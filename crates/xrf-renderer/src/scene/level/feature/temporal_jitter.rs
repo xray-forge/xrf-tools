@@ -12,7 +12,8 @@ pub struct TemporalJitter {
 
 impl TemporalJitter {
   /// The next frame's offset, in drawn pixels about each pixel's centre, `y` down, cycling through
-  /// `ffxFsr3UpscalerGetJitterPhaseCount`'s places for a viewport `ratio` times the drawing's side: eight times its square.
+  /// `ffxFsr3UpscalerGetJitterPhaseCount`'s places for a viewport `ratio` times the drawing's side: eight times its
+  /// square.
   pub fn next(&mut self, ratio: f32) -> Vec2 {
     let phases: u32 = Self::get_phases(ratio);
 

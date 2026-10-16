@@ -10,7 +10,8 @@ const SWAY_TEXELS: f32 = 0.5;
 /// How the trees sway this frame, as the shadows see it: how far they lean, and where they stand.
 #[derive(Clone, Copy, Debug)]
 pub struct ShadowSway<'a> {
-  /// The wind's amplitude, which a tree's reach is multiplied by to give how far it leans; zero while trees stand still.
+  /// The wind's amplitude, which a tree's reach is multiplied by to give how far it leans; zero while trees stand
+  /// still.
   pub amplitude: f32,
   /// The farthest any tree reaches, in metres, weighted by its rigidity.
   pub reach: f32,
@@ -21,8 +22,8 @@ pub struct ShadowSway<'a> {
 }
 
 impl ShadowSway<'_> {
-  /// Seconds between a shadow's draws for what sways alone, at most sixty a second: the sway is slow, and each draw over
-  /// the trees costs a light face's or a cascade's cull and draw.
+  /// Seconds between a shadow's draws for what sways alone, at most sixty a second: the sway is slow, and each draw
+  /// over the trees costs a light face's or a cascade's cull and draw.
   pub const INTERVAL: f32 = 1.0 / 60.0;
 
   /// Whether a map drawn at `drawn_at` draws again for the sway alone: once its interval passed, and only where a tree

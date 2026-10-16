@@ -43,9 +43,9 @@ impl PickFeature {
     Some(slot)
   }
 
-  /// Adds a pick into its readback `slot`: the frame's visible clusters drawn again into its texel, through its narrowed
-  /// camera, after every cull of the frame, passing the composited surfaces by where `is_through`; then the texel
-  /// copied out into its readback.
+  /// Adds a pick into its readback `slot`: the frame's visible clusters drawn again into its texel, through its
+  /// narrowed camera, after every cull of the frame, passing the composited surfaces by where `is_through`; then the
+  /// texel copied out into its readback.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),

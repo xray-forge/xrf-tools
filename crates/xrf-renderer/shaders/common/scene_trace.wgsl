@@ -163,8 +163,8 @@ fn is_scene_solid(index: u32, primitive: u32, barycentrics: vec2<f32>, width: f3
     return true;
   }
 
-  // What the test reads alone, each candidate a leaf a ray passes may be: the surface's base slot, tiling and reference,
-  // and the triangle's outline.
+  // What the test reads alone, each candidate a leaf a ray passes may be: the surface's base slot, tiling and
+  // reference, and the triangle's outline.
   let slot: u32 = trace_surfaces[record.surface].textures[SLOT_BASE];
   let tiling: f32 = trace_surfaces[record.surface].tiling;
   let triangle: SceneTriangle = scene_outline(record, primitive);
@@ -472,12 +472,13 @@ fn scene_lamps(
 }
 
 // The level's grass about a slot as the view plants it: its ground's lowest and highest heights; how much of the ground
-// its tufts cover from above, summed before they overlap; how much of a metre of a ray crossing them sideways they stop,
-// likewise; their mean height; the colour they are of and the hemisphere the slot was baked with; whether any stand.
-// Each of the slot's four models is planted at a candidate as often as its density there says (`InterpolateAndDither`
-// without the dither), one model a candidate where several pass, as many of them as `standing` leaves; each tuft is
-// the disc its vertices spread over at its mean planted size, as tall as its model at that size, by the share of its
-// texture its blades fill (`grass/colours`): its disc seen from above, its width by its height sideways.
+// its tufts cover from above, summed before they overlap; how much of a metre of a ray crossing them sideways they
+// stop, likewise; their mean height; the colour they are of and the hemisphere the slot was baked with; whether any
+// stand. Each of the slot's four models is planted at a candidate as often as its density there says
+// (`InterpolateAndDither` without the dither), one model a candidate where several pass, as many of them as `standing`
+// leaves; each tuft is the disc its vertices spread over at its mean planted size, as tall as its model at that size,
+// by the share of its texture its blades fill (`grass/colours`): its disc seen from above, its width by its height
+// sideways.
 struct SceneGrassSlot {
   base: f32,
   top: f32,

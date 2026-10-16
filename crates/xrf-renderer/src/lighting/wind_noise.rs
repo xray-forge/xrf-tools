@@ -8,19 +8,19 @@ const SAMPLES: usize = 256;
 /// `N`: what the argument is lifted by before it is cut into the table's cells.
 const LIFT: f32 = 4096.0;
 
-/// How far the argument moves before the noise repeats: the cell is the lifted argument's whole part masked by
-/// `SAMPLES - 1`, and the blend between it and the next its fraction, neither of which a move by `SAMPLES` changes while
-/// the lifted argument stays positive, as one kept within a period is.
+/// How far the argument moves before the noise repeats: the cell is the lifted argument's whole part masked by `SAMPLES
+/// - 1`, and the blend between it and the next its fraction, neither of which a move by `SAMPLES` changes while the
+/// lifted argument stays positive, as one kept within a period is.
 const PERIOD: f32 = SAMPLES as f32;
 
 /// `SetOctaves(2)` and `SetAmplitude(0.66666f)`, as `CEnvironment` sets its noise up.
 const OCTAVES: usize = 2;
 const AMPLITUDE: f32 = 0.66666;
 
-/// `CPerlinNoise1D` as `CEnvironment` drives `wind_strength_factor` by it: two octaves of one-dimensional gradient noise
-/// read continuously, each octave's time advanced by the step since the last read at the frequency of that moment, so a
-/// change of frequency changes the pace without a jump. Its tables are filled from a seed of its own, not the C library's
-/// `rand`, so its values are the engine's in kind rather than in number.
+/// `CPerlinNoise1D` as `CEnvironment` drives `wind_strength_factor` by it: two octaves of one-dimensional gradient
+/// noise read continuously, each octave's time advanced by the step since the last read at the frequency of that
+/// moment, so a change of frequency changes the pace without a jump. Its tables are filled from a seed of its own, not
+/// the C library's `rand`, so its values are the engine's in kind rather than in number.
 pub struct WindNoise {
   /// `p`, the cells' shuffled order, and `g1`, their gradients, each repeated past the end as the engine repeats them.
   order: [usize; SAMPLES * 2 + 2],

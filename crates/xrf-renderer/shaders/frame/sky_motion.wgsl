@@ -8,7 +8,8 @@
 // The frame's depth.
 #import "generated/frame/sky_motion"
 
-// Metres along its ray a pixel's sky point stands: far enough that the camera's own travel moves it by no visible share.
+// Metres along its ray a pixel's sky point stands: far enough that the camera's own travel moves it by no visible
+// share.
 const SKY_DISTANCE: f32 = 1e5;
 
 @fragment

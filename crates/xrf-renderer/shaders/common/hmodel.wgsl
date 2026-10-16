@@ -1,8 +1,8 @@
 #import "common/lighting"
 #import "common/sky_box"
 
-// The engine's `hmodel` and `combine_1`, for every pass that lights a surface as the deferred frame does. The irradiance
-// cubes and the material table come in as arguments, so each pass binds them where it likes.
+// The engine's `hmodel` and `combine_1`, for every pass that lights a surface as the deferred frame does. The
+// irradiance cubes and the material table come in as arguments, so each pass binds them where it likes.
 
 // The material table's lighting at its three coordinates.
 fn material_lookup(table: texture_3d<f32>, table_sampler: sampler, x: f32, y: f32, slice: f32) -> vec4<f32> {
@@ -75,8 +75,8 @@ fn hmodel_reflected_environment(state: Lighting, cube_0: texture_cube<f32>, cube
 
 // The hemisphere and ambient, times the screen's occlusion as `combine_1` multiplies `hdiffuse` and `hspecular` by
 // `occ`, added to what the lights accumulated; the environment's reflection apart. Vanilla adds every reflection white;
-// Anomaly's tints the lights' by their colour and multiplies the lit albedo by the hemisphere's. Directions are in world
-// space; `albedo` carries the gloss in alpha.
+// Anomaly's tints the lights' by their colour and multiplies the lit albedo by the hemisphere's. Directions are in
+// world space; `albedo` carries the gloss in alpha.
 fn hmodel_terms(state: Lighting, table: texture_3d<f32>, table_sampler: sampler, cube_0: texture_cube<f32>,
   cube_1: texture_cube<f32>, cube_sampler: sampler, albedo: vec4<f32>, light: vec4<f32>, normal_world: vec3<f32>,
   to_point_world: vec3<f32>, slice: f32, occlusion: f32, visible: vec3<f32>) -> HmodelTerms {

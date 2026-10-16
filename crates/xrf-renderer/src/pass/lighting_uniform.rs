@@ -59,10 +59,11 @@ pub struct LightingUniform {
   /// One where the reflections are traced and blended in, the frame's pixels a traced pixel stands for each way, their
   /// intensity, and how far the sky's highlights are expanded as their light (`sky_as_light`).
   pub reflections: Vec4,
-  /// The enhanced fog's height, density and sun colour, then one where it is drawn; nothing where the engine's alone is.
+  /// The enhanced fog's height, density and sun colour, then one where it is drawn; nothing where the engine's alone
+  /// is.
   pub height_fog: Vec4,
-  /// The fog's share past which the enhanced fog fades fogged surfaces into the sky behind them, then one where it does;
-  /// nothing where they fade by the fog's square, as the engine fades them.
+  /// The fog's share past which the enhanced fog fades fogged surfaces into the sky behind them, then one where it
+  /// does; nothing where they fade by the fog's square, as the engine fades them.
   pub sky_fade: Vec4,
 }
 

@@ -77,8 +77,8 @@ impl GrassCards {
     }
   }
 
-  /// Triangles the cards hold, `current` held now and their tufts having last asked for `asked`: `ASKED_MARGIN` more than
-  /// asked, as a power of two; grown at once and shrunk only once that falls to half the room.
+  /// Triangles the cards hold, `current` held now and their tufts having last asked for `asked`: `ASKED_MARGIN` more
+  /// than asked, as a power of two; grown at once and shrunk only once that falls to half the room.
   pub fn get_capacity(current: u32, asked: u32) -> u32 {
     let wanted: u32 = ((asked as f32 * Self::ASKED_MARGIN) as u32)
       .next_power_of_two()

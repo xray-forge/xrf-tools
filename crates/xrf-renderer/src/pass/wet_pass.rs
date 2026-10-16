@@ -28,8 +28,8 @@ pub struct WetPass {
 
 impl WetPass {
   /// What the enhanced patch writes beside the light target, for the wet look, the reflections and combine to read: how
-  /// much of the surface a puddle's clear coat of water covers, how much a puddle, the water's height over the ground in
-  /// metres, and the variance of the ripples' tilt the patch's filtering folded away.
+  /// much of the surface a puddle's clear coat of water covers, how much a puddle, the water's height over the ground
+  /// in metres, and the variance of the ripples' tilt the patch's filtering folded away.
   pub const SURFACE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// What both patches write beside the light target for combine: the gloss the reflections' wet reach added beyond
   /// the engine's own wetting, which the lights' specular leaves out.

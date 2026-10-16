@@ -1,5 +1,5 @@
-/// Work drawn once in so many frames, offered to the frame's `PeriodicScheduler`: the passes that draw it, how much of it
-/// there is, and how long it may still wait.
+/// Work drawn once in so many frames, offered to the frame's `PeriodicScheduler`: the passes that draw it, how much of
+/// it there is, and how long it may still wait.
 #[derive(Clone, Copy, Debug)]
 pub struct PeriodicJob {
   /// The passes that draw it, as the timer names them; the first names what its cost is learned under.

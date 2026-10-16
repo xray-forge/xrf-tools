@@ -6,8 +6,8 @@
 // The enhanced bloom, from the finished scene rather than the engine's high part: the scene blurred to half its size by
 // a Gaussian across and down; its bright parts raised to the threshold's power, the sky's scaled, self-lit surfaces
 // added whole; halved six times and doubled back, each doubling adding the halving of its size; then split into its
-// colours a few pixels apart, lifted, tonemapped and saturated. The present screens it over the frame. Alpha carries how
-// much of a texel is self-lit through every stage.
+// colours a few pixels apart, lifted, tonemapped and saturated. The present screens it over the frame. Alpha carries
+// how much of a texel is self-lit through every stage.
 
 // The image a stage reads, the coarser halving a doubling adds, their sampler, the frame's depth and marks, and the
 // stage's sizes, spread and strengths.

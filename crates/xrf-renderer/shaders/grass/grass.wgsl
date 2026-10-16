@@ -9,8 +9,8 @@ enable wgpu_binding_array;
 #import "generated/grass/draw"
 
 // `deffer_detail_w_flat.vs` and `deffer_detail_s_flat.vs` with `deffer_base_aref_flat.ps`: a model's tufts as the
-// planting sorted them, each stood at its place, turned and scaled, a waving one leant by its wave, lit by its slot's sky
-// and sun, cut out at its reference, and drawn into the G-buffer from both sides.
+// planting sorted them, each stood at its place, turned and scaled, a waving one leant by its wave, lit by its slot's
+// sky and sun, cut out at its reference, and drawn into the G-buffer from both sides.
 
 // The texture cache's group, at 1 as every static draw binds it.
 @group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;

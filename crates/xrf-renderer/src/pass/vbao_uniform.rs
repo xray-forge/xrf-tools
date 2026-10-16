@@ -4,7 +4,8 @@ use xrf_renderer_core::ShaderStruct;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::pass::noise_turn::NoiseTurn;
 
-/// The exponent a strength of one raises the filtered visibility to, chosen by looking: creases read without blackening.
+/// The exponent a strength of one raises the filtered visibility to, chosen by looking: creases read without
+/// blackening.
 const BASE_POWER: f32 = 1.5;
 
 /// The share of the search target's height a slice is searched across at most, however near the point.

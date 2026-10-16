@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use xrf_renderer_core::GraphCompileOptions;
 
-/// Which of the frame graph's mechanisms every frame compiles with, each to be turned off alone, or all for serial mode,
-/// to bisect a difference in a capture.
+/// Which of the frame graph's mechanisms every frame compiles with, each to be turned off alone, or all for serial
+/// mode, to bisect a difference in a capture.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

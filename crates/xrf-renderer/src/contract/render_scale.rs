@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use xrf_dlss::DlssQuality;
 
-/// How much smaller than the viewport the scene is drawn and then upscaled: the upscalers' quality modes, by the ratio of
-/// the viewport's side to the drawing's.
+/// How much smaller than the viewport the scene is drawn and then upscaled: the upscalers' quality modes, by the ratio
+/// of the viewport's side to the drawing's.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]

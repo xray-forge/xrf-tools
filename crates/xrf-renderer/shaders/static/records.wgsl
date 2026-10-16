@@ -2,8 +2,8 @@
 
 // What the static scene's records mean beyond their layout, which `generated/structs` declares from Rust.
 
-// A surface's texture slots, by their place in its `textures`, as `StaticSurface` orders them; water's take the detail's,
-// the bump's and its companion's places.
+// A surface's texture slots, by their place in its `textures`, as `StaticSurface` orders them; water's take the
+// detail's, the bump's and its companion's places.
 const SLOT_BASE: u32 = 0u;
 const SLOT_DETAIL: u32 = 1u;
 const SLOT_BUMP: u32 = 2u;

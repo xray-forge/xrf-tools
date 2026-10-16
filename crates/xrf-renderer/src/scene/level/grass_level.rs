@@ -203,8 +203,8 @@ impl GrassLevel {
     }
   }
 
-  /// The engine's dither (`bwdithermap(2, dither)` over `magic4x4`), indexed `column * 16 + row` as the planting reads it:
-  /// `dither[(x + shift_x) % 16][(z + shift_z) % 16]`.
+  /// The engine's dither (`bwdithermap(2, dither)` over `magic4x4`), indexed `column * 16 + row` as the planting reads
+  /// it: `dither[(x + shift_x) % 16][(z + shift_z) % 16]`.
   pub fn create_dither() -> [u32; 256] {
     const MAGIC: [[u32; 4]; 4] = [[0, 14, 3, 13], [11, 5, 8, 6], [12, 2, 15, 1], [7, 9, 4, 10]];
     // `N = 255 / (levels - 1)` for two levels, and `magicfact = (N - 1) / 16`, single precision as the engine keeps it,

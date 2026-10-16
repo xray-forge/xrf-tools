@@ -83,8 +83,8 @@ fn lanczos2_history(uv: vec2<f32>, size: vec2<f32>) -> vec4<f32> {
   return clamp(filtered / down_total, least, most);
 }
 
-// `LoadRwNewLocks`, gathered: the lock the reactivity pass found for the one drawn sample landing in this display pixel,
-// the texel `m` whose `floor((m + 0.5 - jitter) / render * display)` is this pixel.
+// `LoadRwNewLocks`, gathered: the lock the reactivity pass found for the one drawn sample landing in this display
+// pixel, the texel `m` whose `floor((m + 0.5 - jitter) / render * display)` is this pixel.
 fn new_lock(position: vec2<f32>) -> f32 {
   // The candidate at or just past this pixel's own edge, and the ones before it, lest rounding put it a texel over.
   let candidate: vec2<f32> = ceil(position * fsr.downscale - 0.5 + fsr.jitter);

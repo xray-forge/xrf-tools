@@ -14,8 +14,8 @@ fn vs_fullscreen(@builtin(vertex_index) index: u32) -> FullscreenVarying {
   return out;
 }
 
-// A frame target read at a texel of the frame, held to the target's own size: one that stands in at a single texel while
-// its feature is off reads that texel, rather than whatever an out-of-bounds load returns.
+// A frame target read at a texel of the frame, held to the target's own size: one that stands in at a single texel
+// while its feature is off reads that texel, rather than whatever an out-of-bounds load returns.
 fn load_frame_target(frame_target: texture_2d<f32>, texel: vec2<i32>) -> vec4<f32> {
   return textureLoad(frame_target, min(texel, vec2<i32>(textureDimensions(frame_target)) - 1), 0);
 }

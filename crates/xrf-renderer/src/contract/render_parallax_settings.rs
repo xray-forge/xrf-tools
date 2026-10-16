@@ -20,7 +20,8 @@ pub struct RenderParallaxSettings {
   pub is_refined: bool,
   /// How much of the sun the enhanced parallax's own relief keeps from its hollows: none to all.
   pub shadow: f32,
-  /// How far a terrain's layers blend by height, the one standing highest showing through: none, the mask alone, to all.
+  /// How far a terrain's layers blend by height, the one standing highest showing through: none, the mask alone, to
+  /// all.
   pub blending: f32,
   /// How much the enhanced parallax darkens the low ground of its relief: none to its whole share.
   pub cavity: f32,

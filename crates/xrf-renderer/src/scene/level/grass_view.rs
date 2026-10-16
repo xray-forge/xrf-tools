@@ -38,8 +38,8 @@ use crate::scene::level::grass_view_frame::GrassViewFrame;
 /// Metres a detail slot spans, `dm_slot_size`.
 const SLOT_METERS: f32 = 2.0;
 
-/// A level's grass as one view plants it: every frame in a ring around its camera, the ring caching what it planted, and
-/// drawn into the G-buffer swaying in the view's wind. The ring and lists are built again when the settings outgrow
+/// A level's grass as one view plants it: every frame in a ring around its camera, the ring caching what it planted,
+/// and drawn into the G-buffer swaying in the view's wind. The ring and lists are built again when the settings outgrow
 /// them, or need less than half; a density changed plants every slot again.
 pub struct GrassView {
   build: Option<GrassBuild>,

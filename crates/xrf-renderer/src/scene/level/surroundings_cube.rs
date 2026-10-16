@@ -33,8 +33,8 @@ use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::surroundings_faces::SurroundingsFaces;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
-/// The level around the camera as a cube, a face a frame, lit into the prefiltered sky cube's first mip, so a reflection
-/// that meets nothing on the screen reads the trees and the hills around it rather than the sky alone.
+/// The level around the camera as a cube, a face a frame, lit into the prefiltered sky cube's first mip, so a
+/// reflection that meets nothing on the screen reads the trees and the hills around it rather than the sky alone.
 pub struct SurroundingsCube {
   /// What culls and draws a face whole, and the camera it is lit by; and what culls and draws a band.
   cut: ShadowCut,
@@ -456,9 +456,9 @@ impl SurroundingsCube {
     CameraView::new(position, look, 90.0, 1.0, Self::NEAR, Self::FAR)
   }
 
-  /// Declares this frame's band of the face drawn again, into the spare G-buffer; then the face's cull and its draw into
-  /// the G-buffer it keeps where it is drawn whole, and its resolve into `faces`, the prefiltered cube's first mip, where
-  /// this frame lights one.
+  /// Declares this frame's band of the face drawn again, into the spare G-buffer; then the face's cull and its draw
+  /// into the G-buffer it keeps where it is drawn whole, and its resolve into `faces`, the prefiltered cube's first
+  /// mip, where this frame lights one.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),

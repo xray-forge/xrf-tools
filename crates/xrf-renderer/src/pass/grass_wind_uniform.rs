@@ -3,8 +3,8 @@ use xrf_renderer_core::ShaderStruct;
 
 use crate::pass::foliage_wind_values::FoliageWindValues;
 
-/// How the grass sways this frame, as `shaders/grass/tuft.wgsl` reads it, in the engine's space: each wave's lean across
-/// the ground, then each wave's direction with its phase in `w`, both over a turn.
+/// How the grass sways this frame, as `shaders/grass/tuft.wgsl` reads it, in the engine's space: each wave's lean
+/// across the ground, then each wave's direction with its phase in `w`, both over a turn.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "GrassWind")]

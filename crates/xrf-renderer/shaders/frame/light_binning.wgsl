@@ -1,8 +1,8 @@
 #import "common/light_clusters"
 
 // Bins the lights standing in view into the clusters of the view, an invocation a cluster: each keeps the lights whose
-// sphere reaches its box, up to its capacity. The two words after the clusters' counts count the clusters that ran out of
-// room and the lights they left out, for the readouts.
+// sphere reaches its box, up to its capacity. The two words after the clusters' counts count the clusters that ran out
+// of room and the lights they left out, for the readouts.
 
 #import "generated/frame/light_binning"
 

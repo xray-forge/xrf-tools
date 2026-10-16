@@ -48,8 +48,8 @@ impl DlssReactivePass {
     }
   }
 
-  /// Writes the bias-current-colour mask DLSS reads: how much the transparent layers changed each pixel against the frame
-  /// before them.
+  /// Writes the bias-current-colour mask DLSS reads: how much the transparent layers changed each pixel against the
+  /// frame before them.
   pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &DlssReactiveParameters) {
     context.bind(parameters);
 

@@ -2,9 +2,9 @@ use xrf_renderer_core::{FrameGraph, GraphColorAttachment};
 
 use crate::frame::view_target_handles::ViewTargetHandles;
 
-/// One viewport's G-buffer, depth, light and scene, sized to its rectangle and made again when that changes; the targets
-/// each frame writes afresh (the ambient occlusion, the haze, the distortion, the high part and the bloom) are its
-/// graph's, their formats and sizes here.
+/// One viewport's G-buffer, depth, light and scene, sized to its rectangle and made again when that changes; the
+/// targets each frame writes afresh (the ambient occlusion, the haze, the distortion, the high part and the bloom) are
+/// its graph's, their formats and sizes here.
 pub struct ViewTargets {
   pub width: u32,
   pub height: u32,

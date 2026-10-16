@@ -238,9 +238,9 @@ impl RenderViewport {
   }
 
   /// Reports the frames since the last report, once one is due: `allocator` what the GPU allocator and the GPU's own
-  /// memory hold, `scenes` every scene, its own among them, `timer` what the frames' passes cost, its own taken from it,
-  /// `composition` what the windows' own passes cost this report round, and `graph` what the frame graph made of the
-  /// latest described frame.
+  /// memory hold, `scenes` every scene, its own among them, `timer` what the frames' passes cost, its own taken from
+  /// it, `composition` what the windows' own passes cost this report round, and `graph` what the frame graph made of
+  /// the latest described frame.
   pub fn report(
     &mut self,
     now: Instant,

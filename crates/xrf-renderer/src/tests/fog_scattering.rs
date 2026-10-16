@@ -90,7 +90,8 @@ fn ships_the_engines_fog_with_the_enhanced_strengths() {
   );
 }
 
-// The height fog reaches the shaders only while enhanced, lit and fogged; the engine's fog is drawn as it was otherwise.
+// The height fog reaches the shaders only while enhanced, lit and fogged; the engine's fog is drawn as it was
+// otherwise.
 #[test]
 fn writes_the_height_fog_only_where_it_is_drawn() {
   assert_eq!(

@@ -146,8 +146,8 @@ fn penumbra_lit(
 }
 
 // Where a point reads a shadowed light's map: the square of the atlas its face holds, in texels, a texel in at each
-// edge (`least` and `most`), where the point falls in it (`centre`), its depth in the engine's own moved by its scale and
-// bias (`moved`, `0` near), and how far the face has faded.
+// edge (`least` and `most`), where the point falls in it (`centre`), its depth in the engine's own moved by its scale
+// and bias (`moved`, `0` near), and how far the face has faded.
 struct ShadowPlace {
   centre: vec2<f32>,
   least: vec2<f32>,

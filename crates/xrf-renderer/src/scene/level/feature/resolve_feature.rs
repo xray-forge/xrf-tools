@@ -626,8 +626,9 @@ impl ResolveFeature {
     }
   }
 
-  /// Adds the guides DLSS ray reconstruction reads, where it resolves this frame, at the drawn size: worked out from the
-  /// G-buffer, the wet surface and the reflections' trace (`traced`, a texel of nothing where none is) after combine.
+  /// Adds the guides DLSS ray reconstruction reads, where it resolves this frame, at the drawn size: worked out from
+  /// the G-buffer, the wet surface and the reflections' trace (`traced`, a texel of nothing where none is) after
+  /// combine.
   pub fn add_guide_passes<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
@@ -689,9 +690,9 @@ impl ResolveFeature {
   }
 
   /// Adds the resolve of `frame`, the finished frame at the drawn size, against the frame as it stood before the
-  /// blended surfaces (`opaque`, the scene where none was kept), DLSS's ray reconstruction reading `guides`. At the drawn size, the temporal resolve; then, at the
-  /// viewport's, the upscale where nothing upscaled it and the sharpening. Answers the frame at the drawn size, which
-  /// the present distorts, and the image the viewport shows.
+  /// blended surfaces (`opaque`, the scene where none was kept), DLSS's ray reconstruction reading `guides`. At the
+  /// drawn size, the temporal resolve; then, at the viewport's, the upscale where nothing upscaled it and the
+  /// sharpening. Answers the frame at the drawn size, which the present distorts, and the image the viewport shows.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),

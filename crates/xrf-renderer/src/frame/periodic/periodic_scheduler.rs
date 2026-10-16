@@ -10,13 +10,13 @@ use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 /// What a frame was granted: each job's passes, the units it drew and what a unit cost before any was learned.
 type FrameGrants = Vec<(&'static [&'static str], f32, f32)>;
 
-/// The work every view and scene draws once in so many frames, and what streams in, decided for all of them so the frame
-/// carries about the same share of it every time: each offers its due jobs, the scheduler grants them, and each does
-/// what it was granted. A frame decides in rounds sharing its budget: what streams in as the scenes take their updates,
-/// then what is drawn once every view prepared. A job that must be done this frame is granted whatever it costs, and
-/// spends the budget like any other, so what may wait fills only what it leaves; then the one waited longest past its
-/// deadline, whatever the budget, one a frame; then the rest by how near their deadline they stand, while they fit.
-/// A job's cost is its units at the milliseconds a unit last cost: as the timer measured its passes where they are
+/// The work every view and scene draws once in so many frames, and what streams in, decided for all of them so the
+/// frame carries about the same share of it every time: each offers its due jobs, the scheduler grants them, and each
+/// does what it was granted. A frame decides in rounds sharing its budget: what streams in as the scenes take their
+/// updates, then what is drawn once every view prepared. A job that must be done this frame is granted whatever it
+/// costs, and spends the budget like any other, so what may wait fills only what it leaves; then the one waited longest
+/// past its deadline, whatever the budget, one a frame; then the rest by how near their deadline they stand, while they
+/// fit. A job's cost is its units at the milliseconds a unit last cost: as the timer measured its passes where they are
 /// timed, else as the frames' GPU times show it, fitted over the jobs each frame was granted; its seed before either.
 pub struct PeriodicScheduler {
   /// Milliseconds of GPU time a frame's work that may wait fills.
@@ -219,7 +219,8 @@ impl PeriodicScheduler {
     ticket.frame == self.frame && self.offers.get(ticket.index).is_some_and(|offer| offer.is_granted)
   }
 
-  /// Milliseconds a job costs: its units at what a unit of its passes last cost, or at its seed before any was measured.
+  /// Milliseconds a job costs: its units at what a unit of its passes last cost, or at its seed before any was
+  /// measured.
   pub fn get_cost(&self, job: &PeriodicJob) -> f32 {
     let rate: f32 = job
       .passes

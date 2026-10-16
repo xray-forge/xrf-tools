@@ -5,8 +5,8 @@ use crate::scene::level::grass_level::GrassLevel;
 /// What one storage binding holds at least on every adapter the renderer starts on: 128 MiB.
 const BINDING_LIMIT: u64 = 128 << 20;
 
-// `bwdithermap(2, dither)`: `magic4x4` spread over sixteen by sixteen, the coarse cell's value scaled by 254 / 16 and the
-// fine one's by a sixteenth of that.
+// `bwdithermap(2, dither)`: `magic4x4` spread over sixteen by sixteen, the coarse cell's value scaled by 254 / 16 and
+// the fine one's by a sixteenth of that.
 #[test]
 fn lays_out_the_engines_dither_column_by_row() {
   let dither: [u32; 256] = GrassLevel::create_dither();

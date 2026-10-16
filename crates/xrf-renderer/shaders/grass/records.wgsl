@@ -6,10 +6,12 @@
 // Steps a ground normal's `x` and `z` are kept on each, as a tuft's record packs them.
 const GROUND_NORMAL_STEPS: u32 = 1024u;
 
-// Words a cached slot's key takes: the world slot it holds on each axis, the generation it was planted under, its tufts.
+// Words a cached slot's key takes: the world slot it holds on each axis, the generation it was planted under, its
+// tufts.
 const GRASS_KEY_WORDS: u32 = 4u;
 
-// Words a planted slot takes in the level's records: its stored sixteen bytes, then its triangle bin's start and length.
+// Words a planted slot takes in the level's records: its stored sixteen bytes, then its triangle bin's start and
+// length.
 const GRASS_SLOT_WORDS: u32 = 6u;
 
 // Floats a collision triangle takes: its three corners.

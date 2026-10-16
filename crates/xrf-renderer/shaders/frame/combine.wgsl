@@ -8,8 +8,8 @@
 #import "common/occlusion"
 #import "common/reflection_trace"
 
-// `hmodel` and `combine_1` over the light the frame accumulated, then the fog and tonemap of `combine_2`, faded into the
-// weather's sky, into the viewport's scene; and `combine_1`'s and the sky's high part beside it, which the bloom is
+// `hmodel` and `combine_1` over the light the frame accumulated, then the fog and tonemap of `combine_2`, faded into
+// the weather's sky, into the viewport's scene; and `combine_1`'s and the sky's high part beside it, which the bloom is
 // built from. Unlit, a surface is its raw albedo.
 
 // The G-buffer and its light, the material table, the lighting and exposure, the ambient occlusion (visibility, then
@@ -71,8 +71,8 @@ fn combined(low: vec3<f32>, high: vec3<f32>) -> CombineOutput {
   return CombineOutput(vec4<f32>(low, 1.0), vec4<f32>(high, 1.0));
 }
 
-// How far the ground seen through a puddle's water shifts, metres a unit of its ripples' tilt, and the puddle over which
-// the shift comes in.
+// How far the ground seen through a puddle's water shifts, metres a unit of its ripples' tilt, and the puddle over
+// which the shift comes in.
 const REFRACTION_SHIFT: f32 = 0.25;
 const REFRACTION_FROM: vec2<f32> = vec2<f32>(0.6, 0.8);
 

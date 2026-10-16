@@ -211,8 +211,9 @@ impl StaticsFeature {
     });
   }
 
-  /// Declares the scene's culls and G-buffer draws: what last frame's depth does not hide, culled and drawn; then, while
-  /// it culls occlusion, this frame's depth reduced and what the first draw does not hide of the rest culled and drawn.
+  /// Declares the scene's culls and G-buffer draws: what last frame's depth does not hide, culled and drawn; then,
+  /// while it culls occlusion, this frame's depth reduced and what the first draw does not hide of the rest culled and
+  /// drawn.
   pub fn add_gbuffer_passes<'a>(
     &'a self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),

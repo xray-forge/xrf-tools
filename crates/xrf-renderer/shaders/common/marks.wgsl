@@ -1,8 +1,8 @@
-// The marks the G-buffer's material target holds in its alpha, a bit each: what is selected, which the present outlines,
-// what is self-lit, whose light the sun pass fills, what is lit as foliage, which passes light through from behind,
-// what is terrain, which reflects the sky where a reflection meets nothing, and what is a plant (grass and leaves,
-// however lit), which rain does not wet and which reflects little, and what moved by itself since the last frame
-// (swayed by the wind), whose shading its motion does not fully carry.
+// The marks the G-buffer's material target holds in its alpha, a bit each: what is selected, which the present
+// outlines, what is self-lit, whose light the sun pass fills, what is lit as foliage, which passes light through from
+// behind, what is terrain, which reflects the sky where a reflection meets nothing, and what is a plant (grass and
+// leaves, however lit), which rain does not wet and which reflects little, and what moved by itself since the last
+// frame (swayed by the wind), whose shading its motion does not fully carry.
 const MARK_SELECTED: u32 = 128u;
 const MARK_EMISSIVE: u32 = 64u;
 const MARK_FLORA: u32 = 32u;

@@ -3,8 +3,8 @@ use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::scene::level::grass_cards::GrassCards;
 use crate::scene::level::level_shadows::LevelShadows;
 
-// The cards hold more than their tufts asked, as a power of two: grown at once, kept while what is asked moves a little,
-// and shrunk back once it falls to half the room.
+// The cards hold more than their tufts asked, as a power of two: grown at once, kept while what is asked moves a
+// little, and shrunk back once it falls to half the room.
 #[test]
 fn sizes_the_cards_to_what_their_tufts_ask() {
   let least: u32 = GrassCards::get_capacity(0, 0);

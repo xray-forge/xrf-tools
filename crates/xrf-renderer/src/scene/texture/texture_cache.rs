@@ -21,8 +21,8 @@ use crate::thread::render_workers::RenderWorkers;
 const CHECKER_SIZE: u32 = 16;
 const CHECKER_SQUARE: u32 = 2;
 
-/// Bytes of texture uploaded at most each frame while a level opens, so an open spreads its uploads rather than stalling
-/// a frame.
+/// Bytes of texture uploaded at most each frame while a level opens, so an open spreads its uploads rather than
+/// stalling a frame.
 const UPLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
 /// Textures offered at most a frame once every level stands; milliseconds a byte of one costs to upload, and frames
@@ -765,8 +765,9 @@ impl TextureCache {
     })
   }
 
-  /// Levels the engine drops off a texture's top at `texture_lod` (`get_texture_load_lod`): none to one, one to three, two
-  /// at four; a texture its `reduce_lod_texture_list` names a step sooner, none at nought (the address space allowing).
+  /// Levels the engine drops off a texture's top at `texture_lod` (`get_texture_load_lod`): none to one, one to three,
+  /// two at four; a texture its `reduce_lod_texture_list` names a step sooner, none at nought (the address space
+  /// allowing).
   pub(crate) fn get_dropped_levels(lod: u32, is_reduced: bool) -> u32 {
     match (is_reduced, lod) {
       (true, 0) | (false, 0..=1) => 0,

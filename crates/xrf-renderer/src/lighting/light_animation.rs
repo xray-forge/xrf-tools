@@ -1,7 +1,8 @@
 use glam::Vec3;
 use xrf_visual::LightAnimatorDescription;
 
-/// `CLAItem::CalculateRGB`: the colour an animation holds at a time, each channel in `[0, 255]`, looping over its frames.
+/// `CLAItem::CalculateRGB`: the colour an animation holds at a time, each channel in `[0, 255]`, looping over its
+/// frames.
 pub fn to_animated_color(animator: &LightAnimatorDescription, seconds: f32) -> Vec3 {
   let length: f32 = animator.frame_count as f32 / animator.fps;
   let frame: f32 = if length > 0.0 && length.is_finite() {

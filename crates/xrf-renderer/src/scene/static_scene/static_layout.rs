@@ -1,6 +1,6 @@
 /// How a static geometry's vertices are laid out in their arena, as words in this order: position (three plain floats,
-/// first, so an acceleration structure reads the arena in place), binormal, normal, tangent, base coordinate, and a word
-/// the layout gives the meaning of. `shaders/static/vertex.wgsl` reads them by the same offsets.
+/// first, so an acceleration structure reads the arena in place), binormal, normal, tangent, base coordinate, and a
+/// word the layout gives the meaning of. `shaders/static/vertex.wgsl` reads them by the same offsets.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum StaticLayout {
   /// A sector's baked geometry: the base coordinate as two shorts, and a lightmap coordinate.

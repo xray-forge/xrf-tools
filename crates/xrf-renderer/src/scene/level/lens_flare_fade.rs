@@ -34,9 +34,8 @@ impl LensFlareFade {
     }
   }
 
-  /// Steps the fade towards the lens flare named now, by the game seconds since the last step: real ones times
-  /// `rate`; at a rate of zero, a paused clock, every fade completes at once. `times` gives a lens flare's rise and down
-  /// times.
+  /// Steps the fade towards the lens flare named now, by the game seconds since the last step: real ones times `rate`;
+  /// at a rate of zero, a paused clock, every fade completes at once. `times` gives a lens flare's rise and down times.
   pub fn advance(&mut self, named: Option<&str>, times: impl Fn(&str) -> Option<(f32, f32)>, now: Instant, rate: f32) {
     let delta: f32 = self
       .last

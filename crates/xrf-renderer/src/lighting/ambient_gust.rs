@@ -1,7 +1,7 @@
 use glam::Vec3;
 
-/// The wind the weather's ambient effects stir, as the grass, the rain and the campfires read it: `wind_strength_factor`
-/// and `wind_blast_direction`, in engine space.
+/// The wind the weather's ambient effects stir, as the grass, the rain and the campfires read it:
+/// `wind_strength_factor` and `wind_blast_direction`, in engine space.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AmbientGust {
   pub strength: f32,

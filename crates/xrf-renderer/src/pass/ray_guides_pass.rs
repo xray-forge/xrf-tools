@@ -54,8 +54,8 @@ impl RayGuidesPass {
     }
   }
 
-  /// Writes the guides DLSS ray reconstruction reads: the specular albedo, the normal with the reflections' roughness, the
-  /// specular and the diffuse hit distances, and the bias mask.
+  /// Writes the guides DLSS ray reconstruction reads: the specular albedo, the normal with the reflections' roughness,
+  /// the specular and the diffuse hit distances, and the bias mask.
   pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &RayGuidesParameters) {
     context.bind(parameters);
 

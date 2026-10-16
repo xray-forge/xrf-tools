@@ -13,8 +13,8 @@ use crate::pass::view_binding::ViewBinding;
 /// The indirect light traced at half the frame's size where DLSS ray reconstruction denoises the frame
 /// (`frame/indirect_trace`): one ray from each point, cosine-weighted about its normal, traced against the level's
 /// geometry by hardware ray query and lit where it meets something as the reflections light a hit, written as the
-/// screen-space bounce's filter writes its light, which combine and the debug view read alike. Nothing traces on a device
-/// without ray queries.
+/// screen-space bounce's filter writes its light, which combine and the debug view read alike. Nothing traces on a
+/// device without ray queries.
 pub struct IndirectTracePass {
   view_layout: wgpu::BindGroupLayout,
   sky_layout: wgpu::BindGroupLayout,

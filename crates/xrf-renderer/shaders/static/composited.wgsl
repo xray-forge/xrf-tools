@@ -6,11 +6,12 @@ enable dual_source_blending;
 #import "common/sky_box"
 #import "common/sun_shadow"
 
-// Static surfaces composited over the lit frame, as the engine's forward passes draw them after the deferred ones:
-// a blended level surface as `lmapE` or `vert` lights it, a spawned model's per vertex as `model_def_lq` or
+// Static surfaces composited over the lit frame, as the engine's forward passes draw them after the deferred ones: a
+// blended level surface as `lmapE` or `vert` lights it, a spawned model's per vertex as `model_def_lq` or
 // `model_env_lq` lights it, each into the frame already tonemapped; added and multiplied ones as their texture reads,
-// fading into the fog by leaving what is behind them; and wall marks laid into the G-buffer's albedo before any light. Every blend is one
-// equation, the surface's colour plus what is behind it times a second colour, so one pipeline a target draws them all.
+// fading into the fog by leaving what is behind them; and wall marks laid into the G-buffer's albedo before any light.
+// Every blend is one equation, the surface's colour plus what is behind it times a second colour, so one pipeline a
+// target draws them all.
 
 #import "generated/static/composited"
 // The sky's own bind group, of which both skies, the irradiance cubes and their sampler are read.

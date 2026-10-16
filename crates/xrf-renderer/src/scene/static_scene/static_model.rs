@@ -130,8 +130,8 @@ impl StaticModel {
       .unwrap_or_else(|| geometry.get_default_level())
   }
 
-  /// Each vertex's links as two words: its four bones' indices as bytes, then their weights as bytes. A geometry without
-  /// a skin hangs from nothing, which its vertices' zero weights say.
+  /// Each vertex's links as two words: its four bones' indices as bytes, then their weights as bytes. A geometry
+  /// without a skin hangs from nothing, which its vertices' zero weights say.
   fn pack_links(geometry: &VisualGeometry, buffer: &[u8], vertices: usize) -> Vec<u32> {
     let Some(skin) = &geometry.skin else {
       return vec![0; vertices * 2];

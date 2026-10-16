@@ -96,7 +96,8 @@ impl OverlaysFeature {
     self.overlays.as_ref()
   }
 
-  /// A box's twelve edges as lines, its corners where `transform` stands them, in one colour seen through what is in front.
+  /// A box's twelve edges as lines, its corners where `transform` stands them, in one colour seen through what is in
+  /// front.
   fn to_box_lines(transform: Mat4, [min, max]: [Vec3; 2], color: [f32; 3]) -> RenderOverlay {
     let corner = |index: usize| -> Vec3 {
       transform.transform_point3(Vec3::new(

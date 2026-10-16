@@ -30,8 +30,8 @@ impl RenderViewOptions {
     self.features.tonemap == RenderTonemapMode::Enhanced && self.mode.is_lit && !self.mode.is_wireframe
   }
 
-  /// Whether the view inspects its surfaces rather than shows them: a wireframe, the asset checker, alpha hidden, or the
-  /// parallax, bumps, heights or sampled mip drawn for their debug views.
+  /// Whether the view inspects its surfaces rather than shows them: a wireframe, the asset checker, alpha hidden, or
+  /// the parallax, bumps, heights or sampled mip drawn for their debug views.
   pub fn is_inspecting_surfaces(&self) -> bool {
     self.mode.is_wireframe
       || self.asset.checker > 0.0

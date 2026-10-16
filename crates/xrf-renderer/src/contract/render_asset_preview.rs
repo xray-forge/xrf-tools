@@ -15,7 +15,8 @@ pub struct RenderAssetPreview {
   /// What shows where nothing was drawn and neither the sky nor the fog is, each channel zero to one; none for the
   /// level viewer's own.
   pub backdrop: Option<[f32; 3]>,
-  /// The backdrop laid out as a checkerboard with a second colour, as behind a picture with alpha; none for a plain one.
+  /// The backdrop laid out as a checkerboard with a second colour, as behind a picture with alpha; none for a plain
+  /// one.
   pub backdrop_squares: Option<RenderBackdropSquares>,
   /// Times a uv checker repeats over a surface's base coordinate, drawn in place of its textures; zero for none.
   pub checker: f32,

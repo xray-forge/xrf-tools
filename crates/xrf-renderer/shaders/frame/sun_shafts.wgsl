@@ -10,8 +10,8 @@
 // it, stepped along each ray from what it shows back to the camera through the sun's shadow, the steps jittered a pixel
 // apart, at half the frame's size and brought up by depth; the sky as dense as the whole ray. Weighted towards the sun,
 // in its colour, added to what the local lights' shafts gathered (`frame/light_volumes`), as both add up in
-// `rt_Generic_2`, tonemapped together and added to the frame. Where the enhanced volume draws, neither: what its froxels
-// gathered along the view up to the pixel's depth, the sky's at its far end, added the same way.
+// `rt_Generic_2`, tonemapped together and added to the frame. Where the enhanced volume draws, neither: what its
+// froxels gathered along the view up to the pixel's depth, the sky's at its far end, added the same way.
 
 #import "generated/frame/sun_shafts"
 

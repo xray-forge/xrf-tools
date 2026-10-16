@@ -5,9 +5,9 @@ enable wgpu_binding_array;
 #import "static/pulling"
 #import "generated/structs"
 
-// What every water program shares: the vertex the wave lifts, the fragment's textures, normals, eye, fog, sky and vertex
-// light, the depth behind it, and the distortion it writes. The water's own bindings are passed in, since each program
-// declares its group 3 from its own passes' parameters.
+// What every water program shares: the vertex the wave lifts, the fragment's textures, normals, eye, fog, sky and
+// vertex light, the depth behind it, and the distortion it writes. The water's own bindings are passed in, since each
+// program declares its group 3 from its own passes' parameters.
 
 @group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;
 @group(1) @binding(1) var texture_sampler: sampler;
@@ -116,8 +116,8 @@ struct WaterFragment {
   depth: f32,
 };
 
-// Samples a fragment's surface and works out what every water reads of it, discarding where the fog is total and where a
-// nearer fold of the surface covers it.
+// Samples a fragment's surface and works out what every water reads of it, discarding where the fog is total and where
+// a nearer fold of the surface covers it.
 fn read_water(
   in: WaterVarying,
   water: Water,

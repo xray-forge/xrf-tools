@@ -20,8 +20,8 @@ const BLENDS: [ParticleBlend; 5] = [
   ParticleBlend::MultiplyDoubled,
 ];
 
-/// Draws the bolt striking over a viewport's finished scene, as `dxThunderboltRender` does after the rain: its model and
-/// its two glows, each composited as its shader says, tested against the G-buffer's depth without writing it.
+/// Draws the bolt striking over a viewport's finished scene, as `dxThunderboltRender` does after the rain: its model
+/// and its two glows, each composited as its shader says, tested against the G-buffer's depth without writing it.
 pub struct ThunderPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,

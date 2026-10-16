@@ -30,8 +30,8 @@ impl PeriodicBudget {
   /// How far a slower interval moves the refresh up a frame: it follows the fastest, and only slowly what is slower.
   const REFRESH_RISE: f32 = 0.01;
 
-  /// Takes a frame `delta` after the last, `span` the milliseconds of the latest GPU frame read back where one came back,
-  /// held to `frame_rate`: answers what the frame gives the work that may wait, at least `floor`.
+  /// Takes a frame `delta` after the last, `span` the milliseconds of the latest GPU frame read back where one came
+  /// back, held to `frame_rate`: answers what the frame gives the work that may wait, at least `floor`.
   pub fn update(&mut self, (delta, span): (Duration, Option<f32>), frame_rate: RenderFrameRate, floor: f32) -> f32 {
     let seconds: f32 = delta.as_secs_f32();
     let interval: f32 = seconds * 1000.0;

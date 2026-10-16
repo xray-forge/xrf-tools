@@ -87,8 +87,8 @@ impl RenderLighting {
 
   /// `env_color.rgb` as combine binds it.
   ///
-  /// `CEnvDescriptorMixer::lerp` adds `EPS` so a black hemisphere is never exactly zero, then `phase_combine` doubles it
-  /// times `r2_sun_lumscale_hemi`.
+  /// `CEnvDescriptorMixer::lerp` adds `EPS` so a black hemisphere is never exactly zero, then `phase_combine` doubles
+  /// it times `r2_sun_lumscale_hemi`.
   pub fn get_environment(&self, scales: &RenderLightScales) -> Vec3 {
     (self.hemisphere_color * 2.0 + EPS) * 2.0 * scales.hemi
   }

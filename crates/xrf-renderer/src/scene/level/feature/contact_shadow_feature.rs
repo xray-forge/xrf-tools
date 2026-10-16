@@ -13,9 +13,9 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
-/// The contact shadows, marched over the frame's depth where the view is lit and solid: the sun's under its cascades, at
-/// the frame's size or half of it into a target the sun brings up and multiplies its own by, none while the sun lights
-/// nothing (a weather's night); and the lights', which the lights march in their own pass.
+/// The contact shadows, marched over the frame's depth where the view is lit and solid: the sun's under its cascades,
+/// at the frame's size or half of it into a target the sun brings up and multiplies its own by, none while the sun
+/// lights nothing (a weather's night); and the lights', which the lights march in their own pass.
 #[derive(Default)]
 pub struct ContactShadowFeature {
   /// Whether the sun's are marched this frame.

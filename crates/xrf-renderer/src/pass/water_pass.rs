@@ -463,8 +463,8 @@ impl WaterPass {
     }
   }
 
-  /// The pipelines every batch draws with: the depth and the engine's surface from `static/water`, the enhanced surface from
-  /// `static/water_enhanced`, each module with its own group 3; its reflection and resolve from
+  /// The pipelines every batch draws with: the depth and the engine's surface from `static/water`, the enhanced surface
+  /// from `static/water_enhanced`, each module with its own group 3; its reflection and resolve from
   /// `static/water_reflection`, with its own group 4 past the request list the reflection fills.
   fn create_pipelines(
     source: PipelineSource<'_>,

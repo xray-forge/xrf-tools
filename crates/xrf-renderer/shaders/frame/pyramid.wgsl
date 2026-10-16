@@ -61,8 +61,8 @@ fn cs_copy_nearest(@builtin(global_invocation_id) id: vec3<u32>) {
   textureStore(target_level, id.xy, vec4<f32>(textureLoad(source_depth, id.xy, 0), 0.0, 0.0, 0.0));
 }
 
-// A level of the nearest's into the next, half its size rounded down: each texel the nearest of the two by two under it,
-// and of the third row or column where the level before is odd and it is the last.
+// A level of the nearest's into the next, half its size rounded down: each texel the nearest of the two by two under
+// it, and of the third row or column where the level before is odd and it is the last.
 @compute @workgroup_size(8, 8)
 fn cs_reduce_nearest(@builtin(global_invocation_id) id: vec3<u32>) {
   let size: vec2<u32> = textureDimensions(target_level);

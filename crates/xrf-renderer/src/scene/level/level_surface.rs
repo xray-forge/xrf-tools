@@ -206,8 +206,8 @@ impl LevelSurface {
     ]
   }
 
-  /// Declares the level surface's passes: the overhead maps where due, the puddle sites placed again where either map or
-  /// the fires changed, and this frame's puddles kept. Answers the lowest heights, the puddles and the level water's
+  /// Declares the level surface's passes: the overhead maps where due, the puddle sites placed again where either map
+  /// or the fires changed, and this frame's puddles kept. Answers the lowest heights, the puddles and the level water's
   /// depth, which the wet passes read.
   pub fn add_passes<'a>(
     &'a self,

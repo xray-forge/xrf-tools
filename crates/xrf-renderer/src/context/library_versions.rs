@@ -34,8 +34,8 @@ pub(crate) fn read_file_version(path: &Path) -> Option<String> {
   let wide: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
   let name: PCWSTR = PCWSTR(wide.as_ptr());
   // SAFETY: `name` is a NUL-terminated path that outlives each call, and `block` is the size the first call asks. The
-  // fixed info `VerQueryValueW` points at lies inside `block`, which outlives the read; it is copied out unaligned, as a
-  // `Vec<u8>` promises no alignment, and only once the length it answers covers it.
+  // fixed info `VerQueryValueW` points at lies inside `block`, which outlives the read; it is copied out unaligned, as
+  // a `Vec<u8>` promises no alignment, and only once the length it answers covers it.
   unsafe {
     let size: u32 = GetFileVersionInfoSizeW(name, None);
 

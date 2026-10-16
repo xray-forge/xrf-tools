@@ -28,8 +28,8 @@ pub struct RenderSettings {
   /// backend does not have falls back to automatic.
   pub gpu: Option<RenderGpu>,
   /// Milliseconds of GPU time each frame gives at least the work drawn once in so many frames that may wait: the
-  /// shadows' cascades and faces, the overhead maps, the surroundings' faces, the sky's refill. A frame held to a cap or
-  /// the display's refresh gives it what headroom it leaves, up to `PeriodicBudget::CEILING`.
+  /// shadows' cascades and faces, the overhead maps, the surroundings' faces, the sky's refill. A frame held to a cap
+  /// or the display's refresh gives it what headroom it leaves, up to `PeriodicBudget::CEILING`.
   pub periodic_budget: f32,
   /// How the level's surfaces sample their textures, which every viewport shares.
   pub texture_filtering: RenderTextureFiltering,

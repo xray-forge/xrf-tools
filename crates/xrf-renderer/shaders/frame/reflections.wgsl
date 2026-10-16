@@ -806,10 +806,10 @@ struct ReprojectedTargets {
   @location(1) variance: f32,
 };
 
-// The last frame's reflection at a traced pixel: read where the reflected point stood (the view's ray carried on through
-// the surface by the hit's length) where the normals there match as a mirror's would, else where the surface stood if
-// it keeps near the neighbourhood; searched about where the history disagrees, dropped where it still does, and for a
-// mirror. Holds more frames the rougher the surface.
+// The last frame's reflection at a traced pixel: read where the reflected point stood (the view's ray carried on
+// through the surface by the hit's length) where the normals there match as a mirror's would, else where the surface
+// stood if it keeps near the neighbourhood; searched about where the history disagrees, dropped where it still does,
+// and for a mirror. Holds more frames the rougher the surface.
 @fragment
 fn fs_reproject(in: FullscreenVarying) -> ReprojectedTargets {
   let pixel: vec2<f32> = floor(in.clip.xy);

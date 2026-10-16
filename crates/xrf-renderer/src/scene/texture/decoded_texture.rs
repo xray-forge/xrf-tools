@@ -453,8 +453,8 @@ impl DecodedTexture {
     })
   }
 
-  /// The GPU format a cube of texels four bytes each uploads as, raw, the way an irradiance cube is stored; `None` for any
-  /// other texel layout.
+  /// The GPU format a cube of texels four bytes each uploads as, raw, the way an irradiance cube is stored; `None` for
+  /// any other texel layout.
   fn to_texel_cube_format(format: &DdsFormat) -> Option<wgpu::TextureFormat> {
     Some(match format {
       DdsFormat::D3d(D3DFormat::A8R8G8B8 | D3DFormat::X8R8G8B8) => wgpu::TextureFormat::Bgra8Unorm,

@@ -267,7 +267,8 @@ impl RenderThread {
       self.frame();
     }
 
-    // Answered once everything the thread made on the GPU is let go: its scenes hold the device as long as the GPU does.
+    // Answered once everything the thread made on the GPU is let go: its scenes hold the device as long as the GPU
+    // does.
     let reply: Option<Sender<()>> = self.stopping.take();
 
     drop(self);
@@ -1185,7 +1186,8 @@ impl RenderThread {
   ) -> (Vec<ViewFrame>, Vec<(RenderSceneId, RenderViewportId)>) {
     let mut frames: Vec<ViewFrame> = Vec::new();
 
-    // Every view samples the one texture cache, so it is filtered and loaded by the renderer's settings, never a view's.
+    // Every view samples the one texture cache, so it is filtered and loaded by the renderer's settings, never a
+    // view's.
     gpu
       .textures
       .set_anisotropy(&gpu.context.device, self.settings.texture_filtering.get_anisotropy());
@@ -1803,8 +1805,8 @@ impl RenderThread {
     }
   }
 
-  /// What a viewport's camera sees over `rect`, its whole rectangle: a lit and fogged level ends where its fog is total,
-  /// or at the weather's far plane, as the engine's does.
+  /// What a viewport's camera sees over `rect`, its whole rectangle: a lit and fogged level ends where its fog is
+  /// total, or at the weather's far plane, as the engine's does.
   fn get_camera_view(viewport: &RenderViewport, rect: &RenderRect) -> CameraView {
     let far_limit: f32 = viewport
       .world

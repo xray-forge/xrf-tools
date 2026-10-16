@@ -2,10 +2,10 @@ use glam::{UVec2, Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 /// A reflection ray the screen left unanswered on its turn, which the scene pass traces against the level's geometry:
-/// where it starts in renderer space and how far it reaches, its cone, its direction (octahedral, two snorm halves), its
-/// traced pixel (`x` in the low half, `y` in the high), and what the screen answered: that answer's colour already
-/// weighed by its share, then the share (four halves), and its length where it holds most; and the reason its ends
-/// take on a hit.
+/// where it starts in renderer space and how far it reaches, its cone, its direction (octahedral, two snorm halves),
+/// its traced pixel (`x` in the low half, `y` in the high), and what the screen answered: that answer's colour already
+/// weighed by its share, then the share (four halves), and its length where it holds most; and the reason its ends take
+/// on a hit.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "TraceRequest")]

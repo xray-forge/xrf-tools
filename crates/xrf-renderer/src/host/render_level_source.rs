@@ -99,8 +99,8 @@ pub trait RenderLevelSource: RenderAssetSource {
     Err(XrfError::new_not_found_error(format!("No motion '{name}' to play")))
   }
 
-  /// An object motion a spawned object moves along (`CObjectAnimator::Load`), by the name its spawn gives, called from a
-  /// loader thread.
+  /// An object motion a spawned object moves along (`CObjectAnimator::Load`), by the name its spawn gives, called from
+  /// a loader thread.
   ///
   /// # Errors
   ///

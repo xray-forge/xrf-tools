@@ -68,8 +68,8 @@ impl RenderShadowSettings {
     }
   }
 
-  /// Cascade `index`'s width in metres, from `RENDER_MIN_SHADOW_CASCADE_WIDTH` to `RENDER_MAX_SHADOW_CASCADE_WIDTH`; the
-  /// least for one missing or not a number.
+  /// Cascade `index`'s width in metres, from `RENDER_MIN_SHADOW_CASCADE_WIDTH` to `RENDER_MAX_SHADOW_CASCADE_WIDTH`;
+  /// the least for one missing or not a number.
   pub fn get_cascade_width(&self, index: usize) -> f32 {
     match self.cascades.get(index) {
       Some(width) if !width.is_nan() => width.clamp(RENDER_MIN_SHADOW_CASCADE_WIDTH, RENDER_MAX_SHADOW_CASCADE_WIDTH),

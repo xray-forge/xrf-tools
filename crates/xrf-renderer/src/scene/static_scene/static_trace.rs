@@ -16,9 +16,10 @@ use crate::scene::static_scene::static_trace_swaying::StaticTraceSwaying;
 /// The level's static geometry as rays are traced against it by hardware ray query: bottom-level acceleration
 /// structures read in place from the scene's vertex and index arenas, a sector's deferred baked sections in one, each
 /// of its instanced meshes and each rigid spawned model in one of its own; and one top-level structure, an instance for
-/// each sector's baked geometry, for each place an instanced mesh stands at and for each object a model stands as. Each instance names an entry of the instance table, its
-/// first record and its place, so a hit finds its geometry, its triangle's corners, its surface and its hemisphere
-/// (`TraceParameters`). Built again as sectors come and go, whole when an arena it reads grows.
+/// each sector's baked geometry, for each place an instanced mesh stands at and for each object a model stands as. Each
+/// instance names an entry of the instance table, its first record and its place, so a hit finds its geometry, its
+/// triangle's corners, its surface and its hemisphere (`TraceParameters`). Built again as sectors come and go, whole
+/// when an arena it reads grows.
 pub struct StaticTrace {
   tlas: wgpu::Tlas,
   /// The key the top-level structure is bound by, a new one each time it is made.

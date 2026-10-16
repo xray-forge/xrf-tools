@@ -81,10 +81,10 @@ fn overhead_open(
 // (`scene/level/cover_pyramid.rs`), `shape` its texels across and the metres it reaches down, the point's surface
 // facing `normal`. Where the point stands open, all of it, weighed over the four texels about it as `overhead_open`
 // weighs them. Where something stands over a surface facing up, twice the share of the sky within `creep` metres of it
-// open down to no more than `COVER_CREEP_DROP` under it, at most all: under a cover's edge as wet as the open ground beside it, dry
-// `creep` under it, and wet throughout under a cover narrower than twice `creep`, as a long rain runs and splashes in
-// under what is small. The pyramid tells first whether anything, or everything, stands over the point's surroundings,
-// so only a point within `creep` of a cover's edge counts taps; `noise`, from nothing to one, turns them.
+// open down to no more than `COVER_CREEP_DROP` under it, at most all: under a cover's edge as wet as the open ground
+// beside it, dry `creep` under it, and wet throughout under a cover narrower than twice `creep`, as a long rain runs
+// and splashes in under what is small. The pyramid tells first whether anything, or everything, stands over the point's
+// surroundings, so only a point within `creep` of a cover's edge counts taps; `noise`, from nothing to one, turns them.
 fn cover_reached(
   map: texture_depth_2d,
   pyramid: texture_2d<f32>,

@@ -32,8 +32,8 @@ struct SkyTextureEntry {
   used: u64,
 }
 
-/// The weather's textures, skies and their irradiance cubes, clouds, rain and what it wets with, by reference: loaded the first time a viewport
-/// asks for one, and let go once none has asked for a while.
+/// The weather's textures, skies and their irradiance cubes, clouds, rain and what it wets with, by reference: loaded
+/// the first time a viewport asks for one, and let go once none has asked for a while.
 pub struct WeatherTextureCache {
   entries: HashMap<String, SkyTextureEntry>,
   sender: Sender<SkyTextureLoad>,

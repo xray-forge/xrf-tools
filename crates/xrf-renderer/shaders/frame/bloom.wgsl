@@ -4,10 +4,10 @@
 // blurred across and down by a fifteen-tap Gaussian (`bloom_filter.ps`). Every target is eight bits a channel, as the
 // engine's are, so each stage clamps to one.
 
-// The source and its sampler, and the draw's `Bloom`: for the build, x, y half a texel of the frame and z the threshold;
-// for a filter, x, y one texel of the target along its way and z one where only the side behind is read, as Anomaly's
-// `bloom_filter.ps` reads it; then `CalcGauss_wave`'s weights, the taps one to four out, then five to seven out and the
-// centre.
+// The source and its sampler, and the draw's `Bloom`: for the build, x, y half a texel of the frame and z the
+// threshold; for a filter, x, y one texel of the target along its way and z one where only the side behind is read, as
+// Anomaly's `bloom_filter.ps` reads it; then `CalcGauss_wave`'s weights, the taps one to four out, then five to seven
+// out and the centre.
 #import "generated/frame/bloom"
 
 // `BLOOM_size_X`, `BLOOM_size_Y`.
@@ -22,8 +22,8 @@ fn read_source(at: vec2<f32>) -> vec3<f32> {
   return textureSampleLevel(source, source_sampler, at, 0.0).rgb;
 }
 
-// `bloom_build.ps`: four reads of the high part around a texel of the target, twice their mean, and the brightness their
-// three channels sum to less the threshold.
+// `bloom_build.ps`: four reads of the high part around a texel of the target, twice their mean, and the brightness
+// their three channels sum to less the threshold.
 @fragment
 fn fs_bloom_build(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let at: vec2<f32> = in.clip.xy / BLOOM_SIZE + bloom.params.xy;

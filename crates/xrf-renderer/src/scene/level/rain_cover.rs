@@ -15,8 +15,8 @@ use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::shadow_frame::ShadowFrame;
 
 /// What stands over the rain around the camera, drawn straight down as both engines draw their rain shadow map, which
-/// stops the streaks and keeps what is under it dry: one overhead map, fitted to the wet reach where the wetting reaches
-/// past the engine's, and its pyramid of the lowest and highest under each texel, reduced whenever it is drawn.
+/// stops the streaks and keeps what is under it dry: one overhead map, fitted to the wet reach where the wetting
+/// reaches past the engine's, and its pyramid of the lowest and highest under each texel, reduced whenever it is drawn.
 pub struct RainCover {
   map: OverheadMap,
   pyramid: CoverPyramid,

@@ -75,7 +75,8 @@ impl MaterialTable {
     data
   }
 
-  /// One texel of one lighting model, quantised byte for byte as the engine's `r4_rendertarget_build_textures.cpp` does.
+  /// One texel of one lighting model, quantised byte for byte as the engine's `r4_rendertarget_build_textures.cpp`
+  /// does.
   fn sample_material(slice: u32, x: u32, y: u32) -> [u8; 2] {
     let ld: f64 = f64::from(x) / f64::from(Self::LUT_WIDTH - 1);
     let ls: f64 = (f64::from(y) / f64::from(Self::LUT_HEIGHT - 1) + f64::from(EPS_S)) * ld.powf(1.0 / 32.0);

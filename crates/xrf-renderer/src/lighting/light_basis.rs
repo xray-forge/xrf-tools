@@ -107,8 +107,8 @@ impl LightBasis {
     (self.position + direction * radius).extend(radius)
   }
 
-  /// `light::get_LOD`: how far a shadowed light has faded, by its sphere's share of the screen, one whole and zero gone,
-  /// against the progressive meshes' own `start` and `end` thresholds.
+  /// `light::get_LOD`: how far a shadowed light has faded, by its sphere's share of the screen, one whole and zero
+  /// gone, against the progressive meshes' own `start` and `end` thresholds.
   pub fn to_light_lod(sphere: Vec4, eye: Vec3, start: f32, end: f32) -> f32 {
     // `EPS` added to the squared distance, so a camera inside the light divides by no zero.
     let area: f32 = SHADOWED_FADE * sphere.w / (eye.distance_squared(sphere.truncate()) + EPS);

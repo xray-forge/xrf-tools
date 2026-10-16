@@ -71,8 +71,8 @@ fn sky_drawn(state: Lighting, direction: vec3<f32>, toward: vec3<f32>, scale: f3
   return sky_with_clouds(state, direction, below, scale);
 }
 
-// The sky's haze along a world direction, from the haze map `haze`: the sky as drawn there, clouds and all, blurred past
-// any shape; below the horizon, the horizon's own, since nothing stands behind the ground.
+// The sky's haze along a world direction, from the haze map `haze`: the sky as drawn there, clouds and all, blurred
+// past any shape; below the horizon, the horizon's own, since nothing stands behind the ground.
 fn sky_haze(haze: texture_2d<f32>, direction: vec3<f32>) -> vec3<f32> {
   let lifted: vec3<f32> = normalize(vec3<f32>(direction.x, max(direction.y, 0.0), direction.z));
   let coordinates: vec2<f32> = sky_haze_coordinates(lifted);

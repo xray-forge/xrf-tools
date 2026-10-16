@@ -99,8 +99,8 @@ const PICKED_CLUSTER: u32 = 1;
 const PICKED_IMPOSTOR: u32 = 2;
 
 /// A scene as one viewport draws it: the values its units share this frame (`ViewFrame`), its targets, and its units
-/// (`SceneFeatures`), which each keep what they keep between frames. The scene (`LevelScene`) is shared by every view of
-/// it and passed in; this prepares the view's frame from it and records it into the frame's graph.
+/// (`SceneFeatures`), which each keep what they keep between frames. The scene (`LevelScene`) is shared by every view
+/// of it and passed in; this prepares the view's frame from it and records it into the frame's graph.
 pub struct SceneView {
   /// The values every unit reads this frame.
   shared: ViewFrame,
@@ -343,8 +343,8 @@ impl SceneView {
   }
 
   /// The scene's units: the static cull; the grass, which reads its discard, plants around last frame's puddles and
-  /// casts by the trace or the cascades; the lights, which read the cull's levels of detail; then what the views off the
-  /// viewport draw the scene with.
+  /// casts by the trace or the cascades; the lights, which read the cull's levels of detail; then what the views off
+  /// the viewport draw the scene with.
   fn prepare_scene(&mut self, scene: &mut LevelScene, encoder: &mut FrameEncoder, frame: &ViewPrepare<'_>, time: f32) {
     let (device, options, lighting, view) = (frame.device, frame.options, frame.lighting, frame.view);
 
@@ -832,10 +832,10 @@ impl SceneView {
   }
 
   /// Declares the frame `begin_frame` readied into the frame's graph, in the encode groups the frame is recorded in, on
-  /// as many threads where it is not timed: the scene (culled and drawn into the G-buffer, the grass planted and drawn),
-  /// its shadows (the cascades, the rain's cover, the level's surface and the lamps' faces), its lighting with the
-  /// reflections and the water, and what blends over it and resolves it; the pick last. Which passes run is decided by
-  /// the units; each reads the view, which recording leaves as it is. The present pass reads what it leaves.
+  /// as many threads where it is not timed: the scene (culled and drawn into the G-buffer, the grass planted and
+  /// drawn), its shadows (the cascades, the rain's cover, the level's surface and the lamps' faces), its lighting with
+  /// the reflections and the water, and what blends over it and resolves it; the pick last. Which passes run is decided
+  /// by the units; each reads the view, which recording leaves as it is. The present pass reads what it leaves.
   pub fn record<'a>(
     &'a self,
     scene: &'a LevelScene,
@@ -1533,7 +1533,8 @@ impl SceneView {
     }
   }
 
-  /// What its frames are drawn with, as resolved from what `options` asked; the weather's light is the viewport's to add.
+  /// What its frames are drawn with, as resolved from what `options` asked; the weather's light is the viewport's to
+  /// add.
   pub fn describe_applied(&self, options: &RenderViewOptions) -> RenderAppliedReport {
     let antialiasing: RenderAntialiasing = self.get_antialiasing();
     let cascades: usize = self.shared.shadow_settings.get_cascade_count();

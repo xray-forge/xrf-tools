@@ -32,8 +32,8 @@ use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// The sky a view draws and reflects: its textures as the weather holds them this frame, with the sun's sprite, the
-/// prefiltered cube the reflections and the enhanced specular read, filled again as the frame's scheduler grants it
-/// (at once when new, else after `REFILL_WAIT_LEAST` frames and within `REFILL_WAIT_MOST` more, as the sky and its light
+/// prefiltered cube the reflections and the enhanced specular read, filled again as the frame's scheduler grants it (at
+/// once when new, else after `REFILL_WAIT_LEAST` frames and within `REFILL_WAIT_MOST` more, as the sky and its light
 /// move slowly), and the haze map the distance fades into.
 #[derive(Default)]
 pub struct SkyFeature {

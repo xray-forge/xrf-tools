@@ -2,8 +2,8 @@ use wgpu::util::DeviceExt;
 
 use crate::host::render_weather_model::RenderWeatherModel;
 
-/// A model the weather draws, on the GPU: rain's splash, which every landing drop draws a copy of, or a thunderbolt. Its
-/// vertices in renderer space, a position then a coordinate each, and its indices.
+/// A model the weather draws, on the GPU: rain's splash, which every landing drop draws a copy of, or a thunderbolt.
+/// Its vertices in renderer space, a position then a coordinate each, and its indices.
 pub struct WeatherModelBuffers {
   pub vertices: wgpu::Buffer,
   pub indices: wgpu::Buffer,

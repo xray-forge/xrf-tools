@@ -37,8 +37,8 @@ fn ray_view_point(screen: vec3<f32>) -> vec3<f32> {
   return camera_view_position(screen.xy * camera.viewport.xy, max(screen.z, 1e-7));
 }
 
-// A microfacet normal drawn from the GGX distribution of visible normals (Heitz 2018) about +z, seen from `view`, with a
-// roughness `alpha` and two uniform numbers.
+// A microfacet normal drawn from the GGX distribution of visible normals (Heitz 2018) about +z, seen from `view`, with
+// a roughness `alpha` and two uniform numbers.
 fn ggx_visible_normal(view: vec3<f32>, alpha: f32, numbers: vec2<f32>) -> vec3<f32> {
   let stretched: vec3<f32> = normalize(vec3<f32>(alpha * view.x, alpha * view.y, view.z));
   let length_squared: f32 = dot(stretched.xy, stretched.xy);
@@ -321,15 +321,15 @@ fn environment_brdf(head_on: vec3<f32>, roughness: f32, facing: f32) -> vec3<f32
   return head_on * ab.x + ab.y;
 }
 
-    // The sun's angular radius, which its glint's lobe is widened by, so a mirror shows the disc rather than a point; and
-// the most of the sun's light, by its luminance, a glint sends the eye, a fifth of the half float's range, so a mirror's
-// peak blooms rather than overflowing the frame's light.
+// The sun's angular radius, which its glint's lobe is widened by, so a mirror shows the disc rather than a point; and
+// the most of the sun's light, by its luminance, a glint sends the eye, a fifth of the half float's range, so a
+// mirror's peak blooms rather than overflowing the frame's light.
 const SUN_ANGULAR_RADIUS: f32 = 0.00465;
 const SUN_GLINT_MOST: f32 = 4096.0;
 
 // The share of the sun's light a surface reflects to the eye: GGX's lobe over its reflectance head on and roughness,
-// widened by the sun's disc, Smith's height-correlated visibility and Schlick's Fresnel, by the cosine the sun lights it
-// at. `normal`, `to_eye` and `to_sun` share a space.
+// widened by the sun's disc, Smith's height-correlated visibility and Schlick's Fresnel, by the cosine the sun lights
+// it at. `normal`, `to_eye` and `to_sun` share a space.
 fn sun_glint(normal: vec3<f32>, to_eye: vec3<f32>, to_sun: vec3<f32>, roughness: f32, head_on: vec3<f32>) -> vec3<f32> {
   let lit: f32 = dot(normal, to_sun);
   let facing: f32 = dot(normal, to_eye);

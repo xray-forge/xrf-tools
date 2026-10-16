@@ -177,8 +177,8 @@ impl LevelShadows {
     }
   }
 
-  /// Fits the cascades, offers those wanting a draw to `scheduler` while the sun lights anything, and takes what the sun
-  /// samples them by.
+  /// Fits the cascades, offers those wanting a draw to `scheduler` while the sun lights anything, and takes what the
+  /// sun samples them by.
   pub fn prepare_cascades(
     &mut self,
     device: &wgpu::Device,
@@ -564,8 +564,8 @@ impl LevelShadows {
     }
   }
 
-  /// Offers the draw a cascade drawn whole wants this frame, while the trees stand still: where its box moved, the scene
-  /// changed under it or the sway shows.
+  /// Offers the draw a cascade drawn whole wants this frame, while the trees stand still: where its box moved, the
+  /// scene changed under it or the sway shows.
   fn offer_whole(
     index: usize,
     cascade: &mut ShadowCascadeView,
@@ -599,11 +599,11 @@ impl LevelShadows {
     ))
   }
 
-  /// Offers the draw a cascade keeping a static layer wants this frame, while the trees sway or the grass casts: over its
-  /// static layer, at the fit that layer was drawn at, while the cascade's fit holds by it and nothing changed under it
-  /// (the nearest cascade's only while its fit is the same); else a new static layer at the cascade's fit. One the grass
-  /// casts into (`has_grass`) draws every frame, at once: the grass sways every frame, and a shadow drawn at the sway's
-  /// interval would trail the blades drawn over it wherever the frame rate passes it.
+  /// Offers the draw a cascade keeping a static layer wants this frame, while the trees sway or the grass casts: over
+  /// its static layer, at the fit that layer was drawn at, while the cascade's fit holds by it and nothing changed
+  /// under it (the nearest cascade's only while its fit is the same); else a new static layer at the cascade's fit. One
+  /// the grass casts into (`has_grass`) draws every frame, at once: the grass sways every frame, and a shadow drawn at
+  /// the sway's interval would trail the blades drawn over it wherever the frame rate passes it.
   fn offer_split(
     index: usize,
     cascade: &mut ShadowCascadeView,
@@ -742,8 +742,8 @@ impl LevelShadows {
     cascade.is_swapped = true;
   }
 
-  /// Offers a band of a far cascade's next static layer, drawn ahead once its fit strayed past `PREFETCH_HOLD` of what its
-  /// static layer holds, at the fit it strayed to; started again where the fit strays as far from that or the scene
+  /// Offers a band of a far cascade's next static layer, drawn ahead once its fit strayed past `PREFETCH_HOLD` of what
+  /// its static layer holds, at the fit it strayed to; started again where the fit strays as far from that or the scene
   /// changes under it. None while its static layer holds well, or is drawn again whole this frame.
   fn offer_band(
     index: usize,

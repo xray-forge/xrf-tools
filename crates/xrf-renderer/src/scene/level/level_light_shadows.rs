@@ -253,8 +253,8 @@ impl LevelLightShadows {
   }
 
   /// The size of the faces a light asks for, from the texels it wants: the size it has while that stays near enough,
-  /// else the nearest tile size; none where it asks nothing this frame, being kept ready already or asked for already by
-  /// a nearer view.
+  /// else the nearest tile size; none where it asks nothing this frame, being kept ready already or asked for already
+  /// by a nearer view.
   fn choose_size(&mut self, ask: &LightShadowAsk<'_>, wanted: f32) -> Option<u32> {
     let frame: u64 = self.frame;
     let entry: &mut LightShadowEntry = self.entries.entry(ask.handle).or_default();

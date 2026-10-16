@@ -296,9 +296,9 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
     hit = march_reflection(position, reflected, noise, uv, select(MARCH_THICKNESS, TRACED_MARCH_THICKNESS, is_traced));
   }
   let sky: vec3<f32> = enhanced_sky(flat_reflected, lighting, sky_cube_0, sky_cube_1, sky_clamp) * water.reflection;
-  // Where the trace answers, a surface the screen met facing away from the ray is left to it, and so is the last surface
-  // a ray that ran out of steps passed in front of: kept, they put a pipe and its cables in the water as dark wedges
-  // where the trace meets nothing but the sky.
+  // Where the trace answers, a surface the screen met facing away from the ray is left to it, and so is the last
+  // surface a ray that ran out of steps passed in front of: kept, they put a pipe and its cables in the water as dark
+  // wedges where the trace meets nothing but the sky.
   let is_met: bool = all(hit.xy != vec2<f32>(0.0)) &&
     !(is_traced && is_away && (hit.w < 0.5 || is_facing_away(hit.xy, reflected)));
   let screen_share: f32 = select(0.0, saturate(hit.y * 5.0) * away, is_met);
@@ -400,8 +400,8 @@ fn fs_water_resolve(in: WaterVarying) -> @location(0) vec4<f32> {
     enhanced.history;
   let jitter: vec2<f32> = (hash22(uv * 100.0 + water.time * 100.0) * 2.0 - 1.0) / size * 0.25;
   let sampled: vec3<f32> = textureSampleLevel(reflection_history, sky_clamp, previous + jitter, 0.0).rgb;
-  // The history held within what this frame's fresh pixels about it show, so a reflection that moved onto a pixel, which
-  // its history never had, stands at once rather than when its turn comes.
+  // The history held within what this frame's fresh pixels about it show, so a reflection that moved onto a pixel,
+  // which its history never had, stands at once rather than when its turn comes.
   let bounds: FreshBounds = fresh_bounds(vec2<i32>(in.clip.xy));
   let history: vec3<f32> = select(sampled, clamp(sampled, bounds.low, bounds.high), bounds.is_found);
   // The history's distance says whether the last frame drew water there: newly seen water keeps none of it.

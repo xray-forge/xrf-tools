@@ -7,7 +7,8 @@ pub struct RainWetness {
 }
 
 impl RainWetness {
-  /// What a real second of rain at full density adds in the game: Monolith's `density / 10000` a frame, at sixty frames.
+  /// What a real second of rain at full density adds in the game: Monolith's `density / 10000` a frame, at sixty
+  /// frames.
   pub const ENGINE_BUILD_UP: f32 = 0.006;
   /// The enhanced rain's: twice the engine's, so surfaces wet in step with a rain's first minutes, the puddles still
   /// filling at their own pace.

@@ -22,7 +22,8 @@ pub struct ReflectionUniform {
   pub ratio: f32,
   /// One where the last frame's scene and depth are kept for a hit to read its colour from.
   pub has_source: f32,
-  /// One where a ray the screen does not answer is traced against the level's geometry: asked for, on a device that can.
+  /// One where a ray the screen does not answer is traced against the level's geometry: asked for, on a device that
+  /// can.
   pub is_traced: f32,
   /// Frames such a pixel waits between its rays, the last answer reprojected in between.
   pub trace_turns: u32,

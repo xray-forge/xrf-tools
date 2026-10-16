@@ -14,9 +14,9 @@ const FIRST_WAVE: [f32; 3] = [1.0 / 5.0, 1.0 / 7.0, 1.0 / 3.0];
 /// The second wave's, the same components in another order.
 const SECOND_WAVE: [f32; 3] = [1.0 / 3.0, 1.0 / 7.0, 1.0 / 5.0];
 
-/// The grass's sway as `CDetailManager::hw_Render` builds it each frame: two winds turning at their own rates and a wave
-/// running through the level, the normal and fast swings mixed by `wind_strength_factor`, each advanced by the frame's
-/// step so a change of strength turns them no faster at once.
+/// The grass's sway as `CDetailManager::hw_Render` builds it each frame: two winds turning at their own rates and a
+/// wave running through the level, the normal and fast swings mixed by `wind_strength_factor`, each advanced by the
+/// frame's step so a change of strength turns them no faster at once.
 #[derive(Debug, Default)]
 pub struct GrassWind {
   /// `m_time_rot_1`, `m_time_rot_2` and `m_time_pos`.

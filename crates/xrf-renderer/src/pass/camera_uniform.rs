@@ -27,9 +27,10 @@ pub struct CameraUniform {
   pub viewport: Vec4,
   /// The frustum's planes in renderer space, pointing inward.
   pub planes: [Vec4; 6],
-  /// Textured, bumped, the baked hemisphere's strength, and the surfaces' bits: one where the engines' steep parallax is
-  /// drawn, two, four and eight where the G-buffer draws the parallax, the bumps or the heights in place of the albedo
-  /// for their debug views, sixteen where the enhanced parallax is marched, thirty two where it draws the sampled mip.
+  /// Textured, bumped, the baked hemisphere's strength, and the surfaces' bits: one where the engines' steep parallax
+  /// is drawn, two, four and eight where the G-buffer draws the parallax, the bumps or the heights in place of the
+  /// albedo for their debug views, sixteen where the enhanced parallax is marched, thirty two where it draws the
+  /// sampled mip.
   pub switches: Vec4,
   /// One where the static surfaces draw as their triangles' edges; times a uv checker repeats in place of every
   /// surface's textures, zero for none; one where surfaces draw solid, their alpha ignored; one where an untextured
@@ -51,15 +52,15 @@ pub struct CameraUniform {
   /// The selection's runs of clusters, two a row: each its first and the one past its last.
   pub selection_runs: [UVec4; SELECTION_ROWS],
   /// The enhanced parallax's steps at most, its range in metres, its depth in detail coordinates, and one where its
-  /// march is refined; the sun's direction in view space and how much of it its relief keeps from its hollows; how far a
-  /// terrain's layers blend by height, how much its low ground darkens, and a steep surface's depth and range.
+  /// march is refined; the sun's direction in view space and how much of it its relief keeps from its hollows; how far
+  /// a terrain's layers blend by height, how much its low ground darkens, and a steep surface's depth and range.
   pub parallax: Vec4,
   pub parallax_light: Vec4,
   pub parallax_mix: Vec4,
   /// One where the scene holds linear light at its exposure, which the window pass tonemaps; zero where every pass
   /// writes tonemapped colour, as the engine's do. Then the mip bias the surfaces' textures are read at, negative
-  /// sharper; none for any camera but a viewport's own. Then what the sun and the lamps draw in place of their light for
-  /// a debug view (`LightView`): nought their light.
+  /// sharper; none for any camera but a viewport's own. Then what the sun and the lamps draw in place of their light
+  /// for a debug view (`LightView`): nought their light.
   pub output: Vec4,
 }
 

@@ -460,13 +460,14 @@ fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>, plane:
 }
 
 // What a surfaces debug view draws in place of a surface's albedo, the shading otherwise as it was. The parallax view:
-// how far the coordinate moved, across in red and down in green about a half, out to the march's reach, over full
-// blue, a terrain's by its layers as they blend; a half in both where the surface takes parallax and stood past its
-// reach; every other surface a dim grey of its own brightness. The bumps view: a bumped surface's normal in its own tangent space as a normal map colours it,
-// lavender where flat, a terrain's by its four details' bumps; a surface without a bump red by its brightness. The
-// heights view: a terrain's details' heights weighed by its mask, and a steep surface's height, grey from black low to
-// white high; every other surface a dim blue of its own brightness. The sampled mip's view: the mip its base texture is
-// read at by its footprint, `mip_colour`'s, shaded by its own brightness; a surface without a base texture grey.
+// how far the coordinate moved, across in red and down in green about a half, out to the march's reach, over full blue,
+// a terrain's by its layers as they blend; a half in both where the surface takes parallax and stood past its reach;
+// every other surface a dim grey of its own brightness. The bumps view: a bumped surface's normal in its own tangent
+// space as a normal map colours it, lavender where flat, a terrain's by its four details' bumps; a surface without a
+// bump red by its brightness. The heights view: a terrain's details' heights weighed by its mask, and a steep surface's
+// height, grey from black low to white high; every other surface a dim blue of its own brightness. The sampled mip's
+// view: the mip its base texture is read at by its footprint, `mip_colour`'s, shaded by its own brightness; a surface
+// without a base texture grey.
 fn surfaces_shown(in: GBufferVarying, at: Footprint, shaded: GBufferOutput) -> GBufferOutput {
   let is_parallax: bool = IS_INSPECTED && has_surfaces_bit(SURFACES_PARALLAX_SHOWN);
   let is_heights: bool = IS_INSPECTED && has_surfaces_bit(SURFACES_HEIGHTS_SHOWN);
@@ -590,10 +591,10 @@ struct TerrainTexel {
 };
 
 // The enhanced parallax, a terrain's and a steep surface's: the steps a march takes looking straight down, at least;
-// what is added to the eye's rise over the surface, so a grazing look reaches a bounded way along it rather than without
-// end; the halvings a refined march settles by; how far the
-// lowest ground darkens at most; and the steps a shadow ray takes towards the sun and how sharply one passing under the
-// relief is shadowed. Then the band of height within which a terrain's layers blending by height share a texel.
+// what is added to the eye's rise over the surface, so a grazing look reaches a bounded way along it rather than
+// without end; the halvings a refined march settles by; how far the lowest ground darkens at most; and the steps a
+// shadow ray takes towards the sun and how sharply one passing under the relief is shadowed. Then the band of height
+// within which a terrain's layers blending by height share a texel.
 const RELIEF_STEPS_LEAST: f32 = 3.0;
 const RELIEF_GRAZING: f32 = 0.41;
 const RELIEF_REFINES: u32 = 3u;
@@ -939,7 +940,8 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
 
   out.albedo = vec4<f32>(mix(untextured_color(surface.color), diffuse, is_textured), gloss);
   out.normal = octahedral_encode(normal);
-  // Its alpha holds the marks: what is selected, which the present pass outlines, what is self-lit, foliage and terrain.
+  // Its alpha holds the marks: what is selected, which the present pass outlines, what is self-lit, foliage and
+  // terrain.
   out.material = vec4<f32>(hemi, sun, surface.slice,
     encode_marks(is_selected(in.entry), (surface.flags & SURFACE_IS_EMISSIVE) != 0u, is_flora, is_terrain, at.is_relief,
       in.flora.z > 0.5, is_moved(in.moved)));
@@ -1041,9 +1043,9 @@ fn fs_pick_cut_out(in: GBufferVarying) -> @location(0) vec4<u32> {
 // gauge's is a fiftieth), and not the empty texels about a blended fence's wires.
 const PICK_SHOWN: f32 = 0.5 / 255.0;
 
-// A composited surface in a pick, the nearest thing a click meets as glass is: one blended over what is behind it, where
-// its texel shows and its own reference passes. Light added or multiplied in, a glow or a halo, stands for nothing a
-// click could meet, and is passed by.
+// A composited surface in a pick, the nearest thing a click meets as glass is: one blended over what is behind it,
+// where its texel shows and its own reference passes. Light added or multiplied in, a glow or a halo, stands for
+// nothing a click could meet, and is passed by.
 @fragment
 fn fs_pick_composited(in: GBufferVarying) -> @location(0) vec4<u32> {
   let at: Footprint = take_footprint(in);

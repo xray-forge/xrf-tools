@@ -43,10 +43,11 @@ fn reflection_end_code(value: f32) -> u32 {
   return u32(round(value * 255.0));
 }
 
-// The ends view's colour for a reason: green met by crossing, yellow met by thickness, red uncertain behind a
-// surface, orange spent in the clear, blue off the screen, cyan at the distance, pale blue at the distance over the
-// screen's sky, white traced against the level's geometry, pink held from the frame before off its turn to trace,
-// grey too rough, magenta untrusted, black untraced; a met reason darkened where the hit was relit rather than read from the last frame.
+// The ends view's colour for a reason: green met by crossing, yellow met by thickness, red uncertain behind a surface,
+// orange spent in the clear, blue off the screen, cyan at the distance, pale blue at the distance over the screen's
+// sky, white traced against the level's geometry, pink held from the frame before off its turn to trace, grey too
+// rough, magenta untrusted, black untraced; a met reason darkened where the hit was relit rather than read from the
+// last frame.
 fn reflection_end_colour(end: u32) -> vec3<f32> {
   let colour: vec3<f32> = reason_colour(end & (END_RELIT - 1u));
 

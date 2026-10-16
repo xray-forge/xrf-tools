@@ -26,8 +26,8 @@ impl HeightField {
 
   /// The heights under a tiling normal map `width` by `height` texels, both powers of two, each normal in tangent space
   /// (`x` along the texture's width, `y` along its height, `z` out of it): in texels, their mean at nought, relief of
-  /// fewer than about `low_cut` waves across the texture and of more than about `high_cut` faded out (neither at nought).
-  /// A normal map's `y` may run either way down the texture; the one whose slopes are integrable is taken.
+  /// fewer than about `low_cut` waves across the texture and of more than about `high_cut` faded out (neither at
+  /// nought). A normal map's `y` may run either way down the texture; the one whose slopes are integrable is taken.
   pub fn integrate_normals(
     width: usize,
     height: usize,
@@ -126,8 +126,8 @@ impl HeightField {
       .collect()
   }
 
-  /// How far slopes `x` and `y`, `y` taken with `sign`, are from any surface's: the sum of their curl's squares over the
-  /// wrapped texture.
+  /// How far slopes `x` and `y`, `y` taken with `sign`, are from any surface's: the sum of their curl's squares over
+  /// the wrapped texture.
   fn get_curl(width: usize, height: usize, slopes: &[(f32, f32)], sign: f32) -> f32 {
     let at = |column: usize, row: usize| slopes[(row % height) * width + column % width];
     let mut sum: f32 = 0.0;
@@ -156,8 +156,8 @@ impl HeightField {
     (turn.cos() - 1.0, turn.sin())
   }
 
-  /// A two dimensional discrete Fourier transform in place, `width` by `height`, both powers of two: rows, then columns;
-  /// the inverse scaled by the texel count.
+  /// A two dimensional discrete Fourier transform in place, `width` by `height`, both powers of two: rows, then
+  /// columns; the inverse scaled by the texel count.
   fn transform_2d(width: usize, height: usize, (real, imaginary): (&mut [f32], &mut [f32]), is_inverse: bool) {
     let across: Vec<(f32, f32)> = Self::create_twiddles(width, is_inverse);
     let down: Vec<(f32, f32)> = Self::create_twiddles(height, is_inverse);
@@ -205,7 +205,8 @@ impl HeightField {
       .collect()
   }
 
-  /// A one dimensional radix-2 Cooley-Tukey transform in place, unscaled, by the `twiddles` of its length, a power of two.
+  /// A one dimensional radix-2 Cooley-Tukey transform in place, unscaled, by the `twiddles` of its length, a power of
+  /// two.
   fn transform(real: &mut [f32], imaginary: &mut [f32], twiddles: &[(f32, f32)]) {
     let size: usize = real.len();
     let bits: u32 = size.trailing_zeros();

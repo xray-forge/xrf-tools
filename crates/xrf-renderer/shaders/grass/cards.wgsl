@@ -13,9 +13,9 @@
 // popping at the reach; past it the grass casts no shadow. A triangle the frame leaves unwritten has every corner's `x`
 // not a number, which the build and the draw take as no triangle.
 
-// It binds the models' arenas, the wind, and what is written at group 2 (`GrassCardsParameters`): three floats a corner,
-// then four words a triangle (its model and how many of its texture's widths a metre of it spans, then each corner's
-// coordinate), how many triangles stand, and the cascades' draw of them (their corners, one instance).
+// It binds the models' arenas, the wind, and what is written at group 2 (`GrassCardsParameters`): three floats a
+// corner, then four words a triangle (its model and how many of its texture's widths a metre of it spans, then each
+// corner's coordinate), how many triangles stand, and the cascades' draw of them (their corners, one instance).
 
 // Words a triangle's corners and record take.
 const CARD_VERTEX_WORDS: u32 = 9u;
@@ -44,11 +44,11 @@ fn cs_clear_cards(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_wor
   }
 }
 
-// Past `CARD_THIN_FROM` metres from the eye a tuft stands as a card only by chance, the share kept falling with the square
-// of the distance down to `CARD_THIN_LEAST`, each at its own size: every far tuft drawn into four cascades a frame made
-// 150 m of grass shadow cost three milliseconds and stutter. A tuft whose chance nears the share shrinks to its foot over
-// `CARD_THIN_SOFT` of it, so one leaving or joining as the eye moves never pops. Widened to cover as much as the tufts
-// left out, a far tuft's shadow stood two or three times its size and shrank as the eye came nearer.
+// Past `CARD_THIN_FROM` metres from the eye a tuft stands as a card only by chance, the share kept falling with the
+// square of the distance down to `CARD_THIN_LEAST`, each at its own size: every far tuft drawn into four cascades a
+// frame made 150 m of grass shadow cost three milliseconds and stutter. A tuft whose chance nears the share shrinks to
+// its foot over `CARD_THIN_SOFT` of it, so one leaving or joining as the eye moves never pops. Widened to cover as much
+// as the tufts left out, a far tuft's shadow stood two or three times its size and shrank as the eye came nearer.
 const CARD_THIN_FROM: f32 = 40.0;
 const CARD_THIN_LEAST: f32 = 0.11;
 const CARD_THIN_SOFT: f32 = 0.25;

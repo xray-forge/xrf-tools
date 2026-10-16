@@ -51,8 +51,8 @@ fn fog_amount(state: Lighting, position: vec3<f32>) -> f32 {
   return saturate(length(position) * state.fog.y + state.fog.x) * state.fog_color.w;
 }
 
-// How much of the enhanced fog's height fog lies at a world height: none from its height up, rising smoothly to whole as
-// far below the world's zero; none while it is not drawn.
+// How much of the enhanced fog's height fog lies at a world height: none from its height up, rising smoothly to whole
+// as far below the world's zero; none while it is not drawn.
 fn height_fog_share(state: Lighting, height: f32) -> f32 {
   let range: f32 = max(state.height_fog.x, 1e-3);
   let rise: f32 = saturate((range - height) / (2.0 * range));
