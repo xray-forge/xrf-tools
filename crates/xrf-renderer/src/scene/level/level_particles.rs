@@ -8,7 +8,8 @@ use rayon::prelude::*;
 use wgpu::util::DeviceExt;
 use xrf_material::{XraySurfaceDraw, XraySurfaceSampler};
 use xrf_particles::{
-  ParticleBounds, ParticleCollider, ParticleEffectInstance, ParticleEngineRules, ParticleLibrary, ParticleUpdateContext,
+  ParticleBounds, ParticleCollider, ParticleEffectInstance, ParticleEngineRules, ParticleLibrary, ParticleObject,
+  ParticleUpdateContext,
 };
 use xrf_renderer_core::{ProxyHandle, ProxyStore};
 
@@ -70,10 +71,11 @@ struct ParticleSurface {
   record: ParticleSurfaceRecord,
 }
 
-/// A step's outcome: the emitters it stepped, how many of their objects it simulated and what it took.
+/// A step's outcome: the emitters it stepped, the effects that stopped, what they came to and what it took.
 struct ParticleStep {
   emitters: ProxyStore<ParticleEmitterProxy>,
-  simulated: u32,
+  finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
+  report: RenderParticlesReport,
   time: f32,
 }
 
@@ -86,6 +88,9 @@ struct ParticlesTally {
 }
 
 impl LevelParticles {
+  /// Objects a worker steps at least: fewer would cost more waking it than it saves.
+  const STEPPED_PER_WORKER: usize = 8;
+
   pub fn new(device: &wgpu::Device, workers: &RenderWorkers) -> Self {
     Self {
       systems: None,
@@ -288,28 +293,58 @@ impl LevelParticles {
         rules: &rules,
         collider: collider.as_deref(),
       };
-      let simulated: u32 = emitters
+      // Most objects are neither in view nor due for the scheduler: only the rest are stepped, a few to a worker.
+      let mut due: Vec<(&mut ParticleObject, bool)> = emitters
         .as_mut_slice()
-        .par_iter_mut()
-        .flat_map_iter(|emitter| emitter.objects.iter_mut())
-        .map(|object| {
+        .iter_mut()
+        .flat_map(|emitter| emitter.objects.iter_mut())
+        .filter_map(|object| {
           let is_in_view: bool = Self::is_in_view(&planes, object.get_instance().get_bounds());
 
-          u32::from(object.advance(now, eye, is_in_view, &context))
+          object.is_due(now, is_in_view).then_some((object, is_in_view))
         })
+        .collect();
+      let simulated: u32 = due
+        .par_iter_mut()
+        .with_min_len(Self::STEPPED_PER_WORKER)
+        .map(|(object, is_in_view)| u32::from(object.advance(now, eye, *is_in_view, &context)))
         .sum();
+      let mut finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)> = Vec::new();
+      let mut report: RenderParticlesReport = RenderParticlesReport {
+        simulated,
+        ..RenderParticlesReport::default()
+      };
+
+      for (handle, emitter) in emitters.iter_mut() {
+        finished.extend(
+          emitter
+            .objects
+            .take_finished()
+            .into_iter()
+            .map(|effect| (handle, effect)),
+        );
+
+        for effect in emitter
+          .objects
+          .iter()
+          .flat_map(|object| object.get_instance().get_effects())
+        {
+          report.effects += u32::from(effect.is_playing());
+          report.particles += effect.get_pool().len() as u32;
+        }
+      }
 
       // The receiver is gone only with the level.
       let _ = sender.send(ParticleStep {
         emitters,
-        simulated,
+        finished,
+        report,
         time: started.elapsed().as_secs_f32() * 1000.0,
       });
     });
   }
 
-  /// Waits for the step running on the workers, if one runs, and takes back its emitters, noting the effects that
-  /// stopped.
+  /// Waits for the step running on the workers, if one runs, and takes back its emitters and what stopped.
   fn settle(&mut self) {
     let Some(receiver) = self.step.take() else {
       return;
@@ -319,7 +354,8 @@ impl LevelParticles {
 
     let Ok(ParticleStep {
       emitters,
-      simulated,
+      finished,
+      report,
       time,
     }) = receiver.recv()
     else {
@@ -329,33 +365,7 @@ impl LevelParticles {
     };
 
     self.emitters = emitters;
-
-    for (handle, emitter) in self.emitters.iter_mut() {
-      self.finished.extend(
-        emitter
-          .objects
-          .take_finished()
-          .into_iter()
-          .map(|effect| (handle, effect)),
-      );
-    }
-
-    let mut report: RenderParticlesReport = RenderParticlesReport {
-      simulated,
-      ..RenderParticlesReport::default()
-    };
-
-    for effect in self
-      .emitters
-      .as_slice()
-      .iter()
-      .flat_map(|emitter| emitter.objects.iter())
-      .flat_map(|object| object.get_instance().get_effects())
-    {
-      report.effects += u32::from(effect.is_playing());
-      report.particles += effect.get_pool().len() as u32;
-    }
-
+    self.finished.extend(finished);
     self.report.last = report;
     self.report.simulation_time += time;
     self.report.frames += 1;
