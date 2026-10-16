@@ -47,23 +47,23 @@ describe("ConfigsResolvedView", () => {
   it("says what an empty resolution means rather than drawing a blank document", async () => {
     // A config that only includes others resolves to nothing of its own, and so does one whose sections a patch
     // deleted. Both are real files to open, and neither is a failure.
-    const render_: RenderResult = renderResolved(INCLUDER);
+    const { getByRole, getByTestId, getByText, queryByTestId, queryByText } = renderResolved(INCLUDER);
 
-    expect(render_.getByText("This config declares no sections")).toBeInTheDocument();
-    expect(render_.getByText(new RegExp(INCLUDER.replace(/\\/g, "\\\\")))).toBeInTheDocument();
-    expect(render_.queryByTestId("configs-resolved-lines")).not.toBeInTheDocument();
+    expect(getByText("This config declares no sections")).toBeInTheDocument();
+    expect(getByText(new RegExp(INCLUDER.replace(/\\/g, "\\\\")))).toBeInTheDocument();
+    expect(queryByTestId("configs-resolved-lines")).not.toBeInTheDocument();
 
     // The way out is the same one the banner offers, because the reader's next question is what the root does hold.
-    await userEvent.click(render_.getByRole("button", { name: "Show all" }));
+    await userEvent.click(getByRole("button", { name: "Show all" }));
 
-    expect(render_.getByTestId("configs-resolved-lines")).toBeInTheDocument();
-    expect(render_.queryByText("This config declares no sections")).not.toBeInTheDocument();
+    expect(getByTestId("configs-resolved-lines")).toBeInTheDocument();
+    expect(queryByText("This config declares no sections")).not.toBeInTheDocument();
   });
 
   it("draws the resolution when it holds sections", () => {
-    const render_: RenderResult = renderResolved(null);
+    const { getByTestId, getByText } = renderResolved(null);
 
-    expect(render_.getByTestId("configs-resolved-lines")).toBeInTheDocument();
-    expect(render_.getByText("[wpn_base]")).toBeInTheDocument();
+    expect(getByTestId("configs-resolved-lines")).toBeInTheDocument();
+    expect(getByText("[wpn_base]")).toBeInTheDocument();
   });
 });

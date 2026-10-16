@@ -53,7 +53,10 @@ describe("ConfigsSectionsPanel", () => {
   it("lists what a list config declares instead of reporting that it declares no sections", async () => {
     // Anomaly's `valid_item_sections.ltx` and its kind: names outside any section, which is all the file holds. Saying
     // "no sections" about it describes the one thing it does not have and none of what it does.
-    const { render: render_, service } = renderPanel(
+    const {
+      render: { getAllByRole, getByText, queryByText },
+      service,
+    } = renderPanel(
       getStructureOf({
         rootEntries: [
           { hasValue: false, line: 1, name: "af_ear" },
@@ -65,18 +68,20 @@ describe("ConfigsSectionsPanel", () => {
 
     const openAt = jest.spyOn(service, "openAt").mockResolvedValue(undefined);
 
-    expect(render_.getByText("Entries")).toBeInTheDocument();
-    expect(render_.queryByText("This document declares no sections.")).not.toBeInTheDocument();
-    expect(render_.getAllByRole("treeitem")).toHaveLength(3);
+    expect(getByText("Entries")).toBeInTheDocument();
+    expect(queryByText("This document declares no sections.")).not.toBeInTheDocument();
+    expect(getAllByRole("treeitem")).toHaveLength(3);
 
     // An entry belongs to no section, so it is opened at the line it is written on rather than revealed by name.
-    await userEvent.click(render_.getByText("ammo_9x18_ap_bad"));
+    await userEvent.click(getByText("ammo_9x18_ap_bad"));
 
     expect(openAt).toHaveBeenCalledWith(PATH, 2);
   });
 
   it("filters entries by what was typed", async () => {
-    const { render: render_ } = renderPanel(
+    const {
+      render: { getAllByRole, getByLabelText, getByText },
+    } = renderPanel(
       getStructureOf({
         rootEntries: [
           { hasValue: false, line: 1, name: "af_ear" },
@@ -85,19 +90,22 @@ describe("ConfigsSectionsPanel", () => {
       })
     );
 
-    await userEvent.type(render_.getByLabelText("Filter entries"), "ammo");
+    await userEvent.type(getByLabelText("Filter entries"), "ammo");
 
-    expect(render_.getAllByRole("treeitem")).toHaveLength(1);
-    expect(render_.getByText("ammo_9x18_ap_bad")).toBeInTheDocument();
+    expect(getAllByRole("treeitem")).toHaveLength(1);
+    expect(getByText("ammo_9x18_ap_bad")).toBeInTheDocument();
 
-    await userEvent.clear(render_.getByLabelText("Filter entries"));
-    await userEvent.type(render_.getByLabelText("Filter entries"), "nothing");
+    await userEvent.clear(getByLabelText("Filter entries"));
+    await userEvent.type(getByLabelText("Filter entries"), "nothing");
 
-    expect(render_.getByText("No entry matches that.")).toBeInTheDocument();
+    expect(getByText("No entry matches that.")).toBeInTheDocument();
   });
 
   it("lists the headers of an ordinary config and reveals one by name", async () => {
-    const { render: render_, service } = renderPanel(
+    const {
+      render: { getByText },
+      service,
+    } = renderPanel(
       getStructureOf({
         path: "configs\\system.ltx",
         sections: [
@@ -107,17 +115,19 @@ describe("ConfigsSectionsPanel", () => {
       })
     );
 
-    expect(render_.getByText("Sections")).toBeInTheDocument();
+    expect(getByText("Sections")).toBeInTheDocument();
 
-    await userEvent.click(render_.getByText("wpn_child"));
+    await userEvent.click(getByText("wpn_child"));
 
     // By name, because that is what both views address a section by and what the Scheme panel explains.
     expect(service.selectedSection).toBe("wpn_child");
   });
 
   it("says a config declares no sections when it declares nothing at all", () => {
-    const { render: render_ } = renderPanel(getStructureOf({}));
+    const {
+      render: { getByText },
+    } = renderPanel(getStructureOf({}));
 
-    expect(render_.getByText("This document declares no sections.")).toBeInTheDocument();
+    expect(getByText("This document declares no sections.")).toBeInTheDocument();
   });
 });

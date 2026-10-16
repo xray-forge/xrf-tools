@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ESyntaxToken } from "@xrf/syntax";
 import { Nullable } from "@xrf/types";
@@ -8,6 +7,7 @@ import { CODE } from "@/core/theme/tokens";
 import { ECodeLineMark, ICodeLine, ICodeLineRange, ICodeLineSource, toCodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines/VirtualizedLines";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { setVirtualizationEnabled } from "@/fixtures/utils/virtualization";
 
 const VIEWPORT_HEIGHT: number = 400;
 
@@ -21,22 +21,6 @@ const VIEWPORT_HEIGHT: number = 400;
  */
 function line(number: number, text: string, mark?: ECodeLineMark): ICodeLine {
   return { mark, number, spans: [{ token: ESyntaxToken.PLAIN, text }] };
-}
-
-/**
- * Lifts `@mui/x-virtualizer`'s own opt-out.
- *
- * It reads `platform.env.jsdom` once, when a virtualizer's store is created, and turns windowing off
- * under a test runner - which is why `VirtualizedTree` cannot assert its window and verifies it in the
- * running app instead. Flipped here because a bounded window is the only reason this component exists,
- * and a rewrite into one `<pre>` would otherwise pass every test in this file.
- *
- * @param isEnabled - Whether the virtualizer should behave as it does in a browser.
- */
-function setVirtualizationEnabled(isEnabled: boolean): void {
-  const platformModule: { platform: { env: { jsdom: boolean } } } = require("@base-ui/utils/platform");
-
-  platformModule.platform.env.jsdom = !isEnabled;
 }
 
 /**
@@ -74,28 +58,28 @@ function asScrollable(list: HTMLElement): HTMLElement {
 
 describe("VirtualizedLines", () => {
   it("exposes itself as a list of selectable lines", () => {
-    const render_: RenderResult = renderWithProviders(
+    const { getAllByRole, getByRole } = renderWithProviders(
       <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource([line(1, "a"), line(2, "b")])} />
     );
 
-    expect(render_.getByRole("listbox", { name: "Source" })).toBeInTheDocument();
-    expect(render_.getAllByRole("option")).toHaveLength(2);
+    expect(getByRole("listbox", { name: "Source" })).toBeInTheDocument();
+    expect(getAllByRole("option")).toHaveLength(2);
   });
 
   it("numbers the gutter from what a line says rather than from where it sits", () => {
     // An excerpt keeps the numbering of the file it came from, and a resolved document is assembled
     // rather than read off one, so the index is never the answer.
-    const render_: RenderResult = renderWithProviders(
+    const { getAllByTestId } = renderWithProviders(
       <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource([line(40, "a"), line(41, "b"), line(99, "c")])} />
     );
 
-    const gutters: Array<HTMLElement> = render_.getAllByTestId("virtualized-lines-gutter");
+    const gutters: Array<HTMLElement> = getAllByTestId("virtualized-lines-gutter");
 
     expect(gutters.map((it: HTMLElement) => it.textContent)).toEqual(["40", "41", "99"]);
   });
 
   it("draws a mark beside the number of the line that carries it", () => {
-    const render_: RenderResult = renderWithProviders(
+    const { getAllByTestId, getByTitle } = renderWithProviders(
       <VirtualizedLines
         ariaLabel={"Source"}
         source={toCodeLineSource([
@@ -106,13 +90,13 @@ describe("VirtualizedLines", () => {
       />
     );
 
-    expect(render_.getAllByTestId("virtualized-lines-gutter")[1]).toContainElement(render_.getByTitle("Error"));
-    expect(render_.getAllByTestId("virtualized-lines-gutter")[2]).toContainElement(render_.getByTitle("Warning"));
-    expect(render_.getAllByTestId("virtualized-lines-gutter")[0].querySelector("svg")).toBeNull();
+    expect(getAllByTestId("virtualized-lines-gutter")[1]).toContainElement(getByTitle("Error"));
+    expect(getAllByTestId("virtualized-lines-gutter")[2]).toContainElement(getByTitle("Warning"));
+    expect(getAllByTestId("virtualized-lines-gutter")[0].querySelector("svg")).toBeNull();
   });
 
   it("renders the spans a line was built with, and colours only what is not plain", () => {
-    const render_: RenderResult = renderWithProviders(
+    const { getAllByRole } = renderWithProviders(
       <VirtualizedLines
         ariaLabel={"Source"}
         source={toCodeLineSource([
@@ -128,7 +112,7 @@ describe("VirtualizedLines", () => {
       />
     );
 
-    const row: HTMLElement = render_.getAllByRole("option")[0];
+    const row: HTMLElement = getAllByRole("option")[0];
 
     expect(row).toHaveTextContent("1cost = 1000");
     // Two coloured runs and the plain one left to inherit, which is most of a real file.
@@ -137,7 +121,7 @@ describe("VirtualizedLines", () => {
 
   it("reports the line a click chose, by the line itself and not its position", async () => {
     const onSelectLine = jest.fn();
-    const render_: RenderResult = renderWithProviders(
+    const { getByText } = renderWithProviders(
       <VirtualizedLines
         ariaLabel={"Source"}
         source={toCodeLineSource([line(40, "a"), line(41, "b")])}
@@ -145,13 +129,13 @@ describe("VirtualizedLines", () => {
       />
     );
 
-    await userEvent.click(render_.getByText("b"));
+    await userEvent.click(getByText("b"));
 
     expect(onSelectLine).toHaveBeenCalledWith(expect.objectContaining({ number: 41 }));
   });
 
   it("draws the selection on the line naming that number, wherever it sits", () => {
-    const render_: RenderResult = renderWithProviders(
+    const { getAllByRole, getByRole } = renderWithProviders(
       <VirtualizedLines
         ariaLabel={"Source"}
         source={toCodeLineSource([line(40, "a"), line(41, "b")])}
@@ -159,22 +143,22 @@ describe("VirtualizedLines", () => {
       />
     );
 
-    const rows: Array<HTMLElement> = render_.getAllByRole("option");
+    const rows: Array<HTMLElement> = getAllByRole("option");
 
     expect(rows.map((it: HTMLElement) => it.getAttribute("aria-selected"))).toEqual(["false", "true"]);
-    expect(render_.getByRole("listbox")).toHaveAttribute("aria-activedescendant", rows[1].id);
+    expect(getByRole("listbox")).toHaveAttribute("aria-activedescendant", rows[1].id);
   });
 
   it("moves the selection with the arrow keys without moving focus off the list", async () => {
     const onSelectLine = jest.fn();
-    const render_: RenderResult = renderWithProviders(
+    const { getByRole } = renderWithProviders(
       <VirtualizedLines
         ariaLabel={"Source"}
         source={toCodeLineSource([line(40, "a"), line(41, "b")])}
         onSelectLine={onSelectLine}
       />
     );
-    const list: HTMLElement = render_.getByRole("listbox");
+    const list: HTMLElement = getByRole("listbox");
 
     list.focus();
     await userEvent.keyboard("{ArrowDown}{End}");
@@ -187,12 +171,12 @@ describe("VirtualizedLines", () => {
     // A section jumped to is read downwards from its header, so scrolling just far enough to make it visible is the
     // wrong answer: it would sit against the bottom edge, showing its name and none of its body.
     const lines: Array<ICodeLine> = Array.from({ length: 300 }, (_, index: number) => line(index + 1, "a"));
-    const render_: RenderResult = renderWithProviders(
+    const { getByRole, rerender } = renderWithProviders(
       <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource(lines)} />
     );
-    const list: HTMLElement = asScrollable(render_.getByRole("listbox"));
+    const list: HTMLElement = asScrollable(getByRole("listbox"));
 
-    render_.rerender(
+    rerender(
       <>
         <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource(lines)} scrollToLine={200} />
       </>
@@ -206,14 +190,14 @@ describe("VirtualizedLines", () => {
     // bodies landing - and throwing the reader back to the top for that would be unusable. Two documents are two
     // documents, and the second one does not inherit where the reader had scrolled the first.
     const layout: object = {};
-    const render_: RenderResult = renderWithProviders(
+    const { getByRole, rerender } = renderWithProviders(
       <VirtualizedLines ariaLabel={"Source"} source={sourceOf("a", layout)} />
     );
-    const list: HTMLElement = asScrollable(render_.getByRole("listbox"));
+    const list: HTMLElement = asScrollable(getByRole("listbox"));
 
     list.scrollTop = 500;
 
-    render_.rerender(
+    rerender(
       <>
         <VirtualizedLines ariaLabel={"Source"} source={sourceOf("a with its bodies", layout)} />
       </>
@@ -221,7 +205,7 @@ describe("VirtualizedLines", () => {
 
     expect(list.scrollTop).toBe(500);
 
-    render_.rerender(
+    rerender(
       <>
         <VirtualizedLines ariaLabel={"Source"} source={sourceOf("b", {})} />
       </>
@@ -234,12 +218,12 @@ describe("VirtualizedLines", () => {
     // The other half of the same decision: an arrow key that parked its line at the top would throw away the context
     // the reader is looking at, so a step still scrolls by the least it can.
     const lines: Array<ICodeLine> = Array.from({ length: 300 }, (_, index: number) => line(index + 1, "a"));
-    const render_: RenderResult = renderWithProviders(
+    const { getByRole, rerender } = renderWithProviders(
       <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource(lines)} />
     );
-    const list: HTMLElement = asScrollable(render_.getByRole("listbox"));
+    const list: HTMLElement = asScrollable(getByRole("listbox"));
 
-    render_.rerender(
+    rerender(
       <>
         <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource(lines)} selectedLine={300} />
       </>
@@ -269,7 +253,7 @@ describe("VirtualizedLines", () => {
     // A fetch driven by this callback would otherwise be asked for the same page on every scroll frame.
     const onVisibleRangeChange = jest.fn();
     const lines: Array<ICodeLine> = [line(1, "a"), line(2, "b")];
-    const render_: RenderResult = renderWithProviders(
+    const { rerender } = renderWithProviders(
       <VirtualizedLines
         ariaLabel={"Source"}
         source={toCodeLineSource(lines)}
@@ -279,7 +263,7 @@ describe("VirtualizedLines", () => {
 
     // Re-wrapped exactly as `renderWithProviders` wraps the first render: a rerender that changes the shape of the
     // tree above the subject remounts it, which would reset what it remembers reporting and prove nothing.
-    render_.rerender(
+    rerender(
       <>
         <VirtualizedLines
           ariaLabel={"Source"}
@@ -296,7 +280,7 @@ describe("VirtualizedLines", () => {
 
   it("reports again once the document under it is numbered differently", () => {
     const onVisibleRangeChange = jest.fn();
-    const render_: RenderResult = renderWithProviders(
+    const { rerender } = renderWithProviders(
       <VirtualizedLines
         ariaLabel={"Source"}
         source={toCodeLineSource([line(1, "a"), line(2, "b")])}
@@ -304,7 +288,7 @@ describe("VirtualizedLines", () => {
       />
     );
 
-    render_.rerender(
+    rerender(
       <>
         <VirtualizedLines
           ariaLabel={"Source"}
@@ -322,15 +306,16 @@ describe("VirtualizedLines", () => {
     // The signature of a windowed listing: the scroller learns how tall the document is by arithmetic,
     // so the rows it never rendered still take up the room they would have.
     const lines: Array<ICodeLine> = Array.from({ length: 4000 }, (_, index: number) => line(index + 1, "a"));
-    const render_: RenderResult = renderWithProviders(
+    const { getByRole } = renderWithProviders(
       <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource(lines)} />
     );
-    const sizer: Nullable<HTMLElement> = render_.getByRole("listbox").querySelector("div[role='presentation']");
+    const sizer: Nullable<HTMLElement> = getByRole("listbox").querySelector("div[role='presentation']");
 
     expect(sizer).toHaveStyle({ height: `${4000 * CODE.lineHeight}px` });
   });
 });
 
+// A bounded window is the only reason this component exists: a rewrite into one `<pre>` would pass every other case.
 describe("VirtualizedLines with windowing on", () => {
   beforeEach(() => {
     setVirtualizationEnabled(true);
@@ -353,17 +338,17 @@ describe("VirtualizedLines with windowing on", () => {
 
   it("renders a window of lines rather than the document behind it", () => {
     const lines: Array<ICodeLine> = Array.from({ length: 300000 }, (_, index: number) => line(index + 1, "a"));
-    const render_: RenderResult = renderWithProviders(
+    const { getAllByRole, getAllByTestId } = renderWithProviders(
       <VirtualizedLines ariaLabel={"Source"} source={toCodeLineSource(lines)} />
     );
-    const rows: Array<HTMLElement> = render_.getAllByRole("option");
+    const rows: Array<HTMLElement> = getAllByRole("option");
 
     // What is asserted is the shape of the cost, not an exact count: the window is the viewport plus
     // the virtualizer's own scroll buffer, and it is a function of neither the 300,000 lines behind it
     // nor of anything this component holds.
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.length).toBeLessThan((3 * VIEWPORT_HEIGHT) / CODE.lineHeight);
-    expect(render_.getAllByTestId("virtualized-lines-gutter")[0]).toHaveTextContent("1");
+    expect(getAllByTestId("virtualized-lines-gutter")[0]).toHaveTextContent("1");
   });
 
   it("reports the window it rendered rather than the document behind it", () => {
@@ -392,7 +377,7 @@ describe("VirtualizedLines with windowing on", () => {
     const onVisibleRangeChange = jest.fn();
     const first: Array<ICodeLine> = Array.from({ length: 300000 }, (_, index: number) => line(index + 1, "a"));
     const second: Array<ICodeLine> = Array.from({ length: 300000 }, (_, index: number) => line(index + 1, "b"));
-    const render_: RenderResult = renderWithProviders(
+    const { rerender } = renderWithProviders(
       <VirtualizedLines
         ariaLabel={"Source"}
         source={toCodeLineSource(first)}
@@ -400,7 +385,7 @@ describe("VirtualizedLines with windowing on", () => {
       />
     );
 
-    render_.rerender(
+    rerender(
       <>
         <VirtualizedLines
           ariaLabel={"Source"}

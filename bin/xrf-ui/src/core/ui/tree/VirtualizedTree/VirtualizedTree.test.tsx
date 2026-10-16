@@ -66,15 +66,15 @@ function render(options: IRenderOptions = {}): RenderResult {
 
 describe("VirtualizedTree", () => {
   it("exposes itself as a tree of rows", () => {
-    const render_: RenderResult = render();
+    const { getAllByRole, getByRole } = render();
 
-    expect(render_.getByRole("tree", { name: "Visuals" })).toBeInTheDocument();
-    expect(render_.getAllByRole("treeitem")).toHaveLength(2);
+    expect(getByRole("tree", { name: "Visuals" })).toBeInTheDocument();
+    expect(getAllByRole("treeitem")).toHaveLength(2);
   });
 
   it("states the depth and sibling position that a flat DOM no longer implies", () => {
-    const render_: RenderResult = render({ expanded: [toDirectoryItemId("meshes")] });
-    const rows: Array<HTMLElement> = render_.getAllByRole("treeitem");
+    const { getAllByRole } = render({ expanded: [toDirectoryItemId("meshes")] });
+    const rows: Array<HTMLElement> = getAllByRole("treeitem");
 
     expect(rows.map((it: HTMLElement) => it.getAttribute("aria-level"))).toEqual(["1", "2", "2", "1"]);
     expect(rows.map((it: HTMLElement) => it.getAttribute("aria-posinset"))).toEqual(["1", "1", "2", "2"]);
@@ -87,26 +87,26 @@ describe("VirtualizedTree", () => {
     const onToggleExpanded = jest.fn();
     const onActivate = jest.fn();
     const onSelect = jest.fn();
-    const render_: RenderResult = render({ onToggleExpanded, onActivate, onSelect });
+    const { getAllByRole, getByText } = render({ onToggleExpanded, onActivate, onSelect });
 
-    await userEvent.click(render_.getByText("meshes"));
+    await userEvent.click(getByText("meshes"));
 
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ label: "meshes" }));
     expect(onToggleExpanded).not.toHaveBeenCalled();
     expect(onActivate).not.toHaveBeenCalled();
-    expect(render_.getAllByRole("treeitem")[0]).toHaveAttribute("aria-selected", "true");
+    expect(getAllByRole("treeitem")[0]).toHaveAttribute("aria-selected", "true");
   });
 
   // The two states answer different questions, and they part company the moment somebody arrows past what is open.
   it("marks the open row apart from where the keyboard stands", async () => {
-    const render_: RenderResult = render({
+    const { getAllByRole, getByText } = render({
       activeId: toFileItemId("readme.txt"),
       expanded: [toDirectoryItemId("meshes")],
     });
 
-    await userEvent.click(render_.getByText("ak74.ogf"));
+    await userEvent.click(getByText("ak74.ogf"));
 
-    const rows: Array<HTMLElement> = render_.getAllByRole("treeitem");
+    const rows: Array<HTMLElement> = getAllByRole("treeitem");
     const open: HTMLElement = rows[3];
     const cursor: HTMLElement = rows[1];
 
@@ -118,17 +118,17 @@ describe("VirtualizedTree", () => {
   });
 
   it("marks nothing as open for a tree whose rows open nothing", () => {
-    const render_: RenderResult = render();
+    const { getAllByRole } = render();
 
-    expect(render_.getAllByRole("treeitem").every((it: HTMLElement) => !it.hasAttribute("aria-current"))).toBe(true);
+    expect(getAllByRole("treeitem").every((it: HTMLElement) => !it.hasAttribute("aria-current"))).toBe(true);
   });
 
   it("selects a leaf on one click without opening it", async () => {
     const onActivate = jest.fn();
     const onSelect = jest.fn();
-    const render_: RenderResult = render({ onActivate, onSelect });
+    const { getByText } = render({ onActivate, onSelect });
 
-    await userEvent.click(render_.getByText("readme.txt"));
+    await userEvent.click(getByText("readme.txt"));
 
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ label: "readme.txt" }));
     expect(onActivate).not.toHaveBeenCalled();
@@ -139,21 +139,21 @@ describe("VirtualizedTree", () => {
     // from the id rather than from a flag this component would have to carry.
     const onToggleExpanded = jest.fn();
     const onActivate = jest.fn();
-    const render_: RenderResult = render({ onToggleExpanded, onActivate });
+    const { findByText, getByText } = render({ onToggleExpanded, onActivate });
 
-    await userEvent.dblClick(render_.getByText("meshes"));
+    await userEvent.dblClick(getByText("meshes"));
 
     expect(onToggleExpanded).toHaveBeenCalledWith(toDirectoryItemId("meshes"));
     expect(onActivate).toHaveBeenCalledWith(expect.objectContaining({ label: "meshes" }));
-    expect(await render_.findByText("ak74.ogf")).toBeInTheDocument();
+    expect(await findByText("ak74.ogf")).toBeInTheDocument();
   });
 
   it("activates a leaf on a double click without toggling it", async () => {
     const onToggleExpanded = jest.fn();
     const onActivate = jest.fn();
-    const render_: RenderResult = render({ onToggleExpanded, onActivate });
+    const { getByText } = render({ onToggleExpanded, onActivate });
 
-    await userEvent.dblClick(render_.getByText("readme.txt"));
+    await userEvent.dblClick(getByText("readme.txt"));
 
     expect(onActivate).toHaveBeenCalledWith(expect.objectContaining({ label: "readme.txt" }));
     expect(onToggleExpanded).not.toHaveBeenCalled();
@@ -162,24 +162,24 @@ describe("VirtualizedTree", () => {
   it("opens a directory from the chevron without moving the selection", async () => {
     const onToggleExpanded = jest.fn();
     const onSelect = jest.fn();
-    const render_: RenderResult = render({ onToggleExpanded, onSelect });
+    const { getAllByRole, getAllByTestId, getByText } = render({ onToggleExpanded, onSelect });
 
-    await userEvent.click(render_.getByText("readme.txt"));
+    await userEvent.click(getByText("readme.txt"));
     onSelect.mockClear();
 
-    await userEvent.click(render_.getAllByTestId("virtualized-tree-chevron")[0]);
+    await userEvent.click(getAllByTestId("virtualized-tree-chevron")[0]);
 
     expect(onToggleExpanded).toHaveBeenCalledWith(toDirectoryItemId("meshes"));
     expect(onSelect).not.toHaveBeenCalled();
     // The leaf clicked first is still the selected row, now below the two the directory revealed.
-    expect(render_.getAllByRole("treeitem")[3]).toHaveAttribute("aria-selected", "true");
+    expect(getAllByRole("treeitem")[3]).toHaveAttribute("aria-selected", "true");
   });
 
   it("moves the selection with the arrow keys without moving focus off the tree", async () => {
     const onSelect = jest.fn();
     const onActivate = jest.fn();
-    const render_: RenderResult = render({ onSelect, onActivate });
-    const treeElement: HTMLElement = render_.getByRole("tree");
+    const { getAllByRole, getByRole } = render({ onSelect, onActivate });
+    const treeElement: HTMLElement = getByRole("tree");
 
     treeElement.focus();
     await userEvent.keyboard("{ArrowDown}{ArrowDown}");
@@ -189,7 +189,7 @@ describe("VirtualizedTree", () => {
     expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ label: "readme.txt" }));
     expect(onActivate).not.toHaveBeenCalled();
 
-    const rows: Array<HTMLElement> = render_.getAllByRole("treeitem");
+    const rows: Array<HTMLElement> = getAllByRole("treeitem");
 
     expect(rows[1]).toHaveAttribute("aria-selected", "true");
     expect(treeElement).toHaveAttribute("aria-activedescendant", rows[1].id);
@@ -198,9 +198,9 @@ describe("VirtualizedTree", () => {
   it("activates the selected row with enter, and does nothing with space", async () => {
     const onActivate = jest.fn();
     const onToggleExpanded = jest.fn();
-    const render_: RenderResult = render({ onActivate, onToggleExpanded });
+    const { getByRole } = render({ onActivate, onToggleExpanded });
 
-    render_.getByRole("tree").focus();
+    getByRole("tree").focus();
     await userEvent.keyboard("{ArrowDown}");
     await userEvent.keyboard(" ");
 
@@ -216,9 +216,9 @@ describe("VirtualizedTree", () => {
 
   it("opens a closed directory with the right arrow", async () => {
     const onToggleExpanded = jest.fn();
-    const render_: RenderResult = render({ onToggleExpanded });
+    const { getByRole } = render({ onToggleExpanded });
 
-    render_.getByRole("tree").focus();
+    getByRole("tree").focus();
     await userEvent.keyboard("{ArrowDown}{ArrowRight}");
 
     expect(onToggleExpanded).toHaveBeenCalledWith(toDirectoryItemId("meshes"));
@@ -227,9 +227,9 @@ describe("VirtualizedTree", () => {
   it("steps to the next row with the right arrow once there is nothing left to open", async () => {
     const onToggleExpanded = jest.fn();
     const onSelect = jest.fn();
-    const render_: RenderResult = render({ expanded: [toDirectoryItemId("meshes")], onToggleExpanded, onSelect });
+    const { getByRole } = render({ expanded: [toDirectoryItemId("meshes")], onToggleExpanded, onSelect });
 
-    render_.getByRole("tree").focus();
+    getByRole("tree").focus();
     // From the open directory into its first child, then past that leaf to its sibling.
     await userEvent.keyboard("{ArrowDown}{ArrowRight}{ArrowRight}");
 
@@ -239,9 +239,9 @@ describe("VirtualizedTree", () => {
 
   it("holds the selection on the last row when the right arrow has nowhere to step", async () => {
     const onSelect = jest.fn();
-    const render_: RenderResult = render({ onSelect });
+    const { getByRole } = render({ onSelect });
 
-    render_.getByRole("tree").focus();
+    getByRole("tree").focus();
     await userEvent.keyboard("{ArrowDown}{ArrowDown}{ArrowRight}");
 
     expect(onSelect).toHaveBeenLastCalledWith(expect.objectContaining({ label: "readme.txt" }));
@@ -253,7 +253,7 @@ describe("VirtualizedTree", () => {
     const onSelect = jest.fn();
     const onActivate = jest.fn();
     const onToggleExpanded = jest.fn();
-    const render_: RenderResult = renderWithProviders(
+    const { getByRole } = renderWithProviders(
       <VirtualizedTree<string>
         ariaLabel={"Visuals"}
         items={mockTree()}
@@ -270,7 +270,7 @@ describe("VirtualizedTree", () => {
       />
     );
 
-    await userEvent.dblClick(render_.getByRole("button", { name: "Hide meshes" }));
+    await userEvent.dblClick(getByRole("button", { name: "Hide meshes" }));
 
     expect(onPress).toHaveBeenCalledWith("meshes");
     expect(onSelect).not.toHaveBeenCalled();
@@ -284,7 +284,7 @@ describe("VirtualizedTree", () => {
     const onSelect = jest.fn();
     const onActivate = jest.fn();
     const onToggleExpanded = jest.fn();
-    const render_: RenderResult = renderWithProviders(
+    const { getByRole } = renderWithProviders(
       <VirtualizedTree<string>
         ariaLabel={"Visuals"}
         items={mockTree()}
@@ -301,7 +301,7 @@ describe("VirtualizedTree", () => {
       />
     );
 
-    render_.getByRole("button", { name: "Hide meshes" }).focus();
+    getByRole("button", { name: "Hide meshes" }).focus();
     await userEvent.keyboard("{Enter}{ArrowDown}{ArrowRight}");
 
     expect(onPress).toHaveBeenCalledWith("meshes");
