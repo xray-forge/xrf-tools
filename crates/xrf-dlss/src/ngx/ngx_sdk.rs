@@ -14,14 +14,16 @@ use crate::ngx::ngx_api::NgxApi;
 use crate::ngx::ngx_application::NgxApplication;
 use crate::ngx::ngx_lock::lock_ngx;
 use crate::ngx::ngx_result::check_ngx;
+use crate::ngx::ngx_retired_feature::NgxRetiredFeature;
 
-/// NGX started on a device, the API it runs on, the parameters its features are made with, and whether it reconstructs
-/// rays as well as it upscales.
+/// NGX started on a device, the API it runs on, the parameters its features are made with, whether it reconstructs
+/// rays as well as it upscales, and the features dropped while the device may still run their work.
 pub(crate) struct NgxSdk {
   pub(crate) parameters: *mut NVSDK_NGX_Parameter,
   pub(crate) device: wgpu::Device,
   pub(crate) api: NgxApi,
   pub(crate) has_ray_reconstruction: bool,
+  retired: Vec<NgxRetiredFeature>,
 }
 
 // SAFETY: the SDK is reached only through the mutex `Dlss` keeps it in, which only `Send` needs, and NGX's parameters
@@ -52,6 +54,7 @@ impl NgxSdk {
       device: device.clone(),
       api,
       has_ray_reconstruction: false,
+      retired: Vec::new(),
     };
     let read: XrfResult<()> = sdk.read_capabilities();
 
@@ -194,6 +197,47 @@ impl NgxSdk {
     });
   }
 
+  /// Takes a dropped feature to release once the device has finished its work, then releases those that are, holding
+  /// NGX's lock.
+  pub(crate) fn retire(&mut self, feature: NgxRetiredFeature) {
+    self.retired.push(feature);
+    self.release_finished();
+  }
+
+  /// Releases the retired features whose work the device has finished, holding NGX's lock.
+  pub(crate) fn release_finished(&mut self) {
+    let api: NgxApi = self.api;
+
+    self.retired.retain(|feature| {
+      if !feature.is_done() {
+        return true;
+      }
+
+      unsafe { Self::release(api, feature.handle) };
+
+      false
+    });
+  }
+
+  /// Releases a feature made on `api`, logging what NGX refuses.
+  ///
+  /// # Safety
+  ///
+  /// NGX's lock is held, and nothing recorded with the feature is still running on the device.
+  unsafe fn release(api: NgxApi, handle: *mut NVSDK_NGX_Handle) {
+    let result: NVSDK_NGX_Result = unsafe {
+      match api {
+        NgxApi::Vulkan => NVSDK_NGX_VULKAN_ReleaseFeature(handle),
+        #[cfg(windows)]
+        NgxApi::D3d12 => NVSDK_NGX_D3D12_ReleaseFeature(handle),
+      }
+    };
+
+    if let Err(error) = check_ngx(result, "DLSS does not release a feature") {
+      log::error!("{error}");
+    }
+  }
+
   /// Releases the parameters, where it was given them, and shuts NGX down on the device, logging what NGX refuses.
   ///
   /// # Safety
@@ -236,13 +280,18 @@ impl NgxSdk {
 }
 
 impl Drop for NgxSdk {
-  /// Waits for what was submitted to finish, through wgpu, which owns the queue, then shuts NGX down.
+  /// Waits for what was submitted to finish, through wgpu, which owns the queue, then releases the retired features and
+  /// shuts NGX down.
   fn drop(&mut self) {
     if let Err(error) = self.device.poll(wgpu::PollType::wait_indefinitely()) {
       log::error!("DLSS shuts down on a device that does not finish its work: {error}");
     }
 
     let _ngx: MutexGuard<'static, ()> = lock_ngx();
+
+    for feature in self.retired.drain(..) {
+      unsafe { Self::release(self.api, feature.handle) };
+    }
 
     unsafe { self.shut_down() };
   }

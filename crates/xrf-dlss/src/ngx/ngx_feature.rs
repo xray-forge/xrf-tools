@@ -11,6 +11,7 @@ use xrf_error::{XrfError, XrfResult};
 use crate::ngx::bindings::*;
 use crate::ngx::ngx_api::NgxApi;
 use crate::ngx::ngx_result::check_ngx;
+use crate::ngx::ngx_retired_feature::NgxRetiredFeature;
 use crate::ngx::ngx_sdk::NgxSdk;
 use crate::ngx::ngx_sdk_guard::NgxSdkGuard;
 
@@ -20,6 +21,7 @@ pub(crate) struct NgxFeature {
   pub(crate) api: NgxApi,
   pub(crate) sdk: Arc<Mutex<NgxSdk>>,
   device: wgpu::Device,
+  queue: wgpu::Queue,
 }
 
 // SAFETY: the handle is private and reaches NGX only through `evaluate` and `drop`, both holding NGX's lock, and NGX's
@@ -54,6 +56,7 @@ impl NgxFeature {
       api,
       sdk: Arc::clone(sdk),
       device: device.clone(),
+      queue: queue.clone(),
     })
   }
 
@@ -65,7 +68,10 @@ impl NgxFeature {
     what: &str,
     evaluate: impl FnOnce(NgxCommands, &NgxSdk, *mut NVSDK_NGX_Handle) -> XrfResult<NVSDK_NGX_Result>,
   ) -> XrfResult<wgpu::CommandBuffer> {
-    let sdk: NgxSdkGuard<'_> = NgxSdkGuard::lock(&self.sdk);
+    let mut sdk: NgxSdkGuard<'_> = NgxSdkGuard::lock(&self.sdk);
+
+    sdk.release_finished();
+
     let mut commands: wgpu::CommandEncoder = self
       .device
       .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("dlss") });
@@ -78,26 +84,10 @@ impl NgxFeature {
 }
 
 impl Drop for NgxFeature {
-  /// Waits for what was submitted to finish, through wgpu, which owns the queue, then releases the feature.
+  /// Hands the feature to the SDK, which releases it once the device has finished what was submitted with it, rather
+  /// than waiting for the device here.
   fn drop(&mut self) {
-    if let Err(error) = self.device.poll(wgpu::PollType::wait_indefinitely()) {
-      log::error!("DLSS releases a feature on a device that does not finish its work: {error}");
-    }
-
-    let _locked: NgxSdkGuard<'_> = NgxSdkGuard::lock(&self.sdk);
-
-    unsafe {
-      if let Err(error) = check_ngx(
-        match self.api {
-          NgxApi::Vulkan => NVSDK_NGX_VULKAN_ReleaseFeature(self.handle),
-          #[cfg(windows)]
-          NgxApi::D3d12 => NVSDK_NGX_D3D12_ReleaseFeature(self.handle),
-        },
-        "DLSS does not release a feature",
-      ) {
-        log::error!("{error}");
-      }
-    }
+    NgxSdkGuard::lock(&self.sdk).retire(NgxRetiredFeature::new(self.handle, &self.queue));
   }
 }
 

@@ -9,6 +9,7 @@ pub(crate) mod ngx_feature;
 pub(crate) mod ngx_lock;
 pub(crate) mod ngx_ray_reconstruction;
 pub(crate) mod ngx_result;
+pub(crate) mod ngx_retired_feature;
 pub(crate) mod ngx_sdk;
 pub(crate) mod ngx_sdk_guard;
 pub(crate) mod ngx_super_resolution;

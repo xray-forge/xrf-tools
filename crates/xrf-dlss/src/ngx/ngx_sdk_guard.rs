@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use crate::ngx::ngx_lock::lock_ngx;
@@ -24,5 +24,11 @@ impl Deref for NgxSdkGuard<'_> {
 
   fn deref(&self) -> &NgxSdk {
     &self.sdk
+  }
+}
+
+impl DerefMut for NgxSdkGuard<'_> {
+  fn deref_mut(&mut self) -> &mut NgxSdk {
+    &mut self.sdk
   }
 }
