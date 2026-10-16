@@ -6,6 +6,7 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::pipeline::compute_pipeline_description::ComputePipelineDescription;
 use crate::pipeline::render_pipeline_description::RenderPipelineDescription;
+use crate::pipeline::shader_lines::ShaderLines;
 use crate::pipeline::shader_source::ShaderSource;
 
 /// The shader modules and pipelines a renderer has made, kept by what they were made from: a module by name, a
@@ -289,12 +290,14 @@ impl PipelineCache {
         device.create_shader_module_trusted(
           wgpu::ShaderModuleDescriptor {
             label: Some(module),
-            source: wgpu::ShaderSource::Wgsl(code.into()),
+            source: wgpu::ShaderSource::Wgsl(code.as_str().into()),
           },
           Self::RUNTIME_CHECKS,
         )
       }
-    })?;
+    })
+    // An error names lines of the composed text: each is told back as the module and line it came from.
+    .map_err(|error| XrfError::new_invalid_error(ShaderLines::annotate(&code, &error.to_string())))?;
 
     self
       .modules

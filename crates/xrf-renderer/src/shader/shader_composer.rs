@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_renderer_core::ShaderLines;
 
 /// Composes a WGSL module with its imports inlined.
 pub struct ShaderComposer;
@@ -8,7 +9,7 @@ pub struct ShaderComposer;
 impl ShaderComposer {
   /// Inlines `#import "module"` lines, each module once. Directives sit alone on their line; WGSL's `enable` lines are
   /// gathered to the top, each once, since they must come before any declaration; everything else passes through
-  /// unchanged.
+  /// unchanged, each run of a module's lines after a marker naming where it came from (`ShaderLines`).
   ///
   /// # Errors
   ///
@@ -49,10 +50,14 @@ impl ShaderComposer {
       return Ok(());
     }
 
+    // A run of the module's lines starts again after each line it does not pass through.
+    let mut is_run_started: bool = false;
+
     for (index, line) in read(name)?.lines().enumerate() {
       let directive: &str = line.trim();
 
       if let Some(rest) = directive.strip_prefix("#import ") {
+        is_run_started = false;
         Self::append_module(rest.trim().trim_matches('"'), read, imported, enables, output)?;
       } else if directive.starts_with('#') {
         return Err(XrfError::new_invalid_error(format!(
@@ -60,8 +65,15 @@ impl ShaderComposer {
           index + 1
         )));
       } else if directive.starts_with("enable ") {
+        is_run_started = false;
         enables.insert(directive.to_string());
       } else {
+        if !is_run_started {
+          is_run_started = true;
+          output.push_str(&ShaderLines::mark(name, index + 1));
+          output.push('\n');
+        }
+
         output.push_str(line);
         output.push('\n');
       }

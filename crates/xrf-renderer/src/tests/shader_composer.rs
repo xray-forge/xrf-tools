@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_renderer_core::ShaderLines;
 
 use crate::shader::shader_composer::ShaderComposer;
 
@@ -27,7 +28,10 @@ fn inlines_each_import_once() {
   )
   .unwrap();
 
-  assert_eq!(source, "const C: f32 = 1.0;\nfn b() {}\nfn a() {}\n");
+  assert_eq!(
+    source,
+    "// module: common:1\nconst C: f32 = 1.0;\n// module: b:2\nfn b() {}\n// module: a:3\nfn a() {}\n"
+  );
 }
 
 #[test]
@@ -41,11 +45,31 @@ fn gathers_enables_to_the_top_once() {
   )
   .unwrap();
 
-  assert_eq!(source, "enable x;\nenable y;\nfn b() {}\nfn a() {}\n");
+  assert_eq!(
+    source,
+    "enable x;\nenable y;\n// module: b:3\nfn b() {}\n// module: a:3\nfn a() {}\n"
+  );
 }
 
 #[test]
 fn rejects_what_it_cannot_resolve() {
   assert!(compose(&[("a", "#import \"missing\"")], "a").is_err());
   assert!(compose(&[("a", "#if A\nx")], "a").is_err());
+}
+
+// A compiler's error names lines of the composed text; each is told back as the module and line it came from.
+#[test]
+fn tells_a_composed_line_back_as_its_module_and_line() {
+  let source: String = compose(
+    &[("a", "#import \"b\"\nfn a() {}\nfn broken() {"), ("b", "fn b() {}")],
+    "a",
+  )
+  .unwrap();
+  let broken: usize = source.lines().position(|line| line == "fn broken() {").unwrap() + 1;
+
+  assert_eq!(ShaderLines::locate(&source, broken), Some(("a", 3)));
+  assert_eq!(
+    ShaderLines::annotate(&source, &format!("expected '}}'\n  ┌─ wgsl:{broken}:14")),
+    format!("expected '}}'\n  ┌─ wgsl:{broken}:14 (a:3)")
+  );
 }

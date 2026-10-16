@@ -32,7 +32,7 @@ pub use crate::param::{
   UniformField,
 };
 pub use crate::pipeline::{
-  ComputePipelineDescription, PipelineCache, PipelineConstants, RenderPipelineDescription, ShaderOverride,
+  ComputePipelineDescription, PipelineCache, PipelineConstants, RenderPipelineDescription, ShaderLines, ShaderOverride,
   ShaderPermutation, ShaderSource, VertexLayout,
 };
 pub use crate::profiler::{send_profiler_message, start_profiler};
