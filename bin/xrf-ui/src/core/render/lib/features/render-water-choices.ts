@@ -1,7 +1,9 @@
 import { formatNumber } from "@xrf/format";
 
+import { ERenderWaterMode, RenderWaterMode } from "@/core/ipc/types/xrf-renderer";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The bounds each water value is offered between. */
 export const RENDER_WATER_LIMITS = {
@@ -59,3 +61,9 @@ export function formatWaterBorder(depth: number): string {
 export function formatWaterDistortion(distortion: number): string {
   return `${formatNumber(distortion * 100, 1)}%`;
 }
+
+/** The water modes, in the order they are offered. */
+export const RENDER_WATER_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderWaterMode>> = [
+  { label: "Engine", value: ERenderWaterMode.ENGINE },
+  { label: "Enhanced", value: ERenderWaterMode.ENHANCED },
+];

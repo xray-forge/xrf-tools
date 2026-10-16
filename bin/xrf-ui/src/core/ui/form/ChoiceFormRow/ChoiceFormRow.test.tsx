@@ -3,7 +3,8 @@ import { userEvent } from "@testing-library/user-event";
 
 import { renderWithProviders } from "@/fixtures/utils/render";
 
-import { ChoiceFormRow, IChoiceFormRowOption } from "./ChoiceFormRow";
+import { IChoiceFormRowOption } from "./choice-form-row-option";
+import { ChoiceFormRow } from "./ChoiceFormRow";
 
 type TMode = "folder" | "model";
 

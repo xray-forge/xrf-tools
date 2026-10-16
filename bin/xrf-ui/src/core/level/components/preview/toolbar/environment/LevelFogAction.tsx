@@ -13,11 +13,11 @@ import { LevelManualWeatherVectorField } from "@/core/level/components/weather/L
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { LEVEL_MANUAL_WEATHER_FOG_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import {
   explainRenderFogMode,
   formatFogDensity,
@@ -28,13 +28,11 @@ import {
 } from "@/core/render/lib/features/render-fog-choices";
 import { TRenderFogSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-/** The keys the popover sets. */
-const FOG_KEYS: ReadonlyArray<keyof ILevelManualWeather> = ["fogColor", "fogDistance", "fogDensity", "farPlane"];
-
 /** What the distance fades into: the sky as the engine fades it, or its haze. */
-const FADE_OPTIONS: ReadonlyArray<IRenderChoiceOption<"sky" | "haze">> = [
+const FADE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<"sky" | "haze">> = [
   { label: "Sky (engine)", value: "sky" },
   { label: "Sky haze", value: "haze" },
 ];
@@ -107,7 +105,7 @@ export function LevelFogAction({
         onChange={(fade: "sky" | "haze") => viewService.setOption("isSkyHazed", fade === "haze")}
       />
 
-      <LevelWeatherResetButton keys={FOG_KEYS} onEdit={weatherService.editManual} />
+      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_FOG_KEYS} onEdit={weatherService.editManual} />
 
       <RenderValueChoice
         label={"Drawn as"}

@@ -9,9 +9,9 @@ import {
   RenderDlssPreset,
   RenderScale,
 } from "@/core/ipc/types/xrf-renderer";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import { IRenderLimits, toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** How far the upscaled frame's sharpening goes. */
 export const RENDER_SHARPENING_LIMITS: IRenderLimits = toRenderLimits(RENDER_FEATURE_SCHEMA.upscaling.sharpening, 0.05);
@@ -39,7 +39,7 @@ export function describeRenderScale(scale: RenderScale): string {
 }
 
 /** The render scales, in the order they are offered. */
-export const RENDER_SCALE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderScale>> = Object.values(ERenderScale).map(
+export const RENDER_SCALE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderScale>> = Object.values(ERenderScale).map(
   (value: RenderScale) => ({ label: describeRenderScale(value), value })
 );
 
@@ -104,7 +104,7 @@ export function describeDlssPreset(preset: RenderDlssPreset): string {
 }
 
 /** DLSS's models by their letters alone, short enough for a toolbar popover's row. */
-export const RENDER_DLSS_PRESET_SHORT_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderDlssPreset>> = Object.values(
+export const RENDER_DLSS_PRESET_SHORT_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderDlssPreset>> = Object.values(
   ERenderDlssPreset
 ).map((value: RenderDlssPreset) => ({
   label: value === ERenderDlssPreset.DEFAULT ? "Default" : value.toUpperCase(),
@@ -112,6 +112,6 @@ export const RENDER_DLSS_PRESET_SHORT_OPTIONS: ReadonlyArray<IRenderChoiceOption
 }));
 
 /** DLSS's models, in the order they are offered. */
-export const RENDER_DLSS_PRESET_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderDlssPreset>> = Object.values(
+export const RENDER_DLSS_PRESET_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderDlssPreset>> = Object.values(
   ERenderDlssPreset
 ).map((value: RenderDlssPreset) => ({ label: RENDER_DLSS_PRESET_NAMES[value], value }));

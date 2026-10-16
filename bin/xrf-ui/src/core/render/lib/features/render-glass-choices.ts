@@ -1,9 +1,9 @@
 import { formatNumber } from "@xrf/format";
 
 import { ERenderGlassMode, RenderGlassMode } from "@/core/ipc/types/xrf-renderer";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The bounds the enhanced glass's refraction is offered between. */
 export const RENDER_GLASS_LIMITS = {
@@ -25,7 +25,7 @@ export function explainRenderGlassMode(mode: RenderGlassMode): string {
 }
 
 /** The glass modes, in the order they are offered. */
-export const RENDER_GLASS_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderGlassMode>> = [
+export const RENDER_GLASS_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderGlassMode>> = [
   { label: "Engine", value: ERenderGlassMode.ENGINE },
   { label: "Enhanced", value: ERenderGlassMode.ENHANCED },
 ];

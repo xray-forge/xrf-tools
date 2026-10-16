@@ -14,6 +14,7 @@ import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWe
 import { LevelWeatherSunSelect } from "@/core/level/components/weather/LevelWeatherSunSelect";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather, toLevelManualSun } from "@/core/level/lib/weather/level-manual-weather";
+import { LEVEL_MANUAL_WEATHER_SUN_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
 import {
   ILevelSunShaftsOptions,
   LEVEL_SUN_SHAFTS_MINIMUM_LIMITS,
@@ -31,17 +32,6 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Lens flares while the weather is not read yet. */
 const NO_SUNS: ReadonlyArray<string> = [];
-
-/** The keys the popover sets. */
-const SUN_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
-  "sunColor",
-  "sunAltitude",
-  "sunLongitude",
-  "ambientColor",
-  "hemisphereColor",
-  "sun",
-  "sunShaftsIntensity",
-];
 
 /**
  * The sun, the ambient and the hemisphere, by the keys a weather writes them with; the lens flare the sun is drawn
@@ -182,7 +172,7 @@ export function LevelSunAction({
           onChange={(minimum: number) => weatherService.setSunShafts({ ...sunShafts, minimum })}
         />
 
-        <LevelWeatherResetButton keys={SUN_KEYS} onEdit={weatherService.editManual} />
+        <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_SUN_KEYS} onEdit={weatherService.editManual} />
 
         <LevelVolumetricSettings className={"flex flex-col gap-2"} />
       </div>

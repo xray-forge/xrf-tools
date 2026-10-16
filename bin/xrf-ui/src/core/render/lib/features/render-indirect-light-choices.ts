@@ -1,9 +1,9 @@
 import { formatPercent } from "@xrf/format";
 
 import { ERenderIndirectLightMode, RenderIndirectLightMode } from "@/core/ipc/types/xrf-renderer";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The bounds each indirect light value is offered between. */
 export const RENDER_INDIRECT_LIGHT_LIMITS = {
@@ -26,7 +26,7 @@ export function explainRenderIndirectLightMode(mode: RenderIndirectLightMode): s
 }
 
 /** The indirect light modes, in the order they are offered. */
-export const RENDER_INDIRECT_LIGHT_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderIndirectLightMode>> = [
+export const RENDER_INDIRECT_LIGHT_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderIndirectLightMode>> = [
   { label: "Engine", value: ERenderIndirectLightMode.ENGINE },
   { label: "Enhanced", value: ERenderIndirectLightMode.ENHANCED },
 ];

@@ -1,6 +1,5 @@
 import { formatPercent } from "@xrf/format";
 
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import { IRenderLimits } from "@/core/render/lib/features/render-limits";
 import { FRAME_RATE_LIMITS, TFrameRateLimit } from "@/core/render/lib/settings/render-frame-rate-limit";
 import {
@@ -8,9 +7,10 @@ import {
   RENDER_OUTPUT_SCALES,
   RENDER_RESOLUTIONS,
 } from "@/core/render/lib/settings/render-resolution";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The frame rate limits, in the order they are offered. */
-export const RENDER_FRAME_RATE_OPTIONS: ReadonlyArray<IRenderChoiceOption<TFrameRateLimit>> = FRAME_RATE_LIMITS.map(
+export const RENDER_FRAME_RATE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TFrameRateLimit>> = FRAME_RATE_LIMITS.map(
   (value: TFrameRateLimit) => ({ label: value === "none" ? "No cap" : `${value} fps`, value })
 );
 
@@ -46,6 +46,6 @@ export function formatOutputScale(scale: number): string {
 }
 
 /** The resolutions, in the order they are offered. */
-export const RENDER_RESOLUTION_OPTIONS: ReadonlyArray<IRenderChoiceOption<ERenderResolution>> = RENDER_RESOLUTIONS.map(
+export const RENDER_RESOLUTION_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ERenderResolution>> = RENDER_RESOLUTIONS.map(
   (value: ERenderResolution) => ({ label: describeRenderResolution(value), value })
 );

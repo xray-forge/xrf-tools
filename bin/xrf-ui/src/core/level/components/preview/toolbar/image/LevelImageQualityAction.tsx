@@ -26,7 +26,6 @@ import {
   isTemporalAntialiasing,
   RENDER_TEXTURE_FILTERING_SHORT_OPTIONS,
 } from "@/core/render/lib/features/render-antialiasing-choices";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import {
   formatOutputScale,
   RENDER_OUTPUT_SCALE_LIMITS,
@@ -52,15 +51,16 @@ import { ERenderResolution } from "@/core/render/lib/settings/render-resolution"
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-const MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderAntialiasing>> = LEVEL_ANTIALIASING_MODES.map(
+const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderAntialiasing>> = LEVEL_ANTIALIASING_MODES.map(
   (value: RenderAntialiasing) => ({ label: describeRenderAntialiasing(value), value })
 );
 
 /** The modes offered where the GPU has no DLSS: DLSS greyed out, FSR 2 standing in for it. */
-const MODE_OPTIONS_WITHOUT_DLSS: ReadonlyArray<IRenderChoiceOption<RenderAntialiasing>> = MODE_OPTIONS.map(
-  (option: IRenderChoiceOption<RenderAntialiasing>) =>
+const MODE_OPTIONS_WITHOUT_DLSS: ReadonlyArray<IChoiceFormRowOption<RenderAntialiasing>> = MODE_OPTIONS.map(
+  (option: IChoiceFormRowOption<RenderAntialiasing>) =>
     option.value === ERenderAntialiasing.DLSS ? { ...option, isDisabled: true } : option
 );
 
@@ -70,7 +70,7 @@ const MODE_OPTIONS_WITHOUT_DLSS: ReadonlyArray<IRenderChoiceOption<RenderAntiali
  */
 function toBackendOptions(
   availability: Nullable<ReadonlyArray<RenderBackendAvailability>>
-): ReadonlyArray<IRenderChoiceOption<TRenderBackendChoice>> {
+): ReadonlyArray<IChoiceFormRowOption<TRenderBackendChoice>> {
   return RENDER_BACKEND_CHOICES.map((choice: TRenderBackendChoice) =>
     choice === RENDER_BACKEND_AUTO
       ? { label: "Auto", value: choice }

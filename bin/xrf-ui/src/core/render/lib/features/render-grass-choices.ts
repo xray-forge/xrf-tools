@@ -1,8 +1,10 @@
 import { formatNumber } from "@xrf/format";
 
+import { ERenderFoliageMode, RenderFoliageMode } from "@/core/ipc/types/xrf-renderer";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { DEFAULT_RENDER_GRASS_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The engine's grass density, `r__detail_density`, which is a spacing: a smaller one plants more. */
 const GAME_GRASS_DENSITY: number = DEFAULT_RENDER_GRASS_SETTINGS.density;
@@ -71,3 +73,9 @@ export function formatGrassRadius(radius: number): string {
 export function formatGrassHeight(height: number): string {
   return `${formatNumber(height, 1)}×`;
 }
+
+/** The foliage motion modes, in the order they are offered. */
+export const RENDER_FOLIAGE_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderFoliageMode>> = [
+  { label: "Engine", value: ERenderFoliageMode.ENGINE },
+  { label: "Enhanced", value: ERenderFoliageMode.ENHANCED },
+];

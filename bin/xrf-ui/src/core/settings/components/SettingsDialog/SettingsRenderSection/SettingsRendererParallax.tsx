@@ -3,19 +3,15 @@ import { formatNumber, formatPercent } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ERenderParallaxMode, RenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
+import { RENDER_PARALLAX_MODE_OPTIONS } from "@/core/render/lib/features/render-parallax-choices";
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
+import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 import { useRendererOverride } from "./use-renderer-override";
-
-const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderParallaxMode>> = [
-  { label: "Engine", value: ERenderParallaxMode.ENGINE },
-  { label: "Enhanced", value: ERenderParallaxMode.ENHANCED },
-];
 
 /** How the level's surfaces are displaced by their height: the engines' steep parallax, or the enhanced terrain march. */
 export function SettingsRendererParallax(): ReactElement {
@@ -33,7 +29,7 @@ export function SettingsRendererParallax(): ReactElement {
             "Engine: the engine's steep parallax alone, no terrain. Enhanced: terrain and steep surfaces marched over " +
             "their heights, self-shadowed, terrain's layers blended by height."
           }
-          options={MODE_OPTIONS}
+          options={RENDER_PARALLAX_MODE_OPTIONS}
           value={parallax.mode}
           onChange={(mode: RenderParallaxMode) => onSet({ mode })}
         />

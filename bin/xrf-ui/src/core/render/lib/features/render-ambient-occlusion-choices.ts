@@ -6,9 +6,9 @@ import {
   RenderAmbientOcclusionMethod,
   RenderAmbientOcclusionQuality,
 } from "@/core/ipc/types/xrf-renderer";
-import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The bounds each ambient occlusion value is offered between. */
 export const RENDER_AMBIENT_OCCLUSION_LIMITS = {
@@ -49,16 +49,17 @@ export function explainRenderAmbientOcclusionMethod(method: RenderAmbientOcclusi
 }
 
 /** The ambient occlusion methods, in the order they are offered. */
-export const RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderAmbientOcclusionMethod>> =
-  Object.values(ERenderAmbientOcclusionMethod).map((value: RenderAmbientOcclusionMethod) => ({
-    label: describeRenderAmbientOcclusionMethod(value),
-    value,
-  }));
+export const RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS: ReadonlyArray<
+  IChoiceFormRowOption<RenderAmbientOcclusionMethod>
+> = Object.values(ERenderAmbientOcclusionMethod).map((value: RenderAmbientOcclusionMethod) => ({
+  label: describeRenderAmbientOcclusionMethod(value),
+  value,
+}));
 
 /** The same where the GPU traces no rays: RTAO greyed out, VBAO searching in its place. */
 export const RENDER_AMBIENT_OCCLUSION_METHOD_UNTRACED_OPTIONS: ReadonlyArray<
-  IRenderChoiceOption<RenderAmbientOcclusionMethod>
-> = RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS.map((option: IRenderChoiceOption<RenderAmbientOcclusionMethod>) =>
+  IChoiceFormRowOption<RenderAmbientOcclusionMethod>
+> = RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS.map((option: IChoiceFormRowOption<RenderAmbientOcclusionMethod>) =>
   option.value === ERenderAmbientOcclusionMethod.RTAO ? { ...option, isDisabled: true } : option
 );
 
@@ -111,7 +112,7 @@ export function describeRenderAmbientOcclusionQuality(quality: RenderAmbientOccl
 
 /** The ambient occlusion qualities, in the order they are offered. */
 export const RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS: ReadonlyArray<
-  IRenderChoiceOption<RenderAmbientOcclusionQuality>
+  IChoiceFormRowOption<RenderAmbientOcclusionQuality>
 > = Object.values(ERenderAmbientOcclusionQuality).map((value: RenderAmbientOcclusionQuality) => ({
   label: describeRenderAmbientOcclusionQuality(value),
   value,
