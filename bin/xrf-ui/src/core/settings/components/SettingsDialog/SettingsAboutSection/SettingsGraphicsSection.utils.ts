@@ -1,6 +1,12 @@
 import { Nullable } from "@xrf/types";
 
-import { RenderBackend, RenderBackendAvailability, RenderLibraries } from "@/core/ipc/types/xrf-renderer";
+import {
+  RenderBackend,
+  RenderBackendAvailability,
+  RenderGpu,
+  RenderGpuDescription,
+  RenderLibraries,
+} from "@/core/ipc/types/xrf-renderer";
 import {
   describeRenderBackend,
   getForcedRenderBackend,
@@ -8,6 +14,7 @@ import {
   resolveRenderBackend,
   TRenderBackendChoice,
 } from "@/core/render/lib/settings/render-backend-choice";
+import { describeRenderGpu, resolveRenderGpu } from "@/core/render/lib/settings/render-gpu-choice";
 
 import { IAboutRow } from "./about-row";
 
@@ -18,48 +25,56 @@ export const DLSS_ATTRIBUTION: string =
 
 /**
  * @param backend - One graphics API as the renderer probed it.
- * @returns The GPU and driver it would use, or why it is unavailable.
+ * @returns Every GPU it can use with its driver, or why it is unavailable.
  */
 function describeAvailability(backend: RenderBackendAvailability): string {
-  if (backend.adapter === null) {
+  if (backend.gpus.length === 0) {
     return `Not available: ${backend.problem ?? "no adapter"}`;
   }
 
-  return backend.driver ? `${backend.adapter}, driver ${backend.driver}` : backend.adapter;
+  return backend.gpus.map((it: RenderGpuDescription) => describeRenderGpu(it)).join("; ");
 }
 
 /**
  * @param choice - The graphics API chosen in the settings.
+ * @param gpu - The GPU chosen in the settings, or null for the automatic one.
  * @param availability - Each graphics API as the renderer probed it.
- * @returns The API in use, and why it was picked.
+ * @returns The API and GPU in use, and why the API was picked.
  */
 function describeDrawing(
   choice: TRenderBackendChoice,
+  gpu: Nullable<RenderGpu>,
   availability: ReadonlyArray<RenderBackendAvailability>
-): Nullable<string> {
+): string {
   const drawn: Nullable<RenderBackend> = resolveRenderBackend(choice, availability);
 
   if (drawn === null) {
     return "No graphics API works on this machine";
   }
 
+  const drawnGpu: Nullable<RenderGpuDescription> = resolveRenderGpu(
+    gpu,
+    availability.find((it: RenderBackendAvailability) => it.backend === drawn)
+  );
+  const drawing: string = `${describeRenderBackend(drawn)} on ${drawnGpu?.name ?? "the GPU"}`;
+
   if (getForcedRenderBackend(availability) === drawn) {
-    return `${describeRenderBackend(drawn)}, set by XRF_RENDER_BACKEND`;
+    return `${drawing}, set by XRF_RENDER_BACKEND`;
   }
 
-  return choice === RENDER_BACKEND_AUTO
-    ? `${describeRenderBackend(drawn)}, chosen automatically`
-    : describeRenderBackend(drawn);
+  return choice === RENDER_BACKEND_AUTO ? `${drawing}, chosen automatically` : drawing;
 }
 
 /**
  * @param choice - The graphics API chosen in the settings.
+ * @param gpu - The GPU chosen in the settings, or null for the automatic one.
  * @param availability - Each graphics API as the renderer probed it, or null until it answers.
  * @param libraries - The graphics libraries the renderer ships with, or null until it answers.
  * @returns The rows to show, in display order.
  */
 export function describeGraphics(
   choice: TRenderBackendChoice,
+  gpu: Nullable<RenderGpu>,
   availability: Nullable<ReadonlyArray<RenderBackendAvailability>>,
   libraries: Nullable<RenderLibraries>
 ): Array<IAboutRow> {
@@ -70,14 +85,9 @@ export function describeGraphics(
       ...availability.map((it: RenderBackendAvailability) => ({
         label: describeRenderBackend(it.backend),
         value: describeAvailability(it),
-      }))
+      })),
+      { label: "Drawing with", value: describeDrawing(choice, gpu, availability) }
     );
-
-    const drawing: Nullable<string> = describeDrawing(choice, availability);
-
-    if (drawing) {
-      rows.push({ label: "Drawing with", value: drawing });
-    }
   }
 
   if (libraries !== null) {

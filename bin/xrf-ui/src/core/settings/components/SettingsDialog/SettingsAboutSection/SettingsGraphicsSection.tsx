@@ -36,6 +36,7 @@ export function SettingsGraphicsSection(): ReactElement {
 
   const rows: Array<IAboutRow> = describeGraphics(
     renderSettingsService.renderBackend,
+    renderSettingsService.renderGpu,
     renderSettingsService.renderBackends,
     libraries
   );

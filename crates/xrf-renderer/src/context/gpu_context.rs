@@ -10,6 +10,8 @@ use crate::context::gpu_requirements::{
 };
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_backend_availability::RenderBackendAvailability;
+use crate::contract::render_gpu::RenderGpu;
+use crate::contract::render_gpu_description::RenderGpuDescription;
 
 /// The GPU the renderer draws with: one per process, owned by the render thread.
 pub struct GpuContext {
@@ -20,6 +22,8 @@ pub struct GpuContext {
   pub backend: RenderBackend,
   /// The adapter's name, as reports state it.
   pub adapter_name: String,
+  /// The GPU drawn on.
+  pub gpu: RenderGpu,
   /// DLSS where the build and the GPU both have it: an RTX GPU, on Vulkan or D3D12.
   pub dlss: Option<Dlss>,
   lost: Arc<AtomicBool>,
@@ -35,16 +39,20 @@ impl GpuContext {
   /// so the holes textures streaming in and out leave in the blocks hold little.
   pub const MEMORY_BLOCK: u64 = 16 * 1024 * 1024;
 
-  /// Starts the GPU on a hardware adapter of the backend asked for, D3D12 compiling with the DXC library at the first of
-  /// `libraries` where it loads, and Vulkan loading DLSS's runtime library from the directory at the second where the
-  /// build has DLSS.
+  /// Starts the GPU on a hardware adapter of a backend: the GPU `gpu` names where the backend has it, else the one the
+  /// backend picks automatically. D3D12 compiles with the DXC library at the first of `libraries` where it loads, and
+  /// Vulkan loads DLSS's runtime library from the directory at the second where the build has DLSS.
   ///
   /// # Errors
   ///
   /// Returns an error when no adapter of that backend exists, when it lacks a required feature, or when its device
   /// cannot be created.
-  pub fn create(backend: RenderBackend, libraries: (Option<&Path>, Option<&Path>)) -> XrfResult<Self> {
-    Self::create_with(backend, false, libraries)
+  pub fn create(
+    backend: RenderBackend,
+    gpu: Option<RenderGpu>,
+    libraries: (Option<&Path>, Option<&Path>),
+  ) -> XrfResult<Self> {
+    Self::create_with(backend, gpu, false, libraries)
   }
 
   /// Starts the GPU on the first backend of `RenderBackend::list_tried` that starts: the one asked for, else the first
@@ -53,11 +61,15 @@ impl GpuContext {
   /// # Errors
   ///
   /// Returns an error, every backend's reason in it, when none starts.
-  pub fn create_preferred(asked: Option<RenderBackend>, libraries: (Option<&Path>, Option<&Path>)) -> XrfResult<Self> {
+  pub fn create_preferred(
+    asked: Option<RenderBackend>,
+    gpu: Option<RenderGpu>,
+    libraries: (Option<&Path>, Option<&Path>),
+  ) -> XrfResult<Self> {
     let mut problems: Vec<String> = Vec::new();
 
     for backend in RenderBackend::list_tried(asked) {
-      match Self::create(backend, libraries) {
+      match Self::create(backend, gpu, libraries) {
         Ok(context) => {
           if !problems.is_empty() {
             log::warn!("Renderer fell back to {}: {}", backend.get_label(), problems.join("; "));
@@ -75,32 +87,21 @@ impl GpuContext {
     )))
   }
 
-  /// Whether the renderer can draw with a backend here: a hardware adapter of it with every feature it needs, without
-  /// starting a device on it.
+  /// Whether the renderer can draw with a backend here: every hardware GPU of it with the features the renderer needs,
+  /// without starting a device on any.
   pub fn probe(backend: RenderBackend) -> RenderBackendAvailability {
     let is_forced: bool = RenderBackend::get_forced() == Some(backend);
 
-    match Self::request_adapter(backend, (false, false), (None, None))
-      .and_then(|(_, adapter)| Self::check_adapter(&adapter))
-    {
-      Ok(info) => RenderBackendAvailability {
+    match Self::list_gpus(backend) {
+      Ok(gpus) => RenderBackendAvailability {
         backend,
-        driver: Some(
-          [info.driver.as_str(), info.driver_info.as_str()]
-            .into_iter()
-            .filter(|it| !it.is_empty())
-            .collect::<Vec<&str>>()
-            .join(" "),
-        )
-        .filter(|it| !it.is_empty()),
-        adapter: Some(info.name),
+        gpus,
         problem: None,
         is_forced,
       },
       Err(error) => RenderBackendAvailability {
         backend,
-        adapter: None,
-        driver: None,
+        gpus: Vec::new(),
         problem: Some(error.to_string()),
         is_forced,
       },
@@ -114,7 +115,8 @@ impl GpuContext {
   ///
   /// Returns an error when neither a hardware nor a software adapter can be had with the required features.
   pub fn create_headless(backend: RenderBackend, dxc: Option<&Path>) -> XrfResult<Self> {
-    Self::create_with(backend, false, (dxc, None)).or_else(|_| Self::create_with(backend, true, (dxc, None)))
+    Self::create_with(backend, None, false, (dxc, None))
+      .or_else(|_| Self::create_with(backend, None, true, (dxc, None)))
   }
 
   /// Whether the device was lost, after which nothing it made draws again.
@@ -122,14 +124,44 @@ impl GpuContext {
     self.lost.load(Ordering::Acquire)
   }
 
-  /// An instance of a backend and its high-performance adapter, a software one where `is_fallback`; D3D12 compiling
-  /// with the DXC library at `dxc`, or FXC where none is given; ready for DLSS where `is_upscaled`, loading its runtime
-  /// library from `dlss` where the application ships one.
-  fn request_adapter(
+  /// Every hardware GPU of a backend with the features the renderer needs, the one it picks automatically first.
+  fn list_gpus(backend: RenderBackend) -> XrfResult<Vec<RenderGpuDescription>> {
+    let instance: DlssInstance = Self::create_instance(backend, false, (None, None));
+    let automatic: Option<wgpu::Adapter> = Self::request_automatic(&instance.instance, backend, false).ok();
+    let listed: Vec<wgpu::Adapter> = pollster::block_on(instance.instance.enumerate_adapters(backend.to_backends()));
+    let mut gpus: Vec<RenderGpuDescription> = Vec::new();
+    let mut problems: Vec<String> = Vec::new();
+
+    for adapter in automatic.into_iter().chain(listed) {
+      let info: wgpu::AdapterInfo = adapter.get_info();
+
+      if info.device_type == wgpu::DeviceType::Cpu || gpus.iter().any(|it| it.gpu == RenderGpu::of(&info)) {
+        continue;
+      }
+
+      match Self::check_adapter(&adapter) {
+        Ok(info) => gpus.push(RenderGpuDescription::describe(&info)),
+        Err(error) => problems.push(error.to_string()),
+      }
+    }
+
+    match (gpus.is_empty(), problems.is_empty()) {
+      (false, _) => Ok(gpus),
+      (true, true) => Err(XrfError::new_unexpected_error(format!(
+        "No {} adapter",
+        backend.get_label()
+      ))),
+      (true, false) => Err(XrfError::new_unexpected_error(problems.join("; "))),
+    }
+  }
+
+  /// Creates an instance of a backend. D3D12 compiles with the DXC library at `dxc`, or FXC if none is given; with
+  /// `is_upscaled` the instance is ready for DLSS, loading its runtime from `dlss` where the application ships one.
+  fn create_instance(
     backend: RenderBackend,
-    (is_fallback, is_upscaled): (bool, bool),
+    is_upscaled: bool,
     (dxc, dlss): (Option<&Path>, Option<&Path>),
-  ) -> XrfResult<(DlssInstance, wgpu::Adapter)> {
+  ) -> DlssInstance {
     let mut descriptor: wgpu::InstanceDescriptor = wgpu::InstanceDescriptor::new_without_display_handle();
 
     descriptor.backends = backend.to_backends();
@@ -143,14 +175,56 @@ impl GpuContext {
     // rest of wgpu's switches override it either way.
     descriptor.flags = wgpu::InstanceFlags::from_build_config().with_env();
 
-    let instance: DlssInstance = DlssInstance::new(descriptor, is_upscaled, dlss);
-    let adapter: wgpu::Adapter = pollster::block_on(instance.instance.request_adapter(&wgpu::RequestAdapterOptions {
+    DlssInstance::new(descriptor, is_upscaled, dlss)
+  }
+
+  /// The adapter the backend picks automatically: its high-performance one, or a software one if `is_fallback`.
+  fn request_automatic(
+    instance: &wgpu::Instance,
+    backend: RenderBackend,
+    is_fallback: bool,
+  ) -> XrfResult<wgpu::Adapter> {
+    pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
       power_preference: wgpu::PowerPreference::HighPerformance,
       compatible_surface: None,
       force_fallback_adapter: is_fallback,
       apply_limit_buckets: false,
     }))
-    .map_err(|error| XrfError::new_unexpected_error(format!("No {} adapter: {error}", backend.get_label())))?;
+    .map_err(|error| XrfError::new_unexpected_error(format!("No {} adapter: {error}", backend.get_label())))
+  }
+
+  /// Creates an instance of a backend and picks its adapter: the hardware GPU `gpu` names if the backend has it with
+  /// every required feature, otherwise the automatic one (a software one if `is_fallback`).
+  fn request_adapter(
+    backend: RenderBackend,
+    gpu: Option<RenderGpu>,
+    (is_fallback, is_upscaled): (bool, bool),
+    libraries: (Option<&Path>, Option<&Path>),
+  ) -> XrfResult<(DlssInstance, wgpu::Adapter)> {
+    let instance: DlssInstance = Self::create_instance(backend, is_upscaled, libraries);
+
+    if let Some(asked) = gpu.filter(|_| !is_fallback) {
+      let listed: Vec<wgpu::Adapter> = pollster::block_on(instance.instance.enumerate_adapters(backend.to_backends()));
+      let chosen: Option<wgpu::Adapter> = listed.into_iter().find(|adapter| {
+        let info: wgpu::AdapterInfo = adapter.get_info();
+
+        info.device_type != wgpu::DeviceType::Cpu
+          && RenderGpu::of(&info) == asked
+          && Self::check_adapter(adapter).is_ok()
+      });
+
+      match chosen {
+        Some(adapter) => return Ok((instance, adapter)),
+        None => log::warn!(
+          "The chosen GPU ({:04x}:{:04x}) cannot draw on {}; drawing on the automatic one",
+          asked.vendor,
+          asked.device,
+          backend.get_label()
+        ),
+      }
+    }
+
+    let adapter: wgpu::Adapter = Self::request_automatic(&instance.instance, backend, is_fallback)?;
 
     Ok((instance, adapter))
   }
@@ -172,18 +246,19 @@ impl GpuContext {
 
   fn create_with(
     backend: RenderBackend,
+    gpu: Option<RenderGpu>,
     is_fallback: bool,
     (dxc, dlss): (Option<&Path>, Option<&Path>),
   ) -> XrfResult<Self> {
     let dxc: Option<&Path> = dxc.filter(|_| backend == RenderBackend::D3d12);
     // A DXC library that does not load fails the instance's D3D12 backend, so FXC is tried in its place.
     let upscaled: (bool, bool) = (is_fallback, !is_fallback);
-    let (instance, adapter, shader_compiler) = match Self::request_adapter(backend, upscaled, (dxc, dlss)) {
+    let (instance, adapter, shader_compiler) = match Self::request_adapter(backend, gpu, upscaled, (dxc, dlss)) {
       Ok((instance, adapter)) => (instance, adapter, dxc.map_or("FXC", |_| "DXC")),
       Err(error) if dxc.is_some() => {
         log::warn!("D3D12 compiles with FXC, the DXC library not loading: {error}");
 
-        let (instance, adapter) = Self::request_adapter(backend, upscaled, (None, dlss))?;
+        let (instance, adapter) = Self::request_adapter(backend, gpu, upscaled, (None, dlss))?;
 
         (instance, adapter, "FXC")
       }
@@ -227,13 +302,15 @@ impl GpuContext {
     }));
 
     log::info!(
-      "Renderer started on '{}' ({}{}, {:?}, driver {} {}), {}{}",
+      "Renderer started on '{}' ({}{}, {:?}, driver {}), {}{}",
       info.name,
       backend.get_label(),
       shader_compiler.map(|it| format!(" with {it}")).unwrap_or_default(),
       info.device_type,
-      info.driver,
-      info.driver_info,
+      RenderGpuDescription::describe(&info)
+        .driver
+        .as_deref()
+        .unwrap_or("unknown"),
       if can_trace(&device) {
         "tracing rays"
       } else {
@@ -243,6 +320,7 @@ impl GpuContext {
     );
 
     Ok(Self {
+      gpu: RenderGpu::of(&info),
       adapter_name: info.name,
       instance: instance.instance,
       adapter,
