@@ -751,12 +751,15 @@ fn terrain_texel(
     to_sun = light.xy / (light.z + RELIEF_GRAZING) * depth;
   }
 
-  // Each layer's coordinate where its march met it, its height there and its depth; the plane where none marches.
+  // Each layer's coordinate where its march met it and its height there; the plane where none marches. The dominant
+  // layer's coordinate, depth and lod are kept apart as the march finds them, so nothing reads the array by a layer
+  // known only per pixel.
   var coords: array<vec2<f32>, 4> = array<vec2<f32>, 4>(uv, uv, uv, uv);
   var heights: vec4<f32> = vec4<f32>(0.5);
-  var depths: vec4<f32> = vec4<f32>(0.0);
-  var lods: vec4<f32> = vec4<f32>(0.0);
   var dominant: u32 = 0u;
+  var dominant_coord: vec2<f32> = uv;
+  var dominant_depth: f32 = 0.0;
+  var dominant_lod: f32 = 0.0;
 
   for (var layer: u32 = 0u; layer < 4u; layer++) {
     let weight: f32 = weights[layer];
@@ -776,8 +779,12 @@ fn terrain_texel(
 
       coords[layer] = hit.xy;
       heights[layer] = textureSampleLevel(textures[slot], texture_sampler, hit.xy, lod).r;
-      depths[layer] = hit.z;
-      lods[layer] = lod;
+
+      if (layer == dominant) {
+        dominant_coord = hit.xy;
+        dominant_depth = hit.z;
+        dominant_lod = lod;
+      }
     }
   }
 
@@ -822,13 +829,13 @@ fn terrain_texel(
   out.sink = select(0.0, out.sink, is_marched);
 
   if (is_marched) {
-    out.clearance = relief_clearance(surface.terrain.heights[dominant], coords[dominant], lods[dominant],
+    out.clearance = relief_clearance(surface.terrain.heights[dominant], dominant_coord, dominant_lod,
       weights[dominant], reach, 0u);
   }
 
   if (is_lit) {
     let slot: u32 = surface.terrain.heights[dominant];
-    let shadow: f32 = relief_shadow(slot, vec3<f32>(coords[dominant], depths[dominant]), lods[dominant],
+    let shadow: f32 = relief_shadow(slot, vec3<f32>(dominant_coord, dominant_depth), dominant_lod,
       weights[dominant], to_sun, 0u);
 
     out.relief = mix(1.0, shadow, camera.parallax_light.w);
