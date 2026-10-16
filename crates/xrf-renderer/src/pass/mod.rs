@@ -61,6 +61,8 @@ pub(crate) mod fsr_uniform;
 pub(crate) mod fullscreen_pipeline;
 pub(crate) mod fxaa_parameters;
 pub(crate) mod fxaa_pass;
+pub(crate) mod glass_copy_dispatch_parameters;
+pub(crate) mod glass_copy_parameters;
 pub(crate) mod glass_parameters;
 pub(crate) mod glass_pass;
 pub(crate) mod glass_uniform;
