@@ -251,11 +251,11 @@ export const DEFAULT_RENDER_UPSCALING_SETTINGS: TRenderUpscalingSettings = {
   sharpening: 0.5,
 };
 
-/** The engine's own shafts, with the froxel volume at a fifth of its designed strength and a quarter's lean, to 120 m. */
+/** The engine's own shafts, with the froxel volume at its designed strength and a quarter's lean, to 120 m. */
 export const DEFAULT_RENDER_VOLUMETRIC_SETTINGS: TRenderVolumetricSettings = {
   anisotropy: 0.25,
   distance: 120,
-  intensity: 0.2,
+  intensity: 1,
   mode: ERenderVolumetricMode.ENGINE,
 };
 

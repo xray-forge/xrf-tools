@@ -25,7 +25,7 @@ describe("LevelVolumetricSettings", () => {
     await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
     expect(view.features.volumetric).toEqual({ mode: ERenderVolumetricMode.ENHANCED });
-    expect(getByRole("slider", { name: "Intensity" })).toHaveAttribute("aria-valuetext", "0.20");
+    expect(getByRole("slider", { name: "Intensity" })).toHaveAttribute("aria-valuetext", "1.00");
     expect(getByRole("slider", { name: "Anisotropy" })).toHaveAttribute("aria-valuetext", "0.25");
     expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "120 m");
 
