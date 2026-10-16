@@ -96,8 +96,8 @@ impl GrassView {
 
   /// Fits the planting to the settings and the camera, building the ring and lists again where the settings outgrow
   /// them, and the cards where the grass casts shadows, traced where the view traces its light (`is_traced`) and drawn
-  /// into the sun's cascades where they shadow the frame (`is_cascaded`); `discard_below` is `r_ssaDISCARD` as the
-  /// static cull compares it, `time` the seconds the wind blows by, and `strength` the wind's,
+  /// into the sun's cascades where they shadow the frame (`cascade_reach`, as far as they reach); `discard_below` is
+  /// `r_ssaDISCARD` as the static cull compares it, `time` the seconds the wind blows by, and `strength` the wind's,
   /// `wind_strength_factor`.
   #[allow(clippy::too_many_arguments)]
   pub fn prepare(
@@ -110,7 +110,7 @@ impl GrassView {
     (time, is_windy, strength): (f32, bool, f32),
     foliage: &FoliageWindValues,
     puddles: (&wgpu::TextureView, GrassPuddlesUniform),
-    (is_traced, is_cascaded): (bool, bool),
+    (is_traced, cascade_reach): (bool, Option<f32>),
   ) {
     let wind: GrassWindUniform = self
       .wind
@@ -126,6 +126,8 @@ impl GrassView {
 
       return;
     };
+
+    let is_cascaded: bool = cascade_reach.is_some();
 
     self.is_card_traced = is_traced;
     self.is_card_cascaded = is_cascaded;
@@ -178,7 +180,9 @@ impl GrassView {
       return;
     };
     let eye: Vec3 = Vec3::new(camera.position.x, camera.position.y, -camera.position.z);
-    let (card_reach, card_fade): (f32, f32) = GrassCards::get_reach(settings);
+    // Traced, the cards shadow as far as their radius; drawn into the cascades alone, as far as those reach.
+    let (card_reach, card_fade): (f32, f32) =
+      GrassCards::get_reach(settings, if is_traced { None } else { cascade_reach });
 
     self.values = GrassUniform {
       eye: eye.extend(1.0),

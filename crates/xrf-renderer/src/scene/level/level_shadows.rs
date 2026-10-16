@@ -6,7 +6,7 @@ use xrf_renderer_core::{
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
-use crate::contract::render_shadow_settings::RENDER_MAX_SHADOW_CASCADES;
+use crate::contract::render_shadow_settings::{RENDER_MAX_SHADOW_CASCADES, RenderShadowSettings};
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic_job::PeriodicJob;
 use crate::frame::periodic_scheduler::PeriodicScheduler;
@@ -72,7 +72,7 @@ const SWAY_SEEDS: [f32; RENDER_MAX_SHADOW_CASCADES] = [0.12, 0.15, 0.25, 0.35];
 const GRASS_STANDING: f32 = 3.0;
 /// Cascades the grass's cards are drawn into, the nearest first: past them a tuft is a few texels at most, and its
 /// shadow fades out over the last one's blend into the next.
-const GRASS_CASCADES: usize = 2;
+pub const GRASS_CASCADES: usize = 2;
 /// The share of a map's edge the sun's pass keeps a point off (`EDGE` in `common/sun_shadow.wgsl`).
 const SUN_SHADOW_EDGE: f32 = 0.02;
 /// Where the cards' reach is sampled for the cascades it lands in: rays a side of the screen's grid, and the shares of
@@ -150,6 +150,16 @@ pub struct LevelShadows {
 }
 
 impl LevelShadows {
+  /// Metres the grass's cards need stand from the eye to shadow the cascades they are drawn into by `settings`: the
+  /// last such cascade's width, past which a tuft falls in a cascade drawing none.
+  pub fn get_grass_reach(settings: &RenderShadowSettings) -> Option<f32> {
+    settings.cascades[..settings.get_cascade_count()]
+      .iter()
+      .take(GRASS_CASCADES)
+      .last()
+      .copied()
+  }
+
   /// The maps, while any cascade is drawn.
   pub fn get_maps(&self) -> Option<&SunShadowMaps> {
     self.maps.as_ref()

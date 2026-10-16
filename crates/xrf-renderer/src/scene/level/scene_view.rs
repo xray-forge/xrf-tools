@@ -66,6 +66,7 @@ use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
+use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::level::level_surface::LevelSurface;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::lighting_handles::LightingHandles;
@@ -369,7 +370,12 @@ impl SceneView {
         frame.passes.wet.get_dry()[1],
         self.features.wet.has_puddles(),
       ),
-      (is_traced, is_cascaded),
+      (
+        is_traced,
+        is_cascaded
+          .then(|| LevelShadows::get_grass_reach(&options.features.shadows))
+          .flatten(),
+      ),
     );
     scene.lights.prepare(
       &mut *encoder,
