@@ -287,7 +287,7 @@ export function LevelLookAction({
 
         <CheckboxFormRow
           label={"Adapt exposure"}
-          description={"`r2_tonemap`: off, the frame is tonemapped at a fixed scale"}
+          description={"Adapts the exposure to how bright the frame is; off, a fixed scale. Game setting: r2_tonemap."}
           isChecked={look.exposure.isEnabled}
           onChange={(isEnabled: boolean) => lookService.edit({ ...look, exposure: { ...look.exposure, isEnabled } })}
         />
@@ -321,7 +321,7 @@ export function LevelLookAction({
         ) : (
           <CheckboxFormRow
             label={"Bloom"}
-            description={"`phase_bloom`: the bright part of the frame blurred over it, as the console sets it"}
+            description={"Blurs the frame's bright parts over it. Game setting: phase_bloom."}
             isChecked={look.bloom.isEnabled}
             onChange={(isEnabled: boolean) => lookService.edit({ ...look, bloom: { ...look.bloom, isEnabled } })}
           />

@@ -254,9 +254,17 @@ describe("LevelImageQualityAction", () => {
     expect(rendered.renderSettings.renderBackend).toBe(ERenderBackend.D3D12);
   });
 
-  it("is disabled while the settings smooth nothing", () => {
+  it("opens on a click, its settings still reached, while the settings smooth nothing", async () => {
     const rendered = renderAction({ mode: ERenderAntialiasing.NONE });
+    const trigger: HTMLElement = rendered.getByRole("button", { name: "Image quality" });
 
-    expect(rendered.getByRole("button", { name: "Image quality" })).toBeDisabled();
+    expect(trigger).toHaveAccessibleDescription("Antialiasing is off in Settings, under Rendering");
+
+    await userEvent.click(trigger);
+
+    expect(await rendered.findByRole("dialog", { name: "Image quality" })).toHaveTextContent(
+      "Antialiasing is off in Settings, under Rendering"
+    );
+    expect(rendered.getByRole("button", { name: "Direct3D 12" })).toBeInTheDocument();
   });
 });

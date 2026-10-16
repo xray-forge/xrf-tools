@@ -121,8 +121,8 @@ export function SettingsRendererAntialiasing(): ReactElement {
         <ChoiceFormRow
           label={"Texture quality"}
           description={
-            "The game's `texture_lod`: how much coarser than stored the textures load. Each step past full drops " +
-            "their largest levels as the engine does; changing it loads every texture again."
+            "Drops each texture's largest mip levels, one a step; a change loads every texture again. " +
+            "Game setting: texture_lod."
           }
           options={TEXTURE_LOD_OPTIONS}
           value={String(features.textureLod)}

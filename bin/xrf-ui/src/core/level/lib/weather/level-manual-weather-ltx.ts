@@ -64,11 +64,11 @@ export function toLevelManualWeatherLtx(input: ILevelManualWeatherLtxInput): str
         ] as Array<[string, string]>)
       : ([["tree_amplitude_intensity", toNumber(manual.treesAmplitude)]] as Array<[string, string]>)),
   ];
-  const width: number = Math.max(...keys.map(([key]) => key.length));
 
   return [
     `[${formatLevelWeatherTime(time, true)}]`,
-    ...keys.map(([key, value]) => `${key.padEnd(width)} = ${value}`),
+    // As the LTX formatter writes an entry: one space either side of the separator, none after it with no value.
+    ...keys.map(([key, value]) => (value === "" ? `${key} =` : `${key} = ${value}`)),
     "",
   ].join("\n");
 }

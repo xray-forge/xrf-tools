@@ -30,15 +30,20 @@ describe("LevelLightsAction", () => {
     expect(view.features).toEqual({ ...before, lights: {} });
   });
 
-  it("is disabled, with the reason, while the settings keep the lights off", () => {
+  it("opens on a click, saying why, while the settings keep the lights off", async () => {
     const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
 
     descriptor.renderSettings.setRendererOverrides({ lights: { isEnabled: false } });
 
-    const { getByRole } = renderLevelView(<LevelLightsAction />, descriptor);
+    const { getByRole, findByRole } = renderLevelView(<LevelLightsAction />, descriptor);
 
-    expect(getByRole("button", { name: "Lights" })).toBeDisabled();
     expect(getByRole("button", { name: "Lights" })).toHaveAccessibleDescription(
+      "Lights are off in Settings, under Rendering"
+    );
+
+    await userEvent.click(getByRole("button", { name: "Lights" }));
+
+    expect(await findByRole("dialog", { name: "Lights" })).toHaveTextContent(
       "Lights are off in Settings, under Rendering"
     );
   });

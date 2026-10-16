@@ -64,11 +64,16 @@ describe("LevelShadowAction", () => {
     );
   });
 
-  it("is disabled, with the reason, while the settings draw no shadows", () => {
-    const { getByRole } = renderAction({ ...DEFAULT_RENDER_SHADOW_SETTINGS, isEnabled: false });
+  it("opens on a click, saying why, while the settings draw no shadows", async () => {
+    const { getByRole, findByRole } = renderAction({ ...DEFAULT_RENDER_SHADOW_SETTINGS, isEnabled: false });
 
-    expect(getByRole("button", { name: "Shadows" })).toBeDisabled();
     expect(getByRole("button", { name: "Shadows" })).toHaveAccessibleDescription(
+      "Shadows are off in Settings, under Rendering"
+    );
+
+    await userEvent.click(getByRole("button", { name: "Shadows" }));
+
+    expect(await findByRole("dialog", { name: "Shadows" })).toHaveTextContent(
       "Shadows are off in Settings, under Rendering"
     );
   });
