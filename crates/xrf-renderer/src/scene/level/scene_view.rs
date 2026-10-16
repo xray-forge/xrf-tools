@@ -244,14 +244,19 @@ impl SceneView {
     let sight: StaticSight = scene.statics.get_sight(&frame.view.get_frustum());
     let lighting_frame: LightingFrame = self.prepare_weather(scene, frame, &sight, time);
 
+    self
+      .features
+      .overlays
+      .follow_skeletons((scene, frame.device, &mut *encoder));
+
     self.prepare_scene(scene, encoder, frame, time);
     self.prepare_view(scene, encoder, frame, &sight);
     self.prepare_lighting(scene, encoder, frame, &lighting_frame, time);
   }
 
-  /// The units the weather drives: the overlays' skeletons, the shadows' maps, the exposure, the flares and the sky, the
-  /// water, the wind, the falling rain and the wet surfaces following it, the thunder, and the post units reading the
-  /// weather. Answers what the lighting draws the sky with.
+  /// The units the weather drives: the shadows' maps, the exposure, the flares and the sky, the water, the wind, the
+  /// falling rain and the wet surfaces following it, the thunder, and the post units reading the weather. Answers what
+  /// the lighting draws the sky with.
   fn prepare_weather(
     &mut self,
     scene: &LevelScene,
@@ -263,7 +268,6 @@ impl SceneView {
     let weather = (lighting, frame.weather);
     let size: Option<(u32, u32)> = self.targets.as_ref().map(|targets| (targets.width, targets.height));
 
-    self.features.overlays.follow_skeletons((scene, device));
     self.features.shadows.prepare(
       device,
       options.features.shadows.resolution,

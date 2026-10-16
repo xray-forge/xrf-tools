@@ -4,6 +4,7 @@ use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_overlay_segment::RenderOverlaySegment;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_selection_target::RenderSelectionTarget;
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
@@ -48,9 +49,9 @@ impl OverlaysFeature {
   }
 
   /// Follows the scene's skeletons where the overlays draw them.
-  pub fn follow_skeletons(&mut self, (scene, device): (&LevelScene, &wgpu::Device)) {
+  pub fn follow_skeletons(&mut self, (scene, device, encoder): (&LevelScene, &wgpu::Device, &mut FrameEncoder)) {
     if let Some(overlays) = self.overlays.as_mut().filter(|it| it.skeleton.is_some()) {
-      overlays.set_skeleton(device, &scene.skeleton_segments);
+      overlays.set_skeleton((device, encoder), &scene.skeleton_segments);
     }
   }
 

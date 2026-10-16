@@ -2,9 +2,10 @@ use glam::Vec3;
 use wgpu::util::DeviceExt;
 
 use crate::contract::render_overlay::RenderOverlay;
+use crate::frame::frame_encoder::FrameEncoder;
 
 /// A viewport's overlays as their vertices: every line segment's two ends, the points, and the sun's disc, uploaded
-/// once a set; and the skeleton's segments, uploaded again every frame its pose may have moved.
+/// once a set; and the skeleton's segments, written again every frame its pose may have moved.
 pub struct LevelOverlays {
   /// The set they were built from.
   pub version: u64,
@@ -16,7 +17,7 @@ pub struct LevelOverlays {
   pub sun: Option<wgpu::Buffer>,
   /// The skeleton's colour and whether depth tests it, while the set draws one.
   pub skeleton: Option<([f32; 3], bool)>,
-  /// The skeleton's segments as `lines` holds its own, this frame.
+  /// The skeleton's segments as `lines` holds its own, this frame, in a buffer kept while they fit it.
   pub skeleton_lines: Option<(wgpu::Buffer, u32)>,
 }
 
@@ -92,7 +93,7 @@ impl LevelOverlays {
   }
 
   /// Takes this frame's skeleton segments, child then parent, in renderer space, while the set draws a skeleton.
-  pub fn set_skeleton(&mut self, device: &wgpu::Device, segments: &[(Vec3, Vec3)]) {
+  pub fn set_skeleton(&mut self, (device, encoder): (&wgpu::Device, &mut FrameEncoder), segments: &[(Vec3, Vec3)]) {
     let Some((color, is_depth_tested)) = self.skeleton else {
       return;
     };
@@ -103,7 +104,33 @@ impl LevelOverlays {
       .map(|end| [end.x, end.y, end.z, color[0], color[1], color[2], tested])
       .collect();
 
-    self.skeleton_lines = Self::create_vertices(device, "overlay skeleton", &vertices);
+    let bytes: &[u8] = bytemuck::cast_slice(&vertices);
+
+    if vertices.is_empty() {
+      self.skeleton_lines = None;
+
+      return;
+    }
+
+    if self
+      .skeleton_lines
+      .as_ref()
+      .is_none_or(|(buffer, _)| buffer.size() < bytes.len() as u64)
+    {
+      let buffer: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("overlay skeleton"),
+        size: (bytes.len() as u64).next_power_of_two(),
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+      });
+
+      self.skeleton_lines = Some((buffer, 0));
+    }
+
+    if let Some((buffer, count)) = &mut self.skeleton_lines {
+      encoder.write_buffer(buffer, 0, bytes);
+      *count = vertices.len() as u32;
+    }
   }
 
   /// A vertex buffer of what is given and how many, or none for nothing.
