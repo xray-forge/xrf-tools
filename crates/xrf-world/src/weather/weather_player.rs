@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use glam::Vec3;
 use xrf_environment::{
   WeatherEffectStart, WeatherEffectTimeline, WeatherMix, WeatherMixPoint, WeatherMixer, WeatherPair,
   WeatherPlayedKeyframe, WeatherTime,
@@ -13,7 +14,7 @@ use crate::contract::world_weather_transition::WorldWeatherTransition;
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::playing_effect::PlayingEffect;
 use crate::weather::weather_fader::WeatherFader;
-use crate::weather::weather_lighting::to_weather_lighting;
+use crate::weather::weather_lighting::WeatherLighting;
 use crate::weather::weather_thunder::WeatherThunder;
 use crate::weather::weather_thundered_lighting::to_thundered_lighting;
 
@@ -78,8 +79,8 @@ impl Default for WeatherPlayer {
 }
 
 impl WeatherPlayer {
-  /// What the strikes are drawn from on every play, as the ambient effects' schedule is, so a driven capture strikes the
-  /// same bolts at the same moments.
+  /// What the strikes are drawn from on every play, as the ambient effects' schedule is, so a driven capture strikes
+  /// the same bolts at the same moments.
   const THUNDER_SEED: u64 = 0x7B0_17ED;
 
   /// Whether a weather plays, lighting the scene in place of the default lighting.
@@ -203,7 +204,7 @@ impl WeatherPlayer {
       self.run(step.as_secs_f32() * control.factor);
     }
 
-    if has_modifiers && distance(view, self.view) > VIEW_STEP {
+    if has_modifiers && Vec3::from(view).distance(Vec3::from(self.view)) > VIEW_STEP {
       self.view = view;
       self.is_changed = true;
     }
@@ -320,7 +321,7 @@ impl WeatherPlayer {
       modifiers: &weather.level.modifiers,
     }
     .mix_pair([pair[0].as_mixed(), pair[1].as_mixed()], point);
-    let target: RenderLighting = to_weather_lighting(&mix, pair, weather.get_engine());
+    let target: RenderLighting = WeatherLighting::of(&mix, pair, weather.get_engine());
 
     // Faded over rather than cut to, as the skies of the engine's own blend never jump.
     if self.is_jumped
@@ -367,8 +368,4 @@ impl WeatherPlayer {
       self.is_jumped = true;
     }
   }
-}
-
-fn distance(a: [f32; 3], b: [f32; 3]) -> f32 {
-  (0..3).map(|axis| (a[axis] - b[axis]).powi(2)).sum::<f32>().sqrt()
 }

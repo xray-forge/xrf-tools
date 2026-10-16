@@ -14,6 +14,7 @@ use xrf_renderer_core::{ProxyHandle, ProxyStore};
 
 use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
+use crate::camera::engine_space::EngineSpace;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::host::render_asset_source::RenderAssetSource;
@@ -276,7 +277,7 @@ impl LevelParticles {
     }
 
     let now: u64 = self.started.elapsed().as_millis() as u64;
-    let eye: Vec3 = ParticleSprite::mirror(view.position);
+    let eye: Vec3 = EngineSpace::mirror(view.position);
     let frustum: CameraFrustum = view.get_frustum();
     let (library, rules, collider) = (Arc::clone(&level.library), level.rules, level.collider.clone());
     let mut emitters: ProxyStore<ParticleEmitterProxy> = std::mem::take(&mut self.emitters);
@@ -389,7 +390,7 @@ impl LevelParticles {
       return;
     }
 
-    let eye: Vec3 = ParticleSprite::mirror(view.position);
+    let eye: Vec3 = EngineSpace::mirror(view.position);
     let frustum: CameraFrustum = view.get_frustum();
     let mut drawn: Vec<(f32, &ParticleEffectInstance, u32, &ParticleSurface)> = Vec::new();
 
@@ -461,6 +462,6 @@ impl LevelParticles {
   fn is_in_view(frustum: &CameraFrustum, bounds: ParticleBounds) -> bool {
     let (center, radius) = bounds.get_sphere();
 
-    frustum.reaches(ParticleSprite::mirror(center).extend(radius))
+    frustum.reaches(EngineSpace::mirror(center).extend(radius))
   }
 }

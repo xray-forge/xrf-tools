@@ -14,7 +14,7 @@ use xrf_visual::{LightAnimatorDescription, LightAnimatorKey};
 use crate::contract::world_weather_control::WorldWeatherControl;
 use crate::contract::world_weather_transition::WorldWeatherTransition;
 use crate::weather::played_weather::PlayedWeather;
-use crate::weather::weather_fade::to_faded_lighting;
+use crate::weather::weather_fade::WeatherFade;
 use crate::weather::weather_player::WeatherPlayer;
 use crate::weather::weather_thunder::WeatherThunder;
 
@@ -216,7 +216,7 @@ fn walks_the_skies_from_one_pair_to_the_other_in_thirds() {
   };
   let (from, to) = (sky("a", "b", 0.8), sky("c", "d", 0.2));
   let at = |t: f32| {
-    let faded: RenderLighting = to_faded_lighting(&from, &to, t);
+    let faded: RenderLighting = WeatherFade::blend(&from, &to, t);
 
     (faded.sky.textures.map(Option::unwrap), faded.sky.blend)
   };

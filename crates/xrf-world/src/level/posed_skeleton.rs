@@ -26,7 +26,7 @@ impl PosedSkeleton {
     Self {
       bones,
       inverse_binds: (0..bones)
-        .map(|bone| to_matrix(&skeleton.binds, bone * FLOATS_PER_BONE).inverse())
+        .map(|bone| Self::to_matrix(&skeleton.binds, bone * FLOATS_PER_BONE).inverse())
         .collect(),
       binds: skeleton.binds.clone(),
       pairs: skeleton.pairs.clone(),
@@ -58,7 +58,7 @@ impl PosedSkeleton {
       _ => (&self.binds, 0),
     };
     let posed: Vec<Mat4> = (0..self.bones)
-      .map(|bone| to_matrix(source.0, source.1 + bone * FLOATS_PER_BONE))
+      .map(|bone| Self::to_matrix(source.0, source.1 + bone * FLOATS_PER_BONE))
       .collect();
     let current: Vec<[Vec4; 3]> = posed
       .iter()
@@ -98,22 +98,22 @@ impl PosedSkeleton {
       .filter_map(|(child, parent)| Some((*self.joints.get(*child as usize)?, *self.joints.get(*parent as usize)?)))
       .collect()
   }
-}
 
-/// A bone's twelve floats as a matrix: its basis' three columns, then its translation.
-fn to_matrix(values: &[f32], at: usize) -> Mat4 {
-  let read = |offset: usize| -> Vec3 {
-    Vec3::new(
-      values.get(at + offset).copied().unwrap_or(0.0),
-      values.get(at + offset + 1).copied().unwrap_or(0.0),
-      values.get(at + offset + 2).copied().unwrap_or(0.0),
+  /// A bone's twelve floats as a matrix: its basis' three columns, then its translation.
+  fn to_matrix(values: &[f32], at: usize) -> Mat4 {
+    let read = |offset: usize| -> Vec3 {
+      Vec3::new(
+        values.get(at + offset).copied().unwrap_or(0.0),
+        values.get(at + offset + 1).copied().unwrap_or(0.0),
+        values.get(at + offset + 2).copied().unwrap_or(0.0),
+      )
+    };
+
+    Mat4::from_cols(
+      read(0).extend(0.0),
+      read(3).extend(0.0),
+      read(6).extend(0.0),
+      read(9).extend(1.0),
     )
-  };
-
-  Mat4::from_cols(
-    read(0).extend(0.0),
-    read(3).extend(0.0),
-    read(6).extend(0.0),
-    read(9).extend(1.0),
-  )
+  }
 }

@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use glam::Vec3;
 use xrf_renderer::{
-  RenderLighting, RenderSceneId, RenderViewFrame, RenderViewInput, RenderViewOptions, WeatherTextureKind,
+  EngineSpace, RenderLighting, RenderSceneId, RenderViewFrame, RenderViewInput, RenderViewOptions, WeatherTextureKind,
 };
 
 use crate::camera::camera_controller::CameraController;
@@ -77,7 +77,7 @@ impl WorldViewport {
     let position: Vec3 = self.camera.get_pose().position.into();
     let is_thundering: bool = self.toggles.is_thundering && options.mode.is_lit;
 
-    let eye: Vec3 = Vec3::new(position.x, position.y, -position.z);
+    let eye: Vec3 = EngineSpace::mirror(position);
 
     self.eye = eye;
     self.options.clone_from(options);

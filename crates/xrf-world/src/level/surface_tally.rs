@@ -36,7 +36,7 @@ impl SurfaceTally {
         section.surface.shader_id,
         section.drawables.len() as u32,
         section.draw.count / 3,
-        measure_span(&description.geometry, buffer, section.draw.start, section.draw.count),
+        Self::measure_span(&description.geometry, buffer, section.draw.start, section.draw.count),
       );
     }
 
@@ -53,7 +53,7 @@ impl SurfaceTally {
         group.surface.shader_id,
         group.drawables.len() as u32,
         (count / 3).saturating_mul(group.instance_count),
-        measure_span(&group.geometry, buffer, start, count),
+        Self::measure_span(&group.geometry, buffer, start, count),
       );
     }
 
@@ -86,63 +86,63 @@ impl SurfaceTally {
       .or_insert_with(|| WorldSurfaceGeometry::new(shader_id))
       .add(drawables, triangles, drawn);
   }
-}
 
-/// The range one draw's base coordinate covers, sampled across its indices; none where the geometry carries none.
-fn measure_span(geometry: &SectorGeometry, buffer: &[u8], start: u32, count: u32) -> Option<WorldSurfaceSpan> {
-  let uvs: &[u8] = get_section_bytes(buffer, geometry.uvs.as_ref()?);
-  let indices: &[u8] = get_section_bytes(buffer, &geometry.indices);
-  let tangents: &[u8] = geometry
-    .tangents
-    .as_ref()
-    .map_or(&[], |it| get_section_bytes(buffer, it));
-  let binormals: &[u8] = geometry
-    .binormals
-    .as_ref()
-    .map_or(&[], |it| get_section_bytes(buffer, it));
-  let end: u32 = start.saturating_add(count).min((indices.len() / 4) as u32);
-  let stride: usize = (count / SPAN_SAMPLES).max(1) as usize;
-  let mut span: Option<WorldSurfaceSpan> = None;
+  /// The range one draw's base coordinate covers, sampled across its indices; none where the geometry carries none.
+  fn measure_span(geometry: &SectorGeometry, buffer: &[u8], start: u32, count: u32) -> Option<WorldSurfaceSpan> {
+    let uvs: &[u8] = get_section_bytes(buffer, geometry.uvs.as_ref()?);
+    let indices: &[u8] = get_section_bytes(buffer, &geometry.indices);
+    let tangents: &[u8] = geometry
+      .tangents
+      .as_ref()
+      .map_or(&[], |it| get_section_bytes(buffer, it));
+    let binormals: &[u8] = geometry
+      .binormals
+      .as_ref()
+      .map_or(&[], |it| get_section_bytes(buffer, it));
+    let end: u32 = start.saturating_add(count).min((indices.len() / 4) as u32);
+    let stride: usize = (count / SPAN_SAMPLES).max(1) as usize;
+    let mut span: Option<WorldSurfaceSpan> = None;
 
-  for at in (start..end).step_by(stride) {
-    let vertex: usize = read_u32(indices, at as usize) as usize;
-    let coordinate: Option<(f32, f32)> = if geometry.uv_components == TREE_COMPONENTS {
-      read_i16(uvs, vertex * 4)
-        .zip(read_i16(uvs, vertex * 4 + 1))
-        .map(|(u, v)| (u as f32 / TREE_QUANT, v as f32 / TREE_QUANT))
-    } else {
-      // A baked coordinate's low bytes ride in the fourth byte of its tangent and binormal.
-      let fraction_u: f32 = tangents.get(vertex * 4 + 3).map_or(0.0, |it| *it as f32 / 255.0);
-      let fraction_v: f32 = binormals.get(vertex * 4 + 3).map_or(0.0, |it| *it as f32 / 255.0);
+    for at in (start..end).step_by(stride) {
+      let vertex: usize = Self::read_u32(indices, at as usize) as usize;
+      let coordinate: Option<(f32, f32)> = if geometry.uv_components == TREE_COMPONENTS {
+        Self::read_i16(uvs, vertex * 4)
+          .zip(Self::read_i16(uvs, vertex * 4 + 1))
+          .map(|(u, v)| (u as f32 / TREE_QUANT, v as f32 / TREE_QUANT))
+      } else {
+        // A baked coordinate's low bytes ride in the fourth byte of its tangent and binormal.
+        let fraction_u: f32 = tangents.get(vertex * 4 + 3).map_or(0.0, |it| *it as f32 / 255.0);
+        let fraction_v: f32 = binormals.get(vertex * 4 + 3).map_or(0.0, |it| *it as f32 / 255.0);
 
-      read_i16(uvs, vertex * 2)
-        .zip(read_i16(uvs, vertex * 2 + 1))
-        .map(|(u, v)| {
-          (
-            (u as f32 + fraction_u) / BASE_QUANT,
-            (v as f32 + fraction_v) / BASE_QUANT,
-          )
-        })
-    };
+        Self::read_i16(uvs, vertex * 2)
+          .zip(Self::read_i16(uvs, vertex * 2 + 1))
+          .map(|(u, v)| {
+            (
+              (u as f32 + fraction_u) / BASE_QUANT,
+              (v as f32 + fraction_v) / BASE_QUANT,
+            )
+          })
+      };
 
-    if let Some((u, v)) = coordinate.filter(|(u, v)| u.is_finite() && v.is_finite()) {
-      let at: WorldSurfaceSpan = WorldSurfaceSpan::at(u, v);
+      if let Some((u, v)) = coordinate.filter(|(u, v)| u.is_finite() && v.is_finite()) {
+        let at: WorldSurfaceSpan = WorldSurfaceSpan::at(u, v);
 
-      span = Some(span.map_or(at, |span| span.merge(at)));
+        span = Some(span.map_or(at, |span| span.merge(at)));
+      }
     }
+
+    span
   }
 
-  span
-}
+  fn read_u32(bytes: &[u8], index: usize) -> u32 {
+    bytes
+      .get(index * 4..index * 4 + 4)
+      .map_or(0, |it| u32::from_le_bytes([it[0], it[1], it[2], it[3]]))
+  }
 
-fn read_u32(bytes: &[u8], index: usize) -> u32 {
-  bytes
-    .get(index * 4..index * 4 + 4)
-    .map_or(0, |it| u32::from_le_bytes([it[0], it[1], it[2], it[3]]))
-}
-
-fn read_i16(bytes: &[u8], index: usize) -> Option<i16> {
-  bytes
-    .get(index * 2..index * 2 + 2)
-    .map(|it| i16::from_le_bytes([it[0], it[1]]))
+  fn read_i16(bytes: &[u8], index: usize) -> Option<i16> {
+    bytes
+      .get(index * 2..index * 2 + 2)
+      .map(|it| i16::from_le_bytes([it[0], it[1]]))
+  }
 }

@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use xrf_renderer::RenderLighting;
 
-use crate::weather::weather_fade::to_faded_lighting;
+use crate::weather::weather_fade::WeatherFade;
 
 /// Real time a fade waits for the skies it fades into before it starts without them.
 const LONGEST_WAIT: Duration = Duration::from_secs(2);
@@ -63,7 +63,7 @@ impl WeatherFader {
     let progress: f32 = fading.started_at.map_or(0.0, |started| {
       now.duration_since(started).as_secs_f32() / fading.duration.as_secs_f32().max(f32::EPSILON)
     });
-    let lighting: RenderLighting = to_faded_lighting(&fading.from, target, progress);
+    let lighting: RenderLighting = WeatherFade::blend(&fading.from, target, progress);
 
     if progress >= 1.0 {
       self.fading = None;

@@ -5,7 +5,7 @@ use glam::Vec3;
 use xrf_environment::WeatherMix;
 use xrf_math::{EPS_L, EPS_S};
 use xrf_renderer::{
-  RenderThunder, RenderThunderSettings, RenderThunderbolt, RenderThunderboltGlow, RenderThunderboltStrike,
+  EngineSpace, RenderThunder, RenderThunderSettings, RenderThunderbolt, RenderThunderboltGlow, RenderThunderboltStrike,
   WeatherRandom, to_interpolated_color,
 };
 
@@ -130,7 +130,7 @@ impl WeatherThunder {
     let lasting: f32 = mix.thunderbolt_duration;
     let life: f32 = lasting + random.between(-lasting * 0.5, lasting * 0.5);
     let (name, bolt) = palette[((random.next_fraction() * palette.len() as f32) as usize).min(palette.len() - 1)];
-    let sun_heading: f32 = to_heading(Vec3::from(mix.sun_direction));
+    let sun_heading: f32 = Self::to_heading(Vec3::from(mix.sun_direction));
     let far: f32 = mix.far_plane;
     let period: f32 = mix.thunderbolt_period;
     let altitude: f32 = random.between(settings.altitude[0], settings.altitude[1]);
@@ -139,7 +139,7 @@ impl WeatherThunder {
       sun_heading + settings.delta_longitude + PI,
     );
     let distance: f32 = random.between(far * settings.min_distance, far * MAX_DISTANCE);
-    let toward: Vec3 = to_direction(longitude, altitude);
+    let toward: Vec3 = Self::to_direction(longitude, altitude);
     let position: Vec3 = view + toward * distance;
     let deviation: Vec3 = Vec3::new(
       random.between(-settings.tilt, settings.tilt),
@@ -147,9 +147,9 @@ impl WeatherThunder {
       random.between(-settings.tilt, settings.tilt),
     );
     // `setXYZi`, which is `setHPB(-y, -x, -z)`; the light falls down the matrix's second axis.
-    let [i, j, k] = to_rotation_rows(-deviation.y, -deviation.x, -deviation.z);
+    let [i, j, k] = Self::to_rotation_rows(-deviation.y, -deviation.x, -deviation.z);
     let down: Vec3 = -j;
-    let size: f32 = to_ground(position, down, far * 2.0);
+    let size: f32 = Self::to_ground(position, down, far * 2.0);
 
     self.next = Self::get_moment(
       now,
@@ -198,24 +198,24 @@ impl WeatherThunder {
 
     ThunderFlash {
       color: (color / 255.0).clamp(Vec3::ZERO, Vec3::ONE),
-      direction: to_renderer(strike.direction),
+      direction: EngineSpace::mirror(strike.direction),
       strike: RenderThunderboltStrike {
         bolt: strike.name.clone(),
         // The model's `z` is negated into renderer space as its mesh is, so its third axis turns about too.
-        axes: [to_renderer(i), to_renderer(j), -to_renderer(k)],
-        position: to_renderer(strike.position),
+        axes: [EngineSpace::mirror(i), EngineSpace::mirror(j), -EngineSpace::mirror(k)],
+        position: EngineSpace::mirror(strike.position),
         shift: if phase > 0.5 {
           ((random.next_fraction() * 2.0) as u32).min(1) as f32 * 0.5
         } else {
           phase * 0.5
         },
         top: RenderThunderboltGlow {
-          position: to_renderer(strike.position),
+          position: EngineSpace::mirror(strike.position),
           extent: [bolt.top.radius[0] * size, bolt.top.radius[1] * size],
           opacity,
         },
         center: RenderThunderboltGlow {
-          position: to_renderer(strike.center),
+          position: EngineSpace::mirror(strike.center),
           extent: [bolt.center.radius[0] * size, bolt.center.radius[1] * size],
           opacity,
         },
@@ -247,51 +247,46 @@ impl WeatherThunder {
           .collect()
       })
   }
-}
 
-/// `Fvector::setHP`: the direction a heading and a pitch point along, in engine space.
-fn to_direction(heading: f32, pitch: f32) -> Vec3 {
-  Vec3::new(-pitch.cos() * heading.sin(), pitch.sin(), pitch.cos() * heading.cos())
-}
-
-/// `Fvector::getHP`'s heading: a direction straight up or down has none, and reads as zero.
-fn to_heading(direction: Vec3) -> f32 {
-  if direction.x.abs() < EPS_S && direction.z.abs() < EPS_S {
-    0.0
-  } else {
-    (-direction.x).atan2(direction.z)
-  }
-}
-
-/// `Fmatrix::setHPB`'s first three rows.
-fn to_rotation_rows(h: f32, p: f32, b: f32) -> [Vec3; 3] {
-  let (sh, ch, sp, cp, sb, cb) = (h.sin(), h.cos(), p.sin(), p.cos(), b.sin(), b.cos());
-  let (cc, cs, sc, ss) = (ch * cb, ch * sb, sh * cb, sh * sb);
-
-  [
-    Vec3::new(cc - sp * ss, -cp * sb, sp * cs + sc),
-    Vec3::new(sp * sc + cs, cp * cb, ss - sp * cc),
-    Vec3::new(-cp * sh, sp, cp * ch),
-  ]
-}
-
-/// `RayPick` where the level's own geometry is not at hand: how far down the bolt reaches the ground plane, `y = 0`,
-/// within a range, or the range where it never does.
-fn to_ground(from: Vec3, down: Vec3, range: f32) -> f32 {
-  if down.y.abs() < 1e-6 {
-    return range;
+  /// `Fvector::setHP`: the direction a heading and a pitch point along, in engine space.
+  fn to_direction(heading: f32, pitch: f32) -> Vec3 {
+    Vec3::new(-pitch.cos() * heading.sin(), pitch.sin(), pitch.cos() * heading.cos())
   }
 
-  let distance: f32 = -from.y / down.y;
-
-  if (0.0..=range).contains(&distance) {
-    distance
-  } else {
-    range
+  /// `Fvector::getHP`'s heading: a direction straight up or down has none, and reads as zero.
+  fn to_heading(direction: Vec3) -> f32 {
+    if direction.x.abs() < EPS_S && direction.z.abs() < EPS_S {
+      0.0
+    } else {
+      (-direction.x).atan2(direction.z)
+    }
   }
-}
 
-/// An engine-space vector in renderer space, its `z` negated.
-fn to_renderer(vector: Vec3) -> Vec3 {
-  Vec3::new(vector.x, vector.y, -vector.z)
+  /// `Fmatrix::setHPB`'s first three rows.
+  fn to_rotation_rows(h: f32, p: f32, b: f32) -> [Vec3; 3] {
+    let (sh, ch, sp, cp, sb, cb) = (h.sin(), h.cos(), p.sin(), p.cos(), b.sin(), b.cos());
+    let (cc, cs, sc, ss) = (ch * cb, ch * sb, sh * cb, sh * sb);
+
+    [
+      Vec3::new(cc - sp * ss, -cp * sb, sp * cs + sc),
+      Vec3::new(sp * sc + cs, cp * cb, ss - sp * cc),
+      Vec3::new(-cp * sh, sp, cp * ch),
+    ]
+  }
+
+  /// `RayPick` where the level's own geometry is not at hand: how far down the bolt reaches the ground plane, `y = 0`,
+  /// within a range, or the range where it never does.
+  fn to_ground(from: Vec3, down: Vec3, range: f32) -> f32 {
+    if down.y.abs() < 1e-6 {
+      return range;
+    }
+
+    let distance: f32 = -from.y / down.y;
+
+    if (0.0..=range).contains(&distance) {
+      distance
+    } else {
+      range
+    }
+  }
 }

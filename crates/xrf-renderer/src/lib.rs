@@ -26,6 +26,7 @@ pub use xrf_renderer_core::{send_profiler_message, start_profiler};
 
 pub use crate::camera::camera_frame::CameraFrame;
 pub use crate::camera::camera_view::CameraView;
+pub use crate::camera::engine_space::EngineSpace;
 pub use crate::context::backend_probe::probe_render_backends;
 pub use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
 pub use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;

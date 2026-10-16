@@ -165,7 +165,7 @@ impl LevelStreaming {
       };
 
       for index in 0..streamed.places.len() {
-        if is_group_shown(self.hidden_groups, streamed.places[index].0.group) {
+        if Self::is_group_shown(self.hidden_groups, streamed.places[index].0.group) {
           self.stand(updates, animation, &mut streamed, index);
         }
       }
@@ -236,8 +236,8 @@ impl LevelStreaming {
     }
   }
 
-  /// Leaves the spawn groups `hidden` names out of the scene: the objects of a group newly hidden leave it, and those of
-  /// one newly shown stand in it again.
+  /// Leaves the spawn groups `hidden` names out of the scene: the objects of a group newly hidden leave it, and those
+  /// of one newly shown stand in it again.
   fn filter_spawn(&mut self, updates: &mut Vec<RenderSceneUpdate>, animation: &mut LevelAnimation, hidden: u32) {
     let changed: u32 = hidden ^ self.hidden_groups;
 
@@ -257,7 +257,7 @@ impl LevelStreaming {
           continue;
         }
 
-        if is_group_shown(hidden, group) {
+        if Self::is_group_shown(hidden, group) {
           self.stand(updates, animation, model, index);
         } else if let Some(object) = model.places[index].1.take() {
           animation.remove(object);
@@ -297,9 +297,9 @@ impl LevelStreaming {
       animation.add(object, skeleton, place.transform);
     }
   }
-}
 
-/// Whether a spawn group stands in the scene: group zero always does.
-fn is_group_shown(hidden: u32, group: u32) -> bool {
-  group == 0 || hidden & (1 << (group - 1)) == 0
+  /// Whether a spawn group stands in the scene: group zero always does.
+  fn is_group_shown(hidden: u32, group: u32) -> bool {
+    group == 0 || hidden & (1 << (group - 1)) == 0
+  }
 }

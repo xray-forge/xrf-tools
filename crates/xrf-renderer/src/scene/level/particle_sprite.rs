@@ -4,6 +4,7 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_math::EPS_S;
 use xrf_particles::{Particle, ParticleEffectFlags, ParticleEffectInstance};
 
+use crate::camera::engine_space::EngineSpace;
 use crate::pass::particle_vertex::ParticleVertex;
 
 /// `CParticleEffect::ParticleRenderStream`: an effect's particles as quads, each filled as `FillSprite` fills it in
@@ -27,9 +28,9 @@ impl ParticleSprite {
     let camera: Mat4 = view.inverse();
 
     Self {
-      top: Self::mirror(camera.y_axis.truncate()),
-      right: Self::mirror(camera.x_axis.truncate()),
-      direction: Self::mirror(-camera.z_axis.truncate()),
+      top: EngineSpace::mirror(camera.y_axis.truncate()),
+      right: EngineSpace::mirror(camera.x_axis.truncate()),
+      direction: EngineSpace::mirror(-camera.z_axis.truncate()),
     }
   }
 
@@ -110,7 +111,7 @@ impl ParticleSprite {
     let b: Vec3 = along_top + along_right;
     let color: u32 = Self::pack_color(m);
     let corner = |offset: Vec3, uv: Vec2| ParticleVertex {
-      position: Self::mirror(m.position + offset),
+      position: EngineSpace::mirror(m.position + offset),
       color,
       uv,
       surface,
@@ -164,11 +165,6 @@ impl ParticleSprite {
     } else {
       vector
     }
-  }
-
-  /// Between engine and renderer space, either way: `z` the other way.
-  pub fn mirror(vector: Vec3) -> Vec3 {
-    Vec3::new(vector.x, vector.y, -vector.z)
   }
 }
 
