@@ -79,6 +79,7 @@ use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::pick_in_flight::PickInFlight;
 use crate::viewport::render_viewport::RenderViewport;
+use crate::viewport::viewport_device::ViewportDevice;
 use crate::window::composed_view::ComposedView;
 use crate::window::render_window::RenderWindow;
 use crate::window::window_backdrop::WindowBackdrop;
@@ -859,24 +860,26 @@ impl RenderThread {
       return;
     };
     let _ = gpu.context.device.poll(wgpu::PollType::Poll);
-    let dlss: [RenderDlssAvailability; 2] = match (Dlss::IS_BUILT, &gpu.context.dlss) {
-      (false, _) => [RenderDlssAvailability::Unbuilt; 2],
-      (true, Some(dlss)) => [
-        RenderDlssAvailability::Available,
-        if dlss.has_ray_reconstruction() {
-          RenderDlssAvailability::Available
-        } else {
-          RenderDlssAvailability::Unsupported
-        },
-      ],
-      (true, None) => [RenderDlssAvailability::Unsupported; 2],
-    };
-    let device: (RenderBackend, &str, bool, [RenderDlssAvailability; 2]) = (
-      gpu.context.backend,
-      gpu.context.adapter_name.as_str(),
-      can_trace(&gpu.context.device),
+    let (dlss, ray_reconstruction): (RenderDlssAvailability, RenderDlssAvailability) =
+      match (Dlss::IS_BUILT, &gpu.context.dlss) {
+        (false, _) => (RenderDlssAvailability::Unbuilt, RenderDlssAvailability::Unbuilt),
+        (true, Some(dlss)) => (
+          RenderDlssAvailability::Available,
+          if dlss.has_ray_reconstruction() {
+            RenderDlssAvailability::Available
+          } else {
+            RenderDlssAvailability::Unsupported
+          },
+        ),
+        (true, None) => (RenderDlssAvailability::Unsupported, RenderDlssAvailability::Unsupported),
+      };
+    let device: ViewportDevice<'_> = ViewportDevice {
+      backend: gpu.context.backend,
+      adapter: gpu.context.adapter_name.as_str(),
+      has_ray_queries: can_trace(&gpu.context.device),
       dlss,
-    );
+      ray_reconstruction,
+    };
 
     if self
       .allocator_report

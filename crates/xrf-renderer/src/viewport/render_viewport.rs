@@ -9,8 +9,6 @@ use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_fog::RenderAppliedFog;
 use crate::contract::render_applied_report::RenderAppliedReport;
-use crate::contract::render_backend::RenderBackend;
-use crate::contract::render_dlss_availability::RenderDlssAvailability;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_graph_report::RenderGraphReport;
 use crate::contract::render_grass_report::RenderGrassReport;
@@ -43,6 +41,7 @@ use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::scene_view::SceneView;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::pick_in_flight::PickInFlight;
+use crate::viewport::viewport_device::ViewportDevice;
 
 /// One rectangle of a window drawn by the renderer, with what its world gave this frame and its page's channel.
 pub struct RenderViewport {
@@ -244,18 +243,20 @@ impl RenderViewport {
   pub fn report(
     &mut self,
     now: Instant,
-    (backend, adapter, has_ray_queries, [dlss, ray_reconstruction]): (
-      RenderBackend,
-      &str,
-      bool,
-      [RenderDlssAvailability; 2],
-    ),
+    device: ViewportDevice<'_>,
     (allocator, scenes): (Option<&GpuMemory>, &mut HashMap<RenderSceneId, LevelScene>),
     (timer, composition, graph): (&mut GraphTimer, &[GraphPassTime], Option<&GraphReport>),
   ) {
     let Some(summary) = self.statistics.take(now) else {
       return;
     };
+    let ViewportDevice {
+      backend,
+      adapter,
+      has_ray_queries,
+      dlss,
+      ray_reconstruction,
+    } = device;
     let shown: Option<(&mut LevelScene, &mut SceneView)> = self
       .shown
       .as_mut()
