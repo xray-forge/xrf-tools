@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::sync::Arc;
 
 use glam::{Mat4, UVec4, Vec3, Vec4};
 use xrf_error::{XrfError, XrfResult};
@@ -12,7 +11,6 @@ use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::section_bytes::read_pods;
 use crate::scene::static_scene::geometry_clusters::GeometryClusters;
 use crate::scene::static_scene::static_batch::StaticBatch;
@@ -21,6 +19,7 @@ use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 use crate::scene::static_scene::static_geometry::StaticGeometry;
 use crate::scene::static_scene::static_geometry_base::StaticGeometryBase;
 use crate::scene::static_scene::static_impostor::StaticImpostor;
+use crate::scene::static_scene::static_item_context::StaticItemContext;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_model::StaticModel;
 use crate::scene::static_scene::static_model_place::StaticModelPlace;
@@ -44,7 +43,6 @@ use crate::scene::static_scene::static_surfaces::StaticSurfaces;
 use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::static_trace_group::StaticTraceGroup;
 use crate::scene::static_scene::static_vertex_words::StaticVertexWords;
-use crate::scene::texture::texture_cache::TextureCache;
 
 /// Clusters a spawned model's row holds at most: the row cull walks a row's clusters on one thread.
 const MODEL_ROW_CLUSTERS: usize = 32;
@@ -246,111 +244,20 @@ impl StaticScene {
   /// # Errors
   ///
   /// Returns an error when a buffer would outgrow what the device allows; the scene is left as it was.
-  #[allow(clippy::too_many_arguments)]
   pub fn add_sector(
     &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    textures: &mut TextureCache,
-    source: &Arc<dyn RenderAssetSource>,
+    context: &mut StaticItemContext<'_>,
     descriptors: &[XraySurfaceDescriptor],
     (handle, package): (ProxyHandle<StaticSectorProxy>, &SectorPackage),
   ) -> XrfResult {
     let mut writer: StaticSceneWriter = StaticSceneWriter::default();
     let mut swaying: Vec<(Vec4, f32)> = Vec::new();
-    // What its baked sections hold, in the world.
-    let mut sections: Vec<Vec4> = Vec::new();
     let description = &package.description;
     let buffer: &[u8] = &package.buffer;
-
-    if !description.sections.is_empty() && description.geometry.index_count > 0 {
-      let base: StaticGeometryBase =
-        Self::put_geometry(&mut writer, StaticLayout::Baked, &description.geometry, buffer);
-      let clusters: GeometryClusters<'_> = GeometryClusters::new(&description.geometry, buffer);
-
-      for section in &description.sections {
-        // A section drawing past the sector's indices would draw another's, or past the buffer.
-        if section
-          .draw
-          .start
-          .checked_add(section.draw.count)
-          .is_none_or(|end| end > description.geometry.index_count)
-        {
-          log::warn!(
-            "Sector {} draws {} indices from {}, past its {}; the section is left out",
-            description.sector,
-            section.draw.count,
-            section.draw.start,
-            description.geometry.index_count
-          );
-
-          continue;
-        }
-
-        let Some(StaticSurfaceUse { surface, class, passes }) = self.surfaces.resolve(
-          &mut writer,
-          Self::level_surface(&section.surface, descriptors),
-          textures,
-          source,
-        ) else {
-          continue;
-        };
-        let batch: StaticBatch = StaticBatch {
-          layout: StaticLayout::Baked,
-          class,
-        };
-        let cut: Vec<(u32, u32, Vec4)> = clusters.cut(section.draw.start, section.draw.count);
-        let sphere: Vec4 = Self::bound_spheres(&cut.iter().map(|(_, _, sphere)| *sphere).collect::<Vec<Vec4>>());
-
-        sections.push(sphere);
-        let (slot, clusters): (u32, u32) = writer.put_slot(
-          &base,
-          cut,
-          (StaticSlot::SINGLE, batch, surface, passes),
-          StaticSlotInfo {
-            sector: description.sector,
-            shader_id: section.surface.shader_id,
-            mesh: None,
-            first_place: 0,
-          },
-        );
-
-        for list in batch.list_draw_lists(passes) {
-          writer.capacities[list] += clusters;
-        }
-
-        if class == StaticClass::Sorted {
-          writer.sorted_runs.push(StaticSortedRun {
-            sphere,
-            place: None,
-            layout: StaticLayout::Baked,
-            clusters: (writer.slots[slot as usize].first_cluster, clusters),
-          });
-        }
-
-        let sight: StaticSight = StaticSight::of(class, passes);
-
-        if !sight.is_empty() {
-          writer.sights.push((sphere, sight));
-        }
-
-        if class.is_deferred() {
-          writer.trace_geometries.push(StaticTraceGeometry {
-            layout: StaticLayout::Baked,
-            first_index: base.index_start + section.draw.start,
-            index_count: section.draw.count,
-            vertex_start: base.vertex_start,
-            vertex_count: description.geometry.vertex_count,
-            surface,
-            is_cut_out: class == StaticClass::CutOut,
-          });
-        }
-      }
-    }
+    let sections: Vec<Vec4> = self.put_sections(&mut writer, context, descriptors, package);
 
     if let Some(impostors) = &description.impostors {
-      self.put_impostors(&mut writer, impostors, buffer, textures, source);
+      self.put_impostors(&mut writer, impostors, buffer, context);
     }
 
     for (mesh, group) in description.instances.iter().enumerate() {
@@ -360,16 +267,17 @@ impl StaticScene {
         group,
         buffer,
         descriptors,
-        textures,
-        source,
+        context,
       );
     }
 
-    self.surfaces.put(device, queue, encoder, &writer);
+    self
+      .surfaces
+      .put(context.device, context.queue, context.encoder, &writer);
 
-    self.cull.check_capacities(device, &writer.capacities)?;
+    self.cull.check_capacities(context.device, &writer.capacities)?;
 
-    let spans: StaticSpans = self.geometry.allocate(device, queue, &writer)?;
+    let spans: StaticSpans = self.geometry.allocate(context.device, context.queue, &writer)?;
 
     writer.relocate(&spans);
     self.geometry.write(&spans, &writer);
@@ -491,10 +399,7 @@ impl StaticScene {
   /// Returns an error when a buffer would outgrow what the device allows; the scene is left as it was.
   pub fn add_model(
     &mut self,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
-    (textures, source): (&mut TextureCache, &Arc<dyn RenderAssetSource>),
+    context: &mut StaticItemContext<'_>,
     (handle, model): (ProxyHandle<StaticModelProxy>, &StaticModel),
   ) -> XrfResult {
     let mut writer: StaticSceneWriter = StaticSceneWriter::default();
@@ -513,8 +418,8 @@ impl StaticScene {
       let Some(StaticSurfaceUse { surface, class, passes }) = self.surfaces.resolve(
         &mut writer,
         (key, &part.surface, part.descriptor.as_ref()),
-        textures,
-        source,
+        context.textures,
+        context.source,
       ) else {
         continue;
       };
@@ -564,9 +469,11 @@ impl StaticScene {
       writer.skins.extend_from_slice(&skin.links);
     }
 
-    self.surfaces.put(device, queue, encoder, &writer);
+    self
+      .surfaces
+      .put(context.device, context.queue, context.encoder, &writer);
 
-    let spans: StaticSpans = self.geometry.allocate(device, queue, &writer)?;
+    let spans: StaticSpans = self.geometry.allocate(context.device, context.queue, &writer)?;
     let first_slot: u32 = StaticSpans::get_offset(&spans.slots);
     let first_cluster: u32 = StaticSpans::get_offset(&spans.clusters);
 
@@ -887,7 +794,6 @@ impl StaticScene {
 
   /// Puts an instanced group: its geometry once, a slot per progressive band, a place per instance and a row per
   /// instance and band.
-  #[allow(clippy::too_many_arguments)]
   fn put_instances(
     &mut self,
     (writer, swaying): (&mut StaticSceneWriter, &mut Vec<(Vec4, f32)>),
@@ -895,8 +801,7 @@ impl StaticScene {
     group: &SectorInstanceGroup,
     buffer: &[u8],
     descriptors: &[XraySurfaceDescriptor],
-    textures: &mut TextureCache,
-    source: &Arc<dyn RenderAssetSource>,
+    context: &mut StaticItemContext<'_>,
   ) {
     let geometry: &SectorGeometry = &group.geometry;
 
@@ -907,8 +812,8 @@ impl StaticScene {
     let Some(StaticSurfaceUse { surface, class, passes }) = self.surfaces.resolve(
       writer,
       Self::level_surface(&group.surface, descriptors),
-      textures,
-      source,
+      context.textures,
+      context.source,
     ) else {
       return;
     };
@@ -1040,14 +945,112 @@ impl StaticScene {
       .extend(traced.filter(|group| !group.transforms.is_empty()));
   }
 
+  /// Puts a sector's baked sections, each a single draw cut in clusters, answering the sphere each holds in the world.
+  fn put_sections(
+    &mut self,
+    writer: &mut StaticSceneWriter,
+    context: &mut StaticItemContext<'_>,
+    descriptors: &[XraySurfaceDescriptor],
+    package: &SectorPackage,
+  ) -> Vec<Vec4> {
+    let description = &package.description;
+    let buffer: &[u8] = &package.buffer;
+    let mut sections: Vec<Vec4> = Vec::new();
+
+    if !description.sections.is_empty() && description.geometry.index_count > 0 {
+      let base: StaticGeometryBase = Self::put_geometry(writer, StaticLayout::Baked, &description.geometry, buffer);
+      let clusters: GeometryClusters<'_> = GeometryClusters::new(&description.geometry, buffer);
+
+      for section in &description.sections {
+        // A section drawing past the sector's indices would draw another's, or past the buffer.
+        if section
+          .draw
+          .start
+          .checked_add(section.draw.count)
+          .is_none_or(|end| end > description.geometry.index_count)
+        {
+          log::warn!(
+            "Sector {} draws {} indices from {}, past its {}; the section is left out",
+            description.sector,
+            section.draw.count,
+            section.draw.start,
+            description.geometry.index_count
+          );
+
+          continue;
+        }
+
+        let Some(StaticSurfaceUse { surface, class, passes }) = self.surfaces.resolve(
+          writer,
+          Self::level_surface(&section.surface, descriptors),
+          context.textures,
+          context.source,
+        ) else {
+          continue;
+        };
+        let batch: StaticBatch = StaticBatch {
+          layout: StaticLayout::Baked,
+          class,
+        };
+        let cut: Vec<(u32, u32, Vec4)> = clusters.cut(section.draw.start, section.draw.count);
+        let sphere: Vec4 = Self::bound_spheres(&cut.iter().map(|(_, _, sphere)| *sphere).collect::<Vec<Vec4>>());
+
+        sections.push(sphere);
+        let (slot, clusters): (u32, u32) = writer.put_slot(
+          &base,
+          cut,
+          (StaticSlot::SINGLE, batch, surface, passes),
+          StaticSlotInfo {
+            sector: description.sector,
+            shader_id: section.surface.shader_id,
+            mesh: None,
+            first_place: 0,
+          },
+        );
+
+        for list in batch.list_draw_lists(passes) {
+          writer.capacities[list] += clusters;
+        }
+
+        if class == StaticClass::Sorted {
+          writer.sorted_runs.push(StaticSortedRun {
+            sphere,
+            place: None,
+            layout: StaticLayout::Baked,
+            clusters: (writer.slots[slot as usize].first_cluster, clusters),
+          });
+        }
+
+        let sight: StaticSight = StaticSight::of(class, passes);
+
+        if !sight.is_empty() {
+          writer.sights.push((sphere, sight));
+        }
+
+        if class.is_deferred() {
+          writer.trace_geometries.push(StaticTraceGeometry {
+            layout: StaticLayout::Baked,
+            first_index: base.index_start + section.draw.start,
+            index_count: section.draw.count,
+            vertex_start: base.vertex_start,
+            vertex_count: description.geometry.vertex_count,
+            surface,
+            is_cut_out: class == StaticClass::CutOut,
+          });
+        }
+      }
+    }
+
+    sections
+  }
+
   /// Puts a sector's impostors in its own order, each with its run's surface; one no run dresses is never drawn.
   fn put_impostors(
     &mut self,
     writer: &mut StaticSceneWriter,
     impostors: &SectorImpostors,
     buffer: &[u8],
-    textures: &mut TextureCache,
-    source: &Arc<dyn RenderAssetSource>,
+    context: &mut StaticItemContext<'_>,
   ) {
     let spheres: Vec<Vec4> = read_pods(buffer, &impostors.spheres);
     let factors: Vec<f32> = read_pods(buffer, &impostors.factors);
@@ -1061,7 +1064,9 @@ impl StaticScene {
     let mut dressed: Vec<Option<(u32, u16)>> = vec![None; count];
 
     for group in &impostors.groups {
-      let row: u32 = self.surfaces.resolve_impostor(writer, &group.surface, textures, source);
+      let row: u32 = self
+        .surfaces
+        .resolve_impostor(writer, &group.surface, context.textures, context.source);
 
       for index in (group.start as usize..).take(group.count as usize) {
         if let Some(it) = dressed.get_mut(index) {

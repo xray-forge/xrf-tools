@@ -10,6 +10,7 @@ use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
+use crate::scene::static_scene::static_item_context::StaticItemContext;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_model::StaticModel;
 use crate::scene::static_scene::static_model_part::StaticModelPart;
@@ -75,10 +76,13 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
 
   scene
     .add_model(
-      device,
-      queue,
-      &mut encoder,
-      (&mut textures, &source),
+      &mut StaticItemContext {
+        device,
+        queue,
+        encoder: &mut encoder,
+        textures: &mut textures,
+        source: &source,
+      },
       (model, &create_model(2)),
     )
     .unwrap();
@@ -162,10 +166,13 @@ fn tells_a_cache_only_of_changes_within_what_it_covers() {
 
   scene
     .add_model(
-      device,
-      queue,
-      &mut encoder,
-      (&mut textures, &source),
+      &mut StaticItemContext {
+        device,
+        queue,
+        encoder: &mut encoder,
+        textures: &mut textures,
+        source: &source,
+      },
       (model, &create_model(1)),
     )
     .unwrap();

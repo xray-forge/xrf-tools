@@ -18,6 +18,7 @@ use crate::pass::lights_uniform::LightsUniform;
 use crate::pass::shadow_uniform::ShadowUniform;
 use crate::pass::trace_grass_uniform::TraceGrassUniform;
 use crate::pass::trace_parameters::TraceParameters;
+use crate::scene::static_scene::static_item_context::StaticItemContext;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_model::StaticModel;
 use crate::scene::static_scene::static_model_part::StaticModelPart;
@@ -247,11 +248,13 @@ fn traces_a_sector_through_its_records() {
 
   scene
     .add_sector(
-      device,
-      queue,
-      &mut encoder,
-      &mut textures,
-      &source,
+      &mut StaticItemContext {
+        device,
+        queue,
+        encoder: &mut encoder,
+        textures: &mut textures,
+        source: &source,
+      },
       &[],
       (handle, &create_sector()),
     )
@@ -515,21 +518,26 @@ fn traces_spawned_objects_where_they_stand() {
 
   scene
     .add_sector(
-      device,
-      queue,
-      &mut encoder,
-      &mut textures,
-      &source,
+      &mut StaticItemContext {
+        device,
+        queue,
+        encoder: &mut encoder,
+        textures: &mut textures,
+        source: &source,
+      },
       &[],
       (sectors.allocate(), &create_sector()),
     )
     .unwrap();
   scene
     .add_model(
-      device,
-      queue,
-      &mut encoder,
-      (&mut textures, &source),
+      &mut StaticItemContext {
+        device,
+        queue,
+        encoder: &mut encoder,
+        textures: &mut textures,
+        source: &source,
+      },
       (model, &create_model()),
     )
     .unwrap();

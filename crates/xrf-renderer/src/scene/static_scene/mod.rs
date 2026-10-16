@@ -7,6 +7,7 @@ pub(crate) mod static_cull_scratch;
 pub(crate) mod static_geometry;
 pub(crate) mod static_geometry_base;
 pub(crate) mod static_impostor;
+pub(crate) mod static_item_context;
 pub(crate) mod static_layout;
 pub(crate) mod static_model;
 pub(crate) mod static_model_part;

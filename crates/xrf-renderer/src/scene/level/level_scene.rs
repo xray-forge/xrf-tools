@@ -28,6 +28,7 @@ use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_load::LevelLoad;
 use crate::scene::level::level_particles::LevelParticles;
 use crate::scene::level::level_wetness::LevelWetness;
+use crate::scene::static_scene::static_item_context::StaticItemContext;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::static_scene::static_sector_proxy::StaticSectorProxy;
 use crate::scene::static_scene::static_trace::StaticTrace;
@@ -276,11 +277,13 @@ impl LevelScene {
 
       let started: Instant = Instant::now();
       let added: XrfResult = self.statics.add_sector(
-        device,
-        queue,
-        encoder,
-        textures,
-        assets,
+        &mut StaticItemContext {
+          device,
+          queue,
+          encoder: &mut *encoder,
+          textures: &mut *textures,
+          source: assets,
+        },
         self.source.get_surfaces(),
         (handle, &package),
       );
@@ -324,10 +327,16 @@ impl LevelScene {
           }
         },
         RenderSceneUpdate::AddModel { handle, model } => {
-          if let Err(error) = self
-            .statics
-            .add_model(device, queue, encoder, (&mut *textures, assets), (handle, &model))
-          {
+          if let Err(error) = self.statics.add_model(
+            &mut StaticItemContext {
+              device,
+              queue,
+              encoder: &mut *encoder,
+              textures: &mut *textures,
+              source: assets,
+            },
+            (handle, &model),
+          ) {
             log::warn!("Native viewport could not add a spawned model: {error}");
 
             self.model_failures.push(RenderModelFailure {
