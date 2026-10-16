@@ -99,7 +99,7 @@ impl LevelSurface {
     }
   }
 
-  /// Readies the draws `scheduler` granted; `encoder` takes the copies a list growing makes.
+  /// Readies the draws `scheduler` granted; `encoder` takes what readying them writes.
   pub fn commit(
     &mut self,
     device: &wgpu::Device,

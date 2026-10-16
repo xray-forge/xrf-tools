@@ -49,6 +49,20 @@ impl ShadowCascadeView {
     }
   }
 
+  /// Lets go of what it holds, its cut's lists and its band, and of what its map was drawn at: drawn afresh once it is
+  /// asked for again.
+  pub fn release(&mut self, index: usize) {
+    self.cut.release_lists();
+    self.band = None;
+    self.drawn = None;
+    self.forget_static(index);
+  }
+
+  /// The bytes of its cut's lists and its band's, while it holds them.
+  pub fn get_memory(&self) -> u64 {
+    self.cut.get_memory() + self.band.as_ref().map_or(0, ShadowCut::get_memory)
+  }
+
   /// Forgets its static layer: drawn again before it is read, from the cascade's own layer.
   pub fn forget_static(&mut self, index: usize) {
     self.static_layer = index as u32;

@@ -613,7 +613,7 @@ impl SceneView {
   }
 
   /// Readies what `scheduler` granted of what `offer_periodic` offered, which the frame's passes then draw, and writes
-  /// where the overhead maps now stand; `encoder` takes the copies a list growing makes.
+  /// where the overhead maps now stand; `encoder` takes what readying them writes.
   pub fn commit_periodic(
     &mut self,
     scene: &LevelScene,

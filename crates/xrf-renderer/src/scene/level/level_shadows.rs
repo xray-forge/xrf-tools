@@ -200,6 +200,12 @@ impl LevelShadows {
     let count: usize = settings.get_cascade_count();
 
     self.values.count = count as u32;
+
+    // A cascade past those asked for holds nothing, drawn afresh once it is asked for again.
+    for (index, cascade) in self.cascades.iter_mut().enumerate().skip(count) {
+      cascade.release(index);
+    }
+
     self.offers.clear();
     self.band_offers.clear();
     self.due.clear();
@@ -260,7 +266,7 @@ impl LevelShadows {
       .map(|statics| bindings.import_view(&mut *graph, "sun static shadow maps", &statics.view));
     let mut import = |cut: &'a ShadowCut| -> (&'a ShadowCut, GraphBuffer, StaticCullParameters, StaticLayouts) {
       let args: GraphBuffer = bindings.import_buffer(graph, "sun shadow draw arguments", &cut.args);
-      let lists: GraphBuffer = bindings.import_buffer(graph, "sun shadow lists", cut.lists.get_buffer());
+      let lists: GraphBuffer = bindings.import_buffer(graph, "sun shadow lists", cut.get_lists());
 
       (
         cut,
@@ -382,7 +388,7 @@ impl LevelShadows {
   }
 
   /// Readies the cascades and bands `scheduler` granted to be culled and drawn, marking each drawn; one not granted
-  /// waits a frame more. `encoder` takes the copies a list growing makes.
+  /// waits a frame more. `encoder` takes what readying them writes.
   pub fn commit_cascades(
     &mut self,
     device: &wgpu::Device,
@@ -394,7 +400,7 @@ impl LevelShadows {
     let resolution: u32 = self.maps.as_ref().map_or(1, |maps| maps.resolution);
     let list_bytes: u64 = scene.cull.get_list_bytes();
     let ready = |cut: &mut ShadowCut, encoder: &mut FrameEncoder, view: &CameraView, rect| {
-      cut.lists.reserve(device, encoder, list_bytes);
+      cut.reserve_lists(device, list_bytes);
       scene.cull.reset_args(encoder, &cut.args);
       cut.view.write(encoder, &CameraUniform::new(view, rect, Vec4::ZERO));
     };
@@ -856,12 +862,13 @@ type CutHandles<'a> = (&'a ShadowCut, GraphBuffer, StaticCullParameters, StaticL
 type StaticLayouts = [StaticDrawParameters; StaticLayout::COUNT];
 
 impl ViewFeature for LevelShadows {
-  /// The maps and the static layers, while held.
+  /// The maps and the static layers, and the cascades' lists, while held.
   fn get_memory(&self) -> u64 {
     [&self.maps, &self.statics]
       .into_iter()
       .flatten()
       .map(|maps| u64::from(maps.resolution).pow(2) * maps.layers.len() as u64 * 4)
+      .chain(self.cascades.iter().map(ShadowCascadeView::get_memory))
       .sum()
   }
 
@@ -870,8 +877,7 @@ impl ViewFeature for LevelShadows {
     self.statics = None;
 
     for (index, cascade) in self.cascades.iter_mut().enumerate() {
-      cascade.drawn = None;
-      cascade.forget_static(index);
+      cascade.release(index);
     }
   }
 }

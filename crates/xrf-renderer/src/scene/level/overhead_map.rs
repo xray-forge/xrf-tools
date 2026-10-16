@@ -245,8 +245,8 @@ impl OverheadMap {
     self.offer = Some((scheduler.offer(job), state, draw));
   }
 
-  /// Readies the draw `offer` offered, where `scheduler` granted it; one not granted waits a frame more. `encoder` takes
-  /// the copies a list growing makes.
+  /// Readies the draw `offer` offered, where `scheduler` granted it; one not granted waits a frame more. `encoder`
+  /// takes what readying it writes.
   pub fn commit(
     &mut self,
     device: &wgpu::Device,
@@ -272,7 +272,7 @@ impl OverheadMap {
       };
       let [x, y, width, height] = region;
 
-      cut.lists.reserve(device, encoder, scene.cull.get_list_bytes());
+      cut.reserve_lists(device, scene.cull.get_list_bytes());
       scene.cull.reset_args(encoder, &cut.args);
       cut.view.write(
         encoder,
@@ -338,7 +338,7 @@ impl OverheadMap {
       .filter_map(|(cut, region)| {
         let region: [u32; 4] = region?;
         let args: GraphBuffer = bindings.import_buffer(graph, draw_pass, &cut.args);
-        let lists: GraphBuffer = bindings.import_buffer(graph, cull_pass, cut.lists.get_buffer());
+        let lists: GraphBuffer = bindings.import_buffer(graph, cull_pass, cut.get_lists());
 
         Some((
           cut,

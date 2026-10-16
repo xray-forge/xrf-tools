@@ -163,8 +163,8 @@ impl SurroundingsCube {
     (size * Self::DRAWN_OVER).min(Self::DRAWN_MOST).max(size)
   }
 
-  /// Draws no face this frame: nothing reads the cube. Its faces and their G-buffers go, since the prefilter fills
-  /// their mip with the sky meanwhile.
+  /// Draws no face this frame: nothing reads the cube. Its faces, their G-buffers and its cuts' lists go, since the
+  /// prefilter fills their mip with the sky meanwhile.
   pub fn rest(&mut self) {
     self.is_due = false;
     self.band_due = None;
@@ -174,6 +174,8 @@ impl SurroundingsCube {
     self.drawn = [None; 6];
     self.redraw = None;
     self.faces = None;
+    self.cut.release_lists();
+    self.band.release_lists();
   }
 
   /// Offers `scheduler` this frame's face, if one is due: a face drawn again band by band and now whole first, lit from
@@ -303,7 +305,7 @@ impl SurroundingsCube {
 
   /// Readies what `scheduler` granted of this frame's offer: a face's camera, looking down its axis with the up a cube
   /// texture's face lays its texels by, or a band's, the same narrowed to its rows; a band not granted waits a frame
-  /// more. `encoder` takes the copies a list growing makes.
+  /// more. `encoder` takes what readying it writes.
   pub fn commit(
     &mut self,
     device: &wgpu::Device,
@@ -340,7 +342,7 @@ impl SurroundingsCube {
           Vec2::new(2.0, 2.0 * height as f32 / drawn as f32),
         );
 
-        self.band.lists.reserve(device, encoder, list_bytes);
+        self.band.reserve_lists(device, list_bytes);
         scene.cull.reset_args(encoder, &self.band.args);
         self.band.view.write(
           encoder,
@@ -371,7 +373,7 @@ impl SurroundingsCube {
         let to_sun: Vec3 = -frame.sun_direction;
 
         if is_redrawn {
-          self.cut.lists.reserve(device, encoder, list_bytes);
+          self.cut.reserve_lists(device, list_bytes);
           scene.cull.reset_args(encoder, &self.cut.args);
         }
 
@@ -554,7 +556,7 @@ impl SurroundingsCube {
   ) {
     let (cull_pass, draw_pass): (&'static str, &'static str) = (names[0], names[1]);
     let args = bindings.import_buffer(graph, draw_pass, &cut.args);
-    let lists = bindings.import_buffer(graph, cull_pass, cut.lists.get_buffer());
+    let lists = bindings.import_buffer(graph, cull_pass, cut.get_lists());
     let cull: StaticCullParameters = scene.get_cull_parameters(StorageArrayMut::new(lists), StorageArrayMut::new(args));
     let layouts: [StaticDrawParameters; StaticLayout::COUNT] = scene.get_layout_draws(StorageArray::new(lists));
     let draws: StaticDraws = StaticDraws {
@@ -629,9 +631,9 @@ impl SurroundingsCube {
 }
 
 impl ViewFeature for SurroundingsCube {
-  /// The faces' G-buffers and their spare, while the cube is in use.
+  /// The faces' G-buffers and their spare, and its cuts' lists, while the cube is in use.
   fn get_memory(&self) -> u64 {
-    self.faces.as_ref().map_or(0, SurroundingsFaces::get_memory)
+    self.faces.as_ref().map_or(0, SurroundingsFaces::get_memory) + self.cut.get_memory() + self.band.get_memory()
   }
 
   fn release(&mut self) {

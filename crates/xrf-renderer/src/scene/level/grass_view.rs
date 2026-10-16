@@ -116,8 +116,9 @@ impl GrassView {
     self.is_drawn = false;
     self.trace = TraceGrassUniform::default();
 
+    // Off, it holds nothing: its ring and lists are made again, and every slot planted, once it is back.
     let Some(level) = level.filter(|level| settings.is_enabled && level.model_count > 0) else {
-      self.cards = None;
+      self.release();
 
       return;
     };

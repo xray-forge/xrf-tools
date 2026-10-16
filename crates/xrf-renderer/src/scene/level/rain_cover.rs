@@ -45,7 +45,7 @@ impl RainCover {
     self.map.offer(frame, scheduler);
   }
 
-  /// Readies the draw `scheduler` granted; `encoder` takes the copies a list growing makes.
+  /// Readies the draw `scheduler` granted; `encoder` takes what readying it writes.
   pub fn commit(
     &mut self,
     device: &wgpu::Device,
