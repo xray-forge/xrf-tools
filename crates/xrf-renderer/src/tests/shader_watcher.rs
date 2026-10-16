@@ -1,11 +1,13 @@
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+
 use crate::shader::shader_watcher::ShaderWatcher;
 
 #[test]
 fn tells_once_a_shader_source_is_written() {
-  let root: PathBuf = std::env::temp_dir().join(format!("xrf-shader-watcher-{}", std::process::id()));
+  let root: PathBuf = build_absolute_generated_test_resource_path("shader-watcher");
 
   std::fs::create_dir_all(&root).expect("the folder is made");
 
@@ -22,9 +24,6 @@ fn tells_once_a_shader_source_is_written() {
     std::thread::sleep(Duration::from_millis(20));
     is_told = watcher.take_changed();
   }
-
-  drop(watcher);
-  let _ = std::fs::remove_dir_all(&root);
 
   assert!(is_told);
 }
