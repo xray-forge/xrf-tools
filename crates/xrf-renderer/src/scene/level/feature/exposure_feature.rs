@@ -102,7 +102,13 @@ impl ExposureFeature {
   }
 
   fn reset(&self, queue: &wgpu::Queue) {
-    queue.write_buffer(&self.state, 0, bytemuck::bytes_of(&[1.0f32, 1.0, 0.0, 0.0]));
+    let state: ExposureState = ExposureState {
+      adapted: 1.0,
+      used: 1.0,
+      ..bytemuck::Zeroable::zeroed()
+    };
+
+    queue.write_buffer(&self.state, 0, bytemuck::bytes_of(&state));
   }
 }
 

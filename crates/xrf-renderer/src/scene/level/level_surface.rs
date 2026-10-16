@@ -15,6 +15,7 @@ use crate::pass::water_uniform::WaterUniform;
 use crate::pass::wet_uniform::WetUniform;
 use crate::scene::level::overhead_map::OverheadMap;
 use crate::scene::level::overhead_shape::OverheadShape;
+use crate::scene::level::puddle_keep_inputs::PuddleKeepInputs;
 use crate::scene::level::shadow_frame::ShadowFrame;
 
 /// The level's surface around the camera, which the enhanced rain places its puddles on: its overhead map without its
@@ -31,14 +32,6 @@ pub struct LevelSurface {
   fires: Vec<Vec2>,
   /// Whether the fires changed this frame, which places the sites again.
   is_fire_due: bool,
-}
-
-/// What deciding the puddles reads beside the sites: the wet surfaces' settings and state, and the puddles' regional
-/// noise and its sampler.
-pub struct PuddleKeepInputs<'a> {
-  pub wet: UniformBinding<WetUniform>,
-  pub noise: &'a wgpu::TextureView,
-  pub sampler: &'a wgpu::Sampler,
 }
 
 impl LevelSurface {

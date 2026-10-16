@@ -37,6 +37,7 @@ pub(crate) mod particles_view;
 pub(crate) mod placed_effect;
 pub(crate) mod placed_objects;
 pub(crate) mod puddle_fill;
+pub(crate) mod puddle_keep_inputs;
 pub(crate) mod rain_cover;
 pub(crate) mod rain_wetness;
 pub(crate) mod scene_output;
