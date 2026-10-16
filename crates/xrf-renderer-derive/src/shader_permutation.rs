@@ -3,8 +3,8 @@ use quote::quote;
 use syn::ext::IdentExt;
 use syn::{Data, DataStruct, DeriveInput, Error, Fields, Type};
 
-/// Expands `#[derive(ShaderPermutation)]`: each field a WGSL `override` constant of its name in upper case, set from its
-/// value when a pipeline is made.
+/// Expands `#[derive(ShaderPermutation)]`: each field a WGSL `override` constant of its name in upper case, set from
+/// its value when a pipeline is made.
 pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let name: &Ident = &input.ident;
   let fields = match &input.data {

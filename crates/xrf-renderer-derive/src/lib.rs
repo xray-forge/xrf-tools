@@ -41,8 +41,8 @@ pub fn pass_parameters_derive(input: TokenStream) -> TokenStream {
     .into()
 }
 
-/// Declares a shader's permutation domain: each field a WGSL `override` constant of its name in upper case, set from the
-/// field's value when a pipeline is made; see the crate's README.
+/// Declares a shader's permutation domain: each field a WGSL `override` constant of its name in upper case, set from
+/// the field's value when a pipeline is made; see the crate's README.
 #[proc_macro_derive(ShaderPermutation)]
 pub fn shader_permutation_derive(input: TokenStream) -> TokenStream {
   let input: DeriveInput = parse_macro_input!(input as DeriveInput);

@@ -3,8 +3,8 @@ use quote::{format_ident, quote};
 use syn::{Attribute, Data, DataStruct, DeriveInput, Error, Fields, LitStr, Type};
 
 /// Expands `#[derive(ShaderStruct)]`: WGSL's layout of the struct computed in constants from each member's
-/// `ShaderType`, every member's Rust offset and the struct's size asserted against it, and the WGSL declaration, named as
-/// the struct is unless `#[shader(name = "...")]` names it.
+/// `ShaderType`, every member's Rust offset and the struct's size asserted against it, and the WGSL declaration, named
+/// as the struct is unless `#[shader(name = "...")]` names it.
 pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let name: &Ident = &input.ident;
   let fields = match &input.data {
