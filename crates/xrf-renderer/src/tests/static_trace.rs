@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use glam::{Mat4, Vec3, Vec4};
-use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, ProxyAllocator, ProxyHandle};
 use xrf_visual::{
   SectorDescription, SectorGeometry, SectorPackage, SectorSection, SectorSurface, VisualClusters, VisualDrawRange,
@@ -30,20 +29,8 @@ use crate::scene::static_scene::static_trace::StaticTrace;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::test_bundle::checkout_dxc;
+use crate::tests::test_source::EmptySource;
 use crate::tests::test_workers::create_workers;
-
-/// A source holding no textures.
-struct EmptySource;
-
-impl RenderAssetSource for EmptySource {
-  fn get_texture_scope(&self) -> String {
-    String::from("test")
-  }
-
-  fn read_texture(&self, _: &str) -> XrfResult<Option<Vec<u8>>> {
-    Ok(None)
-  }
-}
 
 /// A ray a probe traces, and what it met: its distance, below none for nothing; its record and triangle; and how far
 /// the hit triangle's corners, read back through its record from its arena, interpolated and stood where its instance

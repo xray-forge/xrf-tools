@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use glam::{Mat4, Vec3, Vec4};
-use xrf_error::XrfResult;
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::SectorSurface;
 
@@ -19,20 +18,8 @@ use crate::scene::static_scene::static_object_proxy::StaticObjectProxy;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::tests::test_bundle::checkout_dxc;
+use crate::tests::test_source::EmptySource;
 use crate::tests::test_workers::create_workers;
-
-/// A source holding no textures.
-struct EmptySource;
-
-impl RenderAssetSource for EmptySource {
-  fn get_texture_scope(&self) -> String {
-    String::from("test")
-  }
-
-  fn read_texture(&self, _: &str) -> XrfResult<Option<Vec<u8>>> {
-    Ok(None)
-  }
-}
 
 /// One triangle a part, each part of its own shader.
 fn create_model(parts: usize) -> StaticModel {

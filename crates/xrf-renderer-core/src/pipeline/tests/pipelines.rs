@@ -41,6 +41,12 @@ fn source() -> TestSource {
        @fragment fn fragment() -> @location(0) vec4<f32> { return vec4<f32>(1.0, 0.0, 0.0, 1.0); }"
         .to_string(),
     ),
+    (
+      "count_at_one",
+      "@group(1) @binding(0) var<storage, read_write> counts: array<u32>;
+       @compute @workgroup_size(1) fn main() { counts[0] = 1u; }"
+        .to_string(),
+    ),
     ("broken", "fn main( {".to_string()),
   ]))
 }
@@ -137,4 +143,27 @@ fn refuses_a_module_wgpu_cannot_compile() {
     .to_string();
 
   assert!(error.contains("'broken'"), "{error}");
+}
+
+#[test]
+fn makes_a_pipeline_whose_layout_leaves_a_slot_empty() {
+  let Some((device, _queue)) = crate::tests::test_device::create_device() else {
+    return;
+  };
+  let cache: PipelineCache = PipelineCache::new();
+  let layout: wgpu::BindGroupLayout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+    label: Some("counts"),
+    entries: &[crate::PassBindingLayout::storage(0, true)],
+  });
+  let description: ComputePipelineDescription = ComputePipelineDescription::new("count at one", "count_at_one", "main")
+    .with_bind_group_layouts(&[None, Some(&layout)]);
+
+  cache.get_compute_pipeline(&device, &source(), &description).unwrap();
+  cache.get_compute_pipeline(&device, &source(), &description).unwrap();
+
+  assert_eq!(
+    cache.get_pipeline_count(),
+    1,
+    "the gap is part of the description it is cached by"
+  );
 }

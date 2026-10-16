@@ -7905,6 +7905,7 @@ dependencies = [
  "xrf-particles",
  "xrf-renderer-core",
  "xrf-utils",
+ "xrf-vfs",
  "xrf-visual",
 ]
 
