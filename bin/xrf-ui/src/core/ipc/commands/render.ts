@@ -13,6 +13,7 @@ import {
   RenderGraphReport,
   RenderGrassReport,
   RenderGroupCost,
+  RenderLibraries,
   RenderLightsReport,
   RenderLoadDurations,
   RenderMemoryReport,
@@ -131,6 +132,8 @@ export const renderCommands = {
       /** What the frame graph made of its latest frame, none before its first. */
       graph: RenderGraphReport | null;
     } | null>("plugin:render|describe_frame", { viewport }),
+  /** Name the graphics libraries the renderer ships with: the DLSS runtime's version. */
+  describeLibraries: () => __TAURI_INVOKE<RenderLibraries>("plugin:render|describe_libraries"),
   /**
    * Say how far the level a viewport was last asked to show has loaded, for a caller polling rather than listening; none
    * before its view is made.

@@ -264,6 +264,8 @@ export type RenderBackendAvailability = {
   backend: RenderBackend;
   /** The adapter it would draw on, none where it cannot draw. */
   adapter: string | null;
+  /** The adapter's driver and its version, as the API names them, such as `NVIDIA 617.14`; none where it cannot draw. */
+  driver: string | null;
   /** Why it cannot draw, none where it can. */
   problem: string | null;
   /** Whether `XRF_RENDER_BACKEND` names it, so the renderer starts on it over the settings' choice. */
@@ -921,6 +923,15 @@ export type RenderLevelHit =
       object: number;
       point: [number | null, number | null, number | null];
     };
+
+/** The graphics libraries the renderer ships beside the application: the DLSS runtime. */
+export type RenderLibraries = {
+  /**
+   * The DLSS runtime's own file version, such as `310.9.1.0`; none where the build has no DLSS or its library is not
+   * in the bundle.
+   */
+  dlss: string | null;
+};
 
 /**
  * How a game's console scales the weather's light (`r2_sun_lumscale`, `r2_sun_lumscale_hemi`,

@@ -85,6 +85,14 @@ impl GpuContext {
     {
       Ok(info) => RenderBackendAvailability {
         backend,
+        driver: Some(
+          [info.driver.as_str(), info.driver_info.as_str()]
+            .into_iter()
+            .filter(|it| !it.is_empty())
+            .collect::<Vec<&str>>()
+            .join(" "),
+        )
+        .filter(|it| !it.is_empty()),
         adapter: Some(info.name),
         problem: None,
         is_forced,
@@ -92,6 +100,7 @@ impl GpuContext {
       Err(error) => RenderBackendAvailability {
         backend,
         adapter: None,
+        driver: None,
         problem: Some(error.to_string()),
         is_forced,
       },

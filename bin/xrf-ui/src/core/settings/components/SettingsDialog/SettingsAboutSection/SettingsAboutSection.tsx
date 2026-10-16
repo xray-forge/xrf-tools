@@ -5,6 +5,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { SettingsBuildSection } from "./SettingsBuildSection";
 import { SettingsEnvironmentSection } from "./SettingsEnvironmentSection";
+import { SettingsGraphicsSection } from "./SettingsGraphicsSection";
 import { SettingsRuntimeSection } from "./SettingsRuntimeSection";
 import { SettingsVariablesSection } from "./SettingsVariablesSection";
 import { SettingsWebviewSection } from "./SettingsWebviewSection";
@@ -24,6 +25,7 @@ export function SettingsAboutSection({
       <SettingsWebviewSection />
       <SettingsEnvironmentSection />
       <SettingsVariablesSection />
+      <SettingsGraphicsSection />
     </div>
   );
 }

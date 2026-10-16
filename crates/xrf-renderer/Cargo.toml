@@ -37,7 +37,7 @@ xrf-utils = { workspace = true }
 xrf-visual = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
-windows = { workspace = true, features = ["Win32_Graphics_Dxgi"] }
+windows = { workspace = true, features = ["Win32_Graphics_Dxgi", "Win32_Storage_FileSystem"] }
 
 [dev-dependencies]
 naga = { workspace = true }

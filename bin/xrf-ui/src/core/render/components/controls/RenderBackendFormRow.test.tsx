@@ -8,8 +8,8 @@ import { RENDER_BACKEND_AUTO, TRenderBackendChoice } from "@/core/render/lib/set
 import { RenderBackendFormRow } from "./RenderBackendFormRow";
 
 const VULKAN_ONLY: ReadonlyArray<RenderBackendAvailability> = [
-  { adapter: null, backend: ERenderBackend.D3D12, isForced: false, problem: "No D3D12 adapter" },
-  { adapter: "Test GPU", backend: ERenderBackend.VULKAN, isForced: false, problem: null },
+  { adapter: null, backend: ERenderBackend.D3D12, driver: null, isForced: false, problem: "No D3D12 adapter" },
+  { adapter: "Test GPU", backend: ERenderBackend.VULKAN, driver: "1.0", isForced: false, problem: null },
 ];
 
 describe("RenderBackendFormRow", () => {

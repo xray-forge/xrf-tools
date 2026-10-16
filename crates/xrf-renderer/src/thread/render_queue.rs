@@ -1,6 +1,7 @@
 use std::sync::mpsc::{Sender, channel};
 use std::sync::{Arc, Mutex, MutexGuard};
 
+use crate::contract::render_libraries::RenderLibraries;
 use crate::contract::render_settings::RenderSettings;
 use crate::host::render_bundle::RenderBundle;
 use crate::host::render_cache_store::RenderCacheStore;
@@ -46,6 +47,11 @@ impl RenderQueue {
 
   /// Hands a command to the running thread, starting one for an attach; any other command has nothing to act on
   /// without a thread, since a stopped thread had no viewport left. Settings are kept for every thread started later.
+  /// The graphics libraries the renderer ships, the DLSS runtime looked for in its bundle.
+  pub fn describe_libraries(&self) -> RenderLibraries {
+    RenderLibraries::describe(self.bundle.as_ref())
+  }
+
   pub fn send(&self, command: RenderCommand) {
     let mut link: MutexGuard<'_, RenderLink> = self.lock();
     let is_attach: bool = matches!(command, RenderCommand::Attach { .. });
