@@ -1,5 +1,5 @@
 import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, flowResult, Observable, reaction, runInAction } from "@wirestate/mobx";
+import { BoundAction, flowResult, Observable, reaction, RefObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
 import { Maybe, Nullable } from "@xrf/types";
@@ -39,18 +39,18 @@ export class LevelLoadService {
   public level: AsyncState<IOpenLevel> = AsyncState.idle();
 
   /** The level being opened, named before it is open: what a viewer heads its viewport with while it waits. */
-  @Observable()
+  @RefObservable()
   public opening: Nullable<LevelSource> = null;
 
   /** Opens begun, so one taken over by a later open leaves that one's name. */
   private openings: number = 0;
 
   /** The objects the open level's spawn places, once listed; null before, and for a spawn that could not be read. */
-  @Observable()
+  @RefObservable()
   public spawn: Nullable<LevelSpawnObjectsDescription> = null;
 
   /** How the spawn's listing went. */
-  @Observable()
+  @RefObservable()
   public spawnReport: ILevelSpawnReport = EMPTY_LEVEL_SPAWN_REPORT;
 
   /**
