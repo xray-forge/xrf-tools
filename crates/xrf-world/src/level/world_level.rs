@@ -101,7 +101,7 @@ impl WorldLevel {
   }
 
   /// Every skinned object's bones as segments in renderer space, child then parent, where this frame poses them.
-  pub fn list_segments(&self) -> Vec<(Vec3, Vec3)> {
+  pub fn list_segments(&self) -> Arc<[(Vec3, Vec3)]> {
     self.animation.list_segments()
   }
 

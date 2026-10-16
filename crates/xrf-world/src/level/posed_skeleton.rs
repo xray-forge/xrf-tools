@@ -15,6 +15,8 @@ pub struct PosedSkeleton {
   previous: Option<Vec<[Vec4; 3]>>,
   /// Each joint's position this frame, in model space.
   joints: Vec<Vec3>,
+  /// Whether the last pose drew as the one before it, so posting it again changes nothing.
+  is_settled: bool,
 }
 
 impl PosedSkeleton {
@@ -30,6 +32,7 @@ impl PosedSkeleton {
       pairs: skeleton.pairs.clone(),
       previous: None,
       joints: Vec::new(),
+      is_settled: false,
     }
   }
 
@@ -77,8 +80,14 @@ impl PosedSkeleton {
 
     // The overlay keeps drawing hidden bones: it is the only thing left saying where a hidden part sits.
     self.joints = posed.iter().map(|matrix| matrix.w_axis.truncate()).collect();
+    self.is_settled = previous == current;
 
     (current, previous)
+  }
+
+  /// Whether the last pose drew as the one before it: until it is asked another, posing it again changes nothing.
+  pub fn is_settled(&self) -> bool {
+    self.is_settled
   }
 
   /// The segments the overlay draws, child then parent, where this frame stands the joints, in model space.

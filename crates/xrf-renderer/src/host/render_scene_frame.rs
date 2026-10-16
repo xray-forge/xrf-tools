@@ -18,7 +18,7 @@ pub struct RenderSceneFrame {
   pub updates: Vec<RenderSceneUpdate>,
   pub streaming: RenderStreamingProgress,
   /// Every skinned object's bones as segments in renderer space, child then parent, which the skeleton overlay draws.
-  pub skeleton_segments: Vec<(Vec3, Vec3)>,
+  pub skeleton_segments: Arc<[(Vec3, Vec3)]>,
   /// The wind the ambient effects blow this frame, which the grass, the rain and the campfires read.
   pub gust: AmbientGust,
   /// How much of each campfire's idle light shows this frame, by its spawned object's id.

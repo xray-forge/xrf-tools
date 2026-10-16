@@ -61,7 +61,7 @@ pub struct LevelScene {
   /// The viewport driving what it simulates by its camera, as the world named it.
   pub driver: Option<RenderViewportId>,
   /// Every skinned object's bones as segments, which the skeleton overlay draws.
-  pub skeleton_segments: Vec<(Vec3, Vec3)>,
+  pub skeleton_segments: Arc<[(Vec3, Vec3)]>,
   /// The wind the ambient effects blow, and how much of each campfire's idle light shows.
   pub gust: AmbientGust,
   pub campfire_shares: HashMap<u16, f32>,
@@ -103,7 +103,7 @@ impl LevelScene {
       sector_time: 0.0,
       load: LevelLoad::new(started),
       driver: None,
-      skeleton_segments: Vec::new(),
+      skeleton_segments: Arc::from([]),
       gust: AmbientGust::default(),
       campfire_shares: HashMap::new(),
       camera_hemi: None,
