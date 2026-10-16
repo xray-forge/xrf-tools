@@ -153,9 +153,7 @@ impl LevelShadows {
   /// Metres the grass's cards need stand from the eye to shadow the cascades they are drawn into by `settings`: the
   /// last such cascade's width, past which a tuft falls in a cascade drawing none.
   pub fn get_grass_reach(settings: &RenderShadowSettings) -> Option<f32> {
-    settings.cascades[..settings.get_cascade_count()]
-      .iter()
-      .take(GRASS_CASCADES)
+    settings.cascades[..settings.get_cascade_count().min(GRASS_CASCADES)]
       .last()
       .copied()
   }
