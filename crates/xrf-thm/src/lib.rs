@@ -22,7 +22,7 @@ pub use crate::chunks::thm_extra_chunk::*;
 pub use crate::chunks::thm_material_chunk::*;
 pub use crate::chunks::thm_texture_param_chunk::*;
 pub use crate::chunks::thm_thumbnail_chunk::*;
-pub use crate::chunks::thm_trailing_bytes::*;
+pub use crate::chunks::thm_trailing_bytes::ThmTrailingBytes;
 pub use crate::thm_bump_mode::*;
 pub use crate::thm_bump_patch_report::*;
 pub use crate::thm_bump_processor::*;
