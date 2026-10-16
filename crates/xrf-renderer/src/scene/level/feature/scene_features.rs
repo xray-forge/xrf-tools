@@ -129,83 +129,6 @@ impl SceneFeatures {
     }
   }
 
-  /// Every unit, as what each answers alike.
-  pub fn list(&self) -> [&dyn ViewFeature; 33] {
-    [
-      &self.lights,
-      &self.overlays,
-      &self.wind,
-      &self.grass,
-      &self.particles,
-      &self.fog,
-      &self.bloom,
-      &self.smoothing,
-      &self.exposure,
-      &self.flares,
-      &self.rain,
-      &self.thunder,
-      &self.resolve,
-      &self.bitmask,
-      &self.reflections,
-      &self.water,
-      &self.volumetric,
-      &self.composited,
-      &self.ambient_occlusion,
-      &self.contact_shadows,
-      &self.sun,
-      &self.sun_trace,
-      &self.indirect_trace,
-      &self.view_trace,
-      &self.wet,
-      &self.sky,
-      &self.pick,
-      &self.statics,
-      &self.present,
-      &self.combine,
-      &self.shadows,
-      &self.sun_shafts,
-      &self.surroundings,
-    ]
-  }
-
-  pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; 33] {
-    [
-      &mut self.lights,
-      &mut self.overlays,
-      &mut self.wind,
-      &mut self.grass,
-      &mut self.particles,
-      &mut self.fog,
-      &mut self.bloom,
-      &mut self.smoothing,
-      &mut self.exposure,
-      &mut self.flares,
-      &mut self.rain,
-      &mut self.thunder,
-      &mut self.resolve,
-      &mut self.bitmask,
-      &mut self.reflections,
-      &mut self.water,
-      &mut self.volumetric,
-      &mut self.composited,
-      &mut self.ambient_occlusion,
-      &mut self.contact_shadows,
-      &mut self.sun,
-      &mut self.sun_trace,
-      &mut self.indirect_trace,
-      &mut self.view_trace,
-      &mut self.wet,
-      &mut self.sky,
-      &mut self.pick,
-      &mut self.statics,
-      &mut self.present,
-      &mut self.combine,
-      &mut self.shadows,
-      &mut self.sun_shafts,
-      &mut self.surroundings,
-    ]
-  }
-
   /// Bytes the units hold on the GPU between frames, with the overhead maps.
   pub fn get_memory(&self) -> u64 {
     let units: u64 = self.list().iter().map(|feature| feature.get_memory()).sum();
@@ -215,3 +138,59 @@ impl SceneFeatures {
       + self.level_surface.as_ref().map_or(0, LevelSurface::get_memory)
   }
 }
+
+/// The units' two lists made from one, so neither names a unit the other leaves out.
+macro_rules! scene_units {
+  ($($unit:ident),+ $(,)?) => {
+    impl SceneFeatures {
+      /// How many units a view has.
+      pub const UNIT_COUNT: usize = [$(stringify!($unit)),+].len();
+
+      /// Every unit, as what each answers alike.
+      pub fn list(&self) -> [&dyn ViewFeature; Self::UNIT_COUNT] {
+        [$(&self.$unit),+]
+      }
+
+      /// Every unit, to let go of or change alike.
+      pub fn list_mut(&mut self) -> [&mut dyn ViewFeature; Self::UNIT_COUNT] {
+        [$(&mut self.$unit),+]
+      }
+    }
+  };
+}
+
+scene_units!(
+  lights,
+  overlays,
+  wind,
+  grass,
+  particles,
+  fog,
+  bloom,
+  smoothing,
+  exposure,
+  flares,
+  rain,
+  thunder,
+  resolve,
+  bitmask,
+  reflections,
+  water,
+  volumetric,
+  composited,
+  ambient_occlusion,
+  contact_shadows,
+  sun,
+  sun_trace,
+  indirect_trace,
+  view_trace,
+  wet,
+  sky,
+  pick,
+  statics,
+  present,
+  combine,
+  shadows,
+  sun_shafts,
+  surroundings,
+);
