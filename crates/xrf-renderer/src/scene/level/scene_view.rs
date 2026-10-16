@@ -489,10 +489,11 @@ impl SceneView {
       .features
       .combine
       .prepare(&self.shared.lighting, view.get_depth_range().1);
-    self
-      .features
-      .contact_shadows
-      .prepare(options, self.shared.lighting.to_sun, (frame.drawn.1, noise_frame));
+    self.features.contact_shadows.prepare(
+      options,
+      (self.shared.lighting.to_sun, self.shared.lighting.sun),
+      (frame.drawn.1, noise_frame),
+    );
     self.features.sun_trace.prepare(
       options,
       self.shared.lighting.to_sun,
