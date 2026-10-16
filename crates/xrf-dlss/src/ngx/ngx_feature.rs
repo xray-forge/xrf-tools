@@ -10,6 +10,7 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::ngx::bindings::*;
 use crate::ngx::ngx_api::NgxApi;
+use crate::ngx::ngx_commands::NgxCommands;
 use crate::ngx::ngx_result::check_ngx;
 use crate::ngx::ngx_retired_feature::NgxRetiredFeature;
 use crate::ngx::ngx_sdk::NgxSdk;
@@ -89,14 +90,6 @@ impl Drop for NgxFeature {
   fn drop(&mut self) {
     NgxSdkGuard::lock(&self.sdk).retire(NgxRetiredFeature::new(self.handle, &self.queue));
   }
-}
-
-/// The command list NGX records into, of the device's API.
-#[derive(Clone, Copy)]
-pub(crate) enum NgxCommands {
-  Vulkan(ash::vk::CommandBuffer),
-  #[cfg(windows)]
-  D3d12(*mut ID3D12GraphicsCommandList),
 }
 
 /// Runs `record` with `encoder`'s command list as NGX takes it on `api`.

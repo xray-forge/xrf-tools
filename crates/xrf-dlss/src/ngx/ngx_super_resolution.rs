@@ -9,7 +9,8 @@ use crate::dlss_quality::DlssQuality;
 use crate::ngx::bindings::*;
 #[cfg(windows)]
 use crate::ngx::d3d12_resource::to_d3d12_resource;
-use crate::ngx::ngx_feature::{NgxCommands, NgxFeature};
+use crate::ngx::ngx_commands::NgxCommands;
+use crate::ngx::ngx_feature::NgxFeature;
 use crate::ngx::ngx_result::check_ngx;
 use crate::ngx::ngx_sdk::NgxSdk;
 use crate::ngx::ngx_sdk_guard::NgxSdkGuard;
