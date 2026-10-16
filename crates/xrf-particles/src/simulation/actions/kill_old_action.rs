@@ -32,10 +32,11 @@ impl From<&ParticleActionKillOld> for KillOldAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::KillOldAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
 
@@ -46,15 +47,10 @@ mod tests {
     let mut step: ParticleActionStep = ParticleActionStep::new(0.033, &rules);
 
     for age in [0.5, 2.0, 1.0] {
-      pool.add(
-        Vec3::ZERO,
-        Vec3::ZERO,
-        Vec3::ONE,
-        Vec3::ZERO,
-        Vec3::ZERO,
-        Vec4::ONE,
+      pool.add(Particle {
         age,
-      );
+        ..Particle::born(Vec3::ZERO, Vec3::ZERO)
+      });
     }
 
     KillOldAction {

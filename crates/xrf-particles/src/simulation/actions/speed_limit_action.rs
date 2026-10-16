@@ -35,9 +35,10 @@ impl From<&ParticleActionSpeedLimit> for SpeedLimitAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::SpeedLimitAction;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_pool::ParticlePool;
 
   #[test]
@@ -45,7 +46,7 @@ mod tests {
     let mut pool: ParticlePool = ParticlePool::new(3, 1);
 
     for velocity in [Vec3::X * 10.0, Vec3::X * 0.5, Vec3::ZERO] {
-      pool.add(Vec3::ZERO, Vec3::ZERO, Vec3::ONE, Vec3::ZERO, velocity, Vec4::ONE, 0.0);
+      pool.add(Particle::born(Vec3::ZERO, velocity));
     }
 
     SpeedLimitAction {

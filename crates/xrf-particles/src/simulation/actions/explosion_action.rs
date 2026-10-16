@@ -68,11 +68,12 @@ impl From<&ParticleActionExplosion> for ExplosionAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
   use xrf_math::EPS;
 
   use super::ExplosionAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
 
@@ -90,15 +91,10 @@ mod tests {
     };
     let mut pool: ParticlePool = ParticlePool::new(1, 1);
 
-    pool.add(
-      Vec3::new(2.0, 0.0, 0.0),
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec4::ONE,
-      0.0,
-    );
+    pool.add(Particle {
+      previous_position: Vec3::ZERO,
+      ..Particle::born(Vec3::new(2.0, 0.0, 0.0), Vec3::ZERO)
+    });
     action.execute(&mut pool, &ParticleActionStep::new(0.5, &rules));
 
     // On the front (radius 2) the Gaussian is its peak 1 / sqrt(2 pi).

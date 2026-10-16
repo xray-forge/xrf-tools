@@ -6,6 +6,7 @@ use crate::simulation::engine_vector::EngineVector;
 use crate::simulation::particle::Particle;
 use crate::simulation::particle_pool::ParticlePool;
 use crate::simulation::particle_volume::ParticleVolume;
+use crate::simulation::particle_volume_kind::ParticleVolumeKind;
 
 /// `PAAvoid`: steers particles heading into a plane, rectangle, triangle, disc or sphere away from it, keeping speed.
 pub(crate) struct AvoidAction {
@@ -27,7 +28,7 @@ impl AvoidAction {
     let particles: &mut [Particle] = pool.get_particles_mut();
 
     match domain.kind {
-      ParticleVolume::PLANE => {
+      ParticleVolumeKind::Plane => {
         let is_limited: bool = self.look_ahead < ParticleActionStep::MAX_FLOAT;
 
         for m in particles {
@@ -40,7 +41,7 @@ impl AvoidAction {
           m.velocity = self.steer(m.velocity, domain.p2, magdt, dist);
         }
       }
-      ParticleVolume::RECTANGLE | ParticleVolume::TRIANGLE => {
+      ParticleVolumeKind::Rectangle | ParticleVolumeKind::Triangle => {
         let (u, v) = (domain.u, domain.v);
         let un: Vec3 = u / domain.radius1_sqr;
         let vn: Vec3 = v / domain.radius2_sqr;
@@ -61,7 +62,7 @@ impl AvoidAction {
           let upos: f32 = offset.dot(s1);
           let vpos: f32 = offset.dot(s2);
 
-          let safety: Vec3 = if domain.kind == ParticleVolume::RECTANGLE {
+          let safety: Vec3 = if domain.kind == ParticleVolumeKind::Rectangle {
             if upos < 0.0 || vpos < 0.0 || upos > 1.0 || vpos > 1.0 {
               continue;
             }
@@ -111,7 +112,7 @@ impl AvoidAction {
           m.velocity = self.steer(m.velocity, safety.normalize_safe(), magdt, t);
         }
       }
-      ParticleVolume::DISC => {
+      ParticleVolumeKind::Disc => {
         let r1_sqr: f32 = domain.radius1 * domain.radius1;
         let r2_sqr: f32 = domain.radius2 * domain.radius2;
 
@@ -136,7 +137,7 @@ impl AvoidAction {
           m.velocity = self.steer(m.velocity, offset.normalize_safe(), magdt, t);
         }
       }
-      ParticleVolume::SPHERE => {
+      ParticleVolumeKind::Sphere => {
         let r_sqr: f32 = domain.radius1 * domain.radius1;
 
         for m in particles {
@@ -193,13 +194,15 @@ impl From<&ParticleActionAvoid> for AvoidAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::AvoidAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
   use crate::simulation::particle_volume::ParticleVolume;
+  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
 
   #[test]
   fn bends_a_particle_near_a_plane_keeping_its_speed() {
@@ -213,15 +216,10 @@ mod tests {
       epsilon: 0.0,
     };
 
-    pool.add(
-      Vec3::new(0.0, 1.0, 0.0),
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::new(2.0, 0.0, 0.0),
-      Vec4::ONE,
-      0.0,
-    );
+    pool.add(Particle {
+      previous_position: Vec3::ZERO,
+      ..Particle::born(Vec3::new(0.0, 1.0, 0.0), Vec3::new(2.0, 0.0, 0.0))
+    });
     action.execute(&mut pool, &ParticleActionStep::new(0.5, &rules));
 
     // dist = 1, so the up normal blends in by 0.5 / 1 against the unit direction; the speed of 2 is kept.
@@ -232,7 +230,7 @@ mod tests {
 
   fn plane() -> ParticleVolume {
     ParticleVolume {
-      kind: ParticleVolume::PLANE,
+      kind: ParticleVolumeKind::Plane,
       p1: Vec3::ZERO,
       p2: Vec3::Y,
       u: Vec3::ZERO,

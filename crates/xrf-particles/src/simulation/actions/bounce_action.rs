@@ -5,6 +5,7 @@ use crate::simulation::actions::particle_action_step::ParticleActionStep;
 use crate::simulation::engine_vector::EngineVector;
 use crate::simulation::particle_pool::ParticlePool;
 use crate::simulation::particle_volume::ParticleVolume;
+use crate::simulation::particle_volume_kind::ParticleVolumeKind;
 
 /// `PABounce`: reflects particles crossing a surface this step, with friction and resilience.
 pub(crate) struct BounceAction {
@@ -25,7 +26,7 @@ impl BounceAction {
     let (particles, random) = pool.split_mut();
 
     match domain.kind {
-      ParticleVolume::TRIANGLE | ParticleVolume::RECTANGLE => {
+      ParticleVolumeKind::Triangle | ParticleVolumeKind::Rectangle => {
         let (s1, s2) = domain.get_plane_inverse_basis();
 
         for m in particles {
@@ -43,7 +44,7 @@ impl BounceAction {
           let upos: f32 = offset.dot(s1);
           let vpos: f32 = offset.dot(s2);
 
-          let is_outside: bool = if domain.kind == ParticleVolume::TRIANGLE {
+          let is_outside: bool = if domain.kind == ParticleVolumeKind::Triangle {
             upos < 0.0 || vpos < 0.0 || (upos + vpos) > 1.0
           } else {
             upos < 0.0 || upos > 1.0 || vpos < 0.0 || vpos > 1.0
@@ -53,7 +54,7 @@ impl BounceAction {
             continue;
           }
 
-          let normal_speed: f32 = if domain.kind == ParticleVolume::TRIANGLE {
+          let normal_speed: f32 = if domain.kind == ParticleVolumeKind::Triangle {
             nv
           } else {
             m.velocity.dot(domain.p2)
@@ -62,7 +63,7 @@ impl BounceAction {
           m.velocity = self.reflect(m.velocity, domain.p2 * normal_speed);
         }
       }
-      ParticleVolume::DISC => {
+      ParticleVolumeKind::Disc => {
         let r1_sqr: f32 = domain.radius1 * domain.radius1;
         let r2_sqr: f32 = domain.radius2 * domain.radius2;
 
@@ -87,7 +88,7 @@ impl BounceAction {
           m.velocity = self.reflect(m.velocity, domain.p2 * nv);
         }
       }
-      ParticleVolume::PLANE => {
+      ParticleVolumeKind::Plane => {
         for m in particles {
           let next: Vec3 = m.position + m.velocity * step.dt;
           let dist_old: f32 = m.position.dot(domain.p2) + domain.radius1;
@@ -100,7 +101,7 @@ impl BounceAction {
           m.velocity = self.reflect(m.velocity, domain.p2 * m.velocity.dot(domain.p2));
         }
       }
-      ParticleVolume::SPHERE => {
+      ParticleVolumeKind::Sphere => {
         for m in particles {
           let next: Vec3 = m.position + m.velocity * step.dt;
 
@@ -155,19 +156,21 @@ impl From<&ParticleActionBounce> for BounceAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::BounceAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
   use crate::simulation::particle_volume::ParticleVolume;
+  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
 
   #[test]
   fn reflects_a_particle_crossing_a_plane_with_friction_and_resilience() {
     let rules: ParticleEngineRules = ParticleEngineRules::default();
     let floor: ParticleVolume = ParticleVolume {
-      kind: ParticleVolume::PLANE,
+      kind: ParticleVolumeKind::Plane,
       p1: Vec3::ZERO,
       p2: Vec3::Y,
       u: Vec3::ZERO,
@@ -186,15 +189,10 @@ mod tests {
     };
     let mut pool: ParticlePool = ParticlePool::new(1, 1);
 
-    pool.add(
-      Vec3::new(0.0, 0.1, 0.0),
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::new(4.0, -8.0, 0.0),
-      Vec4::ONE,
-      0.0,
-    );
+    pool.add(Particle {
+      previous_position: Vec3::ZERO,
+      ..Particle::born(Vec3::new(0.0, 0.1, 0.0), Vec3::new(4.0, -8.0, 0.0))
+    });
     action.execute(&mut pool, &ParticleActionStep::new(0.033, &rules));
 
     // Tangent (4, 0, 0) halved, normal (0, -8, 0) reversed at a quarter.

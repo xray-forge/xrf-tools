@@ -41,16 +41,18 @@ impl From<&ParticleActionSink> for SinkAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::SinkAction;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_pool::ParticlePool;
   use crate::simulation::particle_volume::ParticleVolume;
+  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
 
   #[test]
   fn removes_particles_outside_a_kept_volume() {
     let ground: ParticleVolume = ParticleVolume {
-      kind: ParticleVolume::PLANE,
+      kind: ParticleVolumeKind::Plane,
       p1: Vec3::ZERO,
       p2: Vec3::Y,
       u: Vec3::ZERO,
@@ -62,8 +64,14 @@ mod tests {
     };
     let mut pool: ParticlePool = ParticlePool::new(2, 1);
 
-    pool.add(Vec3::Y, Vec3::ZERO, Vec3::ONE, Vec3::ZERO, Vec3::ZERO, Vec4::ONE, 0.0);
-    pool.add(-Vec3::Y, Vec3::ZERO, Vec3::ONE, Vec3::ZERO, Vec3::ZERO, Vec4::ONE, 0.0);
+    pool.add(Particle {
+      previous_position: Vec3::ZERO,
+      ..Particle::born(Vec3::Y, Vec3::ZERO)
+    });
+    pool.add(Particle {
+      previous_position: Vec3::ZERO,
+      ..Particle::born(-Vec3::Y, Vec3::ZERO)
+    });
     SinkAction {
       is_killing_inside: false,
       position_local: ground.clone(),

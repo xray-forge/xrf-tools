@@ -5,11 +5,12 @@ use glam::{Mat4, Vec3, Vec4Swizzles};
 use crate::data::particle_domain::ParticleDomain;
 use crate::simulation::engine_vector::EngineVector;
 use crate::simulation::particle_random::ParticleRandom;
+use crate::simulation::particle_volume_kind::ParticleVolumeKind;
 
 /// `pDomain`: a region particles are generated in or tested against, its fields as the file stores them.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParticleVolume {
-  pub kind: u32,
+  pub kind: ParticleVolumeKind,
   pub p1: Vec3,
   pub p2: Vec3,
   pub u: Vec3,
@@ -21,22 +22,10 @@ pub struct ParticleVolume {
 }
 
 impl ParticleVolume {
-  pub const POINT: u32 = 0;
-  pub const LINE: u32 = 1;
-  pub const TRIANGLE: u32 = 2;
-  pub const PLANE: u32 = 3;
-  pub const BOX: u32 = 4;
-  pub const SPHERE: u32 = 5;
-  pub const CYLINDER: u32 = 6;
-  pub const CONE: u32 = 7;
-  pub const BLOB: u32 = 8;
-  pub const DISC: u32 = 9;
-  pub const RECTANGLE: u32 = 10;
-
   /// `Within`: whether a point is inside. Kinds with no inside answer false, and a blob answers by chance.
   pub fn is_within(&self, position: Vec3, random: &mut ParticleRandom) -> bool {
     match self.kind {
-      Self::BOX => {
+      ParticleVolumeKind::Box => {
         !(position.x < self.p1.x
           || position.x > self.p2.x
           || position.y < self.p1.y
@@ -44,13 +33,13 @@ impl ParticleVolume {
           || position.z < self.p1.z
           || position.z > self.p2.z)
       }
-      Self::PLANE => position.dot(self.p2) >= -self.radius1,
-      Self::SPHERE => {
+      ParticleVolumeKind::Plane => position.dot(self.p2) >= -self.radius1,
+      ParticleVolumeKind::Sphere => {
         let distance_sqr: f32 = (position - self.p1).length_squared();
 
         distance_sqr <= self.radius1_sqr && distance_sqr >= self.radius2_sqr
       }
-      Self::CYLINDER | Self::CONE => {
+      ParticleVolumeKind::Cylinder | ParticleVolumeKind::Cone => {
         let offset: Vec3 = position - self.p1;
         let along: f32 = self.p2.dot(offset) * self.radius2_sqr;
 
@@ -60,36 +49,41 @@ impl ParticleVolume {
 
         let radial_sqr: f32 = (offset - self.p2 * along).length_squared();
 
-        if self.kind == Self::CONE {
+        if self.kind == ParticleVolumeKind::Cone {
           radial_sqr <= (along * self.radius1) * (along * self.radius1)
             && radial_sqr >= (along * self.radius2) * (along * self.radius2)
         } else {
           radial_sqr <= self.radius1_sqr && radial_sqr >= self.radius2 * self.radius2
         }
       }
-      Self::BLOB => {
+      ParticleVolumeKind::Blob => {
         let offset: Vec3 = position - self.p1;
         let density: f32 = (offset.length_squared() * self.radius2_sqr).exp() * self.radius2;
 
         random.next_fraction() < density
       }
-      _ => false,
+      ParticleVolumeKind::Point
+      | ParticleVolumeKind::Line
+      | ParticleVolumeKind::Triangle
+      | ParticleVolumeKind::Disc
+      | ParticleVolumeKind::Rectangle
+      | ParticleVolumeKind::Unknown(_) => false,
     }
   }
 
   /// `Generate`: a random point inside.
   pub fn generate(&self, random: &mut ParticleRandom) -> Vec3 {
     match self.kind {
-      Self::POINT => self.p1,
-      Self::LINE => self.p1 + self.p2 * random.next_fraction(),
-      Self::BOX => {
+      ParticleVolumeKind::Point => self.p1,
+      ParticleVolumeKind::Line => self.p1 + self.p2 * random.next_fraction(),
+      ParticleVolumeKind::Box => {
         let x: f32 = self.p1.x + (self.p2.x - self.p1.x) * random.next_fraction();
         let y: f32 = self.p1.y + (self.p2.y - self.p1.y) * random.next_fraction();
         let z: f32 = self.p1.z + (self.p2.z - self.p1.z) * random.next_fraction();
 
         Vec3::new(x, y, z)
       }
-      Self::TRIANGLE => {
+      ParticleVolumeKind::Triangle => {
         let r1: f32 = random.next_fraction();
         let r2: f32 = random.next_fraction();
 
@@ -99,13 +93,13 @@ impl ParticleVolume {
           self.p1 + self.u * (1.0 - r1) + self.v * (1.0 - r2)
         }
       }
-      Self::RECTANGLE => {
+      ParticleVolumeKind::Rectangle => {
         let along_u: f32 = random.next_fraction();
 
         self.p1 + self.u * along_u + self.v * random.next_fraction()
       }
-      Self::PLANE => self.p1,
-      Self::SPHERE => {
+      ParticleVolumeKind::Plane => self.p1,
+      ParticleVolumeKind::Sphere => {
         let x: f32 = random.next_fraction();
         let y: f32 = random.next_fraction();
         let z: f32 = random.next_fraction();
@@ -117,34 +111,34 @@ impl ParticleVolume {
           self.p1 + direction * (self.radius2 + random.next_fraction() * (self.radius1 - self.radius2))
         }
       }
-      Self::CYLINDER | Self::CONE => {
+      ParticleVolumeKind::Cylinder | ParticleVolumeKind::Cone => {
         let along: f32 = random.next_fraction();
         let theta: f32 = random.next_fraction() * 2.0 * PI;
         let radius: f32 = self.radius2 + random.next_fraction() * (self.radius1 - self.radius2);
         let mut x: f32 = radius * theta.cos();
         let mut y: f32 = radius * theta.sin();
 
-        if self.kind == Self::CONE {
+        if self.kind == ParticleVolumeKind::Cone {
           x *= along;
           y *= along;
         }
 
         self.p1 + self.p2 * along + self.u * x + self.v * y
       }
-      Self::BLOB => {
+      ParticleVolumeKind::Blob => {
         let x: f32 = self.p1.x + random.next_normal(self.radius1);
         let y: f32 = self.p1.y + random.next_normal(self.radius1);
         let z: f32 = self.p1.z + random.next_normal(self.radius1);
 
         Vec3::new(x, y, z)
       }
-      Self::DISC => {
+      ParticleVolumeKind::Disc => {
         let theta: f32 = random.next_fraction() * 2.0 * PI;
         let radius: f32 = self.radius2 + random.next_fraction() * (self.radius1 - self.radius2);
 
         self.p1 + self.u * (radius * theta.cos()) + self.v * (radius * theta.sin())
       }
-      _ => Vec3::ZERO,
+      ParticleVolumeKind::Unknown(_) => Vec3::ZERO,
     }
   }
 
@@ -165,7 +159,7 @@ impl ParticleVolume {
   /// `transform`: the source volume placed by a matrix; a box takes its turned corners' bounds (`Fbox::xform`).
   pub fn transform_from(&mut self, source: &Self, matrix: &Mat4) {
     match self.kind {
-      Self::BOX => {
+      ParticleVolumeKind::Box => {
         let extent: Vec3 = source.p2 - source.p1;
         let edges: [Vec3; 3] = [
           matrix.x_axis.xyz() * extent.x,
@@ -188,25 +182,29 @@ impl ParticleVolume {
         self.p1 = min;
         self.p2 = max;
       }
-      Self::PLANE => {
+      ParticleVolumeKind::Plane => {
         self.p1 = matrix.transform_point3(source.p1);
         self.p2 = matrix.transform_vector3(source.p2);
         self.radius1 = -self.p1.dot(self.p2);
       }
-      Self::SPHERE | Self::BLOB | Self::POINT => {
+      ParticleVolumeKind::Sphere | ParticleVolumeKind::Blob | ParticleVolumeKind::Point => {
         self.p1 = matrix.transform_point3(source.p1);
       }
-      Self::LINE => {
+      ParticleVolumeKind::Line => {
         self.p1 = matrix.transform_point3(source.p1);
         self.p2 = matrix.transform_vector3(source.p2);
       }
-      Self::CYLINDER | Self::CONE | Self::RECTANGLE | Self::TRIANGLE | Self::DISC => {
+      ParticleVolumeKind::Cylinder
+      | ParticleVolumeKind::Cone
+      | ParticleVolumeKind::Rectangle
+      | ParticleVolumeKind::Triangle
+      | ParticleVolumeKind::Disc => {
         self.p1 = matrix.transform_point3(source.p1);
         self.p2 = matrix.transform_vector3(source.p2);
         self.u = matrix.transform_vector3(source.u);
         self.v = matrix.transform_vector3(source.v);
       }
-      _ => {}
+      ParticleVolumeKind::Unknown(_) => {}
     }
   }
 
@@ -223,7 +221,7 @@ impl ParticleVolume {
 impl From<&ParticleDomain> for ParticleVolume {
   fn from(domain: &ParticleDomain) -> Self {
     Self {
-      kind: domain.domain_type,
+      kind: ParticleVolumeKind::from(domain.domain_type),
       p1: Vec3::from(domain.coordinates.0.to_array()),
       p2: Vec3::from(domain.coordinates.1.to_array()),
       u: Vec3::from(domain.basis.0.to_array()),
@@ -242,8 +240,9 @@ mod tests {
 
   use super::ParticleVolume;
   use crate::simulation::particle_random::ParticleRandom;
+  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
 
-  fn volume(kind: u32) -> ParticleVolume {
+  fn volume(kind: ParticleVolumeKind) -> ParticleVolume {
     ParticleVolume {
       kind,
       p1: Vec3::ZERO,
@@ -260,7 +259,7 @@ mod tests {
   #[test]
   fn generates_a_box_point_from_three_draws() {
     let mut random: ParticleRandom = ParticleRandom::new(1);
-    let mut cube: ParticleVolume = volume(ParticleVolume::BOX);
+    let mut cube: ParticleVolume = volume(ParticleVolumeKind::Box);
 
     cube.p1 = Vec3::new(-1.0, 0.0, 2.0);
     cube.p2 = Vec3::new(1.0, 4.0, 3.0);
@@ -276,7 +275,7 @@ mod tests {
   #[test]
   fn tests_a_hollow_sphere_by_both_radii() {
     let mut random: ParticleRandom = ParticleRandom::new(1);
-    let mut shell: ParticleVolume = volume(ParticleVolume::SPHERE);
+    let mut shell: ParticleVolume = volume(ParticleVolumeKind::Sphere);
 
     shell.radius1_sqr = 4.0;
     shell.radius2_sqr = 1.0;
@@ -288,7 +287,7 @@ mod tests {
 
   #[test]
   fn takes_the_bounds_of_a_turned_box() {
-    let mut cube: ParticleVolume = volume(ParticleVolume::BOX);
+    let mut cube: ParticleVolume = volume(ParticleVolumeKind::Box);
 
     cube.p1 = Vec3::new(0.0, 0.0, 0.0);
     cube.p2 = Vec3::new(2.0, 1.0, 1.0);
@@ -307,7 +306,7 @@ mod tests {
 
   #[test]
   fn moves_only_a_point_of_a_sphere() {
-    let mut ball: ParticleVolume = volume(ParticleVolume::SPHERE);
+    let mut ball: ParticleVolume = volume(ParticleVolumeKind::Sphere);
 
     ball.radius1 = 3.0;
 

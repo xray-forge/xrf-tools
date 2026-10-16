@@ -24,6 +24,22 @@ impl Particle {
   /// Bytes in a packed colour channel.
   const CHANNEL: f32 = 255.0;
 
+  /// A particle born at `position` moving at `velocity`: where it was is where it is, of unit size, white, unturned and
+  /// of no age, on its first frame and played forwards.
+  pub fn born(position: Vec3, velocity: Vec3) -> Self {
+    Self {
+      rotation: 0.0,
+      position,
+      previous_position: position,
+      velocity,
+      size: Vec3::ONE,
+      color: Vec4::ONE,
+      age: 0.0,
+      frame: 0,
+      is_reversed: false,
+    }
+  }
+
   /// `color_rgba_f` then `Fcolor::set`: each channel floored to a byte, clamped, and read back as a fraction.
   pub fn quantize_color(color: Vec4) -> Vec4 {
     (color * Self::CHANNEL)

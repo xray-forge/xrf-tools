@@ -1,5 +1,3 @@
-use glam::{Vec3, Vec4};
-
 use crate::simulation::particle::Particle;
 use crate::simulation::particle_event::ParticleEvent;
 use crate::simulation::particle_random::ParticleRandom;
@@ -78,33 +76,12 @@ impl ParticlePool {
     (&mut self.particles, &mut self.random)
   }
 
-  /// `Add`: appends a particle unless the effect is full, then applies the birth rules and reports it.
-  #[allow(clippy::too_many_arguments)]
-  pub(crate) fn add(
-    &mut self,
-    position: Vec3,
-    previous_position: Vec3,
-    size: Vec3,
-    rotation: Vec3,
-    velocity: Vec3,
-    color: Vec4,
-    age: f32,
-  ) -> bool {
+  /// `Add`: appends a particle unless the effect is full, then applies the birth rules, which choose its frame and
+  /// its direction of play, and reports it.
+  pub(crate) fn add(&mut self, mut particle: Particle) -> bool {
     if self.particles.len() >= self.max_particles {
       return false;
     }
-
-    let mut particle: Particle = Particle {
-      rotation: rotation.x,
-      position,
-      previous_position,
-      velocity,
-      size,
-      color,
-      age,
-      frame: 0,
-      is_reversed: false,
-    };
 
     if let Some(frame_count) = self.random_frames {
       particle.frame = (self.random.next_below(frame_count) as f32 * 255.0).floor() as u16;
@@ -152,21 +129,17 @@ impl ParticlePool {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::ParticlePool;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_event::ParticleEvent;
 
   fn add_at(pool: &mut ParticlePool, x: f32) -> bool {
-    pool.add(
-      Vec3::new(x, 0.0, 0.0),
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec4::ONE,
-      0.0,
-    )
+    pool.add(Particle {
+      previous_position: Vec3::ZERO,
+      ..Particle::born(Vec3::new(x, 0.0, 0.0), Vec3::ZERO)
+    })
   }
 
   #[test]

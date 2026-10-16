@@ -26,16 +26,20 @@ impl From<&ParticleActionCopyVertex> for CopyVertexAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::CopyVertexAction;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_pool::ParticlePool;
 
   #[test]
   fn copies_the_position_into_the_previous_one() {
     let mut pool: ParticlePool = ParticlePool::new(1, 1);
 
-    pool.add(Vec3::X, Vec3::ZERO, Vec3::ONE, Vec3::ZERO, Vec3::ZERO, Vec4::ONE, 0.0);
+    pool.add(Particle {
+      previous_position: Vec3::ZERO,
+      ..Particle::born(Vec3::X, Vec3::ZERO)
+    });
     CopyVertexAction {
       is_copying_position: true,
     }

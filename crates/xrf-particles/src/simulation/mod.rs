@@ -18,6 +18,7 @@ pub(crate) mod particle_random;
 pub(crate) mod particle_running_action;
 pub(crate) mod particle_update_context;
 pub(crate) mod particle_volume;
+pub(crate) mod particle_volume_kind;
 
 #[cfg(test)]
 mod tests;

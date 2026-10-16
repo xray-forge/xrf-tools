@@ -75,6 +75,7 @@ mod tests {
 
   use super::TargetColorAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
 
@@ -82,15 +83,11 @@ mod tests {
     let rules: ParticleEngineRules = ParticleEngineRules::new(engine, 1.0);
     let mut pool: ParticlePool = ParticlePool::new(1, 1);
 
-    pool.add(
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec4::ZERO,
-      0.5,
-    );
+    pool.add(Particle {
+      color: Vec4::ZERO,
+      age: 0.5,
+      ..Particle::born(Vec3::ZERO, Vec3::ZERO)
+    });
     TargetColorAction {
       color: Vec4::ONE,
       scale: 10.0,
@@ -125,15 +122,11 @@ mod tests {
     let mut step: ParticleActionStep = ParticleActionStep::new(0.033, &rules);
 
     step.kill_old_time = 0.25;
-    pool.add(
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec4::ZERO,
-      0.5,
-    );
+    pool.add(Particle {
+      color: Vec4::ZERO,
+      age: 0.5,
+      ..Particle::born(Vec3::ZERO, Vec3::ZERO)
+    });
     TargetColorAction {
       color: Vec4::ONE,
       scale: 10.0,

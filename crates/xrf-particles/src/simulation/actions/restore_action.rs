@@ -48,10 +48,11 @@ impl From<&ParticleActionRestore> for RestoreAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::RestoreAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
 
@@ -61,7 +62,10 @@ mod tests {
     let mut pool: ParticlePool = ParticlePool::new(1, 1);
     let mut action: RestoreAction = RestoreAction { time_left: 0.0 };
 
-    pool.add(Vec3::X, Vec3::Y, Vec3::ONE, Vec3::ZERO, Vec3::Z, Vec4::ONE, 0.0);
+    pool.add(Particle {
+      previous_position: Vec3::Y,
+      ..Particle::born(Vec3::X, Vec3::Z)
+    });
     action.execute(&mut pool, &ParticleActionStep::new(0.5, &rules));
 
     assert_eq!(pool.get_particles()[0].position, Vec3::Y);
@@ -75,7 +79,10 @@ mod tests {
     let mut pool: ParticlePool = ParticlePool::new(1, 1);
     let mut action: RestoreAction = RestoreAction { time_left: 1.0 };
 
-    pool.add(Vec3::ZERO, Vec3::X, Vec3::ONE, Vec3::ZERO, Vec3::ZERO, Vec4::ONE, 0.0);
+    pool.add(Particle {
+      previous_position: Vec3::X,
+      ..Particle::born(Vec3::ZERO, Vec3::ZERO)
+    });
     action.execute(&mut pool, &ParticleActionStep::new(0.5, &rules));
 
     // b = 3 * 1, a = -2 * 0.75: velocity 3 - 1.5 = 1.5 along x.

@@ -31,10 +31,11 @@ impl From<&ParticleActionTargetSize> for TargetSizeAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::TargetSizeAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
 
@@ -43,15 +44,7 @@ mod tests {
     let rules: ParticleEngineRules = ParticleEngineRules::default();
     let mut pool: ParticlePool = ParticlePool::new(1, 1);
 
-    pool.add(
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec4::ONE,
-      0.0,
-    );
+    pool.add(Particle::born(Vec3::ZERO, Vec3::ZERO));
     TargetSizeAction {
       size: Vec3::splat(3.0),
       scale: Vec3::new(1.0, 2.0, 0.0),

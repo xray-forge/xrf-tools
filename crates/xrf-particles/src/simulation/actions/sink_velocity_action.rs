@@ -41,16 +41,18 @@ impl From<&ParticleActionSinkVelocity> for SinkVelocityAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::SinkVelocityAction;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_pool::ParticlePool;
   use crate::simulation::particle_volume::ParticleVolume;
+  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
 
   #[test]
   fn removes_particles_moving_inside_the_volume() {
     let slow: ParticleVolume = ParticleVolume {
-      kind: ParticleVolume::SPHERE,
+      kind: ParticleVolumeKind::Sphere,
       p1: Vec3::ZERO,
       p2: Vec3::ZERO,
       u: Vec3::ZERO,
@@ -62,24 +64,8 @@ mod tests {
     };
     let mut pool: ParticlePool = ParticlePool::new(2, 1);
 
-    pool.add(
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::X * 0.5,
-      Vec4::ONE,
-      0.0,
-    );
-    pool.add(
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::X * 5.0,
-      Vec4::ONE,
-      0.0,
-    );
+    pool.add(Particle::born(Vec3::ZERO, Vec3::X * 0.5));
+    pool.add(Particle::born(Vec3::ZERO, Vec3::X * 5.0));
     SinkVelocityAction {
       is_killing_inside: true,
       velocity_local: slow.clone(),

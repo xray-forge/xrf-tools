@@ -58,10 +58,11 @@ impl From<&ParticleActionOrbitLine> for OrbitLineAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::OrbitLineAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
 
@@ -70,15 +71,10 @@ mod tests {
     let rules: ParticleEngineRules = ParticleEngineRules::default();
     let mut pool: ParticlePool = ParticlePool::new(1, 1);
 
-    pool.add(
-      Vec3::new(2.0, 5.0, 0.0),
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec4::ONE,
-      0.0,
-    );
+    pool.add(Particle {
+      previous_position: Vec3::ZERO,
+      ..Particle::born(Vec3::new(2.0, 5.0, 0.0), Vec3::ZERO)
+    });
     OrbitLineAction {
       position_local: Vec3::ZERO,
       axis_local: Vec3::Y,

@@ -77,15 +77,13 @@ impl SourceAction {
 
       // Without `flVertexB_tracks` the engine passes an uninitialised previous position, which the first move
       // overwrites; it starts where the particle does here.
-      pool.add(
-        position,
-        position,
+      pool.add(Particle {
         size,
-        rotation,
-        velocity,
-        Particle::quantize_color(Vec4::new(color.x, color.y, color.z, self.alpha)),
+        rotation: rotation.x,
+        color: Particle::quantize_color(Vec4::new(color.x, color.y, color.z, self.alpha)),
         age,
-      );
+        ..Particle::born(position, velocity)
+      });
     }
   }
 }
@@ -123,10 +121,11 @@ mod tests {
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
   use crate::simulation::particle_volume::ParticleVolume;
+  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
 
   fn point(at: Vec3) -> ParticleVolume {
     ParticleVolume {
-      kind: ParticleVolume::POINT,
+      kind: ParticleVolumeKind::Point,
       p1: at,
       p2: Vec3::ZERO,
       u: Vec3::ZERO,

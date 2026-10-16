@@ -67,10 +67,11 @@ impl From<&ParticleActionVortex> for VortexAction {
 mod tests {
   use std::f32::consts::FRAC_PI_2;
 
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::VortexAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
 
@@ -79,15 +80,10 @@ mod tests {
     let rules: ParticleEngineRules = ParticleEngineRules::default();
     let mut pool: ParticlePool = ParticlePool::new(1, 1);
 
-    pool.add(
-      Vec3::new(2.0, 1.0, 0.0),
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec4::ONE,
-      0.0,
-    );
+    pool.add(Particle {
+      previous_position: Vec3::ZERO,
+      ..Particle::born(Vec3::new(2.0, 1.0, 0.0), Vec3::ZERO)
+    });
     // A quarter turn about y at radius sqrt(5): theta = 5 pi / 2 / 5.
     VortexAction {
       center_local: Vec3::ZERO,

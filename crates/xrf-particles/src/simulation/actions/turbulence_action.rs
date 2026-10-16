@@ -67,10 +67,11 @@ impl From<&ParticleActionTurbulence> for TurbulenceAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::TurbulenceAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_noise::ParticleNoise;
   use crate::simulation::particle_pool::ParticlePool;
@@ -89,15 +90,10 @@ mod tests {
     };
     let start: Vec3 = Vec3::new(0.3, 0.7, 0.2);
 
-    pool.add(
-      start,
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::new(0.0, 0.0, 2.0),
-      Vec4::ONE,
-      0.0,
-    );
+    pool.add(Particle {
+      previous_position: Vec3::ZERO,
+      ..Particle::born(start, Vec3::new(0.0, 0.0, 2.0))
+    });
     action.execute(&mut pool, &ParticleActionStep::new(0.5, &rules));
 
     let noise: &ParticleNoise = ParticleNoise::get();

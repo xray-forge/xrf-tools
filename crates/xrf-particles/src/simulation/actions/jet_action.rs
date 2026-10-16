@@ -61,19 +61,21 @@ impl From<&ParticleActionJet> for JetAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::JetAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
   use crate::simulation::particle_volume::ParticleVolume;
+  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
 
   #[test]
   fn accelerates_inside_the_radius_by_the_inverse_square_distance() {
     let rules: ParticleEngineRules = ParticleEngineRules::default();
     let point: ParticleVolume = ParticleVolume {
-      kind: ParticleVolume::POINT,
+      kind: ParticleVolumeKind::Point,
       p1: Vec3::Y,
       p2: Vec3::ZERO,
       u: Vec3::ZERO,
@@ -94,24 +96,14 @@ mod tests {
     };
     let mut pool: ParticlePool = ParticlePool::new(2, 1);
 
-    pool.add(
-      Vec3::new(2.0, 0.0, 0.0),
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec4::ONE,
-      0.0,
-    );
-    pool.add(
-      Vec3::new(5.0, 0.0, 0.0),
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec4::ONE,
-      0.0,
-    );
+    pool.add(Particle {
+      previous_position: Vec3::ZERO,
+      ..Particle::born(Vec3::new(2.0, 0.0, 0.0), Vec3::ZERO)
+    });
+    pool.add(Particle {
+      previous_position: Vec3::ZERO,
+      ..Particle::born(Vec3::new(5.0, 0.0, 0.0), Vec3::ZERO)
+    });
     action.execute(&mut pool, &ParticleActionStep::new(1.0, &rules));
 
     assert_eq!(pool.get_particles()[0].velocity, Vec3::new(0.0, 1.0, 0.0));

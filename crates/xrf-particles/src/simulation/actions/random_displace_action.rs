@@ -40,19 +40,21 @@ impl From<&ParticleActionRandomDisplace> for RandomDisplaceAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::RandomDisplaceAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
   use crate::simulation::particle_volume::ParticleVolume;
+  use crate::simulation::particle_volume_kind::ParticleVolumeKind;
 
   #[test]
   fn moves_by_a_point_volume_times_the_step() {
     let rules: ParticleEngineRules = ParticleEngineRules::default();
     let point: ParticleVolume = ParticleVolume {
-      kind: ParticleVolume::POINT,
+      kind: ParticleVolumeKind::Point,
       p1: Vec3::new(0.0, 4.0, 0.0),
       p2: Vec3::ZERO,
       u: Vec3::ZERO,
@@ -64,15 +66,7 @@ mod tests {
     };
     let mut pool: ParticlePool = ParticlePool::new(1, 1);
 
-    pool.add(
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec4::ONE,
-      0.0,
-    );
+    pool.add(Particle::born(Vec3::ZERO, Vec3::ZERO));
     RandomDisplaceAction {
       displacement_local: point.clone(),
       displacement: point,

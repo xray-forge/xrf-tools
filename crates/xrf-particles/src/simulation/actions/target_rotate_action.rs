@@ -32,10 +32,11 @@ impl From<&ParticleActionTargetRotate> for TargetRotateAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::TargetRotateAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
 
@@ -44,24 +45,14 @@ mod tests {
     let rules: ParticleEngineRules = ParticleEngineRules::default();
     let mut pool: ParticlePool = ParticlePool::new(2, 1);
 
-    pool.add(
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::new(1.0, 0.0, 0.0),
-      Vec3::ZERO,
-      Vec4::ONE,
-      0.0,
-    );
-    pool.add(
-      Vec3::ZERO,
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::new(-1.0, 0.0, 0.0),
-      Vec3::ZERO,
-      Vec4::ONE,
-      0.0,
-    );
+    pool.add(Particle {
+      rotation: (Vec3::new(1.0, 0.0, 0.0)).x,
+      ..Particle::born(Vec3::ZERO, Vec3::ZERO)
+    });
+    pool.add(Particle {
+      rotation: (Vec3::new(-1.0, 0.0, 0.0)).x,
+      ..Particle::born(Vec3::ZERO, Vec3::ZERO)
+    });
     TargetRotateAction {
       rotation: -3.0,
       scale: 1.0,

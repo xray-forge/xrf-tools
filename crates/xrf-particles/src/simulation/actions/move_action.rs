@@ -16,10 +16,11 @@ impl MoveAction {
 
 #[cfg(test)]
 mod tests {
-  use glam::{Vec3, Vec4};
+  use glam::Vec3;
 
   use super::MoveAction;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
+  use crate::simulation::particle::Particle;
   use crate::simulation::particle_engine_rules::ParticleEngineRules;
   use crate::simulation::particle_pool::ParticlePool;
 
@@ -28,15 +29,11 @@ mod tests {
     let rules: ParticleEngineRules = ParticleEngineRules::default();
     let mut pool: ParticlePool = ParticlePool::new(1, 1);
 
-    pool.add(
-      Vec3::X,
-      Vec3::ZERO,
-      Vec3::ONE,
-      Vec3::ZERO,
-      Vec3::new(0.0, 2.0, 0.0),
-      Vec4::ONE,
-      1.0,
-    );
+    pool.add(Particle {
+      previous_position: Vec3::ZERO,
+      age: 1.0,
+      ..Particle::born(Vec3::X, Vec3::new(0.0, 2.0, 0.0))
+    });
     MoveAction.execute(&mut pool, &ParticleActionStep::new(0.5, &rules));
 
     let particle = pool.get_particles()[0];
