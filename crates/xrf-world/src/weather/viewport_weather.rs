@@ -32,6 +32,8 @@ pub struct ViewportWeather {
   sender: Sender<WeatherLoad>,
   receiver: Receiver<WeatherLoad>,
   lighting: RenderLighting,
+  /// Whether `lighting` is the default one nothing playing leaves, so an idle frame need not compare against another.
+  is_default_lighting: bool,
   sent_report: Option<Option<WorldWeatherReport>>,
   report_due: Instant,
   workers: RenderWorkers,
@@ -51,6 +53,7 @@ impl ViewportWeather {
       sender,
       receiver,
       lighting: RenderLighting::default(),
+      is_default_lighting: true,
       sent_report: None,
       report_due: now,
       workers: workers.clone(),
@@ -129,8 +132,10 @@ impl ViewportWeather {
 
     if let Some(lighting) = self.player.advance(now, view, is_thundering, is_up) {
       self.lighting = lighting;
-    } else if !self.player.is_playing() && self.lighting != RenderLighting::default() {
+      self.is_default_lighting = false;
+    } else if !self.player.is_playing() && !self.is_default_lighting {
       self.lighting = RenderLighting::default();
+      self.is_default_lighting = true;
     }
   }
 
