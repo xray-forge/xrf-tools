@@ -1,5 +1,6 @@
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::pass::light_view::LightView;
+use crate::scene::level::level_light_shadows::LevelLightShadows;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
@@ -64,6 +65,17 @@ fn the_cull_counts_classes_as_rust_does() {
   assert_eq!(
     get_constant(&library, "static/cull", "SURFACE_PASS_COUNT"),
     StaticSurfacePass::COUNT as u32
+  );
+}
+
+/// The lamps read their shadows in texels of the atlas the renderer allocates their tiles in.
+#[test]
+fn the_lamps_read_the_shadow_atlas_at_its_allocated_size() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(
+    get_float_constant(&library, "common/local_lights", "ATLAS_TEXEL"),
+    1.0 / LevelLightShadows::ATLAS_SIZE as f32
   );
 }
 
@@ -169,6 +181,22 @@ fn a_static_surface_is_as_large_as_its_shaders_read() {
 }
 
 /// A `u32` constant's value in a module.
+/// The value a module declares a float constant as.
+fn get_float_constant(library: &ShaderLibrary, name: &str, constant: &str) -> f32 {
+  let source: String = library.compose(name).expect("composes");
+  let module: naga::Module = naga::front::wgsl::parse_str(&source).expect("parses");
+  let (_, declared) = module
+    .constants
+    .iter()
+    .find(|(_, declared)| declared.name.as_deref() == Some(constant))
+    .unwrap_or_else(|| panic!("'{name}' declares no {constant}"));
+
+  match module.global_expressions[declared.init] {
+    naga::Expression::Literal(naga::Literal::F32(value)) => value,
+    ref other => panic!("'{name}' declares {constant} as {other:?}"),
+  }
+}
+
 fn get_constant(library: &ShaderLibrary, name: &str, constant: &str) -> u32 {
   let source: String = library.compose(name).expect("composes");
   let module: naga::Module = naga::front::wgsl::parse_str(&source).expect("parses");
