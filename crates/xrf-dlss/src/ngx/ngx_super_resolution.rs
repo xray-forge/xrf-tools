@@ -203,7 +203,7 @@ impl NgxSuperResolution {
       pInAnimatedTextureMask: ptr::null_mut(),
       pInDepthHighRes: ptr::null_mut(),
       pInPositionViewSpace: ptr::null_mut(),
-      InFrameTimeDeltaInMsec: inputs.frame_time,
+      InFrameTimeDeltaInMsec: inputs.frame_time.as_secs_f32() * 1000.0,
       pInRayTracingHitDistance: ptr::null_mut(),
       pInMotionVectorsReflections: ptr::null_mut(),
     };
@@ -248,7 +248,7 @@ impl NgxSuperResolution {
         pInBiasCurrentColorMask: inputs
           .bias_current_color
           .map_or(ptr::null_mut(), |view| to_d3d12_resource(view)),
-        InFrameTimeDeltaInMsec: inputs.frame_time,
+        InFrameTimeDeltaInMsec: inputs.frame_time.as_secs_f32() * 1000.0,
         // The optional inputs left out: null resources and zero scalars.
         ..std::mem::zeroed()
       };

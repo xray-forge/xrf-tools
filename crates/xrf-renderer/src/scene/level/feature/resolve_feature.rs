@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec2};
 use xrf_dlss::{Dlss, DlssInputs, DlssPreset, DlssQuality, DlssRayInputs};
@@ -82,9 +82,9 @@ pub struct ResolveFeature {
   view_projection_previous: Option<Mat4>,
   /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
   noise_frame: u32,
-  /// When the view was last prepared, and the milliseconds since the one before, which DLSS weighs its history by.
+  /// When the view was last prepared, and the time since the one before, which DLSS weighs its history by.
   prepared_at: Option<Instant>,
-  frame_time: f32,
+  frame_time: Duration,
   /// The output, quality, preset and range DLSS last refused, which FSR resolves in its place until they change.
   refused: Option<DlssKey>,
   /// The output and quality ray reconstruction last refused, which super resolution upscales in its place until they
@@ -112,7 +112,7 @@ impl Default for ResolveFeature {
       view_projection_previous: None,
       noise_frame: 0,
       prepared_at: None,
-      frame_time: 0.0,
+      frame_time: Duration::ZERO,
       refused: None,
       refused_rays: None,
     }
@@ -178,7 +178,7 @@ impl ResolveFeature {
 
     self.frame_time = self
       .prepared_at
-      .map_or(0.0, |before| now.duration_since(before).as_secs_f32() * 1000.0);
+      .map_or(Duration::ZERO, |before| now.duration_since(before));
     self.prepared_at = Some(now);
 
     if self.temporal.is_some() {
@@ -860,7 +860,7 @@ impl ResolveFeature {
     // FSR's sense of the jitter, which DLSS shares: a drawn texel `m` stands at `m + 0.5 - jitter`.
     let jitter: [f32; 2] = (-self.offset).to_array();
     let is_reset: bool = resolve.is_reset;
-    let frame_time: f32 = self.frame_time;
+    let frame_time: Duration = self.frame_time;
 
     let mut pass = graph
       .add_encoder_pass("dlss")

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 /// What a view's frame gives DLSS to upscale.
 pub struct DlssInputs<'a> {
   /// The frame as drawn, at the render size.
@@ -20,6 +22,6 @@ pub struct DlssInputs<'a> {
   pub output: &'a wgpu::TextureView,
   /// Whether the frames before are forgotten: the first frame, or one after a cut.
   pub is_reset: bool,
-  /// Milliseconds since the frame before, which DLSS weighs its history by.
-  pub frame_time: f32,
+  /// Time since the frame before, which DLSS weighs its history by.
+  pub frame_time: Duration,
 }
