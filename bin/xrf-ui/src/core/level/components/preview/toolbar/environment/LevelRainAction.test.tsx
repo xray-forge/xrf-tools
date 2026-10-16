@@ -6,6 +6,7 @@ import { ERenderRainMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelRainAction } from "@/core/level/components/preview/toolbar/environment/LevelRainAction";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_RENDER_RAIN_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { clearLocalStorage } from "@/core/storage";
 import { resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import {
   ILevelViewContainerDescriptor,
@@ -31,7 +32,7 @@ async function renderAction(opening?: ILevelViewOpening): Promise<TLevelViewRend
 }
 
 beforeEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 afterEach(() => {

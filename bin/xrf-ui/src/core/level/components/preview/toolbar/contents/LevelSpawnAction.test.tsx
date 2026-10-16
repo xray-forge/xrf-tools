@@ -3,6 +3,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { LevelSpawnAction } from "@/core/level/components/preview/toolbar/contents/LevelSpawnAction";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
+import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
@@ -10,7 +11,7 @@ import {
 } from "@/fixtures/utils/level-container";
 
 beforeEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 describe("LevelSpawnAction", () => {

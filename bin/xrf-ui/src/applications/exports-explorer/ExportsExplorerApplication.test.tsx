@@ -4,6 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
 
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
+import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -13,9 +14,9 @@ import { ExportsExplorerApplication } from "./ExportsExplorerApplication";
 
 describe("ExportsExplorerApplication", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
     // The picker remembers its own path: nothing configured describes a TypeScript source tree, so exports asks.
-    window.localStorage.setItem("xrf.form.exports-explorer.project", "C:\\projects\\active-xrf");
+    setLocalStorageValue("xrf.form.exports-explorer.project", "C:\\projects\\active-xrf");
 
     setMockInvokeResponses({
       ["plugin:exports|get_project"]: mockSessionResponse(null),

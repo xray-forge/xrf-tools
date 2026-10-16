@@ -14,7 +14,7 @@ import {
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { TCatalogView } from "@/core/settings/lib/catalog-view";
 import { SettingsService } from "@/core/settings/services/settings";
-import { DEV_MODE_STORAGE_KEY } from "@/core/storage";
+import { clearLocalStorage, DEV_MODE_STORAGE_KEY, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -82,8 +82,8 @@ function getToolNames(catalog: HTMLElement): Array<string> {
 
 describe("ApplicationLauncher", () => {
   beforeEach(() => {
-    window.localStorage.clear();
-    window.localStorage.setItem(DEV_MODE_STORAGE_KEY, "true");
+    clearLocalStorage();
+    setLocalStorageValue(DEV_MODE_STORAGE_KEY, "true");
   });
 
   it.each<TCatalogView>(["rows", "grid"])(
@@ -347,7 +347,7 @@ describe("ApplicationLauncher", () => {
   });
 
   it("takes the view it was left in", () => {
-    window.localStorage.setItem("xrf.preference.catalog-view", "grid");
+    setLocalStorageValue("xrf.preference.catalog-view", "grid");
 
     const { queryByRole } = renderLauncher();
 
@@ -355,7 +355,7 @@ describe("ApplicationLauncher", () => {
   });
 
   it("falls back to the dense rows for a view it does not recognise", () => {
-    window.localStorage.setItem("xrf.preference.catalog-view", "spreadsheet");
+    setLocalStorageValue("xrf.preference.catalog-view", "spreadsheet");
 
     const { getByRole } = renderLauncher();
 
@@ -398,7 +398,7 @@ describe("ApplicationLauncher", () => {
     await userEvent.click(getByRole("button", { name: "Grid view" }));
 
     expect(queryByRole("list", { name: "Tools" })).not.toBeInTheDocument();
-    expect(window.localStorage.getItem("xrf.preference.catalog-view")).toBe("grid");
+    expect(getLocalStorageValue("xrf.preference.catalog-view")).toBe("grid");
     // The same tools in the same catalog order: only their drawing changed.
     expect(getToolNames(getByTestId("application-launcher-catalog"))).toEqual([
       "Archives editor",
@@ -414,6 +414,6 @@ describe("ApplicationLauncher", () => {
     await userEvent.click(getByRole("button", { name: "Row view" }));
 
     expect(getByRole("list", { name: "Tools" })).toBeInTheDocument();
-    expect(window.localStorage.getItem("xrf.preference.catalog-view")).toBe("rows");
+    expect(getLocalStorageValue("xrf.preference.catalog-view")).toBe("rows");
   });
 });

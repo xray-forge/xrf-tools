@@ -3,6 +3,7 @@ import { userEvent } from "@testing-library/user-event";
 
 import { LevelGrassAction } from "@/core/level/components/preview/toolbar/contents/LevelGrassAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
@@ -10,7 +11,7 @@ import {
 } from "@/fixtures/utils/level-container";
 
 beforeEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 describe("LevelGrassAction", () => {

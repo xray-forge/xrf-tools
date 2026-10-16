@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Optional } from "@xrf/types";
 
 import { IIpcCommandMetrics, IPC_METRICS, setIpcProfilingEnabled } from "@/core/ipc/metrics";
+import { clearLocalStorage } from "@/core/storage";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 
 import { invoke } from "./invoke";
@@ -15,7 +16,7 @@ function mockRecorded(): Optional<IIpcCommandMetrics> {
 
 describe("invoke", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
 
     setIpcProfilingEnabled(false);
     IPC_METRICS.reset();

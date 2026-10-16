@@ -10,6 +10,7 @@ import {
 import { LevelReflectionsAction } from "@/core/level/components/preview/toolbar/lighting/LevelReflectionsAction";
 import { DEFAULT_RENDER_REFLECTION_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
@@ -33,7 +34,7 @@ function renderAction(
 }
 
 beforeEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 describe("LevelReflectionsAction", () => {

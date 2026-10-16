@@ -7,6 +7,7 @@ import { AssetService } from "@/core/assets/services";
 import { LevelEntry } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine, EXrayEngineEvidence, XrayEngineResolution } from "@/core/ipc/types/xrf-engine-target";
 import { LevelListService, LevelLoadService } from "@/core/level/services";
+import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -40,7 +41,7 @@ function setRoot(form: RenderResult, path: string): void {
 
 describe("LevelViewerOpenForm", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
     resetMockInvoke();
 
     setMockInvokeResponses({ ["plugin:levels|list_levels"]: [mockEntry("zaton"), mockEntry("jupiter")] });

@@ -14,6 +14,7 @@ import {
   PANEL_ACTIVE_QUERY,
   PANEL_SET_ACTIVE_COMMAND,
 } from "@/core/shell/panel/panel-messages";
+import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -102,7 +103,7 @@ function renderFrame(children: ReactNode, route: string = "/"): RenderResult {
 describe("ApplicationShellFrame", () => {
   beforeEach(() => {
     // The frame remembers which panel was open, so a leftover choice would decide the next test.
-    window.localStorage.clear();
+    clearLocalStorage();
     // The narrowest window the app supports, where the ratio binds and the fixed maximum never did.
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 900, writable: true });
   });
@@ -141,7 +142,7 @@ describe("ApplicationShellFrame", () => {
   });
 
   it("hides the jobs listing outside dev mode, where it answers nothing a person needs", () => {
-    window.localStorage.setItem("xrf.preference.dev-mode", "false");
+    setLocalStorageValue("xrf.preference.dev-mode", "false");
 
     const { queryByLabelText } = renderFrame(<div>bare editor</div>);
 
@@ -200,7 +201,7 @@ describe("ApplicationShellFrame", () => {
   });
 
   it("renders a lone panel at the window budget rather than its stored width", () => {
-    window.localStorage.setItem("xrf.panels.right.width", "640");
+    setLocalStorageValue("xrf.panels.right.width", "640");
 
     const { getByTestId } = renderFrame(<EditorWithPanel name={"Bones"} />);
 
@@ -208,8 +209,8 @@ describe("ApplicationShellFrame", () => {
   });
 
   it("splits the budget so two open panels leave the content room", () => {
-    window.localStorage.setItem("xrf.panels.left.width", "640");
-    window.localStorage.setItem("xrf.panels.right.width", "640");
+    setLocalStorageValue("xrf.panels.left.width", "640");
+    setLocalStorageValue("xrf.panels.right.width", "640");
 
     const { getByTestId } = renderFrame(<EditorWithBothPanels />);
 
@@ -218,8 +219,8 @@ describe("ApplicationShellFrame", () => {
   });
 
   it("returns the closed panel's share to the one still open", async () => {
-    window.localStorage.setItem("xrf.panels.left.width", "640");
-    window.localStorage.setItem("xrf.panels.right.width", "640");
+    setLocalStorageValue("xrf.panels.left.width", "640");
+    setLocalStorageValue("xrf.panels.right.width", "640");
 
     const { getByLabelText, getByTestId } = renderFrame(<EditorWithBothPanels />);
 
@@ -229,7 +230,7 @@ describe("ApplicationShellFrame", () => {
   });
 
   it("restores the global right-panel selection", () => {
-    window.localStorage.setItem("xrf.panels.right.global", "notifications");
+    setLocalStorageValue("xrf.panels.right.global", "notifications");
 
     const { getByText, queryByText } = renderFrame(<EditorWithPanel name={"Bones"} />);
 

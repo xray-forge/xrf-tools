@@ -8,6 +8,7 @@ import { AssetService } from "@/core/assets/services";
 import { ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
 import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
+import { clearLocalStorage } from "@/core/storage";
 import {
   mockArchivedContainer,
   mockArchiveFileDescriptor,
@@ -68,7 +69,7 @@ async function renderExplorer() {
 
 describe("archive overrides dialog", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
 
     setMockInvokeResponses({
       ["plugin:archives|describe_statistics"]: mockStatistics(),

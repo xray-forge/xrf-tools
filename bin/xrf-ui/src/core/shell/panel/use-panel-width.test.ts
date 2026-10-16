@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, renderHook } from "@testing-library/react";
 
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
+import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 
 function setWindowWidth(width: number): void {
   act(() => {
@@ -12,29 +13,29 @@ function setWindowWidth(width: number): void {
 
 describe("usePanelWidth", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 1600, writable: true });
   });
 
   it("starts at the stored preference when the window has room for it", () => {
-    window.localStorage.setItem("xrf.panels.left.width", "640");
+    setLocalStorageValue("xrf.panels.left.width", "640");
 
     expect(renderHook(() => usePanelWidth("left", 1)).result.current.width).toBe(640);
   });
 
   it("renders a stored preference the window cannot afford at the budget instead", () => {
-    window.localStorage.setItem("xrf.panels.right.width", "640");
+    setLocalStorageValue("xrf.panels.right.width", "640");
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 900, writable: true });
 
     const { result } = renderHook(() => usePanelWidth("right", 1));
 
     expect(result.current.width).toBe(450);
     // Reconciling with the window is not the user restating a preference, so the stored value stands.
-    expect(window.localStorage.getItem("xrf.panels.right.width")).toBe("640");
+    expect(getLocalStorageValue("xrf.panels.right.width")).toBe("640");
   });
 
   it("re-clamps as the window narrows and gives the preference back when it widens", () => {
-    window.localStorage.setItem("xrf.panels.left.width", "640");
+    setLocalStorageValue("xrf.panels.left.width", "640");
 
     const { result } = renderHook(() => usePanelWidth("left", 1));
 
@@ -45,11 +46,11 @@ describe("usePanelWidth", () => {
 
     setWindowWidth(1600);
     expect(result.current.width).toBe(640);
-    expect(window.localStorage.getItem("xrf.panels.left.width")).toBe("640");
+    expect(getLocalStorageValue("xrf.panels.left.width")).toBe("640");
   });
 
   it("halves the share when a second panel opens and restores it when that panel closes", () => {
-    window.localStorage.setItem("xrf.panels.left.width", "640");
+    setLocalStorageValue("xrf.panels.left.width", "640");
 
     const { result, rerender } = renderHook(({ openCount }) => usePanelWidth("left", openCount), {
       initialProps: { openCount: 1 },
@@ -72,6 +73,6 @@ describe("usePanelWidth", () => {
     act(() => result.current.onResize(1200));
 
     expect(result.current.width).toBe(450);
-    expect(window.localStorage.getItem("xrf.panels.left.width")).toBe("450");
+    expect(getLocalStorageValue("xrf.panels.left.width")).toBe("450");
   });
 });

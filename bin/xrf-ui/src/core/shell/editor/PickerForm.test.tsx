@@ -6,6 +6,7 @@ import { ReactElement } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -165,25 +166,25 @@ describe("PickerForm", () => {
     }
 
     beforeEach(() => {
-      window.localStorage.clear();
+      clearLocalStorage();
     });
 
     it("records the paths its rows hold, without any of them being named here", () => {
-      window.localStorage.setItem(VALUE_KEY, "C:\\projects\\all.spawn");
+      setLocalStorageValue(VALUE_KEY, "C:\\projects\\all.spawn");
 
       const { getByText } = renderWithProviders(<SpawnPickerForm />, { route: "/spawn-editor" });
 
-      expect(window.localStorage.getItem(RECENTS_KEY)).toBeNull();
+      expect(getLocalStorageValue(RECENTS_KEY)).toBeNull();
 
       fireEvent.click(getByText("Open"));
 
       // The row joined the form and the form told it, so no screen has to remember to say so. Severing that wiring
       // compiles perfectly, which is why it is asserted here.
-      expect(window.localStorage.getItem(RECENTS_KEY)).toContain("C:\\\\projects\\\\all.spawn");
+      expect(getLocalStorageValue(RECENTS_KEY)).toContain("C:\\\\projects\\\\all.spawn");
     });
 
     it("records nothing when the submission was refused", () => {
-      window.localStorage.setItem(VALUE_KEY, "C:\\projects\\all.spawn");
+      setLocalStorageValue(VALUE_KEY, "C:\\projects\\all.spawn");
 
       const { getByText } = renderWithProviders(
         <PickerForm title={"Open spawn"} submitLabel={"Open"} isLoading onSubmit={() => undefined}>
@@ -194,7 +195,7 @@ describe("PickerForm", () => {
 
       fireEvent.click(getByText("Open"));
 
-      expect(window.localStorage.getItem(RECENTS_KEY)).toBeNull();
+      expect(getLocalStorageValue(RECENTS_KEY)).toBeNull();
     });
   });
 });

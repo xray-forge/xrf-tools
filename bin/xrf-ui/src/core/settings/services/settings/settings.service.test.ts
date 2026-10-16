@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { SettingsService } from "@/core/settings/services/settings/settings.service";
+import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 describe("SettingsService", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("takes its first value from the build, which is on under test", () => {
@@ -17,7 +18,7 @@ describe("SettingsService", () => {
   });
 
   it("lets a stored choice override the build default", () => {
-    window.localStorage.setItem("xrf.preference.dev-mode", "false");
+    setLocalStorageValue("xrf.preference.dev-mode", "false");
 
     const { service } = mockInjectedService(SettingsService);
 
@@ -30,7 +31,7 @@ describe("SettingsService", () => {
     service.setDevModeEnabled(false);
 
     expect(service.isDevModeEnabled).toBe(false);
-    expect(window.localStorage.getItem("xrf.preference.dev-mode")).toBe("false");
+    expect(getLocalStorageValue("xrf.preference.dev-mode")).toBe("false");
     expect(service.isDevModeEnabled).toBe(false);
   });
 
@@ -43,7 +44,7 @@ describe("SettingsService", () => {
   it("refuses a catalog view this build does not know, rather than handing it to the launcher", () => {
     // Written by an older build, a hand edit, or a half-finished rename. `JSON.parse` would have
     // thrown on it here, taking the whole service down while it was being constructed.
-    window.localStorage.setItem("xrf.preference.catalog-view", "spreadsheet");
+    setLocalStorageValue("xrf.preference.catalog-view", "spreadsheet");
 
     const { service } = mockInjectedService(SettingsService);
 
@@ -56,7 +57,7 @@ describe("SettingsService", () => {
     service.setCatalogView("grid");
 
     expect(service.catalogView).toBe("grid");
-    expect(window.localStorage.getItem("xrf.preference.catalog-view")).toBe("grid");
+    expect(getLocalStorageValue("xrf.preference.catalog-view")).toBe("grid");
     expect(mockInjectedService(SettingsService).service.catalogView).toBe("grid");
   });
 });

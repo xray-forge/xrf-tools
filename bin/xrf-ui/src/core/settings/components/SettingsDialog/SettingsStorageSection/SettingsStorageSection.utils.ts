@@ -1,7 +1,12 @@
 import { BYTES_PER_MEGABYTE } from "@xrf/format";
-import { Optional } from "@xrf/types";
 
-import { EStorageNamespace, isInStorageNamespace, setLocalStorageValue } from "@/core/storage";
+import {
+  EStorageNamespace,
+  getLocalStorageValue,
+  isInStorageNamespace,
+  listLocalStorageKeys,
+  setLocalStorageValue,
+} from "@/core/storage";
 
 /**
  * What the application allows itself.
@@ -117,30 +122,15 @@ export function measureLocalStorage(): IStorageUsage {
 /**
  * Every key currently stored, and what it occupies.
  *
- * The one part that reads the browser. Nothing is parsed as JSON: this measures storage, not meaning.
+ * The one part that reads storage. Nothing is parsed as JSON: this measures storage, not meaning.
  *
  * @returns One entry per key, in whatever order storage lists them.
  */
 export function readStorageEntries(): Array<IStorageEntry> {
-  if (!window.localStorage) {
-    return [];
-  }
-
-  const entries: Array<IStorageEntry> = [];
-
-  for (let index = 0; index < window.localStorage.length; index += 1) {
-    const key: Optional<string> = window.localStorage.key(index) ?? undefined;
-
-    if (key === undefined) {
-      continue;
-    }
-
-    const characters: number = key.length + (window.localStorage.getItem(key)?.length ?? 0);
-
-    entries.push({ key, size: characters * BYTES_PER_CODE_UNIT });
-  }
-
-  return entries;
+  return listLocalStorageKeys().map((key: string) => ({
+    key,
+    size: (key.length + (getLocalStorageValue(key)?.length ?? 0)) * BYTES_PER_CODE_UNIT,
+  }));
 }
 
 /**

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, renderHook } from "@testing-library/react";
 
+import { clearLocalStorage, getLocalStorageValue } from "@/core/storage";
 import { readRecentPaths, writeRecentPaths } from "@/core/ui/form/path-recents";
 import { usePathRecents } from "@/core/ui/form/use-path-recents";
 
@@ -8,7 +9,7 @@ const STORAGE_KEY: string = "xrf.form-recents.archives-packer.source";
 
 describe("usePathRecents", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("retains both paths recorded before a rerender", () => {
@@ -37,6 +38,6 @@ describe("usePathRecents", () => {
     });
 
     expect(result.current.records).toEqual([]);
-    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(getLocalStorageValue(STORAGE_KEY)).toBeNull();
   });
 });

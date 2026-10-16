@@ -6,6 +6,7 @@ import { ArchivesExplorerApplication } from "@/applications/archives-explorer/Ar
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { AssetService } from "@/core/assets/services";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
+import { clearLocalStorage } from "@/core/storage";
 import { mockArchiveResolution, mockArchivesWorldSubject } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -24,7 +25,7 @@ async function renderExplorer() {
 
 describe("archive resolution dialog", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
 
     setMockInvokeResponses({
       ["plugin:archives|describe_resolution"]: mockArchiveResolution(),

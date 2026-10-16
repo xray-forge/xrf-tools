@@ -13,7 +13,7 @@ import {
 } from "@/core/routing/application";
 import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
-import { KEYBINDS_STORAGE_KEY } from "@/core/storage";
+import { clearLocalStorage, getLocalStorageValue, KEYBINDS_STORAGE_KEY, setLocalStorageValue } from "@/core/storage";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { KeymapService } from "./keymap.service";
@@ -49,7 +49,7 @@ const RELOADING_APPLICATION: IApplicationDescriptor = createApplicationDescripto
 
 describe("KeymapService", () => {
   // The service reads storage once, when it is constructed, so each case needs its own starting state.
-  beforeEach(() => window.localStorage.clear());
+  beforeEach(() => clearLocalStorage());
 
   it("answers with the declared chords when nothing was rebound", () => {
     const { service } = mockInjectedService(KeymapService);
@@ -58,7 +58,7 @@ describe("KeymapService", () => {
   });
 
   it("prefers a stored override over the declaration", () => {
-    window.localStorage.setItem(KEYBINDS_STORAGE_KEY, JSON.stringify({ "fixture/reload": ["mod+r"] }));
+    setLocalStorageValue(KEYBINDS_STORAGE_KEY, JSON.stringify({ "fixture/reload": ["mod+r"] }));
 
     const { service } = mockInjectedService(KeymapService);
 
@@ -66,10 +66,7 @@ describe("KeymapService", () => {
   });
 
   it("discards an unusable entry without losing the entries beside it", () => {
-    window.localStorage.setItem(
-      KEYBINDS_STORAGE_KEY,
-      JSON.stringify({ "fixture/broken": 5, "fixture/reload": ["mod+r"] })
-    );
+    setLocalStorageValue(KEYBINDS_STORAGE_KEY, JSON.stringify({ "fixture/broken": 5, "fixture/reload": ["mod+r"] }));
 
     const { service } = mockInjectedService(KeymapService);
 
@@ -77,7 +74,7 @@ describe("KeymapService", () => {
   });
 
   it("discards an override containing an invalid chord without losing a valid neighbor", () => {
-    window.localStorage.setItem(
+    setLocalStorageValue(
       KEYBINDS_STORAGE_KEY,
       JSON.stringify({
         [FOCUS_SEARCH_KEYBIND_COMMAND.id]: ["mod+j", "mod"],
@@ -93,7 +90,7 @@ describe("KeymapService", () => {
   });
 
   it("keeps an empty stored override as a disabled command", () => {
-    window.localStorage.setItem(KEYBINDS_STORAGE_KEY, JSON.stringify({ [FOCUS_SEARCH_KEYBIND_COMMAND.id]: [] }));
+    setLocalStorageValue(KEYBINDS_STORAGE_KEY, JSON.stringify({ [FOCUS_SEARCH_KEYBIND_COMMAND.id]: [] }));
 
     const { service } = mockInjectedService(KeymapService);
     const keymap: IKeymap = service.keymap;
@@ -105,7 +102,7 @@ describe("KeymapService", () => {
   });
 
   it("falls back to declarations when the whole map is unreadable", () => {
-    window.localStorage.setItem(KEYBINDS_STORAGE_KEY, "{ not json");
+    setLocalStorageValue(KEYBINDS_STORAGE_KEY, "{ not json");
 
     const { service } = mockInjectedService(KeymapService);
 
@@ -115,13 +112,13 @@ describe("KeymapService", () => {
   it("keeps an override for a command that no longer exists rather than pruning it", () => {
     const stored: string = JSON.stringify({ "fixture/retired": ["mod+r"] });
 
-    window.localStorage.setItem(KEYBINDS_STORAGE_KEY, stored);
+    setLocalStorageValue(KEYBINDS_STORAGE_KEY, stored);
 
     const { service } = mockInjectedService(KeymapService);
 
     service.setChords(RELOAD.id, ["mod+shift+r"]);
 
-    expect(JSON.parse(window.localStorage.getItem(KEYBINDS_STORAGE_KEY) as string)).toEqual({
+    expect(JSON.parse(getLocalStorageValue(KEYBINDS_STORAGE_KEY) as string)).toEqual({
       "fixture/reload": ["mod+shift+r"],
       "fixture/retired": ["mod+r"],
     });
@@ -137,7 +134,7 @@ describe("KeymapService", () => {
     service.setChords(RELOAD.id, null);
 
     expect(service.getChords(RELOAD)).toEqual(["F5"]);
-    expect(window.localStorage.getItem(KEYBINDS_STORAGE_KEY)).toBeNull();
+    expect(getLocalStorageValue(KEYBINDS_STORAGE_KEY)).toBeNull();
   });
 
   it("reaches the home screen's commands while nothing is routed", () => {

@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
-import { setLocalStorageValue, setLocalStorageValueSafe } from "@/core/storage/read-write";
+import { clearLocalStorage, setLocalStorageValue, setLocalStorageValueSafe } from "@/core/storage/read-write";
 import { getLocalStorageRevision, subscribeToLocalStorage } from "@/core/storage/revision";
 
 describe("local storage revision", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("advances on a write, so a reader can tell that something changed", () => {

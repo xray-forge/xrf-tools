@@ -21,6 +21,7 @@ import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { SettingsRendererDisplay } from "@/core/settings/components/SettingsDialog/SettingsRenderSection/SettingsRendererDisplay";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
+import { clearLocalStorage } from "@/core/storage";
 import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -311,7 +312,7 @@ describe("LevelPreviewLayout", () => {
 
   // One switch, offered where the readout is and where the settings are: either place sets it, and both show it.
   it("times the passes from the overlays' popover and from the settings alike", async () => {
-    window.localStorage.clear();
+    clearLocalStorage();
 
     const container: Container = mockContainer([
       LevelLoadService,

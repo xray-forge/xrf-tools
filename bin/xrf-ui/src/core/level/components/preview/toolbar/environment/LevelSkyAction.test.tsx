@@ -4,6 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 import { ERenderDebandingMode, ERenderDebandingQuality } from "@/core/ipc/types/xrf-renderer";
 import { LevelSkyAction } from "@/core/level/components/preview/toolbar/environment/LevelSkyAction";
 import { DEFAULT_RENDER_DEBANDING_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { clearLocalStorage } from "@/core/storage";
 import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
 import { resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import {
@@ -35,7 +36,7 @@ async function renderOpenAction(opening?: ILevelViewOpening): Promise<TLevelView
 }
 
 beforeEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 afterEach(() => {

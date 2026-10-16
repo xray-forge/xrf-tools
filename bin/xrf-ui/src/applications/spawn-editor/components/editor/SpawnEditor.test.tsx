@@ -9,6 +9,7 @@ import { SpawnFile, SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
 import { IEditorPanel, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { SpawnFileService } from "@/core/spawn/services";
+import { clearLocalStorage } from "@/core/storage";
 import { mockSpawnFile, mockSpawnSession } from "@/fixtures/mocks/spawn.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -44,7 +45,7 @@ function mockOpenSpawn(overrides: Partial<SpawnFile> = {}): void {
 
 describe("SpawnEditor", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
     mockOpenSpawn();
   });
 

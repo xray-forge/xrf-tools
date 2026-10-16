@@ -2,16 +2,17 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
 import { TranslationsParserService } from "@/applications/translations-parser/services/parser";
+import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { TranslationsParserApplication } from "./TranslationsParserApplication";
 
 describe("TranslationsParserApplication", () => {
-  beforeEach(() => window.localStorage.clear());
+  beforeEach(() => clearLocalStorage());
 
   it("remembers the selected language but starts with replacement off on each mount", async () => {
-    window.localStorage.setItem("xrf.form.translations-parser.language", "ukr");
+    setLocalStorageValue("xrf.form.translations-parser.language", "ukr");
 
     const { container } = mockInjectedService(TranslationsParserService);
     const view = renderWithProviders(<TranslationsParserApplication />, { container, route: "/translations-parser" });

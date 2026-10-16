@@ -3,11 +3,12 @@ import { userEvent } from "@testing-library/user-event";
 
 import { ERenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelParallaxSettings } from "@/core/level/components/preview/toolbar/view/LevelParallaxSettings";
+import { clearLocalStorage } from "@/core/storage";
 import { mockLevelViewContainer } from "@/fixtures/utils/level-container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 beforeEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 describe("LevelParallaxSettings", () => {

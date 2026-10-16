@@ -8,12 +8,13 @@ import {
   ILevelViewOptions,
 } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view.service";
+import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
 import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 describe("LevelViewService", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
   });
 
   it("starts with the defaults", () => {
@@ -80,8 +81,8 @@ describe("LevelViewService", () => {
   });
 
   it("starts from the defaults where what was stored does not read", () => {
-    window.localStorage.setItem("xrf.preference.level-camera", "{not json");
-    window.localStorage.setItem("xrf.preference.level-features", JSON.stringify({ antialiasing: "none", grass: 4 }));
+    setLocalStorageValue("xrf.preference.level-camera", "{not json");
+    setLocalStorageValue("xrf.preference.level-features", JSON.stringify({ antialiasing: "none", grass: 4 }));
 
     const { service } = mockInjectedService(LevelViewService);
 

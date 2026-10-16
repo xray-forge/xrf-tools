@@ -6,6 +6,7 @@ import {
   DEFAULT_RENDER_GRAPH_SETTINGS,
   SERIAL_RENDER_GRAPH_SETTINGS,
 } from "@/core/render/lib/settings/render-graph-settings";
+import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
@@ -33,7 +34,7 @@ async function renderOpenAction(
 }
 
 beforeEach(() => {
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 describe("LevelCullingAction", () => {

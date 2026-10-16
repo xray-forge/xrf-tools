@@ -12,6 +12,7 @@ import {
   LevelViewService,
   LevelWeatherService,
 } from "@/core/level/services";
+import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -44,7 +45,7 @@ async function renderAction(): Promise<{ weather: LevelWeatherService } & Return
 
 afterEach(() => {
   resetMockInvoke();
-  window.localStorage.clear();
+  clearLocalStorage();
 });
 
 describe("LevelWeatherAction", () => {

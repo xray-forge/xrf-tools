@@ -9,6 +9,7 @@ import { AssetService } from "@/core/assets/services";
 import { ArchiveSubject, EArchiveSubject } from "@/core/ipc/types/xrf-app";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
+import { clearLocalStorage } from "@/core/storage";
 import {
   mockArchiveFileDescriptor,
   mockArchiveSharedPayload,
@@ -38,7 +39,7 @@ const PROJECT: ArchiveSubject = mockArchivesVolumes([TEXT_FILE, BINARY_FILE, MES
 
 describe("opened archives editor", () => {
   beforeEach(() => {
-    window.localStorage.clear();
+    clearLocalStorage();
 
     // The picture reaches the element as an object url now, so the panel needs one jsdom does not mint on its own.
     jest.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:decoded-texture");
