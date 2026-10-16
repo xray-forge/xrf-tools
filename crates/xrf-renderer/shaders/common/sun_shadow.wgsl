@@ -18,8 +18,7 @@ const PLANT_OFFSET_MOST: f32 = 0.04;
 const OFFSET_ANY: f32 = 1e9;
 
 // The texels the filter reaches each way where a pipeline fixes it, which compiles the filter's loops to their count;
-// below nought, the shadows' uniform says. Bounded by the uniform, the sun's pass ran eight times slower on Vulkan, the
-// same taps reading the same texels.
+// below nought, the shadows' uniform says. Bounded by the uniform, the loops run several times slower on Vulkan.
 override SUN_FILTER_REACH: i32 = -1;
 
 // The sun's share at a point by one cascade alone, compared over the square of texels the filter reaches; the last

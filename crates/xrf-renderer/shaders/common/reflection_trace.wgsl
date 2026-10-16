@@ -101,10 +101,8 @@ fn ray_cell_depth(pyramid: texture_2d<f32>, cell: vec2<i32>, level: i32) -> f32 
 // share of the distance). Further behind, it has passed behind something nearer than what it went for: a wire, a
 // lattice bar or a twig, which the ray goes on past, out from behind it within `PASS_CELLS` finest cells; or a wall,
 // a hill or a bush's crown it stays behind, where nothing on the screen can say what it met, and the walk ends
-// uncertain where it first went behind: the miss chain answers, never a guess from the pixels about it. Without the
-// passing, every ray climbing to the sky over a power line ended uncertain at the wire and the cube answered for the
-// whole puddle under the lines. Its second part is whether it met a surface, never where it left the screen, ran out
-// of crossings or ended uncertain.
+// uncertain where it first went behind: the miss chain answers, never a guess from the pixels about it. Its second
+// part is whether it met a surface, never where it left the screen, ran out of crossings or ended uncertain.
 struct RayWalk {
   position: vec3<f32>,
   is_met: bool,
@@ -219,8 +217,7 @@ fn ray_walk(pyramid: texture_2d<f32>, origin: vec3<f32>, direction: vec3<f32>, c
 // towards its own colour, and the share of metal in that material it takes to be marked one. X-Ray's data holds no
 // metalness, only the material its `hmodel` blends between (the G-buffer's `material.z` read back as a material: 2 to 3
 // Phong to Metal, 3 to 4 Metal to Oren-Nayar), authored for that look, so both must agree: glass, screens and polished
-// paint under Blinn-Phong never turn metal, a rough wall tagged a fifth metal stays a dielectric (Skadovsk's television
-// glass at gloss 0.64 reflected as a metal and read as wet on gloss alone).
+// paint under Blinn-Phong never turn metal, a rough wall tagged a fifth metal stays a dielectric.
 const METAL_GLOSS: vec2<f32> = vec2<f32>(0.6, 0.9);
 const METAL_TAGGED: vec2<f32> = vec2<f32>(0.45, 0.55);
 // The roughness past which a surface is not traced and reflects the prefiltered sky alone; and the roughness over

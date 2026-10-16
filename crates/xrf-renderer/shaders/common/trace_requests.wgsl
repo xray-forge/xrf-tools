@@ -10,9 +10,8 @@ fn trace_request_screen(answer: vec3<f32>, share: f32) -> vec2<u32> {
   return vec2<u32>(pack2x16float(answer.rg * share), pack2x16float(vec2<f32>(answer.b * share, share)));
 }
 
-// The turn of `turns` a pixel traces on: its place in an 8 × 8 ordered dither, so each turn takes
-// exactly one in `turns` of them, every one within a 4 × 2 block. Blue noise read from the compressed map bunched them,
-// a turn taking up to a quarter, past the list's room, and the pixels drawn last never traced.
+// The turn of `turns` a pixel traces on: its place in an 8 × 8 ordered dither, so each turn takes exactly one in
+// `turns` of them, every one within a 4 × 2 block, and no turn passes the list's room.
 fn trace_turn_of(cell: vec2<u32>, turns: u32) -> u32 {
   let x: u32 = cell.x & 7u;
   let mixed: u32 = x ^ (cell.y & 7u);

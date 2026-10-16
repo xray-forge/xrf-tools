@@ -4,9 +4,8 @@
 // The sky as the engine shows it along a world direction, with the clouds `RenderClouds` lays over it (`clouds.vs`,
 // `clouds.ps`), and the same as light: what a reflection of the sky adds to a surface, in the units the surface's own
 // light is in. Every pass drawing or reflecting the sky reads these through its own bindings, so the cube a reflection
-// reads where it meets nothing shows the sky the frame shows, clouds and all: the probe once held the sky box alone,
-// and in an overcast rain the clouds are the bright of the sky, so a ray leaving the screen reflected a darker sky than
-// one ending over the screen's own, a seam across one puddle.
+// reads where it meets nothing shows the sky the frame shows, clouds and all: in an overcast rain the clouds are the
+// bright of the sky.
 
 // `mScale.scale(10, 0.4f, 10)`: the dome `RenderClouds` draws, wide and flat around the camera.
 const DOME_WIDTH: f32 = 10.0;

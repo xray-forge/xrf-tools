@@ -319,8 +319,8 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   // Where the screen answers the ray only in part or not at all, the scene pass traces it on its turn, a hit written
   // over the sky; off its turn, or past the list's room, the pixel holds what it reflected the frame before. Only turns
   // trace, so the list always has room: water with no history to hold (newly in view, a fast turn's edge) takes its
-  // fresh neighbours' instead. Tracing it too overflowed the list wherever much of the water lost its history, and the
-  // pixels drawn last never traced again.
+  // fresh neighbours' instead, since tracing it too would overflow the list wherever much of the water lost its
+  // history.
   if (screen_share < 1.0 && is_traced) {
     let pixel: vec2<f32> = floor(in.clip.xy);
     let answer: vec4<f32> = vec4<f32>(scene, met_distance);

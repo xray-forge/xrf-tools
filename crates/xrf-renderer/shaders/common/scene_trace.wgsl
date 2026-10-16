@@ -301,8 +301,8 @@ fn shade_scene_hit(
   let width: f32 = cone.width + cone.spread * hit.distance;
   let met: SceneSurface = scene_surface(hit, width);
   // Under the enhanced foliage a leaf is lit as the frame lights it: by its crown's sphere rather than its card, never
-  // darker than three tenths of the sky, and passing the sun through from behind (`frame/sun.wgsl`). Lit by its card,
-  // a crown the water mirrors from below turned every leaf from the sun and reflected black.
+  // darker than three tenths of the sky, and passing the sun through from behind (`frame/sun.wgsl`), so a crown the
+  // water mirrors from below is not turned from the sun.
   let is_crown: bool = met.is_leaf && state.flora.x > 0.5;
   let facing: vec3<f32> = select(select(met.normal, -met.normal, dot(met.normal, toward) > 0.0), met.crown, is_crown);
   let lifted: vec3<f32> = met.position + facing * SCENE_SUN_BIAS;
@@ -310,8 +310,8 @@ fn shade_scene_hit(
   let half_way: vec3<f32> = normalize(to_sun - toward);
   let lit: vec4<f32> = textureSampleLevel(lut, lut_sampler,
     vec3<f32>(dot(to_sun, facing), dot(half_way, facing), met.slice), 0.0);
-  // A tree's own leaves do not shade it: its sun ray starts among them, and passing through the whole crown it blacked
-  // the far side out, which the frame's foliage, lit through its leaves, never shows.
+  // A tree's own leaves do not shade it: its sun ray starts among them, and the frame lights foliage through its
+  // leaves.
   let own: u32 = select(SCENE_NO_PLACE, hit.place, (trace_records[hit.record].flags & TRACE_RECORD_TREE) != 0u);
   var sun: vec4<f32> = vec4<f32>(0.0);
 
@@ -349,8 +349,8 @@ const SCENE_OCCLUSION_RAYS: u32 = 2u;
 
 // How much of the light about it reaches a traced hit, which its hemisphere and ambient are lit by as the frame's
 // occlusion lets them: the share of a few short rays from it, half way between its normal and the ground, turned by its
-// place, that meet nothing solid within `SCENE_OCCLUSION_REACH`. Without it the trace read a quarter brighter than the
-// screen's own reflection of the same bank, which the frame's occlusion darkens.
+// place, that meet nothing solid within `SCENE_OCCLUSION_REACH`, so the trace reads as dark as the screen's own
+// reflection of the same bank, which the frame's occlusion darkens.
 fn scene_occlusion(position: vec3<f32>, normal: vec3<f32>, width: f32, passed: u32) -> f32 {
   let frame: AxisFrame = axis_frame(normal);
   let across: vec3<f32> = frame.across;
@@ -362,7 +362,7 @@ fn scene_occlusion(position: vec3<f32>, normal: vec3<f32>, width: f32, passed: u
     let angle: f32 = turn + f32(ray) * 6.2831853 / f32(SCENE_OCCLUSION_RAYS);
     let direction: vec3<f32> = normalize(normal + across * cos(angle) + along * sin(angle));
 
-    // Solid geometry alone: a cut-out card's alpha, tested at each one the ray passes, cost a third of the occlusion,
+    // Solid geometry alone: testing a cut-out card's alpha at each one the ray passes costs a third of the occlusion,
     // for leaves within a metre and a half that the hit's own hemisphere darkens already.
     let probe: RayDesc = RayDesc(RAY_FLAG_TERMINATE_ON_FIRST_HIT | RAY_FLAG_CULL_NO_OPAQUE, 0xffu, 0.0,
       SCENE_OCCLUSION_REACH, position, direction);

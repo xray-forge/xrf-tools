@@ -159,9 +159,9 @@ fn cover_reached(
 // How much slanted rain reaches a covered point under a high cover, from none to one: rain falls up to `COVER_SLANT`
 // off the vertical, so a cover more than `COVER_SLANT_FROM` metres over the point lets it in from the open sky within
 // as far again, a share of its height past that. Twice the share of points within that reach with nothing standing
-// over them higher than `COVER_SLANT_FROM` over the point, at most all, over `SLANT_TAPS` points laid alike for every pixel, so
-// the share steps finely rather than grains. Only past a height no room's ceiling reaches, as the map sees no walls:
-// the ground under a bridge's deck took the deck's outline sharp and dry, however high it stood.
+// over them higher than `COVER_SLANT_FROM` over the point, at most all, over `SLANT_TAPS` points laid alike for every
+// pixel, so the share steps finely rather than grains. Only past a height no room's ceiling reaches, as the map sees no
+// walls.
 fn slanted_reached(map: texture_depth_2d, window: vec4<f32>, shape: vec2<f32>, point: vec3<f32>) -> f32 {
   let cover: f32 = overhead_height(map, window, shape.x, shape.y, point);
   let reach: f32 = (cover - point.y - COVER_SLANT_FROM) * COVER_SLANT;

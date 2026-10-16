@@ -4,8 +4,8 @@ enable wgpu_binding_array;
 #import "generated/grass/colours"
 
 // Each detail model's colour where its tufts stand, which a traced hit on grassed ground blends towards: its base
-// texture's solid texels (alpha over its reference) averaged at the texture's own resolution, a workgroup a model. A
-// read of a coarse mip took the transparent texels' dark colour into the average and greyed the grass towards black.
+// texture's solid texels (alpha over its reference) averaged at the texture's own resolution, a workgroup a model: a
+// coarse mip would take the transparent texels' dark colour into the average.
 
 @group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;
 @group(1) @binding(1) var texture_sampler: sampler;
