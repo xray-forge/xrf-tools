@@ -90,13 +90,15 @@ describe("ConfigsSectionsPanel", () => {
       })
     );
 
-    await userEvent.type(getByLabelText("Filter entries"), "ammo");
+    await userEvent.click(getByLabelText("Filter entries"));
+    await userEvent.paste("ammo");
 
     expect(getAllByRole("treeitem")).toHaveLength(1);
     expect(getByText("ammo_9x18_ap_bad")).toBeInTheDocument();
 
     await userEvent.clear(getByLabelText("Filter entries"));
-    await userEvent.type(getByLabelText("Filter entries"), "nothing");
+    await userEvent.click(getByLabelText("Filter entries"));
+    await userEvent.paste("nothing");
 
     expect(getByText("No entry matches that.")).toBeInTheDocument();
   });

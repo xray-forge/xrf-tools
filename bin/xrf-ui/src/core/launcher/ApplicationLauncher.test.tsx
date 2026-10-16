@@ -112,7 +112,8 @@ describe("ApplicationLauncher", () => {
       expect(queryByRole("button", { name: "Spawns 1" })).not.toBeInTheDocument();
       expect(queryByText("Spawns")).not.toBeInTheDocument();
 
-      await userEvent.type(getByLabelText("Search tools"), "archives");
+      await userEvent.click(getByLabelText("Search tools"));
+      await userEvent.paste("archives");
 
       expect(getByText("1 match")).toBeInTheDocument();
       expect(queryByRole("button", { name: "Archives packer" })).not.toBeInTheDocument();
@@ -140,7 +141,8 @@ describe("ApplicationLauncher", () => {
     );
 
     await userEvent.click(getByRole("button", { name: "Spawns 1" }));
-    await userEvent.type(getByLabelText("Search tools"), "editor");
+    await userEvent.click(getByLabelText("Search tools"));
+    await userEvent.paste("editor");
 
     expect(getToolNames(getByTestId("application-launcher-catalog"))).toEqual(["Spawn editor"]);
 
@@ -171,7 +173,8 @@ describe("ApplicationLauncher", () => {
     );
 
     await userEvent.click(getByRole("button", { name: "Archives 2" }));
-    await userEvent.type(getByLabelText("Search tools"), "packer");
+    await userEvent.click(getByLabelText("Search tools"));
+    await userEvent.paste("packer");
 
     expect(getByRole("button", { name: "Archives packer" })).toBeInTheDocument();
 
@@ -238,7 +241,8 @@ describe("ApplicationLauncher", () => {
   it("drops the sections while searching and ranks what is left", async () => {
     const { getByLabelText, getByText, queryByRole, queryByText } = renderLauncher();
 
-    await userEvent.type(getByLabelText("Search tools"), "spawn");
+    await userEvent.click(getByLabelText("Search tools"));
+    await userEvent.paste("spawn");
 
     expect(getByText("1 match")).toBeInTheDocument();
     expect(getByText("Spawn editor")).toBeInTheDocument();
@@ -250,7 +254,8 @@ describe("ApplicationLauncher", () => {
     const { getByLabelText, getByRole, getByTestId } = renderLauncher();
 
     await userEvent.click(getByRole("button", { name: "Grid view" }));
-    await userEvent.type(getByLabelText("Search tools"), "spawn");
+    await userEvent.click(getByLabelText("Search tools"));
+    await userEvent.paste("spawn");
 
     expect(within(getByTestId("application-launcher-catalog")).getByText("Spawns")).toBeInTheDocument();
   });
@@ -258,7 +263,8 @@ describe("ApplicationLauncher", () => {
   it("matches a group name that no label of its own mentions", async () => {
     const { getByLabelText, getByText, queryByText } = renderLauncher();
 
-    await userEvent.type(getByLabelText("Search tools"), "spawns");
+    await userEvent.click(getByLabelText("Search tools"));
+    await userEvent.paste("spawns");
 
     expect(getByText("Spawn editor")).toBeInTheDocument();
     expect(queryByText("Archives editor")).not.toBeInTheDocument();
@@ -267,7 +273,8 @@ describe("ApplicationLauncher", () => {
   it("says so rather than showing an empty grid when nothing matches", async () => {
     const { getByLabelText, getByText } = renderLauncher();
 
-    await userEvent.type(getByLabelText("Search tools"), "nothing-here");
+    await userEvent.click(getByLabelText("Search tools"));
+    await userEvent.paste("nothing-here");
 
     expect(getByText("No tools match")).toBeInTheDocument();
     // Quoted: unquoted, a query like "nothing here" reads as part of the sentence carrying it.
@@ -277,7 +284,8 @@ describe("ApplicationLauncher", () => {
   it("offers a way out of a search that found nothing", async () => {
     const { getByLabelText, getByRole, getByText } = renderLauncher();
 
-    await userEvent.type(getByLabelText("Search tools"), "nothing-here");
+    await userEvent.click(getByLabelText("Search tools"));
+    await userEvent.paste("nothing-here");
     await userEvent.click(getByRole("button", { name: "Clear search" }));
 
     expect(getByText("Spawn editor")).toBeInTheDocument();
@@ -301,7 +309,8 @@ describe("ApplicationLauncher", () => {
     const { getByLabelText, getByRole, getByText, queryByText } = renderLauncher();
 
     await userEvent.click(getByRole("button", { name: "Archives 2" }));
-    await userEvent.type(getByLabelText("Search tools"), "editor");
+    await userEvent.click(getByLabelText("Search tools"));
+    await userEvent.paste("editor");
 
     expect(getByText("Archives editor")).toBeInTheDocument();
     expect(queryByText("Spawn editor")).not.toBeInTheDocument();
@@ -375,7 +384,8 @@ describe("ApplicationLauncher", () => {
   it("names the group on a row only once the separators are gone", async () => {
     const { getByLabelText, getByTestId } = renderLauncher();
 
-    await userEvent.type(getByLabelText("Search tools"), "spawn");
+    await userEvent.click(getByLabelText("Search tools"));
+    await userEvent.paste("spawn");
 
     const catalog = getByTestId("application-launcher-catalog");
 
@@ -386,7 +396,8 @@ describe("ApplicationLauncher", () => {
   it("keeps drawing rows once a search narrows them", async () => {
     const { getByLabelText, getByRole, getByTestId } = renderLauncher();
 
-    await userEvent.type(getByLabelText("Search tools"), "spawn");
+    await userEvent.click(getByLabelText("Search tools"));
+    await userEvent.paste("spawn");
 
     expect(getByRole("list", { name: "Tools" })).toBeInTheDocument();
     expect(getToolNames(getByTestId("application-launcher-catalog"))).toEqual(["Spawn editor"]);

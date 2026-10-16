@@ -102,7 +102,8 @@ async function renderPanel(
  * @returns Its details, under the tree.
  */
 async function choose(view: RenderResult, filter: string, label: string): Promise<HTMLElement> {
-  await userEvent.type(view.getByRole("textbox", { name: "Filter surfaces" }), filter);
+  await userEvent.click(view.getByRole("textbox", { name: "Filter surfaces" }));
+  await userEvent.paste(filter);
   await userEvent.click(await view.findByText(label));
 
   return view.findByTestId("level-surface-row");
@@ -146,7 +147,9 @@ describe("LevelSurfacesPanel", () => {
   it("opens what a filter matches, each entry by its id and texture with what it is drawn as", async () => {
     const view: RenderResult = await renderPanel();
 
-    await userEvent.type(view.getByRole("textbox", { name: "Filter surfaces" }), "decal");
+    await userEvent.click(view.getByRole("textbox", { name: "Filter surfaces" }));
+
+    await userEvent.paste("decal");
 
     await waitFor(() =>
       expect(listRows(view)).toEqual([
@@ -226,7 +229,9 @@ describe("LevelSurfacesPanel", () => {
     });
     const filter: HTMLElement = view.getByRole("textbox", { name: "Filter surfaces" });
 
-    await userEvent.type(filter, "default");
+    await userEvent.click(filter);
+
+    await userEvent.paste("default");
     act(() =>
       (viewport as unknown as LevelViewportService).notePicked({
         isImpostor: false,
