@@ -1,9 +1,27 @@
-import { Popover } from "@mui/material";
+import { Popover, SxProps, Theme } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { MouseEvent, MouseEventHandler, ReactElement, ReactNode, useCallback, useEffect, useId, useState } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+import { TEditorPopoverKind } from "./editor-popover-kind";
+
+/** The corner cue a trigger of each kind draws: a triangle where a click opens, a dot where it switches. */
+const CUE_SX: Readonly<Record<TEditorPopoverKind, SxProps<Theme>>> = {
+  popover: {
+    width: 0,
+    height: 0,
+    borderLeft: "4px solid transparent",
+    borderBottom: "4px solid currentColor",
+  },
+  toggle: {
+    width: 4,
+    height: 4,
+    borderRadius: "50%",
+    backgroundColor: "currentColor",
+  },
+};
 
 interface IEditorPopoverActionProps extends BaseComponentProps {
   label: string;
@@ -14,6 +32,8 @@ interface IEditorPopoverActionProps extends BaseComponentProps {
   isActive?: boolean;
   /** Side of the trigger on which the content opens. */
   placement?: "top" | "bottom";
+  /** What a click does, which its corner cue says: opens it, or switches it (`onClick`). */
+  kind?: TEditorPopoverKind;
   /** What a click on the trigger does instead of opening it; a right click opens it either way. */
   onClick?: MouseEventHandler<HTMLButtonElement>;
   children: ReactNode;
@@ -32,6 +52,7 @@ export function EditorPopoverAction({
   isDisabled = false,
   isActive = false,
   placement = "bottom",
+  kind = "popover",
   onClick,
   children,
 }: IEditorPopoverActionProps): ReactElement {
@@ -62,6 +83,7 @@ export function EditorPopoverAction({
       <EditorIconAction
         data-testid={dataTestId}
         aria-haspopup={"dialog"}
+        data-cue={kind}
         aria-expanded={isOpen}
         aria-controls={isOpen ? dialogId : undefined}
         id={id}
@@ -71,7 +93,7 @@ export function EditorPopoverAction({
         icon={icon}
         isActive={isActive}
         isDisabled={isDisabled}
-        // Says there is something behind this one, which is a kind rather than a state.
+        // Says there is something behind this one and what a click does, which is a kind rather than a state.
         sx={{
           position: "relative",
           "&::after": {
@@ -79,11 +101,8 @@ export function EditorPopoverAction({
             position: "absolute",
             right: 2,
             bottom: 2,
-            width: 0,
-            height: 0,
-            borderLeft: "4px solid transparent",
-            borderBottom: "4px solid currentColor",
             opacity: 0.7,
+            ...CUE_SX[kind],
           },
         }}
         onClick={onClick ?? onOpen}

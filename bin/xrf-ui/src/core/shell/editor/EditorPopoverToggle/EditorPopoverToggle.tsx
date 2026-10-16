@@ -61,6 +61,8 @@ export function EditorPopoverToggle({
       description={isDisabled ? description : `${description}. Right-click for its settings`}
       icon={icon}
       isActive={isOn && !isDisabled}
+      // A click opens it while it cannot turn over, which its cue then says.
+      kind={isDisabled ? "popover" : "toggle"}
       onClick={isDisabled ? undefined : onClick}
     >
       <div className={`flex ${isWide ? "w-80" : "w-60"} flex-col gap-2 px-4 py-2`}>

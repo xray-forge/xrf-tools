@@ -32,6 +32,7 @@ describe("EditorPopoverAction", () => {
     // The machine-readable half of the corner mark this action draws: both say a trigger opens something rather
     // than acting, and the mark itself is a pseudo-element, which jsdom cannot compute.
     expect(button).toHaveAttribute("aria-haspopup", "dialog");
+    expect(button).toHaveAttribute("data-cue", "popover");
 
     await userEvent.tab();
     await userEvent.keyboard("{Enter}");
