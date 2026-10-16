@@ -150,6 +150,9 @@ impl ViewportWeather {
       return None;
     }
 
+    // Checked once an interval whether or not it changed, so a still weather is not mixed again every frame.
+    self.report_due = now + REPORT_INTERVAL;
+
     let report: Option<WorldWeatherReport> = self
       .player
       .report()
@@ -160,7 +163,6 @@ impl ViewportWeather {
     }
 
     self.sent_report = Some(report.clone());
-    self.report_due = now + REPORT_INTERVAL;
 
     Some(report)
   }
