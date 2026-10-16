@@ -15,6 +15,8 @@ pub struct DialogProjectLayout {
   /// Stands in for the prefix the mode would default to.
   pub dialogs_prefix: Option<String>,
   pub translations_prefix: Option<String>,
+  /// Whether the text tree goes unread, for a caller that shows no lines: phrases then show their keys.
+  pub is_text_skipped: bool,
 }
 
 impl DialogProjectLayout {
@@ -23,6 +25,7 @@ impl DialogProjectLayout {
       mode,
       dialogs_prefix: None,
       translations_prefix: None,
+      is_text_skipped: false,
     }
   }
 

@@ -3,7 +3,7 @@ use xrf_dialog::{DialogElement, DialogElementKind, DialogProject, DialogReferenc
 use xrf_output::OutputOptions;
 
 use super::report::DialogFindReport;
-use crate::commands::dialog::dialog_project_open::open_dialog_project;
+use crate::commands::dialog::dialog_project_open::open_dialog_project_keys;
 use crate::commands::dialog::dialog_roots::DialogRootsArguments;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
@@ -51,7 +51,7 @@ impl GenericCommand for FindCommand {
     let output: OutputOptions = context.get_output().clone();
     let infos: Vec<String> = Self::requested(matches, INFO_ARGUMENT);
     let functors: Vec<String> = Self::requested(matches, FUNCTOR_ARGUMENT);
-    let project: DialogProject = open_dialog_project(matches)?;
+    let project: DialogProject = open_dialog_project_keys(matches)?;
 
     let report: DialogFindReport = DialogFindReport {
       references: project.list_references(|element| {

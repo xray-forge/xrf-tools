@@ -122,7 +122,11 @@ impl DialogProject {
     }
 
     let translations_prefix: String = layout.get_translations_prefix().to_owned();
-    let text: DialogTextIndex = Self::read_text(&vfs, roots, layout.mode, &translations_prefix, &mut findings);
+    let text: DialogTextIndex = if layout.is_text_skipped {
+      DialogTextIndex::default()
+    } else {
+      Self::read_text(&vfs, roots, layout.mode, &translations_prefix, &mut findings)
+    };
 
     Ok(Self {
       roots: roots.clone(),

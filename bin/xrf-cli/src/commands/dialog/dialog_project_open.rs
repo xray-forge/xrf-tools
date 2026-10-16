@@ -30,12 +30,29 @@ impl DialogProjectArguments for Command {
 ///
 /// Returns an error when the roots cannot be mounted or hold no dialog files under the prefix.
 pub fn open_dialog_project(matches: &ArgMatches) -> XrfResult<DialogProject> {
+  DialogProject::open(&requested_dialog_roots(matches)?, &requested_layout(matches))
+}
+
+/// Open the dialog project as `open_dialog_project` does, without its text tree, for a command reporting keys alone.
+///
+/// # Errors
+///
+/// Returns an error when the roots cannot be mounted or hold no dialog files under the prefix.
+pub fn open_dialog_project_keys(matches: &ArgMatches) -> XrfResult<DialogProject> {
   let layout: DialogProjectLayout = DialogProjectLayout {
-    dialogs_prefix: requested_dialog_prefix(matches).map(str::to_owned),
-    ..DialogProjectLayout::default()
+    is_text_skipped: true,
+    ..requested_layout(matches)
   };
 
   DialogProject::open(&requested_dialog_roots(matches)?, &layout)
+}
+
+/// The layout a command's prefix names, as shipped gamedata.
+fn requested_layout(matches: &ArgMatches) -> DialogProjectLayout {
+  DialogProjectLayout {
+    dialogs_prefix: requested_dialog_prefix(matches).map(str::to_owned),
+    ..DialogProjectLayout::default()
+  }
 }
 
 /// The language a command was asked to show lines in, if it was asked for one.
