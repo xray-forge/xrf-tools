@@ -50,7 +50,8 @@ struct RingCell {
 
 fn ring_cell(cell: u32, slot: RingSlot) -> RingCell {
   let ground: vec4<f32> = shapes[cell];
-  let center: vec3<f32> = vec3<f32>(f32(slot.x) * 2.0 + 1.0, ground.x, f32(slot.z) * 2.0 + 1.0);
+  let center: vec3<f32> =
+    vec3<f32>((f32(slot.x) + 0.5) * GRASS_SLOT_METERS, ground.x, (f32(slot.z) + 0.5) * GRASS_SLOT_METERS);
   let offset: vec3<f32> = params.eye.xyz - center;
   let distance: f32 = dot(offset, offset);
   let fade_limit: f32 = params.fade * params.fade;

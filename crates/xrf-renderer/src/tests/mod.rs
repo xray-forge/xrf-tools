@@ -51,7 +51,7 @@ mod shaders;
 mod shadow_tile_allocator;
 mod static_row;
 mod static_scene;
-mod static_surface_build;
+mod static_surface_builder;
 mod static_trace;
 mod static_vertex_words;
 mod sun_cascade;

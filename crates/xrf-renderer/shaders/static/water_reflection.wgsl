@@ -1,4 +1,5 @@
 #import "common/depth_plane"
+#import "common/noise"
 #import "common/water_surface"
 #import "common/scene_light"
 #import "common/water_enhanced"
@@ -120,15 +121,6 @@ fn request_water_trace(pixel: vec2<f32>, world: vec3<f32>, normal: vec3<f32>, to
 @vertex
 fn vs_water(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32) -> WaterVarying {
   return water_vertex(vertex_index, instance_index, water);
-}
-
-// Two values in nothing to one, from a point: the jitter the reflection reads its history with.
-fn hash22(point: vec2<f32>) -> vec2<f32> {
-  var p: vec3<f32> = fract(vec3<f32>(point.xyx) * vec3<f32>(0.1031, 0.103, 0.0973));
-
-  p += dot(p, p.yzx + 33.33);
-
-  return fract((p.xx + p.yz) * p.zy);
 }
 
 // A view space point's place on the screen, in texture coordinates.

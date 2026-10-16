@@ -89,7 +89,8 @@ fn scrolled(base: vec2<f32>, world: vec3<f32>, tile: f32, amplitude: f32, water:
   return base * tile + vec2<f32>(sin(angle), cos(angle)) * amplitude * water.ripple;
 }
 
-fn sample_slot(slot: u32, uv: vec2<f32>) -> vec4<f32> {
+// A slot's texture at `uv`, at the level the fragment's own derivatives pick.
+fn sample_slot_implicit(slot: u32, uv: vec2<f32>) -> vec4<f32> {
   return textureSample(textures[slot], texture_sampler, uv);
 }
 
@@ -129,11 +130,11 @@ fn read_water(
   let first: vec2<f32> = scrolled(in.uv, in.world, LAYER_TILES.x, LAYER_AMPLITUDES.x, water);
   let second: vec2<f32> = scrolled(in.uv, in.world, LAYER_TILES.y, LAYER_AMPLITUDES.y, water);
   // Sampled before any branch, where every derivative is taken alike; a texture the surface binds none of is ignored.
-  let sampled: vec4<f32> = sample_slot(surface.textures[SLOT_BASE], in.uv);
-  let normals: vec3<f32> = sample_slot(surface.textures[SLOT_WATER_NORMAL], first).xyz + sample_slot(surface.textures[SLOT_WATER_NORMAL], second).xyz - 1.0;
-  let foam_texel: vec4<f32> = sample_slot(surface.textures[SLOT_FOAM], in.uv);
-  let distorted: vec2<f32> = (sample_slot(surface.textures[SLOT_DISTORTION], first).xy +
-    sample_slot(surface.textures[SLOT_DISTORTION], second).xy) * 0.5;
+  let sampled: vec4<f32> = sample_slot_implicit(surface.textures[SLOT_BASE], in.uv);
+  let normals: vec3<f32> = sample_slot_implicit(surface.textures[SLOT_WATER_NORMAL], first).xyz + sample_slot_implicit(surface.textures[SLOT_WATER_NORMAL], second).xyz - 1.0;
+  let foam_texel: vec4<f32> = sample_slot_implicit(surface.textures[SLOT_FOAM], in.uv);
+  let distorted: vec2<f32> = (sample_slot_implicit(surface.textures[SLOT_DISTORTION], first).xy +
+    sample_slot_implicit(surface.textures[SLOT_DISTORTION], second).xy) * 0.5;
   let is_textured: f32 = camera.switches.x;
   var out: WaterFragment;
 

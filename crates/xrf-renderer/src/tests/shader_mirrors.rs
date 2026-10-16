@@ -24,7 +24,7 @@ use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_row::StaticRow;
 use crate::scene::static_scene::static_slot::StaticSlot;
 use crate::scene::static_scene::static_surface::StaticSurface;
-use crate::scene::static_scene::static_surface_build::StaticSurfaceBuilder;
+use crate::scene::static_scene::static_surface_builder::StaticSurfaceBuilder;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::shader::shader_library::ShaderLibrary;
 

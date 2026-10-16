@@ -1,3 +1,5 @@
+#import "common/noise"
+
 // What placing the puddles and drawing them share about a site: each world cell of the level surface holds at most
 // one, its keep, shape and jitter drawn from one hash of the cell.
 
@@ -20,10 +22,7 @@ fn site_hash(cell: vec2<f32>) -> vec3<f32> {
 // Where a site stands in its world cell, from nothing to one each way: a hash of its own, so its spot does not follow
 // its keep or its shape.
 fn site_jitter(cell: vec2<f32>) -> vec2<f32> {
-  let mixed: vec3<f32> = fract(vec3<f32>(cell.xyx) * vec3<f32>(0.1031, 0.1030, 0.0973));
-  let stirred: vec3<f32> = mixed + dot(mixed, mixed.yzx + 33.33);
-
-  return fract((stirred.xx + stirred.yz) * stirred.zy);
+  return hash22(cell);
 }
 
 // The world cell, whole metres over the cell size, of the first cell of a map whose corner is `corner`: the hashes,

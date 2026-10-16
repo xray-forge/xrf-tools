@@ -14,3 +14,13 @@ fn gradient_noise(pixel: vec2<f32>) -> f32 {
 fn gradient_noise_2(pixel: vec2<f32>) -> vec2<f32> {
   return vec2<f32>(gradient_noise(pixel), gradient_noise(pixel.yx + vec2<f32>(17.0, 59.0)));
 }
+
+// Two values from nothing to one a point, each its own (Hoskins, "Hash without Sine"): what a cell or a pixel draws
+// apart from its neighbours.
+fn hash22(point: vec2<f32>) -> vec2<f32> {
+  var p: vec3<f32> = fract(vec3<f32>(point.xyx) * vec3<f32>(0.1031, 0.1030, 0.0973));
+
+  p += dot(p, p.yzx + 33.33);
+
+  return fract((p.xx + p.yz) * p.zy);
+}

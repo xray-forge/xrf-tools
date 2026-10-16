@@ -340,8 +340,8 @@ fn enhanced_colour(in: WaterVarying, tilt: vec2<f32>) -> vec3<f32> {
   let noise: f32 = textureSample(perlin_map, texture_sampler, level * COLOUR_NOISE).r;
   // The noise bends the first read's repeat as well, by up to a repeat's half.
   let bent: vec2<f32> = (noise - 0.5) * COLOUR_BEND * enhanced.variation;
-  let first: vec3<f32> = sample_slot(slot, level * 0.1 + tilt + bent).rgb;
-  let second: vec3<f32> = sample_slot(slot, COLOUR_TURN * level * (0.1 * COLOUR_TILING) + tilt).rgb;
+  let first: vec3<f32> = sample_slot_implicit(slot, level * 0.1 + tilt + bent).rgb;
+  let second: vec3<f32> = sample_slot_implicit(slot, COLOUR_TURN * level * (0.1 * COLOUR_TILING) + tilt).rgb;
 
   return mix(first, second, saturate(noise) * enhanced.variation);
 }

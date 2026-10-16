@@ -12,7 +12,7 @@ use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_surface_plan::StaticSurfacePlan;
 use crate::scene::static_scene::static_terrain_slots::StaticTerrainSlots;
-use crate::scene::static_scene::static_water_surface::StaticWaterSurfaceBuilder;
+use crate::scene::static_scene::static_water_surface_builder::StaticWaterSurfaceBuilder;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
 

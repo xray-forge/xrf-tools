@@ -8,7 +8,7 @@ use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
 use crate::scene::static_scene::static_scene_writer::StaticSceneWriter;
 use crate::scene::static_scene::static_surface::StaticSurface;
-use crate::scene::static_scene::static_surface_build::StaticSurfaceBuilder;
+use crate::scene::static_scene::static_surface_builder::StaticSurfaceBuilder;
 use crate::scene::static_scene::static_surface_key::StaticSurfaceKey;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::scene::static_scene::static_surface_use::StaticSurfaceUse;

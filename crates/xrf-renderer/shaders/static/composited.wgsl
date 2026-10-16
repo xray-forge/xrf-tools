@@ -69,8 +69,8 @@ fn vs_model_lit(@builtin(vertex_index) vertex_index: u32, @builtin(instance_inde
 @vertex
 fn vs_baked_lit(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) instance_index: u32)
   -> GBufferVarying {
-  var out: GBufferVarying = baked_vertex(vertex_index, instance_index);
   let pulled: PulledVertex = pull(vertex_index, instance_index);
+  var out: GBufferVarying = baked_vertex(pulled, vertex_index);
 
   if ((surfaces[pulled.surface].flags & SURFACE_HAS_LIGHTMAP) == 0u) {
     let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));

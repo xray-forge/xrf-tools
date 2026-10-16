@@ -1,15 +1,9 @@
 #import "common/foliage_wind"
+#import "common/math"
 #import "generated/structs"
 
 // A tree's vertex as the wind sways it, its wind passed in, so the G-buffer's draws and the trace's swaying trees move
 // it alike.
-
-// `calc_cyclic`: a wave from minus one to one over each whole turn, a parabola rather than a sine.
-fn cyclic(phase: f32) -> f32 {
-  let f: f32 = fract(phase) * 2.8284271 - 1.4142136;
-
-  return f * f - 1.0;
-}
 
 // What a vertex is to the foliage motion, in a `foliage` pair's `x`: not foliage, a trunk, or a branch or leaf.
 const FOLIAGE_NONE: f32 = 0.0;

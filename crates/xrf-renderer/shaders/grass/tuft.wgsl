@@ -1,17 +1,11 @@
 #import "common/foliage_wind"
+#import "common/math"
 #import "grass/records"
 
 // A tuft as the cull keeps it (`grass/planting`): its place and yaw, then its size, hemisphere, sun, and its wave with
 // its ground's normal packed in one float; stood, turned, scaled and swayed as the grass draw stands it, so what the
 // trace's cards hold is where the frame draws it. How the grass sways (`GrassWind`) is declared by
 // `pass/grass_wind_uniform.rs`, in the engine's space.
-
-// `calc_cyclic`: a wave from minus one to one over each whole turn, a parabola rather than a sine.
-fn cyclic(phase: f32) -> f32 {
-  let f: f32 = fract(phase) * 2.8284271 - 1.4142136;
-
-  return f * f - 1.0;
-}
 
 // A waving tuft's vertex leant across the ground by its wave's `wind`, as far as its height over the foot times the
 // wave at its place, and as much of that as its own height in the model lets it. The wave runs through the engine's
