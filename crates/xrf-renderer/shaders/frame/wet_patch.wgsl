@@ -21,6 +21,21 @@ fn engine_value(vanilla: f32, extended: f32) -> f32 {
   return select(vanilla, extended, wet.is_extended > 0.5);
 }
 
+// Metres of view depth past which the engine's splashes and flow wet nothing.
+fn engine_reach() -> f32 {
+  return engine_value(20.0, 25.0);
+}
+
+// Metres of view depth past which nothing wets a surface: the engine's splashes, the reflections' reach where they
+// trace and the puddles' distance where they gather. The reach and the distance run from the camera, never shorter
+// than the view depth, so a point this deep is past them too.
+fn wet_limit() -> f32 {
+  let traced: f32 = select(0.0, wet.reach.y, wet.reach.x > 0.5);
+  let puddled: f32 = select(0.0, wet.puddle_state.x, wet.puddle_state.y > 0.0);
+
+  return max(engine_reach(), max(traced, puddled));
+}
+
 // How much of the rain reaches a point facing `world_normal`, from none to one, by the cover as `cover_reached` reads
 // it, the wetness creeping in under a cover by the level's soak; `pixel` turns the creep's taps.
 fn rain_reached(world: vec3<f32>, world_normal: vec3<f32>, pixel: vec2<f32>) -> f32 {
@@ -73,7 +88,7 @@ fn engine_wetting(
   // The engine's axes: `z` negated.
   let place: vec3<f32> = vec3<f32>(world.x, world.y, -world.z);
   let facing: vec3<f32> = vec3<f32>(world_normal.x, world_normal.y, -world_normal.z);
-  let fade: f32 = 1.0 - smoothstep(5.0, engine_value(20.0, 25.0), -position.z);
+  let fade: f32 = 1.0 - smoothstep(5.0, engine_reach(), -position.z);
   // `-dot(Ldynamic_dir, N)`, the rain falling straight down.
   let up: f32 = facing.y;
   let near: f32 = reached * fade * fade * saturate(up * 10.0 + 10.0 * 0.5 + 0.5);
@@ -261,6 +276,12 @@ fn fs_wet_patch(in: FullscreenVarying) -> EngineWetTargets {
   let size: vec2<f32> = camera.viewport.xy;
   let ndc: vec2<f32> = vec2<f32>(in.clip.x / size.x * 2.0 - 1.0, 1.0 - in.clip.y / size.y * 2.0);
   let world: vec3<f32> = camera_unproject(ndc, depth);
+
+  // Past every wetting's reach: the normal as drawn, dry.
+  if (-position.z >= wet_limit()) {
+    return EngineWetTargets(vec4<f32>(octahedral_encode(normalize(normal)), 0.0, 0.0), vec4<f32>(0.0));
+  }
+
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let world_normal: vec3<f32> = normalize(rotation * normal);
   let reached: f32 = rain_reached(world, world_normal, in.clip.xy);
@@ -717,6 +738,16 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   let distance: f32 = -position.z;
   let gradients: PlaceGradients = PlaceGradients(dpdx(place.xz), dpdy(place.xz));
   let footprint: f32 = max(length(gradients.across), length(gradients.down));
+
+  // Past every wetting's reach: the normal as drawn, no gloss and no puddle, darkened only under the level's water.
+  if (distance >= wet_limit()) {
+    return WetPatchTargets(
+      vec4<f32>(octahedral_encode(normalize(normal)), 0.0, dot(albedo.rgb, vec3<f32>(0.33)) * under_water(world)),
+      vec4<f32>(0.0),
+      vec4<f32>(0.0),
+    );
+  }
+
   let reached: f32 = rain_reached(world, world_normal, in.clip.xy);
   let wetting: EngineWetting = engine_wetting(normal, position, world, world_normal, reached);
   // How wet the engine reads the surface, by the albedo's brightness, as far as the reflections want it.
