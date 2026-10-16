@@ -5,14 +5,13 @@ import { Nullable } from "@xrf/types";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { LevelConsoleDefaults, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { XrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { ILevelLook, toGameLevelLook } from "@/core/level/lib/look/level-look";
 import {
   ELevelLookSource,
-  ILevelLook,
   ILevelLookChoice,
   resolveLevelLook,
-  toGameLevelLook,
   toLevelLookChoice,
-} from "@/core/level/lib/look";
+} from "@/core/level/lib/look/level-look-choice";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings";

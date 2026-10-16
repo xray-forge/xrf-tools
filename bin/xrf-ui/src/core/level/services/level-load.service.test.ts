@@ -5,7 +5,7 @@ import { createRoots } from "@/core/assets/lib";
 import { LevelSource, LevelSpawnObjectsDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { EMPTY_LEVEL_SPAWN_REPORT, isLevelSpawnReading } from "@/core/level/lib/spawn";
+import { EMPTY_LEVEL_SPAWN_REPORT, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
 import { mockLevelSpawnObject, mockSectorOutline, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";

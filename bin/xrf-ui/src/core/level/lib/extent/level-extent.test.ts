@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ILevelBox, toBoxFloor, toBoxReach, toLevelBox, toOriginReach } from "@/core/level/lib/extent";
+import { ILevelBox, toBoxFloor, toBoxReach, toLevelBox, toOriginReach } from "@/core/level/lib/extent/level-extent";
 import { mockVisualBounds } from "@/fixtures/mocks/visual.mocks";
 
 function boxOf(min: [number, number, number], max: [number, number, number]): ILevelBox {

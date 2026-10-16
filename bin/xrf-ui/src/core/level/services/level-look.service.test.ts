@@ -4,7 +4,8 @@ import { Container } from "@wirestate/core";
 
 import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine, EXrayEngineEvidence } from "@/core/ipc/types/xrf-engine-target";
-import { ELevelLookSource, MONOLITH_LEVEL_BLOOM, OPENXRAY_LEVEL_BLOOM } from "@/core/level/lib/look";
+import { MONOLITH_LEVEL_BLOOM, OPENXRAY_LEVEL_BLOOM } from "@/core/level/lib/look/level-look";
+import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";

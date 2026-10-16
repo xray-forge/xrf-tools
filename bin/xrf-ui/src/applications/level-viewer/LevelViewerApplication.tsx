@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
-import { describeLevelSource } from "@/core/level/lib/source";
+import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { LevelLoadService } from "@/core/level/services";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
