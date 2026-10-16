@@ -7,6 +7,7 @@ use crate::graph::resource::{GraphBuffer, GraphTexture};
 use crate::param::PassParameters;
 
 /// Declares a raster pass: its attachments and accesses, then what it draws.
+#[must_use = "a pass is declared only by its `record`"]
 pub struct RasterPassBuilder<'g, 'a> {
   graph: &'g mut FrameGraph<'a>,
   declaration: GraphPassDeclaration,

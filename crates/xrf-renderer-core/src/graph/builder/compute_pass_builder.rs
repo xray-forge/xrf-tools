@@ -7,6 +7,7 @@ use crate::graph::resource::{GraphBuffer, GraphTexture};
 use crate::param::PassParameters;
 
 /// Declares a compute pass: its accesses, then what it dispatches.
+#[must_use = "a pass is declared only by its `record`"]
 pub struct ComputePassBuilder<'g, 'a> {
   graph: &'g mut FrameGraph<'a>,
   declaration: GraphPassDeclaration,

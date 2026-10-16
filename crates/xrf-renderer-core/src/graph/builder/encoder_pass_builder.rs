@@ -6,6 +6,7 @@ use crate::graph::record::GraphPassWork;
 use crate::graph::resource::{GraphBuffer, GraphTexture};
 
 /// Declares an encoder pass: its accesses, then what it records straight into the encoder.
+#[must_use = "a pass is declared only by its `record`"]
 pub struct EncoderPassBuilder<'g, 'a> {
   graph: &'g mut FrameGraph<'a>,
   declaration: GraphPassDeclaration,
