@@ -795,6 +795,8 @@ impl RenderThread {
     };
 
     if now.duration_since(self.textures_swept) >= TEXTURE_SWEEP {
+      profiling::scope!("texture sweep");
+
       self.textures_swept = now;
 
       let sampled: HashSet<u32> = self.scenes.values().flat_map(LevelScene::list_texture_slots).collect();
@@ -809,6 +811,8 @@ impl RenderThread {
     }
 
     let is_opening: bool = self.scenes.values().any(|scene| !scene.is_ready(&gpu.textures));
+
+    profiling::scope!("texture uploads");
 
     gpu.textures.update(
       (&gpu.context.device, &gpu.context.queue),
@@ -850,6 +854,8 @@ impl RenderThread {
       .as_ref()
       .is_none_or(|(asked, _)| now.duration_since(*asked) >= ALLOCATOR_REPORT_EVERY)
     {
+      profiling::scope!("allocator report");
+
       let last: Option<&GpuMemory> = self.allocator_report.as_ref().and_then(|(_, held)| held.as_ref());
       let held: Option<GpuMemory> = GpuMemory::read((&gpu.context.adapter, &gpu.context.device), last);
 
@@ -857,6 +863,8 @@ impl RenderThread {
     }
 
     let allocator: Option<&GpuMemory> = self.allocator_report.as_ref().and_then(|(_, held)| held.as_ref());
+
+    profiling::scope!("frame report");
 
     for viewport in self.viewports.values_mut() {
       viewport.answer_readbacks(&self.scenes);
