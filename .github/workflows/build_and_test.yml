@@ -27,6 +27,8 @@ jobs:
 
       - uses: ./.github/actions/pinned-toolchain
 
+      - uses: ./.github/actions/native-sdks
+
       - uses: Swatinem/rust-cache@v2
         with:
           cache-workspace-crates: true
@@ -36,10 +38,10 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run linter
-        run: cargo clippy --workspace --all-targets --locked --features xrf-app/typescript-bindings,xrf-job/rayon -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked --features xrf-app/typescript-bindings,xrf-app/dlss,xrf-job/rayon -- -D warnings
 
       - name: Run workspace tests and verify frontend bindings
-        run: cargo test --verbose --workspace --lib --bins --locked --features xrf-app/typescript-bindings,xrf-job/rayon
+        run: cargo test --verbose --workspace --lib --bins --locked --features xrf-app/typescript-bindings,xrf-app/dlss,xrf-job/rayon
 
       - name: Discard trybuild scratch crates
         if: always()
@@ -168,6 +170,8 @@ jobs:
 
       - uses: ./.github/actions/pinned-toolchain
 
+      - uses: ./.github/actions/native-sdks
+
       - uses: Swatinem/rust-cache@v2
         with:
           cache-workspace-crates: true
@@ -185,17 +189,19 @@ jobs:
 
       - name: Build application
         working-directory: bin/xrf-app
-        run: ..\xrf-ui\node_modules\.bin\tauri.cmd build --ci --no-bundle --config tauri.ci.conf.json
+        run: ..\xrf-ui\node_modules\.bin\tauri.cmd build --ci --no-bundle --features dlss --config tauri.ci.conf.json --config tauri.dlss.conf.json
 
-      - name: Mark the application binary as a development build
-        run: Move-Item target/release/xrf-app.exe target/release/xrf-app-dev.exe
+      # The executable with the renderer's resources beside it, which it cannot draw everything without.
+      - name: Package the application as a development build
+        run: node cli/package/app.mjs --name xrf-app-dev-windows-x64
 
-      - name: Upload the application binary
+      - name: Upload the application archive
         uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
           name: xrf-app
-          path: target/release/xrf-app-dev.exe
+          path: target/package/xrf-app-dev-windows-x64.zip
+          compression-level: 0
           retention-days: 1
 
   check-and-build-linux:
@@ -276,11 +282,11 @@ jobs:
         with:
           name: xrf-app
 
-      - name: Publish the nightly application binary
+      - name: Publish the nightly application archive
         if: ${{ steps.update-nightly-tag.outcome == 'success' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload --clobber nightly xrf-app-dev.exe
+        run: gh release upload --clobber nightly xrf-app-dev-windows-x64.zip
 
   release-e2e:
     if: ${{ github.ref_name == 'main' && github.event_name != 'pull_request' }}
