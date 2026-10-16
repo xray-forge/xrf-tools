@@ -17,11 +17,11 @@ wgpu = { workspace = true }
 xrf-error = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
-windows-core = { workspace = true, optional = true }
+windows-core = { version = "0.62.2", optional = true }
 
 [build-dependencies]
-bindgen = { workspace = true, optional = true }
-cc = { workspace = true, optional = true }
+bindgen = { version = "0.73.2", optional = true }
+cc = { version = "1.4.5", optional = true }
 
 [features]
 # Builds against NVIDIA's DLSS SDK (`DLSS_SDK`, `VULKAN_SDK` and libclang, as DEVELOPMENT.md sets them up); without it

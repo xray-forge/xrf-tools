@@ -11,7 +11,7 @@ path = "src/lib.rs"
 [dependencies]
 byteorder = { workspace = true }
 derive_more = { workspace = true, features = ["display", "from_str"] }
-enum-map = "3.1.0"
+enum-map = { workspace = true }
 lazy_static = "1.5.0"
 log = { workspace = true }
 phf = { version = "0.14.0", features = ["macros"] }

@@ -64,50 +64,40 @@ rust-version = "1.99.0"
 
 [workspace.dependencies]
 ash = "0.38.0"
-bindgen = "0.73.2"
-cc = "1.4.5"
+crc32fast = "1.5.1"
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 byteorder = "1.5.0"
 bytemuck = { version = "1.25.2", features = ["derive"] }
-bytes = "1.12.1"
-ddsfile = "0.5.2"
 derive_more = "2.1.1"
-dirs = "7.0.0"
+enum-map = "3.1.0"
 env_logger = "0.11.11"
 glam = { version = "0.33.12", features = ["bytemuck"] }
 fileslice = { version = "0.8.0", default-features = false }
-getrandom = "0.4.3"
-http-body-util = "0.1.5"
-hyper = { version = "1.11.1", features = ["http1", "server"] }
-hyper-util = { version = "0.1.20", features = ["tokio"] }
 image = { version = "0.25.10", default-features = false }
-image_dds = "0.7.2"
 indexmap = { version = "2.14.2", features = ["serde"] }
 log = "0.4.34"
 notify = "8.2.0"
 naga = { version = "30.0.1", features = ["wgsl-in"] }
-offset-allocator = "0.2.0"
 lzokay = { version = "2.0.1", default-features = false, features = ["std", "compress", "decompress"] }
 pollster = "0.4.0"
+proc-macro2 = "1.0.107"
 profiling = "1.0.18"
-raw-window-handle = "0.6.2"
+quote = "1.0.47"
 rayon = "1.12.0"
-regex = "1.13.1"
 serde = { version = "1.0.229", features = ["derive", "rc"] }
 serde_json = "1.0.151"
+syn = "3.0.5"
 sysinfo = "0.39.6"
 specta = { version = "=2.0.0-rc.25", features = ["derive", "serde_json", "uuid"] }
 specta-serde = "0.0.12"
 specta-typescript = "0.0.12"
 specta-util = "0.0.12"
+tauri = "2.12.0"
 tauri-specta = { version = "=2.0.0-rc.25", features = ["typescript"] }
-tracy-client = "=0.18.5"
-tracy-client-sys = "=0.29.0"
-tokio = { version = "1.53.1", features = ["net", "rt"] }
+trybuild = "1.0.121"
 uuid = "1.26.1"
 walkdir = "2.5.0"
 windows = "0.62.2"
-windows-core = "0.62.2"
 wgpu = { version = "30.0.1", default-features = false, features = ["std", "parking_lot", "dx12", "vulkan", "wgsl"] }
 xrf-animation-envelope = { path = "crates/xrf-animation-envelope" }
 xrf-anm = { path = "crates/xrf-anm" }

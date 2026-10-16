@@ -9,13 +9,15 @@ rust-version.workspace = true
 bytemuck = { workspace = true }
 glam = { workspace = true }
 naga = { workspace = true }
-offset-allocator = { workspace = true }
+offset-allocator = "0.2.0"
 pollster = { workspace = true }
 profiling = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }
-tracy-client = { workspace = true, optional = true }
-tracy-client-sys = { workspace = true, optional = true }
+# Tracy 0.14's protocol, which the workspace's Tracy tools speak and whose exporter reads GPU zones; the `-sys` crate is a
+# direct dependency only to pin it.
+tracy-client = { version = "=0.18.5", optional = true }
+tracy-client-sys = { version = "=0.29.0", optional = true }
 wgpu = { workspace = true }
 xrf-error = { workspace = true }
 xrf-renderer-derive = { workspace = true }

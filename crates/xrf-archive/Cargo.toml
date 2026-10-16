@@ -7,10 +7,10 @@ rust-version.workspace = true
 
 [dependencies]
 byteorder = { workspace = true }
-crc32fast = "1.5.1"
+crc32fast = { workspace = true }
 log = { workspace = true }
 lzokay = { workspace = true }
-regex = { workspace = true }
+regex = "1.13.1"
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 walkdir = { workspace = true }

@@ -10,7 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 byteorder = { workspace = true }
-enum-map = "3.1.0"
+enum-map = { workspace = true }
 log = { workspace = true }
 derive_more = { workspace = true, features = ["display", "from_str"] }
 glam = { workspace = true }

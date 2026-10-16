@@ -17,7 +17,7 @@ log = { workspace = true }
 notify = { workspace = true }
 pollster = { workspace = true }
 profiling = { workspace = true }
-raw-window-handle = { workspace = true }
+raw-window-handle = "0.6.2"
 rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
@@ -41,7 +41,6 @@ windows = { workspace = true, features = ["Win32_Graphics_Dxgi"] }
 [dev-dependencies]
 naga = { workspace = true }
 serde_json = { workspace = true }
-xrf-animation-envelope = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
