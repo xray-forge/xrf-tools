@@ -45,7 +45,6 @@ impl WeatherMixer<'_> {
     let (a, b) = (a.descriptor, b.descriptor);
     let f: f32 = Self::weigh(time, between);
     let scalar = |a: f32, b: f32| (1.0 - f) * a + f * b;
-    let vector = |a: &[f32], b: &[f32]| -> Vec<f32> { a.iter().zip(b).map(|(a, b)| scalar(*a, *b)).collect() };
     // A value some modifier reaches is the mix plus what they add, of which the environment keeps its share.
     let modify = |flag: u16, value: f32, added: f32| {
       if modified.has(flag) {
@@ -54,7 +53,7 @@ impl WeatherMixer<'_> {
         value
       }
     };
-    let modify_vector = |flag: u16, value: Vec<f32>, added: [f32; 3]| -> [f32; 3] {
+    let modify_vector = |flag: u16, value: [f32; 3], added: [f32; 3]| -> [f32; 3] {
       std::array::from_fn(|axis| modify(flag, value[axis], added[axis]))
     };
     let far_plane: f32 = modify(
@@ -68,13 +67,10 @@ impl WeatherMixer<'_> {
       modified.fog_density,
     );
     let hemi_color: [f32; 4] = {
-      let [red, green, blue] = modify_vector(
-        WeatherModifier::HEMI_COLOR,
-        vector(&a.hemi_color, &b.hemi_color),
-        modified.hemi_color,
-      );
+      let [red, green, blue, alpha] = lerp(f, &a.hemi_color, &b.hemi_color);
+      let [red, green, blue] = modify_vector(WeatherModifier::HEMI_COLOR, [red, green, blue], modified.hemi_color);
 
-      [red, green, blue, scalar(a.hemi_color[3], b.hemi_color[3])]
+      [red, green, blue, alpha]
     };
     let fog_distance: f32 = match self.engine {
       XrayEngine::Vanilla => scalar(a.fog_distance, b.fog_distance),
@@ -94,15 +90,15 @@ impl WeatherMixer<'_> {
     WeatherMix {
       ambient_color: modify_vector(
         WeatherModifier::AMBIENT_COLOR,
-        vector(&a.ambient_color, &b.ambient_color),
+        lerp(f, &a.ambient_color, &b.ambient_color),
         modified.ambient,
       ),
-      clouds_color: to_array(&vector(&a.clouds_color, &b.clouds_color)),
+      clouds_color: lerp(f, &a.clouds_color, &b.clouds_color),
       clouds_rotation: scalar(a.clouds_rotation, b.clouds_rotation),
       far_plane,
       fog_color: modify_vector(
         WeatherModifier::FOG_COLOR,
-        vector(&a.fog_color, &b.fog_color),
+        lerp(f, &a.fog_color, &b.fog_color),
         modified.fog_color,
       ),
       fog_density,
@@ -113,7 +109,7 @@ impl WeatherMixer<'_> {
       between,
       sky_color: modify_vector(
         WeatherModifier::SKY_COLOR,
-        vector(&a.sky_color, &b.sky_color),
+        lerp(f, &a.sky_color, &b.sky_color),
         modified.sky_color,
       ),
       sky_rotation: scalar(a.sky_rotation, b.sky_rotation),
@@ -123,7 +119,7 @@ impl WeatherMixer<'_> {
       tree_amplitude: scalar(a.tree_amplitude, b.tree_amplitude),
       tree_rotation: scalar(a.tree_rotation, b.tree_rotation),
       tree_speed: scalar(a.tree_speed, b.tree_speed),
-      tree_wave: to_array(&vector(&a.tree_wave, &b.tree_wave)),
+      tree_wave: lerp(f, &a.tree_wave, &b.tree_wave),
       water_intensity: scalar(a.water_intensity, b.water_intensity),
       sun_shafts_intensity: scalar(a.sun_shafts_intensity, b.sun_shafts_intensity),
       thunderbolt_collection: if f < 0.5 {
@@ -134,7 +130,7 @@ impl WeatherMixer<'_> {
       .clone(),
       thunderbolt_duration: scalar(a.thunderbolt_duration, b.thunderbolt_duration),
       thunderbolt_period: scalar(a.thunderbolt_period, b.thunderbolt_period),
-      rain_color: to_array(&vector(&a.rain_color, &b.rain_color)),
+      rain_color: lerp(f, &a.rain_color, &b.rain_color),
       rain_density: scalar(a.rain_density, b.rain_density),
       wind_direction: scalar(a.wind_direction, b.wind_direction),
       wind_velocity: scalar(a.wind_velocity, b.wind_velocity),
@@ -219,8 +215,9 @@ impl WeatherMixer<'_> {
   }
 }
 
-fn to_array<const N: usize>(values: &[f32]) -> [f32; N] {
-  std::array::from_fn(|index| values.get(index).copied().unwrap_or(0.0))
+/// Each of two values' components mixed `f` of the way from the first to the second.
+fn lerp<const N: usize>(f: f32, a: &[f32; N], b: &[f32; N]) -> [f32; N] {
+  std::array::from_fn(|index| (1.0 - f) * a[index] + f * b[index])
 }
 
 /// A direction at unit length, straight down where it has none.
