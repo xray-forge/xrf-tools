@@ -929,10 +929,6 @@ impl RenderThread {
     }
   }
 
-  /// Draws every window's viewports in one frame graph and presents each window: acquires every window's image first,
-  /// skipping a window that cannot give one (minimised, occluded, outdated, lost) rather than waiting for it; readies
-  /// each of their viewports' frames; declares the viewports' frames, then each window's composition and captures;
-  /// submits once; and presents every window. `update` is what the frame spent before any window.
   /// Readies each window this frame draws: its swapchain configured for its size now, made where it is new or was
   /// lost, the viewports laid out in it with the part each shows, and its page's backdrop; its image is acquired later.
   fn ready_windows(&mut self, encoder: &mut FrameEncoder) -> Vec<WindowFrame> {

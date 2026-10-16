@@ -18,7 +18,7 @@ pub enum RenderDebugView {
   Hemi,
   /// The baked sun occlusion.
   Sun,
-  /// The lighting model slice, `(class + 0.5) / 4`.
+  /// The lighting model slice the G-buffer keeps (`material_slice`).
   Material,
   /// View distance, logarithmic: near dark, far light.
   Depth,

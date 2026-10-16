@@ -252,7 +252,10 @@ export type RenderAssetPreview = {
    * level viewer's own.
    */
   backdrop: [number | null, number | null, number | null] | null;
-  /** The backdrop laid out as a checkerboard with a second colour, as behind a picture with alpha; none for a plain one. */
+  /**
+   * The backdrop laid out as a checkerboard with a second colour, as behind a picture with alpha; none for a plain
+   * one.
+   */
   backdropSquares: RenderBackdropSquares | null;
   /** Times a uv checker repeats over a surface's base coordinate, drawn in place of its textures; zero for none. */
   checker: number | null;
@@ -411,7 +414,7 @@ export enum ERenderDebugView {
   HEMI = "hemi",
   /** The baked sun occlusion. */
   SUN = "sun",
-  /** The lighting model slice, `(class + 0.5) / 4`. */
+  /** The lighting model slice the G-buffer keeps (`material_slice`). */
   MATERIAL = "material",
   /** View distance, logarithmic: near dark, far light. */
   DEPTH = "depth",
@@ -673,19 +676,22 @@ export type RenderFoliageSettings = {
   sssColor: number | null;
 };
 
-/** Where the render thread's time goes a frame, mean milliseconds over a report's span, in the order it spends them. */
+/** Where the render thread's time goes a frame, mean milliseconds over a report's span. */
 export type RenderFramePhases = {
-  /** Moving the cameras and weathers on, and uploading the textures that arrived. */
+  /**
+   * Moving the cameras and weathers on, feeding the scenes what the world posted, and uploading the textures that
+   * arrived.
+   */
   update: number | null;
   /** Waiting for the window's next image. */
   acquire: number | null;
-  /** Taking in what the level's workers loaded. */
+  /** Asking for what each view draws with: its overlays, its weather's textures and the heights its parallax reads. */
   load: number | null;
   /** Readying the frame: its uniforms, culling arguments, lights, particles and water. */
   prepare: number | null;
-  /** Recording the level's passes. */
+  /** Recording the level's passes and the window's own pass, which every viewport's picture is drawn into. */
   record: number | null;
-  /** Recording the window's own pass, which every viewport's picture is drawn into. */
+  /** Readying the window pass's pipelines for each window's image format. */
   compose: number | null;
   /** Encoding what was recorded into the graphics API's commands, which wgpu leaves until the encoder is finished. */
   encode: number | null;
@@ -861,8 +867,8 @@ export type RenderGraphReport = {
 };
 
 /**
- * Which of the frame graph's mechanisms every frame compiles with, each to be turned off alone, or all for serial mode,
- * to bisect a difference in a capture.
+ * Which of the frame graph's mechanisms every frame compiles with, each to be turned off alone, or all for serial
+ * mode, to bisect a difference in a capture.
  */
 export type RenderGraphSettings = {
   /** Drops passes whose effects nothing reads. */
@@ -1241,8 +1247,8 @@ export enum ERenderParallaxMode {
   /** The engines' own: steep parallax on a level surface whose texture asks for it, none on terrain. */
   ENGINE = "engine",
   /**
-   * Terrain marched over its details' heights, each layer by its own, self-shadowed towards the sun, its layers blended
-   * by height.
+   * Terrain marched over its details' heights, each layer by its own, self-shadowed towards the sun, its layers
+   * blended by height.
    */
   ENHANCED = "enhanced",
 }
@@ -1265,7 +1271,10 @@ export type RenderParallaxSettings = {
   isRefined: boolean;
   /** How much of the sun the enhanced parallax's own relief keeps from its hollows: none to all. */
   shadow: number | null;
-  /** How far a terrain's layers blend by height, the one standing highest showing through: none, the mask alone, to all. */
+  /**
+   * How far a terrain's layers blend by height, the one standing highest showing through: none, the mask alone, to
+   * all.
+   */
   blending: number | null;
   /** How much the enhanced parallax darkens the low ground of its relief: none to its whole share. */
   cavity: number | null;
@@ -1453,8 +1462,8 @@ export enum ERenderReflectionTraceQuality {
 export type RenderReflectionTraceQuality = `${ERenderReflectionTraceQuality}`;
 
 /**
- * How much smaller than the viewport the scene is drawn and then upscaled: the upscalers' quality modes, by the ratio of
- * the viewport's side to the drawing's.
+ * How much smaller than the viewport the scene is drawn and then upscaled: the upscalers' quality modes, by the ratio
+ * of the viewport's side to the drawing's.
  */
 export enum ERenderScale {
   NATIVE = "native",
@@ -1523,8 +1532,8 @@ export type RenderSettings = {
   gpu: RenderGpu | null;
   /**
    * Milliseconds of GPU time each frame gives at least the work drawn once in so many frames that may wait: the
-   * shadows' cascades and faces, the overhead maps, the surroundings' faces, the sky's refill. A frame held to a cap or
-   * the display's refresh gives it what headroom it leaves, up to `PeriodicBudget::CEILING`.
+   * shadows' cascades and faces, the overhead maps, the surroundings' faces, the sky's refill. A frame held to a cap
+   * or the display's refresh gives it what headroom it leaves, up to `PeriodicBudget::CEILING`.
    */
   periodicBudget: number | null;
   /** How the level's surfaces sample their textures, which every viewport shares. */
@@ -1718,8 +1727,8 @@ export enum ERenderTonemapMode {
 export type RenderTonemapMode = `${ERenderTonemapMode}`;
 
 /**
- * What the scene is drawn at, a share of the viewport upscaled to it, how sharply the upscaled frame is finished, which
- * model DLSS upscales with, and whether DLSS reconstructs rays as it upscales.
+ * What the scene is drawn at, a share of the viewport upscaled to it, how sharply the upscaled frame is finished,
+ * which model DLSS upscales with, and whether DLSS reconstructs rays as it upscales.
  */
 export type RenderUpscalingSettings = {
   scale: RenderScale;

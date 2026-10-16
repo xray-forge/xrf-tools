@@ -1,7 +1,9 @@
 //! The native renderer: one GPU and one render thread drawing viewports into the application's windows.
 //!
-//! It takes what it draws in memory and never opens a file, and knows nothing of the application hosting it beyond
-//! [`RenderWindowHost`], [`RenderEventSink`] and the [`RenderBundle`] of files it ships with.
+//! It takes what it draws in memory, from the [`RenderLevelSource`] and [`RenderAssetSource`] the host gives it, and
+//! knows the application hosting it only through its traits: [`RenderWindowHost`], [`RenderEventSink`], [`RenderWorld`],
+//! [`RenderCacheStore`], the [`RenderBundle`] of files it ships with, and the [`RenderWorkers`] it loads on. A debug
+//! build also reads its shaders from the checkout's `shaders/`, and watches them for changes.
 
 pub(crate) mod camera;
 pub(crate) mod context;

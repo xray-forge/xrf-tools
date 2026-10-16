@@ -25,7 +25,7 @@ pub struct ViewTargets {
   pub depth: wgpu::TextureView,
   /// What the lights accumulate: diffuse in colour, specular in alpha.
   pub light: wgpu::TextureView,
-  /// The scene combine finished, tonemapped, before it is put into the window.
+  /// The scene combine finished: tonemapped, or linear light where the window pass tonemaps it.
   pub scene: wgpu::TextureView,
 }
 

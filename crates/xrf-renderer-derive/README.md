@@ -50,8 +50,9 @@ struct Box3 {
 
 Declares one bind group of a pass as a struct: a binding per field, at the group `#[parameters(group = G)]` names,
 each numbered one past the field before unless `#[binding(N)]` numbers it (an index taken twice is refused), so passes
-drawing with one module can keep their bindings apart. From it come the bind group's layout, the WGSL that declares its bindings (named as the fields are), the graph
-accesses the pass makes, and what each binding binds this frame. Field kinds:
+drawing with one module can keep their bindings apart. From it come the bind group's layout, the WGSL that declares its
+bindings (named as the fields are), the graph accesses the pass makes, and what each binding binds this frame. Field
+kinds:
 
 - `#[uniform]` on a `UniformBinding<'_, T>`: a value pushed to the upload ring this frame, read at its dynamic offset;
   `var<uniform> name: T;`.
@@ -65,6 +66,8 @@ accesses the pass makes, and what each binding binds this frame. Field kinds:
 - `#[storage_texture(dimension, format, access)]` on a `GraphTexture`: `d2`, `d2_array` or `d3`, a format such as
   `rgba16float`, and `read`, `write` or `read_write`.
 - `#[sampler(kind)]` on a `&wgpu::Sampler`: `filtering`, `non_filtering` or `comparison`.
+- `#[acceleration_structure]` on an `AccelerationStructureBinding<'_>`: a top-level structure rays are traced against,
+  `acceleration_structure`; the struct's `ENABLES` then names `wgpu_ray_query`.
 
 A binding is visible to every stage, except a writable one, which a vertex shader may not hold. A field's name is its
 WGSL name, so it must not be one of WGSL's reserved words (`target`, `filter`, …); the naga check in a pass's tests is
