@@ -1,11 +1,14 @@
 import { default as TextureIcon } from "@mui/icons-material/Texture";
+import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { ERenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelParallaxSettings } from "@/core/level/components/preview/LevelParallaxSettings";
-import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/use-level-render-features";
+import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ELevelShading, getLevelShading, LEVEL_SHADINGS } from "@/core/level/lib/view/level-shading";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { LevelViewService } from "@/core/level/services/level-view.service";
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
@@ -17,19 +20,6 @@ const SHADING_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ELevelShading>> = LEVE
   value,
 }));
 
-interface ILevelShadingActionProps extends BaseComponentProps {
-  options: ILevelViewOptions;
-  /** The parallax this view draws with while its toggle is on: the settings' and what the view sets over them. */
-  parallax: TRenderParallaxSettings;
-  /** What the view sets over the settings, the parallax's among them. */
-  features: ILevelFeatureOptions;
-  onChangeFeatures: (features: ILevelFeatureOptions) => void;
-  /** What the viewport shows of its surfaces. */
-  shading: ELevelShading;
-  onToggle: (option: keyof ILevelViewOptions) => void;
-  onChangeShading: (shading: ELevelShading) => void;
-}
-
 /**
  * How the level is shaded: the frame as dressed, as clay or by shader, or one of the targets it is built from; and the
  * surfaces as wireframe, with their bumps and parallax, under their wall marks, whichever of those is shown.
@@ -38,14 +28,13 @@ export function LevelShadingAction({
   "data-testid": dataTestId = "level-shading-action",
   id,
   className,
-  options,
-  parallax,
-  features,
-  shading,
-  onToggle,
-  onChangeShading,
-  onChangeFeatures,
-}: ILevelShadingActionProps): ReactElement {
+}: BaseComponentProps): ReactElement {
+  const viewService: LevelViewService = useInjection(LevelViewService);
+  const { settings, features } = useLevelRenderFeatures();
+
+  const options: ILevelViewOptions = viewService.options;
+  const shading: ELevelShading = viewService.shading;
+  const parallax: TRenderParallaxSettings = toLevelModeFeature("parallax", settings, features);
   const { isWireframe, isBumped, isWallmarked } = options;
   const isParallaxAvailable: boolean = parallax.isSteep || parallax.mode === ERenderParallaxMode.ENHANCED;
   const isParallaxed: boolean = options.isParallaxed && isParallaxAvailable;
@@ -81,16 +70,20 @@ export function LevelShadingAction({
         options={SHADING_OPTIONS}
         value={shading}
         filterFrom={SHADING_OPTIONS.length + 1}
-        onChange={onChangeShading}
+        onChange={viewService.setShading}
       />
 
-      <EditorPopoverGroupSection label={"Wireframe"} isOn={isWireframe} onToggle={() => onToggle("isWireframe")} />
+      <EditorPopoverGroupSection
+        label={"Wireframe"}
+        isOn={isWireframe}
+        onToggle={() => viewService.toggleOption("isWireframe")}
+      />
 
       <EditorPopoverGroupSection
         label={"Bumps"}
         description={isBumped ? "Shaded with the bump pairs their textures declare" : "Shaded flat, as though unbound"}
         isOn={isBumped}
-        onToggle={() => onToggle("isBumped")}
+        onToggle={() => viewService.toggleOption("isBumped")}
       />
 
       <EditorPopoverGroupSection
@@ -104,16 +97,16 @@ export function LevelShadingAction({
         }
         isOn={isParallaxed}
         isDisabled={!isParallaxAvailable}
-        onToggle={() => onToggle("isParallaxed")}
+        onToggle={() => viewService.toggleOption("isParallaxed")}
       >
-        <LevelParallaxSettings value={parallax} features={features} onChange={onChangeFeatures} />
+        <LevelParallaxSettings />
       </EditorPopoverGroupSection>
 
       <EditorPopoverGroupSection
         label={"Wall marks"}
         description={isWallmarked ? "The decals compiled into the level, over what they mark" : "The surfaces bare"}
         isOn={isWallmarked}
-        onToggle={() => onToggle("isWallmarked")}
+        onToggle={() => viewService.toggleOption("isWallmarked")}
       />
     </EditorPopoverGroup>
   );

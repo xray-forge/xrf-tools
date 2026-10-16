@@ -1,16 +1,9 @@
-import { Nullable } from "@xrf/types";
-import { ReactElement, ReactNode, useCallback } from "react";
+import { ReactElement, ReactNode } from "react";
 
-import { LevelSunDescription, LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
-import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
-import {
-  ERenderTonemapMode,
-  RenderBackendAvailability,
-  RenderDlssAvailability,
-  RenderGraphSettings,
-} from "@/core/ipc/types/xrf-renderer";
+import { LevelCameraAction } from "@/core/level/components/preview/LevelCameraAction";
 import { LevelCullingAction } from "@/core/level/components/preview/LevelCullingAction";
 import { LevelFogAction } from "@/core/level/components/preview/LevelFogAction";
+import { LevelGoToAction } from "@/core/level/components/preview/LevelGoToAction";
 import { LevelGrassAction } from "@/core/level/components/preview/LevelGrassAction";
 import { LevelImageQualityAction } from "@/core/level/components/preview/LevelImageQualityAction";
 import { LevelLightsAction } from "@/core/level/components/preview/LevelLightsAction";
@@ -28,149 +21,26 @@ import { LevelSunAction } from "@/core/level/components/preview/LevelSunAction";
 import { LevelWaterAction } from "@/core/level/components/preview/LevelWaterAction";
 import { LevelWeatherAction } from "@/core/level/components/preview/LevelWeatherAction";
 import { LevelWindAction } from "@/core/level/components/preview/LevelWindAction";
-import {
-  ILevelFeatureOptions,
-  TLevelFeatureView,
-  toLevelIndirectLight,
-  toLevelModeFeature,
-  toLevelRain,
-  toLevelReflections,
-} from "@/core/level/lib/features";
-import { ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
-import { ELevelShading } from "@/core/level/lib/view/level-shading";
-import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
-import { ILevelSunShaftsOptions } from "@/core/level/lib/weather/level-sun-shafts-options";
-import { TRenderBackendChoice } from "@/core/render/lib/settings/render-backend-choice";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelPreviewToolbarProps extends BaseComponentProps {
   subtitle?: ReactNode;
-  options: ILevelViewOptions;
-  /** How much the baked hemisphere darkens the ambient, which the baked light toggle carries. */
-  hemiStrength: number;
-  /** The keyframe on screen, which the sun, sky, clouds, fog, rain, thunder, water and wind popovers edit. */
-  manual: ILevelManualWeather;
-  /** Every sky the game's weather names, which the sky's popover offers. */
-  skies: ReadonlyArray<LevelWeatherTexture>;
-  /** Every clouds texture it names. */
-  clouds: ReadonlyArray<LevelWeatherTexture>;
-  /** Every thunderbolt collection of the game, which the rain's popover offers. */
-  collections: ReadonlyArray<ThunderboltCollection>;
-  /** The sun the open level was compiled against, which the sun's popover offers to light it from. */
-  sun: Nullable<LevelSunDescription>;
-  /** The sun or moon the sky draws now, by its `suns.ltx` section, which lights the sun's button; null for neither. */
-  drawnSun: Nullable<string>;
-  /** Every lens flare of the game, which the sun's popover offers. */
-  suns: ReadonlyArray<string>;
-  /** How the level's sun shafts step, and the floor under their density, which the sun's popover sets. */
-  sunShafts: ILevelSunShaftsOptions;
-  /** How far trees are drawn in full, which the impostors toggle carries. */
-  lod: ILevelLodOptions;
-  /** What the view sets over the settings' features for itself. */
-  features: ILevelFeatureOptions;
-  /** Each feature group as the view draws it while on, and whether the settings let it be on. */
-  featureView: TLevelFeatureView;
-  /** What the renderer's settings draw every viewport with, which the toggles can only narrow. */
-  settings: IRenderFeatureSettings;
-  /** Whether the settings time every viewport's passes. */
-  isGpuTimed: boolean;
-  /** Whether the GPU drawing the view traces rays. */
-  isTraceable: boolean;
-  /** The graphics API the settings draw every viewport with. */
-  backend: TRenderBackendChoice;
-  /** What each graphics API can do on this machine, none until the renderer was asked. */
-  backends: Nullable<ReadonlyArray<RenderBackendAvailability>>;
-  /** Whether the view's frame is drawn smaller than the viewport. */
-  isUpscaled: boolean;
-  /** Whether the GPU drawing the view upscales with DLSS, and what it lacks where it does not. */
-  dlss: RenderDlssAvailability;
-  /** Whether the GPU drawing the view reconstructs rays with DLSS. */
-  rayReconstruction: RenderDlssAvailability;
-  /** What the settings resolve every viewport at, which the image quality popover may set over for the view. */
-  resolution: ERenderResolution;
-  /** The share of the viewport the settings resolve at while automatic. */
-  outputScale: number;
-  /** Which of the frame graph's mechanisms the frames compile with. */
-  graph: RenderGraphSettings;
-  /** What the viewport shows of its surfaces. */
-  shading: ELevelShading;
-  /** Value pickers the surface contributes, drawn last, as every toolbar in this application orders them. */
-  actions?: ReactNode;
-  onChangeOptions: (options: ILevelViewOptions) => void;
-  onChangeHemiStrength: (hemiStrength: number) => void;
-  onChangeSunShafts: (sunShafts: ILevelSunShaftsOptions) => void;
-  /** Sets keys of the keyframe set by hand, which lights the level from then on. */
-  onEditManual: (patch: Partial<ILevelManualWeather>) => void;
-  onChangeLod: (lod: ILevelLodOptions) => void;
-  onChangeFeatures: (features: ILevelFeatureOptions) => void;
-  /** Sets in the settings whether every viewport times its passes. */
-  onChangeGpuTimed: (isGpuTimed: boolean) => void;
-  onChangeGraph: (graph: RenderGraphSettings) => void;
-  /** Draws every viewport with another graphics API. */
-  onChangeBackend: (backend: TRenderBackendChoice) => void;
-  onChangeShading: (shading: ELevelShading) => void;
   onBack?: () => void;
 }
 
 /**
- * Composes the level view toggles in the editor toolbar. A toggle with settings behind it turns over on a click and
- * opens them on a right click; a group of toggles opens on a click.
+ * Composes the level view toggles in the editor toolbar, by what each changes: the view, the image, the lighting, the
+ * environment and the contents, then the camera's value pickers last. Each action reads and sets what it shows itself.
  */
 export function LevelPreviewToolbar({
   "data-testid": dataTestId,
   id,
   className,
   subtitle,
-  options,
-  hemiStrength,
-  manual,
-  skies,
-  clouds,
-  collections,
-  sun,
-  drawnSun,
-  suns,
-  sunShafts,
-  lod,
-  features,
-  featureView,
-  settings,
-  isGpuTimed,
-  isTraceable,
-  backend,
-  backends,
-  isUpscaled,
-  dlss,
-  rayReconstruction,
-  resolution,
-  outputScale,
-  graph,
-  shading,
-  actions,
-  onChangeOptions,
-  onChangeHemiStrength,
-  onChangeSunShafts,
-  onEditManual,
-  onChangeLod,
-  onChangeFeatures,
-  onChangeGpuTimed,
-  onChangeGraph,
-  onChangeBackend,
-  onChangeShading,
   onBack,
 }: ILevelPreviewToolbarProps): ReactElement {
-  const onToggle = useCallback(
-    (option: keyof ILevelViewOptions) => {
-      onChangeOptions({ ...options, [option]: !options[option] });
-    },
-    [options, onChangeOptions]
-  );
-
   return (
     <EditorToolbar
       data-testid={dataTestId}
@@ -180,193 +50,42 @@ export function LevelPreviewToolbar({
       onBack={onBack}
       actions={
         <>
-          <LevelShadingAction
-            options={options}
-            parallax={toLevelModeFeature("parallax", settings, features)}
-            features={features}
-            onChangeFeatures={onChangeFeatures}
-            shading={shading}
-            onToggle={onToggle}
-            onChangeShading={onChangeShading}
-          />
-
-          <LevelOverlaysAction
-            options={options}
-            isGpuTimed={isGpuTimed}
-            onToggle={onToggle}
-            onChangeGpuTimed={onChangeGpuTimed}
-          />
+          <LevelShadingAction />
+          <LevelOverlaysAction />
 
           <EditorToolbarSeparator />
 
-          <LevelLookAction
-            bloom={toLevelModeFeature("enhancedBloom", settings, features)}
-            features={features}
-            onChangeFeatures={onChangeFeatures}
-          />
-
-          <LevelImageQualityAction
-            isOn={options.isAntialiased}
-            settingsMode={settings.antialiasing}
-            settingsTextureFiltering={settings.textureFiltering}
-            settingsScale={settings.upscaling.scale}
-            settingsSharpening={settings.upscaling.sharpening}
-            settingsDlssPreset={settings.upscaling.dlssPreset}
-            settingsRayReconstruction={settings.upscaling.isRayReconstructed}
-            isSceneLinear={settings.tonemap === ERenderTonemapMode.ENHANCED}
-            settingsResolution={resolution}
-            settingsOutputScale={outputScale}
-            backend={backend}
-            backends={backends}
-            isUpscaled={isUpscaled}
-            dlss={dlss}
-            rayReconstruction={rayReconstruction}
-            onChangeBackend={onChangeBackend}
-            features={features}
-            onToggle={() => onToggle("isAntialiased")}
-            onChange={onChangeFeatures}
-          />
+          <LevelLookAction />
+          <LevelImageQualityAction />
 
           <EditorToolbarSeparator />
 
-          <LevelSunAction
-            manual={manual}
-            sun={sun}
-            drawnSun={drawnSun}
-            suns={suns}
-            options={options}
-            sunShafts={sunShafts}
-            volumetric={toLevelModeFeature("volumetric", settings, features)}
-            features={features}
-            onToggle={onToggle}
-            onChangeSunShafts={onChangeSunShafts}
-            onChangeFeatures={onChangeFeatures}
-            onEdit={onEditManual}
-          />
-
-          <LevelLightsAction
-            isOn={options.isLamplit}
-            state={featureView.lights}
-            features={features}
-            onToggle={() => onToggle("isLamplit")}
-            onChange={onChangeFeatures}
-          />
-
-          <LevelShadowAction
-            isOn={options.isShadowed}
-            state={featureView.shadows}
-            features={features}
-            onToggle={() => onToggle("isShadowed")}
-            onChange={onChangeFeatures}
-          />
-
-          <LevelOcclusionAction
-            options={options}
-            state={featureView.ambientOcclusion}
-            features={features}
-            hemiStrength={hemiStrength}
-            indirectLight={toLevelIndirectLight(settings, features)}
-            isTraceable={isTraceable}
-            onToggle={onToggle}
-            onChange={onChangeFeatures}
-            onChangeHemiStrength={onChangeHemiStrength}
-          />
-
-          <LevelReflectionsAction
-            value={toLevelReflections(settings, features)}
-            glass={toLevelModeFeature("glass", settings, features)}
-            features={features}
-            isTraceable={isTraceable}
-            onChange={onChangeFeatures}
-          />
+          <LevelSunAction />
+          <LevelLightsAction />
+          <LevelShadowAction />
+          <LevelOcclusionAction />
+          <LevelReflectionsAction />
 
           <EditorToolbarSeparator />
 
           <LevelWeatherAction />
-
-          <LevelSkyAction
-            options={options}
-            manual={manual}
-            skies={skies}
-            clouds={clouds}
-            debanding={toLevelModeFeature("debanding", settings, features)}
-            features={features}
-            onToggle={onToggle}
-            onEdit={onEditManual}
-            onChangeFeatures={onChangeFeatures}
-          />
-
-          <LevelFogAction
-            isOn={options.isFogged}
-            manual={manual}
-            isHazed={options.isSkyHazed}
-            value={toLevelModeFeature("fog", settings, features)}
-            features={features}
-            onToggle={() => onToggle("isFogged")}
-            onEdit={onEditManual}
-            onHazed={(isSkyHazed: boolean) => onChangeOptions({ ...options, isSkyHazed })}
-            onChangeFeatures={onChangeFeatures}
-          />
-
-          <LevelRainAction
-            options={options}
-            manual={manual}
-            collections={collections}
-            puddles={toLevelRain(settings, features)}
-            features={features}
-            onToggle={onToggle}
-            onEdit={onEditManual}
-            onChangeFeatures={onChangeFeatures}
-          />
-
-          <LevelWindAction
-            isOn={options.isWindy}
-            manual={manual}
-            onToggle={() => onToggle("isWindy")}
-            onEdit={onEditManual}
-          />
+          <LevelSkyAction />
+          <LevelFogAction />
+          <LevelRainAction />
+          <LevelWindAction />
 
           <EditorToolbarSeparator />
 
-          <LevelSpawnAction options={options} onToggle={onToggle} />
+          <LevelSpawnAction />
+          <LevelParticlesAction />
+          <LevelGrassAction />
+          <LevelWaterAction />
+          <LevelCullingAction />
 
-          <LevelParticlesAction options={options} onToggle={onToggle} />
+          <EditorToolbarSeparator />
 
-          <LevelGrassAction
-            isOn={options.isGrassy}
-            state={featureView.grass}
-            features={features}
-            onToggle={() => onToggle("isGrassy")}
-            onChange={onChangeFeatures}
-          />
-
-          <LevelWaterAction
-            isOn={options.isWaterVisible}
-            state={featureView.water}
-            features={features}
-            manual={manual}
-            onToggle={() => onToggle("isWaterVisible")}
-            onChange={onChangeFeatures}
-            onEdit={onEditManual}
-          />
-
-          <LevelCullingAction
-            options={options}
-            isOcclusionAvailable={settings.isOcclusionCulled}
-            isImpostorsAvailable={settings.lod.isImpostors}
-            lod={lod}
-            onToggle={onToggle}
-            onChangeLod={onChangeLod}
-            graph={graph}
-            onChangeGraph={onChangeGraph}
-          />
-
-          {actions ? (
-            <>
-              <EditorToolbarSeparator />
-              {actions}
-            </>
-          ) : null}
+          <LevelCameraAction />
+          <LevelGoToAction />
         </>
       }
     />

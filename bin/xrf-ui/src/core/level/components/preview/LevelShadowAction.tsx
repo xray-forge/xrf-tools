@@ -3,8 +3,8 @@ import { Button } from "@mui/material";
 import { ReactElement } from "react";
 
 import { ERenderContactShadowMode, RenderContactShadowMode } from "@/core/ipc/types/xrf-renderer";
-import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
-import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { useLevelFeature } from "@/core/level/components/preview/use-level-feature";
+import { useLevelViewToggle } from "@/core/level/components/preview/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
@@ -29,6 +29,7 @@ import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/render-
 import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 const CONTACT_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderContactShadowMode>> = [
   { label: "Engine", value: ERenderContactShadowMode.ENGINE },
@@ -43,13 +44,9 @@ export function LevelShadowAction({
   "data-testid": dataTestId = "level-shadow-action",
   id,
   className,
-  isOn,
-  state,
-  features,
-  onToggle,
-  onChange,
-}: ILevelFeatureActionProps<"shadows">): ReactElement {
-  const { set, reset } = useLevelFeatureOverride("shadows", features, onChange);
+}: BaseComponentProps): ReactElement {
+  const { isOn, toggle } = useLevelViewToggle("isShadowed");
+  const { state, set, reset } = useLevelFeature("shadows");
   const shadows: TRenderShadowSettings = state.value;
   const contact: TRenderShadowSettings["contact"] = shadows.contact;
   const widest: number = shadows.cascades.at(-1) ?? 0;
@@ -79,7 +76,7 @@ export function LevelShadowAction({
       isOn={isOn && state.isAvailable}
       isDisabled={!state.isAvailable}
       toggleLabel={"Cast the sun's shadows"}
-      onToggle={onToggle}
+      onToggle={toggle}
     >
       <RenderValueChoice
         label={"Cascades"}

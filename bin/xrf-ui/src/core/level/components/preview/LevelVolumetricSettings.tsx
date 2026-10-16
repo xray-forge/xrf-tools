@@ -1,8 +1,10 @@
 import { Button } from "@mui/material";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 import { ERenderVolumetricMode, RenderVolumetricMode } from "@/core/ipc/types/xrf-renderer";
-import { ILevelFeatureOptions, TLevelVolumetricOptions } from "@/core/level/lib/features";
+import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/use-level-render-features";
+import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
@@ -15,14 +17,6 @@ import {
 import { TRenderVolumetricSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ILevelVolumetricSettingsProps extends BaseComponentProps {
-  /** The volumetric lighting as the view draws it. */
-  value: TRenderVolumetricSettings;
-  /** What the view sets over the settings, of which the volumetric lighting's part is changed. */
-  features: ILevelFeatureOptions;
-  onChange: (features: ILevelFeatureOptions) => void;
-}
-
 /**
  * How the light the air scatters is drawn: the engine's shafts, or the enhanced froxel volume; and how strongly, how
  * far forward and how far along the view the enhanced volume scatters.
@@ -31,15 +25,10 @@ export function LevelVolumetricSettings({
   "data-testid": dataTestId = "level-volumetric-settings",
   id,
   className,
-  value,
-  features,
-  onChange,
-}: ILevelVolumetricSettingsProps): ReactElement {
-  const set = useCallback(
-    (part: Partial<TLevelVolumetricOptions>): void =>
-      onChange({ ...features, volumetric: { ...features.volumetric, ...part } }),
-    [features, onChange]
-  );
+}: BaseComponentProps): ReactElement {
+  const { settings, features } = useLevelRenderFeatures();
+  const { set, reset } = useLevelFeatureOverride("volumetric");
+  const value: TRenderVolumetricSettings = toLevelModeFeature("volumetric", settings, features);
 
   return (
     <div data-testid={dataTestId} id={id} className={className}>
@@ -80,7 +69,7 @@ export function LevelVolumetricSettings({
         </>
       ) : null}
 
-      <Button size={"small"} onClick={() => onChange({ ...features, volumetric: {} })}>
+      <Button size={"small"} onClick={reset}>
         Back to the settings for the volumetric lighting
       </Button>
     </div>

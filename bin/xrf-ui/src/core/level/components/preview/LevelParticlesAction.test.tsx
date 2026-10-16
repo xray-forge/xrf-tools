@@ -1,18 +1,15 @@
-import { describe, expect, it, jest } from "@jest/globals";
+import { describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelParticlesAction } from "@/core/level/components/preview/LevelParticlesAction";
-import { DEFAULT_LEVEL_VIEW_OPTIONS, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
+import { mockLevelViewContainer } from "@/fixtures/utils/level-container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-
-type TToggle = (option: keyof ILevelViewOptions) => void;
 
 describe("LevelParticlesAction", () => {
   it("says what plays and turns the particles, the campfires and the ambient effects over by their own checkboxes", async () => {
-    const onToggle = jest.fn<TToggle>();
-    const { getByRole, findByRole } = renderWithProviders(
-      <LevelParticlesAction options={DEFAULT_LEVEL_VIEW_OPTIONS} onToggle={onToggle} />
-    );
+    const { container, view } = mockLevelViewContainer();
+    const { getByRole, findByRole } = renderWithProviders(<LevelParticlesAction />, { container });
 
     expect(getByRole("button", { name: "Particles" })).toHaveAccessibleDescription("Particles playing, campfires lit");
 
@@ -22,13 +19,20 @@ describe("LevelParticlesAction", () => {
     await userEvent.click(getByRole("checkbox", { name: "Campfires lit" }));
     await userEvent.click(getByRole("checkbox", { name: "Ambient effects" }));
 
-    expect(onToggle.mock.calls).toEqual([["isParticled"], ["isCampfireLit"], ["isAmbientPlayed"]]);
+    expect(view.options).toEqual({
+      ...DEFAULT_LEVEL_VIEW_OPTIONS,
+      isAmbientPlayed: !DEFAULT_LEVEL_VIEW_OPTIONS.isAmbientPlayed,
+      isCampfireLit: !DEFAULT_LEVEL_VIEW_OPTIONS.isCampfireLit,
+      isParticled: !DEFAULT_LEVEL_VIEW_OPTIONS.isParticled,
+    });
   });
 
   it("says when the particles are off", () => {
-    const { getByRole } = renderWithProviders(
-      <LevelParticlesAction options={{ ...DEFAULT_LEVEL_VIEW_OPTIONS, isParticled: false }} onToggle={() => {}} />
-    );
+    const { container, view } = mockLevelViewContainer();
+
+    view.setOption("isParticled", false);
+
+    const { getByRole } = renderWithProviders(<LevelParticlesAction />, { container });
 
     expect(getByRole("button", { name: "Particles" })).toHaveAccessibleDescription("Particles off");
   });

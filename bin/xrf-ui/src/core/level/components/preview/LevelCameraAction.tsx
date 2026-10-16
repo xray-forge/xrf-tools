@@ -1,5 +1,6 @@
 import { default as VideocamIcon } from "@mui/icons-material/Videocam";
 import { Button, Typography } from "@mui/material";
+import { useInjection } from "@wirestate/react";
 import { formatDegrees, formatNumber } from "@xrf/format";
 import { ReactElement } from "react";
 
@@ -8,15 +9,11 @@ import {
   ILevelCameraOptions,
   LEVEL_CAMERA_LIMITS,
 } from "@/core/level/lib/camera/level-camera-options";
+import { LevelViewService } from "@/core/level/services/level-view.service";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { usePartialChange } from "@/lib/react/use-partial-change";
-
-interface ILevelCameraActionProps extends BaseComponentProps {
-  camera: ILevelCameraOptions;
-  onChange: (camera: ILevelCameraOptions) => void;
-}
 
 /**
  * What the camera sees and how it answers input, in the toolbar beside the rest of what a person sets.
@@ -25,10 +22,10 @@ export function LevelCameraAction({
   "data-testid": dataTestId = "level-camera-action",
   id,
   className,
-  camera,
-  onChange,
-}: ILevelCameraActionProps): ReactElement {
-  const onSet = usePartialChange(camera, onChange);
+}: BaseComponentProps): ReactElement {
+  const viewService: LevelViewService = useInjection(LevelViewService);
+  const camera: ILevelCameraOptions = viewService.camera;
+  const onSet = usePartialChange(camera, viewService.setCamera);
 
   return (
     <EditorPopoverAction
@@ -76,7 +73,7 @@ export function LevelCameraAction({
           onChange={(sensitivity) => onSet({ sensitivity })}
         />
 
-        <Button size={"small"} onClick={() => onChange(DEFAULT_LEVEL_CAMERA_OPTIONS)}>
+        <Button size={"small"} onClick={() => viewService.setCamera(DEFAULT_LEVEL_CAMERA_OPTIONS)}>
           Back to the default camera
         </Button>
       </div>

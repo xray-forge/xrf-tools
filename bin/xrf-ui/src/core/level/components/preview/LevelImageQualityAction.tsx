@@ -1,10 +1,12 @@
 import { default as HighQualityIcon } from "@mui/icons-material/HighQuality";
 import { Button, Typography } from "@mui/material";
+import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
-import { ReactElement } from "react";
+import { ReactElement, useEffect } from "react";
 
 import {
   ERenderAntialiasing,
+  ERenderTonemapMode,
   RenderAntialiasing,
   RenderBackendAvailability,
   RenderDlssAvailability,
@@ -12,7 +14,11 @@ import {
   RenderScale,
   RenderTextureFiltering,
 } from "@/core/ipc/types/xrf-renderer";
-import { describeLevelFeatureToggle, ILevelFeatureOptions, LEVEL_ANTIALIASING_MODES } from "@/core/level/lib/features";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/use-level-render-features";
+import { useLevelViewToggle } from "@/core/level/components/preview/use-level-view-toggle";
+import { describeLevelFeatureToggle, LEVEL_ANTIALIASING_MODES } from "@/core/level/lib/features";
+import { LevelRenderService } from "@/core/level/services/level-render.service";
+import { LevelViewService } from "@/core/level/services/level-view.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
@@ -43,6 +49,7 @@ import {
   TRenderBackendChoice,
 } from "@/core/render/lib/settings/render-backend-choice";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -75,46 +82,6 @@ function toBackendOptions(
   );
 }
 
-interface ILevelImageQualityActionProps extends BaseComponentProps {
-  isOn: boolean;
-  /** The mode the settings smooth with, which this view can only narrow to none. */
-  settingsMode: RenderAntialiasing;
-  /** How the settings filter textures, which this view may set over. */
-  settingsTextureFiltering: RenderTextureFiltering;
-  /** How much smaller than the output the settings draw, which this view may set over. */
-  settingsScale: RenderScale;
-  /** How sharply the settings finish a frame drawn smaller than the viewport, which this view may set over. */
-  settingsSharpening: number;
-  /** Which model the settings upscale DLSS with, which this view may set over. */
-  settingsDlssPreset: RenderDlssPreset;
-  /** Whether the settings reconstruct rays with DLSS, which this view may set over. */
-  settingsRayReconstruction: boolean;
-  /** Whether the scene holds linear light, the Enhanced tonemap, which ray reconstruction needs. */
-  isSceneLinear: boolean;
-  /** What the settings resolve every viewport at, which this view may set over. */
-  settingsResolution: ERenderResolution;
-  /** The share of the viewport the settings resolve at while automatic, which this view may set over. */
-  settingsOutputScale: number;
-  /** The graphics API the settings draw every viewport with, which this popover sets for all of them. */
-  backend: TRenderBackendChoice;
-  /** What each graphics API can do on this machine, none until the renderer was asked. */
-  backends: Nullable<ReadonlyArray<RenderBackendAvailability>>;
-  /**
-   * Whether the view's frame is drawn smaller than the viewport, which sharpening applies to besides a temporal
-   * resolve.
-   */
-  isUpscaled: boolean;
-  /** Whether the GPU drawing the view upscales with DLSS; FSR 2 smooths in its place where it does not. */
-  dlss: RenderDlssAvailability;
-  /** Whether the GPU drawing the view reconstructs rays with DLSS; DLSS upscales alone where it does not. */
-  rayReconstruction: RenderDlssAvailability;
-  features: ILevelFeatureOptions;
-  onToggle: () => void;
-  onChange: (features: ILevelFeatureOptions) => void;
-  /** Draws every viewport with another graphics API, which restarts the renderer. */
-  onChangeBackend: (backend: TRenderBackendChoice) => void;
-}
-
 /**
  * How this view's frame is made into the image it shows: whether its edges are smoothed and by which pass, whether DLSS
  * reconstructs rays as it upscales, how much smaller it is drawn, what it is resolved at, and how its textures are
@@ -124,26 +91,39 @@ export function LevelImageQualityAction({
   "data-testid": dataTestId = "level-image-quality-action",
   id,
   className,
-  isOn,
-  settingsMode,
-  settingsTextureFiltering,
-  settingsScale,
-  settingsSharpening,
-  settingsDlssPreset,
-  settingsRayReconstruction,
-  isSceneLinear,
-  settingsResolution,
-  settingsOutputScale,
-  backend,
-  backends,
-  isUpscaled,
-  dlss,
-  rayReconstruction,
-  features,
-  onToggle,
-  onChange,
-  onChangeBackend,
-}: ILevelImageQualityActionProps): ReactElement {
+}: BaseComponentProps): ReactElement {
+  const viewService: LevelViewService = useInjection(LevelViewService);
+  const renderService: LevelRenderService = useInjection(LevelRenderService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
+  const { settings, features } = useLevelRenderFeatures();
+  const { isOn, toggle } = useLevelViewToggle("isAntialiased");
+  // What the settings draw every viewport with, which this view may set over, the mode only narrowed to none.
+  const settingsMode: RenderAntialiasing = settings.antialiasing;
+  const settingsTextureFiltering: RenderTextureFiltering = settings.textureFiltering;
+  const settingsScale: RenderScale = settings.upscaling.scale;
+  const settingsSharpening: number = settings.upscaling.sharpening;
+  const settingsDlssPreset: RenderDlssPreset = settings.upscaling.dlssPreset;
+  const settingsRayReconstruction: boolean = settings.upscaling.isRayReconstructed;
+  const settingsResolution: ERenderResolution = renderSettingsService.renderResolution;
+  const settingsOutputScale: number = renderSettingsService.renderOutputScale;
+  // Whether the scene holds linear light, the Enhanced tonemap, which ray reconstruction needs.
+  const isSceneLinear: boolean = settings.tonemap === ERenderTonemapMode.ENHANCED;
+  // The graphics API every viewport draws with, set here for all of them, which restarts the renderer.
+  const backend: TRenderBackendChoice = renderSettingsService.renderBackend;
+  const backends: Nullable<ReadonlyArray<RenderBackendAvailability>> = renderSettingsService.renderBackends;
+  // Whether the frame is drawn smaller than the viewport, which sharpening applies to besides a temporal resolve.
+  const isUpscaled: boolean = renderService.isUpscaled;
+  // What the GPU can do: FSR 2 smooths in place of DLSS, and DLSS upscales alone, where it lacks them.
+  const dlss: RenderDlssAvailability = renderService.dlss;
+  const rayReconstruction: RenderDlssAvailability = renderService.rayReconstruction;
+
+  // What each graphics API can do here, which the choices are greyed out by; asked once, while nothing has.
+  useEffect(() => {
+    if (renderSettingsService.renderBackends === null) {
+      void renderSettingsService.refreshRenderBackends();
+    }
+  }, [renderSettingsService]);
+
   const isAvailable: boolean = settingsMode !== ERenderAntialiasing.NONE;
   const asked: RenderAntialiasing = features.antialiasing ?? settingsMode;
   const dlssProblem: Nullable<string> = describeDlssUnavailability(dlss);
@@ -182,7 +162,7 @@ export function LevelImageQualityAction({
             label={"Graphics API"}
             options={toBackendOptions(backends)}
             value={backend}
-            onChange={onChangeBackend}
+            onChange={renderSettingsService.setRenderBackend}
           />
 
           <Typography className={"text-text-secondary"} variant={"caption"}>
@@ -191,13 +171,13 @@ export function LevelImageQualityAction({
         </>
       }
       toggleLabel={"Antialiasing"}
-      onToggle={onToggle}
+      onToggle={toggle}
     >
       <RenderValueChoice
         label={"Mode"}
         options={dlssProblem ? MODE_OPTIONS_WITHOUT_DLSS : MODE_OPTIONS}
         value={mode}
-        onChange={(antialiasing: RenderAntialiasing) => onChange({ ...features, antialiasing })}
+        onChange={(antialiasing: RenderAntialiasing) => viewService.setFeatures({ ...features, antialiasing })}
       />
 
       {dlssProblem ? (
@@ -211,7 +191,9 @@ export function LevelImageQualityAction({
         options={RENDER_SCALE_OPTIONS}
         value={scale}
         isStacked
-        onChange={(next: RenderScale) => onChange({ ...features, upscaling: { ...features.upscaling, scale: next } })}
+        onChange={(next: RenderScale) =>
+          viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, scale: next } })
+        }
       />
 
       {mode === ERenderAntialiasing.DLSS ? (
@@ -222,7 +204,7 @@ export function LevelImageQualityAction({
             isChecked={isRayReconstructed}
             isDisabled={Boolean(rayProblem)}
             onChange={(next: boolean) =>
-              onChange({ ...features, upscaling: { ...features.upscaling, isRayReconstructed: next } })
+              viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, isRayReconstructed: next } })
             }
           />
 
@@ -233,7 +215,7 @@ export function LevelImageQualityAction({
                 options={RENDER_DLSS_PRESET_SHORT_OPTIONS}
                 value={dlssPreset}
                 onChange={(next: RenderDlssPreset) =>
-                  onChange({ ...features, upscaling: { ...features.upscaling, dlssPreset: next } })
+                  viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, dlssPreset: next } })
                 }
               />
 
@@ -251,7 +233,9 @@ export function LevelImageQualityAction({
         {...RENDER_SHARPENING_LIMITS}
         format={formatSharpening}
         isDisabled={!isSharpenable}
-        onChange={(next: number) => onChange({ ...features, upscaling: { ...features.upscaling, sharpening: next } })}
+        onChange={(next: number) =>
+          viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, sharpening: next } })
+        }
       />
 
       {isSharpenable ? null : (
@@ -265,7 +249,7 @@ export function LevelImageQualityAction({
         options={RENDER_RESOLUTION_OPTIONS}
         value={resolution}
         onChange={(next: ERenderResolution) =>
-          onChange({ ...features, output: { ...features.output, resolution: next } })
+          viewService.setFeatures({ ...features, output: { ...features.output, resolution: next } })
         }
       />
 
@@ -275,7 +259,9 @@ export function LevelImageQualityAction({
           value={outputScale}
           {...RENDER_OUTPUT_SCALE_LIMITS}
           format={formatOutputScale}
-          onChange={(next: number) => onChange({ ...features, output: { ...features.output, scale: next } })}
+          onChange={(next: number) =>
+            viewService.setFeatures({ ...features, output: { ...features.output, scale: next } })
+          }
         />
       ) : null}
 
@@ -283,12 +269,22 @@ export function LevelImageQualityAction({
         label={"Texture filtering"}
         options={RENDER_TEXTURE_FILTERING_SHORT_OPTIONS}
         value={textureFiltering}
-        onChange={(filtering: RenderTextureFiltering) => onChange({ ...features, textureFiltering: filtering })}
+        onChange={(filtering: RenderTextureFiltering) =>
+          viewService.setFeatures({ ...features, textureFiltering: filtering })
+        }
       />
 
       <Button
         size={"small"}
-        onClick={() => onChange({ ...features, antialiasing: null, textureFiltering: null, upscaling: {}, output: {} })}
+        onClick={() =>
+          viewService.setFeatures({
+            ...features,
+            antialiasing: null,
+            textureFiltering: null,
+            upscaling: {},
+            output: {},
+          })
+        }
       >
         Back to the settings
       </Button>

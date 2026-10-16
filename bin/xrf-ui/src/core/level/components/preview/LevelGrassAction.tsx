@@ -4,8 +4,8 @@ import { formatPercent } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
 import { ERenderFoliageMode, RenderFoliageMode } from "@/core/ipc/types/xrf-renderer";
-import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
-import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { useLevelFeature } from "@/core/level/components/preview/use-level-feature";
+import { useLevelViewToggle } from "@/core/level/components/preview/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
@@ -23,6 +23,7 @@ import {
 import { TRenderFoliageSettings, TRenderGrassSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 const FOLIAGE_MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderFoliageMode>> = [
   { label: "Engine", value: ERenderFoliageMode.ENGINE },
@@ -50,13 +51,10 @@ export function LevelGrassAction({
   "data-testid": dataTestId = "level-grass-action",
   id,
   className,
-  isOn,
-  state,
-  features,
-  onToggle,
-  onChange,
-}: ILevelFeatureActionProps<"grass">): ReactElement {
-  const { set, reset } = useLevelFeatureOverride("grass", features, onChange);
+}: BaseComponentProps): ReactElement {
+  const { isOn, toggle } = useLevelViewToggle("isGrassy");
+  const { state, set, reset } = useLevelFeature("grass");
+
   const grass: TRenderGrassSettings = state.value;
   const foliage: TRenderFoliageSettings = grass.foliage;
 
@@ -84,7 +82,7 @@ export function LevelGrassAction({
       isOn={isOn && state.isAvailable}
       isDisabled={!state.isAvailable}
       toggleLabel={"Plant the grass"}
-      onToggle={onToggle}
+      onToggle={toggle}
     >
       <RenderValueSlider
         label={"Density"}

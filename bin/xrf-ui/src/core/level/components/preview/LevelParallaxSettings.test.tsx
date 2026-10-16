@@ -1,55 +1,35 @@
-import { describe, expect, it, jest } from "@jest/globals";
+import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
 import { ERenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelParallaxSettings } from "@/core/level/components/preview/LevelParallaxSettings";
-import { ILevelFeatureOptions } from "@/core/level/lib/features";
-import { DEFAULT_RENDER_PARALLAX_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
-import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
+import { mockLevelViewContainer } from "@/fixtures/utils/level-container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
-type TChange = (features: ILevelFeatureOptions) => void;
+beforeEach(() => {
+  window.localStorage.clear();
+});
 
 describe("LevelParallaxSettings", () => {
-  it("sets the view's own mode over the settings, and gives it back to them", async () => {
-    const onChange = jest.fn<TChange>();
-    const { getByRole } = renderWithProviders(
-      <LevelParallaxSettings
-        value={DEFAULT_RENDER_PARALLAX_SETTINGS}
-        features={mockLevelFeatureOptions()}
-        onChange={onChange}
-      />
-    );
+  it("sets the view's own mode over the settings, showing the enhanced strengths only then, and gives it back", async () => {
+    const { container, renderSettings, view } = mockLevelViewContainer();
 
-    await userEvent.click(getByRole("button", { name: "Enhanced" }));
-    await userEvent.click(getByRole("button", { name: "Back to the settings" }));
+    // The settings draw the engine's, so the view's own choice is what turns it enhanced.
+    renderSettings.setRendererOverrides({ parallax: { mode: ERenderParallaxMode.ENGINE } });
 
-    expect(onChange.mock.calls.map(([features]) => features.parallax)).toEqual([
-      { mode: ERenderParallaxMode.ENHANCED },
-      {},
-    ]);
-  });
-
-  it("shows the enhanced parallax's strengths only while it is enhanced", () => {
-    const { queryByRole, rerender } = renderWithProviders(
-      <LevelParallaxSettings
-        value={DEFAULT_RENDER_PARALLAX_SETTINGS}
-        features={mockLevelFeatureOptions()}
-        onChange={() => {}}
-      />
-    );
+    const { getByRole, queryByRole } = renderWithProviders(<LevelParallaxSettings />, { container });
 
     expect(queryByRole("slider", { name: "Steps" })).toBeNull();
 
-    rerender(
-      <LevelParallaxSettings
-        value={{ ...DEFAULT_RENDER_PARALLAX_SETTINGS, mode: ERenderParallaxMode.ENHANCED }}
-        features={mockLevelFeatureOptions()}
-        onChange={() => {}}
-      />
-    );
+    await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
-    expect(queryByRole("slider", { name: "Steps" })).toHaveAttribute("aria-valuetext", "16");
-    expect(queryByRole("slider", { name: "Range" })).toHaveAttribute("aria-valuetext", "60 m");
+    expect(view.features.parallax).toEqual({ mode: ERenderParallaxMode.ENHANCED });
+    expect(getByRole("slider", { name: "Steps" })).toHaveAttribute("aria-valuetext", "16");
+    expect(getByRole("slider", { name: "Range" })).toHaveAttribute("aria-valuetext", "60 m");
+
+    await userEvent.click(getByRole("button", { name: "Back to the settings" }));
+
+    expect(view.features.parallax).toEqual({});
+    expect(queryByRole("slider", { name: "Steps" })).toBeNull();
   });
 });

@@ -3,14 +3,15 @@ import { Button } from "@mui/material";
 import { ReactElement } from "react";
 
 import { RenderLightShadowFilter } from "@/core/ipc/types/xrf-renderer";
-import { ILevelFeatureActionProps } from "@/core/level/components/preview/level-feature-action-props";
-import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { useLevelFeature } from "@/core/level/components/preview/use-level-feature";
+import { useLevelViewToggle } from "@/core/level/components/preview/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features/render-shadow-choices";
 import { TRenderLightsSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
+import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Whether this view lights the level with its lamps, and with the level file's own lights too.
@@ -19,13 +20,10 @@ export function LevelLightsAction({
   "data-testid": dataTestId = "level-lights-action",
   id,
   className,
-  isOn,
-  state,
-  features,
-  onToggle,
-  onChange,
-}: ILevelFeatureActionProps<"lights">): ReactElement {
-  const { set, reset } = useLevelFeatureOverride("lights", features, onChange);
+}: BaseComponentProps): ReactElement {
+  const { isOn, toggle } = useLevelViewToggle("isLamplit");
+  const { state, set, reset } = useLevelFeature("lights");
+
   const lights: TRenderLightsSettings = state.value;
 
   return (
@@ -48,7 +46,7 @@ export function LevelLightsAction({
       isOn={isOn && state.isAvailable}
       isDisabled={!state.isAvailable}
       toggleLabel={"Light the lamps"}
-      onToggle={onToggle}
+      onToggle={toggle}
     >
       <CheckboxFormRow
         label={"Shadows"}

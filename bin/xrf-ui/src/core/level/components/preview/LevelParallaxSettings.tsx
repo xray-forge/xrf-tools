@@ -1,9 +1,11 @@
 import { Button } from "@mui/material";
 import { formatNumber, formatPercent } from "@xrf/format";
-import { ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 import { ERenderParallaxMode, RenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
-import { ILevelFeatureOptions, TLevelParallaxOptions } from "@/core/level/lib/features/level-feature-options";
+import { useLevelFeatureOverride } from "@/core/level/components/preview/use-level-feature-override";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/use-level-render-features";
+import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
@@ -16,27 +18,16 @@ const MODE_OPTIONS: ReadonlyArray<IRenderChoiceOption<RenderParallaxMode>> = [
   { label: "Enhanced", value: ERenderParallaxMode.ENHANCED },
 ];
 
-interface ILevelParallaxSettingsProps extends BaseComponentProps {
-  /** The parallax this view draws with: the settings' and what it sets over them. */
-  value: TRenderParallaxSettings;
-  /** What the view sets over the settings. */
-  features: ILevelFeatureOptions;
-  onChange: (features: ILevelFeatureOptions) => void;
-}
-
 /** How this view's surfaces are displaced by their height: the engine's steep parallax, or the enhanced terrain march. */
 export function LevelParallaxSettings({
   "data-testid": dataTestId = "level-parallax-settings",
   id,
   className,
-  value,
-  features,
-  onChange,
-}: ILevelParallaxSettingsProps): ReactElement {
-  const set = useCallback(
-    (part: Partial<TLevelParallaxOptions>) => onChange({ ...features, parallax: { ...features.parallax, ...part } }),
-    [features, onChange]
-  );
+}: BaseComponentProps): ReactElement {
+  const { settings, features } = useLevelRenderFeatures();
+  const { set, reset } = useLevelFeatureOverride("parallax");
+
+  const value: TRenderParallaxSettings = toLevelModeFeature("parallax", settings, features);
 
   return (
     <div data-testid={dataTestId} id={id} className={className}>
@@ -144,7 +135,7 @@ export function LevelParallaxSettings({
         </>
       ) : null}
 
-      <Button size={"small"} onClick={() => onChange({ ...features, parallax: {} })}>
+      <Button size={"small"} onClick={reset}>
         Back to the settings
       </Button>
     </div>

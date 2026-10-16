@@ -1,13 +1,19 @@
-import { describe, expect, it, jest } from "@jest/globals";
+import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelCameraAction } from "@/core/level/components/preview/LevelCameraAction";
-import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
+import { DEFAULT_LEVEL_CAMERA_OPTIONS } from "@/core/level/lib/camera/level-camera-options";
+import { LevelViewService } from "@/core/level/services";
+import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/fixtures/utils/level-container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
-function renderAction(onChange: (camera: ILevelCameraOptions) => void = jest.fn()): RenderResult {
-  return renderWithProviders(<LevelCameraAction camera={DEFAULT_LEVEL_CAMERA_OPTIONS} onChange={onChange} />);
+function renderAction(): RenderResult & { view: LevelViewService } {
+  window.localStorage.clear();
+
+  const { container, view }: ILevelViewContainerDescriptor = mockLevelViewContainer();
+
+  return { ...renderWithProviders(<LevelCameraAction />, { container }), view };
 }
 
 describe("LevelCameraAction", () => {
@@ -16,32 +22,32 @@ describe("LevelCameraAction", () => {
   });
 
   it("offers what a person flying a level changes", async () => {
-    const view: RenderResult = renderAction();
+    const rendered = renderAction();
 
-    await userEvent.click(view.getByRole("button", { name: "Camera" }));
+    await userEvent.click(rendered.getByRole("button", { name: "Camera" }));
 
     for (const label of ["Field of view", "Speed", "Boost", "Sensitivity"]) {
-      expect(view.getByRole("slider", { name: label })).toBeInTheDocument();
+      expect(rendered.getByRole("slider", { name: label })).toBeInTheDocument();
     }
   });
 
-  it("answers with the whole camera, changed in one place", async () => {
-    const onChange = jest.fn<(camera: ILevelCameraOptions) => void>();
-    const view: RenderResult = renderAction(onChange);
+  it("changes the whole camera in one place", async () => {
+    const rendered = renderAction();
 
-    await userEvent.click(view.getByRole("button", { name: "Camera" }));
-    fireEvent.change(view.getByRole("slider", { name: "Field of view" }), { target: { value: "90" } });
+    await userEvent.click(rendered.getByRole("button", { name: "Camera" }));
+    fireEvent.change(rendered.getByRole("slider", { name: "Field of view" }), { target: { value: "90" } });
 
-    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, fieldOfView: 90 });
+    expect(rendered.view.camera).toEqual({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, fieldOfView: 90 });
   });
 
   it("puts the camera back", async () => {
-    const onChange = jest.fn<(camera: ILevelCameraOptions) => void>();
-    const view: RenderResult = renderAction(onChange);
+    const rendered = renderAction();
 
-    await userEvent.click(view.getByRole("button", { name: "Camera" }));
-    await userEvent.click(view.getByRole("button", { name: "Back to the default camera" }));
+    rendered.view.setCamera({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, speed: 40 });
 
-    expect(onChange).toHaveBeenCalledWith(DEFAULT_LEVEL_CAMERA_OPTIONS);
+    await userEvent.click(rendered.getByRole("button", { name: "Camera" }));
+    await userEvent.click(rendered.getByRole("button", { name: "Back to the default camera" }));
+
+    expect(rendered.view.camera).toEqual(DEFAULT_LEVEL_CAMERA_OPTIONS);
   });
 });

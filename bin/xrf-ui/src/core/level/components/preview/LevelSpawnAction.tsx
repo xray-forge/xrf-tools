@@ -1,15 +1,12 @@
 import { default as Inventory2Icon } from "@mui/icons-material/Inventory2";
+import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { ILevelSpawnCategoryEntry, LEVEL_SPAWN_CATEGORIES } from "@/core/level/lib/spawn/level-spawn-categories";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
+import { LevelViewService } from "@/core/level/services/level-view.service";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-interface ILevelSpawnActionProps extends BaseComponentProps {
-  options: ILevelViewOptions;
-  onToggle: (option: keyof ILevelViewOptions) => void;
-}
 
 /**
  * Which of the level's spawned objects are drawn, by what the game spawns them as.
@@ -18,9 +15,10 @@ export function LevelSpawnAction({
   "data-testid": dataTestId = "level-spawn-action",
   id,
   className,
-  options,
-  onToggle,
-}: ILevelSpawnActionProps): ReactElement {
+}: BaseComponentProps): ReactElement {
+  const viewService: LevelViewService = useInjection(LevelViewService);
+  const options: ILevelViewOptions = viewService.options;
+
   const shown: Array<string> = LEVEL_SPAWN_CATEGORIES.filter(
     (entry: ILevelSpawnCategoryEntry) => options[entry.option]
   ).map((entry: ILevelSpawnCategoryEntry) => entry.label.toLowerCase());
@@ -44,7 +42,7 @@ export function LevelSpawnAction({
           key={entry.category}
           label={entry.label}
           isOn={options[entry.option]}
-          onToggle={() => onToggle(entry.option)}
+          onToggle={() => viewService.toggleOption(entry.option)}
         />
       ))}
 
@@ -52,7 +50,7 @@ export function LevelSpawnAction({
         label={"Released"}
         description={"What a new game releases before the actor arrives, drawn with its group"}
         isOn={options.isSpawnedReleased}
-        onToggle={() => onToggle("isSpawnedReleased")}
+        onToggle={() => viewService.toggleOption("isSpawnedReleased")}
       />
     </EditorPopoverGroup>
   );

@@ -1,33 +1,22 @@
-import { afterEach, describe, expect, it, jest } from "@jest/globals";
+import { afterEach, describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { Container } from "@wirestate/core";
 
 import { ERenderBloomMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelLookAction } from "@/core/level/components/preview/LevelLookAction";
-import { ILevelFeatureOptions } from "@/core/level/lib/features";
 import { ELevelLookSource } from "@/core/level/lib/look";
-import { LevelLookService } from "@/core/level/services";
-import { LevelLoadService } from "@/core/level/services/level-load.service";
-import { DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
-import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
-import { mockContainer } from "@/fixtures/utils/container";
+import {
+  ILevelViewContainerDescriptor,
+  mockLevelViewContainer,
+  renderLevelView,
+  TLevelViewRenderResult,
+} from "@/fixtures/utils/level-container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
-function renderAction(
-  bloom: TRenderEnhancedBloomSettings = DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS,
-  onChangeFeatures: (features: ILevelFeatureOptions) => void = () => {}
-): { look: LevelLookService } & ReturnType<typeof renderWithProviders> {
-  const container: Container = mockContainer([LevelLoadService, LevelLookService]);
+function renderAction(): TLevelViewRenderResult {
+  const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
 
-  return {
-    ...renderWithProviders(
-      <LevelLookAction bloom={bloom} features={mockLevelFeatureOptions()} onChangeFeatures={onChangeFeatures} />,
-      { container }
-    ),
-    look: container.get(LevelLookService),
-  };
+  return renderLevelView(<LevelLookAction />, descriptor);
 }
 
 afterEach(() => {
@@ -86,8 +75,14 @@ describe("LevelLookAction", () => {
 
   // The enhanced bloom's strengths stand in the engine bloom's place while it draws.
   it("draws the enhanced bloom on asking, its strengths in place of the engine bloom's", async () => {
-    const onChangeFeatures = jest.fn<(features: ILevelFeatureOptions) => void>();
-    const { getByRole, findByRole, queryByRole, unmount } = renderAction(undefined, onChangeFeatures);
+    const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+
+    // The settings draw the engine bloom, so the view's own choice is what turns it enhanced.
+    descriptor.renderSettings.setRendererOverrides({ enhancedBloom: { mode: ERenderBloomMode.ENGINE } });
+
+    const { getByRole, findByRole, queryByRole } = renderWithProviders(<LevelLookAction />, {
+      container: descriptor.container,
+    });
 
     await userEvent.click(getByRole("button", { name: "Look" }));
     await findByRole("dialog", { name: "Look" });
@@ -97,21 +92,10 @@ describe("LevelLookAction", () => {
 
     await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
-    expect(onChangeFeatures).toHaveBeenLastCalledWith({
-      ...mockLevelFeatureOptions(),
-      enhancedBloom: { mode: ERenderBloomMode.ENHANCED },
-    });
-
-    unmount();
-
-    const enhanced = renderAction({ ...DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS, mode: ERenderBloomMode.ENHANCED });
-
-    await userEvent.click(enhanced.getByRole("button", { name: "Look" }));
-    await enhanced.findByRole("dialog", { name: "Look" });
-
-    expect(enhanced.queryByRole("checkbox", { name: "Bloom" })).toBeNull();
-    expect(enhanced.queryByRole("slider", { name: "Radius" })).toBeNull();
-    expect(enhanced.getByRole("slider", { name: "Threshold" })).toHaveAttribute("aria-valuetext", "5.0");
-    expect(enhanced.getByRole("slider", { name: "Vibrance" })).toHaveAttribute("aria-valuetext", "1.0");
+    expect(descriptor.view.features.enhancedBloom).toEqual({ mode: ERenderBloomMode.ENHANCED });
+    expect(queryByRole("checkbox", { name: "Bloom" })).toBeNull();
+    expect(queryByRole("slider", { name: "Radius" })).toBeNull();
+    expect(getByRole("slider", { name: "Threshold" })).toHaveAttribute("aria-valuetext", "5.0");
+    expect(getByRole("slider", { name: "Vibrance" })).toHaveAttribute("aria-valuetext", "1.0");
   });
 });

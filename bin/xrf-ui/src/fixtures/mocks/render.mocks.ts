@@ -1,4 +1,9 @@
-import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderAntialiasing,
+  ERenderScale,
+  RenderAppliedReport,
+  RenderLoadReport,
+} from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_RENDER_FEATURE_CHOICE, resolveRenderFeatures } from "@/core/render/lib/settings/render-feature-choice";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 
@@ -18,6 +23,29 @@ export function mockRenderLoadReport(overrides: Partial<RenderLoadReport> = {}):
     sectorsTotal: 0,
     textures: 0,
     texturesTotal: 0,
+    ...overrides,
+  };
+}
+
+/** What the renderer last applied to a viewport: TAA at the native scale and nothing else drawn, unless told. */
+export function mockRenderAppliedReport(overrides: Partial<RenderAppliedReport> = {}): RenderAppliedReport {
+  return {
+    ambientOcclusion: null,
+    ambientOcclusionMethod: null,
+    antialiasing: ERenderAntialiasing.TAA,
+    bloom: null,
+    debanding: null,
+    environment: null,
+    grass: null,
+    heightFog: null,
+    indirectLight: null,
+    isRayReconstructed: false,
+    isWater: false,
+    lights: null,
+    reflections: null,
+    renderScale: ERenderScale.NATIVE,
+    shadows: null,
+    sun: null,
     ...overrides,
   };
 }
