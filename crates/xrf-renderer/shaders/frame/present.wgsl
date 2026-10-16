@@ -7,6 +7,7 @@
 #import "common/present"
 #import "common/debanding"
 #import "common/reflection_end"
+#import "common/debug_colours"
 
 // The viewport's finished scene put into its rectangle of the window, moved where the water and the particles distort
 // it; or, for a debug view, one of the targets the scene was built from.
@@ -32,8 +33,14 @@ const VIEW_REFLECTION_ENDS: u32 = 13u;
 const VIEW_PARALLAX: u32 = 14u;
 const VIEW_BUMPS: u32 = 15u;
 const VIEW_HEIGHTS: u32 = 16u;
+const VIEW_LUMINANCE: u32 = 17u;
+const VIEW_ALBEDO_RANGE: u32 = 18u;
+const VIEW_OVERDRAW: u32 = 19u;
+const VIEW_CASCADES: u32 = 20u;
+const VIEW_LAMPS: u32 = 21u;
+const VIEW_SAMPLED_MIP: u32 = 22u;
 // The first of FSR's debug views, which FSR draws in place of the frame it resolved.
-const VIEW_FSR_FIRST: u32 = 17u;
+const VIEW_FSR_FIRST: u32 = 23u;
 // What the reflections view shows where a ray met nothing and the cube stands.
 const REFLECTION_MISS: vec3<f32> = vec3<f32>(0.05, 0.1, 0.45);
 // What the reflections view multiplies what was met by before its shoulder.
@@ -47,6 +54,26 @@ const BLOOM_ENHANCED: u32 = 2u;
 
 // Metres the depth view spreads over, logarithmically, so a metre up close and a kilometre away both read.
 const DEPTH_VIEW_RANGE: f32 = 5000.0;
+
+// Rec. 709's luminance weights, and the middle grey the luminance view counts its stops from.
+const LUMINANCE_WEIGHTS: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
+const MIDDLE_GREY: f32 = 0.18;
+
+// The linear albedo the albedo range view takes as plausible, and what it shows below and above it.
+const ALBEDO_LEAST: f32 = 0.03;
+const ALBEDO_MOST: f32 = 0.9;
+const ALBEDO_UNDER: vec3<f32> = vec3<f32>(0.1, 0.25, 0.95);
+const ALBEDO_OVER: vec3<f32> = vec3<f32>(0.95, 0.15, 0.1);
+
+// The counts the overdraw and the lamps views reach red at.
+const OVERDRAW_MOST: f32 = 8.0;
+const LAMPS_MOST: f32 = 16.0;
+
+// How much of a cascade's tint stays where it shadows, and the drawn texels a stripe of the grass's reach repeats over
+// and spans.
+const CASCADE_SHADOWED: f32 = 0.35;
+const GRASS_STRIPE_PERIOD: i32 = 8;
+const GRASS_STRIPE_WIDTH: i32 = 2;
 
 // One step of the eight-bit window the frame is written to.
 const OUTPUT_STEP: f32 = 1.0 / 255.0;
@@ -134,9 +161,49 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
 
       return mix(REFLECTION_MISS, met / (1.0 + met), saturate(traced.a));
     }
-    // The G-buffer draws the parallax, the bumps or the heights into the albedo for these views alone.
-    case VIEW_PARALLAX, VIEW_BUMPS, VIEW_HEIGHTS: {
+    // The G-buffer draws the parallax, the bumps, the heights or the sampled mip into the albedo for these views alone.
+    case VIEW_PARALLAX, VIEW_BUMPS, VIEW_HEIGHTS, VIEW_SAMPLED_MIP: {
       return textureLoad(albedo_target, texel, 0).rgb;
+    }
+    case VIEW_LUMINANCE: {
+      let luminance: f32 = dot(textureLoad(scene, texel, 0).rgb, LUMINANCE_WEIGHTS);
+
+      return stop_colour(log2(max(luminance, 1e-6) / MIDDLE_GREY));
+    }
+    case VIEW_ALBEDO_RANGE: {
+      if (stored <= 0.0) {
+        return vec3<f32>(0.0);
+      }
+
+      let albedo: vec3<f32> = textureLoad(albedo_target, texel, 0).rgb;
+      let linear: f32 = dot(srgb_decoded(albedo), LUMINANCE_WEIGHTS);
+      let grey: vec3<f32> = vec3<f32>(dot(albedo, LUMINANCE_WEIGHTS));
+
+      return select(select(grey, ALBEDO_OVER, linear > ALBEDO_MOST), ALBEDO_UNDER, linear < ALBEDO_LEAST);
+    }
+    // The overdraw pass added one into the light target for each surface drawn over the pixel.
+    case VIEW_OVERDRAW: {
+      return count_colour(textureLoad(light_target, texel, 0).x, OVERDRAW_MOST);
+    }
+    // The lamps' pass wrote the pixel's cluster's count into the light target, the sun nought.
+    case VIEW_LAMPS: {
+      if (stored <= 0.0) {
+        return vec3<f32>(0.0);
+      }
+
+      return count_colour(textureLoad(light_target, texel, 0).x, LAMPS_MOST);
+    }
+    // The sun's pass wrote the cascade the pixel reads, from one, and how much of the sun reaches it.
+    case VIEW_CASCADES: {
+      if (stored <= 0.0) {
+        return vec3<f32>(0.0);
+      }
+
+      let sun: vec4<f32> = textureLoad(light_target, texel, 0);
+      let shown: vec3<f32> = cascade_colour(sun.x) * mix(CASCADE_SHADOWED, 1.0, saturate(sun.y));
+      let is_stripe: bool = (texel.x + texel.y) % GRASS_STRIPE_PERIOD < GRASS_STRIPE_WIDTH;
+
+      return select(shown, mix(shown, vec3<f32>(1.0), 0.6), distance < present.inspect.x && is_stripe);
     }
     case VIEW_REFLECTION_ENDS: {
       if (present.is_reflected == 0u || stored <= 0.0) {
@@ -154,6 +221,11 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
       return vec3<f32>(select(1.0, upsampled_occlusion(occlusion_target, vec2<f32>(texel), distance), is_searched));
     }
   }
+}
+
+// The sRGB transfer undone, which the engine's textures are encoded by and its albedo holds as it is.
+fn srgb_decoded(color: vec3<f32>) -> vec3<f32> {
+  return select(pow((color + 0.055) / 1.055, vec3<f32>(2.4)), color / 12.92, color <= vec3<f32>(0.04045));
 }
 
 // `img_corrections` (Anomaly's `combine_2`): the finished frame exposed, graded towards a colour in its mid tones,

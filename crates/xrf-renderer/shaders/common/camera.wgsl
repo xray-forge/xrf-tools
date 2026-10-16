@@ -89,15 +89,29 @@ fn selection_run(index: u32) -> vec2<u32> {
 }
 
 // The surfaces' bits in `switches.w`: the engines' steep parallax drawn; the parallax, the bumps or the heights drawn in
-// place of the albedo for their debug views; and the enhanced parallax marched.
+// place of the albedo for their debug views; the enhanced parallax marched; and the sampled mip drawn in place of the
+// albedo for its debug view.
 const SURFACES_STEEP: u32 = 1u;
 const SURFACES_PARALLAX_SHOWN: u32 = 2u;
 const SURFACES_BUMPS_SHOWN: u32 = 4u;
 const SURFACES_HEIGHTS_SHOWN: u32 = 8u;
 const SURFACES_ENHANCED: u32 = 16u;
+const SURFACES_MIP_SHOWN: u32 = 32u;
 
 fn has_surfaces_bit(bit: u32) -> bool {
   return (u32(camera.switches.w) & bit) != 0u;
+}
+
+// What the sun and the lamps draw into the light target (`output.z`, `LightView`): their light; for the cascades view
+// the sun the cascade it reads, from one, and how much of it reaches, the lamps nothing; for the lamps view the lamps
+// their cluster's count, the sun nothing; for the overdraw view neither anything.
+const LIGHT_VIEW_LIGHT: u32 = 0u;
+const LIGHT_VIEW_CASCADES: u32 = 1u;
+const LIGHT_VIEW_LAMPS: u32 = 2u;
+const LIGHT_VIEW_OVERDRAW: u32 = 3u;
+
+fn light_view() -> u32 {
+  return u32(camera.output.z);
 }
 
 // The albedo every surface shares as clay: a mid grey, light enough to read the shading on.

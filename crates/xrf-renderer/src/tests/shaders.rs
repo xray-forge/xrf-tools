@@ -1,4 +1,5 @@
 use crate::contract::render_debug_view::RenderDebugView;
+use crate::pass::light_view::LightView;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
@@ -75,6 +76,29 @@ fn the_present_numbers_debug_views_as_rust_does() {
     get_constant(&library, "frame/present", "VIEW_HEIGHTS"),
     RenderDebugView::Heights.get_index()
   );
+
+  for (name, view) in [
+    ("VIEW_LUMINANCE", RenderDebugView::Luminance),
+    ("VIEW_ALBEDO_RANGE", RenderDebugView::AlbedoRange),
+    ("VIEW_OVERDRAW", RenderDebugView::Overdraw),
+    ("VIEW_CASCADES", RenderDebugView::Cascades),
+    ("VIEW_LAMPS", RenderDebugView::LampsPerCluster),
+    ("VIEW_SAMPLED_MIP", RenderDebugView::SampledMip),
+  ] {
+    assert_eq!(
+      get_constant(&library, "frame/present", name),
+      view.get_index(),
+      "{name}"
+    );
+  }
+
+  for (name, view) in [
+    ("LIGHT_VIEW_CASCADES", LightView::Cascades),
+    ("LIGHT_VIEW_LAMPS", LightView::LampsPerCluster),
+    ("LIGHT_VIEW_OVERDRAW", LightView::Overdraw),
+  ] {
+    assert_eq!(get_constant(&library, "frame/sun", name), view as u32, "{name}");
+  }
   assert_eq!(
     get_constant(&library, "frame/present", "VIEW_FSR_FIRST"),
     RenderDebugView::FsrMasks.get_index()

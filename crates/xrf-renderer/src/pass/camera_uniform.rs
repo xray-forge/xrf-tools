@@ -6,6 +6,7 @@ use crate::contract::render_parallax_settings::RenderParallaxSettings;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_surface_color::RenderSurfaceColor;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::pass::light_view::LightView;
 use crate::scene::static_scene::static_selection::StaticSelection;
 
 /// The camera as `shaders/common/camera.wgsl` declares it.
@@ -24,7 +25,7 @@ pub struct CameraUniform {
   pub planes: [Vec4; 6],
   /// Textured, bumped, the baked hemisphere's strength, and the surfaces' bits: one where the engines' steep parallax is
   /// drawn, two, four and eight where the G-buffer draws the parallax, the bumps or the heights in place of the albedo
-  /// for their debug views, sixteen where the enhanced parallax is marched.
+  /// for their debug views, sixteen where the enhanced parallax is marched, thirty two where it draws the sampled mip.
   pub switches: Vec4,
   /// One where the static surfaces draw as their triangles' edges; times a uv checker repeats in place of every
   /// surface's textures; one where surfaces draw solid.
@@ -52,7 +53,8 @@ pub struct CameraUniform {
   pub parallax_mix: Vec4,
   /// One where the scene holds linear light at its exposure, which the window pass tonemaps; zero where every pass
   /// writes tonemapped colour, as the engine's do. Then the mip bias the surfaces' textures are read at, negative
-  /// sharper; none for any camera but a viewport's own.
+  /// sharper; none for any camera but a viewport's own. Then what the sun and the lamps draw in place of their light for
+  /// a debug view (`LightView`): nought their light.
   pub output: Vec4,
 }
 
@@ -61,7 +63,8 @@ const SELECTION_ROWS: usize = 32;
 
 impl CameraUniform {
   /// What a viewport's own camera draws the static scene with by its `options`: textured, bumped, the hemisphere's
-  /// strength, then the parallax's bits (steep, the parallax, bumps and heights debug views, enhanced).
+  /// strength, then the surfaces' bits (steep, the parallax, bumps and heights debug views, enhanced, the sampled mip's
+  /// debug view).
   pub fn get_switches(options: &RenderViewOptions) -> Vec4 {
     Vec4::new(
       f32::from(u8::from(options.mode.surface_color == RenderSurfaceColor::Textured)),
@@ -72,7 +75,8 @@ impl CameraUniform {
           | u8::from(options.mode.debug_view == RenderDebugView::Parallax) << 1
           | u8::from(options.mode.debug_view == RenderDebugView::Bumps) << 2
           | u8::from(options.mode.debug_view == RenderDebugView::Heights) << 3
-          | u8::from(options.features.parallax.is_enhanced()) << 4,
+          | u8::from(options.features.parallax.is_enhanced()) << 4
+          | u8::from(options.mode.debug_view == RenderDebugView::SampledMip) << 5,
       ),
     )
   }
@@ -183,6 +187,12 @@ impl CameraUniform {
   /// sharper: a temporal resolve gathers the detail a frame drawn smaller than its output would lose.
   pub fn with_texture_bias(mut self, bias: f32) -> Self {
     self.output.y = bias;
+    self
+  }
+
+  /// The same camera with the sun and the lamps drawing what `view` shows in place of their light, or their light.
+  pub fn with_light_view(mut self, view: RenderDebugView) -> Self {
+    self.output.z = LightView::of(view) as u32 as f32;
     self
   }
 

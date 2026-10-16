@@ -45,6 +45,23 @@ pub enum RenderDebugView {
   /// The heights parallax reads: a terrain's details' weighed by its mask, an installation's own or derived from their
   /// bumps, and a steep surface's, grey from black low to white high; every other surface a dim blue.
   Heights,
+  /// The scene's luminance in stops about middle grey, one colour a stop: blues below, grey at middle grey, green to
+  /// red above, white six stops over and black six under.
+  Luminance,
+  /// The albedo's luminance read as linear light: grey within the plausible 0.03 to 0.9, blue below, red above.
+  AlbedoRange,
+  /// How many of the static scene's surfaces were drawn over each pixel, hidden or not: black none, then blue through
+  /// green and yellow to red at eight.
+  Overdraw,
+  /// Which of the sun's cascades shades each pixel, a tint a cascade from the nearest, darker where it shadows, grey
+  /// past them all; striped within the reach the grass's cards cast their shadows to.
+  Cascades,
+  /// How many lamps the cluster each pixel falls in lists: black none, then blue through green and yellow to red at
+  /// sixteen.
+  LampsPerCluster,
+  /// The mip a surface's base texture is read at: green its own size, blue where it is magnified, yellow to red as
+  /// smaller mips are read; grey where a surface has no base texture.
+  SampledMip,
   /// FSR's masks at each pixel's drawn texel: how reactive it is (moving apart from what it lands on, or a plant the
   /// wind moved) in red, how disoccluded in green, how far its shading changed in blue.
   FsrMasks,

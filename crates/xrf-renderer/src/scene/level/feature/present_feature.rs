@@ -43,7 +43,8 @@ impl PresentFeature {
     } else {
       present
     }
-    .with_linear_scene(options.is_scene_linear());
+    .with_linear_scene(options.is_scene_linear())
+    .with_grass_reach(inputs.grass_reach);
 
     self.uniform = match self.debanding {
       Some(quality) => present.with_debanding(quality.get_passes(), options.features.debanding.radius, time),

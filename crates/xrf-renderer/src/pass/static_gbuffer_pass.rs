@@ -17,7 +17,8 @@ use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 /// Draws the static scene into a viewport's G-buffer: the cut-out batches' depth alone first, then one indirect draw a
 /// batch, its visible clusters as instances, a cut-out batch shaded only where its depth is the one drawn, then one for
 /// the impostors standing in for distant trees. A frame inspecting its surfaces (a wireframe, the asset checker, alpha
-/// hidden, a surface debug view) draws with pipelines keeping their code; any other with pipelines without it.
+/// hidden, a surface debug view) draws with pipelines keeping their code; any other with pipelines without it. For the
+/// overdraw's debug view it draws every batch again, counting each surface drawn over a pixel.
 pub struct StaticGBufferPass {
   layout: wgpu::BindGroupLayout,
   impostor_layout: wgpu::BindGroupLayout,
@@ -148,6 +149,27 @@ impl StaticGBufferPass {
       context
         .get_pass()
         .draw_indirect(args, StaticCullScratch::IMPOSTOR_ARGS_OFFSET);
+    }
+  }
+
+  /// Draws every batch of the clusters the argument buffers list again into the target the graph opened, with no depth
+  /// test, each fragment adding one: how many of the static scene's surfaces were drawn over each pixel, hidden or not.
+  pub fn record_overdraw(
+    &self,
+    context: &mut RasterContext<'_>,
+    (view, draws, textures): (&ViewBinding, &StaticDraws, &wgpu::BindGroup),
+    args: &[&wgpu::Buffer],
+  ) {
+    context.get_pass().set_bind_group(0, &view.bind_group, &[]);
+    context.get_pass().set_bind_group(1, textures, &[]);
+
+    for (batch, pipeline) in StaticBatch::list().zip(&self.pipelines.overdraws) {
+      context.bind(&draws.layouts[batch.layout.get_index()]);
+      context.get_pass().set_pipeline(pipeline);
+
+      for args in args {
+        context.get_pass().draw_indirect(args, batch.get_index() as u64 * 16);
+      }
     }
   }
 
@@ -315,10 +337,47 @@ impl StaticGBufferPass {
       })
     };
 
+    // Each fragment adds one into the light target, whatever stands in front of it.
+    let counted: wgpu::ColorTargetState = wgpu::ColorTargetState {
+      format: ViewTargets::LIGHT,
+      blend: Some(wgpu::BlendState {
+        color: wgpu::BlendComponent {
+          src_factor: wgpu::BlendFactor::One,
+          dst_factor: wgpu::BlendFactor::One,
+          operation: wgpu::BlendOperation::Add,
+        },
+        alpha: wgpu::BlendComponent::REPLACE,
+      }),
+      write_mask: wgpu::ColorWrites::ALL,
+    };
+    let overdraws: Vec<wgpu::RenderPipeline> = StaticBatch::list()
+      .map(|batch| {
+        let fragment: &'static str = if batch.class == StaticClass::CutOut {
+          "fs_overdraw_cut_out"
+        } else {
+          "fs_overdraw"
+        };
+
+        source.get_render_pipeline(
+          &RenderPipelineDescription::new("static overdraw", "static/gbuffer", batch.layout.get_vertex_entry())
+            .with_fragment(fragment)
+            .with_constants(&[("IS_INSPECTED", 0.0)])
+            .with_bind_group_layouts(&[Some(view_layout), Some(texture_layout), Some(layout)])
+            .with_primitive(wgpu::PrimitiveState {
+              front_face: wgpu::FrontFace::Ccw,
+              cull_mode: Some(wgpu::Face::Back),
+              ..Default::default()
+            })
+            .with_target(counted.clone()),
+        )
+      })
+      .collect::<XrfResult<_>>()?;
+
     Ok(GBufferPipelines {
       frames: [frame(false)?, frame(true)?],
       picks: create(deferred.clone(), (true, true))?,
       composited_picks: create(Self::list_composited_picks().collect(), (true, true))?,
+      overdraws,
     })
   }
 }
@@ -330,6 +389,8 @@ struct GBufferPipelines {
   picks: Vec<wgpu::RenderPipeline>,
   /// One a composited batch, in `StaticGBufferPass::list_composited_picks` order, picking what of them shows.
   composited_picks: Vec<wgpu::RenderPipeline>,
+  /// One a batch of every class, in `StaticBatch::list` order, counting what it draws for the overdraw's debug view.
+  overdraws: Vec<wgpu::RenderPipeline>,
 }
 
 /// A frame's draws of the G-buffer by batch: one a batch, by its index, and a cut-out batch's depth-only draw ahead of

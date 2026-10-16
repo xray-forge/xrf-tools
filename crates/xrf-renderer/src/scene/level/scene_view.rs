@@ -792,6 +792,7 @@ impl SceneView {
       selection_color: features.overlays.get_selection_color(),
       is_engine_bloomed: features.bloom.is_engine_drawn(),
       is_enhanced_bloomed: features.bloom.is_enhanced_drawn(),
+      grass_reach: features.grass.get_cascade_reach(),
     };
 
     self
@@ -1160,6 +1161,11 @@ impl SceneView {
       (view, textures, scene),
       (handles, lit, traced),
     );
+
+    self
+      .features
+      .statics
+      .add_overdraw_pass(&mut *graph, passes, (view, textures, &statics), handles.light);
     let surroundings: &SurroundingsCube = &self.features.surroundings;
     let sky: Option<SkyParameters> = self.features.sky.add_passes(
       (&mut *graph, &mut *bindings, runtime),

@@ -87,6 +87,7 @@ pub(crate) mod light_record;
 pub(crate) mod light_shadowing_parameters;
 pub(crate) mod light_trace_uniform;
 pub(crate) mod light_tracing_parameters;
+pub(crate) mod light_view;
 pub(crate) mod light_visibility_parameters;
 pub(crate) mod light_volume_parameters;
 pub(crate) mod light_volume_pass;
