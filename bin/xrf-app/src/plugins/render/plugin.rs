@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tauri::plugin::{Builder, TauriPlugin};
 use tauri::webview::{PageLoadEvent, PageLoadPayload};
-use tauri::{Manager, Runtime, Webview};
+use tauri::{AppHandle, Manager, RunEvent, Runtime, Webview, WindowEvent};
 use xrf_renderer::RenderWorkers;
 
 use crate::core::execution::ExecutionState;
@@ -11,8 +11,8 @@ use crate::plugins::render::packaged_bundle::PackagedBundle;
 use crate::plugins::render::state::RenderState;
 
 /// The `render` plugin: the native renderer's state (`RenderState`, its loaders on the application's pool, its bundle and
-/// the driver's pipeline cache on disk), every `render|*` command, and the hook that detaches a window's viewports as a
-/// page starts loading over them.
+/// the driver's pipeline cache on disk), every `render|*` command, and the hooks that detach a window's viewports as a
+/// page starts loading over them or the window is destroyed.
 pub struct RenderPlugin {}
 
 impl RenderPlugin {
@@ -38,6 +38,7 @@ impl RenderPlugin {
         Ok(())
       })
       .on_page_load(Self::on_page_load)
+      .on_event(Self::on_event)
       .invoke_handler(crate::core::logging::warn_on_unhandled_command(
         Self::NAME,
         crate::ipc::registry::render::handler(),
@@ -53,6 +54,19 @@ impl RenderPlugin {
 
     if let Some(state) = webview.try_state::<RenderState>() {
       state.detach_window(webview.window().label());
+    }
+  }
+
+  /// Detaches a destroyed window's viewports, whose page went with it before it could let them go.
+  fn on_event<R: Runtime>(application: &AppHandle<R>, event: &RunEvent) {
+    if let RunEvent::WindowEvent {
+      label,
+      event: WindowEvent::Destroyed,
+      ..
+    } = event
+      && let Some(state) = application.try_state::<RenderState>()
+    {
+      state.detach_window(label);
     }
   }
 

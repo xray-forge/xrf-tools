@@ -76,13 +76,14 @@ impl RenderState {
     self.release(viewport);
   }
 
-  /// Stops drawing every viewport in a window whose page is loading again, which can no longer let them go itself.
+  /// Stops drawing every viewport in a window whose page is loading again or which was destroyed, neither of which can
+  /// let them go itself.
   pub fn detach_window(&self, window: &str) {
     let viewports: Vec<RenderViewportId> = self.lock_windows().take_window(window);
 
     for viewport in viewports {
       log::info!(
-        "Detached native viewport {} from window '{window}', whose page is loading again",
+        "Detached native viewport {} from window '{window}', whose page went",
         viewport.0
       );
 
