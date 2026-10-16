@@ -40,7 +40,7 @@ describe("RenderGpuFormRow", () => {
       <RenderGpuFormRow value={INTEGRATED} backend={RENDER_BACKEND_AUTO} availability={TWO_GPUS} onChange={onChange} />
     );
 
-    await userEvent.click(view.getByRole("button", { name: "Automatic" }));
+    await userEvent.click(view.getByRole("button", { name: "Auto" }));
 
     expect(onChange).toHaveBeenLastCalledWith(null);
   });
