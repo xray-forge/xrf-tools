@@ -33,15 +33,8 @@ use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::surroundings_faces::SurroundingsFaces;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
-/// The level around the camera as a cube, a face a frame: the static scene culled and drawn into a G-buffer of the
-/// face's own by a camera looking down one axis from where the viewport's stands, then lit into the prefiltered sky
-/// cube's first mip, so a reflection that meets nothing on the screen reads the trees and the hills around it rather
-/// than the sky alone. A face is drawn again only where the camera moved from where it was drawn or the scene's
-/// contents changed; where the sun turned or it has stood `REFRESH_FRAMES`, it is only lit again from the G-buffer it
-/// keeps, which costs next to nothing, so a still view draws no geometry at all. A face never drawn at the probe's size
-/// draws whole at once, and so does a face lit again. One left behind is drawn again a band a frame, `BANDS` of its
-/// rows, into a spare G-buffer, each band offered to the frame's scheduler, and takes the face's place, lit, once
-/// whole: a moving camera's faces never land whole on one frame.
+/// The level around the camera as a cube, a face a frame, lit into the prefiltered sky cube's first mip, so a reflection
+/// that meets nothing on the screen reads the trees and the hills around it rather than the sky alone.
 pub struct SurroundingsCube {
   /// What culls and draws a face whole, and the camera it is lit by; and what culls and draws a band.
   cut: ShadowCut,
@@ -118,8 +111,8 @@ impl SurroundingsCube {
   /// alias out of the probe; never past `DRAWN_MOST`, which bounds what the six G-buffers keep.
   pub const DRAWN_OVER: u32 = 2;
   pub const DRAWN_MOST: u32 = 1024;
-  /// Metres the faces see from the camera: from past what stands about it, which is the screen's to trace and, drawn
-  /// into a cube, showed in every far-ended reflection wherever the camera stood, to the whole of a level.
+  /// Metres the faces see from the camera: from past what stands about it, which the screen traces, to the whole of a
+  /// level.
   const NEAR: f32 = 15.0;
   const FAR: f32 = 1200.0;
   /// Metres the camera moves before a face is drawn again; the cosine of the angle the sun turns before it is lit

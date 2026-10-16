@@ -495,12 +495,7 @@ impl LevelLights {
   }
 
   /// A shadowed light's shafts this frame, and the slices they draw, as the view's engine gives them out
-  /// (`r3_rendertarget_accum_spot.cpp`, `accum_volumetric`): OpenXRay only for a light whose owner asks, by its own
-  /// quality, intensity and distance, drawing the whole buffer however few slices its quality asks; Monolith, as
-  /// `ps_ssfx_volumetric` ships, for every light whose owner sets them, by its own constants, a fifth for an omni part,
-  /// fading from 20 m to none at 120. A shadowed point is one volume over its sphere where the engine draws six omni
-  /// parts, each over the box of its own sphere, `1 / sqrt(2)` of the range: as many slices a metre take root two times
-  /// as many over the whole sphere's box.
+  /// (`r3_rendertarget_accum_spot.cpp`, `accum_volumetric`).
   fn to_volume(
     light: &LightDescription,
     basis: &LightBasis,

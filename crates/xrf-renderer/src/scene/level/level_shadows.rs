@@ -120,17 +120,7 @@ struct CascadeOffer {
 }
 
 /// A level's sun shadow: its cascades fitted along the camera's view every frame, each culled and drawn into its map
-/// only when its box moved, the scene changed under it, its trees' sway shows or the grass casts into it
-/// (`GrassShadowCasters`), which moves every frame. The nearest draws at once, and so does
-/// one never drawn or whose box strayed too far from its map to wait; a farther one is offered to the frame's
-/// scheduler, waiting at most its stagger (two, four, eight frames).
-///
-/// While the trees sway or the grass casts, each cascade keeps what stands still in a static layer of its own, drawn
-/// only when the scene changes under it or its fit no longer holds by the one it was drawn at; a draw for what moves
-/// copies that layer into the map and draws the trees, and the grass where its cards reach, over it at the same fit,
-/// which leaves the map as a whole draw at that fit would. The far
-/// cascades draw their next static layer ahead, a band a frame into a second layer, once their fit has strayed half of
-/// what their static layer holds, and show it when done: a turning sun never stales one whole on a single frame.
+/// only when its box moved, the scene changed under it, its trees' sway shows or the grass casts into it.
 #[derive(Default)]
 pub struct LevelShadows {
   /// The maps, while any cascade is drawn.

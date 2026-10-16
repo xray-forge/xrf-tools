@@ -1,9 +1,5 @@
-/// How full the level's puddles are, how stormy the rain has been and how soaked a long rain has left the level: puddles
-/// fill slower than surfaces wet, and the harder the rain the faster, and drain three times slower than surfaces dry,
-/// so they outlast the sheen; the storm follows how far the rain is past a light one, slowly, so a gust does not pop
-/// puddles in, and eases no faster than puddles drain, so the puddles a downpour made outlast it rather than vanish the
-/// moment the rain lightens; the soak builds over a long rain, the harder the faster, and dries slower still. All on the weather's
-/// clock, from empty and dry before any rain, as every rain starts on dry ground.
+/// How full the level's puddles are, how stormy the rain has been and how soaked a long rain has left the level, on the
+/// weather's clock, from empty and dry before any rain.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct PuddleFill {
   /// How full, how stormy, how soaked, and the clock they were last moved on at.

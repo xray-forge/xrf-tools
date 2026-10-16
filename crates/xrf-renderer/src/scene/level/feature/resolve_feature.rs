@@ -48,11 +48,8 @@ type DlssKey = ((u32, u32), (DlssQuality, DlssPreset), bool);
 /// What a DLSS ray reconstructor is made for: its output and quality.
 type RayKey = ((u32, u32), DlssQuality);
 
-/// How a view's frame becomes the image its viewport shows. From the drawn size to the output's: the temporal resolve
-/// (TAA, or FSR or DLSS upscaling as they resolve, DLSS reconstructing rays where asked) with the jitter its samples
-/// are moved by. Then, to the viewport's
-/// size where what was resolved, or the frame where nothing was, is of another: EASU's upscale or the box downscale; and
-/// RCAS's sharpening where the frame was drawn smaller than the viewport or a temporal resolve gathered it.
+/// How a view's frame becomes the image its viewport shows: the temporal resolve from the drawn size to the output's,
+/// then EASU's upscale or the box downscale to the viewport's, and RCAS's sharpening.
 pub struct ResolveFeature {
   jitter: TemporalJitter,
   /// Where this frame's samples sit within their pixels, and the phases the jitter's sequence repeats over.

@@ -107,17 +107,7 @@ const GRASS_LEAN: f32 = 0.3;
 type FaceCandidate = ((bool, bool, f32), ProxyHandle<LightDescription>, bool, usize, u32);
 
 /// The local lights' shadows: a square of an atlas a face, sized as the engine sizes its maps, drawn once and kept
-/// while the scene it casts from stays, a few faces a frame as the frame's scheduler grants them by their texels, the
-/// nearest lights first; a face over swaying trees is drawn again once a sway interval, where the lean shows at its
-/// texels. A light lights only once its faces are drawn; one asked at another size keeps its old faces until its new
-/// ones are. While trees sway in a light's reach, each of its faces keeps what stands still in the same tile of a
-/// static atlas, drawn only when the scene changes under it or its light moves; a sway's draw restores the tile from it
-/// and draws the trees over. Room is made from the lights out of view longest, and where there is still none, a light
-/// is asked at smaller squares. A light out of view but standing near the camera is kept ready, so a turn finds it
-/// drawn: it holds the faces it has, takes room only where some is free, at smaller squares where little is, and its
-/// faces are drawn after those in view. Each face drawn in a frame has a slot of its own in the lists and the draw arguments,
-/// so every face is culled before any is drawn, and all are drawn in one render pass. The atlas is held only while a
-/// view of the scene casts the lights' shadows; a texel of nothing is bound in its place otherwise.
+/// while the scene it casts from stays, a few faces a frame as the frame's scheduler grants them, the nearest first.
 pub struct LevelLightShadows {
   /// The atlas, while a view casts the lights' shadows, and what is bound in its place while none does.
   atlas: Option<wgpu::TextureView>,

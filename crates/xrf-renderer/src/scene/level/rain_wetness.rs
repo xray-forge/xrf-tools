@@ -1,8 +1,5 @@
-/// How wet the level has become: built up towards the rain's density while it rains, as Monolith's weather accumulates
-/// `wetness_factor`, and dried slowly towards it after, on the weather's clock; dry before any rain, as every rain starts
-/// on dry ground, so surfaces wet and dry smoothly and settle at the density the engine wets by. Beside it the wet
-/// spell's peak, which the surfaces dry from in turn once the rain stops: held while the level dries, closing on the
-/// wetness while it rains again, so what had dried wets back over a minute or so, and none once the level is dry.
+/// How wet the level has become, built up towards the rain's density as Monolith's weather accumulates
+/// `wetness_factor` and dried slowly after, beside the wet spell's peak the surfaces dry from in turn.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct RainWetness {
   /// Its wetness, from nothing to one, the clock it was last moved on at, and the wet spell's peak.
