@@ -471,7 +471,16 @@ impl RenderThread {
 
   /// Lets the GPU go, with everything made on its device, for `ensure_gpu` to start it again.
   fn release_gpu(&mut self) {
-    self.gpu = None;
+    // The device's work finished and the windows' swapchains let go before the device, so a backend started next finds
+    // every window free of them; a lost device has no work to wait for.
+    if let Some(mut gpu) = self.gpu.take() {
+      if !gpu.context.is_lost() {
+        let _ = gpu.context.device.poll(wgpu::PollType::wait_indefinitely());
+      }
+
+      gpu.windows.clear();
+    }
+
     // Its pool, bind groups and timers belong to the device let go.
     self.runtime = None;
     self.frame_span = None;
@@ -731,10 +740,20 @@ impl RenderThread {
       let Some(scene) = self.scenes.get(&asked) else {
         continue;
       };
-      let is_shown: bool = match self.reopening.is_held(asked) {
+      let is_held: bool = self.reopening.is_held(asked);
+      let is_shown: bool = match is_held {
         true => self.reopening.release(asked, scene, &gpu.textures),
         false => shown.is_none() || scene.source.get_sector_count() > 0 || scene.is_ready(&gpu.textures),
       };
+
+      // A swapchain made right after another backend's let go of the window can present without the window showing it
+      // until it is configured again; the restarted level is the frame that does.
+      if is_held
+        && is_shown
+        && let Some(window) = gpu.windows.get(&viewport.window)
+      {
+        window.configure_again();
+      }
 
       if is_shown {
         viewport.show(Some((

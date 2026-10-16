@@ -95,6 +95,11 @@ impl RenderWindow {
     self.is_lost.get()
   }
 
+  /// Has the next frame configure the swapchain again, as a size change would.
+  pub fn configure_again(&self) {
+    self.configured.set(None);
+  }
+
   /// Configures the swapchain for the window's size now, answering the size; `None` while the window shows nothing.
   pub fn ready(&mut self, context: &GpuContext, is_vsync: bool) -> Option<(u32, u32)> {
     let (width, height) = self.host.get_client_size();
