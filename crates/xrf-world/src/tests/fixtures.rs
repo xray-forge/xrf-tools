@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use xrf_anm::AnmFile;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
@@ -10,12 +13,13 @@ use xrf_visual::{LightsDescription, SectorPackage};
 /// How a test level packs a sector.
 pub type TestSectorPack = Box<dyn Fn(u32) -> XrfResult<SectorPackage> + Send + Sync>;
 
-/// A level holding nothing but what a test gives it: the key its scene is shared by, and its sectors, each packed as
-/// `pack` says; everything else it is asked for is not there.
+/// A level holding nothing but what a test gives it: the key its scene is shared by, its sectors, each packed as
+/// `pack` says, and its object motions by name; everything else it is asked for is not there.
 pub struct TestLevelSource {
   pub key: Option<String>,
   pub sectors: u32,
   pub pack: TestSectorPack,
+  pub motions: HashMap<String, AnmFile>,
 }
 
 impl Default for TestLevelSource {
@@ -24,6 +28,7 @@ impl Default for TestLevelSource {
       key: None,
       sectors: 0,
       pack: Box::new(|_| Err(Self::none())),
+      motions: HashMap::new(),
     }
   }
 }
@@ -88,5 +93,9 @@ impl RenderLevelSource for TestLevelSource {
 
   fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>> {
     Ok(None)
+  }
+
+  fn read_object_motion(&self, name: &str) -> XrfResult<AnmFile> {
+    self.motions.get(name).cloned().ok_or_else(Self::none)
   }
 }

@@ -1,9 +1,12 @@
 mod ambient_effects;
 mod ambient_wind;
 mod cameras;
+mod campfire;
 pub(crate) mod fixtures;
 mod level_animation;
+mod level_campfires;
 mod level_loader;
+mod level_object_motions;
 mod level_streaming;
 mod placed_emitter;
 mod scenes;
