@@ -126,7 +126,6 @@ impl LevelSurface {
     )
   }
 
-  /// The surface's and the water's windows of a surface not made yet.
   /// Where the puddles stood last frame as the grass plants around them: a surface's puddles and the window they cover,
   /// or the dry stand-in (`dry`) where none is made; `has_puddles` whether the wet surfaces draw any.
   pub fn get_grass_puddles<'a>(
@@ -140,6 +139,7 @@ impl LevelSurface {
     )
   }
 
+  /// The surface's and the water's windows of a surface not made yet.
   pub fn get_unmade() -> ((Vec4, Vec4), Vec4) {
     let shape: OverheadShape = OverheadShape::LEVEL_SURFACE;
 
@@ -169,10 +169,9 @@ impl LevelSurface {
     self.water.get_window()
   }
 
-  /// Declares its draws and, where they are drawn, what is placed from them, then this frame's puddles; answers its
-  /// lowest heights, its puddles and its water as the graph knows them. `water` lifts the water's waves.
   /// Adds a surface's passes where the enhanced wetting places its puddles by it (`surface`, with the wet surfaces'
-  /// uniform), answering its lowest heights, its puddles and its water; the dry stand-ins otherwise.
+  /// uniform), `water` lifting the water's waves: its draws, what is placed from them, then this frame's puddles.
+  /// Answers its lowest heights, its puddles and its water as the graph knows them; the dry stand-ins otherwise.
   pub fn add_surface_passes<'a>(
     surface: Option<&'a LevelSurface>,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),

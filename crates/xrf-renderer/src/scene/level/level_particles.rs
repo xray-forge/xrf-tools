@@ -427,7 +427,7 @@ impl LevelParticles {
     }
   }
 
-  /// Every surface's record, which each view's particle pass reads, and how many times it was made.
+  /// Every surface's record, which each view's particle pass reads.
   pub fn get_surfaces(&self) -> &wgpu::Buffer {
     &self.surface_buffer
   }

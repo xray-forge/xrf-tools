@@ -226,8 +226,8 @@ impl LightsFeature {
     }
   }
 
-  /// Adds the clusters' counts cleared and, while any light stands in view, the records binned into the clusters;
-  /// answers the lights as the graph holds them.
+  /// Adds the binning's overflow words cleared and, while any light stands in view, the records binned into the
+  /// clusters; answers the lights as the graph holds them.
   pub fn add_binning_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -242,7 +242,7 @@ impl LightsFeature {
     let counts: GraphBuffer = buffers.counts;
 
     graph
-      .add_encoder_pass("light counts clear")
+      .add_encoder_pass("light overflow clear")
       .buffer(counts, GraphBufferAccess::CopyDestination)
       .record(move |context| self.clear_overflow(context.get_encoder()));
 

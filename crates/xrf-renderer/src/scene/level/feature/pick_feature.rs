@@ -111,7 +111,7 @@ impl PickFeature {
 }
 
 impl ViewFeature for PickFeature {
-  /// One texel and its readbacks.
+  /// Nothing counted: one texel and its readbacks are all it holds.
   fn get_memory(&self) -> u64 {
     0
   }

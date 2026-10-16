@@ -6,7 +6,7 @@ use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_uniform::LightingUniform;
 
 /// The values every unit of a view reads this frame, prepared before them: the camera and the sun it is drawn by, the
-/// shading switches, the shadows asked for, whether it draws solid and shafted, and the lighting uniform.
+/// shading switches, the shadows asked for, whether it draws its edges alone, and the lighting uniform.
 pub struct ViewFrame {
   pub camera: CameraView,
   /// Where the sunlight travels.

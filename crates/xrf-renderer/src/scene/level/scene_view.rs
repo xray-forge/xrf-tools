@@ -111,7 +111,6 @@ pub struct SceneView {
 }
 
 impl SceneView {
-  /// What the scene's particles came to since the last report, as this view draws them.
   /// What the grass came to on a recent frame.
   pub fn take_grass_report(&mut self) -> RenderGrassReport {
     self.features.grass.take_report()

@@ -16,8 +16,8 @@ pub struct PresentFeature {
 }
 
 impl PresentFeature {
-  /// Takes this frame's present over a scene drawn `render` texels across into `output`, once every other unit has
-  /// decided what it reads (`inputs`), the debanding's noise turning with `time`.
+  /// Takes this frame's present into `output`, of a scene upscaled into it where `is_upscaled`, once every other unit
+  /// has decided what it reads (`inputs`), the debanding's noise turning with `time`.
   pub fn prepare(
     &mut self,
     options: &RenderViewOptions,
