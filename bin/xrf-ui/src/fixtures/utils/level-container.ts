@@ -1,8 +1,10 @@
-import { act, RenderResult } from "@testing-library/react";
+import { expect } from "@jest/globals";
+import { act, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 import { ReactNode } from "react";
 
+import { LevelWeatherDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { RenderAppliedReport, RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
 import {
   LevelLoadService,
@@ -14,7 +16,11 @@ import {
 } from "@/core/level/services";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockRenderAppliedReport } from "@/fixtures/mocks/render.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -68,6 +74,38 @@ export type TLevelViewRenderResult = ILevelViewContainerDescriptor & Omit<Render
  */
 export function renderLevelView(ui: ReactNode, descriptor: ILevelViewContainerDescriptor): TLevelViewRenderResult {
   return { ...renderWithProviders(ui, { container: descriptor.container }), ...descriptor };
+}
+
+/** The level a view opens, and the weather its game names. */
+export interface ILevelViewOpening {
+  level?: Partial<SelectedLevelDescription>;
+  weather?: Partial<LevelWeatherDescription>;
+}
+
+/**
+ * Renders a part of the level view over an open level, once its weather is read.
+ *
+ * @param ui - What to render.
+ * @param descriptor - The services it reads, set up as the case needs.
+ * @param opening - The level and the weather the backend answers with.
+ * @returns The render result and the services.
+ */
+export async function renderOpenLevelView(
+  ui: ReactNode,
+  descriptor: ILevelViewContainerDescriptor,
+  opening: ILevelViewOpening = {}
+): Promise<TLevelViewRenderResult> {
+  setMockInvokeResponses({
+    ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription(opening.level)),
+    ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription(opening.weather)),
+  });
+
+  const rendered: TLevelViewRenderResult = renderLevelView(ui, descriptor);
+
+  await waitFor(() => expect(descriptor.weather.description.isReady).toBe(true));
+  await waitFor(() => expect(descriptor.weather.cycle.isLoading).toBe(false));
+
+  return rendered;
 }
 
 /**
