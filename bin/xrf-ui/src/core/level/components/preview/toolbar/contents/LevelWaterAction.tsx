@@ -8,8 +8,10 @@ import { ERenderWaterMode, RenderWaterMode } from "@/core/ipc/types/xrf-renderer
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
+import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
+import { LEVEL_MANUAL_WEATHER_WATER_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
@@ -81,6 +83,8 @@ export function LevelWaterAction({
         format={formatPercent}
         onEdit={weatherService.editManual}
       />
+
+      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_WATER_KEYS} onEdit={weatherService.editManual} />
 
       <RenderValueChoice
         label={"Mode"}

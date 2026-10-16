@@ -38,6 +38,9 @@ export const LEVEL_MANUAL_WEATHER_RAIN_KEYS: ReadonlyArray<keyof ILevelManualWea
   "thunderboltDuration",
 ];
 
+/** The water's key of a keyframe set by hand, set back on its own. */
+export const LEVEL_MANUAL_WEATHER_WATER_KEYS: ReadonlyArray<keyof ILevelManualWeather> = ["waterIntensity"];
+
 /** The wind's and the trees' keys of a keyframe set by hand, set back together. */
 export const LEVEL_MANUAL_WEATHER_WIND_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
   "windVelocity",
