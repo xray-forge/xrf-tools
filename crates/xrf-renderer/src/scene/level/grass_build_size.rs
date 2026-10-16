@@ -20,8 +20,7 @@ impl GrassBuildSize {
   pub fn wanted(reach: u32, candidates: u32, binding_limit: u64) -> Self {
     let line: u32 = reach * 2 + 1;
     let cells: u32 = line * line;
-    let per_cell: u64 =
-      u64::from(candidates).min(binding_limit / (u64::from(cells.max(1)) * Self::ITEM_BYTES));
+    let per_cell: u64 = u64::from(candidates).min(binding_limit / (u64::from(cells.max(1)) * Self::ITEM_BYTES));
     let most: u64 = binding_limit / Self::ITEM_BYTES;
 
     Self {

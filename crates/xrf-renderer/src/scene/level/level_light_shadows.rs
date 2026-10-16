@@ -693,11 +693,7 @@ impl LevelLightShadows {
   fn hold_atlas(&mut self, device: &wgpu::Device) {
     match (self.is_cast, self.atlas.is_some()) {
       (true, false) => {
-        self.atlas = Some(Self::create_atlas(
-          device,
-          "light shadow atlas",
-          Self::ATLAS_SIZE,
-        ));
+        self.atlas = Some(Self::create_atlas(device, "light shadow atlas", Self::ATLAS_SIZE));
       }
       (false, true) => {
         self.atlas = None;
