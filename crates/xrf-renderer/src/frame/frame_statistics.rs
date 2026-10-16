@@ -18,7 +18,7 @@ pub struct FrameStatistics {
   cpu_times: Vec<f32>,
   /// The GPU's milliseconds on each frame read back, a few frames after it was drawn.
   gpu_times: Vec<f32>,
-  phase_sums: [f32; FrameStatistics::PHASES],
+  phase_sums: FramePhases,
   /// Each encode group's record and finish milliseconds summed, by name in the order first seen.
   group_sums: Vec<(&'static str, f32, f32)>,
 }
@@ -39,9 +39,6 @@ pub struct FrameSummary {
 }
 
 impl FrameStatistics {
-  /// The phases a frame's render thread time is told apart in, as [`RenderFramePhases`] lists them.
-  pub(crate) const PHASES: usize = 9;
-
   /// How often a viewport reports what its frames cost.
   pub const REPORT_INTERVAL: Duration = Duration::from_millis(250);
 
@@ -55,7 +52,7 @@ impl FrameStatistics {
       cpu_sum: 0.0,
       cpu_times: Vec::new(),
       gpu_times: Vec::new(),
-      phase_sums: [0.0; Self::PHASES],
+      phase_sums: FramePhases::default(),
       group_sums: Vec::new(),
     }
   }
@@ -80,9 +77,7 @@ impl FrameStatistics {
     self.cpu_times.push(cpu);
     self.gpu_times.extend(gpu);
 
-    for (sum, phase) in self.phase_sums.iter_mut().zip(phases.to_array()) {
-      *sum += phase.as_secs_f32() * 1000.0;
-    }
+    self.phase_sums += *phases;
 
     for group in groups {
       let (record, finish): (f32, f32) = (group.record.as_secs_f32() * 1000.0, group.finish.as_secs_f32() * 1000.0);
@@ -120,7 +115,7 @@ impl FrameStatistics {
       cpu_times: std::mem::take(&mut self.cpu_times),
       gpu_time: (!self.gpu_times.is_empty()).then(|| self.gpu_times.iter().sum::<f32>() / self.gpu_times.len() as f32),
       gpu_times: std::mem::take(&mut self.gpu_times),
-      phases: Self::to_phases(self.phase_sums.map(|sum| sum / frames)),
+      phases: self.phase_sums.to_report(self.frames),
       groups: self
         .group_sums
         .iter()
@@ -135,21 +130,5 @@ impl FrameStatistics {
     *self = Self::new(now);
 
     Some(summary)
-  }
-
-  fn to_phases(
-    [update, acquire, load, prepare, record, compose, encode, submit, present]: [f32; Self::PHASES],
-  ) -> RenderFramePhases {
-    RenderFramePhases {
-      update,
-      acquire,
-      load,
-      prepare,
-      record,
-      compose,
-      encode,
-      submit,
-      present,
-    }
   }
 }
