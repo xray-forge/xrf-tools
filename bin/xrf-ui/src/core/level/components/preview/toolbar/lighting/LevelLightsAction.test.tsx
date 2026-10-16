@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
+import { ERenderVolumetricMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelLightsAction } from "@/core/level/components/preview/toolbar/lighting/LevelLightsAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { clearLocalStorage } from "@/core/storage";
@@ -46,5 +47,19 @@ describe("LevelLightsAction", () => {
     expect(await findByRole("dialog", { name: "Lamps" })).toHaveTextContent(
       "Lamps are off in Settings, under Rendering"
     );
+  });
+
+  it("sets the view's volumetric light beside the lamps' shafts it replaces", async () => {
+    const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+
+    descriptor.renderSettings.setRendererOverrides({ volumetric: { mode: ERenderVolumetricMode.ENGINE } });
+
+    const { getByRole, findByRole, view } = renderLevelView(<LevelLightsAction />, descriptor);
+
+    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Lamps" }) });
+    await findByRole("dialog", { name: "Lamps" });
+    await userEvent.click(getByRole("button", { name: "Enhanced" }));
+
+    expect(view.features.volumetric).toEqual({ mode: ERenderVolumetricMode.ENHANCED });
   });
 });

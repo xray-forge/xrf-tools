@@ -7,7 +7,6 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
 import { RenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
-import { LevelVolumetricSettings } from "@/core/level/components/preview/toolbar/lighting/LevelVolumetricSettings";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
@@ -35,8 +34,7 @@ const NO_SUNS: ReadonlyArray<string> = [];
 
 /**
  * The sun, the ambient and the hemisphere, by the keys a weather writes them with; the lens flare the sun is drawn
- * with and the light shafts through its shadow, each with its switch; and how the light the air scatters is drawn. Its
- * direction is marked among the overlays.
+ * with and the light shafts through its shadow, each with its switch. Its direction is marked among the overlays.
  */
 export function LevelSunAction({
   "data-testid": dataTestId = "level-sun-action",
@@ -174,8 +172,6 @@ export function LevelSunAction({
         />
 
         <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_SUN_KEYS} onReset={weatherService.resetManual} />
-
-        <LevelVolumetricSettings className={"flex flex-col gap-2"} />
       </div>
     </EditorPopoverAction>
   );

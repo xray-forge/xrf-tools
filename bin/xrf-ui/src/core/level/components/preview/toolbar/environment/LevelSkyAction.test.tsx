@@ -1,9 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { ERenderDebandingMode, ERenderDebandingQuality } from "@/core/ipc/types/xrf-renderer";
 import { LevelSkyAction } from "@/core/level/components/preview/toolbar/environment/LevelSkyAction";
-import { DEFAULT_RENDER_DEBANDING_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { clearLocalStorage } from "@/core/storage";
 import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
 import { resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
@@ -18,12 +16,10 @@ import {
 
 /**
  * @param opening - The level and weather to open; none unless given.
- * @returns The sky's action, its popover open, and the services behind it, the sky not debanded.
+ * @returns The sky's action, its popover open, and the services behind it.
  */
 async function renderOpenAction(opening?: ILevelViewOpening): Promise<TLevelViewRenderResult> {
   const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
-
-  descriptor.renderSettings.setRendererOverrides({ debanding: DEFAULT_RENDER_DEBANDING_SETTINGS });
 
   const rendered: TLevelViewRenderResult = opening
     ? await renderOpenLevelView(<LevelSkyAction />, descriptor, opening)
@@ -71,23 +67,5 @@ describe("LevelSkyAction", () => {
     await userEvent.type(field, "sky\\clouds_storm{Enter}");
 
     expect(weather.manual?.cloudsTexture).toBe("sky\\clouds_storm");
-  });
-
-  it("debands the sky on asking, offering its quality and radius only then", async () => {
-    const { getByRole, queryByRole, view } = await renderOpenAction();
-
-    expect(queryByRole("slider", { name: "Radius" })).toBeNull();
-
-    await userEvent.click(getByRole("checkbox", { name: "Debanding" }));
-
-    expect(view.features.debanding).toEqual({ mode: ERenderDebandingMode.ENHANCED });
-    expect(getByRole("slider", { name: "Radius" })).toHaveAttribute("aria-valuetext", "48 px");
-
-    await userEvent.click(getByRole("button", { name: "Ultra" }));
-
-    expect(view.features.debanding).toEqual({
-      mode: ERenderDebandingMode.ENHANCED,
-      quality: ERenderDebandingQuality.ULTRA,
-    });
   });
 });

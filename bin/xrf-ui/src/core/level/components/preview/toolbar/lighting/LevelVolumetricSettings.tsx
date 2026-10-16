@@ -69,7 +69,7 @@ export function LevelVolumetricSettings({
         </>
       ) : null}
 
-      <Button size={"small"} onClick={reset}>
+      <Button aria-label={"Reset the volumetric light to the preset"} size={"small"} onClick={reset}>
         Reset to the preset
       </Button>
     </div>

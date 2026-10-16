@@ -1,20 +1,46 @@
 import { default as AirIcon } from "@mui/icons-material/Air";
+import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { formatDegrees, formatNumber } from "@xrf/format";
-import { ReactElement } from "react";
+import { formatDegrees, formatNumber, formatPercent } from "@xrf/format";
+import { ReactElement, useCallback } from "react";
 
+import { ERenderFoliageMode, RenderFoliageMode } from "@/core/ipc/types/xrf-renderer";
+import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
+import { LEVEL_FOLIAGE_MOTION_KEYS, resetLevelFoliageKeys } from "@/core/level/lib/features/level-foliage-keys";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { LEVEL_MANUAL_WEATHER_WIND_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
+import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
+import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import {
+  explainRenderFoliageMode,
+  formatFoliageStrength,
+  RENDER_FOLIAGE_LIMITS,
+  RENDER_FOLIAGE_MODE_OPTIONS,
+} from "@/core/render/lib/features/render-grass-choices";
+import { TRenderFoliageSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+/** The enhanced foliage motion's strengths, each a slider. */
+const FOLIAGE_MOTION: ReadonlyArray<[keyof typeof RENDER_FOLIAGE_LIMITS, string]> = [
+  ["grassSpeed", "Grass speed"],
+  ["grassTurbulence", "Grass turbulence"],
+  ["grassPush", "Grass push"],
+  ["grassWave", "Grass wave"],
+  ["treesSpeed", "Branches speed"],
+  ["treesTrunk", "Trunk speed"],
+  ["treesBend", "Trunk bend"],
+];
+
 /**
- * The wind the rain drifts on and the trees' sway; whether the trees and the grass sway at all.
+ * The wind the rain drifts on and the trees' sway; whether the trees and the grass sway at all, and how they move.
  */
 export function LevelWindAction({
   "data-testid": dataTestId = "level-wind-action",
@@ -22,9 +48,26 @@ export function LevelWindAction({
   className,
 }: BaseComponentProps): ReactElement {
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
+  const viewService: LevelViewService = useInjection(LevelViewService);
+  const { settings } = useLevelRenderFeatures();
   const { isOn, toggle } = useLevelViewToggle("isWindy");
+  const { state, set } = useLevelFeature("grass");
 
   const manual: ILevelManualWeather = weatherService.shown;
+  const foliage: TRenderFoliageSettings = state.value.foliage;
+
+  const setFoliage = useCallback(
+    (part: Partial<TRenderFoliageSettings>): void => set({ foliage: { ...foliage, ...part } }),
+    [foliage, set]
+  );
+
+  // The light through leaves is the Grass popover's, which a reset here leaves alone.
+  const resetFoliage = useCallback(() => {
+    viewService.setFeatures({
+      ...viewService.features,
+      grass: resetLevelFoliageKeys(viewService.features.grass, settings.grass.foliage, LEVEL_FOLIAGE_MOTION_KEYS),
+    });
+  }, [viewService, settings]);
 
   return (
     <EditorPopoverToggle
@@ -80,6 +123,46 @@ export function LevelWindAction({
       <LevelManualWeatherVectorField field={"treesWave"} manual={manual} onEdit={weatherService.editManual} />
 
       <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_WIND_KEYS} onReset={weatherService.resetManual} />
+
+      <Typography className={"text-text-secondary"} variant={"overline"}>
+        Foliage motion
+      </Typography>
+
+      <RenderValueChoice
+        label={"Mode"}
+        options={RENDER_FOLIAGE_MODE_OPTIONS}
+        value={foliage.mode}
+        onChange={(mode: RenderFoliageMode) => setFoliage({ mode })}
+      />
+
+      <p className={"text-xs text-text-secondary"}>{explainRenderFoliageMode(foliage.mode)}</p>
+
+      {foliage.mode === ERenderFoliageMode.ENHANCED ? (
+        <>
+          <RenderValueSlider
+            label={"Least wind"}
+            value={foliage.minSpeed}
+            {...RENDER_FOLIAGE_LIMITS.minSpeed}
+            format={formatPercent}
+            onChange={(minSpeed: number) => setFoliage({ minSpeed })}
+          />
+
+          {FOLIAGE_MOTION.map(([key, label]) => (
+            <RenderValueSlider
+              key={key}
+              label={label}
+              value={foliage[key]}
+              {...RENDER_FOLIAGE_LIMITS[key]}
+              format={formatFoliageStrength}
+              onChange={(value: number) => setFoliage({ [key]: value })}
+            />
+          ))}
+        </>
+      ) : null}
+
+      <Button size={"small"} aria-label={"Reset the foliage motion to the preset"} onClick={resetFoliage}>
+        Reset to the preset
+      </Button>
     </EditorPopoverToggle>
   );
 }

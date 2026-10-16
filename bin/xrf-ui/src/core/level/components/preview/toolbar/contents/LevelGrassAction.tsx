@@ -1,23 +1,23 @@
 import { default as GrassIcon } from "@mui/icons-material/Grass";
 import { Button } from "@mui/material";
-import { formatPercent } from "@xrf/format";
+import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
-import { ERenderFoliageMode, RenderFoliageMode } from "@/core/ipc/types/xrf-renderer";
+import { ERenderFoliageMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
+import { LEVEL_FOLIAGE_LIGHT_KEYS, resetLevelFoliageKeys } from "@/core/level/lib/features/level-foliage-keys";
+import { LevelViewService } from "@/core/level/services/level-view.service";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
-  explainRenderFoliageMode,
   formatFoliageStrength,
   formatGrassDensity,
   formatGrassHeight,
   formatGrassRadius,
   fromGrassDensityScale,
   RENDER_FOLIAGE_LIMITS,
-  RENDER_FOLIAGE_MODE_OPTIONS,
   RENDER_GRASS_LIMITS,
   toGrassDensityScale,
 } from "@/core/render/lib/features/render-grass-choices";
@@ -26,30 +26,25 @@ import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-/** The enhanced foliage motion's strengths, each a slider. */
-const FOLIAGE_STRENGTHS: ReadonlyArray<[keyof typeof RENDER_FOLIAGE_LIMITS, string]> = [
-  ["grassSpeed", "Grass speed"],
-  ["grassTurbulence", "Grass turbulence"],
-  ["grassPush", "Grass push"],
-  ["grassWave", "Grass wave"],
-  ["treesSpeed", "Branches speed"],
-  ["treesTrunk", "Trunk speed"],
-  ["treesBend", "Trunk bend"],
+/** The light the enhanced foliage passes through leaves and grass, each a slider; its motion is the Wind popover's. */
+const FOLIAGE_LIGHT: ReadonlyArray<[keyof typeof RENDER_FOLIAGE_LIMITS, string]> = [
   ["sssIntensity", "Light through leaves"],
   ["sssColor", "Sun colour through leaves"],
 ];
 
 /**
- * Whether this view plants the level's grass, how dense, how far and how tall, and how it and the trees move in the
- * wind.
+ * Whether this view plants the level's grass, how dense, how far and how tall, whether it casts shadows, and the light
+ * passing through leaves and grass.
  */
 export function LevelGrassAction({
   "data-testid": dataTestId = "level-grass-action",
   id,
   className,
 }: BaseComponentProps): ReactElement {
+  const viewService: LevelViewService = useInjection(LevelViewService);
+  const { settings } = useLevelRenderFeatures();
   const { isOn, toggle } = useLevelViewToggle("isGrassy");
-  const { state, set, reset } = useLevelFeature("grass");
+  const { state, set } = useLevelFeature("grass");
 
   const grass: TRenderGrassSettings = state.value;
   const foliage: TRenderFoliageSettings = grass.foliage;
@@ -60,6 +55,16 @@ export function LevelGrassAction({
     },
     [foliage, set]
   );
+
+  // The foliage's motion is the Wind popover's, which a reset here leaves alone.
+  const reset = useCallback(() => {
+    const grassOptions = viewService.features.grass;
+
+    viewService.setFeatures({
+      ...viewService.features,
+      grass: resetLevelFoliageKeys({ foliage: grassOptions.foliage }, settings.grass.foliage, LEVEL_FOLIAGE_LIGHT_KEYS),
+    });
+  }, [viewService, settings]);
 
   return (
     <EditorPopoverToggle
@@ -136,37 +141,22 @@ export function LevelGrassAction({
         />
       ) : null}
 
-      <RenderValueChoice
-        label={"Foliage motion mode"}
-        options={RENDER_FOLIAGE_MODE_OPTIONS}
-        value={foliage.mode}
-        onChange={(mode: RenderFoliageMode) => setFoliage({ mode })}
-      />
-
-      <p className={"text-xs text-text-secondary"}>{explainRenderFoliageMode(foliage.mode)}</p>
-
       {foliage.mode === ERenderFoliageMode.ENHANCED ? (
-        <>
+        FOLIAGE_LIGHT.map(([key, label]) => (
           <RenderValueSlider
-            label={"Least wind"}
-            value={foliage.minSpeed}
-            {...RENDER_FOLIAGE_LIMITS.minSpeed}
-            format={formatPercent}
-            onChange={(minSpeed: number) => setFoliage({ minSpeed })}
+            key={key}
+            label={label}
+            value={foliage[key]}
+            {...RENDER_FOLIAGE_LIMITS[key]}
+            format={formatFoliageStrength}
+            onChange={(value: number) => setFoliage({ [key]: value })}
           />
-
-          {FOLIAGE_STRENGTHS.map(([key, label]) => (
-            <RenderValueSlider
-              key={key}
-              label={label}
-              value={foliage[key]}
-              {...RENDER_FOLIAGE_LIMITS[key]}
-              format={formatFoliageStrength}
-              onChange={(value: number) => setFoliage({ [key]: value })}
-            />
-          ))}
-        </>
-      ) : null}
+        ))
+      ) : (
+        <p className={"text-xs text-text-secondary"}>
+          Light through leaves comes with the Enhanced foliage motion, under Wind.
+        </p>
+      )}
 
       <Button size={"small"} onClick={reset}>
         Reset to the preset

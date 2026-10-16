@@ -5,6 +5,7 @@ import { formatNumber } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
 import { ERenderBloomMode, RenderBloomMode } from "@/core/ipc/types/xrf-renderer";
+import { LevelDebandingSettings } from "@/core/level/components/preview/toolbar/image/LevelDebandingSettings";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
@@ -220,7 +221,7 @@ const FIELD_GROUPS: ReadonlyArray<{ title: string; fields: ReadonlyArray<ILookFi
 
 /**
  * How the level is exposed, lit, bloomed and corrected: the game's console defaults, the settings', a built-in engine's,
- * or values edited by hand; and whether the engine's bloom draws or the enhanced one in its place.
+ * or values edited by hand; whether the engine's bloom draws or the enhanced one in its place; and the sky's debanding.
  */
 export function LevelLookAction({
   "data-testid": dataTestId = "level-look-action",
@@ -327,7 +328,7 @@ export function LevelLookAction({
           />
         )}
 
-        <Button size={"small"} onClick={resetBloom}>
+        <Button size={"small"} aria-label={"Reset the bloom to the preset"} onClick={resetBloom}>
           Reset to the preset
         </Button>
 
@@ -351,6 +352,8 @@ export function LevelLookAction({
             ))}
           </div>
         ))}
+
+        <LevelDebandingSettings className={"flex flex-col gap-2"} />
       </div>
     </EditorPopoverAction>
   );

@@ -2,13 +2,12 @@ import { default as HighQualityIcon } from "@mui/icons-material/HighQuality";
 import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
-import { ReactElement, useEffect } from "react";
+import { ReactElement } from "react";
 
 import {
   ERenderAntialiasing,
   ERenderTonemapMode,
   RenderAntialiasing,
-  RenderBackendAvailability,
   RenderDlssAvailability,
   RenderDlssPreset,
   RenderScale,
@@ -40,16 +39,9 @@ import {
   RENDER_SCALE_OPTIONS,
   RENDER_SHARPENING_LIMITS,
 } from "@/core/render/lib/features/render-upscaling-choices";
-import {
-  describeRenderBackend,
-  isRenderBackendAvailable,
-  RENDER_BACKEND_AUTO,
-  RENDER_BACKEND_CHOICES,
-  TRenderBackendChoice,
-} from "@/core/render/lib/settings/render-backend-choice";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
-import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
+import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -63,24 +55,6 @@ const MODE_OPTIONS_WITHOUT_DLSS: ReadonlyArray<IChoiceFormRowOption<RenderAntial
   (option: IChoiceFormRowOption<RenderAntialiasing>) =>
     option.value === ERenderAntialiasing.DLSS ? { ...option, isDisabled: true } : option
 );
-
-/**
- * @param availability - What each graphics API can do here, none until known.
- * @returns The graphics APIs offered: automatic, then each by name, greyed out where this machine cannot draw with it.
- */
-function toBackendOptions(
-  availability: Nullable<ReadonlyArray<RenderBackendAvailability>>
-): ReadonlyArray<IChoiceFormRowOption<TRenderBackendChoice>> {
-  return RENDER_BACKEND_CHOICES.map((choice: TRenderBackendChoice) =>
-    choice === RENDER_BACKEND_AUTO
-      ? { label: "Auto", value: choice }
-      : {
-          isDisabled: availability !== null && !isRenderBackendAvailable(choice, availability),
-          label: describeRenderBackend(choice),
-          value: choice,
-        }
-  );
-}
 
 /**
  * How this view's frame is made into the image it shows: whether its edges are smoothed and by which pass, whether DLSS
@@ -108,9 +82,6 @@ export function LevelImageQualityAction({
   const settingsOutputScale: number = renderSettingsService.renderOutputScale;
   // Whether the scene holds linear light, the Enhanced tonemap, which ray reconstruction needs.
   const isSceneLinear: boolean = settings.tonemap === ERenderTonemapMode.ENHANCED;
-  // The graphics API every viewport draws with, set here for all of them, which restarts the renderer.
-  const backend: TRenderBackendChoice = renderSettingsService.renderBackend;
-  const backends: Nullable<ReadonlyArray<RenderBackendAvailability>> = renderSettingsService.renderBackends;
   // Whether the frame is drawn smaller than the viewport, which sharpening applies to besides a temporal resolve.
   const isUpscaled: boolean = renderService.isUpscaled;
   // What the GPU can do: FSR smooths in place of DLSS, and DLSS upscales alone, where it lacks them.
@@ -132,162 +103,155 @@ export function LevelImageQualityAction({
   const outputScale: number = features.output.scale ?? settingsOutputScale;
   const isSharpenable: boolean = isUpscaled || (isOn && isTemporalAntialiasing(mode));
 
-  // What each graphics API can do here, which the choices are greyed out by; asked once, while nothing has.
-  useEffect(() => {
-    if (renderSettingsService.renderBackends === null) {
-      void renderSettingsService.refreshRenderBackends();
-    }
-  }, [renderSettingsService]);
+  const description: string = describeLevelFeatureToggle({
+    isAvailable,
+    isOn,
+    label: "Antialiasing",
+    off: "Antialiasing off, every edge as drawn",
+    on: `Edges smoothed by ${describeRenderAntialiasing(mode)}`,
+  });
 
   return (
-    <EditorPopoverToggle
+    <EditorPopoverAction
       data-testid={dataTestId}
       id={id}
       className={className}
       label={"Image quality"}
-      description={describeLevelFeatureToggle({
-        isAvailable,
-        isOn,
-        label: "Antialiasing",
-        off: "Antialiasing off, every edge as drawn",
-        on: `Edges smoothed by ${describeRenderAntialiasing(mode)}`,
-      })}
+      description={description}
       icon={<HighQualityIcon />}
-      isOn={isOn && isAvailable}
-      isDisabled={!isAvailable}
-      isWide
-      header={
-        <>
-          <RenderValueChoice
-            label={"Graphics API"}
-            options={toBackendOptions(backends)}
-            value={backend}
-            onChange={renderSettingsService.setRenderBackend}
-          />
-
-          <Typography className={"text-text-secondary"} variant={"caption"}>
-            Every viewport draws with it; another one restarts the renderer.
-          </Typography>
-        </>
-      }
-      toggleLabel={"Antialiasing"}
-      onToggle={toggle}
+      isActive={isOn && isAvailable}
     >
-      <RenderValueChoice
-        label={"Mode"}
-        options={dlssProblem ? MODE_OPTIONS_WITHOUT_DLSS : MODE_OPTIONS}
-        value={mode}
-        onChange={(antialiasing: RenderAntialiasing) => viewService.setFeatures({ ...features, antialiasing })}
-      />
-
-      {dlssProblem ? (
-        <Typography className={"text-text-secondary"} variant={"caption"}>
-          {dlssProblem}
+      <div className={"flex w-80 flex-col gap-2 px-4 py-2"}>
+        <Typography className={"text-text-secondary"} variant={"overline"}>
+          Image quality
         </Typography>
-      ) : null}
 
-      <RenderValueChoice
-        label={"Upscaling quality"}
-        options={RENDER_SCALE_OPTIONS}
-        value={scale}
-        isStacked
-        onChange={(next: RenderScale) =>
-          viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, scale: next } })
-        }
-      />
+        <CheckboxFormRow
+          label={"Antialiasing"}
+          description={isAvailable ? undefined : description}
+          isChecked={isOn && isAvailable}
+          isDisabled={!isAvailable}
+          onChange={toggle}
+        />
 
-      {mode === ERenderAntialiasing.DLSS ? (
-        <>
-          <CheckboxFormRow
-            label={"Ray reconstruction"}
-            description={rayProblem ?? "Denoises and upscales in one network, over each surface's albedo and normal."}
-            isChecked={isRayReconstructed}
-            isDisabled={Boolean(rayProblem)}
-            onChange={(next: boolean) =>
-              viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, isRayReconstructed: next } })
-            }
+        {isAvailable ? (
+          <RenderValueChoice
+            label={"Mode"}
+            options={dlssProblem ? MODE_OPTIONS_WITHOUT_DLSS : MODE_OPTIONS}
+            value={mode}
+            onChange={(antialiasing: RenderAntialiasing) => viewService.setFeatures({ ...features, antialiasing })}
           />
+        ) : null}
 
-          {isRayReconstructed ? null : (
-            <>
-              <RenderValueChoice
-                label={"DLSS model"}
-                options={RENDER_DLSS_PRESET_SHORT_OPTIONS}
-                value={dlssPreset}
-                onChange={(next: RenderDlssPreset) =>
-                  viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, dlssPreset: next } })
-                }
-              />
+        {isAvailable && dlssProblem ? (
+          <Typography className={"text-text-secondary"} variant={"caption"}>
+            {dlssProblem}
+          </Typography>
+        ) : null}
 
-              <Typography className={"text-text-secondary"} variant={"caption"}>
-                {describeDlssPreset(dlssPreset)}
-              </Typography>
-            </>
-          )}
-        </>
-      ) : null}
-
-      <RenderValueSlider
-        label={"Sharpening"}
-        value={sharpening}
-        {...RENDER_SHARPENING_LIMITS}
-        format={formatSharpening}
-        isDisabled={!isSharpenable}
-        onChange={(next: number) =>
-          viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, sharpening: next } })
-        }
-      />
-
-      {isSharpenable ? null : (
-        <Typography className={"text-text-secondary"} variant={"caption"}>
-          Sharpens only a frame drawn smaller than the viewport or resolved temporally.
-        </Typography>
-      )}
-
-      <RenderValueChoice
-        label={"Output resolution"}
-        options={RENDER_RESOLUTION_OPTIONS}
-        value={resolution}
-        onChange={(next: ERenderResolution) =>
-          viewService.setFeatures({ ...features, output: { ...features.output, resolution: next } })
-        }
-      />
-
-      {resolution === ERenderResolution.AUTO ? (
-        <RenderValueSlider
-          label={"Output scale"}
-          value={outputScale}
-          {...RENDER_OUTPUT_SCALE_LIMITS}
-          format={formatOutputScale}
-          onChange={(next: number) =>
-            viewService.setFeatures({ ...features, output: { ...features.output, scale: next } })
+        <RenderValueChoice
+          label={"Upscaling quality"}
+          options={RENDER_SCALE_OPTIONS}
+          value={scale}
+          isStacked
+          onChange={(next: RenderScale) =>
+            viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, scale: next } })
           }
         />
-      ) : null}
 
-      <RenderValueChoice
-        label={"Texture filtering"}
-        options={RENDER_TEXTURE_FILTERING_SHORT_OPTIONS}
-        value={textureFiltering}
-        onChange={(filtering: RenderTextureFiltering) =>
-          viewService.setFeatures({ ...features, textureFiltering: filtering })
-        }
-      />
+        {isAvailable && mode === ERenderAntialiasing.DLSS ? (
+          <>
+            <CheckboxFormRow
+              label={"Ray reconstruction"}
+              description={rayProblem ?? "Denoises and upscales in one network, over each surface's albedo and normal."}
+              isChecked={isRayReconstructed}
+              isDisabled={Boolean(rayProblem)}
+              onChange={(next: boolean) =>
+                viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, isRayReconstructed: next } })
+              }
+            />
 
-      <Button
-        size={"small"}
-        onClick={() =>
-          viewService.setFeatures({
-            ...features,
-            antialiasing: null,
-            textureFiltering: null,
-            upscaling: {},
-            output: {},
-          })
-        }
-      >
-        Reset to the preset
-      </Button>
-    </EditorPopoverToggle>
+            {isRayReconstructed ? null : (
+              <>
+                <RenderValueChoice
+                  label={"DLSS model"}
+                  options={RENDER_DLSS_PRESET_SHORT_OPTIONS}
+                  value={dlssPreset}
+                  onChange={(next: RenderDlssPreset) =>
+                    viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, dlssPreset: next } })
+                  }
+                />
+
+                <Typography className={"text-text-secondary"} variant={"caption"}>
+                  {describeDlssPreset(dlssPreset)}
+                </Typography>
+              </>
+            )}
+          </>
+        ) : null}
+
+        <RenderValueSlider
+          label={"Sharpening"}
+          value={sharpening}
+          {...RENDER_SHARPENING_LIMITS}
+          format={formatSharpening}
+          isDisabled={!isSharpenable}
+          onChange={(next: number) =>
+            viewService.setFeatures({ ...features, upscaling: { ...features.upscaling, sharpening: next } })
+          }
+        />
+
+        {isSharpenable ? null : (
+          <Typography className={"text-text-secondary"} variant={"caption"}>
+            Sharpens only a frame drawn smaller than the viewport or resolved temporally.
+          </Typography>
+        )}
+
+        <RenderValueChoice
+          label={"Output resolution"}
+          options={RENDER_RESOLUTION_OPTIONS}
+          value={resolution}
+          onChange={(next: ERenderResolution) =>
+            viewService.setFeatures({ ...features, output: { ...features.output, resolution: next } })
+          }
+        />
+
+        {resolution === ERenderResolution.AUTO ? (
+          <RenderValueSlider
+            label={"Output scale"}
+            value={outputScale}
+            {...RENDER_OUTPUT_SCALE_LIMITS}
+            format={formatOutputScale}
+            onChange={(next: number) =>
+              viewService.setFeatures({ ...features, output: { ...features.output, scale: next } })
+            }
+          />
+        ) : null}
+
+        <RenderValueChoice
+          label={"Texture filtering"}
+          options={RENDER_TEXTURE_FILTERING_SHORT_OPTIONS}
+          value={textureFiltering}
+          onChange={(filtering: RenderTextureFiltering) =>
+            viewService.setFeatures({ ...features, textureFiltering: filtering })
+          }
+        />
+
+        <Button
+          size={"small"}
+          onClick={() =>
+            viewService.setFeatures({
+              ...features,
+              antialiasing: null,
+              textureFiltering: null,
+              upscaling: {},
+              output: {},
+            })
+          }
+        >
+          Reset to the preset
+        </Button>
+      </div>
+    </EditorPopoverAction>
   );
 }
