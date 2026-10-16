@@ -1,4 +1,5 @@
 use std::f32::consts::{PI, TAU};
+use std::time::Duration;
 
 use glam::Vec3;
 use xrf_renderer::CameraFrame;
@@ -117,7 +118,7 @@ impl OrbitCameraController {
     }
   }
 
-  pub fn update(&mut self, _delta: f32) {}
+  pub fn update(&mut self, _delta: Duration) {}
 
   pub fn get_description(&self) -> WorldCamera {
     self.description

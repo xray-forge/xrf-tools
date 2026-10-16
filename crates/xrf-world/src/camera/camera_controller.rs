@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use xrf_renderer::CameraFrame;
 
 use crate::camera::fly_camera_controller::FlyCameraController;
@@ -49,8 +51,8 @@ impl CameraController {
     }
   }
 
-  /// Advances the camera by a frame's seconds; `height` is the viewport's in CSS pixels.
-  pub fn update(&mut self, delta: f32, height: f32) {
+  /// Advances the camera by a frame's time; `height` is the viewport's in CSS pixels.
+  pub fn update(&mut self, delta: Duration, height: f32) {
     match self {
       CameraController::Fly(controller) => controller.update(delta),
       CameraController::Orbit(controller) => {

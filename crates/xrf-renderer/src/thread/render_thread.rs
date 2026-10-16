@@ -624,7 +624,7 @@ impl RenderThread {
     profiling::scope!("frame");
 
     let now: Instant = Instant::now();
-    let delta: f32 = now.duration_since(self.last_frame).as_secs_f32();
+    let delta: Duration = now.duration_since(self.last_frame);
 
     self.last_frame = now;
     self.pacer.begin(now, self.settings.frame_rate.get_interval());
@@ -656,7 +656,7 @@ impl RenderThread {
   /// Runs the world inline before the frame: it moves each viewport's camera and weather, then streams each scene and
   /// plays what lives in it, and answers what each scene takes in. Without a GPU no scene could take in what the world
   /// posts, so the scenes wait for one rather than stream into nothing.
-  fn advance_world(&mut self, now: Instant, delta: f32) -> HashMap<RenderSceneId, RenderSceneFrame> {
+  fn advance_world(&mut self, now: Instant, delta: Duration) -> HashMap<RenderSceneId, RenderSceneFrame> {
     let mut world: MutexGuard<'_, dyn RenderWorld> = self.world.lock().unwrap_or_else(PoisonError::into_inner);
 
     for viewport in self.viewports.values_mut() {
@@ -698,17 +698,16 @@ impl RenderThread {
   /// Opens the frame's encoder and grants its periodic work and streaming against one budget, the streaming's rounds
   /// first, from the timers read back since; answers the encoder and the GPU's milliseconds on the latest frame read
   /// back. None without a GPU.
-  fn begin_frame_work(&mut self, delta: f32) -> Option<(FrameEncoder, Option<f32>)> {
+  fn begin_frame_work(&mut self, delta: Duration) -> Option<(FrameEncoder, Option<f32>)> {
     let running: &mut RunningGpu = self.running.as_mut()?;
     let mut encoder: FrameEncoder = running.begin_encoder();
     let times: Vec<GraphTaggedTime> = running.runtime.timer.take_tagged();
     let spans: Vec<(u64, f32)> = running.frame_span.take();
     let span: Option<f32> = spans.last().map(|(_, span)| *span);
-    let budget: f32 = self.periodic_budget.update(
-      (Duration::from_secs_f32(delta), span),
-      self.settings.frame_rate,
-      self.settings.periodic_budget,
-    );
+    let budget: f32 =
+      self
+        .periodic_budget
+        .update((delta, span), self.settings.frame_rate, self.settings.periodic_budget);
 
     self.periodic.begin(budget, (&times, &spans));
     running.frame_span.begin(&mut encoder, self.periodic.get_frame());

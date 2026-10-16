@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::f32::consts::{FRAC_PI_2, FRAC_PI_4};
+use std::time::Duration;
 
 use glam::{EulerRot, Mat4, Quat, Vec3};
 use xrf_renderer::CameraFrame;
@@ -17,7 +18,7 @@ const MAX_PITCH: f32 = FRAC_PI_2 - 0.001;
 const TURN_SPEED: f32 = FRAC_PI_4;
 
 /// The longest step one frame moves by, so a frame after a stall does not throw the camera across the level.
-const MAX_DELTA: f32 = 0.25;
+const MAX_DELTA: Duration = Duration::from_millis(250);
 
 /// A free camera: a drag or the arrow keys turn it, the other keys move it along where it faces, rising along its own
 /// up as it is pitched. It holds yaw and pitch itself, since a rotation read back cannot tell `+π` from `-π`.
@@ -114,8 +115,8 @@ impl FlyCameraController {
     }
   }
 
-  /// Advances the camera by a frame's seconds.
-  pub fn update(&mut self, delta: f32) {
+  /// Advances the camera by a frame's time.
+  pub fn update(&mut self, delta: Duration) {
     let WorldCamera::Fly {
       speed,
       boost,
@@ -126,7 +127,7 @@ impl FlyCameraController {
       return;
     };
 
-    let step: f32 = delta.min(MAX_DELTA);
+    let step: f32 = delta.min(MAX_DELTA).as_secs_f32();
     let turned: f32 = TURN_SPEED * step;
 
     // Looking before moving, because where the camera walks is where it faces.

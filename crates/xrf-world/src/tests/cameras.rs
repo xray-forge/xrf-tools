@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use glam::Vec3;
 
 use crate::camera::fly_camera_controller::FlyCameraController;
@@ -66,16 +68,16 @@ fn fly_walks_where_it_faces_and_faster_boosted() {
   let mut camera: FlyCameraController = FlyCameraController::new(fly([0.0, 2.0, 0.0], [0.0, 2.0, -1.0]));
 
   camera.input(&key_down("KeyW"));
-  camera.update(0.1);
+  camera.update(Duration::from_millis(100));
   assert_near(camera.get_pose().position, [0.0, 2.0, -1.0]);
 
   camera.input(&key_down("ShiftLeft"));
-  camera.update(0.1);
+  camera.update(Duration::from_millis(100));
   assert_near(camera.get_pose().position, [0.0, 2.0, -5.0]);
 
   // A long stall moves no further than a quarter second would.
   camera.input(&key_up("ShiftLeft"));
-  camera.update(10.0);
+  camera.update(Duration::from_secs(10));
   assert_near(camera.get_pose().position, [0.0, 2.0, -7.5]);
 }
 
@@ -86,7 +88,7 @@ fn fly_lets_go_of_every_key_and_drag_on_release_all() {
   camera.input(&key_down("KeyW"));
   camera.input(&drag_start(0));
   camera.input(&WorldInputEvent::ReleaseAll);
-  camera.update(0.1);
+  camera.update(Duration::from_millis(100));
 
   assert_near(camera.get_pose().position, [0.0, 0.0, 0.0]);
   assert!(!camera.is_moving());
@@ -100,7 +102,7 @@ fn fly_turns_by_a_drag() {
   // A quarter turn to the right in two moves, at a hundredth of a radian a pixel.
   camera.input(&drag_move(std::f32::consts::FRAC_PI_4 * 100.0, 0.0));
   camera.input(&drag_move(std::f32::consts::FRAC_PI_4 * 100.0, 0.0));
-  camera.update(0.016);
+  camera.update(Duration::from_millis(16));
 
   assert_near(camera.get_pose().target, [1.0, 0.0, 0.0]);
 
@@ -114,7 +116,7 @@ fn fly_turns_by_the_main_button_alone() {
 
   camera.input(&drag_start(2));
   camera.input(&drag_move(300.0, 0.0));
-  camera.update(0.016);
+  camera.update(Duration::from_millis(16));
 
   assert_near(camera.get_pose().target, [0.0, 0.0, -1.0]);
 }
@@ -124,7 +126,7 @@ fn fly_keeps_its_place_when_described_again_from_the_same_start() {
   let mut camera: FlyCameraController = FlyCameraController::new(fly([0.0, 0.0, 0.0], [0.0, 0.0, -1.0]));
 
   camera.input(&key_down("KeyW"));
-  camera.update(0.1);
+  camera.update(Duration::from_millis(100));
 
   assert!(!camera.describe(fly([0.0, 0.0, 0.0], [0.0, 0.0, -1.0])));
   assert_near(camera.get_pose().position, [0.0, 0.0, -1.0]);
