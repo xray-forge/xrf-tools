@@ -4,6 +4,7 @@ use xrf_renderer_core::{
   StorageArray, StorageArrayMut,
 };
 
+use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_shadow_settings::{RENDER_MAX_SHADOW_CASCADES, RenderShadowSettings};
@@ -585,7 +586,9 @@ impl LevelShadows {
     // item coming or going within what it covers changes it.
     let is_changed: bool = cascade.has_drawn_grass
       || cascade.drawn.is_none_or(|(version, contents)| {
-        version != fit.version || scene.is_changed_since(contents, |sphere| fit.view.reaches(sphere))
+        let frustum: CameraFrustum = fit.view.get_frustum();
+
+        version != fit.version || scene.is_changed_since(contents, |sphere| frustum.reaches(sphere))
       });
 
     if !(is_changed || frame.sway.is_redrawn(frame.sway.reach, fit.texel, cascade.drawn_at)) {
@@ -626,7 +629,9 @@ impl LevelShadows {
         current.is_held_by(&static_fit)
       };
 
-      is_fit && !scene.is_changed_since(contents, |sphere| static_fit.view.reaches(sphere))
+      let frustum: CameraFrustum = static_fit.view.get_frustum();
+
+      is_fit && !scene.is_changed_since(contents, |sphere| frustum.reaches(sphere))
     });
     let is_wanted: bool = cascade.drawn.is_none()
       || !is_held
@@ -771,9 +776,10 @@ impl LevelShadows {
       waited: 0,
     };
     let prefetch: &mut ShadowPrefetch = cascade.prefetch.get_or_insert(started);
+    let frustum: CameraFrustum = prefetch.fit.view.get_frustum();
 
     if !current.is_held_within(&prefetch.fit, PREFETCH_HOLD)
-      || scene.is_changed_since(prefetch.contents, |sphere| prefetch.fit.view.reaches(sphere))
+      || scene.is_changed_since(prefetch.contents, |sphere| frustum.reaches(sphere))
     {
       *prefetch = ShadowPrefetch {
         waited: prefetch.waited,

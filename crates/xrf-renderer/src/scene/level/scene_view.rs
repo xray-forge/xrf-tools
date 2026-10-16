@@ -241,7 +241,7 @@ impl SceneView {
 
     // What of the scene drawn by passes of its own the view may see: none of the water's or the surface passes' work
     // runs for what is out of sight.
-    let sight: StaticSight = scene.statics.get_sight(&frame.view.get_planes());
+    let sight: StaticSight = scene.statics.get_sight(&frame.view.get_frustum());
     let lighting_frame: LightingFrame = self.prepare_weather(scene, frame, &sight, time);
 
     self.prepare_scene(scene, encoder, frame, time);

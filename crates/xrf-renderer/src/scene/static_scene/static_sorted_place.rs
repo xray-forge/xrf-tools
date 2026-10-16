@@ -16,13 +16,6 @@ pub struct StaticSortedPlace<'a> {
 }
 
 impl StaticSortedPlace<'_> {
-  /// Whether its sphere stands inside every plane of a view, each pointing in.
-  pub fn is_in_view(&self, planes: &[Vec4; 6]) -> bool {
-    planes
-      .iter()
-      .all(|plane| plane.truncate().dot(self.sphere.truncate()) + plane.w >= -self.sphere.w)
-  }
-
   pub fn get_distance(&self, eye: Vec3) -> f32 {
     self.sphere.truncate().distance(eye)
   }

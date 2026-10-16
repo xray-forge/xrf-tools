@@ -1,5 +1,7 @@
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
+use crate::camera::camera_frustum::CameraFrustum;
+
 /// What a camera sees from where it stands this frame, in renderer space.
 #[derive(Clone, Copy, Debug)]
 pub struct CameraView {
@@ -65,12 +67,11 @@ impl CameraView {
     (scale * far / (1.0 + scale), far)
   }
 
-  /// Whether any of a sphere in the world, its centre and radius, falls within the view's frustum.
-  pub fn reaches(&self, sphere: Vec4) -> bool {
-    self
-      .get_planes()
-      .iter()
-      .all(|plane| plane.truncate().dot(sphere.truncate()) + plane.w >= -sphere.w)
+  /// The view's frustum, to test spheres against.
+  pub fn get_frustum(&self) -> CameraFrustum {
+    CameraFrustum {
+      planes: self.get_planes(),
+    }
   }
 
   /// The view's six planes in renderer space, pointing in, each normalized so a sphere tests by its radius.

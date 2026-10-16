@@ -4,6 +4,7 @@ use xrf_renderer_core::{
   GraphTextureDescriptor, StorageArray, StorageArrayMut, StorageValue, UniformBinding,
 };
 
+use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
@@ -239,10 +240,13 @@ impl SurroundingsCube {
 
     let moved: Option<u32> = order().find(|face| {
       self.drawn[*face as usize].is_some_and(|it: FaceDrawn| {
-        it.position.distance(camera) > Self::MOVED
-          || frame.scene.is_changed_since(it.contents, |sphere| {
-            Self::create_view(*face, it.position).reaches(sphere)
-          })
+        it.position.distance(camera) > Self::MOVED || {
+          let frustum: CameraFrustum = Self::create_view(*face, it.position).get_frustum();
+
+          frame
+            .scene
+            .is_changed_since(it.contents, |sphere| frustum.reaches(sphere))
+        }
       })
     });
     let scene = frame.scene;
@@ -250,9 +254,9 @@ impl SurroundingsCube {
     let redraw: Option<FaceRedraw> = self
       .redraw
       .filter(|redraw| {
-        !scene.is_changed_since(redraw.contents, |sphere| {
-          Self::create_view(redraw.face, redraw.position).reaches(sphere)
-        })
+        let frustum: CameraFrustum = Self::create_view(redraw.face, redraw.position).get_frustum();
+
+        !scene.is_changed_since(redraw.contents, |sphere| frustum.reaches(sphere))
       })
       .or_else(|| {
         moved.map(|face| FaceRedraw {

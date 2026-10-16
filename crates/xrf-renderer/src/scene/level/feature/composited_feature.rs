@@ -1,10 +1,10 @@
-use glam::Vec4;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphBufferDescriptor, GraphColorAttachment,
   GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, StorageArray, StorageArrayMut,
   StorageValue,
 };
 
+use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::frame_encoder::FrameEncoder;
@@ -74,11 +74,11 @@ impl CompositedFeature {
     encoder: &mut FrameEncoder,
     view: &CameraView,
   ) {
-    let planes: [Vec4; 6] = view.get_planes();
+    let frustum: CameraFrustum = view.get_frustum();
     let mut places: Vec<(f32, StaticSortedPlace<'_>)> = scene
       .statics
       .list_sorted_places()
-      .filter(|place| place.is_in_view(&planes))
+      .filter(|place| frustum.reaches(place.sphere))
       .map(|place| (place.get_distance(view.position), place))
       .collect();
 

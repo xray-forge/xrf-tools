@@ -1,5 +1,6 @@
 use glam::Vec3;
 
+use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_shadow_settings::{RENDER_MAX_SHADOW_FILTER, RenderShadowSettings};
 use crate::scene::level::level_shadows::LevelShadows;
@@ -24,8 +25,10 @@ fn samples_the_grass_a_narrow_view_sees() {
   let view: CameraView = camera(Vec3::new(64.0, -2.4, -232.8), (157.4, 5.9), 8.0);
   let points: Vec<Vec3> = LevelShadows::sample_seen_grass(&view, 111.0);
 
+  let frustum: CameraFrustum = view.get_frustum();
+
   assert!(!points.is_empty());
-  assert!(points.iter().all(|point| view.reaches(point.extend(0.01))));
+  assert!(points.iter().all(|point| frustum.reaches(point.extend(0.01))));
   assert!(points.iter().any(|point| point.distance(view.position) < 20.0));
   assert!(points.iter().all(|point| point.distance(view.position) <= 111.0 + 1e-3));
 }
@@ -34,8 +37,9 @@ fn samples_the_grass_a_narrow_view_sees() {
 fn samples_the_grass_a_wide_view_sees_near_and_at_its_reach() {
   let view: CameraView = camera(Vec3::ZERO, (0.0, 10.0), 67.5);
   let points: Vec<Vec3> = LevelShadows::sample_seen_grass(&view, 50.0);
+  let frustum: CameraFrustum = view.get_frustum();
 
-  assert!(points.iter().all(|point| view.reaches(point.extend(0.01))));
+  assert!(points.iter().all(|point| frustum.reaches(point.extend(0.01))));
   assert!(points.iter().any(|point| point.distance(view.position) < 5.0));
   assert!(
     points

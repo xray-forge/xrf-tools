@@ -7,6 +7,7 @@ use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer_core::{ProxyHandle, ProxyStore, Span};
 use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface};
 
+use crate::camera::camera_frustum::CameraFrustum;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::contract::render_static_report::RenderStaticReport;
@@ -823,13 +824,9 @@ impl StaticScene {
     self.sway_reach
   }
 
-  /// What of the scene drawn by passes of its own may be seen through a view's frustum `planes`.
-  pub fn get_sight(&self, planes: &[Vec4; 6]) -> StaticSight {
-    let is_in_view = |sphere: &Vec4| {
-      planes
-        .iter()
-        .all(|plane| plane.truncate().dot(sphere.truncate()) + plane.w >= -sphere.w)
-    };
+  /// What of the scene drawn by passes of its own may be seen through a view's `frustum`.
+  pub fn get_sight(&self, frustum: &CameraFrustum) -> StaticSight {
+    let is_in_view = |sphere: &Vec4| frustum.reaches(*sphere);
     let sectors = self
       .sectors
       .as_slice()

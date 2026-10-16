@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, Vec3};
 use rayon::prelude::*;
 use wgpu::util::DeviceExt;
 use xrf_material::{XraySurfaceDraw, XraySurfaceSampler};
@@ -12,6 +12,7 @@ use xrf_particles::{
 };
 use xrf_renderer_core::{ProxyHandle, ProxyStore};
 
+use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -276,7 +277,7 @@ impl LevelParticles {
 
     let now: u64 = self.started.elapsed().as_millis() as u64;
     let eye: Vec3 = ParticleSprite::mirror(view.position);
-    let planes: [Vec4; 6] = view.get_planes();
+    let frustum: CameraFrustum = view.get_frustum();
     let (library, rules, collider) = (Arc::clone(&level.library), level.rules, level.collider.clone());
     let mut emitters: ProxyStore<ParticleEmitterProxy> = std::mem::take(&mut self.emitters);
 
@@ -295,7 +296,7 @@ impl LevelParticles {
         .iter_mut()
         .flat_map(|emitter| emitter.objects.iter_mut())
         .filter_map(|object| {
-          let is_in_view: bool = Self::is_in_view(&planes, object.get_instance().get_bounds());
+          let is_in_view: bool = Self::is_in_view(&frustum, object.get_instance().get_bounds());
 
           object.is_due(now, is_in_view).then_some((object, is_in_view))
         })
@@ -389,7 +390,7 @@ impl LevelParticles {
     }
 
     let eye: Vec3 = ParticleSprite::mirror(view.position);
-    let planes: [Vec4; 6] = view.get_planes();
+    let frustum: CameraFrustum = view.get_frustum();
     let mut drawn: Vec<(f32, &ParticleEffectInstance, u32, &ParticleSurface)> = Vec::new();
 
     for effect in self
@@ -408,7 +409,7 @@ impl LevelParticles {
       let drawing: &ParticleSurface = &level.surfaces[surface as usize];
       let is_drawing: bool = drawing.blend.is_some() || drawing.is_distorting;
 
-      if is_drawing && !effect.get_pool().is_empty() && Self::is_in_view(&planes, effect.get_bounds()) {
+      if is_drawing && !effect.get_pool().is_empty() && Self::is_in_view(&frustum, effect.get_bounds()) {
         let (center, _) = effect.get_bounds().get_sphere();
 
         drawn.push((center.distance_squared(eye), effect, surface, drawing));
@@ -456,13 +457,10 @@ impl LevelParticles {
     report
   }
 
-  /// Whether bounds in engine space stand within the frustum's planes in renderer space.
-  fn is_in_view(planes: &[Vec4; 6], bounds: ParticleBounds) -> bool {
+  /// Whether bounds in engine space stand within a frustum in renderer space.
+  fn is_in_view(frustum: &CameraFrustum, bounds: ParticleBounds) -> bool {
     let (center, radius) = bounds.get_sphere();
-    let center: Vec3 = ParticleSprite::mirror(center);
 
-    planes
-      .iter()
-      .all(|plane| plane.truncate().dot(center) + plane.w >= -radius)
+    frustum.reaches(ParticleSprite::mirror(center).extend(radius))
   }
 }

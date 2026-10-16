@@ -8,6 +8,7 @@ use xrf_math::{EPS_L, Vector3d};
 use xrf_renderer_core::{FrameGraph, GraphBindings, ProxyHandle, ProxyStore};
 use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightsDescription};
 
+use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::frame::frame_encoder::FrameEncoder;
@@ -281,7 +282,7 @@ impl LevelLights {
     (lod, campfire_shares): ((f32, f32), &HashMap<u16, f32>),
     is_shadowing: bool,
   ) -> Vec<InView> {
-    let planes: [Vec4; 6] = camera.get_planes();
+    let frustum: CameraFrustum = camera.get_frustum();
     let eye: Vec3 = camera.position;
 
     self
@@ -309,9 +310,7 @@ impl LevelLights {
 
         let basis: LightBasis = LightBasis::of(light);
         let bound: Vec4 = basis.get_bound(light);
-        let is_visible: bool = planes
-          .iter()
-          .all(|plane| plane.truncate().dot(bound.truncate()) + plane.w >= -bound.w);
+        let is_visible: bool = frustum.reaches(bound);
 
         let distance: f32 = (eye.distance(bound.truncate()) - bound.w).max(0.0);
 
