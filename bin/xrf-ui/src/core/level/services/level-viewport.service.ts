@@ -15,7 +15,7 @@ import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/li
 const NO_LEVEL_SURFACES_GEOMETRY: ReadonlyMap<number, ILevelSurfaceGeometry> = new Map();
 
 /** Nothing the level could not draw, which is also what a level not yet resident reports. */
-export const NO_LEVEL_PROBLEMS: WorldLevelProblems = { models: [], sectors: [], skipped: [] };
+const NO_LEVEL_PROBLEMS: WorldLevelProblems = { models: [], sectors: [], skipped: [] };
 
 /**
  * What the viewport reports about itself while it draws.

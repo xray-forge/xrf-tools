@@ -126,7 +126,7 @@ export function measureLocalStorage(): IStorageUsage {
  *
  * @returns One entry per key, in whatever order storage lists them.
  */
-export function readStorageEntries(): Array<IStorageEntry> {
+function readStorageEntries(): Array<IStorageEntry> {
   return listLocalStorageKeys().map((key: string) => ({
     key,
     size: (key.length + (getLocalStorageValue(key)?.length ?? 0)) * BYTES_PER_CODE_UNIT,

@@ -36,12 +36,6 @@ export function explainRenderReflectionMode(mode: RenderReflectionMode): string 
   return RENDER_REFLECTION_MODE_DESCRIPTIONS[mode];
 }
 
-/** The reflection modes, in the order they are offered. */
-export const RENDER_REFLECTION_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderReflectionMode>> = [
-  { label: "Engine", value: ERenderReflectionMode.ENGINE },
-  { label: "Enhanced", value: ERenderReflectionMode.ENHANCED },
-];
-
 const RENDER_REFLECTION_QUALITY_NAMES: Readonly<Record<RenderReflectionQuality, string>> = {
   [ERenderReflectionQuality.LOW]: "Low",
   [ERenderReflectionQuality.MEDIUM]: "Medium",
@@ -63,18 +57,10 @@ const RENDER_REFLECTION_PROBE_NAMES: Readonly<Record<RenderReflectionProbe, stri
   [ERenderReflectionProbe.FINEST]: "1024 texels",
 };
 
-/**
- * @param probe - A surroundings cube size.
- * @returns Its name as the settings say it: texels a side of a face.
- */
-export function describeRenderReflectionProbe(probe: RenderReflectionProbe): string {
-  return RENDER_REFLECTION_PROBE_NAMES[probe];
-}
-
 /** The surroundings cube sizes, coarsest first. */
 export const RENDER_REFLECTION_PROBE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderReflectionProbe>> =
   Object.values(ERenderReflectionProbe).map((value: RenderReflectionProbe) => ({
-    label: describeRenderReflectionProbe(value),
+    label: RENDER_REFLECTION_PROBE_NAMES[value],
     value,
   }));
 
@@ -92,19 +78,11 @@ const RENDER_REFLECTION_TRACE_QUALITY_NAMES: Readonly<Record<RenderReflectionTra
   [ERenderReflectionTraceQuality.ULTRA]: "Ultra",
 };
 
-/**
- * @param quality - How often a pixel the screen misses is traced.
- * @returns Its name as the settings say it.
- */
-export function describeRenderReflectionTraceQuality(quality: RenderReflectionTraceQuality): string {
-  return RENDER_REFLECTION_TRACE_QUALITY_NAMES[quality];
-}
-
 /** How often a pixel the screen misses is traced, cheapest first: once in eight frames up to every frame. */
 export const RENDER_REFLECTION_TRACE_QUALITY_OPTIONS: ReadonlyArray<
   IChoiceFormRowOption<RenderReflectionTraceQuality>
 > = Object.values(ERenderReflectionTraceQuality).map((value: RenderReflectionTraceQuality) => ({
-  label: describeRenderReflectionTraceQuality(value),
+  label: RENDER_REFLECTION_TRACE_QUALITY_NAMES[value],
   value,
 }));
 

@@ -58,7 +58,7 @@ export const RENDER_MAX_CONTACT_SHADOW_LIGHTS: number = 8;
 export const RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION: number = 32;
 
 /** VBAO's strengths: a grass clump's depth, every bounce, and eight frames. */
-export const DEFAULT_RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS: TRenderAmbientOcclusionVbaoSettings = {
+const DEFAULT_RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS: TRenderAmbientOcclusionVbaoSettings = {
   accumulation: 8,
   bounce: 1,
   thickness: 0.25,
@@ -263,7 +263,7 @@ export const DEFAULT_RENDER_VOLUMETRIC_SETTINGS: TRenderVolumetricSettings = {
  * The enhanced water's designed strengths, but for caustics a sixth as bright, calm water flowing a fifth as fast, and
  * its maps' repeat broken.
  */
-export const DEFAULT_RENDER_ENHANCED_WATER_SETTINGS: TRenderEnhancedWaterSettings = {
+const DEFAULT_RENDER_ENHANCED_WATER_SETTINGS: TRenderEnhancedWaterSettings = {
   blurNoise: 1,
   calmFlow: 0.2,
   caustics: 0.05,

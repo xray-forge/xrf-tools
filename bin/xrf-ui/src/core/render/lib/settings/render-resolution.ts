@@ -23,7 +23,7 @@ export const RENDER_RESOLUTIONS: ReadonlyArray<ERenderResolution> = [
 ];
 
 /** What a viewport resolves at until somebody says otherwise. */
-export const DEFAULT_RENDER_RESOLUTION: ERenderResolution = ERenderResolution.AUTO;
+const DEFAULT_RENDER_RESOLUTION: ERenderResolution = ERenderResolution.AUTO;
 
 /** The share of the viewport's sides an automatic resolution resolves at: the least, the most and the default. */
 export const RENDER_OUTPUT_SCALES = { min: 0.5, max: 2, initial: 1 } as const;

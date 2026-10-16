@@ -50,7 +50,7 @@ export interface INativeViewSwitches
 export type TNativeLook = TSettled<Pick<RenderViewFeatures, "bloom" | "corrections" | "exposure" | "lightScales">>;
 
 /** Nothing switched on: what an asset viewer's scene of one model has none of. */
-export const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
+const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
   isClouded: false,
   isFogged: false,
   isGrassy: false,
@@ -66,7 +66,7 @@ export const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
 };
 
 /** Nothing scaled, bloomed or corrected, as an asset viewer shows what it draws. */
-export const NEUTRAL_NATIVE_LOOK: Omit<TNativeLook, "exposure"> = {
+const NEUTRAL_NATIVE_LOOK: Omit<TNativeLook, "exposure"> = {
   bloom: { isEnabled: false, radius: 3, strength: 0.7, threshold: 0.00001 },
   corrections: { exposure: 1, gamma: 1, grading: [0, 0, 0], saturation: 1 },
   lightScales: { ambient: 1, hemi: 1, sun: 1 },

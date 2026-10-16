@@ -43,7 +43,7 @@ export function toRenderSurfaceDraw(descriptor: Nullable<XraySurfaceDescriptor>)
  * @param draw - How the backend resolved a shader to composite.
  * @returns The same, as the renderer draws it; opaque for a kind it does not know.
  */
-export function toRenderDraw(draw: XraySurfaceDraw): ERenderDraw {
+function toRenderDraw(draw: XraySurfaceDraw): ERenderDraw {
   switch (draw.kind) {
     case EXraySurfaceDraw.ALPHA_TESTED:
       return ERenderDraw.CUT_OUT;

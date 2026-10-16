@@ -9,7 +9,7 @@ export type TFrameRateLimit = "30" | "60" | "120" | "160" | "none";
 export const FRAME_RATE_LIMITS: ReadonlyArray<TFrameRateLimit> = ["none", "30", "60", "120", "160"];
 
 /** No cap: with vsync on, which it is by default, every viewport draws at the display's own refresh rate. */
-export const DEFAULT_FRAME_RATE_LIMIT: TFrameRateLimit = "none";
+const DEFAULT_FRAME_RATE_LIMIT: TFrameRateLimit = "none";
 
 /**
  * Reads a stored choice, falling back to the default rather than trusting what is in storage.
