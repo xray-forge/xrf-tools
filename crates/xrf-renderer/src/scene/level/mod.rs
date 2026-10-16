@@ -21,6 +21,7 @@ pub(crate) mod level_scene;
 pub(crate) mod level_shadows;
 pub(crate) mod level_surface;
 pub(crate) mod level_wetness;
+pub(crate) mod light_shadow_ask;
 pub(crate) mod light_shadow_atlas;
 pub(crate) mod light_shadow_entry;
 pub(crate) mod light_shadow_face;

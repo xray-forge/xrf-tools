@@ -27,6 +27,7 @@ use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 use crate::scene::level::level_light_shadows::LevelLightShadows;
+use crate::scene::level::light_shadow_ask::LightShadowAsk;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::lights_frame::LightsFrame;
@@ -201,17 +202,16 @@ impl LevelLights {
             continue;
           };
 
-          self.shadows.ask(
-            it.handle,
+          let ask: LightShadowAsk<'_> = LightShadowAsk {
+            handle: it.handle,
             light,
-            &it.basis,
+            basis: &it.basis,
             eye,
             forward,
-            Vec3::from(light.color),
-            statics,
-            (sway, grass_reach),
             is_in_view,
-          );
+          };
+
+          self.shadows.ask(&ask, (statics, sway, grass_reach));
         }
       }
 

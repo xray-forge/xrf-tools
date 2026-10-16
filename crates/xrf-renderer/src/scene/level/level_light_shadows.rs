@@ -32,6 +32,7 @@ use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
+use crate::scene::level::light_shadow_ask::LightShadowAsk;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::light_shadow_entry::LightShadowEntry;
 use crate::scene::level::light_shadow_face::LightShadowFace;
@@ -227,22 +228,21 @@ impl LevelLightShadows {
     self.is_cast = false;
   }
 
-  /// Takes a shadowed light in view this frame, nearest first, or one out of view kept ready (`is_in_view` false), after
-  /// every one in view: gives it faces where it has none at the size it wants, and puts forward those of its faces
-  /// wanting a draw. One kept ready keeps the faces it has, and takes new ones only from free room.
-  #[allow(clippy::too_many_arguments)]
+  /// Takes a shadowed light in view this frame, nearest first, or one out of view kept ready, after every one in view:
+  /// gives it faces where it has none at the size it wants, and puts forward those of its faces wanting a draw. One
+  /// kept ready keeps the faces it has, and takes new ones only from free room.
   pub fn ask(
     &mut self,
-    handle: ProxyHandle<LightDescription>,
-    light: &LightDescription,
-    basis: &LightBasis,
-    eye: Vec3,
-    forward: Vec3,
-    color: Vec3,
-    statics: &StaticScene,
-    (sway, grass_reach): (&ShadowSway<'_>, Option<f32>),
-    is_in_view: bool,
+    ask: &LightShadowAsk<'_>,
+    (statics, sway, grass_reach): (&StaticScene, &ShadowSway<'_>, Option<f32>),
   ) {
+    let LightShadowAsk {
+      light,
+      basis,
+      eye,
+      forward,
+      ..
+    } = *ask;
     let is_spot: bool = matches!(light.kind, LightKind::Spot);
     let spatial: Vec4 = basis.get_spatial_sphere(light);
     let distance: f32 = (eye.distance(spatial.truncate()) - spatial.w).max(0.0);
@@ -252,51 +252,90 @@ impl LevelLightShadows {
       1.0
     };
     let cone: f32 = if is_spot { light.cone } else { LIGHT_SHADOW_POINT_CONE };
+    let color: Vec3 = Vec3::from(light.color);
     let wanted: f32 = to_light_shadow_size(light.range, distance, LightBasis::to_light_intensity(color), duel, cone);
-    let entry: &mut LightShadowEntry = self.entries.entry(handle).or_default();
+    let Some(asked) = self.choose_size(ask, wanted) else {
+      return;
+    };
+
+    self.replace_set(ask, asked);
+    self.push_candidates(ask, (statics, sway, grass_reach), (spatial, distance, cone));
+  }
+
+  /// The size of the faces a light asks for, from the texels it wants: the size it has while that stays near enough,
+  /// else the nearest tile size; none where it asks nothing this frame, being kept ready already or asked for already by
+  /// a nearer view.
+  fn choose_size(&mut self, ask: &LightShadowAsk<'_>, wanted: f32) -> Option<u32> {
+    let frame: u64 = self.frame;
+    let entry: &mut LightShadowEntry = self.entries.entry(ask.handle).or_default();
 
     // Kept ready out of view once a frame, and never over a view's ask.
-    if !is_in_view {
-      if entry.seen == self.frame || entry.warmed == self.frame {
-        return;
+    if !ask.is_in_view {
+      if entry.seen == frame || entry.warmed == frame {
+        return None;
       }
 
-      entry.warmed = self.frame;
+      entry.warmed = frame;
     }
 
-    let is_asked: bool = is_in_view && entry.seen == self.frame;
+    let is_asked: bool = ask.is_in_view && entry.seen == frame;
     let current: Option<u32> = entry.next.as_ref().or(entry.shown.as_ref()).map(|set| set.size);
     let asked: u32 = match current {
-      Some(size) if !is_in_view || (wanted <= size as f32 * GROW && wanted >= size as f32 * SHRINK) => size,
+      Some(size) if !ask.is_in_view || (wanted <= size as f32 * GROW && wanted >= size as f32 * SHRINK) => size,
       _ => to_light_shadow_tile_size(wanted),
     };
 
     // Another view of the scene asked for it this frame already: the size the nearer one wants stands.
     if is_asked && current.is_some_and(|size| asked <= size) {
+      return None;
+    }
+
+    if ask.is_in_view {
+      entry.seen = frame;
+    }
+
+    Some(asked)
+  }
+
+  /// Gives a light faces of the `asked` size: back at the size it shows while another was being drawn, the shown faces
+  /// stand and the other goes; at a size it neither shows nor draws, new faces replace those it draws.
+  fn replace_set(&mut self, ask: &LightShadowAsk<'_>, asked: u32) {
+    // Out of the map while the faces are made, which may evict another light's.
+    let Some(mut entry) = self.entries.remove(&ask.handle) else {
       return;
-    }
+    };
 
-    if is_in_view {
-      entry.seen = self.frame;
-    }
-
-    // Back at the size it shows while another was being drawn: the shown faces stand, and the other goes.
     if entry.shown.as_ref().is_some_and(|set| set.size == asked) {
       if let Some(next) = entry.next.take() {
         Self::release_set(&mut self.allocator, next);
       }
     } else if entry.next.as_ref().is_none_or(|set| set.size != asked) {
-      if let Some(next) = self.entries.get_mut(&handle).and_then(|entry| entry.next.take()) {
+      if let Some(next) = entry.next.take() {
         Self::release_set(&mut self.allocator, next);
       }
 
-      let set: Option<LightShadowSet> = self.create_set(light, basis, asked, is_in_view);
-
-      if let Some(entry) = self.entries.get_mut(&handle) {
-        entry.next = set;
-      }
+      entry.next = self.create_set(ask.light, ask.basis, asked, ask.is_in_view);
     }
 
+    self.entries.insert(ask.handle, entry);
+  }
+
+  /// Puts forward the faces of a light wanting a draw: those holding nothing yet or changed under, those its light
+  /// carried, and those the sway or the grass's cards move in.
+  fn push_candidates(
+    &mut self,
+    ask: &LightShadowAsk<'_>,
+    (statics, sway, grass_reach): (&StaticScene, &ShadowSway<'_>, Option<f32>),
+    (spatial, distance, cone): (Vec4, f32, f32),
+  ) {
+    let LightShadowAsk {
+      handle,
+      light,
+      basis,
+      eye,
+      is_in_view,
+      ..
+    } = *ask;
     let Some(entry) = self.entries.get_mut(&handle) else {
       return;
     };
