@@ -466,7 +466,6 @@ impl SurroundingsCube {
   /// Declares this frame's band of the face drawn again, into the spare G-buffer; then the face's cull and its draw into
   /// the G-buffer it keeps where it is drawn whole, and its resolve into `faces`, the prefiltered cube's first mip, where
   /// this frame lights one.
-  #[allow(clippy::too_many_arguments)]
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),

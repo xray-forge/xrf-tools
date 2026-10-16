@@ -27,6 +27,7 @@ use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::grass_planting::GrassPlanting;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 use crate::scene::level::grass_view::GrassView;
+use crate::scene::level::grass_view_frame::GrassViewFrame;
 use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
@@ -153,12 +154,17 @@ fn plants_draws_and_casts_the_grass_without_a_validation_error() {
       device,
       Some(&level),
       &settings,
-      &camera,
-      0.0,
-      (frame as f32 * 0.1, true, 1.0),
-      &FoliageWindValues::default(),
-      (&puddles_view, GrassPuddlesUniform::default()),
-      (false, Some(40.0)),
+      &GrassViewFrame {
+        camera: &camera,
+        discard_below: 0.0,
+        time: frame as f32 * 0.1,
+        is_windy: true,
+        strength: 1.0,
+        foliage: &FoliageWindValues::default(),
+        puddles: (&puddles_view, GrassPuddlesUniform::default()),
+        is_traced: false,
+        cascade_reach: Some(40.0),
+      },
     );
 
     {

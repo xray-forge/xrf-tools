@@ -1,5 +1,6 @@
 pub(crate) mod ambient_occlusion_feature;
 pub(crate) mod bitmask_feature;
+pub(crate) mod bitmask_tracing;
 pub(crate) mod bloom_feature;
 pub(crate) mod combine_feature;
 pub(crate) mod composited_draw;

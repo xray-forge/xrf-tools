@@ -22,6 +22,7 @@ use crate::pass::vbao_parameters::VbaoParameters;
 use crate::pass::vbao_pass::VbaoPass;
 use crate::pass::vbao_uniform::VbaoUniform;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::bitmask_tracing::BitmaskTracing;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
 
@@ -131,8 +132,13 @@ impl BitmaskFeature {
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     targets: ViewTargetHandles,
-    (traced, is_reconstructed, is_light_traced): (Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>, bool, bool),
+    tracing: BitmaskTracing<'a>,
   ) -> Option<GraphTexture> {
+    let BitmaskTracing {
+      traced,
+      is_reconstructed,
+      is_light_traced,
+    } = tracing;
     let asked: BitmaskSearch = self.search?;
     let trace: Option<(TraceParameters<'a>, &'a wgpu::BindGroup)> = traced.filter(|_| asked.is_traced);
     let search: BitmaskSearch = BitmaskSearch {

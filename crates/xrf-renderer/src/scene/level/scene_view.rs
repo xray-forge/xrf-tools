@@ -48,6 +48,7 @@ use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::wet_uniform::WetUniform;
 use crate::scene::level::cover_textures::CoverTextures;
+use crate::scene::level::feature::bitmask_tracing::BitmaskTracing;
 use crate::scene::level::feature::composited_draw::CompositedDraw;
 use crate::scene::level::feature::fog_feature::FogFeature;
 use crate::scene::level::feature::light_buffers::LightBuffers;
@@ -64,6 +65,7 @@ use crate::scene::level::grass_card_handles::GrassCardHandles;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::grass_planting::GrassPlanting;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
+use crate::scene::level::grass_view_frame::GrassViewFrame;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
@@ -356,28 +358,30 @@ impl SceneView {
     let is_cascaded: bool =
       SunTraceFeature::is_cascaded(options, is_traced, self.features.resolve.is_ray_reconstructed());
 
-    self.features.grass.prepare(
-      device,
-      scene.grass.get_level(),
-      &options.features.grass,
-      view,
-      self.features.statics.get_cull().discard_below,
+    let grass: GrassViewFrame<'_> = GrassViewFrame {
+      camera: view,
+      discard_below: self.features.statics.get_cull().discard_below,
       // The ambient effects blow the wind the grass reads this frame.
-      (time, lighting.trees.is_some(), scene.gust.strength),
-      self.features.wind.get_values(),
+      time,
+      is_windy: lighting.trees.is_some(),
+      strength: scene.gust.strength,
+      foliage: self.features.wind.get_values(),
       // Where the puddles stood last frame, which no tuft is planted in: the wet readies after the grass.
-      LevelSurface::get_grass_puddles(
+      puddles: LevelSurface::get_grass_puddles(
         self.features.level_surface.as_ref(),
         frame.passes.wet.get_dry()[1],
         self.features.wet.has_puddles(),
       ),
-      (
-        is_traced,
-        is_cascaded
-          .then(|| LevelShadows::get_grass_reach(&options.features.shadows))
-          .flatten(),
-      ),
-    );
+      is_traced,
+      cascade_reach: is_cascaded
+        .then(|| LevelShadows::get_grass_reach(&options.features.shadows))
+        .flatten(),
+    };
+
+    self
+      .features
+      .grass
+      .prepare(device, scene.grass.get_level(), &options.features.grass, &grass);
     scene.lights.prepare(
       &mut *encoder,
       &mut self.features.lights,
@@ -443,11 +447,9 @@ impl SceneView {
     self.features.ambient_occlusion.prepare(options, view.projection, half);
     self.features.bitmask.prepare(device, options, view.projection, half);
     self.features.indirect_trace.prepare(
-      (
-        frame.passes.indirect_trace.is_traced(),
-        self.features.resolve.is_ray_reconstructed(),
-        self.features.bitmask.get_search().is_some_and(|search| search.is_lit),
-      ),
+      frame.passes.indirect_trace.is_traced()
+        && self.features.resolve.is_ray_reconstructed()
+        && self.features.bitmask.get_search().is_some_and(|search| search.is_lit),
       (
         self.features.bitmask.get_indirect_light().intensity,
         self.features.resolve.get_noise_frame(),
@@ -757,11 +759,11 @@ impl SceneView {
       passes,
       view,
       targets,
-      (
+      BitmaskTracing {
         traced,
-        self.features.resolve.is_ray_reconstructed(),
-        self.features.indirect_trace.is_traced(traced.is_some()),
-      ),
+        is_reconstructed: self.features.resolve.is_ray_reconstructed(),
+        is_light_traced: self.features.indirect_trace.is_traced(traced.is_some()),
+      },
     );
 
     (indirect_light, sun_seen)

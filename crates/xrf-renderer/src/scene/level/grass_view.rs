@@ -4,14 +4,12 @@ use xrf_renderer_core::{
   GraphTexture, StorageArray, StorageArrayMut, StorageValue, StorageValueMut, UniformBinding,
 };
 
-use crate::camera::camera_view::CameraView;
 use crate::contract::render_applied_grass::RenderAppliedGrass;
 use crate::contract::render_grass_report::RenderGrassReport;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::lighting::grass_wind::GrassWind;
-use crate::pass::foliage_wind_values::FoliageWindValues;
 use crate::pass::grass_build_parameters::GrassBuildParameters;
 use crate::pass::grass_card_shadow_parameters::GrassCardShadowParameters;
 use crate::pass::grass_cards_parameters::GrassCardsParameters;
@@ -35,6 +33,7 @@ use crate::scene::level::grass_cards::GrassCards;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::grass_planting::GrassPlanting;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
+use crate::scene::level::grass_view_frame::GrassViewFrame;
 
 /// Metres a detail slot spans, `dm_slot_size`.
 const SLOT_METERS: f32 = 2.0;
@@ -90,23 +89,26 @@ impl GrassView {
   }
 
   /// Fits the planting to the settings and the camera, building the ring and lists again where the settings outgrow
-  /// them, and the cards where the grass casts shadows, traced where the view traces its light (`is_traced`) and drawn
-  /// into the sun's cascades where they shadow the frame (`cascade_reach`, as far as they reach); `discard_below` is
-  /// `r_ssaDISCARD` as the static cull compares it, `time` the seconds the wind blows by, and `strength` the wind's,
-  /// `wind_strength_factor`.
-  #[allow(clippy::too_many_arguments)]
+  /// them, and the cards where the grass casts shadows, traced where the view traces its light and drawn into the sun's
+  /// cascades where they shadow the frame.
   pub fn prepare(
     &mut self,
     device: &wgpu::Device,
     level: Option<&GrassLevel>,
     settings: &RenderGrassSettings,
-    camera: &CameraView,
-    discard_below: f32,
-    (time, is_windy, strength): (f32, bool, f32),
-    foliage: &FoliageWindValues,
-    puddles: (&wgpu::TextureView, GrassPuddlesUniform),
-    (is_traced, cascade_reach): (bool, Option<f32>),
+    frame: &GrassViewFrame<'_>,
   ) {
+    let GrassViewFrame {
+      camera,
+      discard_below,
+      time,
+      is_windy,
+      strength,
+      foliage,
+      puddles,
+      is_traced,
+      cascade_reach,
+    } = *frame;
     let wind: GrassWindUniform = self
       .wind
       .advance(time, is_windy, strength)

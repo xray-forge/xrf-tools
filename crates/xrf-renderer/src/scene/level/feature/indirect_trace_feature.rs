@@ -23,15 +23,10 @@ pub struct IndirectTraceFeature {
 }
 
 impl IndirectTraceFeature {
-  /// Takes this frame's trace: asked where its pass is built (`is_built`), DLSS ray reconstruction resolves the frame
-  /// (`is_reconstructed`) and the bitmask search gathers light (`is_gathered`), at the light's `intensity`, its noise
-  /// turned by `noise_frame`.
-  pub fn prepare(
-    &mut self,
-    (is_built, is_reconstructed, is_gathered): (bool, bool, bool),
-    (intensity, noise_frame): (f32, u32),
-  ) {
-    self.is_asked = is_built && is_reconstructed && is_gathered;
+  /// Takes this frame's trace, `is_asked` where its pass is built, DLSS ray reconstruction resolves the frame and the
+  /// bitmask search gathers light, at the light's `intensity`, its noise turned by `noise_frame`.
+  pub fn prepare(&mut self, is_asked: bool, (intensity, noise_frame): (f32, u32)) {
+    self.is_asked = is_asked;
     self.uniform = IndirectTraceUniform::new(noise_frame, intensity);
   }
 
