@@ -213,19 +213,37 @@ impl CameraUniform {
     self
   }
 
-  /// Runs in order joined across their narrowest gaps until at most `most` remain.
+  /// Runs in order joined across their narrowest gaps, the earlier first among equals, until at most `most` remain.
   fn join_nearest(runs: &[[u32; 2]], most: usize) -> Vec<[u32; 2]> {
-    let mut joined: Vec<[u32; 2]> = runs.to_vec();
-
-    while joined.len() > most {
-      let narrowest: usize = (1..joined.len())
-        .min_by_key(|index| joined[*index][0].saturating_sub(joined[index - 1][1]))
-        .unwrap_or(1);
-
-      joined[narrowest - 1][1] = joined[narrowest][1];
-      joined.remove(narrowest);
+    if runs.len() <= most {
+      return runs.to_vec();
     }
 
-    joined
+    // A join leaves every other gap as wide as it was, so the runs stay apart only across the gaps joined last.
+    let mut gaps: Vec<(u32, usize)> = (1..runs.len())
+      .map(|index| (runs[index][0].saturating_sub(runs[index - 1][1]), index))
+      .collect();
+
+    gaps.sort_unstable();
+
+    let mut parts: Vec<usize> = gaps[runs.len() - most.max(1)..]
+      .iter()
+      .map(|(_, index)| *index)
+      .collect();
+
+    parts.sort_unstable();
+
+    let mut start: usize = 0;
+
+    parts
+      .into_iter()
+      .chain([runs.len()])
+      .map(|part| {
+        let run: [u32; 2] = [runs[start][0], runs[part - 1][1]];
+
+        start = part;
+        run
+      })
+      .collect()
   }
 }

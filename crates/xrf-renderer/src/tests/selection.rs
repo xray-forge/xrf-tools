@@ -52,3 +52,39 @@ fn joins_the_runs_nearest_each_other_past_what_it_holds() {
   assert_eq!(uniform.selection[2], 64);
   assert_eq!(uniform.selection_runs[31], UVec4::new(6_200, 6_210, 6_300, 6_320));
 }
+
+// Joined at once, the runs part where joining the narrowest gap one at a time, the earlier among equals, leaves them.
+#[test]
+fn joins_as_the_narrowest_gap_joined_one_at_a_time_would() {
+  let mut at: u32 = 0;
+  let runs: Vec<[u32; 2]> = (0..300_u32)
+    .map(|index| {
+      let start: u32 = at + (index * 7_919) % 13;
+
+      at = start + 1 + index % 5;
+      [start, at]
+    })
+    .collect();
+  let mut expected: Vec<[u32; 2]> = runs.clone();
+
+  while expected.len() > 64 {
+    let narrowest: usize = (1..expected.len())
+      .min_by_key(|index| expected[*index][0].saturating_sub(expected[index - 1][1]))
+      .unwrap();
+
+    expected[narrowest - 1][1] = expected[narrowest][1];
+    expected.remove(narrowest);
+  }
+
+  let uniform: CameraUniform = camera().with_selection(Some(&StaticSelection { place: None, runs }));
+  let joined: Vec<[u32; 2]> = (0..64)
+    .map(|index| {
+      let row: UVec4 = uniform.selection_runs[index / 2];
+
+      if index % 2 == 0 { [row.x, row.y] } else { [row.z, row.w] }
+    })
+    .collect();
+
+  assert_eq!(uniform.selection[2], 64);
+  assert_eq!(joined, expected);
+}
