@@ -1,9 +1,6 @@
 use xrf_renderer_core::PipelineCache;
-use xrf_test_utils::gpu::skip_without_gpu;
 
 use crate::camera::camera_frame::CameraFrame;
-use crate::context::gpu_context::GpuContext;
-use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_rect::RenderRect;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::pass::camera_uniform::CameraUniform;
@@ -12,7 +9,7 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::test_bundle::TestBundle;
-use crate::tests::test_bundle::checkout_dxc;
+use crate::tests::test_context::create_test_context;
 use crate::tests::test_workers::create_workers;
 use crate::thread::gpu_state::GpuState;
 
@@ -22,15 +19,8 @@ const SIZE: u32 = 64;
 /// machine with no adapter at all; CI has WARP under D3D12.
 #[test]
 fn draws_sky_over_ground_offscreen() {
-  let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
-  {
-    Ok(context) => context,
-    Err(error) => {
-      skip_without_gpu(format_args!("no GPU to draw with ({error})"));
-
-      return;
-    }
+  let Some(context) = create_test_context("to draw with") else {
+    return;
   };
   let device: &wgpu::Device = &context.device;
   let format: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
@@ -154,15 +144,8 @@ fn draws_sky_over_ground_offscreen() {
 /// that no longer matches its pass fails here rather than in the app.
 #[test]
 fn builds_every_pass() {
-  let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
-  {
-    Ok(context) => context,
-    Err(error) => {
-      skip_without_gpu(format_args!("no GPU to draw with ({error})"));
-
-      return;
-    }
+  let Some(context) = create_test_context("to draw with") else {
+    return;
   };
   let shaders: ShaderLibrary = ShaderLibrary::default();
 
@@ -179,11 +162,7 @@ fn builds_every_pass() {
 /// GPU.
 #[test]
 fn builds_without_what_the_bundle_lacks() {
-  let Ok(context) = GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
-  else {
-    skip_without_gpu("no GPU to draw with");
-
+  let Some(context) = create_test_context("to draw with") else {
     return;
   };
 

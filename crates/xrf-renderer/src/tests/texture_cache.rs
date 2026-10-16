@@ -4,16 +4,14 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_test_utils::gpu::skip_without_gpu;
 
 use crate::context::gpu_context::GpuContext;
-use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_texture_state::RenderTextureState;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
-use crate::tests::test_bundle::checkout_dxc;
+use crate::tests::test_context::create_test_context;
 use crate::tests::test_workers::{TEST_WORKER_NAME, create_workers};
 
 /// A source holding nothing, whose `slow` texture answers only once the test lets it, and then with a failure.
@@ -35,13 +33,6 @@ impl RenderAssetSource for GatedSource {
 
     Ok(None)
   }
-}
-
-fn create_context() -> Option<GpuContext> {
-  GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
-    .map_err(|error| skip_without_gpu(format_args!("no GPU to upload to ({error})")))
-    .ok()
 }
 
 fn create_source() -> (Arc<dyn RenderAssetSource>, Sender<()>) {
@@ -69,7 +60,7 @@ fn settle(cache: &mut TextureCache, context: &GpuContext, slot: u32) -> RenderTe
 
 #[test]
 fn a_slot_no_scene_samples_is_freed_and_taken_by_the_next_texture() {
-  let Some(context) = create_context() else {
+  let Some(context) = create_test_context("to upload to") else {
     return;
   };
   let (source, _open) = create_source();
@@ -86,7 +77,7 @@ fn a_slot_no_scene_samples_is_freed_and_taken_by_the_next_texture() {
 
 #[test]
 fn a_load_landing_after_its_slot_was_freed_is_not_drawn_in_the_slots_next_texture() {
-  let Some(context) = create_context() else {
+  let Some(context) = create_test_context("to upload to") else {
     return;
   };
   let (source, open) = create_source();
@@ -109,7 +100,7 @@ fn a_load_landing_after_its_slot_was_freed_is_not_drawn_in_the_slots_next_textur
 
 #[test]
 fn an_environment_no_scene_samples_is_freed_and_its_slot_taken_by_the_next_cube() {
-  let Some(context) = create_context() else {
+  let Some(context) = create_test_context("to upload to") else {
     return;
   };
   let mut cache: TextureCache = TextureCache::new(&context.device, &context.queue, &create_workers());
@@ -147,7 +138,7 @@ impl RenderAssetSource for ThreadTellingSource {
 // The application hands the renderer its pool; a read on rayon's global pool would add a pool the size of the machine.
 #[test]
 fn reads_a_texture_on_the_pool_it_was_handed() {
-  let Some(context) = create_context() else {
+  let Some(context) = create_test_context("to upload to") else {
     return;
   };
   let (told, heard) = channel();
@@ -219,7 +210,7 @@ fn wait_reads(cache: &mut TextureCache, context: &GpuContext, reads: &dyn Fn() -
 
 #[test]
 fn reloads_a_texture_by_its_file_name_and_its_source_forgets_it() {
-  let Some(context) = create_context() else {
+  let Some(context) = create_test_context("to upload to") else {
     return;
   };
   let counting: Arc<CountingSource> = CountingSource::new(1);
@@ -241,7 +232,7 @@ fn reloads_a_texture_by_its_file_name_and_its_source_forgets_it() {
 
 #[test]
 fn reloads_a_texture_a_reopened_source_finds_changed_on_disk() {
-  let Some(context) = create_context() else {
+  let Some(context) = create_test_context("to upload to") else {
     return;
   };
   let first: Arc<CountingSource> = CountingSource::new(1);

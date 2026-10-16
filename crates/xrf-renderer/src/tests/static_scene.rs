@@ -2,11 +2,8 @@ use std::sync::Arc;
 
 use glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
-use xrf_test_utils::gpu::skip_without_gpu;
 use xrf_visual::SectorSurface;
 
-use crate::context::gpu_context::GpuContext;
-use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_selection_target::RenderSelectionTarget;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
@@ -19,7 +16,7 @@ use crate::scene::static_scene::static_model_proxy::StaticModelProxy;
 use crate::scene::static_scene::static_object_proxy::StaticObjectProxy;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::texture::texture_cache::TextureCache;
-use crate::tests::test_bundle::checkout_dxc;
+use crate::tests::test_context::create_test_context;
 use crate::tests::test_source::EmptySource;
 use crate::tests::test_workers::create_workers;
 
@@ -58,11 +55,7 @@ fn place(object: u32) -> StaticModelPlace {
 
 #[test]
 fn stands_objects_as_a_model_and_takes_them_out_again() {
-  let Ok(context) = GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
-  else {
-    skip_without_gpu("no GPU to hold a scene");
-
+  let Some(context) = create_test_context("to hold a scene") else {
     return;
   };
   let (device, queue): (&wgpu::Device, &wgpu::Queue) = (&context.device, &context.queue);
@@ -148,11 +141,7 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
 
 #[test]
 fn tells_a_cache_only_of_changes_within_what_it_covers() {
-  let Ok(context) = GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
-  else {
-    skip_without_gpu("no GPU to hold a scene");
-
+  let Some(context) = create_test_context("to hold a scene") else {
     return;
   };
   let (device, queue): (&wgpu::Device, &wgpu::Queue) = (&context.device, &context.queue);

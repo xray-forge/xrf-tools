@@ -2,12 +2,9 @@ use std::sync::Arc;
 
 use glam::{Mat4, Vec3};
 use xrf_renderer_core::{FrameGraph, GraphBindings, GraphCompileOptions, GraphRuntime, GraphTexture, PipelineCache};
-use xrf_test_utils::gpu::skip_without_gpu;
 use xrf_visual::{DetailsDescription, DetailsModel, DetailsPackage, VisualSection};
 
 use crate::camera::camera_view::CameraView;
-use crate::context::gpu_context::GpuContext;
-use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -31,7 +28,7 @@ use crate::scene::level::grass_view_frame::GrassViewFrame;
 use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
-use crate::tests::test_bundle::checkout_dxc;
+use crate::tests::test_context::create_test_context;
 use crate::tests::test_source::EmptySource;
 use crate::tests::test_workers::create_workers;
 
@@ -98,15 +95,8 @@ fn create_details() -> RenderLevelDetails {
 /// machine with no adapter at all.
 #[test]
 fn plants_draws_and_casts_the_grass_without_a_validation_error() {
-  let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
-  {
-    Ok(context) => context,
-    Err(error) => {
-      skip_without_gpu(format_args!("no GPU to draw with ({error})"));
-
-      return;
-    }
+  let Some(context) = create_test_context("to draw with") else {
+    return;
   };
   let device: &wgpu::Device = &context.device;
   let scope: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);

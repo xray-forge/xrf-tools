@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{PassParameters, ProxyAllocator, ProxyHandle};
-use xrf_test_utils::gpu::skip_without_gpu;
 use xrf_visual::{
   SectorDescription, SectorGeometry, SectorPackage, SectorSection, SectorSurface, VisualClusters, VisualDrawRange,
   VisualSection,
@@ -10,7 +9,6 @@ use xrf_visual::{
 
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_requirements::can_trace;
-use crate::contract::render_backend::RenderBackend;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::pass::light_record::LightRecord;
@@ -30,7 +28,7 @@ use crate::scene::static_scene::static_sector_proxy::StaticSectorProxy;
 use crate::scene::static_scene::static_trace::StaticTrace;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
-use crate::tests::test_bundle::checkout_dxc;
+use crate::tests::test_context::create_test_context;
 use crate::tests::test_source::EmptySource;
 use crate::tests::test_workers::create_workers;
 
@@ -213,13 +211,7 @@ fn create_model() -> StaticModel {
 
 /// A headless device that traces rays; none, saying why, where no GPU or no ray query is there.
 fn create_tracing_context() -> Option<GpuContext> {
-  let Ok(context) = GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
-  else {
-    skip_without_gpu("no GPU to trace with");
-
-    return None;
-  };
+  let context: GpuContext = create_test_context("to trace with")?;
 
   if !can_trace(&context.device) {
     eprintln!("Skipped: '{}' has no ray queries", context.adapter_name);

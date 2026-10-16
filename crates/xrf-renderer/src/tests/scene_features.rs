@@ -1,26 +1,15 @@
-use xrf_test_utils::gpu::skip_without_gpu;
-
-use crate::context::gpu_context::GpuContext;
-use crate::contract::render_backend::RenderBackend;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::tests::test_bundle::checkout_dxc;
+use crate::tests::test_context::create_test_context;
 
 /// A view's feature units hold nothing on the GPU before they draw and nothing once let go of, but for the state made
 /// with the view whatever the settings: the exposure's, which every lit pass reads its scale from, the lights' records
 /// and clusters, and the particles' first quads. Skipped, and says so, on a machine with no adapter at all.
 #[test]
 fn holds_nothing_while_off() {
-  let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
-    .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
-  {
-    Ok(context) => context,
-    Err(error) => {
-      skip_without_gpu(format_args!("no GPU to draw with ({error})"));
-
-      return;
-    }
+  let Some(context) = create_test_context("to draw with") else {
+    return;
   };
   let layout: wgpu::BindGroupLayout = ViewBinding::create_layout(&context.device);
   let mut features: SceneFeatures = SceneFeatures::new((&context.device, &context.queue), &layout);
