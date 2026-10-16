@@ -10,6 +10,9 @@ use xrf_renderer::{
 use xrf_vfs::XrayRoots;
 use xrf_world::{World, WorldEventSink};
 
+use crate::core::execution::ExecutionState;
+use crate::core::types::TauriResult;
+
 use crate::plugins::render::disk_cache_store::DiskCacheStore;
 use crate::plugins::render::renderer::Renderer;
 use crate::plugins::render::texture_watcher::{TextureWatcher, to_texture_name};
@@ -239,6 +242,22 @@ impl RenderState {
   /// The world, locked for a command; the render thread holds it only while it runs a viewport's frame.
   pub fn lock_world(&self) -> MutexGuard<'_, World> {
     self.world.lock().unwrap_or_else(PoisonError::into_inner)
+  }
+
+  /// Runs `read` over the world on the execution pool, so a command waiting for the render thread's frame to let go of
+  /// it holds no async worker meanwhile.
+  pub async fn read_world<T, F>(&self, execution: &ExecutionState, what: &str, read: F) -> TauriResult<T>
+  where
+    F: FnOnce(&World) -> T + Send + 'static,
+    T: Send + 'static,
+  {
+    let world: Arc<Mutex<World>> = Arc::clone(&self.world);
+
+    execution
+      .run_blocking(what, move || {
+        read(&world.lock().unwrap_or_else(PoisonError::into_inner))
+      })
+      .await
   }
 
   fn release(&self, viewport: RenderViewportId) {
