@@ -174,6 +174,20 @@ lto = true
 opt-level = "s"
 strip = true
 
+# wgpu at level 3 in a size-optimised release: the render thread's command encoding (`CommandEncoder::finish`) is its
+# hottest CPU work. naga stays at the profile's level, as it runs only when shaders compile.
+[profile.release.package.wgpu]
+opt-level = 3
+
+[profile.release.package.wgpu-core]
+opt-level = 3
+
+[profile.release.package.wgpu-hal]
+opt-level = 3
+
+[profile.release.package.wgpu-types]
+opt-level = 3
+
 # Keep development builds fast.
 [profile.dev]
 opt-level = 0
