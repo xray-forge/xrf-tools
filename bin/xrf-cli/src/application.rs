@@ -142,8 +142,5 @@ fn get_environment_help() -> String {
     .map(|flag| format!("  {:width$}  {}", flag.name, flag.description.replace('`', "")))
     .collect();
 
-  format!(
-    "Environment:\n{}\n\nEvery variable is described in ENVIRONMENT.md.",
-    lines.join("\n")
-  )
+  format!("Environment:\n{}", lines.join("\n"))
 }
