@@ -465,7 +465,7 @@ impl SceneView {
       self.features.resolve.is_ray_reconstructed(),
     );
     self.features.view_trace.prepare(
-      (device, frame.queue),
+      (device, &mut *encoder),
       (scene.trace.as_ref(), self.features.grass.get_cards_blas()),
       view.position,
       options.is_scene_traced() && frame.passes.scene_trace.is_traced(),

@@ -6,6 +6,7 @@ use xrf_renderer_core::{
   StorageArrayMut,
 };
 
+use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::level_passes::LevelPasses;
@@ -67,7 +68,7 @@ impl ViewTraceFeature {
   /// written and the view's top level filled, with the grass's `cards` where the view stands them.
   pub fn prepare(
     &mut self,
-    (device, queue): (&wgpu::Device, &wgpu::Queue),
+    (device, encoder): (&wgpu::Device, &mut FrameEncoder),
     (trace, cards): (Option<&StaticTrace>, Option<&wgpu::Blas>),
     camera: Vec3,
     is_traced: bool,
@@ -153,7 +154,7 @@ impl ViewTraceFeature {
       vertices
     };
 
-    queue.write_buffer(&slot_buffer, 0, bytemuck::cast_slice(&slots));
+    encoder.write_buffer(&slot_buffer, 0, bytemuck::cast_slice(&slots));
 
     let replaced: HashMap<u32, &wgpu::Blas> = swayed.iter().map(|it| (it.index, &it.blas)).collect();
 
