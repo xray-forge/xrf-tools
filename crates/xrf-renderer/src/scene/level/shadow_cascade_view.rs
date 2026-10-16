@@ -31,10 +31,10 @@ pub struct ShadowCascadeView {
 }
 
 impl ShadowCascadeView {
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, (index, args_size): (usize, u64)) -> Self {
+  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, index: usize) -> Self {
     Self {
       cascade: SunCascade::default(),
-      cut: ShadowCut::new(device, view_layout, "sun shadow", args_size),
+      cut: ShadowCut::new(device, view_layout, "sun shadow"),
       drawn: None,
       drawn_at: 0.0,
       drawn_fit: SunCascade::default(),

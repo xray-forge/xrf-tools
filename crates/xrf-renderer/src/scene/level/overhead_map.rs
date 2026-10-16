@@ -93,8 +93,8 @@ impl OverheadMap {
   /// What shifting the whole map costs, as texels of a draw.
   const SHIFT_SHARE: f32 = 1.0 / 8.0;
 
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64, shape: OverheadShape) -> Self {
-    let cut = || ShadowCut::new(device, view_layout, shape.label, args_size);
+  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, shape: OverheadShape) -> Self {
+    let cut = || ShadowCut::new(device, view_layout, shape.label);
 
     Self {
       depth: device

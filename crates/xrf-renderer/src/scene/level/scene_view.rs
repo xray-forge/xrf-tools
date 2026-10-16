@@ -155,17 +155,12 @@ impl SceneView {
     self.features.resolve.next_jittered(current)
   }
 
-  /// A view of `scene`, nothing of it drawn yet.
-  pub fn new(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    view_layout: &wgpu::BindGroupLayout,
-    scene: &LevelScene,
-  ) -> Self {
+  /// A view of a scene, nothing of it drawn yet.
+  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, view_layout: &wgpu::BindGroupLayout) -> Self {
     Self {
       shared: ViewFrame::default(),
       targets: None,
-      features: SceneFeatures::new((device, queue), view_layout, scene.statics.cull.args.size()),
+      features: SceneFeatures::new((device, queue), view_layout),
     }
   }
 
@@ -562,7 +557,7 @@ impl SceneView {
       shadows,
       rain_cover,
       level_surface,
-      overhead_layout: (overhead_view_layout, args_size),
+      overhead_layout: overhead_view_layout,
       surroundings,
       reflections,
       rain,
@@ -594,7 +589,7 @@ impl SceneView {
     // Out to the wet reach where the wetting reaches past the engine's.
     if rain.is_raining() || wet.is_wet() {
       rain_cover
-        .get_or_insert_with(|| RainCover::new(device, overhead_view_layout, *args_size))
+        .get_or_insert_with(|| RainCover::new(device, overhead_view_layout))
         .offer(&frame, wet.get_reach(), scheduler);
     } else {
       *rain_cover = None;
@@ -603,7 +598,7 @@ impl SceneView {
     // The puddles seat on it.
     if wet.is_enhanced() {
       level_surface
-        .get_or_insert_with(|| LevelSurface::new(device, overhead_view_layout, *args_size))
+        .get_or_insert_with(|| LevelSurface::new(device, overhead_view_layout))
         .offer(&frame, scene.lights.get_fires(), scheduler);
     } else {
       *level_surface = None;

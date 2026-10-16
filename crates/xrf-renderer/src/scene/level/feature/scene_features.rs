@@ -45,9 +45,8 @@ pub struct SceneFeatures {
   /// The level's surface around the camera without its trees, which the puddles are seated on, while the enhanced
   /// wetting draws them.
   pub level_surface: Option<LevelSurface>,
-  /// What the overhead maps and their views are made with when they are wanted again: the views' layout and the
-  /// scene's cull arguments' bytes.
-  pub overhead_layout: (wgpu::BindGroupLayout, u64),
+  /// The layout the overhead maps' views are made with when they are wanted again.
+  pub overhead_layout: wgpu::BindGroupLayout,
   /// The level around the camera as a cube, a face a frame, which a reflection meeting nothing on the screen reads.
   pub surroundings: SurroundingsCube,
   /// The level's local lights as the view lights its frame with them.
@@ -88,18 +87,14 @@ pub struct SceneFeatures {
 }
 
 impl SceneFeatures {
-  /// The units of a view whose views bind by `view_layout`, the scene's cull arguments `args_size` bytes.
-  pub fn new(
-    (device, queue): (&wgpu::Device, &wgpu::Queue),
-    view_layout: &wgpu::BindGroupLayout,
-    args_size: u64,
-  ) -> Self {
+  /// The units of a view whose views bind by `view_layout`.
+  pub fn new((device, queue): (&wgpu::Device, &wgpu::Queue), view_layout: &wgpu::BindGroupLayout) -> Self {
     Self {
       shadows: LevelShadows::default(),
       rain_cover: None,
       level_surface: None,
-      overhead_layout: (view_layout.clone(), args_size),
-      surroundings: SurroundingsCube::new(device, view_layout, args_size),
+      overhead_layout: view_layout.clone(),
+      surroundings: SurroundingsCube::new(device, view_layout),
       lights: LightsFeature::new(device),
       overlays: OverlaysFeature::default(),
       wind: WindFeature::default(),

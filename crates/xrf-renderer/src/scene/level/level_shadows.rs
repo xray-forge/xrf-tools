@@ -512,11 +512,7 @@ impl LevelShadows {
     while self.cascades.len() < count.min(RENDER_MAX_SHADOW_CASCADES) {
       let index: usize = self.cascades.len();
 
-      self.cascades.push(ShadowCascadeView::new(
-        device,
-        view_layout,
-        (index, scene.cull.args.size()),
-      ));
+      self.cascades.push(ShadowCascadeView::new(device, view_layout, index));
     }
 
     // The points of the cards' reach the camera sees, and the cascade each is shaded by so far and whether it blends
@@ -569,7 +565,7 @@ impl LevelShadows {
       if index >= BANDED_FROM {
         cascade
           .band
-          .get_or_insert_with(|| ShadowCut::new(device, view_layout, "sun shadow band", scene.cull.args.size()));
+          .get_or_insert_with(|| ShadowCut::new(device, view_layout, "sun shadow band"));
 
         let ticket: Option<PeriodicTicket> = Self::offer_band(index, cascade, frame, scheduler);
 

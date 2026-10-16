@@ -134,10 +134,10 @@ impl SurroundingsCube {
   const DRAW_SEED: f32 = 1.1e-6;
   const LIGHT_SEED: f32 = 0.01;
 
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
+  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
     Self {
-      cut: ShadowCut::new(device, view_layout, "surroundings", args_size),
-      band: ShadowCut::new(device, view_layout, "surroundings band", args_size),
+      cut: ShadowCut::new(device, view_layout, "surroundings"),
+      band: ShadowCut::new(device, view_layout, "surroundings band"),
       faces: None,
       face: 5,
       to_sun: Vec3::Y,

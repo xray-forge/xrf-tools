@@ -94,7 +94,7 @@ impl LevelScene {
 
     Self {
       grass: LevelGrass::new(&source, workers),
-      lights: LevelLights::new(device, view_layout, statics.cull.args.size()),
+      lights: LevelLights::new(device, view_layout),
       particles: LevelParticles::new(device, workers),
       statics,
       trace: None,

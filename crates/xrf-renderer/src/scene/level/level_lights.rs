@@ -89,7 +89,7 @@ pub struct LevelLights {
 }
 
 impl LevelLights {
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
+  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
     Self {
       lights: ProxyStore::new(),
       moving: Vec::new(),
@@ -97,7 +97,7 @@ impl LevelLights {
       projectors: Vec::new(),
       volume_textures: (TextureCache::MISSING_SLOT, TextureCache::MISSING_SLOT),
       fires: Vec::new(),
-      shadows: LevelLightShadows::new(device, view_layout, args_size),
+      shadows: LevelLightShadows::new(device, view_layout),
       started: Instant::now(),
     }
   }

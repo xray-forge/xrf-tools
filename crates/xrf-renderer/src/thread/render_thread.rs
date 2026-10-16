@@ -797,7 +797,7 @@ impl RenderThread {
       if is_shown {
         viewport.show(Some((
           asked,
-          SceneView::new(&gpu.context.device, &gpu.context.queue, &gpu.view_layout, scene),
+          SceneView::new(&gpu.context.device, &gpu.context.queue, &gpu.view_layout),
         )));
       }
     }

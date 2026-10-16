@@ -147,9 +147,8 @@ pub struct LevelLightShadows {
   /// Every slot's visible list, `region` bytes apart.
   lists: GrowableBuffer,
   region: u64,
-  /// Every slot's draw arguments, `args_stride` bytes apart, each `args_size` long.
+  /// Every slot's draw arguments, `args_stride` bytes apart, each a cull's arguments long.
   args: wgpu::Buffer,
-  args_size: u64,
   args_stride: u64,
   /// What a slot's range of a buffer starts at a multiple of.
   alignment: u64,
@@ -159,9 +158,9 @@ impl LevelLightShadows {
   /// Texels the light shadow atlas is across.
   pub const ATLAS_SIZE: u32 = 4096;
 
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
+  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
     let alignment: u64 = u64::from(device.limits().min_storage_buffer_offset_alignment);
-    let args_stride: u64 = args_size.next_multiple_of(alignment);
+    let args_stride: u64 = StaticCullScratch::ARGS_SIZE.next_multiple_of(alignment);
     Self {
       atlas: None,
       none: Self::create_atlas(device, "light shadow atlas none", 1),
@@ -193,7 +192,6 @@ impl LevelLightShadows {
         usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
       }),
-      args_size,
       args_stride,
       alignment,
     }
@@ -552,7 +550,7 @@ impl LevelLightShadows {
           (*tile, *draw, *is_grassed && grass.is_some()),
           scene.get_cull_parameters(
             StorageArrayMut::new_range(lists, list_offset, self.region),
-            StorageArrayMut::new_range(args, args_offset, self.args_size),
+            StorageArrayMut::new_range(args, args_offset, StaticCullScratch::ARGS_SIZE),
           ),
           scene.get_layout_draws(StorageArray::new_range(lists, list_offset, self.region)),
         )
@@ -572,7 +570,7 @@ impl LevelLightShadows {
             0,
             args,
             *slot as u64 * self.args_stride,
-            self.args_size,
+            StaticCullScratch::ARGS_SIZE,
           );
         }
       });

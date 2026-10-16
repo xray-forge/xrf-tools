@@ -48,7 +48,7 @@ impl LevelSurface {
   /// by its step, which is no whole number of them.
   pub const SITE_CELL: f32 = 6.0;
 
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
+  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
     let shape: OverheadShape = OverheadShape::LEVEL_SURFACE;
     let cells: u32 = Self::get_cells(shape);
     let create = |label: &str, size: u32, format: wgpu::TextureFormat| -> wgpu::TextureView {
@@ -71,8 +71,8 @@ impl LevelSurface {
     };
 
     Self {
-      map: OverheadMap::new(device, view_layout, args_size, shape),
-      water: OverheadMap::new(device, view_layout, args_size, OverheadShape::LEVEL_WATER),
+      map: OverheadMap::new(device, view_layout, shape),
+      water: OverheadMap::new(device, view_layout, OverheadShape::LEVEL_WATER),
       lowest: create("level surface lowest", shape.resolution, Self::HEIGHT_FORMAT),
       sites: create("puddle sites", cells, Self::SITES_FORMAT),
       puddles: create("puddles", cells, Self::SITES_FORMAT),

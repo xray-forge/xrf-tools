@@ -23,11 +23,11 @@ pub struct RainCover {
 }
 
 impl RainCover {
-  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout, args_size: u64) -> Self {
+  pub fn new(device: &wgpu::Device, view_layout: &wgpu::BindGroupLayout) -> Self {
     let shape: OverheadShape = OverheadShape::RAIN_COVER;
 
     Self {
-      map: OverheadMap::new(device, view_layout, args_size, shape),
+      map: OverheadMap::new(device, view_layout, shape),
       pyramid: CoverPyramid::new(device, "rain cover pyramid", shape.resolution),
     }
   }
