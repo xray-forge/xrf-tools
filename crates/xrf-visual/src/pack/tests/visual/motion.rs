@@ -5,7 +5,8 @@ use xrf_ogf::{OgfBone, OgfBoneIkData};
 use xrf_skeleton::{SAMPLE_FPS, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 
 use crate::pack::tests::fixtures::{bind, bones, vector};
-use crate::pack::visual::motion::visual_motion::{FLOATS_PER_BONE, bake_motion};
+use crate::pack::visual::motion::visual_motion::{FLOATS_PER_BONE, bake_motion, describe_motion};
+use crate::pack::visual::motion::visual_motion_bake::VisualMotionBake;
 use crate::pack::visual::motion::visual_motion_pose::VisualMotionPose;
 
 /// The measured case behind the reported duration: `s98b_reload` of Anomaly's `ceasar_hand_am98b_hud_animation.omf`.
@@ -63,8 +64,8 @@ fn definition(name: &str, speed: f32) -> SkeletonMotionDefinition {
   }
 }
 
-/// Poses a motion onto a flat skeleton of the named bones, one partition naming them in order.
-fn try_bake(motion: &SkeletonMotion, names: &[&str], speed: f32) -> XrfResult<VisualMotionPose> {
+/// A flat skeleton of the named bones, bound where they stand, and one partition naming them in order.
+fn flat_skeleton(names: &[&str]) -> (Vec<OgfBone>, Vec<OgfBoneIkData>, Vec<SkeletonPart>) {
   let skeleton: Vec<OgfBone> = bones(&names.iter().map(|it| (*it, "")).collect::<Vec<(&str, &str)>>()).bones;
   let binds: Vec<OgfBoneIkData> = names
     .iter()
@@ -78,6 +79,13 @@ fn try_bake(motion: &SkeletonMotion, names: &[&str], speed: f32) -> XrfResult<Vi
       .map(|(index, name)| (String::from(*name), index as u32))
       .collect(),
   }];
+
+  (skeleton, binds, parts)
+}
+
+/// Poses a motion onto a flat skeleton of the named bones.
+fn try_bake(motion: &SkeletonMotion, names: &[&str], speed: f32) -> XrfResult<VisualMotionPose> {
+  let (skeleton, binds, parts) = flat_skeleton(names);
 
   bake_motion(&skeleton, &binds, &parts, &definition("s98b_reload", speed), motion)
 }
@@ -188,4 +196,17 @@ fn takes_the_frame_count_from_the_longest_stream_any_bone_carries() {
     RELOAD_FRAMES as usize * 2 * FLOATS_PER_BONE,
     "expect the buffer to hold every baked frame"
   );
+}
+
+#[test]
+fn describes_a_motion_as_its_bake_does_without_posing_it() {
+  let (skeleton, binds, parts) = flat_skeleton(&["wpn_body", "wpn_hand"]);
+  let motion: SkeletonMotion = motion(RELOAD_FRAMES, &[keyed_run(RELOAD_FRAMES), held_run()]);
+  let definition: SkeletonMotionDefinition = definition("s98b_reload", RELOAD_SPEED);
+  let baked: VisualMotionPose =
+    bake_motion(&skeleton, &binds, &parts, &definition, &motion).expect("expect the motion to bake");
+  let described: VisualMotionBake =
+    describe_motion(&skeleton, &binds, &parts, &definition, &motion).expect("expect the motion to describe");
+
+  assert_eq!(described, baked.description);
 }

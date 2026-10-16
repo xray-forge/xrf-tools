@@ -5,7 +5,7 @@ import { AsyncState } from "@xrf/async";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -23,7 +23,7 @@ async function renderTrack(names: ReadonlyArray<string> = ["first", "second"]) {
   });
 
   setMockInvokeResponses({
-    ["plugin:visuals|open_motion"]: mockSessionResponse(bake),
+    ["plugin:visuals|describe_motion"]: bake,
   });
 
   for (const name of names) {

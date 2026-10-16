@@ -7,7 +7,7 @@ import { ESequenceMotionState } from "@/applications/visuals-sequencer/lib/seque
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -40,7 +40,7 @@ function mockMotions(failing: Array<string> = []): Array<string> {
   const calls: Array<string> = [];
 
   setMockInvokeResponses({
-    ["plugin:visuals|open_motion"]: mockSessionResponse(((args) => {
+    ["plugin:visuals|describe_motion"]: ((args) => {
       const name: string = String(args?.name);
 
       calls.push(`open:${name}`);
@@ -50,7 +50,7 @@ function mockMotions(failing: Array<string> = []): Array<string> {
       }
 
       return mockBake(name);
-    }) as InvokeHandler),
+    }) as InvokeHandler,
   });
 
   return calls;

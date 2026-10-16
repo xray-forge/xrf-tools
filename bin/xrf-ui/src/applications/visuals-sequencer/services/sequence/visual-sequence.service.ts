@@ -156,7 +156,7 @@ export class VisualSequenceService {
 
     this.clips = [...this.clips, { id: `clip-${this.lastClipId}`, motion }];
 
-    void this.motionCache.bake(motion);
+    void this.motionCache.describe(motion);
   }
 
   /**

@@ -72,8 +72,8 @@ export function SequenceClipRow({
           </Typography>
         ) : null}
 
-        {motion?.state === ESequenceMotionState.BAKING ? (
-          <Chip size={"small"} variant={"outlined"} label={"Baking"} />
+        {motion?.state === ESequenceMotionState.DESCRIBING ? (
+          <Chip size={"small"} variant={"outlined"} label={"Reading"} />
         ) : null}
 
         {motion?.state === ESequenceMotionState.UNAVAILABLE ? (

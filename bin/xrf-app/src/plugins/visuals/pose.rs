@@ -1,10 +1,18 @@
+use xrf_error::XrfResult;
+use xrf_ogf::{OgfBone, OgfBoneIkData};
 use xrf_omf::OmfFile;
+use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 use xrf_spawn::XRayByteOrder;
 use xrf_vfs::{XrayAsset, XrayProbe, XrayResolution};
-use xrf_visual::{VisualDependencies, VisualMotionPose, bake_motion};
+use xrf_visual::{VisualDependencies, VisualMotionBake, VisualMotionPose, bake_motion, describe_motion};
 
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::skeleton::SelectedSkeleton;
+
+/// What reads one motion onto a skeleton, given its bones and their binds, and the motion's partition, definition and
+/// keys.
+type MotionReader<T> =
+  fn(&[OgfBone], &[OgfBoneIkData], &[SkeletonPart], &SkeletonMotionDefinition, &SkeletonMotion) -> XrfResult<T>;
 
 /// Bakes one named motion onto a selected visual's skeleton.
 ///
@@ -18,19 +26,45 @@ pub fn bake_named_motion(
   dependencies: &VisualDependencies,
   name: &str,
 ) -> TauriResult<VisualMotionPose> {
+  read_named_motion(probe, skeleton, dependencies, (name, "pose"), bake_motion)
+}
+
+/// Describes one named motion as a bake of it onto a selected visual's skeleton would hold it, posing no frame.
+///
+/// # Errors
+///
+/// Returns an error where `bake_named_motion` would.
+pub fn describe_named_motion(
+  probe: &XrayProbe,
+  skeleton: &SelectedSkeleton,
+  dependencies: &VisualDependencies,
+  name: &str,
+) -> TauriResult<VisualMotionBake> {
+  read_named_motion(probe, skeleton, dependencies, (name, "describe"), describe_motion)
+}
+
+/// Reads one named motion through `read`: the embedded one of that name first, then the first referenced file's;
+/// `verb` says what was done in a refusal.
+fn read_named_motion<T>(
+  probe: &XrayProbe,
+  skeleton: &SelectedSkeleton,
+  dependencies: &VisualDependencies,
+  (name, verb): (&str, &str),
+  read: MotionReader<T>,
+) -> TauriResult<T> {
   if let Some((definition, motion)) = skeleton
     .embedded_motions
     .iter()
     .find(|(definition, _)| definition.name == name)
   {
-    return bake_motion(
+    return read(
       &skeleton.bones,
       &skeleton.binds,
       &skeleton.embedded_parts,
       definition,
       motion,
     )
-    .map_err(|error| format!("Failed to pose embedded motion '{name}': {error}"));
+    .map_err(|error| format!("Failed to {verb} embedded motion '{name}': {error}"));
   }
 
   let mut searched: usize = 0;
@@ -44,14 +78,14 @@ pub fn bake_named_motion(
       };
 
       if let Some((definition, motion)) = omf.get_motion_by_name(name) {
-        return bake_motion(
+        return read(
           &skeleton.bones,
           &skeleton.binds,
           &omf.parameters.parts,
           definition,
           motion,
         )
-        .map_err(|error| format!("Failed to pose motion '{name}': {error}"));
+        .map_err(|error| format!("Failed to {verb} motion '{name}': {error}"));
       }
     }
   }
