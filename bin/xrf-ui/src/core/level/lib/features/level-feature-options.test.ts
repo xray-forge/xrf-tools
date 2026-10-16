@@ -22,9 +22,7 @@ import {
   TLevelFeatureKey,
   toLevelFeatureOptions,
   toLevelFeatureState,
-  toLevelIndirectLight,
   toLevelModeFeature,
-  toLevelReflections,
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
 } from "@/core/level/lib/features/level-feature-options";
@@ -161,8 +159,8 @@ describe("level feature options", () => {
     });
 
     expect(view.indirectLight).toEqual({ intensity: 4, mode: ERenderIndirectLightMode.ENGINE });
-    expect(toLevelIndirectLight(SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.indirectLight);
-    expect(toLevelIndirectLight(SETTINGS, view)).toEqual({
+    expect(toLevelModeFeature("indirectLight", SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.indirectLight);
+    expect(toLevelModeFeature("indirectLight", SETTINGS, view)).toEqual({
       ...SETTINGS.indirectLight,
       intensity: 4,
       mode: ERenderIndirectLightMode.ENGINE,
@@ -176,8 +174,8 @@ describe("level feature options", () => {
     });
 
     expect(view.reflections).toEqual({ distance: 200, intensity: 4, mode: ERenderReflectionMode.ENGINE });
-    expect(toLevelReflections(SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.reflections);
-    expect(toLevelReflections(SETTINGS, view)).toEqual({
+    expect(toLevelModeFeature("reflections", SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.reflections);
+    expect(toLevelModeFeature("reflections", SETTINGS, view)).toEqual({
       ...SETTINGS.reflections,
       distance: 200,
       intensity: 4,

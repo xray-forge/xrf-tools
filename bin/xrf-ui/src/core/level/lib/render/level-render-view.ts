@@ -4,10 +4,7 @@ import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-option
 import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import {
   ILevelFeatureOptions,
-  toLevelIndirectLight,
   toLevelModeFeature,
-  toLevelRain,
-  toLevelReflections,
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
 } from "@/core/level/lib/features/level-feature-options";
@@ -96,13 +93,13 @@ export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewO
       fog: toLevelModeFeature("fog", features, view),
       glass: toLevelModeFeature("glass", features, view),
       grass: toLevelRendererFeature("grass", features, view, options.isGrassy),
-      indirectLight: toLevelIndirectLight(features, view),
+      indirectLight: toLevelModeFeature("indirectLight", features, view),
       isOcclusionCulled: features.isOcclusionCulled && options.isOcclusionCulled,
       lights: toLevelRendererFeature("lights", features, view, options.isLamplit),
       lod: toLevelRendererLod(features.lod, lod, options.isImpostors),
       parallax: toLevelModeFeature("parallax", features, view),
-      rain: toLevelRain(features, view),
-      reflections: toLevelReflections(features, view),
+      rain: toLevelModeFeature("rain", features, view),
+      reflections: toLevelModeFeature("reflections", features, view),
       shadows: toLevelRendererFeature("shadows", features, view, options.isShadowed),
       volumetric: toLevelModeFeature("volumetric", features, view),
       water: toLevelRendererFeature("water", features, view, options.isWaterVisible),
