@@ -38,7 +38,7 @@ Directory to load unpacked browser extensions into the webview from. Each entry 
 Turns wgpu's API validation on or off.
 
 - Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Default: on in debug builds, off otherwise.
 - Read by: `xrf-app`.
 
 ### `WGPU_DEBUG`
@@ -46,7 +46,7 @@ Turns wgpu's API validation on or off.
 Turns wgpu's debug labels and markers on GPU objects on or off, for graphics debuggers.
 
 - Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Default: on in debug builds, off otherwise.
 - Read by: `xrf-app`.
 
 ### `WGPU_GPU_BASED_VALIDATION`
@@ -54,7 +54,7 @@ Turns wgpu's debug labels and markers on GPU objects on or off, for graphics deb
 Turns on the driver's GPU-based validation. It is much slower and needs `WGPU_VALIDATION` on.
 
 - Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Default: off.
 - Read by: `xrf-app`.
 
 ### `WGPU_VALIDATION_INDIRECT_CALL`
@@ -62,7 +62,7 @@ Turns on the driver's GPU-based validation. It is much slower and needs `WGPU_VA
 Turns wgpu's validation of indirect draw and dispatch arguments on or off.
 
 - Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Default: on.
 - Read by: `xrf-app`.
 
 ### `WGPU_DISCARD_HAL_LABELS`
@@ -70,7 +70,7 @@ Turns wgpu's validation of indirect draw and dispatch arguments on or off.
 When on, wgpu does not pass labels down to the graphics API's objects.
 
 - Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Default: off.
 - Read by: `xrf-app`.
 
 ### `WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER`
@@ -78,7 +78,7 @@ When on, wgpu does not pass labels down to the graphics API's objects.
 When on, wgpu also offers adapters it does not consider compliant.
 
 - Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Default: off.
 - Read by: `xrf-app`.
 
 ### `WGPU_STRICT_WEBGPU_COMPLIANCE`
@@ -86,7 +86,7 @@ When on, wgpu also offers adapters it does not consider compliant.
 When on, wgpu enforces WebGPU's limits strictly.
 
 - Takes: `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off.
-- Default: wgpu's default for the build type (validation and debug labels are on in debug builds).
+- Default: off.
 - Read by: `xrf-app`.
 
 ## Passed through
@@ -147,7 +147,7 @@ Kind the build reports itself as, matched exactly. It is a label, not a Cargo pr
 
 - Takes: `development` or `optimized`.
 - Default: `local`.
-- Read by: `xrf-build-info`.
+- Read by: `xrf-build-info`, `xrf-app`.
 
 ### `XRF_BUILD_TIMESTAMP`
 
@@ -156,6 +156,38 @@ Build time the build reports, copied as given (use RFC 3339). An empty value lea
 - Takes: text.
 - Default: the time the build script runs.
 - Read by: `xrf-build-info`.
+
+### `GITHUB_SHA`
+
+Commit the build reports. GitHub Actions sets it.
+
+- Takes: text.
+- Default: the checkout's `HEAD`.
+- Read by: `xrf-build-info`.
+
+### `GITHUB_REF_NAME`
+
+Branch or tag the build reports. GitHub Actions sets it.
+
+- Takes: text.
+- Default: the checkout's branch.
+- Read by: `xrf-build-info`.
+
+### `GITHUB_RUN_ID`
+
+Workflow run the build reports. GitHub Actions sets it.
+
+- Takes: text.
+- Default: none, which leaves it out.
+- Read by: `xrf-build-info`.
+
+### `PACKAGE_NAME`
+
+Name of the archive `package-app` packs the release application into, under `target/package/`.
+
+- Takes: text.
+- Default: `xrf-app-windows-x64`.
+- Read by: `cargo make package-app`.
 
 ### `DLSS_SDK`
 

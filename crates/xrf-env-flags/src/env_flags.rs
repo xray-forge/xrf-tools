@@ -56,36 +56,45 @@ impl EnvFlags {
     description: "Log filter in `env_logger` syntax, for example `info,wgpu_hal=warn`.",
   });
 
-  pub const WGPU_VALIDATION: SwitchFlag =
-    Self::wgpu_switch("WGPU_VALIDATION", "Turns wgpu's API validation on or off.");
+  pub const WGPU_VALIDATION: SwitchFlag = Self::wgpu_switch(
+    "WGPU_VALIDATION",
+    "on in debug builds, off otherwise",
+    "Turns wgpu's API validation on or off.",
+  );
 
   pub const WGPU_DEBUG: SwitchFlag = Self::wgpu_switch(
     "WGPU_DEBUG",
+    "on in debug builds, off otherwise",
     "Turns wgpu's debug labels and markers on GPU objects on or off, for graphics debuggers.",
   );
 
   pub const WGPU_GPU_BASED_VALIDATION: SwitchFlag = Self::wgpu_switch(
     "WGPU_GPU_BASED_VALIDATION",
+    "off",
     "Turns on the driver's GPU-based validation. It is much slower and needs `WGPU_VALIDATION` on.",
   );
 
   pub const WGPU_VALIDATION_INDIRECT_CALL: SwitchFlag = Self::wgpu_switch(
     "WGPU_VALIDATION_INDIRECT_CALL",
+    "on",
     "Turns wgpu's validation of indirect draw and dispatch arguments on or off.",
   );
 
   pub const WGPU_DISCARD_HAL_LABELS: SwitchFlag = Self::wgpu_switch(
     "WGPU_DISCARD_HAL_LABELS",
+    "off",
     "When on, wgpu does not pass labels down to the graphics API's objects.",
   );
 
   pub const WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER: SwitchFlag = Self::wgpu_switch(
     "WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER",
+    "off",
     "When on, wgpu also offers adapters it does not consider compliant.",
   );
 
   pub const WGPU_STRICT_WEBGPU_COMPLIANCE: SwitchFlag = Self::wgpu_switch(
     "WGPU_STRICT_WEBGPU_COMPLIANCE",
+    "off",
     "When on, wgpu enforces WebGPU's limits strictly.",
   );
 
@@ -114,7 +123,7 @@ impl EnvFlags {
     kind: EnvFlagKind::Build,
     value: EnvFlagValue::Choice(&["development", "optimized"]),
     default: "`local`",
-    readers: &["xrf-build-info"],
+    readers: &["xrf-build-info", "xrf-app"],
     condition: None,
     description: "Kind the build reports itself as, matched exactly. It is a label, not a Cargo profile; CI sets it.",
   });
@@ -127,6 +136,34 @@ impl EnvFlags {
     readers: &["xrf-build-info"],
     condition: None,
     description: "Build time the build reports, copied as given (use RFC 3339). An empty value leaves it out.",
+  });
+
+  pub const GITHUB_SHA: TextFlag = Self::ci(
+    "GITHUB_SHA",
+    "the checkout's `HEAD`",
+    "Commit the build reports. GitHub Actions sets it.",
+  );
+
+  pub const GITHUB_REF_NAME: TextFlag = Self::ci(
+    "GITHUB_REF_NAME",
+    "the checkout's branch",
+    "Branch or tag the build reports. GitHub Actions sets it.",
+  );
+
+  pub const GITHUB_RUN_ID: TextFlag = Self::ci(
+    "GITHUB_RUN_ID",
+    "none, which leaves it out",
+    "Workflow run the build reports. GitHub Actions sets it.",
+  );
+
+  pub const PACKAGE_NAME: TextFlag = TextFlag::new(EnvFlag {
+    name: "PACKAGE_NAME",
+    kind: EnvFlagKind::Build,
+    value: EnvFlagValue::Text,
+    default: "`xrf-app-windows-x64`",
+    readers: &["cargo make package-app"],
+    condition: None,
+    description: "Name of the archive `package-app` packs the release application into, under `target/package/`.",
   });
 
   pub const DLSS_SDK: PathFlag = Self::sdk(
@@ -176,6 +213,10 @@ impl EnvFlags {
     *Self::WEBVIEW2_USER_DATA_FOLDER.get_flag(),
     *Self::BUILD_KIND.get_flag(),
     *Self::BUILD_TIMESTAMP.get_flag(),
+    *Self::GITHUB_SHA.get_flag(),
+    *Self::GITHUB_REF_NAME.get_flag(),
+    *Self::GITHUB_RUN_ID.get_flag(),
+    *Self::PACKAGE_NAME.get_flag(),
     *Self::DLSS_SDK.get_flag(),
     *Self::VULKAN_SDK.get_flag(),
     *Self::LIBCLANG_PATH.get_flag(),
@@ -255,14 +296,28 @@ impl EnvFlags {
     document
   }
 
-  /// One of wgpu's instance flags, read as any switch and applied when the renderer creates its instance.
-  const fn wgpu_switch(name: &'static str, description: &'static str) -> SwitchFlag {
+  /// One of wgpu's instance flags, read as any switch and applied when the renderer creates its instance; `default` is
+  /// what wgpu's build configuration sets.
+  const fn wgpu_switch(name: &'static str, default: &'static str, description: &'static str) -> SwitchFlag {
     SwitchFlag::new(EnvFlag {
       name,
       kind: EnvFlagKind::Runtime,
       value: EnvFlagValue::Switch,
-      default: "wgpu's default for the build type (validation and debug labels are on in debug builds)",
+      default,
       readers: &["xrf-app"],
+      condition: None,
+      description,
+    })
+  }
+
+  /// One of GitHub Actions' variables, which the build reports where CI sets it.
+  const fn ci(name: &'static str, default: &'static str, description: &'static str) -> TextFlag {
+    TextFlag::new(EnvFlag {
+      name,
+      kind: EnvFlagKind::Build,
+      value: EnvFlagValue::Text,
+      default,
+      readers: &["xrf-build-info"],
       condition: None,
       description,
     })
