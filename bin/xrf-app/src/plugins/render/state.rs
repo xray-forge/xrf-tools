@@ -232,9 +232,15 @@ impl RenderState {
     self.textures.watch(roots);
   }
 
-  /// Loads again wherever they are drawn the textures among files this application wrote, by their paths.
+  /// Loads again wherever they are drawn the textures among files this application wrote, by their paths: those
+  /// outside the roots watched, as the watcher reloads the rest itself.
   pub fn reload_written<T: AsRef<std::path::Path>>(&self, paths: &[T]) {
-    let names: Vec<String> = paths.iter().filter_map(|path| to_texture_name(path.as_ref())).collect();
+    let names: Vec<String> = paths
+      .iter()
+      .map(AsRef::as_ref)
+      .filter(|path| !self.textures.is_watched(path))
+      .filter_map(to_texture_name)
+      .collect();
 
     self.renderer.reload_textures(names);
   }

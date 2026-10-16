@@ -83,6 +83,17 @@ impl TextureWatcher {
     }
   }
 
+  /// Whether a file written at `path` reloads by itself: it lies under a root watched.
+  pub fn is_watched(&self, path: &Path) -> bool {
+    self.watcher.is_some()
+      && self
+        .watched
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .iter()
+        .any(|root| path.starts_with(root))
+  }
+
   /// Tells the renderer the names of the textures written, a settled burst at a time.
   fn forward(receiver: &Receiver<String>, queue: &RenderQueue) {
     while let Ok(first) = receiver.recv() {
