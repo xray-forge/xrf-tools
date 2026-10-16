@@ -9,6 +9,7 @@ use xrf_renderer::{
   RenderSpawnObject, RenderWorkers, StaticModel, StaticModelPlace, take_answer,
 };
 
+use crate::level::indexed_spawn::IndexedSpawn;
 use crate::level::loader_flight::LoaderFlight;
 
 /// Visuals a loader thread reads in one batch: enough that the level's lighting is estimated for many at once, few
@@ -29,7 +30,7 @@ pub struct SpawnLoader {
   /// The objects on their way from their loader, none once they came or could not be read.
   reading: Option<LoaderReceiver<Option<RenderLevelSpawn>>>,
   /// The objects once read, whose visuals the batches read.
-  spawn: Option<Arc<RenderLevelSpawn>>,
+  spawn: Option<Arc<IndexedSpawn>>,
   sender: Sender<SpawnLoad>,
   receiver: LoaderReceiver<SpawnLoad>,
   /// The batches started, in order, and how many of them finished.
@@ -89,7 +90,7 @@ impl SpawnLoader {
   /// more batches as finished.
   pub fn take(&mut self, limit: usize) -> Vec<SpawnLoad> {
     if let Some(spawn) = take_answer(&mut self.reading, "spawn") {
-      self.spawn = spawn.map(Arc::new);
+      self.spawn = spawn.map(|spawn| Arc::new(IndexedSpawn::new(spawn)));
     }
 
     let taken: Vec<SpawnLoad> = self.receiver.try_iter().take(limit).collect();
@@ -105,12 +106,12 @@ impl SpawnLoader {
     self
       .spawn
       .as_ref()
-      .map_or(0, |spawn| spawn.visuals.len().div_ceil(VISUALS_PER_BATCH))
+      .map_or(0, |indexed| indexed.spawn.visuals.len().div_ceil(VISUALS_PER_BATCH))
   }
 
   /// Starts the next batches while the pool's width of them are not read.
   fn refill(&mut self) {
-    let Some(spawn) = self.spawn.clone() else {
+    let Some(indexed) = self.spawn.clone() else {
       return;
     };
     let count: usize = self.get_batch_count();
@@ -119,8 +120,9 @@ impl SpawnLoader {
       && let Some(finished) = self.flight.start()
     {
       let first: usize = (self.flight.get_started() as usize - 1) * VISUALS_PER_BATCH;
-      let names: Vec<String> = spawn.visuals[first..(first + VISUALS_PER_BATCH).min(spawn.visuals.len())].to_vec();
-      let (source, spawn, sender) = (Arc::clone(&self.source), Arc::clone(&spawn), self.sender.clone());
+      let visuals: &[String] = &indexed.spawn.visuals;
+      let names: Vec<String> = visuals[first..(first + VISUALS_PER_BATCH).min(visuals.len())].to_vec();
+      let (source, indexed, sender) = (Arc::clone(&self.source), Arc::clone(&indexed), self.sender.clone());
       let (sent, is_cancelled, failures) = (
         Arc::clone(&self.sent),
         Arc::clone(&self.is_cancelled),
@@ -135,7 +137,7 @@ impl SpawnLoader {
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner)
                 .extend(std::mem::take(&mut models.failures));
-              Self::send_models(&spawn, first, models, &sender, &sent);
+              Self::send_models((&indexed, &names, first), models, &sender, &sent);
             }
             Err(error) => {
               log::warn!("Spawned models cannot be drawn: {error}");
@@ -157,8 +159,7 @@ impl SpawnLoader {
 
   /// Packs each model read and sends it with the objects standing as it, lit by their cubes where they have them.
   fn send_models(
-    spawn: &RenderLevelSpawn,
-    first: usize,
+    (indexed, names, first): (&IndexedSpawn, &[String], usize),
     models: RenderSpawnModels,
     sender: &Sender<SpawnLoad>,
     sent: &AtomicU32,
@@ -170,19 +171,15 @@ impl SpawnLoader {
       .collect();
 
     for model in models.models {
-      let Some(visual) = spawn
-        .visuals
+      let Some(visual) = names
         .iter()
-        .skip(first)
         .position(|name| *name == model.name)
         .map(|it| (it + first) as u32)
       else {
         continue;
       };
-      let places: Vec<StaticModelPlace> = spawn
-        .objects
-        .iter()
-        .filter(|object| object.visual == visual)
+      let places: Vec<StaticModelPlace> = indexed
+        .list_objects(visual)
         .map(|object: &RenderSpawnObject| StaticModelPlace {
           object: object.index,
           transform: Mat4::from_cols_array(&object.transform),
@@ -194,7 +191,8 @@ impl SpawnLoader {
           },
         })
         .collect();
-      let packed: StaticModel = StaticModel::pack_at(&model.package, &model.surfaces, visual as u16, spawn.detail);
+      let packed: StaticModel =
+        StaticModel::pack_at(&model.package, &model.surfaces, visual as u16, indexed.spawn.detail);
 
       // Counted before it is sent, so the loader never sees it taken before it was sent.
       sent.fetch_add(1, Ordering::AcqRel);

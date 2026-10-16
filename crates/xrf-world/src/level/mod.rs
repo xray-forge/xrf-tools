@@ -3,6 +3,7 @@ pub(crate) mod ambient_wind;
 pub(crate) mod camera_hemi;
 pub(crate) mod campfire;
 pub(crate) mod effects_frame;
+pub(crate) mod indexed_spawn;
 pub(crate) mod level_ambient_effects;
 pub(crate) mod level_animation;
 pub(crate) mod level_campfires;
