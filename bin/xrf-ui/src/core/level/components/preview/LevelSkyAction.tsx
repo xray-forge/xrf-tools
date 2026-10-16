@@ -20,7 +20,7 @@ import {
   formatDebandingRadius,
   RENDER_DEBANDING_LIMITS,
   RENDER_DEBANDING_QUALITY_OPTIONS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-debanding-choices";
 import { TRenderDebandingSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";

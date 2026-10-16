@@ -9,17 +9,17 @@ import { useLevelFeatureOverride } from "@/core/level/components/preview/use-lev
 import { describeLevelFeatureToggle } from "@/core/level/lib/features";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import {
   formatFoliageStrength,
   formatGrassDensity,
   formatGrassHeight,
   formatGrassRadius,
   fromGrassDensityScale,
-  IRenderChoiceOption,
   RENDER_FOLIAGE_LIMITS,
   RENDER_GRASS_LIMITS,
   toGrassDensityScale,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-grass-choices";
 import { TRenderFoliageSettings, TRenderGrassSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";

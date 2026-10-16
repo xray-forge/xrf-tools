@@ -29,7 +29,7 @@ import {
   RENDER_AMBIENT_OCCLUSION_METHOD_UNTRACED_OPTIONS,
   RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS,
   RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-ambient-occlusion-choices";
 import {
   TRenderAmbientOcclusionSettings,
   TRenderAmbientOcclusionVbaoSettings,

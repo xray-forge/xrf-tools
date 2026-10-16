@@ -16,21 +16,25 @@ import { describeLevelFeatureToggle, ILevelFeatureOptions, LEVEL_ANTIALIASING_MO
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
+  describeRenderAntialiasing,
+  isTemporalAntialiasing,
+  RENDER_TEXTURE_FILTERING_SHORT_OPTIONS,
+} from "@/core/render/lib/features/render-antialiasing-choices";
+import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
+import {
+  formatOutputScale,
+  RENDER_OUTPUT_SCALE_LIMITS,
+  RENDER_RESOLUTION_OPTIONS,
+} from "@/core/render/lib/features/render-display-choices";
+import {
   describeDlssPreset,
   describeDlssUnavailability,
   describeRayReconstructionUnavailability,
-  describeRenderAntialiasing,
-  formatOutputScale,
   formatSharpening,
-  IRenderChoiceOption,
-  isTemporalAntialiasing,
   RENDER_DLSS_PRESET_SHORT_OPTIONS,
-  RENDER_OUTPUT_SCALE_LIMITS,
-  RENDER_RESOLUTION_OPTIONS,
   RENDER_SCALE_OPTIONS,
   RENDER_SHARPENING_LIMITS,
-  RENDER_TEXTURE_FILTERING_SHORT_OPTIONS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-upscaling-choices";
 import {
   describeRenderBackend,
   isRenderBackendAvailable,

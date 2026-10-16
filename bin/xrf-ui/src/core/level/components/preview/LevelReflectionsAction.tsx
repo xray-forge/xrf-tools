@@ -22,7 +22,7 @@ import {
   RENDER_REFLECTION_PROBE_OPTIONS,
   RENDER_REFLECTION_QUALITY_OPTIONS,
   RENDER_REFLECTION_TRACE_QUALITY_OPTIONS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-reflection-choices";
 import { TRenderGlassSettings, TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";

@@ -4,7 +4,7 @@ import { Fragment, ReactElement, ReactNode } from "react";
 
 import { ERenderAntialiasing, RenderFrameReport, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
-import { describeRenderAntialiasing } from "@/core/render/lib/features";
+import { describeRenderAntialiasing } from "@/core/render/lib/features/render-antialiasing-choices";
 import { groupRenderPassCosts, IRenderPassGroup } from "@/core/render/lib/frame/render-pass-groups";
 import { abbreviateRenderBackend } from "@/core/render/lib/settings/render-backend-choice";
 import { BaseComponentProps } from "@/lib/dom/element-types";

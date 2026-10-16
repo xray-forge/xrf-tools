@@ -8,7 +8,7 @@ import {
   fromGrassDensityScale,
   RENDER_GRASS_LIMITS,
   toGrassDensityScale,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-grass-choices";
 import { TRenderGrassSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";

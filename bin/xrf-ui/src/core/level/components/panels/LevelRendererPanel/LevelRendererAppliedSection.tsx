@@ -11,20 +11,18 @@ import {
 import {
   describeRenderAmbientOcclusionMethod,
   describeRenderAmbientOcclusionQuality,
-  describeRenderAntialiasing,
-  describeRenderDebandingQuality,
-  describeRenderLightShadowFilter,
+} from "@/core/render/lib/features/render-ambient-occlusion-choices";
+import { describeRenderAntialiasing } from "@/core/render/lib/features/render-antialiasing-choices";
+import { describeRenderDebandingQuality } from "@/core/render/lib/features/render-debanding-choices";
+import { formatFogDensity, formatFogHeight, formatFogShare } from "@/core/render/lib/features/render-fog-choices";
+import { formatGrassDensity, formatGrassRadius } from "@/core/render/lib/features/render-grass-choices";
+import { formatIndirectLightIntensity } from "@/core/render/lib/features/render-indirect-light-choices";
+import {
   describeRenderReflectionQuality,
-  describeRenderScale,
-  formatFogDensity,
-  formatFogHeight,
-  formatFogShare,
-  formatGrassDensity,
-  formatGrassRadius,
-  formatIndirectLightIntensity,
   formatReflectionIntensity,
-  formatShadowFilter,
-} from "@/core/render/lib/features/render-feature-choices";
+} from "@/core/render/lib/features/render-reflection-choices";
+import { describeRenderLightShadowFilter, formatShadowFilter } from "@/core/render/lib/features/render-shadow-choices";
+import { describeRenderScale } from "@/core/render/lib/features/render-upscaling-choices";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

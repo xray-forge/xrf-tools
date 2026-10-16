@@ -4,12 +4,12 @@ import { ReactElement, useCallback } from "react";
 import { ERenderIndirectLightMode } from "@/core/ipc/types/xrf-renderer";
 import { ILevelFeatureOptions, TLevelIndirectLightOptions } from "@/core/level/lib/features";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { formatOcclusionRadius } from "@/core/render/lib/features/render-ambient-occlusion-choices";
 import {
   explainRenderIndirectLightMode,
   formatIndirectLightIntensity,
-  formatOcclusionRadius,
   RENDER_INDIRECT_LIGHT_LIMITS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-indirect-light-choices";
 import { TRenderIndirectLightSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";

@@ -10,7 +10,7 @@ import {
   formatGlassStrength,
   RENDER_GLASS_LIMITS,
   RENDER_GLASS_MODE_OPTIONS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-glass-choices";
 import { TRenderGlassSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

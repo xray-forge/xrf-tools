@@ -12,15 +12,15 @@ import { ILevelFeatureOptions, TLevelFogOptions } from "@/core/level/lib/feature
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import {
   explainRenderFogMode,
   formatFogDensity,
   formatFogHeight,
   formatFogShare,
-  IRenderChoiceOption,
   RENDER_FOG_LIMITS,
   RENDER_FOG_MODE_OPTIONS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-fog-choices";
 import { TRenderFogSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 

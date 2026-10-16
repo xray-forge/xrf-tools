@@ -2,7 +2,7 @@ import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { IRenderChoiceOption } from "@/core/render/lib/features";
+import { IRenderChoiceOption } from "@/core/render/lib/features/render-choice-option";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IRenderValueChoiceProps<T extends string> extends BaseComponentProps {

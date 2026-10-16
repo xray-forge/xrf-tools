@@ -15,7 +15,7 @@ import {
   formatBloomStrength,
   RENDER_BLOOM_MODE_OPTIONS,
   RENDER_ENHANCED_BLOOM_LIMITS,
-} from "@/core/render/lib/features";
+} from "@/core/render/lib/features/render-bloom-choices";
 import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
