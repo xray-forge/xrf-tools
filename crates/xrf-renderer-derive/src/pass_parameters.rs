@@ -219,7 +219,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
         resources.push(quote!(#core::StorageField::get_binding(&self.#ident, resources)));
       }
       Binding::Texture { dimension, sample } => {
-        let (view, wgsl_type) = texture_view(*dimension, *sample)?;
+        let (view, wgsl_type) = texture_view(*dimension, *sample, ident)?;
         let sample_type: TokenStream = match sample {
           Sample::Float => quote!(::xrf_renderer_core::wgpu::TextureSampleType::Float { filterable: true }),
           Sample::Unfilterable => quote!(::xrf_renderer_core::wgpu::TextureSampleType::Float { filterable: false }),
@@ -599,8 +599,8 @@ fn read_sample(attr: &Attribute, words: &[String]) -> syn::Result<Sample> {
     })
 }
 
-/// The view dimension and WGSL type of a sampled texture.
-fn texture_view(dimension: Dimension, sample: Sample) -> syn::Result<(TokenStream, String)> {
+/// The view dimension and WGSL type of a sampled texture, a refusal spanned at its field's `ident`.
+fn texture_view(dimension: Dimension, sample: Sample, ident: &Ident) -> syn::Result<(TokenStream, String)> {
   let (view, name): (TokenStream, &str) = match dimension {
     Dimension::D2 => (quote!(::xrf_renderer_core::wgpu::TextureViewDimension::D2), "2d"),
     Dimension::D2Array => (
@@ -616,10 +616,7 @@ fn texture_view(dimension: Dimension, sample: Sample) -> syn::Result<(TokenStrea
   };
   let wgsl: String = match sample {
     Sample::Depth if matches!(dimension, Dimension::D3) => {
-      return Err(Error::new(
-        proc_macro2::Span::call_site(),
-        "A depth texture is not three-dimensional",
-      ));
+      return Err(Error::new_spanned(ident, "A depth texture is not three-dimensional"));
     }
     Sample::Depth => format!("texture_depth_{name}"),
     Sample::Float | Sample::Unfilterable => format!("texture_{name}<f32>"),

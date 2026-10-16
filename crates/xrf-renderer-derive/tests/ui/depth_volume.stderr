@@ -1,0 +1,5 @@
+error: A depth texture is not three-dimensional
+ --> tests/ui/depth_volume.rs:9:3
+  |
+9 |   depth: GraphTexture,
+  |   ^^^^^
