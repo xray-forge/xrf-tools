@@ -58,7 +58,11 @@ fn resolve_existing_prefix(path: &Path) -> io::Result<PathBuf> {
   }
 
   match path.symlink_metadata() {
-    Ok(_) => return Err(io::Error::new(ErrorKind::NotFound, "destination cannot be resolved")),
+    Ok(metadata) if metadata.file_type().is_symlink() => {
+      return Err(io::Error::new(ErrorKind::NotFound, "destination cannot be resolved"));
+    }
+    // Created after the failed resolution, by another job or another process: it resolves now.
+    Ok(_) => return path.canonicalize(),
     Err(error) if error.kind() == ErrorKind::NotFound => {}
     Err(error) => return Err(error),
   }
