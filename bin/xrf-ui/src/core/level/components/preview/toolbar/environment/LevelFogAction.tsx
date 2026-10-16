@@ -108,7 +108,7 @@ export function LevelFogAction({
       <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_FOG_KEYS} onReset={weatherService.resetManual} />
 
       <RenderValueChoice
-        label={"Drawn as"}
+        label={"Mode"}
         options={RENDER_FOG_MODE_OPTIONS}
         value={value.mode}
         onChange={(mode: RenderFogMode) => set({ mode })}

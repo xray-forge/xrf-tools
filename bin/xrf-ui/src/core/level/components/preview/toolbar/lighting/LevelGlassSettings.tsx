@@ -33,7 +33,7 @@ export function LevelGlassSettings({
   return (
     <div data-testid={dataTestId} id={id} className={className}>
       <RenderValueChoice
-        label={"Glass"}
+        label={"Glass mode"}
         options={RENDER_GLASS_MODE_OPTIONS}
         value={value.mode}
         onChange={(mode: RenderGlassMode) => set({ mode })}

@@ -10,6 +10,7 @@ import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feat
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
+  explainRenderFoliageMode,
   formatFoliageStrength,
   formatGrassDensity,
   formatGrassHeight,
@@ -136,11 +137,13 @@ export function LevelGrassAction({
       ) : null}
 
       <RenderValueChoice
-        label={"Foliage motion"}
+        label={"Foliage motion mode"}
         options={RENDER_FOLIAGE_MODE_OPTIONS}
         value={foliage.mode}
         onChange={(mode: RenderFoliageMode) => setFoliage({ mode })}
       />
+
+      <p className={"text-xs text-text-secondary"}>{explainRenderFoliageMode(foliage.mode)}</p>
 
       {foliage.mode === ERenderFoliageMode.ENHANCED ? (
         <>

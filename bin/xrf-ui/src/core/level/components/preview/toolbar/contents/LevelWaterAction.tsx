@@ -16,6 +16,7 @@ import { LevelWeatherService } from "@/core/level/services/level-weather.service
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
+  explainRenderWaterMode,
   formatWaterBorder,
   formatWaterDistortion,
   formatWaterMultiple,
@@ -92,6 +93,8 @@ export function LevelWaterAction({
         value={water.mode}
         onChange={(mode: RenderWaterMode) => set({ mode })}
       />
+
+      <p className={"text-xs text-text-secondary"}>{explainRenderWaterMode(water.mode)}</p>
 
       {water.mode === ERenderWaterMode.ENHANCED ? (
         <>
@@ -210,8 +213,8 @@ export function LevelWaterAction({
       ) : null}
 
       <CheckboxFormRow
-        label={"Soft"}
-        description={"Fades by how deep it is, and lays foam in the shallows: r2_soft_water."}
+        label={"Soft water"}
+        description={"Fades the water by its depth and lays foam in the shallows. Game setting: r2_soft_water."}
         isChecked={water.isSoft}
         onChange={(isSoft: boolean) => set({ isSoft })}
       />

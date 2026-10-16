@@ -9,6 +9,7 @@ import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feat
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
+  explainRenderContactShadowMode,
   formatContactShadowIntensity,
   formatContactShadowLength,
   formatContactShadowLights,
@@ -59,15 +60,15 @@ export function LevelShadowAction({
       data-testid={dataTestId}
       id={id}
       className={className}
-      label={"Shadows"}
+      label={"Sun shadows"}
       description={describeLevelFeatureToggle({
         isAvailable: state.isAvailable,
         isOn,
         isPlural: true,
-        label: "Shadows",
-        off: "Shadows off, the sun lights every surface facing it",
+        label: "Sun shadows",
+        off: "Sun shadows off: the sun lights every surface facing it",
         on:
-          `Shadows in ${shadows.cascades.length} cascades, the widest ${widest} m across, at ${shadows.resolution}` +
+          `Sun shadows in ${shadows.cascades.length} cascades, the widest ${widest} m across, at ${shadows.resolution}` +
           (isContactShadowed ? ", with contact shadows" : ""),
       })}
       icon={<TonalityIcon />}
@@ -115,11 +116,13 @@ export function LevelShadowAction({
       />
 
       <RenderValueChoice
-        label={"Contact shadows"}
+        label={"Contact shadow mode"}
         options={RENDER_CONTACT_SHADOW_MODE_OPTIONS}
         value={contact.mode}
         onChange={(mode: RenderContactShadowMode) => onSetContact({ mode })}
       />
+
+      <p className={"text-xs text-text-secondary"}>{explainRenderContactShadowMode(contact.mode)}</p>
 
       {isContactShadowed ? (
         <>

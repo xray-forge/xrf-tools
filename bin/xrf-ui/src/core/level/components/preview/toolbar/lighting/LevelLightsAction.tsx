@@ -31,13 +31,13 @@ export function LevelLightsAction({
       data-testid={dataTestId}
       id={id}
       className={className}
-      label={"Lights"}
+      label={"Lamps"}
       description={describeLevelFeatureToggle({
         isAvailable: state.isAvailable,
         isOn,
         isPlural: true,
-        label: "Lights",
-        off: "Lights off, only the sun and the baked light",
+        label: "Lamps",
+        off: "Lamps off: only the sun and the baked light",
         on:
           `The level's lamps${lights.isLevelLights ? " and the level file's own lights" : ""}, ` +
           (lights.isShadowed ? "shadowed" : "unshadowed"),
@@ -62,15 +62,17 @@ export function LevelLightsAction({
       />
 
       <CheckboxFormRow
-        label={"Light shafts"}
-        description={"Shadowed lamps' shafts (r2_volumetric_lights)."}
+        label={"Lamp shafts"}
+        description={"Shafts of light from the shadowed lamps. Game setting: r2_volumetric_lights."}
         isChecked={lights.isVolumetric}
         onChange={(isVolumetric: boolean) => set({ isVolumetric })}
       />
 
       <CheckboxFormRow
         label={"Level lights"}
-        description={"The level file's own, which the game draws only with r2_allow_r1_lights."}
+        description={
+          "The level file's own lights, which the game draws only with this on. Game setting: r2_allow_r1_lights."
+        }
         isChecked={lights.isLevelLights}
         onChange={(isLevelLights: boolean) => set({ isLevelLights })}
       />

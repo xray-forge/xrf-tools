@@ -62,6 +62,20 @@ export function formatWaterDistortion(distortion: number): string {
   return `${formatNumber(distortion * 100, 1)}%`;
 }
 
+const RENDER_WATER_MODE_DESCRIPTIONS: Readonly<Record<RenderWaterMode, string>> = {
+  [ERenderWaterMode.ENGINE]: "The game's own: rippled water reflecting the sky.",
+  [ERenderWaterMode.ENHANCED]:
+    "What lies under the water refracted and clouded with depth, the scene reflected, the shore softened.",
+};
+
+/**
+ * @param mode - A water mode.
+ * @returns What it does, in a sentence.
+ */
+export function explainRenderWaterMode(mode: RenderWaterMode): string {
+  return RENDER_WATER_MODE_DESCRIPTIONS[mode];
+}
+
 /** The water modes, in the order they are offered. */
 export const RENDER_WATER_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderWaterMode>> = [
   { label: "Engine", value: ERenderWaterMode.ENGINE },

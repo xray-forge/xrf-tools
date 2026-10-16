@@ -34,8 +34,8 @@ async function renderOpenAction(
 
   const rendered: TLevelViewRenderResult = renderLevelView(<LevelOcclusionAction />, descriptor);
 
-  await userEvent.click(rendered.getByRole("button", { name: "Occlusion" }));
-  await rendered.findByRole("dialog", { name: "Occlusion" });
+  await userEvent.click(rendered.getByRole("button", { name: "Ambient light" }));
+  await rendered.findByRole("dialog", { name: "Ambient light" });
 
   return rendered;
 }
@@ -68,7 +68,7 @@ describe("LevelOcclusionAction", () => {
     expect(view.features.ambientOcclusion).toEqual({ method: ERenderAmbientOcclusionMethod.VBAO });
     expect(getByRole("slider", { name: "Thickness" })).toHaveAttribute("aria-valuetext", "0.25 m");
     expect(getByRole("slider", { name: "Accumulation" })).toHaveAttribute("aria-valuetext", "8 frames");
-    expect(getByRole("button", { hidden: true, name: "Occlusion" })).toHaveAccessibleDescription(
+    expect(getByRole("button", { hidden: true, name: "Ambient light" })).toHaveAccessibleDescription(
       "VBAO occlusion over 1.00 m, high quality, baked at 100%"
     );
   });
@@ -99,7 +99,7 @@ describe("LevelOcclusionAction", () => {
     expect(view.features.indirectLight).toEqual({ mode: ERenderIndirectLightMode.ENHANCED });
     expect(getByRole("checkbox", { name: "Indirect light" })).toBeChecked();
     expect(getByRole("slider", { name: "Intensity" })).toHaveAttribute("aria-valuetext", "100%");
-    expect(getByRole("button", { hidden: true, name: "Occlusion" })).toHaveAccessibleDescription(
+    expect(getByRole("button", { hidden: true, name: "Ambient light" })).toHaveAccessibleDescription(
       "GTAO occlusion over 1.00 m, high quality, indirect light, baked at 100%"
     );
 

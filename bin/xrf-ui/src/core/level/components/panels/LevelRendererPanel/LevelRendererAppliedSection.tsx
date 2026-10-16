@@ -84,7 +84,7 @@ export function LevelRendererAppliedSection({
           />
         ) : null}
         <EditorPanelProperty
-          label={"Render scale"}
+          label={"Upscaling quality"}
           value={toChanged(
             describeRenderScale(applied.renderScale),
             describeRenderScale(requested.output.upscaling.scale)
@@ -137,7 +137,7 @@ export function LevelRendererAppliedSection({
           }
         />
         <EditorPanelProperty
-          label={"Lights"}
+          label={"Lamps"}
           value={
             applied.lights
               ? [
@@ -152,7 +152,7 @@ export function LevelRendererAppliedSection({
           }
         />
         <EditorPanelProperty
-          label={"Sun shadow"}
+          label={"Sun shadows"}
           value={
             shadows
               ? `${shadows.cascades.map((width) => formatNumber(width ?? 0, 0)).join(" / ")} m · ` +

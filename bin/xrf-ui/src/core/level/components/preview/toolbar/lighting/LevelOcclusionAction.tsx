@@ -83,7 +83,7 @@ export function LevelOcclusionAction({
       data-testid={dataTestId}
       id={id}
       className={className}
-      label={"Occlusion"}
+      label={"Ambient light"}
       description={[
         isScreen
           ? `${describeRenderAmbientOcclusionMethod(occlusion.method)} occlusion over ` +
@@ -186,7 +186,7 @@ export function LevelOcclusionAction({
         onToggle={() => viewService.toggleOption("isBaked")}
       >
         <RenderValueSlider
-          label={"Occlusion"}
+          label={"Baked hemisphere"}
           value={hemiStrength}
           min={0}
           max={1}

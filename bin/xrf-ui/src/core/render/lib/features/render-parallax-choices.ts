@@ -16,6 +16,21 @@ export const RENDER_PARALLAX_LIMITS = {
   surfaceRange: { max: 100, min: 4, step: 1 },
 } as const satisfies Record<string, IRenderLimits>;
 
+const RENDER_PARALLAX_MODE_DESCRIPTIONS: Readonly<Record<RenderParallaxMode, string>> = {
+  [ERenderParallaxMode.ENGINE]:
+    "The game's own: steep parallax on surfaces whose texture asks for it, none on terrain.",
+  [ERenderParallaxMode.ENHANCED]:
+    "Terrain and bumped surfaces marched over their heights, shadowed towards the sun, terrain layers blended by height.",
+};
+
+/**
+ * @param mode - A parallax mode.
+ * @returns What it does, in a sentence.
+ */
+export function explainRenderParallaxMode(mode: RenderParallaxMode): string {
+  return RENDER_PARALLAX_MODE_DESCRIPTIONS[mode];
+}
+
 /** The parallax modes, in the order they are offered. */
 export const RENDER_PARALLAX_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderParallaxMode>> = [
   { label: "Engine", value: ERenderParallaxMode.ENGINE },

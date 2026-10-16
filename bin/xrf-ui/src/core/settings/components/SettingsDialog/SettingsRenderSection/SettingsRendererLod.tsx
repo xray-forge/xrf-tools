@@ -21,42 +21,42 @@ interface ILodThreshold {
 /** In the order the engine's console lists them (`xrRender_console.cpp`); its ranges are the renderer's schema's. */
 const LOD_THRESHOLDS: ReadonlyArray<ILodThreshold> = [
   {
-    description: "Scales every threshold below (r__geometry_lod).",
+    description: "Scales every threshold below. Game setting: r__geometry_lod.",
     digits: 2,
     key: "geometryLod",
     label: "Detail scale",
     step: 0.05,
   },
   {
-    description: "Clusters smaller on screen draw as impostors (r2_ssa_lod_a).",
+    description: "Clusters smaller on screen draw as impostors. Game setting: r2_ssa_lod_a.",
     digits: 0,
     key: "ssaA",
     label: "Impostor below",
     step: 1,
   },
   {
-    description: "Clusters larger draw as trees; in between, both (r2_ssa_lod_b).",
+    description: "Clusters larger draw as trees; in between, both. Game setting: r2_ssa_lod_b.",
     digits: 0,
     key: "ssaB",
     label: "Trees above",
     step: 1,
   },
   {
-    description: "Clusters smaller are not drawn (r__ssa_discard).",
+    description: "Clusters smaller are not drawn. Game setting: r__ssa_discard.",
     digits: 1,
     key: "ssaDiscard",
     label: "Cull below",
     step: 0.5,
   },
   {
-    description: "Progressive trees larger draw at full detail (r__ssa_glod_start).",
+    description: "Progressive trees larger draw at full detail. Game setting: r__ssa_glod_start.",
     digits: 0,
     key: "ssaGlodStart",
     label: "Full detail above",
     step: 8,
   },
   {
-    description: "Progressive trees smaller draw at the lowest detail (r__ssa_glod_end).",
+    description: "Progressive trees smaller draw at the lowest detail. Game setting: r__ssa_glod_end.",
     digits: 0,
     key: "ssaGlodEnd",
     label: "Lowest detail below",

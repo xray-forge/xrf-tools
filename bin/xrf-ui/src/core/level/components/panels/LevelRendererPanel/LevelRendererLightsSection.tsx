@@ -20,7 +20,7 @@ export function LevelRendererLightsSection({
   lights,
 }: ILevelRendererLightsSectionProps): ReactElement {
   return (
-    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Lights"}>
+    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Lamps"}>
       <EditorPanelProperty label={"In view"} value={lights.inView} />
       <EditorPanelProperty label={"Shadowed"} value={lights.shadowed} />
       <EditorPanelProperty

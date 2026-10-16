@@ -50,7 +50,7 @@ export function SettingsRendererExposure(): ReactElement {
 
         <SliderFormRow
           label={"Middle gray"}
-          description={"Target luminance (r2_tonemap_middlegray)."}
+          description={"Target luminance. Game setting: r2_tonemap_middlegray."}
           value={exposure.middleGray}
           {...RENDER_EXPOSURE_LIMITS.middleGray}
           isDisabled={!exposure.isEnabled}
@@ -60,7 +60,7 @@ export function SettingsRendererExposure(): ReactElement {
 
         <SliderFormRow
           label={"Strength"}
-          description={"Share of the adaptation applied (r2_tonemap_amount)."}
+          description={"Share of the adaptation applied. Game setting: r2_tonemap_amount."}
           value={exposure.amount}
           {...RENDER_EXPOSURE_LIMITS.amount}
           isDisabled={!exposure.isEnabled}
@@ -70,7 +70,7 @@ export function SettingsRendererExposure(): ReactElement {
 
         <SliderFormRow
           label={"Luminance floor"}
-          description={"Lowest luminance the meter reads (r2_tonemap_lowlum)."}
+          description={"Lowest luminance the meter reads. Game setting: r2_tonemap_lowlum."}
           value={exposure.lowLuminance}
           {...RENDER_EXPOSURE_LIMITS.lowLuminance}
           isDisabled={!exposure.isEnabled}
@@ -80,7 +80,7 @@ export function SettingsRendererExposure(): ReactElement {
 
         <SliderFormRow
           label={"Adaptation speed"}
-          description={"How quickly exposure follows the frame (r2_tonemap_adaptation)."}
+          description={"How quickly the exposure follows the frame. Game setting: r2_tonemap_adaptation."}
           value={exposure.adaptation}
           {...RENDER_EXPOSURE_LIMITS.adaptation}
           isDisabled={!exposure.isEnabled}
