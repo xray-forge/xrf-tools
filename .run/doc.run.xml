@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="doc" type="CargoCommandRunConfiguration" factoryName="Cargo Command"
                  folderName="doc">
-    <option name="command" value="doc "/>
+    <option name="command" value="make doc"/>
     <option name="workingDirectory" value="file://$PROJECT_DIR$"/>
     <envs/>
     <option name="emulateTerminal" value="true"/>

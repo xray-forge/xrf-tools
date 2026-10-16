@@ -1,195 +1,180 @@
-[tasks.clean]
-description = "Remove workspace build artifacts."
-category = "Maintenance"
-command = "cargo"
-args = ["clean"]
+[config]
+default_to_workspace = false
+skip_core_tasks = true
 
-[tasks.test]
-description = "Run Cargo Make's workspace test flow."
-category = "Verification"
+[env]
+# Cargo features that `lint` and `test` enable. CI runs the same tasks, so it uses the same list.
+CHECK_FEATURES = "xrf-app/typescript-bindings,xrf-app/dlss,xrf-job/rayon"
+# Tauri CLI version pinned by the `bin/xrf-ui` lockfile. Desktop tasks run it with Node from `bin/xrf-app`, which
+# holds `tauri.conf.json`.
+NODE_TAURI = "../xrf-ui/node_modules/@tauri-apps/cli/tauri.js"
 
-[tasks.doc]
-description = "Generate Rust documentation for workspace members."
-category = "Documentation"
+# Checks.
 
 [tasks.format]
-description = "Format rust codebase."
+description = "Format the Rust code."
 category = "Verification"
 command = "cargo"
-args = ["fmt"]
+args = ["fmt", "--all"]
 
-[tasks.format-check]
-description = "Check format of rust codebase."
+[tasks.check-format]
+description = "Check Rust formatting without changing files."
 category = "Verification"
-workspace = false
 command = "cargo"
 args = ["fmt", "--all", "--", "--check"]
 
 [tasks.lint]
-description = "Lint rust codebase with clippy tool."
+description = "Run Clippy on all workspace targets with CHECK_FEATURES. Warnings fail the task."
 category = "Verification"
-workspace = false
+dependencies = ["fetch-sdks"]
 command = "cargo"
-args = [
-  "clippy",
-  "--workspace",
-  "--all-targets",
-  "--locked",
-  "--features",
-  "xrf-app/typescript-bindings,xrf-job/rayon",
-  "--",
-  "-D",
-  "warnings",
-]
+args = ["clippy", "--workspace", "--all-targets", "--locked", "--features", "${CHECK_FEATURES}", "--", "-D", "warnings"]
 
-[tasks.test-workspace]
-description = "Run workspace tests and verify the generated frontend bindings."
+[tasks.test]
+description = "Run workspace library and binary tests with CHECK_FEATURES, including the frontend bindings check."
 category = "Verification"
-workspace = false
+dependencies = ["fetch-sdks"]
 command = "cargo"
-args = [
-  "test",
-  "--workspace",
-  "--lib",
-  "--bins",
-  "--locked",
-  "--features",
-  "xrf-app/typescript-bindings,xrf-job/rayon",
-]
+args = ["test", "--workspace", "--lib", "--bins", "--locked", "--features", "${CHECK_FEATURES}"]
 
 [tasks.test-error-derive]
-description = "Run the derive macro diagnostics snapshots."
+description = "Run the xrf-error-derive diagnostic snapshot tests."
 category = "Verification"
-workspace = false
 command = "cargo"
 args = ["test", "-p", "xrf-error-derive", "--test", "ui", "--locked"]
 
+[tasks.install-ui]
+description = "Install the locked TypeScript dependencies."
+category = "Verification"
+script_runner = "@shell"
+script = "pnpm install --frozen-lockfile"
+
 [tasks.test-ui]
 description = "Run the tests of every TypeScript workspace member."
-category = "Development"
-workspace = false
+category = "Verification"
 script_runner = "@shell"
-script = 'pnpm run test'
+script = "pnpm run test"
 
 [tasks.verify-ui]
-description = "Install locked TypeScript dependencies, then typecheck, test and lint every workspace member."
+description = "Typecheck, test and lint every TypeScript workspace member."
 category = "Verification"
-workspace = false
+dependencies = ["install-ui"]
 script_runner = "@shell"
-script = 'pnpm install --frozen-lockfile && pnpm run typecheck && pnpm run test && pnpm run lint'
+script = "pnpm run typecheck && pnpm run test && pnpm run lint"
 
-# Pre-push gate: every check .github/workflows/build_and_test.yml gates on.
 [tasks.verify]
-description = "Run every check CI gates on."
+description = "Run every check that CI runs. Use it before pushing."
 category = "Verification"
-workspace = false
-dependencies = [
-  "format-check",
-  "lint",
-  "test-workspace",
-  "test-error-derive",
-  "verify-ui",
-]
+dependencies = ["check-format", "lint", "test", "test-error-derive", "verify-ui"]
+
+# Builds.
 
 [tasks.fetch-sdks]
-description = "Fetch the SDKs the optional native features build against into .sdks."
+description = "Fetch the pinned DLSS SDK, Vulkan headers and libclang into .sdks. Skips what is already at its pin."
 category = "Build"
-workspace = false
-script_runner = "@shell"
-script = 'node cli/sdks/fetch.mjs'
+command = "node"
+args = ["cli/sdks/fetch.mjs"]
 
 [tasks.build-cli]
-description = "Build CLI application in debug mode."
+description = "Build the CLI in debug mode."
 category = "Build"
-workspace = false
-dependencies = [
-  { name = "build", path = "bin/xrf-cli" },
-]
+command = "cargo"
+args = ["build", "-p", "xrf-cli"]
 
 [tasks.build-cli-release]
-description = "Build CLI application in release mode."
+description = "Build the CLI in release mode."
 category = "Build"
-workspace = false
-dependencies = [
-  { name = "build-release", path = "bin/xrf-cli" },
-]
+command = "cargo"
+args = ["build", "-p", "xrf-cli", "--release", "--locked"]
 
 [tasks.build-app]
-description = "Build UI application in debug mode."
+description = "Build the desktop application in debug mode, without DLSS."
 category = "Build"
-workspace = false
-dependencies = [
-  { name = "build", path = "bin/xrf-app" },
-]
+dependencies = ["install-ui"]
+cwd = "bin/xrf-app"
+command = "node"
+args = ["${NODE_TAURI}", "build", "--debug", "--no-bundle"]
 
+[tasks.build-app.env]
+XRF_BUILD_KIND = { value = "development", condition = { env_not_set = ["XRF_BUILD_KIND"] } }
+
+# `--no-bundle` skips the installers. `package-app` produces the archive the application ships as.
 [tasks.build-app-release]
-description = "Build UI application in release mode, with DLSS."
+description = "Build the desktop application in release mode, with DLSS."
 category = "Build"
-workspace = false
-dependencies = [
-  "fetch-sdks",
-  { name = "build-release", path = "bin/xrf-app" },
-]
+dependencies = ["install-ui", "fetch-sdks"]
+cwd = "bin/xrf-app"
+command = "node"
+args = ["${NODE_TAURI}", "build", "--no-bundle", "--features", "dlss", "--config", "tauri.dlss.conf.json"]
+
+[tasks.build-app-release.env]
+XRF_BUILD_KIND = { value = "optimized", condition = { env_not_set = ["XRF_BUILD_KIND"] } }
 
 [tasks.package-app]
-description = "Build the application in release mode, with DLSS, and package it as the archive it ships as."
+description = "Build the release application and pack it into target/package/<PACKAGE_NAME>.zip (default xrf-app-windows-x64)."
 category = "Build"
-workspace = false
 dependencies = ["build-app-release"]
-script_runner = "@shell"
-script = 'node cli/package/app.mjs'
+command = "node"
+args = ["cli/package/app.mjs", "--name", "${PACKAGE_NAME}"]
+
+[tasks.package-app.env]
+PACKAGE_NAME = { value = "xrf-app-windows-x64", condition = { env_not_set = ["PACKAGE_NAME"] } }
+
+# Development.
 
 [tasks.dev-app]
-description = "Run UI application backend and frontend in watch mode."
+description = "Run the desktop backend and UI in watch mode."
 category = "Development"
-workspace = false
-dependencies = [
-  { name = "dev", path = "bin/xrf-app" },
-]
+cwd = "bin/xrf-app"
+command = "node"
+args = ["${NODE_TAURI}", "dev"]
 
 [tasks.dev-app-optimized]
-description = "Run UI application in watch mode with the dev-optimized profile: workspace level 1, dependencies level 3."
+description = "Run the desktop application in watch mode with DLSS and the dev-optimized profile (workspace opt-level 1, dependencies 3)."
 category = "Development"
-workspace = false
-dependencies = [
-  { name = "dev-optimized", path = "bin/xrf-app" },
-]
+dependencies = ["fetch-sdks"]
+cwd = "bin/xrf-app"
+command = "node"
+args = ["${NODE_TAURI}", "dev", "--features", "dlss", "--config", "tauri.dlss.conf.json", "--", "--profile", "dev-optimized"]
 
 [tasks.dev-app-profiling]
-description = "Run UI application in watch mode with the profiling profile: release code with line tables."
+description = "Run the desktop application in watch mode with DLSS and the profiling profile (release code with line tables)."
 category = "Development"
-workspace = false
-dependencies = [
-  { name = "dev-profiling", path = "bin/xrf-app" },
-]
+dependencies = ["fetch-sdks"]
+cwd = "bin/xrf-app"
+command = "node"
+args = ["${NODE_TAURI}", "dev", "--features", "dlss", "--config", "tauri.dlss.conf.json", "--", "--profile", "profiling"]
 
 [tasks.serve-backend]
-description = "Run UI application backend in watch mode."
+description = "Run the desktop backend without the UI dev server."
 category = "Development"
-workspace = false
-dependencies = [
-  { name = "serve-backend", path = "bin/xrf-app" },
-]
+command = "cargo"
+args = ["run", "-p", "xrf-app", "--no-default-features"]
 
 [tasks.serve-ui]
-description = "Run UI application frontend in watch mode."
+description = "Run the UI dev server without the backend."
 category = "Development"
-workspace = false
-dependencies = [
-  { name = "serve-ui", path = "bin/xrf-app" },
-]
+cwd = "bin/xrf-ui"
+script_runner = "@shell"
+script = "pnpm run dev"
 
-[tasks.docs-cli]
-description = "Generate CLI command reference from clap definitions."
+# Documentation and generated code.
+
+[tasks.doc]
+description = "Generate Rust documentation for workspace crates, without dependencies."
 category = "Documentation"
-workspace = false
+command = "cargo"
+args = ["doc", "--workspace", "--no-deps"]
+
+[tasks.doc-cli]
+description = "Generate the CLI command reference from the clap definitions into target/doc-commands."
+category = "Documentation"
 command = "cargo"
 args = ["run", "-p", "xrf-cli", "--", "docs", "generate", "--output", "target/doc-commands"]
 
 [tasks.generate-typescript-bindings]
-description = "Emit Specta-generated frontend types and Tauri command bindings."
+description = "Emit the Specta-generated frontend types and Tauri command bindings."
 category = "Code generation"
-workspace = false
 command = "cargo"
 args = [
   "test",
@@ -205,15 +190,21 @@ args = [
 ]
 
 [tasks.format-typescript-bindings]
-description = "Apply frontend formatting and lint rules to generated mirrors."
+description = "Apply the frontend formatting and lint rules to the generated mirrors."
 category = "Code generation"
-workspace = false
 cwd = "bin/xrf-ui"
 script_runner = "@shell"
-script = 'pnpm run format:bindings'
+script = "pnpm run format:bindings"
 
 [tasks.generate-typescript]
 description = "Regenerate and format the frontend mirrors of serialized Rust types."
 category = "Code generation"
-workspace = false
 dependencies = ["generate-typescript-bindings", "format-typescript-bindings"]
+
+# Maintenance.
+
+[tasks.clean]
+description = "Remove workspace build artifacts."
+category = "Maintenance"
+command = "cargo"
+args = ["clean"]

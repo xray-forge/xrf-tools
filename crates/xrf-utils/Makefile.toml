@@ -1,5 +1,0 @@
-[tasks.setup]
-
-[tasks.doc]
-command = "cargo"
-args = ["doc"]

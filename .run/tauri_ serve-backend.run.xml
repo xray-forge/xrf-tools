@@ -2,7 +2,7 @@
   <configuration default="false" name="tauri: serve-backend" type="CargoCommandRunConfiguration"
                  factoryName="Cargo Command" folderName="application">
     <option name="command" value="make serve-backend"/>
-    <option name="workingDirectory" value="file://$PROJECT_DIR$/bin/xrf-app"/>
+    <option name="workingDirectory" value="file://$PROJECT_DIR$"/>
     <envs>
       <env name="RUST_LOG" value="info"/>
     </envs>

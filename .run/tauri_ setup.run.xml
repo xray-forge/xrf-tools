@@ -1,8 +1,8 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="tauri: setup" type="CargoCommandRunConfiguration" factoryName="Cargo Command"
                  folderName="application">
-    <option name="command" value="make setup"/>
-    <option name="workingDirectory" value="file://$PROJECT_DIR$/bin/xrf-app"/>
+    <option name="command" value="make install-ui"/>
+    <option name="workingDirectory" value="file://$PROJECT_DIR$"/>
     <envs>
       <env name="RUST_LOG" value="info"/>
     </envs>

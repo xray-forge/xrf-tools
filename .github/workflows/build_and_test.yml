@@ -34,14 +34,18 @@ jobs:
           cache-workspace-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-make@0.37.24
+
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        run: cargo make check-format
 
       - name: Run linter
-        run: cargo clippy --workspace --all-targets --locked --features xrf-app/typescript-bindings,xrf-app/dlss,xrf-job/rayon -- -D warnings
+        run: cargo make lint
 
       - name: Run workspace tests and verify frontend bindings
-        run: cargo test --verbose --workspace --lib --bins --locked --features xrf-app/typescript-bindings,xrf-app/dlss,xrf-job/rayon
+        run: cargo make test
 
       - name: Discard trybuild scratch crates
         if: always()
@@ -69,8 +73,12 @@ jobs:
         shell: bash
         run: echo "XRF_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-make@0.37.24
+
       - name: Build CLI
-        run: cargo build -p xrf-cli --release --locked
+        run: cargo make build-cli-release
 
       - name: Mark the CLI binary as a development build
         run: Move-Item target/release/xrf-cli.exe target/release/xrf-cli-dev.exe
@@ -177,23 +185,20 @@ jobs:
           cache-workspace-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      - name: Install TypeScript dependencies
-        run: pnpm.cmd install --frozen-lockfile
-
-      - name: Build UI
-        run: pnpm.cmd --dir bin/xrf-ui build
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-make@0.37.24
 
       - name: Record the build timestamp
         shell: bash
         run: echo "XRF_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
-      - name: Build application
-        working-directory: bin/xrf-app
-        run: ..\xrf-ui\node_modules\.bin\tauri.cmd build --ci --no-bundle --features dlss --config tauri.ci.conf.json --config tauri.dlss.conf.json
-
-      # The executable with the renderer's resources beside it, which it cannot draw everything without.
-      - name: Package the application as a development build
-        run: node cli/package/app.mjs --name xrf-app-dev-windows-x64
+      # Packs the executable with the renderer resources it needs at runtime. XRF_BUILD_KIND comes from this
+      # workflow (`development`).
+      - name: Build and package the application as a development build
+        env:
+          PACKAGE_NAME: xrf-app-dev-windows-x64
+        run: cargo make package-app
 
       - name: Upload the application archive
         uses: actions/upload-artifact@v7
@@ -221,6 +226,7 @@ jobs:
           cache-workspace-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
+      # Plain commands instead of the Makefile tasks, because Linux builds without DLSS and the frontend bindings.
       - name: Run workspace tests on default features
         run: cargo test --verbose --workspace --lib --locked --exclude xrf-ipc-typescript
 

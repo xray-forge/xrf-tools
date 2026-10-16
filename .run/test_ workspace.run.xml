@@ -2,7 +2,7 @@
   <configuration default="false" name="test: workspace" type="CargoCommandRunConfiguration"
                  factoryName="Cargo Command" folderName="test">
     <option name="buildProfileId" value="test"/>
-    <option name="command" value="test --workspace"/>
+    <option name="command" value="make test"/>
     <option name="workingDirectory" value="file://$PROJECT_DIR$"/>
     <envs/>
     <option name="emulateTerminal" value="true"/>
