@@ -1,6 +1,16 @@
-import { Popover, SxProps, Theme } from "@mui/material";
+import { Popover } from "@mui/material";
 import { Nullable } from "@xrf/types";
-import { MouseEvent, MouseEventHandler, ReactElement, ReactNode, useCallback, useEffect, useId, useState } from "react";
+import {
+  CSSProperties,
+  MouseEvent,
+  MouseEventHandler,
+  ReactElement,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useState,
+} from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -8,7 +18,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 import { TEditorPopoverKind } from "./editor-popover-kind";
 
 /** The corner cue a trigger of each kind draws: a triangle where a click opens, a dot where it switches. */
-const CUE_SX: Readonly<Record<TEditorPopoverKind, SxProps<Theme>>> = {
+const CUE_SX: Readonly<Record<TEditorPopoverKind, CSSProperties>> = {
   popover: {
     width: 0,
     height: 0,
