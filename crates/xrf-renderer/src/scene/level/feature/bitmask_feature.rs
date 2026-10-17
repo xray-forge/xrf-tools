@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use glam::Mat4;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
@@ -36,6 +38,9 @@ pub struct BitmaskFeature {
   occlusion: Option<History<FrameTexture>>,
   /// The indirect light, while it accumulates and gathers light.
   light: Option<History<FrameTexture>>,
+  /// Which of `occlusion` and `light` this frame's passes write, noted as they are added: a frame whose search a
+  /// trace answers raw, or the indirect light's own trace replaces, writes neither or only the first.
+  written: Cell<[bool; 2]>,
 }
 
 impl BitmaskFeature {
@@ -45,6 +50,7 @@ impl BitmaskFeature {
     let settings: RenderAmbientOcclusionSettings = options.features.ambient_occlusion;
 
     self.search = BitmaskSearch::new(options, can_trace(device));
+    self.written.set([false; 2]);
     self.quality = settings.quality;
     self.indirect_light = options.features.indirect_light;
 
@@ -321,6 +327,8 @@ impl BitmaskFeature {
       .as_ref()
       .filter(|_| self.occlusion.is_some() && is_lit)
       .map(|history| import("indirect light history", history));
+    self.written.set([histories.is_some(), light_histories.is_some()]);
+
     let (gathered, gathered_light): (GraphTexture, Option<GraphTexture>) = match histories {
       Some([previous, written]) => {
         let [previous_light, written_light] = light_histories.unwrap_or([dark, dark]);
@@ -383,14 +391,17 @@ impl ViewFeature for BitmaskFeature {
       .sum()
   }
 
-  /// The accumulations this frame wrote become the ones the next reads.
-  fn end_frame(&mut self, end: &mut ViewFrameEnd<'_>) {
-    if !end.is_lit {
-      return;
-    }
-
-    for history in [&mut self.occlusion, &mut self.light].into_iter().flatten() {
-      history.swap();
+  /// The accumulations this frame wrote become the ones the next reads; one it did not write holds nothing to read.
+  fn end_frame(&mut self, _end: &mut ViewFrameEnd<'_>) {
+    for (history, is_written) in [&mut self.occlusion, &mut self.light]
+      .into_iter()
+      .zip(self.written.get())
+    {
+      match history {
+        Some(history) if is_written => history.swap(),
+        Some(history) => history.invalidate(),
+        None => {}
+      }
     }
   }
 

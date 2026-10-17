@@ -483,9 +483,7 @@ impl ViewFeature for ReflectionFeature {
   /// What this frame wrote becomes what the next reads, while they are traced: the view's depth target this frame drew
   /// into kept, and the one kept handed back for the view to draw into next.
   fn end_frame(&mut self, end: &mut ViewFrameEnd<'_>) {
-    if let (true, Some(_), Some(history), Some(depth)) =
-      (end.is_lit, self.trace, &mut self.history, end.depth.as_deref_mut())
-    {
+    if let (Some(_), Some(history), Some(depth)) = (self.trace, &mut self.history, end.depth.as_deref_mut()) {
       history.swap(depth);
     }
   }

@@ -767,9 +767,8 @@ impl SceneView {
   }
 
   /// Ends a frame its graph recorded: every unit's history it wrote becomes the one the next frame keeps.
-  pub fn end_frame(&mut self, frame: &LevelFrame) {
+  pub fn end_frame(&mut self) {
     let mut end: ViewFrameEnd<'_> = ViewFrameEnd {
-      is_lit: frame.is_lit,
       depth: self.targets.as_mut().map(|targets| &mut targets.depth),
     };
 
@@ -827,7 +826,6 @@ impl SceneView {
       pick_slot,
       is_pick_through: pick.is_some_and(|(_, _, is_through)| is_through),
       is_scene_first: false,
-      is_lit: self.targets.is_some(),
     })
   }
 
@@ -908,24 +906,22 @@ impl SceneView {
       bloom: handles.bloom[0],
     };
 
-    if frame.is_lit {
-      let lit: LightingRecorded<'a> = self.record_lighting(
-        scene,
-        (&mut *graph, &mut *bindings, runtime),
-        record,
-        (grass_cards, wet_surface, wet_reach),
-      );
+    let lit: LightingRecorded<'a> = self.record_lighting(
+      scene,
+      (&mut *graph, &mut *bindings, runtime),
+      record,
+      (grass_cards, wet_surface, wet_reach),
+    );
 
-      graph.begin_group("post");
+    graph.begin_group("post");
 
-      self.record_post(
-        scene,
-        (&mut *graph, &mut *bindings, runtime),
-        record,
-        (lit, shadowed),
-        &mut output,
-      );
-    }
+    self.record_post(
+      scene,
+      (&mut *graph, &mut *bindings, runtime),
+      record,
+      (lit, shadowed),
+      &mut output,
+    );
 
     if let Some(slot) = frame.pick_slot {
       self.features.pick.add_passes(
