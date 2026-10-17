@@ -428,8 +428,10 @@ fn path_fog(state: Lighting, length: f32) -> f32 {
   return saturate(length * state.fog.y) * state.fog_color.w;
 }
 
-// Requests a workgroup of the reflections' scene pass traces, which a pass listing them counts its dispatch by.
+// Requests a workgroup of the reflections' scene pass traces, which a pass listing them counts its dispatch by; and the
+// workgroups a row of that dispatch holds, the most one dimension may.
 const TRACE_REQUEST_WORKGROUP: u32 = 64u;
+const TRACE_REQUEST_ROW: u32 = 65535u;
 // The head's word holding the wait a list's pixels stretch their turns by; the share of the list's room the rays its
 // pixels ask are kept to by it; and the most it stretches them.
 const TRACE_REQUEST_WAIT: u32 = 4u;

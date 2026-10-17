@@ -37,8 +37,13 @@ fn list_trace_request(request: TraceRequest) -> bool {
     return false;
   }
 
+  // A new workgroup's first request widens the scene pass's dispatch to it and the head's spare one, laid in rows a
+  // dimension can hold, as `compute_index` reads them back.
   if (index % TRACE_REQUEST_WORKGROUP == 0u) {
-    atomicAdd(&trace_request_head[1], 1u);
+    let groups: u32 = index / TRACE_REQUEST_WORKGROUP + 2u;
+
+    atomicMax(&trace_request_head[1], min(groups, TRACE_REQUEST_ROW));
+    atomicMax(&trace_request_head[2], (groups + TRACE_REQUEST_ROW - 1u) / TRACE_REQUEST_ROW);
   }
 
   trace_requests[index] = request;
