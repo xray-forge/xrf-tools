@@ -161,7 +161,7 @@ describe("RenderSettingsService", () => {
     expect(mockInjectedService(RenderSettingsService).service.rendererChoice.preset).toBe(ERenderPreset.EDITING);
   });
 
-  // Two writes to one group keep both, whichever group: a group forgotten used to be replaced whole.
+  // Two writes to one group keep both, whichever group.
   it("keeps every group's earlier changes when another of its settings changes", () => {
     const { service } = mockInjectedService(RenderSettingsService);
 

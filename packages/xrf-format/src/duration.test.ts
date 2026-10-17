@@ -9,7 +9,6 @@ describe("formatDuration", () => {
   });
 
   it("rounds fractional milliseconds rather than printing them", () => {
-    // The result components used to render `duration / 1000` directly, producing `0.1234 sec`.
     expect(formatDuration(123.456)).toBe("123 ms");
   });
 

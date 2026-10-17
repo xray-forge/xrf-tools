@@ -26,10 +26,6 @@ const COMPARISON_SEPARATOR: string = "\\";
 /**
  * Where a host path's last separator is, whichever kind it is written with.
  *
- * The primitive under "the file's own name", "the directory above it" and "the path without its extension", each of
- * which was spelling this twice per call site. Those three stay separate operations, because they mean different
- * things; what they share is only knowing where a path stops being a directory.
- *
  * @param path - A path from the host, in either separator style.
  * @returns The index of the last separator, or -1 when the path carries none.
  */
@@ -82,16 +78,9 @@ export function getPathDirectory(path: string): string {
 }
 
 /**
- * One spelling of a host path, for deciding whether two paths name the same thing.
- *
- * Windows reaches the same directory through several spellings - either separator, a trailing one or not, any casing -
- * and a native dialog, a typed path and a path joined here disagree freely. This folds those apart, and is only ever a
- * key: what gets stored and shown stays the string that arrived.
- *
- * Wrong on Linux in two ways, both accepted: sibling paths differing only in case fold together, and a file name
- * containing `\` reads as two segments. Both cost a comparison, never a path, and the alternative is asking the backend
- * which platform this is before a key can be computed. Repeated separators are left alone, because collapsing them
- * would eat the `\\` a UNC path opens with.
+ * One spelling of a host path, for deciding whether two paths name the same thing: either separator, a trailing one or
+ * not, and any casing fold together, while repeated separators stay for the `\\` a UNC path opens with. Only ever a
+ * key: what is stored and shown stays the string that arrived.
  *
  * @param path - A path from the host, in either separator style.
  * @returns Its comparison key.
@@ -174,10 +163,6 @@ export interface ILogicalPathParts {
 
 /**
  * Splits a logical path into the part a reader identifies it by and the part that only places it.
- *
- * One policy rather than three: a search row shows the name loudly and the directory quietly, and a save dialog offers
- * the name alone. Every one of those was splitting on its own `lastIndexOf` before, which is how a separator ends up
- * spelled in four files and corrected in three.
  *
  * @param path - Engine logical path, `\`-separated.
  * @returns The file name, and the directories above it when there are any.

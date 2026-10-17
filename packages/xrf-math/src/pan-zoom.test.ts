@@ -125,8 +125,7 @@ describe("pan-zoom", () => {
     const small: IPanZoomPoint = project(state, camera.center, { width: 640, height: 480 });
     const large: IPanZoomPoint = project(state, camera.center, { width: 1600, height: 900 });
 
-    // What the person centred stays centred, whatever the window did around it. Holding a pixel offset instead is what
-    // used to walk the picture out of the pane on every fullscreen toggle.
+    // What the person centred stays centred, whatever the window did around it.
     expect(small).toEqual({ x: 320, y: 240 });
     expect(large).toEqual({ x: 800, y: 450 });
 
