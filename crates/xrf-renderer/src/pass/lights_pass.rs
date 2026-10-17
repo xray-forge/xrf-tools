@@ -16,12 +16,6 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 
-/// Invocations a binning workgroup runs, as the source declares it.
-const BINNING_WORKGROUP: u32 = 64;
-
-/// Pixels a side of the square a visibility workgroup covers, as the source declares it.
-const VISIBILITY_WORKGROUP: u32 = 8;
-
 /// Bins the local lights in view into clusters of the view, marches the contact shadows towards the strongest at half
 /// the frame's size, finds how much of each shadowed light every pixel sees, from the shadow atlas or traced, then adds
 /// every light reaching each pixel to the light its frame accumulated after the sun.
@@ -58,6 +52,11 @@ struct LightsPipelines {
 }
 
 impl LightsPass {
+  /// Invocations a binning workgroup runs, as the source declares it.
+  pub(crate) const BINNING_WORKGROUP: u32 = 64;
+  /// Pixels a side of the square a visibility workgroup covers, as the source declares it.
+  pub(crate) const VISIBILITY_WORKGROUP: u32 = 8;
+
   /// Clusters the view is cut into, sixteen across, nine down and twenty four along it, as `common/light_clusters`
   /// declares them.
   pub const LIGHT_CLUSTERS: u32 = 16 * 9 * 24;
@@ -196,7 +195,7 @@ impl LightsPass {
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
     pass.set_pipeline(&self.pipelines.binning);
-    pass.dispatch_workgroups(Self::LIGHT_CLUSTERS.div_ceil(BINNING_WORKGROUP), 1, 1);
+    pass.dispatch_workgroups(Self::LIGHT_CLUSTERS.div_ceil(Self::BINNING_WORKGROUP), 1, 1);
   }
 
   /// Marches the contact shadows towards each texel's strongest lights into a target `size` texels across, half the
@@ -216,8 +215,8 @@ impl LightsPass {
     pass.set_pipeline(&self.pipelines.contact);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.dispatch_workgroups(
-      size.0.div_ceil(VISIBILITY_WORKGROUP),
-      size.1.div_ceil(VISIBILITY_WORKGROUP),
+      size.0.div_ceil(Self::VISIBILITY_WORKGROUP),
+      size.1.div_ceil(Self::VISIBILITY_WORKGROUP),
       1,
     );
   }
@@ -239,8 +238,8 @@ impl LightsPass {
     pass.set_pipeline(&self.pipelines.visibility[usize::from(is_contact)]);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.dispatch_workgroups(
-      size.0.div_ceil(VISIBILITY_WORKGROUP),
-      size.1.div_ceil(VISIBILITY_WORKGROUP),
+      size.0.div_ceil(Self::VISIBILITY_WORKGROUP),
+      size.1.div_ceil(Self::VISIBILITY_WORKGROUP),
       1,
     );
   }
@@ -269,8 +268,8 @@ impl LightsPass {
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(Self::TEXTURE_GROUP, textures, &[]);
     pass.dispatch_workgroups(
-      size.0.div_ceil(VISIBILITY_WORKGROUP),
-      size.1.div_ceil(VISIBILITY_WORKGROUP),
+      size.0.div_ceil(Self::VISIBILITY_WORKGROUP),
+      size.1.div_ceil(Self::VISIBILITY_WORKGROUP),
       1,
     );
   }

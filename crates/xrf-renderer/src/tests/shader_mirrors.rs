@@ -8,13 +8,24 @@ use crate::frame::view_targets::ViewTargets;
 use crate::lighting::material_slice::material_slice;
 use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::camera_uniform::CameraUniform;
+use crate::pass::depth_pyramid_pass::DepthPyramidPass;
+use crate::pass::exposure_pass::ExposurePass;
 use crate::pass::flare_pass::FlarePass;
+use crate::pass::froxel_pass::FroxelPass;
+use crate::pass::fsr_pass::FsrPass;
+use crate::pass::grass_pass::GrassPass;
 use crate::pass::light_view::LightView;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::noise_turn::NoiseTurn;
 use crate::pass::particle_surface_record::ParticleSurfaceRecord;
 use crate::pass::present_uniform::PresentUniform;
+use crate::pass::puddle_sites_pass::PuddleSitesPass;
 use crate::pass::puddle_sites_uniform::PuddleSitesUniform;
+use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
+use crate::pass::static_cull_pass::StaticCullPass;
+use crate::pass::surroundings_pass::SurroundingsPass;
+use crate::pass::trace_request::TraceRequest;
+use crate::pass::trace_sway_pass::TraceSwayPass;
 use crate::scene::level::feature::exposure_feature::ExposureFeature;
 use crate::scene::level::level_light_shadows::LevelLightShadows;
 use crate::scene::static_scene::static_class::StaticClass;
@@ -363,6 +374,121 @@ fn get_constant(library: &ShaderLibrary, name: &str, constant: &str) -> u32 {
   match module.global_expressions[get_declared(&module, name, constant).init] {
     naga::Expression::Literal(naga::Literal::U32(value)) => value,
     ref other => panic!("'{name}' declares {constant} as {other:?}"),
+  }
+}
+
+/// Each compute entry dispatched by groups of a size Rust counts in declares that size: one side for a line of work,
+/// two for a square of pixels.
+#[test]
+fn the_compute_entries_run_the_workgroups_rust_dispatches() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+  let line = |size: u32| [size, 1, 1];
+  let square = |size: u32| [size, size, 1];
+  let entries: [(&str, &[&str], [u32; 3]); 17] = [
+    (
+      "frame/pyramid",
+      &[
+        "cs_reduce_depth",
+        "cs_reduce_level",
+        "cs_copy_nearest",
+        "cs_reduce_nearest",
+        "cs_reduce_cover",
+        "cs_reduce_cover_level",
+      ],
+      square(DepthPyramidPass::WORKGROUP),
+    ),
+    ("frame/exposure", &["cs_measure"], line(ExposurePass::MEASURE_WORKGROUP)),
+    (
+      "frame/froxel_inject",
+      &["cs_froxel_inject"],
+      square(FroxelPass::WORKGROUP),
+    ),
+    (
+      "frame/froxel_integrate",
+      &["cs_froxel_integrate"],
+      square(FroxelPass::WORKGROUP),
+    ),
+    (
+      "frame/fsr/reconstruct",
+      &["cs_reconstruct"],
+      square(FsrPass::RECONSTRUCT_WORKGROUP),
+    ),
+    (
+      "grass/planting",
+      &[
+        "cs_clear_schedule",
+        "cs_rank",
+        "cs_decompress",
+        "cs_clear_counts",
+        "cs_cull",
+      ],
+      line(GrassPass::WORKGROUP),
+    ),
+    (
+      "grass/cards",
+      &["cs_clear_cards", "cs_grass_cards"],
+      line(GrassPass::WORKGROUP),
+    ),
+    ("frame/light_binning", &["cs_bin"], line(LightsPass::BINNING_WORKGROUP)),
+    (
+      "frame/light_contact",
+      &["cs_light_contact"],
+      square(LightsPass::VISIBILITY_WORKGROUP),
+    ),
+    (
+      "frame/light_visibility",
+      &["cs_visibility"],
+      square(LightsPass::VISIBILITY_WORKGROUP),
+    ),
+    (
+      "frame/light_tracing",
+      &["cs_visibility_traced"],
+      square(LightsPass::VISIBILITY_WORKGROUP),
+    ),
+    (
+      "frame/puddle_sites",
+      &["cs_surface_lowest", "cs_surface_sites", "cs_puddle_keep"],
+      square(PuddleSitesPass::WORKGROUP),
+    ),
+    (
+      "frame/sky_prefilter",
+      &["cs_prefilter"],
+      square(SkyPrefilterPass::WORKGROUP),
+    ),
+    (
+      "static/cull",
+      &[
+        "cs_cull_singles",
+        "cs_cull_impostors",
+        "cs_cull_rows",
+        "cs_clamp_counts",
+        "cs_cull_late",
+        "cs_clamp_late",
+      ],
+      line(StaticCullPass::WORKGROUP),
+    ),
+    (
+      "frame/surroundings",
+      &["cs_resolve"],
+      square(SurroundingsPass::WORKGROUP),
+    ),
+    ("static/trace_sway", &["cs_trace_sway"], line(TraceSwayPass::WORKGROUP)),
+    ("frame/reflection_scene", &["cs_scene"], line(TraceRequest::WORKGROUP)),
+  ];
+
+  for (name, names, size) in entries {
+    let module: naga::Module = parse(&library, name);
+
+    for entry in names {
+      let declared: [u32; 3] = module
+        .entry_points
+        .iter()
+        .find(|point| point.name == *entry)
+        .unwrap_or_else(|| panic!("'{name}' declares no {entry}"))
+        .workgroup_size;
+
+      assert_eq!(declared, size, "'{name}' {entry}");
+    }
   }
 }
 

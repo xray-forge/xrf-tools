@@ -27,9 +27,6 @@ const CULLING_ENTRIES: [&str; 2] = ["cs_clear_counts", "cs_cull"];
 /// The cards' entry points: every card cleared, the near tufts' stood, then the cascades' draw of them sized.
 const CARDS_ENTRIES: [&str; 3] = ["cs_clear_cards", "cs_grass_cards", "cs_card_draw"];
 
-/// Threads a planting workgroup runs.
-const WORKGROUP: u32 = 64;
-
 /// Items the lists hold past which the sort is dispatched over the items kept, read off the GPU, rather than over every
 /// item the lists hold. The indirect dispatch costs ~0.02 ms on D3D12, which patches its arguments in a pass of its
 /// own; dispatching over the lists costs ~0.035 ms a million items (RTX 5080), so the indirect one wins only past ~1M.
@@ -63,6 +60,9 @@ pub struct GrassPass {
 }
 
 impl GrassPass {
+  /// Threads a planting workgroup runs.
+  pub(crate) const WORKGROUP: u32 = 64;
+
   /// Bytes one indexed indirect draw takes.
   pub const DRAW_BYTES: u64 = 20;
 
@@ -188,7 +188,7 @@ impl GrassPass {
     (level, build, cards): (&GrassLevelParameters, &GrassBuildParameters, &GrassCardsParameters),
     (triangles, tufts): (u32, u32),
   ) {
-    let groups = |count: u32| count.max(1).div_ceil(WORKGROUP);
+    let groups = |count: u32| count.max(1).div_ceil(Self::WORKGROUP);
 
     context.bind(level);
     context.bind(build);
@@ -209,7 +209,7 @@ impl GrassPass {
     (level, build): (&GrassLevelParameters, &GrassBuildParameters),
     dispatch: GrassDispatch,
   ) {
-    let groups = |count: u32| count.max(1).div_ceil(WORKGROUP);
+    let groups = |count: u32| count.max(1).div_ceil(Self::WORKGROUP);
     let sizes: [u32; 4] = [
       groups(dispatch.bands),
       groups(dispatch.cells),
@@ -237,7 +237,7 @@ impl GrassPass {
     occlusion: &GrassOcclusionParameters,
     dispatch: GrassDispatch,
   ) {
-    let groups = |count: u32| count.max(1).div_ceil(WORKGROUP);
+    let groups = |count: u32| count.max(1).div_ceil(Self::WORKGROUP);
     let sizes: [u32; 2] = [groups(dispatch.models + 1), groups(dispatch.cells)];
 
     context.bind(level);

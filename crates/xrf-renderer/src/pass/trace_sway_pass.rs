@@ -16,7 +16,7 @@ pub struct TraceSwayPass {
 
 impl TraceSwayPass {
   /// Invocations a workgroup runs, as the source declares it.
-  const WORKGROUP: u32 = 64;
+  pub(crate) const WORKGROUP: u32 = 64;
 
   /// # Errors
   ///

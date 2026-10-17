@@ -9,9 +9,6 @@ use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::scene::level::cover_pyramid::CoverPyramid;
 
-/// Invocations a reduction workgroup runs a side, as `shaders/frame/pyramid.wgsl` declares them.
-const WORKGROUP: u32 = 8;
-
 /// Reduces a viewport's depth into a pyramid, a dispatch a level: to the farthest under each texel, or the nearest; and
 /// a rain cover into a pyramid of both.
 pub struct DepthPyramidPass {
@@ -24,6 +21,9 @@ pub struct DepthPyramidPass {
 }
 
 impl DepthPyramidPass {
+  /// Invocations a reduction workgroup runs a side, as `shaders/frame/pyramid.wgsl` declares them.
+  pub(crate) const WORKGROUP: u32 = 8;
+
   pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
@@ -74,7 +74,7 @@ impl DepthPyramidPass {
       let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
       pass.set_pipeline(&self.pipelines[usize::from(is_nearest) * 2 + usize::from(level > 0)]);
-      pass.dispatch_workgroups(width.div_ceil(WORKGROUP), height.div_ceil(WORKGROUP), 1);
+      pass.dispatch_workgroups(width.div_ceil(Self::WORKGROUP), height.div_ceil(Self::WORKGROUP), 1);
     }
   }
 
@@ -96,7 +96,7 @@ impl DepthPyramidPass {
       let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
       pass.set_pipeline(&self.pipelines[4 + usize::from(level > 0)]);
-      pass.dispatch_workgroups(size.div_ceil(WORKGROUP), size.div_ceil(WORKGROUP), 1);
+      pass.dispatch_workgroups(size.div_ceil(Self::WORKGROUP), size.div_ceil(Self::WORKGROUP), 1);
     }
   }
 

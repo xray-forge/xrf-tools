@@ -7,9 +7,6 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::froxel_volume::FroxelVolume;
 
-/// Invocations a workgroup runs across and down the grid, as both source declare them.
-const WORKGROUP: u32 = 8;
-
 /// Draws the enhanced volumetric lighting's froxels: fills each with what the sun and the local lights scatter in it
 /// and how thick it is, over its history, then integrates them along the view into what reaches the camera up to each,
 /// which the shafts' composite reads at each pixel's depth.
@@ -25,6 +22,9 @@ pub struct FroxelPass {
 }
 
 impl FroxelPass {
+  /// Invocations a workgroup runs across and down the grid, as both source declare them.
+  pub(crate) const WORKGROUP: u32 = 8;
+
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
@@ -101,7 +101,7 @@ impl FroxelPass {
 
     pass.set_pipeline(&self.pipelines[0]);
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.dispatch_workgroups(width.div_ceil(WORKGROUP), height.div_ceil(WORKGROUP), depth);
+    pass.dispatch_workgroups(width.div_ceil(Self::WORKGROUP), height.div_ceil(Self::WORKGROUP), depth);
   }
 
   /// Integrates every column of the grid along the view.
@@ -118,7 +118,7 @@ impl FroxelPass {
 
     pass.set_pipeline(&self.pipelines[1]);
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.dispatch_workgroups(width.div_ceil(WORKGROUP), height.div_ceil(WORKGROUP), 1);
+    pass.dispatch_workgroups(width.div_ceil(Self::WORKGROUP), height.div_ceil(Self::WORKGROUP), 1);
   }
 
   fn create_pipelines(

@@ -22,9 +22,6 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::scene::level::feature::fsr_graph_textures::FsrGraphTextures;
 use crate::scene::level::feature::fsr_targets::FsrTargets;
 
-/// Drawn texels a side of one workgroup of the depth reconstruction.
-const RECONSTRUCT_WORKGROUP: u32 = 8;
-
 /// The layouts FSR's stages bind, in their order, each its parameters'.
 struct FsrLayouts {
   reconstruct: wgpu::BindGroupLayout,
@@ -91,6 +88,9 @@ pub struct FsrPass {
 }
 
 impl FsrPass {
+  /// Drawn texels a side of one workgroup of the depth reconstruction.
+  pub(crate) const RECONSTRUCT_WORKGROUP: u32 = 8;
+
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
@@ -186,8 +186,8 @@ impl FsrPass {
 
         pass.set_pipeline(&pipelines.reconstruct);
         pass.dispatch_workgroups(
-          render.0.div_ceil(RECONSTRUCT_WORKGROUP),
-          render.1.div_ceil(RECONSTRUCT_WORKGROUP),
+          render.0.div_ceil(Self::RECONSTRUCT_WORKGROUP),
+          render.1.div_ceil(Self::RECONSTRUCT_WORKGROUP),
           1,
         );
       });

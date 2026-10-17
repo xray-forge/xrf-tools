@@ -6,9 +6,6 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::puddle_keep_parameters::PuddleKeepParameters;
 use crate::pass::puddle_sites_parameters::PuddleSitesParameters;
 
-/// Invocations a workgroup runs a side, as `shaders/frame/puddle_sites.wgsl` declares them.
-const WORKGROUP: u32 = 8;
-
 /// Places the puddles on the level's surface seen from overhead: its lowest heights, then a site a cell, a dispatch
 /// each, where it is drawn; and each frame, which sites hold a puddle and how big.
 pub struct PuddleSitesPass {
@@ -19,6 +16,9 @@ pub struct PuddleSitesPass {
 }
 
 impl PuddleSitesPass {
+  /// Invocations a workgroup runs a side, as `shaders/frame/puddle_sites.wgsl` declares them.
+  pub(crate) const WORKGROUP: u32 = 8;
+
   pub fn new(source: PipelineSource<'_>) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
@@ -59,12 +59,12 @@ impl PuddleSitesPass {
     context.get_pass().set_pipeline(&self.pipelines[0]);
     context
       .get_pass()
-      .dispatch_workgroups(size.div_ceil(WORKGROUP), size.div_ceil(WORKGROUP), 1);
+      .dispatch_workgroups(size.div_ceil(Self::WORKGROUP), size.div_ceil(Self::WORKGROUP), 1);
     context.bind(sites);
     context.get_pass().set_pipeline(&self.pipelines[1]);
     context
       .get_pass()
-      .dispatch_workgroups(cells.div_ceil(WORKGROUP), cells.div_ceil(WORKGROUP), 1);
+      .dispatch_workgroups(cells.div_ceil(Self::WORKGROUP), cells.div_ceil(Self::WORKGROUP), 1);
   }
 
   /// Decides each of `cells` a side's puddle this frame.
@@ -73,7 +73,7 @@ impl PuddleSitesPass {
     context.get_pass().set_pipeline(&self.pipelines[2]);
     context
       .get_pass()
-      .dispatch_workgroups(cells.div_ceil(WORKGROUP), cells.div_ceil(WORKGROUP), 1);
+      .dispatch_workgroups(cells.div_ceil(Self::WORKGROUP), cells.div_ceil(Self::WORKGROUP), 1);
   }
 
   fn create_pipelines(

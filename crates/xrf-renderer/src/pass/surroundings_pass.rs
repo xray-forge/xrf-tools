@@ -5,9 +5,6 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::surroundings_parameters::SurroundingsParameters;
 use crate::pass::view_binding::ViewBinding;
 
-/// Invocations a workgroup runs a side, as `shaders/frame/surroundings.wgsl` declares them.
-const WORKGROUP: u32 = 8;
-
 /// Lights one face of the surroundings cube from the G-buffer the static scene drew into it, the sky behind, into the
 /// prefiltered cube's first mip, which the mips after it blur.
 pub struct SurroundingsPass {
@@ -18,6 +15,9 @@ pub struct SurroundingsPass {
 }
 
 impl SurroundingsPass {
+  /// Invocations a workgroup runs a side, as `shaders/frame/surroundings.wgsl` declares them.
+  pub(crate) const WORKGROUP: u32 = 8;
+
   pub const CULL_PASS: &'static str = "surroundings cull";
   pub const DRAW_PASS: &'static str = "surroundings g-buffer";
   pub const RESOLVE_PASS: &'static str = "surroundings resolve";
@@ -65,7 +65,7 @@ impl SurroundingsPass {
 
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_pipeline(&self.pipeline);
-    pass.dispatch_workgroups(size.div_ceil(WORKGROUP), size.div_ceil(WORKGROUP), 1);
+    pass.dispatch_workgroups(size.div_ceil(Self::WORKGROUP), size.div_ceil(Self::WORKGROUP), 1);
   }
 
   fn create_pipeline(

@@ -6,9 +6,6 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
 use crate::scene::level::feature::sky_prefilter::SkyPrefilter;
 
-/// Invocations a workgroup runs a side, as `shaders/frame/sky_prefilter.wgsl` declares them.
-const WORKGROUP: u32 = 8;
-
 /// Fills the prefiltered sky cube, a mip a dispatch: the first from the sky's own cubes as the sky is drawn, each after
 /// it by sampling the mips before it over the GGX lobe of its roughness.
 pub struct SkyPrefilterPass {
@@ -20,6 +17,9 @@ pub struct SkyPrefilterPass {
 }
 
 impl SkyPrefilterPass {
+  /// Invocations a workgroup runs a side, as `shaders/frame/sky_prefilter.wgsl` declares them.
+  pub(crate) const WORKGROUP: u32 = 8;
+
   /// Each mip's pass, by its mip.
   pub const PASSES: [&'static str; SkyPrefilter::MOST_LEVELS as usize] = [
     "sky prefilter 0",
@@ -99,7 +99,7 @@ impl SkyPrefilterPass {
     context.get_pass().set_pipeline(&self.pipeline);
     context
       .get_pass()
-      .dispatch_workgroups(size.div_ceil(WORKGROUP), size.div_ceil(WORKGROUP), 6);
+      .dispatch_workgroups(size.div_ceil(Self::WORKGROUP), size.div_ceil(Self::WORKGROUP), 6);
   }
 
   fn create_pipeline(source: PipelineSource<'_>, layout: &wgpu::BindGroupLayout) -> XrfResult<wgpu::ComputePipeline> {

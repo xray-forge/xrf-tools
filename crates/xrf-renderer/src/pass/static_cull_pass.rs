@@ -11,9 +11,6 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 
-/// Invocations a cull workgroup runs, as `shaders/static/cull.wgsl` declares them.
-const WORKGROUP: u32 = 64;
-
 /// The cull's entry points, in the order its pipelines are held.
 const ENTRIES: [&str; 6] = [
   "cs_cull_impostors",
@@ -37,6 +34,9 @@ pub struct StaticCullPass {
 }
 
 impl StaticCullPass {
+  /// Invocations a cull workgroup runs, as `shaders/static/cull.wgsl` declares them.
+  pub(crate) const WORKGROUP: u32 = 64;
+
   pub fn new(source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
     let device: &wgpu::Device = source.device;
 
@@ -92,7 +92,7 @@ impl StaticCullPass {
     ] {
       if count > 0 {
         pass.set_pipeline(pipeline);
-        self.grid.dispatch(pass, count.div_ceil(WORKGROUP));
+        self.grid.dispatch(pass, count.div_ceil(Self::WORKGROUP));
       }
     }
   }
@@ -122,7 +122,7 @@ impl StaticCullPass {
     ] {
       if count > 0 {
         pass.set_pipeline(pipeline);
-        self.grid.dispatch(pass, count.div_ceil(WORKGROUP));
+        self.grid.dispatch(pass, count.div_ceil(Self::WORKGROUP));
       }
     }
   }
@@ -155,7 +155,7 @@ impl StaticCullPass {
     pass.set_pipeline(&self.pipelines[4]);
     pass.dispatch_workgroups_indirect(dispatch, 0);
     pass.set_pipeline(&self.pipelines[5]);
-    pass.dispatch_workgroups((StaticBatch::LIST_COUNT as u32).div_ceil(WORKGROUP), 1, 1);
+    pass.dispatch_workgroups((StaticBatch::LIST_COUNT as u32).div_ceil(Self::WORKGROUP), 1, 1);
   }
 
   fn create_pipelines(

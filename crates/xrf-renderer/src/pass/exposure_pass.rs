@@ -5,9 +5,6 @@ use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::scene::level::feature::exposure_feature::ExposureFeature;
 
-/// Invocations a measuring workgroup runs, as `shaders/frame/exposure.wgsl` declares them.
-const MEASURE_WORKGROUP: u32 = 64;
-
 /// `phase_luminance`: measures the scene combine finished, then adapts the scale the next frame's tonemap reads.
 pub struct ExposurePass {
   layout: wgpu::BindGroupLayout,
@@ -17,6 +14,9 @@ pub struct ExposurePass {
 }
 
 impl ExposurePass {
+  /// Invocations a measuring workgroup runs, as `shaders/frame/exposure.wgsl` declares them.
+  pub(crate) const MEASURE_WORKGROUP: u32 = 64;
+
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile.
@@ -53,7 +53,7 @@ impl ExposurePass {
 
     pass.set_pipeline(&self.pipelines[0]);
     pass.dispatch_workgroups(
-      (ExposureFeature::CELLS * ExposureFeature::CELLS).div_ceil(MEASURE_WORKGROUP),
+      (ExposureFeature::CELLS * ExposureFeature::CELLS).div_ceil(Self::MEASURE_WORKGROUP),
       1,
       1,
     );
