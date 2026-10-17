@@ -64,11 +64,12 @@ already at its pinned version, so repeated runs fetch nothing.
 | `check-format`      | Checks Rust formatting without writing files.                                                         |
 | `lint`              | Runs Clippy on all workspace targets with DLSS. Fetches the SDKs first.                               |
 | `test`              | Runs workspace library and binary tests with DLSS and checks the generated frontend bindings.         |
-| `test-error-derive` | Runs the `xrf-error-derive` UI diagnostic snapshots.                                                  |
+| `test-derive`       | Runs every derive crate's UI diagnostic snapshots (each crate's `tests/ui.rs`).                       |
+| `test-doc`          | Runs the documentation examples of every workspace crate, READMEs included.                           |
 | `install-ui`        | Installs the locked TypeScript dependencies.                                                          |
 | `test-ui`           | Runs the tests of every TypeScript workspace member.                                                  |
 | `verify-ui`         | Installs locked TypeScript dependencies, then typechecks, tests, and lints every workspace member.    |
-| `verify`            | Runs the full CI-gated suite: format check, lint, workspace tests, derive diagnostics, and UI checks. |
+| `verify`            | Runs the CI-gated suite: format check, lint, workspace tests, derive diagnostics, doc examples, UI.   |
 
 `lint` and `test` enable the Cargo features listed in `CHECK_FEATURES` in `Makefile.toml`. Change the list there;
 CI follows because it runs the same tasks.
