@@ -8,9 +8,11 @@ pub const RENDER_MAX_SHADOW_CASCADES: usize = 4;
 /// Texels the sun's filter reaches each way at most: the widest its pass has a pipeline for.
 pub const RENDER_MAX_SHADOW_FILTER: u32 = 3;
 
-/// Metres a cascade is across at least and at most, whatever a setting asks: a width of nought would cut it into texels
-/// of nought.
-pub const RENDER_SHADOW_CASCADE_WIDTHS: (f32, f32) = (1.0, 10_000.0);
+/// Metres a cascade is across at least, whatever a setting asks: a width of nought would cut it into texels of nought.
+pub const RENDER_MIN_SHADOW_CASCADE_WIDTH: f32 = 1.0;
+
+/// Metres a cascade is across at most, whatever a setting asks.
+pub const RENDER_MAX_SHADOW_CASCADE_WIDTH: f32 = 10_000.0;
 
 /// The sun's shadow: cascades of maps, each a square of the level seen from the sun, drawn through the static draws
 /// and sampled by the sun's light. The engine's are three, 20, 40 and 160 metres across, at 2048 texels
@@ -64,13 +66,12 @@ impl RenderShadowSettings {
     }
   }
 
-  /// Cascade `index`'s width in metres, within `RENDER_SHADOW_CASCADE_WIDTHS`; the least for one not a number.
+  /// Cascade `index`'s width in metres, from `RENDER_MIN_SHADOW_CASCADE_WIDTH` to `RENDER_MAX_SHADOW_CASCADE_WIDTH`; the
+  /// least for one missing or not a number.
   pub fn get_cascade_width(&self, index: usize) -> f32 {
-    let (least, most) = RENDER_SHADOW_CASCADE_WIDTHS;
-
     match self.cascades.get(index) {
-      Some(width) if !width.is_nan() => width.clamp(least, most),
-      _ => least,
+      Some(width) if !width.is_nan() => width.clamp(RENDER_MIN_SHADOW_CASCADE_WIDTH, RENDER_MAX_SHADOW_CASCADE_WIDTH),
+      _ => RENDER_MIN_SHADOW_CASCADE_WIDTH,
     }
   }
 
