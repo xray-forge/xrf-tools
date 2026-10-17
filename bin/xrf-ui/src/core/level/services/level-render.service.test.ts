@@ -13,15 +13,21 @@ import {
   EWorldCamera,
   EWorldCameraCommand,
   EWorldViewportEvent,
+  EWorldWeatherPlay,
   WorldCamera,
   WorldSurfaceSpan,
 } from "@/core/ipc/types/xrf-world";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
+import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level-sun-shafts-options";
+import { DEFAULT_LEVEL_WEATHER_CONTROL } from "@/core/level/lib/weather/level-weather-control";
+import { toLevelWeatherMemoryKey, writeLevelWeatherMemory } from "@/core/level/lib/weather/level-weather-memory";
+import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { EMPTY_RENDER_FRAME_PHASES } from "@/core/render/lib/native/native-frame-report";
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
 import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-periodic-budget";
 import { clearLocalStorage } from "@/core/storage";
+import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import {
   getMockChannels,
@@ -261,6 +267,27 @@ describe("LevelRenderService", () => {
     element.dispatchEvent(new FocusEvent("focus"));
     service.detach();
     expect(viewportService.isSceneFocused).toBe(false);
+  });
+
+  // The renderer's clock starts at noon, so the time a level was left at reaches it with the level's weather.
+  it("plays a level's weather on from the time it was last left at", async () => {
+    writeLevelWeatherMemory(toLevelWeatherMemoryKey(mockSelectedLevelDescription()), {
+      control: DEFAULT_LEVEL_WEATHER_CONTROL,
+      cycle: "",
+      manual: null,
+      seed: null,
+      source: ELevelWeatherSource.WEATHER,
+      sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
+      time: 7_200,
+    });
+
+    await mockAttachedLevelRender();
+
+    await waitFor(() => expect(sentRenderCommand("seek_weather")).toEqual([{ time: 7_200, viewport: LEVEL_VIEWPORT }]));
+    expect(sentRenderCommand("play_weather").at(-1)?.play).toEqual({
+      kind: EWorldWeatherPlay.CYCLE,
+      name: "default_clear",
+    });
   });
 
   it("states why the viewport cannot draw, and lets it go on detach", async () => {

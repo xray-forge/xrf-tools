@@ -279,8 +279,14 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     return [
       reaction(
         () => weatherService.weather,
-        (play: Nullable<WorldWeatherPlay>) =>
-          viewport.playWeather(play ?? { kind: EWorldWeatherPlay.NONE }, weatherService.transition),
+        (play: Nullable<WorldWeatherPlay>, previous: Maybe<Nullable<WorldWeatherPlay>>) => {
+          viewport.playWeather(play ?? { kind: EWorldWeatherPlay.NONE }, weatherService.transition);
+
+          // The renderer's clock starts at noon: a level's first weather plays on from where its own clock stands.
+          if (play && !previous) {
+            viewport.seekWeather(weatherService.time);
+          }
+        },
         { equals: comparer.structural, fireImmediately: true }
       ),
       reaction(
