@@ -1,16 +1,10 @@
-use serde::Serialize;
-
 use crate::weather::WeatherDescriptor;
 
 /// A cycle mixed at one time of day, `CEnvDescriptorMixer` after `lerp`: what the frame is lit and fogged by.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, PartialEq)]
 pub struct WeatherMix {
   /// Seconds since midnight, as asked.
   pub time: f32,
-  /// Where it was seen from, in engine space, as asked.
-  pub view: [f32; 3],
   /// The times of day of the keyframes either side.
   pub between: [f32; 2],
   /// How far from the first to the second.

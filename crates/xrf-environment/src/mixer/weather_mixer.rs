@@ -120,7 +120,6 @@ impl WeatherMixer<'_> {
       sun_color,
       sun_direction,
       time,
-      view,
       tree_amplitude: scalar(a.tree_amplitude, b.tree_amplitude),
       tree_rotation: scalar(a.tree_rotation, b.tree_rotation),
       tree_speed: scalar(a.tree_speed, b.tree_speed),
