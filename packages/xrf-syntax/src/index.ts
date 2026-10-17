@@ -1,8 +1,3 @@
 export * from "#/highlight";
-export * from "#/syntax-rules";
-export * from "#/syntax.ltx.rules";
-export * from "#/syntax.lua.rules";
-export * from "#/syntax.shader.rules";
+export { isLineLocalSyntax } from "#/syntax-rules";
 export * from "#/syntax.types";
-export * from "#/syntax.typescript.rules";
-export * from "#/syntax.xml.rules";
