@@ -3,6 +3,7 @@ mod console_defaults;
 mod lens_flares;
 mod level_start;
 mod new_game;
+mod particles;
 mod read;
 mod spawn_objects;
 mod surfaces;

@@ -4,6 +4,8 @@
 mod log_file;
 mod log_sink;
 mod setup_logger;
+#[cfg(test)]
+mod tests;
 mod warn_on_unhandled_command;
 
 pub use setup_logger::setup_logger;
