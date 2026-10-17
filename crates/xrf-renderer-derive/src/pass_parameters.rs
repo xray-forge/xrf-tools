@@ -143,6 +143,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let mut buffer_accesses: Vec<TokenStream> = Vec::new();
   let mut resources: Vec<TokenStream> = Vec::new();
   let mut dynamic_offsets: Vec<TokenStream> = Vec::new();
+  let mut stride_checks: Vec<TokenStream> = Vec::new();
   let indices: Vec<u32> = bindings.iter().map(|(index, ..)| *index).collect();
   // A binding array and an acceleration structure need wgpu's extensions enabled in the module declaring them.
   let enables: Vec<&str> = [
@@ -194,6 +195,26 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
         declares.push(quote!(<<#ty as #core::StorageField>::Element as #core::ShaderType>::declare(declarations);));
         buffer_accesses.push(quote! {
           (#core::StorageField::get_buffer(&self.#ident), #core::StorageField::get_access(&self.#ident))
+        });
+
+        // WGSL steps through an array at its element's size rounded up to its alignment, Rust at its size: a `vec3`
+        // is sixteen bytes apart in one and twelve in the other.
+        let stride_message: String = format!(
+          "`{name}.{field_name}` is an array whose elements WGSL places further apart than Rust: \
+           use an element whose size is a multiple of its alignment"
+        );
+
+        stride_checks.push(quote! {
+          const _: () = {
+            type Element = <#ty as #core::StorageField>::Element;
+
+            assert!(
+              !<#ty as #core::StorageField>::IS_ARRAY
+                || #core::round_up(<Element as #core::ShaderType>::ALIGN, <Element as #core::ShaderType>::SIZE)
+                  == ::core::mem::size_of::<Element>() as u64,
+              #stride_message
+            );
+          };
         });
         resources.push(quote!(#core::StorageField::get_binding(&self.#ident, resources)));
       }
@@ -310,6 +331,8 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   }
 
   Ok(quote! {
+    #(#stride_checks)*
+
     impl #impl_generics #core::PassParameters for #name #type_generics #where_clause {
       const GROUP: u32 = #group;
       const LAYOUT_KEY: &'static str = ::core::concat!(::core::module_path!(), "::", #key);
