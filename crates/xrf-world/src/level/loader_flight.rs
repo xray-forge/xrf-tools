@@ -4,7 +4,12 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use xrf_renderer::RenderWorkers;
 
 /// How many of a loader's jobs started and how many finished, so that no more than the pool's width of them run or wait
-/// on it at once: what other work queued behind them waits for stays one round of them, not a whole level.
+/// on it at once: what other work queued behind them waits for stays one round of them, not a whole level. It bounds
+/// the jobs, not the answers waiting to be taken.
+///
+/// Its owner starts the next jobs from the render thread as it takes answers, once a frame, rather than each job
+/// starting the next as it ends: a job spawned from a pool thread goes to that thread's own queue, which the pool runs
+/// before anything queued from outside, so the loader would again hold every other job back for the whole level.
 pub struct LoaderFlight {
   bound: u32,
   started: u32,
