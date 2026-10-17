@@ -1,3 +1,5 @@
+import { parseHexColor, toRawColor } from "@xrf/math";
+
 import { ACCENT, ColorScheme, HEADER_GLOSS, RECESS_TONE, STATE, toSharePercent, WASH } from "./tokens";
 
 /** A gradient's colour stop: sRGB channels and alpha, each from 0 to 1. */
@@ -23,9 +25,7 @@ export function getWashStops(scheme: ColorScheme): IWashStops {
 }
 
 function toWashStop(hex: string, share: number): TWashStop {
-  const value: number = Number.parseInt(hex.slice(1), 16);
-
-  return [((value >> 16) & 0xff) / 255, ((value >> 8) & 0xff) / 255, (value & 0xff) / 255, share];
+  return [...toRawColor(parseHexColor(hex)), share];
 }
 
 /** Diagonal accent wash over the frame and the reading plane. */

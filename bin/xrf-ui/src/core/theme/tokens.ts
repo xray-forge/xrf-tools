@@ -24,6 +24,8 @@ export const VIEWPORT = {
   checkerboardLight: "#808080",
   /** Side of one checkerboard square, in css pixels. */
   checkerboardSquare: 10,
+  /** A textured slab's edges and back: dark and plain, so a turned slab reads as a slab rather than as the texture. */
+  slabEdge: "#1a1a1a",
 } as const;
 
 /**  How long an operation may run before a loader for it is worth drawing at all. */

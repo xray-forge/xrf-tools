@@ -22,9 +22,6 @@ export const TEXTURE_SURFACE_CAMERA: WorldCamera = {
   target: [0, 0, 0],
 };
 
-/** The slab's four edges and its back: dark and plain, so a turned slab reads as a slab rather than as the texture. */
-const TEXTURE_EDGE_COLOR: number = 0x1a1a1a;
-
 /**
  * @param description - The texture on screen, or null for none.
  * @param options - How it is being looked at.
@@ -77,7 +74,7 @@ export function toTextureViewOptions(
         size: VIEWPORT.checkerboardSquare * pixelRatio,
       },
       lighting: toNativeAssetLighting(lighting),
-      plainColor: toRawColor(TEXTURE_EDGE_COLOR),
+      plainColor: toRawColor(parseHexColor(VIEWPORT.slabEdge)),
     },
   };
 }
