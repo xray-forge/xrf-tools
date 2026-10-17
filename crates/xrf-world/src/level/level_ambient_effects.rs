@@ -141,13 +141,13 @@ impl LevelAmbientEffects {
         name: playing.name.clone(),
         particles: playing.particles.clone(),
         remaining: if playing.is_stopping {
-          0.0
+          Duration::ZERO
         } else {
-          self.stop_time.saturating_sub(now).as_secs_f32()
+          self.stop_time.saturating_sub(now)
         },
       }),
       is_indoors,
-      wait: self.next_time.saturating_sub(now).as_secs_f32(),
+      wait: self.next_time.saturating_sub(now),
       played: self.played as u32,
     }
   }

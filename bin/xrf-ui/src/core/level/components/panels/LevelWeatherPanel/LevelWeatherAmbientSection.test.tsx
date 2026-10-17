@@ -7,10 +7,10 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 import { LevelWeatherAmbientSection } from "./LevelWeatherAmbientSection";
 
 const PLAYING: WorldAmbientReport = {
-  effect: { name: "effect_3", particles: "nature\\fog_tornado_00", remaining: 6.2 },
+  effect: { name: "effect_3", particles: "nature\\fog_tornado_00", remaining: 6_200 },
   isIndoors: false,
   played: 3,
-  wait: 21.5,
+  wait: 21_500,
 };
 
 describe("LevelWeatherAmbientSection", () => {

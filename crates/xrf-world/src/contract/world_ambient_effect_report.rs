@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use serde::{Deserialize, Serialize};
 
 /// The weather's ambient effect playing near a viewport's camera.
@@ -9,6 +11,8 @@ pub struct WorldAmbientEffectReport {
   pub name: String,
   /// The `particles.xr` effect or group it plays.
   pub particles: String,
-  /// Real seconds of its life left; none while what it emitted dies out.
-  pub remaining: f32,
+  /// Real time its life has left, zero while what it emitted dies out.
+  #[serde(with = "xrf_utils::duration_ms")]
+  #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
+  pub remaining: Duration,
 }

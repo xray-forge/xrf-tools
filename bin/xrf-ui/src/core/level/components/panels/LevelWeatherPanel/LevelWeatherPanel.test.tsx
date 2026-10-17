@@ -215,10 +215,10 @@ describe("LevelWeatherPanel", () => {
       weather.noteReport(
         mockWorldWeatherReport({
           ambient: {
-            effect: { name: "effect_6", particles: "nature\\fog_stormy_01", remaining: 4 },
+            effect: { name: "effect_6", particles: "nature\\fog_stormy_01", remaining: 4_000 },
             isIndoors: false,
             played: 1,
-            wait: 20,
+            wait: 20_000,
           },
         })
       )

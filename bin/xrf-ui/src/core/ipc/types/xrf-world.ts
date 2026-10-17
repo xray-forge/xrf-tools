@@ -10,8 +10,8 @@ export type WorldAmbientEffectReport = {
   name: string;
   /** The `particles.xr` effect or group it plays. */
   particles: string;
-  /** Real seconds of its life left; none while what it emitted dies out. */
-  remaining: number | null;
+  /** Real time its life has left, zero while what it emitted dies out. */
+  remaining: number;
 };
 
 /** Where the weather's ambient effects near a viewport's camera stand. */
@@ -20,8 +20,8 @@ export type WorldAmbientReport = {
   effect: WorldAmbientEffectReport | null;
   /** Whether the camera stands indoors, where none starts. */
   isIndoors: boolean;
-  /** Real seconds until the next may start, none once it may. */
-  wait: number | null;
+  /** Real time until the next may start, zero once it may. */
+  wait: number;
   /** How many have started since the level opened. */
   played: number;
 };
