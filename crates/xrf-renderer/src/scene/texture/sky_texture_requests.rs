@@ -23,7 +23,12 @@ impl RenderSkyTextures for SkyTextureRequests<'_> {
     }
   }
 
+  /// Clouds are fetched only where the view draws them, as `request_sky` asks for them.
   fn prefetch(&mut self, reference: &str, kind: WeatherTextureKind) {
+    if kind == WeatherTextureKind::Flat && !self.is_clouded {
+      return;
+    }
+
     if let (Some(cache), Some(source)) = (self.cache.as_deref_mut(), &self.source) {
       cache.request(reference, kind, source);
     }

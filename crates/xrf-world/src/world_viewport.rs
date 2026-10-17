@@ -95,7 +95,7 @@ impl WorldViewport {
         (keyframe.sky_texture_env.as_str(), WeatherTextureKind::Cube),
         (keyframe.clouds_texture.as_str(), WeatherTextureKind::Flat),
       ] {
-        if !reference.is_empty() && !keyframe.sky_texture.is_empty() {
+        if !reference.is_empty() {
           skies.prefetch(reference, kind);
         }
       }
