@@ -325,17 +325,19 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   var color: vec3<f32> = select(textureLoad(scene, drawn_texel(read), 0).rgb,
     textureLoad(upscaled, vec2<i32>(read), 0).rgb, present.is_upscaled != 0u);
 
-  // The sky debanding, where nothing was drawn: its neighbours read about the pixel itself, not where the distortion
-  // moved its read.
-  if (present.deband.x > 0.0 && textureLoad(depth_target, texel, 0) <= 0.0) {
-    color = debanded(upscaled, bloom_sampler, color, (pixel + 0.5) / present.size, 1.0 / present.size,
-      u32(present.deband.x), present.deband.y, present.deband.z);
-  }
+  let is_linear: bool = present.tonemap.x > 0.5;
 
   // A scene of linear light at its exposure is tonemapped here, by the engine's curve, before everything the engine
   // lays over its tonemapped frame.
-  if (present.tonemap.x > 0.5) {
+  if (is_linear) {
     color = tonemap(color, 1.0);
+  }
+
+  // The sky debanding, where nothing was drawn, over the shown steps it bands in: its neighbours read about the pixel
+  // itself, not where the distortion moved its read.
+  if (present.deband.x > 0.0 && textureLoad(depth_target, texel, 0) <= 0.0) {
+    color = debanded(upscaled, bloom_sampler, color, (pixel + 0.5) / present.size, 1.0 / present.size,
+      u32(present.deband.x), present.deband.y, present.deband.z, is_linear);
   }
 
   // The enhanced bloom screened over the frame, `1 - (1 - img)(1 - bloom)`, before its corrections; where the
