@@ -2,11 +2,11 @@
 /// `reduce_lod_texture_list` names them: a reference is reduced where it holds any part the list names, letter case
 /// aside.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct ReducedTextures {
+pub struct XrayReducedTextures {
   parts: Vec<String>,
 }
 
-impl ReducedTextures {
+impl XrayReducedTextures {
   /// The `system.ltx` section listing them, a part a key.
   pub const SECTION: &'static str = "reduce_lod_texture_list";
 

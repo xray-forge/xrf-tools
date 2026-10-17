@@ -8,7 +8,7 @@ use xrf_environment::{EnvironmentCatalog, WeatherDescriptor, WeatherModifier};
 use xrf_error::{XrfError, XrfResult};
 use xrf_level::{LevelSector, LevelSectorComposition};
 use xrf_ltx::Ltx;
-use xrf_material::XraySurfaceDescriptor;
+use xrf_material::{XrayReducedTextures, XraySurfaceDescriptor};
 use xrf_particles::{ParticleCollider, ParticleEngineRules};
 use xrf_renderer::{
   RenderAssetSource, RenderLensFlare, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
@@ -17,7 +17,6 @@ use xrf_renderer::{
   RenderThunderboltGradient, RenderThunderboltModel, RenderWeatherModel, RenderWetSurfaces,
 };
 use xrf_visual::{LightsDescription, SectorPackage, SectorPacker, VisualPoser};
-use xrf_world::{ReducedTextures, to_render_lens_flare};
 
 use crate::core::assets::AssetMountState;
 use crate::core::session::SessionSnapshot;
@@ -27,6 +26,7 @@ use crate::plugins::levels::configs::get_level_sections;
 use crate::plugins::levels::details::{PackedLevelDetails, pack_details};
 use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
 use crate::plugins::levels::hemi::{estimate_visuals_hemi, get_level_hemi};
+use crate::plugins::levels::lens_flares::to_render_lens_flare;
 use crate::plugins::levels::lights::{PackedLevelLights, pack_lights};
 use crate::plugins::levels::object_motions::read_object_motion;
 use crate::plugins::levels::particle_collider::LevelParticleCollider;
@@ -55,7 +55,7 @@ pub struct LevelRenderSource {
   textures: TextureResolver,
   /// The textures the game loads a step coarser at the same texture quality, read the first time a texture quality
   /// above full asks.
-  reduced: OnceLock<ReducedTextures>,
+  reduced: OnceLock<XrayReducedTextures>,
 }
 
 impl LevelRenderSource {
@@ -123,8 +123,8 @@ impl RenderAssetSource for LevelRenderSource {
           .flatten()
           .and_then(|sections| {
             sections
-              .section(ReducedTextures::SECTION)
-              .map(|section| ReducedTextures::new(section.iter().map(|(key, _)| key)))
+              .section(XrayReducedTextures::SECTION)
+              .map(|section| XrayReducedTextures::new(section.iter().map(|(key, _)| key)))
           })
           .unwrap_or_default()
       })

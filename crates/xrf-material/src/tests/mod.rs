@@ -8,6 +8,7 @@ mod detail;
 mod level;
 mod material;
 mod outcome;
+mod reduced_textures;
 mod surface;
 mod surface_bump;
 mod surface_terrain;

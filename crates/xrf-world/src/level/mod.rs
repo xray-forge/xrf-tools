@@ -16,7 +16,6 @@ pub(crate) mod loader_slots;
 pub(crate) mod model_motions;
 pub(crate) mod placed_emitter;
 pub(crate) mod posed_skeleton;
-pub(crate) mod reduced_textures;
 pub(crate) mod spawn_loader;
 pub(crate) mod streamed_model;
 pub(crate) mod surface_tally;
