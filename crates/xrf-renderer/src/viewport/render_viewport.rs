@@ -220,8 +220,9 @@ impl RenderViewport {
   }
 
   /// Reports the frames since the last report, once one is due: `allocator` what the GPU allocator and the GPU's own
-  /// memory hold, `scenes` every scene, its own among them, `timer` what the frames' passes cost, its own and its
-  /// window's taken from it, and `graph` what the frame graph made of the latest described frame.
+  /// memory hold, `scenes` every scene, its own among them, `timer` what the frames' passes cost, its own taken from it,
+  /// `composition` what the windows' own passes cost this report round, and `graph` what the frame graph made of the
+  /// latest described frame.
   pub fn report(
     &mut self,
     now: Instant,
@@ -232,7 +233,7 @@ impl RenderViewport {
       [RenderDlssAvailability; 2],
     ),
     (allocator, scenes): (Option<&GpuMemory>, &mut HashMap<RenderSceneId, LevelScene>),
-    (timer, graph): (Option<&mut GraphTimer>, Option<&GraphReport>),
+    (timer, composition, graph): (Option<&mut GraphTimer>, &[GraphPassTime], Option<&GraphReport>),
   ) {
     let Some(summary) = self.statistics.take(now) else {
       return;
@@ -264,7 +265,7 @@ impl RenderViewport {
     let (is_gpu_timed, passes): (bool, Vec<RenderPassCost>) = timer.map_or((false, Vec::new()), |timer| {
       let mut times: Vec<GraphPassTime> = timer.take(self.id.0);
 
-      times.extend(timer.take(FrameGraph::FRAME_OWNER));
+      times.extend_from_slice(composition);
 
       (
         timer.is_timing(),
@@ -367,6 +368,11 @@ impl RenderViewport {
       self.sent_applied = Some(applied.clone());
       self.send(RenderViewportEvent::Applied { report: applied });
     }
+  }
+
+  /// Whether its next report is due.
+  pub fn is_report_due(&self, now: Instant) -> bool {
+    self.statistics.is_due(now)
   }
 
   /// Tells the page how far the scene it shows has loaded, where that changed since it was last told.

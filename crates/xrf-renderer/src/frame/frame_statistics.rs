@@ -97,13 +97,18 @@ impl FrameStatistics {
     }
   }
 
-  /// The summary of the frames since the last one taken, once a report is due and a frame was drawn.
-  pub fn take(&mut self, now: Instant) -> Option<FrameSummary> {
-    let elapsed: Duration = now.duration_since(self.since);
+  /// Whether a report is due: its interval passed since the last, and a frame was drawn.
+  pub fn is_due(&self, now: Instant) -> bool {
+    now.duration_since(self.since) >= Self::REPORT_INTERVAL && self.frames > 0
+  }
 
-    if elapsed < Self::REPORT_INTERVAL || self.frames == 0 {
+  /// The summary of the frames since the last one taken, once a report is due.
+  pub fn take(&mut self, now: Instant) -> Option<FrameSummary> {
+    if !self.is_due(now) {
       return None;
     }
+
+    let elapsed: Duration = now.duration_since(self.since);
 
     let frames: f32 = self.frames as f32;
     let summary: FrameSummary = FrameSummary {
