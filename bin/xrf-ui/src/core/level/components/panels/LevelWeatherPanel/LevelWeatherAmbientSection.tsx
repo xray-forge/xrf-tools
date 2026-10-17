@@ -18,7 +18,7 @@ interface ILevelWeatherAmbientSectionProps extends BaseComponentProps {
  * @param milliseconds - Real milliseconds.
  * @returns Them rounded up to whole seconds.
  */
-function formatSeconds(milliseconds: number): string {
+function formatWholeSecondsOf(milliseconds: number): string {
   return `${Math.ceil(milliseconds / 1000)} s`;
 }
 
@@ -29,7 +29,7 @@ function formatSeconds(milliseconds: number): string {
  */
 function toNext(wait: number, isPlaying: boolean): string {
   if (wait > 0) {
-    return `In ${formatSeconds(wait)}`;
+    return `In ${formatWholeSecondsOf(wait)}`;
   }
 
   return isPlaying ? "Once this one is gone" : "Now";
@@ -66,7 +66,7 @@ export function LevelWeatherAmbientSection({
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Ambient effects"}>
       <EditorPanelProperty label={"Playing"} value={effect ? `${effect.name}, ${effect.particles}` : "Nothing"} />
       {effect ? (
-        <EditorPanelProperty label={"Left"} value={remaining > 0 ? formatSeconds(remaining) : "Dying out"} />
+        <EditorPanelProperty label={"Left"} value={remaining > 0 ? formatWholeSecondsOf(remaining) : "Dying out"} />
       ) : null}
       <EditorPanelProperty label={"Next"} value={toNext(wait, effect !== null)} />
       <EditorPanelProperty label={"Camera"} value={isIndoors ? "Indoors, none start" : "Outdoors"} />
