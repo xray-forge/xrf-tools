@@ -18,8 +18,6 @@
 // Rays a point casts each frame, by quality.
 override RAYS: u32 = 4u;
 
-// The R2 sequence's steps, which spread a pixel's rays apart.
-const R2: vec2<f32> = vec2<f32>(0.7548777, 0.5698403);
 // Metres a ray starts off its surface, and how much more each metre away, so it leaves the surface it starts on.
 const LIFT: f32 = 0.03;
 const LIFT_PER_METRE: f32 = 0.002;
@@ -76,7 +74,7 @@ fn trace_occlusion(clip: vec2<f32>) -> vec4<f32> {
   var open: f32 = 0.0;
 
   for (var ray: u32 = 0u; ray < RAYS; ray++) {
-    let sample: vec2<f32> = fract(start + f32(ray) * R2);
+    let sample: vec2<f32> = fract(start + f32(ray) * R2_STEPS);
     // Cosine-weighted about the normal: the share open is the hemisphere's light that reaches the point.
     let radius: f32 = sqrt(sample.x);
     let angle: f32 = sample.y * TAU;

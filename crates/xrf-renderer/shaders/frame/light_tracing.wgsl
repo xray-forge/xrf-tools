@@ -12,8 +12,6 @@
 // `frame/light_selection` gives it, the contact shadows not marched. The grass near the eye stands in the trace as the
 // view's cards where it is shadowed (`GrassCards`).
 
-// The R2 sequence's steps, which spread a pixel's lights' rays apart.
-const R2: vec2<f32> = vec2<f32>(0.7548777, 0.5698403);
 // Metres a ray starts off its surface along its normal, and how much more each metre away, so it leaves the surface it
 // starts on.
 const LIFT: f32 = 0.03;
@@ -88,7 +86,7 @@ fn cs_visibility_traced(@builtin(global_invocation_id) id: vec3<u32>) {
       continue;
     }
 
-    seen[slot] = traced_seen(pixel, record, is_plant, fract(start + f32(slot) * R2));
+    seen[slot] = traced_seen(pixel, record, is_plant, fract(start + f32(slot) * R2_STEPS));
     slot++;
   }
 

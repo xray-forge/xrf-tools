@@ -102,6 +102,7 @@ pub(crate) mod lights_pass;
 pub(crate) mod lights_uniform;
 pub(crate) mod lowest_heights_parameters;
 pub(crate) mod material_table;
+pub(crate) mod noise_turn;
 pub(crate) mod overhead_shift_parameters;
 pub(crate) mod overhead_shift_uniform;
 pub(crate) mod overlay_parameters;

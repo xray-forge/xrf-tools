@@ -2,15 +2,10 @@ use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_contact_shadow_settings::RenderContactShadowSettings;
+use crate::pass::noise_turn::NoiseTurn;
 
 /// The share of the drawn height a ray spans at most, however near the surface it leaves.
 const MAX_REACH: f32 = 0.125;
-
-/// Interleaved gradient noise's step between frames, Jimenez's, in pixels.
-const NOISE_STEP: f32 = 5.588_238;
-
-/// Frames the noise cycles through before it repeats.
-const NOISE_FRAMES: u32 = 64;
 
 /// What the contact shadows' march reads, as `shaders/common/contact_march.wgsl` takes it: the sun's pass and the
 /// local lights' alike.
@@ -45,7 +40,7 @@ impl ContactShadowUniform {
       thickness: settings.thickness,
       steps: settings.steps,
       reach: (height as f32 * MAX_REACH).max(1.0),
-      noise: (frame % NOISE_FRAMES) as f32 * NOISE_STEP,
+      noise: NoiseTurn::get_gradient(frame),
       lights: settings.get_light_count(),
       stride: if settings.is_full_resolution { 1 } else { 2 },
     }

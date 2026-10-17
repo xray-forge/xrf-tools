@@ -2,15 +2,13 @@ use glam::Mat4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::pass::noise_turn::NoiseTurn;
 
 /// The exponent a strength of one raises the filtered visibility to, chosen by looking: creases read without blackening.
 const BASE_POWER: f32 = 1.5;
 
 /// The share of the search target's height a slice is searched across at most, however near the point.
 const MAX_REACH: f32 = 0.2;
-
-/// The R2 sequence's steps between frames (Roberts, 2018): the plastic number's reciprocal and its square.
-const NOISE_STEPS: (f32, f32) = (0.754_877_7, 0.569_840_3);
 
 /// Frames the noise cycles through before it repeats.
 const NOISE_FRAMES: u32 = 256;
@@ -59,7 +57,7 @@ impl VbaoUniform {
   ) -> Self {
     let frames: u32 = settings.vbao.get_accumulation();
     // A noise held still where nothing gathers it, so it never crawls.
-    let turn: f32 = if frames > 1 { (frame % NOISE_FRAMES) as f32 } else { 0.0 };
+    let [slice_noise, step_noise] = NoiseTurn::get_r2(if frames > 1 { frame } else { 0 }, NOISE_FRAMES);
 
     Self {
       radius: settings.radius,
@@ -70,8 +68,8 @@ impl VbaoUniform {
       reach: (height as f32 * MAX_REACH).max(1.0),
       frames: frames as f32,
       has_history: f32::from(u8::from(has_history && frames > 1)),
-      slice_noise: (turn * NOISE_STEPS.0).fract(),
-      step_noise: (turn * NOISE_STEPS.1).fract(),
+      slice_noise,
+      step_noise,
       intensity: intensity.max(0.0),
       has_light_history: f32::from(u8::from(has_light_history && has_history && frames > 1)),
       light_radius: light_radius.max(settings.radius),
