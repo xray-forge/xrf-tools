@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::mpsc::{self, Receiver};
 use std::time::Instant;
 
 use glam::{Mat4, Vec3, Vec4};
@@ -27,6 +26,7 @@ use crate::scene::level::placed_effect::PlacedEffect;
 use crate::scene::level::placed_objects::PlacedObjects;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
+use crate::thread::frame_task::FrameTask;
 use crate::thread::render_workers::RenderWorkers;
 
 /// The sampler a distorting effect's `l_special` pass binds its distortion map to.
@@ -40,8 +40,8 @@ pub struct LevelParticles {
   systems: Option<LevelSystems>,
   /// Empty while a step holds them: whatever reads or changes them settles the step first.
   emitters: ProxyStore<ParticleEmitterProxy>,
-  /// The step running on the workers, which answers the emitters it took.
-  step: Option<Receiver<ParticleStep>>,
+  /// The step offered to the workers, which answers the emitters it took.
+  step: Option<FrameTask<ParticleStep>>,
   /// The effects that stopped playing this frame, told back to the world.
   finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
   workers: RenderWorkers,
@@ -279,10 +279,8 @@ impl LevelParticles {
     let planes: [Vec4; 6] = view.get_planes();
     let (library, rules, collider) = (Arc::clone(&level.library), level.rules, level.collider.clone());
     let mut emitters: ProxyStore<ParticleEmitterProxy> = std::mem::take(&mut self.emitters);
-    let (sender, receiver) = mpsc::channel();
 
-    self.step = Some(receiver);
-    self.workers.spawn(move || {
+    self.step = Some(self.workers.spawn_frame_task(move |is_parallel: bool| {
       profiling::scope!("particles");
 
       let started: Instant = Instant::now();
@@ -302,11 +300,19 @@ impl LevelParticles {
           object.is_due(now, is_in_view).then_some((object, is_in_view))
         })
         .collect();
-      let simulated: u32 = due
-        .par_iter_mut()
-        .with_min_len(Self::STEPPED_PER_WORKER)
-        .map(|(object, is_in_view)| u32::from(object.advance(now, eye, *is_in_view, &context)))
-        .sum();
+      let advance = |(object, is_in_view): &mut (&mut ParticleObject, bool)| -> u32 {
+        u32::from(object.advance(now, eye, *is_in_view, &context))
+      };
+      // A step the frame took back for want of a free worker runs on the render thread, outside the pool.
+      let simulated: u32 = if is_parallel {
+        due
+          .par_iter_mut()
+          .with_min_len(Self::STEPPED_PER_WORKER)
+          .map(advance)
+          .sum()
+      } else {
+        due.iter_mut().map(advance).sum()
+      };
       let mut finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)> = Vec::new();
       let mut report: RenderParticlesReport = RenderParticlesReport {
         simulated,
@@ -332,30 +338,29 @@ impl LevelParticles {
         }
       }
 
-      // The receiver is gone only with the level.
-      let _ = sender.send(ParticleStep {
+      ParticleStep {
         emitters,
         finished,
         report,
         time: started.elapsed().as_secs_f32() * 1000.0,
-      });
-    });
+      }
+    }));
   }
 
-  /// Waits for the step running on the workers, if one runs, and takes back its emitters and what stopped.
+  /// Joins the step offered to the workers, if one was, and takes back its emitters and what stopped.
   fn settle(&mut self) {
-    let Some(receiver) = self.step.take() else {
+    let Some(step) = self.step.take() else {
       return;
     };
 
     profiling::scope!("particles wait");
 
-    let Ok(ParticleStep {
+    let Some(ParticleStep {
       emitters,
       finished,
       report,
       time,
-    }) = receiver.recv()
+    }) = step.join()
     else {
       log::error!("A particle step ended without answering; its effects are gone");
 
