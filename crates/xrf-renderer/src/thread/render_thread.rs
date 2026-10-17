@@ -69,6 +69,7 @@ use crate::scene::texture::sky_texture_requests::SkyTextureRequests;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::shader::shader_watcher::ShaderWatcher;
+use crate::thread::frame_failure_log::FrameFailureLog;
 use crate::thread::gpu_state::GpuState;
 use crate::thread::render_command::RenderCommand;
 use crate::thread::render_link::RenderLink;
@@ -164,6 +165,8 @@ pub struct RenderThread {
   textures_swept: Instant,
   /// Who asked the thread to stop at once, answered once it stopped.
   stopping: Option<Sender<()>>,
+  /// The composition's failures, which repeat every frame until a shader changes.
+  composition_failures: FrameFailureLog,
 }
 
 impl RenderThread {
@@ -203,6 +206,7 @@ impl RenderThread {
       shader_watcher: ShaderWatcher::new(&ShaderLibrary::get_source_root()),
       textures_swept: now,
       stopping: None,
+      composition_failures: FrameFailureLog::default(),
     }
   }
 
@@ -1045,7 +1049,8 @@ impl RenderThread {
             format,
             (window.get_backdrop_slot(), &backdrop),
           )
-          .inspect_err(|error| log::error!("The page's wash cannot be drawn: {error}"))
+          .inspect_err(|error| self.composition_failures.fail("The page's wash cannot be drawn", error))
+          .inspect(|()| self.composition_failures.succeed("The page's wash cannot be drawn"))
           .is_ok();
 
       windows.push(WindowFrame {
@@ -1323,9 +1328,9 @@ impl RenderThread {
   }
 
   /// Readies the present's and the overlays' pipelines for each window's image format.
-  fn prepare_composition(&self, gpu: &mut GpuState, windows: &[WindowFrame]) {
+  fn prepare_composition(&mut self, gpu: &mut GpuState, windows: &[WindowFrame]) {
     for format in windows.iter().map(|window| window.format).collect::<HashSet<_>>() {
-      if let Err(error) = gpu.present.prepare(
+      match gpu.present.prepare(
         PipelineSource {
           cache: &gpu.pipelines,
           device: &gpu.context.device,
@@ -1333,10 +1338,13 @@ impl RenderThread {
         },
         format,
       ) {
-        log::error!("Level viewport cannot be presented: {error}");
+        Ok(()) => self.composition_failures.succeed("Level viewport cannot be presented"),
+        Err(error) => self
+          .composition_failures
+          .fail("Level viewport cannot be presented", &error),
       }
 
-      if let Err(error) = gpu.overlay.prepare(
+      match gpu.overlay.prepare(
         PipelineSource {
           cache: &gpu.pipelines,
           device: &gpu.context.device,
@@ -1344,7 +1352,8 @@ impl RenderThread {
         },
         format,
       ) {
-        log::error!("Level overlays cannot be drawn: {error}");
+        Ok(()) => self.composition_failures.succeed("Level overlays cannot be drawn"),
+        Err(error) => self.composition_failures.fail("Level overlays cannot be drawn", &error),
       }
     }
   }
