@@ -33,11 +33,24 @@ impl OverlayPass {
     }
   }
 
-  /// Forgets pipelines built from a library reloaded since, so the next frame builds them again.
+  /// Builds the pipelines again from a library reloaded since they were built, one a window format each; a broken edit
+  /// keeps the last good ones.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-      self.pipelines.clear();
+    if source.get_generation() == self.generation {
+      return;
+    }
+
+    self.generation = source.get_generation();
+
+    let rebuilt: XrfResult<HashMap<wgpu::TextureFormat, [wgpu::RenderPipeline; 3]>> = self
+      .pipelines
+      .keys()
+      .map(|format| Ok((*format, self.create_pipeline(source, *format)?)))
+      .collect();
+
+    match rebuilt {
+      Ok(pipelines) => self.pipelines = pipelines,
+      Err(error) => log::error!("Overlay shader rejected, drawing with the last one: {error}"),
     }
   }
 
@@ -47,12 +60,22 @@ impl OverlayPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn prepare(&mut self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult {
-    let device: &wgpu::Device = source.device;
+    if !self.pipelines.contains_key(&format) {
+      let pipelines: [wgpu::RenderPipeline; 3] = self.create_pipeline(source, format)?;
 
-    if self.pipelines.contains_key(&format) {
-      return Ok(());
+      self.pipelines.insert(format, pipelines);
     }
 
+    Ok(())
+  }
+
+  /// The lines', the sun's and the points' pipelines drawing into a window format.
+  fn create_pipeline(
+    &self,
+    source: PipelineSource<'_>,
+    format: wgpu::TextureFormat,
+  ) -> XrfResult<[wgpu::RenderPipeline; 3]> {
+    let device: &wgpu::Device = source.device;
     let module: wgpu::ShaderModule = source.get_module("frame/overlay")?;
     let layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
       label: Some("overlay"),
@@ -119,9 +142,7 @@ impl OverlayPass {
       },
     )?;
 
-    self.pipelines.insert(format, [lines, sun, points]);
-
-    Ok(())
+    Ok([lines, sun, points])
   }
 
   /// Draws into the window's pass, whose viewport and scissor are the viewport's rectangle already.

@@ -40,11 +40,24 @@ impl PresentPass {
     }
   }
 
-  /// Forgets pipelines built from a library reloaded since, so the next frame builds them again.
+  /// Builds the pipelines again from a library reloaded since they were built, one a window format each; a broken edit
+  /// keeps the last good ones.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-      self.pipelines.clear();
+    if source.get_generation() == self.generation {
+      return;
+    }
+
+    self.generation = source.get_generation();
+
+    let rebuilt: XrfResult<HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>> = self
+      .pipelines
+      .keys()
+      .map(|format| Ok((*format, self.create_pipeline(source, *format)?)))
+      .collect();
+
+    match rebuilt {
+      Ok(pipelines) => self.pipelines = pipelines,
+      Err(error) => log::error!("Present shader rejected, drawing with the last one: {error}"),
     }
   }
 
@@ -55,18 +68,26 @@ impl PresentPass {
   /// Returns an error when the shader does not compose or compile.
   pub fn prepare(&mut self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult {
     if !self.pipelines.contains_key(&format) {
-      let pipeline: wgpu::RenderPipeline = create_fullscreen_pipeline(
-        source,
-        "frame/present",
-        "fs_present",
-        &[Some(&self.view_layout), Some(&self.layout)],
-        format,
-      )?;
+      let pipeline: wgpu::RenderPipeline = self.create_pipeline(source, format)?;
 
       self.pipelines.insert(format, pipeline);
     }
 
     Ok(())
+  }
+
+  fn create_pipeline(
+    &self,
+    source: PipelineSource<'_>,
+    format: wgpu::TextureFormat,
+  ) -> XrfResult<wgpu::RenderPipeline> {
+    create_fullscreen_pipeline(
+      source,
+      "frame/present",
+      "fs_present",
+      &[Some(&self.view_layout), Some(&self.layout)],
+      format,
+    )
   }
 
   /// The bloom's sampler, which a viewport's parameters bind.
