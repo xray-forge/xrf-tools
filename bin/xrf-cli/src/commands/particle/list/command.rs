@@ -2,7 +2,8 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
 use xrf_particles::ParticlesFile;
 
-use super::report::{ParticleListEntry, ParticleListReport};
+use super::particle_list_entry::ParticleListEntry;
+use super::report::ParticleListReport;
 use crate::commands::particle::particle_names::to_name_key;
 use crate::commands::particle::particles_file_open::{ParticlesFileArguments, open_particles_file};
 use crate::core::command_context::CommandContext;

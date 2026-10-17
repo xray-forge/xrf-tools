@@ -1,57 +1,9 @@
 use serde::Serialize;
 use xrf_report::Status;
-use xrf_utils::to_portable_path_string;
-use xrf_vfs::{XrayAssetContainer, XrayPathCollision, XrayShadowingEntry};
+use xrf_vfs::{XrayPathCollision, XrayShadowingEntry};
 
-/// One engine path the set answers with more than one copy, as a report states it.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArchiveVerifyOverrideReport {
-  logical_path: String,
-  /// Where the copy a lookup reaches sits.
-  container: String,
-  /// The copies behind it, in precedence order.
-  hidden: Vec<String>,
-}
-
-impl From<&XrayShadowingEntry> for ArchiveVerifyOverrideReport {
-  fn from(entry: &XrayShadowingEntry) -> Self {
-    Self {
-      container: to_portable_container(entry.get_asset().get_container()),
-      hidden: entry
-        .shadowed
-        .iter()
-        .map(|copy| to_portable_container(copy.asset.get_container()))
-        .collect(),
-      logical_path: entry.get_logical_path().to_string(),
-    }
-  }
-}
-
-/// Where a container sits, spelled the one way every report spells a path.
-fn to_portable_container(container: &XrayAssetContainer) -> String {
-  match container {
-    XrayAssetContainer::Directory { root, relative_path } => to_portable_path_string(root.join(relative_path)),
-    XrayAssetContainer::Archive { path } => to_portable_path_string(path),
-  }
-}
-
-/// One payload that could not be read back.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArchiveVerifyFindingReport {
-  message: String,
-  name: String,
-}
-
-impl ArchiveVerifyFindingReport {
-  pub fn new(name: &str, message: String) -> Self {
-    Self {
-      message,
-      name: String::from(name),
-    }
-  }
-}
+use crate::commands::archive::verify::archive_verify_finding_report::ArchiveVerifyFindingReport;
+use crate::commands::archive::verify::archive_verify_override_report::ArchiveVerifyOverrideReport;
 
 /// The verdict `archive verify` reached.
 ///

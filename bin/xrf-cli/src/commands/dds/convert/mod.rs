@@ -1,4 +1,6 @@
 pub(crate) mod command;
+pub(crate) mod dds_convert_candidate_report;
+pub(crate) mod dds_convert_compatibility_report;
 pub(crate) mod report;
 
 #[cfg(test)]

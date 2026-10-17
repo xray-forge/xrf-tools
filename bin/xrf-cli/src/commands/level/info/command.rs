@@ -4,7 +4,8 @@ use xrf_output::OutputOptions;
 use xrf_spawn::XRayByteOrder;
 use xrf_vfs::{XrayLookupScope, XrayVfs};
 
-use super::report::{LevelInfoReport, LevelVisualsReport};
+use super::level_visuals_report::LevelVisualsReport;
+use super::report::LevelInfoReport;
 use crate::commands::level::level_assets::LevelAssets;
 use crate::commands::level::level_selection::LevelSelection;
 use crate::core::command_context::CommandContext;

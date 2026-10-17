@@ -1,27 +1,8 @@
 use serde::Serialize;
 use xrf_omf::OmfFile;
 
-/// One motion, joining what the parameters declare to what the motion data holds.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OmfMotionReport {
-  accrue: f32,
-  falloff: f32,
-  flags: u32,
-  keyframes: u32,
-  label_diverges: bool,
-  name: String,
-  power: f32,
-  speed: f32,
-}
-
-/// One skeleton part and the bones it drives.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OmfPartReport {
-  bones: Vec<String>,
-  name: String,
-}
+use crate::commands::omf::info::omf_motion_report::OmfMotionReport;
+use crate::commands::omf::info::omf_part_report::OmfPartReport;
 
 /// What `omf info` read out of a motion container.
 #[derive(Debug, Serialize)]
@@ -37,28 +18,8 @@ impl OmfInfoReport {
   pub fn new(file: &OmfFile) -> Self {
     Self {
       bones: file.parameters.get_bones_count(),
-      motions: file
-        .get_motions()
-        .map(|(definition, motion)| OmfMotionReport {
-          accrue: definition.accrue,
-          falloff: definition.falloff,
-          flags: definition.flags,
-          keyframes: motion.count,
-          label_diverges: !motion.has_label_matching(&definition.name),
-          name: definition.name.clone(),
-          power: definition.power,
-          speed: definition.speed,
-        })
-        .collect(),
-      parts: file
-        .parameters
-        .parts
-        .iter()
-        .map(|part| OmfPartReport {
-          bones: part.get_bones().into_iter().map(String::from).collect(),
-          name: part.name.clone(),
-        })
-        .collect(),
+      motions: OmfMotionReport::list(file),
+      parts: OmfPartReport::list(file),
       version: file.parameters.version,
     }
   }

@@ -1,4 +1,5 @@
 pub(crate) mod command;
+pub(crate) mod profiled_binary_output;
 pub(crate) mod report;
 pub(crate) mod rounds;
 pub(crate) mod sample;

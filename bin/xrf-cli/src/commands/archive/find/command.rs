@@ -8,7 +8,7 @@ use xrf_utils::format_path;
 
 use super::report::ArchiveFindReport;
 use crate::commands::archive::list::ListCommand;
-use crate::commands::archive::list::report::ArchiveSharedPayloadIndex;
+use crate::commands::archive::list::archive_shared_payload_index::ArchiveSharedPayloadIndex;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 

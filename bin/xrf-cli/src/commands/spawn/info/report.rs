@@ -1,15 +1,7 @@
 use serde::Serialize;
 use xrf_spawn::SpawnFile;
 
-/// The level graph a spawn file carries, which is a census of its own.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SpawnGraphReport {
-  edges: u32,
-  points: u32,
-  version: u8,
-  vertices: u16,
-}
+use crate::commands::spawn::info::spawn_graph_report::SpawnGraphReport;
 
 /// What `spawn info` read out of a spawn file.
 #[derive(Debug, Serialize)]
@@ -28,12 +20,7 @@ impl SpawnInfoReport {
   pub fn new(file: &SpawnFile) -> Self {
     Self {
       artefact_spawn_points: file.artefact_spawn.nodes.len(),
-      graph: SpawnGraphReport {
-        edges: file.graphs.header.edges_count,
-        points: file.graphs.header.points_count,
-        version: file.graphs.header.version,
-        vertices: file.graphs.header.vertices_count,
-      },
+      graph: SpawnGraphReport::new(&file.graphs),
       guid: file.header.guid.to_string(),
       levels: file.header.levels_count,
       objects: file.header.objects_count,

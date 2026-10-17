@@ -1,7 +1,8 @@
 use serde::Serialize;
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 
-use crate::commands::archive::list::report::{ArchiveEntryReport, ArchiveSharedPayloadIndex};
+use crate::commands::archive::list::archive_entry_report::ArchiveEntryReport;
+use crate::commands::archive::list::archive_shared_payload_index::ArchiveSharedPayloadIndex;
 
 /// What `archive find` matched.
 ///

@@ -4,37 +4,7 @@ use serde::Serialize;
 use xrf_report::Status;
 use xrf_texture::EquipmentGridOverlap;
 
-/// One square of the inventory icon grid.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SpriteGridCellReport {
-  x: u32,
-  y: u32,
-}
-
-/// Two sections whose inventory icon rectangles cover a common square.
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SpriteEquipmentOverlapReport {
-  cell: SpriteGridCellReport,
-  first: String,
-  overlapping_cells: u32,
-  second: String,
-}
-
-impl SpriteEquipmentOverlapReport {
-  pub fn new(overlap: &EquipmentGridOverlap) -> Self {
-    Self {
-      cell: SpriteGridCellReport {
-        x: overlap.cell.0,
-        y: overlap.cell.1,
-      },
-      first: overlap.first.clone(),
-      overlapping_cells: overlap.overlapping_cells,
-      second: overlap.second.clone(),
-    }
-  }
-}
+use crate::commands::sprite::verify_equipment::sprite_equipment_overlap_report::SpriteEquipmentOverlapReport;
 
 /// The verdict `sprite verify-equipment` reached over an inventory icon grid.
 #[derive(Debug, Serialize)]

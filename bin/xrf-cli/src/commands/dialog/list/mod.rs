@@ -1,4 +1,6 @@
 pub(crate) mod command;
+pub(crate) mod dialog_list_entry;
+pub(crate) mod dialog_list_profile;
 pub(crate) mod report;
 
 pub(crate) use command::ListCommand;

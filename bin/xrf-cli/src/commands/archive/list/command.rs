@@ -6,7 +6,8 @@ use xrf_archive::{ArchiveFileDescriptor, ArchiveProject, ArchiveSharedPayload};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
-use super::report::{ArchiveListReport, ArchiveSharedPayloadIndex};
+use super::archive_shared_payload_index::ArchiveSharedPayloadIndex;
+use super::report::ArchiveListReport;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 

@@ -12,7 +12,10 @@ use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_spawn::XRayByteOrder;
 use xrf_utils::{format_path, write_file_staged};
 
-use crate::commands::ogf::fix::report::{OgfFixFileReport, OgfFixFindingReport, OgfFixOutcome, OgfFixReport};
+use crate::commands::ogf::fix::ogf_fix_file_report::OgfFixFileReport;
+use crate::commands::ogf::fix::ogf_fix_finding_report::OgfFixFindingReport;
+use crate::commands::ogf::fix::ogf_fix_outcome::OgfFixOutcome;
+use crate::commands::ogf::fix::report::OgfFixReport;
 
 pub struct OgfFixer<'a> {
   output: &'a OutputOptions,

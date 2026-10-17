@@ -7,7 +7,8 @@ use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
-use super::report::{ProfileReportOutput, ProfiledBinaryOutput};
+use super::profiled_binary_output::ProfiledBinaryOutput;
+use super::report::ProfileReportOutput;
 use super::rounds::{RoundStatistics, interleaved};
 use super::sample::{SampledRun, run_sampled};
 use crate::core::command_context::CommandContext;

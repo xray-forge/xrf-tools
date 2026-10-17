@@ -11,7 +11,8 @@ use xrf_output::OutputOptions;
 use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
-use super::report::{OmfRepackFindingReport, OmfRepackVerifyReport};
+use super::omf_repack_finding_report::OmfRepackFindingReport;
+use super::report::OmfRepackVerifyReport;
 use super::statistics::{RepackOmfOutcome, RepackOmfStatistics};
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};

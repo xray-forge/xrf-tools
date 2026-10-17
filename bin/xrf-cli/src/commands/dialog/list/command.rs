@@ -7,7 +7,9 @@ use xrf_dialog::{
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 
-use super::report::{DialogListEntry, DialogListProfile, DialogListReport};
+use super::dialog_list_entry::DialogListEntry;
+use super::dialog_list_profile::DialogListProfile;
+use super::report::DialogListReport;
 use crate::commands::dialog::dialog_project_open::{
   DialogProjectArguments, open_dialog_project, requested_dialog_text,
 };

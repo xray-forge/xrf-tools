@@ -2,8 +2,10 @@ use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
 use xrf_particles::{ParticleActionType, ParticleGroup, ParticlesFile};
 
-use super::report::{ParticleFindMatch, ParticleFindReason, ParticleFindReport};
-use crate::commands::particle::list::report::ParticleListEntry;
+use super::particle_find_match::ParticleFindMatch;
+use super::particle_find_reason::ParticleFindReason;
+use super::report::ParticleFindReport;
+use crate::commands::particle::list::particle_list_entry::ParticleListEntry;
 use crate::commands::particle::particle_names::{to_name_key, to_texture_key};
 use crate::commands::particle::particles_file_open::{ParticlesFileArguments, open_particles_file};
 use crate::core::command_context::CommandContext;

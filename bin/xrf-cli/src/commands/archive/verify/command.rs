@@ -7,7 +7,8 @@ use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_vfs::{XrayArchiveSource, XrayPathCollision, XrayShadowingEntry};
 
-use super::report::{ArchiveVerifyFindingReport, ArchiveVerifyReport};
+use super::archive_verify_finding_report::ArchiveVerifyFindingReport;
+use super::report::ArchiveVerifyReport;
 use crate::commands::archive::list::ListCommand;
 use crate::core::collisions::{print_collisions, print_overrides};
 use crate::core::command_context::CommandContext;
