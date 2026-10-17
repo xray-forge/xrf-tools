@@ -1,7 +1,9 @@
 mod ambient_effects;
 mod ambient_wind;
 mod cameras;
+pub(crate) mod fixtures;
 mod lens_flares;
+mod level_loader;
 mod placed_emitter;
 mod reduced_textures;
 mod scenes;

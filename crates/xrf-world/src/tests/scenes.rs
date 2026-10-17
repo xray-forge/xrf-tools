@@ -4,86 +4,16 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use xrf_environment::WeatherDescriptor;
-use xrf_error::{XrfError, XrfResult};
-use xrf_material::XraySurfaceDescriptor;
-use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather,
-  RenderSceneFrame, RenderSceneId, RenderSpawnModels, RenderViewportId, RenderWorld,
-};
-use xrf_visual::{LightsDescription, SectorPackage};
+use xrf_renderer::{RenderLevelSource, RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorld};
 
+use crate::tests::fixtures::TestLevelSource;
 use crate::tests::test_workers::create_workers;
 use crate::world::World;
 
-/// A level with nothing in it, shared with every other source of the same key.
-struct EmptySource {
-  key: Option<String>,
-}
-
-impl RenderAssetSource for EmptySource {
-  fn get_texture_scope(&self) -> String {
-    String::from("test")
-  }
-
-  fn read_texture(&self, _: &str) -> XrfResult<Option<Vec<u8>>> {
-    Ok(None)
-  }
-}
-
-impl RenderLevelSource for EmptySource {
-  fn get_sector_count(&self) -> u32 {
-    0
-  }
-
-  fn get_scene_key(&self) -> Option<String> {
-    self.key.clone()
-  }
-
-  fn pack_sector(&self, _: u32) -> XrfResult<SectorPackage> {
-    Err(none())
-  }
-
-  fn get_surfaces(&self) -> &[XraySurfaceDescriptor] {
-    &[]
-  }
-
-  fn read_lights(&self) -> XrfResult<LightsDescription> {
-    Err(none())
-  }
-
-  fn read_weather(&self) -> XrfResult<RenderLevelWeather> {
-    Err(none())
-  }
-
-  fn read_weather_cycle(&self, _: &str) -> XrfResult<Vec<WeatherDescriptor>> {
-    Err(none())
-  }
-
-  fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {
-    Err(none())
-  }
-
-  fn read_spawn_models(&self, _: &[String]) -> XrfResult<RenderSpawnModels> {
-    Err(none())
-  }
-
-  fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>> {
-    Ok(None)
-  }
-
-  fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>> {
-    Ok(None)
-  }
-}
-
-fn none() -> XrfError {
-  XrfError::new_not_found_error("nothing")
-}
-
 fn source(key: Option<&str>) -> Arc<dyn RenderLevelSource> {
-  Arc::new(EmptySource {
+  Arc::new(TestLevelSource {
     key: key.map(String::from),
+    ..TestLevelSource::default()
   })
 }
 

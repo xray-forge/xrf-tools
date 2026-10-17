@@ -1,67 +1,99 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::Sender;
 
 use xrf_renderer::{LoaderReceiver, RenderLevelSource, RenderWorkers};
 use xrf_visual::SectorPackage;
 
+use crate::level::loader_flight::LoaderFlight;
 use crate::level::surface_tally::SurfaceTally;
 
 /// One sector's pack as a loader thread finished it, with what its surfaces draw, or why it could not be packed.
 pub type SectorLoad = (u32, Result<(SectorPackage, SurfaceTally), String>);
 
-/// Packs every sector of a level side by side on the loader threads, handing each to the render thread as it is done.
-/// Dropped, it lets go of the sectors not started yet, so a level closed mid open stops costing work.
+/// Packs a level's sectors side by side on the loader threads, the pool's width of them at a time, handing each to the
+/// render thread as it is done and starting the next as they are taken. Dropped, it lets go of the sectors not started
+/// yet, so a level closed mid open stops costing work.
 pub struct LevelLoader {
+  source: Arc<dyn RenderLevelSource>,
+  workers: RenderWorkers,
+  sender: Sender<SectorLoad>,
   receiver: LoaderReceiver<SectorLoad>,
   total: u32,
+  /// The sectors started, in order, and how many of them finished.
+  flight: LoaderFlight,
   is_cancelled: Arc<AtomicBool>,
 }
 
 impl LevelLoader {
   pub fn start(source: Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
     let (sender, receiver) = LoaderReceiver::channel();
-    let total: u32 = source.get_sector_count();
-    let is_cancelled: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-
-    for sector in 0..total {
-      let (sender, source, is_cancelled) = (sender.clone(), Arc::clone(&source), Arc::clone(&is_cancelled));
-
-      workers.spawn(move || {
-        if is_cancelled.load(Ordering::Acquire) {
-          return;
-        }
-
-        let pack: Result<(SectorPackage, SurfaceTally), String> = source
-          .pack_sector(sector)
-          .map(|package| {
-            let tally: SurfaceTally = SurfaceTally::measure(&package);
-
-            (package, tally)
-          })
-          .map_err(|error| error.to_string());
-
-        if let Err(error) = &pack {
-          log::error!("Sector {sector} cannot be drawn: {error}");
-        }
-
-        let _ = sender.send((sector, pack));
-      });
-    }
-
-    Self {
+    let mut loader: Self = Self {
+      total: source.get_sector_count(),
+      source,
+      workers: workers.clone(),
+      sender,
       receiver,
-      total,
-      is_cancelled,
-    }
+      flight: LoaderFlight::new(workers),
+      is_cancelled: Arc::new(AtomicBool::new(false)),
+    };
+
+    loader.refill();
+
+    loader
   }
 
   pub fn get_total(&self) -> u32 {
     self.total
   }
 
-  /// The sectors finished since the last call, at most `limit` of them.
+  /// The sectors finished since the last call, at most `limit` of them; starts as many more as finished.
   pub fn take(&mut self, limit: usize) -> Vec<SectorLoad> {
-    self.receiver.try_iter().take(limit).collect()
+    let taken: Vec<SectorLoad> = self.receiver.try_iter().take(limit).collect();
+
+    self.refill();
+
+    taken
+  }
+
+  /// Starts the next sectors while the pool's width of them are not packing.
+  fn refill(&mut self) {
+    while self.flight.get_started() < self.total
+      && let Some(finished) = self.flight.start()
+    {
+      let sector: u32 = self.flight.get_started() - 1;
+      let (sender, source, is_cancelled) = (
+        self.sender.clone(),
+        Arc::clone(&self.source),
+        Arc::clone(&self.is_cancelled),
+      );
+
+      self.workers.spawn(move || {
+        if !is_cancelled.load(Ordering::Acquire) {
+          let _ = sender.send((sector, Self::pack(source.as_ref(), sector)));
+        }
+
+        finished.fetch_add(1, Ordering::AcqRel);
+      });
+    }
+  }
+
+  /// One sector packed, with what its surfaces draw.
+  fn pack(source: &dyn RenderLevelSource, sector: u32) -> Result<(SectorPackage, SurfaceTally), String> {
+    let pack: Result<(SectorPackage, SurfaceTally), String> = source
+      .pack_sector(sector)
+      .map(|package| {
+        let tally: SurfaceTally = SurfaceTally::measure(&package);
+
+        (package, tally)
+      })
+      .map_err(|error| error.to_string());
+
+    if let Err(error) = &pack {
+      log::error!("Sector {sector} cannot be drawn: {error}");
+    }
+
+    pack
   }
 }
 
