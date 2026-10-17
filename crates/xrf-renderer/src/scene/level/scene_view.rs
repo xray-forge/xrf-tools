@@ -396,6 +396,7 @@ impl SceneView {
         sway: &Self::to_sway(&scene.statics, self.features.wind.get_sway()),
         grass_reach: self.features.grass.get_cascade_reach(),
         campfire_shares: &scene.campfire_shares,
+        is_scene_first: frame.is_scene_first,
       },
     );
     self.shared.camera = *view;

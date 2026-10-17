@@ -159,6 +159,7 @@ impl LevelLights {
       sway,
       grass_reach,
       campfire_shares,
+      is_scene_first,
     } = frame;
 
     into.begin(
@@ -209,6 +210,7 @@ impl LevelLights {
             eye,
             forward,
             is_in_view,
+            is_scene_first,
           };
 
           self.shadows.ask(&ask, (statics, sway, grass_reach));

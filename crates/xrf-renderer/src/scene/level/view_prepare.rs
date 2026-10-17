@@ -31,4 +31,6 @@ pub struct ViewPrepare<'a> {
   pub weather_textures: WeatherTextures<'a>,
   /// How fast the weather's clock runs against real time.
   pub weather_rate: f32,
+  /// Whether it is the first of its scene's views this frame, which draws the scene's own work: the lights' faces.
+  pub is_scene_first: bool,
 }

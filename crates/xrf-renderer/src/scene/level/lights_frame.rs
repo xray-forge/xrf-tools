@@ -24,4 +24,6 @@ pub struct LightsFrame<'a> {
   pub grass_reach: Option<f32>,
   /// How much of each campfire's idle light shows, by its id.
   pub campfire_shares: &'a HashMap<u16, f32>,
+  /// Whether the view is its scene's first, which draws the lights' faces with its own grass cards.
+  pub is_scene_first: bool,
 }

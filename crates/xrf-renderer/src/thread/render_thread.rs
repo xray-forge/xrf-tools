@@ -1267,7 +1267,7 @@ impl RenderThread {
 
       match Self::ready_view(
         (gpu, &self.shaders),
-        (viewport, scene),
+        (viewport, scene, is_first),
         rect,
         (&mut *encoder, &mut self.periodic),
         (&mut phases.load, &mut phases.prepare),
@@ -1850,7 +1850,7 @@ impl RenderThread {
   /// `rect` is its whole rectangle; what loading and preparing take is added to `load` and `prepare`.
   fn ready_view(
     (gpu, shaders): (&mut GpuState, &ShaderLibrary),
-    (viewport, scene): (&mut RenderViewport, Option<&mut LevelScene>),
+    (viewport, scene, is_scene_first): (&mut RenderViewport, Option<&mut LevelScene>, bool),
     rect: &RenderRect,
     (encoder, periodic): (&mut FrameEncoder, &mut PeriodicScheduler),
     (load, prepare): (&mut Duration, &mut Duration),
@@ -1967,6 +1967,7 @@ impl RenderThread {
           weather,
           weather_textures: gpu.weather_textures.scoped(source.get_texture_scope()),
           weather_rate: world.clock_rate,
+          is_scene_first,
         },
       );
       view_state.offer_periodic(scene, device, periodic, &gpu.view_layout);

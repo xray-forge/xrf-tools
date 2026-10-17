@@ -324,6 +324,7 @@ impl LevelLightShadows {
       basis,
       eye,
       is_in_view,
+      is_scene_first,
       ..
     } = *ask;
     let Some(entry) = self.entries.get_mut(&handle) else {
@@ -350,16 +351,19 @@ impl LevelLightShadows {
       ));
     }
 
-    // The cards stand about the eye: a light near it whose reach meets them casts their shadow.
-    let is_grassed: bool = distance < GRASS_LIGHT_DISTANCE
-      && grass_reach.is_some_and(|reach| eye.distance(spatial.truncate()) < spatial.w + reach);
+    // The cards stand about the eye: a light near it whose reach meets them casts their shadow. The scene's first view
+    // draws the faces with its own cards, so only its asks say which lights cast them; another view's leave that be.
+    if is_scene_first {
+      entry.is_grassed = distance < GRASS_LIGHT_DISTANCE
+        && grass_reach.is_some_and(|reach| eye.distance(spatial.truncate()) < spatial.w + reach);
+    }
+
+    let is_grassed: bool = entry.is_grassed;
     let swaying: f32 =
       entry
         .swaying
         .map_or(0.0, |(_, swaying)| swaying)
         .max(if is_grassed { GRASS_LEAN / near } else { 0.0 });
-
-    entry.is_grassed = is_grassed;
 
     self.is_swaying |= sway.amplitude * swaying > 0.0;
     // How wide a face's texels are, for each metre from the light, times the square's side.
