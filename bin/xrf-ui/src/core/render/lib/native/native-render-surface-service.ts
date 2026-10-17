@@ -1,14 +1,8 @@
 import { OnDeactivation } from "@wirestate/core";
-import { comparer, reaction, RefObservable, runInAction } from "@wirestate/mobx";
+import { RefObservable, runInAction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
-import { renderCommands } from "@/core/ipc/commands/render";
-import {
-  RenderAppliedReport,
-  RenderFrameReport,
-  RenderLoadReport,
-  RenderSettings,
-} from "@/core/ipc/types/xrf-renderer";
+import { RenderAppliedReport, RenderFrameReport, RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { WorldCameraPose, WorldWeatherReport } from "@/core/ipc/types/xrf-world";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
@@ -82,17 +76,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
       this.onClick(point, isThrough)
     );
     this.onAttached(container);
-    this.reactions.push(
-      reaction(
-        () => this.renderSettingsService.renderSettings,
-        (settings: RenderSettings) =>
-          void renderCommands
-            .configure(settings)
-            .catch((error: unknown) => this.log.warn("The renderer refused its settings:", error)),
-        { equals: comparer.structural, fireImmediately: true }
-      ),
-      ...this.start(viewport)
-    );
+    this.reactions.push(...this.start(viewport));
   }
 
   /** Stops drawing and closes the element's hole. */

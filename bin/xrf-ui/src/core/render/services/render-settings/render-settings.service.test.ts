@@ -6,11 +6,36 @@ import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-perio
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
 import { RenderSettingsService } from "@/core/render/services/render-settings/render-settings.service";
 import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
+import { mockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+
+/** How often the renderer was told its settings. */
+function countConfigured(): number {
+  return mockInvoke.mock.calls.filter(([name]) => name === "plugin:render|configure").length;
+}
 
 describe("RenderSettingsService", () => {
   beforeEach(() => {
     clearLocalStorage();
+  });
+
+  // The settings are the renderer's, not a viewport's: told once, then once a change, however many viewports draw.
+  it("tells the renderer its settings while provisioned, with no viewport attached", () => {
+    const { service } = mockInjectedService(RenderSettingsService);
+
+    mockInvoke.mockClear();
+    service.onProvision();
+
+    expect(countConfigured()).toBe(1);
+
+    service.setVsync(false);
+
+    expect(countConfigured()).toBe(2);
+
+    service.onDeprovision();
+    service.setVsync(true);
+
+    expect(countConfigured()).toBe(2);
   });
 
   it("caps viewports at sixty until something says otherwise", () => {
