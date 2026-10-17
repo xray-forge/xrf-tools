@@ -12,7 +12,6 @@ use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
-use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::lighting::sun_cascade::SunCascade;
 use crate::lighting::sun_view_rays::SunViewRays;
 use crate::pass::camera_uniform::CameraUniform;
@@ -31,6 +30,7 @@ use crate::scene::level::shadow_cascade_view::ShadowCascadeView;
 use crate::scene::level::shadow_cut::ShadowCut;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_prefetch::ShadowPrefetch;
+use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// Each cascade's passes, as the frame's timings name them, in the order a job lists them: a whole draw; its static

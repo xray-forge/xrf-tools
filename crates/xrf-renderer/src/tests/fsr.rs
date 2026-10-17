@@ -9,7 +9,6 @@ use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::frame::frame_texture::FrameTexture;
-use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::temporal_jitter::TemporalJitter;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_target_uses::ViewTargetUses;
@@ -27,6 +26,7 @@ use crate::pass::fsr_shading_change_parameters::FsrShadingChangeParameters;
 use crate::pass::fsr_shading_pyramid_parameters::FsrShadingPyramidParameters;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::pipeline_source::PipelineSource;
+use crate::scene::level::feature::fsr_targets::FsrTargets;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::test_bundle::checkout_dxc;
 

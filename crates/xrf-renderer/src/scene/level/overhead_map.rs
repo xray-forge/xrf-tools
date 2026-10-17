@@ -11,7 +11,6 @@ use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
-use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::level_passes::LevelPasses;
@@ -29,6 +28,7 @@ use crate::pass::water_uniform::WaterUniform;
 use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::shadow_cut::ShadowCut;
 use crate::scene::level::shadow_frame::ShadowFrame;
+use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// A square of the level around the camera seen straight down, as its shape lays it out: a depth whose every texel says

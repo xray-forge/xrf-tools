@@ -1,11 +1,11 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
 
-use crate::frame::froxel_volume::FroxelVolume;
 use crate::pass::froxel_inject_parameters::FroxelInjectParameters;
 use crate::pass::froxel_integrate_parameters::FroxelIntegrateParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::froxel_volume::FroxelVolume;
 
 /// Invocations a workgroup runs across and down the grid, as both source declare them.
 const WORKGROUP: u32 = 8;

@@ -10,13 +10,13 @@ use crate::contract::render_reflection_quality::RenderReflectionQuality;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_reflection_trace_quality::RenderReflectionTraceQuality;
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::frame::reflection_history::ReflectionHistory;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::reflection_uniform::ReflectionUniform;
+use crate::scene::level::feature::reflection_history::ReflectionHistory;
 
 fn enhanced() -> RenderReflectionSettings {
   RenderReflectionSettings {

@@ -6,7 +6,6 @@ use xrf_renderer_core::{
   StorageArrayMut,
 };
 
-use crate::frame::grass_card_handles::GrassCardHandles;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::level_passes::LevelPasses;
@@ -15,6 +14,7 @@ use crate::pass::trace_sway_parameters::TraceSwayParameters;
 use crate::pass::trace_sway_slot::TraceSwaySlot;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::grass_card_handles::GrassCardHandles;
 use crate::scene::level::grass_cards::GrassCards;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::grass_view::GrassView;

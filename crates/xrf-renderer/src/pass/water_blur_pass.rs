@@ -3,12 +3,12 @@ use xrf_renderer_core::{
   FrameGraph, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, PassParameters, UniformBinding,
 };
 
-use crate::frame::water_reflection::WaterReflection;
 use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::water_blur_parameters::WaterBlurParameters;
 use crate::pass::water_blur_uniform::WaterBlurUniform;
+use crate::scene::level::feature::water_reflection::WaterReflection;
 
 /// Blurs the enhanced water's reflection one way at a time into half-size targets.
 pub struct WaterBlurPass {

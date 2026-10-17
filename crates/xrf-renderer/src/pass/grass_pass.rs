@@ -4,7 +4,6 @@ use xrf_renderer_core::{
   VertexLayout,
 };
 
-use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::compute_grid::ComputeGrid;
 use crate::pass::grass_build_parameters::GrassBuildParameters;
@@ -19,6 +18,7 @@ use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::pass::grass_sort_parameters::GrassSortParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 
 /// The planting's entry points, in the order a frame dispatches them: the ring's stale cells ranked and the nearest
 /// planted, before the frame's depth; then, against that depth, every current cell culled and what it keeps sorted.

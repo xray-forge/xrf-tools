@@ -2,13 +2,13 @@ use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
-use crate::frame::reflection_history::ReflectionHistory;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::reflection_parameters::ReflectionParameters;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_request_parameters::TraceRequestParameters;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::reflection_history::ReflectionHistory;
 
 /// Stochastic screen-space reflections at the size their quality traces at: each glossy pixel's ray scattered by its
 /// roughness and walked up and down the frame's nearest depth pyramid, what it met lit; then denoised, the last frame's

@@ -5,7 +5,6 @@ use xrf_renderer_core::{
 };
 
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::frame::froxel_volume::FroxelVolume;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::froxel_inject_parameters::FroxelInjectParameters;
@@ -15,6 +14,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_volume_parameters::LightVolumeParameters;
 use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::froxel_volume::FroxelVolume;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;

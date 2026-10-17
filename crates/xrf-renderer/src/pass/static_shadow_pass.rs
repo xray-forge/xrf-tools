@@ -1,7 +1,6 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
 
-use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::pass::overhead_shift_parameters::OverheadShiftParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::shadow_casters::ShadowCasters;
@@ -9,6 +8,7 @@ use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draw_permutation::StaticDrawPermutation;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_layout::StaticLayout;

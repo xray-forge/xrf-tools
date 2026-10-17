@@ -1,6 +1,6 @@
-use crate::frame::fsr_targets::FsrTargets;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::scene::level::feature::dlss_resolve::DlssResolve;
+use crate::scene::level::feature::fsr_targets::FsrTargets;
 use crate::scene::level::feature::ray_reconstruction_resolve::RayReconstructionResolve;
 use crate::scene::level::feature::temporal_resolve::TemporalResolve;
 

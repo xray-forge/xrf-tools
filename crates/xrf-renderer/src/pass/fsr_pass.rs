@@ -5,8 +5,6 @@ use xrf_renderer_core::{
 };
 
 use crate::contract::render_debug_view::RenderDebugView;
-use crate::frame::fsr_frame::FsrFrame;
-use crate::frame::fsr_targets::FsrTargets;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::fsr_accumulate_parameters::FsrAccumulateParameters;
 use crate::pass::fsr_debug_view_parameters::FsrDebugViewParameters;
@@ -21,6 +19,8 @@ use crate::pass::fsr_shading_pyramid_parameters::FsrShadingPyramidParameters;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
+use crate::scene::level::feature::fsr_frame::FsrFrame;
+use crate::scene::level::feature::fsr_targets::FsrTargets;
 
 /// Drawn texels a side of one workgroup of the depth reconstruction.
 const RECONSTRUCT_WORKGROUP: u32 = 8;

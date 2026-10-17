@@ -6,7 +6,6 @@ use xrf_renderer_core::{
 };
 
 use crate::frame::view_targets::ViewTargets;
-use crate::frame::water_reflection::WaterReflection;
 use crate::host::render_bundle::RenderBundle;
 use crate::pass::enhanced_water_maps::EnhancedWaterMaps;
 use crate::pass::enhanced_water_parameters::EnhancedWaterParameters;
@@ -27,6 +26,7 @@ use crate::pass::water_reflection_parameters::WaterReflectionParameters;
 use crate::pass::water_surface_parameters::WaterSurfaceParameters;
 use crate::pass::water_uniform::WaterUniform;
 use crate::scene::level::feature::water_feature::WaterFeature;
+use crate::scene::level::feature::water_reflection::WaterReflection;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_layout::StaticLayout;
 

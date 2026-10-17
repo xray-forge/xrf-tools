@@ -1,5 +1,5 @@
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
-use crate::frame::sky_prefilter_level::SkyPrefilterLevel;
+use crate::scene::level::feature::sky_prefilter_level::SkyPrefilterLevel;
 
 /// The sky as drawn, prefiltered by roughness into a cube's mips: the first mip the sky itself, each after it the sky
 /// blurred by the lobe of a rougher surface, so a reflection that meets nothing reads the cube at the mip its

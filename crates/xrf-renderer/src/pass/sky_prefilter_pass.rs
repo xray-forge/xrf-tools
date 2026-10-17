@@ -2,9 +2,9 @@ use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
 
-use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
+use crate::scene::level::feature::sky_prefilter::SkyPrefilter;
 
 /// Invocations a workgroup runs a side, as `shaders/frame/sky_prefilter.wgsl` declares them.
 const WORKGROUP: u32 = 8;

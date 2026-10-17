@@ -1,9 +1,9 @@
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::history::History;
-use crate::frame::reflection_frame::ReflectionFrame;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::trace_request_list::TraceRequestList;
+use crate::scene::level::feature::reflection_frame::ReflectionFrame;
 
 /// What the screen-space reflections keep from one frame to the next: what their denoiser writes each frame for the
 /// next, a side read while the other is written, none while DLSS ray reconstruction takes the trace raw; at the
