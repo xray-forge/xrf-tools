@@ -3,6 +3,7 @@ use xrf_material::XraySurfaceDraw;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
+use crate::pass::particle_blend::ParticleBlend;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::shader_pipelines::create_checked;
 use crate::pass::thunder_parameters::ThunderParameters;
@@ -11,14 +12,13 @@ use crate::pass::view_binding::ViewBinding;
 /// What draws a strike: its model, then its top glow, then its middle one, as `shaders/frame/thunder.wgsl` names them.
 const ENTRIES: [&str; 3] = ["vs_model", "vs_glow_top", "vs_glow_center"];
 
-/// The blends a bolt's shader composites by, as `XraySurfaceDraw` names them: blended, added, alpha added, multiplied,
-/// multiplied twice over.
-const BLENDS: [(wgpu::BlendFactor, wgpu::BlendFactor); 5] = [
-  (wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::OneMinusSrcAlpha),
-  (wgpu::BlendFactor::One, wgpu::BlendFactor::One),
-  (wgpu::BlendFactor::SrcAlpha, wgpu::BlendFactor::One),
-  (wgpu::BlendFactor::Dst, wgpu::BlendFactor::Zero),
-  (wgpu::BlendFactor::Dst, wgpu::BlendFactor::Src),
+/// The blends a bolt's shader composites by: blended, added, alpha added, multiplied, multiplied twice over.
+const BLENDS: [ParticleBlend; 5] = [
+  ParticleBlend::Blend,
+  ParticleBlend::Add,
+  ParticleBlend::AlphaAdd,
+  ParticleBlend::Multiply,
+  ParticleBlend::MultiplyDoubled,
 ];
 
 /// Draws the bolt striking over a viewport's finished scene, as `dxThunderboltRender` does after the rain: its model and
@@ -116,12 +116,8 @@ impl ThunderPass {
     ENTRIES
       .iter()
       .flat_map(|entry| BLENDS.iter().map(move |blend| (*entry, *blend)))
-      .map(|(entry, (from, destination))| {
-        let component: wgpu::BlendComponent = wgpu::BlendComponent {
-          src_factor: from,
-          dst_factor: destination,
-          operation: wgpu::BlendOperation::Add,
-        };
+      .map(|(entry, blend)| {
+        let component: wgpu::BlendComponent = blend.get_component();
         let targets: [Option<wgpu::ColorTargetState>; 1] = [Some(wgpu::ColorTargetState {
           format: ViewTargets::SCENE,
           blend: Some(wgpu::BlendState {
@@ -165,15 +161,57 @@ impl ThunderPass {
       .collect()
   }
 
-  /// A shader's blend among `BLENDS`; one that composites nothing still lights the air, as the engine's lightning is
-  /// added.
+  /// A shader's blend among `BLENDS`; one that composites nothing, or writes over what is behind it, still lights the
+  /// air, as the engine's lightning is added.
   fn to_blend(draw: XraySurfaceDraw) -> usize {
-    match draw {
-      XraySurfaceDraw::Blended { .. } => 0,
-      XraySurfaceDraw::Added { is_weighted: true, .. } => 2,
-      XraySurfaceDraw::Multiplied { is_doubled: false } => 3,
-      XraySurfaceDraw::Multiplied { is_doubled: true } => 4,
-      _ => 1,
+    let find = |blend: ParticleBlend| BLENDS.iter().position(|it| *it == blend);
+
+    ParticleBlend::of(draw)
+      .and_then(find)
+      .or_else(|| find(ParticleBlend::Add))
+      .unwrap_or_default()
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use xrf_material::XraySurfaceDraw;
+
+  use super::{BLENDS, ThunderPass};
+  use crate::pass::particle_blend::ParticleBlend;
+
+  #[test]
+  fn composites_each_draw_by_its_blend_and_adds_what_has_none_among_them() {
+    for (draw, blend) in [
+      (XraySurfaceDraw::Blended { reference: 0 }, ParticleBlend::Blend),
+      (
+        XraySurfaceDraw::Added {
+          reference: 0,
+          is_weighted: false,
+        },
+        ParticleBlend::Add,
+      ),
+      (
+        XraySurfaceDraw::Added {
+          reference: 0,
+          is_weighted: true,
+        },
+        ParticleBlend::AlphaAdd,
+      ),
+      (
+        XraySurfaceDraw::Multiplied { is_doubled: false },
+        ParticleBlend::Multiply,
+      ),
+      (
+        XraySurfaceDraw::Multiplied { is_doubled: true },
+        ParticleBlend::MultiplyDoubled,
+      ),
+      (XraySurfaceDraw::Opaque, ParticleBlend::Add),
+      (XraySurfaceDraw::AlphaTested { reference: 0 }, ParticleBlend::Add),
+      (XraySurfaceDraw::Invisible, ParticleBlend::Add),
+      (XraySurfaceDraw::Water { is_soft: true }, ParticleBlend::Add),
+    ] {
+      assert_eq!(BLENDS[ThunderPass::to_blend(draw)], blend, "{draw:?}");
     }
   }
 }
