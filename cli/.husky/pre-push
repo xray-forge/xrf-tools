@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+
+# Uploads the Git LFS objects a push references (the renderer's DXC and water maps). Git runs the hooks of this
+# directory, so Git LFS's own pre-push hook never does, and a push without this one sends only their pointers.
+command -v git-lfs >/dev/null 2>&1 || {
+  printf >&2 "\n%s\n\n" "This repository keeps binaries in Git LFS, which is not installed: install it, then push again."
+  exit 2
+}
+
+git lfs pre-push "$@"
