@@ -54,9 +54,8 @@ describe("LevelShadowAction", () => {
 
     await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
-    expect(view.features.shadows).toEqual({
-      contact: { ...DEFAULT_RENDER_SHADOW_SETTINGS.contact, mode: ERenderContactShadowMode.ENHANCED },
-    });
+    // Only the mode is the view's own, so the strengths still follow the settings.
+    expect(view.features.shadows).toEqual({ contact: { mode: ERenderContactShadowMode.ENHANCED } });
     expect(getByRole("slider", { name: "Contact length" })).toBeInTheDocument();
     expect(getByRole("slider", { name: "Contact lights" })).toHaveAttribute("aria-valuetext", "4 lights");
     expect(getByRole("button", { hidden: true, name: "Sun shadows" })).toHaveAccessibleDescription(

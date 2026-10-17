@@ -55,7 +55,7 @@ export function LevelOcclusionAction({
   const viewService: LevelViewService = useInjection(LevelViewService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
   const { settings, features } = useLevelRenderFeatures();
-  const { state, set, reset } = useLevelFeature("ambientOcclusion");
+  const { state, set, setNested, reset } = useLevelFeature("ambientOcclusion");
 
   const options: ILevelViewOptions = viewService.options;
   const hemiStrength: number = viewService.hemiStrength;
@@ -72,10 +72,8 @@ export function LevelOcclusionAction({
   const isIndirect: boolean = indirectLight.mode === ERenderIndirectLightMode.ENHANCED;
 
   const onSetVbao = useCallback(
-    (part: Partial<TRenderAmbientOcclusionVbaoSettings>): void => {
-      set({ vbao: { ...vbao, ...part } });
-    },
-    [vbao, set]
+    (part: Partial<TRenderAmbientOcclusionVbaoSettings>): void => setNested("vbao", part),
+    [setNested]
   );
 
   return (

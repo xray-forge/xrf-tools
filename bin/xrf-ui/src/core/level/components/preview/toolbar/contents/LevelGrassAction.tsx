@@ -44,16 +44,14 @@ export function LevelGrassAction({
   const viewService: LevelViewService = useInjection(LevelViewService);
   const { settings } = useLevelRenderFeatures();
   const { isOn, toggle } = useLevelViewToggle("isGrassy");
-  const { state, set } = useLevelFeature("grass");
+  const { state, set, setNested } = useLevelFeature("grass");
 
   const grass: TRenderGrassSettings = state.value;
   const foliage: TRenderFoliageSettings = grass.foliage;
 
   const setFoliage = useCallback(
-    (part: Partial<TRenderFoliageSettings>): void => {
-      set({ foliage: { ...foliage, ...part } });
-    },
-    [foliage, set]
+    (part: Partial<TRenderFoliageSettings>): void => setNested("foliage", part),
+    [setNested]
   );
 
   // The foliage's motion is the Wind popover's, which a reset here leaves alone.

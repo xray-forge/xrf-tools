@@ -43,17 +43,15 @@ export function LevelWaterAction({
 }: BaseComponentProps): ReactElement {
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
   const { isOn, toggle } = useLevelViewToggle("isWaterVisible");
-  const { state, set, reset } = useLevelFeature("water");
+  const { state, set, setNested, reset } = useLevelFeature("water");
   // The keyframe on screen, whose `water_intensity` scales what the water reflects.
   const manual: ILevelManualWeather = weatherService.shown;
   const water: TRenderWaterSettings = state.value;
   const enhanced: TRenderEnhancedWaterSettings = water.enhanced;
 
   const onSetEnhanced = useCallback(
-    (part: Partial<TRenderEnhancedWaterSettings>): void => {
-      set({ enhanced: { ...enhanced, ...part } });
-    },
-    [enhanced, set]
+    (part: Partial<TRenderEnhancedWaterSettings>): void => setNested("enhanced", part),
+    [setNested]
   );
 
   return (
