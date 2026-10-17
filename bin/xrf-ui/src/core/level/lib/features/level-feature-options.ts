@@ -144,15 +144,35 @@ export const LEVEL_ANTIALIASING_MODES: ReadonlyArray<RenderAntialiasing> = Objec
   (mode: RenderAntialiasing) => mode !== ERenderAntialiasing.NONE
 );
 
+/** Every key of a group a view may set, as a table the compiler holds complete: a key left out is never stored. */
+type TKeyTable<T> = { readonly [P in keyof Required<T>]: true };
+
 /** Each group's settings a view may set, which is all a stored view keeps. */
-const LEVEL_FEATURE_KEYS: {
-  readonly [K in TLevelFeatureKey]: ReadonlyArray<keyof ILevelFeatureOptions[K]>;
-} = {
-  ambientOcclusion: ["method", "quality", "radius", "strength", "vbao"],
-  grass: ["density", "foliage", "height", "isAligned", "isShadowed", "radius", "shadowRadius", "slopeLimit"],
-  lights: ["isLevelLights", "isShadowed", "isVolumetric", "shadowFilter"],
-  shadows: ["bias", "blend", "cascades", "contact", "filter", "resolution"],
-  water: ["distortion", "enhanced", "isDistorted", "isSoft", "mode", "reflection", "ripple", "waveHeight", "waveSpeed"],
+const LEVEL_FEATURE_KEYS: { readonly [K in TLevelFeatureKey]: TKeyTable<ILevelFeatureOptions[K]> } = {
+  ambientOcclusion: { method: true, quality: true, radius: true, strength: true, vbao: true },
+  grass: {
+    density: true,
+    foliage: true,
+    height: true,
+    isAligned: true,
+    isShadowed: true,
+    radius: true,
+    shadowRadius: true,
+    slopeLimit: true,
+  },
+  lights: { isLevelLights: true, isShadowed: true, isVolumetric: true, shadowFilter: true },
+  shadows: { bias: true, blend: true, cascades: true, contact: true, filter: true, resolution: true },
+  water: {
+    distortion: true,
+    enhanced: true,
+    isDistorted: true,
+    isSoft: true,
+    mode: true,
+    reflection: true,
+    ripple: true,
+    waveHeight: true,
+    waveSpeed: true,
+  },
 };
 
 /** The groups no toolbar toggle turns off, whose own mode does, of which a view may set every setting. */
@@ -168,30 +188,39 @@ export type TLevelModeFeatureKey =
   | "volumetric";
 
 /** Each such group's settings a view may set. */
-const LEVEL_MODE_FEATURE_KEYS: {
-  readonly [K in TLevelModeFeatureKey]: ReadonlyArray<keyof ILevelFeatureOptions[K]>;
-} = {
-  debanding: ["mode", "quality", "radius"],
-  enhancedBloom: ["blur", "exposure", "mode", "sky", "threshold", "vibrance"],
-  fog: ["density", "height", "mode", "scattering", "skyFade", "sunColor"],
-  glass: ["mode", "refraction"],
-  indirectLight: ["intensity", "mode", "radius"],
-  parallax: [
-    "blending",
-    "cavity",
-    "height",
-    "isRefined",
-    "isSteep",
-    "mode",
-    "range",
-    "shadow",
-    "steps",
-    "surfaceHeight",
-    "surfaceRange",
-  ],
-  rain: ["distance", "isReliefFlooded", "mode", "puddles", "reflectivity", "ripples"],
-  reflections: ["distance", "intensity", "mode", "quality"],
-  volumetric: ["mode", "intensity", "anisotropy", "distance"],
+const LEVEL_MODE_FEATURE_KEYS: { readonly [K in TLevelModeFeatureKey]: TKeyTable<ILevelFeatureOptions[K]> } = {
+  debanding: { mode: true, quality: true, radius: true },
+  enhancedBloom: { blur: true, exposure: true, mode: true, sky: true, threshold: true, vibrance: true },
+  fog: { density: true, height: true, mode: true, scattering: true, skyFade: true, sunColor: true },
+  glass: { mode: true, refraction: true },
+  indirectLight: { intensity: true, mode: true, radius: true },
+  parallax: {
+    blending: true,
+    cavity: true,
+    height: true,
+    isRefined: true,
+    isSteep: true,
+    mode: true,
+    range: true,
+    shadow: true,
+    steps: true,
+    surfaceHeight: true,
+    surfaceRange: true,
+  },
+  rain: { distance: true, isReliefFlooded: true, mode: true, puddles: true, reflectivity: true, ripples: true },
+  reflections: {
+    distance: true,
+    intensity: true,
+    isGrassReflected: true,
+    isTraced: true,
+    mode: true,
+    probe: true,
+    quality: true,
+    reach: true,
+    skyGain: true,
+    traceQuality: true,
+  },
+  volumetric: { mode: true, intensity: true, anisotropy: true, distance: true },
 };
 
 /**
@@ -205,7 +234,9 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     const group: Record<string, unknown> = (overrides[key] ?? {}) as Record<string, unknown>;
 
     return Object.fromEntries(
-      LEVEL_FEATURE_KEYS[key].filter((it) => group[it as string] !== undefined).map((it) => [it, group[it as string]])
+      Object.keys(LEVEL_FEATURE_KEYS[key])
+        .filter((it: string) => group[it] !== undefined)
+        .map((it: string) => [it, group[it]])
     ) as ILevelFeatureOptions[K];
   }
 
@@ -213,9 +244,9 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     const group: Record<string, unknown> = (overrides[key] ?? {}) as Record<string, unknown>;
 
     return Object.fromEntries(
-      LEVEL_MODE_FEATURE_KEYS[key]
-        .filter((it) => group[it as string] !== undefined)
-        .map((it) => [it, group[it as string]])
+      Object.keys(LEVEL_MODE_FEATURE_KEYS[key])
+        .filter((it: string) => group[it] !== undefined)
+        .map((it: string) => [it, group[it]])
     ) as ILevelFeatureOptions[K];
   }
 
