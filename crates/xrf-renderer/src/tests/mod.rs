@@ -37,6 +37,7 @@ mod puddle_fill;
 mod rain_wetness;
 mod reflections;
 mod render_backend;
+mod render_queue;
 mod render_scale;
 mod render_view_output;
 mod scene_features;
