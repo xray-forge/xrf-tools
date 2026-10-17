@@ -4,7 +4,8 @@
 
 // Helpers drawn over a viewport's finished frame in the window's pass, unlit, as the raw colours they name: line
 // segments, hidden where the scene stands in front of them if they ask to be, and the sun as a disc where the light
-// comes from.
+// comes from. They are placed without the temporal jitter (`motion_current`), so they hold still under a temporal
+// resolve; the jitter moves no depth, so the depth test still compares like with like.
 
 #import "generated/frame/overlay"
 
@@ -22,7 +23,7 @@ struct LineVarying {
 fn vs_line(@location(0) position: vec3<f32>, @location(1) color: vec4<f32>) -> LineVarying {
   var out: LineVarying;
 
-  out.clip = camera.view_projection * vec4<f32>(position, 1.0);
+  out.clip = camera.motion_current * vec4<f32>(position, 1.0);
   out.color = color.rgb;
   out.is_depth_tested = u32(color.a > 0.5);
 
@@ -61,7 +62,7 @@ fn vs_point(@builtin(vertex_index) index: u32, @location(0) point: vec4<f32>, @l
     vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
     vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0),
   );
-  let center: vec4<f32> = camera.view_projection * vec4<f32>(point.xyz, 1.0);
+  let center: vec4<f32> = camera.motion_current * vec4<f32>(point.xyz, 1.0);
   let corner: vec2<f32> = corners[index];
   var out: PointVarying;
 
@@ -109,7 +110,7 @@ fn vs_sun(@builtin(vertex_index) index: u32, @location(0) sun: vec4<f32>) -> Sun
   );
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let toward: vec3<f32> = normalize(rotation * lighting.to_sun.xyz);
-  var clip: vec4<f32> = camera.view_projection * vec4<f32>(camera.position.xyz + toward * SUN_REACH, 1.0);
+  var clip: vec4<f32> = camera.motion_current * vec4<f32>(camera.position.xyz + toward * SUN_REACH, 1.0);
   let corner: vec2<f32> = corners[index];
   var out: SunVarying;
 
