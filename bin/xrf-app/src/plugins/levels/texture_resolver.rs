@@ -3,10 +3,8 @@ use std::sync::{PoisonError, RwLock};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XrayTextureScope;
-use xrf_vfs::XrayRoots;
-
 use xrf_renderer::get_texture_name;
-use xrf_vfs::XrayAssetContainer;
+use xrf_vfs::{XrayAssetContainer, XrayRoots};
 
 use crate::core::assets::{AssetMountState, read_located_asset};
 use crate::plugins::levels::textures::resolve_reference;
