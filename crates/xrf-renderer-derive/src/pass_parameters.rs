@@ -53,7 +53,6 @@ enum SamplerKind {
   Comparison,
 }
 
-/// The storage texture formats a parameter may name: the wgpu variant and the WGSL texel format.
 /// The words a texture names its dimension by.
 const DIMENSIONS: &[&str] = &["d2", "d2_array", "cube", "cube_array", "d3"];
 /// The words a sampled texture names what it samples by.
@@ -63,6 +62,7 @@ const ACCESSES: &[&str] = &["read", "write", "read_write"];
 /// The words a sampler names its kind by.
 const SAMPLER_KINDS: &[&str] = &["filtering", "non_filtering", "comparison"];
 
+/// The storage texture formats a parameter may name: the wgpu variant and the WGSL texel format.
 const STORAGE_FORMATS: &[(&str, &str, &str)] = &[
   ("rgba8unorm", "Rgba8Unorm", "rgba8unorm"),
   ("rgba16float", "Rgba16Float", "rgba16float"),
@@ -424,6 +424,7 @@ fn read_binding(attrs: &[Attribute], ident: &Ident) -> syn::Result<Binding> {
       let formats: Vec<&str> = STORAGE_FORMATS.iter().map(|(spelling, _, _)| *spelling).collect();
 
       check_words(attr, &words, &[DIMENSIONS, &formats, ACCESSES])?;
+
       let format = words
         .iter()
         .find_map(|word| STORAGE_FORMATS.iter().find(|(spelling, _, _)| spelling == word))
