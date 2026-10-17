@@ -194,7 +194,7 @@ export function LevelSpawnPanel({
         <LevelSpawnVisibilityToggle
           entry={row.entry}
           isShown={options[option]}
-          onToggle={() => viewService.setOptions({ ...options, [option]: !options[option] })}
+          onToggle={() => viewService.toggleOption(option)}
         />
       );
     },
