@@ -1,18 +1,31 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ERenderTextureState, RenderTextureReport } from "@/core/ipc/types/xrf-renderer";
+import { ERenderTextureGroup, ERenderTextureState, RenderTextureReport } from "@/core/ipc/types/xrf-renderer";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelTextureReport, toLevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 
 const REPORTS: Array<RenderTextureReport> = [
   {
+    group: ERenderTextureGroup.SURFACES,
     reference: "wall\\wall_panel",
     state: { height: 512, isExpanded: false, kind: ERenderTextureState.LOADED, layout: "BC1", levels: 10, width: 512 },
   },
-  { reference: "terrain\\terrain_zaton", state: { kind: ERenderTextureState.DEFERRED } },
-  { reference: "decal\\decal_poteki", state: { kind: ERenderTextureState.LOADING } },
-  { reference: "wpn\\gone", state: { kind: ERenderTextureState.MISSING } },
-  { reference: "wpn\\broken", state: { kind: ERenderTextureState.FAILED, reason: "Unknown DDS format" } },
+  {
+    group: ERenderTextureGroup.SURFACES,
+    reference: "terrain\\terrain_zaton",
+    state: { kind: ERenderTextureState.DEFERRED },
+  },
+  {
+    group: ERenderTextureGroup.SURFACES,
+    reference: "decal\\decal_poteki",
+    state: { kind: ERenderTextureState.LOADING },
+  },
+  { group: ERenderTextureGroup.SURFACES, reference: "wpn\\gone", state: { kind: ERenderTextureState.MISSING } },
+  {
+    group: ERenderTextureGroup.SURFACES,
+    reference: "wpn\\broken",
+    state: { kind: ERenderTextureState.FAILED, reason: "Unknown DDS format" },
+  },
 ];
 
 describe("toLevelTextureReport", () => {
@@ -31,8 +44,12 @@ describe("toLevelTextureReport", () => {
 
   it("reports every reference that is stood in for, with why, in the order they were read, and no deferred one", () => {
     expect(toLevelTextureReport(REPORTS).problems).toEqual([
-      { reason: "Nothing in the mounted roots answers to it", reference: "wpn\\gone" },
-      { reason: "Unknown DDS format", reference: "wpn\\broken" },
+      {
+        group: ERenderTextureGroup.SURFACES,
+        reason: "Nothing in the mounted roots answers to it",
+        reference: "wpn\\gone",
+      },
+      { group: ERenderTextureGroup.SURFACES, reason: "Unknown DDS format", reference: "wpn\\broken" },
     ]);
   });
 
@@ -40,6 +57,7 @@ describe("toLevelTextureReport", () => {
     const report: ILevelTextureReport = toLevelTextureReport([
       ...REPORTS,
       {
+        group: ERenderTextureGroup.SURFACES,
         reference: "sky\\sky_night",
         state: {
           height: 256,

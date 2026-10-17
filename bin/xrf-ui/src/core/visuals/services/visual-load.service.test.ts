@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
-import { ERenderTextureState } from "@/core/ipc/types/xrf-renderer";
+import { ERenderTextureGroup, ERenderTextureState } from "@/core/ipc/types/xrf-renderer";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
@@ -169,7 +169,11 @@ describe("VisualLoadService textures", () => {
     expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.LOADING);
 
     service.noteTextures(service.sessionId ?? "", [
-      { reference: "wpn\\wpn_ak74", state: { kind: ERenderTextureState.FAILED, reason: "truncated" } },
+      {
+        group: ERenderTextureGroup.SURFACES,
+        reference: "wpn\\wpn_ak74",
+        state: { kind: ERenderTextureState.FAILED, reason: "truncated" },
+      },
     ]);
 
     expect(service.textureStatuses.get(0)).toEqual({
@@ -187,7 +191,7 @@ describe("VisualLoadService textures", () => {
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
     service.noteTextures("another-session", [
-      { reference: "wpn\\wpn_ak74", state: { kind: ERenderTextureState.MISSING } },
+      { group: ERenderTextureGroup.SURFACES, reference: "wpn\\wpn_ak74", state: { kind: ERenderTextureState.MISSING } },
     ]);
 
     expect(service.textureStatuses.get(0)?.state).toBe(EVisualTextureState.LOADING);

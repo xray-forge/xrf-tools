@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { ERenderTextureGroup } from "@/core/ipc/types/xrf-renderer";
 import { ILevelTextureReport, listLevelSurfaceDressing } from "@/core/level/lib/texture/level-texture-report";
 
 import { describeLevelSurfaceDressing, ELevelSurfaceDressing, ILevelSurfaceDressing } from "./level-surface-dressing";
@@ -10,7 +11,11 @@ function mockReport(...dressing: Array<ILevelSurfaceDressing>): ILevelTextureRep
     dressing: new Map(dressing.map((it: ILevelSurfaceDressing) => [it.reference, it])),
     problems: dressing
       .filter((it: ILevelSurfaceDressing) => it.reason)
-      .map((it: ILevelSurfaceDressing) => ({ reason: it.reason as string, reference: it.reference })),
+      .map((it: ILevelSurfaceDressing) => ({
+        group: ERenderTextureGroup.SURFACES,
+        reason: it.reason as string,
+        reference: it.reference,
+      })),
     uploaded: dressing.length,
   };
 }
@@ -59,7 +64,12 @@ describe("listLevelSurfaceDressing", () => {
 
   it("reads nothing before a level is open", () => {
     expect(listLevelSurfaceDressing(["wall\\wall_panel"])).toEqual([
-      { reason: null, reference: "wall\\wall_panel", state: ELevelSurfaceDressing.UNREAD, upload: null },
+      {
+        reason: null,
+        reference: "wall\\wall_panel",
+        state: ELevelSurfaceDressing.UNREAD,
+        upload: null,
+      },
     ]);
   });
 

@@ -1674,10 +1674,23 @@ export enum ERenderTextureFiltering {
 /** Every `ERenderTextureFiltering` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderTextureFiltering = `${ERenderTextureFiltering}`;
 
+/** What of a viewport's scene samples a texture. */
+export enum ERenderTextureGroup {
+  /** The static surfaces: the level's geometry and what stands on it. */
+  SURFACES = "surfaces",
+  /** The grass's tufts, and none of the surfaces. */
+  GRASS = "grass",
+}
+
+/** Every `ERenderTextureGroup` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderTextureGroup = `${ERenderTextureGroup}`;
+
 /** What became of one texture reference a viewport's scene samples. */
 export type RenderTextureReport = {
   reference: string;
   state: RenderTextureState;
+  /** What of the scene samples it. */
+  group: RenderTextureGroup;
 };
 
 /** Every `kind` the `RenderTextureState` union is told apart by, so a switch or a comparison names one. */
@@ -1918,7 +1931,7 @@ export type RenderWaterSettings = {
   isSoft: boolean;
   /** Whether water writes the distortion it causes, moving what is seen through it. */
   isDistorted: boolean;
-  /** How high the waves lift the surface, in metres: `W_POSITION_SHIFT_HEIGHT`. */
+  /** How high the waves lift the surface, in metres: `W_POSITION_SHIFT_HEIGHT`, 1/60 on the setting's step. */
   waveHeight: number | null;
   /** How fast they run: `W_POSITION_SHIFT_SPEED`. */
   waveSpeed: number | null;

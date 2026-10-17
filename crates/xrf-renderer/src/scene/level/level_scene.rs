@@ -8,6 +8,7 @@ use xrf_renderer_core::ProxyHandle;
 use xrf_visual::SectorPackage;
 
 use crate::contract::render_load_report::RenderLoadReport;
+use crate::contract::render_texture_group::RenderTextureGroup;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_encoder::FrameEncoder;
@@ -410,18 +411,19 @@ impl LevelScene {
     }
   }
 
-  /// What became of every texture the level's surfaces and its grass sample.
+  /// What became of every texture the level's surfaces sample, then each the grass samples that none of them does.
   pub fn describe_textures(&self, textures: &TextureCache) -> Vec<RenderTextureReport> {
-    let slots: BTreeSet<u32> = self
-      .statics
-      .surfaces
-      .texture_slots
-      .iter()
-      .copied()
-      .chain(self.grass.list_texture_slots())
+    let surfaces: BTreeSet<u32> = self.statics.surfaces.texture_slots.iter().copied().collect();
+    let grass: BTreeSet<u32> = self
+      .grass
+      .list_texture_slots()
+      .filter(|slot| !surfaces.contains(slot))
       .collect();
 
-    textures.describe(&slots)
+    let mut described: Vec<RenderTextureReport> = textures.describe(&surfaces, RenderTextureGroup::Surfaces);
+
+    described.extend(textures.describe(&grass, RenderTextureGroup::Grass));
+    described
   }
 
   /// A spawned object's bounding sphere in renderer space, once its model is in the scene.

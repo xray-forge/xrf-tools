@@ -1,10 +1,18 @@
-import { ERenderTextureState, RenderTextureReport, RenderTextureState } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderTextureGroup,
+  ERenderTextureState,
+  RenderTextureGroup,
+  RenderTextureReport,
+  RenderTextureState,
+} from "@/core/ipc/types/xrf-renderer";
 import { ELevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 
 /** One reference the textures have something to say about, for a viewer reporting what a level is missing. */
 export interface ILevelTextureProblem {
   reference: string;
   reason: string;
+  /** What of the level samples it: its surfaces, or its grass alone. */
+  group: RenderTextureGroup;
 }
 
 /**
@@ -54,13 +62,16 @@ export function toLevelTextureReport(described: Array<RenderTextureReport>): ILe
   const dressing: Map<string, ILevelSurfaceDressing> = new Map(
     described.map(({ reference, state }: RenderTextureReport) => [reference, toLevelSurfaceDressing(reference, state)])
   );
+  const groups: Map<string, RenderTextureGroup> = new Map(
+    described.map(({ group, reference }: RenderTextureReport) => [reference, group])
+  );
   const problems: Array<ILevelTextureProblem> = [];
   let uploaded: number = 0;
   let deferred: number = 0;
 
   dressing.forEach(({ reason, reference, state }: ILevelSurfaceDressing) => {
     if (reason) {
-      problems.push({ reason, reference });
+      problems.push({ group: groups.get(reference) ?? ERenderTextureGroup.SURFACES, reason, reference });
     }
 
     // A stand-in is uploaded as much as a file is; a load on its way is neither yet, and a deferred one neither at all.

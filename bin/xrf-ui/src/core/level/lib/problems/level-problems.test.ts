@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { ERenderTextureGroup } from "@/core/ipc/types/xrf-renderer";
 import { SectorSkip } from "@/core/ipc/types/xrf-visual";
 import { WorldSectorSkip } from "@/core/ipc/types/xrf-world";
 import { ELevelProblemRule } from "@/core/level/lib/problems/level-problem-rule";
@@ -30,9 +31,29 @@ describe("listLevelProblems", () => {
     expect(listLevelProblems(mockSources({ surfaces: [mockSurfaceDescriptor()] }))).toEqual([]);
   });
 
+  it("names a texture only the grass samples under the grass's own rule", () => {
+    const problems: Array<IEditorProblem> = listLevelProblems(
+      mockSources({
+        textures: [{ group: ERenderTextureGroup.GRASS, reason: "missing", reference: "grass\\grass_1" }],
+      })
+    );
+
+    expect(problems).toEqual([
+      { message: "missing", rule: ELevelProblemRule.GRASS_TEXTURE, subject: "grass\\grass_1" },
+    ]);
+  });
+
   it("names every texture the set could not answer for", () => {
     const problems: Array<IEditorProblem> = listLevelProblems(
-      mockSources({ textures: [{ reason: "The file in the mounted roots is 2x2", reference: "trees\\frond" }] })
+      mockSources({
+        textures: [
+          {
+            group: ERenderTextureGroup.SURFACES,
+            reason: "The file in the mounted roots is 2x2",
+            reference: "trees\\frond",
+          },
+        ],
+      })
     );
 
     expect(problems).toEqual([
@@ -132,7 +153,7 @@ describe("listLevelProblems", () => {
       skipped: sectorOf(0, [{ cause: "malformed", drawable: 1, reason: "bad range" }]),
       spawn: EMPTY_LEVEL_SPAWN_REPORT,
       surfaces: [mockSurfaceDescriptor({ declaration: { kind: "undefined" } })],
-      textures: [{ reason: "missing", reference: "stone" }],
+      textures: [{ group: ERenderTextureGroup.SURFACES, reason: "missing", reference: "stone" }],
     });
 
     expect(problems.map((it) => it.rule)).toEqual([

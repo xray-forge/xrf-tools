@@ -4,7 +4,7 @@ import { Container } from "@wirestate/core";
 import { AsyncState } from "@xrf/async";
 
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
-import { RenderLoadFailure } from "@/core/ipc/types/xrf-renderer";
+import { ERenderTextureGroup, RenderLoadFailure } from "@/core/ipc/types/xrf-renderer";
 import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
@@ -69,7 +69,13 @@ async function renderProblems({
       : {
           deferred: 0,
           dressing: new Map(),
-          problems: [{ reason: "Nothing in the mounted roots answers to 'stone'", reference: "stone" }],
+          problems: [
+            {
+              group: ERenderTextureGroup.SURFACES,
+              reason: "Nothing in the mounted roots answers to 'stone'",
+              reference: "stone",
+            },
+          ],
           uploaded: 0,
         }
   );

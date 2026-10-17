@@ -6,6 +6,7 @@ use std::sync::mpsc::Sender;
 
 use xrf_error::XrfResult;
 
+use crate::contract::render_texture_group::RenderTextureGroup;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_texture_state::RenderTextureState;
 use crate::frame::periodic::periodic_job::PeriodicJob;
@@ -502,13 +503,18 @@ impl TextureCache {
   }
 
   /// What became of some slots' textures.
-  pub fn describe<'a>(&self, slots: impl IntoIterator<Item = &'a u32>) -> Vec<RenderTextureReport> {
+  pub fn describe<'a>(
+    &self,
+    slots: impl IntoIterator<Item = &'a u32>,
+    group: RenderTextureGroup,
+  ) -> Vec<RenderTextureReport> {
     slots
       .into_iter()
       .filter_map(|slot| {
         Some(RenderTextureReport {
           reference: self.references.get(*slot as usize)?.clone(),
           state: self.states.get(*slot as usize)?.clone(),
+          group,
         })
       })
       .collect()

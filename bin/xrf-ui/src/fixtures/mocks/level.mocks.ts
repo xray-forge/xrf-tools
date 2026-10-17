@@ -9,6 +9,7 @@ import {
   SelectedLevelDescription,
 } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine, EXrayEngineEvidence } from "@/core/ipc/types/xrf-engine-target";
+import { ERenderTextureGroup } from "@/core/ipc/types/xrf-renderer";
 import { EClsId } from "@/core/ipc/types/xrf-spawn";
 import { SectorOutline } from "@/core/ipc/types/xrf-visual";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
@@ -135,7 +136,11 @@ export function mockLevelTextureReport(entries: Record<string, IMockLevelTexture
     ),
     problems: Object.entries(entries)
       .filter(([, loaded]) => loaded.reason)
-      .map(([reference, loaded]) => ({ reason: loaded.reason as string, reference })),
+      .map(([reference, loaded]) => ({
+        group: ERenderTextureGroup.SURFACES,
+        reason: loaded.reason as string,
+        reference,
+      })),
     deferred: 0,
     uploaded: Object.keys(entries).length,
   };

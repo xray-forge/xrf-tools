@@ -124,6 +124,7 @@ pub use crate::contract::render_sun_shafts::RenderSunShafts;
 pub use crate::contract::render_sun_shafts_quality::RenderSunShaftsQuality;
 pub use crate::contract::render_surface_color::RenderSurfaceColor;
 pub use crate::contract::render_texture_filtering::RenderTextureFiltering;
+pub use crate::contract::render_texture_group::RenderTextureGroup;
 pub use crate::contract::render_texture_report::RenderTextureReport;
 pub use crate::contract::render_texture_state::RenderTextureState;
 pub use crate::contract::render_tonemap_mode::RenderTonemapMode;

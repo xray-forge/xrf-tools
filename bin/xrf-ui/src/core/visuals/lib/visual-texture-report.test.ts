@@ -1,13 +1,14 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
-import { ERenderTextureState, RenderTextureReport } from "@/core/ipc/types/xrf-renderer";
+import { ERenderTextureGroup, ERenderTextureState, RenderTextureReport } from "@/core/ipc/types/xrf-renderer";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { toVisualBumpStatuses, toVisualTextureStatuses } from "@/core/visuals/lib/visual-texture-report";
 import { mockMaterialDescriptor, mockSelectedVisual, mockTextureDependency } from "@/fixtures/mocks/visual.mocks";
 
 function mockLoaded(reference: string, isExpanded: boolean = false): RenderTextureReport {
   return {
+    group: ERenderTextureGroup.SURFACES,
     reference,
     state: { height: 4, isExpanded, kind: ERenderTextureState.LOADED, layout: "DXT1", levels: 1, width: 4 },
   };
@@ -50,7 +51,11 @@ describe("toVisualTextureStatuses", () => {
     const loaded = toVisualTextureStatuses(mockVisual(), [mockLoaded("WPN/wpn_ak74")]);
     const expanded = toVisualTextureStatuses(mockVisual(), [mockLoaded("wpn\\wpn_ak74", true)]);
     const failed = toVisualTextureStatuses(mockVisual(), [
-      { reference: "wpn\\wpn_ak74", state: { kind: ERenderTextureState.FAILED, reason: "truncated" } },
+      {
+        group: ERenderTextureGroup.SURFACES,
+        reference: "wpn\\wpn_ak74",
+        state: { kind: ERenderTextureState.FAILED, reason: "truncated" },
+      },
     ]);
 
     expect(loaded.get(0)?.state).toBe(EVisualTextureState.APPLIED);
@@ -63,7 +68,11 @@ describe("toVisualBumpStatuses", () => {
   it("reports each half of a located pair on its own", () => {
     const statuses = toVisualBumpStatuses(mockVisual(), [
       mockLoaded("wpn\\wpn_ak74_bump"),
-      { reference: "wpn\\wpn_ak74_bump#", state: { kind: ERenderTextureState.MISSING } },
+      {
+        group: ERenderTextureGroup.SURFACES,
+        reference: "wpn\\wpn_ak74_bump#",
+        state: { kind: ERenderTextureState.MISSING },
+      },
     ]);
 
     expect([...statuses.values()]).toEqual([

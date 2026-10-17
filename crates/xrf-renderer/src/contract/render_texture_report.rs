@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::contract::render_texture_group::RenderTextureGroup;
 use crate::contract::render_texture_state::RenderTextureState;
 
 /// What became of one texture reference a viewport's scene samples.
@@ -9,4 +10,6 @@ use crate::contract::render_texture_state::RenderTextureState;
 pub struct RenderTextureReport {
   pub reference: String,
   pub state: RenderTextureState,
+  /// What of the scene samples it.
+  pub group: RenderTextureGroup,
 }

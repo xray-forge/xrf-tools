@@ -8,6 +8,7 @@ import {
   ERenderDlssAvailability,
   ERenderLevelHit,
   ERenderTextureFiltering,
+  ERenderTextureGroup,
   ERenderViewportEvent,
   RENDER_DEFAULT_PERIODIC_BUDGET,
   RenderFrameReport,
@@ -185,10 +186,11 @@ describe("LevelRenderService", () => {
     setMockInvokeResponses({
       ["plugin:render|describe_textures"]: [
         {
+          group: ERenderTextureGroup.SURFACES,
           reference: "terrain\\terrain_escape",
           state: { height: 512, isExpanded: false, kind: "loaded", layout: "DXT1", levels: 10, width: 1024 },
         },
-        { reference: "act\\act_none", state: { kind: "missing" } },
+        { group: ERenderTextureGroup.SURFACES, reference: "act\\act_none", state: { kind: "missing" } },
       ],
       ["plugin:render|measure_surfaces"]: [{ drawables: 3, narrowest: SPAN, shaderId: 7, span: SPAN, triangles: 40 }],
     });
@@ -212,7 +214,11 @@ describe("LevelRenderService", () => {
     expect(viewport.textureReport.uploaded).toBe(2);
     expect(viewport.textureReport.dressing.get("terrain\\terrain_escape")?.upload).toBe("1024×512 · DXT1 · 10 levels");
     expect(viewport.textureReport.problems).toEqual([
-      { reason: "Nothing in the mounted roots answers to it", reference: "act\\act_none" },
+      {
+        group: ERenderTextureGroup.SURFACES,
+        reason: "Nothing in the mounted roots answers to it",
+        reference: "act\\act_none",
+      },
     ]);
   });
 
