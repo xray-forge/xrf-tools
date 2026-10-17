@@ -76,6 +76,23 @@ export function ColorPicker({
     setDraft(null);
   }, [flush]);
 
+  const isDragged: boolean = draft !== null;
+
+  // The picker follows a drag across the whole window, so one let go outside it ends there too.
+  useEffect(() => {
+    if (!isDragged) {
+      return;
+    }
+
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+
+    return () => {
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+    };
+  }, [isDragged, end]);
+
   // A picker taken down mid-drag still tells what it was dragged to.
   useEffect(
     () => () => {
@@ -112,8 +129,6 @@ export function ColorPicker({
           width: 14,
         },
       })}
-      onPointerUp={end}
-      onPointerCancel={end}
       onKeyUp={end}
     >
       <RgbColorPicker color={draft ?? value} onChange={change} />

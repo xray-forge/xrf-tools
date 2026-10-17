@@ -22,4 +22,19 @@ describe("ColorPicker", () => {
     expect(onChange).toHaveBeenCalledTimes(2);
     expect(onChange.mock.calls[1]?.[0]).not.toEqual(onChange.mock.calls[0]?.[0]);
   });
+
+  // The picker tracks a drag across the window, so the pointer can be let go anywhere; the owner's colour then shows.
+  it("shows its owner's colour again once a drag is let go outside it", () => {
+    const onChange = jest.fn<(value: IPickedColor) => void>();
+    const { getByRole } = render(<ColorPicker value={{ b: 0, g: 0, r: 255 }} onChange={onChange} />);
+    const hue: HTMLElement = getByRole("slider", { name: "Hue" });
+
+    fireEvent.keyDown(hue, { key: "ArrowRight", keyCode: 39 });
+
+    expect(hue).not.toHaveAttribute("aria-valuenow", "0");
+
+    fireEvent.pointerUp(window);
+
+    expect(hue).toHaveAttribute("aria-valuenow", "0");
+  });
 });
