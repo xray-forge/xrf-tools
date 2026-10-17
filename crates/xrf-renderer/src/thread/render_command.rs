@@ -89,4 +89,13 @@ pub enum RenderCommand {
     id: RenderViewportId,
     reply: Sender<XrfResult<RenderCapture>>,
   },
+  /// Answers once every command sent before it is handled.
+  Handled {
+    reply: Sender<()>,
+  },
+  /// Detaches every viewport and stops the thread at once, answering once the GPU is let go; an attach sent after it
+  /// keeps the thread running and lets the answer go unsent.
+  Stop {
+    reply: Sender<()>,
+  },
 }

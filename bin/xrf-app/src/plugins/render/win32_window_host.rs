@@ -23,7 +23,9 @@ impl Win32WindowHost {
   }
 }
 
-impl RenderWindowHost for Win32WindowHost {
+// SAFETY: the render plugin detaches a window's viewports and waits until the render thread handled it when the window
+// is asked to close, before it is destroyed, and stops the renderer before the application exits (`RenderPlugin`).
+unsafe impl RenderWindowHost for Win32WindowHost {
   fn get_key(&self) -> u64 {
     self.hwnd.get() as u64
   }
@@ -32,6 +34,7 @@ impl RenderWindowHost for Win32WindowHost {
     let mut handle: Win32WindowHandle = Win32WindowHandle::new(self.hwnd);
 
     // Vulkan makes its surface from the module instance as well as the window.
+    // SAFETY: plain Win32 read; a handle no longer naming a window answers zero, which is no instance.
     handle.hinstance = NonZeroIsize::new(unsafe { GetWindowLongPtrW(self.get_hwnd(), GWLP_HINSTANCE) });
 
     (
@@ -43,6 +46,7 @@ impl RenderWindowHost for Win32WindowHost {
   fn get_client_size(&self) -> (u32, u32) {
     let mut rect: RECT = RECT::default();
 
+    // SAFETY: `rect` outlives the call; a handle no longer naming a window fails, answered as an empty area.
     match unsafe { GetClientRect(self.get_hwnd(), &mut rect) } {
       Ok(()) => (
         (rect.right - rect.left).max(0) as u32,
@@ -53,6 +57,7 @@ impl RenderWindowHost for Win32WindowHost {
   }
 
   fn is_minimized(&self) -> bool {
+    // SAFETY: plain Win32 read; a handle no longer naming a window answers false.
     unsafe { IsIconic(self.get_hwnd()) }.as_bool()
   }
 }

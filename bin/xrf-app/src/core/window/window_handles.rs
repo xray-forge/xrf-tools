@@ -20,6 +20,15 @@ impl WindowHandles {
       .insert(label.to_string(), handle);
   }
 
+  /// Forgets a destroyed window, so no viewport is attached to a handle that names nothing.
+  pub fn forget(&self, label: &str) {
+    self
+      .handles
+      .write()
+      .unwrap_or_else(|poisoned| poisoned.into_inner())
+      .remove(label);
+  }
+
   pub fn get(&self, label: &str) -> Option<NonZeroIsize> {
     self
       .handles

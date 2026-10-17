@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::PathBuf;
-use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
@@ -155,6 +155,8 @@ pub struct RenderThread {
   shader_watcher: ShaderWatcher,
   /// When the textures no scene samples were last freed.
   textures_swept: Instant,
+  /// Who asked the thread to stop at once, answered once it stopped.
+  stopping: Option<Sender<()>>,
 }
 
 impl RenderThread {
@@ -192,11 +194,12 @@ impl RenderThread {
       last_present: HashMap::new(),
       shader_watcher: ShaderWatcher::new(&ShaderLibrary::get_source_root()),
       textures_swept: now,
+      stopping: None,
     }
   }
 
-  /// Runs the thread until its queue goes: draws a frame while any viewport draws, paced to the settings' rate, and
-  /// handles the commands sent between frames.
+  /// Runs the thread until it idles past `IDLE_STOP` or is asked to stop: draws a frame while any viewport draws, paced
+  /// to the settings' rate, and handles the commands sent between frames.
   pub fn run(mut self) {
     log::info!("Render thread started");
 
@@ -228,10 +231,13 @@ impl RenderThread {
         }
       } else {
         match self.receiver.recv_timeout(IDLE_WAIT) {
+          // A stop asked for is taken at once rather than after the next wait.
           Ok(command) => {
             self.handle(command);
 
-            continue;
+            if self.stopping.is_none() {
+              continue;
+            }
           }
           Err(RecvTimeoutError::Timeout) => {}
           Err(RecvTimeoutError::Disconnected) => break,
@@ -241,7 +247,9 @@ impl RenderThread {
       self.forget_gone();
 
       if self.viewports.is_empty() {
-        if self.idle_since.is_some_and(|since| since.elapsed() >= IDLE_STOP) && self.try_stop() {
+        let is_due: bool = self.stopping.is_some() || self.idle_since.is_some_and(|since| since.elapsed() >= IDLE_STOP);
+
+        if is_due && self.try_stop() {
           break;
         }
 
@@ -253,6 +261,10 @@ impl RenderThread {
     }
 
     log::info!("Render thread stopped");
+
+    if let Some(reply) = self.stopping.take() {
+      let _ = reply.send(());
+    }
   }
 
   /// Whether any viewport has somewhere to be drawn now: a frame is due each turn, rather than a wait.
@@ -278,10 +290,20 @@ impl RenderThread {
           .viewports
           .insert(id, RenderViewport::new(id, window, sink, Instant::now()));
         self.idle_since = None;
+        // An attach after a stop keeps the thread drawing; the stop's answer goes unsent.
+        self.stopping = None;
       }
       RenderCommand::Detach { id } => {
         self.viewports.remove(&id);
         self.forget_unused_windows();
+      }
+      RenderCommand::Handled { reply } => {
+        let _ = reply.send(());
+      }
+      RenderCommand::Stop { reply } => {
+        self.viewports.clear();
+        self.forget_unused_windows();
+        self.stopping = Some(reply);
       }
       RenderCommand::Layout { id, layout } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
@@ -440,7 +462,8 @@ impl RenderThread {
   }
 
   /// Stops the thread unless a command arrived meanwhile: checked and decided under the link's lock, which every
-  /// command is sent under.
+  /// command is sent under. The GPU is let go after the lock, so no command waits on its teardown; its windows went
+  /// with the last viewport.
   fn try_stop(&mut self) -> bool {
     let link: Arc<Mutex<RenderLink>> = Arc::clone(&self.link);
     let mut link = link.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -453,7 +476,11 @@ impl RenderThread {
     }
 
     link.sender = None;
-    self.running = None;
+    drop(link);
+
+    if let Some(running) = self.running.take() {
+      running.release();
+    }
 
     true
   }
