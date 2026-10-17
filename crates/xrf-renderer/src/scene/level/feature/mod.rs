@@ -39,6 +39,7 @@ pub(crate) mod statics_feature;
 pub(crate) mod sun_feature;
 pub(crate) mod sun_shafts_feature;
 pub(crate) mod sun_trace_feature;
+pub(crate) mod temporal_jitter;
 pub(crate) mod temporal_resolve;
 pub(crate) mod thunder_feature;
 pub(crate) mod view_feature;
