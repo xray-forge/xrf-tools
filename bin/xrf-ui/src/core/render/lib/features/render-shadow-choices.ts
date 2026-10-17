@@ -10,6 +10,14 @@ import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-r
 export const RENDER_SHADOW_CASCADE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<string>> =
   RENDER_SHADOW_CASCADE_WIDTHS.map((_, index: number) => ({ label: String(index + 1), value: String(index + 1) }));
 
+/**
+ * @param widths - Cascade widths in metres.
+ * @returns Them as the settings list them, the last joined by "and".
+ */
+export function formatCascadeWidths(widths: ReadonlyArray<number>): string {
+  return `${widths.slice(0, -1).join(", ")} and ${widths.at(-1)} m`;
+}
+
 /** The map resolutions offered, in texels across. */
 const RENDER_SHADOW_RESOLUTIONS: ReadonlyArray<number> = [1024, 1536, 2048, 4096];
 

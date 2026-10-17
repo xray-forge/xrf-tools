@@ -3,6 +3,7 @@ import { ReactElement } from "react";
 
 import {
   formatCascadeBlend,
+  formatCascadeWidths,
   formatShadowBias,
   formatShadowFilter,
   RENDER_SHADOW_CASCADE_OPTIONS,
@@ -42,7 +43,7 @@ export function SettingsRendererShadows(): ReactElement {
 
         <ChoiceFormRow
           label={"Cascades"}
-          description={"Cascade count. Widths: 20, 40, 160 and 480 m."}
+          description={`Cascade count. Widths: ${formatCascadeWidths(RENDER_SHADOW_CASCADE_WIDTHS)}.`}
           options={RENDER_SHADOW_CASCADE_OPTIONS}
           value={String(shadows.cascades.length)}
           onChange={(count: string) => onSet({ cascades: RENDER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
