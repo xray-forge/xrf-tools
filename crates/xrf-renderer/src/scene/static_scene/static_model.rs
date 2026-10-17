@@ -59,19 +59,26 @@ impl StaticModel {
       let stored: Vec<u16> = read_pods(&package.buffer, &geometry.indices);
       let packed: Vec<u32> = StaticVertexWords::pack_model_words(geometry, &package.buffer);
       let vertices: usize = packed.len() / StaticLayout::STRIDE as usize;
+      let drawn: Vec<u16> = stored
+        .iter()
+        .skip(level.start as usize)
+        .take(level.count as usize)
+        .copied()
+        .collect();
+
+      // A part whose indices fall short of its count or past its vertices is left out: drawn, it would read another's.
+      if drawn.len() != level.count as usize || drawn.iter().any(|it| usize::from(*it) >= vertices) {
+        log::warn!("Part {index} of a spawned model indexes past its vertices and is left out");
+
+        continue;
+      }
 
       if is_skinned {
         links.extend(Self::pack_links(geometry, &package.buffer, vertices));
       }
 
       words.extend(packed);
-      indices.extend(
-        stored
-          .iter()
-          .skip(level.start as usize)
-          .take(level.count as usize)
-          .map(|it| u32::from(*it) + vertex_base),
-      );
+      indices.extend(drawn.iter().map(|it| u32::from(*it) + vertex_base));
       parts.push(StaticModelPart {
         indices: (index_base, level.count),
         clusters: if !is_skinned {
@@ -165,15 +172,18 @@ impl StaticModel {
     let ranges: Vec<[u32; 4]> = read_pods(buffer, &clusters.ranges);
     let spheres: Vec<Vec4> = read_pods(buffer, &clusters.spheres);
 
-    let Some(run) = VisualClusters::find_run(&ranges, start, count) else {
-      return Self::to_reaching_clusters(count, base, sphere);
-    };
+    // A pack whose spheres are fewer than its ranges is culled whole, as one without clusters is.
+    if let Some(run) = VisualClusters::find_run(&ranges, start, count)
+      && let Some(run_spheres) = spheres.get(run.clone())
+    {
+      return ranges[run]
+        .iter()
+        .zip(run_spheres)
+        .map(|(range, sphere)| (range[0] - start + base, range[1], *sphere))
+        .collect();
+    }
 
-    ranges[run.clone()]
-      .iter()
-      .zip(&spheres[run])
-      .map(|(range, sphere)| (range[0] - start + base, range[1], *sphere))
-      .collect()
+    Self::to_reaching_clusters(count, base, sphere)
   }
 
   /// A level's indices cut into clusters in order, each culled by the model's whole sphere widened: what a geometry

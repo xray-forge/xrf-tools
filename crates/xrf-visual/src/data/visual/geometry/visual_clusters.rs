@@ -28,9 +28,10 @@ impl VisualClusters {
   /// What a cluster names for its drawable where it is cut from a mesh many drawables stand in.
   pub const NO_DRAWABLE: u32 = u32::MAX;
 
-  /// The clusters, by their place in `ranges`, cut from the run of `count` indices at `start`; `None` where none was.
+  /// The clusters, by their place in `ranges`, cut from the run of `count` indices at `start`; `None` where none was,
+  /// as for counts past `u32` that only damaged data holds.
   pub fn find_run(ranges: &[[u32; 4]], start: u32, count: u32) -> Option<Range<usize>> {
-    let end: u32 = start + count;
+    let end: u32 = start.checked_add(count)?;
 
     // A progressive geometry's levels overlap, so a cluster within a run's indices may be another level's: the run is
     // the cluster starting at its start and those after it each starting where the one before ends.
@@ -46,7 +47,7 @@ impl VisualClusters {
             return None;
           }
 
-          at += range[1] * 3;
+          at = at.checked_add(range[1].checked_mul(3)?)?;
 
           if at == end {
             return Some(first..index + 1);

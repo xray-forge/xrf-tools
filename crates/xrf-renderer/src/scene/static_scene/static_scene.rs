@@ -267,6 +267,24 @@ impl StaticScene {
         Self::put_geometry(&mut writer, StaticLayout::Baked, &description.geometry, buffer);
 
       for section in &description.sections {
+        // A section drawing past the sector's indices would draw another's, or past the buffer.
+        if section
+          .draw
+          .start
+          .checked_add(section.draw.count)
+          .is_none_or(|end| end > description.geometry.index_count)
+        {
+          log::warn!(
+            "Sector {} draws {} indices from {}, past its {}; the section is left out",
+            description.sector,
+            section.draw.count,
+            section.draw.start,
+            description.geometry.index_count
+          );
+
+          continue;
+        }
+
         let Some(StaticSurfaceUse { surface, class, passes }) = self.surfaces.resolve(
           &mut writer,
           Self::level_surface(&section.surface, descriptors),
@@ -1153,12 +1171,15 @@ impl StaticScene {
   fn cut_clusters(geometry: &SectorGeometry, buffer: &[u8], start: u32, count: u32) -> Vec<(u32, u32, Vec4)> {
     let ranges: Vec<[u32; 4]> = read_pods(buffer, &geometry.clusters.ranges);
     let spheres: Vec<Vec4> = read_pods(buffer, &geometry.clusters.spheres);
-    let end: u32 = start + count;
+    let end: u32 = start.saturating_add(count);
 
-    if let Some(run) = VisualClusters::find_run(&ranges, start, count) {
-      return ranges[run.clone()]
+    // A pack whose spheres are fewer than its ranges is cut anew, as one without clusters is.
+    if let Some(run) = VisualClusters::find_run(&ranges, start, count)
+      && let Some(run_spheres) = spheres.get(run.clone())
+    {
+      return ranges[run]
         .iter()
-        .zip(&spheres[run])
+        .zip(run_spheres)
         .map(|(range, sphere)| (range[0], range[1], *sphere))
         .collect();
     }
