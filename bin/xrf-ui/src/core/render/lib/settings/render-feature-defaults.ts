@@ -200,7 +200,7 @@ export const DEFAULT_RENDER_LOD_SETTINGS: TRenderLodSettings = {
 
 /**
  * The engines' own, steep as Anomaly's high and extreme presets set `r2_steep_parallax`, with the enhanced parallax's
- * strengths for when it is drawn: sixteen steps within 60 m, 0.02 of the detail deep, refined, self-shadowed, its layers
+ * strengths for when it is drawn: eight steps within 60 m, 0.02 of the detail deep, refined, self-shadowed, its layers
  * half blended by height.
  */
 export const DEFAULT_RENDER_PARALLAX_SETTINGS: TRenderParallaxSettings = {
@@ -212,7 +212,7 @@ export const DEFAULT_RENDER_PARALLAX_SETTINGS: TRenderParallaxSettings = {
   mode: ERenderParallaxMode.ENGINE,
   range: 60,
   shadow: 1,
-  steps: 16,
+  steps: 8,
   surfaceHeight: 0.02,
   surfaceRange: 60,
 };

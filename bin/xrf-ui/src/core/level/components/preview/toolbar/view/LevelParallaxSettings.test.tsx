@@ -25,7 +25,7 @@ describe("LevelParallaxSettings", () => {
     await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
     expect(view.features.parallax).toEqual({ mode: ERenderParallaxMode.ENHANCED });
-    expect(getByRole("slider", { name: "Steps" })).toHaveAttribute("aria-valuetext", "16");
+    expect(getByRole("slider", { name: "Steps" })).toHaveAttribute("aria-valuetext", "8");
     expect(getByRole("slider", { name: "Range" })).toHaveAttribute("aria-valuetext", "60 m");
 
     await userEvent.click(getByRole("button", { name: "Reset to the preset" }));

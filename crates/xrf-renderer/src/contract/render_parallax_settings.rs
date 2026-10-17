@@ -37,7 +37,7 @@ impl Default for RenderParallaxSettings {
     Self {
       mode: RenderParallaxMode::Engine,
       is_steep: true,
-      steps: 16,
+      steps: 8,
       range: 60.0,
       height: 0.02,
       is_refined: true,
