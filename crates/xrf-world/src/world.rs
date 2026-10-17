@@ -124,13 +124,18 @@ impl World {
     Some(id)
   }
 
-  /// Stands a viewport's skinned objects as asked from the next frame on.
+  /// Stands a viewport's skinned objects as asked from the next frame on; a scene it shares stands them as its driver
+  /// asks, as every other choice of a viewport reaches a shared scene.
   pub fn pose_model(&mut self, viewport: RenderViewportId, pose: &WorldModelPose) {
     let world: &mut WorldViewport = self.get_viewport(viewport);
 
     world.pose = pose.clone();
 
-    if let Some(scene) = world.scene.and_then(|id| self.scenes.get_mut(&id)) {
+    if let Some(scene) = world
+      .scene
+      .and_then(|id| self.scenes.get_mut(&id))
+      .filter(|scene| scene.get_driver() == Some(viewport))
+    {
       scene.level.set_pose(pose);
     }
   }
@@ -187,17 +192,22 @@ impl World {
     self.scenes.get(&self.viewports.get(&viewport)?.scene?)
   }
 
-  /// Takes a viewport out of the scene it shows, which goes once no viewport shows it; the next shows on drive it.
+  /// Takes a viewport out of the scene it shows, which goes once no viewport shows it; the next shows on drive it,
+  /// standing its skinned objects as that viewport asks.
   fn leave_scene(&mut self, viewport: RenderViewportId) {
     let Some(id) = self.viewports.get_mut(&viewport).and_then(|world| world.scene.take()) else {
       return;
     };
 
     if let Some(scene) = self.scenes.get_mut(&id) {
+      let was_driving: bool = scene.get_driver() == Some(viewport);
+
       scene.viewers.retain(|it| *it != viewport);
 
       if scene.viewers.is_empty() {
         self.scenes.remove(&id);
+      } else if was_driving && let Some(driving) = scene.get_driver().and_then(|driver| self.viewports.get(&driver)) {
+        scene.level.set_pose(&driving.pose);
       }
     }
   }
