@@ -3,10 +3,8 @@ use std::time::Duration;
 
 use glam::Vec3;
 use xrf_math::Vector3d;
-use xrf_renderer::RenderWorkers;
+use xrf_renderer::{LoaderReceiver, RenderWorkers, take_answer};
 use xrf_visual::HemiEstimator;
-
-use crate::level::loader_slot::LoaderSlot;
 
 /// `get_luminocity_hemi() < 0.05`: the hemi under which the actor stands indoors (`CGamePersistent::WeathersUpdate`).
 const INDOOR_HEMI: f32 = 0.05;
@@ -22,7 +20,7 @@ const SMOOTHING: f32 = 1.0;
 pub struct CameraHemi {
   estimator: Option<Arc<HemiEstimator>>,
   /// The estimate asked for and not taken yet.
-  pending: Option<LoaderSlot<f32>>,
+  pending: Option<LoaderReceiver<f32>>,
   /// The last estimate, `hemi_value`.
   value: Option<f32>,
   /// `hemi_smooth`, one half until the first estimate replaces it.
@@ -49,33 +47,27 @@ impl CameraHemi {
   /// Takes a finished estimate, asks for the next one once due, and smooths the hemi on to `now`, the level's clock.
   /// `eye` is where the camera stands, in engine space.
   pub fn advance(&mut self, eye: Vec3, now: Duration) {
-    if let Some(pending) = &mut self.pending {
-      let estimate: Option<f32> = pending.poll().copied();
-
-      if let Some(value) = estimate {
-        // The first estimate is taken as it is, as the first update takes it.
-        if self.value.is_none() {
-          self.smooth = value;
-        }
-
-        self.value = Some(value);
+    // A worker that never answered leaves none pending, so the next is asked for.
+    if let Some(value) = take_answer(&mut self.pending, "camera hemi") {
+      // The first estimate is taken as it is, as the first update takes it.
+      if self.value.is_none() {
+        self.smooth = value;
       }
 
-      // A worker that never answered is asked again.
-      if !pending.is_pending() {
-        self.pending = None;
-      }
+      self.value = Some(value);
     }
 
     if self.pending.is_none()
       && now >= self.due
       && let Some(estimator) = &self.estimator
     {
+      let (sender, receiver) = LoaderReceiver::channel();
       let estimator: Arc<HemiEstimator> = Arc::clone(estimator);
 
-      self.pending = Some(LoaderSlot::spawn(&self.workers, move || {
-        Some(estimator.estimate(&Vector3d::new(eye.x, eye.y, eye.z), 0.0).sky)
-      }));
+      self.workers.spawn(move || {
+        let _ = sender.send(estimator.estimate(&Vector3d::new(eye.x, eye.y, eye.z), 0.0).sky);
+      });
+      self.pending = Some(receiver);
       self.due = now + ESTIMATE_INTERVAL;
     }
 

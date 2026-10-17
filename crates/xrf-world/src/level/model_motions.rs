@@ -28,7 +28,7 @@ impl ModelMotions {
     self.motions.get(name, || {
       let (source, name) = (Arc::clone(source), name.to_owned());
 
-      LoaderSlot::spawn(workers, move || {
+      LoaderSlot::spawn(workers, "motion", move || {
         source
           .read_motion(&name)
           .inspect_err(|error| log::warn!("Motion '{name}' cannot be played: {error}"))
