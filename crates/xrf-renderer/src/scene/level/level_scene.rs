@@ -59,6 +59,8 @@ pub struct LevelScene {
   pub sector_time: f32,
   /// What its load reports, from how far the world streamed it.
   load: LevelLoad,
+  /// Every texture slot it samples, each once, as the last frame left them.
+  texture_slots: Vec<u32>,
   /// The viewport driving what it simulates by its camera, as the world named it.
   pub driver: Option<RenderViewportId>,
   /// Every skinned object's bones as segments, which the skeleton overlay draws.
@@ -103,6 +105,7 @@ impl LevelScene {
       started,
       sector_time: 0.0,
       load: LevelLoad::new(started),
+      texture_slots: Vec::new(),
       driver: None,
       skeleton_segments: Arc::from([]),
       gust: AmbientGust::default(),
@@ -169,9 +172,17 @@ impl LevelScene {
       self.add_sectors((device, queue, encoder), (&mut *textures, &assets), scheduler);
 
     self.sector_failures.extend(failures);
-    let slots: Vec<u32> = self.list_texture_slots().collect();
+    // Refilled in place, so a frame allocates nothing once the list is as long as it gets.
+    let mut slots: Vec<u32> = std::mem::take(&mut self.texture_slots);
 
-    self.load.advance(streaming, (self.grass.is_loaded(), &slots), textures);
+    slots.clear();
+    slots.extend(self.list_texture_slots());
+    slots.sort_unstable();
+    slots.dedup();
+    self.texture_slots = slots;
+    self
+      .load
+      .advance(streaming, (self.grass.is_loaded(), &self.texture_slots), textures);
     self.driver = driver;
     self.skeleton_segments = skeleton_segments;
     self.gust = gust;
@@ -204,23 +215,23 @@ impl LevelScene {
 
   /// How far the level, the scene `id`, has loaded.
   pub fn describe_load(&self, id: RenderSceneId, textures: &TextureCache) -> RenderLoadReport {
-    let slots: Vec<u32> = self.list_texture_slots().collect();
-
-    self.load.describe(id, (self.grass.is_loaded(), &slots), textures)
+    self
+      .load
+      .describe(id, (self.grass.is_loaded(), &self.texture_slots), textures)
   }
 
   /// Whether everything the level opens with is resident, so it draws as it will.
   pub fn is_ready(&self, textures: &TextureCache) -> bool {
-    let slots: Vec<u32> = self.list_texture_slots().collect();
-
-    self.load.is_ready((self.grass.is_loaded(), &slots), textures)
+    self
+      .load
+      .is_ready(self.grass.is_loaded(), self.list_texture_slots(), textures)
   }
 
   /// What the level still waits for before it is ready, said for a log.
   pub fn describe_pending(&self, textures: &TextureCache) -> String {
-    let slots: Vec<u32> = self.list_texture_slots().collect();
-
-    self.load.describe_pending((self.grass.is_loaded(), &slots), textures)
+    self
+      .load
+      .describe_pending((self.grass.is_loaded(), &self.texture_slots), textures)
   }
 
   /// Takes in the sectors waiting as `scheduler` grants them, in a round of their own: every one while the level opens,
@@ -423,10 +434,9 @@ impl LevelScene {
     self.statics.surfaces.environment_slots.iter().copied()
   }
 
-  /// Every texture slot it samples, each once whoever samples it, so the slots no scene samples can be freed and its
-  /// load counts a texture once.
-  pub fn list_texture_slots(&self) -> impl Iterator<Item = u32> {
-    let slots: BTreeSet<u32> = self
+  /// Every texture slot it samples, once for each of its parts sampling it, so the slots no scene samples can be freed.
+  pub fn list_texture_slots(&self) -> impl Iterator<Item = u32> + '_ {
+    self
       .statics
       .surfaces
       .texture_slots
@@ -435,8 +445,5 @@ impl LevelScene {
       .chain(self.grass.list_texture_slots())
       .chain(self.lights.get_projectors().iter().copied())
       .chain(self.particles.get_texture_slots().iter().copied())
-      .collect();
-
-    slots.into_iter()
   }
 }

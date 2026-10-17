@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::time::{Duration, Instant};
 
 use crate::contract::render_load_durations::RenderLoadDurations;
@@ -41,7 +42,7 @@ impl LevelLoad {
       scene.0,
       progress.is_lights_done,
       progress.is_particles_done,
-      self.is_ready(scene, textures),
+      self.is_ready(scene.0, scene.1, textures),
     ];
     let RenderLoadDurations {
       sectors,
@@ -87,11 +88,13 @@ impl LevelLoad {
   }
 
   /// Whether everything the level opens with is resident, so it draws as it will.
-  pub fn is_ready(&self, (is_grass_read, slots): (bool, &[u32]), textures: &TextureCache) -> bool {
-    self.is_done(
-      is_grass_read,
-      textures.count_settled(slots.iter().copied()) == slots.len() as u32,
-    )
+  pub fn is_ready(
+    &self,
+    is_grass_read: bool,
+    slots: impl IntoIterator<Item = impl Borrow<u32>>,
+    textures: &TextureCache,
+  ) -> bool {
+    self.is_done(is_grass_read, textures.is_settled(slots))
   }
 
   /// What the level still waits for, said for a log: the parts not finished and the textures not settled.

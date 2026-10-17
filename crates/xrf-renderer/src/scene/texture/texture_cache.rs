@@ -474,6 +474,16 @@ impl TextureCache {
     }
   }
 
+  /// Whether every one of some slots is uploaded or given up on.
+  pub fn is_settled(&self, slots: impl IntoIterator<Item = impl Borrow<u32>>) -> bool {
+    slots.into_iter().all(|slot| {
+      !matches!(
+        self.states.get(*slot.borrow() as usize),
+        Some(RenderTextureState::Loading)
+      )
+    })
+  }
+
   /// Of some slots, how many are uploaded or given up on.
   pub fn count_settled(&self, slots: impl IntoIterator<Item = impl Borrow<u32>>) -> u32 {
     slots
