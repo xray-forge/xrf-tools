@@ -160,10 +160,11 @@ without timestamps inside encoders times nothing.
   A description takes override constants only from one (`with_permutation`), never by name.
 - **`PipelineCache`** makes pipelines from hashable descriptions (`RenderPipelineDescription`,
   `ComputePipelineDescription`: module, entry points, the permutation's `PipelineConstants`, the bind group layouts by
-  identity, the render state, owned `VertexLayout`s) and keeps them, and the modules they compile, by that key. WGSL
-  comes from a `ShaderSource` (a module by name, imports resolved). `invalidate_module` drops a module hot reload
-  changed and every pipeline made from it; `warm` makes a level's pipelines ahead of the frames that draw with them.
-  What wgpu refuses comes back as an error naming the module or pipeline.
+  identity, the bytes of immediates a render layout holds, the render state, owned `VertexLayout`s) and keeps them, and
+  the modules they compile, by that key. WGSL comes from a `ShaderSource` (a module by name, imports resolved).
+  `invalidate_module` drops a module hot reload changed and every pipeline made from it; `warm` makes a level's
+  pipelines ahead of the frames that draw with them. What wgpu refuses comes back as an error naming the module or
+  pipeline.
 
 ## Generated files
 
