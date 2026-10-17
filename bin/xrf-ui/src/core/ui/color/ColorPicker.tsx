@@ -1,12 +1,21 @@
 import { Box } from "@mui/material";
 import { Nullable } from "@xrf/types";
-import { ReactElement, useCallback, useEffect, useRef, useState } from "react";
-import { RgbColor, RgbColorPicker } from "react-colorful";
+import { ReactElement, useCallback, useEffect } from "react";
+import { RgbColorPicker } from "react-colorful";
 
 import { RADIUS } from "@/core/theme/tokens";
 import { IPickedColor } from "@/core/ui/color/color-intensity";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { DEFAULT_DRAFT_INTERVAL } from "@/lib/react/use-throttled-draft";
+import { useThrottledValue } from "@/lib/react/use-throttled-value";
+
+/**
+ * @param left - A colour told or shown.
+ * @param right - Another, or none.
+ * @returns Whether they are one colour of the picker.
+ */
+function isSameColor(left: IPickedColor, right: Nullable<IPickedColor>): boolean {
+  return right !== null && left.r === right.r && left.g === right.g && left.b === right.b;
+}
 
 interface IColorPickerProps extends BaseComponentProps {
   value: IPickedColor;
@@ -25,84 +34,23 @@ export function ColorPicker({
   onChange,
 }: IColorPickerProps): ReactElement {
   // The colour shown while it is dragged, ahead of what the owner was told.
-  const [draft, setDraft] = useState<Nullable<IPickedColor>>(null);
-  const onChangeRef = useRef<(value: IPickedColor) => void>(onChange);
-  const pending = useRef<Nullable<IPickedColor>>(null);
-  const sentAt = useRef<number>(-Infinity);
-  const timer = useRef<Nullable<ReturnType<typeof setTimeout>>>(null);
-
-  onChangeRef.current = onChange;
-
-  const flush = useCallback((): void => {
-    timer.current = null;
-
-    const next: Nullable<IPickedColor> = pending.current;
-
-    pending.current = null;
-
-    if (next) {
-      sentAt.current = performance.now();
-      onChangeRef.current(next);
-    }
-  }, []);
-
-  const change = useCallback(
-    (color: RgbColor): void => {
-      setDraft(color);
-      pending.current = color;
-
-      if (timer.current !== null) {
-        return;
-      }
-
-      const wait: number = sentAt.current + DEFAULT_DRAFT_INTERVAL - performance.now();
-
-      if (wait <= 0) {
-        flush();
-      } else {
-        timer.current = setTimeout(flush, wait);
-      }
-    },
-    [flush]
-  );
-
-  // Letting go, of the pointer or a key, tells the last colour at once and shows the owner's again.
-  const end = useCallback((): void => {
-    if (timer.current !== null) {
-      clearTimeout(timer.current);
-    }
-
-    flush();
-    setDraft(null);
-  }, [flush]);
-
-  const isDragged: boolean = draft !== null;
+  const { value: shown, isDrafted, change, end } = useThrottledValue(value, isSameColor, onChange);
+  const endDrag = useCallback((): void => end(), [end]);
 
   // The picker follows a drag across the whole window, so one let go outside it ends there too.
   useEffect(() => {
-    if (!isDragged) {
+    if (!isDrafted) {
       return;
     }
 
-    window.addEventListener("pointerup", end);
-    window.addEventListener("pointercancel", end);
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
 
     return () => {
-      window.removeEventListener("pointerup", end);
-      window.removeEventListener("pointercancel", end);
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
     };
-  }, [isDragged, end]);
-
-  // A picker taken down mid-drag still tells what it was dragged to.
-  useEffect(
-    () => () => {
-      if (timer.current !== null) {
-        clearTimeout(timer.current);
-        flush();
-      }
-    },
-    [flush]
-  );
+  }, [isDrafted, endDrag]);
 
   return (
     <Box
@@ -129,9 +77,9 @@ export function ColorPicker({
           width: 14,
         },
       })}
-      onKeyUp={end}
+      onKeyUp={endDrag}
     >
-      <RgbColorPicker color={draft ?? value} onChange={change} />
+      <RgbColorPicker color={shown} onChange={change} />
     </Box>
   );
 }

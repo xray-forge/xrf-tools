@@ -1,8 +1,7 @@
 import { Nullable } from "@xrf/types";
-import { SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
+import { SyntheticEvent, useCallback } from "react";
 
-/** How often a control dragged by hand tells its owner, in milliseconds: about every third frame, which reads as live. */
-export const DEFAULT_DRAFT_INTERVAL: number = 50;
+import { DEFAULT_DRAFT_INTERVAL, IThrottledValue, useThrottledValue } from "@/lib/react/use-throttled-value";
 
 /** Commits a slider reports for one discrete step rather than for letting go: a key, or its hidden input changing. */
 const STEP_COMMIT_EVENTS: ReadonlySet<string> = new Set(["keydown", "change"]);
@@ -21,10 +20,8 @@ export interface IThrottledDraft {
 }
 
 /**
- * A slider value that follows the hand at once but tells its owner at most once an interval, and always the last.
- *
- * Only what this gesture dragged to is told, never what the owner holds or was last told; the owner holding anything
- * else drops the draft, which also ends a gesture the browser cancelled.
+ * A slider value that follows the hand at once but tells its owner at most once an interval, and always the last, as
+ * `useThrottledValue` does for any value.
  *
  * @param value - The owner's value.
  * @param step - The slider's step: values within half of one are the same position, since an owner storing a mapping of
@@ -39,110 +36,24 @@ export function useThrottledDraft(
   onChange: (value: number) => void,
   intervalMs: number = DEFAULT_DRAFT_INTERVAL
 ): IThrottledDraft {
-  const [draft, setDraft] = useState<Nullable<number>>(null);
-  const valueRef = useRef<number>(value);
-  const onChangeRef = useRef<(value: number) => void>(onChange);
-  const pending = useRef<Nullable<number>>(null);
-  const sent = useRef<Nullable<number>>(null);
-  const sentAt = useRef<number>(-Infinity);
-  const isEnding = useRef<boolean>(false);
-  const timer = useRef<Nullable<ReturnType<typeof setTimeout>>>(null);
-
-  valueRef.current = value;
-  onChangeRef.current = onChange;
-
   // A step that is not a positive number has no half to be within: every value would read as an override.
   const tolerance: number = step > 0 && Number.isFinite(step) ? step / 2 : 0;
-
   const isSame = useCallback(
     (left: number, right: Nullable<number>): boolean =>
       right !== null && (tolerance > 0 ? Math.abs(left - right) < tolerance : Object.is(left, right)),
     [tolerance]
   );
+  const draft: IThrottledValue<number> = useThrottledValue(value, isSame, onChange, intervalMs);
+  const { change, end } = draft;
 
-  const cancel = useCallback((): void => {
-    if (timer.current !== null) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-  }, []);
-
-  const flush = useCallback((): void => {
-    timer.current = null;
-
-    const next: Nullable<number> = pending.current;
-
-    pending.current = null;
-
-    if (next !== null && !isSame(next, sent.current) && !isSame(next, valueRef.current)) {
-      sent.current = next;
-      sentAt.current = performance.now();
-      onChangeRef.current(next);
-    }
-
-    if (isEnding.current) {
-      isEnding.current = false;
-      setDraft(null);
-    }
-  }, [isSame]);
-
-  const change = useCallback(
-    (_: Event, next: TSliderValue): void => {
-      const scalar: number = typeof next === "number" ? next : next[0];
-
-      setDraft(scalar);
-      pending.current = scalar;
-      isEnding.current = false;
-
-      if (timer.current !== null) {
-        return;
-      }
-
-      const wait: number = sentAt.current + intervalMs - performance.now();
-
-      if (wait <= 0) {
-        flush();
-      } else {
-        timer.current = setTimeout(flush, wait);
-      }
-    },
-    [intervalMs, flush]
+  const onSliderChange = useCallback(
+    (_: Event, next: TSliderValue): void => change(typeof next === "number" ? next : next[0]),
+    [change]
+  );
+  const onSliderCommitted = useCallback(
+    (event: Event | SyntheticEvent): void => end(STEP_COMMIT_EVENTS.has(event.type)),
+    [end]
   );
 
-  const commit = useCallback(
-    (event: Event | SyntheticEvent): void => {
-      isEnding.current = true;
-
-      // A step waits for its interval like any change; letting go tells at once.
-      if (timer.current === null || !STEP_COMMIT_EVENTS.has(event.type)) {
-        cancel();
-        flush();
-      }
-    },
-    [cancel, flush]
-  );
-
-  // The owner holding something this hook did not send overrides whatever was being dragged.
-  useEffect(() => {
-    if (!isSame(value, sent.current)) {
-      cancel();
-      pending.current = null;
-      sent.current = null;
-      isEnding.current = false;
-      setDraft(null);
-    }
-  }, [value, cancel, isSame]);
-
-  // A control taken down mid-drag still tells what it was dragged to.
-  useEffect(
-    () => () => {
-      if (timer.current !== null) {
-        cancel();
-        flush();
-      }
-    },
-    [cancel, flush]
-  );
-
-  return { onChange: change, onChangeCommitted: commit, value: draft === null ? value : draft };
+  return { onChange: onSliderChange, onChangeCommitted: onSliderCommitted, value: draft.value };
 }
