@@ -64,3 +64,9 @@ fn fs_thunder(in: ThunderVarying) -> @location(0) vec4<f32> {
 
   return vec4<f32>(scene_from_shown(drawn.rgb), drawn.a);
 }
+
+// A multiplied bolt's texel, a factor the scene is multiplied by rather than a colour, so left as it is.
+@fragment
+fn fs_thunder_multiplied(in: ThunderVarying) -> @location(0) vec4<f32> {
+  return textureSample(thunder_texture, thunder_sampler, in.uv) * in.opacity;
+}

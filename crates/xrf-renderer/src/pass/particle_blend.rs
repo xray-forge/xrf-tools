@@ -54,6 +54,12 @@ impl ParticleBlend {
     self as usize
   }
 
+  /// Whether its source is a factor the scene is multiplied by, which is left as drawn rather than taken into the
+  /// scene's light as a colour is.
+  pub fn is_multiplied(self) -> bool {
+    matches!(self, Self::Multiply | Self::MultiplyDoubled)
+  }
+
   /// The colour equation over the scene; the scene's alpha is left as it is.
   pub fn get_blend_state(self) -> wgpu::BlendState {
     wgpu::BlendState {

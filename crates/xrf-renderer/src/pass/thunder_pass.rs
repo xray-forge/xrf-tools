@@ -112,7 +112,11 @@ impl ThunderPass {
         // Both sides, `CULL_NONE`, and a glow faces the view anyway.
         source.get_render_pipeline(
           &RenderPipelineDescription::new("thunder", "frame/thunder", entry)
-            .with_fragment("fs_thunder")
+            .with_fragment(if blend.is_multiplied() {
+              "fs_thunder_multiplied"
+            } else {
+              "fs_thunder"
+            })
             .with_bind_group_layouts(&[Some(view_layout), Some(layout)])
             .with_depth_stencil(wgpu::DepthStencilState {
               format: ViewTargets::DEPTH,

@@ -165,7 +165,15 @@ impl ParticlePass {
     Ok(ParticlePipelines {
       colour: ParticleBlend::ALL
         .iter()
-        .map(|blend| create("particles", "fs_particle", ViewTargets::SCENE, blend.get_blend_state()))
+        .map(|blend| {
+          let entry_point: &'static str = if blend.is_multiplied() {
+            "fs_particle_multiplied"
+          } else {
+            "fs_particle"
+          };
+
+          create("particles", entry_point, ViewTargets::SCENE, blend.get_blend_state())
+        })
         .collect::<XrfResult<_>>()?,
       // `blend(true, blend.srcalpha, blend.invsrcalpha)`, as the water blends what it writes there.
       distortion: create(

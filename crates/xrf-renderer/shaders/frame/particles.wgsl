@@ -83,8 +83,23 @@ fn fogged(alpha: f32, view_position: vec3<f32>) -> f32 {
   return alpha;
 }
 
+// A sprite's colour over the scene, taken into the light the scene holds.
 @fragment
 fn fs_particle(in: ParticleVarying) -> @location(0) vec4<f32> {
+  let drawn: vec4<f32> = particle_texel(in);
+
+  return vec4<f32>(scene_from_shown(drawn.rgb), drawn.a);
+}
+
+// A multiplied sprite's texel, a factor the scene is multiplied by rather than a colour, so left as it is.
+@fragment
+fn fs_particle_multiplied(in: ParticleVarying) -> @location(0) vec4<f32> {
+  return particle_texel(in);
+}
+
+// The sprite's texel as the engine draws it: tinted, soft against the scene behind it, cut at its reference and faded
+// by the fog.
+fn particle_texel(in: ParticleVarying) -> vec4<f32> {
   let surface: ParticleSurface = surfaces[in.surface];
   var result: vec4<f32> = in.color * sample_surface(surface, surface.texture, in.uv);
 
@@ -107,7 +122,7 @@ fn fs_particle(in: ParticleVarying) -> @location(0) vec4<f32> {
 
   result.a = fogged(result.a, in.view_position);
 
-  return vec4<f32>(scene_from_shown(result.rgb), result.a);
+  return result;
 }
 
 // `particle_distort.ps`: the distortion map's colour, blended in by its alpha times the particle's mean colour; neither
