@@ -39,7 +39,6 @@ import {
   ArchivePpeColor,
   ArchivePpeDescription,
   ArchiveReference,
-  ArchiveResolution,
   ArchiveShaderCompilerDescription,
   ArchiveShadersBlender,
   ArchiveShadersDescription,
@@ -68,7 +67,7 @@ import {
 import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { ArchivePackResult } from "@/core/ipc/types/xrf-pack";
-import { EXrayAssetContainer, EXraySourceKind, XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
+import { EXrayAssetContainer, XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * Creates the complete result of a packing run.
@@ -390,96 +389,6 @@ export function mockArchiveStatistics(overrides: Partial<ArchiveStatistics> = {}
         path: "C:\\game\\db\\textures.db0",
         sizeCompressed: 2048,
         sizeReal: 4096,
-      },
-    ],
-    ...overrides,
-  };
-}
-
-/**
- * @param overrides - Field values to override.
- * @returns A breakdown of a world.
- */
-export function mockArchiveWorldStatistics(overrides: Partial<ArchiveStatistics> = {}): ArchiveStatistics {
-  return mockArchiveStatistics({
-    compression: null,
-    extensions: [
-      { extension: EXrayExtension.LTX, isDeclared: true, measure: { files: 2, sizeReal: 3072 }, sizeCompressed: null },
-    ],
-    origins: {
-      archived: { files: 1, sizeReal: 1024 },
-      hidden: { files: 1, sizeReal: 8192 },
-      loose: { files: 1, sizeReal: 2048 },
-      sources: [
-        {
-          hides: { files: 0, sizeReal: 0 },
-          isLoose: true,
-          source: "C:\\game\\gamedata",
-          wins: { files: 1, sizeReal: 2048 },
-        },
-        {
-          hides: { files: 1, sizeReal: 8192 },
-          isLoose: false,
-          source: "C:\\game\\db\\configs.db0",
-          wins: { files: 1, sizeReal: 1024 },
-        },
-      ],
-    },
-    volumes: null,
-    ...overrides,
-  });
-}
-
-/**
- * Creates the search a mounted world resolves through: a loose tree in front of the volumes it overrides.
- *
- * @param overrides - Field values to override.
- * @returns Where the open subject looks for an engine path, in the order it looks.
- */
-export function mockArchiveResolution(overrides: Partial<ArchiveResolution> = {}): ArchiveResolution {
-  return {
-    sources: [
-      {
-        base: "",
-        entries: 12,
-        kind: EXraySourceKind.DIRECTORY,
-        label: "gamedata",
-        origin: "$game_data$",
-        path: "C:\\game\\gamedata",
-        step: "C:\\game",
-        volumes: [],
-      },
-      {
-        base: "",
-        entries: 480,
-        kind: EXraySourceKind.ARCHIVE,
-        label: "db",
-        origin: "$arch_dir$",
-        path: "C:\\game\\db",
-        step: "C:\\game",
-        volumes: [
-          {
-            entries: 300,
-            outputRootPath: "gamedata",
-            path: "C:\\game\\db\\patch.db1",
-            sizeCompressed: 1024,
-            sizeReal: 4096,
-          },
-          {
-            entries: 180,
-            outputRootPath: "gamedata",
-            path: "C:\\game\\db\\textures.db0",
-            sizeCompressed: 2048,
-            sizeReal: 8192,
-          },
-        ],
-      },
-    ],
-    unread: [
-      {
-        origin: "$arch_dir_levels$",
-        path: "C:\\game\\db\\levels",
-        reason: "failed to read archive header",
       },
     ],
     ...overrides,
