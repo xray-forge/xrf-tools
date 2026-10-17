@@ -1,4 +1,4 @@
-error[E0080]: evaluation panicked: `Points.points` is an array whose elements WGSL places further apart than Rust: use an element whose size is a multiple of its alignment
+error[E0080]: evaluation panicked: `Points.points` is an array whose element stride differs between WGSL and Rust: use an element whose size is a multiple of its alignment
  --> tests/ui/storage_stride.rs:5:10
   |
 5 | #[derive(PassParameters)]

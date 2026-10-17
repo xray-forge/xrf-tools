@@ -200,7 +200,7 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
         // WGSL steps through an array at its element's size rounded up to its alignment, Rust at its size: a `vec3`
         // is sixteen bytes apart in one and twelve in the other.
         let stride_message: String = format!(
-          "`{name}.{field_name}` is an array whose elements WGSL places further apart than Rust: \
+          "`{name}.{field_name}` is an array whose element stride differs between WGSL and Rust: \
            use an element whose size is a multiple of its alignment"
         );
 
