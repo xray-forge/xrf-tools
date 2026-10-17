@@ -102,8 +102,9 @@ impl LevelEffects {
 
   /// Moves the effects on a frame and posts what the scene plays: takes the read particles, plays the weather's ambient
   /// effects, switches the campfires and moves the object motions, then plays what each placement plays. `eye` is where
-  /// the camera stands in engine space; `lights` the campfires and motions the level's lights follow. Frozen while
-  /// particles are not drawn, and played as though indoors while the ambient effects are switched off.
+  /// the camera stands in engine space; `lights` the campfires and motions the level's lights follow. The wind blows and
+  /// the camera's indoor estimate runs every frame; while particles are not drawn, or the ambient effects are switched
+  /// off, the ambient effects play as though indoors: none starts, what plays stops, and the wind calms.
   pub fn advance(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
@@ -116,7 +117,7 @@ impl LevelEffects {
 
     self.take_read(updates);
 
-    if is_playing && let Some(systems) = &mut self.systems {
+    if let Some(systems) = &mut self.systems {
       systems.hemi.advance(eye, now);
       self.ambient.update(
         updates,
@@ -127,7 +128,10 @@ impl LevelEffects {
           finished: &std::mem::take(&mut self.finished),
         },
         ambient,
-        (eye, systems.hemi.is_indoors() || !toggles.is_ambient_played),
+        (
+          eye,
+          systems.hemi.is_indoors() || !toggles.is_ambient_played || !is_playing,
+        ),
         now,
       );
     }
