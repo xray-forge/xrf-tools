@@ -1,0 +1,5 @@
+error: `PassParameters` cannot be derived for a struct with type or const parameters, which its cached layout ignores
+ --> tests/ui/generic_parameters.rs:6:16
+  |
+6 | struct Generic<const SLOTS: usize> {
+  |                ^^^^^^^^^^^^^^^^^^
