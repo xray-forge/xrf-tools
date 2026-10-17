@@ -288,8 +288,15 @@ export class LevelWeatherService {
     }
 
     try {
-      if (this.cycle.value?.name !== name) {
+      if (this.cycle.value?.name === name) {
+        this.keepCycle(name);
+      } else {
         await this.play(selected, name);
+      }
+
+      // Another level opened during the read keeps how it was lit.
+      if (this.sessionId !== sessionId) {
+        return;
       }
 
       this.setSource(ELevelWeatherSource.WEATHER);
@@ -492,6 +499,20 @@ export class LevelWeatherService {
       this.log.warn(`The remembered cycle '${name}' is not played:`, transformError(error).message);
 
       return false;
+    }
+  }
+
+  /**
+   * Asks again for the cycle held, which a read of another one since then gives way to.
+   *
+   * @param name - The held cycle's name.
+   */
+  @BoundAction()
+  private keepCycle(name: string): void {
+    this.requested = name;
+
+    if (this.cycle.isLoading) {
+      this.cycle = this.cycle.asReady();
     }
   }
 
