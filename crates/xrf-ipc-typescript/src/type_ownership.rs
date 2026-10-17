@@ -70,6 +70,11 @@ impl TypeOwnership {
     }
   }
 
+  /// Whether `module` declares a type, or a type's enum, of `name`.
+  pub(crate) fn is_declared_by(&self, name: &str, module: &str) -> bool {
+    self.owners.get(name).is_some_and(|owner| owner == module)
+  }
+
   /// Names `source` references, excluding the ones `owner` declares itself.
   pub(crate) fn references(&self, source: &str, owner: &str) -> BTreeSet<&str> {
     Self::referenced_types(source, &self.owners, owner)
@@ -192,7 +197,13 @@ impl TypeOwnership {
   ///
   /// Answers `None` for a type no workspace crate declares, which has no module to live in.
   fn owning_module(named: &NamedDataType) -> Option<String> {
-    let declaring_crate: &str = named.module_path.split("::").next()?;
+    Self::owning_module_of(&named.module_path)
+  }
+
+  /// The bindings module owning what `module_path!()` places at `module_path`: its crate's, read off its first
+  /// segment, `None` outside the workspace. Types and constants share it, so both land in their crate's module.
+  pub(crate) fn owning_module_of(module_path: &str) -> Option<String> {
+    let declaring_crate: &str = module_path.split("::").next()?;
 
     declaring_crate
       .starts_with("xrf_")
