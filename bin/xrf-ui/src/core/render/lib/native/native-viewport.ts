@@ -311,20 +311,8 @@ export class NativeViewport {
    * @returns The scene drawn, which the viewport's load reports name; null for no level, a viewport not attached or a
    *   request that failed.
    */
-  public async showLevel(sessionId: Nullable<string>): Promise<Nullable<number>> {
-    const id: Nullable<RenderViewportId> = await this.attached;
-
-    if (id === null || this.isDisposed) {
-      return null;
-    }
-
-    try {
-      return (await renderCommands.showLevel(id, sessionId)) ?? null;
-    } catch (error: unknown) {
-      this.noteFailure("showLevel", error);
-
-      return null;
-    }
+  public showLevel(sessionId: Nullable<string>): Promise<Nullable<number>> {
+    return this.show("showLevel", (id: RenderViewportId) => renderCommands.showLevel(id, sessionId));
   }
 
   /**
@@ -332,20 +320,22 @@ export class NativeViewport {
    *
    * @param sessionId - The model's open session, as the backend holds it, or null for no model.
    * @param detail - How far down each submesh's collapse chain to draw: zero its finest level, one its coarsest.
+   * @returns The scene drawn, which the viewport's load reports name; null for no model, a viewport not attached or a
+   *   request that failed.
    */
-  public showModel(sessionId: Nullable<string>, detail: number): void {
-    this.call("showModel", (id: RenderViewportId) =>
-      renderCommands.showModel(id, sessionId, detail).then(() => undefined)
-    );
+  public showModel(sessionId: Nullable<string>, detail: number): Promise<Nullable<number>> {
+    return this.show("showModel", (id: RenderViewportId) => renderCommands.showModel(id, sessionId, detail));
   }
 
   /**
    * Draws a texture laid on a body, or none.
    *
    * @param request - The texture, the body and how it is laid on it, or null for none.
+   * @returns The scene drawn, which the viewport's load reports name; null for no texture, a viewport not attached or a
+   *   request that failed.
    */
-  public showTexture(request: TNativeTextureRequest): void {
-    this.call("showTexture", (id: RenderViewportId) => renderCommands.showTexture(id, request).then(() => undefined));
+  public showTexture(request: TNativeTextureRequest): Promise<Nullable<number>> {
+    return this.show("showTexture", (id: RenderViewportId) => renderCommands.showTexture(id, request));
   }
 
   /**
@@ -367,6 +357,30 @@ export class NativeViewport {
         return renderCommands.detachViewport(id).catch(ignoreDropped);
       }
     });
+  }
+
+  /**
+   * @param command - The show sent, which a failure is told under.
+   * @param send - Sends it to the attached viewport.
+   * @returns The scene it drew, or null for none, a viewport not attached or a show that failed.
+   */
+  private async show(
+    command: string,
+    send: (id: RenderViewportId) => Promise<Nullable<number>>
+  ): Promise<Nullable<number>> {
+    const id: Nullable<RenderViewportId> = await this.attached;
+
+    if (id === null || this.isDisposed) {
+      return null;
+    }
+
+    try {
+      return (await send(id)) ?? null;
+    } catch (error: unknown) {
+      this.noteFailure(command, error);
+
+      return null;
+    }
   }
 
   /**

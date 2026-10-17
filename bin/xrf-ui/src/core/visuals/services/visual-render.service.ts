@@ -29,6 +29,12 @@ export class VisualRenderService extends NativeRenderSurfaceService {
   private hasFramed: boolean = false;
   /** Whether the shown model's textures were described since it was shown. */
   private hasDescribed: boolean = false;
+  /** The scene the shown model is drawn as, which its load reports name; null until the renderer answers. */
+  private scene: Nullable<number> = null;
+  /** How many models were shown, so the answer for one shown before the last is dropped. */
+  private showing: number = 0;
+  /** The viewport's last load report, of whichever scene it named. */
+  private loaded: Nullable<RenderLoadReport> = null;
 
   public constructor(
     private readonly source: IVisualRenderSource = inject(VISUAL_RENDER_SOURCE),
@@ -100,26 +106,47 @@ export class VisualRenderService extends NativeRenderSurfaceService {
   }
 
   protected onLoad(report: RenderLoadReport): void {
-    const sessionId: Nullable<string> = this.source.sessionId;
-
-    // Described once everything it opens with is resident, so the panels never report a texture still on its way.
-    if (report.isReady && sessionId && !this.hasDescribed && this.viewport) {
-      this.hasDescribed = true;
-      void this.viewport
-        .describeTextures()
-        .then((reports: Array<RenderTextureReport>) => this.loadService.noteTextures(sessionId, reports));
-    }
+    this.loaded = report;
+    this.describeWhenReady();
   }
 
   /** A view mounted again frames what it opens with, as a view first shown does. */
   protected release(): void {
     this.hasFramed = false;
     this.hasDescribed = false;
+    this.scene = null;
+    this.loaded = null;
   }
 
   private showModel(sessionId: Nullable<string>, detail: number): void {
+    const showing: number = ++this.showing;
+
     this.hasDescribed = false;
-    this.viewport?.showModel(sessionId, detail);
+    this.scene = null;
+    void this.viewport?.showModel(sessionId, detail).then((scene: Nullable<number>) => {
+      if (showing === this.showing) {
+        this.scene = scene;
+        this.describeWhenReady();
+      }
+    });
+  }
+
+  /**
+   * Describes the shown model's textures once everything it opens with is resident, so the panels never report a
+   * texture still on its way; a ready report of the model shown before it describes nothing.
+   */
+  private describeWhenReady(): void {
+    const sessionId: Nullable<string> = this.source.sessionId;
+    const report: Nullable<RenderLoadReport> = this.loaded;
+
+    if (!report?.isReady || report.scene !== this.scene || !sessionId || this.hasDescribed || !this.viewport) {
+      return;
+    }
+
+    this.hasDescribed = true;
+    void this.viewport
+      .describeTextures()
+      .then((reports: Array<RenderTextureReport>) => this.loadService.noteTextures(sessionId, reports));
   }
 
   /**

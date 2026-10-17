@@ -25,6 +25,8 @@ import { mockSelectedVisual, mockTextureDependency, mockVisualModelViews } from 
 import { mockContainer } from "@/fixtures/utils/container";
 
 const VIEWPORT: number = 3;
+/** The scene the mocked renderer draws every model shown as. */
+const SCENE: number = 4;
 
 /** What a render command was sent, in order. */
 function sent(command: string): Array<Record<string, unknown>> {
@@ -56,7 +58,7 @@ async function mockAttached(source: IVisualRenderSource): Promise<{
   service: VisualRenderService;
   viewService: VisualViewService;
 }> {
-  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: VIEWPORT });
+  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: VIEWPORT, ["plugin:render|show_model"]: SCENE });
 
   const container: Container = mockContainer([
     VisualLoadService,
@@ -192,11 +194,18 @@ describe("VisualRenderService", () => {
       ],
     });
 
+    // A ready report of the model shown before, still in the channel, describes nothing.
+    emit({ kind: ERenderViewportEvent.LOAD, report: mockRenderLoadReport({ isReady: true, scene: SCENE - 1 }) });
+    await flush();
+
+    expect(sent("describe_textures")).toHaveLength(0);
+
     emit({
       kind: ERenderViewportEvent.LOAD,
       report: mockRenderLoadReport({
         bytes: 0,
         isReady: true,
+        scene: SCENE,
         sectors: 0,
         sectorsTotal: 0,
         textures: 1,
