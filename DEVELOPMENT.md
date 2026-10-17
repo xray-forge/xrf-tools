@@ -94,6 +94,10 @@ CI follows because it runs the same tasks.
 See the [build requirements](./README.md#build-from-source). The desktop app needs the Rust toolchain, Node.js, pnpm,
 and the Tauri CLI. The CLI-only tasks need Rust and Cargo Make.
 
+The renderer's binary resources (`crates/xrf-renderer/assets`: the DXC compiler and the water maps) are stored in Git
+LFS. Install it before cloning (`git lfs install`), or run `git lfs pull` after: without it the tree holds pointer
+files in their place, D3D12 falls back to FXC and `package-app` refuses to pack.
+
 ### DLSS
 
 The desktop app upscales with NVIDIA DLSS when built with the `dlss` feature (`cargo build -p xrf-app --features dlss`),

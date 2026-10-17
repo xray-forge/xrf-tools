@@ -1,0 +1,34 @@
+name: LFS assets
+description: >
+  Replaces the Git LFS pointers a checkout leaves with the files they name (`dxcompiler.dll`, the renderer's water
+  maps), so tests and packages read the real bytes. The objects come from a cache keyed on the LFS object list, so a
+  run downloads them from LFS only when that list changes, sparing the repository's LFS bandwidth.
+
+runs:
+  using: composite
+  steps:
+    - name: List the LFS objects
+      shell: bash
+      run: |
+        mkdir -p target
+        git lfs ls-files --long | cut -d ' ' -f 1 | sort > target/lfs-objects.txt
+
+    - name: Restore the LFS objects
+      id: restore
+      uses: actions/cache/restore@v6
+      with:
+        path: .git/lfs
+        key: lfs-assets-${{ runner.os }}-${{ hashFiles('target/lfs-objects.txt') }}
+
+    # Fetches only the objects the cache did not hold, then writes every LFS file into the tree.
+    - name: Pull the LFS files
+      shell: bash
+      run: git lfs pull
+
+    # Saved only from main, which every branch's restore falls back to.
+    - name: Save the LFS objects
+      if: ${{ steps.restore.outputs.cache-hit != 'true' && github.ref == 'refs/heads/main' }}
+      uses: actions/cache/save@v6
+      with:
+        path: .git/lfs
+        key: lfs-assets-${{ runner.os }}-${{ hashFiles('target/lfs-objects.txt') }}
