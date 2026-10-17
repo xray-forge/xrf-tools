@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use xrf_dlss::{Dlss, DlssInstance};
+use xrf_env_flags::EnvFlags;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::context::gpu_requirements::{
@@ -173,9 +174,46 @@ impl GpuContext {
     };
     // Validation in debug builds only, so a release frame pays nothing for it; `WGPU_VALIDATION`, `WGPU_DEBUG` and the
     // rest of wgpu's switches override it either way.
-    descriptor.flags = wgpu::InstanceFlags::from_build_config().with_env();
+    descriptor.flags = Self::read_instance_flags();
 
     DlssInstance::new(descriptor, is_upscaled, dlss)
+  }
+
+  /// The build's instance flags with each of wgpu's switches that is set applied, read as every xrf switch is rather
+  /// than by wgpu's `with_env`, which takes any value but a bare `0`, `false` and ` 0` among them, as on.
+  fn read_instance_flags() -> wgpu::InstanceFlags {
+    let mut flags: wgpu::InstanceFlags = wgpu::InstanceFlags::from_build_config();
+
+    for (switch, flag) in [
+      (EnvFlags::WGPU_VALIDATION, wgpu::InstanceFlags::VALIDATION),
+      (EnvFlags::WGPU_DEBUG, wgpu::InstanceFlags::DEBUG),
+      (
+        EnvFlags::WGPU_DISCARD_HAL_LABELS,
+        wgpu::InstanceFlags::DISCARD_HAL_LABELS,
+      ),
+      (
+        EnvFlags::WGPU_ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER,
+        wgpu::InstanceFlags::ALLOW_UNDERLYING_NONCOMPLIANT_ADAPTER,
+      ),
+      (
+        EnvFlags::WGPU_GPU_BASED_VALIDATION,
+        wgpu::InstanceFlags::GPU_BASED_VALIDATION,
+      ),
+      (
+        EnvFlags::WGPU_VALIDATION_INDIRECT_CALL,
+        wgpu::InstanceFlags::VALIDATION_INDIRECT_CALL,
+      ),
+      (
+        EnvFlags::WGPU_STRICT_WEBGPU_COMPLIANCE,
+        wgpu::InstanceFlags::STRICT_WEBGPU_COMPLIANCE,
+      ),
+    ] {
+      if let Some(is_on) = switch.read_switch() {
+        flags.set(flag, is_on);
+      }
+    }
+
+    flags
   }
 
   /// The adapter the backend picks automatically: its high-performance one, or a software one if `is_fallback`.
