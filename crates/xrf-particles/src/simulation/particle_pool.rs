@@ -19,9 +19,10 @@ pub struct ParticlePool {
 }
 
 impl ParticlePool {
+  /// A pool growing with what is born, up to `max_particles`, a count from the file that reserves nothing.
   pub(crate) fn new(max_particles: usize, seed: i32) -> Self {
     Self {
-      particles: Vec::with_capacity(max_particles),
+      particles: Vec::new(),
       max_particles,
       random: ParticleRandom::new(seed),
       random_frames: None,
