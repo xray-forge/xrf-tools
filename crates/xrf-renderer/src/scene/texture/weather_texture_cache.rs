@@ -240,7 +240,7 @@ impl WeatherTextureCache {
   fn is_kind(texture: &DecodedTexture, kind: WeatherTextureKind) -> bool {
     match kind {
       WeatherTextureKind::Cube => !texture.is_volume && texture.layers == DecodedTexture::CUBE_FACES,
-      WeatherTextureKind::Flat => texture.layers == 1,
+      WeatherTextureKind::Flat => texture.is_flat(),
       WeatherTextureKind::Volume => texture.is_volume,
     }
   }

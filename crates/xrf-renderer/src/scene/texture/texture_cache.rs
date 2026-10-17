@@ -647,10 +647,22 @@ impl TextureCache {
       return;
     }
 
-    // The bindless array holds two dimensional textures alone: a cube or a volume named as a level texture draws its
-    // first face.
-    // todo: refuse a cube or a volume named as a level texture as failed, rather than drawing its first face.
-    self.views[slot as usize] = texture.upload_flat(device, queue, "level texture");
+    // The bindless array holds two dimensional textures alone, so a cube or a volume named as a level texture is
+    // refused rather than drawn by its first face.
+    if !texture.is_flat() {
+      let kind: &str = if texture.is_volume { "a volume" } else { "a cube map" };
+
+      self.stand_in(
+        slot,
+        RenderTextureState::Failed {
+          reason: format!("It is {kind}, and a level texture is drawn flat"),
+        },
+      );
+
+      return;
+    }
+
+    self.views[slot as usize] = texture.upload(device, queue, "level texture");
     self.states[slot as usize] = RenderTextureState::Loaded {
       width: texture.width,
       height: texture.height,

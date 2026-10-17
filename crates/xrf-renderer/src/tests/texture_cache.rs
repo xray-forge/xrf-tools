@@ -3,6 +3,7 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use ddsfile::{Caps2, D3DFormat, Dds, NewD3dParams};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::context::gpu_context::GpuContext;
@@ -57,6 +58,50 @@ fn settle(cache: &mut TextureCache, context: &GpuContext, slot: u32) -> RenderTe
 
     std::thread::sleep(Duration::from_millis(5));
   }
+}
+
+/// A source answering every texture with one cube map.
+struct CubeSource;
+
+impl RenderAssetSource for CubeSource {
+  fn get_texture_scope(&self) -> &str {
+    "test"
+  }
+
+  fn read_texture(&self, _: &str) -> XrfResult<Option<Vec<u8>>> {
+    let mut cube: Dds = Dds::new_d3d(NewD3dParams {
+      width: 4,
+      height: 4,
+      depth: None,
+      format: D3DFormat::DXT1,
+      mipmap_levels: Some(1),
+      caps2: Some(Caps2::CUBEMAP | Caps2::CUBEMAP_ALLFACES),
+    })
+    .expect("a DXT1 cube");
+    let mut bytes: Vec<u8> = Vec::new();
+
+    // One 4x4 block of BC1 a face.
+    cube.data = vec![0; 6 * 8];
+    cube.write(&mut bytes).expect("a written cube");
+
+    Ok(Some(bytes))
+  }
+}
+
+// The bindless array holds flat textures alone: a cube named as a level texture is refused, not drawn by its first face.
+#[test]
+fn refuses_a_cube_named_as_a_level_texture() {
+  let Some(context) = create_test_context("to upload to") else {
+    return;
+  };
+  let source: Arc<dyn RenderAssetSource> = Arc::new(CubeSource);
+  let mut cache: TextureCache = TextureCache::new(&context.device, &context.queue, &create_workers());
+  let slot: u32 = cache.request("sky", TextureRole::Base, &source);
+
+  assert!(matches!(
+    settle(&mut cache, &context, slot),
+    RenderTextureState::Failed { reason } if reason.contains("a cube map")
+  ));
 }
 
 #[test]

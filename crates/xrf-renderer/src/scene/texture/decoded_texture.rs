@@ -170,12 +170,9 @@ impl DecodedTexture {
       })
   }
 
-  /// Makes a two dimensional texture of its first layer alone on the GPU, every level written, and answers its view: a
-  /// cube's first face, a volume's first slice.
-  pub fn upload_flat(&self, device: &wgpu::Device, queue: &wgpu::Queue, label: &str) -> wgpu::TextureView {
-    self
-      .upload_layers(device, queue, label, 1)
-      .create_view(&Default::default())
+  /// Whether it is one flat image, neither a cube nor a volume: what a two dimensional binding samples.
+  pub fn is_flat(&self) -> bool {
+    !self.is_volume && self.layers == 1
   }
 
   /// How a shader reads it: a volume's slices as an array, a cube's faces as a cube, anything else flat.
