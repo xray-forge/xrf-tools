@@ -1,4 +1,5 @@
 use std::sync::mpsc::Sender;
+use std::thread::JoinHandle;
 
 use crate::contract::render_settings::RenderSettings;
 use crate::thread::render_command::RenderCommand;
@@ -11,4 +12,7 @@ pub struct RenderLink {
   pub sender: Option<Sender<RenderCommand>>,
   /// The settings a thread started next begins with.
   pub settings: RenderSettings,
+  /// The thread started last, which may still be letting its GPU go after it stopped taking commands; the next thread
+  /// joins it before it starts a GPU of its own.
+  pub thread: Option<JoinHandle<()>>,
 }
