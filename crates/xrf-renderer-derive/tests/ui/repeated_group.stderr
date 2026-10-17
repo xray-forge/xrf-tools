@@ -1,0 +1,5 @@
+error: the group is given once
+ --> tests/ui/repeated_group.rs:5:25
+  |
+5 | #[parameters(group = 0, group = 1)]
+  |                         ^^^^^

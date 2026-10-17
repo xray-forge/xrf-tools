@@ -54,6 +54,15 @@ enum SamplerKind {
 }
 
 /// The storage texture formats a parameter may name: the wgpu variant and the WGSL texel format.
+/// The words a texture names its dimension by.
+const DIMENSIONS: &[&str] = &["d2", "d2_array", "cube", "cube_array", "d3"];
+/// The words a sampled texture names what it samples by.
+const SAMPLES: &[&str] = &["float", "unfilterable", "uint", "sint", "depth"];
+/// The words a storage texture names its access by.
+const ACCESSES: &[&str] = &["read", "write", "read_write"];
+/// The words a sampler names its kind by.
+const SAMPLER_KINDS: &[&str] = &["filtering", "non_filtering", "comparison"];
+
 const STORAGE_FORMATS: &[(&str, &str, &str)] = &[
   ("rgba8unorm", "Rgba8Unorm", "rgba8unorm"),
   ("rgba16float", "Rgba16Float", "rgba16float"),
@@ -111,7 +120,9 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
       ));
     }
 
-    next = index + 1;
+    next = index
+      .checked_add(1)
+      .ok_or_else(|| Error::new_spanned(ident, format!("binding {index} leaves no index for a binding after it")))?;
     bindings.push((index, ident, &field.ty, read_binding(&field.attrs, ident)?));
   }
 
@@ -358,6 +369,10 @@ fn read_group(attrs: &[Attribute], name: &Ident) -> syn::Result<u32> {
   for attr in attrs.iter().filter(|attr| attr.path().is_ident("parameters")) {
     attr.parse_nested_meta(|meta| {
       if meta.path.is_ident("group") {
+        if group.is_some() {
+          return Err(meta.error("the group is given once"));
+        }
+
         group = Some(meta.value()?.parse::<LitInt>()?.base10_parse()?);
         Ok(())
       } else {
@@ -390,11 +405,15 @@ fn read_binding(attrs: &[Attribute], ident: &Ident) -> syn::Result<Binding> {
   for attr in attrs {
     let path = attr.path();
     let found: Option<Binding> = if path.is_ident("uniform") {
+      require_bare(attr)?;
       Some(Binding::Uniform)
     } else if path.is_ident("storage") {
+      require_bare(attr)?;
       Some(Binding::Storage)
     } else if path.is_ident("texture") {
       let words: Vec<String> = read_words(attr)?;
+
+      check_words(attr, &words, &[DIMENSIONS, SAMPLES])?;
 
       Some(Binding::Texture {
         dimension: read_dimension(attr, &words)?,
@@ -402,6 +421,9 @@ fn read_binding(attrs: &[Attribute], ident: &Ident) -> syn::Result<Binding> {
       })
     } else if path.is_ident("storage_texture") {
       let words: Vec<String> = read_words(attr)?;
+      let formats: Vec<&str> = STORAGE_FORMATS.iter().map(|(spelling, _, _)| *spelling).collect();
+
+      check_words(attr, &words, &[DIMENSIONS, &formats, ACCESSES])?;
       let format = words
         .iter()
         .find_map(|word| STORAGE_FORMATS.iter().find(|(spelling, _, _)| spelling == word))
@@ -424,9 +446,12 @@ fn read_binding(attrs: &[Attribute], ident: &Ident) -> syn::Result<Binding> {
         },
       })
     } else if path.is_ident("acceleration_structure") {
+      require_bare(attr)?;
       Some(Binding::AccelerationStructure)
     } else if path.is_ident("sampler") {
       let words: Vec<String> = read_words(attr)?;
+
+      check_words(attr, &words, &[SAMPLER_KINDS])?;
 
       Some(Binding::Sampler {
         kind: match words.first().map(String::as_str) {
@@ -481,6 +506,38 @@ fn read_words(attr: &Attribute) -> syn::Result<Vec<String>> {
   }
 
   Ok(words)
+}
+
+/// Refuses arguments to a binding kind that takes none, which would otherwise be dropped unread.
+fn require_bare(attr: &Attribute) -> syn::Result<()> {
+  match &attr.meta {
+    Meta::Path(_) => Ok(()),
+    _ => Err(Error::new_spanned(attr, "this binding kind takes no arguments")),
+  }
+}
+
+/// Refuses a word no group of `groups` holds, and a second word of one group, so none is dropped unread or lost to the
+/// first.
+fn check_words(attr: &Attribute, words: &[String], groups: &[&[&str]]) -> syn::Result<()> {
+  let mut seen: Vec<usize> = Vec::new();
+
+  for word in words {
+    let group: usize = groups
+      .iter()
+      .position(|group| group.contains(&word.as_str()))
+      .ok_or_else(|| Error::new_spanned(attr, format!("`{word}` is not a word this binding takes")))?;
+
+    if seen.contains(&group) {
+      return Err(Error::new_spanned(
+        attr,
+        format!("`{word}` repeats or contradicts a word before it"),
+      ));
+    }
+
+    seen.push(group);
+  }
+
+  Ok(())
 }
 
 fn read_dimension(attr: &Attribute, words: &[String]) -> syn::Result<Dimension> {
