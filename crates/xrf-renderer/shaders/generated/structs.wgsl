@@ -1,5 +1,38 @@
 // Generated from Rust declarations; do not edit. Regenerate with `cargo test`.
 
+struct Camera {
+  view_projection: mat4x4<f32>,
+  inverse_view_projection: mat4x4<f32>,
+  view: mat4x4<f32>,
+  projection: mat4x4<f32>,
+  inverse_projection: mat4x4<f32>,
+  position: vec4<f32>,
+  viewport: vec4<f32>,
+  planes: array<vec4<f32>, 6>,
+  switches: vec4<f32>,
+  modes: vec4<f32>,
+  motion_current: mat4x4<f32>,
+  motion_previous: mat4x4<f32>,
+  view_projection_previous: mat4x4<f32>,
+  backdrop: vec4<f32>,
+  plain: vec4<f32>,
+  backdrop_squares: vec4<f32>,
+  selection: vec4<u32>,
+  selection_runs: array<vec4<u32>, 32>,
+  parallax: vec4<f32>,
+  parallax_light: vec4<f32>,
+  parallax_mix: vec4<f32>,
+  output: vec4<f32>,
+}
+
+struct Backdrop {
+  color: vec4<f32>,
+  first: vec4<f32>,
+  last: vec4<f32>,
+  rect: vec4<f32>,
+  line: vec4<f32>,
+}
+
 struct Lighting {
   to_sun: vec4<f32>,
   sun: vec4<f32>,

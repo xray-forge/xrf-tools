@@ -1,52 +1,7 @@
 #import "common/marks"
 
-// What every pass drawing a viewport knows of its camera and the frame's switches.
-struct Camera {
-  view_projection: mat4x4<f32>,
-  inverse_view_projection: mat4x4<f32>,
-  view: mat4x4<f32>,
-  projection: mat4x4<f32>,
-  inverse_projection: mat4x4<f32>,
-  // xyz: the eye in renderer space.
-  position: vec4<f32>,
-  // xy: the viewport's size in device pixels; zw: its top left corner in the window.
-  viewport: vec4<f32>,
-  // The frustum's six planes in renderer space, pointing inward.
-  planes: array<vec4<f32>, 6>,
-  // x: textured, y: bumped, z: the baked hemisphere's strength, w: the surfaces' bits, `SURFACES_STEEP`,
-  // `SURFACES_PARALLAX_SHOWN`, `SURFACES_BUMPS_SHOWN`, `SURFACES_HEIGHTS_SHOWN` and `SURFACES_ENHANCED`.
-  switches: vec4<f32>,
-  // x: one where every static surface draws as its triangles' edges; y: times a uv checker repeats in place of every
-  // surface's textures, zero for none; z: one where surfaces draw solid, their alpha ignored; w: one where an
-  // untextured surface is clay rather than its shader's tint.
-  modes: vec4<f32>,
-  // World to clip without the jitter, this frame and the last, which a surface's motion is measured by.
-  motion_current: mat4x4<f32>,
-  motion_previous: mat4x4<f32>,
-  // World to clip with the jitter the last frame drew by, which a read of that frame's targets reprojects through.
-  view_projection_previous: mat4x4<f32>,
-  // What shows where nothing was drawn and neither the sky nor the fog is; `w` one where it is set.
-  backdrop: vec4<f32>,
-  // What a surface naming no base texture is drawn; `w` one where it is set, white where it is not.
-  plain: vec4<f32>,
-  // The backdrop's second colour, and in `w` the side of a square in render pixels; zero for a plain backdrop.
-  backdrop_squares: vec4<f32>,
-  // x: one while something is selected; y: the place its clusters are drawn in, or any at `0xffffffff`; z: how many runs
-  // of clusters follow.
-  selection: vec4<u32>,
-  // Runs of clusters in order, two a vector: each its first and the one past its last.
-  selection_runs: array<vec4<u32>, 32>,
-  // The enhanced parallax: x its steps at most, y its range in metres, z its depth in detail coordinates, w one where
-  // its march is refined; then xyz the sun's direction in view space, w how much of it the relief keeps from its
-  // hollows; then x how far a terrain's layers blend by height, y how much its low ground darkens, z a steep surface's
-  // depth in its own coordinates and w its range in metres.
-  parallax: vec4<f32>,
-  parallax_light: vec4<f32>,
-  parallax_mix: vec4<f32>,
-  // x: one where the scene holds linear light at its exposure, which the window pass tonemaps; zero where every pass
-  // writes tonemapped colour, as the engine's do. y: the mip bias the surfaces' textures are read at, negative sharper.
-  output: vec4<f32>,
-};
+// What every pass drawing a viewport knows of its camera and the frame's switches (`CameraUniform`).
+#import "generated/structs"
 
 @group(0) @binding(0) var<uniform> camera: Camera;
 

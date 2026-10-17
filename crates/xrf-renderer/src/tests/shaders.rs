@@ -2,7 +2,11 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use xrf_renderer_core::{ShaderAddressSpace, ShaderLayoutVerifier};
+
 use crate::contract::render_debug_view::RenderDebugView;
+use crate::pass::backdrop_uniform::BackdropUniform;
+use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::light_view::LightView;
 use crate::scene::level::level_light_shadows::LevelLightShadows;
 use crate::scene::static_scene::static_class::StaticClass;
@@ -215,6 +219,13 @@ fn get_struct_size(library: &ShaderLibrary, name: &str, type_name: &str) -> u32 
     .unwrap_or_else(|| panic!("'{name}' has no '{type_name}'"));
 
   layouter[handle].size
+}
+
+/// naga lays the camera and the page's backdrop out where the derive does, and takes each as a uniform.
+#[test]
+fn the_camera_and_the_backdrop_are_laid_out_as_naga_lays_them() {
+  ShaderLayoutVerifier::verify::<CameraUniform>(ShaderAddressSpace::Uniform).unwrap();
+  ShaderLayoutVerifier::verify::<BackdropUniform>(ShaderAddressSpace::Uniform).unwrap();
 }
 
 /// The static draws lay a surface out as large as it is written.

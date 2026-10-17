@@ -1,4 +1,5 @@
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, UVec4, Vec3, Vec4};
+use xrf_renderer_core::ShaderStruct;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_debug_view::RenderDebugView;
@@ -9,17 +10,20 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::pass::light_view::LightView;
 use crate::scene::static_scene::static_selection::StaticSelection;
 
-/// The camera as `shaders/common/camera.wgsl` declares it.
+/// What every pass drawing a viewport knows of its camera and the frame's switches: WGSL's `Camera`, which
+/// `shaders/common/camera.wgsl` binds.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Camera")]
 pub struct CameraUniform {
   pub view_projection: Mat4,
   pub inverse_view_projection: Mat4,
   pub view: Mat4,
   pub projection: Mat4,
   pub inverse_projection: Mat4,
+  /// The eye in renderer space.
   pub position: Vec4,
-  /// The viewport's size, then its top left corner in the window.
+  /// The viewport's size in device pixels, then its top left corner in the window.
   pub viewport: Vec4,
   /// The frustum's planes in renderer space, pointing inward.
   pub planes: [Vec4; 6],
@@ -28,7 +32,8 @@ pub struct CameraUniform {
   /// for their debug views, sixteen where the enhanced parallax is marched, thirty two where it draws the sampled mip.
   pub switches: Vec4,
   /// One where the static surfaces draw as their triangles' edges; times a uv checker repeats in place of every
-  /// surface's textures; one where surfaces draw solid.
+  /// surface's textures, zero for none; one where surfaces draw solid, their alpha ignored; one where an untextured
+  /// surface is clay rather than its shader's tint.
   pub modes: Vec4,
   /// World to clip without the jitter, this frame and the last, which a surface's motion is measured by.
   pub motion_current: Mat4,
@@ -42,9 +47,9 @@ pub struct CameraUniform {
   /// The backdrop's second colour, and in `w` the side of a square in render pixels; zero for a plain backdrop.
   pub backdrop_squares: Vec4,
   /// One while something is selected; the place its clusters are drawn in, or `u32::MAX` for any; how many runs follow.
-  pub selection: [u32; 4],
+  pub selection: UVec4,
   /// The selection's runs of clusters, two a row: each its first and the one past its last.
-  pub selection_runs: [[u32; 4]; SELECTION_ROWS],
+  pub selection_runs: [UVec4; SELECTION_ROWS],
   /// The enhanced parallax's steps at most, its range in metres, its depth in detail coordinates, and one where its
   /// march is refined; the sun's direction in view space and how much of it its relief keeps from its hollows; how far a
   /// terrain's layers blend by height, how much its low ground darkens, and a steep surface's depth and range.
@@ -101,8 +106,8 @@ impl CameraUniform {
       backdrop: Vec4::ZERO,
       plain: Vec4::ZERO,
       backdrop_squares: Vec4::ZERO,
-      selection: [0; 4],
-      selection_runs: [[0; 4]; SELECTION_ROWS],
+      selection: UVec4::ZERO,
+      selection_runs: [UVec4::ZERO; SELECTION_ROWS],
       parallax: Vec4::ZERO,
       parallax_light: Vec4::ZERO,
       parallax_mix: Vec4::ZERO,
@@ -167,7 +172,7 @@ impl CameraUniform {
     };
     let runs: Vec<[u32; 2]> = Self::join_nearest(&selection.runs, SELECTION_ROWS * 2);
 
-    self.selection = [1, selection.place.unwrap_or(u32::MAX), runs.len() as u32, 0];
+    self.selection = UVec4::new(1, selection.place.unwrap_or(u32::MAX), runs.len() as u32, 0);
 
     for (index, run) in runs.iter().enumerate() {
       self.selection_runs[index / 2][(index % 2) * 2] = run[0];
