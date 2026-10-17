@@ -242,7 +242,7 @@ impl DialogProject {
       .find(|file| file.get_logical_path().eq_ignore_ascii_case(logical_path))
   }
 
-  /// One dialog, addressed the way the project index lists it: by file, then by id.
+  /// One dialog, addressed the way the project index lists it: by file, then by id, since one id may be in many files.
   pub fn find_dialog(&self, logical_path: &str, id: &str) -> Option<&Dialog> {
     self.find_file(logical_path)?.get_file().find_dialog(id)
   }
@@ -266,7 +266,8 @@ impl DialogProject {
     self.text.get_languages()
   }
 
-  /// Describe one dialog with every phrase it declares, resolving its lines into one language.
+  /// Describe one dialog with every phrase it declares, its lines in `language`, the tree's first where none is named;
+  /// a language the tree does not hold resolves no line.
   pub fn describe_dialog(&self, logical_path: &str, id: &str, language: Option<&str>) -> Option<DialogDescriptor> {
     let file: &DialogProjectFile = self.find_file(logical_path)?;
     let dialog: &Dialog = file.get_file().find_dialog(id)?;
@@ -321,7 +322,7 @@ impl DialogProject {
     self.files.iter().map(|file| file.get_file().get_dialogs().len()).sum()
   }
 
-  /// Whether every file the project holds could be written back.
+  /// Whether every file the project holds could be written back; a project of no files is not editable.
   pub fn is_editable(&self) -> bool {
     !self.files.is_empty() && self.files.iter().all(DialogProjectFile::is_editable)
   }

@@ -19,8 +19,8 @@ type PartnerReader = fn(&mut DialogPartners, &XmlElementSpan, &str);
 
 /// The talk partners a game tree declares: characters, the profiles naming them, and the info portions opening dialogs.
 ///
-/// Answers which dialogs reach the actor when it talks to an NPC, the way `CActor::UpdateAvailableDialogs` gathers them.
-/// A file that cannot be read becomes a finding, as it does for `DialogProject`.
+/// Answers which dialogs reach the actor when it talks to an NPC, the way `CActor::UpdateAvailableDialogs` gathers
+/// them. A file that cannot be read becomes a finding, as it does for `DialogProject`.
 #[derive(Debug, Default)]
 pub struct DialogPartners {
   characters: IndexMap<String, DialogCharacter>,

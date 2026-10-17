@@ -56,7 +56,10 @@ fn main() -> xrf_error::XrfResult {
 ```
 
 `get_files` and `get_findings` expose parsed content and problems. `describe` summarizes the project;
-`describe_dialog` returns one conversation with optional translated text from its `DialogTextIndex`.
+`describe_dialog` returns one conversation with optional translated text from its `DialogTextIndex`. A dialog is
+addressed by its file and its id, because one id may be declared in several files, each a dialog of its own;
+`list_files_declaring` names them. With no language named, the text is the tree's first language, since a project may
+ship one and not always English; a language the tree does not hold resolves no line rather than another's.
 
 Choose source mode for the XRF source layout and gamedata mode for game string tables. The layout's optional dialog
 and translation prefixes override its defaults. Mode detection is advisory; the layout passed to `open` selects the
