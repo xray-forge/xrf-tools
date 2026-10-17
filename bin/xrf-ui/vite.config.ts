@@ -16,7 +16,7 @@ import { default as manifest } from "./package.json" with { type: "json" };
 function preloadThemePlugin(): Plugin {
   const entry: string = normalizePath(path.resolve(import.meta.dirname, "./src/core/theme/preload.ts"));
   let files: ReadonlySet<string> = new Set([entry]);
-  let css = null;
+  let css: Promise<string> | null = null;
 
   async function load(): Promise<string> {
     const { module, dependencies } = await runnerImport<typeof import("./src/core/theme/preload.ts")>(entry);
@@ -81,7 +81,7 @@ function reactObserverPlugin(): Plugin {
   };
 }
 
-function getInitialVendorChunk(id: string) {
+function getInitialVendorChunk(id: string): string | null {
   const normalized: string = id.replaceAll("\\", "/");
 
   if (normalized.includes("/node_modules/")) {
