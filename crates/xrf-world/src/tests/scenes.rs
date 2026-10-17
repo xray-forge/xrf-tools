@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use xrf_renderer::{RenderLevelSource, RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorld};
 
@@ -20,7 +20,7 @@ fn source(key: Option<&str>) -> Arc<dyn RenderLevelSource> {
 /// Each scene the world plays this frame, by the viewport driving it.
 fn list_drivers(world: &mut World) -> HashMap<RenderSceneId, Option<RenderViewportId>> {
   world
-    .advance_scenes(HashMap::new())
+    .advance_scenes(Instant::now(), HashMap::new())
     .into_iter()
     .map(|(id, frame): (RenderSceneId, RenderSceneFrame)| (id, frame.driver))
     .collect()
@@ -90,13 +90,13 @@ fn restarting_the_scenes_streams_each_again_under_its_id_and_driver() {
 
   world.show_level(viewport, Some(source(Some("zaton"))));
 
-  let before: HashMap<RenderSceneId, RenderSceneFrame> = world.advance_scenes(HashMap::new());
+  let before: HashMap<RenderSceneId, RenderSceneFrame> = world.advance_scenes(Instant::now(), HashMap::new());
 
   // So the restarted streaming's start is later than the first's on any clock.
   std::thread::sleep(Duration::from_millis(1));
   world.restart_scenes();
 
-  let after: HashMap<RenderSceneId, RenderSceneFrame> = world.advance_scenes(HashMap::new());
+  let after: HashMap<RenderSceneId, RenderSceneFrame> = world.advance_scenes(Instant::now(), HashMap::new());
 
   assert_eq!(after.keys().collect::<Vec<_>>(), before.keys().collect::<Vec<_>>());
 

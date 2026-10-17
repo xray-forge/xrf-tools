@@ -50,7 +50,7 @@ pub struct WeatherPlayer {
   thunder: WeatherThunder,
   /// Whether the last frame was lit by a strike, which the frame after it ends lights without.
   is_flashing: bool,
-  /// What real seconds are counted from, which the bolts strike by.
+  /// What the real clock the bolts strike by runs from.
   epoch: Instant,
 }
 
@@ -230,7 +230,7 @@ impl WeatherPlayer {
     is_thundering: bool,
     lighting: Option<RenderLighting>,
   ) -> Option<RenderLighting> {
-    let seconds: f32 = now.saturating_duration_since(self.epoch).as_secs_f32();
+    let clock: Duration = now.saturating_duration_since(self.epoch);
     let (Some(weather), Some(mix), Some(shown)) = (&self.weather, &self.mix, &self.shown) else {
       return lighting;
     };
@@ -239,7 +239,7 @@ impl WeatherPlayer {
     };
     let flash = self
       .thunder
-      .advance(thunder, mix, is_thundering, seconds, glam::Vec3::from(view));
+      .advance(thunder, mix, is_thundering, clock, glam::Vec3::from(view));
 
     if let (Some(flash), Some(settings)) = (flash, thunder.settings) {
       self.is_flashing = true;

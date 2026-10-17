@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::lighting::weather_random::WeatherRandom;
 
 /// `PERLIN_SAMPLE_SIZE`: gradients in the table, and the mask that wraps into it.
@@ -20,7 +22,7 @@ pub struct WindNoise {
   gradients: [f32; SAMPLES * 2 + 2],
   /// `mTimes` and `mPrevContiniousTime`.
   times: [f32; OCTAVES],
-  previous: f32,
+  previous: Duration,
 }
 
 impl WindNoise {
@@ -50,17 +52,14 @@ impl WindNoise {
       order,
       gradients,
       times: [0.0; OCTAVES],
-      previous: 0.0,
+      previous: Duration::ZERO,
     }
   }
 
-  /// `GetContinious`: the noise at a moment, in seconds, read at a frequency; within two thirds of zero either way.
-  pub fn read(&mut self, time: f32, frequency: f32) -> f32 {
-    let mut step: f32 = if self.previous != 0.0 {
-      time - self.previous
-    } else {
-      time
-    };
+  /// `GetContinious`: the noise at a moment read at a frequency; within two thirds of zero either way. The step since
+  /// the last read is taken before it is made seconds, so the noise keeps its pace however long its clock has run.
+  pub fn read(&mut self, time: Duration, frequency: f32) -> f32 {
+    let mut step: f32 = time.saturating_sub(self.previous).as_secs_f32();
     let mut amplitude: f32 = AMPLITUDE;
     let mut result: f32 = 0.0;
 

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::sync::mpsc::TryRecvError;
+use std::time::Duration;
 
 use glam::Vec3;
 use xrf_math::Vector3d;
@@ -9,8 +10,8 @@ use xrf_visual::HemiEstimator;
 /// `get_luminocity_hemi() < 0.05`: the hemi under which the actor stands indoors (`CGamePersistent::WeathersUpdate`).
 const INDOOR_HEMI: f32 = 0.05;
 
-/// Milliseconds between estimates; the engine casts five of its sky's rays a frame (`ps_r2_dhemi_count`).
-const ESTIMATE_INTERVAL: u64 = 200;
+/// How long between estimates; the engine casts five of its sky's rays a frame (`ps_r2_dhemi_count`).
+const ESTIMATE_INTERVAL: Duration = Duration::from_millis(200);
 
 /// `ps_r2_lt_smooth`: how much of the way to the estimate the smoothed hemi moves a second.
 const SMOOTHING: f32 = 1.0;
@@ -24,9 +25,9 @@ pub struct CameraHemi {
   value: Option<f32>,
   /// `hemi_smooth`, one half until the first estimate replaces it.
   smooth: f32,
-  /// When the next estimate is due, and when the hemi was last smoothed, in milliseconds.
-  due: u64,
-  smoothed_at: Option<u64>,
+  /// When the next estimate is due, and when the hemi was last smoothed, on the level's clock.
+  due: Duration,
+  smoothed_at: Option<Duration>,
   workers: RenderWorkers,
 }
 
@@ -37,15 +38,15 @@ impl CameraHemi {
       pending: None,
       value: None,
       smooth: 0.5,
-      due: 0,
+      due: Duration::ZERO,
       smoothed_at: None,
       workers: workers.clone(),
     }
   }
 
-  /// Takes a finished estimate, asks for the next one once due, and smooths the hemi on to `now`. `eye` is where the
-  /// camera stands, in engine space.
-  pub fn advance(&mut self, eye: Vec3, now: u64) {
+  /// Takes a finished estimate, asks for the next one once due, and smooths the hemi on to `now`, the level's clock.
+  /// `eye` is where the camera stands, in engine space.
+  pub fn advance(&mut self, eye: Vec3, now: Duration) {
     match self.pending.as_mut().map(LoaderReceiver::try_recv) {
       Some(Ok(value)) => {
         // The first estimate is taken as it is, as the first update takes it.
@@ -76,7 +77,7 @@ impl CameraHemi {
     }
 
     if let (Some(value), Some(at)) = (self.value, self.smoothed_at) {
-      let share: f32 = ((now.saturating_sub(at)) as f32 / 1000.0 * SMOOTHING).clamp(0.0, 1.0);
+      let share: f32 = (now.saturating_sub(at).as_secs_f32() * SMOOTHING).clamp(0.0, 1.0);
 
       self.smooth += (value - self.smooth) * share;
     }

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::time::Instant;
+use std::time::Duration;
 
 use crate::level::campfire::Campfire;
 
@@ -9,9 +9,8 @@ use crate::level::campfire::Campfire;
 pub struct LevelCampfires {
   campfires: HashMap<u16, Campfire>,
   is_lit: bool,
-  started: Instant,
-  /// The viewer's milliseconds at this frame, which every campfire's turn is timed by.
-  now: u64,
+  /// The level's clock at this frame, which every campfire's turn is timed by.
+  now: Duration,
 }
 
 impl Default for LevelCampfires {
@@ -26,35 +25,13 @@ impl LevelCampfires {
       campfires: HashMap::new(),
       // `m_turned_on`: a campfire spawns lit.
       is_lit: true,
-      started: Instant::now(),
-      now: 0,
+      now: Duration::ZERO,
     }
   }
 
-  /// Turns every campfire to the view's switch when it flips, and settles each turn that has taken its time.
-  pub fn prepare(&mut self, is_lit: bool) {
-    self.prepare_at(is_lit, self.started.elapsed().as_millis() as u64);
-  }
-
-  /// The campfire spawned as an object, standing in the switch's state if nothing asked for it before.
-  pub fn get(&mut self, id: u16) -> &Campfire {
-    let is_lit: bool = self.is_lit;
-
-    self.campfires.entry(id).or_insert_with(|| Campfire::new(is_lit))
-  }
-
-  /// How much of a campfire's idle light shows this frame.
-  pub fn get_light_share(&mut self, id: u16) -> f32 {
-    let now: u64 = self.now;
-
-    self.get(id).get_light_share(now)
-  }
-
-  pub fn get_now(&self) -> u64 {
-    self.now
-  }
-
-  fn prepare_at(&mut self, is_lit: bool, now: u64) {
+  /// Moves on to `now`, the level's clock: turns every campfire to the view's switch when it flips, and settles each
+  /// turn that has taken its time.
+  pub fn prepare(&mut self, is_lit: bool, now: Duration) {
     self.now = now;
 
     if is_lit != self.is_lit {
@@ -69,10 +46,30 @@ impl LevelCampfires {
       campfire.settle(now);
     }
   }
+
+  /// The campfire spawned as an object, standing in the switch's state if nothing asked for it before.
+  pub fn get(&mut self, id: u16) -> &Campfire {
+    let is_lit: bool = self.is_lit;
+
+    self.campfires.entry(id).or_insert_with(|| Campfire::new(is_lit))
+  }
+
+  /// How much of a campfire's idle light shows this frame.
+  pub fn get_light_share(&mut self, id: u16) -> f32 {
+    let now: Duration = self.now;
+
+    self.get(id).get_light_share(now)
+  }
+
+  pub fn get_now(&self) -> Duration {
+    self.now
+  }
 }
 
 #[cfg(test)]
 mod tests {
+  use std::time::Duration;
+
   use super::LevelCampfires;
   use crate::level::campfire::Campfire;
 
@@ -80,7 +77,7 @@ mod tests {
   fn stands_a_campfire_first_asked_for_in_the_switchs_state() {
     let mut campfires: LevelCampfires = LevelCampfires::new();
 
-    campfires.prepare_at(false, 1000);
+    campfires.prepare(false, Duration::from_millis(1000));
 
     assert_eq!(*campfires.get(3), Campfire::new(false));
   }
@@ -89,15 +86,15 @@ mod tests {
   fn turns_every_campfire_as_the_switch_flips_and_settles_them() {
     let mut campfires: LevelCampfires = LevelCampfires::new();
 
-    campfires.prepare_at(true, 0);
+    campfires.prepare(true, Duration::ZERO);
     campfires.get(1);
     campfires.get(2);
-    campfires.prepare_at(false, 1000);
+    campfires.prepare(false, Duration::from_millis(1000));
 
     assert!(!campfires.get(1).is_lit());
     assert!(campfires.get(2).is_turning());
 
-    campfires.prepare_at(false, 4000);
+    campfires.prepare(false, Duration::from_millis(4000));
 
     assert_eq!(*campfires.get(1), Campfire::new(false));
     assert_eq!(*campfires.get(2), Campfire::new(false));

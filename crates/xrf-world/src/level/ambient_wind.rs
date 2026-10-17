@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use glam::Vec4;
 use xrf_renderer::{AmbientGust, RenderAmbientEffect, WindNoise};
 
@@ -19,11 +21,11 @@ pub struct AmbientWind {
   gust: AmbientGust,
   /// `wind_gust_factor`.
   gust_factor: f32,
-  /// `ambient_effect_wind_start`, `_in_time`, `_end` and `_out_time`, in seconds.
-  start: f32,
-  rise_end: f32,
-  end: f32,
-  fall_end: f32,
+  /// `ambient_effect_wind_start`, `_in_time`, `_end` and `_out_time`, on the level's clock.
+  start: Duration,
+  rise_end: Duration,
+  end: Duration,
+  fall_end: Duration,
   /// `ambient_effect_wind_on`: rising or blowing, before the effect's life is up.
   is_on: bool,
   /// `wind_blast_strength_start_value` and `_stop_value`.
@@ -39,10 +41,10 @@ impl Default for AmbientWind {
       noise: WindNoise::new(NOISE_SEED),
       gust: AmbientGust::default(),
       gust_factor: 0.0,
-      start: 0.0,
-      rise_end: 0.0,
-      end: 0.0,
-      fall_end: 0.0,
+      start: Duration::ZERO,
+      rise_end: Duration::ZERO,
+      end: Duration::ZERO,
+      fall_end: Duration::ZERO,
       is_on: false,
       strengths: (0.0, 0.0),
       directions: (Vec4::ZERO, Vec4::ZERO),
@@ -55,8 +57,8 @@ impl AmbientWind {
     self.gust
   }
 
-  /// `CEnvironment::OnFrame`: the strength the noise gives at the gust factor of the moment, in seconds.
-  pub fn blow(&mut self, time: f32) {
+  /// `CEnvironment::OnFrame`: the strength the noise gives at the gust factor of the moment.
+  pub fn blow(&mut self, time: Duration) {
     let noise: f32 = self.noise.read(time, self.gust_factor * MAX_NOISE_FREQUENCY);
 
     self.gust.strength = (noise + 0.5).clamp(0.0, 1.0);
@@ -64,17 +66,17 @@ impl AmbientWind {
 
   /// An effect starts: its gusts, and its blast rising from the strength of the moment and turning from the blast's
   /// direction, or from its own where the wind was still.
-  pub fn start(&mut self, effect: &RenderAmbientEffect, time: f32) {
+  pub fn start(&mut self, effect: &RenderAmbientEffect, time: Duration) {
     let blast = &effect.wind_blast;
-    let life: f32 = effect.life_time.as_secs_f32();
+    let life: Duration = effect.life_time;
     // `wind_blast_direction.setHP(deg2rad(wind_blast_longitude), 0)`.
     let toward: Vec4 = Vec4::new(-blast.longitude.sin(), 0.0, blast.longitude.cos(), 0.0);
 
     self.gust_factor = effect.wind_gust_factor;
     self.start = time;
-    self.rise_end = time + blast.in_time.as_secs_f32();
-    self.end = time + life;
-    self.fall_end = time + life + blast.out_time.as_secs_f32();
+    self.rise_end = time.saturating_add(blast.in_time);
+    self.end = time.saturating_add(life);
+    self.fall_end = self.end.saturating_add(blast.out_time);
     self.is_on = true;
     self.strengths = (self.gust.strength, blast.strength);
     self.directions = (
@@ -93,7 +95,7 @@ impl AmbientWind {
   }
 
   /// The blast while it rises, over the noise.
-  pub fn rise(&mut self, time: f32) {
+  pub fn rise(&mut self, time: Duration) {
     if !self.is_on || time < self.start || time > self.rise_end {
       return;
     }
@@ -106,7 +108,7 @@ impl AmbientWind {
   }
 
   /// The blast once the effect's life is up: falling from where it stands to nothing, and nothing once it has fallen.
-  pub fn fall(&mut self, time: f32) {
+  pub fn fall(&mut self, time: Duration) {
     if self.is_on && time >= self.end {
       self.strengths = (self.gust.strength, 0.0);
       self.is_on = false;
@@ -118,14 +120,18 @@ impl AmbientWind {
       self.gust.strength = self.strengths.0 + t * (self.strengths.1 - self.strengths.0);
     }
 
-    if time > self.fall_end && self.fall_end != 0.0 {
+    if time > self.fall_end && !self.fall_end.is_zero() {
       self.gust.strength = 0.0;
     }
   }
 
   /// How far a moment stands between two, none where they are one.
-  fn get_progress(time: f32, from: f32, to: f32) -> f32 {
-    if to != from { (time - from) / (to - from) } else { 0.0 }
+  fn get_progress(time: Duration, from: Duration, to: Duration) -> f32 {
+    if to != from {
+      time.saturating_sub(from).as_secs_f32() / to.saturating_sub(from).as_secs_f32()
+    } else {
+      0.0
+    }
   }
 
   /// `Fquaternion::slerp`: the shorter way round, straight where the two nearly meet.

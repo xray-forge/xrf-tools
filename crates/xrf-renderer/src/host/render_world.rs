@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::Instant;
 
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
@@ -17,10 +18,12 @@ pub trait RenderWorld: Send {
   /// Moves a viewport's camera and weather on a frame, answering what it draws.
   fn advance_view(&mut self, viewport: RenderViewportId, input: RenderViewInput<'_>) -> RenderViewFrame;
 
-  /// Moves every scene on a frame, after every viewport: streams it, poses it and plays its effects by its driving
-  /// viewport. `feedback` is what each scene told of the last frame; a scene the world no longer answers is gone.
+  /// Moves every scene on to the frame's `now`, after every viewport: streams it, poses it and plays its effects by its
+  /// driving viewport. `feedback` is what each scene told of the last frame; a scene the world no longer answers is
+  /// gone.
   fn advance_scenes(
     &mut self,
+    now: Instant,
     feedback: HashMap<RenderSceneId, RenderSceneFeedback>,
   ) -> HashMap<RenderSceneId, RenderSceneFrame>;
 

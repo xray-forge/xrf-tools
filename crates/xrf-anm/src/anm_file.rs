@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::path::Path;
+use std::time::Duration;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
@@ -189,24 +190,27 @@ impl AnmFile {
     if self.fps > 0.0 { self.fps } else { ANM_DEFAULT_FPS }
   }
 
-  /// The time a looping object animator plays it at `elapsed` seconds after it started: `SAnimParams::Set` starts at
-  /// the first frame's time, and `Update` wraps whole lengths back once past the last frame's.
-  pub fn get_looped_time(&self, elapsed: f32) -> f32 {
+  /// The time, in seconds, a looping object animator plays it at `elapsed` after it started: `SAnimParams::Set` starts
+  /// at the first frame's time, and `Update` wraps whole lengths back once past the last frame's. The lengths are
+  /// wrapped before the time is taken in seconds, so it keeps its pace however long it has played.
+  pub fn get_looped_time(&self, elapsed: Duration) -> f32 {
     let fps: f32 = self.get_fps();
-    let (start, end): (f32, f32) = (self.frame_start as f32 / fps, self.frame_end as f32 / fps);
-    let time: f32 = start + elapsed;
-    let length: f32 = end - start;
+    let start: f32 = self.frame_start as f32 / fps;
+    let length: f32 = self.frame_end as f32 / fps - start;
 
     // A motion of one frame has no length to wrap by, and holds it.
-    if length <= 0.0 {
+    let Some(period) = Duration::try_from_secs_f32(length)
+      .ok()
+      .filter(|period| !period.is_zero())
+    else {
       return start;
+    };
+
+    if elapsed <= period {
+      return start + elapsed.as_secs_f32();
     }
 
-    if time <= end {
-      return time;
-    }
-
-    time - ((time - start) / length).floor() * length
+    start + Duration::from_nanos((elapsed.as_nanos() % period.as_nanos()) as u64).as_secs_f32()
   }
 
   /// Where it has an object at a time, `COMotion::_Evaluate`: the position, and the rotation as the object animator

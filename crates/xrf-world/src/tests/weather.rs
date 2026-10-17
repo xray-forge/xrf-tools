@@ -302,14 +302,14 @@ fn strikes_a_bolt_of_the_collection_each_period_and_lights_by_its_colour() {
 
   // A period half again at most after the weather names the collection, then a strike lasting about half a second.
   for step in 0..200 {
-    let now: f32 = step as f32 * 0.05;
+    let now: Duration = Duration::from_millis(step * 50);
 
     if let Some(flash) = strikes.advance(&thunder, &mix, true, now, Vec3::ZERO) {
       assert_eq!(flash.strike.bolt, "bolt");
       assert!(flash.color.distance(Vec3::new(1.0, 128.0 / 255.0, 0.0)) < 1e-5);
       // It strikes beyond the view, from above the ground.
       assert!(flash.strike.position.y > 0.0);
-      struck.push(now);
+      struck.push(now.as_secs_f32());
     }
   }
 
@@ -321,7 +321,7 @@ fn strikes_a_bolt_of_the_collection_each_period_and_lights_by_its_colour() {
 
   assert!((0..200).all(|step| {
     quiet
-      .advance(&thunder, &mix, false, step as f32 * 0.05, Vec3::ZERO)
+      .advance(&thunder, &mix, false, Duration::from_millis(step * 50), Vec3::ZERO)
       .is_none()
   }));
 }
