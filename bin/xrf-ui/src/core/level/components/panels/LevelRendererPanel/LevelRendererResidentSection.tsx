@@ -14,21 +14,26 @@ interface ILevelRendererResidentSectionProps extends BaseComponentProps {
 }
 
 /**
+ * @param bytes - A count of bytes the report may leave out.
+ * @returns Whether it holds one.
+ */
+function isReported(bytes: unknown): bytes is number {
+  return typeof bytes === "number" && Number.isFinite(bytes);
+}
+
+/**
  * @param memory - What the renderer holds on the GPU.
  * @returns What the GPU allocator holds allocated of what it reserved, or that it reports none, as a build or a backend
  *   reporting no allocator leaves it.
  */
 function formatAllocated(memory: RenderMemoryReport): string {
-  const allocated: unknown = memory.allocated;
-  const reserved: unknown = memory.reserved;
-
-  if (typeof allocated !== "number" || !Number.isFinite(allocated)) {
+  if (!isReported(memory.allocated)) {
     return "Not reported";
   }
 
-  return typeof reserved === "number" && Number.isFinite(reserved)
-    ? `${formatBytes(allocated)} of ${formatBytes(reserved)} reserved`
-    : formatBytes(allocated);
+  return isReported(memory.reserved)
+    ? `${formatBytes(memory.allocated)} of ${formatBytes(memory.reserved)} reserved`
+    : formatBytes(memory.allocated);
 }
 
 /**
@@ -36,17 +41,7 @@ function formatAllocated(memory: RenderMemoryReport): string {
  * @returns The most the GPU allocator held allocated since the renderer started, or that it reports none.
  */
 function formatPeak(memory: RenderMemoryReport): string {
-  const peak: unknown = memory.peakAllocated;
-
-  return typeof peak === "number" && Number.isFinite(peak) ? formatBytes(peak) : "Not reported";
-}
-
-/**
- * @param bytes - A count of bytes the report may leave out.
- * @returns Whether it holds one.
- */
-function isReported(bytes: unknown): bytes is number {
-  return typeof bytes === "number" && Number.isFinite(bytes);
+  return isReported(memory.peakAllocated) ? formatBytes(memory.peakAllocated) : "Not reported";
 }
 
 /**
