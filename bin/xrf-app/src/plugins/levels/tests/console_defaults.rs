@@ -10,7 +10,6 @@ fn reads_the_lighting_anomaly_ships_among_its_other_commands() {
   assert_eq!(
     parse_console_defaults(text),
     LevelConsoleDefaults {
-      is_shipped: true,
       is_tonemapped: Some(true),
       tonemap_middle_gray: Some(1.5),
       tonemap_low_luminance: Some(0.5),
@@ -29,7 +28,19 @@ fn reads_the_lighting_anomaly_ships_among_its_other_commands() {
 fn leaves_to_the_engine_whatever_no_command_sets_or_it_cannot_read() {
   let defaults: LevelConsoleDefaults = parse_console_defaults("r2_tonemap maybe\nr__gamma bright\n");
 
-  assert!(defaults.is_shipped);
   assert_eq!(defaults.is_tonemapped, None);
   assert_eq!(defaults.image_gamma, None);
+}
+
+// A vanilla installation that has been run has a `user.ltx` and no shipped defaults: its console ships none.
+#[test]
+fn says_nothing_shipped_for_a_user_console_alone() {
+  let console: LevelConsoleDefaults = parse_console_defaults(
+    "r2_tonemap on
+",
+  )
+  .over(LevelConsoleDefaults::default());
+
+  assert!(!console.is_shipped);
+  assert_eq!(console.is_tonemapped, Some(true));
 }

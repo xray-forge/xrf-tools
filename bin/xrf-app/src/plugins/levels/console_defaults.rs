@@ -68,19 +68,16 @@ pub fn read_console_defaults(probe: &XrayProbe) -> XrfResult<LevelConsoleDefault
   };
   let bytes: Vec<u8> = probe.read_asset_bytes(asset)?;
 
-  Ok(parse_console_defaults(&decode_bytes_to_string(
-    &bytes,
-    new_windows1251_encoder(),
-  )?))
+  Ok(LevelConsoleDefaults {
+    is_shipped: true,
+    ..parse_console_defaults(&decode_bytes_to_string(&bytes, new_windows1251_encoder())?)
+  })
 }
 
-/// The commands of a console defaults file this viewer draws by, `r2_sun_lumscale 2.0` and its kin; a command it
-/// cannot read is left to the engine.
+/// The commands of a console file this viewer draws by, `r2_sun_lumscale 2.0` and its kin; a command it cannot read is
+/// left to the engine. Whether the game ships such a file is its reader's to say.
 pub fn parse_console_defaults(text: &str) -> LevelConsoleDefaults {
-  let mut defaults: LevelConsoleDefaults = LevelConsoleDefaults {
-    is_shipped: true,
-    ..LevelConsoleDefaults::default()
-  };
+  let mut defaults: LevelConsoleDefaults = LevelConsoleDefaults::default();
 
   for line in text.lines() {
     let command: &str = line.split(';').next().unwrap_or_default().trim();
