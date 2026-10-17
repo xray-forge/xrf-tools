@@ -3,8 +3,8 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { createRoots } from "@/core/assets/lib";
-import { EngineChoiceFormRow } from "@/core/engine-target/components";
-import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib";
+import { EngineChoiceFormRow } from "@/core/engine-target/components/EngineChoiceFormRow";
+import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
 import { LevelEntry } from "@/core/ipc/types/xrf-app";
 import { LevelListService, LevelLoadService } from "@/core/level/services";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";

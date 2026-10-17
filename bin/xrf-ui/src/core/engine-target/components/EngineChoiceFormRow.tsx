@@ -1,6 +1,7 @@
 import { ReactElement, useMemo } from "react";
 
-import { IEngineChoice, toAutoEngineLabel } from "@/core/engine-target/lib";
+import { toAutoEngineLabel } from "@/core/engine-target/lib/engine-target-label";
+import { IEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form";
 
