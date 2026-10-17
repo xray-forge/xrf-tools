@@ -4,6 +4,7 @@ mod camera_view;
 mod compute_grid;
 mod contact_shadows;
 mod debanding;
+mod decoded_texture;
 mod enhanced_bloom;
 mod fog_scattering;
 mod frame_pacer;
