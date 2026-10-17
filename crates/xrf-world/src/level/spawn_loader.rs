@@ -15,9 +15,9 @@ use crate::level::loader_flight::LoaderFlight;
 /// enough that objects appear while the rest are read.
 const VISUALS_PER_BATCH: usize = 16;
 
-/// One model packed for the scene, with every object standing as it, and the skeleton it is posed by where the
-/// renderer poses it.
-pub type SpawnLoad = (StaticModel, Vec<StaticModelPlace>, Option<RenderModelSkeleton>);
+/// One model packed for the scene, the visual it was read from, every object standing as it, and the skeleton it is
+/// posed by where the renderer poses it.
+pub type SpawnLoad = (StaticModel, String, Vec<StaticModelPlace>, Option<RenderModelSkeleton>);
 
 /// Reads a level's spawn on the loader threads: the objects once, then their visuals in batches side by side, the
 /// pool's width of them at a time, each model packed and handed to the render thread with the objects standing as it,
@@ -198,7 +198,7 @@ impl SpawnLoader {
       // Counted before it is sent, so the loader never sees it taken before it was sent.
       sent.fetch_add(1, Ordering::AcqRel);
 
-      let _ = sender.send((packed, places, model.skeleton));
+      let _ = sender.send((packed, model.name, places, model.skeleton));
     }
   }
 }
