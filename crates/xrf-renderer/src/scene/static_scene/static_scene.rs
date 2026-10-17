@@ -243,14 +243,20 @@ impl StaticScene {
   ///
   /// # Errors
   ///
-  /// Returns an error when a buffer would outgrow what the device allows; none of it stands in the scene, though the
-  /// surfaces it put and the texture slots they asked for stay.
+  /// Returns an error for a handle that holds a sector already, or when a buffer would outgrow what the device allows;
+  /// none of it stands in the scene, though the surfaces it put and the texture slots they asked for stay.
   pub fn add_sector(
     &mut self,
     context: &mut StaticItemContext<'_>,
     descriptors: &[XraySurfaceDescriptor],
     (handle, package): (ProxyHandle<StaticSectorProxy>, &SectorPackage),
   ) -> XrfResult {
+    if self.sectors.is_held(handle) {
+      return Err(XrfError::new_invalid_error(format!(
+        "Sector posted at {handle:?}, which holds one already"
+      )));
+    }
+
     let mut writer: StaticSceneWriter = StaticSceneWriter::default();
     let mut swaying: Vec<(Vec4, f32)> = Vec::new();
     let description = &package.description;
@@ -397,13 +403,19 @@ impl StaticScene {
   ///
   /// # Errors
   ///
-  /// Returns an error when a buffer would outgrow what the device allows; none of it stands in the scene, though the
-  /// surfaces it put and the texture slots they asked for stay.
+  /// Returns an error for a handle that holds a model already, or when a buffer would outgrow what the device allows;
+  /// none of it stands in the scene, though the surfaces it put and the texture slots they asked for stay.
   pub fn add_model(
     &mut self,
     context: &mut StaticItemContext<'_>,
     (handle, model): (ProxyHandle<StaticModelProxy>, &StaticModel),
   ) -> XrfResult {
+    if self.models.is_held(handle) {
+      return Err(XrfError::new_invalid_error(format!(
+        "Model posted at {handle:?}, which holds one already"
+      )));
+    }
+
     let mut writer: StaticSceneWriter = StaticSceneWriter::default();
     let base: StaticGeometryBase = writer.put_words(StaticLayout::Model, &model.words, &model.indices);
     let vertex_count: u32 = (model.words.len() / StaticLayout::STRIDE as usize) as u32;
@@ -537,8 +549,8 @@ impl StaticScene {
   ///
   /// # Errors
   ///
-  /// Returns an error for a model no longer in the scene, or when a buffer would outgrow what the device allows; the
-  /// scene is left as it was.
+  /// Returns an error for a handle that holds an object already, a model no longer in the scene, or when a buffer would
+  /// outgrow what the device allows; the scene is left as it was.
   pub fn add_object(
     &mut self,
     device: &wgpu::Device,
@@ -546,6 +558,12 @@ impl StaticScene {
     handle: ProxyHandle<StaticObjectProxy>,
     (model, place): (ProxyHandle<StaticModelProxy>, &StaticModelPlace),
   ) -> XrfResult {
+    if self.objects.is_held(handle) {
+      return Err(XrfError::new_invalid_error(format!(
+        "Object posted at {handle:?}, which holds one already"
+      )));
+    }
+
     let Some(proxy) = self.models.get(model) else {
       return Err(XrfError::new_invalid_error(format!(
         "Spawned object {} stands as a model no longer in the scene",

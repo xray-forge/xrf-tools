@@ -122,3 +122,20 @@ fn holds_items_at_the_handles_an_allocator_gave_out() {
   assert_eq!(store.get(reused), Some(&"reused"));
   assert_eq!(store.get(first), None);
 }
+
+#[test]
+fn says_a_slot_is_held_whatever_generation_holds_it() {
+  let mut allocator: ProxyAllocator<&str> = ProxyAllocator::new();
+  let mut store: ProxyStore<&str> = ProxyStore::new();
+  let handle: ProxyHandle<&str> = allocator.allocate();
+
+  assert!(!store.is_held(handle));
+
+  store.insert(handle, "first");
+
+  assert!(store.is_held(handle));
+
+  store.remove(handle);
+
+  assert!(!store.is_held(handle));
+}

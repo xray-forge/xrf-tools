@@ -75,7 +75,7 @@ impl<T> ProxyStore<T> {
   ///
   /// # Panics
   ///
-  /// When the handle's slot holds an item.
+  /// When the handle's slot holds an item, which a caller rules out first with `is_held`.
   pub fn insert(&mut self, handle: ProxyHandle<T>, item: T) {
     let slot: usize = handle.slot as usize;
 
@@ -131,6 +131,14 @@ impl<T> ProxyStore<T> {
     }
 
     Some(item)
+  }
+
+  /// Whether the handle's slot holds an item, its own or one of another generation: where `insert` would refuse it.
+  pub fn is_held(&self, handle: ProxyHandle<T>) -> bool {
+    self
+      .slots
+      .get(handle.slot as usize)
+      .is_some_and(|slot| slot.dense != ProxySlot::FREE)
   }
 
   pub fn contains(&self, handle: ProxyHandle<T>) -> bool {

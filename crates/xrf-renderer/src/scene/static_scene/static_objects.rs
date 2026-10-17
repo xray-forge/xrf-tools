@@ -51,6 +51,11 @@ impl StaticObjects {
       .collect()
   }
 
+  /// Whether the handle's slot holds an object already, which `insert` would refuse.
+  pub fn is_held(&self, handle: ProxyHandle<StaticObjectProxy>) -> bool {
+    self.store.is_held(handle)
+  }
+
   /// Puts an object at its handle; answers the one standing as the same spawned object before, which it replaces.
   pub fn insert(
     &mut self,
