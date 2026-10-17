@@ -2,7 +2,7 @@ use glam::Vec4;
 
 use crate::param::tests::fixtures::{
   Blur, Clashing, ClashingLate, Count, ENVIRONMENT_CUBES, Environment, Head, Reflection, Scale, Settings, Shade,
-  Surface, Traced,
+  Surface, Traced, Undeclared,
 };
 use crate::{
   FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphRuntime, GraphTexture,
@@ -337,6 +337,16 @@ fn adds_nothing_of_parameters_that_clash() {
 
   assert!(bindings.add::<ClashingLate>().is_err());
   assert_eq!(bindings.to_wgsl(), before);
+}
+
+/// Parameters whose declarations do not number one a binding are refused whole, rather than paired off by position.
+#[test]
+fn refuses_parameters_declaring_other_than_one_line_a_binding() {
+  let mut bindings: ShaderBindings = ShaderBindings::new();
+  let error: String = bindings.add::<Undeclared>().err().expect("a miscount").to_string();
+
+  assert!(error.contains("declares 1 WGSL bindings for 2 bindings"), "{error}");
+  assert_eq!(bindings.to_wgsl(), "");
 }
 
 /// The derive declares one WGSL line a binding, in `BINDINGS` order.
