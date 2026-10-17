@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tauri::plugin::{Builder, TauriPlugin};
-use tauri::webview::{PageLoadEvent, PageLoadPayload};
+use tauri::webview::{PageLoadEvent, PageLoadPayload, WebviewWindow};
 use tauri::{AppHandle, Manager, RunEvent, Runtime, Webview, WindowEvent};
 use xrf_renderer::RenderWorkers;
 
@@ -58,9 +58,9 @@ impl RenderPlugin {
     }
   }
 
-  /// Detaches a closing window's viewports, whose page goes with it before it can let them go, waiting until the
-  /// renderer let go of the window before it is destroyed; forgets a destroyed window's handle; stops the renderer as
-  /// the application exits.
+  /// Detaches a closing window's viewports, whose page goes with it before it can let them go, holding the window open
+  /// until the renderer let go of it and destroying it then; forgets a destroyed window; stops the renderer as the
+  /// application exits.
   fn on_event<R: Runtime>(application: &AppHandle<R>, event: &RunEvent) {
     let Some(state) = application.try_state::<RenderState>() else {
       return;
@@ -69,15 +69,33 @@ impl RenderPlugin {
     match event {
       RunEvent::WindowEvent {
         label,
-        event: WindowEvent::CloseRequested { .. },
+        event: WindowEvent::CloseRequested { api, .. },
         ..
-      } => state.close_window(label),
+      } => {
+        // A window on its way out hosts no viewport attached from now on.
+        if let Some(handles) = application.try_state::<WindowHandles>() {
+          handles.forget(label);
+        }
+
+        let window: Option<WebviewWindow<R>> = application.get_webview_window(label);
+        let is_held: bool = state.close_window(label, move || {
+          if let Some(window) = window
+            && let Err(error) = window.destroy()
+          {
+            log::error!("Window '{}' cannot be closed: {error}", window.label());
+          }
+        });
+
+        if is_held {
+          api.prevent_close();
+        }
+      }
       RunEvent::WindowEvent {
         label,
         event: WindowEvent::Destroyed,
         ..
       } => {
-        state.detach_window(label);
+        state.forget_window(label);
 
         if let Some(handles) = application.try_state::<WindowHandles>() {
           handles.forget(label);
