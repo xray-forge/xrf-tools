@@ -3,7 +3,13 @@
 import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
-import { ETextureSurfaceAlpha, ETextureSurfaceShape, TextureSource, ViewportEvent } from "@/core/ipc/types/xrf-app";
+import {
+  ETextureSurfaceAlpha,
+  ETextureSurfaceShape,
+  RenderPickRequest,
+  TextureSource,
+  ViewportEvent,
+} from "@/core/ipc/types/xrf-app";
 import {
   RenderAntialiasing,
   RenderBackend,
@@ -188,10 +194,10 @@ export const renderCommands = {
   measureSurfaces: (viewport: RenderViewportId) =>
     __TAURI_INVOKE<Array<WorldSurfaceGeometry>>("plugin:render|measure_surfaces", { viewport }),
   /**
-   * Name what a viewport's level draws under a point, css pixels from its corner, or nothing; glass is the nearest
-   * thing a click meets unless the pick passes it by (`is_through`).
+   * Name what a viewport's level draws under a point, or nothing; glass is the nearest thing a click meets unless the
+   * pick passes it by.
    */
-  pick: (viewport: RenderViewportId, x: number | null, y: number | null, isThrough: boolean) =>
+  pick: (viewport: RenderViewportId, request: RenderPickRequest) =>
     __TAURI_INVOKE<
       /** A surface the level compiled. */
       | {
@@ -215,7 +221,7 @@ export const renderCommands = {
           point: [number | null, number | null, number | null];
         }
       | null
-    >("plugin:render|pick", { viewport, x, y, isThrough }),
+    >("plugin:render|pick", { viewport, request }),
   /** Stand one viewport's skinned models in a pose. */
   poseModel: (viewport: RenderViewportId, pose: WorldModelPose) =>
     __TAURI_INVOKE<void>("plugin:render|pose_model", { viewport, pose }),

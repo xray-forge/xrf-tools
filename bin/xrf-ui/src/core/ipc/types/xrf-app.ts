@@ -1953,6 +1953,16 @@ export type ProcessUsage = {
   virtualMemory: number;
 };
 
+/** A point of a viewport to name what its level draws under. */
+export type RenderPickRequest = {
+  /** Css pixels from the viewport's left edge. */
+  x: number | null;
+  /** Css pixels from its top edge. */
+  y: number | null;
+  /** Whether glass is passed by, naming what stands behind it. */
+  isThrough: boolean;
+};
+
 /** One reading of what the application costs, and of how long it has been running. */
 export type RuntimeSnapshot = {
   /** Milliseconds since the epoch at which the process began, stamped in `main`. */

@@ -14,8 +14,8 @@ use xrf_visual::{LightsDescription, SectorPackage, VisualMesh, VisualPacker, Vis
 use crate::core::assets::AssetMountState;
 use crate::plugins::textures::description::TextureDescription;
 use crate::plugins::textures::file_stamp::TextureFileStamp;
+use crate::plugins::textures::request::TextureSurfaceRequest;
 use crate::plugins::textures::surface::texture_surface_alpha::TextureSurfaceAlpha;
-use crate::plugins::textures::surface::texture_surface_request::TextureSurfaceRequest;
 use crate::plugins::textures::surface::texture_surface_shape::TextureSurfaceShape;
 
 /// The one object the body is: the texture's body at the origin.

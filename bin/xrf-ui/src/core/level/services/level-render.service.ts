@@ -186,7 +186,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       return;
     }
 
-    const hit: Nullable<RenderLevelHit> = await viewport.pick(point.x, point.y, isThrough);
+    const hit: Nullable<RenderLevelHit> = await viewport.pick({ x: point.x, y: point.y, isThrough });
 
     // Asked of a viewport or a level since replaced, it names something else now.
     if (viewport !== this.viewport || opening !== this.opening) {

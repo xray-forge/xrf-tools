@@ -3,7 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
 import { renderCommands } from "@/core/ipc/commands/render";
-import { ViewportEvent } from "@/core/ipc/types/xrf-app";
+import { RenderPickRequest, ViewportEvent } from "@/core/ipc/types/xrf-app";
 import {
   ERenderViewportEvent,
   RenderAppliedReport,
@@ -199,12 +199,10 @@ export class NativeViewport {
   /**
    * Names what the viewport's level draws under a point.
    *
-   * @param x - Css pixels from the viewport's left edge.
-   * @param y - Css pixels from its top edge.
-   * @param isThrough - Whether glass is passed by, naming what stands behind it.
+   * @param request - The point, in css pixels from the viewport's top left corner, and whether glass is passed by.
    * @returns What was hit, or null for nothing, a viewport not attached or a pick that failed.
    */
-  public async pick(x: number, y: number, isThrough: boolean): Promise<Nullable<RenderLevelHit>> {
+  public async pick(request: RenderPickRequest): Promise<Nullable<RenderLevelHit>> {
     const id: Nullable<RenderViewportId> = await this.attached;
 
     if (id === null || this.isDisposed) {
@@ -212,7 +210,7 @@ export class NativeViewport {
     }
 
     try {
-      return await renderCommands.pick(id, x, y, isThrough);
+      return await renderCommands.pick(id, request);
     } catch (error: unknown) {
       this.noteFailure("pick", error);
 

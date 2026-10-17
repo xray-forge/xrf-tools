@@ -6,19 +6,19 @@ use xrf_renderer::{RenderLevelHit, RenderPick, RenderViewportId};
 
 use crate::core::types::TauriResult;
 use crate::plugins::render::render_answer::{ANSWER_TIMEOUT, await_answer};
+use crate::plugins::render::request::RenderPickRequest;
 use crate::plugins::render::state::RenderState;
 
-/// Name what a viewport's level draws under a point, css pixels from its corner, or nothing; glass is the nearest
-/// thing a click meets unless the pick passes it by (`is_through`).
+/// Name what a viewport's level draws under a point, or nothing; glass is the nearest thing a click meets unless the
+/// pick passes it by.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "pick"))]
 #[tauri::command(rename = "pick")]
 pub async fn render_pick(
   state: State<'_, RenderState>,
   viewport: RenderViewportId,
-  x: f32,
-  y: f32,
-  is_through: bool,
+  request: RenderPickRequest,
 ) -> TauriResult<Option<RenderLevelHit>> {
+  let RenderPickRequest { x, y, is_through } = request;
   let answer: Receiver<XrfResult<RenderPick>> = state.renderer.pick(viewport, x, y, is_through);
 
   await_answer(

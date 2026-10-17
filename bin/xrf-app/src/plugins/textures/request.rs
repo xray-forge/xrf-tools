@@ -1,4 +1,4 @@
-//! What each of the editor's four commands was asked to do.
+//! What each of the editor's four commands was asked to do, and how a texture is laid on a body to preview it.
 
 use std::path::PathBuf;
 
@@ -13,6 +13,8 @@ use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingQuality};
 use crate::plugins::textures::file_stamp::TextureFileStamp;
 use crate::plugins::textures::source::TextureSource;
+use crate::plugins::textures::surface::texture_surface_alpha::TextureSurfaceAlpha;
+use crate::plugins::textures::surface::texture_surface_shape::TextureSurfaceShape;
 
 /// One file a write addresses, and what was there when the editor read it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -153,6 +155,22 @@ impl TexturesCompareRequest {
   pub fn to_mipmaps(&self) -> TauriResult<DdsMipmaps> {
     to_mipmaps(self.mip_filter.as_deref())
   }
+}
+
+/// A texture laid on a body, and how it is laid there.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TextureSurfaceRequest {
+  pub source: TextureSource,
+  /// The roots the texture is resolved in, as its description was.
+  pub roots: XrayRoots,
+  pub shape: TextureSurfaceShape,
+  /// How many times the texture repeats across the body, which is how a tiling seam becomes visible.
+  pub tiling: f32,
+  pub alpha: TextureSurfaceAlpha,
+  /// Width over height of the texture, which the plane is stretched to.
+  pub aspect: f32,
 }
 
 /// The chain a caller asked for, by the kernel's SDK name.

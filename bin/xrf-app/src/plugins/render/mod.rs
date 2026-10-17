@@ -6,6 +6,7 @@ pub mod packaged_bundle;
 pub mod plugin;
 pub mod render_answer;
 pub mod renderer;
+pub mod request;
 pub mod state;
 #[cfg(test)]
 mod tests;

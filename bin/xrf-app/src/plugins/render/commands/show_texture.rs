@@ -9,8 +9,8 @@ use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
 use crate::plugins::render::state::RenderState;
 use crate::plugins::textures::description::TextureDescription;
+use crate::plugins::textures::request::TextureSurfaceRequest;
 use crate::plugins::textures::surface::render_source::TextureRenderSource;
-use crate::plugins::textures::surface::texture_surface_request::TextureSurfaceRequest;
 
 /// Draw a texture laid on a body in a viewport, its files read by the renderer; no request draws none. Answers the
 /// scene drawn, which the viewport's load reports name, or none.
