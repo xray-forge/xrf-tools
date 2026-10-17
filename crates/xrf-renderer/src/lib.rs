@@ -209,4 +209,5 @@ pub use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 pub use crate::thread::loader_receiver::LoaderReceiver;
 pub use crate::thread::render_command::RenderCommand;
 pub use crate::thread::render_queue::RenderQueue;
+pub use crate::thread::render_wait::RenderWait;
 pub use crate::thread::render_workers::RenderWorkers;

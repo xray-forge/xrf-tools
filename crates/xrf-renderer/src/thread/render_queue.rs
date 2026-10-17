@@ -12,6 +12,7 @@ use crate::host::render_world::RenderWorld;
 use crate::thread::render_command::RenderCommand;
 use crate::thread::render_link::RenderLink;
 use crate::thread::render_thread::RenderThread;
+use crate::thread::render_wait::RenderWait;
 use crate::thread::render_workers::RenderWorkers;
 
 /// The way to the render thread: cheap to make, and touching no GPU until a viewport is attached.
@@ -56,6 +57,34 @@ impl RenderQueue {
   /// Hands a command to the running thread, starting one for an attach; any other command has nothing to act on
   /// without a thread, since a stopped thread had no viewport left. Settings are kept for every thread started later.
   pub fn send(&self, command: RenderCommand) {
+    self.dispatch(command);
+  }
+
+  /// Waits up to `wait` until the running thread has handled every command sent before; at once where none runs.
+  pub fn wait_handled(&self, wait: Duration) -> RenderWait {
+    let (reply, answer): (Sender<()>, Receiver<()>) = channel();
+
+    if !self.dispatch(RenderCommand::Handled { reply }) {
+      return RenderWait::NotRunning;
+    }
+
+    Self::await_reply(&answer, wait)
+  }
+
+  /// Detaches every viewport and stops the running thread at once, waiting up to `wait` until it let everything it
+  /// made on the GPU go; at once where none runs.
+  pub fn stop(&self, wait: Duration) -> RenderWait {
+    let (reply, answer): (Sender<()>, Receiver<()>) = channel();
+
+    if !self.dispatch(RenderCommand::Stop { reply }) {
+      return RenderWait::NotRunning;
+    }
+
+    Self::await_reply(&answer, wait)
+  }
+
+  /// `send`, answering whether a thread took the command.
+  fn dispatch(&self, command: RenderCommand) -> bool {
     let mut link: MutexGuard<'_, RenderLink> = self.lock();
     let is_attach: bool = matches!(command, RenderCommand::Attach { .. });
 
@@ -65,7 +94,7 @@ impl RenderQueue {
 
     let command: RenderCommand = match &link.sender {
       Some(sender) => match sender.send(command) {
-        Ok(()) => return,
+        Ok(()) => return true,
         // The thread died: its viewports with it.
         Err(error) => error.0,
       },
@@ -74,41 +103,31 @@ impl RenderQueue {
 
     link.sender = None;
 
-    if is_attach {
-      // A thread that cannot start leaves the viewport undrawn; the next attach tries again.
-      let Some(sender) = self.spawn(&mut link) else {
-        return;
-      };
-
-      if sender.send(command).is_err() {
-        log::error!("The render thread stopped before its first viewport arrived");
-      }
+    if !is_attach {
+      return false;
     }
+
+    // A thread that cannot start leaves the viewport undrawn; the next attach tries again.
+    let Some(sender) = self.spawn(&mut link) else {
+      return false;
+    };
+
+    if sender.send(command).is_err() {
+      log::error!("The render thread stopped before its first viewport arrived");
+
+      return false;
+    }
+
+    true
   }
 
-  /// Waits up to `wait` until the running thread has handled every command sent before; at once where none runs.
-  /// Answers whether it did in time.
-  pub fn wait_handled(&self, wait: Duration) -> bool {
-    let (reply, answer): (Sender<()>, Receiver<()>) = channel();
-
-    self.send(RenderCommand::Handled { reply });
-
-    Self::await_reply(&answer, wait)
-  }
-
-  /// Detaches every viewport and stops the running thread at once, waiting up to `wait` until it let the GPU go; at
-  /// once where none runs. Answers whether it did in time.
-  pub fn stop(&self, wait: Duration) -> bool {
-    let (reply, answer): (Sender<()>, Receiver<()>) = channel();
-
-    self.send(RenderCommand::Stop { reply });
-
-    Self::await_reply(&answer, wait)
-  }
-
-  /// Whether a reply came within `wait`, or its sender went unanswered: dropped with no thread to take the command.
-  fn await_reply(answer: &Receiver<()>, wait: Duration) -> bool {
-    !matches!(answer.recv_timeout(wait), Err(RecvTimeoutError::Timeout))
+  /// How a wait for a thread that took the question ended.
+  fn await_reply(answer: &Receiver<()>, wait: Duration) -> RenderWait {
+    match answer.recv_timeout(wait) {
+      Ok(()) => RenderWait::Answered,
+      Err(RecvTimeoutError::Timeout) => RenderWait::TimedOut,
+      Err(RecvTimeoutError::Disconnected) => RenderWait::Unanswered,
+    }
   }
 
   fn spawn(&self, link: &mut RenderLink) -> Option<Sender<RenderCommand>> {
