@@ -27,7 +27,8 @@ describe("LevelVolumetricSettings", () => {
     expect(view.features.volumetric).toEqual({ mode: ERenderVolumetricMode.ENHANCED });
     expect(getByRole("slider", { name: "Intensity" })).toHaveAttribute("aria-valuetext", "1.00");
     expect(getByRole("slider", { name: "Anisotropy" })).toHaveAttribute("aria-valuetext", "0.25");
-    expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "120 m");
+    // The Base preset's own reach, which the settings keep.
+    expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "80 m");
 
     await userEvent.click(getByRole("button", { name: "Reset the volumetric light to the preset" }));
 

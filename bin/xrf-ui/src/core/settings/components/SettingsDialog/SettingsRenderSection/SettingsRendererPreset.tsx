@@ -9,8 +9,9 @@ import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 const PRESET_LABELS: Record<ERenderPreset, string> = {
-  [ERenderPreset.BASE]: "Base",
   [ERenderPreset.EDITING]: "Editing",
+  [ERenderPreset.BASE]: "Base",
+  [ERenderPreset.ENHANCED]: "Enhanced",
 };
 
 /** Which preset the renderer's features follow, whether anything is changed on top of it, and the way back. */
@@ -24,7 +25,8 @@ export function SettingsRendererPreset(): ReactElement {
     <DetailSection
       title={"Preset"}
       description={
-        "Applies to every tab except Display. Base matches the game's defaults; Editing favours responsiveness."
+        "Applies to every tab except Display. Editing favours responsiveness for the editing tools; Base is the " +
+        "application's look at cheap qualities; Enhanced is that look at its best."
       }
       fact={isCustom ? `Custom, from ${PRESET_LABELS[preset]}` : PRESET_LABELS[preset]}
       action={
