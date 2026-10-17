@@ -23,6 +23,7 @@ pub(crate) mod render_scene_id;
 pub(crate) mod render_scene_update;
 pub(crate) mod render_sector_failure;
 pub(crate) mod render_sky_textures;
+pub(crate) mod render_spawn_category;
 pub(crate) mod render_spawn_lighting;
 pub(crate) mod render_spawn_model;
 pub(crate) mod render_spawn_models;

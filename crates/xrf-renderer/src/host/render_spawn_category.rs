@@ -1,9 +1,5 @@
-use serde::{Deserialize, Serialize};
-
 /// Which group of a level's spawned objects one is drawn in, by the class its spawn stores.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum RenderSpawnCategory {
   /// Physics objects, breakables, inventory boxes and vehicles.
   Props,

@@ -88,7 +88,6 @@ pub(crate) mod render_selection_target;
 pub(crate) mod render_settings;
 pub(crate) mod render_shadow_settings;
 pub(crate) mod render_show_flags;
-pub(crate) mod render_spawn_category;
 pub(crate) mod render_static_report;
 pub(crate) mod render_sun_shafts;
 pub(crate) mod render_sun_shafts_quality;
