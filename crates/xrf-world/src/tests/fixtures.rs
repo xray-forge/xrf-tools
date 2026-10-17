@@ -10,6 +10,9 @@ use xrf_renderer::{
 };
 use xrf_visual::{LightsDescription, SectorPackage};
 
+use crate::contract::world_viewport_event::WorldViewportEvent;
+use crate::world_event_sink::WorldEventSink;
+
 /// How a test level packs a sector.
 pub type TestSectorPack = Box<dyn Fn(u32) -> XrfResult<SectorPackage> + Send + Sync>;
 
@@ -98,4 +101,11 @@ impl RenderLevelSource for TestLevelSource {
   fn read_object_motion(&self, name: &str) -> XrfResult<AnmFile> {
     self.motions.get(name).cloned().ok_or_else(Self::none)
   }
+}
+
+/// A viewport's world events sent nowhere, for a test attaching a viewport only to show it a level.
+pub struct SilentSink;
+
+impl WorldEventSink for SilentSink {
+  fn send(&self, _: WorldViewportEvent) {}
 }

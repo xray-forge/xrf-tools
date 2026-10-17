@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use xrf_renderer::{RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorld};
 
-use crate::tests::fixtures::TestLevelSource;
+use crate::tests::fixtures::{SilentSink, TestLevelSource};
 use crate::tests::test_workers::create_workers;
 use crate::world::World;
 
@@ -35,6 +35,8 @@ fn finishes_streaming_a_level_whose_sectors_all_fail_counting_each_once() {
   let mut world: World = World::new(create_workers());
   let viewport: RenderViewportId = RenderViewportId(1);
 
+  world.attach(viewport, Box::new(SilentSink));
+
   // The fixture packs no sector: every one of the three fails.
   world.show_level(
     viewport,
@@ -60,6 +62,8 @@ fn finishes_streaming_a_level_whose_sectors_all_fail_counting_each_once() {
 fn leaves_no_scene_behind_a_level_let_go_while_it_streams() {
   let mut world: World = World::new(create_workers());
   let viewport: RenderViewportId = RenderViewportId(1);
+
+  world.attach(viewport, Box::new(SilentSink));
 
   world.show_level(
     viewport,

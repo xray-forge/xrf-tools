@@ -47,9 +47,20 @@ impl World {
     }
   }
 
-  /// Starts a viewport's world, publishing its camera and weather on `sink`.
+  /// Starts a viewport's world, publishing its camera and weather on `sink`: the one door a viewport's world opens by,
+  /// so a command or a frame naming a viewport detached since starts nothing.
   pub fn attach(&mut self, viewport: RenderViewportId, sink: Box<dyn WorldEventSink>) {
-    self.get_viewport(viewport).set_sink(sink);
+    let workers: &RenderWorkers = &self.workers;
+
+    self
+      .viewports
+      .entry(viewport)
+      .or_insert_with(|| {
+        let now: Instant = Instant::now();
+
+        WorldViewport::new(ViewportWeather::new(now, workers), now)
+      })
+      .set_sink(sink);
   }
 
   pub fn detach(&mut self, viewport: RenderViewportId) {
@@ -59,19 +70,27 @@ impl World {
 
   /// Sets what of a viewport's world plays from its next frame on.
   pub fn set_toggles(&mut self, viewport: RenderViewportId, toggles: WorldToggles) {
-    self.get_viewport(viewport).toggles = toggles;
+    if let Some(world) = self.viewports.get_mut(&viewport) {
+      world.toggles = toggles;
+    }
   }
 
   pub fn set_camera(&mut self, viewport: RenderViewportId, camera: WorldCamera) {
-    self.get_viewport(viewport).camera.describe(camera);
+    if let Some(world) = self.viewports.get_mut(&viewport) {
+      world.camera.describe(camera);
+    }
   }
 
   pub fn command_camera(&mut self, viewport: RenderViewportId, command: WorldCameraCommand) {
-    self.get_viewport(viewport).camera.command(command);
+    if let Some(world) = self.viewports.get_mut(&viewport) {
+      world.camera.command(command);
+    }
   }
 
   pub fn send_input(&mut self, viewport: RenderViewportId, event: &WorldInputEvent) {
-    self.get_viewport(viewport).camera.input(event);
+    if let Some(world) = self.viewports.get_mut(&viewport) {
+      world.camera.input(event);
+    }
   }
 
   /// Shows a level in a viewport, or none, and plays its weather there: the scene of the same level another viewport
@@ -82,6 +101,11 @@ impl World {
     viewport: RenderViewportId,
     source: Option<Arc<dyn RenderLevelSource>>,
   ) -> Option<RenderSceneId> {
+    // A viewport detached since shows nothing, rather than starting a scene nothing would let go.
+    if !self.viewports.contains_key(&viewport) {
+      return None;
+    }
+
     self.leave_scene(viewport);
     self.get_viewport(viewport).weather.show(source.clone());
 
@@ -127,7 +151,9 @@ impl World {
   /// Stands a viewport's skinned objects as asked from the next frame on; a scene it shares stands them as its driver
   /// asks, as every other choice of a viewport reaches a shared scene.
   pub fn pose_model(&mut self, viewport: RenderViewportId, pose: &WorldModelPose) {
-    let world: &mut WorldViewport = self.get_viewport(viewport);
+    let Some(world) = self.viewports.get_mut(&viewport) else {
+      return;
+    };
 
     world.pose = pose.clone();
 
@@ -162,19 +188,27 @@ impl World {
     play: WorldWeatherPlay,
     transition: WorldWeatherTransition,
   ) {
-    self.get_viewport(viewport).weather.play(play, transition);
+    if let Some(world) = self.viewports.get_mut(&viewport) {
+      world.weather.play(play, transition);
+    }
   }
 
   pub fn set_weather_control(&mut self, viewport: RenderViewportId, control: WorldWeatherControl) {
-    self.get_viewport(viewport).weather.set_control(control);
+    if let Some(world) = self.viewports.get_mut(&viewport) {
+      world.weather.set_control(control);
+    }
   }
 
   pub fn seek_weather(&mut self, viewport: RenderViewportId, time: f32) {
-    self.get_viewport(viewport).weather.seek(time);
+    if let Some(world) = self.viewports.get_mut(&viewport) {
+      world.weather.seek(time);
+    }
   }
 
   pub fn play_weather_effect(&mut self, viewport: RenderViewportId, name: Option<&str>) {
-    self.get_viewport(viewport).weather.play_effect(name);
+    if let Some(world) = self.viewports.get_mut(&viewport) {
+      world.weather.play_effect(name);
+    }
   }
 
   /// Plays a weather ambient effect near the camera of the viewport driving a viewport's scene on its next frame,
@@ -212,15 +246,9 @@ impl World {
     }
   }
 
-  /// A viewport's world, started for whatever names it first: a command may arrive before its attach.
+  /// An attached viewport's world, which `show_level` has checked it is.
   fn get_viewport(&mut self, viewport: RenderViewportId) -> &mut WorldViewport {
-    let workers: &RenderWorkers = &self.workers;
-
-    self.viewports.entry(viewport).or_insert_with(|| {
-      let now: Instant = Instant::now();
-
-      WorldViewport::new(ViewportWeather::new(now, workers), now)
-    })
+    self.viewports.get_mut(&viewport).expect("the viewport is attached")
   }
 }
 
@@ -232,7 +260,11 @@ impl RenderWorld for World {
   fn advance_view(&mut self, viewport: RenderViewportId, input: RenderViewInput<'_>) -> RenderViewFrame {
     let ambient: Option<WorldAmbientReport> = self.get_scene(viewport).and_then(|scene| scene.level.report_ambient());
 
-    self.get_viewport(viewport).advance(input, ambient)
+    // A frame drawn before the world's attach, or after its detach, rests: it starts no world.
+    self
+      .viewports
+      .get_mut(&viewport)
+      .map_or_else(RenderViewFrame::default, |world| world.advance(input, ambient))
   }
 
   fn advance_scenes(

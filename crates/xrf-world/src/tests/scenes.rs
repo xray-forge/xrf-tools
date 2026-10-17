@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use xrf_renderer::{RenderLevelSource, RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorld};
 
-use crate::tests::fixtures::TestLevelSource;
+use crate::tests::fixtures::{SilentSink, TestLevelSource};
 use crate::tests::test_workers::create_workers;
 use crate::world::World;
 
@@ -30,6 +30,9 @@ fn list_drivers(world: &mut World) -> HashMap<RenderSceneId, Option<RenderViewpo
 fn viewports_showing_one_opening_share_its_scene_driven_by_the_first() {
   let mut world: World = World::new(create_workers());
   let (first, second) = (RenderViewportId(1), RenderViewportId(2));
+
+  world.attach(first, Box::new(SilentSink));
+  world.attach(second, Box::new(SilentSink));
 
   world.show_level(first, Some(source(Some("zaton"))));
   world.show_level(second, Some(source(Some("zaton"))));
@@ -57,6 +60,9 @@ fn sources_sharing_nothing_stream_scenes_of_their_own() {
   let mut world: World = World::new(create_workers());
   let (first, second) = (RenderViewportId(1), RenderViewportId(2));
 
+  world.attach(first, Box::new(SilentSink));
+  world.attach(second, Box::new(SilentSink));
+
   world.show_level(first, Some(source(None)));
   world.show_level(second, Some(source(None)));
 
@@ -67,6 +73,8 @@ fn sources_sharing_nothing_stream_scenes_of_their_own() {
 fn showing_another_level_leaves_the_last_scene() {
   let mut world: World = World::new(create_workers());
   let viewport: RenderViewportId = RenderViewportId(1);
+
+  world.attach(viewport, Box::new(SilentSink));
 
   world.show_level(viewport, Some(source(Some("zaton"))));
 
@@ -88,6 +96,8 @@ fn restarting_the_scenes_streams_each_again_under_its_id_and_driver() {
   let mut world: World = World::new(create_workers());
   let viewport: RenderViewportId = RenderViewportId(1);
 
+  world.attach(viewport, Box::new(SilentSink));
+
   world.show_level(viewport, Some(source(Some("zaton"))));
 
   let before: HashMap<RenderSceneId, RenderSceneFrame> = world.advance_scenes(Instant::now(), HashMap::new());
@@ -104,4 +114,19 @@ fn restarting_the_scenes_streams_each_again_under_its_id_and_driver() {
     assert_eq!(frame.driver, Some(viewport));
     assert!(frame.streaming.started > before[id].streaming.started);
   }
+}
+
+#[test]
+fn starts_nothing_for_a_viewport_not_attached_or_detached_since() {
+  let mut world: World = World::new(create_workers());
+  let viewport: RenderViewportId = RenderViewportId(1);
+
+  // A late show for a viewport never attached, or detached since, starts no scene nothing would let go.
+  assert_eq!(world.show_level(viewport, Some(source(Some("zaton")))), None);
+
+  world.attach(viewport, Box::new(SilentSink));
+  world.detach(viewport);
+
+  assert_eq!(world.show_level(viewport, Some(source(Some("zaton")))), None);
+  assert!(list_drivers(&mut world).is_empty());
 }
