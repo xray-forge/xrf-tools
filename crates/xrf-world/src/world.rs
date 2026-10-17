@@ -243,21 +243,25 @@ impl RenderWorld for World {
     let mut frames: HashMap<RenderSceneId, RenderSceneFrame> = HashMap::with_capacity(self.scenes.len());
 
     for (id, scene) in &mut self.scenes {
-      let driver: Option<RenderViewportId> = scene.get_driver();
-      let Some(driving) = driver.and_then(|driver| self.viewports.get(&driver)) else {
-        continue;
-      };
       let RenderSceneFeedback {
         sector_failures,
         model_failures,
         finished_effects,
       } = feedback.remove(id).unwrap_or_default();
+
+      // The scene told it once, so it is taken even in a frame no viewport drives the scene.
+      scene
+        .level
+        .take_feedback((sector_failures, model_failures), finished_effects);
+
+      let driver: Option<RenderViewportId> = scene.get_driver();
+      let Some(driving) = driver.and_then(|driver| self.viewports.get(&driver)) else {
+        continue;
+      };
       let (updates, effects): (Vec<RenderSceneUpdate>, EffectsFrame) = scene.level.advance(
         now,
         (&driving.options, &driving.toggles, driving.get_ambient_frame()),
         driving.eye,
-        (sector_failures, model_failures),
-        finished_effects,
       );
 
       frames.insert(

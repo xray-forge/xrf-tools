@@ -56,28 +56,31 @@ impl WorldLevel {
     self.effects.report_ambient()
   }
 
+  /// Takes what the level's scene told of the last frame, whether or not a viewport drives it now: `failures` are the
+  /// sectors and the spawned models it could not take in of the posts before, and `finished` the effects it finished.
+  pub fn take_feedback(
+    &mut self,
+    failures: (Vec<RenderSectorFailure>, Vec<RenderModelFailure>),
+    finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
+  ) {
+    self.streaming.take_failures(&mut self.animation, failures);
+    self.effects.note_finished(finished);
+  }
+
   /// This frame's posts to the level's scene at the frame's `now` by the view's options and the frame's weather, the
-  /// camera standing at `eye` in engine space, and what its effects give the scene besides. `failures` are the sectors
-  /// and the spawned models the scene could not take in of the last frame's posts, and `finished` the effects it
-  /// finished.
+  /// camera standing at `eye` in engine space, and what its effects give the scene besides.
   pub fn advance(
     &mut self,
     now: Instant,
     (options, toggles, ambient): (&RenderViewOptions, &WorldToggles, Option<AmbientFrame<'_>>),
     eye: Vec3,
-    failures: (Vec<RenderSectorFailure>, Vec<RenderModelFailure>),
-    finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
   ) -> (Vec<RenderSceneUpdate>, EffectsFrame) {
     let mut updates: Vec<RenderSceneUpdate> = Vec::new();
 
-    self.streaming.stream(
-      &mut updates,
-      &mut self.animation,
-      (toggles.get_hidden_spawn_groups(), failures),
-    );
+    self
+      .streaming
+      .stream(&mut updates, &mut self.animation, toggles.get_hidden_spawn_groups());
     self.animation.pose(&mut updates, self.streaming.get_source());
-
-    self.effects.note_finished(finished);
 
     let effects: EffectsFrame = self.effects.advance(
       &mut updates,
