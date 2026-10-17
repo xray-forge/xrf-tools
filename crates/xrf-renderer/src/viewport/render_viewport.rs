@@ -233,7 +233,7 @@ impl RenderViewport {
       [RenderDlssAvailability; 2],
     ),
     (allocator, scenes): (Option<&GpuMemory>, &mut HashMap<RenderSceneId, LevelScene>),
-    (timer, composition, graph): (Option<&mut GraphTimer>, &[GraphPassTime], Option<&GraphReport>),
+    (timer, composition, graph): (&mut GraphTimer, &[GraphPassTime], Option<&GraphReport>),
   ) {
     let Some(summary) = self.statistics.take(now) else {
       return;
@@ -262,22 +262,18 @@ impl RenderViewport {
       }
       None => Default::default(),
     };
-    let (is_gpu_timed, passes): (bool, Vec<RenderPassCost>) = timer.map_or((false, Vec::new()), |timer| {
-      let mut times: Vec<GraphPassTime> = timer.take(GraphOwner::from(self.id));
+    let mut times: Vec<GraphPassTime> = timer.take(GraphOwner::from(self.id));
 
-      times.extend_from_slice(composition);
+    times.extend_from_slice(composition);
 
-      (
-        timer.is_timing(),
-        times
-          .into_iter()
-          .map(|time| RenderPassCost {
-            name: time.name,
-            gpu_time: time.gpu_time,
-          })
-          .collect(),
-      )
-    });
+    let is_gpu_timed: bool = timer.is_timing();
+    let passes: Vec<RenderPassCost> = times
+      .into_iter()
+      .map(|time| RenderPassCost {
+        name: time.name,
+        gpu_time: time.gpu_time,
+      })
+      .collect();
     let FrameSummary {
       frames_per_second,
       frame_time,
