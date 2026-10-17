@@ -44,6 +44,7 @@ use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_bundle::RenderBundle;
 use crate::host::render_cache_store::RenderCacheStore;
+use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
 use crate::host::render_scene_frame::RenderSceneFrame;
@@ -1945,6 +1946,9 @@ impl RenderThread {
     {
       profiling::scope!("prepare");
 
+      // Held apart from the scene, which preparing changes, for the weather textures to be read in its scope.
+      let source: Arc<dyn RenderLevelSource> = Arc::clone(&scene.source);
+
       view_state.prepare(
         scene,
         encoder,
@@ -1961,7 +1965,7 @@ impl RenderThread {
           options: &options,
           lighting,
           weather,
-          weather_textures: &gpu.weather_textures,
+          weather_textures: gpu.weather_textures.scoped(source.get_texture_scope()),
           weather_rate: world.clock_rate,
         },
       );

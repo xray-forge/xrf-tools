@@ -17,8 +17,8 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::over_scene::add_over_scene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
-use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// The falling rain, while the weather rains and the view shows it: the splash's model built for the level's weather,
 /// the uniform at the rain cover's window, the streak's and the splash's textures, and the drops drawn.
@@ -43,7 +43,7 @@ impl FallingRainFeature {
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     (rainfall, gust, time): (Option<RenderRainfall>, AmbientGust, f32),
     (cover, (texels, reach)): (Vec4, (f32, f32)),
-    weather_textures: &WeatherTextureCache,
+    weather_textures: WeatherTextures<'_>,
   ) -> Option<RainUniform> {
     self.draw = None;
     self.views = None;

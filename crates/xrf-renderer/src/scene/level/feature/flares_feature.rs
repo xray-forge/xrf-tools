@@ -25,6 +25,7 @@ use crate::scene::level::lens_flare_fade::LensFlareFade;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// The sun a level's viewport draws as `CLensFlare` does: the lens flare its keyframes name, faded between them, its
 /// sprite in the sky and its flares and gradient over the frame, each shown as much as the sun is.
@@ -89,7 +90,7 @@ impl FlaresFeature {
     device: &wgpu::Device,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
-    weather_textures: &WeatherTextureCache,
+    weather_textures: WeatherTextures<'_>,
     (view, rate): (&CameraView, f32),
     has_targets: bool,
   ) -> Option<(String, Vec4)> {
@@ -119,7 +120,7 @@ impl FlaresFeature {
     &mut self,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
-    weather_textures: &WeatherTextureCache,
+    weather_textures: WeatherTextures<'_>,
     (view, rate): (&CameraView, f32),
     has_targets: bool,
   ) -> Option<(String, Vec4)> {
@@ -225,7 +226,7 @@ impl FlaresFeature {
   }
 
   /// Each flare's texture and the gradient's, as the weather textures hold them now.
-  fn collect_textures(&mut self, flare: &RenderLensFlare, weather_textures: &WeatherTextureCache) {
+  fn collect_textures(&mut self, flare: &RenderLensFlare, weather_textures: WeatherTextures<'_>) {
     let view = |reference: &str| {
       weather_textures
         .get_view(Some(reference), WeatherTextureKind::Flat)

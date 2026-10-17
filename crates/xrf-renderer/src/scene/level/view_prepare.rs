@@ -8,7 +8,7 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
+use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// What a view readies its frame from: the GPU and its passes, the camera, the sizes the frame is drawn, resolved and
 /// shown at, the options, and the weather's light, textures and clock rate.
@@ -28,7 +28,7 @@ pub struct ViewPrepare<'a> {
   pub options: &'a RenderViewOptions,
   pub lighting: &'a RenderLighting,
   pub weather: Option<&'a Arc<RenderLevelWeather>>,
-  pub weather_textures: &'a WeatherTextureCache,
+  pub weather_textures: WeatherTextures<'a>,
   /// How fast the weather's clock runs against real time.
   pub weather_rate: f32,
 }

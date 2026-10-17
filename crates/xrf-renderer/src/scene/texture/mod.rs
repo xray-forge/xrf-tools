@@ -5,3 +5,4 @@ pub(crate) mod texture_cache;
 pub(crate) mod texture_role;
 pub(crate) mod weather_texture_cache;
 pub(crate) mod weather_texture_kind;
+pub(crate) mod weather_textures;

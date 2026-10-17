@@ -28,8 +28,8 @@ use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::sky_views::SkyViews;
 use crate::scene::level::surroundings_cube::SurroundingsCube;
-use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// The sky a view draws and reflects: its textures as the weather holds them this frame, with the sun's sprite, the
 /// prefiltered cube the reflections and the enhanced specular read, filled again as the frame's scheduler grants it (at
@@ -72,7 +72,7 @@ impl SkyFeature {
     device: &wgpu::Device,
     (passes, options): (LevelPasses<'_>, &RenderViewOptions),
     (sky, sun_sprite, environments): (&RenderSky, Option<(String, Vec4)>, &[String]),
-    weather_textures: &WeatherTextureCache,
+    weather_textures: WeatherTextures<'_>,
   ) {
     self.views = Some(passes.sky.collect(
       weather_textures,
@@ -185,7 +185,7 @@ impl SkyFeature {
   pub fn get_lighting_frame(
     &self,
     (sky, options): (&RenderSky, &RenderViewOptions),
-    weather_textures: &WeatherTextureCache,
+    weather_textures: WeatherTextures<'_>,
     (is_adapting, time): (bool, f32),
   ) -> LightingFrame {
     let side = |index: usize| {

@@ -15,8 +15,8 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::over_scene::add_over_scene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
-use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// The strike, while a bolt strikes and the view shows it: every bolt model built for the level's weather, the uniform
 /// where the strike stands, and what its model and its two glows bind and draw.
@@ -41,7 +41,7 @@ impl ThunderFeature {
     device: &wgpu::Device,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
-    weather_textures: &WeatherTextureCache,
+    weather_textures: WeatherTextures<'_>,
   ) {
     self.draw = None;
     self.views = None;

@@ -25,8 +25,8 @@ use crate::scene::level::feature::overhead_windows::OverheadWindows;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::level_wetness::LevelWetness;
 use crate::scene::level::rain_wetness::RainWetness;
-use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// The wet surfaces: the G-buffer wetted by the level's wetness and its puddles' fill (`LevelWetness`, the scene's)
 /// while the rain falls and, enhanced, while the level is still wet after it stops.
@@ -47,7 +47,7 @@ impl WetFeature {
     options: &RenderViewOptions,
     (level, falling, time): (&LevelWetness, Option<&RainUniform>, f32),
     (windows, noise_frame): (OverheadWindows, u32),
-    weather_textures: &WeatherTextureCache,
+    weather_textures: WeatherTextures<'_>,
   ) {
     self.views = None;
 

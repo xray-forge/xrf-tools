@@ -6,6 +6,7 @@ use crate::host::render_asset_source::{RenderAssetSource, get_texture_name};
 use crate::lighting::render_sky::RenderSky;
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+use crate::scene::texture::weather_textures::WeatherTextures;
 use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
@@ -18,8 +19,8 @@ const PLACEHOLDER_VOLUME: [u8; 4] = [128, 128, 128, 128];
 /// The mean of `default_clear`'s noon irradiance, which a sky cube shows until its file is up.
 const PLACEHOLDER_SKY: [u8; 4] = [128, 130, 140, 255];
 
-/// What a texture load came to, sent from a loader thread.
-type SkyTextureLoad = (String, Result<Option<DecodedTexture>, String>);
+/// What a texture load came to, by its source's scope and its reference, sent from a loader thread.
+type SkyTextureLoad = (String, String, Result<Option<DecodedTexture>, String>);
 
 /// One weather texture: its view once up, whether its load settled, and the source it was read from.
 struct SkyTextureEntry {
@@ -32,10 +33,11 @@ struct SkyTextureEntry {
   used: u64,
 }
 
-/// The weather's textures, skies and their irradiance cubes, clouds, rain and what it wets with, by reference: loaded
-/// the first time a viewport asks for one, and let go once none has asked for a while.
+/// The weather's textures, skies and their irradiance cubes, clouds, rain and what it wets with, by the scope their
+/// source resolves them in and their reference, so two installations' files of one reference stay apart: loaded the
+/// first time a viewport asks for one, and let go once none has asked for a while.
 pub struct WeatherTextureCache {
-  entries: HashMap<String, SkyTextureEntry>,
+  entries: HashMap<String, HashMap<String, SkyTextureEntry>>,
   sender: Sender<SkyTextureLoad>,
   receiver: LoaderReceiver<SkyTextureLoad>,
   placeholder_cube: wgpu::TextureView,
@@ -75,13 +77,29 @@ impl WeatherTextureCache {
 
   /// Asks for a texture, loading it on a loader thread the first time; answers whether it is up or given up on.
   pub fn request(&mut self, reference: &str, kind: WeatherTextureKind, source: &Arc<dyn RenderAssetSource>) -> bool {
-    if let Some(entry) = self.entries.get_mut(reference) {
+    let scope: &str = source.get_texture_scope();
+
+    if let Some(entry) = self
+      .entries
+      .get_mut(scope)
+      .and_then(|entries| entries.get_mut(reference))
+    {
       entry.used = self.frame;
 
-      return entry.is_settled;
+      // Asked again by a source opened since, as a level reopened: the file may have changed meanwhile, so it is read
+      // again, the texture shown until it lands.
+      let is_reopened: bool = !Arc::ptr_eq(&entry.source, source);
+      let is_settled: bool = entry.is_settled;
+
+      if is_reopened {
+        entry.source = Arc::clone(source);
+        self.load(reference, source);
+      }
+
+      return is_settled;
     }
 
-    self.entries.insert(
+    self.entries.entry(scope.to_owned()).or_default().insert(
       reference.to_owned(),
       SkyTextureEntry {
         kind,
@@ -96,12 +114,18 @@ impl WeatherTextureCache {
     false
   }
 
+  /// The textures as one source reads them, by the scope it resolves them in.
+  pub fn scoped<'a>(&'a self, scope: &'a str) -> WeatherTextures<'a> {
+    WeatherTextures::new(self, scope)
+  }
+
   /// Loads again every texture of these file names (lowercase, without folder or extension), its source first
   /// forgetting where it resolved: its file changed. Each keeps what it shows until it lands again.
   pub fn reload(&mut self, names: &[String]) {
     let reloaded: Vec<(String, Arc<dyn RenderAssetSource>)> = self
       .entries
-      .iter()
+      .values()
+      .flatten()
       .filter(|(reference, _)| names.contains(&get_texture_name(reference)))
       .map(|(reference, entry)| (reference.clone(), Arc::clone(&entry.source)))
       .collect();
@@ -115,6 +139,7 @@ impl WeatherTextureCache {
   /// Reads and decodes a texture on a loader thread.
   fn load(&self, reference: &str, source: &Arc<dyn RenderAssetSource>) {
     let (sender, source, reference) = (self.sender.clone(), Arc::clone(source), reference.to_owned());
+    let scope: String = source.get_texture_scope().to_owned();
 
     self.workers.spawn(move || {
       let load: Result<Option<DecodedTexture>, String> = source
@@ -126,7 +151,7 @@ impl WeatherTextureCache {
         log::warn!("Weather texture '{reference}' cannot be drawn: {error}");
       }
 
-      let _ = sender.send((reference, load));
+      let _ = sender.send((scope, reference, load));
     });
   }
 
@@ -147,20 +172,22 @@ impl WeatherTextureCache {
     is_settled
   }
 
-  /// Whether a texture is up or given up on for good; none counts as settled.
-  pub fn is_settled(&self, reference: Option<&str>) -> bool {
-    reference.is_none_or(|reference| self.entries.get(reference).is_some_and(|entry| entry.is_settled))
+  /// Whether a texture of a scope is up or given up on for good; none counts as settled.
+  pub fn is_settled(&self, scope: &str, reference: Option<&str>) -> bool {
+    reference.is_none_or(|reference| self.get_entry(scope, reference).is_some_and(|entry| entry.is_settled))
   }
 
-  /// Whether a texture is up, rather than standing in for itself.
-  pub fn is_up(&self, reference: &str) -> bool {
-    self.entries.get(reference).is_some_and(|entry| entry.view.is_some())
+  /// Whether a texture of a scope is up, rather than standing in for itself.
+  pub fn is_up(&self, scope: &str, reference: &str) -> bool {
+    self
+      .get_entry(scope, reference)
+      .is_some_and(|entry| entry.view.is_some())
   }
 
-  /// What samples a texture: its own once up, its kind's placeholder before, or for none.
-  pub fn get_view(&self, reference: Option<&str>, kind: WeatherTextureKind) -> &wgpu::TextureView {
+  /// What samples a texture of a scope: its own once up, its kind's placeholder before, or for none.
+  pub fn get_view(&self, scope: &str, reference: Option<&str>, kind: WeatherTextureKind) -> &wgpu::TextureView {
     reference
-      .and_then(|reference| self.entries.get(reference))
+      .and_then(|reference| self.get_entry(scope, reference))
       .and_then(|entry| entry.view.as_ref())
       .unwrap_or(match kind {
         WeatherTextureKind::Cube => &self.placeholder_cube,
@@ -173,8 +200,12 @@ impl WeatherTextureCache {
   pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
     self.frame += 1;
 
-    while let Ok((reference, load)) = self.receiver.try_recv() {
-      let Some(entry) = self.entries.get_mut(&reference) else {
+    while let Ok((scope, reference, load)) = self.receiver.try_recv() {
+      let Some(entry) = self
+        .entries
+        .get_mut(&scope)
+        .and_then(|entries| entries.get_mut(&reference))
+      else {
         continue;
       };
 
@@ -194,9 +225,15 @@ impl WeatherTextureCache {
 
     let frame: u64 = self.frame;
 
-    self
-      .entries
-      .retain(|_, entry| frame.saturating_sub(entry.used) <= KEPT_FRAMES);
+    for entries in self.entries.values_mut() {
+      entries.retain(|_, entry| frame.saturating_sub(entry.used) <= KEPT_FRAMES);
+    }
+
+    self.entries.retain(|_, entries| !entries.is_empty());
+  }
+
+  fn get_entry(&self, scope: &str, reference: &str) -> Option<&SkyTextureEntry> {
+    self.entries.get(scope)?.get(reference)
   }
 
   /// Whether a texture read is the kind it is drawn as.

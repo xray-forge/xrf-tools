@@ -3,8 +3,8 @@ use xrf_renderer_core::{FrameGraph, GraphBindings, GraphTexture, PassParameters}
 use crate::lighting::render_sky::RenderSky;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::scene::level::sky_views::SkyViews;
-use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
+use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// What every pass drawing the weather's sky binds as its sky group: the layout [`SkyParameters`] make and the two
 /// samplers they read through, and the views a frame's sky takes from the weather textures.
@@ -53,7 +53,7 @@ impl SkyBindings {
   /// placeholder until its file is up; the first environment slot, and every one past `environments`, stands for none.
   pub fn collect(
     &self,
-    cache: &WeatherTextureCache,
+    cache: WeatherTextures<'_>,
     (sky, sun): (&RenderSky, Option<&str>),
     environments: &[String],
   ) -> SkyViews {
