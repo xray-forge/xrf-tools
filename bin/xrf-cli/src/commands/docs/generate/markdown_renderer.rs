@@ -27,7 +27,7 @@ impl ReferenceMarkdownRenderer {
     let mut page: String = format!(
       "{GENERATED_HEADER}\n\n# XRF CLI command reference\n\n\
        Reference for `xrf-cli` subcommands, generated from the clap command definitions. \
-       This directory is fully generated: rebuild it with `cargo make docs-cli` instead of editing pages.\n\n\
+       This directory is fully generated: rebuild it with `cargo make doc-cli` instead of editing pages.\n\n\
        <!-- ANCHOR: {GROUPS_ANCHOR} -->\n\n\
        | Group | Commands |\n| ----- | -------- |\n"
     );
