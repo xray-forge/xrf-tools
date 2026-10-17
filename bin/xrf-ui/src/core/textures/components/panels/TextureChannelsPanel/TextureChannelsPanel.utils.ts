@@ -66,13 +66,13 @@ export function toTextureChannelAspect(files: Nullable<ITextureSurfaceFiles>): s
  *
  * @param description - The texture as the backend resolved it, or none open.
  * @param files - What the surface read for it.
- * @param isUploading - Whether that read is still in progress.
+ * @param isReading - Whether that read is still in progress.
  * @returns What to say instead of the tiles, or null when the tiles can be drawn.
  */
 export function describeTextureChannelsGap(
   description: Nullable<TextureDescription>,
   files: Nullable<ITextureSurfaceFiles>,
-  isUploading: boolean
+  isReading: boolean
 ): Nullable<string> {
   if (!description) {
     return "No texture selected. The planes of its bump pair show here.";
@@ -86,7 +86,7 @@ export function describeTextureChannelsGap(
       : "This file sits outside a game tree, so no bump pair was resolved for it.";
   }
 
-  if (isUploading) {
+  if (isReading) {
     return "Reading the pair…";
   }
 

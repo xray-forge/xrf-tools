@@ -101,6 +101,7 @@ export class RenderSettingsService {
   @RefObservable()
   public renderBackends: Nullable<ReadonlyArray<RenderBackendAvailability>> = null;
 
+  /** What every viewport resolves its frame at: its own size times the output scale, or a height in its shape. */
   @Observable()
   public renderResolution: ERenderResolution = toRenderResolution(getLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY));
   /** The share of the viewport's sides the automatic resolution resolves at. */
