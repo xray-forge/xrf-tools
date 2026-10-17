@@ -1,10 +1,9 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::view_binding::ViewBinding;
@@ -261,43 +260,30 @@ impl CompositedPass {
     [view_layout, scene_layout, texture_layout, sky_layout]: &[wgpu::BindGroupLayout; 4],
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<CompositedPipelines> {
-    let device: &wgpu::Device = source.device;
-
-    let module: wgpu::ShaderModule = source.get_module("static/composited")?;
-    let composited_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("composited"),
-      bind_group_layouts: &[
-        Some(view_layout),
-        Some(texture_layout),
-        Some(scene_layout),
-        Some(layout),
-        Some(sky_layout),
-      ],
-      ..Default::default()
-    });
-    let wallmark_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("wall marks"),
-      bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(scene_layout)],
-      ..Default::default()
-    });
+    let composited_layout: [Option<&wgpu::BindGroupLayout>; 5] = [
+      Some(view_layout),
+      Some(texture_layout),
+      Some(scene_layout),
+      Some(layout),
+      Some(sky_layout),
+    ];
+    let wallmark_layout: [Option<&wgpu::BindGroupLayout>; 3] =
+      [Some(view_layout), Some(texture_layout), Some(scene_layout)];
     let composited = Self::create_layout_pipelines(
-      (device, source),
-      &module,
+      source,
       (&composited_layout, COMPOSITED_FRAGMENT),
       (ViewTargets::SCENE, Some(COMPOSITED_BLEND), wgpu::ColorWrites::ALL),
       StaticBatch::list_composited().map(|batch| batch.layout),
     )?;
     let wallmarks = Self::create_layout_pipelines(
-      (device, source),
-      &module,
+      source,
       (&wallmark_layout, "fs_wallmark"),
       (ViewTargets::ALBEDO, Some(COMPOSITED_BLEND), wgpu::ColorWrites::ALL),
       StaticBatch::list_wallmarks().map(|batch| batch.layout),
     )?;
     // Blended over what the water and the particles wrote, as `distort(true)` passes blend by their alpha.
     let distortion = Self::create_layout_pipelines(
-      (device, source),
-      &module,
+      source,
       (&composited_layout, "fs_composited_distort"),
       (
         ViewTargets::DISTORTION,
@@ -308,8 +294,7 @@ impl CompositedPass {
     )?;
     // The mark alone, in the alpha, over whatever the surface behind it marked.
     let selection = Self::create_layout_pipelines(
-      (device, source),
-      &module,
+      source,
       (&wallmark_layout, "fs_composited_selected"),
       (ViewTargets::MATERIAL, None, wgpu::ColorWrites::ALPHA),
       Self::list_selectable().map(|batch| batch.layout),
@@ -319,61 +304,43 @@ impl CompositedPass {
   }
 
   fn create_layout_pipelines(
-    (device, source): (&wgpu::Device, PipelineSource<'_>),
-    module: &wgpu::ShaderModule,
-    (pipeline_layout, fragment): (&wgpu::PipelineLayout, &str),
+    source: PipelineSource<'_>,
+    (bind_group_layouts, fragment): (&[Option<&wgpu::BindGroupLayout>], &'static str),
     (format, blend, write_mask): (wgpu::TextureFormat, Option<wgpu::BlendState>, wgpu::ColorWrites),
     layouts: impl Iterator<Item = StaticLayout>,
   ) -> XrfResult<Vec<wgpu::RenderPipeline>> {
-    let targets: [Option<wgpu::ColorTargetState>; 1] = [Some(wgpu::ColorTargetState {
-      format,
-      blend,
-      write_mask,
-    })];
-
     layouts
       .map(|layout| {
         // A model and a vertex-lit level surface composited over the frame are lit by their vertices, as the engine's
         // forward passes light them.
-        let vertex: &str = match layout {
+        let vertex: &'static str = match layout {
           StaticLayout::Model if fragment == COMPOSITED_FRAGMENT => "vs_model_lit",
           StaticLayout::Baked if fragment == COMPOSITED_FRAGMENT => "vs_baked_lit",
           layout => layout.get_vertex_entry(),
         };
 
-        create_checked(device, fragment, || {
-          device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some(fragment),
-            layout: Some(pipeline_layout),
-            vertex: wgpu::VertexState {
-              module,
-              entry_point: Some(vertex),
-              compilation_options: Default::default(),
-              buffers: &[],
-            },
-            fragment: Some(wgpu::FragmentState {
-              module,
-              entry_point: Some(fragment),
-              compilation_options: Default::default(),
-              targets: &targets,
-            }),
-            primitive: wgpu::PrimitiveState {
+        source.get_render_pipeline(
+          &RenderPipelineDescription::new(fragment, "static/composited", vertex)
+            .with_fragment(fragment)
+            .with_bind_group_layouts(bind_group_layouts)
+            .with_primitive(wgpu::PrimitiveState {
               front_face: wgpu::FrontFace::Ccw,
               cull_mode: Some(wgpu::Face::Back),
               ..Default::default()
-            },
-            depth_stencil: Some(wgpu::DepthStencilState {
+            })
+            .with_depth_stencil(wgpu::DepthStencilState {
               format: ViewTargets::DEPTH,
               depth_write_enabled: Some(false),
               depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
               stencil: Default::default(),
               bias: Self::DEPTH_BIAS,
+            })
+            .with_target(wgpu::ColorTargetState {
+              format,
+              blend,
+              write_mask,
             }),
-            multisample: Default::default(),
-            multiview_mask: None,
-            cache: source.get_driver_cache(),
-          })
-        })
+        )
       })
       .collect()
   }

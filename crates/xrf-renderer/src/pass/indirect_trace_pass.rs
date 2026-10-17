@@ -2,9 +2,9 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::context::gpu_requirements::can_trace;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::indirect_trace_parameters::IndirectTraceParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::vbao_pass::VbaoPass;
@@ -108,12 +108,9 @@ impl IndirectTracePass {
     (view_layout, sky_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
     layouts: Option<&[wgpu::BindGroupLayout; 3]>,
   ) -> XrfResult<Option<wgpu::RenderPipeline>> {
-    let device: &wgpu::Device = source.device;
-
     let Some([own_layout, trace_layout, texture_layout]) = layouts else {
       return Ok(None);
     };
-    let module: wgpu::ShaderModule = source.get_module("frame/indirect_trace")?;
     let mut groups: [Option<&wgpu::BindGroupLayout>; 5] = [None; 5];
 
     groups[0] = Some(view_layout);
@@ -122,35 +119,13 @@ impl IndirectTracePass {
     groups[Self::TRACE_GROUP as usize] = Some(trace_layout);
     groups[Self::TEXTURE_GROUP as usize] = Some(texture_layout);
 
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("indirect trace"),
-      bind_group_layouts: &groups,
-      ..Default::default()
-    });
-
-    create_checked(device, "indirect trace", || {
-      device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("indirect trace"),
-        layout: Some(&pipeline_layout),
-        vertex: wgpu::VertexState {
-          module: &module,
-          entry_point: Some("vs_fullscreen"),
-          compilation_options: Default::default(),
-          buffers: &[],
-        },
-        fragment: Some(wgpu::FragmentState {
-          module: &module,
-          entry_point: Some("fs_indirect_trace"),
-          compilation_options: Default::default(),
-          targets: &[Some(VbaoPass::LIGHT.into()), Some(Self::HITS.into())],
-        }),
-        primitive: Default::default(),
-        depth_stencil: None,
-        multisample: Default::default(),
-        multiview_mask: None,
-        cache: source.get_driver_cache(),
-      })
-    })
+    create_fullscreen_pipeline_into(
+      source,
+      "frame/indirect_trace",
+      "fs_indirect_trace",
+      &groups,
+      &[Some(VbaoPass::LIGHT.into()), Some(Self::HITS.into())],
+    )
     .map(Some)
   }
 }

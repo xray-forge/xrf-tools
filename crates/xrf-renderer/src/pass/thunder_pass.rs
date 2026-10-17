@@ -1,11 +1,10 @@
 use xrf_error::XrfResult;
 use xrf_material::XraySurfaceDraw;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::particle_blend::ParticleBlend;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::thunder_parameters::ThunderParameters;
 use crate::pass::view_binding::ViewBinding;
 
@@ -104,59 +103,33 @@ impl ThunderPass {
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<Vec<wgpu::RenderPipeline>> {
-    let device: &wgpu::Device = source.device;
-
-    let module: wgpu::ShaderModule = source.get_module("frame/thunder")?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("thunder"),
-      bind_group_layouts: &[Some(view_layout), Some(layout)],
-      ..Default::default()
-    });
-
     ENTRIES
       .iter()
       .flat_map(|entry| BLENDS.iter().map(move |blend| (*entry, *blend)))
       .map(|(entry, blend)| {
         let component: wgpu::BlendComponent = blend.get_component();
-        let targets: [Option<wgpu::ColorTargetState>; 1] = [Some(wgpu::ColorTargetState {
-          format: ViewTargets::SCENE,
-          blend: Some(wgpu::BlendState {
-            color: component,
-            alpha: component,
-          }),
-          write_mask: wgpu::ColorWrites::ALL,
-        })];
 
-        create_checked(device, "thunder", || {
-          device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("thunder"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-              module: &module,
-              entry_point: Some(entry),
-              compilation_options: Default::default(),
-              buffers: &[],
-            },
-            fragment: Some(wgpu::FragmentState {
-              module: &module,
-              entry_point: Some("fs_thunder"),
-              compilation_options: Default::default(),
-              targets: &targets,
-            }),
-            // Both sides, `CULL_NONE`, and a glow faces the view anyway.
-            primitive: Default::default(),
-            depth_stencil: Some(wgpu::DepthStencilState {
+        // Both sides, `CULL_NONE`, and a glow faces the view anyway.
+        source.get_render_pipeline(
+          &RenderPipelineDescription::new("thunder", "frame/thunder", entry)
+            .with_fragment("fs_thunder")
+            .with_bind_group_layouts(&[Some(view_layout), Some(layout)])
+            .with_depth_stencil(wgpu::DepthStencilState {
               format: ViewTargets::DEPTH,
               depth_write_enabled: Some(false),
               depth_compare: Some(wgpu::CompareFunction::Greater),
               stencil: Default::default(),
               bias: Default::default(),
+            })
+            .with_target(wgpu::ColorTargetState {
+              format: ViewTargets::SCENE,
+              blend: Some(wgpu::BlendState {
+                color: component,
+                alpha: component,
+              }),
+              write_mask: wgpu::ColorWrites::ALL,
             }),
-            multisample: Default::default(),
-            multiview_mask: None,
-            cache: source.get_driver_cache(),
-          })
-        })
+        )
       })
       .collect()
   }

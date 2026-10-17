@@ -4,7 +4,6 @@ use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::pass::overhead_shift_parameters::OverheadShiftParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
@@ -195,8 +194,6 @@ impl StaticShadowPass {
     wgpu::RenderPipeline,
     [wgpu::RenderPipeline; 2],
   )> {
-    let device: &wgpu::Device = source.device;
-
     let pipelines: Vec<wgpu::RenderPipeline> = StaticBatch::list_deferred()
       .map(|batch| {
         let description: RenderPipelineDescription =
@@ -219,32 +216,10 @@ impl StaticShadowPass {
         })
       })
       .collect::<XrfResult<_>>()?;
-    let clear_module: wgpu::ShaderModule = source.get_module("frame/depth_clear")?;
-    let clear_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&Default::default());
-    let clear: wgpu::RenderPipeline = create_checked(device, "shadow tile clear", || {
-      device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some("shadow tile clear"),
-        layout: Some(&clear_layout),
-        vertex: wgpu::VertexState {
-          module: &clear_module,
-          entry_point: Some("vs_clear"),
-          compilation_options: Default::default(),
-          buffers: &[],
-        },
-        fragment: None,
-        primitive: Default::default(),
-        depth_stencil: Some(wgpu::DepthStencilState {
-          format: SunShadowMaps::FORMAT,
-          depth_write_enabled: Some(true),
-          depth_compare: Some(wgpu::CompareFunction::Always),
-          stencil: Default::default(),
-          bias: Default::default(),
-        }),
-        multisample: Default::default(),
-        multiview_mask: None,
-        cache: source.get_driver_cache(),
-      })
-    })?;
+    let clear: wgpu::RenderPipeline = source.get_render_pipeline(
+      &RenderPipelineDescription::new("shadow tile clear", "frame/depth_clear", "vs_clear")
+        .with_depth_stencil(Self::get_overwritten_depth()),
+    )?;
 
     let writers: [wgpu::RenderPipeline; 2] = [
       Self::create_depth_writer(
@@ -276,46 +251,25 @@ impl StaticShadowPass {
   fn create_depth_writer(
     source: PipelineSource<'_>,
     (module, label): (&'static str, &'static str),
-    (vertex, fragment): (&str, &str),
+    (vertex, fragment): (&'static str, &'static str),
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::RenderPipeline> {
-    let device: &wgpu::Device = source.device;
+    source.get_render_pipeline(
+      &RenderPipelineDescription::new(label, module, vertex)
+        .with_fragment(fragment)
+        .with_bind_group_layouts(&[Some(layout)])
+        .with_depth_stencil(Self::get_overwritten_depth()),
+    )
+  }
 
-    let module: wgpu::ShaderModule = source.get_module(module)?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some(label),
-      bind_group_layouts: &[Some(layout)],
-      ..Default::default()
-    });
-
-    create_checked(device, label, || {
-      device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-        label: Some(label),
-        layout: Some(&pipeline_layout),
-        vertex: wgpu::VertexState {
-          module: &module,
-          entry_point: Some(vertex),
-          compilation_options: Default::default(),
-          buffers: &[],
-        },
-        fragment: Some(wgpu::FragmentState {
-          module: &module,
-          entry_point: Some(fragment),
-          compilation_options: Default::default(),
-          targets: &[],
-        }),
-        primitive: Default::default(),
-        depth_stencil: Some(wgpu::DepthStencilState {
-          format: SunShadowMaps::FORMAT,
-          depth_write_enabled: Some(true),
-          depth_compare: Some(wgpu::CompareFunction::Always),
-          stencil: Default::default(),
-          bias: Default::default(),
-        }),
-        multisample: Default::default(),
-        multiview_mask: None,
-        cache: source.get_driver_cache(),
-      })
-    })
+  /// A shadow map's depth written over whatever stood there.
+  fn get_overwritten_depth() -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+      format: SunShadowMaps::FORMAT,
+      depth_write_enabled: Some(true),
+      depth_compare: Some(wgpu::CompareFunction::Always),
+      stencil: Default::default(),
+      bias: Default::default(),
+    }
   }
 }

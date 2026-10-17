@@ -1,14 +1,13 @@
 use std::ops::Range;
 
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::particle_batch::ParticleBatch;
 use crate::pass::particle_blend::ParticleBlend;
 use crate::pass::particle_parameters::ParticleParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
 use crate::pass::view_binding::ViewBinding;
 
 /// Draws a level's particle sprites over its finished scene after the composited surfaces, as `render_forward` draws
@@ -138,51 +137,29 @@ impl ParticlePass {
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<ParticlePipelines> {
-    let device: &wgpu::Device = source.device;
-
-    let module: wgpu::ShaderModule = source.get_module("frame/particles")?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("particles"),
-      bind_group_layouts: &[Some(view_layout), Some(layout), Some(texture_layout)],
-      ..Default::default()
-    });
-    let create = |label: &str, entry_point: &str, format: wgpu::TextureFormat, blend: wgpu::BlendState| {
-      let targets: [Option<wgpu::ColorTargetState>; 1] = [Some(wgpu::ColorTargetState {
-        format,
-        blend: Some(blend),
-        write_mask: wgpu::ColorWrites::ALL,
-      })];
-
-      create_checked(device, label, || {
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-          label: Some(label),
-          layout: Some(&pipeline_layout),
-          vertex: wgpu::VertexState {
-            module: &module,
-            entry_point: Some("vs_particle"),
-            compilation_options: Default::default(),
-            buffers: &[],
-          },
-          fragment: Some(wgpu::FragmentState {
-            module: &module,
-            entry_point: Some(entry_point),
-            compilation_options: Default::default(),
-            targets: &targets,
-          }),
-          // todo: Cull `dfCulling` effects' quads by `dfCullCCW` as `CParticleEffect::Render` does; both sides draw.
-          primitive: Default::default(),
-          depth_stencil: Some(wgpu::DepthStencilState {
+    let create = |label: &'static str,
+                  entry_point: &'static str,
+                  format: wgpu::TextureFormat,
+                  blend: wgpu::BlendState|
+     -> XrfResult<wgpu::RenderPipeline> {
+      // todo: Cull `dfCulling` effects' quads by `dfCullCCW` as `CParticleEffect::Render` does; both sides draw.
+      source.get_render_pipeline(
+        &RenderPipelineDescription::new(label, "frame/particles", "vs_particle")
+          .with_fragment(entry_point)
+          .with_bind_group_layouts(&[Some(view_layout), Some(layout), Some(texture_layout)])
+          .with_depth_stencil(wgpu::DepthStencilState {
             format: ViewTargets::DEPTH,
             depth_write_enabled: Some(false),
             depth_compare: Some(wgpu::CompareFunction::Greater),
             stencil: Default::default(),
             bias: Default::default(),
+          })
+          .with_target(wgpu::ColorTargetState {
+            format,
+            blend: Some(blend),
+            write_mask: wgpu::ColorWrites::ALL,
           }),
-          multisample: Default::default(),
-          multiview_mask: None,
-          cache: source.get_driver_cache(),
-        })
-      })
+      )
     };
 
     Ok(ParticlePipelines {
