@@ -60,6 +60,23 @@ impl VisualTransform {
     [i.x, i.y, i.z, j.x, j.y, j.z, k.x, k.y, k.z, c.x, c.y, c.z]
   }
 
+  /// This transform followed by `outer`: a point taken by it, then by `outer`.
+  pub(crate) fn then(&self, outer: &Self) -> Self {
+    BindTransform::from_renderer_space(self)
+      .then(&BindTransform::from_renderer_space(outer))
+      .to_visual()
+  }
+
+  /// The inverse of a rigid transform: its basis transposed, and its translation turned back by it.
+  pub(crate) fn inverse(&self) -> Self {
+    BindTransform::from_renderer_space(self).inverse().to_visual()
+  }
+
+  /// A vector turned by its basis, its translation left out.
+  pub(crate) fn rotate(&self, vector: &Vector3d) -> Vector3d {
+    BindTransform::from_renderer_space(self).rotate(vector)
+  }
+
   /// A point of its own space where the transform stands it, `transform_tiny`.
   pub fn apply_to_point(&self, point: &Vector3d) -> Vector3d {
     let Self { i, j, k, c } = self;

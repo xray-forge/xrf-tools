@@ -100,6 +100,22 @@ impl BindTransform {
     }
   }
 
+  /// The inverse of a rigid transform: its basis transposed, and its translation turned back by it.
+  pub(crate) fn inverse(&self) -> Self {
+    let transposed: Self = Self {
+      i: Vector3d::new(self.i.x, self.j.x, self.k.x),
+      j: Vector3d::new(self.i.y, self.j.y, self.k.y),
+      k: Vector3d::new(self.i.z, self.j.z, self.k.z),
+      c: Vector3d::new(0.0, 0.0, 0.0),
+    };
+    let back: Vector3d = transposed.rotate(&self.c);
+
+    Self {
+      c: Vector3d::new(-back.x, -back.y, -back.z),
+      ..transposed
+    }
+  }
+
   /// Composes local transforms into model space, root downwards; `None` for a bone whose chain reaches no root.
   pub(crate) fn compose_chain(locals: &[Self], parents: &[Option<usize>]) -> Vec<Option<Self>> {
     let mut model: Vec<Option<Self>> = vec![None; locals.len()];
