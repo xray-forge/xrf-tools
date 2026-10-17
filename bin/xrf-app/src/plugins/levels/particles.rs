@@ -186,9 +186,7 @@ fn place_zone(object: &AlifeObject, sections: &Ltx) -> Option<RenderParticlePlac
       .mirrored()
       .to_matrix(),
     motion: motion.and_then(AlifeObjectMotion::get_name).map(str::to_owned),
-    // A zone always fast never switches, so it keeps no sphere to measure.
-    zone_sphere: (!zone.is_always_fast())
-      .then(|| ZoneSphere::of_zone(&zone.base.shape, (&object.position, &object.direction))),
+    zone_sphere: ZoneSphere::of_custom_zone(zone, (&object.position, &object.direction)),
   })
 }
 
