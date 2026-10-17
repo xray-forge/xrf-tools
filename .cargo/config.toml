@@ -5,9 +5,8 @@
 [target.'cfg(all(target_os = "linux", target_env = "gnu"))']
 rustflags = ["-Clink-arg=-lstdc++"]
 
-# The SDKs `cargo make fetch-sdks` checks out, which the `dlss` feature builds against, and on Windows the libclang
-# bindgen generates its bindings with; any set in the environment wins.
+# The SDKs `cargo make fetch-sdks` checks out, which the `dlss` feature builds against; any set in the environment
+# wins. On Windows `xrf-dlss`'s build script points bindgen at the libclang it fetches, elsewhere at the system's.
 [env]
 DLSS_SDK = { value = ".sdks/dlss", relative = true }
 VULKAN_SDK = { value = ".sdks/vulkan-headers", relative = true }
-LIBCLANG_PATH = { value = ".sdks/libclang", relative = true }

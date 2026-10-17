@@ -3,6 +3,7 @@
 fn main() {
   println!("cargo:rerun-if-env-changed=DLSS_SDK");
   println!("cargo:rerun-if-env-changed=VULKAN_SDK");
+  println!("cargo:rerun-if-env-changed=LIBCLANG_PATH");
   println!("cargo:rerun-if-changed=src/ngx/wrapper.h");
 
   #[cfg(feature = "sdk")]
@@ -18,6 +19,17 @@ mod sdk {
   struct Platform {
     libraries: &'static str,
     runtime: &'static str,
+  }
+
+  /// On a Windows host with no `LIBCLANG_PATH` set, points bindgen at the libclang `cargo make fetch-sdks` placed in
+  /// `.sdks/libclang`; elsewhere bindgen finds the system's.
+  fn use_fetched_libclang() {
+    if cfg!(windows) && env::var_os("LIBCLANG_PATH").is_none() {
+      let fetched: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../.sdks/libclang");
+
+      // SAFETY: the build script runs on one thread, and bindgen reads the variable after this as it loads libclang.
+      unsafe { env::set_var("LIBCLANG_PATH", fetched) };
+    }
   }
 
   pub fn bind() {
@@ -63,6 +75,8 @@ mod sdk {
         println!("cargo:rustc-link-lib=dylib=dl");
       }
     }
+
+    use_fetched_libclang();
 
     // Vulkan's own types come from ash, so only NGX's are generated; its static inline helpers are compiled into a
     // library of their own.

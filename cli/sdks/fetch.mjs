@@ -262,12 +262,38 @@ async function fetchArchived(tool) {
  * @returns {boolean} whether bindgen finds libclang, which generating the NGX bindings needs
  */
 function hasLibclang() {
-  const candidates = [process.env.LIBCLANG_PATH, "/usr/lib", "/usr/lib/x86_64-linux-gnu", "/usr/local/lib"].filter(
-    Boolean
-  );
-  const library = "libclang.so";
+  const versioned = fs.existsSync("/usr/lib")
+    ? fs
+        .readdirSync("/usr/lib")
+        .filter((name) => name.startsWith("llvm-"))
+        .map((name) => path.join("/usr/lib", name, "lib"))
+    : [];
+  const candidates = [
+    process.env.LIBCLANG_PATH,
+    readLlvmLibdir(),
+    "/usr/lib",
+    "/usr/lib/x86_64-linux-gnu",
+    "/usr/local/lib",
+    ...versioned,
+  ].filter(Boolean);
 
-  return candidates.some((dir) => fs.existsSync(path.join(dir, library)));
+  // Debian and Ubuntu install a versioned library, `libclang-<n>.so` or `libclang.so.<n>`, which clang-sys finds too.
+  return candidates.some(
+    (dir) => fs.existsSync(dir) && fs.readdirSync(dir).some((name) => /^libclang(-[\d.]+)?\.so(\.[\d.]+)?$/.test(name))
+  );
+}
+
+/**
+ * @returns {string | null} the library directory `llvm-config` reports, or null where it is not installed
+ */
+function readLlvmLibdir() {
+  try {
+    return cp
+      .execFileSync("llvm-config", ["--libdir"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+      .trim();
+  } catch {
+    return null;
+  }
 }
 
 for (const sdk of SDKS) {
