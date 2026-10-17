@@ -1,11 +1,13 @@
+use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::time::Duration;
 
-use image::RgbaImage;
+use image::{ImageFormat, RgbaImage};
 use tauri::State;
 use xrf_error::XrfResult;
 use xrf_renderer::{RenderCapture, RenderViewportId};
+use xrf_utils::write_file_staged;
 
 use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
@@ -39,9 +41,14 @@ pub async fn render_save_capture(
       let image: RgbaImage = RgbaImage::from_raw(capture.width, capture.height, capture.pixels)
         .ok_or_else(|| "The capture's pixels do not fill its size".to_string())?;
 
+      let mut png: Vec<u8> = Vec::new();
+
       image
-        .save(&path)
-        .map_err(|error| format!("Failed to write capture '{}': {error}", path.display()))
+        .write_to(&mut Cursor::new(&mut png), ImageFormat::Png)
+        .map_err(|error| format!("Failed to encode capture '{}': {error}", path.display()))?;
+
+      // A PNG whatever the path is named, encoded whole first so a failed write leaves no partial file.
+      write_file_staged(&path, &png).map_err(|error| format!("Failed to write capture '{}': {error}", path.display()))
     })
     .await?
 }
