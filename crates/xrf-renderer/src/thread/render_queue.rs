@@ -2,6 +2,7 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, channel};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
+use crate::context::library_versions::describe_libraries;
 use crate::contract::render_libraries::RenderLibraries;
 use crate::contract::render_settings::RenderSettings;
 use crate::host::render_bundle::RenderBundle;
@@ -50,7 +51,7 @@ impl RenderQueue {
   /// without a thread, since a stopped thread had no viewport left. Settings are kept for every thread started later.
   /// The graphics libraries the renderer ships, the DLSS runtime looked for in its bundle.
   pub fn describe_libraries(&self) -> RenderLibraries {
-    RenderLibraries::describe(self.bundle.as_ref())
+    describe_libraries(self.bundle.as_ref())
   }
 
   pub fn send(&self, command: RenderCommand) {
