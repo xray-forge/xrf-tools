@@ -469,7 +469,10 @@ export enum ERenderDebugView {
   FSR_LOCKS = "fsrLocks",
   /** How strongly FSR finds each pixel's luma flickering back to an earlier frame's, which lets its history hold. */
   FSR_LUMA_INSTABILITY = "fsrLumaInstability",
-  /** How much of each pixel FSR takes from this frame rather than its history, from black for none to white for all. */
+  /**
+   * How much of each pixel FSR takes from this frame rather than its history, from black for none to white for all,
+   * as its square root so a frame's usual small share reads.
+   */
   FSR_FRAME_SHARE = "fsrFrameShare",
 }
 
