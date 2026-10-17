@@ -49,17 +49,18 @@ impl LevelGrass {
     self.level.as_ref()
   }
 
-  /// Takes the level's grass once it is read, asking for its textures; answers their slots the first time.
-  pub fn poll(
-    &mut self,
-    device: &wgpu::Device,
-    textures: &mut TextureCache,
-    source: &Arc<dyn RenderAssetSource>,
-  ) -> Option<Vec<u32>> {
-    let read: XrfResult<Option<RenderLevelDetails>> = take_answer(&mut self.pending, "grass")?;
-    let details: RenderLevelDetails = read.ok().flatten()?;
+  /// The texture slots its models sample, none before it is read.
+  pub fn list_texture_slots(&self) -> impl Iterator<Item = u32> + '_ {
+    self.level.iter().flat_map(|level| level.texture_slots.iter().copied())
+  }
+
+  /// Takes the level's grass once it is read, asking for its textures.
+  pub fn poll(&mut self, device: &wgpu::Device, textures: &mut TextureCache, source: &Arc<dyn RenderAssetSource>) {
+    let answer: Option<XrfResult<Option<RenderLevelDetails>>> = take_answer(&mut self.pending, "grass");
+    let Some(Ok(Some(details))) = answer else {
+      return;
+    };
     let level: GrassLevel = GrassLevel::new(device, &details, (textures, source));
-    let slots: Vec<u32> = level.texture_slots.clone();
 
     log::info!(
       "Native viewport grass {} models over {}x{} slots",
@@ -68,7 +69,5 @@ impl LevelGrass {
       level.grid[1]
     );
     self.level = Some(level);
-
-    Some(slots)
   }
 }
