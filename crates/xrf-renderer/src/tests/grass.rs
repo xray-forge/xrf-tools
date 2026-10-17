@@ -39,6 +39,16 @@ fn holds_a_cell_a_slot_the_planting_reaches_and_rebuilds_for_a_want_past_it_or_u
   assert!(!held.is_fitting(&GrassBuildSize::wanted(8, 25, BINDING_LIMIT)));
 }
 
+// A reach and a spacing no setting offers still ask for no more than one binding holds, rather than overflowing.
+#[test]
+fn bounds_a_want_past_any_setting_by_the_binding() {
+  let wanted: GrassBuildSize = GrassBuildSize::wanted(u32::MAX, u32::MAX, BINDING_LIMIT);
+
+  assert_eq!(u64::from(wanted.capacity), BINDING_LIMIT / GrassBuildSize::ITEM_BYTES);
+  assert_eq!(wanted.per_cell, 1);
+  assert_eq!(wanted.bands, u32::MAX);
+}
+
 #[test]
 fn sways_the_grass_on_its_two_winds_and_stills_it_without_wind() {
   let mut wind: GrassWind = GrassWind::default();

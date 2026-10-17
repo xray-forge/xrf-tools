@@ -1,6 +1,7 @@
 use glam::Vec3;
 
 use crate::camera::camera_view::CameraView;
+use crate::contract::render_shadow_settings::{RENDER_MAX_SHADOW_FILTER, RenderShadowSettings};
 use crate::scene::level::level_shadows::LevelShadows;
 
 /// A camera at `position` looking along `heading` degrees about the up axis and `pitch` degrees down, through `fov`.
@@ -50,4 +51,24 @@ fn widens_the_nearest_cascades_bands_alone() {
     [0.2, 0.2, 0.08, 0.08]
   );
   assert_eq!(LevelShadows::get_cascade_blends(0.3).to_array(), [0.3, 0.3, 0.3, 0.3]);
+}
+
+// Widths and a filter from a stored setting or a page are bounded where they are read: a width of nought made a NaN
+// cascade that redrew every frame.
+#[test]
+fn reads_the_cascades_and_the_filter_within_their_bounds() {
+  let settings: RenderShadowSettings = RenderShadowSettings {
+    cascades: vec![0.0, f32::NAN, f32::INFINITY, 20.0],
+    filter: 9,
+    ..RenderShadowSettings::default()
+  };
+
+  assert_eq!(
+    (0..5)
+      .map(|index| settings.get_cascade_width(index))
+      .collect::<Vec<f32>>(),
+    [1.0, 1.0, 10_000.0, 20.0, 1.0]
+  );
+  assert_eq!(settings.get_filter(), RENDER_MAX_SHADOW_FILTER);
+  assert_eq!(LevelShadows::get_grass_reach(&settings), Some(1.0));
 }

@@ -18,16 +18,20 @@ impl GrassBuildSize {
   /// What a reach and a slot's candidates want, within what one storage binding may hold: past it the planting plants
   /// what fits, dropping the rest. The lists are a power of two, so a setting dragged rebuilds them a handful of times.
   pub fn wanted(reach: u32, candidates: u32, binding_limit: u64) -> Self {
-    let line: u32 = reach * 2 + 1;
-    let cells: u32 = line * line;
-    let per_cell: u64 = u64::from(candidates).min(binding_limit / (u64::from(cells.max(1)) * Self::ITEM_BYTES));
-    let most: u64 = binding_limit / Self::ITEM_BYTES;
+    // Counted in 64 bits: a wide reach at a dense spacing passes a 32-bit count before the binding limit bounds it.
+    let line: u64 = u64::from(reach) * 2 + 1;
+    let cells: u64 = line.saturating_mul(line);
+    let per_cell: u64 = u64::from(candidates).min(binding_limit / cells.max(1).saturating_mul(Self::ITEM_BYTES));
+    let most: u64 = (binding_limit / Self::ITEM_BYTES).min(u64::from(u32::MAX));
 
     Self {
-      cells,
+      cells: cells.min(u64::from(u32::MAX)) as u32,
       per_cell: per_cell.max(1) as u32,
-      bands: reach + 1,
-      capacity: u64::from(cells * candidates).next_power_of_two().clamp(1, most) as u32,
+      bands: reach.saturating_add(1),
+      capacity: cells
+        .saturating_mul(u64::from(candidates))
+        .checked_next_power_of_two()
+        .map_or(most, |capacity| capacity.clamp(1, most)) as u32,
     }
   }
 

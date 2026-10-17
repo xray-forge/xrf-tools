@@ -153,9 +153,9 @@ impl LevelShadows {
   /// Metres the grass's cards need stand from the eye to shadow the cascades they are drawn into by `settings`: the
   /// last such cascade's width, past which a tuft falls in a cascade drawing none.
   pub fn get_grass_reach(settings: &RenderShadowSettings) -> Option<f32> {
-    settings.cascades[..settings.get_cascade_count().min(GRASS_CASCADES)]
-      .last()
-      .copied()
+    let count: usize = settings.get_cascade_count().min(GRASS_CASCADES);
+
+    count.checked_sub(1).map(|last| settings.get_cascade_width(last))
   }
 
   /// The maps, while any cascade is drawn.
@@ -233,7 +233,7 @@ impl LevelShadows {
     let look: Vec3 = -frame.camera.view.inverse().z_axis.truncate();
 
     self.values.forward = look.extend(0.0);
-    self.values.filter_reach = settings.filter;
+    self.values.filter_reach = settings.get_filter();
     self.values.resolution = self.maps.as_ref().map_or(1, |maps| maps.resolution) as f32;
     self.values.bias = settings.bias;
   }
@@ -525,7 +525,7 @@ impl LevelShadows {
       .collect();
 
     for (index, cascade) in self.cascades.iter_mut().take(count).enumerate() {
-      let width: f32 = frame.settings.cascades.get(index).copied().unwrap_or(1.0);
+      let width: f32 = frame.settings.get_cascade_width(index);
 
       cascade
         .cascade

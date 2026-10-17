@@ -2,7 +2,7 @@ use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
-use crate::contract::render_shadow_settings::RENDER_MAX_SHADOW_CASCADES;
+use crate::contract::render_shadow_settings::{RENDER_MAX_SHADOW_CASCADES, RENDER_MAX_SHADOW_FILTER};
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_with;
@@ -30,8 +30,8 @@ impl SunPass {
   /// How much of the sun reaches a pixel, past its shadow, its contact shadow and its relief.
   pub const SEEN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
 
-  /// The filter's widths there are pipelines for: none to three texels each way, as the settings offer.
-  const REACHES: usize = 4;
+  /// The filter's widths there are pipelines for: none to the settings' widest each way.
+  const REACHES: usize = RENDER_MAX_SHADOW_FILTER as usize + 1;
 
   /// The sun's maps with nothing in them, which the frame binds while no cascade is drawn.
   pub fn get_unshadowed(&self) -> &wgpu::TextureView {

@@ -1620,8 +1620,13 @@ impl RenderThread {
 
   /// The sizes a viewport's frame is resolved at and drawn at over its rectangle `rect`: the settings' output
   /// resolution first, then the render scale's share of it, where it shows a scene (`is_scened`); nothing else is drawn
-  /// but at the viewport's size.
-  fn get_view_sizes(options: &RenderViewOptions, rect: &RenderRect, is_scened: bool) -> ((u32, u32), RenderRect) {
+  /// but at the viewport's size. Each side stays within `most`, the largest texture the device makes.
+  fn get_view_sizes(
+    options: &RenderViewOptions,
+    rect: &RenderRect,
+    is_scened: bool,
+    most: u32,
+  ) -> ((u32, u32), RenderRect) {
     let render_scale: RenderScale = if is_scened {
       options.output.upscaling.scale
     } else {
@@ -1632,6 +1637,7 @@ impl RenderThread {
     } else {
       (rect.width, rect.height)
     };
+    let resolved: (u32, u32) = (resolved.0.min(most), resolved.1.min(most));
 
     (
       resolved,
@@ -1736,7 +1742,12 @@ impl RenderThread {
 
     let options: RenderViewOptions = viewport.options.clone();
     let switches: Vec4 = CameraUniform::get_switches(&options);
-    let (resolved, drawn_rect): ((u32, u32), RenderRect) = Self::get_view_sizes(&options, rect, scene.is_some());
+    let (resolved, drawn_rect): ((u32, u32), RenderRect) = Self::get_view_sizes(
+      &options,
+      rect,
+      scene.is_some(),
+      device.limits().max_texture_dimension_2d,
+    );
     let RenderViewport {
       shown,
       world,

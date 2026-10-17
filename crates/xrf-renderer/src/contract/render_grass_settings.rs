@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::contract::render_foliage_settings::RenderFoliageSettings;
 
+/// Metres grass is planted to at most, whatever a setting asks: past it the planting's buffers outgrow any device.
+pub const RENDER_MAX_GRASS_RADIUS: f32 = 512.0;
+
 /// The grass (`CDetailManager`): planted on the GPU around the camera as the engine plants it, and drawn into the
 /// G-buffer. The engine's are 49 metres round at a density of 0.6 (`r__detail_radius`, `r__detail_density`).
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -43,6 +46,17 @@ impl Default for RenderGrassSettings {
       is_aligned: false,
       is_shadowed: false,
       shadow_radius: 50.0,
+    }
+  }
+}
+
+impl RenderGrassSettings {
+  /// Metres grass is planted to, from nought to `RENDER_MAX_GRASS_RADIUS`; nought for one not a number.
+  pub fn get_radius(&self) -> f32 {
+    if self.radius.is_nan() {
+      0.0
+    } else {
+      self.radius.clamp(0.0, RENDER_MAX_GRASS_RADIUS)
     }
   }
 }
