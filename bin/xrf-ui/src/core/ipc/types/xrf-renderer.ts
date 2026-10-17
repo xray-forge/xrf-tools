@@ -1,5 +1,23 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+/**
+ * GPU milliseconds a frame gives the work drawn once in so many frames that may wait, unless the settings say
+ * otherwise.
+ */
+export const RENDER_DEFAULT_PERIODIC_BUDGET: number = 0.5;
+
+/** Frames VBAO accumulates over at most. */
+export const RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION: number = 32;
+
+/** Local lights a pixel marches contact shadows towards at most: the lights' shader keeps their weights in an array. */
+export const RENDER_MAX_CONTACT_SHADOW_LIGHTS: number = 8;
+
+/** Cascades the sun's shadow can be cut into at most: the sun reads their texels from one `vec4`. */
+export const RENDER_MAX_SHADOW_CASCADES: number = 4;
+
+/** Texels the sun's shadow filter reaches each way at most: the widest the sun's pass has a pipeline for. */
+export const RENDER_MAX_SHADOW_FILTER: number = 3;
+
 /** How the screen's ambient occlusion is searched. */
 export enum ERenderAmbientOcclusionMethod {
   /** GTAO as XeGTAO computes it: everything the depth shows taken to reach infinitely behind it. */

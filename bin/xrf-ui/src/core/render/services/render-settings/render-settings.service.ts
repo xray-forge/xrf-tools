@@ -5,6 +5,7 @@ import { Nullable } from "@xrf/types";
 
 import { renderCommands } from "@/core/ipc/commands/render";
 import {
+  RENDER_DEFAULT_PERIODIC_BUDGET,
   RenderBackendAvailability,
   RenderGpu,
   RenderGraphSettings,
@@ -15,7 +16,6 @@ import {
   toRenderBackendChoice,
   TRenderBackendChoice,
 } from "@/core/render/lib/settings/render-backend-choice";
-import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-contract-limits";
 import {
   IRenderFeatureChoice,
   mergeRenderFeatureOverrides,
@@ -83,7 +83,7 @@ export class RenderSettingsService {
    * unless set to measure another, for the session only.
    */
   @Observable()
-  public periodicBudget: number = DEFAULT_PERIODIC_BUDGET;
+  public periodicBudget: number = RENDER_DEFAULT_PERIODIC_BUDGET;
 
   /** Whether every viewport's frames wait for the display's refresh: on unless turned off. */
   @Observable()

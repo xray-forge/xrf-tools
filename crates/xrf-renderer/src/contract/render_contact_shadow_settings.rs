@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::contract::render_contact_shadow_mode::RenderContactShadowMode;
 
-/// Local lights a pixel marches contact shadows towards at most.
+/// Local lights a pixel marches contact shadows towards at most: the lights' shader keeps their weights in an array.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
 pub const RENDER_MAX_CONTACT_SHADOW_LIGHTS: u32 = 8;
 
 /// Contact shadows: the small shadows the sun's cascades and the lights' maps are too coarse to cast, or the lights

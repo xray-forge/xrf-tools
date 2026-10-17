@@ -2,10 +2,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::contract::render_contact_shadow_settings::RenderContactShadowSettings;
 
-/// Cascades the sun's shadow can be cut into at most.
+/// Cascades the sun's shadow can be cut into at most: the sun reads their texels from one `vec4`.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
 pub const RENDER_MAX_SHADOW_CASCADES: usize = 4;
 
-/// Texels the sun's filter reaches each way at most: the widest its pass has a pipeline for.
+/// Texels the sun's shadow filter reaches each way at most: the widest the sun's pass has a pipeline for.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
 pub const RENDER_MAX_SHADOW_FILTER: u32 = 3;
 
 /// Metres a cascade is across at least, whatever a setting asks: a width of nought would cut it into texels of nought.

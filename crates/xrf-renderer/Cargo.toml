@@ -29,6 +29,7 @@ xrf-engine-target = { workspace = true }
 xrf-env-flags = { workspace = true }
 xrf-environment = { workspace = true }
 xrf-error = { workspace = true }
+xrf-ipc = { workspace = true, optional = true }
 xrf-material = { workspace = true }
 xrf-math = { workspace = true }
 xrf-particles = { workspace = true }
@@ -49,6 +50,7 @@ xrf-vfs = { workspace = true }
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
 typescript-bindings = [
   "specta",
+  "xrf-ipc",
   "xrf-environment/typescript-bindings",
   "xrf-engine-target/typescript-bindings",
   "xrf-visual/typescript-bindings",

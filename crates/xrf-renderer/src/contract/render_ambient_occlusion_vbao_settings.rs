@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Frames VBAO accumulates over at most.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
 pub const RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION: u32 = 32;
 
 /// VBAO's strengths: how deep an occluder is taken to be, how much light bounces back off a
