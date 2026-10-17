@@ -83,6 +83,53 @@ fn drops_the_byte_order_mark_and_declaration_of_an_included_file() -> XrfResult 
 }
 
 #[test]
+fn decodes_an_include_name_as_its_document_declares_nested_ones_too() -> XrfResult {
+  // "диалоги" in Windows-1251.
+  let name: &[u8] = &[0xE4, 0xE8, 0xE0, 0xEB, 0xEE, 0xE3, 0xE8];
+  let source: Vec<u8> = [
+    b"<?xml version=\"1.0\" encoding=\"windows-1251\"?>\n#include \"".as_slice(),
+    name,
+    b".xml\"\n",
+  ]
+  .concat();
+  let mut names: Vec<String> = Vec::new();
+
+  expand_xml_includes(&source, &mut |name: &str| {
+    names.push(name.to_owned());
+
+    Ok(if names.len() == 1 {
+      [
+        b"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n#include \"".as_slice(),
+        &[0xE4],
+        b".xml\"\n",
+      ]
+      .concat()
+    } else {
+      b"<a/>\n".to_vec()
+    })
+  })?;
+
+  assert_eq!(names, ["диалоги.xml", "д.xml"]);
+  assert_eq!(
+    list_xml_includes(&source)
+      .iter()
+      .map(String::as_str)
+      .collect::<Vec<&str>>(),
+    ["диалоги.xml"]
+  );
+
+  Ok(())
+}
+
+#[test]
+fn refuses_an_include_name_its_document_does_not_decode() {
+  let source: &[u8] = b"#include \"\xE4.xml\"\n";
+
+  assert!(expand_xml_includes(source, &mut |_: &str| Ok(Vec::new())).is_err());
+  assert!(list_xml_includes(source).is_empty());
+}
+
+#[test]
 fn lists_the_names_a_document_includes_without_reading_them() {
   let source: &str = "<root>\n#include \"a.xml\"\n  #include \"b\\c.xml\"\n#include broken\n</root>";
 

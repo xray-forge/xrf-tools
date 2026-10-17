@@ -1,4 +1,7 @@
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::{XRayEncoding, decode_bytes_to_string_without_bom_handling, new_utf8_encoder};
+
+use crate::encoding::declared_xml_encoding;
 
 /// The directive a line opens with to splice another file in its place.
 const INCLUDE_DIRECTIVE: &[u8] = b"#include";
@@ -21,11 +24,13 @@ const XML_DECLARATION_END: &[u8] = b"?>";
 ///
 /// `read` maps an include name to its bytes. The engine opens it under `$game_config$`, so a reader of a game tree maps
 /// `gameplay\character_dialogs.xml` to `configs\gameplay\character_dialogs.xml`. Bytes are spliced as they are, like the
-/// engine does, so the including document's encoding decodes the result.
+/// engine does, so the including document's encoding decodes the result; it decodes every include name too, nested
+/// ones as well, since their files' declarations are dropped where they are spliced.
 ///
 /// # Errors
 ///
-/// Returns a parsing error for a malformed directive or for includes nested past the engine's limit, and what `read`
+/// Returns a parsing error for a malformed directive, a name its document's encoding does not decode, or includes
+/// nested past the engine's limit; an encoding error for a declaration naming no known code page; and what `read`
 /// returns for a name it cannot open. The engine refuses the loaders' documents on each.
 pub fn expand_xml_includes(source: &[u8], read: &mut dyn FnMut(&str) -> XrfResult<Vec<u8>>) -> XrfResult<Vec<u8>> {
   // Nearly every document has no include at all, and it is then returned as written.
@@ -33,29 +38,37 @@ pub fn expand_xml_includes(source: &[u8], read: &mut dyn FnMut(&str) -> XrfResul
     return Ok(source.to_vec());
   }
 
+  let encoding: XRayEncoding = declared_xml_encoding(source)?.unwrap_or_else(new_utf8_encoder);
   let mut expanded: Vec<u8> = Vec::with_capacity(source.len());
 
-  expand_into(source, read, 0, &mut expanded)?;
+  expand_into(source, encoding, read, 0, &mut expanded)?;
 
   Ok(expanded)
 }
 
 /// The names a document's `#include` lines ask for, in order, without reading them.
 ///
-/// A malformed directive is left out, since `expand_xml_includes` reports it when the document is read.
+/// A malformed directive, or a name the document's encoding does not decode, is left out, since `expand_xml_includes`
+/// reports it when the document is read.
 pub fn list_xml_includes(source: &[u8]) -> Vec<String> {
   if !contains(source, INCLUDE_DIRECTIVE) {
     return Vec::new();
   }
 
+  let encoding: XRayEncoding = declared_xml_encoding(source)
+    .ok()
+    .flatten()
+    .unwrap_or_else(new_utf8_encoder);
+
   source
     .split_inclusive(|byte| *byte == b'\n')
-    .filter_map(|line| parse_include(line.trim_ascii_end()).ok().flatten())
+    .filter_map(|line| parse_include(line.trim_ascii_end(), encoding).ok().flatten())
     .collect()
 }
 
 fn expand_into(
   source: &[u8],
+  encoding: XRayEncoding,
   read: &mut dyn FnMut(&str) -> XrfResult<Vec<u8>>,
   depth: usize,
   expanded: &mut Vec<u8>,
@@ -67,13 +80,13 @@ fn expand_into(
   }
 
   for line in source.split_inclusive(|byte| *byte == b'\n') {
-    let Some(name) = parse_include(line.trim_ascii_end())? else {
+    let Some(name) = parse_include(line.trim_ascii_end(), encoding)? else {
       expanded.extend_from_slice(line);
 
       continue;
     };
 
-    expand_into(strip_prolog(&read(&name)?), read, depth + 1, expanded)?;
+    expand_into(strip_prolog(&read(&name)?), encoding, read, depth + 1, expanded)?;
 
     // The engine writes every line it copies with a line break, the included file's last one too.
     if !expanded.ends_with(b"\n") {
@@ -84,11 +97,11 @@ fn expand_into(
   Ok(())
 }
 
-/// The name a line includes, or `None` for a line that is not an include.
+/// The name a line includes, decoded as its document is, or `None` for a line that is not an include.
 ///
 /// Follows `ParseInclude` in `xrCore/XML/XMLDocument.cpp`: blanks may precede the directive and the opening quote, and a
 /// name missing its closing quote runs to the end of the line.
-fn parse_include(line: &[u8]) -> XrfResult<Option<String>> {
+fn parse_include(line: &[u8], encoding: XRayEncoding) -> XrfResult<Option<String>> {
   let line: &[u8] = trim_blanks(line);
 
   let Some(rest) = line.strip_prefix(INCLUDE_DIRECTIVE) else {
@@ -111,7 +124,15 @@ fn parse_include(line: &[u8]) -> XrfResult<Option<String>> {
     )));
   }
 
-  Ok(Some(String::from_utf8_lossy(name).into_owned()))
+  decode_bytes_to_string_without_bom_handling(name, encoding)
+    .map(Some)
+    .map_err(|_| {
+      XrfError::new_parsing_error(format!(
+        "Invalid XML include directive '{}', the name is not {}",
+        String::from_utf8_lossy(line),
+        encoding.name()
+      ))
+    })
 }
 
 /// An included file's content without its byte order mark and XML declaration.
