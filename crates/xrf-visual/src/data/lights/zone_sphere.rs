@@ -37,9 +37,8 @@ impl ZoneSphere {
 
   /// How far a point stands outside it, `distance_to(P) - s.R`, where the point it is offset from stands at `at`.
   pub fn get_distance(&self, at: [f32; 3], point: [f32; 3]) -> f32 {
-    let center: [f32; 3] = [at[0] + self.offset.x, at[1] + self.offset.y, at[2] + self.offset.z];
-    let squared: f32 = (0..3).map(|axis| (point[axis] - center[axis]).powi(2)).sum();
+    let center: Vector3d = &Vector3d::from(at) + &self.offset;
 
-    squared.sqrt() - self.radius
+    Vector3d::from(point).distance(&center) - self.radius
   }
 }

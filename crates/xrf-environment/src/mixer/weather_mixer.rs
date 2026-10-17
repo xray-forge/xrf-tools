@@ -1,5 +1,5 @@
 use xrf_engine_target::XrayEngine;
-use xrf_math::EPS;
+use xrf_math::{EPS, Vector3d};
 
 use crate::mixer::weather_mix::WeatherMix;
 use crate::mixer::weather_mix_keyframe::WeatherMixKeyframe;
@@ -223,11 +223,13 @@ fn to_array<const N: usize>(values: &[f32]) -> [f32; N] {
   std::array::from_fn(|index| values.get(index).copied().unwrap_or(0.0))
 }
 
-fn normalise([x, y, z]: [f32; 3]) -> [f32; 3] {
-  let length: f32 = (x * x + y * y + z * z).sqrt();
+/// A direction at unit length, straight down where it has none.
+fn normalise(direction: [f32; 3]) -> [f32; 3] {
+  let direction: Vector3d = Vector3d::from(direction);
+  let length: f32 = direction.length();
 
   if length > 0.0 {
-    [x / length, y / length, z / length]
+    (&direction / length).to_array()
   } else {
     [0.0, -1.0, 0.0]
   }

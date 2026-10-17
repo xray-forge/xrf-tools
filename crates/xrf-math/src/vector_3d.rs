@@ -46,6 +46,14 @@ impl Vector3d<f32> {
     self.length_squared().sqrt()
   }
 
+  pub fn distance_squared(&self, other: &Self) -> f32 {
+    (self - other).length_squared()
+  }
+
+  pub fn distance(&self, other: &Self) -> f32 {
+    self.distance_squared(other).sqrt()
+  }
+
   /// The same direction at unit length, or zero for a vector with none.
   pub fn normalize_or_zero(&self) -> Self {
     let length: f32 = self.length();
@@ -247,6 +255,8 @@ mod tests {
       Vector3d::new(0.0, 0.6, 0.8)
     );
     assert_eq!(Vector3d::ZERO.normalize_or_zero(), Vector3d::ZERO);
+    assert_eq!(a.distance_squared(&Vector3d::new(1.0, 5.0, 7.0)), 25.0);
+    assert_eq!(a.distance(&Vector3d::new(1.0, 5.0, 7.0)), 5.0);
 
     let mut sum: Vector3d = Vector3d::ZERO;
 

@@ -1,5 +1,6 @@
 use serde::Serialize;
 use xrf_level::EnvModifier;
+use xrf_math::Vector3d;
 
 /// One `level.env_mod` volume as the mixer weighs it, `CEnvModifier`: where it is, how far and how strongly it reaches,
 /// and what it adds of each value its flags name.
@@ -65,6 +66,6 @@ impl WeatherModifier {
   }
 
   fn get_distance_sq(&self, view: [f32; 3]) -> f32 {
-    (0..3).map(|axis| (view[axis] - self.position[axis]).powi(2)).sum()
+    Vector3d::from(view).distance_squared(&Vector3d::from(self.position))
   }
 }
