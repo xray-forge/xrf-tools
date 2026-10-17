@@ -36,14 +36,16 @@ fn attach(
     .get(window)
     .ok_or_else(|| format!("Window '{window}' cannot host a native viewport"))?;
 
-  Ok(state.attach_viewport(
-    window,
-    Arc::new(Win32WindowHost::new(handle)),
-    (
-      Box::new(ChannelEventSink::new(events.clone())),
-      Box::new(ChannelEventSink::new(events)),
-    ),
-  ))
+  state
+    .attach_viewport(
+      window,
+      Arc::new(Win32WindowHost::new(handle)),
+      (
+        Box::new(ChannelEventSink::new(events.clone())),
+        Box::new(ChannelEventSink::new(events)),
+      ),
+    )
+    .ok_or_else(|| "No native viewport number is left to attach another".to_string())
 }
 
 #[cfg(not(windows))]

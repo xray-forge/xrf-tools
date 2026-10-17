@@ -13,24 +13,34 @@ use xrf_renderer::{
 /// viewports it attaches and answering a question through a channel of its own.
 pub struct Renderer {
   queue: RenderQueue,
-  next_id: AtomicU32,
+  /// The number the last viewport was attached under, none before the first.
+  last_id: AtomicU32,
 }
 
 impl Renderer {
   pub fn new(queue: RenderQueue) -> Self {
     Self {
       queue,
-      next_id: AtomicU32::new(0),
+      last_id: AtomicU32::new(0),
     }
   }
 
-  /// Starts drawing a viewport into a window, answering the number every later call names it by.
-  pub fn attach_viewport(&self, host: Arc<dyn RenderWindowHost>, sink: Box<dyn RenderEventSink>) -> RenderViewportId {
-    let id: RenderViewportId = RenderViewportId(self.next_id.fetch_add(1, Ordering::Relaxed) + 1);
+  /// Starts drawing a viewport into a window, answering the number every later call names it by; none once every
+  /// number was handed, since a number is never handed twice.
+  pub fn attach_viewport(
+    &self,
+    host: Arc<dyn RenderWindowHost>,
+    sink: Box<dyn RenderEventSink>,
+  ) -> Option<RenderViewportId> {
+    let last: u32 = self
+      .last_id
+      .try_update(Ordering::Relaxed, Ordering::Relaxed, |last| last.checked_add(1))
+      .ok()?;
+    let id: RenderViewportId = RenderViewportId(last + 1);
 
     self.queue.send(RenderCommand::Attach { id, host, sink });
 
-    id
+    Some(id)
   }
 
   pub fn detach_viewport(&self, id: RenderViewportId) {

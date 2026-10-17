@@ -3,6 +3,7 @@ use std::collections::{HashMap, VecDeque};
 use xrf_renderer_core::GraphTaggedTime;
 
 use crate::frame::periodic::periodic_job::PeriodicJob;
+use crate::frame::periodic::periodic_owner::PeriodicOwner;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 
 /// What a frame was granted: each job's passes, the units it drew and what a unit cost before any was learned.
@@ -22,7 +23,7 @@ pub struct PeriodicScheduler {
   /// Frames begun, which tags the timed frames.
   frame: u64,
   /// Who offers what is offered next.
-  owner: u32,
+  owner: PeriodicOwner,
   /// This frame's offers, by their owner, whether withdrawn and whether granted; those before `decided` were decided by
   /// an earlier round.
   offers: Vec<PeriodicOffer>,
@@ -43,7 +44,7 @@ pub struct PeriodicScheduler {
 }
 
 struct PeriodicOffer {
-  owner: u32,
+  owner: PeriodicOwner,
   job: PeriodicJob,
   is_withdrawn: bool,
   is_granted: bool,
@@ -65,7 +66,7 @@ impl PeriodicScheduler {
     Self {
       budget: Self::DEFAULT_BUDGET,
       frame: 0,
-      owner: 0,
+      owner: PeriodicOwner::Scenes,
       offers: Vec::new(),
       decided: 0,
       is_forced: false,
@@ -80,13 +81,14 @@ impl PeriodicScheduler {
 
   /// Starts a frame's offers with `budget` milliseconds for the work drawn once in so many frames, learning first from
   /// the passes the timer read back since the last frame, and from the GPU's milliseconds on each frame read back
-  /// (`spans`, by the frame's tag) where its passes were not timed.
+  /// (`spans`, by the frame's tag) where its passes were not timed. What is offered next is the scenes' own until a
+  /// view is named.
   pub fn begin(&mut self, budget: f32, (times, spans): (&[GraphTaggedTime], &[(u64, f32)])) {
     self.learn(times);
     self.fit(times, spans);
     self.budget = budget.max(0.0);
     self.frame += 1;
-    self.owner = 0;
+    self.owner = PeriodicOwner::Scenes;
     self.offers.clear();
     self.decided = 0;
     self.is_forced = false;
@@ -106,7 +108,7 @@ impl PeriodicScheduler {
   }
 
   /// Names who offers the jobs offered from now on, which `withdraw` takes back together.
-  pub fn set_owner(&mut self, owner: u32) {
+  pub fn set_owner(&mut self, owner: PeriodicOwner) {
     self.owner = owner;
   }
 
@@ -126,7 +128,7 @@ impl PeriodicScheduler {
   }
 
   /// Takes back what `owner` offered this frame: a view that does not draw this frame draws none of it.
-  pub fn withdraw(&mut self, owner: u32) {
+  pub fn withdraw(&mut self, owner: PeriodicOwner) {
     for offer in self.offers.iter_mut().filter(|offer| offer.owner == owner) {
       offer.is_withdrawn = true;
       offer.is_granted = false;

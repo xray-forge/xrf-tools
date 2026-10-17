@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use xrf_renderer_core::GraphReport;
+use xrf_renderer_core::{GraphOwner, GraphReport};
 
 use crate::contract::render_graph_pass::RenderGraphPass;
 use crate::contract::render_graph_transient::RenderGraphTransient;
@@ -25,12 +25,12 @@ pub struct RenderGraphReport {
 
 impl RenderGraphReport {
   /// A frame's report as one viewport reads it: its own passes, `owner`, and those of the frame's own.
-  pub fn of(report: &GraphReport, owner: u32, frame_owner: u32) -> Self {
+  pub fn of(report: &GraphReport, owner: GraphOwner) -> Self {
     Self {
       passes: report
         .passes
         .iter()
-        .filter(|pass| pass.owner == owner || pass.owner == frame_owner)
+        .filter(|pass| pass.owner == owner || pass.owner == GraphOwner::Frame)
         .map(|pass| RenderGraphPass {
           name: pass.name.clone(),
           kind: pass.kind.into(),

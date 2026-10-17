@@ -13,6 +13,7 @@ use crate::graph::execute::{
   GraphResources, GraphRuntime, PassMarker, RasterContext,
 };
 use crate::graph::frame_graph::FrameGraph;
+use crate::graph::graph_owner::GraphOwner;
 use crate::graph::pool::{TransientBufferKey, TransientPool, TransientTextureKey};
 use crate::graph::record::{GraphBufferRecord, GraphPassWork, GraphTextureRecord};
 use crate::graph::report::{GraphPassKind, GraphPassReport, GraphReport, GraphTransientReport};
@@ -283,7 +284,7 @@ impl<'a> CompiledGraph<'a> {
     }
 
     while let Some(pass) = pending.pop_front() {
-      let owner: u32 = pass.pass.owner;
+      let owner: GraphOwner = pass.pass.owner;
       let name: String = match pass.render_pass {
         Some(render_pass) => {
           let mut run: Vec<CompiledPass<'a>> = vec![pass];

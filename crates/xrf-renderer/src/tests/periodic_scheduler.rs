@@ -1,6 +1,8 @@
 use xrf_renderer_core::GraphTaggedTime;
 
+use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::periodic::periodic_job::PeriodicJob;
+use crate::frame::periodic::periodic_owner::PeriodicOwner;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 
@@ -66,17 +68,22 @@ fn withdraws_what_a_view_offered() {
   let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
 
   scheduler.begin(1.0, (&[], &[]));
-  scheduler.set_owner(1);
+
+  let streamed: PeriodicTicket = scheduler.offer(PeriodicJob::new_now(&PASSES, 0.1, 1.0));
+
+  scheduler.set_owner(PeriodicOwner::View(RenderViewportId(0)));
 
   let drawn: PeriodicTicket = scheduler.offer(PeriodicJob::new_now(&PASSES, 0.1, 1.0));
 
-  scheduler.set_owner(2);
+  scheduler.set_owner(PeriodicOwner::View(RenderViewportId(1)));
 
   let withdrawn: PeriodicTicket = scheduler.offer(PeriodicJob::new_now(&PASSES, 0.1, 1.0));
 
-  scheduler.withdraw(2);
+  scheduler.withdraw(PeriodicOwner::View(RenderViewportId(1)));
   scheduler.grant();
 
+  // The scenes' own offers stand apart from every view's, whatever its number.
+  assert!(scheduler.is_granted(streamed));
   assert!(scheduler.is_granted(drawn));
   assert!(!scheduler.is_granted(withdrawn));
 }

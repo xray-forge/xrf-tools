@@ -46,14 +46,19 @@ impl RenderState {
     }
   }
 
-  /// Starts drawing a viewport into a window, named by its label, telling its page through `sink`.
+  /// Starts drawing a viewport into a window, named by its label, telling its page through `sink`; none once every
+  /// viewport number was handed.
   pub fn attach_viewport(
     &self,
     window: &str,
     host: Arc<dyn RenderWindowHost>,
     (sink, world_sink): (Box<dyn RenderEventSink>, Box<dyn WorldEventSink>),
-  ) -> RenderViewportId {
-    let viewport: RenderViewportId = self.renderer.attach_viewport(host, sink);
+  ) -> Option<RenderViewportId> {
+    let Some(viewport) = self.renderer.attach_viewport(host, sink) else {
+      log::error!("No native viewport number is left to attach one to window '{window}'");
+
+      return None;
+    };
 
     self.lock_world().attach(viewport, world_sink);
 
@@ -61,7 +66,7 @@ impl RenderState {
 
     log::info!("Attached native viewport {} to window '{window}'", viewport.0);
 
-    viewport
+    Some(viewport)
   }
 
   /// Stops drawing a viewport its page let go.
