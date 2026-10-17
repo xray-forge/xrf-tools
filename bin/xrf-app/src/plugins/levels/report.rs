@@ -301,7 +301,7 @@ pub fn report_spawn_objects(source: &LevelSource, objects: &LevelSpawnObjectsDes
   );
 }
 
-/// What the estimate of how a level lights its spawned objects was built from, and how long its form took to read.
+/// What the estimate of how a level lights its spawned objects was built from, and how long building it took.
 pub fn report_hemi(source: &LevelSource, lights: usize, started: Instant) {
   log::info!(
     "Built the spawned objects' lighting of {} in {}: {lights} compiled point lights",

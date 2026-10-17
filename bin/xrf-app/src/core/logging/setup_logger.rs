@@ -15,9 +15,8 @@ pub fn setup_logger(identifier: &str) {
   if let Some(rust_log) = EnvFlags::RUST_LOG.read_text() {
     logger.parse_filters(&rust_log);
   } else {
-    // Debug builds trace every command dispatch; release keeps the info lines the commands already
-    // write, which is what makes a user's log useful in a bug report. At the previous warn/error
-    // levels none of them were ever emitted, so the logging in the commands did nothing at all.
+    // Debug builds trace every command dispatch; release keeps the info lines the commands write, which is what makes
+    // a user's log useful in a bug report.
     match cfg!(debug_assertions) {
       true => logger.filter_level(LevelFilter::Debug),
       false => logger.filter_level(LevelFilter::Info),

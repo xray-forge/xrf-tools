@@ -245,7 +245,8 @@ impl RenderState {
     self.renderer.reload_textures(names);
   }
 
-  /// The world, locked for a command; the render thread holds it only while it runs a viewport's frame.
+  /// The world, locked for a command; the render thread holds it while it advances every viewport and scene before a
+  /// frame.
   pub fn lock_world(&self) -> MutexGuard<'_, World> {
     self.world.lock().unwrap_or_else(PoisonError::into_inner)
   }

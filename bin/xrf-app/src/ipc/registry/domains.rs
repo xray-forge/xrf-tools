@@ -101,7 +101,7 @@ macro_rules! for_each_tauri_command_domain {
         read_level_cycle => crate::plugins::levels::commands::read_level_cycle::levels_read_level_cycle,
         read_level_weather => crate::plugins::levels::commands::read_level_weather::levels_read_level_weather,
       }
-      // Native viewports drawn by the renderer into the calling window, under its webview.
+      // Native viewports drawn by the renderer into the window the page names, under its webview.
       render => "render" {
         attach_viewport => crate::plugins::render::commands::attach_viewport::render_attach_viewport,
         command_camera => crate::plugins::render::commands::command_camera::render_command_camera,
