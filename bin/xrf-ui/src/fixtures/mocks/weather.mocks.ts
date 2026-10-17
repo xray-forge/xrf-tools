@@ -115,7 +115,7 @@ export function mockWorldWeatherReport(overrides: Partial<WorldWeatherReport> = 
   return {
     ambient: null,
     between: [0, 43_200],
-    current: toLevelManualDescriptor(DEFAULT_LEVEL_MANUAL_WEATHER, time),
+    current: toLevelManualDescriptor(DEFAULT_LEVEL_MANUAL_WEATHER, time, null),
     effect: null,
     modifiers: 0,
     time,

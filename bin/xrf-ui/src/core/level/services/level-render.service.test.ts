@@ -272,6 +272,7 @@ describe("LevelRenderService", () => {
   // The renderer's clock starts at noon, so the time a level was left at reaches it with the level's weather.
   it("plays a level's weather on from the time it was last left at", async () => {
     writeLevelWeatherMemory(toLevelWeatherMemoryKey(mockSelectedLevelDescription()), {
+      base: null,
       control: DEFAULT_LEVEL_WEATHER_CONTROL,
       cycle: "",
       manual: null,

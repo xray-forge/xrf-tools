@@ -126,6 +126,7 @@ describe("LevelWeatherService", () => {
 
   it("plays the remembered cycle where the level offers no cycle", async () => {
     writeLevelWeatherMemory(toLevelWeatherMemoryKey(SELECTED.value), {
+      base: null,
       control: { factor: 12, isDynamicSun: false, isPaused: true },
       cycle: "w_clear",
       manual: null,
@@ -258,7 +259,12 @@ describe("LevelWeatherService", () => {
     await service.open(SELECTED);
     service.noteReport(
       mockWorldWeatherReport({
-        current: { ...mockWorldWeatherReport().current, skyTexture: "sky\\sky_night" },
+        current: {
+          ...mockWorldWeatherReport().current,
+          ambient: "ambient_rain",
+          skyTexture: "sky\\sky_night",
+          skyTextureEnv: "sky\\sky_night_env",
+        },
       })
     );
     service.editManual({ rainDensity: 0.5 });
@@ -267,7 +273,9 @@ describe("LevelWeatherService", () => {
     expect(service.manual?.skyTexture).toBe("sky\\sky_night");
     expect(service.manual?.rainDensity).toBe(0.5);
     expect(toKeyframe(service.weather)?.rainDensity).toBe(0.5);
-    expect(toKeyframe(service.weather)?.skyTextureEnv).toBe("sky\\sky_night#small");
+    expect(toKeyframe(service.weather)?.skyTextureEnv).toBe("sky\\sky_night_env");
+    expect(toKeyframe(service.weather)?.ambient).toBe("ambient_rain");
+    expect(readLevelWeatherMemory(toLevelWeatherMemoryKey(SELECTED.value))?.base?.ambient).toBe("ambient_rain");
 
     service.editManual({ skyTexture: "sky\\sky_noon" });
 
@@ -338,6 +346,7 @@ describe("LevelWeatherService", () => {
     expect(service.transition).toBe(EWorldWeatherTransition.FADE);
     expect(service.control).toEqual({ factor: 1000, isDynamicSun: false, isPaused: false });
     expect(readLevelWeatherMemory(toLevelWeatherMemoryKey(SELECTED.value))).toEqual({
+      base: null,
       control: { factor: 1000, isDynamicSun: false, isPaused: false },
       cycle: "default_rain",
       manual: null,
@@ -434,6 +443,7 @@ describe("LevelWeatherService", () => {
     let release!: () => void;
 
     writeLevelWeatherMemory(toLevelWeatherMemoryKey(other.value), {
+      base: null,
       control: { factor: 12, isDynamicSun: false, isPaused: true },
       cycle: "",
       manual: { ...DEFAULT_LEVEL_MANUAL_WEATHER, rainDensity: 0.3 },
@@ -492,6 +502,7 @@ describe("LevelWeatherService", () => {
 
   it("plays the level's own cycle where the remembered one no longer reads", async () => {
     writeLevelWeatherMemory(toLevelWeatherMemoryKey(SELECTED.value), {
+      base: null,
       control: { factor: 12, isDynamicSun: false, isPaused: true },
       cycle: "gone",
       manual: { ...DEFAULT_LEVEL_MANUAL_WEATHER, rainDensity: 0.3 },

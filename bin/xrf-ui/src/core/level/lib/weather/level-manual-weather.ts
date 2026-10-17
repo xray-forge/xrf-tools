@@ -88,7 +88,10 @@ export const DEFAULT_LEVEL_MANUAL_WEATHER: ILevelManualWeather = {
   windVelocity: 0,
 };
 
-/** What a keyframe set by hand reads as for every key it does not set: the engine's defaults where it reads them. */
+/**
+ * What a keyframe set by hand reads as for every key it does not set where it was seeded from nothing: the engine's
+ * defaults where it reads them.
+ */
 const MANUAL_DESCRIPTOR_REST: Pick<
   WeatherDescriptor,
   | "ambient"
@@ -116,14 +119,37 @@ const MANUAL_DESCRIPTOR_REST: Pick<
   wetSurfaceFactor: 0,
 };
 
+/** Keys of a descriptor that are never null. */
+const DESCRIPTOR_REQUIRED_KEYS: ReadonlySet<string> = new Set([
+  "time",
+  "skyTexture",
+  "skyTextureEnv",
+  "cloudsTexture",
+  "isSunFixed",
+  "skyColor",
+  "cloudsColor",
+  "fogColor",
+  "rainColor",
+  "hemiColor",
+  "sunColor",
+  "ambientColor",
+  "treeWave",
+]);
+
 /**
  * @param manual - A keyframe set by hand.
  * @param time - Seconds since midnight it stands at.
+ * @param base - The descriptor it was seeded from, whose keys it does not set it keeps; null for one seeded from
+ *   nothing, which takes the engine's defaults for them.
  * @returns It as the engine holds a loaded keyframe: radians, the sun's direction built by `setHP`.
  */
-export function toLevelManualDescriptor(manual: ILevelManualWeather, time: number): WeatherDescriptor {
+export function toLevelManualDescriptor(
+  manual: ILevelManualWeather,
+  time: number,
+  base: Nullable<WeatherDescriptor>
+): WeatherDescriptor {
   return {
-    ...MANUAL_DESCRIPTOR_REST,
+    ...(base ?? MANUAL_DESCRIPTOR_REST),
     ambientColor: [...manual.ambientColor],
     cloudsColor: [...manual.cloudsColor],
     cloudsRotation: toRadians(manual.cloudsRotation),
@@ -138,7 +164,9 @@ export function toLevelManualDescriptor(manual: ILevelManualWeather, time: numbe
     skyColor: [...manual.skyColor],
     skyRotation: toRadians(manual.skyRotation),
     skyTexture: manual.skyTexture,
-    skyTextureEnv: `${manual.skyTexture}${ENVIRONMENT_SUFFIX}`,
+    // The seeded sky's own irradiance cube while the sky is the one seeded, which need not follow the suffix.
+    skyTextureEnv:
+      base?.skyTexture === manual.skyTexture ? base.skyTextureEnv : `${manual.skyTexture}${ENVIRONMENT_SUFFIX}`,
     sunColor: [...manual.sunColor],
     sunDirection: toDirection({ heading: toRadians(manual.sunAltitude), pitch: toRadians(manual.sunLongitude) }),
     time: Math.round(time),
@@ -236,6 +264,39 @@ export function readLevelManualWeather(stored: unknown): Nullable<ILevelManualWe
   }
 
   return read as unknown as ILevelManualWeather;
+}
+
+/**
+ * @param stored - What storage handed back.
+ * @returns The descriptor, or null where any key does not read as what a descriptor holds there.
+ */
+export function readLevelManualBase(stored: unknown): Nullable<WeatherDescriptor> {
+  if (typeof stored !== "object" || stored === null || Array.isArray(stored)) {
+    return null;
+  }
+
+  const record: Record<string, unknown> = stored as Record<string, unknown>;
+  const template: WeatherDescriptor = toLevelManualDescriptor(DEFAULT_LEVEL_MANUAL_WEATHER, 0, null);
+
+  for (const [key, expected] of Object.entries(template)) {
+    const value: unknown = record[key];
+    const isRead: boolean =
+      value === null
+        ? !DESCRIPTOR_REQUIRED_KEYS.has(key)
+        : Array.isArray(expected)
+          ? Array.isArray(value) &&
+            value.length === expected.length &&
+            value.every((it: unknown) => it === null || isFiniteNumber(it))
+          : expected === null
+            ? typeof value === "string"
+            : typeof value === typeof expected && (typeof value !== "number" || Number.isFinite(value));
+
+    if (!isRead) {
+      return null;
+    }
+  }
+
+  return record as unknown as WeatherDescriptor;
 }
 
 /**
