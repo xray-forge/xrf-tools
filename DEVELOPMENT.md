@@ -118,9 +118,10 @@ on an RTX GPU, with either graphics API. `dev-app` and `build-app` build without
   `resources/renderer/dlss/` (`bin/xrf-app/tauri.dlss.conf.json`). NVIDIA's licence lets them ship only inside the
   application, under terms as protective as its own, so they are never committed.
 - wgpu and naga come from the `xray-forge/xrf-wgpu` fork (`[patch.crates-io]` in `Cargo.toml`): a wgpu release with
-  two commits on top, one exposing the D3D12 command list a HAL encoder records into, which NGX records DLSS into, and
-  one refitting bottom-level acceleration structures in place where they allow and ask for it. Moving to a newer wgpu
-  means rebasing those commits onto its tag in the fork and pinning the new one.
+  its commits on top: the D3D12 command list a HAL encoder records into exposed, which NGX records DLSS into, with the
+  conditions it is safe under; and bottom-level acceleration structures refit in place where they allow and ask for it,
+  only from a build laid out as their last one (`blas_refit_shrunk` in its GPU tests). Moving to a newer wgpu means
+  rebasing those commits onto its tag in the fork and pinning the new one.
 
 ### Tracy
 

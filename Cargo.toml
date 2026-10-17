@@ -164,14 +164,14 @@ xrf-xml = { path = "crates/xrf-xml" }
 # bottom-level acceleration structures refit in place where they allow and ask for it; the whole family comes from the
 # fork so one copy of each crate is built.
 [patch.crates-io]
-naga = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
-naga-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
-wgpu = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
-wgpu-core = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
-wgpu-core-deps-windows-linux-android = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
-wgpu-hal = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
-wgpu-naga-bridge = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
-wgpu-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "c64da79978429b535b435e9340010290b7107a17" }
+naga = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
+naga-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
+wgpu = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
+wgpu-core = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
+wgpu-core-deps-windows-linux-android = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
+wgpu-hal = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
+wgpu-naga-bridge = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
+wgpu-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
 
 # Size-optimised: level 3 measured 3.7% faster for 36-40% larger binaries.
 [profile.release]
