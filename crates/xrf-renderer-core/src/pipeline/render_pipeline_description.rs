@@ -13,6 +13,8 @@ pub struct RenderPipelineDescription {
   pub constants: PipelineConstants,
   /// Its bind group layouts by index, a gap where a slot binds nothing, compared by identity.
   pub bind_group_layouts: Vec<Option<wgpu::BindGroupLayout>>,
+  /// Bytes of immediates its layout holds, none for most.
+  pub immediate_size: u32,
   pub vertex_layouts: Vec<VertexLayout>,
   pub primitive: wgpu::PrimitiveState,
   pub depth_stencil: Option<wgpu::DepthStencilState>,
@@ -30,6 +32,7 @@ impl RenderPipelineDescription {
       fragment_entry: None,
       constants: PipelineConstants::default(),
       bind_group_layouts: Vec::new(),
+      immediate_size: 0,
       vertex_layouts: Vec::new(),
       primitive: wgpu::PrimitiveState::default(),
       depth_stencil: None,
@@ -51,6 +54,12 @@ impl RenderPipelineDescription {
   /// Its bind group layouts by index, a gap where a slot binds nothing.
   pub fn with_bind_group_layouts(mut self, layouts: &[Option<&wgpu::BindGroupLayout>]) -> Self {
     self.bind_group_layouts = layouts.iter().map(|layout| layout.cloned()).collect();
+    self
+  }
+
+  /// Its layout holding `bytes` of immediates, which a draw sets with `set_immediates`.
+  pub fn with_immediate_size(mut self, bytes: u32) -> Self {
+    self.immediate_size = bytes;
     self
   }
 

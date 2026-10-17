@@ -1,10 +1,12 @@
 use glam::Vec4;
+use xrf_renderer_core::ShaderStruct;
 
-/// Where the puddles stand, as the grass's planting reads them (`shaders/grass/planting.wgsl`'s `GrassPuddles`) to
-/// plant no tuft in a puddle's water: the level surface's window (its centre in `x` and `z`, its half width, the height
-/// it is seen from), its shape (texels across, metres down, a site cell's metres), and one where puddles are drawn.
+/// Where the puddles stand, as the grass's planting reads them (`shaders/grass/puddles.wgsl`) to plant no tuft in a
+/// puddle's water: the level surface's window (its centre in `x` and `z`, its half width, the height it is seen from),
+/// its shape (texels across, metres down, a site cell's metres), and one where puddles are drawn.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "GrassPuddles")]
 pub struct GrassPuddlesUniform {
   pub surface: Vec4,
   pub shape: Vec4,

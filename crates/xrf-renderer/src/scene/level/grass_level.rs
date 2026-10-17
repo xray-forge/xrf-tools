@@ -27,6 +27,10 @@ pub struct GrassLevel {
   /// Each grid cell's planted slot, one past its index, none for an empty cell; and the planted slots' records.
   pub cells: wgpu::Buffer,
   pub slots: wgpu::Buffer,
+  /// Each planted slot's triangle bin, the collision triangles they index, and the engine's dither.
+  pub bins: wgpu::Buffer,
+  pub triangles: wgpu::Buffer,
+  pub dither: wgpu::Buffer,
   /// Each model's colour where its tufts stand and the share of its texture they cover, which the colour pass writes
   /// while the scene is traced.
   pub colours: wgpu::Buffer,
@@ -35,14 +39,14 @@ pub struct GrassLevel {
   pub indices: wgpu::Buffer,
   /// What the cull counted, each model's tufts then their total, padded so a copy of four words starts at the total.
   pub counts: wgpu::Buffer,
+  /// Where each model's range goes on filling as the items are sorted into it, and one indexed draw a model.
+  pub cursors: wgpu::Buffer,
   pub args: wgpu::Buffer,
-  pub bind_group: wgpu::BindGroup,
 }
 
 impl GrassLevel {
   pub fn new(
     device: &wgpu::Device,
-    pass: &GrassPass,
     details: &RenderLevelDetails,
     (textures, source): (&mut TextureCache, &Arc<dyn RenderAssetSource>),
   ) -> Self {
@@ -137,20 +141,6 @@ impl GrassLevel {
       &vec![0; (u64::from(model_count.max(1)) * GrassPass::DRAW_BYTES) as usize],
       wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::INDIRECT,
     );
-    let bind_group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
-      label: Some("grass level"),
-      layout: pass.get_level_layout(),
-      entries: &[
-        &grid, &slots, &bins, &triangles, &dither, &models, &counts, &cursors, &args,
-      ]
-      .iter()
-      .enumerate()
-      .map(|(binding, buffer)| wgpu::BindGroupEntry {
-        binding: binding as u32,
-        resource: buffer.as_entire_binding(),
-      })
-      .collect::<Vec<_>>(),
-    });
     // The draws read the arenas as vertices, and the trace's cards as storage (`GrassCards`).
     let vertex = wgpu::BufferUsages::VERTEX | read;
 
@@ -178,6 +168,9 @@ impl GrassLevel {
       models,
       cells: grid,
       slots,
+      bins,
+      triangles,
+      dither,
       colours: device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("grass colours"),
         size: u64::from(model_count.max(1)) * 16,
@@ -185,8 +178,8 @@ impl GrassLevel {
         mapped_at_creation: false,
       }),
       counts,
+      cursors,
       args,
-      bind_group,
     }
   }
 

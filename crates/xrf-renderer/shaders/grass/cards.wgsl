@@ -2,6 +2,7 @@
 #import "grass/puddles"
 #import "grass/ring"
 #import "grass/tuft"
+#import "generated/grass/cards"
 
 // The grass's cards, which cast its shadows: every tuft the ring holds within `card_reach` metres of the eye, kept as
 // the cull keeps it but whether the view sees it or not, its model's triangles stood and swayed where the grass draw
@@ -12,17 +13,9 @@
 // popping at the reach; past it the grass casts no shadow. A triangle the frame leaves unwritten has every corner's `x`
 // not a number, which the build and the draw take as no triangle.
 
-// The models' arenas, the wind, and what is written: three floats a corner, then four words a triangle (its model and
-// how many of its texture's widths a metre of it spans, then each corner's coordinate), and how many triangles stand.
-@group(2) @binding(0) var<storage, read> positions: array<f32>;
-@group(2) @binding(1) var<storage, read> uvs: array<f32>;
-@group(2) @binding(2) var<storage, read> indices: array<u32>;
-@group(2) @binding(3) var<uniform> wind: GrassWind;
-@group(2) @binding(4) var<storage, read_write> card_vertices: array<u32>;
-@group(2) @binding(5) var<storage, read_write> card_triangles: array<u32>;
-@group(2) @binding(6) var<storage, read_write> card_count: atomic<u32>;
-// The cascades' draw of them: their corners, one instance.
-@group(2) @binding(7) var<storage, read_write> card_draw: array<u32, 4>;
+// It binds the models' arenas, the wind, and what is written at group 2 (`GrassCardsParameters`): three floats a corner,
+// then four words a triangle (its model and how many of its texture's widths a metre of it spans, then each corner's
+// coordinate), how many triangles stand, and the cascades' draw of them (their corners, one instance).
 
 // Words a triangle's corners and record take.
 const CARD_VERTEX_WORDS: u32 = 9u;

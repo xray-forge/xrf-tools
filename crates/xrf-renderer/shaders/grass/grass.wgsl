@@ -6,17 +6,15 @@ enable wgpu_binding_array;
 #import "common/gloss"
 #import "grass/records"
 #import "grass/tuft"
+#import "generated/grass/draw"
 
 // `deffer_detail_w_flat.vs` and `deffer_detail_s_flat.vs` with `deffer_base_aref_flat.ps`: a model's tufts as the
 // planting sorted them, each stood at its place, turned and scaled, a waving one leant by its wave, lit by its slot's sky
 // and sun, cut out at its reference, and drawn into the G-buffer from both sides.
 
-@group(1) @binding(0) var<storage, read> sorted: array<vec4<f32>>;
-@group(1) @binding(1) var<storage, read> models: array<GrassModel>;
-@group(1) @binding(2) var<uniform> wind: GrassWind;
-
-@group(2) @binding(0) var textures: binding_array<texture_2d<f32>>;
-@group(2) @binding(1) var texture_sampler: sampler;
+// The texture cache's group, at 1 as every static draw binds it.
+@group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;
+@group(1) @binding(1) var texture_sampler: sampler;
 
 // The model drawn: a struct, as the HLSL backend takes immediates only as one.
 struct GrassDraw {

@@ -1,9 +1,11 @@
 use glam::{IVec2, IVec4, Vec4};
+use xrf_renderer_core::ShaderStruct;
 
-/// Where the camera stands and what the grass's planting is set to, as `shaders/grass/records.wgsl` reads it:
+/// Where the camera stands and what the grass's planting is set to, as `shaders/grass/planting.wgsl` reads it:
 /// `CDetailManager`'s terms.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "GrassParams")]
 pub struct GrassUniform {
   /// The eye, in the engine's space: renderer space with `z` negated.
   pub eye: Vec4,
@@ -21,11 +23,13 @@ pub struct GrassUniform {
   pub fade: f32,
   /// How far a candidate is jittered off its step, `density / 1.7`.
   pub jitter: f32,
+  /// What every tuft is scaled by, `ps_current_detail_height`.
   pub height: f32,
   /// `r_ssaDISCARD`, as the static cull compares it.
   pub discard_below: f32,
   /// Counts what a slot plants changing, so every slot held is planted again.
   pub generation: u32,
+  /// Tufts a cell of the ring holds, rings of cells around the camera's, items the lists hold, and models.
   pub per_cell: u32,
   pub bands: u32,
   pub capacity: u32,
@@ -39,5 +43,5 @@ pub struct GrassUniform {
   pub card_reach: f32,
   pub card_fade: f32,
   pub card_slots: i32,
-  pub pad: [u32; 2],
+  pub _pad: [u32; 2],
 }

@@ -4,15 +4,15 @@
 #import "grass/ring"
 #import "common/pyramid_occlusion"
 #import "generated/grass/occlusion"
+#import "generated/grass/sort"
 #import "common/math"
 
 // The passes planting the grass, as `CDetailManager` does. A ring of slots around the camera is its cache: a slot
 // coming into it is planted once, the nearest first within a budget a frame, and every frame culls what the ring holds,
 // then sorts what it keeps into a draw a model.
 
-// The sort's indirect dispatch, sized by what the cull kept: bound to `arrange` alone, since the sort reads it as its
-// arguments while the rest stay bound.
-@group(3) @binding(0) var<storage, read_write> sort_dispatch: array<u32, 3>;
+// The sort's indirect dispatch (`sort_dispatch`), sized by what the cull kept, is bound to `arrange` alone, since the
+// sort reads it as its arguments while the rest stay bound.
 
 // Workgroups a row of the sort's dispatch holds at most: D3D12's limit, the least Vulkan guarantees.
 const SORT_ROW: u32 = 65535u;

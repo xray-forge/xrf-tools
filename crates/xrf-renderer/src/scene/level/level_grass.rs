@@ -5,7 +5,6 @@ use xrf_error::XrfResult;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_details::RenderLevelDetails;
 use crate::host::render_level_source::RenderLevelSource;
-use crate::pass::grass_pass::GrassPass;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::loader_answer::take_answer;
 use crate::scene::texture::texture_cache::TextureCache;
@@ -54,13 +53,12 @@ impl LevelGrass {
   pub fn poll(
     &mut self,
     device: &wgpu::Device,
-    pass: &GrassPass,
     textures: &mut TextureCache,
     source: &Arc<dyn RenderAssetSource>,
   ) -> Option<Vec<u32>> {
     let read: XrfResult<Option<RenderLevelDetails>> = take_answer(&mut self.pending, "grass")?;
     let details: RenderLevelDetails = read.ok().flatten()?;
-    let level: GrassLevel = GrassLevel::new(device, pass, &details, (textures, source));
+    let level: GrassLevel = GrassLevel::new(device, &details, (textures, source));
     let slots: Vec<u32> = level.texture_slots.clone();
 
     log::info!(

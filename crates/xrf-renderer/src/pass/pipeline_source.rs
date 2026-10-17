@@ -36,20 +36,6 @@ impl<'a> PipelineSource<'a> {
     self.cache.get_compute_pipeline(self.device, self, description)
   }
 
-  /// The shader module `module` names, composed for the device's features and compiled once.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the module cannot be composed or wgpu refuses it.
-  pub fn get_module(&self, module: &'static str) -> XrfResult<wgpu::ShaderModule> {
-    self.cache.get_module(self.device, self, module)
-  }
-
-  /// The driver's cache a pipeline made by hand is made with, none where the device keeps none.
-  pub fn get_driver_cache(&self) -> Option<&'a wgpu::PipelineCache> {
-    self.cache.get_driver_cache()
-  }
-
   /// Makes the render pipelines described ahead of the frames that draw with them.
   ///
   /// # Errors

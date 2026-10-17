@@ -22,7 +22,6 @@ use crate::host::render_scene_id::RenderSceneId;
 use crate::host::render_scene_update::RenderSceneUpdate;
 use crate::host::render_sector_failure::RenderSectorFailure;
 use crate::lighting::ambient_gust::AmbientGust;
-use crate::pass::grass_pass::GrassPass;
 use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_load::LevelLoad;
@@ -123,7 +122,7 @@ impl LevelScene {
     &mut self,
     (device, queue, encoder): (&wgpu::Device, &wgpu::Queue, &mut FrameEncoder),
     (textures, weather_textures): (&mut TextureCache, &mut WeatherTextureCache),
-    (grass_pass, scheduler): (&GrassPass, &mut PeriodicScheduler),
+    scheduler: &mut PeriodicScheduler,
     (frame, is_traced): (RenderSceneFrame, bool),
   ) {
     let assets: Arc<dyn RenderAssetSource> = Arc::clone(&self.source) as Arc<dyn RenderAssetSource>;
@@ -142,7 +141,7 @@ impl LevelScene {
       }
     }
 
-    if let Some(slots) = self.grass.poll(device, grass_pass, textures, &assets) {
+    if let Some(slots) = self.grass.poll(device, textures, &assets) {
       self.statics.surfaces.texture_slots.extend(slots);
     }
 

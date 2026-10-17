@@ -5,6 +5,7 @@ pub(crate) mod grass_build;
 pub(crate) mod grass_build_size;
 pub(crate) mod grass_cards;
 pub(crate) mod grass_level;
+pub(crate) mod grass_planting;
 pub(crate) mod grass_shadow_casters;
 pub(crate) mod grass_view;
 pub(crate) mod lens_flare_fade;

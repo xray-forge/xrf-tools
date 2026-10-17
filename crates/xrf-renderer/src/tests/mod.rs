@@ -16,6 +16,7 @@ mod gpu_memory;
 mod gpu_selection;
 mod grass;
 mod grass_cards;
+mod grass_frame;
 mod headless;
 mod height_field;
 mod history;

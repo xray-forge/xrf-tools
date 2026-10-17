@@ -719,7 +719,7 @@ impl RenderThread {
       scene.advance(
         (&gpu.context.device, &gpu.context.queue, &mut *encoder),
         (&mut gpu.textures, &mut gpu.weather_textures),
-        (&gpu.grass, &mut self.periodic),
+        &mut self.periodic,
         (frame, traced.contains(&id)),
       );
     }

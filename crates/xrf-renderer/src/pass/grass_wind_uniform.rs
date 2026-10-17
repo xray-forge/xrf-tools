@@ -1,12 +1,15 @@
 use glam::Vec4;
+use xrf_renderer_core::ShaderStruct;
 
 use crate::pass::foliage_wind_values::FoliageWindValues;
 
-/// How the grass sways this frame, as `shaders/grass/grass.wgsl` reads it, in the engine's space: each wave's lean across
+/// How the grass sways this frame, as `shaders/grass/tuft.wgsl` reads it, in the engine's space: each wave's lean across
 /// the ground, then each wave's direction with its phase in `w`, both over a turn.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "GrassWind")]
 pub struct GrassWindUniform {
+  /// `dir1` and `dir2`.
   pub wind_1: Vec4,
   pub wind_2: Vec4,
   pub wave_1: Vec4,

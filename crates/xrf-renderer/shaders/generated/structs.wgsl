@@ -90,6 +90,53 @@ struct GrassModel {
   pad: array<u32, 2>,
 }
 
+struct GrassParams {
+  eye: vec4<f32>,
+  planes: array<vec4<f32>, 6>,
+  center: vec2<i32>,
+  reach: i32,
+  steps: i32,
+  grid: vec4<i32>,
+  fade: f32,
+  jitter: f32,
+  height: f32,
+  discard_below: f32,
+  generation: u32,
+  per_cell: u32,
+  bands: u32,
+  capacity: u32,
+  model_count: u32,
+  tuft_reach: f32,
+  slope_limit: f32,
+  card_reach: f32,
+  card_fade: f32,
+  card_slots: i32,
+}
+
+struct GrassWind {
+  wind_1: vec4<f32>,
+  wind_2: vec4<f32>,
+  wave_1: vec4<f32>,
+  wave_2: vec4<f32>,
+  previous_wind_1: vec4<f32>,
+  previous_wind_2: vec4<f32>,
+  previous_wave_1: vec4<f32>,
+  previous_wave_2: vec4<f32>,
+  foliage_wind: vec4<f32>,
+  foliage_grass: vec4<f32>,
+  foliage_trees: vec4<f32>,
+  foliage_anim: vec4<f32>,
+  foliage_previous_anim: vec4<f32>,
+  foliage_flora: vec4<f32>,
+  alignment: vec4<f32>,
+}
+
+struct GrassPuddles {
+  surface: vec4<f32>,
+  shape: vec4<f32>,
+  state: vec4<f32>,
+}
+
 struct TraceGrass {
   grid: vec4<i32>,
   steps: i32,
