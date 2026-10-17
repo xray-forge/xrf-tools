@@ -25,7 +25,7 @@ fn a_change_of_wind_changes_how_fast_the_water_moves_not_where_it_stands() {
   flow.advance(1100.1, &settings, wind(1000.0));
 
   assert!((flow.waves - calm.waves - 0.1 * 0.97).abs() < 1e-3);
-  assert!((flow.gusts[0] - calm.gusts[0]).hypot(flow.gusts[1] - calm.gusts[1]) - 0.1 < 1e-3);
+  assert!(((flow.gusts[0] - calm.gusts[0]).hypot(flow.gusts[1] - calm.gusts[1]) - 0.1).abs() < 1e-3);
   // Before it, the calm drifted at its floor times the calm flow, for the hundred seconds it was drawn.
   assert!((calm.waves - 100.0 * 0.45 * settings.calm_flow).abs() < 1e-2);
   assert_eq!(calm.gusts, [0.0; 2]);
