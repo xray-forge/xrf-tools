@@ -1,7 +1,8 @@
 use glam::Vec4;
 
 use crate::param::tests::fixtures::{
-  Blur, Clashing, Count, ENVIRONMENT_CUBES, Environment, Head, Reflection, Scale, Settings, Shade, Surface, Traced,
+  Blur, Clashing, ClashingLate, Count, ENVIRONMENT_CUBES, Environment, Head, Reflection, Scale, Settings, Shade,
+  Surface, Traced,
 };
 use crate::{
   FrameGraph, GraphBindings, GraphBufferAccess, GraphBufferDescriptor, GraphCompileOptions, GraphRuntime, GraphTexture,
@@ -323,6 +324,34 @@ fn gathers_a_shared_module_s_bindings_once_each() {
   let error: String = bindings.add::<Clashing>().err().expect("a clash").to_string();
 
   assert!(error.contains("var history"), "{error}");
+}
+
+/// A clash refuses the whole struct: its bindings declared before the clash are not added either.
+#[test]
+fn adds_nothing_of_parameters_that_clash() {
+  let mut bindings: ShaderBindings = ShaderBindings::new();
+
+  bindings.add::<Reflection>().unwrap();
+
+  let before: String = bindings.to_wgsl();
+
+  assert!(bindings.add::<ClashingLate>().is_err());
+  assert_eq!(bindings.to_wgsl(), before);
+}
+
+/// The derive declares one WGSL line a binding, in `BINDINGS` order.
+#[test]
+fn lists_one_declaration_a_binding() {
+  let lines: Vec<String> = ClashingLate::list_wgsl_bindings();
+
+  assert_eq!(ClashingLate::BINDINGS, [5, 1]);
+  assert_eq!(
+    lines,
+    [
+      "@group(2) @binding(5) var ripples: texture_2d<f32>;",
+      "@group(2) @binding(1) var history: texture_2d<f32>;"
+    ]
+  );
 }
 
 #[test]

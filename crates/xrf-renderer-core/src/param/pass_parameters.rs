@@ -26,8 +26,13 @@ pub trait PassParameters {
     })
   }
 
-  /// `@group(G) @binding(i) var …;` for each field, named as the field is.
-  fn get_wgsl_bindings() -> String;
+  /// `@group(G) @binding(i) var …;` for each field, named as the field is, one a binding in `BINDINGS` order.
+  fn list_wgsl_bindings() -> Vec<String>;
+
+  /// Its WGSL bindings, a line each.
+  fn get_wgsl_bindings() -> String {
+    Self::list_wgsl_bindings().into_iter().map(|line| line + "\n").collect()
+  }
 
   /// Adds the structs its uniforms and storage arrays hold.
   fn declare(declarations: &mut ShaderDeclarations);
