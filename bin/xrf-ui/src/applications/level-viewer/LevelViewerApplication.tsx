@@ -12,7 +12,8 @@ import { LevelViewerLayout } from "./components/LevelViewerLayout";
 import { LevelViewerOpenForm } from "./components/LevelViewerOpenForm";
 
 /**
- * Fly a compiled level, shown once every sector of it is read.
+ * Fly a compiled level, shown once every sector of it is read. An open that fails shows why over the empty viewport,
+ * with a retry, the picker one step back.
  */
 export function LevelViewerApplication({
   "data-testid": dataTestId = "level-viewer-application",
@@ -31,11 +32,13 @@ export function LevelViewerApplication({
 
   const onDeselect = useCallback(() => void loadService.close(), [loadService]);
 
+  const onRetry = useCallback(() => void loadService.retry(), [loadService]);
+
   if (!loadService.isReady) {
     return <ApplicationLoader />;
   }
 
-  if (isPickerOpen || (!description && !loadService.level.isLoading)) {
+  if (isPickerOpen || (!description && !loadService.level.isLoading && !loadService.level.isFailed)) {
     return <LevelViewerOpenForm onFinished={onFinished} />;
   }
 
@@ -48,6 +51,7 @@ export function LevelViewerApplication({
       pending={loadService.opening ? describeLevelSource(loadService.opening) : null}
       isLoading={loadService.level.isLoading}
       error={loadService.level.error?.message}
+      onRetry={onRetry}
       onBack={onBack}
       onDeselect={onDeselect}
     />

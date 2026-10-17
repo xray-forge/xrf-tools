@@ -1,4 +1,4 @@
-import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
+import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, flowResult, Observable, reaction, RefObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
@@ -17,6 +17,8 @@ import {
 } from "@/core/ipc/types/xrf-app";
 import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { EMPTY_LEVEL_SPAWN_REPORT, ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
+import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
+import { EApplicationId } from "@/core/routing/application";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
@@ -34,6 +36,11 @@ export class LevelLoadService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   private readonly session: Session = new Session(levelsCommands.closeLevel);
+
+  /** The last open asked for, which a retry asks for again. */
+  private request: Nullable<LevelOpenRequest> = null;
+
+  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
 
   @Observable()
   public level: AsyncState<IOpenLevel> = AsyncState.idle();
@@ -65,7 +72,8 @@ export class LevelLoadService {
   }
 
   /**
-   * Open a level and report what it is built out of.
+   * Open a level and report what it is built out of. One that fails closes the level open before it, so the viewer
+   * shows the failure rather than the level it was asked to replace.
    *
    * @param request - The level to open, the roots it is searched in, and how the game's configs beside it are read.
    */
@@ -75,6 +83,7 @@ export class LevelLoadService {
     const timer: Timer = new Timer();
     const opening: number = ++this.openings;
 
+    this.request = request;
     this.log.info("Loading level:", describeLevelSource(source));
 
     try {
@@ -105,12 +114,27 @@ export class LevelLoadService {
         transformed
       );
 
-      this.level = this.level.asFailed(transformed);
+      if (this.level.value) {
+        yield* call(this.release());
+      }
+
+      this.level = this.level.asFailed(transformed, null);
+      this.spawn = null;
+      this.spawnReport = EMPTY_LEVEL_SPAWN_REPORT;
     } finally {
       // A later open took the flow over meanwhile, and names its own level.
       if (opening === this.openings) {
         this.opening = null;
       }
+    }
+  }
+
+  /**
+   * Opens the last level asked for again, after it failed.
+   */
+  public async retry(): Promise<void> {
+    if (this.request) {
+      await flowResult(this.load(this.request));
     }
   }
 
@@ -200,19 +224,35 @@ export class LevelLoadService {
    */
   @LatestFlow("level")
   public *close(): TFlow {
+    yield* call(this.release());
+
+    this.clearView();
+  }
+
+  /**
+   * Lets the backend's level go; a failure is told as a notice, the level staying owned for the next close.
+   */
+  private async release(): Promise<void> {
     const source: Maybe<LevelSource> = this.level.value?.selected.value.source;
 
     try {
-      yield* call(this.session.close());
+      await this.session.close();
 
       if (source) {
         this.log.info("Level closed:", describeLevelSource(source));
       }
     } catch (error: unknown) {
-      this.log.error("Failed to close level:", transformError(error));
-    }
+      const transformed: Error = transformError(error);
 
-    this.clearView();
+      this.log.error("Failed to close level:", transformed);
+
+      emitNotification(this.eventBus, {
+        details: source ? `${describeLevelSource(source)}\n${transformed.message}` : transformed.message,
+        severity: ENotificationSeverity.ERROR,
+        source: EApplicationId.LEVEL_VIEWER,
+        title: "Could not close the level",
+      });
+    }
   }
 
   /**

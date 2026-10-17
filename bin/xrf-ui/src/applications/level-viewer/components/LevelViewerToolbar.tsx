@@ -1,4 +1,4 @@
-import { ReactElement, ReactNode } from "react";
+import { ReactElement } from "react";
 
 import { LevelCameraAction } from "@/core/level/components/preview/toolbar/camera/LevelCameraAction";
 import { LevelGoToAction } from "@/core/level/components/preview/toolbar/camera/LevelGoToAction";
@@ -26,7 +26,6 @@ import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparat
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelViewerToolbarProps extends BaseComponentProps {
-  subtitle?: ReactNode;
   onBack?: () => void;
 }
 
@@ -38,7 +37,6 @@ export function LevelViewerToolbar({
   "data-testid": dataTestId,
   id,
   className,
-  subtitle,
   onBack,
 }: ILevelViewerToolbarProps): ReactElement {
   return (
@@ -46,7 +44,6 @@ export function LevelViewerToolbar({
       data-testid={dataTestId}
       id={id}
       className={className}
-      subtitle={subtitle}
       onBack={onBack}
       actions={
         <>

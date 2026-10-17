@@ -37,9 +37,9 @@ interface ILevelViewerLayoutProps extends BaseComponentProps {
    * otherwise, and the viewport shrinks by it, which sizes every target the renderer draws into again.
    */
   pending?: Nullable<string>;
-  subtitle?: ReactNode;
   /** Whether the level itself is being opened, which is a different wait from reading its sectors. */
   isLoading?: boolean;
+  /** Why the last open failed, shown with `onRetry` while no level is open. */
   error?: string;
   /** Draws the viewport, for a surface with no GPU to give one - a test, or a headless render. */
   renderViewport?: (props: ILevelPreviewViewportProps) => ReactNode;
@@ -57,7 +57,6 @@ export function LevelViewerLayout({
   className,
   name = null,
   pending = null,
-  subtitle,
   isLoading = false,
   error,
   renderViewport,
@@ -118,7 +117,7 @@ export function LevelViewerLayout({
   );
 
   return (
-    <EditorLayout toolbar={<LevelViewerToolbar subtitle={subtitle} onBack={onBack} />}>
+    <EditorLayout toolbar={<LevelViewerToolbar onBack={onBack} />}>
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>
         {heading ? (
           <EditorFileHeader

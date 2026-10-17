@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { EventBus, WireEvent } from "@wirestate/core";
 import { isObservableProp } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib";
@@ -6,6 +7,7 @@ import { LevelSource, LevelSpawnObjectsDescription, SelectedLevelDescription } f
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { EMPTY_LEVEL_SPAWN_REPORT, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
+import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockLevelSpawnObject, mockSectorOutline, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -15,6 +17,7 @@ import { LevelLoadService } from "./level-load.service";
 
 const ROOTS: XrayRoots = createRoots(["C:\\game\\db"]);
 const SOURCE: LevelSource = { kind: "asset", logicalPath: "levels\\zaton" };
+const OTHER_SOURCE: LevelSource = { kind: "asset", logicalPath: "levels\\jupiter" };
 
 const SPAWN: LevelSpawnObjectsDescription = {
   objects: [mockLevelSpawnObject({ index: 0, visual: 0 }), mockLevelSpawnObject({ index: 1, visual: 0 })],
@@ -178,6 +181,79 @@ describe("LevelLoadService", () => {
     await service.close();
 
     expect(countCalls("plugin:levels|close_level")).toBe(2);
+  });
+
+  it("tells a close the backend failed as a notice", async () => {
+    const { container, service } = mockInjectedService(LevelLoadService);
+    const raised: Array<INotificationPayload> = [];
+
+    container
+      .get(EventBus)
+      .subscribe(EMIT_NOTIFICATION_EVENT, (event: WireEvent<INotificationPayload>) =>
+        raised.push(event.payload as INotificationPayload)
+      );
+
+    armLevel();
+
+    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await flush();
+
+    setMockInvokeResponses({
+      ["plugin:levels|close_level"]: () => Promise.reject(new Error("The level is busy")),
+    });
+
+    await service.close();
+
+    expect(raised).toEqual([
+      expect.objectContaining({ severity: ENotificationSeverity.ERROR, title: "Could not close the level" }),
+    ]);
+    expect(raised[0].details).toContain("The level is busy");
+  });
+
+  // Showing the level it was asked to replace, with no word, reads as the open having worked.
+  it("closes the open level when another fails to open, and holds the failure", async () => {
+    const { service } = mockInjectedService(LevelLoadService);
+
+    armLevel();
+
+    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+    await flush();
+
+    setMockInvokeResponses({
+      ["plugin:levels|open_level"]: mockSessionResponse(() => {
+        throw new Error("level carries no visuals chunk, so it draws nothing");
+      }),
+    });
+
+    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: OTHER_SOURCE });
+
+    expect(service.level.value).toBeNull();
+    expect(service.level.error?.message).toBe("level carries no visuals chunk, so it draws nothing");
+    expect(service.spawn).toBeNull();
+    expect(countCalls("plugin:levels|close_level")).toBe(1);
+  });
+
+  it("opens the last level asked for again on a retry", async () => {
+    const { service } = mockInjectedService(LevelLoadService);
+
+    setMockInvokeResponses({
+      ["plugin:levels|open_level"]: mockSessionResponse(() => {
+        throw new Error("The archive is locked");
+      }),
+    });
+
+    await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
+
+    expect(service.level.isFailed).toBe(true);
+
+    armLevel();
+
+    await service.retry();
+
+    expect(service.level.value?.selected.value.sectors).toHaveLength(1);
+    expect(mockInvoke.mock.calls.filter(([name]) => name === "plugin:levels|open_level").at(-1)?.[1]).toEqual(
+      expect.objectContaining({ request: expect.objectContaining({ source: SOURCE }) })
+    );
   });
 
   it("records a failure as state rather than throwing it at the caller", async () => {
