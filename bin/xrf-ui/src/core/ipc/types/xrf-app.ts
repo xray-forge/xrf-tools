@@ -8,7 +8,6 @@ import {
   LevelWeather,
   SunPosition,
   ThunderboltCollection,
-  WeatherCycle,
   WeatherCycleKind,
   WeatherDescriptor,
 } from "@/core/ipc/types/xrf-environment";
@@ -1456,25 +1455,6 @@ export type DialogsReadRequest = {
   language: string | null;
 };
 
-/** What a catalog holds, as a browser lists it, and every finding in it. */
-export type EnvironmentCatalogDescription = {
-  engine: XrayEngine;
-  /** Every config read. */
-  configs: Array<string>;
-  cycles: Array<EnvironmentCycleEntry>;
-  effects: Array<EnvironmentCycleEntry>;
-  suns: Array<EnvironmentDefinitionEntry>;
-  thunderboltCollections: Array<EnvironmentDefinitionEntry>;
-  ambients: Array<EnvironmentDefinitionEntry>;
-  findings: Array<EnvironmentFinding>;
-};
-
-/** One cycle or effect as authored, where each value came from, and what is wrong in its config. */
-export type EnvironmentCycleDescription = {
-  cycle: WeatherCycle;
-  findings: Array<EnvironmentFinding>;
-};
-
 /** One cycle or effect of a catalog, as a list shows it. */
 export type EnvironmentCycleEntry = {
   name: string;
@@ -1483,24 +1463,6 @@ export type EnvironmentCycleEntry = {
   keyframes: number;
   /** Findings in its config. */
   findings: number;
-};
-
-/** One definition of a catalog, a sun, a collection or an ambient, as a list shows it. */
-export type EnvironmentDefinitionEntry = {
-  name: string;
-  file: string;
-  /** Findings in its section. */
-  findings: number;
-};
-
-/** Which game's environment configs to read, and as which engine. */
-export type EnvironmentRequest = {
-  /** Trees to search, and how each is read. */
-  roots: XrayRoots;
-  /** Whether to resolve with the Monolith/Anomaly DLTX patch dialect. */
-  isDltx: boolean;
-  /** Which engine the configs are read as; detected on `auto`. */
-  engine: XrayEngineChoice;
 };
 
 /** Every `kind` the `EquipmentConfigSource` union is told apart by, so a switch or a comparison names one. */

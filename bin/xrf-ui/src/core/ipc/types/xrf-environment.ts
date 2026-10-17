@@ -12,25 +12,6 @@ export type EnvironmentFinding = {
   message: string;
 };
 
-/** Every `kind` the `EnvironmentOrigin` union is told apart by, so a switch or a comparison names one. */
-export enum EEnvironmentOrigin {
-  /** Written in the section itself. */
-  DECLARED = "declared",
-  /** Inherited from the section that writes it. */
-  INHERITED = "inherited",
-  /** Won a load-order contest under a patching dialect, DLTX's `mod_` files among them. */
-  LOADED = "loaded",
-}
-
-/** Where a key's resolved value is written, for a writer that has to put an edit back where it came from. */
-export type EnvironmentOrigin =
-  /** Written in the section itself. */
-  | { kind: "declared"; file: string | null }
-  /** Inherited from the section that writes it. */
-  | { kind: "inherited"; section: string; file: string | null }
-  /** Won a load-order contest under a patching dialect, DLTX's `mod_` files among them. */
-  | { kind: "loaded"; file: string; depth: number; operation: string };
-
 /** What kind of problem a finding reports. */
 export enum EEnvironmentRule {
   /** The engine refuses to load it, or loads it as something other than what is written. */
@@ -46,42 +27,6 @@ export enum EEnvironmentRule {
 
 /** Every `EEnvironmentRule` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type EnvironmentRule = `${EEnvironmentRule}`;
-
-/**
- * One section of an environment config as authored: every key the engine reads that it writes, as the engine reads
- * it, and every other key as written.
- */
-export type EnvironmentSection = {
-  /** The section's name as its header writes it. */
-  name: string;
-  /** The config it was read from, as a logical path. */
-  file: string;
-  /** Every key of the table the section writes, whether or not this engine reads it. */
-  values: { [key in string]: EnvironmentValue };
-  /** Keys outside the table, as written, so a writer can keep them. */
-  extras: { [key in string]: string };
-  /** Where each written key's value came from, for a read that was asked to record it; empty otherwise. */
-  origins: { [key in string]: EnvironmentOrigin };
-};
-
-/** Every `kind` the `EnvironmentValue` union is told apart by, so a switch or a comparison names one. */
-export enum EEnvironmentValue {
-  NUMBER = "number",
-  INTEGER = "integer",
-  VECTOR = "vector",
-  FLAG = "flag",
-  TEXT = "text",
-  LIST = "list",
-}
-
-/** One key's value as the engine holds it after reading. */
-export type EnvironmentValue =
-  | { kind: "number"; value: number | null }
-  | { kind: "integer"; value: number }
-  | { kind: "vector"; value: Array<number | null> }
-  | { kind: "flag"; value: boolean }
-  | { kind: "text"; value: string }
-  | { kind: "list"; value: Array<string> };
 
 /**
  * The cycles a level can be lit under, as its game's weather script chooses between them: the `weathers` key of its
@@ -123,17 +68,6 @@ export type ThunderboltCollection = {
   file: string;
   /** The bolts' `thunderbolts.ltx` sections, in the order written. */
   thunderbolts: Array<string>;
-};
-
-/** One weather cycle or effect: a config whose every section is a keyframe. */
-export type WeatherCycle = {
-  /** The file's name without its extension, which is what the engine and its scripts name it by. */
-  name: string;
-  /** The config, as a logical path. */
-  file: string;
-  kind: WeatherCycleKind;
-  /** Sorted by time as the engine sorts them, a keyframe whose name it refuses last. */
-  keyframes: Array<WeatherKeyframe>;
 };
 
 /** Which cycle or effect: the list the engine keeps it in, and its name there. */
@@ -219,13 +153,3 @@ export type WeatherDescriptor = {
   bloomExposure: number | null;
   bloomSkyIntensity: number | null;
 };
-
-/** One keyframe of a weather cycle or effect, as authored: a section named for the time of day it applies at. */
-export type WeatherKeyframe = {
-  /** When it applies; none for a section name the engine refuses. */
-  time: WeatherTime | null;
-  section: EnvironmentSection;
-};
-
-/** A time of day as a keyframe's section names it, in whole seconds since midnight: the engine's `exec_time`. */
-export type WeatherTime = number;

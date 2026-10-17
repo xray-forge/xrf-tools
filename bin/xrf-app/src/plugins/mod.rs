@@ -4,7 +4,6 @@ pub mod archives;
 pub mod assets;
 pub mod configs;
 pub mod dialogs;
-pub mod environment;
 pub mod exports;
 pub mod gamedata;
 pub mod jobs;
