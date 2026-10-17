@@ -9,7 +9,6 @@
 
 mod file_conversion_report;
 mod file_verify_report;
-pub mod file_write_report;
 mod skipped_mount_report;
 
 pub use file_conversion_report::FileConversionReport;
