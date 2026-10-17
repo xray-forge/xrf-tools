@@ -49,7 +49,8 @@ impl<'a> EnvironmentReadPass<'a> {
   pub const GRAPHS: &'static str = "environment\\dynamic_weather_graphs.ltx";
   pub const SYSTEM: &'static str = "system.ltx";
 
-  /// The section `environment.ltx` holds the strike settings in, and the one OpenXRay reads from `system.ltx` without it.
+  /// The section `environment.ltx` holds the strike settings in, and the one OpenXRay reads from `system.ltx` without
+  /// it.
   pub(super) const THUNDERBOLT_SETTINGS: &'static str = "environment";
   pub(super) const THUNDERBOLT_COMMON: &'static str = "thunderbolt_common";
 

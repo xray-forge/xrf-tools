@@ -6,7 +6,7 @@ use crate::playback::weather_pair::WeatherPair;
 use crate::playback::weather_played_keyframe::WeatherPlayedKeyframe;
 use crate::weather::WeatherTime;
 
-/// A weather effect laid over the cycle from the time it started, as `SetWeatherFX` lays it.
+/// A weather effect laid over the cycle from the time it started, as `SetWeatherFX` lays it but across midnight.
 #[derive(Clone, Debug, PartialEq)]
 pub struct WeatherEffectTimeline {
   pub name: String,
@@ -44,6 +44,7 @@ impl WeatherEffectTimeline {
 
     let rewind: f32 = Self::TRANSITION * factor;
     let begin: f32 = time + rewind;
+    // Wrapped past midnight, where the engine divides by the raw difference and leads in backwards: a deliberate fix.
     let to_next: f32 = WeatherMixer::get_elapsed(WeatherTime::of_day(time), WeatherTime::of_day(b.time));
     let length: f32 = WeatherMixer::get_elapsed(WeatherTime::of_day(a.time), WeatherTime::of_day(b.time));
     // The first keyframe moved back so the weight at the start stays what it was.

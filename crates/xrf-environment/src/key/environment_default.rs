@@ -3,7 +3,8 @@ use serde::Serialize;
 use crate::key::environment_value::EnvironmentValue;
 
 /// What the engine holds for a key a section does not write: the default it reads with, or for a key it requires, the
-/// value its descriptor is constructed with, which is what a viewer shows in place of a section the engine would refuse.
+/// value its descriptor is constructed with, which is what a viewer shows in place of a section the engine would
+/// refuse.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[serde(tag = "kind", content = "value", rename_all = "camelCase")]
