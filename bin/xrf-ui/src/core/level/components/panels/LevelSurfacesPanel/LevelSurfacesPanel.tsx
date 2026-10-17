@@ -19,7 +19,8 @@ import {
   toLevelSurfaceTree,
 } from "@/core/level/lib/surface/level-surface-tree";
 import { listLevelSurfaceDressing } from "@/core/level/lib/texture/level-texture-report";
-import { LevelLoadService, LevelViewportService } from "@/core/level/services";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { describeSurfaceOutcome } from "@/core/materials/lib";
 import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";

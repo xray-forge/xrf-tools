@@ -6,14 +6,12 @@ import { ReactNode } from "react";
 
 import { LevelWeatherDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { RenderAppliedReport, RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
-import {
-  LevelLoadService,
-  LevelLookService,
-  LevelRenderService,
-  LevelViewportService,
-  LevelViewService,
-  LevelWeatherService,
-} from "@/core/level/services";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelLookService } from "@/core/level/services/level-look.service";
+import { LevelRenderService } from "@/core/level/services/level-render.service";
+import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";

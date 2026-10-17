@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { formatLevelFacing, formatLevelPosition, ILevelCamera } from "@/core/level/lib/camera/level-camera";
-import { LevelViewportService } from "@/core/level/services";
+import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { RenderViewportOverlay } from "@/core/render/components/overlay";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

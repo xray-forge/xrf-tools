@@ -5,7 +5,8 @@ import { Container } from "@wirestate/core";
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { RenderLoadFailure } from "@/core/ipc/types/xrf-renderer";
 import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/texture/level-texture-report";
-import { LevelLoadService, LevelViewportService } from "@/core/level/services";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import {
   mockLevelSpawnObject,
   mockLevelTextureReference,

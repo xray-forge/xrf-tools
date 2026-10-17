@@ -4,7 +4,8 @@ import { Container } from "@wirestate/core";
 
 import { LevelPreviewPick } from "@/core/level/components/preview/LevelPreviewPick";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
-import { LevelLoadService, LevelViewportService } from "@/core/level/services";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { mockLevelSpawnObject } from "@/fixtures/mocks/level.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

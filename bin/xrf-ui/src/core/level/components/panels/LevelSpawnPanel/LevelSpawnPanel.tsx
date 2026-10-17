@@ -21,7 +21,10 @@ import {
   toLevelSpawnTree,
 } from "@/core/level/lib/spawn/level-spawn-tree";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { LevelLoadService, LevelRenderService, LevelViewportService, LevelViewService } from "@/core/level/services";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelRenderService } from "@/core/level/services/level-render.service";
+import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { cn } from "@/core/theme/class-name";
