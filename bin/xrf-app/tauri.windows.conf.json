@@ -1,0 +1,10 @@
+{
+  "bundle": {
+    "resources": {
+      "../../.sdks/dxc/dxcompiler.dll": "resources/renderer/dxc/dxcompiler.dll",
+      "../../.sdks/dxc/LICENCE-MIT.txt": "resources/renderer/dxc/LICENCE-MIT.txt",
+      "../../.sdks/dxc/LICENSE-LLVM.txt": "resources/renderer/dxc/LICENSE-LLVM.txt",
+      "../../.sdks/dxc/LICENSE-MS.txt": "resources/renderer/dxc/LICENSE-MS.txt"
+    }
+  }
+}

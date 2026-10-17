@@ -95,9 +95,13 @@ CI follows because it runs the same tasks.
 See the [build requirements](./README.md#build-from-source). The desktop app needs the Rust toolchain, Node.js and
 pnpm; the Tauri CLI comes locked with `bin/xrf-ui`. The CLI-only tasks need Rust and Cargo Make.
 
-The renderer's binary resources (`crates/xrf-renderer/assets`: the DXC compiler and the water maps) are stored in Git
-LFS. Install it before cloning (`git lfs install`), or run `git lfs pull` after: without it the tree holds pointer
-files in their place, D3D12 falls back to FXC and `package-app` refuses to pack.
+The renderer's water maps (`crates/xrf-renderer/assets/water`) are stored in Git LFS. Install it before cloning
+(`git lfs install`), or run `git lfs pull` after: without it the tree holds pointer files in their place and
+`package-app` refuses to pack.
+
+On Windows the application ships DXC, which D3D12 compiles shader model 6 with: `cargo make fetch-sdks` places the
+pinned release in `.sdks/dxc`, and `tauri.windows.conf.json` copies it into the renderer's bundle. Every task that
+builds the application fetches it first; a plain `cargo build -p xrf-app` wants it fetched once.
 
 ### DLSS
 

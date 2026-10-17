@@ -1,6 +1,6 @@
 name: LFS assets
 description: >
-  Replaces the Git LFS pointers a checkout leaves with the files they name (`dxcompiler.dll`, the renderer's water
+  Replaces the Git LFS pointers a checkout leaves with the files they name (the renderer's water
   maps), so tests and packages read the real bytes. The objects come from a cache keyed on the LFS object list, so a
   run downloads them from LFS only when that list changes, sparing the repository's LFS bandwidth.
 

@@ -76,7 +76,7 @@ dependencies = ["check-format", "lint", "test", "test-derive", "test-doc", "veri
 # Builds.
 
 [tasks.fetch-sdks]
-description = "Fetch the pinned DLSS SDK, Vulkan headers and libclang into .sdks. Skips what is already at its pin."
+description = "Fetch the pinned DLSS SDK, Vulkan headers, libclang and DXC into .sdks. Skips what is already at its pin."
 category = "Build"
 command = "node"
 args = ["cli/sdks/fetch.mjs"]
@@ -96,7 +96,7 @@ args = ["build", "-p", "xrf-cli", "--release", "--locked"]
 [tasks.build-app]
 description = "Build the desktop application in debug mode, without DLSS."
 category = "Build"
-dependencies = ["install-ui"]
+dependencies = ["install-ui", "fetch-sdks"]
 cwd = "bin/xrf-app"
 command = "node"
 args = ["${NODE_TAURI}", "build", "--debug", "--no-bundle"]
@@ -139,7 +139,7 @@ PACKAGE_NAME = { value = "xrf-app-windows-x64", condition = { env_not_set = ["PA
 [tasks.dev-app]
 description = "Run the desktop backend and UI in watch mode."
 category = "Development"
-dependencies = ["install-ui"]
+dependencies = ["install-ui", "fetch-sdks"]
 cwd = "bin/xrf-app"
 command = "node"
 args = ["${NODE_TAURI}", "dev"]
@@ -163,6 +163,7 @@ args = ["${NODE_TAURI}", "dev", "--features", "dlss", "--config", "tauri.dlss.co
 [tasks.serve-backend]
 description = "Run the desktop backend without the UI dev server."
 category = "Development"
+dependencies = ["fetch-sdks"]
 command = "cargo"
 args = ["run", "-p", "xrf-app", "--no-default-features"]
 
@@ -178,6 +179,7 @@ script = "pnpm run dev"
 [tasks.doc]
 description = "Generate Rust documentation for workspace crates, without dependencies."
 category = "Documentation"
+dependencies = ["fetch-sdks"]
 command = "cargo"
 args = ["doc", "--workspace", "--no-deps"]
 
@@ -190,6 +192,7 @@ args = ["run", "-p", "xrf-cli", "--", "docs", "generate", "--output", "target/do
 [tasks.generate-typescript-bindings]
 description = "Emit the Specta-generated frontend types and Tauri command bindings."
 category = "Code generation"
+dependencies = ["fetch-sdks"]
 command = "cargo"
 args = [
   "test",

@@ -7,7 +7,8 @@ import * as process from "node:process";
 
 /**
  * Fetches the SDKs the optional native features build against into `.sdks/`, which `.cargo/config.toml` points the
- * builds at: each pinned to a commit and checked out sparsely, only the headers and libraries a build reads.
+ * builds at: each pinned to a commit and checked out sparsely, only the headers and libraries a build reads. On Windows
+ * it also places the libraries taken from a pinned archive: libclang for the builds and DXC for the renderer.
  */
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, "..", "..");
 const SDKS_ROOT = path.join(REPOSITORY_ROOT, ".sdks");
@@ -118,17 +119,68 @@ function fetchSdk(sdk) {
 }
 
 /**
- * libclang for Windows as LLVM builds it, from its Python package: bindgen loads it to generate the NGX bindings, and
- * `.cargo/config.toml` points `LIBCLANG_PATH` at it, so no LLVM install is needed.
+ * @typedef {object} IArchivedFile
+ * @property {string} member - where the archive holds it
+ * @property {string} file - its name under the tool's directory
+ * @property {string} hash - its pinned SHA-256
  */
-const LIBCLANG = {
-  url:
-    "https://files.pythonhosted.org/packages/0b/2d/3f480b1e1d31eb3d6de5e3ef641954e5c67430d5ac93b7fa7e07589576c7/" +
-    "libclang-18.1.1-py2.py3-none-win_amd64.whl",
-  wheel: "4dd2d3b82fab35e2bf9ca717d7b63ac990a3519c7e312f19fa8e86dcc712f7fb",
-  member: "libclang-18.1.1.data/platlib/clang/native/libclang.dll",
-  library: "b13ec96d9a036d6c6c36dd09e00415ead7acc7fcfd40e721bf33ea86b3490f9d",
-};
+
+/**
+ * @typedef {object} IArchivedTool
+ * @property {string} name - its directory under `.sdks/`
+ * @property {string} url - the archive it is taken from
+ * @property {string} hash - the archive's pinned SHA-256
+ * @property {ReadonlyArray<IArchivedFile>} files - what is taken out of the archive
+ */
+
+/** @type {ReadonlyArray<IArchivedTool>} */
+const ARCHIVED_TOOLS = [
+  {
+    // libclang for Windows as LLVM builds it, from its Python package: bindgen loads it to generate the NGX bindings,
+    // and `.cargo/config.toml` points `LIBCLANG_PATH` at it, so no LLVM install is needed.
+    name: "libclang",
+    url:
+      "https://files.pythonhosted.org/packages/0b/2d/3f480b1e1d31eb3d6de5e3ef641954e5c67430d5ac93b7fa7e07589576c7/" +
+      "libclang-18.1.1-py2.py3-none-win_amd64.whl",
+    hash: "4dd2d3b82fab35e2bf9ca717d7b63ac990a3519c7e312f19fa8e86dcc712f7fb",
+    files: [
+      {
+        member: "libclang-18.1.1.data/platlib/clang/native/libclang.dll",
+        file: "libclang.dll",
+        hash: "b13ec96d9a036d6c6c36dd09e00415ead7acc7fcfd40e721bf33ea86b3490f9d",
+      },
+    ],
+  },
+  {
+    // DXC 1.9.2609 (September 2026), which the renderer's D3D12 compiles shader model 6 with, ray queries among it; the
+    // application ships it beside its executable, as `bin/xrf-app/tauri.windows.conf.json` maps it, with its licences.
+    name: "dxc",
+    url: "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2609/dxc_2026_09_29.zip",
+    hash: "ad31b1fc8443175d204f77a611fdb3ef2ec42759bdc2f1167368de24a4a7e7f1",
+    files: [
+      {
+        member: "bin/x64/dxcompiler.dll",
+        file: "dxcompiler.dll",
+        hash: "0689e2fee0a1c9df8662a59680469f24e2a3ad7ce6bbbcc9284f7a83172bfc59",
+      },
+      {
+        member: "LICENCE-MIT.txt",
+        file: "LICENCE-MIT.txt",
+        hash: "903df5512f7d02609fed0c780a9b704f5a3eeb6e4d84ebe42a29845c81899a3c",
+      },
+      {
+        member: "LICENSE-LLVM.txt",
+        file: "LICENSE-LLVM.txt",
+        hash: "729615317e28dd03907e46f0fc3b5e88f7853cee61d1a1471d2749335516b46f",
+      },
+      {
+        member: "LICENSE-MS.txt",
+        file: "LICENSE-MS.txt",
+        hash: "734f72f239fe7b07b4c7203f294c1a7ce27095687278bab7e56d630d7c672963",
+      },
+    ],
+  },
+];
 
 /**
  * @param {Buffer | string} data - bytes, or a file's path
@@ -142,58 +194,68 @@ function hash(data) {
 }
 
 /**
- * Places libclang in `.sdks/libclang/` on Windows, downloading its package only where the library there is missing or
- * not the pinned one.
+ * Places a tool's files in `.sdks/<name>/`, downloading its archive only where a file there is missing or not the
+ * pinned one.
+ *
+ * @param {IArchivedTool} tool - the tool
  */
-async function fetchLibclang() {
-  const dir = path.join(SDKS_ROOT, "libclang");
-  const library = path.join(dir, "libclang.dll");
+async function fetchArchived(tool) {
+  const dir = path.join(SDKS_ROOT, tool.name);
 
-  if (fs.existsSync(library) && hash(library) === LIBCLANG.library) {
-    console.info(`libclang: ${path.relative(REPOSITORY_ROOT, library)}`);
+  function isPlaced(file) {
+    return fs.existsSync(path.join(dir, file.file)) && hash(path.join(dir, file.file)) === file.hash;
+  }
+
+  if (tool.files.every(isPlaced)) {
+    console.info(`${tool.name}: ${path.relative(REPOSITORY_ROOT, dir)}`);
 
     return;
   }
 
-  console.info(`Fetching libclang from ${LIBCLANG.url}`);
+  console.info(`Fetching ${tool.name} from ${tool.url}`);
 
-  const response = await fetch(LIBCLANG.url);
+  const response = await fetch(tool.url);
 
   if (!response.ok) {
-    throw new Error(`libclang's package is not fetched: ${response.status} ${response.statusText}`);
+    throw new Error(`${tool.name}'s archive is not fetched: ${response.status} ${response.statusText}`);
   }
 
-  const wheel = Buffer.from(await response.arrayBuffer());
+  const bytes = Buffer.from(await response.arrayBuffer());
 
-  if (hash(wheel) !== LIBCLANG.wheel) {
-    throw new Error("libclang's package is not the pinned one");
+  if (hash(bytes) !== tool.hash) {
+    throw new Error(`${tool.name}'s archive is not the pinned one`);
   }
 
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "xrf-libclang-"));
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), `xrf-${tool.name}-`));
 
   try {
-    const archive = path.join(scratch, "libclang.whl");
+    const archive = path.join(scratch, "archive.zip");
 
-    fs.writeFileSync(archive, wheel);
-    // Windows' own tar reads the package as the zip it is.
+    fs.writeFileSync(archive, bytes);
+    // Windows' own tar reads a zip, which a Python package is too.
     cp.execFileSync(path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe"), [
       "-xf",
       archive,
       "-C",
       scratch,
-      LIBCLANG.member,
+      ...tool.files.map((file) => file.member),
     ]);
     fs.mkdirSync(dir, { recursive: true });
-    fs.copyFileSync(path.join(scratch, LIBCLANG.member), library);
+
+    for (const file of tool.files) {
+      fs.copyFileSync(path.join(scratch, file.member), path.join(dir, file.file));
+    }
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
 
-  if (hash(library) !== LIBCLANG.library) {
-    throw new Error("libclang's library is not the pinned one");
+  for (const file of tool.files) {
+    if (!isPlaced(file)) {
+      throw new Error(`${tool.name}'s ${file.file} is not the pinned one`);
+    }
   }
 
-  console.info(`libclang: ${path.relative(REPOSITORY_ROOT, library)}`);
+  console.info(`${tool.name}: ${path.relative(REPOSITORY_ROOT, dir)}`);
 }
 
 /**
@@ -213,7 +275,9 @@ for (const sdk of SDKS) {
 }
 
 if (process.platform === "win32") {
-  await fetchLibclang();
+  for (const tool of ARCHIVED_TOOLS) {
+    await fetchArchived(tool);
+  }
 } else if (!hasLibclang()) {
   console.warn(
     "libclang is not found: building with `--features dlss` needs it installed (libclang-dev or LLVM), or " +
