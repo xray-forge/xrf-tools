@@ -77,6 +77,15 @@ fn to_milliseconds(seconds: f32) -> Duration {
   Duration::from_millis((seconds * 1000.0).floor().max(0.0) as u64)
 }
 
+/// A wind blast's ramp longer than this is read as this: past it a config holds no time a game could play out, and an
+/// infinite one would not fit a `Duration` at all.
+const LONGEST_BLAST_RAMP: f32 = 3600.0;
+
+/// Seconds of a wind blast's ramp, none for a negative or unreadable value.
 fn to_seconds(seconds: f32) -> Duration {
-  Duration::from_secs_f32(seconds.max(0.0))
+  if seconds.is_nan() {
+    Duration::ZERO
+  } else {
+    Duration::from_secs_f32(seconds.clamp(0.0, LONGEST_BLAST_RAMP))
+  }
 }
