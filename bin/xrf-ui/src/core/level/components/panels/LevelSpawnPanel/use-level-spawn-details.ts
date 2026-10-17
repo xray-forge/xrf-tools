@@ -31,8 +31,16 @@ export function useLevelSpawnDetails(
     setDetails(AsyncState.loading());
     levelsCommands
       .describeSpawnObject(sessionId, index)
-      .then(({ value }) => isCurrent && setDetails(AsyncState.ready(value)))
-      .catch((error: unknown) => isCurrent && setDetails(AsyncState.failed(transformError(error))));
+      .then(({ value }) => {
+        if (isCurrent) {
+          setDetails(AsyncState.ready(value));
+        }
+      })
+      .catch((error: unknown) => {
+        if (isCurrent) {
+          setDetails(AsyncState.failed(transformError(error)));
+        }
+      });
 
     return () => {
       isCurrent = false;
