@@ -63,6 +63,9 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
         });
       },
       onCamera: (pose: WorldCameraPose): void => this.onCamera(pose),
+      onCommandFailed: (command: string, error: unknown): void => {
+        this.log.warn("A native viewport command failed:", command, error);
+      },
       onFailed: (message: string): void => this.fail(message),
       onFrame: (report: RenderFrameReport): void => {
         runInAction(() => {
@@ -82,7 +85,10 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
     this.reactions.push(
       reaction(
         () => this.renderSettingsService.renderSettings,
-        (settings: RenderSettings) => void renderCommands.configure(settings).catch(() => {}),
+        (settings: RenderSettings) =>
+          void renderCommands
+            .configure(settings)
+            .catch((error: unknown) => this.log.warn("The renderer refused its settings:", error)),
         { equals: comparer.structural, fireImmediately: true }
       ),
       ...this.start(viewport)

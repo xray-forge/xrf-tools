@@ -53,6 +53,8 @@ export interface INativeViewportListener {
   onWeather(report: Nullable<WorldWeatherReport>): void;
   /** Why it cannot be drawn. */
   onFailed(message: string): void;
+  /** A command it was sent failed: said once per command, so one sent every frame says so once. */
+  onCommandFailed(command: string, error: unknown): void;
 }
 
 /**
@@ -65,8 +67,13 @@ export class NativeViewport {
   private isDisposed: boolean = false;
   /** The kind of camera last described; the renderer flies one until it is told. */
   private cameraKind: WorldCamera["kind"] = EWorldCamera.FLY;
+  /** The commands whose failure was told. */
+  private readonly failed: Set<string> = new Set();
+  private readonly listener: INativeViewportListener;
 
   public constructor(listener: INativeViewportListener) {
+    this.listener = listener;
+
     const events: Channel<ViewportEvent> = new Channel<ViewportEvent>();
 
     events.onmessage = (event: ViewportEvent): void => {
@@ -118,16 +125,16 @@ export class NativeViewport {
   }
 
   public setLayout(layout: RenderViewportLayout): void {
-    this.call((id: RenderViewportId) => renderCommands.setViewportLayout(id, layout));
+    this.call("setViewportLayout", (id: RenderViewportId) => renderCommands.setViewportLayout(id, layout));
   }
 
   public sendInput(event: WorldInputEvent): void {
-    this.call((id: RenderViewportId) => renderCommands.sendInput(id, event));
+    this.call("sendInput", (id: RenderViewportId) => renderCommands.sendInput(id, event));
   }
 
   public setCamera(camera: WorldCamera): void {
     this.cameraKind = camera.kind;
-    this.call((id: RenderViewportId) => renderCommands.setCamera(id, camera));
+    this.call("setCamera", (id: RenderViewportId) => renderCommands.setCamera(id, camera));
   }
 
   public getCameraKind(): WorldCamera["kind"] {
@@ -135,11 +142,11 @@ export class NativeViewport {
   }
 
   public commandCamera(command: WorldCameraCommand): void {
-    this.call((id: RenderViewportId) => renderCommands.commandCamera(id, command));
+    this.call("commandCamera", (id: RenderViewportId) => renderCommands.commandCamera(id, command));
   }
 
   public setViewOptions(options: RenderViewOptions): void {
-    this.call((id: RenderViewportId) => renderCommands.setViewOptions(id, options));
+    this.call("setViewOptions", (id: RenderViewportId) => renderCommands.setViewOptions(id, options));
   }
 
   /**
@@ -147,45 +154,45 @@ export class NativeViewport {
    *   ambient effects and which spawned groups stream in.
    */
   public setWorldToggles(toggles: WorldToggles): void {
-    this.call((id: RenderViewportId) => renderCommands.setWorldToggles(id, toggles));
+    this.call("setWorldToggles", (id: RenderViewportId) => renderCommands.setWorldToggles(id, toggles));
   }
 
   /**
    * @param overlays - The helpers drawn over its frame from now on, in place of those before.
    */
   public setOverlays(overlays: Array<RenderOverlay>): void {
-    this.call((id: RenderViewportId) => renderCommands.setOverlays(id, overlays));
+    this.call("setOverlays", (id: RenderViewportId) => renderCommands.setOverlays(id, overlays));
   }
 
   public setSelection(selection: Nullable<RenderSelection>): void {
-    this.call((id: RenderViewportId) => renderCommands.setSelection(id, selection));
+    this.call("setSelection", (id: RenderViewportId) => renderCommands.setSelection(id, selection));
   }
 
   public playWeather(play: WorldWeatherPlay, transition: EWorldWeatherTransition): void {
-    this.call((id: RenderViewportId) => renderCommands.playWeather(id, play, transition));
+    this.call("playWeather", (id: RenderViewportId) => renderCommands.playWeather(id, play, transition));
   }
 
   public setWeatherControl(control: WorldWeatherControl): void {
-    this.call((id: RenderViewportId) => renderCommands.setWeatherControl(id, control));
+    this.call("setWeatherControl", (id: RenderViewportId) => renderCommands.setWeatherControl(id, control));
   }
 
   /**
    * @param time - Seconds since midnight to play the weather on from.
    */
   public seekWeather(time: number): void {
-    this.call((id: RenderViewportId) => renderCommands.seekWeather(id, time));
+    this.call("seekWeather", (id: RenderViewportId) => renderCommands.seekWeather(id, time));
   }
 
   /**
    * @param name - The effect to play over the cycle from the clock's time, or null to end the one playing.
    */
   public playWeatherEffect(name: Nullable<string>): void {
-    this.call((id: RenderViewportId) => renderCommands.playWeatherEffect(id, name));
+    this.call("playWeatherEffect", (id: RenderViewportId) => renderCommands.playWeatherEffect(id, name));
   }
 
   /** Plays a weather ambient effect near the camera at once, ending the one playing; none plays indoors. */
   public playAmbientEffect(): void {
-    this.call((id: RenderViewportId) => renderCommands.playAmbientEffect(id));
+    this.call("playAmbientEffect", (id: RenderViewportId) => renderCommands.playAmbientEffect(id));
   }
 
   /**
@@ -205,7 +212,9 @@ export class NativeViewport {
 
     try {
       return await renderCommands.pick(id, x, y, isThrough);
-    } catch {
+    } catch (error: unknown) {
+      this.noteFailure("pick", error);
+
       return null;
     }
   }
@@ -224,7 +233,9 @@ export class NativeViewport {
 
     try {
       return await renderCommands.measureSurfaces(id);
-    } catch {
+    } catch (error: unknown) {
+      this.noteFailure("measureSurfaces", error);
+
       return [];
     }
   }
@@ -243,7 +254,9 @@ export class NativeViewport {
 
     try {
       return await renderCommands.describeProblems(id);
-    } catch {
+    } catch (error: unknown) {
+      this.noteFailure("describeProblems", error);
+
       return none;
     }
   }
@@ -263,7 +276,9 @@ export class NativeViewport {
       const sphere = await renderCommands.locateSpawnObject(id, object);
 
       return sphere ? [sphere[0] ?? 0, sphere[1] ?? 0, sphere[2] ?? 0, sphere[3] ?? 0] : null;
-    } catch {
+    } catch (error: unknown) {
+      this.noteFailure("locateSpawnObject", error);
+
       return null;
     }
   }
@@ -282,7 +297,9 @@ export class NativeViewport {
 
     try {
       return await renderCommands.describeTextures(id);
-    } catch {
+    } catch (error: unknown) {
+      this.noteFailure("describeTextures", error);
+
       return [];
     }
   }
@@ -303,7 +320,9 @@ export class NativeViewport {
 
     try {
       return (await renderCommands.showLevel(id, sessionId)) ?? null;
-    } catch {
+    } catch (error: unknown) {
+      this.noteFailure("showLevel", error);
+
       return null;
     }
   }
@@ -315,7 +334,9 @@ export class NativeViewport {
    * @param detail - How far down each submesh's collapse chain to draw: zero its finest level, one its coarsest.
    */
   public showModel(sessionId: Nullable<string>, detail: number): void {
-    this.call((id: RenderViewportId) => renderCommands.showModel(id, sessionId, detail).then(() => undefined));
+    this.call("showModel", (id: RenderViewportId) =>
+      renderCommands.showModel(id, sessionId, detail).then(() => undefined)
+    );
   }
 
   /**
@@ -324,14 +345,14 @@ export class NativeViewport {
    * @param request - The texture, the body and how it is laid on it, or null for none.
    */
   public showTexture(request: TNativeTextureRequest): void {
-    this.call((id: RenderViewportId) => renderCommands.showTexture(id, request).then(() => undefined));
+    this.call("showTexture", (id: RenderViewportId) => renderCommands.showTexture(id, request).then(() => undefined));
   }
 
   /**
    * @param pose - How the viewport's skinned models stand from now on.
    */
   public poseModel(pose: WorldModelPose): void {
-    this.call((id: RenderViewportId) => renderCommands.poseModel(id, pose));
+    this.call("poseModel", (id: RenderViewportId) => renderCommands.poseModel(id, pose));
   }
 
   /** Stops drawing; the renderer lets its GPU go a few seconds after the last viewport. */
@@ -348,14 +369,30 @@ export class NativeViewport {
     });
   }
 
-  private call(send: (id: RenderViewportId) => Promise<void>): void {
+  /**
+   * @param command - What is sent, which a failure is told under.
+   * @param send - Sends it to the attached viewport.
+   */
+  private call(command: string, send: (id: RenderViewportId) => Promise<void>): void {
     void this.attached.then((id: Nullable<RenderViewportId>) => {
       if (id !== null && !this.isDisposed) {
-        return send(id).catch(ignoreDropped);
+        return send(id).catch((error: unknown) => this.noteFailure(command, error));
       }
     });
   }
+
+  /**
+   * Tells a command's first failure; none once released, when the renderer dropping the viewport is expected.
+   */
+  private noteFailure(command: string, error: unknown): void {
+    if (this.isDisposed || this.failed.has(command)) {
+      return;
+    }
+
+    this.failed.add(command);
+    this.listener.onCommandFailed(command, error);
+  }
 }
 
-/** A command to a viewport the renderer dropped changes nothing: its failure is reported on its own. */
+/** A detach that failed changes nothing: the page has let the viewport go either way. */
 function ignoreDropped(): void {}
