@@ -8,14 +8,10 @@ const SAMPLES: usize = 256;
 /// `N`: what the argument is lifted by before it is cut into the table's cells.
 const LIFT: f32 = 4096.0;
 
-/// How far the argument moves before the noise repeats: a cell is the argument's whole part masked by `SAMPLES - 1`,
-/// and the lift adds whole tables to it, so moving the argument by `SAMPLES` lands in the same cell at the same place.
+/// How far the argument moves before the noise repeats: the cell is the lifted argument's whole part masked by
+/// `SAMPLES - 1`, and the blend between it and the next its fraction, neither of which a move by `SAMPLES` changes while
+/// the lifted argument stays positive, as one kept within a period is.
 const PERIOD: f32 = SAMPLES as f32;
-
-const _: () = assert!(
-  (LIFT as usize).is_multiple_of(SAMPLES),
-  "the lift must add whole tables"
-);
 
 /// `SetOctaves(2)` and `SetAmplitude(0.66666f)`, as `CEnvironment` sets its noise up.
 const OCTAVES: usize = 2;
