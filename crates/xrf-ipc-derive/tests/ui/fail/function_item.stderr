@@ -1,4 +1,4 @@
-error: `#[constant]` marks a `const` item, whose value the frontend's bindings export
+error: `#[constant]` marks a module-level `const` item, whose value the frontend's bindings export
  --> tests/ui/fail/function_item.rs:2:1
   |
 2 | / fn render_max_shadow_filter() -> u32 {

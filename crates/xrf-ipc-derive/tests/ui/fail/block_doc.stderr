@@ -1,0 +1,6 @@
+error: `#[constant]` reads its doc comment from `///` lines: write this one as `///` lines
+ --> tests/ui/fail/block_doc.rs:1:1
+  |
+1 | / /** Texels the sun's filter reaches each way at most:
+2 | |  * the widest its pass has a pipeline for. */
+  | |_____________________________________________^

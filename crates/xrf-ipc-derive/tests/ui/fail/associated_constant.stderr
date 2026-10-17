@@ -1,0 +1,7 @@
+error: module is not supported in `trait`s or `impl`s
+ --> tests/ui/fail/associated_constant.rs:6:3
+  |
+6 |   const MAX_CASCADES: u32 = 4;
+  |   ^^^^^
+  |
+  = help: consider moving the module out to a nearby module scope

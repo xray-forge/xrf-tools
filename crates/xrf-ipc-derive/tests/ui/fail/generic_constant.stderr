@@ -1,0 +1,13 @@
+error: `#[constant]` marks a module-level `const` item, whose value the frontend's bindings export
+ --> tests/ui/fail/generic_constant.rs:3:1
+  |
+3 | const RENDER_MAX_SHADOW_FILTER<T>: u32 = 3;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0658]: generic const items are experimental
+ --> tests/ui/fail/generic_constant.rs:3:31
+  |
+3 | const RENDER_MAX_SHADOW_FILTER<T>: u32 = 3;
+  |                               ^^^
+  |
+  = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
