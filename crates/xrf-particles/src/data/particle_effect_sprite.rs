@@ -14,6 +14,18 @@ pub struct ParticleEffectSprite {
 
 impl ParticleEffectSprite {
   pub const META_TYPE: &'static str = "particle_effect_sprite";
+
+  /// The textures the sprite names, as the engine's `_ParseList` reads `texture_name`: comma-separated, each trimmed,
+  /// empty ones dropped, the base first.
+  pub fn list_textures(&self) -> Vec<String> {
+    self
+      .texture_name
+      .split(',')
+      .map(str::trim)
+      .filter(|texture| !texture.is_empty())
+      .map(str::to_owned)
+      .collect()
+  }
 }
 
 impl ChunkReadWrite for ParticleEffectSprite {
@@ -151,6 +163,16 @@ mod tests {
     );
 
     Ok(())
+  }
+
+  #[test]
+  fn lists_its_textures_as_the_engine_parses_them() {
+    let sprite: ParticleEffectSprite = ParticleEffectSprite {
+      shader_name: String::from(r"particles\blend"),
+      texture_name: String::from(r" fx\fx_smoke , ,fx\fx_smoke_detail,"),
+    };
+
+    assert_eq!(sprite.list_textures(), [r"fx\fx_smoke", r"fx\fx_smoke_detail"]);
   }
 
   #[test]

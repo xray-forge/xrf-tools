@@ -7,7 +7,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelPsStaticFile, PsStaticPlacement};
 use xrf_ltx::{Ltx, Section};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
-use xrf_particles::{ParticleEffect, ParticleLibrary, ParticlesFile};
+use xrf_particles::{ParticleLibrary, ParticlesFile};
 use xrf_renderer::{RenderParticlePlacement, RenderParticleSource};
 use xrf_spawn::{AlifeObject, AlifeObjectInherited, AlifeObjectMotion, AlifeObjectSpaceRestrictor};
 use xrf_vfs::XrayProbe;
@@ -80,7 +80,7 @@ pub fn pack_particles(
     let Some(effect) = library.get_effect(&name) else {
       continue;
     };
-    let textures: Vec<String> = split_textures(effect);
+    let textures: Vec<String> = effect.sprite.list_textures();
 
     references.extend(textures.iter().cloned());
     surfaces.insert(name, resolver.describe(&effect.sprite.shader_name, &textures));
@@ -244,18 +244,6 @@ fn list_reached_effects(
   }
 
   reached
-}
-
-/// `_ParseList`: the comma-separated textures an effect's sprite names, the base first.
-fn split_textures(effect: &ParticleEffect) -> Vec<String> {
-  effect
-    .sprite
-    .texture_name
-    .split(',')
-    .map(str::trim)
-    .filter(|texture| !texture.is_empty())
-    .map(str::to_owned)
-    .collect()
 }
 
 #[cfg(test)]

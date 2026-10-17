@@ -42,7 +42,7 @@ impl ParticleListEntry {
     Self::Effect {
       name: effect.name.clone(),
       shader: effect.sprite.shader_name.clone(),
-      textures: Self::split_textures(&effect.sprite.texture_name),
+      textures: effect.sprite.list_textures(),
       max_particles: effect.max_particles,
       actions: effect.actions.iter().map(ParticleActionType::get_action_type).collect(),
       time_limit: effect.time_limit,
@@ -98,15 +98,5 @@ impl ParticleListEntry {
         ..
       } => format!("group {name} ({} effects, {} children)", effects.len(), children.len()),
     }
-  }
-
-  /// `_ParseList`: a sprite's comma-separated texture list, each trimmed, empty ones dropped.
-  fn split_textures(list: &str) -> Vec<String> {
-    list
-      .split(',')
-      .map(str::trim)
-      .filter(|it| !it.is_empty())
-      .map(str::to_owned)
-      .collect()
   }
 }
