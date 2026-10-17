@@ -130,7 +130,7 @@ fn traverse_solid(ray: RayDesc, cone: SceneCone, passed: u32) -> SceneHit {
 
     if (instance.place != passed &&
       is_scene_solid(instance.first_record + candidate.geometry_index, candidate.primitive_index,
-        candidate.barycentrics, width)) {
+        candidate.barycentrics, width, normals_to_world(candidate.world_to_object))) {
       rayQueryConfirmIntersection(&query);
     }
   }
@@ -147,16 +147,21 @@ fn traverse_solid(ray: RayDesc, cone: SceneCone, passed: u32) -> SceneHit {
   }
 
   let instance: TraceInstance = trace_instances[hit.instance_custom_data];
-  let inverse: mat4x3<f32> = hit.world_to_object;
 
   return SceneHit(hit.t, instance.first_record + hit.geometry_index, hit.primitive_index, hit.barycentrics,
-    instance.place, ray.origin + ray.dir * hit.t, transpose(mat3x3<f32>(inverse[0], inverse[1], inverse[2])));
+    instance.place, ray.origin + ray.dir * hit.t, normals_to_world(hit.world_to_object));
+}
+
+// What turns an instance's geometry's normals into renderer space, from what takes renderer space into its geometry:
+// the transpose of its inverse.
+fn normals_to_world(world_to_object: mat4x3<f32>) -> mat3x3<f32> {
+  return transpose(mat3x3<f32>(world_to_object[0], world_to_object[1], world_to_object[2]));
 }
 
 // Whether a cut-out section is solid at a point of a triangle: its base texture's alpha at the level of detail the
 // cone's `width` there reads, raised as minification thins it as the G-buffer's cut raises it (`is_alpha_cut`), over
-// its surface's reference.
-fn is_scene_solid(index: u32, primitive: u32, barycentrics: vec2<f32>, width: f32) -> bool {
+// its surface's reference; `to_world` turns its instance's normals into renderer space.
+fn is_scene_solid(index: u32, primitive: u32, barycentrics: vec2<f32>, width: f32, to_world: mat3x3<f32>) -> bool {
   let record: TraceRecord = trace_records[index];
 
   if ((record.flags & TRACE_RECORD_CUT_OUT) == 0u) {
@@ -168,7 +173,7 @@ fn is_scene_solid(index: u32, primitive: u32, barycentrics: vec2<f32>, width: f3
   let slot: u32 = trace_surfaces[record.surface].textures[SLOT_BASE];
   let tiling: f32 = trace_surfaces[record.surface].tiling;
   let triangle: SceneTriangle = scene_outline(record, primitive);
-  let lod: f32 = texture_lod(tiling, triangle, slot, width, 1.0);
+  let lod: f32 = texture_lod(tiling, triangle, slot, width, 1.0, scene_area(triangle, to_world));
   let uv: vec2<f32> = base_uv(tiling, triangle, barycentric_weights(barycentrics));
   let alpha: f32 = textureSampleLevel(trace_textures[slot], trace_sampler, uv, lod).a;
 
@@ -204,8 +209,9 @@ fn scene_surface(hit: SceneHit, width: f32) -> SceneSurface {
   let weights: vec3<f32> = barycentric_weights(hit.barycentrics);
   let slot: u32 = surface.textures[SLOT_BASE];
   let uv: vec2<f32> = base_uv(surface.tiling, triangle, weights);
+  let area: f32 = scene_area(triangle, hit.to_world);
   let base: vec4<f32> = textureSampleLevel(trace_textures[slot], trace_sampler, uv,
-    texture_lod(surface.tiling, triangle, slot, width, 1.0));
+    texture_lod(surface.tiling, triangle, slot, width, 1.0, area));
   let normal: vec4<f32> = triangle.normals[0] * weights.x + triangle.normals[1] * weights.y +
     triangle.normals[2] * weights.z;
   let place: Place = trace_places[hit.place];
@@ -217,7 +223,7 @@ fn scene_surface(hit: SceneHit, width: f32) -> SceneSurface {
     hemi = cube_hemi(place.cube, world_normal);
   }
 
-  var albedo: vec3<f32> = base.rgb * scene_detail(surface, triangle, uv, width);
+  var albedo: vec3<f32> = base.rgb * scene_detail(surface, triangle, uv, width, area);
 
   // A terrain is lit by its base's alpha, as the G-buffer lights it, and covered by the grass planted on it; a
   // lightmapped surface by its lightmap.
@@ -250,14 +256,14 @@ fn scene_surface(hit: SceneHit, width: f32) -> SceneSurface {
 
 // What a surface's details multiply its base by, as the G-buffer lays them: a terrain's four by its mask, a surface's
 // one, each doubled; one for a surface without. A terrain's layers blend by its mask alone, not sharpened by their
-// heights as the G-buffer's are.
-fn scene_detail(surface: Surface, triangle: SceneTriangle, uv: vec2<f32>, width: f32) -> vec3<f32> {
+// heights as the G-buffer's are. `area` is the triangle's in renderer space.
+fn scene_detail(surface: Surface, triangle: SceneTriangle, uv: vec2<f32>, width: f32, area: f32) -> vec3<f32> {
   let scale: f32 = surface.detail_scale;
 
   if ((surface.flags & SURFACE_IS_TERRAIN) != 0u) {
     let mask_slot: u32 = surface.terrain.mask;
     let mask: vec4<f32> = textureSampleLevel(trace_textures[mask_slot], trace_sampler, uv,
-      texture_lod(surface.tiling, triangle, mask_slot, width, 1.0));
+      texture_lod(surface.tiling, triangle, mask_slot, width, 1.0, area));
     let weights: vec4<f32> = mask / max(dot(mask, vec4<f32>(1.0)), 1e-4);
     var detail: vec3<f32> = vec3<f32>(0.0);
 
@@ -266,7 +272,7 @@ fn scene_detail(surface: Surface, triangle: SceneTriangle, uv: vec2<f32>, width:
         let slot: u32 = surface.terrain.details[layer];
 
         detail += textureSampleLevel(trace_textures[slot], trace_sampler, uv * scale,
-          texture_lod(surface.tiling, triangle, slot, width, scale)).rgb * weights[layer];
+          texture_lod(surface.tiling, triangle, slot, width, scale, area)).rgb * weights[layer];
       }
     }
 
@@ -277,7 +283,7 @@ fn scene_detail(surface: Surface, triangle: SceneTriangle, uv: vec2<f32>, width:
     let slot: u32 = surface.textures[SLOT_DETAIL];
 
     return textureSampleLevel(trace_textures[slot], trace_sampler, uv * scale,
-      texture_lod(surface.tiling, triangle, slot, width, scale)).rgb * 2.0;
+      texture_lod(surface.tiling, triangle, slot, width, scale, area)).rgb * 2.0;
   }
 
   return vec3<f32>(1.0);
@@ -760,16 +766,24 @@ fn base_uv(tiling: f32, triangle: SceneTriangle, weights: vec3<f32>) -> vec2<f32
 }
 
 // The level of detail a texture is read at under a cone `width` wide, its coordinate the base's times `scale`: texels a
-// metre of the triangle spans, from its area in each.
-fn texture_lod(tiling: f32, triangle: SceneTriangle, slot: u32, width: f32, scale: f32) -> f32 {
+// metre of the triangle spans, from its area in each, `area` its renderer space's.
+fn texture_lod(tiling: f32, triangle: SceneTriangle, slot: u32, width: f32, scale: f32, area: f32) -> f32 {
   let size: vec2<f32> = vec2<f32>(textureDimensions(trace_textures[slot]));
-  let world_area: f32 = length(cross(triangle.positions[1] - triangle.positions[0],
-    triangle.positions[2] - triangle.positions[0]));
   let uv_area: f32 = abs(trace_cross(triangle.uvs[1] - triangle.uvs[0], triangle.uvs[2] - triangle.uvs[0])) *
     tiling * tiling * scale * scale;
-  let density: f32 = sqrt(uv_area / max(world_area, 1e-8)) * max(size.x, size.y);
+  let density: f32 = sqrt(uv_area / max(area, 1e-8)) * max(size.x, size.y);
 
   return log2(max(width * density, 1.0));
+}
+
+// A triangle's area in renderer space, its geometry's corners carried by its instance: the cross of its edges, turned
+// as a normal by `to_world` (the transpose of the instance's inverse), scaled by the instance's determinant, which is
+// that matrix's inverse.
+fn scene_area(triangle: SceneTriangle, to_world: mat3x3<f32>) -> f32 {
+  let across: vec3<f32> = cross(triangle.positions[1] - triangle.positions[0], triangle.positions[2] -
+    triangle.positions[0]);
+
+  return length(to_world * across) / max(abs(determinant(to_world)), 1e-12);
 }
 
 fn trace_cross(a: vec2<f32>, b: vec2<f32>) -> f32 {
