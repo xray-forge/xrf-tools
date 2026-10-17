@@ -28,12 +28,6 @@ impl ComputePipelineDescription {
     self
   }
 
-  /// Override constants named and valued, where no permutation struct declares them.
-  pub fn with_constants(mut self, values: &[(&'static str, f64)]) -> Self {
-    self.constants = PipelineConstants::new(values);
-    self
-  }
-
   /// Its bind group layouts by index, a gap where a slot binds nothing.
   pub fn with_bind_group_layouts(mut self, layouts: &[Option<&wgpu::BindGroupLayout>]) -> Self {
     self.bind_group_layouts = layouts.iter().map(|layout| layout.cloned()).collect();

@@ -29,7 +29,7 @@ fn source() -> TestSource {
       "count",
       format!(
         "{}@group(0) @binding(0) var<storage, read_write> counts: array<u32>;
-         @compute @workgroup_size(1) fn main() {{ counts[cascade] = select(1u, 2u, is_shadow); }}",
+         @compute @workgroup_size(1) fn main() {{ counts[CASCADE] = select(1u, 2u, IS_SHADOW); }}",
         Shadowing::get_wgsl_overrides()
       ),
     ),
@@ -58,10 +58,10 @@ fn derives_the_constants_and_their_overrides() {
     cascade: 2,
   };
 
-  assert_eq!(shadowing.list_constants(), [("is_shadow", 1.0), ("cascade", 2.0)]);
+  assert_eq!(shadowing.list_constants(), [("IS_SHADOW", 1.0), ("CASCADE", 2.0)]);
   assert_eq!(
     Shadowing::get_wgsl_overrides(),
-    "override is_shadow: bool;\noverride cascade: u32;\n"
+    "override IS_SHADOW: bool;\noverride CASCADE: u32;\n"
   );
 
   let code: String = source().compose("count").unwrap();

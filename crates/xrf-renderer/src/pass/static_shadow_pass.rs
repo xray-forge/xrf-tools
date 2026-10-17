@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
 
 use crate::frame::sun_shadow_maps::SunShadowMaps;
 use crate::pass::overhead_shift_parameters::OverheadShiftParameters;
@@ -8,13 +8,17 @@ use crate::pass::shader_pipelines::create_checked;
 use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
+use crate::pass::static_draw_permutation::StaticDrawPermutation;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
-/// The override constants every shadow draw is built with: it leaves out the surfaces casting none.
-const SHADOW_DRAW: &[(&str, f64)] = &[("IS_SHADOW_DRAW", 1.0)];
+/// The variant every shadow draw is built with: it leaves out the surfaces casting none.
+const SHADOW_DRAW: StaticDrawPermutation = StaticDrawPermutation {
+  is_shadow_draw: true,
+  is_inspected: true,
+};
 
 /// Draws the static scene's casters into one layer of a shadow's map, depth alone: one indirect draw a batch, a
 /// view's visible clusters as instances. Both faces cast, so a surface seen edge on from the sun leaks no light.
@@ -193,51 +197,25 @@ impl StaticShadowPass {
   )> {
     let device: &wgpu::Device = source.device;
 
-    let module: wgpu::ShaderModule = source.get_module("static/gbuffer")?;
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("static shadow"),
-      bind_group_layouts: &[Some(view_layout), Some(texture_layout), Some(layout)],
-      ..Default::default()
-    });
-
     let pipelines: Vec<wgpu::RenderPipeline> = StaticBatch::list_deferred()
       .map(|batch| {
-        let vertex: &str = batch.layout.get_vertex_entry();
-        // An opaque caster writes depth alone; a cut-out one is cut first.
-        let fragment: Option<wgpu::FragmentState<'_>> =
-          (batch.class == StaticClass::CutOut).then(|| wgpu::FragmentState {
-            module: &module,
-            entry_point: Some("fs_shadow_cut_out"),
-            compilation_options: Default::default(),
-            targets: &[],
-          });
-
-        create_checked(device, "static shadow", || {
-          device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("static shadow"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-              module: &module,
-              entry_point: Some(vertex),
-              compilation_options: wgpu::PipelineCompilationOptions {
-                constants: SHADOW_DRAW,
-                ..Default::default()
-              },
-              buffers: &[],
-            },
-            fragment: fragment.clone(),
-            primitive: Default::default(),
-            depth_stencil: Some(wgpu::DepthStencilState {
+        let description: RenderPipelineDescription =
+          RenderPipelineDescription::new("static shadow", "static/gbuffer", batch.layout.get_vertex_entry())
+            .with_permutation(&SHADOW_DRAW)
+            .with_bind_group_layouts(&[Some(view_layout), Some(texture_layout), Some(layout)])
+            .with_depth_stencil(wgpu::DepthStencilState {
               format: SunShadowMaps::FORMAT,
               depth_write_enabled: Some(true),
               depth_compare: Some(wgpu::CompareFunction::Greater),
               stencil: Default::default(),
               bias: Default::default(),
-            }),
-            multisample: Default::default(),
-            multiview_mask: None,
-            cache: source.get_driver_cache(),
-          })
+            });
+
+        // An opaque caster writes depth alone; a cut-out one is cut first.
+        source.get_render_pipeline(&if batch.class == StaticClass::CutOut {
+          description.with_fragment("fs_shadow_cut_out")
+        } else {
+          description
         })
       })
       .collect::<XrfResult<_>>()?;

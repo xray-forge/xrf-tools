@@ -5,6 +5,7 @@ use xrf_renderer_core::{
 
 use crate::context::gpu_requirements::can_trace;
 use crate::frame::view_targets::ViewTargets;
+use crate::pass::contact_march_permutation::ContactMarchPermutation;
 use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::light_contact_parameters::LightContactParameters;
 use crate::pass::light_shadowing_parameters::LightShadowingParameters;
@@ -309,11 +310,13 @@ impl LightsPass {
       &ComputePipelineDescription::new("light contact", "frame/light_contact", "cs_light_contact")
         .with_bind_group_layouts(&[Some(view_layout), Some(layout), None, Some(contact_layout)]),
     )?;
-    let constants = |is_contact: bool| [("CONTACT_MARCHED", f64::from(u8::from(is_contact)))];
+    let permutation = |is_contact: bool| ContactMarchPermutation {
+      contact_marched: is_contact,
+    };
     let create_visibility = |is_contact: bool| -> XrfResult<wgpu::ComputePipeline> {
       source.get_compute_pipeline(
         &ComputePipelineDescription::new("light visibility", "frame/light_visibility", "cs_visibility")
-          .with_constants(&constants(is_contact))
+          .with_permutation(&permutation(is_contact))
           .with_bind_group_layouts(&[Some(view_layout), Some(layout), None, Some(shadowing_layout)]),
       )
     };
@@ -340,7 +343,7 @@ impl LightsPass {
       source.get_render_pipeline(
         &RenderPipelineDescription::new("lights", "frame/lights", "vs_fullscreen")
           .with_fragment("fs_lights")
-          .with_constants(&constants(is_contact))
+          .with_permutation(&permutation(is_contact))
           .with_bind_group_layouts(&[
             Some(view_layout),
             Some(layout),

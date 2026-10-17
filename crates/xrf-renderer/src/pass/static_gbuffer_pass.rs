@@ -7,6 +7,7 @@ use crate::pass::composited_pass::CompositedPass;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::shader_pipelines::create_checked;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
+use crate::pass::static_draw_permutation::StaticDrawPermutation;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_impostor_parameters::StaticImpostorParameters;
 use crate::pass::view_binding::ViewBinding;
@@ -243,14 +244,14 @@ impl StaticGBufferPass {
     let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets(true);
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
     let create_one = |label: &'static str,
-                      (vertex, fragment, constants): (&'static str, &'static str, &[(&'static str, f64)]),
+                      (vertex, fragment, permutation): (&'static str, &'static str, &StaticDrawPermutation),
                       targets: &[Option<wgpu::ColorTargetState>],
                       (is_written, depth_compare, bias): (bool, wgpu::CompareFunction, wgpu::DepthBiasState)|
      -> XrfResult<wgpu::RenderPipeline> {
       source.get_render_pipeline(
         &RenderPipelineDescription::new(label, "static/gbuffer", vertex)
           .with_fragment(fragment)
-          .with_constants(constants)
+          .with_permutation(permutation)
           .with_bind_group_layouts(&[Some(view_layout), Some(texture_layout), Some(layout)])
           // The packer reversed the winding with the z axis it flipped, so front faces wind counter clockwise.
           .with_primitive(wgpu::PrimitiveState {
@@ -270,7 +271,10 @@ impl StaticGBufferPass {
     };
     let create =
       |batches: Vec<StaticBatch>, (is_pick, is_inspected): (bool, bool)| -> XrfResult<Vec<wgpu::RenderPipeline>> {
-        let constants: [(&'static str, f64); 1] = [("IS_INSPECTED", f64::from(u8::from(is_inspected)))];
+        let permutation: StaticDrawPermutation = StaticDrawPermutation {
+          is_shadow_draw: false,
+          is_inspected,
+        };
 
         batches
           .into_iter()
@@ -292,7 +296,7 @@ impl StaticGBufferPass {
 
             create_one(
               "static g-buffer",
-              (batch.layout.get_vertex_entry(), fragment, &constants),
+              (batch.layout.get_vertex_entry(), fragment, &permutation),
               if is_pick { &pick_targets } else { &targets },
               depth,
             )
@@ -312,7 +316,10 @@ impl StaticGBufferPass {
       })
       .collect();
     let create_prepasses = |is_inspected: bool| -> XrfResult<Vec<Option<wgpu::RenderPipeline>>> {
-      let constants: [(&'static str, f64); 1] = [("IS_INSPECTED", f64::from(u8::from(is_inspected)))];
+      let permutation: StaticDrawPermutation = StaticDrawPermutation {
+        is_shadow_draw: false,
+        is_inspected,
+      };
 
       deferred
         .iter()
@@ -321,7 +328,7 @@ impl StaticGBufferPass {
             .then(|| {
               create_one(
                 "static g-buffer depth",
-                (batch.layout.get_vertex_entry(), "fs_depth_cut_out", &constants),
+                (batch.layout.get_vertex_entry(), "fs_depth_cut_out", &permutation),
                 &untouched,
                 (true, wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default()),
               )
@@ -361,7 +368,10 @@ impl StaticGBufferPass {
         source.get_render_pipeline(
           &RenderPipelineDescription::new("static overdraw", "static/gbuffer", batch.layout.get_vertex_entry())
             .with_fragment(fragment)
-            .with_constants(&[("IS_INSPECTED", 0.0)])
+            .with_permutation(&StaticDrawPermutation {
+              is_shadow_draw: false,
+              is_inspected: false,
+            })
             .with_bind_group_layouts(&[Some(view_layout), Some(texture_layout), Some(layout)])
             .with_primitive(wgpu::PrimitiveState {
               front_face: wgpu::FrontFace::Ccw,

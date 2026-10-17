@@ -5,6 +5,7 @@ use crate::frame::view_targets::ViewTargets;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::glass_copy_dispatch_parameters::GlassCopyDispatchParameters;
 use crate::pass::glass_copy_parameters::GlassCopyParameters;
+use crate::pass::glass_copy_permutation::GlassCopyPermutation;
 use crate::pass::glass_parameters::GlassParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::shader_pipelines::create_checked;
@@ -158,7 +159,12 @@ impl GlassPass {
     source: PipelineSource<'_>,
     [dispatch_layout, copy_layout]: &[wgpu::BindGroupLayout; 2],
   ) -> XrfResult<[wgpu::ComputePipeline; 2]> {
-    let list = |layout: StaticLayout| f64::from(StaticBatch::get_pass_list(layout, StaticSurfacePass::Glass));
+    let list = |layout: StaticLayout| StaticBatch::get_pass_list(layout, StaticSurfacePass::Glass);
+    let permutation: GlassCopyPermutation = GlassCopyPermutation {
+      glass_list_baked: list(StaticLayout::Baked),
+      glass_list_tree: list(StaticLayout::Tree),
+      glass_list_model: list(StaticLayout::Model),
+    };
 
     Ok([
       source.get_compute_pipeline(
@@ -167,11 +173,7 @@ impl GlassPass {
           "frame/glass_copy_dispatch",
           "cs_glass_copy_dispatch",
         )
-        .with_constants(&[
-          ("GLASS_LIST_BAKED", list(StaticLayout::Baked)),
-          ("GLASS_LIST_TREE", list(StaticLayout::Tree)),
-          ("GLASS_LIST_MODEL", list(StaticLayout::Model)),
-        ])
+        .with_permutation(&permutation)
         .with_bind_group_layouts(&[Some(dispatch_layout)]),
       )?,
       source.get_compute_pipeline(

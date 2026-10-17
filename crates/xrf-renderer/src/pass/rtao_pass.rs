@@ -4,8 +4,9 @@ use xrf_renderer_core::{PassParameters, RasterContext};
 use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::frame::view_targets::ViewTargets;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_with;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::shader_pipelines::create_checked;
+use crate::pass::rtao_permutation::RtaoPermutation;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::vbao_parameters::VbaoParameters;
 use crate::pass::view_binding::ViewBinding;
@@ -112,24 +113,15 @@ impl RtaoPass {
     view_layout: &wgpu::BindGroupLayout,
     layouts: Option<&[wgpu::BindGroupLayout; 3]>,
   ) -> XrfResult<Vec<wgpu::RenderPipeline>> {
-    let device: &wgpu::Device = source.device;
-
     let Some([search_layout, trace_layout, texture_layout]) = layouts else {
       return Ok(Vec::new());
     };
-    let module: wgpu::ShaderModule = source.get_module("frame/rtao")?;
     let mut groups: [Option<&wgpu::BindGroupLayout>; 5] = [None; 5];
 
     groups[0] = Some(view_layout);
     groups[1] = Some(search_layout);
     groups[Self::TRACE_GROUP as usize] = Some(trace_layout);
     groups[Self::TEXTURE_GROUP as usize] = Some(texture_layout);
-
-    let pipeline_layout: wgpu::PipelineLayout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-      label: Some("rtao"),
-      bind_group_layouts: &groups,
-      ..Default::default()
-    });
 
     let raw_targets: [Option<wgpu::ColorTargetState>; 2] =
       [Some(ViewTargets::OCCLUSION.into()), Some(ViewTargets::OCCLUSION.into())];
@@ -139,39 +131,18 @@ impl RtaoPass {
       .into_iter()
       .chain([(Self::RAW_RAYS, true)])
       .map(|(rays, is_raw)| {
-        let constants: &[(&str, f64)] = &[("RAYS", f64::from(rays))];
-        let (entry, targets): (&str, &[Option<wgpu::ColorTargetState>]) = if is_raw {
+        let (entry, targets): (&'static str, &[Option<wgpu::ColorTargetState>]) = if is_raw {
           ("fs_rtao_raw", &raw_targets)
         } else {
           ("fs_rtao", &raw_targets[..1])
         };
 
-        create_checked(device, "rtao", || {
-          device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("rtao"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-              module: &module,
-              entry_point: Some("vs_fullscreen"),
-              compilation_options: Default::default(),
-              buffers: &[],
-            },
-            fragment: Some(wgpu::FragmentState {
-              module: &module,
-              entry_point: Some(entry),
-              compilation_options: wgpu::PipelineCompilationOptions {
-                constants,
-                ..Default::default()
-              },
-              targets,
-            }),
-            primitive: Default::default(),
-            depth_stencil: None,
-            multisample: Default::default(),
-            multiview_mask: None,
-            cache: source.get_driver_cache(),
-          })
-        })
+        create_fullscreen_pipeline_with(
+          source,
+          ("frame/rtao", entry, &RtaoPermutation { rays }),
+          &groups,
+          targets,
+        )
       })
       .collect()
   }

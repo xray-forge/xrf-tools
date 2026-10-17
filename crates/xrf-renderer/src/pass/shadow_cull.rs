@@ -1,3 +1,5 @@
+use crate::pass::static_cull_permutation::StaticCullPermutation;
+
 /// Which view a shadow-style cull fills: a sun cascade, a light's face kept while nothing it casts from changes, or an
 /// overhead map of the level's water, which keeps its water alone.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -12,12 +14,12 @@ impl ShadowCull {
     self as usize
   }
 
-  /// The override constants its pipelines are built with.
-  pub const fn get_constants(self) -> &'static [(&'static str, f64)] {
-    match self {
-      Self::Cascade => &[("IS_SHADOW", 1.0)],
-      Self::LightFace => &[("IS_SHADOW", 1.0), ("IS_FINEST", 1.0)],
-      Self::Water => &[("IS_SHADOW", 1.0), ("IS_WATER", 1.0)],
+  /// The cull's variant its pipelines are built with.
+  pub const fn get_permutation(self) -> StaticCullPermutation {
+    StaticCullPermutation {
+      is_shadow: true,
+      is_finest: matches!(self, Self::LightFace),
+      is_water: matches!(self, Self::Water),
     }
   }
 }

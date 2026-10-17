@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::RenderPipelineDescription;
+use xrf_renderer_core::{RenderPipelineDescription, ShaderPermutation};
 
 use crate::pass::pipeline_source::PipelineSource;
 
@@ -23,20 +23,20 @@ pub fn create_fullscreen_pipeline_into(
   layouts: &[Option<&wgpu::BindGroupLayout>],
   targets: &[Option<wgpu::ColorTargetState>],
 ) -> XrfResult<wgpu::RenderPipeline> {
-  create_fullscreen_pipeline_with(source, (module, fragment, &[]), layouts, targets)
+  create_fullscreen_pipeline_with(source, (module, fragment, &()), layouts, targets)
 }
 
-/// `create_fullscreen_pipeline_into` with the fragment's override constants named and valued (`constants`).
-pub fn create_fullscreen_pipeline_with(
+/// `create_fullscreen_pipeline_into` with the fragment's variant, its override constants, given by `permutation`.
+pub fn create_fullscreen_pipeline_with<P: ShaderPermutation>(
   source: PipelineSource<'_>,
-  (module, fragment, constants): (&'static str, &'static str, &[(&'static str, f64)]),
+  (module, fragment, permutation): (&'static str, &'static str, &P),
   layouts: &[Option<&wgpu::BindGroupLayout>],
   targets: &[Option<wgpu::ColorTargetState>],
 ) -> XrfResult<wgpu::RenderPipeline> {
   source.get_render_pipeline(
     &RenderPipelineDescription::new(module, module, "vs_fullscreen")
       .with_fragment(fragment)
-      .with_constants(constants)
+      .with_permutation(permutation)
       .with_bind_group_layouts(layouts)
       .with_targets(targets.to_vec()),
   )

@@ -1,9 +1,10 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
+use syn::ext::IdentExt;
 use syn::{Data, DataStruct, DeriveInput, Error, Fields, Type};
 
-/// Expands `#[derive(ShaderPermutation)]`: each field a WGSL `override` constant of its name, set from its value when
-/// a pipeline is made.
+/// Expands `#[derive(ShaderPermutation)]`: each field a WGSL `override` constant of its name in upper case, set from its
+/// value when a pipeline is made.
 pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
   let name: &Ident = &input.ident;
   let fields = match &input.data {
@@ -31,7 +32,10 @@ pub fn expand(input: &DeriveInput) -> syn::Result<TokenStream> {
     .iter()
     .map(|field| field.ident.as_ref().expect("named fields"))
     .collect();
-  let names: Vec<String> = idents.iter().map(|ident| ident.to_string()).collect();
+  let names: Vec<String> = idents
+    .iter()
+    .map(|ident| ident.unraw().to_string().to_uppercase())
+    .collect();
   let types: Vec<&Type> = fields.iter().map(|field| &field.ty).collect();
 
   Ok(quote! {
