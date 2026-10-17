@@ -21,13 +21,13 @@ assert_eq!(resolution.evidence, XrayEngineEvidence::Named);
 
 ## Named or inferred
 
-`XrayEngineChoice` is `auto` (the default), `vanilla` or `extended`. `XrayEngineDetector::detect(roots, read_config)` infers the
-engine for `auto` and answers an `XrayEngineResolution`: the engine, the `XrayEngineEvidence` that decided it, and the
-file or logical path that showed it. `read_config` reads a logical path through whatever the caller already mounted,
-so archived configs count, and it is called only when the installation layout decides nothing.
+`XrayEngineChoice` is `auto` (the default), `vanilla` or `extended`. `XrayEngineDetector::detect(roots, read_config)`
+infers the engine for `auto` and answers an `XrayEngineResolution`: the engine, the `XrayEngineEvidence` that decided
+it, and the file or logical path that showed it. `read_config` reads a logical path through whatever the caller already
+mounted, so archived configs count, and it is called only when the installation layout decides nothing.
 
-The installation is each root, and the asset roots are centred on, when it holds an fsgame file (`fsgame.ltx`, or an Enhanced Edition's `fsgame_<game>.ltx`), otherwise its nearest
-ancestor that does. The first rule that matches wins:
+A root's installation is the root itself where it holds an fsgame file (`fsgame.ltx`, or an Enhanced Edition's
+`fsgame_<game>.ltx`), otherwise its nearest ancestor that does. The first rule that matches wins:
 
 1. `AnomalyExecutables`: `AnomalyLauncher.exe` in the installation, or `bin/AnomalyDX*.exe` or `bin/VerifiedDX11.exe`.
    Names compare without case. Extended.

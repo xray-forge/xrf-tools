@@ -82,8 +82,8 @@ impl XraySurfaceRule {
 
   /// The pass the renderer compiles for one blender, which is the knobs this rule reads out of it.
   pub(crate) fn draw(self, blender: &ShaderBlender, alpha: XraySurfaceAlpha) -> XraySurfaceDraw {
-    // The one class that names its equation outright. An index no build of it defines leaves the surface drawn as
-    // written, which is what the engine's own `switch` does with one.
+    // One of the classes that name their equation outright, as `ScreenSet` below does. An index no build of it defines
+    // leaves the surface drawn as written, which is what the engine's own `switch` does with one.
     if self == Self::Particle {
       return blender
         .token(XrayParticleBlending::PROPERTY)
