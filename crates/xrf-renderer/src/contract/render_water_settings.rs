@@ -17,7 +17,7 @@ pub struct RenderWaterSettings {
   pub is_soft: bool,
   /// Whether water writes the distortion it causes, moving what is seen through it.
   pub is_distorted: bool,
-  /// How high the waves lift the surface, in metres: `W_POSITION_SHIFT_HEIGHT`.
+  /// How high the waves lift the surface, in metres: `W_POSITION_SHIFT_HEIGHT`, 1/60 on the setting's step.
   pub wave_height: f32,
   /// How fast they run: `W_POSITION_SHIFT_SPEED`.
   pub wave_speed: f32,
@@ -39,7 +39,7 @@ impl Default for RenderWaterSettings {
       mode: RenderWaterMode::Engine,
       is_soft: true,
       is_distorted: true,
-      wave_height: 1.0 / 60.0,
+      wave_height: 0.017,
       wave_speed: 25.0,
       ripple: 1.0,
       reflection: 1.0,

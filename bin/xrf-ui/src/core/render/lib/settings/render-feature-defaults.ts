@@ -281,6 +281,6 @@ export const DEFAULT_RENDER_WATER_SETTINGS: TRenderWaterSettings = {
   mode: ERenderWaterMode.ENGINE,
   reflection: 1,
   ripple: 1,
-  waveHeight: 1 / 60,
+  waveHeight: 0.017,
   waveSpeed: 25,
 };
