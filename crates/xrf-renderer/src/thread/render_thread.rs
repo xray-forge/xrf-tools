@@ -1369,7 +1369,7 @@ impl RenderThread {
         continue;
       };
 
-      graph.begin_owner(GraphOwner::from(*id));
+      graph.begin_owner(viewport.get_graph_owner());
 
       let output: Option<SceneOutput> = view.record(
         scene,
