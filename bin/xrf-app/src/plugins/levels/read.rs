@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::ErrorKind;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_level::{LevelFile, LevelGeomSource, LevelVisualsChunk};
@@ -54,7 +54,7 @@ pub fn read_file(source: &LevelSource, probe: &XrayProbe, file: &str) -> TauriRe
 pub fn read_optional_file(source: &LevelSource, probe: &XrayProbe, file: &str) -> TauriResult<Option<Vec<u8>>> {
   match source {
     LevelSource::Directory { path } => {
-      let path: PathBuf = Path::new(path).join(file);
+      let path: PathBuf = to_level_file_path(Path::new(path), file)?;
 
       match fs::read(&path) {
         Ok(bytes) => Ok(Some(bytes)),
@@ -77,6 +77,24 @@ pub fn read_optional_file(source: &LevelSource, probe: &XrayProbe, file: &str) -
         .map_err(|error| format!("Failed to read level file '{logical_path}': {error}"))
     }
   }
+}
+
+/// A level file's path in its directory, refusing a name that would leave it: a root, a drive, `.` or `..`, as a spawn's
+/// motion names can be written.
+///
+/// # Errors
+///
+/// Returns why the name was refused.
+pub fn to_level_file_path(directory: &Path, file: &str) -> TauriResult<PathBuf> {
+  let relative: &Path = Path::new(file);
+
+  if file.is_empty() || !relative.components().all(|it| matches!(it, Component::Normal(_))) {
+    return Err(format!(
+      "Rejected level file '{file}': it names no file inside the level's directory"
+    ));
+  }
+
+  Ok(directory.join(relative))
 }
 
 fn failure(source: &LevelSource, file: &str, error: &impl std::fmt::Display) -> String {
