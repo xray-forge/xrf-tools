@@ -30,8 +30,10 @@ pub struct GrassBuildParameters {
   pub sorted: StorageArrayMut<Vec4>,
   #[uniform]
   pub params: UniformBinding<GrassUniform>,
+  /// This frame's puddle sites (`LevelSurface::puddles`), a texel each: its spot in `xy`, its height, its radius or none.
   #[texture(d2, unfilterable)]
   pub puddles: GraphTexture,
+  /// Where the puddle sites stand, which no tuft is planted in: grass does not grow under water.
   #[uniform]
   pub puddle_window: UniformBinding<GrassPuddlesUniform>,
 }
