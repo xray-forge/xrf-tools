@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_anm::AnmFile;
@@ -53,9 +53,8 @@ pub struct LevelRenderSource {
   /// Where each texture reference the level's surfaces bind resolved to at open, each projector its lights name once
   /// they are read, and anything else once asked for, as the weather's skies are.
   textures: TextureResolver,
-  /// The textures the game loads a step coarser at the same texture quality, read the first time a texture quality
-  /// above full asks.
-  reduced: OnceLock<XrayReducedTextures>,
+  /// The textures the game loads a step coarser at the same texture quality, out of the sections read as it opened.
+  reduced: XrayReducedTextures,
 }
 
 impl LevelRenderSource {
@@ -68,12 +67,20 @@ impl LevelRenderSource {
         .iter()
         .map(|texture| (texture.reference.clone(), texture.logical_path.clone())),
     );
+    // Read as the level opened, so no texture load waits on the configs; none where they could not be read.
+    let reduced: XrayReducedTextures = level
+      .sections
+      .get()
+      .and_then(|sections| sections.as_ref().ok())
+      .and_then(|sections| sections.section(XrayReducedTextures::SECTION))
+      .map(|section| XrayReducedTextures::new(section.iter().map(|(key, _)| key)))
+      .unwrap_or_default();
 
     Self {
       level,
       assets,
       textures,
-      reduced: OnceLock::new(),
+      reduced,
     }
   }
 }
@@ -114,21 +121,7 @@ impl RenderAssetSource for LevelRenderSource {
   }
 
   fn is_texture_reduced(&self, reference: &str) -> bool {
-    self
-      .reduced
-      .get_or_init(|| {
-        self
-          .read_sections()
-          .ok()
-          .flatten()
-          .and_then(|sections| {
-            sections
-              .section(XrayReducedTextures::SECTION)
-              .map(|section| XrayReducedTextures::new(section.iter().map(|(key, _)| key)))
-          })
-          .unwrap_or_default()
-      })
-      .is_reduced(reference)
+    self.reduced.is_reduced(reference)
   }
 }
 

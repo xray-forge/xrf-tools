@@ -6,6 +6,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_dltx::select_ltx_dialect;
 use xrf_engine_target::XrayEngineResolution;
 use xrf_level::LevelCformFile;
+use xrf_ltx::{Ltx, LtxDialect};
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_math::Vector3d;
 use xrf_vfs::{XrayProbe, XrayRoots};
@@ -15,6 +16,7 @@ use crate::core::assets::{AssetMountState, detect_probe_engine};
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
+use crate::plugins::levels::configs::read_level_sections;
 use crate::plugins::levels::read::{ReadLevel, read_optional_file, read_source};
 use crate::plugins::levels::report::{report_open, report_opening, report_start};
 use crate::plugins::levels::request::LevelOpenRequest;
@@ -33,6 +35,8 @@ struct OpenedLevel {
   textures: Vec<LevelTextureReference>,
   surfaces: Vec<XraySurfaceDescriptor>,
   spawn: Result<Arc<LevelSpawn>, String>,
+  /// The sections the spawn names and the textures the configs reduce, none where the spawn could not be read.
+  sections: Option<Result<Arc<Ltx>, String>>,
   outlines: Vec<SectorOutline>,
   start: Option<LevelStart>,
 }
@@ -61,14 +65,16 @@ pub async fn levels_open_level(
   report_opening(&source);
 
   let roots: XrayRoots = roots.centred_on(source.get_physical_path());
+  let dialect: Arc<dyn LtxDialect> = select_ltx_dialect(is_dltx);
   let assets: AssetMountState = AssetMountState::clone(&assets);
-  let (opened, engine, source, roots) = execution
+  let (opened, engine, source, roots, dialect) = execution
     .run_blocking("Opening the level", move || {
       let (opened, engine): (OpenedLevel, XrayEngineResolution) = assets.with_fresh_probe(&roots, |probe| {
-        open(&source, probe).map(|opened| (opened, engine.resolve(|| detect_probe_engine(probe, &roots))))
+        open(&source, probe, (&roots, &dialect))
+          .map(|opened| (opened, engine.resolve(|| detect_probe_engine(probe, &roots))))
       })??;
 
-      TauriResult::Ok((opened, engine, source, roots))
+      TauriResult::Ok((opened, engine, source, roots, dialect))
     })
     .await??;
 
@@ -80,12 +86,12 @@ pub async fn levels_open_level(
     session_id,
     SelectedLevel {
       collision: OnceLock::new(),
-      dialect: select_ltx_dialect(is_dltx),
+      dialect,
       engine,
       environment: OnceLock::new(),
       hemi: OnceLock::new(),
       spawn: opened.spawn.into(),
-      sections: OnceLock::new(),
+      sections: opened.sections.map(OnceLock::from).unwrap_or_default(),
       spawn_visuals: LevelSpawnVisuals::new(),
       geometry: opened.read.geometry,
       level: opened.read.level,
@@ -105,10 +111,15 @@ pub async fn levels_open_level(
 }
 
 /// Reads the level and its spawn side by side, outlines its sectors and decides where it opens.
-fn open(source: &LevelSource, probe: &XrayProbe) -> TauriResult<OpenedLevel> {
+fn open(
+  source: &LevelSource,
+  probe: &XrayProbe,
+  configs: (&XrayRoots, &Arc<dyn LtxDialect>),
+) -> TauriResult<OpenedLevel> {
   let scope: XrayTextureScope = source.get_texture_scope();
-  // The spawn, and what stands over the places it has an actor at, are read beside the level rather than after it.
-  let (read, (spawn, open)) = rayon::join(
+  // The spawn, what stands over the places it has an actor at, and the configs' sections it names are read beside the
+  // level rather than after it: the renderer's first texture asks whether the configs reduce it.
+  let (read, (spawn, open, sections)) = rayon::join(
     || read_source(source, probe),
     || {
       let spawn: Result<Arc<LevelSpawn>, String> = read_source_spawn(source, probe);
@@ -117,7 +128,12 @@ fn open(source: &LevelSource, probe: &XrayProbe) -> TauriResult<OpenedLevel> {
         |spawn| find_open(source, probe, &list_level_start_eyes(spawn)),
       );
 
-      (spawn, open)
+      let sections: Option<Result<Arc<Ltx>, String>> = spawn
+        .as_deref()
+        .ok()
+        .map(|spawn| read_level_sections(source, configs, spawn));
+
+      (spawn, open, sections)
     },
   );
   let read: ReadLevel = read?;
@@ -141,6 +157,7 @@ fn open(source: &LevelSource, probe: &XrayProbe) -> TauriResult<OpenedLevel> {
   Ok(OpenedLevel {
     outlines,
     read,
+    sections,
     spawn,
     start,
     surfaces,
