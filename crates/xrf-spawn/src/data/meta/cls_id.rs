@@ -120,6 +120,15 @@ pub enum ClsId {
 }
 
 impl ClsId {
+  /// The class a section's `class` key names, by the engine's spelling: those xrf reads a spawned object by, none for
+  /// any other.
+  pub fn from_class_name(class: &str) -> Option<Self> {
+    match class.trim() {
+      "Z_CFIRE" => Some(Self::ZCFire),
+      _ => None,
+    }
+  }
+
   pub fn from_section(section_name: &str) -> XrfResult<Self> {
     SECTION_TO_CLS_ID.get(section_name).cloned().ok_or_else(|| {
       XrfError::new_parsing_error(format!(
@@ -134,6 +143,12 @@ mod tests {
   use xrf_error::XrfError;
 
   use super::ClsId;
+
+  #[test]
+  fn reads_a_campfire_by_its_class_name() {
+    assert_eq!(ClsId::from_class_name(" Z_CFIRE"), Some(ClsId::ZCFire));
+    assert_eq!(ClsId::from_class_name("Z_ZONE"), None);
+  }
 
   #[test]
   fn maps_known_section_to_clsid() {

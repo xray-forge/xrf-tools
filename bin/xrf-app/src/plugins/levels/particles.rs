@@ -9,9 +9,9 @@ use xrf_ltx::{Ltx, Section};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_particles::{ParticleLibrary, ParticlesFile};
 use xrf_renderer::{RenderParticlePlacement, RenderParticleSource};
-use xrf_spawn::{AlifeObject, AlifeObjectCustomZone, AlifeObjectInherited, AlifeObjectMotion};
+use xrf_spawn::{AlifeObject, AlifeObjectCustomZone, AlifeObjectInherited, AlifeObjectMotion, ClsId};
 use xrf_vfs::XrayProbe;
-use xrf_visual::{LightsPacker, VisualTransform, ZoneSphere};
+use xrf_visual::{VisualTransform, ZoneSphere};
 
 use crate::core::assets::read_located_asset;
 use crate::plugins::levels::ambients::list_ambient_particles;
@@ -168,7 +168,7 @@ fn place_zone(object: &AlifeObject, sections: &Ltx) -> Option<RenderParticlePlac
   };
   let idle: String = read("idle_particles")?;
   let source: RenderParticleSource = match (
-    read("class").as_deref() == Some(LightsPacker::CAMPFIRE_CLASS),
+    read("class").as_deref().and_then(ClsId::from_class_name) == Some(ClsId::ZCFire),
     read("disabled_particles"),
     read("enabling_particles"),
   ) {

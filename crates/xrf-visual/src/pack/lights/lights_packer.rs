@@ -5,7 +5,7 @@ use xrf_light_anim::LightAnimFile;
 use xrf_ltx::{Ltx, Section};
 use xrf_math::Vector3d;
 
-use xrf_spawn::{AlifeObject, AlifeObjectHangingLamp, AlifeObjectInherited, AlifeObjectTorridZone};
+use xrf_spawn::{AlifeObject, AlifeObjectHangingLamp, AlifeObjectInherited, AlifeObjectTorridZone, ClsId};
 
 use crate::data::lights::light_animator_description::LightAnimatorDescription;
 use crate::data::lights::light_description::LightDescription;
@@ -49,9 +49,6 @@ impl<'a> LightsPacker<'a> {
 
   /// A light's own shaft quality, intensity and distance where its owner sets none (`light::light`).
   const VOLUMETRIC_DEFAULT: f32 = 1.0;
-
-  /// `CLSID_Z_CAMPFIRE`'s class name, which a campfire's section names: its idle light switches with it.
-  pub const CAMPFIRE_CLASS: &'static str = "Z_CFIRE";
 
   /// The widest cone a spot takes here, so its projection stays finite; the engines pass any cone through.
   const MAX_CONE: f32 = 120.0 * std::f32::consts::PI / 180.0;
@@ -284,7 +281,7 @@ impl<'a> LightsPacker<'a> {
       animator_scale: 1.0 / 255.0,
       is_shadowed,
       is_level: false,
-      campfire: (section.get("class").map(str::trim) == Some(Self::CAMPFIRE_CLASS)).then_some(object.id),
+      campfire: (section.get("class").and_then(ClsId::from_class_name) == Some(ClsId::ZCFire)).then_some(object.id),
       zone_sphere: torrid
         .and_then(|zone| ZoneSphere::of_custom_zone(&zone.base, (&object.position, &object.direction)))
         .map(|sphere| sphere.to_renderer_space(height)),
