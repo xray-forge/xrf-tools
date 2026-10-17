@@ -20,11 +20,13 @@ pub enum TextureRole {
   /// A terrain detail's height, neutral at a half, the plane: the installation's own (`<detail>_height`, red), or
   /// derived from the detail's bump where it brings none.
   TerrainHeight,
+  /// A water's normal map, neutral facing straight out of the surface: two reads of it summed less one give its normal.
+  WaterNormal,
 }
 
 impl TextureRole {
   /// Every role, in declaration order, so `role as usize` indexes what is kept a role.
-  pub const ALL: [TextureRole; 9] = [
+  pub const ALL: [TextureRole; 10] = [
     TextureRole::Base,
     TextureRole::Detail,
     TextureRole::Bump,
@@ -34,6 +36,7 @@ impl TextureRole {
     TextureRole::Projector,
     TextureRole::TerrainMask,
     TextureRole::TerrainHeight,
+    TextureRole::WaterNormal,
   ];
 
   /// What a terrain detail's height is named by beside the detail, as the third-party pack names it, and its bump.
@@ -48,6 +51,7 @@ impl TextureRole {
       TextureRole::Bump => [23, 255, 128, 128],
       TextureRole::BumpCompanion => [128, 128, 128, 0],
       TextureRole::ImpostorCompanion => [128, 128, 0, 255],
+      TextureRole::WaterNormal => [128, 128, 255, 255],
     }
   }
 }

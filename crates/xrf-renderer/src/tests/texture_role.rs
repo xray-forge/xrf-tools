@@ -6,5 +6,5 @@ fn texture_roles_are_listed_in_declaration_order() {
     assert_eq!(*role as usize, index);
   }
 
-  assert_eq!(TextureRole::ALL.len(), TextureRole::TerrainHeight as usize + 1);
+  assert_eq!(TextureRole::ALL.len(), TextureRole::WaterNormal as usize + 1);
 }
