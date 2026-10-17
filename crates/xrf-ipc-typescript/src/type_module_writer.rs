@@ -12,7 +12,7 @@ use xrf_ipc::IpcConstant;
 use crate::command_typescript::CommandTypescript;
 use crate::constants::GENERATED_HEADER;
 use crate::enumerations::Enumerations;
-use crate::generated_output::write_generated;
+use crate::generated_output::{normalize_doc_indentation, write_generated};
 use crate::type_ownership::TypeOwnership;
 use crate::typescript::format::TypeScriptFormat;
 
@@ -94,7 +94,8 @@ impl TypeModuleWriter {
     (ownership, enumerations)
   }
 
-  /// One type as the frontend declares it, which is Specta's rendering plus whatever enum the type declares.
+  /// One type as the frontend declares it, which is Specta's rendering, its doc indentation normalized, plus whatever
+  /// enum the type declares.
   fn render_declaration(
     exporter: &Exporter,
     types: &Types,
@@ -105,7 +106,7 @@ impl TypeModuleWriter {
     let union: String = primitives::export(&exporter, types, iter::once(declared), "")
       .unwrap_or_else(|error| panic!("Failed to export {module} type {}: {error}", declared.name));
 
-    enumerations.render(declared, &union)
+    normalize_doc_indentation(&enumerations.render(declared, &union))
   }
 
   /// Every registered constant by the module of the crate declaring it, each module's sorted by name.
@@ -242,6 +243,11 @@ mod tests {
   #[xrf_ipc::constant]
   const EXPORTED_NAME: &str = "steps";
 
+  /// A pattern the test exports as written:
+  ///   its indent and its ` *  ` kept.
+  #[xrf_ipc::constant]
+  const EXPORTED_PATTERN: &str = "a *  b";
+
   #[test]
   fn writes_a_marked_constant_into_its_crate_s_module_with_its_doc() {
     let output: PathBuf = build_absolute_generated_test_resource_path("type-module-writer");
@@ -254,11 +260,17 @@ mod tests {
 
     assert_eq!(EXPORTED_STEPS, 7);
     assert_eq!(EXPORTED_NAME, "steps");
+    assert_eq!(EXPORTED_PATTERN, "a *  b");
     assert_eq!(
       module,
       "// Auto-generated rust bindings. Do not edit it manually.\n\n\
        /** A name the test exports beside the steps. */\n\
        export const EXPORTED_NAME: string = \"steps\";\n\n\
+       /**\n \
+       * A pattern the test exports as written:\n \
+       *   its indent and its ` *  ` kept.\n \
+       */\n\
+       export const EXPORTED_PATTERN: string = \"a *  b\";\n\n\
        /**\n \
        * Steps a test exports to its crate's module.\n \
        *\n \
