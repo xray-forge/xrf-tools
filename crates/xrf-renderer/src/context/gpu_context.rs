@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use xrf_dlss::{Dlss, DlssInstance};
-use xrf_env_flags::EnvFlags;
+use xrf_env_flags::{EnvFlag, EnvFlags};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::context::gpu_requirements::{
@@ -179,11 +179,16 @@ impl GpuContext {
     DlssInstance::new(descriptor, is_upscaled, dlss)
   }
 
-  /// The build's instance flags with each of wgpu's switches that is set applied, read as every xrf switch is rather
-  /// than by wgpu's `with_env`, which takes any value but a bare `0`, `false` and ` 0` among them, as on.
+  /// The build's instance flags with each of wgpu's switches set in the environment applied, read as any xrf switch.
   fn read_instance_flags() -> wgpu::InstanceFlags {
-    let mut flags: wgpu::InstanceFlags = wgpu::InstanceFlags::from_build_config();
+    Self::apply_instance_switches(wgpu::InstanceFlags::from_build_config(), EnvFlag::read_switch)
+  }
 
+  /// `flags` with each wgpu switch `read` answers for turned on or off as it answers.
+  pub(crate) fn apply_instance_switches(
+    mut flags: wgpu::InstanceFlags,
+    read: impl Fn(&EnvFlag) -> Option<bool>,
+  ) -> wgpu::InstanceFlags {
     for (switch, flag) in [
       (EnvFlags::WGPU_VALIDATION, wgpu::InstanceFlags::VALIDATION),
       (EnvFlags::WGPU_DEBUG, wgpu::InstanceFlags::DEBUG),
@@ -208,7 +213,7 @@ impl GpuContext {
         wgpu::InstanceFlags::STRICT_WEBGPU_COMPLIANCE,
       ),
     ] {
-      if let Some(is_on) = switch.read_switch() {
+      if let Some(is_on) = read(&switch) {
         flags.set(flag, is_on);
       }
     }
