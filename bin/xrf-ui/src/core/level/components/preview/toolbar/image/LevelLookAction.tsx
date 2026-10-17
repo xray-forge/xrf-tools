@@ -11,8 +11,14 @@ import { LevelDebandingSettings } from "@/core/level/components/preview/toolbar/
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
-import { ILevelLook } from "@/core/level/lib/look/level-look";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
+import {
+  ILevelEnhancedBloomField,
+  ILevelLookField,
+  LEVEL_ENHANCED_BLOOM_FIELDS,
+  LEVEL_LOOK_BLOOM_GROUP,
+  LEVEL_LOOK_FIELD_GROUPS,
+} from "@/core/level/lib/look/level-look-fields";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
@@ -64,178 +70,6 @@ function describeGameDefaults(defaults: AsyncState<LevelConsoleDefaults>): strin
 
   return defaults.value && !defaults.value.isShipped ? " (none shipped, the engine's)" : "";
 }
-
-/** One number of the look a slider sets. */
-interface ILookField {
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-  read: (look: ILevelLook) => number;
-  write: (look: ILevelLook, value: number) => ILevelLook;
-}
-
-/** The title of the group of the engine bloom's sliders, which the enhanced bloom's replace. */
-const BLOOM_GROUP: string = "Bloom";
-
-/** One of the enhanced bloom's strengths a slider sets. */
-interface IEnhancedBloomField {
-  key: Exclude<keyof TRenderEnhancedBloomSettings, "mode">;
-  label: string;
-}
-
-/** The enhanced bloom's sliders, in the order they are offered. */
-const ENHANCED_BLOOM_FIELDS: ReadonlyArray<IEnhancedBloomField> = [
-  { key: "threshold", label: "Threshold" },
-  { key: "exposure", label: "Brightness" },
-  { key: "blur", label: "Blur" },
-  { key: "vibrance", label: "Vibrance" },
-  { key: "sky", label: "Sky" },
-];
-
-/** The sliders, by the group they sit under. */
-const FIELD_GROUPS: ReadonlyArray<{ title: string; fields: ReadonlyArray<ILookField> }> = [
-  {
-    fields: [
-      {
-        label: "Strength",
-        max: 1,
-        min: 0,
-        read: (look) => look.exposure.amount,
-        step: 0.01,
-        write: (look, amount) => ({ ...look, exposure: { ...look.exposure, amount } }),
-      },
-      {
-        label: "Middle gray",
-        max: 2,
-        min: 0,
-        read: (look) => look.exposure.middleGray,
-        step: 0.05,
-        write: (look, middleGray) => ({ ...look, exposure: { ...look.exposure, middleGray } }),
-      },
-      {
-        label: "Luminance floor",
-        max: 1,
-        min: 0.0001,
-        read: (look) => look.exposure.lowLuminance,
-        step: 0.01,
-        write: (look, lowLuminance) => ({ ...look, exposure: { ...look.exposure, lowLuminance } }),
-      },
-      {
-        label: "Adaptation speed",
-        max: 10,
-        min: 0.01,
-        read: (look) => look.exposure.adaptation,
-        step: 0.01,
-        write: (look, adaptation) => ({ ...look, exposure: { ...look.exposure, adaptation } }),
-      },
-    ],
-    title: "Tonemap",
-  },
-  {
-    fields: [
-      {
-        label: "Sun",
-        max: 4,
-        min: 0,
-        read: (look) => look.lightScales.sun,
-        step: 0.05,
-        write: (look, sun) => ({ ...look, lightScales: { ...look.lightScales, sun } }),
-      },
-      {
-        label: "Hemisphere",
-        max: 4,
-        min: 0,
-        read: (look) => look.lightScales.hemi,
-        step: 0.05,
-        write: (look, hemi) => ({ ...look, lightScales: { ...look.lightScales, hemi } }),
-      },
-      {
-        label: "Ambient",
-        max: 4,
-        min: 0,
-        read: (look) => look.lightScales.ambient,
-        step: 0.05,
-        write: (look, ambient) => ({ ...look, lightScales: { ...look.lightScales, ambient } }),
-      },
-    ],
-    title: "Light scales",
-  },
-  {
-    fields: [
-      {
-        label: "Threshold",
-        max: 1,
-        min: 0,
-        read: (look) => look.bloom.threshold,
-        step: 0.01,
-        write: (look, threshold) => ({ ...look, bloom: { ...look.bloom, threshold } }),
-      },
-      {
-        label: "Radius",
-        max: 7,
-        min: 1,
-        read: (look) => look.bloom.radius,
-        step: 0.1,
-        write: (look, radius) => ({ ...look, bloom: { ...look.bloom, radius } }),
-      },
-      {
-        label: "Strength",
-        max: 2,
-        min: 0.05,
-        read: (look) => look.bloom.strength,
-        step: 0.05,
-        write: (look, strength) => ({ ...look, bloom: { ...look.bloom, strength } }),
-      },
-    ],
-    title: BLOOM_GROUP,
-  },
-  {
-    fields: [
-      {
-        label: "Exposure",
-        max: 4,
-        min: 0.5,
-        read: (look) => look.corrections.exposure,
-        step: 0.05,
-        write: (look, exposure) => ({ ...look, corrections: { ...look.corrections, exposure } }),
-      },
-      {
-        label: "Gamma",
-        max: 2.2,
-        min: 0.5,
-        read: (look) => look.corrections.gamma,
-        step: 0.05,
-        write: (look, gamma) => ({ ...look, corrections: { ...look.corrections, gamma } }),
-      },
-      {
-        label: "Saturation",
-        max: 2,
-        min: 0,
-        read: (look) => look.corrections.saturation,
-        step: 0.05,
-        write: (look, saturation) => ({ ...look, corrections: { ...look.corrections, saturation } }),
-      },
-      ...(["Grading red", "Grading green", "Grading blue"] as const).map(
-        (label: string, channel: number): ILookField => ({
-          label,
-          max: 1,
-          min: 0,
-          read: (look) => look.corrections.grading[channel] ?? 0,
-          step: 0.01,
-          write: (look, value) => {
-            const grading: [number, number, number] = [...look.corrections.grading];
-
-            grading[channel] = value;
-
-            return { ...look, corrections: { ...look.corrections, grading } };
-          },
-        })
-      ),
-    ],
-    title: "Image",
-  },
-];
 
 /**
  * How the level is exposed, lit, bloomed and corrected: the game's console defaults, the settings', a built-in engine's,
@@ -326,7 +160,7 @@ export function LevelLookAction({
               Enhanced bloom
             </Typography>
 
-            {ENHANCED_BLOOM_FIELDS.map((field: IEnhancedBloomField) => (
+            {LEVEL_ENHANCED_BLOOM_FIELDS.map((field: ILevelEnhancedBloomField) => (
               <RenderValueSlider
                 key={field.key}
                 label={field.label}
@@ -350,26 +184,28 @@ export function LevelLookAction({
           Reset to the preset
         </Button>
 
-        {FIELD_GROUPS.filter((group) => !isEnhancedBloom || group.title !== BLOOM_GROUP).map((group) => (
-          <div key={group.title} className={"flex flex-col gap-1"}>
-            <Typography variant={"caption"} className={"text-text-secondary"}>
-              {group.title}
-            </Typography>
+        {LEVEL_LOOK_FIELD_GROUPS.filter((group) => !isEnhancedBloom || group.title !== LEVEL_LOOK_BLOOM_GROUP).map(
+          (group) => (
+            <div key={group.title} className={"flex flex-col gap-1"}>
+              <Typography variant={"caption"} className={"text-text-secondary"}>
+                {group.title}
+              </Typography>
 
-            {group.fields.map((field: ILookField) => (
-              <RenderValueSlider
-                key={field.label}
-                label={field.label}
-                value={field.read(look)}
-                min={field.min}
-                max={field.max}
-                step={field.step}
-                format={(value: number) => formatNumber(value, 2)}
-                onChange={(value: number) => lookService.edit(field.write(look, value))}
-              />
-            ))}
-          </div>
-        ))}
+              {group.fields.map((field: ILevelLookField) => (
+                <RenderValueSlider
+                  key={field.label}
+                  label={field.label}
+                  value={field.read(look)}
+                  min={field.min}
+                  max={field.max}
+                  step={field.step}
+                  format={(value: number) => formatNumber(value, 2)}
+                  onChange={(value: number) => lookService.edit(field.write(look, value))}
+                />
+              ))}
+            </div>
+          )
+        )}
 
         <LevelDebandingSettings className={"flex flex-col gap-2"} />
       </div>
