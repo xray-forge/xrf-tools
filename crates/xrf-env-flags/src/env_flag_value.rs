@@ -36,7 +36,8 @@ impl EnvFlagValue {
           None
         }
       }
-      Self::ZeroOffSwitch => Some(String::from(if trimmed == "0" { "off" } else { "on" })),
+      // Untrimmed, as wgpu compares it: a padded ` 0` turns the switch on.
+      Self::ZeroOffSwitch => Some(String::from(if raw == "0" { "off" } else { "on" })),
       Self::Choice(names) => names
         .iter()
         .find(|name| name.eq_ignore_ascii_case(trimmed))

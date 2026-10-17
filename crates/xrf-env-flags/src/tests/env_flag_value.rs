@@ -20,6 +20,9 @@ fn reads_wgpus_switches_as_wgpu_does() {
   assert_eq!(EnvFlagValue::ZeroOffSwitch.interpret("0").as_deref(), Some("off"));
   assert_eq!(EnvFlagValue::ZeroOffSwitch.interpret("false").as_deref(), Some("on"));
   assert_eq!(EnvFlagValue::ZeroOffSwitch.interpret("").as_deref(), Some("on"));
+  // wgpu compares the value as set, so a padded nought, or one a batch file ended with a carriage return, is on.
+  assert_eq!(EnvFlagValue::ZeroOffSwitch.interpret(" 0").as_deref(), Some("on"));
+  assert_eq!(EnvFlagValue::ZeroOffSwitch.interpret("0\r").as_deref(), Some("on"));
 }
 
 #[test]
