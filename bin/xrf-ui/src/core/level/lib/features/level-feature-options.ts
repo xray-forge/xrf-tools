@@ -145,8 +145,25 @@ export const LEVEL_ANTIALIASING_MODES: ReadonlyArray<RenderAntialiasing> = Objec
 /** Every key of a group a view may set, as a table the compiler holds complete: a key left out is never stored. */
 type TKeyTable<T> = { readonly [P in keyof Required<T>]: true };
 
+/** The feature groups a view sets over the settings for itself, each behind a toolbar toggle of its own. */
+export type TLevelFeatureKey = "ambientOcclusion" | "grass" | "lights" | "shadows" | "water";
+
+/** The groups no toolbar toggle turns off, whose own mode does, of which a view may set every setting. */
+export type TLevelModeFeatureKey =
+  | "debanding"
+  | "enhancedBloom"
+  | "fog"
+  | "glass"
+  | "indirectLight"
+  | "parallax"
+  | "rain"
+  | "reflections"
+  | "volumetric";
+
 /** Each group's settings a view may set, which is all a stored view keeps. */
-const LEVEL_FEATURE_KEYS: { readonly [K in TLevelFeatureKey]: TKeyTable<ILevelFeatureOptions[K]> } = {
+const LEVEL_GROUP_KEYS: {
+  readonly [K in TLevelFeatureKey | TLevelModeFeatureKey]: TKeyTable<ILevelFeatureOptions[K]>;
+} = {
   ambientOcclusion: { method: true, quality: true, radius: true, strength: true, vbao: true },
   grass: {
     density: true,
@@ -171,22 +188,6 @@ const LEVEL_FEATURE_KEYS: { readonly [K in TLevelFeatureKey]: TKeyTable<ILevelFe
     waveHeight: true,
     waveSpeed: true,
   },
-};
-
-/** The groups no toolbar toggle turns off, whose own mode does, of which a view may set every setting. */
-export type TLevelModeFeatureKey =
-  | "debanding"
-  | "enhancedBloom"
-  | "fog"
-  | "glass"
-  | "indirectLight"
-  | "parallax"
-  | "rain"
-  | "reflections"
-  | "volumetric";
-
-/** Each such group's settings a view may set. */
-const LEVEL_MODE_FEATURE_KEYS: { readonly [K in TLevelModeFeatureKey]: TKeyTable<ILevelFeatureOptions[K]> } = {
   debanding: { mode: true, quality: true, radius: true },
   enhancedBloom: { blur: true, exposure: true, mode: true, sky: true, threshold: true, vibrance: true },
   fog: { density: true, height: true, mode: true, scattering: true, skyFade: true, sunColor: true },
@@ -228,21 +229,11 @@ const LEVEL_MODE_FEATURE_KEYS: { readonly [K in TLevelModeFeatureKey]: TKeyTable
 export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
   const overrides: IRenderFeatureOverrides = toRenderFeatureChoice({ overrides: stored }).overrides;
 
-  function pick<K extends TLevelFeatureKey>(key: K): ILevelFeatureOptions[K] {
+  function pick<K extends TLevelFeatureKey | TLevelModeFeatureKey>(key: K): ILevelFeatureOptions[K] {
     const group: Record<string, unknown> = (overrides[key] ?? {}) as Record<string, unknown>;
 
     return Object.fromEntries(
-      Object.keys(LEVEL_FEATURE_KEYS[key])
-        .filter((it: string) => group[it] !== undefined)
-        .map((it: string) => [it, group[it]])
-    ) as ILevelFeatureOptions[K];
-  }
-
-  function pickModeFeature<K extends TLevelModeFeatureKey>(key: K): ILevelFeatureOptions[K] {
-    const group: Record<string, unknown> = (overrides[key] ?? {}) as Record<string, unknown>;
-
-    return Object.fromEntries(
-      Object.keys(LEVEL_MODE_FEATURE_KEYS[key])
+      Object.keys(LEVEL_GROUP_KEYS[key])
         .filter((it: string) => group[it] !== undefined)
         .map((it: string) => [it, group[it]])
     ) as ILevelFeatureOptions[K];
@@ -253,16 +244,16 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
   return {
     ambientOcclusion: pick("ambientOcclusion"),
     antialiasing: antialiasing && LEVEL_ANTIALIASING_MODES.includes(antialiasing) ? antialiasing : null,
-    debanding: pickModeFeature("debanding"),
-    enhancedBloom: pickModeFeature("enhancedBloom"),
-    fog: pickModeFeature("fog"),
-    glass: pickModeFeature("glass"),
+    debanding: pick("debanding"),
+    enhancedBloom: pick("enhancedBloom"),
+    fog: pick("fog"),
+    glass: pick("glass"),
     grass: pick("grass"),
-    indirectLight: pickModeFeature("indirectLight"),
+    indirectLight: pick("indirectLight"),
     lights: pick("lights"),
-    parallax: pickModeFeature("parallax"),
-    rain: pickModeFeature("rain"),
-    reflections: pickModeFeature("reflections"),
+    parallax: pick("parallax"),
+    rain: pick("rain"),
+    reflections: pick("reflections"),
     shadows: pick("shadows"),
     upscaling: Object.fromEntries(
       (["scale", "sharpening", "dlssPreset", "isRayReconstructed"] as const)
@@ -270,13 +261,10 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
         .map((key) => [key, overrides.upscaling?.[key]])
     ),
     output: toLevelOutputOptions(stored),
-    volumetric: pickModeFeature("volumetric"),
+    volumetric: pick("volumetric"),
     water: pick("water"),
   };
 }
-
-/** The feature groups a view sets over the settings for itself, each behind a toolbar toggle of its own. */
-export type TLevelFeatureKey = "ambientOcclusion" | "grass" | "lights" | "shadows" | "water";
 
 /** A feature group as a view resolves it: what it draws with while on, and whether the settings let it be. */
 export interface ILevelFeatureState<T> {
