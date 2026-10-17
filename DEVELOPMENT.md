@@ -92,8 +92,8 @@ CI follows because it runs the same tasks.
 
 ## Prerequisites
 
-See the [build requirements](./README.md#build-from-source). The desktop app needs the Rust toolchain, Node.js, pnpm,
-and the Tauri CLI. The CLI-only tasks need Rust and Cargo Make.
+See the [build requirements](./README.md#build-from-source). The desktop app needs the Rust toolchain, Node.js and
+pnpm; the Tauri CLI comes locked with `bin/xrf-ui`. The CLI-only tasks need Rust and Cargo Make.
 
 The renderer's binary resources (`crates/xrf-renderer/assets`: the DXC compiler and the water maps) are stored in Git
 LFS. Install it before cloning (`git lfs install`), or run `git lfs pull` after: without it the tree holds pointer
@@ -114,5 +114,13 @@ on an RTX GPU, with either graphics API. `dev-app` and `build-app` build without
   `resources/renderer/dlss/` (`bin/xrf-app/tauri.dlss.conf.json`). NVIDIA's licence lets them ship only inside the
   application, under terms as protective as its own, so they are never committed.
 - wgpu and naga come from the `xray-forge/xrf-wgpu` fork (`[patch.crates-io]` in `Cargo.toml`): a wgpu release with
-  one commit on top that exposes the D3D12 command list a HAL encoder records into, which NGX records DLSS into. Moving
-  to a newer wgpu means rebasing that commit onto its tag in the fork and pinning the new commit.
+  two commits on top, one exposing the D3D12 command list a HAL encoder records into, which NGX records DLSS into, and
+  one refitting bottom-level acceleration structures in place where they allow and ask for it. Moving to a newer wgpu
+  means rebasing those commits onto its tag in the fork and pinning the new one.
+
+### Tracy
+
+A capture build for [Tracy](https://github.com/wolfpld/tracy) is the `profiling` profile (release code with line
+tables) with the app's `tracy` feature, the renderer's zones, GPU zones and frame marks, built with the `tracy`
+profile into a target folder of its own, so switching never rebuilds the others:
+`cargo build -p xrf-app --profile tracy --features tracy,dlss`. Tracy's profiler connects to the running app.
