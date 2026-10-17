@@ -14,6 +14,9 @@ pub struct FogScatteringUniform {
   pub intensity: f32,
   /// The clock the blur's debanding noise turns with, in seconds.
   pub time: f32,
+  /// Whether the stage reads the scene as it is held, which it takes as it is shown: the first blur.
+  pub is_reading_scene: u32,
+  pub _pad: u32,
 }
 
 impl FogScatteringUniform {
@@ -26,12 +29,15 @@ impl FogScatteringUniform {
       .then(|| Self::stages(size, fog.scattering, time))
   }
 
-  /// The quarter-size blur, the half-size blur, then the scattering at the frame's own size.
+  /// The quarter-size blur, the half-size blur, then the scattering at the frame's own size; the first blur reads the
+  /// scene, so the blurs hold it as shown and their eight bits clip nothing the tonemap would have kept.
   pub fn stages((width, height): (u32, u32), intensity: f32, time: f32) -> [Self; 3] {
     [4, 2, 1].map(|ratio: u32| Self {
       size: Vec2::new(width.div_ceil(ratio) as f32, height.div_ceil(ratio) as f32),
       intensity: intensity.clamp(0.0, 1.0),
       time,
+      is_reading_scene: u32::from(ratio == 4),
+      _pad: 0,
     })
   }
 }

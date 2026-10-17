@@ -4,10 +4,10 @@
 #import "common/lighting"
 #import "common/debanding"
 
-// The enhanced fog's scattering, over the finished scene before it blooms: the scene blurred to a quarter of its size,
-// that blurred again to half, then the blur, debanded, laid over the scene wherever it is brighter, by how much
-// enhanced fog lies there squared and by how alike the two are, so a lit window does not glow into the dark fog around
-// it. The fog's own colour is already in the scene; this carries its light into the fog.
+// The enhanced fog's scattering, over the finished scene before it blooms: the scene as shown blurred to a quarter of
+// its size, that blurred again to half, then the blur, debanded, laid over the scene wherever it is brighter, by how
+// much enhanced fog lies there squared and by how alike the two are, so a lit window does not glow into the dark fog
+// around it. The fog's own colour is already in the scene; this carries its light into the fog.
 
 // The image a stage blurs or scatters into, the blur a stage before it left, their sampler, the depth the fog is
 // measured by, the lighting and the stage's own target size, strength and clock.
@@ -24,7 +24,8 @@ const SCATTER_DEBAND_RADIUS: f32 = 48.0;
 // The spiral's start, the same at every pixel: interleaved gradient noise at a texel's centre, a quarter turn of it.
 const SPIRAL_START: f32 = 1.4640113;
 
-// A blur stage: twelve reads of the source spiralling out from the pixel, each a target's texel times its turn further.
+// A blur stage: twelve reads of the source spiralling out from the pixel, each a target's texel times its turn further;
+// the scene's read as it is shown.
 @fragment
 fn fs_scatter_blur(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let size: vec2<f32> = scattering.size;
@@ -37,7 +38,9 @@ fn fs_scatter_blur(in: FullscreenVarying) -> @location(0) vec4<f32> {
   for (var index: i32 = 0; index < SPIRAL_READS; index++) {
     reach += 1.0 / reach;
     offset = offset * SPIRAL_TURN;
-    sum += textureSampleLevel(source, source_sampler, uv + offset * (reach - 1.0) * pixel, 0.0).rgb;
+    let read: vec3<f32> = textureSampleLevel(source, source_sampler, uv + offset * (reach - 1.0) * pixel, 0.0).rgb;
+
+    sum += select(read, scene_shown(read), scattering.is_reading_scene != 0u);
   }
 
   return vec4<f32>(sum / f32(SPIRAL_READS), 1.0);
@@ -62,8 +65,8 @@ fn fs_scattering(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let fog: f32 = fog_amount_at(lighting, position, height);
   let uv: vec2<f32> = in.clip.xy / scattering.size;
   let read: vec3<f32> = textureSampleLevel(blurred, source_sampler, uv, 0.0).rgb;
-  let blur: vec3<f32> = scene_shown(debanded(blurred, source_sampler, read, uv, 1.0 / scattering.size,
-    SCATTER_DEBAND_PASSES, SCATTER_DEBAND_RADIUS, scattering.time));
+  let blur: vec3<f32> = debanded(blurred, source_sampler, read, uv, 1.0 / scattering.size, SCATTER_DEBAND_PASSES,
+    SCATTER_DEBAND_RADIUS, scattering.time);
   let alike: f32 = dot(blur, saturate(image));
   let share: f32 = fog * fog * alike * alike;
   let scattered: vec3<f32> = mix(image, max(image, blur),

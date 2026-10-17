@@ -238,6 +238,7 @@ struct FogScattering {
   size: vec2<f32>,
   intensity: f32,
   time: f32,
+  is_reading_scene: u32,
 }
 
 struct PuddleSites {
