@@ -45,7 +45,11 @@ export function SettingsRenderSection(): ReactElement {
             label={
               <span className={"flex items-center gap-1.5"}>
                 {it.label}
-                {isCustomRenderSettingsTab(it, renderSettingsService.rendererChoice) ? (
+                {isCustomRenderSettingsTab(
+                  it,
+                  renderSettingsService.rendererFeatures,
+                  renderSettingsService.rendererChoice.preset
+                ) ? (
                   <span
                     aria-label={"changed from the preset"}
                     className={"size-1.5 rounded-full bg-primary"}

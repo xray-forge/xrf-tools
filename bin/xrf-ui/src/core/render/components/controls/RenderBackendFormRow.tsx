@@ -1,22 +1,18 @@
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import {
-  RenderBackend,
-  RenderBackendAvailability,
-  RenderGpu,
-  RenderGpuDescription,
-} from "@/core/ipc/types/xrf-renderer";
+import { RenderBackend, RenderBackendAvailability, RenderGpu } from "@/core/ipc/types/xrf-renderer";
 import {
   describeRenderBackend,
+  describeRenderDrawing,
   getForcedRenderBackend,
+  IRenderDrawing,
   isRenderBackendAvailable,
   RENDER_BACKEND_AUTO,
   RENDER_BACKEND_CHOICES,
-  resolveRenderBackend,
+  resolveRenderDrawing,
   TRenderBackendChoice,
 } from "@/core/render/lib/settings/render-backend-choice";
-import { resolveRenderGpu } from "@/core/render/lib/settings/render-gpu-choice";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -33,23 +29,20 @@ function describeBackendChoice(
 ): string {
   const lead: string =
     "The API every viewport draws with. Auto takes the first that works; moving to another API restarts the " +
-    "renderer and streams the level in again.";
+    "renderer and reads the level in again.";
 
   if (availability === null) {
     return lead;
   }
 
-  const drawn: Nullable<RenderBackend> = resolveRenderBackend(value, availability);
+  const drawing: Nullable<IRenderDrawing> = resolveRenderDrawing(value, gpu, availability);
 
-  if (drawn === null) {
+  if (drawing === null) {
     return `${lead} No graphics API works on this machine.`;
   }
 
-  const drawnGpu: Nullable<RenderGpuDescription> = resolveRenderGpu(
-    gpu,
-    availability.find((it: RenderBackendAvailability) => it.backend === drawn)
-  );
-  const drawnOn: string = `Drawing with ${describeRenderBackend(drawn)} on ${drawnGpu?.name ?? "the GPU"}.`;
+  const drawn: RenderBackend = drawing.backend;
+  const drawnOn: string = `Drawing with ${describeRenderDrawing(drawing)}.`;
   const forced: Nullable<RenderBackend> = getForcedRenderBackend(availability);
 
   if (forced !== null) {

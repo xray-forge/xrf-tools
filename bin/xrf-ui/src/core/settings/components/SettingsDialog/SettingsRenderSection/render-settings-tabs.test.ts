@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
+import { resolveRenderFeatures } from "@/core/render/lib/settings/render-feature-choice";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
@@ -41,8 +42,10 @@ describe("render settings tabs", () => {
       preset: ERenderPreset.BASE,
     };
 
-    expect(isCustomRenderSettingsTab(getTab(ERenderSettingsTab.WORLD), choice)).toBe(true);
-    expect(isCustomRenderSettingsTab(getTab(ERenderSettingsTab.IMAGE), choice)).toBe(false);
-    expect(isCustomRenderSettingsTab(getTab(ERenderSettingsTab.DISPLAY), choice)).toBe(false);
+    const features = resolveRenderFeatures(choice);
+
+    expect(isCustomRenderSettingsTab(getTab(ERenderSettingsTab.WORLD), features, choice.preset)).toBe(true);
+    expect(isCustomRenderSettingsTab(getTab(ERenderSettingsTab.IMAGE), features, choice.preset)).toBe(false);
+    expect(isCustomRenderSettingsTab(getTab(ERenderSettingsTab.DISPLAY), features, choice.preset)).toBe(false);
   });
 });

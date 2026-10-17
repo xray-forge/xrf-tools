@@ -1,6 +1,13 @@
 import { Nullable } from "@xrf/types";
 
-import { ERenderBackend, RenderBackend, RenderBackendAvailability } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderBackend,
+  RenderBackend,
+  RenderBackendAvailability,
+  RenderGpu,
+  RenderGpuDescription,
+} from "@/core/ipc/types/xrf-renderer";
+import { resolveRenderGpu } from "@/core/render/lib/settings/render-gpu-choice";
 
 /** The choice that names no backend: the renderer starts on the first that works. */
 export const RENDER_BACKEND_AUTO = "auto";
@@ -91,6 +98,47 @@ export function resolveRenderBackend(
   );
 
   return first ? first.backend : null;
+}
+
+/** The graphics API the renderer draws with and the GPU it draws on. */
+export interface IRenderDrawing {
+  backend: RenderBackend;
+  /** The GPU, or null where the API names none for the choice. */
+  gpu: Nullable<RenderGpuDescription>;
+}
+
+/**
+ * @param choice - The graphics API the settings ask for.
+ * @param gpu - The GPU the settings ask for, or null for the automatic one.
+ * @param availability - What each backend can do on this machine, in the renderer's order.
+ * @returns What draws, as the renderer resolves the choice; null where no graphics API works here.
+ */
+export function resolveRenderDrawing(
+  choice: TRenderBackendChoice,
+  gpu: Nullable<RenderGpu>,
+  availability: ReadonlyArray<RenderBackendAvailability>
+): Nullable<IRenderDrawing> {
+  const backend: Nullable<RenderBackend> = resolveRenderBackend(choice, availability);
+
+  if (backend === null) {
+    return null;
+  }
+
+  return {
+    backend,
+    gpu: resolveRenderGpu(
+      gpu,
+      availability.find((it: RenderBackendAvailability) => it.backend === backend)
+    ),
+  };
+}
+
+/**
+ * @param drawing - What draws.
+ * @returns The API and the GPU by name.
+ */
+export function describeRenderDrawing(drawing: IRenderDrawing): string {
+  return `${describeRenderBackend(drawing.backend)} on ${drawing.gpu?.name ?? "the GPU"}`;
 }
 
 /**

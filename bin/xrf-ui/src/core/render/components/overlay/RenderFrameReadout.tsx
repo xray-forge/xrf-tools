@@ -2,19 +2,15 @@ import { formatCount, formatMilliseconds } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { Fragment, ReactElement, ReactNode } from "react";
 
-import { ERenderAntialiasing, RenderFrameReport, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
+import { RenderFrameReport, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
-import { describeRenderAntialiasing } from "@/core/render/lib/features/render-antialiasing-choices";
+import {
+  describeRenderAntialiasing,
+  isTemporalAntialiasing,
+} from "@/core/render/lib/features/render-antialiasing-choices";
 import { groupRenderPassCosts, IRenderPassGroup } from "@/core/render/lib/frame/render-pass-groups";
 import { abbreviateRenderBackend } from "@/core/render/lib/settings/render-backend-choice";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-
-/** The antialiasing modes that resolve the frame temporally, upscaling it to the output as they do. */
-const TEMPORAL_ANTIALIASING: ReadonlySet<string> = new Set<string>([
-  ERenderAntialiasing.TAA,
-  ERenderAntialiasing.FSR,
-  ERenderAntialiasing.DLSS,
-]);
 
 /**
  * Where the scene is drawn or resolved at another size than the viewport's: what takes it from there and to which
@@ -22,7 +18,7 @@ const TEMPORAL_ANTIALIASING: ReadonlySet<string> = new Set<string>([
  * where it is the viewport's own size, which the line above says; none at the viewport's own size.
  */
 function toScalingLine(report: RenderFrameReport): Nullable<string> {
-  const isTemporal: boolean = TEMPORAL_ANTIALIASING.has(report.antialiasing);
+  const isTemporal: boolean = isTemporalAntialiasing(report.antialiasing);
   const target: string = isTemporal
     ? `${report.outputWidth} × ${report.outputHeight}`
     : `${report.width} × ${report.height}`;
@@ -80,12 +76,14 @@ export function RenderFrameReadout({
   corner = "top-left",
   children,
 }: IRenderFrameReadoutProps): ReactElement {
+  const scaling: Nullable<string> = toScalingLine(report);
+
   return (
     <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={corner}>
       <div>{`${(report.framesPerSecond ?? 0).toFixed(0)} fps · ${formatMilliseconds(report.frameTime ?? 0)}`}</div>
       <div>{toDrawnLine(report)}</div>
       <div>{`${report.width} × ${report.height}`}</div>
-      {toScalingLine(report) ? <div>{toScalingLine(report)}</div> : null}
+      {scaling ? <div>{scaling}</div> : null}
 
       {children}
 

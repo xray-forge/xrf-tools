@@ -63,14 +63,19 @@ export function isRenderFeatureChoiceCustom(choice: IRenderFeatureChoice): boole
 }
 
 /**
- * @param choice - A preset and what was changed on top of it.
+ * @param features - Every feature as a choice resolves it.
+ * @param preset - The preset that choice stands on.
  * @param group - One feature group.
  * @returns Whether that group differs from the preset's, which a settings view marks where the group is set.
  */
-export function isRenderFeatureCustom(choice: IRenderFeatureChoice, group: keyof IRenderFeatureSettings): boolean {
+export function isRenderFeatureCustom(
+  features: IRenderFeatureSettings,
+  preset: ERenderPreset,
+  group: keyof IRenderFeatureSettings
+): boolean {
   const node: TSchemaNode = (SCHEMA as { readonly [key: string]: TSchemaNode })[group];
 
-  return !isSame(node, resolveRenderFeatures(choice)[group], RENDER_PRESETS[choice.preset][group]);
+  return !isSame(node, features[group], RENDER_PRESETS[preset][group]);
 }
 
 /**
