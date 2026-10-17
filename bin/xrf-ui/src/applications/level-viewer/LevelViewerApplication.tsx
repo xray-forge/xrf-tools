@@ -12,7 +12,7 @@ import { LevelViewerLayout } from "./components/LevelViewerLayout";
 import { LevelViewerOpenForm } from "./components/LevelViewerOpenForm";
 
 /**
- * Fly a compiled level, streaming its sectors as the camera reaches them.
+ * Fly a compiled level, shown once every sector of it is read.
  */
 export function LevelViewerApplication({
   "data-testid": dataTestId = "level-viewer-application",

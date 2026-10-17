@@ -106,7 +106,7 @@ export function LevelViewerOpenForm({
       title={"Open compiled level"}
       description={
         isListed
-          ? "Opens the level's structure and streams its geometry as you fly. Nothing is written."
+          ? "Opens the level's structure, then reads all of its geometry before showing it. Nothing is written."
           : "Lists the levels the roots hold, archives included. Nothing is written."
       }
       error={listService.levels.error?.message ?? loadService.level.error?.message}

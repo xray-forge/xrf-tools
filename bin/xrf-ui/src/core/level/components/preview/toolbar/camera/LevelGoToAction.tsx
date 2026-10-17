@@ -23,9 +23,9 @@ export function LevelGoToAction({
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
 
-  // Where the camera is as the popover opens, which the fields start at; null before the viewport has drawn.
   const isDisabled: boolean = loadService.level.value === null;
 
+  // Where the camera is as the popover opens, which the fields start at; null before the viewport has drawn.
   const readCamera = useCallback((): Nullable<ILevelCamera> => viewportService.camera, [viewportService]);
 
   return (

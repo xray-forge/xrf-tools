@@ -16,8 +16,8 @@ export interface ILevelManualWeatherLtxInput {
 }
 
 /**
- * A keyframe set by hand as a weather config's `[HH:MM:SS]` section, with the keys the engine target reads; `sun` and
- * `ambient` are the file's own and are left out.
+ * A keyframe set by hand as a weather config's `[HH:MM:SS]` section, with the keys the engine target reads; `ambient`
+ * is the file's own and is left out.
  *
  * @param input - The keyframe, its time and the engine target.
  * @returns The section's text.

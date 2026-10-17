@@ -40,12 +40,12 @@ export function LevelGoToForm({
   const [texts, setTexts] = useState<Record<keyof ILevelGoTo, string>>(() => toLevelGoToTexts(start));
   const parsed: Nullable<ILevelGoTo> = parseLevelGoToTexts(texts);
 
-  const onPaste = useCallback(
+  const onReadout = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      const pasted: Nullable<ILevelGoTo> = parseLevelGoTo(event.target.value, parsed ?? start);
+      const readout: Nullable<ILevelGoTo> = parseLevelGoTo(event.target.value, parsed ?? start);
 
-      if (pasted) {
-        setTexts(toLevelGoToTexts(pasted));
+      if (readout) {
+        setTexts(toLevelGoToTexts(readout));
       }
     },
     [parsed, start]
@@ -78,7 +78,7 @@ export function LevelGoToForm({
         margin={"dense"}
         label={"Paste the readout"}
         placeholder={"x 0 y 0 z 0 h 0 p 0"}
-        onChange={onPaste}
+        onChange={onReadout}
       />
 
       <div className={"grid grid-cols-3 gap-x-2"}>

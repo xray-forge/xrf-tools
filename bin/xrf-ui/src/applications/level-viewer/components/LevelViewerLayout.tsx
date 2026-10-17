@@ -38,7 +38,7 @@ interface ILevelViewerLayoutProps extends BaseComponentProps {
    */
   pending?: Nullable<string>;
   subtitle?: ReactNode;
-  /** Whether the level itself is being opened, which is a different wait from streaming its sectors. */
+  /** Whether the level itself is being opened, which is a different wait from reading its sectors. */
   isLoading?: boolean;
   error?: string;
   /** Draws the viewport, for a surface with no GPU to give one - a test, or a headless render. */
