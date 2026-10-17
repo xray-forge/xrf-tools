@@ -20,8 +20,8 @@ const LINKS: usize = 4;
 pub struct VisualPoser;
 
 impl VisualPoser {
-  /// The visual standing in `pose`. A submesh without skin, or a visual without a pose or its bones' binds, stands as
-  /// stored.
+  /// The visual standing in `pose`. A submesh without skin, or a visual without a pose of its own bones or their binds,
+  /// stands as stored.
   pub fn pose(package: &VisualPackage, pose: Option<&VisualRestPose>) -> VisualPackage {
     let skins: Option<Vec<VisualTransform>> = pose.and_then(|pose| Self::get_skins(&package.description, pose));
     let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
@@ -52,8 +52,13 @@ impl VisualPoser {
   }
 
   /// Each bone's pose after the inverse of its bind: what takes a bound vertex to where the bone stands. `None` where a
-  /// bone carries no bind.
+  /// bone carries no bind, or the pose stands another count of bones: the engine poses every bone, and the packer has
+  /// held each link to one.
   fn get_skins(description: &VisualDescription, pose: &VisualRestPose) -> Option<Vec<VisualTransform>> {
+    if pose.transforms.len() != description.bones.len() {
+      return None;
+    }
+
     description
       .bones
       .iter()

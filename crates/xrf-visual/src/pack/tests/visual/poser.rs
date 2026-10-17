@@ -88,3 +88,13 @@ fn stands_a_visual_without_a_pose_as_stored() {
   assert_eq!(positions(&posed), positions(&package));
   assert_eq!(posed.description.buffer_length as usize, posed.buffer.len());
 }
+
+#[test]
+fn stands_a_visual_as_stored_for_a_pose_of_another_count_of_bones() {
+  let package: VisualPackage = skinned_triangle();
+  let short: VisualRestPose = VisualRestPose::new(vec![String::from("root")], vec![raised().transforms[0].clone()])
+    .expect("one transform for one bone");
+  let posed: VisualPackage = VisualPoser::pose(&package, Some(&short));
+
+  assert_eq!(positions(&posed), positions(&package));
+}
