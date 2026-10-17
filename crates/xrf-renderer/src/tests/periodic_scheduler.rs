@@ -1,8 +1,8 @@
 use xrf_renderer_core::GraphTaggedTime;
 
-use crate::frame::periodic_job::PeriodicJob;
-use crate::frame::periodic_scheduler::PeriodicScheduler;
-use crate::frame::periodic_ticket::PeriodicTicket;
+use crate::frame::periodic::periodic_job::PeriodicJob;
+use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 
 static PASSES: [&str; 2] = ["job cull", "job draw"];
 static OTHER: [&str; 1] = ["other draw"];

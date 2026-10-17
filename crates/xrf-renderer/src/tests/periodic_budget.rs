@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::contract::render_frame_rate::RenderFrameRate;
-use crate::frame::periodic_budget::PeriodicBudget;
+use crate::frame::periodic::periodic_budget::PeriodicBudget;
 
 const FLOOR: f32 = 0.5;
 

@@ -9,7 +9,7 @@ use xrf_test_utils::gpu::skip_without_gpu;
 use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_texture_state::RenderTextureState;
-use crate::frame::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;

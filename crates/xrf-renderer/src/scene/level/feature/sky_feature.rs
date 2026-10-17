@@ -6,9 +6,9 @@ use xrf_renderer_core::{
 
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::frame::periodic_job::PeriodicJob;
-use crate::frame::periodic_scheduler::PeriodicScheduler;
-use crate::frame::periodic_ticket::PeriodicTicket;
+use crate::frame::periodic::periodic_job::PeriodicJob;
+use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::frame::sky_prefilter::SkyPrefilter;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_target_handles::ViewTargetHandles;

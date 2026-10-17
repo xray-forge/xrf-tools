@@ -4,7 +4,7 @@ use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_frame_rate::RenderFrameRate;
 use crate::contract::render_gpu::RenderGpu;
 use crate::contract::render_graph_settings::RenderGraphSettings;
-use crate::frame::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 
 /// GPU milliseconds a frame gives the work drawn once in so many frames that may wait, unless the settings say
 /// otherwise.

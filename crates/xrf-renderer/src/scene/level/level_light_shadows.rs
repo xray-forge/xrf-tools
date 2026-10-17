@@ -12,9 +12,9 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::periodic_job::PeriodicJob;
-use crate::frame::periodic_scheduler::PeriodicScheduler;
-use crate::frame::periodic_ticket::PeriodicTicket;
+use crate::frame::periodic::periodic_job::PeriodicJob;
+use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::lighting::light_basis::LightBasis;
 use crate::lighting::light_shadow_size::{

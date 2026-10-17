@@ -2,7 +2,7 @@ use glam::Vec4;
 use xrf_renderer_core::{FrameGraph, GraphBindings, GraphRuntime, GraphTexture};
 
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
 use crate::pass::cover_pyramid_level_parameters::CoverPyramidLevelParameters;

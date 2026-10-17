@@ -8,9 +8,9 @@ use xrf_error::XrfResult;
 
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_texture_state::RenderTextureState;
-use crate::frame::periodic_job::PeriodicJob;
-use crate::frame::periodic_scheduler::PeriodicScheduler;
-use crate::frame::periodic_ticket::PeriodicTicket;
+use crate::frame::periodic::periodic_job::PeriodicJob;
+use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
+use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::host::render_asset_source::{RenderAssetSource, get_texture_name};
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::scene::texture::texture_role::TextureRole;
