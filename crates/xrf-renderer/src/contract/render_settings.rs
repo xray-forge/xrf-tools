@@ -4,12 +4,11 @@ use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_frame_rate::RenderFrameRate;
 use crate::contract::render_gpu::RenderGpu;
 use crate::contract::render_graph_settings::RenderGraphSettings;
-use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 
 /// GPU milliseconds a frame gives the work drawn once in so many frames that may wait, unless the settings say
 /// otherwise.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub const RENDER_DEFAULT_PERIODIC_BUDGET: f32 = PeriodicScheduler::DEFAULT_BUDGET;
+pub const RENDER_DEFAULT_PERIODIC_BUDGET: f32 = 0.5;
 
 /// What every viewport of the renderer draws with.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
