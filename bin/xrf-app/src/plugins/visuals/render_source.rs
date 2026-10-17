@@ -175,23 +175,18 @@ impl RenderLevelSource for VisualRenderSource {
         .map_err(XrfError::new_asset_error)?
         .map_err(XrfError::new_asset_error)?,
     };
-    let floats: usize = posed.description.floats_per_bone as usize;
-
-    // Twelve floats a bone, whatever the bake's stride: the basis' three columns, then the translation.
-    let transforms: Vec<f32> = if floats == FLOATS_PER_BONE {
-      posed.transforms
-    } else {
-      posed
-        .transforms
-        .chunks(floats.max(1))
-        .flat_map(|bone| bone.iter().copied().chain(std::iter::repeat(0.0)).take(FLOATS_PER_BONE))
-        .collect()
-    };
+    // Twelve floats a bone, as the renderer reads them: the basis' three columns, then the translation.
+    if posed.description.floats_per_bone as usize != FLOATS_PER_BONE {
+      return Err(XrfError::new_invalid_error(format!(
+        "Motion '{name}' is baked at {} floats a bone, not {FLOATS_PER_BONE}",
+        posed.description.floats_per_bone
+      )));
+    }
 
     Ok(RenderMotion {
       frames: posed.description.frame_count,
       bones: posed.description.bone_count,
-      transforms,
+      transforms: posed.transforms,
     })
   }
 }
