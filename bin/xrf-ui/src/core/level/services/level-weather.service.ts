@@ -105,7 +105,8 @@ export class LevelWeatherService {
   private sessionId: Nullable<string> = null;
   /** What the level's weather is remembered under. */
   private memoryKey: Nullable<string> = null;
-  /** The level open, which a cycle is read against. */
+  /** The level open, which a cycle is read against and the engine is named by. */
+  @RefObservable()
   private selected: Nullable<SessionSnapshot<SelectedLevelDescription>> = null;
   /** The cycle the level was last played with, kept until one plays so a level left early forgets nothing. */
   private remembered: string = "";
@@ -199,7 +200,9 @@ export class LevelWeatherService {
 
     this.sessionId = selected.sessionId;
     this.memoryKey = memoryKey;
-    this.selected = selected;
+    runInAction(() => {
+      this.selected = selected;
+    });
 
     if (memory) {
       this.restore(memory);
