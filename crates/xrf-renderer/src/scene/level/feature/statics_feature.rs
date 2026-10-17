@@ -70,6 +70,11 @@ impl StaticsFeature {
     self.history = None;
   }
 
+  /// Forgets the camera a frame that was never submitted kept as the pyramid's: the pyramid never reduced its depth.
+  pub fn abandon_frame(&mut self) {
+    self.history = None;
+  }
+
   /// Takes this frame's cull of `statics` through `view`, a lens `field_of_view` degrees tall over a frame `width` by
   /// `height`, and what the occlusion tests against.
   pub fn prepare(

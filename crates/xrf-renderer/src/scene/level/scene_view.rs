@@ -1513,6 +1513,8 @@ impl SceneView {
   /// periodic work it drew, which draws again.
   pub fn abandon_frame(&mut self) {
     self.features.statics.abandon_stats();
+    self.features.statics.abandon_frame();
+    self.features.resolve.abandon_frame();
     self.features.grass.abandon_stats();
     self.features.lights.abandon_report();
     self.features.reflections.abandon_demand();
