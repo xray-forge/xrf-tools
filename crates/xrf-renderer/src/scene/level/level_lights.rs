@@ -9,7 +9,6 @@ use xrf_renderer_core::{FrameGraph, GraphBindings, ProxyHandle, ProxyStore};
 use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightsDescription};
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
@@ -160,16 +159,14 @@ impl LevelLights {
       campfire_shares,
     } = frame;
 
-    into.settings = *settings;
-    into.records.clear();
-    into.volumes.clear();
-    into.volume_slices.clear();
-    into.report = RenderLightsReport::default();
-    // `timers.z * 0.1`: the engine's global seconds over a hundred.
-    into.volumes_uniform = LightVolumesUniform {
-      noise: self.volume_textures.0,
-      scroll: self.started.elapsed().as_secs_f32() / 100.0,
-    };
+    into.begin(
+      *settings,
+      // `timers.z * 0.1`: the engine's global seconds over a hundred.
+      LightVolumesUniform {
+        noise: self.volume_textures.0,
+        scroll: self.started.elapsed().as_secs_f32() / 100.0,
+      },
+    );
 
     let is_shadowing: bool = settings.is_enabled && settings.is_shadowed;
 
@@ -188,7 +185,7 @@ impl LevelLights {
 
       let (mut in_view, mut ready): (Vec<InView>, Vec<InView>) = in_view.into_iter().partition(|it| it.is_seen);
 
-      into.report.excess = in_view.len().saturating_sub(LightsFeature::MAX_LIGHTS) as u32;
+      into.set_excess(in_view.len().saturating_sub(LightsFeature::MAX_LIGHTS) as u32);
       in_view.truncate(LightsFeature::MAX_LIGHTS);
       ready.truncate(WARM_MOST);
 
@@ -231,14 +228,12 @@ impl LevelLights {
           None
         };
         let color: Vec3 = Self::to_color(&self.animators, light, seconds) * it.fades.whole * it.share;
-        let range: f32 = Self::to_frame_range(light, &mut into.random) * it.share * FALLOFF_RANGE;
+        let range: f32 = Self::to_frame_range(light, || into.next_random()) * it.share * FALLOFF_RANGE;
         let mut record: LightRecord =
           Self::to_record(&self.projectors, light, &it.basis, it.bound, color, range, camera.view);
 
         if let Some(set) = set {
           let atlas: f32 = LevelLightShadows::ATLAS_SIZE as f32;
-
-          into.report.shadowed += 1;
 
           record.shadow = Vec4::new(set.near, set.far, set.faces.len() as f32, 0.0);
 
@@ -252,10 +247,13 @@ impl LevelLights {
           }
         }
 
-        if set.is_some() && settings.is_volumetric {
-          let index: u32 = into.records.len() as u32;
+        let Some(index) = into.push(record, set.is_some()) else {
+          break;
+        };
 
-          if let Some((volume, slices)) = Self::to_volume(
+        if set.is_some()
+          && settings.is_volumetric
+          && let Some((volume, slices)) = Self::to_volume(
             light,
             &it.basis,
             &record,
@@ -263,18 +261,14 @@ impl LevelLights {
             (eye, camera.view),
             engine,
             self.volume_textures.1,
-          ) {
-            into.volumes.push(volume);
-            into.volume_slices.push(slices);
-          }
+          )
+        {
+          into.push_volume(volume, slices);
         }
-
-        into.records.push(record);
       }
     }
 
-    into.report.atlas = self.shadows.get_atlas_use();
-    into.write(encoder, camera, settings.shadow_filter);
+    into.write(encoder, camera, (settings.shadow_filter, self.shadows.get_atlas_use()));
   }
 
   /// The lights a view sees this frame, by its `camera` and `settings`: in its frustum, or, out of it, a shadowed one
@@ -490,18 +484,13 @@ impl LevelLights {
     }
   }
 
-  /// `UpdateIdleLight`: a light's range this frame, strayed at random by its jitter.
-  fn to_frame_range(light: &LightDescription, random: &mut u64) -> f32 {
+  /// `UpdateIdleLight`: a light's range this frame, strayed by its jitter at the next of the view's `random` numbers.
+  fn to_frame_range(light: &LightDescription, random: impl FnOnce() -> u64) -> f32 {
     if light.range_jitter == 0.0 {
       return light.range;
     }
 
-    // xorshift64, which needs nothing seeded but a state that is never zero.
-    *random ^= *random << 13;
-    *random ^= *random >> 7;
-    *random ^= *random << 17;
-
-    let unit: f32 = (*random >> 40) as f32 / (1u64 << 24) as f32;
+    let unit: f32 = (random() >> 40) as f32 / (1u64 << 24) as f32;
 
     light.range + light.range_jitter * (unit * 2.0 - 1.0)
   }

@@ -18,10 +18,8 @@ use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_particle_definitions::RenderParticleDefinitions;
-use crate::pass::particle_batch::ParticleBatch;
 use crate::pass::particle_blend::ParticleBlend;
 use crate::pass::particle_surface_record::ParticleSurfaceRecord;
-use crate::pass::particle_vertex::ParticleVertex;
 use crate::scene::level::particle_emitter_proxy::ParticleEmitterProxy;
 use crate::scene::level::particle_sprite::ParticleSprite;
 use crate::scene::level::particles_view::ParticlesView;
@@ -415,34 +413,11 @@ impl LevelParticles {
     // Far to near, as `mapSorted` draws what blends and `mapDistort` what distorts; every effect is sorted, as nothing
     // else orders them.
     drawn.sort_by(|a, b| b.0.total_cmp(&a.0));
-    into.drawn = drawn.len() as u32;
 
     let sprite: ParticleSprite = ParticleSprite::new(view.view);
 
     for (_, effect, surface, drawing) in drawn {
-      let first: u32 = into.vertices.len() as u32 / ParticleVertex::CORNERS;
-
-      sprite.push(effect, surface, &mut into.vertices);
-
-      let end: u32 = into.vertices.len() as u32 / ParticleVertex::CORNERS;
-
-      if let Some(blend) = drawing.blend {
-        match into.batches.last_mut() {
-          Some(last) if last.blend == blend && last.first + last.count == first => last.count = end - last.first,
-          _ => into.batches.push(ParticleBatch {
-            blend,
-            first,
-            count: end - first,
-          }),
-        }
-      }
-
-      if drawing.is_distorting {
-        match into.distortion_runs.last_mut() {
-          Some(last) if last.end == first => last.end = end,
-          _ => into.distortion_runs.push(first..end),
-        }
-      }
+      into.push_effect((&sprite, effect), surface, (drawing.blend, drawing.is_distorting));
     }
   }
 

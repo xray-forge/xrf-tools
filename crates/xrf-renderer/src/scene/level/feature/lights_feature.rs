@@ -7,6 +7,7 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_light_shadow_filter::RenderLightShadowFilter;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_lights_settings::RenderLightsSettings;
+use crate::contract::render_pool_use::RenderPoolUse;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -42,24 +43,25 @@ const OVERFLOW_BYTES: u64 = 16;
 /// `LevelLights::prepare` in its view space, the clusters the lights pass bins them into, and what they came to.
 pub struct LightsFeature {
   /// The lights as the view asks for them this frame.
-  pub settings: RenderLightsSettings,
-  pub records: Vec<LightRecord>,
+  settings: RenderLightsSettings,
+  /// The records written this frame, nearest first, `MAX_LIGHTS` at most.
+  records: Vec<LightRecord>,
   pub record_buffer: wgpu::Buffer,
-  /// The shafts the shadowed lights draw this frame, the slices each draws, and what they all share.
-  pub volumes: Vec<LightVolumeRecord>,
-  pub volume_slices: Vec<u32>,
+  /// The shafts the shadowed lights draw this frame, the slices each draws beside it, and what they all share.
+  volumes: Vec<LightVolumeRecord>,
+  volume_slices: Vec<u32>,
   pub volume_buffer: wgpu::Buffer,
-  pub volumes_uniform: LightVolumesUniform,
+  volumes_uniform: LightVolumesUniform,
   pub counts: wgpu::Buffer,
   pub items: wgpu::Buffer,
   /// What the passes bin and light the records with this frame.
   pub uniform: LightsUniform,
   count: u32,
   /// What the last frame's lights came to, and the binning's count of the clusters it filled, read back.
-  pub report: RenderLightsReport,
+  report: RenderLightsReport,
   overflow: StatsReadback,
   /// What a zone's range strays by each frame.
-  pub random: u64,
+  random: u64,
 }
 
 impl LightsFeature {
@@ -103,10 +105,81 @@ impl LightsFeature {
     }
   }
 
-  /// Writes the records filled this frame and what the passes bin and light them with.
-  pub fn write(&mut self, encoder: &mut FrameEncoder, camera: &CameraView, filter: RenderLightShadowFilter) {
+  /// Starts this frame's lights as the view asks for them (`settings`), their shafts sharing `volumes`: none written.
+  pub fn begin(&mut self, settings: RenderLightsSettings, volumes: LightVolumesUniform) {
+    self.settings = settings;
+    self.records.clear();
+    self.volumes.clear();
+    self.volume_slices.clear();
+    self.report = RenderLightsReport::default();
+    self.volumes_uniform = volumes;
+  }
+
+  /// Counts the lights in view past those the records hold.
+  pub fn set_excess(&mut self, excess: u32) {
+    self.report.excess = excess;
+  }
+
+  /// Writes a light's record after those written before, counting it shadowed where `is_shadowed`; answers its index,
+  /// none once `MAX_LIGHTS` are written.
+  pub fn push(&mut self, record: LightRecord, is_shadowed: bool) -> Option<u32> {
+    if self.records.len() >= Self::MAX_LIGHTS {
+      return None;
+    }
+
+    self.records.push(record);
+    self.report.shadowed += u32::from(is_shadowed);
+
+    Some(self.records.len() as u32 - 1)
+  }
+
+  /// Adds the shafts a written record draws, and the slices they draw.
+  pub fn push_volume(&mut self, volume: LightVolumeRecord, slices: u32) {
+    self.volumes.push(volume);
+    self.volume_slices.push(slices);
+  }
+
+  /// The next of the view's random numbers a zone's range strays by: xorshift64, which needs nothing seeded but a
+  /// state that is never zero.
+  pub fn next_random(&mut self) -> u64 {
+    self.random ^= self.random << 13;
+    self.random ^= self.random >> 7;
+    self.random ^= self.random << 17;
+
+    self.random
+  }
+
+  /// The lights as the view asks for them this frame.
+  pub fn get_settings(&self) -> RenderLightsSettings {
+    self.settings
+  }
+
+  /// Whether a shadowed light draws shafts this frame.
+  pub fn has_volumes(&self) -> bool {
+    !self.volumes.is_empty()
+  }
+
+  /// The slices each of this frame's shafts draws, in their order.
+  pub fn get_volume_slices(&self) -> &[u32] {
+    &self.volume_slices
+  }
+
+  /// What this frame's shafts share.
+  pub fn get_volumes_uniform(&self) -> &LightVolumesUniform {
+    &self.volumes_uniform
+  }
+
+  /// Writes the records written this frame and what the passes bin and light them with, and notes the share of the
+  /// scene's shadow atlas in use (`atlas`).
+  pub fn write(
+    &mut self,
+    encoder: &mut FrameEncoder,
+    camera: &CameraView,
+    (filter, atlas): (RenderLightShadowFilter, RenderPoolUse),
+  ) {
     let (near, far): (f32, f32) = camera.get_depth_range();
 
+    self.report.atlas = atlas;
     self.count = self.records.len() as u32;
     self.report.in_view = self.count;
     self.uniform = LightsUniform::new(self.count, camera.projection, near, far, filter);
