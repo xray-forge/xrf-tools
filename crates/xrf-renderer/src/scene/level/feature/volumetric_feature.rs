@@ -33,6 +33,9 @@ pub struct VolumetricFeature {
 }
 
 impl VolumetricFeature {
+  /// The golden ratio's fraction, 0.618..., in 32 bits: what each frame moves the froxels' points along.
+  const GOLDEN_SHARE: u32 = 2_654_435_769;
+
   /// Takes this frame's volumetric lighting: the froxels made or kept where the enhanced volume draws, which is lit and
   /// solid, dropped where it does not.
   pub fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions) {
@@ -47,8 +50,9 @@ impl VolumetricFeature {
 
     let volume: &FroxelVolume = self.froxels.get_or_insert_with(|| FroxelVolume::new(device));
     let [width, height, depth] = FroxelVolume::SIZE;
-    // Each frame's points a golden share further along their slices, so the history gathers the whole of each.
-    let jitter: f32 = (volume.histories.get_frame() as f32 * 0.618_034).fract();
+    // Each frame's points a golden share further along their slices, so the history gathers the whole of each: the
+    // share's 32 bits times the frame, wrapping, which keeps every frame's step exact however long the view runs.
+    let jitter: f32 = volume.histories.get_frame().wrapping_mul(Self::GOLDEN_SHARE) as f32 / 4_294_967_296.0;
 
     self.uniform = Some(FroxelUniform {
       size: Vec4::new(width as f32, height as f32, depth as f32, settings.distance),
