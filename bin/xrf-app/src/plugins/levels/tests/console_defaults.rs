@@ -35,11 +35,7 @@ fn leaves_to_the_engine_whatever_no_command_sets_or_it_cannot_read() {
 // A vanilla installation that has been run has a `user.ltx` and no shipped defaults: its console ships none.
 #[test]
 fn says_nothing_shipped_for_a_user_console_alone() {
-  let console: LevelConsoleDefaults = parse_console_defaults(
-    "r2_tonemap on
-",
-  )
-  .over(LevelConsoleDefaults::default());
+  let console: LevelConsoleDefaults = parse_console_defaults("r2_tonemap on\n").over(LevelConsoleDefaults::default());
 
   assert!(!console.is_shipped);
   assert_eq!(console.is_tonemapped, Some(true));
