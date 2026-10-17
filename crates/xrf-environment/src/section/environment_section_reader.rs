@@ -1,5 +1,6 @@
 use xrf_engine_target::XrayEngine;
-use xrf_ltx::{LtxProvenance, Section, read_engine_bool, read_engine_floats, read_engine_integer, scan_engine_float};
+use xrf_ltx::{LtxProvenance, Section, read_engine_bool, read_engine_floats, scan_engine_float};
+use xrf_utils::read_engine_integer;
 
 use crate::finding::{EnvironmentFinding, EnvironmentRule};
 use crate::key::{EnvironmentKey, EnvironmentKeyUse, EnvironmentValue, EnvironmentValueKind};

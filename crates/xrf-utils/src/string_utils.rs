@@ -77,8 +77,8 @@ pub fn vector_from_string_sep_sized<T: FromStr>(string: &str, sep: &str, size: u
 
 /// Convert a snake or kebab case identifier to camel case.
 ///
-/// Separators are dropped and the character after each is upper cased; nothing else is touched, so an already camel case
-/// string survives unchanged. Used where a wire name has to become a JavaScript identifier.
+/// Separators are dropped and the character after each is upper cased; nothing else is touched, so an already camel
+/// case string survives unchanged. Used where a wire name has to become a JavaScript identifier.
 pub fn to_camel_case(value: &str) -> String {
   let mut camel: String = String::with_capacity(value.len());
   let mut capitalize_next: bool = false;
@@ -97,13 +97,37 @@ pub fn to_camel_case(value: &str) -> String {
   camel
 }
 
+/// `atoi`, as the engine's LTX and XML readers read integers: the longest leading integer, sign included, or zero.
+pub fn read_engine_integer(value: &str) -> i32 {
+  let text: &str = value.trim_start();
+  let bytes: &[u8] = text.as_bytes();
+  let sign: usize = usize::from(matches!(bytes.first(), Some(b'+' | b'-')));
+  let digits: usize = bytes[sign..].iter().take_while(|it| it.is_ascii_digit()).count();
+
+  if digits == 0 {
+    return 0;
+  }
+
+  // `atoi` overflows as the platform does; saturating is the one reading that is never worse.
+  text[..sign + digits]
+    .parse::<i64>()
+    .map_or(0, |number| number.clamp(i32::MIN.into(), i32::MAX.into()) as i32)
+}
+
 #[cfg(test)]
 mod tests {
   use xrf_error::XrfResult;
 
+  #[test]
+  fn reads_an_integer_as_atoi_does() {
+    assert_eq!(read_engine_integer(" 25000"), 25000);
+    assert_eq!(read_engine_integer("-3.7"), -3);
+    assert_eq!(read_engine_integer("x1"), 0);
+  }
+
   use crate::{
-    to_camel_case, vector_from_string, vector_from_string_sep, vector_from_string_sep_sized, vector_from_string_sized,
-    vector_to_string, vector_to_string_sep,
+    read_engine_integer, to_camel_case, vector_from_string, vector_from_string_sep, vector_from_string_sep_sized,
+    vector_from_string_sized, vector_to_string, vector_to_string_sep,
   };
 
   #[test]

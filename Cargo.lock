@@ -7568,6 +7568,7 @@ dependencies = [
  "xrf-ltx",
  "xrf-math",
  "xrf-test-utils",
+ "xrf-utils",
  "xrf-vfs",
 ]
 

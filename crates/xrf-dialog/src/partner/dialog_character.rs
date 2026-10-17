@@ -40,7 +40,7 @@ impl DialogCharacter {
         .collect(),
       is_random: element
         .attribute(Self::NO_RANDOM_ATTRIBUTE)
-        .is_none_or(|value| value.trim().parse::<i32>().unwrap_or(0) == 0),
+        .is_none_or(|value| xrf_utils::read_engine_integer(value) == 0),
     })
   }
 

@@ -66,7 +66,8 @@ pub fn apply_line_endings(content: &str, line_endings: LineEndings) -> String {
 /// Detects the more frequent LF or CRLF ending, choosing LF on a tie.
 ///
 /// Counts each CRLF pair once and ignores bare CR bytes. Returns `None` when neither LF nor CRLF occurs, leaving the
-/// fallback to the caller. Unlike [`normalize_line_endings`], this function does not recognize bare CR as a line ending.
+/// fallback to the caller. Unlike [`normalize_line_endings`], this function does not recognize bare CR as a line
+/// ending.
 ///
 /// Use the dominant ending to preserve an existing file's convention when rewriting mixed input.
 ///

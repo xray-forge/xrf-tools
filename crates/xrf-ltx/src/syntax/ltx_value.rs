@@ -79,26 +79,9 @@ pub fn read_engine_floats(value: &str, most: usize) -> Vec<f32> {
   components
 }
 
-/// `CInifile::r_s32`, through `atoi`: the longest leading integer, sign included, or zero.
-pub fn read_engine_integer(value: &str) -> i32 {
-  let text: &str = value.trim_start();
-  let bytes: &[u8] = text.as_bytes();
-  let sign: usize = usize::from(matches!(bytes.first(), Some(b'+' | b'-')));
-  let digits: usize = bytes[sign..].iter().take_while(|it| it.is_ascii_digit()).count();
-
-  if digits == 0 {
-    return 0;
-  }
-
-  // `atoi` overflows as the platform does; saturating is the one reading that is never worse.
-  text[..sign + digits]
-    .parse::<i64>()
-    .map_or(0, |number| number.clamp(i32::MIN.into(), i32::MAX.into()) as i32)
-}
-
 #[cfg(test)]
 mod tests {
-  use crate::syntax::ltx_value::{read_engine_bool, read_engine_float, read_engine_floats, read_engine_integer};
+  use crate::syntax::ltx_value::{read_engine_bool, read_engine_float, read_engine_floats};
 
   #[test]
   fn reads_a_flag_as_r_bool_does() {
@@ -129,12 +112,5 @@ mod tests {
     assert_eq!(read_engine_floats("1 ,2", 2), vec![1.0]);
     assert_eq!(read_engine_floats("1,x,3", 3), vec![1.0]);
     assert!(read_engine_floats("", 3).is_empty());
-  }
-
-  #[test]
-  fn reads_an_integer_as_atoi_does() {
-    assert_eq!(read_engine_integer(" 25000"), 25000);
-    assert_eq!(read_engine_integer("-3.7"), -3);
-    assert_eq!(read_engine_integer("x1"), 0);
   }
 }
