@@ -47,13 +47,13 @@ impl RenderQueue {
     self
   }
 
-  /// Hands a command to the running thread, starting one for an attach; any other command has nothing to act on
-  /// without a thread, since a stopped thread had no viewport left. Settings are kept for every thread started later.
   /// The graphics libraries the renderer ships, the DLSS runtime looked for in its bundle.
   pub fn describe_libraries(&self) -> RenderLibraries {
     describe_libraries(self.bundle.as_ref())
   }
 
+  /// Hands a command to the running thread, starting one for an attach; any other command has nothing to act on
+  /// without a thread, since a stopped thread had no viewport left. Settings are kept for every thread started later.
   pub fn send(&self, command: RenderCommand) {
     let mut link: MutexGuard<'_, RenderLink> = self.lock();
     let is_attach: bool = matches!(command, RenderCommand::Attach { .. });
