@@ -6,7 +6,8 @@ use crate::graph::timing::gpu_zones::GpuZones;
 use crate::graph::timing::graph_pass_time::GraphPassTime;
 use crate::graph::timing::graph_tagged_time::GraphTaggedTime;
 use crate::graph::timing::group_stamps::GroupStamps;
-use crate::graph::timing::timer_slot::{TimedPass, TimerSlot};
+use crate::graph::timing::timed_pass::TimedPass;
+use crate::graph::timing::timer_slot::TimerSlot;
 
 /// What each pass of the graph's frames cost on the GPU, with no code in any pass: the graph writes a timestamp at the
 /// start of each encode group and after each pass or render pass, each group into a range of the query set of its own
@@ -26,7 +27,7 @@ pub struct GraphTimer {
   /// The slot this frame records into and each group's first stamp and how many it has, while a frame is timed.
   frame: Option<(usize, Vec<(u32, u32)>)>,
   /// Milliseconds summed per owner's pass since that owner's last `take`, in the order passes were first seen.
-  sums: Vec<(GraphOwner, String, f64)>,
+  sums: Vec<(TimedPass, f64)>,
   /// Frames read back per owner since its last `take`, which its passes' sums are averaged over.
   frames: Vec<(GraphOwner, u32)>,
   /// The tag the frame timed next carries.
@@ -121,7 +122,7 @@ impl GraphTimer {
 
     let (taken, kept): (Vec<_>, Vec<_>) = std::mem::take(&mut self.sums)
       .into_iter()
-      .partition(|(it, ..)| *it == owner);
+      .partition(|(it, _)| it.owner == owner);
     let frames: u32 = self
       .frames
       .iter()
@@ -133,8 +134,8 @@ impl GraphTimer {
 
     taken
       .into_iter()
-      .map(|(_, name, total)| GraphPassTime {
-        name,
+      .map(|(pass, total)| GraphPassTime {
+        name: pass.to_name(),
         gpu_time: (total / f64::from(frames.max(1))) as f32,
       })
       .collect()
@@ -291,25 +292,29 @@ impl GraphTimer {
         let mut owners: Vec<GraphOwner> = Vec::new();
 
         for (index, name) in slot.names.iter().enumerate() {
-          let Some((owner, name)) = name.as_ref().filter(|_| index > 0) else {
+          let Some(pass) = name.as_ref().filter(|_| index > 0) else {
             continue;
           };
           // A tick count running backwards across a pass is a driver's, not a negative cost.
           let spent: f64 = stamps[index].saturating_sub(stamps[index - 1]) as f64 * to_milliseconds;
 
-          match self.sums.iter_mut().find(|(it, named, _)| it == owner && named == name) {
-            Some((_, _, total)) => *total += spent,
-            None => self.sums.push((*owner, name.clone(), spent)),
+          match self
+            .sums
+            .iter_mut()
+            .find(|(it, _)| it.owner == pass.owner && it.passes == pass.passes)
+          {
+            Some((_, total)) => *total += spent,
+            None => self.sums.push((pass.clone(), spent)),
           }
 
           self.tagged.push(GraphTaggedTime {
             tag: slot.tag,
-            name: name.clone(),
+            passes: pass.passes.clone(),
             gpu_time: spent as f32,
           });
 
-          if !owners.contains(owner) {
-            owners.push(*owner);
+          if !owners.contains(&pass.owner) {
+            owners.push(pass.owner);
           }
         }
 

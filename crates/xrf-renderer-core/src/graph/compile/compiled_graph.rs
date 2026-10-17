@@ -18,7 +18,7 @@ use crate::graph::pool::{TransientBufferKey, TransientPool, TransientTextureKey}
 use crate::graph::record::{GraphBufferRecord, GraphPassWork, GraphTextureRecord};
 use crate::graph::report::{GraphPassKind, GraphPassReport, GraphReport, GraphTransientReport};
 use crate::graph::resource::{GraphBuffer, GraphTexture, GraphTextureDescriptor};
-use crate::graph::timing::GroupStamps;
+use crate::graph::timing::{GroupStamps, TimedPass};
 use crate::param::BindGroupCache;
 
 /// One encode group as recorded: its command buffers in submit order, what its encoding took, and what wgpu refused of
@@ -285,7 +285,7 @@ impl<'a> CompiledGraph<'a> {
 
     while let Some(pass) = pending.pop_front() {
       let owner: GraphOwner = pass.pass.owner;
-      let name: String = match pass.render_pass {
+      let timed: TimedPass = match pass.render_pass {
         Some(render_pass) => {
           let mut run: Vec<CompiledPass<'a>> = vec![pass];
 
@@ -296,18 +296,24 @@ impl<'a> CompiledGraph<'a> {
             run.extend(pending.pop_front());
           }
 
-          let name: String = run.iter().map(|pass| pass.pass.name).collect::<Vec<_>>().join(" + ");
+          let timed: TimedPass = TimedPass {
+            owner,
+            passes: run.iter().map(|pass| pass.pass.name).collect(),
+          };
 
-          profiling::scope!("record", &name);
+          profiling::scope!("record", &timed.to_name());
 
           Self::record_render_pass(&mut encoder, run, textures, (device, cache, resources));
 
-          name
+          timed
         }
         None => {
-          let name: String = pass.pass.name.to_string();
+          let timed: TimedPass = TimedPass {
+            owner,
+            passes: vec![pass.pass.name],
+          };
 
-          profiling::scope!("record", &name);
+          profiling::scope!("record", pass.pass.name);
 
           let (is_marked, handed): (bool, Vec<wgpu::CommandBuffer>) =
             Self::record_pass(&mut encoder, pass, (device, cache, resources), timing.as_deref_mut());
@@ -325,12 +331,12 @@ impl<'a> CompiledGraph<'a> {
             continue;
           }
 
-          name
+          timed
         }
       };
 
       if let Some(stamps) = timing.as_mut() {
-        stamps.stamp(&mut encoder, Some((owner, name)));
+        stamps.stamp(&mut encoder, Some(timed));
       }
     }
 

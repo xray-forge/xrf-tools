@@ -119,20 +119,22 @@ fn learns_a_job_s_cost_from_its_passes() {
   scheduler.grant();
   assert!((scheduler.get_cost(&job) - 0.1).abs() < 1e-6);
 
-  let time = |name: &str, gpu_time: f32| GraphTaggedTime {
+  let time = |passes: &[&'static str], gpu_time: f32| GraphTaggedTime {
     tag: frame,
-    name: name.to_owned(),
+    passes: passes.to_vec(),
     gpu_time,
   };
 
-  // The job's own passes, merged or not, count; one merged with another job's does not.
+  // The job's own passes, merged or not, count; one merged with another job's does not, nor one whose own name only
+  // reads like the job's merged.
   scheduler.begin(
     1.0,
     (
       &[
-        time("job cull", 0.2),
-        time("job draw", 0.6),
-        time("job draw + other draw", 5.0),
+        time(&["job cull"], 0.2),
+        time(&["job draw"], 0.6),
+        time(&["job draw", "other draw"], 5.0),
+        time(&["job cull + job draw"], 7.0),
       ],
       &[],
     ),
