@@ -1175,17 +1175,11 @@ export type RenderMemorySection = {
 
 /** Every `kind` the `RenderOverlay` union is told apart by, so a switch or a comparison names one. */
 export enum ERenderOverlay {
-  /**
-   * Line segments in renderer space: three floats a vertex, two vertices a segment, and three floats of colour a
-   * vertex.
-   */
+  /** Line segments in renderer space, each with a colour at either end. */
   LINES = "lines",
   /** A disc in the sky where the light comes from, `size` device pixels across, following the camera and the lighting. */
   SUN = "sun",
-  /**
-   * Points in renderer space, three floats each, drawn as discs of one colour `size` device pixels across wherever
-   * they stand.
-   */
+  /** Points in renderer space, drawn as discs of one colour `size` device pixels across wherever they stand. */
   POINTS = "points",
   /** Every skinned model's bones as segments, child to parent, following its pose. */
   SKELETON = "skeleton",
@@ -1193,26 +1187,19 @@ export enum ERenderOverlay {
 
 /** A helper drawn over a viewport's frame, unlit, as the raw colours it names. */
 export type RenderOverlay =
-  /**
-   * Line segments in renderer space: three floats a vertex, two vertices a segment, and three floats of colour a
-   * vertex.
-   */
+  /** Line segments in renderer space, each with a colour at either end. */
   | {
       kind: "lines";
-      positions: Array<number | null>;
-      colors: Array<number | null>;
+      segments: Array<RenderOverlaySegment>;
       /** Whether what the scene draws in front hides them. */
       isDepthTested: boolean;
     }
   /** A disc in the sky where the light comes from, `size` device pixels across, following the camera and the lighting. */
   | { kind: "sun"; color: [number | null, number | null, number | null]; size: number | null }
-  /**
-   * Points in renderer space, three floats each, drawn as discs of one colour `size` device pixels across wherever
-   * they stand.
-   */
+  /** Points in renderer space, drawn as discs of one colour `size` device pixels across wherever they stand. */
   | {
       kind: "points";
-      positions: Array<number | null>;
+      positions: Array<[number | null, number | null, number | null]>;
       color: [number | null, number | null, number | null];
       size: number | null;
       /** Whether what the scene draws in front hides them. */
@@ -1225,6 +1212,12 @@ export type RenderOverlay =
       /** Whether what the scene draws in front hides them. */
       isDepthTested: boolean;
     };
+
+/** One line segment of an overlay: its two ends in renderer space, and the raw colour at each. */
+export type RenderOverlaySegment = {
+  ends: [[number | null, number | null, number | null], [number | null, number | null, number | null]];
+  colors: [[number | null, number | null, number | null], [number | null, number | null, number | null]];
+};
 
 /** What the page shows where it is transparent around its viewports: its colour, and the wash laid over it. */
 export type RenderPageBackdrop = {

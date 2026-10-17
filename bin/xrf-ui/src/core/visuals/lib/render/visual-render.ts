@@ -111,7 +111,7 @@ export function toVisualOverlays(
         color: toRawColor(config.highlightColor),
         isDepthTested: false,
         kind: ERenderOverlay.POINTS,
-        positions: [...joint],
+        positions: [[...joint]],
         size: config.highlightSize,
       });
     }

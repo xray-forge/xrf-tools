@@ -30,26 +30,23 @@ impl LevelOverlays {
     for overlay in overlays {
       match overlay {
         RenderOverlay::Lines {
-          positions,
-          colors,
+          segments,
           is_depth_tested,
         } => {
           let tested: f32 = f32::from(u8::from(*is_depth_tested));
-          let ends: &[[f32; 3]] = positions.as_chunks::<3>().0;
-          let tints: &[[f32; 3]] = colors.as_chunks::<3>().0;
-          // A segment needs both its ends, so one left without its pair is dropped with the set it came in.
-          let count: usize = ends.len().min(tints.len()) / 2 * 2;
 
-          for (position, color) in ends.iter().zip(tints).take(count) {
-            vertices.push([
-              position[0],
-              position[1],
-              position[2],
-              color[0],
-              color[1],
-              color[2],
-              tested,
-            ]);
+          for segment in segments {
+            for (position, color) in segment.ends.iter().zip(&segment.colors) {
+              vertices.push([
+                position[0],
+                position[1],
+                position[2],
+                color[0],
+                color[1],
+                color[2],
+                tested,
+              ]);
+            }
           }
         }
         RenderOverlay::Points {
@@ -62,8 +59,6 @@ impl LevelOverlays {
 
           points.extend(
             positions
-              .as_chunks::<3>()
-              .0
               .iter()
               .map(|it| [it[0], it[1], it[2], *size, color[0], color[1], color[2], tested]),
           );

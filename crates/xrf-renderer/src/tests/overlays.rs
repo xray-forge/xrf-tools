@@ -3,20 +3,26 @@ use xrf_test_utils::gpu::skip_without_gpu;
 use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_overlay::RenderOverlay;
+use crate::contract::render_overlay_segment::RenderOverlaySegment;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::tests::test_bundle::checkout_dxc;
 
-fn lines(vertices: usize, is_depth_tested: bool) -> RenderOverlay {
+fn lines(segments: usize, is_depth_tested: bool) -> RenderOverlay {
   RenderOverlay::Lines {
-    positions: vec![0.0; vertices * 3],
-    colors: vec![1.0; vertices * 3],
+    segments: vec![
+      RenderOverlaySegment {
+        ends: [[0.0; 3]; 2],
+        colors: [[1.0; 3]; 2],
+      };
+      segments
+    ],
     is_depth_tested,
   }
 }
 
-/// Every set's segments whole, an odd end dropped with its own set, and the sun apart from them.
+/// Every set's segments as two vertices each, and the sun apart from them.
 #[test]
-fn packs_whole_segments_and_the_sun() {
+fn packs_segments_and_the_sun() {
   let context: GpuContext = match GpuContext::create_headless(RenderBackend::D3d12, checkout_dxc().as_deref())
     .or_else(|_| GpuContext::create_headless(RenderBackend::Vulkan, None))
   {
@@ -30,8 +36,8 @@ fn packs_whole_segments_and_the_sun() {
   let overlays: LevelOverlays = LevelOverlays::new(
     &context.device,
     &[
-      lines(3, true),
-      lines(4, false),
+      lines(1, true),
+      lines(2, false),
       RenderOverlay::Sun {
         color: [1.0, 0.9, 0.8],
         size: 24.0,
@@ -44,7 +50,7 @@ fn packs_whole_segments_and_the_sun() {
   assert_eq!(overlays.lines.as_ref().map(|(_, count)| *count), Some(6));
   assert!(overlays.sun.is_some());
 
-  let empty: LevelOverlays = LevelOverlays::new(&context.device, &[lines(1, true)], 6);
+  let empty: LevelOverlays = LevelOverlays::new(&context.device, &[lines(0, true)], 6);
 
   assert!(empty.lines.is_none());
   assert!(empty.sun.is_none());
@@ -53,7 +59,7 @@ fn packs_whole_segments_and_the_sun() {
 #[test]
 fn reads_overlays_as_the_viewers_send_them() {
   let overlays: Vec<RenderOverlay> = serde_json::from_str(
-    r#"[{"kind":"lines","positions":[0,0,0,1,0,0],"colors":[1,0,0,1,0,0],"isDepthTested":false},{"kind":"sun","color":[1,1,1],"size":24}]"#,
+    r#"[{"kind":"lines","segments":[{"ends":[[0,0,0],[1,0,0]],"colors":[[1,0,0],[1,0,0]]}],"isDepthTested":false},{"kind":"points","positions":[[0,1,0]],"color":[1,1,1],"size":8,"isDepthTested":false},{"kind":"sun","color":[1,1,1],"size":24}]"#,
   )
   .unwrap();
 
@@ -61,8 +67,16 @@ fn reads_overlays_as_the_viewers_send_them() {
     overlays,
     vec![
       RenderOverlay::Lines {
-        positions: vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-        colors: vec![1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+        segments: vec![RenderOverlaySegment {
+          ends: [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+          colors: [[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+        }],
+        is_depth_tested: false,
+      },
+      RenderOverlay::Points {
+        positions: vec![[0.0, 1.0, 0.0]],
+        color: [1.0, 1.0, 1.0],
+        size: 8.0,
         is_depth_tested: false,
       },
       RenderOverlay::Sun {
@@ -70,5 +84,22 @@ fn reads_overlays_as_the_viewers_send_them() {
         size: 24.0,
       },
     ]
+  );
+}
+
+/// A segment without its other end, or a point short of a coordinate, is refused rather than dropped.
+#[test]
+fn refuses_a_partial_segment_or_point() {
+  assert!(
+    serde_json::from_str::<RenderOverlay>(
+      r#"{"kind":"lines","segments":[{"ends":[[0,0,0]],"colors":[[1,0,0],[1,0,0]]}],"isDepthTested":false}"#
+    )
+    .is_err()
+  );
+  assert!(
+    serde_json::from_str::<RenderOverlay>(
+      r#"{"kind":"points","positions":[[0,1]],"color":[1,1,1],"size":8,"isDepthTested":false}"#
+    )
+    .is_err()
   );
 }
