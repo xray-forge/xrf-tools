@@ -16,6 +16,8 @@ use crate::plugins::textures::file_stamp::TextureFileStamp;
 pub struct TextureResolver {
   roots: XrayRoots,
   scope: XrayTextureScope,
+  /// What tells its textures apart from another source's in the renderer's cache.
+  scope_key: String,
   located: RwLock<HashMap<String, Option<String>>>,
 }
 
@@ -26,15 +28,31 @@ impl TextureResolver {
     known: impl IntoIterator<Item = (String, Option<String>)>,
   ) -> Self {
     Self {
+      scope_key: Self::to_scope_key(&roots, &scope),
       roots,
       scope,
       located: RwLock::new(known.into_iter().collect()),
     }
   }
 
+  /// Its roots and scope as one key: the subject asset, each root's path and how it mounts, in order, then the level's
+  /// directory. Paths are written as the host holds them, so two keys match only where every part reads alike.
+  fn to_scope_key(roots: &XrayRoots, scope: &XrayTextureScope) -> String {
+    let mut key: String = format!("{:?}", roots.asset);
+
+    for root in &roots.roots {
+      key.push_str(&format!(" {:?} {:?}", root.path, root.mode));
+    }
+
+    key.push(' ');
+    key.push_str(scope.get_level().map_or("", |level| level.as_str()));
+
+    key
+  }
+
   /// What tells its textures apart from another source's in the renderer's cache: its roots and scope.
-  pub fn get_scope_key(&self) -> String {
-    format!("{:?} {:?}", self.roots, self.scope)
+  pub fn get_scope_key(&self) -> &str {
+    &self.scope_key
   }
 
   /// Takes references resolved elsewhere, as a level's lights, details, particles and spawned models resolve theirs.

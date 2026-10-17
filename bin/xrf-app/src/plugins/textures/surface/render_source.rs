@@ -159,8 +159,8 @@ impl TextureRenderSource {
 }
 
 impl RenderAssetSource for TextureRenderSource {
-  fn get_texture_scope(&self) -> String {
-    self.scope.clone()
+  fn get_texture_scope(&self) -> &str {
+    &self.scope
   }
 
   fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {

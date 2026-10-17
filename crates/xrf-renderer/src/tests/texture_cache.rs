@@ -20,8 +20,8 @@ struct GatedSource {
 }
 
 impl RenderAssetSource for GatedSource {
-  fn get_texture_scope(&self) -> String {
-    String::from("test")
+  fn get_texture_scope(&self) -> &str {
+    "test"
   }
 
   fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
@@ -123,8 +123,8 @@ struct ThreadTellingSource {
 }
 
 impl RenderAssetSource for ThreadTellingSource {
-  fn get_texture_scope(&self) -> String {
-    String::from("test")
+  fn get_texture_scope(&self) -> &str {
+    "test"
   }
 
   fn read_texture(&self, _: &str) -> XrfResult<Option<Vec<u8>>> {
@@ -174,8 +174,8 @@ impl CountingSource {
 }
 
 impl RenderAssetSource for CountingSource {
-  fn get_texture_scope(&self) -> String {
-    String::from("test")
+  fn get_texture_scope(&self) -> &str {
+    "test"
   }
 
   fn read_texture(&self, _: &str) -> XrfResult<Option<Vec<u8>>> {

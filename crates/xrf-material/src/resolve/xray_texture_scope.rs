@@ -21,6 +21,11 @@ impl XrayTextureScope {
     Self { level: Some(directory) }
   }
 
+  /// The level whose own files it reads first, by their directory; none outside a level.
+  pub fn get_level(&self) -> Option<&XrayLogicalPath> {
+    self.level.as_ref()
+  }
+
   /// Locates a texture as `texture_load` does: beside the level first, then the shared tree (`Texture.cpp`).
   pub fn resolve_texture(&self, probe: &XrayProbe, reference: &str) -> XrfResult<XrayResolution> {
     match self.find_beside_level(probe, XrayAssetType::Dds, reference) {

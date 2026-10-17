@@ -97,7 +97,7 @@ impl LevelRenderSource {
 }
 
 impl RenderAssetSource for LevelRenderSource {
-  fn get_texture_scope(&self) -> String {
+  fn get_texture_scope(&self) -> &str {
     self.textures.get_scope_key()
   }
 

@@ -52,7 +52,7 @@ impl VisualRenderSource {
 }
 
 impl RenderAssetSource for VisualRenderSource {
-  fn get_texture_scope(&self) -> String {
+  fn get_texture_scope(&self) -> &str {
     self.textures.get_scope_key()
   }
 

@@ -61,8 +61,8 @@ pub struct TextureCache {
   neutral: Vec<wgpu::TextureView>,
   /// What stands in for a base texture that cannot be had.
   checker: wgpu::TextureView,
-  /// Each texture's slot by the scope its source resolves it in and its reference.
-  by_reference: HashMap<(String, String), u32>,
+  /// Each texture's slot by the scope its source resolves it in, then its reference, so a lookup borrows both.
+  by_reference: HashMap<String, HashMap<String, u32>>,
   /// Each slot's key in `by_reference`, `None` for the missing texture's and for a freed slot.
   keys: Vec<Option<(String, String)>>,
   /// Bumped each time a slot is freed or loaded again, so a load asked for its last texture is not uploaded into its
@@ -189,9 +189,9 @@ impl TextureCache {
       return Self::MISSING_SLOT;
     }
 
-    let key: (String, String) = (source.get_texture_scope(), reference.to_owned());
+    let scope: &str = source.get_texture_scope();
 
-    if let Some(&slot) = self.by_reference.get(&key) {
+    if let Some(&slot) = self.by_reference.get(scope).and_then(|slots| slots.get(reference)) {
       // Asked again by a source opened since, as a level reopened: the file may have changed meanwhile.
       if self.sources[slot as usize]
         .as_ref()
@@ -212,7 +212,7 @@ impl TextureCache {
         self.states[index] = RenderTextureState::Loading;
         self.references[index] = reference.to_owned();
         self.roles[index] = role;
-        self.keys[index] = Some(key.clone());
+        self.keys[index] = Some((scope.to_owned(), reference.to_owned()));
         self.sources[index] = Some(Arc::clone(source));
         self.stamps[index] = None;
 
@@ -223,7 +223,7 @@ impl TextureCache {
         self.states.push(RenderTextureState::Loading);
         self.references.push(reference.to_owned());
         self.roles.push(role);
-        self.keys.push(Some(key.clone()));
+        self.keys.push(Some((scope.to_owned(), reference.to_owned())));
         self.generations.push(0);
         self.sources.push(Some(Arc::clone(source)));
         self.stamps.push(None);
@@ -241,7 +241,11 @@ impl TextureCache {
     };
 
     self.is_dirty = true;
-    self.by_reference.insert(key, slot);
+    self
+      .by_reference
+      .entry(scope.to_owned())
+      .or_default()
+      .insert(reference.to_owned(), slot);
 
     if role == TextureRole::TerrainHeight && !self.is_heights_wanted {
       self.states[slot as usize] = RenderTextureState::Deferred;
@@ -518,8 +522,14 @@ impl TextureCache {
         continue;
       }
 
-      if let Some(key) = self.keys[slot].take() {
-        self.by_reference.remove(&key);
+      if let Some((scope, reference)) = self.keys[slot].take()
+        && let Some(slots) = self.by_reference.get_mut(&scope)
+      {
+        slots.remove(&reference);
+
+        if slots.is_empty() {
+          self.by_reference.remove(&scope);
+        }
       }
 
       self.sources[slot] = None;

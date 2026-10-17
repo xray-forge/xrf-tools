@@ -67,8 +67,8 @@ impl WorldEventSink for Silence {
 struct EmptyLevel;
 
 impl RenderAssetSource for EmptyLevel {
-  fn get_texture_scope(&self) -> String {
-    String::from("test")
+  fn get_texture_scope(&self) -> &str {
+    "test"
   }
 
   fn read_texture(&self, _: &str) -> XrfResult<Option<Vec<u8>>> {

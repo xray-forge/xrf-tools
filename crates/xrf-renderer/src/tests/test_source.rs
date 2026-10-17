@@ -6,8 +6,8 @@ use crate::host::render_asset_source::RenderAssetSource;
 pub struct EmptySource;
 
 impl RenderAssetSource for EmptySource {
-  fn get_texture_scope(&self) -> String {
-    String::from("test")
+  fn get_texture_scope(&self) -> &str {
+    "test"
   }
 
   fn read_texture(&self, _: &str) -> XrfResult<Option<Vec<u8>>> {
