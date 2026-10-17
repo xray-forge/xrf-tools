@@ -107,7 +107,10 @@ impl TextureRenderSource {
         .enumerate()
         .map(|(index, mesh)| if index == PLANE_FACE { face(mesh) } else { edge(mesh) })
         .collect(),
-      TextureSurfaceShape::Sphere => vec![face(VisualShape::create_sphere(SHAPE_EXTENT / 2.0, 96, 64))],
+      TextureSurfaceShape::Sphere => VisualShape::create_sphere(SHAPE_EXTENT / 2.0, 96, 64)
+        .into_iter()
+        .map(face)
+        .collect(),
       TextureSurfaceShape::Cube => VisualShape::create_box(SHAPE_EXTENT * 0.8, SHAPE_EXTENT * 0.8, SHAPE_EXTENT * 0.8)
         .into_iter()
         .map(face)
