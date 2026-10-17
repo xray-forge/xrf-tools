@@ -136,6 +136,7 @@ export function mockLevelTextureReport(entries: Record<string, IMockLevelTexture
     problems: Object.entries(entries)
       .filter(([, loaded]) => loaded.reason)
       .map(([reference, loaded]) => ({ reason: loaded.reason as string, reference })),
+    deferred: 0,
     uploaded: Object.keys(entries).length,
   };
 }

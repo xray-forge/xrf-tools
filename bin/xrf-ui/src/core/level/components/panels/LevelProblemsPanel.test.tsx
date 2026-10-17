@@ -60,6 +60,7 @@ async function renderProblems({ isPresent, unreadable }: IRenderProblemsOptions)
     isPresent
       ? EMPTY_LEVEL_TEXTURE_REPORT
       : {
+          deferred: 0,
           dressing: new Map(),
           problems: [{ reason: "Nothing in the mounted roots answers to 'stone'", reference: "stone" }],
           uploaded: 0,

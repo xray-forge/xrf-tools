@@ -16,16 +16,21 @@ const REPORTS: Array<RenderTextureReport> = [
 ];
 
 describe("toLevelTextureReport", () => {
-  it("counts a stand-in as uploaded and a load on its way as not yet", () => {
-    expect(toLevelTextureReport(REPORTS).uploaded).toBe(4);
+  it("counts a stand-in as uploaded, a load on its way as not yet, and a deferred one apart", () => {
+    const report: ILevelTextureReport = toLevelTextureReport(REPORTS);
+
+    expect(report.uploaded).toBe(3);
+    expect(report.deferred).toBe(1);
+    expect(report.dressing.get("terrain\\terrain_zaton")).toEqual({
+      reason: null,
+      reference: "terrain\\terrain_zaton",
+      state: ELevelSurfaceDressing.DEFERRED,
+      upload: null,
+    });
   });
 
-  it("reports every reference that is stood in for, with why, in the order they were read", () => {
+  it("reports every reference that is stood in for, with why, in the order they were read, and no deferred one", () => {
     expect(toLevelTextureReport(REPORTS).problems).toEqual([
-      {
-        reason: "Held unread until an enhanced parallax or the heights view reads it",
-        reference: "terrain\\terrain_zaton",
-      },
       { reason: "Nothing in the mounted roots answers to it", reference: "wpn\\gone" },
       { reason: "Unknown DDS format", reference: "wpn\\broken" },
     ]);

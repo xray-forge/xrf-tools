@@ -13,6 +13,8 @@ export interface ILevelTextureProblem {
 export interface ILevelTextureReport {
   /** References uploaded, which is what a viewer counts. */
   uploaded: number;
+  /** References held unread on purpose until a mode that reads them draws, which are neither uploaded nor problems. */
+  deferred: number;
   /** Every reference that could not be answered for properly, in the order they were read. */
   problems: ReadonlyArray<ILevelTextureProblem>;
   /** What became of each reference that has been asked for, keyed by it. */
@@ -21,6 +23,7 @@ export interface ILevelTextureReport {
 
 /** Nothing read yet, which is also what a closed level reports. */
 export const EMPTY_LEVEL_TEXTURE_REPORT: ILevelTextureReport = {
+  deferred: 0,
   dressing: new Map(),
   problems: [],
   uploaded: 0,
@@ -53,19 +56,22 @@ export function toLevelTextureReport(described: Array<RenderTextureReport>): ILe
   );
   const problems: Array<ILevelTextureProblem> = [];
   let uploaded: number = 0;
+  let deferred: number = 0;
 
   dressing.forEach(({ reason, reference, state }: ILevelSurfaceDressing) => {
     if (reason) {
       problems.push({ reason, reference });
     }
 
-    // A stand-in is uploaded as much as a file is; a load on its way is neither yet.
-    if (state !== ELevelSurfaceDressing.FETCHING) {
+    // A stand-in is uploaded as much as a file is; a load on its way is neither yet, and a deferred one neither at all.
+    if (state === ELevelSurfaceDressing.DEFERRED) {
+      deferred += 1;
+    } else if (state !== ELevelSurfaceDressing.FETCHING) {
       uploaded += 1;
     }
   });
 
-  return { dressing, problems, uploaded };
+  return { deferred, dressing, problems, uploaded };
 }
 
 function toLevelSurfaceDressing(reference: string, state: RenderTextureState): ILevelSurfaceDressing {
@@ -86,12 +92,7 @@ function toLevelSurfaceDressing(reference: string, state: RenderTextureState): I
     }
 
     case ERenderTextureState.DEFERRED:
-      return {
-        reason: "Held unread until an enhanced parallax or the heights view reads it",
-        reference,
-        state: ELevelSurfaceDressing.STOOD_IN,
-        upload: null,
-      };
+      return { reason: null, reference, state: ELevelSurfaceDressing.DEFERRED, upload: null };
 
     case ERenderTextureState.MISSING:
       return {
