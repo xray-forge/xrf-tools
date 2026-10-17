@@ -48,18 +48,6 @@ import {
 /** The engine's three cascade widths in metres (`render_phase_sun.cpp`), and a fourth reaching three times as far. */
 export const RENDER_SHADOW_CASCADE_WIDTHS: ReadonlyArray<number> = [20, 40, 160, 480];
 
-/** Cascades the sun's shadow can be cut into at most: the sun reads their texels from one `vec4`. */
-export const RENDER_MAX_SHADOW_CASCADES: number = 4;
-
-/** Texels the sun's shadow filter reaches each way at most: the widest the sun's pass has a pipeline for. */
-export const RENDER_MAX_SHADOW_FILTER: number = 3;
-
-/** Local lights a pixel marches contact shadows towards at most: the lights' shader keeps their weights in an array. */
-export const RENDER_MAX_CONTACT_SHADOW_LIGHTS: number = 8;
-
-/** Frames VBAO accumulates over at most. */
-export const RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION: number = 32;
-
 /** VBAO's strengths: a grass clump's depth, every bounce, and eight frames. */
 const DEFAULT_RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS: TRenderAmbientOcclusionVbaoSettings = {
   accumulation: 8,

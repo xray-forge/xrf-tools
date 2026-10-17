@@ -29,7 +29,7 @@ import {
   RENDER_MAX_CONTACT_SHADOW_LIGHTS,
   RENDER_MAX_SHADOW_CASCADES,
   RENDER_MAX_SHADOW_FILTER,
-} from "@/core/render/lib/settings/render-feature-defaults";
+} from "@/core/render/lib/settings/render-contract-limits";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import {
   ERenderSettingKind,

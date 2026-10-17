@@ -15,6 +15,7 @@ import {
   toRenderBackendChoice,
   TRenderBackendChoice,
 } from "@/core/render/lib/settings/render-backend-choice";
+import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-contract-limits";
 import {
   IRenderFeatureChoice,
   mergeRenderFeatureOverrides,
@@ -30,7 +31,6 @@ import {
 } from "@/core/render/lib/settings/render-frame-rate-limit";
 import { toRenderGpuChoice } from "@/core/render/lib/settings/render-gpu-choice";
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
-import { DEFAULT_PERIODIC_BUDGET } from "@/core/render/lib/settings/render-periodic-budget";
 import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
 import {
   ERenderResolution,
