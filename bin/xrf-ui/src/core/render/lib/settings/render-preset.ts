@@ -80,14 +80,14 @@ const BASE_PRESET: IRenderFeatureSettings = {
   fog: { ...DEFAULT_RENDER_FOG_SETTINGS, mode: ERenderFogMode.ENHANCED },
   // Glass refracting what is behind it.
   glass: { ...DEFAULT_RENDER_GLASS_SETTINGS, mode: ERenderGlassMode.ENHANCED },
-  // The enhanced foliage motion, each tuft stood along its ground's slope, planted out to 100 m rather than the
-  // engine's 49 and shadowed near the camera.
+  // The enhanced foliage motion, each tuft stood along its ground's slope, planted out to 150 m rather than the
+  // engine's 49 (nearer, its edge shows on the slopes ahead) and shadowed near the camera.
   grass: {
     ...DEFAULT_RENDER_GRASS_SETTINGS,
     foliage: { ...DEFAULT_RENDER_FOLIAGE_SETTINGS, mode: ERenderFoliageMode.ENHANCED },
     isAligned: true,
     isShadowed: true,
-    radius: 100,
+    radius: 150,
     shadowRadius: 25,
   },
   // The light bounced in the occlusion's own search.
