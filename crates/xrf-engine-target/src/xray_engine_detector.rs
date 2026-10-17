@@ -243,7 +243,10 @@ mod tests {
 
     assert_eq!(resolution.engine, XrayEngine::Extended);
     assert_eq!(resolution.evidence, XrayEngineEvidence::AtmosfearCycles);
-    assert_eq!(resolution.subject.as_deref(), Some(XrayEngineDetector::WEATHER_GRAPHS_LOGICAL_PATH));
+    assert_eq!(
+      resolution.subject.as_deref(),
+      Some(XrayEngineDetector::WEATHER_GRAPHS_LOGICAL_PATH)
+    );
   }
 
   #[test]
