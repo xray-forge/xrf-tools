@@ -31,8 +31,15 @@ impl VisualPackage {
       .collect()
   }
 
-  /// A section's bytes, shortened where the buffer ends before it does.
+  /// A section's bytes. The packer writes every section within its buffer, so one past its end is the packer's fault:
+  /// asserted in a debug build, shortened where the buffer ends otherwise.
   fn get_section_bytes(&self, section: VisualSection) -> &[u8] {
+    debug_assert!(
+      (section.byte_offset as usize).saturating_add(section.byte_length as usize) <= self.buffer.len(),
+      "section {section:?} must fit the buffer of {} bytes",
+      self.buffer.len()
+    );
+
     let start: usize = (section.byte_offset as usize).min(self.buffer.len());
     let end: usize = start
       .saturating_add(section.byte_length as usize)
