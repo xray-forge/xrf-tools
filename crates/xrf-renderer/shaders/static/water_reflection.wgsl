@@ -158,11 +158,13 @@ fn ray_behind(ray: ReflectionRay, at: vec2<f32>) -> vec2<f32> {
   return vec2<f32>(along - scene, scene);
 }
 
-// The view space point at a place on the screen, a distance along the view.
+// The view space point at a place on the screen, a distance along the view: through the whole projection, its
+// off-centre terms the temporal jitter moves included, as `view_to_uv` projects back.
 fn view_point(at: vec2<f32>, distance: f32) -> vec3<f32> {
   let ndc: vec2<f32> = (at * 2.0 - 1.0) * vec2<f32>(1.0, -1.0);
+  let centred: vec2<f32> = ndc + vec2<f32>(camera.projection[2][0], camera.projection[2][1]);
 
-  return vec3<f32>(ndc.x / camera.projection[0][0], ndc.y / camera.projection[1][1], -1.0) * distance;
+  return vec3<f32>(centred.x / camera.projection[0][0], centred.y / camera.projection[1][1], -1.0) * distance;
 }
 
 // The view space point the screen shows at a place.
