@@ -6,7 +6,7 @@ use xrf_anm::AnmFile;
 use xrf_chunk::XRayByteOrder;
 use xrf_environment::{EnvironmentCatalog, WeatherDescriptor, WeatherModifier};
 use xrf_error::{XrfError, XrfResult};
-use xrf_level::{LevelSector, LevelSectorComposition};
+use xrf_level::{EnvModifier, LevelSector, LevelSectorComposition};
 use xrf_ltx::Ltx;
 use xrf_material::{XrayReducedTextures, XraySurfaceDescriptor};
 use xrf_particles::{ParticleCollider, ParticleEngineRules};
@@ -209,7 +209,7 @@ impl RenderLevelSource for LevelRenderSource {
         .iter()
         .map(|effect| (effect.name.clone(), effect.list_descriptors(environment.catalog.engine)))
         .collect(),
-      modifiers: modifiers.iter().map(WeatherModifier::of).collect(),
+      modifiers: modifiers.iter().map(to_weather_modifier).collect(),
       sun_table: environment
         .catalog
         .sun_table
@@ -403,6 +403,25 @@ fn to_render_category(category: LevelSpawnCategory) -> RenderSpawnCategory {
     LevelSpawnCategory::Items => RenderSpawnCategory::Items,
     LevelSpawnCategory::Weapons => RenderSpawnCategory::Weapons,
     LevelSpawnCategory::Lamps => RenderSpawnCategory::Lamps,
+  }
+}
+
+/// A `level.env_mod` volume as the mixer weighs it: one from a file before the flag word adds every value, as the
+/// engine's `use_flags.one()` before the read leaves it.
+fn to_weather_modifier(modifier: &EnvModifier) -> WeatherModifier {
+  let to_array = |vector: &xrf_math::Vector3d<f32>| [vector.x, vector.y, vector.z];
+
+  WeatherModifier {
+    position: to_array(&modifier.position),
+    radius: modifier.radius,
+    power: modifier.power,
+    far_plane: modifier.far_plane,
+    fog_color: to_array(&modifier.fog_color),
+    fog_density: modifier.fog_density,
+    ambient: to_array(&modifier.ambient),
+    sky_color: to_array(&modifier.sky_color),
+    hemi_color: to_array(&modifier.hemi_color),
+    flags: modifier.use_flags.unwrap_or(WeatherModifier::ALL),
   }
 }
 
