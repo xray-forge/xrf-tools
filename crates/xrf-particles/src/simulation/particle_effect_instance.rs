@@ -57,8 +57,9 @@ impl ParticleEffectInstance {
       });
     let mut pool: ParticlePool = ParticlePool::new(definition.max_particles as usize, seed);
 
+    // A frame chunk counting no frames starts every particle on the first, where the engine would divide by nought.
     if flags.is(ParticleEffectFlags::RANDOM_FRAME) {
-      pool = pool.with_random_frames(frame_count as i32);
+      pool = pool.with_random_frames(i32::try_from(frame_count.max(1)).unwrap_or(i32::MAX));
     }
 
     if flags.is(ParticleEffectFlags::ANIMATED | ParticleEffectFlags::RANDOM_PLAYBACK) {
