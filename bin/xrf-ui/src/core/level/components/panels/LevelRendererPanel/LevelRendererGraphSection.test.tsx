@@ -27,15 +27,17 @@ describe("LevelRendererGraphSection", () => {
   it("turns them all off at once, or all back on once any is off", async () => {
     const onChange = jest.fn<(settings: RenderGraphSettings) => void>();
 
-    await userEvent.click(
-      renderSection(DEFAULT_RENDER_GRAPH_SETTINGS, onChange).getByRole("checkbox", { name: "Optimizations" })
-    );
+    const whole = renderSection(DEFAULT_RENDER_GRAPH_SETTINGS, onChange);
+
+    await userEvent.click(whole.getByRole("checkbox", { name: "Optimizations" }));
 
     expect(onChange).toHaveBeenLastCalledWith(SERIAL_RENDER_GRAPH_SETTINGS);
 
+    whole.unmount();
+
     const bisected = renderSection({ ...DEFAULT_RENDER_GRAPH_SETTINGS, isMerging: false }, onChange);
 
-    await userEvent.click(bisected.getAllByRole("checkbox", { name: "Optimizations" }).at(-1) as HTMLElement);
+    await userEvent.click(bisected.getByRole("checkbox", { name: "Optimizations" }));
 
     expect(onChange).toHaveBeenLastCalledWith(DEFAULT_RENDER_GRAPH_SETTINGS);
   });

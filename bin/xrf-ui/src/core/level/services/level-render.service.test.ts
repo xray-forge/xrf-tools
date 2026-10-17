@@ -39,7 +39,6 @@ import {
 } from "@/fixtures/mocks/tauri.mocks";
 import {
   emitViewportEvent,
-  flushPromises,
   LEVEL_SCENE,
   LEVEL_VIEWPORT,
   mockAttachedLevelRender,
@@ -305,8 +304,8 @@ describe("LevelRenderService", () => {
     setMockInvokeResponses({ ["plugin:render|seek_weather"]: () => Promise.reject(new Error("invalid time")) });
     service.seekWeather(60);
     service.seekWeather(120);
-    await flushPromises();
 
+    await waitFor(() => expect(warn).toHaveBeenCalled());
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith("A native viewport command failed:", "seekWeather", new Error("invalid time"));
   });
@@ -318,8 +317,7 @@ describe("LevelRenderService", () => {
     expect(service.failure).toBe("No GPU");
 
     service.detach();
-    await flushPromises();
 
-    expect(sentRenderCommand("detach_viewport")).toEqual([{ viewport: LEVEL_VIEWPORT }]);
+    await waitFor(() => expect(sentRenderCommand("detach_viewport")).toEqual([{ viewport: LEVEL_VIEWPORT }]));
   });
 });
