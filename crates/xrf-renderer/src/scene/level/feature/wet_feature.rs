@@ -22,55 +22,39 @@ use crate::pass::wet_uniform::WetUniform;
 use crate::scene::level::cover_textures::CoverTextures;
 use crate::scene::level::feature::overhead_windows::OverheadWindows;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::puddle_fill::PuddleFill;
+use crate::scene::level::level_wetness::LevelWetness;
 use crate::scene::level::rain_wetness::RainWetness;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
-/// The wet surfaces: the level's wetness and its puddles' fill, moved on with the rain and the game's clock, and the
-/// G-buffer wetted while the rain falls and, enhanced, while the level is still wet after it stops.
+/// The wet surfaces: the G-buffer wetted by the level's wetness and its puddles' fill (`LevelWetness`, the scene's)
+/// while the rain falls and, enhanced, while the level is still wet after it stops.
 #[derive(Default)]
 pub struct WetFeature {
-  wetness: RainWetness,
-  puddle_fill: PuddleFill,
   uniform: WetUniform,
   /// The splash volume and the flow, as the weather textures hold them, while the surfaces are wetted.
   views: Option<[wgpu::TextureView; 2]>,
 }
 
 impl WetFeature {
-  /// Moves the level's wetness and its puddles on by `time` at the weather's `rate`, and takes this frame's wetting:
-  /// with the falling rain's uniform where it falls, over the overhead maps where they stand (`windows`), its cover's
-  /// noise turned by `noise_frame`.
+  /// Takes this frame's wetting from the level's wetness (`level`) at the scene's clock `time`: with the falling rain's
+  /// uniform where it falls, over the overhead maps where they stand (`windows`), its cover's noise turned by
+  /// `noise_frame`.
   pub fn prepare(
     &mut self,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
-    (falling, time, rate): (Option<&RainUniform>, f32, f32),
+    (level, falling, time): (&LevelWetness, Option<&RainUniform>, f32),
     (windows, noise_frame): (OverheadWindows, u32),
     weather_textures: &WeatherTextureCache,
   ) {
     self.views = None;
 
-    // The game's `time_factor`: Anomaly's `alife.ltx` runs its clock six times a real second, Call of Pripyat's ten.
-    let time_factor: f32 = if lighting.engine == XrayEngine::Extended {
-      6.0
-    } else {
-      10.0
-    };
-    let density: f32 = lighting.rain.map_or(0.0, |rain| rain.density);
-    // A paused clock still lets the level wet and dry at the game's own pace, so a rain switched on or off in a view
-    // standing at a moment fills and drains as it would in play.
-    let pace: f32 = if rate > 0.0 { rate / time_factor } else { 1.0 };
     let settings: RenderRainSettings = options.features.rain;
     let is_enhanced: bool = settings.is_enhanced();
-    let build_up: f32 = if is_enhanced {
-      RainWetness::ENHANCED_BUILD_UP
-    } else {
-      RainWetness::ENGINE_BUILD_UP
-    };
-    let wetness: f32 = self.wetness.advance(time, density, pace, build_up);
-    let (fill, storm, soak): (f32, f32, f32) = self.puddle_fill.advance(time, density, pace);
+    let drying: &RainWetness = level.get_wetness();
+    let wetness: f32 = drying.get();
+    let (fill, storm, soak): (f32, f32, f32) = level.get_puddles();
     // The traced reflections want the wet gloss as far as the rain reaches, whatever the rain's mode.
     let is_far: bool = options.features.reflections.is_drawn();
 
@@ -110,7 +94,7 @@ impl WetFeature {
       ),
       gust: WetUniform::get_gust(lighting.wind.direction, lighting.wind.velocity),
       relief: Vec4::new(f32::from(u8::from(settings.is_relief_flooded)), 0.0, 0.0, 0.0),
-      drying: Vec4::new(self.wetness.get_peak(), self.wetness.get_left(), 0.0, 0.0),
+      drying: Vec4::new(drying.get_peak(), drying.get_left(), 0.0, 0.0),
     };
     self.views = Some([
       weather_textures

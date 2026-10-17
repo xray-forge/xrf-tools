@@ -23,6 +23,7 @@ mod history;
 mod indirect_light;
 mod lens_flares;
 mod level_shadows;
+mod level_wetness;
 mod library_versions;
 mod light_geometry;
 mod lighting;

@@ -26,6 +26,7 @@ use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_load::LevelLoad;
 use crate::scene::level::level_particles::LevelParticles;
+use crate::scene::level::level_wetness::LevelWetness;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::static_scene::static_sector_proxy::StaticSectorProxy;
 use crate::scene::static_scene::static_trace::StaticTrace;
@@ -64,6 +65,8 @@ pub struct LevelScene {
   pub campfire_shares: HashMap<u16, f32>,
   /// The driving camera's smoothed hemi, none where it is not estimated.
   pub camera_hemi: Option<f32>,
+  /// How wet the level is and how full its puddles, which every view of it wets its surfaces by.
+  pub wetness: LevelWetness,
   /// The sectors it could not take in since the world was last told.
   failures: Vec<RenderSectorFailure>,
   /// The sectors the world posted that wait to be taken in, in the order posted, and the frames the first has waited.
@@ -101,6 +104,7 @@ impl LevelScene {
       gust: AmbientGust::default(),
       campfire_shares: HashMap::new(),
       camera_hemi: None,
+      wetness: LevelWetness::default(),
       failures: Vec::new(),
       pending: VecDeque::new(),
       waited: 0,

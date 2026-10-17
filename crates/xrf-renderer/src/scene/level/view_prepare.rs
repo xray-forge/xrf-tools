@@ -11,7 +11,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 
 /// What a view readies its frame from: the GPU and its passes, the camera, the sizes the frame is drawn, resolved and
-/// shown at, the options, and the weather's light, textures and clock rate.
+/// shown at, the options, the weather's light, textures and clock rate, and whether it is its scene's first view.
 pub struct ViewPrepare<'a> {
   pub device: &'a wgpu::Device,
   pub queue: &'a wgpu::Queue,
@@ -31,4 +31,6 @@ pub struct ViewPrepare<'a> {
   pub weather_textures: &'a WeatherTextureCache,
   /// How fast the weather's clock runs against real time.
   pub weather_rate: f32,
+  /// Whether it is the first view of its scene readied this frame, which moves the scene's own state on.
+  pub is_scene_first: bool,
 }
