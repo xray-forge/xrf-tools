@@ -159,7 +159,7 @@ impl StaticCullPass {
   ) -> XrfResult<([wgpu::ComputePipeline; 6], [[wgpu::ComputePipeline; 3]; 3])> {
     let create = |entry: &'static str, permutation: StaticCullPermutation| -> XrfResult<wgpu::ComputePipeline> {
       source.get_compute_pipeline(
-        &ComputePipelineDescription::new(entry, "static/cull", entry)
+        &ComputePipelineDescription::new(entry, StaticCullPermutation::MODULE, entry)
           .with_permutation(&permutation)
           .with_bind_group_layouts(&[Some(view_layout), Some(layout)]),
       )

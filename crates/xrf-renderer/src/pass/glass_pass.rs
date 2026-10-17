@@ -171,7 +171,7 @@ impl GlassPass {
       source.get_compute_pipeline(
         &ComputePipelineDescription::new(
           "glass copy dispatch",
-          "frame/glass_copy_dispatch",
+          GlassCopyPermutation::MODULE,
           "cs_glass_copy_dispatch",
         )
         .with_permutation(&permutation)

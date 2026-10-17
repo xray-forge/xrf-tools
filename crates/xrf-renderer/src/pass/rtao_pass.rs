@@ -139,7 +139,7 @@ impl RtaoPass {
 
         create_fullscreen_pipeline_with(
           source,
-          ("frame/rtao", entry, &RtaoPermutation { rays }),
+          (RtaoPermutation::MODULE, entry, &RtaoPermutation { rays }),
           &groups,
           targets,
         )

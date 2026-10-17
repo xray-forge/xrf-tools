@@ -143,7 +143,7 @@ impl SunPass {
 
       create_fullscreen_pipeline_with(
         source,
-        ("frame/sun", entry, &permutation),
+        (SunFilterPermutation::MODULE, entry, &permutation),
         &[Some(view_layout), Some(layout)],
         &[Some(ViewTargets::LIGHT.into()), Some(Self::SEEN_FORMAT.into())],
       )

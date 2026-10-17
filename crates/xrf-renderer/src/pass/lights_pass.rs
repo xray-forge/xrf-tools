@@ -315,9 +315,13 @@ impl LightsPass {
     };
     let create_visibility = |is_contact: bool| -> XrfResult<wgpu::ComputePipeline> {
       source.get_compute_pipeline(
-        &ComputePipelineDescription::new("light visibility", "frame/light_visibility", "cs_visibility")
-          .with_permutation(&permutation(is_contact))
-          .with_bind_group_layouts(&[Some(view_layout), Some(layout), None, Some(shadowing_layout)]),
+        &ComputePipelineDescription::new(
+          "light visibility",
+          ContactMarchPermutation::VISIBILITY_MODULE,
+          "cs_visibility",
+        )
+        .with_permutation(&permutation(is_contact))
+        .with_bind_group_layouts(&[Some(view_layout), Some(layout), None, Some(shadowing_layout)]),
       )
     };
     let traced: Option<wgpu::ComputePipeline> = trace_layout
@@ -341,7 +345,7 @@ impl LightsPass {
     };
     let create_draw = |is_contact: bool| -> XrfResult<wgpu::RenderPipeline> {
       source.get_render_pipeline(
-        &RenderPipelineDescription::new("lights", "frame/lights", "vs_fullscreen")
+        &RenderPipelineDescription::new("lights", ContactMarchPermutation::LIGHTS_MODULE, "vs_fullscreen")
           .with_fragment("fs_lights")
           .with_permutation(&permutation(is_contact))
           .with_bind_group_layouts(&[
