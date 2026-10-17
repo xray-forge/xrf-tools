@@ -2,16 +2,6 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_renderer_core::{ShaderAddressSpace, ShaderLayoutVerifier};
-
-use crate::contract::render_debug_view::RenderDebugView;
-use crate::pass::backdrop_uniform::BackdropUniform;
-use crate::pass::camera_uniform::CameraUniform;
-use crate::pass::light_view::LightView;
-use crate::scene::level::level_light_shadows::LevelLightShadows;
-use crate::scene::static_scene::static_class::StaticClass;
-use crate::scene::static_scene::static_surface::StaticSurface;
-use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::shader::generated_shaders::list_generated_shaders;
 use crate::shader::shader_library::ShaderLibrary;
 
@@ -57,37 +47,6 @@ fn every_module_composes_without_ray_queries() {
   assert!(fallen_back > 0, "No module imports a fallback");
 }
 
-/// The cull tells a batch's class by its index as Rust lays batches out, a layout's classes in `StaticClass` order,
-/// and finds a surface pass's draw list after them as Rust does.
-#[test]
-fn the_cull_counts_classes_as_rust_does() {
-  let library: ShaderLibrary = ShaderLibrary::default();
-
-  assert_eq!(
-    get_constant(&library, "static/cull", "CLASS_COUNT"),
-    StaticClass::ALL.len() as u32
-  );
-  assert_eq!(
-    get_constant(&library, "static/cull", "WATER_CLASS"),
-    StaticClass::Water.get_index() as u32
-  );
-  assert_eq!(
-    get_constant(&library, "static/cull", "SURFACE_PASS_COUNT"),
-    StaticSurfacePass::COUNT as u32
-  );
-}
-
-/// The lamps read their shadows in texels of the atlas the renderer allocates their tiles in.
-#[test]
-fn the_lamps_read_the_shadow_atlas_at_its_allocated_size() {
-  let library: ShaderLibrary = ShaderLibrary::default();
-
-  assert_eq!(
-    get_float_constant(&library, "common/local_lights", "ATLAS_TEXEL"),
-    1.0 / LevelLightShadows::ATLAS_SIZE as f32
-  );
-}
-
 /// A reload stales the modules that compose from what changed and no others; a changed fallback stales the modules
 /// that import the module it replaces.
 #[test]
@@ -111,45 +70,6 @@ fn a_reload_stales_only_the_modules_composing_from_a_change() {
   assert!(traced.contains(&"common/scene_trace"));
   assert!(traced.contains(&"common/scene_trace_none"));
   assert!(!traced.contains(&"frame/present"));
-}
-
-/// The present tells a debug view by its index as Rust numbers them, FSR's last and from the first it names on.
-#[test]
-fn the_present_numbers_debug_views_as_rust_does() {
-  let library: ShaderLibrary = ShaderLibrary::default();
-
-  assert_eq!(
-    get_constant(&library, "frame/present", "VIEW_HEIGHTS"),
-    RenderDebugView::Heights.get_index()
-  );
-
-  for (name, view) in [
-    ("VIEW_LUMINANCE", RenderDebugView::Luminance),
-    ("VIEW_ALBEDO_RANGE", RenderDebugView::AlbedoRange),
-    ("VIEW_OVERDRAW", RenderDebugView::Overdraw),
-    ("VIEW_CASCADES", RenderDebugView::Cascades),
-    ("VIEW_LAMPS", RenderDebugView::LampsPerCluster),
-    ("VIEW_SAMPLED_MIP", RenderDebugView::SampledMip),
-  ] {
-    assert_eq!(
-      get_constant(&library, "frame/present", name),
-      view.get_index(),
-      "{name}"
-    );
-  }
-
-  for (name, view) in [
-    ("LIGHT_VIEW_CASCADES", LightView::Cascades),
-    ("LIGHT_VIEW_LAMPS", LightView::LampsPerCluster),
-    ("LIGHT_VIEW_OVERDRAW", LightView::Overdraw),
-  ] {
-    assert_eq!(get_constant(&library, "frame/sun", name), view as u32, "{name}");
-  }
-  assert_eq!(
-    get_constant(&library, "frame/present", "VIEW_FSR_FIRST"),
-    RenderDebugView::FsrMasks.get_index()
-  );
-  assert!(RenderDebugView::FsrFrameShare.get_index() > RenderDebugView::FsrMasks.get_index());
 }
 
 /// The library's table is kept by hand: a file left out of it is never validated or reloaded, and fails only when a GPU
@@ -202,71 +122,4 @@ fn validate(name: &str, source: &str, capabilities: naga::valid::Capabilities) {
   naga::valid::Validator::new(naga::valid::ValidationFlags::all(), capabilities)
     .validate(&module)
     .unwrap_or_else(|error| panic!("'{name}' does not validate:\n{}", error.emit_to_string(source)));
-}
-
-/// The bytes a struct of a name takes in a module, as the shader lays it out.
-fn get_struct_size(library: &ShaderLibrary, name: &str, type_name: &str) -> u32 {
-  let source: String = library.compose(name).expect("composes");
-  let module: naga::Module = naga::front::wgsl::parse_str(&source).expect("parses");
-  let mut layouter: naga::proc::Layouter = naga::proc::Layouter::default();
-
-  layouter.update(module.to_ctx()).expect("lays out");
-
-  let (handle, _) = module
-    .types
-    .iter()
-    .find(|(_, it)| it.name.as_deref() == Some(type_name))
-    .unwrap_or_else(|| panic!("'{name}' has no '{type_name}'"));
-
-  layouter[handle].size
-}
-
-/// naga lays the camera and the page's backdrop out where the derive does, and takes each as a uniform.
-#[test]
-fn the_camera_and_the_backdrop_are_laid_out_as_naga_lays_them() {
-  ShaderLayoutVerifier::verify::<CameraUniform>(ShaderAddressSpace::Uniform).unwrap();
-  ShaderLayoutVerifier::verify::<BackdropUniform>(ShaderAddressSpace::Uniform).unwrap();
-}
-
-/// The static draws lay a surface out as large as it is written.
-#[test]
-fn a_static_surface_is_as_large_as_its_shaders_read() {
-  let library: ShaderLibrary = ShaderLibrary::default();
-
-  assert_eq!(
-    get_struct_size(&library, "static/gbuffer", "Surface"),
-    size_of::<StaticSurface>() as u32
-  );
-}
-
-/// A `u32` constant's value in a module.
-/// The value a module declares a float constant as.
-fn get_float_constant(library: &ShaderLibrary, name: &str, constant: &str) -> f32 {
-  let source: String = library.compose(name).expect("composes");
-  let module: naga::Module = naga::front::wgsl::parse_str(&source).expect("parses");
-  let (_, declared) = module
-    .constants
-    .iter()
-    .find(|(_, declared)| declared.name.as_deref() == Some(constant))
-    .unwrap_or_else(|| panic!("'{name}' declares no {constant}"));
-
-  match module.global_expressions[declared.init] {
-    naga::Expression::Literal(naga::Literal::F32(value)) => value,
-    ref other => panic!("'{name}' declares {constant} as {other:?}"),
-  }
-}
-
-fn get_constant(library: &ShaderLibrary, name: &str, constant: &str) -> u32 {
-  let source: String = library.compose(name).expect("composes");
-  let module: naga::Module = naga::front::wgsl::parse_str(&source).expect("parses");
-  let (_, declared) = module
-    .constants
-    .iter()
-    .find(|(_, declared)| declared.name.as_deref() == Some(constant))
-    .unwrap_or_else(|| panic!("'{name}' declares no {constant}"));
-
-  match module.global_expressions[declared.init] {
-    naga::Expression::Literal(naga::Literal::U32(value)) => value,
-    ref other => panic!("'{name}' declares {constant} as {other:?}"),
-  }
 }

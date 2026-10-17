@@ -15,8 +15,7 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 
-/// Clusters the view is cut into, and invocations a binning workgroup runs, as the source declare them.
-const LIGHT_CLUSTERS: u32 = 16 * 9 * 24;
+/// Invocations a binning workgroup runs, as the source declares it.
 const BINNING_WORKGROUP: u32 = 64;
 
 /// Pixels a side of the square a visibility workgroup covers, as the source declares it.
@@ -58,6 +57,13 @@ struct LightsPipelines {
 }
 
 impl LightsPass {
+  /// Clusters the view is cut into, sixteen across, nine down and twenty four along it, as `common/light_clusters`
+  /// declares them.
+  pub const LIGHT_CLUSTERS: u32 = 16 * 9 * 24;
+
+  /// Lights one cluster holds at most; any more reaching it go unlit there.
+  pub const LIGHT_CLUSTER_CAPACITY: u32 = 64;
+
   /// Where the traced visibility binds the texture cache's group, after the scene trace's.
   const TEXTURE_GROUP: u32 = 4;
 
@@ -189,7 +195,7 @@ impl LightsPass {
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
     pass.set_pipeline(&self.pipelines.binning);
-    pass.dispatch_workgroups(LIGHT_CLUSTERS.div_ceil(BINNING_WORKGROUP), 1, 1);
+    pass.dispatch_workgroups(Self::LIGHT_CLUSTERS.div_ceil(BINNING_WORKGROUP), 1, 1);
   }
 
   /// Marches the contact shadows towards each texel's strongest lights into a target `size` texels across, half the
