@@ -10,7 +10,7 @@ impl NoiseTurn {
   /// Interleaved gradient noise's step between frames, Jimenez's, in pixels.
   pub const GRADIENT_STEP: f32 = 5.588_238;
 
-  /// Frames the noise cycles through before it repeats.
+  /// Frames a pass's noise cycles through before it repeats, where the pass keeps no cycle of its own.
   pub const FRAMES: u32 = 64;
 
   /// What `frame` turns a pixel's noise by each way, from zero to one, cycling every `frames`.
@@ -20,8 +20,8 @@ impl NoiseTurn {
     [(turn * Self::R2_STEPS[0]).fract(), (turn * Self::R2_STEPS[1]).fract()]
   }
 
-  /// The pixels `frame` moves interleaved gradient noise by, cycling every `FRAMES`.
-  pub fn get_gradient(frame: u32) -> f32 {
-    (frame % Self::FRAMES) as f32 * Self::GRADIENT_STEP
+  /// The pixels `frame` moves interleaved gradient noise by, cycling every `frames`.
+  pub fn get_gradient(frame: u32, frames: u32) -> f32 {
+    (frame % frames) as f32 * Self::GRADIENT_STEP
   }
 }
