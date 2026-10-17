@@ -3,8 +3,9 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_renderer::{
-  LoaderReceiver, RenderLevelSource, RenderLoadFailure, RenderModelSkeleton, RenderSceneUpdate, RenderSectorFailure,
-  RenderStreamingProgress, RenderWorkers, StaticModelProxy, StaticObjectProxy, StaticSectorProxy, take_answer,
+  LoaderReceiver, RenderLevelSource, RenderLoadFailure, RenderModelFailure, RenderModelSkeleton, RenderSceneUpdate,
+  RenderSectorFailure, RenderStreamingProgress, RenderWorkers, StaticModelProxy, StaticObjectProxy, StaticSectorProxy,
+  take_answer,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::LightsDescription;
@@ -46,6 +47,8 @@ pub struct LevelStreaming {
   hidden_groups: u32,
   /// The sectors that could not be read or taken in, and the drawables the packer left out of those that were.
   failed_sectors: Vec<RenderLoadFailure>,
+  /// The spawned models the scene could not take in, which no object stands as.
+  failed_models: Vec<RenderLoadFailure>,
   skipped: Vec<WorldSectorSkip>,
   surfaces: SurfaceTally,
   /// When it began opening the level, which the load is timed from.
@@ -80,6 +83,7 @@ impl LevelStreaming {
       models: Vec::new(),
       hidden_groups: 0,
       failed_sectors: Vec::new(),
+      failed_models: Vec::new(),
       skipped: Vec::new(),
       surfaces: SurfaceTally::default(),
       started: Instant::now(),
@@ -93,13 +97,15 @@ impl LevelStreaming {
 
   /// Posts this frame's changes: the spawn groups `hidden` names left out and those it no longer names stood again, the
   /// lights once read, and a few of the sectors and spawned models the workers finished. `failures` are the sectors
-  /// the scene could not take in of the last frame's posts.
+  /// and the spawned models the scene could not take in of the last frame's posts.
   pub fn stream(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     animation: &mut LevelAnimation,
-    (hidden, failures): (u32, Vec<RenderSectorFailure>),
+    (hidden, (failures, model_failures)): (u32, (Vec<RenderSectorFailure>, Vec<RenderModelFailure>)),
   ) {
+    self.forget_failed_models(animation, model_failures);
+
     for failure in failures {
       if let Some((sector, _)) = self.posted.remove(&failure.handle) {
         self.sector_handles.free(failure.handle);
@@ -195,10 +201,40 @@ impl LevelStreaming {
 
   /// What the level could not draw the way it asked, so far.
   pub fn describe_problems(&self) -> WorldLevelProblems {
+    let mut models: Vec<RenderLoadFailure> = self.spawn.list_failures();
+
+    models.extend_from_slice(&self.failed_models);
+
     WorldLevelProblems {
       skipped: self.skipped.clone(),
       sectors: self.failed_sectors.clone(),
-      models: self.spawn.list_failures(),
+      models,
+    }
+  }
+
+  /// Forgets each spawned model the scene could not take in, with every object standing as it, which the scene never
+  /// took in either, and records it failed: none of its objects is stood again.
+  fn forget_failed_models(&mut self, animation: &mut LevelAnimation, failures: Vec<RenderModelFailure>) {
+    for failure in failures {
+      let Some(index) = self.models.iter().position(|model| model.handle == failure.handle) else {
+        continue;
+      };
+      let model: StreamedModel = self.models.remove(index);
+
+      for object in model.places.iter().filter_map(|(_, object)| *object) {
+        animation.remove(object);
+        self.object_handles.free(object);
+      }
+
+      self.model_handles.free(model.handle);
+      self.failed_models.push(RenderLoadFailure {
+        name: match model.places.as_slice() {
+          [] => "spawned model".to_string(),
+          [(place, _)] => format!("model of spawned object {}", place.object),
+          [(place, _), rest @ ..] => format!("model of spawned object {} and {} more", place.object, rest.len()),
+        },
+        reason: failure.reason,
+      });
     }
   }
 

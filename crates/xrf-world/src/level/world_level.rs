@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use glam::Vec3;
 use xrf_renderer::{
-  ParticleEmitterProxy, PlacedEffect, RenderLevelSource, RenderSceneUpdate, RenderSectorFailure,
+  ParticleEmitterProxy, PlacedEffect, RenderLevelSource, RenderModelFailure, RenderSceneUpdate, RenderSectorFailure,
   RenderStreamingProgress, RenderViewOptions, RenderWorkers,
 };
 use xrf_renderer_core::ProxyHandle;
@@ -54,13 +54,13 @@ impl WorldLevel {
   }
 
   /// This frame's posts to the level's scene by the view's options and the frame's weather, the camera standing at
-  /// `eye` in engine space, and what its effects give the scene besides. `failures` are the sectors the scene could not
-  /// take in of the last frame's posts, and `finished` the effects it finished.
+  /// `eye` in engine space, and what its effects give the scene besides. `failures` are the sectors and the spawned
+  /// models the scene could not take in of the last frame's posts, and `finished` the effects it finished.
   pub fn advance(
     &mut self,
     (options, toggles, ambient): (&RenderViewOptions, &WorldToggles, Option<AmbientFrame<'_>>),
     eye: Vec3,
-    failures: Vec<RenderSectorFailure>,
+    failures: (Vec<RenderSectorFailure>, Vec<RenderModelFailure>),
     finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
   ) -> (Vec<RenderSceneUpdate>, EffectsFrame) {
     let mut updates: Vec<RenderSceneUpdate> = Vec::new();

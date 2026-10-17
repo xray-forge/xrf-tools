@@ -16,6 +16,7 @@ use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_source::RenderLevelSource;
+use crate::host::render_model_failure::RenderModelFailure;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
 use crate::host::render_scene_frame::RenderSceneFrame;
 use crate::host::render_scene_id::RenderSceneId;
@@ -67,8 +68,9 @@ pub struct LevelScene {
   pub camera_hemi: Option<f32>,
   /// How wet the level is and how full its puddles, which every view of it wets its surfaces by.
   pub wetness: LevelWetness,
-  /// The sectors it could not take in since the world was last told.
-  failures: Vec<RenderSectorFailure>,
+  /// The sectors and the spawned models it could not take in since the world was last told.
+  sector_failures: Vec<RenderSectorFailure>,
+  model_failures: Vec<RenderModelFailure>,
   /// The sectors the world posted that wait to be taken in, in the order posted, and the frames the first has waited.
   pending: VecDeque<(ProxyHandle<StaticSectorProxy>, SectorPackage)>,
   waited: u32,
@@ -105,7 +107,8 @@ impl LevelScene {
       campfire_shares: HashMap::new(),
       camera_hemi: None,
       wetness: LevelWetness::default(),
-      failures: Vec::new(),
+      sector_failures: Vec::new(),
+      model_failures: Vec::new(),
       pending: VecDeque::new(),
       waited: 0,
       source,
@@ -163,7 +166,7 @@ impl LevelScene {
     let failures: Vec<RenderSectorFailure> =
       self.add_sectors((device, queue, encoder), (&mut *textures, &assets), scheduler);
 
-    self.failures.extend(failures);
+    self.sector_failures.extend(failures);
     let slots: Vec<u32> = self.list_texture_slots().collect();
 
     self.load.advance(streaming, (self.grass.is_loaded(), &slots), textures);
@@ -187,11 +190,12 @@ impl LevelScene {
     }
   }
 
-  /// What it tells the world of the frames since the last: the sectors it could not take in, and the effects whose
-  /// particles stopped playing.
+  /// What it tells the world of the frames since the last: the sectors and the spawned models it could not take in,
+  /// and the effects whose particles stopped playing.
   pub fn take_feedback(&mut self) -> RenderSceneFeedback {
     RenderSceneFeedback {
-      failures: std::mem::take(&mut self.failures),
+      sector_failures: std::mem::take(&mut self.sector_failures),
+      model_failures: std::mem::take(&mut self.model_failures),
       finished_effects: self.particles.take_finished(),
     }
   }
@@ -324,11 +328,19 @@ impl LevelScene {
             .add_model(device, queue, encoder, (&mut *textures, assets), (handle, &model))
           {
             log::warn!("Native viewport could not add a spawned model: {error}");
+
+            self.model_failures.push(RenderModelFailure {
+              handle,
+              reason: error.to_string(),
+            });
           }
         }
         RenderSceneUpdate::RemoveModel(handle) => {
           self.statics.remove_model(handle);
         }
+        // The objects of a model refused are told back with it: the world takes them out.
+        RenderSceneUpdate::AddObject { model, .. }
+          if self.model_failures.iter().any(|failure| failure.handle == model) => {}
         RenderSceneUpdate::AddObject { handle, model, place } => {
           if let Err(error) = self.statics.add_object(device, queue, handle, (model, &place)) {
             log::warn!(
