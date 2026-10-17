@@ -203,7 +203,7 @@ impl RenderThread {
   pub fn run(mut self) {
     log::info!("Render thread started");
 
-    loop {
+    'running: loop {
       if self.is_drawing() {
         // A limited rate waits until the next frame starts, a lead ahead of its due, hearing commands meanwhile.
         loop {
@@ -214,7 +214,7 @@ impl RenderThread {
               continue;
             }
             Err(TryRecvError::Empty) => {}
-            Err(TryRecvError::Disconnected) => return,
+            Err(TryRecvError::Disconnected) => break 'running,
           }
 
           let left: Duration = self
@@ -240,7 +240,7 @@ impl RenderThread {
             }
           }
           Err(RecvTimeoutError::Timeout) => {}
-          Err(RecvTimeoutError::Disconnected) => break,
+          Err(RecvTimeoutError::Disconnected) => break 'running,
         }
       }
 
@@ -250,7 +250,7 @@ impl RenderThread {
         let is_due: bool = self.stopping.is_some() || self.idle_since.is_some_and(|since| since.elapsed() >= IDLE_STOP);
 
         if is_due && self.try_stop() {
-          break;
+          break 'running;
         }
 
         continue;
@@ -260,9 +260,13 @@ impl RenderThread {
       self.frame();
     }
 
+    // Answered once everything the thread made on the GPU is let go: its scenes hold the device as long as the GPU does.
+    let reply: Option<Sender<()>> = self.stopping.take();
+
+    drop(self);
     log::info!("Render thread stopped");
 
-    if let Some(reply) = self.stopping.take() {
+    if let Some(reply) = reply {
       let _ = reply.send(());
     }
   }
