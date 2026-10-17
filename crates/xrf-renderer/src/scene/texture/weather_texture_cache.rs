@@ -41,8 +41,6 @@ pub struct WeatherTextureCache {
   placeholder_cube: wgpu::TextureView,
   placeholder_flat: wgpu::TextureView,
   placeholder_volume: wgpu::TextureView,
-  /// Bumped whenever a view changes, which the bind groups sampling them follow.
-  generation: u64,
   frame: u64,
   workers: RenderWorkers,
 }
@@ -70,7 +68,6 @@ impl WeatherTextureCache {
         1,
         wgpu::TextureViewDimension::D2Array,
       ),
-      generation: 0,
       frame: 0,
       workers: workers.clone(),
     }
@@ -186,7 +183,6 @@ impl WeatherTextureCache {
       match load {
         Ok(Some(texture)) if Self::is_kind(&texture, entry.kind) => {
           entry.view = Some(Self::upload(device, queue, &texture, &reference));
-          self.generation += 1;
         }
         Ok(Some(_)) => log::warn!("Weather texture '{reference}' is not the kind it is drawn as"),
         _ => {}
@@ -194,15 +190,10 @@ impl WeatherTextureCache {
     }
 
     let frame: u64 = self.frame;
-    let before: usize = self.entries.len();
 
     self
       .entries
       .retain(|_, entry| frame.saturating_sub(entry.used) <= KEPT_FRAMES);
-
-    if self.entries.len() != before {
-      self.generation += 1;
-    }
   }
 
   fn upload(device: &wgpu::Device, queue: &wgpu::Queue, texture: &DecodedTexture, label: &str) -> wgpu::TextureView {

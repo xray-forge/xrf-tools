@@ -18,8 +18,6 @@ pub struct StaticSectorProxy {
   pub sphere: Vec4,
   /// The sector, by its index in the level.
   pub sector: u32,
-  /// Bytes of its pack.
-  pub bytes: u64,
   pub spans: StaticSpans,
   pub rows: Vec<ProxyHandle<StaticRow>>,
   /// Entries of the visible list it may need a batch.

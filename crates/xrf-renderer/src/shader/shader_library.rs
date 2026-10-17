@@ -610,8 +610,6 @@ const FALLBACKS: &[(&str, wgpu::Features, &str)] = &[(
 #[derive(Clone, Debug)]
 pub struct ShaderLibrary {
   modules: BTreeMap<&'static str, String>,
-  /// Bumped by every reload that changed a module, so a pass knows its pipelines are stale.
-  generation: u64,
   /// When each module's file last changed, for a debug build's reload.
   stamps: BTreeMap<&'static str, Option<SystemTime>>,
 }
@@ -623,7 +621,6 @@ impl Default for ShaderLibrary {
         .iter()
         .map(|(name, source)| (*name, source.to_string()))
         .collect(),
-      generation: 0,
       stamps: BTreeMap::new(),
     };
 
@@ -738,10 +735,6 @@ impl ShaderLibrary {
         self.modules.insert(name, source);
         changed.push(name);
       }
-    }
-
-    if !changed.is_empty() {
-      self.generation += 1;
     }
 
     changed

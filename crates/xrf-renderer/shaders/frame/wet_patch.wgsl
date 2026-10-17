@@ -79,7 +79,6 @@ struct EngineWetting {
 };
 
 fn engine_wetting(
-  normal: vec3<f32>,
   position: vec3<f32>,
   world: vec3<f32>,
   world_normal: vec3<f32>,
@@ -285,7 +284,7 @@ fn fs_wet_patch(in: FullscreenVarying) -> EngineWetTargets {
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let world_normal: vec3<f32> = normalize(rotation * normal);
   let reached: f32 = rain_reached(world, world_normal, in.clip.xy);
-  let wetting: EngineWetting = engine_wetting(normal, position, world, world_normal, reached);
+  let wetting: EngineWetting = engine_wetting(position, world, world_normal, reached);
   let wetness: f32 = surface_wetness(wetting, reached, world, world_normal, position,
     textureLoad(relief_target, texel, 0).r);
 
@@ -749,7 +748,7 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   }
 
   let reached: f32 = rain_reached(world, world_normal, in.clip.xy);
-  let wetting: EngineWetting = engine_wetting(normal, position, world, world_normal, reached);
+  let wetting: EngineWetting = engine_wetting(position, world, world_normal, reached);
   // How wet the engine reads the surface, by the albedo's brightness, as far as the reflections want it.
   let surface_wet: f32 = surface_wetness(wetting, reached, world, world_normal, position, sink);
   var wetness: f32 = surface_wet * dot(albedo.rgb, vec3<f32>(0.33));

@@ -5,8 +5,6 @@ pub struct GrowableBuffer {
   usage: wgpu::BufferUsages,
   buffer: wgpu::Buffer,
   length: u64,
-  /// Bumped each time the buffer is replaced, so whatever binds it knows to bind it again.
-  generation: u64,
 }
 
 impl GrowableBuffer {
@@ -21,7 +19,6 @@ impl GrowableBuffer {
       label,
       usage,
       length: 0,
-      generation: 0,
     }
   }
 
@@ -67,7 +64,6 @@ impl GrowableBuffer {
     }
 
     self.buffer = grown;
-    self.generation += 1;
   }
 
   fn create(device: &wgpu::Device, label: &'static str, usage: wgpu::BufferUsages, size: u64) -> wgpu::Buffer {
