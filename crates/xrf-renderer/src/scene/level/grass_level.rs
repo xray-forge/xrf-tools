@@ -81,6 +81,22 @@ impl GrassLevel {
       };
 
       let model_positions: Vec<f32> = read_pods(buffer, &model.positions);
+      let model_uvs: Vec<f32> = read_pods(buffer, &model.uvs);
+      let vertices: usize = model_positions.len() / 3;
+
+      // A model whose sections disagree draws nothing but keeps its place, which the slots name it by, and every later
+      // model's vertices stay its own.
+      if !model_positions.len().is_multiple_of(3)
+        || model_uvs.len() != vertices * 2
+        || model_indices.iter().any(|it| usize::from(*it) >= vertices)
+      {
+        log::warn!("Grass model {index} ({}) is damaged and draws nothing", model.texture);
+        texture_slots.push(texture);
+        records.push(Self::to_record(model, texture, reference, (first_index, 0), 0.0));
+
+        continue;
+      }
+
       let spread: f32 = model_positions
         .as_chunks::<3>()
         .0
@@ -89,7 +105,7 @@ impl GrassLevel {
         .fold(0.0, f32::max);
 
       positions.extend(model_positions);
-      uvs.extend(read_pods::<f32>(buffer, &model.uvs));
+      uvs.extend(model_uvs);
       indices.extend(model_indices.iter().map(|it| u32::from(*it) + base));
       texture_slots.push(texture);
       records.push(Self::to_record(
