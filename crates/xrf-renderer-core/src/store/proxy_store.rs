@@ -9,8 +9,10 @@ pub struct ProxyStore<T> {
   /// The slot each dense record is held through.
   owners: Vec<u32>,
   slots: Vec<ProxySlot>,
-  /// Slots no item holds, reused before new ones.
+  /// Slots no item holds, reused before new ones; kept only while `add` gives the handles out.
   free: Vec<u32>,
+  /// Whether a `ProxyAllocator` gives the handles out, so no slot freed is reused here.
+  is_allocated: bool,
   /// Dense records added, changed or moved since the mirror last took them, each listed once while it is marked, so
   /// a store no mirror takes from stays bounded.
   changed: Vec<u32>,
@@ -30,6 +32,7 @@ impl<T> ProxyStore<T> {
       owners: Vec::new(),
       slots: Vec::new(),
       free: Vec::new(),
+      is_allocated: false,
       changed: Vec::new(),
       marked: Vec::new(),
     }
@@ -45,6 +48,8 @@ impl<T> ProxyStore<T> {
 
   /// Puts an item in, at the end of the dense records.
   pub fn add(&mut self, item: T) -> ProxyHandle<T> {
+    debug_assert!(!self.is_allocated, "a store an allocator fills takes no add");
+
     let dense: u32 = self.items.len() as u32;
     let slot: u32 = match self.free.pop() {
       Some(slot) => {
@@ -73,6 +78,8 @@ impl<T> ProxyStore<T> {
   /// When the handle's slot holds an item.
   pub fn insert(&mut self, handle: ProxyHandle<T>, item: T) {
     let slot: usize = handle.slot as usize;
+
+    self.is_allocated = true;
 
     if self.slots.len() <= slot {
       self.slots.resize(
@@ -118,7 +125,10 @@ impl<T> ProxyStore<T> {
 
     slot.dense = ProxySlot::FREE;
     slot.generation = slot.generation.wrapping_add(1);
-    self.free.push(handle.slot);
+
+    if !self.is_allocated {
+      self.free.push(handle.slot);
+    }
 
     Some(item)
   }
