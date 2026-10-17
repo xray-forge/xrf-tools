@@ -5,7 +5,6 @@ use xrf_error::XrfResult;
 use xrf_utils::to_format_size;
 
 use crate::AnimationKey;
-use crate::envelope_evaluation;
 
 /// One animated channel, `CEnvelope` (`xrCore/Animation/Envelope.hpp`): how it behaves outside its keys, and the
 /// keys themselves.
@@ -18,6 +17,24 @@ pub struct AnimationEnvelope {
 }
 
 impl AnimationEnvelope {
+  /// `BEH_RESET`: zero outside the keys.
+  pub(crate) const BEHAVIOR_RESET: u8 = 0;
+
+  /// `BEH_CONSTANT`: the nearest end key's value.
+  pub(crate) const BEHAVIOR_CONSTANT: u8 = 1;
+
+  /// `BEH_REPEAT`: the keyed span over again.
+  pub(crate) const BEHAVIOR_REPEAT: u8 = 2;
+
+  /// `BEH_OSCILLATE`: the keyed span forwards and back.
+  pub(crate) const BEHAVIOR_OSCILLATE: u8 = 3;
+
+  /// `BEH_OFFSET`: the keyed span over again, shifted by its rise each time.
+  pub(crate) const BEHAVIOR_OFFSET: u8 = 4;
+
+  /// `BEH_LINEAR`: on along the end key's tangent.
+  pub(crate) const BEHAVIOR_LINEAR: u8 = 5;
+
   /// The two behaviours and the key count of the narrow layout, which is what `CEnvelope::Load_2` reads.
   pub const MIN_SERIALIZED_SIZE: u64 = 1 + 1 + 2;
 
@@ -30,11 +47,6 @@ impl AnimationEnvelope {
     let last: &AnimationKey = self.keys.last()?;
 
     Some(last.time - first.time)
-  }
-
-  /// The channel's value at a time in seconds, `CEnvelope::Evaluate`.
-  pub fn evaluate(&self, time: f32) -> f32 {
-    envelope_evaluation::evaluate(self, time)
   }
 
   /// Reads an envelope the narrow way, `CEnvelope::Load_2`.
