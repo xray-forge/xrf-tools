@@ -11,6 +11,8 @@ pub(crate) mod level_loader;
 pub(crate) mod level_object_motions;
 pub(crate) mod level_streaming;
 pub(crate) mod loader_flight;
+pub(crate) mod loader_slot;
+pub(crate) mod loader_slots;
 pub(crate) mod model_motions;
 pub(crate) mod placed_emitter;
 pub(crate) mod posed_skeleton;

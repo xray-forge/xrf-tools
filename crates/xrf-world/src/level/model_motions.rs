@@ -1,27 +1,21 @@
-use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::mpsc::TryRecvError;
 
-use xrf_renderer::{LoaderReceiver, RenderLevelSource, RenderMotion, RenderWorkers};
+use xrf_renderer::{RenderLevelSource, RenderMotion, RenderWorkers};
 
-/// One motion asked for: on its way from a loader thread, baked, or not to be had.
-enum MotionState {
-  Reading(LoaderReceiver<Option<RenderMotion>>),
-  Baked(RenderMotion),
-  Missing,
-}
+use crate::level::loader_slot::LoaderSlot;
+use crate::level::loader_slots::LoaderSlots;
 
 /// The motions a viewport's skinned models are posed by, each baked once on a loader thread the first time a pose
 /// names it, and kept while the viewport shows the same scene.
 pub struct ModelMotions {
-  motions: HashMap<String, MotionState>,
+  motions: LoaderSlots<RenderMotion>,
   workers: RenderWorkers,
 }
 
 impl ModelMotions {
   pub fn new(workers: &RenderWorkers) -> Self {
     Self {
-      motions: HashMap::new(),
+      motions: LoaderSlots::default(),
       workers: workers.clone(),
     }
   }
@@ -30,37 +24,16 @@ impl ModelMotions {
   /// be, which the caller poses the bind pose for.
   pub fn get(&mut self, source: &Arc<dyn RenderLevelSource>, name: &str) -> Option<&RenderMotion> {
     let workers: &RenderWorkers = &self.workers;
-    let state: &mut MotionState = self.motions.entry(name.to_owned()).or_insert_with(|| {
-      let (sender, receiver) = LoaderReceiver::channel();
+
+    self.motions.get(name, || {
       let (source, name) = (Arc::clone(source), name.to_owned());
 
-      workers.spawn(move || {
-        let motion: Option<RenderMotion> = match source.read_motion(&name) {
-          Ok(motion) => Some(motion),
-          Err(error) => {
-            log::warn!("Motion '{name}' cannot be played: {error}");
-
-            None
-          }
-        };
-
-        let _ = sender.send(motion);
-      });
-
-      MotionState::Reading(receiver)
-    });
-
-    if let MotionState::Reading(receiver) = state {
-      *state = match receiver.try_recv() {
-        Ok(Some(motion)) => MotionState::Baked(motion),
-        Ok(None) | Err(TryRecvError::Disconnected) => MotionState::Missing,
-        Err(TryRecvError::Empty) => return None,
-      };
-    }
-
-    match state {
-      MotionState::Baked(motion) => Some(motion),
-      _ => None,
-    }
+      LoaderSlot::spawn(workers, move || {
+        source
+          .read_motion(&name)
+          .inspect_err(|error| log::warn!("Motion '{name}' cannot be played: {error}"))
+          .ok()
+      })
+    })
   }
 }

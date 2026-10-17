@@ -1,19 +1,13 @@
-use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::mpsc::TryRecvError;
 use std::time::Duration;
 
 use glam::{Mat4, Vec3};
 use xrf_anm::AnmFile;
-use xrf_renderer::{LoaderReceiver, RenderLevelSource, RenderWorkers};
+use xrf_renderer::{RenderLevelSource, RenderWorkers};
 use xrf_visual::VisualTransform;
 
-/// One object motion asked for: on its way from a loader thread, read, or not to be had.
-enum MotionState {
-  Reading(LoaderReceiver<Option<AnmFile>>),
-  Read(AnmFile),
-  Missing,
-}
+use crate::level::loader_slot::LoaderSlot;
+use crate::level::loader_slots::LoaderSlots;
 
 /// The object motions a level's moving zones follow, each read once on a loader thread the first time something it
 /// carries asks, and played looping from when the level began opening (`CObjectAnimator::Play(true)` at spawn), one
@@ -21,7 +15,7 @@ enum MotionState {
 pub struct LevelObjectMotions {
   source: Arc<dyn RenderLevelSource>,
   workers: RenderWorkers,
-  motions: HashMap<String, MotionState>,
+  motions: LoaderSlots<AnmFile>,
   /// The level's clock at this frame and at the one before.
   now: Duration,
   previous: Duration,
@@ -32,7 +26,7 @@ impl LevelObjectMotions {
     Self {
       source: Arc::clone(source),
       workers: workers.clone(),
-      motions: HashMap::new(),
+      motions: LoaderSlots::default(),
       now: Duration::ZERO,
       previous: Duration::ZERO,
     }
@@ -73,34 +67,17 @@ impl LevelObjectMotions {
   /// The motion by its name once it is read, asking for it the first time.
   fn get(&mut self, name: &str) -> Option<&AnmFile> {
     let (source, workers) = (&self.source, &self.workers);
-    let state: &mut MotionState = self.motions.entry(name.to_owned()).or_insert_with(|| {
-      let (sender, receiver) = LoaderReceiver::channel();
+
+    self.motions.get(name, || {
       let (source, name) = (Arc::clone(source), name.to_owned());
 
-      workers.spawn(move || {
-        let motion: Option<AnmFile> = source
+      LoaderSlot::spawn(workers, move || {
+        source
           .read_object_motion(&name)
           .inspect_err(|error| log::warn!("Object motion '{name}' cannot be played: {error}"))
-          .ok();
-
-        let _ = sender.send(motion);
-      });
-
-      MotionState::Reading(receiver)
-    });
-
-    if let MotionState::Reading(receiver) = state {
-      *state = match receiver.try_recv() {
-        Ok(Some(motion)) => MotionState::Read(motion),
-        Ok(None) | Err(TryRecvError::Disconnected) => MotionState::Missing,
-        Err(TryRecvError::Empty) => return None,
-      };
-    }
-
-    match state {
-      MotionState::Read(motion) => Some(motion),
-      _ => None,
-    }
+          .ok()
+      })
+    })
   }
 }
 
@@ -121,7 +98,7 @@ mod tests {
   };
   use xrf_visual::{LightsDescription, SectorPackage};
 
-  use crate::level::level_object_motions::{LevelObjectMotions, MotionState};
+  use crate::level::level_object_motions::LevelObjectMotions;
   use crate::tests::test_workers::create_workers;
 
   /// A level with nothing but one motion, `line.anm`: two seconds carrying its object 3 metres a second along x.
@@ -281,13 +258,13 @@ mod tests {
     let started: Instant = Instant::now();
 
     while motions.get_pose("gone.anm").is_none()
-      && matches!(motions.motions.get("gone.anm"), Some(MotionState::Reading(_)))
+      && motions.motions.is_pending("gone.anm")
       && started.elapsed() < Duration::from_secs(5)
     {
       std::thread::sleep(Duration::from_millis(5));
     }
 
-    assert!(matches!(motions.motions.get("gone.anm"), Some(MotionState::Missing)));
+    assert!(!motions.motions.is_pending("gone.anm"));
     assert!(motions.get_pose("gone.anm").is_none());
   }
 }
