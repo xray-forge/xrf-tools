@@ -8,6 +8,7 @@ use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_surface_build::StaticSurfaceBuilder;
 use crate::scene::static_scene::static_surface_plan::StaticSurfacePlan;
+use crate::scene::texture::texture_role::TextureRole;
 
 /// A level surface of shader table entry 1, dressed by `texture`.
 fn create_surface(texture: &str) -> SectorSurface {
@@ -197,4 +198,32 @@ fn lights_a_blended_level_surface_by_the_lightmap_its_entry_names() {
   assert!(blended.flags & StaticSurface::HAS_LIGHTMAP != 0);
   assert_eq!(added.lightmap, None, "an added surface is lit by nothing of its own");
   assert!(added.flags & StaticSurface::HAS_LIGHTMAP == 0);
+}
+
+#[test]
+fn names_each_texture_at_its_slot_with_the_role_it_is_asked_for_as() {
+  let surface: SectorSurface = SectorSurface {
+    hemi: Some(String::from("lmap#3_2")),
+    ..create_surface("crete\\crete")
+  };
+  let descriptor: XraySurfaceDescriptor = XraySurfaceDescriptor {
+    bump: Some(create_bump(XrayBumpMode::Use)),
+    ..create_descriptor("default", "LM", XraySurfaceDraw::Opaque)
+  };
+  let plan: StaticSurfacePlan<'_> = StaticSurfaceBuilder::plan(&surface, Some(&descriptor)).unwrap();
+
+  assert_eq!(
+    plan.slots[StaticSurface::BASE],
+    Some(("crete\\crete", TextureRole::Base))
+  );
+  assert_eq!(plan.slots[StaticSurface::DETAIL], None);
+  assert_eq!(
+    plan.slots[StaticSurface::BUMP],
+    Some(("crete\\crete_bump", TextureRole::Bump))
+  );
+  assert_eq!(
+    plan.slots[StaticSurface::BUMP_COMPANION],
+    Some(("crete\\crete_bump#", TextureRole::BumpCompanion))
+  );
+  assert_eq!(plan.slots[StaticSurface::HEMI], Some(("lmap#3_2", TextureRole::Hemi)));
 }
