@@ -1147,6 +1147,13 @@ impl RenderThread {
     phases: &mut FramePhases,
   ) -> (Vec<ViewFrame>, Vec<(RenderSceneId, RenderViewportId)>) {
     let mut frames: Vec<ViewFrame> = Vec::new();
+
+    // Every view samples the one texture cache, so it is filtered and loaded by the renderer's settings, never a view's.
+    gpu
+      .textures
+      .set_anisotropy(&gpu.context.device, self.settings.texture_filtering.get_anisotropy());
+    gpu.textures.set_lod(self.settings.texture_lod);
+
     let mut drawn: Vec<(RenderViewportId, RenderRect, Option<RenderSceneId>)> = windows
       .iter()
       .flat_map(|window| window.drawn.iter())
@@ -1707,12 +1714,8 @@ impl RenderThread {
     )
   }
 
-  /// Sets the textures' filtering and level of detail by a view's `options`, and asks for the heights where the
-  /// enhanced parallax or the heights' debug view reads them.
-  fn ask_textures(textures: &mut TextureCache, device: &wgpu::Device, options: &RenderViewOptions) {
-    textures.set_anisotropy(device, options.features.texture_filtering.get_anisotropy());
-    textures.set_lod(options.features.texture_lod);
-
+  /// Asks for the heights where a view's enhanced parallax or the heights' debug view reads them.
+  fn ask_heights(textures: &mut TextureCache, options: &RenderViewOptions) {
     if options.features.parallax.is_enhanced() || options.mode.debug_view == RenderDebugView::Heights {
       textures.want_heights();
     }
@@ -1871,7 +1874,7 @@ impl RenderThread {
 
       view_state.set_overlays(scene, device, overlays, *overlays_version, selection.as_ref());
       view_state.request_textures(scene, &mut gpu.weather_textures, (lighting, weather), &options);
-      Self::ask_textures(&mut gpu.textures, device, &options);
+      Self::ask_heights(&mut gpu.textures, &options);
     }
     *load += loading.elapsed();
 

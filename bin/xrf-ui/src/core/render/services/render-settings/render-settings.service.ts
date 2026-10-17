@@ -121,8 +121,9 @@ export class RenderSettingsService {
   }
 
   /**
-   * What the renderer draws every viewport with: how often, whether its passes are timed, how its graph compiles, and on
-   * which graphics API, the renderer falling back to the first that works where the one asked for does not.
+   * What the renderer draws every viewport with: how often, whether its passes are timed, how its graph compiles, on
+   * which graphics API (the renderer falling back to the first that works where the one asked for does not), and how its
+   * textures are filtered and loaded.
    */
   @Computed()
   public get renderSettings(): RenderSettings {
@@ -133,6 +134,9 @@ export class RenderSettingsService {
       graph: { ...this.graph },
       isGpuTimed: this.isGpuTimed,
       periodicBudget: this.periodicBudget,
+      // The one texture cache every viewport samples is filtered and loaded alike for all of them.
+      textureFiltering: this.rendererFeatures.textureFiltering,
+      textureLod: this.rendererFeatures.textureLod,
     };
   }
 

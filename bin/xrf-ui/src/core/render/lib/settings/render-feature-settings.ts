@@ -16,6 +16,7 @@ import {
   RenderParallaxSettings,
   RenderRainSettings,
   RenderReflectionSettings,
+  RenderSettings,
   RenderShadowSettings,
   RenderUpscalingSettings,
   RenderViewFeatures,
@@ -43,8 +44,6 @@ export type TRenderViewFeatureKey =
   | "rain"
   | "reflections"
   | "shadows"
-  | "textureFiltering"
-  | "textureLod"
   | "tonemap"
   | "volumetric"
   | "water";
@@ -54,7 +53,9 @@ export type TRenderViewFeatureKey =
  * on top of it. A feature that is off costs nothing: its passes leave the frame and its targets are freed.
  */
 export interface IRenderFeatureSettings extends TSettled<
-  Pick<RenderViewFeatures, TRenderViewFeatureKey> & Pick<RenderViewOutput, "upscaling">
+  Pick<RenderViewFeatures, TRenderViewFeatureKey> &
+    Pick<RenderViewOutput, "upscaling"> &
+    Pick<RenderSettings, "textureFiltering" | "textureLod">
 > {}
 
 export type TRenderAmbientOcclusionVbaoSettings = TSettled<RenderAmbientOcclusionVbaoSettings>;

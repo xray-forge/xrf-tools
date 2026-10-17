@@ -118,8 +118,6 @@ export function toNativeViewOptions(
         : { ...features.parallax, isSteep: false, mode: ERenderParallaxMode.ENGINE },
       shadows: { ...shadows, cascades: [...shadows.cascades] },
       sunShafts: { ...switches.sunShafts },
-      textureFiltering: features.textureFiltering,
-      textureLod: features.textureLod,
       tonemap: features.tonemap,
       volumetric: features.volumetric,
       water: { ...water, isEnabled: water.isEnabled && switches.isWaterVisible },

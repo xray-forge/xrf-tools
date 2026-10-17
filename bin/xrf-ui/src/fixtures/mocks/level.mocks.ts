@@ -151,7 +151,6 @@ export function mockLevelFeatureOptions(overrides: Partial<ILevelFeatureOptions>
   return {
     ambientOcclusion: {},
     antialiasing: null,
-    textureFiltering: null,
     upscaling: {},
     output: {},
     debanding: {},
