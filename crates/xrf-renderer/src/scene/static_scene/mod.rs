@@ -31,6 +31,7 @@ pub(crate) mod static_surface;
 pub(crate) mod static_surface_build;
 pub(crate) mod static_surface_key;
 pub(crate) mod static_surface_pass;
+pub(crate) mod static_surface_plan;
 pub(crate) mod static_surface_use;
 pub(crate) mod static_surfaces;
 pub(crate) mod static_terrain_slots;

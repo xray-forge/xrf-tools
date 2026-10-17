@@ -10,6 +10,7 @@ use crate::host::render_asset_source::RenderAssetSource;
 use crate::lighting::material_slice::material_slice;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_surface::StaticSurface;
+use crate::scene::static_scene::static_surface_plan::StaticSurfacePlan;
 use crate::scene::static_scene::static_terrain_slots::StaticTerrainSlots;
 use crate::scene::static_scene::static_water_surface::StaticWaterSurfaceBuilder;
 use crate::scene::texture::texture_cache::TextureCache;
@@ -57,6 +58,18 @@ impl StaticSurfaceBuilder {
   /// The material whose slice `lod.ps` writes: the default lighting model.
   pub const IMPOSTOR_MATERIAL: f32 = 0.0;
 
+  /// The texture role each of a surface's own slots is asked for as, by `StaticSurface`'s slots from the base to the
+  /// hemisphere.
+  const SLOT_ROLES: [TextureRole; 7] = [
+    TextureRole::Base,
+    TextureRole::Detail,
+    TextureRole::Bump,
+    TextureRole::BumpCompanion,
+    TextureRole::Bump,
+    TextureRole::BumpCompanion,
+    TextureRole::Hemi,
+  ];
+
   /// A shader table entry as the static draws wear it, asking for its textures; `None` for an invisible one, which no
   /// static draw draws. A composited wall mark is laid into the G-buffer's albedo rather than over the lit frame.
   pub fn build(
@@ -65,6 +78,64 @@ impl StaticSurfaceBuilder {
     textures: &mut TextureCache,
     source: &Arc<dyn RenderAssetSource>,
   ) -> Option<(StaticSurface, StaticClass)> {
+    if let Some(descriptor) = descriptor
+      && let XraySurfaceDraw::Water { is_soft } = descriptor.draw
+    {
+      let color: Vec3 = Self::to_surface_color(surface.shader_id);
+
+      return Some((
+        StaticWaterSurfaceBuilder::build(surface, descriptor, is_soft, textures, source, color),
+        StaticClass::Water,
+      ));
+    }
+
+    let plan: StaticSurfacePlan<'_> = Self::plan(surface, descriptor)?;
+    let mut texture_slots: [u32; 8] = [0; 8];
+
+    for (index, reference) in plan.slots.iter().enumerate() {
+      texture_slots[index] = reference.map_or(0, |it| textures.request(it, Self::SLOT_ROLES[index], source));
+    }
+
+    let terrain: StaticTerrainSlots = plan.terrain.map_or_else(StaticTerrainSlots::default, |terrain| {
+      Self::request_terrain(terrain, textures, source)
+    });
+
+    texture_slots[StaticSurface::ENVIRONMENT] = plan
+      .environment
+      .map_or(0, |reference| textures.request_environment(reference));
+
+    if let Some(lightmap) = plan.lightmap {
+      texture_slots[StaticSurface::LIGHTMAP] = textures.request(lightmap, TextureRole::Hemi, source);
+    }
+
+    let distortion: u32 = plan
+      .distortion
+      .map_or(0, |reference| textures.request(reference, TextureRole::Detail, source));
+
+    Some((
+      StaticSurface {
+        tiling: 1.0,
+        detail_scale: plan.detail_scale,
+        alpha_reference: plan.alpha_reference as f32 / 255.0,
+        slice: material_slice(plan.material),
+        color: Self::to_surface_color(surface.shader_id),
+        flags: plan.flags,
+        textures: texture_slots,
+        terrain,
+        distortion,
+        _pad: [0; 3],
+      },
+      plan.class,
+    ))
+  }
+
+  /// What a shader table entry decides of a surface before its textures are asked for: its class, alpha reference and
+  /// flags, and the textures it names; `None` for water, which `StaticWaterSurfaceBuilder` builds, and for an
+  /// invisible one.
+  pub fn plan<'a>(
+    surface: &'a SectorSurface,
+    descriptor: Option<&'a XraySurfaceDescriptor>,
+  ) -> Option<StaticSurfacePlan<'a>> {
     let (class, reference, blend): (StaticClass, u8, u32) = match descriptor.map(|it| it.draw) {
       None | Some(XraySurfaceDraw::Opaque) => (StaticClass::Opaque, XraySurfaceDraw::DEFERRED_ALPHA_REFERENCE, 0),
       Some(XraySurfaceDraw::AlphaTested { reference }) => (StaticClass::CutOut, reference, 0),
@@ -79,16 +150,7 @@ impl StaticSurfaceBuilder {
         0,
         StaticSurface::IS_MULTIPLIED | if is_doubled { StaticSurface::IS_DOUBLED } else { 0 },
       ),
-      Some(XraySurfaceDraw::Water { is_soft }) => {
-        let descriptor: &XraySurfaceDescriptor = descriptor?;
-        let color: Vec3 = Self::to_surface_color(surface.shader_id);
-
-        return Some((
-          StaticWaterSurfaceBuilder::build(surface, descriptor, is_soft, textures, source, color),
-          StaticClass::Water,
-        ));
-      }
-      Some(_) => return None,
+      Some(XraySurfaceDraw::Water { .. } | XraySurfaceDraw::Invisible) => return None,
     };
 
     let class: StaticClass = match class {
@@ -97,11 +159,7 @@ impl StaticSurfaceBuilder {
       class => class,
     };
 
-    let mut request = |reference: Option<&str>, role: TextureRole| -> Option<u32> {
-      reference
-        .filter(|it| !it.is_empty())
-        .map(|it| textures.request(it, role, source))
-    };
+    let named = |reference: Option<&'a str>| reference.filter(|it| !it.is_empty());
     let detail = descriptor
       .and_then(|it| it.detail.as_ref())
       .filter(|detail| detail.scale.is_finite());
@@ -110,66 +168,46 @@ impl StaticSurfaceBuilder {
     let is_terrain: bool = descriptor.is_some_and(|it| it.terrain.is_some());
     let bump = descriptor.and_then(|it| it.bump.as_ref()).filter(|_| !is_terrain);
     let detail_bump = detail.and_then(|detail| detail.bump.as_ref()).filter(|_| !is_terrain);
-    let slots: [Option<u32>; 7] = [
-      request(surface.texture_name.as_deref(), TextureRole::Base),
-      request(
-        detail.filter(|_| !is_terrain).map(|it| it.reference.as_str()),
-        TextureRole::Detail,
-      ),
-      request(bump.map(|it| it.bump.reference.as_str()), TextureRole::Bump),
-      request(
-        bump.map(|it| it.companion.reference.as_str()),
-        TextureRole::BumpCompanion,
-      ),
-      request(detail_bump.map(|it| it.bump.reference.as_str()), TextureRole::Bump),
-      request(
-        detail_bump.map(|it| it.companion.reference.as_str()),
-        TextureRole::BumpCompanion,
-      ),
-      request(surface.hemi.as_deref(), TextureRole::Hemi),
+    let slots: [Option<&'a str>; 7] = [
+      named(surface.texture_name.as_deref()),
+      named(detail.filter(|_| !is_terrain).map(|it| it.reference.as_str())),
+      named(bump.map(|it| it.bump.reference.as_str())),
+      named(bump.map(|it| it.companion.reference.as_str())),
+      named(detail_bump.map(|it| it.bump.reference.as_str())),
+      named(detail_bump.map(|it| it.companion.reference.as_str())),
+      named(surface.hemi.as_deref()),
     ];
-    let mut flags: u32 = Self::to_flags(descriptor, &slots, (class, reference, blend));
+    let mut flags: u32 = Self::to_flags(descriptor, &slots.map(|it| it.is_some()), (class, reference, blend));
 
-    let terrain: StaticTerrainSlots = match descriptor.and_then(|it| it.terrain.as_ref()) {
-      Some(terrain) if flags & StaticSurface::HAS_BASE != 0 => {
-        flags |= StaticSurface::IS_TERRAIN;
+    let terrain: Option<&'a XraySurfaceTerrain> = descriptor
+      .and_then(|it| it.terrain.as_ref())
+      .filter(|_| flags & StaticSurface::HAS_BASE != 0);
 
-        Self::request_terrain(terrain, textures, source)
-      }
-      _ => StaticTerrainSlots::default(),
-    };
-    let environment: u32 = descriptor
-      .and_then(|it| it.environment.as_deref())
-      .filter(|_| flags & StaticSurface::IS_ENVIRONMENT_MAPPED != 0)
-      .map_or(0, |reference| textures.request_environment(reference));
-
-    let mut texture_slots: [u32; 8] = [0; 8];
-
-    for (index, slot) in slots.iter().enumerate() {
-      texture_slots[index] = slot.unwrap_or(0);
+    if terrain.is_some() {
+      flags |= StaticSurface::IS_TERRAIN;
     }
 
-    texture_slots[StaticSurface::ENVIRONMENT] = environment;
+    let environment: Option<&'a str> = descriptor
+      .and_then(|it| it.environment.as_deref())
+      .filter(|_| flags & StaticSurface::IS_ENVIRONMENT_MAPPED != 0);
 
     // A blended level surface is drawn forward as `lmapE` draws it, by its own lightmap, the shader entry's second
     // texture where it names one.
-    let lightmap: Option<u32> = descriptor
+    let lightmap: Option<&'a str> = descriptor
       .filter(|_| class.is_composited() && blend == 0)
       .and_then(|it| it.textures.get(1))
       .filter(|reference| reference.starts_with(LIGHTMAP_PREFIX))
-      .map(|reference| textures.request(reference, TextureRole::Hemi, source));
+      .map(String::as_str);
 
-    if let Some(lightmap) = lightmap {
-      texture_slots[StaticSurface::LIGHTMAP] = lightmap;
+    if lightmap.is_some() {
       flags = (flags & !StaticSurface::HAS_DETAIL) | StaticSurface::HAS_LIGHTMAP;
     }
 
     // A composited surface whose special pass distorts (`r__dsgraph_build` files it under `mapDistort`) draws that pass
     // into the distortion target too, by the texture it binds there: a window's `pfx\pfx_dist_glass`.
-    let distortion: Option<u32> = descriptor
+    let distortion: Option<&'a str> = descriptor
       .filter(|it| class.is_composited() && it.is_distorting)
-      .and_then(|it| it.find_sampler(XraySurfaceSampler::DISTORTION_ELEMENT, "s_distort"))
-      .map(|reference| textures.request(reference, TextureRole::Detail, source));
+      .and_then(|it| it.find_sampler(XraySurfaceSampler::DISTORTION_ELEMENT, "s_distort"));
 
     if distortion.is_some() {
       flags |= StaticSurface::IS_DISTORTING;
@@ -180,30 +218,25 @@ impl StaticSurfaceBuilder {
       flags |= StaticSurface::IS_GLASS;
     }
 
-    let material: f32 = descriptor.map_or(DEFAULT_MATERIAL, |it| it.material);
-
-    Some((
-      StaticSurface {
-        tiling: 1.0,
-        detail_scale: detail.map_or(1.0, |it| it.scale),
-        alpha_reference: reference as f32 / 255.0,
-        slice: material_slice(material),
-        color: Self::to_surface_color(surface.shader_id),
-        flags,
-        textures: texture_slots,
-        terrain,
-        distortion: distortion.unwrap_or(0),
-        _pad: [0; 3],
-      },
+    Some(StaticSurfacePlan {
       class,
-    ))
+      alpha_reference: reference,
+      flags,
+      slots,
+      terrain,
+      environment,
+      lightmap,
+      distortion,
+      detail_scale: detail.map_or(1.0, |it| it.scale),
+      material: descriptor.map_or(DEFAULT_MATERIAL, |it| it.material),
+    })
   }
 
-  /// A surface's flags by what its shader entry (`descriptor`) asks for and what its textures bind (`slots`): its class
-  /// and alpha `reference` deciding its test, and its `blend`.
+  /// A surface's flags by what its shader entry (`descriptor`) asks for and which of its own slots name a texture
+  /// (`named`): its class and alpha `reference` deciding its test, and its `blend`.
   fn to_flags(
     descriptor: Option<&XraySurfaceDescriptor>,
-    slots: &[Option<u32>; 7],
+    named: &[bool; 7],
     (class, reference, blend): (StaticClass, u8, u32),
   ) -> u32 {
     let mut flags: u32 = 0;
@@ -215,17 +248,17 @@ impl StaticSurfaceBuilder {
       (StaticSurface::DETAIL_BUMP, StaticSurface::HAS_DETAIL_BUMP),
       (StaticSurface::HEMI, StaticSurface::HAS_HEMI),
     ] {
-      if slots[slot].is_some() {
+      if named[slot] {
         flags |= flag;
       }
     }
 
     // A bump binds as a pair, and a detail's bump adds only to the surface's own.
-    if slots[StaticSurface::BUMP_COMPANION].is_none() {
+    if !named[StaticSurface::BUMP_COMPANION] {
       flags &= !(StaticSurface::HAS_BUMP | StaticSurface::HAS_DETAIL_BUMP);
     }
 
-    if slots[StaticSurface::DETAIL_BUMP_COMPANION].is_none() {
+    if !named[StaticSurface::DETAIL_BUMP_COMPANION] {
       flags &= !StaticSurface::HAS_DETAIL_BUMP;
     }
 
