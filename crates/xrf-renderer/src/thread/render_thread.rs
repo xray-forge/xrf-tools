@@ -482,7 +482,7 @@ impl RenderThread {
     // No queue left to send anything: nothing can arrive, so the thread stops.
     let Some(link) = self.link.upgrade() else {
       if let Some(running) = self.running.take() {
-        running.release();
+        running.release(self.store.as_deref());
       }
 
       return true;
@@ -500,7 +500,7 @@ impl RenderThread {
     drop(link);
 
     if let Some(running) = self.running.take() {
-      running.release();
+      running.release(self.store.as_deref());
     }
 
     true
@@ -524,7 +524,7 @@ impl RenderThread {
   /// Lets the GPU go, with everything made on its device, for `ensure_gpu` to start it again.
   fn release_gpu(&mut self) {
     if let Some(running) = self.running.take() {
-      running.release();
+      running.release(self.store.as_deref());
     }
 
     // Its scenes went with it; the world streams each in again, from the start, into scenes made again, which the
@@ -651,6 +651,21 @@ impl RenderThread {
     self.keep_textures(now);
     self.draw_windows((now.elapsed(), span), encoder);
     self.report_viewports(now);
+    self.save_level_pipelines();
+  }
+
+  /// Keeps the driver's pipelines once a level first stands drawn on this GPU, by when its passes made most of theirs.
+  fn save_level_pipelines(&mut self) {
+    let Some(running) = &mut self.running else {
+      return;
+    };
+
+    if running.is_level_cache_saved || !self.scenes.values().any(|scene| scene.is_ready(&running.gpu.textures)) {
+      return;
+    }
+
+    running.gpu.save_driver_cache(self.store.as_deref());
+    running.is_level_cache_saved = true;
   }
 
   /// Runs the world inline before the frame: it moves each viewport's camera and weather, then streams each scene and
@@ -1107,6 +1122,7 @@ impl RenderThread {
       runtime,
       frame_span,
       belt,
+      ..
     } = running;
     let started: Instant = Instant::now();
     let mut phases: FramePhases = FramePhases {

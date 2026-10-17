@@ -3,6 +3,7 @@ use xrf_renderer_core::GraphRuntime;
 
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::frame_span_timer::FrameSpanTimer;
+use crate::host::render_cache_store::RenderCacheStore;
 use crate::thread::gpu_state::GpuState;
 
 /// The GPU while it runs: everything made on it, with what the frames keep between them on its device, all made and
@@ -15,6 +16,8 @@ pub struct RunningGpu {
   /// The staging belt the frames' own writes go through, kept between frames; out while a frame's encoder holds it.
   pub belt: Option<StagingBelt>,
   pub gpu: GpuState,
+  /// Whether the driver's pipelines were kept once a level first stood ready, by then holding most it will make.
+  pub is_level_cache_saved: bool,
 }
 
 impl RunningGpu {
@@ -24,6 +27,7 @@ impl RunningGpu {
       frame_span: FrameSpanTimer::new(&gpu.context.device, &gpu.context.queue),
       belt: None,
       gpu,
+      is_level_cache_saved: false,
     }
   }
 
@@ -35,11 +39,12 @@ impl RunningGpu {
     FrameEncoder::new(device, belt)
   }
 
-  /// Lets the GPU go: the device's work finished, unless it was lost and has none to wait for, and the windows'
-  /// swapchains let go before the device, so a backend started next finds every window free of them.
-  pub fn release(mut self) {
+  /// Lets the GPU go: the device's work finished and the driver's pipelines kept, unless it was lost and has neither,
+  /// and the windows' swapchains let go before the device, so a backend started next finds every window free of them.
+  pub fn release(mut self, store: Option<&dyn RenderCacheStore>) {
     if !self.gpu.context.is_lost() {
       let _ = self.gpu.context.device.poll(wgpu::PollType::wait_indefinitely());
+      self.gpu.save_driver_cache(store);
     }
 
     self.gpu.windows.clear();

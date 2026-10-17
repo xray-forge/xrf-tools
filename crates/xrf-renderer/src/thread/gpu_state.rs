@@ -136,6 +136,10 @@ pub struct GpuState {
   pub table: MaterialTable,
   /// The grid pass for each target format drawn into.
   grids: HashMap<wgpu::TextureFormat, GridPass>,
+  /// The name the driver's pipelines are kept under for this adapter and driver, none where its backend keeps none.
+  driver_cache_key: Option<String>,
+  /// How many bytes of them are kept now, which a save must pass to be worth writing.
+  driver_cache_kept: usize,
 }
 
 impl GpuState {
@@ -177,7 +181,7 @@ impl GpuState {
     };
     let (device, queue, view, scene, texture, sky_layout) = (&device, &queue, &view, &scene, &texture, &sky_layout);
 
-    let state: Self = std::thread::scope(|threads| -> XrfResult<Self> {
+    let mut state: Self = std::thread::scope(|threads| -> XrfResult<Self> {
       let static_gbuffer = threads.spawn(move || StaticGBufferPass::new(source, view, texture));
       let static_shadow = threads.spawn(move || StaticShadowPass::new(source, view, scene, texture));
       let water = threads.spawn(move || WaterPass::new(queue, source, [view, scene, texture], bundle));
@@ -285,6 +289,8 @@ impl GpuState {
         textures,
         view_layout,
         context,
+        driver_cache_key: None,
+        driver_cache_kept: 0,
       })
     })?;
 
@@ -292,12 +298,27 @@ impl GpuState {
       .get_pipeline_source(shaders)
       .warm(&state.enhanced_bloom.describe_pipelines())?;
 
-    // Every pipeline is made now: kept for the next start.
-    if let (Some(store), Some(key), Some(data)) = (store, cache_key, state.pipelines.get_driver_data()) {
-      store.write_cached(&key, &data);
-    }
+    state.driver_cache_key = cache_key;
+    state.driver_cache_kept = cached.map_or(0, |cached| cached.len());
+    state.save_driver_cache(store);
 
     Ok(state)
+  }
+
+  /// Keeps the driver's pipelines for the next start where it holds more of them than are kept: the composition, the
+  /// grids and the feature units make theirs on demand, so the cache grows long after the start.
+  pub fn save_driver_cache(&mut self, store: Option<&dyn RenderCacheStore>) {
+    let (Some(store), Some(key)) = (store, self.driver_cache_key.as_deref()) else {
+      return;
+    };
+    let Some(data) = self.pipelines.get_driver_data() else {
+      return;
+    };
+
+    if data.len() > self.driver_cache_kept {
+      store.write_cached(key, &data);
+      self.driver_cache_kept = data.len();
+    }
   }
 
   /// Where the feature units ask for their pipelines, made from `shaders`.
