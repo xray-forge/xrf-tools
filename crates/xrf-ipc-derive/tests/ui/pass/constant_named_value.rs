@@ -8,5 +8,5 @@ fn main() {
     .find(|it| it.name == "value")
     .expect("registered");
 
-  assert_eq!((exported.value)(), xrf_ipc::serde_json::json!(value));
+  assert_eq!((exported.value)().expect("serialized"), xrf_ipc::serde_json::json!(value));
 }

@@ -21,7 +21,7 @@ fn main() {
     .unwrap();
 
   assert_eq!(exported.doc, "Texels the sun's filter reaches each way at most.");
-  assert_eq!((exported.value)(), xrf_ipc::serde_json::json!(3));
+  assert_eq!((exported.value)().unwrap(), xrf_ipc::serde_json::json!(3));
 }
 ```
 

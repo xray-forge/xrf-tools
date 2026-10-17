@@ -5,8 +5,8 @@ pub struct IpcConstant {
   pub name: &'static str,
   /// Its doc comment, its lines joined by `\n`.
   pub doc: &'static str,
-  /// Its value, as it serializes.
-  pub value: fn() -> serde_json::Value,
+  /// Its value as it serializes, or why it does not.
+  pub value: fn() -> serde_json::Result<serde_json::Value>,
 }
 
 inventory::collect!(IpcConstant);
