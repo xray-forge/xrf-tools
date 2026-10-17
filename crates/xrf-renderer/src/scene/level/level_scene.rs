@@ -37,8 +37,9 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 use crate::thread::render_workers::RenderWorkers;
 
 /// A level as the renderer holds it, whatever views draw it: its static geometry, grass, lights and the effects and
-/// motions living in it, and the models its weather draws. Its streaming fills it; it knows nothing of files, failures
-/// or readiness.
+/// motions living in it, and the models its weather draws. The world streams it in and owns the files and their
+/// failures; the scene owns what is resident on the GPU, reports how far that is ready, and tells the world what it
+/// could not take in.
 pub struct LevelScene {
   pub source: Arc<dyn RenderLevelSource>,
   pub grass: LevelGrass,
