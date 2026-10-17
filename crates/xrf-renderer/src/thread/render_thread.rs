@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, TryRecvError};
@@ -42,9 +43,11 @@ use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_bundle::RenderBundle;
 use crate::host::render_cache_store::RenderCacheStore;
+use crate::host::render_level_weather::RenderLevelWeather;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
 use crate::host::render_scene_frame::RenderSceneFrame;
 use crate::host::render_scene_id::RenderSceneId;
+use crate::host::render_view_frame::RenderViewFrame;
 use crate::host::render_view_input::RenderViewInput;
 use crate::host::render_window_host::RenderWindowHost;
 use crate::host::render_world::RenderWorld;
@@ -1165,7 +1168,8 @@ impl RenderThread {
     });
 
     // Each scene's effects step once a frame by the camera of its first view, which stands for the actor, on the
-    // workers while the views are readied; the first fill of them waits for the step.
+    // workers while the views are readied; the first fill of them waits for the step. Its wetness moves on once too,
+    // before any view reads it.
     let mut simulated: Vec<RenderSceneId> = Vec::new();
 
     for (id, rect, scene_id) in &drawn {
@@ -1179,6 +1183,7 @@ impl RenderThread {
         scene
           .particles
           .start_simulation(&Self::get_camera_view(viewport, rect), &viewport.options);
+        Self::advance_wetness(scene, &self.viewports);
         simulated.push(scene_id);
       }
     }
@@ -1197,7 +1202,7 @@ impl RenderThread {
 
       match Self::ready_view(
         (gpu, &self.shaders),
-        (viewport, scene, is_first),
+        (viewport, scene),
         rect,
         (&mut *encoder, &mut self.periodic),
         (&mut phases.load, &mut phases.prepare),
@@ -1777,11 +1782,10 @@ impl RenderThread {
 
   /// Readies one viewport's frame of the scene it shows: writes its camera, asks for the textures its weather draws
   /// with, prepares its frame, and readies its graph's frame with a pick when one waits; none where it shows no scene.
-  /// `rect` is its whole rectangle; `is_scene_first` whether it is its scene's first view this frame; what loading and
-  /// preparing take is added to `load` and `prepare`.
+  /// `rect` is its whole rectangle; what loading and preparing take is added to `load` and `prepare`.
   fn ready_view(
     (gpu, shaders): (&mut GpuState, &ShaderLibrary),
-    (viewport, scene, is_scene_first): (&mut RenderViewport, Option<&mut LevelScene>, bool),
+    (viewport, scene): (&mut RenderViewport, Option<&mut LevelScene>),
     rect: &RenderRect,
     (encoder, periodic): (&mut FrameEncoder, &mut PeriodicScheduler),
     (load, prepare): (&mut Duration, &mut Duration),
@@ -1840,12 +1844,9 @@ impl RenderThread {
     let previous: Mat4 = view_state.next_jittered(drawn.get_view_projection());
     let selected: Option<StaticSelection> = view_state.resolve_selection(scene, selection.as_ref()).cloned();
 
-    // An asset viewer lights by its rig rather than a weather, and plays none.
-    let asset_lighting: Option<RenderLighting> = options.asset.lighting.as_ref().map(RenderLighting::for_asset);
-    let (lighting, weather) = match &asset_lighting {
-      Some(lighting) => (lighting, None),
-      None => (&world.lighting, world.weather.as_ref()),
-    };
+    let (lighting, weather): (Cow<'_, RenderLighting>, Option<&Arc<RenderLevelWeather>>) =
+      Self::get_view_lighting(&options, world);
+    let lighting: &RenderLighting = &lighting;
     // The enhanced parallax shadows its relief towards the sun, as the view sees it.
     let to_sun: Vec3 = drawn.view.transform_vector3(-lighting.get_sun_direction());
 
@@ -1898,7 +1899,6 @@ impl RenderThread {
           weather,
           weather_textures: &gpu.weather_textures,
           weather_rate: world.clock_rate,
-          is_scene_first,
         },
       );
       view_state.offer_periodic(scene, device, periodic, &gpu.view_layout);
@@ -1910,5 +1910,32 @@ impl RenderThread {
       (device, encoder, &gpu.view_layout),
       (&view, rect, scale, switches),
     )
+  }
+
+  /// What a view is lit by and the weather it plays: an asset viewer's rig and none, else its world's frame's.
+  fn get_view_lighting<'a>(
+    options: &RenderViewOptions,
+    world: &'a RenderViewFrame,
+  ) -> (Cow<'a, RenderLighting>, Option<&'a Arc<RenderLevelWeather>>) {
+    match options.asset.lighting.as_ref() {
+      Some(rig) => (Cow::Owned(RenderLighting::for_asset(rig)), None),
+      None => (Cow::Borrowed(&world.lighting), world.weather.as_ref()),
+    }
+  }
+
+  /// Moves a scene's wetness on, once a frame, by its driving viewport's rain and weather clock; every view of the
+  /// scene wets its surfaces by it.
+  fn advance_wetness(scene: &mut LevelScene, viewports: &BTreeMap<RenderViewportId, RenderViewport>) {
+    let Some(driver) = scene.driver.and_then(|driver| viewports.get(&driver)) else {
+      return;
+    };
+    let (lighting, _): (Cow<'_, RenderLighting>, Option<&Arc<RenderLevelWeather>>) =
+      Self::get_view_lighting(&driver.options, &driver.world);
+
+    scene.wetness.advance(
+      &lighting,
+      &driver.options.features.rain,
+      (scene.started.elapsed().as_secs_f32(), driver.world.clock_rate),
+    );
   }
 }
