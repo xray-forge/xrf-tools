@@ -50,13 +50,20 @@ impl LevelObjectMotions {
   pub fn get_pose(&mut self, name: &str) -> Option<(Mat4, Vec3)> {
     let (now, previous) = (self.now, self.previous);
     let motion: &AnmFile = self.get(name)?;
-    let (position, rotation) = motion.evaluate(motion.get_looped_time(now));
-    let (before, _) = motion.evaluate(motion.get_looped_time(previous));
+    let (looped, looped_before): (f32, f32) = (motion.get_looped_time(now), motion.get_looped_time(previous));
+    let (position, rotation) = motion.evaluate(looped);
     let transform: Mat4 =
       Mat4::from_cols_array(&VisualTransform::of_motion(&position, &rotation).mirrored().to_matrix());
     let elapsed: f32 = now - previous;
+    // Across the loop's seam the two times lie at its two ends: the motion is measured over this frame's stretch
+    // ahead instead, rather than over the whole path back to its start.
+    let (from, to) = if looped_before > looped {
+      (position, motion.evaluate(looped + elapsed).0)
+    } else {
+      (motion.evaluate(looped_before).0, position)
+    };
     let velocity: Vec3 = if elapsed > 0.0 {
-      (Vec3::from(position.to_array()) - Vec3::from(before.to_array())) / elapsed
+      (Vec3::from(to.to_array()) - Vec3::from(from.to_array())) / elapsed
     } else {
       Vec3::ZERO
     };
@@ -254,6 +261,20 @@ mod tests {
 
     assert!(transform.w_axis.truncate().abs_diff_eq(Vec3::new(4.5, 0.0, 0.0), 1e-4));
     assert!(velocity.abs_diff_eq(Vec3::new(3.0, 0.0, 0.0), 1e-3));
+  }
+
+  // From 1.9 s to 2.1 s the two-second motion wraps: it still moves at its 3 m a second, not back across the seam.
+  #[test]
+  fn keeps_an_object_s_velocity_across_its_loop_s_seam() {
+    let source: Arc<dyn RenderLevelSource> = Arc::new(MotionSource);
+    let mut motions: LevelObjectMotions = LevelObjectMotions::new(&source, &create_workers());
+
+    motions.prepare_at(1.9);
+    motions.prepare_at(2.1);
+
+    let (_, velocity) = read(&mut motions, "line.anm").expect("the motion to be read");
+
+    assert!(velocity.abs_diff_eq(Vec3::new(3.0, 0.0, 0.0), 1e-3), "{velocity}");
   }
 
   #[test]
