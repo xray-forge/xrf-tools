@@ -143,12 +143,10 @@ export class LevelViewportService {
   /** Forgets the open level's telemetry, so a closed viewer reports nothing rather than its last frame. */
   @BoundAction()
   public clear(): void {
+    this.conceal();
     this.camera = null;
-    this.textureReport = EMPTY_LEVEL_TEXTURE_REPORT;
-    this.isRevealed = false;
     this.picked = null;
-    this.load = null;
-    this.problems = NO_LEVEL_PROBLEMS;
+    this.isSceneFocused = false;
   }
 
   @OnDeactivation()
