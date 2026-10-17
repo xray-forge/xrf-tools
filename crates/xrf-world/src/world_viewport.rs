@@ -1,9 +1,7 @@
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
-use xrf_renderer::{
-  EngineSpace, RenderLighting, RenderSceneId, RenderViewFrame, RenderViewInput, RenderViewOptions, WeatherTextureKind,
-};
+use xrf_renderer::{EngineSpace, RenderLighting, RenderSceneId, RenderViewFrame, RenderViewInput, RenderViewOptions};
 
 use crate::camera::camera_controller::CameraController;
 use crate::contract::world_ambient_report::WorldAmbientReport;
@@ -13,6 +11,7 @@ use crate::contract::world_toggles::WorldToggles;
 use crate::contract::world_viewport_event::WorldViewportEvent;
 use crate::level::ambient::ambient_frame::AmbientFrame;
 use crate::weather::viewport_weather::ViewportWeather;
+use crate::weather::weather_lighting::WeatherLighting;
 use crate::world_event_sink::WorldEventSink;
 
 /// How often a moving camera's pose is published.
@@ -88,16 +87,8 @@ impl WorldViewport {
 
     // The keyframe the clock walks to next has its skies fetched before it is reached.
     if let Some(next) = self.weather.get_player().get_next() {
-      let keyframe = &next.descriptor;
-
-      for (reference, kind) in [
-        (keyframe.sky_texture.as_str(), WeatherTextureKind::Cube),
-        (keyframe.sky_texture_env.as_str(), WeatherTextureKind::Cube),
-        (keyframe.clouds_texture.as_str(), WeatherTextureKind::Flat),
-      ] {
-        if !reference.is_empty() {
-          skies.prefetch(reference, kind);
-        }
+      for (reference, kind) in WeatherLighting::list_sky_textures(&next.descriptor) {
+        skies.prefetch(&reference, kind);
       }
     }
 

@@ -4,7 +4,7 @@ use xrf_environment::{WeatherDescriptor, WeatherMix, WeatherPlayedKeyframe};
 use xrf_math::EPS_L;
 use xrf_renderer::{
   EngineSpace, RenderAmbients, RenderClouds, RenderFog, RenderLighting, RenderRainfall, RenderSky, RenderTreeWind,
-  RenderWind,
+  RenderWind, WeatherTextureKind,
 };
 
 /// A weather's mix as the lighting the scene is drawn with.
@@ -65,6 +65,18 @@ impl WeatherLighting {
         weight: mix.weight,
       },
     }
+  }
+
+  /// The sky textures a keyframe's lighting samples, as `of` takes them from it: its cube, its irradiance cube and its
+  /// clouds' layer, each only where the keyframe names it.
+  pub fn list_sky_textures(keyframe: &WeatherDescriptor) -> impl Iterator<Item = (String, WeatherTextureKind)> {
+    [
+      (Self::to_named(&keyframe.sky_texture), WeatherTextureKind::Cube),
+      (Self::to_environment(keyframe), WeatherTextureKind::Cube),
+      (Self::to_named(&keyframe.clouds_texture), WeatherTextureKind::Flat),
+    ]
+    .into_iter()
+    .filter_map(|(reference, kind)| Some((reference?, kind)))
   }
 
   fn to_named(reference: &str) -> Option<String> {

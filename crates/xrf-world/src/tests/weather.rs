@@ -7,7 +7,7 @@ use xrf_environment::{WeatherDescriptor, WeatherMix, WeatherMixPoint, WeatherMix
 use xrf_material::XraySurfaceDraw;
 use xrf_renderer::{
   RenderLevelWeather, RenderLighting, RenderThunder, RenderThunderSettings, RenderThunderbolt,
-  RenderThunderboltGradient,
+  RenderThunderboltGradient, WeatherTextureKind,
 };
 use xrf_visual::{LightAnimatorDescription, LightAnimatorKey};
 
@@ -15,6 +15,7 @@ use crate::contract::world_weather_control::WorldWeatherControl;
 use crate::contract::world_weather_transition::WorldWeatherTransition;
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::weather_fade::WeatherFade;
+use crate::weather::weather_lighting::WeatherLighting;
 use crate::weather::weather_player::WeatherPlayer;
 use crate::weather::weather_thunder::WeatherThunder;
 
@@ -324,4 +325,27 @@ fn strikes_a_bolt_of_the_collection_each_period_and_lights_by_its_colour() {
       .advance(&thunder, &mix, false, Duration::from_millis(step * 50), Vec3::ZERO)
       .is_none()
   }));
+}
+
+#[test]
+fn lists_a_keyframes_sky_textures_as_its_lighting_samples_them() {
+  let clouded: WeatherDescriptor = WeatherDescriptor {
+    clouds_texture: String::from(r"sky\clouds"),
+    ..keyframe(NOON, 1.0)
+  };
+  // An irradiance cube without a sky names only its suffix, which the lighting leaves out.
+  let skyless: WeatherDescriptor = WeatherDescriptor {
+    sky_texture: String::new(),
+    ..keyframe(NOON, 1.0)
+  };
+
+  assert_eq!(
+    WeatherLighting::list_sky_textures(&clouded).collect::<Vec<_>>(),
+    [
+      (format!(r"sky\sky_{NOON}"), WeatherTextureKind::Cube),
+      (format!(r"sky\sky_{NOON}#small"), WeatherTextureKind::Cube),
+      (String::from(r"sky\clouds"), WeatherTextureKind::Flat),
+    ]
+  );
+  assert_eq!(WeatherLighting::list_sky_textures(&skyless).count(), 0);
 }
