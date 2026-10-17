@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
@@ -198,20 +199,23 @@ describe("LevelSurfacesPanel", () => {
     const details: HTMLElement = await choose(view, "wall_panel", "0 · wall\\wall_panel");
 
     expect(within(details).getByText("wall\\wall_panel · not read yet")).toBeInTheDocument();
-    // Nothing is resident in this test, so the entry says so rather than nothing.
-    expect(within(details).getByText("nothing resident draws it")).toBeInTheDocument();
+    // Nothing is resident in this test, so the renderer has counted nothing yet, which the entry says.
+    expect(
+      within(details).getByText("Not read yet: the renderer says how much it draws once the level is resident.")
+    ).toBeInTheDocument();
   });
 
   // The renderer counts what every entry draws once the level is resident; the panel shows the chosen entry's count.
   it("shows what the viewport counted the chosen entry drawing", async () => {
     const view: RenderResult = await renderPanel(undefined, (container: Container) => {
-      container
-        .get(LevelViewportService)
-        .noteSurfaceGeometry(
-          new Map(
-            [0, 1, 2, 3].map((shaderId) => [shaderId, { drawables: 2, narrowest: null, span: null, triangles: 70 }])
-          )
-        );
+      const viewport: LevelViewportService = container.get(LevelViewportService);
+
+      viewport.noteSurfaceGeometry(
+        new Map(
+          [0, 1, 2, 3].map((shaderId) => [shaderId, { drawables: 2, narrowest: null, span: null, triangles: 70 }])
+        )
+      );
+      viewport.noteDescription(AsyncState.ready<void>(null));
     });
 
     const details: HTMLElement = await choose(view, "poteki", "2 · decal\\decal_poteki");

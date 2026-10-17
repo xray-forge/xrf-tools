@@ -1,7 +1,8 @@
 import { OnDeactivation } from "@wirestate/core";
-import { RefObservable, runInAction } from "@wirestate/mobx";
+import { Computed, RefObservable, runInAction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
+import { transformError } from "@/core/error/lib";
 import { RenderAppliedReport, RenderFrameReport, RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { WorldCameraPose, WorldWeatherReport } from "@/core/ipc/types/xrf-world";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
@@ -21,7 +22,11 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
 
   /** Why the viewport cannot be drawn, or null while it draws: kept until a view is attached again. */
   @RefObservable()
-  public failure: Nullable<string> = null;
+  private drawFailure: Nullable<string> = null;
+
+  /** Why what was last asked to be shown is not, or null: kept until another show is asked. */
+  @RefObservable()
+  private showFailure: Nullable<string> = null;
 
   /** What the viewport's recent frames cost, for the readouts; empty while none is attached. */
   @RefObservable()
@@ -35,8 +40,16 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
 
   private target: Nullable<NativeViewportTarget> = null;
   private readonly reactions: Array<() => void> = [];
+  /** Shows asked, so one replaced since neither hands its scene on nor fails. */
+  private showing: number = 0;
 
   protected constructor(protected readonly renderSettingsService: RenderSettingsService) {}
+
+  /** Why the viewport draws nothing it was asked to, or null while it does: it cannot be drawn, or the show failed. */
+  @Computed()
+  public get failure(): Nullable<string> {
+    return this.drawFailure ?? this.showFailure;
+  }
 
   /**
    * Draws a native viewport under an element.
@@ -47,7 +60,8 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
     this.detach();
 
     runInAction(() => {
-      this.failure = null;
+      this.drawFailure = null;
+      this.showFailure = null;
     });
 
     const viewport: NativeViewport = new NativeViewport({
@@ -85,6 +99,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
       this.onDetached();
     }
 
+    this.showing += 1;
     this.reactions.splice(0).forEach((stop: () => void) => stop());
     this.target?.dispose();
     this.target = null;
@@ -149,6 +164,47 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   /** Called before the viewport goes. */
   protected onDetached(): void {}
 
+  /**
+   * Asks the viewport to show something, handing on the scene it draws; a show that fails is held as the failure, and
+   * one replaced since does neither.
+   *
+   * @param send - Sends the show to the viewport.
+   * @param onShown - Takes the scene drawn, or null for nothing shown or no viewport attached.
+   */
+  protected show(
+    send: (viewport: NativeViewport) => Promise<Nullable<number>>,
+    onShown: (scene: Nullable<number>) => void
+  ): void {
+    const showing: number = ++this.showing;
+
+    runInAction(() => {
+      this.showFailure = null;
+    });
+
+    if (!this.viewport) {
+      return;
+    }
+
+    send(this.viewport).then(
+      (scene: Nullable<number>) => {
+        if (showing === this.showing) {
+          onShown(scene);
+        }
+      },
+      (error: unknown) => {
+        if (showing === this.showing) {
+          const message: string = transformError(error).message;
+
+          this.log.error("The native viewport cannot show what it was asked:", message);
+
+          runInAction(() => {
+            this.showFailure = message;
+          });
+        }
+      }
+    );
+  }
+
   /** Forgets what the subclass told the viewport, which went with it. */
   protected release(): void {}
 
@@ -156,7 +212,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
     this.log.error("The native viewport cannot be drawn:", message);
 
     runInAction(() => {
-      this.failure = message;
+      this.drawFailure = message;
     });
   }
 }

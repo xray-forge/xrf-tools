@@ -25,6 +25,8 @@ interface ILevelSurfaceRowProps extends BaseComponentProps {
   dressing: ReadonlyArray<ILevelSurfaceDressing>;
   /** How much the entry draws across the resident sectors, which is the shape its shader cannot say. */
   geometry: ILevelSurfaceGeometry;
+  /** Why the renderer has not said how much the entry draws, in place of the count; null once it has. */
+  unmeasured?: Nullable<string>;
   isFirst?: boolean;
 }
 
@@ -38,6 +40,7 @@ export function LevelSurfaceRow({
   summary,
   dressing,
   geometry,
+  unmeasured = null,
   isFirst = false,
 }: ILevelSurfaceRowProps): ReactElement {
   const { descriptor } = summary;
@@ -70,7 +73,7 @@ export function LevelSurfaceRow({
         />
       ) : null}
 
-      <EditorPanelProperty label={"Draws"} value={describeLevelSurfaceGeometry(geometry)} />
+      <EditorPanelProperty label={"Draws"} value={unmeasured ?? describeLevelSurfaceGeometry(geometry)} />
 
       {geometry.drawables ? (
         <EditorPanelProperty label={"Over"} value={describeLevelSurfaceSpan(geometry.span)} />

@@ -4,6 +4,7 @@ import { Maybe, Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { describeLevelDescriptionWait } from "@/core/level/lib/load/level-description-wait";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelSurfaceGeometry, NO_LEVEL_SURFACE_GEOMETRY } from "@/core/level/lib/surface/level-surface-geometry";
@@ -180,7 +181,13 @@ export function LevelSurfacesPanel({
 
       {selected ? (
         <div className={"max-h-1/2 shrink-0 overflow-y-auto border-t border-divider"}>
-          <LevelSurfaceRow summary={selected} dressing={dressing} geometry={geometry} isFirst />
+          <LevelSurfaceRow
+            summary={selected}
+            dressing={dressing}
+            geometry={geometry}
+            unmeasured={describeLevelDescriptionWait(viewportService.description, "how much it draws")}
+            isFirst
+          />
         </div>
       ) : null}
     </div>

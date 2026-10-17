@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 
+import { createRoots } from "@/core/assets/lib";
+import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import {
   ERenderAntialiasing,
   ERenderDlssAvailability,
@@ -24,12 +26,14 @@ import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level
 import { DEFAULT_LEVEL_WEATHER_CONTROL } from "@/core/level/lib/weather/level-weather-control";
 import { toLevelWeatherMemoryKey, writeLevelWeatherMemory } from "@/core/level/lib/weather/level-weather-memory";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { EMPTY_RENDER_FRAME_PHASES } from "@/core/render/lib/native/native-frame-report";
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import {
   getMockChannels,
   mockInvoke,
@@ -319,5 +323,47 @@ describe("LevelRenderService", () => {
     service.detach();
 
     await waitFor(() => expect(sentRenderCommand("detach_viewport")).toEqual([{ viewport: LEVEL_VIEWPORT }]));
+  });
+
+  // A show the renderer refused would otherwise leave the cover spinning over nothing.
+  it("states why the viewport could not show the level, until the next show", async () => {
+    const { container, service } = await mockAttachedLevelRender();
+
+    jest.spyOn(service.log, "error").mockImplementation(() => undefined);
+    setMockInvokeResponses({ ["plugin:render|show_level"]: () => Promise.reject(new Error("The level is closed")) });
+    await container.get(LevelLoadService).close();
+
+    await waitFor(() => expect(service.failure).toBe("The level is closed"));
+
+    setMockInvokeResponses({
+      ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+      ["plugin:render|show_level"]: LEVEL_SCENE,
+    });
+    await container.get(LevelLoadService).load({
+      engine: EXrayEngineChoice.VANILLA,
+      isDltx: false,
+      roots: createRoots(["C:\\game"]),
+      source: { kind: "asset", logicalPath: "levels\\zaton" },
+    });
+
+    expect(service.failure).toBeNull();
+    await waitFor(() => expect(sentRenderCommand("show_level")).toHaveLength(3));
+  });
+
+  it("holds why the resident level could not be described, for the panels to say", async () => {
+    const { container, service } = await mockAttachedLevelRender();
+    const viewport: LevelViewportService = container.get(LevelViewportService);
+
+    jest.spyOn(service.log, "error").mockImplementation(() => undefined);
+    setMockInvokeResponses({
+      ["plugin:render|describe_problems"]: () => Promise.reject(new Error("The viewport is gone")),
+    });
+    emitViewportEvent({
+      kind: ERenderViewportEvent.LOAD,
+      report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE }),
+    });
+
+    expect(viewport.description.isLoading).toBe(true);
+    await waitFor(() => expect(viewport.description.error?.message).toBe("The viewport is gone"));
   });
 });

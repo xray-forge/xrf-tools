@@ -31,6 +31,8 @@ interface IEditorProblemsPanelProps extends BaseComponentProps {
   rulePrefix?: string;
   /** Explains what was checked when no problems were found. */
   emptyDescription: string;
+  /** Says the findings are not all in, shown above them and in place of the verdict that there are none. */
+  status?: Nullable<string>;
   /** A finding naming a place was chosen. Rows without a location never call it. */
   onSelect?: (location: IEditorProblemLocation) => void;
 }
@@ -45,10 +47,13 @@ export function EditorProblemsPanel({
   findings,
   rulePrefix = "",
   emptyDescription,
+  status = null,
   onSelect,
 }: IEditorProblemsPanelProps): ReactElement {
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Problems"}>
+      {status ? <EditorPanelEmpty data-testid={"editor-problems-status"} label={status} /> : null}
+
       {findings.length ? (
         <List dense disablePadding>
           {findings.map((finding: IEditorProblem, index: number) => {
@@ -106,7 +111,7 @@ export function EditorProblemsPanel({
             );
           })}
         </List>
-      ) : (
+      ) : status ? null : (
         <EditorPanelEmpty label={`No problems found. ${emptyDescription}`} />
       )}
     </EditorPanel>

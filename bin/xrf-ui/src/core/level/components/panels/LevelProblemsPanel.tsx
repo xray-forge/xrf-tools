@@ -4,6 +4,7 @@ import { ReactElement, useMemo } from "react";
 
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { WorldLevelProblems } from "@/core/ipc/types/xrf-world";
+import { describeLevelDescriptionWait } from "@/core/level/lib/load/level-description-wait";
 import { listLevelProblems } from "@/core/level/lib/problems/level-problems";
 import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
@@ -14,7 +15,8 @@ import { EditorProblemsPanel, IEditorProblem } from "@/core/shell/editor/EditorP
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
- * Everything the viewer could not draw the way the level asked for it.
+ * Everything the viewer could not draw the way the level asked for it; what the renderer could not draw is said once
+ * the level is resident, and the panel says so until then rather than calling the level clean.
  */
 export function LevelProblemsPanel({
   "data-testid": dataTestId = "level-problems-panel",
@@ -56,6 +58,7 @@ export function LevelProblemsPanel({
       id={id}
       className={className}
       findings={problems}
+      status={describeLevelDescriptionWait(viewportService.description, "what it could not draw")}
       emptyDescription={
         "Everything this level names was read: its textures, shader entries, sectors' drawables and spawned visuals."
       }

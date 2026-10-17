@@ -166,7 +166,7 @@ describe("LevelViewerLayout", () => {
 
     container.get(LevelViewportService).reveal();
     runInAction(() => {
-      container.get(LevelRenderService).failure = "No GPU adapter";
+      container.get(LevelRenderService)["drawFailure"] = "No GPU adapter";
     });
 
     const view: RenderResult = renderWithProviders(

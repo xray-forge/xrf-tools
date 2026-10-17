@@ -1,5 +1,6 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, RefObservable } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 
 import { KeybindCommand } from "@/core/commands";
@@ -57,6 +58,13 @@ export class LevelViewportService {
   @RefObservable()
   public problems: WorldLevelProblems = NO_LEVEL_PROBLEMS;
 
+  /**
+   * How asking the renderer what the resident level draws went: its surfaces, textures and problems. Idle until the
+   * level is resident, and failed with why where it could not say.
+   */
+  @RefObservable()
+  public description: AsyncState<void> = AsyncState.idle();
+
   /** Shows the level, drawn whole. */
   @BoundAction()
   public reveal(): void {
@@ -71,6 +79,7 @@ export class LevelViewportService {
     this.textureReport = EMPTY_LEVEL_TEXTURE_REPORT;
     this.load = null;
     this.problems = NO_LEVEL_PROBLEMS;
+    this.description = AsyncState.idle();
   }
 
   /**
@@ -79,6 +88,14 @@ export class LevelViewportService {
   @BoundAction()
   public noteLoad(report: Nullable<RenderLoadReport>): void {
     this.load = report;
+  }
+
+  /**
+   * @param description - How asking the renderer what the resident level draws went.
+   */
+  @BoundAction()
+  public noteDescription(description: AsyncState<void>): void {
+    this.description = description;
   }
 
   /**

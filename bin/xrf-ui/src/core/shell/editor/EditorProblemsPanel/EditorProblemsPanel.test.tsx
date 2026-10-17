@@ -69,4 +69,25 @@ describe("EditorProblemsPanel", () => {
     expect(getByText(`No problems found. ${EMPTY_DESCRIPTION}`)).toBeInTheDocument();
     expect(queryByRole("list")).not.toBeInTheDocument();
   });
+
+  // Findings still being read are not a clean verdict, with or without some already in.
+  it("says the findings are not all in, in place of the verdict that there are none", () => {
+    const { getByTestId, queryByText, rerender } = renderWithProviders(
+      <EditorProblemsPanel findings={[]} emptyDescription={EMPTY_DESCRIPTION} status={"Reading the rest…"} />
+    );
+
+    expect(getByTestId("editor-problems-status")).toHaveTextContent("Reading the rest…");
+    expect(queryByText(`No problems found. ${EMPTY_DESCRIPTION}`)).not.toBeInTheDocument();
+
+    rerender(
+      <EditorProblemsPanel
+        findings={[{ rule: "read.failed", subject: null, message: "Could not read the project." }]}
+        emptyDescription={EMPTY_DESCRIPTION}
+        status={"Reading the rest…"}
+      />
+    );
+
+    expect(getByTestId("editor-problems-status")).toHaveTextContent("Reading the rest…");
+    expect(queryByText("Could not read the project.")).toBeInTheDocument();
+  });
 });

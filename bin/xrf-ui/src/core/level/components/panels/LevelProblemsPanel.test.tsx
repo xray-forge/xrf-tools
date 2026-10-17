@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult, waitFor, within } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { AsyncState } from "@xrf/async";
 
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { RenderLoadFailure } from "@/core/ipc/types/xrf-renderer";
@@ -25,9 +26,15 @@ interface IRenderProblemsOptions {
   isPresent: boolean;
   /** A spawned visual the renderer could not read, if any. */
   unreadable?: RenderLoadFailure;
+  /** How asking the renderer about the resident level went: answered unless said. */
+  description?: AsyncState<void>;
 }
 
-async function renderProblems({ isPresent, unreadable }: IRenderProblemsOptions): Promise<RenderResult> {
+async function renderProblems({
+  isPresent,
+  unreadable,
+  description = AsyncState.ready<void>(null),
+}: IRenderProblemsOptions): Promise<RenderResult> {
   const level = mockSelectedLevelDescription({
     sectors: [mockSectorOutline({ sector: 0 })],
     textures: [mockLevelTextureReference("stone", isPresent)],
@@ -67,6 +74,7 @@ async function renderProblems({ isPresent, unreadable }: IRenderProblemsOptions)
         }
   );
   viewport.noteProblems({ models: unreadable ? [unreadable] : [], sectors: [], skipped: [] });
+  viewport.noteDescription(description);
 
   return renderWithProviders(<LevelProblemsPanel />, { container });
 }
@@ -78,6 +86,29 @@ describe("LevelProblemsPanel", () => {
     expect(getByTestId("level-problems-panel").textContent).toContain(
       "its textures, shader entries, sectors' drawables and spawned visuals"
     );
+  });
+
+  // Before the level is resident the renderer has said nothing, which is not the same as having found nothing.
+  it("says the renderer's part is not read yet rather than calling the level clean", async () => {
+    const { getByTestId } = await renderProblems({ description: AsyncState.idle(), isPresent: true });
+    const panel: HTMLElement = getByTestId("level-problems-panel");
+
+    expect(getByTestId("editor-problems-status")).toHaveTextContent(
+      "Not read yet: the renderer says what it could not draw once the level is resident."
+    );
+    expect(panel.textContent).not.toContain("No problems found");
+  });
+
+  it("says why the renderer's part could not be read", async () => {
+    const { getByTestId } = await renderProblems({
+      description: AsyncState.failed(new Error("The viewport is gone")),
+      isPresent: true,
+    });
+
+    expect(getByTestId("editor-problems-status")).toHaveTextContent(
+      "Could not read what it could not draw: The viewport is gone."
+    );
+    expect(getByTestId("level-problems-panel").textContent).not.toContain("No problems found");
   });
 
   // The confusion the whole panel exists to end: a surface drew wrong and nothing anywhere named the file behind it,

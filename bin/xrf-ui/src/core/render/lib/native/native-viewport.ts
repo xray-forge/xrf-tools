@@ -221,7 +221,7 @@ export class NativeViewport {
   /**
    * Counts what each shader table entry of the viewport's level draws across the sectors resident.
    *
-   * @returns Every entry something draws, or none for a viewport not attached or a measure that failed.
+   * @returns Every entry something draws, or none for a viewport not attached; rejects for a measure that failed.
    */
   public async measureSurfaces(): Promise<Array<WorldSurfaceGeometry>> {
     const id: Nullable<RenderViewportId> = await this.attached;
@@ -235,13 +235,13 @@ export class NativeViewport {
     } catch (error: unknown) {
       this.noteFailure("measureSurfaces", error);
 
-      return [];
+      throw error;
     }
   }
 
   /**
-   * @returns What the viewport's level could not draw the way it asked; nothing for a viewport not attached or a
-   *   description that failed.
+   * @returns What the viewport's level could not draw the way it asked; nothing for a viewport not attached; rejects
+   *   for a description that failed.
    */
   public async describeProblems(): Promise<WorldLevelProblems> {
     const id: Nullable<RenderViewportId> = await this.attached;
@@ -256,7 +256,7 @@ export class NativeViewport {
     } catch (error: unknown) {
       this.noteFailure("describeProblems", error);
 
-      return none;
+      throw error;
     }
   }
 
@@ -285,7 +285,8 @@ export class NativeViewport {
   /**
    * Says what became of every texture the viewport's level samples.
    *
-   * @returns Each texture's reference and state, or none for a viewport not attached or a description that failed.
+   * @returns Each texture's reference and state, or none for a viewport not attached; rejects for a description that
+   *   failed.
    */
   public async describeTextures(): Promise<Array<RenderTextureReport>> {
     const id: Nullable<RenderViewportId> = await this.attached;
@@ -299,7 +300,7 @@ export class NativeViewport {
     } catch (error: unknown) {
       this.noteFailure("describeTextures", error);
 
-      return [];
+      throw error;
     }
   }
 
@@ -307,8 +308,8 @@ export class NativeViewport {
    * Draws an open level, or none.
    *
    * @param sessionId - The level's open session, as the backend holds it, or null for no level.
-   * @returns The scene drawn, which the viewport's load reports name; null for no level, a viewport not attached or a
-   *   request that failed.
+   * @returns The scene drawn, which the viewport's load reports name; null for no level or a viewport not attached;
+   *   rejects for a request that failed.
    */
   public showLevel(sessionId: Nullable<string>): Promise<Nullable<number>> {
     return this.show("showLevel", (id: RenderViewportId) => renderCommands.showLevel(id, sessionId));
@@ -319,8 +320,8 @@ export class NativeViewport {
    *
    * @param sessionId - The model's open session, as the backend holds it, or null for no model.
    * @param detail - How far down each submesh's collapse chain to draw: zero its finest level, one its coarsest.
-   * @returns The scene drawn, which the viewport's load reports name; null for no model, a viewport not attached or a
-   *   request that failed.
+   * @returns The scene drawn, which the viewport's load reports name; null for no model or a viewport not attached;
+   *   rejects for a request that failed.
    */
   public showModel(sessionId: Nullable<string>, detail: number): Promise<Nullable<number>> {
     return this.show("showModel", (id: RenderViewportId) => renderCommands.showModel(id, sessionId, detail));
@@ -330,8 +331,8 @@ export class NativeViewport {
    * Draws a texture laid on a body, or none.
    *
    * @param request - The texture, the body and how it is laid on it, or null for none.
-   * @returns The scene drawn, which the viewport's load reports name; null for no texture, a viewport not attached or a
-   *   request that failed.
+   * @returns The scene drawn, which the viewport's load reports name; null for no texture or a viewport not attached;
+   *   rejects for a request that failed.
    */
   public showTexture(request: TNativeTextureRequest): Promise<Nullable<number>> {
     return this.show("showTexture", (id: RenderViewportId) => renderCommands.showTexture(id, request));
@@ -361,7 +362,7 @@ export class NativeViewport {
   /**
    * @param command - The show sent, which a failure is told under.
    * @param send - Sends it to the attached viewport.
-   * @returns The scene it drew, or null for none, a viewport not attached or a show that failed.
+   * @returns The scene it drew, or null for none or a viewport not attached; rejects for a show that failed.
    */
   private async show(
     command: string,
@@ -378,7 +379,7 @@ export class NativeViewport {
     } catch (error: unknown) {
       this.noteFailure(command, error);
 
-      return null;
+      throw error;
     }
   }
 

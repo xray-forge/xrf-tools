@@ -1,7 +1,9 @@
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 import { Maybe, Nullable } from "@xrf/types";
 
+import { transformError } from "@/core/error/lib";
 import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import {
   ERenderDlssAvailability,
@@ -361,7 +363,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
   /**
    * Asks what each shader table entry draws, what each texture came to and what the level could not draw, once it is
-   * resident whole.
+   * resident whole; a failure is held for the panels to say.
    */
   private async describeResident(): Promise<void> {
     const { viewport, opening } = this;
@@ -370,17 +372,29 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       return;
     }
 
-    const [measured, textures, problems] = await Promise.all([
-      viewport.measureSurfaces(),
-      viewport.describeTextures(),
-      viewport.describeProblems(),
-    ]);
-
     // Asked of a viewport or a level since replaced, it describes something else.
-    if (viewport === this.viewport && opening === this.opening) {
-      this.viewportService.noteSurfaceGeometry(toLevelSurfaceGeometry(measured));
-      this.viewportService.noteTextures(toLevelTextureReport(textures));
-      this.viewportService.noteProblems(problems);
+    const isCurrent = (): boolean => viewport === this.viewport && opening === this.opening;
+
+    this.viewportService.noteDescription(AsyncState.loading());
+
+    try {
+      const [measured, textures, problems] = await Promise.all([
+        viewport.measureSurfaces(),
+        viewport.describeTextures(),
+        viewport.describeProblems(),
+      ]);
+
+      if (isCurrent()) {
+        this.viewportService.noteSurfaceGeometry(toLevelSurfaceGeometry(measured));
+        this.viewportService.noteTextures(toLevelTextureReport(textures));
+        this.viewportService.noteProblems(problems);
+        this.viewportService.noteDescription(AsyncState.ready<void>(null));
+      }
+    } catch (error: unknown) {
+      if (isCurrent()) {
+        this.log.error("Failed to describe the resident level:", transformError(error));
+        this.viewportService.noteDescription(AsyncState.failed(transformError(error)));
+      }
     }
   }
 
@@ -396,14 +410,13 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.viewportService.notePicked(null);
     this.viewportService.conceal();
 
-    const opening: number = this.opening;
-
-    void this.viewport?.showLevel(selected?.sessionId ?? null).then((scene: Nullable<number>) => {
-      if (opening === this.opening) {
+    this.show(
+      (viewport: NativeViewport) => viewport.showLevel(selected?.sessionId ?? null),
+      (scene: Nullable<number>) => {
         this.scene = scene;
         this.revealWhenReady();
       }
-    });
+    );
   }
 
   /** The toolbar's speeds and lens, from the same place: the camera keeps where it has flown. */

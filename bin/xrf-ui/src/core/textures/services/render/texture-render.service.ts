@@ -43,8 +43,6 @@ export class TextureRenderService extends NativeRenderSurfaceService {
   private hasDescribed: boolean = false;
   /** The scene the shown texture is drawn as, which its load reports name; null until the renderer answers. */
   private scene: Nullable<number> = null;
-  /** How many textures were shown, so the answer for one shown before the last is dropped. */
-  private showing: number = 0;
   /** The viewport's last load report, of whichever scene it named. */
   private loaded: Nullable<RenderLoadReport> = null;
   /** The display's scale, which the backdrop's squares are sized by. */
@@ -167,8 +165,6 @@ export class TextureRenderService extends NativeRenderSurfaceService {
   }
 
   private showTexture(request: TNativeTextureRequest): void {
-    const showing: number = ++this.showing;
-
     this.hasDescribed = false;
     this.scene = null;
 
@@ -176,11 +172,12 @@ export class TextureRenderService extends NativeRenderSurfaceService {
       this.baseFailure = null;
     });
 
-    void this.viewport?.showTexture(request).then((scene: Nullable<number>) => {
-      if (showing === this.showing) {
+    this.show(
+      (viewport: NativeViewport) => viewport.showTexture(request),
+      (scene: Nullable<number>) => {
         this.scene = scene;
         this.describeWhenReady();
       }
-    });
+    );
   }
 }
