@@ -1,4 +1,4 @@
-import { formatPercent } from "@xrf/format";
+import { formatCount, formatPercent } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { RenderLightsReport } from "@/core/ipc/types/xrf-renderer";
@@ -21,11 +21,11 @@ export function LevelRendererLightsSection({
 }: ILevelRendererLightsSectionProps): ReactElement {
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Lamps"}>
-      <EditorPanelProperty label={"In view"} value={lights.inView} />
-      <EditorPanelProperty label={"Shadowed"} value={lights.shadowed} />
+      <EditorPanelProperty label={"In view"} value={formatCount(lights.inView)} />
+      <EditorPanelProperty label={"Shadowed"} value={formatCount(lights.shadowed)} />
       <EditorPanelProperty
         label={"Past the most a frame holds"}
-        value={lights.excess ? `${lights.excess}, the farthest` : "none"}
+        value={lights.excess ? `${formatCount(lights.excess)}, the farthest` : "none"}
       />
       <EditorPanelProperty
         label={"Shadow atlas"}
@@ -33,7 +33,9 @@ export function LevelRendererLightsSection({
       />
       <EditorPanelProperty
         label={"Full clusters"}
-        value={lights.fullClusters ? `${lights.fullClusters} · ${lights.dropped} left out` : "none"}
+        value={
+          lights.fullClusters ? `${formatCount(lights.fullClusters)} · ${formatCount(lights.dropped)} left out` : "none"
+        }
       />
     </EditorPanelSection>
   );

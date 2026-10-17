@@ -1,3 +1,4 @@
+import { formatCount } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 
 import { WorldSurfaceGeometry, WorldSurfaceSpan } from "@/core/ipc/types/xrf-world";
@@ -43,7 +44,7 @@ export function describeLevelSurfaceGeometry(geometry: ILevelSurfaceGeometry): s
   const triangles: number = Math.round(geometry.triangles);
   const each: string = (triangles / geometry.drawables).toFixed(1);
 
-  return `${geometry.drawables} drawables · ${triangles} triangles · ${each} each`;
+  return `${formatCount(geometry.drawables)} drawables · ${formatCount(triangles)} triangles · ${each} each`;
 }
 
 /**

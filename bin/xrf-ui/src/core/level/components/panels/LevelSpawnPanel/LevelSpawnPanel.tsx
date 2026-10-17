@@ -1,5 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
+import { formatCount } from "@xrf/format";
 import { Maybe, Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -175,9 +176,13 @@ export function LevelSpawnPanel({
     return (
       <TreeRowLabel
         label={item.label}
-        caption={row.released ? `${row.count} · ${row.released} released` : String(row.count)}
+        caption={
+          row.released ? `${formatCount(row.count)} · ${formatCount(row.released)} released` : formatCount(row.count)
+        }
         captionTitle={
-          row.released ? `${row.count} spawned, ${row.released} of them released by a new game` : `${row.count} spawned`
+          row.released
+            ? `${formatCount(row.count)} spawned, ${formatCount(row.released)} of them released by a new game`
+            : `${formatCount(row.count)} spawned`
         }
       />
     );

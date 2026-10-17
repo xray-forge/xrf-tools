@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -39,15 +40,15 @@ export function LevelHeaderPanel({
       </EditorPanelSection>
 
       <EditorPanelSection title={"Structure"}>
-        <EditorPanelProperty label={"Sectors"} value={description.sectors.length} />
-        <EditorPanelProperty label={"Portals"} value={description.portals} />
-        <EditorPanelProperty label={"Visuals"} value={description.visuals} />
-        <EditorPanelProperty label={"Drawable"} value={description.drawables} />
-        <EditorPanelProperty label={"Shader entries"} value={description.shaderEntries} />
+        <EditorPanelProperty label={"Sectors"} value={formatCount(description.sectors.length)} />
+        <EditorPanelProperty label={"Portals"} value={formatCount(description.portals)} />
+        <EditorPanelProperty label={"Visuals"} value={formatCount(description.visuals)} />
+        <EditorPanelProperty label={"Drawable"} value={formatCount(description.drawables)} />
+        <EditorPanelProperty label={"Shader entries"} value={formatCount(description.shaderEntries)} />
       </EditorPanelSection>
 
       <EditorPanelSection title={"Lighting"}>
-        <EditorPanelProperty label={"Level lights"} value={description.lights} />
+        <EditorPanelProperty label={"Level lights"} value={formatCount(description.lights)} />
         <EditorPanelProperty label={"Sun"} value={description.hasSun ? "Present" : "Absent"} />
       </EditorPanelSection>
     </EditorPanel>

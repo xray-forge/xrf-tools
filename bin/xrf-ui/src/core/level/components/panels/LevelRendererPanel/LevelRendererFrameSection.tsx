@@ -1,4 +1,4 @@
-import { formatMilliseconds } from "@xrf/format";
+import { formatCount, formatMilliseconds } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
@@ -24,7 +24,7 @@ export function LevelRendererFrameSection({
       <EditorPanelProperty label={"Frame time"} value={formatMilliseconds(frame.frameTime ?? 0)} />
       <EditorPanelProperty label={"Worst frame"} value={formatMilliseconds(frame.frameTimeMax ?? 0)} />
       <EditorPanelProperty label={"Render thread"} value={formatMilliseconds(frame.cpuTime ?? 0)} />
-      <EditorPanelProperty label={"Frames a second"} value={(frame.framesPerSecond ?? 0).toFixed(0)} />
+      <EditorPanelProperty label={"Frames a second"} value={formatCount(Math.round(frame.framesPerSecond ?? 0))} />
       <EditorPanelProperty label={"Taking a sector in"} value={formatMilliseconds(frame.sectorTime ?? 0)} />
       <EditorPanelProperty label={"Graphics API"} value={frame.adapter ? describeRenderBackend(frame.backend) : "—"} />
       <EditorPanelProperty label={"GPU"} value={frame.adapter || "—"} />

@@ -11,7 +11,7 @@ describe("describeLevelSurfaceGeometry", () => {
   // place is two. The average per drawable is what tells them apart.
   it("says how many triangles each drawable averages", () => {
     expect(describeLevelSurfaceGeometry({ drawables: 70, narrowest: null, span: null, triangles: 4807 })).toBe(
-      "70 drawables · 4807 triangles · 68.7 each"
+      "70 drawables · 4,807 triangles · 68.7 each"
     );
   });
 

@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { Maybe, Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -114,7 +115,13 @@ export function LevelSurfacesPanel({
     const row: Maybe<TLevelSurfaceTreeRow> = item.payload;
 
     if (row?.kind === "shader") {
-      return <TreeRowLabel label={item.label} caption={String(row.count)} captionTitle={`${row.count} entries`} />;
+      return (
+        <TreeRowLabel
+          label={item.label}
+          caption={formatCount(row.count)}
+          captionTitle={`${formatCount(row.count)} entries`}
+        />
+      );
     }
 
     return row ? (

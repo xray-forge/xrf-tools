@@ -1,4 +1,4 @@
-import { formatBytes, formatCount } from "@xrf/format";
+import { formatBytes, formatCount, formatPercent } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { RenderMemoryReport, RenderMemorySection } from "@/core/ipc/types/xrf-renderer";
@@ -16,7 +16,7 @@ interface ILevelRendererMemorySectionProps extends BaseComponentProps {
  * @returns Its bytes, its share of all of it, and how many resources make it up.
  */
 function formatSection(section: RenderMemorySection, allocated: number | null): string {
-  const share: string = allocated ? ` · ${((section.bytes / allocated) * 100).toFixed(1)}%` : "";
+  const share: string = allocated ? ` · ${formatPercent(section.bytes / allocated, 1)}` : "";
 
   return `${formatBytes(section.bytes)}${share} · ${formatCount(section.count)}`;
 }

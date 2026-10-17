@@ -1,4 +1,4 @@
-import { formatMilliseconds } from "@xrf/format";
+import { formatCount, formatMilliseconds } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { RenderParticlesReport } from "@/core/ipc/types/xrf-renderer";
@@ -21,10 +21,10 @@ export function LevelRendererParticlesSection({
 }: ILevelRendererParticlesSectionProps): ReactElement {
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Particles"}>
-      <EditorPanelProperty label={"Effects playing"} value={particles.effects} />
-      <EditorPanelProperty label={"Particles"} value={particles.particles} />
-      <EditorPanelProperty label={"Stepped"} value={particles.simulated} />
-      <EditorPanelProperty label={"Drawn"} value={particles.drawn} />
+      <EditorPanelProperty label={"Effects playing"} value={formatCount(particles.effects)} />
+      <EditorPanelProperty label={"Particles"} value={formatCount(particles.particles)} />
+      <EditorPanelProperty label={"Stepped"} value={formatCount(particles.simulated)} />
+      <EditorPanelProperty label={"Drawn"} value={formatCount(particles.drawn)} />
       <EditorPanelProperty label={"Stepping"} value={formatMilliseconds(particles.simulationTime ?? 0)} />
     </EditorPanelSection>
   );

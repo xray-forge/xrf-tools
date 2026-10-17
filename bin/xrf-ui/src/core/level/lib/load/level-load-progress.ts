@@ -1,3 +1,5 @@
+import { formatCount } from "@xrf/format";
+
 import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 
 /**
@@ -7,11 +9,11 @@ import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
  */
 export function describeLevelLoad(load: RenderLoadReport): string {
   if (load.sectors < load.sectorsTotal) {
-    return `Reading sectors, ${load.sectors} of ${load.sectorsTotal}`;
+    return `Reading sectors, ${formatCount(load.sectors)} of ${formatCount(load.sectorsTotal)}`;
   }
 
   if (load.textures < load.texturesTotal) {
-    return `Uploading textures, ${load.textures} of ${load.texturesTotal}`;
+    return `Uploading textures, ${formatCount(load.textures)} of ${formatCount(load.texturesTotal)}`;
   }
 
   return "Reading spawned objects, grass, lights and particles";
