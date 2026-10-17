@@ -195,19 +195,24 @@ export class LevelLoadService {
   }
 
   /**
-   * Closes this loader's level without clearing a newer one.
+   * Closes this loader's level without clearing a newer one. The view is cleared even where the backend failed to let
+   * the level go, which stays owned for the next close to release.
    */
   @LatestFlow("level")
   public *close(): TFlow {
     const source: Maybe<LevelSource> = this.level.value?.selected.value.source;
 
-    yield* call(this.session.close());
+    try {
+      yield* call(this.session.close());
+
+      if (source) {
+        this.log.info("Level closed:", describeLevelSource(source));
+      }
+    } catch (error: unknown) {
+      this.log.error("Failed to close level:", transformError(error));
+    }
 
     this.clearView();
-
-    if (source) {
-      this.log.info("Level closed:", describeLevelSource(source));
-    }
   }
 
   /**
