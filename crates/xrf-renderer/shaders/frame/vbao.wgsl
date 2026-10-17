@@ -23,6 +23,7 @@ override FAR_STEPS: u32 = 2u;
 // the albedo, material and light, the light at the search's size, the stage before's light and the last frame's.
 #import "generated/frame/vbao"
 #import "common/math"
+#import "common/luminance"
 
 // The share of the radius past which a sample is dropped by noise, more of them the further out.
 const FALLOFF_START: f32 = 0.6;
@@ -46,7 +47,6 @@ const SOURCE_LIMIT: f32 = 4.0;
 // How far a sample's surface must turn towards the point before all its light reaches it: a surface's light leaves
 // it alike every way it faces, so only the back faces and those seen edge on are dropped.
 const FACING_FADE: f32 = 0.2;
-const LUMINANCE: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
 
 struct SearchPoint {
   depth: f32,
@@ -131,9 +131,7 @@ fn fs_light_source(in: FullscreenVarying) -> @location(0) vec4<f32> {
   }
 
   let light: vec3<f32> = textureLoad(albedo_target, texel, 0).rgb * textureLoad(light_target, texel, 0).rgb;
-  let luminance: f32 = dot(light, LUMINANCE);
-
-  return vec4<f32>(light * min(1.0, SOURCE_LIMIT / max(luminance, 1e-4)), 1.0);
+  return vec4<f32>(light * min(1.0, SOURCE_LIMIT / max(luminance(light), 1e-4)), 1.0);
 }
 
 // What a search gives: the occlusion, and the light gathered where it is lit.

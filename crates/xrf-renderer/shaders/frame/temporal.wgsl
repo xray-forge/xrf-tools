@@ -1,5 +1,7 @@
 #import "common/camera"
 #import "common/fullscreen"
+#import "common/luminance"
+#import "common/reactive"
 
 // The temporal resolve, after Karis's "High Quality Temporal Supersampling": this frame's jittered samples blended
 // with the history the camera's motion carries to each pixel, the history clipped to the colours around it, upscaling
@@ -20,9 +22,7 @@ const MAX_MOTION: f32 = 128.0;
 // `exp(-2.29 x²)`'s factor: Karis's fit of a Blackman-Harris window a pixel wide.
 const WINDOW: f32 = -2.29;
 const NEIGHBOURS: f32 = 9.0;
-// How strongly a change over the opaque frame, relative to its brightness, marks a pixel reactive; the share of this
-// frame a fully reactive pixel takes at least; and how far its history's clip box narrows.
-const REACTIVE_GAIN: f32 = 2.0;
+// The share of this frame a fully reactive pixel takes at least, and how far its history's clip box narrows.
 const REACTIVE_WEIGHT: f32 = 0.5;
 const REACTIVE_CLIP: f32 = 0.5;
 // How fast a pixel's flicker, its frame's jump against its history relative to their brightness, follows; how much
@@ -39,7 +39,7 @@ fn reactive_at(at: vec2<f32>, size: vec2<f32>) -> f32 {
   let over: vec3<f32> = max(textureLoad(frame, texel, 0).rgb, vec3<f32>(0.0));
   let under: vec3<f32> = max(textureLoad(opaque, texel, 0).rgb, vec3<f32>(0.0));
 
-  return saturate(length(over - under) / (luminance(over) + luminance(under) + 0.05) * REACTIVE_GAIN);
+  return reactive_change(over, under);
 }
 
 fn load_frame(at: vec2<f32>, size: vec2<f32>) -> vec3<f32> {
@@ -63,10 +63,6 @@ fn to_uv(view_projection: mat4x4<f32>, world: vec3<f32>) -> vec2<f32> {
   let ndc: vec2<f32> = clip.xy / clip.w;
 
   return vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
-}
-
-fn luminance(color: vec3<f32>) -> f32 {
-  return dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
 }
 
 // The history clipped towards the neighbourhood's mean onto the box of its colours (Playdead's `clip_aabb`), so a
