@@ -298,13 +298,15 @@ impl GpuContext {
     let upscaled: (bool, bool) = (is_fallback, !is_fallback);
     let (instance, adapter, shader_compiler) = match Self::request_adapter(backend, gpu, upscaled, (dxc, dlss)) {
       Ok((instance, adapter)) => (instance, adapter, dxc.map_or("FXC", |_| "DXC")),
-      Err(error) if dxc.is_some() => {
-        log::warn!("D3D12 compiles with FXC, the DXC library not loading: {error}");
+      // DXC is what failed only where FXC then starts; where FXC fails too, the adapter's own error stands.
+      Err(error) if dxc.is_some() => match Self::request_adapter(backend, gpu, upscaled, (None, dlss)) {
+        Ok((instance, adapter)) => {
+          log::warn!("D3D12 compiles with FXC, the DXC library not loading: {error}");
 
-        let (instance, adapter) = Self::request_adapter(backend, gpu, upscaled, (None, dlss))?;
-
-        (instance, adapter, "FXC")
-      }
+          (instance, adapter, "FXC")
+        }
+        Err(_) => return Err(error),
+      },
       Err(error) => return Err(error),
     };
     let shader_compiler: Option<&'static str> = (backend == RenderBackend::D3d12).then_some(shader_compiler);
