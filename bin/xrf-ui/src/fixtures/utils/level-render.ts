@@ -33,13 +33,6 @@ export function sentOverlayKinds(): Array<string> {
   );
 }
 
-/** Lets the promises already settled run their continuations. */
-export async function flushPromises(): Promise<void> {
-  for (let index: number = 0; index < 10; index += 1) {
-    await Promise.resolve();
-  }
-}
-
 /**
  * A level open and provisioned as the application provisions it, its render service attached to `element`.
  *
@@ -74,7 +67,8 @@ export async function mockAttachedLevelRender(
   const service: LevelRenderService = container.get(LevelRenderService);
 
   service.attach(element);
-  await flushPromises();
+  // Attaching ends with the level shown.
+  await waitFor(() => expect(sentRenderCommand("show_level")).toHaveLength(1));
 
   return { container, service };
 }

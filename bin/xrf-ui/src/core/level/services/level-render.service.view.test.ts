@@ -18,7 +18,6 @@ import { mockInvoke, resetMockChannels, resetMockInvoke } from "@/fixtures/mocks
 import { mockWorldWeatherReport } from "@/fixtures/mocks/weather.mocks";
 import {
   emitViewportEvent,
-  flushPromises,
   LEVEL_VIEWPORT,
   mockAttachedLevelRender,
   sentOverlayKinds,
@@ -38,9 +37,8 @@ describe("LevelRenderService view", () => {
 
     mockInvoke.mockClear();
     service.goTo({ heading: 90, pitch: 0, x: 4, y: 5, z: 6 });
-    await flushPromises();
 
-    expect(sentRenderCommand("set_camera")).toHaveLength(1);
+    await waitFor(() => expect(sentRenderCommand("set_camera")).toHaveLength(1));
     expect(sentRenderCommand("command_camera")).toEqual([
       { command: { kind: EWorldCameraCommand.RESET }, viewport: LEVEL_VIEWPORT },
     ]);
@@ -52,9 +50,8 @@ describe("LevelRenderService view", () => {
 
     mockInvoke.mockClear();
     view.setCameraOptions({ ...view.cameraOptions, speed: view.cameraOptions.speed * 2 });
-    await flushPromises();
 
-    expect(sentRenderCommand("set_camera")).toHaveLength(1);
+    await waitFor(() => expect(sentRenderCommand("set_camera")).toHaveLength(1));
     expect(sentRenderCommand("command_camera")).toHaveLength(0);
   });
 
@@ -75,8 +72,8 @@ describe("LevelRenderService view", () => {
 
     mockInvoke.mockClear();
     view.setShading(ELevelShading.CLAY);
-    await flushPromises();
 
+    await waitFor(() => expect(sentRenderCommand("set_view_options")).not.toHaveLength(0));
     expect(sentRenderCommand("set_view_options")).toEqual([
       {
         options: expect.objectContaining({
@@ -99,8 +96,8 @@ describe("LevelRenderService view", () => {
 
     mockInvoke.mockClear();
     view.setOptions({ ...view.options, isRainy: false, isSpawnedLamps: false });
-    await flushPromises();
 
+    await waitFor(() => expect(sentRenderCommand("set_world_toggles")).not.toHaveLength(0));
     expect(sentRenderCommand("set_world_toggles")).toEqual([
       { toggles: expect.objectContaining({ isRainy: false, isSpawnedLamps: false }), viewport: LEVEL_VIEWPORT },
     ]);
@@ -121,29 +118,31 @@ describe("LevelRenderService view", () => {
 
     view.setOptions({ ...view.options, isWireframe: true });
     container.get(RenderSettingsService).setRenderResolution(ERenderResolution.HEIGHT_720);
-    await flushPromises();
 
-    expect(sentRenderCommand("set_view_options").at(-1)).toEqual({
-      options: expect.objectContaining({
-        mode: expect.objectContaining({ isWireframe: true }),
-        output: expect.objectContaining({ outputHeight: 720 }),
-      }),
-      viewport: LEVEL_VIEWPORT,
-    });
+    await waitFor(() =>
+      expect(sentRenderCommand("set_view_options").at(-1)).toEqual({
+        options: expect.objectContaining({
+          mode: expect.objectContaining({ isWireframe: true }),
+          output: expect.objectContaining({ outputHeight: 720 }),
+        }),
+        viewport: LEVEL_VIEWPORT,
+      })
+    );
   });
 
   it("resolves at the share of the viewport the settings' scale asks while the resolution is automatic", async () => {
     const { container } = await mockAttachedLevelRender();
 
     container.get(RenderSettingsService).setRenderOutputScale(1.5);
-    await flushPromises();
 
-    expect(sentRenderCommand("set_view_options").at(-1)).toEqual({
-      options: expect.objectContaining({
-        output: expect.objectContaining({ outputHeight: null, outputScale: 1.5 }),
-      }),
-      viewport: LEVEL_VIEWPORT,
-    });
+    await waitFor(() =>
+      expect(sentRenderCommand("set_view_options").at(-1)).toEqual({
+        options: expect.objectContaining({
+          output: expect.objectContaining({ outputHeight: null, outputScale: 1.5 }),
+        }),
+        viewport: LEVEL_VIEWPORT,
+      })
+    );
   });
 
   it("draws the grid, the extent, the axes and the sun over the level as the toolbar shows them", async () => {
@@ -151,13 +150,12 @@ describe("LevelRenderService view", () => {
     const view: LevelViewService = container.get(LevelViewService);
 
     view.setOptions({ ...view.options, isAxesVisible: false, isGridVisible: false, isSunMarked: true });
-    await flushPromises();
 
-    expect(sentOverlayKinds()).toEqual([ERenderOverlay.SUN]);
+    await waitFor(() => expect(sentOverlayKinds()).toEqual([ERenderOverlay.SUN]));
 
     view.setOptions({ ...view.options, isAxesVisible: true, isGridVisible: true, isSunMarked: false });
-    await flushPromises();
 
+    await waitFor(() => expect(sentOverlayKinds()).not.toContain(ERenderOverlay.SUN));
     expect(sentOverlayKinds()).toEqual([
       ERenderOverlay.LINES,
       ERenderOverlay.LINES,
@@ -190,8 +188,8 @@ describe("LevelRenderService view", () => {
     service.playWeatherEffect("fx_storm");
     service.playAmbientEffect();
     service.playAmbientEffect();
-    await flushPromises();
 
+    await waitFor(() => expect(sentRenderCommand("play_ambient_effect")).toHaveLength(2));
     expect(sentRenderCommand("set_weather_control")).toEqual([
       { control: { factor: 12, isDynamicSun: false, isPaused: false }, viewport: LEVEL_VIEWPORT },
     ]);
