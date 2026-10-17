@@ -8,6 +8,7 @@
 #import "common/debanding"
 #import "common/reflection_end"
 #import "common/debug_colours"
+#import "common/luminance"
 
 // The viewport's finished scene put into its rectangle of the window, moved where the water and the particles distort
 // it; or, for a debug view, one of the targets the scene was built from.
@@ -55,8 +56,7 @@ const BLOOM_ENHANCED: u32 = 2u;
 // Metres the depth view spreads over, logarithmically, so a metre up close and a kilometre away both read.
 const DEPTH_VIEW_RANGE: f32 = 5000.0;
 
-// Rec. 709's luminance weights, and the middle grey the luminance view counts its stops from.
-const LUMINANCE_WEIGHTS: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
+// The middle grey the luminance view counts its stops from.
 const MIDDLE_GREY: f32 = 0.18;
 
 // The linear albedo the albedo range view takes as plausible, and what it shows below and above it.
@@ -166,9 +166,9 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
       return textureLoad(albedo_target, texel, 0).rgb;
     }
     case VIEW_LUMINANCE: {
-      let luminance: f32 = dot(textureLoad(scene, texel, 0).rgb, LUMINANCE_WEIGHTS);
+      let shown: f32 = luminance(textureLoad(scene, texel, 0).rgb);
 
-      return stop_colour(log2(max(luminance, 1e-6) / MIDDLE_GREY));
+      return stop_colour(log2(max(shown, 1e-6) / MIDDLE_GREY));
     }
     case VIEW_ALBEDO_RANGE: {
       if (stored <= 0.0) {
@@ -176,8 +176,8 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
       }
 
       let albedo: vec3<f32> = textureLoad(albedo_target, texel, 0).rgb;
-      let linear: f32 = dot(srgb_decoded(albedo), LUMINANCE_WEIGHTS);
-      let grey: vec3<f32> = vec3<f32>(dot(albedo, LUMINANCE_WEIGHTS));
+      let linear: f32 = luminance(srgb_decoded(albedo));
+      let grey: vec3<f32> = vec3<f32>(luminance(albedo));
 
       return select(select(grey, ALBEDO_OVER, linear > ALBEDO_MOST), ALBEDO_UNDER, linear < ALBEDO_LEAST);
     }

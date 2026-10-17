@@ -410,7 +410,7 @@ fn met_radiance(texel: vec2<i32>, hit: vec3<f32>, origin: vec3<f32>) -> vec4<f32
 
   let fogged: vec3<f32> = mix(lit, lighting.fog_color.rgb, path_fog(lighting, length(hit - origin)));
 
-  return vec4<f32>(fogged * min(1.0, RADIANCE_LIMIT / luminance(fogged)), remembered.w);
+  return vec4<f32>(fogged * min(1.0, RADIANCE_LIMIT / traced_luminance(fogged)), remembered.w);
 }
 
 // The view space point the walked depth shows at a frame texel, held to the frame, one in `w` where something is
@@ -789,8 +789,8 @@ fn neighbourhood(source: texture_2d<f32>, pixel: vec2<f32>) -> Moments {
 
 // How far the history's luminance strays from this frame's, squared and relative.
 fn temporal_variance(held: vec3<f32>, fresh: vec3<f32>) -> f32 {
-  let before: f32 = luminance(held);
-  let now: f32 = luminance(fresh);
+  let before: f32 = traced_luminance(held);
+  let now: f32 = traced_luminance(fresh);
   let difference: f32 = abs(before - now) / max(max(before, now), 0.5);
 
   return difference * difference;
@@ -918,7 +918,7 @@ fn fs_average(in: FullscreenVarying) -> @location(0) vec4<f32> {
       let fresh: vec4<f32> = textureLoad(traced, at, 0);
       let held: vec4<f32> = textureLoad(reprojected, at, 0);
       let radiance: vec3<f32> = select(fresh.rgb, mix(fresh.rgb, held.rgb, 0.3), held.a > 1.0);
-      let weight: f32 = max(exp(-luminance(radiance) * AVERAGE_LUMINANCE_WEIGHT), 1e-2);
+      let weight: f32 = max(exp(-traced_luminance(radiance) * AVERAGE_LUMINANCE_WEIGHT), 1e-2);
 
       if (fresh.a >= 0.0 && all(radiance == radiance) && weight <= 1e3) {
         sum += radiance * weight;

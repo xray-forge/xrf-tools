@@ -6,6 +6,7 @@ enable wgpu_binding_array;
 #import "common/octahedral"
 #import "common/gloss"
 #import "common/debug_colours"
+#import "common/luminance"
 #import "static/pulling"
 
 // Static draws into the G-buffer, pulled as `static/pulling` reads them.
@@ -478,7 +479,7 @@ fn surfaces_shown(in: GBufferVarying, at: Footprint, shaded: GBufferOutput) -> G
 
   var out: GBufferOutput = shaded;
   let flags: u32 = surfaces[in.surface].flags;
-  let brightness: f32 = dot(shaded.albedo.rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
+  let brightness: f32 = luminance(shaded.albedo.rgb);
 
   if (is_mip) {
     var shown: vec3<f32> = vec3<f32>(0.25 + 0.25 * brightness);

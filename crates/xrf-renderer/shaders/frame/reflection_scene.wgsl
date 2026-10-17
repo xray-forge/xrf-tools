@@ -59,7 +59,7 @@ fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroup
   let shown: vec3<f32> = shade_scene_hit(hit, toward, cone, lighting, material_lut, lut_sampler, sky_environment_0,
     sky_environment_1, sky_clamp);
   let fog: f32 = path_fog(lighting, hit.distance);
-  let met: vec3<f32> = mix(shown * min(1.0, RADIANCE_LIMIT / luminance(shown)), lighting.fog_color.rgb, fog);
+  let met: vec3<f32> = mix(shown * min(1.0, RADIANCE_LIMIT / traced_luminance(shown)), lighting.fog_color.rgb, fog);
 
   textureStore(traced_out, pixel, vec4<f32>(screen.rgb + met * (1.0 - screen.w),
     select(hit.distance, request.screen_length, screen.w > 0.5)));

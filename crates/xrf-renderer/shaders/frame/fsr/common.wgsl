@@ -60,7 +60,7 @@ fn is_hdr() -> bool {
   return fsr.hdr > 0.5;
 }
 
-// `RGBToLuma`.
+// `RGBToLuma`, kept as the port writes it rather than `common/luminance`, so the FSR files follow AMD's source.
 fn to_luma(rgb: vec3<f32>) -> f32 {
   return dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
 }
