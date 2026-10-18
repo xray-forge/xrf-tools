@@ -21,10 +21,7 @@ interface IArchiveUnpackDialogProps extends BaseComponentProps {
 }
 
 /**
- * Asks where to write every file the open subject holds, then starts that run.
- *
- * Closes as soon as the run starts: progress and cancelling belong to the editor's banner, which is also where a run
- * started before a reload is found again.
+ * Asks where to write every file the open subject holds, then starts that run and closes.
  */
 export function ArchiveUnpackDialog({
   "data-testid": dataTestId = "archive-unpack-dialog",
@@ -39,7 +36,7 @@ export function ArchiveUnpackDialog({
   const titleId: string = useId();
 
   const subject: Nullable<ArchiveSubject> = archivesService.subject.value;
-  const isExtracting: boolean = archivesService.operation.isLoading;
+  const isWriting: boolean = archivesService.isWriting;
 
   const destination: IPathField = usePathField({
     application: EApplicationId.ARCHIVES_EXPLORER,
@@ -47,7 +44,7 @@ export function ArchiveUnpackDialog({
     title: "Select output directory",
     isDirectory: true,
     isSave: true,
-    isDisabled: isExtracting,
+    isDisabled: isWriting,
     seed: () => resolveOutputPath(EApplicationId.ARCHIVES_EXPLORER),
   });
 
@@ -99,7 +96,7 @@ export function ArchiveUnpackDialog({
         </div>
 
         <PathFormRow
-          isDisabled={isExtracting}
+          isDisabled={isWriting}
           label={"Output"}
           description={"Directory the whole tree is unpacked into, with its folder layout"}
           field={destination}
@@ -114,7 +111,7 @@ export function ArchiveUnpackDialog({
         <Button
           size={"small"}
           variant={"contained"}
-          disabled={isExtracting || !destination.isValid || !archivesService.entries.length}
+          disabled={isWriting || !destination.isValid || !archivesService.entries.length}
           startIcon={<UnarchiveIcon fontSize={"small"} />}
           onClick={() => void onUnpack()}
         >

@@ -30,9 +30,6 @@ interface IArchiveDirectoryContentProps extends BaseComponentProps {
  * A directory has nothing to preview, so it reports what extracting it would cost - how many files and how
  * much data - and offers the command. The counts are computed here rather than taken from the tree
  * because the tree only knows its own shape, while the totals people care about are recursive.
- *
- * The tree root has no folder name to extract as, so it offers the unpack dialog instead: one way to write
- * everything, with a remembered output directory.
  */
 export function ArchiveDirectoryContent({
   "data-testid": dataTestId = "archive-directory-content",
@@ -47,6 +44,7 @@ export function ArchiveDirectoryContent({
 
   const files: Array<IArchiveEntry> = archivesService.entries;
   const operation: AsyncState<Nullable<TArchiveOperation>> = archivesService.operation;
+  const isWriting: boolean = archivesService.isWriting;
   // A file extraction started elsewhere must not be reported here as if this directory had been written.
   const extracted: Nullable<ArchiveExtractDirectoryResult> =
     operation.value?.kind === "extract-directory" ? operation.value.result : null;
@@ -100,7 +98,7 @@ export function ArchiveDirectoryContent({
         <Button
           variant={"contained"}
           size={"small"}
-          disabled={operation.isLoading || !summary.count}
+          disabled={isWriting || !summary.count}
           startIcon={<SaveAltIcon fontSize={"small"} />}
           onClick={onExtract}
         >
@@ -111,7 +109,7 @@ export function ArchiveDirectoryContent({
           aria-haspopup={"dialog"}
           variant={"contained"}
           size={"small"}
-          disabled={operation.isLoading || !summary.count}
+          disabled={isWriting || !summary.count}
           startIcon={<UnarchiveIcon fontSize={"small"} />}
           onClick={onUnpack}
         >

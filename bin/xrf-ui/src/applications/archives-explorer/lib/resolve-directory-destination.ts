@@ -2,11 +2,7 @@ import * as path from "@tauri-apps/api/path";
 import { LOGICAL_PATH_SEPARATOR, splitLogicalPath } from "@xrf/path";
 
 /**
- * Where extracting one archive directory writes, given the folder picked for it.
- *
- * The directory lands as itself inside the picked folder, the way copying a folder does: `configs\gameplay` picked
- * into `C:\out` writes `C:\out\gameplay\...`, without the `configs` parents above it. The tree root has no name of its
- * own, so it writes into the picked folder directly.
+ * Where extracting one archive directory writes: its own folder inside the picked one, or the picked one for the root.
  *
  * @param picked - Host directory the person chose.
  * @param prefix - Archive directory being extracted; empty for the tree root.

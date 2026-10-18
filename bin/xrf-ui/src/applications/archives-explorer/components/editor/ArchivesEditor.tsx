@@ -150,7 +150,7 @@ export function ArchivesEditor(): ReactElement {
                 label={"Unpack"}
                 description={"Write every file in the open tree to a directory"}
                 icon={<UnarchiveIcon />}
-                isDisabled={isExtracting || Boolean(job) || !archivesService.entries.length}
+                isDisabled={archivesService.isWriting || !archivesService.entries.length}
                 onClick={() => setUnpackOpen(true)}
               />
             </>
