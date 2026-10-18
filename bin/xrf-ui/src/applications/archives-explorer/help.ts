@@ -28,8 +28,8 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
     "Previews support engine text (Windows-1251), `dds` images, `ogg` audio and `ogf` models. Other supported " +
       "binary formats show descriptions; linked references select matching files in the open tree. " +
       "Unknown formats may show a chunk tree or file details only.",
-    "Extracting `configs\\gameplay` writes its contents directly into the destination, without the " +
-      "`configs\\gameplay` parent folders.",
+    "Extracting `configs\\gameplay` creates a `gameplay` folder inside the chosen destination, without the " +
+      "`configs` parent folder. An existing `gameplay` folder is merged into.",
   ],
   limitations: [
     "Extraction overwrites existing destination files without asking. Directory extraction can be cancelled " +

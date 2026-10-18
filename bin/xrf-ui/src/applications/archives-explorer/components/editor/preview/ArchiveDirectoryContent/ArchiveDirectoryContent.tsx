@@ -8,6 +8,7 @@ import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
+import { resolveDirectoryDestination } from "@/applications/archives-explorer/lib/resolve-directory-destination";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveEntry, isUnderArchiveDirectory, TArchiveOperation } from "@/core/archive/lib";
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
@@ -59,17 +60,17 @@ export function ArchiveDirectoryContent({
   }, [files, path]);
 
   const onExtract = useCallback(async () => {
-    const destination: Nullable<string> = (await dialog.open({
-      title: path ? `Extract ${path}` : "Extract everything",
+    const picked: Nullable<string> = (await dialog.open({
+      title: path ? `Extract ${path} into` : "Extract everything",
       directory: true,
     })) as Nullable<string>;
 
-    if (!destination) {
+    if (!picked) {
       return;
     }
 
     try {
-      await archivesService.extractArchiveDirectory(path, destination);
+      await archivesService.extractArchiveDirectory(path, await resolveDirectoryDestination(picked, path));
     } catch (error: unknown) {
       // Published on the service, which the alert below renders. Logged here for the stack.
       log.error("Failed to extract archive directory:", error);
