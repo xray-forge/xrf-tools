@@ -111,7 +111,7 @@ mod tests {
   fn tells_an_unknown_extension_apart_from_no_extension() {
     // The distinction the whole type exists for: one is a file this cannot open, the other is a file whose kind is
     // read from its name instead, which is how a level bundle is recognized.
-    assert_eq!(XrayExtensionOf::of("readme.txt"), XrayExtensionOf::Unknown("txt"));
+    assert_eq!(XrayExtensionOf::of("readme.docx"), XrayExtensionOf::Unknown("docx"));
     assert_eq!(XrayExtensionOf::of("levels\\l01_escape\\level"), XrayExtensionOf::None);
     assert_eq!(
       XrayExtensionOf::of("configs\\weapons.old\\readme"),

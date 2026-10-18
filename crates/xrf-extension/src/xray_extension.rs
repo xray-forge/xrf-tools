@@ -154,6 +154,8 @@ declare_xray_extensions! {
   /// XRF's own source spelling for a generated config, which `xrf-ltx` looks for beside an absent `.ltx` to tell a
   /// config that has not been built yet from one that is missing.
   Ts => "ts",
+  /// Plain notes, which vanilla `configs` ships beside the configs they describe.
+  Txt => "txt",
   Vs => "vs",
   Wallmarks => "wallmarks",
   Wav => "wav",
@@ -280,7 +282,7 @@ mod tests {
   fn the_vocabulary_holds_every_spelling_it_held_before() {
     // Nothing else fails when a variant is deleted: `of` in `xrf-vfs` matches exhaustively and would simply stop
     // naming the kind, and every policy list would quietly shrink. Adding one is a decision; losing one is not.
-    assert_eq!(XrayExtension::ALL.len(), 59);
+    assert_eq!(XrayExtension::ALL.len(), 60);
   }
 
   #[test]

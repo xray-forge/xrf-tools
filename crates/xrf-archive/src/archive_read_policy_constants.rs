@@ -21,6 +21,7 @@ pub const ALLOWED_TEXT_EXTENSIONS: &[XrayExtension] = &[
   XrayExtension::S,
   XrayExtension::Script,
   XrayExtension::Seq,
+  XrayExtension::Txt,
   XrayExtension::Vs,
   XrayExtension::Xml,
 ];

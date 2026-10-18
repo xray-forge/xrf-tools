@@ -148,6 +148,7 @@ impl XrayAssetType {
       | XrayExtension::Json
       | XrayExtension::Md
       | XrayExtension::Ts
+      | XrayExtension::Txt
       | XrayExtension::Xml => return None,
     })
   }

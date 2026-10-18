@@ -78,6 +78,8 @@ export enum EXrayExtension {
    * config that has not been built yet from one that is missing.
    */
   TS = "ts",
+  /** Plain notes, which vanilla `configs` ships beside the configs they describe. */
+  TXT = "txt",
   VS = "vs",
   WALLMARKS = "wallmarks",
   WAV = "wav",
