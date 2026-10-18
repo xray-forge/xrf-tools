@@ -33,7 +33,7 @@
     "@mui/system": "^9.5.0",
     "@mui/x-data-grid": "^9.15.0",
     "@mui/x-tree-view": "^9.15.0",
-    "@mui/x-virtualizer": "0.7.1",
+    "@mui/x-virtualizer": "0.7.3",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.8.3",
     "@tauri-apps/plugin-fs": "^2.7.1",
