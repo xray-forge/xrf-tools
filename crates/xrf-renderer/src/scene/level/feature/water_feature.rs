@@ -89,7 +89,7 @@ impl WaterFeature {
         if self
           .reflection
           .as_ref()
-          .is_none_or(|reflection| reflection.size != WaterReflection::get_size(targets))
+          .is_none_or(|reflection| reflection.size != (targets.width, targets.height))
         {
           self.reflection = Some(WaterReflection::new(device, targets));
         }

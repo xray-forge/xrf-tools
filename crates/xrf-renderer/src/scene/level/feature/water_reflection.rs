@@ -3,13 +3,13 @@ use crate::frame::history::History;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::trace_request_list::TraceRequestList;
 
-/// The enhanced water's reflection: two histories at half the drawn size, one written each frame over the other it
-/// reads, and the list its rays the screen does not answer are left to the scene pass in, an eighth of its pixels while
+/// The enhanced water's reflection: two histories at the drawn size, one written each frame over the other it reads,
+/// and the list its rays the screen does not answer are left to the scene pass in, an eighth of the drawn pixels while
 /// it traces, a stub otherwise.
 pub struct WaterReflection {
   pub histories: History<FrameTexture>,
   pub requests: TraceRequestList,
-  /// The size it was made at, half the targets' drawn size.
+  /// The size it was made at, the targets' drawn size.
   pub size: (u32, u32),
 }
 
@@ -24,7 +24,7 @@ impl WaterReflection {
   pub const TRACE_TURNS_LEAST: u32 = 8;
 
   pub fn new(device: &wgpu::Device, targets: &ViewTargets) -> Self {
-    let size: (u32, u32) = Self::get_size(targets);
+    let size: (u32, u32) = (targets.width, targets.height);
 
     Self {
       histories: History::new(|side| {
@@ -39,11 +39,6 @@ impl WaterReflection {
       requests: TraceRequestList::new(device, "water reflection", 0),
       size,
     }
-  }
-
-  /// The size it is drawn at for a view's targets: half their drawn size, which the surface reads filtered.
-  pub fn get_size(targets: &ViewTargets) -> (u32, u32) {
-    (targets.width.div_ceil(2), targets.height.div_ceil(2))
   }
 
   /// Bytes its histories and its request list take.
