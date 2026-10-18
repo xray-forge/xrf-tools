@@ -24,6 +24,39 @@ updates:
         update-types:
           - version-update:semver-major
           - version-update:semver-minor
+      # `xrf-dlss` hands D3D12 objects to `wgpu-hal`, so it must use the `windows-core` that the
+      # `xrf-wgpu` fork, `tao`, `wry` and `webview2-com` use. Move it together with the fork.
+      - dependency-name: windows-core
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # `minimumReleaseAge` in `pnpm-workspace.yaml` refuses anything younger than a week, with the
+    # same exemptions; a shorter cooldown proposes versions the lockfile update cannot resolve.
+    cooldown:
+      default-days: 7
+      exclude:
+        - "@tauri-apps/*"
+        - "@wirestate/*"
+    groups:
+      # Matched first, so every Tauri package moves in one pull request to follow the crates.
+      tauri:
+        patterns:
+          - "@tauri-apps/*"
+      npm-compatible:
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # Types follow the Node major the project targets: the root `package.json` engines floor, 24.15.
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
