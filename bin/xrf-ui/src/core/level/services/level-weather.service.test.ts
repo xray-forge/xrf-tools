@@ -231,7 +231,7 @@ describe("LevelWeatherService", () => {
     });
 
     const service: LevelWeatherService = createLevelWeatherService();
-    const shafts = { minimum: 0.3, quality: ERenderSunShaftsQuality.LOW, steps: null };
+    const shafts = { minimum: 0.3, quality: ERenderSunShaftsQuality.LOW };
 
     await service.open(LEVEL_WEATHER_SELECTED);
     service.setSunShafts(shafts);

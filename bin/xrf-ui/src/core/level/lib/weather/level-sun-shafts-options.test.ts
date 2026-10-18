@@ -3,30 +3,22 @@ import { describe, expect, it } from "@jest/globals";
 import { ERenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
-  describeLevelSunShaftsSteps,
   ILevelSunShaftsOptions,
   toLevelSunShaftsOptions,
 } from "@/core/level/lib/weather/level-sun-shafts-options";
 
 describe("toLevelSunShaftsOptions", () => {
   it("reads stored options back as they were set", () => {
-    const options: ILevelSunShaftsOptions = { minimum: 0.3, quality: ERenderSunShaftsQuality.MEDIUM, steps: 24 };
+    const options: ILevelSunShaftsOptions = { minimum: 0.3, quality: ERenderSunShaftsQuality.MEDIUM };
 
     expect(toLevelSunShaftsOptions(JSON.parse(JSON.stringify(options)))).toEqual(options);
   });
 
   it("holds the minimum to the console's bounds, and defaults what does not read", () => {
-    expect(toLevelSunShaftsOptions({ minimum: 0.9, quality: "ultra", steps: 4.5 })).toEqual({
+    expect(toLevelSunShaftsOptions({ minimum: 0.9, quality: "ultra" })).toEqual({
       minimum: 0.5,
       quality: ERenderSunShaftsQuality.HIGH,
-      steps: null,
     });
-    expect(toLevelSunShaftsOptions({ steps: 65 }).steps).toBeNull();
     expect(toLevelSunShaftsOptions(null)).toEqual(DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS);
-  });
-
-  it("reads zero steps as the quality's own", () => {
-    expect(describeLevelSunShaftsSteps(0)).toBe("Quality's");
-    expect(describeLevelSunShaftsSteps(24)).toBe("24");
   });
 });

@@ -35,7 +35,7 @@ function toInputs(overrides: Partial<ILevelViewOptionsInputs> = {}): ILevelViewO
 
 describe("toLevelViewOptions", () => {
   it("steps the sunshafts as the sun's popover sets them", () => {
-    const sunShafts = { minimum: 0.25, quality: ERenderSunShaftsQuality.LOW, steps: 12 };
+    const sunShafts = { minimum: 0.25, quality: ERenderSunShaftsQuality.LOW };
 
     expect(toLevelViewOptions(toInputs({ sunShafts })).features.sunShafts).toEqual(sunShafts);
   });

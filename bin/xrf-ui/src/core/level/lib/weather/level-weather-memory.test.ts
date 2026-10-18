@@ -25,7 +25,7 @@ const MEMORY: ILevelWeatherMemory = {
   manual: null,
   seed: null,
   source: ELevelWeatherSource.WEATHER,
-  sunShafts: { minimum: 0.2, quality: ERenderSunShaftsQuality.MEDIUM, steps: null },
+  sunShafts: { minimum: 0.2, quality: ERenderSunShaftsQuality.MEDIUM },
   time: 3_600,
 };
 
@@ -128,7 +128,7 @@ describe("level weather memory", () => {
     });
     expect(toLevelWeatherMemory({ ...MEMORY, sunShafts: { minimum: 2, quality: "ultra" }, version: 4 })).toEqual({
       ...MEMORY,
-      sunShafts: { minimum: 0.5, quality: ERenderSunShaftsQuality.HIGH, steps: null },
+      sunShafts: { minimum: 0.5, quality: ERenderSunShaftsQuality.HIGH },
     });
   });
 

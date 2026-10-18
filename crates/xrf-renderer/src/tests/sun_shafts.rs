@@ -19,31 +19,12 @@ fn steps_each_quality_as_its_engine_does() {
   assert_eq!(steps(XrayEngine::Extended), [15, 25, 30]);
 }
 
-// Steps asked for stand in for the quality's, held to the most a ray takes; none asked steps as the quality does.
-#[test]
-fn steps_as_asked_over_the_quality() {
-  let shafts = |steps: Option<u32>| RenderSunShafts {
-    quality: RenderSunShaftsQuality::High,
-    minimum: 0.0,
-    steps,
-  };
-
-  assert_eq!(shafts(None).get_steps(XrayEngine::Vanilla), 40);
-  assert_eq!(shafts(Some(12)).get_steps(XrayEngine::Vanilla), 12);
-  assert_eq!(shafts(Some(0)).get_steps(XrayEngine::Extended), 1);
-  assert_eq!(
-    shafts(Some(500)).get_steps(XrayEngine::Extended),
-    RenderSunShafts::MAX_STEPS
-  );
-}
-
 // Monolith's `r2_sunshafts_min`, held to its console's bounds, lifts the mixed density on any engine; zero leaves it.
 #[test]
 fn lifts_the_density_by_its_floor() {
   let shafts: RenderSunShafts = RenderSunShafts {
     quality: RenderSunShaftsQuality::High,
     minimum: 0.2,
-    steps: None,
   };
   let lit = |engine: XrayEngine, density: f32| RenderLighting {
     engine,

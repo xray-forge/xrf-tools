@@ -1631,8 +1631,6 @@ export type RenderSunShafts = {
   quality: RenderSunShaftsQuality;
   /** `r2_sunshafts_min`, from zero to a half: the floor the keyframes' density is lifted from; zero draws it as it is. */
   minimum: number | null;
-  /** Steps along a ray in place of the quality's, up to `RenderSunShafts::MAX_STEPS`; none steps as the quality does. */
-  steps: number | null;
 };
 
 /**
