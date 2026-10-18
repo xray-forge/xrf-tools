@@ -50,8 +50,6 @@ pub struct TextureCache {
   sampler: wgpu::Sampler,
   /// The sampler's anisotropy clamp, one for trilinear.
   anisotropy: u16,
-  /// Trilinear whatever the anisotropy, for the hemisphere's lightmap, which the engine reads unfiltered by it.
-  trilinear: wgpu::Sampler,
   bind_group: wgpu::BindGroup,
   /// Each slot's view; a slot not loaded holds the missing texture's.
   views: Vec<wgpu::TextureView>,
@@ -131,17 +129,10 @@ impl TextureCache {
           ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
           count: None,
         },
-        wgpu::BindGroupLayoutEntry {
-          binding: 2,
-          visibility: wgpu::ShaderStages::FRAGMENT | wgpu::ShaderStages::COMPUTE,
-          ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-          count: None,
-        },
       ],
     });
     let anisotropy: u16 = 8;
     let sampler: wgpu::Sampler = Self::create_sampler(device, anisotropy);
-    let trilinear: wgpu::Sampler = Self::create_sampler(device, 1);
     let missing: wgpu::TextureView = Self::create_solid(device, queue, [128, 128, 128, 255]);
     let neutral: Vec<wgpu::TextureView> = TextureRole::ALL
       .into_iter()
@@ -150,13 +141,12 @@ impl TextureCache {
     let checker: wgpu::TextureView = Self::create_checker(device, queue);
     let (sender, receiver) = LoaderReceiver::channel();
     let views: Vec<wgpu::TextureView> = vec![missing];
-    let bind_group: wgpu::BindGroup = Self::create_bind_group(device, &layout, (&sampler, &trilinear), &views);
+    let bind_group: wgpu::BindGroup = Self::create_bind_group(device, &layout, &sampler, &views);
 
     Self {
       layout,
       sampler,
       anisotropy,
-      trilinear,
       bind_group,
       views,
       states: vec![RenderTextureState::Missing],
@@ -637,7 +627,7 @@ impl TextureCache {
 
     if self.is_dirty {
       self.is_dirty = false;
-      self.bind_group = Self::create_bind_group(device, &self.layout, (&self.sampler, &self.trilinear), &self.views);
+      self.bind_group = Self::create_bind_group(device, &self.layout, &self.sampler, &self.views);
     }
   }
 
@@ -769,7 +759,7 @@ impl TextureCache {
 
     self.anisotropy = anisotropy;
     self.sampler = Self::create_sampler(device, anisotropy);
-    self.bind_group = Self::create_bind_group(device, &self.layout, (&self.sampler, &self.trilinear), &self.views);
+    self.bind_group = Self::create_bind_group(device, &self.layout, &self.sampler, &self.views);
   }
 
   /// Trilinear, anisotropic up to `anisotropy`, repeating, as the engine samples a level's surfaces.
@@ -787,11 +777,11 @@ impl TextureCache {
     })
   }
 
-  /// Binds every slot, the ones never filled to the missing texture, since an array is bound whole, and both samplers.
+  /// Binds every slot, the ones never filled to the missing texture, since an array is bound whole.
   fn create_bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
-    (sampler, trilinear): (&wgpu::Sampler, &wgpu::Sampler),
+    sampler: &wgpu::Sampler,
     views: &[wgpu::TextureView],
   ) -> wgpu::BindGroup {
     // Only the slots asked for: the array is partially bound, and every view bound is tracked by each pass binding it.
@@ -808,10 +798,6 @@ impl TextureCache {
         wgpu::BindGroupEntry {
           binding: 1,
           resource: wgpu::BindingResource::Sampler(sampler),
-        },
-        wgpu::BindGroupEntry {
-          binding: 2,
-          resource: wgpu::BindingResource::Sampler(trilinear),
         },
       ],
     })

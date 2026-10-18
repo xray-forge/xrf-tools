@@ -13,9 +13,6 @@ enable wgpu_binding_array;
 
 @group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;
 @group(1) @binding(1) var texture_sampler: sampler;
-// Trilinear whatever the preset's anisotropy, for the hemisphere's lightmap, which the engine reads unfiltered by it
-// (`smp_rtlinear`).
-@group(1) @binding(2) var trilinear_sampler: sampler;
 
 // Whether this pipeline draws a shadow map, whose surfaces casting none are collapsed to nothing.
 override IS_SHADOW_DRAW: bool = false;
@@ -555,11 +552,6 @@ fn sample_slot(slot: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f
   return textureSampleGrad(textures[slot], texture_sampler, uv, dx, dy);
 }
 
-// The same, trilinear: a lightmap.
-fn sample_slot_trilinear(slot: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
-  return textureSampleGrad(textures[slot], trilinear_sampler, uv, dx, dy);
-}
-
 // The uv checker an asset viewer draws in place of a surface's textures: eight texels a side, white and dark, each
 // repeat of the coordinate.
 fn checker_texel(uv: vec2<f32>) -> vec4<f32> {
@@ -894,16 +886,14 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
 
   if (!is_terrain && (surface.flags & SURFACE_HAS_BUMP) != 0u) {
     let bump: vec4<f32> = sample_slot(surface.textures[SLOT_BUMP], at.uv, at.dx, at.dy);
-    var tangent_normal: vec3<f32> = bump.wzy +
-      sample_slot(surface.textures[SLOT_BUMP_COMPANION], at.uv, at.dx, at.dy).xyz - 1.0;
+    var tangent_normal: vec3<f32> = bump.wzy + sample_slot(surface.textures[SLOT_BUMP_COMPANION], at.uv, at.dx, at.dy).xyz - 1.0;
 
     leaf_tilt = tangent_normal.xy * is_bumped * is_textured;
     var bumped_gloss: f32 = bump.x * bump.x;
 
     if ((surface.flags & SURFACE_HAS_DETAIL_BUMP) != 0u) {
       let detail_bump: vec4<f32> = sample_slot(surface.textures[SLOT_DETAIL_BUMP], detail_uv, detail_dx, detail_dy);
-      let companion: vec4<f32> = sample_slot(surface.textures[SLOT_DETAIL_BUMP_COMPANION], detail_uv, detail_dx,
-        detail_dy);
+      let companion: vec4<f32> = sample_slot(surface.textures[SLOT_DETAIL_BUMP_COMPANION], detail_uv, detail_dx, detail_dy);
 
       tangent_normal += detail_bump.wzy + companion.xyz - 1.0;
       bumped_gloss *= detail_bump.x * 2.0;
@@ -934,8 +924,7 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   var sun: f32 = 1.0;
 
   if ((surface.flags & SURFACE_HAS_HEMI) != 0u) {
-    let lightmap: vec4<f32> = sample_slot_trilinear(surface.textures[SLOT_HEMI], at.lightmap, at.lightmap_dx,
-      at.lightmap_dy);
+    let lightmap: vec4<f32> = sample_slot(surface.textures[SLOT_HEMI], at.lightmap, at.lightmap_dx, at.lightmap_dy);
 
     hemi = lightmap.a;
     sun = lightmap.g;
