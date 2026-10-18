@@ -42,11 +42,17 @@ type TUnsupported = Exclude<
   | { kind: "description" }
 >;
 
+interface IArchivesFilePreviewProps extends BaseComponentProps {
+  /** Opens the unpack dialog, which is what the tree root offers in place of a directory extraction. */
+  onUnpack: () => void;
+}
+
 export function ArchivesFilePreview({
   "data-testid": dataTestId = "archives-file-preview",
   id = "archives-file-preview",
   className,
-}: BaseComponentProps): ReactElement {
+  onUnpack,
+}: IArchivesFilePreviewProps): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
   const selection: TArchiveSelection = archivesService.selection;
@@ -65,7 +71,7 @@ export function ArchivesFilePreview({
 
   // A directory selection is a different kind of thing, not a file that happens to be missing.
   if (selection.kind === EPathEntryKind.DIRECTORY) {
-    return <ArchiveDirectoryContent path={selection.path} />;
+    return <ArchiveDirectoryContent path={selection.path} onUnpack={onUnpack} />;
   }
 
   const entry: Nullable<IArchiveEntry> = selection.kind === EPathEntryKind.FILE ? selection.entry : null;

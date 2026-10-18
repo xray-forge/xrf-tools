@@ -7,8 +7,8 @@ export const ARCHIVES_EXPLORER_HELP: IApplicationHelp = {
       "folder, or `Archive` for one volume.",
     "Browse or filter the file tree. Double-click a file or press `Enter` to preview it; open `File details` " +
       "to inspect its source and metadata.",
-    "Use `Extract file` for one file, or select a directory to extract its contents. Select the tree root " +
-      "to extract everything with the full folder layout.",
+    "Use `Extract file` for one file, or select a directory to extract it as a folder. Use `Unpack` in the " +
+      "toolbar, or select the tree root, to write everything with the full folder layout.",
   ],
   nuances: [
     "`Gamedata` opens the selected directory as a loose file tree, with paths relative to that directory. " +

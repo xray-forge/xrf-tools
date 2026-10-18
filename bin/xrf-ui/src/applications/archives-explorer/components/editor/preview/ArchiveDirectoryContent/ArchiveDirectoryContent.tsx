@@ -1,5 +1,6 @@
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as SaveAltIcon } from "@mui/icons-material/SaveAlt";
+import { default as UnarchiveIcon } from "@mui/icons-material/Unarchive";
 import { Alert, Button, Typography } from "@mui/material";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
@@ -19,6 +20,8 @@ import { Logger, useLogger } from "@/lib/logging";
 
 interface IArchiveDirectoryContentProps extends BaseComponentProps {
   path: string;
+  /** Opens the unpack dialog, which the tree root offers instead of extracting into a bare picked folder. */
+  onUnpack: () => void;
 }
 
 /**
@@ -27,12 +30,16 @@ interface IArchiveDirectoryContentProps extends BaseComponentProps {
  * A directory has nothing to preview, so it reports what extracting it would cost - how many files and how
  * much data - and offers the command. The counts are computed here rather than taken from the tree
  * because the tree only knows its own shape, while the totals people care about are recursive.
+ *
+ * The tree root has no folder name to extract as, so it offers the unpack dialog instead: one way to write
+ * everything, with a remembered output directory.
  */
 export function ArchiveDirectoryContent({
   "data-testid": dataTestId = "archive-directory-content",
   id,
   className,
   path,
+  onUnpack,
 }: IArchiveDirectoryContentProps): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
@@ -61,7 +68,7 @@ export function ArchiveDirectoryContent({
 
   const onExtract = useCallback(async () => {
     const picked: Nullable<string> = (await dialog.open({
-      title: path ? `Extract ${path} into` : "Extract everything",
+      title: `Extract ${path} into`,
       directory: true,
     })) as Nullable<string>;
 
@@ -89,15 +96,28 @@ export function ArchiveDirectoryContent({
         {summary.count} files · {formatBytes(summary.size)}
       </Typography>
 
-      <Button
-        variant={"contained"}
-        size={"small"}
-        disabled={operation.isLoading || !summary.count}
-        startIcon={<SaveAltIcon fontSize={"small"} />}
-        onClick={onExtract}
-      >
-        {operation.isLoading ? "Extracting..." : "Extract directory"}
-      </Button>
+      {path ? (
+        <Button
+          variant={"contained"}
+          size={"small"}
+          disabled={operation.isLoading || !summary.count}
+          startIcon={<SaveAltIcon fontSize={"small"} />}
+          onClick={onExtract}
+        >
+          {operation.isLoading ? "Extracting..." : "Extract directory"}
+        </Button>
+      ) : (
+        <Button
+          aria-haspopup={"dialog"}
+          variant={"contained"}
+          size={"small"}
+          disabled={operation.isLoading || !summary.count}
+          startIcon={<UnarchiveIcon fontSize={"small"} />}
+          onClick={onUnpack}
+        >
+          {operation.isLoading ? "Unpacking..." : "Unpack..."}
+        </Button>
+      )}
 
       {operation.error ? (
         <div className={"mt-4 max-w-120"}>

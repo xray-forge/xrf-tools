@@ -1,6 +1,7 @@
 import { default as BarChartIcon } from "@mui/icons-material/BarChart";
 import { default as FileCopyIcon } from "@mui/icons-material/FileCopy";
 import { default as LayersIcon } from "@mui/icons-material/Layers";
+import { default as UnarchiveIcon } from "@mui/icons-material/Unarchive";
 import { Alert } from "@mui/material";
 import { CommandBus } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
@@ -32,6 +33,7 @@ import { ArchiveOverridesDialog } from "./overrides";
 import { ArchivesFilePreview } from "./preview";
 import { ArchiveResolutionDialog } from "./resolution";
 import { ArchiveStatisticsDialog } from "./statistics";
+import { ArchiveUnpackDialog } from "./unpack";
 
 export function ArchivesEditor(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
@@ -42,6 +44,7 @@ export function ArchivesEditor(): ReactElement {
   const [isStatisticsOpen, setStatisticsOpen] = useState<boolean>(false);
   const [isResolutionOpen, setResolutionOpen] = useState<boolean>(false);
   const [isOverridesOpen, setOverridesOpen] = useState<boolean>(false);
+  const [isUnpackOpen, setUnpackOpen] = useState<boolean>(false);
 
   // The run rather than the service's own flag: an extraction survives the window being reloaded, so returning here
   // finds it again instead of showing an idle tree over files it is still writing.
@@ -140,6 +143,16 @@ export function ArchivesEditor(): ReactElement {
                 icon={<BarChartIcon />}
                 onClick={() => setStatisticsOpen(true)}
               />
+
+              <EditorIconAction
+                aria-haspopup={"dialog"}
+                aria-expanded={isUnpackOpen}
+                label={"Unpack"}
+                description={"Write every file in the open tree to a directory"}
+                icon={<UnarchiveIcon />}
+                isDisabled={isExtracting || Boolean(job) || !archivesService.entries.length}
+                onClick={() => setUnpackOpen(true)}
+              />
             </>
           }
           onBack={() => void onClose()}
@@ -163,7 +176,7 @@ export function ArchivesEditor(): ReactElement {
         ) : null
       }
     >
-      <ArchivesFilePreview />
+      <ArchivesFilePreview onUnpack={() => setUnpackOpen(true)} />
 
       <ArchiveResolutionDialog isOpen={isResolutionOpen} onClose={() => setResolutionOpen(false)} />
 
@@ -174,6 +187,8 @@ export function ArchivesEditor(): ReactElement {
         onClose={() => setOverridesOpen(false)}
         onOpenFile={onOpenOverride}
       />
+
+      <ArchiveUnpackDialog isOpen={isUnpackOpen} onClose={() => setUnpackOpen(false)} />
     </EditorLayout>
   );
 }
