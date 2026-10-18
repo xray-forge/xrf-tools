@@ -22,14 +22,18 @@ mod sdk {
   }
 
   /// On a Windows host with no `LIBCLANG_PATH` set, points bindgen at the libclang `cargo make fetch-sdks` placed in
-  /// `.sdks/libclang`; elsewhere bindgen finds the system's.
-  fn use_fetched_libclang() {
+  /// `.sdks/libclang` and answers true; elsewhere bindgen finds the system's.
+  fn use_fetched_libclang() -> bool {
     if cfg!(windows) && env::var_os("LIBCLANG_PATH").is_none() {
       let fetched: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../.sdks/libclang");
 
       // SAFETY: the build script runs on one thread, and bindgen reads the variable after this as it loads libclang.
       unsafe { env::set_var("LIBCLANG_PATH", fetched) };
+
+      return true;
     }
+
+    false
   }
 
   pub fn bind() {
@@ -76,12 +80,14 @@ mod sdk {
       }
     }
 
-    use_fetched_libclang();
+    let is_libclang_fetched: bool = use_fetched_libclang();
 
     // Vulkan's own types come from ash, so only NGX's are generated; its static inline helpers are compiled into a
-    // library of their own.
+    // library of their own. The fetched libclang takes no system clang's headers: a clang on PATH of another version
+    // (LLVM 20 on the CI runners) has intrinsic headers that libclang 18 cannot parse.
     bindgen::Builder::default()
       .header(wrapper.to_string_lossy())
+      .detect_include_paths(!is_libclang_fetched)
       .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
       .wrap_static_fns(true)
       .wrap_static_fns_path(out.join("wrap_static_fns"))
