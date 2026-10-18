@@ -1,69 +1,38 @@
-use std::collections::{HashMap, HashSet};
-use std::ffi::OsStr;
 use std::fs;
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
 
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use xrf_archive::{ArchiveFileDescriptor, ArchiveOpenVolumes, ArchiveProject};
 use xrf_error::{XrfError, XrfResult};
-use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::format_path;
 
 use crate::path::{relative_to_prefix, to_host_relative};
-use crate::unpack::archive_extract_options::{ArchiveExtractOptions, EXTRACT_PHASE_WRITE};
+use crate::unpack::archive_extract_options::ArchiveExtractOptions;
 use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, ArchiveExtractResult};
-use crate::unpack::archive_unpack_options::{ArchiveUnpackOptions, UNPACK_PHASE_PREPARE, UNPACK_PHASE_WRITE};
 use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
 use crate::unpack::rooted_destination::RootedDestination;
-
-/// What one unpack run wrote, counted as it went.
-///
-/// Separate from the job's own counters because a job counts units for whoever is watching, while these are what the
-/// result reports: a watcher may not exist, and the numbers still have to be true.
-#[derive(Default)]
-struct UnpackTally {
-  files: AtomicUsize,
-  bytes: AtomicU64,
-}
+use crate::unpack::tree_entry::TreeEntry;
+use crate::unpack::tree_write_summary::TreeWriteSummary;
+use crate::unpack::tree_writer::TreeWriter;
 
 /// Writes the contents of an archive project back out to a directory.
 pub struct ArchiveUnpacker;
 
 impl ArchiveUnpacker {
   /// Write every file in the project beneath a destination root.
-  ///
-  /// The plain door. A caller that wants to watch the run or be able to stop it uses [`Self::unpack_opt`].
   pub fn unpack<P: AsRef<Path>>(project: &ArchiveProject, destination: P) -> XrfResult<ArchiveUnpackResult> {
-    Self::unpack_opt(project, destination, ArchiveUnpackOptions::default())
+    Self::unpack_opt(project, destination, ArchiveExtractOptions::default())
   }
 
   /// Write every file in the project beneath a destination root, as `options` asks.
-  ///
-  /// Synchronous: nothing below this performs asynchronous I/O, so a caller on an executor has to move the whole call
-  /// to a blocking thread rather than expect it to yield.
-  ///
-  /// Names come from the archive, so every write goes through a [`RootedDestination`] and lands below `destination`
-  /// even where that tree already exists and holds links.
-  ///
-  /// A failure ends the run: no further entry is started, entries already started run to completion, and one of the
-  /// errors is returned. Which one is unspecified, because entries are dispatched out of a hash table and finish out
-  /// of order. Whatever was written stays on disk and the run is still reported as a failure — a partial tree reported
-  /// as a success is worse, because nothing downstream can tell that the missing files were never written.
-  ///
-  /// Cancellation is the same shape with a different name: the run stops between entries, keeps what it wrote, and
-  /// answers `Ok` carrying counts of what actually landed. It is not a failure, so it does not lose the description
-  /// of the tree it left behind — which is the only way a caller can tell the user what to clean up.
   pub fn unpack_opt<P: AsRef<Path>>(
     project: &ArchiveProject,
     destination: P,
-    options: ArchiveUnpackOptions,
+    options: ArchiveExtractOptions,
   ) -> XrfResult<ArchiveUnpackResult> {
     let destination: RootedDestination = RootedDestination::new(destination.as_ref());
     let job = &options.job;
-    let tally: UnpackTally = UnpackTally::default();
 
     destination.create_root()?;
 
@@ -71,68 +40,29 @@ impl ArchiveUnpacker {
     // serves the whole run without a cursor to race for.
     let volumes: ArchiveOpenVolumes<'_> = project.open_volumes()?;
 
-    let prepared: HashMap<PathBuf, PathBuf> = {
-      let preparing: JobScope = job.enter(UNPACK_PHASE_PREPARE, None);
+    let entries: Vec<TreeEntry<&ArchiveFileDescriptor>> = project
+      .files
+      .values()
+      .map(|descriptor| {
+        Ok(TreeEntry {
+          source: descriptor,
+          relative: Self::build_relative_path(volumes.get_unpack_root_of(descriptor)?, descriptor)?,
+          is_directory: descriptor.is_directory,
+        })
+      })
+      .collect::<XrfResult<Vec<TreeEntry<&ArchiveFileDescriptor>>>>()?;
 
-      Self::unpack_dirs(&volumes, &destination, &preparing)?
-    };
-
-    let prepared_at: Duration = job.elapsed();
-
-    {
-      let writing: JobScope = job.enter(UNPACK_PHASE_WRITE, Some(project.files.len() as u64));
-
-      let outcome: XrfResult = project.files.par_iter().try_for_each(|(_, descriptor)| -> XrfResult {
-        // Before the write rather than after it: a payload already being written cannot be halved without leaving a
-        // truncated file that is indistinguishable from a short one, so the only safe boundary is this one.
-        job.check_cancelled()?;
-
-        // A directory row carries no payload, and the tree it names was created during preparation. It is counted
-        // anyway, so the progress total stays the entry count the project reports holding.
-        if !descriptor.is_directory {
-          Self::unpack_file(&destination, &volumes, &prepared, descriptor)?;
-
-          tally.files.fetch_add(1, Ordering::Relaxed);
-          tally
-            .bytes
-            .fetch_add(u64::from(descriptor.size_real), Ordering::Relaxed);
-        }
-
-        writing.advance();
-
-        Ok(())
-      });
-
-      // The run's own cancellation is control flow, not a failure. Any other error is the caller's to see.
-      if let Err(error) = outcome
-        && !matches!(error, XrfError::Cancelled { .. })
-      {
-        return Err(error);
-      }
-    }
+    let summary: TreeWriteSummary = Self::write_entries(&destination, &volumes, &entries, &options)?;
 
     Ok(Self::describe_result(
       project,
       destination.get_root(),
-      &tally,
-      if job.is_cancelled() {
-        JobOutcome::Cancelled
-      } else {
-        JobOutcome::Completed
-      },
-      prepared_at,
+      &summary,
       job.elapsed(),
     ))
   }
 
   /// Write every archived file under one directory to a destination root.
-  ///
-  /// Keeps the layout below the prefix but not the prefix itself: extracting `configs\gameplay` into
-  /// `C:\out` produces `C:\out\dialogs.xml`, not `C:\out\configs\gameplay\dialogs.xml`. The user picked
-  /// the destination for the directory they named, so repeating that directory inside it is surprising.
-  ///
-  /// An empty prefix means the whole archive, which is what selecting the tree root does. What lies below the prefix
-  /// is archive-controlled, so it is written through a [`RootedDestination`] rather than joined and opened.
   pub fn extract_directory<P: AsRef<Path>>(
     project: &ArchiveProject,
     prefix: &str,
@@ -142,16 +72,6 @@ impl ArchiveUnpacker {
   }
 
   /// Write every archived file under one directory to a destination root, as `options` asks.
-  ///
-  /// Keeps the layout below the prefix but not the prefix itself: extracting `configs\gameplay` into
-  /// `C:\out` produces `C:\out\dialogs.xml`, not `C:\out\configs\gameplay\dialogs.xml`. The user picked
-  /// the destination for the directory they named, so repeating that directory inside it is surprising.
-  ///
-  /// An empty prefix means the whole archive, which is what selecting the tree root does. What lies below the prefix
-  /// is archive-controlled, so it is written through a [`RootedDestination`] rather than joined and opened.
-  ///
-  /// Cancellation lands between entries and keeps what it wrote, the same way an unpack does: the destination may hold
-  /// the caller's own files, and nothing here can tell those from this run's.
   pub fn extract_directory_opt<P: AsRef<Path>>(
     project: &ArchiveProject,
     prefix: &str,
@@ -160,7 +80,6 @@ impl ArchiveUnpacker {
   ) -> XrfResult<ArchiveExtractDirectoryResult> {
     let normalized: String = prefix.trim_end_matches(['\\', '/']).to_string();
     let destination: RootedDestination = RootedDestination::new(destination.as_ref());
-    let job = &options.job;
 
     destination.create_root()?;
 
@@ -169,12 +88,18 @@ impl ArchiveUnpacker {
 
     // Selected before anything is written, so the run knows how much it is about to do. The alternative - filtering
     // inside the write loop - leaves the total unknowable until the end, which is exactly when it stops being useful.
-    let selected: Vec<(&ArchiveFileDescriptor, PathBuf)> = project
+    let selected: Vec<TreeEntry<&ArchiveFileDescriptor>> = project
       .files
       .values()
       .filter_map(|descriptor| relative_to_prefix(&descriptor.name, &normalized).map(|relative| (descriptor, relative)))
-      .map(|(descriptor, relative)| to_host_relative(relative).map(|relative| (descriptor, relative)))
-      .collect::<XrfResult<Vec<(&ArchiveFileDescriptor, PathBuf)>>>()?;
+      .map(|(descriptor, relative)| {
+        Ok(TreeEntry {
+          source: descriptor,
+          relative: to_host_relative(relative)?,
+          is_directory: descriptor.is_directory,
+        })
+      })
+      .collect::<XrfResult<Vec<TreeEntry<&ArchiveFileDescriptor>>>>()?;
 
     if selected.is_empty() {
       return Err(XrfError::new_not_found_error(format!(
@@ -182,39 +107,14 @@ impl ArchiveUnpacker {
       )));
     }
 
-    let mut extracted_count: usize = 0;
-    let mut size: u64 = 0;
-    let mut outcome: JobOutcome = JobOutcome::Completed;
-
-    let extracting: JobScope = job.enter(EXTRACT_PHASE_WRITE, Some(selected.len() as u64));
-
-    for (descriptor, relative) in &selected {
-      // Before the write rather than after it: a payload already being written cannot be halved without leaving a
-      // truncated file indistinguishable from a short one.
-      if job.is_cancelled() {
-        outcome = JobOutcome::Cancelled;
-
-        break;
-      }
-
-      if descriptor.is_directory {
-        destination.create_directory(relative)?;
-      } else {
-        volumes.write_contents(&mut destination.create_file(relative)?, descriptor)?;
-
-        extracted_count += 1;
-        size += descriptor.size_real as u64;
-      }
-
-      extracting.advance();
-    }
+    let summary: TreeWriteSummary = Self::write_entries(&destination, &volumes, &selected, &options)?;
 
     Ok(ArchiveExtractDirectoryResult {
       prefix: normalized,
       destination: format_path(destination.get_root()).to_string(),
-      outcome,
-      extracted_count,
-      size,
+      outcome: summary.outcome,
+      extracted_count: summary.files,
+      size: summary.bytes,
     })
   }
 
@@ -252,12 +152,24 @@ impl ArchiveUnpacker {
     })
   }
 
+  /// Writes the selected entries through the shared tree writer, reading each payload out of its volume.
+  fn write_entries(
+    destination: &RootedDestination,
+    volumes: &ArchiveOpenVolumes<'_>,
+    entries: &[TreeEntry<&ArchiveFileDescriptor>],
+    options: &ArchiveExtractOptions,
+  ) -> XrfResult<TreeWriteSummary> {
+    TreeWriter::write(destination, entries, &options.job, |descriptor, target| {
+      volumes.write_contents(target, descriptor)?;
+
+      Ok(u64::from(descriptor.size_real))
+    })
+  }
+
   fn describe_result(
     project: &ArchiveProject,
     destination: &Path,
-    tally: &UnpackTally,
-    outcome: JobOutcome,
-    prepared_at: Duration,
+    summary: &TreeWriteSummary,
     unpacked_at: Duration,
   ) -> ArchiveUnpackResult {
     ArchiveUnpackResult {
@@ -268,12 +180,12 @@ impl ArchiveUnpacker {
         .collect(),
       destination: format_path(destination).to_string(),
       duration: unpacked_at,
-      outcome,
+      outcome: summary.outcome,
       files_total: project.files.len(),
-      files_unpacked: tally.files.load(Ordering::Relaxed),
-      prepare_duration: prepared_at,
-      unpack_duration: unpacked_at.saturating_sub(prepared_at),
-      unpacked_size: tally.bytes.load(Ordering::Relaxed),
+      files_unpacked: summary.files,
+      prepare_duration: summary.prepared_at,
+      unpack_duration: unpacked_at.saturating_sub(summary.prepared_at),
+      unpacked_size: summary.bytes,
     }
   }
 
@@ -288,78 +200,7 @@ impl ArchiveUnpacker {
     )
   }
 
-  /// Writes one entry, reusing the parent directory the preparation phase already verified.
-  ///
-  /// `prepared` holds every directory the entries named, so the lookup normally hits and the walk down is skipped. The
-  /// miss path is kept because it costs nothing and is the only thing standing between a future change in what
-  /// preparation collects and an entry that never reaches disk.
-  fn unpack_file(
-    destination: &RootedDestination,
-    volumes: &ArchiveOpenVolumes<'_>,
-    prepared: &HashMap<PathBuf, PathBuf>,
-    descriptor: &ArchiveFileDescriptor,
-  ) -> XrfResult {
-    let relative: PathBuf = Self::build_relative_path(volumes.get_unpack_root_of(descriptor)?, descriptor)?;
-    let verified: Option<(&PathBuf, &OsStr)> = relative
-      .parent()
-      .and_then(|parent| prepared.get(parent))
-      .zip(relative.file_name());
-
-    let mut target: File = match verified {
-      Some((parent, name)) => destination.create_file_in(parent, name)?,
-      None => destination.create_file(&relative)?,
-    };
-
-    volumes.write_contents(&mut target, descriptor)
-  }
-
-  /// Creates every directory the entries need, and returns where each one landed.
-  ///
-  /// The map is what stops the write phase walking the same components again for every file in a directory: it holds
-  /// one verified host path per relative directory, keyed the way [`Self::build_relative_path`] spells it.
-  fn unpack_dirs(
-    volumes: &ArchiveOpenVolumes<'_>,
-    destination: &RootedDestination,
-    preparing: &JobScope,
-  ) -> XrfResult<HashMap<PathBuf, PathBuf>> {
-    let mut set: HashSet<PathBuf> = HashSet::new();
-
-    for descriptor in volumes.get_project().files.values() {
-      let target: PathBuf = Self::build_relative_path(volumes.get_unpack_root_of(descriptor)?, descriptor)?;
-
-      let directory: Option<PathBuf> = if descriptor.is_directory {
-        Some(target)
-      } else {
-        target.parent().map(Into::into)
-      };
-
-      if let Some(directory) = directory {
-        set.insert(directory);
-      }
-    }
-
-    let mut created: HashMap<PathBuf, PathBuf> = HashMap::with_capacity(set.len());
-
-    for path in set {
-      let host: PathBuf = destination.create_directory(&path)?;
-
-      created.insert(path, host);
-      preparing.advance();
-    }
-
-    Ok(created)
-  }
-
   /// Where one archived entry lands, relative to a destination root.
-  ///
-  /// Takes the root rather than the open volumes, so deciding where an entry goes stays a question about two paths
-  /// that a test can ask without a filesystem.
-  ///
-  /// Both halves are engine paths, so both are crossed into host components rather than pushed whole: an entry named
-  /// `configs\system.ltx` is a single component to `std::path` on Linux, which unpacks the tree as a flat directory of
-  /// files with backslashes in their names.
-  ///
-  /// Relative rather than already joined, because the destination is only ever reached one component at a time.
   fn build_relative_path(unpack_root: &Path, descriptor: &ArchiveFileDescriptor) -> XrfResult<PathBuf> {
     let mut path: PathBuf = to_host_relative(&unpack_root.to_string_lossy())?;
 

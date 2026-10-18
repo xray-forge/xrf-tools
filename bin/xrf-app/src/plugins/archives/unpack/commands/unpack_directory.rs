@@ -5,7 +5,7 @@ use tauri::ipc::Channel;
 use uuid::Uuid;
 use xrf_archive::ArchiveProject;
 use xrf_job::{JobHandle, JobProgress};
-use xrf_pack::{ArchiveUnpackOptions, ArchiveUnpackResult, ArchiveUnpacker};
+use xrf_pack::{ArchiveExtractOptions, ArchiveUnpackResult, ArchiveUnpacker};
 
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
@@ -46,7 +46,7 @@ pub async fn archives_unpack_directory(
     move || {
       let project: ArchiveProject = ArchiveProject::new(&source)?;
 
-      ArchiveUnpacker::unpack_opt(&project, &destination, ArchiveUnpackOptions::default().with_job(job))
+      ArchiveUnpacker::unpack_opt(&project, &destination, ArchiveExtractOptions::default().with_job(job))
     },
     |result| result.outcome,
   )

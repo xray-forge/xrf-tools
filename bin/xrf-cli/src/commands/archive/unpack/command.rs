@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_archive::ArchiveProject;
 use xrf_output::OutputOptions;
-use xrf_pack::{ArchiveUnpackOptions, ArchiveUnpackResult, ArchiveUnpacker};
+use xrf_pack::{ArchiveExtractOptions, ArchiveUnpackResult, ArchiveUnpacker};
 use xrf_utils::format_path;
 
 use super::report::ArchiveUnpackDryReport;
@@ -101,7 +101,7 @@ impl GenericCommand for UnpackCommand {
       let result: ArchiveUnpackResult = ArchiveUnpacker::unpack_opt(
         &archive_project,
         &destination,
-        ArchiveUnpackOptions::default().with_job(new_logging_job()),
+        ArchiveExtractOptions::default().with_job(new_logging_job()),
       )?;
 
       xrf_output::success!(

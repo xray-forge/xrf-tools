@@ -1,10 +1,15 @@
 use std::fs;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use xrf_archive::ArchiveProject;
+use xrf_job::{ExecutionRequest, JobHandle, JobOutcome};
 
 use super::fixtures::{Entry, create_project, create_temporary_directory};
-use crate::{ArchiveExtractDirectoryResult, ArchiveUnpacker};
+use crate::{ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveUnpacker};
+
+/// More entries than workers, which is what an ordinary run looks like.
+const TWO: NonZeroUsize = NonZeroUsize::new(2).expect("a non-zero worker count");
 
 #[test]
 fn extract_directory_writes_every_file_under_the_prefix() {
@@ -186,6 +191,76 @@ fn extract_file_writes_a_compressed_entry_decompressed() {
 
   // What lands on disk is the file, not the archive's compressed image of it.
   assert_eq!(fs::read(&target).expect("written file"), COMPRESSIBLE);
+}
+
+/// The ordinary parallel run: more entries than workers, a directory record with nothing to write, and a compressed
+/// entry a worker has to decompress.
+#[test]
+fn extract_directory_writes_every_entry_across_several_workers() {
+  let directory: PathBuf = create_temporary_directory("directory-parallel");
+  let project: ArchiveProject = create_project(
+    &directory,
+    &[
+      Entry::stored("configs\\gameplay\\", b""),
+      Entry::stored("configs\\gameplay\\dialogs.xml", b"<game_dialogs/>"),
+      Entry::stored("configs\\system.ltx", b"[section]"),
+      Entry::compressed("configs\\alife.ltx", COMPRESSIBLE),
+      Entry::stored("meshes\\actor.ogf", b"ogf"),
+    ],
+  );
+
+  let out: PathBuf = directory.join("out");
+  let result: ArchiveExtractDirectoryResult = ExecutionRequest::Workers(TWO)
+    .resolve()
+    .install(|| ArchiveUnpacker::extract_directory(&project, "configs", &out))
+    .expect("the pool starts")
+    .expect("extraction");
+
+  assert_eq!(result.outcome, JobOutcome::Completed);
+  assert_eq!(result.extracted_count, 3, "the directory record is not a file");
+  assert_eq!(
+    result.size,
+    (b"<game_dialogs/>".len() + b"[section]".len() + COMPRESSIBLE.len()) as u64
+  );
+  assert_eq!(
+    fs::read_to_string(out.join("gameplay").join("dialogs.xml")).expect("nested file"),
+    "<game_dialogs/>"
+  );
+  assert_eq!(
+    fs::read(out.join("alife.ltx")).expect("decompressed file"),
+    COMPRESSIBLE
+  );
+  assert!(!out.join("actor.ogf").exists(), "must not reach outside the prefix");
+}
+
+/// A run asked to stop before its first entry writes nothing and reports that as a cancellation, not a failure.
+#[test]
+fn extract_directory_stops_between_entries_when_cancelled() {
+  let directory: PathBuf = create_temporary_directory("directory-cancelled");
+  let project: ArchiveProject = create_project(
+    &directory,
+    &[
+      Entry::stored("configs\\system.ltx", b"[section]"),
+      Entry::stored("configs\\game.ltx", b"[game]"),
+    ],
+  );
+
+  let job: JobHandle = JobHandle::inert();
+
+  job.cancel();
+
+  let out: PathBuf = directory.join("out");
+  let result: ArchiveExtractDirectoryResult = ArchiveUnpacker::extract_directory_opt(
+    &project,
+    "configs",
+    &out,
+    ArchiveExtractOptions::default().with_job(job),
+  )
+  .expect("a cancelled run still answers");
+
+  assert_eq!(result.outcome, JobOutcome::Cancelled);
+  assert_eq!(result.extracted_count, 0);
+  assert!(!out.join("system.ltx").exists());
 }
 
 #[test]

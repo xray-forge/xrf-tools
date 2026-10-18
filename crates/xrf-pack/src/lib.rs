@@ -24,9 +24,8 @@ pub use crate::patch::{
   ArchivePatchOptions, ArchivePatchPublication, ArchivePatchResult, ArchivePatcher, PATCH_PHASE_COMPARE,
   PATCH_PHASE_PACK,
 };
-pub use crate::unpack::archive_extract_options::{ArchiveExtractOptions, EXTRACT_PHASE_WRITE};
+pub use crate::unpack::archive_extract_options::{ArchiveExtractOptions, EXTRACT_PHASE_PREPARE, EXTRACT_PHASE_WRITE};
 pub use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, ArchiveExtractResult};
-pub use crate::unpack::archive_unpack_options::{ArchiveUnpackOptions, UNPACK_PHASE_PREPARE, UNPACK_PHASE_WRITE};
 pub use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
 pub use crate::unpack::archive_unpacker::ArchiveUnpacker;
 pub use crate::unpack::xray_world_extractor::XrayWorldExtractor;

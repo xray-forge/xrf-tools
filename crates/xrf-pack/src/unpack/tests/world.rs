@@ -1,7 +1,8 @@
 use std::fs;
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
-use xrf_job::JobOutcome;
+use xrf_job::{ExecutionRequest, JobOutcome};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayProbe, XrayProbePlan, XrayProbeStep, XrayVfs};
 
@@ -96,6 +97,29 @@ fn an_empty_prefix_extracts_the_whole_world_with_its_layout() {
 
   assert_eq!(result.extracted_count, 4);
   assert!(out.join("configs").join("system.ltx").is_file());
+  assert!(out.join("textures").join("outside.dds").is_file());
+}
+
+/// Many workers read through one probe at once, and every winner still lands once.
+#[test]
+fn a_whole_world_extracts_across_several_workers() {
+  let (vfs, steps) = layered("parallel");
+  let probe: XrayProbe = vfs.probe().with_steps(steps);
+  let out: PathBuf = destination("parallel");
+
+  let result: ArchiveExtractDirectoryResult =
+    ExecutionRequest::Workers(NonZeroUsize::new(4).expect("four is not zero"))
+      .resolve()
+      .install(|| XrayWorldExtractor::extract_directory(&probe, "", &out))
+      .expect("the pool starts")
+      .expect("the root resolves");
+
+  assert_eq!(result.outcome, JobOutcome::Completed);
+  assert_eq!(result.extracted_count, 4);
+  assert_eq!(
+    fs::read_to_string(out.join("configs").join("system.ltx")).expect("the winner is written"),
+    "front"
+  );
   assert!(out.join("textures").join("outside.dds").is_file());
 }
 

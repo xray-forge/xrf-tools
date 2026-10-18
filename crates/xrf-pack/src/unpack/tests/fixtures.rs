@@ -13,7 +13,7 @@ use xrf_error::XrfResult;
 use xrf_job::ExecutionRequest;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-use crate::unpack::archive_unpack_options::ArchiveUnpackOptions;
+use crate::unpack::archive_extract_options::ArchiveExtractOptions;
 use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
 use crate::unpack::archive_unpacker::ArchiveUnpacker;
 
@@ -182,6 +182,6 @@ pub(crate) fn unpack_with<P: AsRef<Path> + Send>(
 ) -> XrfResult<ArchiveUnpackResult> {
   ExecutionRequest::Workers(workers)
     .resolve()
-    .install(|| ArchiveUnpacker::unpack_opt(project, destination, ArchiveUnpackOptions::default()))
+    .install(|| ArchiveUnpacker::unpack_opt(project, destination, ArchiveExtractOptions::default()))
     .expect("the pool starts")
 }

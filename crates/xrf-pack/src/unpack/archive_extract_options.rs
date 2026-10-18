@@ -1,9 +1,14 @@
 use xrf_job::JobHandle;
 
-/// Phase an extraction reports while it writes the entries it selected.
+/// Phase an unpack or extraction reports while it creates the destination tree.
+pub const EXTRACT_PHASE_PREPARE: &str = "prepare";
+
+/// Phase an unpack or extraction reports while it writes the entries it selected.
 pub const EXTRACT_PHASE_WRITE: &str = "write";
 
-/// How one directory extraction should behave, beyond what it reads and where it writes.
+/// How one unpack or directory extraction should behave, beyond what it reads and where it writes.
+///
+/// Holds no width: the run is as wide as the pool its caller installed.
 #[derive(Default)]
 pub struct ArchiveExtractOptions {
   /// Where progress goes and where cancellation comes from.

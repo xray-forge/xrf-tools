@@ -7,6 +7,7 @@ use xrf_output::OutputOptions;
 use xrf_pack::{ArchiveExtractDirectoryResult, ArchiveExtractResult, ArchiveUnpacker};
 
 use crate::core::command_context::CommandContext;
+use crate::core::execution::ExecutionArguments;
 use crate::core::generic_command::{CommandResult, GenericCommand};
 
 #[derive(Default)]
@@ -52,6 +53,7 @@ impl GenericCommand for ExtractCommand {
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
+      .with_jobs()
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -98,5 +100,47 @@ impl GenericCommand for ExtractCommand {
     }
 
     Ok(())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use xrf_job::ExecutionRequest;
+
+  use super::ExtractCommand;
+  use crate::core::execution::requested_execution;
+  use crate::core::generic_command::GenericCommand;
+
+  fn parse(arguments: &[&str]) -> Result<clap::ArgMatches, clap::Error> {
+    ExtractCommand.init().try_get_matches_from(arguments)
+  }
+
+  #[test]
+  fn takes_the_width_every_other_command_takes() {
+    let matches = parse(&[
+      "extract",
+      "-p",
+      "archive.db",
+      "--directory",
+      "scripts",
+      "-d",
+      "out",
+      "-j",
+      "1",
+    ])
+    .expect("the arguments parse");
+
+    assert_eq!(
+      requested_execution(&matches),
+      Some(ExecutionRequest::Workers(1.try_into().expect("one is not zero")))
+    );
+  }
+
+  #[test]
+  fn extracts_at_the_host_width_when_nobody_says_otherwise() {
+    let matches =
+      parse(&["extract", "-p", "archive.db", "--directory", "scripts", "-d", "out"]).expect("the arguments parse");
+
+    assert_eq!(requested_execution(&matches), Some(ExecutionRequest::Auto));
   }
 }
