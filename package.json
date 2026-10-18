@@ -19,9 +19,9 @@
     "lint:staged": "lint-staged --config cli/hooks/lint-staged.config.mjs --max-arg-length 7000"
   },
   "devDependencies": {
+    "@xrf/toolchain": "workspace:*",
     "eslint": "catalog:",
-    "lint-staged": "^17.5.1",
-    "prettier": "catalog:",
-    "@xrf/toolchain": "workspace:*"
+    "lint-staged": "^17.6.0",
+    "prettier": "catalog:"
   }
 }

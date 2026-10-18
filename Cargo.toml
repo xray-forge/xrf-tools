@@ -83,7 +83,7 @@ log = "0.4.34"
 notify = "8.2.0"
 naga = { version = "30.0.1", features = ["wgsl-in"] }
 lzokay = { version = "2.0.1", default-features = false, features = ["std", "compress", "decompress"] }
-pollster = "0.4.0"
+pollster = "1.0.1"
 proc-macro2 = "1.0.107"
 profiling = "1.0.18"
 quote = "1.0.47"
