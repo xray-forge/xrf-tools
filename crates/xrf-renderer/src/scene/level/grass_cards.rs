@@ -1,3 +1,4 @@
+use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 
 /// The grass that casts a view's shadows (`shaders/grass/cards.wgsl`): the tufts near its eye stood and swayed as the
@@ -12,7 +13,8 @@ pub struct GrassCards {
   pub draw: wgpu::Buffer,
   /// Triangles they hold at most (`get_capacity`).
   pub capacity: u32,
-  pub blas: wgpu::Blas,
+  /// The structure over them, on a device that traces rays alone: one that cannot holds no structure's input.
+  pub blas: Option<wgpu::Blas>,
 }
 
 impl GrassCards {
@@ -33,8 +35,9 @@ impl GrassCards {
   /// The share of their reach over which the cards fade out.
   const FADE_SHARE: f32 = 0.2;
 
-  /// Cards holding `capacity` triangles at most.
+  /// Cards holding `capacity` triangles at most, and the structure over them where the device traces rays.
   pub fn new(device: &wgpu::Device, capacity: u32) -> Self {
+    let is_traceable: bool = can_trace(device);
     let buffer = |label: &str, size: u64, usage: wgpu::BufferUsages| -> wgpu::Buffer {
       device.create_buffer(&wgpu::BufferDescriptor {
         label: Some(label),
@@ -47,7 +50,11 @@ impl GrassCards {
     let vertices: wgpu::Buffer = buffer(
       "grass card vertices",
       triangles_most * Self::VERTEX_BYTES,
-      wgpu::BufferUsages::BLAS_INPUT,
+      if is_traceable {
+        wgpu::BufferUsages::BLAS_INPUT
+      } else {
+        wgpu::BufferUsages::empty()
+      },
     );
     let triangles: wgpu::Buffer = buffer(
       "grass card triangles",
@@ -57,16 +64,18 @@ impl GrassCards {
     // Four words, as a stats readback copies them, the first counted.
     let count: wgpu::Buffer = buffer("grass card count", 16, wgpu::BufferUsages::COPY_SRC);
     let draw: wgpu::Buffer = buffer("grass card draw", 16, wgpu::BufferUsages::INDIRECT);
-    let blas: wgpu::Blas = device.create_blas(
-      &wgpu::CreateBlasDescriptor {
-        label: Some("grass cards"),
-        flags: wgpu::AccelerationStructureFlags::PREFER_FAST_BUILD,
-        update_mode: wgpu::AccelerationStructureUpdateMode::Build,
-      },
-      wgpu::BlasGeometrySizeDescriptors::Triangles {
-        descriptors: vec![Self::get_size(capacity)],
-      },
-    );
+    let blas: Option<wgpu::Blas> = is_traceable.then(|| {
+      device.create_blas(
+        &wgpu::CreateBlasDescriptor {
+          label: Some("grass cards"),
+          flags: wgpu::AccelerationStructureFlags::PREFER_FAST_BUILD,
+          update_mode: wgpu::AccelerationStructureUpdateMode::Build,
+        },
+        wgpu::BlasGeometrySizeDescriptors::Triangles {
+          descriptors: vec![Self::get_size(capacity)],
+        },
+      )
+    });
     Self {
       vertices,
       triangles,

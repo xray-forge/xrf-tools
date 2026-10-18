@@ -220,7 +220,7 @@ impl GrassView {
       .cards
       .as_ref()
       .filter(|_| self.is_drawn && self.is_card_traced)
-      .map(|cards| &cards.blas)
+      .and_then(|cards| cards.blas.as_ref())
   }
 
   /// Metres from the camera the grass casts the sun's shadow to through its cascades this frame, none where it does
@@ -316,9 +316,9 @@ impl GrassView {
       draw,
     };
 
-    if !self.is_card_traced {
+    let Some(blas) = cards.blas.as_ref().filter(|_| self.is_card_traced) else {
       return Some(handles);
-    }
+    };
 
     graph
       .add_encoder_pass("grass cards build")
@@ -337,7 +337,7 @@ impl GrassView {
           transform_buffer_offset: None,
         };
         let entry: wgpu::BlasBuildEntry<'_> = wgpu::BlasBuildEntry {
-          blas: &cards.blas,
+          blas,
           geometry: wgpu::BlasGeometries::TriangleGeometries(vec![geometry]),
         };
 
