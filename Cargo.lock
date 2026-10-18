@@ -6154,7 +6154,7 @@ checksum = "6131992ff3e2cb96f407eb4eb005427ba15e2687260d99089b90e60e33169ce0"
 dependencies = [
  "loom",
  "once_cell",
- "tracy-client-sys",
+ "tracy-client-sys 0.29.0",
 ]
 
 [[package]]
@@ -6165,6 +6165,16 @@ checksum = "ab27f167b093214c68413a2e0bcd318f0591af475597405ff68138ba0a433379"
 dependencies = [
  "cc",
  "windows-targets 0.52.6",
+]
+
+[[package]]
+name = "tracy-client-sys"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eef8a023d2b19f44e430da334f7dfb5e5db219bb83e2b4f56a09c1cb12abe915"
+dependencies = [
+ "cc",
+ "windows-targets 0.53.5",
 ]
 
 [[package]]
@@ -7910,7 +7920,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tracy-client",
- "tracy-client-sys",
+ "tracy-client-sys 0.30.0",
  "wgpu",
  "xrf-error",
  "xrf-renderer-derive",
