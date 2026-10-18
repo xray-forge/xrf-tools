@@ -50,8 +50,7 @@ pub struct TextureCache {
   sampler: wgpu::Sampler,
   /// The sampler's anisotropy clamp, one for trilinear.
   anisotropy: u16,
-  /// Trilinear whatever the anisotropy, for the low-frequency maps whose anisotropic samples cost more than they show:
-  /// the bumps and the hemisphere's lightmap.
+  /// Trilinear whatever the anisotropy, for the hemisphere's lightmap, which the engine reads unfiltered by it.
   trilinear: wgpu::Sampler,
   bind_group: wgpu::BindGroup,
   /// Each slot's view; a slot not loaded holds the missing texture's.

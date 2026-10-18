@@ -13,8 +13,8 @@ enable wgpu_binding_array;
 
 @group(1) @binding(0) var textures: binding_array<texture_2d<f32>>;
 @group(1) @binding(1) var texture_sampler: sampler;
-// Trilinear whatever the preset's anisotropy, for the bumps and the hemisphere's lightmap: low-frequency maps whose
-// anisotropic samples cost more than they show.
+// Trilinear whatever the preset's anisotropy, for the hemisphere's lightmap, which the engine reads unfiltered by it
+// (`smp_rtlinear`).
 @group(1) @binding(2) var trilinear_sampler: sampler;
 
 // Whether this pipeline draws a shadow map, whose surfaces casting none are collapsed to nothing.
@@ -555,7 +555,7 @@ fn sample_slot(slot: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f
   return textureSampleGrad(textures[slot], texture_sampler, uv, dx, dy);
 }
 
-// The same, trilinear: a bump or a lightmap.
+// The same, trilinear: a lightmap.
 fn sample_slot_trilinear(slot: u32, uv: vec2<f32>, dx: vec2<f32>, dy: vec2<f32>) -> vec4<f32> {
   return textureSampleGrad(textures[slot], trilinear_sampler, uv, dx, dy);
 }
@@ -893,18 +893,17 @@ fn shade(in: GBufferVarying, base: vec4<f32>, at: Footprint) -> GBufferOutput {
   var leaf_tilt: vec2<f32> = vec2<f32>(0.0);
 
   if (!is_terrain && (surface.flags & SURFACE_HAS_BUMP) != 0u) {
-    let bump: vec4<f32> = sample_slot_trilinear(surface.textures[SLOT_BUMP], at.uv, at.dx, at.dy);
+    let bump: vec4<f32> = sample_slot(surface.textures[SLOT_BUMP], at.uv, at.dx, at.dy);
     var tangent_normal: vec3<f32> = bump.wzy +
-      sample_slot_trilinear(surface.textures[SLOT_BUMP_COMPANION], at.uv, at.dx, at.dy).xyz - 1.0;
+      sample_slot(surface.textures[SLOT_BUMP_COMPANION], at.uv, at.dx, at.dy).xyz - 1.0;
 
     leaf_tilt = tangent_normal.xy * is_bumped * is_textured;
     var bumped_gloss: f32 = bump.x * bump.x;
 
     if ((surface.flags & SURFACE_HAS_DETAIL_BUMP) != 0u) {
-      let detail_bump: vec4<f32> = sample_slot_trilinear(surface.textures[SLOT_DETAIL_BUMP], detail_uv, detail_dx,
+      let detail_bump: vec4<f32> = sample_slot(surface.textures[SLOT_DETAIL_BUMP], detail_uv, detail_dx, detail_dy);
+      let companion: vec4<f32> = sample_slot(surface.textures[SLOT_DETAIL_BUMP_COMPANION], detail_uv, detail_dx,
         detail_dy);
-      let companion: vec4<f32> = sample_slot_trilinear(surface.textures[SLOT_DETAIL_BUMP_COMPANION], detail_uv,
-        detail_dx, detail_dy);
 
       tangent_normal += detail_bump.wzy + companion.xyz - 1.0;
       bumped_gloss *= detail_bump.x * 2.0;
