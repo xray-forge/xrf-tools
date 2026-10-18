@@ -248,6 +248,8 @@ impl RenderState {
   /// The world, locked for a command; the render thread holds it while it advances every viewport and scene before a
   /// frame.
   pub fn lock_world(&self) -> MutexGuard<'_, World> {
+    profiling::scope!("lock world");
+
     self.world.lock().unwrap_or_else(PoisonError::into_inner)
   }
 

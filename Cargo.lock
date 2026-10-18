@@ -7297,6 +7297,7 @@ dependencies = [
  "log",
  "notify",
  "percent-encoding",
+ "profiling",
  "rayon",
  "serde",
  "serde_json",

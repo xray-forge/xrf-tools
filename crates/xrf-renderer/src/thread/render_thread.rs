@@ -677,6 +677,8 @@ impl RenderThread {
   /// plays what lives in it, and answers what each scene takes in. Without a GPU no scene could take in what the world
   /// posts, so the scenes wait for one rather than stream into nothing.
   fn advance_world(&mut self, now: Instant, delta: Duration) -> HashMap<RenderSceneId, RenderSceneFrame> {
+    profiling::scope!("advance world");
+
     let mut world: MutexGuard<'_, dyn RenderWorld> = self.world.lock().unwrap_or_else(PoisonError::into_inner);
 
     for viewport in self.viewports.values_mut() {
