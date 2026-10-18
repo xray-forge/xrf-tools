@@ -5,9 +5,9 @@ use std::time::Duration;
 
 use xrf_error::XrfResult;
 use xrf_renderer::{
-  RenderCapture, RenderCommand, RenderEventSink, RenderFrameReport, RenderLoadReport, RenderOverlay, RenderPick,
-  RenderQueue, RenderSelection, RenderSettings, RenderTextureReport, RenderViewOptions, RenderViewportId,
-  RenderViewportLayout, RenderWait, RenderWindowHost,
+  RenderCapture, RenderCommand, RenderEventSink, RenderFrameReport, RenderLoadReport, RenderMemoryReport,
+  RenderOverlay, RenderPick, RenderQueue, RenderSelection, RenderSettings, RenderTextureReport, RenderViewOptions,
+  RenderViewportId, RenderViewportLayout, RenderWait, RenderWindowHost,
 };
 
 /// The renderer as the application calls it: each call a command on the render thread's queue, numbering the
@@ -90,6 +90,12 @@ impl Renderer {
   /// caller polling rather than listening. None before its first report.
   pub fn describe_frame(&self, id: RenderViewportId) -> Receiver<Option<RenderFrameReport>> {
     self.ask(|reply| RenderCommand::DescribeFrame { id, reply })
+  }
+
+  /// What the renderer holds on the GPU and what the GPU's own memory holds of the process, answered at once; the reply
+  /// is let go unanswered while no render thread runs, and none while it runs without a GPU.
+  pub fn describe_memory(&self) -> Receiver<Option<RenderMemoryReport>> {
+    self.ask(|reply| RenderCommand::DescribeMemory { reply })
   }
 
   /// A spawned object's bounding sphere in renderer space, centre then radius, answered at once; none until its model

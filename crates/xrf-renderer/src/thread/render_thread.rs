@@ -24,6 +24,7 @@ use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_dlss_availability::RenderDlssAvailability;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_load_report::RenderLoadReport;
+use crate::contract::render_memory_report::RenderMemoryReport;
 use crate::contract::render_pick::RenderPick;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_scale::RenderScale;
@@ -101,7 +102,7 @@ const IDLE_STOP: Duration = Duration::from_secs(5);
 /// How often the textures no scene samples any more are freed.
 const TEXTURE_SWEEP: Duration = Duration::from_secs(2);
 
-/// How often the GPU allocator is asked what it holds, for the viewports' memory reports.
+/// How often the GPU allocator is asked what it holds, for the viewports' and the application's memory reports.
 const ALLOCATOR_REPORT_EVERY: Duration = Duration::from_millis(500);
 
 /// A viewport's readied frame, with the pick it draws and what unprojects that pick's depth.
@@ -436,6 +437,17 @@ impl RenderThread {
 
         let _ = reply.send(described);
       }
+      RenderCommand::DescribeMemory { reply } => {
+        let described: Option<RenderMemoryReport> = self.running.as_ref().map(|running| {
+          RenderMemoryReport::of(Self::read_allocator_report(
+            &mut self.allocator_report,
+            (&running.gpu.context.adapter, &running.gpu.context.device),
+            Instant::now(),
+          ))
+        });
+
+        let _ = reply.send(described);
+      }
       RenderCommand::LocateSpawnObject { id, object, reply } => {
         let sphere: Option<[f32; 4]> = self
           .get_shown_scene(id)
@@ -531,6 +543,9 @@ impl RenderThread {
     if let Some(running) = self.running.take() {
       running.release(self.store.as_deref());
     }
+
+    // What its allocator held went with it, so a GPU started again reports its own, its peak from nothing.
+    self.allocator_report = None;
 
     // Its scenes went with it; the world streams each in again, from the start, into scenes made again, which the
     // viewports showing them wait for whole.
@@ -902,20 +917,11 @@ impl RenderThread {
       ray_reconstruction,
     };
 
-    if self
-      .allocator_report
-      .as_ref()
-      .is_none_or(|(asked, _)| now.duration_since(*asked) >= ALLOCATOR_REPORT_EVERY)
-    {
-      profiling::scope!("allocator report");
-
-      let last: Option<&GpuMemory> = self.allocator_report.as_ref().and_then(|(_, held)| held.as_ref());
-      let held: Option<GpuMemory> = GpuMemory::read((&gpu.context.adapter, &gpu.context.device), last);
-
-      self.allocator_report = Some((now, held));
-    }
-
-    let allocator: Option<&GpuMemory> = self.allocator_report.as_ref().and_then(|(_, held)| held.as_ref());
+    let allocator: Option<&GpuMemory> = Self::read_allocator_report(
+      &mut self.allocator_report,
+      (&gpu.context.adapter, &gpu.context.device),
+      now,
+    );
 
     profiling::scope!("frame report");
 
@@ -949,6 +955,28 @@ impl RenderThread {
         viewport.report_load(scene.describe_load(id, &gpu.textures));
       }
     }
+  }
+
+  /// What the GPU allocator holds: its last answer while younger than `ALLOCATOR_REPORT_EVERY`, else asked again and
+  /// kept, its peak carried on.
+  fn read_allocator_report<'a>(
+    report: &'a mut Option<(Instant, Option<GpuMemory>)>,
+    gpu: (&wgpu::Adapter, &wgpu::Device),
+    now: Instant,
+  ) -> Option<&'a GpuMemory> {
+    if report
+      .as_ref()
+      .is_none_or(|(asked, _)| now.duration_since(*asked) >= ALLOCATOR_REPORT_EVERY)
+    {
+      profiling::scope!("allocator report");
+
+      let last: Option<&GpuMemory> = report.as_ref().and_then(|(_, held)| held.as_ref());
+      let held: Option<GpuMemory> = GpuMemory::read(gpu, last);
+
+      *report = Some((now, held));
+    }
+
+    report.as_ref().and_then(|(_, held)| held.as_ref())
   }
 
   /// Readies each window this frame draws: its swapchain configured for its size now, made where it is new or was

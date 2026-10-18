@@ -347,15 +347,7 @@ impl RenderViewport {
       grass,
       sector_time,
       graph: graph.map(|graph| Box::new(RenderGraphReport::of(graph, self.get_graph_owner()))),
-      memory: RenderMemoryReport {
-        total: allocator.and_then(|memory| memory.budget).map(|budget| budget.total),
-        budget: allocator.and_then(|memory| memory.budget).map(|budget| budget.budget),
-        used: allocator.and_then(|memory| memory.budget).map(|budget| budget.used),
-        allocated: allocator.map(|memory| memory.allocated),
-        reserved: allocator.map(|memory| memory.reserved),
-        peak_allocated: allocator.map(|memory| memory.peak),
-        sections: allocator.map(|memory| memory.sections.clone()).unwrap_or_default(),
-      },
+      memory: RenderMemoryReport::of(allocator),
     };
 
     self.sent_frame = Some(report.clone());

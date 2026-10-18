@@ -28,6 +28,7 @@ const USAGE: MemoryUsage = {
       memory: { committed: 2000 * MB, workingSet: 1900 * MB, privateWorkingSet: 1800 * MB },
     },
   ],
+  gpu: null,
 };
 
 describe("describeBackendMemory", () => {

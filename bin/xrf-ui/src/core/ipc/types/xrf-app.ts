@@ -1565,6 +1565,19 @@ export type GamedataVerifySummary = {
   duration: number;
 };
 
+/** What the process holds in the GPU's own memory, as its driver says, and how much of it the renderer made. */
+export type GpuMemoryUsage = {
+  /**
+   * Bytes the process holds there, DLSS's and the driver's counted with the renderer's, which Task Manager's dedicated
+   * GPU memory column shows; none where the driver says nothing.
+   */
+  used: number | null;
+  /** Bytes the system lets the process hold there now; none where the driver says nothing. */
+  budget: number | null;
+  /** Bytes the renderer's GPU allocator holds allocated; none where the backend reports none. */
+  allocated: number | null;
+};
+
 /** What the application is running on and with, none of which changes while it runs. */
 export type HostInfo = {
   /** Tauri the application was linked against. */
@@ -1895,12 +1908,14 @@ export type MachineUsage = {
   availableMemory: number;
 };
 
-/** What the application and its webview hold in memory at one instant. */
+/** What the application and its webview hold in memory at one instant, and what the application holds on the GPU. */
 export type MemoryUsage = {
   /** The backend process itself. */
   application: ProcessMemory;
   /** Every webview process still running, in the order the environment listed them. */
   webview: Array<WebviewProcessMemory>;
+  /** The application's GPU memory, none while no renderer runs a GPU. */
+  gpu: GpuMemoryUsage | null;
 };
 
 /** What an equipment sprite pack was asked to do. */

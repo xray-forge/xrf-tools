@@ -6,6 +6,7 @@ use xrf_error::XrfResult;
 use crate::contract::render_capture::RenderCapture;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_load_report::RenderLoadReport;
+use crate::contract::render_memory_report::RenderMemoryReport;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_pick::RenderPick;
 use crate::contract::render_selection::RenderSelection;
@@ -72,6 +73,10 @@ pub enum RenderCommand {
   DescribeFrame {
     id: RenderViewportId,
     reply: Sender<Option<RenderFrameReport>>,
+  },
+  /// Says what the renderer holds on the GPU and what the GPU's own memory holds of the process; none without a GPU.
+  DescribeMemory {
+    reply: Sender<Option<RenderMemoryReport>>,
   },
   /// Finds a spawned object's bounding sphere in a viewport's level, none until its model is in the scene.
   LocateSpawnObject {

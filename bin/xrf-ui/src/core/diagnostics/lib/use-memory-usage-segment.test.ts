@@ -11,6 +11,7 @@ const MB: number = 1024 * 1024;
 const USAGE: MemoryUsage = {
   application: { committed: 410 * MB, workingSet: 300 * MB, privateWorkingSet: 260 * MB },
   webview: [],
+  gpu: null,
 };
 
 describe("useMemoryUsageSegment", () => {

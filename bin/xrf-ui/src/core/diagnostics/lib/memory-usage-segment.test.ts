@@ -1,7 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { describeMemoryUsage } from "@/core/diagnostics/lib/memory-usage-segment";
-import { EWebviewProcessKind, MemoryUsage, WebviewProcessKind, WebviewProcessMemory } from "@/core/ipc/types/xrf-app";
+import {
+  EWebviewProcessKind,
+  GpuMemoryUsage,
+  MemoryUsage,
+  WebviewProcessKind,
+  WebviewProcessMemory,
+} from "@/core/ipc/types/xrf-app";
 import { IEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
 
 const MB: number = 1024 * 1024;
@@ -14,10 +20,11 @@ function process(kind: WebviewProcessKind, inUse: number, committed: number, pid
   };
 }
 
-function usage(webview: Array<WebviewProcessMemory>): MemoryUsage {
+function usage(webview: Array<WebviewProcessMemory>, gpu: GpuMemoryUsage | null = null): MemoryUsage {
   return {
     application: { committed: 410 * MB, workingSet: 300 * MB, privateWorkingSet: 260 * MB },
     webview,
+    gpu,
   };
 }
 
@@ -54,6 +61,7 @@ describe("describeMemoryUsage", () => {
       { label: "GPU", value: "480 MB", isNested: true },
       { label: "Browser", value: "90 MB", isNested: true },
       { label: "Utility ×2", value: "40 MB", isNested: true },
+      { label: "Video memory", value: "—" },
       { label: "Committed", value: "7.01 GB" },
     ]);
   });
@@ -69,6 +77,7 @@ describe("describeMemoryUsage", () => {
             memory: { committed: 900 * MB, workingSet: 500 * MB, privateWorkingSet: null },
           },
         ],
+        gpu: null,
       },
       []
     );
@@ -98,8 +107,43 @@ describe("describeMemoryUsage", () => {
     expect(segment.details).toEqual([
       { label: "Backend", value: "260 MB" },
       { label: "Webview", value: "—" },
+      { label: "Video memory", value: "—" },
       { label: "Committed", value: "410 MB" },
       { label: "Script heap", value: "42 MB / 4 GB" },
+    ]);
+  });
+
+  it("says what video memory has in use after the processes, with what the renderer allocated and the budget", () => {
+    const segment: IEditorStatusSegment = describeMemoryUsage(
+      usage([process(EWebviewProcessKind.GPU, 480, 900)], { used: 1434 * MB, budget: 7680 * MB, allocated: 1147 * MB }),
+      []
+    );
+
+    expect(segment.text).toBe("B 260MB W 480MB G 1.4GB");
+    expect(segment.details).toEqual([
+      { label: "Backend", value: "260 MB" },
+      { label: "Webview", value: "480 MB" },
+      { label: "GPU", value: "480 MB", isNested: true },
+      { label: "Video memory", value: "1.4 GB" },
+      { label: "Allocated", value: "1.12 GB", isNested: true },
+      { label: "Budget", value: "7.5 GB", isNested: true },
+      { label: "Committed", value: "1.28 GB" },
+    ]);
+  });
+
+  it("leaves video memory out of the text and its unread figures out of the hover where the driver said nothing", () => {
+    const segment: IEditorStatusSegment = describeMemoryUsage(
+      usage([], { used: null, budget: null, allocated: 1147 * MB }),
+      []
+    );
+
+    expect(segment.text).toBe("B 260MB");
+    expect(segment.details).toEqual([
+      { label: "Backend", value: "260 MB" },
+      { label: "Webview", value: "—" },
+      { label: "Video memory", value: "—" },
+      { label: "Allocated", value: "1.12 GB", isNested: true },
+      { label: "Committed", value: "410 MB" },
     ]);
   });
 

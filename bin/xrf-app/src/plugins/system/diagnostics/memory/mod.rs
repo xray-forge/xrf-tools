@@ -2,8 +2,10 @@
 //!
 //! Read by process id from the operating system, because the webview's processes are separate processes: WebView2
 //! names them and their kinds, and each one's memory is the kernel's answer. Only Windows answers, where the webview is
-//! WebView2; elsewhere the reading is absent rather than a guess.
+//! WebView2; elsewhere the reading is absent rather than a guess. The GPU's figures are the renderer's own reading,
+//! asked of its thread.
 
+mod gpu_memory_usage;
 mod memory_usage;
 mod process_memory;
 mod webview_process;
@@ -14,6 +16,7 @@ mod webview_process_probe;
 #[cfg(test)]
 mod tests;
 
+pub use gpu_memory_usage::GpuMemoryUsage;
 pub use memory_usage::MemoryUsage;
 pub use process_memory::ProcessMemory;
 pub use webview_process::WebviewProcess;

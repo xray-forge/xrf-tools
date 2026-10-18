@@ -1,4 +1,8 @@
-use crate::plugins::system::diagnostics::memory::{MemoryUsage, ProcessMemory, WebviewProcess, WebviewProcessKind};
+use xrf_renderer::RenderMemoryReport;
+
+use crate::plugins::system::diagnostics::memory::{
+  GpuMemoryUsage, MemoryUsage, ProcessMemory, WebviewProcess, WebviewProcessKind,
+};
 
 /// No process has this identifier: Windows numbers processes in multiples of four.
 const EXITED_PID: u32 = u32::MAX - 2;
@@ -59,6 +63,7 @@ fn leaves_out_webview_processes_that_have_exited_since_they_were_listed() {
         pid,
       },
     ],
+    None,
   )
   .expect("This process should be readable");
 
@@ -115,7 +120,8 @@ fn reads_nothing_where_the_webview_is_not_webview2() {
       &[WebviewProcess {
         kind: WebviewProcessKind::Renderer,
         pid: EXITED_PID,
-      }]
+      }],
+      None
     ),
     None
   );
@@ -138,6 +144,11 @@ fn serializes_the_reading_the_frontend_formats() {
         private_working_set: Some(3),
       },
     }],
+    gpu: Some(GpuMemoryUsage {
+      used: Some(7),
+      budget: None,
+      allocated: Some(6),
+    }),
   };
 
   assert_eq!(
@@ -149,6 +160,29 @@ fn serializes_the_reading_the_frontend_formats() {
         "pid": 8,
         "memory": { "committed": 5, "workingSet": 4, "privateWorkingSet": 3 },
       }],
+      "gpu": { "used": 7, "budget": null, "allocated": 6 },
     })
+  );
+}
+
+#[test]
+fn takes_the_driver_and_allocator_figures_of_the_renderer_report() {
+  let report: RenderMemoryReport = RenderMemoryReport {
+    total: Some(9),
+    budget: Some(8),
+    used: Some(7),
+    allocated: Some(6),
+    reserved: Some(5),
+    peak_allocated: Some(4),
+    sections: Vec::new(),
+  };
+
+  assert_eq!(
+    GpuMemoryUsage::from(&report),
+    GpuMemoryUsage {
+      used: Some(7),
+      budget: Some(8),
+      allocated: Some(6),
+    }
   );
 }
