@@ -62,7 +62,7 @@ const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
   isSunShafted: false,
   isWallmarked: true,
   isWaterVisible: false,
-  sunShafts: { minimum: 0, quality: ERenderSunShaftsQuality.HIGH },
+  sunShafts: { minimum: 0, quality: ERenderSunShaftsQuality.HIGH, steps: null },
 };
 
 /** Nothing scaled, bloomed or corrected, as an asset viewer shows what it draws. */

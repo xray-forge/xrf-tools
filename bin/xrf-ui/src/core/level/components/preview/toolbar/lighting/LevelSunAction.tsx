@@ -15,9 +15,11 @@ import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather, toLevelManualSun } from "@/core/level/lib/weather/level-manual-weather";
 import { LEVEL_MANUAL_WEATHER_SUN_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
 import {
+  describeLevelSunShaftsSteps,
   ILevelSunShaftsOptions,
   LEVEL_SUN_SHAFTS_MINIMUM_LIMITS,
   LEVEL_SUN_SHAFTS_QUALITY_OPTIONS,
+  LEVEL_SUN_SHAFTS_STEPS_LIMITS,
 } from "@/core/level/lib/weather/level-sun-shafts-options";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
@@ -159,7 +161,18 @@ export function LevelSunAction({
           label={"Quality"}
           options={LEVEL_SUN_SHAFTS_QUALITY_OPTIONS}
           value={sunShafts.quality}
-          onChange={(quality: RenderSunShaftsQuality) => weatherService.setSunShafts({ ...sunShafts, quality })}
+          onChange={(quality: RenderSunShaftsQuality) =>
+            weatherService.setSunShafts({ ...sunShafts, quality, steps: null })
+          }
+        />
+
+        <RenderValueSlider
+          label={"Steps"}
+          hint={"Steps along each ray, zero for the quality's own"}
+          value={sunShafts.steps ?? 0}
+          {...LEVEL_SUN_SHAFTS_STEPS_LIMITS}
+          format={describeLevelSunShaftsSteps}
+          onChange={(steps: number) => weatherService.setSunShafts({ ...sunShafts, steps: steps > 0 ? steps : null })}
         />
 
         <RenderValueSlider

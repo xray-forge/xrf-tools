@@ -131,7 +131,7 @@ impl LightingUniform {
       shafts: if options.show.is_sun_shafted && options.mode.is_lit {
         Vec4::new(
           lighting.get_sun_shafts(&options.features.sun_shafts),
-          options.features.sun_shafts.quality.get_steps(lighting.engine) as f32,
+          options.features.sun_shafts.get_steps(lighting.engine) as f32,
           0.0,
           0.0,
         )

@@ -111,7 +111,19 @@ describe("LevelSunAction", () => {
     await openSettings(rendered);
     await userEvent.click(rendered.getByRole("button", { name: "Low" }));
 
-    expect(rendered.weather.sunShafts).toEqual({ minimum: 0, quality: ERenderSunShaftsQuality.LOW });
+    expect(rendered.weather.sunShafts).toEqual({ minimum: 0, quality: ERenderSunShaftsQuality.LOW, steps: null });
     expect(rendered.getByRole("slider", { name: "Minimum" })).toHaveAttribute("aria-valuemax", "0.5");
+  });
+
+  // Steps asked for stand in for the quality's; zero is the quality's own, which picking a quality returns to.
+  it("offers the steps along each ray, from the quality's own", async () => {
+    const rendered = await renderAction();
+
+    await openSettings(rendered);
+
+    const steps: HTMLElement = rendered.getByRole("slider", { name: "Steps" });
+
+    expect(steps).toHaveAttribute("aria-valuenow", "0");
+    expect(steps).toHaveAttribute("aria-valuemax", "64");
   });
 });
