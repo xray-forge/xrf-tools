@@ -275,6 +275,33 @@ fn traces_a_sector_through_its_records() {
   assert!(answers[2].distance < 0.0, "{:?}", answers[2]);
 }
 
+/// A scene with nothing in it builds a top level all the same, which no ray meets anything in. Skipped, and says so, on
+/// a device without ray queries.
+#[test]
+fn traces_nothing_in_an_empty_scene() {
+  let Some(context) = create_tracing_context() else {
+    return;
+  };
+  let (device, queue): (&wgpu::Device, &wgpu::Queue) = (&context.device, &context.queue);
+  let mut scene: StaticScene = StaticScene::new(device, queue);
+  let mut encoder: FrameEncoder = FrameEncoder::new(device, FrameEncoder::create_belt(device));
+
+  scene.prepare_draws(device, queue, &mut encoder);
+
+  let mut trace: StaticTrace = StaticTrace::new(device, queue);
+
+  trace.update(device, queue, &mut encoder, &scene);
+
+  let probes: [[f32; 8]; 2] = [
+    [0.0, 10.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0],
+    [0.25, 0.5, 0.25, 1.0, 0.0, -1.0, 0.0, 0.0],
+  ];
+  let answers: Vec<Answer> = run_probes(device, queue, encoder, (&scene, &trace), &probes);
+
+  assert_eq!(trace.get_instance_count(), 0);
+  assert!(answers.iter().all(|answer| answer.distance < 0.0), "{answers:?}");
+}
+
 /// Traces each probe's ray against the scene's structure and reads back what it met.
 fn run_probes(
   device: &wgpu::Device,

@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec3};
+use wgpu::util::DeviceExt;
 use xrf_renderer_core::{AccelerationStructureBinding, ProxyHandle};
 
 use crate::scene::static_scene::static_layout::StaticLayout;
@@ -28,6 +29,9 @@ pub struct StaticTrace {
   records: wgpu::Buffer,
   /// What a trace binding with nothing to hold is given: a few records of nothing.
   empty: wgpu::Buffer,
+  /// One triangle no ray meets, the top level's instance while it holds nothing else: a top level of no instances is a
+  /// build some drivers fail (WARP divides by its instance count).
+  placeholder: wgpu::Blas,
   /// Each sector's structures, by its index in the level.
   sectors: HashMap<u32, SectorStructures>,
   /// Each traced model's structure, of those objects stand as.
@@ -91,13 +95,45 @@ impl StaticTrace {
   const ORIGIN_PLACE: u32 = 0;
 
   pub fn new(device: &wgpu::Device, queue: &wgpu::Queue) -> Self {
-    let tlas: wgpu::Tlas = Self::create_tlas(device, Self::INSTANCES);
+    let mut tlas: wgpu::Tlas = Self::create_tlas(device, Self::INSTANCES);
+    let size: wgpu::BlasTriangleGeometrySizeDescriptor = Self::get_placeholder_size();
+    let placeholder: wgpu::Blas = device.create_blas(
+      &wgpu::CreateBlasDescriptor {
+        label: Some("static trace placeholder"),
+        flags: wgpu::AccelerationStructureFlags::PREFER_FAST_TRACE,
+        update_mode: wgpu::AccelerationStructureUpdateMode::Build,
+      },
+      wgpu::BlasGeometrySizeDescriptors::Triangles {
+        descriptors: vec![size.clone()],
+      },
+    );
+    let corners: wgpu::Buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+      label: Some("static trace placeholder"),
+      contents: bytemuck::cast_slice(&[[0.0_f32, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]),
+      usage: wgpu::BufferUsages::BLAS_INPUT,
+    });
     let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
       label: Some("static trace"),
     });
 
-    // Built empty, so it is bound built before any sector is in.
-    encoder.build_acceleration_structures(std::iter::empty(), std::iter::once(&tlas));
+    // Built over the placeholder alone, so it is bound built before any sector is in.
+    tlas[0] = Some(Self::create_placeholder_instance(&placeholder));
+    encoder.build_acceleration_structures(
+      std::iter::once(&wgpu::BlasBuildEntry {
+        blas: &placeholder,
+        geometry: wgpu::BlasGeometries::TriangleGeometries(vec![wgpu::BlasTriangleGeometry {
+          size: &size,
+          vertex_buffer: &corners,
+          first_vertex: 0,
+          vertex_stride: 12,
+          index_buffer: None,
+          first_index: None,
+          transform_buffer: None,
+          transform_buffer_offset: None,
+        }]),
+      }),
+      std::iter::once(&tlas),
+    );
     queue.submit([encoder.finish()]);
 
     Self {
@@ -106,6 +142,7 @@ impl StaticTrace {
       instances: Self::create_table::<StaticTraceInstance>(device, "static trace instances", Self::RECORDS),
       records: Self::create_table::<StaticTraceRecord>(device, "static trace records", Self::RECORDS),
       empty: Self::create_table::<[u32; 16]>(device, "static trace empty", 1),
+      placeholder,
       sectors: HashMap::new(),
       models: HashMap::new(),
       built: None,
@@ -274,6 +311,10 @@ impl StaticTrace {
 
         wgpu::TlasInstance::new(blas, *transform, index as u32, Self::MASK)
       });
+    }
+
+    if instances.is_empty() {
+      self.tlas[0] = Some(Self::create_placeholder_instance(&self.placeholder));
     }
 
     encoder.build_acceleration_structures(entries.iter(), std::iter::once(&self.tlas));
@@ -507,6 +548,22 @@ impl StaticTrace {
         wgpu::AccelerationStructureGeometryFlags::OPAQUE
       },
     }
+  }
+
+  /// The placeholder's one triangle, unindexed.
+  fn get_placeholder_size() -> wgpu::BlasTriangleGeometrySizeDescriptor {
+    wgpu::BlasTriangleGeometrySizeDescriptor {
+      vertex_format: wgpu::VertexFormat::Float32x3,
+      vertex_count: 3,
+      index_format: None,
+      index_count: None,
+      flags: wgpu::AccelerationStructureGeometryFlags::OPAQUE,
+    }
+  }
+
+  /// The placeholder as an instance of mask zero, which no ray's mask shares a bit with, so nothing ever meets it.
+  fn create_placeholder_instance(placeholder: &wgpu::Blas) -> wgpu::TlasInstance {
+    wgpu::TlasInstance::new(placeholder, Self::IDENTITY, 0, 0)
   }
 
   fn create_tlas(device: &wgpu::Device, instances: u32) -> wgpu::Tlas {
