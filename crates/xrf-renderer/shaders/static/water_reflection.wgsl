@@ -20,8 +20,8 @@ const MARCH_REACH: f32 = 150.0;
 const REFLECTION_HISTORY: f32 = 0.97;
 const REFLECTION_SKY_HISTORY: f32 = 0.2;
 
-// Pixels of motion over which the history gives way entirely: a fast turn draws the reflection afresh rather than drag
-// the last frames behind it.
+// The frame's pixels of motion over which the history gives way entirely: a fast turn draws the reflection afresh
+// rather than drag the last frames behind it.
 const HISTORY_MOTION: f32 = 40.0;
 
 // Metres a traced ray starts off the water, so its own surface's triangles beneath do not meet it.
@@ -40,6 +40,16 @@ const WATER_HELD: f32 = -2.0;
 // The distance along the view the history keeps for a pixel whose ray met the sky; the history keeps none where no
 // water drew.
 const SKY_DISTANCE: f32 = 60000.0;
+
+// The reflection's size, half the frame's: what its pixels and its history are counted in.
+fn reflection_size() -> vec2<f32> {
+  return vec2<f32>(textureDimensions(reflection_history));
+}
+
+// The frame's texel under a place of the screen, which its depth and the nearest water are read at.
+fn frame_texel(uv: vec2<f32>) -> vec2<i32> {
+  return vec2<i32>(min(uv * camera.viewport.xy, camera.viewport.xy - 1.0));
+}
 
 // Where a pixel's point stood on the last frame's screen: along its view as far as what its ray met, or far off at the
 // sky where it met nothing or holds.
@@ -61,7 +71,7 @@ fn is_off_screen(previous: vec2<f32>) -> bool {
 
 // The distance the history keeps at a place on the last frame's screen, none off it or where no water drew.
 fn history_distance(previous: vec2<f32>) -> f32 {
-  let size: vec2<f32> = camera.viewport.xy;
+  let size: vec2<f32> = reflection_size();
   let pixel: vec2<i32> = vec2<i32>(clamp(floor(previous * size), vec2<f32>(0.0), size - 1.0));
 
   return select(textureLoad(reflection_history, pixel, 0).a, 0.0, is_off_screen(previous));
@@ -99,12 +109,12 @@ fn is_water_trace_turn(pixel: vec2<f32>) -> bool {
 }
 
 // The ray a water's pixel leaves to the scene pass where the screen answers it only in part or not at all: from its
-// point along its flat reflection, lifted off the water, as far as the trace reaches, a pixel wide where it leaves and
-// widening by the pixel's angle; with what the screen answered (`scene` weighed by its `share`) and the distance along
-// the view of what it met, none where it met nothing; whether the list took it.
+// point along its flat reflection, lifted off the water, as far as the trace reaches, a reflection's pixel wide where
+// it leaves and widening by that pixel's angle; with what the screen answered (`scene` weighed by its `share`) and the
+// distance along the view of what it met, none where it met nothing; whether the list took it.
 fn request_water_trace(pixel: vec2<f32>, world: vec3<f32>, normal: vec3<f32>, toward: vec3<f32>, distance: f32,
   answer: vec4<f32>, share: f32) -> bool {
-  let pixel_angle: f32 = 2.0 / (camera.projection[1][1] * camera.viewport.y);
+  let pixel_angle: f32 = 2.0 / (camera.projection[1][1] * reflection_size().y);
   var request: TraceRequest;
 
   request.origin = vec4<f32>(world + normal * TRACED_LIFT, enhanced.trace_distance);
@@ -257,23 +267,25 @@ fn march_reflection(start: vec3<f32>, direction: vec3<f32>, noise: f32, uv: vec2
   return vec4<f32>(behind, 0.0);
 }
 
-// The scene the water's flat surface reflects, marched over the screen as it stood before the water and faded towards
-// the top of the screen and into the fog, the sky where the ray met nothing, with the distance along the view of what
-// it met; a ray the screen answers only in part listed for the scene pass, whose hit replaces the sky.
+// The scene the water's flat surface reflects, at the reflection's half size, marched over the screen as it stood
+// before the water and faded towards the top of the screen and into the fog, the sky where the ray met nothing, with
+// the distance along the view of what it met; a ray the screen answers only in part listed for the scene pass, whose
+// hit replaces the sky.
 @fragment
 fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
   let fog: f32 = select(0.0, fog_amount(lighting, position), lighting.params.y > 0.5);
-  let texel: vec2<i32> = vec2<i32>(in.clip.xy);
+  let size: vec2<f32> = reflection_size();
+  let uv: vec2<f32> = (floor(in.clip.xy) + 0.5) / size;
+  let texel: vec2<i32> = frame_texel(uv);
 
-  // A fragment listing rays writes storage, which holds the depth test back until after it shades: one behind the
-  // scene is left out here instead, before it marches or lists anything.
-  if (fog >= 1.0 || in.clip.z < textureLoad(nearest_water, texel, 0) || in.clip.z <= textureLoad(depth_target, texel, 0)) {
+  // The frame's depth is not attached at this size, and a fragment listing rays writes storage, which would hold the
+  // test back until after it shades anyway: one behind the scene is left out here, before it marches or lists anything.
+  if (fog >= 1.0 || in.clip.z < textureLoad(nearest_water, texel, 0) ||
+    in.clip.z <= textureLoad(depth_target, texel, 0)) {
     discard;
   }
 
-  let size: vec2<f32> = camera.viewport.xy;
-  let uv: vec2<f32> = (floor(in.clip.xy) + 0.5) / size;
   let normal: vec3<f32> = normalize(in.normal);
   let eye: vec3<f32> = normalize(position);
   let normal_view: vec3<f32> = normalize((camera.view * vec4<f32>(normal, 0.0)).xyz);
@@ -306,7 +318,7 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   var share: f32 = 0.0;
 
   if (screen_share > 0.0) {
-    scene = scene_shown(textureLoad(water_scene, vec2<i32>(clamp(floor(hit.xy * size), vec2<f32>(0.0), size - 1.0)), 0).rgb);
+    scene = scene_shown(textureLoad(water_scene, frame_texel(hit.xy), 0).rgb);
     share = screen_share *
       (1.0 - saturate((length(vec3<f32>(position.xy, hit.z)) * lighting.fog.y + lighting.fog.x) * 1.4));
   }
@@ -377,13 +389,16 @@ fn fresh_bounds(pixel: vec2<i32>) -> FreshBounds {
 fn fs_water_resolve(in: WaterVarying) -> @location(0) vec4<f32> {
   let position: vec3<f32> = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
   let fog: f32 = select(0.0, fog_amount(lighting, position), lighting.params.y > 0.5);
+  let size: vec2<f32> = reflection_size();
+  let uv: vec2<f32> = (floor(in.clip.xy) + 0.5) / size;
+  let texel: vec2<i32> = frame_texel(uv);
 
-  if (fog >= 1.0 || in.clip.z < textureLoad(nearest_water, vec2<i32>(in.clip.xy), 0)) {
+  // The frame's depth tested here, not attached at this size.
+  if (fog >= 1.0 || in.clip.z < textureLoad(nearest_water, texel, 0) ||
+    in.clip.z <= textureLoad(depth_target, texel, 0)) {
     discard;
   }
 
-  let size: vec2<f32> = camera.viewport.xy;
-  let uv: vec2<f32> = (floor(in.clip.xy) + 0.5) / size;
   let eye: vec3<f32> = normalize(position);
   let current: vec4<f32> = textureLoad(water_current, vec2<i32>(in.clip.xy), 0);
   let reflection: vec3<f32> = current.rgb;
@@ -406,7 +421,7 @@ fn fs_water_resolve(in: WaterVarying) -> @location(0) vec4<f32> {
   let history: vec3<f32> = select(sampled, clamp(sampled, bounds.low, bounds.high), bounds.is_found);
   // The history's distance says whether the last frame drew water there: newly seen water keeps none of it.
   let is_history: f32 = f32(history_distance(previous) > 0.0);
-  let settled: f32 = saturate(1.0 - length(moved * size) / HISTORY_MOTION);
+  let settled: f32 = saturate(1.0 - length(moved * camera.viewport.xy) / HISTORY_MOTION);
 
   // A held pixel keeps the history whole where it holds a frame there; where it does not, it takes what its fresh
   // neighbours show, and where there are none either it shows its sky fallback but leaves no history of it, so the

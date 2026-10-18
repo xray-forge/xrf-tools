@@ -285,9 +285,10 @@ impl WaterPass {
     );
   }
 
-  /// Declares the water's reflection over the frame's copy before it (`scene`): traced on the screen into the current
-  /// reflection, the rays the screen left traced against the level's geometry, resolved over time into its history and
-  /// blurred. Answers the reflection blurred and the history written.
+  /// Declares the water's reflection over the frame's copy before it (`scene`), at its own half size: traced on the
+  /// screen into the current reflection, the rays the screen left traced against the level's geometry, resolved over
+  /// time into its history and blurred. Answers the reflection blurred and the history written. Its passes test the
+  /// frame's depth in their shaders, the attachment being twice their size.
   fn add_reflection_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -295,7 +296,7 @@ impl WaterPass {
     (enhanced, scene, nothing): (UniformBinding<EnhancedWaterUniform>, GraphTexture, GraphTexture),
     (reflection, histories, blue_noise): (&'a WaterReflection, [GraphTexture; 2], GraphTexture),
   ) -> (GraphTexture, GraphTexture) {
-    let (width, height) = draw.targets.size;
+    let (width, height) = reflection.size;
     let [written, read]: [GraphTexture; 2] = histories;
     let current: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
       "water reflection current",
@@ -329,8 +330,7 @@ impl WaterPass {
         .color(GraphColorAttachment::new(
           current,
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-        ))
-        .depth(GraphDepthAttachment::new_read_only(draw.targets.depth)),
+        )),
       (parameters, Some(listed.to_listed())),
       (&frame.args, frame.groups),
       |it| &it.reflection,
@@ -369,8 +369,7 @@ impl WaterPass {
           written,
           // Transparent where no water draws, so the next frame keeps no history there.
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-        ))
-        .depth(GraphDepthAttachment::new_read_only(draw.targets.depth)),
+        )),
       (
         WaterReflectionParameters {
           water_current: current,
@@ -382,17 +381,16 @@ impl WaterPass {
       |it| &it.reflection_resolve,
     );
 
-    let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
     let across: GraphTexture = self.blur.add(
       graph,
       runtime,
-      ("water blur across", written, half, WaterBlurUniform::ACROSS),
+      ("water blur across", written, reflection.size, WaterBlurUniform::ACROSS),
       enhanced,
     );
     let down: GraphTexture = self.blur.add(
       graph,
       runtime,
-      ("water blur down", across, half, WaterBlurUniform::DOWN),
+      ("water blur down", across, reflection.size, WaterBlurUniform::DOWN),
       enhanced,
     );
 
@@ -516,8 +514,7 @@ impl WaterPass {
     let current_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(WaterReflection::CURRENT_FORMAT.into())];
     let describe = |label: &'static str,
                     module: &'static str,
-                    bind_group_layouts: &[Option<&wgpu::BindGroupLayout>],
-                    is_written: bool|
+                    bind_group_layouts: &[Option<&wgpu::BindGroupLayout>]|
      -> RenderPipelineDescription {
       RenderPipelineDescription::new(label, module, "vs_water")
         .with_bind_group_layouts(bind_group_layouts)
@@ -526,38 +523,48 @@ impl WaterPass {
           cull_mode: Some(wgpu::Face::Back),
           ..Default::default()
         })
-        .with_depth_stencil(wgpu::DepthStencilState {
-          format: ViewTargets::DEPTH,
-          depth_write_enabled: Some(is_written),
-          depth_compare: Some(wgpu::CompareFunction::Greater),
-          stencil: Default::default(),
-          bias: Default::default(),
-        })
+    };
+    let tested = |is_written: bool| wgpu::DepthStencilState {
+      format: ViewTargets::DEPTH,
+      depth_write_enabled: Some(is_written),
+      depth_compare: Some(wgpu::CompareFunction::Greater),
+      stencil: Default::default(),
+      bias: Default::default(),
     };
     let surface = |(label, module, entry): (&'static str, &'static str, &'static str),
                    bind_group_layouts: &[Option<&wgpu::BindGroupLayout>],
                    targets: &[Option<wgpu::ColorTargetState>]|
      -> XrfResult<wgpu::RenderPipeline> {
       source.get_render_pipeline(
-        &describe(label, module, bind_group_layouts, false)
+        &describe(label, module, bind_group_layouts)
+          .with_depth_stencil(tested(false))
+          .with_fragment(entry)
+          .with_targets(targets.to_vec()),
+      )
+    };
+    // The reflection's passes draw at half the frame's size, without its depth attached: their shaders test it.
+    let reflected = |(label, entry): (&'static str, &'static str),
+                     bind_group_layouts: &[Option<&wgpu::BindGroupLayout>],
+                     targets: &[Option<wgpu::ColorTargetState>]|
+     -> XrfResult<wgpu::RenderPipeline> {
+      source.get_render_pipeline(
+        &describe(label, "static/water_reflection", bind_group_layouts)
           .with_fragment(entry)
           .with_targets(targets.to_vec()),
       )
     };
 
     Ok(WaterPipelines {
-      depth: source.get_render_pipeline(&describe("water depth", "static/water", &depth_layouts, true))?,
-      reflection: surface(
-        ("water reflection", "static/water_reflection", "fs_water_reflection"),
+      depth: source.get_render_pipeline(
+        &describe("water depth", "static/water", &depth_layouts).with_depth_stencil(tested(true)),
+      )?,
+      reflection: reflected(
+        ("water reflection", "fs_water_reflection"),
         &reflection_layouts,
         &current_targets,
       )?,
-      reflection_resolve: surface(
-        (
-          "water reflection resolve",
-          "static/water_reflection",
-          "fs_water_resolve",
-        ),
+      reflection_resolve: reflected(
+        ("water reflection resolve", "fs_water_resolve"),
         &resolve_layouts,
         &reflection_targets,
       )?,
