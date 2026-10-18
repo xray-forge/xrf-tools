@@ -4024,7 +4024,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d595e54a326bc53c1c197b32d295e14b169e3cfeaa8dc82b529f947fba6bcf5"
 dependencies = [
  "profiling-procmacros",
- "tracy-client",
+ "tracy-client 0.18.5",
 ]
 
 [[package]]
@@ -6154,7 +6154,18 @@ checksum = "6131992ff3e2cb96f407eb4eb005427ba15e2687260d99089b90e60e33169ce0"
 dependencies = [
  "loom",
  "once_cell",
- "tracy-client-sys",
+ "tracy-client-sys 0.29.0",
+]
+
+[[package]]
+name = "tracy-client"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d93fd676d8946eaeaff4881d26d2240a8d106fcaccbd47cb9f1389e3561ba490"
+dependencies = [
+ "loom",
+ "once_cell",
+ "tracy-client-sys 0.30.0",
 ]
 
 [[package]]
@@ -6165,6 +6176,16 @@ checksum = "ab27f167b093214c68413a2e0bcd318f0591af475597405ff68138ba0a433379"
 dependencies = [
  "cc",
  "windows-targets 0.52.6",
+]
+
+[[package]]
+name = "tracy-client-sys"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eef8a023d2b19f44e430da334f7dfb5e5db219bb83e2b4f56a09c1cb12abe915"
+dependencies = [
+ "cc",
+ "windows-targets 0.53.5",
 ]
 
 [[package]]
@@ -7909,8 +7930,8 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
- "tracy-client",
- "tracy-client-sys",
+ "tracy-client 0.19.0",
+ "tracy-client-sys 0.29.0",
  "wgpu",
  "xrf-error",
  "xrf-renderer-derive",
