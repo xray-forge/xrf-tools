@@ -17,11 +17,9 @@ impl WaterReflection {
   pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// This frame's reflection before the history keeps it: its colour, and the distance along the view of what it met.
   pub const CURRENT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
-  /// Drawn pixels a request the list holds stands for at most while it traces.
+  /// Drawn pixels a request the list holds stands for at most while it traces; past its room the pixels stretch their
+  /// turns by the list's wait.
   pub const REQUEST_SHARE: u32 = 8;
-  /// Frames a pixel waits between its rays at the least, the history held between: the water's reflection keeps 0.97
-  /// of the last frame's and is blurred, so a pixel traced once in eight shows no difference and stays within its list.
-  pub const TRACE_TURNS_LEAST: u32 = 8;
   /// How many times its turns a still, dim reflection waits between its rays under the reflections' ray budgets, as the
   /// surfaces' dim tier does.
   pub const DIM_TURNS: u32 = 4;

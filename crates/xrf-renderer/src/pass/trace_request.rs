@@ -27,6 +27,8 @@ impl TraceRequest {
   /// Words the head holds: `HEAD`'s, then the wait its pixels' turns are stretched by, which a frame keeps from the
   /// last.
   pub const HEAD_WORDS: usize = Self::HEAD.len() + 1;
+  /// Where the wait stands in the head.
+  pub const HEAD_WAIT_OFFSET: u64 = (Self::HEAD.len() * size_of::<u32>()) as u64;
   /// Where the scene pass's dispatch starts in the head: after the count of requests made.
   pub const HEAD_DISPATCH_OFFSET: u64 = size_of::<u32>() as u64;
   /// Bytes an indirect dispatch takes.

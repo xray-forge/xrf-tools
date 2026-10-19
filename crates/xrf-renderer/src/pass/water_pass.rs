@@ -362,6 +362,8 @@ impl WaterPass {
             trace_request_head,
             traced_out: current,
             ends_out: no_ends,
+            screen_scene: scene,
+            screen_depth: draw.targets.depth,
           },
           sky,
         ),

@@ -10,3 +10,5 @@
 @group(1) @binding(5) var<storage, read_write> trace_request_head: array<u32>;
 @group(1) @binding(6) var traced_out: texture_storage_2d<rgba16float, write>;
 @group(1) @binding(7) var ends_out: texture_storage_2d<r32float, write>;
+@group(1) @binding(8) var screen_scene: texture_2d<f32>;
+@group(1) @binding(9) var screen_depth: texture_depth_2d;

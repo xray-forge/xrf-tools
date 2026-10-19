@@ -1,20 +1,22 @@
 use crate::pass::trace_request::TraceRequest;
 
 /// The rays a pass leaves to the scene pass each frame: the requests, as many as `capacity` and one workgroup's at the
-/// least; their head (the count made, the scene pass's dispatch and the wait, `TraceRequest::HEAD_WORDS`); and the
-/// dispatch copied out of it.
+/// least; their head (the count made, the scene pass's dispatch and the wait, `TraceRequest::HEAD_WORDS`); the
+/// dispatch copied out of it; and the wait copied out of it as the frame starts, which the listing pass reads plainly,
+/// since an atomic load in every pixel of a full-screen pass costs as much as its march.
 pub struct TraceRequestList {
   label: String,
   capacity: u32,
   pub requests: wgpu::Buffer,
   pub head: wgpu::Buffer,
   pub dispatch: wgpu::Buffer,
+  pub wait: wgpu::Buffer,
 }
 
 impl TraceRequestList {
   /// Bytes its buffers take.
   pub fn get_memory(&self) -> u64 {
-    self.requests.size() + self.head.size() + self.dispatch.size()
+    self.requests.size() + self.head.size() + self.dispatch.size() + self.wait.size()
   }
 
   pub fn new(device: &wgpu::Device, label: &str, capacity: u32) -> Self {
@@ -40,6 +42,11 @@ impl TraceRequestList {
         "request dispatch",
         TraceRequest::DISPATCH_BYTES,
         wgpu::BufferUsages::INDIRECT | wgpu::BufferUsages::COPY_DST,
+      ),
+      wait: buffer(
+        "request wait",
+        size_of::<u32>() as u64,
+        wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
       ),
     }
   }

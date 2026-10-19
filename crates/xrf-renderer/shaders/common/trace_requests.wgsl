@@ -21,9 +21,10 @@ fn trace_turn_of(cell: vec2<u32>, turns: u32) -> u32 {
   return place * turns / 64u;
 }
 
-// What a list's pixels stretch their turns by this frame, so the rays they ask fit its room (`keep_trace_wait`).
+// What a list's pixels stretch their turns by this frame, so the rays they ask fit its room (`keep_trace_wait`), as the
+// head held it when the frame started.
 fn trace_request_wait() -> u32 {
-  return clamp(atomicLoad(&trace_request_head[TRACE_REQUEST_WAIT]), 1u, TRACE_REQUEST_WAIT_MOST);
+  return clamp(trace_request_waits[0], 1u, TRACE_REQUEST_WAIT_MOST);
 }
 
 // Lists a request, counting the scene pass's dispatch a workgroup at a time; whether it was listed. A request past the

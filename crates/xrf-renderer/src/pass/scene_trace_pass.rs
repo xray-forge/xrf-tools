@@ -118,9 +118,27 @@ impl SceneTracePass {
       requests: bindings.import_buffer(graph, label, &list.requests),
       head: bindings.import_buffer(graph, label, &list.head),
       dispatch: bindings.import_buffer(graph, label, &list.dispatch),
+      wait: bindings.import_buffer(graph, label, &list.wait),
     };
     let reset = bindings.import_buffer(graph, "scene trace request head reset", &self.head_reset);
-    let head = handles.head;
+    let (head, wait) = (handles.head, handles.wait);
+
+    // The wait the last frame's scene pass left, read plainly by this frame's listing pass.
+    graph
+      .add_encoder_pass("scene trace request wait")
+      .buffer(head, GraphBufferAccess::CopySource)
+      .buffer(wait, GraphBufferAccess::CopyDestination)
+      .record(move |context| {
+        let (head, wait) = (context.get_buffer(head), context.get_buffer(wait));
+
+        context.get_encoder().copy_buffer_to_buffer(
+          head,
+          TraceRequest::HEAD_WAIT_OFFSET,
+          wait,
+          0,
+          size_of::<u32>() as u64,
+        );
+      });
 
     graph
       .add_encoder_pass(label)

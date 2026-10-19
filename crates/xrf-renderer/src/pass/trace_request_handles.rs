@@ -10,6 +10,7 @@ pub struct TraceRequestHandles {
   pub requests: GraphBuffer,
   pub head: GraphBuffer,
   pub dispatch: GraphBuffer,
+  pub wait: GraphBuffer,
 }
 
 impl TraceRequestHandles {
@@ -18,6 +19,7 @@ impl TraceRequestHandles {
     TraceRequestParameters {
       trace_requests: StorageArrayMut::new(self.requests),
       trace_request_head: StorageArrayMut::new(self.head),
+      trace_request_waits: StorageArray::new(self.wait),
     }
   }
 

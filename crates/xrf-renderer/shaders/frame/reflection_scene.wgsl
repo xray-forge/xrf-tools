@@ -4,6 +4,7 @@
 #import "common/octahedral"
 #import "common/reflection_end"
 #import "common/reflection_trace"
+#import "common/scene_light"
 #import "common/scene_trace"
 #import "common/sky_box"
 #import "generated/frame/reflection_scene"
@@ -15,6 +16,9 @@
 // sky the trace wrote: the screen's weighed answer and the hit's light by the share the screen left, the hit's length
 // where the screen held less than half, and the reason the trace gave it; a miss leaves the sky. A water's request
 // (`TRACE_REQUEST_WATER`) is answered into the water's reflection (`answer_water`), with the grass its ray passes.
+
+// The share of its distance the screen's depth may stand off a water's hit for the screen to show it.
+const SCREEN_DEPTH_TOLERANCE: f32 = 0.03;
 
 // The wait the list's pixels stretch their turns by the next frame: as many times as the rays they asked this frame,
 // counted back to their turns unstretched, overrun the list's room. Past its room the list drops the pixels drawn last,
@@ -77,8 +81,36 @@ fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroup
   }
 }
 
-// A water's ray answered: what it met tonemapped as the scene copy the water reads was, or where it met nothing the sky
-// as the water reflects it; the grass it passed on the way over it; the screen's weighed answer over both. Its
+// What the frame's screen, copied before the water, shows of a world point, as the colour shown, and in `w` one where it
+// shows it: the point taken through the frame's camera and read where the depth agrees within `SCREEN_DEPTH_TOLERANCE`
+// of its distance. None off the screen, or in front of or behind what it shows.
+fn screen_shown_at(point: vec3<f32>) -> vec4<f32> {
+  let clip: vec4<f32> = camera.view_projection * vec4<f32>(point, 1.0);
+
+  if (clip.w <= 0.0) {
+    return vec4<f32>(0.0);
+  }
+
+  let uv: vec2<f32> = clip.xy / clip.w * vec2<f32>(0.5, -0.5) + 0.5;
+
+  if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) {
+    return vec4<f32>(0.0);
+  }
+
+  let size: vec2<f32> = camera.viewport.xy;
+  let texel: vec2<i32> = clamp(vec2<i32>(uv * size), vec2<i32>(0), vec2<i32>(size) - 1);
+  let stored: f32 = textureLoad(screen_depth, texel, 0);
+
+  if (stored <= 0.0 || abs(camera_view_distance(stored) - clip.w) > SCREEN_DEPTH_TOLERANCE * clip.w) {
+    return vec4<f32>(0.0);
+  }
+
+  return vec4<f32>(scene_shown(textureLoad(screen_scene, texel, 0).rgb), 1.0);
+}
+
+// A water's ray answered: what it met as the screen shows it where it does, so a traced hit reads as the march's do,
+// else lit and tonemapped as the scene copy the water reads was, or where it met nothing the sky as the water reflects
+// it; the grass it passed on the way over it; the screen's weighed answer over both. Its
 // distance is where the mirror shows the grass or the hit, the screen's where it met something; a ray meeting neither
 // grass nor geometry keeps the sky its pass wrote.
 fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: SceneHit, screen: vec4<f32>,
@@ -96,10 +128,16 @@ fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: 
     trace_request_sky_share(request.hit_end);
 
   if (is_met) {
-    let shown: vec3<f32> = shade_scene_hit(hit, toward, cone, lighting, material_lut, lut_sampler, sky_environment_0,
-      sky_environment_1, sky_clamp);
+    let seen: vec4<f32> = screen_shown_at(request.origin.xyz + toward * hit.distance);
 
-    behind = tonemap(mix(shown, lighting.fog_color.rgb, path_fog(lighting, hit.distance)), scale);
+    if (seen.w > 0.5) {
+      behind = seen.rgb;
+    } else {
+      let shown: vec3<f32> = shade_scene_hit(hit, toward, cone, lighting, material_lut, lut_sampler, sky_environment_0,
+        sky_environment_1, sky_clamp);
+
+      behind = tonemap(mix(shown, lighting.fog_color.rgb, path_fog(lighting, hit.distance)), scale);
+    }
   }
 
   var met_length: f32 = hit.distance;

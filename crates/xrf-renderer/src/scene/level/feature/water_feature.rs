@@ -132,7 +132,7 @@ impl WaterFeature {
         .map_or((false, false), |reflection| (true, reflection.histories.is_valid())),
       (
         if is_traced { reflections.distance } else { 0.0 },
-        reflections.get_trace_interval().max(WaterReflection::TRACE_TURNS_LEAST),
+        reflections.get_trace_interval(),
         self.frame,
         if reflections.is_ray_budgeted {
           WaterReflection::DIM_TURNS

@@ -7,12 +7,9 @@
 #import "generated/static/water_reflection"
 
 // The reflection's march, its steps the settings' (`EnhancedWater::march_steps`): its refinements of a hit, how thick a
-// surface it takes for one, and how far it reaches.
+// surface it takes for one, traced or not, and how far it reaches.
 const MARCH_REFINES: i32 = 2;
 const MARCH_THICKNESS: f32 = 3.0;
-// How thick a surface the march takes for a hit where the trace answers what it does not: a ray passing a few metres
-// behind a pipe or a cable is not its hit, and the trace finds what lies past it.
-const TRACED_MARCH_THICKNESS: f32 = 0.1;
 const MARCH_REACH: f32 = 150.0;
 
 // How much of the reflection the last frames keep, and how much less of it where the ray met the sky.
@@ -95,9 +92,10 @@ fn mirrored_distance(position: vec3<f32>, travelled: f32) -> f32 {
 const WATER_DIM_SHARE: f32 = 0.15;
 const WATER_DIM_STILL: f32 = 2.0;
 
-// Frames a water's pixel at `world`, its flat surface facing `normal`, waits between its rays.
-fn water_trace_turns(world: vec3<f32>, normal: vec3<f32>) -> u32 {
-  let turns: u32 = max(enhanced.trace_turns, 1u);
+// Frames a water's pixel at `world`, its flat surface facing `normal`, waits between its rays, stretched by the list's
+// `wait` where the rays asked overrun its room.
+fn water_trace_turns(world: vec3<f32>, normal: vec3<f32>, wait: u32) -> u32 {
+  let turns: u32 = max(enhanced.trace_turns, 1u) * wait;
 
   if (enhanced.dim_turns <= 1u) {
     return turns;
@@ -315,14 +313,12 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   var hit: vec4<f32> = vec4<f32>(0.0);
 
   if (is_away) {
-    hit = march_reflection(position, reflected, noise, uv, select(MARCH_THICKNESS, TRACED_MARCH_THICKNESS, is_traced));
+    hit = march_reflection(position, reflected, noise, uv, MARCH_THICKNESS);
   }
   let sky: vec3<f32> = enhanced_sky(flat_reflected, lighting, sky_cube_0, sky_cube_1, sky_clamp) * water.reflection;
-  // Where the trace answers, a surface the screen met facing away from the ray is left to it, and so is the last
-  // surface a ray that ran out of steps passed in front of: kept, they put a pipe and its cables in the water as dark
-  // wedges where the trace meets nothing but the sky.
-  let is_met: bool = all(hit.xy != vec2<f32>(0.0)) &&
-    !(is_traced && is_away && (hit.w < 0.5 || is_facing_away(hit.xy, reflected)));
+  // The screen answers first, as it does untraced: the trace takes only what it misses (off the screen, the sky, past
+  // its reach), and a surface the screen met facing away from the ray, which the mirror cannot see.
+  let is_met: bool = all(hit.xy != vec2<f32>(0.0)) && !(is_traced && is_away && is_facing_away(hit.xy, reflected));
   let screen_share: f32 = select(0.0, saturate(hit.y * 5.0) * away, is_met);
   var scene: vec3<f32> = vec3<f32>(0.0);
   var share: f32 = 0.0;
@@ -347,7 +343,7 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
     let pixel: vec2<f32> = floor(in.clip.xy);
     let answer: vec4<f32> = vec4<f32>(scene, met_distance);
 
-    if (!(is_water_trace_turn(pixel, water_trace_turns(in.world, normal)) &&
+    if (!(is_water_trace_turn(pixel, water_trace_turns(in.world, normal, trace_request_wait())) &&
       request_water_trace(pixel, in.world, normal, flat_reflected, -position.z, answer, share))) {
       met_distance = WATER_HELD;
     }
@@ -414,8 +410,9 @@ fn fs_water_resolve(in: WaterVarying) -> @location(0) vec4<f32> {
   let previous: vec2<f32> = select(previous_place(uv, eye, met_distance), held_place(uv, eye), is_held);
   let moved: vec2<f32> = uv - previous;
   let is_off: bool = is_off_screen(previous);
-  // A pixel on its turn brings the only fresh ray of its turns, so it keeps of the history what as many frames would.
-  let turns: u32 = water_trace_turns(in.world, normalize(in.normal));
+  // A pixel on its turn brings the only fresh ray of its turns, so it keeps of the history what as many frames would;
+  // the list's wait is not read here, so a stretched turn keeps a little less.
+  let turns: u32 = water_trace_turns(in.world, normalize(in.normal), 1u);
   let frames: f32 = select(1.0, f32(turns),
     enhanced.trace_distance > 0.0 && is_water_trace_turn(floor(in.clip.xy), turns));
   let kept: f32 =
