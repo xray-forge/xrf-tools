@@ -117,8 +117,10 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24.x
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          package-manager-cache: false
+
+      - uses: ./.github/actions/pnpm-store
+        id: pnpm-store
 
       - name: Restore frontend tool state
         id: frontend-tools
@@ -140,6 +142,13 @@ jobs:
 
       - name: Install TypeScript dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Save the pnpm store
+        if: ${{ github.ref == 'refs/heads/main' && steps.pnpm-store.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ steps.pnpm-store.outputs.key }}
 
       - name: Typecheck TypeScript members
         run: pnpm -r typecheck
@@ -186,8 +195,10 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24.x
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          package-manager-cache: false
+
+      - uses: ./.github/actions/pnpm-store
+        id: pnpm-store
 
       - uses: ./.github/actions/pinned-toolchain
 
@@ -212,6 +223,14 @@ jobs:
         env:
           PACKAGE_NAME: xrf-app-dev-windows-x64
         run: cargo make package-app
+
+      # `package-app` installs the TypeScript dependencies, so the store is complete only now.
+      - name: Save the pnpm store
+        if: ${{ github.ref == 'refs/heads/main' && steps.pnpm-store.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ steps.pnpm-store.outputs.key }}
 
       - name: Upload the application archive
         uses: actions/upload-artifact@v7

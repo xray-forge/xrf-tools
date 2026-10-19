@@ -35,19 +35,17 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24.x
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          package-manager-cache: false
+
+      # Restored, never saved: main's routine build stores it.
+      - uses: ./.github/actions/pnpm-store
 
       - uses: ./.github/actions/pinned-toolchain
 
       - uses: ./.github/actions/native-sdks
 
-      # Not sharing a cache with the routine jobs: their artifacts are built under relaxed
-      # profile settings, so restoring them here would mean recompiling everything anyway.
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: optimized
-          save-if: ${{ github.ref == 'refs/heads/main' }}
+      # No Rust cache: the routine jobs build under relaxed profile settings, so theirs would not match, and an entry
+      # of its own for a build dispatched once or twice a week would only push theirs out of the 10 GB limit.
 
       - name: Record the build timestamp
         shell: bash
@@ -91,11 +89,6 @@ jobs:
           ref: main
 
       - uses: ./.github/actions/pinned-toolchain
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: optimized
-          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Record the build timestamp
         run: echo "XRF_BUILD_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"

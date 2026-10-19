@@ -1,0 +1,33 @@
+name: pnpm store
+description: >
+  Restores the pnpm package store from the cache entry keyed on `pnpm-lock.yaml`. It only restores: the job saves the
+  store with `actions/cache/save` after its install, from main alone, so pull requests reuse main's entry instead of
+  storing their own.
+
+outputs:
+  path:
+    description: The pnpm store directory, for the save step.
+    value: ${{ steps.locate.outputs.path }}
+  key:
+    description: The cache key, for the save step.
+    value: ${{ steps.locate.outputs.key }}
+  cache-hit:
+    description: Whether the restore matched the key exactly.
+    value: ${{ steps.restore.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    - name: Locate the pnpm store
+      id: locate
+      shell: bash
+      run: |
+        echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+        echo "key=pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}" >> "$GITHUB_OUTPUT"
+
+    - name: Restore the pnpm store
+      id: restore
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ steps.locate.outputs.path }}
+        key: ${{ steps.locate.outputs.key }}

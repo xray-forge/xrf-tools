@@ -3,7 +3,8 @@ default_to_workspace = false
 skip_core_tasks = true
 
 [env]
-# Cargo features that `lint` and `test` enable. CI runs the same tasks, so it uses the same list.
+# Cargo features that every Cargo check task enables, so they share one build. CI runs the same tasks, so it uses the
+# same list.
 CHECK_FEATURES = "xrf-app/typescript-bindings,xrf-app/dlss,xrf-job/rayon"
 # Tauri CLI version pinned by the `bin/xrf-ui` lockfile. Desktop tasks run it with Node from `bin/xrf-app`, which
 # holds `tauri.conf.json`.
@@ -38,16 +39,18 @@ command = "cargo"
 args = ["test", "--workspace", "--lib", "--bins", "--locked", "--features", "${CHECK_FEATURES}"]
 
 [tasks.test-derive]
-description = "Run every derive crate's diagnostic snapshot tests: each `tests/ui.rs` in the workspace."
+description = "Run every derive crate's diagnostic snapshot tests with CHECK_FEATURES: each `tests/ui.rs` in the workspace."
 category = "Verification"
+dependencies = ["fetch-sdks"]
 command = "cargo"
-args = ["test", "--workspace", "--test", "ui", "--locked"]
+args = ["test", "--workspace", "--test", "ui", "--locked", "--features", "${CHECK_FEATURES}"]
 
 [tasks.test-doc]
-description = "Run the documentation examples of every workspace crate, READMEs included."
+description = "Run the documentation examples of every workspace crate with CHECK_FEATURES, READMEs included."
 category = "Verification"
+dependencies = ["fetch-sdks"]
 command = "cargo"
-args = ["test", "--workspace", "--doc", "--locked"]
+args = ["test", "--workspace", "--doc", "--locked", "--features", "${CHECK_FEATURES}"]
 
 [tasks.install-ui]
 description = "Install the locked TypeScript dependencies."
