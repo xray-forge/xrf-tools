@@ -4,9 +4,11 @@ import { Nullable } from "@xrf/types";
 import {
   ERenderDlssAvailability,
   ERenderDlssPreset,
+  ERenderRayReconstructionPreset,
   ERenderScale,
   RenderDlssAvailability,
   RenderDlssPreset,
+  RenderRayReconstructionPreset,
   RenderScale,
 } from "@/core/ipc/types/xrf-renderer";
 import { IRenderLimits, toRenderLimits } from "@/core/render/lib/features/render-limits";
@@ -108,6 +110,29 @@ export const RENDER_DLSS_PRESET_SHORT_OPTIONS: ReadonlyArray<IChoiceFormRowOptio
   ERenderDlssPreset
 ).map((value: RenderDlssPreset) => ({
   label: value === ERenderDlssPreset.DEFAULT ? "Default" : value.toUpperCase(),
+  value,
+}));
+
+const RENDER_RAY_RECONSTRUCTION_PRESET_DETAILS: Readonly<Record<RenderRayReconstructionPreset, string>> = {
+  [ERenderRayReconstructionPreset.DEFAULT]: "NVIDIA's pick, which a driver update may change.",
+  [ERenderRayReconstructionPreset.D]: "The transformer model.",
+  [ERenderRayReconstructionPreset.E]: "The latest transformer model.",
+  [ERenderRayReconstructionPreset.F]: "NVIDIA's default model, RR2.",
+};
+
+/**
+ * @param preset - A ray reconstruction model.
+ * @returns What it is, in a sentence.
+ */
+export function describeRayReconstructionPreset(preset: RenderRayReconstructionPreset): string {
+  return RENDER_RAY_RECONSTRUCTION_PRESET_DETAILS[preset];
+}
+
+/** Ray reconstruction's models by their letters, in the order they are offered. */
+export const RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS: ReadonlyArray<
+  IChoiceFormRowOption<RenderRayReconstructionPreset>
+> = Object.values(ERenderRayReconstructionPreset).map((value: RenderRayReconstructionPreset) => ({
+  label: value === ERenderRayReconstructionPreset.DEFAULT ? "Default" : value.toUpperCase(),
   value,
 }));
 

@@ -5,6 +5,7 @@ use xrf_error::XrfResult;
 
 use crate::dlss_preset::DlssPreset;
 use crate::dlss_quality::DlssQuality;
+use crate::dlss_ray_preset::DlssRayPreset;
 use crate::dlss_ray_reconstructor::DlssRayReconstructor;
 use crate::dlss_upscaler::DlssUpscaler;
 #[cfg(feature = "sdk")]
@@ -75,24 +76,29 @@ impl Dlss {
     match self.never {}
   }
 
-  /// A ray reconstructor of one view into `output` pixels at a quality, over colour of linear light already exposed.
+  /// A ray reconstructor of one view into `output` pixels at a quality and preset, over colour of linear light already
+  /// exposed.
   ///
   /// # Errors
   ///
   /// Returns NGX's error where the reconstructor cannot be made.
-  pub fn create_ray_reconstructor(&self, output: (u32, u32), quality: DlssQuality) -> XrfResult<DlssRayReconstructor> {
+  pub fn create_ray_reconstructor(
+    &self,
+    output: (u32, u32),
+    (quality, preset): (DlssQuality, DlssRayPreset),
+  ) -> XrfResult<DlssRayReconstructor> {
     #[cfg(feature = "sdk")]
     {
       DlssRayReconstructor::new(
         (&self.sdk, &self.adapter),
         (&self.device, &self.queue),
-        (output, quality),
+        (output, quality, preset),
       )
     }
 
     #[cfg(not(feature = "sdk"))]
     {
-      let _ = (output, quality);
+      let _ = (output, quality, preset);
 
       match self.never {}
     }

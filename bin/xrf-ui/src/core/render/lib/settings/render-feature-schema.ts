@@ -15,6 +15,7 @@ import {
   ERenderParallaxMode,
   ERenderRainDropsMode,
   ERenderRainMode,
+  ERenderRayReconstructionPreset,
   ERenderReflectionMode,
   ERenderReflectionProbe,
   ERenderReflectionQuality,
@@ -234,6 +235,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   upscaling: {
     dlssPreset: toChoice(ERenderDlssPreset),
     isRayReconstructed: FLAG,
+    rayReconstructionPreset: toChoice(ERenderRayReconstructionPreset),
     scale: toChoice(ERenderScale),
     sharpening: toNumber(0, 1),
   },

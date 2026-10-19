@@ -109,6 +109,7 @@ pub use crate::contract::render_pool_use::RenderPoolUse;
 pub use crate::contract::render_rain_drops_mode::RenderRainDropsMode;
 pub use crate::contract::render_rain_mode::RenderRainMode;
 pub use crate::contract::render_rain_settings::RenderRainSettings;
+pub use crate::contract::render_ray_reconstruction_preset::RenderRayReconstructionPreset;
 pub use crate::contract::render_rect::RenderRect;
 pub use crate::contract::render_reflection_mode::RenderReflectionMode;
 pub use crate::contract::render_reflection_probe::RenderReflectionProbe;

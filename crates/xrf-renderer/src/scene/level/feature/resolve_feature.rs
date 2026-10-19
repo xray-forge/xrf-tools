@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec2};
-use xrf_dlss::{Dlss, DlssInputs, DlssPreset, DlssQuality, DlssRayInputs};
+use xrf_dlss::{Dlss, DlssInputs, DlssPreset, DlssQuality, DlssRayInputs, DlssRayPreset};
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureAccess,
   GraphTextureDescriptor, UniformBinding,
@@ -47,7 +47,7 @@ use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
 type DlssKey = ((u32, u32), (DlssQuality, DlssPreset), bool);
 
 /// What a DLSS ray reconstructor is made for: its output and quality.
-type RayKey = ((u32, u32), DlssQuality);
+type RayKey = ((u32, u32), DlssQuality, DlssRayPreset);
 
 /// How a view's frame becomes the image its viewport shows: the temporal resolve from the drawn size to the output's,
 /// then EASU's upscale or the box downscale to the viewport's, and RCAS's sharpening.
@@ -421,7 +421,8 @@ impl ResolveFeature {
     (render, display): ((u32, u32), (u32, u32)),
   ) -> bool {
     let quality: DlssQuality = self.upscaling.scale.get_dlss_quality();
-    let key: RayKey = (display, quality);
+    let preset: DlssRayPreset = self.upscaling.ray_reconstruction_preset.to_dlss();
+    let key: RayKey = (display, quality, preset);
 
     if self.refused_rays == Some(key) {
       return false;
@@ -432,14 +433,14 @@ impl ResolveFeature {
     };
     let is_fitting: bool = matches!(
       &self.resolve,
-      Some(Resolve::RayReconstruction(resolve)) if resolve.reconstructor.is_fitting(display, quality)
+      Some(Resolve::RayReconstruction(resolve)) if resolve.reconstructor.is_fitting(display, (quality, preset))
     );
 
     if !is_fitting {
       // NGX makes and releases its features with the device idle: the last one goes first.
       self.resolve = None;
 
-      match dlss.create_ray_reconstructor(display, quality) {
+      match dlss.create_ray_reconstructor(display, (quality, preset)) {
         Ok(reconstructor) => {
           self.resolve = Some(Resolve::RayReconstruction(Box::new(RayReconstructionResolve {
             reconstructor,

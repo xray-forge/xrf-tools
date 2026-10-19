@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 use crate::contract::render_dlss_preset::RenderDlssPreset;
+use crate::contract::render_ray_reconstruction_preset::RenderRayReconstructionPreset;
 use crate::contract::render_scale::RenderScale;
 
 /// What the scene is drawn at, a share of the viewport upscaled to it, how sharply the upscaled frame is finished,
-/// which model DLSS upscales with, and whether DLSS reconstructs rays as it upscales.
+/// which model DLSS upscales with, whether DLSS reconstructs rays as it upscales, and with which model.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -16,6 +17,7 @@ pub struct RenderUpscalingSettings {
   /// DLSS ray reconstruction in super resolution's place: one network denoising and upscaling the frame over its
   /// surfaces' guides, where the GPU has it and the scene holds linear light.
   pub is_ray_reconstructed: bool,
+  pub ray_reconstruction_preset: RenderRayReconstructionPreset,
 }
 
 impl Default for RenderUpscalingSettings {
@@ -25,6 +27,7 @@ impl Default for RenderUpscalingSettings {
       sharpening: 0.5,
       dlss_preset: RenderDlssPreset::Default,
       is_ray_reconstructed: false,
+      ray_reconstruction_preset: RenderRayReconstructionPreset::Default,
     }
   }
 }

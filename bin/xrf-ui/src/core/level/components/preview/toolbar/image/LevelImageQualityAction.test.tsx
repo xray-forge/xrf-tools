@@ -6,6 +6,7 @@ import {
   ERenderAntialiasing,
   ERenderDlssAvailability,
   ERenderDlssPreset,
+  ERenderRayReconstructionPreset,
   ERenderScale,
   ERenderTonemapMode,
   RenderAntialiasing,
@@ -129,11 +130,18 @@ describe("LevelImageQualityAction", () => {
     await openSettings(rendered);
 
     expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toBeChecked();
-    expect(rendered.queryByRole("button", { name: "Default" })).toBeNull();
+    expect(rendered.queryByRole("button", { name: "J" })).toBeNull();
+
+    await userEvent.click(rendered.getByRole("button", { name: "E" }));
+
+    expect(rendered.view.features.upscaling).toEqual({ rayReconstructionPreset: ERenderRayReconstructionPreset.E });
 
     await userEvent.click(rendered.getByRole("checkbox", { name: "Ray reconstruction" }));
 
-    expect(rendered.view.features.upscaling).toEqual({ isRayReconstructed: false });
+    expect(rendered.view.features.upscaling).toEqual({
+      isRayReconstructed: false,
+      rayReconstructionPreset: ERenderRayReconstructionPreset.E,
+    });
   });
 
   it("greys DLSS ray reconstruction out with what it needs: the GPU's support, then the Enhanced tonemap", async () => {

@@ -6,6 +6,7 @@ use xrf_error::XrfResult;
 
 use crate::dlss_quality::DlssQuality;
 use crate::dlss_ray_inputs::DlssRayInputs;
+use crate::dlss_ray_preset::DlssRayPreset;
 use crate::ngx::bindings::*;
 #[cfg(windows)]
 use crate::ngx::d3d12_resource::to_d3d12_resource;
@@ -24,12 +25,22 @@ pub(crate) struct NgxRayReconstruction {
 }
 
 impl NgxRayReconstruction {
-  /// Makes the feature for `output` pixels at a quality, over hardware depth and roughness packed into the normals'
-  /// fourth channel, with `flags`.
+  /// NGX's ray reconstruction render preset hints, one a quality, each set to the preset asked before a feature is made.
+  const PRESET_HINTS: [&'static [u8]; 6] = [
+    NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_DLAA,
+    NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Quality,
+    NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Balanced,
+    NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Performance,
+    NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_UltraPerformance,
+    NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_UltraQuality,
+  ];
+
+  /// Makes the feature for `output` pixels at a quality and preset, over hardware depth and roughness packed into the
+  /// normals' fourth channel, with `flags`.
   pub(crate) fn new(
     sdk: &Arc<Mutex<NgxSdk>>,
     (device, queue): (&wgpu::Device, &wgpu::Queue),
-    (output, quality): ((u32, u32), DlssQuality),
+    (output, quality, preset): ((u32, u32), DlssQuality, DlssRayPreset),
     flags: NVSDK_NGX_DLSS_Feature_Flags,
   ) -> XrfResult<Self> {
     let value: NVSDK_NGX_PerfQuality_Value = quality.to_value();
@@ -60,7 +71,13 @@ impl NgxRayReconstruction {
       sdk,
       (device, queue),
       "DLSS cannot reconstruct rays into the output",
+      // The preset hints go on the shared parameters under the lock the feature is made under, so another feature made
+      // meanwhile cannot change them first.
       |commands, ngx, handle| unsafe {
+        for hint in Self::PRESET_HINTS {
+          NVSDK_NGX_Parameter_SetUI(ngx, hint.as_ptr().cast(), preset.to_hint() as u32);
+        }
+
         match commands {
           NgxCommands::Vulkan(list) => {
             NGX_VULKAN_CREATE_DLSSD_EXT1(vulkan_device, list, 1, 1, handle, ngx, &mut parameters)

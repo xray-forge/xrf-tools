@@ -7,6 +7,7 @@ import {
   ERenderTonemapMode,
   RenderAntialiasing,
   RenderDlssPreset,
+  RenderRayReconstructionPreset,
   RenderScale,
   RenderTextureFiltering,
 } from "@/core/ipc/types/xrf-renderer";
@@ -24,8 +25,10 @@ import {
 } from "@/core/render/lib/features/render-display-choices";
 import {
   describeDlssPreset,
+  describeRayReconstructionPreset,
   formatSharpening,
   RENDER_DLSS_PRESET_OPTIONS,
+  RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS,
   RENDER_SCALE_OPTIONS,
   RENDER_SHARPENING_LIMITS,
 } from "@/core/render/lib/features/render-upscaling-choices";
@@ -125,6 +128,17 @@ export function SettingsRendererAntialiasing(): ReactElement {
           isDisabled={features.antialiasing !== ERenderAntialiasing.DLSS || features.upscaling.isRayReconstructed}
           onChange={(dlssPreset: RenderDlssPreset) =>
             renderSettingsService.setRendererOverrides({ upscaling: { dlssPreset } })
+          }
+        />
+
+        <ChoiceFormRow
+          label={"Ray reconstruction model"}
+          description={describeRayReconstructionPreset(features.upscaling.rayReconstructionPreset)}
+          options={RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS}
+          value={features.upscaling.rayReconstructionPreset}
+          isDisabled={features.antialiasing !== ERenderAntialiasing.DLSS || !features.upscaling.isRayReconstructed}
+          onChange={(rayReconstructionPreset: RenderRayReconstructionPreset) =>
+            renderSettingsService.setRendererOverrides({ upscaling: { rayReconstructionPreset } })
           }
         />
 

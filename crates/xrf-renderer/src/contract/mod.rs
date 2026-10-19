@@ -79,6 +79,7 @@ pub(crate) mod render_pool_use;
 pub(crate) mod render_rain_drops_mode;
 pub(crate) mod render_rain_mode;
 pub(crate) mod render_rain_settings;
+pub(crate) mod render_ray_reconstruction_preset;
 pub(crate) mod render_rect;
 pub(crate) mod render_reflection_mode;
 pub(crate) mod render_reflection_probe;

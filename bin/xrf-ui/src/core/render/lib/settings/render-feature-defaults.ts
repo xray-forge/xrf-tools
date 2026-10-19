@@ -14,6 +14,7 @@ import {
   ERenderParallaxMode,
   ERenderRainDropsMode,
   ERenderRainMode,
+  ERenderRayReconstructionPreset,
   ERenderReflectionMode,
   ERenderReflectionProbe,
   ERenderReflectionQuality,
@@ -247,10 +248,11 @@ export const DEFAULT_RENDER_SHADOW_SETTINGS: TRenderShadowSettings = {
   swayRate: 60,
 };
 
-/** Drawn at the viewport's size; sharpened halfway once upscaled; DLSS's model NVIDIA's pick, reconstructing no rays. */
+/** Drawn at the viewport's size; sharpened halfway once upscaled; DLSS's models NVIDIA's pick, reconstructing no rays. */
 export const DEFAULT_RENDER_UPSCALING_SETTINGS: TRenderUpscalingSettings = {
   dlssPreset: ERenderDlssPreset.DEFAULT,
   isRayReconstructed: false,
+  rayReconstructionPreset: ERenderRayReconstructionPreset.DEFAULT,
   scale: ERenderScale.NATIVE,
   sharpening: 0.5,
 };

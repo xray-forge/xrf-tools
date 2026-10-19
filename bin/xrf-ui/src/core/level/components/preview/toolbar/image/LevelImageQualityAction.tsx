@@ -10,6 +10,7 @@ import {
   RenderAntialiasing,
   RenderDlssAvailability,
   RenderDlssPreset,
+  RenderRayReconstructionPreset,
   RenderScale,
 } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
@@ -33,9 +34,11 @@ import {
 import {
   describeDlssPreset,
   describeDlssUnavailability,
+  describeRayReconstructionPreset,
   describeRayReconstructionUnavailability,
   formatSharpening,
   RENDER_DLSS_PRESET_SHORT_OPTIONS,
+  RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS,
   RENDER_SCALE_OPTIONS,
   RENDER_SHARPENING_LIMITS,
 } from "@/core/render/lib/features/render-upscaling-choices";
@@ -78,6 +81,7 @@ export function LevelImageQualityAction({
   const settingsSharpening: number = settings.upscaling.sharpening;
   const settingsDlssPreset: RenderDlssPreset = settings.upscaling.dlssPreset;
   const settingsRayReconstruction: boolean = settings.upscaling.isRayReconstructed;
+  const settingsRayPreset: RenderRayReconstructionPreset = settings.upscaling.rayReconstructionPreset;
   const settingsResolution: ERenderResolution = renderSettingsService.renderResolution;
   const settingsOutputScale: number = renderSettingsService.renderOutputScale;
   // Whether the scene holds linear light, the Enhanced tonemap, which ray reconstruction needs.
@@ -95,6 +99,7 @@ export function LevelImageQualityAction({
   const scale: RenderScale = features.upscaling.scale ?? settingsScale;
   const sharpening: number = features.upscaling.sharpening ?? settingsSharpening;
   const dlssPreset: RenderDlssPreset = features.upscaling.dlssPreset ?? settingsDlssPreset;
+  const rayPreset: RenderRayReconstructionPreset = features.upscaling.rayReconstructionPreset ?? settingsRayPreset;
   const rayProblem: Nullable<string> = describeRayReconstructionUnavailability(rayReconstruction, isSceneLinear);
   const isRayReconstructed: boolean =
     !rayProblem && (features.upscaling.isRayReconstructed ?? settingsRayReconstruction);
@@ -166,7 +171,20 @@ export function LevelImageQualityAction({
               onChange={(next: boolean) => setUpscaling({ isRayReconstructed: next })}
             />
 
-            {isRayReconstructed ? null : (
+            {isRayReconstructed ? (
+              <>
+                <RenderValueChoice
+                  label={"Ray reconstruction model"}
+                  options={RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS}
+                  value={rayPreset}
+                  onChange={(next: RenderRayReconstructionPreset) => setUpscaling({ rayReconstructionPreset: next })}
+                />
+
+                <Typography className={"text-text-secondary"} variant={"caption"}>
+                  {describeRayReconstructionPreset(rayPreset)}
+                </Typography>
+              </>
+            ) : (
               <>
                 <RenderValueChoice
                   label={"DLSS model"}

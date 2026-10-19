@@ -1394,6 +1394,21 @@ export type RenderRainSettings = {
   isReliefFlooded: boolean;
 };
 
+/** Which of DLSS ray reconstruction's models denoises and upscales: NVIDIA's pick, or one for every quality. */
+export enum ERenderRayReconstructionPreset {
+  /** NVIDIA's pick, which a driver update may change. */
+  DEFAULT = "default",
+  /** The transformer model. */
+  D = "d",
+  /** The latest transformer model. */
+  E = "e",
+  /** NVIDIA's default model, RR2. */
+  F = "f",
+}
+
+/** Every `ERenderRayReconstructionPreset` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderRayReconstructionPreset = `${ERenderRayReconstructionPreset}`;
+
 /** A rectangle of a window's client area, in device pixels from its top left corner. */
 export type RenderRect = {
   x: number;
@@ -1808,7 +1823,7 @@ export type RenderTonemapMode = `${ERenderTonemapMode}`;
 
 /**
  * What the scene is drawn at, a share of the viewport upscaled to it, how sharply the upscaled frame is finished,
- * which model DLSS upscales with, and whether DLSS reconstructs rays as it upscales.
+ * which model DLSS upscales with, whether DLSS reconstructs rays as it upscales, and with which model.
  */
 export type RenderUpscalingSettings = {
   scale: RenderScale;
@@ -1820,6 +1835,7 @@ export type RenderUpscalingSettings = {
    * surfaces' guides, where the GPU has it and the scene holds linear light.
    */
   isRayReconstructed: boolean;
+  rayReconstructionPreset: RenderRayReconstructionPreset;
 };
 
 /** Each of the renderer's features as a view sets it, a full set a view: one struct a feature, owned by its module. */

@@ -5,6 +5,7 @@ use xrf_error::XrfResult;
 
 use crate::dlss_quality::DlssQuality;
 use crate::dlss_ray_inputs::DlssRayInputs;
+use crate::dlss_ray_preset::DlssRayPreset;
 #[cfg(feature = "sdk")]
 use crate::ngx::{ngx_ray_reconstruction::NgxRayReconstruction, ngx_sdk::NgxSdk};
 
@@ -13,6 +14,7 @@ use crate::ngx::{ngx_ray_reconstruction::NgxRayReconstruction, ngx_sdk::NgxSdk};
 pub struct DlssRayReconstructor {
   output: (u32, u32),
   quality: DlssQuality,
+  preset: DlssRayPreset,
   #[cfg(feature = "sdk")]
   feature: NgxRayReconstruction,
   #[cfg(feature = "sdk")]
@@ -22,9 +24,9 @@ pub struct DlssRayReconstructor {
 }
 
 impl DlssRayReconstructor {
-  /// Whether it reconstructs into `output` pixels at a quality, rather than another one being needed.
-  pub fn is_fitting(&self, output: (u32, u32), quality: DlssQuality) -> bool {
-    self.output == output && self.quality == quality
+  /// Whether it reconstructs into `output` pixels at a quality and preset, rather than another one being needed.
+  pub fn is_fitting(&self, output: (u32, u32), (quality, preset): (DlssQuality, DlssRayPreset)) -> bool {
+    self.output == output && self.quality == quality && self.preset == preset
   }
 
   /// The smallest and the largest render size it upscales from.
@@ -62,24 +64,26 @@ impl DlssRayReconstructor {
     }
   }
 
-  /// NGX's ray reconstruction for `output` pixels at a quality: reversed hardware depth and motion at the render size,
-  /// over colour of linear light already exposed, as ray reconstruction exposes nothing itself.
+  /// NGX's ray reconstruction for `output` pixels at a quality and preset: reversed hardware depth and motion at the
+  /// render size, over colour of linear light already exposed, as ray reconstruction exposes nothing itself.
   #[cfg(feature = "sdk")]
   pub(crate) fn new(
     (sdk, adapter): (&Arc<Mutex<NgxSdk>>, &wgpu::Adapter),
     (device, queue): (&wgpu::Device, &wgpu::Queue),
-    (output, quality): ((u32, u32), DlssQuality),
+    (output, quality, preset): ((u32, u32), DlssQuality, DlssRayPreset),
   ) -> XrfResult<Self> {
     use crate::ngx::bindings::*;
 
     let flags: NVSDK_NGX_DLSS_Feature_Flags = NVSDK_NGX_DLSS_Feature_Flags_NVSDK_NGX_DLSS_Feature_Flags_DepthInverted
       | NVSDK_NGX_DLSS_Feature_Flags_NVSDK_NGX_DLSS_Feature_Flags_MVLowRes
       | NVSDK_NGX_DLSS_Feature_Flags_NVSDK_NGX_DLSS_Feature_Flags_IsHDR;
-    let feature: NgxRayReconstruction = NgxRayReconstruction::new(sdk, (device, queue), (output, quality), flags)?;
+    let feature: NgxRayReconstruction =
+      NgxRayReconstruction::new(sdk, (device, queue), (output, quality, preset), flags)?;
 
     Ok(Self {
       output,
       quality,
+      preset,
       feature,
       adapter: adapter.clone(),
     })
