@@ -13,12 +13,6 @@
 // the bits it sets that were still clear, which are the share of the hemisphere it is seen through, by how far it faces
 // the point. Colour, then the point's distance along the view once filtered.
 
-// Directions around the view, and steps each way along each: the quality's; lit, steps each way past the occlusion's
-// radius out to the light's.
-override SLICES: u32 = 2u;
-override STEPS: u32 = 4u;
-override FAR_STEPS: u32 = 2u;
-
 // The normals, depth and motion, the settings, the stage before's result and the last frame's accumulation; and, lit,
 // the albedo, material and light, the light at the search's size, the stage before's light and the last frame's.
 #import "generated/frame/vbao"
@@ -174,10 +168,10 @@ fn search(clip: vec2<f32>, is_lit: bool) -> Searched {
   // Lit, the light reaches further than the occlusion: steps past the occlusion's radius gather light alone, so the
   // occlusion's own samples are the same lit or not.
   let light_radius: f32 = min(occlusion.light_radius / (distance * occlusion.spread), occlusion.reach);
-  let far_steps: u32 = select(0u, FAR_STEPS, is_lit && light_radius > screen_radius + 1.0);
+  let far_steps: u32 = select(0u, occlusion.light_steps, is_lit && light_radius > screen_radius + 1.0);
 
-  for (var slice: u32 = 0u; slice < SLICES; slice++) {
-    let phi: f32 = (f32(slice) + slice_noise) / f32(SLICES) * PI;
+  for (var slice: u32 = 0u; slice < occlusion.slices; slice++) {
+    let phi: f32 = (f32(slice) + slice_noise) / f32(occlusion.slices) * PI;
     // Down the target is up the view.
     let along_screen: vec2<f32> = vec2<f32>(cos(phi), -sin(phi));
     let frame_slice: BitmaskSlice = bitmask_slice(normal, to_camera, vec3<f32>(cos(phi), sin(phi), 0.0));
@@ -186,11 +180,11 @@ fn search(clip: vec2<f32>, is_lit: bool) -> Searched {
     var light_mask: u32 = 0u;
     var slice_light: vec3<f32> = vec3<f32>(0.0);
 
-    for (var step: u32 = 0u; step < STEPS + far_steps; step++) {
-      let jitter: f32 = fract(step_noise + f32(step + slice * STEPS) * GOLDEN);
-      let is_near: bool = step < STEPS;
-      let near: f32 = pow((f32(step) + jitter) / f32(STEPS), STEP_POWER) * screen_radius;
-      let far: f32 = mix(screen_radius, light_radius, (f32(step - min(step, STEPS)) + jitter) / f32(max(far_steps, 1u)));
+    for (var step: u32 = 0u; step < occlusion.steps + far_steps; step++) {
+      let jitter: f32 = fract(step_noise + f32(step + slice * occlusion.steps) * GOLDEN);
+      let is_near: bool = step < occlusion.steps;
+      let near: f32 = pow((f32(step) + jitter) / f32(occlusion.steps), STEP_POWER) * screen_radius;
+      let far: f32 = mix(screen_radius, light_radius, (f32(step - min(step, occlusion.steps)) + jitter) / f32(max(far_steps, 1u)));
       let reach: f32 = max(select(far, near, is_near), 1.0);
       let offset: vec2<f32> = round(along_screen * reach);
       // Where past the falloff's start this step's samples are dropped.

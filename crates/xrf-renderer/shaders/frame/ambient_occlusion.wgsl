@@ -6,10 +6,6 @@
 // denoised one way and the other. Visibility in red, from none to all, and the point's distance along the view in
 // green; nothing drawn is all visible at no distance.
 
-// Directions around the view, and steps each way along each: the quality's.
-override SLICES: u32 = 3u;
-override STEPS: u32 = 3u;
-
 // The normals and depth, the settings, and the occlusion target the other way of the denoise wrote.
 #import "generated/frame/ambient_occlusion"
 #import "common/math"
@@ -91,8 +87,8 @@ fn fs_search(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let half_pi: f32 = PI * 0.5;
   var visibility: f32 = saturate((10.0 - screen_radius) / 100.0) * 0.5;
 
-  for (var slice: u32 = 0u; slice < SLICES; slice++) {
-    let phi: f32 = (slice_noise + f32(slice)) / f32(SLICES) * PI;
+  for (var slice: u32 = 0u; slice < occlusion.slices; slice++) {
+    let phi: f32 = (slice_noise + f32(slice)) / f32(occlusion.slices) * PI;
     // Down the target is up the view.
     let omega: vec2<f32> = vec2<f32>(cos(phi), -sin(phi)) * screen_radius;
     let direction: vec3<f32> = vec3<f32>(cos(phi), sin(phi), 0.0);
@@ -108,9 +104,9 @@ fn fs_search(in: FullscreenVarying) -> @location(0) vec4<f32> {
     var horizon_cos0: f32 = low_cos0;
     var horizon_cos1: f32 = low_cos1;
 
-    for (var step: u32 = 0u; step < STEPS; step++) {
-      let noise: f32 = fract(step_noise + f32(slice + step * STEPS) * 0.6180339887);
-      let s: f32 = pow((noise + f32(step)) / f32(STEPS), DISTRIBUTION_POWER) + min_step;
+    for (var step: u32 = 0u; step < occlusion.steps; step++) {
+      let noise: f32 = fract(step_noise + f32(slice + step * occlusion.steps) * 0.6180339887);
+      let s: f32 = pow((noise + f32(step)) / f32(occlusion.steps), DISTRIBUTION_POWER) + min_step;
       let offset: vec2<f32> = round(omega * s);
 
       horizon_cos0 = horizon_cos(to_point(pixel + offset, last), position, to_camera, falloff, low_cos0, horizon_cos0);
@@ -125,7 +121,7 @@ fn fs_search(in: FullscreenVarying) -> @location(0) vec4<f32> {
     visibility += mix(projected_length, 1.0, 0.05) * (arc0 + arc1);
   }
 
-  return vec4<f32>(max(pow(max(visibility / f32(SLICES), 1e-4), occlusion.power), 0.03), distance, 0.0, 1.0);
+  return vec4<f32>(max(pow(max(visibility / f32(occlusion.slices), 1e-4), occlusion.power), 0.03), distance, 0.0, 1.0);
 }
 
 // One way of XeGTAO's denoise: the visibility averaged four pixels wide, each weighed by how near its distance lies

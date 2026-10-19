@@ -1,7 +1,6 @@
 use glam::{Mat4, Vec4};
 
 use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
-use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_indirect_light_mode::RenderIndirectLightMode;
 use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
@@ -97,14 +96,16 @@ fn searches_once_for_whatever_the_bitmask_yields() {
   );
   assert_eq!(search(&shared).map(|it| it.get_names().search), Some("vbao + indirect"));
 
-  for quality in [
-    RenderAmbientOcclusionQuality::Low,
-    RenderAmbientOcclusionQuality::Medium,
-    RenderAmbientOcclusionQuality::High,
-    RenderAmbientOcclusionQuality::Ultra,
-  ] {
-    assert!(quality.get_indirect_steps() > 0);
-  }
+  // The steps past the occlusion's radius are held to their range, never none.
+  let steps = |steps: u32| {
+    RenderIndirectLightSettings {
+      steps,
+      ..RenderIndirectLightSettings::default()
+    }
+    .get_steps()
+  };
+
+  assert_eq!((steps(0), steps(100)), RenderIndirectLightSettings::STEPS_RANGE);
 
   let mut unoccluded: RenderViewOptions = shared.clone();
 
@@ -186,7 +187,7 @@ fn adds_the_light_only_where_it_is_gathered() {
 fn carries_the_light_only_with_the_search_history() {
   let settings: RenderAmbientOcclusionSettings = RenderAmbientOcclusionSettings::default();
   let uniform =
-    |histories: (bool, bool)| VbaoUniform::new(&settings, (1.5, 3.0), Mat4::IDENTITY, (800, 600), 0, histories);
+    |histories: (bool, bool)| VbaoUniform::new(&settings, (1.5, 3.0, 2), Mat4::IDENTITY, (800, 600), 0, histories);
 
   assert_eq!(uniform((true, true)).has_light_history, 1.0);
   assert_eq!(uniform((false, true)).has_light_history, 0.0);
@@ -194,11 +195,11 @@ fn carries_the_light_only_with_the_search_history() {
   assert_eq!(uniform((true, true)).intensity, 1.5);
   assert_eq!(uniform((true, true)).light_radius, 3.0);
   assert_eq!(
-    VbaoUniform::new(&settings, (1.0, 0.5), Mat4::IDENTITY, (800, 600), 0, (true, true)).light_radius,
+    VbaoUniform::new(&settings, (1.0, 0.5, 2), Mat4::IDENTITY, (800, 600), 0, (true, true)).light_radius,
     settings.radius
   );
   assert_eq!(
-    VbaoUniform::new(&settings, (-1.0, 0.5), Mat4::IDENTITY, (800, 600), 0, (true, true)).intensity,
+    VbaoUniform::new(&settings, (-1.0, 0.5, 2), Mat4::IDENTITY, (800, 600), 0, (true, true)).intensity,
     0.0
   );
 }

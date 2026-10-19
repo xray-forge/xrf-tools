@@ -13,6 +13,8 @@ pub struct RenderIndirectLightSettings {
   pub intensity: f32,
   /// Metres around a point it is gathered from; the occlusion's radius where that is further.
   pub radius: f32,
+  /// Steps the search takes past the occlusion's radius out to the light's.
+  pub steps: u32,
 }
 
 impl Default for RenderIndirectLightSettings {
@@ -22,11 +24,19 @@ impl Default for RenderIndirectLightSettings {
       mode: RenderIndirectLightMode::Engine,
       intensity: 1.0,
       radius: 3.0,
+      steps: 2,
     }
   }
 }
 
 impl RenderIndirectLightSettings {
+  /// The least and most steps past the occlusion's radius.
+  pub const STEPS_RANGE: (u32, u32) = (1, 8);
+
+  pub fn get_steps(&self) -> u32 {
+    self.steps.clamp(Self::STEPS_RANGE.0, Self::STEPS_RANGE.1)
+  }
+
   /// Whether it is gathered at all: enhanced, and its intensity above none.
   pub fn is_drawn(&self) -> bool {
     self.mode == RenderIndirectLightMode::Enhanced && self.intensity > 0.0

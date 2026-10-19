@@ -69,7 +69,7 @@ describe("LevelOcclusionAction", () => {
     expect(getByRole("slider", { name: "Thickness" })).toHaveAttribute("aria-valuetext", "0.25 m");
     expect(getByRole("slider", { name: "Accumulation" })).toHaveAttribute("aria-valuetext", "8 frames");
     expect(getByRole("button", { hidden: true, name: "Ambient light" })).toHaveAccessibleDescription(
-      "VBAO occlusion over 1.00 m, high quality, baked at 100%"
+      "VBAO occlusion over 1.00 m, 1 × 8 steps, baked at 100%"
     );
   });
 
@@ -100,7 +100,7 @@ describe("LevelOcclusionAction", () => {
     expect(getByRole("checkbox", { name: "Indirect light" })).toBeChecked();
     expect(getByRole("slider", { name: "Intensity" })).toHaveAttribute("aria-valuetext", "100%");
     expect(getByRole("button", { hidden: true, name: "Ambient light" })).toHaveAccessibleDescription(
-      "GTAO occlusion over 1.00 m, high quality, indirect light, baked at 100%"
+      "GTAO occlusion over 1.00 m, 3 × 3 steps, indirect light, baked at 100%"
     );
 
     await userEvent.click(getByRole("button", { name: "Reset the indirect light to the preset" }));

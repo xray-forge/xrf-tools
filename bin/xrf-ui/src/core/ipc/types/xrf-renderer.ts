@@ -18,6 +18,12 @@ export const RENDER_MAX_SHADOW_CASCADES: number = 4;
 /** Texels the sun's shadow filter reaches each way at most: the widest the sun's pass has a pipeline for. */
 export const RENDER_MAX_SHADOW_FILTER: number = 3;
 
+/** GTAO's search: the slices it turns about a pixel and the steps it takes each way along each. */
+export type RenderAmbientOcclusionGtaoSettings = {
+  slices: number;
+  steps: number;
+};
+
 /** How the screen's ambient occlusion is searched. */
 export enum ERenderAmbientOcclusionMethod {
   /** GTAO as XeGTAO computes it: everything the depth shows taken to reach infinitely behind it. */
@@ -34,24 +40,15 @@ export enum ERenderAmbientOcclusionMethod {
 /** Every `ERenderAmbientOcclusionMethod` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderAmbientOcclusionMethod = `${ERenderAmbientOcclusionMethod}`;
 
-/** How hard the ambient occlusion searches: XeGTAO's presets, VBAO's own, and RTAO's rays. */
-export enum ERenderAmbientOcclusionQuality {
-  /** GTAO one direction, two steps each way; VBAO three steps; RTAO one ray. */
-  LOW = "low",
-  /** GTAO two directions, two steps; VBAO five steps; RTAO two rays. */
-  MEDIUM = "medium",
-  /** GTAO three directions, three steps; VBAO eight steps; RTAO four rays. `Base`'s choice. */
-  HIGH = "high",
-  /** GTAO six directions, three steps; VBAO two directions, eight steps; RTAO eight rays. */
-  ULTRA = "ultra",
-}
-
-/** Every `ERenderAmbientOcclusionQuality` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type RenderAmbientOcclusionQuality = `${ERenderAmbientOcclusionQuality}`;
+/** RTAO's trace: the rays each point casts a frame. */
+export type RenderAmbientOcclusionRtaoSettings = {
+  rays: number;
+};
 
 /**
  * Ambient occlusion from the depth of the frame at half resolution: it darkens the hemisphere and ambient light over
- * the baked hemisphere occlusion, as the engine's SSAO does. The radius, strength and quality are every method's.
+ * the baked hemisphere occlusion, as the engine's SSAO does. The radius and strength are every method's; each method
+ * has its own search.
  */
 export type RenderAmbientOcclusionSettings = {
   isEnabled: boolean;
@@ -64,15 +61,19 @@ export type RenderAmbientOcclusionSettings = {
   radius: number | null;
   /** How dark the occlusion goes: one the method's own curve, zero none, two its square. */
   strength: number | null;
-  quality: RenderAmbientOcclusionQuality;
+  gtao: RenderAmbientOcclusionGtaoSettings;
   vbao: RenderAmbientOcclusionVbaoSettings;
+  rtao: RenderAmbientOcclusionRtaoSettings;
 };
 
 /**
- * VBAO's strengths: how deep an occluder is taken to be, how much light bounces back off a
- * surface into its own creases, and over how many frames it is gathered.
+ * VBAO's search and strengths: the slices it turns about a pixel and the steps along each, how deep an occluder is
+ * taken to be, how much light bounces back off a surface into its own creases, and over how many frames it is
+ * gathered.
  */
 export type RenderAmbientOcclusionVbaoSettings = {
+  slices: number;
+  steps: number;
   /** Metres behind what the depth shows that it is taken to be solid: light passes behind anything thinner. */
   thickness: number | null;
   /** How much of the light a surface's colour bounces between the sides of its creases comes back, one all of it. */
@@ -185,7 +186,7 @@ export type RenderAppliedReport = {
   /** The sun's shadow, or none where no cascade is drawn. */
   shadows: RenderAppliedShadows | null;
   /** The screen's ambient occlusion, or none where it is off or the scene is unlit. */
-  ambientOcclusion: RenderAmbientOcclusionQuality | null;
+  ambientOcclusion: RenderAmbientOcclusionSettings | null;
   /**
    * How the ambient occlusion is found, or none where it is not: RTAO asked for is VBAO's search on a GPU that traces
    * no rays.
@@ -198,7 +199,7 @@ export type RenderAppliedReport = {
   /** The enhanced height fog, or none where the engine's fog alone is drawn or none at all. */
   heightFog: RenderAppliedHeightFog | null;
   /** How hard the sky is debanded, or none where it is drawn as it is. */
-  debanding: RenderDebandingQuality | null;
+  debanding: number | null;
   /** Which bloom is drawn, or none where the frame blooms nothing. */
   bloom: RenderBloomMode | null;
   /** The local lights, or none where they are off. */
@@ -379,25 +380,11 @@ export enum ERenderDebandingMode {
 /** Every `ERenderDebandingMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderDebandingMode = `${ERenderDebandingMode}`;
 
-/** How many times the sky debanding averages a pixel with its neighbours, each time further out. */
-export enum ERenderDebandingQuality {
-  /** Once. */
-  LOW = "low",
-  /** Twice. */
-  MEDIUM = "medium",
-  /** Three times. */
-  HIGH = "high",
-  /** Four times. */
-  ULTRA = "ultra",
-}
-
-/** Every `ERenderDebandingQuality` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type RenderDebandingQuality = `${ERenderDebandingQuality}`;
-
 /** Whether and how the sky's colour bands are smoothed. */
 export type RenderDebandingSettings = {
   mode: RenderDebandingMode;
-  quality: RenderDebandingQuality;
+  /** Times a sky pixel is averaged with its neighbours, each time further out. */
+  passes: number;
   /** Pixels around a sky pixel its neighbours are read from at most. */
   radius: number | null;
 };
@@ -983,6 +970,8 @@ export type RenderIndirectLightSettings = {
   intensity: number | null;
   /** Metres around a point it is gathered from; the occlusion's radius where that is further. */
   radius: number | null;
+  /** Steps the search takes past the occlusion's radius out to the light's. */
+  steps: number;
 };
 
 /** Every `kind` the `RenderLevelHit` union is told apart by, so a switch or a comparison names one. */

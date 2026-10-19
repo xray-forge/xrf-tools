@@ -2,7 +2,10 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { ERenderIndirectLightMode } from "@/core/ipc/types/xrf-renderer";
-import { formatOcclusionRadius } from "@/core/render/lib/features/render-ambient-occlusion-choices";
+import {
+  formatOcclusionCount,
+  formatOcclusionRadius,
+} from "@/core/render/lib/features/render-ambient-occlusion-choices";
 import {
   explainRenderIndirectLightMode,
   formatIndirectLightIntensity,
@@ -55,6 +58,16 @@ export function SettingsRendererIndirectLight(): ReactElement {
           isDisabled={!isEnhanced}
           format={formatOcclusionRadius}
           onChange={(radius: number) => onSet({ radius })}
+        />
+
+        <SliderFormRow
+          label={"Bounce steps"}
+          description={"Steps the search takes past the occlusion's radius out to the bounce radius."}
+          value={indirectLight.steps}
+          {...RENDER_INDIRECT_LIGHT_LIMITS.steps}
+          isDisabled={!isEnhanced}
+          format={formatOcclusionCount}
+          onChange={(steps: number) => onSet({ steps })}
         />
       </div>
     </DetailSection>

@@ -2,14 +2,11 @@ use std::collections::BTreeSet;
 
 use xrf_renderer_core::ShaderPermutation;
 
-use crate::pass::ambient_occlusion_permutation::AmbientOcclusionPermutation;
 use crate::pass::contact_march_permutation::ContactMarchPermutation;
 use crate::pass::glass_copy_permutation::GlassCopyPermutation;
-use crate::pass::rtao_permutation::RtaoPermutation;
 use crate::pass::static_cull_permutation::StaticCullPermutation;
 use crate::pass::static_draw_permutation::StaticDrawPermutation;
 use crate::pass::sun_filter_permutation::SunFilterPermutation;
-use crate::pass::vbao_permutation::VbaoPermutation;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Every permutation names override constants the modules it makes pipelines of declare, of the types its fields give
@@ -17,11 +14,8 @@ use crate::shader::shader_library::ShaderLibrary;
 #[test]
 fn every_permutation_matches_its_modules_overrides() {
   let library: ShaderLibrary = ShaderLibrary::default();
-  let permutations: [(&str, String); 9] = [
+  let permutations: [(&str, String); 6] = [
     of::<SunFilterPermutation>(SunFilterPermutation::MODULE),
-    of::<AmbientOcclusionPermutation>(AmbientOcclusionPermutation::MODULE),
-    of::<VbaoPermutation>(VbaoPermutation::MODULE),
-    of::<RtaoPermutation>(RtaoPermutation::MODULE),
     of::<ContactMarchPermutation>(ContactMarchPermutation::LIGHTS_MODULE),
     of::<ContactMarchPermutation>(ContactMarchPermutation::VISIBILITY_MODULE),
     of::<GlassCopyPermutation>(GlassCopyPermutation::MODULE),

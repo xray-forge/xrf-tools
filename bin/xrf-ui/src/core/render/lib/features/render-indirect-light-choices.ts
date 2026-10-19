@@ -8,6 +8,7 @@ import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature
 export const RENDER_INDIRECT_LIGHT_LIMITS = {
   intensity: toRenderLimits(RENDER_FEATURE_SCHEMA.indirectLight.intensity, 0.05),
   radius: toRenderLimits(RENDER_FEATURE_SCHEMA.indirectLight.radius, 0.25),
+  steps: toRenderLimits(RENDER_FEATURE_SCHEMA.indirectLight.steps, 1),
 } as const;
 
 const RENDER_INDIRECT_LIGHT_MODE_DESCRIPTIONS: Readonly<Record<RenderIndirectLightMode, string>> = {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { ERenderDebandingMode, ERenderDebandingQuality } from "@/core/ipc/types/xrf-renderer";
+import { ERenderDebandingMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelDebandingSettings } from "@/core/level/components/preview/toolbar/image/LevelDebandingSettings";
 import { DEFAULT_RENDER_DEBANDING_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { clearLocalStorage } from "@/core/storage";
@@ -30,12 +30,12 @@ describe("LevelDebandingSettings", () => {
     expect(view.features.debanding).toEqual({ mode: ERenderDebandingMode.ENHANCED });
     expect(getByRole("slider", { name: "Debanding radius" })).toHaveAttribute("aria-valuetext", "48 px");
 
-    await userEvent.click(getByRole("button", { name: "Ultra" }));
+    expect(getByRole("slider", { name: "Debanding passes" })).toHaveAttribute("aria-valuetext", "2 times");
 
-    expect(view.features.debanding).toEqual({
-      mode: ERenderDebandingMode.ENHANCED,
-      quality: ERenderDebandingQuality.ULTRA,
-    });
+    getByRole("slider", { name: "Debanding passes" }).focus();
+    await userEvent.keyboard("{ArrowRight}");
+
+    expect(view.features.debanding).toEqual({ mode: ERenderDebandingMode.ENHANCED, passes: 3 });
 
     await userEvent.click(getByRole("button", { name: "Reset the debanding to the preset" }));
 

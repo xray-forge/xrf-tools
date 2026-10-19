@@ -1,7 +1,6 @@
 use glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
-use crate::contract::render_debanding_quality::RenderDebandingQuality;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_rect::RenderRect;
@@ -82,12 +81,13 @@ impl PresentUniform {
     }
   }
 
-  /// How hard a view debands its sky, or none: the engine's sky asked for, no sky shown, unlit or wireframe.
-  pub fn get_debanding(options: &RenderViewOptions) -> Option<RenderDebandingQuality> {
+  /// How many times a view averages its sky's pixels, or none: the engine's sky asked for, no sky shown, unlit or
+  /// wireframe.
+  pub fn get_debanding(options: &RenderViewOptions) -> Option<u32> {
     let debanding = &options.features.debanding;
     let is_shown: bool = options.mode.is_lit && !options.mode.is_wireframe && options.show.is_sky_visible;
 
-    (is_shown && debanding.is_drawn()).then_some(debanding.quality)
+    (is_shown && debanding.is_drawn()).then(|| debanding.get_passes())
   }
 
   /// The same over a scene holding linear light (`is_linear`), which it tonemaps, or tonemapped colour.

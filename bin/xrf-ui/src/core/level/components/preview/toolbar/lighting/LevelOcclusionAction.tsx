@@ -8,7 +8,6 @@ import {
   ERenderAmbientOcclusionMethod,
   ERenderIndirectLightMode,
   RenderAmbientOcclusionMethod,
-  RenderAmbientOcclusionQuality,
 } from "@/core/ipc/types/xrf-renderer";
 import { LevelIndirectLightSection } from "@/core/level/components/preview/toolbar/lighting/LevelIndirectLightSection";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
@@ -21,20 +20,22 @@ import { RenderValueChoice } from "@/core/render/components/controls/RenderValue
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
   describeRenderAmbientOcclusionMethod,
-  describeRenderAmbientOcclusionQuality,
+  describeRenderAmbientOcclusionSearch,
   explainRenderAmbientOcclusionMethod,
   formatOcclusionAccumulation,
   formatOcclusionBounce,
+  formatOcclusionCount,
   formatOcclusionRadius,
   formatOcclusionStrength,
   formatOcclusionThickness,
   RENDER_AMBIENT_OCCLUSION_LIMITS,
   RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS,
   RENDER_AMBIENT_OCCLUSION_METHOD_UNTRACED_OPTIONS,
-  RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS,
   RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS,
 } from "@/core/render/lib/features/render-ambient-occlusion-choices";
 import {
+  TRenderAmbientOcclusionGtaoSettings,
+  TRenderAmbientOcclusionRtaoSettings,
   TRenderAmbientOcclusionSettings,
   TRenderAmbientOcclusionVbaoSettings,
   TRenderIndirectLightSettings,
@@ -65,7 +66,9 @@ export function LevelOcclusionAction({
   const occlusion: TRenderAmbientOcclusionSettings = state.value;
   const vbao: TRenderAmbientOcclusionVbaoSettings = occlusion.vbao;
   const isScreen: boolean = options.isOccluded && state.isAvailable;
+  const isGtao: boolean = occlusion.method === ERenderAmbientOcclusionMethod.GTAO;
   const isVbao: boolean = occlusion.method === ERenderAmbientOcclusionMethod.VBAO;
+  const isRtao: boolean = occlusion.method === ERenderAmbientOcclusionMethod.RTAO;
   // VBAO and RTAO both gather over frames and bounce light back from their creases.
   const isGathered: boolean = occlusion.method !== ERenderAmbientOcclusionMethod.GTAO;
   const isUntraced: boolean = occlusion.method === ERenderAmbientOcclusionMethod.RTAO && !isTraceable;
@@ -73,6 +76,14 @@ export function LevelOcclusionAction({
 
   const onSetVbao = useCallback(
     (part: Partial<TRenderAmbientOcclusionVbaoSettings>): void => setNested("vbao", part),
+    [setNested]
+  );
+  const onSetGtao = useCallback(
+    (part: Partial<TRenderAmbientOcclusionGtaoSettings>): void => setNested("gtao", part),
+    [setNested]
+  );
+  const onSetRtao = useCallback(
+    (part: Partial<TRenderAmbientOcclusionRtaoSettings>): void => setNested("rtao", part),
     [setNested]
   );
 
@@ -86,7 +97,7 @@ export function LevelOcclusionAction({
         isScreen
           ? `${describeRenderAmbientOcclusionMethod(occlusion.method)} occlusion over ` +
             `${formatOcclusionRadius(occlusion.radius)}, ` +
-            `${describeRenderAmbientOcclusionQuality(occlusion.quality).toLowerCase()} quality`
+            describeRenderAmbientOcclusionSearch(occlusion)
           : "Ambient occlusion off",
         isIndirect ? "indirect light" : null,
         options.isBaked ? `baked at ${formatPercent(hemiStrength)}` : "baked off",
@@ -118,12 +129,55 @@ export function LevelOcclusionAction({
             : explainRenderAmbientOcclusionMethod(occlusion.method)}
         </p>
 
-        <RenderValueChoice
-          label={"Quality"}
-          options={RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS}
-          value={occlusion.quality}
-          onChange={(quality: RenderAmbientOcclusionQuality) => set({ quality })}
-        />
+        {isGtao ? (
+          <>
+            <RenderValueSlider
+              label={"Slices"}
+              value={occlusion.gtao.slices}
+              {...RENDER_AMBIENT_OCCLUSION_LIMITS.gtaoSlices}
+              format={formatOcclusionCount}
+              onChange={(slices: number) => onSetGtao({ slices })}
+            />
+
+            <RenderValueSlider
+              label={"Steps"}
+              value={occlusion.gtao.steps}
+              {...RENDER_AMBIENT_OCCLUSION_LIMITS.gtaoSteps}
+              format={formatOcclusionCount}
+              onChange={(steps: number) => onSetGtao({ steps })}
+            />
+          </>
+        ) : null}
+
+        {isVbao ? (
+          <>
+            <RenderValueSlider
+              label={"Slices"}
+              value={vbao.slices}
+              {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.slices}
+              format={formatOcclusionCount}
+              onChange={(slices: number) => onSetVbao({ slices })}
+            />
+
+            <RenderValueSlider
+              label={"Steps"}
+              value={vbao.steps}
+              {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.steps}
+              format={formatOcclusionCount}
+              onChange={(steps: number) => onSetVbao({ steps })}
+            />
+          </>
+        ) : null}
+
+        {isRtao ? (
+          <RenderValueSlider
+            label={"Rays"}
+            value={occlusion.rtao.rays}
+            {...RENDER_AMBIENT_OCCLUSION_LIMITS.rays}
+            format={formatOcclusionCount}
+            onChange={(rays: number) => onSetRtao({ rays })}
+          />
+        ) : null}
 
         <RenderValueSlider
           label={"Radius"}

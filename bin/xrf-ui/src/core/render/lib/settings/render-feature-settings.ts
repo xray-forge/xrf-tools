@@ -1,4 +1,6 @@
 import {
+  RenderAmbientOcclusionGtaoSettings,
+  RenderAmbientOcclusionRtaoSettings,
   RenderAmbientOcclusionSettings,
   RenderAmbientOcclusionVbaoSettings,
   RenderContactShadowSettings,
@@ -59,6 +61,10 @@ export interface IRenderFeatureSettings extends TSettled<
 > {}
 
 export type TRenderAmbientOcclusionVbaoSettings = TSettled<RenderAmbientOcclusionVbaoSettings>;
+
+export type TRenderAmbientOcclusionGtaoSettings = TSettled<RenderAmbientOcclusionGtaoSettings>;
+
+export type TRenderAmbientOcclusionRtaoSettings = TSettled<RenderAmbientOcclusionRtaoSettings>;
 
 export type TRenderAmbientOcclusionSettings = TSettled<RenderAmbientOcclusionSettings>;
 

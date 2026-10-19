@@ -1,5 +1,6 @@
+pub(crate) mod render_ambient_occlusion_gtao_settings;
 pub(crate) mod render_ambient_occlusion_method;
-pub(crate) mod render_ambient_occlusion_quality;
+pub(crate) mod render_ambient_occlusion_rtao_settings;
 pub(crate) mod render_ambient_occlusion_settings;
 pub(crate) mod render_ambient_occlusion_vbao_settings;
 pub(crate) mod render_antialiasing;
@@ -23,7 +24,6 @@ pub(crate) mod render_color;
 pub(crate) mod render_contact_shadow_mode;
 pub(crate) mod render_contact_shadow_settings;
 pub(crate) mod render_debanding_mode;
-pub(crate) mod render_debanding_quality;
 pub(crate) mod render_debanding_settings;
 pub(crate) mod render_debug_view;
 pub(crate) mod render_dlss_availability;

@@ -1,7 +1,6 @@
 use glam::Mat4;
 use xrf_renderer_core::{FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, UniformBinding};
 
-use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -35,8 +34,8 @@ impl AmbientOcclusionFeature {
     self.is_drawn
   }
 
-  pub fn get_quality(&self) -> RenderAmbientOcclusionQuality {
-    self.settings.quality
+  pub fn get_settings(&self) -> &RenderAmbientOcclusionSettings {
+    &self.settings
   }
 
   /// Adds GTAO's search and its denoise to and fro between the occlusion targets, the first holding it finished;
@@ -52,7 +51,6 @@ impl AmbientOcclusionFeature {
       return;
     }
 
-    let quality: RenderAmbientOcclusionQuality = self.settings.quality;
     let occlusion: UniformBinding<AmbientOcclusionUniform> = runtime.push_uniform(&self.uniform);
     // The search reads no source, but binds one: a texel of nothing, as neither target is written yet.
     let unsearched: GraphTexture =
@@ -80,11 +78,7 @@ impl AmbientOcclusionFeature {
           targets.occlusion[written],
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
         ))
-        .record(move |context| {
-          passes
-            .ambient_occlusion
-            .record(context, (stage, quality), view, &parameters)
-        });
+        .record(move |context| passes.ambient_occlusion.record(context, stage, view, &parameters));
     }
   }
 }

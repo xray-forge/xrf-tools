@@ -1,7 +1,8 @@
 use glam::{Mat4, Vec4};
 
+use crate::contract::render_ambient_occlusion_gtao_settings::RenderAmbientOcclusionGtaoSettings;
 use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
-use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
+use crate::contract::render_ambient_occlusion_rtao_settings::RenderAmbientOcclusionRtaoSettings;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_ambient_occlusion_vbao_settings::{
   RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION, RenderAmbientOcclusionVbaoSettings,
@@ -49,16 +50,33 @@ fn searches_with_gtao_unless_asked_for_vbao() {
     RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION
   );
 
-  for quality in [
-    RenderAmbientOcclusionQuality::Low,
-    RenderAmbientOcclusionQuality::Medium,
-    RenderAmbientOcclusionQuality::High,
-    RenderAmbientOcclusionQuality::Ultra,
-  ] {
-    let (slices, steps) = quality.get_vbao_search();
+  // Each method's search is held to its range, never none.
+  let wild: RenderAmbientOcclusionSettings = RenderAmbientOcclusionSettings {
+    gtao: RenderAmbientOcclusionGtaoSettings { slices: 0, steps: 100 },
+    vbao: RenderAmbientOcclusionVbaoSettings {
+      slices: 100,
+      steps: 0,
+      ..RenderAmbientOcclusionVbaoSettings::default()
+    },
+    rtao: RenderAmbientOcclusionRtaoSettings { rays: 0 },
+    ..RenderAmbientOcclusionSettings::default()
+  };
 
-    assert!(slices > 0 && steps > 0);
-  }
+  assert_eq!(
+    (wild.gtao.get_slices(), wild.gtao.get_steps()),
+    (
+      RenderAmbientOcclusionGtaoSettings::SLICES_RANGE.0,
+      RenderAmbientOcclusionGtaoSettings::STEPS_RANGE.1
+    )
+  );
+  assert_eq!(
+    (wild.vbao.get_slices(), wild.vbao.get_steps()),
+    (
+      RenderAmbientOcclusionVbaoSettings::SLICES_RANGE.1,
+      RenderAmbientOcclusionVbaoSettings::STEPS_RANGE.0
+    )
+  );
+  assert_eq!(wild.rtao.get_rays(), RenderAmbientOcclusionRtaoSettings::RAYS_RANGE.0);
 }
 
 // Accumulating, the noise turns with the frame and comes back to its start; gathering nothing, it holds still and
@@ -66,7 +84,14 @@ fn searches_with_gtao_unless_asked_for_vbao() {
 #[test]
 fn turns_its_noise_only_while_it_accumulates() {
   let uniform = |settings: &RenderAmbientOcclusionSettings, frame: u32| {
-    VbaoUniform::new(settings, (0.0, 0.0), Mat4::IDENTITY, (800, 600), frame, (true, false))
+    VbaoUniform::new(
+      settings,
+      (0.0, 0.0, 0),
+      Mat4::IDENTITY,
+      (800, 600),
+      frame,
+      (true, false),
+    )
   };
   let gathering: RenderAmbientOcclusionSettings = vbao(8);
   let still: RenderAmbientOcclusionSettings = vbao(1);

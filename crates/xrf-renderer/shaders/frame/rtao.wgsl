@@ -15,9 +15,6 @@
 #import "generated/frame/vbao"
 #import "common/math"
 
-// Rays a point casts each frame, by quality.
-override RAYS: u32 = 4u;
-
 // Metres a ray starts off its surface, and how much more each metre away, so it leaves the surface it starts on.
 const LIFT: f32 = 0.03;
 const LIFT_PER_METRE: f32 = 0.002;
@@ -73,7 +70,7 @@ fn trace_occlusion(clip: vec2<f32>) -> vec4<f32> {
     vec2<f32>(occlusion.slice_noise, occlusion.step_noise));
   var open: f32 = 0.0;
 
-  for (var ray: u32 = 0u; ray < RAYS; ray++) {
+  for (var ray: u32 = 0u; ray < occlusion.rays; ray++) {
     let sample: vec2<f32> = fract(start + f32(ray) * R2_STEPS);
     // Cosine-weighted about the normal: the share open is the hemisphere's light that reaches the point.
     let radius: f32 = sqrt(sample.x);
@@ -84,7 +81,7 @@ fn trace_occlusion(clip: vec2<f32>) -> vec4<f32> {
     open += select(1.0, 0.0, trace_scene_blocked(origin, direction, occlusion.radius, cone, SCENE_NO_PLACE));
   }
 
-  return vec4<f32>(open / f32(RAYS), distance, 0.0, 1.0);
+  return vec4<f32>(open / f32(occlusion.rays), distance, 0.0, 1.0);
 }
 
 @fragment

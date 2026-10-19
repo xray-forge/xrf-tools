@@ -1,4 +1,3 @@
-use crate::contract::render_debanding_quality::RenderDebandingQuality;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::pass::present_uniform::PresentUniform;
@@ -11,8 +10,8 @@ use crate::scene::level::feature::view_feature::ViewFeature;
 #[derive(Default)]
 pub struct PresentFeature {
   uniform: PresentUniform,
-  /// How hard the sky is debanded this frame, none where it is drawn as it is.
-  debanding: Option<RenderDebandingQuality>,
+  /// How many times the sky is averaged this frame, none where it is drawn as it is.
+  debanding: Option<u32>,
 }
 
 impl PresentFeature {
@@ -47,7 +46,7 @@ impl PresentFeature {
     .with_grass_reach(inputs.grass_reach);
 
     self.uniform = match self.debanding {
-      Some(quality) => present.with_debanding(quality.get_passes(), options.features.debanding.radius, time),
+      Some(passes) => present.with_debanding(passes, options.features.debanding.radius, time),
       None => present,
     };
   }
@@ -57,8 +56,8 @@ impl PresentFeature {
     &self.uniform
   }
 
-  /// How hard the sky is debanded this frame.
-  pub fn get_debanding(&self) -> Option<RenderDebandingQuality> {
+  /// How many times the sky is averaged this frame.
+  pub fn get_debanding(&self) -> Option<u32> {
     self.debanding
   }
 }

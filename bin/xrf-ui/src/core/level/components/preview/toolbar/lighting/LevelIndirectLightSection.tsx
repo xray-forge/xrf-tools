@@ -6,7 +6,10 @@ import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { formatOcclusionRadius } from "@/core/render/lib/features/render-ambient-occlusion-choices";
+import {
+  formatOcclusionCount,
+  formatOcclusionRadius,
+} from "@/core/render/lib/features/render-ambient-occlusion-choices";
 import {
   explainRenderIndirectLightMode,
   formatIndirectLightIntensity,
@@ -57,6 +60,14 @@ export function LevelIndirectLightSection({
             {...RENDER_INDIRECT_LIGHT_LIMITS.radius}
             format={formatOcclusionRadius}
             onChange={(radius: number) => set({ radius })}
+          />
+
+          <RenderValueSlider
+            label={"Bounce steps"}
+            value={value.steps}
+            {...RENDER_INDIRECT_LIGHT_LIMITS.steps}
+            format={formatOcclusionCount}
+            onChange={(steps: number) => set({ steps })}
           />
         </>
       ) : null}

@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
 
+use crate::contract::render_ambient_occlusion_gtao_settings::RenderAmbientOcclusionGtaoSettings;
 use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
-use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
+use crate::contract::render_ambient_occlusion_rtao_settings::RenderAmbientOcclusionRtaoSettings;
 use crate::contract::render_ambient_occlusion_vbao_settings::RenderAmbientOcclusionVbaoSettings;
 
 /// Ambient occlusion from the depth of the frame at half resolution: it darkens the hemisphere and ambient light over
-/// the baked hemisphere occlusion, as the engine's SSAO does. The radius, strength and quality are every method's.
+/// the baked hemisphere occlusion, as the engine's SSAO does. The radius and strength are every method's; each method
+/// has its own search.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,8 +20,9 @@ pub struct RenderAmbientOcclusionSettings {
   pub radius: f32,
   /// How dark the occlusion goes: one the method's own curve, zero none, two its square.
   pub strength: f32,
-  pub quality: RenderAmbientOcclusionQuality,
+  pub gtao: RenderAmbientOcclusionGtaoSettings,
   pub vbao: RenderAmbientOcclusionVbaoSettings,
+  pub rtao: RenderAmbientOcclusionRtaoSettings,
 }
 
 impl Default for RenderAmbientOcclusionSettings {
@@ -30,8 +33,9 @@ impl Default for RenderAmbientOcclusionSettings {
       method: RenderAmbientOcclusionMethod::Gtao,
       radius: 1.0,
       strength: 1.0,
-      quality: RenderAmbientOcclusionQuality::High,
+      gtao: RenderAmbientOcclusionGtaoSettings::default(),
       vbao: RenderAmbientOcclusionVbaoSettings::default(),
+      rtao: RenderAmbientOcclusionRtaoSettings::default(),
     }
   }
 }

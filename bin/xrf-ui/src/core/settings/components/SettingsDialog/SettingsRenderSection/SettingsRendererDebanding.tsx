@@ -1,17 +1,16 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ERenderDebandingMode, RenderDebandingQuality } from "@/core/ipc/types/xrf-renderer";
+import { ERenderDebandingMode } from "@/core/ipc/types/xrf-renderer";
 import {
   explainRenderDebandingMode,
+  formatDebandingPasses,
   formatDebandingRadius,
   RENDER_DEBANDING_LIMITS,
-  RENDER_DEBANDING_QUALITY_OPTIONS,
 } from "@/core/render/lib/features/render-debanding-choices";
 import { TRenderDebandingSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 
@@ -38,15 +37,14 @@ export function SettingsRendererDebanding(): ReactElement {
           }
         />
 
-        <ChoiceFormRow
-          label={"Quality"}
-          description={
-            "Times a pixel is averaged with its neighbours, each further out: once at Low, four times at Ultra."
-          }
-          options={RENDER_DEBANDING_QUALITY_OPTIONS}
-          value={debanding.quality}
+        <SliderFormRow
+          label={"Passes"}
+          description={"Times a sky pixel is averaged with its neighbours, each time further out."}
+          value={debanding.passes}
+          {...RENDER_DEBANDING_LIMITS.passes}
           isDisabled={!isEnhanced}
-          onChange={(quality: RenderDebandingQuality) => onSet({ quality })}
+          format={formatDebandingPasses}
+          onChange={(passes: number) => onSet({ passes })}
         />
 
         <SliderFormRow

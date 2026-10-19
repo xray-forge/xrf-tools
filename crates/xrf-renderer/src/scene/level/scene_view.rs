@@ -1643,7 +1643,7 @@ impl SceneView {
         .features
         .ambient_occlusion
         .is_drawn()
-        .then_some(self.features.ambient_occlusion.get_quality()),
+        .then_some(*self.features.ambient_occlusion.get_settings()),
       ambient_occlusion_method: self.features.ambient_occlusion.is_drawn().then(|| {
         match self.features.bitmask.get_search() {
           Some(search) if search.is_occluding && search.is_traced => RenderAmbientOcclusionMethod::Rtao,

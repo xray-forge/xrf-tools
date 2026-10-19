@@ -361,6 +361,8 @@ struct AmbientOcclusion {
   power: f32,
   spread: f32,
   reach: f32,
+  slices: u32,
+  steps: u32,
 }
 
 struct Vbao {
@@ -376,6 +378,10 @@ struct Vbao {
   intensity: f32,
   has_light_history: f32,
   light_radius: f32,
+  slices: u32,
+  steps: u32,
+  light_steps: u32,
+  rays: u32,
 }
 
 struct Reflections {

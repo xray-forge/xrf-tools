@@ -41,15 +41,21 @@ pub struct VbaoUniform {
   pub has_light_history: f32,
   /// Metres around a point the indirect light is gathered from, never under the occlusion's radius.
   pub light_radius: f32,
+  /// The slices turned about a pixel and the steps along each; the steps a lit search takes past the occlusion's
+  /// radius; and the rays RTAO casts a point in its place.
+  pub slices: u32,
+  pub steps: u32,
+  pub light_steps: u32,
+  pub rays: u32,
 }
 
 impl VbaoUniform {
   /// The settings over a search target of a size, through the camera's projection, on the noise's `frame`, with or
   /// without the occlusion's and the indirect light's histories to carry; an `intensity` of zero gathers no light,
-  /// and the light is gathered from `light_radius` metres around.
+  /// and the light is gathered from `light_radius` metres around in `light_steps` past the occlusion's.
   pub fn new(
     settings: &RenderAmbientOcclusionSettings,
-    (intensity, light_radius): (f32, f32),
+    (intensity, light_radius, light_steps): (f32, f32, u32),
     projection: Mat4,
     (width, height): (u32, u32),
     frame: u32,
@@ -73,6 +79,10 @@ impl VbaoUniform {
       intensity: intensity.max(0.0),
       has_light_history: f32::from(u8::from(has_light_history && has_history && frames > 1)),
       light_radius: light_radius.max(settings.radius),
+      slices: settings.vbao.get_slices(),
+      steps: settings.vbao.get_steps(),
+      light_steps,
+      rays: settings.rtao.get_rays(),
     }
   }
 }

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
-use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
+use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_grass::RenderAppliedGrass;
@@ -10,7 +10,6 @@ use crate::contract::render_applied_indirect_light::RenderAppliedIndirectLight;
 use crate::contract::render_applied_reflections::RenderAppliedReflections;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_bloom_mode::RenderBloomMode;
-use crate::contract::render_debanding_quality::RenderDebandingQuality;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_scale::RenderScale;
 
@@ -28,7 +27,7 @@ pub struct RenderAppliedReport {
   /// The sun's shadow, or none where no cascade is drawn.
   pub shadows: Option<RenderAppliedShadows>,
   /// The screen's ambient occlusion, or none where it is off or the scene is unlit.
-  pub ambient_occlusion: Option<RenderAmbientOcclusionQuality>,
+  pub ambient_occlusion: Option<RenderAmbientOcclusionSettings>,
   /// How the ambient occlusion is found, or none where it is not: RTAO asked for is VBAO's search on a GPU that traces
   /// no rays.
   pub ambient_occlusion_method: Option<RenderAmbientOcclusionMethod>,
@@ -39,7 +38,7 @@ pub struct RenderAppliedReport {
   /// The enhanced height fog, or none where the engine's fog alone is drawn or none at all.
   pub height_fog: Option<RenderAppliedHeightFog>,
   /// How hard the sky is debanded, or none where it is drawn as it is.
-  pub debanding: Option<RenderDebandingQuality>,
+  pub debanding: Option<u32>,
   /// Which bloom is drawn, or none where the frame blooms nothing.
   pub bloom: Option<RenderBloomMode>,
   /// The local lights, or none where they are off.

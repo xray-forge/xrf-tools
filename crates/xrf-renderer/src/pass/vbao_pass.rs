@@ -2,13 +2,11 @@ use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
-use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::bitmask_search::BitmaskSearch;
-use crate::pass::fullscreen_pipeline::{create_fullscreen_pipeline_into, create_fullscreen_pipeline_with};
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::vbao_parameters::VbaoParameters;
-use crate::pass::vbao_permutation::VbaoPermutation;
 use crate::pass::view_binding::ViewBinding;
 
 /// The visibility-bitmask search at half the frame's size, for VBAO's occlusion, the indirect light or both:
@@ -24,11 +22,11 @@ pub struct VbaoPass {
   generation: u64,
 }
 
-/// The search a quality, unlit and gathering light; the accumulations; the filters by what they yield; and the light
-/// copied for the search.
+/// The search, unlit and gathering light, its slices and steps the uniform's; the accumulations; the filters by what
+/// they yield; and the light copied for the search.
 struct VbaoPipelines {
-  searches: Vec<wgpu::RenderPipeline>,
-  lit_searches: Vec<wgpu::RenderPipeline>,
+  search: wgpu::RenderPipeline,
+  lit_search: wgpu::RenderPipeline,
   accumulate: wgpu::RenderPipeline,
   lit_accumulate: wgpu::RenderPipeline,
   filter: wgpu::RenderPipeline,
@@ -39,6 +37,9 @@ struct VbaoPipelines {
 }
 
 impl VbaoPass {
+  /// The module its pipelines are made from.
+  const MODULE: &'static str = "frame/vbao";
+
   /// The accumulations, the occlusion's and the light's: half floats.
   pub const HISTORY: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// The light copied for the search, gathered and filtered: colour, then distance along the view where it says.
@@ -121,22 +122,21 @@ impl VbaoPass {
     Self::draw(context, &self.pipelines.light_source, view, parameters);
   }
 
-  /// Searches the frame's pixels at `quality` into the targets the pass draws into, gathering the light while lit.
+  /// Searches the frame's pixels into the targets the pass draws into, gathering the light while lit.
   pub fn record_search(
     &self,
     context: &mut RasterContext<'_>,
-    (quality, is_lit): (RenderAmbientOcclusionQuality, bool),
+    is_lit: bool,
     view: &ViewBinding,
     parameters: &VbaoParameters,
   ) {
-    let search: usize = quality.get_index();
-    let searches: &[wgpu::RenderPipeline] = if is_lit {
-      &self.pipelines.lit_searches
+    let pipeline: &wgpu::RenderPipeline = if is_lit {
+      &self.pipelines.lit_search
     } else {
-      &self.pipelines.searches
+      &self.pipelines.search
     };
 
-    Self::draw(context, &searches[search], view, parameters);
+    Self::draw(context, pipeline, view, parameters);
   }
 
   /// Blends the search with the last frame's accumulation into this frame's, the light's too while lit.
@@ -193,41 +193,19 @@ impl VbaoPass {
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<VbaoPipelines> {
-    let module: &'static str = VbaoPermutation::MODULE;
+    let module: &'static str = Self::MODULE;
     let layouts: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
     let targets = |formats: &[wgpu::TextureFormat]| -> Vec<Option<wgpu::ColorTargetState>> {
       formats.iter().map(|it| Some((*it).into())).collect()
-    };
-    let search = |fragment: &'static str,
-                  permutation: &VbaoPermutation,
-                  formats: &[wgpu::TextureFormat]|
-     -> XrfResult<wgpu::RenderPipeline> {
-      create_fullscreen_pipeline_with(source, (module, fragment, permutation), &layouts, &targets(formats))
     };
     let create = |fragment: &'static str, formats: &[wgpu::TextureFormat]| -> XrfResult<wgpu::RenderPipeline> {
       create_fullscreen_pipeline_into(source, module, fragment, &layouts, &targets(formats))
     };
     let occluded: &[wgpu::TextureFormat] = &[ViewTargets::OCCLUSION];
     let lit: &[wgpu::TextureFormat] = &[ViewTargets::OCCLUSION, Self::LIGHT];
-    let mut searches: Vec<wgpu::RenderPipeline> = Vec::with_capacity(RenderAmbientOcclusionQuality::ALL.len());
-    let mut lit_searches: Vec<wgpu::RenderPipeline> = Vec::with_capacity(RenderAmbientOcclusionQuality::ALL.len());
-
-    for quality in RenderAmbientOcclusionQuality::ALL {
-      let (slices, steps) = quality.get_vbao_search();
-      // An unlit search never steps past the occlusion's radius, so the far steps change only the lit one.
-      let permutation: VbaoPermutation = VbaoPermutation {
-        slices,
-        steps,
-        far_steps: quality.get_indirect_steps(),
-      };
-
-      searches.push(search("fs_search", &permutation, occluded)?);
-      lit_searches.push(search("fs_search_lit", &permutation, lit)?);
-    }
-
     Ok(VbaoPipelines {
-      searches,
-      lit_searches,
+      search: create("fs_search", occluded)?,
+      lit_search: create("fs_search_lit", lit)?,
       accumulate: create("fs_accumulate", &[Self::HISTORY])?,
       lit_accumulate: create("fs_accumulate_lit", &[Self::HISTORY, Self::HISTORY])?,
       filter: create("fs_filter", occluded)?,

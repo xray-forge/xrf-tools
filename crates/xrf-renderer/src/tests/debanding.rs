@@ -3,7 +3,6 @@
 use glam::Vec4;
 
 use crate::contract::render_debanding_mode::RenderDebandingMode;
-use crate::contract::render_debanding_quality::RenderDebandingQuality;
 use crate::contract::render_debanding_settings::RenderDebandingSettings;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
@@ -45,7 +44,7 @@ fn ships_the_sky_as_drawn_with_two_passes_out_to_48_pixels() {
   let defaults: RenderDebandingSettings = RenderDebandingSettings::default();
 
   assert_eq!(defaults.mode, RenderDebandingMode::Engine);
-  assert_eq!(defaults.quality, RenderDebandingQuality::Medium);
+  assert_eq!(defaults.passes, 2);
   assert_eq!(defaults.radius, 48.0);
   assert!(!defaults.is_drawn());
   assert!(enhanced().is_drawn());
@@ -57,18 +56,15 @@ fn ships_the_sky_as_drawn_with_two_passes_out_to_48_pixels() {
     .is_drawn()
   );
   assert_eq!(
-    RenderDebandingQuality::ALL.map(RenderDebandingQuality::get_passes),
-    [1, 2, 3, 4]
+    [0, 3, 9].map(|passes| RenderDebandingSettings { passes, ..enhanced() }.get_passes()),
+    [1, 3, 4]
   );
 }
 
 // Nothing is debanded while the engine's sky is asked for, no sky is shown, unlit or in wireframe.
 #[test]
 fn debands_only_a_sky_shown_lit_and_solid() {
-  assert_eq!(
-    PresentUniform::get_debanding(&options_with(enhanced())),
-    Some(RenderDebandingQuality::Medium)
-  );
+  assert_eq!(PresentUniform::get_debanding(&options_with(enhanced())), Some(2));
   assert_eq!(
     PresentUniform::get_debanding(&options_with(RenderDebandingSettings::default())),
     None

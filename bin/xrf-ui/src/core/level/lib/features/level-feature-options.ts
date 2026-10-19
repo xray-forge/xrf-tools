@@ -36,7 +36,7 @@ export type TLevelShadowOptions = Pick<
 /** The ambient occlusion settings a level view may set for itself. */
 export type TLevelAmbientOcclusionOptions = Pick<
   TRenderAmbientOcclusionSettings,
-  "method" | "quality" | "radius" | "strength" | "vbao"
+  "gtao" | "method" | "radius" | "rtao" | "strength" | "vbao"
 >;
 
 /** The indirect light settings a level view may set for itself: all of them. */
@@ -164,7 +164,7 @@ export type TLevelModeFeatureKey =
 const LEVEL_GROUP_KEYS: {
   readonly [K in TLevelFeatureKey | TLevelModeFeatureKey]: TKeyTable<ILevelFeatureOptions[K]>;
 } = {
-  ambientOcclusion: { method: true, quality: true, radius: true, strength: true, vbao: true },
+  ambientOcclusion: { gtao: true, method: true, radius: true, rtao: true, strength: true, vbao: true },
   grass: {
     density: true,
     foliage: true,
@@ -197,11 +197,11 @@ const LEVEL_GROUP_KEYS: {
     waveHeight: true,
     waveSpeed: true,
   },
-  debanding: { mode: true, quality: true, radius: true },
+  debanding: { mode: true, passes: true, radius: true },
   enhancedBloom: { blur: true, exposure: true, mode: true, sky: true, threshold: true, vibrance: true },
   fog: { density: true, height: true, mode: true, scattering: true, skyFade: true, sunColor: true },
   glass: { mode: true, refraction: true },
-  indirectLight: { intensity: true, mode: true, radius: true },
+  indirectLight: { intensity: true, mode: true, radius: true, steps: true },
   parallax: {
     blending: true,
     cavity: true,

@@ -1,12 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 
 import {
-  ERenderAmbientOcclusionQuality,
   ERenderAntialiasing,
   ERenderBloomMode,
   ERenderContactShadowMode,
   ERenderDebandingMode,
-  ERenderDebandingQuality,
   ERenderFogMode,
   ERenderGlassMode,
   ERenderIndirectLightMode,
@@ -35,7 +33,7 @@ const SETTINGS: IRenderFeatureSettings = RENDER_PRESETS[ERenderPreset.BASE];
 
 const VIEW: ILevelFeatureOptions = {
   ...mockLevelFeatureOptions(),
-  ambientOcclusion: { quality: ERenderAmbientOcclusionQuality.LOW },
+  ambientOcclusion: { radius: 2 },
   grass: { radius: 80 },
   lights: { shadowFilter: ERenderLightShadowFilter.SOFT },
   shadows: { cascades: [20], filter: 0 },
@@ -70,9 +68,7 @@ describe("level feature options", () => {
   });
 
   it("draws every group with the view's own values over the settings'", () => {
-    expect(toLevelRendererFeature("ambientOcclusion", SETTINGS, VIEW, true).quality).toBe(
-      ERenderAmbientOcclusionQuality.LOW
-    );
+    expect(toLevelRendererFeature("ambientOcclusion", SETTINGS, VIEW, true).radius).toBe(2);
     expect(toLevelRendererFeature("grass", SETTINGS, VIEW, true)).toEqual({ ...SETTINGS.grass, radius: 80 });
     expect(toLevelRendererFeature("lights", SETTINGS, VIEW, true).shadowFilter).toBe(ERenderLightShadowFilter.SOFT);
     expect(toLevelRendererFeature("shadows", SETTINGS, VIEW, true)).toEqual({
@@ -188,12 +184,13 @@ describe("level feature options", () => {
       indirectLight: { intensity: 9, mode: ERenderIndirectLightMode.ENGINE, steps: 3 },
     });
 
-    expect(view.indirectLight).toEqual({ intensity: 4, mode: ERenderIndirectLightMode.ENGINE });
+    expect(view.indirectLight).toEqual({ intensity: 4, mode: ERenderIndirectLightMode.ENGINE, steps: 3 });
     expect(toLevelModeFeature("indirectLight", SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.indirectLight);
     expect(toLevelModeFeature("indirectLight", SETTINGS, view)).toEqual({
       ...SETTINGS.indirectLight,
       intensity: 4,
       mode: ERenderIndirectLightMode.ENGINE,
+      steps: 3,
     });
     expect(toLevelFeatureOptions({ indirectLight: { mode: "radiosity" } }).indirectLight).toEqual({});
   });
@@ -217,7 +214,7 @@ describe("level feature options", () => {
 
   it("keeps the fog's, the sky debanding's, the glass's and the bloom's own modes and strengths, held to their bounds", () => {
     const view: ILevelFeatureOptions = toLevelFeatureOptions({
-      debanding: { mode: ERenderDebandingMode.ENGINE, quality: ERenderDebandingQuality.ULTRA, radius: 400 },
+      debanding: { mode: ERenderDebandingMode.ENGINE, passes: 9, radius: 400 },
       enhancedBloom: { lens: 2, mode: ERenderBloomMode.ENHANCED, threshold: 0.5 },
       fog: { density: 9, height: 6, mode: ERenderFogMode.ENGINE, steps: 3 },
       glass: { blur: 1, mode: ERenderGlassMode.ENGINE, refraction: 5 },
@@ -228,7 +225,7 @@ describe("level feature options", () => {
     expect(toLevelModeFeature("glass", SETTINGS, view)).toEqual({ mode: ERenderGlassMode.ENGINE, refraction: 2 });
     expect(view.debanding).toEqual({
       mode: ERenderDebandingMode.ENGINE,
-      quality: ERenderDebandingQuality.ULTRA,
+      passes: 4,
       radius: 128,
     });
     expect(view.enhancedBloom).toEqual({ mode: ERenderBloomMode.ENHANCED, threshold: 1 });

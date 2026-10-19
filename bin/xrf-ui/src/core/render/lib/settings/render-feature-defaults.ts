@@ -1,10 +1,8 @@
 import {
   ERenderAmbientOcclusionMethod,
-  ERenderAmbientOcclusionQuality,
   ERenderBloomMode,
   ERenderContactShadowMode,
   ERenderDebandingMode,
-  ERenderDebandingQuality,
   ERenderDlssPreset,
   ERenderFogMode,
   ERenderFoliageMode,
@@ -23,6 +21,8 @@ import {
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
 import {
+  TRenderAmbientOcclusionGtaoSettings,
+  TRenderAmbientOcclusionRtaoSettings,
   TRenderAmbientOcclusionSettings,
   TRenderAmbientOcclusionVbaoSettings,
   TRenderContactShadowSettings,
@@ -53,15 +53,29 @@ export const RENDER_SHADOW_CASCADE_WIDTHS: ReadonlyArray<number> = [20, 40, 160,
 const DEFAULT_RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS: TRenderAmbientOcclusionVbaoSettings = {
   accumulation: 8,
   bounce: 1,
+  slices: 1,
+  steps: 8,
   thickness: 0.25,
 };
 
-/** XeGTAO's defaults, at a metre, and VBAO's strengths for when it searches. */
+/** XeGTAO's High: three slices of three steps. */
+export const DEFAULT_RENDER_AMBIENT_OCCLUSION_GTAO_SETTINGS: TRenderAmbientOcclusionGtaoSettings = {
+  slices: 3,
+  steps: 3,
+};
+
+/** Four rays a point. */
+export const DEFAULT_RENDER_AMBIENT_OCCLUSION_RTAO_SETTINGS: TRenderAmbientOcclusionRtaoSettings = {
+  rays: 4,
+};
+
+/** XeGTAO's defaults, at a metre, and VBAO's and RTAO's searches for when they search. */
 export const DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS: TRenderAmbientOcclusionSettings = {
+  gtao: DEFAULT_RENDER_AMBIENT_OCCLUSION_GTAO_SETTINGS,
   isEnabled: true,
   method: ERenderAmbientOcclusionMethod.GTAO,
-  quality: ERenderAmbientOcclusionQuality.HIGH,
   radius: 1,
+  rtao: DEFAULT_RENDER_AMBIENT_OCCLUSION_RTAO_SETTINGS,
   strength: 1,
   vbao: DEFAULT_RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS,
 };
@@ -88,7 +102,7 @@ export const DEFAULT_RENDER_FOG_SETTINGS: TRenderFogSettings = {
 /** The sky as drawn, with the debanding's shipped strengths for when it is debanded: two passes out to 48 pixels. */
 export const DEFAULT_RENDER_DEBANDING_SETTINGS: TRenderDebandingSettings = {
   mode: ERenderDebandingMode.ENGINE,
-  quality: ERenderDebandingQuality.MEDIUM,
+  passes: 2,
   radius: 48,
 };
 
@@ -141,6 +155,7 @@ export const DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS: TRenderIndirectLightSetting
   intensity: 1,
   mode: ERenderIndirectLightMode.ENGINE,
   radius: 3,
+  steps: 2,
 };
 
 /**

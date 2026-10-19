@@ -1,11 +1,9 @@
 import {
   ERenderAmbientOcclusionMethod,
-  ERenderAmbientOcclusionQuality,
   ERenderAntialiasing,
   ERenderBloomMode,
   ERenderContactShadowMode,
   ERenderDebandingMode,
-  ERenderDebandingQuality,
   ERenderFogMode,
   ERenderFoliageMode,
   ERenderGlassMode,
@@ -63,8 +61,10 @@ const BASE_PRESET: IRenderFeatureSettings = {
   // VBAO over XeGTAO, which lets light through behind grass and fences.
   ambientOcclusion: {
     ...DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
+    gtao: { slices: 2, steps: 2 },
     method: ERenderAmbientOcclusionMethod.VBAO,
-    quality: ERenderAmbientOcclusionQuality.MEDIUM,
+    rtao: { rays: 2 },
+    vbao: { ...DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS.vbao, steps: 5 },
   },
   // The resolve the cut-outs' hashed alpha and the jitter are for.
   antialiasing: ERenderAntialiasing.TAA,
@@ -72,7 +72,7 @@ const BASE_PRESET: IRenderFeatureSettings = {
   debanding: {
     ...DEFAULT_RENDER_DEBANDING_SETTINGS,
     mode: ERenderDebandingMode.ENHANCED,
-    quality: ERenderDebandingQuality.LOW,
+    passes: 1,
   },
   enhancedBloom: { ...DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS, mode: ERenderBloomMode.ENHANCED },
   exposure: DEFAULT_RENDER_EXPOSURE_SETTINGS,
@@ -135,8 +135,14 @@ const BASE_PRESET: IRenderFeatureSettings = {
 /** The application's look at its best: every quality at its top step, short of ray reconstruction and traced occlusion. */
 const ENHANCED_PRESET: IRenderFeatureSettings = {
   ...BASE_PRESET,
-  ambientOcclusion: { ...BASE_PRESET.ambientOcclusion, quality: ERenderAmbientOcclusionQuality.ULTRA },
-  debanding: { ...BASE_PRESET.debanding, quality: ERenderDebandingQuality.ULTRA },
+  ambientOcclusion: {
+    ...BASE_PRESET.ambientOcclusion,
+    gtao: { slices: 6, steps: 3 },
+    rtao: { rays: 8 },
+    vbao: { ...BASE_PRESET.ambientOcclusion.vbao, slices: 2, steps: 8 },
+  },
+  debanding: { ...BASE_PRESET.debanding, passes: 4 },
+  indirectLight: { ...BASE_PRESET.indirectLight, steps: 4 },
   grass: { ...BASE_PRESET.grass, radius: 300, shadowRadius: 100 },
   parallax: { ...BASE_PRESET.parallax, steps: 32 },
   // Drops bending the scene behind them, their landings ringing the water and the puddles.

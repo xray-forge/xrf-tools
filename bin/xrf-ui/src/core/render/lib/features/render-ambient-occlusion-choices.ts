@@ -2,9 +2,8 @@ import { formatNumber, formatPercent } from "@xrf/format";
 
 import {
   ERenderAmbientOcclusionMethod,
-  ERenderAmbientOcclusionQuality,
   RenderAmbientOcclusionMethod,
-  RenderAmbientOcclusionQuality,
+  RenderAmbientOcclusionSettings,
 } from "@/core/ipc/types/xrf-renderer";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
@@ -12,7 +11,10 @@ import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-r
 
 /** The bounds each ambient occlusion value is offered between. */
 export const RENDER_AMBIENT_OCCLUSION_LIMITS = {
+  gtaoSlices: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.gtao.slices, 1),
+  gtaoSteps: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.gtao.steps, 1),
   radius: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.radius, 0.1),
+  rays: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.rtao.rays, 1),
   strength: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.strength, 0.1),
 } as const;
 
@@ -66,6 +68,8 @@ export const RENDER_AMBIENT_OCCLUSION_METHOD_UNTRACED_OPTIONS: ReadonlyArray<
 export const RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS = {
   accumulation: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.accumulation, 1),
   bounce: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.bounce, 0.05),
+  slices: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.slices, 1),
+  steps: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.steps, 1),
   thickness: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.thickness, 0.01),
 } as const;
 
@@ -94,25 +98,23 @@ export function formatOcclusionStrength(strength: number): string {
   return formatNumber(strength, 1);
 }
 
-const RENDER_AMBIENT_OCCLUSION_QUALITY_NAMES: Readonly<Record<RenderAmbientOcclusionQuality, string>> = {
-  [ERenderAmbientOcclusionQuality.LOW]: "Low",
-  [ERenderAmbientOcclusionQuality.MEDIUM]: "Medium",
-  [ERenderAmbientOcclusionQuality.HIGH]: "High",
-  [ERenderAmbientOcclusionQuality.ULTRA]: "Ultra",
-};
-
-/**
- * @param quality - An ambient occlusion quality.
- * @returns Its name as the settings say it.
- */
-export function describeRenderAmbientOcclusionQuality(quality: RenderAmbientOcclusionQuality): string {
-  return RENDER_AMBIENT_OCCLUSION_QUALITY_NAMES[quality];
+/** @returns How many slices, steps or rays a search takes. */
+export function formatOcclusionCount(count: number): string {
+  return formatNumber(count, 0);
 }
 
-/** The ambient occlusion qualities, in the order they are offered. */
-export const RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS: ReadonlyArray<
-  IChoiceFormRowOption<RenderAmbientOcclusionQuality>
-> = Object.values(ERenderAmbientOcclusionQuality).map((value: RenderAmbientOcclusionQuality) => ({
-  label: describeRenderAmbientOcclusionQuality(value),
-  value,
-}));
+/**
+ * @param occlusion - The ambient occlusion's settings.
+ * @returns How its method searches, in a few words: GTAO's and VBAO's slices by steps, RTAO's rays.
+ */
+export function describeRenderAmbientOcclusionSearch(
+  occlusion: Pick<RenderAmbientOcclusionSettings, "gtao" | "method" | "rtao" | "vbao">
+): string {
+  if (occlusion.method === ERenderAmbientOcclusionMethod.RTAO) {
+    return `${occlusion.rtao.rays} rays`;
+  }
+
+  const search = occlusion.method === ERenderAmbientOcclusionMethod.GTAO ? occlusion.gtao : occlusion.vbao;
+
+  return `${search.slices} × ${search.steps} steps`;
+}

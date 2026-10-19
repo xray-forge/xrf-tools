@@ -23,6 +23,9 @@ pub struct AmbientOcclusionUniform {
   pub spread: f32,
   /// Pixels of the search target a horizon is searched across at most.
   pub reach: f32,
+  /// The slices turned about a pixel, and the steps each way along each.
+  pub slices: u32,
+  pub steps: u32,
 }
 
 impl AmbientOcclusionUniform {
@@ -34,6 +37,8 @@ impl AmbientOcclusionUniform {
       // Clip x over view x at a metre is the projection's first element.
       spread: 2.0 / (projection.x_axis.x * width.max(1) as f32),
       reach: (height as f32 * MAX_REACH).max(1.0),
+      slices: settings.gtao.get_slices(),
+      steps: settings.gtao.get_steps(),
     }
   }
 }

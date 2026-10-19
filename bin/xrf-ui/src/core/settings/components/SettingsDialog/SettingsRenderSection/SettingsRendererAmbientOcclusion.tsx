@@ -1,23 +1,22 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { RenderAmbientOcclusionQuality } from "@/core/ipc/types/xrf-renderer";
 import {
+  formatOcclusionCount,
   formatOcclusionRadius,
   formatOcclusionStrength,
   RENDER_AMBIENT_OCCLUSION_LIMITS,
-  RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS,
+  RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS,
 } from "@/core/render/lib/features/render-ambient-occlusion-choices";
 import { TRenderAmbientOcclusionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 import { useRendererOverride } from "./use-renderer-override";
 
-/** The screen's ambient occlusion: whether it is drawn, how far it reaches, how dark and how fine. */
+/** The screen's ambient occlusion: whether it is drawn, how far it reaches, how dark, and each method's search. */
 export function SettingsRendererAmbientOcclusion(): ReactElement {
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
@@ -40,14 +39,6 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
           onChange={(isEnabled: boolean) => onSet({ isEnabled })}
         />
 
-        <ChoiceFormRow
-          label={"Quality"}
-          description={"Samples per pixel. Higher is smoother and more expensive."}
-          options={RENDER_AMBIENT_OCCLUSION_QUALITY_OPTIONS}
-          value={occlusion.quality}
-          onChange={(quality: RenderAmbientOcclusionQuality) => onSet({ quality })}
-        />
-
         <SliderFormRow
           label={"Radius"}
           description={"Occlusion radius in metres."}
@@ -64,6 +55,51 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
           {...RENDER_AMBIENT_OCCLUSION_LIMITS.strength}
           format={formatOcclusionStrength}
           onChange={(strength: number) => onSet({ strength })}
+        />
+
+        <SliderFormRow
+          label={"GTAO slices"}
+          description={"Directions GTAO searches about a pixel for its horizons."}
+          value={occlusion.gtao.slices}
+          {...RENDER_AMBIENT_OCCLUSION_LIMITS.gtaoSlices}
+          format={formatOcclusionCount}
+          onChange={(slices: number) => onSet({ gtao: { ...occlusion.gtao, slices } })}
+        />
+
+        <SliderFormRow
+          label={"GTAO steps"}
+          description={"Steps each way along each of GTAO's slices."}
+          value={occlusion.gtao.steps}
+          {...RENDER_AMBIENT_OCCLUSION_LIMITS.gtaoSteps}
+          format={formatOcclusionCount}
+          onChange={(steps: number) => onSet({ gtao: { ...occlusion.gtao, steps } })}
+        />
+
+        <SliderFormRow
+          label={"VBAO slices"}
+          description={"Directions VBAO searches about a pixel, its visibility bitmask's."}
+          value={occlusion.vbao.slices}
+          {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.slices}
+          format={formatOcclusionCount}
+          onChange={(slices: number) => onSet({ vbao: { ...occlusion.vbao, slices } })}
+        />
+
+        <SliderFormRow
+          label={"VBAO steps"}
+          description={"Steps along each of VBAO's slices."}
+          value={occlusion.vbao.steps}
+          {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.steps}
+          format={formatOcclusionCount}
+          onChange={(steps: number) => onSet({ vbao: { ...occlusion.vbao, steps } })}
+        />
+
+        <SliderFormRow
+          label={"RTAO rays"}
+          description={"Rays RTAO traces from each point a frame, on a GPU that traces rays."}
+          value={occlusion.rtao.rays}
+          {...RENDER_AMBIENT_OCCLUSION_LIMITS.rays}
+          format={formatOcclusionCount}
+          onChange={(rays: number) => onSet({ rtao: { rays } })}
         />
       </div>
     </DetailSection>

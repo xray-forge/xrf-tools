@@ -10,10 +10,10 @@ import {
 } from "@/core/ipc/types/xrf-renderer";
 import {
   describeRenderAmbientOcclusionMethod,
-  describeRenderAmbientOcclusionQuality,
+  describeRenderAmbientOcclusionSearch,
 } from "@/core/render/lib/features/render-ambient-occlusion-choices";
 import { describeRenderAntialiasing } from "@/core/render/lib/features/render-antialiasing-choices";
-import { describeRenderDebandingQuality } from "@/core/render/lib/features/render-debanding-choices";
+import { formatDebandingPasses } from "@/core/render/lib/features/render-debanding-choices";
 import { formatFogDensity, formatFogHeight, formatFogShare } from "@/core/render/lib/features/render-fog-choices";
 import { formatGrassDensity, formatGrassRadius } from "@/core/render/lib/features/render-grass-choices";
 import { formatIndirectLightIntensity } from "@/core/render/lib/features/render-indirect-light-choices";
@@ -94,9 +94,7 @@ export function LevelRendererAppliedSection({
         />
         <EditorPanelProperty
           label={"Sky debanding"}
-          value={
-            applied.debanding ? `${describeRenderDebandingQuality(applied.debanding)} quality` : "The sky as drawn"
-          }
+          value={applied.debanding ? formatDebandingPasses(applied.debanding) : "The sky as drawn"}
         />
       </EditorPanelSection>
 
@@ -109,7 +107,7 @@ export function LevelRendererAppliedSection({
                   applied.ambientOcclusionMethod
                     ? describeRenderAmbientOcclusionMethod(applied.ambientOcclusionMethod)
                     : null,
-                  describeRenderAmbientOcclusionQuality(applied.ambientOcclusion),
+                  describeRenderAmbientOcclusionSearch(applied.ambientOcclusion),
                 ]
                   .filter((it): it is string => it !== null)
                   .join(", ")

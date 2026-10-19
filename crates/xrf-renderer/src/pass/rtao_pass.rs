@@ -2,11 +2,9 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext};
 
 use crate::context::gpu_requirements::can_trace;
-use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_with;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::rtao_permutation::RtaoPermutation;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::vbao_parameters::VbaoParameters;
 use crate::pass::view_binding::ViewBinding;
@@ -20,8 +18,8 @@ pub struct RtaoPass {
   view_layout: wgpu::BindGroupLayout,
   /// The search's, the trace's and the texture cache's layouts, on a device with ray queries.
   layouts: Option<[wgpu::BindGroupLayout; 3]>,
-  /// A pipeline a quality, on a device with ray queries.
-  pipelines: Vec<wgpu::RenderPipeline>,
+  /// The trace, its rays the uniform's, on a device with ray queries.
+  pipeline: Option<wgpu::RenderPipeline>,
   generation: u64,
 }
 
@@ -29,6 +27,8 @@ impl RtaoPass {
   /// Where the pass binds the trace's group, and the texture cache's after it.
   const TRACE_GROUP: u32 = 3;
   const TEXTURE_GROUP: u32 = 4;
+  /// The module its pipeline is made from.
+  const MODULE: &'static str = "frame/rtao";
 
   /// # Errors
   ///
@@ -49,7 +49,7 @@ impl RtaoPass {
     });
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, view_layout, layouts.as_ref())?,
+      pipeline: Self::create_pipelines(source, view_layout, layouts.as_ref())?,
       view_layout: view_layout.clone(),
       layouts,
       generation: source.get_generation(),
@@ -63,22 +63,20 @@ impl RtaoPass {
       self.generation = source.get_generation();
 
       match Self::create_pipelines(source, &self.view_layout, self.layouts.as_ref()) {
-        Ok(pipelines) => self.pipelines = pipelines,
+        Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("RTAO rejected, tracing with the last one: {error}"),
       }
     }
   }
 
-  /// Traces the frame's points at `quality` into the target the pass draws into.
+  /// Traces the frame's points into the target the pass draws into, as many rays a point as the uniform says.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
-    quality: RenderAmbientOcclusionQuality,
     view: &ViewBinding,
     (parameters, trace, textures): (&VbaoParameters, &TraceParameters<'_>, &wgpu::BindGroup),
   ) {
-    // One pipeline a quality in `RenderAmbientOcclusionQuality::ALL` order.
-    let Some(pipeline) = self.pipelines.get(quality.get_index()) else {
+    let Some(pipeline) = &self.pipeline else {
       return;
     };
 
@@ -97,9 +95,9 @@ impl RtaoPass {
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layouts: Option<&[wgpu::BindGroupLayout; 3]>,
-  ) -> XrfResult<Vec<wgpu::RenderPipeline>> {
+  ) -> XrfResult<Option<wgpu::RenderPipeline>> {
     let Some([search_layout, trace_layout, texture_layout]) = layouts else {
-      return Ok(Vec::new());
+      return Ok(None);
     };
     let mut groups: [Option<&wgpu::BindGroupLayout>; 5] = [None; 5];
 
@@ -110,22 +108,6 @@ impl RtaoPass {
 
     let targets: [Option<wgpu::ColorTargetState>; 1] = [Some(ViewTargets::OCCLUSION.into())];
 
-    RenderAmbientOcclusionQuality::ALL
-      .into_iter()
-      .map(|quality| {
-        create_fullscreen_pipeline_with(
-          source,
-          (
-            RtaoPermutation::MODULE,
-            "fs_rtao",
-            &RtaoPermutation {
-              rays: quality.get_rtao_rays(),
-            },
-          ),
-          &groups,
-          &targets,
-        )
-      })
-      .collect()
+    create_fullscreen_pipeline_into(source, Self::MODULE, "fs_rtao", &groups, &targets).map(Some)
   }
 }

@@ -6,7 +6,6 @@ use xrf_renderer_core::{
 };
 
 use crate::context::gpu_requirements::can_trace;
-use crate::contract::render_ambient_occlusion_quality::RenderAmbientOcclusionQuality;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -32,7 +31,6 @@ use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
 #[derive(Default)]
 pub struct BitmaskFeature {
   search: Option<BitmaskSearch>,
-  quality: RenderAmbientOcclusionQuality,
   indirect_light: RenderIndirectLightSettings,
   uniform: VbaoUniform,
   /// Visibility, distance along the view and frames gathered, while it accumulates.
@@ -52,7 +50,6 @@ impl BitmaskFeature {
 
     self.search = BitmaskSearch::new(options, can_trace(device));
     self.written.set([false; 2]);
-    self.quality = settings.quality;
     self.indirect_light = options.features.indirect_light;
 
     let is_lit: bool = self.search.is_some_and(|search| search.is_lit);
@@ -99,9 +96,13 @@ impl BitmaskFeature {
     self.uniform = VbaoUniform::new(
       &settings,
       if is_lit {
-        (self.indirect_light.intensity, self.indirect_light.radius)
+        (
+          self.indirect_light.intensity,
+          self.indirect_light.radius,
+          self.indirect_light.get_steps(),
+        )
       } else {
-        (0.0, 0.0)
+        (0.0, 0.0, 0)
       },
       projection,
       size,
@@ -150,7 +151,6 @@ impl BitmaskFeature {
       return None;
     }
 
-    let quality: RenderAmbientOcclusionQuality = self.quality;
     let names: BitmaskPassNames = search.get_names();
     let is_lit: bool = search.is_lit;
     let occlusion: UniformBinding<VbaoUniform> = runtime.push_uniform(&self.uniform);
@@ -228,11 +228,11 @@ impl BitmaskFeature {
             .color(clear(search_visibility)),
           |builder, light| builder.color(clear(light)),
         )
-        .record(move |context| passes.vbao.record_search(context, (quality, is_lit), view, &searching));
+        .record(move |context| passes.vbao.record_search(context, is_lit, view, &searching));
     }
 
     if let Some(trace) = trace {
-      Self::add_trace_pass(graph, passes, view, (base, trace, quality), searched);
+      Self::add_trace_pass(graph, passes, view, (base, trace), searched);
     }
 
     self.add_gather_passes(
@@ -251,11 +251,7 @@ impl BitmaskFeature {
     graph: &mut FrameGraph<'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    (base, (trace, textures), quality): (
-      VbaoParameters,
-      (TraceParameters<'a>, &'a wgpu::BindGroup),
-      RenderAmbientOcclusionQuality,
-    ),
+    (base, (trace, textures)): (VbaoParameters, (TraceParameters<'a>, &'a wgpu::BindGroup)),
     searched: GraphTexture,
   ) {
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
@@ -266,7 +262,7 @@ impl BitmaskFeature {
       .parameters(&tracing)
       .parameters(&trace)
       .color(clear(searched))
-      .record(move |context| passes.rtao.record(context, quality, view, (&tracing, &trace, textures)));
+      .record(move |context| passes.rtao.record(context, view, (&tracing, &trace, textures)));
   }
 
   /// Accumulates the search with the last frame's into its histories while it accumulates, then filters it into the

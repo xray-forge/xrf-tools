@@ -1,11 +1,9 @@
 import {
   ERenderAmbientOcclusionMethod,
-  ERenderAmbientOcclusionQuality,
   ERenderAntialiasing,
   ERenderBloomMode,
   ERenderContactShadowMode,
   ERenderDebandingMode,
-  ERenderDebandingQuality,
   ERenderDlssPreset,
   ERenderFogMode,
   ERenderFoliageMode,
@@ -55,14 +53,23 @@ function toChoice<T extends string>(values: Record<string, T>): IRenderChoiceFie
 export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings> = {
   ambientOcclusion: {
     isEnabled: FLAG,
+    // Each method's search within its settings' own ranges (`RenderAmbientOcclusionGtaoSettings` and the rest).
+    gtao: {
+      slices: toNumber(1, 9, true),
+      steps: toNumber(1, 6, true),
+    },
     method: toChoice(ERenderAmbientOcclusionMethod),
-    quality: toChoice(ERenderAmbientOcclusionQuality),
     radius: toNumber(0.1, 8),
+    rtao: {
+      rays: toNumber(1, 8, true),
+    },
     strength: toNumber(0, 2),
     // The renderer's own: past two metres a thickness lets nothing through that a horizon would not.
     vbao: {
       accumulation: toNumber(1, RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION, true),
       bounce: toNumber(0, 1),
+      slices: toNumber(1, 4, true),
+      steps: toNumber(2, 16, true),
       thickness: toNumber(0.01, 2),
     },
   },
@@ -70,7 +77,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   // The renderer's own: from a few pixels to well past the shipped 48, where neighbours stop sharing a band.
   debanding: {
     mode: toChoice(ERenderDebandingMode),
-    quality: toChoice(ERenderDebandingQuality),
+    passes: toNumber(1, 4, true),
     radius: toNumber(8, 128),
   },
   // The enhanced bloom's own menu bounds.
@@ -139,6 +146,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     intensity: toNumber(0, 4),
     mode: toChoice(ERenderIndirectLightMode),
     radius: toNumber(0.5, 8),
+    steps: toNumber(1, 8, true),
   },
   isOcclusionCulled: FLAG,
   // The renderer's own: puddles from none to nearly every site at two, a puddle's reflection at most a mirror's, the
