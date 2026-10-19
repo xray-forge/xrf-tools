@@ -787,7 +787,6 @@ impl SceneView {
       targets,
       BitmaskTracing {
         traced,
-        is_reconstructed: self.features.resolve.is_ray_reconstructed(),
         is_light_traced: self.features.indirect_trace.is_traced(traced.is_some()),
       },
     );

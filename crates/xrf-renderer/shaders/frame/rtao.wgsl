@@ -92,16 +92,3 @@ fn fs_rtao(in: FullscreenVarying) -> @location(0) vec4<f32> {
   return trace_occlusion(in.clip.xy);
 }
 
-// Raw: what the trace found, which the light's accumulation measures its history by, and what combine reads, through
-// the strength's power as the filter would give it, its noise left to DLSS ray reconstruction.
-struct RawTargets {
-  @location(0) searched: vec4<f32>,
-  @location(1) shown: vec4<f32>,
-};
-
-@fragment
-fn fs_rtao_raw(in: FullscreenVarying) -> RawTargets {
-  let traced: vec4<f32> = trace_occlusion(in.clip.xy);
-
-  return RawTargets(traced, vec4<f32>(pow(max(traced.x, 1e-4), occlusion.power), traced.yzw));
-}

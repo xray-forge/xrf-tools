@@ -136,7 +136,6 @@ impl BitmaskFeature {
   ) -> Option<GraphTexture> {
     let BitmaskTracing {
       traced,
-      is_reconstructed,
       is_light_traced,
     } = tracing;
     let asked: BitmaskSearch = self.search?;
@@ -151,8 +150,6 @@ impl BitmaskFeature {
       return None;
     }
 
-    // Raw: DLSS ray reconstruction denoises the traced occlusion in the frame, so combine reads it as traced.
-    let is_raw: bool = trace.is_some() && is_reconstructed;
     let quality: RenderAmbientOcclusionQuality = self.quality;
     let names: BitmaskPassNames = search.get_names();
     let is_lit: bool = search.is_lit;
@@ -201,13 +198,6 @@ impl BitmaskFeature {
     } else {
       searched
     };
-    // Raw, the filter's occlusion goes unread, the light alone filtered for combine.
-    let filtered_occlusion: GraphTexture = if is_raw {
-      create("rtao filtered unread", ViewTargets::OCCLUSION)
-    } else {
-      filtered
-    };
-
     let laying: VbaoParameters = VbaoParameters { points: empty, ..base };
 
     graph
@@ -242,18 +232,7 @@ impl BitmaskFeature {
     }
 
     if let Some(trace) = trace {
-      Self::add_trace_pass(
-        graph,
-        passes,
-        view,
-        (base, trace, quality),
-        (searched, filtered, is_raw),
-      );
-    }
-
-    // Raw and gathering no light, nothing is left to accumulate or filter.
-    if is_raw && !is_lit {
-      return None;
+      Self::add_trace_pass(graph, passes, view, (base, trace, quality), searched);
     }
 
     self.add_gather_passes(
@@ -261,14 +240,13 @@ impl BitmaskFeature {
       passes,
       view,
       (base, search, names),
-      (searched, filtered_occlusion, lit_searched, lit_filtered),
+      (searched, filtered, lit_searched, lit_filtered),
     );
 
     lit_filtered
   }
 
-  /// Traces the occlusion through the scene's trace (`trace`, its textures bound beside) into `searched`; raw, beside
-  /// it into `filtered`, which combine reads.
+  /// Traces the occlusion through the scene's trace (`trace`, its textures bound beside) into `searched`.
   fn add_trace_pass<'a>(
     graph: &mut FrameGraph<'a>,
     passes: LevelPasses<'a>,
@@ -278,28 +256,17 @@ impl BitmaskFeature {
       (TraceParameters<'a>, &'a wgpu::BindGroup),
       RenderAmbientOcclusionQuality,
     ),
-    (searched, filtered, is_raw): (GraphTexture, GraphTexture, bool),
+    searched: GraphTexture,
   ) {
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
     let tracing: VbaoParameters = base;
 
-    // Raw, the trace writes what combine reads beside what the light's accumulation measures its history by.
-    is_raw
-      .then_some(filtered)
-      .into_iter()
-      .fold(
-        graph
-          .add_raster_pass(BitmaskSearch::TRACE_PASS)
-          .parameters(&tracing)
-          .parameters(&trace)
-          .color(clear(searched)),
-        |builder, shown| builder.color(clear(shown)),
-      )
-      .record(move |context| {
-        passes
-          .rtao
-          .record(context, (quality, is_raw), view, (&tracing, &trace, textures))
-      });
+    graph
+      .add_raster_pass(BitmaskSearch::TRACE_PASS)
+      .parameters(&tracing)
+      .parameters(&trace)
+      .color(clear(searched))
+      .record(move |context| passes.rtao.record(context, quality, view, (&tracing, &trace, textures)));
   }
 
   /// Accumulates the search with the last frame's into its histories while it accumulates, then filters it into the

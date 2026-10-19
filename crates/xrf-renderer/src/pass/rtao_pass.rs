@@ -13,21 +13,19 @@ use crate::pass::view_binding::ViewBinding;
 
 /// RTAO at half the frame's size: a few short rays from each point, cosine-weighted about its normal, traced against
 /// the level's geometry by hardware ray query (`frame/rtao`), their unblocked share written as the bitmask search
-/// writes its visibility, for its accumulation and filter; or raw, one ray a point, straight into what combine reads,
-/// where DLSS ray reconstruction denoises it. Nothing traces on a device without ray queries.
+/// writes its visibility, for its accumulation and filter, under DLSS ray reconstruction too: a ray or few a point
+/// multiplied straight into the frame are not a signal it reconstructs, and left dotted the frame. Nothing traces on a
+/// device without ray queries.
 pub struct RtaoPass {
   view_layout: wgpu::BindGroupLayout,
   /// The search's, the trace's and the texture cache's layouts, on a device with ray queries.
   layouts: Option<[wgpu::BindGroupLayout; 3]>,
-  /// A pipeline a quality, then the raw one, on a device with ray queries.
+  /// A pipeline a quality, on a device with ray queries.
   pipelines: Vec<wgpu::RenderPipeline>,
   generation: u64,
 }
 
 impl RtaoPass {
-  /// Rays a point casts raw: DLSS ray reconstruction takes one's noise out as well as more.
-  pub const RAW_RAYS: u32 = 1;
-
   /// Where the pass binds the trace's group, and the texture cache's after it.
   const TRACE_GROUP: u32 = 3;
   const TEXTURE_GROUP: u32 = 4;
@@ -71,22 +69,16 @@ impl RtaoPass {
     }
   }
 
-  /// Traces the frame's points at `quality` into the target the pass draws into; raw, at `RAW_RAYS` whatever the
-  /// quality, into what combine reads beside it.
+  /// Traces the frame's points at `quality` into the target the pass draws into.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
-    (quality, is_raw): (RenderAmbientOcclusionQuality, bool),
+    quality: RenderAmbientOcclusionQuality,
     view: &ViewBinding,
     (parameters, trace, textures): (&VbaoParameters, &TraceParameters<'_>, &wgpu::BindGroup),
   ) {
-    // One pipeline a quality in `RenderAmbientOcclusionQuality::ALL` order, then the raw one.
-    let index: usize = if is_raw {
-      RenderAmbientOcclusionQuality::ALL.len()
-    } else {
-      quality.get_index()
-    };
-    let Some(pipeline) = self.pipelines.get(index) else {
+    // One pipeline a quality in `RenderAmbientOcclusionQuality::ALL` order.
+    let Some(pipeline) = self.pipelines.get(quality.get_index()) else {
       return;
     };
 
@@ -116,25 +108,22 @@ impl RtaoPass {
     groups[Self::TRACE_GROUP as usize] = Some(trace_layout);
     groups[Self::TEXTURE_GROUP as usize] = Some(texture_layout);
 
-    let raw_targets: [Option<wgpu::ColorTargetState>; 2] =
-      [Some(ViewTargets::OCCLUSION.into()), Some(ViewTargets::OCCLUSION.into())];
+    let targets: [Option<wgpu::ColorTargetState>; 1] = [Some(ViewTargets::OCCLUSION.into())];
 
     RenderAmbientOcclusionQuality::ALL
-      .map(|quality| (quality.get_rtao_rays(), false))
       .into_iter()
-      .chain([(Self::RAW_RAYS, true)])
-      .map(|(rays, is_raw)| {
-        let (entry, targets): (&'static str, &[Option<wgpu::ColorTargetState>]) = if is_raw {
-          ("fs_rtao_raw", &raw_targets)
-        } else {
-          ("fs_rtao", &raw_targets[..1])
-        };
-
+      .map(|quality| {
         create_fullscreen_pipeline_with(
           source,
-          (RtaoPermutation::MODULE, entry, &RtaoPermutation { rays }),
+          (
+            RtaoPermutation::MODULE,
+            "fs_rtao",
+            &RtaoPermutation {
+              rays: quality.get_rtao_rays(),
+            },
+          ),
           &groups,
-          targets,
+          &targets,
         )
       })
       .collect()
