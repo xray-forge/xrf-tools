@@ -31,6 +31,7 @@ use crate::scene::level::shadow_cascade_view::ShadowCascadeView;
 use crate::scene::level::shadow_cut::ShadowCut;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_prefetch::ShadowPrefetch;
+use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
@@ -57,6 +58,12 @@ static GRASS_PASSES: [&str; RENDER_MAX_SHADOW_CASCADES] = [
   "sun shadow grass 2",
   "sun shadow grass 3",
 ];
+static KEPT_PASSES: [[&str; 2]; RENDER_MAX_SHADOW_CASCADES] = [
+  ["sun shadow kept 0", "sun shadow grass 0"],
+  ["sun shadow kept 1", "sun shadow grass 1"],
+  ["sun shadow kept 2", "sun shadow grass 2"],
+  ["sun shadow kept 3", "sun shadow grass 3"],
+];
 static BAND_PASSES: [[&str; 1]; RENDER_MAX_SHADOW_CASCADES] = [
   ["sun shadow band 0"],
   ["sun shadow band 1"],
@@ -68,6 +75,10 @@ static BAND_PASSES: [[&str; 1]; RENDER_MAX_SHADOW_CASCADES] = [
 /// trees over its static layer's copy.
 const WHOLE_SEEDS: [f32; RENDER_MAX_SHADOW_CASCADES] = [0.35, 0.45, 0.7, 1.0];
 const SWAY_SEEDS: [f32; RENDER_MAX_SHADOW_CASCADES] = [0.12, 0.15, 0.25, 0.35];
+/// Milliseconds a kept layer's copy with the grass over it costs before the timer measured one.
+const KEPT_SEED: f32 = 0.15;
+/// Sway intervals a kept cascade's trees wait at most for another's redraw this frame.
+const TREES_WAIT_MOST: f32 = 2.0;
 
 /// Metres the grass stands at most over the ground, which the cards' reach is sampled past.
 const GRASS_STANDING: f32 = 3.0;
@@ -107,6 +118,8 @@ enum CascadeDraw {
   Static,
   /// Its static layer copied into its map, the trees over it.
   Swaying,
+  /// Its kept layer copied into its map, the grass over it: the trees as last drawn, waiting their turn.
+  Kept,
 }
 
 /// A cascade's draw offered this frame: which, its ticket, how it would be drawn, the fit it is drawn at, and what the
@@ -127,6 +140,9 @@ pub struct LevelShadows {
   maps: Option<SunShadowMaps>,
   /// The cascades' static layers, while any cascade is drawn and the trees sway.
   statics: Option<SunShadowMaps>,
+  /// The grass's cascades' kept layers, while the grass casts: each its static layer with the trees over it as last
+  /// drawn, which the grass is drawn over every frame while the trees redraw at their own interval.
+  kept: Option<SunShadowMaps>,
   values: ShadowUniform,
   cascades: Vec<ShadowCascadeView>,
   /// The cascades' draws offered this frame, and their bands drawn ahead, by cascade.
@@ -169,6 +185,7 @@ impl LevelShadows {
     } else if self.maps.as_ref().is_none_or(|maps| maps.resolution != resolution) {
       self.maps = Some(SunShadowMaps::new(device, resolution));
       self.statics = None;
+      self.kept = None;
 
       for (index, cascade) in self.cascades.iter_mut().enumerate() {
         cascade.drawn = None;
@@ -222,6 +239,20 @@ impl LevelShadows {
       _ => {}
     }
 
+    match (&self.maps, self.statics.is_some() && frame.grass_reach.is_some()) {
+      (Some(maps), true) if self.kept.is_none() => {
+        self.kept = Some(SunShadowMaps::new_kept(device, maps.resolution, GRASS_CASCADES as u32));
+      }
+      (_, false) if self.kept.is_some() => {
+        self.kept = None;
+
+        for cascade in &mut self.cascades {
+          cascade.is_kept = false;
+        }
+      }
+      _ => {}
+    }
+
     // A sun of no colour lights nothing its shadow could take away: no cascade is drawn, the maps keeping their last.
     if count > 0 && frame.is_sunlit {
       self.offer_cascades(device, view_layout, frame, count, scheduler);
@@ -254,6 +285,10 @@ impl LevelShadows {
       .statics
       .as_ref()
       .map(|statics| bindings.import_view(&mut *graph, "sun static shadow maps", &statics.view));
+    let kept: Option<GraphTexture> = self
+      .kept
+      .as_ref()
+      .map(|kept| bindings.import_view(&mut *graph, "sun kept shadow maps", &kept.view));
     let mut import = |cut: &'a ShadowCut| -> (&'a ShadowCut, GraphBuffer, StaticCullParameters, StaticLayouts) {
       let args: GraphBuffer = bindings.import_buffer(graph, "sun shadow draw arguments", &cut.args);
       let lists: GraphBuffer = bindings.import_buffer(graph, "sun shadow lists", cut.get_lists());
@@ -275,8 +310,10 @@ impl LevelShadows {
       .iter()
       .filter_map(|&(index, band, layer)| Some((index, band, layer, import(self.cascades[index].band.as_ref()?))))
       .collect();
+    // A kept layer's copy draws no caster, so its cascade needs no lists.
     let culls: Vec<(&'a ViewBinding, StaticCullParameters)> = due
       .iter()
+      .filter(|(_, draw, _)| *draw != CascadeDraw::Kept)
       .map(|(.., (cut, _, cull, _))| (&cut.view, *cull))
       .chain(bands.iter().map(|(.., (cut, _, cull, _))| (&cut.view, *cull)))
       .collect();
@@ -317,9 +354,21 @@ impl LevelShadows {
         });
       };
 
-      match (draw, statics) {
-        (CascadeDraw::Static | CascadeDraw::Swaying, Some(statics)) => {
+      let has_grass: bool = self.grass_cascades[index];
+
+      match (draw, statics, kept) {
+        (CascadeDraw::Kept, _, Some(kept)) => {
+          Self::add_layer_copy(&mut *graph, KEPT_PASSES[index][0], (kept, maps), (layer, layer));
+
+          if let Some(grass) = grass.filter(|_| has_grass) {
+            grass.add_pass(&mut *graph, GRASS_PASSES[index], (maps, layer), &cut.view);
+          }
+        }
+        (CascadeDraw::Static | CascadeDraw::Swaying, Some(statics), kept) => {
           let [static_pass, copy_pass, sway_pass] = STATIC_PASSES[index];
+          // Where the grass casts, the trees go into the kept layer, which later frames copy in under the grass alone.
+          let kept: Option<GraphTexture> = kept.filter(|_| has_grass);
+          let (target, target_layer): (GraphTexture, u32) = (kept.unwrap_or(maps), layer);
 
           if draw == CascadeDraw::Static {
             draw_casters(
@@ -330,15 +379,19 @@ impl LevelShadows {
             );
           }
 
-          Self::add_layer_copy(&mut *graph, copy_pass, (statics, maps), (static_layer, layer));
+          Self::add_layer_copy(&mut *graph, copy_pass, (statics, target), (static_layer, target_layer));
           draw_casters(
             &mut *graph,
             sway_pass,
-            (maps, layer, wgpu::LoadOp::Load),
+            (target, target_layer, wgpu::LoadOp::Load),
             ShadowCasters::Swaying,
           );
 
-          if let Some(grass) = grass.filter(|_| self.grass_cascades[index]) {
+          if let Some(kept) = kept {
+            Self::add_layer_copy(&mut *graph, KEPT_PASSES[index][0], (kept, maps), (target_layer, layer));
+          }
+
+          if let Some(grass) = grass.filter(|_| has_grass) {
             grass.add_pass(&mut *graph, GRASS_PASSES[index], (maps, layer), &cut.view);
           }
         }
@@ -418,11 +471,16 @@ impl LevelShadows {
 
       self.due.push((offer.index, offer.draw));
       cascade.drawn = Some((offer.fit.version, offer.contents));
-      cascade.drawn_at = frame.sway.time;
+      // A kept layer's copy shows the trees as last drawn, so their interval runs on from that draw.
+      if offer.draw != CascadeDraw::Kept {
+        cascade.drawn_at = frame.sway.time;
+      }
+
       cascade.drawn_fit = offer.fit;
       cascade.waited = 0;
       cascade.is_swapped = false;
       cascade.has_drawn_grass = offer.draw != CascadeDraw::Whole && self.grass_cascades[offer.index];
+      cascade.is_kept = offer.draw != CascadeDraw::Whole && self.grass_cascades[offer.index] && self.kept.is_some();
 
       if offer.draw == CascadeDraw::Static {
         cascade.drawn_static = Some((offer.fit.version, offer.contents));
@@ -476,6 +534,7 @@ impl LevelShadows {
     for (index, _) in std::mem::take(&mut self.due) {
       self.cascades[index].drawn = None;
       self.cascades[index].drawn_static = None;
+      self.cascades[index].is_kept = false;
     }
 
     for (index, ..) in std::mem::take(&mut self.bands) {
@@ -516,6 +575,8 @@ impl LevelShadows {
       .into_iter()
       .map(|point| (point, None))
       .collect();
+    // Whether a kept cascade already redraws its trees this frame: the others wait theirs, so the redraws spread.
+    let mut is_trees_taken: bool = false;
 
     for (index, cascade) in self.cascades.iter_mut().take(count).enumerate() {
       let width: f32 = frame.settings.get_cascade_width(index);
@@ -548,9 +609,13 @@ impl LevelShadows {
 
       self.grass_cascades[index] = has_grass;
       Self::swap_prefetched(index, cascade);
-      self
-        .offers
-        .extend(Self::offer_split(index, cascade, frame, has_grass, scheduler));
+      self.offers.extend(Self::offer_split(
+        index,
+        cascade,
+        frame,
+        (has_grass, &mut is_trees_taken),
+        scheduler,
+      ));
 
       if index >= BANDED_FROM {
         cascade
@@ -603,12 +668,15 @@ impl LevelShadows {
   /// its static layer, at the fit that layer was drawn at, while the cascade's fit holds by it and nothing changed
   /// under it (the nearest cascade's only while its fit is the same); else a new static layer at the cascade's fit. One
   /// the grass casts into (`has_grass`) draws every frame, at once: the grass sways every frame, and a shadow drawn at
-  /// the sway's interval would trail the blades drawn over it wherever the frame rate passes it.
+  /// the sway's interval would trail the blades drawn over it wherever the frame rate passes it. Its trees still wait
+  /// their interval: between their draws it copies in its kept layer and draws the grass alone over it, and while
+  /// another kept cascade redraws its trees this frame (`is_trees_taken`) one whose trees are due for the sway alone
+  /// waits a frame, up to `TREES_WAIT_MOST` intervals, so the redraws spread over frames rather than piling into one.
   fn offer_split(
     index: usize,
     cascade: &mut ShadowCascadeView,
     frame: &ShadowFrame<'_>,
-    has_grass: bool,
+    (has_grass, is_trees_taken): (bool, &mut bool),
     scheduler: &mut PeriodicScheduler,
   ) -> Option<CascadeOffer> {
     let scene = frame.scene;
@@ -625,12 +693,28 @@ impl LevelShadows {
 
       is_fit && !scene.is_changed_since(contents, |sphere| frustum.reaches(sphere))
     });
-    let is_wanted: bool = cascade.drawn.is_none()
-      || !is_held
-      || cascade.is_swapped
-      || frame.sway.is_redrawn(frame.sway.reach, current.texel, cascade.drawn_at)
-      || has_grass
-      || cascade.has_drawn_grass;
+    let is_stale: bool = cascade.drawn.is_none() || !is_held || cascade.is_swapped;
+    let is_swayed: bool = frame.sway.is_redrawn(frame.sway.reach, current.texel, cascade.drawn_at);
+    let is_kept: bool = has_grass && cascade.is_kept;
+    let can_wait: bool = frame.sway.time - cascade.drawn_at < ShadowSway::INTERVAL * TREES_WAIT_MOST;
+    let is_trees_due: bool = is_stale || (is_swayed && !(is_kept && *is_trees_taken && can_wait));
+
+    if is_kept && is_trees_due {
+      *is_trees_taken = true;
+    }
+
+    if is_kept && !is_trees_due {
+      return Some(Self::offer(
+        index,
+        cascade,
+        frame,
+        scheduler,
+        (CascadeDraw::Kept, cascade.drawn_fit),
+        true,
+      ));
+    }
+
+    let is_wanted: bool = is_trees_due || has_grass || cascade.has_drawn_grass;
 
     if !is_wanted {
       cascade.waited = 0;
@@ -668,6 +752,7 @@ impl LevelShadows {
       CascadeDraw::Whole => (&WHOLE_PASSES[index], WHOLE_SEEDS[index]),
       CascadeDraw::Static => (&STATIC_PASSES[index], WHOLE_SEEDS[index]),
       CascadeDraw::Swaying => (&SWAY_PASSES[index], SWAY_SEEDS[index]),
+      CascadeDraw::Kept => (&KEPT_PASSES[index], KEPT_SEED),
     };
     // The nearest is seen closest, and a cascade never drawn or strayed past its map shows wrong until drawn.
     let is_now: bool = index == 0
@@ -850,7 +935,7 @@ type StaticLayouts = [StaticDrawParameters; StaticLayout::COUNT];
 impl ViewFeature for LevelShadows {
   /// The maps and the static layers, and the cascades' lists, while held.
   fn get_memory(&self) -> u64 {
-    [&self.maps, &self.statics]
+    [&self.maps, &self.statics, &self.kept]
       .into_iter()
       .flatten()
       .map(|maps| u64::from(maps.resolution).pow(2) * maps.layers.len() as u64 * 4)
@@ -861,6 +946,7 @@ impl ViewFeature for LevelShadows {
   fn release(&mut self) {
     self.maps = None;
     self.statics = None;
+    self.kept = None;
 
     for (index, cascade) in self.cascades.iter_mut().enumerate() {
       cascade.release(index);

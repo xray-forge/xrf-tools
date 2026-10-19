@@ -18,6 +18,9 @@ pub struct ShadowCascadeView {
   /// Whether its map holds the grass's cards, which stand where they stood when it was drawn: it draws again once the
   /// grass no longer casts into it, so none of them stay behind.
   pub has_drawn_grass: bool,
+  /// Whether its kept layer holds its static layer and trees as its map was last drawn from, which a frame drawing
+  /// only the grass copies in.
+  pub is_kept: bool,
   /// The layer of the static layers it shows, and the version and contents its static layer was drawn at, none before
   /// it was or since it went stale; and the fit it was drawn at.
   pub static_layer: u32,
@@ -40,6 +43,7 @@ impl ShadowCascadeView {
       drawn_fit: SunCascade::default(),
       waited: 0,
       has_drawn_grass: false,
+      is_kept: false,
       static_layer: index as u32,
       drawn_static: None,
       static_fit: SunCascade::default(),
@@ -69,5 +73,6 @@ impl ShadowCascadeView {
     self.drawn_static = None;
     self.prefetch = None;
     self.is_swapped = false;
+    self.is_kept = false;
   }
 }

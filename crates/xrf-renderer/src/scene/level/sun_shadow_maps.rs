@@ -33,6 +33,17 @@ impl SunShadowMaps {
     )
   }
 
+  /// `layers` layers the trees are drawn into over a static layer's copy, kept between their draws and copied into the
+  /// maps.
+  pub fn new_kept(device: &wgpu::Device, resolution: u32, layers: u32) -> Self {
+    Self::create(
+      device,
+      (resolution, layers),
+      "sun kept shadow maps",
+      wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST,
+    )
+  }
+
   fn create(
     device: &wgpu::Device,
     (resolution, layers): (u32, u32),
