@@ -1,6 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
 
-use glam::{Vec3, Vec4};
+use glam::{Vec2, Vec3, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_rain_drops_mode::RenderRainDropsMode;
@@ -42,12 +42,23 @@ const ENHANCED_MAX_DISTANCE: f32 = ENHANCED_SOURCE_OFFSET * 1.5;
 /// How far ahead along the camera's way Monolith's `Born` aims the drops, in metres.
 const ENHANCED_AIM: f32 = 5.0;
 
-/// `ssfx_rain_drops_setup`'s defaults (`ssfx_rain_settings.script`): drops at the heaviest and their square's side.
-const ENHANCED_DROPS: f32 = 2500.0;
+/// Seconds the enhanced drops' square takes to follow the camera's way most of the way round, about a drop's fall:
+/// Monolith's drops stay where they were born and new ones are born ahead, where a square turned at once with the
+/// camera moved most of its drops in one frame.
+const ENHANCED_AIM_EASING: f32 = 1.0;
+
+/// `ssfx_rain_drops_setup`: drops at the heaviest and its square's side. Each of its 2500 streaks carries two drops,
+/// where each of ours carries one, falling on its own; and Monolith's drops are born again as they land, where a
+/// stateless fall waits out its turn, about a quarter of it: so 6000 for its 5000 drops.
+const ENHANCED_DROPS: f32 = 6000.0;
 const ENHANCED_RADIUS: f32 = 15.0;
 
-/// `ssfx_rain_1`'s defaults: a drop's length and half its width, and its speed's scale.
-const ENHANCED_LENGTH: f32 = 2.0;
+/// The share of landing drops that splash: `CEffect_Rain::Hit`'s half of Monolith's 2500, among the 6000.
+const ENHANCED_SPLASHING: f32 = 0.21;
+
+/// `ssfx_rain_1`'s half width and speed's scale, and a streak of one drop, as long as each of its two drops drew on
+/// its 2 m streaks: a drop's fall over a frame's exposure, a few tenths of a metre at these speeds.
+const ENHANCED_LENGTH: f32 = 0.55;
 const ENHANCED_WIDTH: f32 = 0.1;
 const ENHANCED_SPEED: f32 = 0.6;
 
@@ -56,9 +67,10 @@ const ENHANCED_SPEED: f32 = 0.6;
 /// place of its brightness (0.205 of the hemisphere added), low enough that rain does not draw the eye.
 const ENHANCED_LOOK: Vec4 = Vec4::new(0.35, 0.2, 1.2, 0.5);
 
-/// `ssfx_rain_3`'s cover and refraction, then the share of the light a splash scatters: G.A.M.M.A.'s cover and
-/// refraction; seen by the light it scatters and the ground it bends through the distortion target.
-const ENHANCED_SPLASH_LOOK: Vec4 = Vec4::new(0.25, 3.0, 0.25, 0.0);
+/// The enhanced splash, a slight addition: how much the light it scatters covers, how far its map bends the ground
+/// through the distortion target (in its units, which the window pass scales by `def_distort`), unused, and the share
+/// of the landings that splash. SSS's `ssfx_rain_3` bent a blurred copy of the ground, which drew a soft grey blob.
+const ENHANCED_SPLASH_LOOK: Vec4 = Vec4::new(0.08, 0.5, 0.0, ENHANCED_SPLASHING);
 
 /// What `shaders/frame/rain.wgsl` reads as its `Rain`, as `dxRainRender::Render` sets the rain up.
 #[repr(C)]
@@ -73,15 +85,18 @@ pub struct RainUniform {
   /// the metres it reaches down, the rest unused.
   pub window: Vec4,
   pub cover_shape: Vec4,
-  /// Metres over the eye a drop starts, metres it falls at most, the side of the square it falls over, and metres
-  /// ahead of the eye along the camera's way that square stands.
+  /// Metres over the eye a drop starts, metres it falls at most and the side of the square it falls over; the rest
+  /// unused.
   pub fall: Vec4,
   /// A drop's length at the heaviest rain and half its width, then its slowest and fastest speed in metres a second.
   pub streak: Vec4,
   /// The enhanced drops' cover, the share of the light they scatter, refraction and reflection; then the splashes'
-  /// cover, refraction and share of the light they scatter.
+  /// cover of the light they scatter, bend of the ground, unused, and share of the landings that splash.
   pub look: Vec4,
   pub splash_look: Vec4,
+  /// Where the enhanced drops' square stands from the eye, in `x` and `z`, then the texels across and down of the
+  /// image the enhanced streaks draw over.
+  pub aim: Vec4,
   /// Drops drawn.
   pub count: u32,
   /// Seconds the rain has fallen.
@@ -90,9 +105,6 @@ pub struct RainUniform {
   pub splash_indices: u32,
   /// One where the drops are the enhanced ones, straying as Monolith's `random_dir` scatters them.
   pub is_enhanced: u32,
-  /// Seconds since the last frame, which the enhanced drops' motion is measured over.
-  pub step: f32,
-  pub _pad: [u32; 3],
 }
 
 impl RainUniform {
@@ -106,7 +118,7 @@ impl RainUniform {
     (rain, drops): (&RenderRainfall, RenderRainDropsMode),
     (wind, strength): (RenderWind, f32),
     (window, cover_shape): (Vec4, Vec4),
-    (time, step): (f32, f32),
+    (time, aim): (f32, Vec2),
     splash_indices: u32,
   ) -> Self {
     let density: f32 = rain.density.clamp(0.0, 1.0);
@@ -116,7 +128,6 @@ impl RainUniform {
       cover_shape,
       time,
       splash_indices,
-      step,
       ..Default::default()
     };
 
@@ -142,12 +153,8 @@ impl RainUniform {
 
         Self {
           axis: Self::get_axis(ENHANCED_MAX_LEAN * lean, wind.direction).extend(ENHANCED_STRAY * (1.5 - velocity)),
-          fall: Vec4::new(
-            ENHANCED_SOURCE_OFFSET,
-            ENHANCED_MAX_DISTANCE,
-            ENHANCED_RADIUS,
-            ENHANCED_AIM,
-          ),
+          fall: Vec4::new(ENHANCED_SOURCE_OFFSET, ENHANCED_MAX_DISTANCE, ENHANCED_RADIUS, 0.0),
+          aim: Vec4::new(aim.x, aim.y, 0.0, 0.0),
           streak: Vec4::new(ENHANCED_LENGTH, ENHANCED_WIDTH, SPEED_MIN * speed, SPEED_MAX * speed),
           look: ENHANCED_LOOK,
           splash_look: ENHANCED_SPLASH_LOOK,
@@ -162,6 +169,25 @@ impl RainUniform {
   /// Streaks drawn at a density, `0.5 * (1 + factor) * max_desired_items`.
   pub fn get_count(density: f32) -> u32 {
     (0.5 * (1.0 + density.clamp(0.0, 1.0)) * Self::STREAKS as f32) as u32
+  }
+
+  /// The same rain drawn over an image `size` texels across and down, which the enhanced streaks place themselves on.
+  pub fn over(self, (width, height): (u32, u32)) -> Self {
+    Self {
+      aim: Vec4::new(self.aim.x, self.aim.y, width as f32, height as f32),
+      ..self
+    }
+  }
+
+  /// Where the enhanced drops' square stands from the eye: `aim` from last frame, eased `step` seconds towards
+  /// Monolith's `Born` aim along `look`, the camera's way (`mad(view, dir, 5)`, its height dropped); there at once
+  /// without one.
+  pub fn ease_aim(aim: Option<Vec2>, look: Vec3, step: f32) -> Vec2 {
+    let target: Vec2 = Vec2::new(look.x, look.z) * ENHANCED_AIM;
+
+    aim.map_or(target, |aim| {
+      aim.lerp(target, 1.0 - (-step / ENHANCED_AIM_EASING).exp())
+    })
   }
 
   /// Enhanced drops drawn at a density, Monolith's `0.01 * (1 + factor * 99) * rain_max_particles`.

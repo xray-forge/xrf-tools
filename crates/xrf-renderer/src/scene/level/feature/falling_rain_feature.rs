@@ -1,7 +1,7 @@
 use std::ptr;
 use std::sync::{Arc, Weak};
 
-use glam::Vec4;
+use glam::{Vec2, Vec3, Vec4};
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, StorageArray, StorageValue,
 };
@@ -39,29 +39,35 @@ pub struct FallingRainFeature {
   draw: Option<(u32, u32)>,
   /// The rain's clock at the last frame it fell, which this frame's step is taken from.
   last_time: Option<f32>,
+  /// Where the enhanced drops' square stood from the eye last frame, eased towards the camera's way.
+  aim: Option<Vec2>,
 }
 
 impl FallingRainFeature {
-  /// Takes this frame's rain where `rainfall` falls as `drops` say: the splash's model built for the level's weather,
-  /// the uniform at the rain cover's window and shape (`cover`), and the textures; answers the uniform, which the wet
-  /// surfaces follow, none where the weather has no rain to draw.
+  /// Takes this frame's rain where `rainfall` falls as `drops` say, the camera looking along `look`: the splash's
+  /// model built for the level's weather, the uniform at the rain cover's window and shape (`cover`), and the
+  /// textures; answers the uniform, which the wet surfaces follow, none where the weather has no rain to draw.
   pub fn prepare(
     &mut self,
     device: &wgpu::Device,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
-    ((rainfall, drops), gust, time): ((Option<RenderRainfall>, RenderRainDropsMode), AmbientGust, f32),
+    ((rainfall, drops), gust, (time, look)): ((Option<RenderRainfall>, RenderRainDropsMode), AmbientGust, (f32, Vec3)),
     (cover, (texels, reach)): (Vec4, (f32, f32)),
     weather_textures: WeatherTextures<'_>,
   ) -> Option<RainUniform> {
     self.draw = None;
     self.views = None;
 
-    // Held within a tenth of a second and never back, so a pause or a jump does not stretch the drops' motion.
+    // Held within a tenth of a second and never back, so a pause or a jump does not swing the drops' square.
     let step: f32 = self
       .last_time
       .replace(time)
       .map_or(0.0, |last| time - last)
       .clamp(0.0, 0.1);
+    let aim: Vec2 = RainUniform::ease_aim(self.aim, look, step);
+
+    self.aim = Some(aim);
+
     let rainfall: RenderRainfall = rainfall?;
     let (weather, rain): (&Arc<RenderLevelWeather>, &RenderRain) =
       weather.and_then(|weather| weather.rain.as_ref().map(|rain: &RenderRain| (weather, rain)))?;
@@ -82,7 +88,7 @@ impl FallingRainFeature {
       (&rainfall, drops),
       (lighting.wind, gust.strength),
       (cover, Vec4::new(texels, reach, 0.0, 0.0)),
-      (time, step),
+      (time, aim),
       splash.index_count,
     );
     let flat = |reference: Option<&str>| weather_textures.get_view(reference, WeatherTextureKind::Flat).clone();
@@ -113,8 +119,9 @@ impl FallingRainFeature {
     self.uniform.cover_shape = Vec4::new(texels, reach, 0.0, 0.0);
   }
 
-  /// Adds the drops and the splashes over the scene, read through the rain `cover`, the enhanced ones bending the
-  /// scene as `lit` shows it; nothing while it does not rain or no cover is drawn.
+  /// Adds the drops and the splashes over the scene, read through the rain `cover`: the engine's, or the enhanced
+  /// splashes and the enhanced streaks' distortion, whose drops draw after the resolve (`add_over_resolved`); nothing
+  /// while it does not rain or no cover is drawn.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -122,24 +129,101 @@ impl FallingRainFeature {
     view: &'a ViewBinding,
     (handles, lit, cover): (ViewTargetHandles, &LightingHandles<'a>, Option<GraphTexture>),
   ) {
-    let (Some(counts), Some(cover), Some([streak, splash]), Some((_, model))) =
-      (self.draw, cover, &self.views, &self.splash)
+    let Some((counts, parameters)) = self.get_parameters((&mut *graph, &mut *bindings, runtime), passes, cover, None)
     else {
       return;
     };
-    let parameters: RainParameters = RainParameters {
-      rain: runtime.push_uniform(&self.uniform),
-      cover,
-      streak_texture: bindings.import_view(&mut *graph, "rain streak", streak),
-      splash_texture: bindings.import_view(&mut *graph, "rain splash", splash),
-      rain_sampler: passes.rain.get_sampler(),
-      splash_vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "splash vertices", &model.vertices)),
-      splash_indices: StorageArray::new(bindings.import_buffer(&mut *graph, "splash indices", &model.indices)),
-    };
+    // The enhanced splashes bend the ground and the streaks undo the water's distortion under them, which the window
+    // pass would bend the drops drawn after the resolve by; neither reads a blurred image.
+    let look: Option<RainLookParameters<'a>> = (self.uniform.is_enhanced != 0).then(|| {
+      let nothing: GraphTexture = bindings.import_view(&mut *graph, "rain nothing", passes.rain.get_nothing());
 
-    // `phase_ssfx_rain`: the scene as the water and the sun shafts leave it, blurred small, before any drop draws.
-    let look: Option<RainLookParameters<'a>> = (self.uniform.is_enhanced != 0).then(|| RainLookParameters {
-      refracted: passes.rain.add_blur(&mut *graph, handles.scene, handles.size),
+      self.get_look((&mut *graph, &mut *bindings), passes, (handles, lit), nothing)
+    });
+    let mut pass = add_over_scene(&mut *graph, handles, "rain").parameters(&parameters);
+
+    if let Some(look) = &look {
+      pass = pass
+        .parameters(look)
+        .color(GraphColorAttachment::new(handles.distortion, wgpu::LoadOp::Load));
+    }
+
+    pass.record(move |context| passes.rain.record(context, view, (&parameters, look.as_ref()), counts));
+  }
+
+  /// Adds the enhanced streaks over `shown`, the image the temporal resolve shows, `size` texels across and down: copied
+  /// into a layer of their own, which they draw over, bending it blurred small, so no history the resolve reads again
+  /// holds them and they never move with what lies behind them. Answers the layer, which the window pass shows in
+  /// `shown`'s place; none for the engine's streaks, without rain or without a cover.
+  pub fn add_over_resolved<'a>(
+    &'a self,
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    (handles, lit, cover): (ViewTargetHandles, &LightingHandles<'a>, Option<GraphTexture>),
+    (shown, size): (GraphTexture, (u32, u32)),
+  ) -> Option<GraphTexture> {
+    if self.uniform.is_enhanced == 0 {
+      return None;
+    }
+
+    let ((streaks, _), parameters) =
+      self.get_parameters((&mut *graph, &mut *bindings, runtime), passes, cover, Some(size))?;
+    let layer: GraphTexture = passes.rain.add_layer(&mut *graph, shown, size);
+    // `phase_ssfx_rain`: what the drops bend, the image as shown, blurred small.
+    let refracted: GraphTexture = passes.rain.add_blur(&mut *graph, shown, size);
+    let look: RainLookParameters<'a> = self.get_look((&mut *graph, &mut *bindings), passes, (handles, lit), refracted);
+
+    graph
+      .add_raster_pass("rain")
+      .color(GraphColorAttachment::new(layer, wgpu::LoadOp::Load))
+      .parameters(&parameters)
+      .parameters(&look)
+      .record(move |context| passes.rain.record_over(context, view, (&parameters, &look), streaks));
+
+    Some(layer)
+  }
+
+  /// The rain's parameters, its uniform placed over an image of `over`'s size where given, and the streaks and the
+  /// splash's indices to draw; none while it does not rain or no cover is drawn.
+  fn get_parameters<'a>(
+    &'a self,
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    passes: LevelPasses<'a>,
+    cover: Option<GraphTexture>,
+    over: Option<(u32, u32)>,
+  ) -> Option<((u32, u32), RainParameters<'a>)> {
+    let (Some(counts), Some(cover), Some([streak, splash]), Some((_, model))) =
+      (self.draw, cover, &self.views, &self.splash)
+    else {
+      return None;
+    };
+    let uniform: RainUniform = over.map_or(self.uniform, |size| self.uniform.over(size));
+
+    Some((
+      counts,
+      RainParameters {
+        rain: runtime.push_uniform(&uniform),
+        cover,
+        streak_texture: bindings.import_view(&mut *graph, "rain streak", streak),
+        splash_texture: bindings.import_view(&mut *graph, "rain splash", splash),
+        rain_sampler: passes.rain.get_sampler(),
+        splash_vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "splash vertices", &model.vertices)),
+        splash_indices: StorageArray::new(bindings.import_buffer(&mut *graph, "splash indices", &model.indices)),
+      },
+    ))
+  }
+
+  /// What the enhanced rain reads beside it, the image it bends being `refracted`.
+  fn get_look<'a>(
+    &'a self,
+    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    passes: LevelPasses<'a>,
+    (handles, lit): (ViewTargetHandles, &LightingHandles<'a>),
+    refracted: GraphTexture,
+  ) -> RainLookParameters<'a> {
+    RainLookParameters {
+      refracted,
       refracted_sampler: passes.rain.get_sampler(),
       drop_map: bindings.import_view(&mut *graph, "rain drop map", &passes.rain.get_maps().drop),
       splash_map: bindings.import_view(&mut *graph, "rain splash map", &passes.rain.get_maps().splash),
@@ -148,19 +232,7 @@ impl FallingRainFeature {
       light_target: handles.light,
       lighting: lit.lighting,
       exposure: StorageValue::new(lit.exposure),
-    });
-    let mut pass = add_over_scene(&mut *graph, handles, "rain").parameters(&parameters);
-
-    // The enhanced drops also undo the water's distortion under them, which the window pass would bend them by, and
-    // write their own fall as the motion under them, which the temporal resolves follow rather than what lies behind.
-    if let Some(look) = &look {
-      pass = pass
-        .parameters(look)
-        .color(GraphColorAttachment::new(handles.distortion, wgpu::LoadOp::Load))
-        .color(GraphColorAttachment::new(handles.motion, wgpu::LoadOp::Load));
     }
-
-    pass.record(move |context| passes.rain.record(context, view, (&parameters, look.as_ref()), counts));
   }
 }
 

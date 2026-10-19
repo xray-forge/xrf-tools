@@ -315,7 +315,7 @@ impl SceneView {
           options.features.rain.drops,
         ),
         scene.gust,
-        time,
+        (time, frame.view.get_look()),
       ),
       (windows.cover, windows.cover_shape),
       frame.weather_textures,
@@ -1427,7 +1427,7 @@ impl SceneView {
         .features
         .smoothing
         .add_passes((&mut *graph, &mut *bindings, runtime), passes, (handles.scene, size));
-    let (resolved, shown): (GraphTexture, GraphTexture) = self.features.resolve.add_passes(
+    let (mut resolved, mut shown): (GraphTexture, GraphTexture) = self.features.resolve.add_passes(
       (&mut *graph, &mut *bindings, runtime),
       passes,
       view,
@@ -1442,6 +1442,22 @@ impl SceneView {
         ray_guides,
       ),
     );
+
+    // The enhanced streaks over what the resolve shows, so no history carries them; the frame as drawn is that image
+    // too where nothing rescaled it.
+    if let Some(layer) = self.features.rain.add_over_resolved(
+      (&mut *graph, &mut *bindings, runtime),
+      passes,
+      view,
+      (handles, &lit, shadowed.covers.map(|covers| covers.depth)),
+      (shown, self.features.resolve.get_shown_size(handles.size)),
+    ) {
+      if !self.features.resolve.is_rescaled() {
+        resolved = layer;
+      }
+
+      shown = layer;
+    }
 
     self
       .features

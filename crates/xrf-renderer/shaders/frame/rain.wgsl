@@ -6,11 +6,12 @@
 // splash a copy of its model, each placed by its streak's fall, which is `Born` and `RenewItem` made stateless. Each
 // streak falls again and again at its own speed from a column of the level a square about the camera wraps as it
 // moves, and stops where the cover under that column stands, which is where its splash is. The fall's shape is the
-// uniform's: the engine's, or Monolith's as Screen Space Shaders' rain shapes it (`ssfx_rain_1`, `drops_setup`).
+// uniform's: the engine's, or Monolith's as Screen Space Shaders' rain shapes it (`ssfx_rain_1`, `drops_setup`). The
+// enhanced streaks draw after the temporal resolve, over a copy of the image it shows, so no history carries them.
 
 // The rain, its cover, the streak's and the splash's textures, and the splash's model in renderer space (its position,
-// then its coordinate, a vertex); for the enhanced drops, the scene blurred small, their maps and their sampler, the
-// depth, the light, the lighting and the exposure.
+// then its coordinate, a vertex); for the enhanced rain, the shown image blurred small, their maps and their sampler,
+// the depth, the light, the lighting and the exposure.
 #import "generated/frame/rain"
 #import "common/math"
 #import "common/luminance"
@@ -20,9 +21,6 @@ const SPLASH_TIME: f32 = 0.3;
 
 // `effects_rain.ps`: how far a drop bends the blurred scene behind it, in screen widths, before its refraction.
 const DROP_BEND: f32 = 0.0125;
-
-// `effects_rain_splash.ps`: how far a splash bends it, before its refraction.
-const SPLASH_BEND: f32 = 0.05;
 
 // Metres from the eye over which an enhanced drop fades in: one nearer would cover much of the screen as a soft
 // pillar, where a real one passes too fast to be seen.
@@ -37,9 +35,8 @@ const SUN_SCATTER: f32 = 0.1;
 // tinted sky tinted every drop with it.
 const SCATTER_GREY: f32 = 0.75;
 
-// How far a splash's map bends the ground under it through the distortion target, in its units (the window pass
-// moves its read by them times `def_distort`, 0.05 of the screen by default).
-const SPLASH_DISTORTION: f32 = 0.5;
+// The least of its length and of its width an enhanced streak is drawn at, each fall picking between it and all.
+const STREAK_LEAST: vec2<f32> = vec2<f32>(0.6, 0.75);
 
 // How large a splash stands as it lands, of its full size, which it opens to as it fades.
 const SPLASH_OPENING: f32 = 0.6;
@@ -58,7 +55,6 @@ struct Fall {
   age: f32,
   landing: f32,
   direction: vec3<f32>,
-  speed: f32,
   head: vec3<f32>,
   landed: vec3<f32>,
   is_falling: bool,
@@ -69,21 +65,17 @@ struct Fall {
 struct RainVarying {
   @builtin(position) clip: vec4<f32>,
   @location(0) uv: vec2<f32>,
-  // Where the point stands through this frame's unjittered camera and stood through the last one's, falling.
-  @location(1) current: vec4<f32>,
-  @location(2) previous: vec4<f32>,
   // Where the point stands in view space, which the light it scatters towards the eye is measured by.
-  @location(3) view_at: vec3<f32>,
+  @location(1) view_at: vec3<f32>,
   // How far through its life a splash is, from nought to one; nought for a streak.
-  @location(4) life: f32,
+  @location(2) life: f32,
 };
 
-// What an enhanced drop or splash draws: its colour over the scene, the distortion under it towards none, and its
-// motion over what lies behind, the last two by their alpha.
+// What the enhanced rain draws before the resolve: its colour over the scene, and the distortion under it, by their
+// alpha.
 struct RainLook {
   @location(0) color: vec4<f32>,
   @location(1) distortion: vec4<f32>,
-  @location(2) motion: vec4<f32>,
 };
 
 // `pcg`: a word hashed into another, every bit of it depending on every bit given.
@@ -129,9 +121,8 @@ fn fall_of(streak: u32) -> Fall {
   let cycle: u32 = u32(floor(phase));
   let age: f32 = fract(phase) * period;
   let eye: vec3<f32> = camera.position.xyz;
-  // Monolith's `Born` aims ahead of where the camera looks, along its way flattened onto the ground.
-  let forward: vec3<f32> = -vec3<f32>(camera.view[0][2], camera.view[1][2], camera.view[2][2]);
-  let centre: vec2<f32> = eye.xz + forward.xz * rain.fall.w;
+  // Monolith's `Born` aims ahead of where the camera looks (`aim`, none for the engine's).
+  let centre: vec2<f32> = eye.xz + rain.aim.xy;
   // A column of the level, kept where it is as the camera moves and wrapped around the square's centre.
   let tile: f32 = rain.fall.z;
   let base: vec2<f32> = vec2<f32>(random(streak, cycle, 2u), random(streak, cycle, 3u)) * tile;
@@ -149,7 +140,6 @@ fn fall_of(streak: u32) -> Fall {
   fall.age = age;
   fall.landing = select(period + 1.0, landing, landing < period);
   fall.direction = direction;
-  fall.speed = speed;
   fall.head = column + direction * (speed * age - start);
   fall.landed = column + direction * reach;
   fall.is_falling = streak < rain.count;
@@ -158,36 +148,47 @@ fn fall_of(streak: u32) -> Fall {
   return fall;
 }
 
-// A streak's quad facing the camera from its tail to its head, collapsed onto its head while it has landed or is not
-// drawn; its coordinate one of the engine's two sets, one mirroring the other, picked each fall.
-@vertex
-fn vs_streak(@builtin(vertex_index) vertex_index: u32) -> RainVarying {
+// A streak's quad facing the camera from its tail to its head through `view_projection`, collapsed onto its head while
+// it has landed or is not drawn; its coordinate one of the engine's two sets, one mirroring the other, picked each
+// fall; each enhanced fall its own length and width, so the streaks do not read as one set of lines.
+fn streak_vertex(vertex_index: u32, view_projection: mat4x4<f32>) -> RainVarying {
   let streak: u32 = vertex_index / 6u;
   var corners: array<vec2<f32>, 6> = CORNERS;
   let corner: vec2<f32> = corners[vertex_index % 6u];
   let fall: Fall = fall_of(streak);
-  let tail: vec3<f32> = fall.head - fall.direction * rain.color.w * rain.streak.x;
+  let picked: vec2<f32> = vec2<f32>(random(streak, fall.cycle, 11u), random(streak, fall.cycle, 12u));
+  let size: vec2<f32> = select(vec2<f32>(1.0), mix(STREAK_LEAST, vec2<f32>(1.0), picked), rain.is_enhanced != 0u);
+  let tail: vec3<f32> = fall.head - fall.direction * rain.color.w * rain.streak.x * size.x;
   let middle: vec3<f32> = mix(tail, fall.head, 0.5);
   let side: vec3<f32> = cross(normalize(middle - camera.position.xyz), fall.direction);
-  let placed: vec3<f32> = mix(tail, fall.head, corner.y) + side * corner.x * rain.streak.y;
+  let placed: vec3<f32> = mix(tail, fall.head, corner.y) + side * corner.x * rain.streak.y * size.y;
   let shown: vec3<f32> = select(fall.head, placed, fall.is_falling && fall.age < fall.landing);
   let first: vec2<f32> = vec2<f32>(corner.y, (1.0 - corner.x) * 0.5);
-  // A step back along its way, unless this fall began within it.
-  let fallen: vec3<f32> = fall.direction * fall.speed * select(0.0, rain.step, fall.age >= rain.step);
   var out: RainVarying;
 
-  out.clip = camera.view_projection * vec4<f32>(shown, 1.0);
+  out.clip = view_projection * vec4<f32>(shown, 1.0);
   out.uv = select(vec2<f32>(1.0) - first, first, random(streak, fall.cycle, 6u) < 0.5);
-  out.current = camera.motion_current * vec4<f32>(shown, 1.0);
-  out.previous = camera.motion_previous * vec4<f32>(shown - fallen, 1.0);
   out.view_at = (camera.view * vec4<f32>(shown, 1.0)).xyz;
   out.life = 0.0;
 
   return out;
 }
 
-// `CEffect_Rain::Hit`: half the drops that land leave a splash, turned at random and shrinking to nothing; the
-// enhanced splash opens from `SPLASH_OPENING` of its size to all of it instead, as it fades.
+// The streaks drawn into the scene, through the frame's jittered camera.
+@vertex
+fn vs_streak(@builtin(vertex_index) vertex_index: u32) -> RainVarying {
+  return streak_vertex(vertex_index, camera.view_projection);
+}
+
+// The enhanced streaks drawn over the image the temporal resolve shows, through the camera without its jitter.
+@vertex
+fn vs_streak_over(@builtin(vertex_index) vertex_index: u32) -> RainVarying {
+  return streak_vertex(vertex_index, camera.motion_current);
+}
+
+// `CEffect_Rain::Hit`: half the drops that land leave a splash (the enhanced, `splash_look.w` of them), turned at
+// random and shrinking to nothing; the enhanced splash opens from `SPLASH_OPENING` of its size to all of it instead,
+// as it fades.
 @vertex
 fn vs_splash(@builtin(vertex_index) vertex_index: u32) -> RainVarying {
   let streak: u32 = vertex_index / rain.splash_indices;
@@ -202,15 +203,14 @@ fn vs_splash(@builtin(vertex_index) vertex_index: u32) -> RainVarying {
   let c: f32 = cos(turn);
   let s: f32 = sin(turn);
   let turned: vec3<f32> = vec3<f32>(position.x * c + position.z * s, position.y, position.z * c - position.x * s);
-  let is_shown: bool = fall.is_falling && random(streak, fall.cycle, 8u) < 0.5 && since >= 0.0 && since < SPLASH_TIME;
-  var out: RainVarying;
-
+  let splashing: f32 = select(0.5, rain.splash_look.w, rain.is_enhanced != 0u);
+  let is_shown: bool =
+    fall.is_falling && random(streak, fall.cycle, 8u) < splashing && since >= 0.0 && since < SPLASH_TIME;
   let placed: vec3<f32> = select(fall.landed, fall.landed + turned * scale, is_shown);
+  var out: RainVarying;
 
   out.clip = camera.view_projection * vec4<f32>(placed, 1.0);
   out.uv = coordinate.xy;
-  out.current = out.clip;
-  out.previous = out.clip;
   out.view_at = (camera.view * vec4<f32>(placed, 1.0)).xyz;
   out.life = life;
 
@@ -232,16 +232,16 @@ fn fs_splash(in: RainVarying) -> @location(0) vec4<f32> {
   return shade(textureSample(splash_texture, rain_sampler, in.uv));
 }
 
-// Where a fragment stands on the screen, from nought to one.
-fn screen_at(clip: vec4<f32>) -> vec2<f32> {
-  return clip.xy / vec2<f32>(textureDimensions(depth_target));
-}
-
-// A full-size target's texel at a place on the screen, held within it.
+// A drawn-size target's texel at a place on the screen, from nought to one, held within it.
 fn screen_texel(at: vec2<f32>) -> vec2<i32> {
   let size: vec2<i32> = vec2<i32>(textureDimensions(depth_target));
 
   return clamp(vec2<i32>(at * vec2<f32>(size)), vec2<i32>(0), size - 1);
+}
+
+// How much of an enhanced drop shows: its map's alpha, faded out within `NEAR_FADE` of the eye.
+fn drop_cover(texel: vec4<f32>, view_at: vec3<f32>) -> f32 {
+  return texel.a * smoothstep(NEAR_FADE.x, NEAR_FADE.y, -view_at.z);
 }
 
 // The light a drop scatters towards the eye, as it stands at `view_at`: the sky's light, as on a white surface, and
@@ -256,19 +256,31 @@ fn scattered(view_at: vec3<f32>) -> vec3<f32> {
   return tonemap(mix(light, vec3<f32>(luminance(light)), SCATTER_GREY), frame_scale(lighting, exposure));
 }
 
-// `effects_rain.ps` at its high quality, as modern engines light rain: the blurred scene behind the drop, bent by its
-// map's offset where what the bend lands on stands behind the drop or is sky, and screened with the light about it,
-// read far off by a wider bend, as a fake reflection; then towards the light the drop scatters (`scattered`) by
-// `look.y`, in place of SSS's hemisphere added; covered by the map's alpha times the drops' cover. Its arithmetic is
-// on the colour shown, as the engine's forward passes draw, the light read as it is, as `s_accumulator` is read. Under
-// the drop the distortion goes towards none and the motion towards its fall by the map's alpha, as `effects_rain.ps`
-// masks its motion vectors, so neither the water's waves nor the history of what lies behind drag it. A drop within
-// `NEAR_FADE` of the eye fades out.
+// The enhanced streak in the scene: nothing drawn, only the distortion under it taken towards none by its cover, since
+// the window pass bends the shown image by the water's distortion and a drop over water would zigzag with the waves.
 @fragment
-fn fs_streak_enhanced(in: RainVarying) -> RainLook {
+fn fs_streak_distortion(in: RainVarying) -> RainLook {
+  let cover: f32 = drop_cover(textureSample(drop_map, map_sampler, in.uv), in.view_at);
+  var out: RainLook;
+
+  out.color = vec4<f32>(0.0);
+  out.distortion = vec4<f32>(NEUTRAL_DISTORTION, NEUTRAL_DISTORTION, 0.0, cover);
+
+  return out;
+}
+
+// `effects_rain.ps` at its high quality, drawn over the shown image `rain.aim.zw` texels across and lit as modern
+// engines light rain: the blurred image behind the drop, bent by its map's offset where what the bend lands on stands
+// behind the drop or is sky, and screened with the light about it, read far off by a wider bend, as a fake reflection;
+// then towards the light the drop scatters (`scattered`) by `look.y`, in place of SSS's hemisphere added; covered by
+// the map's alpha times the drops' cover where nothing nearer stands in front of it, tested against the drawn depth
+// here, with no depth attachment of the shown image's size. Its arithmetic is on the colour shown, as the engine's
+// forward passes draw, the light read as it is, as `s_accumulator` is read.
+@fragment
+fn fs_streak_enhanced(in: RainVarying) -> @location(0) vec4<f32> {
   let texel: vec4<f32> = textureSample(drop_map, map_sampler, in.uv);
   let bend: vec2<f32> = texel.xy * 2.0 - 1.0;
-  let at: vec2<f32> = screen_at(in.clip);
+  let at: vec2<f32> = in.clip.xy / rain.aim.zw;
   let hemisphere: vec3<f32> = lighting.forward_hemi.rgb;
   let bright: f32 = saturate(dot(hemisphere, vec3<f32>(1.0)));
   let refraction: vec2<f32> = normalize(vec3<f32>(bend * DROP_BEND * rain.look.z, 1.0)).xy;
@@ -280,36 +292,26 @@ fn fs_streak_enhanced(in: RainVarying) -> RainLook {
   let light: vec3<f32> = textureLoad(light_target, screen_texel(saturate(at + reflection)), 0).rgb;
   let glint: vec3<f32> = saturate(light * rain.look.w);
   let shown: vec3<f32> = mix(1.0 - (1.0 - seen) * (1.0 - glint), scattered(in.view_at), rain.look.y);
+  let is_seen: bool = textureLoad(depth_target, screen_texel(at), 0) < in.clip.z;
 
-  let motion: vec2<f32> = (in.current.xy / in.current.w - in.previous.xy / in.previous.w) * vec2<f32>(0.5, -0.5);
-  let cover: f32 = texel.a * smoothstep(NEAR_FADE.x, NEAR_FADE.y, in.current.w);
-  var out: RainLook;
+  let cover: f32 = select(0.0, drop_cover(texel, in.view_at) * rain.look.x, is_seen);
 
-  out.color = vec4<f32>(scene_from_shown(saturate(shown)), cover * rain.look.x);
-  out.distortion = vec4<f32>(NEUTRAL_DISTORTION, NEUTRAL_DISTORTION, 0.0, cover);
-  out.motion = vec4<f32>(motion, 0.0, cover);
-
-  return out;
+  return vec4<f32>(scene_from_shown(saturate(shown)), cover);
 }
 
-// `effects_rain_splash.ps`: the blurred scene bent by the splash's map, then towards the light it scatters by
-// `splash_look.z`, covered by its alpha times the splashes', fading as the square of what is left of its life; the
-// distortion under it towards its map's bend, as a distorting particle's `l_special` pass writes it, so the ground
-// under it bends at the frame's own size; the motion of the ground it lies on kept.
+// `effects_rain_splash.ps` as a slight addition: the light the splash scatters, covered by its map's alpha times
+// `splash_look.x` and fading as the square of what is left of its life; and the ground under it bent by its map through
+// the distortion target, `splash_look.y` of its units, as a distorting particle's `l_special` pass writes it, so the
+// ground bends at the frame's own size where SSS bent a blurred copy of it.
 @fragment
 fn fs_splash_enhanced(in: RainVarying) -> RainLook {
   let texel: vec4<f32> = textureSample(splash_map, map_sampler, in.uv);
   let outward: vec2<f32> = texel.xy * 2.0 - 1.0;
-  let bend: vec2<f32> = normalize(vec3<f32>(outward * SPLASH_BEND * rain.splash_look.y, 1.0)).xy;
-  let seen: vec3<f32> =
-    scene_shown(textureSampleLevel(refracted, refracted_sampler, saturate(screen_at(in.clip) + bend), 0.0).rgb);
-  let shown: vec3<f32> = mix(seen, scattered(in.view_at), rain.splash_look.z);
   let cover: f32 = texel.a * (1.0 - in.life) * (1.0 - in.life);
   var out: RainLook;
 
-  out.color = vec4<f32>(scene_from_shown(saturate(shown)), cover * rain.splash_look.x);
-  out.distortion = vec4<f32>(vec2<f32>(NEUTRAL_DISTORTION) + outward * SPLASH_DISTORTION, 0.0, cover);
-  out.motion = vec4<f32>(0.0);
+  out.color = vec4<f32>(scene_from_shown(scattered(in.view_at)), cover * rain.splash_look.x);
+  out.distortion = vec4<f32>(vec2<f32>(NEUTRAL_DISTORTION) + outward * rain.splash_look.y, 0.0, cover);
 
   return out;
 }

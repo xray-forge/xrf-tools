@@ -1,4 +1,4 @@
-use glam::{Vec3, Vec4};
+use glam::{Vec2, Vec3, Vec4};
 
 use crate::contract::render_rain_drops_mode::RenderRainDropsMode;
 use crate::lighting::render_fog::RenderFog;
@@ -43,18 +43,35 @@ fn rains_as_many_streaks_as_the_engine_and_leans_them_with_the_wind() {
 fn rains_the_enhanced_drops_as_monolith_counts_slows_and_leans_them() {
   let rain = |density: f32, wind: (f32, f32)| falling_rain(RenderRainDropsMode::Enhanced, density, wind);
 
-  // A hundredth of the drops at the lightest rain, all 2,500 at the heaviest.
-  assert_eq!(RainUniform::get_enhanced_count(0.0), 25);
-  assert_eq!(RainUniform::get_enhanced_count(1.0), 2500);
+  // A hundredth of the drops at the lightest rain, all 6,000 at the heaviest.
+  assert_eq!(RainUniform::get_enhanced_count(0.0), 60);
+  assert_eq!(RainUniform::get_enhanced_count(1.0), 6000);
   assert_eq!(rain(1.0, (0.0, 0.5)).is_enhanced, 1);
-  // A drop is two metres long and a fifth of a metre wide; still air halves its speed, a wind past two thirds of
+  // A drop is 0.55 metres long and a fifth of a metre wide; still air halves its speed, a wind past two thirds of
   // Monolith's thousand gives it whole.
-  assert!(rain(1.0, (0.0, 0.5)).streak.distance(Vec4::new(2.0, 0.1, 12.0, 24.0)) < 1e-4);
-  assert!(rain(1.0, (700.0, 0.5)).streak.distance(Vec4::new(2.0, 0.1, 24.0, 48.0)) < 1e-4);
+  assert!(rain(1.0, (0.0, 0.5)).streak.distance(Vec4::new(0.55, 0.1, 12.0, 24.0)) < 1e-4);
+  assert!(
+    rain(1.0, (700.0, 0.5))
+      .streak
+      .distance(Vec4::new(0.55, 0.1, 24.0, 48.0))
+      < 1e-4
+  );
   // Still air falls straight down, a gust leans it, and the strongest wind thirty five degrees.
   assert!(rain(1.0, (0.0, 0.5)).axis.truncate().distance(Vec3::NEG_Y) < 1e-6);
   assert!(rain(1.0, (0.0, 0.75)).axis.y > -1.0 + 1e-3);
   assert!((rain(1.0, (1000.0, 0.5)).axis.y + 35f32.to_radians().cos()).abs() < 1e-5);
+}
+
+#[test]
+fn aims_the_enhanced_drops_ahead_and_follows_a_turn_over_about_a_second() {
+  let ahead: Vec2 = RainUniform::ease_aim(None, Vec3::NEG_Z, 0.0);
+
+  // Five metres along the camera's way at once, its height dropped.
+  assert!(ahead.distance(Vec2::new(0.0, -5.0)) < 1e-6);
+  assert!(RainUniform::ease_aim(None, Vec3::NEG_Y, 0.0).length() < 1e-6);
+  // Turned round, a frame moves it a little, a second most of the way.
+  assert!(RainUniform::ease_aim(Some(ahead), Vec3::Z, 1.0 / 60.0).distance(ahead) < 0.2);
+  assert!(RainUniform::ease_aim(Some(ahead), Vec3::Z, 1.0).y > 1.0);
 }
 
 fn falling_rain(drops: RenderRainDropsMode, density: f32, (velocity, strength): (f32, f32)) -> RainUniform {
@@ -74,7 +91,7 @@ fn falling_rain(drops: RenderRainDropsMode, density: f32, (velocity, strength): 
       strength,
     ),
     (Vec4::ZERO, Vec4::ZERO),
-    (0.0, 0.0),
+    (0.0, Vec2::ZERO),
     0,
   )
 }

@@ -422,11 +422,11 @@ struct Rain {
   streak: vec4<f32>,
   look: vec4<f32>,
   splash_look: vec4<f32>,
+  aim: vec4<f32>,
   count: u32,
   time: f32,
   splash_indices: u32,
   is_enhanced: u32,
-  step: f32,
 }
 
 struct Wet {

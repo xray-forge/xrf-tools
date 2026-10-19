@@ -1,10 +1,11 @@
 #import "common/fullscreen"
 #import "generated/frame/rain_blur"
 
-// `ssfx_rain.ps` in two passes: the scene at an eighth of its size for the enhanced drops to bend, each texel the whole
-// eight by eight block of the scene under it rather than one filtered read, so the copy holds still as the camera
-// moves; then blurred as Screen Space Shaders blurs it, its middle four times and four taps two of its texels off on
-// the diagonals, over eight. The sun shafts are in the scene already, where its `volumetric_buffer` adds them.
+// `ssfx_rain.ps` in two passes: the image the temporal resolve shows, at an eighth of its size for the enhanced drops
+// to bend, each texel the whole eight by eight block of the image under it rather than one filtered read, so the copy
+// holds still as the camera moves; then blurred as Screen Space Shaders blurs it, its middle four times and four taps
+// two of its texels off on the diagonals, over eight. The sun shafts are in the image already, where its
+// `volumetric_buffer` adds them.
 
 // How many of the scene's texels a texel of the copy spans across.
 const SCALE: f32 = 8.0;
@@ -42,4 +43,11 @@ fn fs_rain_blur(in: FullscreenVarying) -> @location(0) vec4<f32> {
   colour += block_at(at + vec2<i32>(2, -2)) + block_at(at + vec2<i32>(-2, -2));
 
   return vec4<f32>(colour / 8.0, 1.0);
+}
+
+// The shown image copied whole into the enhanced rain's own layer, which its streaks draw over, so a history the
+// temporal resolve reads again never holds them.
+@fragment
+fn fs_rain_copy(in: FullscreenVarying) -> @location(0) vec4<f32> {
+  return textureLoad(source, vec2<i32>(in.clip.xy), 0);
 }

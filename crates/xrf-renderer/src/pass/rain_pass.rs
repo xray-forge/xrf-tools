@@ -15,8 +15,9 @@ use crate::pass::rain_parameters::RainParameters;
 use crate::pass::view_binding::ViewBinding;
 
 /// Draws the rain over a viewport's finished scene as `RenderLast` does after the forward surfaces: the streaks, then
-/// the splashes, blended by their alpha and tested against the G-buffer's depth without writing it; for the enhanced
-/// drops, the scene blurred at an eighth of its size first, which they bend.
+/// the splashes, blended by their alpha and tested against the G-buffer's depth without writing it. The enhanced
+/// streaks draw after the temporal resolve instead, over a copy of the image it shows, which they bend blurred at an
+/// eighth of its size; in the scene they only take the water's distortion under them away.
 pub struct RainPass {
   layout: wgpu::BindGroupLayout,
   look_layout: wgpu::BindGroupLayout,
@@ -25,17 +26,23 @@ pub struct RainPass {
   sampler: wgpu::Sampler,
   /// The enhanced maps' sampler: anisotropic, so a drop keeps its length's detail however thin it is drawn.
   map_sampler: wgpu::Sampler,
-  /// The engine's streaks and splashes, then the enhanced ones.
-  pipelines: [wgpu::RenderPipeline; 4],
-  /// The scene's blocks at an eighth of its size, then their blur.
-  blur: [wgpu::RenderPipeline; 2],
+  /// The engine's streaks and splashes; the enhanced streaks' distortion and the enhanced splashes, in the scene; and
+  /// the enhanced streaks over the shown image.
+  pipelines: [wgpu::RenderPipeline; 5],
+  /// The image's blocks at an eighth of its size, then their blur, then the image copied whole.
+  blur: [wgpu::RenderPipeline; 3],
   maps: EnhancedRainMaps,
+  /// A texel covering nothing, bound where the scene's enhanced passes read no blurred image.
+  nothing: wgpu::TextureView,
   generation: u64,
 }
 
 impl RainPass {
-  /// How many times smaller the enhanced drops' blurred scene is than the scene, as `rt_ssfx_rain` is.
+  /// How many times smaller the enhanced drops' blurred image is than the image, as `rt_ssfx_rain` is.
   pub const BLUR_SCALE: u32 = 8;
+
+  /// What the enhanced streaks draw over: the shown image copied, at the scene's own precision.
+  pub const LAYER: wgpu::TextureFormat = ViewTargets::SCENE;
 
   /// # Errors
   ///
@@ -51,7 +58,6 @@ impl RainPass {
     let layout: wgpu::BindGroupLayout = RainParameters::create_layout(device);
     let look_layout: wgpu::BindGroupLayout = RainLookParameters::create_layout(device);
     let blur_layout: wgpu::BindGroupLayout = RainBlurParameters::create_layout(device);
-    // A texel covering nothing, for a map the bundle cannot give.
     let nothing: wgpu::TextureView = device
       .create_texture(&wgpu::TextureDescriptor {
         label: Some("rain nothing"),
@@ -80,9 +86,9 @@ impl RainPass {
         mipmap_filter: wgpu::MipmapFilterMode::Linear,
         ..Default::default()
       }),
-      // `smp_rtlinear` has no mips, so SSS's drops stay two short dashes a streak at any distance where trilinear
-      // mips smear them along the whole streak; picking the mip along the streak and averaging across it keeps the
-      // dashes without their flicker.
+      // `smp_rtlinear` has no mips, so SSS's drops stay short dashes at any distance where trilinear mips smear them
+      // along the whole streak; picking the mip along the streak and averaging across it keeps the dashes without
+      // their flicker.
       map_sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("rain maps"),
         mag_filter: wgpu::FilterMode::Linear,
@@ -91,6 +97,7 @@ impl RainPass {
         anisotropy_clamp: 16,
         ..Default::default()
       }),
+      nothing,
       view_layout: view_layout.clone(),
       generation: source.get_generation(),
       layout,
@@ -117,7 +124,7 @@ impl RainPass {
     }
   }
 
-  /// The sampler the streak, the splash and the blurred scene are read through, which the parameters bind.
+  /// The sampler the streak, the splash and the blurred image are read through, which the parameters bind.
   pub fn get_sampler(&self) -> &wgpu::Sampler {
     &self.sampler
   }
@@ -132,25 +139,34 @@ impl RainPass {
     &self.map_sampler
   }
 
-  /// Declares the enhanced drops' blur of `scene`, of the scene's `size`, into a transient an eighth of it across: its
-  /// blocks, then their blur, which it answers.
-  pub fn add_blur<'a>(&'a self, graph: &mut FrameGraph<'a>, scene: GraphTexture, size: (u32, u32)) -> GraphTexture {
-    let small: (u32, u32) = (size.0.div_ceil(Self::BLUR_SCALE), size.1.div_ceil(Self::BLUR_SCALE));
-    let blocks: GraphTexture =
-      self.add_blur_stage(&mut *graph, ("rain refraction blocks", &self.blur[0]), scene, small);
-
-    self.add_blur_stage(&mut *graph, ("rain refraction", &self.blur[1]), blocks, small)
+  /// A texel covering nothing, for an image a pass binds but does not read.
+  pub fn get_nothing(&self) -> &wgpu::TextureView {
+    &self.nothing
   }
 
-  fn add_blur_stage<'a>(
+  /// Declares the enhanced drops' blur of `image`, of `size`, into a transient an eighth of it across: its blocks, then
+  /// their blur, which it answers.
+  pub fn add_blur<'a>(&'a self, graph: &mut FrameGraph<'a>, image: GraphTexture, size: (u32, u32)) -> GraphTexture {
+    let small: (u32, u32) = (size.0.div_ceil(Self::BLUR_SCALE), size.1.div_ceil(Self::BLUR_SCALE));
+    let blocks: GraphTexture =
+      self.add_fullscreen(&mut *graph, ("rain refraction blocks", &self.blur[0]), image, small);
+
+    self.add_fullscreen(&mut *graph, ("rain refraction", &self.blur[1]), blocks, small)
+  }
+
+  /// Declares `image`, of `size`, copied whole into a layer of the enhanced streaks' own, which it answers.
+  pub fn add_layer<'a>(&'a self, graph: &mut FrameGraph<'a>, image: GraphTexture, size: (u32, u32)) -> GraphTexture {
+    self.add_fullscreen(&mut *graph, ("rain layer", &self.blur[2]), image, size)
+  }
+
+  fn add_fullscreen<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     (name, pipeline): (&'static str, &'a wgpu::RenderPipeline),
     source: GraphTexture,
     (width, height): (u32, u32),
   ) -> GraphTexture {
-    let target: GraphTexture =
-      graph.create_texture(GraphTextureDescriptor::new_2d(name, width, height, ViewTargets::SCENE));
+    let target: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(name, width, height, Self::LAYER));
     let parameters: RainBlurParameters<'a> = RainBlurParameters {
       source,
       source_sampler: &self.sampler,
@@ -172,7 +188,8 @@ impl RainPass {
     target
   }
 
-  /// Draws the streaks falling, and the splashes where the model has indices: the enhanced ones where `look` is given.
+  /// Draws in the scene the streaks falling and the splashes where the model has indices: the engine's, or with `look`
+  /// the enhanced streaks' distortion and the enhanced splashes.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
@@ -186,7 +203,7 @@ impl RainPass {
       Some(look) => {
         context.bind(look);
 
-        &self.pipelines[2..]
+        &self.pipelines[2..4]
       }
       None => &self.pipelines[..2],
     };
@@ -202,14 +219,32 @@ impl RainPass {
     }
   }
 
+  /// Draws the enhanced streaks over the shown image's layer.
+  pub fn record_over(
+    &self,
+    context: &mut RasterContext<'_>,
+    view: &ViewBinding,
+    (parameters, look): (&RainParameters<'_>, &RainLookParameters<'_>),
+    streaks: u32,
+  ) {
+    context.bind(parameters);
+    context.bind(look);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
+    pass.set_bind_group(0, &view.bind_group, &[]);
+    pass.set_pipeline(&self.pipelines[4]);
+    pass.draw(0..streaks * 6, 0..1);
+  }
+
   fn create_pipelines(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     (layout, look_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
-  ) -> XrfResult<[wgpu::RenderPipeline; 4]> {
+  ) -> XrfResult<[wgpu::RenderPipeline; 5]> {
     // `blend(true, srcalpha, invsrcalpha)`, the alpha kept under it.
-    let target: wgpu::ColorTargetState = wgpu::ColorTargetState {
-      format: ViewTargets::SCENE,
+    let blended = |format: wgpu::TextureFormat| wgpu::ColorTargetState {
+      format,
       blend: Some(wgpu::BlendState {
         color: wgpu::BlendComponent {
           src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -224,10 +259,9 @@ impl RainPass {
       }),
       write_mask: wgpu::ColorWrites::ALL,
     };
-    // Each enhanced drop takes the distortion under it towards none and the motion under it towards its own fall, by
-    // the cover each output's alpha gives, the distortion's own alpha kept.
-    let covering = |format: wgpu::TextureFormat| wgpu::ColorTargetState {
-      format,
+    // The distortion under an enhanced streak or splash taken towards its own by its cover, the target's alpha kept.
+    let distorting: wgpu::ColorTargetState = wgpu::ColorTargetState {
+      format: ViewTargets::DISTORTION,
       blend: Some(wgpu::BlendState {
         color: wgpu::BlendComponent {
           src_factor: wgpu::BlendFactor::SrcAlpha,
@@ -242,46 +276,69 @@ impl RainPass {
       }),
       write_mask: wgpu::ColorWrites::ALL,
     };
-    let engine_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(target.clone())];
-    let enhanced_targets: [Option<wgpu::ColorTargetState>; 3] = [
-      Some(target),
-      Some(covering(ViewTargets::DISTORTION)),
-      Some(covering(ViewTargets::MOTION)),
+    let engine_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(blended(ViewTargets::SCENE))];
+    let splash_targets: [Option<wgpu::ColorTargetState>; 2] =
+      [Some(blended(ViewTargets::SCENE)), Some(distorting.clone())];
+    // The streaks' distortion leaves the scene as it is.
+    let distortion_targets: [Option<wgpu::ColorTargetState>; 2] = [
+      Some(wgpu::ColorTargetState {
+        write_mask: wgpu::ColorWrites::empty(),
+        ..blended(ViewTargets::SCENE)
+      }),
+      Some(distorting),
     ];
+    let over_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(blended(Self::LAYER))];
     let engine: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
     let enhanced: [Option<&wgpu::BindGroupLayout>; 3] = [Some(view_layout), Some(layout), Some(look_layout)];
-    // Both sides, as the engine's `CULL_NONE`.
+    // Both sides, as the engine's `CULL_NONE`; tested against the scene's depth, where one is attached.
     let create = |(vertex, fragment): (&'static str, &'static str),
-                  (layouts, targets): (&[Option<&wgpu::BindGroupLayout>], &[Option<wgpu::ColorTargetState>])|
+                  (layouts, targets): (&[Option<&wgpu::BindGroupLayout>], &[Option<wgpu::ColorTargetState>]),
+                  is_depth_tested: bool|
      -> XrfResult<wgpu::RenderPipeline> {
-      source.get_render_pipeline(
-        &RenderPipelineDescription::new("rain", "frame/rain", vertex)
-          .with_fragment(fragment)
-          .with_bind_group_layouts(layouts)
-          .with_depth_stencil(wgpu::DepthStencilState {
-            format: ViewTargets::DEPTH,
-            depth_write_enabled: Some(false),
-            depth_compare: Some(wgpu::CompareFunction::Greater),
-            stencil: Default::default(),
-            bias: Default::default(),
-          })
-          .with_targets(targets.to_vec()),
-      )
+      let description: RenderPipelineDescription = RenderPipelineDescription::new("rain", "frame/rain", vertex)
+        .with_fragment(fragment)
+        .with_bind_group_layouts(layouts)
+        .with_targets(targets.to_vec());
+
+      source.get_render_pipeline(&if is_depth_tested {
+        description.with_depth_stencil(wgpu::DepthStencilState {
+          format: ViewTargets::DEPTH,
+          depth_write_enabled: Some(false),
+          depth_compare: Some(wgpu::CompareFunction::Greater),
+          stencil: Default::default(),
+          bias: Default::default(),
+        })
+      } else {
+        description
+      })
     };
 
     Ok([
-      create(("vs_streak", "fs_streak"), (&engine, &engine_targets))?,
-      create(("vs_splash", "fs_splash"), (&engine, &engine_targets))?,
-      create(("vs_streak", "fs_streak_enhanced"), (&enhanced, &enhanced_targets))?,
-      create(("vs_splash", "fs_splash_enhanced"), (&enhanced, &enhanced_targets))?,
+      create(("vs_streak", "fs_streak"), (&engine, &engine_targets), true)?,
+      create(("vs_splash", "fs_splash"), (&engine, &engine_targets), true)?,
+      create(
+        ("vs_streak", "fs_streak_distortion"),
+        (&enhanced, &distortion_targets),
+        true,
+      )?,
+      create(("vs_splash", "fs_splash_enhanced"), (&enhanced, &splash_targets), true)?,
+      create(
+        ("vs_streak_over", "fs_streak_enhanced"),
+        (&enhanced, &over_targets),
+        false,
+      )?,
     ])
   }
 
-  fn create_blur(source: PipelineSource<'_>, layout: &wgpu::BindGroupLayout) -> XrfResult<[wgpu::RenderPipeline; 2]> {
+  fn create_blur(source: PipelineSource<'_>, layout: &wgpu::BindGroupLayout) -> XrfResult<[wgpu::RenderPipeline; 3]> {
     let create = |fragment: &'static str| {
-      create_fullscreen_pipeline(source, "frame/rain_blur", fragment, &[Some(layout)], ViewTargets::SCENE)
+      create_fullscreen_pipeline(source, "frame/rain_blur", fragment, &[Some(layout)], Self::LAYER)
     };
 
-    Ok([create("fs_rain_block")?, create("fs_rain_blur")?])
+    Ok([
+      create("fs_rain_block")?,
+      create("fs_rain_blur")?,
+      create("fs_rain_copy")?,
+    ])
   }
 }

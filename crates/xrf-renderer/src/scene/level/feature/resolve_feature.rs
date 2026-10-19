@@ -542,6 +542,14 @@ impl ResolveFeature {
     self.upscaled.is_some()
   }
 
+  /// The size of the image shown, that of the frame as drawn (`drawn`) unless it is rescaled.
+  pub fn get_shown_size(&self, drawn: (u32, u32)) -> (u32, u32) {
+    self
+      .upscaled
+      .as_ref()
+      .map_or(drawn, |[upscaled, _]| upscaled.get_size())
+  }
+
   /// Whether the temporal resolve's reactive weight, or DLSS's mask of what to upscale from this frame alone, reads the
   /// frame's copy as it stood before the water.
   pub fn is_reading_scene_before_water(&self) -> bool {
