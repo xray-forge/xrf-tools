@@ -2,26 +2,45 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Binding, Container } from "@wirestate/core";
+import { flowResult } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { TEXTURES_EDITOR_APPLICATION } from "@/applications/textures-editor/application";
+import { ITextureBumpSources, TextureBumpService } from "@/applications/textures-editor/services/bump";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
+import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import {
   TextureDescription,
   TextureDescriptorForm,
+  TextureEncodingComparison,
+  TextureMakeBumpOutcome,
   TextureSaveOutcome,
   TexturesSaveRequest,
 } from "@/core/ipc/types/xrf-app";
+import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
-import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/fixtures/mocks/texture.mocks";
+import { InvokeMap, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import {
+  MOCK_TEXTURE,
+  mockTextureDescription,
+  mockTextureEncodingComparison,
+  mockTextureVocabulary,
+} from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { noop } from "@/lib/callbacks/noop";
 
 import { TexturesEditorWorkspace } from "./TexturesEditorWorkspace";
 
-/** A described texture with somewhere to write to, which is what makes a save possible at all. */
+const SOURCES: ITextureBumpSources = {
+  gloss: null,
+  glossConstant: 0.5,
+  height: "C:\\work\\wall_height.png",
+  normalMap: null,
+  virtualHeight: 0.05,
+};
+
 function describedTexture(overrides: Partial<TextureDescription> = {}): TextureDescription {
   return mockTextureDescription(MOCK_TEXTURE, {
     targets: {
@@ -32,8 +51,12 @@ function describedTexture(overrides: Partial<TextureDescription> = {}): TextureD
   });
 }
 
-async function renderWorkspace(description: TextureDescription = describedTexture()): Promise<{
+async function renderWorkspace(
+  description: TextureDescription = describedTexture(),
+  responses: InvokeMap = {}
+): Promise<{
   render: RenderResult;
+  container: Container;
   editorService: TextureEditorService;
   selectionService: TextureSelectionService;
 }> {
@@ -51,6 +74,7 @@ async function renderWorkspace(description: TextureDescription = describedTextur
 
       return { descriptorFormat: null, outcome: "completed", written: [] };
     },
+    ...responses,
   });
 
   setMockBulkResponses({
@@ -76,7 +100,16 @@ async function renderWorkspace(description: TextureDescription = describedTextur
     await Promise.resolve();
   });
 
-  return { editorService: container.get(TextureEditorService), render, selectionService };
+  return { container, editorService: container.get(TextureEditorService), render, selectionService };
+}
+
+function mockDeferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve: (value: T) => void = noop;
+  const promise: Promise<T> = new Promise<T>((settle) => {
+    resolve = settle;
+  });
+
+  return { promise, resolve };
 }
 
 describe("TexturesEditorWorkspace", () => {
@@ -134,5 +167,73 @@ describe("TexturesEditorWorkspace", () => {
 
     expect(render.getByText("Leave without saving?")).toBeInTheDocument();
     expect(render.queryByText("Save and leave")).not.toBeInTheDocument();
+  });
+
+  it("stays open while a bump pair is being generated", async () => {
+    // The pair is written beside the texture when the job finishes, and the descriptor is pointed at it only while the
+    // editor is still there to take the edit.
+    const answer = mockDeferred<TextureMakeBumpOutcome>();
+    const {
+      container,
+      render: { getByRole },
+      selectionService,
+    } = await renderWorkspace(describedTexture(), { ["plugin:textures|make_bump"]: () => answer.promise });
+    const lifecycle: EditorLifecycleService = container.get(EditorLifecycleService);
+
+    let generation: Promise<void> = Promise.resolve();
+
+    act(() => {
+      generation = flowResult(container.get(TextureBumpService).run(SOURCES));
+    });
+
+    await waitFor(() => expect(lifecycle.isBusy).toBe(true));
+
+    await userEvent.click(getByRole("button", { name: "Back to Textures editor" }));
+
+    expect(selectionService.selected.value).not.toBeNull();
+
+    await act(async () => {
+      answer.resolve({
+        bump: `C:\\gamedata\\textures\\${MOCK_TEXTURE}_bump.dds`,
+        companion: `C:\\gamedata\\textures\\${MOCK_TEXTURE}_bump#.dds`,
+        glossPower: 0.5,
+        isGlossTooDark: false,
+        outcome: "completed",
+      });
+
+      await generation;
+    });
+
+    expect(lifecycle.isBusy).toBe(false);
+  });
+
+  it("stays open while encodings are being compared", async () => {
+    const answer = mockDeferred<TextureEncodingComparison>();
+    const {
+      container,
+      render: { getByRole },
+      selectionService,
+    } = await renderWorkspace(describedTexture(), { ["plugin:textures|compare_encodings"]: () => answer.promise });
+    const lifecycle: EditorLifecycleService = container.get(EditorLifecycleService);
+
+    let comparison: Promise<void> = Promise.resolve();
+
+    act(() => {
+      comparison = flowResult(container.get(TextureEncodingService).run(null));
+    });
+
+    await waitFor(() => expect(lifecycle.isBusy).toBe(true));
+
+    await userEvent.click(getByRole("button", { name: "Back to Textures editor" }));
+
+    expect(selectionService.selected.value).not.toBeNull();
+
+    await act(async () => {
+      answer.resolve(mockTextureEncodingComparison());
+
+      await comparison;
+    });
+
+    expect(lifecycle.isBusy).toBe(false);
   });
 });

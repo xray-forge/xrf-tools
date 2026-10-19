@@ -3,6 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { TEXTURES_EDITOR_PANELS } from "@/applications/textures-editor/components/panels/textures-editor-panels";
+import { TextureBumpService } from "@/applications/textures-editor/services/bump";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
@@ -26,8 +27,14 @@ export function TexturesEditorWorkspace({
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
   const editorService: TextureEditorService = useInjection(TextureEditorService);
   const encodingService: TextureEncodingService = useInjection(TextureEncodingService);
+  const bumpService: TextureBumpService = useInjection(TextureBumpService);
 
   const description: Nullable<TextureDescription> = selectionService.selected.value;
+
+  // A generated pair is written to disk the moment its job finishes, and a comparison is a job the backend keeps
+  // running, so both hold the editor open as a save does.
+  const isBusy: boolean =
+    editorService.save.isRunning || encodingService.compare.isRunning || bumpService.generate.isRunning;
 
   const panels: Array<IEditorPanel> = useMemo(() => TEXTURES_EDITOR_PANELS, []);
 
@@ -48,7 +55,7 @@ export function TexturesEditorWorkspace({
   useEffect(() => editorService.bind(description), [editorService, description]);
 
   useEditorLifecycle({
-    isBusy: editorService.save.isRunning,
+    isBusy,
     dirtyCount: editorService.isDirty ? 1 : 0,
     save: editorService.canSave ? onSave : null,
   });
