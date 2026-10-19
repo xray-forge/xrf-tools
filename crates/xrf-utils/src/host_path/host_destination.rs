@@ -10,10 +10,6 @@ use crate::host_path::{HostLinkPolicy, HostRelativePath};
 use crate::path_utils::format_path;
 
 /// A destination root that data-named writes only ever grow downwards from.
-///
-/// Every component below the root is created or checked one at a time and nothing is resolved and compared against the
-/// root, so a redirect the user placed (a junction, a symlink deployment, a mod-manager overlay) is never mistaken for
-/// an escape. The root itself is never inspected: the caller named it.
 pub struct HostDestination {
   root: PathBuf,
   link_policy: HostLinkPolicy,
@@ -82,6 +78,38 @@ impl HostDestination {
   pub fn prepare_file(&self, relative: &HostRelativePath) -> XrfResult<PathBuf> {
     let (parent, name) = self.create_parent(relative)?;
     let path: PathBuf = parent.join(name);
+
+    self.check_file_slot(&path)?;
+
+    Ok(path)
+  }
+
+  /// The host path of the file `relative` names, checked as far as it exists and creating nothing.
+  ///
+  /// # Errors
+  ///
+  /// Returns an invalid error when `relative` names no file, or an existing component on the way down is refused.
+  pub fn resolve_file(&self, relative: &HostRelativePath) -> XrfResult<PathBuf> {
+    if relative.file_name().is_none() {
+      return Err(XrfError::new_invalid_error(format!(
+        "Destination path '{relative}' names no file to write"
+      )));
+    }
+
+    let mut path: PathBuf = self.root.clone();
+
+    for component in relative.parent().unwrap_or_default().as_path().components() {
+      path.push(Self::descend(component, relative.as_path())?);
+
+      match self.read_metadata(&path) {
+        Ok(metadata) => self.ensure_directory(&path, &metadata)?,
+        // Nothing below a missing directory exists, so there is nothing left to check.
+        Err(error) if error.kind() == ErrorKind::NotFound => break,
+        Err(error) => return Err(error.into()),
+      }
+    }
+
+    let path: PathBuf = self.root.join(relative);
 
     self.check_file_slot(&path)?;
 

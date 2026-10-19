@@ -1,6 +1,4 @@
 //! A destination under either link policy, against trees that already hold links.
-//!
-//! Each case puts a sentinel outside the root and asserts what reached it, rather than only whether the call failed.
 
 use std::ffi::OsStr;
 use std::fs;
@@ -236,4 +234,55 @@ fn create_file_in_refuses_a_parent_outside_the_root_or_a_path_for_a_name() {
     .expect("a parent below the root is accepted");
 
   assert!(root.join("system.ltx").is_file());
+}
+
+/// Resolving is for reading a target or a dry run, so it must leave the destination exactly as it found it.
+#[test]
+fn resolve_creates_nothing_under_either_policy() {
+  for policy in [HostLinkPolicy::Follow, HostLinkPolicy::Refuse] {
+    let directory: PathBuf = create_directory(&format!("resolve-creates-nothing-{policy:?}"));
+    let root: PathBuf = directory.join("out");
+    let destination: HostDestination = HostDestination::new(&root, policy);
+
+    assert_eq!(
+      destination
+        .resolve_file(&relative("text/eng/st_items.json"))
+        .expect("resolved"),
+      root.join("text").join("eng").join("st_items.json")
+    );
+    assert!(!root.exists(), "resolving created the root");
+    assert!(destination.resolve_file(&HostRelativePath::default()).is_err());
+  }
+}
+
+#[test]
+fn resolve_applies_the_policy_to_links_that_exist() {
+  let directory: PathBuf = create_directory("resolve-links");
+  let sentinel: PathBuf = create_sentinel(&directory);
+  let root: PathBuf = directory.join("out");
+
+  fs::create_dir_all(&root).expect("destination");
+
+  if !link_directory(&sentinel, &root.join("text")) || !link_file(&sentinel.join("keep.txt"), &root.join("keep.txt")) {
+    return;
+  }
+
+  let following: HostDestination = HostDestination::new(&root, HostLinkPolicy::Follow);
+  let refusing: HostDestination = HostDestination::new(&root, HostLinkPolicy::Refuse);
+
+  assert_eq!(
+    following
+      .resolve_file(&relative("text/eng/st_items.json"))
+      .expect("followed"),
+    root.join("text").join("eng").join("st_items.json")
+  );
+  assert!(following.resolve_file(&relative("keep.txt")).is_ok());
+  assert!(matches!(
+    refusing.resolve_file(&relative("text/eng/st_items.json")),
+    Err(XrfError::Invalid { .. })
+  ));
+  assert!(matches!(
+    refusing.resolve_file(&relative("keep.txt")),
+    Err(XrfError::Invalid { .. })
+  ));
 }

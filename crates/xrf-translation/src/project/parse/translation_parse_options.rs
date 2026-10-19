@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use xrf_utils::HostLinkPolicy;
 use xrf_vfs::XrayRoots;
 
 use crate::language::TranslationLanguage;
@@ -12,9 +13,6 @@ pub struct TranslationParseOptions {
   /// Roots holding the raw XML, read through the VFS so an installation imports like a loose tree.
   pub roots: XrayRoots,
   /// Where inside those roots to look, or nothing to let the run resolve it.
-  ///
-  /// See `scope::resolve`: an absent prefix falls back to the gamedata text prefix when the roots
-  /// have one, and then descends into a directory named for the language.
   pub prefix: Option<String>,
   /// The language every entry this run reads is filed under. Never `All`.
   pub language: TranslationLanguage,
@@ -26,4 +24,6 @@ pub struct TranslationParseOptions {
   pub is_overwrite: bool,
   /// Do everything except write, so a caller can see what a run would change.
   pub is_dry_run: bool,
+  /// What to do with a link already below `output_dir`.
+  pub link_policy: HostLinkPolicy,
 }

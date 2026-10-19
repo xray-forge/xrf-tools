@@ -5,7 +5,7 @@ use std::time::Instant;
 use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
-use xrf_utils::format_path;
+use xrf_utils::{HostDestination, HostFileName, HostRelativePath, format_path};
 use xrf_vfs::{XrayAsset, XrayLookupScope, XrayScopedVfs, XrayVfs};
 
 use crate::json::read::parse_json;
@@ -22,18 +22,10 @@ use crate::xml::read::parse_required_string_table;
 type StringTableEntries = IndexMap<String, String>;
 
 /// Imports raw X-Ray XML string tables into multi-language JSON sources.
-///
-/// Named for the `translation parse` command it backs. The readers that turn bytes into a document live in `json` and
-/// `xml`; this is the whole-tree import that uses them.
 pub struct TranslationParser;
 
 impl TranslationParser {
   /// Import one language's raw string tables into JSON sources.
-  ///
-  /// Reads through the VFS, so an installation imports exactly like a loose tree — on Anomaly and CoC
-  /// the tables live inside `db\configs`, and a reader reaching for the filesystem reports them absent
-  /// instead of reading them. Writes to the host, because JSON sources are files a translator edits and
-  /// there is nowhere to put one inside a volume.
   ///
   /// # Errors
   ///
@@ -95,6 +87,8 @@ impl TranslationParser {
       )));
     }
 
+    let destination: HostDestination = HostDestination::new(&options.output_dir, options.link_policy);
+
     let parsing: xrf_job::JobScope = options.job.enter(
       crate::project::job_phases::TRANSLATION_PHASE_PARSE,
       Some(assets.len() as u64),
@@ -113,7 +107,7 @@ impl TranslationParser {
         .job
         .set_detail(Some(asset.get_logical_path().as_str().to_owned()));
 
-      Self::import_asset(&scoped, asset, &scope, &language, options, &mut result)?;
+      Self::import_asset(&scoped, asset, &scope, &language, &destination, options, &mut result)?;
 
       parsing.advance();
     }
@@ -137,6 +131,7 @@ impl TranslationParser {
     asset: &XrayAsset,
     scope: &ResolvedParseScope,
     language: &str,
+    destination: &HostDestination,
     options: &TranslationParseOptions,
     result: &mut TranslationParseResult,
   ) -> XrfResult {
@@ -182,7 +177,8 @@ impl TranslationParser {
     result.census.entries_read += entries.len() as u32;
 
     let entries: Vec<(String, String)> = Self::deduplicate(entries, logical_path, result);
-    let target: PathBuf = Self::target_path(&options.output_dir, scope, logical_path)?;
+    let relative: HostRelativePath = Self::target_path(scope, logical_path)?;
+    let target: PathBuf = destination.resolve_file(&relative)?;
     let existing: TranslationJson = Self::read_existing(&target, result)?;
 
     let (merged, outcome): (TranslationJson, MergeOutcome) =
@@ -190,13 +186,10 @@ impl TranslationParser {
 
     outcome.record(&mut result.census);
 
-    Self::write_merged(&target, &merged, options, result)
+    Self::write_merged(&target, &relative, destination, &merged, options, result)
   }
 
   /// Keep the last of a repeated id, which is the one `CStringTable::Load` leaves in the table.
-  ///
-  /// Reported rather than silently resolved: a file that defines an id twice is relying on load order,
-  /// and the strings that lose are invisible in game with nothing to say why.
   fn deduplicate(
     entries: Vec<(String, String)>,
     logical_path: &str,
@@ -229,45 +222,33 @@ impl TranslationParser {
     }
   }
 
-  /// Where one string table's JSON lands, mirroring its path below the resolved scope.
-  ///
-  /// Mirrored rather than flattened so two tables with the same name in different directories cannot
-  /// merge into one file. For the flat trees that gamedata and XRF sources actually are, this is the
-  /// same thing as flattening.
+  /// Where one string table's JSON lands below the output directory, mirroring its path below the resolved scope.
   ///
   /// # Errors
   ///
-  /// Returns an invalid error when the logical path has no file name.
-  fn target_path(output_dir: &Path, scope: &ResolvedParseScope, logical_path: &str) -> XrfResult<PathBuf> {
-    let relative: &str = logical_path
-      .strip_prefix(scope.prefix())
-      .map_or(logical_path, |rest| rest.trim_start_matches('\\'));
+  /// Returns an invalid error when the logical path has no file name or would leave the output directory.
+  fn target_path(scope: &ResolvedParseScope, logical_path: &str) -> XrfResult<HostRelativePath> {
+    let relative: HostRelativePath = HostRelativePath::new(
+      logical_path
+        .strip_prefix(scope.prefix())
+        .map_or(logical_path, |rest| rest.trim_start_matches('\\')),
+      "Translation table",
+    )?;
 
-    let mut target: PathBuf = output_dir.to_path_buf();
-
-    // Component by component, because a logical path is `\`-separated whatever the host uses.
-    for component in relative.split('\\').filter(|component| !component.is_empty()) {
-      target.push(component);
-    }
-
-    let stem: String = target
+    let stem: &str = relative
+      .as_path()
       .file_stem()
       .and_then(|stem| stem.to_str())
       .ok_or_else(|| {
         XrfError::new_invalid_error(format!("Translation source '{logical_path}' has no usable file name"))
-      })?
-      .to_owned();
+      })?;
 
-    target.set_file_name(format!("{stem}.{}", XrayExtension::Json));
+    let file: HostFileName = HostFileName::new(stem, "Translation table")?.with_extension(XrayExtension::Json.as_str());
 
-    Ok(target)
+    Ok(relative.parent().unwrap_or_default().join(&file))
   }
 
   /// What the target already holds, or an empty document when it holds nothing yet.
-  ///
-  /// A target that exists but cannot be parsed stops this file rather than being overwritten: replacing
-  /// a JSON source somebody is editing because it briefly failed to parse would destroy the very work
-  /// the merge exists to protect.
   fn read_existing(target: &Path, result: &mut TranslationParseResult) -> XrfResult<TranslationJson> {
     if !target.exists() {
       return Ok(TranslationJson::default());
@@ -292,12 +273,10 @@ impl TranslationParser {
   }
 
   /// Write the merged document, unless nothing changed or the run was told not to.
-  ///
-  /// What counts as changed is the canonical bytes against the bytes on disk, so a file whose records this run left alone
-  /// but whose formatting was not canonical is normalized too. That is one definition shared with `translation format`
-  /// rather than a second opinion about the same question.
   fn write_merged(
     target: &Path,
+    relative: &HostRelativePath,
+    destination: &HostDestination,
     merged: &TranslationJson,
     options: &TranslationParseOptions,
     result: &mut TranslationParseResult,
@@ -336,6 +315,10 @@ impl TranslationParser {
     if options.is_dry_run {
       return Ok(());
     }
+
+    // The directories are made here rather than by the staged writer, so the run's link policy decides each of them.
+    destination.create_root()?;
+    destination.prepare_file(relative)?;
 
     write_canonical(target, &render)?;
 

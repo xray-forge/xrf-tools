@@ -110,6 +110,7 @@ pub async fn translations_parse_project(
     file,
     is_overwrite,
     is_dry_run,
+    link_policy: Default::default(),
   };
 
   let outcome: TauriResult<TranslationParseSummary> = run_job(

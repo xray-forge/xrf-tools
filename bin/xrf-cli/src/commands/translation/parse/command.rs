@@ -9,6 +9,7 @@ use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 use crate::core::command_context::CommandContext;
 use crate::core::command_error::CommandError;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::link_policy::{LinkPolicyArguments, requested_link_policy};
 use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
@@ -89,6 +90,7 @@ impl GenericCommand for ParseCommand {
           .long("strict")
           .action(ArgAction::SetTrue),
       )
+      .with_link_policy()
   }
 
   /// Import one language's raw string tables into json sources.
@@ -133,6 +135,7 @@ impl GenericCommand for ParseCommand {
       file: matches.get_one::<String>("file").cloned(),
       is_overwrite: matches.get_flag("overwrite"),
       is_dry_run: matches.get_flag("dry-run"),
+      link_policy: requested_link_policy(matches),
     };
 
     let is_strict: bool = matches.get_flag("strict");

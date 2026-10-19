@@ -1,9 +1,10 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
+use xrf_test_utils::links::link_directory;
 use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_generated_test_resource};
-use xrf_utils::encode_string_to_bytes;
+use xrf_utils::{HostLinkPolicy, encode_string_to_bytes};
 
 use super::super::translation_parse_options::TranslationParseOptions;
 use super::super::translation_parse_result::TranslationParseResult;
@@ -22,6 +23,7 @@ fn options(root: &str, language: TranslationLanguage, output_dir: PathBuf) -> Tr
     file: None,
     is_overwrite: false,
     is_dry_run: false,
+    link_policy: Default::default(),
   }
 }
 
@@ -198,6 +200,7 @@ fn a_dry_run_reports_what_it_would_have_written_and_writes_nothing() -> XrfResul
   assert_eq!(result.census.files_created, 1);
   assert_eq!(result.census.entries_inserted, 1);
   assert!(!output_dir.join("st_items.json").exists());
+  assert!(!output_dir.exists(), "a dry run created the output directory");
 
   Ok(())
 }
@@ -358,6 +361,71 @@ fn a_file_selector_that_names_nothing_is_refused() -> XrfResult {
   let error = TranslationParser::parse(&selected).unwrap_err();
 
   assert!(error.to_string().contains("st_absent.xml"));
+
+  Ok(())
+}
+
+/// A nested table, and an output directory beside the mounted tree whose `ui` directory is a link to a sentinel.
+///
+/// Returns `None` when this host cannot create the link.
+fn linked_output(root: &str) -> XrfResult<Option<(PathBuf, PathBuf)>> {
+  write_generated_test_resource(&format!("{root}/eng/ui/st_ui.xml"), table("st_ui", "UI"))?;
+
+  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{root}-destination"));
+
+  if destination.exists() {
+    fs::remove_dir_all(&destination)?;
+  }
+
+  let sentinel: PathBuf = destination.join("sentinel");
+  let output_dir: PathBuf = destination.join("output");
+
+  fs::create_dir_all(&sentinel)?;
+  fs::create_dir_all(&output_dir)?;
+
+  if !link_directory(&sentinel, &output_dir.join("ui")) {
+    return Ok(None);
+  }
+
+  Ok(Some((output_dir, sentinel)))
+}
+
+/// A junctioned or symlink-deployed folder is the user's layout, so the default run writes where it points.
+#[test]
+fn follows_a_directory_link_below_the_output_by_default() -> XrfResult {
+  let root: &str = "parse_run/link_follow";
+
+  let Some((output_dir, sentinel)) = linked_output(root)? else {
+    return Ok(());
+  };
+
+  TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir))?;
+
+  assert!(read(&sentinel.join("st_ui.json")).contains("\"eng\": \"UI\""));
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_directory_link_below_the_output_when_asked() -> XrfResult {
+  let root: &str = "parse_run/link_refuse";
+
+  let Some((output_dir, sentinel)) = linked_output(root)? else {
+    return Ok(());
+  };
+
+  let mut refusing = options(root, TranslationLanguage::English, output_dir);
+
+  refusing.link_policy = HostLinkPolicy::Refuse;
+
+  assert!(matches!(
+    TranslationParser::parse(&refusing),
+    Err(XrfError::Invalid { .. })
+  ));
+  assert!(
+    !sentinel.join("st_ui.json").exists(),
+    "a source was written through a refused link"
+  );
 
   Ok(())
 }
