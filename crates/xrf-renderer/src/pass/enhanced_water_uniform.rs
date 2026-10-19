@@ -46,6 +46,12 @@ pub struct EnhancedWaterUniform {
   pub trace_frame: u32,
   /// How much of its colour the reflection keeps.
   pub vibrance: f32,
+  /// Metres a side of the tile the enhanced drops' rings wrap over (`RainUniform::get_rings`), which it ripples by in
+  /// place of its map's rings, none without them; the metres from the eye they reach, and their strength, of their
+  /// designed one.
+  pub rings_tile: f32,
+  pub rings_reach: f32,
+  pub rings_strength: f32,
 }
 
 impl EnhancedWaterUniform {
@@ -83,6 +89,7 @@ impl EnhancedWaterUniform {
       trace_turns,
       trace_frame,
       vibrance: settings.vibrance,
+      ..Default::default()
     }
   }
 }

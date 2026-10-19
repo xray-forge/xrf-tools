@@ -34,8 +34,8 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 const NO_COLLECTIONS: ReadonlyArray<ThunderboltCollection> = [];
 
 /**
- * How hard it rains, the streaks' colour and whether the drops bend the scene behind them, the bolts that strike with
- * it, and whether puddles gather on flat ground over the engine's own wetting: how many of the sites hold one, how much
+ * How hard it rains, the streaks' colour, whether the drops bend the scene behind them, how far about the camera
+ * they fall and how far, how strongly and how wide their rings ripple, the bolts that strike with it, and whether puddles gather on flat ground over the engine's own wetting: how many of the sites hold one, how much
  * they reflect, how far they are drawn and how strongly the rain ripples them; whether any of it happens at all.
  */
 export function LevelRainAction({
@@ -93,6 +93,42 @@ export function LevelRainAction({
             setPuddles({ drops: isOn ? ERenderRainDropsMode.ENHANCED : ERenderRainDropsMode.ENGINE })
           }
         />
+
+        {isRefracted ? (
+          <>
+            <RenderValueSlider
+              label={"Drop area"}
+              value={puddles.dropSquare}
+              {...RENDER_RAIN_LIMITS.dropSquare}
+              format={formatGrassRadius}
+              onChange={(dropSquare: number) => setPuddles({ dropSquare })}
+            />
+
+            <RenderValueSlider
+              label={"Ring distance"}
+              value={puddles.ringDistance}
+              {...RENDER_RAIN_LIMITS.ringDistance}
+              format={formatGrassRadius}
+              onChange={(ringDistance: number) => setPuddles({ ringDistance })}
+            />
+
+            <RenderValueSlider
+              label={"Ring strength"}
+              value={puddles.ringStrength}
+              {...RENDER_RAIN_LIMITS.ringStrength}
+              format={formatRainShare}
+              onChange={(ringStrength: number) => setPuddles({ ringStrength })}
+            />
+
+            <RenderValueSlider
+              label={"Ring size"}
+              value={puddles.ringSize}
+              {...RENDER_RAIN_LIMITS.ringSize}
+              format={formatRainShare}
+              onChange={(ringSize: number) => setPuddles({ ringSize })}
+            />
+          </>
+        ) : null}
       </EditorPopoverGroupSection>
 
       <EditorPopoverGroupSection

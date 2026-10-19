@@ -7,7 +7,9 @@
 // streak falls again and again at its own speed from a column of the level a square about the camera wraps as it
 // moves, and stops where the cover under that column stands, which is where its splash is. The fall's shape is the
 // uniform's: the engine's, or Monolith's as Screen Space Shaders' rain shapes it (`ssfx_rain_1`, `drops_setup`). The
-// enhanced streaks draw after the temporal resolve, over a copy of the image it shows, so no history carries them.
+// enhanced streaks draw after the temporal resolve, over a copy of the image it shows, so no history carries them;
+// where they land, each leaves a ring on the water, drawn into the rain's rings from overhead, a tile of the level its
+// columns repeat over.
 
 // The rain, its cover, the streak's and the splash's textures, and the splash's model in renderer space (its position,
 // then its coordinate, a vertex); for the enhanced rain, the shown image blurred small, their maps and their sampler,
@@ -41,6 +43,29 @@ const STREAK_LEAST: vec2<f32> = vec2<f32>(0.6, 0.75);
 // How large a splash stands as it lands, of its full size, which it opens to as it fades.
 const SPLASH_OPENING: f32 = 0.6;
 
+// How much of an enhanced splash shows where it lands on water, whose rings show the drop's landing: a crown of spray
+// over dark water drew the eye as a grey cone.
+const SPLASH_ON_WATER: f32 = 0.35;
+
+// A ring an enhanced drop leaves where it lands, at its designed size (`rain.fall.w` scales it): seconds it spreads
+// for, the metres its front starts at and spreads a second, its waves' length, and how many of them its train runs
+// behind the front.
+const RING_TIME: f32 = 0.7;
+const RING_START: f32 = 0.01;
+const RING_SPEED: f32 = 0.35;
+const RING_WAVE: f32 = 0.07;
+const RING_TRAIN: f32 = 2.0;
+
+// When a fall that ends before it reaches the cover lands: never, however many falls back it is read.
+const NEVER_LANDS: f32 = 1e9;
+
+// The most rings of far cells about the near square, past the widest square's half side.
+const FAR_RINGS_MOST: u32 = 8u;
+
+// How far through its period an enhanced drop lands, the rest waited out before it falls again, as Monolith's drops
+// are born again as they land.
+const ENHANCED_LANDING: f32 = 0.85;
+
 // What the distortion target holds where nothing distorts it, `ViewTargets::NEUTRAL_DISTORTION`.
 const NEUTRAL_DISTORTION: f32 = 127.0 / 255.0;
 
@@ -51,12 +76,18 @@ const CORNERS: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
 );
 
 struct Fall {
-  // Seconds into this fall, and when it lands, past its period where it never does.
+  // What its draws are seeded by: its streak near, its cell and its place in it far.
+  key: u32,
+  // Seconds into this fall, and when it lands, `NEVER_LANDS` where it does not within its period.
   age: f32,
   landing: f32,
   direction: vec3<f32>,
   head: vec3<f32>,
   landed: vec3<f32>,
+  // Whether it lands on the level's water rather than the cover, and whether it is a near drop, of the square every
+  // enhanced drop falls in, whose landings ring the water and splash.
+  is_on_water: bool,
+  is_near: bool,
   is_falling: bool,
   // Which fall of the streak, which every further draw is seeded by.
   cycle: u32,
@@ -69,6 +100,17 @@ struct RainVarying {
   @location(1) view_at: vec3<f32>,
   // How far through its life a splash is, from nought to one; nought for a streak.
   @location(2) life: f32,
+  // One where a splash lands on water, nought otherwise and for a streak.
+  @location(3) on_water: f32,
+};
+
+// A ring on the rain's rings: where it stands from its drop's landing, metres in renderer `x` and `z`, seconds since,
+// and how strongly it rises.
+struct RingVarying {
+  @builtin(position) clip: vec4<f32>,
+  @location(0) offset: vec2<f32>,
+  @location(1) since: f32,
+  @location(2) strength: f32,
 };
 
 // What the enhanced rain draws before the resolve: its colour over the scene, and the distortion under it, by their
@@ -115,35 +157,123 @@ fn direction_of(streak: u32, cycle: u32) -> vec3<f32> {
 }
 
 fn fall_of(streak: u32) -> Fall {
-  let speed: f32 = mix(rain.streak.z, rain.streak.w, random(streak, 0u, 0u));
-  let period: f32 = rain.fall.y / speed;
-  let phase: f32 = rain.time / period + random(streak, 0u, 1u);
-  let cycle: u32 = u32(floor(phase));
-  let age: f32 = fract(phase) * period;
+  return fall_back(streak, 0u);
+}
+
+// Where a far enhanced drop falls (`rain.near_count` and on): the cell of the level it falls in, a cell a near square
+// wide, the one under the near square's centre and rings of them about it, and which of the cell's drops it is. The
+// centre's cell holds as many as the near square, for what of it the near square, following the camera, leaves out;
+// a ring `k` cells out `near_count / 4k²` a cell, so the drops on screen stay about as many at every distance, as a
+// drop far off is drawn small (`RainUniform::squared` counts them alike).
+struct FarDrop {
+  cell: vec2<i32>,
+  index: u32,
+};
+
+fn far_drop(far: u32) -> FarDrop {
+  if (far < rain.near_count) {
+    return FarDrop(vec2<i32>(0), far);
+  }
+
+  var left: u32 = far - rain.near_count;
+
+  for (var k: u32 = 1u; k <= FAR_RINGS_MOST; k++) {
+    let per_cell: u32 = max(1u, u32(floor(f32(rain.near_count) / f32(4u * k * k) + 0.5)));
+    let in_ring: u32 = 8u * k * per_cell;
+
+    if (left < in_ring) {
+      let along: u32 = left / per_cell;
+      let side: u32 = along / (2u * k);
+      let step: i32 = i32(along % (2u * k));
+      let reach: i32 = i32(k);
+      var cell: vec2<i32> = vec2<i32>(-reach + step, -reach);
+
+      if (side == 1u) {
+        cell = vec2<i32>(reach, -reach + step);
+      } else if (side == 2u) {
+        cell = vec2<i32>(reach - step, reach);
+      } else if (side == 3u) {
+        cell = vec2<i32>(-reach, reach - step);
+      }
+
+      return FarDrop(cell, left % per_cell);
+    }
+
+    left -= in_ring;
+  }
+
+  return FarDrop(vec2<i32>(0), 0u);
+}
+
+// A streak's fall `back` falls before this one, aged from its own start; never falling before the rain's first.
+fn fall_back(streak: u32, back: u32) -> Fall {
   let eye: vec3<f32> = camera.position.xyz;
   // Monolith's `Born` aims ahead of where the camera looks (`aim`, none for the engine's).
   let centre: vec2<f32> = eye.xz + rain.aim.xy;
-  // A column of the level, kept where it is as the camera moves and wrapped around the square's centre.
-  let tile: f32 = rain.fall.z;
-  let base: vec2<f32> = vec2<f32>(random(streak, cycle, 2u), random(streak, cycle, 3u)) * tile;
-  let wrapped: vec2<f32> = base - centre + tile / 2.0;
+  let is_enhanced: bool = rain.is_enhanced != 0u;
+  // The near square's side, every drop in it falling, and the cell a far drop falls in, its draws seeded by the cell
+  // and its place in it, so it stays the same drop where it falls however the camera moves.
+  let tile: f32 = select(rain.fall.z, rain.near, is_enhanced);
+  let is_far: bool = is_enhanced && streak >= rain.near_count;
+  let far: FarDrop = far_drop(streak - min(streak, rain.near_count));
+  let cell: vec2<i32> = vec2<i32>(floor(centre / tile)) + far.cell;
+  let cell_key: u32 = hash(bitcast<u32>(cell.x) * 0x9e3779b1u ^ hash(bitcast<u32>(cell.y) + far.index * 0x85ebca6bu));
+  let key: u32 = select(streak, cell_key, is_far);
+  let speed: f32 = mix(rain.streak.z, rain.streak.w, random(key, 0u, 0u));
+  let period: f32 = rain.fall.y / speed;
+  let phase: f32 = rain.time / period + random(key, 0u, 1u);
+  let cycle: u32 = u32(max(floor(phase) - f32(back), 0.0));
+  let age: f32 = (fract(phase) + f32(back)) * period;
+  let picked: vec2<f32> = vec2<f32>(random(key, cycle, 2u), random(key, cycle, 3u));
+  // A near column of the level, kept where it is as the camera moves and wrapped around the square's centre; a far
+  // one in its cell.
+  let wrapped: vec2<f32> = picked * tile - centre + tile / 2.0;
   let around: vec2<f32> = wrapped - floor(wrapped / tile) * tile - tile / 2.0;
-  let column: vec3<f32> = vec3<f32>(centre.x + around.x, eye.y, centre.y + around.y);
-  let direction: vec3<f32> = direction_of(streak, cycle);
+  let placed: vec2<f32> = select(centre + around, (vec2<f32>(cell) + picked) * tile, is_far);
+  let column: vec3<f32> = vec3<f32>(placed.x, eye.y, placed.y);
+  let from_centre: vec2<f32> = abs(placed - centre);
+  let direction: vec3<f32> = direction_of(key, cycle);
   // It starts `source_offset` over the camera, set back along its way so it falls through its column.
   let start: f32 = rain.fall.x / -direction.y;
-  let reach: f32 = (overhead_height(cover, rain.window, rain.cover_shape.x, rain.cover_shape.y, column) - column.y) /
-    direction.y;
-  let landing: f32 = (reach + start) / speed;
+  // The enhanced drops land on the level's water where it stands over the cover (`rain.water`, none for the engine's).
+  let water: f32 = select(-1e9, overhead_height(surface_water, rain.water, rain.water_shape.x, rain.water_shape.y,
+    column), rain.water.z > 0.0);
+  let covered: f32 = overhead_height(cover, rain.window, rain.cover_shape.x, rain.cover_shape.y, column);
+  let ground: f32 = max(covered, water);
   var fall: Fall;
 
+  fall.key = key;
   fall.age = age;
-  fall.landing = select(period + 1.0, landing, landing < period);
   fall.direction = direction;
+  fall.is_on_water = water > covered;
+  // A far drop falling in the near square, whose own drops fall there, or past the square's half side, is not drawn.
+  fall.is_near = !is_far;
+  fall.is_falling = streak < rain.count && floor(phase) >= f32(back) &&
+    (!is_far || (max(from_centre.x, from_centre.y) > tile * 0.5 && max(from_centre.x, from_centre.y) <= rain.fall.z * 0.5));
+  fall.cycle = cycle;
+
+  // The enhanced drop lands at its column at a set moment of its period, so where and when it lands, which its ring
+  // and splash show, holds still however the camera moves; its fall is laid back up its way from there, shown from
+  // `source_offset` over the camera. Started over the camera, as the engine's falls, it landed further along its
+  // slant and later the higher the camera stood, and the rings slid as the camera rose or sank.
+  if (is_enhanced) {
+    let landing: f32 = period * ENHANCED_LANDING;
+    let is_landing: bool = ground > eye.y - rain.fall.y;
+
+    fall.landing = select(NEVER_LANDS, landing, is_landing);
+    fall.landed = vec3<f32>(column.x, select(eye.y - rain.fall.y, ground, is_landing), column.z);
+    fall.head = fall.landed - direction * speed * (landing - age);
+    fall.is_falling = fall.is_falling && (fall.head.y <= eye.y + rain.fall.x || age >= landing);
+
+    return fall;
+  }
+
+  let reach: f32 = (ground - column.y) / direction.y;
+  let landing: f32 = (reach + start) / speed;
+
+  fall.landing = select(NEVER_LANDS, landing, landing < period);
   fall.head = column + direction * (speed * age - start);
   fall.landed = column + direction * reach;
-  fall.is_falling = streak < rain.count;
-  fall.cycle = cycle;
 
   return fall;
 }
@@ -156,7 +286,7 @@ fn streak_vertex(vertex_index: u32, view_projection: mat4x4<f32>) -> RainVarying
   var corners: array<vec2<f32>, 6> = CORNERS;
   let corner: vec2<f32> = corners[vertex_index % 6u];
   let fall: Fall = fall_of(streak);
-  let picked: vec2<f32> = vec2<f32>(random(streak, fall.cycle, 11u), random(streak, fall.cycle, 12u));
+  let picked: vec2<f32> = vec2<f32>(random(fall.key, fall.cycle, 11u), random(fall.key, fall.cycle, 12u));
   let size: vec2<f32> = select(vec2<f32>(1.0), mix(STREAK_LEAST, vec2<f32>(1.0), picked), rain.is_enhanced != 0u);
   let tail: vec3<f32> = fall.head - fall.direction * rain.color.w * rain.streak.x * size.x;
   let middle: vec3<f32> = mix(tail, fall.head, 0.5);
@@ -167,9 +297,10 @@ fn streak_vertex(vertex_index: u32, view_projection: mat4x4<f32>) -> RainVarying
   var out: RainVarying;
 
   out.clip = view_projection * vec4<f32>(shown, 1.0);
-  out.uv = select(vec2<f32>(1.0) - first, first, random(streak, fall.cycle, 6u) < 0.5);
+  out.uv = select(vec2<f32>(1.0) - first, first, random(fall.key, fall.cycle, 6u) < 0.5);
   out.view_at = (camera.view * vec4<f32>(shown, 1.0)).xyz;
   out.life = 0.0;
+  out.on_water = 0.0;
 
   return out;
 }
@@ -196,16 +327,17 @@ fn vs_splash(@builtin(vertex_index) vertex_index: u32) -> RainVarying {
   let position: vec4<f32> = splash_vertices[index * 2u];
   let coordinate: vec4<f32> = splash_vertices[index * 2u + 1u];
   let fall: Fall = fall_of(streak);
-  let since: f32 = fall.age - fall.landing;
+  let since: f32 = (fall.age - fall.landing) / rain.pace;
   let life: f32 = saturate(since / SPLASH_TIME);
   let scale: f32 = select(1.0 - life, mix(SPLASH_OPENING, 1.0, life), rain.is_enhanced != 0u);
-  let turn: f32 = random(streak, fall.cycle, 7u) * PI * 2.0;
+  let turn: f32 = random(fall.key, fall.cycle, 7u) * PI * 2.0;
   let c: f32 = cos(turn);
   let s: f32 = sin(turn);
   let turned: vec3<f32> = vec3<f32>(position.x * c + position.z * s, position.y, position.z * c - position.x * s);
   let splashing: f32 = select(0.5, rain.splash_look.w, rain.is_enhanced != 0u);
   let is_shown: bool =
-    fall.is_falling && random(streak, fall.cycle, 8u) < splashing && since >= 0.0 && since < SPLASH_TIME;
+    fall.is_falling && fall.is_near && random(fall.key, fall.cycle, 8u) < splashing && since >= 0.0 &&
+    since < SPLASH_TIME;
   let placed: vec3<f32> = select(fall.landed, fall.landed + turned * scale, is_shown);
   var out: RainVarying;
 
@@ -213,8 +345,59 @@ fn vs_splash(@builtin(vertex_index) vertex_index: u32) -> RainVarying {
   out.uv = coordinate.xy;
   out.view_at = (camera.view * vec4<f32>(placed, 1.0)).xyz;
   out.life = life;
+  out.on_water = f32(fall.is_on_water);
 
   return out;
+}
+
+// Each enhanced drop's ring where it lands, its fall's and its last fall's, so a ring spreads on as its streak falls
+// again: a quad as wide as its front has spread, on the rain's rings, the level's tile (`rain.near` metres a side, the
+// square every drop falls in) seen from overhead, wrapping; the thinned drops past it leave none. Four copies of each, moved a tile across, along and
+// both towards its nearest edges, so a ring crossing one goes on at the other; the copies a ring does not reach clip
+// away. Collapsed to nothing while it does not spread.
+@vertex
+fn vs_ring(@builtin(vertex_index) vertex_index: u32) -> RingVarying {
+  let copy: u32 = (vertex_index / 6u) % 4u;
+  let ring: u32 = vertex_index / 24u;
+  let streak: u32 = ring / 2u;
+  var corners: array<vec2<f32>, 6> = CORNERS;
+  let corner: vec2<f32> = vec2<f32>(corners[vertex_index % 6u].x, corners[vertex_index % 6u].y * 2.0 - 1.0);
+  let fall: Fall = fall_back(streak, ring % 2u);
+  let since: f32 = (fall.age - fall.landing) / rain.pace;
+  let is_spreading: bool = fall.is_falling && fall.is_near && since >= 0.0 && since < RING_TIME;
+  let offset: vec2<f32> = corner * (RING_START + RING_SPEED * since + RING_WAVE * 0.25) * rain.fall.w;
+  let tile: f32 = rain.near;
+  let within: vec2<f32> = fract(fall.landed.xz / tile);
+  let toward: vec2<f32> = select(vec2<f32>(1.0), vec2<f32>(-1.0), within > vec2<f32>(0.5));
+  let moved: vec2<f32> = toward * vec2<f32>(f32(copy & 1u), f32(copy >> 1u));
+  let placed: vec2<f32> = (within + moved + offset / tile) * 2.0 - 1.0;
+  var out: RingVarying;
+
+  out.clip = select(vec4<f32>(2.0, 2.0, 0.5, 1.0), vec4<f32>(placed.x, -placed.y, 0.5, 1.0), is_spreading);
+  out.offset = offset;
+  out.since = since;
+  out.strength = mix(0.5, 1.0, random(fall.key, fall.cycle, 13u));
+
+  return out;
+}
+
+// A ring's tilt and its square, added over the others: a train of waves behind its front, rising and falling over
+// it, fading as it spreads.
+@fragment
+fn fs_ring(in: RingVarying) -> @location(0) vec4<f32> {
+  let distance: f32 = length(in.offset) / rain.fall.w;
+  let behind: f32 = RING_START + RING_SPEED * in.since - distance;
+  let train: f32 = behind / (RING_WAVE * RING_TRAIN);
+
+  if (train < 0.0 || train > 1.0) {
+    discard;
+  }
+
+  let fade: f32 = 1.0 - in.since / RING_TIME;
+  let slope: f32 = cos(TAU * behind / RING_WAVE) * sin(PI * train) * fade * fade * in.strength;
+  let tilt: vec2<f32> = normalize(in.offset + vec2<f32>(1e-6, 0.0)) * slope;
+
+  return vec4<f32>(tilt, dot(tilt, tilt), 0.0);
 }
 
 // `effects\rain` over `stub_default`: the texture times the rain's colour, by its alpha, unlit and past the tonemap.
@@ -307,7 +490,7 @@ fn fs_streak_enhanced(in: RainVarying) -> @location(0) vec4<f32> {
 fn fs_splash_enhanced(in: RainVarying) -> RainLook {
   let texel: vec4<f32> = textureSample(splash_map, map_sampler, in.uv);
   let outward: vec2<f32> = texel.xy * 2.0 - 1.0;
-  let cover: f32 = texel.a * (1.0 - in.life) * (1.0 - in.life);
+  let cover: f32 = texel.a * (1.0 - in.life) * (1.0 - in.life) * mix(1.0, SPLASH_ON_WATER, in.on_water);
   var out: RainLook;
 
   out.color = vec4<f32>(scene_from_shown(scattered(in.view_at)), cover * rain.splash_look.x);

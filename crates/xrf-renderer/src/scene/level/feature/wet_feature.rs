@@ -96,6 +96,7 @@ impl WetFeature {
       gust: WetUniform::get_gust(lighting.wind.direction, lighting.wind.velocity),
       relief: Vec4::new(f32::from(u8::from(settings.is_relief_flooded)), 0.0, 0.0, 0.0),
       drying: Vec4::new(drying.get_peak(), drying.get_left(), 0.0, 0.0),
+      rings: Vec4::ZERO,
     };
     self.views = Some([
       weather_textures
@@ -105,6 +106,12 @@ impl WetFeature {
         .get_view(Some(&wet.flow), WeatherTextureKind::Flat)
         .clone(),
     ]);
+  }
+
+  /// Follows the enhanced drops' rings this frame: the tile they wrap over (`RainUniform::get_rings`), none without
+  /// them, the metres they reach and their strength.
+  pub fn follow_rings(&mut self, (tile, reach, strength): (f32, f32, f32)) {
+    self.uniform.rings = Vec4::new(tile, reach, strength, 0.0);
   }
 
   /// Follows the overhead maps to where they stand once they have moved, as the wet surfaces read them.
@@ -145,7 +152,8 @@ impl WetFeature {
   }
 
   /// Adds the wetting of the G-buffer before any light is drawn over it, through the rain's `covers` and the level's
-  /// surface (its lowest heights, its puddle sites and its water); answers the wet surface the enhanced patch writes
+  /// surface (its lowest heights, its puddle sites and its water), the puddles rippled by the enhanced drops' `rings`;
+  /// answers the wet surface the enhanced patch writes
   /// and the gloss the reflections' wet reach adds, which the reflections and combine read, a texel of nothing for each
   /// while dry.
   pub fn add_passes<'a>(
@@ -153,10 +161,11 @@ impl WetFeature {
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    (handles, covers, wet): (
+    (handles, covers, wet, rings): (
       ViewTargetHandles,
       Option<CoverTextures>,
       Option<UniformBinding<WetUniform>>,
+      GraphTexture,
     ),
     [surface_lowest, puddles, surface_water]: [GraphTexture; 3],
   ) -> (GraphTexture, GraphTexture) {
@@ -203,6 +212,7 @@ impl WetFeature {
       ripples: bindings.import_view(&mut *graph, "wet ripples", &maps.ripples),
       puddle_noise: bindings.import_view(&mut *graph, "puddle noise", &maps.perlin),
       puddle_normal: bindings.import_view(&mut *graph, "puddle normal", &maps.normal),
+      rain_rings: rings,
       wet_sampler: passes.wet.get_sampler(),
       wet,
     };

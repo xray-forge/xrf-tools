@@ -17,5 +17,6 @@
 @group(1) @binding(12) var ripples: texture_2d<f32>;
 @group(1) @binding(13) var puddle_noise: texture_2d<f32>;
 @group(1) @binding(14) var puddle_normal: texture_2d<f32>;
-@group(1) @binding(15) var wet_sampler: sampler;
-@group(1) @binding(16) var<uniform> wet: Wet;
+@group(1) @binding(15) var rain_rings: texture_2d<f32>;
+@group(1) @binding(16) var wet_sampler: sampler;
+@group(1) @binding(17) var<uniform> wet: Wet;

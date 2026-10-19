@@ -46,6 +46,10 @@ pub struct WetUniform {
   /// The wet spell's peak wetness, which the surfaces the rain reaches wet to, and the share of it the level still
   /// holds as it dries; the rest unused.
   pub drying: Vec4,
+  /// Metres a side of the tile the enhanced drops' rings wrap over (`RainUniform::get_rings`), which the puddles ripple
+  /// by in place of their maps' rings, none for the engine's streaks or without rain; then the metres from the eye they
+  /// reach and their strength, of their designed one; the rest unused.
+  pub rings: Vec4,
 }
 
 impl WetUniform {

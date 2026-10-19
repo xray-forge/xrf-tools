@@ -195,6 +195,9 @@ struct EnhancedWater {
   trace_turns: u32,
   trace_frame: u32,
   vibrance: f32,
+  rings_tile: f32,
+  rings_reach: f32,
+  rings_strength: f32,
 }
 
 struct WaterBlur {
@@ -418,6 +421,8 @@ struct Rain {
   axis: vec4<f32>,
   window: vec4<f32>,
   cover_shape: vec4<f32>,
+  water: vec4<f32>,
+  water_shape: vec4<f32>,
   fall: vec4<f32>,
   streak: vec4<f32>,
   look: vec4<f32>,
@@ -427,6 +432,9 @@ struct Rain {
   time: f32,
   splash_indices: u32,
   is_enhanced: u32,
+  pace: f32,
+  near: f32,
+  near_count: u32,
 }
 
 struct Wet {
@@ -445,6 +453,7 @@ struct Wet {
   water: vec4<f32>,
   relief: vec4<f32>,
   drying: vec4<f32>,
+  rings: vec4<f32>,
 }
 
 struct Thunder {

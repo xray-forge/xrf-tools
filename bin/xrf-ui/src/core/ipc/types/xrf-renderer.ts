@@ -1368,6 +1368,17 @@ export type RenderRainSettings = {
   mode: RenderRainMode;
   /** How the rain falls, apart from how it wets. */
   drops: RenderRainDropsMode;
+  /** Metres across the square about the camera the refracting drops fall over, thinning out past 15 metres. */
+  dropSquare: number | null;
+  /**
+   * Metres across the ground out to which the refracting drops' rings ripple water and puddles, fading over the
+   * last fifth.
+   */
+  ringDistance: number | null;
+  /** How strongly the refracting drops' rings ripple water and puddles, of their designed strength. */
+  ringStrength: number | null;
+  /** How wide the refracting drops' rings spread and how long their waves are, of their designed size. */
+  ringSize: number | null;
   /** How many puddles the level's sites hold: none at nought, about seven in ten at one, nearly all at two. */
   puddles: number | null;
   /** How much of a reflection a puddle takes at most. */

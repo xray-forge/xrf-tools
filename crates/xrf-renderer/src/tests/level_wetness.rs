@@ -25,15 +25,15 @@ fn keeps_the_rain_it_was_moved_on_by() {
   assert_eq!(level.get_wetness().get(), 0.0);
   assert_eq!(level.get_puddles(), (0.0, 0.0, 0.0));
 
-  level.advance(&raining(1.0), &settings, (0.0, 10.0));
-  level.advance(&raining(1.0), &settings, (60.0, 10.0));
+  level.advance(&raining(1.0), &settings, 0.0);
+  level.advance(&raining(1.0), &settings, 60.0);
 
   let wetness: f32 = level.get_wetness().get();
   let puddles: (f32, f32, f32) = level.get_puddles();
 
   assert!(wetness > 0.0 && puddles.0 > 0.0);
 
-  level.advance(&RenderLighting::default(), &settings, (60.0, 10.0));
+  level.advance(&RenderLighting::default(), &settings, 60.0);
 
   assert_eq!(level.get_wetness().get(), wetness);
   assert_eq!(level.get_puddles(), puddles);

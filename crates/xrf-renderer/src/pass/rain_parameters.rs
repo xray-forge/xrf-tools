@@ -3,8 +3,8 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, UniformBindi
 
 use crate::pass::rain_uniform::RainUniform;
 
-/// What the rain's streaks and splashes read: the rain, its cover's depth, the streak's and the splash's textures, and
-/// the splash's model.
+/// What the rain's streaks and splashes read: the rain, its cover's depth, the level water's, the streak's and the
+/// splash's textures, and the splash's model.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct RainParameters<'a> {
@@ -12,6 +12,8 @@ pub struct RainParameters<'a> {
   pub rain: UniformBinding<RainUniform>,
   #[texture(d2, depth)]
   pub cover: GraphTexture,
+  #[texture(d2, depth)]
+  pub surface_water: GraphTexture,
   #[texture(d2, float)]
   pub streak_texture: GraphTexture,
   #[texture(d2, float)]

@@ -105,8 +105,8 @@ const BASE_PRESET: IRenderFeatureSettings = {
   },
   // The terrain marched over its details' heights.
   parallax: { ...DEFAULT_RENDER_PARALLAX_SETTINGS, mode: ERenderParallaxMode.ENHANCED },
-  // Wet surfaces that build up and dry, puddles, and drops bending the scene behind them.
-  rain: { ...DEFAULT_RENDER_RAIN_SETTINGS, drops: ERenderRainDropsMode.ENHANCED, mode: ERenderRainMode.ENHANCED },
+  // Wet surfaces that build up and dry, and puddles, under the engine's streaks.
+  rain: { ...DEFAULT_RENDER_RAIN_SETTINGS, mode: ERenderRainMode.ENHANCED },
   // What the frame shows reflected where a ray meets it, the cube elsewhere.
   reflections: {
     ...DEFAULT_RENDER_REFLECTION_SETTINGS,
@@ -140,6 +140,8 @@ const ENHANCED_PRESET: IRenderFeatureSettings = {
   debanding: { ...BASE_PRESET.debanding, quality: ERenderDebandingQuality.ULTRA },
   grass: { ...BASE_PRESET.grass, radius: 300, shadowRadius: 100 },
   parallax: { ...BASE_PRESET.parallax, steps: 32 },
+  // Drops bending the scene behind them, their landings ringing the water and the puddles.
+  rain: { ...BASE_PRESET.rain, drops: ERenderRainDropsMode.ENHANCED },
   // Traced where the GPU traces rays, the grass reflected too.
   reflections: {
     ...BASE_PRESET.reflections,

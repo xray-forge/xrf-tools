@@ -30,4 +30,6 @@ pub struct WaterDraw<'a> {
   pub water: &'a WaterFeature,
   pub scene_trace: &'a SceneTracePass,
   pub traced: Option<(SkyParameters<'a>, TraceParameters<'a>, &'a wgpu::BindGroup)>,
+  /// The enhanced drops' rings, which the enhanced water ripples by; a texel of nothing without them.
+  pub rings: GraphTexture,
 }

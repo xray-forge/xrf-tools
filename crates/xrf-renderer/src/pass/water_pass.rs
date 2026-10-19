@@ -281,6 +281,7 @@ impl WaterPass {
       caustics_map: maps[3],
       height_map: maps[4],
       ripple_map: maps[5],
+      rain_rings: draw.rings,
     };
 
     self.add_batch_pass(

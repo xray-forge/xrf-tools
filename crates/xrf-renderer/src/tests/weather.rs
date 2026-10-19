@@ -7,6 +7,7 @@ use crate::lighting::render_tree_wind::RenderTreeWind;
 use crate::lighting::render_wind::RenderWind;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::wind_uniform::WindUniform;
+use crate::scene::level::rain_rings::RainRings;
 use crate::scene::level::shadow_sway::ShadowSway;
 
 #[test]
@@ -47,15 +48,12 @@ fn rains_the_enhanced_drops_as_monolith_counts_slows_and_leans_them() {
   assert_eq!(RainUniform::get_enhanced_count(0.0), 60);
   assert_eq!(RainUniform::get_enhanced_count(1.0), 6000);
   assert_eq!(rain(1.0, (0.0, 0.5)).is_enhanced, 1);
-  // A drop is 0.55 metres long and a fifth of a metre wide; still air halves its speed, a wind past two thirds of
-  // Monolith's thousand gives it whole.
-  assert!(rain(1.0, (0.0, 0.5)).streak.distance(Vec4::new(0.55, 0.1, 12.0, 24.0)) < 1e-4);
-  assert!(
-    rain(1.0, (700.0, 0.5))
-      .streak
-      .distance(Vec4::new(0.55, 0.1, 24.0, 48.0))
-      < 1e-4
-  );
+  // A drop is 0.55 metres long and a fifth of a metre wide, falling 24 to 48 metres a second; still air runs its
+  // clock at half the pace, a wind past two thirds of Monolith's thousand at all of it.
+  assert!(rain(1.0, (0.0, 0.5)).streak.distance(Vec4::new(0.55, 0.1, 24.0, 48.0)) < 1e-4);
+  assert_eq!(rain(1.0, (0.0, 0.5)).pace, 0.5);
+  assert_eq!(rain(1.0, (700.0, 0.5)).pace, 1.0);
+  assert_eq!(falling_rain(RenderRainDropsMode::Engine, 1.0, (700.0, 0.5)).pace, 1.0);
   // Still air falls straight down, a gust leans it, and the strongest wind thirty five degrees.
   assert!(rain(1.0, (0.0, 0.5)).axis.truncate().distance(Vec3::NEG_Y) < 1e-6);
   assert!(rain(1.0, (0.0, 0.75)).axis.y > -1.0 + 1e-3);
@@ -72,6 +70,54 @@ fn aims_the_enhanced_drops_ahead_and_follows_a_turn_over_about_a_second() {
   // Turned round, a frame moves it a little, a second most of the way.
   assert!(RainUniform::ease_aim(Some(ahead), Vec3::Z, 1.0 / 60.0).distance(ahead) < 0.2);
   assert!(RainUniform::ease_aim(Some(ahead), Vec3::Z, 1.0).y > 1.0);
+}
+
+#[test]
+fn rings_the_enhanced_drops_tile_on_the_water_and_nothing_for_the_engine_streaks() {
+  let water: Vec4 = Vec4::new(0.0, 0.0, 128.0, 50.0);
+  let on_water = |drops: RenderRainDropsMode| RainUniform {
+    water,
+    ..falling_rain(drops, 1.0, (0.0, 0.5))
+  };
+
+  // The square the drops' columns repeat over, which the rings wrap over.
+  assert_eq!(on_water(RenderRainDropsMode::Enhanced).get_rings(), 15.0);
+  // None without the level water's map to land on, nor for the engine's streaks.
+  assert_eq!(
+    falling_rain(RenderRainDropsMode::Enhanced, 1.0, (0.0, 0.5)).get_rings(),
+    0.0
+  );
+  assert_eq!(on_water(RenderRainDropsMode::Engine).get_rings(), 0.0);
+}
+
+#[test]
+fn falls_the_enhanced_drops_over_a_wider_square_thinning_out_past_monolith_s() {
+  let rain: RainUniform = falling_rain(RenderRainDropsMode::Enhanced, 1.0, (0.0, 0.5));
+
+  // Monolith's square falls them all; a narrower one fewer by its area, every drop near; a wider one thins out past
+  // Monolith's in rings of far cells, ten times as wide falling under seven times the drops; held within five and
+  // 150 metres.
+  assert_eq!(rain.squared(15.0).count, 6000);
+  assert_eq!(rain.squared(7.5).count, 1500);
+  assert_eq!(rain.squared(7.5).near, 7.5);
+  // The centre's cell as full as the near square, then five rings of far cells, 1,500 drops a cell in the first, 60
+  // in the fifth.
+  assert_eq!(
+    rain.squared(150.0).count,
+    6000 + 6000 + 12_000 + 6000 + 4008 + 3008 + 2400
+  );
+  assert_eq!(rain.squared(150.0).near_count, 6000);
+  assert_eq!(rain.squared(150.0).near, 15.0);
+  assert_eq!(rain.squared(500.0).fall.z, 150.0);
+  assert_eq!(
+    falling_rain(RenderRainDropsMode::Engine, 1.0, (0.0, 0.5))
+      .squared(30.0)
+      .count,
+    2500
+  );
+  // The rings' tile two centimetres a texel, in whole reduction blocks, never under the coarsest level's block.
+  assert_eq!(RainRings::get_size(15.0), 752);
+  assert_eq!(RainRings::get_size(5.0), 512);
 }
 
 fn falling_rain(drops: RenderRainDropsMode, density: f32, (velocity, strength): (f32, f32)) -> RainUniform {

@@ -208,11 +208,15 @@ const LEVEL_GROUP_KEYS: {
   },
   rain: {
     distance: true,
+    dropSquare: true,
     drops: true,
     isReliefFlooded: true,
     mode: true,
     puddles: true,
     reflectivity: true,
+    ringDistance: true,
+    ringSize: true,
+    ringStrength: true,
     ripples: true,
   },
   reflections: {

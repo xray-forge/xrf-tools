@@ -1,6 +1,7 @@
 #import "common/camera"
 #import "common/octahedral"
 #import "common/rain_cover"
+#import "common/rain_rings"
 #import "common/fullscreen"
 #import "common/wet"
 #import "common/puddle_site"
@@ -314,6 +315,10 @@ const WATER_REFLECTIVITY: f32 = 0.4;
 const PUDDLE_TILE: f32 = 60.0;
 const PUDDLE_RIPPLE_TILE: f32 = 12.0;
 const PUDDLE_RIPPLE_SHARE: f32 = 0.5;
+// How strongly the enhanced drops' own rings ripple a puddle, its bend held to `RIPPLE_BEND_MOST` as the maps' is: a
+// ring stands alone where the maps' layers overlap, so each is drawn strong enough to read in the sky the puddle
+// mirrors; lighter rain draws fewer of them rather than weaker.
+const RINGS_STRENGTH: f32 = 20.0;
 // A puddle's shape about its site: as long as wide at most by `PUDDLE_STRETCH` (`common/puddle_site`), its border
 // moved in and out by a noise every `PUDDLE_EDGE_TILE` metres and by the puddles' own over `PUDDLE_TILE`, a share of
 // its radius; and the share of its radius its border softens over.
@@ -659,7 +664,8 @@ struct PuddleRipples {
 }
 
 // A puddle's ripples at a `place`: the calm waves, two scrolls of the normal map at the place's own `phase` of them,
-// and the rain's rings, both stronger in a gust at the `ground` place.
+// and the rain's rings, both stronger in a gust at the `ground` place: the enhanced drops' own where they fall, the
+// maps' otherwise.
 fn puddle_ripples(place: vec2<f32>, gradients: PlaceGradients, phase: f32, ground: vec2<f32>, distance: f32,
   puddle: f32) -> PuddleRipples {
   let pace: f32 = wet.time * (0.01 + saturate(wet.density * 1.5) * 0.008);
@@ -681,11 +687,17 @@ fn puddle_ripples(place: vec2<f32>, gradients: PlaceGradients, phase: f32, groun
     mix(GUST_RINGS.x, GUST_RINGS.y, gust);
   let drops: vec3<f32> = rain_ripples(uv * 1.3, PlaceGradients(across * 1.3, down * 1.3), vec3<f32>(0.85, 1.0, 10.0),
     distance);
-  let tilt: vec2<f32> = 0.5 * (first.xy + second.xy) * calm_scale + drops.xy * drop_scale;
+  let rings: RainRings = read_rain_rings(rain_rings, wet_sampler, wet.rings.xy, camera.position.xz, ground,
+    gradients.across, gradients.down);
+  let ring_scale: f32 = RINGS_STRENGTH * wet.rings.z * wet.puddles.w * PUDDLE_RIPPLE_SHARE * 0.15 *
+    mix(GUST_RINGS.x, GUST_RINGS.y, gust) * rings.share;
+  let map_scale: f32 = select(drop_scale, 0.0, wet.rings.x > 0.0);
+  let tilt: vec2<f32> = 0.5 * (first.xy + second.xy) * calm_scale + drops.xy * map_scale +
+    rings.tilt * vec2<f32>(1.0, -1.0) * ring_scale;
   // Bent no further than the most; the variance is the whole tilt's, since what the clamp takes off is roughness too.
   let bend: vec2<f32> = tilt * min(1.0, RIPPLE_BEND_MOST / max(length(tilt), 1e-4)) * puddle;
   let spread: f32 = calm_scale * calm_scale * max(1.0 - kept_length, 0.0) / max(kept_length, TOKSVIG_LEAST) +
-    drop_scale * drop_scale * drops.z;
+    map_scale * map_scale * drops.z + ring_scale * ring_scale * rings.variance;
 
   return PuddleRipples((camera.view * vec4<f32>(bend.x, 0.0, -bend.y, 0.0)).xyz, spread);
 }

@@ -12,6 +12,15 @@ pub struct RenderRainSettings {
   pub mode: RenderRainMode,
   /// How the rain falls, apart from how it wets.
   pub drops: RenderRainDropsMode,
+  /// Metres across the square about the camera the refracting drops fall over, thinning out past 15 metres.
+  pub drop_square: f32,
+  /// Metres across the ground out to which the refracting drops' rings ripple water and puddles, fading over the
+  /// last fifth.
+  pub ring_distance: f32,
+  /// How strongly the refracting drops' rings ripple water and puddles, of their designed strength.
+  pub ring_strength: f32,
+  /// How wide the refracting drops' rings spread and how long their waves are, of their designed size.
+  pub ring_size: f32,
   /// How many puddles the level's sites hold: none at nought, about seven in ten at one, nearly all at two.
   pub puddles: f32,
   /// How much of a reflection a puddle takes at most.
@@ -31,6 +40,10 @@ impl Default for RenderRainSettings {
     Self {
       mode: RenderRainMode::Engine,
       drops: RenderRainDropsMode::Engine,
+      drop_square: 30.0,
+      ring_distance: 75.0,
+      ring_strength: 1.0,
+      ring_size: 1.0,
       puddles: 0.5,
       reflectivity: 0.4,
       ripples: 1.0,

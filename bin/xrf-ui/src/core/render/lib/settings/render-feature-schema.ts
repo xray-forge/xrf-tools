@@ -143,14 +143,20 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   isOcclusionCulled: FLAG,
   // The renderer's own: puddles from none to nearly every site at two, a puddle's reflection at most a mirror's, the
   // rain's ripples up to twice their designed strength, and puddles drawn out to the widest grass's radius, which the
-  // level surface they are placed on reaches past.
+  // level surface they are placed on reaches past; the refracting drops' rings out to where a ring is a pixel or two,
+  // up to three times their designed strength, the drops over a square from five metres to 150, thinning out past 15, and from half their designed size, where their waves still span a few
+  // of the rings' texels, to twice it.
   rain: {
     distance: toNumber(30, 450, true),
+    dropSquare: toNumber(5, 150),
     drops: toChoice(ERenderRainDropsMode),
     isReliefFlooded: FLAG,
     mode: toChoice(ERenderRainMode),
     puddles: toNumber(0, 2),
     reflectivity: toNumber(0, 1),
+    ringDistance: toNumber(0, 300),
+    ringSize: toNumber(0.5, 2),
+    ringStrength: toNumber(0, 3),
     ripples: toNumber(0, 2),
   },
   // The renderer's own: a surface's specular share of what it reflects is its material's by the intensity, one as a

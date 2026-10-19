@@ -1,5 +1,3 @@
-use xrf_engine_target::XrayEngine;
-
 use crate::contract::render_rain_settings::RenderRainSettings;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::scene::level::puddle_fill::PuddleFill;
@@ -14,27 +12,22 @@ pub struct LevelWetness {
 }
 
 impl LevelWetness {
-  /// Moves both on to the scene's clock `time` under the rain `lighting` holds, its weather's clock running `rate`
-  /// times real time, building up as the rain's `settings` say.
-  pub fn advance(&mut self, lighting: &RenderLighting, settings: &RenderRainSettings, (time, rate): (f32, f32)) {
-    // The game's `time_factor`: Anomaly's `alife.ltx` runs its clock six times a real second, Call of Pripyat's ten.
-    let time_factor: f32 = if lighting.engine == XrayEngine::Extended {
-      6.0
-    } else {
-      10.0
-    };
+  /// The game's own pace, which the level wets and dries at.
+  const PACE: f32 = 1.0;
+
+  /// Moves both on to the scene's real clock `time` under the rain `lighting` holds, building up as the rain's
+  /// `settings` say, at the game's own pace whatever the weather's clock runs at, so a clock sped up a thousand times
+  /// does not fill and drain its puddles with every passing shower.
+  pub fn advance(&mut self, lighting: &RenderLighting, settings: &RenderRainSettings, time: f32) {
     let density: f32 = lighting.rain.map_or(0.0, |rain| rain.density);
-    // A paused clock still lets the level wet and dry at the game's own pace, so a rain switched on or off in a view
-    // standing at a moment fills and drains as it would in play.
-    let pace: f32 = if rate > 0.0 { rate / time_factor } else { 1.0 };
     let build_up: f32 = if settings.is_enhanced() {
       RainWetness::ENHANCED_BUILD_UP
     } else {
       RainWetness::ENGINE_BUILD_UP
     };
 
-    self.wetness.advance(time, density, pace, build_up);
-    self.puddle_fill.advance(time, density, pace);
+    self.wetness.advance(time, density, Self::PACE, build_up);
+    self.puddle_fill.advance(time, density, Self::PACE);
   }
 
   /// How wet the level is, from nothing to one.

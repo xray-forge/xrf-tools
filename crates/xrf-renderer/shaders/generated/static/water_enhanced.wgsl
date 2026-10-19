@@ -20,3 +20,4 @@
 @group(3) @binding(15) var caustics_map: texture_2d<f32>;
 @group(3) @binding(16) var height_map: texture_2d<f32>;
 @group(3) @binding(17) var ripple_map: texture_2d<f32>;
+@group(3) @binding(18) var rain_rings: texture_2d<f32>;

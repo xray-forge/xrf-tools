@@ -38,13 +38,19 @@ pub struct WaterFeature {
 impl WaterFeature {
   /// Draws the water of a frame's `record` where it draws, over the sky's `views` and the frame copied before it
   /// (`before_water`, which the enhanced water refracts and reflects), from the cull's argument buffers `args`; its
-  /// rays the screen left traced where the scene's trace is built (`traced`, with the sky's group). Answers the
-  /// G-buffer's depth with the nearest water's over it where the water draws.
+  /// rays the screen left traced where the scene's trace is built (`traced`, with the sky's group), the enhanced water
+  /// rippled by the enhanced drops' `rings`. Answers the G-buffer's depth with the nearest water's over it where the
+  /// water draws.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     record: ViewRecord<'a>,
-    (views, before_water, args): (Option<&'a SkyViews>, Option<GraphTexture>, Vec<GraphBuffer>),
+    (views, before_water, args, rings): (
+      Option<&'a SkyViews>,
+      Option<GraphTexture>,
+      Vec<GraphBuffer>,
+      GraphTexture,
+    ),
     traced: Option<(SkyParameters<'a>, TraceParameters<'a>, &'a wgpu::BindGroup)>,
   ) -> Option<GraphTexture> {
     let views: &SkyViews = views.filter(|_| self.is_drawn())?;
@@ -62,6 +68,7 @@ impl WaterFeature {
       water: self,
       scene_trace: passes.scene_trace,
       traced,
+      rings,
     };
 
     Some(passes.water.add_passes(graph, bindings, runtime, draw))
@@ -144,6 +151,14 @@ impl WaterFeature {
 
   pub fn get_uniform(&self) -> &WaterUniform {
     &self.uniform
+  }
+
+  /// Follows the enhanced drops' rings this frame: the tile they wrap over (`RainUniform::get_rings`), none without
+  /// them, the metres they reach and their strength.
+  pub fn follow_rings(&mut self, (tile, reach, strength): (f32, f32, f32)) {
+    self.enhanced.rings_tile = tile;
+    self.enhanced.rings_reach = reach;
+    self.enhanced.rings_strength = strength;
   }
 
   pub fn get_enhanced_uniform(&self) -> &EnhancedWaterUniform {

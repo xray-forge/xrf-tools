@@ -1,6 +1,7 @@
 #import "common/water_surface"
 #import "common/scene_light"
 #import "common/water_enhanced"
+#import "common/rain_rings"
 #import "generated/static/water_enhanced"
 
 // The enhanced water's waves: its normal map scrolled twice over coordinates its parallax moves into the waves'
@@ -61,6 +62,12 @@ const HIGHLIGHT_FAR: f32 = 160.0;
 const RIPPLE_SPEEDS: vec3<f32> = vec3<f32>(1.05, 1.31, 1.58);
 const RIPPLE_OFFSETS: vec4<f32> = vec4<f32>(0.5, 0.25, 0.31, 0.5);
 const RIPPLE_REACH: f32 = 15.0;
+// How rough the rain's rings leave the water, by the variance of their tilt their filtering folded away.
+const RINGS_ROUGHNESS: f32 = 30.0;
+
+// How strongly the enhanced drops' own rings ripple it, against the map's rings: each ring stands alone where the
+// map's layers overlap, so each is drawn strong enough to read in the sky the water mirrors.
+const RINGS_STRENGTH: f32 = 1.8;
 
 // The enhanced water's waves: its normal map scrolled twice over coordinates its parallax moves
 // into its waves' height, the wind's layer leaning the first and the rain's ripples over both, at a pace and a strength
@@ -74,6 +81,9 @@ struct EnhancedWaves {
   tilt: vec2<f32>,
   // How far the waves' finer detail has been filtered out with distance, from none to all.
   far: f32,
+  // How rough the rain's rings leave it where they are filtered finer than a pixel, from none to all: what of their
+  // tilt the filtering folded away, which blurs its reflection as rain roughens water seen far off.
+  rain_rough: f32,
 };
 
 // The waves' height at coordinates, which its parallax reads: two scrolls of the height map, the higher.
@@ -204,10 +214,25 @@ fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
   slope = mix(slope, gust * 2.0 - 1.0, 0.1 * wind);
 
   var ripples: vec2<f32> = vec2<f32>(0.0);
+  var rain_rough: f32 = 0.0;
 
-  // The rain's ripples, while it rains and they are wanted, its strength from the rain's density.
+  // The rain's ripples, while it rains and they are wanted, its strength from the rain's density: the enhanced drops'
+  // own rings where they fall, the map's otherwise.
   if (enhanced.rain > 0.0 && enhanced.ripples > 0.0) {
-    ripples = rain_ripples(coordinates * 0.6, dx * 0.6, dy * 0.6, clamp(enhanced.rain * 1.6, 0.65, 1.0), bottom_distance);
+    if (enhanced.rings_tile > 0.0) {
+      let to_world: vec2<f32> = vec2<f32>(1.0, -1.0) / (WAVE_WORLD_SCALE * ENHANCED_TILING);
+      let rings: RainRings = read_rain_rings(rain_rings, texture_sampler,
+        vec2<f32>(enhanced.rings_tile, enhanced.rings_reach), camera.position.xz, in.world.xz, dx * to_world,
+        dy * to_world);
+
+      let ring_scale: f32 = enhanced.ripples * RINGS_STRENGTH * enhanced.rings_strength * rings.share;
+
+      ripples = clamp(rings.tilt * vec2<f32>(1.0, -1.0) * ring_scale, vec2<f32>(-1.0), vec2<f32>(1.0));
+      rain_rough = saturate(rings.variance * ring_scale * ring_scale * RINGS_ROUGHNESS);
+    } else {
+      ripples = rain_ripples(coordinates * 0.6, dx * 0.6, dy * 0.6, clamp(enhanced.rain * 1.6, 0.65, 1.0),
+        bottom_distance);
+    }
   }
 
   let screen: vec3<f32> = vec3<f32>(slope, 1.0);
@@ -223,6 +248,7 @@ fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
   out.height = height;
   out.tilt = screen.xy;
   out.far = far;
+  out.rain_rough = rain_rough;
 
   return out;
 }
@@ -359,7 +385,8 @@ fn enhanced_reflection(waves: EnhancedWaves, reflected: vec3<f32>, world: vec3<f
   let clear: vec3<f32> = textureSampleLevel(reflection_clear, sky_clamp, saturate(uv + waves.screen), 0.0).rgb;
   let level: vec2<f32> = vec2<f32>(world.x, -world.z) + waves.normal.xy * 100.0;
   let noise: f32 = textureSampleLevel(perlin_map, texture_sampler, level * 0.02, 0.0).r;
-  let mixed: vec3<f32> = mix(blurred, clear, saturate(noise * enhanced.blur_noise));
+  // The rain's roughness takes the clear reflection away for the blurred one.
+  let mixed: vec3<f32> = mix(blurred, clear, saturate(noise * enhanced.blur_noise) * (1.0 - waves.rain_rough));
 
   return mix(vec3<f32>(dot(mixed, LUMINANCE)), mixed, enhanced.vibrance);
 }

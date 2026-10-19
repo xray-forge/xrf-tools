@@ -310,10 +310,7 @@ impl SceneView {
       device,
       weather,
       (
-        (
-          lighting.rain.filter(|_| options.mode.is_lit),
-          options.features.rain.drops,
-        ),
+        (lighting.rain.filter(|_| options.mode.is_lit), &options.features.rain),
         scene.gust,
         (time, frame.view.get_look()),
       ),
@@ -328,6 +325,20 @@ impl SceneView {
       (windows, self.features.resolve.get_noise_frame()),
       frame.weather_textures,
     );
+    self.features.rain.follow_water(
+      (windows.water, windows.surface_shape),
+      self.features.level_surface.is_some() && self.features.wet.is_enhanced(),
+    );
+
+    // The enhanced drops' rings, where they land on the level water's map, which the water and the puddles ripple by.
+    let rings: (f32, f32, f32) = (
+      self.features.rain.get_rings(),
+      options.features.rain.ring_distance.max(0.0),
+      options.features.rain.ring_strength.max(0.0),
+    );
+
+    self.features.water.follow_rings(rings);
+    self.features.wet.follow_rings(rings);
     self
       .features
       .thunder
@@ -525,6 +536,10 @@ impl SceneView {
 
     self.features.rain.follow_cover(windows.cover, windows.cover_shape);
     self.features.wet.follow(windows);
+    self.features.rain.follow_water(
+      (windows.water, windows.surface_shape),
+      self.features.level_surface.is_some() && self.features.wet.is_enhanced(),
+    );
   }
 
   /// Where the rain cover and the level's surface stand now.
@@ -900,11 +915,23 @@ impl SceneView {
 
     graph.begin_group("lighting");
 
+    // The rings the enhanced drops leave where they land, while the puddles or the enhanced water ripple by them.
+    let rings: GraphTexture = self
+      .features
+      .rain
+      .add_rings(
+        (&mut *graph, &mut *bindings, runtime),
+        passes,
+        view,
+        (shadowed.covers.map(|covers| covers.depth), shadowed.surface[2]),
+        self.features.wet.has_puddles() || self.features.water.is_enhanced(),
+      )
+      .unwrap_or_else(|| bindings.import_view(&mut *graph, "rain rings none", passes.rain.get_nothing()));
     let (wet_surface, wet_reach): (GraphTexture, GraphTexture) = self.features.wet.add_passes(
       (&mut *graph, &mut *bindings),
       passes,
       view,
-      (handles, shadowed.covers, shadowed.wet),
+      (handles, shadowed.covers, shadowed.wet, rings),
       shadowed.surface,
     );
     let mut output: SceneOutput = SceneOutput {
@@ -923,7 +950,7 @@ impl SceneView {
       scene,
       (&mut *graph, &mut *bindings, runtime),
       record,
-      (grass_cards, wet_surface, wet_reach),
+      (grass_cards, wet_surface, wet_reach, rings),
     );
 
     graph.begin_group("post");
@@ -1151,7 +1178,7 @@ impl SceneView {
     scene: &'a LevelScene,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     record: ViewRecord<'a>,
-    (grass_cards, wet_surface, wet_reach): (Option<GrassCardHandles>, GraphTexture, GraphTexture),
+    (grass_cards, wet_surface, wet_reach, rings): (Option<GrassCardHandles>, GraphTexture, GraphTexture, GraphTexture),
   ) -> LightingRecorded<'a> {
     let ViewRecord {
       passes,
@@ -1275,6 +1302,7 @@ impl SceneView {
         water_views,
         before_water,
         self.features.statics.list_draw_args(&statics),
+        rings,
       ),
       sky.zip(traced).map(|(sky, (trace, textures))| (sky, trace, textures)),
     );
@@ -1381,7 +1409,11 @@ impl SceneView {
       (&mut *graph, &mut *bindings, runtime),
       passes,
       view,
-      (handles, &lit, shadowed.covers.map(|covers| covers.depth)),
+      (
+        handles,
+        &lit,
+        (shadowed.covers.map(|covers| covers.depth), shadowed.surface[2]),
+      ),
     );
     self
       .features
@@ -1449,7 +1481,11 @@ impl SceneView {
       (&mut *graph, &mut *bindings, runtime),
       passes,
       view,
-      (handles, &lit, shadowed.covers.map(|covers| covers.depth)),
+      (
+        handles,
+        &lit,
+        (shadowed.covers.map(|covers| covers.depth), shadowed.surface[2]),
+      ),
       (shown, self.features.resolve.get_shown_size(handles.size)),
     ) {
       if !self.features.resolve.is_rescaled() {

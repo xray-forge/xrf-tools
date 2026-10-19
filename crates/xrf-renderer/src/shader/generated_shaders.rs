@@ -81,6 +81,7 @@ use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::rain_blur_parameters::RainBlurParameters;
 use crate::pass::rain_look_parameters::RainLookParameters;
 use crate::pass::rain_parameters::RainParameters;
+use crate::pass::rain_rings_reduce_parameters::RainRingsReduceParameters;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::ray_guides_parameters::RayGuidesParameters;
 use crate::pass::reflection_parameters::ReflectionParameters;
@@ -196,6 +197,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut flare_visibility: ShaderBindings = ShaderBindings::new();
   let mut rain: ShaderBindings = ShaderBindings::new();
   let mut rain_blur: ShaderBindings = ShaderBindings::new();
+  let mut rain_rings: ShaderBindings = ShaderBindings::new();
   let mut wet_patch: ShaderBindings = ShaderBindings::new();
   let mut wet_apply: ShaderBindings = ShaderBindings::new();
   let mut thunder: ShaderBindings = ShaderBindings::new();
@@ -326,6 +328,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   flare_visibility.add::<FlareMeasureParameters>()?;
   rain.add::<RainParameters<'_>>()?.add::<RainLookParameters<'_>>()?;
   rain_blur.add::<RainBlurParameters<'_>>()?;
+  rain_rings.add::<RainRingsReduceParameters>()?;
   wet_patch.add::<WetPatchParameters<'_>>()?;
   wet_apply.add::<WetApplyParameters>()?;
   thunder.add::<ThunderParameters<'_>>()?;
@@ -539,6 +542,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/rain_blur",
       format!("{STRUCTS_IMPORT}{}", rain_blur.to_wgsl()),
+    ),
+    (
+      "generated/frame/rain_rings",
+      format!("{STRUCTS_IMPORT}{}", rain_rings.to_wgsl()),
     ),
     (
       "generated/frame/wet_patch",

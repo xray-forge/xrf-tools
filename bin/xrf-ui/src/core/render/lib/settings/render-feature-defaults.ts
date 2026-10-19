@@ -145,15 +145,19 @@ export const DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS: TRenderIndirectLightSetting
 
 /**
  * The engine's streaks and own wetting; enhanced, half the puddle sites filled to 300 m, each taking up to 40%
- * reflection.
+ * reflection; the refracting drops over 30 m about the camera, their rings out to 75 m.
  */
 export const DEFAULT_RENDER_RAIN_SETTINGS: TRenderRainSettings = {
   distance: 300,
+  dropSquare: 30,
   drops: ERenderRainDropsMode.ENGINE,
   isReliefFlooded: true,
   mode: ERenderRainMode.ENGINE,
   puddles: 0.5,
   reflectivity: 0.4,
+  ringDistance: 75,
+  ringSize: 1,
+  ringStrength: 1,
   ripples: 1,
 };
 

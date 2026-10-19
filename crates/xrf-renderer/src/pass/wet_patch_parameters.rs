@@ -4,7 +4,8 @@ use crate::pass::wet_uniform::WetUniform;
 
 /// What the wet patches read: the G-buffer's depth, albedo, normals, material marks and relief, the rain's cover and
 /// its pyramid, the level surface's lowest heights, this frame's puddles and its water, the splash volume and the flow,
-/// the enhanced wetting's ripples, puddle noise and puddle normals, and the wet surfaces' settings.
+/// the enhanced wetting's ripples, puddle noise and puddle normals, the enhanced drops' rings, and the wet surfaces'
+/// settings.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct WetPatchParameters<'a> {
@@ -38,6 +39,8 @@ pub struct WetPatchParameters<'a> {
   pub puddle_noise: GraphTexture,
   #[texture(d2, float)]
   pub puddle_normal: GraphTexture,
+  #[texture(d2, float)]
+  pub rain_rings: GraphTexture,
   #[sampler(filtering)]
   pub wet_sampler: &'a wgpu::Sampler,
   #[uniform]

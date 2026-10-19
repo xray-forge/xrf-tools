@@ -141,6 +141,7 @@ pub(crate) mod rain_blur_parameters;
 pub(crate) mod rain_look_parameters;
 pub(crate) mod rain_parameters;
 pub(crate) mod rain_pass;
+pub(crate) mod rain_rings_reduce_parameters;
 pub(crate) mod rain_uniform;
 pub(crate) mod ray_guides_parameters;
 pub(crate) mod ray_guides_pass;

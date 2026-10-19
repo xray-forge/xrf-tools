@@ -2030,7 +2030,7 @@ impl RenderThread {
     }
   }
 
-  /// Moves a scene's wetness on, once a frame, by its driving viewport's rain and weather clock; every view of the
+  /// Moves a scene's wetness on, once a frame, by its driving viewport's rain on the real clock; every view of the
   /// scene wets its surfaces by it.
   fn advance_wetness(scene: &mut LevelScene, viewports: &BTreeMap<RenderViewportId, RenderViewport>) {
     let Some(driver) = scene.driver.and_then(|driver| viewports.get(&driver)) else {
@@ -2042,7 +2042,7 @@ impl RenderThread {
     scene.wetness.advance(
       &lighting,
       &driver.options.features.rain,
-      (scene.started.elapsed().as_secs_f32(), driver.world.clock_rate),
+      scene.started.elapsed().as_secs_f32(),
     );
   }
 }

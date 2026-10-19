@@ -5,7 +5,7 @@ use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::water_uniform::WaterUniform;
 
 /// What the enhanced water's surface reads beside the scene: what the engine's reads, the scene before the water, its
-/// reflection blurred and as drawn, the light laid on the scene, and its maps.
+/// reflection blurred and as drawn, the light laid on the scene, its maps, and the enhanced drops' rings.
 #[derive(PassParameters)]
 #[parameters(group = 3)]
 pub struct EnhancedWaterParameters<'a> {
@@ -52,4 +52,6 @@ pub struct EnhancedWaterParameters<'a> {
   pub height_map: GraphTexture,
   #[texture(d2, float)]
   pub ripple_map: GraphTexture,
+  #[texture(d2, float)]
+  pub rain_rings: GraphTexture,
 }

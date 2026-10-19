@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  FrameGraph, GraphColorAttachment, GraphTexture, GraphTextureDescriptor, PassParameters, RasterContext,
-  RenderPipelineDescription,
+  ComputePipelineDescription, FrameGraph, GraphColorAttachment, GraphTexture, GraphTextureDescriptor, PassParameters,
+  RasterContext, RenderPipelineDescription,
 };
 
 use crate::frame::view_targets::ViewTargets;
@@ -12,14 +12,18 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::rain_blur_parameters::RainBlurParameters;
 use crate::pass::rain_look_parameters::RainLookParameters;
 use crate::pass::rain_parameters::RainParameters;
+use crate::pass::rain_rings_reduce_parameters::RainRingsReduceParameters;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::rain_rings::RainRings;
 
 /// Draws the rain over a viewport's finished scene as `RenderLast` does after the forward surfaces: the streaks, then
 /// the splashes, blended by their alpha and tested against the G-buffer's depth without writing it. The enhanced
 /// streaks draw after the temporal resolve instead, over a copy of the image it shows, which they bend blurred at an
-/// eighth of its size; in the scene they only take the water's distortion under them away.
+/// eighth of its size; in the scene they only take the water's distortion under them away. Where they land they draw
+/// rings into the rain's rings, which the water and the puddles ripple by.
 pub struct RainPass {
   layout: wgpu::BindGroupLayout,
+  reduce_layout: wgpu::BindGroupLayout,
   look_layout: wgpu::BindGroupLayout,
   blur_layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
@@ -27,8 +31,10 @@ pub struct RainPass {
   /// The enhanced maps' sampler: anisotropic, so a drop keeps its length's detail however thin it is drawn.
   map_sampler: wgpu::Sampler,
   /// The engine's streaks and splashes; the enhanced streaks' distortion and the enhanced splashes, in the scene; and
-  /// the enhanced streaks over the shown image.
-  pipelines: [wgpu::RenderPipeline; 5],
+  /// the enhanced streaks over the shown image; and the enhanced drops' rings.
+  pipelines: [wgpu::RenderPipeline; 6],
+  /// The rings' first level reduced into the rest.
+  reduce: wgpu::ComputePipeline,
   /// The image's blocks at an eighth of its size, then their blur, then the image copied whole.
   blur: [wgpu::RenderPipeline; 3],
   maps: EnhancedRainMaps,
@@ -58,6 +64,7 @@ impl RainPass {
     let layout: wgpu::BindGroupLayout = RainParameters::create_layout(device);
     let look_layout: wgpu::BindGroupLayout = RainLookParameters::create_layout(device);
     let blur_layout: wgpu::BindGroupLayout = RainBlurParameters::create_layout(device);
+    let reduce_layout: wgpu::BindGroupLayout = RainRingsReduceParameters::create_layout(device);
     let nothing: wgpu::TextureView = device
       .create_texture(&wgpu::TextureDescriptor {
         label: Some("rain nothing"),
@@ -78,6 +85,7 @@ impl RainPass {
     Ok(Self {
       pipelines: Self::create_pipelines(source, view_layout, (&layout, &look_layout))?,
       blur: Self::create_blur(source, &blur_layout)?,
+      reduce: Self::create_reduce(source, &reduce_layout)?,
       maps: EnhancedRainMaps::new(device, queue, bundle, &nothing),
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("rain"),
@@ -103,6 +111,7 @@ impl RainPass {
       layout,
       look_layout,
       blur_layout,
+      reduce_layout,
     })
   }
 
@@ -112,12 +121,17 @@ impl RainPass {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(source, &self.view_layout, (&self.layout, &self.look_layout))
-        .and_then(|pipelines| Ok((pipelines, Self::create_blur(source, &self.blur_layout)?)))
-      {
-        Ok((pipelines, blur)) => {
+      match Self::create_pipelines(source, &self.view_layout, (&self.layout, &self.look_layout)).and_then(|pipelines| {
+        Ok((
+          pipelines,
+          Self::create_blur(source, &self.blur_layout)?,
+          Self::create_reduce(source, &self.reduce_layout)?,
+        ))
+      }) {
+        Ok((pipelines, blur, reduce)) => {
           self.pipelines = pipelines;
           self.blur = blur;
+          self.reduce = reduce;
         }
         Err(error) => log::error!("Rain rejected, falling with the last one: {error}"),
       }
@@ -159,6 +173,54 @@ impl RainPass {
     self.add_fullscreen(&mut *graph, ("rain layer", &self.blur[2]), image, size)
   }
 
+  /// Declares the enhanced drops' rings drawn into the rain's rings' first level, `levels` each of them alone, then
+  /// reduced into the rest in one dispatch.
+  pub fn add_rings<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    view: &'a ViewBinding,
+    parameters: RainParameters<'a>,
+    (levels, size, streaks): ([GraphTexture; RainRings::LEVELS as usize], u32, u32),
+  ) {
+    graph
+      .add_raster_pass("rain rings")
+      .color(GraphColorAttachment::new(
+        levels[0],
+        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+      ))
+      .parameters(&parameters)
+      .record(move |context| {
+        context.bind(&parameters);
+
+        let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
+        pass.set_bind_group(0, &view.bind_group, &[]);
+        pass.set_pipeline(&self.pipelines[5]);
+        pass.draw(0..streaks * 24, 0..1);
+      });
+
+    let reduce: RainRingsReduceParameters = RainRingsReduceParameters {
+      rings_first: levels[0],
+      rings_second: levels[1],
+      rings_third: levels[2],
+      rings_fourth: levels[3],
+      rings_fifth: levels[4],
+    };
+    let groups: u32 = size / RainRings::BLOCK;
+
+    graph
+      .add_compute_pass("rain rings reduce")
+      .parameters(&reduce)
+      .record(move |context| {
+        context.bind(&reduce);
+
+        let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
+
+        pass.set_pipeline(&self.reduce);
+        pass.dispatch_workgroups(groups, groups, 1);
+      });
+  }
+
   fn add_fullscreen<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
@@ -195,7 +257,7 @@ impl RainPass {
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
     (parameters, look): (&RainParameters<'_>, Option<&RainLookParameters<'_>>),
-    (streaks, splash_indices): (u32, u32),
+    (streaks, near, splash_indices): (u32, u32, u32),
   ) {
     context.bind(parameters);
 
@@ -215,7 +277,7 @@ impl RainPass {
 
     if splash_indices > 0 {
       pass.set_pipeline(&pipelines[1]);
-      pass.draw(0..streaks * splash_indices, 0..1);
+      pass.draw(0..near * splash_indices, 0..1);
     }
   }
 
@@ -241,7 +303,7 @@ impl RainPass {
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     (layout, look_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
-  ) -> XrfResult<[wgpu::RenderPipeline; 5]> {
+  ) -> XrfResult<[wgpu::RenderPipeline; 6]> {
     // `blend(true, srcalpha, invsrcalpha)`, the alpha kept under it.
     let blended = |format: wgpu::TextureFormat| wgpu::ColorTargetState {
       format,
@@ -288,6 +350,19 @@ impl RainPass {
       Some(distorting),
     ];
     let over_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(blended(Self::LAYER))];
+    // Each ring added over the others.
+    let ring_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(wgpu::ColorTargetState {
+      format: RainRings::FORMAT,
+      blend: Some(wgpu::BlendState {
+        color: wgpu::BlendComponent {
+          src_factor: wgpu::BlendFactor::One,
+          dst_factor: wgpu::BlendFactor::One,
+          operation: wgpu::BlendOperation::Add,
+        },
+        alpha: wgpu::BlendComponent::REPLACE,
+      }),
+      write_mask: wgpu::ColorWrites::ALL,
+    })];
     let engine: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
     let enhanced: [Option<&wgpu::BindGroupLayout>; 3] = [Some(view_layout), Some(layout), Some(look_layout)];
     // Both sides, as the engine's `CULL_NONE`; tested against the scene's depth, where one is attached.
@@ -327,7 +402,15 @@ impl RainPass {
         (&enhanced, &over_targets),
         false,
       )?,
+      create(("vs_ring", "fs_ring"), (&engine, &ring_targets), false)?,
     ])
+  }
+
+  fn create_reduce(source: PipelineSource<'_>, layout: &wgpu::BindGroupLayout) -> XrfResult<wgpu::ComputePipeline> {
+    source.get_compute_pipeline(
+      &ComputePipelineDescription::new("rain rings reduce", "frame/rain_rings", "cs_reduce_rings")
+        .with_bind_group_layouts(&[Some(layout)]),
+    )
   }
 
   fn create_blur(source: PipelineSource<'_>, layout: &wgpu::BindGroupLayout) -> XrfResult<[wgpu::RenderPipeline; 3]> {
