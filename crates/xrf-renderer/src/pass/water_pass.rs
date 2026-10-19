@@ -5,6 +5,7 @@ use xrf_renderer_core::{
   StorageValue, UniformBinding,
 };
 
+use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
 use crate::pass::enhanced_water_maps::EnhancedWaterMaps;
@@ -48,8 +49,9 @@ struct WaterFrameHandles<'a> {
   groups: WaterGroups<'a>,
 }
 
-/// Draws a viewport's visible water over its lit scene, tested against the G-buffer's depth without writing it, and the
-/// distortion each surface causes into the distortion target while the water distorts. Only the water nearest along
+/// Draws a viewport's visible water over its lit scene, tested against the G-buffer's depth without writing it, the
+/// distortion each surface causes into the distortion target while the water distorts, and its motion over what lies
+/// under it. Only the water nearest along
 /// each pixel draws: a depth pass writes it first, as the engine's water, drawn in its index order, lets a fold of its
 /// surface draw over a nearer one. The enhanced water reads the scene as it stood before the water, which it refracts,
 /// and while it reflects draws its reflection first, accumulated over the frames before and blurred.
@@ -152,14 +154,15 @@ impl WaterPass {
   }
 
   /// Declares the frame's water: the nearest surface's depth, then the engine's surface, or the enhanced water's scene
-  /// copy, reflection and blur and its surface.
+  /// copy, reflection and blur and its surface. Answers the G-buffer's depth with the nearest water's over it, which
+  /// the resolve reprojects the water's pixels by.
   pub fn add_passes<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     bindings: &mut GraphBindings<'a>,
     runtime: &mut GraphRuntime,
     draw: WaterDraw<'a>,
-  ) {
+  ) -> GraphTexture {
     let (width, height) = draw.targets.size;
     let frame: WaterFrameHandles<'a> = WaterFrameHandles {
       uniform: runtime.push_uniform(draw.water.get_uniform()),
@@ -168,7 +171,7 @@ impl WaterPass {
         bindings.import_view(graph, "sky cube 1", draw.skies[1]),
       ],
       nearest: graph.create_texture(GraphTextureDescriptor::new_2d(
-        "water depth",
+        "depth with water",
         width,
         height,
         ViewTargets::DEPTH,
@@ -177,11 +180,12 @@ impl WaterPass {
       groups: (draw.view, draw.textures, draw.layouts),
     };
 
+    add_texture_copy(graph, "water depth copy", draw.targets.depth, frame.nearest);
     self.add_batch_pass(
       graph
         .add_raster_pass("water depth")
-        // Reversed, so nothing is zero and the nearest water is the greatest.
-        .depth(GraphDepthAttachment::new(frame.nearest, wgpu::LoadOp::Clear(0.0))),
+        // Reversed, so the nearest water is the greatest; over the G-buffer's, where water behind it stays unwritten.
+        .depth(GraphDepthAttachment::new(frame.nearest, wgpu::LoadOp::Load)),
       (WaterDepthParameters { water: frame.uniform }, None),
       (&frame.args, frame.groups),
       |it| &it.depth,
@@ -207,6 +211,8 @@ impl WaterPass {
         |it| &it.engine,
       );
     }
+
+    frame.nearest
   }
 
   /// Declares the enhanced water over the frame's copy before it, which it refracts: its reflection and the
@@ -399,12 +405,14 @@ impl WaterPass {
     (down, written)
   }
 
-  /// Begins the surface's pass: over the scene and the distortion target, against the read-only depth it also samples.
+  /// Begins the surface's pass: over the scene, the distortion target and the motion, against the read-only depth it
+  /// also samples.
   fn begin_surface_pass<'g, 'a>(graph: &'g mut FrameGraph<'a>, draw: &WaterDraw<'a>) -> RasterPassBuilder<'g, 'a> {
     graph
       .add_raster_pass("water")
       .color(GraphColorAttachment::new(draw.targets.scene, wgpu::LoadOp::Load))
       .color(GraphColorAttachment::new(draw.targets.distortion, wgpu::LoadOp::Load))
+      .color(GraphColorAttachment::new(draw.targets.motion, wgpu::LoadOp::Load))
       .depth(GraphDepthAttachment::new_read_only(draw.targets.depth))
   }
 
@@ -511,7 +519,12 @@ impl WaterPass {
         write_mask: wgpu::ColorWrites::ALL,
       })
     };
-    let targets: [Option<wgpu::ColorTargetState>; 2] = [blended(ViewTargets::SCENE), blended(ViewTargets::DISTORTION)];
+    // The surface's motion replaces what lies under it, which the resolve would carry the water's pixels by otherwise.
+    let targets: [Option<wgpu::ColorTargetState>; 3] = [
+      blended(ViewTargets::SCENE),
+      blended(ViewTargets::DISTORTION),
+      Some(ViewTargets::MOTION.into()),
+    ];
     let reflection_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(WaterReflection::FORMAT.into())];
     let current_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(WaterReflection::CURRENT_FORMAT.into())];
     let describe = |label: &'static str,

@@ -328,6 +328,7 @@ fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
     saturate(water_depth * SHORE_FADE),
   );
   out.distortion = write_distortion(fragment, water);
+  out.motion = camera_motion(in.world, in.world);
 
   return out;
 }

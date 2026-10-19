@@ -1258,7 +1258,7 @@ impl SceneView {
       .resolve
       .add_reactive_passes((&mut *graph, &mut *bindings), (handles.scene, before_water));
 
-    self.features.water.add_passes(
+    let depth_with_water: Option<GraphTexture> = self.features.water.add_passes(
       (&mut *graph, &mut *bindings, runtime),
       record,
       (
@@ -1277,6 +1277,7 @@ impl SceneView {
       ray_guides,
       before_water,
       opaque,
+      depth_with_water,
       source,
     }
   }
@@ -1306,6 +1307,7 @@ impl SceneView {
       mut ray_guides,
       before_water,
       opaque,
+      depth_with_water,
       source,
       sky,
       ..
@@ -1419,7 +1421,16 @@ impl SceneView {
       (&mut *graph, &mut *bindings, runtime),
       passes,
       view,
-      (handles, smoothed, opaque, ray_guides),
+      (
+        // The water's pixels carried by its surface rather than by what lies under it.
+        ViewTargetHandles {
+          depth: depth_with_water.unwrap_or(handles.depth),
+          ..handles
+        },
+        smoothed,
+        opaque,
+        ray_guides,
+      ),
     );
 
     self

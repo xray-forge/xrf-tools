@@ -38,17 +38,16 @@ pub struct WaterFeature {
 impl WaterFeature {
   /// Draws the water of a frame's `record` where it draws, over the sky's `views` and the frame copied before it
   /// (`before_water`, which the enhanced water refracts and reflects), from the cull's argument buffers `args`; its
-  /// rays the screen left traced where the scene's trace is built (`traced`, with the sky's group).
+  /// rays the screen left traced where the scene's trace is built (`traced`, with the sky's group). Answers the
+  /// G-buffer's depth with the nearest water's over it where the water draws.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     record: ViewRecord<'a>,
     (views, before_water, args): (Option<&'a SkyViews>, Option<GraphTexture>, Vec<GraphBuffer>),
     traced: Option<(SkyParameters<'a>, TraceParameters<'a>, &'a wgpu::BindGroup)>,
-  ) {
-    let Some(views) = views.filter(|_| self.is_drawn()) else {
-      return;
-    };
+  ) -> Option<GraphTexture> {
+    let views: &SkyViews = views.filter(|_| self.is_drawn())?;
     let passes: LevelPasses<'a> = record.passes;
     let draw: WaterDraw<'a> = WaterDraw {
       targets: record.handles,
@@ -65,7 +64,7 @@ impl WaterFeature {
       traced,
     };
 
-    passes.water.add_passes(graph, bindings, runtime, draw);
+    Some(passes.water.add_passes(graph, bindings, runtime, draw))
   }
 
   /// Takes this frame's settings: makes or drops the reflection's histories, and works out the uniforms.

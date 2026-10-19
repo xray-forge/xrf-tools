@@ -44,6 +44,8 @@ struct WaterOutput {
   @location(0) color: vec4<f32>,
   // How far the water moves what is seen through it, around a half, blended in at a half.
   @location(1) distortion: vec4<f32>,
+  // How far the surface moved on the screen since the last frame, in place of what lies under it.
+  @location(2) motion: vec2<f32>,
 };
 
 // The vertex every water program draws, lifted by the wave; each program's `vs_water` calls it with its `water`.

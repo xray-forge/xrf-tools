@@ -89,7 +89,7 @@ impl ViewTargets {
     ]
   }
 
-  /// A depth target of the view's, which the reflections keep a frame's of in turn.
+  /// A depth target of the view's, which the reflections keep a frame's of in turn and the water copies.
   pub fn create_depth(device: &wgpu::Device, (width, height): (u32, u32)) -> wgpu::TextureView {
     device
       .create_texture(&wgpu::TextureDescriptor {
@@ -103,7 +103,9 @@ impl ViewTargets {
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: Self::DEPTH,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+          | wgpu::TextureUsages::TEXTURE_BINDING
+          | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
       })
       .create_view(&Default::default())
