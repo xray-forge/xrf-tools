@@ -15,10 +15,65 @@
 // trace's registers and no wave waits on a few of its lanes. A ray meeting something writes its pixel's answer over the
 // sky the trace wrote: the screen's weighed answer and the hit's light by the share the screen left, the hit's length
 // where the screen held less than half, and the reason the trace gave it; a miss leaves the sky. A water's request
-// (`TRACE_REQUEST_WATER`) is answered into the water's reflection (`answer_water`), with the grass its ray passes.
+// (`TRACE_REQUEST_WATER`) is answered into the water's reflection (`answer_water`), with the grass its ray passes. A hit
+// a screen showed takes its colour from that screen, so a traced reflection reads as the screen's own: the surfaces'
+// from the last frame's scene and depth, which their trace keeps, the water's from this frame's copy before the water.
 
-// The share of its distance the screen's depth may stand off a water's hit for the screen to show it.
+// The share of its distance the screen's depth may stand off a hit for the screen to show it, and the fog past which a
+// frame's colour holds too little of the point to take the fog off.
 const SCREEN_DEPTH_TOLERANCE: f32 = 0.03;
+const SCREEN_FOG_LIMIT: f32 = 0.98;
+
+// Where the screen `view_projection` drew shows a world point, and in `w` one where it shows it: read where the
+// screen's depth agrees within `SCREEN_DEPTH_TOLERANCE` of the point's distance. None off the screen, or in front of or
+// behind what it shows.
+fn screen_place(point: vec3<f32>, view_projection: mat4x4<f32>) -> vec4<f32> {
+  let clip: vec4<f32> = view_projection * vec4<f32>(point, 1.0);
+
+  if (clip.w <= 0.0) {
+    return vec4<f32>(0.0);
+  }
+
+  let uv: vec2<f32> = clip.xy / clip.w * vec2<f32>(0.5, -0.5) + 0.5;
+
+  if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) {
+    return vec4<f32>(0.0);
+  }
+
+  let size: vec2<f32> = camera.viewport.xy;
+  let texel: vec2<i32> = clamp(vec2<i32>(uv * size), vec2<i32>(0), vec2<i32>(size) - 1);
+  let stored: f32 = textureLoad(screen_depth, texel, 0);
+
+  if (stored <= 0.0 || abs(camera_view_distance(stored) - clip.w) > SCREEN_DEPTH_TOLERANCE * clip.w) {
+    return vec4<f32>(0.0);
+  }
+
+  return vec4<f32>(vec2<f32>(texel), 0.0, 1.0);
+}
+
+// What the last frame showed of a surfaces' hit at a world point, as light, and in `w` one where it did: the tonemap
+// undone at the scale that frame used and its fog to the point taken off, as the surfaces' screen hits read it
+// (`remembered_radiance`). None where that frame did not show the point, or lost it in its fog.
+fn remembered_light(point: vec3<f32>) -> vec4<f32> {
+  let place: vec4<f32> = screen_place(point, camera.view_projection_previous);
+
+  if (place.w < 0.5) {
+    return vec4<f32>(0.0);
+  }
+
+  let position: vec3<f32> = (camera.view * vec4<f32>(point, 1.0)).xyz;
+  let fog: f32 = fog_amount_at(lighting, position, point.y);
+
+  if (fog > SCREEN_FOG_LIMIT) {
+    return vec4<f32>(0.0);
+  }
+
+  let scale: f32 = select(1.0, exposure.used, lighting.params.z > 0.5);
+  let shown: vec3<f32> = scene_light(textureLoad(screen_scene, vec2<i32>(place.xy), 0).rgb, scale);
+  let lit: vec3<f32> = (shown - fog_color_at(lighting, position, point.y) * fog) / (1.0 - fog);
+
+  return vec4<f32>(max(lit, vec3<f32>(0.0)), 1.0);
+}
 
 // The wait the list's pixels stretch their turns by the next frame: as many times as the rays they asked this frame,
 // counted back to their turns unstretched, overrun the list's room. Past its room the list drops the pixels drawn last,
@@ -60,8 +115,13 @@ fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroup
     return;
   }
 
-  let shown: vec3<f32> = shade_scene_hit(hit, toward, cone, lighting, material_lut, lut_sampler, sky_environment_0,
-    sky_environment_1, sky_clamp);
+  let remembered: vec4<f32> = remembered_light(request.origin.xyz + toward * hit.distance);
+  var shown: vec3<f32> = remembered.rgb;
+
+  if (remembered.w < 0.5) {
+    shown = shade_scene_hit(hit, toward, cone, lighting, material_lut, lut_sampler, sky_environment_0,
+      sky_environment_1, sky_clamp);
+  }
   let fog: f32 = path_fog(lighting, hit.distance);
   let met: vec3<f32> = mix(shown * min(1.0, RADIANCE_LIMIT / traced_luminance(shown)), lighting.fog_color.rgb, fog);
 
@@ -81,31 +141,16 @@ fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroup
   }
 }
 
-// What the frame's screen, copied before the water, shows of a world point, as the colour shown, and in `w` one where it
-// shows it: the point taken through the frame's camera and read where the depth agrees within `SCREEN_DEPTH_TOLERANCE`
-// of its distance. None off the screen, or in front of or behind what it shows.
+// What the frame's screen, copied before the water, shows of a water's hit at a world point, as the colour shown, and in
+// `w` one where it shows it.
 fn screen_shown_at(point: vec3<f32>) -> vec4<f32> {
-  let clip: vec4<f32> = camera.view_projection * vec4<f32>(point, 1.0);
+  let place: vec4<f32> = screen_place(point, camera.view_projection);
 
-  if (clip.w <= 0.0) {
+  if (place.w < 0.5) {
     return vec4<f32>(0.0);
   }
 
-  let uv: vec2<f32> = clip.xy / clip.w * vec2<f32>(0.5, -0.5) + 0.5;
-
-  if (any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0))) {
-    return vec4<f32>(0.0);
-  }
-
-  let size: vec2<f32> = camera.viewport.xy;
-  let texel: vec2<i32> = clamp(vec2<i32>(uv * size), vec2<i32>(0), vec2<i32>(size) - 1);
-  let stored: f32 = textureLoad(screen_depth, texel, 0);
-
-  if (stored <= 0.0 || abs(camera_view_distance(stored) - clip.w) > SCREEN_DEPTH_TOLERANCE * clip.w) {
-    return vec4<f32>(0.0);
-  }
-
-  return vec4<f32>(scene_shown(textureLoad(screen_scene, texel, 0).rgb), 1.0);
+  return vec4<f32>(scene_shown(textureLoad(screen_scene, vec2<i32>(place.xy), 0).rgb), 1.0);
 }
 
 // A water's ray answered: what it met as the screen shows it where it does, so a traced hit reads as the march's do,

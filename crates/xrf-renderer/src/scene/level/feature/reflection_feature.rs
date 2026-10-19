@@ -332,7 +332,7 @@ impl ReflectionFeature {
             traced_out: traced,
             ends_out: ends,
             screen_scene: parameters.source_scene,
-            screen_depth: parameters.depth_target,
+            screen_depth: parameters.source_depth,
           },
           sky,
         ),

@@ -7,9 +7,8 @@ use crate::pass::trace_request::TraceRequest;
 /// What the reflections' scene pass reads and writes: the lighting and the material table a hit is lit by, and the
 /// exposure a water's is tonemapped at; the rays a pass left to it and their head, whose wait it keeps; and the target
 /// and the ends into which each ray that meets the level's geometry writes its answer, the surfaces' traced reflection
-/// and its ends or the water's reflection and no ends; and the frame's scene and depth a water's hit is read from where
-/// the screen shows it, the scene copied before the water (the surfaces' pass binds what its trace reads and leaves
-/// them unread).
+/// and its ends or the water's reflection and no ends; and the scene and depth a hit is read from where that screen
+/// showed it: the last frame's for the surfaces, this frame's copied before the water for the water.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct ReflectionSceneParameters<'a> {
