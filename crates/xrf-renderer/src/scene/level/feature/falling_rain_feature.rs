@@ -43,9 +43,9 @@ pub struct FallingRainFeature {
   last_time: Option<f32>,
   /// Where the enhanced drops' square stood from the eye last frame, eased towards the camera's way.
   aim: Option<Vec2>,
-  /// The rain's clock, run on at its pace each frame, the pace and the lean it fell at last frame, eased towards the
-  /// weather's: a drop's place along its fall is the clock over its period, so a pace set at once moved every drop.
+  /// The rain's clock, run on at its pace each frame.
   clock: f32,
+  /// The pace and the lean it fell at last frame, eased towards the weather's.
   eased: Option<(f32, Vec3)>,
   /// The rings the enhanced drops leave where they land, made once they first fall.
   rings: Option<RainRings>,
@@ -100,7 +100,7 @@ impl FallingRainFeature {
       (&rainfall, settings.drops),
       (lighting.wind, gust.strength),
       (cover, Vec4::new(texels, reach, 0.0, 0.0)),
-      (time, aim),
+      aim,
       splash.index_count,
     )
     .ringed(settings.ring_size)
@@ -164,10 +164,9 @@ impl FallingRainFeature {
     self.uniform.cover_shape = Vec4::new(texels, reach, 0.0, 0.0);
   }
 
-  /// Follows the level water's map and the level's surface to where they stand (`water`, `surface`, both of `shape`),
-  /// which the enhanced drops land on and tell foliage by where they are drawn, `is_drawn`; the engine's streaks fall
-  /// through the water.
-  pub fn follow_water(&mut self, (water, surface, shape): (Vec4, Vec4, Vec4), is_drawn: bool) {
+  /// Follows the level water's and the level surface's maps (`water`, `surface`, both of `shape`), which the enhanced
+  /// drops land on where `is_drawn`.
+  pub fn follow_surfaces(&mut self, (water, surface, shape): (Vec4, Vec4, Vec4), is_drawn: bool) {
     let is_landing: bool = is_drawn && self.uniform.is_enhanced != 0;
 
     self.uniform.water = if is_landing { water } else { Vec4::ZERO };
@@ -175,10 +174,8 @@ impl FallingRainFeature {
     self.uniform.water_shape = if is_landing { shape } else { Vec4::ZERO };
   }
 
-  /// Adds the drops and the splashes over the scene, falling onto the rain cover and the level water, told from foliage by the level's
-  /// surface (`covers`): the
-  /// engine's, or the enhanced splashes and the enhanced streaks' distortion, whose drops draw after the resolve
-  /// (`add_over_resolved`); nothing while it does not rain or no cover is drawn.
+  /// Adds the rain over the scene, falling onto `covers`: the engine's streaks and splashes, or the enhanced splashes
+  /// and the distortion under the enhanced streaks, which draw after the resolve (`add_over_resolved`).
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -212,10 +209,8 @@ impl FallingRainFeature {
     pass.record(move |context| passes.rain.record(context, view, (&parameters, look.as_ref()), counts));
   }
 
-  /// Adds the enhanced streaks over `shown`, the image the temporal resolve shows, `size` texels across and down: copied
-  /// into a layer of their own, which they draw over, bending it blurred small, so no history the resolve reads again
-  /// holds them and they never move with what lies behind them. Answers the layer, which the window pass shows in
-  /// `shown`'s place; none for the engine's streaks, without rain or without a cover.
+  /// Adds the enhanced streaks over a copy of `shown`, the image the temporal resolve shows, `size` texels across, so
+  /// no history holds them; answers the copy, which the window pass shows in its place, none without enhanced rain.
   pub fn add_over_resolved<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -249,9 +244,8 @@ impl FallingRainFeature {
     Some(layer)
   }
 
-  /// Adds the rings the enhanced drops leave where they land on the rain cover and the level water (`covers`), drawn
-  /// from overhead and reduced, where `is_read` says the water or the puddles read them; answers them, none for the
-  /// engine's streaks, without rain, without a cover or the level water's map, or with nothing reading them.
+  /// Adds the rings the enhanced drops leave where they land on `covers`, while `is_read` says something reads them;
+  /// answers them, none without them.
   pub fn add_rings<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -276,9 +270,8 @@ impl FallingRainFeature {
     Some(bindings.import_view(&mut *graph, "rain rings", &rings.view))
   }
 
-  /// The rain's parameters, falling onto the rain cover and the level water's map, its uniform placed over an image of
-  /// `over`'s size where given, and the streaks and the splash's indices to draw; none while it does not rain or no
-  /// cover is drawn.
+  /// The rain's parameters over `covers`, its uniform placed over an image of `over`'s size where given, and the
+  /// streaks, the near ones and the splash's indices to draw; none without rain or a cover.
   fn get_parameters<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),

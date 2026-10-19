@@ -11,8 +11,9 @@ var<workgroup> reduced: array<vec4<f32>, 64>;
 fn cs_reduce_rings(@builtin(local_invocation_id) local: vec3<u32>, @builtin(workgroup_id) group: vec3<u32>) {
   let texel: vec2<u32> = group.xy * 8u + local.xy;
   let first: vec2<u32> = texel * 2u;
-  let second: vec4<f32> = 0.25 * (textureLoad(rings_first, first, 0) + textureLoad(rings_first, first + vec2<u32>(1u, 0u), 0) +
-    textureLoad(rings_first, first + vec2<u32>(0u, 1u), 0) + textureLoad(rings_first, first + vec2<u32>(1u, 1u), 0));
+  let second: vec4<f32> = 0.25 * (textureLoad(rings_first, first, 0) +
+    textureLoad(rings_first, first + vec2<u32>(1u, 0u), 0) + textureLoad(rings_first, first + vec2<u32>(0u, 1u), 0) +
+    textureLoad(rings_first, first + vec2<u32>(1u, 1u), 0));
 
   textureStore(rings_second, texel, second);
   reduced[local.y * 8u + local.x] = second;

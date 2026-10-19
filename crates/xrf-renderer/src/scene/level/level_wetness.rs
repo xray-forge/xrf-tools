@@ -15,9 +15,8 @@ impl LevelWetness {
   /// The game's own pace, which the level wets and dries at.
   const PACE: f32 = 1.0;
 
-  /// Moves both on to the scene's real clock `time` under the rain `lighting` holds, building up as the rain's
-  /// `settings` say, at the game's own pace whatever the weather's clock runs at, so a clock sped up a thousand times
-  /// does not fill and drain its puddles with every passing shower.
+  /// Moves both on to the scene's real clock `time` under the rain `lighting` holds, at the game's own pace whatever
+  /// the weather's clock runs at, building up as the rain's `settings` say.
   pub fn advance(&mut self, lighting: &RenderLighting, settings: &RenderRainSettings, time: f32) {
     let density: f32 = lighting.rain.map_or(0.0, |rain| rain.density);
     let build_up: f32 = if settings.is_enhanced() {

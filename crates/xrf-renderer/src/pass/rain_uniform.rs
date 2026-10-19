@@ -25,12 +25,13 @@ const SOURCE_TILE: f32 = 12.5 * 1.772_453_9;
 const STREAK_LENGTH: f32 = 5.0;
 const STREAK_WIDTH: f32 = 0.3;
 
-/// The narrowest and widest square the enhanced drops fall over, in metres: past Monolith's they thin out with
-/// distance (`squared`), so the widest falls under seven times as many drops.
+/// The narrowest and widest square the enhanced drops fall over, in metres.
 const ENHANCED_SQUARE: (f32, f32) = (5.0, 150.0);
 
-/// The least of their designed size the enhanced drops' rings are drawn at, where their waves still span a few of the
-/// rings' texels.
+/// The most rings of far cells about the near square, as `frame/rain.wgsl` walks them (`FAR_RINGS_MOST`).
+const FAR_RINGS_MOST: u32 = 8;
+
+/// The least of their designed size the enhanced drops' rings are drawn at, their waves a few of the rings' texels.
 const RING_SIZE_LEAST: f32 = 0.5;
 
 /// `drop_speed_min` and `drop_speed_max`, in metres a second.
@@ -50,10 +51,8 @@ const ENHANCED_MAX_DISTANCE: f32 = ENHANCED_SOURCE_OFFSET * 1.5;
 /// How far ahead along the camera's way Monolith's `Born` aims the drops, in metres.
 const ENHANCED_AIM: f32 = 5.0;
 
-/// Seconds the enhanced drops' square takes to follow the camera's way most of the way round, about a drop's fall:
-/// Monolith's drops stay where they were born and new ones are born ahead, where a square turned at once with the
-/// camera moved most of its drops in one frame.
-const ENHANCED_AIM_EASING: f32 = 1.0;
+/// Seconds the enhanced rain's eased values take to follow most of the way: its square's aim, its pace and its lean.
+const ENHANCED_EASING: f32 = 1.0;
 
 /// `ssfx_rain_drops_setup`: drops at the heaviest and its square's side. Each of its 2500 streaks carries two drops,
 /// where each of ours carries one, falling on its own; and Monolith's drops are born again as they land, where a
@@ -75,9 +74,8 @@ const ENHANCED_SPEED: f32 = 0.6;
 /// place of its brightness (0.205 of the hemisphere added), low enough that rain does not draw the eye.
 const ENHANCED_LOOK: Vec4 = Vec4::new(0.35, 0.2, 1.2, 0.5);
 
-/// The enhanced splash, a slight addition: how much the light it scatters covers, how far its map bends the ground
-/// through the distortion target (in its units, which the window pass scales by `def_distort`), unused, and the share
-/// of the landings that splash. SSS's `ssfx_rain_3` bent a blurred copy of the ground, which drew a soft grey blob.
+/// The enhanced splash: how much the light it scatters covers, how far its map bends the ground through the distortion
+/// target (which the window pass scales by `def_distort`), unused, and the share of the landings that splash.
 const ENHANCED_SPLASH_LOOK: Vec4 = Vec4::new(0.08, 0.5, 0.0, ENHANCED_SPLASHING);
 
 /// What `shaders/frame/rain.wgsl` reads as its `Rain`, as `dxRainRender::Render` sets the rain up.
@@ -93,13 +91,11 @@ pub struct RainUniform {
   /// the metres it reaches down, the rest unused.
   pub window: Vec4,
   pub cover_shape: Vec4,
-  /// The level water's map's window, laid out as the cover's, and its texels across and the metres it reaches down,
-  /// which the enhanced drops land on; none without it, or for the engine's streaks, which fall through the water as
-  /// the engine's do.
+  /// The level water's map's window, laid out as the cover's, and the shape it shares with the level surface's, which
+  /// the enhanced drops land on; none without it and for the engine's streaks.
   pub water: Vec4,
   pub water_shape: Vec4,
-  /// The level surface's map's window, laid out as the water's and of its shape, whose lowest heights, the ground
-  /// without its trees, tell an enhanced drop landing on foliage; none without it.
+  /// The level surface's map's window, whose lowest heights tell an enhanced drop landing on foliage; none without it.
   pub surface: Vec4,
   /// Metres over the eye a drop starts, metres it falls at most, the side of the square it falls over, which its
   /// columns repeat over, and the enhanced drops' rings' size, of their designed one.
@@ -121,14 +117,11 @@ pub struct RainUniform {
   pub splash_indices: u32,
   /// One where the drops are the enhanced ones, straying as Monolith's `random_dir` scatters them.
   pub is_enhanced: u32,
-  /// How fast the rain's clock runs against real time: the enhanced drops' speed, of their fastest, which Monolith
-  /// scales by the wind; one for the engine's.
+  /// How fast the rain's clock runs against real time: the enhanced drops' speed by the wind; one for the engine's.
   pub pace: f32,
-  /// Metres across the square about the enhanced drops' centre every drop falls in, past which they thin out with
-  /// distance, and which their rings wrap over: Monolith's, or the whole square where it is narrower.
+  /// Metres across the near square every enhanced drop falls in, which their rings wrap over.
   pub near: f32,
-  /// The drops falling in the near square, the first of them; the rest fall far, fewer a cell the further out
-  /// (`squared`), and only the near ones ring and splash.
+  /// The drops in the near square, the first of them, which alone ring and splash; the rest fall in far cells.
   pub near_count: u32,
   pub _pad: f32,
 }
@@ -144,7 +137,7 @@ impl RainUniform {
     (rain, drops): (&RenderRainfall, RenderRainDropsMode),
     (wind, strength): (RenderWind, f32),
     (window, cover_shape): (Vec4, Vec4),
-    (time, aim): (f32, Vec2),
+    aim: Vec2,
     splash_indices: u32,
   ) -> Self {
     let density: f32 = rain.density.clamp(0.0, 1.0);
@@ -152,7 +145,6 @@ impl RainUniform {
       color: rain.color.clamp(Vec3::ZERO, Vec3::ONE).extend(density / 2.0 + 0.5),
       window,
       cover_shape,
-      time,
       splash_indices,
       pace: 1.0,
       ..Default::default()
@@ -177,8 +169,7 @@ impl RainUniform {
         // where `wind_strength_factor` swings by one about a half.
         let velocity: f32 = (wind.velocity * 0.001).clamp(0.0, 1.0);
         let lean: f32 = (velocity + (strength - 0.5) * 2.0).clamp(0.0, 1.0);
-        // Monolith's speed by the wind, which runs the rain's clock slower, so a drop never jumps along its fall as
-        // the wind changes (`FallingRainFeature::prepare` runs it).
+        // Monolith's speed by the wind, the pace `FallingRainFeature::prepare` runs the rain's clock at.
         let pace: f32 = (velocity * 1.5).clamp(0.5, 1.0);
 
         Self {
@@ -204,9 +195,8 @@ impl RainUniform {
     }
   }
 
-  /// Metres a side of the tile the enhanced drops' rings wrap over, the square every drop falls in, as the water
-  /// and the puddles read them (`common/rain_rings.wgsl`); none for the engine's streaks, or where no level water's
-  /// map is drawn for the drops to land on (`water`), where the water and the puddles keep their maps' rings.
+  /// Metres a side of the tile the enhanced drops' rings wrap over; none for the engine's streaks or without the level
+  /// water's map to land on.
   pub fn get_rings(&self) -> f32 {
     match self.is_enhanced != 0 && self.water.z > 0.0 {
       false => 0.0,
@@ -214,11 +204,8 @@ impl RainUniform {
     }
   }
 
-  /// The same rain, its enhanced drops falling over a square `side` metres across; the engine's streaks as they are.
-  /// Within Monolith's square every drop falls, a narrower one fewer by its area; past it the far drops fall in cells
-  /// as wide, the one under its centre as many as it for what of it the square leaves out, and rings about it, a ring `k` cells out a quarter of the near square's drops over `k²` a cell
-  /// (`frame/rain.wgsl`), so the drops on screen stay about as many at every distance, as a drop far off is drawn
-  /// small: about `2 + 2 ln(side / 15)` times Monolith's in all.
+  /// The same rain, its enhanced drops falling over a square `side` metres across as `frame/rain.wgsl`'s `far_drop`
+  /// places them; the engine's streaks as they are.
   pub fn squared(self, side: f32) -> Self {
     if self.is_enhanced == 0 {
       return self;
@@ -228,6 +215,9 @@ impl RainUniform {
     let near: f32 = side.min(ENHANCED_RADIUS);
     let near_count: u32 = (self.count as f32 * (near / ENHANCED_RADIUS).powi(2)).round() as u32;
     let rings: u32 = ((side - near) / (2.0 * near)).ceil() as u32;
+
+    debug_assert!(rings <= FAR_RINGS_MOST, "{rings} rings of far cells");
+
     let far_count: u32 = (1..=rings)
       .map(|k| 8 * k * ((near_count as f32 / (4 * k * k) as f32 + 0.5).floor() as u32).max(1))
       .sum::<u32>()
@@ -263,19 +253,17 @@ impl RainUniform {
     }
   }
 
-  /// Where the enhanced drops' square stands from the eye: `aim` from last frame, eased `step` seconds towards
-  /// Monolith's `Born` aim along `look`, the camera's way (`mad(view, dir, 5)`, its height dropped); there at once
-  /// without one.
+  /// Where the enhanced drops' square stands from the eye: `aim` eased `step` seconds towards Monolith's `Born` aim
+  /// along `look` (`mad(view, dir, 5)`, its height dropped); there at once without one.
   pub fn ease_aim(aim: Option<Vec2>, look: Vec3, step: f32) -> Vec2 {
     let target: Vec2 = Vec2::new(look.x, look.z) * ENHANCED_AIM;
 
     aim.map_or(target, |aim| aim.lerp(target, Self::get_following(step)))
   }
 
-  /// The share of the way towards where it is going an eased value of the enhanced rain goes in `step` seconds: its
-  /// drops' square, their pace and their lean, so a turn or a change of weather moves them over about a second.
+  /// The share of the way to its target an eased value of the enhanced rain goes in `step` seconds.
   pub fn get_following(step: f32) -> f32 {
-    1.0 - (-step / ENHANCED_AIM_EASING).exp()
+    1.0 - (-step / ENHANCED_EASING).exp()
   }
 
   /// The same rain on its clock `time`, at its `pace` and leaning along `axis`, as eased from frame to frame.

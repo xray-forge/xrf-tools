@@ -16,8 +16,8 @@ struct RainRings {
 
 // The rings at a `place` in renderer `x` and `z`, as `setup` lays them out: a tile its `x` metres a side, none where
 // no drops draw rings, reaching its `y` metres from the `eye` across the ground, however high over it the eye stands.
-// Filtered evenly over the widest of its gradients `across` and `down`: kept sharp along a grazing look, as an
-// anisotropic read keeps them, rings far off broke into grain; filtered evenly they soften into the variance.
+// Filtered evenly over the widest of its gradients `across` and `down`, so rings far off soften into the variance
+// rather than break into grain along a grazing look.
 fn read_rain_rings(rings: texture_2d<f32>, rings_sampler: sampler, setup: vec2<f32>, eye: vec2<f32>,
   place: vec2<f32>, across: vec2<f32>, down: vec2<f32>) -> RainRings {
   let tile: f32 = setup.x;

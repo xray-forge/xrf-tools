@@ -33,8 +33,8 @@ const NEAR_FADE: vec2<f32> = vec2<f32>(0.5, 2.0);
 const SUN_ASYMMETRY: f32 = 0.5;
 const SUN_SCATTER: f32 = 0.1;
 
-// How far the light a drop scatters goes towards its own grey: clear water takes little of the sky's colour, and a
-// tinted sky tinted every drop with it.
+// How far the light a drop scatters goes towards its own grey: clear water takes little of the sky's colour, so a
+// tinted sky barely tints the drops.
 const SCATTER_GREY: f32 = 0.75;
 
 // The least of its length and of its width an enhanced streak is drawn at, each fall picking between it and all.
@@ -43,8 +43,8 @@ const STREAK_LEAST: vec2<f32> = vec2<f32>(0.6, 0.75);
 // How large a splash stands as it lands, of its full size, which it opens to as it fades.
 const SPLASH_OPENING: f32 = 0.6;
 
-// How much of an enhanced splash shows where it lands on water, whose rings show the drop's landing: a crown of spray
-// over dark water drew the eye as a grey cone.
+// How much of an enhanced splash shows where it lands on water, whose rings show the drop's landing: a grey crown over
+// dark water would draw the eye.
 const SPLASH_ON_WATER: f32 = 0.35;
 
 // A ring an enhanced drop leaves where it lands, at its designed size (`rain.fall.w` scales it): seconds it spreads
@@ -248,6 +248,7 @@ fn fall_back(streak: u32, back: u32) -> Fall {
   let placed: vec2<f32> = select(centre + around, (vec2<f32>(cell) + picked) * tile, is_far);
   let column: vec3<f32> = vec3<f32>(placed.x, eye.y, placed.y);
   let from_centre: vec2<f32> = abs(placed - centre);
+  let out: f32 = max(from_centre.x, from_centre.y);
   let direction: vec3<f32> = direction_of(key, cycle);
   // It starts `source_offset` over the camera, set back along its way so it falls through its column.
   let start: f32 = rain.fall.x / -direction.y;
@@ -262,17 +263,17 @@ fn fall_back(streak: u32, back: u32) -> Fall {
   fall.age = age;
   fall.direction = direction;
   fall.is_on_water = water > covered;
-  fall.is_on_foliage = !fall.is_on_water && rain.surface.z > 0.0 && covered > surface_lowest_at(column.xz) + FOLIAGE_GAP;
+  fall.is_on_foliage =
+    !fall.is_on_water && rain.surface.z > 0.0 && covered > surface_lowest_at(column.xz) + FOLIAGE_GAP;
   // A far drop falling in the near square, whose own drops fall there, or past the square's half side, is not drawn.
   fall.is_near = !is_far;
   fall.is_falling = streak < rain.count && floor(phase) >= f32(back) &&
-    (!is_far || (max(from_centre.x, from_centre.y) > tile * 0.5 && max(from_centre.x, from_centre.y) <= rain.fall.z * 0.5));
+    (!is_far || (out > tile * 0.5 && out <= rain.fall.z * 0.5));
   fall.cycle = cycle;
 
   // The enhanced drop lands at its column at a set moment of its period, so where and when it lands, which its ring
   // and splash show, holds still however the camera moves; its fall is laid back up its way from there, shown from
-  // `source_offset` over the camera. Started over the camera, as the engine's falls, it landed further along its
-  // slant and later the higher the camera stood, and the rings slid as the camera rose or sank.
+  // `source_offset` over the camera.
   if (is_enhanced) {
     let landing: f32 = period * ENHANCED_LANDING;
     let is_landing: bool = ground > eye.y - rain.fall.y;
@@ -368,11 +369,10 @@ fn vs_splash(@builtin(vertex_index) vertex_index: u32) -> RainVarying {
   return out;
 }
 
-// Each enhanced drop's ring where it lands, its fall's and its last fall's, so a ring spreads on as its streak falls
-// again: a quad as wide as its front has spread, on the rain's rings, the level's tile (`rain.near` metres a side, the
-// square every drop falls in) seen from overhead, wrapping; the thinned drops past it leave none. Four copies of each, moved a tile across, along and
-// both towards its nearest edges, so a ring crossing one goes on at the other; the copies a ring does not reach clip
-// away. Collapsed to nothing while it does not spread.
+// Each near drop's ring where it lands, its fall's and its last fall's, so a ring spreads on as its streak falls again:
+// a quad as wide as its front has spread on the rain's rings, the level's tile `rain.near` metres a side seen from
+// overhead, wrapping. Four copies of each, moved a tile across, along and both towards its nearest edges, so a ring
+// crossing one goes on at the other; the copies a ring does not reach clip away. Collapsed while it does not spread.
 @vertex
 fn vs_ring(@builtin(vertex_index) vertex_index: u32) -> RingVarying {
   let copy: u32 = (vertex_index / 6u) % 4u;

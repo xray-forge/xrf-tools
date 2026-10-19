@@ -137,7 +137,7 @@ fn falling_rain(drops: RenderRainDropsMode, density: f32, (velocity, strength): 
       strength,
     ),
     (Vec4::ZERO, Vec4::ZERO),
-    (0.0, Vec2::ZERO),
+    Vec2::ZERO,
     0,
   )
 }

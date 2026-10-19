@@ -325,10 +325,7 @@ impl SceneView {
       (windows, self.features.resolve.get_noise_frame()),
       frame.weather_textures,
     );
-    self.features.rain.follow_water(
-      (windows.water, windows.surface, windows.surface_shape),
-      self.features.level_surface.is_some() && self.features.wet.is_enhanced(),
-    );
+    self.follow_rain_surfaces(windows);
 
     // The enhanced drops' rings, where they land on the level water's map, which the water and the puddles ripple by.
     let rings: (f32, f32, f32) = (
@@ -536,10 +533,17 @@ impl SceneView {
 
     self.features.rain.follow_cover(windows.cover, windows.cover_shape);
     self.features.wet.follow(windows);
-    self.features.rain.follow_water(
-      (windows.water, windows.surface, windows.surface_shape),
-      self.features.level_surface.is_some() && self.features.wet.is_enhanced(),
-    );
+    self.follow_rain_surfaces(windows);
+  }
+
+  /// Follows the rain to the level water's and surface's maps, which the enhanced drops land on while they are drawn.
+  fn follow_rain_surfaces(&mut self, windows: OverheadWindows) {
+    let is_drawn: bool = self.features.level_surface.is_some() && self.features.wet.is_enhanced();
+
+    self
+      .features
+      .rain
+      .follow_surfaces((windows.water, windows.surface, windows.surface_shape), is_drawn);
   }
 
   /// Where the rain cover and the level's surface stand now.
