@@ -8,6 +8,7 @@ pub mod command_testing;
 pub mod engine_target;
 pub mod execution;
 pub mod generic_command;
+pub mod link_policy;
 pub mod logging;
 pub mod ltx_dialect;
 pub mod output;

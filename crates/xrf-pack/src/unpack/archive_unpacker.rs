@@ -1,17 +1,16 @@
 use std::fs;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Duration;
 
 use xrf_archive::{ArchiveFileDescriptor, ArchiveOpenVolumes, ArchiveProject};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::format_path;
+use xrf_utils::{HostDestination, HostRelativePath, format_path};
 
 use crate::path::{relative_to_prefix, to_host_relative};
 use crate::unpack::archive_extract_options::ArchiveExtractOptions;
 use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, ArchiveExtractResult};
 use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
-use crate::unpack::rooted_destination::RootedDestination;
 use crate::unpack::tree_entry::TreeEntry;
 use crate::unpack::tree_write_summary::TreeWriteSummary;
 use crate::unpack::tree_writer::TreeWriter;
@@ -31,7 +30,7 @@ impl ArchiveUnpacker {
     destination: P,
     options: ArchiveExtractOptions,
   ) -> XrfResult<ArchiveUnpackResult> {
-    let destination: RootedDestination = RootedDestination::new(destination.as_ref());
+    let destination: HostDestination = HostDestination::new(destination.as_ref(), options.link_policy);
     let job = &options.job;
 
     destination.create_root()?;
@@ -79,7 +78,7 @@ impl ArchiveUnpacker {
     options: ArchiveExtractOptions,
   ) -> XrfResult<ArchiveExtractDirectoryResult> {
     let normalized: String = prefix.trim_end_matches(['\\', '/']).to_string();
-    let destination: RootedDestination = RootedDestination::new(destination.as_ref());
+    let destination: HostDestination = HostDestination::new(destination.as_ref(), options.link_policy);
 
     destination.create_root()?;
 
@@ -154,7 +153,7 @@ impl ArchiveUnpacker {
 
   /// Writes the selected entries through the shared tree writer, reading each payload out of its volume.
   fn write_entries(
-    destination: &RootedDestination,
+    destination: &HostDestination,
     volumes: &ArchiveOpenVolumes<'_>,
     entries: &[TreeEntry<&ArchiveFileDescriptor>],
     options: &ArchiveExtractOptions,
@@ -201,12 +200,8 @@ impl ArchiveUnpacker {
   }
 
   /// Where one archived entry lands, relative to a destination root.
-  fn build_relative_path(unpack_root: &Path, descriptor: &ArchiveFileDescriptor) -> XrfResult<PathBuf> {
-    let mut path: PathBuf = to_host_relative(&unpack_root.to_string_lossy())?;
-
-    path.push(to_host_relative(&descriptor.name)?);
-
-    Ok(path)
+  fn build_relative_path(unpack_root: &Path, descriptor: &ArchiveFileDescriptor) -> XrfResult<HostRelativePath> {
+    Ok(to_host_relative(&unpack_root.to_string_lossy())?.join_path(&to_host_relative(&descriptor.name)?))
   }
 }
 
@@ -223,7 +218,9 @@ mod tests {
     let descriptor: ArchiveFileDescriptor = ArchiveFileDescriptor::new(0, "configs\\system.ltx".into(), 0, 0, 0);
 
     assert_eq!(
-      ArchiveUnpacker::build_relative_path(Path::new("gamedata\\"), &descriptor).expect("safe archive path"),
+      ArchiveUnpacker::build_relative_path(Path::new("gamedata\\"), &descriptor)
+        .expect("safe archive path")
+        .as_path(),
       PathBuf::from("gamedata").join("configs").join("system.ltx")
     );
   }

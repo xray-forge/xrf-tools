@@ -1,3 +1,6 @@
+use xrf_error::XrfResult;
+use xrf_extension::XrayExtension;
+use xrf_utils::HostFileName;
 use xrf_xml::XmlElement;
 
 use crate::description::{
@@ -60,5 +63,14 @@ impl TextureSpriteDescriptor {
 
   pub fn get_dimension_boundaries(&self) -> (u32, u32) {
     (self.x + self.w, self.y + self.h)
+  }
+
+  /// The file this sprite is stored as on its own, named for its id as spelled.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the id is not one host file name.
+  pub fn to_host_file_name(&self, extension: XrayExtension) -> XrfResult<HostFileName> {
+    Ok(HostFileName::new(&self.id, "Sprite id")?.with_extension(extension.as_str()))
   }
 }

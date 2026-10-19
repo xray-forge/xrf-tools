@@ -1,16 +1,16 @@
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobOutcome, JobScope};
+use xrf_utils::{HostDestination, HostRelativePath};
 
 use crate::unpack::archive_extract_options::{EXTRACT_PHASE_PREPARE, EXTRACT_PHASE_WRITE};
-use crate::unpack::rooted_destination::RootedDestination;
 use crate::unpack::tree_entry::TreeEntry;
 use crate::unpack::tree_write_summary::TreeWriteSummary;
 
@@ -24,7 +24,7 @@ impl TreeWriter {
   ///
   /// Returns whatever creating a directory or file, or `write`, answers with.
   pub(crate) fn write<T, F>(
-    destination: &RootedDestination,
+    destination: &HostDestination,
     entries: &[TreeEntry<T>],
     job: &JobHandle,
     write: F,
@@ -90,11 +90,12 @@ impl TreeWriter {
 
   /// Opens one entry's file, reusing the parent directory the preparation phase already verified.
   fn create_file(
-    destination: &RootedDestination,
+    destination: &HostDestination,
     prepared: &HashMap<PathBuf, PathBuf>,
-    relative: &Path,
+    relative: &HostRelativePath,
   ) -> XrfResult<File> {
     let verified: Option<(&PathBuf, &OsStr)> = relative
+      .as_path()
       .parent()
       .and_then(|parent| prepared.get(parent))
       .zip(relative.file_name());
@@ -107,15 +108,15 @@ impl TreeWriter {
 
   /// Creates every directory the entries need, and returns where each one landed.
   fn create_directories<T>(
-    destination: &RootedDestination,
+    destination: &HostDestination,
     entries: &[TreeEntry<T>],
     preparing: &JobScope,
   ) -> XrfResult<HashMap<PathBuf, PathBuf>> {
-    let mut set: HashSet<&Path> = HashSet::new();
+    let mut set: HashSet<HostRelativePath> = HashSet::new();
 
     for entry in entries {
-      let directory: Option<&Path> = if entry.is_directory {
-        Some(&entry.relative)
+      let directory: Option<HostRelativePath> = if entry.is_directory {
+        Some(entry.relative.clone())
       } else {
         entry.relative.parent()
       };
@@ -128,9 +129,9 @@ impl TreeWriter {
     let mut created: HashMap<PathBuf, PathBuf> = HashMap::with_capacity(set.len());
 
     for path in set {
-      let host: PathBuf = destination.create_directory(path)?;
+      let host: PathBuf = destination.create_directory(&path)?;
 
-      created.insert(path.to_path_buf(), host);
+      created.insert(path.as_path().to_path_buf(), host);
       preparing.advance();
     }
 

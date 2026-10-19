@@ -4,7 +4,9 @@ use image::{ImageBuffer, Rgba, RgbaImage};
 use serde::Serialize;
 use xrf_dds::DDS_BLOCK_SIZE;
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtension;
 use xrf_ltx::{Ltx, Section};
+use xrf_utils::HostFileName;
 
 use crate::equipment::{
   EquipmentGridRect, EquipmentSlotClaim, INVENTORY_ICON_GRID_SQUARE_BASE, LTX_FIELD_INVENTORY_ICON_PATH,
@@ -63,6 +65,15 @@ impl InventorySpriteDescriptor {
 }
 
 impl InventorySpriteDescriptor {
+  /// The file this icon is stored as on its own, named for its section as spelled.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the section name is not one host file name.
+  pub fn to_host_file_name(&self, extension: XrayExtension) -> XrfResult<HostFileName> {
+    Ok(HostFileName::new(&self.section, "Inventory icon section")?.with_extension(extension.as_str()))
+  }
+
   pub fn get_boundaries(&self) -> (u32, u32, u32, u32) {
     (
       self.x * INVENTORY_ICON_GRID_SQUARE_BASE,

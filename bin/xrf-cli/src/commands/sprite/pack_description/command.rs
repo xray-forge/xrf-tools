@@ -9,6 +9,7 @@ use xrf_utils::format_path;
 use super::report::SpriteDescriptionReport;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::link_policy::{LinkPolicyArguments, requested_link_policy};
 use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
@@ -58,6 +59,7 @@ impl GenericCommand for PackDescriptionCommand {
           .required(false)
           .action(ArgAction::SetTrue),
       )
+      .with_link_policy()
   }
 
   /// Pack texture descriptions file as single dds sprite.
@@ -89,6 +91,7 @@ impl GenericCommand for PackDescriptionCommand {
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files,
       is_strict,
+      link_policy: requested_link_policy(matches),
     };
 
     log::info!("Packing texture descriptions from: {}", format_path(description));

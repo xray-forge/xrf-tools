@@ -3,13 +3,12 @@ use std::io::Write;
 use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::format_path;
+use xrf_utils::{HostDestination, format_path};
 use xrf_vfs::{XrayAsset, XrayMountedEntry, XrayProbe};
 
 use crate::path::{relative_to_prefix, to_host_relative};
 use crate::unpack::archive_extract_options::ArchiveExtractOptions;
 use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, ArchiveExtractResult};
-use crate::unpack::rooted_destination::RootedDestination;
 use crate::unpack::tree_entry::TreeEntry;
 use crate::unpack::tree_write_summary::TreeWriteSummary;
 use crate::unpack::tree_writer::TreeWriter;
@@ -45,7 +44,7 @@ impl XrayWorldExtractor {
     options: ArchiveExtractOptions,
   ) -> XrfResult<ArchiveExtractDirectoryResult> {
     let normalized: String = prefix.trim_end_matches(['\\', '/']).to_string();
-    let destination: RootedDestination = RootedDestination::new(destination.as_ref());
+    let destination: HostDestination = HostDestination::new(destination.as_ref(), options.link_policy);
 
     destination.create_root()?;
 

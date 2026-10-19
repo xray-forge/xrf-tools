@@ -11,6 +11,7 @@ use crate::commands::sprite::pack_description::report::SpriteDescriptionReport;
 use crate::core::command_context::CommandContext;
 use crate::core::execution::ExecutionArguments;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::link_policy::{LinkPolicyArguments, requested_link_policy};
 use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
@@ -60,6 +61,7 @@ impl GenericCommand for UnpackDescriptionCommand {
           .action(ArgAction::SetTrue),
       )
       .with_jobs()
+      .with_link_policy()
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -103,6 +105,7 @@ impl GenericCommand for UnpackDescriptionCommand {
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files,
       is_strict,
+      link_policy: requested_link_policy(matches),
     };
 
     // The payload is what the run was pointed at, so it is deposited before the work rather than

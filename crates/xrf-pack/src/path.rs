@@ -1,36 +1,21 @@
 //! Names and the host paths they cross into: the only place this crate decides separators.
 
 use std::ffi::OsStr;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::format_path;
+use xrf_utils::{HostRelativePath, format_path};
 
-/// Converts an engine name into host path components.
+/// Converts an engine name into host path components below a destination root.
 ///
-/// Built from components so the platform inserts its own separator: pushed whole, `configs\system.ltx` is a single
-/// component to `std::path` on Linux, which unpacks a tree as flat files with backslashes in their names.
+/// # Errors
 ///
-/// Empty components are dropped, because a volume's entry point carries a trailing separator (`gamedata\`).
-pub(crate) fn to_host_relative(name: &str) -> XrfResult<PathBuf> {
-  let mut path: PathBuf = PathBuf::new();
-
-  for component in name.split(['\\', '/']).filter(|part| !part.is_empty()) {
-    if matches!(component, "." | "..") || component.contains(':') {
-      return Err(XrfError::new_invalid_error(format!(
-        "Archive entry path '{name}' contains unsafe component '{component}'"
-      )));
-    }
-
-    path.push(component);
-  }
-
-  Ok(path)
+/// Returns an invalid error when a component would leave the destination.
+pub(crate) fn to_host_relative(name: &str) -> XrfResult<HostRelativePath> {
+  HostRelativePath::new(name, "Archive entry path")
 }
 
 /// Express a host path as the engine name relative to the root it was found under.
-///
-/// The counterpart of [`to_host_relative`], and the direction packing crosses in.
 ///
 /// # Errors
 ///
@@ -59,36 +44,7 @@ pub(crate) fn normalize_archive_name(name: &str) -> String {
   name.replace('/', "\\").trim_matches('\\').to_string()
 }
 
-/// Checks that a caller-supplied name is one host file name rather than a path.
-///
-/// A volume is published as `destination.join(name)`, and `join` honours a rooted or separator-bearing name by
-/// dropping the destination the caller was shown. Both separators and the drive colon are refused on every host,
-/// because `std::path` on Linux reads `..\outside` and `C:\outside` as one ordinary component, which would carry
-/// the escape to the host that recognizes it.
-pub(crate) fn validate_host_file_name(name: &str, what: &str) -> XrfResult {
-  // With neither separator nor colon left, a name is one component or it is empty, `.`, or `..`.
-  let is_one_file_name: bool = !name.contains(['\\', '/', ':'])
-    && matches!(
-      Path::new(name).components().next(),
-      Some(Component::Normal(component)) if component == OsStr::new(name)
-    );
-
-  if is_one_file_name {
-    Ok(())
-  } else {
-    Err(XrfError::new_invalid_error(format!(
-      "{what} '{name}' must be a single file name, without a separator, a drive, or a traversal"
-    )))
-  }
-}
-
 /// Whether an engine name is a directory prefix itself or lies below it.
-///
-/// The boundary rule both packing and extraction need. Compared segment-wise rather than by raw `starts_with`, so
-/// `configs` does not swallow `configs_backup`. Case is ignored and either separator closes a component, because a
-/// volume records a name as authored and a configuration names a directory as typed, while the engine folds both.
-///
-/// An empty prefix names the source root, which takes everything.
 pub(crate) fn is_component_prefix(name: &str, prefix: &str) -> bool {
   if prefix.is_empty() {
     return true;
@@ -102,9 +58,6 @@ pub(crate) fn is_component_prefix(name: &str, prefix: &str) -> bool {
 }
 
 /// The part of an engine name below a directory prefix, or `None` when it lies outside it.
-///
-/// Descendants only, unlike [`is_component_prefix`]: a name equal to the prefix leaves nothing to write below an
-/// extraction destination.
 pub(crate) fn relative_to_prefix<'a>(name: &'a str, prefix: &str) -> Option<&'a str> {
   if prefix.is_empty() {
     return Some(name);
@@ -119,14 +72,6 @@ pub(crate) fn relative_to_prefix<'a>(name: &'a str, prefix: &str) -> Option<&'a 
 }
 
 /// Whether `path` names `root` itself or something inside it.
-///
-/// Resolving only what exists is not enough here, and the failure is silent. A destination is commonly named before it
-/// is created, so `canonicalize` refuses it, while a root that does exist comes back on Windows in the `\?\`
-/// extended-length form — so the two never share a prefix, which is precisely the case a containment test has to
-/// catch. Both sides are therefore resolved as far as the filesystem allows and the part that does not exist yet is
-/// put back on.
-///
-/// Matched on a component boundary, so a sibling named `gamedata-patches` is not inside `gamedata`.
 pub(crate) fn is_inside_directory(path: &Path, root: &Path) -> bool {
   let path: String = to_comparable(path);
   let root: String = to_comparable(root);
@@ -138,10 +83,6 @@ pub(crate) fn is_inside_directory(path: &Path, root: &Path) -> bool {
 }
 
 /// A path in the spelling two names for one place share.
-///
-/// The nearest existing ancestor is resolved, the missing tail is appended, and the result is lower-cased with one
-/// separator. Case folding is what a Windows host needs and what a POSIX host does not; folding everywhere keeps one
-/// answer, and the cost is a refusal to publish into a root spelled in a different case, which is the safe direction.
 fn to_comparable(path: &Path) -> String {
   let mut missing: Vec<&OsStr> = Vec::new();
   let mut cursor: &Path = path;
@@ -175,7 +116,7 @@ mod tests {
   use std::ffi::OsString;
   use std::path::{Path, PathBuf};
 
-  use super::{is_component_prefix, relative_to_prefix, to_archive_name, to_host_relative, validate_host_file_name};
+  use super::{is_component_prefix, relative_to_prefix, to_archive_name, to_host_relative};
 
   /// A file name the host accepts and UTF-8 cannot spell: raw bytes on Unix, a lone surrogate on Windows.
   fn unrepresentable_name() -> OsString {
@@ -197,20 +138,14 @@ mod tests {
   #[test]
   fn an_entry_name_crosses_into_host_components_rather_than_one_name() {
     assert_eq!(
-      to_host_relative("configs\\system.ltx").expect("safe archive path"),
+      to_host_relative("configs\\system.ltx")
+        .expect("safe archive path")
+        .as_path(),
       Path::new("configs").join("system.ltx")
-    );
-    assert_eq!(
-      to_host_relative("configs/system.ltx").expect("safe archive path"),
-      Path::new("configs").join("system.ltx")
-    );
-    assert_eq!(
-      to_host_relative("system.ltx").expect("safe archive path"),
-      Path::new("system.ltx")
     );
     // A volume's entry point carries a trailing separator, which must not become an empty component.
     assert_eq!(
-      to_host_relative("gamedata\\").expect("safe archive path"),
+      to_host_relative("gamedata\\").expect("safe archive path").as_path(),
       Path::new("gamedata")
     );
   }
@@ -254,41 +189,6 @@ mod tests {
       to_archive_name(source, &path).is_err(),
       "an unnameable file is reported"
     );
-  }
-
-  #[test]
-  fn a_published_name_may_be_one_host_file_name() {
-    for name in ["gamedata", "levels.part2", "weapons-v1"] {
-      assert!(
-        validate_host_file_name(name, "Archive name").is_ok(),
-        "'{name}' names one file"
-      );
-    }
-  }
-
-  #[test]
-  fn rejects_a_published_name_that_would_leave_its_destination() {
-    // A rooted or drive-qualified name does not escape the destination so much as discard it: `join` returns it
-    // whole. The Windows spellings are refused on Linux too, where they would otherwise pack as innocent file names
-    // and escape on the host that reads them back.
-    for name in [
-      "",
-      ".",
-      "..",
-      "..\\outside",
-      "../outside",
-      "nested\\name",
-      "nested/name",
-      "\\rooted",
-      "/rooted",
-      "C:\\outside",
-      "C:outside",
-    ] {
-      assert!(
-        validate_host_file_name(name, "Archive name").is_err(),
-        "'{name}' must not name a published file"
-      );
-    }
   }
 
   #[test]

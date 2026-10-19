@@ -1,22 +1,24 @@
-//! Containment of archive-controlled names against a destination tree that already holds links.
+//! Extraction into a destination tree that already holds links.
 //!
-//! Rejecting `..` in an entry name proves nothing here: every name below is perfectly ordinary, and the escape is a
-//! link the destination already contained. Each test therefore puts a sentinel outside the destination and asserts
-//! nothing reached it, rather than only that the call failed.
+//! Every name below is ordinary, so what decides where a write lands is the link and the run's link policy. Each test
+//! puts a sentinel outside the destination and asserts what reached it, rather than only whether the call failed.
 
-use std::ffi::OsStr;
 use std::fs;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
 use xrf_archive::ArchiveProject;
-use xrf_error::XrfError;
+use xrf_test_utils::links::{link_directory, link_file};
+use xrf_utils::HostLinkPolicy;
 
-use super::fixtures::{Entry, create_project, create_temporary_directory, link_directory, link_file, unpack_with};
-use crate::ArchiveUnpacker;
-use crate::unpack::rooted_destination::RootedDestination;
+use super::fixtures::{Entry, create_project, create_temporary_directory, unpack_with};
+use crate::{ArchiveExtractOptions, ArchiveUnpacker};
 
 const ONE: NonZeroUsize = NonZeroUsize::new(1).expect("a non-zero worker count");
+
+fn refusing_links() -> ArchiveExtractOptions {
+  ArchiveExtractOptions::default().with_link_policy(HostLinkPolicy::Refuse)
+}
 
 /// A directory outside the destination, holding a file no extraction is allowed to touch.
 fn create_sentinel(directory: &Path) -> PathBuf {
@@ -40,8 +42,30 @@ fn assert_sentinel_untouched(sentinel: &Path) {
   );
 }
 
+/// A junctioned or symlink-deployed folder is the user's layout, so the default unpack writes where it points.
 #[test]
-fn unpack_refuses_a_directory_link_below_the_destination() {
+fn unpack_follows_a_directory_link_below_the_destination_by_default() {
+  let directory: PathBuf = create_temporary_directory("link-follow-directory");
+  let project: ArchiveProject = create_project(&directory, &[Entry::stored("configs\\system.ltx", b"[section]")]);
+  let sentinel: PathBuf = create_sentinel(&directory);
+  let out: PathBuf = directory.join("out");
+
+  fs::create_dir_all(&out).expect("destination");
+
+  if !link_directory(&sentinel, &out.join("configs")) {
+    return;
+  }
+
+  unpack_with(ONE, &project, &out).expect("unpack through the user's link");
+
+  assert_eq!(
+    fs::read_to_string(sentinel.join("system.ltx")).expect("written file"),
+    "[section]"
+  );
+}
+
+#[test]
+fn unpack_refuses_a_directory_link_below_the_destination_when_asked() {
   let directory: PathBuf = create_temporary_directory("link-unpack-directory");
   let project: ArchiveProject = create_project(&directory, &[Entry::stored("configs\\system.ltx", b"[section]")]);
   let sentinel: PathBuf = create_sentinel(&directory);
@@ -49,20 +73,19 @@ fn unpack_refuses_a_directory_link_below_the_destination() {
 
   fs::create_dir_all(&out).expect("destination");
 
-  // The destination is a tree the user already has, and one directory in it points elsewhere.
   if !link_directory(&sentinel, &out.join("configs")) {
     return;
   }
 
   assert!(
-    unpack_with(ONE, &project, &out).is_err(),
+    ArchiveUnpacker::unpack_opt(&project, &out, refusing_links()).is_err(),
     "unpacking through a link must fail rather than follow it"
   );
   assert_sentinel_untouched(&sentinel);
 }
 
 #[test]
-fn unpack_refuses_a_file_link_in_place_of_an_entry() {
+fn unpack_refuses_a_file_link_in_place_of_an_entry_when_asked() {
   let directory: PathBuf = create_temporary_directory("link-unpack-file");
   let project: ArchiveProject = create_project(&directory, &[Entry::stored("configs\\keep.txt", b"[section]")]);
   let sentinel: PathBuf = create_sentinel(&directory);
@@ -76,14 +99,14 @@ fn unpack_refuses_a_file_link_in_place_of_an_entry() {
   }
 
   assert!(
-    unpack_with(ONE, &project, &out).is_err(),
+    ArchiveUnpacker::unpack_opt(&project, &out, refusing_links()).is_err(),
     "writing an entry over a link must fail rather than follow it"
   );
   assert_sentinel_untouched(&sentinel);
 }
 
 #[test]
-fn extract_directory_refuses_a_directory_link_below_the_destination() {
+fn extract_directory_refuses_a_directory_link_below_the_destination_when_asked() {
   let directory: PathBuf = create_temporary_directory("link-extract-directory");
   let project: ArchiveProject = create_project(
     &directory,
@@ -100,7 +123,7 @@ fn extract_directory_refuses_a_directory_link_below_the_destination() {
   }
 
   assert!(
-    ArchiveUnpacker::extract_directory(&project, "configs", &out).is_err(),
+    ArchiveUnpacker::extract_directory_opt(&project, "configs", &out, refusing_links()).is_err(),
     "extracting through a link must fail rather than follow it"
   );
   assert!(
@@ -132,8 +155,7 @@ fn extract_file_still_writes_to_the_linked_path_it_is_given() {
   );
 }
 
-/// The containment walk creates and verifies one component at a time, so an ordinary tree that is already there has to
-/// keep unpacking rather than be mistaken for something to refuse.
+/// An ordinary tree that is already there keeps unpacking under the strict policy too.
 #[test]
 fn unpack_writes_into_a_destination_tree_that_already_exists() {
   let directory: PathBuf = create_temporary_directory("link-existing-tree");
@@ -143,7 +165,7 @@ fn unpack_writes_into_a_destination_tree_that_already_exists() {
   fs::create_dir_all(out.join("configs")).expect("destination");
   fs::write(out.join("configs").join("system.ltx"), b"stale").expect("previous unpack");
 
-  unpack_with(ONE, &project, &out).expect("unpack");
+  ArchiveUnpacker::unpack_opt(&project, &out, refusing_links()).expect("unpack");
 
   assert_eq!(
     fs::read_to_string(out.join("configs").join("system.ltx")).expect("written file"),
@@ -151,36 +173,26 @@ fn unpack_writes_into_a_destination_tree_that_already_exists() {
   );
 }
 
-/// A parent handed in from outside the root is refused rather than trusted.
-///
-/// `create_file_in` skips the walk down because its caller already verified the parent this run. That shortcut is only
-/// sound while the type still owns containment, so the one thing it must not do is accept any path a caller offers.
+/// An entry name that climbs out is refused before anything is written, under either policy.
 #[test]
-fn create_file_in_refuses_a_parent_outside_the_root() {
-  let directory: PathBuf = create_temporary_directory("rooted-parent-outside");
-  let root: PathBuf = directory.join("out");
-  let outside: PathBuf = directory.join("elsewhere");
+fn unpack_refuses_an_entry_name_that_leaves_the_destination() {
+  for (index, name) in [
+    "..\\system.ltx",
+    "configs/../../system.ltx",
+    "C:\\system.ltx",
+    "C:system.ltx",
+  ]
+  .into_iter()
+  .enumerate()
+  {
+    let directory: PathBuf = create_temporary_directory(&format!("escaping-entry-{index}"));
+    let project: ArchiveProject = create_project(&directory, &[Entry::stored(name, b"[section]")]);
+    let out: PathBuf = directory.join("out");
 
-  fs::create_dir_all(&outside).expect("a directory beside the root");
-
-  let destination: RootedDestination = RootedDestination::new(&root);
-
-  destination.create_root().expect("the root is created once");
-
-  let error: XrfError = destination
-    .create_file_in(&outside, OsStr::new("system.ltx"))
-    .expect_err("a parent outside the root is refused");
-
-  assert!(matches!(error, XrfError::Invalid { .. }), "{error}");
-  assert!(
-    !outside.join("system.ltx").exists(),
-    "a refused parent must not have been written into"
-  );
-
-  // The root itself is a parent this type owns, so the same call through it succeeds.
-  destination
-    .create_file_in(&root, OsStr::new("system.ltx"))
-    .expect("a parent below the root is accepted");
-
-  assert!(root.join("system.ltx").is_file());
+    assert!(unpack_with(ONE, &project, &out).is_err(), "'{name}' must be refused");
+    assert!(
+      !directory.join("system.ltx").exists(),
+      "'{name}' was written outside the destination"
+    );
+  }
 }

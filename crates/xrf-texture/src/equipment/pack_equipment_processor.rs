@@ -217,18 +217,12 @@ impl PackEquipmentProcessor {
   ) -> XrfResult<PathBuf> {
     match descriptor.custom_icon.as_deref() {
       None => {
-        let png_path: PathBuf = options
-          .source
-          .join(format!("{}.{}", descriptor.section, XrayExtension::Png));
+        let png_path: PathBuf = options.source.join(descriptor.to_host_file_name(XrayExtension::Png)?);
 
         if png_path.exists() {
           Ok(png_path)
         } else {
-          Ok(
-            options
-              .source
-              .join(format!("{}.{}", descriptor.section, XrayExtension::Dds)),
-          )
+          Ok(options.source.join(descriptor.to_host_file_name(XrayExtension::Dds)?))
         }
       }
       Some(custom_path) => {

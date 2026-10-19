@@ -12,6 +12,7 @@ use xrf_utils::format_path;
 use super::report::SpriteEquipmentUnpackReport;
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::link_policy::{LinkPolicyArguments, requested_link_policy};
 use crate::core::ltx_dialect::{LtxDialectArguments, requested_ltx_dialect};
 use crate::core::progress::new_logging_job;
 
@@ -49,6 +50,7 @@ impl GenericCommand for UnpackEquipmentCommand {
           .value_parser(value_parser!(PathBuf)),
       )
       .with_ltx_dialect()
+      .with_link_policy()
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -100,6 +102,7 @@ impl GenericCommand for UnpackEquipmentCommand {
       output: output_options.clone(),
       output_path: output.into(),
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
+      link_policy: requested_link_policy(matches),
     })?;
 
     context.set_result(|| SpriteEquipmentUnpackReport::new(source, system_ltx_path, output, &metadata))?;

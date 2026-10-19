@@ -1,8 +1,9 @@
 use std::cmp::max;
-use std::path::PathBuf;
 
 use xrf_dds::DDS_BLOCK_SIZE;
 use xrf_error::XrfResult;
+use xrf_extension::XrayExtension;
+use xrf_utils::HostRelativePath;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::description::TextureSpriteDescriptor;
@@ -27,12 +28,28 @@ impl TextureFileDescriptor {
     self.sprites.push(texture);
   }
 
-  /// Converts this description's X-Ray sheet name into a path relative to a trusted host root.
+  /// Converts this description's X-Ray sheet name into a path below a host root.
   ///
-  /// Texture descriptions use engine separators regardless of where the CLI runs, so filesystem
-  /// callers must cross the path boundary through [`XrayLogicalPath`].
-  pub fn to_host_relative_path(&self) -> XrfResult<PathBuf> {
-    Ok(XrayLogicalPath::new(&self.name)?.to_host_relative_path())
+  /// # Errors
+  ///
+  /// Returns an error when the sheet name is not a logical path or would leave the root.
+  pub fn to_host_relative_path(&self) -> XrfResult<HostRelativePath> {
+    HostRelativePath::new(XrayLogicalPath::new(&self.name)?.as_str(), "Texture sheet name")
+  }
+
+  /// Where each sprite's own DDS sits below a host root, in sprite order: inside the sheet's directory.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the sheet name or any sprite id would leave the root.
+  pub fn to_sprite_paths(&self) -> XrfResult<Vec<HostRelativePath>> {
+    let sheet: HostRelativePath = self.to_host_relative_path()?;
+
+    self
+      .sprites
+      .iter()
+      .map(|sprite| Ok(sheet.join(&sprite.to_host_file_name(XrayExtension::Dds)?)))
+      .collect()
   }
 
   /// Smallest `DDS_BLOCK_SIZE`-aligned canvas that holds every described sprite.
@@ -113,8 +130,61 @@ mod tests {
     let descriptor: TextureFileDescriptor = TextureFileDescriptor::new(r"ui\ui_actor_weapons");
 
     assert_eq!(
-      descriptor.to_host_relative_path().expect("valid logical path"),
+      descriptor
+        .to_host_relative_path()
+        .expect("valid logical path")
+        .as_path(),
       PathBuf::from("ui").join("ui_actor_weapons")
     );
+  }
+
+  #[test]
+  fn places_each_sprite_inside_its_sheet_directory_as_spelled() {
+    let mut descriptor: TextureFileDescriptor = TextureFileDescriptor::new(r"ui\ui_icons");
+
+    descriptor.add_sprite(TextureSpriteDescriptor::new("ui_icon_PDA", 0, 0, 4, 4));
+
+    assert_eq!(
+      descriptor
+        .to_sprite_paths()
+        .expect("valid sprite ids")
+        .iter()
+        .map(|path| path.as_path().to_path_buf())
+        .collect::<Vec<PathBuf>>(),
+      [PathBuf::from("ui").join("ui_icons").join("ui_icon_PDA.dds")]
+    );
+  }
+
+  #[test]
+  fn refuses_a_sheet_name_with_a_drive() {
+    for name in [r"c:\victim", "c:victim", r"ui\sheet:stream"] {
+      assert!(
+        TextureFileDescriptor::new(name).to_host_relative_path().is_err(),
+        "'{name}' must not become a host path"
+      );
+    }
+  }
+
+  #[test]
+  fn refuses_a_sprite_id_that_leaves_its_sheet_directory() {
+    for id in [
+      r"..\..\victim",
+      "../../victim",
+      r"nested\victim",
+      "/rooted",
+      r"c:\victim",
+      "c:victim",
+      "",
+      "..",
+    ] {
+      let mut descriptor: TextureFileDescriptor = TextureFileDescriptor::new(r"ui\ui_icons");
+
+      descriptor.add_sprite(TextureSpriteDescriptor::new(id, 0, 0, 4, 4));
+
+      assert!(
+        descriptor.to_sprite_paths().is_err(),
+        "sprite id '{id}' must be refused"
+      );
+    }
   }
 }

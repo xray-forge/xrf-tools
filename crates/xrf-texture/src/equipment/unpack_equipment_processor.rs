@@ -2,6 +2,7 @@ use image::GenericImageView;
 use xrf_dds::DdsMipmaps;
 use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
+use xrf_utils::{HostDestination, HostRelativePath};
 
 use crate::equipment::{InventorySpriteDescriptor, UnpackEquipmentOptions};
 use crate::image_file::save_image_as_ui_dds;
@@ -11,18 +12,26 @@ pub struct UnpackEquipmentProcessor {}
 impl UnpackEquipmentProcessor {
   pub fn unpack_sprites(options: UnpackEquipmentOptions) -> XrfResult {
     let mut count: u32 = 0;
+    let sprites: Vec<InventorySpriteDescriptor> = InventorySpriteDescriptor::new_list_from_ltx(&options.ltx);
+
+    // Every name is checked before the first icon is written, so a refused one leaves no partial output behind.
+    for sprite in &sprites {
+      sprite.to_host_file_name(XrayExtension::Dds)?;
+    }
+
+    let destination: HostDestination = HostDestination::new(&options.output_path, options.link_policy);
+
+    destination.create_root()?;
 
     let unpacking: xrf_job::JobScope = options.job.enter(
       crate::job_phases::TEXTURE_PHASE_UNPACK_SPRITES,
-      Some(options.ltx.len() as u64),
+      Some(sprites.len() as u64),
     );
 
-    for (section_name, section) in options.ltx.iter() {
+    for sprite in &sprites {
       unpacking.advance();
 
-      if let Some(sprite) = InventorySpriteDescriptor::new_optional_from_section(section_name, section)
-        && Self::unpack_sprite(&options, &sprite)?
-      {
+      if Self::unpack_sprite(&options, &destination, sprite)? {
         count += 1;
       }
     }
@@ -32,8 +41,13 @@ impl UnpackEquipmentProcessor {
     Ok(())
   }
 
-  pub fn unpack_sprite(options: &UnpackEquipmentOptions, sprite: &InventorySpriteDescriptor) -> XrfResult<bool> {
+  pub fn unpack_sprite(
+    options: &UnpackEquipmentOptions,
+    destination: &HostDestination,
+    sprite: &InventorySpriteDescriptor,
+  ) -> XrfResult<bool> {
     let (x, y, w, h) = sprite.get_boundaries();
+    let relative_path: HostRelativePath = sprite.to_host_file_name(XrayExtension::Dds)?.into();
 
     xrf_output::verbose!(
       options.output,
@@ -59,9 +73,7 @@ impl UnpackEquipmentProcessor {
       // Unpacked icons are packing input read at their base level, so a mip chain would only cost
       // space.
       save_image_as_ui_dds(
-        &options
-          .output_path
-          .join(format!("{}.{}", sprite.section, XrayExtension::Dds)),
+        &destination.prepare_file(&relative_path)?,
         &options.source.view(x, y, w, h).to_image(),
         options.dds_compression_format,
         DdsMipmaps::Disabled,

@@ -1,11 +1,10 @@
-use std::fs;
 use std::path::PathBuf;
 
 use image::{GenericImage, ImageBuffer, Rgba, RgbaImage};
 use xrf_dds::DdsFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
-use xrf_utils::{assert_equal, format_path};
+use xrf_utils::{HostDestination, HostRelativePath, assert_equal, format_path};
 
 use crate::description::{PackDescriptionOptions, TextureFileDescriptor, XmlDescriptionCollection};
 use crate::image_file::{UI_MIPMAP_LEVELS, UI_MIPMAPS, save_image_as_ui_dds, warn_on_reshaped_ui_dds};
@@ -19,6 +18,11 @@ impl PackDescriptionProcessor {
     let mut count: u32 = 0;
 
     let selected: Vec<&TextureFileDescriptor> = description.select_files(options)?;
+
+    // Every name is checked before the first sheet is written, so a refused one leaves no partial output behind.
+    for file in &selected {
+      file.to_sprite_paths()?;
+    }
 
     xrf_output::info!(options.output, "Packing for {} files", selected.len());
 
@@ -41,7 +45,8 @@ impl PackDescriptionProcessor {
   }
 
   pub fn pack_xml_description(options: &PackDescriptionOptions, file: &TextureFileDescriptor) -> XrfResult<bool> {
-    let relative_path: PathBuf = file.to_host_relative_path()?;
+    let relative_path: HostRelativePath = file.to_host_relative_path()?;
+    let sprite_paths: Vec<HostRelativePath> = file.to_sprite_paths()?;
     let full_name: PathBuf = options
       .base
       .join(relative_path.with_extension(XrayExtension::Dds.as_str()));
@@ -55,7 +60,7 @@ impl PackDescriptionProcessor {
       format_path(&full_name)
     );
 
-    for texture in &file.sprites {
+    for (texture, texture_relative_path) in file.sprites.iter().zip(&sprite_paths) {
       xrf_output::verbose!(
         options.output,
         "Packing texture {} -> {} at [x:{}, y:{}, w:{}, h:{}]",
@@ -67,11 +72,7 @@ impl PackDescriptionProcessor {
         texture.h
       );
 
-      let texture_path: PathBuf =
-        options
-          .base
-          .join(&relative_path)
-          .join(format!("{}.{}", texture.id, XrayExtension::Dds));
+      let texture_path: PathBuf = options.base.join(texture_relative_path);
 
       match DdsFile::read_from_path(&texture_path).and_then(|dds| dds.decode_rgba(0)) {
         Ok(texture_dds) => {
@@ -113,17 +114,15 @@ impl PackDescriptionProcessor {
       }
     }
 
-    let destination: PathBuf = options
-      .output_path
-      .join(relative_path.with_extension(XrayExtension::Dds.as_str()));
+    let sheets: HostDestination = HostDestination::new(&options.output_path, options.link_policy);
+
+    sheets.create_root()?;
+
+    let destination: PathBuf = sheets.prepare_file(&relative_path.with_extension(XrayExtension::Dds.as_str()))?;
 
     xrf_output::verbose!(options.output, "Saving file: {}", format_path(&destination));
 
     warn_on_reshaped_ui_dds(&options.output, &destination, width, height, UI_MIPMAP_LEVELS);
-
-    if let Some(parent) = destination.parent().filter(|parent| !parent.as_os_str().is_empty()) {
-      fs::create_dir_all(parent)?;
-    }
 
     save_image_as_ui_dds(&destination, &result, options.dds_compression_format, UI_MIPMAPS)?;
 

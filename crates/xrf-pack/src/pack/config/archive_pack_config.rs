@@ -2,9 +2,9 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
+use xrf_utils::HostFileName;
 
 use crate::pack::config::archive_pack_header_rules::require_loadable_header;
-use crate::path::validate_host_file_name;
 
 /// Largest volume the engine will open, and the default (`XRP_MAX_SIZE` in `xrCompress.h`).
 pub const VOLUME_SIZE_MAX: u64 = 1900 * xrf_utils::BYTES_PER_MEGABYTE;
@@ -205,7 +205,7 @@ impl ArchivePackConfig {
   /// Runs before any filesystem operation, because both publication paths join the name to `destination`: the volume
   /// each `File::create` opens, and the rename a lone volume ends under.
   pub(crate) fn validate_for_packing(&self) -> XrfResult {
-    validate_host_file_name(&self.name, "Archive name")?;
+    HostFileName::new(&self.name, "Archive name")?;
 
     // A header is optional; one that exists and cannot be loaded is not. Judged here rather than at each surface, so
     // a configuration file reaches the same answer a flag does.

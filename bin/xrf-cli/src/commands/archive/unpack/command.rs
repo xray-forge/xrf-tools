@@ -10,6 +10,7 @@ use super::report::ArchiveUnpackDryReport;
 use crate::core::command_context::CommandContext;
 use crate::core::execution::ExecutionArguments;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::link_policy::{LinkPolicyArguments, requested_link_policy};
 use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
@@ -48,6 +49,7 @@ impl GenericCommand for UnpackCommand {
           .action(ArgAction::SetTrue),
       )
       .with_jobs()
+      .with_link_policy()
   }
 
   /// Unpack xray engine database archive.
@@ -101,7 +103,9 @@ impl GenericCommand for UnpackCommand {
       let result: ArchiveUnpackResult = ArchiveUnpacker::unpack_opt(
         &archive_project,
         &destination,
-        ArchiveExtractOptions::default().with_job(new_logging_job()),
+        ArchiveExtractOptions::default()
+          .with_job(new_logging_job())
+          .with_link_policy(requested_link_policy(matches)),
       )?;
 
       xrf_output::success!(

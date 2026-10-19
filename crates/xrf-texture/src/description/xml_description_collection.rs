@@ -246,6 +246,7 @@ mod tests {
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files: Vec::new(),
       is_strict: true,
+      link_policy: Default::default(),
     };
 
     let result = XmlDescriptionCollection::get_description(&options, &path);
@@ -278,6 +279,7 @@ mod tests {
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files: Vec::new(),
       is_strict: true,
+      link_policy: Default::default(),
     };
 
     let collection: XmlDescriptionCollection =
@@ -317,6 +319,7 @@ mod select_files_tests {
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
       files: files.iter().map(|it| String::from(*it)).collect(),
       is_strict: false,
+      link_policy: Default::default(),
     }
   }
 

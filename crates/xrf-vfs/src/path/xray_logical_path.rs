@@ -7,7 +7,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_utils::format_path;
 
-/// An X-Ray logical path: lower case, backslash separated, with no empty, `.` or `..` component.
+/// An X-Ray logical path: lower case, backslash separated, with no empty, `.` or `..` component and no colon.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(transparent)]
@@ -19,7 +19,7 @@ impl XrayLogicalPath {
   ///
   /// # Errors
   ///
-  /// Returns an error when the path is empty or holds an empty, `.` or `..` component.
+  /// Returns an error when the path is empty or holds an empty, `.` or `..` component or a colon.
   pub fn new(path: &str) -> XrfResult<Self> {
     Ok(Self(normalize(path)?.into_owned()))
   }
@@ -99,7 +99,7 @@ impl XrayLogicalPath {
   ///
   /// # Errors
   ///
-  /// Returns an error when the path contains an empty, `.` or `..` component.
+  /// Returns an error when the path contains an empty, `.` or `..` component or a colon.
   pub fn normalize(path: &str) -> XrfResult<String> {
     normalize_logical(path)
   }
@@ -121,7 +121,7 @@ impl Display for XrayLogicalPath {
 ///
 /// # Errors
 ///
-/// Returns an error when the path contains an empty, `.` or `..` component.
+/// Returns an error when the path contains an empty, `.` or `..` component or a colon.
 pub(crate) fn normalize_logical(path: &str) -> XrfResult<String> {
   Ok(normalize(path)?.into_owned())
 }
@@ -159,11 +159,14 @@ fn is_canonical(path: &str) -> bool {
 }
 
 /// Rejects a path whose components the engine cannot address.
+///
+/// A colon is refused because Windows reads `c:` as a drive, which makes a host path built from the components discard
+/// the root it is joined to.
 fn validate_components(normalized: &str, original: &str) -> XrfResult<()> {
   if normalized.is_empty()
     || normalized
       .split('\\')
-      .any(|part| part.is_empty() || matches!(part, "." | ".."))
+      .any(|part| part.is_empty() || matches!(part, "." | "..") || part.contains(':'))
   {
     return Err(XrfError::new_asset_error(format!(
       "invalid X-Ray logical path: {original}"
@@ -231,6 +234,17 @@ mod tests {
     assert!(normalize("configs\\..\\textures").is_err());
     assert!(normalize("configs\\\\system.ltx").is_err());
     assert!(normalize("").is_err());
+  }
+
+  #[test]
+  fn rejects_a_drive_or_stream_colon() {
+    // `c:` would turn the host path into a drive-relative one that discards the root it is joined to.
+    for path in ["c:\\victim", "c:victim", "textures\\ui\\sheet.dds:stream"] {
+      assert!(
+        XrayLogicalPath::new(path).is_err(),
+        "'{path}' must not be a logical path"
+      );
+    }
   }
 
   #[test]
