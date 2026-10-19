@@ -66,6 +66,11 @@ const FAR_RINGS_MOST: u32 = 8u;
 // are born again as they land.
 const ENHANCED_LANDING: f32 = 0.85;
 
+// Metres over the level's surface without its trees a landing stands on foliage, which an enhanced drop vanishes into
+// without a splash or a ring: the rain cover holds the trees, which keep the ground under them dry, where Monolith's
+// pick of the level's collision passes through them.
+const FOLIAGE_GAP: f32 = 1.0;
+
 // What the distortion target holds where nothing distorts it, `ViewTargets::NEUTRAL_DISTORTION`.
 const NEUTRAL_DISTORTION: f32 = 127.0 / 255.0;
 
@@ -84,6 +89,8 @@ struct Fall {
   direction: vec3<f32>,
   head: vec3<f32>,
   landed: vec3<f32>,
+  // Whether it lands on foliage, over the level's surface without its trees, which neither splashes nor rings.
+  is_on_foliage: bool,
   // Whether it lands on the level's water rather than the cover, and whether it is a near drop, of the square every
   // enhanced drop falls in, whose landings ring the water and splash.
   is_on_water: bool,
@@ -205,6 +212,15 @@ fn far_drop(far: u32) -> FarDrop {
   return FarDrop(vec2<i32>(0), 0u);
 }
 
+// The level surface's lowest height at a place, the ground without its trees, the nearest texel's; the map's edge's
+// past it.
+fn surface_lowest_at(place: vec2<f32>) -> f32 {
+  let size: vec2<i32> = vec2<i32>(textureDimensions(surface_lowest));
+  let uv: vec2<f32> = (place - rain.surface.xy) / (rain.surface.z * 2.0) + 0.5;
+
+  return textureLoad(surface_lowest, clamp(vec2<i32>(uv * vec2<f32>(size)), vec2<i32>(0), size - 1), 0).x;
+}
+
 // A streak's fall `back` falls before this one, aged from its own start; never falling before the rain's first.
 fn fall_back(streak: u32, back: u32) -> Fall {
   let eye: vec3<f32> = camera.position.xyz;
@@ -246,6 +262,7 @@ fn fall_back(streak: u32, back: u32) -> Fall {
   fall.age = age;
   fall.direction = direction;
   fall.is_on_water = water > covered;
+  fall.is_on_foliage = !fall.is_on_water && rain.surface.z > 0.0 && covered > surface_lowest_at(column.xz) + FOLIAGE_GAP;
   // A far drop falling in the near square, whose own drops fall there, or past the square's half side, is not drawn.
   fall.is_near = !is_far;
   fall.is_falling = streak < rain.count && floor(phase) >= f32(back) &&
@@ -336,7 +353,8 @@ fn vs_splash(@builtin(vertex_index) vertex_index: u32) -> RainVarying {
   let turned: vec3<f32> = vec3<f32>(position.x * c + position.z * s, position.y, position.z * c - position.x * s);
   let splashing: f32 = select(0.5, rain.splash_look.w, rain.is_enhanced != 0u);
   let is_shown: bool =
-    fall.is_falling && fall.is_near && random(fall.key, fall.cycle, 8u) < splashing && since >= 0.0 &&
+    fall.is_falling && fall.is_near && !fall.is_on_foliage && random(fall.key, fall.cycle, 8u) < splashing &&
+    since >= 0.0 &&
     since < SPLASH_TIME;
   let placed: vec3<f32> = select(fall.landed, fall.landed + turned * scale, is_shown);
   var out: RainVarying;
@@ -364,7 +382,7 @@ fn vs_ring(@builtin(vertex_index) vertex_index: u32) -> RingVarying {
   let corner: vec2<f32> = vec2<f32>(corners[vertex_index % 6u].x, corners[vertex_index % 6u].y * 2.0 - 1.0);
   let fall: Fall = fall_back(streak, ring % 2u);
   let since: f32 = (fall.age - fall.landing) / rain.pace;
-  let is_spreading: bool = fall.is_falling && fall.is_near && since >= 0.0 && since < RING_TIME;
+  let is_spreading: bool = fall.is_falling && fall.is_near && !fall.is_on_foliage && since >= 0.0 && since < RING_TIME;
   let offset: vec2<f32> = corner * (RING_START + RING_SPEED * since + RING_WAVE * 0.25) * rain.fall.w;
   let tile: f32 = rain.near;
   let within: vec2<f32> = fract(fall.landed.xz / tile);

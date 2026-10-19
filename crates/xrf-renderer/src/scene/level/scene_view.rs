@@ -326,7 +326,7 @@ impl SceneView {
       frame.weather_textures,
     );
     self.features.rain.follow_water(
-      (windows.water, windows.surface_shape),
+      (windows.water, windows.surface, windows.surface_shape),
       self.features.level_surface.is_some() && self.features.wet.is_enhanced(),
     );
 
@@ -537,7 +537,7 @@ impl SceneView {
     self.features.rain.follow_cover(windows.cover, windows.cover_shape);
     self.features.wet.follow(windows);
     self.features.rain.follow_water(
-      (windows.water, windows.surface_shape),
+      (windows.water, windows.surface, windows.surface_shape),
       self.features.level_surface.is_some() && self.features.wet.is_enhanced(),
     );
   }
@@ -923,7 +923,11 @@ impl SceneView {
         (&mut *graph, &mut *bindings, runtime),
         passes,
         view,
-        (shadowed.covers.map(|covers| covers.depth), shadowed.surface[2]),
+        (
+          shadowed.covers.map(|covers| covers.depth),
+          shadowed.surface[2],
+          shadowed.surface[0],
+        ),
         self.features.wet.has_puddles() || self.features.water.is_enhanced(),
       )
       .unwrap_or_else(|| bindings.import_view(&mut *graph, "rain rings none", passes.rain.get_nothing()));
@@ -1412,7 +1416,11 @@ impl SceneView {
       (
         handles,
         &lit,
-        (shadowed.covers.map(|covers| covers.depth), shadowed.surface[2]),
+        (
+          shadowed.covers.map(|covers| covers.depth),
+          shadowed.surface[2],
+          shadowed.surface[0],
+        ),
       ),
     );
     self
@@ -1484,7 +1492,11 @@ impl SceneView {
       (
         handles,
         &lit,
-        (shadowed.covers.map(|covers| covers.depth), shadowed.surface[2]),
+        (
+          shadowed.covers.map(|covers| covers.depth),
+          shadowed.surface[2],
+          shadowed.surface[0],
+        ),
       ),
       (shown, self.features.resolve.get_shown_size(handles.size)),
     ) {

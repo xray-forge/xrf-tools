@@ -164,16 +164,19 @@ impl FallingRainFeature {
     self.uniform.cover_shape = Vec4::new(texels, reach, 0.0, 0.0);
   }
 
-  /// Follows the level water's map to where it stands (`water`, of `shape`), which the enhanced drops land on where
-  /// it is drawn, `is_drawn`; the engine's streaks fall through it.
-  pub fn follow_water(&mut self, (water, shape): (Vec4, Vec4), is_drawn: bool) {
+  /// Follows the level water's map and the level's surface to where they stand (`water`, `surface`, both of `shape`),
+  /// which the enhanced drops land on and tell foliage by where they are drawn, `is_drawn`; the engine's streaks fall
+  /// through the water.
+  pub fn follow_water(&mut self, (water, surface, shape): (Vec4, Vec4, Vec4), is_drawn: bool) {
     let is_landing: bool = is_drawn && self.uniform.is_enhanced != 0;
 
     self.uniform.water = if is_landing { water } else { Vec4::ZERO };
+    self.uniform.surface = if is_landing { surface } else { Vec4::ZERO };
     self.uniform.water_shape = if is_landing { shape } else { Vec4::ZERO };
   }
 
-  /// Adds the drops and the splashes over the scene, falling onto the rain cover and the level water (`covers`): the
+  /// Adds the drops and the splashes over the scene, falling onto the rain cover and the level water, told from foliage by the level's
+  /// surface (`covers`): the
   /// engine's, or the enhanced splashes and the enhanced streaks' distortion, whose drops draw after the resolve
   /// (`add_over_resolved`); nothing while it does not rain or no cover is drawn.
   pub fn add_passes<'a>(
@@ -184,7 +187,7 @@ impl FallingRainFeature {
     (handles, lit, covers): (
       ViewTargetHandles,
       &LightingHandles<'a>,
-      (Option<GraphTexture>, GraphTexture),
+      (Option<GraphTexture>, GraphTexture, GraphTexture),
     ),
   ) {
     let Some((counts, parameters)) = self.get_parameters((&mut *graph, &mut *bindings, runtime), passes, covers, None)
@@ -221,7 +224,7 @@ impl FallingRainFeature {
     (handles, lit, covers): (
       ViewTargetHandles,
       &LightingHandles<'a>,
-      (Option<GraphTexture>, GraphTexture),
+      (Option<GraphTexture>, GraphTexture, GraphTexture),
     ),
     (shown, size): (GraphTexture, (u32, u32)),
   ) -> Option<GraphTexture> {
@@ -254,7 +257,7 @@ impl FallingRainFeature {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    covers: (Option<GraphTexture>, GraphTexture),
+    covers: (Option<GraphTexture>, GraphTexture, GraphTexture),
     is_read: bool,
   ) -> Option<GraphTexture> {
     let rings: &RainRings = self
@@ -280,7 +283,7 @@ impl FallingRainFeature {
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
-    (cover, surface_water): (Option<GraphTexture>, GraphTexture),
+    (cover, surface_water, surface_lowest): (Option<GraphTexture>, GraphTexture, GraphTexture),
     over: Option<(u32, u32)>,
   ) -> Option<((u32, u32, u32), RainParameters<'a>)> {
     let (Some(counts), Some(cover), Some([streak, splash]), Some((_, model))) =
@@ -296,6 +299,7 @@ impl FallingRainFeature {
         rain: runtime.push_uniform(&uniform),
         cover,
         surface_water,
+        surface_lowest,
         streak_texture: bindings.import_view(&mut *graph, "rain streak", streak),
         splash_texture: bindings.import_view(&mut *graph, "rain splash", splash),
         rain_sampler: passes.rain.get_sampler(),

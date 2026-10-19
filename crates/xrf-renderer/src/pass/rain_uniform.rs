@@ -98,6 +98,9 @@ pub struct RainUniform {
   /// the engine's do.
   pub water: Vec4,
   pub water_shape: Vec4,
+  /// The level surface's map's window, laid out as the water's and of its shape, whose lowest heights, the ground
+  /// without its trees, tell an enhanced drop landing on foliage; none without it.
+  pub surface: Vec4,
   /// Metres over the eye a drop starts, metres it falls at most, the side of the square it falls over, which its
   /// columns repeat over, and the enhanced drops' rings' size, of their designed one.
   pub fall: Vec4,

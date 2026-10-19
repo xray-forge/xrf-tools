@@ -423,6 +423,7 @@ struct Rain {
   cover_shape: vec4<f32>,
   water: vec4<f32>,
   water_shape: vec4<f32>,
+  surface: vec4<f32>,
   fall: vec4<f32>,
   streak: vec4<f32>,
   look: vec4<f32>,
