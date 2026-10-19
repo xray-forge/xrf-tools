@@ -157,4 +157,30 @@ describe("NativeViewportTarget", () => {
 
     target.dispose();
   });
+
+  it("keeps Alt to itself, a modifier of the scene's own, while other keys still reach the window", () => {
+    const { element } = mockTree();
+    const { inputs, viewport } = mockViewport();
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport);
+    const heard: Array<string> = [];
+
+    function onWindowKey(event: KeyboardEvent): void {
+      heard.push(event.key);
+    }
+
+    window.addEventListener("keydown", onWindowKey);
+
+    element.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, code: "AltLeft", key: "Alt" }));
+    element.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, code: "F1", key: "F1" }));
+
+    window.removeEventListener("keydown", onWindowKey);
+
+    expect(inputs).toEqual([
+      { code: "AltLeft", kind: EWorldInputEvent.KEY_DOWN },
+      { code: "F1", kind: EWorldInputEvent.KEY_DOWN },
+    ]);
+    expect(heard).toEqual(["F1"]);
+
+    target.dispose();
+  });
 });

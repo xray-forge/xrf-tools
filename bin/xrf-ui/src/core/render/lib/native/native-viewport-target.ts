@@ -351,6 +351,12 @@ export class NativeViewportTarget {
     keydown: (event: Event): void => {
       const key: KeyboardEvent = event as KeyboardEvent;
 
+      // Alt is a modifier of the scene's own, a pick's among them, so it stays here rather than reaching the window as
+      // the key that opens its menu.
+      if (key.key === "Alt") {
+        key.stopPropagation();
+      }
+
       // A held key repeats; the renderer already holds it.
       if (!key.repeat) {
         this.send({ code: key.code, kind: EWorldInputEvent.KEY_DOWN });

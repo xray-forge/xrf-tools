@@ -42,8 +42,8 @@ export function KeybindsDispatcher(): Nullable<ReactElement> {
         return;
       }
 
-      // A modal traps focus, so the application behind it cannot be reached by pointer; a chord must not reach it
-      // either. Probed only once a chord matched, which is rare, rather than on every key someone types.
+      // A modal or an open menu holds the keyboard, so the application behind it cannot be reached by pointer; a chord
+      // must not reach it either. Probed only once a chord matched, which is rare, rather than on every key typed.
       if (isModalOpen()) {
         return;
       }

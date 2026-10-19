@@ -5,7 +5,9 @@ import { Nullable } from "@xrf/types";
 import { format } from "date-fns";
 import { ReactElement, useCallback } from "react";
 
+import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/applications/sprite-equipment-editor/commands";
 import { SPRITE_EQUIPMENT_EDITOR_PANELS } from "@/applications/sprite-equipment-editor/components/panels/sprite-equipment-editor-panels";
+import { SPRITE_EQUIPMENT_EDITOR_MENU } from "@/applications/sprite-equipment-editor/menus";
 import {
   IOpenEquipmentSprite,
   SpriteEquipmentEditorService,
@@ -17,7 +19,8 @@ import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
-import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { useEditorMenus, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { IMenuContribution } from "@/core/shell/menu/lib";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { Logger, useLogger } from "@/lib/logging";
 
@@ -60,6 +63,16 @@ export function EquipmentSpriteEditor({
   const outsideCount: number = gridService.layout?.outside.length ?? 0;
 
   useEditorPanels(() => SPRITE_EQUIPMENT_EDITOR_PANELS, []);
+
+  useEditorMenus(
+    (): Array<IMenuContribution> => [
+      {
+        section: SPRITE_EQUIPMENT_EDITOR_MENU.sections.sprite,
+        entries: [{ kind: "command", command: RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND }],
+      },
+    ],
+    []
+  );
 
   useEditorStatus(
     spriteImage

@@ -9,8 +9,10 @@ import { ErrorCaptureService } from "@/core/notifications/services/error-capture
 import { NotificationsService } from "@/core/notifications/services/notifications.service";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
 import { EditorShellService } from "@/core/shell/services/editor-shell";
+import { ShellKeybindsService } from "@/core/shell/services/shell-keybinds";
 
 /**
  * The services the root container binds, which every application resolves through.
@@ -26,5 +28,7 @@ export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
   KeymapService,
   NotificationsService,
   RenderSettingsService,
+  SettingsDialogService,
   SettingsService,
+  ShellKeybindsService,
 ];

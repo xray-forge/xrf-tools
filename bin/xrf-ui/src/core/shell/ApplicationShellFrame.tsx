@@ -2,7 +2,7 @@ import { useInjection, useOnCommand, useOnQuery } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, Suspense, useCallback, useState } from "react";
 import { flushSync } from "react-dom";
-import { useLocation } from "react-router-dom";
+import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";
 
 import { ErrorBoundary, IErrorBoundaryFallbackProps } from "@/core/error/components/ErrorBoundary";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
@@ -30,6 +30,7 @@ import {
 import { ApplicationRail, RailButton } from "@/core/shell/panel/rail";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
+import { APPLICATION_OPEN_QUERY, CLOSE_APPLICATION_COMMAND } from "@/core/shell/shell-messages";
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -50,6 +51,7 @@ export function ApplicationShellFrame({
 }: IApplicationShellFrameProps): ReactElement {
   const application: Nullable<IApplicationDescriptor> = useCurrentApplication();
   const notify: TEmitNotification = useEmitNotification();
+  const navigate: NavigateFunction = useNavigate();
   const panels: ReadonlyArray<IEditorPanel> = useEditorPanelsRegistry();
 
   const { pathname } = useLocation();
@@ -106,6 +108,10 @@ export function ApplicationShellFrame({
       selection.onTogglePanel(selection.activePanelId);
     }
   });
+
+  useOnCommand(CLOSE_APPLICATION_COMMAND, () => navigate("/", { replace: true }));
+
+  useOnQuery(APPLICATION_OPEN_QUERY, () => application !== null);
 
   useOnQuery(
     PANEL_ACTIVE_QUERY,

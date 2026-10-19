@@ -6,7 +6,7 @@ use tauri::{AppHandle, Manager, RunEvent, Runtime, Webview, WindowEvent};
 use xrf_renderer::RenderWorkers;
 
 use crate::core::execution::ExecutionState;
-use crate::core::window::WindowHandles;
+use crate::core::window::{WindowCloseApprovals, WindowHandles};
 use crate::plugins::render::disk_cache_store::DiskCacheStore;
 use crate::plugins::render::packaged_bundle::PackagedBundle;
 use crate::plugins::render::state::RenderState;
@@ -60,7 +60,7 @@ impl RenderPlugin {
 
   /// Detaches a closing window's viewports, whose page goes with it before it can let them go, holding the window open
   /// until the renderer let go of it and destroying it then; forgets a destroyed window; stops the renderer as the
-  /// application exits.
+  /// application exits. A close the page has not approved is the page's to decide, so it is left alone.
   fn on_event<R: Runtime>(application: &AppHandle<R>, event: &RunEvent) {
     let Some(state) = application.try_state::<RenderState>() else {
       return;
@@ -72,6 +72,16 @@ impl RenderPlugin {
         event: WindowEvent::CloseRequested { api, .. },
         ..
       } => {
+        let is_approved: bool = application
+          .try_state::<WindowCloseApprovals>()
+          .is_some_and(|approvals| approvals.take(label));
+
+        // Asked behind the page's prompt: the page answers, and asks again once it agrees. A window already held stays
+        // held whoever asks.
+        if !is_approved && !state.is_closing(label) {
+          return;
+        }
+
         // A window on its way out hosts no viewport attached from now on.
         if let Some(handles) = application.try_state::<WindowHandles>() {
           handles.forget(label);

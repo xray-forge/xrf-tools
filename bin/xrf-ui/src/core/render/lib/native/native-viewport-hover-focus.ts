@@ -20,9 +20,8 @@ export function canFocusViewportOnHover(pointer: PointerEvent): boolean {
     pointer.buttons === 0 &&
     !isTextEntryTarget(active) &&
     !(active instanceof HTMLSelectElement) &&
-    !isModalOpen() &&
     // A listbox does not count: code views and choice lists stay on screen as listboxes, and a popup's own listbox
     // keeps the focus in its text field.
-    document.querySelector('[role="menu"]') === null
+    !isModalOpen()
   );
 }

@@ -54,7 +54,7 @@ export default createEslintConfig(
       "react/no-unknown-property": "off",
       "react/prop-types": "off",
       "react/react-in-jsx-scope": "off",
-      "react-hooks/exhaustive-deps": ["warn", { additionalHooks: "^useEditorPanels$" }],
+      "react-hooks/exhaustive-deps": ["warn", { additionalHooks: "^useEditor(Panels|Menus)$" }],
       "react-hooks/rules-of-hooks": "error",
     },
   },

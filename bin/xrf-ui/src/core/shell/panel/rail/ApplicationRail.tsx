@@ -1,18 +1,15 @@
 import { default as DarkModeIcon } from "@mui/icons-material/DarkMode";
-import { default as GitHubIcon } from "@mui/icons-material/GitHub";
 import { default as LightModeIcon } from "@mui/icons-material/LightMode";
 import { default as SettingsIcon } from "@mui/icons-material/Settings";
 import { useColorScheme } from "@mui/material/styles";
-import { open } from "@tauri-apps/plugin-shell";
+import { useInjection } from "@wirestate/react";
 import { Maybe, Nullable } from "@xrf/types";
-import { ReactElement, useCallback, useState } from "react";
+import { ReactElement, useCallback } from "react";
 
-import { REPOSITORY_URL } from "@/core/configs";
 import { ApplicationHelp } from "@/core/help/components/ApplicationHelp/ApplicationHelp";
-import { SettingsDialog } from "@/core/settings/components/SettingsDialog";
+import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
-import { Logger } from "@/lib/logging";
 
 import { RailButton } from "./RailButton";
 
@@ -28,14 +25,10 @@ interface IApplicationRailProps {
 export function ApplicationRail({ panels, activePanelId, onTogglePanel }: IApplicationRailProps): ReactElement {
   const { mode, setMode, systemMode } = useColorScheme();
 
-  const [isSettingsOpen, setSettingsOpen] = useState(false);
+  const settingsDialogService: SettingsDialogService = useInjection(SettingsDialogService);
 
   const resolvedMode: Maybe<string> = mode === "system" ? systemMode : mode;
   const isLightMode: boolean = resolvedMode === "light";
-
-  const onOpenGithubLink = useCallback(() => {
-    open(REPOSITORY_URL).catch(Logger.error);
-  }, []);
 
   const onToggleTheme = useCallback(() => {
     setMode(isLightMode ? "dark" : "light");
@@ -57,11 +50,7 @@ export function ApplicationRail({ panels, activePanelId, onTogglePanel }: IAppli
 
           <ApplicationHelp />
 
-          <RailButton label={"Source on github"} icon={<GitHubIcon />} onClick={onOpenGithubLink} />
-
-          <RailButton label={"Settings"} icon={<SettingsIcon />} onClick={() => setSettingsOpen(true)} />
-
-          <SettingsDialog isOpen={isSettingsOpen} onClose={() => setSettingsOpen(false)} />
+          <RailButton label={"Settings"} icon={<SettingsIcon />} onClick={settingsDialogService.open} />
         </>
       }
       onTogglePanel={onTogglePanel}

@@ -4,7 +4,7 @@ import { CommandBus, Container } from "@wirestate/core";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useRef } from "react";
 
-import { FOCUS_SEARCH_FIELD_MESSAGE, useSearchFocusTarget } from "@/core/search/lib";
+import { FOCUS_SEARCH_FIELD_COMMAND, useSearchFocusTarget } from "@/core/search/lib";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -21,7 +21,7 @@ describe("useSearchFocusTarget", () => {
     const container: Container = mockContainer();
     const { getByLabelText } = renderWithProviders(<SearchField />, { container });
 
-    act(() => void container.get(CommandBus).execute(FOCUS_SEARCH_FIELD_MESSAGE, undefined, { optional: true }));
+    act(() => void container.get(CommandBus).execute(FOCUS_SEARCH_FIELD_COMMAND, undefined, { optional: true }));
 
     const field: HTMLInputElement = getByLabelText("field") as HTMLInputElement;
 
@@ -34,10 +34,10 @@ describe("useSearchFocusTarget", () => {
     const container: Container = mockContainer();
     const { unmount } = renderWithProviders(<SearchField />, { container });
 
-    expect(container.get(CommandBus).hasHandler(FOCUS_SEARCH_FIELD_MESSAGE)).toBe(true);
+    expect(container.get(CommandBus).hasHandler(FOCUS_SEARCH_FIELD_COMMAND)).toBe(true);
 
     unmount();
 
-    expect(container.get(CommandBus).hasHandler(FOCUS_SEARCH_FIELD_MESSAGE)).toBe(false);
+    expect(container.get(CommandBus).hasHandler(FOCUS_SEARCH_FIELD_COMMAND)).toBe(false);
   });
 });

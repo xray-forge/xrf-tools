@@ -2,7 +2,7 @@ import { CommandBus, inject, Injectable } from "@wirestate/core";
 
 import { KeybindCommand } from "@/core/commands";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
-import { FOCUS_SEARCH_FIELD_MESSAGE } from "@/core/search/lib";
+import { FOCUS_SEARCH_FIELD_COMMAND } from "@/core/search/lib";
 
 /**
  * Answers the home screen's commands, for as long as the home screen is on screen.
@@ -15,9 +15,9 @@ export class LauncherKeybindsService {
    * Hands the caret to the catalog's field.
    */
   @KeybindCommand(FOCUS_SEARCH_KEYBIND_COMMAND, {
-    isEnabled: (service: LauncherKeybindsService) => service.commandBus.hasHandler(FOCUS_SEARCH_FIELD_MESSAGE),
+    isEnabled: (service: LauncherKeybindsService) => service.commandBus.hasHandler(FOCUS_SEARCH_FIELD_COMMAND),
   })
   public focusSearch(): void {
-    this.commandBus.execute(FOCUS_SEARCH_FIELD_MESSAGE, undefined, { optional: true });
+    this.commandBus.execute(FOCUS_SEARCH_FIELD_COMMAND, undefined, { optional: true });
   }
 }

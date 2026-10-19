@@ -1,11 +1,11 @@
+/** What holds the keyboard while on screen: a modal dialog, an open menu, or an expanded menubar. */
+const MODAL_SELECTOR: string = '[aria-modal="true"], [role="menu"], [role="menubar"]';
+
 /**
- * Whether a modal dialog is on screen.
+ * Whether a modal dialog or a menu is on screen, asked globally since a backdrop click can leave focus outside it.
  *
- * Asked globally rather than of the key event's target: a click on the backdrop can leave focus outside the dialog,
- * and a shortcut must not reach the application behind a modal in that moment either.
- *
- * @returns Whether anything on the page is marked as a modal.
+ * @returns Whether anything on the page is marked as a modal, a menu or a menubar.
  */
 export function isModalOpen(): boolean {
-  return document.querySelector('[aria-modal="true"]') !== null;
+  return document.querySelector(MODAL_SELECTOR) !== null;
 }

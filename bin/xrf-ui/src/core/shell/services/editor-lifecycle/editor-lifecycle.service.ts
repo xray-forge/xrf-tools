@@ -30,6 +30,9 @@ export class EditorLifecycleService {
   @Observable()
   private pendingLeave: Nullable<() => void> = null;
 
+  @Observable()
+  private pendingExit: Nullable<() => void> = null;
+
   private draftOwner: Nullable<string> = null;
   private savingRequest: Nullable<() => void> = null;
 
@@ -43,6 +46,12 @@ export class EditorLifecycleService {
   @Computed()
   public get isLeavePending(): boolean {
     return this.pendingLeave !== null;
+  }
+
+  /** Whether an exit asked while something runs is waiting for a decision. */
+  @Computed()
+  public get isExitPending(): boolean {
+    return this.pendingExit !== null;
   }
 
   /** Whether the active document supplied an operation to save its edits. */
@@ -68,6 +77,7 @@ export class EditorLifecycleService {
       this.dirtyCount = 0;
       this.save = null;
       this.pendingLeave = null;
+      this.pendingExit = null;
       this.savingRequest = null;
       this.isSaving = false;
     });
@@ -132,9 +142,43 @@ export class EditorLifecycleService {
     }
   }
 
+  /**
+   * Exits the way leaving does, except that work still running asks rather than refusing: refusing would leave a window
+   * nobody can close while one operation holds it.
+   */
+  @BoundAction()
+  public requestExit(exit: () => void): void {
+    if (this.pendingLeave || this.pendingExit) {
+      return;
+    }
+
+    if (this.isBusy) {
+      this.log.info("Pending exit while busy");
+
+      this.pendingExit = () => exit();
+    } else {
+      this.requestLeave(exit);
+    }
+  }
+
+  /** Exits despite the work still running, once the user chose to. */
+  @BoundAction()
+  public exitAnyway(): void {
+    const exit = this.pendingExit;
+
+    if (exit) {
+      this.log.info("Exiting while busy:", this.draftOwner, this.dirtyCount);
+    }
+
+    this.pendingExit = null;
+    exit?.();
+  }
+
   /** Declines the pending request unless its save is still running. */
   @BoundAction()
   public stay(): void {
+    this.pendingExit = null;
+
     if (!this.isSaving) {
       if (this.pendingLeave) {
         this.log.info("Kept editor open with unsaved changes:", this.draftOwner, this.dirtyCount);

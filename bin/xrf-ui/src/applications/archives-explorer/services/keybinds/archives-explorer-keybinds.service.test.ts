@@ -7,7 +7,7 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import { ArchivesExplorerKeybindsService } from "@/applications/archives-explorer/services/keybinds";
 import { KeybindCommandsService } from "@/core/commands";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
-import { FOCUS_SEARCH_FIELD_MESSAGE } from "@/core/search/lib";
+import { FOCUS_SEARCH_FIELD_COMMAND } from "@/core/search/lib";
 import {
   IPanelSetActiveCommand,
   PANEL_ACTIVE_QUERY,
@@ -37,7 +37,7 @@ function mockKeybinds(activePanelId: Nullable<string>): IKeybindsHarness {
     openedPanels.push(message);
   });
 
-  commandBus.register(FOCUS_SEARCH_FIELD_MESSAGE, () => dispatched.push(FOCUS_SEARCH_FIELD_MESSAGE));
+  commandBus.register(FOCUS_SEARCH_FIELD_COMMAND, () => dispatched.push(FOCUS_SEARCH_FIELD_COMMAND));
   container.get(QueryBus).register(PANEL_ACTIVE_QUERY, () => activePanelId);
 
   return { container, dispatched, openedPanels, service };
@@ -57,7 +57,7 @@ describe("ArchivesExplorerKeybindsService", () => {
 
     service.focusSearch();
 
-    expect(dispatched).toEqual([PANEL_SET_ACTIVE_COMMAND, FOCUS_SEARCH_FIELD_MESSAGE]);
+    expect(dispatched).toEqual([PANEL_SET_ACTIVE_COMMAND, FOCUS_SEARCH_FIELD_COMMAND]);
     expect(openedPanels).toEqual([{ panelId: "archives", side: "left" }]);
   });
 
@@ -66,7 +66,7 @@ describe("ArchivesExplorerKeybindsService", () => {
 
     service.focusSearch();
 
-    expect(dispatched).toEqual([FOCUS_SEARCH_FIELD_MESSAGE]);
+    expect(dispatched).toEqual([FOCUS_SEARCH_FIELD_COMMAND]);
   });
 
   it("replaces whatever else that side shows, which is where the tree lives", () => {

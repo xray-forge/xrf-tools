@@ -1,7 +1,6 @@
 import { Box, iconButtonClasses, svgIconClasses } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback } from "react";
-import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { useCurrentApplication } from "@/core/routing/current-application.context";
@@ -36,7 +35,6 @@ export function EditorToolbar({
   onBack,
 }: IEditorToolbarProps): ReactElement {
   const application: Nullable<IApplicationDescriptor> = useCurrentApplication();
-  const navigate: NavigateFunction = useNavigate();
 
   const isBusy: boolean = useIsEditorBusy();
   const requestLeave: (leave: () => void) => void = useRequestLeave();
@@ -44,9 +42,6 @@ export function EditorToolbar({
   const label: Nullable<string> = title ?? application?.label ?? null;
 
   const hasActions: boolean = Boolean(actions);
-
-  // Asks first when the editor is holding unsaved work; goes straight home when it is not.
-  const onGoHome = useCallback(() => requestLeave(() => navigate("/", { replace: true })), [navigate, requestLeave]);
 
   const onGoBack = useCallback(() => {
     if (onBack) {
@@ -56,12 +51,9 @@ export function EditorToolbar({
 
   return (
     <div data-testid={dataTestId} id={id} className={cn("flex h-full w-full min-w-0 items-center gap-1.5", className)}>
-      <EditorToolbarCrumb label={"XRF"} isDisabled={isBusy} hint={"Back to all tools"} onClick={onGoHome} />
-
-      {label ? (
-        <>
-          <EditorToolbarPathSeparator />
-
+      {/* Hidden under the window's open menubar, which lies over it, keeping its room so nothing beside it moves. */}
+      <div className={"flex min-w-0 items-center gap-1.5 group-has-[[role=menubar]]/caption:invisible"}>
+        {label ? (
           <EditorToolbarCrumb
             label={label}
             isDisabled={isBusy}
@@ -69,21 +61,21 @@ export function EditorToolbar({
             hint={onBack ? `Back to ${label}, closing what is open` : undefined}
             onClick={onBack ? onGoBack : undefined}
           />
-        </>
-      ) : null}
+        ) : null}
 
-      {subtitle ? (
-        <>
-          <EditorToolbarPathSeparator />
+        {subtitle ? (
+          <>
+            <EditorToolbarPathSeparator />
 
-          <Box
-            className={"min-w-0 truncate text-left opacity-70"}
-            sx={{ direction: "rtl", fontSize: "0.75rem", "& > *": { direction: "ltr" } }}
-          >
-            {subtitle}
-          </Box>
-        </>
-      ) : null}
+            <Box
+              className={"min-w-0 truncate text-left opacity-70"}
+              sx={{ direction: "rtl", fontSize: "0.75rem", "& > *": { direction: "ltr" } }}
+            >
+              {subtitle}
+            </Box>
+          </>
+        ) : null}
+      </div>
 
       <div className={"min-w-2 grow"} />
 

@@ -2,6 +2,7 @@ import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
+import { ILevelOverlay, LEVEL_OVERLAYS } from "@/core/level/lib/view/level-overlays";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
@@ -20,14 +21,10 @@ export function LevelOverlaysAction({
   const viewService: LevelViewService = useInjection(LevelViewService);
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const { isGridVisible, isAxesVisible, isSunMarked, isStatsVisible } = viewService.options;
   const isGpuTimed: boolean = renderSettingsService.isGpuTimed;
-  const shown: Array<string> = [
-    isGridVisible ? "grid" : null,
-    isAxesVisible ? "axes" : null,
-    isSunMarked ? "sun" : null,
-    isStatsVisible ? "readouts" : null,
-  ].filter((it): it is string => it !== null);
+  const shown: Array<string> = LEVEL_OVERLAYS.filter((it: ILevelOverlay) => viewService.options[it.option]).map(
+    (it: ILevelOverlay) => it.label.toLowerCase()
+  );
 
   return (
     <EditorPopoverGroup
@@ -39,35 +36,19 @@ export function LevelOverlaysAction({
       icon={<GridOnIcon />}
       isActive={shown.length > 0}
     >
-      <EditorPopoverGroupSection
-        label={"Grid"}
-        description={"Draws the ground plane in round cells and the extent the level claims"}
-        isOn={isGridVisible}
-        onToggle={() => viewService.toggleOption("isGridVisible")}
-      />
-
-      <EditorPopoverGroupSection
-        label={"Axes"}
-        description={"Marks the level's origin and which way +x and +z point"}
-        isOn={isAxesVisible}
-        onToggle={() => viewService.toggleOption("isAxesVisible")}
-      />
-
-      <EditorPopoverGroupSection
-        label={"Sun"}
-        description={"Marks where the level's directional light comes from with a dot in the sky"}
-        isOn={isSunMarked}
-        onToggle={() => viewService.toggleOption("isSunMarked")}
-      />
-
-      <EditorPopoverGroupSection
-        label={"Readouts"}
-        description={"Shows what each frame costs and where the camera stands"}
-        isOn={isStatsVisible}
-        onToggle={() => viewService.toggleOption("isStatsVisible")}
-      >
-        <RenderPassTimingFormRow isChecked={isGpuTimed} onChange={renderSettingsService.setGpuTimed} />
-      </EditorPopoverGroupSection>
+      {LEVEL_OVERLAYS.map((it: ILevelOverlay) => (
+        <EditorPopoverGroupSection
+          key={it.id}
+          label={it.label}
+          description={it.description}
+          isOn={viewService.options[it.option]}
+          onToggle={() => viewService.toggleOption(it.option)}
+        >
+          {it.option === "isStatsVisible" ? (
+            <RenderPassTimingFormRow isChecked={isGpuTimed} onChange={renderSettingsService.setGpuTimed} />
+          ) : null}
+        </EditorPopoverGroupSection>
+      ))}
     </EditorPopoverGroup>
   );
 }

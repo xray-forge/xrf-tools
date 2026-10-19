@@ -43,15 +43,15 @@ describe("ApplicationTitleBar", () => {
     // The mark was an `<img>`, which tauri does not treat as clickable but the browser does treat as
     // draggable, so it had to carry `draggable="false"` or the image drag won over the window move.
     // Inlined there is no image to drag, and the svg declares no region, so the deep walk reaches it.
-    expect(getByRole("img", { name: "XRF tools" }).tagName.toLowerCase()).toBe("svg");
-    expect(getByRole("img", { name: "XRF tools" })).not.toHaveAttribute("data-tauri-drag-region");
+    expect(getByRole("img", { name: "XRF" }).tagName.toLowerCase()).toBe("svg");
+    expect(getByRole("img", { name: "XRF" })).not.toHaveAttribute("data-tauri-drag-region");
   });
 
   it("identifies the window by icon rather than by repeating the name below it", () => {
     const { getByRole, queryByText } = renderWithProviders(<ApplicationTitleBar />);
 
-    expect(getByRole("img", { name: "XRF tools" })).toBeInTheDocument();
-    expect(queryByText("XRF tools")).not.toBeInTheDocument();
+    expect(getByRole("img", { name: "XRF" })).toBeInTheDocument();
+    expect(queryByText("XRF")).not.toBeInTheDocument();
   });
 
   it("draws the one progress line for whatever the active application is running", () => {
@@ -81,7 +81,7 @@ describe("ApplicationTitleBar", () => {
 
     // The gap is a real element rather than a margin, so a menu bar can land in it without the
     // controls or the icon moving.
-    const reserved: Element = getByRole("img", { name: "XRF tools" }).nextElementSibling as Element;
+    const reserved: Element = getByRole("img", { name: "XRF" }).nextElementSibling as Element;
 
     expect(reserved).toBeInTheDocument();
     expect(reserved.contains(getByLabelText("Minimize"))).toBe(false);

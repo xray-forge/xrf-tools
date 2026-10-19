@@ -4,15 +4,16 @@ use std::error::Error;
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use tauri::{App, AppHandle, Builder, Manager, Wry};
+use tauri::{App, AppHandle, Builder, Manager, RunEvent, Wry};
 use xrf_job::ExecutionRequest;
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::JobRegistry;
 use crate::core::logging::setup_logger;
+use crate::core::process::process_uptime;
 use crate::core::transport::{TransportEndpoint, TransportOrigins, TransportServer, TransportToken};
-use crate::core::window::{WindowHandles, build_main_window};
+use crate::core::window::{WindowCloseApprovals, WindowHandles, build_main_window};
 use crate::ipc::registry::transport_routes;
 use crate::plugins::registry::domain_plugins;
 use crate::plugins::system::diagnostics::log_startup;
@@ -65,7 +66,15 @@ pub fn run() -> ExitCode {
       Ok(())
     });
 
-  builder.run(context).expect("Error while running tauri application");
+  builder
+    .build(context)
+    .expect("Error while building tauri application")
+    .run(|_, event| {
+      // The last line a log gets, so one that ends without it ended without the application exiting.
+      if let RunEvent::Exit = event {
+        log::info!("Exiting application after {:.1?}", process_uptime());
+      }
+    });
 
   ExitCode::SUCCESS
 }
@@ -97,6 +106,7 @@ fn show_start_failure(message: &str) {
 fn manage_shared_state(application: &mut App) -> Result<(), Box<dyn Error>> {
   application.manage(AssetMountState::new());
   application.manage(WindowHandles::default());
+  application.manage(WindowCloseApprovals::default());
 
   application.manage(Arc::new(JobRegistry::new()).start_reporting());
 

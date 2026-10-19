@@ -1,19 +1,21 @@
 import { describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { ReactElement, useState } from "react";
+import { useInjection } from "@wirestate/react";
+import { ReactElement } from "react";
 
+import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { SettingsDialog } from "./SettingsDialog";
 
 function SettingsExample(): ReactElement {
-  const [isOpen, setOpen] = useState(false);
+  const settingsDialogService: SettingsDialogService = useInjection(SettingsDialogService);
 
   return (
     <>
-      <button onClick={() => setOpen(true)}>Open settings</button>
-      <SettingsDialog isOpen={isOpen} onClose={() => setOpen(false)} />
+      <button onClick={settingsDialogService.open}>Open settings</button>
+      <SettingsDialog />
     </>
   );
 }

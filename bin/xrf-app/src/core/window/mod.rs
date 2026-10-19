@@ -3,6 +3,7 @@
 mod main_window;
 mod monitor_work_area;
 mod window_build_kind;
+mod window_close_approvals;
 mod window_geometry;
 mod window_geometry_fit;
 mod window_geometry_restore;
@@ -15,4 +16,5 @@ mod window_reveal;
 mod tests;
 
 pub use main_window::build_main_window;
+pub use window_close_approvals::WindowCloseApprovals;
 pub use window_handles::WindowHandles;

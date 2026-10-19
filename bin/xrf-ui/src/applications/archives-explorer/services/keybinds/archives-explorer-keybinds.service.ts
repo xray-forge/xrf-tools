@@ -5,7 +5,7 @@ import { EArchivePanelId } from "@/applications/archives-explorer/components/edi
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { KeybindCommand } from "@/core/commands";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
-import { FOCUS_SEARCH_FIELD_MESSAGE } from "@/core/search/lib";
+import { FOCUS_SEARCH_FIELD_COMMAND } from "@/core/search/lib";
 import {
   IPanelSetActiveCommand,
   IPanelSideCommand,
@@ -47,6 +47,6 @@ export class ArchivesExplorerKeybindsService {
       );
     }
 
-    this.commandBus.execute(FOCUS_SEARCH_FIELD_MESSAGE, undefined, { optional: true });
+    this.commandBus.execute(FOCUS_SEARCH_FIELD_COMMAND, undefined, { optional: true });
   }
 }

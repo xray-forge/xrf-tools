@@ -1,6 +1,9 @@
 import { Box, Button, Dialog, DialogActions, DialogContent, List, ListItemButton, ListItemText } from "@mui/material";
-import { ReactElement, useId, useState } from "react";
+import { useInjection } from "@wirestate/react";
+import { ReactElement, useId } from "react";
 
+import { ESettingsSection, SETTINGS_SECTION_LABELS, SETTINGS_SECTIONS } from "@/core/settings/lib/settings-section";
+import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
 import { FORM_SURFACE_SX } from "@/core/theme/form-surface";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { inline } from "@/lib/callbacks/inline";
@@ -12,45 +15,14 @@ import { SettingsJobsSection } from "./SettingsJobsSection";
 import { SettingsRenderSection } from "./SettingsRenderSection";
 import { SettingsStorageSection } from "./SettingsStorageSection";
 
-/** The sections settings are grouped into, in the order the rail lists them. */
-enum EDetailSection {
-  GENERAL = "general",
-  RENDER = "render",
-  STORAGE = "storage",
-  IPC = "ipc",
-  JOBS = "jobs",
-  ABOUT = "about",
-}
-
-const SECTION_LABELS: Record<EDetailSection, string> = {
-  [EDetailSection.GENERAL]: "General",
-  [EDetailSection.RENDER]: "Rendering",
-  [EDetailSection.STORAGE]: "Storage",
-  [EDetailSection.IPC]: "IPC",
-  [EDetailSection.JOBS]: "Jobs",
-  [EDetailSection.ABOUT]: "About",
-};
-
-const SECTIONS: ReadonlyArray<EDetailSection> = [
-  EDetailSection.GENERAL,
-  EDetailSection.RENDER,
-  EDetailSection.STORAGE,
-  EDetailSection.IPC,
-  EDetailSection.JOBS,
-  EDetailSection.ABOUT,
-];
-
-export interface ISettingsDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
 /**
  * Settings as a proper desktop dialog: titled, explicitly dismissable, and wide enough to read a path.
  */
-export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): ReactElement {
+export function SettingsDialog(): ReactElement {
+  const settingsDialogService: SettingsDialogService = useInjection(SettingsDialogService);
   const titleId: string = useId();
-  const [section, setSection] = useState<EDetailSection>(EDetailSection.GENERAL);
+
+  const { isOpen, section, close: onClose, setSection } = settingsDialogService;
 
   return (
     <Dialog aria-labelledby={titleId} fullWidth maxWidth={"md"} open={isOpen} onClose={onClose}>
@@ -58,9 +30,9 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
 
       <DialogContent className={"flex h-105 max-h-dialog-height p-0"}>
         <List className={"w-37 shrink-0 border-r border-divider bg-well"} dense={true} disablePadding={true}>
-          {SECTIONS.map((it: EDetailSection) => (
+          {SETTINGS_SECTIONS.map((it: ESettingsSection) => (
             <ListItemButton key={it} selected={section === it} onClick={() => setSection(it)}>
-              <ListItemText primary={SECTION_LABELS[it]} />
+              <ListItemText primary={SETTINGS_SECTION_LABELS[it]} />
             </ListItemButton>
           ))}
         </List>
@@ -68,17 +40,17 @@ export function SettingsDialog({ isOpen, onClose }: ISettingsDialogProps): React
         <Box className={"min-w-0 grow overflow-y-auto px-dialog py-6"} sx={FORM_SURFACE_SX}>
           {inline(() => {
             switch (section) {
-              case EDetailSection.GENERAL:
+              case ESettingsSection.GENERAL:
                 return <SettingsGeneralSection />;
-              case EDetailSection.RENDER:
+              case ESettingsSection.RENDER:
                 return <SettingsRenderSection />;
-              case EDetailSection.STORAGE:
+              case ESettingsSection.STORAGE:
                 return <SettingsStorageSection />;
-              case EDetailSection.IPC:
+              case ESettingsSection.IPC:
                 return <SettingsIpcSection />;
-              case EDetailSection.JOBS:
+              case ESettingsSection.JOBS:
                 return <SettingsJobsSection />;
-              case EDetailSection.ABOUT:
+              case ESettingsSection.ABOUT:
                 return <SettingsAboutSection />;
             }
           })}

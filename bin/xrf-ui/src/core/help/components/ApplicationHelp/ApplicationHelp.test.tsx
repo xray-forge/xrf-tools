@@ -15,7 +15,7 @@ describe("ApplicationHelp", () => {
 
     await userEvent.click(getByLabelText("Help"));
 
-    expect(getByRole("dialog", { name: "XRF Tools" })).toBeInTheDocument();
+    expect(getByRole("dialog", { name: "XRF" })).toBeInTheDocument();
   });
 
   it("offers a disabled affordance on a route that is neither", () => {

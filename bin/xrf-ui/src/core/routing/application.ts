@@ -1,6 +1,8 @@
 import { ComponentType, ReactElement } from "react";
 
 import { IKeybindCommand } from "@/core/commands/lib/command-descriptor";
+import { IMenu } from "@/core/shell/menu/lib/menu-descriptor";
+import { IMenuExtension } from "@/core/shell/menu/lib/menu-extension";
 import { ContainerDefinition } from "@/lib/container/container-definition";
 
 /** Canonical application identity shared by its directory, route, descriptor, and component stem. */
@@ -135,6 +137,10 @@ export interface IApplicationMetadata {
   help?: IApplicationHelp;
   /** Every command reachable inside this application, root ones excluded. */
   keybindCommands?: ReadonlyArray<IKeybindCommand>;
+  /** The menus this application adds between File and Help, in bar order. */
+  menus?: ReadonlyArray<IMenu>;
+  /** Sections this application adds to File or Help while it is open. */
+  menuExtensions?: ReadonlyArray<IMenuExtension>;
 }
 
 export interface IApplicationDescriptor extends IApplicationMetadata, IApplicationRuntime {

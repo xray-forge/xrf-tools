@@ -10,6 +10,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { LevelViewerToolbar } from "@/applications/level-viewer/components/LevelViewerToolbar";
 import { ELevelViewerPanelId } from "@/applications/level-viewer/lib/level-viewer-panel-id";
+import { LEVEL_VIEWER_VIEW_MENU } from "@/applications/level-viewer/menus";
 import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
 import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
 import { LevelRendererPanel } from "@/core/level/components/panels/LevelRendererPanel";
@@ -22,10 +23,13 @@ import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewE
 import { LevelPreviewMetrics } from "@/core/level/components/preview/LevelPreviewMetrics";
 import { LevelPreviewPick } from "@/core/level/components/preview/LevelPreviewPick";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
+import { ILevelOverlay, LEVEL_OVERLAYS } from "@/core/level/lib/view/level-overlays";
+import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
-import { IEditorPanel, useEditorPanels } from "@/core/shell/editor-shell";
+import { IEditorPanel, useEditorMenus, useEditorPanels } from "@/core/shell/editor-shell";
+import { IMenuContribution, TMenuEntry } from "@/core/shell/menu/lib";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -65,6 +69,8 @@ export function LevelViewerLayout({
   onDeselect = null,
 }: ILevelViewerLayoutProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
+
+  const viewOptions: ILevelViewOptions = viewService.options;
 
   const isOpen: boolean = Boolean(name);
   const heading: Nullable<string> = name ?? pending;
@@ -116,6 +122,22 @@ export function LevelViewerLayout({
     []
   );
 
+  useEditorMenus(
+    (): Array<IMenuContribution> => [
+      {
+        section: LEVEL_VIEWER_VIEW_MENU.sections.overlays,
+        entries: LEVEL_OVERLAYS.map((it: ILevelOverlay): TMenuEntry => ({
+          kind: "toggle",
+          id: `level-viewer/toggle-${it.id}`,
+          label: it.label,
+          isChecked: viewOptions[it.option],
+          onToggle: () => viewService.toggleOption(it.option),
+        })),
+      },
+    ],
+    [viewOptions, viewService]
+  );
+
   return (
     <EditorLayout toolbar={<LevelViewerToolbar onBack={onBack} />}>
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>
@@ -136,7 +158,7 @@ export function LevelViewerLayout({
         >
           {renderViewport ? renderViewport({}) : <LevelPreviewViewport />}
 
-          {isOpen && viewService.options.isStatsVisible ? (
+          {isOpen && viewOptions.isStatsVisible ? (
             <>
               <LevelPreviewMetrics />
               <LevelPreviewCoordinates />

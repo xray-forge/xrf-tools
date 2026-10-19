@@ -3,6 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useRef } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
+import { PRODUCT_NAME } from "@/core/configs";
 import { IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { useSearchFocusTarget } from "@/core/search/lib";
 import { SettingsService } from "@/core/settings/services/settings";
@@ -62,7 +63,12 @@ export function ApplicationLauncherScreen({
   useSearchFocusTarget(searchInputRef);
 
   return (
-    <EditorLayout data-testid={dataTestId} id={id} className={className} toolbar={<EditorToolbar />}>
+    <EditorLayout
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      toolbar={<EditorToolbar title={PRODUCT_NAME} />}
+    >
       <div className={"flex h-full min-h-0 w-full flex-col"}>
         <div className={"shrink-0 px-6 pt-6"}>
           <ApplicationLauncherHeader

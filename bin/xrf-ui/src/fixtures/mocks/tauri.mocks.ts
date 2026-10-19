@@ -44,7 +44,18 @@ export function resetMockIsTauri(): void {
   mockIsTauri.mockReturnValue(true);
 }
 
-const windowState: { isMaximized: boolean; listeners: Array<() => void> } = { isMaximized: false, listeners: [] };
+/** The part of Tauri's close event a page touches. */
+export interface IMockCloseRequestedEvent {
+  preventDefault: () => void;
+}
+
+type TMockCloseListener = (event: IMockCloseRequestedEvent) => void | Promise<void>;
+
+const windowState: { isMaximized: boolean; listeners: Array<() => void>; closeListeners: Array<TMockCloseListener> } = {
+  isMaximized: false,
+  listeners: [],
+  closeListeners: [],
+};
 
 /** Provide the mocked Tauri window used by component tests. */
 export const mockAppWindow = {
@@ -53,6 +64,13 @@ export const mockAppWindow = {
   minimize: jest.fn(async (): Promise<void> => undefined),
   close: jest.fn(async (): Promise<void> => undefined),
   toggleMaximize: jest.fn(async (): Promise<void> => setMockWindowMaximized(!windowState.isMaximized)),
+  onCloseRequested: jest.fn(async (handler: TMockCloseListener): Promise<() => void> => {
+    windowState.closeListeners.push(handler);
+
+    return () => {
+      windowState.closeListeners = windowState.closeListeners.filter((it: TMockCloseListener) => it !== handler);
+    };
+  }),
   onResized: jest.fn(async (handler: () => void): Promise<() => void> => {
     windowState.listeners.push(handler);
 
@@ -76,12 +94,28 @@ export function setMockWindowMaximized(next: boolean): void {
 }
 
 /**
+ * Asks the mocked window to close the way the caption button or `Alt+F4` does, through the page's listeners.
+ *
+ * @returns Whether a listener held the close, which the real window answers by staying open.
+ */
+export async function requestMockWindowClose(): Promise<boolean> {
+  let isPrevented: boolean = false;
+
+  for (const listener of [...windowState.closeListeners]) {
+    await listener({ preventDefault: () => (isPrevented = true) });
+  }
+
+  return isPrevented;
+}
+
+/**
  * Restores the mocked window to its initial state.
  *
  */
 export function resetMockAppWindow(): void {
   windowState.isMaximized = false;
   windowState.listeners = [];
+  windowState.closeListeners = [];
 }
 
 /**

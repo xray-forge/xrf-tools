@@ -2,7 +2,6 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { default as RefreshIcon } from "@mui/icons-material/Refresh";
 import { IconButton } from "@mui/material";
 import { userEvent } from "@testing-library/user-event";
-import { Route, Routes } from "react-router-dom";
 
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -33,25 +32,11 @@ describe("EditorToolbar", () => {
     }
   });
 
-  it("shows only the root on a route owned by nothing", () => {
-    const { getByText, queryByText } = renderWithProviders(<EditorToolbar />, { route: "/nonsense" });
+  it("names nothing and offers nothing to follow on a route owned by nothing", () => {
+    const { queryByRole } = renderWithProviders(<EditorToolbar />, { route: "/nonsense" });
 
-    expect(getByText("XRF")).toBeInTheDocument();
-    expect(queryByText("Tools")).not.toBeInTheDocument();
-  });
-
-  it("goes home from the breadcrumb root", async () => {
-    const { getByText, findByText } = renderWithProviders(
-      <Routes>
-        <Route path={"/spawn-editor"} element={<EditorToolbar />} />
-        <Route path={"/"} element={<div>home</div>} />
-      </Routes>,
-      { route: "/spawn-editor" }
-    );
-
-    await userEvent.click(getByText("XRF"));
-
-    expect(await findByText("home")).toBeInTheDocument();
+    // Going home is the menu's File › Close now; the breadcrumb names where you are and closes only what is open.
+    expect(queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("leaves the application segment inert when nothing is open", () => {

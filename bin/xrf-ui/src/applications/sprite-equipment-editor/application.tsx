@@ -10,6 +10,7 @@ import { createApplicationDescriptor } from "@/core/routing/application-descript
 
 import { SPRITE_EQUIPMENT_EDITOR_KEYBIND_COMMANDS } from "./commands";
 import { SPRITE_EQUIPMENT_EDITOR_HELP } from "./help";
+import { SPRITE_EQUIPMENT_EDITOR_MENUS } from "./menus";
 
 export const SPRITE_EQUIPMENT_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {
@@ -20,6 +21,7 @@ export const SPRITE_EQUIPMENT_EDITOR_APPLICATION: IApplicationDescriptor = creat
     id: EApplicationId.SPRITE_EQUIPMENT_EDITOR,
     keybindCommands: SPRITE_EQUIPMENT_EDITOR_KEYBIND_COMMANDS,
     label: "Sprite equipment editor",
+    menus: SPRITE_EQUIPMENT_EDITOR_MENUS,
     path: "/sprite-equipment-editor",
     status: EApplicationStatus.READY,
   },

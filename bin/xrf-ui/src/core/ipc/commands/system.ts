@@ -14,6 +14,8 @@ import { EnvFlagReading } from "@/core/ipc/types/xrf-env-flags";
 
 /** Commands */
 export const systemCommands = {
+  /** Let the next close asked of a window, named by its label, go ahead: its page asked first and was answered. */
+  approveWindowClose: (window: string) => __TAURI_INVOKE<void>("plugin:system|approve_window_close", { window }),
   /** Describe what a path currently holds. */
   describePath: (path: string) => __TAURI_INVOKE<PathDescription>("plugin:system|describe_path", { path }),
   /** Report which build of the application is running. */

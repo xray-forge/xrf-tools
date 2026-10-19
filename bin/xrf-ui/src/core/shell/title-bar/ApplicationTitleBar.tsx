@@ -1,6 +1,7 @@
 import { LinearProgress } from "@mui/material";
 import { ReactElement, Ref } from "react";
 
+import { ApplicationMenu } from "@/core/shell/title-bar/ApplicationMenu";
 import { ApplicationTitleBarIcon } from "@/core/shell/title-bar/ApplicationTitleBarIcon";
 import { WindowControls } from "@/core/shell/title-bar/WindowControls";
 import { cn } from "@/core/theme/class-name";
@@ -14,7 +15,7 @@ interface IApplicationTitleBarProps extends BaseComponentProps {
 }
 
 /**
- * The window's single top band: drawn caption and the active application's toolbar in one row.
+ * The window's single top band: drawn caption, the window's menu and the active application's toolbar in one row.
  */
 export function ApplicationTitleBar({
   "data-testid": dataTestId = "application-title-bar",
@@ -28,9 +29,14 @@ export function ApplicationTitleBar({
       data-testid={dataTestId}
       data-tauri-drag-region={"deep"}
       id={id}
-      className={cn("relative flex h-title-bar min-h-title-bar shrink-0 items-center select-none", className)}
+      className={cn(
+        "group/caption relative flex h-title-bar min-h-title-bar shrink-0 items-center select-none",
+        className
+      )}
     >
       <ApplicationTitleBarIcon />
+
+      <ApplicationMenu />
 
       <div ref={toolbarRef} className={"flex h-full min-w-0 grow items-center"} />
 

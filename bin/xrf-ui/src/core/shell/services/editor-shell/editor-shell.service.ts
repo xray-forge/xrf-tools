@@ -4,6 +4,7 @@ import { Nullable } from "@xrf/types";
 
 import { IEditorPanel } from "@/core/shell/editor-shell/editor-panel";
 import { isSameStatusSegment, TEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
+import { IMenuContribution } from "@/core/shell/menu/lib";
 import { EMPTY_ARRAY } from "@/lib/types/array";
 
 interface IEditorShellRegistration<T> {
@@ -22,11 +23,17 @@ export class EditorShellService {
   @RefObservable()
   private panels: Nullable<IEditorShellRegistration<IEditorPanel>> = null;
 
+  // Unlike status and panels, menus take many owners at once - the shell, a tool, a part inside it - kept in the order
+  // each first published, which is the order their entries draw in within a section.
+  @RefObservable()
+  private menus: ReadonlyArray<IEditorShellRegistration<IMenuContribution>> = EMPTY_ARRAY;
+
   @OnDeprovision()
   public onDeprovision(): void {
     runInAction(() => {
       this.status = null;
       this.panels = null;
+      this.menus = EMPTY_ARRAY;
     });
   }
 
@@ -38,6 +45,13 @@ export class EditorShellService {
   /** Returns panels only for the application whose container can render them. */
   public getPanels(application: string): ReadonlyArray<IEditorPanel> {
     return this.panels?.application === application ? this.panels.values : EMPTY_ARRAY;
+  }
+
+  /** Returns menu entries only for the application whose container can run them, in publication order. */
+  public getMenus(application: string): ReadonlyArray<IMenuContribution> {
+    return this.menus
+      .filter((it: IEditorShellRegistration<IMenuContribution>) => it.application === application)
+      .flatMap((it: IEditorShellRegistration<IMenuContribution>) => it.values);
   }
 
   /** Publishes status, retaining its snapshot when the same owner repeats unchanged segments. */
@@ -77,5 +91,29 @@ export class EditorShellService {
     if (this.panels?.owner === owner) {
       this.panels = null;
     }
+  }
+
+  /** Publishes one owner's menu entries, keeping the place it first published at. */
+  @BoundAction()
+  public publishMenus(owner: string, application: string, contributions: ReadonlyArray<IMenuContribution>): void {
+    const registration: IEditorShellRegistration<IMenuContribution> = {
+      owner,
+      application,
+      values: [...contributions],
+    };
+    const index: number = this.menus.findIndex((it: IEditorShellRegistration<IMenuContribution>) => it.owner === owner);
+
+    this.menus =
+      index < 0
+        ? [...this.menus, registration]
+        : this.menus.map((it: IEditorShellRegistration<IMenuContribution>, at: number) =>
+            at === index ? registration : it
+          );
+  }
+
+  /** Releases only the menu entries published by this registration. */
+  @BoundAction()
+  public releaseMenus(owner: string): void {
+    this.menus = this.menus.filter((it: IEditorShellRegistration<IMenuContribution>) => it.owner !== owner);
   }
 }

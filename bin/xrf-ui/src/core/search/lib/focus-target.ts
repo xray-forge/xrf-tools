@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { RefObject } from "react";
 
 /**  Asks the search field that is on screen for the caret. */
-export const FOCUS_SEARCH_FIELD_MESSAGE: CommandType = Symbol("@/search/focus-field");
+export const FOCUS_SEARCH_FIELD_COMMAND: CommandType = Symbol("@/search/focus-field");
 
 /**
  * Makes a field the one the caret goes to, for as long as it is mounted.
@@ -15,7 +15,7 @@ export const FOCUS_SEARCH_FIELD_MESSAGE: CommandType = Symbol("@/search/focus-fi
  * @param inputRef - Field to focus and select.
  */
 export function useSearchFocusTarget(inputRef: RefObject<Nullable<HTMLInputElement>>): void {
-  useOnCommand(FOCUS_SEARCH_FIELD_MESSAGE, () => {
+  useOnCommand(FOCUS_SEARCH_FIELD_COMMAND, () => {
     inputRef.current?.focus();
     inputRef.current?.select();
   });

@@ -152,6 +152,11 @@ impl RenderState {
     }
   }
 
+  /// Whether a window is held open until the render thread lets go of it.
+  pub fn is_closing(&self, window: &str) -> bool {
+    self.lock_closing().contains(window)
+  }
+
   /// Forgets a destroyed window. One still drawing viewports went without the close that lets the renderer go of it
   /// first, which the window host's contract forbids: they are detached, and the breach logged.
   pub fn forget_window(&self, window: &str) {

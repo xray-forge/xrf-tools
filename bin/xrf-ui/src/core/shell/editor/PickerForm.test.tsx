@@ -20,20 +20,10 @@ describe("PickerForm", () => {
     expect(getByText("Provide spawn file to open")).toBeInTheDocument();
   });
 
-  it("leaves through the breadcrumb root, rather than carrying a back button of its own", () => {
-    const { getByText, queryByLabelText } = renderWithProviders(<PickerForm title={"Open"} />, {
-      route: "/spawn-editor",
-    });
+  it("carries no back button of its own, leaving the way out to the menu's File › Close", () => {
+    const { queryByLabelText } = renderWithProviders(<PickerForm title={"Open"} />, { route: "/spawn-editor" });
 
-    expect(getByText("XRF")).toBeInTheDocument();
     expect(queryByLabelText("Close document")).not.toBeInTheDocument();
-  });
-
-  it("stops the way out while an operation is in flight", () => {
-    const { getByText } = renderWithProviders(<PickerForm title={"Open"} isLoading />, { route: "/spawn-editor" });
-
-    // Disabled rather than removed: a control that vanishes mid-operation is harder to trust.
-    expect(getByText("XRF")).toBeDisabled();
   });
 
   it("draws no progress of its own, leaving the one running command to the caption band", () => {

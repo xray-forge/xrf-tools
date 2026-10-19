@@ -4,6 +4,7 @@ import { ReactElement, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 import { XrfMark } from "@/core/brand/XrfMark";
+import { PRODUCT_NAME } from "@/core/configs";
 import { ApplicationHelpButton, ApplicationHelpDialog } from "@/core/help/components";
 import { HelpService } from "@/core/help/services/help";
 import { LAUNCHER_HELP } from "@/core/launcher/help";
@@ -32,7 +33,7 @@ export function ApplicationHelp(): ReactElement {
 
       {help ? (
         <ApplicationHelpDialog
-          title={application?.label ?? "XRF Tools"}
+          title={application?.label ?? PRODUCT_NAME}
           icon={application?.icon ?? <XrfMark />}
           help={help}
           isOpen={helpService.isOpen}

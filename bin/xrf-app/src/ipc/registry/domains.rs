@@ -159,6 +159,7 @@ macro_rules! for_each_tauri_command_domain {
         pack_sprite => crate::plugins::sprite_equipment::commands::pack_sprite::sprite_equipment_pack_sprite,
       }
       system => "system" {
+        approve_window_close => crate::plugins::system::window::commands::approve_window_close::system_approve_window_close,
         describe_path => crate::plugins::system::paths::commands::describe_path::system_describe_path,
         get_build_info => crate::plugins::system::diagnostics::commands::get_build_info::system_get_build_info,
         get_default_output_root => crate::plugins::system::paths::commands::get_default_output_root::system_get_default_output_root,
