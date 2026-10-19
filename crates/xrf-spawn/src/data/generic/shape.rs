@@ -19,7 +19,7 @@ pub enum Shape {
 impl ChunkReadWrite for Shape {
   /// Read shape from the chunk reader.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let shape_type: u8 = reader.read_u8().expect("Shape type to be read");
+    let shape_type: u8 = reader.read_u8()?;
 
     Ok(match shape_type {
       0 => Self::Sphere((reader.read_xr::<T, _>()?, reader.read_f32::<T>()?)),
@@ -63,7 +63,7 @@ impl ChunkReadWriteList for Shape {
   /// Read list of shapes from the chunk reader.
   fn read_list<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<Self>> {
     let mut shapes: Vec<Self> = Vec::new();
-    let count: u8 = reader.read_u8().expect("Count flag to be read");
+    let count: u8 = reader.read_u8()?;
 
     for _ in 0..count {
       shapes.push(Self::read::<T, _>(reader)?);
@@ -214,6 +214,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write};
   use std::path::Path;
 
+  use byteorder::ReadBytesExt;
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
@@ -227,6 +228,27 @@ mod tests {
   };
 
   use crate::data::generic::shape::Shape;
+
+  /// A truncated shape list is an error, not a panic that a release build turns into an abort.
+  #[test]
+  fn refuses_a_shape_list_cut_short() -> XrfResult {
+    // A count with no shape tag, and a sphere tag with no sphere.
+    for payload in [&[1][..], &[1, 0]] {
+      assert!(
+        Shape::read_list::<XRayByteOrder, _>(&mut ChunkReader::from_bytes(payload)?).is_err(),
+        "a shape list of {payload:?} must be refused"
+      );
+    }
+
+    // No count at all: the list starts where the object's data already ended.
+    let mut exhausted = ChunkReader::from_bytes(&[7])?;
+
+    exhausted.read_u8()?;
+
+    assert!(Shape::read_list::<XRayByteOrder, _>(&mut exhausted).is_err());
+
+    Ok(())
+  }
 
   #[test]
   fn measures_one_sphere_as_it_is_and_anything_else_by_the_box_about_it() {

@@ -34,7 +34,7 @@ impl ChunkReadWrite for ParticlesHeaderChunk {
       ));
     }
 
-    assert!(reader.is_ended(), "Expect version chunk to be ended");
+    reader.assert_read("Expect version chunk to be ended")?;
 
     Ok(header_chunk)
   }

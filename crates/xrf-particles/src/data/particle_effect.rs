@@ -79,6 +79,31 @@ impl ParticleEffect {
   fn get_editor_data_section(section_name: &str) -> String {
     format!("{section_name}.editor_data")
   }
+
+  /// Reads a chunk the effect cannot do without, naming it whether it is missing or malformed.
+  fn read_required<D: ChunkDataSource, R>(
+    chunks: &[ChunkReader<D>],
+    id: u32,
+    name: &str,
+    read: impl FnOnce(&mut ChunkReader<D>) -> XrfResult<R>,
+  ) -> XrfResult<R> {
+    find_required_chunk_by_id(chunks, id)
+      .and_then(|mut chunk| read(&mut chunk))
+      .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle {name} chunk: {error}")))
+  }
+
+  /// Reads a chunk the effect may omit: absent is `None`, present but malformed is an error naming it.
+  fn read_optional<D: ChunkDataSource, R>(
+    chunks: &[ChunkReader<D>],
+    id: u32,
+    name: &str,
+    read: impl FnOnce(&mut ChunkReader<D>) -> XrfResult<R>,
+  ) -> XrfResult<Option<R>> {
+    find_optional_chunk_by_id(chunks, id)
+      .map(|mut chunk| read(&mut chunk))
+      .transpose()
+      .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle {name} chunk: {error}")))
+  }
 }
 
 impl ChunkReadWrite for ParticleEffect {
@@ -87,63 +112,38 @@ impl ChunkReadWrite for ParticleEffect {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
-    let effect: Self = {
-      Self {
-        version: read_u16_chunk::<T, _>(
-          &mut find_optional_chunk_by_id(&chunks, Self::VERSION_CHUNK_ID).expect("Particle name chunk not found"),
-        )
-        .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle version chunk: {}", error)))?,
-        name: read_w1251_string_chunk(
-          &mut find_optional_chunk_by_id(&chunks, Self::NAME_CHUNK_ID).expect("Particle name chunk not found"),
-        )
-        .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle name chunk: {}", error)))?,
-        max_particles: read_u32_chunk::<T, _>(
-          &mut find_optional_chunk_by_id(&chunks, Self::MAX_PARTICLES_CHUNK_ID)
-            .expect("Particle max particles chunk not found"),
-        )
-        .map_err(|error| {
-          XrfError::new_parsing_error(format!("Failed to read particle max_particles chunk: {}", error))
-        })?,
-        actions: find_required_chunk_by_id(&chunks, Self::ACTION_LIST_CHUNK_ID)?
-          .read_xr_list::<T, _>()
-          .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle actions chunk: {}", error)))?,
-        flags: read_u32_chunk::<T, _>(
-          &mut find_optional_chunk_by_id(&chunks, Self::FLAGS_CHUNK_ID).expect("Particle flags chunk not found"),
-        )
-        .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle flags chunk: {}", error)))?,
-        frame: find_optional_chunk_by_id(&chunks, Self::FRAME_CHUNK_ID).map(|mut it| {
-          it.read_xr::<T, _>()
-            .expect("Invalid frame chunk data in particle effect")
-        }),
-        sprite: find_required_chunk_by_id(&chunks, Self::SPRITE_CHUNK_ID)?
-          .read_xr::<T, _>()
-          .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle sprite chunk: {}", error)))?,
-        time_limit: find_optional_chunk_by_id(&chunks, Self::TIME_LIMIT_CHUNK_ID).map(|mut it| {
-          read_f32_chunk::<T, _>(&mut it).expect("Invalid frame time limit chunk data in particle effect")
-        }),
-        collision: find_optional_chunk_by_id(&chunks, Self::COLLISION_CHUNK_ID).map(|mut it| {
-          it.read_xr::<T, _>()
-            .expect("Invalid collision chunk data in particle effect")
-        }),
-        velocity_scale: find_optional_chunk_by_id(&chunks, Self::VELOCITY_SCALE_CHUNK_ID).map(|mut it| {
-          read_f32_vector_chunk::<T, _>(&mut it)
-            .expect("Invalid velocity scale chunk data in particle effect")
-            .into()
-        }),
-        description: find_optional_chunk_by_id(&chunks, Self::DESCRIPTION_CHUNK_ID).map(|mut it| {
-          it.read_xr::<T, _>()
-            .expect("Invalid description chunk data in particle effect")
-        }),
-        rotation: find_optional_chunk_by_id(&chunks, Self::ROTATION_CHUNK_ID).map(|mut it| {
-          read_f32_vector_chunk::<T, _>(&mut it)
-            .expect("Invalid rotation chunk data in particle effect")
-            .into()
-        }),
-        editor_data: find_optional_chunk_by_id(&chunks, Self::EDITOR_DATA_CHUNK_ID).map(|mut it| {
-          it.read_xr::<T, _>()
-            .expect("Invalid editor data chunk in particle effect")
-        }),
-      }
+    let effect: Self = Self {
+      version: Self::read_required(&chunks, Self::VERSION_CHUNK_ID, "version", |it| {
+        read_u16_chunk::<T, _>(it)
+      })?,
+      name: Self::read_required(&chunks, Self::NAME_CHUNK_ID, "name", |it| read_w1251_string_chunk(it))?,
+      max_particles: Self::read_required(&chunks, Self::MAX_PARTICLES_CHUNK_ID, "max_particles", |it| {
+        read_u32_chunk::<T, _>(it)
+      })?,
+      actions: Self::read_required(&chunks, Self::ACTION_LIST_CHUNK_ID, "actions", |it| {
+        it.read_xr_list::<T, _>()
+      })?,
+      flags: Self::read_required(&chunks, Self::FLAGS_CHUNK_ID, "flags", |it| read_u32_chunk::<T, _>(it))?,
+      frame: Self::read_optional(&chunks, Self::FRAME_CHUNK_ID, "frame", |it| it.read_xr::<T, _>())?,
+      sprite: Self::read_required(&chunks, Self::SPRITE_CHUNK_ID, "sprite", |it| it.read_xr::<T, _>())?,
+      time_limit: Self::read_optional(&chunks, Self::TIME_LIMIT_CHUNK_ID, "time_limit", |it| {
+        read_f32_chunk::<T, _>(it)
+      })?,
+      collision: Self::read_optional(&chunks, Self::COLLISION_CHUNK_ID, "collision", |it| {
+        it.read_xr::<T, _>()
+      })?,
+      velocity_scale: Self::read_optional(&chunks, Self::VELOCITY_SCALE_CHUNK_ID, "velocity_scale", |it| {
+        read_f32_vector_chunk::<T, _>(it).map(Into::into)
+      })?,
+      description: Self::read_optional(&chunks, Self::DESCRIPTION_CHUNK_ID, "description", |it| {
+        it.read_xr::<T, _>()
+      })?,
+      rotation: Self::read_optional(&chunks, Self::ROTATION_CHUNK_ID, "rotation", |it| {
+        read_f32_vector_chunk::<T, _>(it).map(Into::into)
+      })?,
+      editor_data: Self::read_optional(&chunks, Self::EDITOR_DATA_CHUNK_ID, "editor_data", |it| {
+        it.read_xr::<T, _>()
+      })?,
     };
 
     reader.assert_read("Expect particle effect chunk to be ended")?;

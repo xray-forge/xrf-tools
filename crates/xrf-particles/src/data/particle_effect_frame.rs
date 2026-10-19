@@ -30,7 +30,7 @@ impl ChunkReadWrite for ParticleEffectFrame {
       frame_speed: reader.read_f32::<T>()?,
     };
 
-    assert!(reader.is_ended(), "Expect particle frame chunk to be ended");
+    reader.assert_read("Expect particle frame chunk to be ended")?;
 
     Ok(particle_frame)
   }

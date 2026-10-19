@@ -4,6 +4,8 @@ pub(crate) mod chunks;
 pub(crate) mod data;
 pub(crate) mod particles_file;
 pub(crate) mod simulation;
+#[cfg(test)]
+mod tests;
 
 pub use crate::chunks::particles_effects_chunk::ParticlesEffectsChunk;
 pub use crate::chunks::particles_groups_chunk::ParticlesGroupsChunk;

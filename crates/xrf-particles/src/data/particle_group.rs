@@ -54,12 +54,16 @@ impl ChunkReadWrite for ParticleGroup {
       effects: find_required_chunk_by_id(&chunks, Self::EFFECTS_CHUNK_ID)?.read_xr_list::<T, _>()?,
       time_limit: read_f32_chunk::<T, _>(&mut find_required_chunk_by_id(&chunks, Self::TIME_LIMIT_CHUNK_ID)?)?,
       description: find_optional_chunk_by_id(&chunks, Self::DESCRIPTION_CHUNK_ID)
-        .map(|mut it| ParticleDescription::read::<T, _>(&mut it).expect("Invalid description chunk data")),
+        .map(|mut it| ParticleDescription::read::<T, _>(&mut it))
+        .transpose()
+        .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle group description: {error}")))?,
       effects_old: find_optional_chunk_by_id(&chunks, Self::EFFECTS2_CHUNK_ID)
-        .map(|mut it| it.read_xr_list::<T, _>().expect("Invalid old group effects chunk data")),
+        .map(|mut it| it.read_xr_list::<T, _>())
+        .transpose()
+        .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle group old effects: {error}")))?,
     };
 
-    assert!(reader.is_ended(), "Expect groups chunk to be ended");
+    reader.assert_read("Expect groups chunk to be ended")?;
     assert_equal(particle_group.version, 3, "Only version 3 of group chunks is supported")?;
 
     Ok(particle_group)
