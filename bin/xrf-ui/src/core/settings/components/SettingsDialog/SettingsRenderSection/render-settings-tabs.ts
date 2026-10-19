@@ -19,6 +19,7 @@ import { SettingsRendererLights } from "./SettingsRendererLights";
 import { SettingsRendererLod } from "./SettingsRendererLod";
 import { SettingsRendererParallax } from "./SettingsRendererParallax";
 import { SettingsRendererPuddles } from "./SettingsRendererPuddles";
+import { SettingsRendererRainDrops } from "./SettingsRendererRainDrops";
 import { SettingsRendererReflections } from "./SettingsRendererReflections";
 import { SettingsRendererShadows } from "./SettingsRendererShadows";
 import { SettingsRendererVolumetric } from "./SettingsRendererVolumetric";
@@ -82,6 +83,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
       SettingsRendererAmbientOcclusion,
       SettingsRendererIndirectLight,
       SettingsRendererReflections,
+      SettingsRendererRainDrops,
       SettingsRendererPuddles,
     ],
   },

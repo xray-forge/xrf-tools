@@ -418,9 +418,15 @@ struct Rain {
   axis: vec4<f32>,
   window: vec4<f32>,
   cover_shape: vec4<f32>,
+  fall: vec4<f32>,
+  streak: vec4<f32>,
+  look: vec4<f32>,
+  splash_look: vec4<f32>,
   count: u32,
   time: f32,
   splash_indices: u32,
+  is_enhanced: u32,
+  step: f32,
 }
 
 struct Wet {

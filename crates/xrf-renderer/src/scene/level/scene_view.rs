@@ -309,7 +309,14 @@ impl SceneView {
     let falling: Option<RainUniform> = self.features.rain.prepare(
       device,
       weather,
-      (lighting.rain.filter(|_| options.mode.is_lit), scene.gust, time),
+      (
+        (
+          lighting.rain.filter(|_| options.mode.is_lit),
+          options.features.rain.drops,
+        ),
+        scene.gust,
+        time,
+      ),
       (windows.cover, windows.cover_shape),
       frame.weather_textures,
     );
@@ -780,9 +787,9 @@ impl SceneView {
     }
   }
 
-  /// Notes what the window pass reads, once every other unit knows what it draws: whether the water, a particle or a
-  /// distorting surface of the scene moves what is seen through it, which bloom it lays over the frame, and the sky
-  /// debanding, its noise turning with `time`.
+  /// Notes what the window pass reads, once every other unit knows what it draws: whether the water, a particle, the
+  /// enhanced rain's splashes or a distorting surface of the scene moves what is seen through it, which bloom it lays
+  /// over the frame, and the sky debanding, its noise turning with `time`.
   fn prepare_present(&mut self, options: &RenderViewOptions, output: RenderRect, time: f32) {
     if self.targets.is_none() {
       return;
@@ -796,7 +803,10 @@ impl SceneView {
       is_indirect: features.bitmask.get_search().is_some_and(|search| search.is_lit),
       reflection_ratio: features.reflections.get_trace().map(ReflectionTrace::get_ratio),
       is_distorting: !options.mode.is_wireframe
-        && (is_water_distorting || features.particles.is_distorting() || features.composited.is_distorting()),
+        && (is_water_distorting
+          || features.particles.is_distorting()
+          || features.rain.is_distorting()
+          || features.composited.is_distorting()),
       selection_color: features.overlays.get_selection_color(),
       is_engine_bloomed: features.bloom.is_engine_drawn(),
       is_enhanced_bloomed: features.bloom.is_enhanced_drawn(),
@@ -1371,7 +1381,7 @@ impl SceneView {
       (&mut *graph, &mut *bindings, runtime),
       passes,
       view,
-      (handles, shadowed.covers.map(|covers| covers.depth)),
+      (handles, &lit, shadowed.covers.map(|covers| covers.depth)),
     );
     self
       .features

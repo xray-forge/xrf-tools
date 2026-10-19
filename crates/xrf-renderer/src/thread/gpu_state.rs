@@ -189,7 +189,7 @@ impl GpuState {
       let glass = threads.spawn(move || GlassPass::new(source, view, scene, texture, sky_layout));
       let grass = threads.spawn(move || GrassPass::new(source, view, texture));
       let grass_colours = threads.spawn(move || GrassColourPass::new(source, texture));
-      let rain = threads.spawn(move || RainPass::new(source, view));
+      let rain = threads.spawn(move || RainPass::new(queue, source, view, bundle));
       let particles = threads.spawn(move || ParticlePass::new(source, view, texture));
       let wet = threads.spawn(move || WetPass::new(source, view));
       let thunder = threads.spawn(move || ThunderPass::new(source, view));

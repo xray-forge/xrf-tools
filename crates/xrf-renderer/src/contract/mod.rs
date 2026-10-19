@@ -76,6 +76,7 @@ pub(crate) mod render_particles_report;
 pub(crate) mod render_pass_cost;
 pub(crate) mod render_pick;
 pub(crate) mod render_pool_use;
+pub(crate) mod render_rain_drops_mode;
 pub(crate) mod render_rain_mode;
 pub(crate) mod render_rain_settings;
 pub(crate) mod render_rect;

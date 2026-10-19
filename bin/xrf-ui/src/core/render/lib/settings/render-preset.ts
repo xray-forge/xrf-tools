@@ -12,6 +12,7 @@ import {
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
   ERenderParallaxMode,
+  ERenderRainDropsMode,
   ERenderRainMode,
   ERenderReflectionMode,
   ERenderReflectionProbe,
@@ -104,8 +105,8 @@ const BASE_PRESET: IRenderFeatureSettings = {
   },
   // The terrain marched over its details' heights.
   parallax: { ...DEFAULT_RENDER_PARALLAX_SETTINGS, mode: ERenderParallaxMode.ENHANCED },
-  // Wet surfaces that build up and dry, and puddles.
-  rain: { ...DEFAULT_RENDER_RAIN_SETTINGS, mode: ERenderRainMode.ENHANCED },
+  // Wet surfaces that build up and dry, puddles, and drops bending the scene behind them.
+  rain: { ...DEFAULT_RENDER_RAIN_SETTINGS, drops: ERenderRainDropsMode.ENHANCED, mode: ERenderRainMode.ENHANCED },
   // What the frame shows reflected where a ray meets it, the cube elsewhere.
   reflections: {
     ...DEFAULT_RENDER_REFLECTION_SETTINGS,

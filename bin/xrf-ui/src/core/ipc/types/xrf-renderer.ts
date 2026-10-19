@@ -1332,6 +1332,20 @@ export type RenderPoolUse = {
   capacity: number;
 };
 
+/** How the falling rain is drawn. */
+export enum ERenderRainDropsMode {
+  /** The engine's streaks: its rain texture tinted by the weather's rain colour. */
+  ENGINE = "engine",
+  /**
+   * Thin drops falling slower where the camera looks, each bending a blurred copy of the scene behind it and lit by a
+   * glint of the light about it and the sky's brightness, and splashes bending what they land on.
+   */
+  ENHANCED = "enhanced",
+}
+
+/** Every `ERenderRainDropsMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderRainDropsMode = `${ERenderRainDropsMode}`;
+
 /** Whether puddles gather on the ground when it rains, over the engine's own wetting of the surfaces either way. */
 export enum ERenderRainMode {
   /** The engine's own wetting alone: splashes and running water near the camera, wet only while it rains. */
@@ -1347,11 +1361,13 @@ export enum ERenderRainMode {
 export type RenderRainMode = `${ERenderRainMode}`;
 
 /**
- * How rain wets the frame's surfaces: the engine's own wetting, and whether puddles gather over it, with their
- * strengths.
+ * How rain falls and wets the frame's surfaces: the engine's streaks or refracting drops, the engine's own wetting,
+ * and whether puddles gather over it, with their strengths.
  */
 export type RenderRainSettings = {
   mode: RenderRainMode;
+  /** How the rain falls, apart from how it wets. */
+  drops: RenderRainDropsMode;
   /** How many puddles the level's sites hold: none at nought, about seven in ten at one, nearly all at two. */
   puddles: number | null;
   /** How much of a reflection a puddle takes at most. */
@@ -1806,7 +1822,10 @@ export type RenderViewFeatures = {
   indirectLight: RenderIndirectLightSettings;
   /** What glossy surfaces reflect: the sky's cube, or what the frame shows where a ray finds it. */
   reflections: RenderReflectionSettings;
-  /** How rain wets the surfaces: the engine's splashes, or wet surfaces and puddles that build up and dry. */
+  /**
+   * How rain falls and wets the surfaces: the engine's streaks or refracting drops, and the engine's splashes or wet
+   * surfaces and puddles that build up and dry.
+   */
   rain: RenderRainSettings;
   lights: RenderLightsSettings;
   water: RenderWaterSettings;

@@ -13,6 +13,7 @@ import {
   ERenderIndirectLightMode,
   ERenderLightShadowFilter,
   ERenderParallaxMode,
+  ERenderRainDropsMode,
   ERenderRainMode,
   ERenderReflectionMode,
   ERenderReflectionProbe,
@@ -145,6 +146,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   // level surface they are placed on reaches past.
   rain: {
     distance: toNumber(30, 450, true),
+    drops: toChoice(ERenderRainDropsMode),
     isReliefFlooded: FLAG,
     mode: toChoice(ERenderRainMode),
     puddles: toNumber(0, 2),

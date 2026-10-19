@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
-import { ERenderRainMode } from "@/core/ipc/types/xrf-renderer";
+import { ERenderRainDropsMode, ERenderRainMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelRainAction } from "@/core/level/components/preview/toolbar/environment/LevelRainAction";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_RENDER_RAIN_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
@@ -93,5 +93,20 @@ describe("LevelRainAction", () => {
     await userEvent.click(getByRole("button", { name: "Reset to the preset" }));
 
     expect(view.features.rain).toEqual({});
+  });
+
+  it("bends the scene through the falling drops from the rain's own section, apart from the puddles", async () => {
+    const { getByRole, findByRole, view } = await renderAction();
+
+    await userEvent.click(getByRole("button", { name: "Rain" }));
+    await findByRole("dialog", { name: "Rain" });
+
+    expect(getByRole("checkbox", { name: "Refracting drops" })).not.toBeChecked();
+
+    await userEvent.click(getByRole("checkbox", { name: "Refracting drops" }));
+
+    expect(view.features.rain).toEqual({ drops: ERenderRainDropsMode.ENHANCED });
+    expect(getByRole("checkbox", { name: "Refracting drops" })).toBeChecked();
+    expect(getByRole("checkbox", { name: "Puddles" })).not.toBeChecked();
   });
 });

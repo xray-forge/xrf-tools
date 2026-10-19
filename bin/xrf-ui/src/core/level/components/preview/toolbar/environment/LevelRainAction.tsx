@@ -5,7 +5,7 @@ import { formatPercent, formatSeconds } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
-import { ERenderRainMode } from "@/core/ipc/types/xrf-renderer";
+import { ERenderRainDropsMode, ERenderRainMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
@@ -20,6 +20,7 @@ import { LevelWeatherService } from "@/core/level/services/level-weather.service
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { formatGrassRadius } from "@/core/render/lib/features/render-grass-choices";
 import {
+  explainRenderRainDropsMode,
   explainRenderRainMode,
   formatRainShare,
   RENDER_RAIN_LIMITS,
@@ -33,9 +34,9 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 const NO_COLLECTIONS: ReadonlyArray<ThunderboltCollection> = [];
 
 /**
- * How hard it rains and the streaks' colour, the bolts that strike with it, and whether puddles gather on flat ground
- * over the engine's own wetting: how many of the sites hold one, how much they reflect, how far they are drawn and how
- * strongly the rain ripples them; whether any of it happens at all.
+ * How hard it rains, the streaks' colour and whether the drops bend the scene behind them, the bolts that strike with
+ * it, and whether puddles gather on flat ground over the engine's own wetting: how many of the sites hold one, how much
+ * they reflect, how far they are drawn and how strongly the rain ripples them; whether any of it happens at all.
  */
 export function LevelRainAction({
   "data-testid": dataTestId = "level-rain-action",
@@ -58,6 +59,7 @@ export function LevelRainAction({
   const isRaining: boolean = isRainy && manual.rainDensity > 0;
   const isStriking: boolean = isThundering && manual.thunderboltCollection !== "";
   const isPuddled: boolean = puddles.mode === ERenderRainMode.ENHANCED;
+  const isRefracted: boolean = puddles.drops === ERenderRainDropsMode.ENHANCED;
 
   return (
     <EditorPopoverGroup
@@ -82,6 +84,15 @@ export function LevelRainAction({
         />
 
         <LevelManualWeatherVectorField field={"rainColor"} isColor manual={manual} onEdit={weatherService.editManual} />
+
+        <CheckboxFormRow
+          label={"Refracting drops"}
+          description={explainRenderRainDropsMode(puddles.drops)}
+          isChecked={isRefracted}
+          onChange={(isOn: boolean) =>
+            setPuddles({ drops: isOn ? ERenderRainDropsMode.ENHANCED : ERenderRainDropsMode.ENGINE })
+          }
+        />
       </EditorPopoverGroupSection>
 
       <EditorPopoverGroupSection

@@ -206,7 +206,15 @@ const LEVEL_GROUP_KEYS: {
     surfaceHeight: true,
     surfaceRange: true,
   },
-  rain: { distance: true, isReliefFlooded: true, mode: true, puddles: true, reflectivity: true, ripples: true },
+  rain: {
+    distance: true,
+    drops: true,
+    isReliefFlooded: true,
+    mode: true,
+    puddles: true,
+    reflectivity: true,
+    ripples: true,
+  },
   reflections: {
     distance: true,
     intensity: true,

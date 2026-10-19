@@ -44,7 +44,8 @@ pub struct RenderViewFeatures {
   pub indirect_light: RenderIndirectLightSettings,
   /// What glossy surfaces reflect: the sky's cube, or what the frame shows where a ray finds it.
   pub reflections: RenderReflectionSettings,
-  /// How rain wets the surfaces: the engine's splashes, or wet surfaces and puddles that build up and dry.
+  /// How rain falls and wets the surfaces: the engine's streaks or refracting drops, and the engine's splashes or wet
+  /// surfaces and puddles that build up and dry.
   pub rain: RenderRainSettings,
   pub lights: RenderLightsSettings,
   pub water: RenderWaterSettings,

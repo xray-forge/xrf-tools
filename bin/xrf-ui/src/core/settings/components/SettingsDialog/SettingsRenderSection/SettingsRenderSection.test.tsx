@@ -7,6 +7,7 @@ import {
   ERenderDebandingMode,
   ERenderFogMode,
   ERenderIndirectLightMode,
+  ERenderRainDropsMode,
   ERenderRainMode,
   ERenderReflectionMode,
   ERenderVolumetricMode,
@@ -135,6 +136,12 @@ describe("SettingsRenderSection", () => {
       ERenderReflectionMode.ENHANCED,
     ],
     ["Lighting", "Puddles", (features: IRenderFeatureSettings) => features.rain.mode, ERenderRainMode.ENHANCED],
+    [
+      "Lighting",
+      "Refracting drops",
+      (features: IRenderFeatureSettings) => features.rain.drops,
+      ERenderRainDropsMode.ENHANCED,
+    ],
   ])("turns the enhanced %s %s over from its checkbox", async (tab, label, read, enhanced) => {
     const { settings, view } = renderSection();
 

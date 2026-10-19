@@ -203,4 +203,5 @@ SOFTWARE.
 ## Screen Space Shaders
 
 By Ascii1457. The enhanced water, the enhanced foliage's motion and lighting, the enhanced rain's wet surfaces and
-puddles, the enhanced fog's height fog and scattering, the sky debanding, and the enhanced bloom.
+puddles, its refracting drops and splashes, the enhanced fog's height fog and scattering, the sky debanding, and the
+enhanced bloom. The drops fall as Anomaly's Monolith engine shapes them for it (`CEffect_Rain`, `dxRainRender`).
