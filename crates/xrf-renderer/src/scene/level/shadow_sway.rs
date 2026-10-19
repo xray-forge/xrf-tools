@@ -30,6 +30,11 @@ impl ShadowSway<'_> {
   /// reaching `reach` leans across enough of a texel `texel` wide to show. Both are metres, or both are per metre of
   /// distance from a light.
   pub fn is_redrawn(&self, reach: f32, texel: f32, drawn_at: f32) -> bool {
-    self.amplitude * reach > texel * SWAY_TEXELS && self.time - drawn_at >= Self::INTERVAL * (1.0 - SWAY_SLACK)
+    self.is_redrawn_every(reach, texel, drawn_at, Self::INTERVAL)
+  }
+
+  /// `is_redrawn` with an interval of its own, `interval` seconds.
+  pub fn is_redrawn_every(&self, reach: f32, texel: f32, drawn_at: f32, interval: f32) -> bool {
+    self.amplitude * reach > texel * SWAY_TEXELS && self.time - drawn_at >= interval * (1.0 - SWAY_SLACK)
   }
 }

@@ -233,6 +233,7 @@ export const DEFAULT_RENDER_SHADOW_SETTINGS: TRenderShadowSettings = {
   isEnabled: true,
   isStaggered: true,
   resolution: 2048,
+  swayRate: 60,
 };
 
 /** Drawn at the viewport's size; sharpened halfway once upscaled; DLSS's model NVIDIA's pick, reconstructing no rays. */

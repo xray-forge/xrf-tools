@@ -1588,6 +1588,11 @@ export type RenderShadowSettings = {
   /** Whether cascade `n` is drawn at most every `2^n` frames, the far ones sharing frames the near one does not. */
   isStaggered: boolean;
   /**
+   * Times a second the cascades redraw their swaying trees at most: 60 by default, fewer to redraw them less, their
+   * shadows then stepping between the sway's poses.
+   */
+  swayRate: number | null;
+  /**
    * The contact shadows: the sun's under the cascades, drawn only while the cascades are, and the local lights',
    * drawn whether the cascades are or not.
    */

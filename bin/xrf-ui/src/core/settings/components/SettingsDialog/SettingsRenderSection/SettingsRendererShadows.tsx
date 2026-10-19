@@ -6,6 +6,7 @@ import {
   formatCascadeWidths,
   formatShadowBias,
   formatShadowFilter,
+  formatShadowSwayRate,
   RENDER_SHADOW_CASCADE_OPTIONS,
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTION_OPTIONS,
@@ -93,6 +94,15 @@ export function SettingsRendererShadows(): ReactElement {
           }
           isChecked={shadows.isStaggered}
           onChange={(isStaggered: boolean) => onSet({ isStaggered })}
+        />
+
+        <SliderFormRow
+          label={"Sway updates"}
+          description={"How often a second the cascades redraw swaying trees. Fewer is cheaper; their shadows step."}
+          value={shadows.swayRate}
+          {...RENDER_SHADOW_LIMITS.swayRate}
+          format={formatShadowSwayRate}
+          onChange={(swayRate: number) => onSet({ swayRate })}
         />
       </div>
     </DetailSection>

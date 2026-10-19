@@ -31,7 +31,6 @@ use crate::scene::level::shadow_cascade_view::ShadowCascadeView;
 use crate::scene::level::shadow_cut::ShadowCut;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_prefetch::ShadowPrefetch;
-use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
@@ -648,7 +647,13 @@ impl LevelShadows {
         version != fit.version || scene.is_changed_since(contents, |sphere| frustum.reaches(sphere))
       });
 
-    if !(is_changed || frame.sway.is_redrawn(frame.sway.reach, fit.texel, cascade.drawn_at)) {
+    let interval: f32 = frame.settings.get_sway_interval();
+
+    if !(is_changed
+      || frame
+        .sway
+        .is_redrawn_every(frame.sway.reach, fit.texel, cascade.drawn_at, interval))
+    {
       cascade.waited = 0;
 
       return None;
@@ -694,9 +699,12 @@ impl LevelShadows {
       is_fit && !scene.is_changed_since(contents, |sphere| frustum.reaches(sphere))
     });
     let is_stale: bool = cascade.drawn.is_none() || !is_held || cascade.is_swapped;
-    let is_swayed: bool = frame.sway.is_redrawn(frame.sway.reach, current.texel, cascade.drawn_at);
+    let interval: f32 = frame.settings.get_sway_interval();
+    let is_swayed: bool = frame
+      .sway
+      .is_redrawn_every(frame.sway.reach, current.texel, cascade.drawn_at, interval);
     let is_kept: bool = has_grass && cascade.is_kept;
-    let can_wait: bool = frame.sway.time - cascade.drawn_at < ShadowSway::INTERVAL * TREES_WAIT_MOST;
+    let can_wait: bool = frame.sway.time - cascade.drawn_at < interval * TREES_WAIT_MOST;
     let is_trees_due: bool = is_stale || (is_swayed && !(is_kept && *is_trees_taken && can_wait));
 
     if is_kept && is_trees_due {
