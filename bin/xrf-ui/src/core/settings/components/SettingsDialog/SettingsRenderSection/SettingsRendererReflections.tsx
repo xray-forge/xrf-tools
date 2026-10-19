@@ -115,19 +115,21 @@ export function SettingsRendererReflections(): ReactElement {
         />
 
         <CheckboxFormRow
-          label={"Ray-traced fallback"}
-          description={"Traces what the screen misses against the level's geometry, on a GPU that traces rays."}
+          label={"Ray-traced reflections"}
+          description={
+            "Traces what the screen misses against the level's geometry, on a GPU that traces rays: the water's " +
+            "reflection always, the surfaces' with screen-space reflections."
+          }
           isChecked={reflections.isTraced}
-          isDisabled={!isEnhanced}
           onChange={(isTraced: boolean) => onSet({ isTraced })}
         />
 
         <ChoiceFormRow
           label={"Trace quality"}
-          description={"How often the fallback traces a pixel: once in eight frames at Low, every frame at Ultra."}
+          description={"How often a pixel is traced: once in eight frames at Low, every frame at Ultra."}
           options={RENDER_REFLECTION_TRACE_QUALITY_OPTIONS}
           value={reflections.traceQuality}
-          isDisabled={!isEnhanced || !reflections.isTraced}
+          isDisabled={!reflections.isTraced}
           onChange={(traceQuality: RenderReflectionTraceQuality) => onSet({ traceQuality })}
         />
 
@@ -143,7 +145,9 @@ export function SettingsRendererReflections(): ReactElement {
 
         <CheckboxFormRow
           label={"Ray budgets"}
-          description={"Traces fewer rays where a reflection is dim or rough, sharing them between neighbouring pixels."}
+          description={
+            "Traces fewer rays where a reflection is dim or rough, sharing them between neighbouring pixels."
+          }
           isChecked={reflections.isRayBudgeted}
           isDisabled={!isEnhanced}
           onChange={(isRayBudgeted: boolean) => onSet({ isRayBudgeted })}

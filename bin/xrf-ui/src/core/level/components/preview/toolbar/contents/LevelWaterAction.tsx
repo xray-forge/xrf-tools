@@ -6,12 +6,14 @@ import { ReactElement, useCallback } from "react";
 
 import { ERenderWaterMode, RenderWaterMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
-import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
+import { describeLevelFeatureToggle, toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { LEVEL_MANUAL_WEATHER_WATER_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
+import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
@@ -42,12 +44,18 @@ export function LevelWaterAction({
   className,
 }: BaseComponentProps): ReactElement {
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
+  const renderService: LevelRenderService = useInjection(LevelRenderService);
+  const renderFeatures = useLevelRenderFeatures();
   const { isOn, toggle } = useLevelViewToggle("isWaterVisible");
   const { state, set, setNested, reset } = useLevelFeature("water");
   // The keyframe on screen, whose `water_intensity` scales what the water reflects.
   const manual: ILevelManualWeather = weatherService.shown;
   const water: TRenderWaterSettings = state.value;
   const enhanced: TRenderEnhancedWaterSettings = water.enhanced;
+  // The water's reflection traces what the screen misses as the reflections' one trace control says.
+  const isReflectionTraced: boolean =
+    renderService.isTraceable &&
+    toLevelModeFeature("reflections", renderFeatures.settings, renderFeatures.features).isTraced;
 
   const onSetEnhanced = useCallback(
     (part: Partial<TRenderEnhancedWaterSettings>): void => setNested("enhanced", part),
@@ -127,6 +135,12 @@ export function LevelWaterAction({
             format={formatWaterStrength}
             onChange={(reflectivity: number) => onSetEnhanced({ reflectivity })}
           />
+
+          <p className={"text-xs text-text-secondary"}>
+            {isReflectionTraced
+              ? "What its reflection misses on the screen is ray-traced: Reflections, Ray-traced reflections."
+              : "Its reflection is the screen's alone: Reflections, Ray-traced reflections traces what it misses."}
+          </p>
 
           <RenderValueSlider
             label={"Reflection blur"}

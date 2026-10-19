@@ -1482,7 +1482,8 @@ export type RenderReflectionSettings = {
   isGrassReflected: boolean;
   /**
    * Whether a ray the screen does not answer is traced against the level's static geometry by hardware ray query,
-   * its hit lit, in place of the sky; on a device without ray queries it falls back to the sky as before.
+   * its hit lit, in place of the sky: the surfaces' while they are drawn, the enhanced water's always; on a device
+   * without ray queries it falls back to the sky as before.
    */
   isTraced: boolean;
   traceQuality: RenderReflectionTraceQuality;

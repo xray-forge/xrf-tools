@@ -24,7 +24,8 @@ export const RENDER_REFLECTION_LIMITS = {
 } as const;
 
 const RENDER_REFLECTION_MODE_DESCRIPTIONS: Readonly<Record<RenderReflectionMode, string>> = {
-  [ERenderReflectionMode.ENGINE]: "Reflects the sky's cube alone on glossy and wet surfaces, as the game does.",
+  [ERenderReflectionMode.ENGINE]:
+    "Reflects the sky's cube alone on glossy and wet surfaces, as the game does. The water keeps its own reflection.",
   [ERenderReflectionMode.ENHANCED]:
     "Reflects what traced rays meet on the screen, the sky's cube elsewhere, more at grazing angles.",
 };

@@ -98,10 +98,26 @@ describe("LevelReflectionsAction", () => {
     await userEvent.pointer({ keys: "[MouseRight]", target: descriptor.getByRole("button", { name: "Reflections" }) });
     await descriptor.findByRole("dialog", { name: "Reflections" });
 
-    const traced: HTMLElement = descriptor.getByRole("checkbox", { name: "Ray-traced fallback" });
+    const traced: HTMLElement = descriptor.getByRole("checkbox", { name: "Ray-traced reflections" });
 
     expect(traced).toBeDisabled();
     expect(traced).not.toBeChecked();
     expect(traced).toHaveAccessibleDescription("Needs a GPU that traces rays");
+  });
+
+  it("keeps the ray-traced reflections offered with the screen-space reflections off, for the water", async () => {
+    const descriptor = renderAction({
+      ...DEFAULT_RENDER_REFLECTION_SETTINGS,
+      isTraced: true,
+      mode: ERenderReflectionMode.ENGINE,
+    });
+
+    noteLevelFrame(descriptor.render, { adapter: "GPU", hasRayQueries: true });
+
+    await userEvent.pointer({ keys: "[MouseRight]", target: descriptor.getByRole("button", { name: "Reflections" }) });
+    await descriptor.findByRole("dialog", { name: "Reflections" });
+
+    expect(descriptor.getByRole("checkbox", { name: "Ray-traced reflections" })).toBeChecked();
+    expect(descriptor.queryByRole("checkbox", { name: "Ray budgets" })).toBeNull();
   });
 });

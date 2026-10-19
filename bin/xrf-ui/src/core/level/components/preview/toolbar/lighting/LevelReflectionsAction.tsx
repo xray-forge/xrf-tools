@@ -35,7 +35,8 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * What glossy and wet surfaces reflect: the engine's sky cube alone, or screen-space reflections of what the frame
- * shows where a traced ray meets it, tracing what the screen misses on a GPU that traces rays; how hard they trace, how
+ * shows where a traced ray meets it; whether what the screen misses is ray-traced on a GPU that traces rays, for the
+ * surfaces and the water's own reflection alike, and how often; how hard the surfaces trace, how
  * strongly surfaces reflect, how far a ray goes, how rough a surface still traces, whether rays are budgeted by what
  * each pixel shows, and how fine the cube of the surroundings a ray meeting nothing reads is; and how glass is drawn.
  */
@@ -139,24 +140,28 @@ export function LevelReflectionsAction({
             isChecked={value.isGrassReflected}
             onChange={(isGrassReflected: boolean) => set({ isGrassReflected })}
           />
-
-          <CheckboxFormRow
-            label={"Ray-traced fallback"}
-            description={isTraceable ? undefined : "Needs a GPU that traces rays"}
-            isChecked={isTraceable && value.isTraced}
-            isDisabled={!isTraceable}
-            onChange={(isTraced: boolean) => set({ isTraced })}
-          />
-
-          {isTraceable && value.isTraced ? (
-            <RenderValueChoice
-              label={"Trace quality"}
-              options={RENDER_REFLECTION_TRACE_QUALITY_OPTIONS}
-              value={value.traceQuality}
-              onChange={(traceQuality: RenderReflectionTraceQuality) => set({ traceQuality })}
-            />
-          ) : null}
         </>
+      ) : null}
+
+      <CheckboxFormRow
+        label={"Ray-traced reflections"}
+        description={
+          isTraceable
+            ? "Traces what the screen misses: the water's reflection always, the surfaces' with screen-space reflections"
+            : "Needs a GPU that traces rays"
+        }
+        isChecked={isTraceable && value.isTraced}
+        isDisabled={!isTraceable}
+        onChange={(isTraced: boolean) => set({ isTraced })}
+      />
+
+      {isTraceable && value.isTraced ? (
+        <RenderValueChoice
+          label={"Trace quality"}
+          options={RENDER_REFLECTION_TRACE_QUALITY_OPTIONS}
+          value={value.traceQuality}
+          onChange={(traceQuality: RenderReflectionTraceQuality) => set({ traceQuality })}
+        />
       ) : null}
 
       <Button size={"small"} aria-label={"Reset the reflections to the preset"} onClick={reset}>
