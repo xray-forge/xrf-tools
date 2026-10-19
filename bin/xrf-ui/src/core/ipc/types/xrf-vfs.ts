@@ -63,7 +63,7 @@ export enum EXrayAssetType {
 /** Every `EXrayAssetType` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type XrayAssetType = `${EXrayAssetType}`;
 
-/** An X-Ray logical path: lower case, backslash separated, with no empty, `.` or `..` component. */
+/** An X-Ray logical path: lower case, backslash separated, with no empty, `.` or `..` component and no colon. */
 export type XrayLogicalPath = string;
 
 /** How a caller's path is turned into mounts. */

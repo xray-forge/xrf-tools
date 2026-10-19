@@ -19,25 +19,12 @@ export type ArchiveExtractResult = {
   size: number;
 };
 
-/**
- * Everything needed to pack one archive volume set.
- *
- * Built from defaults, then optionally from an xrCompress LTX, then from explicit parameters, so a
- * command line and a form can layer over the same config file in the same order.
- *
- * Also the wire contract the desktop editor holds: it is read from a configuration file, edited in
- * place, packed, and written back, so all three surfaces speak one shape.
- */
+/** Everything needed to pack one archive volume set. */
 export type ArchivePackConfig = {
   /** Root the archived names are relative to, normally a `gamedata` directory. */
   source: string;
   destination: string;
-  /**
-   * Base name of the volumes, which become `<name>.db0`, `<name>.db1` and so on.
-   *
-   * One host file name, never a path: it is joined to `destination`, and packing refuses anything that would
-   * resolve elsewhere.
-   */
+  /** Base name of the volumes, which become `<name>.db0`, `<name>.db1` and so on. */
   name: string;
   includeFiles: Array<string>;
   includeDirectories: Array<ArchivePackDirectory>;
@@ -55,26 +42,12 @@ export type ArchivePackConfig = {
    * than exceeding it, which is stricter than the target xrCompress tests before each file and routinely overshoots.
    */
   maxVolumeSize: number;
-  /**
-   * Let `max_volume_size` exceed `VOLUME_SIZE_MAX`, for an engine fork that raised `XRP_MAX_SIZE`.
-   *
-   * Defaulted rather than required, because this shape is also a configuration file on disk: one written before the
-   * field existed reads back as the safe answer instead of failing to parse.
-   */
+  /** Let `max_volume_size` exceed `VOLUME_SIZE_MAX`, for an engine fork that raised `XRP_MAX_SIZE`. */
   isWithOversizedVolumes?: boolean;
   volumeExtension: ArchiveVolumeExtension;
 };
 
-/**
- * One `[include_folders]` or `[exclude_folders]` entry.
- *
- * The section names keep the engine's spelling because they are the xrCompress dialect; everything this crate names
- * itself says `directory`.
- *
- * The boolean has a different meaning on each side, which is an xrCompress quirk worth stating: an
- * included directory recurses into subdirectories, while an excluded one covers everything below itself rather than
- * only the directory it names. Either way the path is matched on complete components, without case.
- */
+/** One `[include_folders]` or `[exclude_folders]` entry. */
 export type ArchivePackDirectory = {
   path: string;
   isRecursive: boolean;
