@@ -1,29 +1,28 @@
 use xrf_engine_target::XrayEngine;
 
 use crate::contract::render_sun_shafts::RenderSunShafts;
-use crate::contract::render_sun_shafts_quality::RenderSunShaftsQuality;
 use crate::lighting::render_lighting::RenderLighting;
 
+// Monolith's high quality by default, the steps held to their range.
 #[test]
-fn steps_each_quality_as_its_engine_does() {
-  let steps = |engine: XrayEngine| {
-    [
-      RenderSunShaftsQuality::Low,
-      RenderSunShaftsQuality::Medium,
-      RenderSunShaftsQuality::High,
-    ]
-    .map(|quality| quality.get_steps(engine))
+fn steps_as_asked_within_their_range() {
+  let steps = |steps: u32| {
+    RenderSunShafts {
+      steps,
+      ..RenderSunShafts::default()
+    }
+    .get_steps()
   };
 
-  assert_eq!(steps(XrayEngine::Vanilla), [20, 20, 40]);
-  assert_eq!(steps(XrayEngine::Extended), [15, 25, 30]);
+  assert_eq!(RenderSunShafts::default().get_steps(), 30);
+  assert_eq!((steps(0), steps(40), steps(1000)), (8, 40, 64));
 }
 
 // Monolith's `r2_sunshafts_min`, held to its console's bounds, lifts the mixed density on any engine; zero leaves it.
 #[test]
 fn lifts_the_density_by_its_floor() {
   let shafts: RenderSunShafts = RenderSunShafts {
-    quality: RenderSunShaftsQuality::High,
+    steps: RenderSunShafts::STEPS,
     minimum: 0.2,
   };
   let lit = |engine: XrayEngine, density: f32| RenderLighting {

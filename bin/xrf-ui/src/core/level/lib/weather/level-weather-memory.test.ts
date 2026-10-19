@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 
-import { ERenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_LEVEL_MANUAL_WEATHER, toLevelManualDescriptor } from "@/core/level/lib/weather/level-manual-weather";
 import {
   ILevelWeatherMemory,
@@ -25,7 +24,7 @@ const MEMORY: ILevelWeatherMemory = {
   manual: null,
   seed: null,
   source: ELevelWeatherSource.WEATHER,
-  sunShafts: { minimum: 0.2, quality: ERenderSunShaftsQuality.MEDIUM },
+  sunShafts: { minimum: 0.2, steps: 25 },
   time: 3_600,
 };
 
@@ -128,7 +127,7 @@ describe("level weather memory", () => {
     });
     expect(toLevelWeatherMemory({ ...MEMORY, sunShafts: { minimum: 2, quality: "ultra" }, version: 4 })).toEqual({
       ...MEMORY,
-      sunShafts: { minimum: 0.5, quality: ERenderSunShaftsQuality.HIGH },
+      sunShafts: { minimum: 0.5, steps: 30 },
     });
   });
 

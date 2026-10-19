@@ -1679,23 +1679,14 @@ export type RenderStaticReport = {
 
 /** How the sun's light shafts are drawn, beside the view's switch for them. */
 export type RenderSunShafts = {
-  quality: RenderSunShaftsQuality;
+  /**
+   * Steps along a ray `accum_volumetric_sun` takes; the engines' `r2_sunshafts_quality` steps OpenXRay's 20, 20 and
+   * 40, Monolith's 15, 25 and 30.
+   */
+  steps: number;
   /** `r2_sunshafts_min`, from zero to a half: the floor the keyframes' density is lifted from; zero draws it as it is. */
   minimum: number | null;
 };
-
-/**
- * How finely the sun's light shafts step along a ray: the engines' `r2_sun_shafts` and `r2_sunshafts_quality` short
- * of off, which the view's switch is.
- */
-export enum ERenderSunShaftsQuality {
-  LOW = "low",
-  MEDIUM = "medium",
-  HIGH = "high",
-}
-
-/** Every `ERenderSunShaftsQuality` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type RenderSunShaftsQuality = `${ERenderSunShaftsQuality}`;
 
 /** What colour a surface's albedo is drawn with. */
 export enum ERenderSurfaceColor {

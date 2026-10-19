@@ -6,7 +6,6 @@ import { autorun } from "@wirestate/mobx";
 import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine, EXrayEngineEvidence, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherCycleId } from "@/core/ipc/types/xrf-environment";
-import { ERenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
 import { EWorldWeatherPlay, EWorldWeatherTransition } from "@/core/ipc/types/xrf-world";
 import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
 import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level-sun-shafts-options";
@@ -231,7 +230,7 @@ describe("LevelWeatherService", () => {
     });
 
     const service: LevelWeatherService = createLevelWeatherService();
-    const shafts = { minimum: 0.3, quality: ERenderSunShaftsQuality.LOW };
+    const shafts = { minimum: 0.3, steps: 15 };
 
     await service.open(LEVEL_WEATHER_SELECTED);
     service.setSunShafts(shafts);

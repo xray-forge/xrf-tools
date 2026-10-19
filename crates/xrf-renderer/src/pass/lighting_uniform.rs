@@ -48,7 +48,7 @@ pub struct LightingUniform {
   /// The sun's sprite colour times how far it has faded in, then half its side as a share of the distance it stands
   /// at; zero where none is drawn.
   pub sun_sprite: Vec4,
-  /// The sun shafts' density, then the steps along a ray `accum_volumetric_sun` takes at the chosen quality; nothing
+  /// The sun shafts' density, then the steps along a ray `accum_volumetric_sun` takes as the settings ask; nothing
   /// where they are not drawn.
   pub shafts: Vec4,
   /// One while flora is lit as foliage, how much sunlight it passes through from behind, and how much of the sun's
@@ -134,7 +134,7 @@ impl LightingUniform {
       shafts: if options.show.is_sun_shafted && options.mode.is_lit {
         Vec4::new(
           lighting.get_sun_shafts(&options.features.sun_shafts),
-          options.features.sun_shafts.quality.get_steps(lighting.engine) as f32,
+          options.features.sun_shafts.get_steps() as f32,
           0.0,
           0.0,
         )

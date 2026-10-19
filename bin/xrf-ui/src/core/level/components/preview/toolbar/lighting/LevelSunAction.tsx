@@ -6,24 +6,25 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
-import { RenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
+import { ERenderVolumetricMode } from "@/core/ipc/types/xrf-renderer";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { LevelWeatherSunSelect } from "@/core/level/components/weather/LevelWeatherSunSelect";
+import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather, toLevelManualSun } from "@/core/level/lib/weather/level-manual-weather";
 import { LEVEL_MANUAL_WEATHER_SUN_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
 import {
   ILevelSunShaftsOptions,
   LEVEL_SUN_SHAFTS_MINIMUM_LIMITS,
-  LEVEL_SUN_SHAFTS_QUALITY_OPTIONS,
+  LEVEL_SUN_SHAFTS_STEPS_LIMITS,
 } from "@/core/level/lib/weather/level-sun-shafts-options";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
@@ -46,6 +47,10 @@ export function LevelSunAction({
   const loadService: LevelLoadService = useInjection(LevelLoadService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
   const manual: ILevelManualWeather = weatherService.shown;
+  const { settings, features } = useLevelRenderFeatures();
+  // The enhanced volumetrics draw the sun's shafts in the engine's march's place, which its steps then leave alone.
+  const isMarched: boolean =
+    toLevelModeFeature("volumetric", settings, features).mode !== ERenderVolumetricMode.ENHANCED;
   // The sun the open level was compiled against, or null where it names none.
   const sun: Nullable<LevelSunDescription> = loadService.level.value?.selected.value.sun ?? null;
   // The sun or moon the sky draws now, by its `suns.ltx` section, or null where it shows neither.
@@ -155,11 +160,18 @@ export function LevelSunAction({
           onEdit={weatherService.editManual}
         />
 
-        <RenderValueChoice
-          label={"Quality"}
-          options={LEVEL_SUN_SHAFTS_QUALITY_OPTIONS}
-          value={sunShafts.quality}
-          onChange={(quality: RenderSunShaftsQuality) => weatherService.setSunShafts({ ...sunShafts, quality })}
+        <RenderValueSlider
+          label={"Steps"}
+          hint={
+            isMarched
+              ? "Game setting: r2_sunshafts_quality steps 20, 20 and 40 (OpenXRay), 15, 25 and 30 (Monolith)"
+              : "The enhanced volumetrics draw the shafts in the engine's march's place"
+          }
+          value={sunShafts.steps}
+          isDisabled={!isMarched}
+          {...LEVEL_SUN_SHAFTS_STEPS_LIMITS}
+          format={(value: number) => value.toFixed(0)}
+          onChange={(steps: number) => weatherService.setSunShafts({ ...sunShafts, steps })}
         />
 
         <RenderValueSlider

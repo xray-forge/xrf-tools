@@ -4,7 +4,6 @@ import {
   ERenderAntialiasing,
   ERenderDebugView,
   ERenderScale,
-  ERenderSunShaftsQuality,
   ERenderSurfaceColor,
   RenderViewOptions,
 } from "@/core/ipc/types/xrf-renderer";
@@ -35,7 +34,7 @@ function toInputs(overrides: Partial<ILevelViewOptionsInputs> = {}): ILevelViewO
 
 describe("toLevelViewOptions", () => {
   it("steps the sunshafts as the sun's popover sets them", () => {
-    const sunShafts = { minimum: 0.25, quality: ERenderSunShaftsQuality.LOW };
+    const sunShafts = { minimum: 0.25, steps: 15 };
 
     expect(toLevelViewOptions(toInputs({ sunShafts })).features.sunShafts).toEqual(sunShafts);
   });

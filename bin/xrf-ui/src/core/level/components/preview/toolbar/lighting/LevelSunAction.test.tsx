@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
-import { ERenderSunShaftsQuality } from "@/core/ipc/types/xrf-renderer";
+import { ERenderVolumetricMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting/LevelSunAction";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
@@ -105,13 +105,22 @@ describe("LevelSunAction", () => {
     expect(rendered.weather.manual?.sun).toBe("moon_halo_full");
   });
 
-  it("sets the level's sun shafts' quality and the floor under their density", async () => {
+  it("sets the level's sun shafts' steps and the floor under their density", async () => {
     const rendered = await renderAction();
 
+    act(() => rendered.renderSettings.setRendererOverrides({ volumetric: { mode: ERenderVolumetricMode.ENHANCED } }));
     await openSettings(rendered);
-    await userEvent.click(rendered.getByRole("button", { name: "Low" }));
 
-    expect(rendered.weather.sunShafts).toEqual({ minimum: 0, quality: ERenderSunShaftsQuality.LOW });
+    expect(rendered.getByRole("slider", { name: "Steps" })).toBeDisabled();
+
+    act(() => rendered.renderSettings.setRendererOverrides({ volumetric: { mode: ERenderVolumetricMode.ENGINE } }));
+
+    expect(rendered.getByRole("slider", { name: "Steps" })).toHaveAttribute("aria-valuetext", "30");
+
+    rendered.getByRole("slider", { name: "Steps" }).focus();
+    await userEvent.keyboard("{ArrowLeft}");
+
+    expect(rendered.weather.sunShafts).toEqual({ minimum: 0, steps: 29 });
     expect(rendered.getByRole("slider", { name: "Minimum" })).toHaveAttribute("aria-valuemax", "0.5");
   });
 });
