@@ -8,8 +8,6 @@ pub const EXTRACT_PHASE_PREPARE: &str = "prepare";
 pub const EXTRACT_PHASE_WRITE: &str = "write";
 
 /// How one unpack or directory extraction should behave, beyond what it reads and where it writes.
-///
-/// Holds no width: the run is as wide as the pool its caller installed.
 #[derive(Default)]
 pub struct ArchiveExtractOptions {
   /// Where progress goes and where cancellation comes from.

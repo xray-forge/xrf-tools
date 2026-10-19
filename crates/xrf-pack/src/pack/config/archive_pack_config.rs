@@ -10,31 +10,15 @@ use crate::pack::config::archive_pack_header_rules::require_loadable_header;
 pub const VOLUME_SIZE_MAX: u64 = 1900 * xrf_utils::BYTES_PER_MEGABYTE;
 
 /// Smallest volume size a caller may ask for.
-///
-/// A floor on what a person requests, not on what the format allows: every volume repeats the header text and the
-/// directory rows of what it holds, so a cap of a few kilobytes spends most of a set restating itself, and the engine
-/// mounts each volume it produces. `ArchiveVolumeLayout` still refuses a cap the actual header and table cannot open
-/// within, which is the only limit derived from content, and a test setting `max_volume_size` directly stays free to
-/// exercise a split at any size.
 pub const VOLUME_SIZE_MIN: u64 = xrf_utils::BYTES_PER_MEGABYTE;
 
 /// Ceiling no configuration may pass, whatever it allows.
-///
-/// Nothing about the archive format stops here — this is a typo guard. A volume size is entered in megabytes, so one
-/// stray digit asks for a volume larger than the disk, and a run that only discovers it after walking the source has
-/// already cost what it took to get there. Far enough above `VOLUME_SIZE_MAX` that no fork raising `XRP_MAX_SIZE` has
-/// any reason to reach it, and low enough that a mistyped number lands past it.
 pub const VOLUME_SIZE_HARD_MAX: u64 = 32 * xrf_utils::BYTES_PER_GIGABYTE;
 
 /// Where a packed `gamedata` tree mounts, which is what nearly every archive is.
 pub const DEFAULT_ENTRY_POINT: &str = "$fs_root$\\gamedata\\";
 
 /// Header written unless a configuration supplies its own.
-///
-/// An archive without a header is not merely unmounted: unless it is named `xdb`, the loader assumes it
-/// is an encrypted Shadow of Chernobyl archive and decrypts it into nonsense
-/// (`xray-16/src/xrCore/LocatorAPI.cpp`). Defaulting to a mountable header makes the harmless case the
-/// easy one, and a configuration that names a different entry point still replaces it.
 pub fn default_header() -> String {
   format!("[header]\r\nauto_load = true\r\nentry_point = {DEFAULT_ENTRY_POINT}\r\n")
 }
@@ -69,13 +53,6 @@ impl ArchiveVolumeExtension {
 }
 
 /// One `[include_folders]` or `[exclude_folders]` entry.
-///
-/// The section names keep the engine's spelling because they are the xrCompress dialect; everything this crate names
-/// itself says `directory`.
-///
-/// The boolean has a different meaning on each side, which is an xrCompress quirk worth stating: an
-/// included directory recurses into subdirectories, while an excluded one covers everything below itself rather than
-/// only the directory it names. Either way the path is matched on complete components, without case.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -85,12 +62,6 @@ pub struct ArchivePackDirectory {
 }
 
 /// Everything needed to pack one archive volume set.
-///
-/// Built from defaults, then optionally from an xrCompress LTX, then from explicit parameters, so a
-/// command line and a form can layer over the same config file in the same order.
-///
-/// Also the wire contract the desktop editor holds: it is read from a configuration file, edited in
-/// place, packed, and written back, so all three surfaces speak one shape.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -99,9 +70,6 @@ pub struct ArchivePackConfig {
   pub source: PathBuf,
   pub destination: PathBuf,
   /// Base name of the volumes, which become `<name>.db0`, `<name>.db1` and so on.
-  ///
-  /// One host file name, never a path: it is joined to `destination`, and packing refuses anything that would
-  /// resolve elsewhere.
   pub name: String,
   pub include_files: Vec<String>,
   pub include_directories: Vec<ArchivePackDirectory>,
@@ -118,9 +86,6 @@ pub struct ArchivePackConfig {
   /// than exceeding it, which is stricter than the target xrCompress tests before each file and routinely overshoots.
   pub max_volume_size: u64,
   /// Let `max_volume_size` exceed `VOLUME_SIZE_MAX`, for an engine fork that raised `XRP_MAX_SIZE`.
-  ///
-  /// Defaulted rather than required, because this shape is also a configuration file on disk: one written before the
-  /// field existed reads back as the safe answer instead of failing to parse.
   #[serde(default)]
   pub is_with_oversized_volumes: bool,
   pub volume_extension: ArchiveVolumeExtension,
@@ -146,14 +111,6 @@ impl ArchivePackConfig {
   }
 
   /// Take an explicit volume size, refusing one outside the range the engine can mount.
-  ///
-  /// `SetMaxVolumeSize` warns and clamps to `XRP_MAX_SIZE` instead. Clamping is wrong for a request typed by a
-  /// person: they asked for volumes of one size, and a set silently split at another is not what they would have
-  /// asked for had they known. The number came from a command line or a form, so the answer belongs where it was
-  /// entered.
-  ///
-  /// The upper bound is the one [`Self::with_oversized_volumes`] lifts, so a caller wanting both applies that first.
-  /// In the other order this refuses, naming it — `validate_for_packing` is the gate that cannot be ordered wrong.
   ///
   /// # Errors
   ///
@@ -186,11 +143,6 @@ impl ArchivePackConfig {
   }
 
   /// Allow a volume size past `VOLUME_SIZE_MAX`, which only an engine fork that raised `XRP_MAX_SIZE` can open.
-  ///
-  /// The archive stays well-formed — nothing about the format stops at 1900 MB. What stops there is `xrCompress` and
-  /// the loader, so a set packed this way is not a S.T.A.L.K.E.R. archive any shipped build will mount, and the
-  /// failure surfaces at load time in the engine rather than here. Off by default, and no configuration file turns it
-  /// on by accident: `with_ltx` does not read it, because the xrCompress dialect has no such key.
   ///
   /// `VOLUME_SIZE_HARD_MAX` still stands: this lifts an engine limit, not the guard against a mistyped number.
   pub fn with_oversized_volumes(mut self, is_allowed: bool) -> Self {
@@ -240,10 +192,6 @@ impl ArchivePackConfig {
   }
 
   /// Name of a set that turned out to hold one volume, as `<base>.db`.
-  ///
-  /// The engine mounts by scanning for any extension starting with `db` or `xdb`, so the index is never
-  /// required. Dropping it for a lone volume is what the shipped games do, and it reads better than a
-  /// `0` that never has a sibling.
   pub fn single_volume_name(&self) -> String {
     format!("{}.{}", self.name, self.volume_extension.as_str())
   }
