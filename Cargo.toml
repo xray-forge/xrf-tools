@@ -165,16 +165,16 @@ xrf-xml = { path = "crates/xrf-xml" }
 # and ask for it; the whole family comes from the fork so one copy of each crate is built. Trunk still calls itself
 # 30.0.0, which the requirements above match.
 [patch.crates-io]
-naga = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
-naga-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
-wgpu = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
-wgpu-core = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
-wgpu-core-deps-linux-android-bsd = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
-wgpu-core-deps-windows = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
-wgpu-hal = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
-wgpu-naga-bridge = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
-wgpu-sync = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
-wgpu-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
+naga = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
+naga-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
+wgpu = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
+wgpu-core = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
+wgpu-core-deps-linux-android-bsd = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
+wgpu-core-deps-windows = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
+wgpu-hal = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
+wgpu-naga-bridge = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
+wgpu-sync = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
+wgpu-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
 
 # Size-optimised: level 3 measured 3.7% faster for 36-40% larger binaries.
 [profile.release]

@@ -3064,7 +3064,7 @@ checksum = "743fb55ba31b18fb1ecef6bdc9aa2743314978ac084044301a7eee33fb99a20d"
 [[package]]
 name = "naga"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=cb681b317adc4ee8f67913852d5c10c27ae56042#cb681b317adc4ee8f67913852d5c10c27ae56042"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
 dependencies = [
  "arrayvec",
  "bit-set 0.11.1",
@@ -3089,7 +3089,7 @@ dependencies = [
 [[package]]
 name = "naga-types"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=cb681b317adc4ee8f67913852d5c10c27ae56042#cb681b317adc4ee8f67913852d5c10c27ae56042"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
 dependencies = [
  "bytemuck",
  "hashbrown 0.17.1",
@@ -6604,7 +6604,7 @@ checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
 [[package]]
 name = "wgpu"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=cb681b317adc4ee8f67913852d5c10c27ae56042#cb681b317adc4ee8f67913852d5c10c27ae56042"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
 dependencies = [
  "arrayvec",
  "bitflags 2.13.2",
@@ -6631,7 +6631,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=cb681b317adc4ee8f67913852d5c10c27ae56042#cb681b317adc4ee8f67913852d5c10c27ae56042"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
 dependencies = [
  "arrayvec",
  "bit-set 0.11.1",
@@ -6663,7 +6663,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core-deps-linux-android-bsd"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=cb681b317adc4ee8f67913852d5c10c27ae56042#cb681b317adc4ee8f67913852d5c10c27ae56042"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
 dependencies = [
  "wgpu-hal",
 ]
@@ -6671,7 +6671,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core-deps-windows"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=cb681b317adc4ee8f67913852d5c10c27ae56042#cb681b317adc4ee8f67913852d5c10c27ae56042"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
 dependencies = [
  "wgpu-hal",
 ]
@@ -6679,7 +6679,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=cb681b317adc4ee8f67913852d5c10c27ae56042#cb681b317adc4ee8f67913852d5c10c27ae56042"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -6715,7 +6715,7 @@ dependencies = [
 [[package]]
 name = "wgpu-naga-bridge"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=cb681b317adc4ee8f67913852d5c10c27ae56042#cb681b317adc4ee8f67913852d5c10c27ae56042"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
 dependencies = [
  "naga",
  "wgpu-types",
@@ -6724,7 +6724,7 @@ dependencies = [
 [[package]]
 name = "wgpu-sync"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=cb681b317adc4ee8f67913852d5c10c27ae56042#cb681b317adc4ee8f67913852d5c10c27ae56042"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
 dependencies = [
  "cfg-if",
  "lock_api",
@@ -6737,7 +6737,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=cb681b317adc4ee8f67913852d5c10c27ae56042#cb681b317adc4ee8f67913852d5c10c27ae56042"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
 dependencies = [
  "bitflags 2.13.2",
  "bytemuck",
