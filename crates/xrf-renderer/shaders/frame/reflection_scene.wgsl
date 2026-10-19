@@ -61,9 +61,20 @@ fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroup
   let fog: f32 = path_fog(lighting, hit.distance);
   let met: vec3<f32> = mix(shown * min(1.0, RADIANCE_LIMIT / traced_luminance(shown)), lighting.fog_color.rgb, fog);
 
-  textureStore(traced_out, pixel, vec4<f32>(screen.rgb + met * (1.0 - screen.w),
-    select(hit.distance, request.screen_length, screen.w > 0.5)));
-  textureStore(ends_out, pixel, vec4<f32>(reflection_end_value(request.hit_end), 0.0, 0.0, 0.0));
+  let answer: vec4<f32> = vec4<f32>(screen.rgb + met * (1.0 - screen.w),
+    select(hit.distance, request.screen_length, screen.w > 0.5));
+  let mates: u32 = request.hit_end >> TRACE_REQUEST_MATES_SHIFT;
+  let quad: vec2<u32> = pixel & vec2<u32>(~1u);
+
+  textureStore(traced_out, pixel, answer);
+  textureStore(ends_out, pixel, vec4<f32>(reflection_end_value(request.hit_end & TRACE_REQUEST_REASON), 0.0, 0.0, 0.0));
+
+  // Under ray budgets, the pixels of its quad that take its answer.
+  for (var corner: u32 = 0u; corner < 4u; corner++) {
+    if ((mates & (1u << corner)) != 0u) {
+      textureStore(traced_out, quad + vec2<u32>(corner & 1u, corner >> 1u), answer);
+    }
+  }
 }
 
 // A water's ray answered: what it met tonemapped as the scene copy the water reads was, or where it met nothing the sky

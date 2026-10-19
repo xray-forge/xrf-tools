@@ -435,6 +435,10 @@ const TRACE_REQUEST_WAIT_MOST: u32 = 16u;
 // Set in a request's `hit_end` for the water's reflection: its hit written tonemapped, as the scene the water reads
 // was, its length the hit's distance along the view, and no reason, the water keeping no ends.
 const TRACE_REQUEST_WATER: u32 = 0x80000000u;
+// From this bit of a surface's request's `hit_end` up, the corners of its pixel's quad that take its answer under the
+// reflections' ray budgets, one bit a corner; below it, the reason its ends take.
+const TRACE_REQUEST_MATES_SHIFT: u32 = 8u;
+const TRACE_REQUEST_REASON: u32 = 0xffu;
 
 // The sky's share a water's request carries in its reason's low half (a half float), which the water's sky is lit by
 // where its ray meets nothing.

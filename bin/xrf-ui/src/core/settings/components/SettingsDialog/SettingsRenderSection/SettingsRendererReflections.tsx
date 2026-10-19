@@ -140,6 +140,14 @@ export function SettingsRendererReflections(): ReactElement {
           format={formatReflectionTraceRoughness}
           onChange={(traceRoughness: number) => onSet({ traceRoughness })}
         />
+
+        <CheckboxFormRow
+          label={"Ray budgets"}
+          description={"Traces fewer rays where a reflection is dim or rough, sharing them between neighbouring pixels."}
+          isChecked={reflections.isRayBudgeted}
+          isDisabled={!isEnhanced}
+          onChange={(isRayBudgeted: boolean) => onSet({ isRayBudgeted })}
+        />
       </div>
     </DetailSection>
   );

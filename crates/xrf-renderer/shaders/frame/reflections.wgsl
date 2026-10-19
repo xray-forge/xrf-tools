@@ -32,6 +32,9 @@
 // The sky's cubes, which a ray meeting nothing reflects.
 #import "generated/common/sky"
 
+// Where the trace writes under ray budgets, as a compute pass.
+#import "generated/frame/reflection_trace_out"
+
 // The share of what it reflects a pixel's specular shows at most, below which it is not traced.
 const TRACE_FLOOR: f32 = 0.02;
 // The roughness under which a surface is a mirror, whose ray is the same every frame and holds no history: under a
@@ -237,6 +240,8 @@ fn scene_ray(pixel: vec2<f32>, position: vec3<f32>, normal: vec3<f32>, direction
 var<private> scene_request: TraceRequest;
 var<private> is_scene_requested: bool = false;
 var<private> scene_texel: vec2<i32>;
+// The corners of the pixel's quad that take its answer under ray budgets, which its request carries to the scene pass.
+var<private> scene_mates: u32 = 0u;
 
 // Lists the pixel's ray for the scene pass with what the screen answered (`answer`'s colour weighed by its `share`,
 // its length) and the reason `hit_end` its ends take where the ray meets something; whether the list took it.
@@ -245,7 +250,7 @@ fn request_scene(answer: vec4<f32>, share: f32, hit_end: u32) -> bool {
 
   request.screen = trace_request_screen(answer.rgb, share);
   request.screen_length = answer.w;
-  request.hit_end = hit_end;
+  request.hit_end = hit_end | (scene_mates << TRACE_REQUEST_MATES_SHIFT);
 
   return list_trace_request(request);
 }
@@ -496,21 +501,47 @@ fn trace_targets(traced: vec4<f32>, end: u32) -> TraceTargets {
   return TraceTargets(traced, reflection_end_value(end));
 }
 
-@fragment
-fn fs_trace(in: FullscreenVarying) -> TraceTargets {
-  let pixel: vec2<f32> = floor(in.clip.xy);
+// A traced pixel's surface as its ray leaves it: the frame texel it stands for, its roughness, normal (a puddle's
+// block's), view space point (a puddle's water's) and the view's direction to it, how squarely it faces the view, and
+// the share of what it reflects its specular shows; or, where nothing is traced, the reason.
+struct TraceStart {
+  is_traced: bool,
+  end: u32,
+  texel: vec2<i32>,
+  roughness: f32,
+  normal: vec3<f32>,
+  position: vec3<f32>,
+  toward: vec3<f32>,
+  facing: f32,
+  shown: f32,
+  is_puddle: bool,
+};
+
+// A pixel nothing is traced at, for the reason `end`.
+fn untraced_start(end: u32) -> TraceStart {
+  var start: TraceStart;
+
+  start.is_traced = false;
+  start.end = end;
+
+  return start;
+}
+
+// The surface a traced pixel's ray leaves, or why nothing is traced there: the sky, a plant, a surface past the
+// roughness limit, or one combine would show too little of.
+fn trace_start(pixel: vec2<f32>) -> TraceStart {
   let texel: vec2<i32> = traced_texel(pixel);
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
   if (depth <= 0.0) {
-    return trace_targets(UNTRACED, END_UNTRACED);
+    return untraced_start(END_UNTRACED);
   }
 
   let material: vec4<f32> = textureLoad(material_target, texel, 0);
 
   // Grass and leaves reflect the environment as `hmodel` does, and are never traced.
   if (has_mark(material.a, MARK_PLANT)) {
-    return trace_targets(UNTRACED, END_UNTRACED);
+    return untraced_start(END_UNTRACED);
   }
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
@@ -519,12 +550,13 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
 
   // Past the limit the surface reflects the prefiltered sky alone, which combine reads for it.
   if (roughness > lighting.reflection_cut.y) {
-    return trace_targets(UNTRACED, END_ROUGH);
+    return untraced_start(END_ROUGH);
   }
 
+  let is_puddle: bool = wet.g > PUDDLE_LEAST;
   var normal: vec3<f32>;
 
-  if (wet.g > PUDDLE_LEAST && reflection.ratio > 1.0) {
+  if (is_puddle && reflection.ratio > 1.0) {
     normal = block_normal(pixel);
   } else {
     normal = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
@@ -541,9 +573,35 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
 
   // Traced only where combine would show enough of it.
   if (shown <= TRACE_FLOOR) {
-    return trace_targets(UNTRACED, END_UNTRACED);
+    return untraced_start(END_UNTRACED);
   }
 
+  return TraceStart(true, END_UNTRACED, texel, roughness, normal, position, toward, facing, shown, is_puddle);
+}
+
+@fragment
+fn fs_trace(in: FullscreenVarying) -> TraceTargets {
+  return trace_pixel(floor(in.clip.xy));
+}
+
+// What a traced pixel reflects: its ray walked over the nearest depth's pyramid, what it met lit, the sky where it met
+// nothing, the level's geometry asked to answer where the screen is less than sure.
+fn trace_pixel(pixel: vec2<f32>) -> TraceTargets {
+  let start: TraceStart = trace_start(pixel);
+
+  is_scene_requested = false;
+
+  if (!start.is_traced) {
+    return trace_targets(UNTRACED, start.end);
+  }
+
+  let texel: vec2<i32> = start.texel;
+  let roughness: f32 = start.roughness;
+  let normal: vec3<f32> = start.normal;
+  let position: vec3<f32> = start.position;
+  let toward: vec3<f32> = start.toward;
+  let facing: f32 = start.facing;
+  let shown: f32 = start.shown;
   let direction: vec3<f32> = reflected_direction(toward, normal, lobe_alpha(roughness), pixel_numbers(pixel));
   // What a ray meeting nothing reflects: the sky prefiltered part way to the surface's roughness along the ray's own
   // direction, occluded only as the screen's occlusion sees the surface's surroundings: the ray itself went clear to
@@ -643,6 +701,176 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   let met_end: u32 = walk.end | select(END_RELIT, 0u, met.w > 0.5);
 
   return answer_trace(vec4<f32>(sky, missed_length), vec4<f32>(met.rgb, length_met), confidence, met_end, met_end);
+}
+
+// Ray budgets: rays a quad of traced pixels takes of its four by what its pixels show, Battlefield V's tiles' and AMD
+// SSSR's quads': every pixel where a puddle or a bright, sharp reflection stands, whose detail its neighbours would
+// smear; one where its reflection is dim or rough, which the denoiser blurs across them anyway; two between. A pixel
+// left takes the answer of the traced pixel of its quad whose surface stands nearest its own and faces most alike, as
+// SSSR copies its rays to their neighbours, the scene pass's hit too (`TRACE_REQUEST_MATES_SHIFT`); the pixels traced
+// turn each frame, so each is walked in turn and the history gathers them. A pixel the last frame left noisy asks a
+// step more, as SSSR adds rays where its variance stayed high.
+//
+// The roughness under which a bright reflection is sharp, and over which any is blurred.
+const SHARP_ROUGHNESS: f32 = 0.1;
+const SHARED_ROUGHNESS: f32 = 0.3;
+// The cosine of the view to a surface under which it is seen at a grazing angle, its reflection stretched along the
+// view, and never shared four ways.
+const GRAZING_FACING: f32 = 0.25;
+// The variance the last frame's reflection kept over which a pixel asks a step more.
+const NOISY_VARIANCE: f32 = 0.05;
+// Traced pixels a side each workgroup of the budgeted trace takes, as quads one an invocation.
+const BUDGET_TILE: u32 = 16u;
+// The order a quad's pixels take its rays in, the diagonals first, so two rays fall across each other.
+const QUAD_ORDER: array<u32, 4> = array<u32, 4>(0u, 3u, 1u, 2u);
+
+// The rays of its quad's four a traced pixel asks for.
+fn ray_need(start: TraceStart, pixel: vec2<u32>) -> u32 {
+  var rays: u32 = 2u;
+
+  if (start.is_puddle || (start.roughness < SHARP_ROUGHNESS && start.shown >= DIM_SHARE)) {
+    rays = 4u;
+  } else if ((start.shown < DIM_SHARE || start.roughness > SHARED_ROUGHNESS) && start.facing >= GRAZING_FACING) {
+    rays = 1u;
+  }
+
+  if (rays < 4u && reflection.has_history > 0.5) {
+    let last: vec2<u32> = textureDimensions(history_radiance) - 1u;
+
+    if (textureLoad(history_radiance, min(pixel, last), 0).a > NOISY_VARIANCE) {
+      rays *= 2u;
+    }
+  }
+
+  return rays;
+}
+
+// How alike two traced pixels' surfaces stand for one to take the other's answer: their normals' cosine raised as the
+// upscale raises it, over how far apart they stand of the first's distance.
+fn surface_likeness(a: TraceStart, b: TraceStart) -> f32 {
+  let difference: f32 = abs(a.position.z - b.position.z) / max(-a.position.z * PREFILTER_PLANE, 1e-3);
+
+  return pow(saturate(dot(a.normal, b.normal)), UPSAMPLE_NORMAL_POWER) / (1.0 + difference * difference);
+}
+
+fn store_trace(pixel: vec2<u32>, written: TraceTargets) {
+  textureStore(traced_out, pixel, written.traced);
+  textureStore(ends_out, pixel, vec4<f32>(written.end, 0.0, 0.0, 0.0));
+}
+
+// Each listed ray: its pixel's place in the tile, four bits a side, then from the eighth bit the corners of its quad
+// that take its answer.
+var<workgroup> budget_rays: array<u32, 256>;
+var<workgroup> budget_count: atomic<u32>;
+
+// The trace under ray budgets: a tile of traced pixels a workgroup, each invocation one quad's. Each quad finds what
+// its pixels show and how many rays they ask, writes its untraced pixels, gives each pixel its budget leaves to the
+// most alike of those it traces, and lists those; then the workgroup's invocations walk the listed rays packed, so a
+// quad tracing one ray holds no lanes idle, and each writes its answer to its pixel and the pixels it stands for.
+@compute @workgroup_size(64)
+fn cs_trace_budgeted(@builtin(workgroup_id) group: vec3<u32>, @builtin(local_invocation_index) local: u32) {
+  if (local == 0u) {
+    atomicStore(&budget_count, 0u);
+  }
+
+  workgroupBarrier();
+
+  let size: vec2<u32> = textureDimensions(traced_out);
+  let tile: vec2<u32> = group.xy * BUDGET_TILE;
+  let place: vec2<u32> = vec2<u32>(local % (BUDGET_TILE / 2u), local / (BUDGET_TILE / 2u)) * 2u;
+  var starts: array<TraceStart, 4>;
+  var needs: array<u32, 4> = array<u32, 4>(0u, 0u, 0u, 0u);
+  var budget: u32 = 0u;
+
+  for (var corner: u32 = 0u; corner < 4u; corner++) {
+    let pixel: vec2<u32> = tile + place + vec2<u32>(corner & 1u, corner >> 1u);
+
+    starts[corner] = untraced_start(END_UNTRACED);
+
+    if (any(pixel >= size)) {
+      continue;
+    }
+
+    starts[corner] = trace_start(vec2<f32>(pixel));
+
+    if (!starts[corner].is_traced) {
+      store_trace(pixel, trace_targets(UNTRACED, starts[corner].end));
+      continue;
+    }
+
+    needs[corner] = ray_need(starts[corner], pixel);
+    budget = max(budget, needs[corner]);
+  }
+
+  // The quad's first pixel to trace turns each frame from a place its noise picks; two rays take a diagonal.
+  let noise_size: vec2<u32> = textureDimensions(blue_noise);
+  let picked: u32 = u32(textureLoad(blue_noise, ((tile + place) / 2u) % noise_size, 0).r * 4.0);
+  let turn: u32 = (reflection.frame + picked) % 4u;
+  let first: u32 = select(turn, turn & 2u, budget == 2u);
+  var is_traced: array<bool, 4> = array<bool, 4>(false, false, false, false);
+  var taken: u32 = 0u;
+
+  for (var step: u32 = 0u; step < 4u; step++) {
+    let corner: u32 = QUAD_ORDER[(first + step) % 4u];
+
+    if (needs[corner] > 0u && taken < budget) {
+      is_traced[corner] = true;
+      taken++;
+    }
+  }
+
+  var mates: array<u32, 4> = array<u32, 4>(0u, 0u, 0u, 0u);
+
+  for (var corner: u32 = 0u; corner < 4u; corner++) {
+    if (needs[corner] == 0u || is_traced[corner]) {
+      continue;
+    }
+
+    var most: f32 = -1.0;
+    var nearest: u32 = 0u;
+
+    for (var other: u32 = 0u; other < 4u; other++) {
+      let likeness: f32 = surface_likeness(starts[corner], starts[other]);
+
+      if (is_traced[other] && likeness > most) {
+        most = likeness;
+        nearest = other;
+      }
+    }
+
+    mates[nearest] |= 1u << corner;
+  }
+
+  for (var corner: u32 = 0u; corner < 4u; corner++) {
+    if (is_traced[corner]) {
+      let at: vec2<u32> = place + vec2<u32>(corner & 1u, corner >> 1u);
+
+      budget_rays[atomicAdd(&budget_count, 1u)] = at.x | (at.y << 4u) | (mates[corner] << 8u);
+    }
+  }
+
+  workgroupBarrier();
+
+  let count: u32 = atomicLoad(&budget_count);
+
+  for (var index: u32 = local; index < count; index += 64u) {
+    let packed: u32 = budget_rays[index];
+    let pixel: vec2<u32> = tile + vec2<u32>(packed & 15u, (packed >> 4u) & 15u);
+    let quad: vec2<u32> = pixel & vec2<u32>(~1u);
+
+    scene_mates = packed >> 8u;
+
+    let written: TraceTargets = trace_pixel(vec2<f32>(pixel));
+
+    store_trace(pixel, written);
+
+    for (var corner: u32 = 0u; corner < 4u; corner++) {
+      if ((scene_mates & (1u << corner)) != 0u) {
+        store_trace(quad + vec2<u32>(corner & 1u, corner >> 1u),
+          TraceTargets(written.traced, reflection_end_value(END_SHARED)));
+      }
+    }
+  }
 }
 
 // A traced pixel's surface: its world normal, roughness and distance along the view, as the history keeps them.

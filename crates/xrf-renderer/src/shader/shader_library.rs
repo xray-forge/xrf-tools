@@ -397,6 +397,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/generated/frame/reflection_scene.wgsl"),
   ),
   (
+    "generated/frame/reflection_trace_out",
+    include_str!("../../shaders/generated/frame/reflection_trace_out.wgsl"),
+  ),
+  (
     "generated/frame/indirect_trace",
     include_str!("../../shaders/generated/frame/indirect_trace.wgsl"),
   ),

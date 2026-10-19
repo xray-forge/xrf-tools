@@ -174,6 +174,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     isTraced: FLAG,
     traceQuality: toChoice(ERenderReflectionTraceQuality),
     traceRoughness: toNumber(0.2, 1),
+    isRayBudgeted: FLAG,
   },
   lights: {
     isEnabled: FLAG,

@@ -1,11 +1,12 @@
 use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, RasterContext};
 
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::reflection_parameters::ReflectionParameters;
 use crate::pass::reflection_stage::ReflectionStage;
+use crate::pass::reflection_trace_out_parameters::ReflectionTraceOutParameters;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_request_parameters::TraceRequestParameters;
 use crate::pass::view_binding::ViewBinding;
@@ -22,6 +23,8 @@ pub struct ReflectionPass {
   sky_layout: wgpu::BindGroupLayout,
   /// The list the trace leaves rays to the scene pass in.
   request_layout: wgpu::BindGroupLayout,
+  /// Where the trace writes under ray budgets.
+  out_layout: wgpu::BindGroupLayout,
   pipelines: ReflectionPipelines,
   /// What a stage reads in place of a history or a stage before it where there is none: one texel of nothing.
   empty: wgpu::TextureView,
@@ -34,10 +37,11 @@ pub struct ReflectionPass {
   generation: u64,
 }
 
-/// The trace, the denoiser's four stages (reproject, average, prefilter and resolve), the upscale to full size, and the
-/// guide ray reconstruction reads.
+/// The trace, under ray budgets too, the denoiser's four stages (reproject, average, prefilter and resolve), the
+/// upscale to full size, and the guide ray reconstruction reads.
 struct ReflectionPipelines {
   trace: wgpu::RenderPipeline,
+  trace_budgeted: wgpu::ComputePipeline,
   reproject: wgpu::RenderPipeline,
   average: wgpu::RenderPipeline,
   prefilter: wgpu::RenderPipeline,
@@ -61,6 +65,8 @@ impl ReflectionPass {
   pub const PREFILTERED: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// Traced pixels a side each texel of the average stands for.
   pub const AVERAGE_RATIO: u32 = 8;
+  /// Traced pixels a side each workgroup of the budgeted trace takes (`BUDGET_TILE`).
+  pub const BUDGET_TILE: u32 = 16;
   /// # Errors
   ///
   /// Returns an error when a shader does not compose or compile.
@@ -74,6 +80,7 @@ impl ReflectionPass {
 
     let layout: wgpu::BindGroupLayout = ReflectionParameters::create_layout(device);
     let request_layout: wgpu::BindGroupLayout = TraceRequestParameters::create_layout(device);
+    let out_layout: wgpu::BindGroupLayout = ReflectionTraceOutParameters::create_layout(device);
     let texel = |label: &str, format: wgpu::TextureFormat, bytes: &[u8]| -> wgpu::TextureView {
       device
         .create_texture_with_data(
@@ -99,10 +106,15 @@ impl ReflectionPass {
     };
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, (view_layout, &layout, sky_layout), &request_layout)?,
+      pipelines: Self::create_pipelines(
+        source,
+        (view_layout, &layout, sky_layout),
+        (&request_layout, &out_layout),
+      )?,
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       request_layout,
+      out_layout,
       // Half floats: nothing, and nothing with an alpha of minus one; then no ray.
       empty: texel("reflections empty", Self::TRACED, bytemuck::cast_slice(&[0u16; 4])),
       untraced: texel(
@@ -131,7 +143,7 @@ impl ReflectionPass {
       match Self::create_pipelines(
         source,
         (&self.view_layout, &self.layout, &self.sky_layout),
-        &self.request_layout,
+        (&self.request_layout, &self.out_layout),
       ) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Reflections rejected, tracing with the last ones: {error}"),
@@ -179,6 +191,28 @@ impl ReflectionPass {
     pass.draw(0..3, 0..1);
   }
 
+  /// Traces under ray budgets into `out`'s targets, `size` traced pixels across, listing in `requests` the rays it
+  /// leaves to the scene pass.
+  pub fn record_trace_budgeted(
+    &self,
+    context: &mut ComputeContext<'_>,
+    view: &ViewBinding,
+    (parameters, sky): (&ReflectionParameters<'_>, &SkyParameters<'_>),
+    (requests, out): (&TraceRequestParameters, &ReflectionTraceOutParameters),
+    (width, height): (u32, u32),
+  ) {
+    context.bind(parameters);
+    context.bind(sky);
+    context.bind(requests);
+    context.bind(out);
+
+    let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
+
+    pass.set_pipeline(&self.pipelines.trace_budgeted);
+    pass.set_bind_group(0, &view.bind_group, &[]);
+    pass.dispatch_workgroups(width.div_ceil(Self::BUDGET_TILE), height.div_ceil(Self::BUDGET_TILE), 1);
+  }
+
   /// Draws one of the denoiser's stages into the targets the pass draws into.
   pub fn record_stage(
     &self,
@@ -217,10 +251,17 @@ impl ReflectionPass {
   fn create_pipelines(
     source: PipelineSource<'_>,
     (view_layout, layout, sky_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
-    request_layout: &wgpu::BindGroupLayout,
+    (request_layout, out_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
   ) -> XrfResult<ReflectionPipelines> {
     let traced_layout: [Option<&wgpu::BindGroupLayout>; 4] =
       [Some(view_layout), Some(layout), Some(sky_layout), Some(request_layout)];
+    let budgeted_layout: [Option<&wgpu::BindGroupLayout>; 5] = [
+      Some(view_layout),
+      Some(layout),
+      Some(sky_layout),
+      Some(request_layout),
+      Some(out_layout),
+    ];
     let stage_layout: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
     let create = |layouts: &[Option<&wgpu::BindGroupLayout>],
                   fragment: &'static str,
@@ -233,6 +274,10 @@ impl ReflectionPass {
 
     Ok(ReflectionPipelines {
       trace: create(&traced_layout, "fs_trace", &[Self::TRACED, Self::ENDS])?,
+      trace_budgeted: source.get_compute_pipeline(
+        &ComputePipelineDescription::new("reflection trace budgeted", "frame/reflections", "cs_trace_budgeted")
+          .with_bind_group_layouts(&budgeted_layout),
+      )?,
       reproject: create(
         &stage_layout,
         ReflectionStage::Reproject.get_entry(),

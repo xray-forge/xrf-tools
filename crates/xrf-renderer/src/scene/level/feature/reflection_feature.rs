@@ -18,6 +18,7 @@ use crate::pass::reflection_pass::ReflectionPass;
 use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::pass::reflection_stage::ReflectionStage;
 use crate::pass::reflection_trace::ReflectionTrace;
+use crate::pass::reflection_trace_out_parameters::ReflectionTraceOutParameters;
 use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_parameters::TraceParameters;
@@ -272,18 +273,38 @@ impl ReflectionFeature {
         .add_reset(graph, bindings, ("reflection trace requests clear", &history.requests));
     let requests: TraceRequestParameters = listed.to_listed();
 
-    graph
-      .add_raster_pass(ReflectionTrace::TRACE_PASS)
-      .parameters(&parameters)
-      .parameters(&sky)
-      .parameters(&requests)
-      .color(clear(traced))
-      .color(clear(ends))
-      .record(move |context| {
-        passes
-          .reflections
-          .record_trace(context, view, (&parameters, &sky), &requests)
-      });
+    if self.settings.is_ray_budgeted {
+      let out: ReflectionTraceOutParameters = ReflectionTraceOutParameters {
+        traced_out: traced,
+        ends_out: ends,
+      };
+      let size: (u32, u32) = history.size;
+
+      graph
+        .add_compute_pass(ReflectionTrace::TRACE_PASS)
+        .parameters(&parameters)
+        .parameters(&sky)
+        .parameters(&requests)
+        .parameters(&out)
+        .record(move |context| {
+          passes
+            .reflections
+            .record_trace_budgeted(context, view, (&parameters, &sky), (&requests, &out), size)
+        });
+    } else {
+      graph
+        .add_raster_pass(ReflectionTrace::TRACE_PASS)
+        .parameters(&parameters)
+        .parameters(&sky)
+        .parameters(&requests)
+        .color(clear(traced))
+        .color(clear(ends))
+        .record(move |context| {
+          passes
+            .reflections
+            .record_trace(context, view, (&parameters, &sky), &requests)
+        });
+    }
 
     // The rays the trace left, traced against the level's geometry.
     if let Some(scene_trace) = scene_trace {

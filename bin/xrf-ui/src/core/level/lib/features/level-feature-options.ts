@@ -231,6 +231,7 @@ const LEVEL_GROUP_KEYS: {
     skyGain: true,
     traceQuality: true,
     traceRoughness: true,
+    isRayBudgeted: true,
   },
   volumetric: { mode: true, intensity: true, anisotropy: true, distance: true },
 };

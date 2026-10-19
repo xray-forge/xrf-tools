@@ -86,6 +86,7 @@ use crate::pass::rain_uniform::RainUniform;
 use crate::pass::ray_guides_parameters::RayGuidesParameters;
 use crate::pass::reflection_parameters::ReflectionParameters;
 use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
+use crate::pass::reflection_trace_out_parameters::ReflectionTraceOutParameters;
 use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::shadow_uniform::ShadowUniform;
@@ -179,6 +180,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut vbao: ShaderBindings = ShaderBindings::new();
   let mut reflections: ShaderBindings = ShaderBindings::new();
   let mut reflection_scene: ShaderBindings = ShaderBindings::new();
+  let mut reflection_trace_out: ShaderBindings = ShaderBindings::new();
   let mut indirect_trace: ShaderBindings = ShaderBindings::new();
   let mut trace_requests: ShaderBindings = ShaderBindings::new();
   let mut grass_colours: ShaderBindings = ShaderBindings::new();
@@ -310,6 +312,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   trace_requests.add::<TraceRequestParameters>()?;
   grass_colours.add::<GrassColourParameters>()?;
   reflection_scene.add::<ReflectionSceneParameters<'_>>()?;
+  reflection_trace_out.add::<ReflectionTraceOutParameters>()?;
   indirect_trace.add::<IndirectTraceParameters<'_>>()?;
   combine.add::<CombineParameters<'_>>()?;
   composited.add::<CompositedParameters<'_>>()?;
@@ -479,6 +482,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/reflection_scene",
       format!("{STRUCTS_IMPORT}{}", reflection_scene.to_wgsl()),
+    ),
+    (
+      "generated/frame/reflection_trace_out",
+      format!("{STRUCTS_IMPORT}{}", reflection_trace_out.to_wgsl()),
     ),
     (
       "generated/frame/indirect_trace",

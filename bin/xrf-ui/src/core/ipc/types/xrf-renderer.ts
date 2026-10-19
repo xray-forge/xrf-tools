@@ -1491,6 +1491,12 @@ export type RenderReflectionSettings = {
    * fading into it over the last third: 0.6 by default, 0.4 as Unreal's Lumen traces.
    */
   traceRoughness: number | null;
+  /**
+   * Whether each quad of traced pixels takes rays by what it shows, as Battlefield V's and AMD's SSSR's budgets do:
+   * every pixel where a bright, sharp reflection or a puddle stands, two where it is dim or blurred, one where both or
+   * rough, the rest filled from their neighbours; off, every traced pixel walks its own ray.
+   */
+  isRayBudgeted: boolean;
 };
 
 /**

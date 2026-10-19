@@ -150,6 +150,7 @@ pub(crate) mod reflection_pass;
 pub(crate) mod reflection_scene_parameters;
 pub(crate) mod reflection_stage;
 pub(crate) mod reflection_trace;
+pub(crate) mod reflection_trace_out_parameters;
 pub(crate) mod reflection_uniform;
 pub(crate) mod rtao_pass;
 pub(crate) mod rtao_permutation;

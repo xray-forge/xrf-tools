@@ -141,6 +141,7 @@ describe("level feature options", () => {
       skyGain: 2,
       traceQuality: "high",
       traceRoughness: 0.4,
+      isRayBudgeted: true,
     };
 
     expect(toLevelFeatureOptions({ reflections }).reflections).toEqual(reflections);
