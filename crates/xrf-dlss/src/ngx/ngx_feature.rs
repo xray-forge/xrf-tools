@@ -1,6 +1,7 @@
 use std::ptr;
 use std::sync::{Arc, Mutex};
 
+use ash::vk;
 #[cfg(windows)]
 use wgpu::hal::api::Dx12;
 use wgpu::hal::api::Vulkan;
@@ -73,10 +74,30 @@ impl NgxFeature {
 
     sdk.release_finished();
 
+    // Taken before the encoder's hal guard: two at once are a recursive read lock.
+    let vulkan: Option<ash::Device> = match self.api {
+      NgxApi::Vulkan => unsafe { self.device.as_hal::<Vulkan>() }.map(|device| device.raw_device().clone()),
+      #[cfg(windows)]
+      NgxApi::D3d12 => None,
+    };
     let mut commands: wgpu::CommandEncoder = self
       .device
       .create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("dlss") });
-    let result: NVSDK_NGX_Result = record(self.api, &mut commands, |list| evaluate(list, &sdk, self.handle))??;
+    let result: NVSDK_NGX_Result = record(self.api, &mut commands, |list| {
+      // NGX clears and writes its output with transfer and compute commands that wgpu's barriers around it, made for
+      // the states its inputs and output are declared in, do not order.
+      if let (Some(device), NgxCommands::Vulkan(buffer)) = (&vulkan, list) {
+        unsafe { record_vulkan_barrier(device, buffer) };
+      }
+
+      let result: XrfResult<NVSDK_NGX_Result> = evaluate(list, &sdk, self.handle);
+
+      if let (Some(device), NgxCommands::Vulkan(buffer)) = (&vulkan, list) {
+        unsafe { record_vulkan_barrier(device, buffer) };
+      }
+
+      result
+    })??;
 
     check_ngx(result, what)?;
 
@@ -89,6 +110,29 @@ impl Drop for NgxFeature {
   /// than waiting for the device here.
   fn drop(&mut self) {
     NgxSdkGuard::lock(&self.sdk).retire(NgxRetiredFeature::new(self.handle, &self.queue));
+  }
+}
+
+/// Orders every command recorded into `buffer` before against every command after, layouts unchanged.
+///
+/// # Safety
+///
+/// `buffer` is recording on `device`, outside a render pass.
+unsafe fn record_vulkan_barrier(device: &ash::Device, buffer: vk::CommandBuffer) {
+  let barrier: vk::MemoryBarrier<'_> = vk::MemoryBarrier::default()
+    .src_access_mask(vk::AccessFlags::MEMORY_WRITE)
+    .dst_access_mask(vk::AccessFlags::MEMORY_READ | vk::AccessFlags::MEMORY_WRITE);
+
+  unsafe {
+    device.cmd_pipeline_barrier(
+      buffer,
+      vk::PipelineStageFlags::ALL_COMMANDS,
+      vk::PipelineStageFlags::ALL_COMMANDS,
+      vk::DependencyFlags::empty(),
+      &[barrier],
+      &[],
+      &[],
+    );
   }
 }
 
