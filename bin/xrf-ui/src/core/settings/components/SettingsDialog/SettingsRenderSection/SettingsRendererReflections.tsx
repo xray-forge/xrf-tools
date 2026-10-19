@@ -12,6 +12,7 @@ import {
   formatReflectionDistance,
   formatReflectionIntensity,
   formatReflectionSkyGain,
+  formatReflectionTraceRoughness,
   RENDER_REFLECTION_LIMITS,
   RENDER_REFLECTION_PROBE_OPTIONS,
   RENDER_REFLECTION_QUALITY_OPTIONS,
@@ -128,6 +129,16 @@ export function SettingsRendererReflections(): ReactElement {
           value={reflections.traceQuality}
           isDisabled={!isEnhanced || !reflections.isTraced}
           onChange={(traceQuality: RenderReflectionTraceQuality) => onSet({ traceQuality })}
+        />
+
+        <SliderFormRow
+          label={"Trace roughness"}
+          description={"How rough a surface may be and still be traced; rougher ones reflect the sky. 0.4 traces less."}
+          value={reflections.traceRoughness}
+          {...RENDER_REFLECTION_LIMITS.traceRoughness}
+          isDisabled={!isEnhanced}
+          format={formatReflectionTraceRoughness}
+          onChange={(traceRoughness: number) => onSet({ traceRoughness })}
         />
       </div>
     </DetailSection>

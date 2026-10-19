@@ -20,6 +20,7 @@ export const RENDER_REFLECTION_LIMITS = {
   intensity: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.intensity, 0.05),
   reach: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.reach, 25),
   skyGain: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.skyGain, 0.05),
+  traceRoughness: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.traceRoughness, 0.05),
 } as const;
 
 const RENDER_REFLECTION_MODE_DESCRIPTIONS: Readonly<Record<RenderReflectionMode, string>> = {
@@ -99,4 +100,9 @@ export function formatReflectionDistance(distance: number): string {
 /** @returns How far the sky's highlights are expanded as their light. */
 export function formatReflectionSkyGain(gain: number): string {
   return `${formatNumber(gain, 2)}×`;
+}
+
+/** @returns The roughness past which a surface is not traced. */
+export function formatReflectionTraceRoughness(roughness: number): string {
+  return formatNumber(roughness, 2);
 }

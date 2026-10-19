@@ -220,11 +220,6 @@ fn ray_walk(pyramid: texture_2d<f32>, origin: vec3<f32>, direction: vec3<f32>, c
 // paint under Blinn-Phong never turn metal, a rough wall tagged a fifth metal stays a dielectric.
 const METAL_GLOSS: vec2<f32> = vec2<f32>(0.6, 0.9);
 const METAL_TAGGED: vec2<f32> = vec2<f32>(0.45, 0.55);
-// The roughness past which a surface is not traced and reflects the prefiltered sky alone; and the roughness over
-// which combine fades from the traced reflection to that sky, so a texel near the cut blends instead of flipping as
-// its wet gloss crosses it.
-const TRACED_ROUGHNESS_LIMIT: f32 = 0.6;
-const TRACED_ROUGHNESS_FADE: vec2<f32> = vec2<f32>(0.4, 0.6);
 
 // The variance a G-buffer normal has across a pixel, as a slope's: its differences to the next texel each way,
 // scaled by one over pi (an independent take on Kaplanyan's 2016 stable specular highlights, his two sigma squared)

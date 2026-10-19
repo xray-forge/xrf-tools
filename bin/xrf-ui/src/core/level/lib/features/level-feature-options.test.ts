@@ -140,6 +140,7 @@ describe("level feature options", () => {
       reach: 300,
       skyGain: 2,
       traceQuality: "high",
+      traceRoughness: 0.4,
     };
 
     expect(toLevelFeatureOptions({ reflections }).reflections).toEqual(reflections);

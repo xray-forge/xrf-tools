@@ -181,7 +181,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     // The full-size history the reflections were resolved into; a texel of nothing where none is traced.
     let traced: vec4<f32> = load_frame_target(reflections, texel);
     // The traced reflection where there is one, faded into the prefiltered sky towards the trace's roughness cut.
-    let kept: f32 = select(0.0, smoothstep(TRACED_ROUGHNESS_FADE.y, TRACED_ROUGHNESS_FADE.x, roughness),
+    let kept: f32 = select(0.0, smoothstep(lighting.reflection_cut.y, lighting.reflection_cut.x, roughness),
       traced.a >= 0.0);
     var radiance: vec3<f32> = max(traced.rgb, vec3<f32>(0.0));
 

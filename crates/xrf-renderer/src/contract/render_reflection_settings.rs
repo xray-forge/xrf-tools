@@ -33,6 +33,9 @@ pub struct RenderReflectionSettings {
   /// its hit lit, in place of the sky; on a device without ray queries it falls back to the sky as before.
   pub is_traced: bool,
   pub trace_quality: RenderReflectionTraceQuality,
+  /// The roughness past which a surface is not traced and reflects the prefiltered sky alone, the traced reflection
+  /// fading into it over the last third: 0.6 by default, 0.4 as Unreal's Lumen traces.
+  pub trace_roughness: f32,
 }
 
 impl Default for RenderReflectionSettings {
@@ -49,11 +52,15 @@ impl Default for RenderReflectionSettings {
       is_grass_reflected: false,
       is_traced: false,
       trace_quality: RenderReflectionTraceQuality::High,
+      trace_roughness: Self::TRACE_ROUGHNESS,
     }
   }
 }
 
 impl RenderReflectionSettings {
+  /// The roughness past which a surface is not traced, by default.
+  pub const TRACE_ROUGHNESS: f32 = 0.6;
+
   /// Whether it is traced at all: enhanced, and its intensity and distance above none.
   pub fn is_drawn(&self) -> bool {
     self.mode == RenderReflectionMode::Enhanced && self.intensity > 0.0 && self.distance > 0.0

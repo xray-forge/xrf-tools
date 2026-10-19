@@ -65,6 +65,9 @@ pub struct LightingUniform {
   /// The fog's share past which the enhanced fog fades fogged surfaces into the sky behind them, then one where it
   /// does; nothing where they fade by the fog's square, as the engine fades them.
   pub sky_fade: Vec4,
+  /// The roughness from which a traced reflection fades into the prefiltered sky, and past which a surface is not
+  /// traced.
+  pub reflection_cut: Vec4,
 }
 
 impl LightingUniform {
@@ -168,6 +171,11 @@ impl LightingUniform {
         Vec4::new(height_fog.sky_fade.min(0.99), 0.0, 0.0, 1.0)
       } else {
         Vec4::ZERO
+      },
+      reflection_cut: {
+        let limit: f32 = options.features.reflections.trace_roughness.clamp(0.05, 1.0);
+
+        Vec4::new(limit * (2.0 / 3.0), limit, 0.0, 0.0)
       },
     }
   }

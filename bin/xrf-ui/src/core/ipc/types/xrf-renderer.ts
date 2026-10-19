@@ -1459,6 +1459,11 @@ export type RenderReflectionSettings = {
    */
   isTraced: boolean;
   traceQuality: RenderReflectionTraceQuality;
+  /**
+   * The roughness past which a surface is not traced and reflects the prefiltered sky alone, the traced reflection
+   * fading into it over the last third: 0.6 by default, 0.4 as Unreal's Lumen traces.
+   */
+  traceRoughness: number | null;
 };
 
 /**

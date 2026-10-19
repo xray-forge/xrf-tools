@@ -167,6 +167,7 @@ export const DEFAULT_RENDER_REFLECTION_SETTINGS: TRenderReflectionSettings = {
   isGrassReflected: false,
   isTraced: false,
   traceQuality: ERenderReflectionTraceQuality.HIGH,
+  traceRoughness: 0.6,
 };
 
 /** The engine's own: every spawned light, and none of the level file's; no shafts until they cost less. */

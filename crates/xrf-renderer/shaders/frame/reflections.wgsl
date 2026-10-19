@@ -518,7 +518,7 @@ fn fs_trace(in: FullscreenVarying) -> TraceTargets {
   let roughness: f32 = traced_roughness(albedo.a, wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
 
   // Past the limit the surface reflects the prefiltered sky alone, which combine reads for it.
-  if (roughness > TRACED_ROUGHNESS_LIMIT) {
+  if (roughness > lighting.reflection_cut.y) {
     return trace_targets(UNTRACED, END_ROUGH);
   }
 
@@ -961,7 +961,7 @@ fn fs_prefilter(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let spread: f32 = textureLoad(variance, vec2<i32>(pixel), 0).x;
   let surface: TracedSurface = guided_surface(pixel);
 
-  if (spread <= 0.0 || surface.roughness < 1e-4 || surface.roughness > TRACED_ROUGHNESS_LIMIT) {
+  if (spread <= 0.0 || surface.roughness < 1e-4 || surface.roughness > lighting.reflection_cut.y) {
     return vec4<f32>(centre.rgb, max(spread, 0.0));
   }
 

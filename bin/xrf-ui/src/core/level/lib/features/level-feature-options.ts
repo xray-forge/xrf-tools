@@ -218,6 +218,7 @@ const LEVEL_GROUP_KEYS: {
     reach: true,
     skyGain: true,
     traceQuality: true,
+    traceRoughness: true,
   },
   volumetric: { mode: true, intensity: true, anisotropy: true, distance: true },
 };

@@ -58,6 +58,7 @@ struct Lighting {
   reflections: vec4<f32>,
   height_fog: vec4<f32>,
   sky_fade: vec4<f32>,
+  reflection_cut: vec4<f32>,
 }
 
 struct TraceSwaySlot {
