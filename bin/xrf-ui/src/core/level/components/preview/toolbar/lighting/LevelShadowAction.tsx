@@ -22,6 +22,8 @@ import {
   formatCascadeBlend,
   formatShadowBias,
   formatShadowFilter,
+  formatShadowSwayCascades,
+  formatShadowSwayRate,
   RENDER_SHADOW_CASCADE_OPTIONS,
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTION_OPTIONS,
@@ -33,8 +35,9 @@ import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
- * Whether the sun casts shadows in this view, in how many cascades, how fine and how soft, and whether contact
- * shadows found in the frame's depth darken what the cascades are too coarse to.
+ * Whether the sun casts shadows in this view, in how many cascades, how fine and how soft, how often and how far out
+ * the cascades redraw swaying trees, and whether contact shadows found in the frame's depth darken what the cascades
+ * are too coarse to.
  */
 export function LevelShadowAction({
   "data-testid": dataTestId = "level-shadow-action",
@@ -111,6 +114,22 @@ export function LevelShadowAction({
         {...RENDER_SHADOW_LIMITS.blend}
         format={formatCascadeBlend}
         onChange={(blend: number) => set({ blend })}
+      />
+
+      <RenderValueSlider
+        label={"Sway updates"}
+        value={shadows.swayRate}
+        {...RENDER_SHADOW_LIMITS.swayRate}
+        format={formatShadowSwayRate}
+        onChange={(swayRate: number) => set({ swayRate })}
+      />
+
+      <RenderValueSlider
+        label={"Swaying cascades"}
+        value={shadows.swayCascades}
+        {...RENDER_SHADOW_LIMITS.swayCascades}
+        format={formatShadowSwayCascades}
+        onChange={(swayCascades: number) => set({ swayCascades })}
       />
 
       <RenderValueChoice

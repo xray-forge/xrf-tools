@@ -30,7 +30,7 @@ import {
 /** The shadow settings a level view may set for itself. */
 export type TLevelShadowOptions = Pick<
   TRenderShadowSettings,
-  "bias" | "blend" | "cascades" | "contact" | "filter" | "resolution"
+  "bias" | "blend" | "cascades" | "contact" | "filter" | "resolution" | "swayCascades" | "swayRate"
 >;
 
 /** The ambient occlusion settings a level view may set for itself. */
@@ -176,7 +176,16 @@ const LEVEL_GROUP_KEYS: {
     slopeLimit: true,
   },
   lights: { isLevelLights: true, isShadowed: true, isVolumetric: true, shadowFilter: true },
-  shadows: { bias: true, blend: true, cascades: true, contact: true, filter: true, resolution: true },
+  shadows: {
+    bias: true,
+    blend: true,
+    cascades: true,
+    contact: true,
+    filter: true,
+    resolution: true,
+    swayCascades: true,
+    swayRate: true,
+  },
   water: {
     distortion: true,
     enhanced: true,

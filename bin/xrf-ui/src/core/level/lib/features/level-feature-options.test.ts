@@ -171,6 +171,13 @@ describe("level feature options", () => {
     });
   });
 
+  it("keeps the cascades' sway updates and swaying cascades, held to their bounds", () => {
+    expect(toLevelFeatureOptions({ shadows: { swayCascades: 2, swayRate: 90 } }).shadows).toEqual({
+      swayCascades: 2,
+      swayRate: 60,
+    });
+  });
+
   it("keeps the indirect light's own mode and intensity, held to their bounds, over the settings'", () => {
     const view: ILevelFeatureOptions = toLevelFeatureOptions({
       indirectLight: { intensity: 9, mode: ERenderIndirectLightMode.ENGINE, steps: 3 },

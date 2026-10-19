@@ -22,6 +22,7 @@ import {
   formatReflectionDistance,
   formatReflectionIntensity,
   formatReflectionSkyGain,
+  formatReflectionTraceRoughness,
   RENDER_REFLECTION_LIMITS,
   RENDER_REFLECTION_PROBE_OPTIONS,
   RENDER_REFLECTION_QUALITY_OPTIONS,
@@ -35,8 +36,8 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 /**
  * What glossy and wet surfaces reflect: the engine's sky cube alone, or screen-space reflections of what the frame
  * shows where a traced ray meets it, tracing what the screen misses on a GPU that traces rays; how hard they trace, how
- * strongly surfaces reflect, how far a ray goes and how fine the cube of the surroundings a ray meeting nothing reads
- * is; and how glass is drawn.
+ * strongly surfaces reflect, how far a ray goes, how rough a surface still traces, whether rays are budgeted by what
+ * each pixel shows, and how fine the cube of the surroundings a ray meeting nothing reads is; and how glass is drawn.
  */
 export function LevelReflectionsAction({
   "data-testid": dataTestId = "level-reflections-action",
@@ -116,6 +117,21 @@ export function LevelReflectionsAction({
             {...RENDER_REFLECTION_LIMITS.skyGain}
             format={formatReflectionSkyGain}
             onChange={(skyGain: number) => set({ skyGain })}
+          />
+
+          <RenderValueSlider
+            label={"Trace roughness"}
+            value={value.traceRoughness}
+            {...RENDER_REFLECTION_LIMITS.traceRoughness}
+            format={formatReflectionTraceRoughness}
+            onChange={(traceRoughness: number) => set({ traceRoughness })}
+          />
+
+          <CheckboxFormRow
+            label={"Ray budgets"}
+            description={"Fewer rays where a reflection is dim or rough, shared between neighbouring pixels"}
+            isChecked={value.isRayBudgeted}
+            onChange={(isRayBudgeted: boolean) => set({ isRayBudgeted })}
           />
 
           <CheckboxFormRow
