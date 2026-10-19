@@ -197,18 +197,19 @@ impl RenderViewport {
 
   /// Where it is drawn in a window frame of the given size, or `None` when nothing of it shows.
   pub fn get_drawn_rect(&self, width: u32, height: u32) -> Option<RenderRect> {
-    self.layout.and_then(|layout| layout.rect.clip(width, height))
+    self.layout.as_ref().and_then(|layout| layout.rect.clip(width, height))
   }
 
   /// Device pixels per CSS pixel.
   pub fn get_scale(&self) -> f32 {
-    self.layout.map_or(1.0, |layout| layout.scale.max(0.1))
+    self.layout.as_ref().map_or(1.0, |layout| layout.scale.max(0.1))
   }
 
   /// The viewport's height in CSS pixels, which drags are measured in.
   pub fn get_css_height(&self) -> f32 {
     self
       .layout
+      .as_ref()
       .map_or(1.0, |layout| layout.rect.height as f32 / layout.scale.max(0.1))
   }
 
@@ -305,7 +306,7 @@ impl RenderViewport {
       phases,
       groups,
     } = summary;
-    let rect: RenderRect = self.layout.map(|layout| layout.rect).unwrap_or_default();
+    let rect: RenderRect = self.layout.as_ref().map(|layout| layout.rect).unwrap_or_default();
     let shown: Option<&SceneView> = self.shown.as_ref().map(|(_, view)| view);
     let (render_width, render_height): (u32, u32) = shown
       .and_then(SceneView::get_render_size)

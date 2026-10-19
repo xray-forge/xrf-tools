@@ -6,6 +6,7 @@ import { createTheme, PaletteOptions, Theme } from "@mui/material/styles";
 import type {} from "@mui/material/themeCssVarsAugmentation";
 import type {} from "@mui/x-data-grid/themeAugmentation";
 
+import { COLOR_SCHEME_ATTRIBUTE, toColorSchemeSelector } from "./color-scheme";
 import { getHeaderGlossImage, getWashImage, WELL_FILL } from "./surface";
 import {
   ACCENT,
@@ -108,7 +109,7 @@ function createShadows(): Theme["shadows"] {
 export function createApplicationTheme(): Theme {
   return createTheme({
     cssVariables: {
-      colorSchemeSelector: "data-color-scheme",
+      colorSchemeSelector: COLOR_SCHEME_ATTRIBUTE,
     },
     defaultColorScheme: "dark",
     shape: {
@@ -141,7 +142,7 @@ export function createApplicationTheme(): Theme {
             "--xrf-shadow-raised": SHADOW.raised.dark,
             "--xrf-shadow-overlay": SHADOW.overlay.dark,
           },
-          '[data-color-scheme="light"]': {
+          [toColorSchemeSelector("light")]: {
             "--xrf-shadow-raised": SHADOW.raised.light,
             "--xrf-shadow-overlay": SHADOW.overlay.light,
           },

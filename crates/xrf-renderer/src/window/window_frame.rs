@@ -15,14 +15,15 @@ use crate::window::render_window::RenderWindow;
 use crate::window::window_backdrop::WindowBackdrop;
 
 /// A window this frame draws: its format, each viewport drawn into it with its whole rectangle and the part the window
-/// shows, what the page is cleared to around them and whether its wash is painted; and the image it draws into, taken
-/// only once every view's work is recorded, so the render thread readies the frame while the GPU still draws the last.
+/// shows, what the page is cleared to around them and whether its backdrop is painted over that; and the image it draws
+/// into, taken only once every view's work is recorded, so the render thread readies the frame while the GPU still draws
+/// the last.
 pub struct WindowFrame {
   pub key: u64,
   pub format: wgpu::TextureFormat,
   pub drawn: Vec<(RenderViewportId, RenderRect, RenderRect)>,
   pub clear: wgpu::Color,
-  pub is_washed: bool,
+  pub is_backdrop_painted: bool,
   /// The image, once acquired; none before, or where the surface gave none.
   pub image: Option<wgpu::SurfaceTexture>,
   /// How long the image took to acquire.

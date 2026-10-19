@@ -76,6 +76,8 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
       },
       onFailed: (message: string): void => this.fail(message),
       onFrame: (report: RenderFrameReport): void => {
+        // A viewport reports only frames it drew, so by its first the window holds the page's backdrop.
+        this.target?.openHole();
         runInAction(() => {
           this.frame = report;
         });

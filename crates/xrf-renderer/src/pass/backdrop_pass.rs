@@ -9,7 +9,7 @@ use crate::pass::layout_entries::uniform_entry;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::window::window_backdrop::WindowBackdrop;
 
-/// Paints the page's backdrop over a window where it is transparent, under its viewports: the colour the page shows
+/// Paints the page's backdrop over a window where it is transparent, under its viewports: each box the page paints
 /// there, and its wash. Each window keeps its own backdrop's uniform.
 pub struct BackdropPass {
   layout: wgpu::BindGroupLayout,

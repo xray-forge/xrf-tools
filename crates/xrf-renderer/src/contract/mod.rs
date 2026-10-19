@@ -68,6 +68,7 @@ pub(crate) mod render_memory_section;
 pub(crate) mod render_overlay;
 pub(crate) mod render_overlay_segment;
 pub(crate) mod render_page_backdrop;
+pub(crate) mod render_page_plane;
 pub(crate) mod render_page_wash;
 pub(crate) mod render_parallax_mode;
 pub(crate) mod render_parallax_settings;

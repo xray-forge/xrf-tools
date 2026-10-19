@@ -2,6 +2,7 @@ import "./tailwind.css";
 import "./base.css";
 import "./syntax.css";
 
+export * from "./color-scheme";
 export * from "./surface";
 export * from "./control-state";
 export * from "./form-surface";

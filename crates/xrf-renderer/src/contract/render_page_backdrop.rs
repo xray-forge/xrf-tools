@@ -1,13 +1,15 @@
 use serde::{Deserialize, Serialize};
 
-use crate::contract::render_color::RenderColor;
+use crate::contract::render_page_plane::RenderPagePlane;
 use crate::contract::render_page_wash::RenderPageWash;
 
-/// What the page shows where it is transparent around its viewports: its colour, and the wash laid over it.
+/// What the page shows where it is transparent around its viewports: the boxes painting there, and the wash the washed
+/// ones carry.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderPageBackdrop {
-  pub color: RenderColor,
+  /// Outermost first, each painted over the ones before it; the first fills the window whatever its box.
+  pub planes: Vec<RenderPagePlane>,
   pub wash: Option<RenderPageWash>,
 }

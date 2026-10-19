@@ -26,11 +26,13 @@ struct Camera {
 }
 
 struct Backdrop {
-  color: vec4<f32>,
   first: vec4<f32>,
   last: vec4<f32>,
   rect: vec4<f32>,
   line: vec4<f32>,
+  colors: array<vec4<f32>, 4>,
+  boxes: array<vec4<f32>, 4>,
+  radii: array<vec4<f32>, 4>,
 }
 
 struct Lighting {

@@ -1053,7 +1053,7 @@ impl RenderThread {
         .filter_map(|viewport| {
           Some((
             viewport.id,
-            viewport.layout?.rect,
+            viewport.layout.as_ref()?.rect,
             viewport.get_drawn_rect(width, height)?,
           ))
         })
@@ -1063,11 +1063,20 @@ impl RenderThread {
         .viewports
         .values()
         .find(|viewport| viewport.window == *key)
-        .and_then(|viewport| viewport.layout)
+        .and_then(|viewport| viewport.layout.as_ref())
         .map(|layout| BackdropUniform::new(&layout.backdrop))
         .unwrap_or_default();
 
-      let is_washed: bool = backdrop.is_washed()
+      // A viewport over the whole window, as a full screen view is, hides the backdrop; the clear stands in for it.
+      let window_rect: RenderRect = RenderRect {
+        x: 0,
+        y: 0,
+        width,
+        height,
+      };
+      let is_covered: bool = drawn.iter().any(|(_, _, shown)| *shown == window_rect);
+      let is_backdrop_painted: bool = !is_covered
+        && !backdrop.is_flat()
         && gpu
           .backdrop
           .prepare(
@@ -1080,21 +1089,20 @@ impl RenderThread {
             format,
             (window.get_backdrop_slot(), &backdrop),
           )
-          .inspect_err(|error| self.composition_failures.fail("The page's wash cannot be drawn", error))
-          .inspect(|()| self.composition_failures.succeed("The page's wash cannot be drawn"))
+          .inspect_err(|error| {
+            self
+              .composition_failures
+              .fail("The page's backdrop cannot be drawn", error)
+          })
+          .inspect(|()| self.composition_failures.succeed("The page's backdrop cannot be drawn"))
           .is_ok();
 
       windows.push(WindowFrame {
         key: *key,
         format,
         drawn,
-        clear: wgpu::Color {
-          r: f64::from(backdrop.color[0]),
-          g: f64::from(backdrop.color[1]),
-          b: f64::from(backdrop.color[2]),
-          a: 1.0,
-        },
-        is_washed,
+        clear: backdrop.get_clear(),
+        is_backdrop_painted,
         image: None,
         acquire: Duration::ZERO,
       });
@@ -1521,7 +1529,7 @@ impl RenderThread {
         .windows
         .get(&window.key)
         .and_then(RenderWindow::get_backdrop)
-        .filter(|_| window.is_washed);
+        .filter(|_| window.is_backdrop_painted);
 
       window.declare(
         (&mut graph, &mut bindings),

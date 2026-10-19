@@ -1225,10 +1225,28 @@ export type RenderOverlaySegment = {
   colors: [[number | null, number | null, number | null], [number | null, number | null, number | null]];
 };
 
-/** What the page shows where it is transparent around its viewports: its colour, and the wash laid over it. */
+/**
+ * What the page shows where it is transparent around its viewports: the boxes painting there, and the wash the washed
+ * ones carry.
+ */
 export type RenderPageBackdrop = {
-  color: RenderColor;
+  /** Outermost first, each painted over the ones before it; the first fills the window whatever its box. */
+  planes: Array<RenderPagePlane>;
   wash: RenderPageWash | null;
+};
+
+/** A box of the page painting a background under a viewport, which the renderer paints in its place. */
+export type RenderPagePlane = {
+  /** The box its background shows in, cut to the boxes clipping it, in device pixels of the window's client area. */
+  rect: RenderRect;
+  /**
+   * The radii its corners are rounded by in device pixels, in CSS's order: top left, top right, bottom right, bottom
+   * left.
+   */
+  radii: [number | null, number | null, number | null, number | null];
+  color: RenderColor;
+  /** Whether the page's wash is laid over its colour. */
+  isWashed: boolean;
 };
 
 /** A linear gradient over a box of the page, as CSS `linear-gradient(angle, from, to)` paints it over a colour. */

@@ -65,10 +65,26 @@ describe("NativeViewportTarget", () => {
     const { layouts, viewport } = mockViewport();
     const target: NativeViewportTarget = new NativeViewportTarget(element, viewport);
 
+    // The page paints itself until the renderer has drawn the window, which shows black while its device starts.
+    expect(inner.style.backgroundColor).toBe("rgb(40, 50, 60)");
+    expect(outer.style.backgroundColor).toBe("rgb(10, 20, 30)");
+
+    target.openHole();
+
     expect(inner.style.background).toBe("transparent");
     expect(outer.style.background).toBe("transparent");
-    // The page showed the nearest painted colour around the viewport, which paints no wash.
-    expect(layouts[0].backdrop).toEqual({ color: { b: 60, g: 50, r: 40 }, wash: null });
+    // jsdom lays nothing out, so the nearest painted ancestor fills the window and hides the ones outside it.
+    expect(layouts[0].backdrop).toEqual({
+      planes: [
+        {
+          color: { b: 60, g: 50, r: 40 },
+          isWashed: false,
+          radii: [0, 0, 0, 0],
+          rect: { height: 0, width: 0, x: 0, y: 0 },
+        },
+      ],
+      wash: null,
+    });
 
     target.dispose();
 

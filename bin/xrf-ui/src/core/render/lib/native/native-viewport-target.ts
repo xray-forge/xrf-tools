@@ -11,6 +11,7 @@ import {
 } from "@/core/ipc/types/xrf-world";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { requestNativePointerLock } from "@/core/render/lib/native/native-pointer-lock";
+import { toNativeRect } from "@/core/render/lib/native/native-rect";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { ENativeViewportAffordance } from "@/core/render/lib/native/native-viewport-affordance";
 import { NativeViewportHole } from "@/core/render/lib/native/native-viewport-hole";
@@ -75,10 +76,11 @@ export type TNativeViewportClick = (point: IRenderViewPoint, isThrough: boolean)
 /**
  * The page's side of a native viewport: an element the renderer draws under.
  *
- * It opens a hole down to the window through the page (`NativeViewportHole`), reports where the element is and what the
- * page shows around it whenever that changes, and tells the world what the person does over it. It alone tells a click
- * from a drag: a main-button press let go within the slop is a click, handed to `onClick`; a press travelling past it
- * is a drag, sent as gestures with the pointer locked. Drag motion and hovering merge into one event a frame.
+ * It opens a hole down to the window through the page (`NativeViewportHole`) once the renderer draws the window, reports
+ * where the element is and what the page shows around it whenever that changes, and tells the world what the person
+ * does over it. It alone tells a click from a drag: a main-button press let go within the slop is a click, handed to
+ * `onClick`; a press travelling past it is a drag, sent as gestures with the pointer locked. Drag motion and hovering
+ * merge into one event a frame.
  */
 export class NativeViewportTarget {
   private readonly hole: NativeViewportHole;
@@ -121,6 +123,11 @@ export class NativeViewportTarget {
     this.poll();
   }
 
+  /** Opens the hole through the page, once the renderer has drawn the window; again does nothing. */
+  public openHole(): void {
+    this.hole.open();
+  }
+
   public dispose(): void {
     cancelAnimationFrame(this.frame);
 
@@ -150,16 +157,9 @@ export class NativeViewportTarget {
     this.flush();
 
     const scale: number = window.devicePixelRatio;
-    const left: number = Math.round(this.rect.left * scale);
-    const top: number = Math.round(this.rect.top * scale);
     const layout: RenderViewportLayout = {
       backdrop: this.hole.getBackdrop(scale),
-      rect: {
-        height: Math.max(0, Math.round(this.rect.bottom * scale) - top),
-        width: Math.max(0, Math.round(this.rect.right * scale) - left),
-        x: left,
-        y: top,
-      },
+      rect: toNativeRect(this.rect, scale),
       scale,
     };
     const key: string = JSON.stringify(layout);

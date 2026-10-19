@@ -1,5 +1,6 @@
 import { Theme } from "@mui/material";
 
+import { toColorSchemeSelector } from "./color-scheme";
 import { createApplicationTheme } from "./creation";
 import { getSchemeVariables, getThemeVariables } from "./variables";
 
@@ -46,7 +47,7 @@ export function getPreloadThemeCss(): string {
       ${toDeclarations(getSchemeVariables("dark"))}
       color-scheme: dark;
     }`,
-    `html[data-color-scheme="light"] {
+    `html${toColorSchemeSelector("light")} {
       ${toDeclarations(getSchemeVariables("light"))}
       color-scheme: light;
     }`,
