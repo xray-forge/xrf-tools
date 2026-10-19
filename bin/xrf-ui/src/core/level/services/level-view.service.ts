@@ -10,18 +10,22 @@ import {
   DEFAULT_LEVEL_VIEW_OPTIONS,
   ILevelViewOptions,
 } from "@/core/level/lib/view/level-view-options";
+import { listUnkeptRenderSettings } from "@/core/render/lib/settings/render-feature-choice";
 import {
   LEVEL_CAMERA_STORAGE_KEY,
   LEVEL_FEATURES_STORAGE_KEY,
   parseLocalStorageValueSafe,
   setLocalStorageValueSafe,
 } from "@/core/storage";
+import { Logger } from "@/lib/logging";
 
 /**
  * How a level is drawn: what the viewer has switched on, rather than what the level is.
  */
 @Injectable()
 export class LevelViewService {
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
+
   /** What the toolbar has switched on. */
   @RefObservable()
   public options: ILevelViewOptions = DEFAULT_LEVEL_VIEW_OPTIONS;
@@ -45,7 +49,7 @@ export class LevelViewService {
    * preference, kept over runs.
    */
   @RefObservable()
-  public features: ILevelFeatureOptions = toLevelFeatureOptions(parseLocalStorageValueSafe(LEVEL_FEATURES_STORAGE_KEY));
+  public features: ILevelFeatureOptions = LevelViewService.readFeatures();
 
   /** What the viewport shows of its surfaces: the frame as dressed, as clay or by shader, or one of its targets. */
   @RefObservable()
@@ -94,10 +98,36 @@ export class LevelViewService {
     this.lod = lod;
   }
 
+  /**
+   * @param features - What the view sets, held as a stored choice is read back: a setting the schema does not take is
+   *   dropped, with a warning, rather than kept until the next start.
+   */
   @BoundAction()
   public setFeatures(features: ILevelFeatureOptions): void {
-    this.features = features;
-    setLocalStorageValueSafe(LEVEL_FEATURES_STORAGE_KEY, JSON.stringify(features));
+    const kept: ILevelFeatureOptions = toLevelFeatureOptions(features);
+    const unkept: Array<string> = listUnkeptRenderSettings(features, kept);
+
+    if (unkept.length) {
+      this.log.warn("View features the schema does not take, left to the settings:", unkept);
+    }
+
+    this.features = kept;
+    setLocalStorageValueSafe(LEVEL_FEATURES_STORAGE_KEY, JSON.stringify(kept));
+  }
+
+  /**
+   * @returns The stored features, or none where none were stored; a setting the schema does not take is dropped.
+   */
+  private static readFeatures(): ILevelFeatureOptions {
+    const stored: unknown = parseLocalStorageValueSafe(LEVEL_FEATURES_STORAGE_KEY);
+    const features: ILevelFeatureOptions = toLevelFeatureOptions(stored);
+    const unkept: Array<string> = listUnkeptRenderSettings(stored, features);
+
+    if (unkept.length) {
+      Logger.warn("Stored view features the schema does not take, left to the settings:", unkept);
+    }
+
+    return features;
   }
 
   /**

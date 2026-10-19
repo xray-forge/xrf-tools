@@ -44,7 +44,7 @@ describe("LevelWindAction", () => {
     descriptor.view.setFeatures({
       ...descriptor.view.features,
       grass: {
-        density: 2,
+        density: 0.5,
         foliage: {
           ...FOLIAGE,
           mode: ERenderFoliageMode.ENGINE,
@@ -61,7 +61,7 @@ describe("LevelWindAction", () => {
     await userEvent.click(getByRole("button", { name: "Reset the foliage motion to the preset" }));
 
     expect(view.features.grass).toEqual({
-      density: 2,
+      density: 0.5,
       foliage: { ...FOLIAGE, sssIntensity: FOLIAGE.sssIntensity + 0.25 },
     });
   });

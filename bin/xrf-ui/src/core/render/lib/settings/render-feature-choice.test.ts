@@ -3,6 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import {
   DEFAULT_RENDER_FEATURE_CHOICE,
   IRenderFeatureChoice,
+  listUnkeptRenderSettings,
   resolveRenderFeatures,
   toRenderFeatureChoice,
 } from "@/core/render/lib/settings/render-feature-choice";
@@ -49,6 +50,17 @@ describe("render feature choice", () => {
     expect(toRenderFeatureChoice(null)).toBe(DEFAULT_RENDER_FEATURE_CHOICE);
     expect(toRenderFeatureChoice([1, 2])).toBe(DEFAULT_RENDER_FEATURE_CHOICE);
     expect(toRenderFeatureChoice({ preset: "ultra" })).toEqual(DEFAULT_RENDER_FEATURE_CHOICE);
+  });
+
+  it("names every setting it did not keep as given", () => {
+    const sent: object = {
+      reflections: { quality: "medium", steps: 500, traceInterval: 2 },
+      shadows: { cascades: [20, 40] },
+    };
+    const choice: IRenderFeatureChoice = toRenderFeatureChoice({ overrides: sent, preset: ERenderPreset.BASE });
+
+    expect(listUnkeptRenderSettings(sent, choice.overrides)).toEqual(["reflections.quality", "reflections.steps"]);
+    expect(listUnkeptRenderSettings(choice.overrides, choice.overrides)).toEqual([]);
   });
 
   it("parses every preset's own features back unchanged", () => {

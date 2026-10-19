@@ -90,6 +90,16 @@ export function mergeRenderFeatureOverrides(
   return (merge(SCHEMA, overrides, changes) ?? {}) as IRenderFeatureOverrides;
 }
 
+/**
+ * @param sent - Settings as a consumer gave or stored them.
+ * @param kept - What reading them against the schema kept of them.
+ * @returns The dotted path of every setting given that was not kept as given: a key the schema does not know, or a
+ *   value it does not take or bounds to another.
+ */
+export function listUnkeptRenderSettings(sent: unknown, kept: unknown): Array<string> {
+  return listUnkept(sent, kept, "");
+}
+
 /** The values a node takes of what was stored, or undefined for none. */
 function parse(node: TSchemaNode, stored: unknown): unknown {
   if (isRenderSettingField(node)) {
@@ -147,6 +157,23 @@ function toGroup(
   }
 
   return Object.keys(group).length ? group : undefined;
+}
+
+function listUnkept(sent: unknown, kept: unknown, at: string): Array<string> {
+  // Nothing given, which leaves the setting to what stands under it, is nothing lost.
+  if (sent === undefined || sent === null) {
+    return [];
+  }
+
+  if (isValues(sent)) {
+    const group: TValues = isValues(kept) ? kept : {};
+
+    return Object.entries(sent).flatMap(([key, value]: [string, unknown]) =>
+      listUnkept(value, group[key], at ? `${at}.${key}` : key)
+    );
+  }
+
+  return JSON.stringify(sent) === JSON.stringify(kept) ? [] : [at];
 }
 
 function isValues(value: unknown): value is TValues {

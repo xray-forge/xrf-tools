@@ -80,6 +80,15 @@ describe("LevelViewService", () => {
     expect(service.features.antialiasing).toBe(ERenderAntialiasing.TAA);
   });
 
+  it("drops a feature the schema does not take as it is set, as it would be once read back", () => {
+    const { service } = mockInjectedService(LevelViewService);
+    const reflections: object = { quality: "medium", steps: 48 };
+
+    service.setFeatures({ ...mockLevelFeatureOptions(), reflections });
+
+    expect(service.features.reflections).toEqual({ steps: 48 });
+  });
+
   it("starts from the defaults where what was stored does not read", () => {
     setLocalStorageValue("xrf.preference.level-camera", "{not json");
     setLocalStorageValue("xrf.preference.level-features", JSON.stringify({ antialiasing: "none", grass: 4 }));

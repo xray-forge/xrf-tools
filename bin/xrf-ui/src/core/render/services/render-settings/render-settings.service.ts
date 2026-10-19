@@ -18,6 +18,7 @@ import {
 } from "@/core/render/lib/settings/render-backend-choice";
 import {
   IRenderFeatureChoice,
+  listUnkeptRenderSettings,
   mergeRenderFeatureOverrides,
   resolveRenderFeatures,
   toRenderFeatureChoice,
@@ -169,7 +170,18 @@ export class RenderSettingsService {
    * @returns The stored choice, or the default where none was stored or it does not parse.
    */
   private static readRendererChoice(): IRenderFeatureChoice {
-    return toRenderFeatureChoice(parseLocalStorageValueSafe(RENDERER_FEATURES_STORAGE_KEY));
+    const stored: unknown = parseLocalStorageValueSafe(RENDERER_FEATURES_STORAGE_KEY);
+    const choice: IRenderFeatureChoice = toRenderFeatureChoice(stored);
+    const unkept: Array<string> = listUnkeptRenderSettings(
+      (stored as Nullable<{ overrides?: unknown }>)?.overrides,
+      choice.overrides
+    );
+
+    if (unkept.length) {
+      Logger.warn("Stored renderer settings the schema does not take, left to the preset:", unkept);
+    }
+
+    return choice;
   }
 
   @BoundAction()
@@ -280,6 +292,12 @@ export class RenderSettingsService {
       overrides: mergeRenderFeatureOverrides(this.rendererChoice.overrides, overrides),
       preset: this.rendererChoice.preset,
     });
+
+    const unkept: Array<string> = listUnkeptRenderSettings(overrides, this.rendererChoice.overrides);
+
+    if (unkept.length) {
+      this.log.warn("Renderer settings the schema does not take, left to the preset:", unkept);
+    }
   }
 
   private storeRendererChoice(choice: IRenderFeatureChoice): void {
