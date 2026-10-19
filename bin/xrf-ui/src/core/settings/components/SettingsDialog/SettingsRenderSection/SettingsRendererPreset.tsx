@@ -4,15 +4,9 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { isRenderFeatureChoiceCustom } from "@/core/render/lib/settings/render-feature-choice";
-import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
+import { describeRenderPreset, ERenderPreset } from "@/core/render/lib/settings/render-preset";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
-
-const PRESET_LABELS: Record<ERenderPreset, string> = {
-  [ERenderPreset.EDITING]: "Editing",
-  [ERenderPreset.BASE]: "Base",
-  [ERenderPreset.ENHANCED]: "Enhanced",
-};
 
 /** Which preset the renderer's features follow, whether anything is changed on top of it, and the way back. */
 export function SettingsRendererPreset(): ReactElement {
@@ -28,11 +22,11 @@ export function SettingsRendererPreset(): ReactElement {
         "Applies to every tab except Display. Editing favours responsiveness for the editing tools; Base is the " +
         "application's look at cheap qualities; Enhanced is that look at its best."
       }
-      fact={isCustom ? `Custom, from ${PRESET_LABELS[preset]}` : PRESET_LABELS[preset]}
+      fact={isCustom ? `Custom, from ${describeRenderPreset(preset)}` : describeRenderPreset(preset)}
       action={
         isCustom ? (
           <Button size={"small"} onClick={() => renderSettingsService.setRendererPreset(preset)}>
-            Back to {PRESET_LABELS[preset]}
+            Back to {describeRenderPreset(preset)}
           </Button>
         ) : null
       }
@@ -51,7 +45,7 @@ export function SettingsRendererPreset(): ReactElement {
       >
         {Object.values(ERenderPreset).map((value: ERenderPreset) => (
           <ToggleButton key={value} value={value}>
-            {PRESET_LABELS[value]}
+            {describeRenderPreset(value)}
           </ToggleButton>
         ))}
       </ToggleButtonGroup>

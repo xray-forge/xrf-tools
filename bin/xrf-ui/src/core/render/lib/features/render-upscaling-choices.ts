@@ -40,10 +40,10 @@ export function describeRenderScale(scale: RenderScale): string {
   return RENDER_SCALE_NAMES[scale];
 }
 
-/** The render scales, in the order they are offered. */
-export const RENDER_SCALE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderScale>> = Object.values(ERenderScale).map(
-  (value: RenderScale) => ({ label: describeRenderScale(value), value })
-);
+/** The render scales, the smallest first as every ordered choice is offered, native last. */
+export const RENDER_SCALE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderScale>> = [...Object.values(ERenderScale)]
+  .reverse()
+  .map((value: RenderScale) => ({ label: describeRenderScale(value), value }));
 
 const DLSS_UNAVAILABILITY: Readonly<Record<RenderDlssAvailability, Nullable<string>>> = {
   [ERenderDlssAvailability.AVAILABLE]: null,

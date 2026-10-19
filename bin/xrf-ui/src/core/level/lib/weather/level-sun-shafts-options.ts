@@ -19,8 +19,11 @@ export const DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS: ILevelSunShaftsOptions = {
 /** The bounds `r2_sunshafts_min` is offered between, as Monolith's console holds it. */
 export const LEVEL_SUN_SHAFTS_MINIMUM_LIMITS = { max: 0.5, min: 0, step: 0.01 } as const;
 
-/** The bounds the steps are offered between, the renderer's own (`RenderSunShafts::STEPS_RANGE`). */
-export const LEVEL_SUN_SHAFTS_STEPS_LIMITS = { max: 64, min: 8, step: 1 } as const;
+/**
+ * The bounds the steps are offered between, the renderer's own (`RenderSunShafts::STEPS_RANGE`), and the range xrf
+ * recommends: the engines' own 15 to 40.
+ */
+export const LEVEL_SUN_SHAFTS_STEPS_LIMITS = { max: 64, min: 8, recommended: [15, 40], step: 1 } as const;
 
 /**
  * @param stored - What was stored for the sunshafts, parsed from wherever it is kept.

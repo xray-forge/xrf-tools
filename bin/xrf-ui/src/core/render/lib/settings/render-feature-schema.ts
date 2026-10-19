@@ -38,8 +38,13 @@ import { TRenderSettingSchema } from "@/core/render/lib/settings/render-setting-
 
 const FLAG: IRenderFlagField = { kind: ERenderSettingKind.FLAG };
 
-function toNumber(min: number, max: number, isInteger: boolean = false): IRenderNumberField {
-  return { isInteger, kind: ERenderSettingKind.NUMBER, max, min };
+function toNumber(
+  min: number,
+  max: number,
+  isInteger: boolean = false,
+  recommended?: readonly [number, number]
+): IRenderNumberField {
+  return { isInteger, kind: ERenderSettingKind.NUMBER, max, min, recommended };
 }
 
 function toChoice<T extends string>(values: Record<string, T>): IRenderChoiceField<T> {
@@ -51,25 +56,28 @@ function toChoice<T extends string>(values: Record<string, T>): IRenderChoiceFie
  * setting (`xrRender_console.cpp`), the renderer's where it does not.
  */
 export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings> = {
+  // A field's fourth argument, where given, is the range xrf recommends, every preset's value within it: below it the
+  // effect shows misses or artefacts, past it it costs more for little visible gain (timed 2026-10-20 at 2830 px for
+  // the reflections, the occlusion and the sun shafts). A field without one is not rated yet.
   ambientOcclusion: {
     isEnabled: FLAG,
     // Each method's search within its settings' own ranges (`RenderAmbientOcclusionGtaoSettings` and the rest).
     gtao: {
-      slices: toNumber(1, 9, true),
-      steps: toNumber(1, 6, true),
+      slices: toNumber(1, 9, true, [2, 6]),
+      steps: toNumber(1, 6, true, [2, 4]),
     },
     method: toChoice(ERenderAmbientOcclusionMethod),
     radius: toNumber(0.1, 8),
     rtao: {
-      rays: toNumber(1, 8, true),
+      rays: toNumber(1, 8, true, [2, 8]),
     },
     strength: toNumber(0, 2),
     // The renderer's own: past two metres a thickness lets nothing through that a horizon would not.
     vbao: {
-      accumulation: toNumber(1, RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION, true),
+      accumulation: toNumber(1, RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION, true, [4, 16]),
       bounce: toNumber(0, 1),
-      slices: toNumber(1, 4, true),
-      steps: toNumber(2, 16, true),
+      slices: toNumber(1, 4, true, [1, 2]),
+      steps: toNumber(2, 16, true, [4, 12]),
       thickness: toNumber(0.01, 2),
     },
   },
@@ -146,7 +154,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     intensity: toNumber(0, 4),
     mode: toChoice(ERenderIndirectLightMode),
     radius: toNumber(0.5, 8),
-    steps: toNumber(1, 8, true),
+    steps: toNumber(1, 8, true, [2, 4]),
   },
   isOcclusionCulled: FLAG,
   // The renderer's own: puddles from none to nearly every site at two, a puddle's reflection at most a mirror's, the
@@ -177,17 +185,17 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     mode: toChoice(ERenderReflectionMode),
     probe: toChoice(ERenderReflectionProbe),
     traceSize: toChoice(ERenderTraceSize),
-    steps: toNumber(16, 128, true),
+    steps: toNumber(16, 128, true, [32, 128]),
     reach: toNumber(25, 1000, true),
     skyGain: toNumber(0.5, 3),
     isGrassReflected: FLAG,
-    traceRoughness: toNumber(0.2, 1),
+    traceRoughness: toNumber(0.2, 1, false, [0.4, 0.7]),
     isDryTraced: FLAG,
     isRayBudgeted: FLAG,
     isWaterReflected: FLAG,
-    waterSteps: toNumber(8, 32, true),
+    waterSteps: toNumber(8, 32, true, [12, 24]),
     isTraced: FLAG,
-    traceInterval: toNumber(1, 8, true),
+    traceInterval: toNumber(1, 8, true, [1, 4]),
   },
   lights: {
     isEnabled: FLAG,
@@ -217,13 +225,13 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
       length: toNumber(0, 4),
       lights: toNumber(0, RENDER_MAX_CONTACT_SHADOW_LIGHTS, true),
       mode: toChoice(ERenderContactShadowMode),
-      steps: toNumber(4, 64, true),
+      steps: toNumber(4, 64, true, [8, 32]),
       thickness: toNumber(0.01, 1),
     },
     filter: toNumber(0, RENDER_MAX_SHADOW_FILTER, true),
     isEnabled: FLAG,
     isStaggered: FLAG,
-    resolution: toNumber(256, 8192, true),
+    resolution: toNumber(256, 8192, true, [1024, 4096]),
     swayCascades: toNumber(0, RENDER_MAX_SHADOW_CASCADES, true),
     swayRate: toNumber(15, 60, true),
   },
@@ -237,7 +245,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     mode: toChoice(ERenderParallaxMode),
     range: toNumber(0, 100),
     shadow: toNumber(0, 1),
-    steps: toNumber(1, 64, true),
+    steps: toNumber(1, 64, true, [8, 32]),
     surfaceHeight: toNumber(0, 0.1),
     surfaceRange: toNumber(0, 100),
   },
@@ -249,7 +257,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     isRayReconstructed: FLAG,
     rayReconstructionPreset: toChoice(ERenderRayReconstructionPreset),
     scale: toChoice(ERenderScale),
-    sharpening: toNumber(0, 1),
+    sharpening: toNumber(0, 1, false, [0, 0.5]),
   },
   // The renderer's own: up to four times the designed scattering, a phase function short of a beam, and from a
   // nearby grid to 300 m.

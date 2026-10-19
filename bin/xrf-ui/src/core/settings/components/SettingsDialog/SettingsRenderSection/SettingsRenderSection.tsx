@@ -3,6 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ComponentType, ReactElement, RefObject, useRef, useState } from "react";
 
+import { RenderSliderReference } from "@/core/render/components/controls/RenderSliderReference";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 
 import {
@@ -16,7 +17,8 @@ import { SettingsRendererPreset } from "./SettingsRendererPreset";
 
 /**
  * How every viewport draws, which is neither application chrome nor any one editor's business: in tabs by what a
- * setting changes, the preset over every tab it sets, and a mark on each tab where something differs from it.
+ * setting changes, the preset over every tab it sets, and a mark on each tab where something differs from it; each
+ * slider is measured by the preset, which it resets to.
  */
 export function SettingsRenderSection(): ReactElement {
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
@@ -64,9 +66,11 @@ export function SettingsRenderSection(): ReactElement {
 
       {isPresetRenderSettingsTab(tab) ? <SettingsRendererPreset /> : null}
 
-      {tab.sections.map((Section: ComponentType, index: number) => (
-        <Section key={index} />
-      ))}
+      <RenderSliderReference source={"preset"}>
+        {tab.sections.map((Section: ComponentType, index: number) => (
+          <Section key={index} />
+        ))}
+      </RenderSliderReference>
     </div>
   );
 }

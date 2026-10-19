@@ -83,13 +83,13 @@ export const RENDER_TEXTURE_FILTERING_OPTIONS: ReadonlyArray<IChoiceFormRowOptio
   }));
 
 /**
- * The game's texture qualities, `texture_lod`, by the Anomaly preset that sets each; the game's own default is Medium,
- * while every preset here sets Full.
+ * The game's texture qualities, `texture_lod`, by the Anomaly preset that sets each, the lowest first as every ordered
+ * choice is offered; the game's own default is Medium, while every preset here sets Full.
  */
 export const RENDER_TEXTURE_LOD_OPTIONS: ReadonlyArray<IChoiceFormRowOption<string>> = [
-  { label: "Full (extreme)", value: "0" },
-  { label: "High", value: "1" },
-  { label: "Medium (game default)", value: "2" },
-  { label: "Low", value: "3" },
   { label: "Lowest", value: "4" },
+  { label: "Low", value: "3" },
+  { label: "Medium (game default)", value: "2" },
+  { label: "High", value: "1" },
+  { label: "Full (extreme)", value: "0" },
 ];

@@ -200,3 +200,17 @@ export const RENDER_PRESETS: Readonly<Record<ERenderPreset, IRenderFeatureSettin
   [ERenderPreset.BASE]: BASE_PRESET,
   [ERenderPreset.ENHANCED]: ENHANCED_PRESET,
 };
+
+const RENDER_PRESET_NAMES: Readonly<Record<ERenderPreset, string>> = {
+  [ERenderPreset.EDITING]: "Editing",
+  [ERenderPreset.BASE]: "Base",
+  [ERenderPreset.ENHANCED]: "Enhanced",
+};
+
+/**
+ * @param preset - A renderer preset.
+ * @returns Its name as the settings say it.
+ */
+export function describeRenderPreset(preset: ERenderPreset): string {
+  return RENDER_PRESET_NAMES[preset];
+}

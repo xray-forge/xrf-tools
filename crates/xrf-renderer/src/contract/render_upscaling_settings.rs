@@ -24,7 +24,7 @@ impl Default for RenderUpscalingSettings {
   fn default() -> Self {
     Self {
       scale: RenderScale::Native,
-      sharpening: 0.5,
+      sharpening: 0.1,
       dlss_preset: RenderDlssPreset::Default,
       is_ray_reconstructed: false,
       ray_reconstruction_preset: RenderRayReconstructionPreset::Default,

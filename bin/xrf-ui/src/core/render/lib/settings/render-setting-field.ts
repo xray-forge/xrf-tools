@@ -21,6 +21,8 @@ export interface IRenderNumberField {
   readonly max: number;
   /** Whether it is whole, as an engine's `CCC_Integer` is. */
   readonly isInteger?: boolean;
+  /** The range xrf recommends within the bounds, which a slider draws; none where it rates nothing. */
+  readonly recommended?: readonly [number, number];
 }
 
 /** One of a set of values. */
