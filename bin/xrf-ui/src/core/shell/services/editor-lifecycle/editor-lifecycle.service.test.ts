@@ -1,7 +1,9 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 
+import { ELeaveDecision } from "@/core/ipc/types/xrf-app";
 import { EMIT_NOTIFICATION_EVENT } from "@/core/notifications/lib";
+import { mockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 
@@ -147,5 +149,28 @@ describe("EditorLifecycleService", () => {
 
     expect(service.dirtyCount).toBe(2);
     expect(service.isLeavePending).toBe(true);
+  });
+
+  it("tells the backend log each decision, so the log file holds what the page decided beside what the window did", () => {
+    const { service } = mockInjectedService(EditorLifecycleService);
+
+    service.setDraft("document", 2, null);
+    service.requestExit(noop);
+    service.stay();
+    service.setBusy("job", true);
+    service.requestExit(noop);
+    service.exitAnyway();
+
+    const reported: Array<unknown> = mockInvoke.mock.calls
+      .filter(([command]) => command === "plugin:system|report_leave_decision")
+      .map(([, args]) => args);
+
+    expect(reported).toEqual([
+      { decision: ELeaveDecision.EXIT_ASKED, unsaved: 2 },
+      { decision: ELeaveDecision.ASKED_ABOUT_UNSAVED, unsaved: 2 },
+      { decision: ELeaveDecision.KEPT_OPEN, unsaved: 2 },
+      { decision: ELeaveDecision.ASKED_ABOUT_RUNNING_WORK, unsaved: 2 },
+      { decision: ELeaveDecision.EXITED_WHILE_BUSY, unsaved: 2 },
+    ]);
   });
 });

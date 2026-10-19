@@ -2,6 +2,7 @@
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
+  ELeaveDecision,
   GpuMemoryUsage,
   HostInfo,
   PathDescription,
@@ -41,6 +42,9 @@ export const systemCommands = {
     } | null>("plugin:system|get_memory_usage"),
   /** Report what the application currently costs the machine, and how long it has been running. */
   getRuntimeSnapshot: () => __TAURI_INVOKE<RuntimeSnapshot>("plugin:system|get_runtime_snapshot"),
+  /** Write what the page decided about leaving or closing to the log, beside what the backend did about it. */
+  reportLeaveDecision: (decision: ELeaveDecision, unsaved: number) =>
+    __TAURI_INVOKE<void>("plugin:system|report_leave_decision", { decision, unsaved }),
   /** Show a path in the desktop's own file manager. */
   revealPath: (path: string) => __TAURI_INVOKE<null>("plugin:system|reveal_path", { path }),
 };

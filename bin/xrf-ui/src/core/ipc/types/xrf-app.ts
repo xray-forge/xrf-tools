@@ -1688,6 +1688,47 @@ export enum EJobKind {
 /** Every `EJobKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type JobKind = `${EJobKind}`;
 
+/** What the page decided when asked to leave what is open or to close the window, which only the page knows. */
+export enum ELeaveDecision {
+  /** A leave refused while an operation runs. */
+  REFUSED_WHILE_BUSY = "refusedWhileBusy",
+  /** A leave or exit ignored while another waits for an answer. */
+  IGNORED_WHILE_PENDING = "ignoredWhilePending",
+  /** Asked before leaving unsaved edits. */
+  ASKED_ABOUT_UNSAVED = "askedAboutUnsaved",
+  /** Left, with nothing unsaved or once the person agreed. */
+  LEFT = "left",
+  /** The window asked to close. */
+  EXIT_ASKED = "exitAsked",
+  /** Asked before closing while an operation runs. */
+  ASKED_ABOUT_RUNNING_WORK = "askedAboutRunningWork",
+  /** Closed anyway while an operation ran, as the person chose. */
+  EXITED_WHILE_BUSY = "exitedWhileBusy",
+  /** Kept open, unsaved edits and all, as the person chose. */
+  KEPT_OPEN = "keptOpen",
+  /** Kept the window open while an operation runs, as the person chose. */
+  KEPT_OPEN_WHILE_BUSY = "keptOpenWhileBusy",
+  /** A stay refused while edits were being saved before leaving. */
+  STAY_REFUSED_WHILE_SAVING = "stayRefusedWhileSaving",
+  /** A discard refused while an operation runs. */
+  DISCARD_REFUSED_WHILE_BUSY = "discardRefusedWhileBusy",
+  /** Unsaved edits discarded before leaving. */
+  DISCARDED = "discarded",
+  /** A save before leaving refused, with nothing to save, no leave waiting, or an operation running. */
+  SAVE_REFUSED = "saveRefused",
+  /** Saving edits before leaving. */
+  SAVING = "saving",
+  /** Saved, then left. */
+  SAVED = "saved",
+  /** The save wrote nothing, so the page stayed. */
+  SAVE_NOT_WRITTEN = "saveNotWritten",
+  /** The save failed, so the page stayed. */
+  SAVE_FAILED = "saveFailed",
+}
+
+/** Every `ELeaveDecision` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type LeaveDecision = `${ELeaveDecision}`;
+
 /**
  * What a game's console sets of how its levels are lit, exposed and corrected: its installation's `user.ltx` over its
  * shipped defaults (Anomaly's `default_controls.ltx`); each `None` it leaves to the engine.

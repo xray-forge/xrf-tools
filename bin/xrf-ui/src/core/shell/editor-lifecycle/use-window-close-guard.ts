@@ -5,12 +5,13 @@ import { useEffect } from "react";
 
 import { systemCommands } from "@/core/ipc/commands/system";
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
-import { Logger } from "@/lib/logging";
+import { Logger, useLogger } from "@/lib/logging";
 import { resolveAppWindow } from "@/lib/tauri/app-window";
 
 /** Asks about unsaved or running work before the window closes, however the close was asked for. */
 export function useWindowCloseGuard(): void {
   const lifecycle: EditorLifecycleService = useInjection(EditorLifecycleService);
+  const log: Logger = useLogger(__MODULE_NAME__);
 
   useEffect(() => {
     const appWindow: Nullable<Window> = resolveAppWindow();
@@ -28,34 +29,41 @@ export function useWindowCloseGuard(): void {
     // Approved first, so a refused approval leaves the window guarded and the next close asks again. Listening still,
     // the page would be asked once more and hold its own close, so it stops just before closing.
     function exit(): void {
+      log.info("Approving window close:", target.label);
+
       systemCommands
         .approveWindowClose(target.label)
         .then(() => {
+          log.info("Window close approved, closing:", target.label);
+
           unlisten?.();
           unlisten = null;
 
           return target.close();
         })
-        .catch(Logger.error);
+        .catch((error: unknown) => log.error("Window close failed, the window stays guarded:", target.label, error));
     }
 
     appWindow
       .onCloseRequested((event: CloseRequestedEvent) => {
+        log.info("Window close requested, asking first:", target.label);
+
         event.preventDefault();
         lifecycle.requestExit(exit);
       })
       .then((it: () => void) => {
         if (isActive) {
+          log.info("Guarding window close:", target.label);
           unlisten = it;
         } else {
           it();
         }
       })
-      .catch(Logger.error);
+      .catch((error: unknown) => log.error("Cannot guard window close:", target.label, error));
 
     return () => {
       isActive = false;
       unlisten?.();
     };
-  }, [lifecycle]);
+  }, [lifecycle, log]);
 }

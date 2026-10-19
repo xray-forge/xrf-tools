@@ -3,6 +3,8 @@ import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx"
 import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
+import { systemCommands } from "@/core/ipc/commands/system";
+import { ELeaveDecision } from "@/core/ipc/types/xrf-app";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { APPLICATION_SOURCE } from "@/core/routing/application";
 import { Logger } from "@/lib/logging";
@@ -124,20 +126,42 @@ export class EditorLifecycleService {
     }
   }
 
+  /**
+   * Says what was decided about leaving, in the console and in the backend's log, beside what the window's close did.
+   *
+   * @param decision - What was decided.
+   * @param details - More for the console alone.
+   */
+  private report(decision: ELeaveDecision, ...details: Array<unknown>): void {
+    this.log.info("Leave decision:", decision, this.draftOwner, this.dirtyCount, ...details);
+
+    systemCommands
+      .reportLeaveDecision(decision, this.dirtyCount)
+      .catch((error: unknown) => this.log.warn("Cannot log leave decision:", decision, error));
+  }
+
   /** Leaves immediately when clean, asks when dirty, and refuses while busy or already asking. */
   @BoundAction()
   public requestLeave(leave: () => void): void {
-    if (this.isBusy || this.pendingLeave) {
+    if (this.isBusy) {
+      this.report(ELeaveDecision.REFUSED_WHILE_BUSY);
+
+      return;
+    }
+
+    if (this.pendingLeave) {
+      this.report(ELeaveDecision.IGNORED_WHILE_PENDING);
+
       return;
     }
 
     if (this.dirtyCount > 0) {
-      this.log.info("Pending leave detected:", this.dirtyCount);
+      this.report(ELeaveDecision.ASKED_ABOUT_UNSAVED);
 
       // A distinct request identity prevents a late save from completing a newer request.
       this.pendingLeave = () => leave();
     } else {
-      this.log.info("Leaving");
+      this.report(ELeaveDecision.LEFT);
       leave();
     }
   }
@@ -149,14 +173,17 @@ export class EditorLifecycleService {
   @BoundAction()
   public requestExit(exit: () => void): void {
     if (this.pendingLeave || this.pendingExit) {
+      this.report(ELeaveDecision.IGNORED_WHILE_PENDING);
+
       return;
     }
 
     if (this.isBusy) {
-      this.log.info("Pending exit while busy");
+      this.report(ELeaveDecision.ASKED_ABOUT_RUNNING_WORK);
 
       this.pendingExit = () => exit();
     } else {
+      this.report(ELeaveDecision.EXIT_ASKED);
       this.requestLeave(exit);
     }
   }
@@ -167,7 +194,7 @@ export class EditorLifecycleService {
     const exit = this.pendingExit;
 
     if (exit) {
-      this.log.info("Exiting while busy:", this.draftOwner, this.dirtyCount);
+      this.report(ELeaveDecision.EXITED_WHILE_BUSY);
     }
 
     this.pendingExit = null;
@@ -177,11 +204,17 @@ export class EditorLifecycleService {
   /** Declines the pending request unless its save is still running. */
   @BoundAction()
   public stay(): void {
+    if (this.pendingExit) {
+      this.report(ELeaveDecision.KEPT_OPEN_WHILE_BUSY);
+    }
+
     this.pendingExit = null;
 
-    if (!this.isSaving) {
+    if (this.isSaving) {
+      this.report(ELeaveDecision.STAY_REFUSED_WHILE_SAVING);
+    } else {
       if (this.pendingLeave) {
-        this.log.info("Kept editor open with unsaved changes:", this.draftOwner, this.dirtyCount);
+        this.report(ELeaveDecision.KEPT_OPEN);
       }
 
       this.pendingLeave = null;
@@ -192,13 +225,15 @@ export class EditorLifecycleService {
   @BoundAction()
   public discardAndLeave(): void {
     if (this.isBusy) {
+      this.report(ELeaveDecision.DISCARD_REFUSED_WHILE_BUSY);
+
       return;
     }
 
     const leave = this.pendingLeave;
 
     if (leave) {
-      this.log.info("Discarding changes before leaving:", this.draftOwner, this.dirtyCount);
+      this.report(ELeaveDecision.DISCARDED);
     }
 
     this.pendingLeave = null;
@@ -212,6 +247,12 @@ export class EditorLifecycleService {
     const save = this.save;
 
     if (this.isBusy || !request || !save) {
+      this.report(ELeaveDecision.SAVE_REFUSED, {
+        isBusy: this.isBusy,
+        hasRequest: Boolean(request),
+        canSave: Boolean(save),
+      });
+
       return;
     }
 
@@ -220,12 +261,14 @@ export class EditorLifecycleService {
 
     const owner: Nullable<string> = this.draftOwner;
 
-    this.log.info("Saving before leaving:", owner, this.dirtyCount);
+    this.report(ELeaveDecision.SAVING);
 
     try {
       const isWritten: boolean = await save();
 
-      this.log.info("Save before leaving finished:", owner, { isWritten, isCurrent: this.pendingLeave === request });
+      this.report(isWritten ? ELeaveDecision.SAVED : ELeaveDecision.SAVE_NOT_WRITTEN, {
+        isCurrent: this.pendingLeave === request,
+      });
 
       runInAction(() => {
         if (isWritten && this.pendingLeave === request) {
@@ -235,6 +278,7 @@ export class EditorLifecycleService {
       });
     } catch (error: unknown) {
       this.log.error("Failed to save before leaving:", owner, error);
+      this.report(ELeaveDecision.SAVE_FAILED);
 
       if (this.pendingLeave === request) {
         emitNotification(this.eventBus, {

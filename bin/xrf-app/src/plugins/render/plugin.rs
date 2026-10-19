@@ -76,10 +76,20 @@ impl RenderPlugin {
           .try_state::<WindowCloseApprovals>()
           .is_some_and(|approvals| approvals.take(label));
 
+        let is_closing: bool = state.is_closing(label);
+
         // Asked behind the page's prompt: the page answers, and asks again once it agrees. A window already held stays
         // held whoever asks.
-        if !is_approved && !state.is_closing(label) {
+        if !is_approved && !is_closing {
+          log::info!("Window '{label}' asked to close without its page's approval, which the page answers first");
+
           return;
+        }
+
+        if is_closing {
+          log::info!("Window '{label}' asked to close again while held for the renderer");
+        } else {
+          log::info!("Window '{label}' closing, as its page approved");
         }
 
         // A window on its way out hosts no viewport attached from now on.
@@ -89,15 +99,19 @@ impl RenderPlugin {
 
         let window: Option<WebviewWindow<R>> = application.get_webview_window(label);
         let is_held: bool = state.close_window(label, move || {
-          if let Some(window) = window
-            && let Err(error) = window.destroy()
-          {
-            log::error!("Window '{}' cannot be closed: {error}", window.label());
+          if let Some(window) = window {
+            match window.destroy() {
+              Ok(()) => log::info!("Window '{}' destroyed once the renderer let go of it", window.label()),
+              Err(error) => log::error!("Window '{}' cannot be closed: {error}", window.label()),
+            }
           }
         });
 
         if is_held {
+          log::info!("Window '{label}' held open until the renderer lets go of it");
           api.prevent_close();
+        } else {
+          log::info!("Window '{label}' closes now: no viewport drew in it");
         }
       }
       RunEvent::WindowEvent {

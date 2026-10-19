@@ -69,11 +69,11 @@ pub fn run() -> ExitCode {
   builder
     .build(context)
     .expect("Error while building tauri application")
-    .run(|_, event| {
+    .run(|_, event| match event {
+      RunEvent::ExitRequested { code, .. } => log::info!("Application exit requested, code {code:?}"),
       // The last line a log gets, so one that ends without it ended without the application exiting.
-      if let RunEvent::Exit = event {
-        log::info!("Exiting application after {:.1?}", process_uptime());
-      }
+      RunEvent::Exit => log::info!("Exiting application after {:.1?}", process_uptime()),
+      _ => {}
     });
 
   ExitCode::SUCCESS
