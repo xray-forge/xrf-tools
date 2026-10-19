@@ -4,7 +4,7 @@ import { IApplicationHelp } from "@/core/routing/application";
  * Help for the home screen, which is a screen rather than an application and so carries its own.
  */
 export const LAUNCHER_HELP: IApplicationHelp = {
-  summary: "Find and open XRF tools by group or search. Click `XRF` in the toolbar to return here from a tool.",
+  summary: "Find and open XRF tools by group or search. Choose `File` > `Close` to return here from a tool.",
   workflow: [
     "Choose a group or type in `Search tools`. Search stays within the selected group; select `All` to search " +
       "every group.",
@@ -19,8 +19,8 @@ export const LAUNCHER_HELP: IApplicationHelp = {
       "shows how many tools match your query.",
     "Developer mode also shows tools marked `Planned`. They are not implemented yet; opening one shows its " +
       "intended purpose. With developer mode off, only implemented tools and their groups appear.",
-    "Returning home asks for confirmation when a tool has unsaved changes. Navigation is disabled while a " +
-      "blocking operation runs.",
+    "`File` > `Close` (`Ctrl + W`) asks for confirmation when a tool has unsaved changes, and is refused while " +
+      "the tool is still working. Closing the window asks in both cases.",
   ],
   limitations: [
     "The catalog is fixed for this build: individual tools cannot be reordered, hidden or pinned.",
