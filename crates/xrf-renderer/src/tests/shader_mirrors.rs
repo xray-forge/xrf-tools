@@ -39,8 +39,8 @@ use crate::scene::static_scene::static_surface_builder::StaticSurfaceBuilder;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::shader::shader_library::ShaderLibrary;
 
-/// The cull tells a batch's class by its index as Rust lays batches out, a layout's classes in `StaticClass` order,
-/// and finds a surface pass's draw list after them as Rust does.
+/// The cull tells a batch's class and layout by its index as Rust lays batches out, a layout's classes in `StaticClass`
+/// order, and finds a surface pass's draw list after them as Rust does.
 #[test]
 fn the_cull_counts_classes_as_rust_does() {
   let library: ShaderLibrary = ShaderLibrary::default();
@@ -56,6 +56,10 @@ fn the_cull_counts_classes_as_rust_does() {
   assert_eq!(
     get_constant(&library, "static/cull", "SURFACE_PASS_COUNT"),
     StaticSurfacePass::COUNT as u32
+  );
+  assert_eq!(
+    get_constant(&library, "static/cull", "TREE_LAYOUT"),
+    StaticLayout::Tree.get_index() as u32
   );
 }
 

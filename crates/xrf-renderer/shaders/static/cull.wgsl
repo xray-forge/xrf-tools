@@ -24,6 +24,10 @@ override IS_FINEST: bool = false;
 // Whether the shadow is an overhead map of the level's water, which keeps its water alone.
 override IS_WATER: bool = false;
 
+// Whether a sun cascade's trees are kept only where their shadows can fall in the camera's view (`params.receivers`):
+// for trees redrawn often enough to follow the camera, never for a layer kept across its turns.
+override IS_RECEIVED: bool = false;
+
 // `EPS_S`, the least a fade's range is taken as.
 const RANGE_EPSILON: f32 = 1e-6;
 // Workgroups a row of the late phase's dispatch holds: the most one dimension may.
@@ -46,6 +50,28 @@ fn is_in_frustum(sphere: vec4<f32>) -> bool {
 }
 
 // `r / d²`, the engine's screen area of a sphere from the camera, without the screen it is compared against.
+// Whether a sun cascade's caster can shade what the camera sees: its sphere drawn out along the light to the cascade's
+// far plane stands inside every plane of the camera's frustum, widened for a turn (`params.receivers`).
+fn casts_into_view(sphere: vec4<f32>) -> bool {
+  let far: vec4<f32> = camera.planes[4];
+  let end: vec3<f32> = sphere.xyz - far.xyz * max(dot(far.xyz, sphere.xyz) + far.w, 0.0);
+
+  for (var plane: u32 = 0u; plane < 6u; plane++) {
+    let p: vec4<f32> = params.receivers[plane];
+
+    if (max(dot(p.xyz, sphere.xyz), dot(p.xyz, end)) + p.w < -sphere.w) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// Whether a sun cascade keeping only what the camera sees drops a slot's caster at `sphere`: a tree's alone.
+fn is_unreceived(slot: Slot, sphere: vec4<f32>) -> bool {
+  return IS_RECEIVED && slot.batch / CLASS_COUNT == TREE_LAYOUT && !casts_into_view(sphere);
+}
+
 fn screen_area(sphere: vec4<f32>) -> f32 {
   let offset: vec3<f32> = sphere.xyz - params.lod_origin.xyz;
 
@@ -166,7 +192,7 @@ fn cs_cull_singles(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_wo
 
   let sphere: vec4<f32> = placed_sphere(spheres[index], places[slot.place]);
 
-  if (is_in_frustum(sphere)) {
+  if (is_in_frustum(sphere) && !is_unreceived(slot, sphere)) {
     keep(slot, index, slot.place, sphere);
   }
 }
@@ -278,6 +304,11 @@ fn cs_cull_rows(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workg
   }
 
   let slot: Slot = slots[row.slot];
+
+  if (is_unreceived(slot, row.sphere)) {
+    return;
+  }
+
   let place: Place = places[row.place];
 
   for (var offset: u32 = 0u; offset < slot.cluster_count; offset++) {

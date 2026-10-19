@@ -45,6 +45,8 @@ fn row_windows(word: u32) -> u32 {
 // shadows cast first, then water, composited surfaces, wall marks and strictly sorted composited surfaces.
 const CLASS_COUNT: u32 = 6u;
 const WATER_CLASS: u32 = 2u;
+// The trees' layout, as `StaticLayout` orders them: a batch's layout is its number over `CLASS_COUNT`.
+const TREE_LAYOUT: u32 = 1u;
 
 // The surface passes a layout has a draw list of each of after every batch's, as `StaticSurfacePass` orders them: the
 // enhanced glass, then the distortion.

@@ -1,3 +1,5 @@
+use glam::Vec3;
+
 use crate::lighting::sun_cascade::SunCascade;
 use crate::scene::level::shadow_cut::ShadowCut;
 use crate::scene::level::shadow_prefetch::ShadowPrefetch;
@@ -21,6 +23,9 @@ pub struct ShadowCascadeView {
   /// Whether its kept layer holds its static layer and trees as its map was last drawn from, which a frame drawing
   /// only the grass copies in.
   pub is_kept: bool,
+  /// The eye and the look its kept layer's trees were kept for, where they were kept only where the camera saw their
+  /// shadows.
+  pub received_at: Option<(Vec3, Vec3)>,
   /// The layer of the static layers it shows, and the version and contents its static layer was drawn at, none before
   /// it was or since it went stale; and the fit it was drawn at.
   pub static_layer: u32,
@@ -44,6 +49,7 @@ impl ShadowCascadeView {
       waited: 0,
       has_drawn_grass: false,
       is_kept: false,
+      received_at: None,
       static_layer: index as u32,
       drawn_static: None,
       static_fit: SunCascade::default(),
@@ -74,5 +80,6 @@ impl ShadowCascadeView {
     self.prefetch = None;
     self.is_swapped = false;
     self.is_kept = false;
+    self.received_at = None;
   }
 }

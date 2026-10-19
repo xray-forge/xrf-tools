@@ -28,7 +28,7 @@ pub struct StaticCullPass {
   view_layout: wgpu::BindGroupLayout,
   pipelines: [wgpu::ComputePipeline; 6],
   /// The singles, the rows and the clamp again, for a sun cascade's view, then for a light face's.
-  shadow_pipelines: [[wgpu::ComputePipeline; 3]; 3],
+  shadow_pipelines: [[wgpu::ComputePipeline; 3]; 4],
   grid: ComputeGrid,
   generation: u64,
 }
@@ -162,7 +162,7 @@ impl StaticCullPass {
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<([wgpu::ComputePipeline; 6], [[wgpu::ComputePipeline; 3]; 3])> {
+  ) -> XrfResult<([wgpu::ComputePipeline; 6], [[wgpu::ComputePipeline; 3]; 4])> {
     let create = |entry: &'static str, permutation: StaticCullPermutation| -> XrfResult<wgpu::ComputePipeline> {
       source.get_compute_pipeline(
         &ComputePipelineDescription::new(entry, StaticCullPermutation::MODULE, entry)
@@ -196,6 +196,7 @@ impl StaticCullPass {
         create_shadow(ShadowCull::Cascade)?,
         create_shadow(ShadowCull::LightFace)?,
         create_shadow(ShadowCull::Water)?,
+        create_shadow(ShadowCull::CascadeReceived)?,
       ],
     ))
   }

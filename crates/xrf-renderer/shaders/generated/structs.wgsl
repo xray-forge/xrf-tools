@@ -525,6 +525,7 @@ struct CullParams {
   is_impostors: u32,
   pad: vec4<u32>,
   lod_origin: vec4<f32>,
+  receivers: array<vec4<f32>, 6>,
 }
 
 struct Occlusion {

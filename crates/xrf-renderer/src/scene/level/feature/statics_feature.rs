@@ -1,4 +1,4 @@
-use glam::{Mat4, UVec4, Vec2};
+use glam::{Mat4, UVec4, Vec2, Vec3, Vec4};
 use xrf_math::EPS_S;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
@@ -27,6 +27,10 @@ use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
+
+/// What the camera's lens is scaled by for the frustum a sun cascade's trees are kept for: a third or so wider each way
+/// at the usual lenses, so a camera turning between the trees' redraws still finds their shadows drawn.
+const RECEIVER_WIDEN: f32 = 0.6;
 
 /// The static scene as the view culls and draws it: the cull's parameters this frame, the depth pyramid the next
 /// frame's occlusion is tested against and the camera it was reduced through, the counts the cull read back, whether
@@ -108,6 +112,7 @@ impl StaticsFeature {
       is_impostors: options.features.lod.is_impostors as u32,
       pad: UVec4::ZERO,
       lod_origin: view.position.extend(1.0),
+      receivers: Self::get_receivers(view),
     };
     self.matrices = (view.view, view.projection);
     self.is_wallmarked = options.show.is_wallmarked;
@@ -125,6 +130,29 @@ impl StaticsFeature {
         has_history: self.history.is_some() as u32,
       };
     }
+  }
+
+  /// The planes a sun cascade's trees are kept within (`StaticCullUniform::receivers`): the camera's frustum through a
+  /// lens `RECEIVER_WIDEN` wider, its sides and the plane through the eye, the last none.
+  fn get_receivers(view: &CameraView) -> [Vec4; 6] {
+    let mut projection: Mat4 = view.projection;
+
+    projection.x_axis.x *= RECEIVER_WIDEN;
+    projection.y_axis.y *= RECEIVER_WIDEN;
+
+    let matrix: Mat4 = projection * view.view;
+    let rows: [Vec4; 4] = [matrix.row(0), matrix.row(1), matrix.row(2), matrix.row(3)];
+    let forward: Vec3 = (-view.view.inverse().z_axis.truncate()).normalize_or_zero();
+    let side = |plane: Vec4| plane / plane.truncate().length().max(f32::EPSILON);
+
+    [
+      side(rows[3] + rows[0]),
+      side(rows[3] - rows[0]),
+      side(rows[3] + rows[1]),
+      side(rows[3] - rows[1]),
+      forward.extend(-forward.dot(view.position)),
+      Vec4::ZERO,
+    ]
   }
 
   /// The cull's parameters this frame, which every cull of the view's own views reads.

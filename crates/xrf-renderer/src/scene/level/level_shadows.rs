@@ -78,6 +78,10 @@ const SWAY_SEEDS: [f32; RENDER_MAX_SHADOW_CASCADES] = [0.12, 0.15, 0.25, 0.35];
 const KEPT_SEED: f32 = 0.15;
 /// Sway intervals a kept cascade's trees wait at most for another's redraw this frame.
 const TREES_WAIT_MOST: f32 = 2.0;
+/// Metres the camera moves and degrees it turns at most before trees kept only where it saw their shadows are drawn
+/// again, within the widening of the frustum they were kept for.
+const RECEIVED_MOVE_MOST: f32 = 4.0;
+const RECEIVED_TURN_MOST: f32 = 10.0;
 
 /// Metres the grass stands at most over the ground, which the cards' reach is sampled past.
 const GRASS_STANDING: f32 = 3.0;
@@ -156,6 +160,12 @@ pub struct LevelShadows {
 }
 
 impl LevelShadows {
+  /// Whether a cascade due this frame draws its trees into its kept layer: the grass casts into it and the kept layers
+  /// are held.
+  fn is_kept_draw(&self, index: usize) -> bool {
+    self.kept.is_some() && self.grass_cascades[index]
+  }
+
   /// Metres the grass's cards need stand from the eye to shadow the cascades they are drawn into by `settings`: the
   /// last such cascade's width, past which a tuft falls in a cascade drawing none.
   pub fn get_grass_reach(settings: &RenderShadowSettings) -> Option<f32> {
@@ -309,24 +319,35 @@ impl LevelShadows {
       .iter()
       .filter_map(|&(index, band, layer)| Some((index, band, layer, import(self.cascades[index].band.as_ref()?))))
       .collect();
-    // A kept layer's copy draws no caster, so its cascade needs no lists.
-    let culls: Vec<(&'a ViewBinding, StaticCullParameters)> = due
+    // A kept layer's copy draws no caster, so its cascade needs no lists; one whose trees go into its kept layer keeps
+    // them only where their shadows can fall in the camera's view, the layer drawn again once the camera turns away.
+    let culls: Vec<(&'a ViewBinding, StaticCullParameters, ShadowCull)> = due
       .iter()
       .filter(|(_, draw, _)| *draw != CascadeDraw::Kept)
-      .map(|(.., (cut, _, cull, _))| (&cut.view, *cull))
-      .chain(bands.iter().map(|(.., (cut, _, cull, _))| (&cut.view, *cull)))
+      .map(|(index, _, (cut, _, cull, _))| {
+        let kind: ShadowCull = if self.is_kept_draw(*index) {
+          ShadowCull::CascadeReceived
+        } else {
+          ShadowCull::Cascade
+        };
+
+        (&cut.view, *cull, kind)
+      })
+      .chain(
+        bands
+          .iter()
+          .map(|(.., (cut, _, cull, _))| (&cut.view, *cull, ShadowCull::Cascade)),
+      )
       .collect();
 
     culls
       .iter()
-      .fold(graph.add_compute_pass("sun shadow cull"), |builder, (_, cull)| {
+      .fold(graph.add_compute_pass("sun shadow cull"), |builder, (_, cull, _)| {
         builder.parameters(cull)
       })
       .record(move |context| {
-        for (view, cull) in &culls {
-          passes
-            .cull
-            .record_shadow(context, view, cull, params, ShadowCull::Cascade);
+        for (view, cull, kind) in &culls {
+          passes.cull.record_shadow(context, view, cull, params, *kind);
         }
       });
 
@@ -479,7 +500,15 @@ impl LevelShadows {
       cascade.waited = 0;
       cascade.is_swapped = false;
       cascade.has_drawn_grass = offer.draw != CascadeDraw::Whole && self.grass_cascades[offer.index];
-      cascade.is_kept = offer.draw != CascadeDraw::Whole && self.grass_cascades[offer.index] && self.kept.is_some();
+      cascade.is_kept = offer.draw != CascadeDraw::Whole && self.kept.is_some() && self.grass_cascades[offer.index];
+
+      if matches!(offer.draw, CascadeDraw::Static | CascadeDraw::Swaying) {
+        cascade.received_at = cascade
+          .is_kept
+          .then(|| (frame.camera.position, frame.camera.get_look()));
+      } else if offer.draw == CascadeDraw::Whole {
+        cascade.received_at = None;
+      }
 
       if offer.draw == CascadeDraw::Static {
         cascade.drawn_static = Some((offer.fit.version, offer.contents));
@@ -534,6 +563,7 @@ impl LevelShadows {
       self.cascades[index].drawn = None;
       self.cascades[index].drawn_static = None;
       self.cascades[index].is_kept = false;
+      self.cascades[index].received_at = None;
     }
 
     for (index, ..) in std::mem::take(&mut self.bands) {
@@ -698,7 +728,12 @@ impl LevelShadows {
 
       is_fit && !scene.is_changed_since(contents, |sphere| frustum.reaches(sphere))
     });
-    let is_stale: bool = cascade.drawn.is_none() || !is_held || cascade.is_swapped;
+    // Trees kept only where the camera saw their shadows are drawn again once it turned or moved far from where it was.
+    let is_left: bool = cascade.received_at.is_some_and(|(eye, look)| {
+      eye.distance(frame.camera.position) > RECEIVED_MOVE_MOST
+        || look.dot(frame.camera.get_look()) < RECEIVED_TURN_MOST.to_radians().cos()
+    });
+    let is_stale: bool = cascade.drawn.is_none() || !is_held || cascade.is_swapped || is_left;
     let interval: f32 = frame.settings.get_sway_interval();
     let is_swayed: bool = frame
       .sway

@@ -28,4 +28,7 @@ pub struct StaticCullUniform {
   pub pad: UVec4,
   /// The camera every view's levels of detail are measured from, a shadow's too.
   pub lod_origin: Vec4,
+  /// The camera's frustum widened for a turn, as planes pointing inward, which a sun cascade keeping only what the camera
+  /// sees tests its trees' shadows against; all nought, which keeps everything, where none is set.
+  pub receivers: [Vec4; 6],
 }

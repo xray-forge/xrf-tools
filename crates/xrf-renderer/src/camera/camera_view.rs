@@ -74,6 +74,11 @@ impl CameraView {
     }
   }
 
+  /// The direction the view looks, in renderer space.
+  pub fn get_look(&self) -> Vec3 {
+    (-self.view.inverse().z_axis.truncate()).normalize_or_zero()
+  }
+
   /// The view's six planes in renderer space, pointing in, each normalized so a sphere tests by its radius.
   pub fn get_planes(&self) -> [Vec4; 6] {
     let matrix: Mat4 = self.get_view_projection();
