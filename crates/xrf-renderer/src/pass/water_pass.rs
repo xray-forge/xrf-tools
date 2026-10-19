@@ -12,6 +12,7 @@ use crate::pass::enhanced_water_maps::EnhancedWaterMaps;
 use crate::pass::enhanced_water_parameters::EnhancedWaterParameters;
 use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::ray_guides_pass::RayGuidesPass;
 use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
@@ -284,12 +285,24 @@ impl WaterPass {
       rain_rings: draw.rings,
     };
 
-    self.add_batch_pass(
-      Self::begin_surface_pass(graph, draw),
-      (parameters, None),
-      (&frame.args, frame.groups),
-      |it| &it.enhanced,
-    );
+    match draw.guides.filter(|_| self.pipelines.enhanced_guided.is_some()) {
+      Some(guides) => self.add_batch_pass(
+        Self::begin_surface_pass(graph, draw)
+          .color(GraphColorAttachment::new(guides.specular_albedo, wgpu::LoadOp::Load))
+          .color(GraphColorAttachment::new(guides.normals, wgpu::LoadOp::Load))
+          .color(GraphColorAttachment::new(guides.hit_distance, wgpu::LoadOp::Load))
+          .color(GraphColorAttachment::new(guides.bias, wgpu::LoadOp::Load)),
+        (parameters, None),
+        (&frame.args, frame.groups),
+        |it| it.enhanced_guided.as_ref().unwrap_or(&it.enhanced),
+      ),
+      None => self.add_batch_pass(
+        Self::begin_surface_pass(graph, draw),
+        (parameters, None),
+        (&frame.args, frame.groups),
+        |it| &it.enhanced,
+      ),
+    }
   }
 
   /// Declares the water's reflection over the frame's copy before it (`scene`): traced on the screen into the current
@@ -528,6 +541,16 @@ impl WaterPass {
       blended(ViewTargets::DISTORTION),
       Some(ViewTargets::MOTION.into()),
     ];
+    // Ray reconstruction's guides past them, replaced where the enhanced water draws.
+    let guided_targets: [Option<wgpu::ColorTargetState>; 7] = [
+      targets[0].clone(),
+      targets[1].clone(),
+      targets[2].clone(),
+      Some(RayGuidesPass::SPECULAR_ALBEDO.into()),
+      Some(RayGuidesPass::NORMALS.into()),
+      Some(RayGuidesPass::HIT_DISTANCE.into()),
+      Some(RayGuidesPass::BIAS.into()),
+    ];
     let reflection_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(WaterReflection::FORMAT.into())];
     let current_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(WaterReflection::CURRENT_FORMAT.into())];
     let describe = |label: &'static str,
@@ -583,6 +606,19 @@ impl WaterPass {
         &enhanced_layouts,
         &targets,
       )?,
+      enhanced_guided: (source.device.limits().max_color_attachment_bytes_per_sample >= WaterPipelines::GUIDED_BYTES)
+        .then(|| {
+          surface(
+            (
+              "water enhanced guided",
+              "static/water_enhanced",
+              "fs_water_enhanced_guided",
+            ),
+            &enhanced_layouts,
+            &guided_targets,
+          )
+        })
+        .transpose()?,
     })
   }
 }

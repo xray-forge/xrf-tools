@@ -11,6 +11,7 @@ use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::water_draw::WaterDraw;
 use crate::pass::water_uniform::WaterUniform;
+use crate::scene::level::feature::ray_guides::RayGuides;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
 use crate::scene::level::feature::water_frame::WaterFrame;
@@ -39,17 +40,18 @@ impl WaterFeature {
   /// Draws the water of a frame's `record` where it draws, over the sky's `views` and the frame copied before it
   /// (`before_water`, which the enhanced water refracts and reflects), from the cull's argument buffers `args`; its
   /// rays the screen left traced where the scene's trace is built (`traced`, with the sky's group), the enhanced water
-  /// rippled by the enhanced drops' `rings`. Answers the G-buffer's depth with the nearest water's over it where the
-  /// water draws.
+  /// rippled by the enhanced drops' `rings`, writing ray reconstruction's `guides` where it reads them. Answers the
+  /// G-buffer's depth with the nearest water's over it where the water draws.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     record: ViewRecord<'a>,
-    (views, before_water, args, rings): (
+    (views, before_water, args, rings, guides): (
       Option<&'a SkyViews>,
       Option<GraphTexture>,
       Vec<GraphBuffer>,
       GraphTexture,
+      Option<RayGuides>,
     ),
     traced: Option<(SkyParameters<'a>, TraceParameters<'a>, &'a wgpu::BindGroup)>,
   ) -> Option<GraphTexture> {
@@ -69,6 +71,7 @@ impl WaterFeature {
       scene_trace: passes.scene_trace,
       traced,
       rings,
+      guides,
     };
 
     Some(passes.water.add_passes(graph, bindings, runtime, draw))

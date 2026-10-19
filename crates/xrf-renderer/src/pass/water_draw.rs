@@ -6,6 +6,7 @@ use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::ray_guides::RayGuides;
 use crate::scene::level::feature::water_feature::WaterFeature;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::static_scene::static_layout::StaticLayout;
@@ -32,4 +33,7 @@ pub struct WaterDraw<'a> {
   pub traced: Option<(SkyParameters<'a>, TraceParameters<'a>, &'a wgpu::BindGroup)>,
   /// The enhanced drops' rings, which the enhanced water ripples by; a texel of nothing without them.
   pub rings: GraphTexture,
+  /// The guides ray reconstruction reads, which the enhanced water writes where it draws; none where it does not
+  /// reconstruct.
+  pub guides: Option<RayGuides>,
 }

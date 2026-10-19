@@ -295,8 +295,72 @@ fn enhanced_caustics(bottom: vec3<f32>) -> vec3<f32> {
 // nearer than the water stands there, clouded into the water's colour by the water's depth, its reflection over it by
 // the fresnel cubed, the light it gathers on its bottom and the sun's highlight where the sun reaches it, fogged, and
 // faded into what lies under it along its shallow edge.
+// The enhanced water's pixel and what ray reconstruction's guides read of it: its waves' normal, the share of its
+// reflection it shows, how rough its reflection reads, and how far its reflected ray went.
+struct EnhancedShaded {
+  out: WaterOutput,
+  normal: vec3<f32>,
+  reflected_share: f32,
+  roughness: f32,
+  hit_distance: f32,
+};
+
+// The guides' roughness of the water's reflection, calm and under the heaviest rain's ripples; how far a reflection
+// with no ray to measure stands, the sky's, as the guides pass takes it; and how far the water is reconstructed from
+// this frame rather than the history, as a puddle's water is (`ray_guides` `BIAS_WATER`): its waves and the rain move
+// its reflection in place every frame.
+const GUIDE_ROUGHNESS_CALM: f32 = 0.05;
+const GUIDE_ROUGHNESS_RAIN: f32 = 0.3;
+const GUIDE_FAR_HIT: f32 = 1000.0;
+const GUIDE_BIAS: f32 = 0.8;
+
 @fragment
 fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
+  return shade_enhanced(in).out;
+}
+
+// The guides ray reconstruction reads, written where the enhanced water draws, over the G-buffer's, which the water
+// draws over after the guides pass.
+struct GuidedOutput {
+  @location(0) color: vec4<f32>,
+  @location(1) distortion: vec4<f32>,
+  @location(2) motion: vec2<f32>,
+  @location(3) specular_albedo: vec4<f32>,
+  @location(4) normals: vec4<f32>,
+  @location(5) hit_distance: f32,
+  @location(6) bias: f32,
+};
+
+@fragment
+fn fs_water_enhanced_guided(in: WaterVarying) -> GuidedOutput {
+  let shaded: EnhancedShaded = shade_enhanced(in);
+  var out: GuidedOutput;
+
+  out.color = shaded.out.color;
+  out.distortion = shaded.out.distortion;
+  out.motion = shaded.out.motion;
+  out.specular_albedo = vec4<f32>(vec3<f32>(shaded.reflected_share), 1.0);
+  out.normals = vec4<f32>(shaded.normal, shaded.roughness);
+  out.hit_distance = shaded.hit_distance;
+  out.bias = GUIDE_BIAS;
+
+  return out;
+}
+
+// How far the reflected ray went from a point of the water (in view space) to what the reflection kept met, from the
+// distance along the view the reflection keeps (`mirrored_distance`); the sky's where it met nothing or reflects none.
+fn reflected_ray_length(position: vec3<f32>, kept: f32) -> f32 {
+  if (enhanced.reflected < 0.5 || kept <= 0.0 || kept >= SKY_KEPT) {
+    return GUIDE_FAR_HIT;
+  }
+
+  return clamp((kept / max(-position.z, 1e-4) - 1.0) * length(position), 0.0, GUIDE_FAR_HIT);
+}
+
+// The distance the reflection's history keeps for the sky (`water_reflection` `SKY_DISTANCE`).
+const SKY_KEPT: f32 = 60000.0;
+
+fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   let size: vec2<f32> = camera.viewport.xy;
   let pixel: vec2<f32> = floor(in.clip.xy);
   // The bottom under the fragment, in the world; far below where only the sky is.
@@ -347,16 +411,21 @@ fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
   let fogged: vec3<f32> = mix(lighting.fog_color.rgb, lit, seen);
   let border: f32 = smoothstep(0.0, max(enhanced.soft_border, 1e-4), path + fresnel);
   let shown: vec3<f32> = mix(screen, fogged, border * seen * seen);
-  var out: WaterOutput;
+  var shaded: EnhancedShaded;
 
-  out.color = vec4<f32>(
+  shaded.out.color = vec4<f32>(
     scene_from_shown(select(fragment.base.rgb, shown, lighting.params.y > 0.5)),
     saturate(water_depth * SHORE_FADE),
   );
-  out.distortion = write_distortion(fragment, water);
-  out.motion = camera_motion(in.world, in.world);
+  shaded.out.distortion = write_distortion(fragment, water);
+  shaded.out.motion = camera_motion(in.world, in.world);
+  shaded.normal = waves.normal;
+  shaded.reflected_share = saturate(fresnel * enhanced.reflectivity) * seen * border * seen * seen;
+  shaded.roughness = mix(GUIDE_ROUGHNESS_CALM, GUIDE_ROUGHNESS_RAIN, waves.rain_rough);
+  shaded.hit_distance = reflected_ray_length(fragment.position,
+    textureSampleLevel(reflection_clear, sky_clamp, saturate((pixel + 0.5) / size + waves.screen), 0.0).a);
 
-  return out;
+  return shaded;
 }
 
 // The enhanced water's colour read over the level ten metres a repeat, moved by its waves' tilt, not over
