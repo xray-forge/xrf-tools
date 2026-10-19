@@ -379,7 +379,8 @@ impl ResolveFeature {
               "dlss output",
               display,
               DlssResolve::FORMAT,
-              wgpu::TextureUsages::STORAGE_BINDING,
+              // NGX writes the output as storage and clears it with a transfer command.
+              wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_DST,
             ),
             is_reset: true,
           })));
@@ -447,7 +448,8 @@ impl ResolveFeature {
               "ray reconstruction output",
               display,
               DlssResolve::FORMAT,
-              wgpu::TextureUsages::STORAGE_BINDING,
+              // As super resolution's: NGX writes it as storage and clears it with a transfer command.
+              wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_DST,
             ),
             is_reset: true,
             view: Mat4::IDENTITY,
