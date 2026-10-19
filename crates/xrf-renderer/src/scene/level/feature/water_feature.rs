@@ -136,6 +136,11 @@ impl WaterFeature {
           .get_turns()
           .max(WaterReflection::TRACE_TURNS_LEAST),
         self.frame,
+        if reflections.is_ray_budgeted {
+          WaterReflection::DIM_TURNS
+        } else {
+          1
+        },
       ),
     );
   }

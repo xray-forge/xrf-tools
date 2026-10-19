@@ -44,6 +44,8 @@ pub struct EnhancedWaterUniform {
   /// Frames a pixel the screen does not answer waits between its rays, the history held between, and the frame's count.
   pub trace_turns: u32,
   pub trace_frame: u32,
+  /// How many times its turns a still, dim reflection waits, one for as often as any.
+  pub dim_turns: u32,
   /// How much of its colour the reflection keeps.
   pub vibrance: f32,
   /// Metres a side of the tile the enhanced drops' rings wrap over (`RainUniform::get_rings`), which it ripples by in
@@ -56,13 +58,14 @@ pub struct EnhancedWaterUniform {
 
 impl EnhancedWaterUniform {
   /// `reflection` says whether its reflection draws this frame, and whether its history holds a frame; `trace` how far
-  /// its misses are traced, none for not, how many frames a pixel waits between its rays, and the frame's count.
+  /// its misses are traced, none for not, how many frames a pixel waits between its rays, the frame's count, and how
+  /// many times its turns a still, dim reflection waits.
   pub fn new(
     settings: &RenderEnhancedWaterSettings,
     (wind, rain): (RenderWind, f32),
     flow: WaterFlow,
     (reflected, history): (bool, bool),
-    (trace_distance, trace_turns, trace_frame): (f32, u32, u32),
+    (trace_distance, trace_turns, trace_frame, dim_turns): (f32, u32, u32, u32),
   ) -> Self {
     Self {
       refraction: settings.refraction,
@@ -88,6 +91,7 @@ impl EnhancedWaterUniform {
       trace_distance,
       trace_turns,
       trace_frame,
+      dim_turns: dim_turns.max(1),
       vibrance: settings.vibrance,
       ..Default::default()
     }

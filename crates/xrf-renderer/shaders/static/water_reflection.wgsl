@@ -89,12 +89,35 @@ fn mirrored_distance(position: vec3<f32>, travelled: f32) -> f32 {
   return -position.z * (1.0 + travelled / max(length(position), 1e-4));
 }
 
-// Whether a pixel the screen does not answer traces this frame: once in its `trace_turns`, each pixel's turn its own
-// (`trace_turn_of`), so every frame traces pixels spread over the whole water and a held pixel has fresh ones about it.
-// The scene pass traces the listed rays packed, so scattered turns cost its waves nothing.
-fn is_water_trace_turn(pixel: vec2<f32>) -> bool {
+// The share of what it reflects under which a water's pixel shows little of its reflection (its fresnel cubed by the
+// reflectivity, as the surface mixes it in, over its flat normal), and the frame's pixels its point may have moved
+// since the last frame for it to be still: a still, dim reflection waits `dim_turns` times its turns between rays, as
+// the surfaces' do, its history held between; a moving one traces at its turns.
+const WATER_DIM_SHARE: f32 = 0.15;
+const WATER_DIM_STILL: f32 = 2.0;
+
+// Frames a water's pixel at `world`, its flat surface facing `normal`, waits between its rays.
+fn water_trace_turns(world: vec3<f32>, normal: vec3<f32>) -> u32 {
   let turns: u32 = max(enhanced.trace_turns, 1u);
 
+  if (enhanced.dim_turns <= 1u) {
+    return turns;
+  }
+
+  let to_point: vec3<f32> = normalize(world - camera.position.xyz);
+  let fresnel: f32 = pow(saturate(dot(reflect(to_point, normal), to_point)), 3.0);
+  let now: vec4<f32> = camera.motion_current * vec4<f32>(world, 1.0);
+  let before: vec4<f32> = camera.motion_previous * vec4<f32>(world, 1.0);
+  let moved: f32 = length((now.xy / now.w - before.xy / before.w) * 0.5 * camera.viewport.xy);
+  let is_still_dim: bool = fresnel * enhanced.reflectivity < WATER_DIM_SHARE && moved < WATER_DIM_STILL;
+
+  return select(turns, turns * enhanced.dim_turns, is_still_dim);
+}
+
+// Whether a pixel the screen does not answer traces this frame: once in its `turns`, each pixel's turn its own
+// (`trace_turn_of`), so every frame traces pixels spread over the whole water and a held pixel has fresh ones about it.
+// The scene pass traces the listed rays packed, so scattered turns cost its waves nothing.
+fn is_water_trace_turn(pixel: vec2<f32>, turns: u32) -> bool {
   return (trace_turn_of(vec2<u32>(pixel), turns) + enhanced.trace_frame) % turns == 0u;
 }
 
@@ -325,7 +348,7 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
     let pixel: vec2<f32> = floor(in.clip.xy);
     let answer: vec4<f32> = vec4<f32>(scene, met_distance);
 
-    if (!(is_water_trace_turn(pixel) &&
+    if (!(is_water_trace_turn(pixel, water_trace_turns(in.world, normal)) &&
       request_water_trace(pixel, in.world, normal, flat_reflected, -position.z, answer, share))) {
       met_distance = WATER_HELD;
     }
@@ -393,8 +416,9 @@ fn fs_water_resolve(in: WaterVarying) -> @location(0) vec4<f32> {
   let moved: vec2<f32> = uv - previous;
   let is_off: bool = is_off_screen(previous);
   // A pixel on its turn brings the only fresh ray of its turns, so it keeps of the history what as many frames would.
-  let frames: f32 = select(1.0, f32(max(enhanced.trace_turns, 1u)), enhanced.trace_distance > 0.0 &&
-    is_water_trace_turn(floor(in.clip.xy)));
+  let turns: u32 = water_trace_turns(in.world, normalize(in.normal));
+  let frames: f32 = select(1.0, f32(turns),
+    enhanced.trace_distance > 0.0 && is_water_trace_turn(floor(in.clip.xy), turns));
   let kept: f32 =
     pow(saturate(REFLECTION_HISTORY - select(0.0, REFLECTION_SKY_HISTORY, met_distance <= 0.0) - f32(is_off)), frames) *
     enhanced.history;
