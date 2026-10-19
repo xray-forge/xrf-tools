@@ -81,7 +81,7 @@ image = { version = "0.25.10", default-features = false }
 indexmap = { version = "2.14.2", features = ["serde"] }
 log = "0.4.34"
 notify = "8.2.0"
-naga = { version = "30.0.1", features = ["wgsl-in"] }
+naga = { version = "30.0.0", features = ["wgsl-in"] }
 lzokay = { version = "2.0.1", default-features = false, features = ["std", "compress", "decompress"] }
 pollster = "1.0.1"
 proc-macro2 = "1.0.107"
@@ -102,7 +102,7 @@ trybuild = "1.0.121"
 uuid = "1.26.1"
 walkdir = "2.5.0"
 windows = "0.62.2"
-wgpu = { version = "30.0.1", default-features = false, features = ["std", "parking_lot", "dx12", "vulkan", "wgsl"] }
+wgpu = { version = "30.0.0", default-features = false, features = ["std", "dx12", "vulkan", "wgsl"] }
 xrf-animation-envelope = { path = "crates/xrf-animation-envelope" }
 xrf-anm = { path = "crates/xrf-anm" }
 xrf-archive = { path = "crates/xrf-archive" }
@@ -160,18 +160,21 @@ xrf-visual = { path = "crates/xrf-visual" }
 xrf-world = { path = "crates/xrf-world" }
 xrf-xml = { path = "crates/xrf-xml" }
 
-# wgpu's release with D3D12's command list reachable from a HAL command encoder, which DLSS records into on D3D12, and
-# bottom-level acceleration structures refit in place where they allow and ask for it; the whole family comes from the
-# fork so one copy of each crate is built.
+# wgpu's trunk on the way to v31 (the fork's `xrf/v31-modified`) with D3D12's command list reachable from a HAL command
+# encoder, which DLSS records into on D3D12, and bottom-level acceleration structures refit in place where they allow
+# and ask for it; the whole family comes from the fork so one copy of each crate is built. Trunk still calls itself
+# 30.0.0, which the requirements above match.
 [patch.crates-io]
-naga = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
-naga-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
-wgpu = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
-wgpu-core = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
-wgpu-core-deps-windows-linux-android = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
-wgpu-hal = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
-wgpu-naga-bridge = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
-wgpu-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "eba18f87ccd409ff019075cd8c742aad8fe0bc03" }
+naga = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
+naga-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
+wgpu = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
+wgpu-core = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
+wgpu-core-deps-linux-android-bsd = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
+wgpu-core-deps-windows = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
+wgpu-hal = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
+wgpu-naga-bridge = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
+wgpu-sync = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
+wgpu-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "cb681b317adc4ee8f67913852d5c10c27ae56042" }
 
 # Size-optimised: level 3 measured 3.7% faster for 36-40% larger binaries.
 [profile.release]
