@@ -29,6 +29,7 @@ export const RENDER_SHADOW_LIMITS = {
   bias: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.bias, 0.25),
   blend: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.blend, 0.01),
   filter: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.filter, 1),
+  swayCascades: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.swayCascades, 1),
   swayRate: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.swayRate, 5),
 } as const;
 
@@ -51,6 +52,11 @@ export function formatCascadeBlend(blend: number): string {
 /** @returns A shadow's normal offset, in texels. */
 export function formatShadowBias(bias: number): string {
   return `${formatNumber(bias, 2)} texels`;
+}
+
+/** @returns How many of the nearest cascades redraw their swaying trees. */
+export function formatShadowSwayCascades(count: number): string {
+  return count === 0 ? "None" : formatNumber(count, 0);
 }
 
 /** @returns How many times a second the cascades redraw their swaying trees at most. */

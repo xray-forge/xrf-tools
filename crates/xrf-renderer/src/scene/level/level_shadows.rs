@@ -680,9 +680,10 @@ impl LevelShadows {
     let interval: f32 = frame.settings.get_sway_interval();
 
     if !(is_changed
-      || frame
-        .sway
-        .is_redrawn_every(frame.sway.reach, fit.texel, cascade.drawn_at, interval))
+      || frame.settings.is_swaying(index)
+        && frame
+          .sway
+          .is_redrawn_every(frame.sway.reach, fit.texel, cascade.drawn_at, interval))
     {
       cascade.waited = 0;
 
@@ -735,9 +736,10 @@ impl LevelShadows {
     });
     let is_stale: bool = cascade.drawn.is_none() || !is_held || cascade.is_swapped || is_left;
     let interval: f32 = frame.settings.get_sway_interval();
-    let is_swayed: bool = frame
-      .sway
-      .is_redrawn_every(frame.sway.reach, current.texel, cascade.drawn_at, interval);
+    let is_swayed: bool = frame.settings.is_swaying(index)
+      && frame
+        .sway
+        .is_redrawn_every(frame.sway.reach, current.texel, cascade.drawn_at, interval);
     let is_kept: bool = has_grass && cascade.is_kept;
     let can_wait: bool = frame.sway.time - cascade.drawn_at < interval * TREES_WAIT_MOST;
     let is_trees_due: bool = is_stale || (is_swayed && !(is_kept && *is_trees_taken && can_wait));

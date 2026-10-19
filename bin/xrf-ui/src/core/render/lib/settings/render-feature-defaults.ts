@@ -233,6 +233,7 @@ export const DEFAULT_RENDER_SHADOW_SETTINGS: TRenderShadowSettings = {
   isEnabled: true,
   isStaggered: true,
   resolution: 2048,
+  swayCascades: 4,
   swayRate: 60,
 };
 

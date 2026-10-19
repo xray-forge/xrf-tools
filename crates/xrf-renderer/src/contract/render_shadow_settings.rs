@@ -39,6 +39,9 @@ pub struct RenderShadowSettings {
   /// Times a second the cascades redraw their swaying trees at most: 60 by default, fewer to redraw them less, their
   /// shadows then stepping between the sway's poses.
   pub sway_rate: f32,
+  /// How many of the nearest cascades redraw their trees as they sway: all four by default, fewer to keep the farther
+  /// ones' trees as they were last drawn, as engines stop animating distant foliage's shadows.
+  pub sway_cascades: u32,
   /// The contact shadows: the sun's under the cascades, drawn only while the cascades are, and the local lights',
   /// drawn whether the cascades are or not.
   pub contact: RenderContactShadowSettings,
@@ -57,6 +60,7 @@ impl Default for RenderShadowSettings {
       blend: 0.1,
       is_staggered: true,
       sway_rate: Self::SWAY_RATE,
+      sway_cascades: RENDER_MAX_SHADOW_CASCADES as u32,
       contact: RenderContactShadowSettings::default(),
     }
   }
@@ -65,6 +69,11 @@ impl Default for RenderShadowSettings {
 impl RenderShadowSettings {
   /// Times a second the cascades redraw their swaying trees at most, by default.
   pub const SWAY_RATE: f32 = 60.0;
+
+  /// Whether cascade `index` redraws its trees as they sway.
+  pub fn is_swaying(&self, index: usize) -> bool {
+    index < self.sway_cascades as usize
+  }
 
   /// Seconds between the cascades' redraws for the sway alone.
   pub fn get_sway_interval(&self) -> f32 {

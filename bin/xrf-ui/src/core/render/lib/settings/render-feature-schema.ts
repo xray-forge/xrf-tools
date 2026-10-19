@@ -202,6 +202,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     isEnabled: FLAG,
     isStaggered: FLAG,
     resolution: toNumber(256, 8192, true),
+    swayCascades: toNumber(0, RENDER_MAX_SHADOW_CASCADES, true),
     swayRate: toNumber(15, 60, true),
   },
   // The renderer's own: the third-party pack's menu bounds, its height doubled.

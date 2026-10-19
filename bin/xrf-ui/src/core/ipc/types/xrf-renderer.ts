@@ -1593,6 +1593,11 @@ export type RenderShadowSettings = {
    */
   swayRate: number | null;
   /**
+   * How many of the nearest cascades redraw their trees as they sway: all four by default, fewer to keep the farther
+   * ones' trees as they were last drawn, as engines stop animating distant foliage's shadows.
+   */
+  swayCascades: number;
+  /**
    * The contact shadows: the sun's under the cascades, drawn only while the cascades are, and the local lights',
    * drawn whether the cascades are or not.
    */

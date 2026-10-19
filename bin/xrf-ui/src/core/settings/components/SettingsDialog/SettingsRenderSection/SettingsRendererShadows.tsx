@@ -6,6 +6,7 @@ import {
   formatCascadeWidths,
   formatShadowBias,
   formatShadowFilter,
+  formatShadowSwayCascades,
   formatShadowSwayRate,
   RENDER_SHADOW_CASCADE_OPTIONS,
   RENDER_SHADOW_LIMITS,
@@ -103,6 +104,15 @@ export function SettingsRendererShadows(): ReactElement {
           {...RENDER_SHADOW_LIMITS.swayRate}
           format={formatShadowSwayRate}
           onChange={(swayRate: number) => onSet({ swayRate })}
+        />
+
+        <SliderFormRow
+          label={"Swaying cascades"}
+          description={"How many of the nearest cascades show trees swaying. Fewer is cheaper; far shadows hold still."}
+          value={shadows.swayCascades}
+          {...RENDER_SHADOW_LIMITS.swayCascades}
+          format={formatShadowSwayCascades}
+          onChange={(swayCascades: number) => onSet({ swayCascades })}
         />
       </div>
     </DetailSection>
