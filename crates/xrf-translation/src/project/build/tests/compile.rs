@@ -15,6 +15,7 @@ fn options(language: TranslationLanguage) -> TranslationBuildOptions {
     output: xrf_output::OutputOptions::default(),
     output_dir: PathBuf::from("output"),
     language,
+    link_policy: Default::default(),
   }
 }
 

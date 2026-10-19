@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use xrf_utils::HostLinkPolicy;
+
 use crate::language::TranslationLanguage;
 
 pub struct TranslationBuildOptions {
@@ -8,9 +10,8 @@ pub struct TranslationBuildOptions {
   pub output: xrf_output::OutputOptions,
   pub is_sorted: bool,
   /// Where the string tables are written, which is always a host directory.
-  ///
-  /// Sources are read through the VFS and may sit inside a volume; output cannot, because a `.db` has
-  /// nowhere to put a file.
   pub output_dir: PathBuf,
   pub language: TranslationLanguage,
+  /// What to do with a link already below `output_dir`.
+  pub link_policy: HostLinkPolicy,
 }

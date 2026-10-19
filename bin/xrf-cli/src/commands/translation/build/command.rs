@@ -10,6 +10,7 @@ use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
 use crate::core::command_context::CommandContext;
 use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::link_policy::{LinkPolicyArguments, requested_link_policy};
 use crate::core::progress::new_logging_job;
 
 #[derive(Default)]
@@ -74,6 +75,7 @@ impl GenericCommand for BuildCommand {
           .required(false)
           .action(ArgAction::SetFalse),
       )
+      .with_link_policy()
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -99,6 +101,7 @@ impl GenericCommand for BuildCommand {
       output,
       output_dir: output_dir.clone(),
       language: TranslationLanguage::from_str(language).map_err(XrfError::new_unknown_language_error)?,
+      link_policy: requested_link_policy(matches),
     };
 
     // A single source keeps working through the path-taking reader: a VFS mounts a directory, never a

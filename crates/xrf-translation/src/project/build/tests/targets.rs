@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_generated_test_resource};
@@ -20,6 +20,7 @@ fn options(output_dir: PathBuf) -> TranslationBuildOptions {
     output: xrf_output::OutputOptions::default(),
     language: TranslationLanguage::English,
     output_dir,
+    link_policy: Default::default(),
   }
 }
 
@@ -32,18 +33,115 @@ fn roots(root: &str) -> XrayRoots {
 
 #[test]
 fn a_json_stem_becomes_the_gamedata_file_name() -> XrfResult {
-  let output_root = PathBuf::from("output");
-
-  let target = target_path(r"ui\st_ui.json", &output_root, &TranslationLanguage::English)?;
+  let target = target_path(r"ui\st_ui.json", &TranslationLanguage::English)?;
 
   // The destination directory carries the language, so the stem is all the name that is needed, and
   // the logical path below the root is mirrored into it.
-  assert_eq!(target, output_root.join("eng").join("ui").join("st_ui.xml"));
+  assert_eq!(target.as_path(), Path::new("eng").join("ui").join("st_ui.xml"));
 
   // A dot in the stem is part of the name, not a language suffix: nothing strips it any more.
-  let dotted = target_path(r"ui\st_items.eng.json", &output_root, &TranslationLanguage::English)?;
+  let dotted = target_path(r"ui\st_items.eng.json", &TranslationLanguage::English)?;
 
-  assert_eq!(dotted, output_root.join("eng").join("ui").join("st_items.eng.xml"));
+  assert_eq!(dotted.as_path(), Path::new("eng").join("ui").join("st_items.eng.xml"));
+
+  Ok(())
+}
+
+#[test]
+fn a_target_never_leaves_the_output_directory() {
+  for source in [
+    r"..\..\input\st_test.json",
+    "../st_test.json",
+    r"c:\input\st_test.json",
+    "c:st_test.json",
+  ] {
+    assert!(
+      target_path(source, &TranslationLanguage::English).is_err(),
+      "'{source}' must not name a target"
+    );
+  }
+}
+
+/// A sentinel `input/st_test.xml` beside the source, and the output directory a single-file build is pointed at.
+fn single_file_layout(test_root: &str) -> XrfResult<(PathBuf, PathBuf)> {
+  let root: PathBuf = build_absolute_generated_test_resource_path(test_root);
+
+  if root.exists() {
+    fs::remove_dir_all(&root)?;
+  }
+
+  let source: PathBuf = write_generated_test_resource(&format!("{test_root}/input/st_test.json"), SOURCE_JSON)?;
+
+  write_generated_test_resource(&format!("{test_root}/input/st_test.xml"), "keep me")?;
+
+  Ok((source, root.join("out")))
+}
+
+fn assert_built_inside_output(source: &Path, output: &Path) -> XrfResult {
+  let result = TranslationBuilder::build_file(&source, &options(output.to_path_buf()))?;
+
+  assert_eq!(result.files, 1);
+  assert!(
+    output.join("eng").join("st_test.xml").is_file(),
+    "built from '{}'",
+    source.display()
+  );
+  assert_eq!(
+    fs::read_to_string(source.with_extension("xml"))?,
+    "keep me",
+    "building '{}' overwrote the file beside its source",
+    source.display()
+  );
+
+  Ok(())
+}
+
+/// The source path says where the file is read from, never where its string table goes: a single-file build writes
+/// `<output>/<language>/<file name>.xml` whatever the path held.
+#[test]
+fn a_single_file_build_writes_inside_the_output_whatever_its_path_holds() -> XrfResult {
+  let (source, output) = single_file_layout("build_targets/single_file_paths")?;
+  let current: PathBuf = std::env::current_dir()?;
+
+  // Parent-relative: climb from the working directory to the filesystem root, then down to the source.
+  let climb: PathBuf = current
+    .components()
+    .skip(1)
+    .map(|_| Path::new(".."))
+    .collect::<PathBuf>()
+    .join(
+      source
+        .strip_prefix(source.ancestors().last().expect("a root"))
+        .expect("the source sits below its root"),
+    );
+
+  let mut sources: Vec<PathBuf> = vec![
+    source.clone(),
+    climb,
+    source
+      .parent()
+      .expect("a directory")
+      .join("..")
+      .join("input")
+      .join("st_test.json"),
+  ];
+
+  // Verbatim-prefixed, which a drive-qualified component would otherwise carry into the target. A verbatim path takes
+  // no `/`, so it is rebuilt from components first.
+  if cfg!(windows) {
+    sources.push(PathBuf::from(format!(
+      r"\\?\{}",
+      source.components().collect::<PathBuf>().display()
+    )));
+  }
+
+  for path in sources {
+    if output.exists() {
+      fs::remove_dir_all(&output)?;
+    }
+
+    assert_built_inside_output(&path, &output)?;
+  }
 
   Ok(())
 }

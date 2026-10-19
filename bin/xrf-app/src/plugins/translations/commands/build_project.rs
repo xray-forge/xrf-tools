@@ -92,6 +92,7 @@ pub async fn translations_build_project(
     output: xrf_output::OutputOptions::default(),
     output_dir,
     language,
+    link_policy: Default::default(),
   };
 
   let outcome: TauriResult<TranslationBuildSummary> = run_job(

@@ -1,15 +1,16 @@
+use std::ffi::OsStr;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Instant;
 
-use xrf_error::XrfResult;
-use xrf_utils::{encode_string_to_bytes, format_path};
+use xrf_error::{XrfError, XrfResult};
+use xrf_utils::{HostDestination, HostRelativePath, encode_string_to_bytes, format_path};
 use xrf_vfs::{XrayAsset, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
 
 use crate::json::read::{parse_json, read_json};
 use crate::language::TranslationLanguage;
 use crate::project::build::compile::compile_by_language;
-use crate::project::build::targets::{ensure_output_outside_roots, prepare_target_file, validate_targets};
+use crate::project::build::targets::{ensure_output_outside_roots, target_path, validate_targets};
 use crate::project::build::translation_build_options::TranslationBuildOptions;
 use crate::project::build::translation_build_result::TranslationBuildResult;
 use crate::source_file_name::{is_json_source, is_json_source_name};
@@ -20,13 +21,6 @@ pub struct TranslationBuilder;
 
 impl TranslationBuilder {
   /// Build every translation source the roots expose.
-  ///
-  /// Reads through `xrf-vfs`, so a source tree layered over an installation compiles the sources the
-  /// engine would actually load. Writes to the host, because a string table is a file and there is
-  /// nowhere to put one inside a volume - which is why the output is a plain path rather than roots.
-  ///
-  /// Targets are validated before anything is written, so a build that would have two sources fighting
-  /// over one output file fails having produced nothing.
   ///
   /// # Errors
   ///
@@ -75,6 +69,8 @@ impl TranslationBuilder {
 
     validate_targets(&names, options)?;
 
+    let destination: HostDestination = HostDestination::new(&options.output_dir, options.link_policy);
+
     xrf_output::info!(options.output, "Building {} translation source(s)", assets.len());
 
     let building: xrf_job::JobScope = options.job.enter(
@@ -101,7 +97,7 @@ impl TranslationBuilder {
 
       result.sources += 1;
 
-      Self::build_parsed(logical_path, &parsed, options, &mut result)?;
+      Self::build_parsed(logical_path, logical_path, &parsed, &destination, options, &mut result)?;
 
       building.advance();
     }
@@ -122,9 +118,6 @@ impl TranslationBuilder {
 
   /// Build one source off disk, for a caller holding one file and no mounted roots.
   ///
-  /// The path-taking convenience the readers keep, and the reason `--path <one source>` still works: a
-  /// VFS mounts a directory, never a file.
-  ///
   /// # Errors
   ///
   /// Returns whatever building the JSON source returns.
@@ -134,11 +127,30 @@ impl TranslationBuilder {
 
     // Through the shared parser rather than comparing an extension; see `verify_file` for why.
     if is_json_source(path.as_ref()) {
+      // The file name alone names the target: the rest of a host path says where the source was, not where its
+      // string table goes, and a parent component in it would carry the write out of the output directory.
+      let name: &str = path.as_ref().file_name().and_then(OsStr::to_str).ok_or_else(|| {
+        XrfError::new_invalid_error(format!(
+          "Translation source '{}' has no file name to build to",
+          format_path(path.as_ref())
+        ))
+      })?;
+
+      validate_targets(&[name.to_owned()], options)?;
+
       let parsed: TranslationJson = read_json(path.as_ref())?;
+      let destination: HostDestination = HostDestination::new(&options.output_dir, options.link_policy);
 
       result.sources += 1;
 
-      Self::build_parsed(&format_path(path.as_ref()).to_string(), &parsed, options, &mut result)?;
+      Self::build_parsed(
+        &format_path(path.as_ref()).to_string(),
+        name,
+        &parsed,
+        &destination,
+        options,
+        &mut result,
+      )?;
     } else {
       log::info!("Skip file {}", format_path(path.as_ref()));
       xrf_output::info!(options.output, "Skip file {}", format_path(path.as_ref()));
@@ -150,20 +162,34 @@ impl TranslationBuilder {
   }
 
   /// Compile one parsed source into one string table per language the run asked for.
+  ///
+  /// `subject` names the source in messages; `target_name` is the name its string tables are written under.
   fn build_parsed(
     subject: &str,
+    target_name: &str,
     parsed: &TranslationJson,
+    destination: &HostDestination,
     options: &TranslationBuildOptions,
     result: &mut TranslationBuildResult,
   ) -> XrfResult {
     xrf_output::verbose!(options.output, "Building translations {subject}");
 
+    destination.create_root()?;
+
     if options.language == TranslationLanguage::All {
       for language in TranslationLanguage::get_all() {
-        Self::build_language(subject, parsed, &language, options, result)?;
+        Self::build_language(subject, target_name, parsed, &language, destination, options, result)?;
       }
     } else {
-      Self::build_language(subject, parsed, &options.language, options, result)?;
+      Self::build_language(
+        subject,
+        target_name,
+        parsed,
+        &options.language,
+        destination,
+        options,
+        result,
+      )?;
     }
 
     Ok(())
@@ -171,16 +197,24 @@ impl TranslationBuilder {
 
   fn build_language(
     subject: &str,
+    target_name: &str,
     source: &TranslationJson,
     language: &TranslationLanguage,
+    destination: &HostDestination,
     options: &TranslationBuildOptions,
     result: &mut TranslationBuildResult,
   ) -> XrfResult {
     let compiled: String = compile_by_language(Path::new(subject), source, language, options)?;
     let data: Vec<u8> = encode_string_to_bytes(&compiled, language.new_language_encoder())?;
-    let target: PathBuf = crate::project::build::targets::target_path(subject, &options.output_dir, language)?;
+    let target: HostRelativePath = target_path(target_name, language)?;
 
-    prepare_target_file(&target, options)?.write_all(&data)?;
+    xrf_output::verbose!(
+      options.output,
+      "Writing file {}",
+      format_path(&destination.get_root().join(&target))
+    );
+
+    destination.create_file(&target)?.write_all(&data)?;
 
     result.record_built_file(&language.to_string(), source.len() as u32);
 
