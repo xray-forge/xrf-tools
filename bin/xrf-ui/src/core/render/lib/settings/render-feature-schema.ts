@@ -18,11 +18,10 @@ import {
   ERenderRayReconstructionPreset,
   ERenderReflectionMode,
   ERenderReflectionProbe,
-  ERenderReflectionQuality,
-  ERenderReflectionTraceQuality,
   ERenderScale,
   ERenderTextureFiltering,
   ERenderTonemapMode,
+  ERenderTraceSize,
   ERenderVolumetricMode,
   ERenderWaterMode,
   RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION,
@@ -162,20 +161,25 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   },
   // The renderer's own: a surface's specular share of what it reflects is its material's by the intensity, one as a
   // dielectric reflects, so four shows a wet road's trees four times as strong; past two hundred metres a ray leaves
-  // the frame long before its steps reach; the rain wets the ground for them out to the reach, a kilometre at most.
+  // the frame long before its steps reach; the rain wets the ground for them out to the reach, a kilometre at most. The
+  // walks and the trace interval are `RenderReflectionSettings`' own ranges.
   reflections: {
     distance: toNumber(5, 200),
     intensity: toNumber(0, 4),
     mode: toChoice(ERenderReflectionMode),
     probe: toChoice(ERenderReflectionProbe),
-    quality: toChoice(ERenderReflectionQuality),
+    traceSize: toChoice(ERenderTraceSize),
+    steps: toNumber(16, 128, true),
     reach: toNumber(25, 1000, true),
     skyGain: toNumber(0.5, 3),
     isGrassReflected: FLAG,
-    isTraced: FLAG,
-    traceQuality: toChoice(ERenderReflectionTraceQuality),
     traceRoughness: toNumber(0.2, 1),
+    isDryTraced: FLAG,
     isRayBudgeted: FLAG,
+    isWaterReflected: FLAG,
+    waterSteps: toNumber(8, 32, true),
+    isTraced: FLAG,
+    traceInterval: toNumber(1, 8, true),
   },
   lights: {
     isEnabled: FLAG,

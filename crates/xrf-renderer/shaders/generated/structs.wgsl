@@ -195,6 +195,7 @@ struct EnhancedWater {
   trace_turns: u32,
   trace_frame: u32,
   dim_turns: u32,
+  march_steps: u32,
   vibrance: f32,
   rings_tile: f32,
   rings_reach: f32,
@@ -387,6 +388,7 @@ struct Reflections {
   has_source: f32,
   is_traced: f32,
   trace_turns: u32,
+  trace_floor: f32,
 }
 
 struct ExposureParams {

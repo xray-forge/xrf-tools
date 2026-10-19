@@ -22,6 +22,7 @@ use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_static_report::RenderStaticReport;
+use crate::contract::render_trace_size::RenderTraceSize;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::frame_encoder::FrameEncoder;
@@ -474,7 +475,7 @@ impl SceneView {
       device,
       options,
       frame.drawn,
-      self.features.resolve.is_ray_reconstructed(),
+      (self.features.resolve.is_ray_reconstructed(), self.features.wet.is_wet()),
     );
     self.features.view_trace.prepare(
       (device, &mut *encoder),
@@ -1664,7 +1665,12 @@ impl SceneView {
         .get_trace()
         .map(|trace| RenderAppliedReflections {
           intensity: trace.intensity,
-          quality: trace.quality,
+          trace_size: if trace.is_raw {
+            RenderTraceSize::Full
+          } else {
+            trace.trace_size
+          },
+          steps: self.features.reflections.get_settings().get_steps(),
         }),
       height_fog: self.features.fog.get_applied(),
       debanding: self.features.present.get_debanding(),

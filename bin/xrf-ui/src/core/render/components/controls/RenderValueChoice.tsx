@@ -11,6 +11,7 @@ export interface IRenderValueChoiceProps<T extends string> extends BaseComponent
   value: T;
   /** Whether the values stack one under another, for names too long to share a row. */
   isStacked?: boolean;
+  isDisabled?: boolean;
   onChange: (value: T) => void;
 }
 
@@ -25,6 +26,7 @@ export function RenderValueChoice<T extends string>({
   options,
   value,
   isStacked = false,
+  isDisabled = false,
   onChange,
 }: IRenderValueChoiceProps<T>): ReactElement {
   return (
@@ -51,7 +53,7 @@ export function RenderValueChoice<T extends string>({
             key={option.value}
             aria-label={option["aria-label"]}
             value={option.value}
-            disabled={option.isDisabled}
+            disabled={isDisabled || option.isDisabled}
           >
             {option.label}
           </ToggleButton>

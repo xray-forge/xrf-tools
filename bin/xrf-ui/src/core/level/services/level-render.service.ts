@@ -120,6 +120,12 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     return this.frame.adapter ? this.frame.rayReconstruction : ERenderDlssAvailability.AVAILABLE;
   }
 
+  /** Whether the view's last frame was reconstructed by DLSS ray reconstruction, its traces taken raw. */
+  @Computed()
+  public get isRayReconstructed(): boolean {
+    return this.frame.isRayReconstructed;
+  }
+
   /** What smooths the view's frame: the toolbar's antialiasing over the settings', FSR for DLSS on a GPU without it. */
   @Computed()
   public get antialiasing(): RenderAntialiasing {

@@ -90,8 +90,10 @@ impl WaterFeature {
       return;
     }
 
+    let reflections: RenderReflectionSettings = options.features.reflections;
+
     match frame.targets {
-      Some(targets) if settings.enhanced.reflectivity > 0.0 => {
+      Some(targets) if settings.enhanced.reflectivity > 0.0 && reflections.is_water_reflected => {
         if self
           .reflection
           .as_ref()
@@ -103,7 +105,6 @@ impl WaterFeature {
       _ => self.reflection = None,
     }
 
-    let reflections: RenderReflectionSettings = options.features.reflections;
     let is_traced: bool = reflections.is_traced && can_trace(device);
 
     self.frame = self.frame.wrapping_add(1);
@@ -131,16 +132,14 @@ impl WaterFeature {
         .map_or((false, false), |reflection| (true, reflection.histories.is_valid())),
       (
         if is_traced { reflections.distance } else { 0.0 },
-        reflections
-          .trace_quality
-          .get_turns()
-          .max(WaterReflection::TRACE_TURNS_LEAST),
+        reflections.get_trace_interval().max(WaterReflection::TRACE_TURNS_LEAST),
         self.frame,
         if reflections.is_ray_budgeted {
           WaterReflection::DIM_TURNS
         } else {
           1
         },
+        reflections.get_water_steps(),
       ),
     );
   }

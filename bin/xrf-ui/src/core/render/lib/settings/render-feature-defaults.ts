@@ -17,9 +17,8 @@ import {
   ERenderRayReconstructionPreset,
   ERenderReflectionMode,
   ERenderReflectionProbe,
-  ERenderReflectionQuality,
-  ERenderReflectionTraceQuality,
   ERenderScale,
+  ERenderTraceSize,
   ERenderVolumetricMode,
   ERenderWaterMode,
 } from "@/core/ipc/types/xrf-renderer";
@@ -163,8 +162,9 @@ export const DEFAULT_RENDER_RAIN_SETTINGS: TRenderRainSettings = {
 };
 
 /**
- * The engine's own: the cube alone, and for when it is traced, rays of 150 metres at high quality at full strength over
- * ground wet to 300 metres, the sky's highlights a quarter brighter as their light.
+ * The engine's own: the surfaces reflect the cube alone and the water the screen. For when the surfaces are traced,
+ * rays of 150 metres at half size over 96 cells at full strength over ground wet to 300 metres, budgeted, the sky's
+ * highlights a quarter brighter as their light; the water marches 16 steps; a missed pixel is traced every other frame.
  */
 export const DEFAULT_RENDER_REFLECTION_SETTINGS: TRenderReflectionSettings = {
   distance: 150,
@@ -172,13 +172,17 @@ export const DEFAULT_RENDER_REFLECTION_SETTINGS: TRenderReflectionSettings = {
   intensity: 1,
   mode: ERenderReflectionMode.ENGINE,
   probe: ERenderReflectionProbe.FINE,
-  quality: ERenderReflectionQuality.HIGH,
+  traceSize: ERenderTraceSize.HALF,
+  steps: 96,
   skyGain: 1.25,
   isGrassReflected: false,
-  isTraced: false,
-  traceQuality: ERenderReflectionTraceQuality.HIGH,
   traceRoughness: 0.6,
-  isRayBudgeted: false,
+  isDryTraced: false,
+  isRayBudgeted: true,
+  isWaterReflected: true,
+  waterSteps: 16,
+  isTraced: false,
+  traceInterval: 2,
 };
 
 /** The engine's own: every spawned light, and none of the level file's; no shafts until they cost less. */

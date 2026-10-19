@@ -6,9 +6,8 @@ use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_reflection_mode::RenderReflectionMode;
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
-use crate::contract::render_reflection_quality::RenderReflectionQuality;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
-use crate::contract::render_reflection_trace_quality::RenderReflectionTraceQuality;
+use crate::contract::render_trace_size::RenderTraceSize;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_frame::LightingFrame;
@@ -67,7 +66,9 @@ fn traces_only_enhanced_with_an_intensity_and_a_distance() {
   assert_eq!(defaults.mode, RenderReflectionMode::Engine);
   assert_eq!(defaults.intensity, 1.0);
   assert_eq!(defaults.distance, 150.0);
-  assert_eq!(defaults.quality, RenderReflectionQuality::High);
+  assert_eq!((defaults.trace_size, defaults.steps), (RenderTraceSize::Half, 96));
+  assert_eq!((defaults.trace_interval, defaults.water_steps), (2, 16));
+  assert!(defaults.is_ray_budgeted && defaults.is_water_reflected && !defaults.is_dry_traced);
   assert_eq!(defaults.reach, 300.0);
   assert!(!defaults.is_drawn());
   assert!(enhanced().is_drawn());
@@ -100,7 +101,7 @@ fn skips_every_pass_where_nothing_is_traced() {
   assert_eq!(
     ReflectionTrace::new(&traced),
     Some(ReflectionTrace {
-      quality: RenderReflectionQuality::High,
+      trace_size: RenderTraceSize::Half,
       intensity: 1.0,
       sky_gain: 1.25,
       is_raw: false,
@@ -120,13 +121,13 @@ fn skips_every_pass_where_nothing_is_traced() {
   assert_eq!(ReflectionTrace::new(&wireframe), None);
 }
 
-// Combine blends the reflections in only where they are traced, reads them at the quality's size and scales the share
+// Combine blends the reflections in only where they are traced, reads them at the size traced and scales the share
 // by the intensity, on either engine, wet or dry, with the sky's highlights expanded as light by the settings' gain.
 #[test]
 fn blends_reflections_in_only_where_traced() {
   let vanilla: RenderLighting = lighting_of(XrayEngine::Vanilla);
   let ultra: RenderViewOptions = options_with(RenderReflectionSettings {
-    quality: RenderReflectionQuality::Ultra,
+    trace_size: RenderTraceSize::Full,
     probe: RenderReflectionProbe::Fine,
     ..enhanced()
   });
@@ -176,27 +177,62 @@ fn blends_reflections_in_only_where_traced() {
   assert_eq!(present(None).is_reflected, 0);
 }
 
-// Each step up the ladder lets a ray cross more of the depth pyramid's cells, and only Ultra traces at the frame's own
-// size.
+// The explicit parameters are held to their ranges, and the trace size halves the frame or keeps it.
 #[test]
-fn climbs_the_quality_ladder() {
-  let crossings: Vec<u32> = RenderReflectionQuality::ALL
-    .iter()
-    .map(|it| it.get_crossings())
-    .collect();
+fn holds_the_parameters_to_their_ranges() {
+  let wild: RenderReflectionSettings = RenderReflectionSettings {
+    steps: 1000,
+    water_steps: 0,
+    trace_interval: 0,
+    ..enhanced()
+  };
 
-  assert!(crossings.windows(2).all(|pair| pair[0] < pair[1]));
+  assert_eq!(wild.get_steps(), RenderReflectionSettings::STEPS_RANGE.1);
+  assert_eq!(wild.get_water_steps(), RenderReflectionSettings::WATER_STEPS_RANGE.0);
+  assert_eq!(wild.get_trace_interval(), 1);
   assert_eq!(
-    RenderReflectionQuality::ALL.map(RenderReflectionQuality::get_ratio),
-    [2, 2, 2, 1]
+    RenderReflectionSettings {
+      trace_interval: 20,
+      ..enhanced()
+    }
+    .get_trace_interval(),
+    RenderReflectionSettings::TRACE_INTERVAL_MOST
+  );
+  assert_eq!(
+    (RenderTraceSize::Half.get_ratio(), RenderTraceSize::Full.get_ratio()),
+    (2, 1)
+  );
+}
+
+// A dry level traces only what reflects more than a dielectric's 4%, unless dry surfaces are asked for; a wet one
+// traces every surface showing more than 2%.
+#[test]
+fn leaves_dry_surfaces_untraced_unless_asked() {
+  let settings: RenderReflectionSettings = enhanced();
+  let floor = |settings: RenderReflectionSettings, is_wet: bool| {
+    ReflectionUniform::new(&settings, trace_of(settings), 0, (false, false), (true, is_wet)).trace_floor
+  };
+
+  assert_eq!(floor(settings, false), ReflectionUniform::DRY_TRACE_FLOOR);
+  assert_eq!(floor(settings, true), ReflectionUniform::TRACE_FLOOR);
+  assert_eq!(
+    floor(
+      RenderReflectionSettings {
+        is_dry_traced: true,
+        ..settings
+      },
+      false
+    ),
+    ReflectionUniform::TRACE_FLOOR
   );
 }
 
 #[test]
 fn writes_the_settings_the_trace_reads() {
-  let high: ReflectionUniform = ReflectionUniform::new(&enhanced(), trace_of(enhanced()), 7, (true, true), true);
+  let high: ReflectionUniform =
+    ReflectionUniform::new(&enhanced(), trace_of(enhanced()), 7, (true, true), (true, false));
 
-  assert_eq!(high.crossings, RenderReflectionQuality::High.get_crossings());
+  assert_eq!(high.crossings, RenderReflectionSettings::STEPS);
   assert_eq!(high.frame, 7);
   assert_eq!(high.ratio, 2.0);
   assert_eq!(high.has_history, 1.0);
@@ -207,14 +243,19 @@ fn writes_the_settings_the_trace_reads() {
 
   let ultra_settings: RenderReflectionSettings = RenderReflectionSettings {
     intensity: 3.0,
-    quality: RenderReflectionQuality::Ultra,
+    trace_size: RenderTraceSize::Full,
     probe: RenderReflectionProbe::Fine,
     is_traced: true,
-    trace_quality: RenderReflectionTraceQuality::Ultra,
+    trace_interval: 1,
     ..enhanced()
   };
-  let ultra: ReflectionUniform =
-    ReflectionUniform::new(&ultra_settings, trace_of(ultra_settings), 0, (false, false), true);
+  let ultra: ReflectionUniform = ReflectionUniform::new(
+    &ultra_settings,
+    trace_of(ultra_settings),
+    0,
+    (false, false),
+    (true, false),
+  );
 
   assert_eq!(ultra.intensity, 3.0);
   assert_eq!(ultra.ratio, 1.0);
@@ -228,28 +269,28 @@ fn writes_the_settings_the_trace_reads() {
   };
 
   assert_eq!(
-    ReflectionUniform::new(&asked, trace_of(asked), 0, (false, false), false).is_traced,
+    ReflectionUniform::new(&asked, trace_of(asked), 0, (false, false), (false, false)).is_traced,
     0.0,
     "a device without ray queries traces nothing, asked or not"
   );
 }
 
-// Taken raw under DLSS ray reconstruction, every pixel traces every frame at the frame's own size, whatever the quality
-// asks; the settings' crossings and distance still hold.
+// Taken raw under DLSS ray reconstruction, every pixel traces every frame at the frame's own size, whatever the size
+// and interval asked; the settings' steps and distance still hold.
 #[test]
 fn traces_every_pixel_every_frame_taken_raw() {
   let settings: RenderReflectionSettings = RenderReflectionSettings {
     is_traced: true,
-    trace_quality: RenderReflectionTraceQuality::Low,
+    trace_interval: 8,
     ..enhanced()
   };
   let raw: ReflectionTrace = trace_of(settings).with_raw(true);
-  let uniform: ReflectionUniform = ReflectionUniform::new(&settings, raw, 3, (false, true), true);
+  let uniform: ReflectionUniform = ReflectionUniform::new(&settings, raw, 3, (false, true), (true, false));
 
   assert_eq!(trace_of(settings).get_ratio(), 2);
   assert_eq!(raw.get_ratio(), 1);
   assert_eq!((uniform.ratio, uniform.trace_turns), (1.0, 1));
-  assert_eq!(uniform.crossings, RenderReflectionQuality::High.get_crossings());
+  assert_eq!(uniform.crossings, RenderReflectionSettings::STEPS);
   assert_eq!(uniform.distance, 150.0);
   assert_eq!(trace_of(settings).with_raw(false), trace_of(settings));
 }

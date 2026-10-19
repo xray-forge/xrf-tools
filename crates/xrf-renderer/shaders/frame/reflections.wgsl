@@ -35,8 +35,6 @@
 // Where the trace writes under ray budgets, as a compute pass.
 #import "generated/frame/reflection_trace_out"
 
-// The share of what it reflects a pixel's specular shows at most, below which it is not traced.
-const TRACE_FLOOR: f32 = 0.02;
 // The roughness under which a surface is a mirror, whose ray is the same every frame and holds no history: under a
 // puddle's water at rest, which holds a few.
 const MIRROR_ROUGHNESS: f32 = 0.01;
@@ -571,8 +569,9 @@ fn trace_start(pixel: vec2<f32>) -> TraceStart {
 
   let shown: f32 = max(max(brdf.r, brdf.g), brdf.b);
 
-  // Traced only where combine would show enough of it.
-  if (shown <= TRACE_FLOOR) {
+  // Traced only where combine would show enough of it (`ReflectionUniform::trace_floor`): on a dry level, by default,
+  // only what reflects more than a dielectric's 4%.
+  if (shown <= reflection.trace_floor) {
     return untraced_start(END_UNTRACED);
   }
 

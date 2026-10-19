@@ -6,9 +6,8 @@
 #import "common/trace_requests"
 #import "generated/static/water_reflection"
 
-// The reflection's march: its steps, its refinements of a hit, how thick
-// a surface it takes for one, and how far it reaches.
-const MARCH_STEPS: i32 = 16;
+// The reflection's march, its steps the settings' (`EnhancedWater::march_steps`): its refinements of a hit, how thick a
+// surface it takes for one, and how far it reaches.
 const MARCH_REFINES: i32 = 2;
 const MARCH_THICKNESS: f32 = 3.0;
 // How thick a surface the march takes for a hit where the trace answers what it does not: a ray passing a few metres
@@ -218,7 +217,7 @@ fn march_reflection(start: vec3<f32>, direction: vec3<f32>, noise: f32, uv: vec2
   var ray: ReflectionRay;
 
   ray.start = screen_start;
-  ray.step = (screen_end - screen_start) / f32(MARCH_STEPS);
+  ray.step = (screen_end - screen_start) / f32(enhanced.march_steps);
   ray.length = length(screen_end - screen_start);
   ray.near = -start.z;
   ray.far = -end.z;
@@ -233,7 +232,7 @@ fn march_reflection(start: vec3<f32>, direction: vec3<f32>, noise: f32, uv: vec2
   let start_distance: f32 = scene_distance(ray.start, depth_target);
   var behind: vec3<f32> = vec3<f32>(0.0);
 
-  for (var step: i32 = 1; step <= MARCH_STEPS; step++) {
+  for (var step: i32 = 1; step <= i32(enhanced.march_steps); step++) {
     if (any(at < vec2<f32>(0.0)) || any(at > vec2<f32>(1.0))) {
       return vec4<f32>(0.0);
     }
@@ -272,7 +271,7 @@ fn march_reflection(start: vec3<f32>, direction: vec3<f32>, noise: f32, uv: vec2
       behind = vec3<f32>(at, check.y) * f32(start_distance - 2.0 < check.y && is_far);
     }
 
-    let is_passed: bool = !is_far && check.y > 0.01 && f32(step) > f32(MARCH_STEPS) * 0.4;
+    let is_passed: bool = !is_far && check.y > 0.01 && f32(step) > f32(enhanced.march_steps) * 0.4;
 
     at += ray.step * select(1.0, 3.5, is_passed);
   }

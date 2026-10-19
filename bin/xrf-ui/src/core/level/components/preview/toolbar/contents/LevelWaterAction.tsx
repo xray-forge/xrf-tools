@@ -52,10 +52,9 @@ export function LevelWaterAction({
   const manual: ILevelManualWeather = weatherService.shown;
   const water: TRenderWaterSettings = state.value;
   const enhanced: TRenderEnhancedWaterSettings = water.enhanced;
-  // The water's reflection traces what the screen misses as the reflections' one trace control says.
-  const isReflectionTraced: boolean =
-    renderService.isTraceable &&
-    toLevelModeFeature("reflections", renderFeatures.settings, renderFeatures.features).isTraced;
+  // The water's reflection is set in the Reflections group, beside the surfaces' and the ray trace both share.
+  const reflections = toLevelModeFeature("reflections", renderFeatures.settings, renderFeatures.features);
+  const isReflectionTraced: boolean = renderService.isTraceable && reflections.isTraced;
 
   const onSetEnhanced = useCallback(
     (part: Partial<TRenderEnhancedWaterSettings>): void => setNested("enhanced", part),
@@ -137,9 +136,11 @@ export function LevelWaterAction({
           />
 
           <p className={"text-xs text-text-secondary"}>
-            {isReflectionTraced
-              ? "What its reflection misses on the screen is ray-traced: Reflections, Ray-traced reflections."
-              : "Its reflection is the screen's alone: Reflections, Ray-traced reflections traces what it misses."}
+            {!reflections.isWaterReflected
+              ? "It reflects the sky's cube alone: Reflections, Water reflects the screen."
+              : isReflectionTraced
+                ? "It reflects the screen, what that misses ray-traced: Reflections, Water and Ray tracing."
+                : "It reflects the screen, the sky's cube where that misses: Reflections, Water and Ray tracing."}
           </p>
 
           <RenderValueSlider

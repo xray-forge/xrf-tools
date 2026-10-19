@@ -46,14 +46,14 @@ pub struct ReflectionFeature {
 
 impl ReflectionFeature {
   /// Takes this frame's reflections for a frame `size` texels across, raw where DLSS ray reconstruction resolves it
-  /// (`is_reconstructed`): the history at the size they trace at and the pyramid over the frame's depth made or kept
+  /// (`is_reconstructed`), the dry surfaces left untraced unless asked where the level is not wet (`is_wet`): the history at the size they trace at and the pyramid over the frame's depth made or kept
   /// while they are traced, dropped otherwise, the trace's request list fitted, and what their passes read.
   pub fn prepare(
     &mut self,
     device: &wgpu::Device,
     options: &RenderViewOptions,
     (width, height): (u32, u32),
-    is_reconstructed: bool,
+    (is_reconstructed, is_wet): (bool, bool),
   ) {
     self.settings = options.features.reflections;
     self.trace = ReflectionTrace::new(options).map(|trace| trace.with_raw(is_reconstructed));
@@ -98,7 +98,13 @@ impl ReflectionFeature {
       .as_ref()
       .map_or((0, false, false), |it| (it.frame, it.has_history(), it.is_source_valid));
 
-    self.uniform = ReflectionUniform::new(&self.settings, trace, frame, (has_history, has_source), can_trace);
+    self.uniform = ReflectionUniform::new(
+      &self.settings,
+      trace,
+      frame,
+      (has_history, has_source),
+      (can_trace, is_wet),
+    );
   }
 
   pub fn get_settings(&self) -> RenderReflectionSettings {

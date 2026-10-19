@@ -139,9 +139,14 @@ describe("level feature options", () => {
       probe: "fine",
       reach: 300,
       skyGain: 2,
-      traceQuality: "high",
+      traceInterval: 4,
       traceRoughness: 0.4,
+      traceSize: "full",
+      steps: 64,
+      waterSteps: 24,
+      isDryTraced: true,
       isRayBudgeted: true,
+      isWaterReflected: false,
     };
 
     expect(toLevelFeatureOptions({ reflections }).reflections).toEqual(reflections);
@@ -198,13 +203,14 @@ describe("level feature options", () => {
       reflections: { distance: 900, intensity: 7, mode: ERenderReflectionMode.ENGINE, steps: 12 },
     });
 
-    expect(view.reflections).toEqual({ distance: 200, intensity: 4, mode: ERenderReflectionMode.ENGINE });
+    expect(view.reflections).toEqual({ distance: 200, intensity: 4, mode: ERenderReflectionMode.ENGINE, steps: 16 });
     expect(toLevelModeFeature("reflections", SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.reflections);
     expect(toLevelModeFeature("reflections", SETTINGS, view)).toEqual({
       ...SETTINGS.reflections,
       distance: 200,
       intensity: 4,
       mode: ERenderReflectionMode.ENGINE,
+      steps: 16,
     });
     expect(toLevelFeatureOptions({ reflections: { mode: "raytraced" } }).reflections).toEqual({});
   });

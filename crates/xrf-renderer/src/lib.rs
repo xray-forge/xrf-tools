@@ -113,9 +113,7 @@ pub use crate::contract::render_ray_reconstruction_preset::RenderRayReconstructi
 pub use crate::contract::render_rect::RenderRect;
 pub use crate::contract::render_reflection_mode::RenderReflectionMode;
 pub use crate::contract::render_reflection_probe::RenderReflectionProbe;
-pub use crate::contract::render_reflection_quality::RenderReflectionQuality;
 pub use crate::contract::render_reflection_settings::RenderReflectionSettings;
-pub use crate::contract::render_reflection_trace_quality::RenderReflectionTraceQuality;
 pub use crate::contract::render_scale::RenderScale;
 pub use crate::contract::render_selection::RenderSelection;
 pub use crate::contract::render_selection_target::RenderSelectionTarget;
@@ -131,6 +129,7 @@ pub use crate::contract::render_texture_group::RenderTextureGroup;
 pub use crate::contract::render_texture_report::RenderTextureReport;
 pub use crate::contract::render_texture_state::RenderTextureState;
 pub use crate::contract::render_tonemap_mode::RenderTonemapMode;
+pub use crate::contract::render_trace_size::RenderTraceSize;
 pub use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 pub use crate::contract::render_view_features::RenderViewFeatures;
 pub use crate::contract::render_view_mode::RenderViewMode;

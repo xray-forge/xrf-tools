@@ -169,7 +169,9 @@ export type RenderAppliedIndirectLight = {
 export type RenderAppliedReflections = {
   /** What scales how much of a surface's reflection a traced one replaces, and how much a puddle's coat reflects. */
   intensity: number | null;
-  quality: RenderReflectionQuality;
+  /** The size the rays are traced at, and the pyramid's cells a ray crosses at most. */
+  traceSize: RenderTraceSize;
+  steps: number;
 };
 
 /** What a viewport's frames are drawn with, as the renderer resolved what it was asked: sent as it changes. */
@@ -1449,40 +1451,26 @@ export enum ERenderReflectionProbe {
 export type RenderReflectionProbe = `${ERenderReflectionProbe}`;
 
 /**
- * How hard the screen-space reflections trace: the size traced at and how many cells of the depth pyramid a ray may
- * cross before it gives up.
- */
-export enum ERenderReflectionQuality {
-  /** Half size, 24 crossings. */
-  LOW = "low",
-  /** Half size, 48 crossings. */
-  MEDIUM = "medium",
-  /** Half size, 96 crossings. */
-  HIGH = "high",
-  /** The frame's own size, 128 crossings. */
-  ULTRA = "ultra",
-}
-
-/** Every `ERenderReflectionQuality` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type RenderReflectionQuality = `${ERenderReflectionQuality}`;
-
-/**
- * Screen-space reflections on the frame's surfaces: what each surface's reflected rays meet over the frame, or the
- * sky prefiltered to its roughness where they meet nothing, shown by a physically based specular in place of the
- * engine's reflection of its cube.
+ * What the frame reflects, in three parts: the surfaces' screen-space reflections (the ground, puddles, wet and glossy
+ * surfaces), the enhanced water's own reflection of the screen (rivers and lakes), and the ray trace both take what the
+ * screen misses from.
  */
 export type RenderReflectionSettings = {
+  /** The surfaces' reflections: the engine's sky cube alone, or traced over the screen. */
   mode: RenderReflectionMode;
   /** What scales the specular's share of what a surface reflects, one as its material reflects. */
   intensity: number | null;
-  /** Metres a ray is traced at most. */
+  /** Metres a reflection ray goes at most, the surfaces' and the water's traces alike. */
   distance: number | null;
   /**
    * Metres out to which the rain wets the ground's gloss for the rays to trace, fading over the last fifth; the
    * engine alone wets it over 25 m.
    */
   reach: number | null;
-  quality: RenderReflectionQuality;
+  /** The size the surfaces' rays are traced at. */
+  traceSize: RenderTraceSize;
+  /** Cells of the depth pyramid a surface's ray crosses at most, half of them for a rough one. */
+  steps: number;
   /** How fine the surroundings cube a ray meeting nothing on the screen reads is. */
   probe: RenderReflectionProbe;
   /**
@@ -1496,42 +1484,34 @@ export type RenderReflectionSettings = {
    */
   isGrassReflected: boolean;
   /**
-   * Whether a ray the screen does not answer is traced against the level's static geometry by hardware ray query,
-   * its hit lit, in place of the sky: the surfaces' while they are drawn, the enhanced water's always; on a device
-   * without ray queries it falls back to the sky as before.
-   */
-  isTraced: boolean;
-  traceQuality: RenderReflectionTraceQuality;
-  /**
    * The roughness past which a surface is not traced and reflects the prefiltered sky alone, the traced reflection
    * fading into it over the last third: 0.6 by default, 0.4 as Unreal's Lumen traces.
    */
   traceRoughness: number | null;
+  /**
+   * Whether a dry level's surfaces are traced where they show little of what they reflect, a dielectric's 4%; off,
+   * they reflect the prefiltered sky alone until the rain wets them, and only metal and glass-like surfaces trace.
+   */
+  isDryTraced: boolean;
   /**
    * Whether each quad of traced pixels takes rays by what it shows, as Battlefield V's and AMD's SSSR's budgets do:
    * every pixel where a bright, sharp reflection or a puddle stands, two where it is dim or blurred, one where both or
    * rough, the rest filled from their neighbours; off, every traced pixel walks its own ray.
    */
   isRayBudgeted: boolean;
+  /** Whether the enhanced water reflects the screen; off, it reflects the sky cube alone and keeps the rest of its look. */
+  isWaterReflected: boolean;
+  /** Steps the water's reflection marches over the screen. */
+  waterSteps: number;
+  /**
+   * Whether a ray the screen does not answer is traced against the level's static geometry by hardware ray query,
+   * its hit lit, in place of the sky: the surfaces' while they are drawn, the water's while it reflects; on a device
+   * without ray queries it falls back to the sky as before.
+   */
+  isTraced: boolean;
+  /** Frames a pixel the screen does not answer waits between its traced rays, the last answer held between. */
+  traceInterval: number;
 };
-
-/**
- * How often a pixel the screen leaves unanswered is traced against the level's geometry: every frame, or on its turn
- * once in a few, the last frame's answer reprojected in between; stretched where the rays asked overrun the list.
- */
-export enum ERenderReflectionTraceQuality {
-  /** Once in eight frames. */
-  LOW = "low",
-  /** Once in four frames. */
-  MEDIUM = "medium",
-  /** Once in two frames. */
-  HIGH = "high",
-  /** Every frame. */
-  ULTRA = "ultra",
-}
-
-/** Every `ERenderReflectionTraceQuality` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type RenderReflectionTraceQuality = `${ERenderReflectionTraceQuality}`;
 
 /**
  * How much smaller than the viewport the scene is drawn and then upscaled: the upscalers' quality modes, by the ratio
@@ -1820,6 +1800,15 @@ export enum ERenderTonemapMode {
 
 /** Every `ERenderTonemapMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderTonemapMode = `${ERenderTonemapMode}`;
+
+/** The size a reflection is traced at, of the frame's: half each way, a ray for every four pixels, or full. */
+export enum ERenderTraceSize {
+  HALF = "half",
+  FULL = "full",
+}
+
+/** Every `ERenderTraceSize` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderTraceSize = `${ERenderTraceSize}`;
 
 /**
  * What the scene is drawn at, a share of the viewport upscaled to it, how sharply the upscaled frame is finished,

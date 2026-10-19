@@ -17,11 +17,9 @@ import { describeRenderDebandingQuality } from "@/core/render/lib/features/rende
 import { formatFogDensity, formatFogHeight, formatFogShare } from "@/core/render/lib/features/render-fog-choices";
 import { formatGrassDensity, formatGrassRadius } from "@/core/render/lib/features/render-grass-choices";
 import { formatIndirectLightIntensity } from "@/core/render/lib/features/render-indirect-light-choices";
-import {
-  describeRenderReflectionQuality,
-  formatReflectionIntensity,
-} from "@/core/render/lib/features/render-reflection-choices";
+import { formatReflectionIntensity, formatReflectionSteps } from "@/core/render/lib/features/render-reflection-choices";
 import { describeRenderLightShadowFilter, formatShadowFilter } from "@/core/render/lib/features/render-shadow-choices";
+import { describeRenderTraceSize } from "@/core/render/lib/features/render-trace-size-choices";
 import { describeRenderScale } from "@/core/render/lib/features/render-upscaling-choices";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -132,7 +130,8 @@ export function LevelRendererAppliedSection({
           value={
             applied.reflections
               ? `${formatReflectionIntensity(applied.reflections.intensity ?? 0)} · ` +
-                `${describeRenderReflectionQuality(applied.reflections.quality).toLowerCase()} quality`
+                `${describeRenderTraceSize(applied.reflections.traceSize).toLowerCase()} size · ` +
+                `${formatReflectionSteps(applied.reflections.steps)} steps`
               : "The cube alone"
           }
         />

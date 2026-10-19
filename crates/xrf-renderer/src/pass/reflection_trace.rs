@@ -1,10 +1,11 @@
-use crate::contract::render_reflection_quality::RenderReflectionQuality;
+use crate::contract::render_trace_size::RenderTraceSize;
 use crate::contract::render_view_options::RenderViewOptions;
 
 /// Whether a frame traces its screen-space reflections, and how: none skips every pass and drops the histories.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ReflectionTrace {
-  pub quality: RenderReflectionQuality,
+  /// The size the settings trace at, full where ray reconstruction takes the trace raw.
+  pub trace_size: RenderTraceSize,
   /// What scales how much of a surface's reflection a traced one replaces, and how much a puddle's coat reflects.
   pub intensity: f32,
   /// How far the sky's highlights are scaled as their light, from `SKY_GAIN_LEAST` to `SKY_GAIN_MOST`.
@@ -37,7 +38,7 @@ impl ReflectionTrace {
     }
 
     Some(Self {
-      quality: settings.quality,
+      trace_size: settings.trace_size,
       intensity: settings.intensity,
       sky_gain: settings.sky_gain.clamp(Self::SKY_GAIN_LEAST, Self::SKY_GAIN_MOST),
       is_raw: false,
@@ -52,8 +53,8 @@ impl ReflectionTrace {
     }
   }
 
-  /// The frame's pixels a traced pixel stands for each way: one taken raw, whatever the quality.
+  /// The frame's pixels a traced pixel stands for each way: one taken raw, whatever the size asked.
   pub fn get_ratio(self) -> u32 {
-    if self.is_raw { 1 } else { self.quality.get_ratio() }
+    if self.is_raw { 1 } else { self.trace_size.get_ratio() }
   }
 }

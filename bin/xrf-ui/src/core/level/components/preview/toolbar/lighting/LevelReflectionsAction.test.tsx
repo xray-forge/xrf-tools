@@ -2,13 +2,12 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
-import {
-  ERenderReflectionMode,
-  ERenderReflectionQuality,
-  ERenderReflectionTraceQuality,
-} from "@/core/ipc/types/xrf-renderer";
+import { ERenderReflectionMode, ERenderTraceSize, ERenderWaterMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelReflectionsAction } from "@/core/level/components/preview/toolbar/lighting/LevelReflectionsAction";
-import { DEFAULT_RENDER_REFLECTION_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import {
+  DEFAULT_RENDER_REFLECTION_SETTINGS,
+  DEFAULT_RENDER_WATER_SETTINGS,
+} from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { clearLocalStorage } from "@/core/storage";
 import {
@@ -21,16 +20,29 @@ import {
 
 /**
  * @param reflections - The reflections the settings draw every viewport with.
+ * @param waterMode - How the settings draw the water.
  * @returns The rendered action and the services behind it.
  */
 function renderAction(
-  reflections: TRenderReflectionSettings = DEFAULT_RENDER_REFLECTION_SETTINGS
+  reflections: TRenderReflectionSettings = DEFAULT_RENDER_REFLECTION_SETTINGS,
+  waterMode: ERenderWaterMode = ERenderWaterMode.ENHANCED
 ): TLevelViewRenderResult {
   const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
 
-  descriptor.renderSettings.setRendererOverrides({ reflections });
+  descriptor.renderSettings.setRendererOverrides({
+    reflections,
+    water: { ...DEFAULT_RENDER_WATER_SETTINGS, mode: waterMode },
+  });
 
   return renderLevelView(<LevelReflectionsAction />, descriptor);
+}
+
+/**
+ * @param rendered - The rendered action.
+ */
+async function open(rendered: TLevelViewRenderResult): Promise<void> {
+  await userEvent.click(rendered.getByRole("button", { name: "Reflections" }));
+  await rendered.findByRole("dialog", { name: "Reflections" });
 }
 
 beforeEach(() => {
@@ -38,33 +50,27 @@ beforeEach(() => {
 });
 
 describe("LevelReflectionsAction", () => {
-  it("turns the view's reflections to enhanced, offering their strengths only then, and back to the settings", async () => {
-    const { getByRole, findByRole, view } = renderAction();
+  it("turns the surfaces' reflections on, offering their parameters only then, and back to the preset", async () => {
+    const rendered: TLevelViewRenderResult = renderAction();
+    const { getByRole, queryByRole, view } = rendered;
 
-    expect(getByRole("button", { name: "Reflections" })).toHaveAccessibleDescription(
-      "The sky's cube alone. Right-click for its settings"
-    );
+    await open(rendered);
 
-    await userEvent.click(getByRole("button", { name: "Reflections" }));
+    expect(queryByRole("slider", { name: "Steps" })).toBeNull();
+
+    await userEvent.click(getByRole("checkbox", { name: "Surfaces" }));
 
     expect(view.features.reflections).toEqual({ mode: ERenderReflectionMode.ENHANCED });
-
-    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Reflections" }) });
-    await findByRole("dialog", { name: "Reflections" });
-
-    expect(getByRole("checkbox", { name: "Screen-space reflections" })).toBeChecked();
-    expect(getByRole("slider", { name: "Intensity" })).toHaveAttribute("aria-valuetext", "100%");
+    expect(getByRole("slider", { name: "Steps" })).toHaveAttribute("aria-valuetext", "96");
     expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "150 m");
-    expect(getByRole("slider", { name: "Wet reach" })).toHaveAttribute("aria-valuetext", "300 m");
-    expect(getByRole("button", { hidden: true, name: "Reflections" })).toHaveAccessibleDescription(
-      "Screen-space reflections, high quality, 100% over 150 m. Right-click for its settings"
-    );
+    expect(getByRole("checkbox", { name: "Ray budgets" })).toBeChecked();
+    expect(getByRole("checkbox", { name: "Trace dry surfaces" })).not.toBeChecked();
 
-    await userEvent.click(getByRole("button", { name: "Ultra" }));
+    await userEvent.click(within(getByRole("group", { name: "Trace size" })).getByRole("button", { name: "Full" }));
 
     expect(view.features.reflections).toEqual({
       mode: ERenderReflectionMode.ENHANCED,
-      quality: ERenderReflectionQuality.ULTRA,
+      traceSize: ERenderTraceSize.FULL,
     });
 
     await userEvent.click(getByRole("button", { name: "Reset the reflections to the preset" }));
@@ -72,52 +78,60 @@ describe("LevelReflectionsAction", () => {
     expect(view.features.reflections).toEqual({});
   });
 
-  it("offers how often to trace once tracing what the screen misses is on", async () => {
-    const { getByRole, findByRole, view } = renderAction({
+  it("greys the trace size out at full under ray reconstruction", async () => {
+    const rendered: TLevelViewRenderResult = renderAction({
       ...DEFAULT_RENDER_REFLECTION_SETTINGS,
-      isTraced: true,
       mode: ERenderReflectionMode.ENHANCED,
     });
 
-    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Reflections" }) });
-    await findByRole("dialog", { name: "Reflections" });
-    await userEvent.click(within(getByRole("group", { name: "Trace quality" })).getByRole("button", { name: "Low" }));
+    noteLevelFrame(rendered.render, { adapter: "GPU", hasRayQueries: true, isRayReconstructed: true });
+    await open(rendered);
 
-    expect(view.features.reflections).toEqual({ traceQuality: ERenderReflectionTraceQuality.LOW });
+    const full: HTMLElement = within(rendered.getByRole("group", { name: "Trace size" })).getByRole("button", {
+      name: "Full",
+    });
+
+    expect(full).toBeDisabled();
+    expect(full).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("turns the water's screen reflection off, and greys it out over the game's water", async () => {
+    const enhanced: TLevelViewRenderResult = renderAction();
+
+    await open(enhanced);
+    await userEvent.click(enhanced.getByRole("checkbox", { name: "Water" }));
+
+    expect(enhanced.view.features.reflections).toEqual({ isWaterReflected: false });
+
+    enhanced.unmount();
+
+    const engine: TLevelViewRenderResult = renderAction(DEFAULT_RENDER_REFLECTION_SETTINGS, ERenderWaterMode.ENGINE);
+
+    await open(engine);
+
+    expect(engine.getByRole("checkbox", { name: "Water" })).toBeDisabled();
+  });
+
+  it("offers how often to re-trace once tracing what the screen misses is on", async () => {
+    const rendered: TLevelViewRenderResult = renderAction({ ...DEFAULT_RENDER_REFLECTION_SETTINGS, isTraced: true });
+
+    noteLevelFrame(rendered.render, { adapter: "GPU", hasRayQueries: true });
+    await open(rendered);
+
+    expect(rendered.getByRole("checkbox", { name: "Ray tracing" })).toBeChecked();
+    expect(rendered.getByRole("slider", { name: "Re-trace" })).toHaveAttribute("aria-valuetext", "Every 2 frames");
   });
 
   it("greys out tracing what the screen misses where the GPU traces no rays", async () => {
-    const descriptor = renderAction({
-      ...DEFAULT_RENDER_REFLECTION_SETTINGS,
-      isTraced: true,
-      mode: ERenderReflectionMode.ENHANCED,
-    });
+    const rendered: TLevelViewRenderResult = renderAction({ ...DEFAULT_RENDER_REFLECTION_SETTINGS, isTraced: true });
 
-    noteLevelFrame(descriptor.render, { adapter: "GPU", hasRayQueries: false });
+    noteLevelFrame(rendered.render, { adapter: "GPU", hasRayQueries: false });
+    await open(rendered);
 
-    await userEvent.pointer({ keys: "[MouseRight]", target: descriptor.getByRole("button", { name: "Reflections" }) });
-    await descriptor.findByRole("dialog", { name: "Reflections" });
-
-    const traced: HTMLElement = descriptor.getByRole("checkbox", { name: "Ray-traced reflections" });
+    const traced: HTMLElement = rendered.getByRole("checkbox", { name: "Ray tracing" });
 
     expect(traced).toBeDisabled();
     expect(traced).not.toBeChecked();
     expect(traced).toHaveAccessibleDescription("Needs a GPU that traces rays");
-  });
-
-  it("keeps the ray-traced reflections offered with the screen-space reflections off, for the water", async () => {
-    const descriptor = renderAction({
-      ...DEFAULT_RENDER_REFLECTION_SETTINGS,
-      isTraced: true,
-      mode: ERenderReflectionMode.ENGINE,
-    });
-
-    noteLevelFrame(descriptor.render, { adapter: "GPU", hasRayQueries: true });
-
-    await userEvent.pointer({ keys: "[MouseRight]", target: descriptor.getByRole("button", { name: "Reflections" }) });
-    await descriptor.findByRole("dialog", { name: "Reflections" });
-
-    expect(descriptor.getByRole("checkbox", { name: "Ray-traced reflections" })).toBeChecked();
-    expect(descriptor.queryByRole("checkbox", { name: "Ray budgets" })).toBeNull();
   });
 });

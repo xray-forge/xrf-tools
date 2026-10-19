@@ -16,10 +16,9 @@ import {
   ERenderRainMode,
   ERenderReflectionMode,
   ERenderReflectionProbe,
-  ERenderReflectionQuality,
-  ERenderReflectionTraceQuality,
   ERenderTextureFiltering,
   ERenderTonemapMode,
+  ERenderTraceSize,
   ERenderVolumetricMode,
   ERenderWaterMode,
   RENDER_MAX_CONTACT_SHADOW_LIGHTS,
@@ -107,11 +106,11 @@ const BASE_PRESET: IRenderFeatureSettings = {
   parallax: { ...DEFAULT_RENDER_PARALLAX_SETTINGS, mode: ERenderParallaxMode.ENHANCED },
   // Wet surfaces that build up and dry, and puddles, under the engine's streaks.
   rain: { ...DEFAULT_RENDER_RAIN_SETTINGS, mode: ERenderRainMode.ENHANCED },
-  // What the frame shows reflected where a ray meets it, the cube elsewhere.
+  // What the frame shows reflected where a ray meets it, the cube elsewhere, over half the walk.
   reflections: {
     ...DEFAULT_RENDER_REFLECTION_SETTINGS,
     mode: ERenderReflectionMode.ENHANCED,
-    quality: ERenderReflectionQuality.MEDIUM,
+    steps: 48,
   },
   // Contact shadows under the cascades, at the frame's size, so thin foliage does not flicker under a temporal resolve.
   shadows: {
@@ -142,14 +141,15 @@ const ENHANCED_PRESET: IRenderFeatureSettings = {
   parallax: { ...BASE_PRESET.parallax, steps: 32 },
   // Drops bending the scene behind them, their landings ringing the water and the puddles.
   rain: { ...BASE_PRESET.rain, drops: ERenderRainDropsMode.ENHANCED },
-  // Traced where the GPU traces rays, the grass reflected too.
+  // Traced at the frame's size over the whole walk, and where the GPU traces rays every frame, the grass reflected too.
   reflections: {
     ...BASE_PRESET.reflections,
     isGrassReflected: true,
     isTraced: true,
     probe: ERenderReflectionProbe.FINEST,
-    quality: ERenderReflectionQuality.ULTRA,
-    traceQuality: ERenderReflectionTraceQuality.ULTRA,
+    steps: 128,
+    traceInterval: 1,
+    traceSize: ERenderTraceSize.FULL,
   },
   shadows: {
     ...BASE_PRESET.shadows,

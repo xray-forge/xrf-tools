@@ -27,22 +27,28 @@ pub struct ReflectionUniform {
   pub is_traced: f32,
   /// Frames such a pixel waits between its rays, the last answer reprojected in between.
   pub trace_turns: u32,
+  /// The share of what it reflects a pixel's specular shows at most, below which it is not traced.
+  pub trace_floor: f32,
 }
 
 impl ReflectionUniform {
+  /// The share under which a pixel is not traced: a dielectric's 4% traced, or, on a dry level not asked to trace
+  /// dry surfaces, only what reflects more, metal and glass-like surfaces, the rest left to the prefiltered sky.
+  pub const TRACE_FLOOR: f32 = 0.02;
+  pub const DRY_TRACE_FLOOR: f32 = 0.08;
+
   /// The settings and how they are traced, at a frame's count, with or without the last frame's reflections to carry
-  /// and its scene to read, on a device that traces rays or not. Raw, each pixel traces each frame.
+  /// and its scene to read, on a device that traces rays or not, over a level wet or dry. Raw, each pixel traces each
+  /// frame.
   pub fn new(
     settings: &RenderReflectionSettings,
     trace: ReflectionTrace,
     frame: u32,
     (has_history, has_source): (bool, bool),
-    can_trace: bool,
+    (can_trace, is_wet): (bool, bool),
   ) -> Self {
-    let quality = settings.quality;
-
     Self {
-      crossings: quality.get_crossings(),
+      crossings: settings.get_steps(),
       frame,
       intensity: settings.intensity.max(0.0),
       distance: settings.distance.max(0.0),
@@ -50,10 +56,11 @@ impl ReflectionUniform {
       ratio: trace.get_ratio() as f32,
       has_source: f32::from(u8::from(has_source)),
       is_traced: f32::from(u8::from(settings.is_traced && can_trace)),
-      trace_turns: if trace.is_raw {
-        1
+      trace_turns: if trace.is_raw { 1 } else { settings.get_trace_interval() },
+      trace_floor: if settings.is_dry_traced || is_wet {
+        Self::TRACE_FLOOR
       } else {
-        settings.trace_quality.get_turns()
+        Self::DRY_TRACE_FLOOR
       },
     }
   }
