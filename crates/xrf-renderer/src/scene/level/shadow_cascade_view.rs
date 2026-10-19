@@ -26,6 +26,8 @@ pub struct ShadowCascadeView {
   /// The eye and the look its kept layer's trees were kept for, where they were kept only where the camera saw their
   /// shadows.
   pub received_at: Option<(Vec3, Vec3)>,
+  /// The sway's time a banded redraw of its trees started at and the band it draws next, while one runs.
+  pub sway_sweep: Option<(f32, u32)>,
   /// The layer of the static layers it shows, and the version and contents its static layer was drawn at, none before
   /// it was or since it went stale; and the fit it was drawn at.
   pub static_layer: u32,
@@ -50,6 +52,7 @@ impl ShadowCascadeView {
       has_drawn_grass: false,
       is_kept: false,
       received_at: None,
+      sway_sweep: None,
       static_layer: index as u32,
       drawn_static: None,
       static_fit: SunCascade::default(),
@@ -81,5 +84,6 @@ impl ShadowCascadeView {
     self.is_swapped = false;
     self.is_kept = false;
     self.received_at = None;
+    self.sway_sweep = None;
   }
 }

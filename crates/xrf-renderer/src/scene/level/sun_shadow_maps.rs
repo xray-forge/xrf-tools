@@ -23,13 +23,13 @@ impl SunShadowMaps {
     )
   }
 
-  /// `layers` static layers, copied into the maps.
+  /// `layers` static layers, copied into the maps, or a band of them restored by a draw.
   pub fn new_static(device: &wgpu::Device, resolution: u32, layers: u32) -> Self {
     Self::create(
       device,
       (resolution, layers),
       "sun static shadow maps",
-      wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
+      wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::TEXTURE_BINDING,
     )
   }
 

@@ -19,6 +19,7 @@ use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_cull::ShadowCull;
+use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::shadow_uniform::ShadowUniform;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_uniform::StaticCullUniform;
@@ -123,6 +124,9 @@ enum CascadeDraw {
   Swaying,
   /// Its kept layer copied into its map, the grass over it: the trees as last drawn, waiting their turn.
   Kept,
+  /// One band of a far cascade's rows: its static layer's rows restored into its map, the trees over them, so a sway
+  /// redraw spreads over `BANDS` frames rather than landing on one.
+  Banded(u32),
 }
 
 /// A cascade's draw offered this frame: which, its ticket, how it would be drawn, the fit it is drawn at, and what the
@@ -351,6 +355,8 @@ impl LevelShadows {
         }
       });
 
+    let map_resolution: u32 = self.maps.as_ref().map_or(1, |maps| maps.resolution);
+
     for (index, draw, (cut, args, _, layouts)) in due {
       let layer: u32 = index as u32;
       let static_layer: u32 = self.cascades[index].static_layer;
@@ -383,6 +389,40 @@ impl LevelShadows {
           if let Some(grass) = grass.filter(|_| has_grass) {
             grass.add_pass(&mut *graph, GRASS_PASSES[index], (maps, layer), &cut.view);
           }
+        }
+        (CascadeDraw::Banded(band), Some(_), _) => {
+          let (Some(static_views), region) = (self.statics.as_ref(), Self::get_band_region(band, map_resolution))
+          else {
+            continue;
+          };
+          // Its static layer's rows restored by a draw, a depth target taking no partial copy, the trees over them.
+          let restore: ShadowTileRestoreParameters = ShadowTileRestoreParameters {
+            static_atlas: bindings.import_view(
+              &mut *graph,
+              "sun static shadow layer",
+              &static_views.layers[static_layer as usize],
+            ),
+          };
+
+          StaticDraws::declare_layouts(
+            graph
+              .add_raster_pass(SWAY_PASSES[index][0])
+              .depth(GraphDepthAttachment::new(maps, wgpu::LoadOp::Load).with_array_layer(layer))
+              .buffer(args, GraphBufferAccess::Indirect)
+              .parameters(&restore),
+            &layouts,
+          )
+          .record(move |context| {
+            let args: &wgpu::Buffer = context.get_buffer(args);
+
+            passes.shadow.record_tile(
+              context,
+              (region, Some(&restore)),
+              (&cut.view, &layouts, textures),
+              (args, 0),
+              ShadowCasters::Swaying,
+            );
+          });
         }
         (CascadeDraw::Static | CascadeDraw::Swaying, Some(statics), kept) => {
           let [static_pass, copy_pass, sway_pass] = STATIC_PASSES[index];
@@ -477,23 +517,55 @@ impl LevelShadows {
         continue;
       }
 
-      ready(
-        &mut cascade.cut,
-        encoder,
-        &offer.fit.view,
-        RenderRect {
-          x: 0,
-          y: 0,
-          width: resolution,
-          height: resolution,
-        },
-      );
+      match offer.draw {
+        CascadeDraw::Banded(band) => {
+          let [x, y, width, height] = Self::get_band_region(band, resolution);
+
+          ready(
+            &mut cascade.cut,
+            encoder,
+            &offer.fit.get_rows_view((y, y + height), resolution),
+            RenderRect {
+              x: x as i32,
+              y: y as i32,
+              width,
+              height,
+            },
+          );
+        }
+        _ => ready(
+          &mut cascade.cut,
+          encoder,
+          &offer.fit.view,
+          RenderRect {
+            x: 0,
+            y: 0,
+            width: resolution,
+            height: resolution,
+          },
+        ),
+      }
 
       self.due.push((offer.index, offer.draw));
       cascade.drawn = Some((offer.fit.version, offer.contents));
-      // A kept layer's copy shows the trees as last drawn, so their interval runs on from that draw.
-      if offer.draw != CascadeDraw::Kept {
-        cascade.drawn_at = frame.sway.time;
+
+      // A kept layer's copy shows the trees as last drawn, so their interval runs on from that draw; a banded sweep's
+      // from its start, once its last band is drawn.
+      match offer.draw {
+        CascadeDraw::Kept => {}
+        CascadeDraw::Banded(band) => {
+          let started: f32 = cascade.sway_sweep.map_or(frame.sway.time, |(started, _)| started);
+
+          cascade.sway_sweep = (band + 1 < BANDS).then_some((started, band + 1));
+
+          if cascade.sway_sweep.is_none() {
+            cascade.drawn_at = started;
+          }
+        }
+        _ => {
+          cascade.drawn_at = frame.sway.time;
+          cascade.sway_sweep = None;
+        }
       }
 
       cascade.drawn_fit = offer.fit;
@@ -564,6 +636,7 @@ impl LevelShadows {
       self.cascades[index].drawn_static = None;
       self.cascades[index].is_kept = false;
       self.cascades[index].received_at = None;
+      self.cascades[index].sway_sweep = None;
     }
 
     for (index, ..) in std::mem::take(&mut self.bands) {
@@ -748,6 +821,20 @@ impl LevelShadows {
       *is_trees_taken = true;
     }
 
+    // A far cascade redraws its trees for the sway alone band by band, a sweep at a time.
+    if index >= BANDED_FROM && !is_stale && (cascade.sway_sweep.is_some() || is_swayed) {
+      let band: u32 = cascade.sway_sweep.map_or(0, |(_, band)| band);
+
+      return Some(Self::offer(
+        index,
+        cascade,
+        frame,
+        scheduler,
+        (CascadeDraw::Banded(band), static_fit),
+        false,
+      ));
+    }
+
     if is_kept && !is_trees_due {
       return Some(Self::offer(
         index,
@@ -798,6 +885,7 @@ impl LevelShadows {
       CascadeDraw::Static => (&STATIC_PASSES[index], WHOLE_SEEDS[index]),
       CascadeDraw::Swaying => (&SWAY_PASSES[index], SWAY_SEEDS[index]),
       CascadeDraw::Kept => (&KEPT_PASSES[index], KEPT_SEED),
+      CascadeDraw::Banded(_) => (&SWAY_PASSES[index], SWAY_SEEDS[index] / BANDS as f32),
     };
     // The nearest is seen closest, and a cascade never drawn or strayed past its map shows wrong until drawn.
     let is_now: bool = index == 0
