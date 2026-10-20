@@ -6,7 +6,7 @@ use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSe
 use crate::contract::render_fog_settings::RenderFogSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::lighting::srgb::authored_light;
+use crate::lighting::srgb::authored_colour;
 use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::reflection_trace::ReflectionTrace;
@@ -91,7 +91,7 @@ impl LightingUniform {
     // and the sprite's colour the pictures they tint, which the shaders decode with them; the forward passes' as the
     // engine binds them.
     let is_physical: bool = options.is_light_physical();
-    let light = |colour: Vec3| authored_light(colour, is_physical);
+    let light = |colour: Vec3| authored_colour(colour, is_physical);
 
     Self {
       to_sun: to_sun.extend(0.0),

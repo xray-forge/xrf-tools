@@ -77,5 +77,5 @@ fn sky_light(direction: vec3<f32>, state: Lighting, cube_0: texture_cube<f32>, c
   let below: vec3<f32> = sky_box_shown(direction, state, cube_0, cube_1, cube_sampler, scale);
 
   return sky_as_light(sky_clouds_over(state, direction, below, clouds_0, clouds_1, repeat, scale), scale,
-    state.reflections.w, state.engine.w > 0.5);
+    state.reflections.w, is_lighting_physical(state));
 }

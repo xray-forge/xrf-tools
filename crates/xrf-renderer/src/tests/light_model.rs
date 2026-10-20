@@ -4,7 +4,7 @@ use crate::contract::render_light_model::RenderLightModel;
 use crate::contract::render_tonemap_mode::RenderTonemapMode;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::lighting::srgb::{authored_light, srgb_decoded, srgb_encoded};
+use crate::lighting::srgb::{authored_colour, srgb_decoded, srgb_encoded};
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 
@@ -77,8 +77,8 @@ fn srgb_decoding_inverts_the_encoding_and_continues_past_white() {
 fn authored_colours_are_decoded_only_under_the_physical_light() {
   let colour: Vec3 = Vec3::new(1.0, 0.5, 0.25);
 
-  assert_eq!(authored_light(colour, false), colour);
-  assert!((authored_light(colour, true) - Vec3::new(1.0, srgb_decoded(0.5), srgb_decoded(0.25))).length() < 1e-6);
+  assert_eq!(authored_colour(colour, false), colour);
+  assert!((authored_colour(colour, true) - Vec3::new(1.0, srgb_decoded(0.5), srgb_decoded(0.25))).length() < 1e-6);
 }
 
 // The sun and the ambient reach the lit passes decoded, and the shaders are told; the fog, the sky's tint and the

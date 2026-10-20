@@ -24,7 +24,7 @@ fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: te
   let environment: vec3<f32> = state.environment.rgb * irradiance;
 
   // The engine's square stands in for decoding the pictures; the physical light decodes them by the sRGB transfer.
-  return select(environment * environment, srgb_decoded(environment), state.engine.w > 0.5);
+  return select(environment * environment, srgb_decoded(environment), is_lighting_physical(state));
 }
 
 // `plight_infinity` for the sun: its colour by the diffuse term, its specular weight by the specular, at a view space

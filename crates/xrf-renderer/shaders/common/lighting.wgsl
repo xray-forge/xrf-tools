@@ -70,16 +70,22 @@ fn fog_amount_at(state: Lighting, position: vec3<f32>, height: f32) -> f32 {
   return saturate(fog + height_fog_share(state, height) * fog * state.height_fog.y);
 }
 
+// Whether the light is physical (`RenderLightModel::Physical`): `engine.w`, written from the view's one rule as the
+// camera's `output.w` is, for the shared functions that take the lighting rather than read the camera.
+fn is_lighting_physical(state: Lighting) -> bool {
+  return state.engine.w > 0.5;
+}
+
 // The sun's colour as the engine binds it, for a pass mixing it into a shown colour: as it stands, or encoded back
 // where the light is physical and it was decoded.
 fn sun_shown(state: Lighting) -> vec3<f32> {
-  return select(state.sun.rgb, srgb_encoded(state.sun.rgb), state.engine.w > 0.5);
+  return select(state.sun.rgb, srgb_encoded(state.sun.rgb), is_lighting_physical(state));
 }
 
 // The fog's colour as light: the weather's display value, decoded where the light is physical. The passes mixing it
 // into a shown colour take `fog_color` as it stands.
 fn fog_light(state: Lighting) -> vec3<f32> {
-  return select(state.fog_color.rgb, srgb_decoded(state.fog_color.rgb), state.engine.w > 0.5);
+  return select(state.fog_color.rgb, srgb_decoded(state.fog_color.rgb), is_lighting_physical(state));
 }
 
 // Light fogged towards the fog's light by `amount`: blended as the engine blends it, in display values, so its tuned
@@ -87,7 +93,7 @@ fn fog_light(state: Lighting) -> vec3<f32> {
 fn fog_mixed(state: Lighting, light: vec3<f32>, fog: vec3<f32>, amount: f32) -> vec3<f32> {
   let encoded: vec3<f32> = srgb_decoded(mix(srgb_encoded(light), srgb_encoded(fog), amount));
 
-  return select(mix(light, fog, amount), encoded, state.engine.w > 0.5);
+  return select(mix(light, fog, amount), encoded, is_lighting_physical(state));
 }
 
 // The colour the fog takes towards a view space point at a world height: the weather's, taking the sun's colour where
