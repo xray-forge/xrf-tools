@@ -2,12 +2,7 @@ import { RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
-import {
-  ILevelFeatureOptions,
-  toLevelModeFeature,
-  toLevelRendererAntialiasing,
-  toLevelRendererFeature,
-} from "@/core/level/lib/features/level-feature-options";
+import { ILevelFeatureOptions, toLevelRendererFeatures } from "@/core/level/lib/features/level-feature-options";
 import { ILevelLodOptions, toLevelRendererLod } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ELevelShading, getLevelShading, ILevelShadingChoice } from "@/core/level/lib/view/level-shading";
@@ -83,25 +78,8 @@ export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewO
       surfaceColor,
     },
     {
-      ...features,
-      ambientOcclusion: toLevelRendererFeature("ambientOcclusion", features, view, options.isOccluded),
-      antialiasing: toLevelRendererAntialiasing(features.antialiasing, view, options.isAntialiased),
-      upscaling: { ...features.upscaling, ...view.upscaling },
-      debanding: toLevelModeFeature("debanding", features, view),
-      enhancedBloom: toLevelModeFeature("enhancedBloom", features, view),
-      fog: toLevelModeFeature("fog", features, view),
-      glass: toLevelModeFeature("glass", features, view),
-      grass: toLevelRendererFeature("grass", features, view, options.isGrassy),
-      indirectLight: toLevelModeFeature("indirectLight", features, view),
-      isOcclusionCulled: features.isOcclusionCulled && options.isOcclusionCulled,
-      lights: toLevelRendererFeature("lights", features, view, options.isLamplit),
+      ...toLevelRendererFeatures(features, view, options),
       lod: toLevelRendererLod(features.lod, lod, options.isImpostors),
-      parallax: toLevelModeFeature("parallax", features, view),
-      rain: toLevelModeFeature("rain", features, view),
-      reflections: toLevelModeFeature("reflections", features, view),
-      shadows: toLevelRendererFeature("shadows", features, view, options.isShadowed),
-      volumetric: toLevelModeFeature("volumetric", features, view),
-      water: toLevelRendererFeature("water", features, view, options.isWaterVisible),
     },
     { ...options, sunShafts },
     look,

@@ -2,7 +2,6 @@
 //! where tools write when nobody named a destination.
 
 pub mod commands;
-pub mod output_root;
 pub mod path_description;
 pub mod reveal;
 mod state;

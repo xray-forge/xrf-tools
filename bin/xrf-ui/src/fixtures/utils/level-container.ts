@@ -1,6 +1,6 @@
 import { expect } from "@jest/globals";
 import { act, RenderResult, waitFor } from "@testing-library/react";
-import { Container } from "@wirestate/core";
+import { Binding, Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 import { ReactNode } from "react";
 
@@ -36,9 +36,10 @@ export interface ILevelViewContainerDescriptor {
 /**
  * Builds the services a level view's toolbar and panels read, as the level viewer binds them.
  *
+ * @param bindings - Services of the application over the view's, such as the level viewer's own.
  * @returns The container, and the services a test sets state on and reads back.
  */
-export function mockLevelViewContainer(): ILevelViewContainerDescriptor {
+export function mockLevelViewContainer(bindings: Array<Binding> = []): ILevelViewContainerDescriptor {
   const container: Container = mockContainer([
     LevelLoadService,
     LevelLookService,
@@ -46,6 +47,7 @@ export function mockLevelViewContainer(): ILevelViewContainerDescriptor {
     LevelViewportService,
     LevelWeatherService,
     LevelRenderService,
+    ...bindings,
   ]);
 
   return {

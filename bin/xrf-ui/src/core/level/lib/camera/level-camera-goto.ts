@@ -46,6 +46,31 @@ export function toLevelGoTo(camera: ILevelCamera): ILevelGoTo {
 }
 
 /**
+ * @param value - Any values under the readout's names, as a file holds them.
+ * @returns Whether they name a whole place: every value a finite number.
+ */
+export function isLevelGoTo(value: Partial<Record<keyof ILevelGoTo, unknown>>): value is ILevelGoTo {
+  return LEVEL_GO_TO_FIELDS.every(([key]) => typeof value[key] === "number" && Number.isFinite(value[key]));
+}
+
+/**
+ * @param goTo - A place.
+ * @param decimals - Decimal places each value keeps.
+ * @returns The place, each value rounded to them.
+ */
+export function toRoundedLevelGoTo(goTo: ILevelGoTo, decimals: number): ILevelGoTo {
+  const scale: number = 10 ** decimals;
+
+  return {
+    heading: Math.round(goTo.heading * scale) / scale,
+    pitch: Math.round(goTo.pitch * scale) / scale,
+    x: Math.round(goTo.x * scale) / scale,
+    y: Math.round(goTo.y * scale) / scale,
+    z: Math.round(goTo.z * scale) / scale,
+  };
+}
+
+/**
  * @param text - Text naming a place as the readout does, a copy of it or part of one.
  * @param current - What each value is where the text does not name it.
  * @returns The place, or null for text naming none of it.

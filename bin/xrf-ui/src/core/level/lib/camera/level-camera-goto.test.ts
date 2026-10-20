@@ -4,16 +4,39 @@ import { toXrayHeading, toXraySpace } from "@xrf/math";
 import { formatLevelFacing, formatLevelPosition, ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import {
   ILevelGoTo,
+  isLevelGoTo,
   isLevelGoToText,
   parseLevelGoTo,
   parseLevelGoToTexts,
   toLevelGoTo,
   toLevelGoToTexts,
   toLevelGoToViewpoint,
+  toRoundedLevelGoTo,
 } from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 
 const HERE: ILevelGoTo = { heading: 0, pitch: 0, x: 0, y: 0, z: 0 };
+
+describe("isLevelGoTo", () => {
+  it("takes only a whole place of finite numbers", () => {
+    expect(isLevelGoTo({ heading: 90, pitch: -4, x: 1, y: 2, z: 3 })).toBe(true);
+    expect(isLevelGoTo({ heading: 90, pitch: -4, x: 1, y: 2 })).toBe(false);
+    expect(isLevelGoTo({ heading: 90, pitch: -4, x: 1, y: 2, z: Number.NaN })).toBe(false);
+    expect(isLevelGoTo({ heading: "90", pitch: -4, x: 1, y: 2, z: 3 })).toBe(false);
+  });
+});
+
+describe("toRoundedLevelGoTo", () => {
+  it("rounds every value to the decimals asked", () => {
+    expect(toRoundedLevelGoTo({ heading: 252.80049, pitch: -4.0004, x: 344.70051, y: -2.3, z: 247.7 }, 3)).toEqual({
+      heading: 252.8,
+      pitch: -4,
+      x: 344.701,
+      y: -2.3,
+      z: 247.7,
+    });
+  });
+});
 
 describe("parseLevelGoTo", () => {
   it("reads the readout as it is copied, degree signs and all", () => {

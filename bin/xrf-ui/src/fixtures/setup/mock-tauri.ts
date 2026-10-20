@@ -40,6 +40,9 @@ export function mockTauri(): void {
 
   jest.mock("@tauri-apps/plugin-fs", () => ({
     exists: jest.fn(async () => true),
+    mkdir: jest.fn(async () => undefined),
+    readTextFile: jest.fn(async () => ""),
+    writeTextFile: jest.fn(async () => undefined),
   }));
 
   jest.mock("@tauri-apps/plugin-shell", () => ({

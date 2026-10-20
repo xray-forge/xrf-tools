@@ -1,34 +1,36 @@
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
-use crate::core::directories::{get_executable_directory, get_local_data_directory};
+use crate::core::directories::{get_app_data_directories, get_local_data_directory};
 
-/// This run's log file, opened fresh with the last run's kept beside it: under `appdata/logs` beside the executable, as
-/// X-Ray keeps its own, else under the application's data directory.
+/// This run's log file, opened fresh with the last run's kept beside it: under `logs` in the application's own data
+/// directory, `appdata` beside the executable as X-Ray keeps its own, else its local data directory.
 pub struct LogFile {
   pub path: PathBuf,
   pub file: File,
 }
 
 impl LogFile {
+  /// The directory the logs keep within the application's own data.
+  pub const DIRECTORY: &'static str = "logs";
+
   /// The log file's name, and the name the last run's is kept under.
   pub const NAME: &'static str = "xrf-app.log";
   pub const PREVIOUS_NAME: &'static str = "xrf-app.previous.log";
 
-  /// Opens this run's log in the first directory that takes it, beside the executable or in the data directory of the
-  /// bundle `identifier`.
+  /// Opens this run's log in the first of the application's own data directories that takes it, the local one that of
+  /// the bundle `identifier`.
   ///
   /// # Errors
   ///
   /// Returns why each directory refused it, where none did.
   pub fn open(identifier: &str) -> Result<Self, String> {
-    let directories = [
-      get_executable_directory().map(|directory| directory.join("appdata").join("logs")),
-      get_local_data_directory(identifier).map(|directory| directory.join("logs")),
-    ];
     let mut refusals: Vec<String> = Vec::new();
 
-    for directory in directories.into_iter().flatten() {
+    for directory in get_app_data_directories(get_local_data_directory(identifier))
+      .into_iter()
+      .map(|directory| directory.join(Self::DIRECTORY))
+    {
       match Self::create_in(&directory) {
         Ok(log) => return Ok(log),
         Err(error) => refusals.push(format!("'{}': {error}", directory.display())),

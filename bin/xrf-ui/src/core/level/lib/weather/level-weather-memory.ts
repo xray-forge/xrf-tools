@@ -1,5 +1,5 @@
 import { clamp } from "@xrf/math";
-import { Maybe, Nullable } from "@xrf/types";
+import { isRecord, Maybe, Nullable } from "@xrf/types";
 
 import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
@@ -145,8 +145,4 @@ function readMemories(): Record<string, unknown> {
   const stored: unknown = parseLocalStorageValueSafe(LEVEL_WEATHER_STORAGE_KEY);
 
   return isRecord(stored) ? { ...stored } : {};
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

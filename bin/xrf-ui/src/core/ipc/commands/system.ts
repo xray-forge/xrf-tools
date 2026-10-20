@@ -19,6 +19,8 @@ export const systemCommands = {
   approveWindowClose: (window: string) => __TAURI_INVOKE<void>("plugin:system|approve_window_close", { window }),
   /** Describe what a path currently holds. */
   describePath: (path: string) => __TAURI_INVOKE<PathDescription>("plugin:system|describe_path", { path }),
+  /** Where the application keeps its own files, as its logs are kept: its first data directory with a Unicode path. */
+  getAppDataRoot: () => __TAURI_INVOKE<string>("plugin:system|get_app_data_root"),
   /** Report which build of the application is running. */
   getBuildInfo: () => __TAURI_INVOKE<BuildInfo>("plugin:system|get_build_info"),
   /** Where tools write when no output directory has been configured. */

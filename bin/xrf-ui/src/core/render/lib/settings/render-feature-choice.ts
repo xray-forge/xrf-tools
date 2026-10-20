@@ -1,3 +1,5 @@
+import { isRecord } from "@xrf/types";
+
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
@@ -34,7 +36,7 @@ const SCHEMA: TSchemaNode = RENDER_FEATURE_SCHEMA as unknown as TSchemaNode;
  *   for nothing usable.
  */
 export function toRenderFeatureChoice(stored: unknown): IRenderFeatureChoice {
-  if (!isValues(stored)) {
+  if (!isRecord(stored)) {
     return DEFAULT_RENDER_FEATURE_CHOICE;
   }
 
@@ -106,7 +108,7 @@ function parse(node: TSchemaNode, stored: unknown): unknown {
     return toRenderSettingValue(node, stored);
   }
 
-  const source: TValues = isValues(stored) ? stored : {};
+  const source: TValues = isRecord(stored) ? stored : {};
 
   return toGroup(node, (key: string, child: TSchemaNode) => parse(child, source[key]));
 }
@@ -116,7 +118,7 @@ function resolve(node: TSchemaNode, base: unknown, overrides: unknown): unknown 
     return overrides ?? base;
   }
 
-  const [from, over] = [base as TValues, isValues(overrides) ? overrides : {}];
+  const [from, over] = [base as TValues, isRecord(overrides) ? overrides : {}];
 
   return toGroup(node, (key: string, child: TSchemaNode) => resolve(child, from[key], over[key])) ?? {};
 }
@@ -136,7 +138,7 @@ function merge(node: TSchemaNode, a: unknown, b: unknown): unknown {
     return b ?? a;
   }
 
-  const [first, second] = [isValues(a) ? a : {}, isValues(b) ? b : {}];
+  const [first, second] = [isRecord(a) ? a : {}, isRecord(b) ? b : {}];
 
   return toGroup(node, (key: string, child: TSchemaNode) => merge(child, first[key], second[key]));
 }
@@ -165,8 +167,8 @@ function listUnkept(sent: unknown, kept: unknown, at: string): Array<string> {
     return [];
   }
 
-  if (isValues(sent)) {
-    const group: TValues = isValues(kept) ? kept : {};
+  if (isRecord(sent)) {
+    const group: TValues = isRecord(kept) ? kept : {};
 
     return Object.entries(sent).flatMap(([key, value]: [string, unknown]) =>
       listUnkept(value, group[key], at ? `${at}.${key}` : key)
@@ -174,8 +176,4 @@ function listUnkept(sent: unknown, kept: unknown, at: string): Array<string> {
   }
 
   return JSON.stringify(sent) === JSON.stringify(kept) ? [] : [at];
-}
-
-function isValues(value: unknown): value is TValues {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

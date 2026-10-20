@@ -8,6 +8,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode } from "react";
 
+import { LevelViewerSnapshotActions } from "@/applications/level-viewer/components/LevelViewerSnapshotActions";
 import { LevelViewerToolbar } from "@/applications/level-viewer/components/LevelViewerToolbar";
 import { ELevelViewerPanelId } from "@/applications/level-viewer/lib/level-viewer-panel-id";
 import { LEVEL_VIEWER_VIEW_MENU } from "@/applications/level-viewer/menus";
@@ -140,6 +141,8 @@ export function LevelViewerLayout({
 
   return (
     <EditorLayout toolbar={<LevelViewerToolbar onBack={onBack} />}>
+      <LevelViewerSnapshotActions />
+
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>
         {heading ? (
           <EditorFileHeader
