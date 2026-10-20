@@ -459,7 +459,8 @@ fn scene_lamps(
     let half_way: vec3<f32> = normalize(to_light + to_eye);
     let material: vec4<f32> = textureSampleLevel(lut, lut_sampler,
       vec3<f32>(dot(to_light, view_normal), dot(half_way, view_normal), slice), 0.0);
-    var light: vec4<f32> = vec4<f32>(material.xxx, material.y) * authored_amount(falloff);
+    var light: vec4<f32> = vec4<f32>(material.xxx, material.y) *
+      light_share(record, to_point, is_light_physical(), 0.0);
 
     if (is_spot && record.up.w >= 0.0) {
       let slot: u32 = u32(record.up.w);

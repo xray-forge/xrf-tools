@@ -318,7 +318,6 @@ struct SunTrace {
 
 struct LightTrace {
   noise: vec4<f32>,
-  radius: f32,
 }
 
 struct IndirectTrace {

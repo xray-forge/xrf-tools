@@ -37,7 +37,8 @@ fn traced_seen(pixel: LitPixel, record: LightRecord, is_plant: bool, drawn: vec2
   let frame: AxisFrame = axis_frame(to_light);
   let across: vec3<f32> = frame.across;
   let along: vec3<f32> = frame.along;
-  let radius: f32 = sqrt(drawn.x) * light_trace.radius;
+  let bulb: f32 = sqrt(record.shadow.w);
+  let radius: f32 = sqrt(drawn.x) * bulb;
   let angle: f32 = drawn.y * TAU;
   let target_point: vec3<f32> = light + (across * cos(angle) + along * sin(angle)) * radius;
   let toward: vec3<f32> = target_point - origin;
@@ -50,7 +51,7 @@ fn traced_seen(pixel: LitPixel, record: LightRecord, is_plant: bool, drawn: vec2
   }
 
   let cone: SceneCone = SceneCone(distance * 2.0 / (camera.projection[1][1] * camera.viewport.y),
-    light_trace.radius / max(length_to, 1e-3));
+    bulb / max(length_to, 1e-3));
 
   return select(1.0, 0.0, trace_scene_blocked(origin, toward / length_to, reach, cone, SCENE_NO_PLACE));
 }

@@ -17,6 +17,7 @@ use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::lighting::light_animation::to_animated_color;
 use crate::lighting::light_basis::LightBasis;
+use crate::lighting::light_bulb::get_bulb_radius;
 use crate::lighting::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shadow_scale};
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::srgb::authored_colour;
@@ -247,7 +248,7 @@ impl LevelLights {
         if let Some(set) = set {
           let atlas: f32 = LevelLightShadows::ATLAS_SIZE as f32;
 
-          record.shadow = Vec4::new(set.near, set.far, set.faces.len() as f32, 0.0);
+          record.shadow = Vec4::new(set.near, set.far, set.faces.len() as f32, record.shadow.w);
 
           for (face, state) in set.faces.iter().enumerate() {
             record.faces[face] = Vec4::new(
@@ -481,7 +482,7 @@ impl LevelLights {
         .transform_vector3(basis.up)
         .extend(if is_spot { projector } else { LightRecord::NO_PROJECTOR }),
       sphere: view.transform_point3(bound.truncate()).extend(bound.w),
-      shadow: Vec4::ZERO,
+      shadow: Vec4::new(0.0, 0.0, 0.0, get_bulb_radius(light).powi(2)),
       faces: [Vec4::ZERO; 6],
     }
   }

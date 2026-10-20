@@ -41,6 +41,9 @@ fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
   let position: vec3<f32> = along * (depth / max(-along.z, 1e-6));
   let world: vec3<f32> = (transpose(camera.view) * vec4<f32>(position, 0.0)).xyz + camera.position.xyz;
   let to_eye: vec3<f32> = -normalize(position);
+  // Half the froxel's extent, along the view (its slice's depth) or across it, whichever is wider.
+  let spread: f32 = 0.5 * max(2.0 * froxels.size.w * t / f32(size.z),
+    depth * 2.0 / (camera.projection[1][1] * f32(size.y)));
   let intensity: f32 = froxels.params.x;
   let g: f32 = froxels.params.y;
   let fog: f32 = 1.0 + height_fog_share(lighting, world.y) * lighting.height_fog.y * FROXEL_FOG;
@@ -70,7 +73,7 @@ fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
         continue;
       }
 
-      var lit: f32 = authored_amount(falloff);
+      var lit: f32 = light_share(record, to_point, is_light_physical(), spread);
 
       if (record.shadow.z > 0.0) {
         lit *= light_shadow(shadow_atlas, shadow_sampler, record, to_point, vec3<f32>(0.0), record.axis.w > -1.0, false);

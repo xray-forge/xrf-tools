@@ -17,7 +17,8 @@ pub struct LightRecord {
   pub up: Vec4,
   /// The sphere it is binned by.
   pub sphere: Vec4,
-  /// A shadowed light's near and far planes, its face count, and nothing: all zero for one unshadowed.
+  /// A shadowed light's near and far planes and its face count, all zero for one unshadowed; then its bulb's radius,
+  /// squared (`get_bulb_radius`).
   pub shadow: Vec4,
   /// Each face's square of the shadow atlas in texture coordinates, then how far the face has faded.
   pub faces: [Vec4; 6],

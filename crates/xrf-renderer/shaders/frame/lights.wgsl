@@ -76,7 +76,8 @@ fn fs_lights(in: FullscreenVarying) -> @location(0) vec4<f32> {
       0.0
     );
     let flora_gloss: f32 = select(1.0, select(0.5, 0.3, is_unshadowed_omni), is_flora);
-    var lit: vec4<f32> = vec4<f32>(material.xxx, material.y * flora_gloss) * authored_amount(light.falloff);
+    var lit: vec4<f32> = vec4<f32>(material.xxx, material.y * flora_gloss) *
+      light_share(record, light.to_point, is_light_physical(), 0.0);
 
     if (is_spot && record.up.w >= 0.0) {
       let projector: u32 = u32(record.up.w);
