@@ -1,4 +1,4 @@
-import { Nullable } from "@xrf/types";
+import { Maybe, Nullable, Optional } from "@xrf/types";
 import { createContext, useContext } from "react";
 
 /** Where a slider's value stands against what it is measured by. */
@@ -26,7 +26,7 @@ export const SLIDER_ABOVE_RECOMMENDED: string = "Past the recommended range: cos
  * @param path - The setting's place in what the nearest source holds, if the slider has one.
  * @returns What the slider is measured by there, or none outside a source or without a place.
  */
-export function useSliderReference(path: ReadonlyArray<string> | undefined): Nullable<ISliderReference> {
+export function useSliderReference(path: Optional<ReadonlyArray<string>>): Nullable<ISliderReference> {
   const source: Nullable<ISliderReferenceSource> = useContext(SliderReferenceContext);
 
   return source && path ? { label: source.label, value: source.resolve(path) } : null;
@@ -39,7 +39,7 @@ export function useSliderReference(path: ReadonlyArray<string> | undefined): Nul
  */
 export function describeSliderRecommendation(
   value: number,
-  recommended: Nullable<readonly [number, number]> | undefined
+  recommended: Maybe<readonly [number, number]>
 ): Nullable<string> {
   if (!recommended) {
     return null;

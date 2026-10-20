@@ -14,11 +14,6 @@ import { SliderFormRow } from "./SliderFormRow";
 
 const SOURCE: ISliderReferenceSource = { label: "Base preset", resolve: () => 32 };
 
-/**
- * @param value - The steps the row shows.
- * @param onChange - What the row tells a new value.
- * @returns A steps row measured by a preset of 32 and recommending 32 to 96.
- */
 function renderStepsRow(value: number, onChange: (value: number) => void): ReactElement {
   return (
     <SliderReferenceContext.Provider value={SOURCE}>
