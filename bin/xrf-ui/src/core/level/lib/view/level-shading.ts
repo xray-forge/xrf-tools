@@ -32,6 +32,7 @@ export enum ELevelShading {
   MATERIAL = "material",
   DEPTH = "depth",
   LIGHT = "light",
+  SPECULAR = "specular",
   AMBIENT_OCCLUSION = "ambientOcclusion",
   INDIRECT_LIGHT = "indirectLight",
   REFLECTIONS = "reflections",
@@ -192,6 +193,13 @@ export const LEVEL_SHADINGS: ReadonlyArray<ILevelShadingChoice> = (
       description: "The light the sun and the lamps add up to, before the surfaces' colour.",
       value: ELevelShading.LIGHT,
       debugView: ERenderDebugView.LIGHT,
+    },
+    {
+      section: "Light",
+      label: "Accumulated specular",
+      description: "The highlights the sun and the lamps add up to, kept apart from their diffuse light.",
+      value: ELevelShading.SPECULAR,
+      debugView: ERenderDebugView.SPECULAR,
     },
     {
       section: "Light",

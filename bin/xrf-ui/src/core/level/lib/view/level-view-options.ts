@@ -10,6 +10,13 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isSunMarked: boolean;
   /** Draws the two readouts over the viewport: what the frame cost, and where the camera stands. */
   isStatsVisible: boolean;
+  /** Reads the light at the viewport's centre into the frame readout, in stops about middle grey. */
+  isMetered: boolean;
+  /**
+   * Stands calibration props ahead of where the camera stood when they were turned on: a grey and a white sphere, a
+   * mirror ball and a colour chart, lit as the level's surfaces are.
+   */
+  isCalibrationVisible: boolean;
   /** Draws the fog, which closes the level in at its distance. */
   isFogged: boolean;
   /** Draws the sky cube, rather than the backdrop behind the level. */
@@ -77,6 +84,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isAmbientPlayed: true,
   isAntialiased: true,
   isAxesVisible: false,
+  isCalibrationVisible: false,
   isCampfireLit: true,
   isClouded: true,
   isDepthPrepassed: true,
@@ -86,6 +94,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isImpostors: true,
   isLamplit: true,
   isLensFlared: true,
+  isMetered: false,
   isOccluded: true,
   isOcclusionCulled: true,
   isParallaxed: true,

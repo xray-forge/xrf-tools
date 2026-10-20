@@ -465,6 +465,8 @@ export enum ERenderDebugView {
    * smaller mips are read; grey where a surface has no base texture.
    */
   SAMPLED_MIP = "sampledMip",
+  /** The specular the sun and the lights accumulated, kept apart from their diffuse in the light target's alpha. */
+  SPECULAR = "specular",
   /**
    * FSR's masks at each pixel's drawn texel: how reactive it is (moving apart from what it lands on, or a plant the
    * wind moved) in red, how disoccluded in green, how far its shading changed in blue.
@@ -771,6 +773,8 @@ export type RenderFrameReport = {
   sectorTime: number | null;
   /** What the renderer holds on the GPU. */
   memory: RenderMemoryReport;
+  /** What the view's spot meter read, a frame or more late; none while it does not meter. */
+  meter: RenderMeterReading | null;
   /** What the frame graph made of its latest frame, none before its first. */
   graph: RenderGraphReport | null;
 };
@@ -1174,6 +1178,29 @@ export type RenderMemorySection = {
   name: string;
   bytes: number;
   count: number;
+};
+
+/**
+ * What a view's spot meter read at its centre, a square of nine texels a side averaged: the light there, what it was
+ * exposed by, and what the G-buffer holds of the surfaces under it.
+ */
+export type RenderMeterReading = {
+  /** The scene's luminance at the spot before its exposure, in the units its light is drawn in. */
+  luminance: number | null;
+  /** Stops the exposed spot stands above middle grey, 0.18; below it where negative. */
+  stops: number | null;
+  /** The scale the frame's light was exposed by. */
+  exposure: number | null;
+  /** The surfaces' albedo luminance read as linear light (sRGB decoded); none where the spot holds only sky. */
+  albedo: number | null;
+  /** The surfaces' gloss, as the G-buffer keeps it. */
+  gloss: number | null;
+  /** The luminance of the diffuse light the sun and the lamps accumulated over the surfaces. */
+  diffuse: number | null;
+  /** The specular the sun and the lamps accumulated over the surfaces. */
+  specular: number | null;
+  /** Metres from the camera to the surfaces, along its view. */
+  distance: number | null;
 };
 
 /** Every `kind` the `RenderOverlay` union is told apart by, so a switch or a comparison names one. */
@@ -1657,6 +1684,11 @@ export type RenderShowFlags = {
   isParticled: boolean;
   /** Whether surfaces cut out and blend as their shaders ask, or draw solid. */
   isAlphaVisible: boolean;
+  /**
+   * Whether calibration props stand ahead of where the camera stood when they were first shown: a grey sphere of a
+   * grey card's albedo, a white one, a metal mirror and a colour chart, lit as the level's surfaces are.
+   */
+  isCalibrationVisible: boolean;
 };
 
 /** How full a level's static draws' pools are, and what the camera's cull kept and occlusion hid. */
@@ -1878,6 +1910,8 @@ export type RenderViewMode = {
   isBumped: boolean;
   /** Which picture the viewport shows: its frame, or one of the targets the frame was built from. */
   debugView: RenderDebugView;
+  /** Whether a spot meter reads the light at the view's centre into its frame reports. */
+  isMetered: boolean;
 };
 
 /**

@@ -17,6 +17,7 @@ use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_memory_report::RenderMemoryReport;
+use crate::contract::render_meter_reading::RenderMeterReading;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pass_cost::RenderPassCost;
@@ -265,12 +266,13 @@ impl RenderViewport {
       .shown
       .as_mut()
       .and_then(|(id, view)| Some((scenes.get_mut(id)?, view)));
-    let (static_draws, lights, particles, grass, sector_time): (
+    let (static_draws, lights, particles, grass, sector_time, meter): (
       RenderStaticReport,
       RenderLightsReport,
       RenderParticlesReport,
       RenderGrassReport,
       f32,
+      Option<RenderMeterReading>,
     ) = match shown {
       Some((scene, view)) => {
         let (static_draws, lights) = view.take_stats(scene);
@@ -281,6 +283,7 @@ impl RenderViewport {
           view.take_particles_report(scene),
           view.take_grass_report(),
           scene.sector_time,
+          view.take_meter_reading(),
         )
       }
       None => Default::default(),
@@ -352,6 +355,7 @@ impl RenderViewport {
       sector_time,
       graph: graph.map(|graph| Box::new(RenderGraphReport::of(graph, self.get_graph_owner()))),
       memory: RenderMemoryReport::of(allocator),
+      meter,
     };
 
     self.sent_frame = Some(report.clone());

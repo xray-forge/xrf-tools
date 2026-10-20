@@ -18,6 +18,7 @@ import { LevelWeatherPanel } from "@/applications/level-viewer/components/panels
 import { LevelPreviewCoordinates } from "@/applications/level-viewer/components/preview/LevelPreviewCoordinates";
 import { LevelPreviewEmpty } from "@/applications/level-viewer/components/preview/LevelPreviewEmpty";
 import { LevelPreviewMetrics } from "@/applications/level-viewer/components/preview/LevelPreviewMetrics";
+import { LevelPreviewSpot } from "@/applications/level-viewer/components/preview/LevelPreviewSpot";
 import { LevelViewerScreenshotActions } from "@/applications/level-viewer/components/screenshot/LevelViewerScreenshotActions";
 import { LevelViewerScreenshotToast } from "@/applications/level-viewer/components/screenshot/LevelViewerScreenshotToast";
 import { LevelViewerSnapshotActions } from "@/applications/level-viewer/components/snapshot/LevelViewerSnapshotActions";
@@ -170,6 +171,8 @@ export function LevelViewerLayout({
               <LevelPreviewCoordinates />
             </>
           ) : null}
+
+          {isOpen && viewOptions.isMetered ? <LevelPreviewSpot /> : null}
 
           {isOpen ? <LevelPreviewPick /> : null}
 

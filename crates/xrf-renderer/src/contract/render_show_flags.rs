@@ -26,6 +26,9 @@ pub struct RenderShowFlags {
   pub is_particled: bool,
   /// Whether surfaces cut out and blend as their shaders ask, or draw solid.
   pub is_alpha_visible: bool,
+  /// Whether calibration props stand ahead of where the camera stood when they were first shown: a grey sphere of a
+  /// grey card's albedo, a white one, a metal mirror and a colour chart, lit as the level's surfaces are.
+  pub is_calibration_visible: bool,
 }
 
 impl Default for RenderShowFlags {
@@ -40,6 +43,7 @@ impl Default for RenderShowFlags {
       is_wallmarked: true,
       is_particled: true,
       is_alpha_visible: true,
+      is_calibration_visible: false,
     }
   }
 }

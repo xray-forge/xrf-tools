@@ -62,6 +62,8 @@ pub enum RenderDebugView {
   /// The mip a surface's base texture is read at: green its own size, blue where it is magnified, yellow to red as
   /// smaller mips are read; grey where a surface has no base texture.
   SampledMip,
+  /// The specular the sun and the lights accumulated, kept apart from their diffuse in the light target's alpha.
+  Specular,
   /// FSR's masks at each pixel's drawn texel: how reactive it is (moving apart from what it lands on, or a plant the
   /// wind moved) in red, how disoccluded in green, how far its shading changed in blue.
   FsrMasks,

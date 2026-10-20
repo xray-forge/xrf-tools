@@ -9,6 +9,7 @@
 #import "common/reflection_end"
 #import "common/debug_colours"
 #import "common/luminance"
+#import "common/srgb"
 
 // The viewport's finished scene put into its rectangle of the window, moved where the water and the particles distort
 // it; or, for a debug view, one of the targets the scene was built from.
@@ -40,8 +41,9 @@ const VIEW_OVERDRAW: u32 = 19u;
 const VIEW_CASCADES: u32 = 20u;
 const VIEW_LAMPS: u32 = 21u;
 const VIEW_SAMPLED_MIP: u32 = 22u;
+const VIEW_SPECULAR: u32 = 23u;
 // The first of FSR's debug views, which FSR draws in place of the frame it resolved.
-const VIEW_FSR_FIRST: u32 = 23u;
+const VIEW_FSR_FIRST: u32 = 24u;
 // What the reflections view shows where a ray met nothing and the cube stands.
 const REFLECTION_MISS: vec3<f32> = vec3<f32>(0.05, 0.1, 0.45);
 // What the reflections view multiplies what was met by before its shoulder.
@@ -56,8 +58,6 @@ const BLOOM_ENHANCED: u32 = 2u;
 // Metres the depth view spreads over, logarithmically, so a metre up close and a kilometre away both read.
 const DEPTH_VIEW_RANGE: f32 = 5000.0;
 
-// The middle grey the luminance view counts its stops from.
-const MIDDLE_GREY: f32 = 0.18;
 
 // The linear albedo the albedo range view takes as plausible, and what it shows below and above it.
 const ALBEDO_LEAST: f32 = 0.03;
@@ -129,6 +129,9 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
     }
     case VIEW_LIGHT: {
       return textureLoad(light_target, texel, 0).rgb;
+    }
+    case VIEW_SPECULAR: {
+      return vec3<f32>(textureLoad(light_target, texel, 0).a);
     }
     case VIEW_MOTION: {
       let pixels: vec2<f32> = textureLoad(motion_target, texel, 0).xy * camera.viewport.xy;
@@ -221,11 +224,6 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
       return vec3<f32>(select(1.0, upsampled_occlusion(occlusion_target, vec2<f32>(texel), distance), is_searched));
     }
   }
-}
-
-// The sRGB transfer undone, which the engine's textures are encoded by and its albedo holds as it is.
-fn srgb_decoded(color: vec3<f32>) -> vec3<f32> {
-  return select(pow((color + 0.055) / 1.055, vec3<f32>(2.4)), color / 12.92, color <= vec3<f32>(0.04045));
 }
 
 // `img_corrections` (Anomaly's `combine_2`): the finished frame exposed, graded towards a colour in its mid tones,

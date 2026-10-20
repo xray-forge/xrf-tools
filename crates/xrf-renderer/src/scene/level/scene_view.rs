@@ -16,6 +16,7 @@ use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_grass_report::RenderGrassReport;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_lights_report::RenderLightsReport;
+use crate::contract::render_meter_reading::RenderMeterReading;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pool_use::RenderPoolUse;
@@ -116,6 +117,11 @@ impl SceneView {
   /// What the grass came to on a recent frame.
   pub fn take_grass_report(&mut self) -> RenderGrassReport {
     self.features.grass.take_report()
+  }
+
+  /// What the spot meter last read; none while the view does not meter.
+  pub fn take_meter_reading(&mut self) -> Option<RenderMeterReading> {
+    self.features.meter.take_reading()
   }
 
   /// The particles' report for this view: the scene's simulation since the last report and the quads this view drew.
@@ -436,7 +442,8 @@ impl SceneView {
   }
 
   /// The view's own units: the resolve and the smoothing, the screen's occlusion and the bitmask search at half the
-  /// frame's size, the reflections, the view's trace and the composited surfaces in `sight`.
+  /// frame's size, the reflections, the view's trace, the composited surfaces in `sight`, and the spot meter and the
+  /// calibration props.
   fn prepare_view(
     &mut self,
     scene: &LevelScene,
@@ -493,6 +500,8 @@ impl SceneView {
       .features
       .composited
       .prepare((scene, device, &mut *encoder), view, options, sight);
+    self.features.meter.prepare(device, options);
+    self.features.calibration.prepare(options, view);
   }
 
   /// The lighting the passes read, the enhanced fog's height fog faded out indoors; the units reading it (the combine,
@@ -1047,6 +1056,12 @@ impl SceneView {
       (view, textures, &statics),
       handles,
     );
+    if is_drawn {
+      self
+        .features
+        .calibration
+        .add_passes((&mut *graph, &mut *runtime), passes, view, handles);
+    }
 
     // The grass is culled once the static scene's depth is reduced, so a cell behind it plants nothing to draw.
     if let Some(grass_planting) = grass_planting {
@@ -1451,6 +1466,10 @@ impl SceneView {
       .features
       .fog
       .add_passes((&mut *graph, &mut *bindings, runtime), passes, view, (handles, lit));
+    self
+      .features
+      .meter
+      .add_passes((&mut *graph, &mut *bindings), passes, view, (handles, lit));
 
     let size: (u32, u32) = handles.size;
     let enhanced_bloom: Option<GraphTexture> = self.features.bloom.add_enhanced_passes(
@@ -1604,6 +1623,7 @@ impl SceneView {
     self.features.grass.request_stats();
     self.features.lights.request_report();
     self.features.reflections.request_demand();
+    self.features.meter.request();
   }
 
   /// Drops what a frame that was never submitted copied out for reading back, its counts and its pick, and forgets the
@@ -1615,6 +1635,7 @@ impl SceneView {
     self.features.grass.abandon_stats();
     self.features.lights.abandon_report();
     self.features.reflections.abandon_demand();
+    self.features.meter.abandon();
     self.features.pick.abandon();
     // What the frame drew of the periodic work was never drawn.
     self.features.shadows.abandon_frame();

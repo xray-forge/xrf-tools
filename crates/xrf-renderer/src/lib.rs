@@ -95,6 +95,7 @@ pub use crate::contract::render_load_report::RenderLoadReport;
 pub use crate::contract::render_lod_settings::RenderLodSettings;
 pub use crate::contract::render_memory_report::RenderMemoryReport;
 pub use crate::contract::render_memory_section::RenderMemorySection;
+pub use crate::contract::render_meter_reading::RenderMeterReading;
 pub use crate::contract::render_overlay::RenderOverlay;
 pub use crate::contract::render_overlay_segment::RenderOverlaySegment;
 pub use crate::contract::render_page_backdrop::RenderPageBackdrop;

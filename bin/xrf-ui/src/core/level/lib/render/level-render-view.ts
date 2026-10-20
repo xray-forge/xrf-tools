@@ -74,6 +74,7 @@ export function toLevelViewOptions(inputs: ILevelViewOptionsInputs): RenderViewO
       hemiStrength: options.isBaked ? hemiStrength : 0,
       isBumped: options.isBumped,
       isLit: true,
+      isMetered: options.isMetered,
       isWireframe: options.isWireframe,
       surfaceColor,
     },

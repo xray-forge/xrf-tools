@@ -19,6 +19,8 @@ pub struct RenderViewMode {
   pub is_bumped: bool,
   /// Which picture the viewport shows: its frame, or one of the targets the frame was built from.
   pub debug_view: RenderDebugView,
+  /// Whether a spot meter reads the light at the view's centre into its frame reports.
+  pub is_metered: bool,
 }
 
 impl Default for RenderViewMode {
@@ -29,6 +31,7 @@ impl Default for RenderViewMode {
       surface_color: RenderSurfaceColor::Textured,
       is_bumped: true,
       debug_view: RenderDebugView::Final,
+      is_metered: false,
     }
   }
 }

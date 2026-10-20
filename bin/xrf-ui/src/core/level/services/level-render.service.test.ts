@@ -88,6 +88,7 @@ const REPORT: RenderFrameReport = {
     total: null,
     used: null,
   },
+  meter: null,
   lights: {
     atlas: { capacity: 16_777_216, used: 4_194_304 },
     dropped: 3,

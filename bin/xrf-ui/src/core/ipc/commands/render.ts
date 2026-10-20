@@ -23,6 +23,7 @@ import {
   RenderLightsReport,
   RenderLoadDurations,
   RenderMemoryReport,
+  RenderMeterReading,
   RenderOverlay,
   RenderParticlesReport,
   RenderPassCost,
@@ -135,6 +136,8 @@ export const renderCommands = {
       sectorTime: number | null;
       /** What the renderer holds on the GPU. */
       memory: RenderMemoryReport;
+      /** What the view's spot meter read, a frame or more late; none while it does not meter. */
+      meter: RenderMeterReading | null;
       /** What the frame graph made of its latest frame, none before its first. */
       graph: RenderGraphReport | null;
     } | null>("plugin:render|describe_frame", { viewport }),

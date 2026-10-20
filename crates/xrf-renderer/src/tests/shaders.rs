@@ -58,6 +58,7 @@ fn a_reload_stales_only_the_modules_composing_from_a_change() {
     quad,
     vec![
       "common/quad",
+      "frame/calibration",
       "frame/flare",
       "frame/particles",
       "frame/thunder",

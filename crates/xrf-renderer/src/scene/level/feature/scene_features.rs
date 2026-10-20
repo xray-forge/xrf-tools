@@ -1,6 +1,7 @@
 use crate::scene::level::feature::ambient_occlusion_feature::AmbientOcclusionFeature;
 use crate::scene::level::feature::bitmask_feature::BitmaskFeature;
 use crate::scene::level::feature::bloom_feature::BloomFeature;
+use crate::scene::level::feature::calibration_feature::CalibrationFeature;
 use crate::scene::level::feature::combine_feature::CombineFeature;
 use crate::scene::level::feature::composited_feature::CompositedFeature;
 use crate::scene::level::feature::contact_shadow_feature::ContactShadowFeature;
@@ -10,6 +11,7 @@ use crate::scene::level::feature::flares_feature::FlaresFeature;
 use crate::scene::level::feature::fog_feature::FogFeature;
 use crate::scene::level::feature::indirect_trace_feature::IndirectTraceFeature;
 use crate::scene::level::feature::lights_feature::LightsFeature;
+use crate::scene::level::feature::meter_feature::MeterFeature;
 use crate::scene::level::feature::overlays_feature::OverlaysFeature;
 use crate::scene::level::feature::pick_feature::PickFeature;
 use crate::scene::level::feature::present_feature::PresentFeature;
@@ -63,6 +65,8 @@ pub struct SceneFeatures {
   pub bloom: BloomFeature,
   pub smoothing: SmoothingFeature,
   pub exposure: ExposureFeature,
+  pub meter: MeterFeature,
+  pub calibration: CalibrationFeature,
   pub flares: FlaresFeature,
   pub rain: FallingRainFeature,
   pub thunder: ThunderFeature,
@@ -104,6 +108,8 @@ impl SceneFeatures {
       bloom: BloomFeature::default(),
       smoothing: SmoothingFeature::default(),
       exposure: ExposureFeature::new(device, queue),
+      meter: MeterFeature::default(),
+      calibration: CalibrationFeature::default(),
       flares: FlaresFeature::new(),
       rain: FallingRainFeature::default(),
       thunder: ThunderFeature::default(),
@@ -169,6 +175,8 @@ scene_units!(
   bloom,
   smoothing,
   exposure,
+  meter,
+  calibration,
   flares,
   rain,
   thunder,

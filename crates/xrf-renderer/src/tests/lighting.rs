@@ -3,6 +3,7 @@ use glam::Vec3;
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::lighting::material_slice::material_slice;
 use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::srgb::srgb_encoded;
 use crate::lighting::sun_direction::to_renderer_sun_direction;
 use crate::pass::material_table::MaterialTable;
 
@@ -145,6 +146,15 @@ fn sun_direction_takes_heading_then_pitch_with_z_negated() {
   assert_near(to_renderer_sun_direction(90.0, 0.0), [-1.0, 0.0, 0.0]);
   assert_near(to_renderer_sun_direction(0.0, -90.0), [0.0, -1.0, 0.0]);
   assert_near(to_renderer_sun_direction(45.0, -45.0), [-0.5, -0.707_106_77, -0.5]);
+}
+
+#[test]
+fn srgb_encodes_linear_light_as_a_colour_texture_holds_it() {
+  // Middle grey, 0.18, is stored as about 118 of 255; the linear toe below 0.0031308 is the transfer's own.
+  assert!((srgb_encoded(0.18) - 0.461_356).abs() < 1e-5);
+  assert!((srgb_encoded(0.002) - 0.002 * 12.92).abs() < 1e-7);
+  assert_eq!(srgb_encoded(0.0), 0.0);
+  assert!((srgb_encoded(1.0) - 1.0).abs() < 1e-6);
 }
 
 #[test]

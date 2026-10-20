@@ -7,6 +7,7 @@ use crate::contract::render_debug_view::RenderDebugView;
 use crate::frame::view_targets::ViewTargets;
 use crate::lighting::material_slice::material_slice;
 use crate::pass::backdrop_uniform::BackdropUniform;
+use crate::pass::calibration_uniform::CalibrationUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
 use crate::pass::exposure_pass::ExposurePass;
@@ -74,6 +75,17 @@ fn the_lamps_read_the_shadow_atlas_at_its_allocated_size() {
   );
 }
 
+/// The calibration props are spheres up to the index Rust counts them to, the chart after them.
+#[test]
+fn the_calibration_draws_its_spheres_as_rust_counts_them() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(
+    get_constant(&library, "frame/calibration", "SPHERES"),
+    CalibrationUniform::SPHERES
+  );
+}
+
 /// The present tells a debug view by its index as Rust numbers them, FSR's last and from the first it names on.
 #[test]
 fn the_present_numbers_debug_views_as_rust_does() {
@@ -91,6 +103,7 @@ fn the_present_numbers_debug_views_as_rust_does() {
     ("VIEW_CASCADES", RenderDebugView::Cascades),
     ("VIEW_LAMPS", RenderDebugView::LampsPerCluster),
     ("VIEW_SAMPLED_MIP", RenderDebugView::SampledMip),
+    ("VIEW_SPECULAR", RenderDebugView::Specular),
   ] {
     assert_eq!(
       get_constant(&library, "frame/present", name),

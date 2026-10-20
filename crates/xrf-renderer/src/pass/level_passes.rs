@@ -1,5 +1,6 @@
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::bloom_pass::BloomPass;
+use crate::pass::calibration_pass::CalibrationPass;
 use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
@@ -19,6 +20,7 @@ use crate::pass::indirect_trace_pass::IndirectTracePass;
 use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
+use crate::pass::meter_pass::MeterPass;
 use crate::pass::particle_pass::ParticlePass;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::puddle_sites_pass::PuddleSitesPass;
@@ -101,5 +103,7 @@ pub struct LevelPasses<'a> {
   pub smaa: Option<&'a SmaaPass>,
   pub upscale: &'a UpscalePass,
   pub exposure: &'a ExposurePass,
+  pub meter: &'a MeterPass,
+  pub calibration: &'a CalibrationPass,
   pub table: &'a MaterialTable,
 }

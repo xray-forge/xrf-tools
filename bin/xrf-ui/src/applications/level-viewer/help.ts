@@ -25,6 +25,7 @@ export const LEVEL_VIEWER_HELP: IApplicationHelp = {
     "`Surfaces` lists shader table entries by ID, with their pass and whether a script or `shaders.xr` defined them. `Problems` lists failed textures, unresolved or unsupported surfaces, and geometry skipped while loading. Weather configuration problems appear in the `Weather` panel.",
     "Objects a new game removes (`new_game_setup.ltx` `[remove_objects]` and `dynamic_item_spawn.ltx` `[replace_items]`) are dimmed in `Spawn` with the reason, and drawn only with `Spawn` > `Released`.",
     "Frame timings show at the top left of the viewport and camera coordinates at the bottom right; `Overlays` > `Readouts` hides both. The status bar shows the memory used by the backend (`B`), the webview (`W`) and the GPU (`G`); hover over it for details. The `Renderer` panel has the full counts, timings, GPU memory and applied settings.",
+    "`Overlays` > `Spot meter` reads the light at the centre of the viewport into the readouts: its stops above or below middle grey as exposed, and the albedo, gloss and distance of the surface there. `Overlays` > `Calibration props` stands a grey and a white sphere, a mirror ball and a colour chart three metres ahead of the camera, lit like the level, to judge its light by.",
   ],
   limitations: [
     "Weather sounds do not play.",

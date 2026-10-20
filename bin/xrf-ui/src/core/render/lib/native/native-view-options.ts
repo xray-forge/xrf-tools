@@ -15,7 +15,7 @@ import { TSettled } from "@/core/render/lib/settings/render-settled";
 
 /** What a view decides of how its scene is shaded, beside the features every viewport shares. */
 export type TNativeViewShading = TSettled<
-  Pick<RenderViewMode, "debugView" | "isBumped" | "isLit" | "isWireframe" | "surfaceColor"> &
+  Pick<RenderViewMode, "debugView" | "isBumped" | "isLit" | "isMetered" | "isWireframe" | "surfaceColor"> &
     Pick<RenderViewFeatures, "hemiStrength">
 >;
 
@@ -27,6 +27,7 @@ export interface INativeViewSwitches
   extends
     Pick<
       RenderShowFlags,
+      | "isCalibrationVisible"
       | "isClouded"
       | "isFogged"
       | "isLensFlared"
@@ -50,6 +51,7 @@ export type TNativeLook = TSettled<Pick<RenderViewFeatures, "bloom" | "correctio
 
 /** Nothing switched on: what an asset viewer's scene of one model has none of. */
 const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
+  isCalibrationVisible: false,
   isClouded: false,
   isFogged: false,
   isGrassy: false,
@@ -126,12 +128,14 @@ export function toNativeViewOptions(
       debugView: shading.debugView,
       isBumped: shading.isBumped,
       isLit: shading.isLit,
+      isMetered: shading.isMetered,
       isWireframe: shading.isWireframe,
       surfaceColor: shading.surfaceColor,
     },
     output: { ...output, upscaling: features.upscaling },
     show: {
       isAlphaVisible: true,
+      isCalibrationVisible: switches.isCalibrationVisible,
       isClouded: switches.isClouded,
       isFogged: switches.isFogged,
       isLensFlared: switches.isLensFlared,
@@ -183,6 +187,7 @@ export function toNativeAssetViewOptions(
       ...shading,
       debugView: ERenderDebugView.FINAL,
       hemiStrength: 1,
+      isMetered: false,
       surfaceColor: ERenderSurfaceColor.TEXTURED,
     },
     // Nothing blooms over one asset, the enhanced bloom no more than the engine's.

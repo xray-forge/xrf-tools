@@ -6,6 +6,8 @@ use crate::pass::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::bloom_parameters::BloomParameters;
 use crate::pass::bloom_uniform::BloomUniform;
+use crate::pass::calibration_parameters::CalibrationParameters;
+use crate::pass::calibration_uniform::CalibrationUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::composited_parameters::CompositedParameters;
@@ -65,6 +67,8 @@ use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::lights_uniform::LightsUniform;
 use crate::pass::lowest_heights_parameters::LowestHeightsParameters;
+use crate::pass::meter_parameters::MeterParameters;
+use crate::pass::meter_sample::MeterSample;
 use crate::pass::overhead_shift_parameters::OverheadShiftParameters;
 use crate::pass::overhead_shift_uniform::OverheadShiftUniform;
 use crate::pass::overlay_parameters::OverlayParameters;
@@ -195,6 +199,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut froxel_inject: ShaderBindings = ShaderBindings::new();
   let mut froxel_integrate: ShaderBindings = ShaderBindings::new();
   let mut exposure: ShaderBindings = ShaderBindings::new();
+  let mut meter: ShaderBindings = ShaderBindings::new();
+  let mut calibration: ShaderBindings = ShaderBindings::new();
   let mut flare: ShaderBindings = ShaderBindings::new();
   let mut flare_visibility: ShaderBindings = ShaderBindings::new();
   let mut rain: ShaderBindings = ShaderBindings::new();
@@ -258,6 +264,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<ExposureUniform>()
     .declare::<ExposureState>()
     .declare::<ExposureHead>()
+    .declare::<MeterSample>()
+    .declare::<CalibrationUniform>()
     .declare::<FlareUniform>()
     .declare::<RainUniform>()
     .declare::<WetUniform>()
@@ -325,6 +333,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   froxel_inject.add::<FroxelInjectParameters<'_>>()?;
   froxel_integrate.add::<FroxelIntegrateParameters>()?;
   exposure.add::<ExposureParameters>()?;
+  meter.add::<MeterParameters>()?;
+  calibration.add::<CalibrationParameters>()?;
   flare
     .add::<FlareDrawParameters<'_>>()?
     .add::<FlareTextureParameters>()?;
@@ -539,6 +549,11 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/exposure",
       format!("{STRUCTS_IMPORT}{}", exposure.to_wgsl()),
+    ),
+    ("generated/frame/meter", format!("{STRUCTS_IMPORT}{}", meter.to_wgsl())),
+    (
+      "generated/frame/calibration",
+      format!("{STRUCTS_IMPORT}{}", calibration.to_wgsl()),
     ),
     ("generated/frame/flare", format!("{STRUCTS_IMPORT}{}", flare.to_wgsl())),
     (

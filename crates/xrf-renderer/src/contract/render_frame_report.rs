@@ -9,6 +9,7 @@ use crate::contract::render_grass_report::RenderGrassReport;
 use crate::contract::render_group_cost::RenderGroupCost;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_memory_report::RenderMemoryReport;
+use crate::contract::render_meter_reading::RenderMeterReading;
 use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pass_cost::RenderPassCost;
 use crate::contract::render_static_report::RenderStaticReport;
@@ -82,6 +83,8 @@ pub struct RenderFrameReport {
   pub sector_time: f32,
   /// What the renderer holds on the GPU.
   pub memory: RenderMemoryReport,
+  /// What the view's spot meter read, a frame or more late; none while it does not meter.
+  pub meter: Option<RenderMeterReading>,
   /// What the frame graph made of its latest frame, none before its first.
   pub graph: Option<Box<RenderGraphReport>>,
 }

@@ -10,6 +10,7 @@ use crate::host::render_cache_store::RenderCacheStore;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::backdrop_pass::BackdropPass;
 use crate::pass::bloom_pass::BloomPass;
+use crate::pass::calibration_pass::CalibrationPass;
 use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
@@ -31,6 +32,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::material_table::MaterialTable;
+use crate::pass::meter_pass::MeterPass;
 use crate::pass::overlay_pass::OverlayPass;
 use crate::pass::particle_pass::ParticlePass;
 use crate::pass::pipeline_source::PipelineSource;
@@ -129,6 +131,8 @@ pub struct GpuState {
   pub ray_guides: RayGuidesPass,
   pub dlss_reactive: DlssReactivePass,
   pub exposure: ExposurePass,
+  pub meter: MeterPass,
+  pub calibration: CalibrationPass,
   pub present: PresentPass,
   /// The page's backdrop under every window's viewports.
   pub backdrop: BackdropPass,
@@ -227,6 +231,8 @@ impl GpuState {
       let sky_prefilter = threads.spawn(move || SkyPrefilterPass::new(queue, source));
       let surroundings = threads.spawn(move || SurroundingsPass::new(source, view));
       let exposure = threads.spawn(move || ExposurePass::new(source));
+      let meter = threads.spawn(move || MeterPass::new(source, view));
+      let calibration = threads.spawn(move || CalibrationPass::new(source, view));
 
       Ok(Self {
         water: Self::join(water)?,
@@ -277,6 +283,8 @@ impl GpuState {
         sky_prefilter: Self::join(sky_prefilter)?,
         surroundings: Self::join(surroundings)?,
         exposure: Self::join(exposure)?,
+        meter: Self::join(meter)?,
+        calibration: Self::join(calibration)?,
         present: PresentPass::new(source, view),
         backdrop: BackdropPass::new(source),
         overlay: OverlayPass::new(source, view),
@@ -401,6 +409,8 @@ impl GpuState {
       smaa: self.smaa.as_ref(),
       upscale: &self.upscale,
       exposure: &self.exposure,
+      meter: &self.meter,
+      calibration: &self.calibration,
       table: &self.table,
     }
   }
@@ -470,6 +480,8 @@ impl GpuState {
     }
     self.upscale.refresh(source);
     self.exposure.refresh(source);
+    self.meter.refresh(source);
+    self.calibration.refresh(source);
     self.present.refresh(source);
     self.backdrop.refresh(source);
     self.overlay.refresh(source);

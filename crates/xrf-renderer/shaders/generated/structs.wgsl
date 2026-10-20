@@ -418,6 +418,26 @@ struct Exposure {
   used: f32,
 }
 
+struct MeterSample {
+  luminance: f32,
+  stops: f32,
+  exposure: f32,
+  drawn: f32,
+  albedo: f32,
+  gloss: f32,
+  diffuse: f32,
+  specular: f32,
+  distance: f32,
+}
+
+struct Calibration {
+  props: array<vec4<f32>, 4>,
+  surfaces: array<vec4<f32>, 4>,
+  slices: vec4<f32>,
+  right: vec4<f32>,
+  up: vec4<f32>,
+}
+
 struct Flares {
   to_sun: vec4<f32>,
   sun: vec4<f32>,

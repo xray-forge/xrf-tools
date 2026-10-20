@@ -136,6 +136,53 @@ describe("RenderFrameReadout", () => {
     expect(getByText("118 sectors · 138 MB")).toBeInTheDocument();
   });
 
+  it("reads the spot meter out: its stops as exposed, the light and the exposure, then the surface under it", () => {
+    const { getByText } = render(
+      <RenderFrameReadout
+        report={{
+          ...REPORT,
+          meter: {
+            albedo: 0.18116,
+            diffuse: 0.6471,
+            distance: 2.788,
+            exposure: 1.3404,
+            gloss: 0.00784,
+            luminance: 0.31359,
+            specular: 0.0213,
+            stops: 1.2235,
+          },
+        }}
+      />
+    );
+
+    expect(getByText("Meter +1.22 EV · L 0.314 · ×1.34")).toBeInTheDocument();
+    expect(getByText("albedo 0.181 · gloss 0.01 · 2.8 m")).toBeInTheDocument();
+    expect(getByText("light 0.647 · specular 0.0213")).toBeInTheDocument();
+  });
+
+  it("reads the spot meter over the sky by its light alone", () => {
+    const { getByText, queryByText } = render(
+      <RenderFrameReadout
+        report={{
+          ...REPORT,
+          meter: {
+            albedo: null,
+            diffuse: null,
+            distance: null,
+            exposure: 2,
+            gloss: null,
+            luminance: 0.02,
+            specular: null,
+            stops: -2.17,
+          },
+        }}
+      />
+    );
+
+    expect(getByText("Meter -2.17 EV · L 0.0200 · ×2.00")).toBeInTheDocument();
+    expect(queryByText(/albedo/)).toBeNull();
+  });
+
   it("reads out nothing drawn rather than nothing at all", () => {
     const { getByText } = render(<RenderFrameReadout report={{ ...EMPTY_RENDER_FRAME_REPORT, frameTime: null }} />);
 

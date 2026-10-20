@@ -2,7 +2,7 @@ import { formatCount, formatMilliseconds } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { Fragment, ReactElement, ReactNode } from "react";
 
-import { RenderFrameReport, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
+import { RenderFrameReport, RenderMeterReading, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
 import {
   describeRenderAntialiasing,
@@ -48,6 +48,27 @@ function toDrawnLine(report: RenderFrameReport): string {
   return report.adapter ? `${abbreviateRenderBackend(report.backend)} · ${triangles}` : triangles;
 }
 
+/**
+ * What the spot meter read: the light in stops about middle grey as exposed, before the exposure and the exposure itself;
+ * then, where a surface lies under the spot, its albedo, gloss and distance, and the light the sun and the lamps gave it.
+ */
+function toMeterLines(meter: RenderMeterReading): Array<string> {
+  const stops: number = meter.stops ?? 0;
+  const lines: Array<string> = [
+    `Meter ${stops >= 0 ? "+" : ""}${stops.toFixed(2)} EV · L ${(meter.luminance ?? 0).toPrecision(3)} · ×${(meter.exposure ?? 1).toFixed(2)}`,
+  ];
+
+  if (meter.albedo !== null && meter.gloss !== null && meter.distance !== null) {
+    lines.push(`albedo ${meter.albedo.toFixed(3)} · gloss ${meter.gloss.toFixed(2)} · ${meter.distance.toFixed(1)} m`);
+  }
+
+  if (meter.diffuse !== null && meter.specular !== null) {
+    lines.push(`light ${meter.diffuse.toPrecision(3)} · specular ${meter.specular.toPrecision(3)}`);
+  }
+
+  return lines;
+}
+
 /** What every pass cost together. */
 function toGpuTotal(passes: ReadonlyArray<RenderPassCost>): number {
   return passes.reduce((total: number, pass: RenderPassCost) => total + (pass.gpuTime ?? 0), 0);
@@ -84,6 +105,14 @@ export function RenderFrameReadout({
       <div>{toDrawnLine(report)}</div>
       <div>{`${report.width} × ${report.height}`}</div>
       {scaling ? <div>{scaling}</div> : null}
+
+      {report.meter ? (
+        <div data-testid={"render-frame-meter"} className={"mt-1 tabular-nums"}>
+          {toMeterLines(report.meter).map((line: string) => (
+            <div key={line}>{line}</div>
+          ))}
+        </div>
+      ) : null}
 
       {children}
 
