@@ -11,6 +11,7 @@ import { SLIDER_REFERENCE } from "@/core/theme/tokens";
  * @param max - The slider's most value.
  * @returns A slider's reference notch standing out of its track, and the recommended range as a band on a rail taller
  *   than the track, the rail neutral outside it: the warning is the slider's own colour, never the amber accent's.
+ *   Both fade as the rest of the slider does while it is disabled.
  */
 export function getSliderReferenceSx(
   recommended: Nullable<readonly [number, number]> | undefined,
@@ -28,6 +29,7 @@ export function getSliderReferenceSx(
         opacity: 1,
       },
       [`& .${sliderClasses.markActive}`]: { backgroundColor: palette.text.secondary, opacity: 1 },
+      [`&.${sliderClasses.disabled} .${sliderClasses.mark}`]: { opacity: theme.palette.action.disabledOpacity },
     };
 
     if (!recommended || max <= min) {
@@ -47,6 +49,7 @@ export function getSliderReferenceSx(
         borderRadius: `${SLIDER_REFERENCE.railHeight / 2}px`,
         background: `linear-gradient(to right, ${outside} 0 ${low}, ${inside} ${low} ${high}, ${outside} ${high} 100%)`,
       },
+      [`&.${sliderClasses.disabled} .${sliderClasses.rail}`]: { opacity: theme.palette.action.disabledOpacity },
     };
   };
 }

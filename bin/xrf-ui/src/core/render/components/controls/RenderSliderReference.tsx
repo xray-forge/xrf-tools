@@ -4,12 +4,12 @@ import { ReactElement, ReactNode, useMemo } from "react";
 import { readRenderFeatureNumber, TRenderFeaturePath } from "@/core/render/lib/settings/render-feature-path";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { describeRenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
+import { ERenderSliderReferenceSource } from "@/core/render/lib/settings/render-slider-reference-source";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { ISliderReferenceSource, SliderReferenceContext } from "@/core/ui/form/ReferenceSlider";
 
 export interface IRenderSliderReferenceProps {
-  /** The settings every viewport draws with, which a view's popover resets to, or the preset they follow. */
-  source: "settings" | "preset";
+  source: ERenderSliderReferenceSource;
   children: ReactNode;
 }
 
@@ -20,9 +20,9 @@ export function RenderSliderReference({ source, children }: IRenderSliderReferen
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
   const { preset } = renderSettingsService.rendererChoice;
-  const features: IRenderFeatureSettings =
-    source === "settings" ? renderSettingsService.rendererFeatures : RENDER_PRESETS[preset];
-  const label: string = source === "settings" ? "Settings" : `${describeRenderPreset(preset)} preset`;
+  const isSettings: boolean = source === ERenderSliderReferenceSource.SETTINGS;
+  const features: IRenderFeatureSettings = isSettings ? renderSettingsService.rendererFeatures : RENDER_PRESETS[preset];
+  const label: string = isSettings ? "Settings" : `${describeRenderPreset(preset)} preset`;
 
   const value: ISliderReferenceSource = useMemo(
     () => ({ label, resolve: (path: TRenderFeaturePath) => readRenderFeatureNumber(features, path) }),

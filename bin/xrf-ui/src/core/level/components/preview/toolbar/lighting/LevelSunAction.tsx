@@ -162,17 +162,19 @@ export function LevelSunAction({
 
         <RenderValueSlider
           label={"Steps"}
-          hint={
-            isMarched
-              ? "Game setting: r2_sunshafts_quality steps 20, 20 and 40 (OpenXRay), 15, 25 and 30 (Monolith)"
-              : "The enhanced volumetrics draw the shafts in the engine's march's place"
-          }
+          hint={"Game setting: r2_sunshafts_quality steps 20, 20 and 40 (OpenXRay), 15, 25 and 30 (Monolith)"}
           value={sunShafts.steps}
           isDisabled={!isMarched}
           {...LEVEL_SUN_SHAFTS_STEPS_LIMITS}
           format={formatCount}
           onChange={(steps: number) => weatherService.setSunShafts({ ...sunShafts, steps })}
         />
+
+        {isMarched ? null : (
+          <p className={"text-xs text-text-secondary"}>
+            The enhanced volumetrics draw the shafts; their steps apply with Engine volumetrics.
+          </p>
+        )}
 
         <RenderValueSlider
           label={"Minimum"}

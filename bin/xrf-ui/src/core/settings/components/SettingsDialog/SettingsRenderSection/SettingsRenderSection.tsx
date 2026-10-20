@@ -4,6 +4,7 @@ import { Nullable } from "@xrf/types";
 import { ComponentType, ReactElement, RefObject, useRef, useState } from "react";
 
 import { RenderSliderReference } from "@/core/render/components/controls/RenderSliderReference";
+import { ERenderSliderReferenceSource } from "@/core/render/lib/settings/render-slider-reference-source";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 
 import {
@@ -66,7 +67,7 @@ export function SettingsRenderSection(): ReactElement {
 
       {isPresetRenderSettingsTab(tab) ? <SettingsRendererPreset /> : null}
 
-      <RenderSliderReference source={"preset"}>
+      <RenderSliderReference source={ERenderSliderReferenceSource.PRESET}>
         {tab.sections.map((Section: ComponentType, index: number) => (
           <Section key={index} />
         ))}

@@ -22,6 +22,7 @@ import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting
 import { LevelOverlaysAction } from "@/core/level/components/preview/toolbar/view/LevelOverlaysAction";
 import { LevelShadingAction } from "@/core/level/components/preview/toolbar/view/LevelShadingAction";
 import { RenderSliderReference } from "@/core/render/components/controls/RenderSliderReference";
+import { ERenderSliderReferenceSource } from "@/core/render/lib/settings/render-slider-reference-source";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -48,7 +49,7 @@ export function LevelViewerToolbar({
       className={className}
       onBack={onBack}
       actions={
-        <RenderSliderReference source={"settings"}>
+        <RenderSliderReference source={ERenderSliderReferenceSource.SETTINGS}>
           <LevelShadingAction />
           <LevelOverlaysAction />
 

@@ -18,6 +18,9 @@ import {
   TLevelViewRenderResult,
 } from "@/fixtures/utils/level-container";
 
+/** What the sun popover says under the steps while the enhanced volumetrics draw the shafts. */
+const STEPS_UNMARCHED: string = "The enhanced volumetrics draw the shafts; their steps apply with Engine volumetrics.";
+
 /**
  * @param opening - The level and weather to open; none unless given.
  * @returns The sun's action and the services behind it.
@@ -112,10 +115,12 @@ describe("LevelSunAction", () => {
     await openSettings(rendered);
 
     expect(rendered.getByRole("slider", { name: "Steps" })).toBeDisabled();
+    expect(rendered.getByText(STEPS_UNMARCHED)).toBeInTheDocument();
 
     act(() => rendered.renderSettings.setRendererOverrides({ volumetric: { mode: ERenderVolumetricMode.ENGINE } }));
 
     expect(rendered.getByRole("slider", { name: "Steps" })).toHaveAttribute("aria-valuetext", "30");
+    expect(rendered.queryByText(STEPS_UNMARCHED)).toBeNull();
 
     rendered.getByRole("slider", { name: "Steps" }).focus();
     await userEvent.keyboard("{ArrowLeft}");
