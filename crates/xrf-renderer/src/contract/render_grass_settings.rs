@@ -25,12 +25,16 @@ pub struct RenderGrassSettings {
   pub slope_limit: f32,
   /// Whether a tuft stands along its ground's normal rather than straight up.
   pub is_aligned: bool,
-  /// Whether the grass casts shadows near the camera, as cards (`GrassCards`): the sun's and the lamps' traced under
-  /// ray reconstruction or a traced occlusion, the sun's drawn into its two nearest cascades otherwise, as Screen Space
-  /// Shaders' `ssfx_grass_shadows` draws them. Neither engine shadows its grass.
+  /// Whether the grass casts shadows at all: the contact shadows' within `shadow_radius`, and as cards (`GrassCards`)
+  /// the sun's and the lamps' traced under ray reconstruction or a traced occlusion, the sun's drawn into its
+  /// `shadow_cascades` nearest cascades otherwise, as Screen Space Shaders' `ssfx_grass_shadows` draws them. Neither
+  /// engine shadows its grass.
   pub is_shadowed: bool,
-  /// Metres from the camera the grass casts shadows to, 150 at most, fading over the last fifth of them.
+  /// Metres from the camera the grass casts shadows to, 150 at most, fading over the last fifth of them: the cards' as
+  /// far as their cascades reach, the contact shadows' past them.
   pub shadow_radius: f32,
+  /// How many of the sun's nearest cascades the cards are drawn into: none for the contact shadows alone.
+  pub shadow_cascades: u32,
 }
 
 impl Default for RenderGrassSettings {
@@ -46,6 +50,7 @@ impl Default for RenderGrassSettings {
       is_aligned: false,
       is_shadowed: false,
       shadow_radius: 50.0,
+      shadow_cascades: 0,
     }
   }
 }

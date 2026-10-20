@@ -1,4 +1,4 @@
-use glam::Vec4;
+use glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_contact_shadow_settings::RenderContactShadowSettings;
@@ -27,12 +27,14 @@ pub struct ContactShadowUniform {
   pub lights: u32,
   /// Frame texels across each texel of the sun's target stands for: one at the frame's size, two at half of it.
   pub stride: u32,
+  /// Metres from the eye grass hides a ray to, none where the grass casts none, and from where it fades out; unused.
+  pub grass: Vec4,
 }
 
 impl ContactShadowUniform {
   /// The settings towards the sun and as many local lights as they march towards, over a drawing `height` pixels tall,
-  /// on the noise's `frame`.
-  pub fn new(settings: &RenderContactShadowSettings, to_sun: Vec4, height: u32, frame: u32) -> Self {
+  /// on the noise's `frame`, grass hiding a ray within `grass` metres (`ContactShadowUniform::grass`).
+  pub fn new(settings: &RenderContactShadowSettings, to_sun: Vec4, height: u32, frame: u32, grass: Vec2) -> Self {
     Self {
       to_sun,
       length: settings.length,
@@ -43,6 +45,7 @@ impl ContactShadowUniform {
       noise: NoiseTurn::get_gradient(frame, NoiseTurn::FRAMES),
       lights: settings.get_light_count(),
       stride: if settings.is_full_resolution { 1 } else { 2 },
+      grass: grass.extend(0.0).extend(0.0),
     }
   }
 }

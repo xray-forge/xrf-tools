@@ -146,6 +146,7 @@ export const DEFAULT_RENDER_GRASS_SETTINGS: TRenderGrassSettings = {
   isEnabled: true,
   isShadowed: false,
   radius: 49,
+  shadowCascades: 0,
   shadowRadius: 50,
   slopeLimit: 90,
 };
@@ -251,12 +252,12 @@ export const DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS: TRenderContactShadowSetting
 };
 
 /**
- * Every cascade, the engine's three and the far one, a filter two texels wide, so swaying grass does not shimmer in the
- * nearest, and no contact shadows.
+ * Every cascade, the engine's three and the far one, each blended into the next over its last quarter, a filter two
+ * texels wide, so swaying grass does not shimmer in the nearest, and no contact shadows.
  */
 export const DEFAULT_RENDER_SHADOW_SETTINGS: TRenderShadowSettings = {
   bias: 1.5,
-  blend: 0.1,
+  blend: 0.25,
   cascades: RENDER_SHADOW_CASCADE_WIDTHS,
   contact: DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS,
   filter: 2,

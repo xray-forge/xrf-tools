@@ -5,6 +5,7 @@ import {
   formatGrassDensity,
   formatGrassHeight,
   formatGrassRadius,
+  formatGrassShadowCascades,
   fromGrassDensityScale,
   RENDER_GRASS_LIMITS,
   toGrassDensityScale,
@@ -83,7 +84,8 @@ export function SettingsRendererGrass(): ReactElement {
         <CheckboxFormRow
           label={"Shadows"}
           description={
-            "Casts shadows from the grass near the camera: traced under ray reconstruction, in the sun's nearest maps otherwise."
+            "Casts shadows from the grass: by the contact shadows, and as cards traced under ray reconstruction or in the " +
+            "sun's nearest cascades."
           }
           isChecked={grass.isShadowed}
           onChange={(isShadowed: boolean) => onSet({ isShadowed })}
@@ -97,6 +99,19 @@ export function SettingsRendererGrass(): ReactElement {
           isDisabled={!grass.isShadowed}
           format={formatGrassRadius}
           onChange={(shadowRadius: number) => onSet({ shadowRadius })}
+        />
+
+        <SliderFormRow
+          label={"Shadow cascades"}
+          description={
+            "How many of the sun's nearest cascades draw the grass's own shadows, as far as the radius; the contact " +
+            "shadows shade the rest."
+          }
+          value={grass.shadowCascades}
+          {...RENDER_GRASS_LIMITS.shadowCascades}
+          isDisabled={!grass.isShadowed}
+          format={formatGrassShadowCascades}
+          onChange={(shadowCascades: number) => onSet({ shadowCascades })}
         />
       </div>
     </DetailSection>

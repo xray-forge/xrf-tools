@@ -70,7 +70,15 @@ export type TLevelEnhancedBloomOptions = TRenderEnhancedBloomSettings;
 /** The grass settings a level view may set for itself. */
 export type TLevelGrassOptions = Pick<
   TRenderGrassSettings,
-  "density" | "foliage" | "height" | "isAligned" | "isShadowed" | "radius" | "shadowRadius" | "slopeLimit"
+  | "density"
+  | "foliage"
+  | "height"
+  | "isAligned"
+  | "isShadowed"
+  | "radius"
+  | "shadowCascades"
+  | "shadowRadius"
+  | "slopeLimit"
 >;
 
 /** The water settings a level view may set for itself: all but whether it is drawn, which the toolbar toggles. */
@@ -173,6 +181,7 @@ const LEVEL_GROUP_KEYS: {
     isAligned: true,
     isShadowed: true,
     radius: true,
+    shadowCascades: true,
     shadowRadius: true,
     slopeLimit: true,
   },

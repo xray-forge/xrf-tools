@@ -57,7 +57,7 @@ impl Default for RenderShadowSettings {
       resolution: 2048,
       filter: 2,
       bias: 1.5,
-      blend: 0.1,
+      blend: 0.25,
       is_staggered: true,
       sway_rate: Self::SWAY_RATE,
       sway_cascades: RENDER_MAX_SHADOW_CASCADES as u32,

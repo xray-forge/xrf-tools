@@ -305,6 +305,7 @@ struct ContactShadows {
   noise: f32,
   lights: u32,
   stride: u32,
+  grass: vec4<f32>,
 }
 
 struct SunTrace {

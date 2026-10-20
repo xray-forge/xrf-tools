@@ -146,6 +146,9 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     // The renderer's own: past the near field a tuft's shadow is a few pixels across.
     isShadowed: FLAG,
     radius: toNumber(49, 450, true, undefined, 300),
+    // The renderer's own: the fourth cascade starts past the 150 m the grass casts to at most, so drawing into it buys
+    // nothing.
+    shadowCascades: toNumber(0, 4, true, [0, 3], 3),
     shadowRadius: toNumber(5, 150),
     // The renderer's own: degrees of slope, ninety for none.
     slopeLimit: toNumber(10, 90),

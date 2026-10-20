@@ -1,8 +1,9 @@
-use glam::{Vec3, Vec4};
+use glam::{Vec2, Vec3, Vec4};
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
 };
 
+use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -12,6 +13,7 @@ use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::grass_cards::GrassCards;
 
 /// The contact shadows, marched over the frame's depth where the view is lit and solid: the sun's under its cascades,
 /// at the frame's size or half of it into a target the sun brings up and multiplies its own by, none while the sun
@@ -39,10 +41,30 @@ impl ContactShadowFeature {
 
     self.is_sun = is_marched && is_sunlit && shadows.is_sun_contact_drawn();
     self.uniform = if is_marched {
-      ContactShadowUniform::new(&shadows.contact, to_sun, height, noise_frame)
+      ContactShadowUniform::new(
+        &shadows.contact,
+        to_sun,
+        height,
+        noise_frame,
+        Self::get_grass_reach(options),
+      )
     } else {
       ContactShadowUniform::default()
     };
+  }
+
+  /// Metres from the eye the grass hides contact shadows' rays to, and from where it fades out: none while it casts
+  /// none.
+  fn get_grass_reach(options: &RenderViewOptions) -> Vec2 {
+    let grass: &RenderGrassSettings = &options.features.grass;
+
+    if !grass.is_enabled || !grass.is_shadowed {
+      return Vec2::ZERO;
+    }
+
+    let (reach, fade) = GrassCards::get_reach(grass, None);
+
+    Vec2::new(reach, reach - fade)
   }
 
   /// Lights each texel marches contact shadows towards at most this frame: none while the lights march none.
@@ -78,6 +100,7 @@ impl ContactShadowFeature {
     ));
     let parameters: ContactShadowParameters = ContactShadowParameters {
       normal_target: targets.normal,
+      material_target: targets.material,
       depth_target: targets.depth,
       contact,
     };

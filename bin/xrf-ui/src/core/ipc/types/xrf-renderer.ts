@@ -913,13 +913,19 @@ export type RenderGrassSettings = {
   /** Whether a tuft stands along its ground's normal rather than straight up. */
   isAligned: boolean;
   /**
-   * Whether the grass casts shadows near the camera, as cards (`GrassCards`): the sun's and the lamps' traced under
-   * ray reconstruction or a traced occlusion, the sun's drawn into its two nearest cascades otherwise, as Screen Space
-   * Shaders' `ssfx_grass_shadows` draws them. Neither engine shadows its grass.
+   * Whether the grass casts shadows at all: the contact shadows' within `shadow_radius`, and as cards (`GrassCards`)
+   * the sun's and the lamps' traced under ray reconstruction or a traced occlusion, the sun's drawn into its
+   * `shadow_cascades` nearest cascades otherwise, as Screen Space Shaders' `ssfx_grass_shadows` draws them. Neither
+   * engine shadows its grass.
    */
   isShadowed: boolean;
-  /** Metres from the camera the grass casts shadows to, 150 at most, fading over the last fifth of them. */
+  /**
+   * Metres from the camera the grass casts shadows to, 150 at most, fading over the last fifth of them: the cards' as
+   * far as their cascades reach, the contact shadows' past them.
+   */
   shadowRadius: number | null;
+  /** How many of the sun's nearest cascades the cards are drawn into: none for the contact shadows alone. */
+  shadowCascades: number;
 };
 
 /**

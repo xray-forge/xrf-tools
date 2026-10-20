@@ -56,7 +56,8 @@ fn cs_light_contact(@builtin(global_invocation_id) id: vec3<u32>) {
         plane_normal = contact_plane_normal(depth_target, texel, clip, pixel.position);
       }
 
-      let lit: f32 = contact_lit(depth_target, contact, clip, pixel.position, plane_normal, to_light_point / reach,
+      let lit: f32 = contact_lit(depth_target, material_target, contact, clip, pixel.position, plane_normal,
+        to_light_point / reach,
         min(contact.length, reach - CONTACT_CLEARANCE), CONTACT_FALLOFF, step_pixels);
 
       slots[marched] = contact_slot(item, lit);

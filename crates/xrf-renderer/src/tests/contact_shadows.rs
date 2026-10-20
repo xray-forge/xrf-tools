@@ -1,4 +1,4 @@
-use glam::Vec4;
+use glam::{Vec2, Vec4};
 
 use crate::contract::render_contact_shadow_mode::RenderContactShadowMode;
 use crate::contract::render_contact_shadow_settings::{RENDER_MAX_CONTACT_SHADOW_LIGHTS, RenderContactShadowSettings};
@@ -45,7 +45,7 @@ fn marches_by_the_settings_over_the_drawn_height() {
     intensity: 2.0,
     ..RenderContactShadowSettings::default()
   };
-  let uniform = |frame: u32| ContactShadowUniform::new(&settings, Vec4::Z, 1600, frame);
+  let uniform = |frame: u32| ContactShadowUniform::new(&settings, Vec4::Z, 1600, frame, Vec2::ZERO);
 
   assert_eq!(uniform(0).reach, 200.0);
   assert_eq!(uniform(0).intensity, 1.0);
@@ -59,7 +59,7 @@ fn marches_by_the_settings_over_the_drawn_height() {
     ..settings
   };
 
-  assert_eq!(ContactShadowUniform::new(&full, Vec4::Z, 1600, 0).stride, 1);
+  assert_eq!(ContactShadowUniform::new(&full, Vec4::Z, 1600, 0, Vec2::ZERO).stride, 1);
 }
 
 // The lights' half asks only the contact shadows' own settings; the sun's asks its cascades too.
@@ -98,6 +98,9 @@ fn marches_towards_the_lights_with_or_without_the_sun_shadows() {
     }
     .is_sun_contact_drawn()
   );
-  assert_eq!(ContactShadowUniform::new(&enhanced, Vec4::Z, 1600, 0).lights, 4);
+  assert_eq!(
+    ContactShadowUniform::new(&enhanced, Vec4::Z, 1600, 0, Vec2::ZERO).lights,
+    4
+  );
   assert_eq!(ContactShadowUniform::default().lights, 0);
 }

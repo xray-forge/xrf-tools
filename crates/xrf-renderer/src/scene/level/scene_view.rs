@@ -395,7 +395,7 @@ impl SceneView {
       ),
       is_traced,
       cascade_reach: is_cascaded
-        .then(|| LevelShadows::get_grass_reach(&options.features.shadows))
+        .then(|| LevelShadows::get_grass_reach(&options.features.shadows, options.features.grass.shadow_cascades))
         .flatten(),
     };
 

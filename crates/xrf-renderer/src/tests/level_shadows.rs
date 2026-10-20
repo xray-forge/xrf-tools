@@ -74,5 +74,5 @@ fn reads_the_cascades_and_the_filter_within_their_bounds() {
     [1.0, 1.0, 10_000.0, 20.0, 1.0]
   );
   assert_eq!(settings.get_filter(), RENDER_MAX_SHADOW_FILTER);
-  assert_eq!(LevelShadows::get_grass_reach(&settings), Some(1.0));
+  assert_eq!(LevelShadows::get_grass_reach(&settings, 2), Some(1.0));
 }

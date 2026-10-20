@@ -37,6 +37,7 @@ export const RENDER_GRASS_LIMITS = {
   },
   height: toRenderLimits(RENDER_FEATURE_SCHEMA.grass.height, 0.1),
   radius: toRenderLimits(RENDER_FEATURE_SCHEMA.grass.radius, 1),
+  shadowCascades: toRenderLimits(RENDER_FEATURE_SCHEMA.grass.shadowCascades, 1),
   shadowRadius: toRenderLimits(RENDER_FEATURE_SCHEMA.grass.shadowRadius, 1),
 } as const;
 
@@ -67,6 +68,15 @@ export function formatGrassDensity(density: number): string {
 /** @returns A grass radius, in metres. */
 export function formatGrassRadius(radius: number): string {
   return `${formatNumber(radius, 0)} m`;
+}
+
+/** @returns How many of the sun's nearest cascades the grass's cards are drawn into, none for the contact shadows. */
+export function formatGrassShadowCascades(cascades: number): string {
+  if (cascades <= 0) {
+    return "contact only";
+  }
+
+  return cascades === 1 ? "1 cascade" : `${formatNumber(cascades, 0)} cascades`;
 }
 
 /** @returns A grass height, as the multiple of the game's it is. */

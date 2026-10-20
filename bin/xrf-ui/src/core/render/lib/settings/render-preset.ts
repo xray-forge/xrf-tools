@@ -81,14 +81,16 @@ const BASE_PRESET: IRenderFeatureSettings = {
   // Glass refracting what is behind it.
   glass: { ...DEFAULT_RENDER_GLASS_SETTINGS, mode: ERenderGlassMode.ENHANCED },
   // The enhanced foliage motion, each tuft stood along its ground's slope, planted out to 150 m rather than the
-  // engine's 49 (nearer, its edge shows on the slopes ahead) and shadowed near the camera.
+  // engine's 49 (nearer, its edge shows on the slopes ahead), and shadowed by the contact shadows alone out to 75 m:
+  // cards in the cascades cost more than they show.
   grass: {
     ...DEFAULT_RENDER_GRASS_SETTINGS,
     foliage: { ...DEFAULT_RENDER_FOLIAGE_SETTINGS, mode: ERenderFoliageMode.ENHANCED },
     isAligned: true,
     isShadowed: true,
     radius: 150,
-    shadowRadius: 25,
+    shadowCascades: 0,
+    shadowRadius: 75,
   },
   // The light bounced in the occlusion's own search.
   indirectLight: { ...DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS, mode: ERenderIndirectLightMode.ENHANCED },
@@ -149,7 +151,8 @@ const ENHANCED_PRESET: IRenderFeatureSettings = {
   },
   debanding: { ...BASE_PRESET.debanding, passes: 2 },
   indirectLight: { ...BASE_PRESET.indirectLight, steps: 2 },
-  grass: { ...BASE_PRESET.grass, radius: 300, shadowRadius: 100 },
+  // Grass planted to 300 m, casting its own shadows in the sun's three nearest cascades out to 75 m.
+  grass: { ...BASE_PRESET.grass, radius: 300, shadowCascades: 3 },
   parallax: { ...BASE_PRESET.parallax, steps: 32 },
   // Drops bending the scene behind them, their landings ringing the water and the puddles.
   rain: { ...BASE_PRESET.rain, drops: ERenderRainDropsMode.ENHANCED },

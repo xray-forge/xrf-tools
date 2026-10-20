@@ -95,7 +95,7 @@ fn fs_grass(in: GrassVarying) -> GrassOutput {
   out.albedo = vec4<f32>(mix(untextured_color(vec3<f32>(1.0)), base.rgb, camera.switches.x), DEFAULT_GLOSS);
   out.normal = octahedral_encode(normal);
   out.material = vec4<f32>(in.hemi, in.sun, GRASS_MATERIAL_SLICE,
-    encode_marks(false, false, is_flora, false, false, true, is_moved(in.moved)));
+    encode_marks(false, false, is_flora, false, false, true, is_moved(in.moved)) + f32(MARK_GRASS) / 255.0);
   out.motion = camera_motion(in.world, in.world + in.moved);
 
   return out;

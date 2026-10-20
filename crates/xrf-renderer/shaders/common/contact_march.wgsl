@@ -1,6 +1,7 @@
 #import "common/depth_plane"
 #import "common/noise"
 #import "common/camera"
+#import "common/marks"
 #import "generated/structs"
 
 // Contact shadows' march, as the sun's contact pass and the local lights take it: from a drawn pixel a ray towards a
@@ -71,14 +72,26 @@ fn contact_plane_normal(
   );
 }
 
+// How much a read hides as a caster by what it shows: whole, but grass only within the metres from the eye the grass
+// casts to (`contact.grass.x`, none where it casts none), fading out from `contact.grass.y`.
+fn contact_grass_weight(contact: ContactShadows, marks: f32, distance: f32) -> f32 {
+  if (!has_mark(marks, MARK_GRASS)) {
+    return 1.0;
+  }
+
+  return 1.0 - smoothstep(contact.grass.y, max(contact.grass.x, contact.grass.y + 1e-3), distance);
+}
+
 // How much of a light the point a pixel shows keeps past what stands within `ray_length` metres of it along
-// `direction`, in view space and of unit length, from none to all. `plane_normal` is `contact_plane_normal`'s.
+// `direction`, in view space and of unit length, from none to all. `plane_normal` is `contact_plane_normal`'s. Grass
+// (`MARK_GRASS` in `material_target`) hides it only as far as the grass casts (`contact_grass_weight`).
 // `falloff` weakens a hit by how far behind what the depth shows the ray passes: zero counts every hit inside the
 // thickness whole, one counts the front half of the thickness whole and fades the back half out to none, as fewer
 // occluders are that thick. `step_pixels` spaces the reads that many drawn pixels apart, as few as the span needs and
 // no more than the settings' steps; zero takes the settings' steps whatever the span.
 fn contact_lit(
   depth_target: texture_depth_2d,
+  material_target: texture_2d<f32>,
   contact: ContactShadows,
   pixel: vec2<f32>,
   position: vec3<f32>,
@@ -155,8 +168,9 @@ fn contact_lit(
     // what the depth shows, as fewer occluders are that thick.
     if (in_front > 0.0 && in_front < thickness) {
       let inside: f32 = 1.0 - falloff * smoothstep(0.5, 1.0, in_front / thickness);
+      let caster: f32 = contact_grass_weight(contact, textureLoad(material_target, vec2<i32>(at), 0).a, scene);
 
-      occlusion = max(occlusion, (1.0 - along * along) * inside);
+      occlusion = max(occlusion, (1.0 - along * along) * inside * caster);
 
       // No read further along can take more: without a falloff, the first hit decides.
       let next: f32 = (f32(step) + 1.0 + jitter) / f32(steps);

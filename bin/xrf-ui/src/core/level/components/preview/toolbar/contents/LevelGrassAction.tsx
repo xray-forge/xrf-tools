@@ -16,6 +16,7 @@ import {
   formatGrassDensity,
   formatGrassHeight,
   formatGrassRadius,
+  formatGrassShadowCascades,
   fromGrassDensityScale,
   RENDER_FOLIAGE_LIMITS,
   RENDER_GRASS_LIMITS,
@@ -130,13 +131,22 @@ export function LevelGrassAction({
       />
 
       {grass.isShadowed ? (
-        <RenderValueSlider
-          label={"Shadow radius"}
-          value={grass.shadowRadius}
-          {...RENDER_GRASS_LIMITS.shadowRadius}
-          format={formatGrassRadius}
-          onChange={(shadowRadius: number) => set({ shadowRadius })}
-        />
+        <>
+          <RenderValueSlider
+            label={"Shadow radius"}
+            value={grass.shadowRadius}
+            {...RENDER_GRASS_LIMITS.shadowRadius}
+            format={formatGrassRadius}
+            onChange={(shadowRadius: number) => set({ shadowRadius })}
+          />
+          <RenderValueSlider
+            label={"Shadow cascades"}
+            value={grass.shadowCascades}
+            {...RENDER_GRASS_LIMITS.shadowCascades}
+            format={formatGrassShadowCascades}
+            onChange={(shadowCascades: number) => set({ shadowCascades })}
+          />
+        </>
       ) : null}
 
       {foliage.mode === ERenderFoliageMode.ENHANCED ? (

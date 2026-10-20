@@ -86,9 +86,6 @@ const RECEIVED_TURN_MOST: f32 = 10.0;
 
 /// Metres the grass stands at most over the ground, which the cards' reach is sampled past.
 const GRASS_STANDING: f32 = 3.0;
-/// Cascades the grass's cards are drawn into, the nearest first: past them a tuft is a few texels at most, and its
-/// shadow fades out over the last one's blend into the next.
-pub const GRASS_CASCADES: usize = 2;
 /// The share of a map's edge the sun's pass keeps a point off (`EDGE` in `common/sun_shadow.wgsl`).
 const SUN_SHADOW_EDGE: f32 = 0.02;
 /// Where the cards' reach is sampled for the cascades it lands in: rays a side of the screen's grid, and the shares of
@@ -170,12 +167,25 @@ impl LevelShadows {
     self.kept.is_some() && self.grass_cascades[index]
   }
 
-  /// Metres the grass's cards need stand from the eye to shadow the cascades they are drawn into by `settings`: the
-  /// last such cascade's width, past which a tuft falls in a cascade drawing none.
-  pub fn get_grass_reach(settings: &RenderShadowSettings) -> Option<f32> {
-    let count: usize = settings.get_cascade_count().min(GRASS_CASCADES);
+  /// Metres the grass's cards need stand from the eye to shadow the `cascades` nearest cascades `settings` draw: the
+  /// last such cascade's width, past which a tuft falls in a cascade drawing none; none for no cascade.
+  pub fn get_grass_reach(settings: &RenderShadowSettings, cascades: u32) -> Option<f32> {
+    let count: usize = settings.get_cascade_count().min(cascades as usize);
 
     count.checked_sub(1).map(|last| settings.get_cascade_width(last))
+  }
+
+  /// How many of the nearest cascades the grass's cards standing `reach` metres from the eye are drawn into: the
+  /// nearest whose width covers the reach and every nearer one; none where the cards stand none.
+  fn get_grass_cascade_count(settings: &RenderShadowSettings, reach: Option<f32>) -> usize {
+    let Some(reach) = reach else {
+      return 0;
+    };
+    let count: usize = settings.get_cascade_count();
+
+    (0..count)
+      .position(|index| settings.get_cascade_width(index) >= reach)
+      .map_or(count, |index| index + 1)
   }
 
   /// The maps, while any cascade is drawn.
@@ -252,9 +262,15 @@ impl LevelShadows {
       _ => {}
     }
 
-    match (&self.maps, self.statics.is_some() && frame.grass_reach.is_some()) {
-      (Some(maps), true) if self.kept.is_none() => {
-        self.kept = Some(SunShadowMaps::new_kept(device, maps.resolution, GRASS_CASCADES as u32));
+    let grass_count: usize = Self::get_grass_cascade_count(settings, frame.grass_reach);
+
+    match (&self.maps, self.statics.is_some() && grass_count > 0) {
+      (Some(maps), true) if self.kept.as_ref().is_none_or(|kept| kept.layers.len() != grass_count) => {
+        self.kept = Some(SunShadowMaps::new_kept(device, maps.resolution, grass_count as u32));
+
+        for cascade in &mut self.cascades {
+          cascade.is_kept = false;
+        }
       }
       (_, false) if self.kept.is_some() => {
         self.kept = None;
@@ -696,7 +712,7 @@ impl LevelShadows {
       let projection: Mat4 = cascade.cascade.view.get_view_projection();
       let has_next: bool = index + 1 < count;
       let mut has_grass: bool = false;
-      let is_grass_drawn: bool = index < GRASS_CASCADES;
+      let is_grass_drawn: bool = index < Self::get_grass_cascade_count(frame.settings, frame.grass_reach);
 
       for (point, shaded) in &mut points {
         match (*shaded, Self::get_cascade_inset(projection, *point)) {
@@ -821,8 +837,9 @@ impl LevelShadows {
       *is_trees_taken = true;
     }
 
-    // A far cascade redraws its trees for the sway alone band by band, a sweep at a time.
-    if index >= BANDED_FROM && !is_stale && (cascade.sway_sweep.is_some() || is_swayed) {
+    // A far cascade redraws its trees for the sway alone band by band, a sweep at a time, unless the grass casts into
+    // it, which draws over its kept layer every frame.
+    if index >= BANDED_FROM && !has_grass && !is_stale && (cascade.sway_sweep.is_some() || is_swayed) {
       let band: u32 = cascade.sway_sweep.map_or(0, |(_, band)| band);
 
       return Some(Self::offer(

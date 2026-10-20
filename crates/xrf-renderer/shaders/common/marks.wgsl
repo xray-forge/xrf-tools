@@ -1,8 +1,9 @@
 // The marks the G-buffer's material target holds in its alpha, a bit each: what is selected, which the present
 // outlines, what is self-lit, whose light the sun pass fills, what is lit as foliage, which passes light through from
 // behind, what is terrain, which reflects the sky where a reflection meets nothing, and what is a plant (grass and
-// leaves, however lit), which rain does not wet and which reflects little, and what moved by itself since the last
-// frame (swayed by the wind), whose shading its motion does not fully carry.
+// leaves, however lit), which rain does not wet and which reflects little, what moved by itself since the last frame
+// (swayed by the wind), whose shading its motion does not fully carry, and what is grass, which casts contact shadows
+// only as far as the grass's shadows reach.
 const MARK_SELECTED: u32 = 128u;
 const MARK_EMISSIVE: u32 = 64u;
 const MARK_FLORA: u32 = 32u;
@@ -11,6 +12,7 @@ const MARK_PLANT: u32 = 8u;
 // A steep surface the enhanced parallax marched, whose sun term is its relief's shadow, which the sun pass takes.
 const MARK_RELIEF: u32 = 4u;
 const MARK_MOVED: u32 = 2u;
+const MARK_GRASS: u32 = 1u;
 // The least a surface's own movement since the last frame, in metres, that counts as moved.
 const MOVED_THRESHOLD: f32 = 1e-4;
 
