@@ -145,6 +145,7 @@ describe("RenderFrameReadout", () => {
             albedo: 0.18116,
             diffuse: 0.6471,
             distance: 2.788,
+            ev100: null,
             exposure: 1.3404,
             gloss: 0.00784,
             luminance: 0.31359,
@@ -169,6 +170,7 @@ describe("RenderFrameReadout", () => {
             albedo: null,
             diffuse: null,
             distance: null,
+            ev100: null,
             exposure: 2,
             gloss: null,
             luminance: 0.02,
@@ -181,6 +183,29 @@ describe("RenderFrameReadout", () => {
 
     expect(getByText("Meter -2.17 EV · L 0.0200 · ×2.00")).toBeInTheDocument();
     expect(queryByText(/albedo/)).toBeNull();
+  });
+
+  it("reads the physical light's spot in cd/m² and its exposure value at ISO 100", () => {
+    const { getByText } = render(
+      <RenderFrameReadout
+        report={{
+          ...REPORT,
+          meter: {
+            albedo: null,
+            diffuse: null,
+            distance: null,
+            ev100: 13.6,
+            exposure: 0.00014,
+            gloss: null,
+            luminance: 1250,
+            specular: null,
+            stops: 0.4,
+          },
+        }}
+      />
+    );
+
+    expect(getByText("Meter +0.40 EV · L 1250 cd/m² · EV100 13.6")).toBeInTheDocument();
   });
 
   it("reads out nothing drawn rather than nothing at all", () => {

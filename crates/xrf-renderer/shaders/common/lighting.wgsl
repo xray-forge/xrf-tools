@@ -4,17 +4,33 @@
 #import "common/luminance"
 #import "common/srgb"
 
-// The scale the frame's light is written at, so a half float holds it however bright the scene (`PreExposure`): the
-// sun, the ambient and the lamps arrive at it, and a pass making light of its own (the hemisphere's cubes, the fog's
-// colour, a self-lit surface) gives it the same; one under the engine's light.
+// The scale the frame's light is written at per cd/m², so a half float holds it however bright the scene
+// (`PreExposure`); one under the engine's light.
 fn pre_exposure(state: Lighting) -> f32 {
   return state.pre_exposure.x;
 }
 
-// The exposure the frame is shown at: the adapted scale where it adapts, one otherwise. What the engine exposes as it
-// is, the sky's picture, takes it whole.
+// The cd/m² a light of one in the engine's units stands for under the physical light (`light_unit`); one under the
+// engine's, whose light has no units.
+fn light_unit(state: Lighting) -> f32 {
+  return state.pre_exposure.z;
+}
+
+// The scale a light in the engine's units is written at: its luminance at the pre-exposure. The sun, the ambient and
+// the lamps arrive at it, and a pass making light of the engine's values (the hemisphere's cubes, the fog's colour, a
+// self-lit surface) gives it the same.
+fn light_scale(state: Lighting) -> f32 {
+  return light_unit(state) * pre_exposure(state);
+}
+
+// The exposure the frame is shown at: the adapted scale where it adapts, one otherwise.
 fn frame_exposure(state: Lighting, exposure: Exposure) -> f32 {
   return select(1.0, exposure.adapted, state.params.z > 0.5);
+}
+
+// The exposure a picture the engine exposes as it is (the sky's), in the engine's units, is shown at.
+fn picture_exposure(state: Lighting, exposure: Exposure) -> f32 {
+  return light_unit(state) * frame_exposure(state, exposure);
 }
 
 // The scale the frame's light, written at the pre-exposure, is brought to the frame's exposure by.
@@ -101,25 +117,25 @@ fn is_lighting_physical(state: Lighting) -> bool {
 }
 
 // The sun's colour as the engine binds it, for a pass mixing it into a shown colour: as it stands, or, where the light
-// is physical, its pre-exposure taken off and encoded back.
+// is physical, its units and pre-exposure taken off and encoded back.
 fn sun_shown(state: Lighting) -> vec3<f32> {
-  let sun: vec3<f32> = state.sun.rgb / pre_exposure(state);
+  let sun: vec3<f32> = state.sun.rgb / light_scale(state);
 
   return select(sun, srgb_encoded(sun), is_lighting_physical(state));
 }
 
-// The fog's colour as light at the pre-exposure: the weather's display value, decoded where the light is physical.
+// The fog's colour as light at the light's scale: the weather's display value, decoded where the light is physical.
 // The passes mixing it into a shown colour take `fog_color` as it stands.
 fn fog_light(state: Lighting) -> vec3<f32> {
   return select(state.fog_color.rgb, srgb_decoded(state.fog_color.rgb), is_lighting_physical(state)) *
-    pre_exposure(state);
+    light_scale(state);
 }
 
 // Light fogged towards the fog's light by `amount`: blended as the engine blends it, in display values, so its tuned
-// amounts veil as they did; under the physical light both are encoded for the blend, their pre-exposure taken off
-// first and given back after, and the result decoded back.
+// amounts veil as they did; under the physical light both are encoded for the blend, the light's scale taken off first
+// and given back after, and the result decoded back.
 fn fog_mixed(state: Lighting, light: vec3<f32>, fog: vec3<f32>, amount: f32) -> vec3<f32> {
-  let scale: f32 = pre_exposure(state);
+  let scale: f32 = light_scale(state);
   let encoded: vec3<f32> = srgb_decoded(mix(srgb_encoded(light / scale), srgb_encoded(fog / scale), amount)) * scale;
 
   return select(mix(light, fog, amount), encoded, is_lighting_physical(state));

@@ -17,7 +17,8 @@ fn cs_meter() {
   let size: vec2<i32> = vec2<i32>(textureDimensions(scene));
   let centre: vec2<i32> = size / 2;
   let scale: f32 = frame_exposure(lighting, exposure);
-  // The lights' target holds light at the pre-exposure, which the readings take off.
+  // The lights' target holds light at the pre-exposure, which the readings take off: cd/m² a white surface would
+  // show, under the physical light.
   let pre: f32 = pre_exposure(lighting);
   var light: vec3<f32> = vec3<f32>(0.0);
   var drawn: f32 = 0.0;
@@ -55,6 +56,7 @@ fn cs_meter() {
   sample.luminance = shown;
   sample.stops = log2(max(shown * scale, 1e-6) / MIDDLE_GREY);
   sample.exposure = scale;
+  sample.photometric = select(0.0, 1.0, is_lighting_physical(lighting));
   sample.drawn = drawn / texels;
   sample.albedo = albedo / covered;
   sample.gloss = gloss / covered;

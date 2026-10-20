@@ -432,7 +432,11 @@ impl SceneView {
         campfire_shares: &scene.campfire_shares,
         is_scene_first: frame.is_scene_first,
         is_physical: options.is_light_physical(),
-        pre_exposure: self.features.exposure.get_pre_exposure().current,
+        light_scale: self
+          .features
+          .exposure
+          .get_pre_exposure()
+          .get_light_scale(options.is_light_physical()),
       },
     );
     self.shared.camera = *view;

@@ -89,22 +89,33 @@ impl ExposureFeature {
 
   /// Advances the rate by the time since the last frame and writes what the adaptation reads; off, the scale goes back
   /// to one, the engine's answer at noon. Under the physical light (`is_physical`) the histogram meters instead, or,
-  /// off, the scale holds at the compensation's stops; a change of light model starts the scale afresh. Then the scale
+  /// off, the scale holds at a daylit exterior's; a change of light model starts the scale afresh. Then the scale
   /// the frame's light is written at: the physical light's last read back, one under the engine's.
   pub fn prepare(&mut self, queue: &wgpu::Queue, settings: &RenderExposureSettings, is_physical: bool, now: Instant) {
-    let previous: f32 = self.pre_exposure.current;
     let read: Option<f32> = self.take_readback();
 
     if is_physical != self.is_physical {
+      // The physical light starts where a daylit exterior is shown, its light written there from the first frame.
+      let start: f32 = if is_physical {
+        ExposureHistogramUniform::get_daylight_scale(settings.compensation)
+      } else {
+        1.0
+      };
+
       self.is_physical = is_physical;
       self.last = None;
       self.rate = 0.5;
       self.held = None;
-      self.reset(queue, 1.0);
-      self.pre_exposure = PreExposure::NONE;
+      self.reset(queue, start);
+      self.pre_exposure = PreExposure {
+        current: start,
+        previous: start,
+      };
     }
 
     if is_physical {
+      let previous: f32 = self.pre_exposure.current;
+
       self.prepare_physical(queue, settings, now);
       self.pre_exposure = PreExposure {
         current: self.held.or(read).unwrap_or(self.pre_exposure.current),
@@ -141,12 +152,12 @@ impl ExposureFeature {
   }
 
   /// The physical light's metering for this frame: the histogram from the time since the last frame, straight to its
-  /// target on the first; or, off, the compensation's scale held.
+  /// target on the first; or, off, a daylit exterior's scale held, raised by the compensation.
   fn prepare_physical(&mut self, queue: &wgpu::Queue, settings: &RenderExposureSettings, now: Instant) {
     self.is_adapting = true;
 
     if !settings.is_enabled {
-      let held: f32 = settings.compensation.exp2();
+      let held: f32 = ExposureHistogramUniform::get_daylight_scale(settings.compensation);
 
       self.is_measuring = false;
       self.last = None;

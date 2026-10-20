@@ -605,7 +605,7 @@ fn trace_pixel(pixel: vec2<f32>) -> TraceTargets {
   let visible: f32 = select(1.0, textureLoad(occlusion_target, searched, 0).x, lighting.params.w > 0.5);
   let aimed: vec3<f32> = surroundings_direction(sky_prefiltered, sky_clamp, world_offset(position), world_direction(direction));
   var sky: vec3<f32> = prefiltered_sky(sky_prefiltered, sky_clamp, aimed, roughness * MISS_BLUR) *
-    pre_exposure(lighting) * specular_occlusion(facing, visible, roughness);
+    light_scale(lighting) * specular_occlusion(facing, visible, roughness);
 
   // The ray's end, the distance traced out, or short of the near plane where it comes back towards the camera: its
   // line across the screen is as long as its reach, so a reach as short as the surface is near cut a puddle's

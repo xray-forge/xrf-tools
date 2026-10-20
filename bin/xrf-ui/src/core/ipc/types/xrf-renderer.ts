@@ -1233,12 +1233,17 @@ export type RenderMemorySection = {
  * exposed by, and what the G-buffer holds of the surfaces under it.
  */
 export type RenderMeterReading = {
-  /** The scene's luminance at the spot before its exposure, in the units its light is drawn in. */
+  /**
+   * The scene's luminance at the spot before its exposure, in the units its light is drawn in: cd/m² under the
+   * physical light.
+   */
   luminance: number | null;
   /** Stops the exposed spot stands above middle grey, 0.18; below it where negative. */
   stops: number | null;
   /** The scale the frame's light was exposed by. */
   exposure: number | null;
+  /** The exposure value at ISO 100 a reflected-light meter would read at the spot, where the light is physical. */
+  ev100: number | null;
   /** The surfaces' albedo luminance read as linear light (sRGB decoded); none where the spot holds only sky. */
   albedo: number | null;
   /** The surfaces' gloss, as the G-buffer keeps it. */

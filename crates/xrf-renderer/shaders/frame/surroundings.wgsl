@@ -46,8 +46,8 @@ fn lit_texel(texel: vec2<i32>, direction: vec3<f32>, scale: f32) -> vec4<f32> {
     albedo, vec4<f32>(sun, 0.0), normal_world, to_point_world, material.z, material.x, vec3<f32>(1.0));
   let fog: f32 = select(0.0, fog_amount_at(lighting, position, height), lighting.fog_color.w > 0.5);
 
-  // Kept as light without the pre-exposure, as the sky's is, since the cube outlasts the frame it was lit in.
-  return vec4<f32>(fog_mixed(lighting, lit, fog_color_at(lighting, position, height), fog) / pre_exposure(lighting),
+  // Kept as light in the engine's units, as the sky's is, since the cube outlasts the frame it was lit in.
+  return vec4<f32>(fog_mixed(lighting, lit, fog_color_at(lighting, position, height), fog) / light_scale(lighting),
     length(position));
 }
 
@@ -61,7 +61,7 @@ fn cs_resolve(@builtin(global_invocation_id) id: vec3<u32>) {
 
   let face: u32 = u32(settings.face.x);
   let drawn: u32 = u32(settings.face.z);
-  let scale: f32 = frame_exposure(lighting, exposure);
+  let scale: f32 = picture_exposure(lighting, exposure);
   let direction: vec3<f32> = cube_face_direction(face, (vec2<f32>(id.xy) + 0.5) / f32(size));
   let first: vec2<i32> = vec2<i32>(id.xy * BOX);
   var sum: vec3<f32> = vec3<f32>(0.0);

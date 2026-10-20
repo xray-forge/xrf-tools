@@ -61,7 +61,7 @@ fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
 
   // `accum_emissive`: a self-lit surface's light is filled with sixteen, which the local lights then add to.
   if (has_mark(material.a, MARK_EMISSIVE)) {
-    return SunTargets(vec4<f32>(EMISSIVE_LIGHT * pre_exposure(lighting)), vec4<f32>(0.0));
+    return SunTargets(vec4<f32>(EMISSIVE_LIGHT * light_scale(lighting)), vec4<f32>(0.0));
   }
 
   let slice: f32 = material.z;
@@ -108,7 +108,7 @@ fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
     let to_eye: vec3<f32> = -normalize(position);
     let amount: f32 = saturate(dot(to_eye, -(to_light + normal))) * lighting.flora.y;
 
-    through = amount * mix(vec3<f32>(pre_exposure(lighting)), lighting.sun.rgb, lighting.flora.z);
+    through = amount * mix(vec3<f32>(light_scale(lighting)), lighting.sun.rgb, lighting.flora.z);
   }
 
   return SunTargets(vec4<f32>(lighting.sun.rgb * lit.x + through, lighting.sun.w * lit.y) * shadow, vec4<f32>(shadow));

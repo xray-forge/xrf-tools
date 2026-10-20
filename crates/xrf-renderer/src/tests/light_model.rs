@@ -4,9 +4,11 @@ use crate::contract::render_display_transform::RenderDisplayTransform;
 use crate::contract::render_light_model::RenderLightModel;
 use crate::contract::render_tonemap_mode::RenderTonemapMode;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::lighting::light_unit::{PHYSICAL_LIGHT_UNIT, light_unit};
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{authored_colour, srgb_decoded, srgb_encoded};
 use crate::pass::display_mode::DisplayMode;
+use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::pre_exposure::PreExposure;
@@ -89,7 +91,7 @@ fn authored_colours_are_decoded_only_under_the_physical_light() {
   assert!((authored_colour(colour, true) - Vec3::new(1.0, srgb_decoded(0.5), srgb_decoded(0.25))).length() < 1e-6);
 }
 
-// The sun and the ambient reach the lit passes decoded, and the shaders are told; the fog, the sky's tint and the
+// The sun and the ambient reach the lit passes decoded and in the physical light's units, and the shaders are told; the fog, the sky's tint and the
 // forward passes' values stay the weather's display values, each pass decoding them where it lights with them.
 #[test]
 fn the_lighting_decodes_what_it_lights_with_and_flags_the_shaders() {
@@ -103,8 +105,10 @@ fn the_lighting_decodes_what_it_lights_with_and_flags_the_shaders() {
 
   assert_eq!(engine.engine.w, 0.0);
   assert_eq!(physical.engine.w, 1.0);
-  assert!(physical.sun.y < engine.sun.y);
-  assert!((physical.sun.y - srgb_decoded(engine.sun.y)).abs() < 1e-5);
+  assert!(physical.sun.y / PHYSICAL_LIGHT_UNIT < engine.sun.y);
+  assert!((physical.sun.y / PHYSICAL_LIGHT_UNIT - srgb_decoded(engine.sun.y)).abs() < 1e-5);
+  assert_eq!(engine.pre_exposure.z, 1.0);
+  assert_eq!(physical.pre_exposure.z, PHYSICAL_LIGHT_UNIT);
   assert_eq!(physical.fog_color, engine.fog_color);
   assert_eq!(physical.sky, engine.sky);
   assert_eq!(physical.forward_sun, engine.forward_sun);
@@ -129,8 +133,8 @@ fn the_lighting_arrives_at_the_pre_exposure() {
 
   assert!((scaled.sun - plain.sun * 4.0).length() < 1e-5);
   assert!((scaled.ambient - plain.ambient * 4.0).length() < 1e-5);
-  assert_eq!(scaled.pre_exposure, Vec4::new(4.0, 2.0, 0.0, 0.0));
-  assert_eq!(plain.pre_exposure, Vec4::new(1.0, 1.0, 0.0, 0.0));
+  assert_eq!(scaled.pre_exposure, Vec4::new(4.0, 2.0, PHYSICAL_LIGHT_UNIT, 0.0));
+  assert_eq!(plain.pre_exposure, Vec4::new(1.0, 1.0, PHYSICAL_LIGHT_UNIT, 0.0));
   assert_eq!(scaled.fog_color, plain.fog_color);
   assert_eq!(scaled.sky, plain.sky);
   assert_eq!(scaled.forward_sun, plain.forward_sun);
@@ -162,4 +166,19 @@ fn each_view_is_shown_by_its_light_models_display_mode() {
 
   unlit.mode.is_lit = false;
   assert_eq!(DisplayMode::of(&unlit), DisplayMode::AsIs);
+}
+
+// A light of one in the engine's units is ten thousand cd/m² under the physical light and has no units under the
+// engine's; the physical exposure starts, and holds while it does not adapt, where a daylit exterior's average is middle
+// grey, raised by the compensation's stops.
+#[test]
+fn the_physical_light_is_in_cd_per_square_metre() {
+  assert_eq!(light_unit(false), 1.0);
+  assert_eq!(light_unit(true), PHYSICAL_LIGHT_UNIT);
+
+  let daylight: f32 = ExposureHistogramUniform::get_daylight_scale(0.0);
+  let reference: f32 = ExposureHistogramUniform::REFERENCE_LOG.exp2();
+
+  assert!((daylight * reference - ExposureHistogramUniform::MIDDLE_GREY).abs() < 1e-5);
+  assert!((ExposureHistogramUniform::get_daylight_scale(1.0) / daylight - 2.0).abs() < 1e-4);
 }

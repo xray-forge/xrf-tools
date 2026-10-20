@@ -3,7 +3,7 @@
 #import "common/sky_clouds"
 
 // The sky's light as the frame draws it (`sky_light`: the cubes through the half box, the rim under the fold, the sky's
-// colour and the engine's factor, the clouds over it, as light before the pre-exposure, which a reader gives it, since
+// colour and the engine's factor, the clouds over it, as light in the engine's units, which a reader gives the light's scale, since
 // the cube outlasts the frame it was drawn in), prefiltered by roughness into a cube's mips for what a reflection meets
 // nothing in front of: the first mip the sky itself, each after it the sky blurred by the GGX lobe of a rougher surface,
 // its roughness the mip over the last mip, so a reflection reads the cube at the mip its roughness names. The cube is
@@ -88,7 +88,7 @@ fn cs_prefilter(@builtin(global_invocation_id) id: vec3<u32>) {
 
   if (level == 0u) {
     colour = sky_light(direction, lighting, sky_cube_0, sky_cube_1, sky_clamp, sky_clouds_0, sky_clouds_1, sky_repeat,
-      frame_exposure(lighting, exposure));
+      picture_exposure(lighting, exposure));
   } else {
     colour = blurred_sky(direction, settings.level.y, u32(settings.level.z), f32(level));
   }

@@ -29,14 +29,15 @@ pub struct ExposureHistogramUniform {
 impl ExposureHistogramUniform {
   /// Bins the frame's log2 luminance is counted in.
   pub const BINS: u32 = 128;
-  /// The luminance the bins span, log2: about 1/4096 to 64 in the scene's units.
-  pub const LEAST_LOG: f32 = -12.0;
-  pub const MOST_LOG: f32 = 6.0;
+  /// The luminance the bins span, log2: about 1/16 000 cd/m², under starlight, to 65 000, sunlit snow and past it.
+  pub const LEAST_LOG: f32 = -14.0;
+  pub const MOST_LOG: f32 = 16.0;
   /// The luminance the average is brought to: middle grey.
   pub const MIDDLE_GREY: f32 = 0.18;
-  /// The log2 luminance of a daylit exterior, which is shown at the aim; a darker or brighter scene keeps this share of
-  /// its distance from it, so a cellar stays darker than noon and snow brighter, as the eye adapts only part of the way.
-  pub const REFERENCE_LOG: f32 = -3.0;
+  /// The log2 luminance of a daylit exterior's average, about 1 260 cd/m², which is shown at the aim; a darker or
+  /// brighter scene keeps this share of its distance from it, so a cellar stays darker than noon and snow brighter, as
+  /// the eye adapts only part of the way.
+  pub const REFERENCE_LOG: f32 = 10.3;
   pub const KEPT_SHARE: f32 = 0.5;
   /// Stops a second the scale moves: faster darkening a brighter frame than brightening a darker one, as the eye does.
   pub const DARKENING: f32 = 3.0;
@@ -44,9 +45,15 @@ impl ExposureHistogramUniform {
   /// The darkest and the brightest shares of the frame the average leaves out.
   pub const LOW_SHARE: f32 = 0.1;
   pub const HIGH_SHARE: f32 = 0.9;
-  /// The scale's bounds, log2.
-  pub const LEAST_SCALE_LOG: f32 = -10.0;
-  pub const MOST_SCALE_LOG: f32 = 10.0;
+  /// The scale's bounds, log2: middle grey shown at about 47 000 cd/m², or at about 1/1 400.
+  pub const LEAST_SCALE_LOG: f32 = -18.0;
+  pub const MOST_SCALE_LOG: f32 = 8.0;
+
+  /// The scale a daylit exterior is shown at, its average at the aim, raised by `compensation` stops: the physical
+  /// light's first and the one it holds while it does not adapt.
+  pub fn get_daylight_scale(compensation: f32) -> f32 {
+    (Self::MIDDLE_GREY.log2() + compensation - Self::REFERENCE_LOG).exp2()
+  }
 
   /// The metering for a frame `delta` seconds after the last, straight to its target where `is_snapped`.
   pub fn new(settings: &RenderExposureSettings, delta: f32, is_snapped: bool) -> Self {

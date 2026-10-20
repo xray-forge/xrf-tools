@@ -70,8 +70,8 @@ fn sky_clouds_over(state: Lighting, direction: vec3<f32>, below: vec3<f32>, clou
   return mix(below, clouds.rgb * scale, clouds.a);
 }
 
-// The sky's light along a renderer-space direction, without the pre-exposure, which a reader of the cube it is kept in
-// gives it: the sky as the frame shows it, clouds and all, taken back through the tonemap, so a reflection of it adds to
+// The sky's light along a renderer-space direction in the engine's units, which a reader of the cube it is kept in
+// gives the light's scale: the sky as the frame shows it, clouds and all, taken back through the tonemap, so a reflection of it adds to
 // a surface what the frame's own sky would.
 fn sky_light(direction: vec3<f32>, state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>,
   cube_sampler: sampler, clouds_0: texture_2d<f32>, clouds_1: texture_2d<f32>, repeat: sampler, scale: f32) -> vec3<f32> {

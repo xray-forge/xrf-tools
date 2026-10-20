@@ -445,6 +445,7 @@ struct MeterSample {
   diffuse: f32,
   specular: f32,
   distance: f32,
+  photometric: f32,
 }
 
 struct Calibration {
