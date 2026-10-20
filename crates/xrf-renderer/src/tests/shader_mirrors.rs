@@ -10,6 +10,8 @@ use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::calibration_uniform::CalibrationUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
+use crate::pass::display_mode::DisplayMode;
+use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::exposure_pass::ExposurePass;
 use crate::pass::flare_pass::FlarePass;
 use crate::pass::froxel_pass::FroxelPass;
@@ -73,6 +75,45 @@ fn the_lamps_read_the_shadow_atlas_at_its_allocated_size() {
     get_float_constant(&library, "common/local_lights", "ATLAS_TEXEL"),
     1.0 / LevelLightShadows::ATLAS_SIZE as f32
   );
+}
+
+/// The physical light's exposure counts its histogram in the bins, workgroups and strides Rust sizes it by.
+#[test]
+fn the_exposure_histogram_is_sized_as_rust_sizes_it() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  assert_eq!(
+    get_constant(&library, "frame/exposure_histogram", "BINS"),
+    ExposureHistogramUniform::BINS
+  );
+  assert_eq!(
+    get_constant(&library, "frame/exposure_histogram", "HISTOGRAM_WORKGROUP"),
+    ExposurePass::HISTOGRAM_WORKGROUP
+  );
+  assert_eq!(
+    get_constant(&library, "frame/exposure_histogram", "SAMPLE_STRIDE"),
+    ExposurePass::HISTOGRAM_STRIDE
+  );
+}
+
+/// The present and the debanding tell how a scene is shown by the numbers Rust gives its display modes.
+#[test]
+fn the_display_modes_are_numbered_as_rust_numbers_them() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+
+  for (name, mode) in [
+    ("DISPLAY_AS_IS", DisplayMode::AsIs),
+    ("DISPLAY_TONEMAPPED", DisplayMode::Tonemapped),
+    ("DISPLAY_ENGINE_ENCODED", DisplayMode::EngineEncoded),
+    ("DISPLAY_AGX", DisplayMode::Agx),
+    ("DISPLAY_PBR_NEUTRAL", DisplayMode::PbrNeutral),
+  ] {
+    assert_eq!(
+      get_constant(&library, "common/display_transform", name),
+      mode.get_index(),
+      "{name}"
+    );
+  }
 }
 
 /// The calibration props are spheres up to the index Rust counts them to, the chart after them.

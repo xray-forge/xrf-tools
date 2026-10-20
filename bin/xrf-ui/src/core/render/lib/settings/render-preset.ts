@@ -4,6 +4,7 @@ import {
   ERenderBloomMode,
   ERenderContactShadowMode,
   ERenderDebandingMode,
+  ERenderDisplayTransform,
   ERenderFogMode,
   ERenderFoliageMode,
   ERenderGlassMode,
@@ -75,6 +76,8 @@ const BASE_PRESET: IRenderFeatureSettings = {
     mode: ERenderDebandingMode.ENHANCED,
     passes: 1,
   },
+  // What shows the physical light's frame, where a view lights by it.
+  displayTransform: ERenderDisplayTransform.PBR_NEUTRAL,
   enhancedBloom: { ...DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS, mode: ERenderBloomMode.ENHANCED },
   exposure: DEFAULT_RENDER_EXPOSURE_SETTINGS,
   // The fog thickened low down and the frame's bright parts scattered into it, at four small passes.
@@ -187,6 +190,7 @@ const EDITING_PRESET: IRenderFeatureSettings = {
   ambientOcclusion: { ...DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS, isEnabled: false },
   antialiasing: ERenderAntialiasing.NONE,
   debanding: DEFAULT_RENDER_DEBANDING_SETTINGS,
+  displayTransform: ERenderDisplayTransform.PBR_NEUTRAL,
   enhancedBloom: DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS,
   exposure: DEFAULT_RENDER_EXPOSURE_SETTINGS,
   fog: DEFAULT_RENDER_FOG_SETTINGS,

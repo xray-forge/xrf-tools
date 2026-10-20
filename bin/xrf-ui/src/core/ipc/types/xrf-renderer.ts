@@ -491,6 +491,31 @@ export enum ERenderDebugView {
 /** Every `ERenderDebugView` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderDebugView = `${ERenderDebugView}`;
 
+/**
+ * What turns the physical light's scene-referred frame into the display's colours, before it is encoded for the
+ * display. The engine's light model always shows its frame by the engine's curve.
+ */
+export enum ERenderDisplayTransform {
+  /**
+   * The engine's curve, `x (1 + x / W²) / (1 + x)` a channel, white at 1.7: each channel clips on its own, so bright
+   * colours walk to yellow and white.
+   */
+  ENGINE = "engine",
+  /**
+   * AgX (Troy Sobotka; Blender's default view since 4.0): a log encoding and a sigmoid over a rotated, inset gamut,
+   * so highlights roll off towards white without their hues walking.
+   */
+  AGX = "agx",
+  /**
+   * Khronos PBR Neutral (2024): colours kept as they are up to a shoulder near white, then compressed and desaturated,
+   * for materials read as authored.
+   */
+  PBR_NEUTRAL = "pbrNeutral",
+}
+
+/** Every `ERenderDisplayTransform` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderDisplayTransform = `${ERenderDisplayTransform}`;
+
 /** Whether a viewport's GPU upscales with DLSS, or reconstructs rays with it, and where it does not, what it lacks. */
 export enum ERenderDlssAvailability {
   AVAILABLE = "available",
@@ -594,6 +619,11 @@ export type RenderExposureSettings = {
   lowLuminance: number | null;
   /** `r2_tonemap_adaptation`: how fast the scale follows the frame. */
   adaptation: number | null;
+  /**
+   * Stops the physical light's exposure brings the frame above middle grey, or below where negative; the engine's
+   * exposure has no such setting.
+   */
+  compensation: number | null;
 };
 
 /**
@@ -1870,6 +1900,8 @@ export type RenderViewFeatures = {
   tonemap: RenderTonemapMode;
   /** What the light is computed in: the engine's display-encoded values, or linear light. */
   lightModel: RenderLightModel;
+  /** What shows the physical light's frame on the display. */
+  displayTransform: RenderDisplayTransform;
   bloom: RenderBloomSettings;
   /** Which bloom is drawn, and the enhanced bloom's strengths. */
   enhancedBloom: RenderEnhancedBloomSettings;

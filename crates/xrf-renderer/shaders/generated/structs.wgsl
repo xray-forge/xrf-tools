@@ -221,7 +221,7 @@ struct Present {
   is_reflected: u32,
   reflection_ratio: f32,
   deband: vec4<f32>,
-  tonemap: vec4<f32>,
+  display: vec4<f32>,
   inspect: vec4<f32>,
 }
 
@@ -416,6 +416,22 @@ struct ExposureState {
 struct Exposure {
   adapted: f32,
   used: f32,
+}
+
+struct ExposureHistogram {
+  least_log: f32,
+  span_log: f32,
+  aim: f32,
+  reference_log: f32,
+  kept_share: f32,
+  delta: f32,
+  brightening: f32,
+  darkening: f32,
+  low_share: f32,
+  high_share: f32,
+  least_scale_log: f32,
+  most_scale_log: f32,
+  snap: f32,
 }
 
 struct MeterSample {

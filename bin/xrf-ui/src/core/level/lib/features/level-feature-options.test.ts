@@ -5,6 +5,7 @@ import {
   ERenderBloomMode,
   ERenderContactShadowMode,
   ERenderDebandingMode,
+  ERenderDisplayTransform,
   ERenderFogMode,
   ERenderGlassMode,
   ERenderIndirectLightMode,
@@ -282,5 +283,20 @@ describe("level feature options", () => {
     );
     expect(toLevelFeatureOptions({ lightModel: "physical" }).lightModel).toBe(ERenderLightModel.PHYSICAL);
     expect(toLevelFeatureOptions({ lightModel: "candle" }).lightModel).toBeNull();
+  });
+
+  it("brings the frame to the display with the view's own transform over the settings', and keeps only one the renderer knows", () => {
+    const neutral: ILevelFeatureOptions = mockLevelFeatureOptions({
+      displayTransform: ERenderDisplayTransform.PBR_NEUTRAL,
+    });
+
+    expect(
+      toLevelRendererFeatures(SETTINGS, mockLevelFeatureOptions(), DEFAULT_LEVEL_VIEW_OPTIONS).displayTransform
+    ).toBe(SETTINGS.displayTransform);
+    expect(toLevelRendererFeatures(SETTINGS, neutral, DEFAULT_LEVEL_VIEW_OPTIONS).displayTransform).toBe(
+      ERenderDisplayTransform.PBR_NEUTRAL
+    );
+    expect(toLevelFeatureOptions({ displayTransform: "agx" }).displayTransform).toBe(ERenderDisplayTransform.AGX);
+    expect(toLevelFeatureOptions({ displayTransform: "filmic" }).displayTransform).toBeNull();
   });
 });

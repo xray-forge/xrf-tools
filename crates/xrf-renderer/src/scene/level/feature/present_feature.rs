@@ -1,5 +1,6 @@
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::pass::display_mode::DisplayMode;
 use crate::pass::present_uniform::PresentUniform;
 use crate::scene::level::feature::present_inputs::PresentInputs;
 use crate::scene::level::feature::view_feature::ViewFeature;
@@ -42,7 +43,7 @@ impl PresentFeature {
     } else {
       present
     }
-    .with_linear_scene(options.is_scene_linear(), options.is_light_physical())
+    .with_display(DisplayMode::of(options))
     .with_grass_reach(inputs.grass_reach);
 
     self.uniform = match self.debanding {

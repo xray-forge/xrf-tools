@@ -125,6 +125,7 @@ function toLevelLook(stored: Record<string, unknown>, exposure: TRenderExposureS
     exposure: {
       adaptation: toNumber(storedExposure.adaptation, exposure.adaptation),
       amount: toNumber(storedExposure.amount, exposure.amount),
+      compensation: toNumber(storedExposure.compensation, exposure.compensation),
       isEnabled: typeof storedExposure.isEnabled === "boolean" ? storedExposure.isEnabled : exposure.isEnabled,
       lowLuminance: toNumber(storedExposure.lowLuminance, exposure.lowLuminance),
       middleGray: toNumber(storedExposure.middleGray, exposure.middleGray),

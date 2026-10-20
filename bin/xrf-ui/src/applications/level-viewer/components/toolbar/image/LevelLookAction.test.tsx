@@ -3,7 +3,7 @@ import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelLookAction } from "@/applications/level-viewer/components/toolbar/image/LevelLookAction";
-import { ERenderBloomMode, ERenderLightModel } from "@/core/ipc/types/xrf-renderer";
+import { ERenderBloomMode, ERenderDisplayTransform, ERenderLightModel } from "@/core/ipc/types/xrf-renderer";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { clearLocalStorage } from "@/core/storage";
 import {
@@ -113,5 +113,26 @@ describe("LevelLookAction", () => {
 
     expect(descriptor.view.features.lightModel).toBe(ERenderLightModel.PHYSICAL);
     expect(descriptor.renderSettings.rendererFeatures.lightModel).toBe(ERenderLightModel.ENGINE);
+  });
+
+  it("shows the physical light through the view's own display transform, offered but off under the engine light", async () => {
+    const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+    const { getByRole, findByRole } = renderWithProviders(<LevelLookAction />, { container: descriptor.container });
+
+    await userEvent.click(getByRole("button", { name: "Look" }));
+    await findByRole("dialog", { name: "Look" });
+
+    expect(getByRole("button", { name: "AgX" })).toBeDisabled();
+    expect(getByRole("slider", { name: "Compensation" })).toBeDisabled();
+    expect(getByRole("slider", { name: "Middle gray" })).toBeEnabled();
+
+    await userEvent.click(getByRole("button", { name: "Physical" }));
+    await userEvent.click(getByRole("button", { name: "AgX" }));
+
+    expect(descriptor.view.features.displayTransform).toBe(ERenderDisplayTransform.AGX);
+    expect(descriptor.renderSettings.rendererFeatures.displayTransform).toBe(ERenderDisplayTransform.PBR_NEUTRAL);
+    expect(getByRole("slider", { name: "Compensation" })).toBeEnabled();
+    // The engine meter's values, which the physical light's histogram does not read.
+    expect(getByRole("slider", { name: "Middle gray" })).toBeDisabled();
   });
 });

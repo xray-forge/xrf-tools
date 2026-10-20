@@ -84,6 +84,7 @@ export const DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS: TRenderAmbientOcclusionS
 export const DEFAULT_RENDER_EXPOSURE_SETTINGS: TRenderExposureSettings = {
   adaptation: 1,
   amount: 0.7,
+  compensation: 0,
   isEnabled: true,
   lowLuminance: 0.0001,
   middleGray: 1,

@@ -5,6 +5,7 @@ use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::pass::display_mode::DisplayMode;
 
 /// What the present pass shows and the overlays drawn over it read, as WGSL's `Present`.
 #[repr(C)]
@@ -38,9 +39,8 @@ pub struct PresentUniform {
   /// The sky debanding's passes, the pixels it reads out to at most and the clock its noise turns with; no passes where
   /// the sky is drawn as it is.
   pub deband: Vec4,
-  /// One where the scene holds linear light, which the window pass tonemaps by the engine's curve before the rest;
-  /// then one where that light is linear light, so the tonemapped frame is encoded for the display (`RenderLightModel`).
-  pub tonemap: Vec4,
+  /// How the scene is shown before the rest is laid over it (`DisplayMode`), as `common/display_transform` numbers it.
+  pub display: Vec4,
   /// What the cascades' debug view marks: the metres from the camera the grass's cards cast the sun's shadow to, none
   /// where they cast none.
   pub inspect: Vec4,
@@ -77,7 +77,7 @@ impl PresentUniform {
       is_reflected: u32::from(reflection_ratio.is_some()),
       reflection_ratio: reflection_ratio.unwrap_or(1) as f32,
       deband: Vec4::ZERO,
-      tonemap: Vec4::ZERO,
+      display: Vec4::ZERO,
       inspect: Vec4::ZERO,
     }
   }
@@ -91,16 +91,10 @@ impl PresentUniform {
     (is_shown && debanding.is_drawn()).then(|| debanding.get_passes())
   }
 
-  /// The same over a scene holding linear light (`is_linear`), which it tonemaps, or tonemapped colour; the tonemapped
-  /// frame encoded for the display where the light is physical (`is_physical`).
-  pub fn with_linear_scene(self, is_linear: bool, is_physical: bool) -> Self {
+  /// The same showing its scene by `mode`.
+  pub fn with_display(self, mode: DisplayMode) -> Self {
     Self {
-      tonemap: Vec4::new(
-        f32::from(u8::from(is_linear)),
-        f32::from(u8::from(is_physical)),
-        0.0,
-        0.0,
-      ),
+      display: Vec4::new(mode.get_index() as f32, 0.0, 0.0, 0.0),
       ..self
     }
   }

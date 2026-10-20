@@ -1,8 +1,12 @@
 use std::time::{Duration, Instant};
 
-use xrf_renderer_core::{FrameGraph, GraphBuffer, GraphRuntime, GraphTexture, StorageValueMut};
+use xrf_renderer_core::{
+  FrameGraph, GraphBindings, GraphBuffer, GraphRuntime, GraphTexture, StorageArrayMut, StorageValueMut,
+};
 
 use crate::contract::render_exposure_settings::RenderExposureSettings;
+use crate::pass::exposure_histogram_parameters::ExposureHistogramParameters;
+use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::exposure_state::ExposureState;
 use crate::pass::exposure_uniform::ExposureUniform;
@@ -13,16 +17,28 @@ use crate::scene::level::feature::view_feature::ViewFeature;
 const LONGEST_STEP: Duration = Duration::from_millis(250);
 
 /// One viewport's exposure: the scale its tonemap multiplies by, adapted on the GPU, the cells it was measured from,
-/// and the adaptation's rate, which the CPU advances by the time between frames.
+/// and the adaptation's rate, which the CPU advances by the time between frames; under the physical light, a histogram
+/// of the scene's light in place of the cells, or a fixed scale where it does not adapt.
 pub struct ExposureFeature {
   /// The adapted scale, then each cell's luminance.
   pub state: wgpu::Buffer,
+  /// The physical light's histogram, emptied by each frame's settling.
+  bins: wgpu::Buffer,
   /// How it adapts this frame.
   pub params: ExposureUniform,
+  /// How the physical light meters this frame.
+  histogram: ExposureHistogramUniform,
   /// `f_luminance_adapt`, how far this frame moves the scale.
   rate: f32,
   last: Option<Instant>,
+  /// Whether the passes read the state's scale, rather than one.
   is_adapting: bool,
+  /// Whether the frame is metered and the scale moved this frame.
+  is_measuring: bool,
+  /// Whether the light is physical, which the histogram meters.
+  is_physical: bool,
+  /// The scale the physical light holds while it does not adapt, as last written.
+  held: Option<f32>,
 }
 
 impl ExposureFeature {
@@ -36,29 +52,57 @@ impl ExposureFeature {
       usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
       mapped_at_creation: false,
     });
+    let bins: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+      label: Some("exposure histogram"),
+      size: u64::from(ExposureHistogramUniform::BINS) * size_of::<u32>() as u64,
+      usage: wgpu::BufferUsages::STORAGE,
+      mapped_at_creation: false,
+    });
     let exposure: Self = Self {
       state,
+      bins,
       params: ExposureUniform::default(),
+      histogram: ExposureHistogramUniform::default(),
       rate: 0.5,
       last: None,
       is_adapting: false,
+      is_measuring: false,
+      is_physical: false,
+      held: None,
     };
 
-    exposure.reset(queue);
+    exposure.reset(queue, 1.0);
 
     exposure
   }
 
   /// Advances the rate by the time since the last frame and writes what the adaptation reads; off, the scale goes back
-  /// to one, the engine's answer at noon.
-  pub fn prepare(&mut self, queue: &wgpu::Queue, settings: &RenderExposureSettings, now: Instant) {
+  /// to one, the engine's answer at noon. Under the physical light (`is_physical`) the histogram meters instead, or,
+  /// off, the scale holds at the compensation's stops; a change of light model starts the scale afresh.
+  pub fn prepare(&mut self, queue: &wgpu::Queue, settings: &RenderExposureSettings, is_physical: bool, now: Instant) {
+    if is_physical != self.is_physical {
+      self.is_physical = is_physical;
+      self.last = None;
+      self.rate = 0.5;
+      self.held = None;
+      self.reset(queue, 1.0);
+    }
+
+    if is_physical {
+      self.prepare_physical(queue, settings, now);
+
+      return;
+    }
+
     if !settings.is_enabled {
       if self.is_adapting {
         self.is_adapting = false;
         self.last = None;
         self.rate = 0.5;
-        self.reset(queue);
+        self.reset(queue, 1.0);
       }
+
+      self.is_measuring = false;
 
       return;
     }
@@ -66,6 +110,7 @@ impl ExposureFeature {
     let delta: Duration = self.last.map_or(Duration::ZERO, |last| (now - last).min(LONGEST_STEP));
 
     self.is_adapting = true;
+    self.is_measuring = true;
     self.last = Some(now);
     // `f_luminance_adapt = .9 * f + .1 * dt * adaptation`; the scale moves by it at most all the way, since past one
     // the move overshoots and a slow frame under a fast adaptation would swing the scale about its target.
@@ -73,19 +118,65 @@ impl ExposureFeature {
     self.params = ExposureUniform::new(settings, self.rate.min(1.0));
   }
 
+  /// The physical light's metering for this frame: the histogram from the time since the last frame, straight to its
+  /// target on the first; or, off, the compensation's scale held.
+  fn prepare_physical(&mut self, queue: &wgpu::Queue, settings: &RenderExposureSettings, now: Instant) {
+    self.is_adapting = true;
+
+    if !settings.is_enabled {
+      let held: f32 = settings.compensation.exp2();
+
+      self.is_measuring = false;
+      self.last = None;
+
+      if self.held != Some(held) {
+        self.held = Some(held);
+        self.reset(queue, held);
+      }
+
+      return;
+    }
+
+    let delta: Duration = self.last.map_or(Duration::ZERO, |last| (now - last).min(LONGEST_STEP));
+
+    self.histogram = ExposureHistogramUniform::new(settings, delta.as_secs_f32(), self.last.is_none());
+    self.is_measuring = true;
+    self.last = Some(now);
+    self.held = None;
+  }
+
+  /// Whether the passes read the adapted scale, rather than one.
   pub fn is_adapting(&self) -> bool {
     self.is_adapting
   }
 
-  /// Adds the adaptation: the frame's luminance measured from the high target and the scale moved towards it, into
-  /// `state`, the imported `state` buffer; nothing while it does not adapt.
+  /// Adds the adaptation into `state`, the imported `state` buffer: the frame's luminance measured from the high target
+  /// and the scale moved towards it, or under the physical light the `size` scene's light counted into the histogram and
+  /// the scale settled from it; nothing while it does not measure.
   pub fn add_passes<'a>(
-    &self,
-    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    &'a self,
+    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
-    (high, state): (GraphTexture, GraphBuffer),
+    (high, scene, size, state): (GraphTexture, GraphTexture, (u32, u32), GraphBuffer),
   ) {
-    if !self.is_adapting {
+    if !self.is_measuring {
+      return;
+    }
+
+    if self.is_physical {
+      let bins: GraphBuffer = bindings.import_buffer(&mut *graph, "exposure histogram", &self.bins);
+      let parameters: ExposureHistogramParameters = ExposureHistogramParameters {
+        scene,
+        state: StorageValueMut::new(state),
+        bins: StorageArrayMut::new(bins),
+        params: runtime.push_uniform(&self.histogram),
+      };
+
+      graph
+        .add_compute_pass("exposure histogram")
+        .parameters(&parameters)
+        .record(move |context| passes.exposure.record_histogram(context, &parameters, size));
+
       return;
     }
 
@@ -101,10 +192,11 @@ impl ExposureFeature {
       .record(move |context| passes.exposure.record(context, &parameters));
   }
 
-  fn reset(&self, queue: &wgpu::Queue) {
+  /// Writes the state's scale and the scale the last frame used as `scale`.
+  fn reset(&self, queue: &wgpu::Queue, scale: f32) {
     let state: ExposureState = ExposureState {
-      adapted: 1.0,
-      used: 1.0,
+      adapted: scale,
+      used: scale,
       ..bytemuck::Zeroable::zeroed()
     };
 
@@ -113,9 +205,10 @@ impl ExposureFeature {
 }
 
 impl ViewFeature for ExposureFeature {
-  /// Its state, which every lit pass reads its scale from, one while it is off; so it is kept whatever the settings.
+  /// Its state and the histogram's bins, which every lit pass reads its scale from, one while it is off; so they are
+  /// kept whatever the settings.
   fn get_memory(&self) -> u64 {
-    self.state.size()
+    self.state.size() + self.bins.size()
   }
 
   /// Nothing to let go of on its own: its state goes with it.

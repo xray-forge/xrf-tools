@@ -1,10 +1,12 @@
 use glam::{Mat4, Vec3, Vec4};
 
+use crate::contract::render_display_transform::RenderDisplayTransform;
 use crate::contract::render_light_model::RenderLightModel;
 use crate::contract::render_tonemap_mode::RenderTonemapMode;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{authored_colour, srgb_decoded, srgb_encoded};
+use crate::pass::display_mode::DisplayMode;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 
@@ -101,4 +103,32 @@ fn the_lighting_decodes_what_it_lights_with_and_flags_the_shaders() {
   assert_eq!(physical.sky, engine.sky);
   assert_eq!(physical.forward_sun, engine.forward_sun);
   assert_eq!(physical.forward_hemi, engine.forward_hemi);
+}
+
+// The engine's scene is shown as it is, or by the engine's curve where it holds linear light; the physical light's by
+// its display transform, PBR Neutral unless the view asks for another.
+#[test]
+fn each_view_is_shown_by_its_light_models_display_mode() {
+  let mut linear: RenderViewOptions = RenderViewOptions::default();
+
+  linear.features.tonemap = RenderTonemapMode::Enhanced;
+  assert_eq!(DisplayMode::of(&RenderViewOptions::default()), DisplayMode::AsIs);
+  assert_eq!(DisplayMode::of(&linear), DisplayMode::Tonemapped);
+  assert_eq!(DisplayMode::of(&physical()), DisplayMode::PbrNeutral);
+
+  for (transform, mode) in [
+    (RenderDisplayTransform::Engine, DisplayMode::EngineEncoded),
+    (RenderDisplayTransform::Agx, DisplayMode::Agx),
+    (RenderDisplayTransform::PbrNeutral, DisplayMode::PbrNeutral),
+  ] {
+    let mut options: RenderViewOptions = physical();
+
+    options.features.display_transform = transform;
+    assert_eq!(DisplayMode::of(&options), mode);
+  }
+
+  let mut unlit: RenderViewOptions = physical();
+
+  unlit.mode.is_lit = false;
+  assert_eq!(DisplayMode::of(&unlit), DisplayMode::AsIs);
 }

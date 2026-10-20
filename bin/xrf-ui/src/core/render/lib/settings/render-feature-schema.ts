@@ -4,6 +4,7 @@ import {
   ERenderBloomMode,
   ERenderContactShadowMode,
   ERenderDebandingMode,
+  ERenderDisplayTransform,
   ERenderDlssPreset,
   ERenderFogMode,
   ERenderFoliageMode,
@@ -91,6 +92,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     passes: toNumber(1, 4, true, undefined, 2),
     radius: toNumber(8, 128),
   },
+  displayTransform: toChoice(ERenderDisplayTransform),
   // The enhanced bloom's own menu bounds.
   enhancedBloom: {
     blur: toNumber(1, 5),
@@ -104,6 +106,8 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   exposure: {
     adaptation: toNumber(0.01, 10),
     amount: toNumber(0, 1),
+    // Stops either way, as a camera's exposure compensation dial.
+    compensation: toNumber(-6, 6),
     isEnabled: FLAG,
     lowLuminance: toNumber(0.0001, 1),
     middleGray: toNumber(0, 2),

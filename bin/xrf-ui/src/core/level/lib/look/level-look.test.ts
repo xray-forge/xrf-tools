@@ -45,7 +45,14 @@ describe("level look", () => {
     const look: ILevelLook = toGameLevelLook(ANOMALY, DEFAULT_RENDER_EXPOSURE_SETTINGS, EXrayEngine.EXTENDED);
 
     expect(look.bloom).toEqual({ isEnabled: true, radius: 1, strength: 0.05, threshold: 0 });
-    expect(look.exposure).toEqual({ adaptation: 10, amount: 1, isEnabled: true, lowLuminance: 0.5, middleGray: 1.5 });
+    expect(look.exposure).toEqual({
+      adaptation: 10,
+      amount: 1,
+      compensation: 0,
+      isEnabled: true,
+      lowLuminance: 0.5,
+      middleGray: 1.5,
+    });
     expect(look.lightScales).toEqual({ ambient: 1, hemi: 1, sun: 2 });
     expect(look.corrections).toEqual(NEUTRAL_LEVEL_IMAGE_CORRECTIONS);
 

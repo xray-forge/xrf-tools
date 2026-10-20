@@ -4,6 +4,7 @@ use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSe
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_debanding_settings::RenderDebandingSettings;
+use crate::contract::render_display_transform::RenderDisplayTransform;
 use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
 use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_fog_settings::RenderFogSettings;
@@ -34,6 +35,8 @@ pub struct RenderViewFeatures {
   pub tonemap: RenderTonemapMode,
   /// What the light is computed in: the engine's display-encoded values, or linear light.
   pub light_model: RenderLightModel,
+  /// What shows the physical light's frame on the display.
+  pub display_transform: RenderDisplayTransform,
   pub bloom: RenderBloomSettings,
   /// Which bloom is drawn, and the enhanced bloom's strengths.
   pub enhanced_bloom: RenderEnhancedBloomSettings,
@@ -83,6 +86,7 @@ impl Default for RenderViewFeatures {
       exposure: RenderExposureSettings::default(),
       tonemap: RenderTonemapMode::Engine,
       light_model: RenderLightModel::Engine,
+      display_transform: RenderDisplayTransform::PbrNeutral,
       bloom: RenderBloomSettings::default(),
       enhanced_bloom: RenderEnhancedBloomSettings::default(),
       fog: RenderFogSettings::default(),

@@ -14,7 +14,13 @@ import {
   LEVEL_LOOK_FIELD_GROUPS,
 } from "@/applications/level-viewer/lib/look/level-look-fields";
 import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
-import { ERenderBloomMode, ERenderLightModel, RenderBloomMode, RenderLightModel } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderBloomMode,
+  ERenderLightModel,
+  RenderBloomMode,
+  RenderDisplayTransform,
+  RenderLightModel,
+} from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
@@ -29,6 +35,11 @@ import {
   RENDER_BLOOM_MODE_OPTIONS,
   RENDER_ENHANCED_BLOOM_LIMITS,
 } from "@/core/render/lib/features/render-bloom-choices";
+import {
+  explainRenderDisplayTransform,
+  RENDER_DISPLAY_TRANSFORM_OPTIONS,
+} from "@/core/render/lib/features/render-display-transform-choices";
+import { formatStops, RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features/render-exposure-choices";
 import { RENDER_LIGHT_MODEL_OPTIONS } from "@/core/render/lib/features/render-light-model-choices";
 import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
@@ -92,6 +103,8 @@ export function LevelLookAction({
   const isEnhancedBloom: boolean = bloom.mode === ERenderBloomMode.ENHANCED;
   // What the view lights in: its own choice, else the settings'.
   const lightModel: RenderLightModel = features.lightModel ?? settings.lightModel;
+  const isPhysical: boolean = lightModel === ERenderLightModel.PHYSICAL;
+  const displayTransform: RenderDisplayTransform = features.displayTransform ?? settings.displayTransform;
 
   const { choice, look, defaults } = lookService;
   const picked: string = choice.source === ELevelLookSource.CUSTOM ? EDITED : choice.source;
@@ -126,7 +139,7 @@ export function LevelLookAction({
       label={"Look"}
       description={`Exposure, light and image as ${options.find((it) => it.value === picked)?.label ?? "set"}`}
       icon={<ExposureIcon />}
-      isActive={picked !== ELevelLookSource.GAME || isEnhancedBloom || lightModel === ERenderLightModel.PHYSICAL}
+      isActive={picked !== ELevelLookSource.GAME || isEnhancedBloom || isPhysical}
     >
       <div className={"flex w-72 flex-col gap-3 px-4 py-2"}>
         <Typography className={"text-text-secondary"} variant={"overline"}>
@@ -149,6 +162,35 @@ export function LevelLookAction({
           value={lightModel}
           onChange={(next: RenderLightModel) => viewService.setFeatures({ ...features, lightModel: next })}
         />
+
+        <div className={"flex flex-col gap-1"}>
+          <RenderValueChoice
+            label={"Display"}
+            options={RENDER_DISPLAY_TRANSFORM_OPTIONS}
+            value={displayTransform}
+            isDisabled={!isPhysical}
+            onChange={(next: RenderDisplayTransform) =>
+              viewService.setFeatures({ ...features, displayTransform: next })
+            }
+          />
+
+          <p className={"text-xs text-text-secondary"}>
+            {isPhysical
+              ? explainRenderDisplayTransform(displayTransform)
+              : "The display transform and the exposure compensation take effect under the physical light."}
+          </p>
+
+          <RenderValueSlider
+            label={"Compensation"}
+            value={look.exposure.compensation}
+            {...RENDER_EXPOSURE_LIMITS.compensation}
+            isDisabled={!isPhysical}
+            format={formatStops}
+            onChange={(compensation: number) =>
+              lookService.edit({ ...look, exposure: { ...look.exposure, compensation } })
+            }
+          />
+        </div>
 
         <CheckboxFormRow
           label={"Auto exposure"}
@@ -211,6 +253,7 @@ export function LevelLookAction({
                   min={field.min}
                   max={field.max}
                   step={field.step}
+                  isDisabled={group.isEngineOnly && isPhysical}
                   format={(value: number) => formatNumber(value, 2)}
                   onChange={(value: number) => lookService.edit(field.write(look, value))}
                 />

@@ -282,10 +282,12 @@ impl SceneView {
       options.features.shadows.resolution,
       options.features.shadows.get_cascade_count() > 0,
     );
-    self
-      .features
-      .exposure
-      .prepare(frame.queue, &options.features.exposure, Instant::now());
+    self.features.exposure.prepare(
+      frame.queue,
+      &options.features.exposure,
+      options.is_light_physical(),
+      Instant::now(),
+    );
 
     let sun_sprite: Option<(String, Vec4)> = self.features.flares.prepare(
       device,
@@ -1538,10 +1540,11 @@ impl SceneView {
       shown = layer;
     }
 
-    self
-      .features
-      .exposure
-      .add_passes((&mut *graph, runtime), passes, (handles.high, lit.exposure));
+    self.features.exposure.add_passes(
+      (&mut *graph, &mut *bindings, runtime),
+      passes,
+      (handles.high, handles.scene, handles.size, lit.exposure),
+    );
 
     output.scene = resolved;
     output.shown = shown;

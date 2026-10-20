@@ -10,6 +10,7 @@
 #import "common/debug_colours"
 #import "common/luminance"
 #import "common/srgb"
+#import "common/display_transform"
 
 // The viewport's finished scene put into its rectangle of the window, moved where the water and the particles distort
 // it; or, for a debug view, one of the targets the scene was built from.
@@ -323,24 +324,17 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   var color: vec3<f32> = select(textureLoad(scene, drawn_texel(read), 0).rgb,
     textureLoad(upscaled, vec2<i32>(read), 0).rgb, present.is_upscaled != 0u);
 
-  let is_linear: bool = present.tonemap.x > 0.5;
+  let display: u32 = u32(present.display.x);
 
-  // A scene of linear light at its exposure is tonemapped here, by the engine's curve, before everything the engine
-  // lays over its tonemapped frame.
-  if (is_linear) {
-    color = tonemap(color, 1.0);
-  }
-
-  // Linear light, tonemapped, is encoded for the display once, before what the engine lays over its displayed frame.
-  if (present.tonemap.y > 0.5) {
-    color = srgb_encoded(color);
-  }
+  // A scene of linear light at its exposure is shown here, by the engine's curve or the physical light's display
+  // transform and encoding, before everything the engine lays over its displayed frame.
+  color = shown_for_display(color, display);
 
   // The sky debanding, where nothing was drawn, over the shown steps it bands in: its neighbours read about the pixel
   // itself, not where the distortion moved its read.
   if (present.deband.x > 0.0 && textureLoad(depth_target, texel, 0) <= 0.0) {
     color = debanded(upscaled, bloom_sampler, color, (pixel + 0.5) / present.size, 1.0 / present.size,
-      u32(present.deband.x), present.deband.y, present.deband.z, vec2<bool>(is_linear, present.tonemap.y > 0.5));
+      u32(present.deband.x), present.deband.y, present.deband.z, display);
   }
 
   // The enhanced bloom screened over the frame, `1 - (1 - img)(1 - bloom)`, before its corrections; where the

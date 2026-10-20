@@ -9,9 +9,15 @@ import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-r
 export const RENDER_EXPOSURE_LIMITS = {
   adaptation: toRenderLimits(RENDER_FEATURE_SCHEMA.exposure.adaptation, 0.01),
   amount: toRenderLimits(RENDER_FEATURE_SCHEMA.exposure.amount, 0.05),
+  compensation: toRenderLimits(RENDER_FEATURE_SCHEMA.exposure.compensation, 0.1),
   lowLuminance: toRenderLimits(RENDER_FEATURE_SCHEMA.exposure.lowLuminance, 0.0001),
   middleGray: toRenderLimits(RENDER_FEATURE_SCHEMA.exposure.middleGray, 0.05),
 } as const;
+
+/** @returns Stops of exposure compensation, signed, in tenths. */
+export function formatStops(stops: number): string {
+  return `${stops > 0 ? "+" : ""}${formatNumber(stops, 1)} EV`;
+}
 
 /** @returns An exposure value that reads in hundredths: its middle gray, amount or adaptation speed. */
 export function formatExposure(value: number): string {

@@ -58,6 +58,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("common/lighting", include_str!("../../shaders/common/lighting.wgsl")),
   ("common/luminance", include_str!("../../shaders/common/luminance.wgsl")),
   ("common/srgb", include_str!("../../shaders/common/srgb.wgsl")),
+  (
+    "common/display_transform",
+    include_str!("../../shaders/common/display_transform.wgsl"),
+  ),
   ("common/reactive", include_str!("../../shaders/common/reactive.wgsl")),
   (
     "common/scene_light",
@@ -149,6 +153,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/frame/overhead_shift.wgsl"),
   ),
   ("frame/exposure", include_str!("../../shaders/frame/exposure.wgsl")),
+  (
+    "frame/exposure_histogram",
+    include_str!("../../shaders/frame/exposure_histogram.wgsl"),
+  ),
   ("frame/meter", include_str!("../../shaders/frame/meter.wgsl")),
   (
     "frame/calibration",
@@ -461,6 +469,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/exposure",
     include_str!("../../shaders/generated/frame/exposure.wgsl"),
+  ),
+  (
+    "generated/frame/exposure_histogram",
+    include_str!("../../shaders/generated/frame/exposure_histogram.wgsl"),
   ),
   (
     "generated/frame/meter",

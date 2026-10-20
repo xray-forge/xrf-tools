@@ -33,6 +33,7 @@ export type TRenderViewFeatureKey =
   | "ambientOcclusion"
   | "antialiasing"
   | "debanding"
+  | "displayTransform"
   | "enhancedBloom"
   | "exposure"
   | "fog"

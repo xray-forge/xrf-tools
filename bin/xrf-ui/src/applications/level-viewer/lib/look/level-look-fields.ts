@@ -32,6 +32,8 @@ export const LEVEL_ENHANCED_BLOOM_FIELDS: ReadonlyArray<ILevelEnhancedBloomField
 /** A titled group of the look's sliders. */
 export interface ILevelLookFieldGroup {
   title: string;
+  /** Whether only the engine light model reads it: the physical light meters its exposure by histogram. */
+  isEngineOnly: boolean;
   fields: ReadonlyArray<ILevelLookField>;
 }
 
@@ -72,6 +74,7 @@ export const LEVEL_LOOK_FIELD_GROUPS: ReadonlyArray<ILevelLookFieldGroup> = [
         write: (look, adaptation) => ({ ...look, exposure: { ...look.exposure, adaptation } }),
       },
     ],
+    isEngineOnly: true,
     title: "Tonemap",
   },
   {
@@ -101,6 +104,7 @@ export const LEVEL_LOOK_FIELD_GROUPS: ReadonlyArray<ILevelLookFieldGroup> = [
         write: (look, ambient) => ({ ...look, lightScales: { ...look.lightScales, ambient } }),
       },
     ],
+    isEngineOnly: false,
     title: "Light scales",
   },
   {
@@ -130,6 +134,7 @@ export const LEVEL_LOOK_FIELD_GROUPS: ReadonlyArray<ILevelLookFieldGroup> = [
         write: (look, strength) => ({ ...look, bloom: { ...look.bloom, strength } }),
       },
     ],
+    isEngineOnly: false,
     title: LEVEL_LOOK_BLOOM_GROUP,
   },
   {
@@ -175,6 +180,7 @@ export const LEVEL_LOOK_FIELD_GROUPS: ReadonlyArray<ILevelLookFieldGroup> = [
         })
       ),
     ],
+    isEngineOnly: false,
     title: "Image",
   },
 ];

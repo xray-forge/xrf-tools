@@ -100,6 +100,7 @@ export function toNativeViewOptions(
       bloom: look.bloom,
       corrections: { ...corrections, grading: [...corrections.grading] },
       debanding: features.debanding,
+      displayTransform: features.displayTransform,
       enhancedBloom: features.enhancedBloom,
       exposure: look.exposure,
       fog: features.fog,

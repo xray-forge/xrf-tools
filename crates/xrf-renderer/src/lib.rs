@@ -56,6 +56,7 @@ pub use crate::contract::render_contact_shadow_settings::RenderContactShadowSett
 pub use crate::contract::render_debanding_mode::RenderDebandingMode;
 pub use crate::contract::render_debanding_settings::RenderDebandingSettings;
 pub use crate::contract::render_debug_view::RenderDebugView;
+pub use crate::contract::render_display_transform::RenderDisplayTransform;
 pub use crate::contract::render_dlss_availability::RenderDlssAvailability;
 pub use crate::contract::render_dlss_preset::RenderDlssPreset;
 pub use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;

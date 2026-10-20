@@ -65,7 +65,7 @@ export const NEUTRAL_LEVEL_IMAGE_CORRECTIONS: ILevelImageCorrections = {
 export const ANOMALY_LEVEL_LOOK: ILevelLook = {
   bloom: { isEnabled: true, radius: 1, strength: 0.05, threshold: 0 },
   corrections: NEUTRAL_LEVEL_IMAGE_CORRECTIONS,
-  exposure: { adaptation: 10, amount: 1, isEnabled: true, lowLuminance: 0.5, middleGray: 1.5 },
+  exposure: { adaptation: 10, amount: 1, compensation: 0, isEnabled: true, lowLuminance: 0.5, middleGray: 1.5 },
   lightScales: { ambient: 1, hemi: 1, sun: 2 },
 };
 
@@ -76,7 +76,7 @@ export const ANOMALY_LEVEL_LOOK: ILevelLook = {
 export const XRF_LEVEL_LOOK: ILevelLook = {
   bloom: OPENXRAY_LEVEL_BLOOM,
   corrections: NEUTRAL_LEVEL_IMAGE_CORRECTIONS,
-  exposure: { adaptation: 0.2, amount: 1, isEnabled: true, lowLuminance: 0.4, middleGray: 1.1 },
+  exposure: { adaptation: 0.2, amount: 1, compensation: 0, isEnabled: true, lowLuminance: 0.4, middleGray: 1.1 },
   lightScales: { ambient: 0.1, hemi: 0.6, sun: 1 },
 };
 
@@ -131,6 +131,7 @@ export function toGameLevelLook(
     exposure: {
       adaptation: defaults.tonemapAdaptation ?? exposure.adaptation,
       amount: defaults.tonemapAmount ?? exposure.amount,
+      compensation: exposure.compensation,
       isEnabled: defaults.isTonemapped ?? exposure.isEnabled,
       lowLuminance: defaults.tonemapLowLuminance ?? exposure.lowLuminance,
       middleGray: defaults.tonemapMiddleGray ?? exposure.middleGray,

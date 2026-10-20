@@ -21,6 +21,8 @@ use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::pass::enhanced_water_parameters::EnhancedWaterParameters;
 use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::pass::exposure_head::ExposureHead;
+use crate::pass::exposure_histogram_parameters::ExposureHistogramParameters;
+use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::exposure_state::ExposureState;
 use crate::pass::exposure_uniform::ExposureUniform;
@@ -199,6 +201,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut froxel_inject: ShaderBindings = ShaderBindings::new();
   let mut froxel_integrate: ShaderBindings = ShaderBindings::new();
   let mut exposure: ShaderBindings = ShaderBindings::new();
+  let mut exposure_histogram: ShaderBindings = ShaderBindings::new();
   let mut meter: ShaderBindings = ShaderBindings::new();
   let mut calibration: ShaderBindings = ShaderBindings::new();
   let mut flare: ShaderBindings = ShaderBindings::new();
@@ -264,6 +267,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<ExposureUniform>()
     .declare::<ExposureState>()
     .declare::<ExposureHead>()
+    .declare::<ExposureHistogramUniform>()
     .declare::<MeterSample>()
     .declare::<CalibrationUniform>()
     .declare::<FlareUniform>()
@@ -333,6 +337,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   froxel_inject.add::<FroxelInjectParameters<'_>>()?;
   froxel_integrate.add::<FroxelIntegrateParameters>()?;
   exposure.add::<ExposureParameters>()?;
+  exposure_histogram.add::<ExposureHistogramParameters>()?;
   meter.add::<MeterParameters>()?;
   calibration.add::<CalibrationParameters>()?;
   flare
@@ -549,6 +554,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/exposure",
       format!("{STRUCTS_IMPORT}{}", exposure.to_wgsl()),
+    ),
+    (
+      "generated/frame/exposure_histogram",
+      format!("{STRUCTS_IMPORT}{}", exposure_histogram.to_wgsl()),
     ),
     ("generated/frame/meter", format!("{STRUCTS_IMPORT}{}", meter.to_wgsl())),
     (

@@ -1,11 +1,21 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { RenderLightModel, RenderTonemapMode } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderLightModel,
+  RenderDisplayTransform,
+  RenderLightModel,
+  RenderTonemapMode,
+} from "@/core/ipc/types/xrf-renderer";
+import {
+  explainRenderDisplayTransform,
+  RENDER_DISPLAY_TRANSFORM_OPTIONS,
+} from "@/core/render/lib/features/render-display-transform-choices";
 import {
   explainRenderTonemapMode,
   formatExposure,
   formatLowLuminance,
+  formatStops,
   RENDER_EXPOSURE_LIMITS,
   RENDER_TONEMAP_MODE_OPTIONS,
 } from "@/core/render/lib/features/render-exposure-choices";
@@ -29,9 +39,16 @@ export function SettingsRendererExposure(): ReactElement {
   const exposure: TRenderExposureSettings = renderSettingsService.rendererFeatures.exposure;
 
   const onSet = useRendererOverride("exposure");
+  // The display transform and the exposure compensation are the physical light's alone; the tonemap mode and the
+  // engine meter's values the engine light's, as the physical light's scene is always linear and metered by histogram.
+  const isPhysical: boolean = renderSettingsService.rendererFeatures.lightModel === ERenderLightModel.PHYSICAL;
+  const isMetered: boolean = exposure.isEnabled && !isPhysical;
 
   return (
-    <DetailSection title={"Exposure"} description={"Automatic exposure, as the engine's tonemapper applies it."}>
+    <DetailSection
+      title={"Exposure"}
+      description={"Automatic exposure: the engine tonemapper's meter, or the physical light's histogram."}
+    >
       <div className={"mt-4 flex flex-col gap-6"}>
         <ChoiceFormRow
           label={"Light"}
@@ -42,20 +59,42 @@ export function SettingsRendererExposure(): ReactElement {
         />
 
         <ChoiceFormRow
+          label={"Display transform"}
+          description={explainRenderDisplayTransform(renderSettingsService.rendererFeatures.displayTransform)}
+          options={RENDER_DISPLAY_TRANSFORM_OPTIONS}
+          value={renderSettingsService.rendererFeatures.displayTransform}
+          isDisabled={!isPhysical}
+          onChange={(displayTransform: RenderDisplayTransform) =>
+            renderSettingsService.setRendererOverrides({ displayTransform })
+          }
+        />
+
+        <ChoiceFormRow
           label={"Tonemap"}
           description={explainRenderTonemapMode(renderSettingsService.rendererFeatures.tonemap)}
           options={RENDER_TONEMAP_MODE_OPTIONS}
           value={renderSettingsService.rendererFeatures.tonemap}
+          isDisabled={isPhysical}
           onChange={(tonemap: RenderTonemapMode) => renderSettingsService.setRendererOverrides({ tonemap })}
         />
 
         <CheckboxFormRow
           label={"Auto exposure"}
           description={
-            "Adapts brightness to the frame's average luminance. Off, the engine's fixed daylight exposure is used."
+            "Adapts brightness to the frame's average luminance. Off, the engine's fixed daylight exposure is used, or the compensation under the physical light."
           }
           isChecked={exposure.isEnabled}
           onChange={(isEnabled: boolean) => onSet({ isEnabled })}
+        />
+
+        <SliderFormRow
+          label={"Compensation"}
+          description={"Stops the physical light's exposure brings the frame above middle grey, or below it."}
+          value={exposure.compensation}
+          {...RENDER_EXPOSURE_LIMITS.compensation}
+          isDisabled={!isPhysical}
+          format={formatStops}
+          onChange={(compensation: number) => onSet({ compensation })}
         />
 
         <SliderFormRow
@@ -63,7 +102,7 @@ export function SettingsRendererExposure(): ReactElement {
           description={"Target luminance. Game setting: r2_tonemap_middlegray."}
           value={exposure.middleGray}
           {...RENDER_EXPOSURE_LIMITS.middleGray}
-          isDisabled={!exposure.isEnabled}
+          isDisabled={!isMetered}
           format={formatExposure}
           onChange={(middleGray: number) => onSet({ middleGray })}
         />
@@ -73,7 +112,7 @@ export function SettingsRendererExposure(): ReactElement {
           description={"Share of the adaptation applied. Game setting: r2_tonemap_amount."}
           value={exposure.amount}
           {...RENDER_EXPOSURE_LIMITS.amount}
-          isDisabled={!exposure.isEnabled}
+          isDisabled={!isMetered}
           format={formatExposure}
           onChange={(amount: number) => onSet({ amount })}
         />
@@ -83,7 +122,7 @@ export function SettingsRendererExposure(): ReactElement {
           description={"Lowest luminance the meter reads. Game setting: r2_tonemap_lowlum."}
           value={exposure.lowLuminance}
           {...RENDER_EXPOSURE_LIMITS.lowLuminance}
-          isDisabled={!exposure.isEnabled}
+          isDisabled={!isMetered}
           format={formatLowLuminance}
           onChange={(lowLuminance: number) => onSet({ lowLuminance })}
         />
@@ -93,7 +132,7 @@ export function SettingsRendererExposure(): ReactElement {
           description={"How quickly the exposure follows the frame. Game setting: r2_tonemap_adaptation."}
           value={exposure.adaptation}
           {...RENDER_EXPOSURE_LIMITS.adaptation}
-          isDisabled={!exposure.isEnabled}
+          isDisabled={!isMetered}
           format={formatExposure}
           onChange={(adaptation: number) => onSet({ adaptation })}
         />

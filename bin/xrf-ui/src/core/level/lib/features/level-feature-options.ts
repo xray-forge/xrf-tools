@@ -1,6 +1,11 @@
 import { isRecord, Nullable } from "@xrf/types";
 
-import { ERenderAntialiasing, RenderAntialiasing, RenderLightModel } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderAntialiasing,
+  RenderAntialiasing,
+  RenderDisplayTransform,
+  RenderLightModel,
+} from "@/core/ipc/types/xrf-renderer";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { toRenderFeatureChoice } from "@/core/render/lib/settings/render-feature-choice";
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
@@ -119,6 +124,8 @@ export interface ILevelFeatureOptions {
   antialiasing: Nullable<RenderAntialiasing>;
   /** What the view lights in, where it sets its own: the engine's display values or linear light; null for the settings'. */
   lightModel: Nullable<RenderLightModel>;
+  /** How the physical light's frame is brought into the display's range, where the view sets its own; null for the settings'. */
+  displayTransform: Nullable<RenderDisplayTransform>;
   /** How much smaller than the viewport the view is drawn, where it sets its own. */
   upscaling: Partial<TRenderUpscalingSettings>;
   /** What the view resolves its frame at, where it sets its own: a resolution, and the scale an automatic one takes. */
@@ -284,6 +291,7 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     ambientOcclusion: pick("ambientOcclusion"),
     antialiasing: antialiasing && LEVEL_ANTIALIASING_MODES.includes(antialiasing) ? antialiasing : null,
     debanding: pick("debanding"),
+    displayTransform: overrides.displayTransform ?? null,
     enhancedBloom: pick("enhancedBloom"),
     fog: pick("fog"),
     glass: pick("glass"),
@@ -392,6 +400,7 @@ export function toLevelRendererFeatures(
     ambientOcclusion: toLevelRendererFeature("ambientOcclusion", settings, view, toggles.isOccluded),
     antialiasing: toLevelRendererAntialiasing(settings.antialiasing, view, toggles.isAntialiased),
     debanding: toLevelModeFeature("debanding", settings, view),
+    displayTransform: view.displayTransform ?? settings.displayTransform,
     enhancedBloom: toLevelModeFeature("enhancedBloom", settings, view),
     fog: toLevelModeFeature("fog", settings, view),
     glass: toLevelModeFeature("glass", settings, view),
