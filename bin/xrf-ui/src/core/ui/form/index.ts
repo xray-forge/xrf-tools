@@ -8,6 +8,7 @@ export * from "./ChoiceListFormRow";
 export * from "./EditableList";
 export * from "./FormRow";
 export * from "./PathFormRow";
+export * from "./ReferenceSlider";
 export * from "./SliderFormRow";
 export * from "./StringListFormRow";
 export * from "./SwitchFormRow";

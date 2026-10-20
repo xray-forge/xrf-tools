@@ -73,6 +73,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/common/reflection_trace.wgsl"),
   ),
   (
+    "common/ray_guides",
+    include_str!("../../shaders/common/ray_guides.wgsl"),
+  ),
+  (
     "common/reflection_end",
     include_str!("../../shaders/common/reflection_end.wgsl"),
   ),

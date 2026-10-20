@@ -303,10 +303,6 @@ fn relit_radiance(texel: vec2<i32>) -> vec3<f32> {
     world_direction(normal), world_direction(normalize(position)), material.z, occlusion, bounced);
 }
 
-// The share of its distance the depth kept may stand off a point for the last frame to have shown it.
-const SOURCE_DEPTH_TOLERANCE: f32 = 0.03;
-// The fog past which a frame's colour holds too little of the point to take the fog off.
-const SOURCE_FOG_LIMIT: f32 = 0.98;
 
 // What the last frame showed where a hit's point stood, as light, and in `w` one where it did: the point taken through
 // that frame's jittered camera, moved back by the sway the motion target holds over the camera's own motion, read
@@ -357,9 +353,7 @@ fn remembered_radiance(texel: vec2<i32>, hit: vec3<f32>) -> vec4<f32> {
 
   let scale: f32 = select(1.0, exposure.used, lighting.params.z > 0.5);
   let shown: vec3<f32> = scene_light(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb, scale);
-  let lit: vec3<f32> = (shown - fog_color_at(lighting, hit, world.y) * fog) / (1.0 - fog);
-
-  return vec4<f32>(max(lit, vec3<f32>(0.0)), 1.0);
+  return vec4<f32>(source_unfogged(shown, fog, fog_color_at(lighting, hit, world.y)), 1.0);
 }
 
 // What the last frame showed of the sky in a world direction, as light, and in `w` one where it did: the direction

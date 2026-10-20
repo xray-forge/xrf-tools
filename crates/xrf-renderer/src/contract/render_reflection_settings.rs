@@ -47,8 +47,8 @@ pub struct RenderReflectionSettings {
   /// Steps the water's reflection marches over the screen.
   pub water_steps: u32,
   /// Whether a ray the screen does not answer is traced against the level's static geometry by hardware ray query,
-  /// its hit lit, in place of the sky: the surfaces' while they are drawn, the water's while it reflects; on a device
-  /// without ray queries it falls back to the sky as before.
+  /// its hit lit, in place of the sky: the surfaces' while they are drawn, the water's while it reflects; a device
+  /// without ray queries reflects the sky.
   pub is_traced: bool,
   /// Frames a pixel the screen does not answer waits between its traced rays, the last answer held between.
   pub trace_interval: u32,

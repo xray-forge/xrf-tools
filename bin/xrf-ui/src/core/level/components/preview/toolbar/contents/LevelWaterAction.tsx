@@ -29,7 +29,11 @@ import {
   RENDER_WATER_LIMITS,
   RENDER_WATER_MODE_OPTIONS,
 } from "@/core/render/lib/features/render-water-choices";
-import { TRenderEnhancedWaterSettings, TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";
+import {
+  TRenderEnhancedWaterSettings,
+  TRenderReflectionSettings,
+  TRenderWaterSettings,
+} from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -53,7 +57,11 @@ export function LevelWaterAction({
   const water: TRenderWaterSettings = state.value;
   const enhanced: TRenderEnhancedWaterSettings = water.enhanced;
   // The water's reflection is set in the Reflections group, beside the surfaces' and the ray trace both share.
-  const reflections = toLevelModeFeature("reflections", renderFeatures.settings, renderFeatures.features);
+  const reflections: TRenderReflectionSettings = toLevelModeFeature(
+    "reflections",
+    renderFeatures.settings,
+    renderFeatures.features
+  );
   const isReflectionTraced: boolean = renderService.isTraceable && reflections.isTraced;
 
   const onSetEnhanced = useCallback(

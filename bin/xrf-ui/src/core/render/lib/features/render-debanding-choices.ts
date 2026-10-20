@@ -1,4 +1,4 @@
-import { formatNumber } from "@xrf/format";
+import { formatCount, formatNumber } from "@xrf/format";
 
 import { ERenderDebandingMode, RenderDebandingMode } from "@/core/ipc/types/xrf-renderer";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
@@ -26,7 +26,7 @@ export function explainRenderDebandingMode(mode: RenderDebandingMode): string {
 
 /** @returns How many times a sky pixel is averaged with its neighbours. */
 export function formatDebandingPasses(passes: number): string {
-  return passes === 1 ? "Once" : `${formatNumber(passes, 0)} times`;
+  return passes === 1 ? "Once" : `${formatCount(passes)} times`;
 }
 
 /** @returns How far out a sky pixel's neighbours are read at most. */

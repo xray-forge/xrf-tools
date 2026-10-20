@@ -1,4 +1,4 @@
-import { formatNumber, formatPercent } from "@xrf/format";
+import { formatCount, formatNumber, formatPercent } from "@xrf/format";
 
 import {
   ERenderReflectionMode,
@@ -65,14 +65,9 @@ export function formatReflectionSkyGain(gain: number): string {
   return `${formatNumber(gain, 2)}×`;
 }
 
-/** @returns How many steps a reflection walks. */
-export function formatReflectionSteps(steps: number): string {
-  return formatNumber(steps, 0);
-}
-
 /** @returns How often a pixel the screen misses is traced again. */
 export function formatReflectionTraceInterval(interval: number): string {
-  return interval <= 1 ? "Every frame" : `Every ${formatNumber(interval, 0)} frames`;
+  return interval <= 1 ? "Every frame" : `Every ${formatCount(interval)} frames`;
 }
 
 /** @returns The roughness past which a surface is not traced. */

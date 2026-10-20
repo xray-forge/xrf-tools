@@ -33,10 +33,6 @@ const FRESH_WINDOW: i32 = 2;
 // trace, or past the list's room.
 const WATER_HELD: f32 = -2.0;
 
-// The distance along the view the history keeps for a pixel whose ray met the sky; the history keeps none where no
-// water drew.
-const SKY_DISTANCE: f32 = 60000.0;
-
 // Where a pixel's point stood on the last frame's screen: along its view as far as what its ray met, or far off at the
 // sky where it met nothing or holds.
 fn previous_place(uv: vec2<f32>, eye: vec3<f32>, met_distance: f32) -> vec2<f32> {

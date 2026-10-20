@@ -20,10 +20,12 @@ import { SettingsRendererLod } from "./SettingsRendererLod";
 import { SettingsRendererParallax } from "./SettingsRendererParallax";
 import { SettingsRendererPuddles } from "./SettingsRendererPuddles";
 import { SettingsRendererRainDrops } from "./SettingsRendererRainDrops";
+import { SettingsRendererRayTracedReflections } from "./SettingsRendererRayTracedReflections";
 import { SettingsRendererReflections } from "./SettingsRendererReflections";
 import { SettingsRendererShadows } from "./SettingsRendererShadows";
 import { SettingsRendererVolumetric } from "./SettingsRendererVolumetric";
 import { SettingsRendererWater } from "./SettingsRendererWater";
+import { SettingsRendererWaterReflection } from "./SettingsRendererWaterReflection";
 
 /** The tabs rendering settings are split into, by what they change, as a game's graphics settings are. */
 export enum ERenderSettingsTab {
@@ -83,6 +85,8 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
       SettingsRendererAmbientOcclusion,
       SettingsRendererIndirectLight,
       SettingsRendererReflections,
+      SettingsRendererWaterReflection,
+      SettingsRendererRayTracedReflections,
       SettingsRendererRainDrops,
       SettingsRendererPuddles,
     ],

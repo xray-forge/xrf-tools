@@ -1,7 +1,7 @@
 import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
 import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { formatDegrees } from "@xrf/format";
+import { formatCount, formatDegrees } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
@@ -170,7 +170,7 @@ export function LevelSunAction({
           value={sunShafts.steps}
           isDisabled={!isMarched}
           {...LEVEL_SUN_SHAFTS_STEPS_LIMITS}
-          format={(value: number) => value.toFixed(0)}
+          format={formatCount}
           onChange={(steps: number) => weatherService.setSunShafts({ ...sunShafts, steps })}
         />
 

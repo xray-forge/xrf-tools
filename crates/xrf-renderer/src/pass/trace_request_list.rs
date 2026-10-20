@@ -2,8 +2,8 @@ use crate::pass::trace_request::TraceRequest;
 
 /// The rays a pass leaves to the scene pass each frame: the requests, as many as `capacity` and one workgroup's at the
 /// least; their head (the count made, the scene pass's dispatch and the wait, `TraceRequest::HEAD_WORDS`); the
-/// dispatch copied out of it; and the wait copied out of it as the frame starts, which the listing pass reads plainly,
-/// since an atomic load in every pixel of a full-screen pass costs as much as its march.
+/// dispatch copied out of it; and the wait copied out of it as the frame starts, which the listing pass reads plainly
+/// rather than by an atomic load in every pixel.
 pub struct TraceRequestList {
   label: String,
   capacity: u32,

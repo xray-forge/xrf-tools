@@ -19,13 +19,8 @@
 // a screen showed takes its colour from that screen, so a traced reflection reads as the screen's own: the surfaces'
 // from the last frame's scene and depth, which their trace keeps, the water's from this frame's copy before the water.
 
-// The share of its distance the screen's depth may stand off a hit for the screen to show it, and the fog past which a
-// frame's colour holds too little of the point to take the fog off.
-const SCREEN_DEPTH_TOLERANCE: f32 = 0.03;
-const SCREEN_FOG_LIMIT: f32 = 0.98;
-
 // Where the screen `view_projection` drew shows a world point, and in `w` one where it shows it: read where the
-// screen's depth agrees within `SCREEN_DEPTH_TOLERANCE` of the point's distance. None off the screen, or in front of or
+// screen's depth agrees within `SOURCE_DEPTH_TOLERANCE` of the point's distance. None off the screen, or in front of or
 // behind what it shows.
 fn screen_place(point: vec3<f32>, view_projection: mat4x4<f32>) -> vec4<f32> {
   let clip: vec4<f32> = view_projection * vec4<f32>(point, 1.0);
@@ -44,7 +39,7 @@ fn screen_place(point: vec3<f32>, view_projection: mat4x4<f32>) -> vec4<f32> {
   let texel: vec2<i32> = clamp(vec2<i32>(uv * size), vec2<i32>(0), vec2<i32>(size) - 1);
   let stored: f32 = textureLoad(screen_depth, texel, 0);
 
-  if (stored <= 0.0 || abs(camera_view_distance(stored) - clip.w) > SCREEN_DEPTH_TOLERANCE * clip.w) {
+  if (stored <= 0.0 || abs(camera_view_distance(stored) - clip.w) > SOURCE_DEPTH_TOLERANCE * clip.w) {
     return vec4<f32>(0.0);
   }
 
@@ -64,15 +59,13 @@ fn remembered_light(point: vec3<f32>) -> vec4<f32> {
   let position: vec3<f32> = (camera.view * vec4<f32>(point, 1.0)).xyz;
   let fog: f32 = fog_amount_at(lighting, position, point.y);
 
-  if (fog > SCREEN_FOG_LIMIT) {
+  if (fog > SOURCE_FOG_LIMIT) {
     return vec4<f32>(0.0);
   }
 
   let scale: f32 = select(1.0, exposure.used, lighting.params.z > 0.5);
   let shown: vec3<f32> = scene_light(textureLoad(screen_scene, vec2<i32>(place.xy), 0).rgb, scale);
-  let lit: vec3<f32> = (shown - fog_color_at(lighting, position, point.y) * fog) / (1.0 - fog);
-
-  return vec4<f32>(max(lit, vec3<f32>(0.0)), 1.0);
+  return vec4<f32>(source_unfogged(shown, fog, fog_color_at(lighting, position, point.y)), 1.0);
 }
 
 // The wait the list's pixels stretch their turns by the next frame: as many times as the rays they asked this frame,

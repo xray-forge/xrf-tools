@@ -1,11 +1,9 @@
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ERenderIndirectLightMode } from "@/core/ipc/types/xrf-renderer";
-import {
-  formatOcclusionCount,
-  formatOcclusionRadius,
-} from "@/core/render/lib/features/render-ambient-occlusion-choices";
+import { formatOcclusionRadius } from "@/core/render/lib/features/render-ambient-occlusion-choices";
 import {
   explainRenderIndirectLightMode,
   formatIndirectLightIntensity,
@@ -66,7 +64,7 @@ export function SettingsRendererIndirectLight(): ReactElement {
           value={indirectLight.steps}
           {...RENDER_INDIRECT_LIGHT_LIMITS.steps}
           isDisabled={!isEnhanced}
-          format={formatOcclusionCount}
+          format={formatCount}
           onChange={(steps: number) => onSet({ steps })}
         />
       </div>

@@ -17,7 +17,7 @@ import { formatDebandingPasses } from "@/core/render/lib/features/render-debandi
 import { formatFogDensity, formatFogHeight, formatFogShare } from "@/core/render/lib/features/render-fog-choices";
 import { formatGrassDensity, formatGrassRadius } from "@/core/render/lib/features/render-grass-choices";
 import { formatIndirectLightIntensity } from "@/core/render/lib/features/render-indirect-light-choices";
-import { formatReflectionIntensity, formatReflectionSteps } from "@/core/render/lib/features/render-reflection-choices";
+import { formatReflectionIntensity } from "@/core/render/lib/features/render-reflection-choices";
 import { describeRenderLightShadowFilter, formatShadowFilter } from "@/core/render/lib/features/render-shadow-choices";
 import { describeRenderTraceSize } from "@/core/render/lib/features/render-trace-size-choices";
 import { describeRenderScale } from "@/core/render/lib/features/render-upscaling-choices";
@@ -129,7 +129,7 @@ export function LevelRendererAppliedSection({
             applied.reflections
               ? `${formatReflectionIntensity(applied.reflections.intensity ?? 0)} · ` +
                 `${describeRenderTraceSize(applied.reflections.traceSize).toLowerCase()} size · ` +
-                `${formatReflectionSteps(applied.reflections.steps)} steps`
+                `${formatCount(applied.reflections.steps)} steps`
               : "The cube alone"
           }
         />

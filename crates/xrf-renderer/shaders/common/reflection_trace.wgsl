@@ -11,6 +11,16 @@
 // its reflectance head on and roughness, which combine weighs the reflection by and the trace gates by alike, with the
 // prefiltered sky it reads where a ray meets nothing. The pyramid is passed in, so each pass binds it where it likes.
 
+// The share of its distance a screen's depth may stand off a hit for that screen to have shown it, and the fog past
+// which a screen's colour holds too little of the point to take the fog off.
+const SOURCE_DEPTH_TOLERANCE: f32 = 0.03;
+const SOURCE_FOG_LIMIT: f32 = 0.98;
+
+// The light a kept screen showed a point by once that screen's `fog` towards it, of `fog_color`, is taken off.
+fn source_unfogged(shown: vec3<f32>, fog: f32, fog_color: vec3<f32>) -> vec3<f32> {
+  return max((shown - fog_color * fog) / (1.0 - fog), vec3<f32>(0.0));
+}
+
 // Water's reflectance head on, from its index of refraction of 1.33, and a dry dielectric's.
 const COAT_F0: f32 = 0.02;
 const DIELECTRIC_F0: f32 = 0.04;

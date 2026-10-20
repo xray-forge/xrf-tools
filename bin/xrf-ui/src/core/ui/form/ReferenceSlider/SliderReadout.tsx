@@ -1,8 +1,10 @@
 import { default as RestartAltIcon } from "@mui/icons-material/RestartAlt";
-import { IconButton, Tooltip, Typography, TypographyProps } from "@mui/material";
+import { IconButton, Tooltip, Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
-import { ReactElement } from "react";
+import { ReactElement, useCallback } from "react";
 
+import { cn } from "@/core/theme/class-name";
+import { SLIDER_REFERENCE } from "@/core/theme/tokens";
 import { describeSliderRecommendation, ISliderReference } from "@/core/ui/form/ReferenceSlider/slider-reference";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -11,15 +13,15 @@ export interface ISliderReadoutProps extends BaseComponentProps {
   format: (value: number) => string;
   reference: Nullable<ISliderReference>;
   recommended?: Nullable<readonly [number, number]>;
-  /** The reading's type, the popovers' compact one or the settings' body. */
-  variant?: TypographyProps["variant"];
+  /** Whether it reads in the popovers' compact monospace rather than the settings' body text. */
+  isCompact?: boolean;
   isDisabled?: boolean;
   onReset: (value: number) => void;
 }
 
 /**
- * A slider's value as it reads: amber outside the recommended range, saying why on hover, and a reset to the reference
- * beside it once the value has left it.
+ * A slider's value as it reads: in the warning's colour outside the recommended range, saying why on hover, and a reset
+ * to the reference beside it once the value has left it.
  */
 export function SliderReadout({
   "data-testid": dataTestId = "slider-readout",
@@ -29,27 +31,36 @@ export function SliderReadout({
   format,
   reference,
   recommended,
-  variant = "caption",
+  isCompact = false,
   isDisabled = false,
   onReset,
 }: ISliderReadoutProps): ReactElement {
   const warning: Nullable<string> = describeSliderRecommendation(value, recommended);
   const referenceValue: Nullable<number> = reference?.value ?? null;
-  const isChanged: boolean = referenceValue !== null && format(referenceValue) !== format(value);
+  const resetLabel: Nullable<string> =
+    reference && referenceValue !== null && format(referenceValue) !== format(value)
+      ? `Reset to ${reference.label}: ${format(referenceValue)}`
+      : null;
+
+  const onResetClick = useCallback(() => {
+    if (referenceValue !== null) {
+      onReset(referenceValue);
+    }
+  }, [referenceValue, onReset]);
 
   return (
-    <span data-testid={dataTestId} id={id} className={`inline-flex items-center gap-0.5 ${className ?? ""}`}>
-      {isChanged && referenceValue !== null && reference ? (
-        <Tooltip title={`Reset to ${reference.label}: ${format(referenceValue)}`}>
-          <span>
+    <span data-testid={dataTestId} id={id} className={cn("inline-flex items-center gap-0.5", className)}>
+      {resetLabel ? (
+        <Tooltip title={resetLabel}>
+          <span className={"inline-flex"}>
             <IconButton
               size={"small"}
-              aria-label={`Reset to ${reference.label}: ${format(referenceValue)}`}
+              aria-label={resetLabel}
               disabled={isDisabled}
-              sx={{ padding: "1px" }}
-              onClick={() => onReset(referenceValue)}
+              sx={{ padding: `${SLIDER_REFERENCE.resetPadding}px` }}
+              onClick={onResetClick}
             >
-              <RestartAltIcon sx={{ fontSize: 14 }} />
+              <RestartAltIcon sx={{ fontSize: SLIDER_REFERENCE.resetIconSize }} />
             </IconButton>
           </span>
         </Tooltip>
@@ -58,12 +69,9 @@ export function SliderReadout({
       <Tooltip title={warning ?? ""} disableHoverListener={!warning}>
         <Typography
           component={"span"}
-          variant={variant}
-          className={"tabular-nums"}
-          sx={{
-            color: warning ? "warning.main" : "text.primary",
-            fontFamily: variant === "caption" ? "monospace" : undefined,
-          }}
+          variant={isCompact ? "caption" : "body2"}
+          className={cn("tabular-nums", isCompact && "font-mono")}
+          sx={{ color: warning ? "warning.main" : "text.primary" }}
         >
           {format(value)}
         </Typography>

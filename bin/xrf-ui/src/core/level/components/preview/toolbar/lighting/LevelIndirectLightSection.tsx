@@ -1,4 +1,5 @@
 import { Button } from "@mui/material";
+import { formatCount } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { ERenderIndirectLightMode } from "@/core/ipc/types/xrf-renderer";
@@ -6,10 +7,7 @@ import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import {
-  formatOcclusionCount,
-  formatOcclusionRadius,
-} from "@/core/render/lib/features/render-ambient-occlusion-choices";
+import { formatOcclusionRadius } from "@/core/render/lib/features/render-ambient-occlusion-choices";
 import {
   explainRenderIndirectLightMode,
   formatIndirectLightIntensity,
@@ -66,7 +64,7 @@ export function LevelIndirectLightSection({
             label={"Bounce steps"}
             value={value.steps}
             {...RENDER_INDIRECT_LIGHT_LIMITS.steps}
-            format={formatOcclusionCount}
+            format={formatCount}
             onChange={(steps: number) => set({ steps })}
           />
         </>

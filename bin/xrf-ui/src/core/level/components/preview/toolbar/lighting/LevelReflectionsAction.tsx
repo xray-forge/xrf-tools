@@ -1,6 +1,7 @@
 import { default as FlipIcon } from "@mui/icons-material/Flip";
 import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { ReactElement } from "react";
 
 import {
@@ -11,7 +12,7 @@ import {
   RenderTraceSize,
 } from "@/core/ipc/types/xrf-renderer";
 import { LevelGlassSettings } from "@/core/level/components/preview/toolbar/lighting/LevelGlassSettings";
-import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
+import { ILevelFeature, useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
@@ -23,7 +24,6 @@ import {
   formatReflectionDistance,
   formatReflectionIntensity,
   formatReflectionSkyGain,
-  formatReflectionSteps,
   formatReflectionTraceInterval,
   formatReflectionTraceRoughness,
   RENDER_REFLECTION_LIMITS,
@@ -36,9 +36,9 @@ import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
- * What the view reflects, in three sections: the surfaces (the ground, puddles, wet and glossy surfaces), the sky's cube
- * alone or traced over the screen, and how; the enhanced water's own reflection of the screen and its march; and the
- * ray trace both take what the screen misses from, and how often. Then how glass is drawn.
+ * What the view reflects, in three sections: the surfaces (the ground, puddles, wet and glossy surfaces), the
+ * enhanced water's own reflection of the screen, and the ray trace both take what the screen misses from; then how
+ * glass is drawn.
  */
 export function LevelReflectionsAction({
   "data-testid": dataTestId = "level-reflections-action",
@@ -48,7 +48,7 @@ export function LevelReflectionsAction({
   const renderService: LevelRenderService = useInjection(LevelRenderService);
   const { settings, features } = useLevelRenderFeatures();
   const { set, reset } = useLevelFeatureOverride("reflections");
-  const water = useLevelFeature("water");
+  const water: ILevelFeature<"water"> = useLevelFeature("water");
 
   const value: TRenderReflectionSettings = toLevelModeFeature("reflections", settings, features);
   const isTraceable: boolean = renderService.isTraceable;
@@ -101,7 +101,7 @@ export function LevelReflectionsAction({
               label={"Steps"}
               value={value.steps}
               {...RENDER_REFLECTION_LIMITS.steps}
-              format={formatReflectionSteps}
+              format={formatCount}
               onChange={(steps: number) => set({ steps })}
             />
 
@@ -194,7 +194,7 @@ export function LevelReflectionsAction({
             label={"March steps"}
             value={value.waterSteps}
             {...RENDER_REFLECTION_LIMITS.waterSteps}
-            format={formatReflectionSteps}
+            format={formatCount}
             onChange={(waterSteps: number) => set({ waterSteps })}
           />
         ) : null}

@@ -1,7 +1,7 @@
 import { default as GradientIcon } from "@mui/icons-material/Gradient";
 import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { formatPercent } from "@xrf/format";
+import { formatCount, formatPercent } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
 import {
@@ -24,7 +24,6 @@ import {
   explainRenderAmbientOcclusionMethod,
   formatOcclusionAccumulation,
   formatOcclusionBounce,
-  formatOcclusionCount,
   formatOcclusionRadius,
   formatOcclusionStrength,
   formatOcclusionThickness,
@@ -135,7 +134,7 @@ export function LevelOcclusionAction({
               label={"Slices"}
               value={occlusion.gtao.slices}
               {...RENDER_AMBIENT_OCCLUSION_LIMITS.gtaoSlices}
-              format={formatOcclusionCount}
+              format={formatCount}
               onChange={(slices: number) => onSetGtao({ slices })}
             />
 
@@ -143,7 +142,7 @@ export function LevelOcclusionAction({
               label={"Steps"}
               value={occlusion.gtao.steps}
               {...RENDER_AMBIENT_OCCLUSION_LIMITS.gtaoSteps}
-              format={formatOcclusionCount}
+              format={formatCount}
               onChange={(steps: number) => onSetGtao({ steps })}
             />
           </>
@@ -155,7 +154,7 @@ export function LevelOcclusionAction({
               label={"Slices"}
               value={vbao.slices}
               {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.slices}
-              format={formatOcclusionCount}
+              format={formatCount}
               onChange={(slices: number) => onSetVbao({ slices })}
             />
 
@@ -163,7 +162,7 @@ export function LevelOcclusionAction({
               label={"Steps"}
               value={vbao.steps}
               {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.steps}
-              format={formatOcclusionCount}
+              format={formatCount}
               onChange={(steps: number) => onSetVbao({ steps })}
             />
           </>
@@ -174,7 +173,7 @@ export function LevelOcclusionAction({
             label={"Rays"}
             value={occlusion.rtao.rays}
             {...RENDER_AMBIENT_OCCLUSION_LIMITS.rays}
-            format={formatOcclusionCount}
+            format={formatCount}
             onChange={(rays: number) => onSetRtao({ rays })}
           />
         ) : null}

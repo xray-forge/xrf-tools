@@ -56,9 +56,9 @@ function toChoice<T extends string>(values: Record<string, T>): IRenderChoiceFie
  * setting (`xrRender_console.cpp`), the renderer's where it does not.
  */
 export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings> = {
-  // A field's fourth argument, where given, is the range xrf recommends, every preset's value within it: below it the
-  // effect shows misses or artefacts, past it it costs more for little visible gain (timed 2026-10-20 at 2830 px for
-  // the reflections, the occlusion and the sun shafts). A field without one is not rated yet.
+  // A field's fourth argument, where given, is the range xrf recommends, Base's and Enhanced's values within it: below
+  // it the effect shows misses or artefacts, past it it costs more for little visible gain. A field without one is not
+  // rated.
   ambientOcclusion: {
     isEnabled: FLAG,
     // Each method's search within its settings' own ranges (`RenderAmbientOcclusionGtaoSettings` and the rest).

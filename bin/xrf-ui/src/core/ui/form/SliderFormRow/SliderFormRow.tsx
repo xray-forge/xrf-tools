@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { ReactElement } from "react";
+import { ReactElement, useCallback } from "react";
 
 import { FormRow } from "@/core/ui/form/FormRow";
 import { ISliderReference, ReferenceSlider, SliderReadout, useSliderReference } from "@/core/ui/form/ReferenceSlider";
@@ -48,6 +48,12 @@ export function SliderFormRow({
   const reference: Nullable<ISliderReference> = useSliderReference(referencePath);
   const referenceValue: Nullable<number> = reference?.value ?? null;
 
+  const onReset = useCallback(() => {
+    if (referenceValue !== null) {
+      onChange(referenceValue);
+    }
+  }, [referenceValue, onChange]);
+
   return (
     <FormRow label={label} description={description} controlId={id}>
       {({ id: controlId, "aria-labelledby": labelId, "aria-describedby": describedBy }) => (
@@ -68,7 +74,7 @@ export function SliderFormRow({
             slotProps={{ input: { "aria-labelledby": labelId, "aria-describedby": describedBy } }}
             onChange={draft.onChange}
             onChangeCommitted={draft.onChangeCommitted}
-            onReset={referenceValue === null || isDisabled ? undefined : () => onChange(referenceValue)}
+            onReset={referenceValue === null || isDisabled ? undefined : onReset}
           />
           <SliderReadout
             className={"w-24 shrink-0 justify-end"}
@@ -76,7 +82,6 @@ export function SliderFormRow({
             format={format}
             reference={reference}
             recommended={recommended}
-            variant={"body2"}
             isDisabled={isDisabled}
             onReset={onChange}
           />

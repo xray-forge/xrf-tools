@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { createContext } from "react";
+import { createContext, useContext } from "react";
 
 /** Where a slider's value stands against what it is measured by. */
 export interface ISliderReference {
@@ -9,10 +9,7 @@ export interface ISliderReference {
   label: string;
 }
 
-/**
- * What the sliders within read their reference from: the source's name and the value it holds at a setting's place,
- * none where it holds no number there.
- */
+/** What the sliders within read their reference from: the source's name, and its number at a setting's place. */
 export interface ISliderReferenceSource {
   label: string;
   resolve: (path: ReadonlyArray<string>) => Nullable<number>;
@@ -21,9 +18,19 @@ export interface ISliderReferenceSource {
 /** The source the sliders within measure themselves by; none outside a provider, where they show no reference. */
 export const SliderReferenceContext = createContext<Nullable<ISliderReferenceSource>>(null);
 
-/** What a value past the recommended range says, below it and above it. */
+/** What a value outside the recommended range says, below it and above it. */
 export const SLIDER_BELOW_RECOMMENDED: string = "Below the recommended range: visible misses or artefacts";
 export const SLIDER_ABOVE_RECOMMENDED: string = "Past the recommended range: costs more for little visible gain";
+
+/**
+ * @param path - The setting's place in what the nearest source holds, if the slider has one.
+ * @returns What the slider is measured by there, or none outside a source or without a place.
+ */
+export function useSliderReference(path: ReadonlyArray<string> | undefined): Nullable<ISliderReference> {
+  const source: Nullable<ISliderReferenceSource> = useContext(SliderReferenceContext);
+
+  return source && path ? { label: source.label, value: source.resolve(path) } : null;
+}
 
 /**
  * @param value - A slider's value.

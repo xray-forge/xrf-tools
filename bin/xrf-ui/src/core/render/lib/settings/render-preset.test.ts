@@ -6,23 +6,14 @@ import {
   resolveRenderFeatures,
   toRenderFeatureChoice,
 } from "@/core/render/lib/settings/render-feature-choice";
+import {
+  listRenderNumberFieldPaths,
+  readRenderFeatureNumber,
+  TRenderFeaturePath,
+} from "@/core/render/lib/settings/render-feature-path";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
-import { ERenderSettingKind, isRenderSettingField } from "@/core/render/lib/settings/render-setting-field";
-
-/** Each rated number of the schema, its place and its recommended range. */
-function listRated(
-  node: object,
-  path: ReadonlyArray<string> = []
-): Array<[ReadonlyArray<string>, readonly [number, number]]> {
-  if (isRenderSettingField(node)) {
-    return node.kind === ERenderSettingKind.NUMBER && node.recommended ? [[path, node.recommended]] : [];
-  }
-
-  return Object.entries(node).flatMap(([key, child]) =>
-    typeof child === "object" && child !== null ? listRated(child, [...path, key]) : []
-  );
-}
+import { IRenderNumberField } from "@/core/render/lib/settings/render-setting-field";
 
 describe("render presets", () => {
   it("starts a fresh install on Base", () => {
@@ -41,22 +32,22 @@ describe("render presets", () => {
   // A preset that painted its own value amber would say xrf advises against what xrf ships; Editing trades looks for
   // responsiveness on purpose and may go below.
   it("sets every rated value of Base and Enhanced within the range it recommends", () => {
-    const rated = listRated(RENDER_FEATURE_SCHEMA);
+    const rated: Array<[IRenderNumberField, TRenderFeaturePath]> = [
+      ...listRenderNumberFieldPaths(RENDER_FEATURE_SCHEMA),
+    ].filter(([field]) => field.recommended);
 
     expect(rated.length).toBeGreaterThan(0);
 
     for (const preset of [ERenderPreset.BASE, ERenderPreset.ENHANCED]) {
-      for (const [path, [low, high]] of rated) {
-        const value: unknown = path.reduce<unknown>(
-          (node: unknown, key: string) => (node as Record<string, unknown>)[key],
-          RENDER_PRESETS[preset]
-        );
+      for (const [field, path] of rated) {
+        const [low, high] = field.recommended ?? [0, 0];
+        const value: number = readRenderFeatureNumber(RENDER_PRESETS[preset], path) ?? Number.NaN;
 
-        expect({
+        expect({ path: path.join("."), preset, within: value >= low && value <= high }).toEqual({
           path: path.join("."),
           preset,
-          within: typeof value === "number" && value >= low && value <= high,
-        }).toEqual({ path: path.join("."), preset, within: true });
+          within: true,
+        });
       }
     }
   });

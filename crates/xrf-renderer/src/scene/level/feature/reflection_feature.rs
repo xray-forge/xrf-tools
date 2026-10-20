@@ -46,8 +46,9 @@ pub struct ReflectionFeature {
 
 impl ReflectionFeature {
   /// Takes this frame's reflections for a frame `size` texels across, raw where DLSS ray reconstruction resolves it
-  /// (`is_reconstructed`), the dry surfaces left untraced unless asked where the level is not wet (`is_wet`): the history at the size they trace at and the pyramid over the frame's depth made or kept
-  /// while they are traced, dropped otherwise, the trace's request list fitted, and what their passes read.
+  /// (`is_reconstructed`), the dry surfaces left untraced unless asked where the level is not wet (`is_wet`): the
+  /// history at the size they trace at and the pyramid over the frame's depth made or kept while they are traced,
+  /// dropped otherwise, the trace's request list fitted, and what their passes read.
   pub fn prepare(
     &mut self,
     device: &wgpu::Device,

@@ -1,4 +1,4 @@
-import { formatNumber, formatPercent } from "@xrf/format";
+import { formatCount, formatNumber, formatPercent } from "@xrf/format";
 
 import {
   ERenderAmbientOcclusionMethod,
@@ -98,11 +98,6 @@ export function formatOcclusionStrength(strength: number): string {
   return formatNumber(strength, 1);
 }
 
-/** @returns How many slices, steps or rays a search takes. */
-export function formatOcclusionCount(count: number): string {
-  return formatNumber(count, 0);
-}
-
 /**
  * @param occlusion - The ambient occlusion's settings.
  * @returns How its method searches, in a few words: GTAO's and VBAO's slices by steps, RTAO's rays.
@@ -111,10 +106,11 @@ export function describeRenderAmbientOcclusionSearch(
   occlusion: Pick<RenderAmbientOcclusionSettings, "gtao" | "method" | "rtao" | "vbao">
 ): string {
   if (occlusion.method === ERenderAmbientOcclusionMethod.RTAO) {
-    return `${occlusion.rtao.rays} rays`;
+    return `${formatCount(occlusion.rtao.rays)} rays`;
   }
 
-  const search = occlusion.method === ERenderAmbientOcclusionMethod.GTAO ? occlusion.gtao : occlusion.vbao;
+  const search: { slices: number; steps: number } =
+    occlusion.method === ERenderAmbientOcclusionMethod.GTAO ? occlusion.gtao : occlusion.vbao;
 
-  return `${search.slices} × ${search.steps} steps`;
+  return `${formatCount(search.slices)} × ${formatCount(search.steps)} steps`;
 }

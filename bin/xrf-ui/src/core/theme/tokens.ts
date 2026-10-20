@@ -105,6 +105,21 @@ export const CONTROL = {
   selectMenuMaxHeight: 320,
 } as const;
 
+/** A slider measured by a reference and a recommended range (`ReferenceSlider`). */
+export const SLIDER_REFERENCE = {
+  /** The rail carrying the band, taller than the track so the band shows behind the filled part. */
+  railHeight: 6,
+  /** The reference's notch, standing out of the track. */
+  notchHeight: 12,
+  notchWidth: 2,
+  /** Shares of the text colour on the rail outside the band, and of the success colour within it. */
+  railShare: 0.2,
+  bandShare: 0.55,
+  /** The reset beside the readout, sized to the readout's line. */
+  resetIconSize: 14,
+  resetPadding: 1,
+} as const;
+
 /** A form somebody sits down and fills: the picker screens' card and the settings dialog. */
 export const FORM = {
   controlRadius: RADIUS.md,

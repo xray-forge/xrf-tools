@@ -1,5 +1,5 @@
 import { Nullable } from "@xrf/types";
-import { ReactElement } from "react";
+import { ReactElement, useCallback } from "react";
 
 import { ISliderReference, ReferenceSlider, SliderReadout, useSliderReference } from "@/core/ui/form/ReferenceSlider";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -49,6 +49,12 @@ export function RenderValueSlider({
   const reference: Nullable<ISliderReference> = useSliderReference(referencePath);
   const referenceValue: Nullable<number> = reference?.value ?? null;
 
+  const onReset = useCallback(() => {
+    if (referenceValue !== null) {
+      onChange(referenceValue);
+    }
+  }, [referenceValue, onChange]);
+
   return (
     <div data-testid={dataTestId} id={id} className={className}>
       <div className={"flex items-baseline justify-between gap-2"}>
@@ -60,6 +66,7 @@ export function RenderValueSlider({
           format={format}
           reference={reference}
           recommended={recommended}
+          isCompact
           isDisabled={isDisabled}
           onReset={onChange}
         />
@@ -78,7 +85,7 @@ export function RenderValueSlider({
         getAriaValueText={format}
         onChange={draft.onChange}
         onChangeCommitted={draft.onChangeCommitted}
-        onReset={referenceValue === null || isDisabled ? undefined : () => onChange(referenceValue)}
+        onReset={referenceValue === null || isDisabled ? undefined : onReset}
       />
     </div>
   );

@@ -1,6 +1,7 @@
-import { Nullable } from "@xrf/types";
+import { isRecord, Nullable } from "@xrf/types";
 
 import { ERenderAntialiasing, RenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
+import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { toRenderFeatureChoice } from "@/core/render/lib/settings/render-feature-choice";
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
 import {
@@ -317,7 +318,7 @@ export function toLevelRendererFeature<K extends TLevelFeatureKey>(
   for (const [name, value] of Object.entries(view[key] as Record<string, unknown>)) {
     const base: unknown = group[name];
 
-    group[name] = isNestedGroup(base) && isNestedGroup(value) ? { ...base, ...value } : value;
+    group[name] = isRecord(base) && isRecord(value) ? { ...base, ...value } : value;
   }
 
   return { ...group, isEnabled: settings[key].isEnabled && isOn } as IRenderFeatureSettings[K];
@@ -337,12 +338,55 @@ export function toLevelModeFeature<K extends TLevelModeFeatureKey>(
   return { ...settings[key], ...view[key] };
 }
 
+/** The toolbar's toggles that turn a feature group off for the view, which they cannot turn on. */
+export type TLevelFeatureToggles = Pick<
+  ILevelViewOptions,
+  "isAntialiased" | "isGrassy" | "isLamplit" | "isOccluded" | "isOcclusionCulled" | "isShadowed" | "isWaterVisible"
+>;
+
+/** Every toggle on: the features as the settings and the view set them, none turned off. */
+export const LEVEL_FEATURE_TOGGLES_ON: Readonly<TLevelFeatureToggles> = {
+  isAntialiased: true,
+  isGrassy: true,
+  isLamplit: true,
+  isOccluded: true,
+  isOcclusionCulled: true,
+  isShadowed: true,
+  isWaterVisible: true,
+};
+
 /**
- * @param value - One value of a feature group.
- * @returns Whether it is a group of its own, as the contact shadows are within the shadows, rather than one value.
+ * @param settings - What the renderer's settings set, for every viewport.
+ * @param view - What the view sets over them.
+ * @param toggles - What the toolbar turns off.
+ * @returns Every feature the view is drawn with: the settings', the view's own over them, under the toggles; the level
+ *   of detail as the settings set it.
  */
-function isNestedGroup(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+export function toLevelRendererFeatures(
+  settings: IRenderFeatureSettings,
+  view: ILevelFeatureOptions,
+  toggles: TLevelFeatureToggles
+): IRenderFeatureSettings {
+  return {
+    ...settings,
+    ambientOcclusion: toLevelRendererFeature("ambientOcclusion", settings, view, toggles.isOccluded),
+    antialiasing: toLevelRendererAntialiasing(settings.antialiasing, view, toggles.isAntialiased),
+    debanding: toLevelModeFeature("debanding", settings, view),
+    enhancedBloom: toLevelModeFeature("enhancedBloom", settings, view),
+    fog: toLevelModeFeature("fog", settings, view),
+    glass: toLevelModeFeature("glass", settings, view),
+    grass: toLevelRendererFeature("grass", settings, view, toggles.isGrassy),
+    indirectLight: toLevelModeFeature("indirectLight", settings, view),
+    isOcclusionCulled: settings.isOcclusionCulled && toggles.isOcclusionCulled,
+    lights: toLevelRendererFeature("lights", settings, view, toggles.isLamplit),
+    parallax: toLevelModeFeature("parallax", settings, view),
+    rain: toLevelModeFeature("rain", settings, view),
+    reflections: toLevelModeFeature("reflections", settings, view),
+    shadows: toLevelRendererFeature("shadows", settings, view, toggles.isShadowed),
+    upscaling: { ...settings.upscaling, ...view.upscaling },
+    volumetric: toLevelModeFeature("volumetric", settings, view),
+    water: toLevelRendererFeature("water", settings, view, toggles.isWaterVisible),
+  };
 }
 
 /**

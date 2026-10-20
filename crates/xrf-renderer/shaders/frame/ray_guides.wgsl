@@ -2,21 +2,18 @@
 #import "common/octahedral"
 #import "common/lighting"
 #import "common/fullscreen"
+#import "common/ray_guides"
 #import "common/reflection_trace"
 
 // The guides DLSS ray reconstruction reads beside the frame, at the frame's size: each surface's specular albedo, the
 // environment BRDF over its reflectance as combine weighs its reflection; its world normal, its roughness in the fourth
 // channel; how far its reflection ray went before it met what it reflects, and its indirect light ray where that is
-// traced; and how far it is reconstructed from this frame rather than its history, `BIAS_WATER` over a puddle's water,
-// whose ripples and rain move its reflection in place every frame, which the history would hold behind them.
+// traced; and how far it is reconstructed from this frame rather than its history, `RAY_GUIDE_BIAS_WATER` over a
+// puddle's water.
 
 // The G-buffer, the wet surface, the lighting, and the reflections' trace: what each traced pixel met, the ray's length
 // in alpha, at the size they are traced at, below none where untraced.
 #import "generated/frame/ray_guides"
-
-// Metres a reflection stands away where no ray was traced or met anything: the sky's, the prefiltered surroundings'.
-const FAR_HIT: f32 = 1000.0;
-const BIAS_WATER: f32 = 0.8;
 
 struct RayGuides {
   @location(0) specular_albedo: vec4<f32>,
@@ -32,7 +29,7 @@ fn fs_ray_guides(in: FullscreenVarying) -> RayGuides {
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
   if (depth <= 0.0) {
-    return RayGuides(vec4<f32>(0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0), FAR_HIT, 0.0, FAR_HIT);
+    return RayGuides(vec4<f32>(0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0), RAY_GUIDE_FAR_HIT, 0.0, RAY_GUIDE_FAR_HIT);
   }
 
   let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
@@ -53,6 +50,6 @@ fn fs_ray_guides(in: FullscreenVarying) -> RayGuides {
   // The indirect light's texel over the pixel, traced at half size: none where its ray met nothing.
   let bounced: f32 = textureLoad(diffuse_hits, min(texel / 2, vec2<i32>(textureDimensions(diffuse_hits)) - 1), 0).r;
 
-  return RayGuides(vec4<f32>(specular, 1.0), vec4<f32>(world_normal, roughness), select(FAR_HIT, met, met >= 0.0),
-    BIAS_WATER * saturate(wet.g), select(FAR_HIT, bounced, bounced > 0.0));
+  return RayGuides(vec4<f32>(specular, 1.0), vec4<f32>(world_normal, roughness), select(RAY_GUIDE_FAR_HIT, met, met >= 0.0),
+    RAY_GUIDE_BIAS_WATER * saturate(wet.g), select(RAY_GUIDE_FAR_HIT, bounced, bounced > 0.0));
 }

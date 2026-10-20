@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { ReactElement } from "react";
 
 import {
-  formatOcclusionCount,
   formatOcclusionRadius,
   formatOcclusionStrength,
   RENDER_AMBIENT_OCCLUSION_LIMITS,
@@ -62,7 +62,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
           description={"Directions GTAO searches about a pixel for its horizons."}
           value={occlusion.gtao.slices}
           {...RENDER_AMBIENT_OCCLUSION_LIMITS.gtaoSlices}
-          format={formatOcclusionCount}
+          format={formatCount}
           onChange={(slices: number) => onSet({ gtao: { ...occlusion.gtao, slices } })}
         />
 
@@ -71,7 +71,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
           description={"Steps each way along each of GTAO's slices."}
           value={occlusion.gtao.steps}
           {...RENDER_AMBIENT_OCCLUSION_LIMITS.gtaoSteps}
-          format={formatOcclusionCount}
+          format={formatCount}
           onChange={(steps: number) => onSet({ gtao: { ...occlusion.gtao, steps } })}
         />
 
@@ -80,7 +80,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
           description={"Directions VBAO searches about a pixel, its visibility bitmask's."}
           value={occlusion.vbao.slices}
           {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.slices}
-          format={formatOcclusionCount}
+          format={formatCount}
           onChange={(slices: number) => onSet({ vbao: { ...occlusion.vbao, slices } })}
         />
 
@@ -89,7 +89,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
           description={"Steps along each of VBAO's slices."}
           value={occlusion.vbao.steps}
           {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.steps}
-          format={formatOcclusionCount}
+          format={formatCount}
           onChange={(steps: number) => onSet({ vbao: { ...occlusion.vbao, steps } })}
         />
 
@@ -98,7 +98,7 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
           description={"Rays RTAO traces from each point a frame, on a GPU that traces rays."}
           value={occlusion.rtao.rays}
           {...RENDER_AMBIENT_OCCLUSION_LIMITS.rays}
-          format={formatOcclusionCount}
+          format={formatCount}
           onChange={(rays: number) => onSet({ rtao: { rays } })}
         />
       </div>

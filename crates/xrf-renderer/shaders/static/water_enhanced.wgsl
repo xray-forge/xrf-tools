@@ -2,6 +2,7 @@
 #import "common/scene_light"
 #import "common/water_enhanced"
 #import "common/rain_rings"
+#import "common/ray_guides"
 #import "generated/static/water_enhanced"
 
 // The enhanced water's waves: its normal map scrolled twice over coordinates its parallax moves into the waves'
@@ -305,14 +306,9 @@ struct EnhancedShaded {
   hit_distance: f32,
 };
 
-// The guides' roughness of the water's reflection, calm and under the heaviest rain's ripples; how far a reflection
-// with no ray to measure stands, the sky's, as the guides pass takes it; and how far the water is reconstructed from
-// this frame rather than the history, as a puddle's water is (`ray_guides` `BIAS_WATER`): its waves and the rain move
-// its reflection in place every frame.
+// The guides' roughness of the water's reflection, calm and under the heaviest rain's ripples.
 const GUIDE_ROUGHNESS_CALM: f32 = 0.05;
 const GUIDE_ROUGHNESS_RAIN: f32 = 0.3;
-const GUIDE_FAR_HIT: f32 = 1000.0;
-const GUIDE_BIAS: f32 = 0.8;
 
 @fragment
 fn fs_water_enhanced(in: WaterVarying) -> WaterOutput {
@@ -342,7 +338,7 @@ fn fs_water_enhanced_guided(in: WaterVarying) -> GuidedOutput {
   out.specular_albedo = vec4<f32>(vec3<f32>(shaded.reflected_share), 1.0);
   out.normals = vec4<f32>(shaded.normal, shaded.roughness);
   out.hit_distance = shaded.hit_distance;
-  out.bias = GUIDE_BIAS;
+  out.bias = RAY_GUIDE_BIAS_WATER;
 
   return out;
 }
@@ -350,15 +346,12 @@ fn fs_water_enhanced_guided(in: WaterVarying) -> GuidedOutput {
 // How far the reflected ray went from a point of the water (in view space) to what the reflection kept met, from the
 // distance along the view the reflection keeps (`mirrored_distance`); the sky's where it met nothing or reflects none.
 fn reflected_ray_length(position: vec3<f32>, kept: f32) -> f32 {
-  if (enhanced.reflected < 0.5 || kept <= 0.0 || kept >= SKY_KEPT) {
-    return GUIDE_FAR_HIT;
+  if (enhanced.reflected < 0.5 || kept <= 0.0 || kept >= SKY_DISTANCE) {
+    return RAY_GUIDE_FAR_HIT;
   }
 
-  return clamp((kept / max(-position.z, 1e-4) - 1.0) * length(position), 0.0, GUIDE_FAR_HIT);
+  return clamp((kept / max(-position.z, 1e-4) - 1.0) * length(position), 0.0, RAY_GUIDE_FAR_HIT);
 }
-
-// The distance the reflection's history keeps for the sky (`water_reflection` `SKY_DISTANCE`).
-const SKY_KEPT: f32 = 60000.0;
 
 fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   let size: vec2<f32> = camera.viewport.xy;
