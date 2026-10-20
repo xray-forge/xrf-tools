@@ -466,7 +466,6 @@ impl ResolveFeature {
       }
     }
 
-    let offset: Vec2 = self.offset;
     let Some(Resolve::RayReconstruction(resolve)) = &mut self.resolve else {
       return false;
     };
@@ -481,15 +480,15 @@ impl ResolveFeature {
       return false;
     }
 
-    // The jitter `CameraView::jittered` put into the projection, taken out again.
-    let mut projection: Mat4 = view.projection;
-
-    projection.z_axis.x -= 2.0 * offset.x / render.0 as f32;
-    projection.z_axis.y += 2.0 * offset.y / render.1 as f32;
-    resolve.view = view.view;
-    resolve.projection = projection;
+    (resolve.view, resolve.projection) = Self::get_ray_camera(view);
 
     true
+  }
+
+  /// The view and projection DLSS ray reconstruction places hits through: the frame's `view` as prepared, unjittered,
+  /// since NGX takes the jitter apart.
+  pub fn get_ray_camera(view: &CameraView) -> (Mat4, Mat4) {
+    (view.view, view.projection)
   }
 
   /// Forgets the cameras a frame that was never submitted kept as the next frame's previous: the motion, the jittered

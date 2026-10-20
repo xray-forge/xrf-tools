@@ -58,6 +58,27 @@ fn a_jittered_view_samples_each_pixel_the_jitter_from_its_centre() {
   }
 }
 
+// The prepared view is unjittered and NGX takes the jitter apart, in FSR's sense (a drawn texel `m` stands at
+// `m + 0.5 - jitter`): its camera puts each point where the drawn frame's jitter, taken out once, says it stands.
+#[test]
+fn ray_reconstruction_places_hits_through_the_drawn_camera_less_its_jitter() {
+  let view: CameraView = CameraView::new(Vec3::ZERO, Mat4::IDENTITY, 60.0, 2.0, 0.1, 100.0);
+  let size: Vec2 = Vec2::new(800.0, 400.0);
+  let offset: Vec2 = Vec2::new(0.25, -0.5);
+  let drawn: CameraView = view.jittered(offset, size);
+  let jitter: Vec2 = -offset;
+  let (world_to_view, view_to_clip): (Mat4, Mat4) = ResolveFeature::get_ray_camera(&view);
+  let to_pixel = |clip: Vec4| Vec2::new(clip.x / clip.w + 1.0, 1.0 - clip.y / clip.w) * size / 2.0;
+
+  for depth in [1.0, 10.0, 90.0] {
+    let point: Vec4 = Vec4::new(3.0, 1.0, -depth, 1.0);
+    let placed: Vec2 = to_pixel(view_to_clip * world_to_view * point);
+    let stood: Vec2 = to_pixel(drawn.get_view_projection() * point) - jitter;
+
+    assert!((placed - stood).abs().max_element() < 1e-3, "{placed} {stood}");
+  }
+}
+
 // FSR and DLSS read textures at AMD's `log2(render / display) - 1`, TAA at the size lost alone, nothing else biased.
 #[test]
 fn reads_textures_sharper_by_what_the_upscale_loses() {
