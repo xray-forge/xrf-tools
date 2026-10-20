@@ -20,10 +20,16 @@ export const DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS: ILevelSunShaftsOptions = {
 export const LEVEL_SUN_SHAFTS_MINIMUM_LIMITS = { max: 0.5, min: 0, step: 0.01 } as const;
 
 /**
- * The bounds the steps are offered between, the renderer's own (`RenderSunShafts::STEPS_RANGE`), and the range xrf
- * recommends: the engines' own 15 to 40.
+ * The bounds the steps are offered between, the renderer's own (`RenderSunShafts::STEPS_RANGE`), the range xrf
+ * recommends, the engines' own 15 to 40, and the end past which more steps were measured to look the same.
  */
-export const LEVEL_SUN_SHAFTS_STEPS_LIMITS = { max: 64, min: 8, recommended: [15, 40], step: 1 } as const;
+export const LEVEL_SUN_SHAFTS_STEPS_LIMITS = {
+  max: 64,
+  min: 8,
+  recommended: [15, 40],
+  step: 1,
+  wastedAbove: 48,
+} as const;
 
 /**
  * @param stored - What was stored for the sunshafts, parsed from wherever it is kept.
