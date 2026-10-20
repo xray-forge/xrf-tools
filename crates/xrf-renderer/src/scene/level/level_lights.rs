@@ -162,6 +162,7 @@ impl LevelLights {
       campfire_shares,
       is_scene_first,
       is_physical,
+      pre_exposure,
     } = frame;
 
     into.begin(
@@ -238,6 +239,10 @@ impl LevelLights {
         let range: f32 = Self::to_frame_range(light, || into.next_random()) * it.share * FALLOFF_RANGE;
         let mut record: LightRecord =
           Self::to_record(&self.projectors, light, &it.basis, it.bound, color, range, camera.view);
+
+        // The colour and its specular weight at the pre-exposure: the weight is the engine's curve over the light itself
+        // (`to_light_specular`), so it is taken before the scale.
+        record.color *= pre_exposure;
 
         if let Some(set) = set {
           let atlas: f32 = LevelLightShadows::ATLAS_SIZE as f32;

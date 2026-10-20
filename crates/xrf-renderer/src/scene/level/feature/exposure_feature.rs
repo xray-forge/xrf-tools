@@ -1,16 +1,20 @@
 use std::time::{Duration, Instant};
 
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphRuntime, GraphTexture, StorageArrayMut, StorageValueMut,
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphRuntime, GraphTexture, StorageArrayMut,
+  StorageValueMut,
 };
 
 use crate::contract::render_exposure_settings::RenderExposureSettings;
+use crate::frame::gpu_readback::GpuReadback;
+use crate::pass::exposure_head::ExposureHead;
 use crate::pass::exposure_histogram_parameters::ExposureHistogramParameters;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::exposure_state::ExposureState;
 use crate::pass::exposure_uniform::ExposureUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::pre_exposure::PreExposure;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
 /// The longest step between frames the adaptation takes, so a stall does not snap it to what one frame measured.
@@ -18,7 +22,8 @@ const LONGEST_STEP: Duration = Duration::from_millis(250);
 
 /// One viewport's exposure: the scale its tonemap multiplies by, adapted on the GPU, the cells it was measured from,
 /// and the adaptation's rate, which the CPU advances by the time between frames; under the physical light, a histogram
-/// of the scene's light in place of the cells, or a fixed scale where it does not adapt.
+/// of the scene's light in place of the cells, or a fixed scale where it does not adapt, the scale read back as the one
+/// the next frames write their light at.
 pub struct ExposureFeature {
   /// The adapted scale, then each cell's luminance.
   pub state: wgpu::Buffer,
@@ -39,6 +44,10 @@ pub struct ExposureFeature {
   is_physical: bool,
   /// The scale the physical light holds while it does not adapt, as last written.
   held: Option<f32>,
+  /// The state's head copied out without waiting, whose scale the physical light's next frames write their light at.
+  readback: GpuReadback,
+  /// The scale this frame's light is written at, and the last frame's.
+  pre_exposure: PreExposure,
 }
 
 impl ExposureFeature {
@@ -49,7 +58,7 @@ impl ExposureFeature {
     let state: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("exposure"),
       size: size_of::<ExposureState>() as u64,
-      usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+      usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
       mapped_at_creation: false,
     });
     let bins: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -69,6 +78,8 @@ impl ExposureFeature {
       is_measuring: false,
       is_physical: false,
       held: None,
+      readback: GpuReadback::new(device, "exposure readback", size_of::<ExposureHead>() as u64),
+      pre_exposure: PreExposure::NONE,
     };
 
     exposure.reset(queue, 1.0);
@@ -78,21 +89,32 @@ impl ExposureFeature {
 
   /// Advances the rate by the time since the last frame and writes what the adaptation reads; off, the scale goes back
   /// to one, the engine's answer at noon. Under the physical light (`is_physical`) the histogram meters instead, or,
-  /// off, the scale holds at the compensation's stops; a change of light model starts the scale afresh.
+  /// off, the scale holds at the compensation's stops; a change of light model starts the scale afresh. Then the scale
+  /// the frame's light is written at: the physical light's last read back, one under the engine's.
   pub fn prepare(&mut self, queue: &wgpu::Queue, settings: &RenderExposureSettings, is_physical: bool, now: Instant) {
+    let previous: f32 = self.pre_exposure.current;
+    let read: Option<f32> = self.take_readback();
+
     if is_physical != self.is_physical {
       self.is_physical = is_physical;
       self.last = None;
       self.rate = 0.5;
       self.held = None;
       self.reset(queue, 1.0);
+      self.pre_exposure = PreExposure::NONE;
     }
 
     if is_physical {
       self.prepare_physical(queue, settings, now);
+      self.pre_exposure = PreExposure {
+        current: self.held.or(read).unwrap_or(self.pre_exposure.current),
+        previous,
+      };
 
       return;
     }
+
+    self.pre_exposure = PreExposure::NONE;
 
     if !settings.is_enabled {
       if self.is_adapting {
@@ -150,6 +172,32 @@ impl ExposureFeature {
     self.is_adapting
   }
 
+  /// The scale this frame's light is written at, and the last frame's.
+  pub fn get_pre_exposure(&self) -> PreExposure {
+    self.pre_exposure
+  }
+
+  /// Asks for the scale copied out with the frame just submitted.
+  pub fn request_readback(&self) {
+    self.readback.request();
+  }
+
+  /// Drops the scale a frame that was never submitted copied out.
+  pub fn abandon_readback(&self) {
+    self.readback.abandon();
+  }
+
+  /// The scale a copy brought back since the last frame, unless it is not a scale. Any scale writes the light right,
+  /// since the passes divide it out again (`frame_scale`); the latest keeps the light near the range it is shown in.
+  fn take_readback(&self) -> Option<f32> {
+    let adapted: f32 = self
+      .readback
+      .take(|bytes| bytemuck::pod_read_unaligned::<ExposureHead>(&bytes[..size_of::<ExposureHead>()]).adapted)?
+      .ok()?;
+
+    (adapted.is_finite() && adapted > 0.0).then_some(adapted)
+  }
+
   /// Adds the adaptation into `state`, the imported `state` buffer: the frame's luminance measured from the high target
   /// and the scale moved towards it, or under the physical light the `size` scene's light counted into the histogram and
   /// the scale settled from it; nothing while it does not measure.
@@ -176,6 +224,24 @@ impl ExposureFeature {
         .add_compute_pass("exposure histogram")
         .parameters(&parameters)
         .record(move |context| passes.exposure.record_histogram(context, &parameters, size));
+      graph
+        .add_encoder_pass("exposure readback")
+        .buffer(state, GraphBufferAccess::CopySource)
+        .keep()
+        .record(move |context| {
+          if self.readback.is_free() {
+            let source: &wgpu::Buffer = context.get_buffer(state);
+
+            context.get_encoder().copy_buffer_to_buffer(
+              source,
+              0,
+              self.readback.get_buffer(),
+              0,
+              size_of::<ExposureHead>() as u64,
+            );
+            self.readback.mark_recorded();
+          }
+        });
 
       return;
     }
@@ -205,10 +271,10 @@ impl ExposureFeature {
 }
 
 impl ViewFeature for ExposureFeature {
-  /// Its state and the histogram's bins, which every lit pass reads its scale from, one while it is off; so they are
-  /// kept whatever the settings.
+  /// Its state, the histogram's bins and the readback, which every lit pass reads its scale from, one while it is off;
+  /// so they are kept whatever the settings.
   fn get_memory(&self) -> u64 {
-    self.state.size() + self.bins.size()
+    self.state.size() + self.bins.size() + self.readback.get_buffer().size()
   }
 
   /// Nothing to let go of on its own: its state goes with it.

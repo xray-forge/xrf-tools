@@ -63,7 +63,7 @@ fn remembered_light(point: vec3<f32>) -> vec4<f32> {
     return vec4<f32>(0.0);
   }
 
-  let scale: f32 = select(1.0, exposure.used, lighting.params.z > 0.5);
+  let scale: f32 = previous_scale(lighting, exposure);
   let shown: vec3<f32> = scene_light(textureLoad(screen_scene, vec2<i32>(place.xy), 0).rgb, scale);
   return vec4<f32>(source_unfogged(shown, fog, fog_color_at(lighting, position, point.y)), 1.0);
 }

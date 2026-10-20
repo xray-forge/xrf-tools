@@ -23,8 +23,10 @@ fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: te
   let irradiance: vec3<f32> = mix(state.sky_irradiance.rgb, cubes, state.sky_irradiance.w);
   let environment: vec3<f32> = state.environment.rgb * irradiance;
 
-  // The engine's square stands in for decoding the pictures; the physical light decodes them by the sRGB transfer.
-  return select(environment * environment, srgb_decoded(environment), is_lighting_physical(state));
+  // The engine's square stands in for decoding the pictures; the physical light decodes them by the sRGB transfer, then
+  // gives them the pre-exposure.
+  return select(environment * environment, srgb_decoded(environment), is_lighting_physical(state)) *
+    pre_exposure(state);
 }
 
 // `plight_infinity` for the sun: its colour by the diffuse term, its specular weight by the specular, at a view space
@@ -97,8 +99,12 @@ fn hmodel_terms(state: Lighting, table: texture_3d<f32>, table_sampler: sampler,
   let lit: vec3<f32> = albedo.rgb * (light.rgb + hemisphere_diffuse);
   let glossed: f32 = gloss * light.a;
 
+  // Anomaly's tint multiplies light by light, the lights' colour by their specular and the environment by the lit
+  // albedo, so each product has one pre-exposure taken off.
   if (is_extended) {
-    return HmodelTerms(lit + light.rgb * glossed, environment, weight * lit, lit);
+    let unscaled: vec3<f32> = lit / pre_exposure(state);
+
+    return HmodelTerms(lit + light.rgb * glossed / pre_exposure(state), environment, weight * unscaled, lit);
   }
 
   return HmodelTerms(lit + glossed, environment, weight, lit);

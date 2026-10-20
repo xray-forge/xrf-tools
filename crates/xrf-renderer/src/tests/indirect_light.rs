@@ -9,6 +9,7 @@ use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::pre_exposure::PreExposure;
 use crate::pass::vbao_uniform::VbaoUniform;
 
 fn enhanced() -> RenderIndirectLightSettings {
@@ -35,6 +36,7 @@ fn lighting_with(options: &RenderViewOptions) -> LightingUniform {
     options,
     &LightingFrame {
       is_adapting: false,
+      pre_exposure: PreExposure::NONE,
       sky_blend: 0.0,
       is_irradiance_up: false,
       clouds_time: 0.0,

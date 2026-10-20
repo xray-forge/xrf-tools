@@ -15,6 +15,7 @@ use crate::lighting::render_sky::RenderSky;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::pre_exposure::PreExposure;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
 use crate::pass::sky_motion_parameters::SkyMotionParameters;
 use crate::pass::sky_parameters::SkyParameters;
@@ -181,12 +182,12 @@ impl SkyFeature {
 
   /// What the lighting draws the sky with this frame: a keyframe whose textures are not all up blended out, so a sky
   /// still going up shows the other one; whether both irradiance cubes are up; the clouds' `time`; the sun's sprite
-  /// while its texture is up; and whether the exposure adapts (`is_adapting`).
+  /// while its texture is up; whether the exposure adapts (`is_adapting`) and the scale the light is written at.
   pub fn get_lighting_frame(
     &self,
     (sky, options): (&RenderSky, &RenderViewOptions),
     weather_textures: WeatherTextures<'_>,
-    (is_adapting, time): (bool, f32),
+    (is_adapting, pre_exposure, time): (bool, PreExposure, f32),
   ) -> LightingFrame {
     let side = |index: usize| {
       let clouds: Option<&str> = sky.clouds.textures[index]
@@ -200,6 +201,7 @@ impl SkyFeature {
 
     LightingFrame {
       is_adapting,
+      pre_exposure,
       sky_blend: match (side(0), side(1)) {
         (true, false) => 0.0,
         (false, true) => 1.0,

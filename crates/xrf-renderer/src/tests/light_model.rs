@@ -9,6 +9,7 @@ use crate::lighting::srgb::{authored_colour, srgb_decoded, srgb_encoded};
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::pre_exposure::PreExposure;
 
 fn physical() -> RenderViewOptions {
   let mut options: RenderViewOptions = RenderViewOptions::default();
@@ -19,12 +20,17 @@ fn physical() -> RenderViewOptions {
 }
 
 fn lighting_with(options: &RenderViewOptions, lighting: &RenderLighting) -> LightingUniform {
+  lighting_at(options, lighting, PreExposure::NONE)
+}
+
+fn lighting_at(options: &RenderViewOptions, lighting: &RenderLighting, pre_exposure: PreExposure) -> LightingUniform {
   LightingUniform::new(
     lighting,
     Mat4::IDENTITY,
     options,
     &LightingFrame {
       is_adapting: false,
+      pre_exposure,
       sky_blend: 0.0,
       is_irradiance_up: false,
       clouds_time: 0.0,
@@ -103,6 +109,31 @@ fn the_lighting_decodes_what_it_lights_with_and_flags_the_shaders() {
   assert_eq!(physical.sky, engine.sky);
   assert_eq!(physical.forward_sun, engine.forward_sun);
   assert_eq!(physical.forward_hemi, engine.forward_hemi);
+}
+
+// The sun's colour and specular weight and the ambient arrive at the pre-exposure, which the shaders are given with the
+// last frame's; what the shaders light with themselves (the fog, the sky's tint, the forward passes') does not carry it.
+#[test]
+fn the_lighting_arrives_at_the_pre_exposure() {
+  let lighting: RenderLighting = RenderLighting {
+    sun_color: Vec3::new(1.0, 0.5, 0.25),
+    ambient_color: Vec3::splat(0.2),
+    ..RenderLighting::default()
+  };
+  let pre_exposure: PreExposure = PreExposure {
+    current: 4.0,
+    previous: 2.0,
+  };
+  let plain: LightingUniform = lighting_with(&physical(), &lighting);
+  let scaled: LightingUniform = lighting_at(&physical(), &lighting, pre_exposure);
+
+  assert!((scaled.sun - plain.sun * 4.0).length() < 1e-5);
+  assert!((scaled.ambient - plain.ambient * 4.0).length() < 1e-5);
+  assert_eq!(scaled.pre_exposure, Vec4::new(4.0, 2.0, 0.0, 0.0));
+  assert_eq!(plain.pre_exposure, Vec4::new(1.0, 1.0, 0.0, 0.0));
+  assert_eq!(scaled.fog_color, plain.fog_color);
+  assert_eq!(scaled.sky, plain.sky);
+  assert_eq!(scaled.forward_sun, plain.forward_sun);
 }
 
 // The engine's scene is shown as it is, or by the engine's curve where it holds linear light; the physical light's by

@@ -12,6 +12,7 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::pre_exposure::PreExposure;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::reflection_uniform::ReflectionUniform;
@@ -51,6 +52,7 @@ fn lighting_uniform(options: &RenderViewOptions, lighting: &RenderLighting) -> L
     options,
     &LightingFrame {
       is_adapting: false,
+      pre_exposure: PreExposure::NONE,
       sky_blend: 0.0,
       is_irradiance_up: false,
       clouds_time: 0.0,

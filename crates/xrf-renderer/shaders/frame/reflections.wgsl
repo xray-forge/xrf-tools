@@ -352,7 +352,7 @@ fn remembered_radiance(texel: vec2<i32>, hit: vec3<f32>) -> vec4<f32> {
     return vec4<f32>(0.0);
   }
 
-  let scale: f32 = select(1.0, exposure.used, lighting.params.z > 0.5);
+  let scale: f32 = previous_scale(lighting, exposure);
   let shown: vec3<f32> = scene_light(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb, scale);
   return vec4<f32>(source_unfogged(shown, fog, fog_color_at(lighting, hit, world.y)), 1.0);
 }
@@ -385,7 +385,7 @@ fn remembered_sky(direction: vec3<f32>) -> vec4<f32> {
     return vec4<f32>(0.0);
   }
 
-  let scale: f32 = select(1.0, exposure.used, lighting.params.z > 0.5);
+  let scale: f32 = previous_scale(lighting, exposure);
 
   return vec4<f32>(sky_as_light(scene_shown(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb), scale,
     lighting.reflections.w, is_light_physical()), 1.0);
@@ -605,7 +605,7 @@ fn trace_pixel(pixel: vec2<f32>) -> TraceTargets {
   let visible: f32 = select(1.0, textureLoad(occlusion_target, searched, 0).x, lighting.params.w > 0.5);
   let aimed: vec3<f32> = surroundings_direction(sky_prefiltered, sky_clamp, world_offset(position), world_direction(direction));
   var sky: vec3<f32> = prefiltered_sky(sky_prefiltered, sky_clamp, aimed, roughness * MISS_BLUR) *
-    specular_occlusion(facing, visible, roughness);
+    pre_exposure(lighting) * specular_occlusion(facing, visible, roughness);
 
   // The ray's end, the distance traced out, or short of the near plane where it comes back towards the camera: its
   // line across the screen is as long as its reach, so a reach as short as the surface is near cut a puddle's
@@ -731,7 +731,9 @@ fn ray_need(start: TraceStart, pixel: vec2<u32>) -> u32 {
   if (rays < 4u && reflection.has_history > 0.5) {
     let last: vec2<u32> = textureDimensions(history_radiance) - 1u;
 
-    if (textureLoad(history_radiance, min(pixel, last), 0).a > NOISY_VARIANCE) {
+    let held_scale: f32 = history_scale(lighting);
+
+    if (textureLoad(history_radiance, min(pixel, last), 0).a * held_scale * held_scale > NOISY_VARIANCE) {
       rays *= 2u;
     }
   }
@@ -974,8 +976,12 @@ fn history_surface_at(uv: vec2<f32>) -> vec4<f32> {
   return textureSampleLevel(history_surface, history_sampler, uv, 0.0);
 }
 
+// The last frame's radiance and its variance at a place, brought to this frame's pre-exposure.
 fn history_radiance_at(uv: vec2<f32>) -> vec4<f32> {
-  return textureSampleLevel(history_radiance, history_sampler, uv, 0.0);
+  let held: vec4<f32> = textureSampleLevel(history_radiance, history_sampler, uv, 0.0);
+  let scale: f32 = history_scale(lighting);
+
+  return vec4<f32>(held.rgb * scale, held.a * scale * scale);
 }
 
 // A Gaussian's weight `offset` pixels out over the neighbourhood.
@@ -1390,7 +1396,8 @@ fn fs_upscale(in: FullscreenVarying) -> @location(0) vec4<f32> {
     return vec4<f32>(current.rgb, distance);
   }
 
-  let held: vec4<f32> = textureSampleLevel(history_full, history_sampler, uv, 0.0);
+  let stored: vec4<f32> = textureSampleLevel(history_full, history_sampler, uv, 0.0);
+  let held: vec4<f32> = vec4<f32>(stored.rgb * history_scale(lighting), stored.a);
 
   if (held.a < 0.0 || abs(held.a - clip.w) > clip.w * UPSCALE_MOVED) {
     return vec4<f32>(current.rgb, distance);

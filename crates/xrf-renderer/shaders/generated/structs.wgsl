@@ -47,6 +47,7 @@ struct Lighting {
   sky_params: vec4<f32>,
   clouds: vec4<f32>,
   engine: vec4<f32>,
+  pre_exposure: vec4<f32>,
   params: vec4<f32>,
   forward_ambient: vec4<f32>,
   forward_hemi: vec4<f32>,

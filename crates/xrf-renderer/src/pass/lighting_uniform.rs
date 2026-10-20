@@ -18,8 +18,9 @@ use crate::pass::reflection_trace::ReflectionTrace;
 pub struct LightingUniform {
   /// Towards the sun, in view space.
   pub to_sun: Vec4,
-  /// The sun's colour, then its specular weight.
+  /// The sun's colour, then its specular weight, at the pre-exposure.
   pub sun: Vec4,
+  /// The ambient light, at the pre-exposure.
   pub ambient: Vec4,
   pub environment: Vec4,
   /// The irradiance's stand-in, then one once both cubes are up.
@@ -40,6 +41,9 @@ pub struct LightingUniform {
   /// composited surfaces, and one where the light is physical (`RenderLightModel`): the colours here lit as linear light,
   /// the irradiance cubes decoded where they are read.
   pub engine: Vec4,
+  /// The scale the frame's light is written at (`PreExposure`), which the sun, the ambient and the lamps here carry and
+  /// the shaders give the light they make, then the last frame's, by which a history is brought to this one's.
+  pub pre_exposure: Vec4,
   /// How much light the occlusion's creases bounce back (VBAO's alone), then ones where the scene is
   /// lit, the exposure adapts and the occlusion darkens.
   pub params: Vec4,
@@ -87,16 +91,17 @@ impl LightingUniform {
     let height_fog: &RenderFogSettings = &options.features.fog;
     // Searched only where the view is lit and solid.
     let is_occluded: bool = occlusion.is_enabled && options.mode.is_lit && !options.mode.is_wireframe;
-    // The weather's colours lit as light: display values, decoded where the light is physical. The sky's, the clouds'
-    // and the sprite's colour the pictures they tint, which the shaders decode with them; the forward passes' as the
-    // engine binds them.
+    // The weather's colours lit as light: display values, decoded where the light is physical, at the pre-exposure. The
+    // sky's, the clouds' and the sprite's colour the pictures they tint, which the shaders decode with them; the forward
+    // passes' as the engine binds them.
     let is_physical: bool = options.is_light_physical();
-    let light = |colour: Vec3| authored_colour(colour, is_physical);
+    let pre_exposure: f32 = frame.pre_exposure.current;
+    let light = |colour: Vec3| authored_colour(colour, is_physical) * pre_exposure;
 
     Self {
       to_sun: to_sun.extend(0.0),
       sun: light(lighting.get_sun_color(&options.features.light_scales))
-        .extend(lighting.get_sun_specular(&options.features.light_scales)),
+        .extend(lighting.get_sun_specular(&options.features.light_scales) * pre_exposure),
       ambient: light(lighting.get_ambient(&options.features.light_scales)).extend(0.0),
       environment: lighting.get_environment(&options.features.light_scales).extend(0.0),
       sky_irradiance: lighting.sky_irradiance.extend(flag(frame.is_irradiance_up)),
@@ -125,6 +130,7 @@ impl LightingUniform {
         flag(options.mode.is_lit && !options.mode.is_wireframe && options.features.glass.is_enhanced()),
         flag(is_physical),
       ),
+      pre_exposure: Vec4::new(pre_exposure, frame.pre_exposure.previous, 0.0, 0.0),
       params: Vec4::new(
         if is_occluded && !occlusion.is_gtao() {
           occlusion.vbao.bounce.clamp(0.0, 1.0)

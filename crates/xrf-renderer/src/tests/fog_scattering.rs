@@ -10,6 +10,7 @@ use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::pre_exposure::PreExposure;
 
 // The enhanced fog, scattering as the pack ships it.
 fn enhanced() -> RenderFogSettings {
@@ -49,6 +50,7 @@ fn height_fog(options: &RenderViewOptions, lighting: &RenderLighting) -> Vec4 {
     options,
     &LightingFrame {
       is_adapting: false,
+      pre_exposure: PreExposure::NONE,
       sky_blend: 0.0,
       is_irradiance_up: false,
       clouds_time: 0.0,

@@ -106,6 +106,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let depth: f32 = textureLoad(depth_target, texel, 0);
   let is_lit: bool = lighting.params.y > 0.5;
   let scale: f32 = frame_scale(lighting, exposure);
+  let exposed: f32 = frame_exposure(lighting, exposure);
   let is_fogged: bool = is_lit && lighting.fog_color.w > 0.5;
   // A level's frame draws its sky behind everything, so an empty pixel is the sky there instead.
   let is_sky_drawn: bool = is_lit && lighting.fog.w > 0.5;
@@ -120,10 +121,10 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     // `sky2.ps`: the sky's high part is the sky as drawn, within `def_hdr`; where the enhanced fog fades only past a
     // share, the sky the far ground fades into, so where the fog ends it meets the faded ground.
     if (is_sky_drawn) {
-      var sky: vec3<f32> = sky_drawn(lighting, direction, toward, scale);
+      var sky: vec3<f32> = sky_drawn(lighting, direction, toward, exposed);
 
       if (lighting.sky_fade.w > 0.5) {
-        sky = sky_over_ground(lighting, haze_map, direction, toward, scale, lighting.fog.z > 0.5);
+        sky = sky_over_ground(lighting, haze_map, direction, toward, exposed, lighting.fog.z > 0.5);
       }
 
       return combined(scene_from_shown(sky), sky / DEF_HDR);
@@ -190,7 +191,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     if (kept < 1.0) {
       let reflected: vec3<f32> = world_direction(reflect(normalize(position), normal));
       let aimed: vec3<f32> = surroundings_direction(sky_prefiltered, sky_clamp, world_offset(position), reflected);
-      let sky: vec3<f32> = prefiltered_sky(sky_prefiltered, sky_clamp, aimed, roughness) *
+      let sky: vec3<f32> = prefiltered_sky(sky_prefiltered, sky_clamp, aimed, roughness) * pre_exposure(lighting) *
         specular_occlusion(facing, occlusion * visible, roughness);
 
       radiance = mix(sky, radiance, kept);

@@ -323,7 +323,7 @@ fn shade_scene_hit(
   var sun: vec4<f32> = vec4<f32>(0.0);
 
   let through: vec3<f32> = select(vec3<f32>(0.0), saturate(dot(-toward, -(to_sun + facing))) * state.flora.y *
-    mix(vec3<f32>(1.0), state.sun.rgb, state.flora.z), is_crown);
+    mix(vec3<f32>(pre_exposure(state)), state.sun.rgb, state.flora.z), is_crown);
 
   if (lit.x > 0.0 || any(through > vec3<f32>(0.0))) {
     sun = vec4<f32>(state.sun.rgb * lit.x + through, state.sun.w * lit.y) *
@@ -403,7 +403,7 @@ fn shade_scene_grass(
   let lit: vec4<f32> = textureSampleLevel(lut, lut_sampler,
     vec3<f32>(dot(to_sun, facing), dot(half_way, facing), GRASS_MATERIAL_SLICE), 0.0);
   let through: vec3<f32> = select(vec3<f32>(0.0), saturate(dot(-toward, -(to_sun + facing))) * state.flora.y *
-    mix(vec3<f32>(1.0), state.sun.rgb, state.flora.z), state.flora.x > 0.5);
+    mix(vec3<f32>(pre_exposure(state)), state.sun.rgb, state.flora.z), state.flora.x > 0.5);
   var sun: vec4<f32> = vec4<f32>(0.0);
 
   if (lit.x > 0.0 || any(through > vec3<f32>(0.0))) {

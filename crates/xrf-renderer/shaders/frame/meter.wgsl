@@ -16,7 +16,9 @@ const SPOT_REACH: i32 = 4;
 fn cs_meter() {
   let size: vec2<i32> = vec2<i32>(textureDimensions(scene));
   let centre: vec2<i32> = size / 2;
-  let scale: f32 = frame_scale(lighting, exposure);
+  let scale: f32 = frame_exposure(lighting, exposure);
+  // The lights' target holds light at the pre-exposure, which the readings take off.
+  let pre: f32 = pre_exposure(lighting);
   var light: vec3<f32> = vec3<f32>(0.0);
   var drawn: f32 = 0.0;
   var albedo: f32 = 0.0;
@@ -39,8 +41,8 @@ fn cs_meter() {
         drawn += 1.0;
         albedo += luminance(srgb_decoded(surface.rgb));
         gloss += surface.a;
-        diffuse += luminance(gathered.rgb);
-        specular += gathered.a;
+        diffuse += luminance(gathered.rgb) / pre;
+        specular += gathered.a / pre;
         distance += -camera_view_position(vec2<f32>(texel) + 0.5, depth).z;
       }
     }

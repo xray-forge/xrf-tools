@@ -136,6 +136,7 @@ pub(crate) mod particle_pass;
 pub(crate) mod particle_surface_record;
 pub(crate) mod particle_vertex;
 pub(crate) mod pipeline_source;
+pub(crate) mod pre_exposure;
 pub(crate) mod present_parameters;
 pub(crate) mod present_pass;
 pub(crate) mod present_uniform;

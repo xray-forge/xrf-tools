@@ -38,7 +38,7 @@ fn fs_sky_behind(in: FullscreenVarying) -> @location(0) vec4<f32> {
   // Along the view through the frame's pixel this one's centre stands over.
   let toward: vec3<f32> = normalize(camera_view_position(in.clip.xy * 2.0, 0.5));
   let direction: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(toward, 0.0)).xyz);
-  let scale: f32 = frame_scale(lighting, exposure);
+  let scale: f32 = frame_exposure(lighting, exposure);
   let is_hazed: bool = lighting.fog.z > 0.5;
 
   return vec4<f32>(sky_behind(lighting, haze_map, direction, toward, scale, is_hazed), 1.0);

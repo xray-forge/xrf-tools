@@ -31,7 +31,7 @@ fn sample_sky(direction: vec3<f32>, scale: f32) -> vec3<f32> {
 @fragment
 fn fs_sky_haze(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let uv: vec2<f32> = in.clip.xy / HAZE_SIZE;
-  let scale: f32 = frame_scale(lighting, exposure);
+  let scale: f32 = frame_exposure(lighting, exposure);
   let bearing: f32 = (uv.x - 0.5) * PI * 2.0;
   // As `sky_haze_coordinates` reads it back: a target sampled where it was drawn, the height from the nadir up.
   let height: f32 = (uv.y - 0.5) * PI;

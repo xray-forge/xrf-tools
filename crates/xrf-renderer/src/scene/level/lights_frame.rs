@@ -28,4 +28,6 @@ pub struct LightsFrame<'a> {
   pub is_scene_first: bool,
   /// Whether the view lights in linear light, the lights' authored colours decoded (`RenderLightModel::Physical`).
   pub is_physical: bool,
+  /// The scale the view's light is written at (`PreExposure::current`).
+  pub pre_exposure: f32,
 }

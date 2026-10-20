@@ -96,7 +96,7 @@ fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
       let kept: vec4<f32> = textureSampleLevel(froxel_history, froxel_sampler,
         vec3<f32>(previous_screen, previous_share), 0.0);
 
-      current = mix(current, kept, FROXEL_HISTORY);
+      current = mix(current, vec4<f32>(kept.rgb * history_scale(lighting), kept.a), FROXEL_HISTORY);
     }
   }
 

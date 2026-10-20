@@ -1,10 +1,15 @@
 use glam::Vec4;
 
-/// What a viewport's frame adds to its lighting before the uniform is written: what is up of the sky, and the clocks.
+use crate::pass::pre_exposure::PreExposure;
+
+/// What a viewport's frame adds to its lighting before the uniform is written: the exposure, what is up of the sky,
+/// and the clocks.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LightingFrame {
   /// Whether the exposure adapts this frame.
   pub is_adapting: bool,
+  /// The scale the frame's light is written at, and the last frame's.
+  pub pre_exposure: PreExposure,
   /// How far from the first keyframe's sky to the second's, moved to the one up while the other is still going up.
   pub sky_blend: f32,
   /// Whether both irradiance cubes are up, else the lighting's stand-in lights the hemisphere.

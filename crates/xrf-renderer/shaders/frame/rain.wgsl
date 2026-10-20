@@ -452,7 +452,8 @@ fn scattered(view_at: vec3<f32>) -> vec3<f32> {
   let facing: f32 = dot(normalize(view_at), lighting.to_sun.xyz);
   let square: f32 = SUN_ASYMMETRY * SUN_ASYMMETRY;
   let phase: f32 = (1.0 - square) / pow(1.0 + square - 2.0 * SUN_ASYMMETRY * facing, 1.5);
-  let light: vec3<f32> = authored_colour(lighting.forward_hemi.rgb * 2.0) + lighting.sun.rgb * phase * SUN_SCATTER;
+  let light: vec3<f32> = authored_colour(lighting.forward_hemi.rgb * 2.0) * pre_exposure(lighting) +
+    lighting.sun.rgb * phase * SUN_SCATTER;
 
   return shown_from_light(mix(light, vec3<f32>(luminance(light)), SCATTER_GREY), frame_scale(lighting, exposure));
 }

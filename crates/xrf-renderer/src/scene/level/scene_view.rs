@@ -359,7 +359,11 @@ impl SceneView {
     let lighting_frame: LightingFrame = self.features.sky.get_lighting_frame(
       (&lighting.sky, options),
       frame.weather_textures,
-      (self.features.exposure.is_adapting(), time),
+      (
+        self.features.exposure.is_adapting(),
+        self.features.exposure.get_pre_exposure(),
+        time,
+      ),
     );
 
     self.features.sun_shafts.prepare(options, lighting);
@@ -428,6 +432,7 @@ impl SceneView {
         campfire_shares: &scene.campfire_shares,
         is_scene_first: frame.is_scene_first,
         is_physical: options.is_light_physical(),
+        pre_exposure: self.features.exposure.get_pre_exposure().current,
       },
     );
     self.shared.camera = *view;
@@ -1628,6 +1633,7 @@ impl SceneView {
     self.features.lights.request_report();
     self.features.reflections.request_demand();
     self.features.meter.request();
+    self.features.exposure.request_readback();
   }
 
   /// Drops what a frame that was never submitted copied out for reading back, its counts and its pick, and forgets the
@@ -1640,6 +1646,7 @@ impl SceneView {
     self.features.lights.abandon_report();
     self.features.reflections.abandon_demand();
     self.features.meter.abandon();
+    self.features.exposure.abandon_readback();
     self.features.pick.abandon();
     // What the frame drew of the periodic work was never drawn.
     self.features.shadows.abandon_frame();
