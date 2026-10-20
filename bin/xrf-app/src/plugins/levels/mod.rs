@@ -26,6 +26,7 @@ pub mod state;
 pub mod surfaces;
 pub mod texture_resolver;
 pub mod textures;
+pub mod viewer;
 
 #[cfg(test)]
 mod tests;

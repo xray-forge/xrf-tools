@@ -305,6 +305,31 @@ export class NativeViewport {
   }
 
   /**
+   * Writes the viewport's next finished frame to a PNG file: the whole viewport at its drawn size, without its
+   * overlays or its selection's outline.
+   *
+   * @param path - The file to write.
+   * @returns Whether it was written, which a viewport not attached is not; rejects for a screenshot that failed.
+   */
+  public async saveScreenshot(path: string): Promise<boolean> {
+    const id: Nullable<RenderViewportId> = await this.attached;
+
+    if (id === null || this.isDisposed) {
+      return false;
+    }
+
+    try {
+      await renderCommands.saveScreenshot(id, path);
+
+      return true;
+    } catch (error: unknown) {
+      this.noteFailure("saveScreenshot", error);
+
+      throw error;
+    }
+  }
+
+  /**
    * Draws an open level, or none.
    *
    * @param sessionId - The level's open session, as the backend holds it, or null for no level.

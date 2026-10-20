@@ -16,7 +16,6 @@
     "core:window:allow-show",
     "core:window:allow-set-focus",
     "fs:allow-exists",
-    "fs:allow-write-text-file",
     {
       "identifier": "fs:scope",
       "allow": [

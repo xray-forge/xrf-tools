@@ -7,6 +7,7 @@ import { IPoint3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { LevelViewerLayout } from "@/applications/level-viewer/components/LevelViewerLayout";
+import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
@@ -48,6 +49,7 @@ function renderReporting(onRender: () => void = () => undefined): {
     LevelViewportService,
     LevelWeatherService,
     LevelLookService,
+    LevelViewerScreenshotService,
     LevelViewerSnapshotService,
   ]);
 
@@ -85,6 +87,7 @@ function renderLayout(
     LevelViewportService,
     LevelWeatherService,
     LevelLookService,
+    LevelViewerScreenshotService,
     LevelViewerSnapshotService,
   ]);
 
@@ -165,6 +168,8 @@ describe("LevelViewerLayout", () => {
       LevelViewportService,
       LevelWeatherService,
       LevelLookService,
+      LevelViewerScreenshotService,
+      LevelViewerScreenshotService,
       LevelViewerSnapshotService,
     ]);
 
@@ -323,6 +328,8 @@ describe("LevelViewerLayout", () => {
       LevelViewportService,
       LevelWeatherService,
       LevelLookService,
+      LevelViewerScreenshotService,
+      LevelViewerScreenshotService,
       LevelViewerSnapshotService,
     ]);
     const settings: RenderSettingsService = container.get(RenderSettingsService);

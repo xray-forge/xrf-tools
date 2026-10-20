@@ -110,6 +110,12 @@ impl Renderer {
     self.ask(|reply| RenderCommand::Capture { id, reply })
   }
 
+  /// A viewport's next finished frame whole, without its overlays, read back; the reply is let go unanswered for a
+  /// viewport the renderer does not draw.
+  pub fn screenshot_viewport(&self, id: RenderViewportId) -> Receiver<XrfResult<RenderCapture>> {
+    self.ask(|reply| RenderCommand::Screenshot { id, reply })
+  }
+
   pub fn set_view_options(&self, id: RenderViewportId, options: RenderViewOptions) {
     self.queue.send(RenderCommand::Options {
       id,

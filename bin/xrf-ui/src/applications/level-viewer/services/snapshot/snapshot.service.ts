@@ -9,7 +9,7 @@ import {
   LEVEL_VIEWER_SNAPSHOT_CAMERA_DECIMALS,
   LEVEL_VIEWER_SNAPSHOT_FORMAT,
   TLevelViewerSnapshotPart,
-} from "@/applications/level-viewer/lib/level-viewer-snapshot";
+} from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
 import { systemCommands } from "@/core/ipc/commands/system";
 import { LevelSource } from "@/core/ipc/types/xrf-app";
 import { BuildInfo } from "@/core/ipc/types/xrf-build-info";

@@ -21,6 +21,11 @@ import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 export const levelsCommands = {
   /** Release only the openings owned by the departing viewer. */
   closeLevel: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:levels|close_level", { sessionIds }),
+  /** Copy a screenshot of the screenshots folder to where the page names, as Save as does. */
+  copyScreenshot: (path: string, target: string) =>
+    __TAURI_INVOKE<null>("plugin:levels|copy_screenshot", { path, target }),
+  /** Delete a screenshot of the screenshots folder for good, with its report beside it. */
+  deleteScreenshot: (path: string) => __TAURI_INVOKE<null>("plugin:levels|delete_screenshot", { path }),
   /**
    * Describe what the open level's game runs its console with of how levels are lit and exposed: its `user.ltx` over
    * its shipped defaults.
@@ -33,8 +38,15 @@ export const levelsCommands = {
       sessionId,
       index,
     }),
+  /**
+   * The first free path for a screenshot named `name` in the screenshots folder, `-2`, `-3` and on added for one taken
+   * within the same second.
+   */
+  findScreenshotPath: (name: string) => __TAURI_INVOKE<string>("plugin:levels|find_screenshot_path", { name }),
   /** Restore the committed level descriptor without reading the level again. */
   getLevel: () => __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>("plugin:levels|get_level"),
+  /** The folder the level viewer's views are exported to and imported from by default, made where it is not yet. */
+  getViewFolder: () => __TAURI_INVOKE<string>("plugin:levels|get_view_folder"),
   /** Every compiled level the mounted roots hold, loose or archived alike. */
   listLevels: (roots: XrayRoots) => __TAURI_INVOKE<Array<LevelEntry>>("plugin:levels|list_levels", { roots }),
   /** Select a compiled level and report what it is built out of, without reading any of its geometry. */
@@ -58,4 +70,8 @@ export const levelsCommands = {
    */
   readLevelWeather: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelWeatherDescription>>("plugin:levels|read_level_weather", { sessionId }),
+  /** Read a level view's JSON text, for the page to check and import. */
+  readView: (path: string) => __TAURI_INVOKE<string>("plugin:levels|read_view", { path }),
+  /** Write a level view, or a screenshot's report, as its JSON text where the page names. */
+  saveView: (path: string, text: string) => __TAURI_INVOKE<null>("plugin:levels|save_view", { path, text }),
 };

@@ -94,6 +94,12 @@ pub enum RenderCommand {
     id: RenderViewportId,
     reply: Sender<XrfResult<RenderCapture>>,
   },
+  /// Reads a viewport's next finished frame back whole, as presented but without its overlays or its selection's
+  /// outline, whatever of it the window shows; the answer never comes for a viewport the renderer does not draw.
+  Screenshot {
+    id: RenderViewportId,
+    reply: Sender<XrfResult<RenderCapture>>,
+  },
   /// Answers once every command sent before it is handled.
   Handled {
     reply: Sender<()>,

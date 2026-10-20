@@ -9,8 +9,8 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_dlss::Dlss;
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
-  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphOwner, GraphPassTime, GraphReport, GraphRuntime,
-  GraphTaggedTime,
+  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphColorAttachment, GraphOwner, GraphPassTime,
+  GraphReport, GraphRuntime, GraphTaggedTime, GraphTexture, GraphTextureAccess, GraphTextureDescriptor,
 };
 
 use wgpu::util::StagingBelt;
@@ -60,6 +60,7 @@ use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::overlay_parameters::OverlayParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::present_parameters::PresentParameters;
+use crate::pass::present_pass::PresentPass;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_scene::LevelScene;
@@ -459,6 +460,11 @@ impl RenderThread {
       RenderCommand::Capture { id, reply } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
           viewport.captures.push(reply);
+        }
+      }
+      RenderCommand::Screenshot { id, reply } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.screenshots.push(reply);
         }
       }
     }
@@ -1397,9 +1403,9 @@ impl RenderThread {
     }
   }
 
-  /// The captures this frame copies out of their window's image once it is composed, before it is presented, each read
-  /// once back. A viewport gives one capture a frame, the first asked, so captures asked together land on consecutive
-  /// frames.
+  /// The captures this frame copies out of their window's image once it is composed, before it is presented, and the
+  /// screenshots it draws apart, each read once back. A viewport gives one of each a frame, the first asked, so those
+  /// asked together land on consecutive frames.
   fn take_captures(
     &mut self,
     device: &wgpu::Device,
@@ -1408,7 +1414,7 @@ impl RenderThread {
     let mut captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)> = Vec::new();
 
     for window in windows {
-      for (id, _, shown) in &window.drawn {
+      for (id, rect, shown) in &window.drawn {
         let Some(viewport) = self.viewports.get_mut(id) else {
           continue;
         };
@@ -1417,6 +1423,17 @@ impl RenderThread {
           let reply: CaptureReply = viewport.captures.remove(0);
 
           match FrameCapture::new(device, window.format, *shown, viewport.frame) {
+            Ok(capture) => captures.push((*id, capture, reply)),
+            Err(error) => {
+              let _ = reply.send(Err(error));
+            }
+          }
+        }
+
+        if !viewport.screenshots.is_empty() {
+          let reply: CaptureReply = viewport.screenshots.remove(0);
+
+          match FrameCapture::new_screenshot(device, window.format, (rect.width, rect.height), viewport.frame) {
             Ok(capture) => captures.push((*id, capture, reply)),
             Err(error) => {
               let _ = reply.send(Err(error));
@@ -1503,16 +1520,28 @@ impl RenderThread {
           .map(|image| image.texture.create_view(&Default::default())),
       );
     }
-    let (kept, refused): (Vec<_>, Vec<_>) = std::mem::take(captures).into_iter().partition(|(id, ..)| {
-      windows
-        .iter()
-        .any(|window| window.image.is_some() && window.drawn.iter().any(|(drawn, ..)| drawn == id))
+    // A screenshot is drawn apart from its window, so it needs no image of it, only a scene drawn.
+    let (kept, refused): (Vec<_>, Vec<_>) = std::mem::take(captures).into_iter().partition(|(id, capture, _)| {
+      capture.is_screenshot()
+        || windows
+          .iter()
+          .any(|window| window.image.is_some() && window.drawn.iter().any(|(drawn, ..)| drawn == id))
     });
+    let (kept, undrawn): (Vec<_>, Vec<_>) = kept
+      .into_iter()
+      .partition(|(id, capture, _)| !capture.is_screenshot() || outputs.contains_key(id));
 
     *captures = kept;
 
     // A window that gave no image this frame, minimised or out of time, is captured on the next frame it presents.
     retried.extend(refused.into_iter().map(|(id, _, reply)| (id, reply)));
+
+    for (id, _, reply) in undrawn {
+      let _ = reply.send(Err(XrfError::new_invalid_error(format!(
+        "Viewport {} draws no scene to take a screenshot of",
+        id.0
+      ))));
+    }
 
     graph.begin_owner(GraphOwner::Frame);
 
@@ -1537,6 +1566,16 @@ impl RenderThread {
         composed,
         (&gpu.backdrop, &gpu.present, &gpu.overlay, grid),
         captures,
+      );
+    }
+
+    for (id, capture, _) in captures.iter().filter(|(_, capture, _)| capture.is_screenshot()) {
+      Self::declare_screenshot(
+        (&mut graph, runtime),
+        gpu,
+        &self.viewports,
+        (*id, capture),
+        outputs.get(id),
       );
     }
 
@@ -1567,24 +1606,7 @@ impl RenderThread {
 
     Some(ComposedView {
       binding: viewport.binding.as_ref()?,
-      present: output.map(|output| PresentParameters {
-        scene: output.scene,
-        distortion: output.targets.distortion,
-        depth_target: output.targets.depth,
-        albedo_target: output.targets.albedo,
-        normal_target: output.targets.normal,
-        material_target: output.targets.material,
-        light_target: output.targets.light,
-        occlusion_target: output.targets.occlusion[0],
-        present: output.present,
-        upscaled: output.shown,
-        motion_target: output.targets.motion,
-        bloom_target: output.bloom,
-        bloom_sampler: gpu.present.get_bloom_sampler(),
-        indirect_light: output.indirect_light,
-        reflections: output.reflections,
-        reflection_ends: output.reflection_ends,
-      }),
+      present: output.map(|output| Self::to_present_parameters(gpu, output)),
       overlays: output
         .zip(level.and_then(SceneView::get_overlays))
         .map(|(output, overlays)| {
@@ -1600,6 +1622,73 @@ impl RenderThread {
       rect,
       shown,
     })
+  }
+
+  /// What the present pass reads of a viewport's frame (`output`).
+  fn to_present_parameters<'a>(gpu: &'a GpuState, output: &SceneOutput) -> PresentParameters<'a> {
+    PresentParameters {
+      scene: output.scene,
+      distortion: output.targets.distortion,
+      depth_target: output.targets.depth,
+      albedo_target: output.targets.albedo,
+      normal_target: output.targets.normal,
+      material_target: output.targets.material,
+      light_target: output.targets.light,
+      occlusion_target: output.targets.occlusion[0],
+      present: output.present,
+      upscaled: output.shown,
+      motion_target: output.targets.motion,
+      bloom_target: output.bloom,
+      bloom_sampler: gpu.present.get_bloom_sampler(),
+      indirect_light: output.indirect_light,
+      reflections: output.reflections,
+      reflection_ends: output.reflection_ends,
+    }
+  }
+
+  /// Declares a viewport's screenshot: its frame (`output`) presented into a texture of its own at its whole size, as
+  /// its window shows it but without its overlays or its selection's outline, then copied out.
+  fn declare_screenshot<'a>(
+    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    gpu: &'a GpuState,
+    viewports: &'a BTreeMap<RenderViewportId, RenderViewport>,
+    (id, capture): (RenderViewportId, &'a FrameCapture),
+    output: Option<&SceneOutput>,
+  ) {
+    let Some(viewport) = viewports.get(&id) else {
+      return;
+    };
+    let (Some(output), Some(binding), Some((_, view))) = (output, viewport.binding.as_ref(), viewport.shown.as_ref())
+    else {
+      return;
+    };
+    let (width, height): (u32, u32) = capture.get_size();
+    let format: wgpu::TextureFormat = capture.get_format();
+    let parameters: PresentParameters<'a> = PresentParameters {
+      present: runtime.push_uniform(&view.get_present_uniform().for_screenshot((width, height))),
+      ..Self::to_present_parameters(gpu, output)
+    };
+    let texture: GraphTexture =
+      graph.create_texture(GraphTextureDescriptor::new_2d("screenshot", width, height, format));
+    let present: &'a PresentPass = &gpu.present;
+
+    graph
+      .add_raster_pass("screenshot")
+      .parameters(&parameters)
+      .color(GraphColorAttachment::new(
+        texture,
+        wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+      ))
+      .record(move |context| present.draw(context, format, binding, &parameters));
+    graph
+      .add_encoder_pass("screenshot copy")
+      .texture(texture, GraphTextureAccess::CopySource)
+      .keep()
+      .record(move |context| {
+        let texture: &wgpu::Texture = context.get_texture(texture).texture;
+
+        capture.encode(context.get_encoder(), texture);
+      });
   }
 
   /// Gives up a frame its graph could not draw: what the frame's own encoder holds is not of the frame (the uploads and

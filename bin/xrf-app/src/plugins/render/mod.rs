@@ -1,3 +1,4 @@
+pub mod capture_file;
 #[cfg(windows)]
 pub mod channel_event_sink;
 pub mod commands;

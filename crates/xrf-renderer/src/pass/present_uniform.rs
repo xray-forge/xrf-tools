@@ -122,4 +122,14 @@ impl PresentUniform {
       ..self
     }
   }
+
+  /// The same drawn into a screenshot `size` pixels across, apart from the window and without the selection's outline.
+  pub fn for_screenshot(self, (width, height): (u32, u32)) -> Self {
+    Self {
+      origin: Vec2::ZERO,
+      size: Vec2::new(width as f32, height as f32),
+      selection: Vec4::ZERO,
+      ..self
+    }
+  }
 }

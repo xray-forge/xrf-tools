@@ -2,11 +2,11 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
+import { LevelViewerListService } from "@/applications/level-viewer/services/list";
 import { createRoots } from "@/core/assets/lib";
 import { EngineChoiceFormRow } from "@/core/engine-target/components/EngineChoiceFormRow";
 import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
 import { LevelEntry } from "@/core/ipc/types/xrf-app";
-import { LevelListService } from "@/core/level/services/level-list.service";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
@@ -28,7 +28,7 @@ export function LevelViewerOpenForm({
   className,
   onFinished,
 }: ILevelViewerOpenFormProps): ReactElement {
-  const listService: LevelListService = useInjection(LevelListService);
+  const listService: LevelViewerListService = useInjection(LevelViewerListService);
   const loadService: LevelLoadService = useInjection(LevelLoadService);
 
   const [selected, setSelected] = useState<string>("");

@@ -42,6 +42,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_trace_uniform::LightTraceUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::present_uniform::PresentUniform;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::sky_parameters::SkyParameters;
@@ -140,6 +141,11 @@ impl SceneView {
   /// Whether DLSS reconstructs rays as it resolves its frame.
   pub fn is_ray_reconstructed(&self) -> bool {
     self.features.resolve.is_ray_reconstructed()
+  }
+
+  /// What its window's present pass reads this frame.
+  pub fn get_present_uniform(&self) -> &PresentUniform {
+    self.features.present.get_uniform()
   }
 
   /// The size its frame is resolved at, none before its targets are made.

@@ -216,6 +216,14 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   /**
+   * @param path - The PNG file to write the viewport's next finished frame to, without its overlays.
+   * @returns Whether it was written, which it is not with no viewport attached; rejects for a screenshot that failed.
+   */
+  public async saveScreenshot(path: string): Promise<boolean> {
+    return this.viewport ? this.viewport.saveScreenshot(path) : false;
+  }
+
+  /**
    * Plays the level's weather on from a time of day, which is where its clock stands from then on.
    *
    * @param time - Seconds since midnight.

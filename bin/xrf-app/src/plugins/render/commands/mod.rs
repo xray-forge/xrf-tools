@@ -17,6 +17,7 @@ pub mod play_weather;
 pub mod play_weather_effect;
 pub mod pose_model;
 pub mod save_capture;
+pub mod save_screenshot;
 pub mod seek_weather;
 pub mod send_input;
 pub mod set_camera;

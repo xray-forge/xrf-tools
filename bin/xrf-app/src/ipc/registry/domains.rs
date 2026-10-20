@@ -92,14 +92,23 @@ macro_rules! for_each_tauri_command_domain {
       }
       levels => "levels" {
         close_level => crate::plugins::levels::commands::close_level::levels_close_level,
+        copy_screenshot => crate::plugins::levels::viewer::commands::copy_screenshot::levels_copy_screenshot,
+        delete_screenshot => crate::plugins::levels::viewer::commands::delete_screenshot::levels_delete_screenshot,
         describe_console_defaults => crate::plugins::levels::commands::describe_console_defaults::levels_describe_console_defaults,
         describe_spawn_object => crate::plugins::levels::commands::describe_spawn_object::levels_describe_spawn_object,
+        find_screenshot_path => crate::plugins::levels::viewer::commands::find_screenshot_path::levels_find_screenshot_path,
         get_level => crate::plugins::levels::commands::get_level::levels_get_level,
+        get_view_folder => crate::plugins::levels::viewer::commands::get_view_folder::levels_get_view_folder,
         list_levels => crate::plugins::levels::commands::list_levels::levels_list_levels,
         open_level => crate::plugins::levels::commands::open_level::levels_open_level,
         open_spawn_objects => crate::plugins::levels::commands::open_spawn_objects::levels_open_spawn_objects,
         read_level_cycle => crate::plugins::levels::commands::read_level_cycle::levels_read_level_cycle,
         read_level_weather => crate::plugins::levels::commands::read_level_weather::levels_read_level_weather,
+        read_view => crate::plugins::levels::viewer::commands::read_view::levels_read_view,
+        save_view => crate::plugins::levels::viewer::commands::save_view::levels_save_view,
+      }
+      @bulk {
+        read_screenshot(path: "string") => crate::plugins::levels::viewer::routes::read_screenshot::levels_read_screenshot,
       }
       // Native viewports drawn by the renderer into the window the page names, under its webview.
       render => "render" {
@@ -122,6 +131,7 @@ macro_rules! for_each_tauri_command_domain {
         play_weather => crate::plugins::render::commands::play_weather::render_play_weather,
         play_weather_effect => crate::plugins::render::commands::play_weather_effect::render_play_weather_effect,
         save_capture => crate::plugins::render::commands::save_capture::render_save_capture,
+        save_screenshot => crate::plugins::render::commands::save_screenshot::render_save_screenshot,
         seek_weather => crate::plugins::render::commands::seek_weather::render_seek_weather,
         send_input => crate::plugins::render::commands::send_input::render_send_input,
         set_camera => crate::plugins::render::commands::set_camera::render_set_camera,

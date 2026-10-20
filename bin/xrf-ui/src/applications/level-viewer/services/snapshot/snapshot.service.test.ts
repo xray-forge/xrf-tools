@@ -5,7 +5,7 @@ import {
   ILevelViewerSnapshot,
   ILevelViewerSnapshotEntry,
   LEVEL_VIEWER_SNAPSHOT_FORMAT,
-} from "@/applications/level-viewer/lib/level-viewer-snapshot";
+} from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
 import { ILevelViewerSnapshotApplied, LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";

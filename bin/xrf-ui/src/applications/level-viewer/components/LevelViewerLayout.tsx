@@ -8,20 +8,22 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode } from "react";
 
-import { LevelViewerSnapshotActions } from "@/applications/level-viewer/components/LevelViewerSnapshotActions";
 import { LevelViewerToolbar } from "@/applications/level-viewer/components/LevelViewerToolbar";
-import { ELevelViewerPanelId } from "@/applications/level-viewer/lib/level-viewer-panel-id";
+import { LevelHeaderPanel } from "@/applications/level-viewer/components/panels/LevelHeaderPanel";
+import { LevelProblemsPanel } from "@/applications/level-viewer/components/panels/LevelProblemsPanel";
+import { LevelRendererPanel } from "@/applications/level-viewer/components/panels/LevelRendererPanel";
+import { LevelSpawnPanel } from "@/applications/level-viewer/components/panels/LevelSpawnPanel";
+import { LevelSurfacesPanel } from "@/applications/level-viewer/components/panels/LevelSurfacesPanel";
+import { LevelWeatherPanel } from "@/applications/level-viewer/components/panels/LevelWeatherPanel";
+import { LevelPreviewCoordinates } from "@/applications/level-viewer/components/preview/LevelPreviewCoordinates";
+import { LevelPreviewEmpty } from "@/applications/level-viewer/components/preview/LevelPreviewEmpty";
+import { LevelPreviewMetrics } from "@/applications/level-viewer/components/preview/LevelPreviewMetrics";
+import { LevelViewerScreenshotActions } from "@/applications/level-viewer/components/screenshot/LevelViewerScreenshotActions";
+import { LevelViewerScreenshotToast } from "@/applications/level-viewer/components/screenshot/LevelViewerScreenshotToast";
+import { LevelViewerSnapshotActions } from "@/applications/level-viewer/components/snapshot/LevelViewerSnapshotActions";
+import { ELevelViewerPanelId } from "@/applications/level-viewer/lib/panels/level-viewer-panel-id";
 import { LEVEL_VIEWER_VIEW_MENU } from "@/applications/level-viewer/menus";
-import { LevelHeaderPanel } from "@/core/level/components/panels/LevelHeaderPanel";
-import { LevelProblemsPanel } from "@/core/level/components/panels/LevelProblemsPanel";
-import { LevelRendererPanel } from "@/core/level/components/panels/LevelRendererPanel";
-import { LevelSpawnPanel } from "@/core/level/components/panels/LevelSpawnPanel";
-import { LevelSurfacesPanel } from "@/core/level/components/panels/LevelSurfacesPanel";
-import { LevelWeatherPanel } from "@/core/level/components/panels/LevelWeatherPanel";
-import { LevelPreviewCoordinates } from "@/core/level/components/preview/LevelPreviewCoordinates";
 import { LevelPreviewCover } from "@/core/level/components/preview/LevelPreviewCover";
-import { LevelPreviewEmpty } from "@/core/level/components/preview/LevelPreviewEmpty";
-import { LevelPreviewMetrics } from "@/core/level/components/preview/LevelPreviewMetrics";
 import { LevelPreviewPick } from "@/core/level/components/preview/LevelPreviewPick";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
 import { ILevelOverlay, LEVEL_OVERLAYS } from "@/core/level/lib/view/level-overlays";
@@ -142,6 +144,7 @@ export function LevelViewerLayout({
   return (
     <EditorLayout toolbar={<LevelViewerToolbar onBack={onBack} />}>
       <LevelViewerSnapshotActions />
+      <LevelViewerScreenshotActions />
 
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>
         {heading ? (
@@ -169,6 +172,8 @@ export function LevelViewerLayout({
           ) : null}
 
           {isOpen ? <LevelPreviewPick /> : null}
+
+          {isOpen ? <LevelViewerScreenshotToast /> : null}
 
           {!isOpen && !isLoading ? <LevelPreviewEmpty error={error} onRetry={onRetry} /> : null}
 

@@ -8,10 +8,10 @@ export const LEVEL_VIEWER_VIEW_MENU: IMenu<"overlays"> = defineMenu({
   sections: ["overlays"],
 });
 
-/** What the level viewer adds to File: the view written to a file and read back. */
-export const LEVEL_VIEWER_FILE_MENU_EXTENSION: IMenuExtension<"view"> = defineMenuExtension(FILE_MENU, {
+/** What the level viewer adds to File: the view written to a file and read back, and the screenshot. */
+export const LEVEL_VIEWER_FILE_MENU_EXTENSION: IMenuExtension<"view" | "screenshot"> = defineMenuExtension(FILE_MENU, {
   owner: "level-viewer",
-  sections: ["view"],
+  sections: ["view", "screenshot"],
 });
 
 /** Sections the level viewer adds to the core menus. */

@@ -1,5 +1,6 @@
+import { LevelViewerListService } from "@/applications/level-viewer/services/list";
+import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
-import { LevelListService } from "@/core/level/services/level-list.service";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
@@ -12,11 +13,12 @@ export { LevelViewerApplication as Component } from "./LevelViewerApplication";
 
 export const container: ContainerDefinition = {
   bindings: [
-    LevelListService,
+    LevelViewerListService,
     LevelLoadService,
     LevelLookService,
     LevelRenderService,
     LevelViewService,
+    LevelViewerScreenshotService,
     LevelViewerSnapshotService,
     LevelViewportService,
     LevelWeatherService,

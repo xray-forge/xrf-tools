@@ -237,6 +237,12 @@ export const renderCommands = {
   /** Write a viewport's next presented frame to a PNG file, as the renderer drew it rather than as the screen shows it. */
   saveCapture: (viewport: RenderViewportId, path: string) =>
     __TAURI_INVOKE<null>("plugin:render|save_capture", { viewport, path }),
+  /**
+   * Write a viewport's next finished frame to a PNG file: the whole viewport at its drawn size, without its overlays or
+   * its selection's outline.
+   */
+  saveScreenshot: (viewport: RenderViewportId, path: string) =>
+    __TAURI_INVOKE<null>("plugin:render|save_screenshot", { viewport, path }),
   /** Play a viewport's weather on from a time of day, in seconds since midnight, ending the effect playing. */
   seekWeather: (viewport: RenderViewportId, time: number | null) =>
     __TAURI_INVOKE<void>("plugin:render|seek_weather", { viewport, time }),

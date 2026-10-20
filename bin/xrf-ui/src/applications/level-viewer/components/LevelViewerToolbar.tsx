@@ -1,5 +1,15 @@
 import { ReactElement } from "react";
 
+import { LevelViewerScreenshotAction } from "@/applications/level-viewer/components/toolbar/camera/LevelViewerScreenshotAction";
+import { LevelFogAction } from "@/applications/level-viewer/components/toolbar/environment/LevelFogAction";
+import { LevelRainAction } from "@/applications/level-viewer/components/toolbar/environment/LevelRainAction";
+import { LevelSkyAction } from "@/applications/level-viewer/components/toolbar/environment/LevelSkyAction";
+import { LevelWindAction } from "@/applications/level-viewer/components/toolbar/environment/LevelWindAction";
+import { LevelImageQualityAction } from "@/applications/level-viewer/components/toolbar/image/LevelImageQualityAction";
+import { LevelLookAction } from "@/applications/level-viewer/components/toolbar/image/LevelLookAction";
+import { LevelOcclusionAction } from "@/applications/level-viewer/components/toolbar/lighting/LevelOcclusionAction";
+import { LevelReflectionsAction } from "@/applications/level-viewer/components/toolbar/lighting/LevelReflectionsAction";
+import { LevelShadowAction } from "@/applications/level-viewer/components/toolbar/lighting/LevelShadowAction";
 import { LevelCameraAction } from "@/core/level/components/preview/toolbar/camera/LevelCameraAction";
 import { LevelGoToAction } from "@/core/level/components/preview/toolbar/camera/LevelGoToAction";
 import { LevelCullingAction } from "@/core/level/components/preview/toolbar/contents/LevelCullingAction";
@@ -7,17 +17,8 @@ import { LevelGrassAction } from "@/core/level/components/preview/toolbar/conten
 import { LevelParticlesAction } from "@/core/level/components/preview/toolbar/contents/LevelParticlesAction";
 import { LevelSpawnAction } from "@/core/level/components/preview/toolbar/contents/LevelSpawnAction";
 import { LevelWaterAction } from "@/core/level/components/preview/toolbar/contents/LevelWaterAction";
-import { LevelFogAction } from "@/core/level/components/preview/toolbar/environment/LevelFogAction";
-import { LevelRainAction } from "@/core/level/components/preview/toolbar/environment/LevelRainAction";
-import { LevelSkyAction } from "@/core/level/components/preview/toolbar/environment/LevelSkyAction";
 import { LevelWeatherAction } from "@/core/level/components/preview/toolbar/environment/LevelWeatherAction";
-import { LevelWindAction } from "@/core/level/components/preview/toolbar/environment/LevelWindAction";
-import { LevelImageQualityAction } from "@/core/level/components/preview/toolbar/image/LevelImageQualityAction";
-import { LevelLookAction } from "@/core/level/components/preview/toolbar/image/LevelLookAction";
 import { LevelLightsAction } from "@/core/level/components/preview/toolbar/lighting/LevelLightsAction";
-import { LevelOcclusionAction } from "@/core/level/components/preview/toolbar/lighting/LevelOcclusionAction";
-import { LevelReflectionsAction } from "@/core/level/components/preview/toolbar/lighting/LevelReflectionsAction";
-import { LevelShadowAction } from "@/core/level/components/preview/toolbar/lighting/LevelShadowAction";
 import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting/LevelSunAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/toolbar/view/LevelOverlaysAction";
 import { LevelShadingAction } from "@/core/level/components/preview/toolbar/view/LevelShadingAction";
@@ -33,8 +34,8 @@ interface ILevelViewerToolbarProps extends BaseComponentProps {
 
 /**
  * Composes the level view toggles in the editor toolbar, by what each changes: the view, the image, the lighting, the
- * environment and the contents, then the camera's value pickers last. Each action reads and sets what it shows itself,
- * its sliders measured by the settings, which its popover resets to.
+ * environment and the contents, then the camera's value pickers and the screenshot last. Each action reads and sets
+ * what it shows itself, its sliders measured by the settings, which its popover resets to.
  */
 export function LevelViewerToolbar({
   "data-testid": dataTestId,
@@ -86,6 +87,7 @@ export function LevelViewerToolbar({
 
           <LevelCameraAction />
           <LevelGoToAction />
+          <LevelViewerScreenshotAction />
         </RenderSliderReference>
       }
     />

@@ -3,10 +3,10 @@ import { fireEvent, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
+import { LevelViewerListService } from "@/applications/level-viewer/services/list";
 import { AssetService } from "@/core/assets/services";
 import { LevelEntry } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine, EXrayEngineEvidence, XrayEngineResolution } from "@/core/ipc/types/xrf-engine-target";
-import { LevelListService } from "@/core/level/services/level-list.service";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
@@ -31,7 +31,7 @@ function mockEntry(name: string): LevelEntry {
 }
 
 function renderForm(): RenderResult {
-  const container: Container = mockContainer([AssetService, LevelListService, LevelLoadService]);
+  const container: Container = mockContainer([AssetService, LevelViewerListService, LevelLoadService]);
 
   return renderWithProviders(<LevelViewerOpenForm />, { route: "/level-viewer", container });
 }

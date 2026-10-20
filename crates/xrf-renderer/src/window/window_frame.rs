@@ -108,7 +108,7 @@ impl WindowFrame {
     });
 
     for (id, capture, _) in captures {
-      if !self.drawn.iter().any(|(drawn, ..)| drawn == id) {
+      if capture.is_screenshot() || !self.drawn.iter().any(|(drawn, ..)| drawn == id) {
         continue;
       }
 

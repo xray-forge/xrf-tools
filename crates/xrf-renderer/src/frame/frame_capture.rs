@@ -11,6 +11,7 @@ pub type CaptureReply = Sender<XrfResult<RenderCapture>>;
 
 /// A viewport's rectangle of a presented frame on its way back, for a capture asked of the renderer rather than of the
 /// screen, which another window may cover: copied out with the frame, read once a later frame's poll finds it mapped.
+/// A screenshot's is the viewport's finished frame whole, drawn apart from the window without its overlays.
 pub struct FrameCapture {
   readback: GpuReadback,
   rect: RenderRect,
@@ -18,6 +19,7 @@ pub struct FrameCapture {
   /// Bytes a row of the copy takes, aligned as copies need.
   row: u32,
   frame: u64,
+  is_screenshot: bool,
 }
 
 impl FrameCapture {
@@ -44,7 +46,47 @@ impl FrameCapture {
       format,
       row,
       frame,
+      is_screenshot: false,
     })
+  }
+
+  /// A screenshot of a viewport `size` pixels across, drawn in `format`, the frame `frame`, waiting for its copy.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a frame of a format a capture cannot read.
+  pub fn new_screenshot(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    (width, height): (u32, u32),
+    frame: u64,
+  ) -> XrfResult<Self> {
+    let rect: RenderRect = RenderRect {
+      x: 0,
+      y: 0,
+      width,
+      height,
+    };
+
+    Ok(Self {
+      is_screenshot: true,
+      ..Self::new(device, format, rect, frame)?
+    })
+  }
+
+  /// Whether it is a screenshot, which its viewport's own pass copies out rather than the window's.
+  pub fn is_screenshot(&self) -> bool {
+    self.is_screenshot
+  }
+
+  /// The pixels it copies across and down.
+  pub fn get_size(&self) -> (u32, u32) {
+    (self.rect.width, self.rect.height)
+  }
+
+  /// The format it reads.
+  pub fn get_format(&self) -> wgpu::TextureFormat {
+    self.format
   }
 
   /// Copies its rectangle out of `texture`, the frame drawn; asked for once the copy is submitted.

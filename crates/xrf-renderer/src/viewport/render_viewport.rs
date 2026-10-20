@@ -64,6 +64,8 @@ pub struct RenderViewport {
   /// Captures asked for, copied out of the next frames presented, one a frame in the order asked, and those copied,
   /// answered once they are back.
   pub captures: Vec<CaptureReply>,
+  /// Screenshots asked for, drawn from the next frames, one a frame in the order asked; in flight with the captures.
+  pub screenshots: Vec<CaptureReply>,
   pub captures_in_flight: Vec<(FrameCapture, CaptureReply)>,
   /// Picks asked for, drawn one a frame while a readback is free, and those drawn, answered once they are back.
   pub picks: Vec<PendingPick>,
@@ -180,6 +182,7 @@ impl RenderViewport {
       shown: None,
       world: RenderViewFrame::default(),
       captures: Vec::new(),
+      screenshots: Vec::new(),
       captures_in_flight: Vec::new(),
       picks: Vec::new(),
       picks_in_flight: Vec::new(),

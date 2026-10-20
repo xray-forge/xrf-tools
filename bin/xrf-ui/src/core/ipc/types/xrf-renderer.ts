@@ -1494,8 +1494,8 @@ export type RenderReflectionSettings = {
   waterSteps: number;
   /**
    * Whether a ray the screen does not answer is traced against the level's static geometry by hardware ray query,
-   * its hit lit, in place of the sky: the surfaces' while they are drawn, the water's while it reflects; on a device
-   * without ray queries it falls back to the sky as before.
+   * its hit lit, in place of the sky: the surfaces' while they are drawn, the water's while it reflects; a device
+   * without ray queries reflects the sky.
    */
   isTraced: boolean;
   /** Frames a pixel the screen does not answer waits between its traced rays, the last answer held between. */
