@@ -112,14 +112,13 @@ const BASE_PRESET: IRenderFeatureSettings = {
     mode: ERenderReflectionMode.ENHANCED,
     steps: 48,
   },
-  // Contact shadows under the cascades, at the frame's size, so thin foliage does not flicker under a temporal resolve.
+  // Contact shadows under the cascades at half the frame's size, which flickered no more than the full size; the trees
+  // swaying in the near two cascades alone, redrawn thirty times a second.
   shadows: {
     ...DEFAULT_RENDER_SHADOW_SETTINGS,
-    contact: {
-      ...DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS,
-      isFullResolution: true,
-      mode: ERenderContactShadowMode.ENHANCED,
-    },
+    contact: { ...DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS, mode: ERenderContactShadowMode.ENHANCED },
+    swayCascades: 2,
+    swayRate: 30,
   },
   textureFiltering: ERenderTextureFiltering.ANISOTROPIC16,
   // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.
@@ -165,6 +164,8 @@ const ENHANCED_PRESET: IRenderFeatureSettings = {
     contact: { ...BASE_PRESET.shadows.contact, lights: RENDER_MAX_CONTACT_SHADOW_LIGHTS, steps: 32 },
     filter: RENDER_MAX_SHADOW_FILTER,
     resolution: 4096,
+    swayCascades: DEFAULT_RENDER_SHADOW_SETTINGS.swayCascades,
+    swayRate: DEFAULT_RENDER_SHADOW_SETTINGS.swayRate,
   },
   volumetric: { ...BASE_PRESET.volumetric, distance: 200 },
 };

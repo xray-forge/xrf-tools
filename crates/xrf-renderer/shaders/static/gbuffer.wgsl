@@ -1062,22 +1062,22 @@ fn fs_pick_composited(in: GBufferVarying) -> @location(0) vec4<u32> {
 
 // A cut-out caster in a shadow's map: depth alone, cut as the G-buffer cuts it, so light falls between its leaves. Its
 // base is read at the mip its footprint's longer side picks, without the anisotropic taps, which a depth's cut does not
-// need; the cut raises the alpha by the mip as it does for any read.
+// need; the cut raises the alpha by that same mip, the texture's size read once.
 @fragment
 fn fs_shadow_cut_out(in: GBufferVarying) {
   let at: Footprint = take_footprint(in);
   let surface: Surface = surfaces[in.surface];
   var base: vec4<f32> = vec4<f32>(1.0);
+  var mip: f32 = 0.0;
 
   if ((surface.flags & SURFACE_HAS_BASE) != 0u) {
     let slot: u32 = surface.textures[SLOT_BASE];
-    let size: vec2<f32> = vec2<f32>(textureDimensions(textures[slot]));
-    let extent: f32 = max(dot(at.dx * size, at.dx * size), dot(at.dy * size, at.dy * size));
 
-    base = textureSampleLevel(textures[slot], texture_sampler, at.uv, 0.5 * log2(max(extent, 1e-8)));
+    mip = footprint_mip(vec2<f32>(textureDimensions(textures[slot])), at.dx, at.dy);
+    base = textureSampleLevel(textures[slot], texture_sampler, at.uv, mip);
   }
 
-  if (is_cut(in, base, at)) {
+  if (is_alpha_cut_at(base.a, mip, surface.alpha_reference)) {
     discard;
   }
 }

@@ -227,7 +227,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
       length: toNumber(0, 4),
       lights: toNumber(0, RENDER_MAX_CONTACT_SHADOW_LIGHTS, true),
       mode: toChoice(ERenderContactShadowMode),
-      steps: toNumber(4, 64, true, [8, 32]),
+      steps: toNumber(4, 64, true, [8, 32], 32),
       thickness: toNumber(0.01, 1),
     },
     filter: toNumber(0, RENDER_MAX_SHADOW_FILTER, true),
