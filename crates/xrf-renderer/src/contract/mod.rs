@@ -55,6 +55,7 @@ pub(crate) mod render_indirect_light_mode;
 pub(crate) mod render_indirect_light_settings;
 pub(crate) mod render_level_hit;
 pub(crate) mod render_libraries;
+pub(crate) mod render_light_model;
 pub(crate) mod render_light_scales;
 pub(crate) mod render_light_shadow_filter;
 pub(crate) mod render_lights_report;

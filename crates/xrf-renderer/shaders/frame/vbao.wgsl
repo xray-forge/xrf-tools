@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/scene_light"
 #import "common/octahedral"
 #import "common/fullscreen"
 #import "common/visibility_bitmask"
@@ -124,7 +125,8 @@ fn fs_light_source(in: FullscreenVarying) -> @location(0) vec4<f32> {
     return vec4<f32>(0.0);
   }
 
-  let light: vec3<f32> = textureLoad(albedo_target, texel, 0).rgb * textureLoad(light_target, texel, 0).rgb;
+  let light: vec3<f32> = authored_colour(textureLoad(albedo_target, texel, 0).rgb) *
+    textureLoad(light_target, texel, 0).rgb;
   return vec4<f32>(light * min(1.0, SOURCE_LIMIT / max(luminance(light), 1e-4)), 1.0);
 }
 

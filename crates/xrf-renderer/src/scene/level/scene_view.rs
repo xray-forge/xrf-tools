@@ -425,6 +425,7 @@ impl SceneView {
         grass_reach: self.features.grass.get_cascade_reach(),
         campfire_shares: &scene.campfire_shares,
         is_scene_first: frame.is_scene_first,
+        is_physical: options.is_light_physical(),
       },
     );
     self.shared.camera = *view;

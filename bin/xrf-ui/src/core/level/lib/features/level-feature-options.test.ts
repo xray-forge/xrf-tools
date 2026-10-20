@@ -8,6 +8,7 @@ import {
   ERenderFogMode,
   ERenderGlassMode,
   ERenderIndirectLightMode,
+  ERenderLightModel,
   ERenderLightShadowFilter,
   ERenderReflectionMode,
   ERenderVolumetricMode,
@@ -23,7 +24,9 @@ import {
   toLevelModeFeature,
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
+  toLevelRendererFeatures,
 } from "@/core/level/lib/features/level-feature-options";
+import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
@@ -266,5 +269,18 @@ describe("level feature options", () => {
       scale: 1.5,
     });
     expect(toLevelFeatureOptions({ output: { resolution: "900", scale: 3 } }).output).toEqual({});
+  });
+
+  it("lights with the view's own light model over the settings', and keeps only one the renderer knows", () => {
+    const physical: ILevelFeatureOptions = mockLevelFeatureOptions({ lightModel: ERenderLightModel.PHYSICAL });
+
+    expect(toLevelRendererFeatures(SETTINGS, mockLevelFeatureOptions(), DEFAULT_LEVEL_VIEW_OPTIONS).lightModel).toBe(
+      SETTINGS.lightModel
+    );
+    expect(toLevelRendererFeatures(SETTINGS, physical, DEFAULT_LEVEL_VIEW_OPTIONS).lightModel).toBe(
+      ERenderLightModel.PHYSICAL
+    );
+    expect(toLevelFeatureOptions({ lightModel: "physical" }).lightModel).toBe(ERenderLightModel.PHYSICAL);
+    expect(toLevelFeatureOptions({ lightModel: "candle" }).lightModel).toBeNull();
   });
 });

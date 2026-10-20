@@ -1,5 +1,6 @@
 #import "common/camera"
 #import "common/lighting"
+#import "common/scene_light"
 #import "common/sun_shadow"
 #import "common/light_clusters"
 #import "common/local_lights"
@@ -51,7 +52,8 @@ fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
   if (sun_density > 0.0) {
     let sunlit: f32 = sun_shadow_tap(shadow_maps, shadows, world);
 
-    scattered += lighting.sun.rgb * sunlit * froxel_phase(g, dot(-lighting.to_sun.xyz, to_eye)) * sun_density;
+    scattered += lighting.sun.rgb * sunlit * froxel_phase(g, dot(-lighting.to_sun.xyz, to_eye)) *
+      authored_amount(sun_density);
   }
 
   // Every local light binned where the froxel stands, through its shadow.
@@ -68,13 +70,14 @@ fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
         continue;
       }
 
-      var lit: f32 = falloff;
+      var lit: f32 = authored_amount(falloff);
 
       if (record.shadow.z > 0.0) {
         lit *= light_shadow(shadow_atlas, shadow_sampler, record, to_point, vec3<f32>(0.0), record.axis.w > -1.0, false);
       }
 
-      scattered += record.color.rgb * lit * froxel_phase(g, dot(normalize(to_point), to_eye)) * lamp_density;
+      scattered += record.color.rgb * lit * froxel_phase(g, dot(normalize(to_point), to_eye)) *
+        authored_amount(lamp_density);
     }
   }
 

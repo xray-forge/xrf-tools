@@ -1,6 +1,7 @@
 enable wgpu_binding_array;
 
 #import "common/camera"
+#import "common/scene_light"
 #import "common/hmodel"
 #import "common/local_lights"
 #import "common/sun_shadow"
@@ -251,7 +252,7 @@ fn scene_surface(hit: SceneHit, width: f32) -> SceneSurface {
     (TRACE_RECORD_TREE | TRACE_RECORD_CUT_OUT) && (surface.flags & SURFACE_IS_STILL) == 0u;
   let crown: vec3<f32> = normalize(hit.to_world * normalize(local + vec3<f32>(0.0, 1e-4, 0.0)));
 
-  return SceneSurface(hit.position, world_normal, albedo, hemi, sun, surface.slice, is_leaf, crown);
+  return SceneSurface(hit.position, world_normal, authored_colour(albedo), hemi, sun, surface.slice, is_leaf, crown);
 }
 
 // What a surface's details multiply its base by, as the G-buffer lays them: a terrain's four by its mask, a surface's
@@ -412,7 +413,7 @@ fn shade_scene_grass(
 
   let occlusion: f32 = mix(1.0, grass.hemi, camera.switches.z);
 
-  return hmodel(state, lut, lut_sampler, environment_0, environment_1, cube_sampler, vec4<f32>(grass.albedo, 0.0), sun,
+  return hmodel(state, lut, lut_sampler, environment_0, environment_1, cube_sampler, vec4<f32>(authored_colour(grass.albedo), 0.0), sun,
     facing, toward, GRASS_MATERIAL_SLICE, occlusion, vec3<f32>(1.0));
 }
 
@@ -458,13 +459,15 @@ fn scene_lamps(
     let half_way: vec3<f32> = normalize(to_light + to_eye);
     let material: vec4<f32> = textureSampleLevel(lut, lut_sampler,
       vec3<f32>(dot(to_light, view_normal), dot(half_way, view_normal), slice), 0.0);
-    var light: vec4<f32> = vec4<f32>(material.xxx, material.y) * falloff;
+    var light: vec4<f32> = vec4<f32>(material.xxx, material.y) * authored_amount(falloff);
 
     if (is_spot && record.up.w >= 0.0) {
       let slot: u32 = u32(record.up.w);
       let uv: vec2<f32> = projector_uv(record, to_point, vec2<f32>(textureDimensions(trace_textures[slot])));
 
-      light *= textureSampleLevel(trace_textures[slot], trace_sampler, uv, 0.0);
+      let projected: vec4<f32> = textureSampleLevel(trace_textures[slot], trace_sampler, uv, 0.0);
+
+      light *= vec4<f32>(authored_colour(projected.rgb), projected.a);
     }
 
     if (is_shadowed) {

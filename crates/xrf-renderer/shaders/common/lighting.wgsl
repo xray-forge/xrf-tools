@@ -2,6 +2,7 @@
 
 #import "generated/structs"
 #import "common/luminance"
+#import "common/srgb"
 
 // The scale this frame's tonemap multiplies by: the adapted exposure where it adapts, one otherwise.
 fn frame_scale(state: Lighting, exposure: Exposure) -> f32 {
@@ -39,11 +40,12 @@ fn untonemapped(colour: vec3<f32>, scale: f32) -> vec3<f32> {
 // The sky as light for the reflections: its picture taken back through the tonemap, as `untonemapped` takes it, its
 // highlights scaled by `gain` at its white, expanded above one (an inverse tone mapping operator, Banterle 2006), since
 // X-Ray's sky is a low-dynamic-range picture capped at the tonemap's white where a real overcast sky is far brighter
-// than the ground, and dimmed below it.
-fn sky_as_light(shown: vec3<f32>, scale: f32, gain: f32) -> vec3<f32> {
+// than the ground, and dimmed below it. A picture shown encoded for the display (`is_encoded`, the physical light) is
+// decoded first.
+fn sky_as_light(shown: vec3<f32>, scale: f32, gain: f32, is_encoded: bool) -> vec3<f32> {
   let bright: f32 = smoothstep(0.5, 1.0, luminance(max(shown, vec3<f32>(0.0))));
 
-  return untonemapped(shown, scale) * mix(1.0, gain, bright);
+  return untonemapped(select(shown, srgb_decoded(shown), is_encoded), scale) * mix(1.0, gain, bright);
 }
 
 // How much fog lies between the camera and a view space point: none without fog, one where it is total.
@@ -68,11 +70,32 @@ fn fog_amount_at(state: Lighting, position: vec3<f32>, height: f32) -> f32 {
   return saturate(fog + height_fog_share(state, height) * fog * state.height_fog.y);
 }
 
+// The sun's colour as the engine binds it, for a pass mixing it into a shown colour: as it stands, or encoded back
+// where the light is physical and it was decoded.
+fn sun_shown(state: Lighting) -> vec3<f32> {
+  return select(state.sun.rgb, srgb_encoded(state.sun.rgb), state.engine.w > 0.5);
+}
+
+// The fog's colour as light: the weather's display value, decoded where the light is physical. The passes mixing it
+// into a shown colour take `fog_color` as it stands.
+fn fog_light(state: Lighting) -> vec3<f32> {
+  return select(state.fog_color.rgb, srgb_decoded(state.fog_color.rgb), state.engine.w > 0.5);
+}
+
+// Light fogged towards the fog's light by `amount`: blended as the engine blends it, in display values, so its tuned
+// amounts veil as they did; under the physical light both are encoded for the blend and the result decoded back.
+fn fog_mixed(state: Lighting, light: vec3<f32>, fog: vec3<f32>, amount: f32) -> vec3<f32> {
+  let encoded: vec3<f32> = srgb_decoded(mix(srgb_encoded(light), srgb_encoded(fog), amount));
+
+  return select(mix(light, fog, amount), encoded, state.engine.w > 0.5);
+}
+
 // The colour the fog takes towards a view space point at a world height: the weather's, taking the sun's colour where
 // the enhanced fog's height fog lies and the view faces the sun.
 fn fog_color_at(state: Lighting, position: vec3<f32>, height: f32) -> vec3<f32> {
   let facing: f32 = saturate(dot(state.to_sun.xyz, normalize(position)));
-  let sunlit: vec3<f32> = mix(state.fog_color.rgb, state.sun.rgb, facing);
+  let fog: vec3<f32> = fog_light(state);
+  let sunlit: vec3<f32> = mix(fog, state.sun.rgb, facing);
 
-  return mix(state.fog_color.rgb, sunlit, height_fog_share(state, height) * state.height_fog.z);
+  return mix(fog, sunlit, height_fog_share(state, height) * state.height_fog.z);
 }

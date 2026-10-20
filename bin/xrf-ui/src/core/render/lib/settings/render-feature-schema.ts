@@ -9,6 +9,7 @@ import {
   ERenderFoliageMode,
   ERenderGlassMode,
   ERenderIndirectLightMode,
+  ERenderLightModel,
   ERenderLightShadowFilter,
   ERenderParallaxMode,
   ERenderRainDropsMode,
@@ -203,6 +204,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     isTraced: FLAG,
     traceInterval: toNumber(1, 8, true, [1, 4]),
   },
+  lightModel: toChoice(ERenderLightModel),
   lights: {
     isEnabled: FLAG,
     isLevelLights: FLAG,

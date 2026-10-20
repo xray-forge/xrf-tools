@@ -38,11 +38,12 @@ fn lit_color(shaded: GBufferOutput, position: vec3<f32>, fog: f32) -> vec3<f32> 
   let light: vec4<f32> = sun_light(lighting, material_lut, lut_sampler, normal, position, slice) * shaded.material.y;
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let occlusion: f32 = mix(1.0, shaded.material.x, camera.switches.z);
+  let albedo: vec4<f32> = vec4<f32>(authored_colour(shaded.albedo.rgb), shaded.albedo.a);
   let color: vec3<f32> = hmodel(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp,
-    shaded.albedo, light, normalize(rotation * normal), normalize(rotation * normalize(position)), slice, occlusion,
+    albedo, light, normalize(rotation * normal), normalize(rotation * normalize(position)), slice, occlusion,
     vec3<f32>(1.0));
 
-  return tonemap(mix(color, lighting.fog_color.rgb, fog), frame_scale(lighting, exposure));
+  return shown_from_light(fog_mixed(lighting, color, fog_light(lighting), fog), frame_scale(lighting, exposure));
 }
 
 // A spawned model's vertex lit as the engine's forward model passes light theirs, per vertex: by its object's sky share
@@ -204,7 +205,7 @@ fn composite(flags: u32, texel: vec3<f32>, alpha: f32, laid: vec3<f32>, fog: f32
     let factor: f32 = select(1.0, 2.0, (flags & SURFACE_IS_DOUBLED) != 0u);
 
     out.color = vec4<f32>(0.0);
-    out.behind = vec4<f32>(mix(texel * factor, vec3<f32>(1.0), fog), 1.0);
+    out.behind = vec4<f32>(mix(authored_colour(texel * factor), vec3<f32>(1.0), fog), 1.0);
   } else if ((flags & SURFACE_IS_ADDED) != 0u) {
     let weight: f32 = select(1.0, alpha, (flags & SURFACE_IS_WEIGHTED) != 0u);
 

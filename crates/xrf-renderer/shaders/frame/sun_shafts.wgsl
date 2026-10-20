@@ -117,7 +117,7 @@ fn fs_sun_shafts(in: FullscreenVarying) -> ShaftsOutput {
     // Facing the sun weighs one, facing away a fifth: `0.8 * (0.5 * cos + 0.5) + 0.2`.
     let facing: f32 = 0.8 * (0.5 * -lighting.to_sun.z + 0.5) + 0.2;
 
-    light = shown * facing * lighting.sun.rgb;
+    light = authored_amount(shown * facing) * lighting.sun.rgb;
   }
 
   if (textureDimensions(light_volumes).x > 1u) {

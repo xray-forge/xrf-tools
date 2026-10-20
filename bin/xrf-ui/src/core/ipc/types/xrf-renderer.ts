@@ -1025,6 +1025,24 @@ export type RenderLibraries = {
   dlss: string | null;
 };
 
+/** What a view's light is computed in. */
+export enum ERenderLightModel {
+  /**
+   * The engine's own: textures, the weather's colours and the lamps lit together as the display-encoded values they
+   * are stored as, as every X-Ray renderer lights them.
+   */
+  ENGINE = "engine",
+  /**
+   * Linear light: every colour authored as a display value (textures, the weather's and the lamps' colours, the
+   * irradiance cubes) decoded by the sRGB transfer before it is lit, the scene held as linear light, and the frame
+   * encoded for the display once it is tonemapped.
+   */
+  PHYSICAL = "physical",
+}
+
+/** Every `ERenderLightModel` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderLightModel = `${ERenderLightModel}`;
+
 /**
  * How a game's console scales the weather's light (`r2_sun_lumscale`, `r2_sun_lumscale_hemi`,
  * `r2_sun_lumscale_amb`): the sun's colour, and the hemisphere and the ambient the deferred frame is combined with.
@@ -1850,6 +1868,8 @@ export type RenderViewFeatures = {
   exposure: RenderExposureSettings;
   /** Where the frame is tonemapped: in combine and each forward pass, or once by the window pass over linear light. */
   tonemap: RenderTonemapMode;
+  /** What the light is computed in: the engine's display-encoded values, or linear light. */
+  lightModel: RenderLightModel;
   bloom: RenderBloomSettings;
   /** Which bloom is drawn, and the enhanced bloom's strengths. */
   enhancedBloom: RenderEnhancedBloomSettings;

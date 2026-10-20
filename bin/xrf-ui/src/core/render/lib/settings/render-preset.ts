@@ -8,6 +8,7 @@ import {
   ERenderFoliageMode,
   ERenderGlassMode,
   ERenderIndirectLightMode,
+  ERenderLightModel,
   ERenderLightShadowFilter,
   ERenderParallaxMode,
   ERenderRainDropsMode,
@@ -98,6 +99,8 @@ const BASE_PRESET: IRenderFeatureSettings = {
   isDepthPrepassed: true,
   isOcclusionCulled: true,
   // Anomaly's soft shadows for the lamps.
+  // The engine's light model while the physical one is built and calibrated.
+  lightModel: ERenderLightModel.ENGINE,
   lights: { ...DEFAULT_RENDER_LIGHTS_SETTINGS, shadowFilter: ERenderLightShadowFilter.SOFT },
   // Trees stand in as impostors twice as far as the engine's: a clump's screen area falls with its distance squared
   // and the thresholds are squared, so half the engine's `r_ssaLOD_A` and `r_ssaLOD_B`.
@@ -193,6 +196,7 @@ const EDITING_PRESET: IRenderFeatureSettings = {
   isDepthPrepassed: false,
   isOcclusionCulled: true,
   // Unshadowed, the lights cost a pass over the screen: an editor keeps seeing what lights a room.
+  lightModel: ERenderLightModel.ENGINE,
   lights: { ...DEFAULT_RENDER_LIGHTS_SETTINGS, isShadowed: false },
   lod: DEFAULT_RENDER_LOD_SETTINGS,
   parallax: DEFAULT_RENDER_PARALLAX_SETTINGS,

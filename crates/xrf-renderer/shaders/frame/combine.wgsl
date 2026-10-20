@@ -97,7 +97,7 @@ fn refracted_albedo(texel: vec2<i32>, albedo: vec4<f32>, normal: vec3<f32>, dist
     return albedo.rgb;
   }
 
-  return textureLoad(albedo_target, at, 0).rgb;
+  return authored_colour(textureLoad(albedo_target, at, 0).rgb);
 }
 
 @fragment
@@ -130,13 +130,15 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     }
 
     if (is_fogged) {
-      return combined(scene_from_light(lighting.fog_color.rgb, scale), tonemap_high(lighting.fog_color.rgb, scale));
+      return combined(scene_from_light(fog_light(lighting), scale), tonemap_high(fog_light(lighting), scale));
     }
 
     return combined(scene_from_shown(backdrop_at(in.clip.xy)), vec3<f32>(0.0));
   }
 
   var albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
+
+  albedo = vec4<f32>(authored_colour(albedo.rgb), albedo.a);
 
   if (!is_lit) {
     return combined(scene_from_shown(albedo.rgb), vec3<f32>(0.0));
@@ -217,7 +219,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   // the middle distance is veiled rather than shown through to the sky.
   let height: f32 = camera.position.y + (transpose(camera.view) * vec4<f32>(position, 0.0)).y;
   let thickened: f32 = select(0.0, fog_amount_at(lighting, position, height), is_fogged);
-  let fogged: vec3<f32> = mix(shaded, fog_color_at(lighting, position, height), thickened);
+  let fogged: vec3<f32> = fog_mixed(lighting, shaded, fog_color_at(lighting, position, height), thickened);
 
   let finished: vec3<f32> = scene_from_light(fogged, scale);
   let high: vec3<f32> = tonemap_high(fogged, scale);

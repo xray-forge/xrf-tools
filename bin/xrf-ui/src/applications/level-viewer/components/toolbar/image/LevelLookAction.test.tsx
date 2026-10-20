@@ -3,7 +3,7 @@ import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelLookAction } from "@/applications/level-viewer/components/toolbar/image/LevelLookAction";
-import { ERenderBloomMode } from "@/core/ipc/types/xrf-renderer";
+import { ERenderBloomMode, ERenderLightModel } from "@/core/ipc/types/xrf-renderer";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { clearLocalStorage } from "@/core/storage";
 import {
@@ -98,5 +98,20 @@ describe("LevelLookAction", () => {
     expect(queryByRole("slider", { name: "Radius" })).toBeNull();
     expect(getByRole("slider", { name: "Threshold" })).toHaveAttribute("aria-valuetext", "5.0");
     expect(getByRole("slider", { name: "Vibrance" })).toHaveAttribute("aria-valuetext", "1.0");
+  });
+
+  it("lights the view in linear light on asking, over the settings' engine light", async () => {
+    const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+    const { getByRole, findByRole } = renderWithProviders(<LevelLookAction />, { container: descriptor.container });
+
+    await userEvent.click(getByRole("button", { name: "Look" }));
+    await findByRole("dialog", { name: "Look" });
+
+    expect(descriptor.renderSettings.rendererFeatures.lightModel).toBe(ERenderLightModel.ENGINE);
+
+    await userEvent.click(getByRole("button", { name: "Physical" }));
+
+    expect(descriptor.view.features.lightModel).toBe(ERenderLightModel.PHYSICAL);
+    expect(descriptor.renderSettings.rendererFeatures.lightModel).toBe(ERenderLightModel.ENGINE);
   });
 });

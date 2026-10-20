@@ -110,6 +110,7 @@ export function toNativeViewOptions(
       isDepthPrepassed: features.isDepthPrepassed,
       isOcclusionCulled: features.isOcclusionCulled,
       lightScales: look.lightScales,
+      lightModel: features.lightModel,
       lights: features.lights,
       rain: features.rain,
       reflections: features.reflections,

@@ -42,7 +42,7 @@ impl PresentFeature {
     } else {
       present
     }
-    .with_linear_scene(options.is_scene_linear())
+    .with_linear_scene(options.is_scene_linear(), options.is_light_physical())
     .with_grass_reach(inputs.grass_reach);
 
     self.uniform = match self.debanding {

@@ -26,4 +26,6 @@ pub struct LightsFrame<'a> {
   pub campfire_shares: &'a HashMap<u16, f32>,
   /// Whether the view is its scene's first, which draws the lights' faces with its own grass cards.
   pub is_scene_first: bool,
+  /// Whether the view lights in linear light, the lights' authored colours decoded (`RenderLightModel::Physical`).
+  pub is_physical: bool,
 }

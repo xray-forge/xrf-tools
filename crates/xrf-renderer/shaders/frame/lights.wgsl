@@ -2,6 +2,7 @@ enable wgpu_binding_array;
 
 #import "common/fullscreen"
 #import "frame/light_selection"
+#import "common/scene_light"
 #import "generated/frame/light_visibility"
 
 // Every local light reaching a pixel, as the engine's `accum_omni` and `accum_spot` accumulate each:
@@ -75,13 +76,15 @@ fn fs_lights(in: FullscreenVarying) -> @location(0) vec4<f32> {
       0.0
     );
     let flora_gloss: f32 = select(1.0, select(0.5, 0.3, is_unshadowed_omni), is_flora);
-    var lit: vec4<f32> = vec4<f32>(material.xxx, material.y * flora_gloss) * light.falloff;
+    var lit: vec4<f32> = vec4<f32>(material.xxx, material.y * flora_gloss) * authored_amount(light.falloff);
 
     if (is_spot && record.up.w >= 0.0) {
       let projector: u32 = u32(record.up.w);
       let uv: vec2<f32> = projector_uv(record, light.to_point, vec2<f32>(textureDimensions(textures[projector])));
 
-      lit *= textureSampleLevel(textures[projector], texture_sampler, uv, 0.0);
+      let projected: vec4<f32> = textureSampleLevel(textures[projector], texture_sampler, uv, 0.0);
+
+      lit *= vec4<f32>(authored_colour(projected.rgb), projected.a);
     }
 
     if (takes_slot(pixel, light)) {

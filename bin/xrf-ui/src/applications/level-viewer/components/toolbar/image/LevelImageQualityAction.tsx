@@ -6,6 +6,7 @@ import { ReactElement } from "react";
 
 import {
   ERenderAntialiasing,
+  ERenderLightModel,
   ERenderTonemapMode,
   RenderAntialiasing,
   RenderDlssAvailability,
@@ -84,8 +85,10 @@ export function LevelImageQualityAction({
   const settingsRayPreset: RenderRayReconstructionPreset = settings.upscaling.rayReconstructionPreset;
   const settingsResolution: ERenderResolution = renderSettingsService.renderResolution;
   const settingsOutputScale: number = renderSettingsService.renderOutputScale;
-  // Whether the scene holds linear light, the Enhanced tonemap, which ray reconstruction needs.
-  const isSceneLinear: boolean = settings.tonemap === ERenderTonemapMode.ENHANCED;
+  // Whether the scene holds linear light, the Enhanced tonemap or the physical light, which ray reconstruction needs.
+  const isSceneLinear: boolean =
+    settings.tonemap === ERenderTonemapMode.ENHANCED ||
+    (features.lightModel ?? settings.lightModel) === ERenderLightModel.PHYSICAL;
   // Whether the frame is drawn smaller than the viewport, which sharpening applies to besides a temporal resolve.
   const isUpscaled: boolean = renderService.isUpscaled;
   // What the GPU can do: FSR smooths in place of DLSS, and DLSS upscales alone, where it lacks them.

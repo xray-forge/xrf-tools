@@ -289,7 +289,8 @@ fn pixel_numbers(pixel: vec2<f32>) -> vec2<f32> {
 // The fallback where the last frame did not show the point: no water, glass or particle stands in the G-buffer.
 fn relit_radiance(texel: vec2<i32>) -> vec3<f32> {
   let depth: f32 = textureLoad(depth_target, texel, 0);
-  let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  let stored: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  let albedo: vec4<f32> = vec4<f32>(authored_colour(stored.rgb), stored.a);
   let light: vec4<f32> = textureLoad(light_target, texel, 0);
   let material: vec4<f32> = textureLoad(material_target, texel, 0);
   let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
@@ -387,7 +388,7 @@ fn remembered_sky(direction: vec3<f32>) -> vec4<f32> {
   let scale: f32 = select(1.0, exposure.used, lighting.params.z > 0.5);
 
   return vec4<f32>(sky_as_light(scene_shown(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb), scale,
-    lighting.reflections.w), 1.0);
+    lighting.reflections.w, is_light_physical()), 1.0);
 }
 
 // What a ray met looks like as light from the surface it was reflected off: what the last frame showed there, or where
@@ -404,7 +405,7 @@ fn met_radiance(texel: vec2<i32>, hit: vec3<f32>, origin: vec3<f32>) -> vec4<f32
     lit = relit_radiance(texel);
   }
 
-  let fogged: vec3<f32> = mix(lit, lighting.fog_color.rgb, path_fog(lighting, length(hit - origin)));
+  let fogged: vec3<f32> = fog_mixed(lighting, lit, fog_light(lighting), path_fog(lighting, length(hit - origin)));
 
   return vec4<f32>(fogged * min(1.0, RADIANCE_LIMIT / traced_luminance(fogged)), remembered.w);
 }

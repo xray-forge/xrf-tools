@@ -11,6 +11,7 @@ use crate::contract::render_glass_settings::RenderGlassSettings;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
+use crate::contract::render_light_model::RenderLightModel;
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_lod_settings::RenderLodSettings;
@@ -31,6 +32,8 @@ pub struct RenderViewFeatures {
   pub exposure: RenderExposureSettings,
   /// Where the frame is tonemapped: in combine and each forward pass, or once by the window pass over linear light.
   pub tonemap: RenderTonemapMode,
+  /// What the light is computed in: the engine's display-encoded values, or linear light.
+  pub light_model: RenderLightModel,
   pub bloom: RenderBloomSettings,
   /// Which bloom is drawn, and the enhanced bloom's strengths.
   pub enhanced_bloom: RenderEnhancedBloomSettings,
@@ -79,6 +82,7 @@ impl Default for RenderViewFeatures {
     Self {
       exposure: RenderExposureSettings::default(),
       tonemap: RenderTonemapMode::Engine,
+      light_model: RenderLightModel::Engine,
       bloom: RenderBloomSettings::default(),
       enhanced_bloom: RenderEnhancedBloomSettings::default(),
       fog: RenderFogSettings::default(),

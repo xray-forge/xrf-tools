@@ -28,6 +28,7 @@ mod level_shadows;
 mod level_wetness;
 mod library_versions;
 mod light_geometry;
+mod light_model;
 mod lighting;
 mod overhead_map;
 mod overlays;

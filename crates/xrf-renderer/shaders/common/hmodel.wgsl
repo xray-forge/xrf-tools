@@ -1,5 +1,6 @@
 #import "common/lighting"
 #import "common/sky_box"
+#import "common/srgb"
 
 // The engine's `hmodel` and `combine_1`, for every pass that lights a surface as the deferred frame does. The
 // irradiance cubes and the material table come in as arguments, so each pass binds them where it likes.
@@ -22,7 +23,8 @@ fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: te
   let irradiance: vec3<f32> = mix(state.sky_irradiance.rgb, cubes, state.sky_irradiance.w);
   let environment: vec3<f32> = state.environment.rgb * irradiance;
 
-  return environment * environment;
+  // The engine's square stands in for decoding the pictures; the physical light decodes them by the sRGB transfer.
+  return select(environment * environment, srgb_decoded(environment), state.engine.w > 0.5);
 }
 
 // `plight_infinity` for the sun: its colour by the diffuse term, its specular weight by the specular, at a view space

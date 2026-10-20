@@ -331,11 +331,16 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
     color = tonemap(color, 1.0);
   }
 
+  // Linear light, tonemapped, is encoded for the display once, before what the engine lays over its displayed frame.
+  if (present.tonemap.y > 0.5) {
+    color = srgb_encoded(color);
+  }
+
   // The sky debanding, where nothing was drawn, over the shown steps it bands in: its neighbours read about the pixel
   // itself, not where the distortion moved its read.
   if (present.deband.x > 0.0 && textureLoad(depth_target, texel, 0) <= 0.0) {
     color = debanded(upscaled, bloom_sampler, color, (pixel + 0.5) / present.size, 1.0 / present.size,
-      u32(present.deband.x), present.deband.y, present.deband.z, is_linear);
+      u32(present.deband.x), present.deband.y, present.deband.z, vec2<bool>(is_linear, present.tonemap.y > 0.5));
   }
 
   // The enhanced bloom screened over the frame, `1 - (1 - img)(1 - bloom)`, before its corrections; where the

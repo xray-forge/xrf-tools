@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/scene_light"
 #import "common/octahedral"
 #import "common/lighting"
 #import "common/fullscreen"
@@ -32,7 +33,8 @@ fn fs_ray_guides(in: FullscreenVarying) -> RayGuides {
     return RayGuides(vec4<f32>(0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0), RAY_GUIDE_FAR_HIT, 0.0, RAY_GUIDE_FAR_HIT);
   }
 
-  let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  let stored: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  let albedo: vec4<f32> = vec4<f32>(authored_colour(stored.rgb), stored.a);
   let material: vec4<f32> = textureLoad(material_target, texel, 0);
   let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
   let position: vec3<f32> = camera_view_position(in.clip.xy, depth);

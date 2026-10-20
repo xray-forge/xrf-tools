@@ -14,12 +14,13 @@ import {
   LEVEL_LOOK_FIELD_GROUPS,
 } from "@/applications/level-viewer/lib/look/level-look-fields";
 import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
-import { ERenderBloomMode, RenderBloomMode } from "@/core/ipc/types/xrf-renderer";
+import { ERenderBloomMode, ERenderLightModel, RenderBloomMode, RenderLightModel } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { LevelLookService } from "@/core/level/services/level-look.service";
+import { LevelViewService } from "@/core/level/services/level-view.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
@@ -28,6 +29,7 @@ import {
   RENDER_BLOOM_MODE_OPTIONS,
   RENDER_ENHANCED_BLOOM_LIMITS,
 } from "@/core/render/lib/features/render-bloom-choices";
+import { RENDER_LIGHT_MODEL_OPTIONS } from "@/core/render/lib/features/render-light-model-choices";
 import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
@@ -81,12 +83,15 @@ export function LevelLookAction({
   className,
 }: BaseComponentProps): ReactElement {
   const lookService: LevelLookService = useInjection(LevelLookService);
+  const viewService: LevelViewService = useInjection(LevelViewService);
   const { settings, features } = useLevelRenderFeatures();
   const { set: setBloom, reset: resetBloom } = useLevelFeatureOverride("enhancedBloom");
 
   // Which bloom the view draws, and the enhanced bloom's strengths.
   const bloom: TRenderEnhancedBloomSettings = toLevelModeFeature("enhancedBloom", settings, features);
   const isEnhancedBloom: boolean = bloom.mode === ERenderBloomMode.ENHANCED;
+  // What the view lights in: its own choice, else the settings'.
+  const lightModel: RenderLightModel = features.lightModel ?? settings.lightModel;
 
   const { choice, look, defaults } = lookService;
   const picked: string = choice.source === ELevelLookSource.CUSTOM ? EDITED : choice.source;
@@ -121,7 +126,7 @@ export function LevelLookAction({
       label={"Look"}
       description={`Exposure, light and image as ${options.find((it) => it.value === picked)?.label ?? "set"}`}
       icon={<ExposureIcon />}
-      isActive={picked !== ELevelLookSource.GAME || isEnhancedBloom}
+      isActive={picked !== ELevelLookSource.GAME || isEnhancedBloom || lightModel === ERenderLightModel.PHYSICAL}
     >
       <div className={"flex w-72 flex-col gap-3 px-4 py-2"}>
         <Typography className={"text-text-secondary"} variant={"overline"}>
@@ -136,6 +141,13 @@ export function LevelLookAction({
           value={picked}
           filterFrom={options.length + 1}
           onChange={onPick}
+        />
+
+        <RenderValueChoice
+          label={"Light"}
+          options={RENDER_LIGHT_MODEL_OPTIONS}
+          value={lightModel}
+          onChange={(next: RenderLightModel) => viewService.setFeatures({ ...features, lightModel: next })}
         />
 
         <CheckboxFormRow

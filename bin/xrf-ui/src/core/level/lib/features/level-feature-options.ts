@@ -1,6 +1,6 @@
 import { isRecord, Nullable } from "@xrf/types";
 
-import { ERenderAntialiasing, RenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
+import { ERenderAntialiasing, RenderAntialiasing, RenderLightModel } from "@/core/ipc/types/xrf-renderer";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { toRenderFeatureChoice } from "@/core/render/lib/settings/render-feature-choice";
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
@@ -117,6 +117,8 @@ export interface ILevelFeatureOptions {
   enhancedBloom: Partial<TLevelEnhancedBloomOptions>;
   /** The mode edges are smoothed with while the settings smooth them at all, or null for the settings' own. */
   antialiasing: Nullable<RenderAntialiasing>;
+  /** What the view lights in, where it sets its own: the engine's display values or linear light; null for the settings'. */
+  lightModel: Nullable<RenderLightModel>;
   /** How much smaller than the viewport the view is drawn, where it sets its own. */
   upscaling: Partial<TRenderUpscalingSettings>;
   /** What the view resolves its frame at, where it sets its own: a resolution, and the scale an automatic one takes. */
@@ -287,6 +289,7 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     glass: pick("glass"),
     grass: pick("grass"),
     indirectLight: pick("indirectLight"),
+    lightModel: overrides.lightModel ?? null,
     lights: pick("lights"),
     parallax: pick("parallax"),
     rain: pick("rain"),
@@ -396,6 +399,7 @@ export function toLevelRendererFeatures(
     indirectLight: toLevelModeFeature("indirectLight", settings, view),
     isDepthPrepassed: settings.isDepthPrepassed && toggles.isDepthPrepassed,
     isOcclusionCulled: settings.isOcclusionCulled && toggles.isOcclusionCulled,
+    lightModel: view.lightModel ?? settings.lightModel,
     lights: toLevelRendererFeature("lights", settings, view, toggles.isLamplit),
     parallax: toLevelModeFeature("parallax", settings, view),
     rain: toLevelModeFeature("rain", settings, view),

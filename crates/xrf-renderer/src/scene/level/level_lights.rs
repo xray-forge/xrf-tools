@@ -19,6 +19,7 @@ use crate::lighting::light_animation::to_animated_color;
 use crate::lighting::light_basis::LightBasis;
 use crate::lighting::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shadow_scale};
 use crate::lighting::light_specular::to_light_specular;
+use crate::lighting::srgb::authored_light;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_record::LightRecord;
 use crate::pass::light_volume_record::LightVolumeRecord;
@@ -160,6 +161,7 @@ impl LevelLights {
       grass_reach,
       campfire_shares,
       is_scene_first,
+      is_physical,
     } = frame;
 
     into.begin(
@@ -230,7 +232,9 @@ impl LevelLights {
         } else {
           None
         };
-        let color: Vec3 = Self::to_color(&self.animators, light, seconds) * it.fades.whole * it.share;
+        // The authored colour lit as light, then faded: a fade is a share of the light, linear in either model.
+        let color: Vec3 =
+          authored_light(Self::to_color(&self.animators, light, seconds), is_physical) * it.fades.whole * it.share;
         let range: f32 = Self::to_frame_range(light, || into.next_random()) * it.share * FALLOFF_RANGE;
         let mut record: LightRecord =
           Self::to_record(&self.projectors, light, &it.basis, it.bound, color, range, camera.view);

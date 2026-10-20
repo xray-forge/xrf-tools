@@ -38,7 +38,8 @@ pub struct PresentUniform {
   /// The sky debanding's passes, the pixels it reads out to at most and the clock its noise turns with; no passes where
   /// the sky is drawn as it is.
   pub deband: Vec4,
-  /// One where the scene holds linear light, which the window pass tonemaps by the engine's curve before the rest.
+  /// One where the scene holds linear light, which the window pass tonemaps by the engine's curve before the rest;
+  /// then one where that light is linear light, so the tonemapped frame is encoded for the display (`RenderLightModel`).
   pub tonemap: Vec4,
   /// What the cascades' debug view marks: the metres from the camera the grass's cards cast the sun's shadow to, none
   /// where they cast none.
@@ -90,10 +91,16 @@ impl PresentUniform {
     (is_shown && debanding.is_drawn()).then(|| debanding.get_passes())
   }
 
-  /// The same over a scene holding linear light (`is_linear`), which it tonemaps, or tonemapped colour.
-  pub fn with_linear_scene(self, is_linear: bool) -> Self {
+  /// The same over a scene holding linear light (`is_linear`), which it tonemaps, or tonemapped colour; the tonemapped
+  /// frame encoded for the display where the light is physical (`is_physical`).
+  pub fn with_linear_scene(self, is_linear: bool, is_physical: bool) -> Self {
     Self {
-      tonemap: Vec4::new(f32::from(u8::from(is_linear)), 0.0, 0.0, 0.0),
+      tonemap: Vec4::new(
+        f32::from(u8::from(is_linear)),
+        f32::from(u8::from(is_physical)),
+        0.0,
+        0.0,
+      ),
       ..self
     }
   }

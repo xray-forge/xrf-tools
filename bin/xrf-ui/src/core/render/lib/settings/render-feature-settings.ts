@@ -41,6 +41,7 @@ export type TRenderViewFeatureKey =
   | "indirectLight"
   | "isDepthPrepassed"
   | "isOcclusionCulled"
+  | "lightModel"
   | "lights"
   | "lod"
   | "parallax"

@@ -50,7 +50,7 @@ fn fs_water(in: WaterVarying) -> WaterOutput {
       let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
       let sun: vec3<f32> = -(rotation * lighting.to_sun.xyz);
 
-      color += lighting.sun.rgb * pow(abs(dot(normalize(to_point + sun), fragment.surface_normal)), 256.0) * 4.0;
+      color += sun_shown(lighting) * pow(abs(dot(normalize(to_point + sun), fragment.surface_normal)), 256.0) * 4.0;
     }
 
     lit = color * light * 2.0;

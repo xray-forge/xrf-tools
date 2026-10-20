@@ -62,6 +62,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
       "textureLod",
       "upscaling",
       "exposure",
+      "lightModel",
       "tonemap",
       "enhancedBloom",
       "debanding",

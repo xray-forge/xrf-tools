@@ -1,4 +1,5 @@
 #import "common/camera"
+#import "common/scene_light"
 #import "common/octahedral"
 #import "common/lighting"
 #import "common/hmodel"
@@ -30,7 +31,8 @@ fn lit_texel(texel: vec2<i32>, direction: vec3<f32>, scale: f32) -> vec4<f32> {
       sky_repeat, scale), 0.0);
   }
 
-  let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  let stored: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  let albedo: vec4<f32> = vec4<f32>(authored_colour(stored.rgb), stored.a);
   let material: vec4<f32> = textureLoad(material_target, texel, 0);
   let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, texel, 0).xy);
   let position: vec3<f32> = camera_view_position(vec2<f32>(texel) + 0.5, depth);
@@ -44,7 +46,7 @@ fn lit_texel(texel: vec2<i32>, direction: vec3<f32>, scale: f32) -> vec4<f32> {
     albedo, vec4<f32>(sun, 0.0), normal_world, to_point_world, material.z, material.x, vec3<f32>(1.0));
   let fog: f32 = select(0.0, fog_amount_at(lighting, position, height), lighting.fog_color.w > 0.5);
 
-  return vec4<f32>(mix(lit, fog_color_at(lighting, position, height), fog), length(position));
+  return vec4<f32>(fog_mixed(lighting, lit, fog_color_at(lighting, position, height), fog), length(position));
 }
 
 @compute @workgroup_size(8, 8, 1)

@@ -60,7 +60,8 @@ pub struct CameraUniform {
   /// One where the scene holds linear light at its exposure, which the window pass tonemaps; zero where every pass
   /// writes tonemapped colour, as the engine's do. Then the mip bias the surfaces' textures are read at, negative
   /// sharper; none for any camera but a viewport's own. Then what the sun and the lamps draw in place of their light
-  /// for a debug view (`LightView`): nought their light.
+  /// for a debug view (`LightView`): nought their light. Then one where the light is computed in linear light, every
+  /// authored colour decoded (`RenderLightModel::Physical`), nought where it is the engine's.
   pub output: Vec4,
 }
 
@@ -199,6 +200,12 @@ impl CameraUniform {
   /// The same camera with the sun and the lamps drawing what `view` shows in place of their light, or their light.
   pub fn with_light_view(mut self, view: RenderDebugView) -> Self {
     self.output.z = LightView::of(view) as u32 as f32;
+    self
+  }
+
+  /// The same camera lighting in linear light, its authored colours decoded (`is_physical`), or as the engine does.
+  pub fn with_physical_light(mut self, is_physical: bool) -> Self {
+    self.output.w = f32::from(u8::from(is_physical));
     self
   }
 

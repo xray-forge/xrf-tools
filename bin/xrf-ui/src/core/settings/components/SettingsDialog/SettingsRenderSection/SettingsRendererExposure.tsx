@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { RenderTonemapMode } from "@/core/ipc/types/xrf-renderer";
+import { RenderLightModel, RenderTonemapMode } from "@/core/ipc/types/xrf-renderer";
 import {
   explainRenderTonemapMode,
   formatExposure,
@@ -9,6 +9,10 @@ import {
   RENDER_EXPOSURE_LIMITS,
   RENDER_TONEMAP_MODE_OPTIONS,
 } from "@/core/render/lib/features/render-exposure-choices";
+import {
+  explainRenderLightModel,
+  RENDER_LIGHT_MODEL_OPTIONS,
+} from "@/core/render/lib/features/render-light-model-choices";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
@@ -29,6 +33,14 @@ export function SettingsRendererExposure(): ReactElement {
   return (
     <DetailSection title={"Exposure"} description={"Automatic exposure, as the engine's tonemapper applies it."}>
       <div className={"mt-4 flex flex-col gap-6"}>
+        <ChoiceFormRow
+          label={"Light"}
+          description={explainRenderLightModel(renderSettingsService.rendererFeatures.lightModel)}
+          options={RENDER_LIGHT_MODEL_OPTIONS}
+          value={renderSettingsService.rendererFeatures.lightModel}
+          onChange={(lightModel: RenderLightModel) => renderSettingsService.setRendererOverrides({ lightModel })}
+        />
+
         <ChoiceFormRow
           label={"Tonemap"}
           description={explainRenderTonemapMode(renderSettingsService.rendererFeatures.tonemap)}

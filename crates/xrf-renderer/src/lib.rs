@@ -85,6 +85,7 @@ pub use crate::contract::render_indirect_light_mode::RenderIndirectLightMode;
 pub use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
 pub use crate::contract::render_level_hit::RenderLevelHit;
 pub use crate::contract::render_libraries::RenderLibraries;
+pub use crate::contract::render_light_model::RenderLightModel;
 pub use crate::contract::render_light_scales::RenderLightScales;
 pub use crate::contract::render_light_shadow_filter::RenderLightShadowFilter;
 pub use crate::contract::render_lights_report::RenderLightsReport;

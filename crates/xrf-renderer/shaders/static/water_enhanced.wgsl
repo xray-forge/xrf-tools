@@ -387,7 +387,7 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   let reflection: vec3<f32> = enhanced_reflection(waves, reflected, in.world, (pixel + 0.5) / size);
   // Where the lights reached the bottom the sun shines on it.
   let sunlit: f32 = saturate(textureLoad(light_target, vec2<i32>(refracted), 0).r * 2000.0);
-  let sun: f32 = dot(lighting.sun.rgb, vec3<f32>(0.5));
+  let sun: f32 = dot(sun_shown(lighting), vec3<f32>(0.5));
   // The gathered light fades as the water clouds.
   let gathering: f32 = 1.0 - smoothstep(0.0, ENHANCED_FOG_DEPTH + 0.5, water_fog);
   let caustics: vec3<f32> = gathered * sunlit * smoothstep(0.3, 1.0, sun) * enhanced.caustics * gathering *
@@ -397,7 +397,7 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   let sunlight: vec3<f32> = -(rotation * lighting.to_sun.xyz);
   let flattened: vec3<f32> = normalize(vec3<f32>(waves.normal.x, waves.normal.y * SPECULAR_NORMAL, waves.normal.z));
   let sharpness: f32 = mix(HIGHLIGHT_NEAR, HIGHLIGHT_FAR, waves.far);
-  let highlight: vec3<f32> = lighting.sun.rgb * pow(abs(dot(normalize(fragment.to_point + sunlight), flattened)), sharpness) *
+  let highlight: vec3<f32> = sun_shown(lighting) * pow(abs(dot(normalize(fragment.to_point + sunlight), flattened)), sharpness) *
     (sharpness + 8.0) / (HIGHLIGHT_NEAR + 8.0) * saturate(sun) * enhanced.specular * sunlit;
   let seen: f32 = 1.0 - fragment.fog;
   let lit: vec3<f32> = mix(turbid, reflection, saturate(fresnel * enhanced.reflectivity)) + caustics + highlight;

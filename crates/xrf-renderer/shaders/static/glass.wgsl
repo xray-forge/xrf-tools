@@ -133,7 +133,7 @@ fn fs_glass(in: GBufferVarying) -> @location(0) vec4<f32> {
   let half_way: vec3<f32> = normalize(lighting.to_sun.xyz - eye);
   let lobe: f32 = (power + 2.0) / 8.0 * pow(saturate(dot(facing, half_way)), power) *
     saturate(dot(facing, lighting.to_sun.xyz));
-  let highlight: vec3<f32> = tonemap(lighting.sun.rgb * lobe * fresnel * sun, frame_scale(lighting, exposure));
+  let highlight: vec3<f32> = shown_from_light(lighting.sun.rgb * lobe * fresnel * sun, frame_scale(lighting, exposure));
 
   let through: f32 = (1.0 - fresnel) * (1.0 - dirt);
   let laid: vec3<f32> = reflection * fresnel * (1.0 - dirt) + dirt_lit * dirt + highlight * (1.0 - dirt);
