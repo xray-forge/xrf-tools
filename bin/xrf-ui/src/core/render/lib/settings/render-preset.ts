@@ -138,22 +138,23 @@ const ENHANCED_PRESET: IRenderFeatureSettings = {
   ambientOcclusion: {
     ...BASE_PRESET.ambientOcclusion,
     gtao: { slices: 6, steps: 3 },
-    rtao: { rays: 8 },
+    rtao: { rays: 4 },
     vbao: { ...BASE_PRESET.ambientOcclusion.vbao, slices: 2, steps: 8 },
   },
-  debanding: { ...BASE_PRESET.debanding, passes: 4 },
+  debanding: { ...BASE_PRESET.debanding, passes: 2 },
   indirectLight: { ...BASE_PRESET.indirectLight, steps: 4 },
   grass: { ...BASE_PRESET.grass, radius: 300, shadowRadius: 100 },
   parallax: { ...BASE_PRESET.parallax, steps: 32 },
   // Drops bending the scene behind them, their landings ringing the water and the puddles.
   rain: { ...BASE_PRESET.rain, drops: ERenderRainDropsMode.ENHANCED },
-  // Traced at the frame's size over the whole walk, and where the GPU traces rays every frame, the grass reflected too.
+  // Traced at the frame's size, and where the GPU traces rays every frame, the grass reflected too; 96 steps, as many
+  // more measured the same.
   reflections: {
     ...BASE_PRESET.reflections,
     isGrassReflected: true,
     isTraced: true,
     probe: ERenderReflectionProbe.FINEST,
-    steps: 128,
+    steps: 96,
     traceInterval: 1,
     traceSize: ERenderTraceSize.FULL,
   },

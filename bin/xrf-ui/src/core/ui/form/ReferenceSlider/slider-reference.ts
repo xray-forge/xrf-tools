@@ -22,6 +22,9 @@ export const SliderReferenceContext = createContext<Nullable<ISliderReferenceSou
 export const SLIDER_BELOW_RECOMMENDED: string = "Below the recommended range: visible misses or artefacts";
 export const SLIDER_ABOVE_RECOMMENDED: string = "Past the recommended range: costs more for little visible gain";
 
+/** What a value past the measured useful end says. */
+export const SLIDER_WASTED: string = "Wasted: measured to look the same as lower values while costing more";
+
 /**
  * @param path - The setting's place in what the nearest source holds, if the slider has one.
  * @returns What the slider is measured by there, or none outside a source or without a place.
@@ -35,12 +38,18 @@ export function useSliderReference(path: Optional<ReadonlyArray<string>>): Nulla
 /**
  * @param value - A slider's value.
  * @param recommended - The range xrf recommends, if it rates the setting.
- * @returns What a value outside the range says, or none within it.
+ * @param wastedAbove - The value past which a higher one only costs more, if measured.
+ * @returns What a value outside the range or past the useful end says, or none within the range.
  */
 export function describeSliderRecommendation(
   value: number,
-  recommended: Maybe<readonly [number, number]>
+  recommended: Maybe<readonly [number, number]>,
+  wastedAbove?: Maybe<number>
 ): Nullable<string> {
+  if (isSliderWasted(value, wastedAbove)) {
+    return SLIDER_WASTED;
+  }
+
   if (!recommended) {
     return null;
   }
@@ -50,4 +59,13 @@ export function describeSliderRecommendation(
   }
 
   return value > recommended[1] ? SLIDER_ABOVE_RECOMMENDED : null;
+}
+
+/**
+ * @param value - A slider's value.
+ * @param wastedAbove - The value past which a higher one only costs more, if measured.
+ * @returns Whether the value stands past it.
+ */
+export function isSliderWasted(value: number, wastedAbove: Maybe<number>): boolean {
+  return wastedAbove !== null && wastedAbove !== undefined && value > wastedAbove;
 }

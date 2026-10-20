@@ -52,6 +52,27 @@ describe("render presets", () => {
     }
   });
 
+  // A preset painted red would ship a value measured to cost more than a lower one for the same picture.
+  it("sets no value of a preset past the end measured to be wasted", () => {
+    const measured: Array<[IRenderNumberField, TRenderFeaturePath]> = [
+      ...listRenderNumberFieldPaths(RENDER_FEATURE_SCHEMA),
+    ].filter(([field]) => field.wastedAbove !== undefined);
+
+    expect(measured.length).toBeGreaterThan(0);
+
+    for (const preset of Object.values(ERenderPreset)) {
+      for (const [field, path] of measured) {
+        const value: number = readRenderFeatureNumber(RENDER_PRESETS[preset], path) ?? Number.NaN;
+
+        expect({ path: path.join("."), preset, value }).toEqual({
+          path: path.join("."),
+          preset,
+          value: Math.min(value, field.wastedAbove ?? value),
+        });
+      }
+    }
+  });
+
   it("draws Enhanced at its best with TAA, short of ray reconstruction and traced occlusion", () => {
     const enhanced = RENDER_PRESETS[ERenderPreset.ENHANCED];
 

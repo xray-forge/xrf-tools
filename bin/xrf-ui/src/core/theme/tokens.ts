@@ -115,6 +115,8 @@ export const SLIDER_REFERENCE = {
   /** Shares of the text colour on the rail outside the band, and of the success colour within it. */
   railShare: 0.2,
   bandShare: 0.55,
+  /** The share of the error colour on the rail past the useful end. */
+  wastedShare: 0.55,
   /** The reset beside the readout, sized to the readout's line. */
   resetIconSize: 14,
   resetPadding: 1,

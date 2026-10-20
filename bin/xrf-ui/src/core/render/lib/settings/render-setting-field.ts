@@ -23,6 +23,8 @@ export interface IRenderNumberField {
   readonly isInteger?: boolean;
   /** The range xrf recommends within the bounds, which a slider draws; none where it rates nothing. */
   readonly recommended?: readonly [number, number];
+  /** Past it a higher value looks the same and only costs more, as measured; a slider draws that end red. */
+  readonly wastedAbove?: number;
 }
 
 /** One of a set of values. */

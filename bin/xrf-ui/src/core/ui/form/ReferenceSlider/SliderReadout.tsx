@@ -5,7 +5,11 @@ import { ReactElement, useCallback } from "react";
 
 import { cn } from "@/core/theme/class-name";
 import { SLIDER_REFERENCE } from "@/core/theme/tokens";
-import { describeSliderRecommendation, ISliderReference } from "@/core/ui/form/ReferenceSlider/slider-reference";
+import {
+  describeSliderRecommendation,
+  ISliderReference,
+  isSliderWasted,
+} from "@/core/ui/form/ReferenceSlider/slider-reference";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface ISliderReadoutProps extends BaseComponentProps {
@@ -13,6 +17,7 @@ export interface ISliderReadoutProps extends BaseComponentProps {
   format: (value: number) => string;
   reference: Nullable<ISliderReference>;
   recommended?: Nullable<readonly [number, number]>;
+  wastedAbove?: Nullable<number>;
   /** Whether it reads in the popovers' compact monospace rather than the settings' body text. */
   isCompact?: boolean;
   isDisabled?: boolean;
@@ -20,7 +25,8 @@ export interface ISliderReadoutProps extends BaseComponentProps {
 }
 
 /**
- * A slider's value as it reads: in the warning's colour outside the recommended range, saying why on hover, and a reset
+ * A slider's value as it reads: in the warning's colour outside the recommended range and the error's past the useful
+ * end, saying why on hover, and a reset
  * to the reference beside it once the value has left it.
  */
 export function SliderReadout({
@@ -31,11 +37,13 @@ export function SliderReadout({
   format,
   reference,
   recommended,
+  wastedAbove,
   isCompact = false,
   isDisabled = false,
   onReset,
 }: ISliderReadoutProps): ReactElement {
-  const warning: Nullable<string> = describeSliderRecommendation(value, recommended);
+  const warning: Nullable<string> = describeSliderRecommendation(value, recommended, wastedAbove);
+  const isWasted: boolean = isSliderWasted(value, wastedAbove);
   const referenceValue: Nullable<number> = reference?.value ?? null;
   const resetLabel: Nullable<string> =
     reference && referenceValue !== null && format(referenceValue) !== format(value)
@@ -71,7 +79,7 @@ export function SliderReadout({
           component={"span"}
           variant={isCompact ? "caption" : "body2"}
           className={cn("tabular-nums", isCompact && "font-mono")}
-          sx={{ color: warning ? "warning.main" : "text.primary" }}
+          sx={{ color: isWasted ? "error.main" : warning ? "warning.main" : "text.primary" }}
         >
           {format(value)}
         </Typography>

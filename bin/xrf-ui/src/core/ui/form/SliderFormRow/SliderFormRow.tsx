@@ -20,6 +20,8 @@ export interface ISliderFormRowProps extends BaseComponentProps {
   referencePath?: ReadonlyArray<string>;
   /** The range xrf recommends, drawn on the rail; none where the setting is not rated. */
   recommended?: readonly [number, number];
+  /** Past it a higher value looks the same and only costs more, drawn red on the rail; none where not measured. */
+  wastedAbove?: number;
   /** Told the value while it is dragged at most once an interval, and at once when it is let go. */
   onChange: (value: number) => void;
 }
@@ -42,6 +44,7 @@ export function SliderFormRow({
   isDisabled = false,
   referencePath,
   recommended,
+  wastedAbove,
   onChange,
 }: ISliderFormRowProps): ReactElement {
   const draft: IThrottledDraft = useThrottledDraft(value, step, onChange);
@@ -69,6 +72,7 @@ export function SliderFormRow({
             step={step}
             reference={referenceValue}
             recommended={recommended}
+            wastedAbove={wastedAbove}
             disabled={isDisabled}
             getAriaValueText={format}
             slotProps={{ input: { "aria-labelledby": labelId, "aria-describedby": describedBy } }}
@@ -82,6 +86,7 @@ export function SliderFormRow({
             format={format}
             reference={reference}
             recommended={recommended}
+            wastedAbove={wastedAbove}
             isDisabled={isDisabled}
             onReset={onChange}
           />

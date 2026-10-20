@@ -42,9 +42,10 @@ function toNumber(
   min: number,
   max: number,
   isInteger: boolean = false,
-  recommended?: readonly [number, number]
+  recommended?: readonly [number, number],
+  wastedAbove?: number
 ): IRenderNumberField {
-  return { isInteger, kind: ERenderSettingKind.NUMBER, max, min, recommended };
+  return { isInteger, kind: ERenderSettingKind.NUMBER, max, min, recommended, wastedAbove };
 }
 
 function toChoice<T extends string>(values: Record<string, T>): IRenderChoiceField<T> {
@@ -58,26 +59,27 @@ function toChoice<T extends string>(values: Record<string, T>): IRenderChoiceFie
 export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings> = {
   // A field's fourth argument, where given, is the range xrf recommends, Base's and Enhanced's values within it: below
   // it the effect shows misses or artefacts, past it it costs more for little visible gain. A field without one is not
-  // rated.
+  // rated. The fifth, where given, is the value past which a higher one was measured to look the same and only cost
+  // more (benchmarks/xrf-renderer/20261020071500-fps-stalls in xrf-agents).
   ambientOcclusion: {
     isEnabled: FLAG,
     // Each method's search within its settings' own ranges (`RenderAmbientOcclusionGtaoSettings` and the rest).
     gtao: {
-      slices: toNumber(1, 9, true, [2, 6]),
+      slices: toNumber(1, 9, true, [2, 6], 6),
       steps: toNumber(1, 6, true, [2, 4]),
     },
     method: toChoice(ERenderAmbientOcclusionMethod),
     radius: toNumber(0.1, 8),
     rtao: {
-      rays: toNumber(1, 8, true, [2, 8]),
+      rays: toNumber(1, 8, true, [2, 8], 4),
     },
     strength: toNumber(0, 2),
     // The renderer's own: past two metres a thickness lets nothing through that a horizon would not.
     vbao: {
       accumulation: toNumber(1, RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION, true, [4, 16]),
       bounce: toNumber(0, 1),
-      slices: toNumber(1, 4, true, [1, 2]),
-      steps: toNumber(2, 16, true, [4, 12]),
+      slices: toNumber(1, 4, true, [1, 2], 2),
+      steps: toNumber(2, 16, true, [4, 12], 12),
       thickness: toNumber(0.01, 2),
     },
   },
@@ -85,7 +87,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   // The renderer's own: from a few pixels to well past the shipped 48, where neighbours stop sharing a band.
   debanding: {
     mode: toChoice(ERenderDebandingMode),
-    passes: toNumber(1, 4, true),
+    passes: toNumber(1, 4, true, undefined, 2),
     radius: toNumber(8, 128),
   },
   // The enhanced bloom's own menu bounds.
@@ -154,7 +156,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     intensity: toNumber(0, 4),
     mode: toChoice(ERenderIndirectLightMode),
     radius: toNumber(0.5, 8),
-    steps: toNumber(1, 8, true, [2, 4]),
+    steps: toNumber(1, 8, true, [2, 4], 4),
   },
   isOcclusionCulled: FLAG,
   // The renderer's own: puddles from none to nearly every site at two, a puddle's reflection at most a mirror's, the
@@ -185,7 +187,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     mode: toChoice(ERenderReflectionMode),
     probe: toChoice(ERenderReflectionProbe),
     traceSize: toChoice(ERenderTraceSize),
-    steps: toNumber(16, 128, true, [32, 128]),
+    steps: toNumber(16, 128, true, [32, 128], 96),
     reach: toNumber(25, 1000, true),
     skyGain: toNumber(0.5, 3),
     isGrassReflected: FLAG,
@@ -193,7 +195,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     isDryTraced: FLAG,
     isRayBudgeted: FLAG,
     isWaterReflected: FLAG,
-    waterSteps: toNumber(8, 32, true, [12, 24]),
+    waterSteps: toNumber(8, 32, true, [12, 24], 24),
     isTraced: FLAG,
     traceInterval: toNumber(1, 8, true, [1, 4]),
   },

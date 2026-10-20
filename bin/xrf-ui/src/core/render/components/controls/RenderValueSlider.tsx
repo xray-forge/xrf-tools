@@ -21,6 +21,8 @@ export interface IRenderValueSliderProps extends BaseComponentProps {
   referencePath?: ReadonlyArray<string>;
   /** The range xrf recommends, drawn on the rail; none where the setting is not rated. */
   recommended?: readonly [number, number];
+  /** Past it a higher value looks the same and only costs more, drawn red on the rail; none where not measured. */
+  wastedAbove?: number;
   /** Told the value while it is dragged at most once an interval, and at once when it is let go. */
   onChange: (value: number) => void;
 }
@@ -43,6 +45,7 @@ export function RenderValueSlider({
   isDisabled = false,
   referencePath,
   recommended,
+  wastedAbove,
   onChange,
 }: IRenderValueSliderProps): ReactElement {
   const draft: IThrottledDraft = useThrottledDraft(value, step, onChange);
@@ -66,6 +69,7 @@ export function RenderValueSlider({
           format={format}
           reference={reference}
           recommended={recommended}
+          wastedAbove={wastedAbove}
           isCompact
           isDisabled={isDisabled}
           onReset={onChange}
@@ -80,6 +84,7 @@ export function RenderValueSlider({
         value={draft.value}
         reference={referenceValue}
         recommended={recommended}
+        wastedAbove={wastedAbove}
         disabled={isDisabled}
         aria-label={label}
         getAriaValueText={format}

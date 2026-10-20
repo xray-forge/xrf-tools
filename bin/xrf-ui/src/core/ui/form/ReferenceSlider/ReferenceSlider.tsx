@@ -3,6 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { getSliderReferenceSx } from "@/core/theme/slider-reference";
+import { isSliderWasted } from "@/core/ui/form/ReferenceSlider/slider-reference";
 
 export interface IReferenceSliderProps extends Omit<SliderProps, "marks" | "color" | "value"> {
   value: number;
@@ -12,13 +13,15 @@ export interface IReferenceSliderProps extends Omit<SliderProps, "marks" | "colo
   reference?: Nullable<number>;
   /** The range xrf recommends, drawn on the rail; none where the setting is not rated. */
   recommended?: Nullable<readonly [number, number]>;
+  /** Past it a higher value only costs more, drawn red on the rail; none where not measured. */
+  wastedAbove?: Nullable<number>;
   /** Told on a double click, the reset sliders conventionally take. */
   onReset?: () => void;
 }
 
 /**
- * MUI's slider measured by a reference, marked on its track, and a recommended range, its band on the rail; painted as
- * a warning while its value stands outside the range.
+ * MUI's slider measured by a reference, marked on its track, a recommended range, its band on the rail, and a wasted
+ * end, red on the rail; painted as a warning outside the range and as an error past the useful end.
  */
 export function ReferenceSlider({
   value,
@@ -26,11 +29,13 @@ export function ReferenceSlider({
   max,
   reference,
   recommended,
+  wastedAbove,
   onReset,
   sx,
   ...props
 }: IReferenceSliderProps): ReactElement {
   const isOutside: boolean = !!recommended && (value < recommended[0] || value > recommended[1]);
+  const isWasted: boolean = isSliderWasted(value, wastedAbove);
   const marks: Array<{ value: number }> = useMemo(
     () =>
       reference !== null && reference !== undefined && reference >= min && reference <= max
@@ -46,8 +51,8 @@ export function ReferenceSlider({
       min={min}
       max={max}
       marks={marks}
-      color={isOutside ? "warning" : "primary"}
-      sx={[getSliderReferenceSx(recommended, min, max), ...(Array.isArray(sx) ? sx : [sx])]}
+      color={isWasted ? "error" : isOutside ? "warning" : "primary"}
+      sx={[getSliderReferenceSx(recommended, min, max, wastedAbove), ...(Array.isArray(sx) ? sx : [sx])]}
       onDoubleClick={onReset}
     />
   );

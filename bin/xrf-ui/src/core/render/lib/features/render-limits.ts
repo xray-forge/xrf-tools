@@ -12,6 +12,7 @@ export interface IRenderLimits {
   step: number;
   referencePath?: TRenderFeaturePath;
   recommended?: readonly [number, number];
+  wastedAbove?: number;
 }
 
 /** Every number field of the feature settings by its place among them. */
@@ -30,5 +31,6 @@ export function toRenderLimits(field: IRenderNumberField, step: number): IRender
     recommended: field.recommended,
     referencePath: FIELD_PATHS.get(field),
     step,
+    wastedAbove: field.wastedAbove,
   };
 }
