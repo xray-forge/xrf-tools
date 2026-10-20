@@ -132,23 +132,25 @@ const BASE_PRESET: IRenderFeatureSettings = {
   water: { ...DEFAULT_RENDER_WATER_SETTINGS, mode: ERenderWaterMode.ENHANCED },
 };
 
-/** The application's look at its best: every quality at its top step, short of ray reconstruction and traced occlusion. */
+/**
+ * The application's look at its best, short of ray reconstruction and traced occlusion, no quality set past a cheaper
+ * value measured to look the same across levels, times and weathers.
+ */
 const ENHANCED_PRESET: IRenderFeatureSettings = {
   ...BASE_PRESET,
   ambientOcclusion: {
     ...BASE_PRESET.ambientOcclusion,
-    gtao: { slices: 6, steps: 3 },
-    rtao: { rays: 4 },
-    vbao: { ...BASE_PRESET.ambientOcclusion.vbao, slices: 2, steps: 8 },
+    gtao: { slices: 4, steps: 3 },
+    rtao: { rays: 2 },
+    vbao: { ...BASE_PRESET.ambientOcclusion.vbao, steps: 8 },
   },
   debanding: { ...BASE_PRESET.debanding, passes: 2 },
-  indirectLight: { ...BASE_PRESET.indirectLight, steps: 4 },
+  indirectLight: { ...BASE_PRESET.indirectLight, steps: 2 },
   grass: { ...BASE_PRESET.grass, radius: 300, shadowRadius: 100 },
   parallax: { ...BASE_PRESET.parallax, steps: 32 },
   // Drops bending the scene behind them, their landings ringing the water and the puddles.
   rain: { ...BASE_PRESET.rain, drops: ERenderRainDropsMode.ENHANCED },
-  // Traced at the frame's size, and where the GPU traces rays every frame, the grass reflected too; 96 steps, as many
-  // more measured the same.
+  // Traced at the frame's size, and where the GPU traces rays every frame, the grass reflected too.
   reflections: {
     ...BASE_PRESET.reflections,
     isGrassReflected: true,
