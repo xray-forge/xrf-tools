@@ -106,11 +106,13 @@ const BASE_PRESET: IRenderFeatureSettings = {
   parallax: { ...DEFAULT_RENDER_PARALLAX_SETTINGS, mode: ERenderParallaxMode.ENHANCED },
   // Wet surfaces that build up and dry, and puddles, under the engine's streaks.
   rain: { ...DEFAULT_RENDER_RAIN_SETTINGS, mode: ERenderRainMode.ENHANCED },
-  // What the frame shows reflected where a ray meets it, the cube elsewhere, over half the walk.
+  // What the frame shows reflected where a ray meets it, the cube elsewhere, over half the walk; traced only below a
+  // roughness of 0.4, as Lumen traces, the rougher reflecting the prefiltered sky.
   reflections: {
     ...DEFAULT_RENDER_REFLECTION_SETTINGS,
     mode: ERenderReflectionMode.ENHANCED,
     steps: 48,
+    traceRoughness: 0.4,
   },
   // Contact shadows under the cascades at half the frame's size, which flickered no more than the full size; the trees
   // swaying in the near two cascades alone, redrawn thirty times a second.
@@ -149,7 +151,8 @@ const ENHANCED_PRESET: IRenderFeatureSettings = {
   parallax: { ...BASE_PRESET.parallax, steps: 32 },
   // Drops bending the scene behind them, their landings ringing the water and the puddles.
   rain: { ...BASE_PRESET.rain, drops: ERenderRainDropsMode.ENHANCED },
-  // Traced at the frame's size, and where the GPU traces rays every frame, the grass reflected too.
+  // Traced at the frame's size up to the default roughness, and where the GPU traces rays every frame, the grass
+  // reflected too.
   reflections: {
     ...BASE_PRESET.reflections,
     isGrassReflected: true,
@@ -157,6 +160,7 @@ const ENHANCED_PRESET: IRenderFeatureSettings = {
     probe: ERenderReflectionProbe.FINEST,
     steps: 96,
     traceInterval: 1,
+    traceRoughness: DEFAULT_RENDER_REFLECTION_SETTINGS.traceRoughness,
     traceSize: ERenderTraceSize.FULL,
   },
   shadows: {
