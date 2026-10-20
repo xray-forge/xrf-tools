@@ -37,6 +37,8 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   isOccluded: boolean;
   /** Culls the static draws the depth hides, while the settings cull them. */
   isOcclusionCulled: boolean;
+  /** Draws the opaque surfaces' depth ahead of their shading, while the settings draw it. */
+  isDepthPrepassed: boolean;
   /** Smooths the frame's edges, while the settings smooth them. */
   isAntialiased: boolean;
   /** Sways the trees and the grass in the wind, as the game does. */
@@ -77,6 +79,7 @@ export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   isAxesVisible: false,
   isCampfireLit: true,
   isClouded: true,
+  isDepthPrepassed: true,
   isFogged: true,
   isGrassy: true,
   isGridVisible: false,

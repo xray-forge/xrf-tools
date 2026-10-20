@@ -110,7 +110,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
     ],
   },
   {
-    features: ["lod", "isOcclusionCulled"],
+    features: ["lod", "isOcclusionCulled", "isDepthPrepassed"],
     id: ERenderSettingsTab.ADVANCED,
     label: "Advanced",
     sections: [SettingsRendererLod, SettingsRendererCulling],

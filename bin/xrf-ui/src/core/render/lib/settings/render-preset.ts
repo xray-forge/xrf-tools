@@ -92,6 +92,8 @@ const BASE_PRESET: IRenderFeatureSettings = {
   },
   // The light bounced in the occlusion's own search.
   indirectLight: { ...DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS, mode: ERenderIndirectLightMode.ENHANCED },
+  // The opaque surfaces' depth drawn first, so a pixel under stacked walls, decks and trunks is shaded once.
+  isDepthPrepassed: true,
   isOcclusionCulled: true,
   // Anomaly's soft shadows for the lamps.
   lights: { ...DEFAULT_RENDER_LIGHTS_SETTINGS, shadowFilter: ERenderLightShadowFilter.SOFT },
@@ -185,6 +187,7 @@ const EDITING_PRESET: IRenderFeatureSettings = {
   glass: DEFAULT_RENDER_GLASS_SETTINGS,
   grass: { ...DEFAULT_RENDER_GRASS_SETTINGS, isEnabled: false },
   indirectLight: DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
+  isDepthPrepassed: false,
   isOcclusionCulled: true,
   // Unshadowed, the lights cost a pass over the screen: an editor keeps seeing what lights a room.
   lights: { ...DEFAULT_RENDER_LIGHTS_SETTINGS, isShadowed: false },

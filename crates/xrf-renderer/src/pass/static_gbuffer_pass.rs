@@ -14,9 +14,10 @@ use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 
-/// Draws the static scene into a viewport's G-buffer: the cut-out batches' depth alone first, then one indirect draw a
-/// batch, its visible clusters as instances, a cut-out batch shaded only where its depth is the one drawn, then one for
-/// the impostors standing in for distant trees. A frame inspecting its surfaces (a wireframe, the asset checker, alpha
+/// Draws the static scene into a viewport's G-buffer: the cut-out batches' depth alone first, and the opaque ones' too
+/// where the frame asks for a depth pass, then one indirect draw a batch, its visible clusters as instances, a batch
+/// whose depth was drawn shaded only where its depth is the one drawn, then one for the impostors standing in for
+/// distant trees. A frame inspecting its surfaces (a wireframe, the asset checker, alpha
 /// hidden, a surface debug view) draws with pipelines keeping their code; any other with pipelines without it. For the
 /// overdraw's debug view it draws every batch again, counting each surface drawn over a pixel.
 pub struct StaticGBufferPass {
@@ -77,29 +78,35 @@ impl StaticGBufferPass {
     }
   }
 
-  /// Draws the visible clusters an argument buffer lists into the G-buffer the pass draws into, and with the frame's
-  /// first draw the impostors too: no occlusion sets one aside.
+  /// Draws the visible clusters an argument buffer lists into the G-buffer the pass draws into, the opaque surfaces'
+  /// depth ahead of their shading where `is_prepassed`, and with the frame's first draw the impostors too: no occlusion
+  /// sets one aside.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
     (view, draws, textures): (&ViewBinding, &StaticDraws, &wgpu::BindGroup),
     args: &wgpu::Buffer,
-    (is_first, is_inspected): (bool, bool),
+    (is_first, is_inspected, is_prepassed): (bool, bool, bool),
   ) {
     let drawing: &FrameDrawPipelines = &self.pipelines.frames[usize::from(is_inspected)];
+    let shading: &[wgpu::RenderPipeline] = if is_prepassed {
+      &drawing.prepassed_draws
+    } else {
+      &drawing.draws
+    };
 
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
     context.get_pass().set_bind_group(1, textures, &[]);
 
     for (batch, prepass) in StaticBatch::list_deferred().zip(&drawing.prepasses) {
-      if let Some(prepass) = prepass {
+      if batch.class == StaticClass::CutOut || is_prepassed {
         context.bind(&draws.layouts[batch.layout.get_index()]);
         context.get_pass().set_pipeline(prepass);
         context.get_pass().draw_indirect(args, batch.get_args_offset());
       }
     }
 
-    for (batch, pipeline) in StaticBatch::list_deferred().zip(&drawing.draws) {
+    for (batch, pipeline) in StaticBatch::list_deferred().zip(shading) {
       context.bind(&draws.layouts[batch.layout.get_index()]);
       context.get_pass().set_pipeline(pipeline);
       context.get_pass().draw_indirect(args, batch.get_args_offset());
@@ -245,40 +252,45 @@ impl StaticGBufferPass {
           .with_targets(targets.to_vec()),
       )
     };
-    let create =
-      |batches: Vec<StaticBatch>, (is_pick, is_inspected): (bool, bool)| -> XrfResult<Vec<wgpu::RenderPipeline>> {
-        let permutation: StaticDrawPermutation = StaticDrawPermutation {
-          is_shadow_draw: false,
-          is_inspected,
-        };
-
-        batches
-          .into_iter()
-          .map(|batch| {
-            let fragment: &str = match (batch.class, is_pick) {
-              (StaticClass::CutOut, false) => "fs_cut_out",
-              (StaticClass::CutOut, true) => "fs_pick_cut_out",
-              (class, true) if class.is_composited() => "fs_pick_composited",
-              (_, false) => "fs_opaque",
-              (_, true) => "fs_pick_opaque",
-            };
-            // A composited surface is picked as it is drawn, pulled towards the eye, so glass laid on a wall wins. A
-            // cut-out is shaded where its depth-only draw left its depth, and writes none of its own.
-            let depth: (bool, wgpu::CompareFunction, wgpu::DepthBiasState) = match batch.class {
-              class if class.is_composited() => (true, wgpu::CompareFunction::GreaterEqual, CompositedPass::DEPTH_BIAS),
-              StaticClass::CutOut if !is_pick => (false, wgpu::CompareFunction::Equal, wgpu::DepthBiasState::default()),
-              _ => (true, wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default()),
-            };
-
-            create_one(
-              "static g-buffer",
-              (batch.layout.get_vertex_entry(), fragment, &permutation),
-              if is_pick { &pick_targets } else { &targets },
-              depth,
-            )
-          })
-          .collect()
+    let create = |batches: Vec<StaticBatch>,
+                  (is_pick, is_inspected, is_prepassed): (bool, bool, bool)|
+     -> XrfResult<Vec<wgpu::RenderPipeline>> {
+      let permutation: StaticDrawPermutation = StaticDrawPermutation {
+        is_shadow_draw: false,
+        is_inspected,
       };
+
+      batches
+        .into_iter()
+        .map(|batch| {
+          let fragment: &str = match (batch.class, is_pick) {
+            (StaticClass::CutOut, false) => "fs_cut_out",
+            (StaticClass::CutOut, true) => "fs_pick_cut_out",
+            (class, true) if class.is_composited() => "fs_pick_composited",
+            (_, false) => "fs_opaque",
+            (_, true) => "fs_pick_opaque",
+          };
+          // A composited surface is picked as it is drawn, pulled towards the eye, so glass laid on a wall wins. A
+          // cut-out, and an opaque surface after the depth pass, is shaded where its depth-only draw left its depth,
+          // and writes none of its own.
+          let depth: (bool, wgpu::CompareFunction, wgpu::DepthBiasState) = match batch.class {
+            class if class.is_composited() => (true, wgpu::CompareFunction::GreaterEqual, CompositedPass::DEPTH_BIAS),
+            StaticClass::CutOut if !is_pick => (false, wgpu::CompareFunction::Equal, wgpu::DepthBiasState::default()),
+            StaticClass::Opaque if is_prepassed => {
+              (false, wgpu::CompareFunction::Equal, wgpu::DepthBiasState::default())
+            }
+            _ => (true, wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default()),
+          };
+
+          create_one(
+            "static g-buffer",
+            (batch.layout.get_vertex_entry(), fragment, &permutation),
+            if is_pick { &pick_targets } else { &targets },
+            depth,
+          )
+        })
+        .collect()
+    };
 
     let deferred: Vec<StaticBatch> = StaticBatch::list_deferred().collect();
     // The G-buffer's targets left as they are: the depth-only draw writes none of them.
@@ -291,7 +303,7 @@ impl StaticGBufferPass {
         })
       })
       .collect();
-    let create_prepasses = |is_inspected: bool| -> XrfResult<Vec<Option<wgpu::RenderPipeline>>> {
+    let create_prepasses = |is_inspected: bool| -> XrfResult<Vec<wgpu::RenderPipeline>> {
       let permutation: StaticDrawPermutation = StaticDrawPermutation {
         is_shadow_draw: false,
         is_inspected,
@@ -300,22 +312,42 @@ impl StaticGBufferPass {
       deferred
         .iter()
         .map(|batch| {
-          (batch.class == StaticClass::CutOut)
-            .then(|| {
-              create_one(
-                "static g-buffer depth",
-                (batch.layout.get_vertex_entry(), "fs_depth_cut_out", &permutation),
-                &untouched,
-                (true, wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default()),
-              )
-            })
-            .transpose()
+          let fragment: &'static str = if batch.class == StaticClass::CutOut {
+            "fs_depth_cut_out"
+          } else {
+            "fs_depth_opaque"
+          };
+
+          create_one(
+            "static g-buffer depth",
+            (batch.layout.get_vertex_entry(), fragment, &permutation),
+            &untouched,
+            (true, wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default()),
+          )
         })
-        .collect::<XrfResult<_>>()
+        .collect()
     };
     let frame = |is_inspected: bool| -> XrfResult<FrameDrawPipelines> {
+      let draws: Vec<wgpu::RenderPipeline> = create(deferred.clone(), (false, is_inspected, false))?;
+      let opaque: Vec<StaticBatch> = deferred
+        .iter()
+        .copied()
+        .filter(|it| it.class == StaticClass::Opaque)
+        .collect();
+      let mut prepassed = create(opaque, (false, is_inspected, true))?.into_iter();
+      // Only the opaque draws change after the depth pass; the cut-outs' are the same pipelines.
+      let prepassed_draws: Vec<wgpu::RenderPipeline> = deferred
+        .iter()
+        .zip(&draws)
+        .map(|(batch, draw)| match batch.class {
+          StaticClass::Opaque => prepassed.next().unwrap_or_else(|| draw.clone()),
+          _ => draw.clone(),
+        })
+        .collect();
+
       Ok(FrameDrawPipelines {
-        draws: create(deferred.clone(), (false, is_inspected))?,
+        draws,
+        prepassed_draws,
         prepasses: create_prepasses(is_inspected)?,
       })
     };
@@ -365,8 +397,8 @@ impl StaticGBufferPass {
 
     Ok(GBufferPipelines {
       frames: [frame(false)?, frame(true)?],
-      picks: create(deferred.clone(), (true, true))?,
-      composited_picks: create(Self::list_composited_picks().collect(), (true, true))?,
+      picks: create(deferred.clone(), (true, true, false))?,
+      composited_picks: create(Self::list_composited_picks().collect(), (true, true, false))?,
       overdraws,
     })
   }
@@ -383,9 +415,11 @@ struct GBufferPipelines {
   overdraws: Vec<wgpu::RenderPipeline>,
 }
 
-/// A frame's draws of the G-buffer by batch: one a batch, by its index, and a cut-out batch's depth-only draw ahead of
-/// its shading, none for an opaque one.
+/// A frame's draws of the G-buffer by batch: one a batch, by its index; the same with the opaque ones shaded where the
+/// depth pass left their depth; and each batch's depth-only draw ahead of its shading, an opaque one's drawn only where
+/// the frame asks for a depth pass.
 struct FrameDrawPipelines {
   draws: Vec<wgpu::RenderPipeline>,
-  prepasses: Vec<Option<wgpu::RenderPipeline>>,
+  prepassed_draws: Vec<wgpu::RenderPipeline>,
+  prepasses: Vec<wgpu::RenderPipeline>,
 }

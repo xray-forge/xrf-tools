@@ -158,6 +158,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     radius: toNumber(0.5, 8),
     steps: toNumber(1, 8, true, [2, 4], 4),
   },
+  isDepthPrepassed: FLAG,
   isOcclusionCulled: FLAG,
   // The renderer's own: puddles from none to nearly every site at two, a puddle's reflection at most a mirror's, the
   // rain's ripples up to twice their designed strength, and puddles drawn out to the widest grass's radius, which the

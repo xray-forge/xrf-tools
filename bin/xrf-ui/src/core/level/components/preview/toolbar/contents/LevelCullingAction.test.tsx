@@ -45,4 +45,14 @@ describe("LevelCullingAction", () => {
     );
     expect(getByRole("checkbox", { name: "Impostors" })).toBeChecked();
   });
+
+  it("turns the opaque depth pass off for the view alone", async () => {
+    const { getByRole, view } = await renderOpenAction(({ renderSettings }) =>
+      renderSettings.setRendererOverrides({ isDepthPrepassed: true })
+    );
+
+    await userEvent.click(getByRole("checkbox", { name: "Opaque depth pass" }));
+
+    expect(view.options.isDepthPrepassed).toBe(false);
+  });
 });

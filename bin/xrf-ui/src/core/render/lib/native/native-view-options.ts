@@ -105,6 +105,7 @@ export function toNativeViewOptions(
       grass: { ...grass, isEnabled: grass.isEnabled && switches.isGrassy },
       hemiStrength: shading.hemiStrength,
       indirectLight: features.indirectLight,
+      isDepthPrepassed: features.isDepthPrepassed,
       isOcclusionCulled: features.isOcclusionCulled,
       lightScales: look.lightScales,
       lights: features.lights,

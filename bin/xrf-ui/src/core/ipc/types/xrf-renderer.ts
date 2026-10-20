@@ -1853,6 +1853,8 @@ export type RenderViewFeatures = {
   hemiStrength: number | null;
   /** Whether what the last frame's depth hides is left undrawn. */
   isOcclusionCulled: boolean;
+  /** Whether the opaque surfaces' depth is drawn alone ahead of their G-buffer draws, so each pixel is shaded once. */
+  isDepthPrepassed: boolean;
 };
 
 /**

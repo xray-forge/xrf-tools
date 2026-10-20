@@ -48,6 +48,8 @@ pub struct StaticsFeature {
   is_wallmarked: bool,
   /// Whether the view inspects its surfaces, which draws them with the inspections' code.
   is_inspected: bool,
+  /// Whether the opaque surfaces' depth is drawn ahead of their shading this frame.
+  is_prepassed: bool,
   /// Whether the view shows its overdraw, which draws its surfaces again to count them.
   is_overdrawn: bool,
 }
@@ -63,6 +65,7 @@ impl StaticsFeature {
       stats: StatsReadback::new(device),
       is_wallmarked: false,
       is_inspected: true,
+      is_prepassed: false,
       is_overdrawn: false,
     }
   }
@@ -117,6 +120,8 @@ impl StaticsFeature {
     self.matrices = (view.view, view.projection);
     self.is_wallmarked = options.show.is_wallmarked;
     self.is_inspected = options.is_inspecting_surfaces();
+    // An inspection cuts surfaces the depth pass would draw whole, a wireframe the faces between its edges.
+    self.is_prepassed = options.features.is_depth_prepassed && !self.is_inspected;
     self.is_overdrawn = options.mode.debug_view == RenderDebugView::Overdraw;
 
     if let Some(pyramid) = &self.pyramid {
@@ -258,6 +263,7 @@ impl StaticsFeature {
     let gbuffer: [GraphTexture; 5] = targets.get_gbuffer();
     let depth: GraphTexture = targets.depth;
     let is_inspected: bool = self.is_inspected;
+    let is_prepassed: bool = self.is_prepassed;
     let add_draw = |graph: &mut FrameGraph<'a>, name: &'static str, draw_args: GraphBuffer, is_first: bool| {
       let color_load: wgpu::LoadOp<wgpu::Color> = if is_first {
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
@@ -280,9 +286,12 @@ impl StaticsFeature {
       draws.declare(builder, is_first).record(move |context| {
         let draw_args: &wgpu::Buffer = context.get_buffer(draw_args);
 
-        passes
-          .gbuffer
-          .record(context, (view, &draws, textures), draw_args, (is_first, is_inspected));
+        passes.gbuffer.record(
+          context,
+          (view, &draws, textures),
+          draw_args,
+          (is_first, is_inspected, is_prepassed),
+        );
       });
     };
 

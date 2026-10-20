@@ -70,6 +70,8 @@ pub struct RenderViewFeatures {
   pub hemi_strength: f32,
   /// Whether what the last frame's depth hides is left undrawn.
   pub is_occlusion_culled: bool,
+  /// Whether the opaque surfaces' depth is drawn alone ahead of their G-buffer draws, so each pixel is shaded once.
+  pub is_depth_prepassed: bool,
 }
 
 impl Default for RenderViewFeatures {
@@ -99,6 +101,7 @@ impl Default for RenderViewFeatures {
       light_scales: RenderLightScales::default(),
       hemi_strength: 1.0,
       is_occlusion_culled: true,
+      is_depth_prepassed: false,
     }
   }
 }

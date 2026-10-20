@@ -341,12 +341,20 @@ export function toLevelModeFeature<K extends TLevelModeFeatureKey>(
 /** The toolbar's toggles that turn a feature group off for the view, which they cannot turn on. */
 export type TLevelFeatureToggles = Pick<
   ILevelViewOptions,
-  "isAntialiased" | "isGrassy" | "isLamplit" | "isOccluded" | "isOcclusionCulled" | "isShadowed" | "isWaterVisible"
+  | "isAntialiased"
+  | "isDepthPrepassed"
+  | "isGrassy"
+  | "isLamplit"
+  | "isOccluded"
+  | "isOcclusionCulled"
+  | "isShadowed"
+  | "isWaterVisible"
 >;
 
 /** Every toggle on: the features as the settings and the view set them, none turned off. */
 export const LEVEL_FEATURE_TOGGLES_ON: Readonly<TLevelFeatureToggles> = {
   isAntialiased: true,
+  isDepthPrepassed: true,
   isGrassy: true,
   isLamplit: true,
   isOccluded: true,
@@ -377,6 +385,7 @@ export function toLevelRendererFeatures(
     glass: toLevelModeFeature("glass", settings, view),
     grass: toLevelRendererFeature("grass", settings, view, toggles.isGrassy),
     indirectLight: toLevelModeFeature("indirectLight", settings, view),
+    isDepthPrepassed: settings.isDepthPrepassed && toggles.isDepthPrepassed,
     isOcclusionCulled: settings.isOcclusionCulled && toggles.isOcclusionCulled,
     lights: toLevelRendererFeature("lights", settings, view, toggles.isLamplit),
     parallax: toLevelModeFeature("parallax", settings, view),

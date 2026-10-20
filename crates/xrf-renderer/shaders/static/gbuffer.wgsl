@@ -983,6 +983,12 @@ fn fs_depth_cut_out(in: GBufferVarying) {
   }
 }
 
+// An opaque surface's depth alone, ahead of the G-buffer's draw where the frame asks for a depth pass: its draw then
+// shades only where its depth is equal, once a pixel however many opaque layers overlap there.
+@fragment
+fn fs_depth_opaque(in: GBufferVarying) {
+}
+
 @fragment
 fn fs_cut_out(in: GBufferVarying) -> GBufferOutput {
   let at: Footprint = steep_footprint(in, take_footprint(in));

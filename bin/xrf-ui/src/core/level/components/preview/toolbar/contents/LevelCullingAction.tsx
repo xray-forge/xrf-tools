@@ -17,7 +17,8 @@ import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/edit
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
- * What is spared drawing: static draws the depth hides, and distant trees drawn as their impostors.
+ * What is spared drawing: static draws the depth hides, opaque pixels shaded more than once, and distant trees drawn as
+ * their impostors.
  */
 export function LevelCullingAction({
   "data-testid": dataTestId = "level-culling-action",
@@ -29,10 +30,13 @@ export function LevelCullingAction({
 
   const options: ILevelViewOptions = viewService.options;
   const lod: ILevelLodOptions = viewService.lod;
-  // Whether the settings cull by occlusion and draw impostors at all, which this view can only narrow.
+  // Whether the settings cull by occlusion, draw the depth pass and draw impostors at all, which this view can only
+  // narrow.
   const isOcclusionAvailable: boolean = settings.isOcclusionCulled;
+  const isPrepassAvailable: boolean = settings.isDepthPrepassed;
   const isImpostorsAvailable: boolean = settings.lod.isImpostors;
   const isOccluding: boolean = options.isOcclusionCulled && isOcclusionAvailable;
+  const isPrepassed: boolean = options.isDepthPrepassed && isPrepassAvailable;
   const isImpostors: boolean = options.isImpostors && isImpostorsAvailable;
 
   return (
@@ -43,12 +47,13 @@ export function LevelCullingAction({
       label={"Culling"}
       description={[
         isOccluding ? "Occlusion culled" : "Occlusion culling off",
+        isPrepassed ? "opaque depth first" : null,
         isImpostors ? `impostors past ${formatLevelLodDistance(lod.distance)} the game's distance` : "every tree drawn",
       ]
         .filter(Boolean)
         .join(", ")}
       icon={<LayersIcon />}
-      isActive={isOccluding || isImpostors}
+      isActive={isOccluding || isPrepassed || isImpostors}
     >
       <EditorPopoverGroupSection
         label={"Occlusion culling"}
@@ -58,6 +63,18 @@ export function LevelCullingAction({
         isOn={isOccluding}
         isDisabled={!isOcclusionAvailable}
         onToggle={() => viewService.toggleOption("isOcclusionCulled")}
+      />
+
+      <EditorPopoverGroupSection
+        label={"Opaque depth pass"}
+        description={
+          isPrepassAvailable
+            ? "Draws the opaque depth first, so each pixel is shaded once"
+            : "Off in Settings, under Rendering"
+        }
+        isOn={isPrepassed}
+        isDisabled={!isPrepassAvailable}
+        onToggle={() => viewService.toggleOption("isDepthPrepassed")}
       />
 
       <EditorPopoverGroupSection

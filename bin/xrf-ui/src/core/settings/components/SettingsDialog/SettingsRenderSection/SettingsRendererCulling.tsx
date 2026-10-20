@@ -18,6 +18,15 @@ export function SettingsRendererCulling(): ReactElement {
           isChecked={renderSettingsService.rendererFeatures.isOcclusionCulled}
           onChange={(isOcclusionCulled: boolean) => renderSettingsService.setRendererOverrides({ isOcclusionCulled })}
         />
+        <CheckboxFormRow
+          label={"Opaque depth pass"}
+          description={
+            "Draws the opaque surfaces' depth first, so each pixel is shaded once where surfaces stack; costs a little " +
+            "over open ground seen from above."
+          }
+          isChecked={renderSettingsService.rendererFeatures.isDepthPrepassed}
+          onChange={(isDepthPrepassed: boolean) => renderSettingsService.setRendererOverrides({ isDepthPrepassed })}
+        />
       </div>
     </DetailSection>
   );

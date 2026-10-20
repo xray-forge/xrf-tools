@@ -607,7 +607,7 @@ impl SurroundingsCube {
       StaticShadowPass::set_region(context, region);
       passes
         .gbuffer
-        .record(context, (&cut.view, &draws, textures), args, (false, false));
+        .record(context, (&cut.view, &draws, textures), args, (false, false, false));
     });
   }
 

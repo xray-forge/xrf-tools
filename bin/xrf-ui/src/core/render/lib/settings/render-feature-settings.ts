@@ -39,6 +39,7 @@ export type TRenderViewFeatureKey =
   | "glass"
   | "grass"
   | "indirectLight"
+  | "isDepthPrepassed"
   | "isOcclusionCulled"
   | "lights"
   | "lod"
