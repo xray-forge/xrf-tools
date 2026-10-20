@@ -12,6 +12,7 @@ use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::pre_exposure::PreExposure;
+use crate::pass::sky_harmonics::SkyHarmonics;
 
 fn physical() -> RenderViewOptions {
   let mut options: RenderViewOptions = RenderViewOptions::default();
@@ -37,6 +38,7 @@ fn lighting_at(options: &RenderViewOptions, lighting: &RenderLighting, pre_expos
       is_irradiance_up: false,
       clouds_time: 0.0,
       sun_sprite: Vec4::ZERO,
+      sky_harmonics: SkyHarmonics::default(),
     },
   )
 }
@@ -181,4 +183,30 @@ fn the_physical_light_is_in_cd_per_square_metre() {
 
   assert!((daylight * reference - ExposureHistogramUniform::MIDDLE_GREY).abs() < 1e-5);
   assert!((ExposureHistogramUniform::get_daylight_scale(1.0) / daylight - 2.0).abs() < 1e-4);
+}
+
+// The physical light lights the hemisphere by the sky's irradiance as the sky feature read it back, times the look's
+// hemisphere scale, keeping whether the sky was projected; the engine's light carries none.
+#[test]
+fn the_sky_irradiance_takes_the_hemisphere_scale() {
+  let mut options: RenderViewOptions = physical();
+
+  options.features.light_scales.hemi = 2.0;
+
+  let mut harmonics: SkyHarmonics = SkyHarmonics::default();
+
+  harmonics.coefficients[0] = Vec4::new(0.5, 0.25, 0.125, 1.0);
+
+  let frame: LightingFrame = LightingFrame {
+    is_adapting: false,
+    pre_exposure: PreExposure::NONE,
+    sky_blend: 0.0,
+    is_irradiance_up: false,
+    clouds_time: 0.0,
+    sun_sprite: Vec4::ZERO,
+    sky_harmonics: harmonics,
+  };
+  let lighting: LightingUniform = LightingUniform::new(&RenderLighting::default(), Mat4::IDENTITY, &options, &frame);
+
+  assert_eq!(lighting.sky_harmonics[0], Vec4::new(1.0, 0.5, 0.25, 1.0));
 }

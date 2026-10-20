@@ -10,6 +10,7 @@ use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::pre_exposure::PreExposure;
+use crate::pass::sky_harmonics::SkyHarmonics;
 use crate::pass::vbao_uniform::VbaoUniform;
 
 fn enhanced() -> RenderIndirectLightSettings {
@@ -41,6 +42,7 @@ fn lighting_with(options: &RenderViewOptions) -> LightingUniform {
       is_irradiance_up: false,
       clouds_time: 0.0,
       sun_sprite: Vec4::ZERO,
+      sky_harmonics: SkyHarmonics::default(),
     },
   )
 }

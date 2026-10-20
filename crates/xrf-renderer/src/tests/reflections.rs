@@ -16,6 +16,7 @@ use crate::pass::pre_exposure::PreExposure;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::reflection_uniform::ReflectionUniform;
+use crate::pass::sky_harmonics::SkyHarmonics;
 use crate::scene::level::feature::reflection_history::ReflectionHistory;
 
 fn enhanced() -> RenderReflectionSettings {
@@ -57,6 +58,7 @@ fn lighting_uniform(options: &RenderViewOptions, lighting: &RenderLighting) -> L
       is_irradiance_up: false,
       clouds_time: 0.0,
       sun_sprite: Vec4::ZERO,
+      sky_harmonics: SkyHarmonics::default(),
     },
   )
 }

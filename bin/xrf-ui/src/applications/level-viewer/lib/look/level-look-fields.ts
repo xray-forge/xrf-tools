@@ -4,6 +4,8 @@ import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-
 /** One number of the look a slider sets. */
 export interface ILevelLookField {
   label: string;
+  /** Whether only the engine light model reads it, where its group is read by both: the physical light has no flat ambient. */
+  isEngineOnly?: boolean;
   min: number;
   max: number;
   step: number;
@@ -96,6 +98,7 @@ export const LEVEL_LOOK_FIELD_GROUPS: ReadonlyArray<ILevelLookFieldGroup> = [
         write: (look, hemi) => ({ ...look, lightScales: { ...look.lightScales, hemi } }),
       },
       {
+        isEngineOnly: true,
         label: "Ambient",
         max: 4,
         min: 0,

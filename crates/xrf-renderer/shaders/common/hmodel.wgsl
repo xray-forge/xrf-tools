@@ -1,4 +1,5 @@
 #import "common/lighting"
+#import "common/sky_harmonics"
 #import "common/sky_box"
 #import "common/srgb"
 
@@ -89,9 +90,13 @@ fn hmodel_terms(state: Lighting, table: texture_3d<f32>, table_sampler: sampler,
   // The hemisphere looked up by occlusion and by how far the reflection turns from the view.
   let hemisphere: vec4<f32> = material_lookup(table, table_sampler, occlusion, 0.5 + 0.5 * dot(reflected, to_point_world),
     slice);
-  let hemisphere_diffuse: vec3<f32> =
-    (hemisphere_environment(state, cube_0, cube_1, cube_sampler, normal_world) * hemisphere.x + state.ambient.rgb)
-    * visible;
+  // The hemisphere's light: the weather's cubes and its flat ambient, or under the physical light the sky's own
+  // irradiance, the baked hemisphere its visibility and no flat ambient, the bounce left to the indirect light.
+  let is_sky: bool = is_sky_irradiance(state);
+  let sky: vec3<f32> = select(hemisphere_environment(state, cube_0, cube_1, cube_sampler, normal_world),
+    sky_irradiance_at(state, normal_world), is_sky);
+  let ambient: vec3<f32> = select(state.ambient.rgb, vec3<f32>(0.0), is_sky);
+  let hemisphere_diffuse: vec3<f32> = (sky * hemisphere.x + ambient) * visible;
   let is_extended: bool = state.engine.x > 0.5;
   let weight: vec3<f32> = hemisphere.y * hmodel_gloss_weight(state, gloss, hemisphere.x) * visible;
   let environment: vec3<f32> = hmodel_reflected_environment(state, cube_0, cube_1, cube_sampler, reflected);

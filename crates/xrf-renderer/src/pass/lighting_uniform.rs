@@ -26,6 +26,9 @@ pub struct LightingUniform {
   pub environment: Vec4,
   /// The irradiance's stand-in, then one once both cubes are up.
   pub sky_irradiance: Vec4,
+  /// The sky's irradiance over π as harmonics, which the physical light lights the hemisphere by (`SkyHarmonics`), times
+  /// the hemisphere's light scale: the first's `w` one once the sky was projected.
+  pub sky_harmonics: [Vec4; 9],
   /// The fog's colour as the weather authors it (a display value: the light passes take it as `fog_light`), then one
   /// where it fogs.
   pub fog_color: Vec4,
@@ -108,6 +111,10 @@ impl LightingUniform {
       ambient: light(lighting.get_ambient(&options.features.light_scales)).extend(0.0),
       environment: lighting.get_environment(&options.features.light_scales).extend(0.0),
       sky_irradiance: lighting.sky_irradiance.extend(flag(frame.is_irradiance_up)),
+      sky_harmonics: frame
+        .sky_harmonics
+        .coefficients
+        .map(|coefficient| (coefficient.truncate() * options.features.light_scales.hemi).extend(coefficient.w)),
       fog_color: fog.map_or(Vec3::ZERO, |fog| fog.color).extend(flag(fog.is_some())),
       fog: Vec4::new(
         offset,

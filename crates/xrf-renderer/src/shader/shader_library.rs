@@ -118,6 +118,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   ),
   ("common/sky_box", include_str!("../../shaders/common/sky_box.wgsl")),
   (
+    "common/sky_harmonics",
+    include_str!("../../shaders/common/sky_harmonics.wgsl"),
+  ),
+  (
     "common/sky_clouds",
     include_str!("../../shaders/common/sky_clouds.wgsl"),
   ),
@@ -254,6 +258,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "frame/puddle_sites",
     include_str!("../../shaders/frame/puddle_sites.wgsl"),
+  ),
+  (
+    "frame/sky_irradiance",
+    include_str!("../../shaders/frame/sky_irradiance.wgsl"),
   ),
   (
     "frame/sky_prefilter",
@@ -533,6 +541,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/puddle_sites",
     include_str!("../../shaders/generated/frame/puddle_sites.wgsl"),
+  ),
+  (
+    "generated/frame/sky_irradiance",
+    include_str!("../../shaders/generated/frame/sky_irradiance.wgsl"),
   ),
   (
     "generated/frame/sky_prefilter",

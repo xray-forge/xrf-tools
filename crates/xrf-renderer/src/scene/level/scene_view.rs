@@ -1638,6 +1638,7 @@ impl SceneView {
     self.features.reflections.request_demand();
     self.features.meter.request();
     self.features.exposure.request_readback();
+    self.features.sky.request_readback();
   }
 
   /// Drops what a frame that was never submitted copied out for reading back, its counts and its pick, and forgets the

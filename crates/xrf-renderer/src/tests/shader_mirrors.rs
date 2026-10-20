@@ -25,6 +25,7 @@ use crate::pass::particle_surface_record::ParticleSurfaceRecord;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::puddle_sites_pass::PuddleSitesPass;
 use crate::pass::puddle_sites_uniform::PuddleSitesUniform;
+use crate::pass::sky_irradiance_pass::SkyIrradiancePass;
 use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
 use crate::pass::static_cull_pass::StaticCullPass;
 use crate::pass::surroundings_pass::SurroundingsPass;
@@ -454,7 +455,7 @@ fn the_compute_entries_run_the_workgroups_rust_dispatches() {
   let library: ShaderLibrary = ShaderLibrary::default();
   let line = |size: u32| [size, 1, 1];
   let square = |size: u32| [size, size, 1];
-  let entries: [(&str, &[&str], [u32; 3]); 17] = [
+  let entries: [(&str, &[&str], [u32; 3]); 18] = [
     (
       "frame/pyramid",
       &[
@@ -519,6 +520,11 @@ fn the_compute_entries_run_the_workgroups_rust_dispatches() {
       "frame/puddle_sites",
       &["cs_surface_lowest", "cs_surface_sites", "cs_puddle_keep"],
       square(PuddleSitesPass::WORKGROUP),
+    ),
+    (
+      "frame/sky_irradiance",
+      &["cs_irradiance"],
+      line(SkyIrradiancePass::WORKGROUP),
     ),
     (
       "frame/sky_prefilter",

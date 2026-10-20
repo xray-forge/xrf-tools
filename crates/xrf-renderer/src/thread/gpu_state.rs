@@ -46,6 +46,7 @@ use crate::pass::scene_trace_pass::SceneTracePass;
 use crate::pass::sky_behind_pass::SkyBehindPass;
 use crate::pass::sky_bindings::SkyBindings;
 use crate::pass::sky_haze_pass::SkyHazePass;
+use crate::pass::sky_irradiance_pass::SkyIrradiancePass;
 use crate::pass::sky_motion_pass::SkyMotionPass;
 use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
 use crate::pass::smaa_pass::SmaaPass;
@@ -84,6 +85,7 @@ pub struct GpuState {
   pub sky: SkyBindings,
   pub sky_haze: SkyHazePass,
   pub sky_motion: SkyMotionPass,
+  pub sky_irradiance: SkyIrradiancePass,
   pub sky_prefilter: SkyPrefilterPass,
   pub surroundings: SurroundingsPass,
   pub water: WaterPass,
@@ -228,6 +230,7 @@ impl GpuState {
       let dlss_reactive = threads.spawn(move || DlssReactivePass::new(source, view));
       let sky_haze = threads.spawn(move || SkyHazePass::new(source, sky_layout));
       let sky_motion = threads.spawn(move || SkyMotionPass::new(source, view));
+      let sky_irradiance = threads.spawn(move || SkyIrradiancePass::new(source));
       let sky_prefilter = threads.spawn(move || SkyPrefilterPass::new(queue, source));
       let surroundings = threads.spawn(move || SurroundingsPass::new(source, view));
       let exposure = threads.spawn(move || ExposurePass::new(source));
@@ -280,6 +283,7 @@ impl GpuState {
         dlss_reactive: Self::join(dlss_reactive)?,
         sky_haze: Self::join(sky_haze)?,
         sky_motion: Self::join(sky_motion)?,
+        sky_irradiance: Self::join(sky_irradiance)?,
         sky_prefilter: Self::join(sky_prefilter)?,
         surroundings: Self::join(surroundings)?,
         exposure: Self::join(exposure)?,
@@ -385,6 +389,7 @@ impl GpuState {
       dlss_reactive: &self.dlss_reactive,
       sky_haze: &self.sky_haze,
       sky_motion: &self.sky_motion,
+      sky_irradiance: &self.sky_irradiance,
       sky_prefilter: &self.sky_prefilter,
       surroundings: &self.surroundings,
       sky: &self.sky,
@@ -438,6 +443,7 @@ impl GpuState {
     self.static_shadow.refresh(source);
     self.pyramid.refresh(source);
     self.puddle_sites.refresh(source);
+    self.sky_irradiance.refresh(source);
     self.sky_prefilter.refresh(source);
     self.surroundings.refresh(source);
     self.contact_shadows.refresh(source);

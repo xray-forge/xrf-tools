@@ -132,7 +132,10 @@ describe("LevelLookAction", () => {
     expect(descriptor.view.features.displayTransform).toBe(ERenderDisplayTransform.AGX);
     expect(descriptor.renderSettings.rendererFeatures.displayTransform).toBe(ERenderDisplayTransform.PBR_NEUTRAL);
     expect(getByRole("slider", { name: "Compensation" })).toBeEnabled();
-    // The engine meter's values, which the physical light's histogram does not read.
+    // The engine meter's values, which the physical light's histogram does not read, and the flat ambient it has none of;
+    // the hemisphere's scale still scales the sky's irradiance.
     expect(getByRole("slider", { name: "Middle gray" })).toBeDisabled();
+    expect(getByRole("slider", { name: "Ambient" })).toBeDisabled();
+    expect(getByRole("slider", { name: "Hemisphere" })).toBeEnabled();
   });
 });

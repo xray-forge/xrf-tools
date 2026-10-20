@@ -97,7 +97,9 @@ use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::shadow_uniform::ShadowUniform;
 use crate::pass::sky_behind_parameters::SkyBehindParameters;
+use crate::pass::sky_harmonics::SkyHarmonics;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
+use crate::pass::sky_irradiance_parameters::SkyIrradianceParameters;
 use crate::pass::sky_motion_parameters::SkyMotionParameters;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
@@ -217,6 +219,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut shadow_tile_restore: ShaderBindings = ShaderBindings::new();
   let mut overhead_shift: ShaderBindings = ShaderBindings::new();
   let mut puddle_sites: ShaderBindings = ShaderBindings::new();
+  let mut sky_irradiance: ShaderBindings = ShaderBindings::new();
   let mut sky_prefilter: ShaderBindings = ShaderBindings::new();
   let mut surroundings: ShaderBindings = ShaderBindings::new();
   let mut static_cull: ShaderBindings = ShaderBindings::new();
@@ -248,6 +251,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<FogScatteringUniform>()
     .declare::<PuddleSitesUniform>()
     .declare::<SkyPrefilterUniform>()
+    .declare::<SkyHarmonics>()
     .declare::<OverheadShiftUniform>()
     .declare::<SurroundingsUniform>()
     .declare::<ParticleVertex>()
@@ -362,6 +366,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .add::<LowestHeightsParameters>()?
     .add::<PuddleSitesParameters>()?
     .add::<PuddleKeepParameters<'_>>()?;
+  sky_irradiance.add::<SkyIrradianceParameters<'_>>()?;
   sky_prefilter.add::<SkyPrefilterParameters<'_>>()?;
   surroundings.add::<SurroundingsParameters<'_>>()?;
   static_cull.add::<StaticCullParameters>()?;
@@ -609,6 +614,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/puddle_sites",
       format!("{STRUCTS_IMPORT}{}", puddle_sites.to_wgsl()),
+    ),
+    (
+      "generated/frame/sky_irradiance",
+      format!("{STRUCTS_IMPORT}{}", sky_irradiance.to_wgsl()),
     ),
     (
       "generated/frame/sky_prefilter",

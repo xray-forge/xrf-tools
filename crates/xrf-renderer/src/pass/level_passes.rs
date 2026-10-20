@@ -32,6 +32,7 @@ use crate::pass::scene_trace_pass::SceneTracePass;
 use crate::pass::sky_behind_pass::SkyBehindPass;
 use crate::pass::sky_bindings::SkyBindings;
 use crate::pass::sky_haze_pass::SkyHazePass;
+use crate::pass::sky_irradiance_pass::SkyIrradiancePass;
 use crate::pass::sky_motion_pass::SkyMotionPass;
 use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
 use crate::pass::smaa_pass::SmaaPass;
@@ -78,6 +79,7 @@ pub struct LevelPasses<'a> {
   pub dlss_reactive: &'a DlssReactivePass,
   pub sky_haze: &'a SkyHazePass,
   pub sky_motion: &'a SkyMotionPass,
+  pub sky_irradiance: &'a SkyIrradiancePass,
   pub sky_prefilter: &'a SkyPrefilterPass,
   pub surroundings: &'a SurroundingsPass,
   pub sky: &'a SkyBindings,

@@ -16,6 +16,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::pre_exposure::PreExposure;
+use crate::pass::sky_harmonics::SkyHarmonics;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
 use crate::pass::sky_motion_parameters::SkyMotionParameters;
 use crate::pass::sky_parameters::SkyParameters;
@@ -24,6 +25,7 @@ use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
 use crate::pass::sky_prefilter_uniform::SkyPrefilterUniform;
 use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::sky_irradiance::SkyIrradiance;
 use crate::scene::level::feature::sky_prefilter::SkyPrefilter;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::lighting_handles::LightingHandles;
@@ -35,7 +37,7 @@ use crate::scene::texture::weather_textures::WeatherTextures;
 /// The sky a view draws and reflects: its textures as the weather holds them this frame, with the sun's sprite, the
 /// prefiltered cube the reflections and the enhanced specular read, filled again as the frame's scheduler grants it (at
 /// once when new, else after `REFILL_WAIT_LEAST` frames and within `REFILL_WAIT_MOST` more, as the sky and its light
-/// move slowly), and the haze map the distance fades into.
+/// move slowly), the haze map the distance fades into, and under the physical light the sky's irradiance.
 #[derive(Default)]
 pub struct SkyFeature {
   views: Option<SkyViews>,
@@ -47,6 +49,11 @@ pub struct SkyFeature {
   unfiltered: Option<wgpu::TextureView>,
   /// Whether the haze map is drawn this frame.
   is_hazing: bool,
+  /// The sky's irradiance, while the light is physical.
+  irradiance: Option<SkyIrradiance>,
+  /// The harmonics this frame lights the hemisphere by: the last the irradiance read back, none under the engine's
+  /// light.
+  harmonics: SkyHarmonics,
   /// Whether the prefiltered cube was filled since it was made.
   is_filled: bool,
   /// The refill offered this frame, whether this frame fills the cube, frames a refill has waited, and frames since
@@ -82,6 +89,17 @@ impl SkyFeature {
     ));
     self.sun_sprite = sun_sprite;
     self.is_hazing = options.mode.is_lit && options.show.is_sky_visible && options.show.is_sky_hazed;
+
+    // The physical light lights the hemisphere by the sky's irradiance; the engine's by its cubes.
+    if options.is_light_physical() {
+      self.harmonics = self
+        .irradiance
+        .get_or_insert_with(|| SkyIrradiance::new(device))
+        .take_harmonics();
+    } else {
+      self.irradiance = None;
+      self.harmonics = SkyHarmonics::default();
+    }
 
     // The prefiltered cube is the enhanced reflections' and specular's alone.
     self.refill = None;
@@ -149,10 +167,22 @@ impl SkyFeature {
     }
   }
 
-  /// Forgets a first fill this frame made, where its frame was not submitted: it fills again at once.
+  /// Forgets a first fill this frame made, where its frame was not submitted: it fills again at once; and drops the
+  /// harmonics that frame copied out.
   pub fn abandon_frame(&mut self) {
     if self.is_refilled {
       self.is_filled = false;
+    }
+
+    if let Some(irradiance) = &self.irradiance {
+      irradiance.abandon();
+    }
+  }
+
+  /// Asks for the harmonics copied out with the frame just submitted.
+  pub fn request_readback(&self) {
+    if let Some(irradiance) = &self.irradiance {
+      irradiance.request();
     }
   }
 
@@ -212,6 +242,7 @@ impl SkyFeature {
         .iter()
         .all(|reference| reference.as_deref().is_some_and(|it| weather_textures.is_up(it))),
       clouds_time: time,
+      sky_harmonics: self.harmonics,
       sun_sprite: self
         .get_sun_sprite()
         .filter(|(texture, _)| weather_textures.is_up(texture))
@@ -250,6 +281,10 @@ impl SkyFeature {
       (None, None) => return None,
     };
     let sky: SkyParameters = passes.sky.import((views, cube), &mut *graph, &mut *bindings);
+
+    if let Some(irradiance) = &self.irradiance {
+      irradiance.add_passes((&mut *graph, &mut *bindings), passes, (&sky, &lit));
+    }
 
     if let Some(prefilter) = &self.prefilter {
       self.add_prefilter_passes(
@@ -349,18 +384,21 @@ impl SkyFeature {
 }
 
 impl ViewFeature for SkyFeature {
-  /// The prefiltered cube, every mip of its six faces.
+  /// The prefiltered cube, every mip of its six faces, and the sky's irradiance.
   fn get_memory(&self) -> u64 {
-    self.prefilter.as_ref().map_or(0, |prefilter| {
+    let prefilter: u64 = self.prefilter.as_ref().map_or(0, |prefilter| {
       let size: u64 = u64::from(prefilter.probe.get_size());
 
       (0..prefilter.levels.len() as u32)
         .map(|level| (size >> level).max(1).pow(2) * 6 * 8)
         .sum()
-    })
+    });
+
+    prefilter + self.irradiance.as_ref().map_or(0, SkyIrradiance::get_memory)
   }
 
   fn release(&mut self) {
     self.prefilter = None;
+    self.irradiance = None;
   }
 }

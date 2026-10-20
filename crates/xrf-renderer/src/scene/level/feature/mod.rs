@@ -36,6 +36,7 @@ pub(crate) mod resolve;
 pub(crate) mod resolve_feature;
 pub(crate) mod scene_features;
 pub(crate) mod sky_feature;
+pub(crate) mod sky_irradiance;
 pub(crate) mod sky_prefilter;
 pub(crate) mod sky_prefilter_level;
 pub(crate) mod smoothing_feature;

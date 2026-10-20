@@ -253,7 +253,7 @@ export function LevelLookAction({
                   min={field.min}
                   max={field.max}
                   step={field.step}
-                  isDisabled={group.isEngineOnly && isPhysical}
+                  isDisabled={(group.isEngineOnly || field.isEngineOnly === true) && isPhysical}
                   format={(value: number) => formatNumber(value, 2)}
                   onChange={(value: number) => lookService.edit(field.write(look, value))}
                 />

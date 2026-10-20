@@ -41,6 +41,7 @@ struct Lighting {
   ambient: vec4<f32>,
   environment: vec4<f32>,
   sky_irradiance: vec4<f32>,
+  sky_harmonics: array<vec4<f32>, 9>,
   fog_color: vec4<f32>,
   fog: vec4<f32>,
   sky: vec4<f32>,
@@ -260,6 +261,10 @@ struct PuddleSites {
 struct SkyPrefilter {
   level: vec4<f32>,
   shape: vec4<f32>,
+}
+
+struct SkyHarmonics {
+  coefficients: array<vec4<f32>, 9>,
 }
 
 struct OverheadShift {
