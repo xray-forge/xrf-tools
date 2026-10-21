@@ -40,7 +40,7 @@ impl ExposureHistogramUniform {
   /// The log2 luminance of a daylit exterior's average as the level meters it, the sky left out (about 510 cd/m²).
   pub const DAYLIT_LOG: f32 = 9.0;
   /// The stops under the aim a daylit exterior's average is shown at, as the engine's display shows the game's noon.
-  pub const DAYLIT_STOPS: f32 = -2.45;
+  pub const DAYLIT_STOPS: f32 = -2.71;
   /// The share of a scene's distance from a daylit exterior it keeps, as the eye adapts only part of the way.
   pub const KEPT_SHARE: f32 = 0.41;
   /// The share of the frame's adaptation the game's pictures (its sky, clouds and fog) are held back from: painted at

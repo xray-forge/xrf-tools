@@ -1,22 +1,18 @@
 use glam::Vec3;
 
-/// Linear light encoded by the sRGB transfer, as a colour texture holds it; `common/srgb.wgsl` decodes it back.
+/// The power of the sRGB display's transfer: the standard's reference display, which `common/srgb.wgsl` explains.
+pub const SRGB_DISPLAY_POWER: f32 = 2.2;
+
+/// Linear light encoded by the sRGB display's transfer, as a colour texture holds it; `common/srgb.wgsl` decodes it
+/// back.
 pub fn srgb_encoded(linear: f32) -> f32 {
-  if linear <= 0.003_130_8 {
-    linear * 12.92
-  } else {
-    1.055 * linear.powf(1.0 / 2.4) - 0.055
-  }
+  linear.max(0.0).powf(1.0 / SRGB_DISPLAY_POWER)
 }
 
-/// A value encoded by the sRGB transfer back to linear light, as `common/srgb.wgsl`'s `srgb_decoded`; past one, as an
-/// engine light brighter than white is, the transfer's curve continues.
+/// A value encoded by the sRGB display's transfer back to linear light, as `common/srgb.wgsl`'s `srgb_decoded`; past
+/// one, as an engine light brighter than white is, the power continues.
 pub fn srgb_decoded(encoded: f32) -> f32 {
-  if encoded <= 0.040_45 {
-    encoded / 12.92
-  } else {
-    ((encoded + 0.055) / 1.055).powf(2.4)
-  }
+  encoded.max(0.0).powf(SRGB_DISPLAY_POWER)
 }
 
 /// A colour authored as a display value (a picture's, a lamp's) as the frame lights with it, as

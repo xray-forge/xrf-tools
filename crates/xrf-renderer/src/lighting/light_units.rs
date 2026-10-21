@@ -34,6 +34,9 @@ impl LightUnits {
   /// The local lights' share of the unit at the physical levels: an engine lamp's 70 000 to 270 000 cd, from its range
   /// (`LIGHT_THIRD_SHARE`), brought to a real lamp's 70 to 270.
   pub const PHYSICAL_LOCAL: f32 = 1e-3;
+  /// The least gain the weather's key light gives: the sRGB encoding's slope at black, under which a darkening key
+  /// would take the night's fill with it.
+  pub const LEAST_KEY_GAIN: f32 = 1.0 / 12.92;
 
   /// The units a view's light is in under `lighting`, its sky's irradiance `harmonics` as last projected and the
   /// world's light where the levels are physical.
@@ -75,15 +78,15 @@ impl LightUnits {
   /// balanced them (`authored_light`), so a night keeps the fill the game gives it and a lamp its pool, and the day's
   /// range follows the key light's decode, as the engine's display shows it: the key light itself stands at its
   /// decoded luminance, and a moon twenty times dimmer than the sun in display values shows hundreds of times darker.
+  /// A key gone dark, between the sun's last keyframe and the moon's first, gives no less than `LEAST_KEY_GAIN`.
   pub fn get_key_gain(key: Vec3) -> f32 {
     let luminance = |colour: Vec3| colour.dot(Vec3::new(0.2126, 0.7152, 0.0722));
     let kept: f32 = luminance(authored_light(key, true));
 
     if kept <= 0.0 {
-      // The transfer's slope at black.
-      return 1.0 / 12.92;
+      return Self::LEAST_KEY_GAIN;
     }
 
-    luminance(authored_colour(key, true)) / kept
+    (luminance(authored_colour(key, true)) / kept).max(Self::LEAST_KEY_GAIN)
   }
 }

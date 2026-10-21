@@ -3,7 +3,7 @@ use glam::Vec3;
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::lighting::material_slice::material_slice;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::lighting::srgb::srgb_encoded;
+use crate::lighting::srgb::{srgb_decoded, srgb_encoded};
 use crate::lighting::sun_direction::to_renderer_sun_direction;
 use crate::pass::material_table::MaterialTable;
 
@@ -168,9 +168,11 @@ fn sun_direction_takes_heading_then_pitch_with_z_negated() {
 
 #[test]
 fn srgb_encodes_linear_light_as_a_colour_texture_holds_it() {
-  // Middle grey, 0.18, is stored as about 118 of 255; the linear toe below 0.0031308 is the transfer's own.
-  assert!((srgb_encoded(0.18) - 0.461_356).abs() < 1e-5);
-  assert!((srgb_encoded(0.002) - 0.002 * 12.92).abs() < 1e-7);
+  // Middle grey, 0.18, is stored as about 117 of 255; the reference display's power holds to black, with no linear toe,
+  // so a product of two encoded values decodes to the product of their decodes.
+  assert!((srgb_encoded(0.18) - 0.458_659).abs() < 1e-5);
+  assert!((srgb_encoded(0.002) - 0.002_f32.powf(1.0 / 2.2)).abs() < 1e-7);
+  assert!((srgb_decoded(0.1 * 0.15) - srgb_decoded(0.1) * srgb_decoded(0.15)).abs() < 1e-9);
   assert_eq!(srgb_encoded(0.0), 0.0);
   assert!((srgb_encoded(1.0) - 1.0).abs() < 1e-6);
 }

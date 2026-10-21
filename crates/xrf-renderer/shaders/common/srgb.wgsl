@@ -1,8 +1,12 @@
-// The sRGB transfer, which the engine's colour textures are encoded by and its albedo holds as it is.
+// The sRGB display's transfer, which the engine's colours were authored on and its albedo holds as it is: the 2.2
+// power of the standard's reference display (IEC 61966-2-1), not the encoding's piecewise curve. The game's colours
+// were judged multiplied as display values, a dark texture's channel by a dim light's; the piecewise curve's linear toe
+// would drop such a product's weak channel several times under what the engine showed (a low sun's shade warmer and
+// more saturated than the game's), where the power gives each product back as the engine multiplied it.
 
 // Encoded values back to linear light.
 fn srgb_decoded(color: vec3<f32>) -> vec3<f32> {
-  return select(pow((color + 0.055) / 1.055, vec3<f32>(2.4)), color / 12.92, color <= vec3<f32>(0.04045));
+  return pow(max(color, vec3<f32>(0.0)), vec3<f32>(2.2));
 }
 
 // One of the weather's lights the engine authors as a display value (its sun, ambient, hemisphere colour) as linear
@@ -23,9 +27,7 @@ fn srgb_light(colour: vec3<f32>) -> vec3<f32> {
   return hue * (dot(colour, luminance_weights) / max(dot(hue, luminance_weights), 1e-12));
 }
 
-// Linear light encoded by the sRGB transfer, as a display takes it.
+// Linear light encoded by the sRGB display's transfer, as a display takes it.
 fn srgb_encoded(color: vec3<f32>) -> vec3<f32> {
-  let clamped: vec3<f32> = max(color, vec3<f32>(0.0));
-
-  return select(1.055 * pow(clamped, vec3<f32>(1.0 / 2.4)) - 0.055, clamped * 12.92, clamped <= vec3<f32>(0.0031308));
+  return pow(max(color, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.2));
 }

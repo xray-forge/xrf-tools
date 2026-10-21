@@ -41,9 +41,9 @@ impl DisplayMode {
   /// these bring each to the engine's brightness over the game's scenes. None for the engine's own showing.
   pub fn get_exposure_stops(self) -> f32 {
     match self {
-      Self::EngineEncoded => -0.3,
+      Self::EngineEncoded => -0.35,
       Self::Agx => 0.0,
-      Self::PbrNeutral => 1.07,
+      Self::PbrNeutral => 0.89,
       Self::AsIs | Self::Tonemapped => 0.0,
     }
   }
@@ -53,9 +53,9 @@ impl DisplayMode {
   /// One for the engine's own showing.
   pub fn get_saturation(self) -> f32 {
     match self {
-      Self::EngineEncoded => 1.09,
-      Self::Agx => 0.97,
-      Self::PbrNeutral => 0.49,
+      Self::EngineEncoded => 1.13,
+      Self::Agx => 1.01,
+      Self::PbrNeutral => 0.5,
       Self::AsIs | Self::Tonemapped => 1.0,
     }
   }
