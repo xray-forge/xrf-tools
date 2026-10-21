@@ -271,7 +271,7 @@ fn pbr_neutral_keeps_colour_and_agx_bleaches_bright_light() {
 }
 
 /// Grading of one leaves the light as it is; contrast pivots on middle grey; saturation of nought leaves the luminance
-/// alone, grey.
+/// alone, grey; a transform's stops lift the light before it.
 #[test]
 fn the_grading_pivots_on_middle_grey_and_keeps_luminance() {
   let colour: Vec3 = Vec3::new(0.41, 0.21, 0.03);
@@ -281,6 +281,7 @@ fn the_grading_pivots_on_middle_grey_and_keeps_luminance() {
     (grey, display(DisplayMode::PbrNeutral, 1.6, 1.0)),
     (colour, display(DisplayMode::PbrNeutral, 1.3, 0.5)),
     (colour, display(DisplayMode::PbrNeutral, 1.0, 0.0)),
+    (colour, display(DisplayMode::PbrNeutral, 1.0, 1.0) + Vec4::W),
   ];
   let Some(shown) = show(&cases) else {
     return;
@@ -294,4 +295,5 @@ fn the_grading_pivots_on_middle_grey_and_keeps_luminance() {
     "saturation nought is grey: {}",
     shown[3]
   );
+  assert_close(shown[4], encoded(pbr_neutral(colour * 2.0)), "a stop up");
 }

@@ -36,4 +36,27 @@ impl DisplayMode {
   pub fn get_index(self) -> u32 {
     self as u32
   }
+
+  /// The stops the physical light's transform lifts the frame by before it: each maps middle grey its own way, and
+  /// these bring each to the engine's brightness over the game's scenes. None for the engine's own showing.
+  pub fn get_exposure_stops(self) -> f32 {
+    match self {
+      Self::EngineEncoded => -0.3,
+      Self::Agx => 0.0,
+      Self::PbrNeutral => 1.07,
+      Self::AsIs | Self::Tonemapped => 0.0,
+    }
+  }
+
+  /// The saturation the physical light's transform grades the frame at before it: each keeps chroma its own way, and
+  /// these bring each to the engine's saturation over the game's scenes, which its curve tamed as it compressed them.
+  /// One for the engine's own showing.
+  pub fn get_saturation(self) -> f32 {
+    match self {
+      Self::EngineEncoded => 1.09,
+      Self::Agx => 0.97,
+      Self::PbrNeutral => 0.49,
+      Self::AsIs | Self::Tonemapped => 1.0,
+    }
+  }
 }
