@@ -27,6 +27,7 @@ pub(crate) mod contact_shadow_uniform;
 pub(crate) mod cover_pyramid_depth_parameters;
 pub(crate) mod cover_pyramid_level_parameters;
 pub(crate) mod depth_pyramid_pass;
+pub(crate) mod display_calibration;
 pub(crate) mod display_mode;
 pub(crate) mod dlss_reactive_parameters;
 pub(crate) mod dlss_reactive_pass;

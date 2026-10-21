@@ -1,5 +1,6 @@
 use crate::contract::render_display_transform::RenderDisplayTransform;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::pass::display_calibration::DisplayCalibration;
 
 /// How the window pass shows a viewport's scene, numbered as `common/display_transform.wgsl` numbers it: as it is (the
 /// engine's passes tonemapped it), by the engine's curve (linear light at the engine's display values), or, where the
@@ -37,26 +38,32 @@ impl DisplayMode {
     self as u32
   }
 
-  /// The stops the physical light's transform lifts the frame by before it: each maps middle grey its own way, and
-  /// these bring each to the engine's brightness over the game's scenes. None for the engine's own showing.
-  pub fn get_exposure_stops(self) -> f32 {
+  /// How the physical light's transform is calibrated to the engine's showing over the game's scenes; the engine's own
+  /// showing calibrates nothing.
+  pub fn get_calibration(self) -> DisplayCalibration {
     match self {
-      Self::EngineEncoded => -0.35,
-      Self::Agx => 0.0,
-      Self::PbrNeutral => 0.89,
-      Self::AsIs | Self::Tonemapped => 0.0,
-    }
-  }
-
-  /// The saturation the physical light's transform grades the frame at before it: each keeps chroma its own way, and
-  /// these bring each to the engine's saturation over the game's scenes, which its curve tamed as it compressed them.
-  /// One for the engine's own showing.
-  pub fn get_saturation(self) -> f32 {
-    match self {
-      Self::EngineEncoded => 1.13,
-      Self::Agx => 1.01,
-      Self::PbrNeutral => 0.5,
-      Self::AsIs | Self::Tonemapped => 1.0,
+      Self::EngineEncoded => DisplayCalibration {
+        stops: -0.3,
+        saturation: 1.23,
+        kept_share: 0.58,
+        picture_stops: 0.39,
+        picture_adaptation: 1.1,
+      },
+      Self::Agx => DisplayCalibration {
+        stops: 0.13,
+        saturation: 1.15,
+        kept_share: 0.43,
+        picture_stops: -0.8,
+        picture_adaptation: 1.4,
+      },
+      Self::PbrNeutral => DisplayCalibration {
+        stops: 1.8,
+        saturation: 0.55,
+        kept_share: 0.59,
+        picture_stops: -1.54,
+        picture_adaptation: 1.67,
+      },
+      Self::AsIs | Self::Tonemapped => DisplayCalibration::NONE,
     }
   }
 }

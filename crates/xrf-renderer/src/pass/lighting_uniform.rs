@@ -10,6 +10,8 @@ use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::authored_light;
 use crate::pass::bitmask_search::BitmaskSearch;
+use crate::pass::display_calibration::DisplayCalibration;
+use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::reflection_trace::ReflectionTrace;
@@ -233,10 +235,15 @@ impl LightingUniform {
       // sky's eight-bit steps and its fog into a glare.
       pictures: Vec4::new(
         if is_physical && options.features.light_level == RenderLightLevel::Authored {
-          ExposureHistogramUniform::get_picture_share(
-            options.features.exposure.compensation,
-            frame.pre_exposure.current,
-          )
+          {
+            let calibration: DisplayCalibration = DisplayMode::of(options).get_calibration();
+
+            ExposureHistogramUniform::get_picture_share(
+              options.features.exposure.compensation,
+              frame.pre_exposure.current,
+              (calibration.picture_stops, calibration.picture_adaptation),
+            )
+          }
         } else {
           1.0
         },

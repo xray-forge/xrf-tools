@@ -15,6 +15,7 @@ use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{authored_colour, authored_light, srgb_decoded, srgb_encoded};
 use crate::pass::camera_uniform::CameraUniform;
+use crate::pass::display_calibration::DisplayCalibration;
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::lighting_frame::LightingFrame;
@@ -102,6 +103,24 @@ fn the_camera_tells_the_shaders_the_lights_level() {
   assert_eq!(level(None), 0.0);
   assert_eq!(level(Some(RenderLightLevel::Authored)), 1.0);
   assert_eq!(level(Some(RenderLightLevel::Physical)), 2.0);
+}
+
+// The engine's light, shown as it is or by its tonemap, takes no transform's calibration; each physical transform keeps
+// a share of the dark's distance under one and lets its pictures follow some of the frame's adaptation.
+#[test]
+fn only_the_physical_transforms_are_calibrated() {
+  assert_eq!(DisplayMode::AsIs.get_calibration(), DisplayCalibration::NONE);
+  assert_eq!(DisplayMode::Tonemapped.get_calibration(), DisplayCalibration::NONE);
+
+  for mode in [DisplayMode::EngineEncoded, DisplayMode::Agx, DisplayMode::PbrNeutral] {
+    let calibration: DisplayCalibration = mode.get_calibration();
+
+    assert!((0.0..1.0).contains(&calibration.kept_share), "{mode:?}");
+    assert!(
+      calibration.picture_adaptation > 0.0 && calibration.saturation > 0.0,
+      "{mode:?}"
+    );
+  }
 }
 
 #[test]
@@ -248,11 +267,12 @@ fn the_physical_light_is_in_cd_per_square_metre() {
   assert!((daylight * ExposureHistogramUniform::DAYLIT_LOG.exp2() - shown).abs() < 1e-5);
   assert!((ExposureHistogramUniform::get_daylight_scale(1.0) / daylight - 2.0).abs() < 1e-4);
 
-  // The pictures stand at the frame's exposure by day and keep back their share of a night's lift.
-  let held: f32 = ExposureHistogramUniform::PICTURE_HELD_SHARE;
+  // The pictures stand at their stops over a daylit exterior's exposure by day and follow their share of a night's
+  // lift.
+  let picture = |pre_exposure: f32| ExposureHistogramUniform::get_picture_share(0.0, pre_exposure, (0.5, 0.7));
 
-  assert!((ExposureHistogramUniform::get_picture_share(0.0, daylight) - 1.0).abs() < 1e-5);
-  assert!((ExposureHistogramUniform::get_picture_share(0.0, daylight * 32.0) - 32.0_f32.powf(-held)).abs() < 1e-5);
+  assert!((picture(daylight) - 0.5_f32.exp2()).abs() < 1e-5);
+  assert!((picture(daylight * 32.0) - 0.5_f32.exp2() * 32.0_f32.powf(-0.3)).abs() < 1e-5);
 }
 
 // At the authored levels the sky's irradiance keeps its shape but takes the authored hemisphere's level and colour, each
