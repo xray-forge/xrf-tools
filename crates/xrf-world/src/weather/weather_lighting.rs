@@ -64,6 +64,7 @@ impl WeatherLighting {
         names: [a.ambient.clone(), b.ambient.clone()],
         weight: mix.weight,
       },
+      time_of_day: mix.time,
     }
   }
 

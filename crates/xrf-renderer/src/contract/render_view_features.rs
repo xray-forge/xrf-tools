@@ -39,6 +39,9 @@ pub struct RenderViewFeatures {
   pub light_model: RenderLightModel,
   /// How bright the physical light's sources stand against each other and the day.
   pub light_level: RenderLightLevel,
+  /// How much of the weather's own sun colour the physical light levels keep in the sun's hue: nought the atmosphere's
+  /// alone, one the weather's.
+  pub sun_tint: f32,
   /// What shows the physical light's frame on the display.
   pub display_transform: RenderDisplayTransform,
   /// How the physical light's frame is graded before its display transform.
@@ -93,6 +96,7 @@ impl Default for RenderViewFeatures {
       tonemap: RenderTonemapMode::Engine,
       light_model: RenderLightModel::Engine,
       light_level: RenderLightLevel::Authored,
+      sun_tint: 0.0,
       display_transform: RenderDisplayTransform::PbrNeutral,
       grading: RenderGradingSettings::default(),
       bloom: RenderBloomSettings::default(),

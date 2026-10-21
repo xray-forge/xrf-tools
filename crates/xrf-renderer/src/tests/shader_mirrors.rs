@@ -5,7 +5,6 @@ use xrf_renderer_core::{ShaderAddressSpace, ShaderLayoutVerifier};
 use crate::contract::render_contact_shadow_settings::RENDER_MAX_CONTACT_SHADOW_LIGHTS;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::frame::view_targets::ViewTargets;
-use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
 use crate::lighting::material_slice::material_slice;
 use crate::lighting::srgb::srgb_decoded;
 use crate::pass::backdrop_uniform::BackdropUniform;
@@ -44,17 +43,6 @@ use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_surface_builder::StaticSurfaceBuilder;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::shader::shader_library::ShaderLibrary;
-
-/// The shaders take a product of two lights back to the engine's units by the same unit Rust lights in.
-#[test]
-fn the_engine_light_unit_is_rusts() {
-  let library: ShaderLibrary = ShaderLibrary::default();
-
-  assert_eq!(
-    get_float_constant(&library, "common/lighting", "PHYSICAL_LIGHT_UNIT"),
-    PHYSICAL_LIGHT_UNIT
-  );
-}
 
 /// The physical lamps' intensity gives what the engine's falloff, decoded, gave a third of the way to their reach,
 /// where their window has already taken `(1 - (1/3)⁴)²`.

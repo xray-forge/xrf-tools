@@ -1937,6 +1937,11 @@ export type RenderViewFeatures = {
   lightModel: RenderLightModel;
   /** How bright the physical light's sources stand against each other and the day. */
   lightLevel: RenderLightLevel;
+  /**
+   * How much of the weather's own sun colour the physical light levels keep in the sun's hue: nought the atmosphere's
+   * alone, one the weather's.
+   */
+  sunTint: number | null;
   /** What shows the physical light's frame on the display. */
   displayTransform: RenderDisplayTransform;
   /** How the physical light's frame is graded before its display transform. */

@@ -1,3 +1,4 @@
+#import "common/hmodel"
 #import "common/lighting"
 #import "common/sky_box"
 #import "common/sky_clouds"
@@ -7,10 +8,11 @@
 // engine's units) projected over the whole sphere into order-2 spherical harmonics, then convolved by the cosine, so a
 // normal's nine products give the irradiance over π that lights a surface facing it (Ramamoorthi and Hanrahan, "An
 // Efficient Representation for Irradiance Environment Maps", SIGGRAPH 2001). One workgroup samples a spherical
-// Fibonacci set and sums it.
+// Fibonacci set and sums it, and beside it the first coefficient of the hemisphere the game authors
+// (`hemisphere_environment`), the level the authored light levels bring the sky's to.
 
-// Both keyframes' sky cubes and clouds and their samplers, the lighting, the exposure whose scale the sky is drawn on,
-// and the harmonics written.
+// Both keyframes' sky cubes, irradiance cubes and clouds and their samplers, the lighting, the exposure whose scale the
+// sky is drawn on, and the harmonics written.
 #import "generated/frame/sky_irradiance"
 #import "common/math"
 
@@ -25,12 +27,14 @@ const BAND_1: f32 = 2.0 / 3.0;
 const BAND_2: f32 = 0.25;
 
 var<workgroup> sums: array<array<vec3<f32>, 9>, 64>;
+var<workgroup> authored_sums: array<vec3<f32>, 64>;
 
 @compute @workgroup_size(64)
 fn cs_irradiance(@builtin(local_invocation_index) index: u32) {
   let count: u32 = INVOCATIONS * SAMPLES_EACH;
   let scale: f32 = picture_exposure(lighting, exposure);
   var sum: array<vec3<f32>, 9>;
+  var authored: vec3<f32> = vec3<f32>(0.0);
 
   for (var sample: u32 = 0u; sample < SAMPLES_EACH; sample++) {
     let at: u32 = index * SAMPLES_EACH + sample;
@@ -42,12 +46,16 @@ fn cs_irradiance(@builtin(local_invocation_index) index: u32) {
       sky_repeat, scale);
     let basis: array<f32, 9> = sky_harmonics_basis(direction);
 
+    authored += hemisphere_environment(lighting, sky_environment_0, sky_environment_1, sky_clamp, direction) /
+      light_scale(lighting) * basis[0];
+
     for (var term: u32 = 0u; term < 9u; term++) {
       sum[term] += light * basis[term];
     }
   }
 
   sums[index] = sum;
+  authored_sums[index] = authored;
   workgroupBarrier();
 
   if (index != 0u) {
@@ -57,6 +65,15 @@ fn cs_irradiance(@builtin(local_invocation_index) index: u32) {
   // Each direction stands for an equal share of the sphere.
   let solid_angle: f32 = 4.0 * PI / f32(count);
   var bands: array<f32, 9> = array<f32, 9>(BAND_0, BAND_1, BAND_1, BAND_1, BAND_2, BAND_2, BAND_2, BAND_2, BAND_2);
+  var authored_total: vec3<f32> = vec3<f32>(0.0);
+
+  for (var invocation: u32 = 0u; invocation < INVOCATIONS; invocation++) {
+    authored_total += authored_sums[invocation];
+  }
+
+  // The authored hemisphere's first coefficient, in the second to fourth's `w`.
+  let level: vec3<f32> = authored_total * solid_angle * BAND_0;
+  var spare: array<f32, 9> = array<f32, 9>(0.0, level.x, level.y, level.z, 0.0, 0.0, 0.0, 0.0, 0.0);
 
   for (var term: u32 = 0u; term < 9u; term++) {
     var total: vec3<f32> = vec3<f32>(0.0);
@@ -66,6 +83,6 @@ fn cs_irradiance(@builtin(local_invocation_index) index: u32) {
     }
 
     // The first's `w` says the sky was projected.
-    harmonics.coefficients[term] = vec4<f32>(total * solid_angle * bands[term], select(0.0, 1.0, term == 0u));
+    harmonics.coefficients[term] = vec4<f32>(total * solid_angle * bands[term], select(spare[term], 1.0, term == 0u));
   }
 }

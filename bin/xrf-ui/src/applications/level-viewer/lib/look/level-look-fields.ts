@@ -1,11 +1,12 @@
+import { ELevelLookFieldOff } from "@/applications/level-viewer/lib/look/level-look-field-off";
 import { ILevelLook } from "@/core/level/lib/look/level-look";
 import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-feature-settings";
 
 /** One number of the look a slider sets. */
 export interface ILevelLookField {
   label: string;
-  /** Whether only the engine light model reads it, which the physical light leaves off. */
-  isEngineOnly?: boolean;
+  /** What leaves it off, where anything does. */
+  offUnder?: ELevelLookFieldOff;
   min: number;
   max: number;
   step: number;
@@ -31,8 +32,8 @@ export const LEVEL_ENHANCED_BLOOM_FIELDS: ReadonlyArray<ILevelEnhancedBloomField
 /** The engine meter's sliders, which only the engine light model reads: the physical light meters by histogram. */
 export const LEVEL_LOOK_TONEMAP_FIELDS: ReadonlyArray<ILevelLookField> = [
   {
-    isEngineOnly: true,
     label: "Strength",
+    offUnder: ELevelLookFieldOff.PHYSICAL_LIGHT,
     max: 1,
     min: 0,
     read: (look) => look.exposure.amount,
@@ -40,8 +41,8 @@ export const LEVEL_LOOK_TONEMAP_FIELDS: ReadonlyArray<ILevelLookField> = [
     write: (look, amount) => ({ ...look, exposure: { ...look.exposure, amount } }),
   },
   {
-    isEngineOnly: true,
     label: "Middle gray",
+    offUnder: ELevelLookFieldOff.PHYSICAL_LIGHT,
     max: 2,
     min: 0,
     read: (look) => look.exposure.middleGray,
@@ -49,8 +50,8 @@ export const LEVEL_LOOK_TONEMAP_FIELDS: ReadonlyArray<ILevelLookField> = [
     write: (look, middleGray) => ({ ...look, exposure: { ...look.exposure, middleGray } }),
   },
   {
-    isEngineOnly: true,
     label: "Luminance floor",
+    offUnder: ELevelLookFieldOff.PHYSICAL_LIGHT,
     max: 1,
     min: 0.0001,
     read: (look) => look.exposure.lowLuminance,
@@ -58,8 +59,8 @@ export const LEVEL_LOOK_TONEMAP_FIELDS: ReadonlyArray<ILevelLookField> = [
     write: (look, lowLuminance) => ({ ...look, exposure: { ...look.exposure, lowLuminance } }),
   },
   {
-    isEngineOnly: true,
     label: "Adaptation speed",
+    offUnder: ELevelLookFieldOff.PHYSICAL_LIGHT,
     max: 10,
     min: 0.01,
     read: (look) => look.exposure.adaptation,
@@ -87,8 +88,8 @@ export const LEVEL_LOOK_LIGHT_SCALE_FIELDS: ReadonlyArray<ILevelLookField> = [
     write: (look, hemi) => ({ ...look, lightScales: { ...look.lightScales, hemi } }),
   },
   {
-    isEngineOnly: true,
     label: "Ambient",
+    offUnder: ELevelLookFieldOff.PHYSICAL_LEVELS,
     max: 4,
     min: 0,
     read: (look) => look.lightScales.ambient,

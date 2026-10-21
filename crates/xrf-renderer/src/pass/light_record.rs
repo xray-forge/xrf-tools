@@ -22,6 +22,9 @@ pub struct LightRecord {
   pub shadow: Vec4,
   /// Each face's square of the shadow atlas in texture coordinates, then how far the face has faded.
   pub faces: [Vec4; 6],
+  /// Whether its light scatters in the air, one for a shadowed light the level gives shafts (`has_shafts`) and nought
+  /// for any other; then nothing.
+  pub scatter: Vec4,
 }
 
 impl LightRecord {

@@ -23,20 +23,24 @@ fn light_scale(state: Lighting) -> f32 {
   return light_unit(state) * pre_exposure(state);
 }
 
-// The cd/m² a light of one in the engine's units stands for under the physical light at its authored levels, the
-// weather's and the lamps' alike (`PHYSICAL_LIGHT_UNIT`).
-const PHYSICAL_LIGHT_UNIT: f32 = 10000.0;
-
-// The scale a light of one in the engine's units, read as the engine reads it before any level dims it, is written at:
-// what a product of two lights takes off once, as it multiplies their engine values.
-fn engine_light_scale(state: Lighting) -> f32 {
-  return select(1.0, PHYSICAL_LIGHT_UNIT, is_lighting_physical(state)) * pre_exposure(state);
-}
-
 // The scale a local light in the engine's units (a lamp, a self-lit surface) is written at: the local lights' own unit
 // (`LightUnits::local`) at the pre-exposure.
 fn local_light_scale(state: Lighting) -> f32 {
   return state.pre_exposure.w * pre_exposure(state);
+}
+
+// The sun foliage passes through from behind (`SSS`, which the engine's light model returns for the sun's colour to
+// multiply): the sun by how directly the eye looks past the leaf into it, times the flora's strength, tinted again by
+// the sun's colour as far as the flora's colour share says. Under the physical light that second tint is the sun's hue
+// alone, so a leaf passes the light that falls on it and no more: a dim moon's as little as the moon gives. Directions
+// in one space, `to_eye` and `to_light` from the leaf.
+fn flora_through(state: Lighting, to_eye: vec3<f32>, to_light: vec3<f32>, normal: vec3<f32>) -> vec3<f32> {
+  let amount: f32 = saturate(dot(to_eye, -(to_light + normal))) * state.flora.y;
+  let sun: vec3<f32> = state.sun.rgb;
+  let hue: vec3<f32> = sun / max(dot(sun, vec3<f32>(0.2126, 0.7152, 0.0722)), 1e-12);
+  let tint: vec3<f32> = select(sun, hue, is_lighting_physical(state));
+
+  return amount * sun * mix(vec3<f32>(1.0), tint, state.flora.z);
 }
 
 // The exposure the frame is shown at: the adapted scale where it adapts, one otherwise.

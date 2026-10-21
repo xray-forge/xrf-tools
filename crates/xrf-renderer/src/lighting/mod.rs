@@ -1,4 +1,5 @@
 pub(crate) mod ambient_gust;
+pub(crate) mod daylight;
 pub(crate) mod foliage_wind;
 pub(crate) mod grass_swing;
 pub(crate) mod grass_wind;

@@ -4,9 +4,11 @@ use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_fog_settings::RenderFogSettings;
+use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::lighting::srgb::authored_colour;
+use crate::lighting::srgb::authored_light;
 use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::reflection_trace::ReflectionTrace;
@@ -96,24 +98,41 @@ impl LightingUniform {
     let height_fog: &RenderFogSettings = &options.features.fog;
     // Searched only where the view is lit and solid.
     let is_occluded: bool = occlusion.is_enabled && options.mode.is_lit && !options.mode.is_wireframe;
-    // The weather's colours lit as light: display values, decoded where the light is physical, in its units at the
-    // pre-exposure. The sky's, the clouds' and the sprite's colour the pictures they tint, which the shaders decode with
-    // them; the forward passes' as the engine binds them.
+    // The weather's colours lit as light: display values, their hue decoded and their strength kept where the light is
+    // physical, in its units at the pre-exposure. The sky's, the clouds' and the sprite's colour the pictures they
+    // tint, which the shaders decode with them; the forward passes' as the engine binds them.
     let is_physical: bool = options.is_light_physical();
     let light_scale: f32 = frame.light_units.weather * frame.pre_exposure.current;
-    let light = |colour: Vec3| authored_colour(colour, is_physical) * light_scale;
+    let gain: f32 = frame.light_units.light_gain;
+    let light = |colour: Vec3| authored_light(colour, is_physical) * gain * light_scale;
+
+    // The sun as the world lights it at the physical levels, a white surface facing it showing its illuminance over π;
+    // else the weather's.
+    let sun: Vec4 = match frame.daylight {
+      Some(daylight) => {
+        let sun: Vec3 = daylight.sun / std::f32::consts::PI;
+
+        (sun * frame.pre_exposure.current).extend(to_light_specular(sun, true) * frame.pre_exposure.current)
+      }
+      None => light(lighting.get_sun_color(&options.features.light_scales))
+        .extend(lighting.get_sun_specular(&options.features.light_scales, is_physical) * gain * light_scale),
+    };
 
     Self {
       to_sun: to_sun.extend(0.0),
-      sun: light(lighting.get_sun_color(&options.features.light_scales))
-        .extend(lighting.get_sun_specular(&options.features.light_scales) * light_scale),
-      ambient: light(lighting.get_ambient(&options.features.light_scales)).extend(0.0),
-      environment: lighting.get_environment(&options.features.light_scales).extend(0.0),
+      sun,
+      // The flat ambient the game lifts its nights by, kept but at the physical levels, which have the world's dark.
+      ambient: if is_physical && options.features.light_level == RenderLightLevel::Physical {
+        Vec4::ZERO
+      } else {
+        light(lighting.get_ambient(&options.features.light_scales)).extend(0.0)
+      },
+      // The hemisphere's colour by the weather's lights' gain, which `srgb_light` keeps as it scales.
+      environment: (lighting.get_environment(&options.features.light_scales) * gain).extend(0.0),
       sky_irradiance: lighting.sky_irradiance.extend(flag(frame.is_irradiance_up)),
       sky_harmonics: frame
         .sky_harmonics
-        .coefficients
-        .map(|coefficient| (coefficient.truncate() * options.features.light_scales.hemi).extend(coefficient.w)),
+        .at_level(options.features.light_level, options.features.light_scales.hemi),
       fog_color: fog.map_or(Vec3::ZERO, |fog| fog.color).extend(flag(fog.is_some())),
       fog: Vec4::new(
         offset,

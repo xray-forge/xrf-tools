@@ -140,6 +140,8 @@ const BASE_PRESET: IRenderFeatureSettings = {
   textureFiltering: ERenderTextureFiltering.ANISOTROPIC16,
   // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.
   textureLod: 0,
+  // The physical light levels' sun in the atmosphere's colour alone.
+  sunTint: 0,
   // The scene held as linear light and tonemapped once at the viewport's size, as an upscaler wants it.
   tonemap: ERenderTonemapMode.ENHANCED,
   upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
@@ -218,6 +220,7 @@ const EDITING_PRESET: IRenderFeatureSettings = {
   textureFiltering: ERenderTextureFiltering.ANISOTROPIC16,
   // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.
   textureLod: 0,
+  sunTint: 0,
   tonemap: ERenderTonemapMode.ENGINE,
   upscaling: DEFAULT_RENDER_UPSCALING_SETTINGS,
   volumetric: DEFAULT_RENDER_VOLUMETRIC_SETTINGS,

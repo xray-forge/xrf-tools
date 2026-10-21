@@ -42,9 +42,9 @@ impl ExposureHistogramUniform {
   /// the eye adapts only part of the way: two thirds, which shows a shaded dawn as darkly as the engine's meter does.
   pub const REFERENCE_LOG: f32 = 10.3;
   pub const KEPT_SHARE: f32 = 0.67;
-  /// Stops under the aim the physical light levels show the darkest scene at most, so a moonlit night stays readable;
-  /// the authored levels' dark never reaches it.
-  pub const PHYSICAL_DARKEST_STOPS: f32 = 2.5;
+  /// Stops under the aim the physical light levels show the darkest scene at most, so a moonlit night shows dark but
+  /// readable; the authored levels' dark never reaches it.
+  pub const PHYSICAL_DARKEST_STOPS: f32 = 4.0;
   /// Stops a second the scale moves: faster darkening a brighter frame than brightening a darker one, as the eye does,
   /// and quick enough that a night under the physical levels, eleven stops under noon, settles in about three seconds.
   pub const DARKENING: f32 = 12.0;

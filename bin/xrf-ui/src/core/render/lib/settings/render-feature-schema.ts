@@ -215,6 +215,8 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     traceInterval: toNumber(1, 8, true, [1, 4]),
   },
   lightLevel: toChoice(ERenderLightLevel),
+  // How much of the weather's own sun colour the physical light levels keep: none to all of it.
+  sunTint: toNumber(0, 1),
   lightModel: toChoice(ERenderLightModel),
   lights: {
     isEnabled: FLAG,

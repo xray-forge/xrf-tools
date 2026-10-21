@@ -64,6 +64,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
       "exposure",
       "lightModel",
       "lightLevel",
+      "sunTint",
       "displayTransform",
       "grading",
       "tonemap",

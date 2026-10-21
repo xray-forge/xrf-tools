@@ -18,6 +18,7 @@ import {
 import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
 import {
   ERenderBloomMode,
+  ERenderLightLevel,
   ERenderLightModel,
   RenderBloomMode,
   RenderDisplayTransform,
@@ -46,7 +47,9 @@ import { formatStops, RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features/
 import { formatGrading, RENDER_GRADING_LIMITS } from "@/core/render/lib/features/render-grading-choices";
 import {
   explainRenderLightLevel,
+  formatSunTint,
   RENDER_LIGHT_LEVEL_OPTIONS,
+  RENDER_SUN_TINT_LIMITS,
 } from "@/core/render/lib/features/render-light-level-choices";
 import {
   explainRenderLightModel,
@@ -123,6 +126,7 @@ export function LevelLookAction({
   const isPhysical: boolean = lightModel === ERenderLightModel.PHYSICAL;
   const displayTransform: RenderDisplayTransform = features.displayTransform ?? settings.displayTransform;
   const lightLevel: RenderLightLevel = features.lightLevel ?? settings.lightLevel;
+  const isPhysicalLevels: boolean = isPhysical && lightLevel === ERenderLightLevel.PHYSICAL;
 
   const { choice, look, defaults } = lookService;
   const picked: string = choice.source === ELevelLookSource.CUSTOM ? EDITED : choice.source;
@@ -190,10 +194,20 @@ export function LevelLookAction({
 
           {isPhysical ? <p className={"text-xs text-text-secondary"}>{explainRenderLightLevel(lightLevel)}</p> : null}
 
+          <RenderValueSlider
+            label={"Sun tint"}
+            value={features.sunTint ?? settings.sunTint}
+            {...RENDER_SUN_TINT_LIMITS}
+            isDisabled={!isPhysicalLevels}
+            format={formatSunTint}
+            onChange={(sunTint: number) => viewService.setFeatures({ ...features, sunTint })}
+          />
+
           <LevelLookSliders
             fields={LEVEL_LOOK_LIGHT_SCALE_FIELDS}
             look={look}
             isPhysical={isPhysical}
+            isPhysicalLevels={isPhysicalLevels}
             onEdit={(edited) => lookService.edit(edited)}
           />
         </LevelLookSection>
@@ -223,6 +237,7 @@ export function LevelLookAction({
             fields={LEVEL_LOOK_TONEMAP_FIELDS}
             look={look}
             isPhysical={isPhysical}
+            isPhysicalLevels={isPhysicalLevels}
             onEdit={(edited) => lookService.edit(edited)}
           />
         </LevelLookSection>
@@ -294,6 +309,7 @@ export function LevelLookAction({
                 fields={LEVEL_LOOK_BLOOM_FIELDS}
                 look={look}
                 isPhysical={isPhysical}
+                isPhysicalLevels={isPhysicalLevels}
                 onEdit={(edited) => lookService.edit(edited)}
               />
             </>
@@ -312,6 +328,7 @@ export function LevelLookAction({
             fields={LEVEL_LOOK_IMAGE_FIELDS}
             look={look}
             isPhysical={isPhysical}
+            isPhysicalLevels={isPhysicalLevels}
             onEdit={(edited) => lookService.edit(edited)}
           />
 

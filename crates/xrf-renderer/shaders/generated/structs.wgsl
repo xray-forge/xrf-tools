@@ -348,6 +348,7 @@ struct LightRecord {
   sphere: vec4<f32>,
   shadow: vec4<f32>,
   faces: array<vec4<f32>, 6>,
+  scatter: vec4<f32>,
 }
 
 struct LightVolume {

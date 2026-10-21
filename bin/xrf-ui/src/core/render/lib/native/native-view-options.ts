@@ -102,6 +102,7 @@ export function toNativeViewOptions(
       debanding: features.debanding,
       displayTransform: features.displayTransform,
       lightLevel: features.lightLevel,
+      sunTint: features.sunTint,
       enhancedBloom: features.enhancedBloom,
       grading: features.grading,
       exposure: look.exposure,

@@ -59,7 +59,9 @@ fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
       authored_amount(sun_density);
   }
 
-  // Every local light binned where the froxel stands, through its shadow.
+  // Every local light binned where the froxel stands that the level gives shafts (`LightRecord::scatter`), through its
+  // shadow, as the engine draws only those lights' shafts: an unshadowed lamp would scatter through the walls between
+  // it and the air it lights, and a campfire or a wall lamp would hang a ball of glowing fog about itself.
   if (lights.count > 0u) {
     let cluster: u32 = light_cluster(lights, screen, depth);
     let lamp_density: f32 = FROXEL_LAMP * fog * intensity;
@@ -69,15 +71,12 @@ fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
       let to_point: vec3<f32> = position - record.position.xyz;
       let falloff: f32 = light_falloff(record, to_point);
 
-      if (falloff <= 0.0 || is_outside_cone(record, to_point)) {
+      if (record.scatter.x <= 0.0 || falloff <= 0.0 || is_outside_cone(record, to_point)) {
         continue;
       }
 
-      var lit: f32 = light_share(record, to_point, is_light_physical(), spread);
-
-      if (record.shadow.z > 0.0) {
-        lit *= light_shadow(shadow_atlas, shadow_sampler, record, to_point, vec3<f32>(0.0), record.axis.w > -1.0, false);
-      }
+      let lit: f32 = light_share(record, to_point, is_light_physical(), spread) *
+        light_shadow(shadow_atlas, shadow_sampler, record, to_point, vec3<f32>(0.0), record.axis.w > -1.0, false);
 
       scattered += record.color.rgb * lit * froxel_phase(g, dot(normalize(to_point), to_eye)) *
         authored_amount(lamp_density);

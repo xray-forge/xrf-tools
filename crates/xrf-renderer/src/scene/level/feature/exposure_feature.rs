@@ -226,7 +226,7 @@ impl ExposureFeature {
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
-    (high, scene, size, state): (GraphTexture, GraphTexture, (u32, u32), GraphBuffer),
+    (high, (scene, depth_target), size, state): (GraphTexture, (GraphTexture, GraphTexture), (u32, u32), GraphBuffer),
   ) {
     if !self.is_measuring {
       return;
@@ -236,6 +236,7 @@ impl ExposureFeature {
       let bins: GraphBuffer = bindings.import_buffer(&mut *graph, "exposure histogram", &self.bins);
       let parameters: ExposureHistogramParameters = ExposureHistogramParameters {
         scene,
+        depth_target,
         state: StorageValueMut::new(state),
         bins: StorageArrayMut::new(bins),
         params: runtime.push_uniform(&self.histogram),

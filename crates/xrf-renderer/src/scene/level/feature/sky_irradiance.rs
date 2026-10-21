@@ -54,6 +54,8 @@ impl SkyIrradiance {
     let parameters: SkyIrradianceParameters = SkyIrradianceParameters {
       sky_cube_0: sky.sky_cube_0,
       sky_cube_1: sky.sky_cube_1,
+      sky_environment_0: sky.sky_environment_0,
+      sky_environment_1: sky.sky_environment_1,
       sky_clouds_0: sky.sky_clouds_0,
       sky_clouds_1: sky.sky_clouds_1,
       sky_clamp: sky.sky_clamp,

@@ -4,6 +4,7 @@ use xrf_renderer_core::{
   UniformBinding,
 };
 
+use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::periodic::periodic_job::PeriodicJob;
@@ -11,7 +12,9 @@ use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::lighting::daylight::Daylight;
 use crate::lighting::light_units::LightUnits;
+use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::render_sky::RenderSky;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
@@ -213,13 +216,18 @@ impl SkyFeature {
 
   /// What the lighting draws the sky with this frame: a keyframe whose textures are not all up blended out, so a sky
   /// still going up shows the other one; whether both irradiance cubes are up; the clouds' `time`; the sun's sprite
-  /// while its texture is up; whether the exposure adapts (`is_adapting`) and the scale the light is written at.
+  /// while its texture is up; whether the exposure adapts (`is_adapting`) and the scale the light is written at; at the
+  /// physical light levels the world's light, and the units the light is in by the sky last projected.
   pub fn get_lighting_frame(
     &self,
-    (sky, options): (&RenderSky, &RenderViewOptions),
+    (lighting, options): (&RenderLighting, &RenderViewOptions),
     weather_textures: WeatherTextures<'_>,
-    (is_adapting, (pre_exposure, light_units), time): (bool, (PreExposure, LightUnits), f32),
+    (is_adapting, pre_exposure, time): (bool, PreExposure, f32),
   ) -> LightingFrame {
+    let sky: &RenderSky = &lighting.sky;
+    let daylight: Option<Daylight> = (options.is_light_physical()
+      && options.features.light_level == RenderLightLevel::Physical)
+      .then(|| Daylight::of(lighting, options.features.sun_tint));
     let side = |index: usize| {
       let clouds: Option<&str> = sky.clouds.textures[index]
         .as_deref()
@@ -233,7 +241,8 @@ impl SkyFeature {
     LightingFrame {
       is_adapting,
       pre_exposure,
-      light_units,
+      light_units: LightUnits::of(options, lighting, &self.harmonics, daylight.as_ref()),
+      daylight,
       sky_blend: match (side(0), side(1)) {
         (true, false) => 0.0,
         (false, true) => 1.0,

@@ -3,6 +3,7 @@ mod bloom;
 mod camera_view;
 mod compute_grid;
 mod contact_shadows;
+mod daylight;
 mod debanding;
 mod decoded_texture;
 mod display_transform;

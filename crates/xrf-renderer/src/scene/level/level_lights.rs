@@ -238,17 +238,26 @@ impl LevelLights {
         let color: Vec3 =
           authored_colour(Self::to_color(&self.animators, light, seconds), is_physical) * it.fades.whole * it.share;
         let range: f32 = Self::to_frame_range(light, || into.next_random()) * it.share * FALLOFF_RANGE;
-        let mut record: LightRecord =
-          Self::to_record(&self.projectors, light, &it.basis, it.bound, color, range, camera.view);
+        let mut record: LightRecord = Self::to_record(
+          &self.projectors,
+          light,
+          (&it.basis, it.bound),
+          (color, is_physical),
+          range,
+          camera.view,
+        );
 
-        // The colour and its specular weight at the light's scale: the weight is the engine's curve over the light itself
-        // (`to_light_specular`), so it is taken before the scale.
+        // The colour and its specular weight at the light's scale: under the engine's light the weight is a curve over
+        // the light itself (`to_light_specular`), so it is taken before the scale.
         record.color *= light_scale;
 
         if let Some(set) = set {
           let atlas: f32 = LevelLightShadows::ATLAS_SIZE as f32;
 
           record.shadow = Vec4::new(set.near, set.far, set.faces.len() as f32, record.shadow.w);
+          // Only the shadowed lights the level gives shafts scatter, as the engine draws only their shafts: a campfire
+          // or a wall lamp lighting the whole air about it would glow through the dark as a ball of fog.
+          record.scatter.x = if Self::has_shafts(light, engine) { 1.0 } else { 0.0 };
 
           for (face, state) in set.faces.iter().enumerate() {
             record.faces[face] = Vec4::new(
@@ -450,9 +459,8 @@ impl LevelLights {
   fn to_record(
     projectors: &[u32],
     light: &LightDescription,
-    basis: &LightBasis,
-    bound: Vec4,
-    color: Vec3,
+    (basis, bound): (&LightBasis, Vec4),
+    (color, is_physical): (Vec3, bool),
     range: f32,
     view: Mat4,
   ) -> LightRecord {
@@ -467,7 +475,7 @@ impl LevelLights {
       position: view
         .transform_point3(basis.position)
         .extend(if range > 0.0 { 1.0 / (range * range) } else { 0.0 }),
-      color: color.extend(to_light_specular(color)),
+      color: color.extend(to_light_specular(color, is_physical)),
       axis: view.transform_vector3(basis.direction).extend(if is_spot {
         (light.cone / 2.0).cos()
       } else {
@@ -484,7 +492,17 @@ impl LevelLights {
       sphere: view.transform_point3(bound.truncate()).extend(bound.w),
       shadow: Vec4::new(0.0, 0.0, 0.0, get_bulb_radius(light).powi(2)),
       faces: [Vec4::ZERO; 6],
+      scatter: Vec4::ZERO,
     }
+  }
+
+  /// Whether the level gives a light shafts as the view's engine reads its description: the ones that ask under
+  /// vanilla, every one described under the extended engine, whose Monolith forces them on.
+  fn has_shafts(light: &LightDescription, engine: XrayEngine) -> bool {
+    light
+      .volumetric
+      .as_ref()
+      .is_some_and(|volumetric| engine == XrayEngine::Extended || volumetric.is_asked)
   }
 
   /// Its colour this frame: animated where it names an animation.
@@ -517,16 +535,12 @@ impl LevelLights {
     engine: XrayEngine,
     projector: u32,
   ) -> Option<(LightVolumeRecord, u32)> {
-    let volumetric = light.volumetric.as_ref()?;
+    let volumetric = light.volumetric.as_ref().filter(|_| Self::has_shafts(light, engine))?;
     let is_spot: bool = matches!(light.kind, LightKind::Spot);
     // The slices drawn, the share of the buffer the volume's depth is stretched over, the colour's scale and the
     // distance.
     let (slices, quality, intensity, distance): (u32, f32, f32, f32) = match engine {
       XrayEngine::Vanilla => {
-        if !volumetric.is_asked {
-          return None;
-        }
-
         let asked: u32 = ((VOLUME_SLICES as f32 * volumetric.quality) as u32).max(VOLUME_FEWEST_SLICES);
         let quality: f32 = asked as f32 / VOLUME_SLICES as f32;
 

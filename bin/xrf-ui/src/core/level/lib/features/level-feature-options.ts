@@ -135,6 +135,11 @@ export interface ILevelFeatureOptions {
   displayTransform: Nullable<RenderDisplayTransform>;
   /** How bright the physical light's sources stand, where the view sets its own; null for the settings'. */
   lightLevel: Nullable<RenderLightLevel>;
+  /**
+   * How much of the weather's sun colour the physical levels keep in the sun's hue, where the view sets its own; null
+   * for the settings'.
+   */
+  sunTint: Nullable<number>;
   /** How much smaller than the viewport the view is drawn, where it sets its own. */
   upscaling: Partial<TRenderUpscalingSettings>;
   /** What the view resolves its frame at, where it sets its own: a resolution, and the scale an automatic one takes. */
@@ -310,6 +315,7 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     grass: pick("grass"),
     indirectLight: pick("indirectLight"),
     lightLevel: overrides.lightLevel ?? null,
+    sunTint: overrides.sunTint ?? null,
     lightModel: overrides.lightModel ?? null,
     lights: pick("lights"),
     parallax: pick("parallax"),
@@ -423,6 +429,7 @@ export function toLevelRendererFeatures(
     isDepthPrepassed: settings.isDepthPrepassed && toggles.isDepthPrepassed,
     isOcclusionCulled: settings.isOcclusionCulled && toggles.isOcclusionCulled,
     lightLevel: view.lightLevel ?? settings.lightLevel,
+    sunTint: view.sunTint ?? settings.sunTint,
     lightModel: view.lightModel ?? settings.lightModel,
     lights: toLevelRendererFeature("lights", settings, view, toggles.isLamplit),
     parallax: toLevelModeFeature("parallax", settings, view),

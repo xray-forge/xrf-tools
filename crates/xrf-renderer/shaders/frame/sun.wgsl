@@ -100,15 +100,11 @@ fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
 
   let shadow: f32 = seen * contact * relief;
 
-  // Foliage passes the sun through from behind: by how directly the eye looks into it past the leaf, tinted by the
-  // sun's colour as far as the flora's colour share says.
+  // Foliage passes the sun through from behind.
   var through: vec3<f32> = vec3<f32>(0.0);
 
   if (lighting.flora.x > 0.5 && has_mark(material.a, MARK_FLORA)) {
-    let to_eye: vec3<f32> = -normalize(position);
-    let amount: f32 = saturate(dot(to_eye, -(to_light + normal))) * lighting.flora.y;
-
-    through = amount * mix(vec3<f32>(light_scale(lighting)), lighting.sun.rgb, lighting.flora.z);
+    through = flora_through(lighting, -normalize(position), to_light, normal);
   }
 
   return SunTargets(vec4<f32>(lighting.sun.rgb * lit.x + through, lighting.sun.w * lit.y) * shadow, vec4<f32>(shadow));

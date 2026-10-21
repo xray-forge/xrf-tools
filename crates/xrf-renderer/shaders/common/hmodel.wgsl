@@ -24,10 +24,11 @@ fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: te
   let irradiance: vec3<f32> = mix(state.sky_irradiance.rgb, cubes, state.sky_irradiance.w);
   let environment: vec3<f32> = state.environment.rgb * irradiance;
 
-  // The engine's square stands in for decoding the pictures; the physical light decodes them by the sRGB transfer, then
-  // gives them the light's scale.
-  return select(environment * environment, srgb_decoded(environment), is_lighting_physical(state)) *
-    light_scale(state);
+  // The engine's square stands in for decoding the product; the physical light decodes the cubes, a picture, and keeps
+  // the hemisphere colour's strength with its hue decoded (`srgb_light`), then gives them the light's scale.
+  let physical: vec3<f32> = srgb_light(state.environment.rgb) * srgb_decoded(irradiance);
+
+  return select(environment * environment, physical, is_lighting_physical(state)) * light_scale(state);
 }
 
 // `plight_infinity` for the sun: its colour by the diffuse term, its specular weight by the specular, at a view space
@@ -90,13 +91,11 @@ fn hmodel_terms(state: Lighting, table: texture_3d<f32>, table_sampler: sampler,
   // The hemisphere looked up by occlusion and by how far the reflection turns from the view.
   let hemisphere: vec4<f32> = material_lookup(table, table_sampler, occlusion, 0.5 + 0.5 * dot(reflected, to_point_world),
     slice);
-  // The hemisphere's light: the weather's cubes and its flat ambient, or under the physical light the sky's own
-  // irradiance, the baked hemisphere its visibility and no flat ambient, the bounce left to the indirect light.
-  let is_sky: bool = is_sky_irradiance(state);
+  // The hemisphere's light: the weather's cubes, or under the physical light the sky's own irradiance, the baked
+  // hemisphere its visibility; then the flat ambient, which the physical light levels leave out (`LightingUniform`).
   let sky: vec3<f32> = select(hemisphere_environment(state, cube_0, cube_1, cube_sampler, normal_world),
-    sky_irradiance_at(state, normal_world), is_sky);
-  let ambient: vec3<f32> = select(state.ambient.rgb, vec3<f32>(0.0), is_sky);
-  let hemisphere_diffuse: vec3<f32> = (sky * hemisphere.x + ambient) * visible;
+    sky_irradiance_at(state, normal_world), is_sky_irradiance(state));
+  let hemisphere_diffuse: vec3<f32> = (sky * hemisphere.x + state.ambient.rgb) * visible;
   let is_extended: bool = state.engine.x > 0.5;
   let weight: vec3<f32> = hemisphere.y * hmodel_gloss_weight(state, gloss, hemisphere.x) * visible;
   let environment: vec3<f32> = hmodel_reflected_environment(state, cube_0, cube_1, cube_sampler, reflected);
@@ -105,12 +104,15 @@ fn hmodel_terms(state: Lighting, table: texture_3d<f32>, table_sampler: sampler,
   let glossed: f32 = gloss * light.a;
 
   // Anomaly's tint multiplies light by light, the lights' colour by their specular and the environment by the lit
-  // albedo: the engine's values multiplied, so each product has the engine's scale taken off once, whatever level the
-  // weather and the lamps stand at.
+  // albedo: the engine's values multiplied, so the lit albedo has the light's scale taken off. Under the physical light
+  // the lights' colour gives their reflection its hue alone and the specular its strength, so the reflection follows
+  // the light as the diffuse does, a dim moon's no brighter.
   if (is_extended) {
-    let unscaled: vec3<f32> = lit / engine_light_scale(state);
+    let unscaled: vec3<f32> = lit / light_scale(state);
+    let tint: vec3<f32> = select(light.rgb, light.rgb / max(dot(light.rgb, vec3<f32>(1.0 / 3.0)), 1e-12),
+      is_lighting_physical(state));
 
-    return HmodelTerms(lit + light.rgb * glossed / engine_light_scale(state), environment, weight * unscaled, lit);
+    return HmodelTerms(lit + tint * glossed, environment, weight * unscaled, lit);
   }
 
   return HmodelTerms(lit + glossed, environment, weight, lit);

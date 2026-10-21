@@ -80,7 +80,7 @@ fn default_lighting_is_noon_of_default_clear() {
   assert_near(lighting.get_sun_direction(), [0.808_504_3, -0.5, -0.310_356]);
   assert_near(lighting.sun_color, [0.905_882, 0.839_216, 0.694_118]);
   assert_near(lighting.sky_irradiance, [0.5, 0.511, 0.548]);
-  assert!((lighting.get_sun_specular(&RenderLightScales::default()) - 3.484_544_3).abs() < 1e-6);
+  assert!((lighting.get_sun_specular(&RenderLightScales::default(), false) - 3.484_544_3).abs() < 1e-6);
   assert_near(lighting.get_ambient(&RenderLightScales::default()), [0.04, 0.04, 0.04]);
   assert_near(
     lighting.get_environment(&RenderLightScales::default()),
@@ -95,7 +95,25 @@ fn sun_specular_is_linear_past_one() {
     ..RenderLighting::default()
   };
 
-  assert_eq!(lighting.get_sun_specular(&RenderLightScales::default()), 6.0);
+  assert_eq!(lighting.get_sun_specular(&RenderLightScales::default(), false), 6.0);
+}
+
+// Under the physical light the sun's specular follows its light as its diffuse does: a moon of 0.04 at
+// `r2_sun_lumscale` 2.2 gives a specular of its strength, 0.088, where the engine's curve softens it to 0.2.
+#[test]
+fn the_physical_suns_specular_follows_its_light() {
+  let lighting: RenderLighting = RenderLighting {
+    sun_color: Vec3::splat(0.04),
+    ..RenderLighting::default()
+  };
+  let scales: RenderLightScales = RenderLightScales {
+    sun: 2.2,
+    ..RenderLightScales::default()
+  };
+  let physical: f32 = lighting.get_sun_specular(&scales, true);
+
+  assert!((physical - 4.0 * 0.088).abs() < 1e-6, "{physical}");
+  assert!(lighting.get_sun_specular(&scales, false) > 2.0 * physical);
 }
 
 // Anomaly's `r2_sun_lumscale 2`: the sun twice as bright, its specular from the scaled colour (linear past one); the
@@ -110,7 +128,7 @@ fn the_games_console_scales_the_sun_hemisphere_and_ambient() {
   };
 
   assert_near(lighting.get_sun_color(&scales), [1.811_764, 1.678_432, 1.388_236]);
-  assert!((lighting.get_sun_specular(&scales) - 6.504_576).abs() < 1e-4);
+  assert!((lighting.get_sun_specular(&scales, false) - 6.504_576).abs() < 1e-4);
   assert_near(lighting.get_environment(&scales), [0.941_186, 0.737_264, 0.658_834]);
   assert_near(lighting.get_ambient(&scales), [0.12, 0.12, 0.12]);
 }

@@ -159,6 +159,7 @@ export function mockLevelFeatureOptions(overrides: Partial<ILevelFeatureOptions>
     lightModel: null,
     displayTransform: null,
     lightLevel: null,
+    sunTint: null,
     upscaling: {},
     output: {},
     debanding: {},

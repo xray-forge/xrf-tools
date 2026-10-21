@@ -52,6 +52,7 @@ export type TRenderViewFeatureKey =
   | "rain"
   | "reflections"
   | "shadows"
+  | "sunTint"
   | "tonemap"
   | "volumetric"
   | "water";

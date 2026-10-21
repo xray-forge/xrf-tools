@@ -136,10 +136,18 @@ describe("LevelLookAction", () => {
     expect(descriptor.view.features.displayTransform).toBe(ERenderDisplayTransform.AGX);
     expect(descriptor.renderSettings.rendererFeatures.displayTransform).toBe(ERenderDisplayTransform.PBR_NEUTRAL);
     expect(getByRole("slider", { name: "Compensation" })).toBeEnabled();
-    // The engine meter's values, which the physical light's histogram does not read, and the flat ambient it has none of;
-    // the hemisphere's scale still scales the sky's irradiance.
+    // The engine meter's values, which the physical light's histogram does not read; the hemisphere's scale still
+    // scales the sky's irradiance, and the game's flat ambient stays at the authored levels, off at the physical ones.
     expect(getByRole("slider", { name: "Middle gray" })).toBeDisabled();
-    expect(getByRole("slider", { name: "Ambient" })).toBeDisabled();
     expect(getByRole("slider", { name: "Hemisphere" })).toBeEnabled();
+    expect(getByRole("slider", { name: "Ambient" })).toBeEnabled();
+
+    expect(getByRole("slider", { name: "Sun tint" })).toBeDisabled();
+
+    await userEvent.click(within(getByRole("group", { name: "Levels" })).getByRole("button", { name: "Physical" }));
+
+    // The real-world levels light by the world's sun, whose hue the weather's may tint, and have no flat ambient.
+    expect(getByRole("slider", { name: "Ambient" })).toBeDisabled();
+    expect(getByRole("slider", { name: "Sun tint" })).toBeEnabled();
   });
 });

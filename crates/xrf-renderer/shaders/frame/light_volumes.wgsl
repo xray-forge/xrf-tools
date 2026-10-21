@@ -3,6 +3,7 @@ enable wgpu_binding_array;
 #import "common/camera"
 #import "common/fullscreen"
 #import "common/local_lights"
+#import "common/scene_light"
 
 // The shafts of the shadowed local lights, as the engines' `accum_volumetric` draws them: slices faced to the camera
 // across the box about each light's sphere, stepping away from it, each pixel of a slice the light's falloff, shadow,
@@ -129,5 +130,11 @@ fn fs_light_volume(in: VolumeVarying) -> @location(0) vec4<f32> {
   let noise: vec4<f32> = textureSampleLevel(textures[noise_slot], texture_sampler, noise_uv + vec2<f32>(volumes.scroll, 0.0),
     0.0) * textureSampleLevel(textures[noise_slot], texture_sampler,
     noise_uv - vec2<f32>(0.0, volumes.scroll * 0.70091), 0.0);
-  return vec4<f32>(VOLUME_DENSITY * shadow * falloff * projected * volume.color.rgb * (noise.rgb * 0.5 + 0.5), 0.0);
+  // The density, the falloff and the noise are amounts the engine tunes as display values, the projector a picture:
+  // under the physical light each is decoded, as the lamp's own colour already is, else the shafts stand many times
+  // brighter against the light they come from than the engine's.
+  let amount: vec3<f32> = vec3<f32>(VOLUME_DENSITY * shadow * falloff) * (noise.rgb * 0.5 + 0.5);
+  let shaft: vec3<f32> = select(amount, srgb_decoded(amount), is_light_physical()) * authored_colour(projected);
+
+  return vec4<f32>(shaft * volume.color.rgb, 0.0);
 }

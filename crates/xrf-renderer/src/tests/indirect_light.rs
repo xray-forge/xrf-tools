@@ -40,6 +40,7 @@ fn lighting_with(options: &RenderViewOptions) -> LightingUniform {
       is_adapting: false,
       pre_exposure: PreExposure::NONE,
       light_units: LightUnits::NONE,
+      daylight: None,
       sky_blend: 0.0,
       is_irradiance_up: false,
       clouds_time: 0.0,

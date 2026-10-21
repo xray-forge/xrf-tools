@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import {
+  ERenderLightLevel,
   ERenderLightModel,
   RenderDisplayTransform,
   RenderLightLevel,
@@ -23,7 +24,9 @@ import {
 import { formatGrading, RENDER_GRADING_LIMITS } from "@/core/render/lib/features/render-grading-choices";
 import {
   explainRenderLightLevel,
+  formatSunTint,
   RENDER_LIGHT_LEVEL_OPTIONS,
+  RENDER_SUN_TINT_LIMITS,
 } from "@/core/render/lib/features/render-light-level-choices";
 import {
   explainRenderLightModel,
@@ -71,6 +74,16 @@ export function SettingsRendererExposure(): ReactElement {
           value={renderSettingsService.rendererFeatures.lightLevel}
           isDisabled={!isPhysical}
           onChange={(lightLevel: RenderLightLevel) => renderSettingsService.setRendererOverrides({ lightLevel })}
+        />
+
+        <SliderFormRow
+          label={"Sun tint"}
+          description={"How much of the weather's own sun colour the real-world light levels keep in the sun's."}
+          value={renderSettingsService.rendererFeatures.sunTint}
+          {...RENDER_SUN_TINT_LIMITS}
+          isDisabled={!isPhysical || renderSettingsService.rendererFeatures.lightLevel !== ERenderLightLevel.PHYSICAL}
+          format={formatSunTint}
+          onChange={(sunTint: number) => renderSettingsService.setRendererOverrides({ sunTint })}
         />
 
         <ChoiceFormRow

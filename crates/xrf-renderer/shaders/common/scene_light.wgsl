@@ -2,7 +2,8 @@
 // exposure, which the window pass tonemaps once (`camera.output.x`). Each pass works in the colour it always has and
 // goes through these where it writes the scene or reads it back. Under the physical light model (`camera.output.w`)
 // the light itself is linear: every colour authored as a display value is decoded before it is lit
-// (`authored_colour`), and the window pass encodes the tonemapped frame for the display.
+// (`authored_colour`), but for the weather's lights, which keep their strength with their hue decoded (`srgb_light`, on
+// the CPU and in the hemisphere), and the window pass encodes the tonemapped frame for the display.
 
 #import "common/camera"
 #import "common/lighting"
@@ -16,14 +17,14 @@ fn is_light_physical() -> bool {
   return camera.output.w > 0.5;
 }
 
-// A colour authored as a display value (a texture's, the weather's, a lamp's) as the frame lights with it: decoded by
-// the sRGB transfer under the physical light model, as it is stored under the engine's.
+// A colour authored as a display value (a texture's, a lamp's, the fog's) as the frame lights with it: decoded by the
+// sRGB transfer under the physical light model, as it is stored under the engine's.
 fn authored_colour(colour: vec3<f32>) -> vec3<f32> {
   return select(colour, srgb_decoded(colour), is_light_physical());
 }
 
 // An amount of light the engine tunes as a display value (a lamp's falloff, a scattering density) as the share of light
-// it sets: decoded under the physical light model, so an amount lit with a decoded colour gives the light the engine's
+// it sets: decoded under the physical light model, so an amount lit with a decoded light gives the light the engine's
 // display value showed.
 fn authored_amount(amount: f32) -> f32 {
   return select(amount, srgb_decoded(vec3<f32>(amount)).x, is_light_physical());

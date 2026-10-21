@@ -322,8 +322,7 @@ fn shade_scene_hit(
   let own: u32 = select(SCENE_NO_PLACE, hit.place, (trace_records[hit.record].flags & TRACE_RECORD_TREE) != 0u);
   var sun: vec4<f32> = vec4<f32>(0.0);
 
-  let through: vec3<f32> = select(vec3<f32>(0.0), saturate(dot(-toward, -(to_sun + facing))) * state.flora.y *
-    mix(vec3<f32>(light_scale(state)), state.sun.rgb, state.flora.z), is_crown);
+  let through: vec3<f32> = select(vec3<f32>(0.0), flora_through(state, -toward, to_sun, facing), is_crown);
 
   if (lit.x > 0.0 || any(through > vec3<f32>(0.0))) {
     sun = vec4<f32>(state.sun.rgb * lit.x + through, state.sun.w * lit.y) *
@@ -402,8 +401,7 @@ fn shade_scene_grass(
   let half_way: vec3<f32> = normalize(to_sun - toward);
   let lit: vec4<f32> = textureSampleLevel(lut, lut_sampler,
     vec3<f32>(dot(to_sun, facing), dot(half_way, facing), GRASS_MATERIAL_SLICE), 0.0);
-  let through: vec3<f32> = select(vec3<f32>(0.0), saturate(dot(-toward, -(to_sun + facing))) * state.flora.y *
-    mix(vec3<f32>(light_scale(state)), state.sun.rgb, state.flora.z), state.flora.x > 0.5);
+  let through: vec3<f32> = select(vec3<f32>(0.0), flora_through(state, -toward, to_sun, facing), state.flora.x > 0.5);
   var sun: vec4<f32> = vec4<f32>(0.0);
 
   if (lit.x > 0.0 || any(through > vec3<f32>(0.0))) {

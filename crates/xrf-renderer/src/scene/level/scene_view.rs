@@ -35,7 +35,6 @@ use crate::frame::view_target_uses::ViewTargetUses;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_weather::RenderLevelWeather;
-use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
@@ -353,14 +352,11 @@ impl SceneView {
       .prepare(device, weather, options, frame.weather_textures);
 
     let lighting_frame: LightingFrame = self.features.sky.get_lighting_frame(
-      (&lighting.sky, options),
+      (lighting, options),
       frame.weather_textures,
       (
         self.features.exposure.is_adapting(),
-        (
-          self.features.exposure.get_pre_exposure(),
-          LightUnits::of(options, lighting),
-        ),
+        self.features.exposure.get_pre_exposure(),
         time,
       ),
     );
@@ -1554,7 +1550,7 @@ impl SceneView {
     self.features.exposure.add_passes(
       (&mut *graph, &mut *bindings, runtime),
       passes,
-      (handles.high, handles.scene, handles.size, lit.exposure),
+      (handles.high, (handles.scene, handles.depth), handles.size, lit.exposure),
     );
 
     output.scene = resolved;
