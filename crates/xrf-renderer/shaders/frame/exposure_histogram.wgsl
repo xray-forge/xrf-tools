@@ -3,7 +3,8 @@
 // The physical light's exposure: the scene's light counted into a histogram of its log2 luminance, a texel in every
 // four each way and the centre weighed up to four times the edges, then the average between the darkest and the
 // brightest shares the settings leave out brought to the target, less the share of its distance from a daylit
-// exterior it keeps, the scale moving towards it at most so many stops a second, faster darkening than brightening.
+// exterior it keeps, never under the dark's limit, the scale moving towards it at most so many stops a second, faster
+// darkening than brightening.
 
 #import "generated/frame/exposure_histogram"
 
@@ -84,7 +85,7 @@ fn cs_settle(@builtin(local_invocation_index) index: u32) {
   }
 
   let average: f32 = select(log2(params.aim), sum / max(weight, 1e-6), weight > 0.0);
-  let shown: f32 = log2(params.aim) + params.kept_share * (average - params.reference_log);
+  let shown: f32 = max(log2(params.aim) + params.kept_share * (average - params.reference_log), params.darkest_log);
   let wanted: f32 = clamp(shown - average, params.least_scale_log, params.most_scale_log);
   let current: f32 = log2(max(state.adapted, 1e-6));
   let reach: f32 = select(params.brightening, params.darkening, wanted < current) * params.delta;

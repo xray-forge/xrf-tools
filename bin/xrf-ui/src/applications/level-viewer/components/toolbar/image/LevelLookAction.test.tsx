@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
-import { act } from "@testing-library/react";
+import { act, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelLookAction } from "@/applications/level-viewer/components/toolbar/image/LevelLookAction";
@@ -109,7 +109,7 @@ describe("LevelLookAction", () => {
 
     expect(descriptor.renderSettings.rendererFeatures.lightModel).toBe(ERenderLightModel.ENGINE);
 
-    await userEvent.click(getByRole("button", { name: "Physical" }));
+    await userEvent.click(within(getByRole("group", { name: "Model" })).getByRole("button", { name: "Physical" }));
 
     expect(descriptor.view.features.lightModel).toBe(ERenderLightModel.PHYSICAL);
     expect(descriptor.renderSettings.rendererFeatures.lightModel).toBe(ERenderLightModel.ENGINE);
@@ -122,11 +122,15 @@ describe("LevelLookAction", () => {
     await userEvent.click(getByRole("button", { name: "Look" }));
     await findByRole("dialog", { name: "Look" });
 
+    for (const section of ["Look", "Light", "Exposure", "Display", "Bloom", "Image"]) {
+      expect(getByRole("region", { name: section })).toBeInTheDocument();
+    }
+
     expect(getByRole("button", { name: "AgX" })).toBeDisabled();
     expect(getByRole("slider", { name: "Compensation" })).toBeDisabled();
     expect(getByRole("slider", { name: "Middle gray" })).toBeEnabled();
 
-    await userEvent.click(getByRole("button", { name: "Physical" }));
+    await userEvent.click(within(getByRole("group", { name: "Model" })).getByRole("button", { name: "Physical" }));
     await userEvent.click(getByRole("button", { name: "AgX" }));
 
     expect(descriptor.view.features.displayTransform).toBe(ERenderDisplayTransform.AGX);

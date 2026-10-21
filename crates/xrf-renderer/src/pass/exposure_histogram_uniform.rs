@@ -1,6 +1,7 @@
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_exposure_settings::RenderExposureSettings;
+use crate::contract::render_light_level::RenderLightLevel;
 
 /// How the physical light's exposure meters and adapts, as `shaders/frame/exposure_histogram.wgsl` reads it: the log2
 /// luminance the histogram's bins span, the luminance the frame is brought to, how much of a scene's distance from a
@@ -15,6 +16,8 @@ pub struct ExposureHistogramUniform {
   pub aim: f32,
   pub reference_log: f32,
   pub kept_share: f32,
+  /// The log2 luminance the frame's average is never shown under: the dark's limit.
+  pub darkest_log: f32,
   pub delta: f32,
   pub brightening: f32,
   pub darkening: f32,
@@ -36,12 +39,16 @@ impl ExposureHistogramUniform {
   pub const MIDDLE_GREY: f32 = 0.18;
   /// The log2 luminance of a daylit exterior's average, about 1 260 cd/m², which is shown at the aim; a darker or
   /// brighter scene keeps this share of its distance from it, so a cellar stays darker than noon and snow brighter, as
-  /// the eye adapts only part of the way.
+  /// the eye adapts only part of the way: two thirds, which shows a shaded dawn as darkly as the engine's meter does.
   pub const REFERENCE_LOG: f32 = 10.3;
-  pub const KEPT_SHARE: f32 = 0.5;
-  /// Stops a second the scale moves: faster darkening a brighter frame than brightening a darker one, as the eye does.
-  pub const DARKENING: f32 = 3.0;
-  pub const BRIGHTENING: f32 = 1.0;
+  pub const KEPT_SHARE: f32 = 0.67;
+  /// Stops under the aim the physical light levels show the darkest scene at most, so a moonlit night stays readable;
+  /// the authored levels' dark never reaches it.
+  pub const PHYSICAL_DARKEST_STOPS: f32 = 2.5;
+  /// Stops a second the scale moves: faster darkening a brighter frame than brightening a darker one, as the eye does,
+  /// and quick enough that a night under the physical levels, eleven stops under noon, settles in about three seconds.
+  pub const DARKENING: f32 = 12.0;
+  pub const BRIGHTENING: f32 = 4.0;
   /// The darkest and the brightest shares of the frame the average leaves out.
   pub const LOW_SHARE: f32 = 0.1;
   pub const HIGH_SHARE: f32 = 0.9;
@@ -55,14 +62,21 @@ impl ExposureHistogramUniform {
     (Self::MIDDLE_GREY.log2() + compensation - Self::REFERENCE_LOG).exp2()
   }
 
-  /// The metering for a frame `delta` seconds after the last, straight to its target where `is_snapped`.
-  pub fn new(settings: &RenderExposureSettings, delta: f32, is_snapped: bool) -> Self {
+  /// The metering for a frame `delta` seconds after the last at the light's `level`, straight to its target where
+  /// `is_snapped`.
+  pub fn new(settings: &RenderExposureSettings, level: RenderLightLevel, delta: f32, is_snapped: bool) -> Self {
+    let aim: f32 = Self::MIDDLE_GREY * settings.compensation.exp2();
+
     Self {
       least_log: Self::LEAST_LOG,
       span_log: Self::MOST_LOG - Self::LEAST_LOG,
-      aim: Self::MIDDLE_GREY * settings.compensation.exp2(),
+      aim,
       reference_log: Self::REFERENCE_LOG,
       kept_share: Self::KEPT_SHARE,
+      darkest_log: match level {
+        RenderLightLevel::Authored => Self::LEAST_LOG,
+        RenderLightLevel::Physical => aim.log2() - Self::PHYSICAL_DARKEST_STOPS,
+      },
       delta,
       brightening: Self::BRIGHTENING,
       darkening: Self::DARKENING,

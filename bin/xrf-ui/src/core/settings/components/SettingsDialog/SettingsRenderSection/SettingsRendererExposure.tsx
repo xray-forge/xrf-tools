@@ -4,6 +4,7 @@ import { ReactElement } from "react";
 import {
   ERenderLightModel,
   RenderDisplayTransform,
+  RenderLightLevel,
   RenderLightModel,
   RenderTonemapMode,
 } from "@/core/ipc/types/xrf-renderer";
@@ -19,6 +20,11 @@ import {
   RENDER_EXPOSURE_LIMITS,
   RENDER_TONEMAP_MODE_OPTIONS,
 } from "@/core/render/lib/features/render-exposure-choices";
+import { formatGrading, RENDER_GRADING_LIMITS } from "@/core/render/lib/features/render-grading-choices";
+import {
+  explainRenderLightLevel,
+  RENDER_LIGHT_LEVEL_OPTIONS,
+} from "@/core/render/lib/features/render-light-level-choices";
 import {
   explainRenderLightModel,
   RENDER_LIGHT_MODEL_OPTIONS,
@@ -59,6 +65,15 @@ export function SettingsRendererExposure(): ReactElement {
         />
 
         <ChoiceFormRow
+          label={"Light levels"}
+          description={explainRenderLightLevel(renderSettingsService.rendererFeatures.lightLevel)}
+          options={RENDER_LIGHT_LEVEL_OPTIONS}
+          value={renderSettingsService.rendererFeatures.lightLevel}
+          isDisabled={!isPhysical}
+          onChange={(lightLevel: RenderLightLevel) => renderSettingsService.setRendererOverrides({ lightLevel })}
+        />
+
+        <ChoiceFormRow
           label={"Display transform"}
           description={explainRenderDisplayTransform(renderSettingsService.rendererFeatures.displayTransform)}
           options={RENDER_DISPLAY_TRANSFORM_OPTIONS}
@@ -66,6 +81,34 @@ export function SettingsRendererExposure(): ReactElement {
           isDisabled={!isPhysical}
           onChange={(displayTransform: RenderDisplayTransform) =>
             renderSettingsService.setRendererOverrides({ displayTransform })
+          }
+        />
+
+        <SliderFormRow
+          label={"Display contrast"}
+          description={"Stops of the physical light's frame about middle grey, raised before its display transform."}
+          value={renderSettingsService.rendererFeatures.grading.contrast}
+          {...RENDER_GRADING_LIMITS.contrast}
+          isDisabled={!isPhysical}
+          format={formatGrading}
+          onChange={(contrast: number) =>
+            renderSettingsService.setRendererOverrides({
+              grading: { ...renderSettingsService.rendererFeatures.grading, contrast },
+            })
+          }
+        />
+
+        <SliderFormRow
+          label={"Display saturation"}
+          description={"How far the physical light's frame is taken from grey before its display transform."}
+          value={renderSettingsService.rendererFeatures.grading.saturation}
+          {...RENDER_GRADING_LIMITS.saturation}
+          isDisabled={!isPhysical}
+          format={formatGrading}
+          onChange={(saturation: number) =>
+            renderSettingsService.setRendererOverrides({
+              grading: { ...renderSettingsService.rendererFeatures.grading, saturation },
+            })
           }
         />
 

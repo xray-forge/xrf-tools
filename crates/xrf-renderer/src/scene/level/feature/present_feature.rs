@@ -43,7 +43,7 @@ impl PresentFeature {
     } else {
       present
     }
-    .with_display(DisplayMode::of(options))
+    .with_display(DisplayMode::of(options), &options.features.grading)
     .with_grass_reach(inputs.grass_reach);
 
     self.uniform = match self.debanding {

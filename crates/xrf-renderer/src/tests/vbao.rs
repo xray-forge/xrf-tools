@@ -8,6 +8,7 @@ use crate::contract::render_ambient_occlusion_vbao_settings::{
   RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION, RenderAmbientOcclusionVbaoSettings,
 };
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
@@ -34,6 +35,7 @@ fn lighting_with(options: &RenderViewOptions) -> LightingUniform {
     &LightingFrame {
       is_adapting: false,
       pre_exposure: PreExposure::NONE,
+      light_units: LightUnits::NONE,
       sky_blend: 0.0,
       is_irradiance_up: false,
       clouds_time: 0.0,

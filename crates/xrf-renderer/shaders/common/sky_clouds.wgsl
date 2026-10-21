@@ -32,13 +32,29 @@ fn sky_box_shown(direction: vec3<f32>, state: Lighting, cube_0: texture_cube<f32
   return sky_box_scaled(sky_box_lit(direction, state, cube_0, cube_1, cube_sampler), state, scale);
 }
 
-// The sky lit, on the exposure's scale, written past the tonemap or through it as `sky_box_shown` writes it.
+// The sky lit, on the exposure's scale, written past the tonemap or through it as `sky_box_shown` writes it. Under the
+// physical light the picture is decoded into light first and only then exposed, written as the shown colour the scene
+// takes back to that light exactly (`scene_from_shown`), so the sky follows the exposure as linearly as the ground it
+// stands over rather than by its power in display values.
 fn sky_box_scaled(lit: vec3<f32>, state: Lighting, scale: f32) -> vec3<f32> {
-  if (state.engine.x > 0.5) {
-    return tonemap(lit * CURVED_SKY_FACTOR, scale);
+  let is_curved: bool = state.engine.x > 0.5;
+  let factor: f32 = select(SKY_FACTOR, CURVED_SKY_FACTOR, is_curved);
+
+  if (is_lighting_physical(state)) {
+    return sky_picture_shown(lit * factor, scale);
   }
 
-  return lit * scale * SKY_FACTOR;
+  if (is_curved) {
+    return tonemap(lit * factor, scale);
+  }
+
+  return lit * scale * factor;
+}
+
+// A picture of the sky's (its cubes, its clouds) as the physical light shows it at `scale`: decoded into light, exposed,
+// and written as the shown colour `scene_from_shown` takes back to that light.
+fn sky_picture_shown(picture: vec3<f32>, scale: f32) -> vec3<f32> {
+  return srgb_encoded(tonemap(srgb_decoded(max(picture, vec3<f32>(0.0))) * scale, 1.0));
 }
 
 // The clouds along a world direction: the dome met along the view, two scrolling layers of both keyframes' textures
@@ -67,7 +83,9 @@ fn sky_clouds_over(state: Lighting, direction: vec3<f32>, below: vec3<f32>, clou
   clouds_1: texture_2d<f32>, repeat: sampler, scale: f32) -> vec3<f32> {
   let clouds: vec4<f32> = sky_clouds_layer(state, direction, clouds_0, clouds_1, repeat);
 
-  return mix(below, clouds.rgb * scale, clouds.a);
+  let shown: vec3<f32> = select(clouds.rgb * scale, sky_picture_shown(clouds.rgb, scale), is_lighting_physical(state));
+
+  return mix(below, shown, clouds.a);
 }
 
 // The sky's light along a renderer-space direction in the engine's units, which a reader of the cube it is kept in

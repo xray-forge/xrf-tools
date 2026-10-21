@@ -33,6 +33,7 @@ import {
   TRenderFogSettings,
   TRenderFoliageSettings,
   TRenderGlassSettings,
+  TRenderGradingSettings,
   TRenderGrassSettings,
   TRenderIndirectLightSettings,
   TRenderLightsSettings,
@@ -115,6 +116,12 @@ export const DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS: TRenderEnhancedBloomSetting
   sky: 0.6,
   threshold: 5,
   vibrance: 1,
+};
+
+/** The physical light's frame ungraded. */
+export const DEFAULT_RENDER_GRADING_SETTINGS: TRenderGradingSettings = {
+  contrast: 1,
+  saturation: 1,
 };
 
 /** The engine's own foliage motion, with the enhanced motion's designed strengths. */

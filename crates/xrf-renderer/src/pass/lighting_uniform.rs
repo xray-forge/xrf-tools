@@ -5,7 +5,6 @@ use xrf_renderer_core::ShaderStruct;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_fog_settings::RenderFogSettings;
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::lighting::light_unit::light_unit;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::authored_colour;
 use crate::pass::bitmask_search::BitmaskSearch;
@@ -46,8 +45,9 @@ pub struct LightingUniform {
   /// the irradiance cubes decoded where they are read.
   pub engine: Vec4,
   /// The scale the frame's light is written at per cd/m² (`PreExposure`), then the last frame's, by which a history is
-  /// brought to this one's, then the cd/m² a light of one in the engine's units stands for (`light_unit`). The sun, the
-  /// ambient and the lamps here arrive at both; the shaders give the light they make from the engine's values the same.
+  /// brought to this one's, then the cd/m² a light of one in the engine's units stands for (`LightUnits`), the weather's
+  /// and the local lights'. The sun and the ambient here arrive at the weather's and the pre-exposure; the shaders give
+  /// the light they make from the engine's values the same.
   pub pre_exposure: Vec4,
   /// How much light the occlusion's creases bounce back (VBAO's alone), then ones where the scene is
   /// lit, the exposure adapts and the occlusion darkens.
@@ -100,8 +100,7 @@ impl LightingUniform {
     // pre-exposure. The sky's, the clouds' and the sprite's colour the pictures they tint, which the shaders decode with
     // them; the forward passes' as the engine binds them.
     let is_physical: bool = options.is_light_physical();
-    let unit: f32 = light_unit(is_physical);
-    let light_scale: f32 = frame.pre_exposure.get_light_scale(is_physical);
+    let light_scale: f32 = frame.light_units.weather * frame.pre_exposure.current;
     let light = |colour: Vec3| authored_colour(colour, is_physical) * light_scale;
 
     Self {
@@ -140,7 +139,12 @@ impl LightingUniform {
         flag(options.mode.is_lit && !options.mode.is_wireframe && options.features.glass.is_enhanced()),
         flag(is_physical),
       ),
-      pre_exposure: Vec4::new(frame.pre_exposure.current, frame.pre_exposure.previous, unit, 0.0),
+      pre_exposure: Vec4::new(
+        frame.pre_exposure.current,
+        frame.pre_exposure.previous,
+        frame.light_units.weather,
+        frame.light_units.local,
+      ),
       params: Vec4::new(
         if is_occluded && !occlusion.is_gtao() {
           occlusion.vbao.bounce.clamp(0.0, 1.0)

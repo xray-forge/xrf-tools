@@ -1,17 +1,19 @@
 import { default as ExposureIcon } from "@mui/icons-material/Exposure";
-import { Button, Typography } from "@mui/material";
+import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
-import { formatNumber } from "@xrf/format";
 import { ReactElement, useCallback } from "react";
 
 import { LevelDebandingSettings } from "@/applications/level-viewer/components/toolbar/image/LevelDebandingSettings";
+import { LevelLookSection } from "@/applications/level-viewer/components/toolbar/image/LevelLookSection";
+import { LevelLookSliders } from "@/applications/level-viewer/components/toolbar/image/LevelLookSliders";
 import {
   ILevelEnhancedBloomField,
-  ILevelLookField,
   LEVEL_ENHANCED_BLOOM_FIELDS,
-  LEVEL_LOOK_BLOOM_GROUP,
-  LEVEL_LOOK_FIELD_GROUPS,
+  LEVEL_LOOK_BLOOM_FIELDS,
+  LEVEL_LOOK_IMAGE_FIELDS,
+  LEVEL_LOOK_LIGHT_SCALE_FIELDS,
+  LEVEL_LOOK_TONEMAP_FIELDS,
 } from "@/applications/level-viewer/lib/look/level-look-fields";
 import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
 import {
@@ -19,6 +21,7 @@ import {
   ERenderLightModel,
   RenderBloomMode,
   RenderDisplayTransform,
+  RenderLightLevel,
   RenderLightModel,
 } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
@@ -40,8 +43,19 @@ import {
   RENDER_DISPLAY_TRANSFORM_OPTIONS,
 } from "@/core/render/lib/features/render-display-transform-choices";
 import { formatStops, RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features/render-exposure-choices";
-import { RENDER_LIGHT_MODEL_OPTIONS } from "@/core/render/lib/features/render-light-model-choices";
-import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { formatGrading, RENDER_GRADING_LIMITS } from "@/core/render/lib/features/render-grading-choices";
+import {
+  explainRenderLightLevel,
+  RENDER_LIGHT_LEVEL_OPTIONS,
+} from "@/core/render/lib/features/render-light-level-choices";
+import {
+  explainRenderLightModel,
+  RENDER_LIGHT_MODEL_OPTIONS,
+} from "@/core/render/lib/features/render-light-model-choices";
+import {
+  TRenderEnhancedBloomSettings,
+  TRenderGradingSettings,
+} from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
@@ -97,14 +111,18 @@ export function LevelLookAction({
   const viewService: LevelViewService = useInjection(LevelViewService);
   const { settings, features } = useLevelRenderFeatures();
   const { set: setBloom, reset: resetBloom } = useLevelFeatureOverride("enhancedBloom");
+  const { set: setGrading } = useLevelFeatureOverride("grading");
 
   // Which bloom the view draws, and the enhanced bloom's strengths.
   const bloom: TRenderEnhancedBloomSettings = toLevelModeFeature("enhancedBloom", settings, features);
+  // How the physical light's frame is graded before its display transform.
+  const grading: TRenderGradingSettings = toLevelModeFeature("grading", settings, features);
   const isEnhancedBloom: boolean = bloom.mode === ERenderBloomMode.ENHANCED;
   // What the view lights in: its own choice, else the settings'.
   const lightModel: RenderLightModel = features.lightModel ?? settings.lightModel;
   const isPhysical: boolean = lightModel === ERenderLightModel.PHYSICAL;
   const displayTransform: RenderDisplayTransform = features.displayTransform ?? settings.displayTransform;
+  const lightLevel: RenderLightLevel = features.lightLevel ?? settings.lightLevel;
 
   const { choice, look, defaults } = lookService;
   const picked: string = choice.source === ELevelLookSource.CUSTOM ? EDITED : choice.source;
@@ -141,44 +159,54 @@ export function LevelLookAction({
       icon={<ExposureIcon />}
       isActive={picked !== ELevelLookSource.GAME || isEnhancedBloom || isPhysical}
     >
-      <div className={"flex w-72 flex-col gap-3 px-4 py-2"}>
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Look
-        </Typography>
+      <div className={"flex w-80 flex-col gap-3 px-4 py-2"}>
+        <LevelLookSection title={"Look"}>
+          <ChoiceListFormRow
+            data-testid={"level-look-source"}
+            label={"Source"}
+            description={"Picks where the exposure, light scales, bloom and image corrections come from"}
+            options={options}
+            value={picked}
+            filterFrom={options.length + 1}
+            onChange={onPick}
+          />
+        </LevelLookSection>
 
-        <ChoiceListFormRow
-          data-testid={"level-look-source"}
-          label={"Source"}
-          description={"Picks where the exposure, light scales, bloom and image corrections come from"}
-          options={options}
-          value={picked}
-          filterFrom={options.length + 1}
-          onChange={onPick}
-        />
-
-        <RenderValueChoice
-          label={"Light"}
-          options={RENDER_LIGHT_MODEL_OPTIONS}
-          value={lightModel}
-          onChange={(next: RenderLightModel) => viewService.setFeatures({ ...features, lightModel: next })}
-        />
-
-        <div className={"flex flex-col gap-1"}>
+        <LevelLookSection title={"Light"} note={explainRenderLightModel(lightModel)}>
           <RenderValueChoice
-            label={"Display"}
-            options={RENDER_DISPLAY_TRANSFORM_OPTIONS}
-            value={displayTransform}
-            isDisabled={!isPhysical}
-            onChange={(next: RenderDisplayTransform) =>
-              viewService.setFeatures({ ...features, displayTransform: next })
-            }
+            label={"Model"}
+            options={RENDER_LIGHT_MODEL_OPTIONS}
+            value={lightModel}
+            onChange={(next: RenderLightModel) => viewService.setFeatures({ ...features, lightModel: next })}
           />
 
-          <p className={"text-xs text-text-secondary"}>
-            {isPhysical
-              ? explainRenderDisplayTransform(displayTransform)
-              : "The display transform and the exposure compensation take effect under the physical light."}
-          </p>
+          <RenderValueChoice
+            label={"Levels"}
+            options={RENDER_LIGHT_LEVEL_OPTIONS}
+            value={lightLevel}
+            isDisabled={!isPhysical}
+            onChange={(next: RenderLightLevel) => viewService.setFeatures({ ...features, lightLevel: next })}
+          />
+
+          {isPhysical ? <p className={"text-xs text-text-secondary"}>{explainRenderLightLevel(lightLevel)}</p> : null}
+
+          <LevelLookSliders
+            fields={LEVEL_LOOK_LIGHT_SCALE_FIELDS}
+            look={look}
+            isPhysical={isPhysical}
+            onEdit={(edited) => lookService.edit(edited)}
+          />
+        </LevelLookSection>
+
+        <LevelLookSection title={"Exposure"}>
+          <CheckboxFormRow
+            label={"Auto exposure"}
+            description={
+              "Adapts the exposure to how bright the frame is; off, a fixed scale. Game setting: r2_tonemap."
+            }
+            isChecked={look.exposure.isEnabled}
+            onChange={(isEnabled: boolean) => lookService.edit({ ...look, exposure: { ...look.exposure, isEnabled } })}
+          />
 
           <RenderValueSlider
             label={"Compensation"}
@@ -190,79 +218,105 @@ export function LevelLookAction({
               lookService.edit({ ...look, exposure: { ...look.exposure, compensation } })
             }
           />
-        </div>
 
-        <CheckboxFormRow
-          label={"Auto exposure"}
-          description={"Adapts the exposure to how bright the frame is; off, a fixed scale. Game setting: r2_tonemap."}
-          isChecked={look.exposure.isEnabled}
-          onChange={(isEnabled: boolean) => lookService.edit({ ...look, exposure: { ...look.exposure, isEnabled } })}
-        />
-
-        <RenderValueChoice
-          label={"Bloom mode"}
-          options={RENDER_BLOOM_MODE_OPTIONS}
-          value={bloom.mode}
-          onChange={(mode: RenderBloomMode) => setBloom({ mode })}
-        />
-
-        <p className={"text-xs text-text-secondary"}>{explainRenderBloomMode(bloom.mode)}</p>
-
-        {isEnhancedBloom ? (
-          <div className={"flex flex-col gap-1"}>
-            <Typography variant={"caption"} className={"text-text-secondary"}>
-              Enhanced bloom
-            </Typography>
-
-            {LEVEL_ENHANCED_BLOOM_FIELDS.map((field: ILevelEnhancedBloomField) => (
-              <RenderValueSlider
-                key={field.key}
-                label={field.label}
-                value={bloom[field.key]}
-                {...RENDER_ENHANCED_BLOOM_LIMITS[field.key]}
-                format={formatBloomStrength}
-                onChange={(value: number) => setBloom({ [field.key]: value })}
-              />
-            ))}
-          </div>
-        ) : (
-          <CheckboxFormRow
-            label={"Bloom"}
-            description={"Blurs the frame's bright parts over it. Game setting: phase_bloom."}
-            isChecked={look.bloom.isEnabled}
-            onChange={(isEnabled: boolean) => lookService.edit({ ...look, bloom: { ...look.bloom, isEnabled } })}
+          <LevelLookSliders
+            fields={LEVEL_LOOK_TONEMAP_FIELDS}
+            look={look}
+            isPhysical={isPhysical}
+            onEdit={(edited) => lookService.edit(edited)}
           />
-        )}
+        </LevelLookSection>
 
-        <Button size={"small"} aria-label={"Reset the bloom to the preset"} onClick={resetBloom}>
-          Reset to the preset
-        </Button>
+        <LevelLookSection
+          title={"Display"}
+          note={isPhysical ? explainRenderDisplayTransform(displayTransform) : "Under the physical light only."}
+        >
+          <RenderValueChoice
+            label={"Transform"}
+            options={RENDER_DISPLAY_TRANSFORM_OPTIONS}
+            value={displayTransform}
+            isDisabled={!isPhysical}
+            onChange={(next: RenderDisplayTransform) =>
+              viewService.setFeatures({ ...features, displayTransform: next })
+            }
+          />
 
-        {LEVEL_LOOK_FIELD_GROUPS.filter((group) => !isEnhancedBloom || group.title !== LEVEL_LOOK_BLOOM_GROUP).map(
-          (group) => (
-            <div key={group.title} className={"flex flex-col gap-1"}>
-              <Typography variant={"caption"} className={"text-text-secondary"}>
-                {group.title}
-              </Typography>
+          <RenderValueSlider
+            label={"Contrast"}
+            value={grading.contrast}
+            {...RENDER_GRADING_LIMITS.contrast}
+            isDisabled={!isPhysical}
+            format={formatGrading}
+            onChange={(contrast: number) => setGrading({ contrast })}
+          />
 
-              {group.fields.map((field: ILevelLookField) => (
+          <RenderValueSlider
+            label={"Saturation"}
+            value={grading.saturation}
+            {...RENDER_GRADING_LIMITS.saturation}
+            isDisabled={!isPhysical}
+            format={formatGrading}
+            onChange={(saturation: number) => setGrading({ saturation })}
+          />
+        </LevelLookSection>
+
+        <LevelLookSection title={"Bloom"} note={explainRenderBloomMode(bloom.mode)}>
+          <RenderValueChoice
+            label={"Mode"}
+            options={RENDER_BLOOM_MODE_OPTIONS}
+            value={bloom.mode}
+            onChange={(mode: RenderBloomMode) => setBloom({ mode })}
+          />
+
+          {isEnhancedBloom ? (
+            <div className={"flex flex-col gap-1"}>
+              {LEVEL_ENHANCED_BLOOM_FIELDS.map((field: ILevelEnhancedBloomField) => (
                 <RenderValueSlider
-                  key={field.label}
+                  key={field.key}
                   label={field.label}
-                  value={field.read(look)}
-                  min={field.min}
-                  max={field.max}
-                  step={field.step}
-                  isDisabled={(group.isEngineOnly || field.isEngineOnly === true) && isPhysical}
-                  format={(value: number) => formatNumber(value, 2)}
-                  onChange={(value: number) => lookService.edit(field.write(look, value))}
+                  value={bloom[field.key]}
+                  {...RENDER_ENHANCED_BLOOM_LIMITS[field.key]}
+                  format={formatBloomStrength}
+                  onChange={(value: number) => setBloom({ [field.key]: value })}
                 />
               ))}
             </div>
-          )
-        )}
+          ) : (
+            <>
+              <CheckboxFormRow
+                label={"Bloom"}
+                description={"Blurs the frame's bright parts over it. Game setting: phase_bloom."}
+                isChecked={look.bloom.isEnabled}
+                onChange={(isEnabled: boolean) => lookService.edit({ ...look, bloom: { ...look.bloom, isEnabled } })}
+              />
 
-        <LevelDebandingSettings className={"flex flex-col gap-2"} />
+              <LevelLookSliders
+                fields={LEVEL_LOOK_BLOOM_FIELDS}
+                look={look}
+                isPhysical={isPhysical}
+                onEdit={(edited) => lookService.edit(edited)}
+              />
+            </>
+          )}
+
+          <Button size={"small"} aria-label={"Reset the bloom to the preset"} onClick={resetBloom}>
+            Reset to the preset
+          </Button>
+        </LevelLookSection>
+
+        <LevelLookSection
+          title={"Image"}
+          note={"The engine's corrections of the finished frame, and the sky's debanding."}
+        >
+          <LevelLookSliders
+            fields={LEVEL_LOOK_IMAGE_FIELDS}
+            look={look}
+            isPhysical={isPhysical}
+            onEdit={(edited) => lookService.edit(edited)}
+          />
+
+          <LevelDebandingSettings className={"flex flex-col gap-2"} />
+        </LevelLookSection>
       </div>
     </EditorPopoverAction>
   );

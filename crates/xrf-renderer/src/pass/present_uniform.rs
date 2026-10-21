@@ -2,6 +2,7 @@ use glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::render_grading_settings::RenderGradingSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -39,7 +40,8 @@ pub struct PresentUniform {
   /// The sky debanding's passes, the pixels it reads out to at most and the clock its noise turns with; no passes where
   /// the sky is drawn as it is.
   pub deband: Vec4,
-  /// How the scene is shown before the rest is laid over it (`DisplayMode`), as `common/display_transform` numbers it.
+  /// How the scene is shown before the rest is laid over it (`DisplayMode`), as `common/display_transform` numbers it,
+  /// then the physical light's grading before its transform: its contrast and its saturation.
   pub display: Vec4,
   /// What the cascades' debug view marks: the metres from the camera the grass's cards cast the sun's shadow to, none
   /// where they cast none.
@@ -91,10 +93,10 @@ impl PresentUniform {
     (is_shown && debanding.is_drawn()).then(|| debanding.get_passes())
   }
 
-  /// The same showing its scene by `mode`.
-  pub fn with_display(self, mode: DisplayMode) -> Self {
+  /// The same showing its scene by `mode`, graded by `grading` where the light is physical.
+  pub fn with_display(self, mode: DisplayMode, grading: &RenderGradingSettings) -> Self {
     Self {
-      display: Vec4::new(mode.get_index() as f32, 0.0, 0.0, 0.0),
+      display: Vec4::new(mode.get_index() as f32, grading.contrast, grading.saturation, 0.0),
       ..self
     }
   }

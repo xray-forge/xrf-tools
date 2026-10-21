@@ -66,7 +66,7 @@ fn fs_scattering(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let uv: vec2<f32> = in.clip.xy / scattering.size;
   let read: vec3<f32> = textureSampleLevel(blurred, source_sampler, uv, 0.0).rgb;
   let blur: vec3<f32> = debanded(blurred, source_sampler, read, uv, 1.0 / scattering.size, SCATTER_DEBAND_PASSES,
-    SCATTER_DEBAND_RADIUS, scattering.time, DISPLAY_AS_IS);
+    SCATTER_DEBAND_RADIUS, scattering.time, DISPLAY_UNGRADED);
   let alike: f32 = dot(blur, saturate(image));
   let share: f32 = fog * fog * alike * alike;
   let scattered: vec3<f32> = mix(image, max(image, blur),

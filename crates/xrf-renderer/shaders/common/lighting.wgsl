@@ -10,8 +10,8 @@ fn pre_exposure(state: Lighting) -> f32 {
   return state.pre_exposure.x;
 }
 
-// The cd/m² a light of one in the engine's units stands for under the physical light (`light_unit`); one under the
-// engine's, whose light has no units.
+// The cd/m² a light of the weather's in the engine's units stands for under the physical light (`LightUnits::weather`);
+// one under the engine's, whose light has no units.
 fn light_unit(state: Lighting) -> f32 {
   return state.pre_exposure.z;
 }
@@ -21,6 +21,22 @@ fn light_unit(state: Lighting) -> f32 {
 // self-lit surface) gives it the same.
 fn light_scale(state: Lighting) -> f32 {
   return light_unit(state) * pre_exposure(state);
+}
+
+// The cd/m² a light of one in the engine's units stands for under the physical light at its authored levels, the
+// weather's and the lamps' alike (`PHYSICAL_LIGHT_UNIT`).
+const PHYSICAL_LIGHT_UNIT: f32 = 10000.0;
+
+// The scale a light of one in the engine's units, read as the engine reads it before any level dims it, is written at:
+// what a product of two lights takes off once, as it multiplies their engine values.
+fn engine_light_scale(state: Lighting) -> f32 {
+  return select(1.0, PHYSICAL_LIGHT_UNIT, is_lighting_physical(state)) * pre_exposure(state);
+}
+
+// The scale a local light in the engine's units (a lamp, a self-lit surface) is written at: the local lights' own unit
+// (`LightUnits::local`) at the pre-exposure.
+fn local_light_scale(state: Lighting) -> f32 {
+  return state.pre_exposure.w * pre_exposure(state);
 }
 
 // The exposure the frame is shown at: the adapted scale where it adapts, one otherwise.
@@ -142,11 +158,13 @@ fn fog_mixed(state: Lighting, light: vec3<f32>, fog: vec3<f32>, amount: f32) -> 
 }
 
 // The colour the fog takes towards a view space point at a world height: the weather's, taking the sun's colour where
-// the enhanced fog's height fog lies and the view faces the sun.
+// the enhanced fog's height fog lies and the view faces the sun. Mixed as the engine mixes it, in display values: under
+// the physical light both are encoded for the mix and the result decoded back, as `fog_mixed` blends, else a sun lit at
+// its full linear strength would outweigh the fog's colour several times over and veil the frame in it.
 fn fog_color_at(state: Lighting, position: vec3<f32>, height: f32) -> vec3<f32> {
   let facing: f32 = saturate(dot(state.to_sun.xyz, normalize(position)));
+  let share: f32 = facing * height_fog_share(state, height) * state.height_fog.z;
   let fog: vec3<f32> = fog_light(state);
-  let sunlit: vec3<f32> = mix(fog, state.sun.rgb, facing);
 
-  return mix(fog, sunlit, height_fog_share(state, height) * state.height_fog.z);
+  return fog_mixed(state, fog, state.sun.rgb, share);
 }

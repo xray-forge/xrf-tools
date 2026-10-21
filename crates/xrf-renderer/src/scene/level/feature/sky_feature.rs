@@ -11,6 +11,7 @@ use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_sky::RenderSky;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
@@ -217,7 +218,7 @@ impl SkyFeature {
     &self,
     (sky, options): (&RenderSky, &RenderViewOptions),
     weather_textures: WeatherTextures<'_>,
-    (is_adapting, pre_exposure, time): (bool, PreExposure, f32),
+    (is_adapting, (pre_exposure, light_units), time): (bool, (PreExposure, LightUnits), f32),
   ) -> LightingFrame {
     let side = |index: usize| {
       let clouds: Option<&str> = sky.clouds.textures[index]
@@ -232,6 +233,7 @@ impl SkyFeature {
     LightingFrame {
       is_adapting,
       pre_exposure,
+      light_units,
       sky_blend: match (side(0), side(1)) {
         (true, false) => 0.0,
         (false, true) => 1.0,

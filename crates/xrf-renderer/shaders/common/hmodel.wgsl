@@ -105,11 +105,12 @@ fn hmodel_terms(state: Lighting, table: texture_3d<f32>, table_sampler: sampler,
   let glossed: f32 = gloss * light.a;
 
   // Anomaly's tint multiplies light by light, the lights' colour by their specular and the environment by the lit
-  // albedo, so each product has the light's scale taken off once.
+  // albedo: the engine's values multiplied, so each product has the engine's scale taken off once, whatever level the
+  // weather and the lamps stand at.
   if (is_extended) {
-    let unscaled: vec3<f32> = lit / light_scale(state);
+    let unscaled: vec3<f32> = lit / engine_light_scale(state);
 
-    return HmodelTerms(lit + light.rgb * glossed / light_scale(state), environment, weight * unscaled, lit);
+    return HmodelTerms(lit + light.rgb * glossed / engine_light_scale(state), environment, weight * unscaled, lit);
   }
 
   return HmodelTerms(lit + glossed, environment, weight, lit);

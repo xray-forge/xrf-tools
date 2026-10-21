@@ -847,6 +847,15 @@ export type RenderGpuDescription = {
   driver: string | null;
 };
 
+/**
+ * How the physical light's frame is graded before its display transform, in scene-referred light: its contrast about
+ * middle grey, a power of its luminance in stops, and its saturation, a mix from its own luminance; one leaves each.
+ */
+export type RenderGradingSettings = {
+  contrast: number | null;
+  saturation: number | null;
+};
+
 /** One pass a viewport's frame ran, as the frame graph placed it. */
 export type RenderGraphPass = {
   name: string;
@@ -1054,6 +1063,27 @@ export type RenderLibraries = {
    */
   dlss: string | null;
 };
+
+/**
+ * How bright the physical light's sources stand against each other and the day: as the weathers and the lamps are
+ * authored, or brought to the real world's.
+ */
+export enum ERenderLightLevel {
+  /**
+   * The weathers' and the lamps' own levels in the physical light's units: a night as bright as the game authors it,
+   * a lamp a thousand times a real one.
+   */
+  AUTHORED = "authored",
+  /**
+   * The real world's: the weather's light dimmed with its sky towards a moonlit night of a fraction of a lux, the lamps
+   * and the self-lit surfaces brought to real lamps', and the exposure held from showing the dark more than a few stops
+   * under middle grey.
+   */
+  PHYSICAL = "physical",
+}
+
+/** Every `ERenderLightLevel` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderLightLevel = `${ERenderLightLevel}`;
 
 /** What a view's light is computed in. */
 export enum ERenderLightModel {
@@ -1905,8 +1935,12 @@ export type RenderViewFeatures = {
   tonemap: RenderTonemapMode;
   /** What the light is computed in: the engine's display-encoded values, or linear light. */
   lightModel: RenderLightModel;
+  /** How bright the physical light's sources stand against each other and the day. */
+  lightLevel: RenderLightLevel;
   /** What shows the physical light's frame on the display. */
   displayTransform: RenderDisplayTransform;
+  /** How the physical light's frame is graded before its display transform. */
+  grading: RenderGradingSettings;
   bloom: RenderBloomSettings;
   /** Which bloom is drawn, and the enhanced bloom's strengths. */
   enhancedBloom: RenderEnhancedBloomSettings;

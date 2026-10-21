@@ -35,6 +35,7 @@ use crate::frame::view_target_uses::ViewTargetUses;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_weather::RenderLevelWeather;
+use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
@@ -258,7 +259,7 @@ impl SceneView {
       .overlays
       .follow_skeletons((scene, frame.device, &mut *encoder));
 
-    self.prepare_scene(scene, encoder, frame, time);
+    self.prepare_scene(scene, encoder, frame, &lighting_frame, time);
     self.prepare_view(scene, encoder, frame, &sight);
     self.prepare_lighting(scene, encoder, frame, &lighting_frame, time);
   }
@@ -282,12 +283,7 @@ impl SceneView {
       options.features.shadows.resolution,
       options.features.shadows.get_cascade_count() > 0,
     );
-    self.features.exposure.prepare(
-      frame.queue,
-      &options.features.exposure,
-      options.is_light_physical(),
-      Instant::now(),
-    );
+    self.features.exposure.prepare(frame.queue, options, Instant::now());
 
     let sun_sprite: Option<(String, Vec4)> = self.features.flares.prepare(
       device,
@@ -361,7 +357,10 @@ impl SceneView {
       frame.weather_textures,
       (
         self.features.exposure.is_adapting(),
-        self.features.exposure.get_pre_exposure(),
+        (
+          self.features.exposure.get_pre_exposure(),
+          LightUnits::of(options, lighting),
+        ),
         time,
       ),
     );
@@ -379,7 +378,14 @@ impl SceneView {
   /// The scene's units: the static cull; the grass, which reads its discard, plants around last frame's puddles and
   /// casts by the trace or the cascades; the lights, which read the cull's levels of detail; then what the views off
   /// the viewport draw the scene with.
-  fn prepare_scene(&mut self, scene: &mut LevelScene, encoder: &mut FrameEncoder, frame: &ViewPrepare<'_>, time: f32) {
+  fn prepare_scene(
+    &mut self,
+    scene: &mut LevelScene,
+    encoder: &mut FrameEncoder,
+    frame: &ViewPrepare<'_>,
+    lighting_frame: &LightingFrame,
+    time: f32,
+  ) {
     let (device, options, lighting, view) = (frame.device, frame.options, frame.lighting, frame.view);
 
     self
@@ -432,11 +438,7 @@ impl SceneView {
         campfire_shares: &scene.campfire_shares,
         is_scene_first: frame.is_scene_first,
         is_physical: options.is_light_physical(),
-        light_scale: self
-          .features
-          .exposure
-          .get_pre_exposure()
-          .get_light_scale(options.is_light_physical()),
+        light_scale: lighting_frame.light_units.local * lighting_frame.pre_exposure.current,
       },
     );
     self.shared.camera = *view;

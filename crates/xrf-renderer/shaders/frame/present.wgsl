@@ -283,6 +283,20 @@ fn drawn_texel(pixel: vec2<f32>) -> vec2<i32> {
   return to_drawn_texel(pixel, camera.viewport.xy, present.size);
 }
 
+// `combine_2`'s bloom over a colour: the bloom read where the scene is; where the distortion (`strength`) blurs, the
+// colour first goes towards it by the distortion's `z`, `lerp(img, bloom * def_hdr, distort.z)`; then the bloom added,
+// `combine_bloom`.
+fn engine_bloomed(color: vec3<f32>, read: vec2<f32>, texel: vec2<i32>, strength: f32) -> vec3<f32> {
+  let bloom: vec4<f32> = textureSampleLevel(bloom_target, bloom_sampler, (read + 0.5) / present.size, 0.0);
+  var bloomed: vec3<f32> = color;
+
+  if (strength > 0.0) {
+    bloomed = mix(bloomed, bloom.rgb * DEF_HDR, textureLoad(distortion, texel, 0).z);
+  }
+
+  return bloomed + bloom.rgb * bloom.a;
+}
+
 @fragment
 fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let pixel: vec2<f32> = floor(in.clip.xy - present.origin);
@@ -324,7 +338,14 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   var color: vec3<f32> = select(textureLoad(scene, drawn_texel(read), 0).rgb,
     textureLoad(upscaled, vec2<i32>(read), 0).rgb, present.is_upscaled != 0u);
 
-  let display: u32 = u32(present.display.x);
+  let display: vec4<f32> = present.display;
+  // The physical light's engine bloom is light, built from its linear scene, so it joins the scene as light before the
+  // display transform; the engine's joins its shown frame after, as `combine_2` adds it.
+  let is_bloom_light: bool = present.is_bloomed == BLOOM_ENGINE && u32(display.x) >= DISPLAY_ENGINE_ENCODED;
+
+  if (is_bloom_light) {
+    color = engine_bloomed(color, read, texel, strength);
+  }
 
   // A scene of linear light at its exposure is shown here, by the engine's curve or the physical light's display
   // transform and encoding, before everything the engine lays over its displayed frame.
@@ -352,16 +373,9 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
     return vec4<f32>(shown + output_dither(in.clip.xy), 1.0);
   }
 
-  // `combine_2`: the bloom read where the scene is; where the distortion blurs, the scene first goes towards it by the
-  // distortion's `z`, `lerp(img, bloom * def_hdr, distort.z)`; then the bloom added, `combine_bloom`.
-  if (present.is_bloomed == BLOOM_ENGINE) {
-    let bloom: vec4<f32> = textureSampleLevel(bloom_target, bloom_sampler, (read + 0.5) / present.size, 0.0);
-
-    if (strength > 0.0) {
-      color = mix(color, bloom.rgb * DEF_HDR, textureLoad(distortion, texel, 0).z);
-    }
-
-    color += bloom.rgb * bloom.a;
+  // The engine's bloom over its shown frame, as `combine_2` adds it.
+  if (present.is_bloomed == BLOOM_ENGINE && !is_bloom_light) {
+    color = engine_bloomed(color, read, texel, strength);
   }
 
   let shown: vec3<f32> = mix(corrected(color), present.selection.rgb, selection_share(texel));

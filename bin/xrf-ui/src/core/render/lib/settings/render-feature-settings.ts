@@ -11,6 +11,7 @@ import {
   RenderFogSettings,
   RenderFoliageSettings,
   RenderGlassSettings,
+  RenderGradingSettings,
   RenderGrassSettings,
   RenderIndirectLightSettings,
   RenderLightsSettings,
@@ -38,10 +39,12 @@ export type TRenderViewFeatureKey =
   | "exposure"
   | "fog"
   | "glass"
+  | "grading"
   | "grass"
   | "indirectLight"
   | "isDepthPrepassed"
   | "isOcclusionCulled"
+  | "lightLevel"
   | "lightModel"
   | "lights"
   | "lod"
@@ -76,6 +79,8 @@ export type TRenderContactShadowSettings = TSettled<RenderContactShadowSettings>
 export type TRenderDebandingSettings = TSettled<RenderDebandingSettings>;
 
 export type TRenderEnhancedBloomSettings = TSettled<RenderEnhancedBloomSettings>;
+
+export type TRenderGradingSettings = TSettled<RenderGradingSettings>;
 
 export type TRenderEnhancedWaterSettings = TSettled<RenderEnhancedWaterSettings>;
 

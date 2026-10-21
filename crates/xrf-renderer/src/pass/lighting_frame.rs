@@ -1,5 +1,6 @@
 use glam::Vec4;
 
+use crate::lighting::light_units::LightUnits;
 use crate::pass::pre_exposure::PreExposure;
 use crate::pass::sky_harmonics::SkyHarmonics;
 
@@ -11,6 +12,8 @@ pub struct LightingFrame {
   pub is_adapting: bool,
   /// The scale the frame's light is written at, and the last frame's.
   pub pre_exposure: PreExposure,
+  /// The cd/m² a light of one in the engine's units stands for, the weather's and the local lights'.
+  pub light_units: LightUnits,
   /// How far from the first keyframe's sky to the second's, moved to the one up while the other is still going up.
   pub sky_blend: f32,
   /// Whether both irradiance cubes are up, else the lighting's stand-in lights the hemisphere.

@@ -23,19 +23,19 @@ fn deband_noise(uv: vec2<f32>, time: f32) -> f32 {
   return fract(sin(dot(uv, vec2<f32>(12.0, 78.0) + time)) * 43758.0) * 0.25;
 }
 
-// A read of the image as the display shows it under `mode` (`shown_for_display`).
-fn deband_read(image: texture_2d<f32>, image_sampler: sampler, uv: vec2<f32>, mode: u32) -> vec3<f32> {
-  return shown_for_display(textureSampleLevel(image, image_sampler, uv, 0.0).rgb, mode);
+// A read of the image as the display shows it under `display` (`shown_for_display`).
+fn deband_read(image: texture_2d<f32>, image_sampler: sampler, uv: vec2<f32>, display: vec4<f32>) -> vec3<f32> {
+  return shown_for_display(textureSampleLevel(image, image_sampler, uv, 0.0).rgb, display);
 }
 
 // One pass: the four diagonal neighbours `offset` away, blended in by how close they and their mean lie to the shown
 // colour.
 fn deband_pass(image: texture_2d<f32>, image_sampler: sampler, color: vec3<f32>, uv: vec2<f32>, offset: vec2<f32>,
-  mode: u32) -> vec3<f32> {
-  let first: vec3<f32> = deband_read(image, image_sampler, uv + offset, mode);
-  let second: vec3<f32> = deband_read(image, image_sampler, uv - offset, mode);
-  let third: vec3<f32> = deband_read(image, image_sampler, uv + vec2<f32>(-offset.x, offset.y), mode);
-  let fourth: vec3<f32> = deband_read(image, image_sampler, uv + vec2<f32>(offset.x, -offset.y), mode);
+  display: vec4<f32>) -> vec3<f32> {
+  let first: vec3<f32> = deband_read(image, image_sampler, uv + offset, display);
+  let second: vec3<f32> = deband_read(image, image_sampler, uv - offset, display);
+  let third: vec3<f32> = deband_read(image, image_sampler, uv + vec2<f32>(-offset.x, offset.y), display);
+  let fourth: vec3<f32> = deband_read(image, image_sampler, uv + vec2<f32>(offset.x, -offset.y), display);
   let mean: vec3<f32> = (first + second + third + fourth) / 4.0;
   let widest: vec3<f32> = max(max(abs(color - first), abs(color - second)), max(abs(color - third), abs(color - fourth)));
   let blend: vec3<f32> = saturate((1.0 - abs(color - mean) / DEBAND_THRESHOLD) * 3.0) *
@@ -45,9 +45,9 @@ fn deband_pass(image: texture_2d<f32>, image_sampler: sampler, color: vec3<f32>,
 }
 
 // A shown colour read at `uv` debanded over `passes` passes reaching `radius` pixels of `pixel` at most, the noise
-// turning with `time`; `mode` how its reads are shown, as `deband_read` takes it.
+// turning with `time`; `display` how its reads are shown, as `deband_read` takes it.
 fn debanded(image: texture_2d<f32>, image_sampler: sampler, color: vec3<f32>, uv: vec2<f32>, pixel: vec2<f32>,
-  passes: u32, radius: f32, time: f32, mode: u32) -> vec3<f32> {
+  passes: u32, radius: f32, time: f32, display: vec4<f32>) -> vec3<f32> {
   var noise: f32 = deband_permute(deband_permute(deband_permute(uv.x) + uv.y) + deband_noise(uv, time));
   let direction: vec2<f32> = vec2<f32>(cos(noise), sin(noise));
   var result: vec3<f32> = color;
@@ -58,7 +58,7 @@ fn debanded(image: texture_2d<f32>, image_sampler: sampler, color: vec3<f32>, uv
     let reach: f32 = f32(index) / f32(passes);
 
     result = deband_pass(image, image_sampler, result, uv, noise * 0.0033 * radius * reach * reach * pixel * direction,
-      mode);
+      display);
   }
 
   return result;

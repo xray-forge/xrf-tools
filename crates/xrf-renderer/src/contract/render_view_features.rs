@@ -9,9 +9,11 @@ use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings
 use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_fog_settings::RenderFogSettings;
 use crate::contract::render_glass_settings::RenderGlassSettings;
+use crate::contract::render_grading_settings::RenderGradingSettings;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
+use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_light_model::RenderLightModel;
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_lights_settings::RenderLightsSettings;
@@ -35,8 +37,12 @@ pub struct RenderViewFeatures {
   pub tonemap: RenderTonemapMode,
   /// What the light is computed in: the engine's display-encoded values, or linear light.
   pub light_model: RenderLightModel,
+  /// How bright the physical light's sources stand against each other and the day.
+  pub light_level: RenderLightLevel,
   /// What shows the physical light's frame on the display.
   pub display_transform: RenderDisplayTransform,
+  /// How the physical light's frame is graded before its display transform.
+  pub grading: RenderGradingSettings,
   pub bloom: RenderBloomSettings,
   /// Which bloom is drawn, and the enhanced bloom's strengths.
   pub enhanced_bloom: RenderEnhancedBloomSettings,
@@ -86,7 +92,9 @@ impl Default for RenderViewFeatures {
       exposure: RenderExposureSettings::default(),
       tonemap: RenderTonemapMode::Engine,
       light_model: RenderLightModel::Engine,
+      light_level: RenderLightLevel::Authored,
       display_transform: RenderDisplayTransform::PbrNeutral,
+      grading: RenderGradingSettings::default(),
       bloom: RenderBloomSettings::default(),
       enhanced_bloom: RenderEnhancedBloomSettings::default(),
       fog: RenderFogSettings::default(),

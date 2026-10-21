@@ -6,6 +6,8 @@ use xrf_renderer_core::{
 };
 
 use crate::contract::render_exposure_settings::RenderExposureSettings;
+use crate::contract::render_light_level::RenderLightLevel;
+use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::gpu_readback::GpuReadback;
 use crate::pass::exposure_head::ExposureHead;
 use crate::pass::exposure_histogram_parameters::ExposureHistogramParameters;
@@ -91,7 +93,9 @@ impl ExposureFeature {
   /// to one, the engine's answer at noon. Under the physical light (`is_physical`) the histogram meters instead, or,
   /// off, the scale holds at a daylit exterior's; a change of light model starts the scale afresh. Then the scale
   /// the frame's light is written at: the physical light's last read back, one under the engine's.
-  pub fn prepare(&mut self, queue: &wgpu::Queue, settings: &RenderExposureSettings, is_physical: bool, now: Instant) {
+  pub fn prepare(&mut self, queue: &wgpu::Queue, options: &RenderViewOptions, now: Instant) {
+    let settings: &RenderExposureSettings = &options.features.exposure;
+    let is_physical: bool = options.is_light_physical();
     let read: Option<f32> = self.take_readback();
 
     if is_physical != self.is_physical {
@@ -116,7 +120,7 @@ impl ExposureFeature {
     if is_physical {
       let previous: f32 = self.pre_exposure.current;
 
-      self.prepare_physical(queue, settings, now);
+      self.prepare_physical(queue, settings, options.features.light_level, now);
       self.pre_exposure = PreExposure {
         current: self.held.or(read).unwrap_or(self.pre_exposure.current),
         previous,
@@ -153,7 +157,13 @@ impl ExposureFeature {
 
   /// The physical light's metering for this frame: the histogram from the time since the last frame, straight to its
   /// target on the first; or, off, a daylit exterior's scale held, raised by the compensation.
-  fn prepare_physical(&mut self, queue: &wgpu::Queue, settings: &RenderExposureSettings, now: Instant) {
+  fn prepare_physical(
+    &mut self,
+    queue: &wgpu::Queue,
+    settings: &RenderExposureSettings,
+    level: RenderLightLevel,
+    now: Instant,
+  ) {
     self.is_adapting = true;
 
     if !settings.is_enabled {
@@ -172,7 +182,7 @@ impl ExposureFeature {
 
     let delta: Duration = self.last.map_or(Duration::ZERO, |last| (now - last).min(LONGEST_STEP));
 
-    self.histogram = ExposureHistogramUniform::new(settings, delta.as_secs_f32(), self.last.is_none());
+    self.histogram = ExposureHistogramUniform::new(settings, level, delta.as_secs_f32(), self.last.is_none());
     self.is_measuring = true;
     self.last = Some(now);
     self.held = None;

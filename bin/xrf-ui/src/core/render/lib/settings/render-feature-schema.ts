@@ -10,6 +10,7 @@ import {
   ERenderFoliageMode,
   ERenderGlassMode,
   ERenderIndirectLightMode,
+  ERenderLightLevel,
   ERenderLightModel,
   ERenderLightShadowFilter,
   ERenderParallaxMode,
@@ -127,6 +128,11 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     mode: toChoice(ERenderGlassMode),
     refraction: toNumber(0, 2),
   },
+  // The physical light's grading: from half the contrast to twice it, and from grey to twice the colour.
+  grading: {
+    contrast: toNumber(0.5, 2),
+    saturation: toNumber(0, 2),
+  },
   grass: {
     // `r__detail_density`: a spacing. The console goes to 0.1, six times the game's; past three times it at the widest
     // radius the grass's buffers outgrow what the GPU process holds and the renderer crashes.
@@ -208,6 +214,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     isTraced: FLAG,
     traceInterval: toNumber(1, 8, true, [1, 4]),
   },
+  lightLevel: toChoice(ERenderLightLevel),
   lightModel: toChoice(ERenderLightModel),
   lights: {
     isEnabled: FLAG,

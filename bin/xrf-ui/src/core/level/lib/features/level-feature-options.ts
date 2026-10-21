@@ -4,6 +4,7 @@ import {
   ERenderAntialiasing,
   RenderAntialiasing,
   RenderDisplayTransform,
+  RenderLightLevel,
   RenderLightModel,
 } from "@/core/ipc/types/xrf-renderer";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
@@ -16,6 +17,7 @@ import {
   TRenderEnhancedBloomSettings,
   TRenderFogSettings,
   TRenderGlassSettings,
+  TRenderGradingSettings,
   TRenderGrassSettings,
   TRenderIndirectLightSettings,
   TRenderLightsSettings,
@@ -62,6 +64,9 @@ export type TLevelDebandingOptions = TRenderDebandingSettings;
 
 /** The glass settings a level view may set for itself: all of them. */
 export type TLevelGlassOptions = TRenderGlassSettings;
+
+/** The physical light's grading a level view may set for itself: all of it. */
+export type TLevelGradingOptions = TRenderGradingSettings;
 
 /** The volumetric lighting settings a level view may set for itself: all of them. */
 export type TLevelVolumetricOptions = TRenderVolumetricSettings;
@@ -114,6 +119,8 @@ export interface ILevelFeatureOptions {
   debanding: Partial<TLevelDebandingOptions>;
   /** How glass is drawn, which no toolbar toggle turns off: its own mode does. */
   glass: Partial<TLevelGlassOptions>;
+  /** How the physical light's frame is graded before its display transform. */
+  grading: Partial<TLevelGradingOptions>;
   /** How the light the air scatters is drawn, which no toolbar toggle turns off: its own mode does. */
   volumetric: Partial<TLevelVolumetricOptions>;
   /** How the surfaces are displaced by their height, which the shading's toggle turns off whole. */
@@ -126,6 +133,8 @@ export interface ILevelFeatureOptions {
   lightModel: Nullable<RenderLightModel>;
   /** How the physical light's frame is brought into the display's range, where the view sets its own; null for the settings'. */
   displayTransform: Nullable<RenderDisplayTransform>;
+  /** How bright the physical light's sources stand, where the view sets its own; null for the settings'. */
+  lightLevel: Nullable<RenderLightLevel>;
   /** How much smaller than the viewport the view is drawn, where it sets its own. */
   upscaling: Partial<TRenderUpscalingSettings>;
   /** What the view resolves its frame at, where it sets its own: a resolution, and the scale an automatic one takes. */
@@ -172,6 +181,7 @@ export type TLevelModeFeatureKey =
   | "enhancedBloom"
   | "fog"
   | "glass"
+  | "grading"
   | "indirectLight"
   | "parallax"
   | "rain"
@@ -220,6 +230,7 @@ const LEVEL_GROUP_KEYS: {
   enhancedBloom: { blur: true, exposure: true, mode: true, sky: true, threshold: true, vibrance: true },
   fog: { density: true, height: true, mode: true, scattering: true, skyFade: true, sunColor: true },
   glass: { mode: true, refraction: true },
+  grading: { contrast: true, saturation: true },
   indirectLight: { intensity: true, mode: true, radius: true, steps: true },
   parallax: {
     blending: true,
@@ -295,8 +306,10 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     enhancedBloom: pick("enhancedBloom"),
     fog: pick("fog"),
     glass: pick("glass"),
+    grading: pick("grading"),
     grass: pick("grass"),
     indirectLight: pick("indirectLight"),
+    lightLevel: overrides.lightLevel ?? null,
     lightModel: overrides.lightModel ?? null,
     lights: pick("lights"),
     parallax: pick("parallax"),
@@ -404,10 +417,12 @@ export function toLevelRendererFeatures(
     enhancedBloom: toLevelModeFeature("enhancedBloom", settings, view),
     fog: toLevelModeFeature("fog", settings, view),
     glass: toLevelModeFeature("glass", settings, view),
+    grading: toLevelModeFeature("grading", settings, view),
     grass: toLevelRendererFeature("grass", settings, view, toggles.isGrassy),
     indirectLight: toLevelModeFeature("indirectLight", settings, view),
     isDepthPrepassed: settings.isDepthPrepassed && toggles.isDepthPrepassed,
     isOcclusionCulled: settings.isOcclusionCulled && toggles.isOcclusionCulled,
+    lightLevel: view.lightLevel ?? settings.lightLevel,
     lightModel: view.lightModel ?? settings.lightModel,
     lights: toLevelRendererFeature("lights", settings, view, toggles.isLamplit),
     parallax: toLevelModeFeature("parallax", settings, view),

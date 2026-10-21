@@ -429,6 +429,7 @@ struct ExposureHistogram {
   aim: f32,
   reference_log: f32,
   kept_share: f32,
+  darkest_log: f32,
   delta: f32,
   brightening: f32,
   darkening: f32,

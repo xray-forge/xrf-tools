@@ -9,6 +9,7 @@ import {
   ERenderFoliageMode,
   ERenderGlassMode,
   ERenderIndirectLightMode,
+  ERenderLightLevel,
   ERenderLightModel,
   ERenderLightShadowFilter,
   ERenderParallaxMode,
@@ -33,6 +34,7 @@ import {
   DEFAULT_RENDER_FOG_SETTINGS,
   DEFAULT_RENDER_FOLIAGE_SETTINGS,
   DEFAULT_RENDER_GLASS_SETTINGS,
+  DEFAULT_RENDER_GRADING_SETTINGS,
   DEFAULT_RENDER_GRASS_SETTINGS,
   DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
   DEFAULT_RENDER_LIGHTS_SETTINGS,
@@ -84,6 +86,7 @@ const BASE_PRESET: IRenderFeatureSettings = {
   fog: { ...DEFAULT_RENDER_FOG_SETTINGS, mode: ERenderFogMode.ENHANCED },
   // Glass refracting what is behind it.
   glass: { ...DEFAULT_RENDER_GLASS_SETTINGS, mode: ERenderGlassMode.ENHANCED },
+  grading: DEFAULT_RENDER_GRADING_SETTINGS,
   // The enhanced foliage motion, each tuft stood along its ground's slope, planted out to 150 m rather than the
   // engine's 49 (nearer, its edge shows on the slopes ahead), and shadowed by the contact shadows alone out to 75 m:
   // cards in the cascades cost more than they show.
@@ -101,9 +104,11 @@ const BASE_PRESET: IRenderFeatureSettings = {
   // The opaque surfaces' depth drawn first, so a pixel under stacked walls, decks and trunks is shaded once.
   isDepthPrepassed: true,
   isOcclusionCulled: true,
-  // Anomaly's soft shadows for the lamps.
+  // The weathers' and the lamps' own brightness, where the light is physical.
+  lightLevel: ERenderLightLevel.AUTHORED,
   // The engine's light model while the physical one is built and calibrated.
   lightModel: ERenderLightModel.ENGINE,
+  // Anomaly's soft shadows for the lamps.
   lights: { ...DEFAULT_RENDER_LIGHTS_SETTINGS, shadowFilter: ERenderLightShadowFilter.SOFT },
   // Trees stand in as impostors twice as far as the engine's: a clump's screen area falls with its distance squared
   // and the thresholds are squared, so half the engine's `r_ssaLOD_A` and `r_ssaLOD_B`.
@@ -195,12 +200,15 @@ const EDITING_PRESET: IRenderFeatureSettings = {
   exposure: DEFAULT_RENDER_EXPOSURE_SETTINGS,
   fog: DEFAULT_RENDER_FOG_SETTINGS,
   glass: DEFAULT_RENDER_GLASS_SETTINGS,
+  grading: DEFAULT_RENDER_GRADING_SETTINGS,
   grass: { ...DEFAULT_RENDER_GRASS_SETTINGS, isEnabled: false },
   indirectLight: DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
   isDepthPrepassed: false,
   isOcclusionCulled: true,
-  // Unshadowed, the lights cost a pass over the screen: an editor keeps seeing what lights a room.
+  // The weathers' and the lamps' own brightness, where the light is physical.
+  lightLevel: ERenderLightLevel.AUTHORED,
   lightModel: ERenderLightModel.ENGINE,
+  // Unshadowed, the lights cost a pass over the screen: an editor keeps seeing what lights a room.
   lights: { ...DEFAULT_RENDER_LIGHTS_SETTINGS, isShadowed: false },
   lod: DEFAULT_RENDER_LOD_SETTINGS,
   parallax: DEFAULT_RENDER_PARALLAX_SETTINGS,

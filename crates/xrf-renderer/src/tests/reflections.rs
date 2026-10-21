@@ -9,6 +9,7 @@ use crate::contract::render_reflection_probe::RenderReflectionProbe;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_trace_size::RenderTraceSize;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
@@ -54,6 +55,7 @@ fn lighting_uniform(options: &RenderViewOptions, lighting: &RenderLighting) -> L
     &LightingFrame {
       is_adapting: false,
       pre_exposure: PreExposure::NONE,
+      light_units: LightUnits::NONE,
       sky_blend: 0.0,
       is_irradiance_up: false,
       clouds_time: 0.0,

@@ -73,20 +73,37 @@ fn pbr_neutral(light: vec3<f32>) -> vec3<f32> {
   return saturate(mix(scaled, vec3<f32>(compressed), grey));
 }
 
-// A colour of the scene as the display shows it under `mode`.
-fn shown_for_display(colour: vec3<f32>, mode: u32) -> vec3<f32> {
+// What a `display` shows a frame as without grading it: as it is (`DISPLAY_AS_IS`), contrast and saturation one.
+const DISPLAY_UNGRADED: vec4<f32> = vec4<f32>(0.0, 1.0, 1.0, 0.0);
+
+// Scene-referred light graded before the physical light's transform: its luminance raised to `contrast` in stops about
+// middle grey, and its colour mixed from that luminance by `saturation`; one leaves either as it is.
+fn graded(light: vec3<f32>, contrast: f32, saturation: f32) -> vec3<f32> {
+  let luminance_was: f32 = max(luminance(light), 1e-6);
+  let luminance_is: f32 = MIDDLE_GREY * pow(luminance_was / MIDDLE_GREY, contrast);
+  let scaled: vec3<f32> = light * (luminance_is / luminance_was);
+
+  return max(mix(vec3<f32>(luminance_is), scaled, saturation), vec3<f32>(0.0));
+}
+
+// A colour of the scene as the display shows it under a `display` (`PresentUniform::display`): its mode, then the
+// physical light's contrast and saturation, which grade it before its transform.
+fn shown_for_display(colour: vec3<f32>, display: vec4<f32>) -> vec3<f32> {
+  let mode: u32 = u32(display.x);
+  let light: vec3<f32> = select(colour, graded(colour, display.y, display.z), mode >= DISPLAY_ENGINE_ENCODED);
+
   switch (mode) {
     case DISPLAY_TONEMAPPED: {
       return tonemap(colour, 1.0);
     }
     case DISPLAY_ENGINE_ENCODED: {
-      return srgb_encoded(tonemap(colour, 1.0));
+      return srgb_encoded(tonemap(light, 1.0));
     }
     case DISPLAY_AGX: {
-      return srgb_encoded(agx(colour));
+      return srgb_encoded(agx(light));
     }
     case DISPLAY_PBR_NEUTRAL: {
-      return srgb_encoded(pbr_neutral(colour));
+      return srgb_encoded(pbr_neutral(light));
     }
     default: {
       return colour;
