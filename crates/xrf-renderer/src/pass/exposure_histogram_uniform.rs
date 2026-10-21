@@ -4,9 +4,9 @@ use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_light_level::RenderLightLevel;
 
 /// How the physical light's exposure meters and adapts, as `shaders/frame/exposure_histogram.wgsl` reads it: the log2
-/// luminance the histogram's bins span, the luminance the frame is brought to, how much of a scene's distance from a
-/// daylit exterior it keeps, how far it may move this frame each way, the share of the darkest and the brightest light
-/// the average leaves out, and the scale's bounds.
+/// luminance the histogram's bins span, the luminance a daylit exterior's average is brought to, how much of a scene's
+/// distance from a daylit exterior it keeps, how far it may move this frame each way, the share of the darkest and the
+/// brightest light the average leaves out, and the scale's bounds.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "ExposureHistogram")]
@@ -35,13 +35,17 @@ impl ExposureHistogramUniform {
   /// The luminance the bins span, log2: about 1/16 000 cd/m², under starlight, to 65 000, sunlit snow and past it.
   pub const LEAST_LOG: f32 = -14.0;
   pub const MOST_LOG: f32 = 16.0;
-  /// The luminance the average is brought to: middle grey.
+  /// The luminance the compensation's aim stands at: middle grey.
   pub const MIDDLE_GREY: f32 = 0.18;
-  /// The log2 luminance of a daylit exterior's average, about 1 260 cd/m², which is shown at the aim; a darker or
-  /// brighter scene keeps this share of its distance from it, so a cellar stays darker than noon and snow brighter, as
-  /// the eye adapts only part of the way: two thirds, which shows a shaded dawn as darkly as the engine's meter does.
-  pub const REFERENCE_LOG: f32 = 10.3;
-  pub const KEPT_SHARE: f32 = 0.67;
+  /// The log2 luminance of a daylit exterior's average as the level meters it, the sky left out (about 510 cd/m²).
+  pub const DAYLIT_LOG: f32 = 9.0;
+  /// The stops under the aim a daylit exterior's average is shown at, as the engine's display shows the game's noon.
+  pub const DAYLIT_STOPS: f32 = -2.45;
+  /// The share of a scene's distance from a daylit exterior it keeps, as the eye adapts only part of the way.
+  pub const KEPT_SHARE: f32 = 0.41;
+  /// The share of the frame's adaptation the game's pictures (its sky, clouds and fog) are held back from: painted at
+  /// their own levels, they show as the engine shows them when they follow the rest of it.
+  pub const PICTURE_HELD_SHARE: f32 = 0.3;
   /// Stops under the aim the physical light levels show the darkest scene at most, so a moonlit night shows dark but
   /// readable; the authored levels' dark never reaches it.
   pub const PHYSICAL_DARKEST_STOPS: f32 = 4.0;
@@ -56,26 +60,32 @@ impl ExposureHistogramUniform {
   pub const LEAST_SCALE_LOG: f32 = -18.0;
   pub const MOST_SCALE_LOG: f32 = 8.0;
 
-  /// The scale a daylit exterior is shown at, its average at the aim, raised by `compensation` stops: the physical
-  /// light's first and the one it holds while it does not adapt.
+  /// The scale a daylit exterior is shown at, raised by `compensation` stops: the physical light's first, the one it
+  /// holds while it does not adapt, and the one the game's pictures are held towards.
   pub fn get_daylight_scale(compensation: f32) -> f32 {
-    (Self::MIDDLE_GREY.log2() + compensation - Self::REFERENCE_LOG).exp2()
+    (Self::MIDDLE_GREY.log2() + compensation + Self::DAYLIT_STOPS - Self::DAYLIT_LOG).exp2()
+  }
+
+  /// The share of the frame's exposure, the light written at `pre_exposure`, the game's pictures are shown at: the
+  /// frame's distance from a daylit exterior's exposure, less the share they are held back from.
+  pub fn get_picture_share(compensation: f32, pre_exposure: f32) -> f32 {
+    (Self::get_daylight_scale(compensation) / pre_exposure).powf(Self::PICTURE_HELD_SHARE)
   }
 
   /// The metering for a frame `delta` seconds after the last at the light's `level`, straight to its target where
   /// `is_snapped`.
   pub fn new(settings: &RenderExposureSettings, level: RenderLightLevel, delta: f32, is_snapped: bool) -> Self {
-    let aim: f32 = Self::MIDDLE_GREY * settings.compensation.exp2();
+    let aim: f32 = Self::MIDDLE_GREY.log2() + settings.compensation;
 
     Self {
       least_log: Self::LEAST_LOG,
       span_log: Self::MOST_LOG - Self::LEAST_LOG,
-      aim,
-      reference_log: Self::REFERENCE_LOG,
+      aim: (aim + Self::DAYLIT_STOPS).exp2(),
+      reference_log: Self::DAYLIT_LOG,
       kept_share: Self::KEPT_SHARE,
       darkest_log: match level {
         RenderLightLevel::Authored => Self::LEAST_LOG,
-        RenderLightLevel::Physical => aim.log2() - Self::PHYSICAL_DARKEST_STOPS,
+        RenderLightLevel::Physical => aim - Self::PHYSICAL_DARKEST_STOPS,
       },
       delta,
       brightening: Self::BRIGHTENING,

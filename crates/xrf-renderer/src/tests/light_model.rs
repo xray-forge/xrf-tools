@@ -223,7 +223,7 @@ fn each_view_is_shown_by_its_light_models_display_mode() {
 
 // A light of one in the engine's units is ten thousand cd/m² under the physical light at its authored levels, the
 // weather's lights taking the key light's gain, and has no units under the engine's; the physical exposure starts, and
-// holds while it does not adapt, where a daylit exterior's average is middle grey, raised by the compensation's stops.
+// holds while it does not adapt, where a daylit exterior's average is shown, raised by the compensation's stops.
 #[test]
 fn the_physical_light_is_in_cd_per_square_metre() {
   let lighting: RenderLighting = RenderLighting::default();
@@ -243,10 +243,16 @@ fn the_physical_light_is_in_cd_per_square_metre() {
   );
 
   let daylight: f32 = ExposureHistogramUniform::get_daylight_scale(0.0);
-  let reference: f32 = ExposureHistogramUniform::REFERENCE_LOG.exp2();
+  let shown: f32 = ExposureHistogramUniform::MIDDLE_GREY * ExposureHistogramUniform::DAYLIT_STOPS.exp2();
 
-  assert!((daylight * reference - ExposureHistogramUniform::MIDDLE_GREY).abs() < 1e-5);
+  assert!((daylight * ExposureHistogramUniform::DAYLIT_LOG.exp2() - shown).abs() < 1e-5);
   assert!((ExposureHistogramUniform::get_daylight_scale(1.0) / daylight - 2.0).abs() < 1e-4);
+
+  // The pictures stand at the frame's exposure by day and keep back their share of a night's lift.
+  let held: f32 = ExposureHistogramUniform::PICTURE_HELD_SHARE;
+
+  assert!((ExposureHistogramUniform::get_picture_share(0.0, daylight) - 1.0).abs() < 1e-5);
+  assert!((ExposureHistogramUniform::get_picture_share(0.0, daylight * 32.0) - 32.0_f32.powf(-held)).abs() < 1e-5);
 }
 
 // The physical light lights the hemisphere by the sky's irradiance as the sky feature read it back, keeping whether the

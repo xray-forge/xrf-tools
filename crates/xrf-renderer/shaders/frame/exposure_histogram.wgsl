@@ -1,9 +1,9 @@
 #import "common/luminance"
 
 // The physical light's exposure: the scene's light counted into a histogram of its log2 luminance, a texel in every
-// four each way, the centre weighed up to four times the edges and the level eight times the sky, then the average
-// between the darkest and the brightest shares the settings leave out brought to the target, less the share of its
-// distance from a daylit exterior it keeps, never under the dark's limit, the scale moving towards it at most so many
+// four each way, the centre weighed up to four times the edges and the sky not at all, then the average between the
+// darkest and the brightest shares the settings leave out brought to where a daylit exterior's is shown, less the
+// share of its distance from one it keeps, never under the dark's limit, the scale moving towards it at most so many
 // stops a second, faster darkening than brightening.
 
 #import "generated/frame/exposure_histogram"
@@ -12,9 +12,6 @@
 const BINS: u32 = 128u;
 // Texels each way a sample stands for.
 const SAMPLE_STRIDE: u32 = 4u;
-// How many times a texel of the level counts against one of the sky: the exposure is the ground's, so an open sky
-// filling half the frame does not darken the ground under it, while a frame of sky alone still meters.
-const GROUND_WEIGHT: u32 = 8u;
 // Invocations a counting workgroup runs each way (`ExposurePass::HISTOGRAM_WORKGROUP`).
 const HISTOGRAM_WORKGROUP: u32 = 16u;
 
@@ -38,8 +35,10 @@ fn cs_bin(@builtin(global_invocation_id) id: vec3<u32>, @builtin(local_invocatio
     let at: f32 = saturate((log2(max(light, 1e-9)) - params.least_log) / params.span_log);
     let bin: u32 = min(u32(at * f32(BINS)), BINS - 1u);
     let off_centre: f32 = length((vec2<f32>(texel) + 0.5) / vec2<f32>(size) - 0.5) * 2.0;
+    // The exposure is the level's alone: the game's sky and sun are pictures with no level of their own against the
+    // ground's, so seeing them never darkens the ground under them, and a frame of sky alone holds the exposure it had.
     let is_sky: bool = textureLoad(depth_target, min(texel, textureDimensions(depth_target) - 1u), 0) <= 0.0;
-    let weight: u32 = (1u + u32(3.0 * saturate(1.0 - off_centre))) * select(GROUND_WEIGHT, 1u, is_sky);
+    let weight: u32 = select(1u + u32(3.0 * saturate(1.0 - off_centre)), 0u, is_sky);
 
     atomicAdd(&local_bins[bin], weight);
   }

@@ -16,8 +16,8 @@ pub struct RenderExposureSettings {
   pub low_luminance: f32,
   /// `r2_tonemap_adaptation`: how fast the scale follows the frame.
   pub adaptation: f32,
-  /// Stops the physical light's exposure brings the frame above middle grey, or below where negative; the engine's
-  /// exposure has no such setting.
+  /// Stops the physical light's exposure lifts the frame over the level it meters it at, or lowers it where negative;
+  /// the engine's exposure has no such setting.
   pub compensation: f32,
 }
 

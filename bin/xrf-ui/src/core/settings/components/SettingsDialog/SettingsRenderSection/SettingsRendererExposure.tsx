@@ -145,7 +145,9 @@ export function SettingsRendererExposure(): ReactElement {
 
         <SliderFormRow
           label={"Compensation"}
-          description={"Stops the physical light's exposure brings the frame above middle grey, or below it."}
+          description={
+            "Stops the physical light's exposure lifts the frame over the level it meters it at, or lowers it."
+          }
           value={exposure.compensation}
           {...RENDER_EXPOSURE_LIMITS.compensation}
           isDisabled={!isPhysical}

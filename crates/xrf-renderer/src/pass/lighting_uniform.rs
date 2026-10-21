@@ -10,6 +10,7 @@ use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::authored_light;
 use crate::pass::bitmask_search::BitmaskSearch;
+use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::reflection_trace::ReflectionTrace;
 
@@ -83,6 +84,9 @@ pub struct LightingUniform {
   /// The roughness from which a traced reflection fades into the prefiltered sky, and past which a surface is not
   /// traced.
   pub reflection_cut: Vec4,
+  /// The share of the frame's exposure the game's pictures (the sky, the clouds, the fog's colour) are shown at
+  /// (`ExposureHistogramUniform::get_picture_share`) at the authored levels, else one.
+  pub pictures: Vec4,
 }
 
 impl LightingUniform {
@@ -224,6 +228,22 @@ impl LightingUniform {
 
         Vec4::new(limit * (2.0 / 3.0), limit, 0.0, 0.0)
       },
+      // The game paints its sky and fog at their own levels against the ground's: adapting to a night or a cellar lifts
+      // what is lit and most of the pictures with it, as the engine's display shows them, rather than lifting a night
+      // sky's eight-bit steps and its fog into a glare.
+      pictures: Vec4::new(
+        if is_physical && options.features.light_level == RenderLightLevel::Authored {
+          ExposureHistogramUniform::get_picture_share(
+            options.features.exposure.compensation,
+            frame.pre_exposure.current,
+          )
+        } else {
+          1.0
+        },
+        0.0,
+        0.0,
+        0.0,
+      ),
     }
   }
 }
