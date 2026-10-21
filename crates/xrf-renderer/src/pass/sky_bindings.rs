@@ -77,11 +77,11 @@ impl SkyBindings {
     }
   }
 
-  /// Imports a frame's sky views and its prefiltered sky cube into its graph, as the parameters every pass drawing
-  /// the sky binds.
+  /// Imports a frame's sky views and its prefiltered sky cubes, the whole and the sky alone, into its graph, as the
+  /// parameters every pass drawing the sky binds.
   pub fn import<'r>(
     &'r self,
-    (views, prefiltered): (&'r SkyViews, &'r wgpu::TextureView),
+    (views, (prefiltered, alone)): (&'r SkyViews, (&'r wgpu::TextureView, &'r wgpu::TextureView)),
     graph: &mut FrameGraph<'_>,
     bindings: &mut GraphBindings<'r>,
   ) -> SkyParameters<'r> {
@@ -97,6 +97,7 @@ impl SkyBindings {
       [("sky clouds 0", &views.clouds[0]), ("sky clouds 1", &views.clouds[1])].map(|(label, view)| import(label, view));
     let sky_sun: GraphTexture = import("sky sun", &views.sun);
     let sky_prefiltered: GraphTexture = import("sky prefiltered", prefiltered);
+    let sky_prefiltered_alone: GraphTexture = import("sky prefiltered alone", alone);
     let environments: [GraphTexture; _] =
       std::array::from_fn(|slot| import("environment cube", &views.environments[slot]));
 
@@ -112,6 +113,7 @@ impl SkyBindings {
       environments,
       sky_sun,
       sky_prefiltered,
+      sky_prefiltered_alone,
     }
   }
 }

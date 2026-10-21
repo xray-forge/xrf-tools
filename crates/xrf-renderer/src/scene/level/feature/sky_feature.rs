@@ -31,6 +31,7 @@ use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::sky_irradiance::SkyIrradiance;
 use crate::scene::level::feature::sky_prefilter::SkyPrefilter;
+use crate::scene::level::feature::sky_prefilter_level::SkyPrefilterLevel;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::sky_views::SkyViews;
@@ -142,13 +143,13 @@ impl SkyFeature {
 
     let job: PeriodicJob = if self.is_filled {
       PeriodicJob::new_waiting(
-        &SkyPrefilterPass::PASSES,
+        &SkyPrefilterPass::FILL_PASSES,
         Self::REFILL_SEED,
         1.0,
         (self.waited, Self::REFILL_WAIT_MOST),
       )
     } else {
-      PeriodicJob::new_now(&SkyPrefilterPass::PASSES, Self::REFILL_SEED, 1.0)
+      PeriodicJob::new_now(&SkyPrefilterPass::FILL_PASSES, Self::REFILL_SEED, 1.0)
     };
 
     self.refill = Some(scheduler.offer(job));
@@ -286,12 +287,12 @@ impl SkyFeature {
     )>,
   ) -> Option<SkyParameters<'a>> {
     let views: &'a SkyViews = self.views.as_ref()?;
-    let cube: &'a wgpu::TextureView = match (&self.prefilter, &self.unfiltered) {
-      (Some(prefilter), _) => &prefilter.cube,
-      (None, Some(unfiltered)) => unfiltered,
+    let cubes: (&'a wgpu::TextureView, &'a wgpu::TextureView) = match (&self.prefilter, &self.unfiltered) {
+      (Some(prefilter), _) => (&prefilter.cube, &prefilter.alone),
+      (None, Some(unfiltered)) => (unfiltered, unfiltered),
       (None, None) => return None,
     };
-    let sky: SkyParameters = passes.sky.import((views, cube), &mut *graph, &mut *bindings);
+    let sky: SkyParameters = passes.sky.import((views, cubes), &mut *graph, &mut *bindings);
 
     if let Some(irradiance) = &self.irradiance {
       irradiance.add_passes((&mut *graph, &mut *bindings), passes, (&sky, &lit));
@@ -328,7 +329,9 @@ impl SkyFeature {
 
   /// Adds the passes filling the prefiltered sky cube this frame, a mip each: the first the surroundings cube's face
   /// drawn this frame, the level around the camera lit with the sky behind, or the sky's cubes alone as the sky is
-  /// drawn where none is; each after it from the mips before it over its roughness's lobe.
+  /// drawn where none is; each after it from the mips before it over its roughness's lobe. Where this frame refills,
+  /// each mip of the sky alone's cube follows the whole cube's: its first the sky where the whole cube's first holds no
+  /// surroundings, each after it from its own mips before it.
   fn add_prefilter_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -342,6 +345,45 @@ impl SkyFeature {
   ) {
     let (lighting, exposure): (UniformBinding<LightingUniform>, GraphBuffer) = (lit.lighting, lit.exposure);
     let empty: GraphTexture = bindings.import_view(&mut *graph, "sky prefilter none", passes.sky_prefilter.get_empty());
+
+    // One mip of either cube from what it reads, the whole cube's or the sky alone's.
+    let fill = |(graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+                index: usize,
+                (source, faces): (GraphTexture, GraphTexture),
+                is_alone: bool| {
+      let level: &SkyPrefilterLevel = &prefilter.levels[index];
+      let settings: UniformBinding<SkyPrefilterUniform> = runtime.push_uniform(&SkyPrefilterUniform::new(
+        index as u32,
+        prefilter.levels.len() as u32,
+        (level.size, prefilter.probe.get_size()),
+        SkyPrefilterPass::SAMPLES,
+        is_alone,
+      ));
+      let parameters: SkyPrefilterParameters = SkyPrefilterParameters {
+        sky_cube_0: sky.sky_cube_0,
+        sky_cube_1: sky.sky_cube_1,
+        sky_clouds_0: sky.sky_clouds_0,
+        sky_clouds_1: sky.sky_clouds_1,
+        sky_clamp: sky.sky_clamp,
+        sky_repeat: sky.sky_repeat,
+        source,
+        lighting,
+        exposure: StorageValue::new(exposure),
+        settings,
+        faces,
+      };
+      let size: u32 = level.size;
+      let name: &'static str = if is_alone {
+        SkyPrefilterPass::ALONE_PASSES[index]
+      } else {
+        SkyPrefilterPass::PASSES[index]
+      };
+
+      graph
+        .add_compute_pass(name)
+        .parameters(&parameters)
+        .record(move |context| passes.sky_prefilter.record(context, size, &parameters));
+    };
 
     for (index, level) in prefilter.levels.iter().enumerate() {
       let source: GraphTexture = level.source.as_ref().map_or(empty, |before| {
@@ -358,50 +400,31 @@ impl SkyFeature {
           (lit, sky),
           faces,
         );
-
-        continue;
+      } else if self.is_refilled {
+        fill((&mut *graph, &mut *runtime), index, (source, faces), false);
       }
 
-      if !self.is_refilled {
-        continue;
-      }
-      let settings: UniformBinding<SkyPrefilterUniform> = runtime.push_uniform(&SkyPrefilterUniform::new(
-        index as u32,
-        prefilter.levels.len() as u32,
-        (level.size, prefilter.probe.get_size()),
-        SkyPrefilterPass::SAMPLES,
-      ));
-      let parameters: SkyPrefilterParameters = SkyPrefilterParameters {
-        sky_cube_0: sky.sky_cube_0,
-        sky_cube_1: sky.sky_cube_1,
-        sky_clouds_0: sky.sky_clouds_0,
-        sky_clouds_1: sky.sky_clouds_1,
-        sky_clamp: sky.sky_clamp,
-        sky_repeat: sky.sky_repeat,
-        source,
-        lighting,
-        exposure: StorageValue::new(exposure),
-        settings,
-        faces,
-      };
-      let size: u32 = level.size;
+      // The sky alone's mip after the whole cube's, whose first it masks by and whose lobes it shares.
+      if self.is_refilled {
+        let alone: (GraphTexture, GraphTexture) = (
+          bindings.import_view(&mut *graph, "sky prefilter before", &level.alone_source),
+          bindings.import_view(&mut *graph, "sky prefilter level", &level.alone_target),
+        );
 
-      graph
-        .add_compute_pass(SkyPrefilterPass::PASSES[index])
-        .parameters(&parameters)
-        .record(move |context| passes.sky_prefilter.record(context, size, &parameters));
+        fill((&mut *graph, &mut *runtime), index, alone, true);
+      }
     }
   }
 }
 
 impl ViewFeature for SkyFeature {
-  /// The prefiltered cube, every mip of its six faces, and the sky's irradiance.
+  /// The prefiltered cubes, the whole and the sky alone, every mip of their six faces, and the sky's irradiance.
   fn get_memory(&self) -> u64 {
     let prefilter: u64 = self.prefilter.as_ref().map_or(0, |prefilter| {
       let size: u64 = u64::from(prefilter.probe.get_size());
 
       (0..prefilter.levels.len() as u32)
-        .map(|level| (size >> level).max(1).pow(2) * 6 * 8)
+        .map(|level| (size >> level).max(1).pow(2) * 6 * 8 * 2)
         .sum()
     });
 

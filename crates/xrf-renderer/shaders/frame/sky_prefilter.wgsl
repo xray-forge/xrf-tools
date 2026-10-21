@@ -8,7 +8,8 @@
 // nothing in front of: the first mip the sky itself, each after it the sky blurred by the GGX lobe of a rougher surface,
 // its roughness the mip over the last mip, so a reflection reads the cube at the mip its roughness names. The cube is
 // indexed by a direction in renderer space, the sky's own turn already taken, so a reader passes its reflected direction
-// as it is.
+// as it is. The sky alone's cube (`SkyPrefilter::alone`) is filled the same, its first mip the sky where the whole
+// cube's holds no surroundings, so a reader can tell the sky's share of a lobe from the lit surroundings'.
 
 // Both keyframes' sky cubes and clouds and their samplers, the mips filled before this one, the lighting, the exposure
 // whose scale the sky is drawn on, the mip's settings and the mip's six faces.
@@ -90,6 +91,12 @@ fn cs_prefilter(@builtin(global_invocation_id) id: vec3<u32>) {
     // At the pictures' share, as the frame shows its sky, so a reflection of it shows what the sky does.
     colour = sky_light(direction, lighting, sky_cube_0, sky_cube_1, sky_clamp, sky_clouds_0, sky_clouds_1, sky_repeat,
       picture_exposure(lighting, exposure)) * picture_share(lighting);
+
+    // The sky alone's: nothing where the whole cube's first mip (its `source` here) holds the surroundings, half a
+    // metre off or further, so a filtered read's sliver of a neighbour's distance does not cut the sky.
+    if (settings.shape.y > 0.5 && textureSampleLevel(source, sky_clamp, direction, 0.0).a > 0.5) {
+      colour = vec3<f32>(0.0);
+    }
   } else {
     colour = blurred_sky(direction, settings.level.y, u32(settings.level.z), f32(level));
   }

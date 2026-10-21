@@ -7,7 +7,8 @@ use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
 use crate::scene::level::feature::sky_prefilter::SkyPrefilter;
 
 /// Fills the prefiltered sky cube, a mip a dispatch: the first from the sky's own cubes as the sky is drawn, each after
-/// it by sampling the mips before it over the GGX lobe of its roughness.
+/// it by sampling the mips before it over the GGX lobe of its roughness; and the sky alone's cube the same, its first
+/// mip the sky where the whole cube's first holds no surroundings.
 pub struct SkyPrefilterPass {
   layout: wgpu::BindGroupLayout,
   pipeline: wgpu::ComputePipeline,
@@ -31,6 +32,39 @@ impl SkyPrefilterPass {
     "sky prefilter 6",
     "sky prefilter 7",
     "sky prefilter 8",
+  ];
+  /// Each mip's pass of the sky alone's cube (`SkyPrefilter::alone`), by its mip.
+  pub const ALONE_PASSES: [&'static str; SkyPrefilter::MOST_LEVELS as usize] = [
+    "sky prefilter alone 0",
+    "sky prefilter alone 1",
+    "sky prefilter alone 2",
+    "sky prefilter alone 3",
+    "sky prefilter alone 4",
+    "sky prefilter alone 5",
+    "sky prefilter alone 6",
+    "sky prefilter alone 7",
+    "sky prefilter alone 8",
+  ];
+  /// Every pass a refill runs, both cubes', which the scheduler times it by.
+  pub const FILL_PASSES: [&'static str; 2 * SkyPrefilter::MOST_LEVELS as usize] = [
+    Self::PASSES[0],
+    Self::PASSES[1],
+    Self::PASSES[2],
+    Self::PASSES[3],
+    Self::PASSES[4],
+    Self::PASSES[5],
+    Self::PASSES[6],
+    Self::PASSES[7],
+    Self::PASSES[8],
+    Self::ALONE_PASSES[0],
+    Self::ALONE_PASSES[1],
+    Self::ALONE_PASSES[2],
+    Self::ALONE_PASSES[3],
+    Self::ALONE_PASSES[4],
+    Self::ALONE_PASSES[5],
+    Self::ALONE_PASSES[6],
+    Self::ALONE_PASSES[7],
+    Self::ALONE_PASSES[8],
   ];
   /// Directions a texel of a blurred mip samples over its lobe.
   pub const SAMPLES: u32 = 32;

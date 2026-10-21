@@ -142,6 +142,14 @@ fn fog_amount_at(state: Lighting, position: vec3<f32>, height: f32) -> f32 {
   return saturate(fog + height_fog_share(state, height) * fog * state.height_fog.y);
 }
 
+// How much of the sky a reflection sees at a surface the hemisphere reaches `visible` of: as much, or at the authored
+// levels that raised to the display's power, as the summed diffuse light (`authored_diffuse` in `common/hmodel`) takes
+// the baked hemisphere and the screen's occlusion inside it, so a crease darkens what it reflects as it darkens what
+// lights it, rather than leaving an occluded forest floor its sheen.
+fn reflected_visibility(state: Lighting, visible: f32) -> f32 {
+  return select(visible, pow(saturate(visible), SRGB_DISPLAY_POWER), state.summed_light.x > 0.0);
+}
+
 // Whether the light is physical (`RenderLightModel::Physical`): `engine.w`, written from the view's one rule as the
 // camera's `output.w` is, for the shared functions that take the lighting rather than read the camera.
 fn is_lighting_physical(state: Lighting) -> bool {

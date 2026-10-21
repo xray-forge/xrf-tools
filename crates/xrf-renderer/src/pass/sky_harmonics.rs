@@ -23,19 +23,29 @@ impl SkyHarmonics {
   const LEAST_CHANNEL_SHARE: f32 = 0.05;
 
   /// The luminance of the sky's irradiance over π a level surface facing up takes, in the engine's units, by the look's
-  /// hemisphere scale (`hemi`); none before the sky was projected. The nine harmonics at the zenith
-  /// (`common/sky_harmonics`, y up): the first, the second by y, and the third band's two that do not vanish there.
+  /// hemisphere scale (`hemi`); none before the sky was projected.
   pub fn get_zenith_irradiance(&self, hemi: f32) -> f32 {
-    let [c0, c1, _, _, _, _, c6, _, c8] = self.coefficients;
-
-    if c0.w < 0.5 {
+    if !self.is_projected() {
       return 0.0;
     }
 
-    let zenith: Vec3 =
-      c0.truncate() * 0.282_095 + c1.truncate() * 0.488_603 - c6.truncate() * 0.315_392 - c8.truncate() * 0.546_274;
+    (Self::get_zenith(&self.coefficients) * hemi)
+      .dot(Vec3::new(0.2126, 0.7152, 0.0722))
+      .max(0.0)
+  }
 
-    (zenith * hemi).dot(Vec3::new(0.2126, 0.7152, 0.0722)).max(0.0)
+  /// Whether the sky was projected.
+  pub fn is_projected(&self) -> bool {
+    self.coefficients[0].w > 0.5
+  }
+
+  /// The irradiance over π `coefficients` give a level surface facing up, per channel: the nine harmonics at the
+  /// zenith (`common/sky_harmonics`, y up), the first, the second by y, and the third band's two that do not vanish
+  /// there.
+  pub fn get_zenith(coefficients: &[Vec4; 9]) -> Vec3 {
+    let [c0, c1, _, _, _, _, c6, _, c8] = *coefficients;
+
+    c0.truncate() * 0.282_095 + c1.truncate() * 0.488_603 - c6.truncate() * 0.315_392 - c8.truncate() * 0.546_274
   }
 
   /// The coefficients the lighting carries at the light's `level`, the look's hemisphere scale (`hemi`) in them. At

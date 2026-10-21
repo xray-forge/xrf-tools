@@ -14,3 +14,4 @@ enable wgpu_binding_array;
 @group(2) @binding(8) var environments: binding_array<texture_cube<f32>, 16>;
 @group(2) @binding(9) var sky_sun: texture_2d<f32>;
 @group(2) @binding(10) var sky_prefiltered: texture_cube<f32>;
+@group(2) @binding(11) var sky_prefiltered_alone: texture_cube<f32>;

@@ -162,10 +162,15 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let terms: HmodelTerms = shaded_terms(vec4<f32>(albedo.rgb, max(albedo.a - reach, 0.0)), light, normal, position,
     material.z, occlusion, bounced);
   var shaded: vec3<f32> = terms.base;
+  // What the surface shows of the light it scatters, which the enhanced specular takes its share from.
+  var diffuse: vec3<f32> = terms.lit;
 
   // The light the frame's surfaces bounce onto this one, lighting its albedo as the hemisphere does.
   if (lighting.indirect.x > 0.5) {
-    shaded += albedo.rgb * upsampled_light(indirect_light, floor(in.clip.xy), -position.z);
+    let indirect: vec3<f32> = albedo.rgb * upsampled_light(indirect_light, floor(in.clip.xy), -position.z);
+
+    shaded += indirect;
+    diffuse += indirect;
   }
 
   // What the surface reflects, before the fog, which lies between the camera and it alike. Engine: the environment
@@ -191,13 +196,17 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     if (kept < 1.0) {
       let reflected: vec3<f32> = world_direction(reflect(normalize(position), normal));
       let aimed: vec3<f32> = surroundings_direction(sky_prefiltered, sky_clamp, world_offset(position), reflected);
-      let sky: vec3<f32> = prefiltered_sky(sky_prefiltered, sky_clamp, aimed, roughness) * light_scale(lighting) *
-        specular_occlusion(facing, occlusion * visible, roughness);
+      let sky: vec3<f32> = reflected_sky(lighting, sky_prefiltered, sky_prefiltered_alone, sky_clamp, aimed, roughness,
+        roughness) *
+        light_scale(lighting) *
+        specular_occlusion(facing, reflected_visibility(lighting, occlusion * visible), roughness);
 
       radiance = mix(sky, radiance, kept);
     }
 
-    shaded += radiance * brdf;
+    // The light the surface reflects is light its diffuse does not scatter: the diffuse gives up the specular's share,
+    // so the two never pass what reaches the surface.
+    shaded += radiance * brdf - diffuse * brdf;
 
     // The sun on a wet surface's water film, which the engine's specular leaves out with the gloss the wetness added:
     // its disc in the film's lobe, as far as a puddle's coat or the wet reach covers the surface, shadowed as the sun's
