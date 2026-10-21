@@ -11,6 +11,16 @@ fn material_lookup(table: texture_3d<f32>, table_sampler: sampler, x: f32, y: f3
   return textureSampleLevel(table, table_sampler, vec3<f32>(x, y, slice), 0.0);
 }
 
+// The hemisphere's light under the physical light, without the light's scale, from its colour (by the lights' `gain`
+// where the diffuse is summed) and the cubes' value: at the physical levels the cubes decoded and the colour's hue
+// (`srgb_light`); at the authored levels the engine's own square, its hue decoded per channel as the display decodes
+// it, its strength the engine's units for `authored_diffuse` to raise.
+fn physical_hemisphere(colour: vec3<f32>, irradiance: vec3<f32>, gain: f32) -> vec3<f32> {
+  let engine: vec3<f32> = colour * irradiance / max(gain, 1e-6);
+
+  return select(srgb_light(colour) * srgb_decoded(irradiance), srgb_light(engine * engine) * gain, gain > 0.0);
+}
+
 // `env_color * lerp(env_s0, env_s1, w)` along a world direction, squared as `hmodel` squares it: the lighting's
 // stand-in until both cubes are up. The cubes take the engine's coordinate, whose `z` is the renderer's negated.
 fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>, cube_sampler: sampler,
@@ -24,9 +34,8 @@ fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: te
   let irradiance: vec3<f32> = mix(state.sky_irradiance.rgb, cubes, state.sky_irradiance.w);
   let environment: vec3<f32> = state.environment.rgb * irradiance;
 
-  // The engine's square stands in for decoding the product; the physical light decodes the cubes, a picture, and keeps
-  // the hemisphere colour's strength with its hue decoded (`srgb_light`), then gives them the light's scale.
-  let physical: vec3<f32> = srgb_light(state.environment.rgb) * srgb_decoded(irradiance);
+  // The engine's square stands in for decoding the product; the physical light decodes it (`physical_hemisphere`).
+  let physical: vec3<f32> = physical_hemisphere(state.environment.rgb, irradiance, state.summed_light.x);
 
   return select(environment * environment, physical, is_lighting_physical(state)) * light_scale(state);
 }

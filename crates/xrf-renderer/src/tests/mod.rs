@@ -1,3 +1,4 @@
+mod authored_light;
 mod backdrop;
 mod bloom;
 mod camera_view;

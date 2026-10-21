@@ -6,7 +6,8 @@ use crate::contract::render_light_level::RenderLightLevel;
 /// The sky's irradiance as order-2 spherical harmonics, as `shaders/frame/sky_irradiance.wgsl` writes it: nine
 /// coefficients, each in a vector's colour, of the irradiance over π in the engine's light units, already convolved by
 /// the cosine; the first's `w` one once the sky was projected, nothing before; the second to fourth's `w` the authored
-/// hemisphere's first coefficient (`hemisphere_environment`, the look's hemisphere scale in it), its level.
+/// hemisphere's first coefficient (`hemisphere_environment`: the engine's own square of the hemisphere colour and the
+/// cubes, its hue decoded per channel, the look's hemisphere scale in it), its level.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "SkyHarmonics")]
