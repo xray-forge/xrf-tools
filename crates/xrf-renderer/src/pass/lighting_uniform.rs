@@ -13,7 +13,6 @@ use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::reflection_trace::ReflectionTrace;
-use crate::pass::sky_harmonics::SkyHarmonics;
 
 /// The lighting the shaders read as their `Lighting`: one viewport's, since the sun is given in its view space.
 #[repr(C)]
@@ -94,12 +93,6 @@ pub struct LightingUniform {
   /// by the look's sun scale, which the sun's shafts add to the frame's display values (`fs_sun_shafts_over`): at the
   /// authored levels; nought elsewhere.
   pub summed_light: Vec4,
-  /// What a rough lobe turns each channel of the sky a reflection meets by (`reflected_sky` in
-  /// `common/reflection_trace`), then one where it does: at the authored levels, the hue of the hemisphere and the
-  /// ambient that light the land over the hue of the sky as drawn, its luminance kept, so a rough surface reflects the
-  /// sky in the colour its diffuse is lit by, where the game's picture stands far bluer than the hemisphere it authors;
-  /// ones and nought elsewhere.
-  pub reflected_sky: Vec4,
 }
 
 impl LightingUniform {
@@ -135,32 +128,6 @@ impl LightingUniform {
       None => light(lighting.get_sun_color(&options.features.light_scales))
         .extend(lighting.get_sun_specular(&options.features.light_scales, is_physical) * gain * light_scale),
     };
-    let harmonics: [Vec4; 9] = frame
-      .sky_harmonics
-      .at_level(options.features.light_level, options.features.light_scales.hemi);
-    // The game paints its sky and fog at their own levels against the ground's: adapting to a night or a cellar lifts
-    // what is lit and most of the pictures with it, as the engine's display shows them, rather than lifting a night
-    // sky's eight-bit steps and its fog into a glare.
-    let pictures: Vec4 = if is_authored_physical {
-      let picture = |stops: f32| {
-        ExposureHistogramUniform::get_picture_share(
-          options.features.exposure.compensation,
-          frame.pre_exposure.current,
-          (stops, ExposureHistogramUniform::PICTURE_ADAPTATION),
-        )
-      };
-
-      Vec4::new(picture(ExposureHistogramUniform::PICTURE_STOPS), picture(0.0), 0.0, 0.0)
-    } else {
-      Vec4::new(1.0, 1.0, 0.0, 0.0)
-    };
-    let reflected_sky: Vec4 = if is_authored_physical && frame.sky_harmonics.is_projected() {
-      let ambient: Vec3 = authored_light(lighting.get_ambient(&options.features.light_scales), true) * gain;
-
-      Self::get_reflected_sky(&frame.sky_harmonics, &harmonics, ambient).extend(1.0)
-    } else {
-      Vec4::new(1.0, 1.0, 1.0, 0.0)
-    };
 
     Self {
       to_sun: to_sun.extend(0.0),
@@ -174,7 +141,9 @@ impl LightingUniform {
       // The hemisphere's colour by the weather's lights' gain, which `srgb_light` keeps as it scales.
       environment: (lighting.get_environment(&options.features.light_scales) * gain).extend(0.0),
       sky_irradiance: lighting.sky_irradiance.extend(flag(frame.is_irradiance_up)),
-      sky_harmonics: harmonics,
+      sky_harmonics: frame
+        .sky_harmonics
+        .at_level(options.features.light_level, options.features.light_scales.hemi),
       fog_color: fog.map_or(Vec3::ZERO, |fog| fog.color).extend(flag(fog.is_some())),
       fog: Vec4::new(
         offset,
@@ -266,7 +235,22 @@ impl LightingUniform {
 
         Vec4::new(limit * (2.0 / 3.0), limit, 0.0, 0.0)
       },
-      pictures,
+      // The game paints its sky and fog at their own levels against the ground's: adapting to a night or a cellar lifts
+      // what is lit and most of the pictures with it, as the engine's display shows them, rather than lifting a night
+      // sky's eight-bit steps and its fog into a glare.
+      pictures: if is_authored_physical {
+        let picture = |stops: f32| {
+          ExposureHistogramUniform::get_picture_share(
+            options.features.exposure.compensation,
+            frame.pre_exposure.current,
+            (stops, ExposureHistogramUniform::PICTURE_ADAPTATION),
+          )
+        };
+
+        Vec4::new(picture(ExposureHistogramUniform::PICTURE_STOPS), picture(0.0), 0.0, 0.0)
+      } else {
+        Vec4::new(1.0, 1.0, 0.0, 0.0)
+      },
       summed_light: if is_authored_physical {
         let sun: Vec3 = lighting.get_sun_color(&options.features.light_scales);
 
@@ -274,28 +258,6 @@ impl LightingUniform {
       } else {
         Vec4::ZERO
       },
-      reflected_sky,
     }
-  }
-
-  /// The most a rough lobe lifts a channel of the sky by, where its picture all but lacks it.
-  const MOST_REFLECTED_SKY: f32 = 4.0;
-  /// The share of a colour's luminance a channel of it is held to, so a channel it all but lacks is not lifted from
-  /// nothing.
-  const LEAST_REFLECTED_CHANNEL: f32 = 0.05;
-
-  /// What a rough lobe turns each channel of the sky a reflection meets by (`reflected_sky`): the hue of the light a
-  /// surface facing up is lit by at the authored levels, the hemisphere at its authored level (`harmonics`) and the
-  /// `ambient`, over the hue of the sky as drawn (`sky`), at the drawn sky's own luminance.
-  fn get_reflected_sky(sky: &SkyHarmonics, harmonics: &[Vec4; 9], ambient: Vec3) -> Vec3 {
-    let hue = |colour: Vec3| {
-      let luminance: f32 = colour.dot(Vec3::new(0.2126, 0.7152, 0.0722)).max(1e-12);
-
-      colour.max(Vec3::splat(luminance * Self::LEAST_REFLECTED_CHANNEL)) / luminance
-    };
-    let drawn: Vec3 = SkyHarmonics::get_zenith(&sky.coefficients);
-    let lit: Vec3 = SkyHarmonics::get_zenith(harmonics) + ambient;
-
-    (hue(lit) / hue(drawn)).min(Vec3::splat(Self::MOST_REFLECTED_SKY))
   }
 }

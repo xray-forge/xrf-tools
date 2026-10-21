@@ -604,8 +604,7 @@ fn trace_pixel(pixel: vec2<f32>) -> TraceTargets {
   let searched: vec2<i32> = min(texel / 2, vec2<i32>(textureDimensions(occlusion_target)) - 1);
   let visible: f32 = select(1.0, textureLoad(occlusion_target, searched, 0).x, lighting.params.w > 0.5);
   let aimed: vec3<f32> = surroundings_direction(sky_prefiltered, sky_clamp, world_offset(position), world_direction(direction));
-  var sky: vec3<f32> = reflected_sky(lighting, sky_prefiltered, sky_prefiltered_alone, sky_clamp, aimed,
-    roughness * MISS_BLUR, roughness) *
+  var sky: vec3<f32> = prefiltered_sky(sky_prefiltered, sky_clamp, aimed, roughness * MISS_BLUR) *
     light_scale(lighting) * specular_occlusion(facing, reflected_visibility(lighting, visible), roughness);
 
   // The ray's end, the distance traced out, or short of the near plane where it comes back towards the camera: its
@@ -660,9 +659,7 @@ fn trace_pixel(pixel: vec2<f32>) -> TraceTargets {
       let seen: vec4<f32> = remembered_sky(world_direction(direction));
 
       if (seen.w > 0.5) {
-        // The screen's sky is the sky alone, turned as the cube's sky share is.
-        sky = seen.rgb * reflected_sky_turn(lighting, roughness) *
-          specular_occlusion(facing, reflected_visibility(lighting, visible), roughness);
+        sky = seen.rgb * specular_occlusion(facing, reflected_visibility(lighting, visible), roughness);
         end = END_SKY;
       }
     }

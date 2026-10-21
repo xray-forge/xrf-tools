@@ -405,35 +405,6 @@ fn prefiltered_sky(cube: texture_cube<f32>, cube_sampler: sampler, direction: ve
   return textureSampleLevel(cube, cube_sampler, direction, saturate(roughness) * last).rgb;
 }
 
-// The roughness from which a reflection's sky leaves the sky as drawn, and the one at which it takes the colour of the
-// light it lights the land by (`reflected_sky`): a mirror beside the visible sky shows it, a rough lobe averages it
-// into light.
-const REFLECTED_SKY_ROUGHNESS: vec2<f32> = vec2<f32>(0.2, 0.6);
-
-// What a surface of `roughness` turns each channel of the sky it reflects by: at the authored levels towards the hue of
-// the hemisphere and ambient that light a surface open to it (`LightingUniform::reflected_sky`) as the lobe roughens;
-// ones elsewhere. The game's sky picture stands far bluer than the hemisphere it authors beside it: reflected as drawn
-// off rough ground, it tinted the shade blue grey.
-fn reflected_sky_turn(state: Lighting, roughness: f32) -> vec3<f32> {
-  if (state.reflected_sky.w < 0.5) {
-    return vec3<f32>(1.0);
-  }
-
-  return mix(vec3<f32>(1.0), state.reflected_sky.rgb,
-    smoothstep(REFLECTED_SKY_ROUGHNESS.x, REFLECTED_SKY_ROUGHNESS.y, roughness));
-}
-
-// `prefiltered_sky` at a lobe's roughness (`blurred`, the mip read) with the sky's own share (the sky alone's cube,
-// `alone`) turned as a surface of `roughness` turns it (`reflected_sky_turn`); the surroundings the cube holds as they
-// were lit.
-fn reflected_sky(state: Lighting, cube: texture_cube<f32>, alone: texture_cube<f32>, cube_sampler: sampler,
-  direction: vec3<f32>, blurred: f32, roughness: f32) -> vec3<f32> {
-  let whole: vec3<f32> = prefiltered_sky(cube, cube_sampler, direction, blurred);
-  let turn: vec3<f32> = reflected_sky_turn(state, roughness);
-
-  return max(whole + prefiltered_sky(alone, cube_sampler, direction, blurred) * (turn - 1.0), vec3<f32>(0.0));
-}
-
 // A surface's roughness for its reflection's lobe, from the engine's gloss: X-Ray's terrain runs from none on bare
 // ground to about 0.37 on asphalt (roughness 0.15); the wet film's 0.43 is a roughness of 0.12, a puddle's water's
 // 0.74 one of 0.02.

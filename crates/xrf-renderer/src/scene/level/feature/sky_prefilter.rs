@@ -7,10 +7,6 @@ use crate::scene::level::feature::sky_prefilter_level::SkyPrefilterLevel;
 pub struct SkyPrefilter {
   /// The whole cube, every mip, which the sky group binds.
   pub cube: wgpu::TextureView,
-  /// The same of the sky alone, nothing where the surroundings cover it, which the sky group binds beside it: the share
-  /// of a reflection that is the sky's, which the authored levels bring to the light it stands for (`reflected_sky` in
-  /// `common/reflection_trace`).
-  pub alone: wgpu::TextureView,
   /// Each mip as the pass fills it, the first first.
   pub levels: Vec<SkyPrefilterLevel>,
   /// The size it was made at, which a changed setting remakes it for.
@@ -23,68 +19,51 @@ impl SkyPrefilter {
   pub const MOST_LEVELS: u32 = 9;
 
   /// A cube `probe` texels a side with its mips, the first the surroundings as drawn, or the sky; the last at roughness
-  /// one; and the sky alone's beside it.
+  /// one.
   pub fn new(device: &wgpu::Device, probe: RenderReflectionProbe) -> Self {
     let size: u32 = probe.get_size();
     let levels_count: u32 = probe.get_levels();
-    let create = |label: &'static str| {
-      device.create_texture(&wgpu::TextureDescriptor {
-        label: Some(label),
-        size: wgpu::Extent3d {
-          width: size,
-          height: size,
-          depth_or_array_layers: 6,
-        },
-        mip_level_count: levels_count,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: Self::FORMAT,
-        usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
-        view_formats: &[],
-      })
-    };
-    let [texture, alone]: [wgpu::Texture; 2] = [create("sky prefiltered"), create("sky prefiltered alone")];
-    let whole = |texture: &wgpu::Texture, label: &'static str| {
-      texture.create_view(&wgpu::TextureViewDescriptor {
-        label: Some(label),
-        dimension: Some(wgpu::TextureViewDimension::Cube),
-        ..Default::default()
-      })
-    };
-    // A cube's mips before `level`, which a mip's pass reads.
-    let before = |texture: &wgpu::Texture, level: u32| {
-      texture.create_view(&wgpu::TextureViewDescriptor {
-        label: Some("sky prefiltered before"),
-        dimension: Some(wgpu::TextureViewDimension::Cube),
-        base_mip_level: 0,
-        mip_level_count: Some(level),
-        ..Default::default()
-      })
-    };
-    let target = |texture: &wgpu::Texture, level: u32| {
-      texture.create_view(&wgpu::TextureViewDescriptor {
-        label: Some("sky prefiltered level"),
-        dimension: Some(wgpu::TextureViewDimension::D2Array),
-        base_mip_level: level,
-        mip_level_count: Some(1),
-        ..Default::default()
-      })
-    };
+    let texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
+      label: Some("sky prefiltered"),
+      size: wgpu::Extent3d {
+        width: size,
+        height: size,
+        depth_or_array_layers: 6,
+      },
+      mip_level_count: levels_count,
+      sample_count: 1,
+      dimension: wgpu::TextureDimension::D2,
+      format: Self::FORMAT,
+      usage: wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::TEXTURE_BINDING,
+      view_formats: &[],
+    });
+    let cube: wgpu::TextureView = texture.create_view(&wgpu::TextureViewDescriptor {
+      label: Some("sky prefiltered"),
+      dimension: Some(wgpu::TextureViewDimension::Cube),
+      ..Default::default()
+    });
     let levels: Vec<SkyPrefilterLevel> = (0..levels_count)
       .map(|level| SkyPrefilterLevel {
         size: size >> level,
-        source: (level > 0).then(|| before(&texture, level)),
-        target: target(&texture, level),
-        alone_source: before(if level > 0 { &alone } else { &texture }, level.max(1)),
-        alone_target: target(&alone, level),
+        source: (level > 0).then(|| {
+          texture.create_view(&wgpu::TextureViewDescriptor {
+            label: Some("sky prefiltered before"),
+            dimension: Some(wgpu::TextureViewDimension::Cube),
+            base_mip_level: 0,
+            mip_level_count: Some(level),
+            ..Default::default()
+          })
+        }),
+        target: texture.create_view(&wgpu::TextureViewDescriptor {
+          label: Some("sky prefiltered level"),
+          dimension: Some(wgpu::TextureViewDimension::D2Array),
+          base_mip_level: level,
+          mip_level_count: Some(1),
+          ..Default::default()
+        }),
       })
       .collect();
 
-    Self {
-      cube: whole(&texture, "sky prefiltered"),
-      alone: whole(&alone, "sky prefiltered alone"),
-      levels,
-      probe,
-    }
+    Self { cube, levels, probe }
   }
 }

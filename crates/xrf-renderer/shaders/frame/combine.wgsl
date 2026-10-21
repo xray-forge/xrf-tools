@@ -196,17 +196,26 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     if (kept < 1.0) {
       let reflected: vec3<f32> = world_direction(reflect(normalize(position), normal));
       let aimed: vec3<f32> = surroundings_direction(sky_prefiltered, sky_clamp, world_offset(position), reflected);
-      let sky: vec3<f32> = reflected_sky(lighting, sky_prefiltered, sky_prefiltered_alone, sky_clamp, aimed, roughness,
-        roughness) *
-        light_scale(lighting) *
+      let sky: vec3<f32> = prefiltered_sky(sky_prefiltered, sky_clamp, aimed, roughness) * light_scale(lighting) *
         specular_occlusion(facing, reflected_visibility(lighting, occlusion * visible), roughness);
 
       radiance = mix(sky, radiance, kept);
     }
 
     // The light the surface reflects is light its diffuse does not scatter: the diffuse gives up the specular's share,
-    // so the two never pass what reaches the surface.
-    shaded += radiance * brdf - diffuse * brdf;
+    // so the two never pass what reaches the surface. At the authored levels both join the surface's display values in
+    // the engine's units, as the engine's look adds its reflections to `hmodel`'s before its display decodes them, so a
+    // dim surface takes the share as the engine's display gives it; added as light they lifted the shade three times
+    // as far as the engine's.
+    if (is_light_summed(lighting)) {
+      let unit: f32 = light_scale(lighting);
+      let shown: vec3<f32> = srgb_encoded(max(shaded, vec3<f32>(0.0)) / unit) +
+        (srgb_encoded(radiance / unit) - srgb_encoded(max(diffuse, vec3<f32>(0.0)) / unit)) * brdf;
+
+      shaded = srgb_decoded(shown) * unit;
+    } else {
+      shaded += radiance * brdf - diffuse * brdf;
+    }
 
     // The sun on a wet surface's water film, which the engine's specular leaves out with the gloss the wetness added:
     // its disc in the film's lobe, as far as a puddle's coat or the wet reach covers the surface, shadowed as the sun's

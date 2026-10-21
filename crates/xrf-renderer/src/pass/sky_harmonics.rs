@@ -36,14 +36,14 @@ impl SkyHarmonics {
   }
 
   /// Whether the sky was projected.
-  pub fn is_projected(&self) -> bool {
+  fn is_projected(&self) -> bool {
     self.coefficients[0].w > 0.5
   }
 
   /// The irradiance over π `coefficients` give a level surface facing up, per channel: the nine harmonics at the
   /// zenith (`common/sky_harmonics`, y up), the first, the second by y, and the third band's two that do not vanish
   /// there.
-  pub fn get_zenith(coefficients: &[Vec4; 9]) -> Vec3 {
+  fn get_zenith(coefficients: &[Vec4; 9]) -> Vec3 {
     let [c0, c1, _, _, _, _, c6, _, c8] = *coefficients;
 
     c0.truncate() * 0.282_095 + c1.truncate() * 0.488_603 - c6.truncate() * 0.315_392 - c8.truncate() * 0.546_274

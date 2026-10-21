@@ -4,8 +4,7 @@ use crate::scene::texture::texture_cache::TextureCache;
 
 /// What every pass drawing the weather's sky binds: both keyframes' sky cubes, their irradiance cubes and their clouds,
 /// the two samplers they are read through, the cubes environment-mapped models mix toward, the sun's sprite, and the
-/// sky as drawn prefiltered by roughness into a cube's mips (`SkyPrefilter`), indexed by a renderer-space direction,
-/// and the same of the sky alone, nothing where the surroundings cover it (`SkyPrefilter::alone`).
+/// sky as drawn prefiltered by roughness into a cube's mips (`SkyPrefilter`), indexed by a renderer-space direction.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 2)]
 pub struct SkyParameters<'a> {
@@ -31,6 +30,4 @@ pub struct SkyParameters<'a> {
   pub sky_sun: GraphTexture,
   #[texture(cube, float)]
   pub sky_prefiltered: GraphTexture,
-  #[texture(cube, float)]
-  pub sky_prefiltered_alone: GraphTexture,
 }
