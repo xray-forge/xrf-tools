@@ -255,6 +255,33 @@ fn the_physical_light_is_in_cd_per_square_metre() {
   assert!((ExposureHistogramUniform::get_picture_share(0.0, daylight * 32.0) - 32.0_f32.powf(-held)).abs() < 1e-5);
 }
 
+// At the authored levels the sky's irradiance keeps its shape but takes the authored hemisphere's level and colour, each
+// channel its own: an orange sunset sky lights the shade in the game's blue. A channel the sky all but lacks is held to
+// a share of its luminance; the physical levels keep the sky's own.
+#[test]
+fn the_authored_levels_light_the_shade_in_the_authored_hemispheres_colour() {
+  let authored: Vec3 = Vec3::new(0.3, 0.35, 0.45);
+  let mut harmonics: SkyHarmonics = SkyHarmonics::default();
+
+  harmonics.coefficients[0] = Vec4::new(1.0, 0.5, 0.2, 1.0);
+  harmonics.coefficients[1] = Vec4::new(0.4, 0.2, 0.1, authored.x);
+  harmonics.coefficients[2].w = authored.y;
+  harmonics.coefficients[3].w = authored.z;
+
+  let levelled: [Vec4; 9] = harmonics.at_level(RenderLightLevel::Authored, 1.0);
+
+  assert!((levelled[0].truncate() - authored).length() < 1e-5, "{}", levelled[0]);
+  assert!((levelled[1].truncate() - Vec3::new(0.4, 0.2, 0.1) * authored / Vec3::new(1.0, 0.5, 0.2)).length() < 1e-5);
+  assert_eq!(
+    harmonics.at_level(RenderLightLevel::Physical, 1.0)[0],
+    harmonics.coefficients[0]
+  );
+
+  harmonics.coefficients[0] = Vec4::new(1.0, 0.5, 0.0, 1.0);
+
+  assert!(harmonics.at_level(RenderLightLevel::Authored, 1.0)[1].z.is_finite());
+}
+
 // The physical light lights the hemisphere by the sky's irradiance as the sky feature read it back, keeping whether the
 // sky was projected: at the physical levels the sky's own times the look's hemisphere scale; at the authored levels the
 // sky's shape at the authored hemisphere's level (the scale already in it); a sky too dark to have a shape evenly.
