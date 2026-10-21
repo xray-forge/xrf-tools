@@ -2,8 +2,9 @@
 // exposure, which the window pass tonemaps once (`camera.output.x`). Each pass works in the colour it always has and
 // goes through these where it writes the scene or reads it back. Under the physical light model (`camera.output.w`)
 // the light itself is linear: every colour authored as a display value is decoded before it is lit
-// (`authored_colour`), but for the weather's lights, which keep their strength with their hue decoded (`srgb_light`, on
-// the CPU and in the hemisphere), and the window pass encodes the tonemapped frame for the display.
+// (`authored_colour`), but for the lights, the weather's and the lamps', which keep their strength with their hue
+// decoded (`srgb_light`, on the CPU and in the hemisphere), and the window pass encodes the tonemapped frame for the
+// display.
 
 #import "common/camera"
 #import "common/lighting"
@@ -15,6 +16,11 @@ fn is_scene_linear() -> bool {
 
 fn is_light_physical() -> bool {
   return camera.output.w > 0.5;
+}
+
+// Whether the physical light stands at the real world's levels (`RenderLightLevel::Physical`) rather than the game's.
+fn are_levels_physical() -> bool {
+  return camera.output.w > 1.5;
 }
 
 // A colour authored as a display value (a texture's, a lamp's, the fog's) as the frame lights with it: decoded by the

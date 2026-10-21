@@ -9,18 +9,18 @@ use crate::lighting::srgb::{authored_colour, authored_light};
 use crate::pass::sky_harmonics::SkyHarmonics;
 
 /// The cd/m² a light of one in the engine's units stands for, the weather's and the local lights' apart, and the gain
-/// the weather's lights take: one each under the engine's light; at the authored levels the physical light's unit for
-/// both, the weather's lights by the key light's gain; at the physical levels the weather's set so its sky lights a
-/// level surface as the world's does (`Daylight`), and the local lights' brought to real lamps'.
+/// the lights take: one each under the engine's light; at the authored levels the physical light's unit for both, every
+/// light by the key light's gain; at the physical levels the weather's set so its sky lights a level surface as the
+/// world's does (`Daylight`), and the local lights' brought to real lamps'.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LightUnits {
   /// The sky's, the clouds', the hemisphere's, the ambient's and the fog's, and at the authored levels the sun's.
   pub weather: f32,
   /// The lamps' and the self-lit surfaces'.
   pub local: f32,
-  /// What the weather's lights (its sun, ambient and hemisphere colour, kept at their strength by `authored_light`)
-  /// take on top of the unit: the key light's gain at the authored levels, else one. Its pictures (the sky, the
-  /// clouds, the fog) are decoded as they are shown and take none.
+  /// What the lights (the weather's sun, ambient and hemisphere colour and the lamps, kept at their strength by
+  /// `authored_light`) take on top of their unit: the key light's gain at the authored levels, else one. The pictures
+  /// (the sky, the clouds, the fog, the self-lit surfaces) are decoded as they are shown and take none.
   pub light_gain: f32,
 }
 
@@ -70,11 +70,11 @@ impl LightUnits {
     }
   }
 
-  /// The gain the authored levels give the weather's lights: what decoding the key light (the weather's sun, by night
-  /// its moon) does to its luminance, decoded over kept. The weather's lights keep their strengths against each other,
-  /// as the game balanced them (`authored_light`), so a night keeps the fill the game gives it, and the day's range
-  /// follows the key light's decode, as the engine's display shows it: the key light itself stands at its decoded
-  /// luminance, and a moon twenty times dimmer than the sun in display values shows hundreds of times darker.
+  /// The gain the authored levels give the lights: what decoding the key light (the weather's sun, by night its moon)
+  /// does to its luminance, decoded over kept. The lights keep their strengths against each other, as the game
+  /// balanced them (`authored_light`), so a night keeps the fill the game gives it and a lamp its pool, and the day's
+  /// range follows the key light's decode, as the engine's display shows it: the key light itself stands at its
+  /// decoded luminance, and a moon twenty times dimmer than the sun in display values shows hundreds of times darker.
   pub fn get_key_gain(key: Vec3) -> f32 {
     let luminance = |colour: Vec3| colour.dot(Vec3::new(0.2126, 0.7152, 0.0722));
     let kept: f32 = luminance(authored_light(key, true));

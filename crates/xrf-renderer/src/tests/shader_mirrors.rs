@@ -6,7 +6,6 @@ use crate::contract::render_contact_shadow_settings::RENDER_MAX_CONTACT_SHADOW_L
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::frame::view_targets::ViewTargets;
 use crate::lighting::material_slice::material_slice;
-use crate::lighting::srgb::srgb_decoded;
 use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::calibration_uniform::CalibrationUniform;
 use crate::pass::camera_uniform::CameraUniform;
@@ -44,15 +43,15 @@ use crate::scene::static_scene::static_surface_builder::StaticSurfaceBuilder;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::shader::shader_library::ShaderLibrary;
 
-/// The physical lamps' intensity gives what the engine's falloff, decoded, gave a third of the way to their reach,
-/// where their window has already taken `(1 - (1/3)⁴)²`.
+/// The physical levels' lamps' intensity gives what the engine's falloff gave a third of the way to their reach, where
+/// their window has already taken `(1 - (1/3)⁴)²`.
 #[test]
 fn the_physical_lamps_meet_the_engine_a_third_of_the_way_out() {
   let library: ShaderLibrary = ShaderLibrary::default();
   let window: f32 = (1.0 - (1.0_f32 / 9.0).powi(2)).powi(2);
   let share: f32 = get_float_constant(&library, "common/local_lights", "LIGHT_THIRD_SHARE");
 
-  assert!((share * 9.0 * window - srgb_decoded(8.0 / 9.0)).abs() < 1e-5);
+  assert!((share * 9.0 * window - 8.0 / 9.0).abs() < 1e-5);
 }
 
 /// The cull tells a batch's class and layout by its index as Rust lays batches out, a layout's classes in `StaticClass`

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_asset_preview::RenderAssetPreview;
 use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_light_model::RenderLightModel;
 use crate::contract::render_show_flags::RenderShowFlags;
 use crate::contract::render_tonemap_mode::RenderTonemapMode;
@@ -37,6 +38,11 @@ impl RenderViewOptions {
   /// light model over a lit, solid view.
   pub fn is_light_physical(&self) -> bool {
     self.features.light_model == RenderLightModel::Physical && self.mode.is_lit && !self.mode.is_wireframe
+  }
+
+  /// The level the view's light stands at where it is physical (`is_light_physical`); none under the engine's light.
+  pub fn get_physical_light_level(&self) -> Option<RenderLightLevel> {
+    self.is_light_physical().then_some(self.features.light_level)
   }
 
   /// Whether the view inspects its surfaces rather than shows them: a wireframe, the asset checker, alpha hidden, or

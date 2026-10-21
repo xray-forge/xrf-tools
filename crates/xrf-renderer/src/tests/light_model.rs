@@ -1,9 +1,12 @@
 use glam::{Mat4, Vec3, Vec4};
 
+use crate::camera::camera_view::CameraView;
+
 use crate::contract::render_display_transform::RenderDisplayTransform;
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_light_model::RenderLightModel;
 use crate::contract::render_light_scales::RenderLightScales;
+use crate::contract::render_rect::RenderRect;
 use crate::contract::render_tonemap_mode::RenderTonemapMode;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::daylight::Daylight;
@@ -11,6 +14,7 @@ use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
 use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{authored_colour, authored_light, srgb_decoded, srgb_encoded};
+use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::lighting_frame::LightingFrame;
@@ -68,17 +72,36 @@ fn physical_light_holds_a_linear_scene_while_lit_and_solid() {
   assert_eq!(lit.features.tonemap, RenderTonemapMode::Engine);
   assert!(lit.is_light_physical());
   assert!(lit.is_scene_linear());
+  assert_eq!(lit.get_physical_light_level(), Some(RenderLightLevel::Authored));
 
   let mut unlit: RenderViewOptions = physical();
 
   unlit.mode.is_lit = false;
   assert!(!unlit.is_light_physical());
   assert!(!unlit.is_scene_linear());
+  assert_eq!(unlit.get_physical_light_level(), None);
 
   let mut wireframe: RenderViewOptions = physical();
 
   wireframe.mode.is_wireframe = true;
   assert!(!wireframe.is_light_physical());
+}
+
+// The camera tells the shaders the light's level: nought under the engine's light, one at the authored levels, two at
+// the physical, whose lamps alone fall off by the inverse square (`are_levels_physical`).
+#[test]
+fn the_camera_tells_the_shaders_the_lights_level() {
+  let view: CameraView = CameraView::new(Vec3::ZERO, Mat4::IDENTITY, 60.0, 1.0, 0.5, 100.0);
+  let level = |level: Option<RenderLightLevel>| {
+    CameraUniform::new(&view, RenderRect::default(), Vec4::ZERO)
+      .with_physical_light(level)
+      .output
+      .w
+  };
+
+  assert_eq!(level(None), 0.0);
+  assert_eq!(level(Some(RenderLightLevel::Authored)), 1.0);
+  assert_eq!(level(Some(RenderLightLevel::Physical)), 2.0);
 }
 
 #[test]

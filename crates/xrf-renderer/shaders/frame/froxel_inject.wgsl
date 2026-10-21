@@ -75,7 +75,7 @@ fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
         continue;
       }
 
-      let lit: f32 = light_share(record, to_point, is_light_physical(), spread) *
+      let lit: f32 = light_share(record, to_point, are_levels_physical(), spread) *
         light_shadow(shadow_atlas, shadow_sampler, record, to_point, vec3<f32>(0.0), record.axis.w > -1.0, false);
 
       scattered += record.color.rgb * lit * froxel_phase(g, dot(normalize(to_point), to_eye)) *

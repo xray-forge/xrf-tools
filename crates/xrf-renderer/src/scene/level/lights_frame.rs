@@ -28,6 +28,7 @@ pub struct LightsFrame<'a> {
   pub is_scene_first: bool,
   /// Whether the view lights in linear light, the lights' authored colours decoded (`RenderLightModel::Physical`).
   pub is_physical: bool,
-  /// The scale a local light in the engine's units is written at: its unit (`LightUnits::local`) at the pre-exposure.
+  /// The scale a local light in the engine's units is written at: its unit (`LightUnits::local`) by the lights' gain
+  /// (`LightUnits::light_gain`) at the pre-exposure.
   pub light_scale: f32,
 }

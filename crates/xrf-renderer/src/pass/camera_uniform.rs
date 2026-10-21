@@ -3,6 +3,7 @@ use xrf_renderer_core::ShaderStruct;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_parallax_settings::RenderParallaxSettings;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_surface_color::RenderSurfaceColor;
@@ -60,8 +61,9 @@ pub struct CameraUniform {
   /// One where the scene holds linear light at its exposure, which the window pass tonemaps; zero where every pass
   /// writes tonemapped colour, as the engine's do. Then the mip bias the surfaces' textures are read at, negative
   /// sharper; none for any camera but a viewport's own. Then what the sun and the lamps draw in place of their light
-  /// for a debug view (`LightView`): nought their light. Then one where the light is computed in linear light, every
-  /// authored colour decoded (`RenderLightModel::Physical`), nought where it is the engine's.
+  /// for a debug view (`LightView`): nought their light. Then nought where the light is the engine's, and where it is
+  /// computed in linear light, every authored colour decoded (`RenderLightModel::Physical`), one at the authored levels
+  /// and two at the physical ones (`RenderLightLevel`).
   pub output: Vec4,
 }
 
@@ -203,9 +205,13 @@ impl CameraUniform {
     self
   }
 
-  /// The same camera lighting in linear light, its authored colours decoded (`is_physical`), or as the engine does.
-  pub fn with_physical_light(mut self, is_physical: bool) -> Self {
-    self.output.w = f32::from(u8::from(is_physical));
+  /// The same camera lighting in linear light at a level, its authored colours decoded, or as the engine does (none).
+  pub fn with_physical_light(mut self, level: Option<RenderLightLevel>) -> Self {
+    self.output.w = match level {
+      None => 0.0,
+      Some(RenderLightLevel::Authored) => 1.0,
+      Some(RenderLightLevel::Physical) => 2.0,
+    };
     self
   }
 
