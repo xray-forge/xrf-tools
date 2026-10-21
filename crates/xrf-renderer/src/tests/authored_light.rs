@@ -135,3 +135,22 @@ fn the_authored_hemisphere_is_the_engines_square_decoded_per_channel() {
   );
   assert_close(shown[1], authored_light(colour, true) * decoded(irradiance), "physical");
 }
+
+// A light's authored display value comes back from the light `srgb_light` made of it, whatever its strength, as the
+// froxels take a lamp's colour back to gather its shafts as the engine does.
+#[test]
+fn srgb_light_authored_undoes_srgb_light() {
+  let colours: [Vec3; 3] = [
+    Vec3::new(1.0, 0.6, 0.3),
+    Vec3::new(0.2, 0.25, 0.4) * 3.0,
+    Vec3::new(0.5, 0.5, 0.5),
+  ];
+  let cases: Vec<(Vec4, Vec4)> = colours.iter().map(|colour| (colour.extend(0.0), Vec4::ZERO)).collect();
+  let Some(shown) = run("answer = srgb_light_authored(srgb_light(first.rgb));", &cases) else {
+    return;
+  };
+
+  for (shown, colour) in shown.iter().zip(colours) {
+    assert_close(*shown, colour, &format!("{colour}"));
+  }
+}

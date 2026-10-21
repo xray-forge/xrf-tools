@@ -12,9 +12,19 @@ use crate::pass::view_binding::ViewBinding;
 pub struct SunShaftsPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
-  /// The half-size march, then the composite adding it to the frame.
-  pipelines: [wgpu::RenderPipeline; 2],
+  /// Each draw's pipeline, by `SunShaftsDraw`.
+  pipelines: [wgpu::RenderPipeline; 3],
   generation: u64,
+}
+
+/// What a draw of the sun's shafts does: the half-size march; the composite adding its light to the frame; or, at the
+/// authored levels, the composite writing the frame over from a copy of it, the shafts added to its display values as
+/// the engine adds them (`fs_sun_shafts_over`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SunShaftsDraw {
+  March,
+  Added,
+  Over,
 }
 
 impl SunShaftsPass {
@@ -50,19 +60,19 @@ impl SunShaftsPass {
     }
   }
 
-  /// Draws the half-size march where `is_march`, the composite adding it to the frame otherwise.
+  /// Draws the shafts as `draw` asks.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
     parameters: &SunShaftsParameters,
-    is_march: bool,
+    draw: SunShaftsDraw,
   ) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
-    pass.set_pipeline(&self.pipelines[usize::from(!is_march)]);
+    pass.set_pipeline(&self.pipelines[draw as usize]);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.draw(0..3, 0..1);
   }
@@ -71,7 +81,7 @@ impl SunShaftsPass {
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
+  ) -> XrfResult<[wgpu::RenderPipeline; 3]> {
     let added: wgpu::BlendComponent = wgpu::BlendComponent {
       src_factor: wgpu::BlendFactor::One,
       dst_factor: wgpu::BlendFactor::One,
@@ -88,6 +98,12 @@ impl SunShaftsPass {
         write_mask: wgpu::ColorWrites::COLOR,
       })
     };
+    // The frame written over from its copy, its alpha kept.
+    let over: Option<wgpu::ColorTargetState> = Some(wgpu::ColorTargetState {
+      format: ViewTargets::SCENE,
+      blend: None,
+      write_mask: wgpu::ColorWrites::COLOR,
+    });
 
     Ok([
       create_fullscreen_pipeline_into(
@@ -103,6 +119,13 @@ impl SunShaftsPass {
         "fs_sun_shafts",
         &[Some(view_layout), Some(layout)],
         &[target(ViewTargets::SCENE), target(ViewTargets::HIGH)],
+      )?,
+      create_fullscreen_pipeline_into(
+        source,
+        "frame/sun_shafts",
+        "fs_sun_shafts_over",
+        &[Some(view_layout), Some(layout)],
+        &[over, target(ViewTargets::HIGH)],
       )?,
     ])
   }

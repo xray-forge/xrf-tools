@@ -11,7 +11,8 @@
 // apart, at half the frame's size and brought up by depth; the sky as dense as the whole ray. Weighted towards the sun,
 // in its colour, added to what the local lights' shafts gathered (`frame/light_volumes`), as both add up in
 // `rt_Generic_2`, tonemapped together and added to the frame. Where the enhanced volume draws, neither: what its
-// froxels gathered along the view up to the pixel's depth, the sky's at its far end, added the same way.
+// froxels gathered along the view up to the pixel's depth, the sky's at its far end, added the same way. At the authored
+// levels the sun's shafts join the frame's display values as the engine's do (`fs_sun_shafts_over`).
 
 #import "generated/frame/sun_shafts"
 
@@ -96,43 +97,88 @@ fn half_upsampled(source: texture_2d<f32>, pixel: vec2<f32>, distance: f32) -> v
   return sum / max(weights, 1e-6);
 }
 
-@fragment
-fn fs_sun_shafts(in: FullscreenVarying) -> ShaftsOutput {
+// What the composite adds at a pixel: the sun's shafts and the froxels' gathered light as light, or where
+// `is_display_added` as the engine's display value they add to the frame's (`shaft`; the froxels gather it so at the
+// authored levels, `froxel_inject`); the shadowed lights' shafts as light beside them.
+struct Composited {
+  light: vec3<f32>,
+  shaft: vec3<f32>,
+};
+
+fn composited(pixel: vec2<f32>, is_display_added: bool) -> Composited {
   let density: f32 = lighting.shafts.x;
   let steps: f32 = lighting.shafts.y;
   var light: vec3<f32> = vec3<f32>(0.0);
+  var shaft: vec3<f32> = vec3<f32>(0.0);
 
-  let depth: f32 = textureLoad(depth_target, vec2<i32>(in.clip.xy), 0);
+  let depth: f32 = textureLoad(depth_target, vec2<i32>(pixel), 0);
   // The distance along the view the pixel shows, the sky's far off.
-  let distance: f32 = select(1e6, -camera_view_position(in.clip.xy, max(depth, 1e-7)).z, depth > 0.0);
+  let distance: f32 = select(1e6, -camera_view_position(pixel, max(depth, 1e-7)).z, depth > 0.0);
 
   // An empty texel stands in for a march or a light volume not drawn this frame.
   if (density > 0.0 && steps >= 1.0 && textureDimensions(shafts).x > 1u) {
     var shown: f32 = density;
 
     if (depth > 0.0) {
-      shown = half_upsampled(shafts, floor(in.clip.xy), distance).r;
+      shown = half_upsampled(shafts, floor(pixel), distance).r;
     }
 
     // Facing the sun weighs one, facing away a fifth: `0.8 * (0.5 * cos + 0.5) + 0.2`.
     let facing: f32 = 0.8 * (0.5 * -lighting.to_sun.z + 0.5) + 0.2;
 
-    light = authored_amount(shown * facing) * lighting.sun.rgb;
+    if (is_display_added) {
+      shaft = shown * facing * lighting.summed_light.yzw;
+    } else {
+      light = authored_amount(shown * facing) * lighting.sun.rgb;
+    }
   }
 
   if (textureDimensions(light_volumes).x > 1u) {
-    light += half_upsampled(light_volumes, floor(in.clip.xy), distance).rgb;
+    light += half_upsampled(light_volumes, floor(pixel), distance).rgb;
   }
 
   // The froxels hold, at each, what was gathered up to its slice's far edge, so a depth reads half a slice short.
   if (froxels.size.w > 0.0) {
-    let screen: vec2<f32> = in.clip.xy / camera.viewport.xy;
+    let screen: vec2<f32> = pixel / camera.viewport.xy;
     let along: f32 = froxel_share(froxels, distance) - 0.5 / froxels.size.z;
+    let gathered: vec3<f32> = textureSampleLevel(froxel_integrated, froxel_sampler, vec3<f32>(screen, along), 0.0).rgb;
 
-    light += textureSampleLevel(froxel_integrated, froxel_sampler, vec3<f32>(screen, along), 0.0).rgb;
+    if (is_display_added) {
+      shaft += gathered;
+    } else {
+      light += gathered;
+    }
   }
 
+  return Composited(light, shaft);
+}
+
+@fragment
+fn fs_sun_shafts(in: FullscreenVarying) -> ShaftsOutput {
+  let light: vec3<f32> = composited(in.clip.xy, false).light;
   let scale: f32 = frame_scale(lighting, exposure);
 
   return ShaftsOutput(vec4<f32>(scene_from_light(light, scale), 0.0), vec4<f32>(tonemap_high(light, scale), 0.0));
+}
+
+// The authored levels' composite, writing the frame over from its copy (`scene_before`): the engine adds its shafts to
+// the combined image's display values (`combine_volumetric`) and the display decodes the sum, so they lift a pixel by
+// `(d + s)^2.2 - d^2.2`, each channel its own, `d` the frame's display value in the engine's units, held to the
+// tonemap's white as the engine's 8-bit image holds it, and `s` the shafts' or the froxels' in the lights' authored
+// colours. Decoded alone and added as light they lifted a low sun's shade a thirtieth as far and left it cold: half
+// its red in the engine is its shafts'.
+@fragment
+fn fs_sun_shafts_over(in: FullscreenVarying) -> ShaftsOutput {
+  let added: Composited = composited(in.clip.xy, true);
+  let scale: f32 = frame_scale(lighting, exposure);
+  let unit: f32 = scale * light_scale(lighting);
+  let before: vec4<f32> = textureLoad(scene_before, vec2<i32>(in.clip.xy), 0);
+  let shown: vec3<f32> = min(srgb_encoded(max(before.rgb, vec3<f32>(0.0)) / unit), vec3<f32>(1.0));
+  let lifted: vec3<f32> = (srgb_decoded(shown + added.shaft) - srgb_decoded(shown)) * light_scale(lighting);
+  let light: vec3<f32> = added.light + lifted;
+
+  return ShaftsOutput(
+    vec4<f32>(before.rgb + scene_from_light(light, scale), before.a),
+    vec4<f32>(tonemap_high(light, scale), 0.0),
+  );
 }

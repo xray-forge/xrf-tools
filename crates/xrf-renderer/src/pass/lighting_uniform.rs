@@ -90,7 +90,9 @@ pub struct LightingUniform {
   /// colour's, without them, as it veils the land the stops were not fitted to.
   pub pictures: Vec4,
   /// The gain the lights took (`LightUnits::light_gain`) where their diffuse sum is decoded once, as the engine's display
-  /// shows it (`authored_diffuse` in `common/hmodel`): at the authored levels; nought elsewhere.
+  /// shows it (`authored_diffuse` in `common/hmodel`), then the sun's colour as the weather authors it, a display value
+  /// by the look's sun scale, which the sun's shafts add to the frame's display values (`fs_sun_shafts_over`): at the
+  /// authored levels; nought elsewhere.
   pub summed_light: Vec4,
   /// What a rough lobe turns each channel of the sky a reflection meets by (`reflected_sky` in
   /// `common/reflection_trace`), then one where it does: at the authored levels, the hue of the hemisphere and the
@@ -265,16 +267,13 @@ impl LightingUniform {
         Vec4::new(limit * (2.0 / 3.0), limit, 0.0, 0.0)
       },
       pictures,
-      summed_light: Vec4::new(
-        if is_authored_physical {
-          frame.light_units.light_gain
-        } else {
-          0.0
-        },
-        0.0,
-        0.0,
-        0.0,
-      ),
+      summed_light: if is_authored_physical {
+        let sun: Vec3 = lighting.get_sun_color(&options.features.light_scales);
+
+        Vec4::new(frame.light_units.light_gain, sun.x, sun.y, sun.z)
+      } else {
+        Vec4::ZERO
+      },
       reflected_sky,
     }
   }

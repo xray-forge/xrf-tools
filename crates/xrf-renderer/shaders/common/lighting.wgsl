@@ -147,7 +147,13 @@ fn fog_amount_at(state: Lighting, position: vec3<f32>, height: f32) -> f32 {
 // the baked hemisphere and the screen's occlusion inside it, so a crease darkens what it reflects as it darkens what
 // lights it, rather than leaving an occluded forest floor its sheen.
 fn reflected_visibility(state: Lighting, visible: f32) -> f32 {
-  return select(visible, pow(saturate(visible), SRGB_DISPLAY_POWER), state.summed_light.x > 0.0);
+  return select(visible, pow(saturate(visible), SRGB_DISPLAY_POWER), is_light_summed(state));
+}
+
+// Whether the light is the authored levels' (`LightingUniform::summed_light`): its diffuse summed in the engine's
+// units and decoded once, its shafts added to the frame's display values as the engine adds them.
+fn is_light_summed(state: Lighting) -> bool {
+  return state.summed_light.x > 0.0;
 }
 
 // Whether the light is physical (`RenderLightModel::Physical`): `engine.w`, written from the view's one rule as the

@@ -9,6 +9,7 @@
 @group(1) @binding(4) var<storage, read> exposure: Exposure;
 @group(1) @binding(5) var shafts: texture_2d<f32>;
 @group(1) @binding(6) var light_volumes: texture_2d<f32>;
-@group(1) @binding(7) var<uniform> froxels: Froxels;
-@group(1) @binding(8) var froxel_integrated: texture_3d<f32>;
-@group(1) @binding(9) var froxel_sampler: sampler;
+@group(1) @binding(7) var scene_before: texture_2d<f32>;
+@group(1) @binding(8) var<uniform> froxels: Froxels;
+@group(1) @binding(9) var froxel_integrated: texture_3d<f32>;
+@group(1) @binding(10) var froxel_sampler: sampler;

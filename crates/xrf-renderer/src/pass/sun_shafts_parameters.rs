@@ -8,7 +8,8 @@ use crate::pass::shadow_uniform::ShadowUniform;
 /// What the sun's shafts read: the depth, the sun's shadow cascades, the frame's lighting and exposure, the half-size
 /// march the composite brings up, nothing while it is marched or where the sun's shafts are not drawn, and the local
 /// lights' shafts the composite adds with them, nothing where none draws any; or the enhanced volume's froxels in place
-/// of both, integrated along the view, a volume of one where none is drawn.
+/// of both, integrated along the view, a volume of one where none is drawn; and the frame as it stood before them, which
+/// the authored levels' composite writes over from (`SunShaftsDraw::Over`), nothing elsewhere.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct SunShaftsParameters<'a> {
@@ -26,6 +27,8 @@ pub struct SunShaftsParameters<'a> {
   pub shafts: GraphTexture,
   #[texture(d2, unfilterable)]
   pub light_volumes: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub scene_before: GraphTexture,
   #[uniform]
   pub froxels: UniformBinding<FroxelUniform>,
   #[texture(d3, float)]

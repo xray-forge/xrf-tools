@@ -30,6 +30,20 @@ fn srgb_light(colour: vec3<f32>) -> vec3<f32> {
   return hue * (dot(colour, luminance_weights) / max(dot(hue, luminance_weights), 1e-12));
 }
 
+// A light `srgb_light` made back to the display value it was authored as: its hue encoded again, its luminance kept.
+fn srgb_light_authored(light: vec3<f32>) -> vec3<f32> {
+  let luminance_weights: vec3<f32> = vec3<f32>(0.2126, 0.7152, 0.0722);
+  let peak: f32 = max(max(light.r, light.g), light.b);
+
+  if (peak <= 0.0) {
+    return vec3<f32>(0.0);
+  }
+
+  let hue: vec3<f32> = pow(max(light, vec3<f32>(0.0)) / peak, vec3<f32>(1.0 / SRGB_DISPLAY_POWER));
+
+  return hue * (dot(light, luminance_weights) / max(dot(hue, luminance_weights), 1e-12));
+}
+
 // Linear light encoded by the sRGB display's transfer, as a display takes it.
 fn srgb_encoded(color: vec3<f32>) -> vec3<f32> {
   return pow(max(color, vec3<f32>(0.0)), vec3<f32>(1.0 / SRGB_DISPLAY_POWER));

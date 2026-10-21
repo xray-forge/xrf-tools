@@ -3,13 +3,16 @@ use xrf_renderer_core::{
   UniformBinding,
 };
 
+use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::view_targets::ViewTargets;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
-use crate::pass::sun_shafts_pass::SunShaftsPass;
+use crate::pass::sun_shafts_pass::{SunShaftsDraw, SunShaftsPass};
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::lighting_handles::LightingHandles;
@@ -21,6 +24,10 @@ pub struct SunShaftsFeature {
   /// Whether the sun's shafts are marched this frame: a lit view showing them, the weather shafting the sun, and its
   /// cascades drawn.
   is_shafted: bool,
+  /// Whether they and the froxels' gathered light are added to the frame's display values as the engine adds its
+  /// shafts, at the authored levels of the physical light (`SunShaftsDraw::Over`), rather than added as light; the
+  /// froxels gather display values there (`froxel_inject`).
+  is_display_added: bool,
 }
 
 impl SunShaftsFeature {
@@ -30,10 +37,12 @@ impl SunShaftsFeature {
       && options.show.is_sun_shafted
       && lighting.get_sun_shafts(&options.features.sun_shafts) > 0.0
       && options.features.shadows.get_cascade_count() > 0;
+    self.is_display_added = options.is_light_physical() && options.features.light_level == RenderLightLevel::Authored;
   }
 
   /// Adds the sun's shafts marched, unless the froxels draw in their place (`is_froxeled`), and the composite of them
-  /// with the shadowed lights' shafts or the froxels; nothing where none of them is drawn.
+  /// with the shadowed lights' shafts or the froxels; nothing where none of them is drawn. At the authored levels the
+  /// composite writes the frame over from a copy of it, the sun's shafts added to its display values.
   pub fn add_passes<'a>(
     &self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -44,6 +53,7 @@ impl SunShaftsFeature {
     froxels: Option<(UniformBinding<FroxelUniform>, GraphTexture)>,
   ) {
     let is_shafted: bool = self.is_shafted && !is_froxeled;
+    let is_froxel_composited: bool = froxels.is_some();
 
     if !(is_shafted || light_volumes.is_some() || froxels.is_some()) {
       return;
@@ -62,6 +72,7 @@ impl SunShaftsFeature {
       exposure: StorageValue::new(lit.exposure),
       shafts: empty,
       light_volumes: empty,
+      scene_before: empty,
       froxels: froxel_uniform,
       froxel_integrated: no_froxels,
       froxel_sampler: passes.froxels.get_sampler(),
@@ -88,15 +99,33 @@ impl SunShaftsFeature {
           marched,
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
         ))
-        .record(move |context| passes.sun_shafts.record(context, view, &march, true));
+        .record(move |context| passes.sun_shafts.record(context, view, &march, SunShaftsDraw::March));
     }
+
+    // At the authored levels the sun's shafts and the froxels' gathered light join the frame's display values, which the
+    // composite reads off a copy of the frame as it stands and writes over it.
+    let draw: SunShaftsDraw = if (is_shafted || is_froxel_composited) && self.is_display_added {
+      let before: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+        "sun shafts frame",
+        width,
+        height,
+        ViewTargets::SCENE,
+      ));
+
+      add_texture_copy(&mut *graph, "sun shafts frame copy", handles.scene, before);
+      parameters.scene_before = before;
+
+      SunShaftsDraw::Over
+    } else {
+      SunShaftsDraw::Added
+    };
 
     graph
       .add_raster_pass("sun shafts")
       .parameters(&parameters)
       .color(GraphColorAttachment::new(handles.scene, wgpu::LoadOp::Load))
       .color(GraphColorAttachment::new(handles.high, wgpu::LoadOp::Load))
-      .record(move |context| passes.sun_shafts.record(context, view, &parameters, false));
+      .record(move |context| passes.sun_shafts.record(context, view, &parameters, draw));
   }
 }
 
