@@ -43,8 +43,9 @@ impl PresentFeature {
     } else {
       present
     }
-    .with_display(DisplayMode::of(options), &options.features.grading)
-    .with_grass_reach(inputs.grass_reach);
+    .with_display(DisplayMode::of(options), &options.features.grading, inputs.exposed_key)
+    .with_grass_reach(inputs.grass_reach)
+    .with_reflection_light(inputs.light_scale, inputs.is_light_summed);
 
     self.uniform = match self.debanding {
       Some(passes) => present.with_debanding(passes, options.features.debanding.radius, time),

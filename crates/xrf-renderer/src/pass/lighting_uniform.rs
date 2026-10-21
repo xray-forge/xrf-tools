@@ -260,4 +260,15 @@ impl LightingUniform {
       },
     }
   }
+
+  /// The scale a light in the engine's units is written at, its luminance at the pre-exposure, as `light_scale` in
+  /// `common/lighting` reads it.
+  pub fn get_light_scale(&self) -> f32 {
+    self.pre_exposure.z * self.pre_exposure.x
+  }
+
+  /// Whether the light is the authored levels' summed light, as `is_light_summed` in `common/lighting` reads it.
+  pub fn is_light_summed(&self) -> bool {
+    self.summed_light.x > 0.0
+  }
 }

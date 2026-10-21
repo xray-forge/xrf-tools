@@ -1,9 +1,11 @@
 //! The physical light's display transforms and grading run on the GPU as the present runs them, held to their published
-//! definitions transcribed here: Khronos PBR Neutral's reference, three.js's AgX, and the engine's curve.
+//! definitions (`pass/display_curves.rs`): Khronos PBR Neutral's reference, three.js's AgX, and the engine's curve; and
+//! the transforms' anchors solved from them.
 
-use glam::{Mat3, Vec3, Vec4};
+use glam::{Vec3, Vec4};
 
-use crate::lighting::srgb::{srgb_decoded, srgb_encoded};
+use crate::lighting::srgb::srgb_encoded;
+use crate::pass::display_curves::{agx, engine_display, pbr_neutral};
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::shader::shader_library::ShaderLibrary;
@@ -26,81 +28,6 @@ fn cs_display(@builtin(global_invocation_id) id: vec3<u32>) {
 }
 ";
 
-/// The engine's curve's white, as `tonemap` squares it.
-const WHITE: f32 = 1.7;
-
-/// The engine's curve a channel, `x (1 + x / W²) / (1 + x)`.
-fn engine_curve(light: Vec3) -> Vec3 {
-  light * (Vec3::ONE + light / (WHITE * WHITE)) / (Vec3::ONE + light)
-}
-
-/// Khronos PBR Neutral, as the reference GLSL of the Khronos PBR Neutral specification writes it.
-fn pbr_neutral(colour: Vec3) -> Vec3 {
-  let start: f32 = 0.8 - 0.04;
-  let desaturation: f32 = 0.15;
-  let least: f32 = colour.min_element();
-  let offset: f32 = if least < 0.08 {
-    least - 6.25 * least * least
-  } else {
-    0.04
-  };
-  let toed: Vec3 = colour - Vec3::splat(offset);
-  let peak: f32 = toed.max_element();
-
-  if peak < start {
-    return toed.clamp(Vec3::ZERO, Vec3::ONE);
-  }
-
-  let d: f32 = 1.0 - start;
-  let compressed: f32 = 1.0 - d * d / (peak + d - start);
-  let grey: f32 = 1.0 - 1.0 / (desaturation * (peak - compressed) + 1.0);
-
-  (toed * (compressed / peak))
-    .lerp(Vec3::splat(compressed), grey)
-    .clamp(Vec3::ZERO, Vec3::ONE)
-}
-
-/// AgX's base look as three.js's `AgXToneMapping` writes it: Rec. 2020, the inset, a log encoding over −12.47 to +4.03
-/// stops, the polynomial sigmoid, the outset, the 2.2 power, back to sRGB.
-fn agx(colour: Vec3) -> Vec3 {
-  let to_rec2020: Mat3 = Mat3::from_cols(
-    Vec3::new(0.6274, 0.0691, 0.0164),
-    Vec3::new(0.3293, 0.9195, 0.0880),
-    Vec3::new(0.0433, 0.0113, 0.8956),
-  );
-  let from_rec2020: Mat3 = Mat3::from_cols(
-    Vec3::new(1.6605, -0.1246, -0.0182),
-    Vec3::new(-0.5876, 1.1329, -0.1006),
-    Vec3::new(-0.0728, -0.0083, 1.1187),
-  );
-  let inset: Mat3 = Mat3::from_cols(
-    Vec3::new(0.85662715, 0.13731897, 0.11189821),
-    Vec3::new(0.09512124, 0.761242, 0.07679942),
-    Vec3::new(0.048251606, 0.10143904, 0.81130237),
-  );
-  let outset: Mat3 = Mat3::from_cols(
-    Vec3::new(1.1271006, -0.14132976, -0.14132976),
-    Vec3::new(-0.11060664, 1.1578237, -0.11060664),
-    Vec3::new(-0.016493939, -0.016493939, 1.2519364),
-  );
-  let (least, most): (f32, f32) = (-12.47393, 4.026069);
-  let encoded: Vec3 = (inset * (to_rec2020 * colour))
-    .max(Vec3::splat(1e-10))
-    .to_array()
-    .map(|channel| ((channel.log2() - least) / (most - least)).clamp(0.0, 1.0))
-    .into();
-  let sigmoid = |x: f32| {
-    let x2: f32 = x * x;
-    let x4: f32 = x2 * x2;
-
-    15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x + 0.4298 * x2 + 0.1191 * x - 0.00232
-  };
-  let curved: Vec3 = encoded.to_array().map(sigmoid).into();
-  let shown: Vec3 = (outset * curved).max(Vec3::ZERO).powf(2.2);
-
-  (from_rec2020 * shown).clamp(Vec3::ZERO, Vec3::ONE)
-}
-
 /// The grading before a physical transform: luminance to `contrast` in stops about middle grey, colour mixed from it by
 /// `saturation`.
 fn graded(light: Vec3, contrast: f32, saturation: f32) -> Vec3 {
@@ -114,12 +41,6 @@ fn graded(light: Vec3, contrast: f32, saturation: f32) -> Vec3 {
 
 fn encoded(colour: Vec3) -> Vec3 {
   colour.to_array().map(srgb_encoded).into()
-}
-
-/// The engine's curve in the engine's domain: over the light encoded for the display, its output the display value,
-/// given back here as the display's linear colour.
-fn engine_display(light: Vec3) -> Vec3 {
-  engine_curve(encoded(light)).to_array().map(srgb_decoded).into()
 }
 
 /// A transform as its definition writes it, light to the shown linear colour.
@@ -224,23 +145,52 @@ fn assert_close(actual: Vec3, expected: Vec3, what: &str) {
   );
 }
 
-/// AgX's and PBR Neutral's anchors show a daylit exterior's average at the display value the engine's curve shows it at.
+/// AgX's and PBR Neutral's anchors show the land's colour at the frame's key, graded, as bright as the engine's curve
+/// shows it, from a night's key to a bright day's, under a soft, a neutral and a hard contrast.
 #[test]
-fn the_anchors_show_the_daylit_average_as_the_engines_curve_does() {
-  let grey: Vec3 = Vec3::splat(0.18 * ExposureHistogramUniform::DAYLIT_STOPS.exp2());
+fn the_anchors_show_the_key_as_the_engines_curve_does() {
+  let daylit: f32 = ExposureHistogramUniform::get_daylit_key(ExposureHistogramUniform::get_daylight_scale(0.0));
   let shown = |colour: Vec3| srgb_encoded(colour.dot(Vec3::new(0.2126, 0.7152, 0.0722)));
-  let engine: f32 = shown(engine_display(grey));
 
-  for (mode, defined) in [
-    (DisplayMode::Agx, agx as Reference),
-    (DisplayMode::PbrNeutral, pbr_neutral),
-  ] {
-    let anchored: f32 = shown(defined(grey * mode.get_anchor_stops().exp2()));
+  for contrast in [0.7, 1.0, 1.5] {
+    for key in [0.0005, 0.005, daylit, 0.3] {
+      let hue: Vec3 = DisplayMode::ANCHOR_HUE;
+      let land: Vec3 = graded(hue * (key / hue.dot(Vec3::new(0.2126, 0.7152, 0.0722))), contrast, 1.0);
+      let engine: f32 = shown(engine_display(land));
 
-    assert!(
-      (anchored - engine).abs() < 0.01,
-      "{mode:?}: {anchored} against {engine}"
-    );
+      for (mode, defined) in [
+        (DisplayMode::Agx, agx as Reference),
+        (DisplayMode::PbrNeutral, pbr_neutral),
+      ] {
+        let anchored: f32 = shown(defined(land * mode.get_anchor_stops(key, contrast).exp2()));
+
+        assert!(
+          (anchored - engine).abs() < 0.002,
+          "{mode:?} at {key} by {contrast}: {anchored} against {engine}"
+        );
+      }
+    }
+  }
+}
+
+/// The anchors move smoothly with the key and stay inside their bounds from a key no display shows to one past white,
+/// under every contrast the grading offers.
+#[test]
+fn the_anchors_stay_bounded_and_continuous_over_every_key() {
+  for mode in [DisplayMode::Agx, DisplayMode::PbrNeutral] {
+    for contrast in [0.5, 1.0, 2.0] {
+      let stops: Vec<f32> = (0..=108)
+        .map(|step| mode.get_anchor_stops((-23.25 + 0.25 * step as f32).exp2(), contrast))
+        .collect();
+
+      for pair in stops.windows(2) {
+        assert!((pair[1] - pair[0]).abs() < 0.5, "{mode:?} by {contrast}: {pair:?}");
+      }
+
+      for stop in stops {
+        assert!((-5.5..7.5).contains(&stop), "{mode:?} by {contrast}: {stop}");
+      }
+    }
   }
 }
 
@@ -298,7 +248,7 @@ fn pbr_neutral_keeps_colour_and_agx_bleaches_bright_light() {
 }
 
 /// Grading of one leaves the light as it is; contrast pivots on middle grey; saturation of nought leaves the luminance
-/// alone, grey; a transform's stops lift the light before it.
+/// alone, grey; a transform's stops lift the graded light before it.
 #[test]
 fn the_grading_pivots_on_middle_grey_and_keeps_luminance() {
   let colour: Vec3 = Vec3::new(0.41, 0.21, 0.03);
@@ -309,6 +259,7 @@ fn the_grading_pivots_on_middle_grey_and_keeps_luminance() {
     (colour, display(DisplayMode::PbrNeutral, 1.3, 0.5)),
     (colour, display(DisplayMode::PbrNeutral, 1.0, 0.0)),
     (colour, display(DisplayMode::PbrNeutral, 1.0, 1.0) + Vec4::W),
+    (colour, display(DisplayMode::PbrNeutral, 1.3, 0.5) + Vec4::W),
   ];
   let Some(shown) = show(&cases) else {
     return;
@@ -323,4 +274,9 @@ fn the_grading_pivots_on_middle_grey_and_keeps_luminance() {
     shown[3]
   );
   assert_close(shown[4], encoded(pbr_neutral(colour * 2.0)), "a stop up");
+  assert_close(
+    shown[5],
+    encoded(pbr_neutral(graded(colour, 1.3, 0.5) * 2.0)),
+    "a stop up after the grading",
+  );
 }

@@ -45,10 +45,8 @@ const VIEW_SAMPLED_MIP: u32 = 22u;
 const VIEW_SPECULAR: u32 = 23u;
 // The first of FSR's debug views, which FSR draws in place of the frame it resolved.
 const VIEW_FSR_FIRST: u32 = 24u;
-// What the reflections view shows where a ray met nothing and the cube stands.
+// What the reflections view shows where no ray was traced and the cube stands.
 const REFLECTION_MISS: vec3<f32> = vec3<f32>(0.05, 0.1, 0.45);
-// What the reflections view multiplies what was met by before its shoulder.
-const REFLECTION_VIEW_GAIN: f32 = 4.0;
 // Drawn pixels of motion the motion view spans from black to full colour on each axis.
 const MOTION_VIEW_RANGE: f32 = 16.0;
 
@@ -156,14 +154,14 @@ fn shown_target(texel: vec2<i32>) -> vec3<f32> {
       let traced: vec4<f32> = textureLoad(reflections, min(texel, vec2<i32>(textureDimensions(reflections)) - 1), 0);
 
       if (traced.a < 0.0) {
-        return vec3<f32>(0.0);
+        return REFLECTION_MISS;
       }
 
-      // What was met, brightened through a shoulder so a dim frame's reflections read, over the miss's colour by how
-      // far the hit is trusted.
-      let met: vec3<f32> = traced.rgb / max(traced.a, 1e-4) * REFLECTION_VIEW_GAIN;
+      // What the rays met as the display value combine adds it, in the engine's units: the light by the light's scale,
+      // encoded where the light is summed (`PresentUniform::inspect`). Its alpha is the distance met at.
+      let met: vec3<f32> = max(traced.rgb, vec3<f32>(0.0)) / max(present.inspect.y, 1e-12);
 
-      return mix(REFLECTION_MISS, met / (1.0 + met), saturate(traced.a));
+      return select(met, srgb_encoded(met), present.inspect.z > 0.5);
     }
     // The G-buffer draws the parallax, the bumps, the heights or the sampled mip into the albedo for these views alone.
     case VIEW_PARALLAX, VIEW_BUMPS, VIEW_HEIGHTS, VIEW_SAMPLED_MIP: {

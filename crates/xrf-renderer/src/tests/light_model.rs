@@ -126,15 +126,22 @@ fn only_the_authored_levels_sum_their_diffuse_light() {
   assert!((authored.pictures.x / authored.pictures.y - stops.exp2()).abs() < 1e-4);
 }
 
-// The engine's curve and the engine's own showing take no anchor; AgX and PBR Neutral each their middle grey's.
+// The engine's curve and the engine's own showing take no anchor; AgX and PBR Neutral each lift a darker frame's key
+// further, their toes darkening it more than the engine's curve.
 #[test]
 fn only_agx_and_pbr_neutral_are_anchored() {
+  let daylit: f32 = ExposureHistogramUniform::get_daylit_key(ExposureHistogramUniform::get_daylight_scale(0.0));
+
   for mode in [DisplayMode::AsIs, DisplayMode::Tonemapped, DisplayMode::EngineEncoded] {
-    assert_eq!(mode.get_anchor_stops(), 0.0, "{mode:?}");
+    assert_eq!(mode.get_anchor_stops(daylit, 1.0), 0.0, "{mode:?}");
   }
 
-  assert!(DisplayMode::Agx.get_anchor_stops() != 0.0);
-  assert!(DisplayMode::PbrNeutral.get_anchor_stops() != 0.0);
+  for mode in [DisplayMode::Agx, DisplayMode::PbrNeutral] {
+    assert!(
+      mode.get_anchor_stops(daylit / 64.0, 1.0) > mode.get_anchor_stops(daylit, 1.0),
+      "{mode:?}"
+    );
+  }
 }
 
 #[test]

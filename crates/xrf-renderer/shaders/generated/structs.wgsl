@@ -416,14 +416,15 @@ struct ExposureParams {
 struct ExposureState {
   adapted: f32,
   used: f32,
-  pad1: f32,
-  pad2: f32,
+  key: f32,
+  pad: f32,
   cells: array<f32, 4096>,
 }
 
 struct Exposure {
   adapted: f32,
   used: f32,
+  key: f32,
 }
 
 struct ExposureHistogram {

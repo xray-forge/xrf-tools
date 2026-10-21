@@ -96,4 +96,6 @@ fn cs_settle(@builtin(local_invocation_index) index: u32) {
 
   state.used = state.adapted;
   state.adapted = exp2(next);
+  // The key as the scale now exposes it.
+  state.key = average + next;
 }

@@ -79,21 +79,20 @@ fn pbr_neutral(light: vec3<f32>) -> vec3<f32> {
 // stops.
 const DISPLAY_UNGRADED: vec4<f32> = vec4<f32>(0.0, 1.0, 1.0, 0.0);
 
-// Scene-referred light graded before the physical light's transform: lifted by `stops`, its luminance raised to
-// `contrast` in stops about middle grey, and its colour mixed from that luminance by `saturation`; nought stops and
-// ones leave it as it is.
-fn graded(scene: vec3<f32>, contrast: f32, saturation: f32, stops: f32) -> vec3<f32> {
-  let light: vec3<f32> = scene * exp2(stops);
+// Scene-referred light graded before the physical light's transform: its luminance raised to `contrast` in stops about
+// middle grey, its colour mixed from that luminance by `saturation`, then lifted by `stops`; ones and nought stops
+// leave it as it is.
+fn graded(light: vec3<f32>, contrast: f32, saturation: f32, stops: f32) -> vec3<f32> {
   let luminance_was: f32 = max(luminance(light), 1e-6);
   let luminance_is: f32 = MIDDLE_GREY * pow(luminance_was / MIDDLE_GREY, contrast);
   let scaled: vec3<f32> = light * (luminance_is / luminance_was);
 
-  return max(mix(vec3<f32>(luminance_is), scaled, saturation), vec3<f32>(0.0));
+  return max(mix(vec3<f32>(luminance_is), scaled, saturation), vec3<f32>(0.0)) * exp2(stops);
 }
 
 // A colour of the scene as the display shows it under a `display` (`PresentUniform::display`): its mode, then the
-// physical light's contrast and saturation and the transform's middle-grey anchor, which grade it before its
-// transform.
+// physical light's contrast and saturation and the transform's anchor at the frame's graded key, which grade it before
+// its transform.
 fn shown_for_display(colour: vec3<f32>, display: vec4<f32>) -> vec3<f32> {
   let mode: u32 = u32(display.x);
   let light: vec3<f32> =

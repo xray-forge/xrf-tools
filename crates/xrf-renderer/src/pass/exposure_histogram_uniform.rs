@@ -68,6 +68,12 @@ impl ExposureHistogramUniform {
     (Self::MIDDLE_GREY.log2() + compensation + Self::DAYLIT_STOPS - Self::DAYLIT_LOG).exp2()
   }
 
+  /// A daylit exterior's average as `scale` exposes it, the key the display transforms' anchors stand at where nothing
+  /// is metered: at `get_daylight_scale`, middle grey `DAYLIT_STOPS` under, raised by the compensation.
+  pub fn get_daylit_key(scale: f32) -> f32 {
+    scale * Self::DAYLIT_LOG.exp2()
+  }
+
   /// The share of the frame's exposure, the light written at `pre_exposure`, the game's pictures are shown at: a daylit
   /// exterior's exposure lifted by `stops` and by the share of the frame's distance from it they follow
   /// (`adaptation`; `PICTURE_STOPS`, `PICTURE_ADAPTATION` for the sky and clouds, no stops for the fog).

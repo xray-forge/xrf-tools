@@ -50,6 +50,9 @@ pub struct ExposureFeature {
   readback: GpuReadback,
   /// The scale this frame's light is written at, and the last frame's.
   pre_exposure: PreExposure,
+  /// The key the physical light is shown at as its scale exposes it: the histogram's last metered (`ExposureHead::key`),
+  /// or a daylit exterior's at the scale it starts at or holds.
+  key: f32,
 }
 
 impl ExposureFeature {
@@ -82,6 +85,7 @@ impl ExposureFeature {
       held: None,
       readback: GpuReadback::new(device, "exposure readback", size_of::<ExposureHead>() as u64),
       pre_exposure: PreExposure::NONE,
+      key: ExposureHistogramUniform::get_daylit_key(1.0),
     };
 
     exposure.reset(queue, 1.0);
@@ -96,7 +100,10 @@ impl ExposureFeature {
   pub fn prepare(&mut self, queue: &wgpu::Queue, options: &RenderViewOptions, now: Instant) {
     let settings: &RenderExposureSettings = &options.features.exposure;
     let is_physical: bool = options.is_light_physical();
-    let read: Option<f32> = self.take_readback();
+    let read: Option<ExposureHead> = self.take_readback();
+    let scale: Option<f32> = read
+      .map(|head| head.adapted)
+      .filter(|adapted| adapted.is_finite() && *adapted > 0.0);
 
     if is_physical != self.is_physical {
       // The physical light starts where a daylit exterior is shown, its light written there from the first frame.
@@ -115,6 +122,7 @@ impl ExposureFeature {
         current: start,
         previous: start,
       };
+      self.key = ExposureHistogramUniform::get_daylit_key(start);
     }
 
     if is_physical {
@@ -122,8 +130,16 @@ impl ExposureFeature {
 
       self.prepare_physical(queue, settings, options.features.light_level, now);
       self.pre_exposure = PreExposure {
-        current: self.held.or(read).unwrap_or(self.pre_exposure.current),
+        current: self.held.or(scale).unwrap_or(self.pre_exposure.current),
         previous,
+      };
+
+      self.key = match self.held {
+        Some(held) => ExposureHistogramUniform::get_daylit_key(held),
+        None => read
+          .map(|head| head.key.exp2())
+          .filter(|key| key.is_finite() && *key > 0.0)
+          .unwrap_or(self.key),
       };
 
       return;
@@ -208,15 +224,19 @@ impl ExposureFeature {
     self.readback.abandon();
   }
 
-  /// The scale a copy brought back since the last frame, unless it is not a scale. Any scale writes the light right,
-  /// since the passes divide it out again (`frame_scale`); the latest keeps the light near the range it is shown in.
-  fn take_readback(&self) -> Option<f32> {
-    let adapted: f32 = self
-      .readback
-      .take(|bytes| bytemuck::pod_read_unaligned::<ExposureHead>(&bytes[..size_of::<ExposureHead>()]).adapted)?
-      .ok()?;
+  /// The key the physical light is shown at as its scale exposes it, which the display transforms' anchors are solved
+  /// at: the histogram's last metered, or a daylit exterior's at the scale it starts at or holds.
+  pub fn get_key(&self) -> f32 {
+    self.key
+  }
 
-    (adapted.is_finite() && adapted > 0.0).then_some(adapted)
+  /// The head a copy brought back since the last frame. Any scale it holds writes the light right, since the passes
+  /// divide it out again (`frame_scale`); the latest keeps the light near the range it is shown in.
+  fn take_readback(&self) -> Option<ExposureHead> {
+    self
+      .readback
+      .take(|bytes| bytemuck::pod_read_unaligned::<ExposureHead>(&bytes[..size_of::<ExposureHead>()]))?
+      .ok()
   }
 
   /// Adds the adaptation into `state`, the imported `state` buffer: the frame's luminance measured from the high target
@@ -285,6 +305,7 @@ impl ExposureFeature {
     let state: ExposureState = ExposureState {
       adapted: scale,
       used: scale,
+      key: ExposureHistogramUniform::get_daylit_key(scale).log2(),
       ..bytemuck::Zeroable::zeroed()
     };
 

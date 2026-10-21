@@ -42,10 +42,11 @@ pub struct PresentUniform {
   pub deband: Vec4,
   /// How the scene is shown before the rest is laid over it (`DisplayMode`), as `common/display_transform` numbers it,
   /// then the physical light's grading before its transform: its contrast, its saturation by the transform's own, and
-  /// the transform's middle-grey anchor (`DisplayMode::get_anchor_stops`).
+  /// the transform's anchor at the frame's key (`DisplayMode::get_anchor_stops`).
   pub display: Vec4,
-  /// What the cascades' debug view marks: the metres from the camera the grass's cards cast the sun's shadow to, none
-  /// where they cast none.
+  /// What the debug views read: the metres from the camera the grass's cards cast the sun's shadow to, none where they
+  /// cast none, which the cascades' view marks; then the light's scale and one where it is summed, by which the
+  /// reflections' view shows what the rays met as the display value combine adds it.
   pub inspect: Vec4,
 }
 
@@ -94,14 +95,15 @@ impl PresentUniform {
     (is_shown && debanding.is_drawn()).then(|| debanding.get_passes())
   }
 
-  /// The same showing its scene by `mode`, graded by `grading` where the light is physical.
-  pub fn with_display(self, mode: DisplayMode, grading: &RenderGradingSettings) -> Self {
+  /// The same showing its scene by `mode`, graded by `grading` where the light is physical, its transform anchored at
+  /// the frame's exposed `key` as graded.
+  pub fn with_display(self, mode: DisplayMode, grading: &RenderGradingSettings, key: f32) -> Self {
     Self {
       display: Vec4::new(
         mode.get_index() as f32,
         grading.contrast,
         grading.saturation,
-        mode.get_anchor_stops(),
+        mode.get_anchor_stops(key, grading.contrast),
       ),
       ..self
     }
@@ -111,7 +113,16 @@ impl PresentUniform {
   /// they cast none.
   pub fn with_grass_reach(self, reach: Option<f32>) -> Self {
     Self {
-      inspect: Vec4::new(reach.unwrap_or(0.0), 0.0, 0.0, 0.0),
+      inspect: Vec4::new(reach.unwrap_or(0.0), self.inspect.y, self.inspect.z, 0.0),
+      ..self
+    }
+  }
+
+  /// The same, the reflections' view showing what the rays met as the display value combine adds it: the light by the
+  /// light's `scale`, encoded where the light is summed (`is_summed`).
+  pub fn with_reflection_light(self, scale: f32, is_summed: bool) -> Self {
+    Self {
+      inspect: Vec4::new(self.inspect.x, scale, f32::from(u8::from(is_summed)), 0.0),
       ..self
     }
   }
