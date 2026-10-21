@@ -20,8 +20,8 @@ impl PuddleFill {
   const SOAKING: f32 = 0.0004;
   const SOAK_DRYING: f32 = 0.0001;
 
-  /// Moves it on to the real clock `time`, in seconds, under a rain of `density`, its weather running `pace` times as
-  /// fast as the game's own clock, and returns how full, how stormy and how soaked.
+  /// Moves it on to the real clock `time`, in seconds, under a rain of `density`, at `pace` times the game's own pace,
+  /// and returns how full, how stormy and how soaked.
   pub fn advance(&mut self, time: f32, density: f32, pace: f32) -> (f32, f32, f32) {
     let density: f32 = density.clamp(0.0, 1.0);
     let storminess: f32 = Self::get_storminess(density);

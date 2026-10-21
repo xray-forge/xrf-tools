@@ -13,6 +13,7 @@ import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature
 export const RENDER_RAIN_LIMITS = {
   distance: toRenderLimits(RENDER_FEATURE_SCHEMA.rain.distance, 10),
   dropSquare: toRenderLimits(RENDER_FEATURE_SCHEMA.rain.dropSquare, 1),
+  pace: toRenderLimits(RENDER_FEATURE_SCHEMA.rain.pace, 1),
   puddles: toRenderLimits(RENDER_FEATURE_SCHEMA.rain.puddles, 0.05),
   reflectivity: toRenderLimits(RENDER_FEATURE_SCHEMA.rain.reflectivity, 0.05),
   ringDistance: toRenderLimits(RENDER_FEATURE_SCHEMA.rain.ringDistance, 5),
@@ -52,4 +53,9 @@ export function explainRenderRainDropsMode(mode: RenderRainDropsMode): string {
 /** @returns A rain strength as a share. */
 export function formatRainShare(share: number): string {
   return formatPercent(share);
+}
+
+/** @returns The pace the level wets at, as a multiple of the game's own. */
+export function formatRainPace(pace: number): string {
+  return `×${Math.round(pace)}`;
 }

@@ -27,6 +27,9 @@ pub struct RenderRainSettings {
   pub reflectivity: f32,
   /// How strongly rain ripples wet surfaces and puddles.
   pub ripples: f32,
+  /// How many times the game's own pace the level wets, dries and fills and drains its puddles at: one as the game
+  /// does, more to see a rain's course in moments.
+  pub pace: f32,
   /// Metres out to which puddles are drawn, fading over the last sixth.
   pub distance: f32,
   /// Whether the puddles fill the relief where the enhanced parallax marches the ground: water in its hollows first,
@@ -47,6 +50,7 @@ impl Default for RenderRainSettings {
       puddles: 0.5,
       reflectivity: 0.4,
       ripples: 1.0,
+      pace: 1.0,
       distance: 300.0,
       is_relief_flooded: true,
     }

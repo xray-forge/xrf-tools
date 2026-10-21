@@ -22,6 +22,7 @@ import { formatGrassRadius } from "@/core/render/lib/features/render-grass-choic
 import {
   explainRenderRainDropsMode,
   explainRenderRainMode,
+  formatRainPace,
   formatRainShare,
   RENDER_RAIN_LIMITS,
 } from "@/core/render/lib/features/render-rain-choices";
@@ -129,6 +130,14 @@ export function LevelRainAction({
             />
           </>
         ) : null}
+
+        <RenderValueSlider
+          label={"Wetting pace"}
+          value={puddles.pace}
+          {...RENDER_RAIN_LIMITS.pace}
+          format={formatRainPace}
+          onChange={(pace: number) => setPuddles({ pace })}
+        />
       </EditorPopoverGroupSection>
 
       <EditorPopoverGroupSection

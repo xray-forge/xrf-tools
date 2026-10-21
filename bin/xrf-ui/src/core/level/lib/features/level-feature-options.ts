@@ -256,6 +256,7 @@ const LEVEL_GROUP_KEYS: {
     drops: true,
     isReliefFlooded: true,
     mode: true,
+    pace: true,
     puddles: true,
     reflectivity: true,
     ringDistance: true,

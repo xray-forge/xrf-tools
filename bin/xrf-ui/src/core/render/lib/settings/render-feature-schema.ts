@@ -178,13 +178,15 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   // rain's ripples up to twice their designed strength, and puddles drawn out to the widest grass's radius, which the
   // level surface they are placed on reaches past; the refracting drops' rings out to where a ring is a pixel or two,
   // up to three times their designed strength, the drops over a square from five metres to 150, thinning out past 15, and from half their designed size, where their waves still span a few
-  // of the rings' texels, to twice it.
+  // of the rings' texels, to twice it; the level wetting and its puddles filling from the game's own pace to a hundred
+  // times it, where a moderate rain fills them in seconds.
   rain: {
     distance: toNumber(30, 450, true),
     dropSquare: toNumber(5, 150),
     drops: toChoice(ERenderRainDropsMode),
     isReliefFlooded: FLAG,
     mode: toChoice(ERenderRainMode),
+    pace: toNumber(1, 100, true),
     puddles: toNumber(0, 2),
     reflectivity: toNumber(0, 1),
     ringDistance: toNumber(0, 300),

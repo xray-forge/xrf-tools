@@ -1495,6 +1495,11 @@ export type RenderRainSettings = {
   reflectivity: number | null;
   /** How strongly rain ripples wet surfaces and puddles. */
   ripples: number | null;
+  /**
+   * How many times the game's own pace the level wets, dries and fills and drains its puddles at: one as the game
+   * does, more to see a rain's course in moments.
+   */
+  pace: number | null;
   /** Metres out to which puddles are drawn, fading over the last sixth. */
   distance: number | null;
   /**

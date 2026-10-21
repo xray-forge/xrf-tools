@@ -38,3 +38,23 @@ fn keeps_the_rain_it_was_moved_on_by() {
   assert_eq!(level.get_wetness().get(), wetness);
   assert_eq!(level.get_puddles(), puddles);
 }
+
+// A rain's wetting at a faster pace comes to what the game's own pace reaches over as many times as long.
+#[test]
+fn a_faster_pace_wets_and_fills_as_a_longer_rain() {
+  let settings: RenderRainSettings = RenderRainSettings::default();
+  let paced: RenderRainSettings = RenderRainSettings {
+    pace: 100.0,
+    ..settings
+  };
+  let (mut slow, mut fast): (LevelWetness, LevelWetness) = (LevelWetness::default(), LevelWetness::default());
+
+  for (level, settings, span) in [(&mut slow, &settings, 100.0), (&mut fast, &paced, 1.0)] {
+    level.advance(&raining(0.6), settings, 0.0);
+    level.advance(&raining(0.6), settings, span);
+  }
+
+  assert!((slow.get_wetness().get() - fast.get_wetness().get()).abs() < 1e-5);
+  assert!((slow.get_puddles().0 - fast.get_puddles().0).abs() < 1e-5);
+  assert!(fast.get_puddles().0 > 0.0);
+}

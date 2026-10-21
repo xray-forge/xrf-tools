@@ -5,6 +5,7 @@ import { ERenderRainMode } from "@/core/ipc/types/xrf-renderer";
 import { formatGrassRadius } from "@/core/render/lib/features/render-grass-choices";
 import {
   explainRenderRainMode,
+  formatRainPace,
   formatRainShare,
   RENDER_RAIN_LIMITS,
 } from "@/core/render/lib/features/render-rain-choices";
@@ -73,6 +74,15 @@ export function SettingsRendererPuddles(): ReactElement {
           isDisabled={!isEnhanced}
           format={formatRainShare}
           onChange={(ripples: number) => onSet({ ripples })}
+        />
+
+        <SliderFormRow
+          label={"Wetting pace"}
+          description={"How many times the game's own pace the level wets, dries, and fills and drains its puddles at."}
+          value={rain.pace}
+          {...RENDER_RAIN_LIMITS.pace}
+          format={formatRainPace}
+          onChange={(pace: number) => onSet({ pace })}
         />
 
         <CheckboxFormRow

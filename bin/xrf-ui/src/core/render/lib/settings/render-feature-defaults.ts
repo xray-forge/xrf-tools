@@ -177,6 +177,7 @@ export const DEFAULT_RENDER_RAIN_SETTINGS: TRenderRainSettings = {
   drops: ERenderRainDropsMode.ENGINE,
   isReliefFlooded: true,
   mode: ERenderRainMode.ENGINE,
+  pace: 1,
   puddles: 0.5,
   reflectivity: 0.4,
   ringDistance: 75,

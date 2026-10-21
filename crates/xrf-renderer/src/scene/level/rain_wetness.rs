@@ -19,9 +19,8 @@ impl RainWetness {
   /// had dried, about a game minute.
   const REWETTING: f32 = 0.05;
 
-  /// Moves it on to the real clock `time`, in seconds, under a rain of `density`, its weather running `pace` times as
-  /// fast as the game's own clock does (the weather's clock rate over the game's `time_factor`), building up by
-  /// `build_up` a second of full rain, and returns it.
+  /// Moves it on to the real clock `time`, in seconds, under a rain of `density`, at `pace` times the game's own pace,
+  /// building up by `build_up` a second of full rain, and returns it.
   pub fn advance(&mut self, time: f32, density: f32, pace: f32, build_up: f32) -> f32 {
     let density: f32 = density.clamp(0.0, 1.0);
     let (wetness, peak): (f32, f32) = match self.state {
