@@ -6,7 +6,6 @@ use crate::contract::render_grading_settings::RenderGradingSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::pass::display_calibration::DisplayCalibration;
 use crate::pass::display_mode::DisplayMode;
 
 /// What the present pass shows and the overlays drawn over it read, as WGSL's `Present`.
@@ -43,7 +42,7 @@ pub struct PresentUniform {
   pub deband: Vec4,
   /// How the scene is shown before the rest is laid over it (`DisplayMode`), as `common/display_transform` numbers it,
   /// then the physical light's grading before its transform: its contrast, its saturation by the transform's own, and
-  /// the transform's stops (`DisplayMode::get_calibration`).
+  /// the transform's middle-grey anchor (`DisplayMode::get_anchor_stops`).
   pub display: Vec4,
   /// What the cascades' debug view marks: the metres from the camera the grass's cards cast the sun's shadow to, none
   /// where they cast none.
@@ -97,14 +96,12 @@ impl PresentUniform {
 
   /// The same showing its scene by `mode`, graded by `grading` where the light is physical.
   pub fn with_display(self, mode: DisplayMode, grading: &RenderGradingSettings) -> Self {
-    let calibration: DisplayCalibration = mode.get_calibration();
-
     Self {
       display: Vec4::new(
         mode.get_index() as f32,
         grading.contrast,
-        grading.saturation * calibration.saturation,
-        calibration.stops,
+        grading.saturation,
+        mode.get_anchor_stops(),
       ),
       ..self
     }

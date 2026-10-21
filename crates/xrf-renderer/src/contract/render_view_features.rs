@@ -97,7 +97,7 @@ impl Default for RenderViewFeatures {
       light_model: RenderLightModel::Engine,
       light_level: RenderLightLevel::Authored,
       sun_tint: 0.0,
-      display_transform: RenderDisplayTransform::PbrNeutral,
+      display_transform: RenderDisplayTransform::Engine,
       grading: RenderGradingSettings::default(),
       bloom: RenderBloomSettings::default(),
       enhanced_bloom: RenderEnhancedBloomSettings::default(),

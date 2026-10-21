@@ -499,8 +499,9 @@ export type RenderDebugView = `${ERenderDebugView}`;
  */
 export enum ERenderDisplayTransform {
   /**
-   * The engine's curve, `x (1 + x / W²) / (1 + x)` a channel, white at 1.7: each channel clips on its own, so bright
-   * colours walk to yellow and white.
+   * The engine's curve, `x (1 + x / W²) / (1 + x)` a channel, white at 1.7, over the light encoded for the display as
+   * the engine's values are: the authored levels shown as the engine shows them. Each channel clips on its own, so
+   * bright colours walk to yellow and white.
    */
   ENGINE = "engine",
   /**

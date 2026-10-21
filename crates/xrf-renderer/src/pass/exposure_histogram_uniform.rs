@@ -40,7 +40,14 @@ impl ExposureHistogramUniform {
   /// The log2 luminance of a daylit exterior's average as the level meters it, the sky left out (about 510 cd/m²).
   pub const DAYLIT_LOG: f32 = 9.0;
   /// The stops under the aim a daylit exterior's average is shown at, as the engine's display shows the game's noon.
-  pub const DAYLIT_STOPS: f32 = -2.71;
+  pub const DAYLIT_STOPS: f32 = -1.21;
+  /// The share of a scene's distance from a daylit exterior it keeps, as the engine's own exposure adapts only a
+  /// little of the way.
+  pub const KEPT_SHARE: f32 = 0.81;
+  /// The stops the game's pictures (its sky, clouds and fog) are shown at against a daylit exterior's exposure, and
+  /// the share of the frame's adaptation away from it they follow (`get_picture_share`).
+  pub const PICTURE_STOPS: f32 = 0.0;
+  pub const PICTURE_ADAPTATION: f32 = 1.0;
   /// Stops under the aim the physical light levels show the darkest scene at most, so a moonlit night shows dark but
   /// readable; the authored levels' dark never reaches it.
   pub const PHYSICAL_DARKEST_STOPS: f32 = 4.0;
@@ -62,22 +69,15 @@ impl ExposureHistogramUniform {
   }
 
   /// The share of the frame's exposure, the light written at `pre_exposure`, the game's pictures are shown at: a daylit
-  /// exterior's exposure lifted by their `stops` and by the share of the frame's distance from it they follow
-  /// (`adaptation`; `DisplayCalibration::picture_stops`, `picture_adaptation`). Painted at their own levels, they show as
-  /// the engine shows them where they follow the frame part of the way.
+  /// exterior's exposure lifted by `stops` and by the share of the frame's distance from it they follow
+  /// (`adaptation`; `PICTURE_STOPS`, `PICTURE_ADAPTATION` for the sky and clouds, no stops for the fog).
   pub fn get_picture_share(compensation: f32, pre_exposure: f32, (stops, adaptation): (f32, f32)) -> f32 {
     stops.exp2() * (Self::get_daylight_scale(compensation) / pre_exposure).powf(1.0 - adaptation)
   }
 
-  /// The metering for a frame `delta` seconds after the last at the light's `level`, keeping `kept_share` of a scene's
-  /// distance from a daylit exterior, as the eye adapts only part of the way and the view's transform is calibrated
-  /// to (`DisplayCalibration::kept_share`), straight to its target where `is_snapped`.
-  pub fn new(
-    settings: &RenderExposureSettings,
-    (level, kept_share): (RenderLightLevel, f32),
-    delta: f32,
-    is_snapped: bool,
-  ) -> Self {
+  /// The metering for a frame `delta` seconds after the last at the light's `level`, straight to its target where
+  /// `is_snapped`.
+  pub fn new(settings: &RenderExposureSettings, level: RenderLightLevel, delta: f32, is_snapped: bool) -> Self {
     let aim: f32 = Self::MIDDLE_GREY.log2() + settings.compensation;
 
     Self {
@@ -85,7 +85,7 @@ impl ExposureHistogramUniform {
       span_log: Self::MOST_LOG - Self::LEAST_LOG,
       aim: (aim + Self::DAYLIT_STOPS).exp2(),
       reference_log: Self::DAYLIT_LOG,
-      kept_share,
+      kept_share: Self::KEPT_SHARE,
       darkest_log: match level {
         RenderLightLevel::Authored => Self::LEAST_LOG,
         RenderLightLevel::Physical => aim - Self::PHYSICAL_DARKEST_STOPS,

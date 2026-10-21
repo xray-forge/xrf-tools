@@ -10,8 +10,6 @@ use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::authored_light;
 use crate::pass::bitmask_search::BitmaskSearch;
-use crate::pass::display_calibration::DisplayCalibration;
-use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::reflection_trace::ReflectionTrace;
@@ -116,7 +114,6 @@ impl LightingUniform {
     let gain: f32 = frame.light_units.light_gain;
     let light = |colour: Vec3| authored_light(colour, is_physical) * gain * light_scale;
     let is_authored_physical: bool = is_physical && options.features.light_level == RenderLightLevel::Authored;
-    let calibration: DisplayCalibration = DisplayMode::of(options).get_calibration();
 
     // The sun as the world lights it at the physical levels, a white surface facing it showing its illuminance over π;
     // else the weather's.
@@ -244,11 +241,11 @@ impl LightingUniform {
           ExposureHistogramUniform::get_picture_share(
             options.features.exposure.compensation,
             frame.pre_exposure.current,
-            (stops, calibration.picture_adaptation),
+            (stops, ExposureHistogramUniform::PICTURE_ADAPTATION),
           )
         };
 
-        Vec4::new(picture(calibration.picture_stops), picture(0.0), 0.0, 0.0)
+        Vec4::new(picture(ExposureHistogramUniform::PICTURE_STOPS), picture(0.0), 0.0, 0.0)
       } else {
         Vec4::new(1.0, 1.0, 0.0, 0.0)
       },

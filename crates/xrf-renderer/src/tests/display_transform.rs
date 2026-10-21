@@ -3,8 +3,9 @@
 
 use glam::{Mat3, Vec3, Vec4};
 
-use crate::lighting::srgb::srgb_encoded;
+use crate::lighting::srgb::{srgb_decoded, srgb_encoded};
 use crate::pass::display_mode::DisplayMode;
+use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::test_context::create_test_context;
 
@@ -115,6 +116,12 @@ fn encoded(colour: Vec3) -> Vec3 {
   colour.to_array().map(srgb_encoded).into()
 }
 
+/// The engine's curve in the engine's domain: over the light encoded for the display, its output the display value,
+/// given back here as the display's linear colour.
+fn engine_display(light: Vec3) -> Vec3 {
+  engine_curve(encoded(light)).to_array().map(srgb_decoded).into()
+}
+
 /// A transform as its definition writes it, light to the shown linear colour.
 type Reference = fn(Vec3) -> Vec3;
 
@@ -217,13 +224,33 @@ fn assert_close(actual: Vec3, expected: Vec3, what: &str) {
   );
 }
 
+/// AgX's and PBR Neutral's anchors show a daylit exterior's average at the display value the engine's curve shows it at.
+#[test]
+fn the_anchors_show_the_daylit_average_as_the_engines_curve_does() {
+  let grey: Vec3 = Vec3::splat(0.18 * ExposureHistogramUniform::DAYLIT_STOPS.exp2());
+  let shown = |colour: Vec3| srgb_encoded(colour.dot(Vec3::new(0.2126, 0.7152, 0.0722)));
+  let engine: f32 = shown(engine_display(grey));
+
+  for (mode, defined) in [
+    (DisplayMode::Agx, agx as Reference),
+    (DisplayMode::PbrNeutral, pbr_neutral),
+  ] {
+    let anchored: f32 = shown(defined(grey * mode.get_anchor_stops().exp2()));
+
+    assert!(
+      (anchored - engine).abs() < 0.01,
+      "{mode:?}: {anchored} against {engine}"
+    );
+  }
+}
+
 /// Each physical transform and the engine's curve show light as their definitions do, ungraded.
 #[test]
 fn the_transforms_show_light_as_their_definitions_do() {
   let modes: [(DisplayMode, Reference); 3] = [
     (DisplayMode::PbrNeutral, pbr_neutral),
     (DisplayMode::Agx, agx),
-    (DisplayMode::EngineEncoded, engine_curve),
+    (DisplayMode::EngineEncoded, engine_display),
   ];
   let cases: Vec<(Vec3, Vec4)> = modes
     .iter()

@@ -134,7 +134,7 @@ describe("LevelLookAction", () => {
     await userEvent.click(getByRole("button", { name: "AgX" }));
 
     expect(descriptor.view.features.displayTransform).toBe(ERenderDisplayTransform.AGX);
-    expect(descriptor.renderSettings.rendererFeatures.displayTransform).toBe(ERenderDisplayTransform.PBR_NEUTRAL);
+    expect(descriptor.renderSettings.rendererFeatures.displayTransform).toBe(ERenderDisplayTransform.ENGINE);
     expect(getByRole("slider", { name: "Compensation" })).toBeEnabled();
     // The engine meter's values, which the physical light's histogram does not read; the hemisphere's scale still
     // scales the sky's irradiance, and the game's flat ambient stays at the authored levels, off at the physical ones.

@@ -3,7 +3,7 @@ import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-r
 
 const RENDER_DISPLAY_TRANSFORM_DESCRIPTIONS: Readonly<Record<RenderDisplayTransform, string>> = {
   [ERenderDisplayTransform.ENGINE]:
-    "The engine's curve: each colour channel clips on its own, so bright colours turn yellow and white.",
+    "The engine's curve over the light encoded as the engine's values are: the game as the engine shows it. Each colour channel clips on its own, so bright colours turn yellow and white.",
   [ERenderDisplayTransform.AGX]:
     "AgX: highlights roll off towards white without their hues shifting, as Blender shows a render.",
   [ERenderDisplayTransform.PBR_NEUTRAL]:

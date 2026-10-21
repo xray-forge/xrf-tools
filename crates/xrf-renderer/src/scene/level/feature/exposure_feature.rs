@@ -9,7 +9,6 @@ use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::gpu_readback::GpuReadback;
-use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_head::ExposureHead;
 use crate::pass::exposure_histogram_parameters::ExposureHistogramParameters;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
@@ -121,9 +120,7 @@ impl ExposureFeature {
     if is_physical {
       let previous: f32 = self.pre_exposure.current;
 
-      let kept_share: f32 = DisplayMode::of(options).get_calibration().kept_share;
-
-      self.prepare_physical(queue, settings, (options.features.light_level, kept_share), now);
+      self.prepare_physical(queue, settings, options.features.light_level, now);
       self.pre_exposure = PreExposure {
         current: self.held.or(read).unwrap_or(self.pre_exposure.current),
         previous,
@@ -158,14 +155,13 @@ impl ExposureFeature {
     self.params = ExposureUniform::new(settings, self.rate.min(1.0));
   }
 
-  /// The physical light's metering for this frame at the light's level and the share of a scene's distance the view's
-  /// transform keeps: the histogram from the time since the last frame, straight to its target on the first; or, off,
-  /// a daylit exterior's scale held, raised by the compensation.
+  /// The physical light's metering for this frame: the histogram from the time since the last frame, straight to its
+  /// target on the first; or, off, a daylit exterior's scale held, raised by the compensation.
   fn prepare_physical(
     &mut self,
     queue: &wgpu::Queue,
     settings: &RenderExposureSettings,
-    level: (RenderLightLevel, f32),
+    level: RenderLightLevel,
     now: Instant,
   ) {
     self.is_adapting = true;

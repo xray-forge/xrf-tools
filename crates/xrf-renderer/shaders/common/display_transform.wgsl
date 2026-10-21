@@ -1,9 +1,11 @@
 #import "common/lighting"
 #import "common/srgb"
 
-// How a viewport's scene is shown (`DisplayMode`): as it is, where the engine's passes tonemapped it; by the engine's
-// curve over linear light at the engine's display values; or, under the physical light, by a display transform to the
-// display's linear colours, then encoded for it. The transforms take scene-referred light, middle grey at 0.18.
+// How a viewport's scene is shown (`DisplayMode`): as it is, where the engine's passes tonemapped it; or, under the
+// physical light, by the engine's curve in the engine's own domain (the light encoded for the display, as the engine's
+// values are, then curved, its output the display value itself, so the authored levels' diffuse shows as the engine
+// shows it), or by a display transform to the display's linear colours, then encoded for it. The transforms take
+// scene-referred light, middle grey at 0.18.
 
 const DISPLAY_AS_IS: u32 = 0u;
 const DISPLAY_TONEMAPPED: u32 = 1u;
@@ -90,7 +92,8 @@ fn graded(scene: vec3<f32>, contrast: f32, saturation: f32, stops: f32) -> vec3<
 }
 
 // A colour of the scene as the display shows it under a `display` (`PresentUniform::display`): its mode, then the
-// physical light's contrast, saturation and the transform's stops, which grade it before its transform.
+// physical light's contrast and saturation and the transform's middle-grey anchor, which grade it before its
+// transform.
 fn shown_for_display(colour: vec3<f32>, display: vec4<f32>) -> vec3<f32> {
   let mode: u32 = u32(display.x);
   let light: vec3<f32> =
@@ -101,7 +104,7 @@ fn shown_for_display(colour: vec3<f32>, display: vec4<f32>) -> vec3<f32> {
       return tonemap(colour, 1.0);
     }
     case DISPLAY_ENGINE_ENCODED: {
-      return srgb_encoded(tonemap(light, 1.0));
+      return tonemap(srgb_encoded(light), 1.0);
     }
     case DISPLAY_AGX: {
       return srgb_encoded(agx(light));

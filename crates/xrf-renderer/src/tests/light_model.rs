@@ -15,7 +15,6 @@ use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{authored_colour, authored_light, srgb_decoded, srgb_encoded};
 use crate::pass::camera_uniform::CameraUniform;
-use crate::pass::display_calibration::DisplayCalibration;
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::lighting_frame::LightingFrame;
@@ -116,7 +115,7 @@ fn only_the_authored_levels_sum_their_diffuse_light() {
   levels.features.light_level = RenderLightLevel::Physical;
 
   let gain: f32 = LightUnits::of(&physical(), &lighting, &SkyHarmonics::default(), None).light_gain;
-  let stops: f32 = DisplayMode::of(&physical()).get_calibration().picture_stops;
+  let stops: f32 = ExposureHistogramUniform::PICTURE_STOPS;
 
   assert!((authored.summed_light.x - gain).abs() < 1e-6);
   assert_eq!(
@@ -127,22 +126,15 @@ fn only_the_authored_levels_sum_their_diffuse_light() {
   assert!((authored.pictures.x / authored.pictures.y - stops.exp2()).abs() < 1e-4);
 }
 
-// The engine's light, shown as it is or by its tonemap, takes no transform's calibration; each physical transform keeps
-// a share of the dark's distance under one and lets its pictures follow some of the frame's adaptation.
+// The engine's curve and the engine's own showing take no anchor; AgX and PBR Neutral each their middle grey's.
 #[test]
-fn only_the_physical_transforms_are_calibrated() {
-  assert_eq!(DisplayMode::AsIs.get_calibration(), DisplayCalibration::NONE);
-  assert_eq!(DisplayMode::Tonemapped.get_calibration(), DisplayCalibration::NONE);
-
-  for mode in [DisplayMode::EngineEncoded, DisplayMode::Agx, DisplayMode::PbrNeutral] {
-    let calibration: DisplayCalibration = mode.get_calibration();
-
-    assert!((0.0..1.0).contains(&calibration.kept_share), "{mode:?}");
-    assert!(
-      calibration.picture_adaptation > 0.0 && calibration.saturation > 0.0,
-      "{mode:?}"
-    );
+fn only_agx_and_pbr_neutral_are_anchored() {
+  for mode in [DisplayMode::AsIs, DisplayMode::Tonemapped, DisplayMode::EngineEncoded] {
+    assert_eq!(mode.get_anchor_stops(), 0.0, "{mode:?}");
   }
+
+  assert!(DisplayMode::Agx.get_anchor_stops() != 0.0);
+  assert!(DisplayMode::PbrNeutral.get_anchor_stops() != 0.0);
 }
 
 #[test]
@@ -235,7 +227,7 @@ fn the_lighting_arrives_at_the_pre_exposure() {
 }
 
 // The engine's scene is shown as it is, or by the engine's curve where it holds linear light; the physical light's by
-// its display transform, PBR Neutral unless the view asks for another.
+// its display transform, the engine's curve unless the view asks for another.
 #[test]
 fn each_view_is_shown_by_its_light_models_display_mode() {
   let mut linear: RenderViewOptions = RenderViewOptions::default();
@@ -243,7 +235,7 @@ fn each_view_is_shown_by_its_light_models_display_mode() {
   linear.features.tonemap = RenderTonemapMode::Enhanced;
   assert_eq!(DisplayMode::of(&RenderViewOptions::default()), DisplayMode::AsIs);
   assert_eq!(DisplayMode::of(&linear), DisplayMode::Tonemapped);
-  assert_eq!(DisplayMode::of(&physical()), DisplayMode::PbrNeutral);
+  assert_eq!(DisplayMode::of(&physical()), DisplayMode::EngineEncoded);
 
   for (transform, mode) in [
     (RenderDisplayTransform::Engine, DisplayMode::EngineEncoded),
