@@ -2,6 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_engine_target::XrayEngineResolution;
+use xrf_job::PoolOnceLock;
 use xrf_level::{LevelCformTracer, LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
 use xrf_ltx::{Ltx, LtxDialect};
 use xrf_material::XraySurfaceDescriptor;
@@ -18,6 +19,9 @@ use crate::plugins::levels::state::selection::level_texture_reference::LevelText
 use crate::plugins::levels::state::selection::selected_level_description::SelectedLevelDescription;
 
 /// The level a viewer has open, and everything a later call reads without opening it again.
+///
+/// The parts read the first time anything asks are asked for by loading jobs on the worker pool, which wait on one
+/// another's: a part whose build fans out over Rayon is a `PoolOnceLock`, which a waiting worker cannot deadlock.
 pub struct SelectedLevel {
   pub source: LevelSource,
   /// What each texture reference the level's surfaces bind came to, decided at open.
@@ -49,8 +53,9 @@ pub struct SelectedLevel {
   pub sections: OnceLock<Result<Arc<Ltx>, String>>,
   /// The game's environment configs and the level's cycles, which its weather is played from; kept likewise.
   pub environment: OnceLock<Result<Arc<LevelEnvironment>, String>>,
-  /// The collision form as rays test it, which lights spawned objects and collides particles; kept likewise.
-  pub collision: OnceLock<Result<Arc<LevelCformTracer>, String>>,
+  /// The collision form as rays test it, which lights spawned objects and collides particles; kept likewise. Its tracer
+  /// orders the form's triangles in parallel.
+  pub collision: PoolOnceLock<Result<Arc<LevelCformTracer>, String>>,
   /// How the level lights its spawned objects and the camera, over the collision form; kept likewise.
   pub hemi: OnceLock<Result<Arc<HemiEstimator>, String>>,
 }

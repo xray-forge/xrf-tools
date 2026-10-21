@@ -68,5 +68,12 @@ With the `rayon` feature, wrap a single operation in `plan.install(..)`, or buil
 `plan.build_pool()` and install operations into it. Nested Rayon work inherits that pool. Libraries use the caller's
 pool rather than building their own; automatic plans may use fewer workers when measurements justify it.
 
+The one exception is `PoolOnceLock`, a value built once that a pool's workers wait on while its build fans out over
+Rayon. A plain `OnceLock` deadlocks there: the worker building it takes other jobs while it waits inside its own
+`join`, and one of them waits on the lock that worker is filling. `PoolOnceLock` builds on a pool of one thread of its
+own, which nothing waiting on the lock runs on, while the caller's worker sleeps: the build stands in for that worker,
+so it stays within the plan, though it no longer runs in parallel. Keep a plain `OnceLock` for a value whose build
+never reaches Rayon, since each build starts a thread.
+
 See the [handle](src/job_handle.rs) and [execution plan](src/execution_plan.rs). Live messages belong to
 [xrf-output](../xrf-output/README.md), and final findings to [xrf-report](../xrf-report/README.md).

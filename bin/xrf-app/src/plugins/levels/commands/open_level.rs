@@ -5,6 +5,7 @@ use tauri::State;
 use xrf_chunk::XRayByteOrder;
 use xrf_dltx::select_ltx_dialect;
 use xrf_engine_target::XrayEngineResolution;
+use xrf_job::PoolOnceLock;
 use xrf_level::LevelCformFile;
 use xrf_ltx::{Ltx, LtxDialect};
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
@@ -85,7 +86,7 @@ pub async fn levels_open_level(
   let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.commit_open(
     session_id,
     SelectedLevel {
-      collision: OnceLock::new(),
+      collision: PoolOnceLock::new(),
       dialect,
       engine,
       environment: OnceLock::new(),

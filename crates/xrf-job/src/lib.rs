@@ -9,6 +9,8 @@ mod job_outcome;
 mod job_progress;
 mod job_scope;
 mod logging_sink;
+#[cfg(feature = "rayon")]
+mod pool_once_lock;
 mod progress_level;
 mod progress_sink;
 mod progress_unit;
@@ -24,6 +26,8 @@ pub use crate::job_outcome::JobOutcome;
 pub use crate::job_progress::JobProgress;
 pub use crate::job_scope::JobScope;
 pub use crate::logging_sink::LoggingSink;
+#[cfg(feature = "rayon")]
+pub use crate::pool_once_lock::PoolOnceLock;
 pub use crate::progress_level::ProgressLevel;
 pub use crate::progress_sink::{NoopSink, ProgressSink, RecordingSink};
 pub use crate::progress_unit::ProgressUnit;
