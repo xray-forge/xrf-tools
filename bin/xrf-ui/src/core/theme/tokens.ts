@@ -51,10 +51,7 @@ export function toSharePercent(share: number): string {
 }
 
 export const LAYOUT = {
-  /**
-   * The corner a framed surface turns: the workspace edge, a form card, and the first-paint skeleton that stands in
-   * for both. Named once so the three cannot drift, which a reader would only ever notice as a jump on load.
-   */
+  /** The corner a card on the application background turns: a form card and a launcher card. */
   surfaceRadius: RADIUS.lg,
   /**
    * The band a surface names itself in: the file header over the body, and a panel's title row. One value, so the

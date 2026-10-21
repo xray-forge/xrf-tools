@@ -67,7 +67,6 @@ export function getThemeVariables(theme: Theme) {
     "--xrf-reading-column": px(LAYOUT.readingColumnWidth),
     "--xrf-reading-label": px(LAYOUT.readingLabelWidth),
     "--xrf-status-bar-height": px(LAYOUT.statusBarHeight),
-    "--xrf-surface-radius": px(LAYOUT.surfaceRadius),
     "--xrf-title-bar-height": px(LAYOUT.titleBarHeight),
     "--xrf-toolbar-slider-width": px(LAYOUT.toolbarSliderWidth),
     "--xrf-tree-icon-gap": px(TREE.iconGap),
