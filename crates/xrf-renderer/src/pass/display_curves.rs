@@ -1,7 +1,7 @@
-//! The display transforms as their published definitions write them, on the CPU: Khronos PBR Neutral's reference,
-//! three.js's AgX and the engine's curve in the engine's own domain, colours of linear light to the display's linear
-//! colours. `common/display_transform.wgsl` runs them on the GPU; `DisplayMode::get_anchor_stops` solves its anchors
-//! from them, and the transforms' GPU test holds the shader to them.
+//! The display transforms as their published definitions write them, on the CPU: Khronos PBR Neutral's reference (its
+//! toe kept to the luminance), three.js's AgX and the engine's curve in the engine's own domain, colours of linear
+//! light to the display's linear colours. `common/display_transform.wgsl` runs them on the GPU;
+//! `DisplayMode::get_anchor_stops` solves its anchors from them, and the transforms' GPU test holds the shader to them.
 
 use glam::{Mat3, Vec3};
 
@@ -25,7 +25,8 @@ pub fn engine_display(light: Vec3) -> Vec3 {
   engine_curve(encoded).to_array().map(srgb_decoded).into()
 }
 
-/// Khronos PBR Neutral, as the reference GLSL of the Khronos PBR Neutral specification writes it.
+/// Khronos PBR Neutral, as the reference GLSL of the Khronos PBR Neutral specification writes it, but for its toe: the
+/// reference's offset taken as a share of the luminance, not off each channel, so a dark colour keeps its chroma.
 pub fn pbr_neutral(colour: Vec3) -> Vec3 {
   let start: f32 = 0.8 - 0.04;
   let desaturation: f32 = 0.15;
@@ -35,7 +36,8 @@ pub fn pbr_neutral(colour: Vec3) -> Vec3 {
   } else {
     0.04
   };
-  let toed: Vec3 = colour - Vec3::splat(offset);
+  let shown: f32 = colour.dot(Vec3::new(0.2126, 0.7152, 0.0722)).max(1e-6);
+  let toed: Vec3 = colour * ((shown - offset).max(0.0) / shown);
   let peak: f32 = toed.max_element();
 
   if peak < start {

@@ -15,6 +15,6 @@ pub enum RenderDisplayTransform {
   /// so highlights roll off towards white without their hues walking.
   Agx,
   /// Khronos PBR Neutral (2024): colours kept as they are up to a shoulder near white, then compressed and desaturated,
-  /// for materials read as authored.
+  /// for materials read as authored; its toe darkens by a share of the luminance, so dark colours keep their chroma.
   PbrNeutral,
 }

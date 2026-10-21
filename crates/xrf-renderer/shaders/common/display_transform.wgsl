@@ -56,11 +56,14 @@ fn agx(light: vec3<f32>) -> vec3<f32> {
   return saturate(REC2020_TO_SRGB * shown);
 }
 
-// Khronos PBR Neutral: scene light to the display's linear colours, as they are below the shoulder.
+// Khronos PBR Neutral: scene light to the display's linear colours, as they are below the shoulder. Its toe darkens the
+// light by the reference's offset as a share of the luminance, keeping a dark colour's chroma, where the offset off
+// each channel would empty its weakest channel.
 fn pbr_neutral(light: vec3<f32>) -> vec3<f32> {
   let least: f32 = min(light.r, min(light.g, light.b));
   let offset: f32 = select(0.04, least - 6.25 * least * least, least < 0.08);
-  let toed: vec3<f32> = light - offset;
+  let shown: f32 = max(luminance(light), 1e-6);
+  let toed: vec3<f32> = light * (max(shown - offset, 0.0) / shown);
   let peak: f32 = max(toed.r, max(toed.g, toed.b));
 
   if (peak < NEUTRAL_START) {

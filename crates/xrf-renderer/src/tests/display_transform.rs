@@ -219,24 +219,27 @@ fn the_transforms_show_light_as_their_definitions_do() {
   }
 }
 
-/// PBR Neutral shows a colour under its shoulder as it is, less its toe's 0.04; AgX bleaches a saturated light towards
-/// white as it brightens, where PBR Neutral keeps its hue.
+/// PBR Neutral shows a colour under its shoulder as it is, darkened by its toe's 0.04 of the luminance, and keeps a dark
+/// colour's chroma as the engine's curve does; AgX bleaches a saturated light towards white as it brightens.
 #[test]
 fn pbr_neutral_keeps_colour_and_agx_bleaches_bright_light() {
   let orange: Vec3 = Vec3::new(0.5, 0.2, 0.1);
+  let land: Vec3 = Vec3::new(0.012, 0.01, 0.005);
   let cases: Vec<(Vec3, Vec4)> = vec![
     (orange, display(DisplayMode::PbrNeutral, 1.0, 1.0)),
     (orange, display(DisplayMode::Agx, 1.0, 1.0)),
     (orange * 16.0, display(DisplayMode::Agx, 1.0, 1.0)),
+    (land, display(DisplayMode::PbrNeutral, 1.0, 1.0)),
   ];
   let Some(shown) = show(&cases) else {
     return;
   };
   let chroma = |encoded: Vec3| (encoded.max_element() - encoded.min_element()) / encoded.max_element();
+  let luminance: f32 = orange.dot(Vec3::new(0.2126, 0.7152, 0.0722));
 
   assert_close(
     shown[0],
-    encoded(orange - Vec3::splat(0.04)),
+    encoded(orange * ((luminance - 0.04) / luminance)),
     "PBR Neutral under its shoulder",
   );
   assert!(
@@ -244,6 +247,12 @@ fn pbr_neutral_keeps_colour_and_agx_bleaches_bright_light() {
     "AgX bleaches: {} at sixteen times, {} at one",
     chroma(shown[2]),
     chroma(shown[1])
+  );
+  assert!(
+    chroma(shown[3]) < chroma(encoded(engine_display(land))) * 1.15,
+    "PBR Neutral keeps the dark land's chroma: {} against the engine's {}",
+    chroma(shown[3]),
+    chroma(encoded(engine_display(land)))
   );
 }
 
