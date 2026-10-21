@@ -43,6 +43,7 @@ import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { toDrawnAntialiasing } from "@/core/render/lib/features/render-antialiasing-choices";
+import { toDrawnRenderLightLevel } from "@/core/render/lib/features/render-light-level-choices";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { toNativeWorldToggles } from "@/core/render/lib/native/native-view-options";
@@ -160,7 +161,16 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       ),
       shading: this.shading,
       sunShafts: this.weatherService.sunShafts,
-      view: this.viewService.features,
+      view: {
+        ...this.viewService.features,
+        lightLevel:
+          this.viewService.features.lightLevel === null
+            ? null
+            : toDrawnRenderLightLevel(
+                this.viewService.features.lightLevel,
+                this.renderSettingsService.isPhysicalLightLevelAvailable
+              ),
+      },
     });
   }
 

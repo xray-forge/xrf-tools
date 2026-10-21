@@ -3,6 +3,7 @@ import { Container } from "@wirestate/core";
 
 import {
   ERenderAntialiasing,
+  ERenderLightLevel,
   ERenderScale,
   ERenderTextureFiltering,
   RENDER_DEFAULT_PERIODIC_BUDGET,
@@ -10,6 +11,7 @@ import {
 import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/render-feature-choice";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
 import { RenderSettingsService } from "@/core/render/services/render-settings/render-settings.service";
+import { SettingsService } from "@/core/settings/services/settings";
 import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { mockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
@@ -183,5 +185,27 @@ describe("RenderSettingsService", () => {
     setLocalStorageValue("xrf.preference.renderer-features", "{not json");
 
     expect(mockInjectedService(RenderSettingsService).service.rendererChoice.preset).toBe(ERenderPreset.BASE);
+  });
+
+  // The physical light levels are parked: outside dev mode a kept choice of them is drawn at the authored levels, and
+  // kept for when dev mode returns.
+  it("draws the parked physical light levels as the authored ones outside dev mode", () => {
+    const { container, service } = mockInjectedService(RenderSettingsService);
+    const settingsService: SettingsService = container.get(SettingsService);
+
+    settingsService.setDevModeEnabled(true);
+    service.setRendererOverrides({ lightLevel: ERenderLightLevel.PHYSICAL });
+
+    expect(service.isPhysicalLightLevelAvailable).toBe(true);
+    expect(service.rendererFeatures.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
+
+    settingsService.setDevModeEnabled(false);
+
+    expect(service.isPhysicalLightLevelAvailable).toBe(false);
+    expect(service.rendererFeatures.lightLevel).toBe(ERenderLightLevel.AUTHORED);
+
+    settingsService.setDevModeEnabled(true);
+
+    expect(service.rendererFeatures.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
   });
 });

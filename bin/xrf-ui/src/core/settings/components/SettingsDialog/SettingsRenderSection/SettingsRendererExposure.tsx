@@ -25,7 +25,7 @@ import { formatGrading, RENDER_GRADING_LIMITS } from "@/core/render/lib/features
 import {
   explainRenderLightLevel,
   formatSunTint,
-  RENDER_LIGHT_LEVEL_OPTIONS,
+  getRenderLightLevelOptions,
   RENDER_SUN_TINT_LIMITS,
 } from "@/core/render/lib/features/render-light-level-choices";
 import {
@@ -70,7 +70,7 @@ export function SettingsRendererExposure(): ReactElement {
         <ChoiceFormRow
           label={"Light levels"}
           description={explainRenderLightLevel(renderSettingsService.rendererFeatures.lightLevel)}
-          options={RENDER_LIGHT_LEVEL_OPTIONS}
+          options={getRenderLightLevelOptions(renderSettingsService.isPhysicalLightLevelAvailable)}
           value={renderSettingsService.rendererFeatures.lightLevel}
           isDisabled={!isPhysical}
           onChange={(lightLevel: RenderLightLevel) => renderSettingsService.setRendererOverrides({ lightLevel })}

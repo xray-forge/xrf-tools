@@ -48,8 +48,9 @@ import { formatGrading, RENDER_GRADING_LIMITS } from "@/core/render/lib/features
 import {
   explainRenderLightLevel,
   formatSunTint,
-  RENDER_LIGHT_LEVEL_OPTIONS,
+  getRenderLightLevelOptions,
   RENDER_SUN_TINT_LIMITS,
+  toDrawnRenderLightLevel,
 } from "@/core/render/lib/features/render-light-level-choices";
 import {
   explainRenderLightModel,
@@ -59,6 +60,7 @@ import {
   TRenderEnhancedBloomSettings,
   TRenderGradingSettings,
 } from "@/core/render/lib/settings/render-feature-settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
@@ -112,6 +114,7 @@ export function LevelLookAction({
 }: BaseComponentProps): ReactElement {
   const lookService: LevelLookService = useInjection(LevelLookService);
   const viewService: LevelViewService = useInjection(LevelViewService);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
   const { settings, features } = useLevelRenderFeatures();
   const { set: setBloom, reset: resetBloom } = useLevelFeatureOverride("enhancedBloom");
   const { set: setGrading } = useLevelFeatureOverride("grading");
@@ -125,7 +128,11 @@ export function LevelLookAction({
   const lightModel: RenderLightModel = features.lightModel ?? settings.lightModel;
   const isPhysical: boolean = lightModel === ERenderLightModel.PHYSICAL;
   const displayTransform: RenderDisplayTransform = features.displayTransform ?? settings.displayTransform;
-  const lightLevel: RenderLightLevel = features.lightLevel ?? settings.lightLevel;
+  const isPhysicalLevelAvailable: boolean = renderSettingsService.isPhysicalLightLevelAvailable;
+  const lightLevel: RenderLightLevel = toDrawnRenderLightLevel(
+    features.lightLevel ?? settings.lightLevel,
+    isPhysicalLevelAvailable
+  );
   const isPhysicalLevels: boolean = isPhysical && lightLevel === ERenderLightLevel.PHYSICAL;
 
   const { choice, look, defaults } = lookService;
@@ -186,7 +193,7 @@ export function LevelLookAction({
 
           <RenderValueChoice
             label={"Levels"}
-            options={RENDER_LIGHT_LEVEL_OPTIONS}
+            options={getRenderLightLevelOptions(isPhysicalLevelAvailable)}
             value={lightLevel}
             isDisabled={!isPhysical}
             onChange={(next: RenderLightLevel) => viewService.setFeatures({ ...features, lightLevel: next })}

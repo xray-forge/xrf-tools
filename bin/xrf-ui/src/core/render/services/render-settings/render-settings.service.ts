@@ -1,4 +1,4 @@
-import { Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
+import { inject, Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
 import { BoundAction, comparer, Computed, Observable, reaction, RefObservable } from "@wirestate/mobx";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
@@ -11,6 +11,7 @@ import {
   RenderGraphSettings,
   RenderSettings,
 } from "@/core/ipc/types/xrf-renderer";
+import { toDrawnRenderLightLevel } from "@/core/render/lib/features/render-light-level-choices";
 import {
   toRenderBackend,
   toRenderBackendChoice,
@@ -39,6 +40,7 @@ import {
   toRenderOutputScale,
   toRenderResolution,
 } from "@/core/render/lib/settings/render-resolution";
+import { SettingsService } from "@/core/settings/services/settings";
 import {
   FRAME_RATE_LIMIT_STORAGE_KEY,
   getLocalStorageValue,
@@ -116,10 +118,23 @@ export class RenderSettingsService {
   /** Stops telling the renderer its settings, while provisioned. */
   private stopConfiguring: Nullable<() => void> = null;
 
-  /** Every renderer feature as the choice sets it. */
+  public constructor(private readonly settingsService: SettingsService = inject(SettingsService)) {}
+
+  /** Whether the physical light levels, parked, may be chosen and drawn: in dev mode only. */
+  @Computed()
+  public get isPhysicalLightLevelAvailable(): boolean {
+    return this.settingsService.isDevModeEnabled;
+  }
+
+  /** Every renderer feature as the choice sets it, a parked light level drawn as the authored one outside dev mode. */
   @Computed()
   public get rendererFeatures(): IRenderFeatureSettings {
-    return resolveRenderFeatures(this.rendererChoice);
+    const features: IRenderFeatureSettings = resolveRenderFeatures(this.rendererChoice);
+
+    return {
+      ...features,
+      lightLevel: toDrawnRenderLightLevel(features.lightLevel, this.isPhysicalLightLevelAvailable),
+    };
   }
 
   /**

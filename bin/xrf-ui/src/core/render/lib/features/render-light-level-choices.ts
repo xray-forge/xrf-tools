@@ -20,11 +20,29 @@ export function explainRenderLightLevel(level: RenderLightLevel): string {
   return RENDER_LIGHT_LEVEL_DESCRIPTIONS[level];
 }
 
-/** The light levels, in the order they are offered. */
-export const RENDER_LIGHT_LEVEL_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderLightLevel>> = [
-  { label: "Authored", value: ERenderLightLevel.AUTHORED },
-  { label: "Physical", value: ERenderLightLevel.PHYSICAL },
-];
+/**
+ * The light levels, in the order they are offered: the physical ones, parked, shown but not offered outside dev mode.
+ *
+ * @param isPhysicalAvailable - Whether the physical light levels may be chosen (`isPhysicalLightLevelAvailable`).
+ * @returns The options.
+ */
+export function getRenderLightLevelOptions(
+  isPhysicalAvailable: boolean
+): ReadonlyArray<IChoiceFormRowOption<RenderLightLevel>> {
+  return [
+    { label: "Authored", value: ERenderLightLevel.AUTHORED },
+    { label: "Physical", value: ERenderLightLevel.PHYSICAL, isDisabled: !isPhysicalAvailable },
+  ];
+}
+
+/**
+ * @param level - A light level as chosen and kept.
+ * @param isPhysicalAvailable - Whether the physical light levels may be drawn.
+ * @returns The level drawn: the authored one where the physical levels, parked, may not be.
+ */
+export function toDrawnRenderLightLevel(level: RenderLightLevel, isPhysicalAvailable: boolean): RenderLightLevel {
+  return level === ERenderLightLevel.PHYSICAL && !isPhysicalAvailable ? ERenderLightLevel.AUTHORED : level;
+}
 
 /** The sun tint slider's bounds and step. */
 export const RENDER_SUN_TINT_LIMITS: IRenderLimits = toRenderLimits(RENDER_FEATURE_SCHEMA.sunTint, 0.05);
