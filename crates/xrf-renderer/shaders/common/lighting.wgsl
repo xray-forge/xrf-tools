@@ -48,10 +48,16 @@ fn frame_exposure(state: Lighting, exposure: Exposure) -> f32 {
   return select(1.0, exposure.adapted, state.params.z > 0.5);
 }
 
-// The share of the frame's exposure the game's pictures (the sky, the clouds, the fog's colour) are shown at
-// (`LightingUniform::pictures`): one but at the authored levels, where they follow only part of the frame's adaptation.
+// The share of the frame's exposure the game's pictures (the sky, the clouds) are shown at (`LightingUniform::pictures`):
+// one but at the authored levels, where they follow the frame's adaptation by the transform's calibration.
 fn picture_share(state: Lighting) -> f32 {
   return state.pictures.x;
+}
+
+// The share the fog's colour is shown at: the pictures' but for the transform's picture stops, which were fitted to the
+// sky and would darken the haze that veils the land.
+fn fog_share(state: Lighting) -> f32 {
+  return state.pictures.y;
 }
 
 // The exposure a picture the engine exposes as it is (the sky's), in the engine's units, is shown at.
@@ -156,10 +162,10 @@ fn fog_colour_light(state: Lighting) -> vec3<f32> {
     light_scale(state);
 }
 
-// The fog's colour as the frame shows it: a picture, at the pictures' share of the exposure. The passes mixing it into
-// a shown colour take `fog_color` as it stands.
+// The fog's colour as the frame shows it: a picture, at the fog's share of the exposure. The passes mixing it into a
+// shown colour take `fog_color` as it stands.
 fn fog_light(state: Lighting) -> vec3<f32> {
-  return fog_colour_light(state) * picture_share(state);
+  return fog_colour_light(state) * fog_share(state);
 }
 
 // Light fogged towards the fog's light by `amount`: blended as the engine blends it, in display values, so its tuned
@@ -181,6 +187,6 @@ fn fog_color_at(state: Lighting, position: vec3<f32>, height: f32) -> vec3<f32> 
   let share: f32 = facing * height_fog_share(state, height) * state.height_fog.z;
   let fog: vec3<f32> = fog_colour_light(state);
 
-  // The turn is the fog's picture too, shown at the pictures' share as the rest of it.
-  return fog_mixed(state, fog, state.sun.rgb, share) * picture_share(state);
+  // The turn is the fog's picture too, shown at the fog's share as the rest of it.
+  return fog_mixed(state, fog, state.sun.rgb, share) * fog_share(state);
 }

@@ -105,6 +105,28 @@ fn the_camera_tells_the_shaders_the_lights_level() {
   assert_eq!(level(Some(RenderLightLevel::Physical)), 2.0);
 }
 
+// The authored levels sum their diffuse light at the lights' gain and show the fog's colour at the pictures' share without
+// the sky's picture stops; the engine's light and the physical levels sum nothing.
+#[test]
+fn only_the_authored_levels_sum_their_diffuse_light() {
+  let lighting: RenderLighting = RenderLighting::default();
+  let authored: LightingUniform = lighting_with(&physical(), &lighting);
+  let mut levels: RenderViewOptions = physical();
+
+  levels.features.light_level = RenderLightLevel::Physical;
+
+  let gain: f32 = LightUnits::of(&physical(), &lighting, &SkyHarmonics::default(), None).light_gain;
+  let stops: f32 = DisplayMode::of(&physical()).get_calibration().picture_stops;
+
+  assert!((authored.summed_light.x - gain).abs() < 1e-6);
+  assert_eq!(
+    lighting_with(&RenderViewOptions::default(), &lighting).summed_light.x,
+    0.0
+  );
+  assert_eq!(lighting_with(&levels, &lighting).summed_light.x, 0.0);
+  assert!((authored.pictures.x / authored.pictures.y - stops.exp2()).abs() < 1e-4);
+}
+
 // The engine's light, shown as it is or by its tonemap, takes no transform's calibration; each physical transform keeps
 // a share of the dark's distance under one and lets its pictures follow some of the frame's adaptation.
 #[test]

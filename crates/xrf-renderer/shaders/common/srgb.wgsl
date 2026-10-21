@@ -4,9 +4,12 @@
 // would drop such a product's weak channel several times under what the engine showed (a low sun's shade warmer and
 // more saturated than the game's), where the power gives each product back as the engine multiplied it.
 
+// The reference display's power.
+const SRGB_DISPLAY_POWER: f32 = 2.2;
+
 // Encoded values back to linear light.
 fn srgb_decoded(color: vec3<f32>) -> vec3<f32> {
-  return pow(max(color, vec3<f32>(0.0)), vec3<f32>(2.2));
+  return pow(max(color, vec3<f32>(0.0)), vec3<f32>(SRGB_DISPLAY_POWER));
 }
 
 // One of the weather's lights the engine authors as a display value (its sun, ambient, hemisphere colour) as linear
@@ -29,5 +32,5 @@ fn srgb_light(colour: vec3<f32>) -> vec3<f32> {
 
 // Linear light encoded by the sRGB display's transfer, as a display takes it.
 fn srgb_encoded(color: vec3<f32>) -> vec3<f32> {
-  return pow(max(color, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.2));
+  return pow(max(color, vec3<f32>(0.0)), vec3<f32>(1.0 / SRGB_DISPLAY_POWER));
 }

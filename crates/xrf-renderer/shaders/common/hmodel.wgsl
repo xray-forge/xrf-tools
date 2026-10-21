@@ -54,6 +54,24 @@ fn hmodel_reflection_lookup(state: Lighting, reflected: vec3<f32>) -> vec3<f32> 
   );
 }
 
+// The diffuse light a surface takes at the authored levels: summed in the engine's units and decoded once, as the
+// engine's display shows it (`LightingUniform::summed_light`). The engine adds its lights in display values and the
+// display raises their sum to its power, so its sunlit ground stands that power over its shade; summed as linear light
+// the two stood the power's root apart, the open ground shown too dark against the shade and a lamplit interior too
+// bright. With the power exact, the decoded albedo times the decoded sum is the engine's product decoded. The sum keeps
+// its decoded hue; only its luminance takes the power. Elsewhere the light as it is.
+fn authored_diffuse(state: Lighting, light: vec3<f32>) -> vec3<f32> {
+  let gain: f32 = state.summed_light.x;
+
+  if (gain <= 0.0) {
+    return light;
+  }
+
+  let summed: f32 = luminance(light) / (light_scale(state) * gain);
+
+  return light * pow(max(summed, 0.0), SRGB_DISPLAY_POWER - 1.0) / gain;
+}
+
 // `hmodel` and `combine_1` in two parts: what the surface shows without its reflection of the environment, the
 // environment it reflects, and what that is weighed by; their sum is `hmodel`. The enhanced reflections put their
 // own specular in place of the reflected part.
@@ -100,7 +118,7 @@ fn hmodel_terms(state: Lighting, table: texture_3d<f32>, table_sampler: sampler,
   let weight: vec3<f32> = hemisphere.y * hmodel_gloss_weight(state, gloss, hemisphere.x) * visible;
   let environment: vec3<f32> = hmodel_reflected_environment(state, cube_0, cube_1, cube_sampler, reflected);
   // `C = D * light`: the lit albedo, and the gloss times what the lights reflect.
-  let lit: vec3<f32> = albedo.rgb * (light.rgb + hemisphere_diffuse);
+  let lit: vec3<f32> = albedo.rgb * authored_diffuse(state, light.rgb + hemisphere_diffuse);
   let glossed: f32 = gloss * light.a;
 
   // Anomaly's tint multiplies light by light, the lights' colour by their specular and the environment by the lit

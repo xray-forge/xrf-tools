@@ -86,9 +86,13 @@ pub struct LightingUniform {
   /// The roughness from which a traced reflection fades into the prefiltered sky, and past which a surface is not
   /// traced.
   pub reflection_cut: Vec4,
-  /// The share of the frame's exposure the game's pictures (the sky, the clouds, the fog's colour) are shown at
-  /// (`ExposureHistogramUniform::get_picture_share`) at the authored levels, else one.
+  /// The share of the frame's exposure the game's pictures are shown at (`ExposureHistogramUniform::get_picture_share`)
+  /// at the authored levels, else one: the sky's and the clouds', at the transform's picture stops; then the fog's
+  /// colour's, without them, as it veils the land the stops were not fitted to.
   pub pictures: Vec4,
+  /// The gain the lights took (`LightUnits::light_gain`) where their diffuse sum is decoded once, as the engine's display
+  /// shows it (`authored_diffuse` in `common/hmodel`): at the authored levels; nought elsewhere.
+  pub summed_light: Vec4,
 }
 
 impl LightingUniform {
@@ -111,6 +115,8 @@ impl LightingUniform {
     let light_scale: f32 = frame.light_units.weather * frame.pre_exposure.current;
     let gain: f32 = frame.light_units.light_gain;
     let light = |colour: Vec3| authored_light(colour, is_physical) * gain * light_scale;
+    let is_authored_physical: bool = is_physical && options.features.light_level == RenderLightLevel::Authored;
+    let calibration: DisplayCalibration = DisplayMode::of(options).get_calibration();
 
     // The sun as the world lights it at the physical levels, a white surface facing it showing its illuminance over π;
     // else the weather's.
@@ -233,19 +239,24 @@ impl LightingUniform {
       // The game paints its sky and fog at their own levels against the ground's: adapting to a night or a cellar lifts
       // what is lit and most of the pictures with it, as the engine's display shows them, rather than lifting a night
       // sky's eight-bit steps and its fog into a glare.
-      pictures: Vec4::new(
-        if is_physical && options.features.light_level == RenderLightLevel::Authored {
-          {
-            let calibration: DisplayCalibration = DisplayMode::of(options).get_calibration();
+      pictures: if is_authored_physical {
+        let picture = |stops: f32| {
+          ExposureHistogramUniform::get_picture_share(
+            options.features.exposure.compensation,
+            frame.pre_exposure.current,
+            (stops, calibration.picture_adaptation),
+          )
+        };
 
-            ExposureHistogramUniform::get_picture_share(
-              options.features.exposure.compensation,
-              frame.pre_exposure.current,
-              (calibration.picture_stops, calibration.picture_adaptation),
-            )
-          }
+        Vec4::new(picture(calibration.picture_stops), picture(0.0), 0.0, 0.0)
+      } else {
+        Vec4::new(1.0, 1.0, 0.0, 0.0)
+      },
+      summed_light: Vec4::new(
+        if is_authored_physical {
+          frame.light_units.light_gain
         } else {
-          1.0
+          0.0
         },
         0.0,
         0.0,
