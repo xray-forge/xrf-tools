@@ -3475,6 +3475,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a0125f776a10d00af4152d74616409f0d4a2053a6f57fa5b7d6aa2854ac04794"
 dependencies = [
  "bitflags 2.13.2",
+ "block2",
  "objc2",
  "objc2-foundation",
 ]
@@ -3499,6 +3500,7 @@ dependencies = [
  "bitflags 2.13.2",
  "objc2",
  "objc2-core-foundation",
+ "objc2-core-graphics",
  "objc2-foundation",
  "objc2-metal",
 ]
@@ -6652,12 +6654,21 @@ dependencies = [
  "scopeguard",
  "smallvec",
  "thiserror 2.0.21",
+ "wgpu-core-deps-apple",
  "wgpu-core-deps-linux-android-bsd",
  "wgpu-core-deps-windows",
  "wgpu-hal",
  "wgpu-naga-bridge",
  "wgpu-sync",
  "wgpu-types",
+]
+
+[[package]]
+name = "wgpu-core-deps-apple"
+version = "30.0.0"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
+dependencies = [
+ "wgpu-hal",
 ]
 
 [[package]]
@@ -6686,6 +6697,7 @@ dependencies = [
  "ash",
  "bit-set 0.11.1",
  "bitflags 2.13.2",
+ "block2",
  "bytemuck",
  "cfg-if",
  "cfg_aliases",
@@ -6696,6 +6708,12 @@ dependencies = [
  "log",
  "naga",
  "naga-types",
+ "objc2",
+ "objc2-core-foundation",
+ "objc2-core-graphics",
+ "objc2-foundation",
+ "objc2-metal",
+ "objc2-quartz-core",
  "ordered-float",
  "profiling",
  "range-alloc",
@@ -7275,6 +7293,10 @@ dependencies = [
  "image",
  "log",
  "notify",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "objc2-quartz-core",
  "percent-encoding",
  "profiling",
  "rayon",
@@ -7908,6 +7930,7 @@ dependencies = [
  "log",
  "naga",
  "notify",
+ "objc2-metal",
  "pollster",
  "profiling",
  "raw-window-handle",

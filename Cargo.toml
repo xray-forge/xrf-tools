@@ -102,7 +102,7 @@ trybuild = "1.0.121"
 uuid = "1.26.1"
 walkdir = "2.5.0"
 windows = "0.62.2"
-wgpu = { version = "30.0.0", default-features = false, features = ["std", "dx12", "vulkan", "wgsl"] }
+wgpu = { version = "30.0.0", default-features = false, features = ["std", "dx12", "vulkan", "metal", "wgsl"] }
 xrf-animation-envelope = { path = "crates/xrf-animation-envelope" }
 xrf-anm = { path = "crates/xrf-anm" }
 xrf-archive = { path = "crates/xrf-archive" }

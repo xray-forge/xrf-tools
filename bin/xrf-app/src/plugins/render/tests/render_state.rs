@@ -4,11 +4,10 @@ use std::sync::Arc;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
-use xrf_renderer::raw_window_handle::{RawDisplayHandle, RawWindowHandle};
 use xrf_renderer::{
   RenderAssetSource, RenderBundle, RenderEventSink, RenderLevelDetails, RenderLevelParticles, RenderLevelSource,
   RenderLevelSpawn, RenderLevelWeather, RenderSpawnModels, RenderViewportEvent, RenderViewportId, RenderWindowHost,
-  RenderWorkers,
+  RenderWorkers, SurfaceTargetUnsafe,
 };
 use xrf_visual::{LightsDescription, SectorPackage};
 use xrf_world::{WorldEventSink, WorldViewportEvent};
@@ -28,24 +27,24 @@ impl RenderBundle for EmptyBundle {
   }
 }
 
-/// A minimised window, which the render thread never draws into, so no GPU starts.
+/// A hidden window, which the render thread never draws into, so no GPU starts.
 struct HiddenWindow;
 
-// SAFETY: it names no window, and a thread that would present through it panics in `get_handles` instead.
+// SAFETY: it names no window, and a thread that would present through it panics in `get_surface_target` instead.
 unsafe impl RenderWindowHost for HiddenWindow {
   fn get_key(&self) -> u64 {
     1
   }
 
-  fn get_handles(&self) -> (RawWindowHandle, RawDisplayHandle) {
-    panic!("A hidden test window has no handles to draw into");
+  fn get_surface_target(&self) -> SurfaceTargetUnsafe {
+    panic!("A hidden test window has no surface to draw into");
   }
 
   fn get_client_size(&self) -> (u32, u32) {
     (0, 0)
   }
 
-  fn is_minimized(&self) -> bool {
+  fn is_hidden(&self) -> bool {
     true
   }
 }

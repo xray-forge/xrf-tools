@@ -28,6 +28,8 @@ mod instance_flags;
 mod lens_flares;
 mod level_shadows;
 mod level_wetness;
+// Windows alone records a library's file version.
+#[cfg(windows)]
 mod library_versions;
 mod light_geometry;
 mod light_model;

@@ -8,8 +8,8 @@ import {
   getForcedRenderBackend,
   IRenderDrawing,
   isRenderBackendAvailable,
+  listRenderBackendChoices,
   RENDER_BACKEND_AUTO,
-  RENDER_BACKEND_CHOICES,
   resolveRenderDrawing,
   TRenderBackendChoice,
 } from "@/core/render/lib/settings/render-backend-choice";
@@ -70,8 +70,8 @@ export interface IRenderBackendFormRowProps extends BaseComponentProps {
 }
 
 /**
- * The settings' choice of graphics API: automatic, or one by name where this machine can draw with it, the others
- * greyed out; says which one is drawn with when the one asked for is not available and the renderer fell back.
+ * The settings' choice of graphics API: automatic, or one of this platform's by name where this machine can draw with it,
+ * the others greyed out; says which one is drawn with when the one asked for is not available and the renderer fell back.
  */
 export function RenderBackendFormRow({
   "data-testid": dataTestId = "render-backend-form-row",
@@ -82,15 +82,17 @@ export function RenderBackendFormRow({
   availability,
   onChange,
 }: IRenderBackendFormRowProps): ReactElement {
-  const options: ReadonlyArray<IChoiceFormRowOption<TRenderBackendChoice>> = RENDER_BACKEND_CHOICES.map(
-    (choice: TRenderBackendChoice) =>
-      choice === RENDER_BACKEND_AUTO
-        ? { label: "Auto", value: choice }
-        : {
-            isDisabled: availability !== null && !isRenderBackendAvailable(choice, availability),
-            label: describeRenderBackend(choice),
-            value: choice,
-          }
+  const options: ReadonlyArray<IChoiceFormRowOption<TRenderBackendChoice>> = listRenderBackendChoices(
+    availability,
+    value
+  ).map((choice: TRenderBackendChoice) =>
+    choice === RENDER_BACKEND_AUTO
+      ? { label: "Auto", value: choice }
+      : {
+          isDisabled: availability !== null && !isRenderBackendAvailable(choice, availability),
+          label: describeRenderBackend(choice),
+          value: choice,
+        }
   );
 
   return (

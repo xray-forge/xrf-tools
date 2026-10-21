@@ -16,12 +16,13 @@ impl EnvFlags {
   pub const RENDER_BACKEND: ChoiceFlag = ChoiceFlag::new(EnvFlag {
     name: "XRF_RENDER_BACKEND",
     kind: EnvFlagKind::Runtime,
-    value: EnvFlagValue::Choice(&["d3d12", "vulkan"]),
+    value: EnvFlagValue::Choice(&["d3d12", "vulkan", "metal"]),
     default: "the API chosen in the settings",
     readers: &["xrf-app"],
     condition: None,
     description: "Starts the renderer on this graphics API instead of the one chosen in the settings. If it cannot \
-                  start, the renderer falls back to the other API.",
+                  start, the renderer falls back to the other APIs of the platform: D3D12 and Vulkan on Windows, Metal \
+                  on macOS (experimental).",
   });
 
   pub const RENDER_RAY_QUERY: SwitchFlag = SwitchFlag::new(EnvFlag {

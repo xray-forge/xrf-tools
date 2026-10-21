@@ -10,9 +10,9 @@ Read by a running binary. Set them in the environment that starts it.
 
 ### `XRF_RENDER_BACKEND`
 
-Starts the renderer on this graphics API instead of the one chosen in the settings. If it cannot start, the renderer falls back to the other API.
+Starts the renderer on this graphics API instead of the one chosen in the settings. If it cannot start, the renderer falls back to the other APIs of the platform: D3D12 and Vulkan on Windows, Metal on macOS (experimental).
 
-- Takes: `d3d12` or `vulkan`.
+- Takes: `d3d12`, `vulkan` or `metal`.
 - Default: the API chosen in the settings.
 - Read by: `xrf-app`.
 

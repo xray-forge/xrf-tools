@@ -281,6 +281,8 @@ export type RenderBackdropSquares = {
 export enum ERenderBackend {
   D3D12 = "d3d12",
   VULKAN = "vulkan",
+  /** Apple's API: experimental, as no CI job builds or tests it. */
+  METAL = "metal",
 }
 
 /** Every `ERenderBackend` as the spelling it crosses IPC as, for a value no member has narrowed. */

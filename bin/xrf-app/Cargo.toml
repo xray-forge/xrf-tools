@@ -99,6 +99,26 @@ windows = { workspace = true, features = [
   "Win32_UI_WindowsAndMessaging"
 ] }
 
+# Already in the tree through tao, wry and wgpu: the view under the webview that native viewports are drawn in.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.5"
+objc2-app-kit = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "NSGraphics",
+  "NSResponder",
+  "NSView",
+  "NSWindow",
+  "objc2-quartz-core",
+] }
+# Walks a view's subviews.
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSEnumerator"] }
+objc2-quartz-core = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "CALayer",
+  "CAMetalLayer",
+  "objc2-core-foundation",
+] }
+
 [dev-dependencies]
 # The mock runtime, which dispatches a command the way a webview would without one.
 tauri = { workspace = true, features = ["test"] }

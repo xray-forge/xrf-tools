@@ -40,6 +40,10 @@ xrf-visual = { workspace = true }
 [target.'cfg(windows)'.dependencies]
 windows = { workspace = true, features = ["Win32_Graphics_Dxgi", "Win32_Storage_FileSystem"] }
 
+[target.'cfg(target_vendor = "apple")'.dependencies]
+# Already in the tree through wgpu: the device the memory budget is read from.
+objc2-metal = { version = "0.3.2", default-features = false, features = ["std", "MTLDevice"] }
+
 [dev-dependencies]
 ddsfile = { workspace = true }
 naga = { workspace = true }

@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use crate::context::library_versions::read_file_version;
 
-#[cfg(windows)]
 #[test]
 fn reads_a_librarys_file_version() {
   let system: PathBuf = PathBuf::from(std::env::var_os("SystemRoot").unwrap_or_else(|| "C:\\Windows".into()));

@@ -2,8 +2,8 @@ use std::num::NonZeroIsize;
 
 use windows::Win32::Foundation::{HWND, RECT};
 use windows::Win32::UI::WindowsAndMessaging::{GWLP_HINSTANCE, GetClientRect, GetWindowLongPtrW, IsIconic};
-use xrf_renderer::RenderWindowHost;
 use xrf_renderer::raw_window_handle::{RawDisplayHandle, RawWindowHandle, Win32WindowHandle, WindowsDisplayHandle};
+use xrf_renderer::{RenderWindowHost, SurfaceTargetUnsafe};
 
 /// A Win32 window viewports are drawn into, read straight from its handle on the render thread.
 ///
@@ -33,17 +33,18 @@ unsafe impl RenderWindowHost for Win32WindowHost {
     self.hwnd.get() as u64
   }
 
-  fn get_handles(&self) -> (RawWindowHandle, RawDisplayHandle) {
+  fn get_surface_target(&self) -> SurfaceTargetUnsafe {
     let mut handle: Win32WindowHandle = Win32WindowHandle::new(self.hwnd);
 
     // Vulkan makes its surface from the module instance as well as the window.
     // SAFETY: plain Win32 read; a handle no longer naming a window answers zero, which is no instance.
     handle.hinstance = NonZeroIsize::new(unsafe { GetWindowLongPtrW(self.get_hwnd(), GWLP_HINSTANCE) });
 
-    (
-      RawWindowHandle::Win32(handle),
-      RawDisplayHandle::Windows(WindowsDisplayHandle::new()),
-    )
+    // Both D3D12 and Vulkan make a surface from a window's handles on any thread.
+    SurfaceTargetUnsafe::RawHandle {
+      raw_display_handle: Some(RawDisplayHandle::Windows(WindowsDisplayHandle::new())),
+      raw_window_handle: RawWindowHandle::Win32(handle),
+    }
   }
 
   fn get_client_size(&self) -> (u32, u32) {
@@ -59,7 +60,7 @@ unsafe impl RenderWindowHost for Win32WindowHost {
     }
   }
 
-  fn is_minimized(&self) -> bool {
+  fn is_hidden(&self) -> bool {
     // SAFETY: plain Win32 read; a handle no longer naming a window answers false.
     unsafe { IsIconic(self.get_hwnd()) }.as_bool()
   }

@@ -19,20 +19,43 @@ export type TRenderBackendChoice = typeof RENDER_BACKEND_AUTO | ERenderBackend;
 const RENDER_BACKEND_NAMES: Readonly<Record<RenderBackend, string>> = {
   [ERenderBackend.D3D12]: "Direct3D 12",
   [ERenderBackend.VULKAN]: "Vulkan",
+  [ERenderBackend.METAL]: "Metal",
 };
 
 /** Each backend's short tag as a viewport's readout shows it. */
 const RENDER_BACKEND_TAGS: Readonly<Record<RenderBackend, string>> = {
   [ERenderBackend.D3D12]: "dx",
   [ERenderBackend.VULKAN]: "vk",
+  [ERenderBackend.METAL]: "mtl",
 };
 
-/** The choices offered, in the renderer's own fallback order after the automatic one. */
-export const RENDER_BACKEND_CHOICES: ReadonlyArray<TRenderBackendChoice> = [
+/** Every choice the settings can hold, whichever platform they were made on, the automatic one first. */
+const RENDER_BACKEND_CHOICES: ReadonlyArray<TRenderBackendChoice> = [
   RENDER_BACKEND_AUTO,
   ERenderBackend.D3D12,
   ERenderBackend.VULKAN,
+  ERenderBackend.METAL,
 ];
+
+/**
+ * The choices the settings offer: the automatic one, every backend the renderer probed on this platform, and the one
+ * asked for even where it is not among them, so the row still shows it.
+ *
+ * @param availability - What each backend can do on this machine, as the renderer probed it; none until known.
+ * @param value - What the settings ask for.
+ * @returns The choices offered, in the renderer's order after the automatic one.
+ */
+export function listRenderBackendChoices(
+  availability: Nullable<ReadonlyArray<RenderBackendAvailability>>,
+  value: TRenderBackendChoice
+): ReadonlyArray<TRenderBackendChoice> {
+  return RENDER_BACKEND_CHOICES.filter(
+    (choice: TRenderBackendChoice) =>
+      choice === RENDER_BACKEND_AUTO ||
+      choice === value ||
+      Boolean(availability?.some((it: RenderBackendAvailability) => it.backend === choice))
+  );
+}
 
 /**
  * Reads a stored choice, falling back to the automatic one rather than trusting what is in storage.

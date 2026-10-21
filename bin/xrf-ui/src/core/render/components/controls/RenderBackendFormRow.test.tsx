@@ -25,6 +25,7 @@ describe("RenderBackendFormRow", () => {
     );
 
     expect(view.getByRole("button", { name: "Direct3D 12" })).toBeDisabled();
+    expect(view.queryByRole("button", { name: "Metal" })).toBeNull();
     expect(view.getByRole("group", { name: "Graphics API" })).toHaveAccessibleDescription(
       /Drawing with Vulkan on Test GPU\./
     );
@@ -58,12 +59,13 @@ describe("RenderBackendFormRow", () => {
     );
   });
 
-  it("offers every API before the renderer was asked which work", () => {
+  it("offers the automatic API and the one asked for before the renderer was asked which work", () => {
     const view = render(
-      <RenderBackendFormRow gpu={null} value={RENDER_BACKEND_AUTO} availability={null} onChange={jest.fn()} />
+      <RenderBackendFormRow gpu={null} value={ERenderBackend.VULKAN} availability={null} onChange={jest.fn()} />
     );
 
-    expect(view.getByRole("button", { name: "Direct3D 12" })).toBeEnabled();
+    expect(view.getByRole("button", { name: "Auto" })).toBeEnabled();
     expect(view.getByRole("button", { name: "Vulkan" })).toBeEnabled();
+    expect(view.queryByRole("button", { name: "Direct3D 12" })).toBeNull();
   });
 });

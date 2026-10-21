@@ -38,16 +38,12 @@ impl RenderWindow {
   ///
   /// Returns an error when the GPU cannot present to the window.
   pub fn new(context: &GpuContext, host: Arc<dyn RenderWindowHost>) -> XrfResult<Self> {
-    let (window, display) = host.get_handles();
     // SAFETY: `RenderWindowHost`'s contract keeps the window alive until its last viewport's detach is handled, and the
     // thread lets the window's swapchain go as it handles that detach.
     let surface: wgpu::Surface<'static> = unsafe {
       context
         .instance
-        .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
-          raw_display_handle: Some(display),
-          raw_window_handle: window,
-        })
+        .create_surface_unsafe(host.get_surface_target())
         .map_err(|error| XrfError::new_unexpected_error(format!("Cannot draw into the window: {error}")))?
     };
     let capabilities: wgpu::SurfaceCapabilities = surface.get_capabilities(&context.adapter);
@@ -104,7 +100,7 @@ impl RenderWindow {
   pub fn ready(&mut self, context: &GpuContext, is_vsync: bool) -> Option<(u32, u32)> {
     let (width, height) = self.host.get_client_size();
 
-    if width == 0 || height == 0 || self.host.is_minimized() {
+    if width == 0 || height == 0 || self.host.is_hidden() {
       return None;
     }
 

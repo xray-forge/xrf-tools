@@ -1,11 +1,16 @@
+use std::num::NonZeroIsize;
+use std::sync::Arc;
+
 use tauri::State;
 use tauri::ipc::Channel;
-use xrf_renderer::RenderViewportId;
+use xrf_renderer::{RenderViewportId, RenderWindowHost};
 
 use crate::core::types::TauriResult;
 use crate::core::window::WindowHandles;
+use crate::plugins::render::channel_event_sink::ChannelEventSink;
 use crate::plugins::render::state::RenderState;
 use crate::plugins::render::viewport_event::ViewportEvent;
+use crate::plugins::render::window_host::WindowHostBuilder;
 
 /// Start drawing a native viewport into a window, named by its label, telling the page what it costs and where its
 /// camera is through `events`.
@@ -17,44 +22,19 @@ pub fn render_attach_viewport(
   window: String,
   events: Channel<ViewportEvent>,
 ) -> TauriResult<RenderViewportId> {
-  attach(&state, &handles, &window, events)
-}
-
-#[cfg(windows)]
-fn attach(
-  state: &RenderState,
-  handles: &WindowHandles,
-  window: &str,
-  events: Channel<ViewportEvent>,
-) -> TauriResult<RenderViewportId> {
-  use std::sync::Arc;
-
-  use crate::plugins::render::channel_event_sink::ChannelEventSink;
-  use crate::plugins::render::win32_window_host::Win32WindowHost;
-
-  let handle = handles
-    .get(window)
+  let handle: NonZeroIsize = handles
+    .get(&window)
     .ok_or_else(|| format!("Window '{window}' cannot host a native viewport"))?;
+  let host: Arc<dyn RenderWindowHost> = WindowHostBuilder::new(handle).build()?;
 
   state
     .attach_viewport(
-      window,
-      Arc::new(Win32WindowHost::new(handle)),
+      &window,
+      host,
       (
         Box::new(ChannelEventSink::new(events.clone())),
         Box::new(ChannelEventSink::new(events)),
       ),
     )
     .ok_or_else(|| "No native viewport number is left to attach another".to_string())
-}
-
-#[cfg(not(windows))]
-fn attach(
-  _state: &RenderState,
-  _handles: &WindowHandles,
-  _window: &str,
-  _events: Channel<ViewportEvent>,
-) -> TauriResult<RenderViewportId> {
-  // todo: Host native viewports outside Windows, where the webview's window composes differently.
-  Err("Native viewports are drawn on Windows only".to_string())
 }

@@ -295,7 +295,7 @@ impl RenderThread {
       host.is_some_and(|host| {
         let (width, height) = host.get_client_size();
 
-        !host.is_minimized() && viewport.get_drawn_rect(width, height).is_some()
+        !host.is_hidden() && viewport.get_drawn_rect(width, height).is_some()
       })
     })
   }

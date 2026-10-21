@@ -9,14 +9,18 @@ pub struct GpuMemoryBudget {
 
 impl GpuMemoryBudget {
   /// What the adapter's driver says of its own memory now: DXGI's on D3D12, `VK_EXT_memory_budget`'s over the
-  /// device-local heaps on Vulkan; none where the backend or the driver says nothing.
+  /// device-local heaps on Vulkan, the device's working set on Metal; none where the driver says nothing.
   pub fn read(adapter: &wgpu::Adapter) -> Option<Self> {
-    #[cfg(windows)]
-    if let Some(budget) = Self::read_dx12(adapter) {
-      return Some(budget);
+    match adapter.get_info().backend {
+      #[cfg(windows)]
+      wgpu::Backend::Dx12 => Self::read_dx12(adapter),
+      // wgpu builds Vulkan on Apple platforms only through MoltenVK's portability layer, which the workspace leaves off.
+      #[cfg(not(target_vendor = "apple"))]
+      wgpu::Backend::Vulkan => Self::read_vulkan(adapter),
+      #[cfg(target_vendor = "apple")]
+      wgpu::Backend::Metal => Self::read_metal(adapter),
+      _ => None,
     }
-
-    Self::read_vulkan(adapter)
   }
 
   #[cfg(windows)]
@@ -41,6 +45,7 @@ impl GpuMemoryBudget {
     })
   }
 
+  #[cfg(not(target_vendor = "apple"))]
   fn read_vulkan(adapter: &wgpu::Adapter) -> Option<Self> {
     use ash::vk;
 
@@ -77,5 +82,23 @@ impl GpuMemoryBudget {
     }
 
     Some(total)
+  }
+
+  /// Metal's memory is the machine's, shared with the CPU, so all of it the GPU may hold is the working set the device
+  /// recommends staying within: it is both the total and the budget.
+  #[cfg(target_vendor = "apple")]
+  fn read_metal(adapter: &wgpu::Adapter) -> Option<Self> {
+    use objc2_metal::MTLDevice;
+
+    // SAFETY: the raw adapter is only queried here, never retained or changed, so wgpu's own state is untouched.
+    let hal = unsafe { adapter.as_hal::<wgpu::hal::api::Metal>() }?;
+    let device = hal.raw_device();
+    let working_set: u64 = device.recommendedMaxWorkingSetSize();
+
+    Some(Self {
+      total: working_set,
+      budget: working_set,
+      used: device.currentAllocatedSize() as u64,
+    })
   }
 }

@@ -3,6 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { ERenderBackend, RenderBackendAvailability } from "@/core/ipc/types/xrf-renderer";
 import {
   getForcedRenderBackend,
+  listRenderBackendChoices,
   RENDER_BACKEND_AUTO,
   resolveRenderBackend,
   toRenderBackend,
@@ -36,8 +37,26 @@ const VULKAN_ONLY: ReadonlyArray<RenderBackendAvailability> = [
 describe("render backend choice", () => {
   it("reads a stored choice, the automatic one for anything it does not know", () => {
     expect(toRenderBackendChoice("vulkan")).toBe(ERenderBackend.VULKAN);
-    expect(toRenderBackendChoice("metal")).toBe(RENDER_BACKEND_AUTO);
+    expect(toRenderBackendChoice("metal")).toBe(ERenderBackend.METAL);
+    expect(toRenderBackendChoice("opengl")).toBe(RENDER_BACKEND_AUTO);
     expect(toRenderBackendChoice(null)).toBe(RENDER_BACKEND_AUTO);
+  });
+
+  it("offers the backends the renderer probed on this platform, and the one asked for even where it is not one", () => {
+    const metal: ReadonlyArray<RenderBackendAvailability> = [{ ...BOTH[0], backend: ERenderBackend.METAL }];
+
+    expect(listRenderBackendChoices(BOTH, RENDER_BACKEND_AUTO)).toEqual([
+      RENDER_BACKEND_AUTO,
+      ERenderBackend.D3D12,
+      ERenderBackend.VULKAN,
+    ]);
+    expect(listRenderBackendChoices(metal, RENDER_BACKEND_AUTO)).toEqual([RENDER_BACKEND_AUTO, ERenderBackend.METAL]);
+    expect(listRenderBackendChoices(metal, ERenderBackend.VULKAN)).toEqual([
+      RENDER_BACKEND_AUTO,
+      ERenderBackend.VULKAN,
+      ERenderBackend.METAL,
+    ]);
+    expect(listRenderBackendChoices(null, RENDER_BACKEND_AUTO)).toEqual([RENDER_BACKEND_AUTO]);
   });
 
   it("asks the renderer for the backend named, none for the automatic choice", () => {

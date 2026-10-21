@@ -4,8 +4,6 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Condvar, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
-use raw_window_handle::{RawDisplayHandle, RawWindowHandle};
-
 use crate::contract::render_viewport_event::RenderViewportEvent;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::host::render_event_sink::RenderEventSink;
@@ -48,25 +46,25 @@ impl Gate {
   }
 }
 
-/// A minimised window, which the thread never draws into: one asked for its handles fails the test rather than hand the
+/// A hidden window, which the thread never draws into: one asked for its surface fails the test rather than hand the
 /// GPU a window that is not there.
 struct HiddenWindow(Arc<Gate>);
 
-// SAFETY: it names no window, and a thread that would present through it panics in `get_handles` instead.
+// SAFETY: it names no window, and a thread that would present through it panics in `get_surface_target` instead.
 unsafe impl RenderWindowHost for HiddenWindow {
   fn get_key(&self) -> u64 {
     1
   }
 
-  fn get_handles(&self) -> (RawWindowHandle, RawDisplayHandle) {
-    panic!("A hidden test window has no handles to draw into");
+  fn get_surface_target(&self) -> wgpu::SurfaceTargetUnsafe {
+    panic!("A hidden test window has no surface to draw into");
   }
 
   fn get_client_size(&self) -> (u32, u32) {
     (0, 0)
   }
 
-  fn is_minimized(&self) -> bool {
+  fn is_hidden(&self) -> bool {
     self.0.pass();
 
     true
