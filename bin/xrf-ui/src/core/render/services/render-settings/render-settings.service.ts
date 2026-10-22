@@ -124,13 +124,13 @@ export class RenderSettingsService {
 
   public constructor(private readonly settingsService: SettingsService = inject(SettingsService)) {}
 
-  /** Whether the physical light levels, parked, may be chosen and drawn: in dev mode only. */
+  /** Whether the physical light levels may be chosen and drawn: in dev mode only. */
   @Computed()
   public get isPhysicalLightLevelAvailable(): boolean {
     return this.settingsService.isDevModeEnabled;
   }
 
-  /** Every renderer feature as the choice sets it, a parked light level drawn as the authored one outside dev mode. */
+  /** Every renderer feature as the choice sets it, a physical light level drawn as the authored one outside dev mode. */
   @Computed()
   public get rendererFeatures(): IRenderFeatureSettings {
     const features: IRenderFeatureSettings = resolveRenderFeatures(this.rendererChoice);

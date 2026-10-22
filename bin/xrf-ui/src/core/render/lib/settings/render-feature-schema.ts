@@ -63,7 +63,7 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   // A field's fourth argument, where given, is the range xrf recommends, Base's and Enhanced's values within it: below
   // it the effect shows misses or artefacts, past it it costs more for little visible gain. A field without one is not
   // rated. The fifth, where given, is the value past which a higher one was measured to look the same and only cost
-  // more (benchmarks/xrf-renderer/20261020071500-fps-stalls in xrf-agents).
+  // more.
   ambientOcclusion: {
     isEnabled: FLAG,
     // Each method's search within its settings' own ranges (`RenderAmbientOcclusionGtaoSettings` and the rest).
@@ -177,9 +177,10 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   // The renderer's own: puddles from none to nearly every site at two, a puddle's reflection at most a mirror's, the
   // rain's ripples up to twice their designed strength, and puddles drawn out to the widest grass's radius, which the
   // level surface they are placed on reaches past; the refracting drops' rings out to where a ring is a pixel or two,
-  // up to three times their designed strength, the drops over a square from five metres to 150, thinning out past 15, and from half their designed size, where their waves still span a few
-  // of the rings' texels, to twice it; the level wetting and its puddles filling from the game's own pace to a hundred
-  // times it, where a moderate rain fills them in seconds.
+  // up to three times their designed strength, the drops over a square from five metres to 150, thinning out past 15,
+  // and from half their designed size, where their waves still span a few of the rings' texels, to twice it; the level
+  // wetting and its puddles filling from the game's own pace to a hundred times it, where a moderate rain fills them in
+  // seconds.
   rain: {
     distance: toNumber(30, 450, true),
     dropSquare: toNumber(5, 150),

@@ -21,7 +21,7 @@ export function explainRenderLightLevel(level: RenderLightLevel): string {
 }
 
 /**
- * The light levels, in the order they are offered: the physical ones, parked, shown but not offered outside dev mode.
+ * The light levels, in the order they are offered: the physical ones shown but not offered outside dev mode.
  *
  * @param isPhysicalAvailable - Whether the physical light levels may be chosen (`isPhysicalLightLevelAvailable`).
  * @returns The options.
@@ -38,7 +38,7 @@ export function getRenderLightLevelOptions(
 /**
  * @param level - A light level as chosen and kept.
  * @param isPhysicalAvailable - Whether the physical light levels may be drawn.
- * @returns The level drawn: the authored one where the physical levels, parked, may not be.
+ * @returns The level drawn: the authored one where the physical levels may not be.
  */
 export function toDrawnRenderLightLevel(level: RenderLightLevel, isPhysicalAvailable: boolean): RenderLightLevel {
   return level === ERenderLightLevel.PHYSICAL && !isPhysicalAvailable ? ERenderLightLevel.AUTHORED : level;
