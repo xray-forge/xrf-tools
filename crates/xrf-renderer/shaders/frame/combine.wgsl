@@ -172,7 +172,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   // across the water lays a grey sheet over a moonlit puddle, where water shows the sun or the moon only as the glint
   // below. Its share is the sun pass's own term (`light_sun`), as much of it as reached the pixel.
   if (reach.y > 0.0 && lit_gloss > 0.0) {
-    let sun_lit: f32 = lighting.sun.w * sun_terms(lighting, material_lut, lut_sampler, normal,
+    let sun_lit: f32 = lighting.sun.w * light_terms(material_lut, lut_sampler, lighting.to_sun.xyz, normal,
       camera_view_ray(position), material.z).y * textureLoad(sun_seen, texel, 0).x;
     let water_kept: f32 = lit_gloss - max(lit_gloss - reach.y * saturate(water_seen), 0.0);
 

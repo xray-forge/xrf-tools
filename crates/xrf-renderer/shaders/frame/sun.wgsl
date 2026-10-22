@@ -67,7 +67,7 @@ fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
 
   let to_light: vec3<f32> = lighting.to_sun.xyz;
   // `plight_infinity`'s terms.
-  let lit: vec4<f32> = sun_terms(lighting, material_lut, lut_sampler, normal, camera_view_ray(position), material.z);
+  let lit: vec4<f32> = light_terms(material_lut, lut_sampler, to_light, normal, camera_view_ray(position), material.z);
   let world: vec3<f32> = (transpose(camera.view) * vec4<f32>(position, 0.0)).xyz + camera.position.xyz;
   let world_normal: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(normal, 0.0)).xyz);
   // Marched at the frame's size and read where it is, or at half and brought up by depth; a single lit texel stands in

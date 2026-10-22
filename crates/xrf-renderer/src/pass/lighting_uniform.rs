@@ -126,7 +126,7 @@ impl LightingUniform {
         (sun * frame.pre_exposure.current).extend(to_light_specular(sun, true) * frame.pre_exposure.current)
       }
       None => light(lighting.get_sun_color(&options.features.light_scales))
-        .extend(lighting.get_sun_specular(&options.features.light_scales, false) * gain * light_scale),
+        .extend(lighting.get_sun_specular(&options.features.light_scales) * gain * light_scale),
     };
 
     Self {

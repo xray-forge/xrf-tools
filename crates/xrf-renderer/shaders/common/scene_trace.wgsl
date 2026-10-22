@@ -314,9 +314,7 @@ fn shade_scene_hit(
   let facing: vec3<f32> = select(select(met.normal, -met.normal, dot(met.normal, toward) > 0.0), met.crown, is_crown);
   let lifted: vec3<f32> = met.position + facing * SCENE_SUN_BIAS;
   let to_sun: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(state.to_sun.xyz, 0.0)).xyz);
-  let half_way: vec3<f32> = normalize(to_sun - toward);
-  let lit: vec4<f32> = textureSampleLevel(lut, lut_sampler,
-    vec3<f32>(dot(to_sun, facing), dot(half_way, facing), met.slice), 0.0);
+  let lit: vec4<f32> = light_terms(lut, lut_sampler, to_sun, facing, toward, met.slice);
   // A tree's own leaves do not shade it: its sun ray starts among them, and the frame lights foliage through its
   // leaves.
   let own: u32 = select(SCENE_NO_PLACE, hit.place, (trace_records[hit.record].flags & TRACE_RECORD_TREE) != 0u);
@@ -398,9 +396,7 @@ fn shade_scene_grass(
   let facing: vec3<f32> = normalize(across + up);
   let point: vec3<f32> = origin + toward * grass.entry;
   let to_sun: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(state.to_sun.xyz, 0.0)).xyz);
-  let half_way: vec3<f32> = normalize(to_sun - toward);
-  let lit: vec4<f32> = textureSampleLevel(lut, lut_sampler,
-    vec3<f32>(dot(to_sun, facing), dot(half_way, facing), GRASS_MATERIAL_SLICE), 0.0);
+  let lit: vec4<f32> = light_terms(lut, lut_sampler, to_sun, facing, toward, GRASS_MATERIAL_SLICE);
   let through: vec3<f32> = select(vec3<f32>(0.0), flora_through(state, -toward, to_sun, facing), state.flora.x > 0.5);
   var sun: vec4<f32> = vec4<f32>(0.0);
 
@@ -454,9 +450,7 @@ fn scene_lamps(
     }
 
     let to_light: vec3<f32> = normalize(-to_point);
-    let half_way: vec3<f32> = normalize(to_light + to_eye);
-    let material: vec4<f32> = textureSampleLevel(lut, lut_sampler,
-      vec3<f32>(dot(to_light, view_normal), dot(half_way, view_normal), slice), 0.0);
+    let material: vec4<f32> = light_terms(lut, lut_sampler, to_light, view_normal, -to_eye, slice);
     var light: vec4<f32> = vec4<f32>(material.xxx, material.y) *
       light_share(record, to_point, are_levels_physical(), 0.0);
 

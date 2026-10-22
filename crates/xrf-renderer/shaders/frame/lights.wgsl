@@ -3,6 +3,7 @@ enable wgpu_binding_array;
 #import "common/fullscreen"
 #import "frame/light_selection"
 #import "common/scene_light"
+#import "common/hmodel"
 #import "generated/frame/light_visibility"
 
 // Every local light reaching a pixel, as the engine's `accum_omni` and `accum_spot` accumulate each:
@@ -63,18 +64,12 @@ fn fs_lights(in: FullscreenVarying) -> @location(0) vec4<f32> {
 
     let is_spot: bool = record.axis.w > -1.0;
     let to_light: vec3<f32> = normalize(-light.to_point);
-    let half_way: vec3<f32> = normalize(to_light + to_eye);
     // Foliage's normal turns towards the light, halfway for a spot or a shadowed omni, wholly for an unshadowed one,
     // and its gloss is cut as far.
     let is_unshadowed_omni: bool = !(is_spot || light.is_shadowed);
     let lit_normal: vec3<f32> = select(pixel.normal,
       select(normalize(pixel.normal + to_light), to_light, is_unshadowed_omni), is_flora);
-    let material: vec4<f32> = textureSampleLevel(
-      material_lut,
-      lut_sampler,
-      vec3<f32>(dot(to_light, lit_normal), dot(half_way, lit_normal), slice),
-      0.0
-    );
+    let material: vec4<f32> = light_terms(material_lut, lut_sampler, to_light, lit_normal, -to_eye, slice);
     let flora_gloss: f32 = select(1.0, select(0.5, 0.3, is_unshadowed_omni), is_flora);
     var lit: vec4<f32> = vec4<f32>(material.xxx, material.y * flora_gloss) *
       light_share(record, light.to_point, are_levels_physical(), 0.0);

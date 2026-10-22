@@ -11,6 +11,7 @@ use crate::contract::render_rect::RenderRect;
 use crate::contract::render_tonemap_mode::RenderTonemapMode;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::daylight::Daylight;
+use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
 use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
@@ -157,7 +158,13 @@ fn only_the_physical_levels_weigh_the_specular_by_the_light() {
     (summed / weight - 1.0).abs() < 1e-5,
     "{summed} against the engine's {weight}"
   );
-  assert!(weight > lighting.get_sun_specular(&engine.features.light_scales, true));
+  assert!(
+    weight
+      > to_light_specular(
+        authored_light(lighting.get_sun_color(&engine.features.light_scales), true),
+        true
+      )
+  );
 }
 
 // The engine's curve and the engine's own showing take no anchor; AgX and PBR Neutral each lift a darker frame's key

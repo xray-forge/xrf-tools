@@ -15,7 +15,6 @@ use crate::lighting::render_sky::RenderSky;
 use crate::lighting::render_thunderbolt_strike::RenderThunderboltStrike;
 use crate::lighting::render_tree_wind::RenderTreeWind;
 use crate::lighting::render_wind::RenderWind;
-use crate::lighting::srgb::authored_light;
 use crate::lighting::sun_direction::to_renderer_sun_direction;
 
 /// The floor `phase_combine` keeps ambient above.
@@ -72,10 +71,10 @@ impl RenderLighting {
     self.sun_color * scales.sun
   }
 
-  /// `Ldynamic_color.w`: what the sun contributes to specular, `u_diffuse2s` of its scaled colour (`r2_types.h`), or
-  /// under the physical light (`is_physical`) of that colour as light (`authored_light`).
-  pub fn get_sun_specular(&self, scales: &RenderLightScales, is_physical: bool) -> f32 {
-    to_light_specular(authored_light(self.get_sun_color(scales), is_physical), is_physical)
+  /// `Ldynamic_color.w`: what the sun contributes to specular, `u_diffuse2s` of its scaled colour (`r2_types.h`), as
+  /// the engine's light and the authored levels weigh it; the physical levels' sun is the world's daylight.
+  pub fn get_sun_specular(&self, scales: &RenderLightScales) -> f32 {
+    to_light_specular(self.get_sun_color(scales), false)
   }
 
   /// The density the sun's shafts are drawn with: the keyframes', lifted by `r2_sunshafts_min` after the mix.
