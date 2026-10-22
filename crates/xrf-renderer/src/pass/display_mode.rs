@@ -2,7 +2,7 @@ use glam::Vec3;
 
 use crate::contract::render_display_transform::RenderDisplayTransform;
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::pass::display_curves::{agx, get_graded, get_key_match, pbr_neutral};
+use crate::pass::display_curves::{agx, get_graded, get_key_match, get_least_shown, pbr_neutral};
 
 /// How the window pass shows a viewport's scene, numbered as `common/display_transform.wgsl` numbers it: as it is (the
 /// engine's passes tonemapped it), by the engine's curve (linear light at the engine's display values), or, where the
@@ -18,13 +18,16 @@ pub enum DisplayMode {
 }
 
 impl DisplayMode {
-  /// The land's colour a transform is anchored on, a warm earth: PBR Neutral's toe takes its offset from a colour's
-  /// weakest channel, so a grey shows the land's brightness through it as no land colour does.
+  /// The land's colour a transform is anchored on, a warm earth: AgX's response depends on the hue it is shown, so the
+  /// anchor matches the land as it is rather than a grey.
   pub const ANCHOR_HUE: Vec3 = Vec3::new(1.0, 0.75, 0.45);
-  /// The keys an anchor is solved within: the least the engine's curve shows above the display's first level,
-  /// `(1/255)^2.2`, under which there is nothing shown to match and AgX's black would lift the frame without end, and
-  /// the display's white, past which the engine's curve shows what AgX and PBR Neutral, held under white, reach only at
-  /// their bounds.
+  /// The sky's colour its pictures are anchored on: grey, a sky's hue running from dusk's orange to noon's blue.
+  pub const SKY_HUE: Vec3 = Vec3::ONE;
+  /// The keys an anchor is solved within: from the least the engine's curve shows above the display's first level,
+  /// `(1/255)^2.2`, under which there is nothing shown to match, or the least the transform itself shows there
+  /// (`get_least_shown`), under which its toe would be lifted from black and whatever the night lights above the key
+  /// with it, into the shoulder (AgX's moonlit grass bleached grey); to the display's white, past which the engine's
+  /// curve shows what AgX and PBR Neutral, held under white, reach only at their bounds.
   const ANCHOR_KEYS: (f32, f32) = (5.07e-6, 1.0);
   /// The most a transform's anchor lifts or lowers the light by, in stops.
   const ANCHOR_BOUNDS: (f32, f32) = (-6.0, 8.0);
@@ -56,13 +59,33 @@ impl DisplayMode {
   /// at the display value the engine's curve shows it at, and nothing else of the engine's look, so each keeps its own
   /// contrast about it. None for the engine's curve and the engine's own showing.
   pub fn get_anchor_stops(self, key: f32, contrast: f32) -> f32 {
-    let (least, most): (f32, f32) = Self::ANCHOR_KEYS;
-    let shown: f32 = get_graded(key, contrast).clamp(least, most);
+    self.get_match(key, contrast, Self::ANCHOR_HUE)
+  }
 
+  /// The stops a sky at the exposed `key` is lifted by, graded by `contrast`, for the transform to show it at the
+  /// display value the engine's curve shows it at: its pictures' own anchor (`PictureShares`), apart from the land's.
+  pub fn get_sky_stops(self, key: f32, contrast: f32) -> f32 {
+    self.get_match(key, contrast, Self::SKY_HUE)
+  }
+
+  /// The transform the physical light is shown through; none for the engine's curve and the engine's own showing.
+  fn get_transform(self) -> Option<fn(Vec3) -> Vec3> {
     match self {
-      Self::Agx => get_key_match(agx, (shown, Self::ANCHOR_HUE), Self::ANCHOR_BOUNDS),
-      Self::PbrNeutral => get_key_match(pbr_neutral, (shown, Self::ANCHOR_HUE), Self::ANCHOR_BOUNDS),
-      Self::AsIs | Self::Tonemapped | Self::EngineEncoded => 0.0,
+      Self::Agx => Some(agx),
+      Self::PbrNeutral => Some(pbr_neutral),
+      Self::AsIs | Self::Tonemapped | Self::EngineEncoded => None,
     }
+  }
+
+  /// The stops that show a colour of `hue` at the exposed `key`, graded by `contrast`, through the transform as the
+  /// engine's curve shows it, the key held within `ANCHOR_KEYS`.
+  fn get_match(self, key: f32, contrast: f32, hue: Vec3) -> f32 {
+    let Some(transform) = self.get_transform() else {
+      return 0.0;
+    };
+    let (least, most): (f32, f32) = Self::ANCHOR_KEYS;
+    let shown: f32 = get_graded(key, contrast).clamp(least.max(get_least_shown(transform, hue)), most);
+
+    get_key_match(transform, (shown, hue), Self::ANCHOR_BOUNDS)
   }
 }

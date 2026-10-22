@@ -56,23 +56,20 @@ fn agx(light: vec3<f32>) -> vec3<f32> {
   return saturate(REC2020_TO_SRGB * shown);
 }
 
-// Khronos PBR Neutral: scene light to the display's linear colours, as they are below the shoulder. Its toe darkens the
-// light by the reference's offset as a share of the luminance, keeping a dark colour's chroma, where the offset off
-// each channel would empty its weakest channel.
+// Khronos PBR Neutral's shoulder: scene light to the display's linear colours, as they are below it, compressed and
+// desaturated towards white past it. Its toe, an offset of 0.04 off the light faded to nothing at black, is left out:
+// its fade squares the dark, which a night lives in whole, doubling a night's contrast into its sky's eight-bit steps,
+// where the engine's curve is near linear; the anchor brings the frame's key to the engine's showing without it.
 fn pbr_neutral(light: vec3<f32>) -> vec3<f32> {
-  let least: f32 = min(light.r, min(light.g, light.b));
-  let offset: f32 = select(0.04, least - 6.25 * least * least, least < 0.08);
-  let shown: f32 = max(luminance(light), 1e-6);
-  let toed: vec3<f32> = light * (max(shown - offset, 0.0) / shown);
-  let peak: f32 = max(toed.r, max(toed.g, toed.b));
+  let peak: f32 = max(light.r, max(light.g, light.b));
 
   if (peak < NEUTRAL_START) {
-    return saturate(toed);
+    return saturate(light);
   }
 
   let reach: f32 = 1.0 - NEUTRAL_START;
   let compressed: f32 = 1.0 - reach * reach / (peak + reach - NEUTRAL_START);
-  let scaled: vec3<f32> = toed * (compressed / peak);
+  let scaled: vec3<f32> = light * (compressed / peak);
   let grey: f32 = 1.0 - 1.0 / (NEUTRAL_DESATURATION * (peak - compressed) + 1.0);
 
   return saturate(mix(scaled, vec3<f32>(compressed), grey));

@@ -5,7 +5,7 @@
 use glam::{Vec3, Vec4};
 
 use crate::lighting::srgb::srgb_encoded;
-use crate::pass::display_curves::{agx, engine_display, pbr_neutral};
+use crate::pass::display_curves::{agx, engine_display, get_least_shown, pbr_neutral};
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::shader::shader_library::ShaderLibrary;
@@ -162,6 +162,11 @@ fn the_anchors_show_the_key_as_the_engines_curve_does() {
         (DisplayMode::Agx, agx as Reference),
         (DisplayMode::PbrNeutral, pbr_neutral),
       ] {
+        // Under the least the transform shows, the key is held there rather than matched.
+        if land.dot(Vec3::new(0.2126, 0.7152, 0.0722)) < get_least_shown(defined, hue) {
+          continue;
+        }
+
         let anchored: f32 = shown(defined(land * mode.get_anchor_stops(key, contrast).exp2()));
 
         assert!(
@@ -171,6 +176,21 @@ fn the_anchors_show_the_key_as_the_engines_curve_does() {
       }
     }
   }
+}
+
+/// A night's key under the least AgX shows is held there: its lift stays the lift at that key, so whatever the night
+/// lights above the key stays out of the shoulder, while PBR Neutral, which shows the darkest land, keeps matching.
+#[test]
+fn a_key_under_the_transforms_black_is_held_at_it() {
+  let least: f32 = get_least_shown(agx, DisplayMode::ANCHOR_HUE);
+
+  assert!(least > 1e-4 && least < 1e-3, "AgX shows the land from {least}");
+  assert_eq!(
+    DisplayMode::Agx.get_anchor_stops(least / 30.0, 1.0),
+    DisplayMode::Agx.get_anchor_stops(least / 2.0, 1.0)
+  );
+  assert!(DisplayMode::Agx.get_anchor_stops(least / 2.0, 1.0) < 3.0);
+  assert!(get_least_shown(pbr_neutral, DisplayMode::ANCHOR_HUE) < 3e-5);
 }
 
 /// The anchors move smoothly with the key and stay inside their bounds from a key no display shows to one past white,
@@ -219,8 +239,8 @@ fn the_transforms_show_light_as_their_definitions_do() {
   }
 }
 
-/// PBR Neutral shows a colour under its shoulder as it is, darkened by its toe's 0.04 of the luminance, and keeps a dark
-/// colour's chroma as the engine's curve does; AgX bleaches a saturated light towards white as it brightens.
+/// PBR Neutral shows a colour under its shoulder as it is, a dark one too, keeping its chroma as the engine's curve
+/// does; AgX bleaches a saturated light towards white as it brightens.
 #[test]
 fn pbr_neutral_keeps_colour_and_agx_bleaches_bright_light() {
   let orange: Vec3 = Vec3::new(0.5, 0.2, 0.1);
@@ -235,13 +255,7 @@ fn pbr_neutral_keeps_colour_and_agx_bleaches_bright_light() {
     return;
   };
   let chroma = |encoded: Vec3| (encoded.max_element() - encoded.min_element()) / encoded.max_element();
-  let luminance: f32 = orange.dot(Vec3::new(0.2126, 0.7152, 0.0722));
-
-  assert_close(
-    shown[0],
-    encoded(orange * ((luminance - 0.04) / luminance)),
-    "PBR Neutral under its shoulder",
-  );
+  assert_close(shown[0], encoded(orange), "PBR Neutral under its shoulder");
   assert!(
     chroma(shown[2]) < chroma(shown[1]) * 0.6,
     "AgX bleaches: {} at sixteen times, {} at one",

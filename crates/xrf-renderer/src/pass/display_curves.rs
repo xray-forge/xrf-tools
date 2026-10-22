@@ -1,5 +1,5 @@
 //! The display transforms as their published definitions write them, on the CPU: Khronos PBR Neutral's reference (its
-//! toe kept to the luminance), three.js's AgX and the engine's curve in the engine's own domain, colours of linear
+//! shoulder alone), three.js's AgX and the engine's curve in the engine's own domain, colours of linear
 //! light to the display's linear colours. `common/display_transform.wgsl` runs them on the GPU;
 //! `DisplayMode::get_anchor_stops` solves its anchors from them, and the transforms' GPU test holds the shader to them.
 
@@ -25,30 +25,22 @@ pub fn engine_display(light: Vec3) -> Vec3 {
   engine_curve(encoded).to_array().map(srgb_decoded).into()
 }
 
-/// Khronos PBR Neutral, as the reference GLSL of the Khronos PBR Neutral specification writes it, but for its toe: the
-/// reference's offset taken as a share of the luminance, not off each channel, so a dark colour keeps its chroma.
+/// Khronos PBR Neutral's shoulder, as the reference GLSL of the Khronos PBR Neutral specification writes it, without
+/// its toe: colours as they are below the shoulder, which starts where the reference's does.
 pub fn pbr_neutral(colour: Vec3) -> Vec3 {
   let start: f32 = 0.8 - 0.04;
   let desaturation: f32 = 0.15;
-  let least: f32 = colour.min_element();
-  let offset: f32 = if least < 0.08 {
-    least - 6.25 * least * least
-  } else {
-    0.04
-  };
-  let shown: f32 = colour.dot(Vec3::new(0.2126, 0.7152, 0.0722)).max(1e-6);
-  let toed: Vec3 = colour * ((shown - offset).max(0.0) / shown);
-  let peak: f32 = toed.max_element();
+  let peak: f32 = colour.max_element();
 
   if peak < start {
-    return toed.clamp(Vec3::ZERO, Vec3::ONE);
+    return colour.clamp(Vec3::ZERO, Vec3::ONE);
   }
 
   let d: f32 = 1.0 - start;
   let compressed: f32 = 1.0 - d * d / (peak + d - start);
   let grey: f32 = 1.0 - 1.0 / (desaturation * (peak - compressed) + 1.0);
 
-  (toed * (compressed / peak))
+  (colour * (compressed / peak))
     .lerp(Vec3::splat(compressed), grey)
     .clamp(Vec3::ZERO, Vec3::ONE)
 }
@@ -97,6 +89,28 @@ pub fn agx(colour: Vec3) -> Vec3 {
 /// A luminance as the grading's `contrast` in stops about middle grey shows it, as `graded` does.
 pub fn get_graded(luminance: f32, contrast: f32) -> f32 {
   MIDDLE_GREY * (luminance / MIDDLE_GREY).powf(contrast)
+}
+
+/// The least luminance a colour of `hue` is shown above the display's first level, `(1/255)^2.2`, through `transform`:
+/// where its toe begins to show anything, solved by bisection over the log2 luminance, as the transform rises with the
+/// light.
+pub fn get_least_shown(transform: fn(Vec3) -> Vec3, hue: Vec3) -> f32 {
+  let luminance = |colour: Vec3| colour.dot(Vec3::new(0.2126, 0.7152, 0.0722));
+  let first: f32 = srgb_decoded(1.0 / 255.0);
+  let unit: Vec3 = hue / luminance(hue).max(1e-6);
+  let (mut low, mut high): (f32, f32) = (-30.0, 0.0);
+
+  for _ in 0..40 {
+    let middle: f32 = 0.5 * (low + high);
+
+    if luminance(transform(unit * middle.exp2())) < first {
+      low = middle;
+    } else {
+      high = middle;
+    }
+  }
+
+  (0.5 * (low + high)).exp2()
 }
 
 /// The stops a colour of `hue` at luminance `key` is lifted by for `transform` to show it as bright as the engine's curve
