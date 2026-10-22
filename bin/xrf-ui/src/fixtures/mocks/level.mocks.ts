@@ -93,6 +93,7 @@ export function mockSelectedLevelDescription(
     engine: { engine: EXrayEngine.VANILLA, evidence: EXrayEngineEvidence.NAMED, subject: null },
     sun: null,
     hasSun: true,
+    levelMap: null,
     lights: 2,
     portals: 0,
     roots: createRoots([]),

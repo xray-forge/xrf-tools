@@ -9,6 +9,7 @@ import { EWeatherCycleKind, WeatherCycleId } from "@/core/ipc/types/xrf-environm
 import { EWorldWeatherPlay, EWorldWeatherTransition } from "@/core/ipc/types/xrf-world";
 import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
 import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level-sun-shafts-options";
+import { ILevelWeatherHold } from "@/core/level/lib/weather/level-weather-hold";
 import {
   readLevelWeatherMemory,
   toLevelWeatherMemoryKey,
@@ -213,6 +214,41 @@ describe("LevelWeatherService", () => {
     expect(service.cycle.value?.name).toBe("default_rain");
     expect(service.time).toBe(9_000);
     expect(service.control.factor).toBe(1000);
+  });
+
+  it("holds the clock, cuts to a borrowed cycle not remembered, and back to what it held", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+      ["plugin:levels|read_level_cycle"]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
+        mockLevelWeatherCycle({ name: cycle.name })
+      ),
+    });
+
+    const service: LevelWeatherService = createLevelWeatherService();
+    const key: string = toLevelWeatherMemoryKey(LEVEL_WEATHER_SELECTED.value);
+
+    await service.open(LEVEL_WEATHER_SELECTED);
+    await service.selectCycle("default_rain");
+    service.setPlaying(true);
+
+    const held: ILevelWeatherHold = service.hold();
+
+    expect(service.control.isPaused).toBe(true);
+    expect(readLevelWeatherMemory(key)?.control.isPaused).toBe(false);
+
+    await service.cutTo("map");
+
+    expect(service.weather).toEqual({ kind: EWorldWeatherPlay.CYCLE, name: "map" });
+    expect(service.transition).toBe(EWorldWeatherTransition.CUT);
+    expect(service.control.isPaused).toBe(true);
+    expect(readLevelWeatherMemory(key)?.cycle).toBe("default_rain");
+
+    await service.release(held);
+
+    expect(service.weather).toEqual({ kind: EWorldWeatherPlay.CYCLE, name: "default_rain" });
+    expect(service.transition).toBe(EWorldWeatherTransition.CUT);
+    expect(service.control.isPaused).toBe(false);
+    expect(readLevelWeatherMemory(key)?.control.isPaused).toBe(false);
   });
 
   // A floor set for one level is that level's: the next opens with its own, or with none.

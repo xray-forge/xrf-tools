@@ -6,10 +6,10 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { useCallback, useState } from "react";
 
-import { IKeybindCommand, KeybindCommandsService } from "@/core/commands";
+import { KeybindCommandsService } from "@/core/commands";
 import { REPOSITORY_URL } from "@/core/configs";
 import { OPEN_APPLICATION_HELP_KEYBIND_COMMAND } from "@/core/help/commands";
-import { formatChord, KeymapService, parseChord } from "@/core/keybinds";
+import { KeymapService } from "@/core/keybinds";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { useCurrentApplication } from "@/core/routing/current-application.context";
 import { OPEN_SETTINGS_KEYBIND_COMMAND } from "@/core/settings/commands";
@@ -17,7 +17,7 @@ import { ESettingsSection } from "@/core/settings/lib/settings-section";
 import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
 import { CLOSE_TOOL_KEYBIND_COMMAND } from "@/core/shell/commands";
 import { useEditorMenusRegistry } from "@/core/shell/editor-shell/use-editor-menus";
-import { IMenubarItem, IMenubarMenu } from "@/core/shell/menu/components/Menubar";
+import { IMenubarItem, IMenubarMenu, toCommandMenubarItem } from "@/core/shell/menu/components/Menubar";
 import { assembleMenus, IAssembledMenu, IMenuContribution, TMenuEntry } from "@/core/shell/menu/lib";
 import { FILE_MENU, HELP_MENU } from "@/core/shell/menu/menus";
 import { Logger } from "@/lib/logging";
@@ -55,19 +55,8 @@ export function useApplicationMenus(): Array<IMenubarMenu> {
   const toItem = useCallback(
     (entry: TMenuEntry): IMenubarItem => {
       switch (entry.kind) {
-        case "command": {
-          const command: IKeybindCommand = entry.command;
-          const [chord] = keymapService.getReachableChords(command);
-
-          return {
-            id: command.id,
-            label: command.label,
-            icon: command.icon,
-            shortcut: chord ? formatChord(parseChord(chord)) : null,
-            isDisabled: !commandsService.isAvailable(command),
-            onSelect: () => commandsService.execute(command),
-          };
-        }
+        case "command":
+          return toCommandMenubarItem(entry.command, commandsService, keymapService);
         case "action":
           return {
             id: entry.id,

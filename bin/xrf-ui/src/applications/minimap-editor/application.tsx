@@ -12,7 +12,7 @@ import { MINIMAP_EDITOR_HELP } from "./help";
 
 export const MINIMAP_EDITOR_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
   {
-    description: "Capture level minimaps and edit their world bounds",
+    description: "Align a level map image to its level and edit its world bounds",
     group: EApplicationGroupId.LEVEL,
     help: MINIMAP_EDITOR_HELP,
     icon: <MapIcon />,

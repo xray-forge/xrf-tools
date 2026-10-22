@@ -8,6 +8,8 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode } from "react";
 
+import { LevelViewerCaptureActions } from "@/applications/level-viewer/components/capture/LevelViewerCaptureActions";
+import { LevelViewerCaptureCover } from "@/applications/level-viewer/components/capture/LevelViewerCaptureCover";
 import { LevelViewerToolbar } from "@/applications/level-viewer/components/LevelViewerToolbar";
 import { LevelHeaderPanel } from "@/applications/level-viewer/components/panels/LevelHeaderPanel";
 import { LevelProblemsPanel } from "@/applications/level-viewer/components/panels/LevelProblemsPanel";
@@ -146,6 +148,7 @@ export function LevelViewerLayout({
     <EditorLayout toolbar={<LevelViewerToolbar onBack={onBack} />}>
       <LevelViewerSnapshotActions />
       <LevelViewerScreenshotActions />
+      <LevelViewerCaptureActions />
 
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>
         {heading ? (
@@ -177,6 +180,8 @@ export function LevelViewerLayout({
           {isOpen ? <LevelPreviewPick /> : null}
 
           {isOpen ? <LevelViewerScreenshotToast /> : null}
+
+          {isOpen ? <LevelViewerCaptureCover /> : null}
 
           {!isOpen && !isLoading ? <LevelPreviewEmpty error={error} onRetry={onRetry} /> : null}
 

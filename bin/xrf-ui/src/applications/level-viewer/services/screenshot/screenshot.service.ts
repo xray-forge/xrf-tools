@@ -1,15 +1,18 @@
 import { save } from "@tauri-apps/plugin-dialog";
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, reaction, RefObservable, runInAction } from "@wirestate/mobx";
-import { getPathName } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 
 import { TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND } from "@/applications/level-viewer/commands";
 import { toLevelViewerFileStem } from "@/applications/level-viewer/lib/files/level-viewer-file-stem";
 import {
+  copyLevelViewerImage,
+  ILevelViewerImage,
+  readLevelViewerImage,
+} from "@/applications/level-viewer/lib/files/level-viewer-image";
+import {
   ILevelViewerScreenshot,
   ILevelViewerScreenshotReport,
-  readPngSize,
   toLevelViewerScreenshotReportPath,
 } from "@/applications/level-viewer/lib/screenshot/level-viewer-screenshot";
 import {
@@ -18,9 +21,7 @@ import {
 } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { KeybindCommand } from "@/core/commands";
-import { fetchBulk } from "@/core/ipc/bulk";
 import { levelsCommands } from "@/core/ipc/commands/levels";
-import { levelsBulkRoutes } from "@/core/ipc/commands/levels-bulk";
 import { systemCommands } from "@/core/ipc/commands/system";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
@@ -180,11 +181,7 @@ export class LevelViewerScreenshotService {
 
   /** Puts the last screenshot's image on the clipboard. */
   public copyImage(): Promise<void> {
-    return this.attempt("copy the screenshot", async (shot: ILevelViewerScreenshot) => {
-      const blob: Blob = await fetch(shot.url).then((response: Response) => response.blob());
-
-      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-    });
+    return this.attempt("copy the screenshot", copyLevelViewerImage);
   }
 
   /** Copies the last screenshot where a save dialog answers. */
@@ -218,19 +215,9 @@ export class LevelViewerScreenshotService {
 
   /** The screenshot written to `path`, read back for the page. */
   private async read(path: string): Promise<ILevelViewerScreenshot> {
-    const bytes: Uint8Array = new Uint8Array(await fetchBulk(levelsBulkRoutes.readScreenshot(path)));
-    const [width, height]: [number, number] = readPngSize(bytes);
+    const image: ILevelViewerImage = await readLevelViewerImage(path);
 
-    return {
-      frame: null,
-      height,
-      name: getPathName(path),
-      path,
-      reportPath: toLevelViewerScreenshotReportPath(path),
-      size: bytes.byteLength,
-      url: URL.createObjectURL(new Blob([bytes as BlobPart], { type: "image/png" })),
-      width,
-    };
+    return { ...image, frame: null, reportPath: toLevelViewerScreenshotReportPath(path) };
   }
 
   /**

@@ -1,6 +1,6 @@
 import { ReactElement } from "react";
 
-import { LevelViewerScreenshotAction } from "@/applications/level-viewer/components/toolbar/camera/LevelViewerScreenshotAction";
+import { LevelViewerCaptureAction } from "@/applications/level-viewer/components/toolbar/camera/LevelViewerCaptureAction";
 import { LevelFogAction } from "@/applications/level-viewer/components/toolbar/environment/LevelFogAction";
 import { LevelRainAction } from "@/applications/level-viewer/components/toolbar/environment/LevelRainAction";
 import { LevelSkyAction } from "@/applications/level-viewer/components/toolbar/environment/LevelSkyAction";
@@ -87,7 +87,7 @@ export function LevelViewerToolbar({
 
           <LevelCameraAction />
           <LevelGoToAction />
-          <LevelViewerScreenshotAction />
+          <LevelViewerCaptureAction />
         </RenderSliderReference>
       }
     />

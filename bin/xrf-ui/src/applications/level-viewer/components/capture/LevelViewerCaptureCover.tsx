@@ -1,0 +1,38 @@
+import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
+import { ReactElement } from "react";
+
+import { ELevelCaptureMode } from "@/applications/level-viewer/lib/capture/level-capture";
+import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { cn } from "@/core/theme/class-name";
+import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
+import { BaseComponentProps } from "@/lib/dom/element-types";
+
+/**
+ * What stands in the viewport while a level map or cubemap is captured: the viewport draws the capture's tiles or
+ * faces rather than its own frames, so it is covered, opaque and taking the pointer, until the capture ends.
+ */
+export function LevelViewerCaptureCover({
+  "data-testid": dataTestId = "level-viewer-capture-cover",
+  id,
+  className,
+}: BaseComponentProps): Nullable<ReactElement> {
+  const captureService: LevelViewerCaptureService = useInjection(LevelViewerCaptureService);
+
+  if (!captureService.isCapturing) {
+    return null;
+  }
+
+  return (
+    <div
+      data-testid={dataTestId}
+      id={id}
+      className={cn("absolute inset-0 z-20 flex items-center justify-center bg-viewport-backdrop", className)}
+    >
+      <DelayedProgress
+        isOnViewport={true}
+        label={captureService.mode === ELevelCaptureMode.MAP ? "Capturing the level map…" : "Capturing the cubemap…"}
+      />
+    </div>
+  );
+}

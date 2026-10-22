@@ -107,6 +107,16 @@ export const JOB_KINDS: Record<EJobKind, IJobKindDescriptor> = {
     source: EApplicationId.GAMEDATA_VERIFIER,
     label: "Gamedata verification",
   },
+  [EJobKind.LEVELS_CAPTURE_CUBE]: {
+    kind: EJobKind.LEVELS_CAPTURE_CUBE,
+    source: EApplicationId.LEVEL_VIEWER,
+    label: "Cubemap capture",
+  },
+  [EJobKind.LEVELS_CAPTURE_MAP]: {
+    kind: EJobKind.LEVELS_CAPTURE_MAP,
+    source: EApplicationId.LEVEL_VIEWER,
+    label: "Level map capture",
+  },
   [EJobKind.TEXTURES_SAVE]: {
     kind: EJobKind.TEXTURES_SAVE,
     source: EApplicationId.TEXTURES_EXPLORER,

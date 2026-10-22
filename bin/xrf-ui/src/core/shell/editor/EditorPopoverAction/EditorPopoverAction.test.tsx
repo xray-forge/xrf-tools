@@ -119,4 +119,18 @@ describe("EditorPopoverAction", () => {
     expect(getByRole("button", { name: "Options" })).toHaveAttribute("aria-expanded", "false");
     expect(queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  it("hands what it opens a way to close it, as a list of actions closes once one is taken", async () => {
+    const { getByRole, findByRole, queryByRole } = renderWithProviders(
+      <EditorPopoverAction label={"Capture"} description={"Capture the view"} icon={<TuneIcon />}>
+        {(close: () => void) => <button onClick={close}>Take screenshot</button>}
+      </EditorPopoverAction>
+    );
+
+    await userEvent.click(getByRole("button", { name: "Capture" }));
+    await findByRole("dialog", { name: "Capture" });
+    await userEvent.click(getByRole("button", { name: "Take screenshot" }));
+
+    await waitFor(() => expect(queryByRole("dialog")).not.toBeInTheDocument());
+  });
 });

@@ -3,13 +3,16 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
 import { renderCommands } from "@/core/ipc/commands/render";
-import { RenderPickRequest, ViewportEvent } from "@/core/ipc/types/xrf-app";
+import { CaptureOutcome, RenderPickRequest, ViewportEvent } from "@/core/ipc/types/xrf-app";
+import { JobProgress } from "@/core/ipc/types/xrf-job";
 import {
   ERenderViewportEvent,
   RenderAppliedReport,
+  RenderCubeCapture,
   RenderFrameReport,
   RenderLevelHit,
   RenderLoadReport,
+  RenderMapCapture,
   RenderOverlay,
   RenderSelection,
   RenderTextureReport,
@@ -324,6 +327,63 @@ export class NativeViewport {
       return true;
     } catch (error: unknown) {
       this.noteFailure("saveScreenshot", error);
+
+      throw error;
+    }
+  }
+
+  /**
+   * Captures a level map in the viewport, tile by tile in place of its frames, and writes it to a PNG file.
+   *
+   * @param capture - What it is asked to capture.
+   * @param path - The file to write.
+   * @param job - The job it runs as, by its id, and where its progress is told.
+   * @returns How it ended, or null for a viewport not attached; rejects for a capture that failed.
+   */
+  public async captureMap(
+    capture: RenderMapCapture,
+    path: string,
+    job: [string, Channel<JobProgress>]
+  ): Promise<Nullable<CaptureOutcome>> {
+    const id: Nullable<RenderViewportId> = await this.attached;
+
+    if (id === null || this.isDisposed) {
+      return null;
+    }
+
+    try {
+      return await renderCommands.captureMap({ viewport: id, capture, path }, ...job);
+    } catch (error: unknown) {
+      this.noteFailure("captureMap", error);
+
+      throw error;
+    }
+  }
+
+  /**
+   * Captures a cubemap around the viewport's camera, face by face in place of its frames, and writes its cross to a
+   * PNG file.
+   *
+   * @param capture - What it is asked to capture.
+   * @param path - The file to write.
+   * @param job - The job it runs as, by its id, and where its progress is told.
+   * @returns How it ended, or null for a viewport not attached; rejects for a capture that failed.
+   */
+  public async captureCube(
+    capture: RenderCubeCapture,
+    path: string,
+    job: [string, Channel<JobProgress>]
+  ): Promise<Nullable<CaptureOutcome>> {
+    const id: Nullable<RenderViewportId> = await this.attached;
+
+    if (id === null || this.isDisposed) {
+      return null;
+    }
+
+    try {
+      return await renderCommands.captureCube({ viewport: id, capture, path }, ...job);
+    } catch (error: unknown) {
+      this.noteFailure("captureCube", error);
 
       throw error;
     }

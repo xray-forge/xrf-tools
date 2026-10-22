@@ -46,7 +46,8 @@ interface IEditorPopoverActionProps extends BaseComponentProps {
   kind?: TEditorPopoverKind;
   /** What a click on the trigger does instead of opening it; a right click opens it either way. */
   onClick?: MouseEventHandler<HTMLButtonElement>;
-  children: ReactNode;
+  /** What it opens; as a function, handed what closes it, as a list of actions closes once one is taken. */
+  children: ReactNode | ((close: () => void) => ReactNode);
 }
 
 /**
@@ -127,7 +128,7 @@ export function EditorPopoverAction({
         slotProps={{ paper: { id: dialogId, role: "dialog", "aria-label": label } }}
         onClose={onClose}
       >
-        {children}
+        {typeof children === "function" ? children(onClose) : children}
       </Popover>
     </>
   );

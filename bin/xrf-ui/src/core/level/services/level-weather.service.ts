@@ -36,6 +36,7 @@ import {
   LEVEL_WEATHER_NOON,
   toLevelWeatherFactor,
 } from "@/core/level/lib/weather/level-weather-control";
+import { ILevelWeatherHold } from "@/core/level/lib/weather/level-weather-hold";
 import {
   ILevelWeatherMemory,
   readLevelWeatherMemory,
@@ -314,6 +315,92 @@ export class LevelWeatherService {
   }
 
   /**
+   * Holds the clock still for something borrowing the weather, such as a capture, without remembering it for the
+   * level; `release` plays what was held again.
+   *
+   * @returns What played until now.
+   */
+  @BoundAction()
+  public hold(): ILevelWeatherHold {
+    const held: ILevelWeatherHold = {
+      cycle: this.cycle.value?.name ?? this.remembered,
+      source: this.source,
+      control: this.control,
+      time: this.time,
+    };
+
+    this.control = { ...this.control, isPaused: true };
+
+    return held;
+  }
+
+  /**
+   * Plays a cycle at once, cut in rather than faded, and lit by the weather: what a level map is captured under, while
+   * the weather is held. Nothing of it is remembered for the level; `release` plays what was held again.
+   *
+   * @param name - The cycle's name.
+   */
+  public async cutTo(name: string): Promise<void> {
+    const sessionId: Nullable<string> = this.sessionId;
+    const selected: Nullable<SessionSnapshot<SelectedLevelDescription>> = this.selected;
+
+    if (!sessionId || !selected) {
+      return;
+    }
+
+    if (this.cycle.value?.name !== name) {
+      await this.play(selected, name, EWorldWeatherTransition.CUT);
+    }
+
+    if (this.sessionId !== sessionId) {
+      return;
+    }
+
+    runInAction(() => {
+      const shown: Nullable<WorldWeatherPlay> = this.weather;
+
+      this.source = ELevelWeatherSource.WEATHER;
+      this.noteShown(shown, EWorldWeatherTransition.CUT);
+    });
+  }
+
+  /**
+   * Plays what `hold` kept again, cut in: its cycle, what lit the level and its clock's control. Where its clock stood
+   * is the caller's to seek, as the renderer owns the clock.
+   *
+   * @param held - What played when the weather was borrowed.
+   */
+  public async release(held: ILevelWeatherHold): Promise<void> {
+    const sessionId: Nullable<string> = this.sessionId;
+    const selected: Nullable<SessionSnapshot<SelectedLevelDescription>> = this.selected;
+
+    if (!sessionId || !selected) {
+      return;
+    }
+
+    try {
+      if (held.cycle && this.cycle.value?.name !== held.cycle) {
+        await this.play(selected, held.cycle, EWorldWeatherTransition.CUT);
+      }
+    } catch (error: unknown) {
+      this.fail(sessionId, error);
+    }
+
+    if (this.sessionId !== sessionId) {
+      return;
+    }
+
+    runInAction(() => {
+      const shown: Nullable<WorldWeatherPlay> = this.weather;
+
+      this.source = held.source;
+      this.control = held.control;
+      this.noteShown(shown, EWorldWeatherTransition.CUT);
+    });
+    this.persist();
+  }
+
+  /**
    * Lights the level by its weather or by the keyframe set by hand, faded into; the keyframe is seeded from what is
    * shown the first time it is asked for.
    *
@@ -534,8 +621,13 @@ export class LevelWeatherService {
    *
    * @param selected - The level it plays in.
    * @param name - The cycle's name.
+   * @param transition - How it takes over from what is shown.
    */
-  private async play(selected: SessionSnapshot<SelectedLevelDescription>, name: string): Promise<void> {
+  private async play(
+    selected: SessionSnapshot<SelectedLevelDescription>,
+    name: string,
+    transition: EWorldWeatherTransition = EWorldWeatherTransition.FADE
+  ): Promise<void> {
     runInAction(() => {
       this.requested = name;
       this.cycle = this.cycle.asLoading();
@@ -569,7 +661,7 @@ export class LevelWeatherService {
       const shown: Nullable<WorldWeatherPlay> = this.weather;
 
       this.cycle = this.cycle.asReady(cycle);
-      this.noteShown(shown, EWorldWeatherTransition.FADE);
+      this.noteShown(shown, transition);
     });
   }
 

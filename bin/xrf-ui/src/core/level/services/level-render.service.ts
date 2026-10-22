@@ -1,16 +1,20 @@
+import { Channel } from "@tauri-apps/api/core";
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
-import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { CaptureOutcome, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { JobProgress } from "@/core/ipc/types/xrf-job";
 import {
   ERenderDlssAvailability,
   RenderAntialiasing,
+  RenderCubeCapture,
   RenderDlssAvailability,
   RenderLevelHit,
   RenderLoadReport,
+  RenderMapCapture,
   RenderViewOptions,
 } from "@/core/ipc/types/xrf-renderer";
 import {
@@ -231,6 +235,34 @@ export class LevelRenderService extends NativeRenderSurfaceService {
    */
   public async saveScreenshot(path: string): Promise<boolean> {
     return this.viewport ? this.viewport.saveScreenshot(path) : false;
+  }
+
+  /**
+   * @param capture - The level map asked for.
+   * @param path - The PNG file to write it to.
+   * @param job - The job it runs as, by its id, and where its progress is told.
+   * @returns How it ended, or null with no viewport attached; rejects for a capture that failed.
+   */
+  public async captureMap(
+    capture: RenderMapCapture,
+    path: string,
+    job: [string, Channel<JobProgress>]
+  ): Promise<Nullable<CaptureOutcome>> {
+    return this.viewport ? this.viewport.captureMap(capture, path, job) : null;
+  }
+
+  /**
+   * @param capture - The cubemap asked for, around the camera.
+   * @param path - The PNG file to write its cross to.
+   * @param job - The job it runs as, by its id, and where its progress is told.
+   * @returns How it ended, or null with no viewport attached; rejects for a capture that failed.
+   */
+  public async captureCube(
+    capture: RenderCubeCapture,
+    path: string,
+    job: [string, Channel<JobProgress>]
+  ): Promise<Nullable<CaptureOutcome>> {
+    return this.viewport ? this.viewport.captureCube(capture, path, job) : null;
   }
 
   /**
