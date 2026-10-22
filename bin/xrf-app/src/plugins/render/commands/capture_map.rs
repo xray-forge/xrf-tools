@@ -58,20 +58,26 @@ pub async fn render_capture_map(
     "Level map capture",
     registration,
     move || {
-      let mut assembly: MapAssembly = MapAssembly::new(capture.width, capture.height);
+      // Made at the first tile, once the renderer has taken the plan, so a capture it refuses allocates nothing.
+      let mut assembly: Option<MapAssembly> = None;
       let names: CaptureNames = CaptureNames {
         capture: "level map",
         shots: "tiles",
       };
 
       let is_finished: bool = receive_shots((&job, &names), &events, |shot, drawn| match shot {
-        CaptureShot::Tile(tile) => assembly.place(&tile, drawn).map_err(|error| error.to_string()),
+        CaptureShot::Tile(tile) => assembly
+          .get_or_insert_with(|| MapAssembly::new(capture.width, capture.height))
+          .place(&tile, drawn)
+          .map_err(|error| error.to_string()),
         CaptureShot::Face(_) => Err("A level map came back with a cubemap's face".to_string()),
       })?;
 
       if !is_finished {
         return Ok(CaptureOutcome::cancelled());
       }
+
+      let assembly: MapAssembly = assembly.ok_or_else(|| "The renderer drew no tile of the level map".to_string())?;
 
       write_capture(&names, &assembly.finish(), &path)
     },

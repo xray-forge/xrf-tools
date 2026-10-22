@@ -57,20 +57,26 @@ pub async fn render_capture_cube(
     "Cubemap capture",
     registration,
     move || {
-      let mut assembly: CubeAssembly = CubeAssembly::new(capture.size);
+      // Made at the first face, once the renderer has taken the plan, so a capture it refuses allocates nothing.
+      let mut assembly: Option<CubeAssembly> = None;
       let names: CaptureNames = CaptureNames {
         capture: "cubemap",
         shots: "faces",
       };
 
       let is_finished: bool = receive_shots((&job, &names), &events, |shot, drawn| match shot {
-        CaptureShot::Face(face) => assembly.place(&face, drawn).map_err(|error| error.to_string()),
+        CaptureShot::Face(face) => assembly
+          .get_or_insert_with(|| CubeAssembly::new(capture.size))
+          .place(&face, drawn)
+          .map_err(|error| error.to_string()),
         CaptureShot::Tile(_) => Err("A cubemap came back with a level map's tile".to_string()),
       })?;
 
       if !is_finished {
         return Ok(CaptureOutcome::cancelled());
       }
+
+      let assembly: CubeAssembly = assembly.ok_or_else(|| "The renderer drew no face of the cubemap".to_string())?;
 
       write_capture(&names, &assembly.finish(), &path)
     },
