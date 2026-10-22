@@ -157,10 +157,17 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let bounced: vec3<f32> = bounced_occlusion(visible, albedo.rgb, lighting.params.x);
   let occlusion: f32 = mix(1.0, material.x, camera.switches.z);
   // The lights' specular, the engine's model, sees the gloss the engine's own wetting gave, not what the reflections'
-  // wet reach added for the trace.
-  let reach: f32 = load_frame_target(wet_reach, texel).r;
-  let terms: HmodelTerms = shaded_terms(vec4<f32>(albedo.rgb, max(albedo.a - reach, 0.0)), light, normal, position,
-    material.z, occlusion, bounced);
+  // wet reach added for the trace; and of a puddle's water's gloss only as much as the water reflects at this angle (its
+  // Fresnel, by the coat's share of the puddle). The reflection gives the water its sky and the sun's glint; all of the
+  // mirror gloss would spread the engine's lobe over the puddle, brighter than the sky it reflects, and none of it would
+  // lose a lamp's glint, which water shows towards grazing.
+  let reach: vec2<f32> = load_frame_target(wet_reach, texel).rg;
+  let wet: vec4<f32> = load_frame_target(wet_surface, texel);
+  let facing: f32 = saturate(dot(normal, -normalize(position)));
+  let water_seen: f32 = environment_brdf(vec3<f32>(COAT_F0), 0.0, facing).x * saturate(wet.r / max(wet.g, 1e-3));
+  let lit_gloss: f32 = max(albedo.a - reach.x - reach.y * (1.0 - saturate(water_seen)), 0.0);
+  let terms: HmodelTerms = shaded_terms(vec4<f32>(albedo.rgb, lit_gloss), light, normal, position, material.z,
+    occlusion, bounced);
   var shaded: vec3<f32> = terms.base;
   // What the surface shows of the light it scatters, which the enhanced specular takes its share from.
   var diffuse: vec3<f32> = terms.lit;
@@ -179,10 +186,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   // puddle's coat) and roughness (its gloss's, widened by the ripples the wet patch filtered away), times the
   // intensity, over the traced reflection where there is one and the prefiltered sky, seen as the hemisphere lets it,
   // where there is none.
-  let wet: vec4<f32> = load_frame_target(wet_surface, texel);
-
   if (lighting.reflections.x > 0.5) {
-    let facing: f32 = saturate(dot(normal, -normalize(position)));
     let roughness: f32 = traced_roughness(albedo.a, wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
     let head_on: vec3<f32> = reflectance_head_on(albedo.rgb, albedo.a, wet.r, material.z);
     let brdf: vec3<f32> = environment_brdf(head_on, roughness, facing) * lighting.reflections.z;
@@ -220,7 +224,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     // The sun on a wet surface's water film, which the engine's specular leaves out with the gloss the wetness added:
     // its disc in the film's lobe, as far as a puddle's coat or the wet reach covers the surface, shadowed as the sun's
     // pass found it.
-    let film: f32 = saturate(wet.r + reach);
+    let film: f32 = saturate(wet.r + reach.x);
 
     if (film > 0.0) {
       let seen: f32 = textureLoad(sun_seen, texel, 0).x;

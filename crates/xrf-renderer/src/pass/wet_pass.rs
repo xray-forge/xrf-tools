@@ -33,8 +33,9 @@ impl WetPass {
   /// in metres, and the variance of the ripples' tilt the patch's filtering folded away.
   pub const SURFACE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   /// What both patches write beside the light target for combine: the gloss the reflections' wet reach added beyond
-  /// the engine's own wetting, which the lights' specular leaves out.
-  pub const REACH: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
+  /// the engine's own wetting, which the lights' specular leaves out, then, enhanced and where the reflections trace, the
+  /// gloss a puddle's water gives, which it takes only as far as the water reflects.
+  pub const REACH: wgpu::TextureFormat = wgpu::TextureFormat::Rg8Unorm;
 
   /// The level's surface where none is made, its lowest heights, its puddles and its water, each of nothing.
   pub fn get_dry(&self) -> [&wgpu::TextureView; 3] {

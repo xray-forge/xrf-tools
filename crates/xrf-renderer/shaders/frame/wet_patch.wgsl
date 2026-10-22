@@ -860,12 +860,15 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
 
   // What the gloss gains: the engine's wet gloss over its own, capped below a mirror, a puddle's water's.
   let wet_gain: f32 = min(glossing * select(0.8, 1.0, wet.is_extended > 0.5), max(WET_GLOSS_MOST - gloss, 0.0));
-  let glossed: f32 = mix(wet_gain, water_gloss(water_roughness) - gloss, puddle);
+  let water_glossed: f32 = water_gloss(water_roughness);
+  let glossed: f32 = mix(wet_gain, water_glossed - gloss, puddle);
   let brightness: f32 = dot(albedo.rgb, vec3<f32>(0.33));
+  // The water's share of the gloss, where the reflections trace and give the water its sky and the sun's glint.
+  let water_share: f32 = select(0.0, water_glossed * puddle, wet.reach.x > 0.5);
 
   return WetPatchTargets(
     vec4<f32>(octahedral_encode(normalize(normal + water)), glossed, wetness),
     vec4<f32>(puddle * floating * wet.puddles.z / WATER_REFLECTIVITY, puddle, lift, variance),
-    vec4<f32>(reach_gloss(wet_gain, wetting.wetness, brightness, gloss) * (1.0 - puddle), 0.0, 0.0, 0.0),
+    vec4<f32>(reach_gloss(wet_gain, wetting.wetness, brightness, gloss) * (1.0 - puddle), water_share, 0.0, 0.0),
   );
 }
