@@ -1,4 +1,7 @@
 pub mod capture_file;
+pub mod capture_outcome;
+pub mod capture_receiver;
+pub mod capture_request;
 pub mod channel_event_sink;
 pub mod commands;
 pub mod disk_cache_store;

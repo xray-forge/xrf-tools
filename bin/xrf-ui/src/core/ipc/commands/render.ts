@@ -4,12 +4,16 @@ import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
+  CaptureOutcome,
+  CubeCaptureRequest,
   ETextureSurfaceAlpha,
   ETextureSurfaceShape,
+  MapCaptureRequest,
   RenderPickRequest,
   TextureSource,
   ViewportEvent,
 } from "@/core/ipc/types/xrf-app";
+import { JobProgress } from "@/core/ipc/types/xrf-job";
 import {
   RenderAntialiasing,
   RenderBackend,
@@ -57,6 +61,12 @@ export const renderCommands = {
    */
   attachViewport: (window: string, events: Channel<ViewportEvent>) =>
     __TAURI_INVOKE<RenderViewportId>("plugin:render|attach_viewport", { window, events }),
+  /** Capture a cubemap around a viewport's camera face by face and write it to a PNG file as a horizontal cross. */
+  captureCube: (request: CubeCaptureRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<CaptureOutcome>("plugin:render|capture_cube", { request, jobId, progress }),
+  /** Capture a level map in a viewport tile by tile and write it to a PNG file with its coverage in alpha. */
+  captureMap: (request: MapCaptureRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<CaptureOutcome>("plugin:render|capture_map", { request, jobId, progress }),
   /** Ask a viewport's camera to reset or dolly. */
   commandCamera: (viewport: RenderViewportId, command: WorldCameraCommand) =>
     __TAURI_INVOKE<void>("plugin:render|command_camera", { viewport, command }),

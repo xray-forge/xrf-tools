@@ -5,6 +5,7 @@ use xrf_vfs::XrayRoots;
 use xrf_visual::{SectorOutline, VisualBounds};
 
 use crate::plugins::levels::state::level_source::LevelSource;
+use crate::plugins::levels::state::selection::level_map_description::LevelMapDescription;
 use crate::plugins::levels::state::selection::level_start::LevelStart;
 use crate::plugins::levels::state::selection::level_sun_description::LevelSunDescription;
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
@@ -40,4 +41,6 @@ pub struct SelectedLevelDescription {
   pub surfaces: Vec<XraySurfaceDescriptor>,
   /// Extent every sector together covers, which is where a camera is framed from.
   pub bounds: Option<VisualBounds>,
+  /// Where the level's map lies over it, as its `level.ltx` places it; `None` where it places none.
+  pub level_map: Option<LevelMapDescription>,
 }

@@ -2,6 +2,7 @@
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
+  CubeExportRequest,
   LevelConsoleDefaults,
   LevelEntry,
   LevelOpenRequest,
@@ -9,6 +10,8 @@ import {
   LevelSpawnObjectsDescription,
   LevelWeatherCycle,
   LevelWeatherDescription,
+  MapAnnotationsRequest,
+  MapExportRequest,
   SelectedLevelDescription,
   SessionId,
   SessionRestore,
@@ -24,7 +27,10 @@ export const levelsCommands = {
   /** Copy a screenshot of the screenshots folder to where the page names, as Save as does. */
   copyScreenshot: (path: string, target: string) =>
     __TAURI_INVOKE<null>("plugin:levels|copy_screenshot", { path, target }),
-  /** Delete a screenshot of the screenshots folder for good, with its report beside it. */
+  /**
+   * Delete a screenshot of the screenshots folder for good, with what stands beside it: a screenshot's report, a level
+   * map's annotations.
+   */
   deleteScreenshot: (path: string) => __TAURI_INVOKE<null>("plugin:levels|delete_screenshot", { path }),
   /**
    * Describe what the open level's game runs its console with of how levels are lit and exposed: its `user.ltx` over
@@ -38,6 +44,13 @@ export const levelsCommands = {
       sessionId,
       index,
     }),
+  /** Write a cubemap of the screenshots folder again as a cube DDS, six TGAs or six PNGs; answers the files written. */
+  exportCube: (request: CubeExportRequest) => __TAURI_INVOKE<Array<string>>("plugin:levels|export_cube", { request }),
+  /**
+   * Write a level map of the screenshots folder again as a PNG, a TGA or a DDS, or its annotations alone as an SVG;
+   * answers its pixels across and down.
+   */
+  exportMap: (request: MapExportRequest) => __TAURI_INVOKE<[number, number]>("plugin:levels|export_map", { request }),
   /**
    * The first free path for a screenshot named `name` in the screenshots folder, `-2`, `-3` and on added for one taken
    * within the same second.
@@ -74,4 +87,7 @@ export const levelsCommands = {
   readView: (path: string) => __TAURI_INVOKE<string>("plugin:levels|read_view", { path }),
   /** Write a level view, or a screenshot's report, as its JSON text where the page names. */
   saveView: (path: string, text: string) => __TAURI_INVOKE<null>("plugin:levels|save_view", { path, text }),
+  /** Draw the open level's annotations over one of its level maps and write them beside it as an SVG; answers the SVG. */
+  writeMapAnnotations: (sessionId: SessionId, request: MapAnnotationsRequest) =>
+    __TAURI_INVOKE<SessionSnapshot<string>>("plugin:levels|write_map_annotations", { sessionId, request }),
 };

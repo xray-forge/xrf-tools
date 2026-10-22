@@ -1,6 +1,9 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
-use crate::core::session::{Session, SessionId, SessionRestore, SessionSnapshot};
+use rayon::prelude::*;
+
+use crate::core::session::{Session, SessionId, SessionPart, SessionParts, SessionRestore, SessionSnapshot};
 
 #[test]
 fn a_failed_replacement_keeps_the_committed_value_readable() {
@@ -171,4 +174,98 @@ fn the_early_check_and_the_commit_refuse_a_superseded_opening_the_same_way() {
   let late: String = session.commit_open(first, "first").unwrap_err();
 
   assert_eq!(early, late, "a caller cannot tell the two apart and should not have to");
+}
+
+/// A part each test builds, or keeps, by its own count, behind a plain lock.
+struct CountedPart;
+
+impl SessionPart for CountedPart {
+  type Value = Arc<u32>;
+
+  const IS_POOLED: bool = false;
+}
+
+/// A pooled part asking for another as it builds.
+struct DependentPart;
+
+impl SessionPart for DependentPart {
+  type Value = u32;
+}
+
+/// A part built over Rayon while the pool's workers wait on it, pooled as parts are by default.
+struct PooledPart;
+
+impl SessionPart for PooledPart {
+  type Value = u64;
+}
+
+#[test]
+fn a_part_is_built_once_and_shared_by_every_ask() {
+  let parts: SessionParts = SessionParts::new();
+  let builds: AtomicU32 = AtomicU32::new(0);
+
+  assert_eq!(
+    parts.get::<CountedPart>(),
+    None,
+    "asking whether it was built builds nothing"
+  );
+
+  let first: Arc<u32> = parts.get_or_init::<CountedPart>(|| Arc::new(builds.fetch_add(1, Ordering::SeqCst) + 7));
+  let second: Arc<u32> = parts.get_or_init::<CountedPart>(|| Arc::new(builds.fetch_add(1, Ordering::SeqCst)));
+
+  assert!(Arc::ptr_eq(&first, &second));
+  assert_eq!(builds.load(Ordering::SeqCst), 1);
+  assert_eq!(parts.get::<CountedPart>().as_deref(), Some(&7));
+}
+
+#[test]
+fn a_part_the_opening_read_is_kept_rather_than_built() {
+  let parts: SessionParts = SessionParts::new()
+    .with::<CountedPart>(Arc::new(3))
+    .with::<PooledPart>(5);
+
+  assert_eq!(
+    *parts.get_or_init::<CountedPart>(|| unreachable!("the part was kept")),
+    3
+  );
+  assert_eq!(parts.get::<PooledPart>(), Some(5));
+  assert_eq!(
+    parts.get_or_init::<PooledPart>(|| unreachable!("the pooled part was kept")),
+    5
+  );
+}
+
+#[test]
+fn a_part_may_ask_for_another_as_it_builds() {
+  let parts: SessionParts = SessionParts::new();
+  let value: u32 = parts.get_or_init::<DependentPart>(|| *parts.get_or_init::<CountedPart>(|| Arc::new(2)) * 10);
+
+  assert_eq!(value, 20);
+}
+
+#[test]
+fn a_pooled_part_built_over_rayon_does_not_deadlock_the_workers_waiting_on_it() {
+  let parts: SessionParts = SessionParts::new();
+  let sums: Vec<u64> = (0..64)
+    .into_par_iter()
+    .map(|_| parts.get_or_init::<PooledPart>(|| (0..10_000u64).into_par_iter().sum()))
+    .collect();
+
+  assert!(sums.iter().all(|sum| *sum == 49_995_000));
+}
+
+#[test]
+fn a_replacement_starts_without_the_parts_of_the_value_it_replaces() {
+  let session: Session<&str> = Session::new("test");
+  let id: SessionId = SessionId::new();
+
+  session.begin_open(id).unwrap();
+
+  let opened: Arc<SessionSnapshot<&str>> = session
+    .commit_open_with(id, "first", SessionParts::new().with::<CountedPart>(Arc::new(1)))
+    .unwrap();
+  let replaced: Arc<SessionSnapshot<&str>> = session.replace(&opened, "second").unwrap().unwrap();
+
+  assert_eq!(opened.parts.get::<CountedPart>().as_deref(), Some(&1));
+  assert_eq!(replaced.parts.get::<CountedPart>(), None);
 }

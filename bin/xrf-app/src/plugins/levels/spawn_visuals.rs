@@ -13,8 +13,9 @@ use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayProbe};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton};
 
 use crate::core::assets::read_referenced_asset;
+use crate::core::session::{SessionPart, SessionSnapshot};
 use crate::plugins::levels::report::{report_bind_rest_pose, report_empty_rest_motion, report_undrawn_visual};
-use crate::plugins::levels::state::{LevelSpawnVisual, SelectedLevel};
+use crate::plugins::levels::state::{LevelSpawnVisual, LevelSpawnVisuals, SelectedLevel};
 use crate::plugins::levels::textures::resolve_surface_textures;
 use crate::plugins::visuals::pose::bake_named_motion;
 use crate::plugins::visuals::skeleton::SelectedSkeleton;
@@ -22,10 +23,20 @@ use crate::plugins::visuals::skeleton::SelectedSkeleton;
 /// The cycle a lamp plays from the moment it spawns (`CHangingLamp::net_Spawn`), whose first frame it stands in.
 const IDLE_MOTION: &str = "idle";
 
+/// Each visual a level's spawned objects stand as, read the first time anything asks and kept, or why it cannot be.
+struct LevelSpawnVisualsPart;
+
+impl SessionPart for LevelSpawnVisualsPart {
+  type Value = Arc<LevelSpawnVisuals>;
+
+  // Built empty, its visuals each read into a cell of its own later, so its build never reaches Rayon.
+  const IS_POOLED: bool = false;
+}
+
 /// Reads a level's spawned visuals within one probe, opening the shader library once for all of them, and only if
 /// one is read at all.
 pub struct SpawnVisualReader<'probe, 'vfs> {
-  current: &'probe SelectedLevel,
+  current: &'probe SessionSnapshot<SelectedLevel>,
   probe: &'probe XrayProbe<'vfs>,
   /// The level's own directory, the engine's `$level$`, where the level's breakables are compiled to.
   level: Option<XrayLogicalPath>,
@@ -34,7 +45,7 @@ pub struct SpawnVisualReader<'probe, 'vfs> {
 }
 
 impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
-  pub fn new(current: &'probe SelectedLevel, probe: &'probe XrayProbe<'vfs>) -> Self {
+  pub fn new(current: &'probe SessionSnapshot<SelectedLevel>, probe: &'probe XrayProbe<'vfs>) -> Self {
     Self {
       current,
       probe,
@@ -50,7 +61,12 @@ impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
   ///
   /// Returns why it cannot be read, reported the once it is tried: it is not read again.
   pub fn get(&self, name: &str) -> Result<Arc<LevelSpawnVisual>, String> {
-    self.current.spawn_visuals.get_or_read(name, || {
+    let visuals: Arc<LevelSpawnVisuals> = self
+      .current
+      .parts
+      .get_or_init::<LevelSpawnVisualsPart>(|| Arc::new(LevelSpawnVisuals::new()));
+
+    visuals.get_or_read(name, || {
       self
         .read(name)
         .map(Arc::new)

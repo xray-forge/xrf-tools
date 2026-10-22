@@ -8,6 +8,7 @@ use xrf_level::{EnvModifier, LevelEnvModFile};
 use xrf_ltx::LtxProject;
 use xrf_vfs::XrayProbe;
 
+use crate::core::session::{SessionPart, SessionSnapshot};
 use crate::plugins::levels::catalog::{open_configs, read_catalog};
 use crate::plugins::levels::read::read_optional_file;
 use crate::plugins::levels::state::selection::environment_cycle_entry::EnvironmentCycleEntry;
@@ -23,6 +24,13 @@ pub struct LevelEnvironment {
   pub weather: LevelWeather,
 }
 
+/// The game's environment configs and the level's cycles, which its weather is played from.
+struct LevelEnvironmentPart;
+
+impl SessionPart for LevelEnvironmentPart {
+  type Value = Result<Arc<LevelEnvironment>, String>;
+}
+
 impl LevelEnvironment {
   /// The level's local weather overrides.
   pub const ENV_MOD_FILE: &'static str = "level.env_mod";
@@ -32,25 +40,22 @@ impl LevelEnvironment {
   /// # Errors
   ///
   /// Returns the reason the configs cannot be read, which every later ask answers with again.
-  pub fn of(current: &SelectedLevel) -> Result<Arc<Self>, String> {
-    current
-      .environment
-      .get_or_init(|| {
-        let project: LtxProject = open_configs(&current.roots, current.dialect.clone())?;
-        let catalog: EnvironmentCatalog = read_catalog(
-          &project,
-          &EnvironmentReadOptions::default().with_engine(current.engine.engine),
-        )?;
-        let level: String = current.source.get_name().unwrap_or_default();
-        let weather: LevelWeather = EnvironmentReader::read_level_weather(&project, &catalog, &level)
-          .map_err(|error| format!("Failed to read which weathers level '{level}' plays: {error}"))?;
+  pub fn of(current: &SessionSnapshot<SelectedLevel>) -> Result<Arc<Self>, String> {
+    current.parts.get_or_init::<LevelEnvironmentPart>(|| {
+      let project: LtxProject = open_configs(&current.roots, current.dialect.clone())?;
+      let catalog: EnvironmentCatalog = read_catalog(
+        &project,
+        &EnvironmentReadOptions::default().with_engine(current.engine.engine),
+      )?;
+      let level: String = current.source.get_name().unwrap_or_default();
+      let weather: LevelWeather = EnvironmentReader::read_level_weather(&project, &catalog, &level)
+        .map_err(|error| format!("Failed to read which weathers level '{level}' plays: {error}"))?;
 
-        Ok(Arc::new(Self {
-          catalog: Arc::new(catalog),
-          weather,
-        }))
-      })
-      .clone()
+      Ok(Arc::new(Self {
+        catalog: Arc::new(catalog),
+        weather,
+      }))
+    })
   }
 
   /// Everything the viewer plays the level's weather from; the level's own file is read in the probe.

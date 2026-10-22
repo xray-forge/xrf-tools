@@ -32,5 +32,5 @@ pub async fn levels_describe_console_defaults(
     })
     .await???;
 
-  Ok(SessionSnapshot { session_id, value })
+  Ok(SessionSnapshot::new(session_id, value))
 }

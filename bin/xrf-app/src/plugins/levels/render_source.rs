@@ -22,7 +22,7 @@ use crate::core::assets::AssetMountState;
 use crate::core::session::SessionSnapshot;
 use crate::plugins::levels::ambients::{to_render_ambient_effects, to_render_ambients};
 use crate::plugins::levels::collision::get_level_collision;
-use crate::plugins::levels::configs::get_level_sections;
+use crate::plugins::levels::configs::{find_level_sections, get_level_sections};
 use crate::plugins::levels::details::{PackedLevelDetails, pack_details};
 use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
 use crate::plugins::levels::hemi::{estimate_visuals_hemi, get_level_hemi};
@@ -68,10 +68,8 @@ impl LevelRenderSource {
         .map(|texture| (texture.reference.clone(), texture.logical_path.clone())),
     );
     // Read as the level opened, so no texture load waits on the configs; none where they could not be read.
-    let reduced: XrayReducedTextures = level
-      .sections
-      .get()
-      .and_then(|sections| sections.as_ref().ok())
+    let reduced: XrayReducedTextures = find_level_sections(&level)
+      .as_ref()
       .and_then(|sections| sections.section(XrayReducedTextures::SECTION))
       .map(|section| XrayReducedTextures::new(section.iter().map(|(key, _)| key)))
       .unwrap_or_default();
@@ -89,7 +87,7 @@ impl LevelRenderSource {
   /// The sections the level's spawned objects name, none where its spawn or the configs cannot be read. Read between
   /// two probes, as the configs mount a tree of their own.
   fn read_sections(&self) -> XrfResult<Option<Arc<Ltx>>> {
-    let level: &SelectedLevel = &self.level;
+    let level: &SessionSnapshot<SelectedLevel> = &self.level;
 
     Ok(
       self
@@ -160,7 +158,7 @@ impl RenderLevelSource for LevelRenderSource {
   }
 
   fn read_lights(&self) -> XrfResult<LightsDescription> {
-    let level: &SelectedLevel = &self.level;
+    let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let sections: Option<Arc<Ltx>> = self.read_sections()?;
     let packed: PackedLevelLights = self
       .assets
@@ -178,7 +176,7 @@ impl RenderLevelSource for LevelRenderSource {
   }
 
   fn read_weather(&self) -> XrfResult<RenderLevelWeather> {
-    let level: &SelectedLevel = &self.level;
+    let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let environment: Arc<LevelEnvironment> = LevelEnvironment::of(level).map_err(XrfError::new_asset_error)?;
     let (modifiers, rain, wet, thunder) = self
       .assets
@@ -234,7 +232,7 @@ impl RenderLevelSource for LevelRenderSource {
   }
 
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>> {
-    let level: &SelectedLevel = &self.level;
+    let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let packed: Option<PackedLevelDetails> = self
       .assets
       .with_probe(&level.roots, |probe| pack_details(&level.source, probe))
@@ -258,7 +256,7 @@ impl RenderLevelSource for LevelRenderSource {
   }
 
   fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {
-    let level: &SelectedLevel = &self.level;
+    let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let spawn = self
       .assets
       .with_probe(&level.roots, |probe| get_level_spawn(level, probe))
@@ -284,7 +282,7 @@ impl RenderLevelSource for LevelRenderSource {
   }
 
   fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>> {
-    let level: &SelectedLevel = &self.level;
+    let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let sections: Option<Arc<Ltx>> = self.read_sections()?;
     let (packed, collision, hemi) = self
       .assets
@@ -320,7 +318,7 @@ impl RenderLevelSource for LevelRenderSource {
   }
 
   fn read_object_motion(&self, name: &str) -> XrfResult<AnmFile> {
-    let level: &SelectedLevel = &self.level;
+    let level: &SessionSnapshot<SelectedLevel> = &self.level;
 
     self
       .assets
@@ -330,7 +328,7 @@ impl RenderLevelSource for LevelRenderSource {
   }
 
   fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels> {
-    let level: &SelectedLevel = &self.level;
+    let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let (read, failures, hemi) = self
       .assets
       .with_probe(&level.roots, |probe| {

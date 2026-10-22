@@ -17,6 +17,7 @@ pub(crate) use level_spawn_visual::LevelSpawnVisual;
 pub(crate) use level_spawn_visuals::LevelSpawnVisuals;
 pub(crate) use level_state::LevelState;
 pub(crate) use selection::level_console_defaults::LevelConsoleDefaults;
+pub(crate) use selection::level_map_description::LevelMapDescription;
 pub(crate) use selection::level_spawn_category::LevelSpawnCategory;
 pub(crate) use selection::level_spawn_object::LevelSpawnObject;
 pub(crate) use selection::level_spawn_object_details::LevelSpawnObjectDetails;
@@ -39,6 +40,9 @@ pub const GEOMETRY_FILE: &str = "level.geom";
 
 /// The detail library and planting grid, which the grass is planted from.
 pub const DETAILS_FILE: &str = "level.details";
+
+/// The level's own config, whose `[level_map]` places its map.
+pub const LEVEL_CONFIG_FILE: &str = "level.ltx";
 
 /// The collision form, which the grass is planted onto and which says whether a start is under the open sky.
 pub const COLLISION_FILE: &str = "level.cform";

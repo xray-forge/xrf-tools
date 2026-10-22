@@ -29,8 +29,5 @@ pub async fn levels_read_level_weather(
     })
     .await??;
 
-  Ok(SessionSnapshot {
-    session_id,
-    value: description,
-  })
+  Ok(SessionSnapshot::new(session_id, description))
 }

@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use crate::core::session::{SessionId, SessionSnapshot};
+use crate::core::session::{SessionId, SessionParts, SessionSnapshot};
 use crate::core::types::TauriResult;
 
 /// Publishes session snapshots atomically, retaining the last success while a replacement is pending.
@@ -72,7 +72,16 @@ impl<T> Session<T> {
 
   /// Publishes only the newest opening; parsing and resource acquisition happen before this call.
   pub fn commit_open(&self, id: SessionId, value: T) -> TauriResult<Arc<SessionSnapshot<T>>> {
-    let opened: Arc<SessionSnapshot<T>> = Arc::new(SessionSnapshot { session_id: id, value });
+    self.commit_open_with(id, value, SessionParts::new())
+  }
+
+  /// Publishes only the newest opening as [`Self::commit_open`] does, keeping the parts the opening read on its way.
+  pub fn commit_open_with(&self, id: SessionId, value: T, parts: SessionParts) -> TauriResult<Arc<SessionSnapshot<T>>> {
+    let opened: Arc<SessionSnapshot<T>> = Arc::new(SessionSnapshot {
+      session_id: id,
+      value,
+      parts,
+    });
 
     let mut state: MutexGuard<SessionState<T>> = self.lock()?;
 
@@ -110,10 +119,7 @@ impl<T> Session<T> {
 
   /// Replaces a saved snapshot only if no other publication has replaced the snapshot it was based on.
   pub fn replace(&self, previous: &Arc<SessionSnapshot<T>>, value: T) -> TauriResult<Option<Arc<SessionSnapshot<T>>>> {
-    let opened: Arc<SessionSnapshot<T>> = Arc::new(SessionSnapshot {
-      session_id: previous.session_id,
-      value,
-    });
+    let opened: Arc<SessionSnapshot<T>> = Arc::new(SessionSnapshot::new(previous.session_id, value));
 
     let mut state: MutexGuard<SessionState<T>> = self.lock()?;
 

@@ -34,8 +34,5 @@ pub async fn levels_read_level_cycle(
     })
     .await??;
 
-  Ok(SessionSnapshot {
-    session_id,
-    value: cycle,
-  })
+  Ok(SessionSnapshot::new(session_id, cycle))
 }

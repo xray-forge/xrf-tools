@@ -5,9 +5,9 @@ use std::time::Duration;
 
 use xrf_error::XrfResult;
 use xrf_renderer::{
-  RenderCapture, RenderCommand, RenderEventSink, RenderFrameReport, RenderLoadReport, RenderMemoryReport,
-  RenderOverlay, RenderPick, RenderQueue, RenderSelection, RenderSettings, RenderTextureReport, RenderViewOptions,
-  RenderViewportId, RenderViewportLayout, RenderWait, RenderWindowHost,
+  CaptureEvent, RenderCapture, RenderCommand, RenderCubeCapture, RenderEventSink, RenderFrameReport, RenderLoadReport,
+  RenderMapCapture, RenderMemoryReport, RenderOverlay, RenderPick, RenderQueue, RenderSelection, RenderSettings,
+  RenderTextureReport, RenderViewOptions, RenderViewportId, RenderViewportLayout, RenderWait, RenderWindowHost,
 };
 
 /// The renderer as the application calls it: each call a command on the render thread's queue, numbering the
@@ -114,6 +114,24 @@ impl Renderer {
   /// viewport the renderer does not draw.
   pub fn screenshot_viewport(&self, id: RenderViewportId) -> Receiver<XrfResult<RenderCapture>> {
     self.ask(|reply| RenderCommand::Screenshot { id, reply })
+  }
+
+  /// Captures a level map in a viewport, answering what it tells as it goes; dropping the answer stops it.
+  pub fn capture_map(&self, id: RenderViewportId, capture: RenderMapCapture) -> Receiver<CaptureEvent> {
+    let (events, receiver): (Sender<CaptureEvent>, Receiver<CaptureEvent>) = channel();
+
+    self.queue.send(RenderCommand::CaptureMap { id, capture, events });
+
+    receiver
+  }
+
+  /// Captures a cubemap around a viewport's camera, answering what it tells as it goes; dropping the answer stops it.
+  pub fn capture_cube(&self, id: RenderViewportId, capture: RenderCubeCapture) -> Receiver<CaptureEvent> {
+    let (events, receiver): (Sender<CaptureEvent>, Receiver<CaptureEvent>) = channel();
+
+    self.queue.send(RenderCommand::CaptureCube { id, capture, events });
+
+    receiver
   }
 
   pub fn set_view_options(&self, id: RenderViewportId, options: RenderViewOptions) {

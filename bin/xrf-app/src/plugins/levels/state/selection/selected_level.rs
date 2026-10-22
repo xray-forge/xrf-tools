@@ -1,27 +1,24 @@
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use xrf_chunk::InMemoryChunkDataSource;
 use xrf_engine_target::XrayEngineResolution;
-use xrf_job::PoolOnceLock;
-use xrf_level::{LevelCformTracer, LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
-use xrf_ltx::{Ltx, LtxDialect};
+use xrf_level::{LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
+use xrf_ltx::LtxDialect;
 use xrf_material::XraySurfaceDescriptor;
 use xrf_vfs::XrayRoots;
-use xrf_visual::{HemiEstimator, SectorOutline};
+use xrf_visual::SectorOutline;
 
-use crate::plugins::levels::state::level_environment::LevelEnvironment;
 use crate::plugins::levels::state::level_source::LevelSource;
-use crate::plugins::levels::state::level_spawn::LevelSpawn;
-use crate::plugins::levels::state::level_spawn_visuals::LevelSpawnVisuals;
+use crate::plugins::levels::state::selection::level_map_description::LevelMapDescription;
 use crate::plugins::levels::state::selection::level_start::LevelStart;
 use crate::plugins::levels::state::selection::level_sun_description::LevelSunDescription;
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
 use crate::plugins::levels::state::selection::selected_level_description::SelectedLevelDescription;
 
-/// The level a viewer has open, and everything a later call reads without opening it again.
+/// The level a viewer has open as the open read it, which a later call reads without opening it again.
 ///
-/// The parts read the first time anything asks are asked for by loading jobs on the worker pool, which wait on one
-/// another's: a part whose build fans out over Rayon is a `PoolOnceLock`, which a waiting worker cannot deadlock.
+/// What is read from it the first time anything asks, such as its spawn, collision form or environment, is kept as
+/// its session snapshot's parts by the module that reads it, rather than here.
 pub struct SelectedLevel {
   pub source: LevelSource,
   /// What each texture reference the level's surfaces bind came to, decided at open.
@@ -41,23 +38,11 @@ pub struct SelectedLevel {
   pub outlines: Vec<SectorOutline>,
   /// Where the level opens, resolved at open; `None` leaves it to the viewer.
   pub start: Option<LevelStart>,
+  /// Where its map lies over it, read at open; `None` where its config places none.
+  pub level_map: Option<LevelMapDescription>,
   /// Render geometry with its payloads still on the heap where they were read, serving whichever range a sector
   /// names. Shared rather than locked: a range is read without moving the source, so sectors pack side by side.
   pub geometry: LevelGeomSource<InMemoryChunkDataSource>,
-  /// What the game spawns on the level, read the first time anything asks and kept, a failure with it.
-  pub spawn: OnceLock<Result<Arc<LevelSpawn>, String>>,
-  /// Each visual a spawned object stands as, read the first time anything asks and kept, or why it cannot be.
-  pub spawn_visuals: LevelSpawnVisuals,
-  /// The sections of the game's resolved `system.ltx` its spawned objects name, which their lights are read from;
-  /// kept likewise.
-  pub sections: OnceLock<Result<Arc<Ltx>, String>>,
-  /// The game's environment configs and the level's cycles, which its weather is played from; kept likewise.
-  pub environment: OnceLock<Result<Arc<LevelEnvironment>, String>>,
-  /// The collision form as rays test it, which lights spawned objects and collides particles; kept likewise. Its tracer
-  /// orders the form's triangles in parallel.
-  pub collision: PoolOnceLock<Result<Arc<LevelCformTracer>, String>>,
-  /// How the level lights its spawned objects and the camera, over the collision form; kept likewise.
-  pub hemi: OnceLock<Result<Arc<HemiEstimator>, String>>,
 }
 
 impl SelectedLevel {
@@ -71,6 +56,7 @@ impl SelectedLevel {
       engine: self.engine.clone(),
       has_sun: level.lights.as_ref().is_some_and(|it| it.get_sun().is_some()),
       sun: LevelSunDescription::of(level.lights.as_ref().and_then(|it| it.get_sun())),
+      level_map: self.level_map.clone(),
       lights: level.lights.as_ref().map_or(0, |it| it.lights.len()) as u32,
       portals: level.portals.as_ref().map_or(0, |it| it.portals.len()) as u32,
       roots: self.roots.clone(),

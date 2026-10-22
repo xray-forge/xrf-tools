@@ -18,6 +18,9 @@ impl LevelViewerFolder {
   /// The extension of a screenshot's report beside it.
   pub const REPORT_EXTENSION: &'static str = "json";
 
+  /// The extension of a level map's annotations beside it.
+  pub const ANNOTATIONS_EXTENSION: &'static str = "svg";
+
   fn get_name(self) -> &'static str {
     match self {
       Self::Views => "views",

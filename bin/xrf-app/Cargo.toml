@@ -22,12 +22,14 @@ glam = { workspace = true }
 http-body-util = "0.1.5"
 hyper = { version = "1.11.1", features = ["http1", "server"] }
 hyper-util = { version = "0.1.20", features = ["tokio"] }
-image = { workspace = true, features = ["png"] }
+image = { workspace = true, features = ["png", "tga"] }
 log = { workspace = true }
 notify = { workspace = true }
 percent-encoding = "2.3.2"
 profiling = { workspace = true }
 rayon = { workspace = true }
+# Rasterises a level map's annotations, which it draws as an SVG.
+resvg = { version = "0.48.1", default-features = false, features = ["text", "system-fonts"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 specta = { workspace = true, optional = true }

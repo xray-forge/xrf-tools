@@ -31,6 +31,8 @@ job_kinds! {
   SpawnUnpack => "spawn.unpack",
   SpriteEquipmentPack => "sprite-equipment.pack",
   GamedataVerify => "gamedata.verify",
+  LevelsCaptureCube => "levels.capture-cube",
+  LevelsCaptureMap => "levels.capture-map",
   TexturesBuild => "textures.build",
   TexturesCompareEncodings => "textures.compare-encodings",
   TexturesMakeBump => "textures.make-bump",

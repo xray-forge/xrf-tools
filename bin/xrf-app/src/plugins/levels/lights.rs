@@ -10,6 +10,7 @@ use xrf_vfs::XrayProbe;
 use xrf_visual::{LightsDescription, LightsPacker};
 
 use crate::core::assets::read_located_asset;
+use crate::core::session::SessionSnapshot;
 use crate::plugins::levels::report::{report_lights, report_missing_spawned_lights, report_unreadable_animations};
 use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::spawn_visuals::SpawnVisualReader;
@@ -27,7 +28,11 @@ pub struct PackedLevelLights {
 
 /// Collects the open level's lights. Where its spawn cannot be read the level keeps its own lights alone, and without
 /// configs its zones light nothing and its lamps keep their spawned flags.
-pub fn pack_lights(current: &SelectedLevel, probe: &XrayProbe, sections: Option<&Ltx>) -> PackedLevelLights {
+pub fn pack_lights(
+  current: &SessionSnapshot<SelectedLevel>,
+  probe: &XrayProbe,
+  sections: Option<&Ltx>,
+) -> PackedLevelLights {
   let started: Instant = Instant::now();
   let animations: Option<LightAnimFile> = read_located_asset(probe, ANIMATIONS_FILE)
     .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)

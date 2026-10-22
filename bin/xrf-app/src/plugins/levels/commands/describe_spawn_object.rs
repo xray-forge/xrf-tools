@@ -29,10 +29,14 @@ pub async fn levels_describe_spawn_object(
     })
     .await???;
 
-  Ok(SessionSnapshot { session_id, value })
+  Ok(SessionSnapshot::new(session_id, value))
 }
 
-fn describe_object(current: &SelectedLevel, probe: &XrayProbe, index: u32) -> TauriResult<LevelSpawnObjectDetails> {
+fn describe_object(
+  current: &SessionSnapshot<SelectedLevel>,
+  probe: &XrayProbe,
+  index: u32,
+) -> TauriResult<LevelSpawnObjectDetails> {
   let spawn = get_level_spawn(current, probe)?;
   let object: &AlifeObject = spawn
     .objects

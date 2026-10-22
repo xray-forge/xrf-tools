@@ -96,6 +96,8 @@ macro_rules! for_each_tauri_command_domain {
         delete_screenshot => crate::plugins::levels::viewer::commands::delete_screenshot::levels_delete_screenshot,
         describe_console_defaults => crate::plugins::levels::commands::describe_console_defaults::levels_describe_console_defaults,
         describe_spawn_object => crate::plugins::levels::commands::describe_spawn_object::levels_describe_spawn_object,
+        export_cube => crate::plugins::levels::viewer::commands::export_cube::levels_export_cube,
+        export_map => crate::plugins::levels::viewer::commands::export_map::levels_export_map,
         find_screenshot_path => crate::plugins::levels::viewer::commands::find_screenshot_path::levels_find_screenshot_path,
         get_level => crate::plugins::levels::commands::get_level::levels_get_level,
         get_view_folder => crate::plugins::levels::viewer::commands::get_view_folder::levels_get_view_folder,
@@ -106,6 +108,7 @@ macro_rules! for_each_tauri_command_domain {
         read_level_weather => crate::plugins::levels::commands::read_level_weather::levels_read_level_weather,
         read_view => crate::plugins::levels::viewer::commands::read_view::levels_read_view,
         save_view => crate::plugins::levels::viewer::commands::save_view::levels_save_view,
+        write_map_annotations => crate::plugins::levels::viewer::commands::write_map_annotations::levels_write_map_annotations,
       }
       @bulk {
         read_screenshot(path: "string") => crate::plugins::levels::viewer::routes::read_screenshot::levels_read_screenshot,
@@ -113,6 +116,8 @@ macro_rules! for_each_tauri_command_domain {
       // Native viewports drawn by the renderer into the window the page names, under its webview.
       render => "render" {
         attach_viewport => crate::plugins::render::commands::attach_viewport::render_attach_viewport,
+        capture_cube => crate::plugins::render::commands::capture_cube::render_capture_cube,
+        capture_map => crate::plugins::render::commands::capture_map::render_capture_map,
         command_camera => crate::plugins::render::commands::command_camera::render_command_camera,
         configure => crate::plugins::render::commands::configure::render_configure,
         describe_frame => crate::plugins::render::commands::describe_frame::render_describe_frame,

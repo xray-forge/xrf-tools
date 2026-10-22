@@ -14,6 +14,7 @@ use xrf_vfs::XrayProbe;
 use xrf_visual::{VisualTransform, ZoneSphere};
 
 use crate::core::assets::read_located_asset;
+use crate::core::session::SessionSnapshot;
 use crate::plugins::levels::ambients::list_ambient_particles;
 use crate::plugins::levels::read::read_optional_file;
 use crate::plugins::levels::report::{report_missing_zone_particles, report_particles, report_unknown_particles};
@@ -48,7 +49,7 @@ pub struct PackedLevelParticles {
 ///
 /// Returns why the library cannot be read; a level without `level.ps_static` or a spawn plants nothing of it.
 pub fn pack_particles(
-  current: &SelectedLevel,
+  current: &SessionSnapshot<SelectedLevel>,
   probe: &XrayProbe,
   sections: Option<&Ltx>,
 ) -> Result<PackedLevelParticles, String> {

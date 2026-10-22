@@ -17,7 +17,12 @@ import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from 
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { ArchivePackConfig, ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
-import { RenderViewportEvent } from "@/core/ipc/types/xrf-renderer";
+import {
+  RenderCubeCapture,
+  RenderMapCapture,
+  RenderViewportEvent,
+  RenderViewportId,
+} from "@/core/ipc/types/xrf-renderer";
 import { ClsId, SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
 import { EquipmentSlotOccupant, ImageShape } from "@/core/ipc/types/xrf-texture";
 import {
@@ -1330,6 +1335,14 @@ export type AudioSourceParameters = {
   maxAiDistance: number | null;
 };
 
+/** How a level map's or cubemap's capture ended: written whole, or stopped when asked, writing nothing. */
+export type CaptureOutcome = {
+  outcome: JobOutcome;
+  /** The picture's pixels across and down, as written: a map's, or a cubemap's cross. */
+  width: number;
+  height: number;
+};
+
 /** One config as the authored view renders it. */
 export type ConfigsDocument = {
   text: LtxFileText;
@@ -1424,6 +1437,46 @@ export type ConfigsVerifyRequest = {
   prefix: string | null;
   /** Whether to resolve with the Monolith/Anomaly DLTX patch dialect. */
   isDltx: boolean;
+};
+
+/** A cubemap asked of a viewport, around its camera, and the PNG its cross is written to. */
+export type CubeCaptureRequest = {
+  viewport: RenderViewportId;
+  capture: RenderCubeCapture;
+  path: string;
+};
+
+/** Every `kind` the `CubeExportFormat` union is told apart by, so a switch or a comparison names one. */
+export enum ECubeExportFormat {
+  PNG = "png",
+  TGA = "tga",
+  DDS = "dds",
+}
+
+/**
+ * What a cubemap is exported as: one cube DDS, six TGAs named `1` to `6` as `CDemoRecord` writes its faces, or six
+ * PNGs named by face.
+ */
+export type CubeExportFormat =
+  | { kind: "png" }
+  | { kind: "tga" }
+  | {
+      kind: "dds";
+      format: TextureEncodingFormat;
+      quality: TextureEncodingQuality;
+      /** Whether each face carries its whole mip chain, reduced with the X-Ray converter's Kaiser kernel. */
+      isMipmapped: boolean;
+    };
+
+/** A cubemap's capture written again in another shape. */
+export type CubeExportRequest = {
+  /** The capture's cross PNG in the screenshots folder. */
+  path: string;
+  /** The DDS written, or the folder six faces are written into. */
+  target: string;
+  format: CubeExportFormat;
+  /** Pixels a face takes on a side, at most the capture's. */
+  size: number;
 };
 
 /** What everything below one process costs, folded in a single walk of the table. */
@@ -1674,6 +1727,8 @@ export enum EJobKind {
   SPAWN_UNPACK = "spawn.unpack",
   SPRITE_EQUIPMENT_PACK = "sprite-equipment.pack",
   GAMEDATA_VERIFY = "gamedata.verify",
+  LEVELS_CAPTURE_CUBE = "levels.capture-cube",
+  LEVELS_CAPTURE_MAP = "levels.capture-map",
   TEXTURES_BUILD = "textures.build",
   TEXTURES_COMPARE_ENCODINGS = "textures.compare-encodings",
   TEXTURES_MAKE_BUMP = "textures.make-bump",
@@ -1729,6 +1784,28 @@ export enum ELeaveDecision {
 /** Every `ELeaveDecision` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type LeaveDecision = `${ELeaveDecision}`;
 
+/** What a level map's annotations draw, each kind on its own switch and in its own colour. */
+export enum ELevelAnnotationKind {
+  /** The smart terrains' shapes, named. */
+  SMART_TERRAINS = "smartTerrains",
+  /** The space restrictors' shapes, those keeping the actor in apart from those keeping him out. */
+  RESTRICTORS = "restrictors",
+  /** The anomalous and torrid zones' shapes. */
+  ANOMALIES = "anomalies",
+  /** The level changers' shapes, each with an arrow toward the level it leads to and its name. */
+  LEVEL_CHANGERS = "levelChangers",
+  /** The game graph's vertices on the level, as dots. */
+  GRAPH_POINTS = "graphPoints",
+  /**
+   * The patrol paths starting on the level: their links as lines, their points as dots, named at the first where
+   * every object is named.
+   */
+  PATROLS = "patrols",
+}
+
+/** Every `ELevelAnnotationKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type LevelAnnotationKind = `${ELevelAnnotationKind}`;
+
 /**
  * What a game's console sets of how its levels are lit, exposed and corrected: its installation's `user.ltx` over its
  * shipped defaults (Anomaly's `default_controls.ltx`); each `None` it leaves to the engine.
@@ -1766,6 +1843,18 @@ export type LevelEntry = {
   logicalPath: string;
   /** Whether `level.geom` sits beside the bundle; a level without it draws nothing. */
   hasGeometry: boolean;
+};
+
+/** Where the PDA lays the level's map over it, as the level's `level.ltx` places it in `[level_map]`. */
+export type LevelMapDescription = {
+  /** `bound_rect`'s first corner, the least `x` and `z` in engine space. */
+  minX: number | null;
+  minZ: number | null;
+  /** Its second corner, the greatest `x` and `z`. */
+  maxX: number | null;
+  maxZ: number | null;
+  /** The map's texture, as `texture` names it, where it names one. */
+  texture: string | null;
 };
 
 /** What opening a level was asked to read, and how the game's configs beside it are read. */
@@ -1949,6 +2038,81 @@ export type MachineUsage = {
   availableMemory: number;
 };
 
+/** The ground a level map covers, engine space: its least and greatest `x` and `z`. */
+export type MapAnnotationsArea = {
+  minX: number | null;
+  minZ: number | null;
+  maxX: number | null;
+  maxZ: number | null;
+};
+
+/**
+ * The annotations asked of a level map: its PNG in the screenshots folder, beside which they are written as an SVG,
+ * the ground it covers, what of them is drawn, and whether every volume is named.
+ */
+export type MapAnnotationsRequest = {
+  path: string;
+  area: MapAnnotationsArea;
+  kinds: Array<LevelAnnotationKind>;
+  isLabelled: boolean;
+};
+
+/** A level map asked of a viewport, and the PNG it is written to. */
+export type MapCaptureRequest = {
+  viewport: RenderViewportId;
+  capture: RenderMapCapture;
+  path: string;
+};
+
+/** How a level map's annotations, the SVG beside its capture, go into an export of it. */
+export enum EMapExportAnnotations {
+  /** Drawn over the map. */
+  OVER = "over",
+  /** Alone, clear where they draw nothing. */
+  ALONE = "alone",
+}
+
+/** Every `EMapExportAnnotations` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type MapExportAnnotations = `${EMapExportAnnotations}`;
+
+/** Every `kind` the `MapExportFormat` union is told apart by, so a switch or a comparison names one. */
+export enum EMapExportFormat {
+  PNG = "png",
+  TGA = "tga",
+  SVG = "svg",
+  DDS = "dds",
+}
+
+/**
+ * What a level map is exported as: `CDemoRecord`'s own uncompressed TGA, a PNG, a DDS as the game loads a map, or, for
+ * its annotations alone, their SVG.
+ */
+export type MapExportFormat =
+  | { kind: "png" }
+  | { kind: "tga" }
+  | { kind: "svg" }
+  | {
+      kind: "dds";
+      format: TextureEncodingFormat;
+      quality: TextureEncodingQuality;
+      /** Whether it carries its whole mip chain, reduced with the X-Ray converter's Kaiser kernel. */
+      isMipmapped: boolean;
+    };
+
+/** A level map's capture written again in another shape. */
+export type MapExportRequest = {
+  /** The capture's PNG in the screenshots folder, its coverage in alpha. */
+  path: string;
+  target: string;
+  format: MapExportFormat;
+  /** Pixels the longer side takes, at most the capture's; the shorter follows the capture's shape. */
+  longSide: number;
+  /** The colour the map is laid over, its alpha made opaque, or none to keep its coverage. */
+  backdrop: [number, number, number] | null;
+  /** Whether and how its annotations go in, or none for the map alone. */
+  annotations: MapExportAnnotations | null;
+};
+
 /** What the application and its webview hold in memory at one instant, and what the application holds on the GPU. */
 export type MemoryUsage = {
   /** The backend process itself. */
@@ -2065,6 +2229,8 @@ export type SelectedLevelDescription = {
   surfaces: Array<XraySurfaceDescriptor>;
   /** Extent every sector together covers, which is where a camera is framed from. */
   bounds: VisualBounds | null;
+  /** Where the level's map lies over it, as its `level.ltx` places it; `None` where it places none. */
+  levelMap: LevelMapDescription | null;
 };
 
 /** What the viewer is showing, paired with where it came from. */

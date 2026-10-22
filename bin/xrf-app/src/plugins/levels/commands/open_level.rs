@@ -1,11 +1,10 @@
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 use std::time::Instant;
 
 use tauri::State;
 use xrf_chunk::XRayByteOrder;
 use xrf_dltx::select_ltx_dialect;
 use xrf_engine_target::XrayEngineResolution;
-use xrf_job::PoolOnceLock;
 use xrf_level::LevelCformFile;
 use xrf_ltx::{Ltx, LtxDialect};
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
@@ -15,16 +14,17 @@ use xrf_visual::SectorOutline;
 
 use crate::core::assets::{AssetMountState, detect_probe_engine};
 use crate::core::execution::ExecutionState;
-use crate::core::session::{SessionId, SessionSnapshot};
+use crate::core::session::{SessionId, SessionParts, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::configs::read_level_sections;
+use crate::plugins::levels::configs::{read_level_sections, with_level_sections};
+use crate::plugins::levels::level_map::read_level_map;
 use crate::plugins::levels::read::{ReadLevel, read_optional_file, read_source};
 use crate::plugins::levels::report::{report_open, report_opening, report_start};
 use crate::plugins::levels::request::LevelOpenRequest;
-use crate::plugins::levels::spawn::read_source_spawn;
+use crate::plugins::levels::spawn::{read_source_spawn, with_level_spawn};
 use crate::plugins::levels::start::{list_level_start_eyes, resolve_level_start};
 use crate::plugins::levels::state::{
-  COLLISION_FILE, LevelSource, LevelSpawn, LevelSpawnVisuals, LevelStart, LevelState, LevelTextureReference,
+  COLLISION_FILE, LevelMapDescription, LevelSource, LevelSpawn, LevelStart, LevelState, LevelTextureReference,
   SelectedLevel, SelectedLevelDescription,
 };
 use crate::plugins::levels::surfaces::resolve_surfaces;
@@ -40,6 +40,7 @@ struct OpenedLevel {
   sections: Option<Result<Arc<Ltx>, String>>,
   outlines: Vec<SectorOutline>,
   start: Option<LevelStart>,
+  level_map: Option<LevelMapDescription>,
 }
 
 /// Select a compiled level and report what it is built out of, without reading any of its geometry.
@@ -83,17 +84,19 @@ pub async fn levels_open_level(
 
   report_start(&source, opened.start.as_ref());
 
-  let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.commit_open(
+  // The spawn and the sections it names are read as the level opens, so they are kept as its parts already.
+  let mut parts: SessionParts = with_level_spawn(SessionParts::new(), opened.spawn);
+
+  if let Some(sections) = opened.sections {
+    parts = with_level_sections(parts, sections);
+  }
+
+  let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.commit_open_with(
     session_id,
     SelectedLevel {
-      collision: PoolOnceLock::new(),
       dialect,
       engine,
-      environment: OnceLock::new(),
-      hemi: OnceLock::new(),
-      spawn: opened.spawn.into(),
-      sections: opened.sections.map(OnceLock::from).unwrap_or_default(),
-      spawn_visuals: LevelSpawnVisuals::new(),
+      level_map: opened.level_map,
       geometry: opened.read.geometry,
       level: opened.read.level,
       outlines: opened.outlines,
@@ -104,6 +107,7 @@ pub async fn levels_open_level(
       textures: opened.textures,
       visuals: opened.read.visuals,
     },
+    parts,
   )?;
 
   report_open(&selected.value, started);
@@ -156,6 +160,7 @@ fn open(
   );
 
   Ok(OpenedLevel {
+    level_map: read_level_map(source, probe),
     outlines,
     read,
     sections,

@@ -1,5 +1,6 @@
 pub(crate) mod environment_cycle_entry;
 pub(crate) mod level_console_defaults;
+pub(crate) mod level_map_description;
 pub(crate) mod level_rain;
 pub(crate) mod level_spawn_category;
 pub(crate) mod level_spawn_object;

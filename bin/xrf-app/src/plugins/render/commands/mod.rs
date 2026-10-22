@@ -1,4 +1,6 @@
 pub mod attach_viewport;
+pub mod capture_cube;
+pub mod capture_map;
 pub mod command_camera;
 pub mod configure;
 pub mod describe_frame;

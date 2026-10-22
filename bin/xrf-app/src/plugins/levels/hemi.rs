@@ -11,6 +11,7 @@ use xrf_math::Vector3d;
 use xrf_vfs::XrayProbe;
 use xrf_visual::{HemiEstimator, VisualSphere, VisualTransform};
 
+use crate::core::session::{SessionPart, SessionSnapshot};
 use crate::plugins::levels::collision::get_level_collision;
 use crate::plugins::levels::read::read_optional_file;
 use crate::plugins::levels::report::{report_hemi, report_missing_hemi, report_unreadable_lights};
@@ -20,16 +21,25 @@ use crate::plugins::levels::state::{
   LIGHTS_FILE, LevelSource, LevelSpawn, LevelSpawnObjectHemi, LevelSpawnVisual, SelectedLevel,
 };
 
+/// How the level lights its spawned objects and the camera, over its collision form.
+struct LevelHemiPart;
+
+impl SessionPart for LevelHemiPart {
+  type Value = Result<Arc<HemiEstimator>, String>;
+}
+
 /// The open level's estimator, built the first time anything asks and kept.
 ///
 /// # Errors
 ///
 /// Returns why the collision form cannot be read, which every later ask answers with again.
-pub fn get_level_hemi(current: &SelectedLevel, probe: &XrayProbe) -> Result<Arc<HemiEstimator>, String> {
-  current
-    .hemi
-    .get_or_init(|| read_hemi(current, probe).inspect_err(|error| report_missing_hemi(&current.source, error)))
-    .clone()
+pub fn get_level_hemi(
+  current: &SessionSnapshot<SelectedLevel>,
+  probe: &XrayProbe,
+) -> Result<Arc<HemiEstimator>, String> {
+  current.parts.get_or_init::<LevelHemiPart>(|| {
+    read_hemi(current, probe).inspect_err(|error| report_missing_hemi(&current.source, error))
+  })
 }
 
 /// The cube of every spawned object the viewer draws standing as one of `spheres`' visuals, where it stands, in
@@ -62,7 +72,7 @@ pub fn estimate_spawn_hemi(
 
 /// How the level lights each object standing as one of the visuals read, none where its spawn cannot be read.
 pub fn estimate_visuals_hemi(
-  current: &SelectedLevel,
+  current: &SessionSnapshot<SelectedLevel>,
   probe: &XrayProbe,
   estimator: &HemiEstimator,
   read: &[(&str, Arc<LevelSpawnVisual>)],
@@ -78,7 +88,7 @@ pub fn estimate_visuals_hemi(
   estimate_spawn_hemi(estimator, &spawn, &spheres)
 }
 
-fn read_hemi(current: &SelectedLevel, probe: &XrayProbe) -> Result<Arc<HemiEstimator>, String> {
+fn read_hemi(current: &SessionSnapshot<SelectedLevel>, probe: &XrayProbe) -> Result<Arc<HemiEstimator>, String> {
   let started: Instant = Instant::now();
   let tracer: Arc<LevelCformTracer> = get_level_collision(current, probe)?;
   let estimator: HemiEstimator = HemiEstimator::new(tracer, &read_hemi_lights(&current.source, probe));

@@ -1,10 +1,28 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+/** Pixels a cubemap's face spans on a side at most. */
+export const RENDER_CUBE_MOST_PIXELS: number = 2048;
+
+/** Times over a cubemap's face is drawn at most. */
+export const RENDER_CUBE_MOST_SUPERSAMPLING: number = 4;
+
 /**
  * GPU milliseconds a frame gives the work drawn once in so many frames that may wait, unless the settings say
  * otherwise.
  */
 export const RENDER_DEFAULT_PERIODIC_BUDGET: number = 0.5;
+
+/** Map pixels a level map spans on a side at most. */
+export const RENDER_MAP_MOST_PIXELS: number = 16384;
+
+/** Times over a level map's tile is drawn at most. */
+export const RENDER_MAP_MOST_SUPERSAMPLING: number = 4;
+
+/** Map pixels a level map's tile spans on a side at most. */
+export const RENDER_MAP_TILE: number = 2048;
+
+/** Map pixels a level map's tile is drawn past each side, as far as the screen-space passes gather around a pixel. */
+export const RENDER_MAP_TILE_MARGIN: number = 64;
 
 /** Frames VBAO accumulates over at most. */
 export const RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION: number = 32;
@@ -366,6 +384,19 @@ export type RenderContactShadowSettings = {
   isFullResolution: boolean;
   /** Local lights each pixel marches towards at most, the strongest there: none for the sun's alone. */
   lights: number;
+};
+
+/**
+ * A cubemap asked of a viewport: the six faces around where its camera stands, world-aligned in the engine's order
+ * `+x -x +y -y +z -z`, each `size` pixels square at exactly 90 degrees.
+ */
+export type RenderCubeCapture = {
+  /** A face's pixels on a side. */
+  size: number;
+  /** Times over on each side a face is drawn before it is reduced to its pixels. */
+  supersampling: number;
+  /** Frames each face is drawn from where it stands before the one kept, for what builds over frames to settle. */
+  settleFrames: number;
 };
 
 /** Whether the sky's gradients are smoothed where its colours fall into visible bands. */
@@ -1227,6 +1258,28 @@ export type RenderLodSettings = {
   /** `r_ssaGLOD_start` and `r_ssaGLOD_end`: a progressive mesh is whole above the first, coarsest below the second. */
   ssaGlodStart: number | null;
   ssaGlodEnd: number | null;
+};
+
+/** A level map asked of a viewport: an area in engine space seen straight down, `width` by `height` pixels. */
+export type RenderMapCapture = {
+  /** The area's least `x` and `z`, the map's left and bottom edges. */
+  minX: number | null;
+  minZ: number | null;
+  /** Its greatest `x` and `z`, the map's right and top edges. */
+  maxX: number | null;
+  maxZ: number | null;
+  /** The heights between which the level is drawn: what stands below `bottom` or above `top` is cut away. */
+  bottom: number | null;
+  top: number | null;
+  /** The map's pixels across and down. */
+  width: number;
+  height: number;
+  /** Times over on each side a tile is drawn before it is reduced to the map's pixels. */
+  supersampling: number;
+  /** Frames each tile is drawn from where it stands before the one kept, for what builds over frames to settle. */
+  settleFrames: number;
+  /** Whether the grass is planted over each tile, which `CDemoRecord`'s map draws none of: an experiment. */
+  isGrassed: boolean;
 };
 
 /** What the renderer holds on the GPU, and what the GPU's own memory holds and allows. */
