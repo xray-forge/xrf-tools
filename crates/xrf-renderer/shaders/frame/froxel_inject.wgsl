@@ -83,8 +83,11 @@ fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
       let lit: f32 = light_share(record, to_point, are_levels_physical(), spread) *
         light_shadow(shadow_atlas, shadow_sampler, record, to_point, vec3<f32>(0.0), record.axis.w > -1.0, false);
 
-      let lamp: vec3<f32> = select(record.color.rgb * authored_amount(lamp_density),
-        srgb_light_authored(record.color.rgb / local_light_scale(lighting)) * lamp_density, is_display);
+      var lamp: vec3<f32> = record.color.rgb * authored_amount(lamp_density);
+
+      if (is_display) {
+        lamp = srgb_light_authored(record.color.rgb / authored_local_scale(lighting)) * lamp_density;
+      }
 
       scattered += lamp * lit * froxel_phase(g, dot(normalize(to_point), to_eye));
     }

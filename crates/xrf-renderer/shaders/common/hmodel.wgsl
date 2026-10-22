@@ -35,9 +35,11 @@ fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: te
   let environment: vec3<f32> = state.environment.rgb * irradiance;
 
   // The engine's square stands in for decoding the product; the physical light decodes it (`physical_hemisphere`).
-  let physical: vec3<f32> = physical_hemisphere(state.environment.rgb, irradiance, state.summed_light.x);
+  if (is_lighting_physical(state)) {
+    return physical_hemisphere(state.environment.rgb, irradiance, state.summed_light.x) * light_scale(state);
+  }
 
-  return select(environment * environment, physical, is_lighting_physical(state)) * light_scale(state);
+  return environment * environment * light_scale(state);
 }
 
 // `plight_infinity` for the sun: its colour by the diffuse term, its specular weight by the specular, at a view space
@@ -65,10 +67,10 @@ fn hmodel_reflection_lookup(state: Lighting, reflected: vec3<f32>) -> vec3<f32> 
 
 // The diffuse light a surface takes at the authored levels: summed in the engine's units and decoded once, as the
 // engine's display shows it (`LightingUniform::summed_light`). The engine adds its lights in display values and the
-// display raises their sum to its power, so its sunlit ground stands that power over its shade; summed as linear light
-// the two stood the power's root apart, the open ground shown too dark against the shade and a lamplit interior too
-// bright. With the power exact, the decoded albedo times the decoded sum is the engine's product decoded. The sum keeps
-// its decoded hue; only its luminance takes the power. Elsewhere the light as it is.
+// display raises their sum to its power, so its sunlit ground stands that power over its shade, where summed as linear
+// light the two would stand the power's root apart. With the power exact, the decoded albedo times the decoded sum is
+// the engine's product decoded. The sum keeps its decoded hue; only its luminance takes the power. Elsewhere the light
+// as it is.
 fn authored_diffuse(state: Lighting, light: vec3<f32>) -> vec3<f32> {
   let gain: f32 = state.summed_light.x;
 
@@ -120,8 +122,13 @@ fn hmodel_terms(state: Lighting, table: texture_3d<f32>, table_sampler: sampler,
     slice);
   // The hemisphere's light: the weather's cubes, or under the physical light the sky's own irradiance, the baked
   // hemisphere its visibility; then the flat ambient, which the physical light levels leave out (`LightingUniform`).
-  let sky: vec3<f32> = select(hemisphere_environment(state, cube_0, cube_1, cube_sampler, normal_world),
-    sky_irradiance_at(state, normal_world), is_sky_irradiance(state));
+  var sky: vec3<f32>;
+
+  if (is_sky_irradiance(state)) {
+    sky = sky_irradiance_at(state, normal_world);
+  } else {
+    sky = hemisphere_environment(state, cube_0, cube_1, cube_sampler, normal_world);
+  }
   let hemisphere_diffuse: vec3<f32> = (sky * hemisphere.x + state.ambient.rgb) * visible;
   let is_extended: bool = state.engine.x > 0.5;
   let weight: vec3<f32> = hemisphere.y * hmodel_gloss_weight(state, gloss, hemisphere.x) * visible;

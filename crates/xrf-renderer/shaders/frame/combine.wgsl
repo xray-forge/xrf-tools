@@ -209,8 +209,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     // The light the surface reflects is light its diffuse does not scatter: the diffuse gives up the specular's share,
     // so the two never pass what reaches the surface. At the authored levels both join the surface's display values in
     // the engine's units, as the engine's look adds its reflections to `hmodel`'s before its display decodes them, so a
-    // dim surface takes the share as the engine's display gives it; added as light they lifted the shade three times
-    // as far as the engine's.
+    // dim surface takes the share as the engine's display gives it.
     if (is_light_summed(lighting)) {
       let unit: f32 = light_scale(lighting);
       let shown: vec3<f32> = srgb_encoded(max(shaded, vec3<f32>(0.0)) / unit) +
@@ -218,7 +217,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
 
       shaded = srgb_decoded(shown) * unit;
     } else {
-      shaded += radiance * brdf - diffuse * brdf;
+      shaded = max(shaded + (radiance - diffuse) * brdf, vec3<f32>(0.0));
     }
 
     // The sun on a wet surface's water film, which the engine's specular leaves out with the gloss the wetness added:

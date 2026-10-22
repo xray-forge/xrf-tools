@@ -69,10 +69,14 @@ export const LEVEL_LOOK_TONEMAP_FIELDS: ReadonlyArray<ILevelLookField> = [
   },
 ];
 
-/** The light's scales: the sun's, the hemisphere's and the flat ambient's, which the physical light has none of. */
+/**
+ * The light's scales: the sun's and the flat ambient's, which the physical light levels light by the atmosphere in
+ * place of, and the hemisphere's.
+ */
 export const LEVEL_LOOK_LIGHT_SCALE_FIELDS: ReadonlyArray<ILevelLookField> = [
   {
     label: "Sun",
+    offUnder: ELevelLookFieldOff.PHYSICAL_LEVELS,
     max: 4,
     min: 0,
     read: (look) => look.lightScales.sun,

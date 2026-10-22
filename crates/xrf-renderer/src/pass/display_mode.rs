@@ -61,7 +61,7 @@ impl DisplayMode {
   /// at the display value the engine's curve shows it at, and nothing else of the engine's look, so each keeps its own
   /// contrast about it. None for the engine's curve and the engine's own showing.
   pub fn get_anchor_stops(self, key: f32, contrast: f32) -> f32 {
-    self.get_match(key, contrast, Self::ANCHOR_HUE)
+    self.get_bounded(key, None, contrast, Self::ANCHOR_HUE)
   }
 
   /// The stops the frame is lifted by: the anchor at its exposed `key` (`get_anchor_stops`), and, as the key falls under
@@ -93,24 +93,25 @@ impl DisplayMode {
   /// The match at `key`, bounded by the match at `bright` as far as the graded key stands under the least the transform
   /// shows, all of it `BRIGHT_FADE_STOPS` under.
   fn get_bounded(self, key: f32, bright: Option<f32>, contrast: f32, hue: Vec3) -> f32 {
-    let lift: f32 = self.get_match(key, contrast, hue);
-    let (Some(bright), Some(transform)) = (bright, self.get_transform()) else {
+    let Some(transform) = self.get_transform() else {
+      return 0.0;
+    };
+    let least: f32 = get_least_shown(transform, hue);
+    let lift: f32 = Self::get_match((transform, least), key, contrast, hue);
+    let Some(bright) = bright else {
       return lift;
     };
-    let under: f32 = (get_least_shown(transform, hue) / get_graded(key, contrast).max(f32::MIN_POSITIVE)).log2();
-    let bounded: f32 = lift.min(self.get_match(bright, contrast, hue));
+    let under: f32 = (least / get_graded(key, contrast).max(f32::MIN_POSITIVE)).log2();
+    let bounded: f32 = lift.min(Self::get_match((transform, least), bright, contrast, hue));
 
     lift + (bounded - lift) * (under / Self::BRIGHT_FADE_STOPS).clamp(0.0, 1.0)
   }
 
-  /// The stops that show a colour of `hue` at the exposed `key`, graded by `contrast`, through the transform as the
-  /// engine's curve shows it, the key held within `ANCHOR_KEYS`.
-  fn get_match(self, key: f32, contrast: f32, hue: Vec3) -> f32 {
-    let Some(transform) = self.get_transform() else {
-      return 0.0;
-    };
-    let (least, most): (f32, f32) = Self::ANCHOR_KEYS;
-    let shown: f32 = get_graded(key, contrast).clamp(least.max(get_least_shown(transform, hue)), most);
+  /// The stops that show a colour of `hue` at the exposed `key`, graded by `contrast`, through `transform` as the
+  /// engine's curve shows it, the key held within `ANCHOR_KEYS` and over the `least` the transform shows.
+  fn get_match((transform, least): (fn(Vec3) -> Vec3, f32), key: f32, contrast: f32, hue: Vec3) -> f32 {
+    let (lowest, most): (f32, f32) = Self::ANCHOR_KEYS;
+    let shown: f32 = get_graded(key, contrast).clamp(lowest.max(least), most);
 
     get_key_match(transform, (shown, hue), Self::ANCHOR_BOUNDS)
   }

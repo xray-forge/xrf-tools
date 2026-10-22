@@ -26,14 +26,22 @@ fn are_levels_physical() -> bool {
 // A colour authored as a display value (a texture's, a lamp's, the fog's) as the frame lights with it: decoded by the
 // sRGB transfer under the physical light model, as it is stored under the engine's.
 fn authored_colour(colour: vec3<f32>) -> vec3<f32> {
-  return select(colour, srgb_decoded(colour), is_light_physical());
+  if (is_light_physical()) {
+    return srgb_decoded(colour);
+  }
+
+  return colour;
 }
 
 // An amount of light the engine tunes as a display value (a lamp's falloff, a scattering density) as the share of light
 // it sets: decoded under the physical light model, so an amount lit with a decoded light gives the light the engine's
 // display value showed.
 fn authored_amount(amount: f32) -> f32 {
-  return select(amount, srgb_decoded(vec3<f32>(amount)).x, is_light_physical());
+  if (is_light_physical()) {
+    return srgb_decoded(vec3<f32>(amount)).x;
+  }
+
+  return amount;
 }
 
 // Light at `scale` as the scene holds it: tonemapped, or linear at its exposure.

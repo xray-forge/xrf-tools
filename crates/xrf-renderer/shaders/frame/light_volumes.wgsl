@@ -139,10 +139,12 @@ fn fs_light_volume(in: VolumeVarying) -> @location(0) vec4<f32> {
   let amount: vec3<f32> = vec3<f32>(VOLUME_DENSITY * shadow * falloff) * (noise.rgb * 0.5 + 0.5);
 
   if (is_light_summed(lighting)) {
-    return vec4<f32>(amount * projected * srgb_light_authored(volume.color.rgb / local_light_scale(lighting)), 0.0);
+    return vec4<f32>(amount * projected * srgb_light_authored(volume.color.rgb / authored_local_scale(lighting)), 0.0);
   }
 
-  let shaft: vec3<f32> = select(amount, srgb_decoded(amount), is_light_physical()) * authored_colour(projected);
+  if (is_light_physical()) {
+    return vec4<f32>(srgb_decoded(amount) * authored_colour(projected) * volume.color.rgb, 0.0);
+  }
 
-  return vec4<f32>(shaft * volume.color.rgb, 0.0);
+  return vec4<f32>(amount * projected * volume.color.rgb, 0.0);
 }

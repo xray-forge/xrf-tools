@@ -97,7 +97,7 @@ fn light_share(record: LightRecord, to_point: vec3<f32>, is_inverse_square: bool
 
   let nearest: f32 = max(record.shadow.w, spread * spread);
 
-  return LIGHT_THIRD_SHARE * window * window / max(reach, nearest * record.position.w);
+  return LIGHT_THIRD_SHARE * window * window / max(max(reach, nearest * record.position.w), 1e-12);
 }
 
 // Whether a point stands outside a spot's cone or behind its apex; never for a light without a cone.

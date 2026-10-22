@@ -91,7 +91,7 @@ fn graded(light: vec3<f32>, contrast: f32, saturation: f32, stops: f32) -> vec3<
 }
 
 // A colour of the scene as the display shows it under a `display` (`PresentUniform::display`): its mode, then the
-// physical light's contrast and saturation and the transform's anchor at the frame's graded key, which grade it before
+// physical light's contrast and saturation and the transform's lift (`DisplayMode::get_lift`), which grade it before
 // its transform.
 fn shown_for_display(colour: vec3<f32>, display: vec4<f32>) -> vec3<f32> {
   let mode: u32 = u32(display.x);

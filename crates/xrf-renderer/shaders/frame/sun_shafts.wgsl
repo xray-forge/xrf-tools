@@ -97,9 +97,9 @@ fn half_upsampled(source: texture_2d<f32>, pixel: vec2<f32>, distance: f32) -> v
   return sum / max(weights, 1e-6);
 }
 
-// What the composite adds at a pixel: the sun's shafts and the froxels' gathered light as light, or where
-// `is_display_added` as the engine's display value they add to the frame's (`shaft`; the froxels gather it so at the
-// authored levels, `froxel_inject`); the shadowed lights' shafts as light beside them.
+// What the composite adds at a pixel: the sun's shafts, the shadowed lights' and the froxels' gathered light as light,
+// or where `is_display_added` as the engine's display value they add to the frame's (`shaft`; the lights' shafts and
+// the froxels gather it so at the authored levels, `light_volumes`, `froxel_inject`).
 struct Composited {
   light: vec3<f32>,
   shaft: vec3<f32>,
@@ -171,8 +171,8 @@ fn fs_sun_shafts(in: FullscreenVarying) -> ShaftsOutput {
 // the combined image's display values (`combine_volumetric`) and the display decodes the sum, so they lift a pixel by
 // `(d + s)^2.2 - d^2.2`, each channel its own, `d` the frame's display value in the engine's units, held to the
 // tonemap's white as the engine's 8-bit image holds it, and `s` the shafts' or the froxels' in the lights' authored
-// colours. Decoded alone and added as light they lifted a low sun's shade a thirtieth as far and left it cold: half
-// its red in the engine is its shafts'.
+// colours: decoded alone and added as light they would lift a low sun's shade a thirtieth as far, where half its red in
+// the engine is its shafts'.
 @fragment
 fn fs_sun_shafts_over(in: FullscreenVarying) -> ShaftsOutput {
   let added: Composited = composited(in.clip.xy, true);

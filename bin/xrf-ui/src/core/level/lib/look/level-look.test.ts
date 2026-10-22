@@ -97,12 +97,11 @@ describe("level look", () => {
       )
     ).toBe(custom);
     expect(
-      resolveLevelLook(
-        { ...DEFAULT_LEVEL_LOOK_CHOICE, source: ELevelLookSource.GAMMA },
-        game,
-        DEFAULT_RENDER_EXPOSURE_SETTINGS
-      )
-    ).toBe(GAMMA_LEVEL_LOOK);
+      resolveLevelLook({ ...DEFAULT_LEVEL_LOOK_CHOICE, source: ELevelLookSource.GAMMA }, game, {
+        ...DEFAULT_RENDER_EXPOSURE_SETTINGS,
+        compensation: 1.5,
+      })
+    ).toEqual({ ...GAMMA_LEVEL_LOOK, exposure: { ...GAMMA_LEVEL_LOOK.exposure, compensation: 1.5 } });
   });
 
   it("keeps G.A.M.M.A.'s look as its installer writes it", () => {

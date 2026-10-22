@@ -3,10 +3,10 @@
 
 // The physical light's exposure: the scene's light counted into a histogram of its log2 luminance, a texel in every
 // four each way, the centre weighed up to four times the edges and the sky not at all, then the average between the
-// darkest and the brightest shares the settings leave out brought to where a daylit exterior's is shown, less the
-// share of its distance from one it keeps, never under the dark's limit, the scale moving towards it at most so many
-// stops a second, faster darkening than brightening. Beside it the sky's own level, its pictures' log2 average as the
-// game paints them, which the pictures are shown by (`PictureShares`).
+// darkest and the brightest shares it leaves out (`LOW_SHARE`, `HIGH_SHARE`) brought to where a daylit exterior's is
+// shown, less the share of its distance from one it keeps, never under the dark's limit, the scale moving towards it at
+// most so many stops a second, faster darkening than brightening. Beside it the sky's own level, its pictures' log2
+// average as the game paints them, which the pictures are shown by (`PictureShares`).
 
 #import "generated/frame/exposure_histogram"
 
@@ -119,6 +119,9 @@ fn cs_settle(@builtin(local_invocation_index) index: u32) {
     total += f32(counts[bin]);
   }
 
+  // The scale this frame's tonemap used, which a frame of sky alone, holding its exposure, keeps too.
+  state.used = state.adapted;
+
   if (total <= 0.0) {
     return;
   }
@@ -137,8 +140,9 @@ fn cs_settle(@builtin(local_invocation_index) index: u32) {
     let windowed: f32 = max(min(below + count, high) - max(below, low), 0.0);
     let middle: f32 = params.least_log + (f32(bin) + 0.5) / f32(BINS) * params.span_log;
 
+    // Placed within its bin by how far into it the bright end's share falls, so it moves smoothly as the frame does.
     if (below < brightest && below + count >= brightest) {
-      bright = middle;
+      bright = params.least_log + (f32(bin) + (brightest - below) / max(count, 1.0)) / f32(BINS) * params.span_log;
     }
 
     below += count;
@@ -153,7 +157,6 @@ fn cs_settle(@builtin(local_invocation_index) index: u32) {
   let reach: f32 = select(params.brightening, params.darkening, wanted < current) * params.delta;
   let next: f32 = select(current + clamp(wanted - current, -reach, reach), wanted, params.snap > 0.5);
 
-  state.used = state.adapted;
   state.adapted = exp2(next);
   // The key and the bright end as the scale now exposes them.
   state.key = average + next;

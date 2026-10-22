@@ -29,18 +29,16 @@ fn local_light_scale(state: Lighting) -> f32 {
   return state.pre_exposure.w * pre_exposure(state);
 }
 
-// The sun foliage passes through from behind (`SSS`, which the engine's light model returns for the sun's colour to
-// multiply): the sun by how directly the eye looks past the leaf into it, times the flora's strength, tinted again by
-// the sun's colour as far as the flora's colour share says. Under the physical light that second tint is the sun's hue
-// alone, so a leaf passes the light that falls on it and no more: a dim moon's as little as the moon gives. Directions
-// in one space, `to_eye` and `to_light` from the leaf.
+// The sun foliage passes through from behind (`SSS`, which Anomaly's light model adds to what the sun's colour
+// multiplies): by how directly the eye looks past the leaf into it, times the flora's strength, at the sun's strength,
+// taking as much of its colour as the flora's colour share says and its luminance for the rest, so a leaf passes the
+// light that falls on it and no more, a night's moon as little as it gives. Directions in one space, `to_eye` and
+// `to_light` from the leaf.
 fn flora_through(state: Lighting, to_eye: vec3<f32>, to_light: vec3<f32>, normal: vec3<f32>) -> vec3<f32> {
   let amount: f32 = saturate(dot(to_eye, -(to_light + normal))) * state.flora.y;
   let sun: vec3<f32> = state.sun.rgb;
-  let hue: vec3<f32> = sun / max(dot(sun, vec3<f32>(0.2126, 0.7152, 0.0722)), 1e-12);
-  let tint: vec3<f32> = select(sun, hue, is_lighting_physical(state));
 
-  return amount * sun * mix(vec3<f32>(1.0), tint, state.flora.z);
+  return amount * mix(vec3<f32>(luminance(sun)), sun, state.flora.z);
 }
 
 // The exposure the frame is shown at: the adapted scale where it adapts, one otherwise.
@@ -116,8 +114,13 @@ fn untonemapped(colour: vec3<f32>, scale: f32) -> vec3<f32> {
 // decoded first.
 fn sky_as_light(shown: vec3<f32>, scale: f32, gain: f32, is_encoded: bool) -> vec3<f32> {
   let bright: f32 = smoothstep(0.5, 1.0, luminance(max(shown, vec3<f32>(0.0))));
+  var picture: vec3<f32> = shown;
 
-  return untonemapped(select(shown, srgb_decoded(shown), is_encoded), scale) * mix(1.0, gain, bright);
+  if (is_encoded) {
+    picture = srgb_decoded(shown);
+  }
+
+  return untonemapped(picture, scale) * mix(1.0, gain, bright);
 }
 
 // How much fog lies between the camera and a view space point: none without fog, one where it is total.
@@ -147,13 +150,24 @@ fn fog_amount_at(state: Lighting, position: vec3<f32>, height: f32) -> f32 {
 // the baked hemisphere and the screen's occlusion inside it, so a crease darkens what it reflects as it darkens what
 // lights it, rather than leaving an occluded forest floor its sheen.
 fn reflected_visibility(state: Lighting, visible: f32) -> f32 {
-  return select(visible, pow(saturate(visible), SRGB_DISPLAY_POWER), is_light_summed(state));
+  if (is_light_summed(state)) {
+    return pow(saturate(visible), SRGB_DISPLAY_POWER);
+  }
+
+  return visible;
 }
 
 // Whether the light is the authored levels' (`LightingUniform::summed_light`): its diffuse summed in the engine's
 // units and decoded once, its shafts added to the frame's display values as the engine adds them.
 fn is_light_summed(state: Lighting) -> bool {
   return state.summed_light.x > 0.0;
+}
+
+// The scale a local light's colour is written at at the authored levels: its unit at the pre-exposure
+// (`local_light_scale`) and the key light's gain every light takes there (`LightUnits::light_gain`), which a lamp's
+// authored colour, the engine's value, is taken back by.
+fn authored_local_scale(state: Lighting) -> f32 {
+  return local_light_scale(state) * state.summed_light.x;
 }
 
 // Whether the light is physical (`RenderLightModel::Physical`): `engine.w`, written from the view's one rule as the
@@ -167,13 +181,20 @@ fn is_lighting_physical(state: Lighting) -> bool {
 fn sun_shown(state: Lighting) -> vec3<f32> {
   let sun: vec3<f32> = state.sun.rgb / light_scale(state);
 
-  return select(sun, srgb_encoded(sun), is_lighting_physical(state));
+  if (is_lighting_physical(state)) {
+    return srgb_encoded(sun);
+  }
+
+  return sun;
 }
 
 // The fog's colour as light at the light's scale: the weather's display value, decoded where the light is physical.
 fn fog_colour_light(state: Lighting) -> vec3<f32> {
-  return select(state.fog_color.rgb, srgb_decoded(state.fog_color.rgb), is_lighting_physical(state)) *
-    light_scale(state);
+  if (is_lighting_physical(state)) {
+    return srgb_decoded(state.fog_color.rgb) * light_scale(state);
+  }
+
+  return state.fog_color.rgb * light_scale(state);
 }
 
 // The fog's colour as the frame shows it: a picture, at the fog's share of the exposure. The passes mixing it into a
@@ -186,10 +207,13 @@ fn fog_light(state: Lighting) -> vec3<f32> {
 // amounts veil as they did; under the physical light both are encoded for the blend, the light's scale taken off first
 // and given back after, and the result decoded back.
 fn fog_mixed(state: Lighting, light: vec3<f32>, fog: vec3<f32>, amount: f32) -> vec3<f32> {
-  let scale: f32 = light_scale(state);
-  let encoded: vec3<f32> = srgb_decoded(mix(srgb_encoded(light / scale), srgb_encoded(fog / scale), amount)) * scale;
+  if (!is_lighting_physical(state)) {
+    return mix(light, fog, amount);
+  }
 
-  return select(mix(light, fog, amount), encoded, is_lighting_physical(state));
+  let scale: f32 = light_scale(state);
+
+  return srgb_decoded(mix(srgb_encoded(light / scale), srgb_encoded(fog / scale), amount)) * scale;
 }
 
 // The colour the fog takes towards a view space point at a world height: the weather's, taking the sun's colour where

@@ -42,7 +42,7 @@ pub struct PresentUniform {
   /// the sky is drawn as it is.
   pub deband: Vec4,
   /// How the scene is shown before the rest is laid over it (`DisplayMode`), as `common/display_transform` numbers it,
-  /// then the physical light's grading before its transform: its contrast, its saturation by the transform's own, and
+  /// then the physical light's grading before its transform: its contrast, its saturation, and
   /// the transform's lift at the frame's key and bright end (`DisplayMode::get_lift`).
   pub display: Vec4,
   /// What the debug views read: the metres from the camera the grass's cards cast the sun's shadow to, none where they

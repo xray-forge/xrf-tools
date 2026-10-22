@@ -9,8 +9,8 @@ pub enum RenderLightModel {
   /// are stored as, as every X-Ray renderer lights them.
   #[default]
   Engine,
-  /// Linear light: every colour authored as a display value (textures, the weather's and the lamps' colours, the
-  /// irradiance cubes) decoded by the sRGB transfer before it is lit, the scene held as linear light, and the frame
-  /// encoded for the display once it is tonemapped.
+  /// Linear light: colours authored as display values decoded before they are lit (textures and the irradiance cubes by
+  /// the sRGB display's 2.2 power, the weather's and the lamps' colours by their hue alone, keeping the strength the
+  /// game balanced them at), the scene held as linear light, and the frame shown through a display transform.
   Physical,
 }

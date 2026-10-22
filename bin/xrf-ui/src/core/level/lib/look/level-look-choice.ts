@@ -51,7 +51,7 @@ export const DEFAULT_LEVEL_LOOK_CHOICE: ILevelLookChoice = {
 /**
  * @param choice - How the look is chosen.
  * @param game - The open level's game's look, or null where it ships none or none is open.
- * @param exposure - The settings' exposure.
+ * @param exposure - The settings' exposure, whose compensation a built-in look keeps, being no console setting.
  * @returns The look the level is drawn with.
  */
 export function resolveLevelLook(
@@ -70,17 +70,26 @@ export function resolveLevelLook(
       return toSettingsLevelLook(exposure);
 
     case ELevelLookSource.XRF:
-      return XRF_LEVEL_LOOK;
+      return withCompensation(XRF_LEVEL_LOOK, exposure);
 
     case ELevelLookSource.ANOMALY:
-      return ANOMALY_LEVEL_LOOK;
+      return withCompensation(ANOMALY_LEVEL_LOOK, exposure);
 
     case ELevelLookSource.GAMMA:
-      return GAMMA_LEVEL_LOOK;
+      return withCompensation(GAMMA_LEVEL_LOOK, exposure);
 
     case ELevelLookSource.OPENXRAY:
-      return OPENXRAY_LEVEL_LOOK;
+      return withCompensation(OPENXRAY_LEVEL_LOOK, exposure);
   }
+}
+
+/**
+ * @param look - A built-in look.
+ * @param exposure - The settings' exposure.
+ * @returns The look at the settings' exposure compensation.
+ */
+function withCompensation(look: ILevelLook, exposure: TRenderExposureSettings): ILevelLook {
+  return { ...look, exposure: { ...look.exposure, compensation: exposure.compensation } };
 }
 
 /**
