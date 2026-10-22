@@ -9,6 +9,7 @@ import {
   ERenderFogMode,
   ERenderGlassMode,
   ERenderIndirectLightMode,
+  ERenderLightLevel,
   ERenderLightModel,
   ERenderLightShadowFilter,
   ERenderReflectionMode,
@@ -298,5 +299,30 @@ describe("level feature options", () => {
     );
     expect(toLevelFeatureOptions({ displayTransform: "agx" }).displayTransform).toBe(ERenderDisplayTransform.AGX);
     expect(toLevelFeatureOptions({ displayTransform: "filmic" }).displayTransform).toBeNull();
+  });
+
+  it("stands the physical light at the view's own level and sun tint over the settings', held to the renderer's bounds", () => {
+    const world: ILevelFeatureOptions = mockLevelFeatureOptions({
+      lightLevel: ERenderLightLevel.PHYSICAL,
+      sunTint: 0.25,
+    });
+    const followed: IRenderFeatureSettings = toLevelRendererFeatures(
+      SETTINGS,
+      mockLevelFeatureOptions(),
+      DEFAULT_LEVEL_VIEW_OPTIONS
+    );
+
+    expect(followed.lightLevel).toBe(SETTINGS.lightLevel);
+    expect(followed.sunTint).toBe(SETTINGS.sunTint);
+    expect(toLevelRendererFeatures(SETTINGS, world, DEFAULT_LEVEL_VIEW_OPTIONS)).toMatchObject({
+      lightLevel: ERenderLightLevel.PHYSICAL,
+      sunTint: 0.25,
+    });
+    expect(toLevelFeatureOptions({ lightLevel: "physical", sunTint: 3 })).toMatchObject({
+      lightLevel: ERenderLightLevel.PHYSICAL,
+      sunTint: 1,
+    });
+    expect(toLevelFeatureOptions({ lightLevel: "moonlit" }).lightLevel).toBeNull();
+    expect(toLevelFeatureOptions({}).sunTint).toBeNull();
   });
 });

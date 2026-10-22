@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use xrf_error::XrfResult;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphRuntime, GraphTexture, StorageArrayMut,
   StorageValueMut,
@@ -50,6 +51,8 @@ pub struct ExposureFeature {
   held: Option<f32>,
   /// The state's head copied out without waiting, whose scale the physical light's next frames write their light at.
   readback: GpuReadback,
+  /// Whether the copy on its way was made before the light model changed, so what it brings is dropped.
+  is_readback_stale: bool,
   /// The scale this frame's light is written at, and the last frame's.
   pre_exposure: PreExposure,
   /// What the physical light's histogram last metered: the key it is shown at, the histogram's or a daylit exterior's
@@ -89,6 +92,7 @@ impl ExposureFeature {
       is_physical: false,
       held: None,
       readback: GpuReadback::new(device, "exposure readback", size_of::<ExposureHead>() as u64),
+      is_readback_stale: false,
       pre_exposure: PreExposure::NONE,
       metering: ExposureMetering::default(),
       is_frozen: false,
@@ -101,17 +105,19 @@ impl ExposureFeature {
 
   /// Advances the rate by the time since the last frame and writes what the adaptation reads; off, the scale goes back
   /// to one, the engine's answer at noon. Under the physical light (`is_physical`) the histogram meters instead, or,
-  /// off, the scale holds at a daylit exterior's; a change of light model starts the scale afresh. Then the scale
-  /// the frame's light is written at: the physical light's last read back, one under the engine's.
+  /// off, the scale holds at a daylit exterior's; a change of light model starts the scale afresh, dropping what the
+  /// other model metered. Then the scale the frame's light is written at: the physical light's last read back, one
+  /// under the engine's.
   pub fn prepare(&mut self, queue: &wgpu::Queue, options: &RenderViewOptions, now: Instant) {
     let settings: &RenderExposureSettings = &options.features.exposure;
     let is_physical: bool = options.is_light_physical();
+    let is_switched: bool = is_physical != self.is_physical;
     let read: Option<ExposureHead> = self.take_readback();
     let scale: Option<f32> = read
       .map(|head| head.adapted)
       .filter(|adapted| adapted.is_finite() && *adapted > 0.0);
 
-    if self.is_frozen && is_physical == self.is_physical {
+    if self.is_frozen && !is_switched {
       // The scale the passes read stays in the state unmeasured, and the light is written at the last frame's.
       self.is_measuring = false;
       self.pre_exposure.previous = self.pre_exposure.current;
@@ -119,8 +125,9 @@ impl ExposureFeature {
       return;
     }
 
-    if is_physical != self.is_physical {
-      // The physical light starts where a daylit exterior is shown, its light written there from the first frame.
+    if is_switched {
+      // The physical light starts where a daylit exterior is shown, its light written there from the first frame; a
+      // copy still on its way measured the other model's scale.
       let start: f32 = if is_physical {
         ExposureHistogramUniform::get_daylight_scale(settings.compensation)
       } else {
@@ -128,6 +135,7 @@ impl ExposureFeature {
       };
 
       self.is_physical = is_physical;
+      self.is_readback_stale = !self.readback.is_free();
       self.last = None;
       self.rate = 0.5;
       self.held = None;
@@ -274,13 +282,19 @@ impl ExposureFeature {
     self.metering
   }
 
-  /// The head a copy brought back since the last frame. Any scale it holds writes the light right, since the passes
-  /// divide it out again (`frame_scale`); the latest keeps the light near the range it is shown in.
-  fn take_readback(&self) -> Option<ExposureHead> {
-    self
+  /// The head a copy brought back since the last frame, none from a copy made before the light model changed. Any
+  /// scale it holds writes the light right, since the passes divide it out again (`frame_scale`); the latest keeps the
+  /// light near the range it is shown in.
+  fn take_readback(&mut self) -> Option<ExposureHead> {
+    let head: XrfResult<ExposureHead> = self
       .readback
-      .take(|bytes| bytemuck::pod_read_unaligned::<ExposureHead>(&bytes[..size_of::<ExposureHead>()]))?
-      .ok()
+      .take(|bytes| bytemuck::pod_read_unaligned::<ExposureHead>(&bytes[..size_of::<ExposureHead>()]))?;
+
+    if std::mem::take(&mut self.is_readback_stale) {
+      return None;
+    }
+
+    head.ok()
   }
 
   /// Adds the adaptation into the exposure's state the lit passes share (`lit`): the frame's luminance measured from the
@@ -324,18 +338,9 @@ impl ExposureFeature {
         .buffer(state, GraphBufferAccess::CopySource)
         .keep()
         .record(move |context| {
-          if self.readback.is_free() {
-            let source: &wgpu::Buffer = context.get_buffer(state);
+          let source: &wgpu::Buffer = context.get_buffer(state);
 
-            context.get_encoder().copy_buffer_to_buffer(
-              source,
-              0,
-              self.readback.get_buffer(),
-              0,
-              size_of::<ExposureHead>() as u64,
-            );
-            self.readback.mark_recorded();
-          }
+          self.record_readback(context.get_encoder(), source);
         });
 
       return;
@@ -351,6 +356,21 @@ impl ExposureFeature {
       .add_compute_pass("exposure")
       .parameters(&parameters)
       .record(move |context| passes.exposure.record(context, &parameters));
+  }
+
+  /// Copies the head of the exposure's state (`source`) out with the frame `encoder` records, unless a copy is still on
+  /// its way.
+  pub(crate) fn record_readback(&self, encoder: &mut wgpu::CommandEncoder, source: &wgpu::Buffer) {
+    if self.readback.is_free() {
+      encoder.copy_buffer_to_buffer(
+        source,
+        0,
+        self.readback.get_buffer(),
+        0,
+        size_of::<ExposureHead>() as u64,
+      );
+      self.readback.mark_recorded();
+    }
   }
 
   /// Writes the state's scale and the scale the last frame used as `scale`.

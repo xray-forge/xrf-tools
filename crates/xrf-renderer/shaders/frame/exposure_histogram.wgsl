@@ -52,7 +52,8 @@ fn cs_bin(@builtin(global_invocation_id) id: vec3<u32>, @builtin(local_invocatio
 
   if (all(texel < size)) {
     // The scene holds light at the scale this frame was drawn at.
-    let light: f32 = luminance(textureLoad(scene, texel, 0).rgb) / max(state.adapted, 1e-6);
+    let held: f32 = luminance(textureLoad(scene, texel, 0).rgb);
+    let light: f32 = held / max(state.adapted, 1e-6);
     let at: f32 = saturate((log2(max(light, 1e-9)) - params.least_log) / params.span_log);
     let bin: u32 = min(u32(at * f32(BINS)), BINS - 1u);
     let off_centre: f32 = length((vec2<f32>(texel) + 0.5) / vec2<f32>(size) - 0.5) * 2.0;
@@ -63,9 +64,9 @@ fn cs_bin(@builtin(global_invocation_id) id: vec3<u32>, @builtin(local_invocatio
 
     atomicAdd(&local_bins[bin], weight);
 
-    // The sky as the game paints it: the light by the scale its pictures were drawn at this frame.
+    // The sky as the game paints it: the scene by the scale its pictures were drawn at this frame.
     if (is_sky) {
-      let painted: f32 = light / max(light_unit(lighting) * picture_share(lighting), 1e-12);
+      let painted: f32 = held / max(picture_scale(lighting, state.adapted), 1e-12);
       let level: f32 = clamp(log2(max(painted, 1e-12)) - SKY_FLOOR_LOG, 0.0, -2.0 * SKY_FLOOR_LOG);
 
       atomicAdd(&local_sky[0], u32(round(level * SKY_STEPS)));

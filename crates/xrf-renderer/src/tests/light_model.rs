@@ -428,8 +428,9 @@ fn metered_frame(units: LightUnits, current: f32, metering: ExposureMetering) ->
 
 // The pictures take the whole exposure at the authored levels under the engine's curve, and wherever the sky is not
 // metered. At the physical levels a night's land, lifted past the authored law, leaves its sky and fog shown as the law
-// exposes that land in the authored levels' units; under AgX and PBR Neutral, and whatever the grading's contrast, the
-// sky shows at its metered level as the engine's curve shows it, the fog keeping the land's lift.
+// exposes that land in the authored levels' units, the sky's share of the pre-exposure the shares were set against, so
+// the frame's exposure snapping ahead of it cannot carry the sky; under AgX and PBR Neutral, and whatever the grading's
+// contrast, the sky shows at its metered level as the engine's curve shows it, the fog keeping the land's lift.
 #[test]
 fn the_pictures_show_as_the_authored_law_shows_them() {
   let lighting: RenderLighting = RenderLighting::default();
@@ -462,6 +463,16 @@ fn the_pictures_show_as_the_authored_law_shows_them() {
   assert!((0.5 * 64.0 * lifted.fog / (PHYSICAL_LIGHT_UNIT * law) - 1.0).abs() < 1e-4);
   assert!(lifted.fog < 1.0);
   assert_eq!(lifted.sky, lifted.fog);
+  assert!(lifted.is_pre_exposed);
+  assert_eq!(lifted.to_vec4().z, 1.0);
+  assert!(
+    PictureShares::of(
+      &levels,
+      &lighting,
+      &metered_frame(world, 64.0, ExposureMetering::default())
+    )
+    .is_pre_exposed
+  );
 
   let unmetered: ExposureMetering = ExposureMetering { sky: None, ..metering };
   let graded = |light: f32, contrast: f32| 0.18 * (light / 0.18).powf(contrast);

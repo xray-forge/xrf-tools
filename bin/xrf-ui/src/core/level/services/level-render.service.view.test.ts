@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 
-import { ERenderDebugView, ERenderOverlay, ERenderSurfaceColor } from "@/core/ipc/types/xrf-renderer";
+import {
+  ERenderDebugView,
+  ERenderLightLevel,
+  ERenderOverlay,
+  ERenderSurfaceColor,
+} from "@/core/ipc/types/xrf-renderer";
 import {
   EWorldCameraCommand,
   EWorldViewportEvent,
@@ -13,6 +18,7 @@ import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { SettingsService } from "@/core/settings/services/settings";
 import { clearLocalStorage } from "@/core/storage";
 import { mockInvoke, resetMockChannels, resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { mockWorldWeatherReport } from "@/fixtures/mocks/weather.mocks";
@@ -143,6 +149,28 @@ describe("LevelRenderService view", () => {
         viewport: LEVEL_VIEWPORT,
       })
     );
+  });
+
+  // A view's own physical light level is parked as the settings' is: drawn at the authored levels outside dev mode,
+  // and kept for when dev mode returns.
+  it("draws a view's own physical light level as the authored one outside dev mode", async () => {
+    const { container, service } = await mockAttachedLevelRender();
+    const settings: SettingsService = container.get(SettingsService);
+    const view: LevelViewService = container.get(LevelViewService);
+
+    settings.setDevModeEnabled(true);
+    view.setFeatures({ ...view.features, lightLevel: ERenderLightLevel.PHYSICAL });
+
+    expect(service.viewOptions.features.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
+
+    settings.setDevModeEnabled(false);
+
+    expect(service.viewOptions.features.lightLevel).toBe(ERenderLightLevel.AUTHORED);
+    expect(view.features.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
+
+    settings.setDevModeEnabled(true);
+
+    expect(service.viewOptions.features.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
   });
 
   it("draws the grid, the extent, the axes and the sun over the level as the toolbar shows them", async () => {

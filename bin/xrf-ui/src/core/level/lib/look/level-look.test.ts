@@ -20,6 +20,7 @@ import {
   toLevelLookChoice,
 } from "@/core/level/lib/look/level-look-choice";
 import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 
 /** What Anomaly's `default_controls.ltx` sets. */
 const ANOMALY: LevelConsoleDefaults = {
@@ -133,5 +134,18 @@ describe("level look", () => {
     expect(choice.custom?.exposure).toEqual(DEFAULT_RENDER_EXPOSURE_SETTINGS);
     // A look kept before the bloom blooms nothing, as it drew.
     expect(choice.custom?.bloom).toEqual(NO_LEVEL_BLOOM);
+  });
+
+  it("gives a look kept before its exposure compensation the settings', keeping its own exposure", () => {
+    const exposure: TRenderExposureSettings = { ...DEFAULT_RENDER_EXPOSURE_SETTINGS, compensation: -0.5 };
+    const choice = toLevelLookChoice(
+      {
+        custom: { exposure: { adaptation: 3, isEnabled: false, middleGray: 0.9 } },
+        source: ELevelLookSource.CUSTOM,
+      },
+      exposure
+    );
+
+    expect(choice.custom?.exposure).toEqual({ ...exposure, adaptation: 3, isEnabled: false, middleGray: 0.9 });
   });
 });

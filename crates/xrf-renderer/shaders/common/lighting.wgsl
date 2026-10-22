@@ -60,7 +60,24 @@ fn fog_share(state: Lighting) -> f32 {
 
 // The exposure a picture the engine exposes as it is (the sky's), in the engine's units, is shown at.
 fn picture_exposure(state: Lighting, exposure: Exposure) -> f32 {
-  return light_unit(state) * frame_exposure(state, exposure) * picture_share(state);
+  return picture_scale(state, frame_exposure(state, exposure));
+}
+
+// The exposure the pictures are shown at in a frame exposed at `adapted`: their share of it, or, where the shares are
+// of the pre-exposure (`are_pictures_pre_exposed`), of that, which the CPU set them against, so an exposure snapping
+// ahead of its read-back copy shows the sky where it was set.
+fn picture_scale(state: Lighting, adapted: f32) -> f32 {
+  if (are_pictures_pre_exposed(state)) {
+    return light_scale(state) * picture_share(state);
+  }
+
+  return light_unit(state) * adapted * picture_share(state);
+}
+
+// Whether the pictures' shares are of the pre-exposure rather than of the frame's exposure
+// (`PictureShares::is_pre_exposed`): at the physical levels, whose sky has an exposure of its own.
+fn are_pictures_pre_exposed(state: Lighting) -> bool {
+  return state.pictures.z > 0.5;
 }
 
 // The scale the frame's light, written at the pre-exposure, is brought to the frame's exposure by.

@@ -10,6 +10,7 @@ mod debanding;
 mod decoded_texture;
 mod display_transform;
 mod enhanced_bloom;
+mod exposure_readback;
 mod fog_scattering;
 mod frame_pacer;
 mod frame_rate;

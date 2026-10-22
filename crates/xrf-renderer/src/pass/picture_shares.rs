@@ -20,15 +20,27 @@ use crate::pass::lighting_frame::LightingFrame;
 /// on the land (`DisplayMode::get_anchor_stops`) lifts the sky by the land's stops, which AgX's toe makes several at
 /// dusk: the sky's share trades them for its own at its metered level and bright end (`DisplayMode::get_sky_lift`),
 /// where the fog's keeps the land's, as it veils the land.
+///
+/// The shares are set against the scale the frame's light is written at, the pre-exposure read back with the metering
+/// they come from. At the authored levels the sky follows the land's exposure as it adapts, so its share is of the
+/// frame's exposure. At the physical levels it has an exposure of its own, the law's: shown at its share of the
+/// pre-exposure (`is_pre_exposed`), a frame's exposure snapping ahead of its read-back copy (the first frame, a cut)
+/// cannot carry the sky with it for the frames until the copy is back.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PictureShares {
   pub sky: f32,
   pub fog: f32,
+  /// Whether the sky's share is of the pre-exposure rather than of the frame's exposure.
+  pub is_pre_exposed: bool,
 }
 
 impl PictureShares {
   /// The whole exposure, under the engine's light and wherever nothing has been metered.
-  pub const WHOLE: Self = Self { sky: 1.0, fog: 1.0 };
+  pub const WHOLE: Self = Self {
+    sky: 1.0,
+    fog: 1.0,
+    is_pre_exposed: false,
+  };
 
   /// The shares for a view's `options`, the weather's `lighting` and what its `frame` metered.
   pub fn of(options: &RenderViewOptions, lighting: &RenderLighting, frame: &LightingFrame) -> Self {
@@ -37,6 +49,7 @@ impl PictureShares {
     }
 
     let current: f32 = frame.light_units.weather * frame.pre_exposure.current;
+    let is_levels_physical: bool = options.features.light_level == RenderLightLevel::Physical;
     let reference: f32 = match (options.features.light_level, frame.metering.land) {
       (RenderLightLevel::Physical, Some(land)) => {
         // The land as the authored levels would light it: their unit, their key light's gain, in place of the world's.
@@ -66,17 +79,21 @@ impl PictureShares {
     let shares: Self = Self {
       sky: fog * stops.exp2(),
       fog,
+      is_pre_exposed: is_levels_physical,
     };
 
     if shares.sky.is_finite() && shares.fog.is_finite() {
       shares
     } else {
-      Self::WHOLE
+      Self {
+        is_pre_exposed: is_levels_physical,
+        ..Self::WHOLE
+      }
     }
   }
 
   /// As `LightingUniform::pictures` holds them.
   pub fn to_vec4(self) -> Vec4 {
-    Vec4::new(self.sky, self.fog, 0.0, 0.0)
+    Vec4::new(self.sky, self.fog, self.is_pre_exposed as u32 as f32, 0.0)
   }
 }
