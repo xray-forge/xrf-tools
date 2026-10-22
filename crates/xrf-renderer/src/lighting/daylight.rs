@@ -1,5 +1,6 @@
 use glam::Vec3;
 
+use crate::lighting::luminance::luminance;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::authored_colour;
 
@@ -166,8 +167,4 @@ impl Daylight {
 
     hue(atmosphere).lerp(hue(authored), tint) * strength
   }
-}
-
-fn luminance(colour: Vec3) -> f32 {
-  colour.dot(Vec3::new(0.2126, 0.7152, 0.0722))
 }

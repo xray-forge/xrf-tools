@@ -1,5 +1,7 @@
 use glam::Vec3;
 
+use crate::lighting::luminance::luminance;
+
 /// The power of the sRGB display's transfer: the standard's reference display, which `common/srgb.wgsl` explains.
 pub const SRGB_DISPLAY_POWER: f32 = 2.2;
 
@@ -37,7 +39,6 @@ pub fn authored_light(colour: Vec3, is_physical: bool) -> Vec3 {
     return if is_physical { Vec3::ZERO } else { colour };
   }
 
-  let luminance = |colour: Vec3| colour.dot(Vec3::new(0.2126, 0.7152, 0.0722));
   let hue: Vec3 = authored_colour(colour.max(Vec3::ZERO) / peak, true);
 
   hue * (luminance(colour) / luminance(hue).max(1e-12))

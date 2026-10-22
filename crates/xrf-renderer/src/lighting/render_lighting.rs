@@ -6,6 +6,7 @@ use crate::contract::render_asset_lighting::RenderAssetLighting;
 use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_sun_shafts::RenderSunShafts;
 use crate::lighting::light_specular::to_light_specular;
+use crate::lighting::luminance::luminance;
 use crate::lighting::render_ambients::RenderAmbients;
 use crate::lighting::render_clouds::RenderClouds;
 use crate::lighting::render_fog::RenderFog;
@@ -103,7 +104,7 @@ impl RenderLighting {
   /// scaled by the viewer's rig; no fog, no sky, no wind, no rain.
   pub fn for_asset(rig: &RenderAssetLighting) -> Self {
     let noon: Self = Self::default();
-    let grey = |color: Vec3| -> Vec3 { Vec3::splat(color.dot(Vec3::new(0.2126, 0.7152, 0.0722))) };
+    let grey = |color: Vec3| -> Vec3 { Vec3::splat(luminance(color)) };
     let tinted = |color: Vec3, tint: [f32; 3], intensity: f32| -> Vec3 { grey(color) * Vec3::from(tint) * intensity };
     let elevation: f32 = rig.sun_elevation.to_radians();
     let azimuth: f32 = rig.sun_azimuth.to_radians();

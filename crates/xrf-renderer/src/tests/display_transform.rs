@@ -4,6 +4,7 @@
 
 use glam::{Vec3, Vec4};
 
+use crate::lighting::luminance::luminance;
 use crate::lighting::srgb::srgb_encoded;
 use crate::pass::display_curves::{agx, engine_display, get_least_shown, pbr_neutral};
 use crate::pass::display_mode::DisplayMode;
@@ -31,7 +32,7 @@ fn cs_display(@builtin(global_invocation_id) id: vec3<u32>) {
 /// The grading before a physical transform: luminance to `contrast` in stops about middle grey, colour mixed from it by
 /// `saturation`.
 fn graded(light: Vec3, contrast: f32, saturation: f32) -> Vec3 {
-  let luminance_was: f32 = light.dot(Vec3::new(0.2126, 0.7152, 0.0722)).max(1e-6);
+  let luminance_was: f32 = luminance(light).max(1e-6);
   let luminance_is: f32 = 0.18 * (luminance_was / 0.18).powf(contrast);
 
   Vec3::splat(luminance_is)
@@ -150,12 +151,12 @@ fn assert_close(actual: Vec3, expected: Vec3, what: &str) {
 #[test]
 fn the_anchors_show_the_key_as_the_engines_curve_does() {
   let daylit: f32 = ExposureHistogramUniform::get_daylit_key(ExposureHistogramUniform::get_daylight_scale(0.0));
-  let shown = |colour: Vec3| srgb_encoded(colour.dot(Vec3::new(0.2126, 0.7152, 0.0722)));
+  let shown = |colour: Vec3| srgb_encoded(luminance(colour));
 
   for contrast in [0.7, 1.0, 1.5] {
     for key in [0.0005, 0.005, daylit, 0.3] {
       let hue: Vec3 = DisplayMode::ANCHOR_HUE;
-      let land: Vec3 = graded(hue * (key / hue.dot(Vec3::new(0.2126, 0.7152, 0.0722))), contrast, 1.0);
+      let land: Vec3 = graded(hue * (key / luminance(hue)), contrast, 1.0);
       let engine: f32 = shown(engine_display(land));
 
       for (mode, defined) in [
@@ -163,7 +164,7 @@ fn the_anchors_show_the_key_as_the_engines_curve_does() {
         (DisplayMode::PbrNeutral, pbr_neutral),
       ] {
         // Under the least the transform shows, the key is held there rather than matched.
-        if land.dot(Vec3::new(0.2126, 0.7152, 0.0722)) < get_least_shown(defined, hue) {
+        if luminance(land) < get_least_shown(defined, hue) {
           continue;
         }
 
@@ -314,8 +315,8 @@ fn the_lift_never_shows_the_bright_end_brighter_than_the_engines_curve() {
   let held: f32 = DisplayMode::Agx.get_anchor_stops(night, 1.0);
   let lift: f32 = DisplayMode::Agx.get_lift((night, Some(moonlit)), 1.0);
   let hue: Vec3 = DisplayMode::ANCHOR_HUE;
-  let bright: Vec3 = hue * (moonlit / hue.dot(Vec3::new(0.2126, 0.7152, 0.0722)));
-  let shown = |colour: Vec3| srgb_encoded(colour.dot(Vec3::new(0.2126, 0.7152, 0.0722)));
+  let bright: Vec3 = hue * (moonlit / luminance(hue));
+  let shown = |colour: Vec3| srgb_encoded(luminance(colour));
 
   assert!(lift < held, "{lift} against the held {held}");
   assert!((shown(agx(bright * lift.exp2())) - shown(engine_display(bright))).abs() < 0.002);

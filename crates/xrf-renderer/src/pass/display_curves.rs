@@ -5,6 +5,7 @@
 
 use glam::{Mat3, Vec3};
 
+use crate::lighting::luminance::luminance;
 use crate::lighting::srgb::{srgb_decoded, srgb_encoded};
 
 /// The engine's curve's white, as `tonemap` squares it.
@@ -95,7 +96,6 @@ pub fn get_graded(luminance: f32, contrast: f32) -> f32 {
 /// where its toe begins to show anything, solved by bisection over the log2 luminance, as the transform rises with the
 /// light.
 pub fn get_least_shown(transform: fn(Vec3) -> Vec3, hue: Vec3) -> f32 {
-  let luminance = |colour: Vec3| colour.dot(Vec3::new(0.2126, 0.7152, 0.0722));
   let first: f32 = srgb_decoded(1.0 / 255.0);
   let unit: Vec3 = hue / luminance(hue).max(1e-6);
   let (mut low, mut high): (f32, f32) = (-30.0, 0.0);
@@ -116,7 +116,6 @@ pub fn get_least_shown(transform: fn(Vec3) -> Vec3, hue: Vec3) -> f32 {
 /// The stops a colour of `hue` at luminance `key` is lifted by for `transform` to show it as bright as the engine's curve
 /// shows it, held to `bounds`: the transform's response solved by bisection, as it rises with the light.
 pub fn get_key_match(transform: fn(Vec3) -> Vec3, (key, hue): (f32, Vec3), (least, most): (f32, f32)) -> f32 {
-  let luminance = |colour: Vec3| colour.dot(Vec3::new(0.2126, 0.7152, 0.0722));
   let colour: Vec3 = hue * (key / luminance(hue).max(1e-6));
   let wanted: f32 = luminance(engine_display(colour));
   let (mut low, mut high): (f32, f32) = (least, most);

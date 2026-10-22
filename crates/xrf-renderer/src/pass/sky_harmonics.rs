@@ -2,6 +2,7 @@ use glam::{Vec3, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_light_level::RenderLightLevel;
+use crate::lighting::luminance::luminance;
 
 /// The sky's irradiance as order-2 spherical harmonics, as `shaders/frame/sky_irradiance.wgsl` writes it: nine
 /// coefficients, each in a vector's colour, of the irradiance over π in the engine's light units, already convolved by
@@ -30,9 +31,7 @@ impl SkyHarmonics {
       return 0.0;
     }
 
-    (Self::get_zenith(&self.coefficients) * hemi)
-      .dot(Vec3::new(0.2126, 0.7152, 0.0722))
-      .max(0.0)
+    luminance(Self::get_zenith(&self.coefficients) * hemi).max(0.0)
   }
 
   /// Whether the sky was projected.
@@ -56,7 +55,6 @@ impl SkyHarmonics {
   /// moon black, and a sky's picture tints the shade it lights its own colour, a day's blue grey where the game's
   /// hemisphere is warmer. A sky too dark to have a shape lights evenly at that level.
   pub fn at_level(&self, level: RenderLightLevel, hemi: f32) -> [Vec4; 9] {
-    let luminance = |colour: Vec3| colour.dot(Vec3::new(0.2126, 0.7152, 0.0722));
     let [sky, authored]: [Vec3; 2] = [
       self.coefficients[0].truncate() * hemi,
       Vec3::new(self.coefficients[1].w, self.coefficients[2].w, self.coefficients[3].w),

@@ -4,6 +4,7 @@ use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::daylight::Daylight;
 use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
+use crate::lighting::luminance::luminance;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{authored_colour, authored_light};
 use crate::pass::sky_harmonics::SkyHarmonics;
@@ -80,7 +81,6 @@ impl LightUnits {
   /// decoded luminance, and a moon twenty times dimmer than the sun in display values shows hundreds of times darker.
   /// A key gone dark, between the sun's last keyframe and the moon's first, gives no less than `LEAST_KEY_GAIN`.
   pub fn get_key_gain(key: Vec3) -> f32 {
-    let luminance = |colour: Vec3| colour.dot(Vec3::new(0.2126, 0.7152, 0.0722));
     let kept: f32 = luminance(authored_light(key, true));
 
     if kept <= 0.0 {

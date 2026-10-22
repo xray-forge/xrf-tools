@@ -1,6 +1,7 @@
 use glam::{Mat4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
+use crate::lighting::luminance::luminance;
 
 use crate::contract::render_display_transform::RenderDisplayTransform;
 use crate::contract::render_light_level::RenderLightLevel;
@@ -170,7 +171,6 @@ fn authored_colours_are_decoded_only_under_the_physical_light() {
 // grey keeps its value, a dim light keeps its share of a bright one, and a coloured one its luminance.
 #[test]
 fn authored_lights_keep_their_strength_and_decode_their_hue() {
-  let luminance = |colour: Vec3| colour.dot(Vec3::new(0.2126, 0.7152, 0.0722));
   let warm: Vec3 = Vec3::new(2.2, 1.76, 1.43);
   let lit: Vec3 = authored_light(warm, true);
 
@@ -199,7 +199,6 @@ fn the_lighting_decodes_what_it_lights_with_and_flags_the_shaders() {
   assert_eq!(physical.engine.w, 1.0);
   let gain: f32 = LightUnits::get_key_gain(engine.sun.truncate());
   let sun: Vec3 = physical.sun.truncate() / PHYSICAL_LIGHT_UNIT;
-  let luminance = |colour: Vec3| colour.dot(Vec3::new(0.2126, 0.7152, 0.0722));
 
   assert!((sun - authored_light(engine.sun.truncate(), true) * gain).length() < 1e-5);
   assert!((luminance(sun) - luminance(authored_colour(engine.sun.truncate(), true))).abs() < 1e-5);
@@ -366,9 +365,12 @@ fn the_sky_irradiance_stands_at_its_levels() {
   options.features.light_level = RenderLightLevel::Authored;
 
   let authored: [Vec4; 9] = lit(&options, harmonics);
-  let luminance = |colour: Vec4| colour.truncate().dot(Vec3::new(0.2126, 0.7152, 0.0722));
 
-  assert!((luminance(authored[0]) - 0.6).abs() < 1e-5, "{}", authored[0]);
+  assert!(
+    (luminance(authored[0].truncate()) - 0.6).abs() < 1e-5,
+    "{}",
+    authored[0]
+  );
   assert!((authored[1].truncate() / authored[0].truncate() - Vec3::new(0.2, 0.8, 2.4)).length() < 1e-4);
   assert_eq!(authored[0].w, 1.0);
 
@@ -462,7 +464,6 @@ fn the_pictures_show_as_the_authored_law_shows_them() {
   assert_eq!(lifted.sky, lifted.fog);
 
   let unmetered: ExposureMetering = ExposureMetering { sky: None, ..metering };
-  let shown = |colour: Vec3| colour.dot(Vec3::new(0.2126, 0.7152, 0.0722));
   let graded = |light: f32, contrast: f32| 0.18 * (light / 0.18).powf(contrast);
   let sky: f32 = (-9.0_f32).exp2() * units.weather * 0.01;
 
@@ -482,8 +483,8 @@ fn the_pictures_show_as_the_authored_law_shows_them() {
 
       let shares: PictureShares = PictureShares::of(&options, &lighting, &metered_frame(units, 0.01, metering));
       let land: f32 = mode.get_anchor_stops(0.01, contrast);
-      let anchored: f32 = shown(curve(Vec3::splat(graded(sky * shares.sky, contrast) * land.exp2())));
-      let engine: f32 = shown(engine_display(Vec3::splat(graded(sky, contrast))));
+      let anchored: f32 = luminance(curve(Vec3::splat(graded(sky * shares.sky, contrast) * land.exp2())));
+      let engine: f32 = luminance(engine_display(Vec3::splat(graded(sky, contrast))));
 
       assert_eq!(shares.fog, 1.0);
       assert!(
