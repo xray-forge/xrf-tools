@@ -4,9 +4,10 @@ use xrf_renderer_core::{
 
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::exposure_state::ExposureState;
+use crate::pass::lighting_uniform::LightingUniform;
 
 /// What the physical light's exposure reads and writes: the scene as drawn and its depth, the exposure's state, the
-/// histogram's bins and how it meters.
+/// histogram's bins and how it meters, and the lighting, whose pictures' scale the sky's level is read back through.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 0)]
 pub struct ExposureHistogramParameters {
@@ -20,4 +21,6 @@ pub struct ExposureHistogramParameters {
   pub bins: StorageArrayMut<ShaderAtomicU32>,
   #[uniform]
   pub params: UniformBinding<ExposureHistogramUniform>,
+  #[uniform]
+  pub lighting: UniformBinding<LightingUniform>,
 }

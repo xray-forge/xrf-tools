@@ -3,13 +3,14 @@ use xrf_renderer_core::ShaderStruct;
 use crate::scene::level::feature::exposure_feature::ExposureFeature;
 
 /// The exposure's state as its pass adapts it: the scale the tonemap multiplies by, the scale the last frame's used,
-/// the exposed key the physical light's histogram metered (`ExposureHead::key`), then each cell's luminance.
+/// the exposed key the physical light's histogram metered and the sky's painted level (`ExposureHead`), then each cell's
+/// luminance.
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 pub struct ExposureState {
   pub adapted: f32,
   pub used: f32,
   pub key: f32,
-  pub pad: f32,
+  pub sky: f32,
   pub cells: [f32; (ExposureFeature::CELLS * ExposureFeature::CELLS) as usize],
 }

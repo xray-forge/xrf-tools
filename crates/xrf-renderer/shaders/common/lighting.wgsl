@@ -48,14 +48,14 @@ fn frame_exposure(state: Lighting, exposure: Exposure) -> f32 {
   return select(1.0, exposure.adapted, state.params.z > 0.5);
 }
 
-// The share of the frame's exposure the game's pictures (the sky, the clouds) are shown at (`LightingUniform::pictures`):
-// one but at the authored levels, where they follow the frame's adaptation by the transform's calibration.
+// The share of the frame's exposure the game's pictures (the sky, the clouds) are shown at (`PictureShares`), so they
+// show as the engine's curve shows them at the authored levels: one there under the engine's curve.
 fn picture_share(state: Lighting) -> f32 {
   return state.pictures.x;
 }
 
-// The share the fog's colour is shown at: the pictures' but for the transform's picture stops, which were fitted to the
-// sky and would darken the haze that veils the land.
+// The share the fog's colour is shown at: the pictures' at the physical levels, but keeping the land's anchor under a
+// transform, as it veils the land.
 fn fog_share(state: Lighting) -> f32 {
   return state.pictures.y;
 }

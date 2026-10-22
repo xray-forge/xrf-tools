@@ -2,6 +2,7 @@ use glam::Vec4;
 
 use crate::lighting::daylight::Daylight;
 use crate::lighting::light_units::LightUnits;
+use crate::pass::exposure_metering::ExposureMetering;
 use crate::pass::pre_exposure::PreExposure;
 use crate::pass::sky_harmonics::SkyHarmonics;
 
@@ -13,6 +14,8 @@ pub struct LightingFrame {
   pub is_adapting: bool,
   /// The scale the frame's light is written at, and the last frame's.
   pub pre_exposure: PreExposure,
+  /// What the exposure last metered, which the game's pictures are shown by.
+  pub metering: ExposureMetering,
   /// The cd/m² a light of one in the engine's units stands for, the weather's and the local lights'.
   pub light_units: LightUnits,
   /// The world's light the physical levels light the sun by; none at the authored levels or under the engine's light.

@@ -12,12 +12,14 @@ use crate::frame::gpu_readback::GpuReadback;
 use crate::pass::exposure_head::ExposureHead;
 use crate::pass::exposure_histogram_parameters::ExposureHistogramParameters;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
+use crate::pass::exposure_metering::ExposureMetering;
 use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::exposure_state::ExposureState;
 use crate::pass::exposure_uniform::ExposureUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::pre_exposure::PreExposure;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::lighting_handles::LightingHandles;
 
 /// The longest step between frames the adaptation takes, so a stall does not snap it to what one frame measured.
 const LONGEST_STEP: Duration = Duration::from_millis(250);
@@ -50,9 +52,9 @@ pub struct ExposureFeature {
   readback: GpuReadback,
   /// The scale this frame's light is written at, and the last frame's.
   pre_exposure: PreExposure,
-  /// The key the physical light is shown at as its scale exposes it: the histogram's last metered (`ExposureHead::key`),
-  /// or a daylit exterior's at the scale it starts at or holds.
-  key: f32,
+  /// What the physical light's histogram last metered: the key it is shown at, the histogram's or a daylit exterior's
+  /// at the scale it starts at or holds, and the land's and the sky's levels, none while it holds.
+  metering: ExposureMetering,
 }
 
 impl ExposureFeature {
@@ -68,7 +70,7 @@ impl ExposureFeature {
     });
     let bins: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("exposure histogram"),
-      size: u64::from(ExposureHistogramUniform::BINS) * size_of::<u32>() as u64,
+      size: u64::from(ExposureHistogramUniform::BINS + ExposureHistogramUniform::SKY_SLOTS) * size_of::<u32>() as u64,
       usage: wgpu::BufferUsages::STORAGE,
       mapped_at_creation: false,
     });
@@ -85,7 +87,7 @@ impl ExposureFeature {
       held: None,
       readback: GpuReadback::new(device, "exposure readback", size_of::<ExposureHead>() as u64),
       pre_exposure: PreExposure::NONE,
-      key: ExposureHistogramUniform::get_daylit_key(1.0),
+      metering: ExposureMetering::default(),
     };
 
     exposure.reset(queue, 1.0);
@@ -122,7 +124,10 @@ impl ExposureFeature {
         current: start,
         previous: start,
       };
-      self.key = ExposureHistogramUniform::get_daylit_key(start);
+      self.metering = ExposureMetering {
+        key: ExposureHistogramUniform::get_daylit_key(start),
+        ..ExposureMetering::default()
+      };
     }
 
     if is_physical {
@@ -134,18 +139,28 @@ impl ExposureFeature {
         previous,
       };
 
-      self.key = match self.held {
-        Some(held) => ExposureHistogramUniform::get_daylit_key(held),
-        None => read
-          .map(|head| head.key.exp2())
-          .filter(|key| key.is_finite() && *key > 0.0)
-          .unwrap_or(self.key),
+      self.metering = match (self.held, read) {
+        (Some(held), _) => ExposureMetering {
+          key: ExposureHistogramUniform::get_daylit_key(held),
+          ..ExposureMetering::default()
+        },
+        (None, Some(head)) => ExposureMetering {
+          key: Some(head.key.exp2())
+            .filter(|key| key.is_finite() && *key > 0.0)
+            .unwrap_or(self.metering.key),
+          land: Some(head.key - head.adapted.log2())
+            .filter(|land| land.is_finite())
+            .or(self.metering.land),
+          sky: Some(head.sky).filter(|sky| sky.is_finite()).or(self.metering.sky),
+        },
+        (None, None) => self.metering,
       };
 
       return;
     }
 
     self.pre_exposure = PreExposure::NONE;
+    self.metering = ExposureMetering::default();
 
     if !settings.is_enabled {
       if self.is_adapting {
@@ -227,7 +242,12 @@ impl ExposureFeature {
   /// The key the physical light is shown at as its scale exposes it, which the display transforms' anchors are solved
   /// at: the histogram's last metered, or a daylit exterior's at the scale it starts at or holds.
   pub fn get_key(&self) -> f32 {
-    self.key
+    self.metering.key
+  }
+
+  /// What the physical light's histogram last metered, which the game's pictures are shown by (`PictureShares`).
+  pub fn get_metering(&self) -> ExposureMetering {
+    self.metering
   }
 
   /// The head a copy brought back since the last frame. Any scale it holds writes the light right, since the passes
@@ -239,18 +259,26 @@ impl ExposureFeature {
       .ok()
   }
 
-  /// Adds the adaptation into `state`, the imported `state` buffer: the frame's luminance measured from the high target
-  /// and the scale moved towards it, or under the physical light the `size` scene's light counted into the histogram and
-  /// the scale settled from it; nothing while it does not measure.
+  /// Adds the adaptation into the exposure's state the lit passes share (`lit`): the frame's luminance measured from the
+  /// high target and the scale moved towards it, or under the physical light the `size` scene's light counted into the
+  /// histogram and the scale settled from it, the sky's level read through the frame's lighting; nothing while it does
+  /// not measure.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
-    (high, (scene, depth_target), size, state): (GraphTexture, (GraphTexture, GraphTexture), (u32, u32), GraphBuffer),
+    (high, (scene, depth_target), size, lit): (
+      GraphTexture,
+      (GraphTexture, GraphTexture),
+      (u32, u32),
+      &LightingHandles<'a>,
+    ),
   ) {
     if !self.is_measuring {
       return;
     }
+
+    let state: GraphBuffer = lit.exposure;
 
     if self.is_physical {
       let bins: GraphBuffer = bindings.import_buffer(&mut *graph, "exposure histogram", &self.bins);
@@ -260,6 +288,7 @@ impl ExposureFeature {
         state: StorageValueMut::new(state),
         bins: StorageArrayMut::new(bins),
         params: runtime.push_uniform(&self.histogram),
+        lighting: lit.lighting,
       };
 
       graph
@@ -306,6 +335,7 @@ impl ExposureFeature {
       adapted: scale,
       used: scale,
       key: ExposureHistogramUniform::get_daylit_key(scale).log2(),
+      sky: f32::NAN,
       ..bytemuck::Zeroable::zeroed()
     };
 

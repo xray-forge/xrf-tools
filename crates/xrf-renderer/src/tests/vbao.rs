@@ -10,6 +10,7 @@ use crate::contract::render_ambient_occlusion_vbao_settings::{
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
+use crate::pass::exposure_metering::ExposureMetering;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::pre_exposure::PreExposure;
@@ -35,6 +36,7 @@ fn lighting_with(options: &RenderViewOptions) -> LightingUniform {
     &LightingFrame {
       is_adapting: false,
       pre_exposure: PreExposure::NONE,
+      metering: ExposureMetering::default(),
       light_units: LightUnits::NONE,
       daylight: None,
       sky_blend: 0.0,

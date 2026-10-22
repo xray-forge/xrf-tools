@@ -32,6 +32,8 @@ pub struct ExposureHistogramUniform {
 impl ExposureHistogramUniform {
   /// Bins the frame's log2 luminance is counted in.
   pub const BINS: u32 = 128;
+  /// The bins' slots after the histogram's: the sky's sum of log2 levels, then its count.
+  pub const SKY_SLOTS: u32 = 2;
   /// The luminance the bins span, log2: about 1/16 000 cd/m², under starlight, to 65 000, sunlit snow and past it.
   pub const LEAST_LOG: f32 = -14.0;
   pub const MOST_LOG: f32 = 16.0;
@@ -44,10 +46,6 @@ impl ExposureHistogramUniform {
   /// The share of a scene's distance from a daylit exterior it keeps, as the engine's own exposure adapts only a
   /// little of the way.
   pub const KEPT_SHARE: f32 = 0.81;
-  /// The stops the game's pictures (its sky, clouds and fog) are shown at against a daylit exterior's exposure, and
-  /// the share of the frame's adaptation away from it they follow (`get_picture_share`).
-  pub const PICTURE_STOPS: f32 = 0.0;
-  pub const PICTURE_ADAPTATION: f32 = 1.0;
   /// Stops under the aim the physical light levels show the darkest scene at most, so a moonlit night shows dark but
   /// readable; the authored levels' dark never reaches it.
   pub const PHYSICAL_DARKEST_STOPS: f32 = 4.0;
@@ -63,7 +61,7 @@ impl ExposureHistogramUniform {
   pub const MOST_SCALE_LOG: f32 = 8.0;
 
   /// The scale a daylit exterior is shown at, raised by `compensation` stops: the physical light's first, the one it
-  /// holds while it does not adapt, and the one the game's pictures are shown about (`get_picture_share`).
+  /// holds while it does not adapt.
   pub fn get_daylight_scale(compensation: f32) -> f32 {
     (Self::MIDDLE_GREY.log2() + compensation + Self::DAYLIT_STOPS - Self::DAYLIT_LOG).exp2()
   }
@@ -74,11 +72,14 @@ impl ExposureHistogramUniform {
     scale * Self::DAYLIT_LOG.exp2()
   }
 
-  /// The share of the frame's exposure, the light written at `pre_exposure`, the game's pictures are shown at: a daylit
-  /// exterior's exposure lifted by `stops` and by the share of the frame's distance from it they follow
-  /// (`adaptation`; `PICTURE_STOPS`, `PICTURE_ADAPTATION` for the sky and clouds, no stops for the fog).
-  pub fn get_picture_share(compensation: f32, pre_exposure: f32, (stops, adaptation): (f32, f32)) -> f32 {
-    stops.exp2() * (Self::get_daylight_scale(compensation) / pre_exposure).powf(1.0 - adaptation)
+  /// The scale the law exposes a frame whose `land` averages so much (log2 at a scale of one) at, raised by
+  /// `compensation`, as `cs_settle` settles it with no dark's limit: a daylit exterior's average brought `DAYLIT_STOPS`
+  /// under the aim, the frame keeping `KEPT_SHARE` of its distance from it, within the scale's bounds.
+  pub fn get_law_scale(compensation: f32, land: f32) -> f32 {
+    let aim: f32 = Self::MIDDLE_GREY.log2() + compensation + Self::DAYLIT_STOPS;
+    let shown: f32 = aim + Self::KEPT_SHARE * (land - Self::DAYLIT_LOG);
+
+    (shown - land).clamp(Self::LEAST_SCALE_LOG, Self::MOST_SCALE_LOG).exp2()
   }
 
   /// The metering for a frame `delta` seconds after the last at the light's `level`, straight to its target where

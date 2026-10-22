@@ -16,6 +16,7 @@ use crate::lighting::daylight::Daylight;
 use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::render_sky::RenderSky;
+use crate::pass::exposure_metering::ExposureMetering;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
@@ -216,13 +217,13 @@ impl SkyFeature {
 
   /// What the lighting draws the sky with this frame: a keyframe whose textures are not all up blended out, so a sky
   /// still going up shows the other one; whether both irradiance cubes are up; the clouds' `time`; the sun's sprite
-  /// while its texture is up; whether the exposure adapts (`is_adapting`) and the scale the light is written at; at the
-  /// physical light levels the world's light, and the units the light is in by the sky last projected.
+  /// while its texture is up; whether the exposure adapts (`is_adapting`), the scale the light is written at and what it
+  /// metered; at the physical light levels the world's light, and the units the light is in by the sky last projected.
   pub fn get_lighting_frame(
     &self,
     (lighting, options): (&RenderLighting, &RenderViewOptions),
     weather_textures: WeatherTextures<'_>,
-    (is_adapting, pre_exposure, time): (bool, PreExposure, f32),
+    ((is_adapting, pre_exposure, metering), time): ((bool, PreExposure, ExposureMetering), f32),
   ) -> LightingFrame {
     let sky: &RenderSky = &lighting.sky;
     let daylight: Option<Daylight> = (options.is_light_physical()
@@ -241,6 +242,7 @@ impl SkyFeature {
     LightingFrame {
       is_adapting,
       pre_exposure,
+      metering,
       light_units: LightUnits::of(options, lighting, &self.harmonics, daylight.as_ref()),
       daylight,
       sky_blend: match (side(0), side(1)) {

@@ -1,10 +1,12 @@
 #import "common/luminance"
+#import "common/lighting"
 
 // The physical light's exposure: the scene's light counted into a histogram of its log2 luminance, a texel in every
 // four each way, the centre weighed up to four times the edges and the sky not at all, then the average between the
 // darkest and the brightest shares the settings leave out brought to where a daylit exterior's is shown, less the
 // share of its distance from one it keeps, never under the dark's limit, the scale moving towards it at most so many
-// stops a second, faster darkening than brightening.
+// stops a second, faster darkening than brightening. Beside it the sky's own level, its pictures' log2 average as the
+// game paints them, which the pictures are shown by (`PictureShares`).
 
 #import "generated/frame/exposure_histogram"
 
@@ -14,14 +16,26 @@ const BINS: u32 = 128u;
 const SAMPLE_STRIDE: u32 = 4u;
 // Invocations a counting workgroup runs each way (`ExposurePass::HISTOGRAM_WORKGROUP`).
 const HISTOGRAM_WORKGROUP: u32 = 16u;
+// Where the bins hold the sky's sum of log2 levels and its count, after the histogram's
+// (`ExposureHistogramUniform::SKY_SLOTS`); the sum in steps of a sixteenth of a stop over the least an eight-bit picture
+// paints above black, `(1/255)^2.2`, so it adds as whole numbers and a black texel counts as that least, not as nothing.
+const SKY_SUM: u32 = 128u;
+const SKY_COUNT: u32 = 129u;
+const SKY_STEPS: f32 = 16.0;
+const SKY_FLOOR_LOG: f32 = -17.59;
 
 var<workgroup> local_bins: array<atomic<u32>, 128>;
 var<workgroup> counts: array<u32, 128>;
+var<workgroup> local_sky: array<atomic<u32>, 2>;
 
 @compute @workgroup_size(16, 16)
 fn cs_bin(@builtin(global_invocation_id) id: vec3<u32>, @builtin(local_invocation_index) index: u32) {
   if (index < BINS) {
     atomicStore(&local_bins[index], 0u);
+  }
+
+  if (index < 2u) {
+    atomicStore(&local_sky[index], 0u);
   }
 
   workgroupBarrier();
@@ -41,12 +55,25 @@ fn cs_bin(@builtin(global_invocation_id) id: vec3<u32>, @builtin(local_invocatio
     let weight: u32 = select(1u + u32(3.0 * saturate(1.0 - off_centre)), 0u, is_sky);
 
     atomicAdd(&local_bins[bin], weight);
+
+    // The sky as the game paints it: the light by the scale its pictures were drawn at this frame.
+    if (is_sky) {
+      let painted: f32 = light / max(light_unit(lighting) * picture_share(lighting), 1e-12);
+      let level: f32 = clamp(log2(max(painted, 1e-12)) - SKY_FLOOR_LOG, 0.0, -2.0 * SKY_FLOOR_LOG);
+
+      atomicAdd(&local_sky[0], u32(round(level * SKY_STEPS)));
+      atomicAdd(&local_sky[1], 1u);
+    }
   }
 
   workgroupBarrier();
 
   if (index < BINS) {
     atomicAdd(&bins[index], atomicLoad(&local_bins[index]));
+  }
+
+  if (index < 2u) {
+    atomicAdd(&bins[SKY_SUM + index], atomicLoad(&local_sky[index]));
   }
 }
 
@@ -59,6 +86,17 @@ fn cs_settle(@builtin(local_invocation_index) index: u32) {
 
   if (index != 0u) {
     return;
+  }
+
+  let sky_sum: u32 = atomicLoad(&bins[SKY_SUM]);
+  let sky_count: u32 = atomicLoad(&bins[SKY_COUNT]);
+
+  atomicStore(&bins[SKY_SUM], 0u);
+  atomicStore(&bins[SKY_COUNT], 0u);
+
+  // A frame with no sky in sight keeps the level it last saw.
+  if (sky_count > 0u) {
+    state.sky = f32(sky_sum) / (f32(sky_count) * SKY_STEPS) + SKY_FLOOR_LOG;
   }
 
   var total: f32 = 0.0;

@@ -89,7 +89,8 @@ fn the_lamps_read_the_shadow_atlas_at_its_allocated_size() {
   );
 }
 
-/// The physical light's exposure counts its histogram in the bins, workgroups and strides Rust sizes it by.
+/// The physical light's exposure counts its histogram in the bins, workgroups and strides Rust sizes it by, and the
+/// sky's level in the slots Rust leaves after the bins.
 #[test]
 fn the_exposure_histogram_is_sized_as_rust_sizes_it() {
   let library: ShaderLibrary = ShaderLibrary::default();
@@ -97,6 +98,14 @@ fn the_exposure_histogram_is_sized_as_rust_sizes_it() {
   assert_eq!(
     get_constant(&library, "frame/exposure_histogram", "BINS"),
     ExposureHistogramUniform::BINS
+  );
+  assert_eq!(
+    get_constant(&library, "frame/exposure_histogram", "SKY_SUM"),
+    ExposureHistogramUniform::BINS
+  );
+  assert_eq!(
+    get_constant(&library, "frame/exposure_histogram", "SKY_COUNT") + 1,
+    ExposureHistogramUniform::BINS + ExposureHistogramUniform::SKY_SLOTS
   );
   assert_eq!(
     get_constant(&library, "frame/exposure_histogram", "HISTOGRAM_WORKGROUP"),

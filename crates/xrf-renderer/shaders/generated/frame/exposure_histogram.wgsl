@@ -7,3 +7,4 @@
 @group(0) @binding(2) var<storage, read_write> state: ExposureState;
 @group(0) @binding(3) var<storage, read_write> bins: array<atomic<u32>>;
 @group(0) @binding(4) var<uniform> params: ExposureHistogram;
+@group(0) @binding(5) var<uniform> lighting: Lighting;

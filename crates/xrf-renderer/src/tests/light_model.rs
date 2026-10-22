@@ -15,10 +15,13 @@ use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{authored_colour, authored_light, srgb_decoded, srgb_encoded};
 use crate::pass::camera_uniform::CameraUniform;
+use crate::pass::display_curves::{agx as agx_curve, engine_display, pbr_neutral};
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
+use crate::pass::exposure_metering::ExposureMetering;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::picture_shares::PictureShares;
 use crate::pass::pre_exposure::PreExposure;
 use crate::pass::sky_harmonics::SkyHarmonics;
 
@@ -42,6 +45,7 @@ fn lighting_at(options: &RenderViewOptions, lighting: &RenderLighting, pre_expos
     &LightingFrame {
       is_adapting: false,
       pre_exposure,
+      metering: ExposureMetering::default(),
       light_units: LightUnits::of(options, lighting, &SkyHarmonics::default(), None),
       daylight: None,
       sky_blend: 0.0,
@@ -104,8 +108,8 @@ fn the_camera_tells_the_shaders_the_lights_level() {
   assert_eq!(level(Some(RenderLightLevel::Physical)), 2.0);
 }
 
-// The authored levels sum their diffuse light at the lights' gain and show the fog's colour at the pictures' share without
-// the sky's picture stops; the engine's light and the physical levels sum nothing.
+// The authored levels sum their diffuse light at the lights' gain and, unmetered, show the sky and the fog's colour alike;
+// the engine's light and the physical levels sum nothing.
 #[test]
 fn only_the_authored_levels_sum_their_diffuse_light() {
   let lighting: RenderLighting = RenderLighting::default();
@@ -115,7 +119,6 @@ fn only_the_authored_levels_sum_their_diffuse_light() {
   levels.features.light_level = RenderLightLevel::Physical;
 
   let gain: f32 = LightUnits::of(&physical(), &lighting, &SkyHarmonics::default(), None).light_gain;
-  let stops: f32 = ExposureHistogramUniform::PICTURE_STOPS;
 
   assert!((authored.summed_light.x - gain).abs() < 1e-6);
   assert_eq!(
@@ -123,11 +126,12 @@ fn only_the_authored_levels_sum_their_diffuse_light() {
     0.0
   );
   assert_eq!(lighting_with(&levels, &lighting).summed_light.x, 0.0);
-  assert!((authored.pictures.x / authored.pictures.y - stops.exp2()).abs() < 1e-4);
+  assert_eq!(authored.pictures.x, authored.pictures.y);
 }
 
 // The engine's curve and the engine's own showing take no anchor; AgX and PBR Neutral each lift a darker frame's key
-// further, their toes darkening it more than the engine's curve.
+// further, the engine's curve near linear in the dark, where AgX's toe darkens, and bending a brighter key down more
+// than PBR Neutral's linear run under its shoulder.
 #[test]
 fn only_agx_and_pbr_neutral_are_anchored() {
   let daylit: f32 = ExposureHistogramUniform::get_daylit_key(ExposureHistogramUniform::get_daylight_scale(0.0));
@@ -288,12 +292,12 @@ fn the_physical_light_is_in_cd_per_square_metre() {
   assert!((daylight * ExposureHistogramUniform::DAYLIT_LOG.exp2() - shown).abs() < 1e-5);
   assert!((ExposureHistogramUniform::get_daylight_scale(1.0) / daylight - 2.0).abs() < 1e-4);
 
-  // The pictures stand at their stops over a daylit exterior's exposure by day and follow their share of a night's
-  // lift.
-  let picture = |pre_exposure: f32| ExposureHistogramUniform::get_picture_share(0.0, pre_exposure, (0.5, 0.7));
+  // The law exposes a daylit exterior at its daylight scale, and a scene a stop darker by less than a stop more.
+  let land: f32 = ExposureHistogramUniform::DAYLIT_LOG;
+  let law = |land: f32| ExposureHistogramUniform::get_law_scale(0.0, land);
 
-  assert!((picture(daylight) - 0.5_f32.exp2()).abs() < 1e-5);
-  assert!((picture(daylight * 32.0) - 0.5_f32.exp2() * 32.0_f32.powf(-0.3)).abs() < 1e-5);
+  assert!((law(land) / daylight - 1.0).abs() < 1e-4);
+  assert!((law(land - 1.0) / law(land) - (1.0 - ExposureHistogramUniform::KEPT_SHARE).exp2()).abs() < 1e-4);
 }
 
 // At the authored levels the sky's irradiance keeps its shape but takes the authored hemisphere's level and colour, each
@@ -343,6 +347,7 @@ fn the_sky_irradiance_stands_at_its_levels() {
     let frame: LightingFrame = LightingFrame {
       is_adapting: false,
       pre_exposure: PreExposure::NONE,
+      metering: ExposureMetering::default(),
       light_units: LightUnits::NONE,
       daylight: None,
       sky_blend: 0.0,
@@ -399,4 +404,95 @@ fn the_physical_levels_bring_the_sky_to_the_worlds() {
     LightUnits::of(&options, &lighting, &SkyHarmonics::default(), Some(&daylight)).weather,
     PHYSICAL_LIGHT_UNIT
   );
+}
+
+fn metered_frame(units: LightUnits, current: f32, metering: ExposureMetering) -> LightingFrame {
+  LightingFrame {
+    is_adapting: true,
+    pre_exposure: PreExposure {
+      current,
+      previous: current,
+    },
+    metering,
+    light_units: units,
+    daylight: None,
+    sky_blend: 0.0,
+    is_irradiance_up: false,
+    clouds_time: 0.0,
+    sun_sprite: Vec4::ZERO,
+    sky_harmonics: SkyHarmonics::default(),
+  }
+}
+
+// The pictures take the whole exposure at the authored levels under the engine's curve, and wherever the sky is not
+// metered. At the physical levels a night's land, lifted past the authored law, leaves its sky and fog shown as the law
+// exposes that land in the authored levels' units; under AgX and PBR Neutral, and whatever the grading's contrast, the
+// sky shows at its metered level as the engine's curve shows it, the fog keeping the land's lift.
+#[test]
+fn the_pictures_show_as_the_authored_law_shows_them() {
+  let lighting: RenderLighting = RenderLighting::default();
+  let metering: ExposureMetering = ExposureMetering {
+    key: 0.01,
+    land: Some(-6.0),
+    sky: Some(-9.0),
+  };
+  let authored: RenderViewOptions = physical();
+  let units: LightUnits = LightUnits::of(&authored, &lighting, &SkyHarmonics::default(), None);
+
+  assert_eq!(
+    PictureShares::of(&authored, &lighting, &metered_frame(units, 0.01, metering)),
+    PictureShares::WHOLE
+  );
+
+  let mut levels: RenderViewOptions = physical();
+
+  levels.features.light_level = RenderLightLevel::Physical;
+
+  let world: LightUnits = LightUnits {
+    weather: 0.5,
+    ..LightUnits::NONE
+  };
+  let lifted: PictureShares = PictureShares::of(&levels, &lighting, &metered_frame(world, 64.0, metering));
+  let gain: f32 = LightUnits::get_key_gain(lighting.get_sun_color(&levels.features.light_scales));
+  let law: f32 = ExposureHistogramUniform::get_law_scale(0.0, -6.0 + (PHYSICAL_LIGHT_UNIT * gain / 0.5).log2());
+
+  assert!((0.5 * 64.0 * lifted.fog / (PHYSICAL_LIGHT_UNIT * law) - 1.0).abs() < 1e-4);
+  assert!(lifted.fog < 1.0);
+  assert_eq!(lifted.sky, lifted.fog);
+
+  let unmetered: ExposureMetering = ExposureMetering { sky: None, ..metering };
+  let shown = |colour: Vec3| colour.dot(Vec3::new(0.2126, 0.7152, 0.0722));
+  let graded = |light: f32, contrast: f32| 0.18 * (light / 0.18).powf(contrast);
+  let sky: f32 = (-9.0_f32).exp2() * units.weather * 0.01;
+
+  for (transform, mode, curve) in [
+    (
+      RenderDisplayTransform::Agx,
+      DisplayMode::Agx,
+      agx_curve as fn(Vec3) -> Vec3,
+    ),
+    (RenderDisplayTransform::PbrNeutral, DisplayMode::PbrNeutral, pbr_neutral),
+  ] {
+    for contrast in [0.7, 1.0, 1.5] {
+      let mut options: RenderViewOptions = physical();
+
+      options.features.display_transform = transform;
+      options.features.grading.contrast = contrast;
+
+      let shares: PictureShares = PictureShares::of(&options, &lighting, &metered_frame(units, 0.01, metering));
+      let land: f32 = mode.get_anchor_stops(0.01, contrast);
+      let anchored: f32 = shown(curve(Vec3::splat(graded(sky * shares.sky, contrast) * land.exp2())));
+      let engine: f32 = shown(engine_display(Vec3::splat(graded(sky, contrast))));
+
+      assert_eq!(shares.fog, 1.0);
+      assert!(
+        (srgb_encoded(anchored) - srgb_encoded(engine)).abs() < 0.002,
+        "{mode:?} by {contrast}: {anchored} against {engine}"
+      );
+      assert_eq!(
+        PictureShares::of(&options, &lighting, &metered_frame(units, 0.01, unmetered)),
+        PictureShares::WHOLE
+      );
+    }
+  }
 }

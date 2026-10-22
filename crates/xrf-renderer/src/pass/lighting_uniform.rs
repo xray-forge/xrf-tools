@@ -10,8 +10,8 @@ use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::authored_light;
 use crate::pass::bitmask_search::BitmaskSearch;
-use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::lighting_frame::LightingFrame;
+use crate::pass::picture_shares::PictureShares;
 use crate::pass::reflection_trace::ReflectionTrace;
 
 /// The lighting the shaders read as their `Lighting`: one viewport's, since the sun is given in its view space.
@@ -84,9 +84,8 @@ pub struct LightingUniform {
   /// The roughness from which a traced reflection fades into the prefiltered sky, and past which a surface is not
   /// traced.
   pub reflection_cut: Vec4,
-  /// The share of the frame's exposure the game's pictures are shown at (`ExposureHistogramUniform::get_picture_share`)
-  /// at the authored levels, else one: the sky's and the clouds', at the transform's picture stops; then the fog's
-  /// colour's, without them, as it veils the land the stops were not fitted to.
+  /// The shares of the frame's exposure the game's pictures are shown at (`PictureShares`): the sky's and the clouds',
+  /// then the fog's colour's.
   pub pictures: Vec4,
   /// The gain the lights took (`LightUnits::light_gain`) where their diffuse sum is decoded once, as the engine's display
   /// shows it (`authored_diffuse` in `common/hmodel`), then the sun's colour as the weather authors it, a display value
@@ -235,22 +234,7 @@ impl LightingUniform {
 
         Vec4::new(limit * (2.0 / 3.0), limit, 0.0, 0.0)
       },
-      // The game paints its sky and fog at their own levels against the ground's: adapting to a night or a cellar lifts
-      // what is lit and most of the pictures with it, as the engine's display shows them, rather than lifting a night
-      // sky's eight-bit steps and its fog into a glare.
-      pictures: if is_authored_physical {
-        let picture = |stops: f32| {
-          ExposureHistogramUniform::get_picture_share(
-            options.features.exposure.compensation,
-            frame.pre_exposure.current,
-            (stops, ExposureHistogramUniform::PICTURE_ADAPTATION),
-          )
-        };
-
-        Vec4::new(picture(ExposureHistogramUniform::PICTURE_STOPS), picture(0.0), 0.0, 0.0)
-      } else {
-        Vec4::new(1.0, 1.0, 0.0, 0.0)
-      },
+      pictures: PictureShares::of(options, lighting, frame).to_vec4(),
       summed_light: if is_authored_physical {
         let sun: Vec3 = lighting.get_sun_color(&options.features.light_scales);
 

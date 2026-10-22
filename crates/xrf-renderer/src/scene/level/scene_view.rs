@@ -355,8 +355,11 @@ impl SceneView {
       (lighting, options),
       frame.weather_textures,
       (
-        self.features.exposure.is_adapting(),
-        self.features.exposure.get_pre_exposure(),
+        (
+          self.features.exposure.is_adapting(),
+          self.features.exposure.get_pre_exposure(),
+          self.features.exposure.get_metering(),
+        ),
         time,
       ),
     );
@@ -1555,7 +1558,7 @@ impl SceneView {
     self.features.exposure.add_passes(
       (&mut *graph, &mut *bindings, runtime),
       passes,
-      (handles.high, (handles.scene, handles.depth), handles.size, lit.exposure),
+      (handles.high, (handles.scene, handles.depth), handles.size, &lit),
     );
 
     output.scene = resolved;
