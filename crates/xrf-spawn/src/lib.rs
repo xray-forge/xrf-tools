@@ -77,6 +77,7 @@ pub use crate::data::graph::graph_header::GraphHeader;
 pub use crate::data::graph::graph_level::GraphLevel;
 pub use crate::data::graph::graph_level_point::GraphLevelPoint;
 pub use crate::data::graph::graph_vertex::GraphVertex;
+pub use crate::data::graph::spawn_level_graph::SpawnLevelGraph;
 pub use crate::data::meta::cls_id::ClsId;
 pub use crate::data::patrols::patrol::Patrol;
 pub use crate::data::patrols::patrol_link::PatrolLink;

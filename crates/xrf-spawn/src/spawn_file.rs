@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::FileImportExport;
+use xrf_math::Vector3d;
 use xrf_utils::{assert_equal, assert_length, open_export_file};
 
 use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
@@ -21,6 +22,8 @@ use crate::data::alife::spawn_level_arrival::SpawnLevelArrival;
 use crate::data::alife::spawn_level_objects::SpawnLevelObjects;
 use crate::data::alife::spawn_skipped_object::SpawnSkippedObject;
 use crate::data::graph::graph_vertex_levels::GraphVertexLevels;
+use crate::data::graph::spawn_level_graph::SpawnLevelGraph;
+use crate::data::patrols::patrol::Patrol;
 
 /// Descriptor of generic spawn file used by xray game engine.
 ///
@@ -178,6 +181,46 @@ impl SpawnFile {
     })
   }
 
+  /// What a spawn file's graph and patrols hold of one level: the graph's levels, the level's game vertices, and the
+  /// patrols whose first point's game vertex stands on it, reading nothing of the objects.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the graph or patrols chunk is missing or cannot be read.
+  pub fn read_level_graph_from_chunks<T: ByteOrder, D: ChunkDataSource>(
+    chunks: &[ChunkReader<D>],
+    level: &str,
+  ) -> XrfResult<SpawnLevelGraph> {
+    let graph: GraphVertexLevels = Self::read_vertex_levels_from_chunks::<T, _>(chunks)?;
+    let is_on_level = |game_vertex_id: u16| {
+      graph
+        .get_level(game_vertex_id)
+        .is_some_and(|it| it.name.eq_ignore_ascii_case(level))
+    };
+    let points: Vec<(u16, Vector3d)> = (0..=u16::MAX)
+      .zip(&graph.vertices)
+      .filter(|(id, _)| is_on_level(*id))
+      .map(|(id, vertex)| (id, vertex.level_point.clone()))
+      .collect();
+    let patrols: Vec<Patrol> = find_required_chunk_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?
+      .read_xr::<T, SpawnPatrolsChunk>()?
+      .patrols
+      .into_iter()
+      .filter(|patrol| {
+        patrol
+          .points
+          .first()
+          .is_some_and(|point| is_on_level(point.game_vertex_id))
+      })
+      .collect();
+
+    Ok(SpawnLevelGraph {
+      levels: graph.levels,
+      points,
+      patrols,
+    })
+  }
+
   /// Write spawn file data to the file by provided path.
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
     let path_ref: &Path = path.as_ref();
@@ -238,6 +281,111 @@ impl SpawnFile {
     self.artefact_spawn.export(path)?;
     self.patrols.export(path)?;
     self.graphs.export(path)?;
+
+    Ok(())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use uuid::uuid;
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_error::XrfResult;
+  use xrf_math::Vector3d;
+
+  use super::SpawnFile;
+  use crate::chunks::spawn_graphs_chunk::SpawnGraphsChunk;
+  use crate::chunks::spawn_patrols_chunk::SpawnPatrolsChunk;
+  use crate::data::graph::graph_header::GraphHeader;
+  use crate::data::graph::graph_level::GraphLevel;
+  use crate::data::graph::graph_vertex::GraphVertex;
+  use crate::data::graph::spawn_level_graph::SpawnLevelGraph;
+  use crate::data::patrols::patrol::Patrol;
+  use crate::data::patrols::patrol_point::PatrolPoint;
+
+  fn new_level(id: u8, name: &str, offset: f32) -> GraphLevel {
+    GraphLevel {
+      id,
+      name: String::from(name),
+      section: String::from(name),
+      guid: uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
+      offset: Vector3d::new(offset, 0.0, 0.0),
+    }
+  }
+
+  fn new_vertex(level_id: u8, x: f32) -> GraphVertex {
+    GraphVertex {
+      level_point: Vector3d::new(x, 1.0, -x),
+      game_point: Vector3d::new(0.0, 0.0, 0.0),
+      level_id,
+      level_vertex_id: 0,
+      vertex_type: (0, 0, 0, 0).into(),
+      edges_offset: 0,
+      level_points_offset: 0,
+      edges_count: 0,
+      level_points_count: 0,
+    }
+  }
+
+  fn new_patrol(name: &str, game_vertex_id: u16) -> Patrol {
+    Patrol {
+      name: String::from(name),
+      points: vec![PatrolPoint {
+        name: String::from("wp00"),
+        position: Vector3d::new(0.0, 0.0, 0.0),
+        flags: 0,
+        level_vertex_id: 0,
+        game_vertex_id,
+      }],
+      links: vec![],
+    }
+  }
+
+  #[test]
+  fn reads_the_graph_points_and_patrols_of_one_level() -> XrfResult {
+    let graphs: SpawnGraphsChunk = SpawnGraphsChunk {
+      header: GraphHeader {
+        version: 10,
+        vertices_count: 3,
+        edges_count: 0,
+        points_count: 0,
+        guid: uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7"),
+        levels_count: 2,
+      },
+      levels: vec![new_level(118, "pripyat", 900.0), new_level(108, "zaton", 0.0)],
+      vertices: vec![new_vertex(108, 10.0), new_vertex(118, 20.0), new_vertex(108, 30.0)],
+      edges: vec![],
+      points: vec![],
+      cross_tables: vec![],
+    };
+    let patrols: SpawnPatrolsChunk = SpawnPatrolsChunk {
+      patrols: vec![new_patrol("zat_walk", 2), new_patrol("pri_walk", 1)],
+    };
+    let mut graphs_writer: ChunkWriter = ChunkWriter::new();
+    let mut patrols_writer: ChunkWriter = ChunkWriter::new();
+
+    graphs.write::<XRayByteOrder>(&mut graphs_writer)?;
+    patrols.write::<XRayByteOrder>(&mut patrols_writer)?;
+
+    let mut bytes: Vec<u8> = graphs_writer.flush_chunk_into_buffer::<XRayByteOrder>(SpawnGraphsChunk::CHUNK_ID)?;
+
+    bytes.extend(patrols_writer.flush_chunk_into_buffer::<XRayByteOrder>(SpawnPatrolsChunk::CHUNK_ID)?);
+
+    let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bytes)?.read_children()?;
+    let graph: SpawnLevelGraph = SpawnFile::read_level_graph_from_chunks::<XRayByteOrder, _>(&chunks, "Zaton")?;
+
+    assert_eq!(
+      graph.points,
+      vec![
+        (0, Vector3d::new(10.0, 1.0, -10.0)),
+        (2, Vector3d::new(30.0, 1.0, -30.0))
+      ]
+    );
+    assert_eq!(
+      graph.patrols.iter().map(|it| it.name.as_str()).collect::<Vec<_>>(),
+      vec!["zat_walk"]
+    );
+    assert_eq!(graph.get_level("PRIPYAT").map(|it| it.offset.x), Some(900.0));
 
     Ok(())
   }

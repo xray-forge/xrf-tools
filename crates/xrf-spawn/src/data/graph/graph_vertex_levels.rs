@@ -7,12 +7,13 @@ use crate::data::graph::graph_header::GraphHeader;
 use crate::data::graph::graph_level::GraphLevel;
 use crate::data::graph::graph_vertex::GraphVertex;
 
-/// Which level each game vertex stands on: the head of a graph chunk, read without its edges, points and cross tables.
+/// Which level each game vertex stands on, and where: the head of a graph chunk, its levels and vertices, read without
+/// its edges, points and cross tables.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct GraphVertexLevels {
   pub levels: Vec<GraphLevel>,
-  /// Each game vertex's level id, by vertex.
-  pub vertex_levels: Vec<u8>,
+  /// The game vertices, by id.
+  pub vertices: Vec<GraphVertex>,
 }
 
 impl GraphVertexLevels {
@@ -34,17 +35,17 @@ impl GraphVertexLevels {
       levels.push(reader.read_xr::<T, _>()?);
     }
 
-    let mut vertex_levels: Vec<u8> = reader.new_bounded_vec(
+    let mut vertices: Vec<GraphVertex> = reader.new_bounded_vec(
       header.vertices_count.into(),
       GraphVertex::MIN_SERIALIZED_SIZE,
       "graph vertices",
     )?;
 
     for _ in 0..header.vertices_count {
-      vertex_levels.push(reader.read_xr::<T, GraphVertex>()?.level_id);
+      vertices.push(reader.read_xr::<T, _>()?);
     }
 
-    Ok(Self { levels, vertex_levels })
+    Ok(Self { levels, vertices })
   }
 
   /// The level a spawned object stands on, by its game vertex; `None` for a graph point, which has none, or a vertex
@@ -55,7 +56,7 @@ impl GraphVertexLevels {
 
   /// The level a game vertex stands on, or `None` for a vertex or level id the graph does not hold.
   pub fn get_level(&self, game_vertex_id: u16) -> Option<&GraphLevel> {
-    let id: u8 = *self.vertex_levels.get(usize::from(game_vertex_id))?;
+    let id: u8 = self.vertices.get(usize::from(game_vertex_id))?.level_id;
 
     self.levels.iter().find(|level| level.id == id)
   }
@@ -84,9 +85,9 @@ mod tests {
     }
   }
 
-  fn new_vertex(level_id: u8) -> GraphVertex {
+  fn new_vertex(level_id: u8, x: f32) -> GraphVertex {
     GraphVertex {
-      level_point: Vector3d::new(0.0, 0.0, 0.0),
+      level_point: Vector3d::new(x, 1.0, -x),
       game_point: Vector3d::new(0.0, 0.0, 0.0),
       level_id,
       level_vertex_id: 0,
@@ -110,7 +111,7 @@ mod tests {
         levels_count: 2,
       },
       levels: vec![new_level(118, "pripyat"), new_level(108, "zaton")],
-      vertices: vec![new_vertex(108), new_vertex(118), new_vertex(7)],
+      vertices: vec![new_vertex(108, 10.0), new_vertex(118, 20.0), new_vertex(7, 30.0)],
       edges: vec![],
       points: vec![],
       cross_tables: vec![],
@@ -125,7 +126,7 @@ mod tests {
       .expect("the graph chunk to exist");
     let levels: GraphVertexLevels = GraphVertexLevels::read::<XRayByteOrder, _>(&mut reader)?;
 
-    assert_eq!(levels.vertex_levels, vec![108, 118, 7]);
+    assert_eq!(levels.vertices, graphs.vertices);
     assert_eq!(levels.get_level(0).map(|it| it.name.as_str()), Some("zaton"));
     assert_eq!(levels.get_level(1).map(|it| it.name.as_str()), Some("pripyat"));
     assert_eq!(levels.get_level(2), None);
