@@ -5,6 +5,7 @@ use tauri::State;
 use xrf_renderer::RenderMemoryReport;
 
 use crate::core::types::TauriResult;
+use crate::plugins::render::render_answer::await_answer;
 use crate::plugins::render::state::RenderState;
 use crate::plugins::system::diagnostics::memory::{GpuMemoryUsage, MemoryUsage, WebviewProcess, WebviewProcessProbe};
 
@@ -24,7 +25,7 @@ pub async fn system_get_memory_usage(
   let processes: Vec<WebviewProcess> = probe.list().await?;
   // No render thread lets the reply go, and a busy one is not waited on past the timeout: both read as no GPU.
   let report: Option<RenderMemoryReport> =
-    tauri::async_runtime::spawn_blocking(move || answer.recv_timeout(GPU_ANSWER_TIMEOUT).ok().flatten())
+    await_answer(answer, GPU_ANSWER_TIMEOUT, String::from("The renderer's GPU memory"))
       .await
       .ok()
       .flatten();
