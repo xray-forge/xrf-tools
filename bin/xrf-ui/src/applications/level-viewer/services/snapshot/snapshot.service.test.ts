@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it } from "@jest/globals";
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { runInAction } from "@wirestate/mobx";
 
 import {
   ELevelViewerSnapshotStatus,
@@ -17,6 +18,23 @@ beforeEach(() => {
 });
 
 describe("LevelViewerSnapshotService", () => {
+  it("applies the values chosen of a file once, however often asked while they are applied", async () => {
+    const { container }: ILevelViewContainerDescriptor = mockLevelViewContainer([LevelViewerSnapshotService]);
+    const snapshot: LevelViewerSnapshotService = container.get(LevelViewerSnapshotService);
+    const applied: ILevelViewerSnapshotApplied = { applied: ["camera.fieldOfView"], failed: [] };
+    const apply = jest.spyOn(snapshot, "apply").mockResolvedValue(applied);
+
+    runInAction(() => {
+      snapshot.importing = { entries: [], fileName: "zaton.json", snapshot: { format: LEVEL_VIEWER_SNAPSHOT_FORMAT } };
+    });
+
+    await Promise.all([snapshot.applyImport([]), snapshot.applyImport([])]);
+
+    expect(apply).toHaveBeenCalledTimes(1);
+    expect(snapshot.result).toEqual(applied);
+    expect(snapshot.isApplying).toBe(false);
+  });
+
   it("describes every setting as the view draws it, its toggles and its camera's lens", () => {
     const { container, view, renderSettings }: ILevelViewContainerDescriptor = mockLevelViewContainer([
       LevelViewerSnapshotService,

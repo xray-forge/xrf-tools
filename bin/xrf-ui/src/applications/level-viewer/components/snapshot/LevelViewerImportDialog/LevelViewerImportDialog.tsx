@@ -20,12 +20,14 @@ export interface ILevelViewerImportDialogProps extends BaseComponentProps {
   /** The file's name, which the summary starts with. */
   fileName: string;
   snapshot: ILevelViewerSnapshot;
-  /** Every entry of the file and every value of the view it lacks, as classified against the view. */
+  /** Every value of the file, as classified against the view. */
   entries: ReadonlyArray<ILevelViewerSnapshotEntry>;
   /** The level open, which the file's is checked against. */
   level: Nullable<string>;
   /** What the apply came to, shown in place of the choice once it ran; null before. */
   result: Nullable<ILevelViewerSnapshotApplied>;
+  /** Whether the values chosen are being applied, during which they are not applied again. */
+  isApplying?: boolean;
   onApply: (entries: Array<ILevelViewerSnapshotEntry>) => void;
   onClose: () => void;
 }
@@ -49,6 +51,7 @@ export function LevelViewerImportDialog({
   entries,
   level,
   result,
+  isApplying = false,
   onApply,
   onClose,
 }: ILevelViewerImportDialogProps): ReactElement {
@@ -180,7 +183,7 @@ export function LevelViewerImportDialog({
 
             <DetailSection
               title={"Unchanged"}
-              description={"Values the view already draws as the file has them, and those the file does not hold."}
+              description={"Values the view already draws as the file has them."}
               fact={formatCount(unchanged.length)}
               action={
                 unchanged.length ? (
@@ -206,7 +209,7 @@ export function LevelViewerImportDialog({
         </Button>
 
         {result ? null : (
-          <Button size={"small"} variant={"contained"} disabled={!chosen.size} onClick={onApplyChosen}>
+          <Button size={"small"} variant={"contained"} disabled={!chosen.size || isApplying} onClick={onApplyChosen}>
             {`Apply ${formatCount(chosen.size)}`}
           </Button>
         )}

@@ -1,6 +1,14 @@
+import { join } from "@tauri-apps/api/path";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { inject, Injectable } from "@wirestate/core";
+import { BoundAction, RefObservable, runInAction } from "@wirestate/mobx";
+import { getPathName } from "@xrf/path";
 import { Maybe, Nullable } from "@xrf/types";
 
+import {
+  toLevelViewerFileStem,
+  toLevelViewerLevelName,
+} from "@/applications/level-viewer/lib/files/level-viewer-file-stem";
 import {
   compareLevelViewerSnapshot,
   ELevelViewerSnapshotStatus,
@@ -10,9 +18,15 @@ import {
   LEVEL_VIEWER_SNAPSHOT_FORMAT,
   TLevelViewerSnapshotPart,
 } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
+import {
+  LEVEL_VIEWER_SNAPSHOT_FILTERS,
+  readLevelViewerSnapshot,
+  writeLevelViewerSnapshot,
+} from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot-files";
+import { levelsCommands } from "@/core/ipc/commands/levels";
 import { systemCommands } from "@/core/ipc/commands/system";
-import { LevelSource } from "@/core/ipc/types/xrf-app";
 import { BuildInfo } from "@/core/ipc/types/xrf-build-info";
+import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { isLevelGoTo, toLevelGoTo, toRoundedLevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import {
@@ -21,7 +35,6 @@ import {
   toLevelRendererFeatures,
 } from "@/core/level/lib/features/level-feature-options";
 import { ELevelLookSource, ILevelLookChoice, toLevelLookChoice } from "@/core/level/lib/look/level-look-choice";
-import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
@@ -41,13 +54,36 @@ export interface ILevelViewerSnapshotApplied {
   failed: Array<{ key: string; reason: string }>;
 }
 
+/** A snapshot read for import, with its entries set against the view as it was read. */
+export interface ILevelViewerImport {
+  fileName: string;
+  snapshot: ILevelViewerSnapshot;
+  entries: Array<ILevelViewerSnapshotEntry>;
+}
+
 /**
  * A level view as a file holds it: what the viewer draws, from where and under what weather, taken whole and given
- * back in part, a value at a time, into the view's own settings alone.
+ * back in part, a value at a time, into the view's own settings alone; File › Export view and Import view, the view
+ * written to a file the user picks, in the application's own folder of views by default, and read back for import.
  */
 @Injectable()
 export class LevelViewerSnapshotService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
+
+  /** The file read for import while its dialog is open. */
+  @RefObservable()
+  public importing: Nullable<ILevelViewerImport> = null;
+
+  /** What the import applied, once it has. */
+  @RefObservable()
+  public result: Nullable<ILevelViewerSnapshotApplied> = null;
+
+  @RefObservable()
+  public isApplying: boolean = false;
+
+  /** Why the last export or import failed, until it is dismissed. */
+  @RefObservable()
+  public failure: Nullable<string> = null;
 
   public constructor(
     private readonly viewService: LevelViewService = inject(LevelViewService),
@@ -61,22 +97,111 @@ export class LevelViewerSnapshotService {
 
   /** The open level as a snapshot names it, engine paths with forward slashes; null with none open. */
   public get level(): Nullable<string> {
-    const source: Maybe<LevelSource> = this.loadService.level.value?.selected.value.source;
-
-    return source ? describeLevelSource(source).replaceAll("\\", "/") : null;
+    return toLevelViewerLevelName(this.loadService.level.value?.selected.value.source);
   }
 
   /**
    * @returns The view as it stands, with the build that draws it.
    */
   public async exportSnapshot(): Promise<ILevelViewerSnapshot> {
-    const build: Nullable<BuildInfo> = await systemCommands.getBuildInfo().catch((error: unknown) => {
+    return this.describe(await this.readBuild());
+  }
+
+  /**
+   * @returns The build that draws the view, or null where it cannot be read.
+   */
+  public readBuild(): Promise<Nullable<BuildInfo>> {
+    return systemCommands.getBuildInfo().catch((error: unknown) => {
       this.log.warn("Could not read the build for a level view's snapshot:", error);
 
       return null;
     });
+  }
 
-    return this.describe(build);
+  /** Writes the view as it stands where a save dialog answers, in the folder of views by default. */
+  public async exportView(): Promise<void> {
+    try {
+      const snapshot: ILevelViewerSnapshot = await this.exportSnapshot();
+      const path: Nullable<string> = await save({
+        defaultPath: await join(
+          await levelsCommands.getViewFolder(),
+          `${toLevelViewerFileStem(this.level, new Date())}.${EXrayExtension.JSON}`
+        ),
+        filters: LEVEL_VIEWER_SNAPSHOT_FILTERS,
+        title: "Export view",
+      });
+
+      if (path) {
+        this.log.info("Exported the view:", await writeLevelViewerSnapshot(path, snapshot));
+      }
+    } catch (error: unknown) {
+      this.fail("export the view", error);
+    }
+  }
+
+  /** Reads the view an open dialog answers, from the folder of views by default, and compares it for import. */
+  public async beginImport(): Promise<void> {
+    try {
+      const path: Nullable<string> = (await open({
+        defaultPath: await levelsCommands.getViewFolder(),
+        directory: false,
+        filters: LEVEL_VIEWER_SNAPSHOT_FILTERS,
+        multiple: false,
+        title: "Import view",
+      })) as Nullable<string>;
+
+      if (path) {
+        const snapshot: ILevelViewerSnapshot = await readLevelViewerSnapshot(path);
+
+        runInAction(() => {
+          this.result = null;
+          this.importing = { entries: this.compare(snapshot), fileName: getPathName(path), snapshot };
+        });
+      }
+    } catch (error: unknown) {
+      this.fail("read the view", error);
+    }
+  }
+
+  /**
+   * Applies the entries chosen of the file read for import, once; nothing while they are being applied.
+   *
+   * @param entries - The values chosen.
+   */
+  public async applyImport(entries: ReadonlyArray<ILevelViewerSnapshotEntry>): Promise<void> {
+    if (!this.importing || this.isApplying) {
+      return;
+    }
+
+    runInAction(() => {
+      this.isApplying = true;
+    });
+
+    try {
+      const result: ILevelViewerSnapshotApplied = await this.apply(entries);
+
+      runInAction(() => {
+        this.result = result;
+      });
+    } catch (error: unknown) {
+      this.closeImport();
+      this.fail("import the view", error);
+    } finally {
+      runInAction(() => {
+        this.isApplying = false;
+      });
+    }
+  }
+
+  @BoundAction()
+  public closeImport(): void {
+    this.importing = null;
+    this.result = null;
+  }
+
+  @BoundAction()
+  public dismissFailure(): void {
+    this.failure = null;
   }
 
   /**
@@ -216,6 +341,12 @@ export class LevelViewerSnapshotService {
     this.log.info("Imported a level view:", result);
 
     return result;
+  }
+
+  @BoundAction()
+  private fail(what: string, error: unknown): void {
+    this.log.error(`Failed to ${what}:`, error);
+    this.failure = error instanceof Error ? error.message : String(error);
   }
 
   private async applyWeather(weather: TLevelViewerSnapshotPart): Promise<ILevelViewerSnapshotApplied["failed"]> {

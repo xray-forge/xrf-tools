@@ -1,5 +1,16 @@
 import { getPathName } from "@xrf/path";
-import { Nullable } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
+
+import { LevelSource } from "@/core/ipc/types/xrf-app";
+import { describeLevelSource } from "@/core/level/lib/source/level-source";
+
+/**
+ * @param source - The level open, or none.
+ * @returns The level as a snapshot and the viewer's files name it, its engine path with forward slashes; null for none.
+ */
+export function toLevelViewerLevelName(source: Maybe<LevelSource>): Nullable<string> {
+  return source ? describeLevelSource(source).replaceAll("\\", "/") : null;
+}
 
 /**
  * @param level - The level a file is of, as a snapshot names it, or null for none.
