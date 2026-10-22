@@ -7,7 +7,7 @@ import { ReactElement, useCallback, useId, useState } from "react";
 
 import { ELevelCaptureMode } from "@/applications/level-viewer/lib/capture/level-capture";
 import { ILevelMapParameters } from "@/applications/level-viewer/lib/map/level-map-capture";
-import { LevelViewerCaptureService, TLevelCapture } from "@/applications/level-viewer/services/capture";
+import { CAPTURE_NAMES, LevelViewerCaptureService, TLevelCapture } from "@/applications/level-viewer/services/capture";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
@@ -37,8 +37,9 @@ export function LevelViewerCaptureDialog({
   const captured: Nullable<TLevelCapture> = captureService.captured;
   const job: Nullable<IJobState> = captureService.operation.job;
   const isCapturing: boolean = captureService.isCapturing;
+  const isExporting: boolean = captureService.isExporting;
   const isMap: boolean = (captured?.mode ?? mode) === ELevelCaptureMode.MAP;
-  const name: string = isMap ? "level map" : "cubemap";
+  const name: string = CAPTURE_NAMES[captured?.mode ?? mode];
 
   const onClose = useCallback(() => captureService.close(), [captureService]);
 
@@ -83,7 +84,7 @@ export function LevelViewerCaptureDialog({
         titleId={titleId}
         icon={isMap ? <MapIcon fontSize={"small"} /> : <PanoramaPhotosphereIcon fontSize={"small"} />}
         closeLabel={"Close the capture"}
-        onClose={isCapturing ? undefined : onClose}
+        onClose={isCapturing || isExporting ? undefined : onClose}
       />
 
       <DialogContent className={"flex flex-col gap-4 px-dialog"}>
@@ -121,7 +122,7 @@ export function LevelViewerCaptureDialog({
         )}
 
         {captureService.failure ? (
-          <Typography className={"text-error"} variant={"body2"}>
+          <Typography className={"text-error"} variant={"body2"} role={"alert"}>
             {captureService.failure}
           </Typography>
         ) : null}
@@ -144,15 +145,17 @@ export function LevelViewerCaptureDialog({
           </>
         ) : captured ? (
           <>
-            <Button className={"mr-auto"} color={"error"} onClick={onArmDelete}>
+            <Button className={"mr-auto"} color={"error"} disabled={isExporting} onClick={onArmDelete}>
               Delete
             </Button>
-            <Button onClick={onBack}>Back to parameters</Button>
+            <Button disabled={isExporting} onClick={onBack}>
+              Back to parameters
+            </Button>
             <Button onClick={onReveal}>Show in folder</Button>
             <Button onClick={onCopyPath}>Copy path</Button>
             <Button onClick={onCopyImage}>Copy image</Button>
-            <Button variant={"contained"} disabled={captureService.isExporting} onClick={onExport}>
-              {captureService.isExporting ? "Exporting…" : "Export…"}
+            <Button variant={"contained"} disabled={isExporting} onClick={onExport}>
+              {isExporting ? "Exporting…" : "Export…"}
             </Button>
           </>
         ) : (

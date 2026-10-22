@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { save } from "@tauri-apps/plugin-dialog";
+import { waitFor } from "@testing-library/react";
 import { Nullable } from "@xrf/types";
 
 import { ELevelCaptureMode } from "@/applications/level-viewer/lib/capture/level-capture";
 import { ELevelMapArea, ELevelMapLook } from "@/applications/level-viewer/lib/map/level-map-capture";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
-import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { ELevelAnnotationKind, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { RenderCubeCapture, RenderMapCapture } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
@@ -28,12 +29,8 @@ const ZATON: SelectedLevelDescription = mockSelectedLevelDescription({
 function mockCapture(
   level: Nullable<SelectedLevelDescription> = ZATON
 ): ILevelViewContainerDescriptor & { service: LevelViewerCaptureService } {
-  const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer([
-    LevelViewerCaptureService,
-    LevelViewerSnapshotService,
-  ]);
+  const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer([LevelViewerCaptureService]);
 
-  jest.spyOn(LevelViewerSnapshotService.prototype, "level", "get").mockReturnValue("levels/zaton");
   jest.spyOn(LevelViewerCaptureService.prototype, "level", "get").mockReturnValue(level);
 
   return { ...descriptor, service: descriptor.container.get(LevelViewerCaptureService) };
@@ -211,6 +208,58 @@ describe("LevelViewerCaptureService", () => {
     expect(asked.at(-1)).toMatchObject({ kinds: [ELevelAnnotationKind.GRAPH_POINTS], isLabelled: true });
   });
 
+  it("writes the annotations in the order drawn and exports once the last is written, the capture held meanwhile", async () => {
+    jest.spyOn(LevelViewerCaptureService.prototype, "sessionId", "get").mockReturnValue("session");
+
+    const { service, render, weather } = mockCapture();
+    const events: Array<string> = [];
+    const firstWrite: { finish: () => void } = { finish: () => undefined };
+
+    jest.spyOn(weather, "cutTo").mockResolvedValue();
+    jest.spyOn(weather, "release").mockResolvedValue();
+    jest.spyOn(render, "captureMap").mockResolvedValue({ outcome: "completed", width: 2048, height: 2048 });
+    jest.mocked(save).mockResolvedValueOnce("C:/out/map_zaton.dds");
+    setMockInvokeResponses({
+      ["plugin:levels|find_screenshot_path"]: PATH,
+      ["plugin:levels|write_map_annotations"]: (args?: Record<string, unknown>) => {
+        const kinds: Array<string> = (args?.request as { kinds: Array<string> }).kinds;
+
+        events.push(`write ${kinds.length}`);
+
+        return kinds.length
+          ? { sessionId: "session", value: "<svg/>" }
+          : new Promise((resolve: (value: unknown) => void) => {
+              firstWrite.finish = () => {
+                events.push("written 0");
+                resolve({ sessionId: "session", value: "<svg/>" });
+              };
+            });
+      },
+      ["plugin:levels|export_map"]: () => {
+        events.push("export");
+
+        return [2048, 2048];
+      },
+    });
+
+    service.open();
+    await service.capture();
+    service.setMapAnnotations({ kinds: [ELevelAnnotationKind.GRAPH_POINTS], isLabelled: false });
+
+    const exporting: Promise<void> = service.exportAs() as unknown as Promise<void>;
+
+    await waitFor(() => expect(service.isExporting).toBe(true));
+    service.back();
+
+    expect(service.captured).not.toBeNull();
+
+    firstWrite.finish();
+    await exporting;
+
+    expect(events).toEqual(["write 0", "written 0", "write 1", "export"]);
+    expect(service.exported).toBe("C:/out/map_zaton.dds");
+  });
+
   it("keeps the parameters and shows no map where the capture was stopped", async () => {
     const { service, render, weather } = mockCapture();
 
@@ -248,6 +297,18 @@ describe("LevelViewerCaptureService", () => {
     expect(captured).toEqual([{ size: 1024, supersampling: 2, settleFrames: 16 }]);
     expect(release).toHaveBeenCalledTimes(1);
     expect(service.captured?.mode).toBe(ELevelCaptureMode.CUBEMAP);
+  });
+
+  it("opens on a cubemap where the level covers no box to map", () => {
+    const { service } = mockCapture({ ...ZATON, bounds: null });
+
+    expect(service.canOpenMap).toBe(false);
+
+    service.openCubemap();
+
+    expect(service.isOpen).toBe(true);
+    expect(service.mode).toBe(ELevelCaptureMode.CUBEMAP);
+    expect(service.mapParameters).toBeNull();
   });
 
   it("draws the largest faces once over unless asked, and refuses a face no GPU draws", () => {

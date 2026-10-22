@@ -48,6 +48,32 @@ export const DEFAULT_LEVEL_MAP_EXPORT: ILevelMapExportSettings = {
 export const LEVEL_MAP_BACKDROP: [number, number, number] = [0, 0, 0];
 
 /**
+ * @param kind - What a map would be exported as.
+ * @param annotations - How its annotations go in.
+ * @returns Whether it can be exported so: only its annotations alone are an SVG.
+ */
+export function isLevelMapExportKindOffered(
+  kind: EMapExportFormat,
+  annotations: Nullable<EMapExportAnnotations>
+): boolean {
+  return kind !== EMapExportFormat.SVG || annotations === EMapExportAnnotations.ALONE;
+}
+
+/**
+ * @param current - A map's export as it stands.
+ * @param patch - What of it changes.
+ * @returns The export changed, as one the backend writes: an SVG whose annotations no longer stand alone is a PNG.
+ */
+export function toLevelMapExportSettings(
+  current: ILevelMapExportSettings,
+  patch: Partial<ILevelMapExportSettings>
+): ILevelMapExportSettings {
+  const next: ILevelMapExportSettings = { ...current, ...patch };
+
+  return isLevelMapExportKindOffered(next.kind, next.annotations) ? next : { ...next, kind: EMapExportFormat.PNG };
+}
+
+/**
  * @param kind - What a map is exported as.
  * @returns The extension its file takes.
  */

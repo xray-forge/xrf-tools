@@ -1,7 +1,13 @@
+use std::sync::{Arc, OnceLock};
+
 use image::{Rgba, RgbaImage};
+use resvg::usvg::fontdb::Database;
 use resvg::{tiny_skia, usvg};
 
 use crate::core::types::TauriResult;
+
+/// The system's fonts, read once a run: reading them takes a few hundred milliseconds.
+static SYSTEM_FONTS: OnceLock<Arc<Database>> = OnceLock::new();
 
 /// `svg` rasterised at `width` by `height` pixels, its view box stretched over them, its text set in the system's
 /// fonts; transparent where it draws nothing, its alpha straight.
@@ -10,10 +16,16 @@ use crate::core::types::TauriResult;
 ///
 /// Returns an error for an SVG that cannot be read, or a size of no pixels.
 pub fn rasterise_annotations(svg: &str, (width, height): (u32, u32)) -> TauriResult<RgbaImage> {
-  let mut options: usvg::Options<'_> = usvg::Options::default();
+  let options: usvg::Options<'_> = usvg::Options {
+    fontdb: Arc::clone(SYSTEM_FONTS.get_or_init(|| {
+      let mut fonts: Database = Database::new();
 
-  options.fontdb_mut().load_system_fonts();
+      fonts.load_system_fonts();
 
+      Arc::new(fonts)
+    })),
+    ..usvg::Options::default()
+  };
   let tree: usvg::Tree =
     usvg::Tree::from_str(svg, &options).map_err(|error| format!("Failed to read the annotations: {error}"))?;
   let mut pixmap: tiny_skia::Pixmap = tiny_skia::Pixmap::new(width, height)

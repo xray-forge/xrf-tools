@@ -13,6 +13,7 @@ import {
 } from "@/applications/level-viewer/lib/map/level-map-annotations";
 import {
   ILevelMapExportSettings,
+  isLevelMapExportKindOffered,
   LEVEL_MAP_BACKDROP,
   LEVEL_MAP_EXPORT_LONG_SIDES,
   toLevelMapExportSize,
@@ -81,19 +82,12 @@ export function LevelViewerMapResult({
     [annotations, captureService]
   );
 
-  // Only the annotations alone are an SVG, so leaving them for the map leaves the SVG for a PNG.
   const onExportAnnotations = useCallback(
-    (value: string) => {
-      const exported: Nullable<EMapExportAnnotations> =
-        value === ANNOTATIONS_NONE ? null : (value as EMapExportAnnotations);
-
-      captureService.setMapExport(
-        exported !== EMapExportAnnotations.ALONE && isSvg
-          ? { annotations: exported, kind: EMapExportFormat.PNG }
-          : { annotations: exported }
-      );
-    },
-    [captureService, isSvg]
+    (value: string) =>
+      captureService.setMapExport({
+        annotations: value === ANNOTATIONS_NONE ? null : (value as EMapExportAnnotations),
+      }),
+    [captureService]
   );
 
   const onKind = useCallback((kind: EMapExportFormat) => captureService.setMapExport({ kind }), [captureService]);
@@ -172,7 +166,7 @@ export function LevelViewerMapResult({
             {
               value: EMapExportFormat.SVG,
               label: "SVG",
-              isDisabled: settings.annotations !== EMapExportAnnotations.ALONE,
+              isDisabled: !isLevelMapExportKindOffered(EMapExportFormat.SVG, settings.annotations),
             },
           ]}
           value={settings.kind}

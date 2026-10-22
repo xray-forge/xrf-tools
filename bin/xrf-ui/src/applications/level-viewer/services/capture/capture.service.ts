@@ -24,7 +24,10 @@ import {
   isLevelCubeExportSingle,
   toCubeExportRequest,
 } from "@/applications/level-viewer/lib/cube/level-cube-export";
-import { toLevelViewerFileStem } from "@/applications/level-viewer/lib/files/level-viewer-file-stem";
+import {
+  toLevelViewerFileStem,
+  toLevelViewerLevelName,
+} from "@/applications/level-viewer/lib/files/level-viewer-file-stem";
 import {
   copyLevelViewerImage,
   ILevelViewerImage,
@@ -55,13 +58,13 @@ import {
   DEFAULT_LEVEL_MAP_EXPORT,
   ILevelMapExportSettings,
   toLevelMapExportExtension,
+  toLevelMapExportSettings,
   toMapExportRequest,
 } from "@/applications/level-viewer/lib/map/level-map-export";
-import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { KeybindCommand } from "@/core/commands";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { systemCommands } from "@/core/ipc/commands/system";
-import { CaptureOutcome, EJobKind, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
+import { CaptureOutcome, EJobKind, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { describeJobFailure, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
@@ -77,6 +80,7 @@ import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+import { noop } from "@/lib/callbacks/noop";
 import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
@@ -84,7 +88,7 @@ import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 const MAP_WEATHER_CYCLE: string = "map";
 
 /** What each mode's capture is called, in its notices and failures. */
-const CAPTURE_NAMES: Record<ELevelCaptureMode, string> = {
+export const CAPTURE_NAMES: Record<ELevelCaptureMode, string> = {
   [ELevelCaptureMode.MAP]: "level map",
   [ELevelCaptureMode.CUBEMAP]: "cubemap",
 };
@@ -185,13 +189,18 @@ export class LevelViewerCaptureService {
   @RefObservable()
   private isViewHeld: boolean = false;
 
+  /**
+   * The last of the annotations' writes beside the map, each sent once the one before it ended, so the file on disk is
+   * the last drawn, which an export reads.
+   */
+  private annotationsWritten: Promise<unknown> = Promise.resolve();
+
   public constructor(
     private readonly loadService: LevelLoadService = inject(LevelLoadService),
     private readonly renderService: LevelRenderService = inject(LevelRenderService),
     private readonly viewService: LevelViewService = inject(LevelViewService),
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
     private readonly weatherService: LevelWeatherService = inject(LevelWeatherService),
-    private readonly snapshotService: LevelViewerSnapshotService = inject(LevelViewerSnapshotService),
     jobsService: JobsService = inject(JobsService)
   ) {
     this.operation = new JobOperation(jobsService, [EJobKind.LEVELS_CAPTURE_MAP, EJobKind.LEVELS_CAPTURE_CUBE]);
@@ -235,10 +244,16 @@ export class LevelViewerCaptureService {
     return this.isViewHeld || this.operation.isRunning;
   }
 
-  /** Whether the dialog can open: a level is open and no capture runs. */
+  /** Whether the dialog can open on a cubemap: a level is open and no capture runs. */
   @Computed()
   public get canOpen(): boolean {
-    return this.volume !== null && !this.isCapturing;
+    return this.level !== null && !this.isCapturing;
+  }
+
+  /** Whether the dialog can open on a level map: it can open, and the level's sectors cover a box to map. */
+  @Computed()
+  public get canOpenMap(): boolean {
+    return this.canOpen && this.volume !== null;
   }
 
   /** Whether the mode's parameters ask for something that can be captured, and no capture runs. */
@@ -274,7 +289,7 @@ export class LevelViewerCaptureService {
 
   /** Opens the dialog on a level map and the defaults: the level's map where it lays one, its whole box otherwise. */
   @KeybindCommand(CAPTURE_LEVEL_MAP_KEYBIND_COMMAND, {
-    isEnabled: (service: LevelViewerCaptureService) => service.canOpen,
+    isEnabled: (service: LevelViewerCaptureService) => service.canOpenMap,
   })
   public open(): void {
     this.openOn(ELevelCaptureMode.MAP);
@@ -288,19 +303,21 @@ export class LevelViewerCaptureService {
     this.openOn(ELevelCaptureMode.CUBEMAP);
   }
 
-  /** Closes the dialog, letting what it showed go; nothing while a capture runs. */
+  /** Closes the dialog, letting what it showed go; nothing while a capture or an export runs. */
   @BoundAction()
   public close(): void {
-    if (!this.isCapturing) {
+    if (!this.isCapturing && !this.isExporting) {
       this.isOpen = false;
       this.show(null);
     }
   }
 
-  /** Goes back to the parameters from what was captured, which stays in its folder. */
+  /** Goes back to the parameters from what was captured, which stays in its folder; nothing while it is exported. */
   @BoundAction()
   public back(): void {
-    this.show(null);
+    if (!this.isExporting) {
+      this.show(null);
+    }
   }
 
   /**
@@ -415,13 +432,15 @@ export class LevelViewerCaptureService {
       return;
     }
 
+    const request = toMapAnnotationsRequest(this.mapAnnotations, captured.image.path, captured.area);
+    const writing: Promise<SessionSnapshot<string>> = this.annotationsWritten.then(() =>
+      levelsCommands.writeMapAnnotations(sessionId, request)
+    );
+
+    this.annotationsWritten = writing.catch(noop);
+
     try {
-      const { value } = yield* call(
-        levelsCommands.writeMapAnnotations(
-          sessionId,
-          toMapAnnotationsRequest(this.mapAnnotations, captured.image.path, captured.area)
-        )
-      );
+      const { value } = yield* call(writing);
 
       if (this.captured === captured) {
         this.showAnnotations(URL.createObjectURL(new Blob([value], { type: "image/svg+xml" })));
@@ -432,11 +451,11 @@ export class LevelViewerCaptureService {
   }
 
   /**
-   * @param patch - What of the map's export changes.
+   * @param patch - What of the map's export changes, kept to an export the backend writes.
    */
   @BoundAction()
   public setMapExport(patch: Partial<ILevelMapExportSettings>): void {
-    this.mapExport = { ...this.mapExport, ...patch };
+    this.mapExport = toLevelMapExportSettings(this.mapExport, patch);
   }
 
   /**
@@ -463,7 +482,7 @@ export class LevelViewerCaptureService {
     const name: string = CAPTURE_NAMES[mode];
     const options: ILevelViewOptions = this.viewService.options;
     const weather: ILevelWeatherHold = this.weatherService.hold();
-    const stem: string = toLevelViewerFileStem(this.snapshotService.level, new Date());
+    const stem: string = toLevelViewerFileStem(toLevelViewerLevelName(this.level?.source), new Date());
 
     this.isViewHeld = true;
     this.failure = null;
@@ -525,10 +544,10 @@ export class LevelViewerCaptureService {
 
     const { mode, image } = captured;
     const name: string = CAPTURE_NAMES[mode];
-    const level: string = this.snapshotService.level ? getPathName(this.snapshotService.level) : "level";
-    const target: Nullable<string> = yield* call(this.askExportTarget(mode, level));
+    const level: Nullable<string> = toLevelViewerLevelName(this.level?.source);
+    const target: Nullable<string> = yield* call(this.askExportTarget(mode, level ? getPathName(level) : "level"));
 
-    if (!target) {
+    if (!target || this.captured !== captured) {
       return;
     }
 
@@ -536,16 +555,23 @@ export class LevelViewerCaptureService {
     this.failure = null;
 
     try {
+      let exported: string = target;
+
       if (mode === ELevelCaptureMode.MAP) {
         const request = toMapExportRequest(this.mapExport, image.path, target, Math.max(image.width, image.height));
 
+        // The annotations drawn last are on disk before the export reads them.
+        yield* call(this.annotationsWritten);
         yield* call(levelsCommands.exportMap(request));
-        this.exported = target;
       } else {
         const request = toCubeExportRequest(this.cubeExport, image.path, target, toLevelCubeFaceSize(image.width));
         const written: Array<string> = yield* call(levelsCommands.exportCube(request));
 
-        this.exported = written[0] ?? target;
+        exported = written[0] ?? target;
+      }
+
+      if (this.captured === captured) {
+        this.exported = exported;
       }
 
       this.log.info(`Exported a ${name}:`, target);
@@ -556,9 +582,14 @@ export class LevelViewerCaptureService {
     }
   }
 
-  /** Deletes what was captured for good. */
-  public remove(): Promise<void> {
-    return this.attempt("delete the capture", async ({ image }: TLevelCapture) => {
+  /** Deletes what was captured for good, with its annotations once they are written; nothing while it is exported. */
+  public async remove(): Promise<void> {
+    if (this.isExporting) {
+      return;
+    }
+
+    await this.attempt("delete the capture", async ({ image }: TLevelCapture) => {
+      await this.annotationsWritten;
       await levelsCommands.deleteScreenshot(image.path);
       this.log.info("Deleted a capture:", image.path);
       this.show(null);
@@ -602,7 +633,7 @@ export class LevelViewerCaptureService {
   private openOn(mode: ELevelCaptureMode): void {
     const volume: Nullable<ILevelMapVolume> = this.volume;
 
-    if (!this.canOpen || !volume) {
+    if (mode === ELevelCaptureMode.MAP ? !this.canOpenMap : !this.canOpen) {
       return;
     }
 
@@ -613,7 +644,7 @@ export class LevelViewerCaptureService {
       this.mapExport = DEFAULT_LEVEL_MAP_EXPORT;
       this.cubeExport = DEFAULT_LEVEL_CUBE_EXPORT;
       this.mapAnnotations = DEFAULT_LEVEL_MAP_ANNOTATIONS;
-      this.mapParameters = toDefaultLevelMapParameters(this.levelMapRect, volume);
+      this.mapParameters = volume ? toDefaultLevelMapParameters(this.levelMapRect, volume) : null;
       this.cubeParameters = toDefaultLevelCubeParameters();
       this.isOpen = true;
     });
