@@ -296,16 +296,18 @@ impl RenderThread {
     }
   }
 
-  /// Whether any viewport has somewhere to be drawn now: a frame is due each turn, rather than a wait.
+  /// Whether any viewport has somewhere to be drawn now, or captures, which draws into textures of its own whether or
+  /// not its window shows anything: a frame is due each turn, rather than a wait.
   fn is_drawing(&self) -> bool {
     self.viewports.values().any(|viewport| {
       let host: Option<&Arc<dyn RenderWindowHost>> = self.hosts.get(&viewport.window);
 
-      host.is_some_and(|host| {
-        let (width, height) = host.get_client_size();
+      viewport.is_capturing()
+        || host.is_some_and(|host| {
+          let (width, height) = host.get_client_size();
 
-        !host.is_hidden() && viewport.get_drawn_rect(width, height).is_some()
-      })
+          !host.is_hidden() && viewport.get_drawn_rect(width, height).is_some()
+        })
     })
   }
 
@@ -1111,23 +1113,42 @@ impl RenderThread {
       let Some(window) = gpu.windows.get_mut(key) else {
         continue;
       };
-      let Some((width, height)) = window.ready(&gpu.context, is_vsync) else {
-        continue;
-      };
+      let size: Option<(u32, u32)> = window.ready(&gpu.context, is_vsync);
       // Each viewport's whole rectangle, which its camera and targets are sized by, and the part of it the window
-      // shows, which its picture is cropped to.
+      // shows, which its picture is cropped to. A capture draws into a texture of its own, so its viewport is drawn
+      // however it is laid out and whether or not the window shows anything.
       let drawn: Vec<(RenderViewportId, RenderRect, RenderRect)> = self
         .viewports
         .values()
         .filter(|viewport| viewport.window == *key)
         .filter_map(|viewport| {
-          Some((
-            viewport.id,
-            viewport.layout.as_ref()?.rect,
-            viewport.get_drawn_rect(width, height)?,
-          ))
+          let shown: Option<(RenderRect, RenderRect)> = size.and_then(|(width, height)| {
+            Some((viewport.layout.as_ref()?.rect, viewport.get_drawn_rect(width, height)?))
+          });
+
+          match shown {
+            Some((rect, clipped)) => Some((viewport.id, rect, clipped)),
+            None if viewport.is_capturing() => Some((viewport.id, RenderRect::default(), RenderRect::default())),
+            None => None,
+          }
         })
         .collect();
+      let Some((width, height)) = size else {
+        if !drawn.is_empty() {
+          windows.push(WindowFrame {
+            key: *key,
+            format,
+            is_shown: false,
+            drawn,
+            clear: wgpu::Color::TRANSPARENT,
+            is_backdrop_painted: false,
+            image: None,
+            acquire: Duration::ZERO,
+          });
+        }
+
+        continue;
+      };
       // The page's backdrop around the viewports, and where a layout change has not reached the renderer yet.
       let backdrop: BackdropUniform = self
         .viewports
@@ -1170,6 +1191,7 @@ impl RenderThread {
       windows.push(WindowFrame {
         key: *key,
         format,
+        is_shown: true,
         drawn,
         clear: backdrop.get_clear(),
         is_backdrop_painted,
@@ -1617,7 +1639,8 @@ impl RenderThread {
     }
 
     for window in windows.iter_mut() {
-      if let Some(surface) = gpu.windows.get(&window.key) {
+      // A window showing nothing draws its viewports' captures alone and takes no image to compose them into.
+      if let Some(surface) = gpu.windows.get(&window.key).filter(|_| window.is_shown) {
         window.acquire(surface);
       }
 

@@ -21,6 +21,9 @@ use crate::window::window_backdrop::WindowBackdrop;
 pub struct WindowFrame {
   pub key: u64,
   pub format: wgpu::TextureFormat,
+  /// Whether it shows anything this frame: one minimised or sized to nothing draws only its viewports' captures, which
+  /// draw into textures of their own, and takes no image.
+  pub is_shown: bool,
   pub drawn: Vec<(RenderViewportId, RenderRect, RenderRect)>,
   pub clear: wgpu::Color,
   pub is_backdrop_painted: bool,
