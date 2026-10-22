@@ -32,8 +32,11 @@ pub struct ExposureHistogramUniform {
 impl ExposureHistogramUniform {
   /// Bins the frame's log2 luminance is counted in.
   pub const BINS: u32 = 128;
-  /// The bins' slots after the histogram's: the sky's sum of log2 levels, then its count.
-  pub const SKY_SLOTS: u32 = 2;
+  /// The bins' slots after the histogram's: the sky's sum of log2 levels, its count and its sum of squared levels.
+  pub const SKY_SLOTS: u32 = 3;
+  /// The share of the frame under its bright end, which the display transforms never show brighter than the engine's
+  /// curve does (`DisplayMode::get_lift`): the brightest few of what is lit, a night's moonlit metal over its dark land.
+  pub const BRIGHT_SHARE: f32 = 0.99;
   /// The luminance the bins span, log2: about 1/16 000 cd/m², under starlight, to 65 000, sunlit snow and past it.
   pub const LEAST_LOG: f32 = -14.0;
   pub const MOST_LOG: f32 = 16.0;

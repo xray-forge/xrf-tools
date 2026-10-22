@@ -862,7 +862,7 @@ impl SceneView {
       grass_reach: features.grass.get_cascade_reach(),
       light_scale: self.shared.lighting.get_light_scale(),
       is_light_summed: self.shared.lighting.is_light_summed(),
-      exposed_key: features.exposure.get_key(),
+      metering: features.exposure.get_metering(),
     };
 
     self

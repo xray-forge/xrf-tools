@@ -435,6 +435,7 @@ fn the_pictures_show_as_the_authored_law_shows_them() {
     key: 0.01,
     land: Some(-6.0),
     sky: Some(-9.0),
+    ..ExposureMetering::default()
   };
   let authored: RenderViewOptions = physical();
   let units: LightUnits = LightUnits::of(&authored, &lighting, &SkyHarmonics::default(), None);

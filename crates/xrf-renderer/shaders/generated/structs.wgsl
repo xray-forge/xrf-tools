@@ -418,6 +418,8 @@ struct ExposureState {
   used: f32,
   key: f32,
   sky: f32,
+  bright: f32,
+  sky_bright: f32,
   cells: array<f32, 4096>,
 }
 
@@ -426,6 +428,8 @@ struct Exposure {
   used: f32,
   key: f32,
   sky: f32,
+  bright: f32,
+  sky_bright: f32,
 }
 
 struct ExposureHistogram {

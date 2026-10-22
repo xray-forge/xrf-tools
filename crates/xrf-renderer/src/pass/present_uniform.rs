@@ -7,6 +7,7 @@ use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::pass::display_mode::DisplayMode;
+use crate::pass::exposure_metering::ExposureMetering;
 
 /// What the present pass shows and the overlays drawn over it read, as WGSL's `Present`.
 #[repr(C)]
@@ -42,7 +43,7 @@ pub struct PresentUniform {
   pub deband: Vec4,
   /// How the scene is shown before the rest is laid over it (`DisplayMode`), as `common/display_transform` numbers it,
   /// then the physical light's grading before its transform: its contrast, its saturation by the transform's own, and
-  /// the transform's anchor at the frame's key (`DisplayMode::get_anchor_stops`).
+  /// the transform's lift at the frame's key and bright end (`DisplayMode::get_lift`).
   pub display: Vec4,
   /// What the debug views read: the metres from the camera the grass's cards cast the sun's shadow to, none where they
   /// cast none, which the cascades' view marks; then the light's scale and one where it is summed, by which the
@@ -95,15 +96,15 @@ impl PresentUniform {
     (is_shown && debanding.is_drawn()).then(|| debanding.get_passes())
   }
 
-  /// The same showing its scene by `mode`, graded by `grading` where the light is physical, its transform anchored at
-  /// the frame's exposed `key` as graded.
-  pub fn with_display(self, mode: DisplayMode, grading: &RenderGradingSettings, key: f32) -> Self {
+  /// The same showing its scene by `mode`, graded by `grading` where the light is physical, its transform lifted by the
+  /// frame's exposed key and bright end as the exposure `metering` read them.
+  pub fn with_display(self, mode: DisplayMode, grading: &RenderGradingSettings, metering: &ExposureMetering) -> Self {
     Self {
       display: Vec4::new(
         mode.get_index() as f32,
         grading.contrast,
         grading.saturation,
-        mode.get_anchor_stops(key, grading.contrast),
+        mode.get_lift((metering.key, metering.bright), grading.contrast),
       ),
       ..self
     }

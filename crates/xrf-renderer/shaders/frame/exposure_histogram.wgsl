@@ -16,17 +16,24 @@ const BINS: u32 = 128u;
 const SAMPLE_STRIDE: u32 = 4u;
 // Invocations a counting workgroup runs each way (`ExposurePass::HISTOGRAM_WORKGROUP`).
 const HISTOGRAM_WORKGROUP: u32 = 16u;
-// Where the bins hold the sky's sum of log2 levels and its count, after the histogram's
+// Where the bins hold the sky's sum of log2 levels, its count and its sum of squared levels, after the histogram's
 // (`ExposureHistogramUniform::SKY_SLOTS`); the sum in steps of a sixteenth of a stop over the least an eight-bit picture
-// paints above black, `(1/255)^2.2`, so it adds as whole numbers and a black texel counts as that least, not as nothing.
+// paints above black, `(1/255)^2.2`, so it adds as whole numbers and a black texel counts as that least, not as nothing,
+// the squares in whole stops.
 const SKY_SUM: u32 = 128u;
 const SKY_COUNT: u32 = 129u;
+const SKY_SQUARES: u32 = 130u;
+// The share of the frame under its bright end (`ExposureHistogramUniform::BRIGHT_SHARE`): the brightest few of what is
+// lit, which a night's moonlit metal is, over the window's top in the dark land; and how many deviations over its mean
+// the sky's bright end stands, as a normal spread's percentile at that share does.
+const BRIGHT_SHARE: f32 = 0.99;
+const SKY_BRIGHT_DEVIATIONS: f32 = 2.33;
 const SKY_STEPS: f32 = 16.0;
 const SKY_FLOOR_LOG: f32 = -17.59;
 
 var<workgroup> local_bins: array<atomic<u32>, 128>;
 var<workgroup> counts: array<u32, 128>;
-var<workgroup> local_sky: array<atomic<u32>, 2>;
+var<workgroup> local_sky: array<atomic<u32>, 3>;
 
 @compute @workgroup_size(16, 16)
 fn cs_bin(@builtin(global_invocation_id) id: vec3<u32>, @builtin(local_invocation_index) index: u32) {
@@ -34,7 +41,7 @@ fn cs_bin(@builtin(global_invocation_id) id: vec3<u32>, @builtin(local_invocatio
     atomicStore(&local_bins[index], 0u);
   }
 
-  if (index < 2u) {
+  if (index < 3u) {
     atomicStore(&local_sky[index], 0u);
   }
 
@@ -63,6 +70,7 @@ fn cs_bin(@builtin(global_invocation_id) id: vec3<u32>, @builtin(local_invocatio
 
       atomicAdd(&local_sky[0], u32(round(level * SKY_STEPS)));
       atomicAdd(&local_sky[1], 1u);
+      atomicAdd(&local_sky[2], u32(round(level * level)));
     }
   }
 
@@ -72,7 +80,7 @@ fn cs_bin(@builtin(global_invocation_id) id: vec3<u32>, @builtin(local_invocatio
     atomicAdd(&bins[index], atomicLoad(&local_bins[index]));
   }
 
-  if (index < 2u) {
+  if (index < 3u) {
     atomicAdd(&bins[SKY_SUM + index], atomicLoad(&local_sky[index]));
   }
 }
@@ -90,13 +98,19 @@ fn cs_settle(@builtin(local_invocation_index) index: u32) {
 
   let sky_sum: u32 = atomicLoad(&bins[SKY_SUM]);
   let sky_count: u32 = atomicLoad(&bins[SKY_COUNT]);
+  let sky_squares: u32 = atomicLoad(&bins[SKY_SQUARES]);
 
   atomicStore(&bins[SKY_SUM], 0u);
   atomicStore(&bins[SKY_COUNT], 0u);
+  atomicStore(&bins[SKY_SQUARES], 0u);
 
-  // A frame with no sky in sight keeps the level it last saw.
+  // A frame with no sky in sight keeps the levels it last saw.
   if (sky_count > 0u) {
-    state.sky = f32(sky_sum) / (f32(sky_count) * SKY_STEPS) + SKY_FLOOR_LOG;
+    let mean: f32 = f32(sky_sum) / (f32(sky_count) * SKY_STEPS);
+    let spread: f32 = sqrt(max(f32(sky_squares) / f32(sky_count) - mean * mean, 0.0));
+
+    state.sky = mean + SKY_FLOOR_LOG;
+    state.sky_bright = mean + SKY_BRIGHT_DEVIATIONS * spread + SKY_FLOOR_LOG;
   }
 
   var total: f32 = 0.0;
@@ -114,15 +128,22 @@ fn cs_settle(@builtin(local_invocation_index) index: u32) {
   var below: f32 = 0.0;
   var weight: f32 = 0.0;
   var sum: f32 = 0.0;
+  let brightest: f32 = total * BRIGHT_SHARE;
+  var bright: f32 = params.least_log;
 
-  // Each bin's count within the window, at the log2 luminance of its middle.
+  // Each bin's count within the window, at the log2 luminance of its middle; and the bin the bright end falls in.
   for (var bin: u32 = 0u; bin < BINS; bin++) {
     let count: f32 = f32(counts[bin]);
     let windowed: f32 = max(min(below + count, high) - max(below, low), 0.0);
+    let middle: f32 = params.least_log + (f32(bin) + 0.5) / f32(BINS) * params.span_log;
+
+    if (below < brightest && below + count >= brightest) {
+      bright = middle;
+    }
 
     below += count;
     weight += windowed;
-    sum += windowed * (params.least_log + (f32(bin) + 0.5) / f32(BINS) * params.span_log);
+    sum += windowed * middle;
   }
 
   let average: f32 = select(log2(params.aim), sum / max(weight, 1e-6), weight > 0.0);
@@ -134,6 +155,7 @@ fn cs_settle(@builtin(local_invocation_index) index: u32) {
 
   state.used = state.adapted;
   state.adapted = exp2(next);
-  // The key as the scale now exposes it.
+  // The key and the bright end as the scale now exposes them.
   state.key = average + next;
+  state.bright = bright + next;
 }

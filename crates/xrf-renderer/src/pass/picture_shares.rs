@@ -7,6 +7,7 @@ use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
+use crate::pass::exposure_metering::ExposureMetering;
 use crate::pass::lighting_frame::LightingFrame;
 
 /// The shares of the frame's exposure the game's pictures are shown at, so they show as the engine's curve shows them at
@@ -17,8 +18,8 @@ use crate::pass::lighting_frame::LightingFrame;
 /// past the authored law, which would blow a sky's eight-bit night picture out into its steps: both pictures are shown
 /// at the exposure the authored law gives the frame's land in the authored levels' units instead. A transform anchored
 /// on the land (`DisplayMode::get_anchor_stops`) lifts the sky by the land's stops, which AgX's toe makes several at
-/// dusk: the sky's share trades them for its own anchor at its metered level (`DisplayMode::get_sky_stops`), where the
-/// fog's keeps the land's, as it veils the land.
+/// dusk: the sky's share trades them for its own at its metered level and bright end (`DisplayMode::get_sky_lift`),
+/// where the fog's keeps the land's, as it veils the land.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PictureShares {
   pub sky: f32,
@@ -50,9 +51,17 @@ impl PictureShares {
     let mode: DisplayMode = DisplayMode::of(options);
     let contrast: f32 = options.features.grading.contrast;
     // The grading raises the light the shares scale to the contrast's power, so the stops traded are divided by it.
-    let stops: f32 = frame.metering.sky.map_or(0.0, |sky| {
-      (mode.get_sky_stops(sky.exp2() * reference, contrast) - mode.get_anchor_stops(frame.metering.key, contrast))
-        / contrast.max(0.05)
+    let metering: ExposureMetering = frame.metering;
+    let stops: f32 = metering.sky.map_or(0.0, |sky| {
+      let sky_lift: f32 = mode.get_sky_lift(
+        (
+          sky.exp2() * reference,
+          metering.sky_bright.map(|bright| bright.exp2() * reference),
+        ),
+        contrast,
+      );
+
+      (sky_lift - mode.get_lift((metering.key, metering.bright), contrast)) / contrast.max(0.05)
     });
     let shares: Self = Self {
       sky: fog * stops.exp2(),

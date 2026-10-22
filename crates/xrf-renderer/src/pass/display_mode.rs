@@ -31,6 +31,8 @@ impl DisplayMode {
   const ANCHOR_KEYS: (f32, f32) = (5.07e-6, 1.0);
   /// The most a transform's anchor lifts or lowers the light by, in stops.
   const ANCHOR_BOUNDS: (f32, f32) = (-6.0, 8.0);
+  /// The stops under the least the transform shows over which a key gives up its anchor for its bright end's.
+  const BRIGHT_FADE_STOPS: f32 = 2.0;
 
   /// The mode a view's options ask for.
   pub fn of(options: &RenderViewOptions) -> Self {
@@ -62,10 +64,21 @@ impl DisplayMode {
     self.get_match(key, contrast, Self::ANCHOR_HUE)
   }
 
+  /// The stops the frame is lifted by: the anchor at its exposed `key` (`get_anchor_stops`), and, as the key falls under
+  /// the least the transform shows, never more than shows its exposed `bright` end (`ExposureHead::bright`) as bright
+  /// as the engine's curve does. A night's land under AgX's black is held at it while what the moon lights rides the
+  /// lift, through AgX's steeper middle, into its shoulder; matched there, the bright end shows as the engine's and the
+  /// land, which AgX cannot show as the engine does, sinks towards its black. Over the transform's range the key rules
+  /// alone: a dusk's bright end is its fires and glints, which would sink the land with them.
+  pub fn get_lift(self, (key, bright): (f32, Option<f32>), contrast: f32) -> f32 {
+    self.get_bounded(key, bright, contrast, Self::ANCHOR_HUE)
+  }
+
   /// The stops a sky at the exposed `key` is lifted by, graded by `contrast`, for the transform to show it at the
-  /// display value the engine's curve shows it at: its pictures' own anchor (`PictureShares`), apart from the land's.
-  pub fn get_sky_stops(self, key: f32, contrast: f32) -> f32 {
-    self.get_match(key, contrast, Self::SKY_HUE)
+  /// display value the engine's curve shows it at, bounded by its exposed `bright` end as `get_lift` bounds the land's:
+  /// its pictures' own anchor (`PictureShares`), apart from the land's.
+  pub fn get_sky_lift(self, (key, bright): (f32, Option<f32>), contrast: f32) -> f32 {
+    self.get_bounded(key, bright, contrast, Self::SKY_HUE)
   }
 
   /// The transform the physical light is shown through; none for the engine's curve and the engine's own showing.
@@ -75,6 +88,19 @@ impl DisplayMode {
       Self::PbrNeutral => Some(pbr_neutral),
       Self::AsIs | Self::Tonemapped | Self::EngineEncoded => None,
     }
+  }
+
+  /// The match at `key`, bounded by the match at `bright` as far as the graded key stands under the least the transform
+  /// shows, all of it `BRIGHT_FADE_STOPS` under.
+  fn get_bounded(self, key: f32, bright: Option<f32>, contrast: f32, hue: Vec3) -> f32 {
+    let lift: f32 = self.get_match(key, contrast, hue);
+    let (Some(bright), Some(transform)) = (bright, self.get_transform()) else {
+      return lift;
+    };
+    let under: f32 = (get_least_shown(transform, hue) / get_graded(key, contrast).max(f32::MIN_POSITIVE)).log2();
+    let bounded: f32 = lift.min(self.get_match(bright, contrast, hue));
+
+    lift + (bounded - lift) * (under / Self::BRIGHT_FADE_STOPS).clamp(0.0, 1.0)
   }
 
   /// The stops that show a colour of `hue` at the exposed `key`, graded by `contrast`, through the transform as the

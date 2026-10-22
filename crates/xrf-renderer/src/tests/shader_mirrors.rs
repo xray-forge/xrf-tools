@@ -104,7 +104,11 @@ fn the_exposure_histogram_is_sized_as_rust_sizes_it() {
     ExposureHistogramUniform::BINS
   );
   assert_eq!(
-    get_constant(&library, "frame/exposure_histogram", "SKY_COUNT") + 1,
+    get_float_constant(&library, "frame/exposure_histogram", "BRIGHT_SHARE"),
+    ExposureHistogramUniform::BRIGHT_SHARE
+  );
+  assert_eq!(
+    get_constant(&library, "frame/exposure_histogram", "SKY_SQUARES") + 1,
     ExposureHistogramUniform::BINS + ExposureHistogramUniform::SKY_SLOTS
   );
   assert_eq!(

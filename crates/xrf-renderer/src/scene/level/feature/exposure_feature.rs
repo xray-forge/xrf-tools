@@ -148,10 +148,16 @@ impl ExposureFeature {
           key: Some(head.key.exp2())
             .filter(|key| key.is_finite() && *key > 0.0)
             .unwrap_or(self.metering.key),
+          bright: Some(head.bright.exp2())
+            .filter(|bright| bright.is_finite() && *bright > 0.0)
+            .or(self.metering.bright),
           land: Some(head.key - head.adapted.log2())
             .filter(|land| land.is_finite())
             .or(self.metering.land),
           sky: Some(head.sky).filter(|sky| sky.is_finite()).or(self.metering.sky),
+          sky_bright: Some(head.sky_bright)
+            .filter(|bright| bright.is_finite())
+            .or(self.metering.sky_bright),
         },
         (None, None) => self.metering,
       };
@@ -237,12 +243,6 @@ impl ExposureFeature {
   /// Drops the scale a frame that was never submitted copied out.
   pub fn abandon_readback(&self) {
     self.readback.abandon();
-  }
-
-  /// The key the physical light is shown at as its scale exposes it, which the display transforms' anchors are solved
-  /// at: the histogram's last metered, or a daylit exterior's at the scale it starts at or holds.
-  pub fn get_key(&self) -> f32 {
-    self.metering.key
   }
 
   /// What the physical light's histogram last metered, which the game's pictures are shown by (`PictureShares`).
@@ -336,6 +336,8 @@ impl ExposureFeature {
       used: scale,
       key: ExposureHistogramUniform::get_daylit_key(scale).log2(),
       sky: f32::NAN,
+      bright: f32::NAN,
+      sky_bright: f32::NAN,
       ..bytemuck::Zeroable::zeroed()
     };
 
