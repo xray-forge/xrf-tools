@@ -34,6 +34,10 @@ fn pack_ground_normal(normal: vec3<f32>) -> u32 {
 // then fills over some frames, the nearest first.
 const DECOMPRESS_BUDGET: u32 = 2048u;
 
+// Slots a frame plants under a lens of parallel rays (`eye.w` nought): a level map's tile plants its whole ground anew,
+// tens of thousands of slots, within the frames it settles for.
+const FLAT_DECOMPRESS_BUDGET: u32 = 32768u;
+
 const STOP_WORD: u32 = 0u;
 const LEFT_WORD: u32 = 1u;
 const TICKET_WORD: u32 = 2u;
@@ -108,13 +112,14 @@ fn cs_select_band() {
   // Past every band: all that is stale is planted.
   var stop: u32 = params.bands;
   var left: u32 = 0u;
+  let budget: u32 = select(DECOMPRESS_BUDGET, FLAT_DECOMPRESS_BUDGET, params.eye.w < 0.5);
 
   for (var band: u32 = 0u; band < params.bands; band++) {
     let count: u32 = atomicLoad(&band_counts[band]);
 
-    if (taken + count > DECOMPRESS_BUDGET) {
+    if (taken + count > budget) {
       stop = band;
-      left = DECOMPRESS_BUDGET - taken;
+      left = budget - taken;
       break;
     }
 

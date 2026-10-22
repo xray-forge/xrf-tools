@@ -91,14 +91,14 @@ impl FlaresFeature {
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
     weather_textures: WeatherTextures<'_>,
-    (view, rate): (&CameraView, f32),
+    (view, rate, now): (&CameraView, f32, Instant),
     has_targets: bool,
   ) -> Option<(String, Vec4)> {
     let sprite: Option<(String, Vec4)> = self.prepare_drawn(
       (lighting, weather),
       options,
       weather_textures,
-      (view, rate),
+      (view, rate, now),
       has_targets,
     );
 
@@ -121,10 +121,9 @@ impl FlaresFeature {
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
     options: &RenderViewOptions,
     weather_textures: WeatherTextures<'_>,
-    (view, rate): (&CameraView, f32),
+    (view, rate, now): (&CameraView, f32, Instant),
     has_targets: bool,
   ) -> Option<(String, Vec4)> {
-    let now: Instant = Instant::now();
     let delta: f32 = self
       .last
       .map_or(0.0, |last| now.saturating_duration_since(last).as_secs_f32());

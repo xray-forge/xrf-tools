@@ -147,7 +147,7 @@ fn read_water(
   out.offset_texel = select(vec2<f32>(0.5), distorted, (flags & SURFACE_HAS_DISTORTION) != 0u);
   out.normal = normalize(in.normal);
   out.surface_normal = normalize(in.tangent * out.bent.x + in.binormal * out.bent.y + out.normal * out.bent.z);
-  out.to_point = normalize(in.world - camera.position.xyz);
+  out.to_point = camera_world_ray(in.world);
   out.position = (camera.view * vec4<f32>(in.world, 1.0)).xyz;
   out.fog = select(0.0, fog_amount_at(lighting, out.position, in.world.y), lighting.params.y > 0.5);
 

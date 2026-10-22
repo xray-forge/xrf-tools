@@ -16,6 +16,10 @@ use xrf_renderer_core::{
 use wgpu::util::StagingBelt;
 
 use crate::camera::camera_view::CameraView;
+use crate::capture::capture_event::CaptureEvent;
+use crate::capture::capture_job::CaptureJob;
+use crate::capture::capture_plan::CapturePlan;
+use crate::capture::capture_shot::CaptureShot;
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_requirements::can_trace;
 use crate::context::library_versions::locate_dlss_runtime;
@@ -66,6 +70,7 @@ use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::scene_output::SceneOutput;
 use crate::scene::level::scene_view::SceneView;
+use crate::scene::level::view_lens::ViewLens;
 use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::static_scene::static_selection::StaticSelection;
 use crate::scene::texture::sky_texture_requests::SkyTextureRequests;
@@ -80,6 +85,7 @@ use crate::thread::render_workers::RenderWorkers;
 use crate::thread::reopening_scenes::ReopeningScenes;
 use crate::thread::retry_backoff::RetryBackoff;
 use crate::thread::running_gpu::RunningGpu;
+use crate::thread::scene_view_framing::SceneViewFraming;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::pick_in_flight::PickInFlight;
 use crate::viewport::render_viewport::RenderViewport;
@@ -108,6 +114,9 @@ const ALLOCATOR_REPORT_EVERY: Duration = Duration::from_millis(500);
 
 /// A viewport's readied frame, with the pick it draws and what unprojects that pick's depth.
 type ViewFrame = (RenderViewportId, LevelFrame, Option<(PendingPick, (Mat4, Vec2))>);
+
+/// A capture's shot copied out of a viewport's frame, on its way back.
+type ShotCopy = (RenderViewportId, FrameCapture);
 
 /// What the application hands the render thread beside its commands: the files it ships with, the world it draws, and
 /// where it keeps the driver's compiled pipelines between runs.
@@ -467,6 +476,61 @@ impl RenderThread {
           viewport.screenshots.push(reply);
         }
       }
+      RenderCommand::CaptureMap { id, capture, events } => {
+        let most: u32 = self.get_most_texture();
+
+        self.begin_capture(id, events, |_| CapturePlan::new_map(capture, most));
+      }
+      RenderCommand::CaptureCube { id, capture, events } => {
+        let most: u32 = self.get_most_texture();
+
+        self.begin_capture(id, events, |viewport| {
+          CapturePlan::new_cube(capture, &viewport.world.camera, Self::get_far_limit(viewport), most)
+        });
+      }
+    }
+  }
+
+  /// The pixels on a side of the GPU's largest texture, or what every GPU draws before one is there.
+  fn get_most_texture(&self) -> u32 {
+    self
+      .running
+      .as_ref()
+      .map_or(wgpu::Limits::default().max_texture_dimension_2d, |running| {
+        running.gpu.context.device.limits().max_texture_dimension_2d
+      })
+  }
+
+  /// Starts a viewport's capture as `plan` plans it from the viewport; refused, through `events`, where the viewport is
+  /// gone, shows no level or captures already, or the capture cannot be drawn.
+  fn begin_capture(
+    &mut self,
+    id: RenderViewportId,
+    events: Sender<CaptureEvent>,
+    plan: impl FnOnce(&RenderViewport) -> XrfResult<CapturePlan>,
+  ) {
+    let planned: XrfResult<CapturePlan> = match self.viewports.get(&id) {
+      None => Err(XrfError::new_invalid_error(format!(
+        "Viewport {} is no longer drawn",
+        id.0
+      ))),
+      Some(viewport) if viewport.shown.is_none() => Err(XrfError::new_invalid_error(format!(
+        "Viewport {} shows no level to capture",
+        id.0
+      ))),
+      Some(viewport) if viewport.is_capturing() => Err(XrfError::new_invalid_error(format!(
+        "Viewport {} captures already",
+        id.0
+      ))),
+      Some(viewport) => plan(viewport),
+    };
+
+    match (planned, self.viewports.get_mut(&id)) {
+      (Ok(plan), Some(viewport)) => viewport.capture = Some(CaptureJob::new(plan, events)),
+      (Err(error), _) => {
+        let _ = events.send(CaptureEvent::Stopped { error });
+      }
+      (Ok(_), None) => {}
     }
   }
 
@@ -1195,6 +1259,7 @@ impl RenderThread {
     let gpu: &GpuState = gpu;
     let mut captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)> =
       self.take_captures(&gpu.context.device, &windows);
+    let shots: Vec<ShotCopy> = self.take_capture_shots(&gpu.context.device, &windows);
 
     runtime.timer.set_enabled(self.settings.is_gpu_timed);
     runtime.timer.set_tag(self.periodic.get_frame());
@@ -1205,7 +1270,7 @@ impl RenderThread {
       (gpu, runtime),
       &mut windows,
       &frames,
-      &mut captures,
+      (&mut captures, &shots),
       &mut retried,
       started,
     );
@@ -1229,7 +1294,7 @@ impl RenderThread {
       &mut phases,
     );
 
-    self.end_view_frames(frames, captures);
+    self.end_view_frames(frames, captures, shots);
 
     let cpu: Duration = started.elapsed().saturating_sub(waited);
 
@@ -1350,10 +1415,17 @@ impl RenderThread {
     self.periodic.grant();
 
     for (id, ..) in frames {
-      let Some((scene_id, view)) = self.viewports.get_mut(id).and_then(|viewport| viewport.shown.as_mut()) else {
+      let Some(viewport) = self.viewports.get_mut(id) else {
         continue;
       };
-      let Some(scene) = self.scenes.get(scene_id) else {
+      let Some(scene) = viewport
+        .shown
+        .as_ref()
+        .and_then(|(scene_id, _)| self.scenes.get(scene_id))
+      else {
+        continue;
+      };
+      let Some(view) = viewport.get_drawn_view_mut() else {
         continue;
       };
 
@@ -1361,9 +1433,9 @@ impl RenderThread {
     }
 
     for (scene_id, id) in firsts {
-      let (Some(scene), Some((_, view))) = (
+      let (Some(scene), Some((_, view, _))) = (
         self.scenes.get_mut(scene_id),
-        self.viewports.get(id).and_then(|viewport| viewport.shown.as_ref()),
+        self.viewports.get(id).and_then(RenderViewport::get_drawn_view),
       ) else {
         continue;
       };
@@ -1415,7 +1487,8 @@ impl RenderThread {
 
     for window in windows {
       for (id, rect, shown) in &window.drawn {
-        let Some(viewport) = self.viewports.get_mut(id) else {
+        // A viewport capturing draws no frame of its own to capture; what it was asked waits.
+        let Some(viewport) = self.viewports.get_mut(id).filter(|viewport| !viewport.is_capturing()) else {
           continue;
         };
 
@@ -1446,6 +1519,41 @@ impl RenderThread {
     captures
   }
 
+  /// The captures' shots this frame copies out, each on the last of its settling frames, in its window's format; a
+  /// shot that cannot be copied stops its capture.
+  fn take_capture_shots(&mut self, device: &wgpu::Device, windows: &[WindowFrame]) -> Vec<ShotCopy> {
+    let mut shots: Vec<ShotCopy> = Vec::new();
+
+    for window in windows {
+      for (id, ..) in &window.drawn {
+        let Some(viewport) = self.viewports.get_mut(id) else {
+          continue;
+        };
+        let Some(shot) = viewport
+          .capture
+          .as_ref()
+          .filter(|capture| !capture.is_ended() && capture.is_kept_frame())
+          .and_then(CaptureJob::get_drawn_shot)
+        else {
+          continue;
+        };
+
+        match FrameCapture::new_shot(
+          device,
+          window.format,
+          shot.get_drawn_size(),
+          viewport.frame,
+          shot.is_covered(),
+        ) {
+          Ok(capture) => shots.push((*id, capture)),
+          Err(error) => viewport.stop_capture(&error.to_string()),
+        }
+      }
+    }
+
+    shots
+  }
+
   /// Puts captures a window gave no image for back at the front of their viewport's, for its next presented frame;
   /// answers one whose viewport is gone.
   fn retry_captures(&mut self, retried: Vec<(RenderViewportId, CaptureReply)>) {
@@ -1471,7 +1579,7 @@ impl RenderThread {
     (gpu, runtime): (&GpuState, &mut GraphRuntime),
     windows: &mut [WindowFrame],
     frames: &[ViewFrame],
-    captures: &mut Vec<(RenderViewportId, FrameCapture, CaptureReply)>,
+    (captures, shots): (&mut Vec<(RenderViewportId, FrameCapture, CaptureReply)>, &[ShotCopy]),
     retried: &mut Vec<(RenderViewportId, CaptureReply)>,
     started: Instant,
   ) -> XrfResult<ExecutedGraph> {
@@ -1487,10 +1595,10 @@ impl RenderThread {
       let Some(viewport) = self.viewports.get(id) else {
         continue;
       };
-      let (Some((scene_id, view)), Some(binding)) = (&viewport.shown, &viewport.binding) else {
+      let Some((scene_id, view, binding)) = viewport.get_drawn_view() else {
         continue;
       };
-      let Some(scene) = self.scenes.get(scene_id) else {
+      let Some(scene) = self.scenes.get(&scene_id) else {
         continue;
       };
 
@@ -1549,9 +1657,11 @@ impl RenderThread {
       let (Some(target), Some(grid)) = (target, gpu.get_grid(window.format)) else {
         continue;
       };
+      // A viewport capturing is left to the backdrop: its frames are the capture's shots.
       let composed: Vec<ComposedView<'_>> = window
         .drawn
         .iter()
+        .filter(|(id, ..)| !self.viewports.get(id).is_some_and(RenderViewport::is_capturing))
         .filter_map(|(id, rect, shown)| Self::compose_view(&self.viewports, gpu, (*id, *rect, *shown), outputs.get(id)))
         .collect();
       let backdrop: Option<&WindowBackdrop> = gpu
@@ -1571,6 +1681,16 @@ impl RenderThread {
 
     for (id, capture, _) in captures.iter().filter(|(_, capture, _)| capture.is_screenshot()) {
       Self::declare_screenshot(
+        (&mut graph, runtime),
+        gpu,
+        &self.viewports,
+        (*id, capture),
+        outputs.get(id),
+      );
+    }
+
+    for (id, capture) in shots {
+      Self::declare_capture_shot(
         (&mut graph, runtime),
         gpu,
         &self.viewports,
@@ -1691,6 +1811,54 @@ impl RenderThread {
       });
   }
 
+  /// Declares a capture's shot: the frame its capture drew (`output`) presented into a texture of its own at the
+  /// shot's drawn size, then copied out with its depth, which a map tile's coverage is read from.
+  fn declare_capture_shot<'a>(
+    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    gpu: &'a GpuState,
+    viewports: &'a BTreeMap<RenderViewportId, RenderViewport>,
+    (id, capture): (RenderViewportId, &'a FrameCapture),
+    output: Option<&SceneOutput>,
+  ) {
+    let (Some(output), Some((_, view, binding))) =
+      (output, viewports.get(&id).and_then(RenderViewport::get_drawn_view))
+    else {
+      return;
+    };
+    let (width, height): (u32, u32) = capture.get_size();
+    let format: wgpu::TextureFormat = capture.get_format();
+    let parameters: PresentParameters<'a> = PresentParameters {
+      present: runtime.push_uniform(&view.get_present_uniform().for_screenshot((width, height))),
+      ..Self::to_present_parameters(gpu, output)
+    };
+    let texture: GraphTexture =
+      graph.create_texture(GraphTextureDescriptor::new_2d("capture shot", width, height, format));
+    let depth: GraphTexture = output.targets.depth;
+    let present: &'a PresentPass = &gpu.present;
+
+    graph
+      .add_raster_pass("capture shot")
+      .parameters(&parameters)
+      .color(GraphColorAttachment::new(
+        texture,
+        wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+      ))
+      .record(move |context| present.draw(context, format, binding, &parameters));
+    graph
+      .add_encoder_pass("capture shot copy")
+      .texture(texture, GraphTextureAccess::CopySource)
+      .texture(depth, GraphTextureAccess::CopySource)
+      .keep()
+      .record(move |context| {
+        let picture: &wgpu::Texture = context.get_texture(texture).texture;
+        let depth: &wgpu::Texture = context.get_texture(depth).texture;
+        let encoder: &mut wgpu::CommandEncoder = context.get_encoder();
+
+        capture.encode(encoder, picture);
+        capture.encode_coverage(encoder, depth);
+      });
+  }
+
   /// Gives up a frame its graph could not draw: what the frame's own encoder holds is not of the frame (the uploads and
   /// the acceleration structures the scenes built, which they count as done) and still goes up; what the graph copied
   /// out for reading back is dropped, its picks wait for the next frame, and its captures are refused.
@@ -1719,7 +1887,7 @@ impl RenderThread {
         continue;
       };
 
-      if let Some((_, level)) = viewport.shown.as_mut() {
+      if let Some(level) = viewport.get_drawn_view_mut() {
         level.abandon_frame();
       }
 
@@ -1792,11 +1960,29 @@ impl RenderThread {
 
   /// Ends each view's submitted frame: its history kept, its stats and its pick asked for back; and each capture asked
   /// for back.
-  fn end_view_frames(&mut self, frames: Vec<ViewFrame>, captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)>) {
+  fn end_view_frames(
+    &mut self,
+    frames: Vec<ViewFrame>,
+    captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)>,
+    mut shots: Vec<ShotCopy>,
+  ) {
     for (id, frame, pick) in frames {
       let Some(viewport) = self.viewports.get_mut(&id) else {
         continue;
       };
+
+      // A capture's frame moves it on, with the shot copied out of it, if any.
+      if let Some(capture) = viewport.capture.as_mut().filter(|capture| !capture.is_ended()) {
+        let kept: Option<FrameCapture> = shots
+          .iter()
+          .position(|(shot, _)| *shot == id)
+          .map(|index| shots.swap_remove(index).1);
+
+        capture.advance(kept);
+
+        continue;
+      }
+
       let Some((_, level)) = viewport.shown.as_mut() else {
         continue;
       };
@@ -1959,17 +2145,20 @@ impl RenderThread {
   /// What a viewport's camera sees over `rect`, its whole rectangle: a lit and fogged level ends where its fog is
   /// total, or at the weather's far plane, as the engine's does.
   fn get_camera_view(viewport: &RenderViewport, rect: &RenderRect) -> CameraView {
-    let far_limit: f32 = viewport
+    viewport
+      .world
+      .camera
+      .to_view(rect.width as f32 / rect.height as f32, Self::get_far_limit(viewport))
+  }
+
+  /// How far a viewport's camera sees at most: where a lit and fogged level's fog is total, else without end.
+  fn get_far_limit(viewport: &RenderViewport) -> f32 {
+    viewport
       .world
       .lighting
       .fog
       .filter(|_| viewport.options.mode.is_lit && viewport.options.show.is_fogged)
-      .map_or(f32::INFINITY, |fog| fog.get_total_distance());
-
-    viewport
-      .world
-      .camera
-      .to_view(rect.width as f32 / rect.height as f32, far_limit)
+      .map_or(f32::INFINITY, |fog| fog.get_total_distance())
   }
 
   /// Readies one viewport's frame of the scene it shows: writes its camera, asks for the textures its weather draws
@@ -1982,16 +2171,24 @@ impl RenderThread {
     (encoder, periodic): (&mut FrameEncoder, &mut PeriodicScheduler),
     (load, prepare): (&mut Duration, &mut Duration),
   ) -> Option<ViewFrame> {
+    if viewport.is_capturing() {
+      return Self::ready_capture_view(
+        (gpu, shaders),
+        (viewport, scene, is_scene_first),
+        (encoder, periodic),
+        (load, prepare),
+      );
+    }
+
     let id: RenderViewportId = viewport.id;
     let device: &wgpu::Device = &gpu.context.device;
-    let queue: &wgpu::Queue = &gpu.context.queue;
     let scale: f32 = viewport.get_scale();
     let view: CameraView = Self::get_camera_view(viewport, rect);
     let binding: &ViewBinding = viewport
       .binding
       .get_or_insert_with(|| ViewBinding::new(device, &gpu.view_layout));
 
-    let options: RenderViewOptions = viewport.options.clone();
+    let options: RenderViewOptions = ViewLens::fit(&viewport.options, &view).into_owned();
     let switches: Vec4 = CameraUniform::get_switches(&options);
     let (resolved, drawn_rect): ((u32, u32), RenderRect) = Self::get_view_sizes(
       &options,
@@ -2024,9 +2221,134 @@ impl RenderThread {
 
       return None;
     };
+    let (lighting, weather): (Cow<'_, RenderLighting>, Option<&Arc<RenderLevelWeather>>) =
+      Self::get_view_lighting(&options, world);
+
+    Self::prepare_scene_view(
+      (gpu, shaders),
+      (scene, &mut *view_state, binding, is_scene_first),
+      &SceneViewFraming {
+        view,
+        rect: *rect,
+        resolved,
+        drawn: drawn_rect,
+        options: &options,
+        lighting: &lighting,
+        weather,
+        overlays: Some((overlays, *overlays_version)),
+        selection: selection.as_ref(),
+        weather_rate: world.clock_rate,
+      },
+      (encoder, periodic),
+      (load, prepare),
+    );
+
+    let device: &wgpu::Device = &gpu.context.device;
+
+    Self::ready_pick(
+      (id, view_state, picks),
+      (device, encoder, &gpu.view_layout),
+      (&view, rect, scale, switches),
+    )
+  }
+
+  /// Readies the frame of a viewport capturing: its capture's view drawn through the shot it stands at, with the
+  /// capture's look and lighting, over the viewport's world frame; none while its last shots come back.
+  fn ready_capture_view(
+    (gpu, shaders): (&mut GpuState, &ShaderLibrary),
+    (viewport, scene, is_scene_first): (&mut RenderViewport, Option<&mut LevelScene>, bool),
+    (encoder, periodic): (&mut FrameEncoder, &mut PeriodicScheduler),
+    (load, prepare): (&mut Duration, &mut Duration),
+  ) -> Option<ViewFrame> {
+    let id: RenderViewportId = viewport.id;
+    let scene: &mut LevelScene = scene?;
+    let RenderViewport {
+      capture,
+      world,
+      options,
+      ..
+    } = viewport;
+    let capture: &mut CaptureJob = capture.as_mut()?;
+    let shot: CaptureShot = capture.get_drawn_shot()?;
+    let view: CameraView = shot.get_view();
+    let options: RenderViewOptions =
+      ViewLens::fit(&shot.apply_look(options, capture.is_metering()), &view).into_owned();
+    let device: &wgpu::Device = &gpu.context.device;
+    let queue: &wgpu::Queue = &gpu.context.queue;
+    let (width, height): (u32, u32) = shot.get_drawn_size();
+    let rect: RenderRect = RenderRect {
+      x: 0,
+      y: 0,
+      width,
+      height,
+    };
+    let (resolved, drawn_rect): ((u32, u32), RenderRect) =
+      Self::get_view_sizes(&options, &rect, true, device.limits().max_texture_dimension_2d);
+    let view_layout: &wgpu::BindGroupLayout = &gpu.view_layout;
+    let (view_state, binding): (&mut SceneView, &ViewBinding) = capture.get_view_mut(|| {
+      (
+        SceneView::new(device, queue, view_layout),
+        ViewBinding::new(device, view_layout),
+      )
+    });
+    let (lighting, weather): (Cow<'_, RenderLighting>, Option<&Arc<RenderLevelWeather>>) =
+      Self::get_view_lighting(&options, world);
+    let lighting: Cow<'_, RenderLighting> = shot.apply_lighting(lighting);
+
+    Self::prepare_scene_view(
+      (gpu, shaders),
+      (scene, &mut *view_state, binding, is_scene_first),
+      &SceneViewFraming {
+        view,
+        rect,
+        resolved,
+        drawn: drawn_rect,
+        options: &options,
+        lighting: &lighting,
+        weather,
+        overlays: None,
+        selection: None,
+        weather_rate: world.clock_rate,
+      },
+      (encoder, periodic),
+      (load, prepare),
+    );
+
+    let device: &wgpu::Device = &gpu.context.device;
+
+    let frame: LevelFrame = view_state.begin_frame((device, encoder), None)?;
+
+    Some((id, frame, None))
+  }
+
+  /// Prepares one view of a scene for its frame: writes its camera, its jitter and motion with it, asks for the
+  /// textures its weather draws with and its overlays where it has them, prepares its features and offers its periodic
+  /// work; what loading and preparing take is added to `load` and `prepare`.
+  fn prepare_scene_view(
+    (gpu, shaders): (&mut GpuState, &ShaderLibrary),
+    (scene, view_state, binding, is_scene_first): (&mut LevelScene, &mut SceneView, &ViewBinding, bool),
+    framing: &SceneViewFraming<'_>,
+    (encoder, periodic): (&mut FrameEncoder, &mut PeriodicScheduler),
+    (load, prepare): (&mut Duration, &mut Duration),
+  ) {
+    let SceneViewFraming {
+      view,
+      rect,
+      resolved,
+      drawn: drawn_rect,
+      options,
+      lighting,
+      weather,
+      overlays,
+      selection,
+      weather_rate,
+    } = *framing;
+    let device: &wgpu::Device = &gpu.context.device;
+    let queue: &wgpu::Queue = &gpu.context.queue;
+    let switches: Vec4 = CameraUniform::get_switches(options);
     // A temporal resolve's jitter moves every scene pass's samples, never the view its history is measured by.
     let jitter: Vec2 = view_state.next_jitter(
-      &options,
+      options,
       resolved.0 as f32 / drawn_rect.width.max(1) as f32,
       gpu.context.dlss.is_some(),
     );
@@ -2034,11 +2356,7 @@ impl RenderThread {
     let unjittered: Mat4 = view.get_view_projection();
     let motion: (Mat4, Mat4) = view_state.next_motion(unjittered);
     let previous: Mat4 = view_state.next_jittered(drawn.get_view_projection());
-    let selected: Option<StaticSelection> = view_state.resolve_selection(scene, selection.as_ref()).cloned();
-
-    let (lighting, weather): (Cow<'_, RenderLighting>, Option<&Arc<RenderLevelWeather>>) =
-      Self::get_view_lighting(&options, world);
-    let lighting: &RenderLighting = &lighting;
+    let selected: Option<StaticSelection> = view_state.resolve_selection(scene, selection).cloned();
     // The enhanced parallax shadows its relief towards the sun, as the view sees it.
     let to_sun: Vec3 = drawn.view.transform_vector3(-lighting.get_sun_direction());
 
@@ -2055,7 +2373,7 @@ impl RenderThread {
         .with_texture_bias(view_state.get_texture_bias())
         .with_motion(motion)
         .with_previous(previous)
-        .with_asset_view(&options, drawn_rect.height as f32 / rect.height.max(1) as f32),
+        .with_asset_view(options, drawn_rect.height as f32 / rect.height.max(1) as f32),
     );
 
     let loading: Instant = Instant::now();
@@ -2063,9 +2381,12 @@ impl RenderThread {
     {
       profiling::scope!("load");
 
-      view_state.set_overlays(scene, device, overlays, *overlays_version, selection.as_ref());
-      view_state.request_textures(scene, &mut gpu.weather_textures, (lighting, weather), &options);
-      Self::ask_heights(&mut gpu.textures, &options);
+      if let Some((overlays, version)) = overlays {
+        view_state.set_overlays(scene, device, overlays, version, selection);
+      }
+
+      view_state.request_textures(scene, &mut gpu.weather_textures, (lighting, weather), options);
+      Self::ask_heights(&mut gpu.textures, options);
     }
     *load += loading.elapsed();
 
@@ -2088,25 +2409,18 @@ impl RenderThread {
           view: &view,
           drawn: (drawn_rect.width, drawn_rect.height),
           resolved,
-          output: *rect,
-          field_of_view: world.camera.field_of_view,
-          options: &options,
+          output: rect,
+          options,
           lighting,
           weather,
           weather_textures: gpu.weather_textures.scoped(source.get_texture_scope()),
-          weather_rate: world.clock_rate,
+          weather_rate,
           is_scene_first,
         },
       );
       view_state.offer_periodic(scene, device, periodic, &gpu.view_layout);
     }
     *prepare += preparing.elapsed();
-
-    Self::ready_pick(
-      (id, view_state, picks),
-      (device, encoder, &gpu.view_layout),
-      (&view, rect, scale, switches),
-    )
   }
 
   /// What a view is lit by and the weather it plays: an asset viewer's rig and none, else its world's frame's.

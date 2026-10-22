@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_error::XrfResult;
@@ -85,6 +85,7 @@ use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::level::shadows_recorded::ShadowsRecorded;
 use crate::scene::level::sky_views::SkyViews;
 use crate::scene::level::surroundings_cube::SurroundingsCube;
+use crate::scene::level::view_clock::ViewClock;
 use crate::scene::level::view_frame::ViewFrame;
 use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::level::view_record::ViewRecord;
@@ -111,6 +112,8 @@ pub struct SceneView {
   targets: Option<ViewTargets>,
   /// Its feature units.
   features: SceneFeatures,
+  /// The time its frames are drawn at.
+  clock: ViewClock,
 }
 
 impl SceneView {
@@ -154,6 +157,17 @@ impl SceneView {
     self.features.present.get_uniform()
   }
 
+  /// Holds its exposure where it stands, metered no more, or lets it adapt again.
+  pub fn freeze_exposure(&mut self, is_frozen: bool) {
+    self.features.exposure.set_frozen(is_frozen);
+  }
+
+  /// Draws its frames `step` apart, however long each takes, or, none, at the time each is drawn: what adapts or fades
+  /// over its frames moves by it.
+  pub fn step_clock(&mut self, step: Option<Duration>) {
+    self.clock.set_step(step);
+  }
+
   /// The size its frame is resolved at, none before its targets are made.
   pub fn get_output_size(&self) -> Option<(u32, u32)> {
     self.targets.as_ref().map(|_| self.features.resolve.get_resolved())
@@ -175,6 +189,7 @@ impl SceneView {
       shared: ViewFrame::default(),
       targets: None,
       features: SceneFeatures::new((device, queue), view_layout),
+      clock: ViewClock::default(),
     }
   }
 
@@ -247,11 +262,12 @@ impl SceneView {
     }
 
     let time: f32 = scene.started.elapsed().as_secs_f32();
+    let now: Instant = self.clock.tick(Instant::now());
 
     // What of the scene drawn by passes of its own the view may see: none of the water's or the surface passes' work
     // runs for what is out of sight.
     let sight: StaticSight = scene.statics.get_sight(&frame.view.get_frustum());
-    let lighting_frame: LightingFrame = self.prepare_weather(scene, frame, &sight, time);
+    let lighting_frame: LightingFrame = self.prepare_weather(scene, frame, &sight, (time, now));
 
     self
       .features
@@ -259,7 +275,7 @@ impl SceneView {
       .follow_skeletons((scene, frame.device, &mut *encoder));
 
     self.prepare_scene(scene, encoder, frame, &lighting_frame, time);
-    self.prepare_view(scene, encoder, frame, &sight);
+    self.prepare_view(scene, encoder, frame, (&sight, now));
     self.prepare_lighting(scene, encoder, frame, &lighting_frame, time);
   }
 
@@ -271,7 +287,7 @@ impl SceneView {
     scene: &LevelScene,
     frame: &ViewPrepare<'_>,
     sight: &StaticSight,
-    time: f32,
+    (time, now): (f32, Instant),
   ) -> LightingFrame {
     let (device, options, lighting) = (frame.device, frame.options, frame.lighting);
     let weather = (lighting, frame.weather);
@@ -282,14 +298,14 @@ impl SceneView {
       options.features.shadows.resolution,
       options.features.shadows.get_cascade_count() > 0,
     );
-    self.features.exposure.prepare(frame.queue, options, Instant::now());
+    self.features.exposure.prepare(frame.queue, options, now);
 
     let sun_sprite: Option<(String, Vec4)> = self.features.flares.prepare(
       device,
       weather,
       options,
       frame.weather_textures,
-      (frame.view, frame.weather_rate),
+      (frame.view, frame.weather_rate, now),
       self.targets.is_some(),
     );
 
@@ -330,7 +346,7 @@ impl SceneView {
 
     self.features.wet.prepare(
       weather,
-      options,
+      (options, !frame.view.is_orthographic()),
       (&scene.wetness, falling.as_ref(), time),
       (windows, self.features.resolve.get_noise_frame()),
       frame.weather_textures,
@@ -390,7 +406,7 @@ impl SceneView {
     self
       .features
       .statics
-      .prepare(&scene.statics, options, (view, frame.field_of_view), frame.drawn);
+      .prepare(&scene.statics, options, view, frame.drawn);
 
     let is_traced: bool = options.is_light_traced() && frame.passes.scene_trace.is_traced() && scene.trace.is_some();
     let is_cascaded: bool =
@@ -464,7 +480,7 @@ impl SceneView {
     scene: &LevelScene,
     encoder: &mut FrameEncoder,
     frame: &ViewPrepare<'_>,
-    sight: &StaticSight,
+    (sight, now): (&StaticSight, Instant),
   ) {
     let (device, options, view) = (frame.device, frame.options, frame.view);
     let (width, height) = frame.drawn;
@@ -472,7 +488,7 @@ impl SceneView {
 
     self.features.resolve.prepare(
       (device, frame.dlss),
-      view,
+      (view, now),
       (
         self.targets.as_ref().map(|targets| (targets.width, targets.height)),
         frame.resolved,

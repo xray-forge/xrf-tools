@@ -165,7 +165,7 @@ fn enhanced_waves(in: WaterVarying, bottom_distance: f32) -> EnhancedWaves {
   // The parallax, while the waves stand: steps by how closely the eye looks along the surface, one alone past its
   // distance.
   if (enhanced.parallax_height > 0.0) {
-    let to_eye: vec3<f32> = normalize(camera.position.xyz - in.world);
+    let to_eye: vec3<f32> = -camera_world_ray(in.world);
     let eye: vec3<f32> = normalize(vec3<f32>(
       dot(to_eye, across),
       dot(to_eye, along),

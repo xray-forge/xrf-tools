@@ -339,6 +339,7 @@ struct Lights {
   far: f32,
   shadow_filter: u32,
   projection: vec4<f32>,
+  lens: vec4<f32>,
 }
 
 struct LightRecord {

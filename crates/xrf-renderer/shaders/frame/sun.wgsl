@@ -67,7 +67,7 @@ fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
   let slice: f32 = material.z;
   // `plight_infinity`: L towards the light, V towards the eye, H halfway.
   let to_light: vec3<f32> = lighting.to_sun.xyz;
-  let half_way: vec3<f32> = normalize(to_light - normalize(position));
+  let half_way: vec3<f32> = normalize(to_light - camera_view_ray(position));
   let lit: vec4<f32> = textureSampleLevel(
     material_lut,
     lut_sampler,
@@ -104,7 +104,7 @@ fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
   var through: vec3<f32> = vec3<f32>(0.0);
 
   if (lighting.flora.x > 0.5 && has_mark(material.a, MARK_FLORA)) {
-    through = flora_through(lighting, -normalize(position), to_light, normal);
+    through = flora_through(lighting, -camera_view_ray(position), to_light, normal);
   }
 
   return SunTargets(vec4<f32>(lighting.sun.rgb * lit.x + through, lighting.sun.w * lit.y) * shadow, vec4<f32>(shadow));

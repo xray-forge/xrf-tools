@@ -55,6 +55,9 @@ pub struct ExposureFeature {
   /// What the physical light's histogram last metered: the key it is shown at, the histogram's or a daylit exterior's
   /// at the scale it starts at or holds, and the land's and the sky's levels, none while it holds.
   metering: ExposureMetering,
+  /// Whether the scale holds where it stands, metered no more: a capture's tiles or faces share one exposure, or
+  /// their seams show.
+  is_frozen: bool,
 }
 
 impl ExposureFeature {
@@ -88,6 +91,7 @@ impl ExposureFeature {
       readback: GpuReadback::new(device, "exposure readback", size_of::<ExposureHead>() as u64),
       pre_exposure: PreExposure::NONE,
       metering: ExposureMetering::default(),
+      is_frozen: false,
     };
 
     exposure.reset(queue, 1.0);
@@ -106,6 +110,14 @@ impl ExposureFeature {
     let scale: Option<f32> = read
       .map(|head| head.adapted)
       .filter(|adapted| adapted.is_finite() && *adapted > 0.0);
+
+    if self.is_frozen && is_physical == self.is_physical {
+      // The scale the passes read stays in the state unmeasured, and the light is written at the last frame's.
+      self.is_measuring = false;
+      self.pre_exposure.previous = self.pre_exposure.current;
+
+      return;
+    }
 
     if is_physical != self.is_physical {
       // The physical light starts where a daylit exterior is shown, its light written there from the first frame.
@@ -181,7 +193,7 @@ impl ExposureFeature {
       return;
     }
 
-    let delta: Duration = self.last.map_or(Duration::ZERO, |last| (now - last).min(LONGEST_STEP));
+    let delta: Duration = self.get_delta(now);
 
     self.is_adapting = true;
     self.is_measuring = true;
@@ -217,12 +229,24 @@ impl ExposureFeature {
       return;
     }
 
-    let delta: Duration = self.last.map_or(Duration::ZERO, |last| (now - last).min(LONGEST_STEP));
+    let delta: Duration = self.get_delta(now);
 
     self.histogram = ExposureHistogramUniform::new(settings, level, delta.as_secs_f32(), self.last.is_none());
     self.is_measuring = true;
     self.last = Some(now);
     self.held = None;
+  }
+
+  /// Holds the scale where it stands, or lets it adapt again.
+  pub fn set_frozen(&mut self, is_frozen: bool) {
+    self.is_frozen = is_frozen;
+    self.last = None;
+  }
+
+  /// The time this frame advances the adaptation by: the time since the last frame, at most its longest step, none
+  /// on the first.
+  fn get_delta(&self, now: Instant) -> Duration {
+    self.last.map_or(Duration::ZERO, |last| (now - last).min(LONGEST_STEP))
   }
 
   /// Whether the passes read the adapted scale, rather than one.

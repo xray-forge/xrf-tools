@@ -1,0 +1,11 @@
+pub(crate) mod capture_event;
+pub(crate) mod capture_job;
+pub(crate) mod capture_plan;
+pub(crate) mod capture_shot;
+pub(crate) mod cube_assembly;
+pub(crate) mod cube_capture_look;
+pub(crate) mod cube_face;
+pub(crate) mod map_assembly;
+pub(crate) mod map_capture_look;
+pub(crate) mod map_tile;
+pub(crate) mod map_tile_plan;

@@ -5,6 +5,7 @@ use glam::Vec3;
 use xrf_error::XrfError;
 use xrf_renderer_core::{ExecutedGroup, GraphOwner, GraphPassTime, GraphReport, GraphTimer};
 
+use crate::capture::capture_job::CaptureJob;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_fog::RenderAppliedFog;
@@ -68,6 +69,8 @@ pub struct RenderViewport {
   /// Screenshots asked for, drawn from the next frames, one a frame in the order asked; in flight with the captures.
   pub screenshots: Vec<CaptureReply>,
   pub captures_in_flight: Vec<(FrameCapture, CaptureReply)>,
+  /// The level map or cubemap it captures, drawn in place of its own frames until it ends.
+  pub capture: Option<CaptureJob>,
   /// Picks asked for, drawn one a frame while a readback is free, and those drawn, answered once they are back.
   pub picks: Vec<PendingPick>,
   pub picks_in_flight: Vec<PickInFlight>,
@@ -133,11 +136,54 @@ impl RenderViewport {
         None => self.captures_in_flight.push((capture, reply)),
       }
     }
+
+    if let Some(capture) = self.capture.as_mut() {
+      capture.poll();
+    }
+
+    if self.capture.as_ref().is_some_and(CaptureJob::is_ended) {
+      self.capture = None;
+    }
+  }
+
+  /// The view it draws and its camera's binding: its capture's while it captures, else its own.
+  pub fn get_drawn_view(&self) -> Option<(RenderSceneId, &SceneView, &ViewBinding)> {
+    let (scene, own) = self.shown.as_ref()?;
+
+    match self.capture.as_ref().filter(|capture| !capture.is_ended()) {
+      Some(capture) => capture.get_view().map(|(view, binding)| (*scene, view, binding)),
+      None => Some((*scene, own, self.binding.as_ref()?)),
+    }
+  }
+
+  /// The view it draws: its capture's while it captures, else its own.
+  pub fn get_drawn_view_mut(&mut self) -> Option<&mut SceneView> {
+    let RenderViewport { shown, capture, .. } = self;
+    let (_, own) = shown.as_mut()?;
+
+    match capture.as_mut().filter(|capture| !capture.is_ended()) {
+      Some(capture) => capture.get_scene_view_mut(),
+      None => Some(own),
+    }
+  }
+
+  /// Whether it captures a level map or cubemap, drawn in place of its own frames.
+  pub fn is_capturing(&self) -> bool {
+    self.capture.as_ref().is_some_and(|capture| !capture.is_ended())
+  }
+
+  /// Stops what it captures, telling its caller why.
+  pub fn stop_capture(&mut self, reason: &str) {
+    if let Some(mut capture) = self.capture.take() {
+      capture.stop(XrfError::new_invalid_error(reason.to_string()));
+    }
   }
 
   /// Answers every capture in flight as its GPU goes: what was read back, or a refusal where nothing came back, as on a
   /// lost device, whose readbacks may never finish.
   pub fn release_captures(&mut self) {
+    self.stop_capture("The GPU went before the capture was read back");
+
     for (capture, reply) in std::mem::take(&mut self.captures_in_flight) {
       let _ = reply.send(capture.take().unwrap_or_else(|| {
         Err(XrfError::new_unexpected_error(
@@ -148,8 +194,10 @@ impl RenderViewport {
   }
 
   /// Shows another view of a scene, or none: the picks asked of the one it replaces, drawn or still waiting, meet
-  /// nothing, since what they were asked of is drawn no more.
+  /// nothing, since what they were asked of is drawn no more, and what it captures stops.
   pub fn show(&mut self, shown: Option<(RenderSceneId, SceneView)>) {
+    self.stop_capture("The viewport shows another scene than the capture was asked of");
+
     for entry in std::mem::take(&mut self.picks_in_flight) {
       let _ = entry.pick.reply.send(Ok(RenderPick {
         frame: entry.frame,
@@ -185,6 +233,7 @@ impl RenderViewport {
       captures: Vec::new(),
       screenshots: Vec::new(),
       captures_in_flight: Vec::new(),
+      capture: None,
       picks: Vec::new(),
       picks_in_flight: Vec::new(),
       frame: 0,

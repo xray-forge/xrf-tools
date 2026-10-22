@@ -71,10 +71,12 @@ fn fs_search(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let position: vec3<f32> = center.position * 0.99999;
   let distance: f32 = -position.z;
   let normal: vec3<f32> = octahedral_decode(textureLoad(normal_target, vec2<i32>(pixel * 2.0), 0).xy);
-  let to_camera: vec3<f32> = normalize(-position);
+  let to_camera: vec3<f32> = -camera_view_ray(position);
   let falloff_range: f32 = occlusion.radius * FALLOFF_RANGE;
   let falloff: vec2<f32> = vec2<f32>(-1.0 / falloff_range, occlusion.radius * (1.0 - FALLOFF_RANGE) / falloff_range + 1.0);
-  let screen_radius: f32 = min(occlusion.radius / (distance * occlusion.spread), occlusion.reach);
+  // Metres a pixel spans there: by the distance through a perspective, the same everywhere through parallel rays.
+  let pixel_metres: f32 = select(distance * occlusion.spread, occlusion.spread, camera_is_orthographic());
+  let screen_radius: f32 = min(occlusion.radius / pixel_metres, occlusion.reach);
 
   // A point whose radius is less than a pixel across has nothing to search.
   if (screen_radius < 1.0) {

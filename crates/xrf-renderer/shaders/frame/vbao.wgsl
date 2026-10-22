@@ -59,9 +59,14 @@ struct SearchRays {
   along_y: vec3<f32>,
 };
 
-// The view ray under a search pixel's even texel, at a view depth of one.
+// The view ray under a search pixel's even texel, at a view depth of one; through parallel rays, where the ray stands
+// across the view, its depth left to the point.
 fn search_ray(pixel: vec2<f32>) -> vec3<f32> {
   let point: vec3<f32> = camera_view_position(pixel * 2.0 + 0.5, 1.0);
+
+  if (camera_is_orthographic()) {
+    return vec3<f32>(point.xy, -1.0);
+  }
 
   return point / -point.z;
 }
@@ -93,7 +98,9 @@ fn search_point(rays: SearchRays, origin: vec2<f32>, at: vec2<f32>, last: vec2<f
   let along: vec2<f32> = pixel - origin;
   let ray: vec3<f32> = rays.origin + rays.along_x * along.x + rays.along_y * along.y;
 
-  return SearchPoint(select(0.0, 1.0, depth < 0.0), ray * -depth, pixel);
+  let place: vec3<f32> = select(ray * -depth, vec3<f32>(ray.xy, depth), camera_is_orthographic());
+
+  return SearchPoint(select(0.0, 1.0, depth < 0.0), place, pixel);
 }
 
 // The view space normal under a search pixel's even texel.
@@ -152,8 +159,10 @@ fn search(clip: vec2<f32>, is_lit: bool) -> Searched {
   let position: vec3<f32> = center.position;
   let distance: f32 = -position.z;
   let normal: vec3<f32> = point_normal(vec2<i32>(pixel));
-  let to_camera: vec3<f32> = normalize(-position);
-  let screen_radius: f32 = min(occlusion.radius / (distance * occlusion.spread), occlusion.reach);
+  let to_camera: vec3<f32> = -camera_view_ray(position);
+  // Metres a pixel spans there: by the distance through a perspective, the same everywhere through parallel rays.
+  let pixel_metres: f32 = select(distance * occlusion.spread, occlusion.spread, camera_is_orthographic());
+  let screen_radius: f32 = min(occlusion.radius / pixel_metres, occlusion.reach);
 
   // A point whose radius is less than a pixel across has nothing to search.
   if (screen_radius < 1.0) {
@@ -169,7 +178,7 @@ fn search(clip: vec2<f32>, is_lit: bool) -> Searched {
 
   // Lit, the light reaches further than the occlusion: steps past the occlusion's radius gather light alone, so the
   // occlusion's own samples are the same lit or not.
-  let light_radius: f32 = min(occlusion.light_radius / (distance * occlusion.spread), occlusion.reach);
+  let light_radius: f32 = min(occlusion.light_radius / pixel_metres, occlusion.reach);
   let far_steps: u32 = select(0u, occlusion.light_steps, is_lit && light_radius > screen_radius + 1.0);
 
   for (var slice: u32 = 0u; slice < occlusion.slices; slice++) {

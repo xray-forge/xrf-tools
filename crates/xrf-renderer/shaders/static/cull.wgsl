@@ -72,7 +72,13 @@ fn is_unreceived(slot: Slot, sphere: vec4<f32>) -> bool {
   return IS_RECEIVED && slot.batch / CLASS_COUNT == TREE_LAYOUT && !casts_into_view(sphere);
 }
 
+// The share of the screen a sphere takes, as the engine weighs it, `r / d²`; past every threshold for a view of parallel
+// rays, which draws everything at its finest.
 fn screen_area(sphere: vec4<f32>) -> f32 {
+  if (params.lod_origin.w == 0.0) {
+    return 3.0e38;
+  }
+
   let offset: vec3<f32> = sphere.xyz - params.lod_origin.xyz;
 
   return sphere.w / (dot(offset, offset) + 1e-7);

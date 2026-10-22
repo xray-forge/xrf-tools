@@ -52,10 +52,13 @@ fn ring_cell(cell: u32, slot: RingSlot) -> RingCell {
   let ground: vec4<f32> = shapes[cell];
   let center: vec3<f32> =
     vec3<f32>((f32(slot.x) + 0.5) * GRASS_SLOT_METERS, ground.x, (f32(slot.z) + 0.5) * GRASS_SLOT_METERS);
-  let offset: vec3<f32> = params.eye.xyz - center;
+  // Under a lens of parallel rays (`eye.w` nought) the ring is measured flat and no tuft shrinks: the eye stands far
+  // above every tile alike, and a level map's tiles must meet.
+  let is_flat: bool = params.eye.w < 0.5;
+  let offset: vec3<f32> = (params.eye.xyz - center) * vec3<f32>(1.0, select(1.0, 0.0, is_flat), 1.0);
   let distance: f32 = dot(offset, offset);
   let fade_limit: f32 = params.fade * params.fade;
-  let shrink: f32 = 1.0 - select((distance - 1.0) / (fade_limit - 1.0), 0.0, distance < 1.0);
+  let shrink: f32 = select(1.0 - select((distance - 1.0) / (fade_limit - 1.0), 0.0, distance < 1.0), 1.0, is_flat);
 
   return RingCell(center, distance, shrink, ground);
 }

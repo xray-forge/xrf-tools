@@ -50,8 +50,7 @@ fn traced_seen(pixel: LitPixel, record: LightRecord, is_plant: bool, drawn: vec2
     return 1.0;
   }
 
-  let cone: SceneCone = SceneCone(distance * 2.0 / (camera.projection[1][1] * camera.viewport.y),
-    bulb / max(length_to, 1e-3));
+  let cone: SceneCone = SceneCone(camera_pixel_footprint(distance), bulb / max(length_to, 1e-3));
 
   return select(1.0, 0.0, trace_scene_blocked(origin, toward / length_to, reach, cone, SCENE_NO_PLACE));
 }

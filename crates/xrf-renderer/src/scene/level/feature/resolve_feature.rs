@@ -168,13 +168,11 @@ impl ResolveFeature {
   pub fn prepare(
     &mut self,
     (device, dlss): (&wgpu::Device, Option<&Dlss>),
-    view: &CameraView,
+    (view, now): (&CameraView, Instant),
     (render, resolved, output): (Option<(u32, u32)>, (u32, u32), RenderRect),
     (upscaling, is_linear): (RenderUpscalingSettings, bool),
   ) {
     self.upscaling = upscaling;
-
-    let now: Instant = Instant::now();
 
     self.frame_time = self
       .prepared_at

@@ -177,12 +177,10 @@ impl LightsFeature {
     camera: &CameraView,
     (filter, atlas): (RenderLightShadowFilter, RenderPoolUse),
   ) {
-    let (near, far): (f32, f32) = camera.get_depth_range();
-
     self.report.atlas = atlas;
     self.count = self.records.len() as u32;
     self.report.in_view = self.count;
-    self.uniform = LightsUniform::new(self.count, camera.projection, near, far, filter);
+    self.uniform = LightsUniform::new(self.count, camera, filter);
 
     if !self.records.is_empty() {
       encoder.write_buffer(&self.record_buffer, 0, bytemuck::cast_slice(&self.records));

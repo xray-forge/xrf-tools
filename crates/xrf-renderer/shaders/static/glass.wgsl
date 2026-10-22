@@ -93,8 +93,8 @@ fn fs_glass(in: GBufferVarying) -> @location(0) vec4<f32> {
   let normal: vec3<f32> = glass_normal(in);
   let flat_normal: vec3<f32> = normalize(in.normal);
   // Seen from behind, the pane faces the eye the other way.
-  let facing: vec3<f32> = select(normal, -normal, dot(flat_normal, position) > 0.0);
-  let eye: vec3<f32> = normalize(position);
+  let eye: vec3<f32> = camera_view_ray(position);
+  let facing: vec3<f32> = select(normal, -normal, dot(flat_normal, eye) > 0.0);
   let cosine: f32 = saturate(dot(facing, -eye));
   let fresnel: f32 = GLASS_F0 + (1.0 - GLASS_F0) * pow(1.0 - cosine, 5.0);
 

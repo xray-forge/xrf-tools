@@ -6,9 +6,10 @@
 
 #import "generated/frame/light_binning"
 
-// A device coordinate across or up at a depth, in view space: `(ndc + offset) * depth / scale`.
+// A device coordinate across or up at a depth, in view space: `(ndc + offset) * depth / scale`, or the same at every
+// depth through parallel rays.
 fn to_view(ndc: f32, offset: f32, scale: f32, depth: f32) -> f32 {
-  return (ndc + offset) * depth / scale;
+  return (ndc + offset) * select(depth, 1.0, lights.lens.x > 0.5) / scale;
 }
 
 @compute @workgroup_size(64)

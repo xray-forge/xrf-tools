@@ -26,7 +26,8 @@ pub struct StaticCullUniform {
   pub is_impostors: u32,
   /// Keeps `lod_origin` where it was; a uniform's arrays step sixteen bytes, so a vector.
   pub pad: UVec4,
-  /// The camera every view's levels of detail are measured from, a shadow's too.
+  /// The camera every view's levels of detail are measured from, a shadow's too; `w` zero for a view of parallel rays,
+  /// which no distance shrinks, so it draws everything at its finest.
   pub lod_origin: Vec4,
   /// The camera's frustum widened for a turn, as planes pointing inward, which a sun cascade keeping only what the camera
   /// sees tests its trees' shadows against; all nought, which keeps everything, where none is set.

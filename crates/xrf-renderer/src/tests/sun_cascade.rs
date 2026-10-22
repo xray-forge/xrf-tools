@@ -1,6 +1,11 @@
 use glam::{Vec3, Vec4};
+use xrf_error::XrfResult;
 
 use crate::camera::camera_view::CameraView;
+use crate::camera::engine_space::EngineSpace;
+use crate::capture::map_tile::MapTile;
+use crate::capture::map_tile_plan::MapTilePlan;
+use crate::contract::render_map_capture::RenderMapCapture;
 use crate::lighting::sun_cascade::SunCascade;
 use crate::lighting::sun_cascade_basis::SunCascadeBasis;
 use crate::lighting::sun_view_rays::SunViewRays;
@@ -314,4 +319,59 @@ fn sun_cascade_basis_stays_finite_for_a_sun_pointing_nowhere() {
   assert_eq!(basis.light, DOWN);
   assert!(basis.right.is_finite() && basis.up.is_finite());
   assert!((basis.right.length() - 1.0).abs() < 1e-5 && (basis.up.length() - 1.0).abs() < 1e-5);
+}
+
+// A level map's tile, seen straight down, holds its whole box in one cascade of its diagonal, whichever way the light
+// comes, low and slanting included.
+#[test]
+fn sun_cascade_holds_a_map_tile_whole_in_its_diagonal() -> XrfResult {
+  let plan: MapTilePlan = MapTilePlan::new(
+    RenderMapCapture {
+      min_x: -600.0,
+      min_z: -615.0,
+      max_x: 600.0,
+      max_z: 585.0,
+      bottom: -20.0,
+      top: 80.0,
+      width: 1024,
+      height: 1024,
+      supersampling: 1,
+      settle_frames: 1,
+      is_grassed: false,
+    },
+    8192,
+  )?;
+  let tile: &MapTile = &plan.tiles[0];
+  let camera: CameraView = tile.get_view();
+
+  for light in [
+    DOWN,
+    Vec3::new(0.3, -0.2, -0.9).normalize(),
+    Vec3::new(-0.7, -0.3, 0.6).normalize(),
+  ] {
+    let mut rays: SunViewRays = SunViewRays::new(&camera);
+    let mut cascade: SunCascade = SunCascade::default();
+
+    // A level standing as far along the light as the whole tile does.
+    cascade.fit(
+      &camera,
+      &mut rays,
+      light,
+      camera.get_orthographic_extent().map_or(0.0, |extent| extent.length()),
+      4096,
+      Some((-2000.0, 2000.0)),
+    );
+
+    for x in [tile.min_x, tile.max_x] {
+      for y in [tile.bottom, tile.top] {
+        for z in [tile.min_z, tile.max_z] {
+          let corner: Vec3 = EngineSpace::mirror(Vec3::new(x, y, z));
+
+          assert!(is_inside(&cascade, corner), "{light} {corner}");
+        }
+      }
+    }
+  }
+
+  Ok(())
 }

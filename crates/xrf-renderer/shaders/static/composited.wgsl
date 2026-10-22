@@ -35,12 +35,12 @@ struct CompositedOutput {
 fn lit_color(shaded: GBufferOutput, position: vec3<f32>, fog: f32) -> vec3<f32> {
   let normal: vec3<f32> = octahedral_decode(shaded.normal);
   let slice: f32 = shaded.material.z;
-  let light: vec4<f32> = sun_light(lighting, material_lut, lut_sampler, normal, position, slice) * shaded.material.y;
+  let light: vec4<f32> = sun_light(lighting, material_lut, lut_sampler, normal, camera_view_ray(position), slice) * shaded.material.y;
   let rotation: mat3x3<f32> = transpose(mat3x3<f32>(camera.view[0].xyz, camera.view[1].xyz, camera.view[2].xyz));
   let occlusion: f32 = mix(1.0, shaded.material.x, camera.switches.z);
   let albedo: vec4<f32> = vec4<f32>(authored_colour(shaded.albedo.rgb), shaded.albedo.a);
   let color: vec3<f32> = hmodel(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp,
-    albedo, light, normalize(rotation * normal), normalize(rotation * normalize(position)), slice, occlusion,
+    albedo, light, normalize(rotation * normal), normalize(rotation * camera_view_ray(position)), slice, occlusion,
     vec3<f32>(1.0));
 
   return shown_from_light(fog_mixed(lighting, color, fog_light(lighting), fog), frame_scale(lighting, exposure));
@@ -267,7 +267,7 @@ fn fs_composited_distort(in: GBufferVarying) -> @location(0) vec4<f32> {
   let surface: Surface = surfaces[in.surface];
   let at: Footprint = take_footprint(in);
   let position: vec3<f32> = camera_view_position(in.clip.xy, in.clip.z);
-  let fade: f32 = 0.9 * abs(dot(normalize(position), normalize(in.normal)));
+  let fade: f32 = 0.9 * abs(dot(camera_view_ray(position), normalize(in.normal)));
   let distort: vec4<f32> = sample_slot(surface.distortion, at.uv, at.dx, at.dy);
   var factor: f32 = distort.a * fade;
 

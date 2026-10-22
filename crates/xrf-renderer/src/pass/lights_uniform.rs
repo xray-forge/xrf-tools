@@ -1,6 +1,7 @@
 use glam::{Mat4, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
+use crate::camera::camera_view::CameraView;
 use crate::contract::render_light_shadow_filter::RenderLightShadowFilter;
 
 /// What the lights are binned and lit by, as `shaders/common/light_clusters.wgsl` declares it: how many stand in view,
@@ -14,12 +15,20 @@ pub struct LightsUniform {
   pub far: f32,
   /// How the shadowed lights' maps are compared: zero `shadow_hw`, one `shadow_pcss`.
   pub shadow_filter: u32,
-  /// The projection's `x` and `y` scales and its offsets.
+  /// The projection's `x` and `y` scales and its offsets: through a perspective the clip offsets times `w`, through
+  /// parallel rays the plain ones.
   pub projection: Vec4,
+  /// `x` one where the view's rays are parallel, which a cluster's box spans the same at every depth.
+  pub lens: Vec4,
 }
 
 impl LightsUniform {
-  pub fn new(count: u32, projection: Mat4, near: f32, far: f32, filter: RenderLightShadowFilter) -> Self {
+  /// What `count` lights in view are binned and lit by through `camera`.
+  pub fn new(count: u32, camera: &CameraView, filter: RenderLightShadowFilter) -> Self {
+    let projection: Mat4 = camera.projection;
+    let is_orthographic: bool = camera.is_orthographic();
+    let (near, far): (f32, f32) = camera.get_depth_range();
+
     Self {
       count,
       near,
@@ -28,12 +37,22 @@ impl LightsUniform {
         RenderLightShadowFilter::Engine => 0,
         RenderLightShadowFilter::Soft => 1,
       },
-      projection: Vec4::new(
-        projection.x_axis.x,
-        projection.y_axis.y,
-        projection.z_axis.x,
-        projection.z_axis.y,
-      ),
+      projection: if is_orthographic {
+        Vec4::new(
+          projection.x_axis.x,
+          projection.y_axis.y,
+          -projection.w_axis.x,
+          -projection.w_axis.y,
+        )
+      } else {
+        Vec4::new(
+          projection.x_axis.x,
+          projection.y_axis.y,
+          projection.z_axis.x,
+          projection.z_axis.y,
+        )
+      },
+      lens: Vec4::new(f32::from(u8::from(is_orthographic)), 0.0, 0.0, 0.0),
     }
   }
 }

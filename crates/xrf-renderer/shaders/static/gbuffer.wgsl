@@ -382,8 +382,9 @@ fn steep_footprint(in: GBufferVarying, at: Footprint) -> Footprint {
     return at;
   }
 
-  let eye: vec3<f32> = normalize(vec3<f32>(dot(normalize(in.tangent), -position), dot(normalize(in.binormal), -position),
-    dot(normalize(in.normal), -position)));
+  let to_eye: vec3<f32> = -camera_view_ray(position);
+  let eye: vec3<f32> = normalize(vec3<f32>(dot(normalize(in.tangent), to_eye), dot(normalize(in.binormal), to_eye),
+    dot(normalize(in.normal), to_eye)));
   let steps: f32 = mix(STEEP_STEPS.x, STEEP_STEPS.y, eye.z);
   let step_size: f32 = 1.0 / steps;
   let reach: vec2<f32> = eye.xy * STEEP_REACH;
@@ -431,7 +432,8 @@ fn surface_relief(in: GBufferVarying, at: Footprint, position: vec3<f32>, plane:
   let tangent: vec3<f32> = normalize(in.tangent);
   let binormal: vec3<f32> = normalize(in.binormal);
   let normal: vec3<f32> = normalize(in.normal);
-  let eye: vec3<f32> = normalize(vec3<f32>(dot(tangent, -position), dot(binormal, -position), dot(normal, -position)));
+  let to_eye: vec3<f32> = -camera_view_ray(position);
+  let eye: vec3<f32> = normalize(vec3<f32>(dot(tangent, to_eye), dot(binormal, to_eye), dot(normal, to_eye)));
   let sun: vec3<f32> = camera.parallax_light.xyz;
   let light: vec3<f32> = vec3<f32>(dot(tangent, sun), dot(binormal, sun), dot(normal, sun));
   let fade: f32 = relief_fade(range, distance);
@@ -739,7 +741,8 @@ fn terrain_texel(
     let tangent: vec3<f32> = normalize(in.tangent);
     let binormal: vec3<f32> = normalize(in.binormal);
     let normal: vec3<f32> = normalize(in.normal);
-    let eye: vec3<f32> = normalize(vec3<f32>(dot(tangent, -position), dot(binormal, -position), dot(normal, -position)));
+    let to_eye: vec3<f32> = -camera_view_ray(position);
+    let eye: vec3<f32> = normalize(vec3<f32>(dot(tangent, to_eye), dot(binormal, to_eye), dot(normal, to_eye)));
     let sun: vec3<f32> = camera.parallax_light.xyz;
     let light: vec3<f32> = vec3<f32>(dot(tangent, sun), dot(binormal, sun), dot(normal, sun));
     fade = relief_fade(range, -position.z);

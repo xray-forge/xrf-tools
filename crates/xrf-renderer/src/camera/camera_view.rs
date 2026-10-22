@@ -22,6 +22,52 @@ impl CameraView {
     }
   }
 
+  /// A right-handed view through a lens of parallel rays, `half_size` across either way of its centre, with reversed
+  /// depth as the perspective's: what a level map is drawn through.
+  pub fn new_orthographic(
+    position: Vec3,
+    view: Mat4,
+    (half_width, half_height): (f32, f32),
+    near: f32,
+    far: f32,
+  ) -> Self {
+    Self {
+      position,
+      view,
+      projection: glam::camera::rh::proj::directx::orthographic(
+        -half_width,
+        half_width,
+        -half_height,
+        half_height,
+        far,
+        near,
+      ),
+    }
+  }
+
+  /// Whether its lens has parallel rays: a projection leaving `w` as it is.
+  pub fn is_orthographic(&self) -> bool {
+    self.projection.w_axis.w == 1.0
+  }
+
+  /// Its lens's height in degrees, read back from the projection; none for parallel rays, which do not spread.
+  pub fn get_field_of_view(&self) -> Option<f32> {
+    (!self.is_orthographic()).then(|| (2.0 * (1.0 / self.projection.y_axis.y).atan()).to_degrees())
+  }
+
+  /// The box a lens of parallel rays sees, across, up and deep, read back from the projection; none for a perspective.
+  pub fn get_orthographic_extent(&self) -> Option<Vec3> {
+    self.is_orthographic().then(|| {
+      let (near, far): (f32, f32) = self.get_depth_range();
+
+      Vec3::new(
+        2.0 / self.projection.x_axis.x,
+        2.0 / self.projection.y_axis.y,
+        far - near,
+      )
+    })
+  }
+
   /// The same view through a lens narrowed to a rectangle of it, centred at `center` and `size` across in normalized
   /// device coordinates: what a pick draws its one texel through.
   pub fn narrow_to(&self, center: Vec2, size: Vec2) -> Self {
@@ -41,12 +87,19 @@ impl CameraView {
   }
 
   /// The same view with its samples moved within their pixels, by `offset` drawn pixels, `y` down, across a drawing
-  /// `size` pixels big: through the clip offset a projection carries times `w` in its third column.
+  /// `size` pixels big: through the clip offset a perspective carries times `w` in its third column, which is `-z`, or
+  /// the one an orthographic lens carries in its fourth, its `w` being one.
   pub fn jittered(&self, offset: Vec2, size: Vec2) -> Self {
     let mut projection: Mat4 = self.projection;
+    let shift: Vec2 = Vec2::new(2.0 * offset.x / size.x.max(1.0), 2.0 * offset.y / size.y.max(1.0));
 
-    projection.z_axis.x += 2.0 * offset.x / size.x.max(1.0);
-    projection.z_axis.y -= 2.0 * offset.y / size.y.max(1.0);
+    if self.is_orthographic() {
+      projection.w_axis.x -= shift.x;
+      projection.w_axis.y += shift.y;
+    } else {
+      projection.z_axis.x += shift.x;
+      projection.z_axis.y -= shift.y;
+    }
 
     Self {
       position: self.position,
@@ -59,9 +112,17 @@ impl CameraView {
     self.projection * self.view
   }
 
-  /// The near and far distances a reversed perspective lens was made with, read back from its depth terms.
+  /// The near and far distances a reversed lens was made with, read back from its depth terms.
   pub fn get_depth_range(&self) -> (f32, f32) {
     let scale: f32 = self.projection.z_axis.z;
+
+    if self.is_orthographic() {
+      // Depth is `(far - d) / (far - near)`: a scale of `1 / (far - near)` and an offset of `far` times it.
+      let far: f32 = self.projection.w_axis.z / scale;
+
+      return (far - 1.0 / scale, far);
+    }
+
     let far: f32 = self.projection.w_axis.z / scale;
 
     (scale * far / (1.0 + scale), far)

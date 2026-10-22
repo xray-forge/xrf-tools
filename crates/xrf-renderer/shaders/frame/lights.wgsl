@@ -48,7 +48,7 @@ fn fs_lights(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let slice: f32 = material_texel.z;
   // Foliage is lit from each light's side, as the light passes through its leaves.
   let is_flora: bool = has_mark(material_texel.a, MARK_FLORA);
-  let to_eye: vec3<f32> = normalize(-pixel.position);
+  let to_eye: vec3<f32> = -camera_view_ray(pixel.position);
   var slot: u32 = 0u;
   var total: vec4<f32> = vec4<f32>(0.0);
 

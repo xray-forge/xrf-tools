@@ -93,9 +93,47 @@ fn camera_unproject(ndc: vec2<f32>, depth: f32) -> vec3<f32> {
   return point.xyz / point.w;
 }
 
-// The distance along the view of the point a depth shows, reversed, from the perspective's depth terms.
+// Whether the camera's lens has parallel rays, as a level map's: a projection leaving `w` as it is.
+fn camera_is_orthographic() -> bool {
+  return camera.projection[3][3] == 1.0;
+}
+
+// The distance along the view of the point a depth shows, reversed, from the lens's depth terms: a perspective's
+// hyperbola, or an orthographic lens's line.
 fn camera_view_distance(depth: f32) -> f32 {
+  if (camera_is_orthographic()) {
+    return (camera.projection[3][2] - depth) / camera.projection[2][2];
+  }
+
   return camera.projection[3][2] / (depth + camera.projection[2][2]);
+}
+
+// Where the camera looks through a view space point: from the eye through it, or the view's own forward for an
+// orthographic lens, whose rays are parallel.
+fn camera_view_ray(position: vec3<f32>) -> vec3<f32> {
+  if (camera_is_orthographic()) {
+    return vec3<f32>(0.0, 0.0, -1.0);
+  }
+
+  return normalize(position);
+}
+
+// Where the camera looks through a world point: from the eye through it, or the view's forward in the world for an
+// orthographic lens.
+fn camera_world_ray(world: vec3<f32>) -> vec3<f32> {
+  if (camera_is_orthographic()) {
+    return -normalize(vec3<f32>(camera.view[0][2], camera.view[1][2], camera.view[2][2]));
+  }
+
+  return normalize(world - camera.position.xyz);
+}
+
+// The ground one pixel of the viewport's height spans at a distance along the view: growing with it through a
+// perspective, the same at every distance through an orthographic lens.
+fn camera_pixel_footprint(distance: f32) -> f32 {
+  let pixel: f32 = 2.0 / (camera.projection[1][1] * camera.viewport.y);
+
+  return select(distance * pixel, pixel, camera_is_orthographic());
 }
 
 // The view space point under a pixel of the viewport's own targets at a depth, reversed: one is the near plane.

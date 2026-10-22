@@ -13,9 +13,12 @@ pub struct SunViewRays {
 }
 
 impl SunViewRays {
-  /// The edges starting at a view's near plane, its corners numbered `-x -y`, `+x -y`, `-x +y`, `+x +y`.
+  /// The edges starting at a view's near plane, its corners numbered `-x -y`, `+x -y`, `-x +y`, `+x +y`: from the eye
+  /// through each corner, or along the view for parallel rays.
   pub fn new(view: &CameraView) -> Self {
     let inverse: Mat4 = view.get_view_projection().inverse();
+    let look: Vec3 = view.get_look();
+    let is_orthographic: bool = view.is_orthographic();
     let corner = |index: usize| -> SunViewRay {
       let x: f32 = if index & 1 != 0 { 1.0 } else { -1.0 };
       let y: f32 = if index & 2 != 0 { 1.0 } else { -1.0 };
@@ -25,7 +28,11 @@ impl SunViewRays {
 
       SunViewRay {
         origin,
-        direction: (origin - view.position).normalize_or_zero(),
+        direction: if is_orthographic {
+          look
+        } else {
+          (origin - view.position).normalize_or_zero()
+        },
       }
     };
     let rays: [SunViewRay; 4] = [corner(0), corner(1), corner(2), corner(3)];

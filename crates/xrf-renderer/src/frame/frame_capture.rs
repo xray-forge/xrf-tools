@@ -20,6 +20,9 @@ pub struct FrameCapture {
   row: u32,
   frame: u64,
   is_screenshot: bool,
+  /// A level map's tile's depth on its way back beside it, and the bytes a row of its copy takes: its coverage, opaque
+  /// where anything was drawn, clear where the depth stayed at the far plane's zero.
+  coverage: Option<(GpuReadback, u32)>,
 }
 
 impl FrameCapture {
@@ -47,6 +50,7 @@ impl FrameCapture {
       row,
       frame,
       is_screenshot: false,
+      coverage: None,
     })
   }
 
@@ -71,6 +75,32 @@ impl FrameCapture {
     Ok(Self {
       is_screenshot: true,
       ..Self::new(device, format, rect, frame)?
+    })
+  }
+
+  /// A capture's shot `size` pixels across, drawn in `format`, the frame `frame`, waiting for its copy, and its depth's
+  /// where it is `is_covered`, as a map's tile is.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for a frame of a format a capture cannot read.
+  pub fn new_shot(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    (width, height): (u32, u32),
+    frame: u64,
+    is_covered: bool,
+  ) -> XrfResult<Self> {
+    let row: u32 = (width * 4).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
+
+    Ok(Self {
+      coverage: is_covered.then(|| {
+        (
+          GpuReadback::new(device, "map tile coverage", (row * height) as u64),
+          row,
+        )
+      }),
+      ..Self::new_screenshot(device, format, (width, height), frame)?
     })
   }
 
@@ -121,13 +151,94 @@ impl FrameCapture {
     self.readback.mark_recorded();
   }
 
+  /// Copies a level map's tile's depth out of `depth`, the frame's depth target, beside its picture.
+  pub fn encode_coverage(&self, encoder: &mut wgpu::CommandEncoder, depth: &wgpu::Texture) {
+    let Some((readback, row)) = &self.coverage else {
+      return;
+    };
+    let (width, height): (u32, u32) = self.get_size();
+
+    encoder.copy_texture_to_buffer(
+      wgpu::TexelCopyTextureInfo {
+        texture: depth,
+        mip_level: 0,
+        origin: wgpu::Origin3d::ZERO,
+        aspect: wgpu::TextureAspect::DepthOnly,
+      },
+      wgpu::TexelCopyBufferInfo {
+        buffer: readback.get_buffer(),
+        layout: wgpu::TexelCopyBufferLayout {
+          offset: 0,
+          bytes_per_row: Some(*row),
+          rows_per_image: Some(height),
+        },
+      },
+      wgpu::Extent3d {
+        width,
+        height,
+        depth_or_array_layers: 1,
+      },
+    );
+    readback.mark_recorded();
+  }
+
+  /// Whether its copies were recorded with the frame, which a frame that drew nothing of it did not.
+  pub fn is_recorded(&self) -> bool {
+    self.readback.is_recorded()
+      && self
+        .coverage
+        .as_ref()
+        .is_none_or(|(readback, _)| readback.is_recorded())
+  }
+
   /// Asks for the copy back, after the frame copying it is submitted.
   pub fn request(&self) {
     self.readback.request();
+
+    if let Some((readback, _)) = &self.coverage {
+      readback.request();
+    }
   }
 
-  /// The capture once it is back, as eight bit RGBA rows top to bottom; nothing while it is on its way.
+  /// The capture once it is back, as eight bit RGBA rows top to bottom, a map tile's alpha its coverage; nothing while
+  /// it, or a map tile's depth, is on its way.
   pub fn take(&self) -> Option<XrfResult<RenderCapture>> {
+    match &self.coverage {
+      Some((readback, row)) if self.readback.is_back() && readback.is_back() => {
+        let capture: XrfResult<RenderCapture> = self.take_picture()?;
+        let depths: XrfResult<Vec<bool>> = readback.take(|bytes| Self::read_covered(bytes, *row, self.get_size()))?;
+
+        Some(capture.and_then(|mut capture| {
+          for (texel, is_covered) in capture.pixels.as_chunks_mut::<4>().0.iter_mut().zip(depths?) {
+            texel[3] = if is_covered { 255 } else { 0 };
+          }
+
+          Ok(capture)
+        }))
+      }
+      Some(_) => None,
+      None => self.take_picture(),
+    }
+  }
+
+  /// Whether each texel of a depth copy, rows `row` bytes apart, holds anything nearer than the far plane: reversed,
+  /// the far plane is zero.
+  fn read_covered(bytes: &[u8], row: u32, (width, height): (u32, u32)) -> Vec<bool> {
+    bytes
+      .chunks_exact(row as usize)
+      .take(height as usize)
+      .flat_map(|line| {
+        line[..(width * 4) as usize]
+          .as_chunks::<4>()
+          .0
+          .iter()
+          .map(|texel| f32::from_le_bytes(*texel) > 0.0)
+      })
+      .collect()
+  }
+
+  /// The picture once it is back, opaque; nothing while it is on its way.
+  fn take_picture(&self) -> Option<XrfResult<RenderCapture>> {
     let (width, height, row) = (self.rect.width, self.rect.height, self.row as usize);
 
     self.readback.take(|bytes| {

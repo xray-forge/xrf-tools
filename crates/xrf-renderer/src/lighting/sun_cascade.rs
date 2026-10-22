@@ -56,7 +56,9 @@ impl Default for SunCascade {
 }
 
 impl SunCascade {
-  /// Fits the cascade to the camera, starting where the view's edges left the cascade before it, and carries them on.
+  /// Fits the cascade to the camera, starting where the view's edges left the cascade before it, and carries them on;
+  /// through parallel rays, a level map's, centred on the box the view holds, which a width of its diagonal covers
+  /// whichever way the light comes.
   ///
   /// `direction` is where the sun's light travels; `width` and `resolution` are the map's metres and texels across;
   /// `span` is how far along the light the level stands, nearest and farthest, which its casters and receivers stand
@@ -75,7 +77,13 @@ impl SunCascade {
     let look: Vec3 = -camera.view.inverse().z_axis.truncate().normalize_or_zero();
     // The engine's light stands over the camera: the square starts centred on it, and is then moved across the light.
     let near: [_; 4] = rays.near;
-    let center: Vec3 = SunCascadePlacement::place(camera.position, look, &mut rays.rays, &near, &basis, width);
+    let center: Vec3 = if camera.is_orthographic() {
+      let (near_plane, far_plane): (f32, f32) = camera.get_depth_range();
+
+      camera.position + look * ((near_plane + far_plane) / 2.0)
+    } else {
+      SunCascadePlacement::place(camera.position, look, &mut rays.rays, &near, &basis, width)
+    };
     let texel: f32 = width / resolution.max(1) as f32;
     let step: f32 = width * DEPTH_STEP;
     let x: f32 = (center.dot(basis.right) / texel).round() * texel;

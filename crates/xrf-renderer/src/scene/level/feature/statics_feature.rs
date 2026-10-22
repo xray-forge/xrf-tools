@@ -82,20 +82,22 @@ impl StaticsFeature {
     self.history = None;
   }
 
-  /// Takes this frame's cull of `statics` through `view`, a lens `field_of_view` degrees tall over a frame `width` by
-  /// `height`, and what the occlusion tests against.
+  /// Takes this frame's cull of `statics` through `view` over a frame `width` by `height`, and what the occlusion tests
+  /// against.
   pub fn prepare(
     &mut self,
     statics: &StaticScene,
     options: &RenderViewOptions,
-    (view, field_of_view): (&CameraView, f32),
+    view: &CameraView,
     (width, height): (u32, u32),
   ) {
     if !options.features.is_occlusion_culled {
       self.history = None;
     }
 
-    // The engine's screen: the viewport's pixels, widened for a lens narrower than its 90 degrees.
+    // The engine's screen: the viewport's pixels, widened for a lens narrower than its 90 degrees; parallel rays are
+    // drawn at their finest whatever it is.
+    let field_of_view: f32 = view.get_field_of_view().unwrap_or(90.0);
     let screen: f32 =
       (width * height) as f32 * (90.0 / field_of_view.max(1.0)).powi(2) * (EPS_S + options.features.lod.geometry_lod);
     let threshold = |area: f32| -> f32 { (area / 3.0).powi(2) / screen };
@@ -114,7 +116,7 @@ impl StaticsFeature {
       lod_b: threshold(options.features.lod.ssa_b),
       is_impostors: options.features.lod.is_impostors as u32,
       pad: UVec4::ZERO,
-      lod_origin: view.position.extend(1.0),
+      lod_origin: view.position.extend(if view.is_orthographic() { 0.0 } else { 1.0 }),
       receivers: Self::get_receivers(view),
     };
     self.matrices = (view.view, view.projection);

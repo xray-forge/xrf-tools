@@ -39,6 +39,16 @@ impl GpuReadback {
     self.state.load(Ordering::Acquire) == FREE
   }
 
+  /// Whether a copy into it was recorded with a frame and not yet asked for.
+  pub fn is_recorded(&self) -> bool {
+    self.state.load(Ordering::Acquire) == RECORDED
+  }
+
+  /// Whether what was copied is back, mapped or refused, so `take` answers.
+  pub fn is_back(&self) -> bool {
+    matches!(self.state.load(Ordering::Acquire), MAPPED | FAILED)
+  }
+
   /// Notes a copy into it recorded with this frame's work.
   pub fn mark_recorded(&self) {
     self.state.store(RECORDED, Ordering::Release);

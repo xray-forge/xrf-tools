@@ -143,10 +143,14 @@ impl GrassView {
     }
 
     // `dm_current_size`, `dm_current_fade` and `d_size`, from `r__detail_radius` and `r__detail_density`.
-    let density: f32 = settings.density.clamp(0.1, 0.99);
+    let reach: i32 = (settings.get_radius() / 4.0).floor() as i32 * 2;
+    let density: f32 = Self::get_density(
+      settings.density.clamp(0.1, 0.99),
+      (reach, camera.is_orthographic()),
+      device.limits().max_storage_buffer_binding_size,
+    );
     let steps: i32 = (SLOT_METERS / density).ceil() as i32;
     let jitter: f32 = density / 1.7;
-    let reach: i32 = (settings.get_radius() / 4.0).floor() as i32 * 2;
     let wanted: GrassBuildSize = GrassBuildSize::wanted(
       reach as u32,
       ((steps + 1) * (steps + 1)) as u32,
@@ -176,7 +180,7 @@ impl GrassView {
       GrassCards::get_reach(settings, if is_traced { None } else { cascade_reach });
 
     self.values = GrassUniform {
-      eye: eye.extend(1.0),
+      eye: eye.extend(if camera.is_orthographic() { 0.0 } else { 1.0 }),
       planes: camera.get_planes(),
       center: IVec2::new(
         (eye.x / SLOT_METERS + 0.5).floor() as i32,
@@ -221,6 +225,22 @@ impl GrassView {
       .as_ref()
       .filter(|_| self.is_drawn && self.is_card_traced)
       .and_then(|cards| cards.blas.as_ref())
+  }
+
+  /// The spacing the tufts are planted at: `density`'s, or, under a lens of parallel rays, as much wider as the lists
+  /// need to hold every slot's within `reach`. A view through a lens keeps its spacing and loses its farthest bands
+  /// where the lists run out, its least seen; a level map's tile must plant all of its ground alike.
+  pub(crate) fn get_density(density: f32, (reach, is_flat): (i32, bool), binding_limit: u64) -> f32 {
+    if !is_flat {
+      return density;
+    }
+
+    let line: u64 = u64::from(reach.unsigned_abs()) * 2 + 1;
+    let room: u64 = binding_limit / GrassBuildSize::ITEM_BYTES / line.saturating_mul(line).max(1);
+    // A slot's candidates stand `steps + 1` a side, so the most that fit stand the root of the room less one apart.
+    let steps: f32 = ((room as f32).sqrt().floor() - 1.0).max(1.0);
+
+    density.max(SLOT_METERS / steps).min(0.99)
   }
 
   /// Metres from the camera the grass casts the sun's shadow to through its cascades this frame, none where it does

@@ -40,11 +40,11 @@ pub struct WetFeature {
 impl WetFeature {
   /// Takes this frame's wetting from the level's wetness (`level`) at the scene's clock `time`: with the falling rain's
   /// uniform where it falls, over the overhead maps where they stand (`windows`), its cover's noise turned by
-  /// `noise_frame`.
+  /// `noise_frame`; dry for a view with no eye (`has_eye`), as the overhead maps stand about one.
   pub fn prepare(
     &mut self,
     (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
-    options: &RenderViewOptions,
+    (options, has_eye): (&RenderViewOptions, bool),
     (level, falling, time): (&LevelWetness, Option<&RainUniform>, f32),
     (windows, noise_frame): (OverheadWindows, u32),
     weather_textures: WeatherTextures<'_>,
@@ -60,7 +60,10 @@ impl WetFeature {
     let is_far: bool = options.features.reflections.is_drawn();
 
     // Puddles are the enhanced rain's alone; the surfaces dry on every engine.
-    if !options.mode.is_lit || (falling.is_none() && wetness.max(if is_enhanced { fill } else { 0.0 }) <= 0.0) {
+    if !has_eye
+      || !options.mode.is_lit
+      || (falling.is_none() && wetness.max(if is_enhanced { fill } else { 0.0 }) <= 0.0)
+    {
       return;
     }
 

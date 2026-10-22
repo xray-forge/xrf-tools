@@ -59,7 +59,7 @@ fn fs_sun_trace(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let angle: f32 = drawn.y * TAU;
   let direction: vec3<f32> = normalize(to_sun + (across * cos(angle) + along * sin(angle)) * radius);
   // What the ray's cone covers where it starts, a pixel's footprint, widening as the disc does.
-  let cone: SceneCone = SceneCone(distance * 2.0 / (camera.projection[1][1] * camera.viewport.y), sun_trace.spread);
+  let cone: SceneCone = SceneCone(camera_pixel_footprint(distance), sun_trace.spread);
   let is_blocked: bool = trace_scene_blocked(world + lift, direction, SCENE_SUN_REACH, cone, SCENE_NO_PLACE);
 
   return vec4<f32>(select(1.0, 0.0, is_blocked));

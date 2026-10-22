@@ -26,7 +26,7 @@ const BACKDROP: vec3<f32> = vec3<f32>(32.0, 36.0, 40.0) / 255.0;
 
 // The view space direction through a pixel of the viewport.
 fn pixel_toward(pixel: vec2<f32>) -> vec3<f32> {
-  return normalize(camera_view_position(pixel, 0.5));
+  return camera_view_ray(camera_view_position(pixel, 0.5));
 }
 
 // The same direction in the world.
@@ -43,7 +43,7 @@ fn world_offset(position: vec3<f32>) -> vec3<f32> {
 fn shaded_terms(albedo: vec4<f32>, light: vec4<f32>, normal: vec3<f32>, position: vec3<f32>, slice: f32,
   occlusion: f32, visible: vec3<f32>) -> HmodelTerms {
   return hmodel_terms(lighting, material_lut, lut_sampler, sky_environment_0, sky_environment_1, sky_clamp, albedo,
-    light, world_direction(normal), world_direction(normalize(position)), slice, occlusion, visible);
+    light, world_direction(normal), world_direction(camera_view_ray(position)), slice, occlusion, visible);
 }
 
 // What shows at a pixel where nothing was drawn: the backdrop, or its checkerboard with a second colour.
@@ -88,7 +88,7 @@ fn refracted_albedo(texel: vec2<i32>, albedo: vec4<f32>, normal: vec3<f32>, dist
   }
 
   let tilt: vec3<f32> = normal - (camera.view * vec4<f32>(0.0, 1.0, 0.0, 0.0)).xyz;
-  let pixels: f32 = REFRACTION_SHIFT * camera.projection[1][1] * camera.viewport.y / (2.0 * max(distance, 0.1));
+  let pixels: f32 = REFRACTION_SHIFT / camera_pixel_footprint(max(distance, 0.1));
   let size: vec2<i32> = vec2<i32>(textureDimensions(albedo_target));
   let at: vec2<i32> = clamp(texel + vec2<i32>(round(vec2<f32>(tilt.x, -tilt.y) * pixels * strength)), vec2<i32>(0),
     size - 1);
@@ -163,7 +163,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   // lose a lamp's glint, which water shows towards grazing.
   let reach: vec2<f32> = load_frame_target(wet_reach, texel).rg;
   let wet: vec4<f32> = load_frame_target(wet_surface, texel);
-  let facing: f32 = saturate(dot(normal, -normalize(position)));
+  let facing: f32 = saturate(dot(normal, -camera_view_ray(position)));
   let water_seen: f32 = environment_brdf(vec3<f32>(COAT_F0), 0.0, facing).x * saturate(wet.r / max(wet.g, 1e-3));
   let lit_gloss: f32 = max(albedo.a - reach.x - reach.y * (1.0 - saturate(water_seen)), 0.0);
   let terms: HmodelTerms = shaded_terms(vec4<f32>(albedo.rgb, lit_gloss), light, normal, position, material.z,
@@ -198,7 +198,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     var radiance: vec3<f32> = max(traced.rgb, vec3<f32>(0.0));
 
     if (kept < 1.0) {
-      let reflected: vec3<f32> = world_direction(reflect(normalize(position), normal));
+      let reflected: vec3<f32> = world_direction(reflect(camera_view_ray(position), normal));
       let aimed: vec3<f32> = surroundings_direction(sky_prefiltered, sky_clamp, world_offset(position), reflected);
       let sky: vec3<f32> = prefiltered_sky(sky_prefiltered, sky_clamp, aimed, roughness) * light_scale(lighting) *
         specular_occlusion(facing, reflected_visibility(lighting, occlusion * visible), roughness);
@@ -229,7 +229,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     if (film > 0.0) {
       let seen: f32 = textureLoad(sun_seen, texel, 0).x;
 
-      shaded += lighting.sun.rgb * sun_glint(normal, -normalize(position), lighting.to_sun.xyz, roughness, head_on) *
+      shaded += lighting.sun.rgb * sun_glint(normal, -camera_view_ray(position), lighting.to_sun.xyz, roughness, head_on) *
         film * seen * lighting.reflections.z;
     }
   } else {

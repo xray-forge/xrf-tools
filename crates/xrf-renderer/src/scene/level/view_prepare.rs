@@ -24,7 +24,6 @@ pub struct ViewPrepare<'a> {
   pub resolved: (u32, u32),
   /// Where the viewport shows it.
   pub output: RenderRect,
-  pub field_of_view: f32,
   pub options: &'a RenderViewOptions,
   pub lighting: &'a RenderLighting,
   pub weather: Option<&'a Arc<RenderLevelWeather>>,

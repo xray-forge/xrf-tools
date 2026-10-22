@@ -3,9 +3,12 @@ use std::sync::mpsc::Sender;
 
 use xrf_error::XrfResult;
 
+use crate::capture::capture_event::CaptureEvent;
 use crate::contract::render_capture::RenderCapture;
+use crate::contract::render_cube_capture::RenderCubeCapture;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_load_report::RenderLoadReport;
+use crate::contract::render_map_capture::RenderMapCapture;
 use crate::contract::render_memory_report::RenderMemoryReport;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_pick::RenderPick;
@@ -99,6 +102,19 @@ pub enum RenderCommand {
   Screenshot {
     id: RenderViewportId,
     reply: Sender<XrfResult<RenderCapture>>,
+  },
+  /// Captures a level map in a viewport, in place of its own frames until it ends, telling `events` of each tile as it
+  /// comes back; one capture at a time a viewport. Dropping the receiving end stops it, at its next word.
+  CaptureMap {
+    id: RenderViewportId,
+    capture: RenderMapCapture,
+    events: Sender<CaptureEvent>,
+  },
+  /// Captures a cubemap around a viewport's camera as `CaptureMap` captures a map, telling `events` of each face.
+  CaptureCube {
+    id: RenderViewportId,
+    capture: RenderCubeCapture,
+    events: Sender<CaptureEvent>,
   },
   /// Answers once every command sent before it is handled.
   Handled {

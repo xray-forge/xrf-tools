@@ -6,6 +6,7 @@
 //! build also reads its shaders from the checkout's `shaders/`, and watches them for changes.
 
 pub(crate) mod camera;
+pub(crate) mod capture;
 pub(crate) mod context;
 pub(crate) mod contract;
 pub(crate) mod frame;
@@ -28,6 +29,12 @@ pub use xrf_renderer_core::{send_profiler_message, start_profiler};
 pub use crate::camera::camera_frame::CameraFrame;
 pub use crate::camera::camera_view::CameraView;
 pub use crate::camera::engine_space::EngineSpace;
+pub use crate::capture::capture_event::CaptureEvent;
+pub use crate::capture::capture_shot::CaptureShot;
+pub use crate::capture::cube_assembly::CubeAssembly;
+pub use crate::capture::cube_face::CubeFace;
+pub use crate::capture::map_assembly::MapAssembly;
+pub use crate::capture::map_tile::MapTile;
 pub use crate::context::backend_probe::probe_render_backends;
 pub use crate::contract::render_ambient_occlusion_gtao_settings::RenderAmbientOcclusionGtaoSettings;
 pub use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
@@ -54,6 +61,7 @@ pub use crate::contract::render_capture::RenderCapture;
 pub use crate::contract::render_color::RenderColor;
 pub use crate::contract::render_contact_shadow_mode::RenderContactShadowMode;
 pub use crate::contract::render_contact_shadow_settings::RenderContactShadowSettings;
+pub use crate::contract::render_cube_capture::RenderCubeCapture;
 pub use crate::contract::render_debanding_mode::RenderDebandingMode;
 pub use crate::contract::render_debanding_settings::RenderDebandingSettings;
 pub use crate::contract::render_debug_view::RenderDebugView;
@@ -98,6 +106,7 @@ pub use crate::contract::render_load_durations::RenderLoadDurations;
 pub use crate::contract::render_load_failure::RenderLoadFailure;
 pub use crate::contract::render_load_report::RenderLoadReport;
 pub use crate::contract::render_lod_settings::RenderLodSettings;
+pub use crate::contract::render_map_capture::RenderMapCapture;
 pub use crate::contract::render_memory_report::RenderMemoryReport;
 pub use crate::contract::render_memory_section::RenderMemorySection;
 pub use crate::contract::render_meter_reading::RenderMeterReading;
