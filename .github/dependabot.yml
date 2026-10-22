@@ -36,6 +36,17 @@ updates:
         update-types:
           - version-update:semver-major
           - version-update:semver-minor
+      # `xrf-renderer-core` pins both to the one Tracy client `profiling`'s `profile-with-tracy`
+      # uses; moving either alone links a second client into a `tracy` build. Move them together
+      # with `profiling`, once it takes the newer `tracy-client`.
+      - dependency-name: tracy-client
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+      - dependency-name: tracy-client-sys
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
 
   - package-ecosystem: npm
     directory: /
