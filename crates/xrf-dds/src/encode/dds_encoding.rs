@@ -1,15 +1,11 @@
-use ddsfile::{D3DFormat, Dds, NewD3dParams};
-use image_dds::{ImageFormat, Mipmaps, Quality};
+use ddsfile::{Caps, Caps2, D3DFormat, Dds, NewD3dParams};
+use image_dds::{ImageFormat, Mipmaps, Quality, SurfaceRgba8};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::file::dds_file::DdsFile;
 use crate::mip::dds_mip_chain::DdsMipChain;
 
 /// How a texture is written: the layout its pixels are packed into, and how hard the encoder works at it.
-///
-/// The one door out of this crate for producing a DDS. It takes levels rather than an image because the levels are
-/// the expensive part and are worth keeping: weighing five formats against one texture is one [`DdsMipChain`] and five
-/// encodings of it, and a door taking an image would have reduced the same picture five times.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DdsEncoding {
   pub format: ImageFormat,
@@ -23,20 +19,30 @@ impl DdsEncoding {
 
   /// Writes the chain into a texture, level for level.
   ///
-  /// The encoder is told to take the levels it is handed rather than produce its own: the X-Ray converter's filter
-  /// family lives in [`crate::DdsMipFilter`] and has no counterpart in `image_dds`, whose generator is a fixed box
-  /// reduction.
-  ///
   /// # Errors
   ///
   /// Returns an error when the chain cannot be laid out as a surface, or when the encoder refuses the pixels.
   pub fn encode(&self, chain: &DdsMipChain) -> XrfResult<DdsFile> {
-    let surface = chain
-      .to_surface()?
+    self.write(chain.to_surface()?)
+  }
+
+  /// Writes six chains into a cube texture, `+x -x +y -y +z -z`, each face level for level as [`Self::encode`] does.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error unless there are six square faces alike in size and levels, or where [`Self::encode`] does.
+  pub fn encode_cube(&self, faces: &[DdsMipChain]) -> XrfResult<DdsFile> {
+    self.write(DdsMipChain::to_cube_surface(faces)?)
+  }
+
+  /// Writes a surface of one layer, or of six as a cube.
+  fn write(&self, surface: SurfaceRgba8<Vec<u8>>) -> XrfResult<DdsFile> {
+    let is_cube: bool = surface.layers == 6;
+    let surface = surface
       .encode(self.format, self.quality, Mipmaps::FromSurface)
       .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
 
-    let dds: Dds = match to_legacy_format(self.format) {
+    let mut dds: Dds = match to_legacy_format(self.format) {
       Some(format) => {
         let mut dds: Dds = Dds::new_d3d(NewD3dParams {
           height: surface.height,
@@ -44,7 +50,7 @@ impl DdsEncoding {
           depth: None,
           format,
           mipmap_levels: (surface.mipmaps > 1).then_some(surface.mipmaps),
-          caps2: None,
+          caps2: is_cube.then_some(Caps2::CUBEMAP | Caps2::CUBEMAP_ALLFACES),
         })
         .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
 
@@ -56,22 +62,22 @@ impl DdsEncoding {
         .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?,
     };
 
+    // A cube is a complex surface whether or not its faces carry levels, which Direct3D's loaders ask of its header;
+    // a DX10 header counts it as one cube, where `image_dds` leaves the count to `ddsfile`, which divides one layer by
+    // six into none.
+    if is_cube {
+      dds.header.caps.insert(Caps::COMPLEX);
+
+      if let Some(header10) = dds.header10.as_mut() {
+        header10.array_size = 1;
+      }
+    }
+
     DdsFile::from_encoded(dds)
   }
 }
 
 /// The legacy `FourCC` spelling of a layout, for the formats that predate the DX10 header extension.
-///
-/// The encoder's own `to_dds` prefers a DX10 header whenever DXGI can name the format, which is every candidate but
-/// nothing X-Ray ships: across `gamedata`, `gamedata-anomaly` and the vanilla trees, 13,274 textures carry a legacy
-/// header and not one carries a DX10 header - Anomaly included, which runs DX11.
-///
-/// The reason it matters is the D3D9 path. `D3DXCreateTextureFromFileInMemoryEx` predates the extension and reads
-/// only the old header, so a BC3 texture written with a DX10 header is refused by a renderer that supports BC3
-/// perfectly well. Writing the legacy spelling wherever one exists is what makes the compatibility this crate reports
-/// true of the files it produces.
-///
-/// BC7 has no legacy spelling and keeps the DX10 header, which is the same fact its `DX9: unsupported` badge states.
 fn to_legacy_format(format: ImageFormat) -> Option<D3DFormat> {
   match format {
     ImageFormat::BC1RgbaUnorm => Some(D3DFormat::DXT1),
@@ -85,9 +91,10 @@ fn to_legacy_format(format: ImageFormat) -> Option<D3DFormat> {
 
 #[cfg(test)]
 mod tests {
+  use ddsfile::Dds;
   use image::{Rgba, RgbaImage};
-  use image_dds::{ImageFormat, Quality};
-  use xrf_error::XrfResult;
+  use image_dds::{ImageFormat, Quality, SurfaceRgba8};
+  use xrf_error::{XrfError, XrfResult};
 
   use super::DdsEncoding;
   use crate::encode::dds_encode_candidate::DdsEncodeCandidate;
@@ -157,6 +164,73 @@ mod tests {
         candidate.label()
       );
     }
+
+    Ok(())
+  }
+
+  #[test]
+  fn writes_six_faces_as_a_cube_in_their_order() -> XrfResult {
+    // Each face one flat shade, so the layer it reads back from shows where it was written.
+    let new_face = |side: u32, face: u8| {
+      DdsMipChain::build(
+        &RgbaImage::from_pixel(side, side, Rgba([40 * (face + 1), 0, 0, u8::MAX])),
+        DdsMipmaps::Filtered(DdsMipFilter::Kaiser),
+      )
+    };
+    let faces: Vec<DdsMipChain> = (0..6).map(|face| new_face(16, face)).collect::<XrfResult<_>>()?;
+
+    for candidate in [
+      DdsEncodeCandidate::Bc3,
+      DdsEncodeCandidate::Bc7,
+      DdsEncodeCandidate::Rgba8,
+    ] {
+      let bytes: Vec<u8> = DdsEncoding::new(candidate.to_image_format(), Quality::Fast)
+        .encode_cube(&faces)?
+        .write_to_bytes()?;
+      let read: DdsFile = DdsFile::read_from_bytes(&bytes)?;
+
+      assert!(read.metadata().is_cubemap, "{}", candidate.label());
+      assert_eq!(
+        (read.metadata().width, read.metadata().mipmap_levels),
+        (16, 5),
+        "{}",
+        candidate.label()
+      );
+
+      let dds: Dds =
+        Dds::read(&mut bytes.as_slice()).map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
+
+      // A DX10 header counts one cube of six faces; a legacy one has no count.
+      assert!(
+        dds.header10.as_ref().is_none_or(|header10| header10.array_size == 1),
+        "{}",
+        candidate.label()
+      );
+
+      let surface: SurfaceRgba8<Vec<u8>> = SurfaceRgba8::decode_layers_mipmaps_dds(&dds, 0..6, 0..1)
+        .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
+
+      for face in 0..6u8 {
+        let red: u8 = surface.data[usize::from(face) * 16 * 16 * 4];
+
+        // Within the four steps BC3's five bits of red round a shade by.
+        assert!(
+          red.abs_diff(40 * (face + 1)) <= 4,
+          "{} face {face} reads {red}",
+          candidate.label()
+        );
+      }
+    }
+
+    // Five faces, or faces of two sizes, are no cube.
+    let encoding: DdsEncoding = DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Fast);
+    let mut uneven: Vec<DdsMipChain> = (0..5).map(|face| new_face(16, face)).collect::<XrfResult<_>>()?;
+
+    assert!(encoding.encode_cube(&uneven).is_err());
+
+    uneven.push(new_face(8, 5)?);
+
+    assert!(encoding.encode_cube(&uneven).is_err());
 
     Ok(())
   }

@@ -21,9 +21,6 @@ pub struct DdsMipChain {
 impl DdsMipChain {
   /// The levels a texture is written with, from the base down to the level `mipmaps` stops at.
   ///
-  /// Built once and encoded as many times as there are formats to weigh, which is what keeps a five-way comparison
-  /// from reducing the same picture five times over.
-  ///
   /// # Errors
   ///
   /// Returns an error when the base has no pixels, which nothing downstream can encode.
@@ -58,21 +55,63 @@ impl DdsMipChain {
   ///
   /// Returns an error when the chain describes more levels than the format's `u32` count can carry.
   pub(crate) fn to_surface(&self) -> XrfResult<SurfaceRgba8<Vec<u8>>> {
-    let base: &RgbaImage = self
+    Self::to_layered_surface(std::slice::from_ref(self))
+  }
+
+  /// Six chains as one cube surface, each face's levels in turn, `+x -x +y -y +z -z`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error unless there are six faces, square and alike in the size of every level.
+  pub(crate) fn to_cube_surface(faces: &[Self]) -> XrfResult<SurfaceRgba8<Vec<u8>>> {
+    let surface: SurfaceRgba8<Vec<u8>> = Self::to_layered_surface(faces)?;
+
+    if surface.layers != 6 || surface.width != surface.height {
+      return Err(XrfError::new_texture_processing_error(format!(
+        "A cube is six square faces, not {} of {} by {}",
+        surface.layers, surface.width, surface.height
+      )));
+    }
+
+    Ok(surface)
+  }
+
+  /// Chains alike in the size of every level as one surface, a layer each, each layer's levels in turn.
+  fn to_layered_surface(layers: &[Self]) -> XrfResult<SurfaceRgba8<Vec<u8>>> {
+    let [first, ..] = layers else {
+      return Err(XrfError::new_texture_processing_error(
+        "Cannot encode a surface holding no layers",
+      ));
+    };
+    let base: &RgbaImage = first
       .levels
       .first()
       .ok_or_else(|| XrfError::new_texture_processing_error("Cannot encode a mip chain holding no levels"))?;
+    let is_alike = |layer: &Self| {
+      layer
+        .levels
+        .iter()
+        .map(RgbaImage::dimensions)
+        .eq(first.levels.iter().map(RgbaImage::dimensions))
+    };
+
+    if !layers.iter().all(is_alike) {
+      return Err(XrfError::new_texture_processing_error(
+        "Layers of one surface must share the size of every level",
+      ));
+    }
 
     Ok(SurfaceRgba8 {
       width: base.width(),
       height: base.height(),
       depth: 1,
-      layers: 1,
-      mipmaps: u32::try_from(self.levels.len())
+      layers: u32::try_from(layers.len())
+        .map_err(|_| XrfError::new_texture_processing_error("Surface exceeds the supported layer count"))?,
+      mipmaps: u32::try_from(first.levels.len())
         .map_err(|_| XrfError::new_texture_processing_error("Mip chain exceeds the supported level count"))?,
-      data: self
-        .levels
+      data: layers
         .iter()
+        .flat_map(|layer| &layer.levels)
         .flat_map(|level| level.as_raw().iter().copied())
         .collect(),
     })
