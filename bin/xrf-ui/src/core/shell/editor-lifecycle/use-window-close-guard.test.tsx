@@ -70,6 +70,17 @@ describe("useWindowCloseGuard", () => {
     expect(await requestClose()).toBe(true);
   });
 
+  it("guards the window again when the approved close fails, so the next close asks again", async () => {
+    mockAppWindow.close.mockRejectedValueOnce(new Error("busy"));
+
+    await renderWindow(<Window />);
+
+    expect(await requestClose()).toBe(true);
+    await waitFor(() => expect(mockAppWindow.onCloseRequested).toHaveBeenCalledTimes(2));
+
+    expect(await requestClose()).toBe(true);
+  });
+
   it("asks about unsaved work before the window goes", async () => {
     const { getByRole, getByText } = await renderWindow(<Window dirtyCount={1} />);
 

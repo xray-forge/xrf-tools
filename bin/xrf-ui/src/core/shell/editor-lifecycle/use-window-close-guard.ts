@@ -26,8 +26,28 @@ export function useWindowCloseGuard(): void {
     let isActive: boolean = true;
     let unlisten: Nullable<() => void> = null;
 
+    function guard(): void {
+      target
+        .onCloseRequested((event: CloseRequestedEvent) => {
+          log.info("Window close requested, asking first:", target.label);
+
+          event.preventDefault();
+          lifecycle.requestExit(exit);
+        })
+        .then((it: () => void) => {
+          if (isActive) {
+            log.info("Guarding window close:", target.label);
+            unlisten = it;
+          } else {
+            it();
+          }
+        })
+        .catch((error: unknown) => log.error("Cannot guard window close:", target.label, error));
+    }
+
     // Approved first, so a refused approval leaves the window guarded and the next close asks again. Listening still,
-    // the page would be asked once more and hold its own close, so it stops just before closing.
+    // the page would be asked once more and hold its own close, so it stops just before closing, and guards it again
+    // where the close then fails.
     function exit(): void {
       log.info("Approving window close:", target.label);
 
@@ -41,25 +61,16 @@ export function useWindowCloseGuard(): void {
 
           return target.close();
         })
-        .catch((error: unknown) => log.error("Window close failed, the window stays guarded:", target.label, error));
+        .catch((error: unknown) => {
+          log.error("Window close failed, the window stays guarded:", target.label, error);
+
+          if (isActive && !unlisten) {
+            guard();
+          }
+        });
     }
 
-    appWindow
-      .onCloseRequested((event: CloseRequestedEvent) => {
-        log.info("Window close requested, asking first:", target.label);
-
-        event.preventDefault();
-        lifecycle.requestExit(exit);
-      })
-      .then((it: () => void) => {
-        if (isActive) {
-          log.info("Guarding window close:", target.label);
-          unlisten = it;
-        } else {
-          it();
-        }
-      })
-      .catch((error: unknown) => log.error("Cannot guard window close:", target.label, error));
+    guard();
 
     return () => {
       isActive = false;
