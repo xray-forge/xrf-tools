@@ -28,11 +28,12 @@ println!("packed {} files; unpacked {} volumes", packed.files_total, unpacked.ar
 # }
 ```
 
-Operations are synchronous. On an async executor, run the call on a blocking thread. Use `unpack_opt` with
-`ArchiveUnpackOptions::with_job` for progress and cancellation.
+Operations are synchronous. On an async executor, run the call on a blocking thread. Use `unpack_opt` or
+`extract_directory_opt` with `ArchiveExtractOptions::with_job` for progress and cancellation.
 
-`unpack` and `extract_directory` reject existing symlinks, junctions, and other reparse points below the destination
-root. `extract_file` writes to the exact path supplied by the caller, which may be linked.
+`unpack` and `extract_directory` follow existing symlinks, junctions, and other reparse points below the destination
+root; `ArchiveExtractOptions::with_link_policy(HostLinkPolicy::Refuse)` refuses them instead. `extract_file` writes to
+the exact path supplied by the caller, which may be linked.
 
 `XrayWorldExtractor::extract_directory` extracts the winning assets from an `XrayProbe`, including loose overrides.
 It preserves paths below the selected prefix; an empty prefix extracts the whole world. Shadowed copies are omitted.

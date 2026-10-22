@@ -48,7 +48,8 @@ impl<T: Send> PoolOnceLock<T> {
             .build()
           {
             Ok(pool) => pool.install(build),
-            // Off every pool, the build's parallel work goes to Rayon's global pool, which no job waiting here runs on.
+            // Off every pool, the build's parallel work goes to Rayon's global pool. Where that pool's own workers are
+            // what wait here, it can deadlock as an unmarked build would; only a thread that cannot start leaves it so.
             Err(error) => {
               log::warn!("Building a shared value on Rayon's global pool, as no thread of its own starts: {error}");
 
