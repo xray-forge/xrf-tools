@@ -42,6 +42,16 @@ fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: te
   return environment * environment * light_scale(state);
 }
 
+// The material's terms for the sun at a view space normal, seen along `view_ray` (`camera_view_ray`): `plight_infinity`'s
+// table looked up by the sun's angle to the normal and the halfway vector's, the diffuse in `x`, the specular in `y`.
+fn sun_terms(state: Lighting, table: texture_3d<f32>, table_sampler: sampler, normal: vec3<f32>, view_ray: vec3<f32>,
+  slice: f32) -> vec4<f32> {
+  let to_light: vec3<f32> = state.to_sun.xyz;
+  let half_way: vec3<f32> = normalize(to_light - view_ray);
+
+  return material_lookup(table, table_sampler, dot(to_light, normal), dot(half_way, normal), slice);
+}
+
 // `plight_infinity` for the sun: its colour by the diffuse term, its specular weight by the specular, at a view space
 // normal and point.
 fn sun_light(state: Lighting, table: texture_3d<f32>, table_sampler: sampler, normal: vec3<f32>, position: vec3<f32>,
@@ -81,6 +91,16 @@ fn authored_diffuse(state: Lighting, light: vec3<f32>) -> vec3<f32> {
   let summed: f32 = luminance(light) / (light_scale(state) * gain);
 
   return light * pow(max(summed, 0.0), SRGB_DISPLAY_POWER - 1.0) / gain;
+}
+
+// The lights' specular joined to the diffuse `lit` in display values, as the engine adds them before its display decodes
+// the sum: the specular `glossed` and the lights' colour `light` written at `scale` by the lights' `gain`, taken back to
+// the engine's units, the specular tinted by the colour as the engine bound it where Anomaly tints it (`is_tinted`).
+fn summed_specular(lit: vec3<f32>, light: vec3<f32>, glossed: f32, scale: f32, gain: f32, is_tinted: bool) -> vec3<f32> {
+  let unit: f32 = scale * gain;
+  let tint: vec3<f32> = select(vec3<f32>(1.0), srgb_light_authored(light / unit), is_tinted);
+
+  return srgb_decoded(srgb_encoded(max(lit, vec3<f32>(0.0)) / scale) + tint * glossed / unit) * scale;
 }
 
 // `hmodel` and `combine_1` in two parts: what the surface shows without its reflection of the environment, the
@@ -136,6 +156,17 @@ fn hmodel_terms(state: Lighting, table: texture_3d<f32>, table_sampler: sampler,
   // `C = D * light`: the lit albedo, and the gloss times what the lights reflect.
   let lit: vec3<f32> = albedo.rgb * authored_diffuse(state, light.rgb + hemisphere_diffuse);
   let glossed: f32 = gloss * light.a;
+
+  // At the authored levels the lights' specular joins the diffuse in display values as the engine's does, its weight
+  // the engine's (`to_light_specular`) and Anomaly's tint the lights' colour as the engine bound it, back in the engine's
+  // units, then decoded once with it: added as light, a dim moon's broad lobe stood hundreds of times the engine's,
+  // laying a grey sheet over wet ground and lighting metal from within.
+  if (is_light_summed(state)) {
+    let scale: f32 = light_scale(state);
+    let base: vec3<f32> = summed_specular(lit, light.rgb, glossed, scale, state.summed_light.x, is_extended);
+
+    return HmodelTerms(base, environment, select(weight, weight * lit / scale, is_extended), lit);
+  }
 
   // Anomaly's tint multiplies light by light, the lights' colour by their specular and the environment by the lit
   // albedo: the engine's values multiplied, so the lit albedo has the light's scale taken off. Under the physical light

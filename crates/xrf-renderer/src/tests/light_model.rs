@@ -130,6 +130,36 @@ fn only_the_authored_levels_sum_their_diffuse_light() {
   assert_eq!(authored.pictures.x, authored.pictures.y);
 }
 
+// The lights' specular weight follows their light only at the physical levels; under the engine's light and at the
+// authored levels it is the engine's over the authored colour, at the authored levels at the lights' gain and unit, so
+// `summed_specular` takes the engine's weight back as it joins the diffuse in display values.
+#[test]
+fn only_the_physical_levels_weigh_the_specular_by_the_light() {
+  let lighting: RenderLighting = RenderLighting {
+    sun_color: Vec3::splat(0.1),
+    ..RenderLighting::default()
+  };
+  let engine: RenderViewOptions = RenderViewOptions::default();
+  let authored: RenderViewOptions = physical();
+  let mut levels: RenderViewOptions = physical();
+
+  levels.features.light_level = RenderLightLevel::Physical;
+
+  assert!(!engine.is_specular_linear());
+  assert!(!authored.is_specular_linear());
+  assert!(levels.is_specular_linear());
+
+  let weight: f32 = lighting_with(&engine, &lighting).sun.w;
+  let units: LightUnits = LightUnits::of(&authored, &lighting, &SkyHarmonics::default(), None);
+  let summed: f32 = lighting_with(&authored, &lighting).sun.w / (units.weather * units.light_gain);
+
+  assert!(
+    (summed / weight - 1.0).abs() < 1e-5,
+    "{summed} against the engine's {weight}"
+  );
+  assert!(weight > lighting.get_sun_specular(&engine.features.light_scales, true));
+}
+
 // The engine's curve and the engine's own showing take no anchor; AgX and PBR Neutral each lift a darker frame's key
 // further, the engine's curve near linear in the dark, where AgX's toe darkens, and bending a brighter key down more
 // than PBR Neutral's linear run under its shoulder.

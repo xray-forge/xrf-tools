@@ -453,6 +453,7 @@ impl SceneView {
         campfire_shares: &scene.campfire_shares,
         is_scene_first: frame.is_scene_first,
         is_physical: options.is_light_physical(),
+        is_specular_linear: options.is_specular_linear(),
         light_scale: lighting_frame.light_units.local
           * lighting_frame.light_units.light_gain
           * lighting_frame.pre_exposure.current,

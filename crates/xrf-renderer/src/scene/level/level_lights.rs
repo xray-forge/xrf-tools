@@ -163,6 +163,7 @@ impl LevelLights {
       campfire_shares,
       is_scene_first,
       is_physical,
+      is_specular_linear,
       light_scale,
     } = frame;
 
@@ -234,16 +235,23 @@ impl LevelLights {
         } else {
           None
         };
-        // The authored colour as light, its strength kept as the weather's lights keep theirs, then faded: a fade is a
-        // share of the light, linear in either model.
-        let color: Vec3 =
-          authored_light(Self::to_color(&self.animators, light, seconds), is_physical) * it.fades.whole * it.share;
+        // The authored colour faded, a fade a share of the light, linear in either model; as light, its strength kept
+        // as the weather's lights keep theirs. Its specular weight follows the light at the physical levels, else the
+        // engine's over the authored colour, which the authored levels add to the diffuse in display values as the
+        // engine does (`hmodel_terms`).
+        let authored: Vec3 = Self::to_color(&self.animators, light, seconds) * it.fades.whole * it.share;
+        let color: Vec3 = authored_light(authored, is_physical);
+        let specular: f32 = if is_specular_linear {
+          to_light_specular(color, true)
+        } else {
+          to_light_specular(authored, false)
+        };
         let range: f32 = Self::to_frame_range(light, || into.next_random()) * it.share * FALLOFF_RANGE;
         let mut record: LightRecord = Self::to_record(
           &self.projectors,
           light,
           (&it.basis, it.bound),
-          (color, is_physical),
+          (color, specular),
           range,
           camera.view,
         );
@@ -461,7 +469,7 @@ impl LevelLights {
     projectors: &[u32],
     light: &LightDescription,
     (basis, bound): (&LightBasis, Vec4),
-    (color, is_physical): (Vec3, bool),
+    (color, specular): (Vec3, f32),
     range: f32,
     view: Mat4,
   ) -> LightRecord {
@@ -476,7 +484,7 @@ impl LevelLights {
       position: view
         .transform_point3(basis.position)
         .extend(if range > 0.0 { 1.0 / (range * range) } else { 0.0 }),
-      color: color.extend(to_light_specular(color, is_physical)),
+      color: color.extend(specular),
       axis: view.transform_vector3(basis.direction).extend(if is_spot {
         (light.cone / 2.0).cos()
       } else {

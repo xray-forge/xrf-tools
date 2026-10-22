@@ -117,7 +117,8 @@ impl LightingUniform {
     let is_authored_physical: bool = is_physical && options.features.light_level == RenderLightLevel::Authored;
 
     // The sun as the world lights it at the physical levels, a white surface facing it showing its illuminance over π;
-    // else the weather's.
+    // else the weather's, its specular weighed as the engine weighs it, which the authored levels' `hmodel` adds to the
+    // diffuse in display values as the engine's does (`hmodel_terms`).
     let sun: Vec4 = match frame.daylight {
       Some(daylight) => {
         let sun: Vec3 = daylight.sun / std::f32::consts::PI;
@@ -125,7 +126,7 @@ impl LightingUniform {
         (sun * frame.pre_exposure.current).extend(to_light_specular(sun, true) * frame.pre_exposure.current)
       }
       None => light(lighting.get_sun_color(&options.features.light_scales))
-        .extend(lighting.get_sun_specular(&options.features.light_scales, is_physical) * gain * light_scale),
+        .extend(lighting.get_sun_specular(&options.features.light_scales, false) * gain * light_scale),
     };
 
     Self {

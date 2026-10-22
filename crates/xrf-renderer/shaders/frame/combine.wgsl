@@ -166,7 +166,20 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let facing: f32 = saturate(dot(normal, -camera_view_ray(position)));
   let water_seen: f32 = environment_brdf(vec3<f32>(COAT_F0), 0.0, facing).x * saturate(wet.r / max(wet.g, 1e-3));
   let lit_gloss: f32 = max(albedo.a - reach.x - reach.y * (1.0 - saturate(water_seen)), 0.0);
-  let terms: HmodelTerms = shaded_terms(vec4<f32>(albedo.rgb, lit_gloss), light, normal, position, material.z,
+  var lit_light: vec4<f32> = light;
+
+  // The sun's and the moon's own share of that specular takes none of the water's gloss: a distant light's broad lobe
+  // across the water lays a grey sheet over a moonlit puddle, where water shows the sun or the moon only as the glint
+  // below. Its share is the sun pass's own term (`light_sun`), as much of it as reached the pixel.
+  if (reach.y > 0.0 && lit_gloss > 0.0) {
+    let sun_lit: f32 = lighting.sun.w * sun_terms(lighting, material_lut, lut_sampler, normal,
+      camera_view_ray(position), material.z).y * textureLoad(sun_seen, texel, 0).x;
+    let water_kept: f32 = lit_gloss - max(lit_gloss - reach.y * saturate(water_seen), 0.0);
+
+    lit_light.a = max(light.a - sun_lit * water_kept / lit_gloss, 0.0);
+  }
+
+  let terms: HmodelTerms = shaded_terms(vec4<f32>(albedo.rgb, lit_gloss), lit_light, normal, position, material.z,
     occlusion, bounced);
   var shaded: vec3<f32> = terms.base;
   // What the surface shows of the light it scatters, which the enhanced specular takes its share from.

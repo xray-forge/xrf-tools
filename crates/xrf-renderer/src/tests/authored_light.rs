@@ -1,5 +1,6 @@
 use glam::{Vec3, Vec4};
 
+use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::srgb::{authored_light, srgb_decoded};
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::test_context::create_test_context;
@@ -153,4 +154,41 @@ fn srgb_light_authored_undoes_srgb_light() {
   for (shown, colour) in shown.iter().zip(colours) {
     assert_close(*shown, colour, &format!("{colour}"));
   }
+}
+
+// At the authored levels the lights' specular joins the diffuse in display values, as the engine adds them before its
+// display decodes the sum: the engine's specular weight over its colour, tinted by the lights' colour where Anomaly
+// tints it, both back in the engine's units. A dim moon's broad lobe over a dark wet surface then adds what the
+// engine's display shows of it, a sliver of what it added as light.
+#[test]
+fn the_authored_specular_joins_the_diffuse_as_the_engine_adds_it() {
+  let (scale, gain): (f32, f32) = (64.0, 2.0);
+  let unit: f32 = scale * gain;
+  let moon: Vec3 = Vec3::splat(0.1);
+  let gloss: f32 = 0.8;
+  let glossed: f32 = gloss * to_light_specular(moon, false) * unit;
+  let shade: f32 = 0.05;
+  let lit: Vec3 = Vec3::splat(srgb_decoded(shade) * scale);
+  let light: Vec3 = authored_light(moon, true) * unit;
+  let body = |is_tinted: bool| {
+    format!("answer = summed_specular(first.rgb, second.rgb, first.w, {scale:?}, second.w, {is_tinted});")
+  };
+  let cases: [(Vec4, Vec4); 1] = [(lit.extend(glossed), light.extend(gain))];
+  let (Some(tinted), Some(white)) = (run(&body(true), &cases), run(&body(false), &cases)) else {
+    return;
+  };
+  let joined = |added: Vec3| encoded_sum(shade, added) * scale;
+
+  assert_close(tinted[0], joined(moon * glossed / unit), "tinted");
+  assert_close(white[0], joined(Vec3::splat(glossed / unit)), "white");
+  assert!(
+    (tinted[0] - lit).max_element() * 50.0 < glossed,
+    "the moon's specular {} against {glossed} added as light",
+    (tinted[0] - lit).max_element()
+  );
+}
+
+/// The light a display value `shade` shows with `added` summed onto it in display values.
+fn encoded_sum(shade: f32, added: Vec3) -> Vec3 {
+  decoded(Vec3::splat(shade) + added)
 }

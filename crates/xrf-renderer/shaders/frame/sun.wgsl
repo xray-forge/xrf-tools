@@ -1,6 +1,7 @@
 #import "common/camera"
 #import "common/octahedral"
 #import "common/lighting"
+#import "common/hmodel"
 #import "common/fullscreen"
 #import "common/sun_shadow"
 #import "common/occlusion"
@@ -64,16 +65,9 @@ fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
     return SunTargets(vec4<f32>(EMISSIVE_LIGHT * local_light_scale(lighting)), vec4<f32>(0.0));
   }
 
-  let slice: f32 = material.z;
-  // `plight_infinity`: L towards the light, V towards the eye, H halfway.
   let to_light: vec3<f32> = lighting.to_sun.xyz;
-  let half_way: vec3<f32> = normalize(to_light - camera_view_ray(position));
-  let lit: vec4<f32> = textureSampleLevel(
-    material_lut,
-    lut_sampler,
-    vec3<f32>(dot(to_light, normal), dot(half_way, normal), slice),
-    0.0
-  );
+  // `plight_infinity`'s terms.
+  let lit: vec4<f32> = sun_terms(lighting, material_lut, lut_sampler, normal, camera_view_ray(position), material.z);
   let world: vec3<f32> = (transpose(camera.view) * vec4<f32>(position, 0.0)).xyz + camera.position.xyz;
   let world_normal: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(normal, 0.0)).xyz);
   // Marched at the frame's size and read where it is, or at half and brought up by depth; a single lit texel stands in
