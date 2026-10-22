@@ -7,3 +7,4 @@ pub(crate) mod get_view_folder;
 pub(crate) mod read_view;
 pub(crate) mod save_view;
 pub(crate) mod write_map_annotations;
+pub(crate) mod write_screenshot_report;

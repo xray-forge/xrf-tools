@@ -16,6 +16,7 @@ import {
 } from "@/fixtures/utils/level-container";
 
 const PATH: string = "appdata/level-viewer/screenshots/zaton-20261020-070509.png";
+const REPORT_PATH: string = "appdata/level-viewer/screenshots/zaton-20261020-070509.json";
 
 function mockScreenshots(): ILevelViewContainerDescriptor & { screenshots: LevelViewerScreenshotService } {
   const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer([
@@ -46,18 +47,23 @@ afterEach(() => {
 });
 
 describe("LevelViewerScreenshotService", () => {
-  it("saves the frame at once and its report with the timed frame, the timing put back after", async () => {
+  it("saves the frame at once and its report with the timed frame, timed for the shot alone", async () => {
     const saved: Array<Record<string, unknown>> = [];
 
     setMockInvokeResponses({
       ["plugin:levels|find_screenshot_path"]: PATH,
-      ["plugin:levels|save_view"]: (args?: Record<string, unknown>) => saved.push(args ?? {}),
+      ["plugin:levels|write_screenshot_report"]: (args?: Record<string, unknown>) => {
+        saved.push(args ?? {});
+
+        return REPORT_PATH;
+      },
     });
 
     const { screenshots, render, renderSettings } = mockScreenshots();
     const taking: Promise<Nullable<ILevelViewerScreenshot>> = screenshots.take();
 
-    expect(renderSettings.isGpuTimed).toBe(true);
+    expect(renderSettings.renderSettings.isGpuTimed).toBe(true);
+    expect(renderSettings.isGpuTimed).toBe(false);
     expect(screenshots.canTake).toBe(false);
     await expect(screenshots.take()).resolves.toBeNull();
 
@@ -76,14 +82,15 @@ describe("LevelViewerScreenshotService", () => {
     const shot: Nullable<ILevelViewerScreenshot> = await taking;
     const report: Record<string, unknown> = JSON.parse(String(saved[0]?.text));
 
-    expect(saved[0]?.path).toBe("appdata/level-viewer/screenshots/zaton-20261020-070509.json");
+    expect(saved[0]?.path).toBe(PATH);
     expect(report).toMatchObject({
       format: LEVEL_VIEWER_SNAPSHOT_FORMAT,
       frame: { framesPerSecond: 61, isGpuTimed: true },
       screenshot: { file: "zaton-20261020-070509.png", height: 1080, isTimingSwitched: true, width: 1920 },
     });
     expect(shot?.frame?.framesPerSecond).toBe(61);
-    expect(renderSettings.isGpuTimed).toBe(false);
+    expect(shot?.reportPath).toBe(REPORT_PATH);
+    expect(renderSettings.renderSettings.isGpuTimed).toBe(false);
     expect(screenshots.canTake).toBe(true);
   });
 
@@ -92,7 +99,11 @@ describe("LevelViewerScreenshotService", () => {
 
     setMockInvokeResponses({
       ["plugin:levels|find_screenshot_path"]: PATH,
-      ["plugin:levels|save_view"]: (args?: Record<string, unknown>) => saved.push(args ?? {}),
+      ["plugin:levels|write_screenshot_report"]: (args?: Record<string, unknown>) => {
+        saved.push(args ?? {});
+
+        return REPORT_PATH;
+      },
     });
 
     const { screenshots, render, renderSettings } = mockScreenshots();
@@ -107,6 +118,26 @@ describe("LevelViewerScreenshotService", () => {
       screenshot: { isTimingSwitched: false },
     });
     expect(renderSettings.isGpuTimed).toBe(true);
+  });
+
+  it("keeps the screenshot when its report cannot be written, and says so apart", async () => {
+    setMockInvokeResponses({
+      ["plugin:levels|find_screenshot_path"]: PATH,
+      ["plugin:levels|write_screenshot_report"]: () => {
+        throw new Error("disk full");
+      },
+    });
+
+    const { screenshots, render, renderSettings } = mockScreenshots();
+
+    renderSettings.setGpuTimed(true);
+    noteLevelFrame(render, { isGpuTimed: true });
+
+    const shot: Nullable<ILevelViewerScreenshot> = await screenshots.take();
+
+    expect(shot?.path).toBe(PATH);
+    expect(shot?.reportPath).toBeNull();
+    expect(screenshots.failure).toContain("write the screenshot's report");
   });
 
   it("deletes the screenshot through the backend and forgets it", async () => {

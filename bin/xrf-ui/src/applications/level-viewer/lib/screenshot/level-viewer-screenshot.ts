@@ -2,13 +2,12 @@ import { Nullable } from "@xrf/types";
 
 import { ILevelViewerImage } from "@/applications/level-viewer/lib/files/level-viewer-image";
 import { ILevelViewerSnapshot } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
 
 /** A screenshot as the viewer holds it once taken: its image, and the report beside it. */
 export interface ILevelViewerScreenshot extends ILevelViewerImage {
-  /** Its report beside it: the view it was taken of and what its frame cost. */
-  reportPath: string;
+  /** Its report beside it, once written: the view it was taken of and what its frame cost. */
+  reportPath: Nullable<string>;
   /** What its frame cost, once its report is written; null until then or where it could not be written. */
   frame: Nullable<RenderFrameReport>;
 }
@@ -23,12 +22,4 @@ export interface ILevelViewerScreenshotReport extends ILevelViewerSnapshot {
     isTimingSwitched: boolean;
   };
   frame: RenderFrameReport;
-}
-
-/**
- * @param path - A screenshot's PNG.
- * @returns Its report's path beside it.
- */
-export function toLevelViewerScreenshotReportPath(path: string): string {
-  return `${path.slice(0, path.length - EXrayExtension.PNG.length)}${EXrayExtension.JSON}`;
 }

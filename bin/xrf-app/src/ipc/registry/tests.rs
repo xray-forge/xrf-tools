@@ -90,6 +90,21 @@ fn every_bulk_route_is_served_at_its_plugin_and_name() {
 }
 
 #[test]
+fn the_page_is_granted_no_file_command_but_exists() {
+  let capability: serde_json::Value =
+    serde_json::from_str(include_str!("../../../capabilities/default.json")).expect("the default capability to parse");
+  let granted: Vec<&str> = capability["permissions"]
+    .as_array()
+    .expect("the capability to list its permissions")
+    .iter()
+    .filter_map(|permission| permission.as_str().or_else(|| permission["identifier"].as_str()))
+    .filter(|identifier| identifier.starts_with("fs:"))
+    .collect();
+
+  assert_eq!(granted, ["fs:allow-exists", "fs:scope"]);
+}
+
+#[test]
 fn a_raw_command_is_dispatched_and_answers_its_bytes_raw() {
   let answer: InvokeResponseBody =
     invoke_fixture("read_bytes", InvokeBody::Json(json!({ "length": 3 }))).expect("raw command to answer");

@@ -13,7 +13,6 @@ import {
 import {
   ILevelViewerScreenshot,
   ILevelViewerScreenshotReport,
-  toLevelViewerScreenshotReportPath,
 } from "@/applications/level-viewer/lib/screenshot/level-viewer-screenshot";
 import {
   ILevelViewerSnapshot,
@@ -23,6 +22,7 @@ import { LevelViewerSnapshotService } from "@/applications/level-viewer/services
 import { KeybindCommand } from "@/core/commands";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { systemCommands } from "@/core/ipc/commands/system";
+import { BuildInfo } from "@/core/ipc/types/xrf-build-info";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
@@ -90,7 +90,8 @@ export class LevelViewerScreenshotService {
   }
 
   /**
-   * Saves the viewport's next finished frame to the screenshots folder, then its report once its frame's cost is read.
+   * Saves the viewport's next finished frame to the screenshots folder, then its report once its frame's cost is read;
+   * the passes are timed on the GPU meanwhile, the timing setting left as it is.
    *
    * @returns The screenshot, or null where none was taken: one is being taken, no level is open, or it failed.
    */
@@ -104,36 +105,46 @@ export class LevelViewerScreenshotService {
       return null;
     }
 
-    const isTimed: boolean = this.renderSettingsService.isGpuTimed;
+    const isTimed: boolean = this.renderSettingsService.renderSettings.isGpuTimed;
+    // Timed from now, so its reports come in while the screenshot is read back.
+    const releaseTiming: () => void = this.renderSettingsService.holdGpuTiming();
+    const timedFrame: Promise<RenderFrameReport> = isTimed
+      ? Promise.resolve(this.renderService.frame)
+      : this.waitForTimedFrame();
+    const build: Promise<Nullable<BuildInfo>> = this.snapshotService.readBuild();
 
     runInAction(() => {
       this.isTaking = true;
       this.failure = null;
     });
 
-    // Timed from now, so its reports come in while the screenshot is read back.
-    if (!isTimed) {
-      this.renderSettingsService.setGpuTimed(true);
-    }
-
-    const timedFrame: Promise<RenderFrameReport> = isTimed
-      ? Promise.resolve(this.renderService.frame)
-      : this.waitForTimedFrame();
-
     try {
       const path: string = await levelsCommands.findScreenshotPath(toLevelViewerFileStem(level, new Date()));
+      // The view as it stands for the frame asked for next, before the camera moves on.
+      const view: ILevelViewerSnapshot = this.snapshotService.describe(null);
 
       if (!(await this.renderService.saveScreenshot(path))) {
         throw new Error("The level viewer has no viewport attached");
       }
 
-      // The view as it stood for the frame, before the camera moves on.
-      const view: Promise<ILevelViewerSnapshot> = this.snapshotService.exportSnapshot();
       const shot: ILevelViewerScreenshot = await this.read(path);
 
       this.replace(shot);
       this.log.info("Took a screenshot:", path);
-      await this.writeReport(shot, await view, await timedFrame, !isTimed);
+
+      try {
+        const built: Nullable<BuildInfo> = await build;
+        const { format, ...described } = view;
+
+        await this.writeReport(
+          shot,
+          { format, ...(built ? { build: built } : {}), ...described },
+          await timedFrame,
+          !isTimed
+        );
+      } catch (error: unknown) {
+        this.fail("write the screenshot's report", error);
+      }
 
       return this.shot;
     } catch (error: unknown) {
@@ -141,10 +152,7 @@ export class LevelViewerScreenshotService {
 
       return null;
     } finally {
-      if (!isTimed) {
-        this.renderSettingsService.setGpuTimed(false);
-      }
-
+      releaseTiming();
       runInAction(() => {
         this.isTaking = false;
       });
@@ -165,11 +173,13 @@ export class LevelViewerScreenshotService {
     return this.attempt("show the screenshot", (shot: ILevelViewerScreenshot) => systemCommands.revealPath(shot.path));
   }
 
-  /** Shows the last screenshot's report selected in its folder. */
+  /** Shows the last screenshot's report selected in its folder, once it is written. */
   public revealReport(): Promise<void> {
-    return this.attempt("show the screenshot's report", (shot: ILevelViewerScreenshot) =>
-      systemCommands.revealPath(shot.reportPath)
-    );
+    return this.attempt("show the screenshot's report", async ({ reportPath }: ILevelViewerScreenshot) => {
+      if (reportPath) {
+        await systemCommands.revealPath(reportPath);
+      }
+    });
   }
 
   /** Puts the last screenshot's path on the clipboard. */
@@ -217,11 +227,12 @@ export class LevelViewerScreenshotService {
   private async read(path: string): Promise<ILevelViewerScreenshot> {
     const image: ILevelViewerImage = await readLevelViewerImage(path);
 
-    return { ...image, frame: null, reportPath: toLevelViewerScreenshotReportPath(path) };
+    return { ...image, frame: null, reportPath: null };
   }
 
   /**
-   * Writes a screenshot's report beside it and keeps its frame's cost with it.
+   * Writes a screenshot's report beside it and keeps its frame's cost with it, unless it was deleted or replaced
+   * meanwhile.
    *
    * @param shot - The screenshot.
    * @param view - The view it shows.
@@ -234,16 +245,24 @@ export class LevelViewerScreenshotService {
     frame: RenderFrameReport,
     isTimingSwitched: boolean
   ): Promise<void> {
+    if (this.shot !== shot) {
+      return;
+    }
+
     const report: ILevelViewerScreenshotReport = {
       ...view,
       screenshot: { file: shot.name, height: shot.height, isTimingSwitched, width: shot.width },
       frame,
     };
 
-    await levelsCommands.saveView(shot.reportPath, serializeLevelViewerSnapshot(report));
+    const reportPath: string = await levelsCommands.writeScreenshotReport(
+      shot.path,
+      serializeLevelViewerSnapshot(report)
+    );
+
     runInAction(() => {
       if (this.shot === shot) {
-        this.shot = { ...shot, frame };
+        this.shot = { ...shot, frame, reportPath };
       }
     });
   }

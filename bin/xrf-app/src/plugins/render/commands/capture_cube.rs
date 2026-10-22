@@ -10,16 +10,19 @@ use xrf_renderer::{CaptureEvent, CaptureShot, CubeAssembly};
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
 use crate::core::types::TauriResult;
+use crate::plugins::levels::viewer::LevelViewerFolder;
 use crate::plugins::render::capture_outcome::CaptureOutcome;
 use crate::plugins::render::capture_receiver::{CaptureNames, receive_shots, write_capture};
 use crate::plugins::render::capture_request::CubeCaptureRequest;
 use crate::plugins::render::state::RenderState;
+use crate::plugins::system::paths::SystemPathsState;
 
 /// Capture a cubemap around a viewport's camera face by face and write it to a PNG file as a horizontal cross.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "capture_cube"))]
 #[tauri::command(rename = "capture_cube")]
 pub async fn render_capture_cube(
   state: State<'_, RenderState>,
+  paths: State<'_, SystemPathsState>,
   execution: State<'_, ExecutionState>,
   registry: State<'_, Arc<JobRegistry>>,
   request: CubeCaptureRequest,
@@ -31,6 +34,9 @@ pub async fn render_capture_cube(
     capture,
     path,
   } = request;
+
+  LevelViewerFolder::require_screenshot(paths.local_data.clone(), &path)?;
+
   let (job, registration): (JobHandle, JobRegistration) = registry.register(
     JobStart::new(job_id, JobKind::LevelsCaptureCube)
       .with_request(&capture)

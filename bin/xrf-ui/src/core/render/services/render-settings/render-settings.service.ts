@@ -1,5 +1,5 @@
 import { inject, Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
-import { BoundAction, comparer, Computed, Observable, reaction, RefObservable } from "@wirestate/mobx";
+import { BoundAction, comparer, Computed, Observable, reaction, RefObservable, runInAction } from "@wirestate/mobx";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
@@ -115,6 +115,10 @@ export class RenderSettingsService {
   @RefObservable()
   public rendererChoice: IRenderFeatureChoice = RenderSettingsService.readRendererChoice();
 
+  /** How many holds time every viewport's passes on the GPU for now, whatever `isGpuTimed` keeps. */
+  @Observable()
+  private gpuTimingHolds: number = 0;
+
   /** Stops telling the renderer its settings, while provisioned. */
   private stopConfiguring: Nullable<() => void> = null;
 
@@ -149,7 +153,7 @@ export class RenderSettingsService {
       gpu: this.renderGpu === null ? null : { ...this.renderGpu },
       frameRate: toRenderFrameRate(this.frameRateLimit, this.isVsync),
       graph: { ...this.graph },
-      isGpuTimed: this.isGpuTimed,
+      isGpuTimed: this.isGpuTimed || this.gpuTimingHolds > 0,
       periodicBudget: this.periodicBudget,
       // The one texture cache every viewport samples is filtered and loaded alike for all of them.
       textureFiltering: this.rendererFeatures.textureFiltering,
@@ -221,6 +225,27 @@ export class RenderSettingsService {
 
     this.isGpuTimed = isGpuTimed;
     setLocalStorageValue(GPU_TIMED_STORAGE_KEY, String(isGpuTimed));
+  }
+
+  /**
+   * Times every viewport's passes on the GPU until released, for this session only and leaving the setting as it is.
+   *
+   * @returns Releases the hold; called again, it does nothing.
+   */
+  @BoundAction()
+  public holdGpuTiming(): () => void {
+    let isHeld: boolean = true;
+
+    this.gpuTimingHolds += 1;
+
+    return () => {
+      if (isHeld) {
+        isHeld = false;
+        runInAction(() => {
+          this.gpuTimingHolds -= 1;
+        });
+      }
+    };
   }
 
   @BoundAction()

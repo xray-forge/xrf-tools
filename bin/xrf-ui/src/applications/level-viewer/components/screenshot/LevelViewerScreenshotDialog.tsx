@@ -119,7 +119,7 @@ export function LevelViewerScreenshotDialog({
               Delete
             </Button>
             <Button onClick={onReveal}>Show in folder</Button>
-            <Button disabled={!shot.frame} onClick={onRevealReport}>
+            <Button disabled={!shot.reportPath} onClick={onRevealReport}>
               Show report
             </Button>
             <Button onClick={onCopyImage}>Copy image</Button>

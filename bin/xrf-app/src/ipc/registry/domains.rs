@@ -109,6 +109,7 @@ macro_rules! for_each_tauri_command_domain {
         read_view => crate::plugins::levels::viewer::commands::read_view::levels_read_view,
         save_view => crate::plugins::levels::viewer::commands::save_view::levels_save_view,
         write_map_annotations => crate::plugins::levels::viewer::commands::write_map_annotations::levels_write_map_annotations,
+        write_screenshot_report => crate::plugins::levels::viewer::commands::write_screenshot_report::levels_write_screenshot_report,
       }
       @bulk {
         read_screenshot(path: "string") => crate::plugins::levels::viewer::routes::read_screenshot::levels_read_screenshot,

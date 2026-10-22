@@ -128,6 +128,26 @@ describe("RenderSettingsService", () => {
     expect(mockInjectedService(RenderSettingsService).service.renderSettings.isGpuTimed).toBe(true);
   });
 
+  // A hold times the passes for as long as it is held and never reaches the stored setting.
+  it("times the passes while held, leaving the setting as it is", () => {
+    const { service } = mockInjectedService(RenderSettingsService);
+    const release: () => void = service.holdGpuTiming();
+    const other: () => void = service.holdGpuTiming();
+
+    expect(service.renderSettings.isGpuTimed).toBe(true);
+    expect(service.isGpuTimed).toBe(false);
+    expect(getLocalStorageValue("xrf.preference.gpu-timed")).toBeNull();
+
+    release();
+    release();
+
+    expect(service.renderSettings.isGpuTimed).toBe(true);
+
+    other();
+
+    expect(service.renderSettings.isGpuTimed).toBe(false);
+  });
+
   // The budget is the renderer's own unless set for a session's measurement.
   it("gives periodic work the renderer's budget until set, for the session only", () => {
     const { service } = mockInjectedService(RenderSettingsService);

@@ -251,8 +251,8 @@ export const renderCommands = {
   saveCapture: (viewport: RenderViewportId, path: string) =>
     __TAURI_INVOKE<null>("plugin:render|save_capture", { viewport, path }),
   /**
-   * Write a viewport's next finished frame to a PNG file: the whole viewport at its drawn size, without its overlays or
-   * its selection's outline.
+   * Write a viewport's next finished frame to a PNG file of the level viewer's screenshots folder: the whole viewport at
+   * its drawn size, without its overlays or its selection's outline.
    */
   saveScreenshot: (viewport: RenderViewportId, path: string) =>
     __TAURI_INVOKE<null>("plugin:render|save_screenshot", { viewport, path }),

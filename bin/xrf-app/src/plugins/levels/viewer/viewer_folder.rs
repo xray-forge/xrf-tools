@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use xrf_utils::HostFileName;
+
 use crate::core::directories::{get_app_data_directories, get_first_unicode_path};
 use crate::core::types::TauriResult;
 
@@ -17,6 +19,9 @@ impl LevelViewerFolder {
 
   /// The extension of a screenshot's report beside it.
   pub const REPORT_EXTENSION: &'static str = "json";
+
+  /// The extension of a level view's file.
+  pub const VIEW_EXTENSION: &'static str = "json";
 
   /// The extension of a level map's annotations beside it.
   pub const ANNOTATIONS_EXTENSION: &'static str = "svg";
@@ -44,7 +49,7 @@ impl LevelViewerFolder {
   }
 
   /// Refuses a path other than a screenshot's image directly in the screenshots folder, the only files the page may
-  /// read, copy or delete through the level viewer.
+  /// have written, read, copied or deleted in that folder through the level viewer.
   ///
   /// # Errors
   ///
@@ -55,6 +60,60 @@ impl LevelViewerFolder {
     } else {
       Err(format!("'{}' is not a screenshot of the level viewer", path.display()))
     }
+  }
+
+  /// Refuses a view file other than a JSON one, the only kind the page may write or read where a file dialog answered.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming the path when it is not a JSON file.
+  pub fn require_view_file(path: &Path) -> TauriResult {
+    if path.file_stem().is_some()
+      && path
+        .extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case(Self::VIEW_EXTENSION))
+    {
+      Ok(())
+    } else {
+      Err(format!("'{}' is not a level view's JSON file", path.display()))
+    }
+  }
+
+  /// The first free path in the screenshots folder (`folder`) for a screenshot named `name`, `-2`, `-3` and on added
+  /// for one taken within the same second.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `name` is not one file name Windows takes, or starts with a dot.
+  pub fn find_free_screenshot(folder: &Path, name: &str) -> TauriResult<PathBuf> {
+    let name: HostFileName = HostFileName::new(name, "A screenshot's name").map_err(|error| error.to_string())?;
+
+    if name.as_str().contains(['*', '?', '"', '<', '>', '|']) || name.as_str().starts_with('.') {
+      return Err(format!("'{name}' is not a screenshot's name"));
+    }
+
+    (1..=u32::MAX)
+      .map(|index: u32| {
+        let stem: String = if index == 1 {
+          name.to_string()
+        } else {
+          format!("{name}-{index}")
+        };
+
+        folder.join(format!("{stem}.{}", Self::SCREENSHOT_EXTENSION))
+      })
+      .find(|path: &PathBuf| !path.exists())
+      .ok_or_else(|| format!("No free name for the screenshot '{name}'"))
+  }
+
+  /// Where the report of the screenshot at `path` stands beside it.
+  pub fn get_report_path(path: &Path) -> PathBuf {
+    path.with_extension(Self::REPORT_EXTENSION)
+  }
+
+  /// Where a level map's annotations, captured at `path`, stand beside it.
+  pub fn get_annotations_path(path: &Path) -> PathBuf {
+    path.with_extension(Self::ANNOTATIONS_EXTENSION)
   }
 
   /// Whether `path` is an image directly in the screenshots folder (`folder`).
@@ -69,9 +128,64 @@ impl LevelViewerFolder {
 
 #[cfg(test)]
 mod tests {
-  use std::path::Path;
+  use std::fs;
+  use std::path::{Path, PathBuf};
+
+  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use super::LevelViewerFolder;
+
+  #[test]
+  fn numbers_a_screenshot_whose_name_is_taken() {
+    let folder: PathBuf = build_absolute_generated_test_resource_path("level-viewer-free-screenshot");
+
+    fs::create_dir_all(&folder).expect("the folder to be made");
+
+    for name in ["zaton.png", "zaton-2.png", "zaton-3.png"] {
+      let _ = fs::remove_file(folder.join(name));
+    }
+
+    assert_eq!(
+      LevelViewerFolder::find_free_screenshot(&folder, "zaton").expect("a free name"),
+      folder.join("zaton.png")
+    );
+
+    fs::write(folder.join("zaton.png"), b"").expect("the first to be written");
+    fs::write(folder.join("zaton-2.png"), b"").expect("the second to be written");
+
+    assert_eq!(
+      LevelViewerFolder::find_free_screenshot(&folder, "zaton").expect("a free name"),
+      folder.join("zaton-3.png")
+    );
+  }
+
+  #[test]
+  fn refuses_a_screenshot_name_that_is_not_one_file_name() {
+    for name in [
+      "",
+      "..",
+      ".hidden",
+      "nested/zaton",
+      "..\\zaton",
+      "C:zaton",
+      "zaton?",
+      "za|ton",
+    ] {
+      assert!(
+        LevelViewerFolder::find_free_screenshot(Path::new("screenshots"), name).is_err(),
+        "'{name}' must not name a screenshot"
+      );
+    }
+  }
+
+  #[test]
+  fn takes_only_a_json_file_for_a_view() {
+    assert!(LevelViewerFolder::require_view_file(Path::new("C:/views/zaton.json")).is_ok());
+    assert!(LevelViewerFolder::require_view_file(Path::new("C:/views/zaton.JSON")).is_ok());
+    assert!(LevelViewerFolder::require_view_file(Path::new("C:/views/zaton.png")).is_err());
+    assert!(LevelViewerFolder::require_view_file(Path::new("C:/Windows/win.ini")).is_err());
+    assert!(LevelViewerFolder::require_view_file(Path::new("C:/views/zaton")).is_err());
+  }
 
   #[test]
   fn takes_only_an_image_directly_in_the_screenshots_folder() {

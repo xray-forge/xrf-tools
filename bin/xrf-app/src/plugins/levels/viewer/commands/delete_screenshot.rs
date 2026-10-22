@@ -25,11 +25,9 @@ pub async fn levels_delete_screenshot(
       fs::remove_file(&path).map_err(|error| format!("Failed to delete '{}': {error}", path.display()))?;
 
       for beside in [
-        LevelViewerFolder::REPORT_EXTENSION,
-        LevelViewerFolder::ANNOTATIONS_EXTENSION,
-      ]
-      .map(|extension| path.with_extension(extension))
-      {
+        LevelViewerFolder::get_report_path(&path),
+        LevelViewerFolder::get_annotations_path(&path),
+      ] {
         match fs::remove_file(&beside) {
           Err(error) if error.kind() != ErrorKind::NotFound => {
             return Err(format!("Failed to delete '{}': {error}", beside.display()));

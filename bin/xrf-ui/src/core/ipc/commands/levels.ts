@@ -83,11 +83,14 @@ export const levelsCommands = {
    */
   readLevelWeather: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelWeatherDescription>>("plugin:levels|read_level_weather", { sessionId }),
-  /** Read a level view's JSON text, for the page to check and import. */
+  /** Read a level view's JSON file as text, for the page to check and import. */
   readView: (path: string) => __TAURI_INVOKE<string>("plugin:levels|read_view", { path }),
-  /** Write a level view, or a screenshot's report, as its JSON text where the page names. */
+  /** Write a level view as its JSON text to the JSON file the page names. */
   saveView: (path: string, text: string) => __TAURI_INVOKE<null>("plugin:levels|save_view", { path, text }),
   /** Draw the open level's annotations over one of its level maps and write them beside it as an SVG; answers the SVG. */
   writeMapAnnotations: (sessionId: SessionId, request: MapAnnotationsRequest) =>
     __TAURI_INVOKE<SessionSnapshot<string>>("plugin:levels|write_map_annotations", { sessionId, request }),
+  /** Write a screenshot's report beside it in the screenshots folder, as its JSON text; answers where it was written. */
+  writeScreenshotReport: (path: string, text: string) =>
+    __TAURI_INVOKE<string>("plugin:levels|write_screenshot_report", { path, text }),
 };

@@ -145,7 +145,7 @@ pub fn export_map(request: &MapExportRequest) -> TauriResult<(u32, u32)> {
   } = request;
   let svg: Option<String> = annotations
     .map(|_| {
-      let path: PathBuf = source.with_extension(LevelViewerFolder::ANNOTATIONS_EXTENSION);
+      let path: PathBuf = LevelViewerFolder::get_annotations_path(source);
 
       fs::read_to_string(&path).map_err(|error| format!("Failed to read annotations '{}': {error}", path.display()))
     })
@@ -157,11 +157,11 @@ pub fn export_map(request: &MapExportRequest) -> TauriResult<(u32, u32)> {
       return Err(refuse_svg());
     };
 
-    write_file_staged(target, svg.as_bytes())
-      .map_err(|error| format!("Failed to write annotations '{}': {error}", target.display()))?;
-
     let (width, height): (u32, u32) =
       image::image_dimensions(source).map_err(|error| format!("Failed to read map '{}': {error}", source.display()))?;
+
+    write_file_staged(target, svg.as_bytes())
+      .map_err(|error| format!("Failed to write annotations '{}': {error}", target.display()))?;
 
     return Ok((width, height));
   }
@@ -214,4 +214,18 @@ pub fn export_map(request: &MapExportRequest) -> TauriResult<(u32, u32)> {
     .map_err(|error| format!("Failed to write map '{}': {error}", target.display()))?;
 
   Ok((width, height))
+}
+
+#[cfg(test)]
+mod tests {
+  use super::get_export_size;
+
+  // The page sizes its preview by the same cases (`level-map-export.test.ts`).
+  #[test]
+  fn sizes_an_export_in_the_capture_s_shape_a_dds_in_whole_blocks() {
+    assert_eq!(get_export_size((4096, 2048), 2048, false), (2048, 1024));
+    assert_eq!(get_export_size((1000, 333), 500, false), (500, 167));
+    assert_eq!(get_export_size((1000, 333), 500, true), (500, 168));
+    assert_eq!(get_export_size((512, 512), 4096, true), (512, 512));
+  }
 }

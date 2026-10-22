@@ -54,7 +54,7 @@ pub async fn levels_write_map_annotations(
           is_labelled: request.is_labelled,
         }
         .draw(&annotations);
-        let target: PathBuf = request.path.with_extension(LevelViewerFolder::ANNOTATIONS_EXTENSION);
+        let target: PathBuf = LevelViewerFolder::get_annotations_path(&request.path);
 
         write_file_staged(&target, svg.as_bytes())
           .map_err(|error| format!("Failed to write annotations '{}': {error}", target.display()))?;
