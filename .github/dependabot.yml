@@ -30,6 +30,12 @@ updates:
         update-types:
           - version-update:semver-major
           - version-update:semver-minor
+      # `xrf-renderer` reads DXGI through the adapter `wgpu-hal` hands out, so it must use the `windows`
+      # the fork does. Move it together with the fork.
+      - dependency-name: windows
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
 
   - package-ecosystem: npm
     directory: /
