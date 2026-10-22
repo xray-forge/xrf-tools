@@ -6,6 +6,7 @@ use std::path::{Component, Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::host_path::host_file_name::is_host_file_name;
 use crate::host_path::{HostLinkPolicy, HostRelativePath};
 use crate::path_utils::format_path;
 
@@ -36,10 +37,6 @@ impl HostDestination {
 
   pub fn get_root(&self) -> &Path {
     &self.root
-  }
-
-  pub fn get_link_policy(&self) -> HostLinkPolicy {
-    self.link_policy
   }
 
   /// Creates the directory `relative` names below the root and returns its host path.
@@ -123,8 +120,15 @@ impl HostDestination {
   /// Returns an invalid error when `parent` is not below the root, `name` is not one file name, or a link the policy
   /// refuses already occupies it.
   pub fn create_file_in(&self, parent: &Path, name: &OsStr) -> XrfResult<File> {
-    // Lexical and free: a parent reaching the root from anywhere else is refused rather than trusted.
-    if !parent.starts_with(&self.root) {
+    // Lexical and free: a parent reaching the root from anywhere else, or climbing back out of it, is refused rather
+    // than trusted.
+    let is_below_root: bool = parent.strip_prefix(&self.root).is_ok_and(|below: &Path| {
+      below
+        .components()
+        .all(|component| matches!(component, Component::Normal(_)))
+    });
+
+    if !is_below_root {
       return Err(XrfError::new_invalid_error(format!(
         "Refusing to write into '{}': it is not below the destination root '{}'",
         format_path(parent),
@@ -132,7 +136,7 @@ impl HostDestination {
       )));
     }
 
-    if !matches!(Path::new(name).components().next(), Some(Component::Normal(part)) if part == name) {
+    if !name.to_str().is_some_and(is_host_file_name) {
       return Err(XrfError::new_invalid_error(format!(
         "Refusing to write '{}': it is not one file name",
         format_path(name)

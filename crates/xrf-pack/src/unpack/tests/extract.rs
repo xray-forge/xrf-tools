@@ -263,6 +263,38 @@ fn extract_directory_stops_between_entries_when_cancelled() {
   assert!(!out.join("system.ltx").exists());
 }
 
+/// Two entries spelled apart only by case are one file on Windows: one of them writes it, never both at once.
+#[test]
+fn extract_directory_writes_a_file_the_host_names_twice_once() {
+  let directory: PathBuf = create_temporary_directory("directory-case");
+  let project: ArchiveProject = create_project(
+    &directory,
+    &[
+      Entry::stored("configs\\System.ltx", b"[upper]"),
+      Entry::stored("configs\\system.ltx", b"[lower]"),
+    ],
+  );
+
+  let out: PathBuf = directory.join("out");
+  let result: ArchiveExtractDirectoryResult = ExecutionRequest::Workers(TWO)
+    .resolve()
+    .install(|| ArchiveUnpacker::extract_directory(&project, "configs", &out))
+    .expect("the pool starts")
+    .expect("extraction");
+
+  assert_eq!(result.outcome, JobOutcome::Completed);
+
+  if cfg!(windows) {
+    assert_eq!(result.extracted_count, 1);
+    assert!(
+      ["[upper]", "[lower]"].contains(&fs::read_to_string(out.join("system.ltx")).expect("the file").as_str()),
+      "one entry's payload, whole"
+    );
+  } else {
+    assert_eq!(result.extracted_count, 2);
+  }
+}
+
 #[test]
 fn extract_directory_reports_a_prefix_that_matches_nothing() {
   let directory: PathBuf = create_temporary_directory("missing");

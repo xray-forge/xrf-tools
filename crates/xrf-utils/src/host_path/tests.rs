@@ -220,6 +220,18 @@ fn create_file_in_refuses_a_parent_outside_the_root_or_a_path_for_a_name() {
     !outside.join("system.ltx").exists(),
     "a refused parent was written into"
   );
+  assert!(matches!(
+    destination.create_file_in(&root.join("..").join("elsewhere"), OsStr::new("system.ltx")),
+    Err(XrfError::Invalid { .. })
+  ));
+  assert!(
+    !outside.join("system.ltx").exists(),
+    "a parent climbing out of the root was written into"
+  );
+  assert!(matches!(
+    destination.create_file_in(&root, OsStr::new("system:stream")),
+    Err(XrfError::Invalid { .. })
+  ));
 
   let escape: PathBuf = Path::new("..").join("elsewhere").join("system.ltx");
 
