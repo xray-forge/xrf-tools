@@ -2,6 +2,7 @@
 //! keeps everything together, else in its own data directory. Each kind of place is a list of candidates, best first.
 
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use std::{env, fs};
 
 /// Directory beside the executable for what the application keeps of its own, as X-Ray keeps its `appdata`: logs, and
@@ -42,9 +43,9 @@ pub fn get_first_unicode_path(directories: Vec<PathBuf>) -> Option<String> {
     .find_map(|directory| directory.into_os_string().into_string().ok())
 }
 
-/// Whether a directory accepts a file, tested by writing one and removing it again.
+/// Whether a directory accepts a file, tested by writing one of this process's own and removing it again.
 fn is_writable(directory: &Path) -> bool {
-  let probe: PathBuf = directory.join(".xrf-write-probe");
+  let probe: PathBuf = directory.join(format!(".xrf-write-probe-{}", std::process::id()));
 
   match fs::write(&probe, []) {
     Ok(()) => {
@@ -56,9 +57,15 @@ fn is_writable(directory: &Path) -> bool {
   }
 }
 
-/// The directory the running executable lies in, where it accepts files.
+/// The directory the running executable lies in, where it accepts files: decided once a run, so every command
+/// addresses the same folders. Probed on every ask, two at once could see each other's probe being removed, and one
+/// decide the other way.
 fn get_writable_executable_directory() -> Option<PathBuf> {
-  get_executable_directory().filter(|directory| is_writable(directory))
+  static WRITABLE: OnceLock<Option<PathBuf>> = OnceLock::new();
+
+  WRITABLE
+    .get_or_init(|| get_executable_directory().filter(|directory| is_writable(directory)))
+    .clone()
 }
 
 fn get_ordered_app_data_directories(executable: Option<PathBuf>, local_data: Option<PathBuf>) -> Vec<PathBuf> {
@@ -83,7 +90,9 @@ mod tests {
   use std::ffi::OsString;
   use std::path::PathBuf;
 
-  use super::{get_first_unicode_path, get_ordered_app_data_directories, get_ordered_output_directories};
+  use super::{
+    get_app_data_directories, get_first_unicode_path, get_ordered_app_data_directories, get_ordered_output_directories,
+  };
 
   #[cfg(unix)]
   fn non_unicode_component() -> OsString {
@@ -143,5 +152,29 @@ mod tests {
       Some(PathBuf::from("data").join("target").display().to_string())
     );
     assert_eq!(get_first_unicode_path(vec![invalid.clone(), invalid]), None);
+  }
+
+  #[test]
+  fn names_the_same_folders_to_every_command_asking_at_once() {
+    let local: Option<PathBuf> = Some(PathBuf::from("data"));
+    let first: Vec<PathBuf> = get_app_data_directories(local.clone());
+    let answers: Vec<Vec<PathBuf>> = std::thread::scope(|scope| {
+      let asks: Vec<_> = (0..16)
+        .map(|_| {
+          scope.spawn(|| {
+            (0..32)
+              .map(|_| get_app_data_directories(local.clone()))
+              .collect::<Vec<_>>()
+          })
+        })
+        .collect();
+
+      asks
+        .into_iter()
+        .flat_map(|ask| ask.join().expect("an ask to answer"))
+        .collect()
+    });
+
+    assert!(answers.iter().all(|answer| *answer == first));
   }
 }
