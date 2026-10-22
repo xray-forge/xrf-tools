@@ -2,12 +2,13 @@ import { formatCount, formatMilliseconds } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { Fragment, ReactElement, ReactNode } from "react";
 
-import { RenderFrameReport, RenderMeterReading, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
+import { RenderFrameReport, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
 import {
   describeRenderAntialiasing,
   isTemporalAntialiasing,
 } from "@/core/render/lib/features/render-antialiasing-choices";
+import { toRenderMeterLines } from "@/core/render/lib/frame/render-meter-lines";
 import { groupRenderPassCosts, IRenderPassGroup } from "@/core/render/lib/frame/render-pass-groups";
 import { abbreviateRenderBackend } from "@/core/render/lib/settings/render-backend-choice";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -46,37 +47,6 @@ function toDrawnLine(report: RenderFrameReport): string {
   const triangles: string = `${formatCount(report.staticDraws.keptTriangles)} tris`;
 
   return report.adapter ? `${abbreviateRenderBackend(report.backend)} · ${triangles}` : triangles;
-}
-
-/** A luminance to three figures, or whole once it reaches the thousands, as cd/m² of daylight do. */
-function formatLuminance(value: number): string {
-  return value >= 1000 ? Math.round(value).toString() : value.toPrecision(3);
-}
-
-/**
- * What the spot meter read: the light in stops about middle grey as exposed, then the light before the exposure, in
- * cd/m² with the exposure value at ISO 100 where the light is physical, or in the engine's units with the exposure's
- * scale; then, where a surface lies under the spot, its albedo, gloss and distance, and the light the sun and the lamps
- * gave it.
- */
-function toMeterLines(meter: RenderMeterReading): Array<string> {
-  const stops: number = meter.stops ?? 0;
-  const luminance: string = formatLuminance(meter.luminance ?? 0);
-  const light: string =
-    meter.ev100 === null
-      ? `L ${luminance} · ×${(meter.exposure ?? 1).toFixed(2)}`
-      : `L ${luminance} cd/m² · EV100 ${meter.ev100.toFixed(1)}`;
-  const lines: Array<string> = [`Meter ${stops >= 0 ? "+" : ""}${stops.toFixed(2)} EV · ${light}`];
-
-  if (meter.albedo !== null && meter.gloss !== null && meter.distance !== null) {
-    lines.push(`albedo ${meter.albedo.toFixed(3)} · gloss ${meter.gloss.toFixed(2)} · ${meter.distance.toFixed(1)} m`);
-  }
-
-  if (meter.diffuse !== null && meter.specular !== null) {
-    lines.push(`light ${meter.diffuse.toPrecision(3)} · specular ${meter.specular.toPrecision(3)}`);
-  }
-
-  return lines;
 }
 
 /** What every pass cost together. */
@@ -118,7 +88,7 @@ export function RenderFrameReadout({
 
       {report.meter ? (
         <div data-testid={"render-frame-meter"} className={"mt-1 tabular-nums"}>
-          {toMeterLines(report.meter).map((line: string) => (
+          {toRenderMeterLines(report.meter).map((line: string) => (
             <div key={line}>{line}</div>
           ))}
         </div>
