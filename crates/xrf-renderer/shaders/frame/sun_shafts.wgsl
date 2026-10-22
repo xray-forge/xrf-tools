@@ -12,7 +12,7 @@
 // in its colour, added to what the local lights' shafts gathered (`frame/light_volumes`), as both add up in
 // `rt_Generic_2`, tonemapped together and added to the frame. Where the enhanced volume draws, neither: what its
 // froxels gathered along the view up to the pixel's depth, the sky's at its far end, added the same way. At the authored
-// levels the sun's shafts join the frame's display values as the engine's do (`fs_sun_shafts_over`).
+// levels all of them join the frame's display values as the engine's do (`fs_sun_shafts_over`).
 
 #import "generated/frame/sun_shafts"
 
@@ -134,7 +134,13 @@ fn composited(pixel: vec2<f32>, is_display_added: bool) -> Composited {
   }
 
   if (textureDimensions(light_volumes).x > 1u) {
-    light += half_upsampled(light_volumes, floor(pixel), distance).rgb;
+    let gathered: vec3<f32> = half_upsampled(light_volumes, floor(pixel), distance).rgb;
+
+    if (is_display_added) {
+      shaft += gathered;
+    } else {
+      light += gathered;
+    }
   }
 
   // The froxels hold, at each, what was gathered up to its slice's far edge, so a depth reads half a slice short.

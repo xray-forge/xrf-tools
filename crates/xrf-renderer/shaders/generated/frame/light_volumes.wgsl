@@ -8,3 +8,4 @@
 @group(1) @binding(3) var shadow_sampler: sampler_comparison;
 @group(1) @binding(4) var<uniform> volumes: LightVolumes;
 @group(1) @binding(5) var depth_target: texture_depth_2d;
+@group(1) @binding(6) var<uniform> lighting: Lighting;

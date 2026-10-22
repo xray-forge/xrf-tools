@@ -24,9 +24,9 @@ pub struct SunShaftsFeature {
   /// Whether the sun's shafts are marched this frame: a lit view showing them, the weather shafting the sun, and its
   /// cascades drawn.
   is_shafted: bool,
-  /// Whether they and the froxels' gathered light are added to the frame's display values as the engine adds its
-  /// shafts, at the authored levels of the physical light (`SunShaftsDraw::Over`), rather than added as light; the
-  /// froxels gather display values there (`froxel_inject`).
+  /// Whether they, the lights' shafts and the froxels' gathered light are added to the frame's display values as the
+  /// engine adds its shafts, at the authored levels of the physical light (`SunShaftsDraw::Over`), rather than added as
+  /// light; the lights' shafts and the froxels gather display values there (`light_volumes`, `froxel_inject`).
   is_display_added: bool,
 }
 
@@ -42,7 +42,8 @@ impl SunShaftsFeature {
 
   /// Adds the sun's shafts marched, unless the froxels draw in their place (`is_froxeled`), and the composite of them
   /// with the shadowed lights' shafts or the froxels; nothing where none of them is drawn. At the authored levels the
-  /// composite writes the frame over from a copy of it, the sun's shafts added to its display values.
+  /// composite writes the frame over from a copy of it, the shafts added to its display values: the frame as the
+  /// reflections copied it for the next frame (`copied`), which stands as the composite finds it, or one of its own.
   pub fn add_passes<'a>(
     &self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
@@ -50,10 +51,12 @@ impl SunShaftsFeature {
     view: &'a ViewBinding,
     (handles, lit): (ViewTargetHandles, LightingHandles<'a>),
     (light_volumes, is_froxeled): (Option<GraphTexture>, bool),
-    froxels: Option<(UniformBinding<FroxelUniform>, GraphTexture)>,
+    (froxels, copied): (
+      Option<(UniformBinding<FroxelUniform>, GraphTexture)>,
+      Option<GraphTexture>,
+    ),
   ) {
     let is_shafted: bool = self.is_shafted && !is_froxeled;
-    let is_froxel_composited: bool = froxels.is_some();
 
     if !(is_shafted || light_volumes.is_some() || froxels.is_some()) {
       return;
@@ -102,18 +105,21 @@ impl SunShaftsFeature {
         .record(move |context| passes.sun_shafts.record(context, view, &march, SunShaftsDraw::March));
     }
 
-    // At the authored levels the sun's shafts and the froxels' gathered light join the frame's display values, which the
-    // composite reads off a copy of the frame as it stands and writes over it.
-    let draw: SunShaftsDraw = if (is_shafted || is_froxel_composited) && self.is_display_added {
-      let before: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
-        "sun shafts frame",
-        width,
-        height,
-        ViewTargets::SCENE,
-      ));
+    // At the authored levels the sun's shafts, the lights' and the froxels' gathered light join the frame's display
+    // values, which the composite reads off a copy of the frame as it stands and writes over it.
+    let draw: SunShaftsDraw = if self.is_display_added {
+      parameters.scene_before = copied.unwrap_or_else(|| {
+        let before: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+          "sun shafts frame",
+          width,
+          height,
+          ViewTargets::SCENE,
+        ));
 
-      add_texture_copy(&mut *graph, "sun shafts frame copy", handles.scene, before);
-      parameters.scene_before = before;
+        add_texture_copy(&mut *graph, "sun shafts frame copy", handles.scene, before);
+
+        before
+      });
 
       SunShaftsDraw::Over
     } else {

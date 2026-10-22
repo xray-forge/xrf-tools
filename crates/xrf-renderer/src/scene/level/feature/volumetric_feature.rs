@@ -13,6 +13,7 @@ use crate::pass::froxel_uniform::FroxelUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_volume_parameters::LightVolumeParameters;
 use crate::pass::light_volume_pass::LightVolumePass;
+use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::froxel_volume::FroxelVolume;
 use crate::scene::level::feature::lights_feature::LightsFeature;
@@ -87,7 +88,7 @@ impl VolumetricFeature {
       (&mut *graph, &mut *bindings, &mut *runtime),
       record.passes,
       (record.view, record.textures),
-      (record.handles, lights, atlas),
+      (record.handles, lights, atlas, record.lit.lighting),
     );
     let froxels: Option<(UniformBinding<FroxelUniform>, GraphTexture)> = self.add_froxel_passes(
       (graph, bindings, runtime),
@@ -106,7 +107,12 @@ impl VolumetricFeature {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     (view, textures): (&'a ViewBinding, &'a wgpu::BindGroup),
-    (handles, lights, atlas): (ViewTargetHandles, &'a LightsFeature, LightShadowAtlas<'a>),
+    (handles, lights, atlas, lighting): (
+      ViewTargetHandles,
+      &'a LightsFeature,
+      LightShadowAtlas<'a>,
+      UniformBinding<LightingUniform>,
+    ),
   ) -> Option<GraphTexture> {
     if self.is_froxeled() || !lights.has_volumes() {
       return None;
@@ -132,6 +138,7 @@ impl VolumetricFeature {
       shadow_sampler: atlas.sampler,
       volumes: runtime.push_uniform(lights.get_volumes_uniform()),
       depth_target: handles.depth,
+      lighting,
     };
     let slices: &'a [u32] = lights.get_volume_slices();
 

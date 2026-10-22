@@ -1451,7 +1451,7 @@ impl SceneView {
       view,
       (handles, lit),
       (light_volumes, is_froxeled),
-      froxels,
+      (froxels, source.map(|(scene, _)| scene)),
     );
     self.features.rain.add_passes(
       (&mut *graph, &mut *bindings, runtime),
