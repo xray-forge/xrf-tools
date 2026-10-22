@@ -70,6 +70,18 @@ export const ANOMALY_LEVEL_LOOK: ILevelLook = {
 };
 
 /**
+ * What G.A.M.M.A.'s installer writes over a fresh profile (`modpack_patches/appdata/user.ltx`): the sun at 2.2 and the
+ * ambient at 0.25, a tonemap brought to 0.7 floored at 0.25, the frame's saturation at 1.05, graded towards a grey of
+ * 0.5, and Anomaly's faint bloom.
+ */
+export const GAMMA_LEVEL_LOOK: ILevelLook = {
+  bloom: ANOMALY_LEVEL_LOOK.bloom,
+  corrections: { exposure: 1, gamma: 1, grading: [0.5, 0.5, 0.5], saturation: 1.05 },
+  exposure: { adaptation: 10, amount: 1, compensation: 0, isEnabled: true, lowLuminance: 0.25, middleGray: 0.7 },
+  lightScales: { ambient: 0.25, hemi: 1, sun: 2.2 },
+};
+
+/**
  * What XRF's render presets ship in `rspec_shared.ltx`: the hemisphere at 0.6 and the ambient at 0.1, a tonemap brought
  * to 1.1 floored at 0.4, and OpenXRay's bloom, which they leave alone.
  */

@@ -3,6 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import {
+  GAMMA_LEVEL_LOOK,
   ILevelLook,
   MONOLITH_LEVEL_BLOOM,
   NEUTRAL_LEVEL_IMAGE_CORRECTIONS,
@@ -95,6 +96,22 @@ describe("level look", () => {
         DEFAULT_RENDER_EXPOSURE_SETTINGS
       )
     ).toBe(custom);
+    expect(
+      resolveLevelLook(
+        { ...DEFAULT_LEVEL_LOOK_CHOICE, source: ELevelLookSource.GAMMA },
+        game,
+        DEFAULT_RENDER_EXPOSURE_SETTINGS
+      )
+    ).toBe(GAMMA_LEVEL_LOOK);
+  });
+
+  it("keeps G.A.M.M.A.'s look as its installer writes it", () => {
+    expect(GAMMA_LEVEL_LOOK.lightScales).toEqual({ ambient: 0.25, hemi: 1, sun: 2.2 });
+    expect(GAMMA_LEVEL_LOOK.exposure.middleGray).toBe(0.7);
+    expect(GAMMA_LEVEL_LOOK.corrections.saturation).toBe(1.05);
+    expect(toLevelLookChoice({ source: ELevelLookSource.GAMMA }, DEFAULT_RENDER_EXPOSURE_SETTINGS).source).toBe(
+      ELevelLookSource.GAMMA
+    );
   });
 
   it("keeps only what is well formed of a stored choice", () => {

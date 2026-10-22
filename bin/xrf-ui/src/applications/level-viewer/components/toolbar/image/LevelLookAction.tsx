@@ -74,6 +74,7 @@ const BUILT_IN_SOURCES: ReadonlyArray<Exclude<ELevelLookSource, ELevelLookSource
   ELevelLookSource.GAME,
   ELevelLookSource.XRF,
   ELevelLookSource.ANOMALY,
+  ELevelLookSource.GAMMA,
   ELevelLookSource.OPENXRAY,
   ELevelLookSource.SETTINGS,
 ];
@@ -83,6 +84,7 @@ const BUILT_IN_LABELS: Readonly<Record<Exclude<ELevelLookSource, ELevelLookSourc
   [ELevelLookSource.GAME]: "Game defaults",
   [ELevelLookSource.XRF]: "XRF",
   [ELevelLookSource.ANOMALY]: "Anomaly",
+  [ELevelLookSource.GAMMA]: "G.A.M.M.A.",
   [ELevelLookSource.OPENXRAY]: "OpenXRay",
   [ELevelLookSource.SETTINGS]: "Settings",
 };

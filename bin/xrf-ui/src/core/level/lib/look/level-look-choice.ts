@@ -2,6 +2,7 @@ import { isRecord, Nullable } from "@xrf/types";
 
 import {
   ANOMALY_LEVEL_LOOK,
+  GAMMA_LEVEL_LOOK,
   ILevelImageCorrections,
   ILevelLightScales,
   ILevelLook,
@@ -24,6 +25,8 @@ export enum ELevelLookSource {
   XRF = "xrf",
   /** What Anomaly ships, whatever game is open. */
   ANOMALY = "anomaly",
+  /** What G.A.M.M.A. ships over Anomaly, whatever game is open. */
+  GAMMA = "gamma",
   /** OpenXRay's own defaults, whatever game is open. */
   OPENXRAY = "openxray",
   /** Values of its own, edited by hand. */
@@ -71,6 +74,9 @@ export function resolveLevelLook(
 
     case ELevelLookSource.ANOMALY:
       return ANOMALY_LEVEL_LOOK;
+
+    case ELevelLookSource.GAMMA:
+      return GAMMA_LEVEL_LOOK;
 
     case ELevelLookSource.OPENXRAY:
       return OPENXRAY_LEVEL_LOOK;
