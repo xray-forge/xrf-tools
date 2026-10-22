@@ -192,3 +192,42 @@ fn the_authored_specular_joins_the_diffuse_as_the_engine_adds_it() {
 fn encoded_sum(shade: f32, added: Vec3) -> Vec3 {
   decoded(Vec3::splat(shade) + added)
 }
+
+/// What the engine's meter reads off a texel of its eight-bit high part holding `high`: twice it, held to one, by
+/// `LUMINANCE_VECTOR`, over `def_hdr`.
+fn engine_reading(high: Vec3) -> f32 {
+  let held: Vec3 = (high.clamp(Vec3::ZERO, Vec3::ONE) * 255.0).round() / 255.0;
+
+  (held * 2.0).min(Vec3::ONE).dot(Vec3::new(0.3, 0.38, 0.22)) * 9.0
+}
+
+// The authored levels meter as the engine does: a texel of their scene, the engine's display values decoded at the
+// engine-equivalent scale, reads as the engine's meter reads that colour exposed by the scale, saturating as its
+// eight bits do; the sky's texel, its picture untonemapped and decoded, reads as its picture, as the engine's high part
+// holds the sky as drawn.
+#[test]
+fn the_authored_scene_is_metered_as_the_engines_high_part() {
+  let colour: Vec3 = Vec3::new(0.4, 0.3, 0.2);
+  let picture: Vec3 = Vec3::new(0.6, 0.7, 0.85);
+  let cases: [(Vec4, Vec4); 3] = [
+    (colour.extend(1.3), Vec4::ZERO),
+    (colour.extend(16.0), Vec4::ZERO),
+    (picture.extend(1.0), Vec4::ONE),
+  ];
+  let Some(read) = run(
+    "let sky: vec3<f32> = untonemapped(srgb_decoded(first.rgb), 1.0); \
+     let land: vec3<f32> = srgb_decoded(first.rgb * first.w); \
+     answer = vec3<f32>(select(engine_metered_scene(land, false), engine_metered_scene(sky, true), second.w > 0.5));",
+    &cases,
+  ) else {
+    return;
+  };
+
+  for (shown, expected, case) in [
+    (read[0].x, engine_reading(colour * 1.3 / 9.0), "land"),
+    (read[1].x, engine_reading(colour * 16.0 / 9.0), "bright land"),
+    (read[2].x, engine_reading(picture / 9.0), "sky"),
+  ] {
+    assert!((shown - expected).abs() < 1e-3, "{case}: {shown} against {expected}");
+  }
+}

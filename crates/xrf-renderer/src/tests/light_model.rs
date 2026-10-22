@@ -4,6 +4,7 @@ use crate::camera::camera_view::CameraView;
 use crate::lighting::luminance::luminance;
 
 use crate::contract::render_display_transform::RenderDisplayTransform;
+use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_light_model::RenderLightModel;
 use crate::contract::render_light_scales::RenderLightScales;
@@ -21,6 +22,7 @@ use crate::pass::display_curves::{agx as agx_curve, engine_display, pbr_neutral}
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::exposure_metering::ExposureMetering;
+use crate::pass::exposure_uniform::ExposureUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::picture_shares::PictureShares;
@@ -334,6 +336,52 @@ fn the_physical_light_is_in_cd_per_square_metre() {
 
   assert!((law(land) / daylight - 1.0).abs() < 1e-4);
   assert!((law(land - 1.0) / law(land) - (1.0 - ExposureHistogramUniform::KEPT_SHARE).exp2()).abs() < 1e-4);
+}
+
+// The authored levels expose as the engine's own meter does, the sky with the land, by the engine's adaptation and
+// moving as far a frame; the physical levels by the law. Held, the authored levels stand at the engine's scale of one:
+// the engine's scale raised to the display's power over the light's unit, raised by the compensation.
+#[test]
+fn the_authored_levels_expose_as_the_engines_meter_does() {
+  let settings: RenderExposureSettings = RenderExposureSettings {
+    middle_gray: 1.5,
+    low_luminance: 0.5,
+    amount: 1.0,
+    compensation: 0.5,
+    ..RenderExposureSettings::default()
+  };
+  let authored = ExposureHistogramUniform::new(&settings, RenderLightLevel::Authored, (0.016, 0.3), false);
+  let physical = ExposureHistogramUniform::new(&settings, RenderLightLevel::Physical, (0.016, 0.3), false);
+  let engine: ExposureUniform = ExposureUniform::new(&settings, 0.3);
+
+  assert_eq!(authored.is_engine_metered, 1.0);
+  assert_eq!(physical.is_engine_metered, 0.0);
+  assert_eq!(
+    (
+      authored.engine_target,
+      authored.engine_weight,
+      authored.engine_floor,
+      authored.engine_blend
+    ),
+    (engine.target_gray, engine.weight, engine.floor_luminance, engine.blend)
+  );
+  assert!((authored.compensation_scale - 0.5_f32.exp2()).abs() < 1e-6);
+
+  let held: f32 = ExposureHistogramUniform::get_held_scale(RenderLightLevel::Authored, 0.5);
+
+  assert!((held * PHYSICAL_LIGHT_UNIT / 0.5_f32.exp2() - 1.0).abs() < 1e-5);
+  assert_eq!(
+    ExposureHistogramUniform::get_held_scale(RenderLightLevel::Physical, 0.5),
+    ExposureHistogramUniform::get_daylight_scale(0.5)
+  );
+
+  // The engine's scale comes back from the authored one as `engine_scale` in `frame/exposure_histogram` takes it.
+  for scale in [1.0 / 128.0, 0.6, 1.5, 20.0] {
+    let authored: f32 = ExposureHistogramUniform::get_engine_scale(scale, 0.5);
+    let engine: f32 = (PHYSICAL_LIGHT_UNIT * authored / 0.5_f32.exp2()).powf(1.0 / 2.2);
+
+    assert!((engine / scale - 1.0).abs() < 1e-4, "{engine} against {scale}");
+  }
 }
 
 // At the authored levels the sky's irradiance keeps its shape but takes the authored hemisphere's level and colour, each

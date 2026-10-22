@@ -448,6 +448,12 @@ struct ExposureHistogram {
   least_scale_log: f32,
   most_scale_log: f32,
   snap: f32,
+  is_engine_metered: f32,
+  engine_target: f32,
+  engine_weight: f32,
+  engine_floor: f32,
+  engine_blend: f32,
+  compensation_scale: f32,
 }
 
 struct MeterSample {

@@ -2,11 +2,15 @@ use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_light_level::RenderLightLevel;
+use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
+use crate::lighting::srgb::SRGB_DISPLAY_POWER;
+use crate::pass::exposure_uniform::ExposureUniform;
 
 /// How the physical light's exposure meters and adapts, as `shaders/frame/exposure_histogram.wgsl` reads it: the log2
 /// luminance the histogram's bins span, the luminance a daylit exterior's average is brought to, how much of a scene's
 /// distance from a daylit exterior it keeps, how far it may move this frame each way, the share of the darkest and the
-/// brightest light the average leaves out, and the scale's bounds.
+/// brightest light the average leaves out, and the scale's bounds; then whether the scale is the engine's own, as at
+/// the authored levels, and the engine's adaptation.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "ExposureHistogram")]
@@ -27,6 +31,18 @@ pub struct ExposureHistogramUniform {
   pub most_scale_log: f32,
   /// One where the scale goes straight to its target, as on the first frame metered.
   pub snap: f32,
+  /// One where the scale is the engine's own (the authored levels): the frame read as the engine's meter reads its high
+  /// part, the sky with the land, as the authored levels show the game as the engine model does; an open frame's
+  /// bright sky darkening its ground as the engine's does, which the land's histogram alone left half a stop bright.
+  pub is_engine_metered: f32,
+  /// The engine's adaptation (`ExposureUniform`): its middle gray, the measured luminance's weight, its floor and how
+  /// far this frame moves.
+  pub engine_target: f32,
+  pub engine_weight: f32,
+  pub engine_floor: f32,
+  pub engine_blend: f32,
+  /// The compensation as a factor of the scale, which the engine's step is taken without.
+  pub compensation_scale: f32,
 }
 
 impl ExposureHistogramUniform {
@@ -34,6 +50,8 @@ impl ExposureHistogramUniform {
   pub const BINS: u32 = 128;
   /// The bins' slots after the histogram's: the sky's sum of log2 levels, its count and its sum of squared levels.
   pub const SKY_SLOTS: u32 = 3;
+  /// The slots after the sky's: the engine meter's sum and its count.
+  pub const ENGINE_SLOTS: u32 = 2;
   /// The share of the frame under its bright end, which the display transforms never show brighter than the engine's
   /// curve does (`DisplayMode::get_lift`): the brightest few of what is lit, a night's moonlit metal over its dark land.
   pub const BRIGHT_SHARE: f32 = 0.99;
@@ -85,10 +103,33 @@ impl ExposureHistogramUniform {
     (shown - land).clamp(Self::LEAST_SCALE_LOG, Self::MOST_SCALE_LOG).exp2()
   }
 
+  /// The authored levels' scale for the engine's scale `engine`, raised by `compensation`: the authored frame is the
+  /// engine's display values decoded at the light's unit, so the engine's scale is raised to the display's power and
+  /// taken over the unit, as `engine_scale` in `frame/exposure_histogram` brings it back. The unit is the authored
+  /// levels' weather unit (`LightUnits::of`), which the shader reads from the lighting.
+  pub fn get_engine_scale(engine: f32, compensation: f32) -> f32 {
+    engine.powf(SRGB_DISPLAY_POWER) * compensation.exp2() / PHYSICAL_LIGHT_UNIT
+  }
+
+  /// The scale the light's `level` holds where its exposure does not adapt, raised by `compensation`: at the authored
+  /// levels the engine's, one; at the physical levels a daylit exterior's.
+  pub fn get_held_scale(level: RenderLightLevel, compensation: f32) -> f32 {
+    match level {
+      RenderLightLevel::Authored => Self::get_engine_scale(1.0, compensation),
+      RenderLightLevel::Physical => Self::get_daylight_scale(compensation),
+    }
+  }
+
   /// The metering for a frame `delta` seconds after the last at the light's `level`, straight to its target where
-  /// `is_snapped`.
-  pub fn new(settings: &RenderExposureSettings, level: RenderLightLevel, delta: f32, is_snapped: bool) -> Self {
+  /// `is_snapped`; at the authored levels the engine's adaptation, moving `engine_blend` of the way.
+  pub fn new(
+    settings: &RenderExposureSettings,
+    level: RenderLightLevel,
+    (delta, engine_blend): (f32, f32),
+    is_snapped: bool,
+  ) -> Self {
     let aim: f32 = Self::MIDDLE_GREY.log2() + settings.compensation;
+    let engine: ExposureUniform = ExposureUniform::new(settings, engine_blend);
 
     Self {
       least_log: Self::LEAST_LOG,
@@ -108,6 +149,12 @@ impl ExposureHistogramUniform {
       least_scale_log: Self::LEAST_SCALE_LOG,
       most_scale_log: Self::MOST_SCALE_LOG,
       snap: f32::from(u8::from(is_snapped)),
+      is_engine_metered: f32::from(u8::from(level == RenderLightLevel::Authored)),
+      engine_target: engine.target_gray,
+      engine_weight: engine.weight,
+      engine_floor: engine.floor_luminance,
+      engine_blend: engine.blend,
+      compensation_scale: settings.compensation.exp2(),
     }
   }
 }

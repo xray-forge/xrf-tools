@@ -114,6 +114,32 @@ fn tonemap_high(color: vec3<f32>, scale: f32) -> vec3<f32> {
   return color * scale / DEF_HDR;
 }
 
+// `LUMINANCE_VECTOR` (`common_defines.h`), the weights the engine's exposure measures by.
+const ENGINE_LUMINANCE: vec3<f32> = vec3<f32>(0.3, 0.38, 0.22);
+
+// `bloom_luminance_1`'s reading of a texel of the high part, `high`: twice it, held to one by its eight bits, by the
+// engine's weights, back over `def_hdr`.
+fn engine_metered(high: vec3<f32>) -> f32 {
+  return dot(min(high * 2.0, vec3<f32>(1.0)), ENGINE_LUMINANCE) * DEF_HDR;
+}
+
+// The levels of the engine's eight-bit high part (`ViewTargets::HIGH`), which its meter reads.
+const HIGH_LEVELS: f32 = 255.0;
+
+// A texel of the authored levels' scene, `held`, as the engine's meter reads its high part (`frame/exposure`): the
+// authored light is the engine's display values decoded, so the land's exposed colour is the scene encoded, within
+// `def_hdr` and eight bits; the sky's high part is the sky as drawn (`is_sky`), its picture, which the scene holds
+// untonemapped and decoded.
+fn engine_metered_scene(held: vec3<f32>, is_sky: bool) -> f32 {
+  var shown: vec3<f32> = srgb_encoded(held) / DEF_HDR;
+
+  if (is_sky) {
+    shown = srgb_encoded(tonemap(held, 1.0)) / DEF_HDR;
+  }
+
+  return engine_metered(round(saturate(shown) * HIGH_LEVELS) / HIGH_LEVELS);
+}
+
 // The tonemap undone: from the colour a frame showed back to the light it was given at the scale it used, each
 // channel `y = x (1 + x / W²) / (1 + x)` solved for `x`.
 fn untonemapped(colour: vec3<f32>, scale: f32) -> vec3<f32> {

@@ -27,8 +27,9 @@ const LONGEST_STEP: Duration = Duration::from_millis(250);
 
 /// One viewport's exposure: the scale its tonemap multiplies by, adapted on the GPU, the cells it was measured from,
 /// and the adaptation's rate, which the CPU advances by the time between frames; under the physical light, a histogram
-/// of the scene's light in place of the cells, or a fixed scale where it does not adapt, the scale read back as the one
-/// the next frames write their light at.
+/// of the scene's light in place of the cells (at the authored levels reading the frame as the engine's cells do, for
+/// the engine's own step), or a fixed scale where it does not adapt, the scale read back as the one the next frames
+/// write their light at.
 pub struct ExposureFeature {
   /// The adapted scale, then each cell's luminance.
   pub state: wgpu::Buffer,
@@ -76,7 +77,9 @@ impl ExposureFeature {
     });
     let bins: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("exposure histogram"),
-      size: u64::from(ExposureHistogramUniform::BINS + ExposureHistogramUniform::SKY_SLOTS) * size_of::<u32>() as u64,
+      size: u64::from(
+        ExposureHistogramUniform::BINS + ExposureHistogramUniform::SKY_SLOTS + ExposureHistogramUniform::ENGINE_SLOTS,
+      ) * size_of::<u32>() as u64,
       usage: wgpu::BufferUsages::STORAGE,
       mapped_at_creation: false,
     });
@@ -105,9 +108,9 @@ impl ExposureFeature {
 
   /// Advances the rate by the time since the last frame and writes what the adaptation reads; off, the scale goes back
   /// to one, the engine's answer at noon. Under the physical light (`is_physical`) the histogram meters instead, or,
-  /// off, the scale holds at a daylit exterior's; a change of light model starts the scale afresh, dropping what the
-  /// other model metered. Then the scale the frame's light is written at: the physical light's last read back, one
-  /// under the engine's.
+  /// off, the scale holds at its level's (`ExposureHistogramUniform::get_held_scale`); a change of light model starts
+  /// the scale afresh, dropping what the other model metered. Then the scale the frame's light is written at: the
+  /// physical light's last read back, one under the engine's.
   pub fn prepare(&mut self, queue: &wgpu::Queue, options: &RenderViewOptions, now: Instant) {
     let settings: &RenderExposureSettings = &options.features.exposure;
     let is_physical: bool = options.is_light_physical();
@@ -126,10 +129,11 @@ impl ExposureFeature {
     }
 
     if is_switched {
-      // The physical light starts where a daylit exterior is shown, its light written there from the first frame; a
-      // copy still on its way measured the other model's scale.
+      // The physical light starts where it holds without adapting (the engine's scale at the authored levels, a daylit
+      // exterior's at the physical), its light written there from the first frame; a copy still on its way measured
+      // the other model's scale.
       let start: f32 = if is_physical {
-        ExposureHistogramUniform::get_daylight_scale(settings.compensation)
+        ExposureHistogramUniform::get_held_scale(options.features.light_level, settings.compensation)
       } else {
         1.0
       };
@@ -213,7 +217,8 @@ impl ExposureFeature {
   }
 
   /// The physical light's metering for this frame: the histogram from the time since the last frame, straight to its
-  /// target on the first; or, off, a daylit exterior's scale held, raised by the compensation.
+  /// target on the first, the engine's rate advanced as its own exposure advances it, for the authored levels' engine
+  /// step; or, off, the level's held scale (`ExposureHistogramUniform::get_held_scale`), raised by the compensation.
   fn prepare_physical(
     &mut self,
     queue: &wgpu::Queue,
@@ -224,7 +229,7 @@ impl ExposureFeature {
     self.is_adapting = true;
 
     if !settings.is_enabled {
-      let held: f32 = ExposureHistogramUniform::get_daylight_scale(settings.compensation);
+      let held: f32 = ExposureHistogramUniform::get_held_scale(level, settings.compensation);
 
       self.is_measuring = false;
       self.last = None;
@@ -239,7 +244,13 @@ impl ExposureFeature {
 
     let delta: Duration = self.get_delta(now);
 
-    self.histogram = ExposureHistogramUniform::new(settings, level, delta.as_secs_f32(), self.last.is_none());
+    self.rate = 0.9 * self.rate + 0.1 * delta.as_secs_f32() * settings.adaptation;
+    self.histogram = ExposureHistogramUniform::new(
+      settings,
+      level,
+      (delta.as_secs_f32(), self.rate.min(1.0)),
+      self.last.is_none(),
+    );
     self.is_measuring = true;
     self.last = Some(now);
     self.held = None;

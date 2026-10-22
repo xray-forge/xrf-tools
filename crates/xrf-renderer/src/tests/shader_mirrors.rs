@@ -112,6 +112,14 @@ fn the_exposure_histogram_is_sized_as_rust_sizes_it() {
     ExposureHistogramUniform::BINS + ExposureHistogramUniform::SKY_SLOTS
   );
   assert_eq!(
+    get_constant(&library, "frame/exposure_histogram", "ENGINE_SUM"),
+    ExposureHistogramUniform::BINS + ExposureHistogramUniform::SKY_SLOTS
+  );
+  assert_eq!(
+    get_constant(&library, "frame/exposure_histogram", "ENGINE_COUNT") + 1,
+    ExposureHistogramUniform::BINS + ExposureHistogramUniform::SKY_SLOTS + ExposureHistogramUniform::ENGINE_SLOTS
+  );
+  assert_eq!(
     get_constant(&library, "frame/exposure_histogram", "HISTOGRAM_WORKGROUP"),
     ExposurePass::HISTOGRAM_WORKGROUP
   );

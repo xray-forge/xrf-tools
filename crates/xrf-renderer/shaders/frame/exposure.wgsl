@@ -6,9 +6,6 @@
 // The high part (`rt_Generic_1`), the scaled colour over `def_hdr` that the bloom is built from.
 #import "generated/frame/exposure"
 
-// `LUMINANCE_VECTOR` (`common_defines.h`).
-const LUMINANCE: vec3<f32> = vec3<f32>(0.3, 0.38, 0.22);
-
 const CELLS: u32 = 64u;
 const CELL_SAMPLES: u32 = 4u;
 const REDUCE: u32 = 256u;
@@ -34,7 +31,7 @@ fn cs_measure(@builtin(global_invocation_id) id: vec3<u32>) {
       / f32(CELL_SAMPLES);
     let at: vec2<i32> = vec2<i32>((cell + offset) / f32(CELLS) * size);
 
-    total += dot(min(textureLoad(high, at, 0).rgb * 2.0, vec3<f32>(1.0)), LUMINANCE) * DEF_HDR;
+    total += engine_metered(textureLoad(high, at, 0).rgb);
   }
 
   state.cells[index] = total / f32(CELL_SAMPLES * CELL_SAMPLES);
