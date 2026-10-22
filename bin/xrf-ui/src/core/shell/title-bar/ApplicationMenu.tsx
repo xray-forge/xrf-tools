@@ -34,6 +34,7 @@ export function ApplicationMenu(): ReactElement {
     <div className={"relative mr-2 flex shrink-0 items-center"}>
       <Tooltip describeChild title={"Menu (Alt)"}>
         <ButtonBase
+          aria-expanded={shownBy !== null}
           aria-haspopup={"menu"}
           aria-label={"Menu"}
           className={cn(

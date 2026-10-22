@@ -113,7 +113,7 @@ export function ArchiveDirectoryContent({
           startIcon={<UnarchiveIcon fontSize={"small"} />}
           onClick={onUnpack}
         >
-          {operation.isLoading ? "Unpacking..." : "Unpack..."}
+          Unpack...
         </Button>
       )}
 
