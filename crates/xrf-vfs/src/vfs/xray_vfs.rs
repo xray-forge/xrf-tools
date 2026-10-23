@@ -7,6 +7,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
 use crate::cache::{XrayAssetCache, XrayCachePolicy};
+use crate::input::{XrayRevision, XrayRevisions};
 use crate::path::{XrayLogicalPath, normalize};
 use crate::source::XrayDirectorySource;
 use crate::trace::XrayReadTrace;
@@ -31,6 +32,10 @@ pub struct XrayVfs {
   failed: HashMap<PathBuf, Vec<(XraySourceKind, usize)>>,
   /// Paths already mounted from a plan, so a later plan naming the same source reuses it.
   planned: HashMap<PathBuf, XrayMountId>,
+  /// How many changes were committed to the project this world is a snapshot of.
+  revision: XrayRevision,
+  /// When each loose file and indexed directory last changed, where one did.
+  revisions: XrayRevisions,
 }
 
 impl XrayVfs {
@@ -65,18 +70,26 @@ impl XrayVfs {
 
   /// A world over the same mounts, sharing each source and the index read for it rather than reading them again, to
   /// mount more into while this one goes on serving reads.
-  ///
-  /// It keeps this world's cache policy, read trace and settled failures, and starts with nothing cached, as a mount
-  /// into it would leave it anyway.
   pub fn fork(&self) -> Self {
     Self {
       cache: XrayAssetCache::new(self.cache.get_policy().clone()),
       failed: self.failed.clone(),
       mounts: self.mounts.clone(),
       planned: self.planned.clone(),
+      revision: self.revision,
+      revisions: self.revisions.clone(),
       skipped: self.skipped.clone(),
       trace: self.trace.clone(),
     }
+  }
+
+  /// The project revision this world is a snapshot of: how many changes were committed before it.
+  pub fn get_revision(&self) -> XrayRevision {
+    self.revision
+  }
+
+  pub(crate) fn get_revisions(&self) -> &XrayRevisions {
+    &self.revisions
   }
 
   /// Reads through a mount, accounting for the read when this world is tracing.
@@ -240,8 +253,6 @@ impl XrayVfs {
 
   /// Every mount holding a logical path, winner first.
   ///
-  /// Includes shadowed copies for override auditing.
-  ///
   /// # Errors
   ///
   /// Returns an error when the path is not a valid X-Ray logical path.
@@ -265,8 +276,6 @@ impl XrayVfs {
   }
 
   /// Reads bytes from the winning entry for a logical path.
-  ///
-  /// Prefer [`Self::read_asset`] when the asset has already been resolved.
   ///
   /// # Errors
   ///
@@ -329,9 +338,6 @@ impl XrayVfs {
   }
 
   /// Size in bytes of the winning entry, without reading it.
-  ///
-  /// Answers `None` both for an absent asset and for a path that is not a valid logical path — a size gate has nothing
-  /// useful to do with the difference, and every caller would discard it.
   pub fn read_size(&self, logical_path: &str) -> Option<u64> {
     self.read_size_in(&XrayLookupScope::default(), logical_path)
   }
@@ -344,9 +350,6 @@ impl XrayVfs {
   }
 
   /// CRC32 of the winning entry's payload, when its source already knows it without reading anything.
-  ///
-  /// `None` covers an absent asset, an unreadable logical path, and a source that simply does not record one; a
-  /// caller that must tell those apart has [`Self::find`] for the first two.
   pub fn read_recorded_crc(&self, logical_path: &str) -> Option<u32> {
     self.read_recorded_crc_in(&XrayLookupScope::default(), logical_path)
   }
@@ -508,8 +511,6 @@ impl XrayVfs {
   }
 
   /// Returns every entry, including shadowed copies, ordered by logical path.
-  ///
-  /// Copies of one path stay in mount priority order, so the winner precedes the entries it shadows.
   pub fn list_entries_all(&self) -> Vec<XrayAsset> {
     self.list_entries_all_in(&XrayLookupScope::default())
   }
@@ -867,9 +868,11 @@ impl XrayVfs {
   }
 
   /// The highest-priority mount in scope holding a logical path, with that path in the mount's own namespace.
-  ///
-  /// `logical_path` must already be normalized.
-  fn get_winner_in_scope<'a>(&self, scope: &XrayLookupScope, logical_path: &'a str) -> Option<(&XrayMount, &'a str)> {
+  pub(crate) fn get_winner_in_scope<'a>(
+    &self,
+    scope: &XrayLookupScope,
+    logical_path: &'a str,
+  ) -> Option<(&XrayMount, &'a str)> {
     if !Self::get_within_prefix(scope, logical_path) {
       return None;
     }
