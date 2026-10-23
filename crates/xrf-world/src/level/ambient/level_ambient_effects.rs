@@ -145,7 +145,7 @@ impl LevelAmbientEffects {
   }
 
   /// Takes the effect playing out of the scene, its particles with it.
-  fn release(&mut self, updates: &mut Vec<RenderSceneUpdate>, emitters: &mut ProxyAllocator<ParticleEmitterProxy>) {
+  pub fn release(&mut self, updates: &mut Vec<RenderSceneUpdate>, emitters: &mut ProxyAllocator<ParticleEmitterProxy>) {
     if let Some(playing) = self.playing.take() {
       emitters.free(playing.emitter);
       updates.push(RenderSceneUpdate::RemoveEmitter(playing.emitter));

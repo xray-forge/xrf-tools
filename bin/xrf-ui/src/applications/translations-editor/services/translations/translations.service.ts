@@ -1,15 +1,29 @@
-import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
+import { EventBus, inject, Injectable, OnDeactivation, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
-import { Nullable } from "@xrf/types";
+import { assertExhaustive, Nullable } from "@xrf/types";
 
 import { TranslationDraft, TTranslationFileEdits } from "@/applications/translations-editor/lib/translation-draft";
 import { describeRoots } from "@/core/assets/lib/roots";
 import { transformError } from "@/core/error/lib";
 import { translationsCommands } from "@/core/ipc/commands/translations";
-import { requireSessionId, Session } from "@/core/ipc/session";
-import { ETranslationSaveOutcome, SessionSnapshot, TranslationSaveOutcome } from "@/core/ipc/types/xrf-app";
+import {
+  ISessionRevision,
+  isOlderSessionAnswer,
+  isSessionMovedPast,
+  requireSessionId,
+  Session,
+  SESSION_CHANGE_EVENT,
+} from "@/core/ipc/session";
+import {
+  ESessionRootChange,
+  ETranslationSaveOutcome,
+  SessionChange,
+  SessionRestore,
+  SessionSnapshot,
+  TranslationSaveOutcome,
+} from "@/core/ipc/types/xrf-app";
 import { TranslationProjectDescriptor, TranslationProjectMode } from "@/core/ipc/types/xrf-translation";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -32,6 +46,18 @@ export class TranslationsService {
   @Computed()
   public get project(): AsyncState<TranslationProjectDescriptor> {
     return this.projectState.map((snapshot) => snapshot.value);
+  }
+
+  /** Where the last change derived the project again, which a read of it then catches up with. */
+  @Observable()
+  private derived: Nullable<ISessionRevision> = null;
+
+  /** Whether a change derived the open project again past what is shown, which is being read again. */
+  @Computed()
+  public get isStale(): boolean {
+    const held: Nullable<SessionSnapshot<TranslationProjectDescriptor>> = this.projectState.value;
+
+    return Boolean(held && this.derived && isSessionMovedPast(held, this.derived));
   }
 
   /**
@@ -69,6 +95,81 @@ export class TranslationsService {
     this.log.info("Deactivating, release");
 
     this.session.release();
+  }
+
+  /**
+   * Reads the open project again once a change derived it anew, a save elsewhere included; one the backend could not
+   * derive again stays as shown, with a notice saying why.
+   */
+  @OnEvent(SESSION_CHANGE_EVENT)
+  public onSessionChange({ payload: change }: WireEvent<SessionChange>): void {
+    const held: Nullable<SessionSnapshot<TranslationProjectDescriptor>> = this.projectState.value;
+
+    if (!change || !held || held.sessionId !== change.sessionId) {
+      return;
+    }
+
+    switch (change.root.kind) {
+      case ESessionRootChange.KEPT:
+        return;
+
+      case ESessionRootChange.DERIVED:
+        if (isSessionMovedPast(held, change)) {
+          this.noteDerived(change);
+          void this.refresh();
+        }
+
+        return;
+
+      case ESessionRootChange.STALE:
+      case ESessionRootChange.FAILED:
+        this.log.warn("The translations project was not read again:", change.root);
+
+        emitNotification(this.eventBus, {
+          details: change.root.kind === ESessionRootChange.FAILED ? change.root.reason : undefined,
+          severity: ENotificationSeverity.WARNING,
+          source: EApplicationId.TRANSLATIONS_EDITOR,
+          title: "Could not read the changed translations project again",
+        });
+
+        return;
+
+      default:
+        return assertExhaustive(change.root);
+    }
+  }
+
+  @BoundAction()
+  private noteDerived(change: SessionChange): void {
+    this.derived = { sessionId: change.sessionId, revision: change.revision };
+  }
+
+  /** Reads the committed project again, for `onSessionChange`; a failure leaves what is shown, stale. */
+  private async refresh(): Promise<void> {
+    try {
+      this.adoptRefreshed(await translationsCommands.getProject());
+    } catch (error: unknown) {
+      this.log.warn("Could not read the translations project again:", transformError(error));
+    }
+  }
+
+  /**
+   * Shows a project read again where it is still the one shown and no older than it; an open or close in flight
+   * decides what is shown instead.
+   */
+  @BoundAction()
+  private adoptRefreshed(answer: SessionRestore<TranslationProjectDescriptor>): void {
+    const held: Nullable<SessionSnapshot<TranslationProjectDescriptor>> = this.projectState.value;
+
+    if (
+      answer &&
+      held &&
+      !this.projectState.isLoading &&
+      answer.sessionId === held.sessionId &&
+      !isOlderSessionAnswer(held, answer)
+    ) {
+      this.projectState = this.projectState.map(() => answer);
+    }
   }
 
   /**
@@ -266,7 +367,12 @@ ${transformError(error).message}`,
         return false;
       }
 
-      this.projectState = this.projectState.asReady(response.project);
+      const held: Nullable<SessionSnapshot<TranslationProjectDescriptor>> = this.projectState.value;
+
+      // A read a later commit's notice started may already show more than this save left.
+      this.projectState = this.projectState.asReady(
+        held && isOlderSessionAnswer(held, response.project) ? held : response.project
+      );
 
       this.log.info("Translations file saved:", file, "in", formatDuration(timer.elapsed()));
 

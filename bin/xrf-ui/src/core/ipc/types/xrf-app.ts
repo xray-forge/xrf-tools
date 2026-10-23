@@ -50,6 +50,27 @@ import {
 } from "@/core/ipc/types/xrf-visual";
 import { WorldViewportEvent } from "@/core/ipc/types/xrf-world";
 
+/** What a change event calls a level's collision form when it goes stale. */
+export const LEVEL_COLLISION_PART: string = "collision";
+
+/** What a change event calls a level's environment when it goes stale. */
+export const LEVEL_ENVIRONMENT_PART: string = "environment";
+
+/** What a change event calls a level's graph when it goes stale. */
+export const LEVEL_GRAPH_PART: string = "graph";
+
+/** What a change event calls a level's hemisphere lighting when it goes stale. */
+export const LEVEL_HEMI_PART: string = "hemi";
+
+/** What a change event calls a level's sections when they go stale. */
+export const LEVEL_SECTIONS_PART: string = "sections";
+
+/** What a change event calls a level's spawn when it goes stale. */
+export const LEVEL_SPAWN_PART: string = "spawn";
+
+/** What a change event calls a level's spawned objects' visuals when they go stale. */
+export const LEVEL_SPAWN_VISUALS_PART: string = "spawnVisuals";
+
 /** Every `kind` the `ArchiveAnimationBehavior` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveAnimationBehavior {
   /** `BEH_RESET`: falls back to nothing. */

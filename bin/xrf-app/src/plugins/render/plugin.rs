@@ -5,8 +5,10 @@ use tauri::webview::{PageLoadEvent, PageLoadPayload, WebviewWindow};
 use tauri::{AppHandle, Manager, RunEvent, Runtime, Webview, WindowEvent};
 use xrf_renderer::RenderWorkers;
 
+use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::window::{WindowCloseApprovals, WindowHandles};
+use crate::plugins::levels::state::LevelState;
 use crate::plugins::render::disk_cache_store::DiskCacheStore;
 use crate::plugins::render::packaged_bundle::PackagedBundle;
 use crate::plugins::render::state::RenderState;
@@ -34,7 +36,16 @@ impl RenderPlugin {
           .ok()
           .map(|directory| DiskCacheStore::new(directory.join("renderer")));
 
-        application.manage(RenderState::new(workers, Arc::new(bundle), store));
+        let state: RenderState = RenderState::new(workers, Arc::new(bundle), store);
+
+        let levels = application
+          .try_state::<LevelState>()
+          .ok_or("The levels plugin is set up before the render plugin, whose scenes follow its session")?;
+
+        application
+          .state::<AssetMountState>()
+          .subscribe(state.follow_levels(levels.selected.clone()));
+        application.manage(state);
 
         Ok(())
       })

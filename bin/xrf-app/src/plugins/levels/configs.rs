@@ -14,13 +14,17 @@ use crate::plugins::levels::report::report_sections;
 use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::state::{LevelSource, LevelSpawn, SelectedLevel};
 
+/// What a change event calls a level's sections when they go stale.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_SECTIONS_PART: &str = "sections";
+
 /// The sections of the game's resolved `system.ltx` a level's spawned objects name, which their lights are read from.
 struct LevelSectionsPart;
 
 impl SessionPart for LevelSectionsPart {
   type Value = Result<Arc<Ltx>, String>;
 
-  const NAME: &'static str = "sections";
+  const NAME: &'static str = LEVEL_SECTIONS_PART;
 }
 
 /// The sections the open level's spawned objects name and [`XrayReducedTextures::SECTION`], kept with the level: read

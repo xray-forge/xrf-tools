@@ -1,19 +1,24 @@
-import { inject, Injectable, OnDeactivation, OnDeprovision, OnProvision } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation, OnDeprovision, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, comparer, Computed, RefObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
+import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
 import {
   EnvironmentCycleEntry,
+  ESessionRootChange,
+  LEVEL_ENVIRONMENT_PART,
   LevelWeatherCycle,
   LevelWeatherDescription,
   SelectedLevelDescription,
+  SessionChange,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
+import { XrayRevision } from "@/core/ipc/types/xrf-vfs";
 import {
   EWorldWeatherPlay,
   EWorldWeatherTransition,
@@ -108,6 +113,8 @@ export class LevelWeatherService {
 
   /** The level whose weather is held or being read. */
   private sessionId: Nullable<string> = null;
+  /** The revision the weather shown was read at, which a weather or a cycle read before it gives way to. */
+  private revision: Nullable<XrayRevision> = null;
   /** What the level's weather is remembered under. */
   private memoryKey: Nullable<string> = null;
   /** The level open, which a cycle is read against and the engine is named by. */
@@ -133,6 +140,20 @@ export class LevelWeatherService {
   public onDeprovision(): void {
     this.unfollow?.();
     this.unfollow = null;
+  }
+
+  /** Reads the open level's weather again once a change let its environment go, and the cycle played with it. */
+  @OnEvent(SESSION_CHANGE_EVENT)
+  public onSessionChange({ payload: change }: WireEvent<SessionChange>): void {
+    if (
+      change &&
+      change.sessionId === this.sessionId &&
+      change.root.kind === ESessionRootChange.KEPT &&
+      change.staleParts.includes(LEVEL_ENVIRONMENT_PART) &&
+      change.revision > (this.revision ?? this.selected?.revision ?? 0)
+    ) {
+      void this.reread(change.sessionId);
+    }
   }
 
   /**
@@ -239,17 +260,13 @@ export class LevelWeatherService {
     });
 
     try {
-      const { value: description }: SessionSnapshot<LevelWeatherDescription> = await levelsCommands.readLevelWeather(
-        selected.sessionId
-      );
+      const read: SessionSnapshot<LevelWeatherDescription> = await levelsCommands.readLevelWeather(selected.sessionId);
 
       if (this.sessionId !== selected.sessionId) {
         return;
       }
 
-      runInAction(() => {
-        this.description = this.description.asReady(description);
-      });
+      const description: LevelWeatherDescription = this.noteDescription(read);
 
       // Lit by hand, the keyframe is handed over first, so the cycle is never shown before it.
       if (this.source === ELevelWeatherSource.MANUAL) {
@@ -516,6 +533,7 @@ export class LevelWeatherService {
   public clear(): void {
     this.persist();
     this.sessionId = null;
+    this.revision = null;
     this.memoryKey = null;
     this.selected = null;
     this.remembered = "";
@@ -636,9 +654,7 @@ export class LevelWeatherService {
     let cycle: LevelWeatherCycle;
 
     try {
-      cycle =
-        this.description.value?.offered.find((it: LevelWeatherCycle) => it.name === name) ??
-        (await levelsCommands.readLevelCycle(selected.sessionId, { kind: EWeatherCycleKind.CYCLE, name })).value;
+      cycle = await this.readCycle(selected.sessionId, name);
     } catch (error: unknown) {
       // A cycle asked for since decides what plays; this one's failure no longer says anything.
       if (this.requested !== name) {
@@ -663,6 +679,79 @@ export class LevelWeatherService {
       this.cycle = this.cycle.asReady(cycle);
       this.noteShown(shown, transition);
     });
+  }
+
+  /**
+   * Reads a cycle as the level's weather offers it, or from its game otherwise; one read before the weather shown is
+   * read again, from what that weather was read from.
+   *
+   * @param sessionId - The level it plays in.
+   * @param name - The cycle's name.
+   */
+  private async readCycle(sessionId: string, name: string): Promise<LevelWeatherCycle> {
+    const offered: Maybe<LevelWeatherCycle> = this.description.value?.offered.find(
+      (it: LevelWeatherCycle) => it.name === name
+    );
+
+    if (offered) {
+      return offered;
+    }
+
+    const read: SessionSnapshot<LevelWeatherCycle> = await levelsCommands.readLevelCycle(sessionId, {
+      kind: EWeatherCycleKind.CYCLE,
+      name,
+    });
+
+    return read.revision < (this.revision ?? read.revision) ? this.readCycle(sessionId, name) : read.value;
+  }
+
+  /**
+   * Reads the level's weather again, and the cycle played from it, keeping what plays and how.
+   *
+   * @param sessionId - The level open.
+   */
+  private async reread(sessionId: string): Promise<void> {
+    try {
+      const read: SessionSnapshot<LevelWeatherDescription> = await levelsCommands.readLevelWeather(sessionId);
+
+      if (this.sessionId !== sessionId) {
+        return;
+      }
+
+      this.noteDescription(read);
+
+      const name: Maybe<string> = this.cycle.value?.name;
+
+      if (!name) {
+        return;
+      }
+
+      const cycle: LevelWeatherCycle = await this.readCycle(sessionId, name);
+
+      if (this.sessionId === sessionId && this.cycle.value?.name === name) {
+        runInAction(() => {
+          this.cycle = this.cycle.map(() => cycle);
+        });
+      }
+    } catch (error: unknown) {
+      this.log.warn("The level's weather was not read again:", transformError(error).message);
+    }
+  }
+
+  /**
+   * Shows a weather read, unless one read at a later revision is shown already.
+   *
+   * @param read - The weather and the revision it was read at.
+   * @returns The weather shown now.
+   */
+  @BoundAction()
+  private noteDescription(read: SessionSnapshot<LevelWeatherDescription>): LevelWeatherDescription {
+    if (this.revision === null || read.revision >= this.revision) {
+      this.revision = read.revision;
+      this.description = this.description.asReady(read.value);
+    }
+
+    return this.description.value ?? read.value;
   }
 
   /**

@@ -21,13 +21,17 @@ use crate::plugins::levels::state::{
   LIGHTS_FILE, LevelSource, LevelSpawn, LevelSpawnObjectHemi, LevelSpawnVisual, SelectedLevel,
 };
 
+/// What a change event calls a level's hemisphere lighting when it goes stale.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_HEMI_PART: &str = "hemi";
+
 /// How the level lights its spawned objects and the camera, over its collision form.
 struct LevelHemiPart;
 
 impl SessionPart for LevelHemiPart {
   type Value = Result<Arc<HemiEstimator>, String>;
 
-  const NAME: &'static str = "hemi";
+  const NAME: &'static str = LEVEL_HEMI_PART;
 }
 
 /// The open level's estimator, built the first time anything asks and kept.

@@ -1,20 +1,24 @@
-import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
+import { EventBus, inject, Injectable, OnDeactivation, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, flowResult, Observable, reaction, RefObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
-import { Maybe, Nullable } from "@xrf/types";
+import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
-import { Session } from "@/core/ipc/session";
+import { Session, SESSION_CHANGE_EVENT } from "@/core/ipc/session";
 import {
+  ESessionRootChange,
+  LEVEL_SPAWN_PART,
   LevelOpenRequest,
   LevelSource,
   LevelSpawnObjectsDescription,
   SelectedLevelDescription,
+  SessionChange,
   SessionRestore,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
+import { XrayRevision } from "@/core/ipc/types/xrf-vfs";
 import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { EMPTY_LEVEL_SPAWN_REPORT, ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -59,6 +63,14 @@ export class LevelLoadService {
   /** How the spawn's listing went. */
   @RefObservable()
   public spawnReport: ILevelSpawnReport = EMPTY_LEVEL_SPAWN_REPORT;
+
+  /** The revision the spawn's listing was read at, which a listing read before it gives way to; null before one is. */
+  @RefObservable()
+  public spawnRevision: Nullable<XrayRevision> = null;
+
+  /** Whether a change moved what the open level was read from, which nothing reads again yet: it shows as it opened. */
+  @Observable()
+  public isStale: boolean = false;
 
   /**
    * Whether the restore below has settled, one way or the other.
@@ -121,6 +133,8 @@ export class LevelLoadService {
       this.level = this.level.asFailed(transformed, null);
       this.spawn = null;
       this.spawnReport = EMPTY_LEVEL_SPAWN_REPORT;
+      this.spawnRevision = null;
+      this.isStale = false;
     } finally {
       // A later open took the flow over meanwhile, and names its own level.
       if (opening === this.openings) {
@@ -179,43 +193,92 @@ export class LevelLoadService {
     this.level = this.level.asReady({ selected });
     this.spawn = null;
     this.spawnReport = EMPTY_LEVEL_SPAWN_REPORT;
+    this.spawnRevision = null;
+    this.isStale = false;
     void this.readSpawn(selected.sessionId);
   }
 
-  /** The level's spawned objects, which the panels list and a pick names. */
+  /**
+   * Lists the open level's spawned objects again once a change let its spawn go; a level whose own files moved is
+   * marked stale and left as it opened.
+   */
+  @OnEvent(SESSION_CHANGE_EVENT)
+  public onSessionChange({ payload: change }: WireEvent<SessionChange>): void {
+    const open: Maybe<SessionSnapshot<SelectedLevelDescription>> = this.level.value?.selected;
+
+    if (!change || !open || open.sessionId !== change.sessionId) {
+      return;
+    }
+
+    switch (change.root.kind) {
+      case ESessionRootChange.KEPT:
+        if (change.staleParts.includes(LEVEL_SPAWN_PART) && change.revision > (this.spawnRevision ?? open.revision)) {
+          void this.readSpawn(open.sessionId);
+        }
+
+        return;
+
+      // todo: Read a derived level again through `getLevel` once a level's session derives itself again.
+      case ESessionRootChange.DERIVED:
+      case ESessionRootChange.STALE:
+      case ESessionRootChange.FAILED:
+        this.noteStale();
+
+        return;
+
+      default:
+        return assertExhaustive(change.root);
+    }
+  }
+
+  @BoundAction()
+  private noteStale(): void {
+    this.isStale = true;
+  }
+
+  /** The level's spawned objects, which the panels list and a pick names; a listing older than the one shown is dropped. */
   private async readSpawn(sessionId: string): Promise<void> {
     const timer: Timer = new Timer();
 
     try {
-      const { value }: SessionSnapshot<LevelSpawnObjectsDescription> = await levelsCommands.openSpawnObjects(sessionId);
+      const { revision, value }: SessionSnapshot<LevelSpawnObjectsDescription> =
+        await levelsCommands.openSpawnObjects(sessionId);
 
-      if (this.isOpen(sessionId)) {
+      if (this.isOpen(sessionId) && revision >= (this.spawnRevision ?? revision)) {
         this.log.info(
           "Level spawned objects listed in:",
           formatDuration(timer.elapsed()),
           `${value.objects.length} objects,`,
           `${value.visuals.length} visuals`
         );
-        this.noteSpawn(value, {
-          failure: null,
-          isListed: true,
-          objects: value.objects.length,
-          visuals: value.visuals.length,
-        });
+        this.noteSpawn(
+          value,
+          { failure: null, isListed: true, objects: value.objects.length, visuals: value.visuals.length },
+          revision
+        );
       }
     } catch (error: unknown) {
       this.log.error("Failed to read the level's spawned objects:", transformError(error));
 
       if (this.isOpen(sessionId)) {
-        this.noteSpawn(null, { ...EMPTY_LEVEL_SPAWN_REPORT, failure: transformError(error).message, isListed: true });
+        this.noteSpawn(
+          null,
+          { ...EMPTY_LEVEL_SPAWN_REPORT, failure: transformError(error).message, isListed: true },
+          this.spawnRevision
+        );
       }
     }
   }
 
   @BoundAction()
-  private noteSpawn(spawn: Nullable<LevelSpawnObjectsDescription>, report: ILevelSpawnReport): void {
+  private noteSpawn(
+    spawn: Nullable<LevelSpawnObjectsDescription>,
+    report: ILevelSpawnReport,
+    revision: Nullable<XrayRevision>
+  ): void {
     this.spawn = spawn;
     this.spawnReport = report;
+    this.spawnRevision = revision;
   }
 
   /**
@@ -291,6 +354,8 @@ export class LevelLoadService {
       this.level = this.level.asIdle();
       this.spawn = null;
       this.spawnReport = EMPTY_LEVEL_SPAWN_REPORT;
+      this.spawnRevision = null;
+      this.isStale = false;
     });
   }
 }

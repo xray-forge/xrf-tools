@@ -53,6 +53,24 @@ struct EffectSystems {
 
 impl LevelEffects {
   pub fn start(source: &Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
+    Self {
+      pending: Some(Self::read_particles(source, workers)),
+      systems: None,
+      emitters: ProxyAllocator::new(),
+      finished: Vec::new(),
+      ambient: LevelAmbientEffects::default(),
+      campfires: LevelCampfires::new(),
+      motions: LevelObjectMotions::new(source, workers),
+      workers: workers.clone(),
+      now: Duration::ZERO,
+    }
+  }
+
+  /// Reads the level's particles on the workers.
+  fn read_particles(
+    source: &Arc<dyn RenderLevelSource>,
+    workers: &RenderWorkers,
+  ) -> LoaderReceiver<Result<Option<RenderLevelParticles>, String>> {
     let (sender, receiver) = LoaderReceiver::channel();
     let reader: Arc<dyn RenderLevelSource> = Arc::clone(source);
 
@@ -66,17 +84,27 @@ impl LevelEffects {
       let _ = sender.send(particles);
     });
 
-    Self {
-      pending: Some(receiver),
-      systems: None,
-      emitters: ProxyAllocator::new(),
-      finished: Vec::new(),
-      ambient: LevelAmbientEffects::default(),
-      campfires: LevelCampfires::new(),
-      motions: LevelObjectMotions::new(source, workers),
-      workers: workers.clone(),
-      now: Duration::ZERO,
+    receiver
+  }
+
+  /// Reads the particles again from `source`: every placement's emitter and the ambient effect playing leave the scene
+  /// with what plays at them, and the particles read are placed afresh. The wind, the campfires and the object motions
+  /// go on as they were.
+  pub fn reload(
+    &mut self,
+    updates: &mut Vec<RenderSceneUpdate>,
+    source: &Arc<dyn RenderLevelSource>,
+    workers: &RenderWorkers,
+  ) {
+    self.ambient.release(updates, &mut self.emitters);
+
+    for emitter in self.systems.take().into_iter().flat_map(|systems| systems.placed) {
+      self.emitters.free(emitter.handle);
+      updates.push(RenderSceneUpdate::RemoveEmitter(emitter.handle));
     }
+
+    self.finished.clear();
+    self.pending = Some(Self::read_particles(source, workers));
   }
 
   /// Whether its loader has answered, whatever it answered.

@@ -20,13 +20,21 @@ const SPAWNS_DIRECTORY: &str = "spawns";
 /// The game's spawn, which places what every level starts with.
 const SPAWN_FILE: &str = "all.spawn";
 
+/// What a change event calls a level's spawn when it goes stale.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_SPAWN_PART: &str = "spawn";
+
+/// What a change event calls a level's graph when it goes stale.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_GRAPH_PART: &str = "graph";
+
 /// What the game spawns on a level.
 struct LevelSpawnPart;
 
 impl SessionPart for LevelSpawnPart {
   type Value = Result<Arc<LevelSpawn>, String>;
 
-  const NAME: &'static str = "spawn";
+  const NAME: &'static str = LEVEL_SPAWN_PART;
 }
 
 /// A level's graph points and patrols and every level's place in the world, which its level maps' annotations draw.
@@ -35,7 +43,7 @@ struct LevelGraphPart;
 impl SessionPart for LevelGraphPart {
   type Value = Result<Arc<SpawnLevelGraph>, String>;
 
-  const NAME: &'static str = "graph";
+  const NAME: &'static str = LEVEL_GRAPH_PART;
 }
 
 /// The open level's spawned objects, read as it opened and kept with the level.

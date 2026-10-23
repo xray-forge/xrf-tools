@@ -23,13 +23,17 @@ use crate::plugins::visuals::skeleton::SelectedSkeleton;
 /// The cycle a lamp plays from the moment it spawns (`CHangingLamp::net_Spawn`), whose first frame it stands in.
 const IDLE_MOTION: &str = "idle";
 
+/// What a change event calls a level's spawned objects' visuals when they go stale.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_SPAWN_VISUALS_PART: &str = "spawnVisuals";
+
 /// Each visual a level's spawned objects stand as, read the first time anything asks and kept, or why it cannot be.
 struct LevelSpawnVisualsPart;
 
 impl SessionPart for LevelSpawnVisualsPart {
   type Value = Arc<LevelSpawnVisuals>;
 
-  const NAME: &'static str = "spawnVisuals";
+  const NAME: &'static str = LEVEL_SPAWN_VISUALS_PART;
 
   // Built empty, its visuals each read into a cell of its own later, so its build never reaches Rayon.
   const IS_POOLED: bool = false;

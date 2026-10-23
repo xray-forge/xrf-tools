@@ -33,8 +33,8 @@ pub async fn levels_write_map_annotations(
 
   let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
   let assets: AssetMountState = AssetMountState::clone(&assets);
-  let value: String = execution
-    .run_blocking("Drawing a level map's annotations", move || -> TauriResult<String> {
+  let value: SessionSnapshot<String> = execution
+    .run_blocking("Drawing a level map's annotations", move || -> TauriResult<_> {
       let search: XraySearch = assets.search(&current.roots)?;
       let level: String = current
         .source
@@ -60,9 +60,9 @@ pub async fn levels_write_map_annotations(
       write_file_staged(&target, svg.as_bytes())
         .map_err(|error| format!("Failed to write annotations '{}': {error}", target.display()))?;
 
-      Ok(svg)
+      Ok(current.answer(svg))
     })
     .await??;
 
-  Ok(SessionSnapshot::new(session_id, value))
+  Ok(value)
 }

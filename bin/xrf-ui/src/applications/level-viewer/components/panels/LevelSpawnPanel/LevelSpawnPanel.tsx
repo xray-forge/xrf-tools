@@ -99,7 +99,8 @@ export function LevelSpawnPanel({
   const selected: Nullable<LevelSpawnObject> = tree.selectedId ? (byId.get(tree.selectedId) ?? null) : null;
   const details: AsyncState<LevelSpawnObjectDetails> = useLevelSpawnDetails(
     loadService.level.value?.selected.sessionId ?? null,
-    selected?.index ?? null
+    selected?.index ?? null,
+    loadService.spawnRevision
   );
 
   // Framed by the sphere its model spans, as the renderer holds it: asked when gone to, since it stands only once drawn.

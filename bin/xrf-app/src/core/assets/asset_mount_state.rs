@@ -6,7 +6,7 @@ use xrf_vfs::{
   XrayVfsHost,
 };
 
-use crate::core::assets::AssetChangeEvent;
+use crate::core::assets::{AssetChangeEvent, AssetChangeSubscriber};
 use crate::core::session::{SessionChange, SessionFollower};
 use crate::core::types::TauriResult;
 
@@ -17,6 +17,8 @@ pub struct AssetMountState {
   host: Arc<XrayVfsHost>,
   /// The sessions a commit moves to their next snapshot, each followed from its plugin's setup on.
   followers: Arc<RwLock<Vec<Arc<dyn SessionFollower>>>>,
+  /// What follows commits in the backend, from its plugin's setup on.
+  subscribers: Arc<RwLock<Vec<Arc<dyn AssetChangeSubscriber>>>>,
   /// The pages told what each commit did, until one stops listening.
   listeners: Arc<Mutex<Vec<Channel<AssetChangeEvent>>>>,
 }
@@ -32,6 +34,7 @@ impl AssetMountState {
     Self {
       host: Arc::new(XrayVfsHost::new(XrayVfs::new().with_cache_policy(Self::cache_policy()))),
       followers: Arc::new(RwLock::new(Vec::new())),
+      subscribers: Arc::new(RwLock::new(Vec::new())),
       listeners: Arc::new(Mutex::new(Vec::new())),
     }
   }
@@ -76,18 +79,30 @@ impl AssetMountState {
   }
 
   /// Writes a transaction's files, all or none, and publishes the snapshot they leave, which every search taken after
-  /// reads; then moves every followed session to it and tells every listening page. Answers what changed.
+  /// reads; then moves every followed session to it, tells every subscriber and then every listening page. Answers
+  /// what changed.
   ///
-  /// The sessions move before this returns, so a caller reading its own session afterwards sees what it committed.
+  /// The sessions move and the subscribers hear of it before this returns, so a caller reading its own session
+  /// afterwards sees what it committed.
   pub fn commit(&self, transaction: &XrayTransaction) -> TauriResult<XrayChangeSet> {
     let changes: XrayChangeSet = self.host.commit(transaction).map_err(|error| error.to_string())?;
 
     // Nothing written is nothing to follow: the project revision did not move.
     if !changes.get_changes().is_empty() {
-      self.announce(AssetChangeEvent {
+      let event: AssetChangeEvent = AssetChangeEvent {
         revision: changes.get_revision(),
         sessions: self.move_sessions(),
-      });
+      };
+
+      // Copied out, so a subscriber reading through this state never runs under the subscribers' lock.
+      let subscribers: Vec<Arc<dyn AssetChangeSubscriber>> =
+        self.subscribers.read().unwrap_or_else(PoisonError::into_inner).clone();
+
+      for subscriber in &subscribers {
+        subscriber.take_change(self, &event);
+      }
+
+      self.announce(event);
     }
 
     Ok(changes)
@@ -100,6 +115,15 @@ impl AssetMountState {
       .write()
       .unwrap_or_else(PoisonError::into_inner)
       .push(Arc::new(session));
+  }
+
+  /// Tells `subscriber` what every commit from now on did, in the backend.
+  pub(crate) fn subscribe(&self, subscriber: impl AssetChangeSubscriber + 'static) {
+    self
+      .subscribers
+      .write()
+      .unwrap_or_else(PoisonError::into_inner)
+      .push(Arc::new(subscriber));
   }
 
   /// Tells `channel` what every commit from now on did, until the page behind it goes away.

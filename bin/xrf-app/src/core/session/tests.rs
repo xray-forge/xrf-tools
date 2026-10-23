@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{Arc, Mutex};
 
 use rayon::prelude::*;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
@@ -10,7 +10,7 @@ use xrf_vfs::{
   XrayVfs,
 };
 
-use crate::core::assets::AssetMountState;
+use crate::core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountState};
 use crate::core::session::{
   Session, SessionChange, SessionDerived, SessionId, SessionPart, SessionParts, SessionRestore, SessionRootChange,
   SessionSnapshot,
@@ -555,6 +555,24 @@ fn a_commit_moves_a_session_along_sharing_its_value_and_the_parts_it_did_not_tou
 }
 
 #[test]
+fn an_answer_read_from_a_moved_snapshot_carries_the_revision_it_was_read_at() {
+  let (assets, search) = opened_tree("answered", &["configs/system.ltx", "configs/game.ltx"]);
+  let session: Session<&str> = Session::new("test");
+  let opened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "level", &["configs\\system.ltx"]);
+
+  write(&assets, &search, "configs\\game.ltx");
+  session.follow(&assets).unwrap().expect("the session moved");
+
+  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap().unwrap();
+
+  assert_ne!(next.revision, XrayRevision::MOUNTED);
+  assert_eq!(
+    serde_json::to_value(next.answer(next.len())).unwrap(),
+    serde_json::json!({ "sessionId": opened.session_id, "revision": next.revision, "value": 5 })
+  );
+}
+
+#[test]
 fn a_commit_to_what_the_value_read_derives_it_again_starting_without_parts() {
   let (assets, search) = opened_tree("derived", &["configs/system.ltx"]);
   let session: Session<&str> =
@@ -631,5 +649,52 @@ fn a_commit_moves_every_followed_session_before_it_returns() {
   assert!(
     closed.get().unwrap().is_none(),
     "a session with nothing open stays empty"
+  );
+}
+
+/// Each change event a subscriber took, with the revision its session stood at as it took it.
+struct RecordingSubscriber {
+  session: Session<&'static str>,
+  taken: Arc<Mutex<Vec<(AssetChangeEvent, XrayRevision)>>>,
+}
+
+impl AssetChangeSubscriber for RecordingSubscriber {
+  fn take_change(&self, _: &AssetMountState, event: &AssetChangeEvent) {
+    let revision: XrayRevision = self.session.get().unwrap().unwrap().revision;
+
+    self.taken.lock().unwrap().push((event.clone(), revision));
+  }
+}
+
+#[test]
+fn a_subscriber_takes_each_commits_changes_once_its_sessions_moved_before_it_returns() {
+  let (assets, search) = opened_tree("subscribed", &["configs/system.ltx", "configs/game.ltx"]);
+  let session: Session<&str> = Session::new("followed");
+  let taken: Arc<Mutex<Vec<(AssetChangeEvent, XrayRevision)>>> = Arc::default();
+
+  assets.follow(session.clone());
+  assets.subscribe(RecordingSubscriber {
+    session: session.clone(),
+    taken: Arc::clone(&taken),
+  });
+
+  let opened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "followed", &["configs\\system.ltx"]);
+
+  write(&assets, &search, "configs\\game.ltx");
+
+  let taken: Vec<(AssetChangeEvent, XrayRevision)> = taken.lock().unwrap().clone();
+  let revision: XrayRevision = assets.get_vfs().get_revision();
+
+  assert_eq!(taken.len(), 1);
+  assert_eq!(taken[0].1, revision, "the session moved before the subscriber heard");
+  assert_eq!(taken[0].0.revision, revision);
+  assert_eq!(
+    taken[0].0.sessions,
+    vec![SessionChange {
+      session_id: opened.session_id,
+      revision,
+      root: SessionRootChange::Kept,
+      stale_parts: Vec::new(),
+    }]
   );
 }

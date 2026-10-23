@@ -12,6 +12,10 @@ use crate::plugins::levels::read::read_file;
 use crate::plugins::levels::report::report_collision;
 use crate::plugins::levels::state::{COLLISION_FILE, LevelSource, SelectedLevel};
 
+/// What a change event calls a level's collision form when it goes stale.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_COLLISION_PART: &str = "collision";
+
 /// The collision form as rays test it, which lights spawned objects and collides particles. It must stay pooled, as
 /// parts are by default: its tracer orders the form's triangles over Rayon.
 struct LevelCollisionPart;
@@ -19,7 +23,7 @@ struct LevelCollisionPart;
 impl SessionPart for LevelCollisionPart {
   type Value = Result<Arc<LevelCformTracer>, String>;
 
-  const NAME: &'static str = "collision";
+  const NAME: &'static str = LEVEL_COLLISION_PART;
 }
 
 /// The open level's collision form in its tracer's hierarchy, built the first time anything asks and kept.

@@ -10,6 +10,7 @@ use xrf_renderer_core::ProxyHandle;
 
 use crate::contract::world_ambient_report::WorldAmbientReport;
 use crate::contract::world_level_problems::WorldLevelProblems;
+use crate::contract::world_level_reload::WorldLevelReload;
 use crate::contract::world_model_pose::WorldModelPose;
 use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
 use crate::contract::world_toggles::WorldToggles;
@@ -26,6 +27,8 @@ pub struct WorldLevel {
   animation: LevelAnimation,
   effects: LevelEffects,
   opened: Instant,
+  /// What a reload took out of the scene, posted ahead of the next frame's own.
+  queued: Vec<RenderSceneUpdate>,
 }
 
 impl WorldLevel {
@@ -35,11 +38,28 @@ impl WorldLevel {
       streaming: LevelStreaming::start(source, workers),
       animation: LevelAnimation::new(workers),
       opened: Instant::now(),
+      queued: Vec::new(),
     }
   }
 
   pub fn get_source(&self) -> &Arc<dyn RenderLevelSource> {
     self.streaming.get_source()
+  }
+
+  /// Plays on from `source`, a next source of the same level, reading again what `reload` names from it: what that
+  /// replaces leaves the scene with the next frame's posts, and everything else stays as it is drawn. The clock runs on.
+  pub fn reload(&mut self, source: Arc<dyn RenderLevelSource>, reload: WorldLevelReload, workers: &RenderWorkers) {
+    if reload.is_particles {
+      self.effects.reload(&mut self.queued, &source, workers);
+    }
+
+    self.streaming.follow(
+      &mut self.queued,
+      &mut self.animation,
+      source,
+      (reload.is_spawn, reload.is_lights),
+      workers,
+    );
   }
 
   pub fn set_pose(&mut self, pose: &WorldModelPose) {
@@ -75,7 +95,7 @@ impl WorldLevel {
     (options, toggles, ambient): (&RenderViewOptions, &WorldToggles, Option<AmbientFrame<'_>>),
     eye: Vec3,
   ) -> (Vec<RenderSceneUpdate>, EffectsFrame) {
-    let mut updates: Vec<RenderSceneUpdate> = Vec::new();
+    let mut updates: Vec<RenderSceneUpdate> = std::mem::take(&mut self.queued);
 
     self
       .streaming

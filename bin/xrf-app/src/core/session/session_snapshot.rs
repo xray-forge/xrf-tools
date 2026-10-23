@@ -44,9 +44,15 @@ impl<T> SessionSnapshot<T> {
 
   /// Projects a value into its wire descriptor while retaining the identity and revision of the snapshot.
   pub fn map<U>(&self, describe: impl FnOnce(&T) -> U) -> SessionSnapshot<U> {
+    self.answer(describe(&self.value))
+  }
+
+  /// `value`, read from this snapshot or its parts, under the snapshot's identity and revision, so a page can tell an
+  /// answer older than what it holds.
+  pub fn answer<U>(&self, value: U) -> SessionSnapshot<U> {
     SessionSnapshot {
       revision: self.revision,
-      ..SessionSnapshot::new(self.session_id, describe(&self.value))
+      ..SessionSnapshot::new(self.session_id, value)
     }
   }
 }

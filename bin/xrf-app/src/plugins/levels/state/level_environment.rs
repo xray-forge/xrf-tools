@@ -18,6 +18,10 @@ use crate::plugins::levels::state::selection::level_weather_source::LevelWeather
 use crate::plugins::levels::state::selection::level_weather_texture::LevelWeatherTexture;
 use crate::plugins::levels::state::selection::selected_level::SelectedLevel;
 
+/// What a change event calls a level's environment when it goes stale.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_ENVIRONMENT_PART: &str = "environment";
+
 /// The game's environment configs as the open level's engine reads them, and which of its cycles the level plays.
 pub struct LevelEnvironment {
   pub catalog: Arc<EnvironmentCatalog>,
@@ -30,7 +34,7 @@ struct LevelEnvironmentPart;
 impl SessionPart for LevelEnvironmentPart {
   type Value = Result<Arc<LevelEnvironment>, String>;
 
-  const NAME: &'static str = "environment";
+  const NAME: &'static str = LEVEL_ENVIRONMENT_PART;
 }
 
 impl LevelEnvironment {

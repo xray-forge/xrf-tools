@@ -12,6 +12,7 @@ use crate::contract::world_camera::WorldCamera;
 use crate::contract::world_camera_command::WorldCameraCommand;
 use crate::contract::world_input_event::WorldInputEvent;
 use crate::contract::world_level_problems::WorldLevelProblems;
+use crate::contract::world_level_reload::WorldLevelReload;
 use crate::contract::world_model_pose::WorldModelPose;
 use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
 use crate::contract::world_toggles::WorldToggles;
@@ -144,6 +145,62 @@ impl World {
     }
 
     self.get_viewport(viewport).scene = Some(id);
+
+    Some(id)
+  }
+
+  /// Moves the scene sources share by `key` onto `source`, a next source of the same level, keeping its id and its
+  /// viewers: what `reload` names is read again from it and replaces what was drawn once read, and everything else
+  /// stays as it is drawn. Answers the scene, none where no scene has the key.
+  pub fn reload_scene(
+    &mut self,
+    key: &str,
+    source: Arc<dyn RenderLevelSource>,
+    reload: WorldLevelReload,
+  ) -> Option<RenderSceneId> {
+    let (id, scene) = self
+      .scenes
+      .iter_mut()
+      .find(|(_, scene)| scene.key.as_deref() == Some(key))?;
+
+    scene.level.reload(Arc::clone(&source), reload, &self.workers);
+
+    for viewer in &scene.viewers {
+      if let Some(world) = self.viewports.get_mut(viewer) {
+        world.weather.follow(Arc::clone(&source), reload.is_weather);
+      }
+    }
+
+    Some(*id)
+  }
+
+  /// Streams the scene sources share by `key` afresh from `source`, a level read again whole, as a scene of its own:
+  /// every viewport showing the one before shows it, its weather read again, and the one before goes. Answers the new
+  /// scene, none where no scene has the key.
+  pub fn reopen_scene(&mut self, key: &str, source: Arc<dyn RenderLevelSource>) -> Option<RenderSceneId> {
+    let before: RenderSceneId = self
+      .scenes
+      .iter()
+      .find(|(_, scene)| scene.key.as_deref() == Some(key))
+      .map(|(id, _)| *id)?;
+    let WorldScene { key, viewers, .. } = self.scenes.remove(&before)?;
+    let id: RenderSceneId = RenderSceneId(self.next_scene);
+    let mut level: WorldLevel = WorldLevel::start(Arc::clone(&source), &self.workers);
+
+    self.next_scene += 1;
+
+    if let Some(driving) = viewers.first().and_then(|driver| self.viewports.get(driver)) {
+      level.set_pose(&driving.pose);
+    }
+
+    for viewer in &viewers {
+      if let Some(world) = self.viewports.get_mut(viewer) {
+        world.scene = Some(id);
+        world.weather.show(Some(Arc::clone(&source)));
+      }
+    }
+
+    self.scenes.insert(id, WorldScene { level, key, viewers });
 
     Some(id)
   }

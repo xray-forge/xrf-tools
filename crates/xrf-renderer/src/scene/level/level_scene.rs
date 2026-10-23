@@ -138,6 +138,21 @@ impl LevelScene {
     scheduler: &mut PeriodicScheduler,
     (frame, is_traced): (RenderSceneFrame, bool),
   ) {
+    let RenderSceneFrame {
+      source,
+      driver,
+      updates,
+      streaming,
+      skeleton_segments,
+      gust,
+      campfire_shares,
+      motions,
+      camera_hemi,
+    } = frame;
+
+    // The world moves a scene onto a next source of its level, which every read from now on goes through.
+    self.source = source;
+
     let assets: Arc<dyn RenderAssetSource> = Arc::clone(&self.source) as Arc<dyn RenderAssetSource>;
 
     if self.environments.0 != textures.get_environments_generation() {
@@ -155,18 +170,6 @@ impl LevelScene {
     }
 
     self.grass.poll(device, textures, &assets);
-
-    let RenderSceneFrame {
-      driver,
-      updates,
-      streaming,
-      skeleton_segments,
-      gust,
-      campfire_shares,
-      motions,
-      camera_hemi,
-      ..
-    } = frame;
     self.apply((device, queue, encoder), (&mut *textures, &assets), updates);
 
     let failures: Vec<RenderSectorFailure> =

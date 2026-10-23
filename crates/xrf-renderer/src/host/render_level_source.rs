@@ -18,8 +18,8 @@ pub trait RenderLevelSource: RenderAssetSource {
   /// How many sectors the level has.
   fn get_sector_count(&self) -> u32;
 
-  /// What every source of the same level names, so the viewports showing it share one scene; none for a source no
-  /// other shares, as a model posed for one viewport is.
+  /// What every source of the same level names, a next source of it included, so the viewports showing it share one
+  /// scene and a next source moves onto it; none for a source no other shares, as a model posed for one viewport is.
   fn get_scene_key(&self) -> Option<String> {
     None
   }
@@ -34,7 +34,8 @@ pub trait RenderLevelSource: RenderAssetSource {
   /// How each entry of the level's shader table is drawn, in its order: what a sector's surface names by id.
   fn get_surfaces(&self) -> &[XraySurfaceDescriptor];
 
-  /// The level's lights, its own and its spawned lamps', called once from a loader thread; their projectors are read
+  /// The level's lights, its own and its spawned lamps', called from a loader thread as the level opens and again for a
+  /// next source that reloads them; their projectors are read
   /// through [`RenderAssetSource::read_texture`] after.
   ///
   /// # Errors
@@ -42,7 +43,8 @@ pub trait RenderLevelSource: RenderAssetSource {
   /// Returns an error when they cannot be collected.
   fn read_lights(&self) -> XrfResult<LightsDescription>;
 
-  /// What every weather of the level plays with, called once from a loader thread; its skies are read through
+  /// What every weather of the level plays with, called from a loader thread as a viewport shows the level and again
+  /// for a next source that reloads it; its skies are read through
   /// [`RenderAssetSource::read_texture`] after.
   ///
   /// # Errors
@@ -57,7 +59,8 @@ pub trait RenderLevelSource: RenderAssetSource {
   /// Returns an error for a cycle the game does not have, or configs that cannot be read.
   fn read_weather_cycle(&self, name: &str) -> XrfResult<Vec<WeatherDescriptor>>;
 
-  /// The objects of the level's spawn the viewer draws, called once from a loader thread.
+  /// The objects of the level's spawn the viewer draws, called from a loader thread as the level opens and again for a
+  /// next source that reloads them.
   ///
   /// # Errors
   ///
@@ -81,8 +84,8 @@ pub trait RenderLevelSource: RenderAssetSource {
   /// Returns an error when the library or the collision form cannot be read.
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>>;
 
-  /// The level's particle systems, planted and played by its zones, called once from a loader thread; none for a
-  /// source with no level.
+  /// The level's particle systems, planted and played by its zones, called from a loader thread as the level opens and
+  /// again for a next source that reloads them; none for a source with no level.
   ///
   /// # Errors
   ///

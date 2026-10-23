@@ -115,7 +115,7 @@ impl LevelLights {
     &self.fires
   }
 
-  /// Adds a level's lights, asking for every projector they name.
+  /// Takes a level's lights in place of any it held, asking for every projector they name.
   pub fn add_lights(
     &mut self,
     lights: LightsDescription,
@@ -133,6 +133,11 @@ impl LevelLights {
     );
     log::info!("Native viewport lights {} local lights", lights.lights.len());
     self.animators = lights.animators;
+    // The store hands its handles out again from the first, so no face of a light before may stay keyed by one.
+    self.lights = ProxyStore::new();
+    self.moving.clear();
+    self.fires.clear();
+    self.shadows.forget_lights();
 
     for light in lights.lights {
       let is_moving: bool = light.motion.is_some();
