@@ -102,6 +102,28 @@ impl XrayVfs {
     &self.revisions
   }
 
+  pub(crate) fn get_revisions_mut(&mut self) -> &mut XrayRevisions {
+    &mut self.revisions
+  }
+
+  pub(crate) fn set_revision(&mut self, revision: XrayRevision) {
+    self.revision = revision;
+  }
+
+  /// Replaces what a mount reads with a changed copy of its source, keeping its opening, so what is retained of the
+  /// copies that did not change goes on being served.
+  pub(crate) fn replace_source(&mut self, id: XrayMountId, source: Box<dyn XrayAssetSource>) {
+    if let Some(mount) = self.mounts.get_mut(id.0) {
+      *mount = mount.with_source(source);
+    }
+  }
+
+  /// Drops what the lineage retains of a copy whose bytes changed: nothing reads it at its old revision once the
+  /// change publishes, and it would otherwise hold the budget until nobody held it.
+  pub(crate) fn forget_retained(&self, mount: &XrayMount, source_path: &str) {
+    self.cache.forget_copy(mount.get_opening(), source_path);
+  }
+
   /// Moves a mount's copy of a logical path to `revision`, for a test standing in for a commit.
   #[cfg(test)]
   pub(crate) fn set_file_revision(&mut self, mount: XrayMountId, logical_path: &str, revision: XrayRevision) {
@@ -581,106 +603,6 @@ impl XrayVfs {
     located.sort_by(|first, second| first.0.get_logical_path().cmp(second.0.get_logical_path()));
 
     located
-  }
-
-  /// Writes bytes to the winning entry within a scope.
-  pub fn write(&self, scope: &XrayLookupScope, logical_path: &str, bytes: &[u8]) -> XrfResult<()> {
-    let logical_path: Cow<str> = normalize(logical_path)?;
-
-    let Some((mount, source_path)) = self.get_winner_in_scope(scope, &logical_path) else {
-      return Err(XrfError::new_asset_error(format!(
-        "cannot write '{logical_path}': no mount in scope holds it"
-      )));
-    };
-
-    if !mount.is_writable() {
-      return Err(XrfError::new_asset_error(format!(
-        "cannot write '{logical_path}': it is held by {} '{}', which is read only",
-        match mount.get_kind() {
-          XraySourceKind::Archive => "archive",
-          XraySourceKind::Directory => "directory",
-        },
-        mount.get_label()
-      )));
-    }
-
-    mount.get_source().write(source_path, bytes)?;
-
-    // Whatever was parsed from the old bytes now describes a file that no longer exists in that form.
-    self.cache.forget_copy(mount.get_opening(), source_path);
-
-    Ok(())
-  }
-
-  /// Creates a loose override in the highest-priority writable mount in scope.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the path is invalid or out of scope, no writable mount can contain it, the target is already
-  /// indexed there, creation or remounting fails, or the new entry does not resolve.
-  pub fn write_override(&mut self, scope: &XrayLookupScope, logical_path: &str, bytes: &[u8]) -> XrfResult<XrayAsset> {
-    let logical_path: Cow<str> = normalize(logical_path)?;
-
-    if !Self::get_within_prefix(scope, &logical_path) {
-      return Err(XrfError::new_asset_error(format!(
-        "cannot override '{logical_path}': it falls outside the scope's subtree"
-      )));
-    }
-
-    let Some((id, source_path)) = self
-      .mounts_in(scope)
-      .find(|mount| mount.is_writable())
-      .map(|mount| (mount.get_id(), mount.to_source_path(&logical_path)))
-    else {
-      return Err(XrfError::new_asset_error(format!(
-        "cannot override '{logical_path}': no writable mount is in scope"
-      )));
-    };
-
-    let Some(source_path) = source_path else {
-      return Err(XrfError::new_asset_error(format!(
-        "cannot override '{logical_path}': it falls outside the writable mount's base"
-      )));
-    };
-
-    self.mounts[id.0].get_source().create(source_path, bytes)?;
-    self.remount(id)?;
-
-    self.find_in(scope, &logical_path)?.ok_or_else(|| {
-      XrfError::new_asset_error(format!("override '{logical_path}' did not resolve after being written"))
-    })
-  }
-
-  /// Reindexes a directory mount so newly created files resolve.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the mount does not exist or its root can no longer be indexed.
-  pub fn remount(&mut self, id: XrayMountId) -> XrfResult<()> {
-    // Reindexing changes which paths a mount answers for, so retained values may describe entries it no longer wins.
-    // This is also the choke point `write_override` passes through, which is why that path needs no hook of its own.
-    self.cache.clear();
-
-    let Some(mount) = self.mounts.get(id.0) else {
-      return Err(XrfError::new_asset_error(format!("no mount {id:?} to remount")));
-    };
-
-    if mount.get_kind() != XraySourceKind::Directory {
-      return Ok(());
-    }
-
-    let base: String = mount.get_base().to_string();
-    let origin: Option<String> = mount.get_origin().map(str::to_string);
-    let root: PathBuf = mount.get_source().get_root_path().to_path_buf();
-
-    self.mounts[id.0] = XrayMount::new(id, &base, Box::new(XrayDirectorySource::read(&root)?))?;
-
-    // Reindexing changes what the mount holds and nothing about why it is there, so the plan's name for it survives.
-    if let Some(origin) = origin {
-      self.record_origin(id, &origin);
-    }
-
-    Ok(())
   }
 
   /// Resolves a raw engine reference of one kind within a scope, under that kind's directory and extension.

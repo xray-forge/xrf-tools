@@ -4,7 +4,9 @@ use std::sync::{Arc, LockResult, Mutex, MutexGuard, RwLock};
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::{XrayRoots, XraySearch, XraySearchPlan, XraySearchStep, XrayVfs};
+use crate::{
+  XrayChange, XrayChangeSet, XrayRoots, XraySearch, XraySearchPlan, XraySearchStep, XrayTransaction, XrayVfs,
+};
 
 /// The one owner of the current VFS snapshot, through which every mount goes: what an analysis host is to its analyses.
 ///
@@ -70,6 +72,36 @@ impl XrayVfsHost {
     let (vfs, steps): (Arc<XrayVfs>, Vec<XraySearchStep>) = self.mount(&plan, true)?;
 
     Ok(XraySearch::new(vfs).with_steps(steps))
+  }
+
+  /// Commits a transaction against the newest snapshot and publishes the snapshot it leaves, answering what changed for
+  /// the caller to fan out. Serialized with every mount, so neither publishes a snapshot missing the other's work.
+  ///
+  /// # Errors
+  ///
+  /// As [`XrayVfs::commit`], with nothing on disk or in the host changed.
+  pub fn commit(&self, transaction: &XrayTransaction) -> XrfResult<XrayChangeSet> {
+    self.change(|current| current.commit(transaction))
+  }
+
+  /// Applies changes already on disk to the newest snapshot and publishes the snapshot they leave, as
+  /// [`XrayVfs::apply`] does.
+  ///
+  /// # Errors
+  ///
+  /// As [`XrayVfs::apply`], with nothing in the host changed.
+  pub fn apply(&self, changes: Vec<XrayChange>) -> XrfResult<XrayChangeSet> {
+    self.change(|current| current.apply(changes))
+  }
+
+  /// Runs a change against the newest snapshot under the mount lock and publishes the snapshot it answers.
+  fn change(&self, change: impl FnOnce(&XrayVfs) -> XrfResult<(XrayVfs, XrayChangeSet)>) -> XrfResult<XrayChangeSet> {
+    let _mounting: MutexGuard<()> = self.recover(self.mounting.lock());
+    let (next, changes): (XrayVfs, XrayChangeSet) = change(&self.get_vfs())?;
+
+    *self.recover(self.current.write()) = Arc::new(next);
+
+    Ok(changes)
   }
 
   /// The search plan of some roots, planned from disk only the first time it is asked for.

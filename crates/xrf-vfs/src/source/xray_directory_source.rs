@@ -95,45 +95,19 @@ impl XrayAssetSource for XrayDirectorySource {
       .map_err(|error| XrfError::new_asset_error(format!("failed to read '{}': {error}", format_path(&absolute))))
   }
 
-  /// Overwrites an indexed entry without creating new files.
-  ///
-  /// Refusing absent paths prevents the in-memory index from becoming stale.
-  fn write(&self, path: &str, bytes: &[u8]) -> XrfResult<()> {
-    let Some(absolute) = self.index.find(path).ok().flatten().map(|asset| asset.absolute_path()) else {
-      return Err(XrfError::new_asset_error(format!(
-        "no asset '{path}' under root {} to write",
-        format_path(self.get_root_path())
-      )));
-    };
-
-    fs::write(&absolute, bytes)
-      .map_err(|error| XrfError::new_asset_error(format!("failed to write '{}': {error}", format_path(&absolute))))
+  /// The file indexed for a path, in the case it has on disk, or where a new one goes below the root.
+  fn get_writable_path(&self, path: &str) -> Option<PathBuf> {
+    match self.index.find(path).ok()? {
+      Some(asset) => Some(asset.absolute_path()),
+      None => Some(self.get_root_path().join(to_host_relative(path))),
+    }
   }
 
-  /// Creates a loose file absent from the mount-time index, including any missing parent directories.
-  ///
-  /// The mount-time index is unchanged.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the path is already indexed or its directories or file cannot be created.
-  fn create(&self, path: &str, bytes: &[u8]) -> XrfResult<()> {
-    if self.contains(path) {
-      return Err(XrfError::new_asset_error(format!(
-        "asset '{path}' already exists under root {}",
-        format_path(self.get_root_path())
-      )));
-    }
-
-    let absolute: PathBuf = self.get_root_path().join(to_host_relative(path));
-
-    if let Some(parent) = absolute.parent() {
-      fs::create_dir_all(parent)
-        .map_err(|error| XrfError::new_asset_error(format!("failed to create '{}': {error}", format_path(parent))))?;
-    }
-
-    fs::write(&absolute, bytes)
-      .map_err(|error| XrfError::new_asset_error(format!("failed to create '{}': {error}", format_path(&absolute))))
+  fn with_changes(&self, created: &[&str], deleted: &[&str]) -> XrfResult<Box<dyn XrayAssetSource>> {
+    Ok(Box::new(Self {
+      index: self.index.with_changes(created, deleted)?,
+      label: self.label.clone(),
+    }))
   }
 
   fn list_entries<'a>(&'a self, prefix: Option<&'a str>) -> Box<dyn Iterator<Item = String> + 'a> {
@@ -213,22 +187,58 @@ mod tests {
   }
 
   #[test]
-  fn refuses_to_read_or_write_a_path_it_does_not_hold() {
+  fn refuses_to_read_a_path_it_does_not_hold() {
     let source: XrayDirectorySource = source("absent", &["textures/wpn/wpn_ak74.dds"]);
 
     assert!(source.read("textures\\wpn\\wpn_val.dds").is_err());
-    assert!(source.write("textures\\wpn\\wpn_val.dds", b"new").is_err());
   }
 
   #[test]
-  fn writes_over_an_entry_it_holds() {
-    let source: XrayDirectorySource = source("writes", &["configs\\system.ltx"]);
+  fn writes_an_indexed_file_where_it_is_and_a_new_one_below_the_root() {
+    let source: XrayDirectorySource = source("writable_paths", &["Configs/System.ltx"]);
 
-    source
-      .write("configs\\system.ltx", b"formatted")
-      .expect("write succeeds");
+    assert!(
+      source
+        .get_writable_path("configs\\system.ltx")
+        .is_some_and(|path| path.ends_with("Configs/System.ltx")),
+      "the file keeps the case it has on disk"
+    );
+    assert_eq!(
+      source.get_writable_path("configs\\game.ltx"),
+      Some(source.get_root_path().join("configs").join("game.ltx"))
+    );
+  }
 
-    assert_eq!(source.read("configs\\system.ltx").unwrap(), b"formatted");
+  #[test]
+  fn takes_created_and_deleted_files_without_walking_again() {
+    let source: XrayDirectorySource = source("changes", &["configs/system.ltx", "configs/game.ltx"]);
+
+    fs::write(source.get_root_path().join("configs/weather.ltx"), b"weather").expect("a file is created");
+
+    let changed = source
+      .with_changes(&["configs\\weather.ltx"], &["configs\\game.ltx"])
+      .expect("the source takes the changes");
+    let entries: Vec<String> = changed.list_entries(None).collect();
+
+    assert_eq!(entries, ["configs\\system.ltx", "configs\\weather.ltx"]);
+    assert_eq!(changed.read("configs\\weather.ltx").unwrap(), b"weather");
+    assert_eq!(source.count_entries(), 2, "the source changed from stays as it was");
+  }
+
+  #[test]
+  fn leaves_a_created_file_under_an_ignored_prefix_out() {
+    let root: PathBuf = build_absolute_generated_test_resource_path("xray_directory_source/ignored_changes");
+
+    let _ = fs::remove_dir_all(&root);
+    fs::create_dir_all(root.join("configs")).expect("the tree is creatable");
+
+    let source: XrayDirectorySource =
+      XrayDirectorySource::read_ignoring(&root, &[String::from("configs\\wip")]).expect("the root indexes");
+    let changed = source
+      .with_changes(&["configs\\wip\\draft.ltx"], &[])
+      .expect("the source takes the change");
+
+    assert_eq!(changed.count_entries(), 0);
   }
 
   #[test]

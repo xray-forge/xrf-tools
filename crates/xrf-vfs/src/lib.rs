@@ -12,6 +12,7 @@
 //! - `mount` — composing sources into a mounted order, and planning one from a path.
 //! - `search` — how a VFS snapshot is read: the ordered search, its steps and what its lookups answer.
 //! - `vfs` — the VFS snapshot itself (mounts, revisions, what it retains) and the host owning the current one.
+//! - `change` — changing what a snapshot holds: a transaction committed to disk, or changes already there applied.
 //! - `input` — which inputs a recording search resolved, and the revision each had then.
 //! - `cache` — what a snapshot keeps after parsing an asset, the policy deciding what is kept, and the coordination
 //!   that keeps two readers from parsing one asset twice.
@@ -21,6 +22,7 @@
 
 mod asset;
 mod cache;
+mod change;
 mod fsgame;
 mod input;
 mod mount;
@@ -32,6 +34,7 @@ mod vfs;
 
 pub use asset::{XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetType, require_writable_path};
 pub use cache::{XrayCachePolicy, XrayCacheStats};
+pub use change::{XrayChange, XrayChangeKind, XrayChangeSet, XrayTransaction};
 pub use fsgame::{FsgameDeclaration, FsgameFile};
 pub use input::{XrayInput, XrayInputAnswer, XrayInputKind, XrayInputRecord, XrayRevision, XraySearchKey};
 pub use mount::{

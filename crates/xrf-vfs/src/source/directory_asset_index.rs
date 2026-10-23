@@ -6,7 +6,7 @@ use xrf_utils::format_path;
 
 use crate::source::DirectoryAsset;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct DirectoryAssetIndex {
   root: PathBuf,
   assets: Vec<DirectoryAsset>,
@@ -78,5 +78,12 @@ impl DirectoryAssetIndex {
 
   pub(crate) fn asset(&self, index: usize) -> &DirectoryAsset {
     &self.assets[index]
+  }
+
+  /// Adds a file created below the root since it was walked, answering its index.
+  pub(crate) fn push(&mut self, relative_path: PathBuf) -> usize {
+    self.assets.push(DirectoryAsset::new(relative_path));
+
+    self.assets.len() - 1
   }
 }

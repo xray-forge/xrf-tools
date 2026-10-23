@@ -1,9 +1,9 @@
 use std::fmt::Debug;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use xrf_archive::ArchiveDescriptor;
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 
 use crate::source::XrayDeclaredRoot;
 use crate::{XrayAssetContainer, XrayPathCollision, XrayShadowedCopy};
@@ -34,7 +34,7 @@ pub trait XrayAssetSource: Debug + Send + Sync {
   /// Classifies the source's physical storage.
   fn get_kind(&self) -> XraySourceKind;
 
-  /// Whether existing entries can be overwritten through [`Self::write`].
+  /// Whether a commit may write, create and delete files in this source, each at [`Self::get_writable_path`].
   fn is_writable(&self) -> bool;
 
   /// Returns the directory root or the directory containing the archive volumes.
@@ -51,11 +51,29 @@ pub trait XrayAssetSource: Debug + Send + Sync {
   /// Reads an existing entry.
   fn read(&self, path: &str) -> XrfResult<Vec<u8>>;
 
-  /// Overwrites an existing entry when [`Self::is_writable`] is true.
-  fn write(&self, path: &str, bytes: &[u8]) -> XrfResult<()>;
+  /// Where a writable source keeps a source-relative path on disk: the file it holds for it, or where a new one goes.
+  /// `None` for a source nothing writes to.
+  fn get_writable_path(&self, path: &str) -> Option<PathBuf> {
+    let _ = path;
 
-  /// Creates an entry the source does not currently expose, when writable.
-  fn create(&self, path: &str, bytes: &[u8]) -> XrfResult<()>;
+    None
+  }
+
+  /// This source once the `created` paths were added on disk and the `deleted` ones removed, without reading anything
+  /// it holds again.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a path is not a valid X-Ray logical path, or when the source cannot take changes in place,
+  /// as a set of archive volumes cannot.
+  fn with_changes(&self, created: &[&str], deleted: &[&str]) -> XrfResult<Box<dyn XrayAssetSource>> {
+    let _ = (created, deleted);
+
+    Err(XrfError::new_not_implemented_error(format!(
+      "source '{}' cannot take changes in place",
+      self.get_label()
+    )))
+  }
 
   /// Enumerates source-relative logical paths, optionally restricted to a component prefix.
   fn list_entries<'a>(&'a self, prefix: Option<&'a str>) -> Box<dyn Iterator<Item = String> + 'a>;

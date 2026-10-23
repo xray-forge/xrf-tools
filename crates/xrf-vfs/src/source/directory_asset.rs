@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 /// One file discovered beneath an indexed physical root.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DirectoryAsset {
   relative_path: PathBuf,
 }
