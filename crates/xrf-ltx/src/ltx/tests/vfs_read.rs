@@ -6,6 +6,7 @@
 use std::fs;
 use std::path::PathBuf;
 
+use xrf_error::XrfResult;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayLookupScope, XrayVfs};
 
@@ -31,11 +32,16 @@ fn mount(name: &str, files: &[(&str, &str)]) -> (XrayVfs, XrayLookupScope) {
   (vfs, XrayLookupScope::all())
 }
 
+/// Reads a config through a probe searching one scope.
+fn read(vfs: &XrayVfs, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Ltx> {
+  Ltx::read_from_probe(&vfs.probe().with_step("configs", scope.clone()), logical_path)
+}
+
 #[test]
 fn reads_a_config_with_no_includes() {
   let (vfs, scope) = mount("plain", &[("configs\\system.ltx", "[section]\nvalue = 1\n")]);
 
-  let ltx: Ltx = Ltx::read_from_vfs(&vfs, &scope, "configs\\system.ltx").expect("config reads");
+  let ltx: Ltx = read(&vfs, &scope, "configs\\system.ltx").expect("config reads");
 
   assert_eq!(ltx.get_from("section", "value"), Some("1"));
 }
@@ -53,7 +59,7 @@ fn resolves_a_named_include_against_the_logical_directory() {
     ],
   );
 
-  let ltx: Ltx = Ltx::read_from_vfs(&vfs, &scope, "configs\\system.ltx").expect("config reads");
+  let ltx: Ltx = read(&vfs, &scope, "configs\\system.ltx").expect("config reads");
 
   assert_eq!(ltx.get_from("first", "value"), Some("2"), "the include was merged");
   assert_eq!(ltx.get_from("own", "value"), Some("1"));
@@ -72,7 +78,7 @@ fn expands_a_wildcard_include_by_enumerating_its_directory() {
     ],
   );
 
-  let ltx: Ltx = Ltx::read_from_vfs(&vfs, &scope, "configs\\system.ltx").expect("config reads");
+  let ltx: Ltx = read(&vfs, &scope, "configs\\system.ltx").expect("config reads");
 
   assert_eq!(ltx.get_from("first", "value"), Some("1"));
   assert_eq!(ltx.get_from("second", "value"), Some("2"));
@@ -96,7 +102,7 @@ fn a_wildcard_include_does_not_reach_into_nested_directories() {
     ],
   );
 
-  let ltx: Ltx = Ltx::read_from_vfs(&vfs, &scope, "configs\\system.ltx").expect("config reads");
+  let ltx: Ltx = read(&vfs, &scope, "configs\\system.ltx").expect("config reads");
 
   assert_eq!(ltx.get_from("first", "value"), Some("1"));
   assert_eq!(ltx.get_from("second", "value"), None);
@@ -113,7 +119,7 @@ fn resolves_includes_recursively_through_the_same_source() {
     ],
   );
 
-  let ltx: Ltx = Ltx::read_from_vfs(&vfs, &scope, "configs\\system.ltx").expect("config reads");
+  let ltx: Ltx = read(&vfs, &scope, "configs\\system.ltx").expect("config reads");
 
   assert_eq!(ltx.get_from("first", "value"), Some("1"));
   assert_eq!(
@@ -131,7 +137,7 @@ fn an_include_the_vfs_does_not_hold_is_nothing_to_merge() {
     &[("configs\\system.ltx", "#include \"generated.ltx\"\n[own]\nvalue = 1\n")],
   );
 
-  let ltx: Ltx = Ltx::read_from_vfs(&vfs, &scope, "configs\\system.ltx").expect("config reads");
+  let ltx: Ltx = read(&vfs, &scope, "configs\\system.ltx").expect("config reads");
 
   assert_eq!(ltx.get_from("own", "value"), Some("1"));
 }
@@ -141,7 +147,7 @@ fn a_config_outside_the_scope_is_an_error_rather_than_an_empty_result() {
   let (vfs, scope) = mount("out_of_scope", &[("configs\\system.ltx", "[section]\nvalue = 1\n")]);
   let textures: XrayLookupScope = scope.with_prefix("textures").expect("prefix is valid");
 
-  assert!(Ltx::read_from_vfs(&vfs, &textures, "configs\\system.ltx").is_err());
+  assert!(read(&vfs, &textures, "configs\\system.ltx").is_err());
 }
 
 #[test]
@@ -149,7 +155,7 @@ fn records_the_logical_path_it_was_read_from() {
   // Nested includes resolve against this, so it has to be the logical location rather than a filesystem one.
   let (vfs, scope) = mount("logical", &[("configs\\system.ltx", "[section]\nvalue = 1\n")]);
 
-  let ltx: Ltx = Ltx::read_from_vfs(&vfs, &scope, "configs\\system.ltx").expect("config reads");
+  let ltx: Ltx = read(&vfs, &scope, "configs\\system.ltx").expect("config reads");
 
   assert_eq!(
     ltx.path.as_deref(),
@@ -167,7 +173,7 @@ fn records_that_location_as_the_normalized_identity() {
     &[("configs\\system.ltx", "#include \"sections\\first.ltx\"\n")],
   );
 
-  let ltx: Ltx = Ltx::read_from_vfs(&vfs, &scope, "Configs\\System.LTX").expect("config reads");
+  let ltx: Ltx = read(&vfs, &scope, "Configs\\System.LTX").expect("config reads");
 
   assert_eq!(
     ltx.path.as_deref(),
@@ -194,7 +200,7 @@ fn a_loose_config_overrides_one_lower_in_the_mount_order() {
   vfs.mount_directory("", &overlay).expect("overlay mounts");
   vfs.mount_directory("", &base).expect("base mounts");
 
-  let ltx: Ltx = Ltx::read_from_vfs(&vfs, &XrayLookupScope::all(), "configs\\system.ltx").expect("config reads");
+  let ltx: Ltx = read(&vfs, &XrayLookupScope::all(), "configs\\system.ltx").expect("config reads");
 
   assert_eq!(ltx.get_from("section", "value"), Some("overridden"));
 }

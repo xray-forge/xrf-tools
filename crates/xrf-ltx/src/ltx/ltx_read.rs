@@ -6,7 +6,7 @@ use xrf_error::XrfResult;
 use xrf_utils::{
   decode_bytes_to_string, encode_w1251_bytes_to_string, new_windows1251_encoder, read_as_string_from_w1251_encoded,
 };
-use xrf_vfs::{XrayLookupScope, XrayVfs};
+use xrf_vfs::{XrayLookupScope, XrayProbe, XrayVfs};
 
 use crate::dialect::{LtxDialect, LtxResolveRequest, LtxStandardDialect};
 use crate::document::{LtxDocument, LtxParser};
@@ -39,41 +39,29 @@ impl Ltx {
   }
 
   /// Read LTX from a file under standard rules, injecting includes and flattening inheritance.
-  ///
-  /// Named for the dialect it applies because it applies one: a game config from a patched Anomaly install resolves
-  /// differently, and silently. Use [`Self::read_from_file_with_dialect`] for anything a patch file could target, and
-  /// this for XRF's own data files, which nothing patches.
   pub fn read_from_file_standard<P: AsRef<Path>>(filename: P) -> XrfResult<Self> {
     Self::read_from_path(filename)?.into_included()?.into_inherited()
   }
 
-  /// Read LTX out of a mounted VFS, injecting includes resolved through it.
-  ///
-  /// This is how configs are read from an installation, where they sit inside `db\configs` volumes and have no filesystem
-  /// path. Wildcard includes resolve by prefix enumeration rather than `read_dir`, and an include the VFS does not hold is
-  /// nothing to merge rather than a failure - the same tolerance a not-yet-generated config gets on disk.
-  ///
-  /// `path` and `directory` on the result carry logical paths, not filesystem ones.
+  /// Read LTX through a probe, injecting includes resolved through it.
   ///
   /// # Errors
   ///
-  /// Returns an error when the path is not in scope, its bytes are not valid Windows-1251, or the contents will not parse.
-  pub(crate) fn read_from_vfs(vfs: &XrayVfs, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Self> {
-    let source: LtxVfsSource = LtxVfsSource::new(vfs, scope);
+  /// Returns an error when the probe does not reach the path, its bytes are not valid Windows-1251, or the contents
+  /// will not parse.
+  pub(crate) fn read_from_probe(probe: &XrayProbe, logical_path: &str) -> XrfResult<Self> {
+    let source: LtxVfsSource = LtxVfsSource::new(probe.clone());
 
     LtxIncludeConvertor::convert_with(source.read_ltx(logical_path)?, &source)
   }
 
-  /// Read LTX out of a mounted VFS under standard rules, with includes injected and inheritance flattened.
-  ///
-  /// Resolve a game config through a project instead, which carries the chosen dialect; see
-  /// `LtxProject::read_full_in_scope` for one outside the project's own prefix.
+  /// Read LTX through a probe under standard rules, with includes injected and inheritance flattened.
   ///
   /// # Errors
   ///
   /// Returns an error when reading fails, or when an inherited section cannot be resolved.
-  pub(crate) fn read_from_vfs_standard(vfs: &XrayVfs, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Self> {
-    Self::read_from_vfs(vfs, scope, logical_path)?.into_inherited()
+  pub(crate) fn read_from_probe_standard(probe: &XrayProbe, logical_path: &str) -> XrfResult<Self> {
+    Self::read_from_probe(probe, logical_path)?.into_inherited()
   }
 
   /// Read from a file as generic ltx with LTX descriptor filled.
@@ -96,10 +84,6 @@ impl Ltx {
   }
 
   /// Read a config from the filesystem, resolving it under `dialect`.
-  ///
-  /// What a command reading one named config should use rather than [`Self::read_from_file_standard`]: a patched
-  /// install resolves differently, and the difference is silent. `path` is used as written, so a relative path
-  /// resolves its includes relative to itself.
   ///
   /// # Errors
   ///
@@ -141,9 +125,6 @@ impl Ltx {
 
   /// Load include statements from a config in a mounted VFS, without parsing its sections.
   ///
-  /// Used when assembling a project: entry points are the files nothing else includes, which needs every file's include list
-  /// and none of their contents.
-  ///
   /// # Errors
   ///
   /// Returns an error when the path is not in scope, its bytes are not valid Windows-1251, or the contents will not parse.
@@ -170,9 +151,6 @@ impl Ltx {
   }
 
   /// Whether the given LTX bytes are already formatted canonically.
-  ///
-  /// Content is all a formatting verdict needs, so this answers for an archived config too — only rewriting one needs a
-  /// file, which is why [`Self::format_file`] stays separate.
   ///
   /// # Errors
   ///

@@ -80,12 +80,39 @@ pub struct XrayProbe<'a> {
 
 /// A record a probe adds to, and the search each input it records is resolved by.
 #[derive(Clone, Debug)]
-struct XrayProbeRecording {
+pub(crate) struct XrayProbeRecording {
   record: XrayInputRecord,
   search: XraySearch,
 }
 
 impl<'a> XrayProbe<'a> {
+  /// A probe of `steps` over `vfs`, recording where `recording` names.
+  pub(crate) fn over(vfs: &'a XrayVfs, steps: Vec<XrayProbeStep>, recording: Option<XrayProbeRecording>) -> Self {
+    Self { vfs, steps, recording }
+  }
+
+  /// This probe with every step searching the logical subtree `prefix` alone, as a config project reads one directory:
+  /// a step's own prefix, where it has one, is replaced.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `prefix` is not a valid X-Ray logical path.
+  pub fn within(mut self, prefix: &str) -> XrfResult<Self> {
+    self.steps = self
+      .steps
+      .into_iter()
+      .map(|step| {
+        Ok(XrayProbeStep {
+          scope: step.scope.clone().with_prefix(prefix)?,
+          ..step
+        })
+      })
+      .collect::<XrfResult<Vec<XrayProbeStep>>>()?;
+    self.refresh_search();
+
+    Ok(self)
+  }
+
   /// Appends a step searched after the ones already added.
   pub fn with_step(mut self, label: impl Into<String>, scope: XrayLookupScope) -> Self {
     self.steps.push(XrayProbeStep::new(label, scope));
@@ -132,6 +159,14 @@ impl<'a> XrayProbe<'a> {
   /// Returns the steps in search order.
   pub fn get_steps(&self) -> &[XrayProbeStep] {
     &self.steps
+  }
+
+  pub(crate) fn get_vfs(&self) -> &'a XrayVfs {
+    self.vfs
+  }
+
+  pub(crate) fn get_recording(&self) -> Option<&XrayProbeRecording> {
+    self.recording.as_ref()
   }
 
   /// Whether this probe has nothing to search, because no step selects a mounted source.

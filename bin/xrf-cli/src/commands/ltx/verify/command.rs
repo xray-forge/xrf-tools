@@ -99,7 +99,7 @@ impl VerifyCommand {
   /// An installation keeps nearly every config in an archive volume, so naming only the game directory would leave a report
   /// silent about where thousands of verified files came from.
   fn report_sources(project: &LtxProject, output: &OutputOptions) {
-    for mount in project.vfs().scoped(project.scope()).list_mounts() {
+    for mount in project.vfs().get_mounts() {
       xrf_output::info!(
         output,
         "Source: {:?} {} ({})",

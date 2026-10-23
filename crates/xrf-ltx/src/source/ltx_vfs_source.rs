@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
-use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayProbe};
 
 use crate::dialect::LtxStandardDialect;
 use crate::document::LtxDocument;
@@ -11,10 +11,9 @@ use crate::ltx::{Ltx, LtxIncludeConvertor};
 use crate::project::LtxReadCounters;
 use crate::source::{LtxDocumentSource, LtxIncludeSource, LtxListingCache};
 
-/// Resolves and reads includes through a mounted VFS.
+/// Resolves and reads includes through a probe, so whatever records the probe's reads records a config's too.
 pub(crate) struct LtxVfsSource<'a> {
-  vfs: &'a XrayVfs,
-  scope: &'a XrayLookupScope,
+  probe: XrayProbe<'a>,
   /// Where this source reports its reads, when a project is counting them.
   counters: Option<&'a LtxReadCounters>,
   /// Where this source keeps directory listings, when a project shares them across the sources it creates.
@@ -22,26 +21,24 @@ pub(crate) struct LtxVfsSource<'a> {
 }
 
 impl<'a> LtxVfsSource<'a> {
-  pub fn new(vfs: &'a XrayVfs, scope: &'a XrayLookupScope) -> Self {
+  pub fn new(probe: XrayProbe<'a>) -> Self {
     Self {
       counters: None,
       listings: None,
-      scope,
-      vfs,
+      probe,
     }
   }
 
   /// A source that reports every read and parse it performs.
-  pub fn new_counted(vfs: &'a XrayVfs, scope: &'a XrayLookupScope, counters: &'a LtxReadCounters) -> Self {
+  pub fn new_counted(probe: XrayProbe<'a>, counters: &'a LtxReadCounters) -> Self {
     Self {
       counters: Some(counters),
       listings: None,
-      scope,
-      vfs,
+      probe,
     }
   }
 
-  /// This source, answering directory listings from a cache shared with other sources over the same VFS and scope.
+  /// This source, answering directory listings from a cache shared with other sources over the same search.
   pub fn with_listings(mut self, listings: &'a LtxListingCache) -> Self {
     self.listings = Some(listings);
     self
@@ -49,17 +46,21 @@ impl<'a> LtxVfsSource<'a> {
 
   /// Reads one logical path as a document, through whatever the mounted world retains.
   pub fn read_document(&self, logical_path: &str) -> XrfResult<Arc<LtxDocument>> {
-    self
-      .vfs
-      .scoped(self.scope)
-      .read_parsed(XrayAssetType::Ltx, logical_path, |bytes| {
-        if let Some(counters) = self.counters {
-          counters.record_read(bytes.len() as u64);
-          counters.record_parse();
-        }
+    let Some(asset) = self.find(logical_path)? else {
+      // Absence is `NotFound`, as a VFS read answers it, so a caller can tell a missing config from a broken one.
+      return Err(XrfError::new_not_found_error(format!(
+        "no config '{logical_path}' in the searched sources"
+      )));
+    };
 
-        Ltx::read_document_from_str(&decode_bytes_to_string(&bytes, new_windows1251_encoder())?)
-      })
+    self.probe.read_asset_parsed(&asset, |bytes| {
+      if let Some(counters) = self.counters {
+        counters.record_read(bytes.len() as u64);
+        counters.record_parse();
+      }
+
+      Ltx::read_document_from_str(&decode_bytes_to_string(&bytes, new_windows1251_encoder())?)
+    })
   }
 
   /// Reads and lowers one logical path, with its logical location recorded so nested includes resolve against it.
@@ -96,16 +97,20 @@ impl<'a> LtxVfsSource<'a> {
     )
   }
 
+  /// The copy of a logical path the search answers with, or `None` where it holds none.
+  fn find(&self, logical_path: &str) -> XrfResult<Option<XrayAsset>> {
+    Ok(self.probe.find(logical_path)?.get_asset().cloned())
+  }
+
   /// A logical path as the VFS spells it.
   fn to_logical(path: &Path) -> String {
     path.to_string_lossy().replace('/', "\\")
   }
 
-  /// The sorted file names directly in `directory`, asked of the VFS every time.
+  /// The sorted file names directly in `directory`, asked of the probe every time.
   fn list_file_names_uncached(&self, directory: &str) -> XrfResult<Vec<String>> {
     let mut names: Vec<String> = self
-      .vfs
-      .scoped(self.scope)
+      .probe
       .list_children(directory)?
       .files
       .into_iter()
@@ -120,7 +125,7 @@ impl<'a> LtxVfsSource<'a> {
 
 impl LtxDocumentSource for LtxVfsSource<'_> {
   fn read_document(&self, logical_path: &str) -> XrfResult<Option<Arc<LtxDocument>>> {
-    if self.vfs.scoped(self.scope).find(logical_path)?.is_none() {
+    if self.find(logical_path)?.is_none() {
       return Ok(None);
     }
 
@@ -171,8 +176,7 @@ impl LtxIncludeSource for LtxVfsSource<'_> {
 
     // `#include "sections\*.ltx"` means that one directory, so this asks for its children rather than everything below it.
     let mut resolved: Vec<PathBuf> = self
-      .vfs
-      .scoped(self.scope)
+      .probe
       .list_children(&prefix)?
       .files
       .into_iter()
@@ -194,7 +198,7 @@ impl LtxIncludeSource for LtxVfsSource<'_> {
 
     // A wildcard include resolves only to names the VFS holds, and a named include that is absent is nothing to merge -
     // the same tolerance the filesystem source shows a config not yet generated from TypeScript.
-    if self.vfs.scoped(self.scope).find(&logical_path)?.is_none() {
+    if self.find(&logical_path)?.is_none() {
       return Ok(None);
     }
 
