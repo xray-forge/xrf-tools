@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use xrf_animation_envelope::{AnimationEnvelope, AnimationPlayback};
+use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationPlayback};
 
 use crate::{PpeColor, PpeFile, PpeScreen};
 
@@ -64,5 +64,34 @@ impl PpeFile {
       }
       AnimationPlayback::Looped | AnimationPlayback::Once => elapsed.as_secs_f32(),
     }
+  }
+
+  /// The first time the effect plays at, and the noise granularity there, at which that granularity is zero or below.
+  /// `CPostprocessAnimator::Process` lerps the screen from the identity's granularity of 1 by the effector's factor and
+  /// stops the game with `R_ASSERT3` on a result at or below zero, which such a granularity reaches at full strength
+  /// and a positive one never does. Sampled over the times the effect plays at, from zero to its length: at each key
+  /// there, the middle of each span, and both ends. An unkeyed granularity keeps the identity's and is never refused.
+  pub fn find_refused_noise_granularity(&self) -> Option<(f32, f32)> {
+    let keys: &[AnimationKey] = &self.noise_granularity.keys;
+
+    if keys.is_empty() {
+      return None;
+    }
+
+    let length: f32 = self.get_length_seconds();
+    let mut times: Vec<f32> = keys
+      .windows(2)
+      .map(|span| (span[0].time + span[1].time) * 0.5)
+      .chain(keys.iter().map(|key| key.time))
+      .chain([0.0, length])
+      .filter(|time| (0.0..=length).contains(time))
+      .collect();
+
+    times.sort_by(f32::total_cmp);
+
+    times
+      .into_iter()
+      .map(|time| (time, self.evaluate(time).noise_granularity))
+      .find(|(_, granularity)| *granularity <= 0.0)
   }
 }

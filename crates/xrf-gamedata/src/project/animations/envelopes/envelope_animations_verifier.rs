@@ -82,7 +82,8 @@ impl<'a, F: EnvelopeAnimation> EnvelopeAnimationsVerifier<'a, F> {
   }
 
   /// What is wrong with one file: that it does not read, or else that it does not write back to the bytes it was read
-  /// from and which of its channels evaluate to something other than a finite number.
+  /// from, which of its channels evaluate to something other than a finite number, and what the engine refuses while
+  /// it plays the file.
   fn verify_file(&self, output: &OutputOptions, path: &str) -> Vec<Finding> {
     xrf_output::verbose!(output, "Verify {}: {}", F::NAME, path);
 
@@ -128,6 +129,10 @@ impl<'a, F: EnvelopeAnimation> EnvelopeAnimationsVerifier<'a, F> {
           format!("Channel '{channel}' evaluates to {value} at time {time:.3}"),
         ));
       }
+    }
+
+    for (rule, message) in file.find_playback_refusals() {
+      findings.push(GamedataFindingFactory::for_asset(rule, path, message));
     }
 
     if !findings.is_empty() {

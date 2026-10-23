@@ -19,6 +19,9 @@ pub enum GamedataVerificationRule {
   AnimationsObjectMotionValue,
   #[display("animations.player-hud")]
   AnimationsPlayerHud,
+  /// A post-process effect whose noise granularity reaches zero or below while it plays, which the engine stops on.
+  #[display("animations.post-process-noise-granularity")]
+  AnimationsPostProcessNoiseGranularity,
   /// A post-process effect (`.ppe`) that does not read.
   #[display("animations.post-process-read")]
   AnimationsPostProcessRead,
