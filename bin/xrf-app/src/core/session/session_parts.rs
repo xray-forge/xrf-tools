@@ -4,7 +4,7 @@ use std::fmt;
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 
 use xrf_job::PoolOnceLock;
-use xrf_vfs::{XrayInputRecord, XraySearch};
+use xrf_vfs::{XrayInputRecord, XraySearch, XrayVfs};
 
 use crate::core::session::SessionPart;
 
@@ -19,8 +19,10 @@ pub(crate) struct SessionParts {
 struct SessionPartSlot {
   cell: Arc<dyn Any + Send + Sync>,
   inputs: XrayInputRecord,
-  /// The key's type name, which a report names the part by.
+  /// The part's [`SessionPart::NAME`], which a report and a change event name it by.
   name: &'static str,
+  /// Whether the cell holds a value, asked of the erased cell by the one function that knows its type.
+  is_built: fn(&(dyn Any + Send + Sync)) -> bool,
 }
 
 /// One part's value: empty until it is built, then what it keeps.
@@ -42,10 +44,53 @@ impl SessionParts {
     self.lock().entry(TypeId::of::<K>()).or_insert_with(|| SessionPartSlot {
       cell: Arc::new(SessionPartCell::Plain(OnceLock::from(value))),
       inputs,
-      name: std::any::type_name::<K>(),
+      name: K::NAME,
+      is_built: SessionPartCell::<K::Value>::is_built_erased,
     });
 
     self
+  }
+
+  /// The store a next snapshot starts with over `vfs`: every built part whose inputs are all current there, shared
+  /// rather than copied, and the names of the built parts that are not, sorted. A part still building is carried by
+  /// neither, since what it reads is not known yet; the next snapshot builds it afresh when asked.
+  pub fn retain_current(&self, vfs: &XrayVfs) -> (SessionParts, Vec<&'static str>) {
+    let mut carried: HashMap<TypeId, SessionPartSlot> = HashMap::new();
+    let mut stale: Vec<&'static str> = Vec::new();
+
+    for (key, slot) in self.lock().iter() {
+      if !(slot.is_built)(slot.cell.as_ref()) {
+        continue;
+      }
+
+      if slot.inputs.is_current_in(vfs) {
+        carried.insert(*key, slot.clone());
+      } else {
+        stale.push(slot.name);
+      }
+    }
+
+    stale.sort_unstable();
+
+    (
+      SessionParts {
+        slots: Mutex::new(carried),
+      },
+      stale,
+    )
+  }
+
+  /// The names of every part built, sorted: what goes stale at once when the value they derive from is derived again.
+  pub fn list_built(&self) -> Vec<&'static str> {
+    let mut built: Vec<&'static str> = self
+      .lock()
+      .values()
+      .filter(|slot| (slot.is_built)(slot.cell.as_ref()))
+      .map(|slot| slot.name)
+      .collect();
+
+    built.sort_unstable();
+    built
   }
 
   /// The part `K`, built by `build` the first time anything asks, for a part that reads nothing of the project.
@@ -121,7 +166,8 @@ impl SessionParts {
           SessionPartCell::Plain(OnceLock::<K::Value>::new())
         }),
         inputs: XrayInputRecord::new(),
-        name: std::any::type_name::<K>(),
+        name: K::NAME,
+        is_built: SessionPartCell::<K::Value>::is_built_erased,
       })
       .clone();
 
@@ -161,6 +207,17 @@ impl<V: Clone + Send> SessionPartCell<V> {
     match self {
       SessionPartCell::Plain(cell) => cell.get().cloned(),
       SessionPartCell::Pooled(cell) => cell.get().cloned(),
+    }
+  }
+}
+
+impl<V: Send + Sync + 'static> SessionPartCell<V> {
+  /// Whether `cell`, a slot's erased cell of this type, holds a value.
+  fn is_built_erased(cell: &(dyn Any + Send + Sync)) -> bool {
+    match cell.downcast_ref::<Self>() {
+      Some(SessionPartCell::Plain(cell)) => cell.get().is_some(),
+      Some(SessionPartCell::Pooled(cell)) => cell.get().is_some(),
+      None => unreachable!("a part's cell is filed under its own key"),
     }
   }
 }

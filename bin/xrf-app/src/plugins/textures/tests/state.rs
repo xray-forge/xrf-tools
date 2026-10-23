@@ -87,7 +87,7 @@ fn a_late_comparison_cannot_replace_a_reopened_session() {
 
   assert!(state.comparison.commit_open(first, comparison(first, "first")).is_err());
   assert_eq!(
-    state.browse.get().expect("browse").expect("opened").value,
+    *state.browse.get().expect("browse").expect("opened").value,
     browse("second")
   );
 }
@@ -109,7 +109,7 @@ fn a_late_open_cannot_undo_close_or_a_newer_open() {
 
   assert!(state.browse.commit_open(first, browse("first")).is_err());
   assert_eq!(
-    state.browse.get().expect("browse").expect("opened").value,
+    *state.browse.get().expect("browse").expect("opened").value,
     browse("second")
   );
 }

@@ -18,6 +18,8 @@ struct LevelCollisionPart;
 
 impl SessionPart for LevelCollisionPart {
   type Value = Result<Arc<LevelCformTracer>, String>;
+
+  const NAME: &'static str = "collision";
 }
 
 /// The open level's collision form in its tracer's hierarchy, built the first time anything asks and kept.

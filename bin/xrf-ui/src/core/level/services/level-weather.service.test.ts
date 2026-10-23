@@ -255,6 +255,7 @@ describe("LevelWeatherService", () => {
   it("remembers the sun shafts with the level's weather, and opens another level without them", async () => {
     const other: SessionSnapshot<SelectedLevelDescription> = {
       sessionId: "other",
+      revision: 0,
       value: mockSelectedLevelDescription({ source: { kind: "directory", path: "C:/levels/jupiter" } }),
     };
 
@@ -319,6 +320,7 @@ describe("LevelWeatherService", () => {
   it("leaves a level opened during a cycle's read lit as it was", async () => {
     const other: SessionSnapshot<SelectedLevelDescription> = {
       sessionId: "other",
+      revision: 0,
       value: mockSelectedLevelDescription({ source: { kind: "directory", path: "C:/levels/jupiter" } }),
     };
     let release!: () => void;
@@ -372,6 +374,7 @@ describe("LevelWeatherService", () => {
 
     await service.open({
       sessionId: "extended",
+      revision: 0,
       value: mockSelectedLevelDescription({
         engine: { engine: EXrayEngine.EXTENDED, evidence: EXrayEngineEvidence.NAMED, subject: null },
       }),

@@ -9,10 +9,10 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_ogf::OgfFile;
-use xrf_vfs::{XrayAssetType, XrayLogicalPath, XraySearch};
+use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath, XraySearch};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton};
 
-use crate::core::assets::read_referenced_asset;
+use crate::core::assets::locate_referenced_asset;
 use crate::core::session::{SessionPart, SessionSnapshot};
 use crate::plugins::levels::report::{report_bind_rest_pose, report_empty_rest_motion, report_undrawn_visual};
 use crate::plugins::levels::state::{LevelSpawnVisual, LevelSpawnVisuals, SelectedLevel};
@@ -28,6 +28,8 @@ struct LevelSpawnVisualsPart;
 
 impl SessionPart for LevelSpawnVisualsPart {
   type Value = Arc<LevelSpawnVisuals>;
+
+  const NAME: &'static str = "spawnVisuals";
 
   // Built empty, its visuals each read into a cell of its own later, so its build never reaches Rayon.
   const IS_POOLED: bool = false;
@@ -83,9 +85,8 @@ impl SpawnVisualReader {
 
   fn read(&self, name: &str) -> Result<LevelSpawnVisual, String> {
     let search: &XraySearch = &self.search;
-    let file: OgfFile = self
-      .read_bytes(name)
-      .and_then(OgfFile::read_from_bytes::<XRayByteOrder>)
+    let file: Arc<OgfFile> = self
+      .read_file(name)
       .map_err(|error| format!("Failed to read visual '{name}': {error}"))?;
     let package: VisualPackage = VisualPacker::pack(&file);
     let rest: Option<Arc<VisualRestPose>> = to_rest_pose(search, name, &file, &package.description).map(Arc::new);
@@ -120,15 +121,21 @@ impl SpawnVisualReader {
   }
 
   /// `CModelPool::Instance_Load`: beside the level first, then the shared meshes; a name no path beside the level can
-  /// spell is looked up in the shared meshes alone, as a texture's is.
-  fn read_bytes(&self, name: &str) -> XrfResult<Vec<u8>> {
-    if let Some(level) = &self.level
-      && let Ok(Some(asset)) = self.search.find_beside(level, XrayAssetType::Ogf, name)
-    {
-      return self.search.read_asset(&asset);
-    }
+  /// spell is looked up in the shared meshes alone, as a texture's is. Parsed through the search, so a model another
+  /// level or the model viewer read is served as it was parsed.
+  fn read_file(&self, name: &str) -> XrfResult<Arc<OgfFile>> {
+    let beside: Option<XrayAsset> = self
+      .level
+      .as_ref()
+      .and_then(|level| self.search.find_beside(level, XrayAssetType::Ogf, name).ok().flatten());
+    let asset: XrayAsset = match beside {
+      Some(asset) => asset,
+      None => locate_referenced_asset(&self.search, XrayAssetType::Ogf, name)?,
+    };
 
-    read_referenced_asset(&self.search, XrayAssetType::Ogf, name)
+    self
+      .search
+      .read_parsed(&asset, OgfFile::read_from_bytes::<XRayByteOrder>)
   }
 }
 

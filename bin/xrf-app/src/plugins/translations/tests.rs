@@ -1,37 +1,55 @@
-//! Pins what a save commits back, when the project it began in is no longer the open one, and what an open project
-//! refuses to let a formatting run rewrite underneath it.
+//! Pins what a save commits back, when the project it began in is no longer the open one, when what it writes moved
+//! underneath it, and what an open project refuses to let a formatting run rewrite underneath it.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_generated_test_resource};
-use xrf_translation::{TranslationEdit, TranslationProjectDescriptor, TranslationVariant, read_source};
+use xrf_translation::{
+  TranslationEdit, TranslationProjectDescriptor, TranslationProjectMode, TranslationVariant, read_source,
+};
 use xrf_utils::error_to_string;
-use xrf_vfs::{XrayMountMode, XrayRoots};
+use xrf_vfs::{XrayChangeSet, XrayMountMode, XrayRoots, XrayTransaction};
 
 use crate::core::assets::AssetMountState;
-use crate::core::session::SessionId;
+use crate::core::session::{SessionDerived, SessionId};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::commands::save_file::{save_into_open_project, write_edits};
+use crate::plugins::translations::project_read::read_project;
 use crate::plugins::translations::state::{TranslationProjectState, TranslationSaveOutcome, TranslationSavePlan};
 
 /// Where a source project keeps its string tables, and therefore what a project opened over one is prefixed with.
 const PREFIX: &str = "translations";
 
-/// The one file every project here holds, keyed the way a descriptor keys it: relative to the prefix.
+/// The file every project here holds, keyed the way a descriptor keys it: relative to the prefix.
 const FILE: &str = "st_test.json";
 
-/// The one entry that file holds, and the one language it is written in.
+/// A second file, for the saves that must not stand in each other's way.
+const OTHER_FILE: &str = "st_other.json";
+
+/// The one entry each file holds, and the one language it is written in.
 const ID: &str = "st_test";
 const LANGUAGE: &str = "eng";
 
-/// Write a one-file source project under `name` and answer the roots it is read through.
+/// Translations state followed by its own asset state, as the plugin's setup wires them.
+fn fixture() -> (AssetMountState, TranslationProjectState) {
+  let assets: AssetMountState = AssetMountState::new();
+  let state: TranslationProjectState = TranslationProjectState::new();
+
+  assets.follow(state.session.clone());
+
+  (assets, state)
+}
+
+/// Write a source project under `name` holding `FILE` and `OTHER_FILE`, and answer the roots it is read through.
 fn write_project(name: &str, value: &str) -> TauriResult<XrayRoots> {
-  write_generated_test_resource(
-    &format!("{name}/{PREFIX}/{FILE}"),
-    format!(r#"{{"{ID}":{{"{LANGUAGE}":"{value}"}}}}"#),
-  )
-  .map_err(error_to_string)?;
+  for file in [FILE, OTHER_FILE] {
+    write_generated_test_resource(
+      &format!("{name}/{PREFIX}/{file}"),
+      format!(r#"{{"{ID}":{{"{LANGUAGE}":"{value}"}}}}"#),
+    )
+    .map_err(error_to_string)?;
+  }
 
   Ok(XrayRoots::one(
     build_absolute_generated_test_resource_path(name),
@@ -39,21 +57,21 @@ fn write_project(name: &str, value: &str) -> TauriResult<XrayRoots> {
   ))
 }
 
-fn read_project(roots: &XrayRoots) -> TauriResult<TranslationProjectDescriptor> {
-  read_source(roots, PREFIX).map_err(error_to_string)
-}
-
-/// The one entry a project holds, which is how every assertion here tells the projects apart.
-fn entry_of(descriptor: &TranslationProjectDescriptor) -> String {
-  descriptor.files[FILE].entries[ID][LANGUAGE]
+/// The entry of `file` a project holds, which is how every assertion here tells the projects apart.
+fn entry_in(descriptor: &TranslationProjectDescriptor, file: &str) -> String {
+  descriptor.files[file].entries[ID][LANGUAGE]
     .as_ref()
     .expect("the fixture entry to carry its language")
     .to_single_line()
 }
 
-/// What the file reads as now, straight off disk.
-fn value_on_disk(roots: &XrayRoots) -> TauriResult<String> {
-  Ok(entry_of(&read_project(roots)?))
+fn entry_of(descriptor: &TranslationProjectDescriptor) -> String {
+  entry_in(descriptor, FILE)
+}
+
+/// What a file reads as now, straight off disk through a mount of its own.
+fn value_on_disk(roots: &XrayRoots, file: &str) -> TauriResult<String> {
+  Ok(entry_in(&read_source(roots, PREFIX).map_err(error_to_string)?, file))
 }
 
 /// What the state reports as open, or `None` when nothing is.
@@ -61,16 +79,25 @@ fn value_in_state(state: &TranslationProjectState) -> TauriResult<Option<String>
   Ok(state.session.get()?.as_ref().map(|project| entry_of(project)))
 }
 
-fn open_project(state: &TranslationProjectState, roots: &XrayRoots) -> TauriResult<()> {
+/// Opens the project as the open command does: through the shared roots, recording what it reads.
+fn open_project(assets: &AssetMountState, state: &TranslationProjectState, roots: &XrayRoots) -> TauriResult<()> {
   let id = SessionId::new();
+  let read: SessionDerived<TranslationProjectDescriptor> = read_project(
+    assets.search_fresh(roots)?,
+    roots,
+    TranslationProjectMode::Source,
+    PREFIX,
+  )?;
 
   state.session.begin_open(id)?;
-  state.session.commit_open(id, read_project(roots)?)?;
+  state
+    .session
+    .commit_open_with(id, read.value, read.inputs, read.parts)?;
 
   Ok(())
 }
 
-/// Replace the file's only entry with `value`.
+/// Replace a file's only entry with `value`.
 fn edits(value: &str) -> HashMap<String, Vec<TranslationEdit>> {
   HashMap::from([(
     String::from(LANGUAGE),
@@ -85,25 +112,34 @@ fn current_id(state: &TranslationProjectState) -> SessionId {
   state.session.get().unwrap().unwrap().session_id
 }
 
+/// Writes and settles a save the plan was made for, as the command does once the plan is taken.
+fn finish_save(
+  assets: &AssetMountState,
+  state: &TranslationProjectState,
+  plan: &TranslationSavePlan,
+  value: &str,
+) -> TauriResult<TranslationSaveOutcome> {
+  let changes: XrayChangeSet = write_edits(assets, plan, &edits(value))?;
+
+  state.settle_save(plan, &changes)
+}
+
 #[test]
-fn a_save_commits_the_project_it_refreshed() -> TauriResult<()> {
-  let state: TranslationProjectState = TranslationProjectState::new();
+fn a_save_answers_the_project_as_its_commit_left_it() -> TauriResult<()> {
+  let (assets, state) = fixture();
   let roots: XrayRoots = write_project("translations_state/committed", "before")?;
 
-  open_project(&state, &roots)?;
+  open_project(&assets, &state, &roots)?;
 
-  match save_into_open_project(
-    &state,
-    &AssetMountState::new(),
-    current_id(&state),
-    FILE,
-    &edits("after"),
-  )? {
-    TranslationSaveOutcome::Saved { project } => assert_eq!(entry_of(&project), "after"),
+  match save_into_open_project(&state, &assets, current_id(&state), FILE, &edits("after"))? {
+    TranslationSaveOutcome::Saved { project } => {
+      assert_eq!(entry_of(&project), "after");
+      assert_eq!(project.revision, assets.get_vfs().get_revision());
+    }
     TranslationSaveOutcome::Stale => panic!("a save of the open project is not stale"),
   }
 
-  assert_eq!(value_on_disk(&roots)?, "after");
+  assert_eq!(value_on_disk(&roots, FILE)?, "after");
   assert_eq!(value_in_state(&state)?.as_deref(), Some("after"));
 
   Ok(())
@@ -111,28 +147,26 @@ fn a_save_commits_the_project_it_refreshed() -> TauriResult<()> {
 
 #[test]
 fn a_project_opened_during_a_save_stays_the_open_one() -> TauriResult<()> {
-  let state: TranslationProjectState = TranslationProjectState::new();
+  let (assets, state) = fixture();
   let first: XrayRoots = write_project("translations_state/replaced/first", "first")?;
   let second: XrayRoots = write_project("translations_state/replaced/second", "second")?;
 
-  open_project(&state, &first)?;
+  open_project(&assets, &state, &first)?;
 
   // The save of the first project pauses here, holding everything it was addressed to.
   let plan: TranslationSavePlan = state.begin_save(current_id(&state), FILE)?;
 
-  open_project(&state, &second)?;
+  open_project(&assets, &state, &second)?;
 
-  // ...and resumes, writing and re-reading the project it started in, which is the right tree to write.
-  let refreshed: TranslationProjectDescriptor = write_edits(&AssetMountState::new(), &plan, &edits("first edited"))?;
-
+  // ...and resumes, writing the project it started in, which is the right tree to write.
   assert!(matches!(
-    state.commit_save(&plan, refreshed)?,
+    finish_save(&assets, &state, &plan, "first edited")?,
     TranslationSaveOutcome::Stale
   ));
 
   // The edits landed in the project that asked for them, and the project opened meanwhile is still the open one.
-  assert_eq!(value_on_disk(&first)?, "first edited");
-  assert_eq!(value_on_disk(&second)?, "second");
+  assert_eq!(value_on_disk(&first, FILE)?, "first edited");
+  assert_eq!(value_on_disk(&second, FILE)?, "second");
   assert_eq!(value_in_state(&state)?.as_deref(), Some("second"));
 
   Ok(())
@@ -140,23 +174,20 @@ fn a_project_opened_during_a_save_stays_the_open_one() -> TauriResult<()> {
 
 #[test]
 fn a_close_during_a_save_is_not_undone_by_it() -> TauriResult<()> {
-  let state: TranslationProjectState = TranslationProjectState::new();
+  let (assets, state) = fixture();
   let roots: XrayRoots = write_project("translations_state/closed", "before")?;
 
-  open_project(&state, &roots)?;
+  open_project(&assets, &state, &roots)?;
 
   let plan: TranslationSavePlan = state.begin_save(current_id(&state), FILE)?;
 
   state.session.close(&[current_id(&state)])?;
 
-  let refreshed: TranslationProjectDescriptor = write_edits(&AssetMountState::new(), &plan, &edits("after"))?;
-
   assert!(matches!(
-    state.commit_save(&plan, refreshed)?,
+    finish_save(&assets, &state, &plan, "after")?,
     TranslationSaveOutcome::Stale
   ));
-
-  assert_eq!(value_on_disk(&roots)?, "after");
+  assert_eq!(value_on_disk(&roots, FILE)?, "after");
   assert!(value_in_state(&state)?.is_none(), "a closed project stays closed");
 
   Ok(())
@@ -164,19 +195,19 @@ fn a_close_during_a_save_is_not_undone_by_it() -> TauriResult<()> {
 
 #[test]
 fn reopening_the_same_project_is_still_a_different_session() -> TauriResult<()> {
-  let state: TranslationProjectState = TranslationProjectState::new();
+  let (assets, state) = fixture();
   let roots: XrayRoots = write_project("translations_state/reopened", "before")?;
 
-  open_project(&state, &roots)?;
+  open_project(&assets, &state, &roots)?;
 
   let plan: TranslationSavePlan = state.begin_save(current_id(&state), FILE)?;
 
   // The same tree, read again. Every field of the descriptor matches, which is exactly why identity is not derived
   // from them: this is a new opening, and the save that began before it no longer speaks for what is shown.
-  open_project(&state, &roots)?;
+  open_project(&assets, &state, &roots)?;
 
   assert!(matches!(
-    state.commit_save(&plan, read_project(&roots)?)?,
+    finish_save(&assets, &state, &plan, "after")?,
     TranslationSaveOutcome::Stale
   ));
 
@@ -184,13 +215,73 @@ fn reopening_the_same_project_is_still_a_different_session() -> TauriResult<()> 
 }
 
 #[test]
+fn a_save_refuses_a_file_that_changed_since_its_project_read_it() -> TauriResult<()> {
+  let (assets, state) = fixture();
+  let roots: XrayRoots = write_project("translations_state/moved", "before")?;
+
+  open_project(&assets, &state, &roots)?;
+
+  let plan: TranslationSavePlan = state.begin_save(current_id(&state), FILE)?;
+  let search = assets.search(&roots)?;
+
+  // Someone else's commit to the very file, after the plan's project read it.
+  assets.commit(
+    &XrayTransaction::new(&search)
+      .with_write(
+        &format!("{PREFIX}\\{FILE}"),
+        format!(r#"{{"{ID}":{{"{LANGUAGE}":"theirs"}}}}"#),
+      )
+      .map_err(error_to_string)?,
+  )?;
+
+  let error: String = write_edits(&assets, &plan, &edits("mine")).expect_err("what the save writes moved");
+
+  assert!(error.contains("stale"), "{error}");
+  assert_eq!(value_on_disk(&roots, FILE)?, "theirs");
+  assert_eq!(
+    value_in_state(&state)?.as_deref(),
+    Some("theirs"),
+    "the open project read the change again"
+  );
+
+  Ok(())
+}
+
+#[test]
+fn saving_one_file_does_not_stand_in_the_way_of_another() -> TauriResult<()> {
+  let (assets, state) = fixture();
+  let roots: XrayRoots = write_project("translations_state/two_files", "before")?;
+
+  open_project(&assets, &state, &roots)?;
+
+  // Both planned against the project as it opened, as two saves sent together are.
+  let first: TranslationSavePlan = state.begin_save(current_id(&state), FILE)?;
+  let other: TranslationSavePlan = state.begin_save(current_id(&state), OTHER_FILE)?;
+
+  assert!(matches!(
+    finish_save(&assets, &state, &first, "first")?,
+    TranslationSaveOutcome::Saved { .. }
+  ));
+
+  match finish_save(&assets, &state, &other, "other")? {
+    TranslationSaveOutcome::Saved { project } => {
+      assert_eq!(entry_in(&project, FILE), "first");
+      assert_eq!(entry_in(&project, OTHER_FILE), "other");
+    }
+    TranslationSaveOutcome::Stale => panic!("the project is still the open one"),
+  }
+
+  Ok(())
+}
+
+#[test]
 fn a_save_needs_an_open_project_holding_the_file() -> TauriResult<()> {
-  let state: TranslationProjectState = TranslationProjectState::new();
+  let (assets, state) = fixture();
   let roots: XrayRoots = write_project("translations_state/absent", "before")?;
 
   assert!(state.begin_save(SessionId::new(), FILE).is_err());
 
-  open_project(&state, &roots)?;
+  open_project(&assets, &state, &roots)?;
 
   assert_eq!(
     state.begin_save(current_id(&state), "st_missing.json").unwrap_err(),
@@ -202,14 +293,14 @@ fn a_save_needs_an_open_project_holding_the_file() -> TauriResult<()> {
 
 #[test]
 fn formatting_is_refused_while_a_project_is_open_over_the_same_tree() -> TauriResult<()> {
-  let state: TranslationProjectState = TranslationProjectState::new();
+  let (assets, state) = fixture();
   let roots: XrayRoots = write_project("translations_state/open_session", "before")?;
   let root: PathBuf = roots.roots[0].path.clone();
 
   // Nothing open, nothing to protect.
   state.require_no_open_session_over(&root)?;
 
-  open_project(&state, &roots)?;
+  open_project(&assets, &state, &roots)?;
 
   // The root itself, and the subtree the sources actually live in: the editor holds buffers over both, and a rewrite
   // under either would be undone by the next save.

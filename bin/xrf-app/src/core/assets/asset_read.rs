@@ -1,5 +1,5 @@
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayAssetType, XraySearch};
+use xrf_vfs::{XrayAsset, XrayAssetType, XraySearch};
 
 /// Reads the asset a search locates, or says which path found nothing.
 ///
@@ -23,10 +23,18 @@ pub fn read_located_asset(search: &XraySearch, logical_path: &str) -> XrfResult<
 /// a texture without saying where it lives or what it is stored as, and the kind is what turns it into a path. Passing
 /// one to the other resolves nothing, which is a real defect this pair exists to make hard to write.
 pub fn read_referenced_asset(search: &XraySearch, asset_type: XrayAssetType, reference: &str) -> XrfResult<Vec<u8>> {
-  match search.resolve(asset_type, reference)?.get_asset() {
-    Some(asset) => search.read_asset(asset),
-    None => Err(XrfError::new_asset_error(format!(
+  search.read_asset(&locate_referenced_asset(search, asset_type, reference)?)
+}
+
+/// The asset an engine reference names, as [`read_referenced_asset`] resolves it, for a caller reading it its own way.
+pub fn locate_referenced_asset(
+  search: &XraySearch,
+  asset_type: XrayAssetType,
+  reference: &str,
+) -> XrfResult<XrayAsset> {
+  search.resolve(asset_type, reference)?.into_asset().ok_or_else(|| {
+    XrfError::new_asset_error(format!(
       "'{reference}' resolves to no {asset_type:?} asset in the mounted roots"
-    ))),
-  }
+    ))
+  })
 }

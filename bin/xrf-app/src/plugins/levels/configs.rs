@@ -19,6 +19,8 @@ struct LevelSectionsPart;
 
 impl SessionPart for LevelSectionsPart {
   type Value = Result<Arc<Ltx>, String>;
+
+  const NAME: &'static str = "sections";
 }
 
 /// The sections the open level's spawned objects name and [`XrayReducedTextures::SECTION`], kept with the level: read

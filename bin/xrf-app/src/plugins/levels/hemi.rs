@@ -26,6 +26,8 @@ struct LevelHemiPart;
 
 impl SessionPart for LevelHemiPart {
   type Value = Result<Arc<HemiEstimator>, String>;
+
+  const NAME: &'static str = "hemi";
 }
 
 /// The open level's estimator, built the first time anything asks and kept.

@@ -25,6 +25,8 @@ struct LevelSpawnPart;
 
 impl SessionPart for LevelSpawnPart {
   type Value = Result<Arc<LevelSpawn>, String>;
+
+  const NAME: &'static str = "spawn";
 }
 
 /// A level's graph points and patrols and every level's place in the world, which its level maps' annotations draw.
@@ -32,6 +34,8 @@ struct LevelGraphPart;
 
 impl SessionPart for LevelGraphPart {
   type Value = Result<Arc<SpawnLevelGraph>, String>;
+
+  const NAME: &'static str = "graph";
 }
 
 /// The open level's spawned objects, read as it opened and kept with the level.

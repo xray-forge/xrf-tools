@@ -4,9 +4,13 @@ import { ISessionIdentity, Session } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { InvokeHandler } from "@/fixtures/mocks/tauri.mocks";
 
-/** A native snapshot with an explicit identity for restoration and state fixtures. */
-export function mockSessionSnapshot<T>(value: T, sessionId: string = "fixture-session"): SessionSnapshot<T> {
-  return { sessionId, value };
+/** A native snapshot with an explicit identity for restoration and state fixtures, at the revision an open leaves. */
+export function mockSessionSnapshot<T>(
+  value: T,
+  sessionId: string = "fixture-session",
+  revision: number = 0
+): SessionSnapshot<T> {
+  return { sessionId, revision, value };
 }
 
 /**
