@@ -13,10 +13,6 @@ use crate::{
 impl XrayVfs {
   /// Writes a transaction to disk and answers the snapshot it leaves, with what it changed: every file or none.
   ///
-  /// A path a writable loose mount answers for is written in place; a path only archived, or held nowhere, is created
-  /// in the first writable loose mount the transaction's search reaches. A delete removes the loose file the path
-  /// resolves to. This snapshot is unchanged; the one answered indexes the files created and drops the ones deleted.
-  ///
   /// # Errors
   ///
   /// Returns an error, with nothing on disk changed, when what the transaction expected moved, a path cannot be placed
@@ -41,10 +37,6 @@ impl XrayVfs {
 
   /// Answers the snapshot that `changes`, already on disk, leave, writing nothing: the seam a watcher or a refresh from
   /// disk uses, and the second half of every commit.
-  ///
-  /// The project revision moves by one; each changed file takes it, and so does each directory above a created or deleted
-  /// one, the mount's root included. A loose mount's index gains the files created and loses the ones deleted without
-  /// walking its tree again, and keeps its opening, so what was retained of every other file it holds is still served.
   ///
   /// # Errors
   ///
