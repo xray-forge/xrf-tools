@@ -57,7 +57,7 @@ pub struct ExposureFeature {
   /// The scale this frame's light is written at, and the last frame's.
   pre_exposure: PreExposure,
   /// What the physical light's histogram last metered: the key it is shown at, the histogram's or a daylit exterior's
-  /// at the scale it starts at or holds, and the land's and the sky's levels, none while it holds.
+  /// at the scale it starts at or holds, and the bright end and the land's level, none while it holds.
   metering: ExposureMetering,
   /// Whether the scale holds where it stands, metered no more: a capture's tiles or faces share one exposure, or
   /// their seams show.
@@ -205,10 +205,16 @@ impl ExposureFeature {
     self.is_adapting = true;
     self.is_measuring = true;
     self.last = Some(now);
-    // `f_luminance_adapt = .9 * f + .1 * dt * adaptation`; the scale moves by it at most all the way, since past one
-    // the move overshoots and a slow frame under a fast adaptation would swing the scale about its target.
+    self.params = ExposureUniform::new(settings, self.advance_rate(delta, settings));
+  }
+
+  /// Advances the rate by `delta`, `f_luminance_adapt = .9 * f + .1 * dt * adaptation`, and gives how far this frame
+  /// moves the scale: by the rate, at most all the way, since past one the move overshoots and a slow frame under a fast
+  /// adaptation would swing the scale about its target.
+  fn advance_rate(&mut self, delta: Duration, settings: &RenderExposureSettings) -> f32 {
     self.rate = 0.9 * self.rate + 0.1 * delta.as_secs_f32() * settings.adaptation;
-    self.params = ExposureUniform::new(settings, self.rate.min(1.0));
+
+    self.rate.min(1.0)
   }
 
   /// The physical light's metering for this frame: the histogram from the time since the last frame, straight to its
@@ -238,12 +244,12 @@ impl ExposureFeature {
     }
 
     let delta: Duration = self.get_delta(now);
+    let engine_blend: f32 = self.advance_rate(delta, settings);
 
-    self.rate = 0.9 * self.rate + 0.1 * delta.as_secs_f32() * settings.adaptation;
     self.histogram = ExposureHistogramUniform::new(
       settings,
       level,
-      (delta.as_secs_f32(), self.rate.min(1.0)),
+      (delta.as_secs_f32(), engine_blend),
       self.last.is_none(),
     );
     self.is_measuring = true;
@@ -305,8 +311,8 @@ impl ExposureFeature {
 
   /// Adds the adaptation into the exposure's state the lit passes share (`lit`): the frame's luminance measured from the
   /// high target and the scale moved towards it, or under the physical light the `size` scene's light counted into the
-  /// histogram and the scale settled from it, the sky's level read through the frame's lighting; nothing while it does
-  /// not measure.
+  /// histogram and the scale settled from it, at the authored levels the frame read as the engine's meter reads it
+  /// through the frame's lighting; nothing while it does not measure.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),

@@ -65,6 +65,6 @@ impl PictureShares {
 
   /// As `LightingUniform::pictures` holds it: the share, then one where it is of the pre-exposure.
   pub fn to_vec4(self) -> Vec4 {
-    Vec4::new(self.share, 0.0, self.is_pre_exposed as u32 as f32, 0.0)
+    Vec4::new(self.share, f32::from(u8::from(self.is_pre_exposed)), 0.0, 0.0)
   }
 }

@@ -555,7 +555,7 @@ fn the_pictures_show_as_the_authored_law_shows_them() {
   assert!((0.5 * 64.0 * lifted.share / (PHYSICAL_LIGHT_UNIT * law) - 1.0).abs() < 1e-4);
   assert!(lifted.share < 1.0);
   assert!(lifted.is_pre_exposed);
-  assert_eq!(lifted.to_vec4().z, 1.0);
+  assert_eq!(lifted.to_vec4().y, 1.0);
   assert!(
     PictureShares::of(
       &levels,
