@@ -1,12 +1,15 @@
 # xrf-visual
 
-Converts parsed OGF models into viewer descriptions and binary geometry buffers, and resolves their texture and motion
-dependencies.
+Turns parsed X-Ray geometry into what a renderer draws: a serializable description plus one binary buffer of attribute
+arrays. It packs OGF models, a level's sectors, its grass and its lights, bakes skeletal motions, and resolves a model's
+texture and motion dependencies. It reads through `xrf-ogf`, `xrf-level`, `xrf-skeleton` and `xrf-spawn`, and the
+native renderer and the desktop app's model and level viewers consume what it produces.
 
 ## Prepare a model for a viewer
 
 ```rust,no_run
-use xrf_db::{OgfFile, XRayByteOrder};
+use xrf_chunk::XRayByteOrder;
+use xrf_ogf::OgfFile;
 use xrf_visual::VisualPacker;
 
 fn main() -> xrf_error::XrfResult {
@@ -25,30 +28,33 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-A package pairs one `VisualDescription` with one byte buffer. Keep them together: the description's sections are byte
-ranges into that buffer, not independent arrays or file offsets.
+A `VisualPackage` pairs one `VisualDescription` with one byte buffer. Keep them together: the description's
+`VisualSection`s are byte ranges into that buffer, little-endian, not independent arrays or file offsets.
+`VisualPacker::pack_meshes` packs meshes built in memory, such as the boxes and spheres `VisualShape` makes, the same
+way.
 
 ## Geometry and draw ranges
 
-Read an `OgfFile` with [xrf-db](../xrf-db/README.md), then call `VisualPacker::pack(&file)` to obtain a `VisualPackage`.
-Use `VisualDependencies::resolve` with its description and an `XraySearch` to locate external textures and motions.
-`bake_motion` prepares skeletal animation poses.
-
-Packing converts coordinates and triangle winding for renderer space. A submesh without drawable geometry becomes
-`VisualSubmeshContent::Skipped` with a reason, so inspect each submesh rather than treating a returned package as proof
-that every part is drawable.
+Packing converts coordinates into renderer space, negating `z`, and reverses triangle winding to match. `convert_vector`
+and `convert_declared_bounds` apply the same conversion to anything else a caller places beside the model. Packing
+itself never fails: a submesh without drawable geometry becomes `VisualSubmeshContent::Skipped` with a
+`VisualSkipCause` (`Unsupported` storage or `Malformed` geometry) and a reason, so inspect each submesh rather than
+treating a returned package as proof that every part is drawable.
 
 `VisualGeometry` describes positions, normals, tangents, binormals, UVs, indices, and optional skinning data.
-Progressive meshes expose valid detail ranges in finest-first order; `get_default_level` selects the finest one.
-Do not draw the entire index buffer merely because it is present: it may contain several detail levels.
+`detail_levels` lists every range a consumer may draw, finest first and never empty, and `get_default_level` selects
+the finest one. Do not draw the entire index buffer merely because it is present: a progressive mesh stores several
+detail levels in it. Geometry drawn as stored is also cut into `clusters`; skinned geometry is not.
 
-The description retains both converted declared bounds and computed bounds. Computed bounds are absent when no submesh
-produced geometry. Skinning indices address the model's bone list, with four slots per vertex.
+The description retains both the declared bounds, converted, and the computed bounds of the packed geometry; computed
+bounds are absent when no submesh produced geometry. Skinning indices address the model's bone list, with four links per
+vertex. `VisualPoser::pose` stands a skinned package still in a rest pose as static geometry.
 
 ## Resolve external assets
 
 ```rust,no_run
-use xrf_db::{OgfFile, XRayByteOrder};
+use xrf_chunk::XRayByteOrder;
+use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayMountMode, XraySearchPlan};
 use xrf_visual::{VisualDependencies, VisualPacker};
 
@@ -66,25 +72,42 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-Texture dependency records retain the submesh index; motion references can resolve to several assets when they contain
-a mask. Embedded motions are already in the model and are not external dependencies. The caller decides which roots
-the search covers and in what order.
+Texture dependencies keep the submesh index and resolve as the renderer does, substituting `ed\ed_not_existing_texture`
+for a missing one. Motion references (`.omf` libraries) have no substitute, and one can resolve to several assets when
+it contains a mask. Embedded motions are already in the model and are not external dependencies. Resolution never fails
+as a whole; a reference that cannot be looked up reports a rejected resolution. The caller decides which roots the
+search covers and in what order.
 
-## Animation and limitations
+## Animation
 
-`bake_motion` takes the skeleton, bind data, partitions, and a paired motion definition and payload. Pair motions through
-the OGF/OMF APIs rather than their payload labels. Bones not driven by a motion retain their bind transforms.
+`bake_motion` takes the skeleton's bones, their bind data, the skeleton's partitions, and a paired motion definition and
+payload, and returns every frame as model-space bone transforms in renderer space, `FLOATS_PER_BONE` floats each.
+`describe_motion` reports the same frame count, duration and animated bones without posing a frame. Pair motions
+through the OGF and OMF `get_motions` and `get_motion_by_name` APIs rather than their payload labels. Each key run is
+matched to a bone by name, as the engine resolves it, and bones not driven by a motion keep their bind transforms. The
+frame count is what the decoded keys hold, not the motion's declared count. Baking fails when the bind records do not
+match the bones or the key payload does not match the partitions.
 
-Skipped submeshes distinguish unsupported geometry from malformed geometry through `VisualSkipCause`. Packing reports
-these as data so the rest of the model remains available; parsing and motion baking can still return errors.
+## Levels
 
-This crate produces data; it does not render a scene. Surface alpha and THM material behavior belong to
-[xrf-material](../xrf-material/README.md).
+- `SectorPacker` packs everything one level sector reaches into one buffer of attribute arrays and one index array:
+  baked geometry once, placed visuals as instance groups, impostors and progressive windows. A visual that reads badly
+  is recorded as a `SectorSkip` rather than failing the sector.
+- `DetailsPacker` packs a level's grass: its detail models and each planted slot with the collision triangles its
+  planting falls on.
+- `LightsPacker` collects the lights the engine would light a level with: its hanging lamps, placed on their bones, zone
+  idle lights, and the level file's own lights other than the sun, with colour animations resolved against
+  `lanims.xr`.
+  `HemiEstimator` estimates the hemisphere lighting at a point from the level's collision and lights.
 
 ## Checks
 
-Run `cargo test --locked -p xrf-visual` from the repository root. The optional `typescript-bindings` feature adds frontend
-type metadata; binary geometry still travels separately from the serializable description.
+This crate produces data; it does not render a scene. Surface alpha and THM material behavior belong to
+[xrf-material](../xrf-material/README.md). The optional `typescript-bindings` feature derives frontend type metadata;
+binary geometry still travels separately from the serializable description.
 
-See the [packer](src/pack/visual_packer.rs), [package](src/pack/visual_package.rs), and
+Run `cargo test --locked -p xrf-visual` from the repository root.
+
+See the [model packer](src/pack/visual/visual_packer.rs), [package](src/pack/visual/visual_package.rs),
+[motion baking](src/pack/visual/motion/visual_motion.rs), [sector packer](src/pack/sector/sector_packer.rs), and
 [dependency resolver](src/resolve/visual_dependencies.rs).

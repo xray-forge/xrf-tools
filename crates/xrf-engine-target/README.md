@@ -1,7 +1,9 @@
 # xrf-engine-target
 
 Names which engine a game data tree is meant for. Two engines read the same configs differently, and a tree does not
-declare which it targets, so a caller either names one or leaves it to detection.
+declare which it targets, so a caller either names one or leaves it to detection. Readers whose behaviour differs by
+engine take an `XrayEngine`: [xrf-environment](../xrf-environment/README.md), particle simulation, and the
+`xrf-gamedata` checks built on them. The CLI spells the choice `--engine auto|vanilla|extended`.
 
 ```rust
 use xrf_engine_target::{XrayEngine, XrayEngineChoice, XrayEngineEvidence, XrayEngineResolution};
@@ -21,10 +23,28 @@ assert_eq!(resolution.evidence, XrayEngineEvidence::Named);
 
 ## Named or inferred
 
-`XrayEngineChoice` is `auto` (the default), `vanilla` or `extended`. `XrayEngineDetector::detect(roots, read_config)`
-infers the engine for `auto` and answers an `XrayEngineResolution`: the engine, the `XrayEngineEvidence` that decided
-it, and the file or logical path that showed it. `read_config` reads a logical path through whatever the caller already
-mounted, so archived configs count, and it is called only when the installation layout decides nothing.
+`XrayEngineChoice` is `auto` (the default), `vanilla` or `extended`; `get_named` answers the engine a choice names, if
+any. `XrayEngineDetector::detect(roots, read_config)` infers the engine for `auto` and answers an
+`XrayEngineResolution`: the engine, the `XrayEngineEvidence` that decided it, and the file or logical path that showed
+it (`describe` renders all of it as one line, such as `extended (Anomaly executables found)`). `read_config` reads a
+logical path through whatever the caller already mounted, answering `None` where nothing resolves, so archived configs
+count; it is called only when the installation layout decides nothing.
+
+```rust,no_run
+use xrf_engine_target::{XrayEngineChoice, XrayEngineDetector, XrayEngineResolution};
+use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+  let roots = XrayRoots::one("C:/Games/Anomaly".into(), XrayMountMode::Auto);
+  let search: XraySearch = roots.to_search_plan()?.open()?;
+  let resolution: XrayEngineResolution =
+    XrayEngineChoice::Auto.resolve(|| XrayEngineDetector::detect(&roots, |path| search.read(path).ok()));
+
+  println!("{}", resolution.describe());
+
+  Ok(())
+}
+```
 
 A root's installation is the root itself where it holds an fsgame file (`fsgame.ltx`, or an Enhanced Edition's
 `fsgame_<game>.ltx`), otherwise its nearest ancestor that does. The first rule that matches wins:
@@ -46,4 +66,11 @@ These rules are deliberately not signs of Monolith, because another reference tr
 - DLTX `mod_*.ltx` files, which mean mods rather than an engine.
 
 A patched tree can still look like the other engine's, so a caller that knows better names the engine. The config
-dialect (`--dltx`) is a separate choice; an extended tree usually resolves with DLTX, and the two stay two values.
+dialect (`--dltx`, [xrf-dltx](../xrf-dltx/README.md)) is a separate choice; an extended tree usually resolves with
+DLTX, and the two stay two values.
+
+## Checks
+
+Run `cargo test --locked -p xrf-engine-target` from the repository root. The detection rules are pinned by the tests in
+[the detector](src/xray_engine_detector.rs), one fixture tree per rule and per deliberate non-sign. The optional
+`typescript-bindings` feature derives `specta` types for the frontend's generated bindings.

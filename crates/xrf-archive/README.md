@@ -26,15 +26,19 @@ fn main() -> xrf_error::XrfResult {
 Opening reads the volume headers and name tables. File payloads are read on demand, so a successful open does not prove
 that every file can be decompressed.
 
-| Method                                   | Input and discovery                                                        |
-| ---------------------------------------- | -------------------------------------------------------------------------- |
-| `ArchiveProject::new(path)`              | One file, or archive volumes recursively beneath a directory               |
-| `ArchiveProject::new_shallow(path)`      | One file, or archive volumes directly inside a directory                   |
-| `ArchiveProject::discover_volumes(path)` | The paths `new` would open, in merge order, without parsing their contents |
+| Method                                       | Input and discovery                                              |
+| -------------------------------------------- | ---------------------------------------------------------------- |
+| `ArchiveProject::new(path)`                  | One file, or archive volumes recursively beneath a directory     |
+| `ArchiveProject::new_shallow(path)`          | One file, or archive volumes directly inside a directory         |
+| `ArchiveProject::get_discover_volumes(path)` | The paths `new` would open, in merge order, without reading them |
 
 Directory discovery recognizes extensions beginning with `db` or `xdb`, ignoring case, including `.db0` and `.xdb1`. A
 directly named file is opened as a volume regardless of its extension. Opening fails when no volume is found, a volume
-cannot be parsed, or the directory walk fails. Discovery alone may return an empty list.
+cannot be parsed or holds no file-descriptor chunk, or any entry below the directory cannot be walked; an unreadable
+subdirectory is an error rather than a set quietly missing its volumes. Discovery alone may return an empty list.
+
+`project.root` is the tightest path holding exactly these volumes: the volume itself when one file was named, otherwise
+the volumes' common parent directory.
 
 ### Names and precedence
 
@@ -64,7 +68,9 @@ Use `entry.is_directory` to distinguish directory rows from files. Directory nam
 without one is an empty file. Thus `project.files.len()` counts entries, including directories.
 
 `ArchiveDescriptor::output_root_path` comes from the volume metadata's `[header] entry_point`, with the leading alias
-removed. It describes an unpack root, not an additional prefix to pass to `read_file_bytes`.
+removed (`$fs_root$\gamedata\` becomes `gamedata\`). It is empty for a volume with no metadata chunk, and a metadata
+chunk without an `entry_point` fails the open. It describes an unpack root, not an additional prefix to pass to
+`read_file_bytes`.
 
 ### Understand size totals
 

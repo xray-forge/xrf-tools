@@ -11,25 +11,33 @@ use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
 use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
 
 fn main() -> xrf_error::XrfResult {
-    let step = |value: f32, time: f32| AnimationKey { value, time, shape: AnimationShape::Stepped, ..Default::default() };
-    let envelope = AnimationEnvelope { keys: vec![step(0.0, 0.0), step(1.0, 2.0)], ..Default::default() };
+  let step = |value: f32, time: f32| AnimationKey {
+    value,
+    time,
+    shape: AnimationShape::Stepped,
+    ..Default::default()
+  };
+  let envelope = AnimationEnvelope {
+    keys: vec![step(0.0, 0.0), step(1.0, 2.0)],
+    ..Default::default()
+  };
 
-    let mut writer = ChunkWriter::new();
-    envelope.write::<XRayByteOrder>(&mut writer)?;
+  let mut writer = ChunkWriter::new();
+  envelope.write::<XRayByteOrder>(&mut writer)?;
 
-    let mut reader = ChunkReader::from_vec(writer.buffer)?;
-    let restored = AnimationEnvelope::read::<XRayByteOrder, _>(&mut reader)?;
+  let mut reader = ChunkReader::from_vec(writer.buffer)?;
+  let restored = AnimationEnvelope::read::<XRayByteOrder, _>(&mut reader)?;
 
-    assert_eq!(restored, envelope);
-    assert_eq!(restored.get_duration_seconds(), Some(2.0));
-    assert_eq!(restored.evaluate(1.0), 0.0);
+  assert_eq!(restored, envelope);
+  assert_eq!(restored.get_duration_seconds(), Some(2.0));
+  assert_eq!(restored.evaluate(1.0), 0.0);
 
-    Ok(())
+  Ok(())
 }
 ```
 
 Envelope I/O consumes or emits fields at the current position without a chunk header; the enclosing format owns framing
-and decides which encoding to read.
+and decides which encoding to read. Key times and `evaluate`'s argument are seconds.
 
 ## Data model
 
@@ -43,7 +51,7 @@ and decides which encoding to read.
 
 The defaults are the engine's constructors: an envelope with no keys, constant either side (`CEnvelope`), and a key of
 zeros with the TCB shape (`st_Key`). Shapes and behaviours the engine does not name are kept as `Unknown(raw)`, so a
-file written back says what it said.
+file written back says what it said; both serialize as their stored `u8`.
 
 `get_duration_seconds` subtracts the first key's time from the last key's time. It returns `None` for no keys and zero
 for one key. It neither sorts keys nor finds the minimum and maximum times; keep keys in chronological order when
@@ -55,7 +63,7 @@ line, step, `BEZ2`), and outside the keys the before/after behaviour (reset, con
 linear). It ports the engine's own arithmetic, quirks included: `range` wraps by `low + time - span * floor(time /
 span)`, so a span not starting at zero repeats from where that lands, and oscillation reads the span's length less the
 time. An unknown shape reads as the offset alone, as the engine's `default` does; an unknown behaviour leaves the time
-outside the keys, and the last span carries on where the engine would read past them.
+outside the keys, and the first or last span carries on where the engine would read past them.
 
 ## Encoding
 
@@ -65,8 +73,10 @@ outside the keys, and the last span carries on where the engine would read past 
   interpolation parameters for every key, stepped or not. Only the low byte of each behaviour and shape code is
   retained.
 - `write` emits the narrow layout, as `CEnvelope::Save` does. It refuses more than 65,535 keys and leaves out a stepped
-  key's interpolation parameters, judging the shape by the byte it writes. Parameters are quantized over `[-32, 32]`,
-  so arbitrary floating-point parameters need not survive a write/read cycle exactly. Wide encoding has no writer.
+  key's interpolation parameters, judging the shape by the byte it writes. Parameters are quantized over `[-32, 32]`
+  and a value outside it is clamped to the nearer end, so arbitrary floating-point parameters need not survive a
+  write/read cycle exactly; bytes read and written back do. Wide encoding has no writer, so a version 3 envelope is
+  rewritten in the narrow layout.
 
 Reads check the available byte budget before reserving key storage and return errors for truncated data. The enclosing
 format must check that its complete payload was consumed.

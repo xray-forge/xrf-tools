@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 pub(crate) mod assertion_utils;
 pub(crate) mod capacity_utils;
 pub(crate) mod clock_utils;

@@ -1,4 +1,4 @@
-//! X-Ray shaders: authored sources, the compiled blender library, and the compiler's own table.
+#![doc = include_str!("../README.md")]
 
 #[cfg(any(test, feature = "fixtures"))]
 pub mod fixtures;

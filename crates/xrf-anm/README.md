@@ -1,7 +1,8 @@
 # xrf-anm
 
-Reads and writes `.anm` and `.anm1` object motion files used for cameras and animated objects. `AnmFile` holds the
-motion name, frame range, frame rate, version, and six animation channels.
+Reads and writes `.anm` and `.anm1` object motion files, one format under two extensions, which the engine plays a
+camera effect or an animated level object from. `AnmFile` holds the motion name, frame range, frame rate, version, and
+six animation channels. The level world, the archive describer and the animation verifier read motions through it.
 
 ## Read a motion
 
@@ -23,8 +24,9 @@ fn main() -> xrf_error::XrfResult {
 ```
 
 Use `read_from_bytes` for owned bytes, including an asset read from an archive, or `read_from_file` for an open file.
-`XRayByteOrder` selects the little-endian layout. The reader accepts versions 3, 4, and 5; version 3 uses the older,
-wider envelope encoding.
+`read_from_chunk` finds the motion chunk among a reader's children, and `read_from_motion_chunk` reads a motion chunk
+already in hand. `XRayByteOrder` selects the little-endian layout. The reader accepts versions 3, 4, and 5; version 3
+uses the older, wider envelope encoding.
 
 ## Write a motion
 
@@ -57,25 +59,31 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-The writer accepts versions 4 and 5 and preserves the chosen version. Version 3 is read-only. Writing requires exactly
-six channels in `ANM_CHANNELS` order: position x/y/z, then rotation heading/pitch/bank. Empty channels are allowed.
+The writer accepts versions 4 and 5, which lay their envelopes out identically, and preserves the chosen version, so a
+version 4 or 5 motion read and written back is byte for byte the file it came from. Version 3 is read-only. Writing
+requires exactly six channels in `ANM_CHANNELS` order: position x/y/z, then rotation heading/pitch/bank. Empty channels
+are allowed.
 
 ## Timing and limits
 
-The frame range includes both endpoints: frames 0 through 29 span 30 frames. A reversed range counts as zero frames.
-`get_duration_seconds` divides the frame count by `fps`, using `ANM_DEFAULT_FPS` (30) when `fps > 0` is false. Envelope
-key times are seconds; their first-to-last-key span is separate from the motion's frame-based duration.
+The frame range includes both endpoints: frames 0 through 29 span 30 frames. Frames are signed, because shipped camera
+effects start at -1, and a reversed range counts as zero frames. `get_fps` is `fps`, or `ANM_DEFAULT_FPS` (30) when
+`fps > 0` is false, and `get_duration_seconds` divides the frame count by it. Envelope key times are seconds; their
+first-to-last-key span is separate from the motion's frame-based duration. `get_keys_count` and `is_keyed` count keys
+across all six channels; a motion with none is still a well-formed file.
 
-`evaluate(time)` is `COMotion::_Evaluate`: the position from channels 0 to 2 and the rotation as an object animator
-hands it to `setXYZi`, the pitch (channel 4) in `x`, the heading (channel 3) in `y` and the bank in `z`.
-`get_looped_time(elapsed)` is the time a looping `CObjectAnimator` plays at: from the first frame's time, wrapped back
-by whole lengths past the last frame's. Envelopes and their encoding constraints belong to
+`evaluate(time)` takes seconds and is `COMotion::_Evaluate`: the position from channels 0 to 2 and the rotation as an
+object animator hands it to `setXYZi`, the pitch (channel 4) in `x`, the heading (channel 3) in `y` and the bank in
+`z`. A missing channel reads as zero. `get_looped_time(elapsed)` is the time in seconds a looping `CObjectAnimator`
+plays at: from the first frame's time, wrapped back by whole lengths past the last frame's; a one-frame motion holds
+its first frame. Envelopes and their encoding constraints belong to
 [xrf-animation-envelope](../xrf-animation-envelope/README.md).
 
 ## Errors and checks
 
-Reads reject missing motion chunks, unsupported versions, truncated payloads, and trailing bytes inside the motion
-chunk. Writes reject unsupported versions and incorrect channel counts, and propagate envelope encoding errors.
+Reads reject a file that cannot be opened, missing motion chunks, unsupported versions, truncated payloads, declared key
+counts the payload cannot hold, and trailing bytes inside the motion chunk. Writes reject unsupported versions and
+incorrect channel counts, and propagate envelope encoding errors.
 
 Run `cargo test --locked -p xrf-anm` from the repository root. See the [motion type and operations](src/anm_file.rs)
 and [format tests](src/tests.rs).

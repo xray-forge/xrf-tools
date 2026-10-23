@@ -1,4 +1,4 @@
-//! `.thm` texture descriptors: what the engine loads a texture as, and the bump pair beside it.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod chunks;
 pub mod thm_bump_mode;

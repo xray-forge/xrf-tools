@@ -1,6 +1,7 @@
 # xrf-report
 
-Immutable, serializable results for command checks and findings.
+Immutable, deterministic reports of what XRF commands checked and found. A `Report` holds `CheckReport`s, each with a
+verdict and its `Finding`s; the CLI's verify commands build one and serialize it into their JSON report.
 
 ## Build a report
 
@@ -8,14 +9,14 @@ Immutable, serializable results for command checks and findings.
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 
 fn main() -> xrf_error::XrfResult {
-  let finding = Finding::new(
+  let finding: Finding = Finding::new(
     RuleId::new("textures.missing")?,
     Some("textures/example.dds".to_owned()),
     "Referenced texture was not found",
   );
 
-  let check = CheckReport::new(CheckId::new("textures")?, Status::Failed, None, vec![finding]);
-  let report = Report::new(vec![check]);
+  let check: CheckReport = CheckReport::new(CheckId::new("textures")?, Status::Failed, None, vec![finding]);
+  let report: Report = Report::new(vec![check]);
 
   assert_eq!(report.status(), Status::Failed);
   assert_eq!(report.checks()[0].findings().len(), 1);
@@ -26,33 +27,34 @@ fn main() -> xrf_error::XrfResult {
 
 ## Concepts
 
-Create a `Finding` with a validated `RuleId`, optional subject, and message. Collect findings into a `CheckReport`
-with a `CheckId`, explicit `Status`, and optional duration, then pass the checks to `Report::new`.
+- `Finding::new(rule_id, subject, message)`: one rule violation or checker error. The optional subject names the
+  affected asset or value as report text, not a validated path; use `None` when the finding concerns the whole check.
+- `CheckReport::new(id, status, duration, findings)`: one check with an explicit `Status`, an optional measured
+  `Duration` (`None` when the check did not time itself), and its findings, which it sorts by subject (`None` first),
+  then rule, then message.
+- `Report::new(checks)`: keeps the checks in the caller's order and aggregates their statuses.
 
-`CheckReport::new` sorts findings deterministically. `Report::new` preserves check order and aggregates their statuses;
-it does not infer a check's status from its findings. Durations serialize as whole milliseconds, or remain absent
-when unmeasured.
+`CheckId` names a check and `RuleId` one rule within it. Both reject an empty string with an `IdentifierError`, which
+converts to `XrfError::Invalid` so `?` works in an `XrfResult` function. Neither imposes a naming scheme; keeping names
+stable is the producer's job.
 
-`CheckId` names an operation's check; `RuleId` identifies one rule within it. Both reject an empty string and serialize
-as strings. They do not impose a dotted naming scheme; stable naming is the producer's responsibility.
-
-The optional finding subject identifies the affected asset or value. It is report text, not a validated filesystem
-path. Keep absence as `None` when a finding concerns the check as a whole.
+Nothing is inferred from findings: a check with findings can pass, and one without can fail. Supply the verdict, or use
+`Status::from_is_valid(bool)` for a plain pass or fail.
 
 ## Status and serialization
 
-Statuses aggregate in this order, strongest first: `Error`, `Failed`, `Incomplete`, `Passed`, `Skipped`. An empty
-report is `Skipped`. Findings alone do not determine which status is appropriate; supply the check's verdict explicitly.
+`Status::aggregate` takes the strongest status present, in this order: `Error`, `Failed`, `Incomplete`, `Passed`,
+`Skipped`. So a skipped check beside a passed one gives `Passed`, and an empty report is `Skipped`.
 
-The report and its checks serialize with camelCase field names; statuses use lowercase strings. Construction fixes
-the order before serialization, so output does not depend on worker completion order.
+Reports, checks and findings serialize with camelCase field names; statuses as lowercase strings, identifiers as plain
+strings, and `duration` as whole milliseconds or `null` when unmeasured. Because construction fixes the order, the
+output does not depend on which worker finished first.
 
 ## Checks and related crates
 
-This crate stores the final result. Use [xrf-output](../xrf-output/README.md) for live messages and
-[xrf-job](../xrf-job/README.md) for progress.
+Run `cargo test --locked -p xrf-report` from the repository root. Building a report does not log, write a file, or
+choose an exit code; those belong to the consuming command. Use [xrf-output](../xrf-output/README.md) for live
+messages and [xrf-job](../xrf-job/README.md) for progress.
 
-Run `cargo test --locked -p xrf-report`. Report construction does not log, write a JSON file, or choose an exit code;
-those decisions belong to the consuming command.
-
-See the [report example and tests](src/report.rs), [finding](src/finding.rs), and [identifier rules](src/identifier.rs).
+See the [report](src/report.rs), [check](src/check_report.rs), [finding](src/finding.rs), [status](src/status.rs) and
+[identifiers](src/identifier.rs).

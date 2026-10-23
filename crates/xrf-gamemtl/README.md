@@ -1,0 +1,91 @@
+# xrf-gamemtl
+
+Reads and writes `gamemtl.xr`, the game material library: the physical materials a collision face names, and the pairs
+that decide what happens when two materials meet (step and impact sounds, particles and marks). `GameMtlFile` holds the
+library; the desktop app's archive describer reads it, and its level grass packing asks which materials are passable.
+
+## Read and write a library
+
+```rust
+use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
+
+fn main() -> xrf_error::XrfResult {
+  let grass = GameMtlMaterial {
+    id: 0,
+    name: "materials\\grass".into(),
+    description: None,
+    flags: GameMtlMaterial::FLAG_PASSABLE,
+    ph_friction: 1.0,
+    ph_damping: 1.0,
+    ph_spring: 1.0,
+    ph_bounce_start_velocity: 0.0,
+    ph_bouncing: 0.0,
+    shoot_factor: 1.0,
+    bounce_damage_factor: 1.0,
+    visual_transparency_factor: 0.0,
+    sound_occlusion_factor: 0.0,
+    flotation_factor: Some(1.0),
+    injurious_speed: Some(0.0),
+    density_factor: Some(0.0),
+    shoot_factor_mp: None,
+    acoustics: None,
+  };
+  let library = GameMtlFile {
+    version: GameMtlFile::CURRENT_VERSION,
+    material_index: 1,
+    material_pair_index: 0,
+    materials: vec![grass],
+    pairs: Vec::new(),
+  };
+
+  let mut writer = ChunkWriter::new();
+  library.write::<XRayByteOrder>(&mut writer)?;
+
+  let restored = GameMtlFile::read_from_bytes::<XRayByteOrder>(writer.buffer)?;
+
+  assert_eq!(restored, library);
+  assert!(restored.find_material(0).is_some_and(GameMtlMaterial::is_passable));
+  assert_eq!(restored.materials[0].get_named_flags(), ["passable"]);
+
+  Ok(())
+}
+```
+
+Read a library with `read_from_path`, `read_from_file`, `read_from_bytes` for an archived entry, or `read_from_chunk`.
+`write` emits the whole library as top-level chunks in the writer's buffer.
+
+## Library, materials and pairs
+
+The library is a chunk tree: a version (`0x1000`), the editor's next material and pair numbers (`0x1001`), then a
+materials chunk and a pairs chunk holding one child each. Only version 1, `GAMEMTL_VERSION_COP`, is read, as the engine
+reads no other. `material_index` and `material_pair_index` are one past the highest number ever handed out, not counts.
+
+`GameMtlMaterial` is `SGameMtl`. Its `id` is the library's number for it, which a collision face stores instead of the
+name; `find_material` looks one up by it. The main, flags, physics and factors chunks are required. Description,
+flotation, injurious speed, density, the multiplayer shoot factor and acoustics are optional and stay `None` when
+absent; the engine falls back to the single-player shoot factor for the first and derives acoustics from the sound
+occlusion factor. `GAMEMTL_FLAGS` names the flag bits; `get_named_flags` and
+`is_passable` read them.
+
+`GameMtlPair` is `SGameMtlPair`: two material numbers, the pair's own number, a parent pair (`NO_PARENT_ID` for none),
+the properties it declares itself (`GAMEMTL_PAIR_PROPERTIES`, read by `get_own_properties`), and its breaking, step and
+collision sound, particle and mark lists as stored strings. `has_parent` answers whether the pair takes unset properties
+from another, and `get_inheriting_pairs_count` counts those that do.
+
+## Chunk order
+
+A material's chunks are written `0x1000`, description `0x1005`, `0x1001`, `0x1002`, `0x1003`, then `0x1008`, `0x1004`,
+`0x1006`, `0x1007` and acoustics `0x1009`, each optional one only when present. That is not the order `SGameMtl::Load`
+reads them in, but it is the order every shipped library writes them in, so a shipped library read and written back is
+byte for byte the file it came from. A pair is always `0x1000 0x1002 0x1003 0x1005`. Materials and pairs are numbered
+from zero in list order on write.
+
+## Errors and checks
+
+Reads reject a file that cannot be opened, a missing version or numbering chunk, another version, and a material or pair
+missing a chunk the engine asserts on. The crate does not resolve sound, particle or mark names to assets.
+
+Run `cargo test --locked -p xrf-gamemtl` from the repository root. See the [library](src/gamemtl_file.rs),
+[material](src/gamemtl_material.rs), [pair](src/gamemtl_pair.rs), [acoustics](src/gamemtl_acoustics.rs), and
+[format tests](src/tests.rs).

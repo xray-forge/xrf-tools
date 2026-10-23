@@ -1,4 +1,4 @@
-//! `.xr` light animation libraries: colour keys over time.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod light_anim_file;
 pub(crate) mod light_anim_item;

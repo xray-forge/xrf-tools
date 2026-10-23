@@ -1,4 +1,4 @@
-//! `.omf` motion libraries, the shared animation banks a visual references.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod omf_file;
 pub(crate) mod omf_motions_processor;

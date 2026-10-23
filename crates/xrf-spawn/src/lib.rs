@@ -1,4 +1,4 @@
-//! Spawn sets and the alife records inside them, with the graph, patrols and artefact points they reference.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod chunks;
 pub(crate) mod constants;

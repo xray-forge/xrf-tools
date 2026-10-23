@@ -1,4 +1,4 @@
-//! The OGF visual format: what a model file carries, and the patches that rewrite one in place.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod chunks;
 pub(crate) mod data;

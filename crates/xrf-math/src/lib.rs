@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 pub(crate) mod math_constants;
 pub(crate) mod matrix_4x4;
 pub(crate) mod vector_3d;

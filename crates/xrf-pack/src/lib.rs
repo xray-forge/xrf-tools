@@ -1,6 +1,4 @@
 #![doc = include_str!("../README.md")]
-//!
-//! Both operations own no state and borrow the project, so neither is a method on it.
 
 mod archive_config_format;
 #[cfg(test)]

@@ -1,4 +1,4 @@
-//! Immutable, deterministic reports produced by XRF commands.
+#![doc = include_str!("../README.md")]
 
 mod check_report;
 mod finding;

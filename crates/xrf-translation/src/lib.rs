@@ -1,8 +1,4 @@
-//! Reading, editing, and building S.T.A.L.K.E.R. translation tables.
-//!
-//! The tree follows the data rather than the operations: `xml` and `json` each own one file format
-//! end to end, and `project` owns whole trees of them - discovery, description, editing, and the
-//! build, verify, initialize and format passes.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod edit;
 pub(crate) mod json;

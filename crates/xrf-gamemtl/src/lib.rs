@@ -1,4 +1,4 @@
-//! `gamemtl.xr` game materials and the pairs that decide what happens when two meet.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod gamemtl_acoustics;
 pub(crate) mod gamemtl_file;

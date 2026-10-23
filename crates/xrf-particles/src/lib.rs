@@ -1,4 +1,4 @@
-//! `particles.xr` libraries: the effects and groups the engine spawns, and the actions that drive them.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod chunks;
 pub(crate) mod data;

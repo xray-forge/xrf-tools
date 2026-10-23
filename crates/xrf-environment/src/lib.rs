@@ -1,17 +1,4 @@
 #![doc = include_str!("../README.md")]
-//!
-//! # Module map
-//!
-//! - `key` — the vocabulary every section kind is read with: a key's value kind, and per engine whether it is read
-//!   and what it defaults to.
-//! - `section` — one section as authored, and the reader that parses one as the engine does.
-//! - `finding` — what a read found wrong, and of which kind.
-//! - `weather` — cycles, effects, their keyframes, and a keyframe as the engine loads it.
-//! - `sun`, `thunderbolt`, `ambient` — the definitions a keyframe names.
-//! - `level` — which cycles a level plays.
-//! - `mixer` — a cycle mixed at a time of day.
-//! - `playback` — a weather played on: the pair of keyframes blended, and effects laid over the cycle.
-//! - `catalog` — reading all of it at once.
 
 pub(crate) mod ambient;
 pub(crate) mod catalog;

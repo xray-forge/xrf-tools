@@ -1,10 +1,4 @@
-//! What the X-Ray renderer builds for a surface, answered the way the engine would.
-//!
-//! Two halves, resolved from the two things a surface declares. From a texture's `.thm`, and a loaded level's own over
-//! it: the bump pair, the detail association, and the outcome of resolving them, the way `CTextureDescrMngr` and
-//! `CRender::texture_load` read them.
-//! From a shader name and `shaders.xr`: whether alpha is read at all and how, the way the blender's own `Compile`
-//! decides it. Neither is derivable from the other, and neither is in the mesh.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod data;
 pub(crate) mod resolve;

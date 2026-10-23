@@ -1,9 +1,4 @@
-//! Reading S.T.A.L.K.E.R. dialog XML.
-//!
-//! The tree follows the data: an `element` is one written child, a `phrase` is one line, a `dialog`
-//! is one conversation, a `file` is one document together with the text its ranges address, and
-//! `project` is a whole tree of them. A `partner` is who the actor talks to: the characters,
-//! profiles and info portions that decide which dialogs reach it.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod constants;
 pub(crate) mod dialog;

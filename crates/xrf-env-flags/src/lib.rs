@@ -1,5 +1,4 @@
-//! Every environment variable the workspace reads, in one table that parses each the same way and generates its
-//! document.
+#![doc = include_str!("../README.md")]
 
 mod choice_flag;
 mod env_flag;

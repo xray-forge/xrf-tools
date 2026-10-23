@@ -1,4 +1,4 @@
-//! What a built binary can say about its own provenance.
+#![doc = include_str!("../README.md")]
 
 mod build_info;
 mod build_kind;

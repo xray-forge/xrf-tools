@@ -1,4 +1,4 @@
-//! `.efd` evaluation function data, the pattern tables the game evaluates.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod efd_file;
 pub(crate) mod efd_pattern;

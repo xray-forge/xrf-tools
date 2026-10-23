@@ -1,6 +1,16 @@
 # xrf-material
 
-Describes the texture dependencies and alpha behavior an X-Ray surface gets from THM descriptors and `shaders.xr`.
+What the X-Ray renderer builds for a surface, answered the way the engine would. A surface declares two things, and
+each is resolved separately, because neither is derivable from the other and neither is in the mesh:
+
+- From a texture's `.thm` descriptor, and a loaded level's own over it: the bump pair, the detail association, the
+  lighting model, and the outcome of resolving them, the way `CTextureDescrMngr` and `CRender::texture_load` read them.
+- From a shader name, a renderer shader script or `shaders.xr`: whether alpha is read at all and how, the way the
+  blender's own `Compile` decides it.
+
+The renderer, the desktop app's level, model and texture views, and the texture verifier ask it what to draw. Binary
+THM parsing lives in [xrf-thm](../xrf-thm/README.md), and the shader library and scripts in
+[xrf-shaders](../xrf-shaders/README.md).
 
 ## Describe a material and surface
 
@@ -25,53 +35,65 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-The texture reference and shader name answer different questions. A mesh's diffuse texture name does not determine
-its alpha draw mode; that comes from its shader declaration.
+The texture reference and shader name answer different questions. A mesh's diffuse texture name does not determine its
+alpha draw mode; that comes from its shader. The caller mounts the sources and decides which roots the `XraySearch`
+covers and in what order.
 
 ## Choose a resolver
 
 - `XrayMaterialResolver::describe_texture(search, scope, reference)` finds a texture's `.thm` and resolves its bump pair
-  and detail association. `describe_descriptor` starts from a THM asset already located by a scan, outside any level.
+  and detail association. `describe_descriptor` starts from a THM asset already located by a scan, outside any level,
+  and `describe_read_descriptor` from a read the caller already made; `read_descriptor` reads one through the search's
+  cache.
 - Open `XraySurfaceResolver` once with a search and a scope, then call `describe(shader_name, textures)` for each
   surface. It reads the shader library once and reports both the authored declaration and the resulting draw mode.
+  Reuse one resolver across every surface using the same library; open a fresh one when the library changes.
 - `XrayTextureScope` says where the renderer looks: `shared()` outside a level, `of_level(directory)` inside one. In a
   level, the level's own `.thm` is read over the shared one as `LoadTHM("$level$")` does: it replaces the bump and the
   material, and the detail only where it names a live one, and one the type gate skips changes nothing. Textures and
   bump inputs resolve beside the level first, save that a `_bump` name the shared tree lacks is the engine's dummy;
   `resolve_texture` answers that order for any other texture a level binds.
-
-Reuse one `XraySurfaceResolver` across all surfaces using the same library. A texture descriptor is per texture, while
-`shaders.xr` contains many surface declarations. Create a fresh resolver when the underlying library changes.
+- `XrayReducedTextures` answers whether a texture loads a step coarser, from `system.ltx`'s `reduce_lod_texture_list`.
 
 ## Texture dependencies
 
-`XrayMaterialDescriptor` carries the located THM, its declaration, bump outcome, optional bound bump pair, and optional
-detail association. A missing descriptor is explicit; it does not mean the diffuse texture itself is absent.
+`XrayMaterialDescriptor` carries the located THM, its declaration, bump outcome, optional bound bump pair, optional
+detail association, and `material`, the lighting model (`1.0` where no descriptor is read).
+`XrayMaterialDeclaration` keeps apart the ways a texture ends up flat: no descriptor, an unreadable one, one whose
+texture type `LoadTHM` skips whole, no bump chunk, a disabled mode, or an empty name. Only `Declared` binds a pair. A
+missing descriptor does not mean the diffuse texture itself is absent.
 
-Bump resolution uses the search's ordered sources and the engine fallback rules. Inspect both the declaration and the
-outcome to distinguish what was requested from what was found or substituted. `describe_descriptor` is useful for
-sweeping THMs even when no diffuse texture with the same name exists.
+`XrayBumpOutcome` is the worse of the pair's two inputs: `Flat`, `Bumped`, `Dummy` (the bump shader runs against the
+engine's flat dummy because a `_bump` file is absent), or `Missing` (an input fell to `ed\ed_not_existing_texture` or to
+nothing). Inspect both the declaration and the outcome to distinguish what was requested from what was found or
+substituted. `describe_descriptor` is useful for sweeping THMs even when no diffuse texture with the same name exists.
 
 ## Alpha behavior
 
-The caller mounts the sources and supplies an `XraySearch`. Missing, unreadable, undefined, and unmodelled declarations
-remain explicit in the result. Surface alpha rules model the deferred renderer, R2 and above.
+`XraySurfaceResolver::describe` looks for a renderer shader script, `shaders\r2\<name>.s` with `\` in the name read as
+`_`, before the library, because the engine uses a script in place of the library entry when one exists. A scripted
+surface reports `XraySurfaceDeclaration::Scripted` and the texture each of its samplers binds. Otherwise the blender's
+class decides: `Described` with its alpha switch, reference and strict sorting, or `Undeclared`, `NoLibrary`,
+`Unreadable`, `Undefined` or `Unmodelled` where nothing could be said.
 
-`XraySurfaceDescriptor` keeps the declaration separate from `XraySurfaceDraw`: opaque, alpha-tested, or blended.
-An absent or unmodelled declaration can still produce the opaque fallback. Do not treat a drawable fallback as proof
-that the authored shader was found and understood.
+`XraySurfaceDescriptor` keeps the declaration separate from `XraySurfaceDraw`: `Opaque`, `AlphaTested`, `Blended`,
+`Added`, `Multiplied`, `Invisible`, or `Water`. A surface nothing could be read for still draws `Opaque`, as the engine
+draws a shader it cannot resolve; do not treat a drawable fallback as proof that the authored shader was found and
+understood. The descriptor also carries the detail texture, terrain layers, bump pair, environment cube, and the clamp,
+distortion, emission, shadow and object-LOD flags. Surface alpha rules model the deferred renderer, R2 and above.
 
 ## Limitations, features, and checks
 
-`find_textures_ltx` locates a possible override file but does not interpret it. The optional `fixtures` feature exposes
-test builders; `typescript-bindings` enables frontend type metadata.
+`find_textures_ltx` locates a possible `textures\textures.ltx` override file but does not interpret it. The crate
+reports descriptors and resolutions; it does not decode diffuse pixels, compile shaders, or render a scene. The
+resolver methods express missing and unreadable declarations in result values rather than errors, so callers must
+inspect those values even though no `Result` is returned.
 
-The crate reports descriptors and resolutions; it does not decode diffuse pixels, compile shaders, or render a scene.
-The resolver methods express missing and unreadable declarations in result values, so callers must inspect those values
-even when no outer `Result` is returned.
+The optional `fixtures` feature exposes the `fixtures` test builders; `typescript-bindings` derives frontend type
+metadata.
 
-Run `cargo test --locked -p xrf-material` from the repository root. Binary THM and shader-library parsing is provided by
-[xrf-db](../xrf-db/README.md).
+Run `cargo test --locked -p xrf-material` from the repository root.
 
-See the [texture resolver](src/resolve/xray_material_resolver.rs) and
-[surface resolver](src/resolve/xray_surface_resolver.rs).
+See the [texture resolver](src/resolve/xray_material_resolver.rs), the
+[surface resolver](src/resolve/xray_surface_resolver.rs), the [texture scope](src/resolve/xray_texture_scope.rs), and
+the [draw modes](src/data/xray_surface_draw.rs).

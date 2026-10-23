@@ -8,9 +8,15 @@ Both entry points return `ArchiveStatistics`:
 - `of_world` takes a resolved listing from [xrf-vfs](../xrf-vfs/README.md). This **mounted world** can contain loose
   files, archived files, or both, with one winning file per engine path and the copies it overrides.
 
-Statistics use metadata already held by the caller. Computing a report performs no file I/O and does not validate
-payload contents. Opening sources belongs to the crates above; packing and extraction belong to
-[xrf-pack](../xrf-pack/README.md).
+The crate sits above both `xrf-archive` and `xrf-vfs`, as `xrf-pack` does: the same breakdown is asked of a volume set,
+whose name table records a stored size per entry, and of a mounted world, which answers loose files and archived
+entries through one lookup and records no stored size. Putting the shared arithmetic in either crate would give one of
+them knowledge of the other's subject.
+
+The two constructors are the whole interface: each returns the full report, so there is no per-question call and no way
+to compute half a report over an installation-sized listing. Statistics use metadata already held by the caller.
+Computing a report performs no file I/O and does not validate payload contents. Opening sources belongs to the crates
+above; packing and extraction belong to [xrf-pack](../xrf-pack/README.md).
 
 ## Summarize a volume set
 
@@ -69,8 +75,51 @@ Supply files only to `of_world`, including files rather than directories in each
 count every supplied entry, while the common breakdown skips entries marked as directories. `of_volumes` already
 handles directory descriptors and uses the crate's `ArchiveStatisticsEntry` implementation for `ArchiveFileDescriptor`.
 
-These traits let the collector borrow the existing listing without cloning it into a second entry model. See the
-[world tests](src/tests/world.rs) for an implementation over a small entry type.
+These traits let the collector borrow the existing listing without cloning it into a second entry model. Here they are
+implemented over the VFS's own shadowing listing:
+
+```rust,no_run
+use xrf_archive_stats::{ArchiveStatistics, ArchiveStatisticsEntry, ArchiveWorldStatisticsEntry};
+use xrf_vfs::{XrayAssetContainer, XrayMountMode, XraySearch, XraySearchPlan, XrayShadowingEntry};
+
+/// A winner and the copies it hides, as the search listed them.
+struct WorldEntry(XrayShadowingEntry);
+
+impl ArchiveStatisticsEntry for WorldEntry {
+  fn get_name(&self) -> &str {
+    self.0.get_logical_path()
+  }
+
+  fn get_size_real(&self) -> u64 {
+    self.0.get_size()
+  }
+}
+
+impl ArchiveWorldStatisticsEntry for WorldEntry {
+  fn get_container(&self) -> &XrayAssetContainer {
+    self.0.get_asset().get_container()
+  }
+
+  fn list_shadowed(&self) -> impl Iterator<Item = (&XrayAssetContainer, u64)> {
+    self.0.shadowed.iter().map(|copy| (copy.asset.get_container(), copy.size))
+  }
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+  let search: XraySearch = XraySearchPlan::new()
+    .with_root_mode("game", "C:\\Games\\Anomaly", XrayMountMode::Installation)?
+    .open()?;
+  let entries: Vec<WorldEntry> = search.list_shadowing_entries().into_iter().map(WorldEntry).collect();
+  let statistics = ArchiveStatistics::of_world(&entries, &search.list_roots(), &search.list_containers());
+
+  println!("{} files from {} mounts", statistics.overview.total.files, statistics.overview.sources);
+  println!("{} hidden copies", statistics.origins.hidden.files);
+
+  Ok(())
+}
+```
+
+The [world tests](src/tests/world.rs) implement the traits over a smaller entry type.
 
 ## Read the report
 
@@ -172,6 +221,7 @@ cargo test --locked -p xrf-archive-stats
 cargo doc --locked -p xrf-archive-stats --no-deps
 ```
 
-See the [report entry points](src/report/archive_statistics.rs), [entry traits](src/collect/archive_statistics_entry.rs),
+The README is the crate documentation, so its Rust examples are checked as doctests. See the
+[report entry points](src/report/archive_statistics.rs), [entry traits](src/collect/archive_statistics_entry.rs),
 [breakdown collector](src/collect/archive_statistics_collector.rs), and
 [origins collector](src/collect/archive_origins_collector.rs).

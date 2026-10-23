@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 pub(crate) mod chunk_constants;
 pub(crate) mod chunk_io;
 pub(crate) mod chunk_trait;

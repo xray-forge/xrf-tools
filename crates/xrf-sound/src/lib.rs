@@ -1,4 +1,4 @@
-//! Sound files the engine plays, and the environment presets it mixes them in.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod sound_environment;
 pub(crate) mod sound_environment_file;
