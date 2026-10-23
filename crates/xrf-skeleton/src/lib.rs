@@ -1,4 +1,4 @@
-//! Skeleton motion data, shared by the formats that carry it: OGF visuals and OMF libraries.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod skeleton_motion;
 pub(crate) mod skeleton_motion_definition;

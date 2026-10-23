@@ -1,7 +1,4 @@
-//! The compiled level of the X-Ray engine, one module per file the game ships.
-//!
-//! `level` is the render bundle itself and `geom` its geometry; the rest are the files beside them, each
-//! named for the one it reads.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod ai;
 pub(crate) mod cform;

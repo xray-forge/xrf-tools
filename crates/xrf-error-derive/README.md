@@ -1,10 +1,12 @@
 # xrf-error-derive
 
-Provides `#[derive(ErrorConstructors)]` for enums with message-based error variants.
+Provides `#[derive(ErrorConstructors)]`, which generates a constructor for each marked message-only variant of an
+error enum. [`XrfError`](../xrf-error/src/error.rs) uses it for its `new_*_error` constructors; depend on `xrf-error`
+rather than on this crate unless you are defining another error enum.
 
 ## Generate constructors
 
-```rust
+```rust,ignore
 use xrf_error_derive::ErrorConstructors;
 
 #[derive(Debug, PartialEq, ErrorConstructors)]
@@ -31,16 +33,9 @@ fn main() {
 }
 ```
 
-The generated methods are associated constructors on the enum. They accept either borrowed text or an owned `String`.
-
-## Attributes
-
-Derive `xrf_error_derive::ErrorConstructors` on an enum and mark selected variants with `#[constructor]`. A variant
-`Invalid { message: String }` gets `new_invalid_error(message: impl Into<String>)`. Use
-`#[constructor("custom_name")]` to choose the method name; unmarked variants get no constructor.
-
-Each marked variant must have exactly one named `message` field compatible with `String`. The macro generates
-constructors only; it does not implement `Display`, `Error`, or conversions.
+The example is not run as a doc test; [tests/ui/pass.rs](tests/ui/pass.rs) compiles the same shape. Each generated
+method is a `pub` associated function taking any `T: Into<String>`, so borrowed text and an owned
+`String` both work.
 
 | Attribute                   | Method generated for `NotFound` |
 | --------------------------- | ------------------------------- |
@@ -48,17 +43,15 @@ constructors only; it does not implement `Display`, `Error`, or conversions.
 | `#[constructor("missing")]` | `missing`                       |
 | No attribute                | No method                       |
 
-Apply display and error derives separately when the enum needs them. Unmarked variants may carry other shapes, as the
-`Cancelled` variant above does.
+The default name is `new_<variant in snake_case>_error`. A marked variant must have exactly one named field,
+`message: String`; unmarked variants may take any shape, as `Cancelled` does above. The enum must not be generic: the
+generated `impl` names the enum without parameters. The derive writes constructors only, so derive `Display`, `Error`
+and conversions separately, and pick custom names that do not collide with handwritten methods.
 
 ## Diagnostics and checks
 
-The derive rejects non-enum inputs, repeated constructor attributes, malformed custom names, and marked variants with
-tuple, unit, or extra fields. Rust type checking also requires the generated `String` to fit the `message` field.
-Choose names that do not collide with other generated or handwritten methods.
+The derive rejects a non-enum input, a repeated `#[constructor]`, an attribute that is not `#[constructor]` or
+`#[constructor("name")]`, a name that is not a Rust identifier, and a marked variant with tuple, unit or extra fields.
 
-Run `cargo test --locked -p xrf-error-derive` from the repository root. Its compile tests cover accepted declarations
-and rejected attribute or variant shapes.
-
-See the [implementation](src/lib.rs), [compile tests](tests), and its use in
-[XrfError](../xrf-error/src/error.rs).
+Run `cargo test --locked -p xrf-error-derive` from the repository root. Its [trybuild tests](tests/ui.rs) compile an
+accepted declaration and check rejected ones against the `.stderr` snapshots. See the [implementation](src/lib.rs).

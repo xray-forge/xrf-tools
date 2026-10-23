@@ -1,4 +1,4 @@
-//! Caller-controlled live output for XRF workflows.
+#![doc = include_str!("../README.md")]
 
 mod channel;
 mod options;

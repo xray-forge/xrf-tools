@@ -7,9 +7,10 @@ writes belong to their consuming crates. The public API is exported from `xrf_xm
 
 ## Choose a document
 
-- `XmlDocument` owns a semantic tree detached from the input. Use it to inspect elements, attributes, and text.
-- `XmlSourceDocument` owns decoded source text together with element ranges. Use it when the original spelling,
-  comments, and whitespace must remain available to an editor.
+- `XmlDocument` owns a semantic tree of `XmlElement`s detached from the input. Use it to inspect elements, attributes,
+  and text, as the texture-description and sound-reference readers do.
+- `XmlSourceDocument` owns decoded source text together with `XmlElementSpan` ranges. Use it when the original
+  spelling, comments, and whitespace must remain available to an editor, as the translation and dialog crates do.
 
 Both expose case-sensitive local names and attributes in source order. Namespace identities are discarded. `text()`
 concatenates direct text children, including CDATA and resolved entities; text inside child elements is excluded.
@@ -74,9 +75,12 @@ tags; `content_range()` includes everything between them, including comments and
 has an empty content range, while a self-closing element has none. Replacing content removes everything in that range.
 Apply multiple edits from highest offset to lowest, then validate the result before encoding and publishing it.
 
-The source reader tries strict parsing first. On failure it retries a same-length copy that neutralizes comment banners,
-bare ampersands and an XML declaration that does not open the document, which shipped mods write below a banner.
-`source()` and `into_source()` always return the original decoded text.
+`XmlSourceDocument::parse` takes text already decoded; decode the file's bytes first, using `declared_xml_encoding` and
+the fallback your format needs. It tries strict parsing first. On failure it retries a same-length copy that neutralizes
+comment banners (`--` inside a comment), bare ampersands and an XML declaration that does not open the document, which
+shipped mods write below a banner. Ranges stay valid because no byte moves, and `source()` and `into_source()` always
+return the original decoded text. `text()` and attribute values, however, come from the copy that parsed: when only the
+repaired copy did, a bare `&` currently reads as `~`, so take exact text from the source range.
 
 ## Expand includes
 
@@ -103,8 +107,10 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-A malformed directive, a missing include or nesting past 128 levels is an error, as each is fatal to the engine's
-loaders.
+A document with no `#include` is returned as written. An included file that does not end in a newline is followed by
+CRLF, as the engine writes every line it copies with a line break. A malformed directive (an unquoted name, or one
+outside 1 to 1024 bytes), a name the document's encoding cannot decode, a missing include, or nesting past 128 levels is
+an error, as each is fatal to the engine's loaders. `list_xml_includes` skips malformed directives instead.
 
 ## Generate XML
 

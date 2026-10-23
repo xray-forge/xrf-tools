@@ -1,4 +1,4 @@
-//! Monolith-compatible DLTX evaluation, as one [`xrf_ltx::LtxDialect`].
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod discovery;
 pub(crate) mod dltx_dialect;

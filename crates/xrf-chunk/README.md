@@ -1,6 +1,8 @@
 # xrf-chunk
 
-Reads and writes X-Ray binary chunks: an ID and payload size followed by the payload bytes.
+Reads and writes X-Ray binary chunks, the framing most engine formats share: a `u32` ID and a `u32` payload size
+followed by the payload bytes, with children nested inside a parent's payload. Every chunked format crate (OGF, OMF,
+THM, level, spawn, material and the rest) reads and writes through this one; it knows no format itself.
 
 ## Write and read a chunk
 
@@ -23,43 +25,64 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-The outer reader spans the whole buffer. The child's ID is `7`, while its position in the child sequence is `0`.
-`XRayByteOrder` is little-endian; formats with a different byte order must choose it explicitly.
+The outer reader spans the whole buffer. The child's ID is `7`, while its position in the child sequence is `0`:
+`read_child_by_index` selects an ordinal, not a stored ID.
 
 ## Sources and readers
 
-- Open owned bytes with `ChunkReader::from_vec`, copied bytes with `from_bytes`, or a file window with `from_slice`.
-  `from_file` loads the whole file into memory. Empty sources are rejected.
-- Use `ChunkIterator` and the `find_*_chunk_by_id` helpers to locate children.
-- Build a payload with `ChunkWriter`, then use `flush_chunk_into` for a framed chunk or `flush_raw_into` for raw bytes.
-- Implement `ChunkReadWrite` for a format's typed payload; the list and optional traits cover repeated or absent chunks.
+- Open owned bytes with `ChunkReader::from_vec`, copied bytes with `from_bytes`, an `InMemoryChunkDataSource` with
+  `from_source`, a file window with `from_slice`, or a path with `from_path`, which reads positionally rather than
+  holding the file. `from_file` loads the whole file into memory. Every constructor rejects an empty source; an empty
+  child chunk is ordinary.
+- Locate children with `read_children`, `ChunkIterator`, and the `find_*_chunk_by_id` helpers, which match the stored ID
+  exactly. `ChunkSizePackedIterator` walks a payload stored as `[size][content]` records, where each size counts its
+  own four bytes.
+- `read_u8_chunk`, `read_u32_chunk`, `read_w1251_string_chunk` and their kin read a chunk holding one value and fail
+  when bytes remain after it.
+- Build a payload with `ChunkWriter`, then use `flush_chunk_into` or `flush_chunk_into_buffer` for a framed chunk, or
+  `flush_raw_into` for raw bytes.
+- Implement `ChunkReadWrite` for a format's typed payload; `ChunkReadWriteList` and `ChunkReadWriteOptional` cover
+  repeated or absent chunks, and `read_xr`, `write_xr` and their list and optional forms delegate to them.
 
-Readers track their current position and remaining byte budget. `read_children` consumes the child sequence;
-`get_children_cloned` reads through a clone without moving the original cursor. The returned children retain views
-of the source rather than exposing unrelated file offsets to the caller.
+Readers track their current position and remaining byte budget. `read_children` consumes the child sequence from the
+start; `get_children_cloned` reads through a clone without moving the original cursor. Each child is a window cut from
+its parent's source: in-memory windows share one buffer, so slicing and cloning do not copy, and an in-memory child's
+`position` and cursor count from its parent window's start rather than the file's.
 
 ## Framing and typed payloads
 
-A chunk header is two `u32` fields: ID and payload size. `ChunkWriter` buffers the payload; its flush methods leave
-that buffer intact. Clear it or create another writer before constructing an unrelated payload.
+A chunk header is two `u32` fields, ID then payload size (`CHUNK_HEADER_SIZE`). `ChunkWriter` buffers the payload; its
+flush methods leave that buffer intact, so clear it or create another writer before constructing an unrelated payload.
+A payload larger than a `u32` can declare is refused.
 
-The `ChunkReadWrite` traits keep typed format logic separate from transport. `read_xr`, `write_xr`, and their list or
-optional forms delegate to those traits. String helpers read and write the Windows-1251 forms used by engine formats.
+`XRayByteOrder` is little-endian. Payload reads and the writer's header take the byte order as a type parameter, but
+the child iterators always read headers little-endian.
 
-## Errors and compressed chunks
+Strings are null-terminated Windows-1251, read up to 10,240 bytes unless a `_limited` form gives another bound.
+`read_w1251_line` reads a value ended by any run of `\r` and `\n`, and returns a `ChunkLine` carrying that terminator so
+`write_w1251_line` can put back exactly what the file held. `read_f32_q16` and `write_f32_q16` read and write a float
+quantised into a `u16` over a range the format supplies; a write clamps a value outside the range, and only the bytes,
+not the float, survive a round trip. `new_bounded_vec` reserves for a declared record count only after checking it
+against the bytes remaining.
 
-Empty sources, missing required children, invalid sizes, and reads outside the remaining budget return errors.
-`read_child_by_index` selects an ordinal, not a stored ID; use the `find_*_chunk_by_id` helpers for ID lookup.
+## Errors, trailing bytes and compressed chunks
 
-Ordinary child reads reject compressed-marked chunks. `read_children_including_compressed` exposes their stored bytes
-and marked IDs without decoding them; the caller must interpret the compressed payload explicitly.
+Empty sources, missing required children, incomplete headers, sizes reaching past the source, and reads outside the
+remaining budget return errors. `assert_read` fails when a reader has bytes left; format readers call it to prove they
+consumed a whole payload.
 
-Choose the byte order required by the format. Chunk framing does not identify the payload's schema; those readers live
-in [xrf-db](../xrf-db/README.md). X-Ray's compressed payload codec is [xrf-lzhuf](../xrf-lzhuf/README.md).
+`read_children` fails on the first malformed header. `read_children_with_trailing` returns the well-formed children
+and a `ChunkTrailing` with the unaccounted bytes and the error a strict walk would raise, leaving the decision to the
+format.
+
+A chunk whose ID carries `CHUNK_ID_COMPRESSED_MASK` (bit 31) holds a compressed payload. Ordinary child reads reject
+it. `read_children_including_compressed` returns the marked ID and the stored bytes without decoding them; the caller
+must interpret the compressed payload explicitly. X-Ray's codec for it is [xrf-lzhuf](../xrf-lzhuf/README.md).
 
 ## Checks
 
-Run `cargo test --locked -p xrf-chunk` from the repository root. Typed format tests belong to the crate implementing
-the payload, while this crate checks framing, boundaries, sources, and primitive I/O.
+Run `cargo test --locked -p xrf-chunk` from the repository root. Typed format tests belong to the crate implementing the
+payload, while this crate checks framing, boundaries, sources, and primitive I/O.
 
-See the [reader](src/reader/chunk_reader.rs), [writer](src/writer/chunk_writer.rs), and [exports](src/lib.rs).
+See the [reader](src/reader/chunk_reader.rs), [child iterator](src/iterator/chunk_iterator.rs),
+[writer](src/writer/chunk_writer.rs), [in-memory source](src/source/chunk_memory_source.rs), and [exports](src/lib.rs).

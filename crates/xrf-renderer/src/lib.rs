@@ -1,9 +1,4 @@
-//! The native renderer: one GPU and one render thread drawing viewports into the application's windows.
-//!
-//! It takes what it draws in memory, from the [`RenderLevelSource`] and [`RenderAssetSource`] the host gives it, and
-//! knows the application hosting it only through its traits: [`RenderWindowHost`], [`RenderEventSink`], [`RenderWorld`],
-//! [`RenderCacheStore`], the [`RenderBundle`] of files it ships with, and the [`RenderWorkers`] it loads on. A debug
-//! build also reads its shaders from the checkout's `shaders/`, and watches them for changes.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod camera;
 pub(crate) mod capture;

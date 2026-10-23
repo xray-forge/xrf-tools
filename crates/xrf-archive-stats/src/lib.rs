@@ -1,13 +1,4 @@
-//! What an open archive subject holds, broken down the ways a person asks about it.
-//!
-//! Above both format crates rather than inside either, the way `xrf-pack` sits: the same question is asked of a volume
-//! set, whose name table records a stored size per entry, and of a mounted world, which answers loose files and
-//! archived entries through one lookup and records no stored size at all. Putting the shared arithmetic in either crate
-//! would give one of them knowledge of the other's subject.
-//!
-//! [`ArchiveStatistics::of_volumes`] and [`ArchiveStatistics::of_world`] are the whole interface. Every part of the
-//! report falls out of a single pass over the entries, so there is no per-question call to make and no way to ask for
-//! half a report over an installation-sized listing.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod collect;
 pub(crate) mod report;

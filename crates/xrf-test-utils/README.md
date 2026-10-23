@@ -1,14 +1,17 @@
 # xrf-test-utils
 
-Shared fixture paths, file helpers, and assertions for XRF Rust tests. Add it as a dev-dependency.
+Shared support for XRF Rust tests: where generated test files live, writing and reading them, comparing files,
+filesystem links for containment tests, and skipping GPU tests on hosts without a device. Add it as a dev-dependency.
 
 ## Write a generated fixture
 
 ```rust
+use std::path::PathBuf;
+
 use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_generated_test_resource};
 
 fn main() -> std::io::Result<()> {
-  let path = write_generated_test_resource("readme/example.ltx", "[actor]\nhealth = 100\n")?;
+  let path: PathBuf = write_generated_test_resource("readme/example.ltx", "[actor]\nhealth = 100\n")?;
 
   assert_eq!(path, build_absolute_generated_test_resource_path("readme/example.ltx"));
   assert_eq!(std::fs::read_to_string(path)?, "[actor]\nhealth = 100\n");
@@ -17,41 +20,55 @@ fn main() -> std::io::Result<()> {
 }
 ```
 
-The writer creates parent directories, replaces an existing generated file, and returns its path. Use a unique relative
-name for tests that may run concurrently; the same name within one test process addresses the same file.
-
-## Resource helpers
-
-Use `utils::build_absolute_generated_test_resource_path` for a generated file or tree, or
-`utils::write_generated_test_resource` to write one resource. The sample helpers derive a resource subdirectory from
-the test source filename. `assertions` contains shared comparisons; `file` contains file-reading helpers.
-
-| Need                                     | Helper                                           |
-| ---------------------------------------- | ------------------------------------------------ |
-| Reserve a path without writing           | `build_absolute_generated_test_resource_path`    |
-| Write bytes or text                      | `write_generated_test_resource`                  |
-| Group a fixture by test source filename  | `build_absolute_generated_test_sample_file_path` |
-| Read a generated fixture through a slice | `open_generated_test_resource_as_slice`          |
-| Open a generated fixture as a file       | `open_generated_test_resource_as_file`           |
-
-`FileSlice` is re-exported for binary-format tests. The path helpers do not determine the fixture's encoding or validate
-its format; write the bytes the test is intended to exercise.
+`write_generated_test_resource` takes text or bytes, creates the parent directories, truncates any earlier file, closes
+it, and returns its path. Every test in one process shares one root, so give each test its own relative name.
 
 ## Location and lifetime
 
-Generated resources live under the workspace's `target/test-resources/<target>-<pid>-<nanos>` directory. Later runs
-attempt to collect generated run directories older than one hour. The path helper allocates a name; callers creating
-a tree must create its directories. Keep committed fixtures separate from generated output.
+Generated files live under the workspace's `target/test-resources/<target>-<pid>-<nanos>/`, chosen once per test
+process: `<target>` is the test binary's name without Cargo's hash, `<nanos>` the start time. The first call in a
+process also deletes run directories of that shape started more than an hour earlier; anything else under
+`target/test-resources` is left alone. Cleanup is best effort and never immediate, so do not keep anything there a
+later run needs. Never use `std::env::temp_dir()` for test output: nothing collects it and process ids are recycled.
 
-The generated root is chosen once per test process. Cleanup is best effort and applies only to run directories with
-the expected naming shape; it is not immediate cleanup after each test. Fixtures needed beyond a test run should not
-use this storage.
+Committed fixtures stay in their crates; this storage is for output a test generates. A fixture that describes a whole
+tree should clear its root first, so a rerun does not see files from the last one. The root is derived from this
+crate's manifest location, so it assumes the XRF workspace layout.
 
-## Errors and checks
+## Helpers
 
-File helpers return `std::io::Result`, preserving the failure kind with path context where applicable. This crate is
-for the XRF workspace layout: its generated root is derived from its own manifest location.
+Helpers are in `utils` unless the name carries another module:
 
-Run `cargo test --locked -p xrf-test-utils` from the repository root.
+| Helper                                           | Use                                                        |
+| ------------------------------------------------ | ---------------------------------------------------------- |
+| `build_absolute_generated_test_resource_path`    | A path in this run's directory; creates nothing            |
+| `write_generated_test_resource`                  | Write one file and get its path                            |
+| `overwrite_generated_test_resource_as_file`      | Create or truncate a generated file, with its parents      |
+| `overwrite_file`                                 | The same for any path                                      |
+| `open_generated_test_resource_as_file`           | Open a generated file                                      |
+| `open_generated_test_resource_as_slice`          | Open a generated file as a `FileSlice`                     |
+| `build_absolute_generated_test_sample_file_path` | A generated path grouped under the test source's file stem |
+| `build_non_unicode_file_name`                    | A file name the host accepts and `Path::to_str` refuses    |
+| `assertions::files_are_equal`, `_by_path`        | Compare two files byte for byte                            |
+| `file::read_file_as_string`                      | Read an open file to the end                               |
+| `links::link_directory`, `links::link_file`      | Create a link for a containment test                       |
+| `gpu::skip_without_gpu`                          | Skip a GPU test that found no device                       |
 
-See the [resource helpers](src/utils.rs) and [assertions](src/assertions.rs).
+`FileSlice` from the `fileslice` crate is re-exported for binary-format tests. The helpers write the bytes they are
+given and validate no format. File helpers return `std::io::Result`, keeping the error kind and naming the path.
+
+`build_non_unicode_file_name` is invalid UTF-8 on Unix and an unpaired surrogate on Windows. NTFS refuses to create the
+Windows form, so a test that writes the file gates itself on `cfg(unix)`; a test about paths alone runs everywhere.
+
+`link_directory` and `link_file` return `false`, after printing why, when the host cannot create the link; the test
+then skips. On Windows, `link_directory` falls back to a junction when symlinks need a privilege the account lacks,
+while `link_file` has no fallback.
+
+`skip_without_gpu(reason)` prints the reason and returns, so the test can return early. When the test-only variable
+`XRF_TEST_REQUIRE_GPU` is set to anything but `0`, as Windows CI does with WARP, it panics instead, so a missing
+device fails the run.
+
+## Checks
+
+Run `cargo test --locked -p xrf-test-utils` from the repository root. See the [resource helpers](src/utils.rs),
+[links](src/links.rs), [GPU skip](src/gpu.rs) and [assertions](src/assertions.rs).

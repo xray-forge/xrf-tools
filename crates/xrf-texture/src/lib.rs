@@ -1,5 +1,4 @@
-//! X-Ray texture recipes: the sprite sheets the interface is drawn from, the bump pair a surface binds, and the
-//! operations that build each of them.
+#![doc = include_str!("../README.md")]
 
 mod build;
 mod bump;

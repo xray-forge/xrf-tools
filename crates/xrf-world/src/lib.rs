@@ -1,6 +1,4 @@
-//! The world a renderer draws: what moves and plays in a level whatever draws it — the cameras, the weather, the
-//! level's streaming into its scene and its skinned objects' poses — run inline before each frame and handed to the
-//! renderer as one frame's input.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod camera;
 pub(crate) mod contract;
