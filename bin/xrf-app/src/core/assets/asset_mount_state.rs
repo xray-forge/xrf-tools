@@ -10,6 +10,9 @@ use crate::core::assets::{AssetChangeEvent, AssetChangeSubscriber};
 use crate::core::session::{SessionChange, SessionFollower};
 use crate::core::types::TauriResult;
 
+/// Work a session's follow puts off until the fan-out under way has told everyone.
+type AssetFanOutStart = Box<dyn FnOnce() + Send>;
+
 /// The application's VFS host, as the state every asset read takes a search from, and what moves every open session
 /// along when a commit changes the files.
 #[derive(Clone)]
@@ -21,6 +24,9 @@ pub struct AssetMountState {
   subscribers: Arc<RwLock<Vec<Arc<dyn AssetChangeSubscriber>>>>,
   /// The pages told what each commit did, until one stops listening.
   listeners: Arc<Mutex<Vec<Channel<AssetChangeEvent>>>>,
+  /// What a session's follow put off until everyone has heard the change under way: a derivation started off the
+  /// commit, whose own announcement must come after it.
+  after_fan_out: Arc<Mutex<Vec<AssetFanOutStart>>>,
 }
 
 impl AssetMountState {
@@ -36,6 +42,7 @@ impl AssetMountState {
       followers: Arc::new(RwLock::new(Vec::new())),
       subscribers: Arc::new(RwLock::new(Vec::new())),
       listeners: Arc::new(Mutex::new(Vec::new())),
+      after_fan_out: Arc::new(Mutex::new(Vec::new())),
     }
   }
 
@@ -83,29 +90,59 @@ impl AssetMountState {
   /// what changed.
   ///
   /// The sessions move and the subscribers hear of it before this returns, so a caller reading its own session
-  /// afterwards sees what it committed.
+  /// afterwards sees what it committed; a session deriving its value off the commit is reported `Deriving`, and what it
+  /// derived comes later through [`Self::announce_sessions`].
   pub fn commit(&self, transaction: &XrayTransaction) -> TauriResult<XrayChangeSet> {
     let changes: XrayChangeSet = self.host.commit(transaction).map_err(|error| error.to_string())?;
 
     // Nothing written is nothing to follow: the project revision did not move.
     if !changes.get_changes().is_empty() {
-      let event: AssetChangeEvent = AssetChangeEvent {
+      self.fan_out(AssetChangeEvent {
         revision: changes.get_revision(),
         sessions: self.move_sessions(),
-      };
-
-      // Copied out, so a subscriber reading through this state never runs under the subscribers' lock.
-      let subscribers: Vec<Arc<dyn AssetChangeSubscriber>> =
-        self.subscribers.read().unwrap_or_else(PoisonError::into_inner).clone();
-
-      for subscriber in &subscribers {
-        subscriber.take_change(self, &event);
-      }
-
-      self.announce(event);
+      });
     }
 
     Ok(changes)
+  }
+
+  /// Tells every subscriber and then every listening page what moved `sessions` after their commit's fan-out, a
+  /// derivation that landed off the commit, as a commit's change at the project revision held now.
+  pub(crate) fn announce_sessions(&self, sessions: Vec<SessionChange>) {
+    self.fan_out(AssetChangeEvent {
+      revision: self.get_vfs().get_revision(),
+      sessions,
+    });
+  }
+
+  /// Runs `start` once the fan-out under way has told every subscriber and page, for a session's follow that starts
+  /// work announcing a later change of its own, so that change is never heard before this one.
+  pub(crate) fn after_fan_out(&self, start: impl FnOnce() + Send + 'static) {
+    self
+      .after_fan_out
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner)
+      .push(Box::new(start));
+  }
+
+  /// Tells every subscriber what `event` did, then every listening page, then runs what the sessions' follows put off.
+  fn fan_out(&self, event: AssetChangeEvent) {
+    // Copied out, so a subscriber reading through this state never runs under the subscribers' lock.
+    let subscribers: Vec<Arc<dyn AssetChangeSubscriber>> =
+      self.subscribers.read().unwrap_or_else(PoisonError::into_inner).clone();
+
+    for subscriber in &subscribers {
+      subscriber.take_change(self, &event);
+    }
+
+    self.announce(event);
+
+    let started: Vec<AssetFanOutStart> =
+      std::mem::take(&mut *self.after_fan_out.lock().unwrap_or_else(PoisonError::into_inner));
+
+    for start in started {
+      start();
+    }
   }
 
   /// Follows `session` through every commit from now on.

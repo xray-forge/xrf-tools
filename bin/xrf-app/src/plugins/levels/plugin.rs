@@ -2,6 +2,7 @@ use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{Manager, Runtime};
 
 use crate::core::assets::AssetMountState;
+use crate::core::execution::ExecutionState;
 use crate::plugins::levels::state::LevelState;
 
 pub struct LevelsPlugin {}
@@ -14,9 +15,10 @@ impl LevelsPlugin {
 
     Builder::new(Self::NAME)
       .setup(|application, _| {
-        let state: LevelState = LevelState::new();
+        let state: LevelState = LevelState::new(application.state::<ExecutionState>().get_pool());
 
-        // An open level records what it and its parts read, so a commit carries the parts it did not touch.
+        // An open level records what it and its parts read, so a commit carries the parts it did not touch and reads
+        // the level again where it moved one of its own files.
         application.state::<AssetMountState>().follow(state.selected.clone());
         application.manage(state);
 

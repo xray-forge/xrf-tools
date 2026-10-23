@@ -14,7 +14,7 @@ use xrf_vfs::XraySearch;
 use xrf_visual::{VisualTransform, ZoneSphere};
 
 use crate::core::assets::read_located_asset;
-use crate::core::session::SessionSnapshot;
+use crate::core::session::{SessionPart, SessionSnapshot};
 use crate::plugins::levels::ambients::list_ambient_particles;
 use crate::plugins::levels::read::read_optional_file;
 use crate::plugins::levels::report::{report_missing_zone_particles, report_particles, report_unknown_particles};
@@ -33,6 +33,22 @@ const SINGLE_PLAYER: u16 = 1;
 /// The height `CLevel::Load_GameSpecific_After` lifts every planted system by.
 const PLANTED_LIFT: f32 = 0.01;
 
+/// What a change event calls what a level's particle systems were read from when it goes stale.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_PARTICLES_PART: &str = "particles";
+
+/// What a level's particle systems were read from: the game's library, `level.ps_static`, and the shaders and textures
+/// their effects draw with, with the parts they ask for; the renderer holds the systems themselves.
+struct LevelParticlesPart;
+
+impl SessionPart for LevelParticlesPart {
+  type Value = ();
+
+  const NAME: &'static str = LEVEL_PARTICLES_PART;
+
+  const IS_POOLED: bool = false;
+}
+
 /// A level's particle systems as the renderer takes them.
 pub struct PackedLevelParticles {
   pub library: ParticleLibrary,
@@ -43,12 +59,23 @@ pub struct PackedLevelParticles {
 }
 
 /// Reads the game's particle library and places what the open level plants and what its zones play, each effect any
-/// of them reaches described.
+/// of them reaches described, what it reads recorded as the level's particles part.
 ///
 /// # Errors
 ///
 /// Returns why the library cannot be read; a level without `level.ps_static` or a spawn plants nothing of it.
 pub fn pack_particles(
+  current: &SessionSnapshot<SelectedLevel>,
+  search: &XraySearch,
+  sections: Option<&Ltx>,
+) -> Result<PackedLevelParticles, String> {
+  current
+    .parts
+    .record_read::<LevelParticlesPart, _>(search, |search| pack_recorded(current, search, sections))
+}
+
+/// The particle systems packed, every read through `search`.
+fn pack_recorded(
   current: &SessionSnapshot<SelectedLevel>,
   search: &XraySearch,
   sections: Option<&Ltx>,

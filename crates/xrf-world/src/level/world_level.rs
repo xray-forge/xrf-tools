@@ -53,6 +53,8 @@ impl WorldLevel {
       self.effects.reload(&mut self.queued, &source, workers);
     }
 
+    self.effects.follow_motions(&source, reload.is_motions);
+
     self.streaming.follow(
       &mut self.queued,
       &mut self.animation,

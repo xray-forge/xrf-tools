@@ -53,6 +53,9 @@ import { WorldViewportEvent } from "@/core/ipc/types/xrf-world";
 /** What a change event calls a level's collision form when it goes stale. */
 export const LEVEL_COLLISION_PART: string = "collision";
 
+/** What a change event calls what a level's grass was read from when it goes stale. */
+export const LEVEL_DETAILS_PART: string = "details";
+
 /** What a change event calls a level's environment when it goes stale. */
 export const LEVEL_ENVIRONMENT_PART: string = "environment";
 
@@ -62,6 +65,15 @@ export const LEVEL_GRAPH_PART: string = "graph";
 /** What a change event calls a level's hemisphere lighting when it goes stale. */
 export const LEVEL_HEMI_PART: string = "hemi";
 
+/** What a change event calls what a level's lights were read from when it goes stale. */
+export const LEVEL_LIGHTS_PART: string = "lights";
+
+/** What a change event calls what a level's object motions were read from when it goes stale. */
+export const LEVEL_OBJECT_MOTIONS_PART: string = "objectMotions";
+
+/** What a change event calls what a level's particle systems were read from when it goes stale. */
+export const LEVEL_PARTICLES_PART: string = "particles";
+
 /** What a change event calls a level's sections when they go stale. */
 export const LEVEL_SECTIONS_PART: string = "sections";
 
@@ -70,6 +82,12 @@ export const LEVEL_SPAWN_PART: string = "spawn";
 
 /** What a change event calls a level's spawned objects' visuals when they go stale. */
 export const LEVEL_SPAWN_VISUALS_PART: string = "spawnVisuals";
+
+/** What a change event calls where a level opens when it goes stale. */
+export const LEVEL_START_PART: string = "start";
+
+/** What a change event calls what a level's weather plays with beyond its environment when it goes stale. */
+export const LEVEL_WEATHER_PART: string = "weather";
 
 /** Every `kind` the `ArchiveAnimationBehavior` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveAnimationBehavior {
@@ -1325,8 +1343,8 @@ export type ArchivesUnpackRequest = {
 };
 
 /**
- * What one commit changed, as every page subscribed to changes is told: the project revision it left, and what it did
- * to each open session that moved or could not.
+ * What one commit changed, or a derivation landing after it, as every page subscribed to changes is told: the project
+ * revision it left, and what it did to each open session that moved or could not.
  */
 export type AssetChangeEvent = {
   revision: XrayRevision;
@@ -2312,6 +2330,11 @@ export enum ESessionRootChange {
   KEPT = "kept",
   /** Something it was read from moved, and its plugin derived it again. */
   DERIVED = "derived",
+  /**
+   * Something it was read from moved, and its plugin derives it again off the commit: the session shows it as it was
+   * until a later event reports it `Derived` or `Failed`.
+   */
+  DERIVING = "deriving",
   /** Something it was read from moved, and nothing derives it again: the session shows it as it was. */
   STALE = "stale",
   /** Deriving it again failed: the session stays at the snapshot it had. */
@@ -2324,6 +2347,11 @@ export type SessionRootChange =
   | { kind: "kept" }
   /** Something it was read from moved, and its plugin derived it again. */
   | { kind: "derived" }
+  /**
+   * Something it was read from moved, and its plugin derives it again off the commit: the session shows it as it was
+   * until a later event reports it `Derived` or `Failed`.
+   */
+  | { kind: "deriving" }
   /** Something it was read from moved, and nothing derives it again: the session shows it as it was. */
   | { kind: "stale" }
   /** Deriving it again failed: the session stays at the snapshot it had. */

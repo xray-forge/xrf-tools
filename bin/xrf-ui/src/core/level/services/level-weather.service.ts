@@ -10,6 +10,7 @@ import {
   EnvironmentCycleEntry,
   ESessionRootChange,
   LEVEL_ENVIRONMENT_PART,
+  LEVEL_WEATHER_PART,
   LevelWeatherCycle,
   LevelWeatherDescription,
   SelectedLevelDescription,
@@ -142,14 +143,17 @@ export class LevelWeatherService {
     this.unfollow = null;
   }
 
-  /** Reads the open level's weather again once a change let its environment go, and the cycle played with it. */
+  /**
+   * Reads the open level's weather again once a change let its environment or what its weather plays with go, the
+   * level kept or read again, and the cycle played with it.
+   */
   @OnEvent(SESSION_CHANGE_EVENT)
   public onSessionChange({ payload: change }: WireEvent<SessionChange>): void {
     if (
       change &&
       change.sessionId === this.sessionId &&
-      change.root.kind === ESessionRootChange.KEPT &&
-      change.staleParts.includes(LEVEL_ENVIRONMENT_PART) &&
+      (change.root.kind === ESessionRootChange.KEPT || change.root.kind === ESessionRootChange.DERIVED) &&
+      (change.staleParts.includes(LEVEL_ENVIRONMENT_PART) || change.staleParts.includes(LEVEL_WEATHER_PART)) &&
       change.revision > (this.revision ?? this.selected?.revision ?? 0)
     ) {
       void this.reread(change.sessionId);

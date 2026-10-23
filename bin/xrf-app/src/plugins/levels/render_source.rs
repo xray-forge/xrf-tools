@@ -29,17 +29,17 @@ use crate::plugins::levels::details::{PackedLevelDetails, pack_details};
 use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
 use crate::plugins::levels::hemi::{LEVEL_HEMI_PART, estimate_visuals_hemi, get_level_hemi};
 use crate::plugins::levels::lens_flares::to_render_lens_flare;
-use crate::plugins::levels::lights::{PackedLevelLights, pack_lights};
-use crate::plugins::levels::object_motions::read_object_motion;
+use crate::plugins::levels::lights::{LEVEL_LIGHTS_PART, PackedLevelLights, pack_lights};
+use crate::plugins::levels::object_motions::{LEVEL_OBJECT_MOTIONS_PART, read_object_motion};
 use crate::plugins::levels::particle_collider::LevelParticleCollider;
-use crate::plugins::levels::particles::{PackedLevelParticles, pack_particles};
+use crate::plugins::levels::particles::{LEVEL_PARTICLES_PART, PackedLevelParticles, pack_particles};
 use crate::plugins::levels::report::{
   report_missing_particle_collision, report_missing_sections, report_packed_sector,
 };
 use crate::plugins::levels::spawn::{LEVEL_SPAWN_PART, get_level_spawn};
 use crate::plugins::levels::spawn_objects::describe_spawn_objects;
 use crate::plugins::levels::spawn_visuals::{LEVEL_SPAWN_VISUALS_PART, SpawnVisualReader};
-use crate::plugins::levels::state::level_environment::LEVEL_ENVIRONMENT_PART;
+use crate::plugins::levels::state::level_environment::{LEVEL_ENVIRONMENT_PART, LEVEL_WEATHER_PART};
 use crate::plugins::levels::state::selection::level_rain::LevelRain;
 use crate::plugins::levels::state::selection::level_thunderbolt_gradient::LevelThunderboltGradient;
 use crate::plugins::levels::state::selection::level_thunderbolts::LevelThunderbolts;
@@ -111,8 +111,10 @@ impl LevelRenderSource {
   }
 
   /// What the renderer reads again of a level whose next snapshot let `stale_parts` go: each package whose read asks
-  /// for any of them. The sectors are the value's, which a next snapshot shares, and the graph feeds nothing drawn.
-  // todo: reload the grass, planted onto the collision form, once a view's grass build follows a replaced grass level.
+  /// for any of them, or recorded what it read as one of them. The sectors are the value's, which a next snapshot
+  /// shares; the graph feeds nothing drawn, and the start only where a viewer first stands.
+  // todo: Reload the grass when `details` goes stale (`level.details`, the collision form it is planted onto, the game
+  //  materials, its shaders and textures), once a view's grass build follows a replaced grass level.
   pub fn to_reload(stale_parts: &[&str]) -> WorldLevelReload {
     let is_stale = |parts: &[&str]| stale_parts.iter().any(|part| parts.contains(part));
 
@@ -123,15 +125,22 @@ impl LevelRenderSource {
         LEVEL_COLLISION_PART,
         LEVEL_HEMI_PART,
       ]),
-      is_lights: is_stale(&[LEVEL_SPAWN_PART, LEVEL_SPAWN_VISUALS_PART, LEVEL_SECTIONS_PART]),
+      is_lights: is_stale(&[
+        LEVEL_SPAWN_PART,
+        LEVEL_SPAWN_VISUALS_PART,
+        LEVEL_SECTIONS_PART,
+        LEVEL_LIGHTS_PART,
+      ]),
       is_particles: is_stale(&[
         LEVEL_SPAWN_PART,
         LEVEL_SECTIONS_PART,
         LEVEL_ENVIRONMENT_PART,
         LEVEL_COLLISION_PART,
         LEVEL_HEMI_PART,
+        LEVEL_PARTICLES_PART,
       ]),
-      is_weather: is_stale(&[LEVEL_ENVIRONMENT_PART]),
+      is_weather: is_stale(&[LEVEL_ENVIRONMENT_PART, LEVEL_WEATHER_PART]),
+      is_motions: is_stale(&[LEVEL_OBJECT_MOTIONS_PART]),
     }
   }
 
@@ -224,39 +233,10 @@ impl RenderLevelSource for LevelRenderSource {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let search: XraySearch = self.search()?;
     let environment: Arc<LevelEnvironment> = LevelEnvironment::of(level, &search).map_err(XrfError::new_asset_error)?;
-    let source = environment.get_source(level, &search);
-    let rain: LevelRain = LevelRain::read(&source);
-    let wet: LevelWetSurfaces = LevelWetSurfaces::read(&source);
-    let thunder: LevelThunderbolts = LevelThunderbolts::read(&source);
-    let modifiers = LevelEnvironment::read_modifiers(level, &search);
 
-    Ok(RenderLevelWeather {
-      engine: environment.catalog.engine,
-      effects: environment
-        .catalog
-        .effects
-        .iter()
-        .map(|effect| (effect.name.clone(), effect.list_descriptors(environment.catalog.engine)))
-        .collect(),
-      modifiers: modifiers.iter().map(to_weather_modifier).collect(),
-      sun_table: environment
-        .catalog
-        .sun_table
-        .as_ref()
-        .map(|table| table.list_positions()),
-      rain: Some(RenderRain {
-        streak: rain.streak.reference,
-        drop: rain.drop.map(to_weather_model),
-      }),
-      wet: Some(RenderWetSurfaces {
-        splash: wet.splash.reference,
-        flow: wet.flow.reference,
-      }),
-      thunder: Some(to_thunder(thunder)),
-      suns: to_suns(&environment.catalog),
-      ambients: to_render_ambients(&environment.catalog, &level.source.get_name().unwrap_or_default()),
-      ambient_effects: to_render_ambient_effects(&environment.catalog),
-    })
+    Ok(LevelEnvironment::record_weather(level, &search, |search| {
+      to_render_weather(level, &environment, search)
+    }))
   }
 
   fn read_weather_cycle(&self, name: &str) -> XrfResult<Vec<WeatherDescriptor>> {
@@ -271,9 +251,8 @@ impl RenderLevelSource for LevelRenderSource {
   }
 
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>> {
-    let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let packed: Option<PackedLevelDetails> =
-      pack_details(&level.source, &self.search()?).map_err(XrfError::new_asset_error)?;
+      pack_details(&self.level, &self.search()?).map_err(XrfError::new_asset_error)?;
     let Some(packed) = packed else {
       return Ok(None);
     };
@@ -345,7 +324,7 @@ impl RenderLevelSource for LevelRenderSource {
   fn read_object_motion(&self, name: &str) -> XrfResult<AnmFile> {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
 
-    read_object_motion(&level.source, &self.search()?, name).map_err(XrfError::new_asset_error)
+    read_object_motion(level, &self.search()?, name).map_err(XrfError::new_asset_error)
   }
 
   fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels> {
@@ -410,6 +389,48 @@ fn to_render_category(category: LevelSpawnCategory) -> RenderSpawnCategory {
     LevelSpawnCategory::Items => RenderSpawnCategory::Items,
     LevelSpawnCategory::Weapons => RenderSpawnCategory::Weapons,
     LevelSpawnCategory::Lamps => RenderSpawnCategory::Lamps,
+  }
+}
+
+/// What the level's weathers play with as the renderer takes them, the environment's catalog read already and the rest
+/// read through `search`.
+fn to_render_weather(
+  level: &SessionSnapshot<SelectedLevel>,
+  environment: &LevelEnvironment,
+  search: &XraySearch,
+) -> RenderLevelWeather {
+  let source = environment.get_source(level, search);
+  let rain: LevelRain = LevelRain::read(&source);
+  let wet: LevelWetSurfaces = LevelWetSurfaces::read(&source);
+  let thunder: LevelThunderbolts = LevelThunderbolts::read(&source);
+  let modifiers = LevelEnvironment::read_modifiers(level, search);
+
+  RenderLevelWeather {
+    engine: environment.catalog.engine,
+    effects: environment
+      .catalog
+      .effects
+      .iter()
+      .map(|effect| (effect.name.clone(), effect.list_descriptors(environment.catalog.engine)))
+      .collect(),
+    modifiers: modifiers.iter().map(to_weather_modifier).collect(),
+    sun_table: environment
+      .catalog
+      .sun_table
+      .as_ref()
+      .map(|table| table.list_positions()),
+    rain: Some(RenderRain {
+      streak: rain.streak.reference,
+      drop: rain.drop.map(to_weather_model),
+    }),
+    wet: Some(RenderWetSurfaces {
+      splash: wet.splash.reference,
+      flow: wet.flow.reference,
+    }),
+    thunder: Some(to_thunder(thunder)),
+    suns: to_suns(&environment.catalog),
+    ambients: to_render_ambients(&environment.catalog, &level.source.get_name().unwrap_or_default()),
+    ambient_effects: to_render_ambient_effects(&environment.catalog),
   }
 }
 

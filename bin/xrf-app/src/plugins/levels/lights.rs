@@ -10,7 +10,7 @@ use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, LightsPacker};
 
 use crate::core::assets::read_located_asset;
-use crate::core::session::SessionSnapshot;
+use crate::core::session::{SessionPart, SessionSnapshot};
 use crate::plugins::levels::report::{report_lights, report_missing_spawned_lights, report_unreadable_animations};
 use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::spawn_visuals::SpawnVisualReader;
@@ -20,15 +20,43 @@ use crate::plugins::levels::textures::resolve_reference;
 /// The colour animations lights name.
 pub(crate) const ANIMATIONS_FILE: &str = "lanims.xr";
 
+/// What a change event calls what a level's lights were read from when it goes stale.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_LIGHTS_PART: &str = "lights";
+
+/// What a level's lights were read from, the colour animations and the projectors' textures with the parts they ask
+/// for; the renderer holds the lights themselves.
+struct LevelLightsPart;
+
+impl SessionPart for LevelLightsPart {
+  type Value = ();
+
+  const NAME: &'static str = LEVEL_LIGHTS_PART;
+
+  const IS_POOLED: bool = false;
+}
+
 /// A level's lights, and what each projector a spot names resolved to.
 pub struct PackedLevelLights {
   pub lights: LightsDescription,
   pub projectors: Vec<LevelTextureReference>,
 }
 
-/// Collects the open level's lights. Where its spawn cannot be read the level keeps its own lights alone, and without
-/// configs its zones light nothing and its lamps keep their spawned flags.
+/// Collects the open level's lights, what they are read from recorded as its lights part. Where its spawn cannot be
+/// read the level keeps its own lights alone, and without configs its zones light nothing and its lamps keep their
+/// spawned flags.
 pub fn pack_lights(
+  current: &SessionSnapshot<SelectedLevel>,
+  search: &XraySearch,
+  sections: Option<&Ltx>,
+) -> PackedLevelLights {
+  current
+    .parts
+    .record_read::<LevelLightsPart, _>(search, |search| pack_recorded(current, search, sections))
+}
+
+/// The lights packed, every read through `search`.
+fn pack_recorded(
   current: &SessionSnapshot<SelectedLevel>,
   search: &XraySearch,
   sections: Option<&Ltx>,

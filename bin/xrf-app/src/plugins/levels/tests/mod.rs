@@ -3,6 +3,7 @@ mod annotations;
 mod console_defaults;
 mod cube_export;
 mod lens_flares;
+mod level_follow;
 mod level_map;
 mod level_start;
 mod map_export;

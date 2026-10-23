@@ -107,6 +107,12 @@ impl LevelEffects {
     self.pending = Some(Self::read_particles(source, workers));
   }
 
+  /// Reads its object motions from `source`, a next source of the same level, from now on, every one read again where
+  /// `is_motions`.
+  pub fn follow_motions(&mut self, source: &Arc<dyn RenderLevelSource>, is_motions: bool) {
+    self.motions.follow(source, is_motions);
+  }
+
   /// Whether its loader has answered, whatever it answered.
   pub fn is_read(&self) -> bool {
     self.pending.is_none()

@@ -1,7 +1,9 @@
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use rayon::prelude::*;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
@@ -663,6 +665,183 @@ impl AssetChangeSubscriber for RecordingSubscriber {
     let revision: XrayRevision = self.session.get().unwrap().unwrap().revision;
 
     self.taken.lock().unwrap().push((event.clone(), revision));
+  }
+}
+
+/// Every change event a subscriber took, in order.
+#[derive(Clone, Default)]
+struct ChangeLog {
+  taken: Arc<Mutex<Vec<AssetChangeEvent>>>,
+}
+
+impl ChangeLog {
+  /// Every session change taken, in order.
+  fn list(&self) -> Vec<SessionChange> {
+    self
+      .taken
+      .lock()
+      .unwrap()
+      .iter()
+      .flat_map(|event| event.sessions.clone())
+      .collect()
+  }
+}
+
+impl AssetChangeSubscriber for ChangeLog {
+  fn take_change(&self, _: &AssetMountState, event: &AssetChangeEvent) {
+    self.taken.lock().unwrap().push(event.clone());
+  }
+}
+
+/// A deferred derivation held until the test lets it go: it says when it starts, then waits.
+struct HeldDerivation {
+  pool: Arc<rayon::ThreadPool>,
+  started: Receiver<()>,
+  release: Sender<()>,
+  calls: Arc<AtomicU32>,
+}
+
+impl HeldDerivation {
+  /// A session deriving `"derived"`, read from nothing, on a pool of one thread, held as above.
+  fn session() -> (Session<&'static str>, Self) {
+    let pool: Arc<rayon::ThreadPool> = Arc::new(
+      rayon::ThreadPoolBuilder::new()
+        .num_threads(1)
+        .build()
+        .expect("a test pool"),
+    );
+    let (started_sender, started) = mpsc::channel::<()>();
+    let (release, released) = mpsc::channel::<()>();
+    let (started_sender, released) = (Mutex::new(started_sender), Mutex::new(released));
+    let calls: Arc<AtomicU32> = Arc::default();
+    let counted: Arc<AtomicU32> = Arc::clone(&calls);
+    let session: Session<&str> = Session::new("test").with_deferred_derivation(Arc::clone(&pool), move |_, _| {
+      counted.fetch_add(1, Ordering::SeqCst);
+      started_sender.lock().unwrap().send(()).unwrap();
+      released.lock().unwrap().recv().unwrap();
+
+      Ok(SessionDerived::new("derived", XrayInputRecord::new()))
+    });
+
+    (
+      session,
+      Self {
+        pool,
+        started,
+        release,
+        calls,
+      },
+    )
+  }
+
+  /// Waits for the derivation to start reading.
+  fn await_start(&self) {
+    self
+      .started
+      .recv_timeout(Duration::from_secs(10))
+      .expect("the derivation started");
+  }
+
+  /// Lets the derivation land and waits until its pool has nothing left to run.
+  fn land(&self) {
+    self.release.send(()).unwrap();
+    self.pool.install(|| ());
+  }
+}
+
+#[test]
+fn a_deferred_derivation_is_reported_at_once_and_published_once_it_lands() {
+  let (assets, search) = opened_tree("deferred", &["configs/system.ltx"]);
+  let (session, held) = HeldDerivation::session();
+  let log: ChangeLog = ChangeLog::default();
+
+  assets.follow(session.clone());
+  assets.subscribe(log.clone());
+
+  let opened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "opened", &["configs\\system.ltx"]);
+
+  opened.parts.get_or_init::<CountedPart>(|| Arc::new(1));
+  write(&assets, &search, "configs\\system.ltx");
+  held.await_start();
+
+  let first: XrayRevision = assets.get_vfs().get_revision();
+
+  assert!(
+    Arc::ptr_eq(&session.get().unwrap().unwrap(), &opened),
+    "the commit does not wait for it"
+  );
+
+  // A commit while it reads starts no second derivation, and is followed once it lands.
+  write(&assets, &search, "configs\\system.ltx");
+  held.land();
+
+  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap().unwrap();
+  let deriving: SessionChange = SessionChange {
+    session_id: opened.session_id,
+    revision: XrayRevision::MOUNTED,
+    root: SessionRootChange::Deriving,
+    stale_parts: Vec::new(),
+  };
+
+  assert_eq!(held.calls.load(Ordering::SeqCst), 1);
+  assert_eq!(**next, "derived");
+  assert_eq!(next.revision, assets.get_vfs().get_revision());
+  assert_eq!(
+    log.list(),
+    vec![
+      deriving.clone(),
+      deriving,
+      SessionChange {
+        session_id: opened.session_id,
+        revision: first,
+        root: SessionRootChange::Derived,
+        stale_parts: vec!["counted"],
+      },
+      SessionChange {
+        session_id: opened.session_id,
+        revision: next.revision,
+        root: SessionRootChange::Kept,
+        stale_parts: Vec::new(),
+      },
+    ]
+  );
+}
+
+#[test]
+fn a_deferred_derivation_gives_way_to_a_close_or_an_open_published_while_it_reads() {
+  for is_closed in [true, false] {
+    let (assets, search) = opened_tree("deferred_lost", &["configs/system.ltx"]);
+    let (session, held) = HeldDerivation::session();
+    let log: ChangeLog = ChangeLog::default();
+
+    assets.follow(session.clone());
+    assets.subscribe(log.clone());
+
+    let opened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "opened", &["configs\\system.ltx"]);
+
+    write(&assets, &search, "configs\\system.ltx");
+    held.await_start();
+
+    if is_closed {
+      session.close(&[opened.session_id]).unwrap();
+    } else {
+      open_reading(&session, &search, "newer", &[]);
+    }
+
+    held.land();
+
+    assert_eq!(
+      session.get().unwrap().map(|current| **current),
+      (!is_closed).then_some("newer")
+    );
+    assert!(
+      log
+        .list()
+        .iter()
+        .all(|change| change.root == SessionRootChange::Deriving),
+      "nothing derived is announced: {:?}",
+      log.list()
+    );
   }
 }
 

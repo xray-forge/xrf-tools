@@ -11,7 +11,8 @@ use crate::plugins::render::shown_levels::ShownLevels;
 
 /// Moves the scene of each level shown along with its session through every commit, in the backend: a kept value's
 /// scene goes on from the next snapshot, reading again only what its stale parts fed; a value derived again streams
-/// afresh; one left stale, or failed, stays as it is drawn, since its session kept the snapshot it was drawn from.
+/// afresh; one being derived, left stale or failed stays as it is drawn, since its session kept the snapshot it was
+/// drawn from.
 pub(crate) struct LevelSceneFollower {
   pub levels: Session<SelectedLevel>,
   pub shown: Arc<ShownLevels>,
@@ -26,6 +27,14 @@ impl LevelSceneFollower {
     let is_derived: bool = match &change.root {
       SessionRootChange::Kept => false,
       SessionRootChange::Derived => true,
+      SessionRootChange::Deriving => {
+        log::info!(
+          "Level '{}' stays as drawn while its session reads it again",
+          shown.get_level().source.get_label()
+        );
+
+        return None;
+      }
       SessionRootChange::Stale | SessionRootChange::Failed { .. } => {
         log::info!(
           "Level '{}' stays as drawn: its session kept revision {}",

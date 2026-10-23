@@ -134,6 +134,20 @@ impl SessionParts {
     read
   }
 
+  /// Runs `read` through a search recording into the inputs of the part `K`, which keeps nothing but them: for a read
+  /// whose asker holds what it read, so a commit to any of it still names the part stale. The part counts as built
+  /// from the first read on, so it is carried or reported while that read goes on. Such a part opts out of pooling: its
+  /// empty value is no build to hand a thread.
+  pub fn record_read<K: SessionPart<Value = ()>, T>(
+    &self,
+    search: &XraySearch,
+    read: impl FnOnce(&XraySearch) -> T,
+  ) -> T {
+    self.get_or_init::<K>(|| ());
+
+    self.record::<K, T>(search, read)
+  }
+
   /// The part `K`, where it was built; asking builds nothing.
   pub fn get<K: SessionPart>(&self) -> Option<K::Value> {
     self.find_slot::<K>()?.0.get()

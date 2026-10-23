@@ -110,7 +110,9 @@ export class TranslationsService {
     }
 
     switch (change.root.kind) {
+      // A later notice says what a derivation under way derived.
       case ESessionRootChange.KEPT:
+      case ESessionRootChange.DERIVING:
         return;
 
       case ESessionRootChange.DERIVED:
