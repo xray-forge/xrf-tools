@@ -10,6 +10,7 @@ use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::authored_light;
 use crate::pass::bitmask_search::BitmaskSearch;
+use crate::pass::display_mode::DisplayMode;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::picture_shares::PictureShares;
 use crate::pass::reflection_trace::ReflectionTrace;
@@ -92,6 +93,9 @@ pub struct LightingUniform {
   /// by the look's sun scale, which the sun's shafts add to the frame's display values (`fs_sun_shafts_over`): at the
   /// authored levels; nought elsewhere.
   pub summed_light: Vec4,
+  /// How the present shows the frame (`DisplayMode::get_display`), which the game's pictures enter the scene through
+  /// the inverse of (`picture_for_display` in `common/display_transform`).
+  pub display: Vec4,
 }
 
 impl LightingUniform {
@@ -243,6 +247,7 @@ impl LightingUniform {
       } else {
         Vec4::ZERO
       },
+      display: DisplayMode::of(options).get_display(&options.features.grading, &frame.metering),
     }
   }
 

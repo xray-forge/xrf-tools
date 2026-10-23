@@ -202,9 +202,8 @@ fn engine_reading(high: Vec3) -> f32 {
 }
 
 // The authored levels meter as the engine does: a texel of their scene, the engine's display values decoded at the
-// engine-equivalent scale, reads as the engine's meter reads that colour exposed by the scale, saturating as its
-// eight bits do; the sky's texel, its picture untonemapped and decoded, reads as its picture, as the engine's high part
-// holds the sky as drawn.
+// engine-equivalent scale, encoded reads as the engine's meter reads that colour exposed by the scale, saturating as
+// its eight bits do; the sky, as the display shows it, reads as the engine's high part holds the sky as drawn.
 #[test]
 fn the_authored_scene_is_metered_as_the_engines_high_part() {
   let colour: Vec3 = Vec3::new(0.4, 0.3, 0.2);
@@ -215,9 +214,8 @@ fn the_authored_scene_is_metered_as_the_engines_high_part() {
     (picture.extend(1.0), Vec4::ONE),
   ];
   let Some(read) = run(
-    "let sky: vec3<f32> = untonemapped(srgb_decoded(first.rgb), 1.0); \
-     let land: vec3<f32> = srgb_decoded(first.rgb * first.w); \
-     answer = vec3<f32>(select(engine_metered_scene(land, false), engine_metered_scene(sky, true), second.w > 0.5));",
+    "let land: vec3<f32> = srgb_encoded(srgb_decoded(first.rgb * first.w)); \
+     answer = vec3<f32>(engine_metered_shown(select(land, first.rgb, second.w > 0.5)));",
     &cases,
   ) else {
     return;

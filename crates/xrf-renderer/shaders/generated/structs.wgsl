@@ -63,6 +63,7 @@ struct Lighting {
   reflection_cut: vec4<f32>,
   pictures: vec4<f32>,
   summed_light: vec4<f32>,
+  display: vec4<f32>,
 }
 
 struct TraceSwaySlot {
@@ -418,9 +419,7 @@ struct ExposureState {
   adapted: f32,
   used: f32,
   key: f32,
-  sky: f32,
   bright: f32,
-  sky_bright: f32,
   cells: array<f32, 4096>,
 }
 
@@ -428,9 +427,7 @@ struct Exposure {
   adapted: f32,
   used: f32,
   key: f32,
-  sky: f32,
   bright: f32,
-  sky_bright: f32,
 }
 
 struct ExposureHistogram {

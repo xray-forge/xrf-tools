@@ -12,7 +12,7 @@ use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::test_context::create_test_context;
 
-/// What the probe shows each case as: `shown_for_display` over its colour under its display.
+/// A probe of `common/display_transform`: each case's colour and display in, `ANSWER` over them out.
 const PROBE: &str = r"
 struct DisplayCase {
   colour: vec4<f32>,
@@ -25,7 +25,7 @@ struct DisplayCase {
 fn cs_display(@builtin(global_invocation_id) id: vec3<u32>) {
   let probe: DisplayCase = cases[id.x];
 
-  cases[id.x].colour = vec4<f32>(shown_for_display(probe.colour.rgb, probe.display), 1.0);
+  cases[id.x].colour = vec4<f32>(ANSWER, 1.0);
 }
 ";
 
@@ -49,11 +49,17 @@ type Reference = fn(Vec3) -> Vec3;
 
 /// What the GPU shows each colour as under each display.
 fn show(cases: &[(Vec3, Vec4)]) -> Option<Vec<Vec3>> {
+  run_probe("shown_for_display(probe.colour.rgb, probe.display)", cases)
+}
+
+/// What the GPU answers each case with under `answer`, an expression over the case's `probe.colour.rgb` and
+/// `probe.display`.
+fn run_probe(answer: &str, cases: &[(Vec3, Vec4)]) -> Option<Vec<Vec3>> {
   let context = create_test_context("to run the display transforms")?;
   let (device, queue) = (&context.device, &context.queue);
   let scope: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);
   let library: ShaderLibrary = ShaderLibrary::default();
-  let source: String = library.compose("common/display_transform").unwrap() + PROBE;
+  let source: String = library.compose("common/display_transform").unwrap() + &PROBE.replace("ANSWER", answer);
   let module: wgpu::ShaderModule = device.create_shader_module(wgpu::ShaderModuleDescriptor {
     label: Some("display probe"),
     source: wgpu::ShaderSource::Wgsl(source.into()),
@@ -330,4 +336,91 @@ fn the_lift_never_shows_the_bright_end_brighter_than_the_engines_curve() {
     DisplayMode::Agx.get_lift((dusk, Some(dusk * 256.0)), 1.0),
     DisplayMode::Agx.get_anchor_stops(dusk, 1.0)
   );
+}
+
+/// Display values across the range, greys and moderate colours as the game's pictures hold them.
+fn shown_colours() -> Vec<Vec3> {
+  vec![
+    Vec3::splat(0.03),
+    Vec3::splat(0.25),
+    Vec3::splat(0.6),
+    Vec3::splat(0.92),
+    Vec3::new(0.6, 0.5, 0.4),
+    Vec3::new(0.25, 0.32, 0.55),
+    Vec3::new(0.9, 0.84, 0.78),
+    Vec3::new(0.05, 0.06, 0.09),
+  ]
+}
+
+/// `scene_for_display` undoes `shown_for_display`: the light it gives back is shown as the value it was given, under
+/// the engine's curve, AgX and PBR Neutral, whatever the grading's contrast and saturation and the transform's lift.
+#[test]
+fn the_display_inverse_shows_what_it_was_given() {
+  let mut cases: Vec<(Vec3, Vec4)> = Vec::new();
+
+  for mode in [DisplayMode::EngineEncoded, DisplayMode::Agx, DisplayMode::PbrNeutral] {
+    for (contrast, saturation, lift) in [(1.0, 1.0, 0.0), (0.8, 1.2, 2.0), (1.3, 0.8, -1.0)] {
+      for colour in shown_colours() {
+        cases.push((colour, Vec4::new(mode.get_index() as f32, contrast, saturation, lift)));
+      }
+    }
+  }
+
+  let Some(shown) = run_probe(
+    "shown_for_display(scene_for_display(probe.colour.rgb, probe.display), probe.display)",
+    &cases,
+  ) else {
+    return;
+  };
+
+  for ((colour, display), shown) in cases.iter().zip(shown) {
+    assert!(
+      (shown - *colour).abs().max_element() < 2e-3,
+      "{display}: {shown} against {colour}"
+    );
+  }
+}
+
+/// A picture of the game's enters the scene so that the frame's display shows it as the engine's curve shows its light,
+/// under AgX and PBR Neutral whatever lifts and grades the frame, as a display-referred plate comes in through the
+/// inverse of its view; under the engine's curve it enters as it stands.
+#[test]
+fn a_picture_shows_under_every_display_as_the_engines_curve_shows_it() {
+  let mut cases: Vec<(Vec3, Vec4)> = Vec::new();
+
+  for mode in [DisplayMode::EngineEncoded, DisplayMode::Agx, DisplayMode::PbrNeutral] {
+    for (contrast, saturation, lift) in [(1.0, 1.0, 0.0), (1.2, 1.1, 2.5)] {
+      for colour in shown_colours() {
+        cases.push((colour, Vec4::new(mode.get_index() as f32, contrast, saturation, lift)));
+      }
+    }
+  }
+
+  let shown_entered: &str = "shown_for_display(untonemapped(srgb_decoded(picture_for_display(probe.colour.rgb, \
+                             probe.display)), 1.0), probe.display)";
+  let engine_showing: &str = "tonemap(srgb_encoded(untonemapped(srgb_decoded(probe.colour.rgb), 1.0)), 1.0)";
+  let unchanged: &str = "picture_for_display(probe.colour.rgb, probe.display)";
+  let (Some(shown), Some(engine), Some(entered)) = (
+    run_probe(shown_entered, &cases),
+    run_probe(engine_showing, &cases),
+    run_probe(unchanged, &cases),
+  ) else {
+    return;
+  };
+
+  for (index, (colour, display)) in cases.iter().enumerate() {
+    if display.x as u32 == DisplayMode::EngineEncoded.get_index() {
+      assert!(
+        (entered[index] - *colour).abs().max_element() < 1e-6,
+        "{display}: entered changed"
+      );
+    } else {
+      assert!(
+        (shown[index] - engine[index]).abs().max_element() < 2e-3,
+        "{display}: {} against the engine's {}",
+        shown[index],
+        engine[index]
+      );
+    }
+  }
 }

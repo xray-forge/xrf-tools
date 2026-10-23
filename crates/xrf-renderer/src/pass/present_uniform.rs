@@ -100,12 +100,7 @@ impl PresentUniform {
   /// frame's exposed key and bright end as the exposure `metering` read them.
   pub fn with_display(self, mode: DisplayMode, grading: &RenderGradingSettings, metering: &ExposureMetering) -> Self {
     Self {
-      display: Vec4::new(
-        mode.get_index() as f32,
-        grading.contrast,
-        grading.saturation,
-        mode.get_lift((metering.key, metering.bright), grading.contrast),
-      ),
+      display: mode.get_display(grading, metering),
       ..self
     }
   }

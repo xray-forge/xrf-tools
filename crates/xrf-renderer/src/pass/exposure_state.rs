@@ -10,8 +10,6 @@ pub struct ExposureState {
   pub adapted: f32,
   pub used: f32,
   pub key: f32,
-  pub sky: f32,
   pub bright: f32,
-  pub sky_bright: f32,
   pub cells: [f32; (ExposureFeature::CELLS * ExposureFeature::CELLS) as usize],
 }

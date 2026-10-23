@@ -18,7 +18,6 @@ use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{authored_colour, authored_light, srgb_decoded, srgb_encoded};
 use crate::pass::camera_uniform::CameraUniform;
-use crate::pass::display_curves::{agx as agx_curve, engine_display, pbr_neutral};
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::exposure_metering::ExposureMetering;
@@ -130,7 +129,7 @@ fn only_the_authored_levels_sum_their_diffuse_light() {
     0.0
   );
   assert_eq!(lighting_with(&levels, &lighting).summed_light.x, 0.0);
-  assert_eq!(authored.pictures.x, authored.pictures.y);
+  assert_eq!(authored.pictures.x, 1.0);
 }
 
 // The lights' specular weight follows their light only at the physical levels; under the engine's light and at the
@@ -511,27 +510,35 @@ fn metered_frame(units: LightUnits, current: f32, metering: ExposureMetering) ->
   }
 }
 
-// The pictures take the whole exposure at the authored levels under the engine's curve, and wherever the sky is not
-// metered. At the physical levels a night's land, lifted past the authored law, leaves its sky and fog shown as the law
-// exposes that land in the authored levels' units, the sky's share of the pre-exposure the shares were set against, so
-// the frame's exposure snapping ahead of it cannot carry the sky; under AgX and PBR Neutral, and whatever the grading's
-// contrast, the sky shows at its metered level as the engine's curve shows it, the fog keeping the land's lift.
+// The pictures take the whole exposure at the authored levels, under every display: a transform's lift and look are
+// undone where the sky enters the scene (`picture_for_display`). At the physical levels a night's land, lifted past the
+// authored law, leaves its pictures shown as the law exposes that land in the authored levels' units, the share of the
+// pre-exposure it was set against, so the frame's exposure snapping ahead of it cannot carry the sky.
 #[test]
 fn the_pictures_show_as_the_authored_law_shows_them() {
   let lighting: RenderLighting = RenderLighting::default();
   let metering: ExposureMetering = ExposureMetering {
     key: 0.01,
     land: Some(-6.0),
-    sky: Some(-9.0),
     ..ExposureMetering::default()
   };
-  let authored: RenderViewOptions = physical();
-  let units: LightUnits = LightUnits::of(&authored, &lighting, &SkyHarmonics::default(), None);
+  let units: LightUnits = LightUnits::of(&physical(), &lighting, &SkyHarmonics::default(), None);
 
-  assert_eq!(
-    PictureShares::of(&authored, &lighting, &metered_frame(units, 0.01, metering)),
-    PictureShares::WHOLE
-  );
+  for transform in [
+    RenderDisplayTransform::Engine,
+    RenderDisplayTransform::Agx,
+    RenderDisplayTransform::PbrNeutral,
+  ] {
+    let mut authored: RenderViewOptions = physical();
+
+    authored.features.display_transform = transform;
+
+    assert_eq!(
+      PictureShares::of(&authored, &lighting, &metered_frame(units, 0.01, metering)),
+      PictureShares::WHOLE,
+      "{transform:?}"
+    );
+  }
 
   let mut levels: RenderViewOptions = physical();
 
@@ -545,9 +552,8 @@ fn the_pictures_show_as_the_authored_law_shows_them() {
   let gain: f32 = LightUnits::get_key_gain(lighting.get_sun_color(&levels.features.light_scales));
   let law: f32 = ExposureHistogramUniform::get_law_scale(0.0, -6.0 + (PHYSICAL_LIGHT_UNIT * gain / 0.5).log2());
 
-  assert!((0.5 * 64.0 * lifted.fog / (PHYSICAL_LIGHT_UNIT * law) - 1.0).abs() < 1e-4);
-  assert!(lifted.fog < 1.0);
-  assert_eq!(lifted.sky, lifted.fog);
+  assert!((0.5 * 64.0 * lifted.share / (PHYSICAL_LIGHT_UNIT * law) - 1.0).abs() < 1e-4);
+  assert!(lifted.share < 1.0);
   assert!(lifted.is_pre_exposed);
   assert_eq!(lifted.to_vec4().z, 1.0);
   assert!(
@@ -558,39 +564,4 @@ fn the_pictures_show_as_the_authored_law_shows_them() {
     )
     .is_pre_exposed
   );
-
-  let unmetered: ExposureMetering = ExposureMetering { sky: None, ..metering };
-  let graded = |light: f32, contrast: f32| 0.18 * (light / 0.18).powf(contrast);
-  let sky: f32 = (-9.0_f32).exp2() * units.weather * 0.01;
-
-  for (transform, mode, curve) in [
-    (
-      RenderDisplayTransform::Agx,
-      DisplayMode::Agx,
-      agx_curve as fn(Vec3) -> Vec3,
-    ),
-    (RenderDisplayTransform::PbrNeutral, DisplayMode::PbrNeutral, pbr_neutral),
-  ] {
-    for contrast in [0.7, 1.0, 1.5] {
-      let mut options: RenderViewOptions = physical();
-
-      options.features.display_transform = transform;
-      options.features.grading.contrast = contrast;
-
-      let shares: PictureShares = PictureShares::of(&options, &lighting, &metered_frame(units, 0.01, metering));
-      let land: f32 = mode.get_anchor_stops(0.01, contrast);
-      let anchored: f32 = luminance(curve(Vec3::splat(graded(sky * shares.sky, contrast) * land.exp2())));
-      let engine: f32 = luminance(engine_display(Vec3::splat(graded(sky, contrast))));
-
-      assert_eq!(shares.fog, 1.0);
-      assert!(
-        (srgb_encoded(anchored) - srgb_encoded(engine)).abs() < 0.002,
-        "{mode:?} by {contrast}: {anchored} against {engine}"
-      );
-      assert_eq!(
-        PictureShares::of(&options, &lighting, &metered_frame(units, 0.01, unmetered)),
-        PictureShares::WHOLE
-      );
-    }
-  }
 }

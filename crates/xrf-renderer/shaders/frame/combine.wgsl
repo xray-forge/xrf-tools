@@ -7,6 +7,7 @@
 #import "common/fullscreen"
 #import "common/occlusion"
 #import "common/reflection_trace"
+#import "common/display_transform"
 
 // `hmodel` and `combine_1` over the light the frame accumulated, then the fog and tonemap of `combine_2`, faded into
 // the weather's sky, into the viewport's scene; and `combine_1`'s and the sky's high part beside it, which the bloom is
@@ -127,7 +128,9 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
         sky = sky_over_ground(lighting, haze_map, direction, toward, exposed, lighting.fog.z > 0.5);
       }
 
-      return combined(scene_from_shown(sky), sky / DEF_HDR);
+      // The scene takes the picture as the frame's display shows it as the engine's curve does; the high part is the
+      // engine's own, the picture as drawn.
+      return combined(scene_from_shown(picture_for_display(sky, lighting.display)), sky / DEF_HDR);
     }
 
     if (is_fogged) {
@@ -272,5 +275,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let behind: vec4<f32> = textureSampleLevel(sky_behind_map, sky_clamp, in.clip.xy / camera.viewport.xy, 0.0);
   let sky: vec3<f32> = behind.rgb / max(behind.a, 1e-4);
 
-  return combined(mix(finished, scene_from_shown(sky), behind_share), mix(high, sky / DEF_HDR, behind_share));
+  let behind_scene: vec3<f32> = scene_from_shown(picture_for_display(sky, lighting.display));
+
+  return combined(mix(finished, behind_scene, behind_share), mix(high, sky / DEF_HDR, behind_share));
 }

@@ -77,9 +77,8 @@ impl ExposureFeature {
     });
     let bins: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
       label: Some("exposure histogram"),
-      size: u64::from(
-        ExposureHistogramUniform::BINS + ExposureHistogramUniform::SKY_SLOTS + ExposureHistogramUniform::ENGINE_SLOTS,
-      ) * size_of::<u32>() as u64,
+      size: u64::from(ExposureHistogramUniform::BINS + ExposureHistogramUniform::ENGINE_SLOTS)
+        * size_of::<u32>() as u64,
       usage: wgpu::BufferUsages::STORAGE,
       mapped_at_creation: false,
     });
@@ -178,10 +177,6 @@ impl ExposureFeature {
           land: Some(head.key - head.adapted.log2())
             .filter(|land| land.is_finite())
             .or(self.metering.land),
-          sky: Some(head.sky).filter(|sky| sky.is_finite()).or(self.metering.sky),
-          sky_bright: Some(head.sky_bright)
-            .filter(|bright| bright.is_finite())
-            .or(self.metering.sky_bright),
         },
         (None, None) => self.metering,
       };
@@ -390,9 +385,7 @@ impl ExposureFeature {
       adapted: scale,
       used: scale,
       key: ExposureHistogramUniform::get_daylit_key(scale).log2(),
-      sky: f32::NAN,
       bright: f32::NAN,
-      sky_bright: f32::NAN,
       ..bytemuck::Zeroable::zeroed()
     };
 

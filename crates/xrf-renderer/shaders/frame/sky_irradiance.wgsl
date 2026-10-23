@@ -43,7 +43,7 @@ fn cs_irradiance(@builtin(local_invocation_index) index: u32) {
     let angle: f32 = f32(at) * GOLDEN_ANGLE;
     let direction: vec3<f32> = vec3<f32>(around * cos(angle), height, around * sin(angle));
     let light: vec3<f32> = sky_light(direction, lighting, sky_cube_0, sky_cube_1, sky_clamp, sky_clouds_0, sky_clouds_1,
-      sky_repeat, scale);
+      sky_repeat, scale, DISPLAY_UNGRADED);
     let basis: array<f32, 9> = sky_harmonics_basis(direction);
 
     authored += hemisphere_environment(lighting, sky_environment_0, sky_environment_1, sky_clamp, direction) /

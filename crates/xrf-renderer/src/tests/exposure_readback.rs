@@ -12,9 +12,7 @@ fn copy_out((device, queue): (&wgpu::Device, &wgpu::Queue), exposure: &ExposureF
     adapted,
     used: adapted,
     key: -2.0,
-    sky: -9.0,
     bright: 1.0,
-    sky_bright: -7.0,
   };
   let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
 
@@ -71,5 +69,5 @@ fn a_light_model_switch_drops_what_was_metered_before_it() {
   exposure.prepare(gpu.1, &physical, now);
 
   assert_eq!(exposure.get_pre_exposure().current, metered);
-  assert_eq!(exposure.get_metering().sky, Some(-9.0));
+  assert_eq!(exposure.get_metering().bright, Some(2.0));
 }
