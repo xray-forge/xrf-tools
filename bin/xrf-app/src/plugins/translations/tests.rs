@@ -9,13 +9,12 @@ use xrf_translation::{
   TranslationEdit, TranslationProjectDescriptor, TranslationProjectMode, TranslationVariant, read_source,
 };
 use xrf_utils::error_to_string;
-use xrf_vfs::{XrayChangeSet, XrayMountMode, XrayRoots, XrayTransaction};
+use xrf_vfs::{XrayChangeSet, XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 
 use crate::core::assets::AssetMountState;
 use crate::core::session::{SessionDerived, SessionId};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::commands::save_file::{save_into_open_project, write_edits};
-use crate::plugins::translations::project_read::read_project;
 use crate::plugins::translations::state::{TranslationProjectState, TranslationSaveOutcome, TranslationSavePlan};
 
 /// Where a source project keeps its string tables, and therefore what a project opened over one is prefixed with.
@@ -36,7 +35,7 @@ fn fixture() -> (AssetMountState, TranslationProjectState) {
   let assets: AssetMountState = AssetMountState::new();
   let state: TranslationProjectState = TranslationProjectState::new();
 
-  assets.follow(state.session.clone());
+  assets.add_follower(state.session.clone());
 
   (assets, state)
 }
@@ -82,17 +81,15 @@ fn value_in_state(state: &TranslationProjectState) -> TauriResult<Option<String>
 /// Opens the project as the open command does: through the shared roots, recording what it reads.
 fn open_project(assets: &AssetMountState, state: &TranslationProjectState, roots: &XrayRoots) -> TauriResult<()> {
   let id = SessionId::new();
-  let read: SessionDerived<TranslationProjectDescriptor> = read_project(
-    assets.search_fresh(roots)?,
-    roots,
-    TranslationProjectMode::Source,
-    PREFIX,
-  )?;
+  let search: XraySearch = assets.search_fresh(roots)?;
+  let revision: XrayRevision = search.get_vfs().get_revision();
+  let read: SessionDerived<TranslationProjectDescriptor> =
+    TranslationProjectState::read_project(search, roots, TranslationProjectMode::Source, PREFIX)?;
 
   state.session.begin_open(id)?;
   state
     .session
-    .commit_open_with(id, read.value, read.inputs, read.parts)?;
+    .commit_open_with(id, read.value, revision, read.inputs, read.parts)?;
 
   Ok(())
 }

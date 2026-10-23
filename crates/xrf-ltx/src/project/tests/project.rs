@@ -12,7 +12,7 @@ use xrf_vfs::{
   XrayInputKind, XrayInputRecord, XrayLogicalPath, XrayLookupScope, XrayMountMode, XrayRoots, XraySearch, XrayVfs,
 };
 
-use crate::project::LtxProject;
+use crate::project::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
   let root: PathBuf = build_absolute_generated_test_resource_path(&format!("project/{name}"));
@@ -24,6 +24,48 @@ fn create_root(name: &str) -> XrfResult<PathBuf> {
   fs::create_dir_all(&root)?;
 
   Ok(root)
+}
+
+#[test]
+fn a_format_hands_over_only_the_rewrites_and_commits_them_by_default() -> XrfResult {
+  let root: PathBuf = create_root("format_rewrites")?;
+
+  fs::write(root.join("unformatted.ltx"), "[a]\nkey=value\n")?;
+  fs::write(root.join("formatted.ltx"), "[b]\r\nkey = value\r\n")?;
+
+  let project: LtxProject = LtxProject::open_at_path(&root)?;
+  let mut handed: Vec<(PathBuf, Vec<u8>)> = Vec::new();
+  let result: LtxProjectFormatResult = project.format_all_files_with(LtxFormatOptions::default(), |rewrites| {
+    handed = rewrites;
+
+    Ok(())
+  })?;
+
+  assert_eq!(
+    handed,
+    vec![(root.join("unformatted.ltx"), b"[a]\r\nkey = value\r\n".to_vec())]
+  );
+  assert_eq!((result.total_files, result.invalid_files), (2, 1));
+  assert_eq!(
+    fs::read_to_string(root.join("unformatted.ltx"))?,
+    "[a]\nkey=value\n",
+    "handing over writes nothing"
+  );
+
+  project.format_all_files()?;
+
+  assert_eq!(
+    fs::read_to_string(root.join("unformatted.ltx"))?,
+    "[a]\r\nkey = value\r\n"
+  );
+  assert_eq!(
+    fs::read_to_string(root.join("formatted.ltx"))?,
+    "[b]\r\nkey = value\r\n"
+  );
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
 }
 
 #[test]

@@ -2,6 +2,8 @@ use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
 
 use crate::core::assets::AssetMountState;
+use crate::core::execution::ExecutionState;
+use crate::plugins::configs::opened_configs_project::OpenedConfigsProject;
 use crate::plugins::configs::state::ConfigsState;
 
 pub struct ConfigsPlugin {}
@@ -18,10 +20,13 @@ impl ConfigsPlugin {
         crate::ipc::registry::configs::handler(),
       ))
       .setup(|application, _| {
-        let state: ConfigsState = ConfigsState::new("configs");
+        // Read again on the pool once a commit moved a config the open read: an installation's configs take a while.
+        let state: ConfigsState = ConfigsState::new("configs").with_deferred_derivation(
+          application.state::<ExecutionState>().get_pool(),
+          OpenedConfigsProject::derive,
+        );
 
-        // The configs editor's open records every config it reads, so a commit tells whether it went stale.
-        application.state::<AssetMountState>().follow(state.clone());
+        application.state::<AssetMountState>().add_follower(state.clone());
         application.manage(state);
 
         Ok(())

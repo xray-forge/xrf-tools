@@ -5,7 +5,7 @@ use serde::Serialize;
 use xrf_archive::ArchiveDescriptor;
 use xrf_error::{XrfError, XrfResult};
 
-use crate::source::XrayDeclaredRoot;
+use crate::source::{XrayDeclaredRoot, XrayFileStamp};
 use crate::{XrayAssetContainer, XrayPathCollision, XrayShadowedCopy};
 
 /// The storage kind backing a mount.
@@ -90,6 +90,14 @@ pub trait XrayAssetSource: Debug + Send + Sync {
 
   /// Size in bytes of an entry this source holds, without reading it.
   fn get_size(&self, path: &str) -> Option<u64>;
+
+  /// How an entry's file looks on disk now, for a source whose files can change behind it; `None` where entries never
+  /// change in place, or where the file cannot be looked at.
+  fn get_stamp(&self, path: &str) -> Option<XrayFileStamp> {
+    let _ = path;
+
+    None
+  }
 
   /// CRC32 of an entry's unpacked payload, when the source already knows it without reading anything.
   fn get_recorded_crc(&self, path: &str) -> Option<u32> {

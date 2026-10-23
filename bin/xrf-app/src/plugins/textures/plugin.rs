@@ -1,6 +1,7 @@
 use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{Manager, Runtime};
 
+use crate::core::assets::AssetMountState;
 use crate::plugins::textures::state::TextureState;
 
 pub struct TexturesPlugin {}
@@ -13,7 +14,9 @@ impl TexturesPlugin {
 
     Builder::new(Self::NAME)
       .setup(|application, _| {
-        application.manage(TextureState::new());
+        application.manage(TextureState::new(AssetMountState::clone(
+          &application.state::<AssetMountState>(),
+        )));
 
         Ok(())
       })

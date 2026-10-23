@@ -5,9 +5,11 @@ use xrf_engine_target::XrayEngineResolution;
 use xrf_level::{LevelFile, LevelGeomSource, LevelSector, LevelVisualsChunk};
 use xrf_ltx::LtxDialect;
 use xrf_material::XraySurfaceDescriptor;
-use xrf_vfs::XrayRoots;
+use xrf_vfs::{XrayRoots, XraySearch};
 use xrf_visual::SectorOutline;
 
+use crate::core::session::SessionSnapshot;
+use crate::plugins::levels::start::get_level_start;
 use crate::plugins::levels::state::level_source::LevelSource;
 use crate::plugins::levels::state::selection::level_map_description::LevelMapDescription;
 use crate::plugins::levels::state::selection::level_start::LevelStart;
@@ -44,6 +46,15 @@ pub struct SelectedLevel {
 }
 
 impl SelectedLevel {
+  /// What the viewer is shown of the open level under its snapshot's identity, where it starts decided again through
+  /// `search` where a commit let the start go.
+  pub fn describe_at(
+    current: &SessionSnapshot<Self>,
+    search: &XraySearch,
+  ) -> SessionSnapshot<SelectedLevelDescription> {
+    current.answer(current.describe(get_level_start(current, search)))
+  }
+
   /// What the viewer is shown of the open level, which opens at `start`, its start part.
   pub fn describe(&self, start: Option<LevelStart>) -> SelectedLevelDescription {
     let level: &LevelFile = &self.level;

@@ -10,6 +10,8 @@ pub struct XrayInputAnswer {
 
 impl XrayVfs {
   /// What this snapshot answers for an input now: two answers that differ mean what a build read of it changed between.
+  /// A listing's answer moves only with a file created or deleted below it, never with one modified, so a size or
+  /// content a listing carried is not followed.
   pub fn answer_input(&self, input: &XrayInput) -> XrayInputAnswer {
     let scopes: &[XrayLookupScope] = input.get_key().get_scopes();
 

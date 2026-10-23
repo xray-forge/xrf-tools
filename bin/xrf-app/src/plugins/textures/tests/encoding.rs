@@ -4,6 +4,7 @@ use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsMipChain, DdsMipmaps, Qua
 use xrf_job::JobOutcome;
 use xrf_vfs::XrayRoots;
 
+use crate::core::assets::AssetMountState;
 use crate::core::session::SessionId;
 use crate::plugins::textures::encoding::{
   TextureEncodingComparison, TextureEncodingCurrent, TextureEncodingFormat, TextureEncodingSession,
@@ -77,7 +78,7 @@ fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() 
   // can only exist while that measurement does - and the failure, when the session has moved on, has to say so rather
   // than serve a picture of something else.
   let chain: DdsMipChain = DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain");
-  let state: TextureState = TextureState::new();
+  let state: TextureState = TextureState::new(AssetMountState::new());
 
   let session_id: SessionId = SessionId::new();
 

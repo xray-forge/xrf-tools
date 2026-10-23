@@ -6,7 +6,7 @@ use xrf_utils::format_path;
 
 use crate::path::{is_component_prefix, to_host_relative};
 use crate::source::xray_asset_source::label_from_path;
-use crate::source::{DirectoryAssetIndex, XrayAssetIndex};
+use crate::source::{DirectoryAssetIndex, XrayAssetIndex, XrayFileStamp};
 use crate::{XrayAssetContainer, XrayAssetSource, XrayPathCollision, XraySourceKind};
 
 /// A directory of loose files, indexed once at mount time.
@@ -137,6 +137,14 @@ impl XrayAssetSource for XrayDirectorySource {
       .flatten()
       .and_then(|asset| fs::metadata(asset.absolute_path()).ok())
       .map(|metadata| metadata.len())
+  }
+
+  fn get_stamp(&self, path: &str) -> Option<XrayFileStamp> {
+    let asset = self.index.find(path).ok()??;
+
+    fs::metadata(asset.absolute_path())
+      .ok()
+      .map(|metadata| XrayFileStamp::of(&metadata))
   }
 
   fn get_collisions(&self) -> &[XrayPathCollision] {

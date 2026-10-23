@@ -32,8 +32,9 @@ let bytes: Vec<u8> = search.read("configs\\system.ltx")?;
   which shares it behind an `Arc`, so a snapshot in use does not change: `commit` and `apply` answer the next snapshot,
   and a host mounts into a fork (`XrayVfs::fork`, which shares sources and cache).
 - **Search** — `XraySearch` is an ordered list of steps over one snapshot it owns, first hit winning: what PhysicsFS and
-  Source's file system call a search path. Each step is a label and an `XrayLookupScope` (which mounts, which logical
-  subtree). A search has no lifetime, is cheap to clone, and can record every input it reads.
+  Source's file system call a search path. Each step is a label and an `XrayLookupScope` (which mounts, in the order it
+  names them, and which logical subtree). A search has no lifetime, is cheap to clone, and can record every input it
+  reads.
 - **Mode** — `XrayMountMode` says how a caller's path becomes mounts. `Auto` (the default) reads the path as an
   installation when it holds an fsgame file, as one volume when it is one, as a volume set when it holds volumes
   directly, and as a loose root otherwise; it never searches upward. `Directory` forces a loose root, `Volumes` mounts
@@ -179,11 +180,18 @@ println!("{:?}", search.read_size("configs\\system.ltx"));
 ```
 
 - A path a writable loose mount answers for is written in place. A path only archived, or not present, is created in
-  the first writable loose mount the search reaches, where it then wins. A delete needs a loose winner.
-- Every file is staged beside its target and synced, then swapped in; a failed swap puts every file back, so a commit
-  changes every file or none.
-- Each changed file takes the new project revision, and so does every directory above a created or deleted file. A
-  snapshot's retained values for untouched files survive the change.
+  the first writable loose mount the search reaches ahead of the copy that answers, and refused where none is ahead of
+  it. `with_write_in_place` refuses anything but a writable loose winner. A delete needs a loose winner.
+  `with_file_write` names a file on disk instead, written in every writable loose mount whose root holds it.
+- Every file is staged beside its target and synced, a journal naming them is written beside the first target, then
+  each is swapped in, a replaced or deleted file kept first as a hard link so its target is never missing; a failed
+  swap puts every file back. A crash leaves the journal, which the next mount of the directory holding it rolls back,
+  or forward once every swap was done; staged and kept siblings (`.<name>.xrf-…`) are never indexed. A crash while
+  staging leaves hidden staged siblings that nothing removes.
+- Each changed file takes the change's project revision, issued by the snapshot's lineage so two changes branched from
+  one snapshot never share one, and so does every directory above a created or deleted file. A snapshot's retained
+  values for untouched files survive the change. A snapshot pins its index and revisions, not loose bytes: an older one
+  reads a changed file's new bytes.
 - `XrayVfs::apply` takes changes already on disk (from a file watcher, say) and writes nothing. An archive mount refuses
   a change with `NotImplemented`.
 - A loose asset's host path is `XrayAsset::to_writable_path`, which refuses an archived winner by name.
@@ -192,9 +200,10 @@ println!("{:?}", search.read_size("configs\\system.ltx"));
 
 `XrayVfsHost` owns the current snapshot for a long-running process such as the desktop app. `search(&roots)` plans an
 `XrayRoots` once, mounts only what the newest snapshot lacks, and answers a search; `search_fresh` plans again and
-retries sources that failed to open, for an open a person makes. Mounts and changes (`commit`, `apply`) are serialized
-on one lock and publish the next snapshot whole, so a search never waits for either and keeps reading the snapshot it
-was given. The snapshot's cache policy and read trace, set on the first `XrayVfs` passed to `XrayVfsHost::new`, carry
+retries sources that failed to open, for an open a person makes. Mounts and changes (`commit`, `apply`, and
+`apply_changed_on_disk`, which applies each retained loose file changed behind every reader) are serialized on one lock
+and publish the next snapshot whole, so a search never waits for either and keeps reading the snapshot it was given;
+`search_writable` searches every writable loose mount, for a writer naming files on disk. The snapshot's cache policy and read trace, set on the first `XrayVfs` passed to `XrayVfsHost::new`, carry
 to every later snapshot.
 
 Further flows are documented on their types: recording what a search reads on `XraySearch::with_recording` and

@@ -7,7 +7,9 @@ use xrf_job::{JobHandle, JobOutcome};
 use xrf_spawn::XRayByteOrder;
 use xrf_thm::{ThmFile, ThmFormat, ThmTextureFlag, ThmTextureFlags};
 use xrf_utils::{error_to_string, format_path, write_file_staged};
+use xrf_vfs::{XraySearch, XrayTransaction};
 
+use crate::core::assets::AssetMountState;
 use crate::core::types::TauriResult;
 use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::encoding::TextureEncodingFormat;
@@ -33,13 +35,15 @@ struct PreparedFile {
   bytes: Vec<u8>,
 }
 
-/// Write both halves of a node, each staged beside its target and renamed over it.
+/// Write both halves of a node, each staged beside its target and renamed over it, through `assets` where a mount holds
+/// it.
 ///
 /// # Errors
 ///
 /// Returns an error when a target changed since it was read, when the descriptor cannot be built or serialized, or when
 /// a staged write cannot be moved into place.
 pub fn write_save(
+  assets: &AssetMountState,
   job: &JobHandle,
   request: &TexturesSaveRequest,
   texture_bytes: Option<Vec<u8>>,
@@ -82,7 +86,7 @@ pub fn write_save(
 
   Ok(TextureSaveOutcome {
     outcome: JobOutcome::Completed,
-    written: publish(prepared)?,
+    written: publish(assets, prepared)?,
     descriptor_format: descriptor_format.map(u32::from),
   })
 }
@@ -109,17 +113,31 @@ fn to_descriptor_bytes(
     .map_err(error_to_string)
 }
 
-/// Move every prepared file into place, answering what landed.
-fn publish(prepared: Vec<PreparedFile>) -> TauriResult<Vec<String>> {
-  prepared
-    .into_iter()
-    .map(|file| {
-      write_file_staged(&file.path, &file.bytes)
-        .map_err(|error| format!("Cannot write '{}': {error}", format_path(&file.path)))?;
+/// Move every prepared file into place, answering what landed: the files a mount holds as one commit, so the cache,
+/// sessions and pages follow them as any save, then the rest one by one, since no snapshot reads a file outside every
+/// mount.
+fn publish(assets: &AssetMountState, prepared: Vec<PreparedFile>) -> TauriResult<Vec<String>> {
+  let written: Vec<String> = prepared.iter().map(|file| file.path.display().to_string()).collect();
+  let search: XraySearch = assets.search_writable();
+  let (mounted, loose): (Vec<PreparedFile>, Vec<PreparedFile>) =
+    prepared.into_iter().partition(|file| search.holds_file(&file.path));
 
-      Ok(file.path.display().to_string())
-    })
-    .collect()
+  if !mounted.is_empty() {
+    assets.commit(
+      &mounted
+        .into_iter()
+        .fold(XrayTransaction::new(&search), |transaction, file| {
+          transaction.with_file_write(file.path, file.bytes)
+        }),
+    )?;
+  }
+
+  for file in loose {
+    write_file_staged(&file.path, &file.bytes)
+      .map_err(|error| format!("Cannot write '{}': {error}", format_path(&file.path)))?;
+  }
+
+  Ok(written)
 }
 
 /// The `ETFormat` a written candidate makes the descriptor name, when the descriptor can name it at all.

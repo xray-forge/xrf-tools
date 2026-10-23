@@ -5,7 +5,8 @@ use std::sync::{Arc, LockResult, Mutex, MutexGuard, RwLock};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::{
-  XrayChange, XrayChangeSet, XrayRoots, XraySearch, XraySearchPlan, XraySearchStep, XrayTransaction, XrayVfs,
+  XrayChange, XrayChangeSet, XrayLookupScope, XrayRoots, XraySearch, XraySearchPlan, XraySearchStep, XrayTransaction,
+  XrayVfs,
 };
 
 /// The one owner of the current VFS snapshot, through which every mount goes: what an analysis host is to its analyses.
@@ -74,6 +75,37 @@ impl XrayVfsHost {
     let (vfs, steps): (Arc<XrayVfs>, Vec<XraySearchStep>) = self.mount(&plan, true)?;
 
     Ok(XraySearch::new(vfs).with_steps(steps))
+  }
+
+  /// A search over every writable loose mount of the newest snapshot, in mount order, for a writer naming the files it
+  /// writes on disk ([`XrayTransaction::with_file_write`]) rather than by logical path.
+  pub fn search_writable(&self) -> XraySearch {
+    XraySearch::new(self.get_vfs()).with_step("writable", XrayLookupScope::writable())
+  }
+
+  /// Applies a change for each loose file the cache retains a value of, among the mounts `search` reaches, that changed
+  /// on disk since it was read, and publishes the snapshot they leave: how a person's open sees edits made behind every
+  /// reader. Looked at under the mount lock, so two opens at once apply one change once; nothing changed publishes
+  /// nothing.
+  ///
+  /// # Errors
+  ///
+  /// As [`XrayVfs::apply`], with nothing in the host changed.
+  pub fn apply_changed_on_disk(&self, search: &XraySearch) -> XrfResult<XrayChangeSet> {
+    let scopes: Vec<XrayLookupScope> = search.get_steps().iter().map(|step| step.get_scope().clone()).collect();
+    let _mounting: MutexGuard<()> = self.recover(self.mounting.lock());
+    let current: Arc<XrayVfs> = self.get_vfs();
+    let changes: Vec<XrayChange> = current.list_changed_on_disk(&scopes);
+
+    if changes.is_empty() {
+      return Ok(XrayChangeSet::new(current.get_revision(), changes));
+    }
+
+    let (next, changes): (XrayVfs, XrayChangeSet) = current.apply(changes)?;
+
+    *self.recover(self.current.write()) = Arc::new(next);
+
+    Ok(changes)
   }
 
   /// Commits a transaction against the newest snapshot and publishes the snapshot it leaves, answering what changed for

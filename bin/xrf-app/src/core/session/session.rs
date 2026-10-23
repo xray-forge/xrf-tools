@@ -1,43 +1,17 @@
 use std::panic::{self, AssertUnwindSafe};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, Weak};
 use std::time::Instant;
 
 use rayon::ThreadPool;
 use xrf_vfs::{XrayInputRecord, XrayRevision, XrayVfs};
 
-use crate::core::assets::AssetMountState;
+use crate::core::assets::{AssetFanOut, AssetMountState};
+use crate::core::session::session_derivation::{SessionDerivation, SessionDerive};
+use crate::core::session::session_state::SessionState;
 use crate::core::session::{
   SessionChange, SessionDerived, SessionId, SessionParts, SessionRootChange, SessionSnapshot,
 };
 use crate::core::types::TauriResult;
-
-/// How a session's plugin derives its value again from the snapshot it replaces, reading through `assets` as its open
-/// did.
-type SessionDerive<T> = dyn Fn(&SessionSnapshot<T>, &AssetMountState) -> TauriResult<SessionDerived<T>> + Send + Sync;
-
-/// Where a session's derivation runs once a commit moved what its value was read from.
-enum SessionDerivation<T> {
-  /// Inside the commit, on the committing thread, which a reader of the session after the commit relies on.
-  Inline(Arc<SessionDerive<T>>),
-  /// On `pool`, the commit reporting the session `Deriving` at once and the derived snapshot announced through the asset
-  /// state's fan-out once it lands: for a derivation too slow to hold a save for.
-  Deferred {
-    derive: Arc<SessionDerive<T>>,
-    pool: Arc<ThreadPool>,
-  },
-}
-
-impl<T> Clone for SessionDerivation<T> {
-  fn clone(&self) -> Self {
-    match self {
-      Self::Inline(derive) => Self::Inline(Arc::clone(derive)),
-      Self::Deferred { derive, pool } => Self::Deferred {
-        derive: Arc::clone(derive),
-        pool: Arc::clone(pool),
-      },
-    }
-  }
-}
 
 /// Publishes session snapshots atomically, retaining the last success while a replacement is pending.
 pub(crate) struct Session<T> {
@@ -56,13 +30,6 @@ impl<T> Clone for Session<T> {
   }
 }
 
-struct SessionState<T> {
-  opening: Option<SessionId>,
-  opened: Option<Arc<SessionSnapshot<T>>>,
-  /// The snapshot a deferred derivation is reading again, so a commit landing meanwhile starts no second one.
-  deriving: Option<Arc<SessionSnapshot<T>>>,
-}
-
 impl<T> Session<T> {
   pub fn new(name: &'static str) -> Self {
     Self {
@@ -71,6 +38,7 @@ impl<T> Session<T> {
         opening: None,
         opened: None,
         deriving: None,
+        stale: Weak::new(),
       })),
       derivation: None,
     }
@@ -141,19 +109,27 @@ impl<T> Session<T> {
 
   /// Publishes only the newest opening; parsing and resource acquisition happen before this call.
   pub fn commit_open(&self, id: SessionId, value: T) -> TauriResult<Arc<SessionSnapshot<T>>> {
-    self.commit_open_with(id, value, XrayInputRecord::new(), SessionParts::new())
+    self.commit_open_with(
+      id,
+      value,
+      XrayRevision::MOUNTED,
+      XrayInputRecord::new(),
+      SessionParts::new(),
+    )
   }
 
-  /// Publishes only the newest opening as [`Self::commit_open`] does, keeping the inputs the value was derived from and
-  /// the parts the opening read on its way.
+  /// Publishes only the newest opening as [`Self::commit_open`] does, at `revision`, the one the search it read was
+  /// taken at, keeping the inputs the value was derived from and the parts the opening read on its way.
   pub fn commit_open_with(
     &self,
     id: SessionId,
     value: T,
+    revision: XrayRevision,
     inputs: XrayInputRecord,
     parts: SessionParts,
   ) -> TauriResult<Arc<SessionSnapshot<T>>> {
     let opened: Arc<SessionSnapshot<T>> = Arc::new(SessionSnapshot {
+      revision,
       inputs,
       parts,
       ..SessionSnapshot::new(id, value)
@@ -232,21 +208,51 @@ impl<T> Session<T> {
 }
 
 impl<T: Send + Sync + 'static> Session<T> {
-  /// Moves the committed snapshot to the project revision `assets` holds now, the change already on disk.
+  /// Moves the committed snapshot to the project revision `assets` holds now, starting at once what the follow puts
+  /// off, for a caller that announces nothing.
+  ///
+  /// # Errors
+  ///
+  /// As [`Self::follow_in`].
+  #[cfg(test)]
+  pub fn follow(&self, assets: &AssetMountState) -> TauriResult<Option<SessionChange>> {
+    let fan_out: AssetFanOut = AssetFanOut::new(assets.get_vfs());
+    let change: Option<SessionChange> = self.follow_in(assets, &fan_out)?;
+
+    for start in fan_out.into_starts() {
+      start();
+    }
+
+    Ok(change)
+  }
+
+  /// Answers `opened`, just published, or, where a change published since the search it read was taken, what the
+  /// session holds once it caught up with it, everyone told: no fan-out of that change found the opening to move.
+  pub fn catch_up(&self, opened: Arc<SessionSnapshot<T>>, assets: &AssetMountState) -> Arc<SessionSnapshot<T>> {
+    if assets.get_vfs().get_revision() <= opened.revision {
+      return opened;
+    }
+
+    assets.catch_up(self);
+
+    self.require(opened.session_id).unwrap_or(opened)
+  }
+
+  /// Moves the committed snapshot to the one `fan_out` carries, the change already on disk.
   ///
   /// Where nothing the value was read from moved, the next snapshot shares the value and carries every part whose
   /// inputs are current; where something did, the plugin's derivation reads the value again and the next snapshot
-  /// starts without parts, and without a derivation the snapshot stays as it is, reported stale. A deferred derivation
-  /// is reported `Deriving` and started once the asset state's fan-out under way has told everyone, one reading the
-  /// same snapshot again already left to land. A derivation's
-  /// failure is reported, never dropped, and leaves the snapshot as it was. Nothing that moved since is lost to a race:
-  /// an open, a close or another change published meanwhile is followed from instead.
+  /// starts without parts, and without a derivation the snapshot stays as it is, reported stale once. A deferred
+  /// derivation is reported `Deriving` and started once `fan_out` has been heard, one reading the same snapshot again
+  /// already left to land. A derivation's failure is reported, never dropped, and leaves the snapshot as it was, to be
+  /// tried again by the next change. Nothing that moved since is lost to a race: an open, a close or another change
+  /// published meanwhile is followed from instead.
   ///
   /// # Errors
   ///
   /// Returns an error when the session's lock is poisoned.
-  pub fn follow(&self, assets: &AssetMountState) -> TauriResult<Option<SessionChange>> {
-    let vfs: Arc<XrayVfs> = assets.get_vfs();
+  pub fn follow_in(&self, assets: &AssetMountState, fan_out: &AssetFanOut) -> TauriResult<Option<SessionChange>> {
+    let vfs: &Arc<XrayVfs> = fan_out.get_vfs();
     let revision: XrayRevision = vfs.get_revision();
 
     loop {
@@ -254,13 +260,13 @@ impl<T: Send + Sync + 'static> Session<T> {
         return Ok(None);
       };
 
-      if current.revision >= revision {
+      if current.revision >= revision || self.is_reported_stale(&current)? {
         return Ok(None);
       }
 
       let session_id: SessionId = current.session_id;
-      let (next, root, stale_parts) = if current.inputs.is_current_in(&vfs) {
-        let (parts, stale_parts) = current.parts.retain_current(&vfs);
+      let (next, root, stale_parts) = if current.inputs.is_current_in(vfs) {
+        let (parts, stale_parts) = current.parts.to_current(vfs);
         let next: SessionSnapshot<T> = SessionSnapshot {
           session_id,
           revision,
@@ -274,9 +280,13 @@ impl<T: Send + Sync + 'static> Session<T> {
         let derive: &Arc<SessionDerive<T>> = match &self.derivation {
           Some(SessionDerivation::Inline(derive)) => derive,
           Some(SessionDerivation::Deferred { derive, pool }) => {
-            return self.defer(&current, derive, pool, assets).map(Some);
+            return self.defer(&current, derive, pool, assets, fan_out).map(Some);
           }
           None => {
+            if !self.mark_stale(&current)? {
+              continue;
+            }
+
             return Ok(Some(SessionChange {
               session_id,
               revision: current.revision,
@@ -307,14 +317,33 @@ impl<T: Send + Sync + 'static> Session<T> {
     }
   }
 
-  /// Starts reading `current` again on `pool` once the fan-out under way told everyone, unless a derivation of it is
-  /// under way already, answering what the commit reports of the session meanwhile.
+  /// Whether `current` is the snapshot reported stale already.
+  fn is_reported_stale(&self, current: &Arc<SessionSnapshot<T>>) -> TauriResult<bool> {
+    Ok(std::ptr::eq(self.lock()?.stale.as_ptr(), Arc::as_ptr(current)))
+  }
+
+  /// Remembers `current` as reported stale while it is still the committed snapshot, answering whether it was.
+  fn mark_stale(&self, current: &Arc<SessionSnapshot<T>>) -> TauriResult<bool> {
+    let mut state: MutexGuard<SessionState<T>> = self.lock()?;
+
+    if !state.opened.as_ref().is_some_and(|opened| Arc::ptr_eq(opened, current)) {
+      return Ok(false);
+    }
+
+    state.stale = Arc::downgrade(current);
+
+    Ok(true)
+  }
+
+  /// Starts reading `current` again on `pool` once `fan_out` has been heard, unless a derivation of it is under way
+  /// already, answering what the change reports of the session meanwhile.
   fn defer(
     &self,
     current: &Arc<SessionSnapshot<T>>,
     derive: &Arc<SessionDerive<T>>,
     pool: &Arc<ThreadPool>,
     assets: &AssetMountState,
+    fan_out: &AssetFanOut,
   ) -> TauriResult<SessionChange> {
     let mut state: MutexGuard<SessionState<T>> = self.lock()?;
     let is_under_way: bool = state
@@ -337,8 +366,8 @@ impl<T: Send + Sync + 'static> Session<T> {
         AssetMountState::clone(assets),
       );
 
-      // Started only once this commit's own change is heard, so the derived one never overtakes it.
-      assets.after_fan_out(move || pool.spawn(move || session.land(&current, derive.as_ref(), &landing)));
+      // Started only once this change is heard, so the derived one never overtakes it.
+      fan_out.after(move || pool.spawn(move || session.land(&current, derive.as_ref(), &landing)));
     }
 
     Ok(SessionChange {
@@ -379,7 +408,7 @@ impl<T: Send + Sync + 'static> Session<T> {
     };
 
     match self.settle(current, next) {
-      Ok(true) => assets.announce_sessions(vec![change]),
+      Ok(true) => assets.announce_sessions(vec![change], AssetFanOut::new(assets.get_vfs())),
       Ok(false) => log::info!(
         "A derivation of the {} session gave way to an open, a close or a change published while it read",
         self.name
@@ -388,11 +417,7 @@ impl<T: Send + Sync + 'static> Session<T> {
     }
 
     if assets.get_vfs().get_revision() > revision {
-      match self.follow(assets) {
-        Ok(Some(change)) => assets.announce_sessions(vec![change]),
-        Ok(None) => {}
-        Err(error) => log::error!("The {} session could not follow a commit: {error}", self.name),
-      }
+      assets.catch_up(self);
     }
   }
 

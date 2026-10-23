@@ -31,3 +31,4 @@ workspace = true
 criterion = { workspace = true }
 serde_json = { workspace = true }
 xrf-test-utils = { workspace = true }
+xrf-utils = { workspace = true, features = ["staging-faults"] }

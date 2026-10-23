@@ -51,20 +51,23 @@ impl SessionParts {
     self
   }
 
-  /// The store a next snapshot starts with over `vfs`: every built part whose inputs are all current there, shared
-  /// rather than copied, and the names of the built parts that are not, sorted. A part still building is carried by
-  /// neither, since what it reads is not known yet; the next snapshot builds it afresh when asked.
-  pub fn retain_current(&self, vfs: &XrayVfs) -> (SessionParts, Vec<&'static str>) {
+  /// The store a next snapshot starts with over `vfs`: every built part whose inputs are all current there, its value
+  /// shared and its inputs copied, so a reader of this store records nothing into the next; and the names of the parts
+  /// not carried, sorted. A part asked for and still building is not carried, since what it reads is not known yet, and
+  /// is named, so whoever waits on its answer asks the next snapshot again.
+  pub fn to_current(&self, vfs: &XrayVfs) -> (SessionParts, Vec<&'static str>) {
     let mut carried: HashMap<TypeId, SessionPartSlot> = HashMap::new();
     let mut stale: Vec<&'static str> = Vec::new();
 
     for (key, slot) in self.lock().iter() {
-      if !(slot.is_built)(slot.cell.as_ref()) {
-        continue;
-      }
-
-      if slot.inputs.is_current_in(vfs) {
-        carried.insert(*key, slot.clone());
+      if (slot.is_built)(slot.cell.as_ref()) && slot.inputs.is_current_in(vfs) {
+        carried.insert(
+          *key,
+          SessionPartSlot {
+            inputs: slot.inputs.to_filtered(|_| true),
+            ..slot.clone()
+          },
+        );
       } else {
         stale.push(slot.name);
       }

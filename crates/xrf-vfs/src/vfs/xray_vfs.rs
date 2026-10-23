@@ -9,19 +9,20 @@ use xrf_utils::format_path;
 use crate::cache::{XrayAssetCache, XrayCacheKey, XrayCachePolicy, XrayCacheStats};
 use crate::input::{XrayRevision, XrayRevisions};
 use crate::path::{XrayLogicalPath, normalize};
-use crate::search::{XrayDirectoryListing, XrayMountedEntry, XrayShadowedCopy, XrayShadowingEntry};
+use crate::search::{XrayDirectoryListing, XrayMountSelection, XrayMountedEntry, XrayShadowedCopy, XrayShadowingEntry};
 use crate::source::XrayDirectorySource;
 use crate::trace::XrayReadTrace;
 use crate::{
-  XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetSource, XrayAssetType, XrayLookupScope, XrayMount,
-  XrayMountId, XraySkippedMount, XraySourceKind,
+  XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetSource, XrayAssetType, XrayFileStamp, XrayLookupScope,
+  XrayMount, XrayMountId, XraySkippedMount, XraySourceKind,
 };
 
 /// A VFS snapshot: the engine's view of assets as several mounted sources in priority order, with the revisions of
 /// what they hold and what the snapshot retains after parsing.
 ///
 /// Read only through an [`XraySearch`](crate::XraySearch), which names the scopes it searches and records what it
-/// reads; the snapshot itself answers for its mounts, revisions and caches.
+/// reads; the snapshot itself answers for its mounts, revisions and caches. A snapshot pins its index and revisions,
+/// not the bytes of loose files, which it reads from disk as they are when read.
 #[derive(Debug, Default)]
 pub struct XrayVfs {
   mounts: Vec<XrayMount>,
@@ -37,7 +38,7 @@ pub struct XrayVfs {
   failed: HashMap<PathBuf, Vec<(XraySourceKind, usize)>>,
   /// Paths already mounted from a plan, so a later plan naming the same source reuses it.
   planned: HashMap<PathBuf, XrayMountId>,
-  /// How many changes were committed to the project this snapshot is a snapshot of.
+  /// The revision of the last change this snapshot holds.
   revision: XrayRevision,
   /// When each loose file and indexed directory last changed, where one did.
   revisions: XrayRevisions,
@@ -64,6 +65,10 @@ impl XrayVfs {
   /// How well retention has served the reads of this snapshot and its lineage so far.
   pub fn get_cache_stats(&self) -> XrayCacheStats {
     self.cache.get_stats()
+  }
+
+  pub(crate) fn get_cache(&self) -> &XrayAssetCache {
+    &self.cache
   }
 
   /// Accounts for every physical read this snapshot performs from here on.
@@ -93,7 +98,8 @@ impl XrayVfs {
     }
   }
 
-  /// The project revision this snapshot is a snapshot of: how many changes were committed before it.
+  /// The project revision this snapshot is a snapshot of: that of the last change it holds, a number its lineage gives
+  /// one change alone and that grows with every change.
   pub fn get_revision(&self) -> XrayRevision {
     self.revision
   }
@@ -257,9 +263,31 @@ impl XrayVfs {
     &self.mounts
   }
 
-  /// Iterates over mounts selected by a scope, preserving priority order.
-  pub(crate) fn mounts_in(&self, scope: &XrayLookupScope) -> impl Iterator<Item = &XrayMount> {
-    self.mounts.iter().filter(move |mount| scope.includes(mount))
+  /// Iterates over mounts selected by a scope in its priority order: named mounts in the order named, once each, and
+  /// every other selection in mount order.
+  pub(crate) fn mounts_in<'a, 's>(
+    &'a self,
+    scope: &'s XrayLookupScope,
+  ) -> impl Iterator<Item = &'a XrayMount> + use<'a, 's> {
+    let named: Option<&[XrayMountId]> = match scope.get_selection() {
+      XrayMountSelection::Only(ids) => Some(ids),
+      _ => None,
+    };
+    let in_named_order = named.into_iter().flat_map(move |ids| {
+      ids
+        .iter()
+        .enumerate()
+        .filter(move |(index, id)| !ids[..*index].contains(id))
+        .filter_map(|(_, id)| self.mounts.get(id.0))
+    });
+    let in_mount_order = named
+      .is_none()
+      .then_some(&self.mounts)
+      .into_iter()
+      .flatten()
+      .filter(move |mount| scope.includes(mount));
+
+    in_named_order.chain(in_mount_order)
   }
 
   /// The winning location for a logical path within a scope, or `None` when no mount in it holds the path.
@@ -283,6 +311,7 @@ impl XrayVfs {
   ///
   /// Returns a not-found error when nothing in scope holds the path, an invalid-path error when it is not a valid
   /// X-Ray logical path, or the source's own error when the bytes cannot be read.
+  #[cfg(test)]
   pub(crate) fn read_in(&self, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Vec<u8>> {
     let logical_path: Cow<str> = normalize(logical_path)?;
     let (mount, source_path) = self.require_winner_in_scope(scope, &logical_path)?;
@@ -296,6 +325,7 @@ impl XrayVfs {
   ///
   /// Returns a not-found error when nothing in scope holds the path. Absence is `NotFound` throughout this crate, so a
   /// consumer can tell "the asset is not here" from "the source holding it failed" without reading the message.
+  #[cfg(test)]
   fn require_winner_in_scope<'a>(
     &self,
     scope: &XrayLookupScope,
@@ -316,6 +346,7 @@ impl XrayVfs {
   ///
   /// Returns whatever reading the asset or parsing it answers with. Failures are not retained, so a broken asset is
   /// re-read by each caller and each reports the real error rather than a copy of the first one.
+  #[cfg(test)]
   pub(crate) fn read_parsed_in<T, F>(
     &self,
     scope: &XrayLookupScope,
@@ -329,27 +360,78 @@ impl XrayVfs {
   {
     let logical_path: Cow<str> = normalize(logical_path)?;
     let (mount, source_path) = self.require_winner_in_scope(scope, &logical_path)?;
+
+    self.read_parsed_at(mount, source_path, &logical_path, kind, parse)
+  }
+
+  /// Reads and parses the copy an asset this VFS already resolved names, serving what the lineage retains of it at its
+  /// revision, so a parse and a raw read of one asset always read the same copy.
+  ///
+  /// # Errors
+  ///
+  /// As [`Self::read_asset_bytes`], or whatever parsing answers; failures are not retained.
+  pub(crate) fn read_parsed_asset<T, F>(&self, asset: &XrayAsset, kind: XrayAssetType, parse: F) -> XrfResult<Arc<T>>
+  where
+    T: Send + Sync + 'static,
+    F: FnOnce(Vec<u8>) -> XrfResult<T>,
+  {
+    let (mount, source_path) = self.locate_copy(asset)?;
+
+    self.read_parsed_at(mount, source_path, asset.get_logical_path().as_str(), kind, parse)
+  }
+
+  /// Parses one mount's copy of a normalized logical path, serving what the lineage retains of it at its revision.
+  fn read_parsed_at<T, F>(
+    &self,
+    mount: &XrayMount,
+    source_path: &str,
+    logical_path: &str,
+    kind: XrayAssetType,
+    parse: F,
+  ) -> XrfResult<Arc<T>>
+  where
+    T: Send + Sync + 'static,
+    F: FnOnce(Vec<u8>) -> XrfResult<T>,
+  {
     let key: XrayCacheKey = XrayCacheKey::of::<T>(
       mount.get_opening(),
       source_path,
-      self.revisions.get_file(mount.get_id(), &logical_path),
+      self.revisions.get_file(mount.get_id(), logical_path),
     );
 
     self.cache.get_or_load(key, kind, || {
-      let bytes: Vec<u8> = self.read_from_mount(mount, source_path, &logical_path)?;
+      // Looked at before the read, so a change landing between the two is seen by the next look rather than missed.
+      let stamp: Option<XrayFileStamp> = self
+        .cache
+        .get_policy()
+        .is_allowed(kind)
+        .then(|| mount.get_source().get_stamp(source_path))
+        .flatten();
+      let bytes: Vec<u8> = self.read_from_mount(mount, source_path, logical_path)?;
       let length: u64 = bytes.len() as u64;
 
-      Ok((parse(bytes)?, length))
+      Ok((parse(bytes)?, length, stamp))
     })
   }
 
-  /// Reads the bytes of an asset this VFS already resolved.
+  /// Reads the bytes of the copy an asset this VFS already resolved names.
   ///
   /// # Errors
   ///
   /// Returns a not-found error when no mount in this VFS holds the asset's container — most often because the asset came
   /// from a different VFS, or its mount has since been replaced.
   pub(crate) fn read_asset_bytes(&self, asset: &XrayAsset) -> XrfResult<Vec<u8>> {
+    let (mount, source_path) = self.locate_copy(asset)?;
+
+    self.read_from_mount(mount, source_path, asset.get_logical_path().as_str())
+  }
+
+  /// The mount holding the copy an asset names, and its path there.
+  ///
+  /// # Errors
+  ///
+  /// As [`Self::read_asset_bytes`].
+  fn locate_copy<'a>(&self, asset: &'a XrayAsset) -> XrfResult<(&XrayMount, &'a str)> {
     let container_root: &Path = match asset.get_container() {
       XrayAssetContainer::Directory { root, .. } => root,
       XrayAssetContainer::Archive { path } => path,
@@ -378,7 +460,7 @@ impl XrayVfs {
       )));
     };
 
-    self.read_from_mount(mount, source_path, asset.get_logical_path().as_str())
+    Ok((mount, source_path))
   }
 
   /// Size in bytes of the winning entry within a scope, without reading it.

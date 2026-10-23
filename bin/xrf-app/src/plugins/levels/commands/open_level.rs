@@ -10,7 +10,7 @@ use crate::core::assets::{AssetMountState, detect_search_engine};
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionDerived, SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::level_read::{describe_level, read_level};
+use crate::plugins::levels::opened_level::OpenedLevel;
 use crate::plugins::levels::report::{report_open, report_opening};
 use crate::plugins::levels::request::LevelOpenRequest;
 use crate::plugins::levels::state::{LevelState, SelectedLevel, SelectedLevelDescription};
@@ -40,12 +40,12 @@ pub async fn levels_open_level(
 
   let roots: XrayRoots = roots.centred_on(source.get_physical_path());
   let dialect: Arc<dyn LtxDialect> = select_ltx_dialect(is_dltx);
-  let assets: AssetMountState = AssetMountState::clone(&assets);
+  let reader: AssetMountState = AssetMountState::clone(&assets);
   let (opened, search) = execution
     .run_blocking("Opening the level", move || {
-      let search: XraySearch = assets.search_fresh(&roots)?;
+      let search: XraySearch = reader.search_fresh(&roots)?;
       let opened: SessionDerived<SelectedLevel> =
-        read_level(search.clone(), source, roots, dialect, |search, roots| {
+        OpenedLevel::read(search.clone(), source, roots, dialect, |search, roots| {
           engine.resolve(|| detect_search_engine(search, roots))
         })?;
 
@@ -60,13 +60,19 @@ pub async fn levels_open_level(
     level.engine.describe()
   );
 
-  let selected: Arc<SessionSnapshot<SelectedLevel>> =
-    state
-      .selected
-      .commit_open_with(session_id, opened.value, opened.inputs, opened.parts)?;
+  let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.catch_up(
+    state.selected.commit_open_with(
+      session_id,
+      opened.value,
+      search.get_vfs().get_revision(),
+      opened.inputs,
+      opened.parts,
+    )?,
+    &assets,
+  );
 
   report_open(&selected, started);
 
   // The start was decided as the level opened, so describing it reads nothing.
-  Ok(describe_level(&selected, &search))
+  Ok(SelectedLevel::describe_at(&selected, &search))
 }

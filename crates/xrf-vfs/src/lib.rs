@@ -25,6 +25,8 @@ pub use search::{
   XrayDirectoryListing, XrayLookupScope, XrayMountedEntry, XrayReadHandle, XrayResolution, XraySearch, XraySearchPlan,
   XraySearchStep, XraySearchedSource, XrayShadowedCopy, XrayShadowingEntry,
 };
-pub use source::{XrayArchiveSource, XrayAssetSource, XrayDeclaredRoot, XraySourceKind, label_from_path};
+pub use source::{
+  XrayArchiveSource, XrayAssetSource, XrayDeclaredRoot, XrayFileStamp, XraySourceKind, label_from_path,
+};
 pub use trace::{XrayReadTrace, XrayReadTraceEntry, XrayReadTraceHotPath, XrayReadTraceSummary};
 pub use vfs::{XrayVfs, XrayVfsHost};

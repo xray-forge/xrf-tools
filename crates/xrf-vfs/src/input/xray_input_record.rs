@@ -49,7 +49,7 @@ impl XrayInputRecord {
 
   /// A record of the inputs `keep` picks, with the answers this one holds for them: what one change depends on, out of
   /// everything its author read, so a commit is refused only when that moved.
-  pub fn filtered(&self, keep: impl Fn(&XrayInput) -> bool) -> XrayInputRecord {
+  pub fn to_filtered(&self, keep: impl Fn(&XrayInput) -> bool) -> XrayInputRecord {
     let inputs: HashMap<XrayInput, XrayInputAnswer> = self
       .lock()
       .iter()

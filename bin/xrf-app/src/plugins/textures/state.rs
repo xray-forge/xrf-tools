@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use xrf_vfs::XrayRoots;
 
+use crate::core::assets::AssetMountState;
 use crate::core::session::{Session, SessionId};
 use crate::core::types::TauriResult;
 use crate::plugins::textures::catalog::TextureCatalogMode;
@@ -22,13 +23,16 @@ pub struct TextureState {
   pub browse: Session<TextureBrowseSession>,
   /// The encodes one comparison weighed, held so a save can write the candidate it reported.
   pub comparison: Session<TextureEncodingSession>,
+  /// The application's asset state, which a save commits through.
+  pub assets: AssetMountState,
 }
 
 impl TextureState {
-  pub fn new() -> Self {
+  pub fn new(assets: AssetMountState) -> Self {
     Self {
       browse: Session::new("texture browse"),
       comparison: Session::new("texture comparison"),
+      assets,
     }
   }
 

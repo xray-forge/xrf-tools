@@ -19,9 +19,9 @@ use crate::core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountSta
 use crate::core::session::{Session, SessionChange, SessionId, SessionRootChange, SessionSnapshot};
 use crate::plugins::levels::configs::LEVEL_SECTIONS_PART;
 use crate::plugins::levels::details::LEVEL_DETAILS_PART;
-use crate::plugins::levels::level_read::read_level;
 use crate::plugins::levels::lights::LEVEL_LIGHTS_PART;
 use crate::plugins::levels::object_motions::LEVEL_OBJECT_MOTIONS_PART;
+use crate::plugins::levels::opened_level::OpenedLevel;
 use crate::plugins::levels::particles::LEVEL_PARTICLES_PART;
 use crate::plugins::levels::render_source::LevelRenderSource;
 use crate::plugins::levels::spawn::LEVEL_SPAWN_PART;
@@ -93,18 +93,16 @@ fn open(
   let source: LevelSource = LevelSource::Asset {
     logical_path: String::from(LEVEL),
   };
-  let opened = read_level(
-    assets.search(roots).expect("the tree mounts"),
-    source,
-    roots.clone(),
-    select_ltx_dialect(false),
-    |_, _| XrayEngineResolution::named(XrayEngine::Vanilla),
-  )
+  let search: XraySearch = assets.search(roots).expect("the tree mounts");
+  let revision = search.get_vfs().get_revision();
+  let opened = OpenedLevel::read(search, source, roots.clone(), select_ltx_dialect(false), |_, _| {
+    XrayEngineResolution::named(XrayEngine::Vanilla)
+  })
   .expect("the level reads");
 
   session.begin_open(id).unwrap();
   session
-    .commit_open_with(id, opened.value, opened.inputs, opened.parts)
+    .commit_open_with(id, opened.value, revision, opened.inputs, opened.parts)
     .unwrap()
 }
 
@@ -174,13 +172,13 @@ fn a_commit_to_a_file_the_level_was_read_from_reads_it_again_and_streams_its_sce
   let log: ChangeLog = ChangeLog::default();
   let viewport: RenderViewportId = RenderViewportId(1);
 
-  assets.follow(state.selected.clone());
-  assets.subscribe(LevelSceneFollower {
+  assets.add_follower(state.selected.clone());
+  assets.add_subscriber(LevelSceneFollower {
     levels: state.selected.clone(),
     shown: Arc::clone(&shown),
     world: Arc::clone(&world),
   });
-  assets.subscribe(log.clone());
+  assets.add_subscriber(log.clone());
 
   let opened: Arc<SessionSnapshot<SelectedLevel>> = open(&state.selected, &assets, &roots);
   let source: Arc<LevelRenderSource> = shown.get_source(Arc::clone(&opened), &assets);

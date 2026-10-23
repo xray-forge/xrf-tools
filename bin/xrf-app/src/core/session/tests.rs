@@ -1,15 +1,16 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Duration;
 
 use rayon::prelude::*;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{
-  XrayInputKind, XrayInputRecord, XrayLookupScope, XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction,
-  XrayVfs,
+  XrayAsset, XrayInputKind, XrayInputRecord, XrayLookupScope, XrayMountMode, XrayRevision, XrayRoots, XraySearch,
+  XrayTransaction, XrayVfs,
 };
 
 use crate::core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountState};
@@ -434,6 +435,7 @@ fn a_snapshot_keeps_what_its_value_and_its_kept_parts_were_read_from() {
     .commit_open_with(
       id,
       "level",
+      XrayRevision::MOUNTED,
       root,
       SessionParts::new().with::<CountedPart>(Arc::new(1), spawn),
     )
@@ -456,6 +458,13 @@ fn a_snapshot_keeps_what_its_value_and_its_kept_parts_were_read_from() {
 
 /// A loose tree of `files` behind an asset state, with the search an open over it takes.
 fn opened_tree(name: &str, files: &[&str]) -> (AssetMountState, XraySearch) {
+  let (assets, _, search) = opened_roots(name, files);
+
+  (assets, search)
+}
+
+/// The same, with the tree's root.
+fn opened_roots(name: &str, files: &[&str]) -> (AssetMountState, PathBuf, XraySearch) {
   let root: PathBuf = build_absolute_generated_test_resource_path(&format!("session_follow/{name}"));
 
   let _ = fs::remove_dir_all(&root);
@@ -468,11 +477,30 @@ fn opened_tree(name: &str, files: &[&str]) -> (AssetMountState, XraySearch) {
   }
 
   let assets: AssetMountState = AssetMountState::new();
-  let search: XraySearch = assets
-    .search(&XrayRoots::one(root, XrayMountMode::Directory))
-    .expect("the tree mounts");
+  let search: XraySearch = assets.search(&roots_at(&root)).expect("the tree mounts");
 
-  (assets, search)
+  (assets, root, search)
+}
+
+fn roots_at(root: &Path) -> XrayRoots {
+  XrayRoots::one(root.to_path_buf(), XrayMountMode::Directory)
+}
+
+/// Parses a config through `search`, counting the parses that ran.
+fn parse_counted(search: &XraySearch, logical_path: &str, parses: &AtomicU32) -> String {
+  let asset: XrayAsset = search
+    .find(logical_path)
+    .expect("the lookup succeeds")
+    .expect("the config is there");
+
+  search
+    .read_parsed(&asset, |bytes| {
+      parses.fetch_add(1, Ordering::Relaxed);
+
+      Ok(String::from_utf8_lossy(&bytes).into_owned())
+    })
+    .expect("the config parses")
+    .to_string()
 }
 
 /// Opens `value` in `session` as an open reading `paths` through `search` would.
@@ -493,7 +521,7 @@ fn open_reading(
 
   session.begin_open(id).unwrap();
   session
-    .commit_open_with(id, value, inputs, SessionParts::new())
+    .commit_open_with(id, value, search.get_vfs().get_revision(), inputs, SessionParts::new())
     .unwrap()
 }
 
@@ -523,7 +551,7 @@ fn a_commit_moves_a_session_along_sharing_its_value_and_the_parts_it_did_not_tou
 
     2
   });
-  // Asked for, never built: what it would read is not known, so it is neither carried nor reported.
+  // Asked for, never built: what it would read is not known, so it is not carried, and is named for whoever waits on it.
   opened
     .parts
     .record::<DependentPart, _>(&search, |search| read(search, "configs\\weather.ltx"));
@@ -539,7 +567,7 @@ fn a_commit_moves_a_session_along_sharing_its_value_and_the_parts_it_did_not_tou
       session_id: opened.session_id,
       revision: assets.get_vfs().get_revision(),
       root: SessionRootChange::Kept,
-      stale_parts: vec!["pooled"],
+      stale_parts: vec!["dependent", "pooled"],
     }
   );
   assert!(
@@ -609,6 +637,145 @@ fn a_moved_value_nothing_derives_is_kept_and_reported_stale() {
   assert_eq!(change.root, SessionRootChange::Stale);
   assert_eq!(change.revision, XrayRevision::MOUNTED, "it stays at its own revision");
   assert!(Arc::ptr_eq(&session.get().unwrap().unwrap(), &opened));
+
+  write(&assets, &search, "configs\\system.ltx");
+
+  assert!(
+    session.follow(&assets).unwrap().is_none(),
+    "a snapshot reported stale is not reported again"
+  );
+
+  let reopened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "reopened", &["configs\\system.ltx"]);
+
+  write(&assets, &search, "configs\\system.ltx");
+
+  assert_eq!(
+    session.follow(&assets).unwrap().map(|change| change.session_id),
+    Some(reopened.session_id),
+    "the snapshot replacing it is followed afresh"
+  );
+}
+
+#[test]
+fn a_carried_part_records_nothing_its_old_snapshot_reads_afterwards() {
+  let (assets, search) = opened_tree("carried_record", &["configs/system.ltx", "configs/game.ltx"]);
+  let session: Session<&str> = Session::new("test");
+  let opened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "opened", &[]);
+
+  opened.parts.get_or_init::<CountedPart>(|| Arc::new(1));
+  write(&assets, &search, "configs\\game.ltx");
+  session.follow(&assets).unwrap().expect("the session moved");
+
+  // A reader still on the old snapshot reads on into its part.
+  opened
+    .parts
+    .record::<CountedPart, _>(&search, |search| read(search, "configs\\system.ltx"));
+
+  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap().unwrap();
+
+  assert_eq!(
+    next.parts.get::<CountedPart>().as_deref(),
+    Some(&1),
+    "the part is carried"
+  );
+  assert!(
+    next
+      .parts
+      .get_inputs::<CountedPart>()
+      .expect("the part is carried")
+      .is_empty()
+  );
+}
+
+#[test]
+fn an_open_published_after_a_commit_it_did_not_read_catches_up() {
+  let (assets, search) = opened_tree("caught_up", &["configs/system.ltx", "configs/game.ltx"]);
+  let session: Session<&str> = Session::new("test");
+  let log: ChangeLog = ChangeLog::default();
+
+  assets.add_follower(session.clone());
+  assets.add_subscriber(log.clone());
+
+  // Read before the commit, published after its fan-out found nothing open.
+  let inputs: XrayInputRecord = XrayInputRecord::new();
+
+  read(&search.clone().with_recording(&inputs), "configs\\system.ltx");
+  write(&assets, &search, "configs\\game.ltx");
+
+  let id: SessionId = SessionId::new();
+
+  session.begin_open(id).unwrap();
+
+  let opened: Arc<SessionSnapshot<&str>> = session
+    .commit_open_with(
+      id,
+      "opened",
+      search.get_vfs().get_revision(),
+      inputs,
+      SessionParts::new(),
+    )
+    .unwrap();
+
+  assert_eq!(opened.revision, XrayRevision::MOUNTED, "stamped with what it read");
+
+  let caught_up: Arc<SessionSnapshot<&str>> = session.catch_up(opened, &assets);
+
+  assert_eq!(caught_up.revision, assets.get_vfs().get_revision());
+  assert_eq!(
+    log.list(),
+    vec![SessionChange {
+      session_id: id,
+      revision: caught_up.revision,
+      root: SessionRootChange::Kept,
+      stale_parts: Vec::new(),
+    }]
+  );
+  assert!(
+    Arc::ptr_eq(&session.catch_up(Arc::clone(&caught_up), &assets), &caught_up),
+    "a current open catches up with nothing"
+  );
+}
+
+// Commits racing each other are heard in the order they were published, each event naming the sessions it moved at its
+// own revision.
+#[test]
+fn concurrent_commits_are_heard_in_revision_order_with_their_own_sessions() {
+  let files: Vec<String> = (0..8).map(|index| format!("configs/file_{index}.ltx")).collect();
+  let names: Vec<&str> = files.iter().map(String::as_str).collect();
+  let (assets, search) = opened_tree("concurrent", &names);
+  let session: Session<&str> = Session::new("test");
+  let log: ChangeLog = ChangeLog::default();
+
+  assets.add_follower(session.clone());
+  assets.add_subscriber(log.clone());
+  open_reading(&session, &search, "opened", &[]);
+
+  thread::scope(|scope| {
+    for index in 0..8 {
+      let (assets, search) = (&assets, &search);
+
+      scope.spawn(move || write(assets, search, &format!("configs\\file_{index}.ltx")));
+    }
+  });
+
+  let events: Vec<AssetChangeEvent> = log.taken.lock().unwrap().clone();
+  let revisions: Vec<XrayRevision> = events.iter().map(|event| event.revision).collect();
+  let mut sorted: Vec<XrayRevision> = revisions.clone();
+
+  sorted.sort();
+
+  assert_eq!(events.len(), 8);
+  assert_eq!(revisions, sorted, "heard in the order published");
+  assert!(
+    events
+      .iter()
+      .flat_map(|event| event
+        .sessions
+        .iter()
+        .map(move |change| (event.revision, change.revision)))
+      .all(|(event, session)| event == session),
+    "every session an event names moved to that event's revision"
+  );
 }
 
 #[test]
@@ -629,14 +796,55 @@ fn a_failed_derivation_is_reported_and_leaves_the_snapshot_as_it_was() {
 }
 
 #[test]
+fn a_fresh_search_reads_a_file_changed_behind_the_app_again_and_moves_its_sessions() {
+  let (assets, root, search) = opened_roots("changed_on_disk", &["configs/system.ltx", "configs/game.ltx"]);
+  let session: Session<&str> =
+    Session::new("test").with_derivation(|_, _| Ok(SessionDerived::new("derived", XrayInputRecord::new())));
+  let parses: AtomicU32 = AtomicU32::new(0);
+
+  assets.add_follower(session.clone());
+  open_reading(&session, &search, "opened", &["configs\\system.ltx"]);
+  parse_counted(&search, "configs\\system.ltx", &parses);
+  parse_counted(&search, "configs\\game.ltx", &parses);
+
+  let unchanged: XraySearch = assets.search_fresh(&roots_at(&root)).expect("the roots open afresh");
+
+  assert_eq!(unchanged.get_vfs().get_revision(), XrayRevision::MOUNTED);
+  assert_eq!(
+    **session.get().unwrap().unwrap(),
+    "opened",
+    "nothing changed moves nothing"
+  );
+
+  fs::write(root.join("configs/system.ltx"), b"edited behind the app").expect("file rewritten");
+
+  let fresh: XraySearch = assets.search_fresh(&roots_at(&root)).expect("the roots open afresh");
+  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap().unwrap();
+
+  assert_ne!(fresh.get_vfs().get_revision(), XrayRevision::MOUNTED);
+  assert_eq!(**next, "derived");
+  assert_eq!(next.revision, fresh.get_vfs().get_revision());
+  assert_eq!(
+    parse_counted(&fresh, "configs\\system.ltx", &parses),
+    "edited behind the app"
+  );
+  assert_eq!(parse_counted(&fresh, "configs\\game.ltx", &parses), "payload");
+  assert_eq!(
+    parses.load(Ordering::Relaxed),
+    3,
+    "the changed file is parsed again and the unchanged one is served"
+  );
+}
+
+#[test]
 fn a_commit_moves_every_followed_session_before_it_returns() {
   let (assets, search) = opened_tree("followed", &["configs/system.ltx", "configs/game.ltx"]);
   let followed: Session<&str> = Session::new("followed");
   let unfollowed: Session<&str> = Session::new("unfollowed");
   let closed: Session<&str> = Session::new("closed");
 
-  assets.follow(followed.clone());
-  assets.follow(closed.clone());
+  assets.add_follower(followed.clone());
+  assets.add_follower(closed.clone());
 
   open_reading(&followed, &search, "followed", &["configs\\system.ltx"]);
   open_reading(&unfollowed, &search, "unfollowed", &["configs\\system.ltx"]);
@@ -755,8 +963,8 @@ fn a_deferred_derivation_is_reported_at_once_and_published_once_it_lands() {
   let (session, held) = HeldDerivation::session();
   let log: ChangeLog = ChangeLog::default();
 
-  assets.follow(session.clone());
-  assets.subscribe(log.clone());
+  assets.add_follower(session.clone());
+  assets.add_subscriber(log.clone());
 
   let opened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "opened", &["configs\\system.ltx"]);
 
@@ -814,8 +1022,8 @@ fn a_deferred_derivation_gives_way_to_a_close_or_an_open_published_while_it_read
     let (session, held) = HeldDerivation::session();
     let log: ChangeLog = ChangeLog::default();
 
-    assets.follow(session.clone());
-    assets.subscribe(log.clone());
+    assets.add_follower(session.clone());
+    assets.add_subscriber(log.clone());
 
     let opened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "opened", &["configs\\system.ltx"]);
 
@@ -851,8 +1059,8 @@ fn a_subscriber_takes_each_commits_changes_once_its_sessions_moved_before_it_ret
   let session: Session<&str> = Session::new("followed");
   let taken: Arc<Mutex<Vec<(AssetChangeEvent, XrayRevision)>>> = Arc::default();
 
-  assets.follow(session.clone());
-  assets.subscribe(RecordingSubscriber {
+  assets.add_follower(session.clone());
+  assets.add_subscriber(RecordingSubscriber {
     session: session.clone(),
     taken: Arc::clone(&taken),
   });

@@ -4,12 +4,16 @@
 #[cfg(test)]
 mod tests;
 mod xray_asset_cache;
+mod xray_cache_entries;
+mod xray_cache_entry;
 mod xray_cache_flights;
 mod xray_cache_key;
 mod xray_cache_policy;
 mod xray_cache_stats;
+mod xray_stamped_copy;
 
 pub(crate) use xray_asset_cache::XrayAssetCache;
 pub(crate) use xray_cache_key::XrayCacheKey;
 pub use xray_cache_policy::XrayCachePolicy;
 pub use xray_cache_stats::XrayCacheStats;
+pub(crate) use xray_stamped_copy::XrayStampedCopy;

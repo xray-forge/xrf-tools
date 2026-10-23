@@ -1,21 +1,16 @@
-use std::any::Any;
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use xrf_error::XrfResult;
 
 use crate::asset::XrayAssetType;
+use crate::cache::xray_cache_entries::XrayCacheEntries;
 use crate::cache::xray_cache_flights::{XrayCacheFlightClaim, XrayCacheFlights};
 use crate::cache::xray_cache_key::XrayCacheKey;
 use crate::cache::xray_cache_policy::XrayCachePolicy;
 use crate::cache::xray_cache_stats::XrayCacheStats;
-
-#[derive(Debug)]
-struct XrayCacheEntry {
-  value: Arc<dyn Any + Send + Sync>,
-  bytes: u64,
-}
+use crate::cache::xray_stamped_copy::XrayStampedCopy;
+use crate::{XrayFileStamp, XrayRevision};
 
 /// Parsed assets a VFS snapshot and its forks keep, so a second read of the same copy costs a hash lookup.
 ///
@@ -28,11 +23,14 @@ struct XrayCacheEntry {
 #[derive(Debug, Default)]
 pub struct XrayAssetCache {
   policy: XrayCachePolicy,
-  entries: RwLock<HashMap<XrayCacheKey, XrayCacheEntry>>,
+  entries: RwLock<XrayCacheEntries>,
   flights: XrayCacheFlights,
   hits: AtomicU64,
   misses: AtomicU64,
   refused: AtomicU64,
+  /// The last project revision a change of this lineage took, so two changes branched from one snapshot never share a
+  /// revision, and so never a retained value's key.
+  issued: AtomicU64,
 }
 
 impl XrayAssetCache {
@@ -47,6 +45,17 @@ impl XrayAssetCache {
     &self.policy
   }
 
+  /// The revision a change of a snapshot at `current` takes: past `current` and past every revision this lineage issued.
+  pub(crate) fn issue_revision(&self, current: XrayRevision) -> XrayRevision {
+    let next = |last: u64| last.max(current.get()) + 1;
+    let last: u64 = self
+      .issued
+      .try_update(Ordering::SeqCst, Ordering::SeqCst, |last| Some(next(last)))
+      .unwrap_or_else(|last| last);
+
+    XrayRevision::from_count(next(last))
+  }
+
   /// Returns a retained value, if the store is holding one under that identity.
   ///
   /// A plain lookup, outside the accounting: it reports what the store holds without changing what the run reports
@@ -58,9 +67,10 @@ impl XrayAssetCache {
 
   /// Serves a retained value, or loads it once on behalf of every thread asking for it at the same moment.
   ///
-  /// `load` answers with the parsed value and the source length it was parsed from, and runs only when nothing is
-  /// retained. Two threads missing the same retained key produce one load and the counters of the sequential pair that
-  /// would have run instead — one miss and one hit — so a report describes the inputs rather than the schedule.
+  /// `load` answers with the parsed value, the source length it was parsed from and, for a loose copy, how its file
+  /// looked when read, and runs only when nothing is retained. Two threads missing the same retained key produce one
+  /// load and the counters of the sequential pair that would have run instead — one miss and one hit — so a report
+  /// describes the inputs rather than the schedule.
   ///
   /// # Errors
   ///
@@ -70,7 +80,7 @@ impl XrayAssetCache {
   pub fn get_or_load<T, F>(&self, key: XrayCacheKey, kind: XrayAssetType, load: F) -> XrfResult<Arc<T>>
   where
     T: Send + Sync + 'static,
-    F: FnOnce() -> XrfResult<(T, u64)>,
+    F: FnOnce() -> XrfResult<(T, u64, Option<XrayFileStamp>)>,
   {
     // Coordinating a kind the store will not retain could only turn a second reader's miss into a hit, because nothing
     // would be published for that reader to find.
@@ -91,9 +101,9 @@ impl XrayAssetCache {
           return Ok(retained);
         }
 
-        let (value, bytes) = self.load_and_count(load)?;
+        let (value, bytes, stamp) = self.load_and_count(load)?;
 
-        self.retain(key, kind, bytes, Arc::clone(&value));
+        self.retain(key, kind, bytes, stamp, Arc::clone(&value));
 
         Ok(value)
       }
@@ -113,30 +123,48 @@ impl XrayAssetCache {
   /// Retains a parsed value if the policy allows its kind and the budget has room.
   #[cfg(test)]
   pub fn insert<T: Send + Sync + 'static>(&self, key: XrayCacheKey, kind: XrayAssetType, bytes: u64, value: Arc<T>) {
-    self.retain(key, kind, bytes, value);
+    self.retain(key, kind, bytes, None, value);
   }
 
   /// Drops everything retained for one copy, whatever type or revision held it.
+  // todo: Index the keys by copy, so a change of many files stops scanning every retained value once per file.
   pub fn forget_copy(&self, opening: u64, path: &str) -> usize {
-    self.drop_entries(|key, _| !key.is_copy(opening, path))
+    self.write_entries().retain(|key, _| !key.is_copy(opening, path))
+  }
+
+  /// Every retained value's loose copy among the sources `is_listed` picks by opening, as its read saw the file: one
+  /// per value, so a copy two types were parsed from is listed twice.
+  pub(crate) fn list_stamped(&self, is_listed: impl Fn(u64) -> bool) -> Vec<XrayStampedCopy> {
+    self
+      .read_entries()
+      .map
+      .iter()
+      .filter(|(key, _)| is_listed(key.get_opening()))
+      .filter_map(|(key, entry)| {
+        Some(XrayStampedCopy {
+          opening: key.get_opening(),
+          path: key.get_path().to_owned(),
+          revision: key.get_revision(),
+          stamp: entry.stamp?,
+        })
+      })
+      .collect()
   }
 
   /// Drops everything no caller is holding, and answers how many entries went.
+  #[cfg(test)]
   pub fn clean_unreferenced(&self) -> usize {
-    self.drop_entries(|_, entry| Arc::strong_count(&entry.value) > 1)
-  }
-
-  /// Drops everything, including values callers still hold — they keep their own references.
-  pub fn clear(&self) {
-    self.write_entries().clear();
+    self
+      .write_entries()
+      .retain(|_, entry| Arc::strong_count(&entry.value) > 1)
   }
 
   pub fn get_stats(&self) -> XrayCacheStats {
     let entries = self.read_entries();
 
     XrayCacheStats {
-      entries: entries.len(),
-      bytes: Self::retained_bytes(&entries),
+      entries: entries.map.len(),
+      bytes: entries.bytes,
       hits: self.hits.load(Ordering::Relaxed),
       misses: self.misses.load(Ordering::Relaxed),
       refused: self.refused.load(Ordering::Relaxed),
@@ -157,16 +185,16 @@ impl XrayAssetCache {
   /// # Errors
   ///
   /// Returns whatever `load` answers with. The miss stands: the read happened, whatever it found.
-  fn load_and_count<T, F>(&self, load: F) -> XrfResult<(Arc<T>, u64)>
+  fn load_and_count<T, F>(&self, load: F) -> XrfResult<(Arc<T>, u64, Option<XrayFileStamp>)>
   where
     T: Send + Sync + 'static,
-    F: FnOnce() -> XrfResult<(T, u64)>,
+    F: FnOnce() -> XrfResult<(T, u64, Option<XrayFileStamp>)>,
   {
     self.misses.fetch_add(1, Ordering::Relaxed);
 
-    let (value, bytes) = load()?;
+    let (value, bytes, stamp) = load()?;
 
-    Ok((Arc::new(value), bytes))
+    Ok((Arc::new(value), bytes, stamp))
   }
 
   /// Loads for this reader alone, retaining nothing and sharing nothing.
@@ -177,7 +205,7 @@ impl XrayAssetCache {
   fn load_uncoordinated<T, F>(&self, load: F) -> XrfResult<Arc<T>>
   where
     T: Send + Sync + 'static,
-    F: FnOnce() -> XrfResult<(T, u64)>,
+    F: FnOnce() -> XrfResult<(T, u64, Option<XrayFileStamp>)>,
   {
     Ok(self.load_and_count(load)?.0)
   }
@@ -186,12 +214,20 @@ impl XrayAssetCache {
   fn peek<T: Send + Sync + 'static>(&self, key: &XrayCacheKey) -> Option<Arc<T>> {
     self
       .read_entries()
+      .map
       .get(key)
       .and_then(|entry| Arc::clone(&entry.value).downcast::<T>().ok())
   }
 
   /// Holds a value, subject to the policy and the budget.
-  fn retain<T: Send + Sync + 'static>(&self, key: XrayCacheKey, kind: XrayAssetType, bytes: u64, value: Arc<T>) {
+  fn retain<T: Send + Sync + 'static>(
+    &self,
+    key: XrayCacheKey,
+    kind: XrayAssetType,
+    bytes: u64,
+    stamp: Option<XrayFileStamp>,
+    value: Arc<T>,
+  ) {
     if !self.policy.is_allowed(kind) {
       return;
     }
@@ -199,44 +235,27 @@ impl XrayAssetCache {
     let mut entries = self.write_entries();
 
     if let Some(budget) = self.policy.get_budget() {
-      if Self::retained_bytes(&entries) + bytes > budget {
-        entries.retain(|_, entry| Arc::strong_count(&entry.value) > 1);
+      if entries.bytes + bytes > budget {
+        entries.evict_for(bytes, budget);
       }
 
       // Still over after dropping what nobody holds: stop retaining rather than exceed a ceiling that exists to keep a
       // session out of swap. The caller already has the value, so this costs a re-parse later and nothing else.
-      if Self::retained_bytes(&entries) + bytes > budget {
+      if entries.bytes + bytes > budget {
         self.refused.fetch_add(1, Ordering::Relaxed);
 
         return;
       }
     }
 
-    entries.insert(key, XrayCacheEntry { value, bytes });
+    entries.insert(key, value, bytes, stamp);
   }
 
-  /// Keeps the entries `keep` admits, and answers how many went.
-  fn drop_entries<F>(&self, keep: F) -> usize
-  where
-    F: FnMut(&XrayCacheKey, &mut XrayCacheEntry) -> bool,
-  {
-    let mut entries = self.write_entries();
-    let before: usize = entries.len();
-
-    entries.retain(keep);
-
-    before - entries.len()
-  }
-
-  fn read_entries(&self) -> RwLockReadGuard<'_, HashMap<XrayCacheKey, XrayCacheEntry>> {
+  fn read_entries(&self) -> RwLockReadGuard<'_, XrayCacheEntries> {
     self.entries.read().expect("asset cache lock is never poisoned")
   }
 
-  fn write_entries(&self) -> RwLockWriteGuard<'_, HashMap<XrayCacheKey, XrayCacheEntry>> {
+  fn write_entries(&self) -> RwLockWriteGuard<'_, XrayCacheEntries> {
     self.entries.write().expect("asset cache lock is never poisoned")
-  }
-
-  fn retained_bytes(entries: &HashMap<XrayCacheKey, XrayCacheEntry>) -> u64 {
-    entries.values().map(|entry| entry.bytes).sum()
   }
 }

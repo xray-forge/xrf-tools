@@ -1,29 +1,16 @@
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_dltx::select_ltx_dialect;
-use xrf_ltx::{LtxDocumentSource, LtxProject, LtxProjectOptions};
-use xrf_ltx_inspect::{LtxInventory, LtxInventoryReader};
-use xrf_utils::{error_to_string, format_path};
-use xrf_vfs::{XrayInputRecord, XrayRoots};
+use xrf_vfs::XrayRevision;
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::SessionParts;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::descriptor::ConfigsProjectDescriptor;
+use crate::plugins::configs::opened_configs_project::OpenedConfigsProject;
 use crate::plugins::configs::request::ConfigsOpenRequest;
-use crate::plugins::configs::state::{ConfigsProject, ConfigsState};
-
-/// What opening one configs project produced, on its way back from the blocking thread.
-struct OpenedConfigsProject {
-  project: LtxProject,
-  /// What the project was opened and listed from.
-  inputs: XrayInputRecord,
-  inventory: LtxInventory,
-  roots: XrayRoots,
-  prefix: Option<String>,
-}
+use crate::plugins::configs::state::ConfigsState;
 
 /// Opens a configs project for browsing, and lists what it holds.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_project"))]
@@ -45,79 +32,21 @@ pub async fn configs_open_project(
 
   state.begin_open(session_id)?;
   let state: ConfigsState = state.inner().clone();
-  let assets: AssetMountState = AssetMountState::clone(&assets);
+  let reader: AssetMountState = AssetMountState::clone(&assets);
 
   let opened: OpenedConfigsProject = execution
     .run_blocking("Configs project open", move || {
-      open_and_list(&assets, roots, prefix, is_dltx)
+      OpenedConfigsProject::read(&reader.search_fresh(&roots)?, roots, prefix, is_dltx)
     })
     .await??;
+  let revision: XrayRevision = opened.get_revision();
+  let (project, inputs) = opened.into_project(session_id);
+  let descriptor: Arc<ConfigsProjectDescriptor> = Arc::clone(&project.descriptor);
 
-  let descriptor: Arc<ConfigsProjectDescriptor> = Arc::new(ConfigsProjectDescriptor {
-    declared_schemes: opened
-      .project
-      .ltx_scheme_declarations
-      .keys()
-      .map(String::from)
-      .collect::<Vec<String>>(),
-    inventory: opened.inventory,
-    is_dltx,
-    prefix: opened.prefix,
-    root: format_path(&opened.project.root).to_string(),
-    roots: opened.roots,
-    session_id,
-  });
-
-  state.commit_open_with(
-    session_id,
-    ConfigsProject::new(opened.project, Arc::clone(&descriptor)),
-    opened.inputs,
-    SessionParts::new(),
-  )?;
+  state.catch_up(
+    state.commit_open_with(session_id, project, revision, inputs, SessionParts::new())?,
+    &assets,
+  );
 
   Ok(descriptor)
-}
-
-/// Assembles the project over the shared asset roots, recording what it reads, and reads what it holds.
-///
-/// # Errors
-///
-/// Returns an error when the roots cannot be mounted, the project cannot be assembled, or a config it holds cannot be
-/// read.
-fn open_and_list(
-  assets: &AssetMountState,
-  roots: XrayRoots,
-  prefix: Option<String>,
-  is_dltx: bool,
-) -> TauriResult<OpenedConfigsProject> {
-  let inputs: XrayInputRecord = XrayInputRecord::new();
-  let options: LtxProjectOptions = LtxProjectOptions {
-    dialect: select_ltx_dialect(is_dltx),
-    is_caching_resolutions: true,
-    is_with_schemes_check: true,
-    is_strict_check: false,
-  };
-  let project: LtxProject = LtxProject::open_at_search_opt(
-    roots.describe(),
-    &assets.search_fresh(&roots)?.with_recording(&inputs),
-    prefix.as_deref(),
-    options,
-  )
-  .map_err(error_to_string)?;
-
-  let inventory: LtxInventory = {
-    let source = project.document_source();
-
-    LtxInventoryReader::new(&project, &source as &dyn LtxDocumentSource)
-      .read()
-      .map_err(error_to_string)?
-  };
-
-  Ok(OpenedConfigsProject {
-    inputs,
-    inventory,
-    prefix,
-    project,
-    roots,
-  })
 }

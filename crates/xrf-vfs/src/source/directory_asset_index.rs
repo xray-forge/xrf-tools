@@ -2,8 +2,9 @@ use std::path::{Path, PathBuf};
 
 use walkdir::WalkDir;
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::format_path;
+use xrf_utils::{format_path, is_staged_sibling};
 
+use crate::change::XrayDiskJournal;
 use crate::source::DirectoryAsset;
 
 #[derive(Clone, Debug)]
@@ -13,9 +14,10 @@ pub(crate) struct DirectoryAssetIndex {
 }
 
 impl DirectoryAssetIndex {
-  /// Recursively indexes files below `root` in relative-path order.
+  /// Recursively indexes files below `root` in relative-path order, after settling what a commit cut short left there.
   ///
-  /// Directory paths and symbolic links to directories are not added as assets.
+  /// Directory paths, symbolic links to directories, and the hidden siblings a write stages or sets aside beside a
+  /// file (`.<name>.xrf-…`) are not added as assets.
   ///
   /// An entry the walk cannot read — a permission-denied subdirectory, a broken link — is warned about and skipped
   /// rather than failing the index. Aborting would discard the whole mount over one unreadable corner of a tree, and the
@@ -26,10 +28,26 @@ impl DirectoryAssetIndex {
   /// Returns an error when a file path cannot be made relative to `root`, which would mean the walk left its own root.
   pub fn read(root: impl AsRef<Path>) -> XrfResult<Self> {
     let root: &Path = root.as_ref();
+    let (index, journals): (Self, Vec<PathBuf>) = Self::walk(root)?;
 
+    if journals.is_empty() {
+      return Ok(index);
+    }
+
+    for journal in &journals {
+      XrayDiskJournal::recover(journal);
+    }
+
+    // Once more, since settling a commit moves files back or removes them.
+    Ok(Self::walk(root)?.0)
+  }
+
+  /// Indexes the files below `root`, answering the commit journals found beside them too.
+  fn walk(root: &Path) -> XrfResult<(Self, Vec<PathBuf>)> {
     log::debug!("reading directory assets from {}", format_path(root));
 
     let mut assets: Vec<DirectoryAsset> = Vec::new();
+    let mut journals: Vec<PathBuf> = Vec::new();
 
     for entry in WalkDir::new(root).follow_links(false) {
       let entry = match entry {
@@ -48,6 +66,14 @@ impl DirectoryAssetIndex {
         continue;
       }
 
+      if is_staged_sibling(entry.file_name()) {
+        if entry.file_name().to_str().is_some_and(XrayDiskJournal::is_journal) {
+          journals.push(entry.path().to_path_buf());
+        }
+
+        continue;
+      }
+
       let relative_path = entry
         .path()
         .strip_prefix(root)
@@ -60,10 +86,13 @@ impl DirectoryAssetIndex {
 
     log::debug!("read {} directory assets from {}", assets.len(), format_path(root));
 
-    Ok(Self {
-      root: root.to_path_buf(),
-      assets,
-    })
+    Ok((
+      Self {
+        root: root.to_path_buf(),
+        assets,
+      },
+      journals,
+    ))
   }
 
   /// Returns the root from which relative paths are measured.

@@ -37,13 +37,13 @@ pub fn apply_edits(path: &Path, language: &str, edits: &[TranslationEdit]) -> Xr
 ///
 /// Each copy is rendered from its current bytes ([`render_edits`]); a JSON source holds every language, so its
 /// languages apply one over the other, in language order so the file comes out the same however the edits arrived. A
-/// copy is saved where it is: an archived one is refused, as the project's editability promised, rather than
-/// overridden by a loose copy the commit would create.
+/// copy is saved where it is ([`XrayTransaction::with_write_in_place`]): its commit refuses an archived one, as the
+/// project's editability promised, rather than override it with a loose copy.
 ///
 /// # Errors
 ///
-/// Returns a not-found error when a language has no copy, or its copy is no longer in `search`; an asset error naming
-/// an archived copy; and whatever reading or rendering a copy answers.
+/// Returns a not-found error when a language has no copy, or its copy is no longer in `search`, and whatever reading
+/// or rendering a copy answers.
 pub fn build_save_transaction(
   search: &XraySearch,
   file: &str,
@@ -69,8 +69,6 @@ pub fn build_save_transaction(
       ))
     })?;
 
-    asset.to_writable_path()?;
-
     log::info!(
       "Saving {} edits to {} ({language})",
       language_edits.len(),
@@ -86,11 +84,10 @@ pub fn build_save_transaction(
     rewritten.insert(asset.get_logical_path().clone(), bytes);
   }
 
-  rewritten
-    .into_iter()
-    .try_fold(XrayTransaction::new(search), |transaction, (path, bytes)| {
-      transaction.with_write(path.as_str(), bytes)
-    })
+  rewritten.into_iter().try_fold(
+    XrayTransaction::new(search).with_write_in_place(),
+    |transaction, (path, bytes)| transaction.with_write(path.as_str(), bytes),
+  )
 }
 
 /// The bytes one language's copy of a file holds once `edits` are applied to `existing`, what it holds now: the

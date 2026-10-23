@@ -2,17 +2,101 @@ use std::path::PathBuf;
 
 use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
-use xrf_utils::encode_w1251_bytes_to_string;
-use xrf_vfs::require_writable_path;
+use xrf_utils::{encode_string_to_w1251_bytes, encode_w1251_bytes_to_string, format_path};
+use xrf_vfs::{XrayTransaction, require_writable_path};
 
-use crate::project::{LTX_PHASE_CHECK, LtxFilesFormatter, LtxFormatOptions, LtxProject, LtxProjectFormatResult};
+use crate::ltx::Ltx;
+use crate::project::{
+  LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LtxFilesFormatter, LtxFormatOptions, LtxProject, LtxProjectFormatResult,
+};
 
 impl LtxProject {
-  /// Formats every project LTX file with explicit options.
+  /// Formats every project LTX file with explicit options, rewriting the ones not formatted yet in one commit of the
+  /// project's own snapshot, so the files hold all of the run or none of it.
   ///
-  /// Returns an error instead of partially formatting a project when any config is archived.
+  /// # Errors
+  ///
+  /// As [`Self::format_all_files_with`], or when the rewrite cannot be committed.
   pub fn format_all_files_opt(&self, options: LtxFormatOptions) -> XrfResult<LtxProjectFormatResult> {
-    LtxFilesFormatter::format_opt(&self.writable_files()?, options)
+    self.format_all_files_with(options, |rewrites| {
+      let transaction: XrayTransaction = rewrites
+        .into_iter()
+        .fold(XrayTransaction::new(self.search()), |transaction, (file, bytes)| {
+          transaction.with_file_write(file, bytes)
+        });
+
+      self.search().get_vfs().commit(&transaction).map(drop)
+    })
+  }
+
+  /// Formats every project LTX file with explicit options, handing the rewrites to `write` at once, each as the file it
+  /// replaces and its formatted bytes, where there are any, for a caller committing the run as one change of its own.
+  /// A cancelled run hands over what it formatted before it stopped.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, with nothing handed over, when any config is archived (a project spanning an installation would
+  /// otherwise format the loose handful and report success), cannot be read or will not parse; or what `write` answers.
+  pub fn format_all_files_with(
+    &self,
+    options: LtxFormatOptions,
+    write: impl FnOnce(Vec<(PathBuf, Vec<u8>)>) -> XrfResult,
+  ) -> XrfResult<LtxProjectFormatResult> {
+    let files: Vec<PathBuf> = self.writable_files()?;
+    let mut result: LtxProjectFormatResult = LtxProjectFormatResult::new();
+    let mut rewrites: Vec<(PathBuf, Vec<u8>)> = Vec::new();
+
+    xrf_output::heading!(options.output, "Formatting {} file(s)", files.len());
+
+    result.startup_duration = options.job.elapsed();
+
+    let formatting: JobScope = options.job.enter(LTX_PHASE_FORMAT, Some(files.len() as u64));
+
+    for (logical_path, file) in self.ltx_files.iter().zip(files) {
+      // Between files, never inside one.
+      if options.job.is_cancelled() {
+        result.outcome = JobOutcome::Cancelled;
+
+        break;
+      }
+
+      options.job.set_detail(Some(format_path(&file).to_string()));
+
+      let existing: String = encode_w1251_bytes_to_string(&self.read_counted_bytes(logical_path)?)?;
+      let formatted: String = Ltx::format_from_str(&existing)?;
+
+      if existing == formatted {
+        result.valid_files += 1;
+      } else {
+        xrf_output::info!(options.output, "Formatted: {}", format_path(&file));
+
+        result.invalid_files += 1;
+        result.to_format.push(file.clone());
+        // The read decodes Windows-1251, so the rewrite goes back in that encoding.
+        rewrites.push((file, encode_string_to_w1251_bytes(&formatted)?));
+      }
+
+      result.total_files += 1;
+      formatting.advance();
+    }
+
+    options.job.set_detail(None);
+
+    if !rewrites.is_empty() {
+      write(rewrites)?;
+    }
+
+    result.duration = options.job.elapsed();
+
+    xrf_output::info!(
+      options.output,
+      "Formatted {}/{} files in {}",
+      result.invalid_files,
+      result.total_files,
+      xrf_utils::format_duration(result.duration)
+    );
+
+    Ok(result)
   }
 
   /// Checks every project LTX file with explicit options, reading each one through the project.
@@ -61,11 +145,8 @@ impl LtxProject {
     Ok(result)
   }
 
-  /// Returns physical paths for every project file, refusing when one is not loose.
-  ///
-  /// Formatting rewrites a file in place, which an archived config cannot do. Refusing by name is intentional: a project
-  /// spanning an installation would otherwise format the loose handful and report success over thousands it never touched.
-  /// A caller that needs the loose subset must select it explicitly.
+  /// Returns physical paths for every project file, in `ltx_files` order, refusing when one is not loose: formatting
+  /// rewrites a file in place, which an archived config cannot do.
   fn writable_files(&self) -> XrfResult<Vec<PathBuf>> {
     let mut writable: Vec<PathBuf> = Vec::with_capacity(self.ltx_files.len());
 

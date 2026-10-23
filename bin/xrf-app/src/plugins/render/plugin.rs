@@ -44,7 +44,7 @@ impl RenderPlugin {
 
         application
           .state::<AssetMountState>()
-          .subscribe(state.follow_levels(levels.selected.clone()));
+          .add_subscriber(state.follow_levels(levels.selected.clone()));
         application.manage(state);
 
         Ok(())

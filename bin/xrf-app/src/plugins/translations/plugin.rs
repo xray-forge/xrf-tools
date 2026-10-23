@@ -17,7 +17,9 @@ impl TranslationsPlugin {
         let state: TranslationProjectState = TranslationProjectState::new();
 
         // An open project records every file it read and reads them again when a commit moved one: a save among them.
-        application.state::<AssetMountState>().follow(state.session.clone());
+        application
+          .state::<AssetMountState>()
+          .add_follower(state.session.clone());
         application.manage(state);
 
         Ok(())
