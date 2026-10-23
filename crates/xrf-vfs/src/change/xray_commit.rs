@@ -23,6 +23,7 @@ impl XrayVfs {
     let mut swap: XrayDiskSwap = XrayDiskSwap::default();
     let mut changes: Vec<XrayChange> = Vec::with_capacity(transaction.get_writes().len());
 
+    // todo: Keep what each write replaces (the bytes the winner held, or that none did), so an undo can commit it back.
     for write in transaction.get_writes() {
       let (change, target): (XrayChange, PathBuf) = self.place_write(transaction.get_scopes(), write)?;
 
@@ -43,6 +44,7 @@ impl XrayVfs {
   /// Returns an error, with nothing this snapshot retains dropped, when a change names a mount this snapshot does not
   /// have, a path outside the mount's base, or an archive, whose volumes cannot take a change in place.
   pub fn apply(&self, changes: Vec<XrayChange>) -> XrfResult<(XrayVfs, XrayChangeSet)> {
+    // todo: Let a change carry bytes, so an edit to an open buffer applies in memory with nothing on disk written.
     // Nothing changed is no change: the project revision moves only with a path that did.
     if changes.is_empty() {
       return Ok((self.fork(), XrayChangeSet::new(self.get_revision(), changes)));

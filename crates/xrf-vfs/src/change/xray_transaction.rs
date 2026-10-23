@@ -3,6 +3,7 @@ use xrf_error::{XrfError, XrfResult};
 use crate::{XrayInputRecord, XrayLogicalPath, XrayLookupScope, XraySearch, XraySearchKey, XrayVfs};
 
 /// One gesture's writes and deletes, committed all at once or not at all through [`XrayVfs::commit`].
+// todo: Tag a transaction with the editor or document that issued it, so undoing it is that editor's alone.
 #[derive(Clone, Debug)]
 pub struct XrayTransaction {
   key: XraySearchKey,

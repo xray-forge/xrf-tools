@@ -95,6 +95,9 @@ impl AssetMountState {
   pub fn commit(&self, transaction: &XrayTransaction) -> TauriResult<XrayChangeSet> {
     let changes: XrayChangeSet = self.host.commit(transaction).map_err(|error| error.to_string())?;
 
+    // todo: Record the transaction in an undo history with what it replaced and the editor it came from, capped by total
+    //  bytes, oldest dropped; undo and redo then commit through here as transactions of their own.
+
     // Nothing written is nothing to follow: the project revision did not move.
     if !changes.get_changes().is_empty() {
       self.fan_out(AssetChangeEvent {
