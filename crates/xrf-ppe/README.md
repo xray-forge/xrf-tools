@@ -62,7 +62,9 @@ a first at 0.5 s lasts 5 s. `get_keys_count` and `is_keyed` include the color-ma
 engine's `SPPInfo` as `CPostprocessAnimator::Process` fills it. The file's colours are offsets added to
 `PpeScreen::IDENTITY` (`pp_identity`: base 0.5, gray 0.333, add 0), a noise parameter carrying no keys keeps the
 identity's value (intensity 0, granularity 1, fps 30), and a keyed noise fps plays at a hundred times its stored value.
-An effector's factor then lerps that screen from the identity, which is how an effect fades in and out.
+An effector's factor then lerps that screen from the identity, which is how an effect fades in and out. The engine stops
+on a lerped noise granularity at or below zero; `find_refused_noise_granularity` finds the first time the effect plays
+at, from zero to its length, where its keyed granularity reaches that at full strength.
 
 `get_played_time(elapsed, playback)` is the time an effect plays at, `elapsed` after it starts. It counts from zero,
 not from the first key; past `get_length_seconds`, a cyclic effect (`AnimationPlayback::Looped`) starts again by whole

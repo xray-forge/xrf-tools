@@ -290,6 +290,41 @@ fn an_effect_adds_its_colours_to_the_identity_and_plays_its_values_as_keyed() {
 }
 
 #[test]
+fn a_noise_granularity_reaching_zero_is_found_where_the_engine_refuses_it() {
+  // Falling from 1 to -1 over two seconds, the grain is zero at the middle of its span.
+  let falling: PpeFile = PpeFile {
+    noise_granularity: line(&[(0.0, 1.0), (2.0, -1.0)]),
+    ..PpeFile::default()
+  };
+
+  assert_eq!(falling.find_refused_noise_granularity(), Some((1.0, 0.0)));
+}
+
+#[test]
+fn a_positive_or_unkeyed_noise_granularity_is_never_refused() {
+  let positive: PpeFile = PpeFile {
+    noise_granularity: line(&[(0.0, 0.1), (2.0, 2.0)]),
+    ..PpeFile::default()
+  };
+
+  assert_eq!(positive.find_refused_noise_granularity(), None);
+  // Unkeyed, it keeps the identity's 1, though the envelope itself evaluates to 0.
+  assert_eq!(PpeFile::default().find_refused_noise_granularity(), None);
+}
+
+#[test]
+fn a_noise_granularity_below_zero_only_before_the_effect_starts_is_never_played() {
+  // The effect plays from zero for the blur's three seconds, and the grain has risen to 1 a second before it starts.
+  let early: PpeFile = PpeFile {
+    blur: line(&[(0.0, 0.0), (3.0, 1.0)]),
+    noise_granularity: line(&[(-2.0, -1.0), (-1.0, 1.0)]),
+    ..PpeFile::default()
+  };
+
+  assert_eq!(early.find_refused_noise_granularity(), None);
+}
+
+#[test]
 fn an_effect_plays_from_zero_and_a_cyclic_one_starts_again_every_length() -> XrfResult {
   // `m_start_time` is the moment the effect began, not its first key, and a cyclic effect moves it on by
   // `GetLength`, the longest key span: 5 s here, though the last key sits at 5.5 s.

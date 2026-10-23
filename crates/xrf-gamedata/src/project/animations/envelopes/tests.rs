@@ -56,6 +56,25 @@ fn new_effect_bytes(value: f32) -> Vec<u8> {
     ..AnimationKey::default()
   });
 
+  write_effect(&effect)
+}
+
+/// A version 1 effect whose noise granularity falls from 1 to -1 over two seconds, passing zero at one.
+fn new_falling_grain_effect_bytes() -> Vec<u8> {
+  let key = |time: f32, value: f32| AnimationKey {
+    value,
+    time,
+    shape: AnimationShape::Linear,
+    ..AnimationKey::default()
+  };
+  let mut effect: PpeFile = PpeFile::default();
+
+  effect.noise_granularity.keys = vec![key(0.0, 1.0), key(2.0, -1.0)];
+
+  write_effect(&effect)
+}
+
+fn write_effect(effect: &PpeFile) -> Vec<u8> {
   let mut writer: ChunkWriter = ChunkWriter::new();
 
   effect.write::<XRayByteOrder>(&mut writer).unwrap();
@@ -125,6 +144,7 @@ fn reports_each_way_a_motion_or_effect_is_invalid_under_its_own_rule() {
       ("nan.anm", new_motion_bytes(f32::NAN)),
       ("short.anm", truncated),
       ("infinite.ppe", new_effect_bytes(f32::INFINITY)),
+      ("grain.ppe", new_falling_grain_effect_bytes()),
     ],
   );
   let result = project
@@ -145,7 +165,7 @@ fn reports_each_way_a_motion_or_effect_is_invalid_under_its_own_rule() {
   assert!(
     result
       .get_failure_message()
-      .ends_with("0/3 object motions valid, 0/1 post-process effects valid"),
+      .ends_with("0/3 object motions valid, 0/2 post-process effects valid"),
     "{}",
     result.get_failure_message()
   );
@@ -155,16 +175,18 @@ fn reports_each_way_a_motion_or_effect_is_invalid_under_its_own_rule() {
       ("anims/extra.anm", "animations.object-motion-round-trip"),
       ("anims/nan.anm", "animations.object-motion-value"),
       ("anims/short.anm", "animations.object-motion-read"),
+      ("anims/grain.ppe", "animations.post-process-noise-granularity"),
       ("anims/infinite.ppe", "animations.post-process-value"),
     ]
     .map(|(path, rule)| (path.to_owned(), rule.to_owned()))
   );
-  assert!(
-    result.get_findings()[1]
-      .message()
-      .eq("Channel 'position x' evaluates to NaN at time 1.000"),
-    "{}",
-    result.get_findings()[1].message()
+  assert_eq!(
+    result.get_findings()[1].message(),
+    "Channel 'position x' evaluates to NaN at time 1.000"
+  );
+  assert_eq!(
+    result.get_findings()[3].message(),
+    "Noise granularity reaches 0.000 at time 1.000, which the engine refuses at full strength"
   );
 
   fs::remove_dir_all(root).unwrap();

@@ -36,4 +36,19 @@ impl EnvelopeAnimation for PpeFile {
   fn get_channels(&self) -> Vec<(String, &AnimationEnvelope)> {
     self.get_named_envelopes()
   }
+
+  fn find_playback_refusals(&self) -> Vec<(GamedataVerificationRule, String)> {
+    self
+      .find_refused_noise_granularity()
+      .map(|(time, granularity)| {
+        (
+          GamedataVerificationRule::AnimationsPostProcessNoiseGranularity,
+          format!(
+            "Noise granularity reaches {granularity:.3} at time {time:.3}, which the engine refuses at full strength"
+          ),
+        )
+      })
+      .into_iter()
+      .collect()
+  }
 }

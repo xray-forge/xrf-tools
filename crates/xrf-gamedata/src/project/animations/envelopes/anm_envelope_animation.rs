@@ -40,4 +40,9 @@ impl EnvelopeAnimation for AnmFile {
       .map(|channel| (channel.get_name().to_owned(), self.get_channel(channel)))
       .collect()
   }
+
+  // `CObjectAnimator` plays whatever finite transform a motion evaluates to.
+  fn find_playback_refusals(&self) -> Vec<(GamedataVerificationRule, String)> {
+    Vec::new()
+  }
 }
