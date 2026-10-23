@@ -85,8 +85,8 @@ pub struct LightingUniform {
   /// The roughness from which a traced reflection fades into the prefiltered sky, and past which a surface is not
   /// traced.
   pub reflection_cut: Vec4,
-  /// The shares of the frame's exposure the game's pictures are shown at (`PictureShares`): the sky's and the clouds',
-  /// then the fog's colour's, then one where the sky's is of the pre-exposure.
+  /// The share of the frame's exposure the game's pictures (the sky, the clouds, the fog's colour) are shown at
+  /// (`PictureShares`), then one where it is of the pre-exposure.
   pub pictures: Vec4,
   /// The gain the lights took (`LightUnits::light_gain`) where their diffuse sum is decoded once, as the engine's display
   /// shows it (`authored_diffuse` in `common/hmodel`), then the sun's colour as the weather authors it, a display value

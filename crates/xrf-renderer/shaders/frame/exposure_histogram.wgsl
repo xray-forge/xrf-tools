@@ -104,14 +104,22 @@ fn cs_bin(@builtin(global_invocation_id) id: vec3<u32>, @builtin(local_invocatio
     atomicAdd(&bins[index], atomicLoad(&local_bins[index]));
   }
 
-  if (is_engine_metered && index == 0u) {
-    var sum: f32 = 0.0;
+  if (!is_engine_metered) {
+    return;
+  }
 
-    for (var invocation: u32 = 0u; invocation < HISTOGRAM_INVOCATIONS; invocation++) {
-      sum += local_engine[invocation];
+  // The workgroup's readings summed by halves before the sum is rounded to its steps, so a dark texel's reading of a
+  // fraction of a step still counts.
+  for (var stride: u32 = HISTOGRAM_INVOCATIONS / 2u; stride > 0u; stride /= 2u) {
+    if (index < stride) {
+      local_engine[index] += local_engine[index + stride];
     }
 
-    atomicAdd(&bins[ENGINE_SUM], u32(round(sum * ENGINE_STEPS)));
+    workgroupBarrier();
+  }
+
+  if (index == 0u) {
+    atomicAdd(&bins[ENGINE_SUM], u32(round(local_engine[0] * ENGINE_STEPS)));
     atomicAdd(&bins[ENGINE_COUNT], atomicLoad(&local_engine_count));
   }
 }
