@@ -5,13 +5,15 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayLookupScope, XrayMountMode, XrayRoots, XrayVfs};
+use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch};
 
 use crate::commands::level::level_assets::LevelAssets;
 
 /// A generated root declares no installation, so name the mode rather than letting `Auto` search upward.
-fn roots(root: &Path) -> XrayRoots {
+fn search(root: &Path) -> XrfResult<XraySearch> {
   XrayRoots::one(root.to_path_buf(), XrayMountMode::Directory)
+    .to_search_plan()?
+    .open()
 }
 
 /// A root holding the named levels, each with a `level` file and a `level.geom` beside it.
@@ -38,9 +40,7 @@ fn create_root(name: &str, levels: &[&str]) -> XrfResult<PathBuf> {
 #[test]
 fn test_reads_a_level_of_mounted_roots_by_name() -> XrfResult {
   let root: PathBuf = create_root("by_name", &["jupiter", "zaton"])?;
-  let vfs: XrayVfs = roots(&root).open()?;
-  let scope: XrayLookupScope = XrayLookupScope::all();
-  let assets: LevelAssets = LevelAssets::open_asset(&vfs, &scope, "zaton")?;
+  let assets: LevelAssets = LevelAssets::open_asset(search(&root)?, "zaton")?;
 
   assert_eq!(assets.read("level")?.as_deref(), Some(b"bundle".as_slice()));
   assert_eq!(assets.read("level.geom")?.as_deref(), Some(b"geometry".as_slice()));
@@ -58,15 +58,14 @@ fn test_reads_a_level_of_mounted_roots_by_name() -> XrfResult {
 #[test]
 fn test_a_name_no_level_answers_to_is_refused() -> XrfResult {
   let root: PathBuf = create_root("unknown_name", &["jupiter"])?;
-  let vfs: XrayVfs = roots(&root).open()?;
-  let scope: XrayLookupScope = XrayLookupScope::all();
+  let search: XraySearch = search(&root)?;
 
   assert!(
-    LevelAssets::open_asset(&vfs, &scope, "pripyat").is_err(),
+    LevelAssets::open_asset(search.clone(), "pripyat").is_err(),
     "a level the roots do not hold is refused rather than read as empty"
   );
   assert!(
-    LevelAssets::open_asset(&vfs, &scope, "not_a_level").is_err(),
+    LevelAssets::open_asset(search, "not_a_level").is_err(),
     "a directory without a bundle is not a level"
   );
 
@@ -76,10 +75,8 @@ fn test_a_name_no_level_answers_to_is_refused() -> XrfResult {
 #[test]
 fn test_lists_only_the_names_that_are_levels() -> XrfResult {
   let root: PathBuf = create_root("listing", &["jupiter", "zaton", "l01_escape"])?;
-  let vfs: XrayVfs = roots(&root).open()?;
-
   assert_eq!(
-    LevelAssets::list_names(&vfs, &XrayLookupScope::all())?,
+    LevelAssets::list_names(&search(&root)?)?,
     vec![
       String::from("jupiter"),
       String::from("l01_escape"),

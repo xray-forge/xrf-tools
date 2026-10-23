@@ -7,14 +7,12 @@ use xrf_error::XrfResult;
 use xrf_utils::format_path;
 
 use crate::mount::xray_root::{find_implied_asset_root, implied_install_root};
-use crate::path::{XrayLogicalPath, normalize, normalize_base};
+use crate::path::{normalize, normalize_base};
 use crate::{FsgameFile, XraySourceKind};
 
 /// One source to mount before it is opened or indexed.
-///
-/// The plan stays plain data, so what to mount can be decided and inspected before anything is opened.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct XrayPlannedMount {
+pub(crate) struct XrayPlannedMount {
   /// Where the source lives.
   pub path: PathBuf,
   /// Logical base the source mounts at, empty for a root.
@@ -24,15 +22,10 @@ pub struct XrayPlannedMount {
   /// Caller-supplied diagnostic label, such as an `fsgame.ltx` alias.
   pub origin: String,
   /// Logical prefixes this source omits when indexed.
-  ///
-  /// Per source rather than per VFS, so an override tree can skip `textures\wip` while the installation beneath it keeps
-  /// serving that prefix. Archives ignore it: nothing writes work-in-progress into a volume.
   pub ignored: Vec<String>,
 }
 
 /// What listing a declared directory said about the archive volumes it holds directly.
-///
-/// The third arm is the whole point: `false` cannot mean both "holds no volumes" and "could not be asked".
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum VolumeScan {
   /// The listing named at least one volume.
@@ -43,35 +36,9 @@ enum VolumeScan {
   Unreadable,
 }
 
-/// An ordered list of sources to mount, highest priority first.
-///
-/// Constructors cover explicit or inferred installations, explicit or inferred asset roots, and partial subtrees.
-///
-/// Order is priority. [`Self::from_fsgame`] reverses declaration order, because the engine registers roots as declared and
-/// later registrations overwrite earlier ones.
-///
-/// A plan is plain data, so it can be inspected or chained before anything is opened — which is how a mod tree layers
-/// over an installation:
-///
-/// ```rust,no_run
-/// use xrf_utils::format_path;
-/// use xrf_vfs::{XrayMountMode, XrayMountPlan, XrayVfs};
-///
-/// # fn main() -> xrf_error::XrfResult {
-/// let plan: XrayMountPlan = XrayMountPlan::root("C:\\work\\my_mod")? // the mod wins every collision
-///   .behind(XrayMountMode::Installation.plan("C:\\Games\\Anomaly")?) // the game answers the rest
-///   .ignoring(&[String::from("textures\\wip")])?;
-///
-/// for planned in plan.get_mounts() {
-///   println!("{} <- {} ({:?})", planned.base, format_path(&planned.path), planned.kind);
-/// }
-///
-/// let vfs: XrayVfs = XrayVfs::from_plan(&plan)?;
-/// # Ok(())
-/// # }
-/// ```
+/// An ordered list of sources to mount, highest priority first: what one search step means before anything is opened.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct XrayMountPlan {
+pub(crate) struct XrayMountPlan {
   mounts: Vec<XrayPlannedMount>,
 }
 
@@ -86,15 +53,6 @@ impl XrayMountPlan {
     Self::new().with(path, "", "root")
   }
 
-  /// Plans a partial directory at an explicit logical base.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when `base` is not a valid X-Ray logical path.
-  pub fn subtree(path: impl AsRef<Path>, base: &str) -> XrfResult<Self> {
-    Self::new().with(path, base, "subtree")
-  }
-
   /// Plans the root implied by an asset path, or returns an empty plan when none is found.
   pub fn implied(asset: impl AsRef<Path>) -> XrfResult<Self> {
     match find_implied_asset_root(asset.as_ref()) {
@@ -103,34 +61,7 @@ impl XrayMountPlan {
     }
   }
 
-  /// The X-Ray root a physical asset path sits under, if any — what [`Self::implied`] plans from.
-  ///
-  /// Walks upward from the asset and answers with the nearest ancestor holding both a `meshes` and a `textures`
-  /// directory, so a gamedata tree nested inside another resolves against the one that contains the asset. Failing
-  /// that, the parent of the asset directory the file itself sits under, so a tree carrying only `textures/` still
-  /// names its files. Finding a root does not promise a reference resolves inside it; callers that need a resolvable
-  /// root must fall through on a failed lookup rather than on a failed derivation.
-  pub fn implied_root(asset: &Path) -> Option<PathBuf> {
-    find_implied_asset_root(asset)
-  }
-
-  /// The engine identity of a loose file, read against the root [`Self::implied_root`] finds for it.
-  pub fn implied_logical_path(asset: &Path) -> Option<XrayLogicalPath> {
-    let root: PathBuf = find_implied_asset_root(asset)?;
-    let components: Vec<&str> = asset
-      .strip_prefix(&root)
-      .ok()?
-      .components()
-      .map(|component| component.as_os_str().to_str())
-      .collect::<Option<Vec<&str>>>()?;
-
-    XrayLogicalPath::new(&components.join("\\")).ok()
-  }
-
   /// Plans the nearest installation containing an asset.
-  ///
-  /// Unlike [`Self::implied`], this uses an ancestor's fsgame file, so it also finds installations with an empty
-  /// `gamedata/`. Returns an empty plan when no installation is found.
   ///
   /// # Errors
   ///
@@ -144,9 +75,6 @@ impl XrayMountPlan {
 
   /// Plans the volume set a directory holds, as one archive source.
   ///
-  /// The counterpart of [`Self::root`] for a directory of `.db` volumes rather than a loose tree: the same directory
-  /// mounted loosely would answer for `textures.db0` as though it were an asset, and for none of the assets inside it.
-  ///
   /// # Errors
   ///
   /// Returns an error when the mount cannot be planned at the root base.
@@ -156,15 +84,6 @@ impl XrayMountPlan {
 
   /// Plans every volume beneath a path, one archive mount each, highest priority first.
   ///
-  /// The recursive half of [`Self::volumes`], which is the engine's own `recurs = true` scan: `CLocatorAPI::ProcessOne`
-  /// registers any `.db*` or `.xdb*` file `Recurse` reaches, at any depth. [`ArchiveProject::new`] discovers volumes the
-  /// same way, so a caller listing a directory and then mounting it to read one entry back gets the identical volume
-  /// set instead of a tree offering files the read cannot reach.
-  ///
-  /// One mount per volume rather than one for the set, because search order is the only precedence a plan has:
-  /// reversing the order the project merges its name table in makes a lookup answer out of the volume that table
-  /// names.
-  ///
   /// # Errors
   ///
   /// Returns an error when a descendant of the path cannot be walked, or a mount cannot be planned at the root base.
@@ -173,9 +92,6 @@ impl XrayMountPlan {
   }
 
   /// Appends one archive mount per volume beneath `path`, highest priority first.
-  ///
-  /// Reversed, because [`ArchiveProject`] returns them in merge order — later wins — while a plan resolves out of the
-  /// first mount holding a path.
   fn with_volumes_beneath(self, path: &Path, origin: &str) -> XrfResult<Self> {
     let mut plan: Self = self;
 
@@ -187,10 +103,6 @@ impl XrayMountPlan {
   }
 
   /// Plans a whole installation from its fsgame file.
-  ///
-  /// The plan includes the existing `$game_data$` directory and existing declared directories that directly contain a
-  /// file whose extension starts with `db`. Other declared directories are omitted. A declaration's `recurs` column
-  /// decides how deep its volumes are read, the way it decides whether the engine's own scan descends.
   ///
   /// # Errors
   ///
@@ -286,9 +198,6 @@ impl XrayMountPlan {
 
   /// Applies logical prefixes for every directory mount in this plan to omit.
   ///
-  /// Set on the plan rather than passed to a mount call, so one `--ignore` reaches every source a mode planned without each
-  /// caller threading it through. Archive mounts are unaffected.
-  ///
   /// # Errors
   ///
   /// Returns an error when a prefix is not a valid X-Ray logical path.
@@ -307,31 +216,12 @@ impl XrayMountPlan {
     Ok(self)
   }
 
-  /// Appends another plan at lower priority.
-  ///
-  /// Duplicate paths are dropped, so chaining a fallback that happens to be the tree the asset already implied does not
-  /// mount it twice.
-  pub fn behind(mut self, other: Self) -> Self {
-    for mount in other.mounts {
-      if !self.mounts.iter().any(|existing| existing.path == mount.path) {
-        self.mounts.push(mount);
-      }
-    }
-
-    self
-  }
-
   /// Returns mounts in priority order.
   pub fn get_mounts(&self) -> &[XrayPlannedMount] {
     &self.mounts
   }
 
   /// The mounts of one source kind, in the order this plan holds them.
-  ///
-  /// What an installation declares is two layers wearing one name: volume sets holding the release, and loose trees
-  /// overriding it. Splitting a single plan is the only honest way to compare them — planning the halves separately
-  /// would read `fsgame.ltx` twice and could disagree with itself, and pointing at `db\` by hand mounts only the
-  /// volumes sitting directly in it, because that is what the engine does with a non-recursive declaration.
   pub fn of_kind(&self, kind: XraySourceKind) -> Self {
     Self {
       mounts: self.mounts.iter().filter(|mount| mount.kind == kind).cloned().collect(),
@@ -348,23 +238,12 @@ impl XrayMountPlan {
     self.mounts.len()
   }
 
-  /// Whether a directory holds archive volumes directly, which makes it an archive source.
-  ///
-  /// Only the immediate contents count, because fsgame declares each volume directory separately and the engine scans them
-  /// non-recursively. Mounting such a directory as a loose source instead would register `textures.db0` as an addressable
-  /// asset.
-  ///
-  /// A directory that cannot be listed answers `false`, which is the honest answer to this question and the wrong one to
-  /// plan from. Callers deciding whether to mount use [`Self::scan_volumes`] instead.
-  pub fn holds_volumes(path: impl AsRef<Path>) -> bool {
-    matches!(Self::scan_volumes(path.as_ref()), VolumeScan::Present)
+  /// Whether a directory holds archive volumes directly, behind [`crate::XrayRootProbe::holds_volumes`].
+  pub(crate) fn holds_volumes(path: &Path) -> bool {
+    matches!(Self::scan_volumes(path), VolumeScan::Present)
   }
 
   /// Classifies what listing a declared directory said about the volumes it holds directly.
-  ///
-  /// Three-way rather than a predicate, because a directory that cannot be listed is not a directory holding no volumes:
-  /// collapsing the two omits an unreadable `db\` from the plan exactly as it omits `$logs$`, and nothing downstream can
-  /// then tell that an installation's whole archive set went unread.
   fn scan_volumes(path: &Path) -> VolumeScan {
     let entries: fs::ReadDir = match fs::read_dir(path) {
       Ok(entries) => entries,
@@ -375,7 +254,7 @@ impl XrayMountPlan {
       }
     };
 
-    if entries.flatten().any(|entry| Self::is_volume(entry.path())) {
+    if entries.flatten().any(|entry| Self::is_volume(&entry.path())) {
       VolumeScan::Present
     } else {
       VolumeScan::Absent
@@ -383,16 +262,11 @@ impl XrayMountPlan {
   }
 
   /// Whether a file is an archive volume, asked of the crate that owns the format.
-  pub fn is_volume(path: impl AsRef<Path>) -> bool {
-    let path: &Path = path.as_ref();
-
+  pub(crate) fn is_volume(path: &Path) -> bool {
     path.is_file() && ArchiveDescriptor::is_valid_db_path(path)
   }
 
   /// Whether a loose directory is the installation's gamedata root rather than one of its subdirectories.
-  ///
-  /// Subdirectory aliases such as `$game_meshes$` resolve inside gamedata, and mounting them alongside it would register
-  /// every mesh twice - once as `meshes\x.ogf` and once as `x.ogf`.
   fn is_gamedata_root(fsgame: &FsgameFile, path: &Path) -> bool {
     fsgame.resolve("$game_data$").is_some_and(|gamedata| gamedata == path)
   }
@@ -442,10 +316,6 @@ mod tests {
   }
 
   /// A directory the host refuses to list is the case the predicate cannot express.
-  ///
-  /// Driven through a path that cannot be listed at all, because a permission-denied directory is not portable to
-  /// arrange; the planner reaches this arm only through a genuine I/O failure, since a path that is not a directory is
-  /// already excluded before the scan.
   #[test]
   fn reports_a_directory_it_cannot_list_as_unknown_rather_than_empty() {
     let absent: PathBuf = build_absolute_generated_test_resource_path("xray_mount_plan/scan_unreadable");
@@ -456,30 +326,6 @@ mod tests {
     assert!(
       !XrayMountPlan::holds_volumes(&absent),
       "the predicate still answers honestly for its own question"
-    );
-  }
-
-  /// A loose file is named the way the root that implies it would list it, whatever separators the host used.
-  #[test]
-  fn names_a_loose_file_by_its_logical_path_inside_the_implied_root() {
-    let root: PathBuf = directory("implied_logical_path", &[]);
-
-    fs::create_dir_all(root.join("meshes")).expect("meshes directory");
-    fs::create_dir_all(root.join("textures").join("ston")).expect("textures directory");
-
-    let texture: PathBuf = root.join("textures").join("ston").join("Ston_Beton05.dds");
-
-    assert_eq!(
-      XrayMountPlan::implied_logical_path(&texture).map(|path| path.as_str().to_owned()),
-      Some(String::from("textures\\ston\\ston_beton05.dds"))
-    );
-    // The root's own parent holds no meshes or textures, so a file beside the root is inside no root at all.
-    let beside: PathBuf = root.parent().expect("scratch root has a parent").join("loose.dds");
-
-    assert_eq!(
-      XrayMountPlan::implied_logical_path(&beside),
-      None,
-      "a file beside the root is not inside it"
     );
   }
 }

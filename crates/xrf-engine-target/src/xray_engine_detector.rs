@@ -153,7 +153,7 @@ mod tests {
 
   /// Detects as the app does: the data rule reads through the roots' own mounts.
   fn detect(roots: &XrayRoots) -> XrayEngineResolution {
-    XrayEngineDetector::detect(roots, |path| roots.open().ok()?.read_bytes(path).ok())
+    XrayEngineDetector::detect(roots, |path| roots.to_search_plan().ok()?.open().ok()?.read(path).ok())
   }
 
   fn detect_root(path: &Path) -> XrayEngineResolution {

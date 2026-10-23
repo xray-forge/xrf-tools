@@ -30,7 +30,6 @@ impl<'a> LevelReferencesVerifier<'a> {
   pub(crate) fn read_library(project: &GamedataProject) -> Option<Arc<ShaderLibraryFile>> {
     project
       .read_parsed(
-        xrf_vfs::XrayAssetType::Shader,
         xrf_vfs::XrayAssetType::SHADER_LIBRARY_PATH,
         ShaderLibraryFile::read_from_chunk,
       )

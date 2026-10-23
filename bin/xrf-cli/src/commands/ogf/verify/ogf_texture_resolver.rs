@@ -14,7 +14,7 @@ use std::sync::Arc;
 
 use xrf_dds::{DdsFile, DdsMetadata};
 use xrf_utils::{error_to_string, format_path};
-use xrf_vfs::{XrayAssetType, XrayMountPlan, XrayResolution, XraySearch, XraySearchPlan, XraySearchStep, XrayVfs};
+use xrf_vfs::{XrayAssetType, XrayResolution, XrayRootProbe, XraySearch, XraySearchPlan, XraySearchStep, XrayVfs};
 
 /// The outcome of resolving and reading one texture reference.
 pub enum TextureResolution {
@@ -64,7 +64,7 @@ impl OgfTextureResolver {
   }
 
   pub fn resolve(&mut self, visual: &Path, reference: &str) -> TextureResolution {
-    let Some(root) = XrayMountPlan::implied_root(visual) else {
+    let Some(root) = XrayRootProbe::implied_root(visual) else {
       return TextureResolution::NoRoot;
     };
 

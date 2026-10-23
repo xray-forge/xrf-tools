@@ -127,10 +127,10 @@ fn places_config_names_in_whichever_scope_the_project_has() -> XrfResult {
 
   vfs.mount_directory("", &root)?;
 
-  let at_game_root: LtxProject = LtxProject::open_at_scope_opt(
+  let at_game_root: LtxProject = LtxProject::open_at_search_opt(
     &configs,
-    vfs,
-    XrayLookupScope::all().with_prefix("configs")?,
+    &XraySearch::new(vfs).with_step("root", XrayLookupScope::all()),
+    Some("configs"),
     Default::default(),
   )?;
 
@@ -221,8 +221,9 @@ fn a_lean_project_lists_nothing_and_still_resolves_system_ltx_with_its_includes_
     "[zone_base]\nidle_light_range = 8\nidle_light = off\n",
   )?;
 
-  let vfs: XrayVfs = XrayRoots::one(root.clone(), XrayMountMode::Directory).open()?;
-  let search: XraySearch = XraySearch::new(vfs).with_step("root", XrayLookupScope::all());
+  let search: XraySearch = XrayRoots::one(root.clone(), XrayMountMode::Directory)
+    .to_search_plan()?
+    .open()?;
   let project: LtxProject = LtxProject::open_lean_at_search_opt(&root, &search, Some("configs"), Default::default())?;
   let system = project.system_ltx()?;
   let campfire = system.ltx.section("campfire").expect("the campfire section to resolve");
@@ -250,10 +251,10 @@ fn a_project_over_a_recording_search_records_the_configs_it_resolves() -> XrfRes
   )?;
   fs::write(root.join("unrelated.ltx"), "[unrelated]\n")?;
 
-  let vfs: XrayVfs = XrayRoots::one(root.clone(), XrayMountMode::Directory).open()?;
   let record: XrayInputRecord = XrayInputRecord::new();
-  let search: XraySearch = XraySearch::new(vfs)
-    .with_step("root", XrayLookupScope::all())
+  let search: XraySearch = XrayRoots::one(root.clone(), XrayMountMode::Directory)
+    .to_search_plan()?
+    .open()?
     .with_recording(&record);
   let project: LtxProject = LtxProject::open_lean_at_search_opt(&root, &search, Some("configs"), Default::default())?;
 
@@ -294,8 +295,9 @@ fn a_project_over_a_search_reads_what_its_search_reaches_within_the_prefix() -> 
   fs::write(root.join("configs").join("game.ltx"), "[game]\n")?;
   fs::write(root.join("unrelated.ltx"), "[unrelated]\n")?;
 
-  let vfs: XrayVfs = XrayRoots::one(root.clone(), XrayMountMode::Directory).open()?;
-  let search: XraySearch = XraySearch::new(vfs).with_step("root", XrayLookupScope::all());
+  let search: XraySearch = XrayRoots::one(root.clone(), XrayMountMode::Directory)
+    .to_search_plan()?
+    .open()?;
   let project: LtxProject = LtxProject::open_at_search_opt(&root, &search, Some("configs"), Default::default())?;
 
   assert_eq!(

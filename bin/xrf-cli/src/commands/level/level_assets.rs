@@ -5,20 +5,20 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
-use xrf_vfs::{XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
+use xrf_vfs::{XrayRoots, XraySearch};
 
 /// The directory every installation keeps its levels under.
 const LEVELS_DIRECTORY: &str = "levels";
 
 /// One compiled level's files, addressed however the level is stored.
-pub enum LevelAssets<'a> {
+pub enum LevelAssets {
   /// A level directory on the host filesystem, read by joining paths.
   Directory(PathBuf),
   /// A level of mounted roots, read by its engine identity, `levels\<name>\<file>`.
-  Asset { scoped: XrayScopedVfs<'a>, name: String },
+  Asset { search: XraySearch, name: String },
 }
 
-impl<'a> LevelAssets<'a> {
+impl LevelAssets {
   /// Takes a level directory as it sits on disk.
   pub fn open_directory(path: &Path) -> Self {
     Self::Directory(path.to_path_buf())
@@ -30,10 +30,10 @@ impl<'a> LevelAssets<'a> {
   ///
   /// Returns an error when the level holds no `level` file, which is what tells a name that exists from one that
   /// does not - a directory of only lightmaps is not a level.
-  pub fn open_asset(vfs: &'a XrayVfs, scope: &'a XrayLookupScope, name: &str) -> XrfResult<Self> {
+  pub fn open_asset(search: XraySearch, name: &str) -> XrfResult<Self> {
     let assets: Self = Self::Asset {
       name: name.to_owned(),
-      scoped: vfs.scoped(scope),
+      search,
     };
 
     if assets.read("level")?.is_none() {
@@ -67,14 +67,10 @@ impl<'a> LevelAssets<'a> {
           ))
         })?))
       }
-      Self::Asset { scoped, .. } => {
-        let logical_path: String = self.describe_file(file);
-
-        match scoped.find(&logical_path)? {
-          Some(_) => Ok(Some(scoped.read_bytes(&logical_path)?)),
-          None => Ok(None),
-        }
-      }
+      Self::Asset { search, .. } => match search.find(&self.describe_file(file))? {
+        Some(asset) => Ok(Some(search.read_asset(&asset)?)),
+        None => Ok(None),
+      },
     }
   }
 
@@ -99,12 +95,11 @@ impl<'a> LevelAssets<'a> {
   /// # Errors
   ///
   /// Returns an error when the levels directory cannot be listed.
-  pub fn list_names(vfs: &XrayVfs, scope: &XrayLookupScope) -> XrfResult<Vec<String>> {
-    let scoped: XrayScopedVfs = vfs.scoped(scope);
+  pub fn list_names(search: &XraySearch) -> XrfResult<Vec<String>> {
     let mut names: Vec<String> = Vec::new();
 
-    for child in scoped.list_children(LEVELS_DIRECTORY)?.directories {
-      if scoped.find(&format!("{LEVELS_DIRECTORY}\\{child}\\level"))?.is_some() {
+    for child in search.list_children(LEVELS_DIRECTORY)?.directories {
+      if search.find(&format!("{LEVELS_DIRECTORY}\\{child}\\level"))?.is_some() {
         names.push(child);
       }
     }

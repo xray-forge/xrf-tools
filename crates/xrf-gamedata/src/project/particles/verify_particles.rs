@@ -6,7 +6,6 @@ use xrf_job::JobHandle;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_particles::ParticlesFile;
 use xrf_spawn::XRayByteOrder;
-use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::project::particles::verify_particles_result::GamedataParticlesVerificationResult;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
@@ -45,9 +44,7 @@ impl GamedataProject {
 
         xrf_output::verbose!(output, "Verify particles file: {}", path);
 
-        match self.read_parsed(AssetType::XrPack, path, |chunk| {
-          ParticlesFile::read_from_chunk::<XRayByteOrder, _>(chunk)
-        }) {
+        match self.read_parsed(path, ParticlesFile::read_from_chunk::<XRayByteOrder, _>) {
           Ok(particles_file) => {
             let particle_findings: Vec<Finding> =
               self.verify_particle_with_job(output, &particles_file, path, &options.job);

@@ -1,6 +1,6 @@
 use xrf_error::XrfResult;
 use xrf_utils::to_portable_path_string;
-use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayRoots, XraySearch};
 
 use crate::json::read::parse_json;
 use crate::language::TranslationLanguage;
@@ -12,22 +12,12 @@ use crate::types::TranslationJson;
 
 /// Read an XRF translations source tree.
 ///
-/// Sources are JSON and only JSON: one file carries every language, keyed inside it. Language-suffixed
-/// and language-neutral XML used to be sources too; they are not, and raw XML now enters the project
-/// through `parse` instead, which is the one place that has to be told which language it is reading.
-///
-/// Unlike the build and the verifier, nothing in here refuses to open on content: problems come back
-/// as findings.
-///
-/// Reads through `xrf-vfs` for the same reason the gamedata reader does — one way of reaching bytes,
-/// whether they are loose or packed.
-///
 /// # Errors
 ///
 /// Returns an error when the roots cannot be mounted or the prefix is not a logical path. Individual
 /// files are reported, not fatal.
 pub fn read_source(roots: &XrayRoots, prefix: &str) -> XrfResult<TranslationProjectDescriptor> {
-  read_source_in(&roots.open()?, roots, prefix)
+  read_source_in(&roots.to_search_plan()?.open()?, roots, prefix)
 }
 
 /// Read a source tree over roots somebody else mounted.
@@ -35,11 +25,9 @@ pub fn read_source(roots: &XrayRoots, prefix: &str) -> XrfResult<TranslationProj
 /// # Errors
 ///
 /// Returns an error when the prefix is not a logical path.
-pub fn read_source_in(vfs: &XrayVfs, roots: &XrayRoots, prefix: &str) -> XrfResult<TranslationProjectDescriptor> {
+pub fn read_source_in(search: &XraySearch, roots: &XrayRoots, prefix: &str) -> XrfResult<TranslationProjectDescriptor> {
   // An empty prefix means the root itself, for a caller that mounted the translations directory directly.
-  let scope: XrayLookupScope = XrayLookupScope::all().with_optional_prefix(Some(prefix))?;
-
-  let scoped: XrayScopedVfs = vfs.scoped(&scope);
+  let sources: XraySearch = search.clone().with_optional_prefix(Some(prefix))?;
 
   let mut descriptor: TranslationProjectDescriptor = TranslationProjectDescriptor {
     mode: TranslationProjectMode::Source,
@@ -48,15 +36,12 @@ pub fn read_source_in(vfs: &XrayVfs, roots: &XrayRoots, prefix: &str) -> XrfResu
     ..Default::default()
   };
 
-  let mut assets: Vec<XrayAsset> = scoped.list_entries();
-
-  // Sorted because mount order is not name order, and an index is only comparable across runs and
-  // machines if it depends on neither.
-  assets.sort_by(|left, right| left.get_logical_path().as_str().cmp(right.get_logical_path().as_str()));
+  // Ordered by engine identity rather than mount order, so an index is comparable across runs and machines.
+  let assets: Vec<XrayAsset> = sources.list_files();
 
   for asset in &assets {
     if is_json_source_name(asset.get_logical_path().file_name()) {
-      merge_json(&scoped, asset, prefix, &mut descriptor);
+      merge_json(&sources, asset, prefix, &mut descriptor);
     }
   }
 
@@ -79,13 +64,13 @@ pub fn read_source_in(vfs: &XrayVfs, roots: &XrayRoots, prefix: &str) -> XrfResu
   Ok(descriptor)
 }
 
-fn merge_json(scoped: &XrayScopedVfs, asset: &XrayAsset, prefix: &str, descriptor: &mut TranslationProjectDescriptor) {
+fn merge_json(search: &XraySearch, asset: &XrayAsset, prefix: &str, descriptor: &mut TranslationProjectDescriptor) {
   let logical_path: &str = asset.get_logical_path().as_str();
 
   // The per-file reader stays strict because the build and the verifier rely on it. Its refusal is
   // caught here instead, so one unreadable file costs its own strings and not the whole project.
-  let translations: TranslationJson = match scoped
-    .read_asset_bytes(asset)
+  let translations: TranslationJson = match search
+    .read_asset(asset)
     .and_then(|data| parse_json(logical_path, &data))
   {
     Ok(translations) => translations,
@@ -147,10 +132,6 @@ fn record_cross_file_duplicates(descriptor: &mut TranslationProjectDescriptor) {
 }
 
 /// A logical path with the project's own prefix removed, which is how a file is keyed and shown.
-///
-/// A path the prefix does not cover keeps its full identity. That cannot happen while the scope
-/// filters to the prefix, and answering with a mangled key if it ever did would be worse than
-/// answering with a long one.
 fn relative(prefix: &str, logical_path: &XrayLogicalPath) -> String {
   if prefix.is_empty() {
     return logical_path.as_str().to_owned();

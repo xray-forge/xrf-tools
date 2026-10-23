@@ -34,8 +34,7 @@ impl<'a> LevelReconciliationVerifier<'a> {
     Ok(
       self
         .project
-        .vfs()
-        .scoped(self.project.scope())
+        .search()
         .list_children(LEVELS_DIRECTORY)?
         .directories
         .into_iter()
@@ -112,7 +111,11 @@ impl<'a> LevelReconciliationVerifier<'a> {
         // Malformed configurations are reported by the ltx check, not this one. Resolved under the project's dialect
         // even though these sit outside its `configs` prefix, so one sweep does not read some configs patched and
         // others not.
-        let Ok(ltx) = self.project.ltx_project.read_full_in_scope(self.project.scope(), path) else {
+        let Ok(ltx) = self
+          .project
+          .ltx_project
+          .read_full_in_search(self.project.search(), path)
+        else {
           xrf_output::verbose!(
             self.options.output,
             "Skipping unreadable level maps configuration: {path}"

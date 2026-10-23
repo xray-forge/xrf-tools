@@ -6,7 +6,7 @@ use xrf_error::XrfResult;
 use xrf_utils::{
   decode_bytes_to_string, encode_w1251_bytes_to_string, new_windows1251_encoder, read_as_string_from_w1251_encoded,
 };
-use xrf_vfs::{XrayLookupScope, XraySearch, XrayVfs};
+use xrf_vfs::XraySearch;
 
 use crate::dialect::{LtxDialect, LtxResolveRequest, LtxStandardDialect};
 use crate::document::{LtxDocument, LtxParser};
@@ -123,17 +123,14 @@ impl Ltx {
     Self::read_included_from_str(&read_as_string_from_w1251_encoded(&mut File::open(filename.as_ref())?)?)
   }
 
-  /// Load include statements from a config in a mounted VFS, without parsing its sections.
+  /// Load include statements from a config a search reaches, without parsing its sections.
   ///
   /// # Errors
   ///
-  /// Returns an error when the path is not in scope, its bytes are not valid Windows-1251, or the contents will not parse.
-  pub(crate) fn read_included_from_vfs(
-    vfs: &XrayVfs,
-    scope: &XrayLookupScope,
-    logical_path: &str,
-  ) -> XrfResult<LtxIncluded> {
-    let bytes: Vec<u8> = vfs.scoped(scope).read_bytes(logical_path)?;
+  /// Returns an error when the search does not reach the path, its bytes are not valid Windows-1251, or the contents
+  /// will not parse.
+  pub(crate) fn read_included_from_search(search: &XraySearch, logical_path: &str) -> XrfResult<LtxIncluded> {
+    let bytes: Vec<u8> = search.read(logical_path)?;
 
     Self::read_included_from_str(&decode_bytes_to_string(&bytes, new_windows1251_encoder())?)
   }

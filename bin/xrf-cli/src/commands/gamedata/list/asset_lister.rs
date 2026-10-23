@@ -1,12 +1,8 @@
-use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
 use xrf_utils::format_path;
-use xrf_vfs::{
-  XrayAsset, XrayAssetContainer, XrayLogicalPath, XrayLookupScope, XrayPathCollision, XrayRoots, XraySkippedMount,
-  XraySourceKind, XrayVfs,
-};
+use xrf_vfs::{XrayAsset, XrayPathCollision, XrayRoots, XraySearch, XraySearchPlan, XraySkippedMount, XraySourceKind};
 
 /// Resolved assets and source metadata for one listing.
 pub struct AssetListing {
@@ -88,64 +84,54 @@ impl AssetLister {
   /// a valid X-Ray logical path.
   pub fn run(&self) -> XrfResult<AssetListing> {
     let started: Instant = Instant::now();
-    let vfs: XrayVfs = XrayVfs::from_plan(&self.roots.to_mount_plan()?.ignoring(&self.ignored)?)?;
-    let scope: XrayLookupScope = self.scope()?;
-    let entries: Vec<XrayAsset> = vfs.scoped(&scope).list_entries();
+    let search: XraySearch = self.plan()?.open()?.with_optional_prefix(self.prefix.as_deref())?;
+    let entries: Vec<XrayAsset> = search.list_files();
     let shadowed: Vec<XrayAsset> = if self.is_shadowed_included {
-      Self::shadowed(&vfs, &scope, &entries)
+      Self::shadowed(&search)
     } else {
       Vec::new()
     };
 
     Ok(AssetListing {
-      collisions: vfs.scoped(&scope).list_collisions(),
+      collisions: search.list_collisions(),
       duration: started.elapsed(),
       entries,
-      mounts: vfs
-        .scoped(&scope)
-        .list_mounts()
-        .map(|mount| {
+      mounts: search
+        .list_sources()
+        .iter()
+        .map(|source| {
           format!(
             "{:<9} {} ({})",
-            format!("{:?}", mount.get_kind()),
-            format_path(mount.get_source().get_root_path()),
-            mount.get_label()
+            format!("{:?}", source.mount.get_kind()),
+            format_path(source.mount.get_source().get_root_path()),
+            source.mount.get_label()
           )
         })
         .collect(),
       origin: self.roots.describe(),
       shadowed,
-      skipped: vfs.get_skipped_mounts().to_vec(),
+      skipped: search.list_skipped_sources().into_iter().cloned().collect(),
     })
   }
 
-  fn scope(&self) -> XrfResult<XrayLookupScope> {
-    let scope: XrayLookupScope = if self.is_loose_only {
-      XrayLookupScope::of_kind(XraySourceKind::Directory)
-    } else {
-      XrayLookupScope::all()
-    };
+  /// What the listing mounts: the roots with the ignored prefixes left out, and only their loose trees where asked,
+  /// so no volume the listing never shows is opened.
+  fn plan(&self) -> XrfResult<XraySearchPlan> {
+    let plan: XraySearchPlan = self.roots.to_search_plan()?.ignoring(&self.ignored)?;
 
-    match self.prefix.as_deref() {
-      Some(prefix) => scope.with_prefix(prefix),
-      None => Ok(scope),
-    }
+    Ok(if self.is_loose_only {
+      plan.of_kind(XraySourceKind::Directory)
+    } else {
+      plan
+    })
   }
 
-  /// Returns entries hidden by a higher-priority mount.
-  ///
-  /// The result removes winning path and container pairs from the complete enumeration. Indexed rather than scanned: an
-  /// installation enumerates ~48,000 entries, and a linear search per entry made this quadratic.
-  fn shadowed(vfs: &XrayVfs, scope: &XrayLookupScope, winners: &[XrayAsset]) -> Vec<XrayAsset> {
-    let mut shadowed: Vec<XrayAsset> = vfs.scoped(scope).list_entries_all();
-
-    let winning: HashSet<(&XrayLogicalPath, &XrayAssetContainer)> = winners
-      .iter()
-      .map(|winner| (winner.get_logical_path(), winner.get_container()))
-      .collect();
-
-    shadowed.retain(|entry| !winning.contains(&(entry.get_logical_path(), entry.get_container())));
-
-    shadowed
+  /// Every copy a higher-priority one hides, ordered by engine identity and then by search order.
+  fn shadowed(search: &XraySearch) -> Vec<XrayAsset> {
+    search
+      .list_shadowing_entries()
+      .into_iter()
+      .flat_map(|entry| entry.shadowed.into_iter().map(|copy| copy.asset))
+      .collect()
   }
 }

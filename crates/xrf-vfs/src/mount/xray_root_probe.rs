@@ -1,12 +1,13 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 
+use crate::mount::XrayMountPlan;
 use crate::mount::xray_root::{
-  CONFIGS_DIRECTORY, MESHES_DIRECTORY, SOUNDS_DIRECTORY, SPAWNS_DIRECTORY, TEXTURES_DIRECTORY,
+  CONFIGS_DIRECTORY, MESHES_DIRECTORY, SOUNDS_DIRECTORY, SPAWNS_DIRECTORY, TEXTURES_DIRECTORY, find_implied_asset_root,
 };
-use crate::{FsgameFile, XrayMountPlan};
+use crate::{FsgameFile, XrayLogicalPath};
 
 /// Well-known entries a probe reports finding, in the order it reports them.
 const PROBED_ENTRIES: [&str; 5] = [
@@ -112,6 +113,35 @@ impl XrayRootProbe {
     }
   }
 
+  /// The X-Ray root a physical asset path sits under, if any: what a search plan centred on the asset searches first.
+  pub fn implied_root(asset: impl AsRef<Path>) -> Option<PathBuf> {
+    find_implied_asset_root(asset.as_ref())
+  }
+
+  /// The engine identity of a loose file, read against the root [`Self::implied_root`] finds for it.
+  pub fn implied_logical_path(asset: impl AsRef<Path>) -> Option<XrayLogicalPath> {
+    let asset: &Path = asset.as_ref();
+    let root: PathBuf = find_implied_asset_root(asset)?;
+    let components: Vec<&str> = asset
+      .strip_prefix(&root)
+      .ok()?
+      .components()
+      .map(|component| component.as_os_str().to_str())
+      .collect::<Option<Vec<&str>>>()?;
+
+    XrayLogicalPath::new(&components.join("\\")).ok()
+  }
+
+  /// Whether a directory holds archive volumes directly, which makes it an archive source.
+  pub fn holds_volumes(path: impl AsRef<Path>) -> bool {
+    XrayMountPlan::holds_volumes(path.as_ref())
+  }
+
+  /// Whether a file is an archive volume, asked of the crate that owns the format.
+  pub fn is_volume(path: impl AsRef<Path>) -> bool {
+    XrayMountPlan::is_volume(path.as_ref())
+  }
+
   fn find_evidence(path: &Path) -> Vec<String> {
     PROBED_ENTRIES
       .iter()
@@ -215,6 +245,28 @@ mod tests {
 
     assert_eq!(probe.kind, XrayRootKind::Unrecognized);
     assert!(probe.evidence.is_empty());
+  }
+
+  /// A loose file is named the way the root that implies it would list it, whatever separators the host used.
+  #[test]
+  fn names_a_loose_file_by_its_logical_path_inside_the_implied_root() {
+    let root: PathBuf = tree("implied_logical_path", &["meshes", "textures/ston"], &[]);
+    let texture: PathBuf = root.join("textures").join("ston").join("Ston_Beton05.dds");
+
+    assert_eq!(XrayRootProbe::implied_root(&texture), Some(root.clone()));
+    assert_eq!(
+      XrayRootProbe::implied_logical_path(&texture).map(|path| path.as_str().to_owned()),
+      Some(String::from("textures\\ston\\ston_beton05.dds"))
+    );
+
+    // The root's own parent holds no meshes or textures, so a file beside the root is inside no root at all.
+    let beside: PathBuf = root.parent().expect("scratch root has a parent").join("loose.dds");
+
+    assert_eq!(
+      XrayRootProbe::implied_logical_path(&beside),
+      None,
+      "a file beside the root is not inside it"
+    );
   }
 
   #[test]

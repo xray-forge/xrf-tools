@@ -8,7 +8,7 @@ use xrf_ogf::OgfFile;
 use xrf_omf::OmfFile;
 use xrf_output::{OutputSequence, OutputSlot};
 use xrf_spawn::XRayByteOrder;
-use xrf_vfs::{XrayAssetType, XrayAssetType as AssetType};
+use xrf_vfs::XrayAssetType;
 
 use crate::project::weapons::constants::NO_SOUND;
 use crate::project::weapons::verify_weapons_result::GamedataWeaponVerificationResult;
@@ -211,9 +211,7 @@ impl GamedataProject {
         .flatten()
         .map(|location| location.get_logical_path().to_string())
     }) {
-      if let Err(error) = self.read_parsed(AssetType::Ogf, visual, |chunk| {
-        OgfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
-      }) {
+      if let Err(error) = self.read_parsed(visual, OgfFile::read_from_chunk::<XRayByteOrder, _>) {
         xrf_output::error!(
           options.output,
           "Failed to read weapon visual: [{}] - {:?} - {}",
@@ -256,9 +254,7 @@ impl GamedataProject {
         .flatten()
         .map(|location| location.get_logical_path().to_string())
     }) {
-      match self.read_parsed(AssetType::Ogf, visual_path, |chunk| {
-        OgfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
-      }) {
+      match self.read_parsed(visual_path, OgfFile::read_from_chunk::<XRayByteOrder, _>) {
         Ok(hud_visual) => {
           if let Some(motion_refs) = hud_visual.kinematics.as_ref().map(|it| &it.motion_refs) {
             let mut ref_animations: Vec<String> = Vec::new();
@@ -275,7 +271,7 @@ impl GamedataProject {
                 // The whole bank, which the meshes and animations checks read too: shared banks are the reason this
                 // check spent most of its time re-reading the same megabytes.
                 match self
-                  .read_parsed(AssetType::Omf, &motion_file_path, |chunk| {
+                  .read_parsed(&motion_file_path, |chunk| {
                     OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
                   })
                   .map(|omf| {

@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use xrf_utils::format_path;
-use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayMountPlan};
+use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayRootProbe};
 
 use crate::plugins::textures::files::TextureFiles;
 
@@ -43,7 +43,7 @@ impl TextureSource {
     match self {
       Self::Asset { reference } => Some(reference.clone()),
       Self::File { path } => {
-        let logical_path: XrayLogicalPath = XrayMountPlan::implied_logical_path(Path::new(path))?;
+        let logical_path: XrayLogicalPath = XrayRootProbe::implied_logical_path(Path::new(path))?;
 
         [XrayAssetType::Dds, XrayAssetType::Thm]
           .into_iter()

@@ -6,7 +6,6 @@ use xrf_job::JobHandle;
 use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOptions};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
-use xrf_vfs::XrayLookupScope;
 
 use crate::commands::ltx::ltx_installation::{INSTALLATION_PATH_HELP, mount_installation};
 use crate::core::command_context::CommandContext;
@@ -70,8 +69,8 @@ impl GenericCommand for VerifyCommand {
     // would leave archived includes unresolved and report their sections as missing, so the scope a person picks is the
     // path they name rather than a flag.
     let project: Box<LtxProject> = Box::new(match mount_installation(path)? {
-      Some(vfs) => {
-        let project: LtxProject = LtxProject::open_at_scope_opt(path, vfs, XrayLookupScope::all(), options)?;
+      Some(search) => {
+        let project: LtxProject = LtxProject::open_at_search_opt(path, &search, None, options)?;
 
         Self::report_sources(&project, &output);
 
@@ -99,7 +98,7 @@ impl VerifyCommand {
   /// An installation keeps nearly every config in an archive volume, so naming only the game directory would leave a report
   /// silent about where thousands of verified files came from.
   fn report_sources(project: &LtxProject, output: &OutputOptions) {
-    for mount in project.vfs().get_mounts() {
+    for mount in project.search().get_vfs().get_mounts() {
       xrf_output::info!(
         output,
         "Source: {:?} {} ({})",

@@ -169,8 +169,6 @@ impl<'a> HudItemAnimationsVerifier<'a> {
     // Resolved and read through the VFS, so a visual and its animations inside archive volumes are checked too.
     let Some(visual_path) = self
       .project
-      .vfs()
-      .scoped(&self.project.scope)
       .ogf(visual)?
       .map(|location| location.get_logical_path().to_string())
     else {
@@ -188,9 +186,9 @@ impl<'a> HudItemAnimationsVerifier<'a> {
     for linked in linked_assets {
       self.options.job.check_cancelled()?;
 
-      let omf: Arc<OmfFile> = self.project.read_parsed(AssetType::Omf, &linked, |chunk| {
-        OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
-      })?;
+      let omf: Arc<OmfFile> = self
+        .project
+        .read_parsed(&linked, OmfFile::read_from_chunk::<XRayByteOrder, _>)?;
 
       motions.extend(omf.get_motion_names().into_iter().map(str::to_owned));
     }
@@ -225,12 +223,7 @@ impl<'a> HudItemAnimationsVerifier<'a> {
     for motion_ref in &motion_refs {
       self.options.job.check_cancelled()?;
 
-      for location in self
-        .project
-        .vfs()
-        .scoped(&self.project.scope)
-        .resolve_all(AssetType::Omf, motion_ref)?
-      {
+      for location in self.project.resolve_all(AssetType::Omf, motion_ref)? {
         self.options.job.check_cancelled()?;
         if location.is_type(AssetType::Omf) {
           assets.insert(location.get_logical_path().to_string());

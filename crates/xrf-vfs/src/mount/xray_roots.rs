@@ -4,10 +4,8 @@ use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 use xrf_utils::format_path;
 
-use crate::FsgameFile;
 use crate::mount::xray_mount_mode::XrayMountMode;
-use crate::mount::xray_mount_plan::XrayMountPlan;
-use crate::{XraySearchPlan, XrayVfs};
+use crate::{FsgameFile, XraySearchPlan};
 
 /// One place to read from, and how that place becomes mounts.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -101,30 +99,13 @@ impl XrayRoots {
       .join(", ")
   }
 
-  /// The mounts these roots mean, in search order.
+  /// The ordered search these roots mean: the asset's own root and installation, then each root, named by its path.
   ///
   /// # Errors
   ///
-  /// Returns an error when a root cannot be planned — `Installation` on a path declaring none, or an
-  /// fsgame file that cannot be read.
-  pub fn to_mount_plan(&self) -> XrfResult<XrayMountPlan> {
-    let mut plan: XrayMountPlan = match &self.asset {
-      Some(asset) => XrayMountPlan::implied(asset)?,
-      None => XrayMountPlan::new(),
-    };
-
-    for root in &self.roots {
-      plan = plan.behind(root.mode.plan(&root.path)?);
-    }
-
-    Ok(plan)
-  }
-
-  /// The ordered search steps these roots mean.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the asset's own sources or one of the roots cannot be planned.
+  /// Returns an error when the asset's own sources or one of the roots cannot be planned — `Installation` on a path
+  /// declaring none, or an fsgame file that cannot be read. A root that is not there is an empty step reported as
+  /// skipped, not an error.
   pub fn to_search_plan(&self) -> XrfResult<XraySearchPlan> {
     let mut plan: XraySearchPlan = XraySearchPlan::new();
 
@@ -137,14 +118,5 @@ impl XrayRoots {
     }
 
     Ok(plan)
-  }
-
-  /// Mount these roots and hand back the result.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the spec cannot be planned or a planned source cannot be mounted.
-  pub fn open(&self) -> XrfResult<XrayVfs> {
-    XrayVfs::from_plan(&self.to_mount_plan()?)
   }
 }

@@ -3,7 +3,7 @@
 use std::fs;
 
 use xrf_error::XrfResult;
-use xrf_vfs::XrayVfs;
+use xrf_vfs::XraySearch;
 
 use crate::pack::source::{ArchivePackEntry, ArchivePackOrigin};
 
@@ -11,8 +11,8 @@ use crate::pack::source::{ArchivePackEntry, ArchivePackOrigin};
 pub(crate) enum ArchivePackPayloads<'a> {
   /// The host filesystem, at the path each entry's walk reached it by.
   Host,
-  /// A mounted world, under the engine identity that is also each entry's name.
-  Mounted(&'a XrayVfs),
+  /// A search, under the engine identity that is also each entry's name.
+  Mounted(&'a XraySearch),
 }
 
 impl ArchivePackPayloads<'_> {
@@ -25,7 +25,7 @@ impl ArchivePackPayloads<'_> {
   pub(crate) fn read(&self, entry: &ArchivePackEntry) -> XrfResult<Vec<u8>> {
     match (self, &entry.origin) {
       (Self::Host, ArchivePackOrigin::Host(path)) => Ok(fs::read(path)?),
-      (Self::Mounted(vfs), ArchivePackOrigin::Mounted) => vfs.read_bytes(&entry.name),
+      (Self::Mounted(search), ArchivePackOrigin::Mounted) => search.read(&entry.name),
       _ => Err(xrf_error::XrfError::new_unexpected_error(format!(
         "Packing entry '{}' came from a source this run does not read from",
         entry.name

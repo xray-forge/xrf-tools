@@ -12,7 +12,11 @@ fn an_installation_root_resolves_down_to_the_language_directory() -> XrfResult {
 
   write_generated_test_resource(&format!("{root}/configs/text/eng/st_a.xml"), table("st_a", "A"))?;
 
-  let scope = resolve(&roots(root).open()?, None, TranslationLanguage::English)?;
+  let scope = resolve(
+    &roots(root).to_search_plan()?.open()?,
+    None,
+    TranslationLanguage::English,
+  )?;
 
   assert_eq!(scope.prefix(), r"configs\text\eng");
 
@@ -25,7 +29,11 @@ fn a_text_root_resolves_down_to_the_language_directory() -> XrfResult {
 
   write_generated_test_resource(&format!("{root}/eng/st_a.xml"), table("st_a", "A"))?;
 
-  let scope = resolve(&roots(root).open()?, None, TranslationLanguage::English)?;
+  let scope = resolve(
+    &roots(root).to_search_plan()?.open()?,
+    None,
+    TranslationLanguage::English,
+  )?;
 
   assert_eq!(scope.prefix(), "eng");
 
@@ -39,7 +47,11 @@ fn a_language_directory_named_directly_is_taken_as_it_is() -> XrfResult {
 
   write_generated_test_resource(&format!("{root}/st_a.xml"), table("st_a", "A"))?;
 
-  let scope = resolve(&roots(root).open()?, None, TranslationLanguage::English)?;
+  let scope = resolve(
+    &roots(root).to_search_plan()?.open()?,
+    None,
+    TranslationLanguage::English,
+  )?;
 
   assert_eq!(scope.prefix(), "");
   assert_eq!(scope.describe(), "<root>");
@@ -54,7 +66,7 @@ fn an_explicit_prefix_is_obeyed_without_searching() -> XrfResult {
   write_generated_test_resource(&format!("{root}/configs/text/rus/st_a.xml"), table("st_a", "А"))?;
 
   let scope = resolve(
-    &roots(root).open()?,
+    &roots(root).to_search_plan()?.open()?,
     Some(r"configs\text\rus"),
     TranslationLanguage::Russian,
   )?;
@@ -73,7 +85,11 @@ fn a_text_root_holding_several_languages_still_resolves_to_the_one_named() -> Xr
   write_generated_test_resource(&format!("{root}/eng/st_a.xml"), table("st_a", "A"))?;
   write_generated_test_resource(&format!("{root}/rus/st_a.xml"), table("st_a", "A"))?;
 
-  let scope = resolve(&roots(root).open()?, None, TranslationLanguage::English)?;
+  let scope = resolve(
+    &roots(root).to_search_plan()?.open()?,
+    None,
+    TranslationLanguage::English,
+  )?;
 
   assert_eq!(scope.prefix(), "eng");
 
@@ -90,7 +106,12 @@ fn a_scope_still_holding_another_language_is_refused() -> XrfResult {
   write_generated_test_resource(&format!("{root}/st_a.xml"), table("st_a", "A"))?;
   write_generated_test_resource(&format!("{root}/rus/st_b.xml"), table("st_b", "B"))?;
 
-  let error = resolve(&roots(root).open()?, Some(""), TranslationLanguage::English).unwrap_err();
+  let error = resolve(
+    &roots(root).to_search_plan()?.open()?,
+    Some(""),
+    TranslationLanguage::English,
+  )
+  .unwrap_err();
 
   assert!(error.to_string().contains("hold other languages"));
   assert!(error.to_string().contains("rus"));
@@ -107,7 +128,11 @@ fn map_desc_is_not_mistaken_for_another_language() -> XrfResult {
   write_generated_test_resource(&format!("{root}/st_a.xml"), table("st_a", "A"))?;
   write_generated_test_resource(&format!("{root}/map_desc/st_b.xml"), table("st_b", "B"))?;
 
-  let scope = resolve(&roots(root).open()?, Some(""), TranslationLanguage::English)?;
+  let scope = resolve(
+    &roots(root).to_search_plan()?.open()?,
+    Some(""),
+    TranslationLanguage::English,
+  )?;
 
   assert_eq!(scope.prefix(), "");
 

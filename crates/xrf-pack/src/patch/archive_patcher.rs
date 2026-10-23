@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_utils::format_path;
-use xrf_vfs::{XrayMountPlan, XraySourceKind};
+use xrf_vfs::{XraySearchPlan, XraySourceKind};
 
 use crate::pack::config::ArchivePackConfig;
 use crate::pack::source::{ArchivePackEntry, ArchivePackNameTable, ArchivePackPayloads};
@@ -147,12 +147,12 @@ impl ArchivePatcher {
         ArchivePatchWorld::mount(target, ArchivePatchRole::Target)?,
       )),
       None => {
-        let plan: XrayMountPlan = ArchivePatchWorld::plan(input, ArchivePatchRole::Base)?;
-        let archived: XrayMountPlan = plan.of_kind(XraySourceKind::Archive);
+        let plan: XraySearchPlan = ArchivePatchWorld::plan(input, ArchivePatchRole::Base)?;
+        let archived: XraySearchPlan = plan.of_kind(XraySourceKind::Archive);
 
         // The likeliest mistake, which the generic empty-mount message would report as a missing root: a gamedata
         // folder named where the game was meant. Its files have nothing to override, so there is no patch to build.
-        if archived.is_empty() {
+        if archived.count_sources() == 0 {
           return Err(XrfError::new_invalid_error(format!(
             "'{}' holds no archive volumes, so its loose files have nothing to override. Point at the game \
              installation instead, or name this tree as the target of one.",
@@ -193,7 +193,7 @@ impl ArchivePatcher {
     let written: XrfResult<ArchivePackResult> = ArchivePacker::write_set(
       &publication,
       &names,
-      &ArchivePackPayloads::Mounted(target.get_vfs()),
+      &ArchivePackPayloads::Mounted(target.get_search()),
       &options.job,
       &pack_narrator,
       PATCH_PHASE_PACK,

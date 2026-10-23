@@ -5,7 +5,7 @@ use std::time::Instant;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_shaders::{ShaderRenderer, XRayShader, XRayShaderScript, is_shader_source_path};
-use xrf_vfs::{XrayLookupScope, XrayVfs};
+use xrf_vfs::XraySearch;
 
 use crate::project::shaders::gamedata_shader_source_loader::GamedataShaderSourceLoader;
 use crate::project::shaders::verify_shaders_result::GamedataShadersVerificationResult;
@@ -18,17 +18,15 @@ pub(crate) struct ShadersVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,
   /// Logical root of the shader trees, not a filesystem path: sources resolve through the VFS.
   shaders_root: PathBuf,
-  scope: &'a XrayLookupScope,
-  vfs: &'a XrayVfs,
+  search: &'a XraySearch,
 }
 
 impl<'a> ShadersVerifier<'a> {
-  pub(crate) fn new(vfs: &'a XrayVfs, scope: &'a XrayLookupScope, options: &'a GamedataProjectVerifyOptions) -> Self {
+  pub(crate) fn new(search: &'a XraySearch, options: &'a GamedataProjectVerifyOptions) -> Self {
     Self {
       options,
-      scope,
+      search,
       shaders_root: PathBuf::from(SHADERS_DIRECTORY),
-      vfs,
     }
   }
 
@@ -111,7 +109,7 @@ impl<'a> ShadersVerifier<'a> {
     self.verify_root_shader_scripts(&renderer_root, &renderer_prefix, result);
 
     let source_loader: GamedataShaderSourceLoader<'_> =
-      GamedataShaderSourceLoader::new(self.vfs, self.scope).with_job(self.options.job.clone());
+      GamedataShaderSourceLoader::new(self.search).with_job(self.options.job.clone());
     let mut checked_sources: HashSet<PathBuf> = HashSet::new();
 
     // Scripts and sources are different sets: a `.s` script is Lua the renderer runs, so a renderer holding only scripts is
@@ -131,22 +129,19 @@ impl<'a> ShadersVerifier<'a> {
     }
   }
 
-  /// Every entry under one renderer root, whether loose or inside a volume.
-  ///
-  /// Sorted so a run reports in a stable order, which a single directory walk gave for free and enumeration across mounts does not.
+  /// Every entry under one renderer root, whether loose or inside a volume, in engine-identity order so a run reports
+  /// in a stable order.
   fn renderer_entries(&self, renderer_prefix: &str) -> XrfResult<Vec<String>> {
     self.options.job.check_cancelled()?;
 
-    let scope: XrayLookupScope = self.scope.clone().with_prefix(renderer_prefix)?;
-    let mut entries: Vec<String> = self
-      .vfs
-      .scoped(&scope)
-      .list_entries()
+    let entries: Vec<String> = self
+      .search
+      .clone()
+      .with_prefix(renderer_prefix)?
+      .list_files()
       .into_iter()
       .map(|location| location.get_logical_path().to_string())
       .collect();
-
-    entries.sort();
 
     self.options.job.check_cancelled()?;
 
@@ -160,7 +155,7 @@ impl<'a> ShadersVerifier<'a> {
     result: &mut GamedataShadersVerificationResult,
   ) {
     // Scripts sit directly in the renderer root, so this is a directory listing rather than a walk.
-    let listing = match self.vfs.scoped(self.scope).list_children(renderer_prefix) {
+    let listing = match self.search.list_children(renderer_prefix) {
       Ok(listing) => listing,
       Err(error) => {
         result.add_finding(GamedataFindingFactory::for_asset(
@@ -210,7 +205,7 @@ impl<'a> ShadersVerifier<'a> {
   fn read_script(&self, logical_path: &str) -> Result<String, XrfError> {
     self.options.job.check_cancelled()?;
 
-    let bytes: Vec<u8> = self.vfs.scoped(self.scope).read_bytes(logical_path)?;
+    let bytes: Vec<u8> = self.search.read(logical_path)?;
 
     String::from_utf8(bytes).map_err(|error| XrfError::new_read_error(format!("not valid utf-8: {error}")))
   }
@@ -275,7 +270,7 @@ mod tests {
 
   use xrf_error::{XrfError, XrfResult};
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-  use xrf_vfs::{XrayLookupScope, XrayVfs};
+  use xrf_vfs::{XrayLookupScope, XraySearch, XrayVfs};
 
   use super::{SHADERS_DIRECTORY, ShadersVerifier};
   use crate::{GamedataCheckResult, GamedataProjectVerifyOptions, GamedataVerificationRule};
@@ -284,12 +279,12 @@ mod tests {
   ///
   /// A directory mount rather than a packed volume: what these check is enumeration and include resolution over logical
   /// paths, which a directory source exercises identically while staying fast.
-  fn mount(root: &Path) -> XrfResult<(XrayVfs, XrayLookupScope)> {
+  fn mount(root: &Path) -> XrfResult<XraySearch> {
     let mut vfs: XrayVfs = XrayVfs::new();
 
     vfs.mount_directory("", root)?;
 
-    Ok((vfs, XrayLookupScope::all()))
+    Ok(XraySearch::new(vfs).with_step("gamedata", XrayLookupScope::all()))
   }
 
   #[test]
@@ -308,8 +303,8 @@ mod tests {
     write_file(&shaders.join("r3/main.ps"), "#include \"shared/common.h\"\n")?;
     write_file(&shaders.join("shared/common.h"), "float value;\n")?;
 
-    let (vfs, scope) = mount(&root)?;
-    let result = ShadersVerifier::new(&vfs, &scope, &options).verify();
+    let search: XraySearch = mount(&root)?;
+    let result = ShadersVerifier::new(&search, &options).verify();
 
     assert_eq!(
       result.get_failure_message(),
@@ -336,8 +331,8 @@ mod tests {
       "function normal(shader, t_base, t_second, t_detail) end\n",
     )?;
 
-    let (vfs, scope) = mount(&root)?;
-    let result = ShadersVerifier::new(&vfs, &scope, &options).verify();
+    let search: XraySearch = mount(&root)?;
+    let result = ShadersVerifier::new(&search, &options).verify();
 
     assert!(result.get_findings().is_empty());
     assert_eq!(
@@ -366,8 +361,8 @@ mod tests {
     write_file(&shaders.join("gl/first.h"), "#include \"second.h\"\n")?;
     write_file(&shaders.join("gl/second.h"), "#include \"first.h\"\n")?;
 
-    let (vfs, scope) = mount(&root)?;
-    let result = ShadersVerifier::new(&vfs, &scope, &options).verify();
+    let search: XraySearch = mount(&root)?;
+    let result = ShadersVerifier::new(&search, &options).verify();
     let rule_ids: Vec<String> = result
       .get_findings()
       .iter()

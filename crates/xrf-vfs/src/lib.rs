@@ -11,7 +11,7 @@
 //! - `source` — the mountable surface, and the two sources the engine itself has.
 //! - `mount` — composing sources into a mounted order, and planning one from a path.
 //! - `search` — how a VFS snapshot is read: the ordered search, its steps and what its lookups answer.
-//! - `vfs` — the VFS snapshot itself: mounts, revisions, and the scoped view a step reads through.
+//! - `vfs` — the VFS snapshot itself: mounts, revisions, and what it retains.
 //! - `input` — which inputs a recording search resolved, and the revision each had then.
 //! - `cache` — what a snapshot keeps after parsing an asset, the policy deciding what is kept, and the coordination
 //!   that keeps two readers from parsing one asset twice.
@@ -31,12 +31,11 @@ mod trace;
 mod vfs;
 
 pub use asset::{XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetType, require_writable_path};
-pub use cache::{XrayAssetCache, XrayCachePolicy, XrayCacheStats};
+pub use cache::{XrayCachePolicy, XrayCacheStats};
 pub use fsgame::{FsgameDeclaration, FsgameFile};
 pub use input::{XrayInput, XrayInputAnswer, XrayInputKind, XrayInputRecord, XrayRevision, XraySearchKey};
 pub use mount::{
-  XrayMount, XrayMountId, XrayMountMode, XrayMountPlan, XrayPlannedMount, XrayRoot, XrayRootKind, XrayRootProbe,
-  XrayRoots, XraySkippedMount,
+  XrayMount, XrayMountId, XrayMountMode, XrayRoot, XrayRootKind, XrayRootProbe, XrayRoots, XraySkippedMount,
 };
 pub use path::{XrayCollisionSite, XrayLogicalPath, XrayPathCollision};
 pub use search::{
@@ -45,4 +44,4 @@ pub use search::{
 };
 pub use source::{XrayArchiveSource, XrayAssetSource, XrayDeclaredRoot, XraySourceKind, label_from_path};
 pub use trace::{XrayReadTrace, XrayReadTraceEntry, XrayReadTraceHotPath, XrayReadTraceSummary};
-pub use vfs::{XrayScopedVfs, XrayVfs};
+pub use vfs::XrayVfs;

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use xrf_error::XrfResult;
 use xrf_ltx::{LtxDialect, LtxProject, LtxProjectOptions, LtxResolution, LtxStandardDialect};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayMountMode, XrayRoots, XraySearch, XrayVfs};
+use xrf_vfs::{XrayLogicalPath, XrayMountMode, XrayRoots};
 
 use crate::dltx_dialect::DltxDialect;
 
@@ -130,10 +130,11 @@ fn dltx_mode_reports_a_dialect_name_a_caller_can_show() {
 #[test]
 fn a_lean_project_resolves_the_patched_values_it_never_listed() -> XrfResult {
   let root: PathBuf = patched_tree("lean")?;
-  let vfs: XrayVfs = XrayRoots::one(root.clone(), XrayMountMode::Directory).open()?;
   let project: LtxProject = LtxProject::open_lean_at_search_opt(
     &root,
-    &XraySearch::new(vfs).with_step("root", XrayLookupScope::all()),
+    &XrayRoots::one(root.clone(), XrayMountMode::Directory)
+      .to_search_plan()?
+      .open()?,
     None,
     LtxProjectOptions::default().with_dialect(Arc::new(DltxDialect)),
   )?;

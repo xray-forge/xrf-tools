@@ -1,5 +1,5 @@
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayDirectoryListing, XrayVfs};
+use xrf_vfs::{XrayDirectoryListing, XraySearch};
 
 use crate::language::TranslationLanguage;
 use crate::project::constants::MAP_DESC_DIRECTORY;
@@ -24,7 +24,7 @@ use crate::project::descriptor::TranslationProjectMode;
 /// single language would otherwise read every language's files and file them all under that one name,
 /// silently — 24,802 entries in two languages, on an Anomaly-sized tree.
 pub(crate) fn resolve(
-  vfs: &XrayVfs,
+  search: &XraySearch,
   prefix: Option<&str>,
   language: TranslationLanguage,
 ) -> XrfResult<ResolvedParseScope> {
@@ -32,14 +32,14 @@ pub(crate) fn resolve(
 
   let mut prefix: String = match prefix {
     Some(prefix) => prefix.to_owned(),
-    None => default_prefix(vfs),
+    None => default_prefix(search),
   };
 
-  if has_child_directory(vfs, &prefix, &language_name) {
+  if has_child_directory(search, &prefix, &language_name) {
     prefix = join(&prefix, &language_name);
   }
 
-  let foreign: Vec<String> = foreign_language_directories(vfs, &prefix, &language_name);
+  let foreign: Vec<String> = foreign_language_directories(search, &prefix, &language_name);
 
   if !foreign.is_empty() {
     return Err(XrfError::new_invalid_error(format!(
@@ -74,10 +74,10 @@ impl ResolvedParseScope {
 ///
 /// Only taken when the directory actually exists, so a caller who mounted the text directory directly
 /// is not sent looking for `configs\text` inside it.
-fn default_prefix(vfs: &XrayVfs) -> String {
+fn default_prefix(search: &XraySearch) -> String {
   let gamedata: &str = TranslationProjectMode::Gamedata.get_prefix();
 
-  if vfs
+  if search
     .list_children(gamedata)
     .is_ok_and(|listing: XrayDirectoryListing| !listing.is_empty())
   {
@@ -87,8 +87,8 @@ fn default_prefix(vfs: &XrayVfs) -> String {
   String::new()
 }
 
-fn has_child_directory(vfs: &XrayVfs, prefix: &str, name: &str) -> bool {
-  vfs.list_children(prefix).is_ok_and(|listing| {
+fn has_child_directory(search: &XraySearch, prefix: &str, name: &str) -> bool {
+  search.list_children(prefix).is_ok_and(|listing| {
     listing
       .directories
       .iter()
@@ -100,8 +100,8 @@ fn has_child_directory(vfs: &XrayVfs, prefix: &str, name: &str) -> bool {
 ///
 /// `map_desc` is excluded by name, exactly as the engine excludes it, so a tree carrying map
 /// descriptions is not mistaken for one carrying a second language.
-fn foreign_language_directories(vfs: &XrayVfs, prefix: &str, language_name: &str) -> Vec<String> {
-  let Ok(listing) = vfs.list_children(prefix) else {
+fn foreign_language_directories(search: &XraySearch, prefix: &str, language_name: &str) -> Vec<String> {
+  let Ok(listing) = search.list_children(prefix) else {
     return Vec::new();
   };
 

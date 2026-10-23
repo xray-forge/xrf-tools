@@ -97,8 +97,6 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
     // Resolved and read through the VFS, so an archived visual and its animation banks are checked too.
     let Ok(Some(visual_path)) = self
       .project
-      .vfs()
-      .scoped(self.project.scope())
       .ogf(visual)
       .map(|it| it.map(|location| location.get_logical_path().to_string()))
     else {
@@ -118,9 +116,10 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
       }
 
       // The whole bank, shared with the meshes and hud-item checks rather than parsed once per reader.
-      let Ok(omf) = self.project.read_parsed(AssetType::Omf, bank, |chunk| {
-        OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
-      }) else {
+      let Ok(omf) = self
+        .project
+        .read_parsed(bank, OmfFile::read_from_chunk::<XRayByteOrder, _>)
+      else {
         continue;
       };
 
@@ -166,12 +165,7 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
     for motion_ref in &OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut chunk)? {
       self.options.job.check_cancelled()?;
 
-      for location in self
-        .project
-        .vfs()
-        .scoped(self.project.scope())
-        .resolve_all(AssetType::Omf, motion_ref)?
-      {
+      for location in self.project.resolve_all(AssetType::Omf, motion_ref)? {
         self.options.job.check_cancelled()?;
         if location.is_type(AssetType::Omf) {
           assets.push(location.get_logical_path().to_string());

@@ -147,13 +147,7 @@ impl GamedataProject {
 
   /// Whether the game holds a texture, as the engine finds one.
   fn has_texture(&self, texture: &str) -> bool {
-    self
-      .vfs()
-      .scoped(self.scope())
-      .dds_texture(texture)
-      .ok()
-      .flatten()
-      .is_some()
+    self.dds_texture(texture).ok().flatten().is_some()
   }
 
   fn report_environment_finding(&self, finding: &EnvironmentFinding) -> XrfResult<Finding> {

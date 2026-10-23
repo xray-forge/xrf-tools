@@ -5,7 +5,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_translation::{TranslationProjectMode, read_gamedata_in, read_source_in};
 use xrf_utils::to_portable_path_string;
-use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayRoots, XraySearch};
 
 use crate::dialog::Dialog;
 use crate::element::DialogElement;
@@ -56,7 +56,7 @@ pub struct DialogProject {
   mode: DialogProjectMode,
   dialogs_prefix: String,
   translations_prefix: String,
-  vfs: XrayVfs,
+  search: XraySearch,
   files: Vec<DialogProjectFile>,
   text: DialogTextIndex,
   findings: Vec<DialogFinding>,
@@ -71,7 +71,7 @@ impl DialogProject {
   /// dialog files under the prefix. The second means the caller named the wrong place, and answering
   /// with an empty project would hide that.
   pub fn open(roots: &XrayRoots, layout: &DialogProjectLayout) -> XrfResult<Self> {
-    Self::from_vfs(roots.open()?, roots, layout)
+    Self::from_search(roots.to_search_plan()?.open()?, roots, layout)
   }
 
   /// Open a project over roots somebody else mounted.
@@ -79,10 +79,10 @@ impl DialogProject {
   /// # Errors
   ///
   /// Returns a not-found error when the roots exposes no dialog files under the dialogs prefix.
-  pub fn from_vfs(vfs: XrayVfs, roots: &XrayRoots, layout: &DialogProjectLayout) -> XrfResult<Self> {
+  pub fn from_search(search: XraySearch, roots: &XrayRoots, layout: &DialogProjectLayout) -> XrfResult<Self> {
     let dialogs_prefix: String = layout.get_dialogs_prefix().to_owned();
-    let scope: XrayLookupScope = XrayLookupScope::all().with_prefix(&dialogs_prefix)?;
-    let assets: Vec<XrayAsset> = Self::list_dialog_assets(&vfs.scoped(&scope));
+    let dialogs: XraySearch = search.clone().with_prefix(&dialogs_prefix)?;
+    let assets: Vec<XrayAsset> = Self::list_dialog_assets(&dialogs);
 
     if assets.is_empty() {
       return Err(XrfError::new_not_found_error(format!(
@@ -97,7 +97,7 @@ impl DialogProject {
     for asset in assets {
       let logical_path: String = asset.get_logical_path().as_str().to_owned();
 
-      match Self::read_asset(&vfs.scoped(&scope), &logical_path) {
+      match Self::read_asset(&dialogs, &asset) {
         Ok(file) => {
           for issue in file.get_issues() {
             findings.push(DialogFinding::new(
@@ -125,7 +125,7 @@ impl DialogProject {
     let text: DialogTextIndex = if layout.is_text_skipped {
       DialogTextIndex::default()
     } else {
-      Self::read_text(&vfs, roots, layout.mode, &translations_prefix, &mut findings)
+      Self::read_text(&search, roots, layout.mode, &translations_prefix, &mut findings)
     };
 
     Ok(Self {
@@ -133,7 +133,7 @@ impl DialogProject {
       mode: layout.mode,
       dialogs_prefix,
       translations_prefix,
-      vfs,
+      search,
       files,
       text,
       findings,
@@ -142,7 +142,7 @@ impl DialogProject {
 
   /// Read the text tree the dialogs resolve their lines from, over the roots already mounted.
   fn read_text(
-    vfs: &XrayVfs,
+    search: &XraySearch,
     roots: &XrayRoots,
     mode: DialogProjectMode,
     prefix: &str,
@@ -158,8 +158,8 @@ impl DialogProject {
     };
 
     let read = match translation_mode {
-      TranslationProjectMode::Source => read_source_in(vfs, roots, prefix),
-      TranslationProjectMode::Gamedata => read_gamedata_in(vfs, roots, prefix),
+      TranslationProjectMode::Source => read_source_in(search, roots, prefix),
+      TranslationProjectMode::Gamedata => read_gamedata_in(search, roots, prefix),
     };
 
     match read {
@@ -186,17 +186,13 @@ impl DialogProject {
     }
   }
 
-  /// Every dialog asset a scoped roots exposes, in logical-path order.
-  pub fn list_dialog_assets(scoped: &XrayScopedVfs) -> Vec<XrayAsset> {
-    let mut assets: Vec<XrayAsset> = scoped
-      .list_entries()
+  /// Every dialog asset a search reaches, in logical-path order.
+  pub fn list_dialog_assets(search: &XraySearch) -> Vec<XrayAsset> {
+    search
+      .list_files()
       .into_iter()
       .filter(|asset| Self::is_dialog_logical_path(asset.get_logical_path()))
-      .collect();
-
-    assets.sort_by(|left, right| left.get_logical_path().as_str().cmp(right.get_logical_path().as_str()));
-
-    assets
+      .collect()
   }
 
   /// Whether a logical path names dialog data, by its file name.
@@ -221,9 +217,9 @@ impl DialogProject {
     &self.translations_prefix
   }
 
-  /// The mounted roots, for a caller that needs to read something beside the dialogs.
-  pub fn get_vfs(&self) -> &XrayVfs {
-    &self.vfs
+  /// The search over the roots, for a caller that needs to read something beside the dialogs.
+  pub fn get_search(&self) -> &XraySearch {
+    &self.search
   }
 
   pub fn get_files(&self) -> &[DialogProjectFile] {
@@ -365,7 +361,7 @@ impl DialogProject {
     }
   }
 
-  fn read_asset(scoped: &XrayScopedVfs, logical_path: &str) -> XrfResult<DialogFile> {
-    DialogFile::read_from_bytes(&scoped.read_bytes(logical_path)?)
+  fn read_asset(search: &XraySearch, asset: &XrayAsset) -> XrfResult<DialogFile> {
+    DialogFile::read_from_bytes(&search.read_asset(asset)?)
   }
 }

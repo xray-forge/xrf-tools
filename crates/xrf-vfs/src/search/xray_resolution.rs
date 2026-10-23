@@ -37,6 +37,19 @@ impl XrayResolution {
     self.get_assets().first()
   }
 
+  /// The located assets, for a caller that needs no report of how they were found.
+  pub fn into_assets(self) -> Vec<XrayAsset> {
+    match self {
+      Self::Resolved { assets, .. } | Self::Substituted { assets, .. } => assets,
+      Self::Missing { .. } | Self::NoScope | Self::Rejected { .. } => Vec::new(),
+    }
+  }
+
+  /// The first located asset, for a caller that needs no report of how it was found.
+  pub fn into_asset(self) -> Option<XrayAsset> {
+    self.into_assets().into_iter().next()
+  }
+
   /// The search step that answered, for a located outcome.
   pub fn get_step(&self) -> Option<&str> {
     match self {
