@@ -1,7 +1,11 @@
+use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rayon::prelude::*;
+use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_vfs::{XrayInputKind, XrayInputRecord, XrayLookupScope, XrayProbe, XrayVfs};
 
 use crate::core::session::{Session, SessionId, SessionPart, SessionParts, SessionRestore, SessionSnapshot};
 
@@ -221,8 +225,8 @@ fn a_part_is_built_once_and_shared_by_every_ask() {
 #[test]
 fn a_part_the_opening_read_is_kept_rather_than_built() {
   let parts: SessionParts = SessionParts::new()
-    .with::<CountedPart>(Arc::new(3))
-    .with::<PooledPart>(5);
+    .with::<CountedPart>(Arc::new(3), XrayInputRecord::new())
+    .with::<PooledPart>(5, XrayInputRecord::new());
 
   assert_eq!(
     *parts.get_or_init::<CountedPart>(|| unreachable!("the part was kept")),
@@ -262,10 +266,200 @@ fn a_replacement_starts_without_the_parts_of_the_value_it_replaces() {
   session.begin_open(id).unwrap();
 
   let opened: Arc<SessionSnapshot<&str>> = session
-    .commit_open_with(id, "first", SessionParts::new().with::<CountedPart>(Arc::new(1)))
+    .commit_open_with(
+      id,
+      "first",
+      XrayInputRecord::new(),
+      SessionParts::new().with::<CountedPart>(Arc::new(1), XrayInputRecord::new()),
+    )
     .unwrap();
   let replaced: Arc<SessionSnapshot<&str>> = session.replace(&opened, "second").unwrap().unwrap();
 
   assert_eq!(opened.parts.get::<CountedPart>().as_deref(), Some(&1));
   assert_eq!(replaced.parts.get::<CountedPart>(), None);
+}
+
+/// A loose tree of `files` mounted as the whole of a world.
+fn world(name: &str, files: &[&str]) -> XrayVfs {
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("session_parts/{name}"));
+
+  let _ = fs::remove_dir_all(&root);
+
+  for file in files {
+    let path: PathBuf = root.join(file);
+
+    fs::create_dir_all(path.parent().expect("a file sits in a directory")).expect("directory created");
+    fs::write(&path, b"payload").expect("file written");
+  }
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs.mount_directory("", &root).expect("the tree mounts");
+
+  vfs
+}
+
+fn probe_of(vfs: &XrayVfs) -> XrayProbe<'_> {
+  vfs.probe().with_step("root", XrayLookupScope::all())
+}
+
+/// Finds a file, as a build reading it would.
+fn read(probe: &XrayProbe, logical_path: &str) {
+  probe.find(logical_path).expect("the lookup succeeds");
+}
+
+/// The files a record holds, sorted, each with whether a source answered for it.
+fn list_files(inputs: &XrayInputRecord) -> Vec<(String, bool)> {
+  let mut files: Vec<(String, bool)> = inputs
+    .list()
+    .into_iter()
+    .filter_map(|(input, answer)| match input.get_kind() {
+      XrayInputKind::File(path) => Some((path.as_str().to_string(), answer.source.is_some())),
+      XrayInputKind::Listing(_) => None,
+    })
+    .collect();
+
+  files.sort();
+  files
+}
+
+fn files(paths: &[(&str, bool)]) -> Vec<(String, bool)> {
+  paths
+    .iter()
+    .map(|(path, is_found)| (path.to_string(), *is_found))
+    .collect()
+}
+
+#[test]
+fn a_part_records_what_its_build_reads() {
+  let vfs: XrayVfs = world("records", &["configs/system.ltx"]);
+  let parts: SessionParts = SessionParts::new();
+
+  parts.get_or_record::<CountedPart>(&probe_of(&vfs), |probe| {
+    read(probe, "configs\\system.ltx");
+    read(probe, "configs\\absent.ltx");
+
+    Arc::new(1)
+  });
+
+  assert_eq!(
+    list_files(&parts.get_inputs::<CountedPart>().expect("the part was asked for")),
+    files(&[("configs\\absent.ltx", false), ("configs\\system.ltx", true)])
+  );
+}
+
+#[test]
+fn a_part_asked_for_as_another_builds_adds_its_inputs_to_the_askers() {
+  let vfs: XrayVfs = world("nested", &["configs/system.ltx", "configs/game.ltx"]);
+  let probe: XrayProbe = probe_of(&vfs);
+  let build_counted = |probe: &XrayProbe| {
+    read(probe, "configs\\game.ltx");
+
+    Arc::new(2)
+  };
+
+  for is_built_first in [false, true] {
+    let parts: SessionParts = SessionParts::new();
+
+    if is_built_first {
+      parts.get_or_record::<CountedPart>(&probe, build_counted);
+    }
+
+    let value: u32 = parts.get_or_record::<DependentPart>(&probe, |probe| {
+      read(probe, "configs\\system.ltx");
+
+      *parts.get_or_record::<CountedPart>(probe, build_counted) * 10
+    });
+
+    assert_eq!(value, 20);
+    assert_eq!(
+      list_files(&parts.get_inputs::<DependentPart>().expect("the asker was asked for")),
+      files(&[("configs\\game.ltx", true), ("configs\\system.ltx", true)]),
+      "the asker read the part built {}",
+      if is_built_first { "before" } else { "for it" }
+    );
+    assert_eq!(
+      list_files(&parts.get_inputs::<CountedPart>().expect("the part was asked for")),
+      files(&[("configs\\game.ltx", true)])
+    );
+  }
+}
+
+#[test]
+fn a_pooled_part_records_what_its_build_reads() {
+  let vfs: XrayVfs = world("pooled", &["configs/system.ltx"]);
+  let probe: XrayProbe = probe_of(&vfs);
+  let parts: SessionParts = SessionParts::new();
+  let sums: Vec<u64> = (0..64)
+    .into_par_iter()
+    .map(|_| {
+      parts.get_or_record::<PooledPart>(&probe, |probe| {
+        read(probe, "configs\\system.ltx");
+
+        (0..10_000u64).into_par_iter().sum()
+      })
+    })
+    .collect();
+
+  assert!(sums.iter().all(|sum| *sum == 49_995_000));
+  assert_eq!(
+    list_files(&parts.get_inputs::<PooledPart>().expect("the part was asked for")),
+    files(&[("configs\\system.ltx", true)])
+  );
+}
+
+#[test]
+fn a_part_read_a_key_at_a_time_records_each_read_as_its_own() {
+  let vfs: XrayVfs = world("keyed", &["meshes/a.ogf", "meshes/b.ogf"]);
+  let probe: XrayProbe = probe_of(&vfs);
+  let parts: SessionParts = SessionParts::new();
+
+  parts.get_or_init::<CountedPart>(|| Arc::new(0));
+  parts.record::<CountedPart, _>(&probe, |probe| read(probe, "meshes\\a.ogf"));
+  parts.record::<CountedPart, _>(&probe, |probe| read(probe, "meshes\\b.ogf"));
+
+  assert_eq!(
+    list_files(&parts.get_inputs::<CountedPart>().expect("the part was asked for")),
+    files(&[("meshes\\a.ogf", true), ("meshes\\b.ogf", true)])
+  );
+}
+
+#[test]
+fn a_snapshot_keeps_what_its_value_and_its_kept_parts_were_read_from() {
+  let vfs: XrayVfs = world("kept", &["levels/l01/level", "spawns/all.spawn"]);
+  let root: XrayInputRecord = XrayInputRecord::new();
+  let spawn: XrayInputRecord = XrayInputRecord::new();
+  let probe: XrayProbe = probe_of(&vfs).recording(&root);
+
+  read(&probe, "levels\\l01\\level");
+  read(&probe.recording(&spawn), "spawns\\all.spawn");
+  probe.record_inputs(&spawn);
+
+  let session: Session<&str> = Session::new("test");
+  let id: SessionId = SessionId::new();
+
+  session.begin_open(id).unwrap();
+
+  let opened: Arc<SessionSnapshot<&str>> = session
+    .commit_open_with(
+      id,
+      "level",
+      root,
+      SessionParts::new().with::<CountedPart>(Arc::new(1), spawn),
+    )
+    .unwrap();
+
+  assert_eq!(
+    list_files(&opened.inputs),
+    files(&[("levels\\l01\\level", true), ("spawns\\all.spawn", true)])
+  );
+  assert_eq!(
+    list_files(&opened.parts.get_inputs::<CountedPart>().expect("the part was kept")),
+    files(&[("spawns\\all.spawn", true)])
+  );
+  assert_eq!(
+    opened.parts.list_inputs().len(),
+    1,
+    "a kept part is listed with its inputs"
+  );
 }

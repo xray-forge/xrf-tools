@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_spawn::{AlifeObject, ClsId, SpawnFile, SpawnLevelGraph, SpawnLevelObjects};
-use xrf_vfs::{XrayLogicalPath, XrayProbe};
+use xrf_vfs::{XrayInputRecord, XrayLogicalPath, XrayProbe};
 
 use crate::core::assets::read_located_asset;
 use crate::core::session::{SessionPart, SessionParts, SessionSnapshot};
@@ -43,12 +43,16 @@ impl SessionPart for LevelGraphPart {
 pub fn get_level_spawn(current: &SessionSnapshot<SelectedLevel>, probe: &XrayProbe) -> Result<Arc<LevelSpawn>, String> {
   current
     .parts
-    .get_or_init::<LevelSpawnPart>(|| read_source_spawn(&current.source, probe))
+    .get_or_record::<LevelSpawnPart>(probe, |probe| read_source_spawn(&current.source, probe))
 }
 
-/// `parts` with the spawn an open read kept as the level's.
-pub fn with_level_spawn(parts: SessionParts, spawn: Result<Arc<LevelSpawn>, String>) -> SessionParts {
-  parts.with::<LevelSpawnPart>(spawn)
+/// `parts` with the spawn an open read from `inputs` kept as the level's.
+pub fn with_level_spawn(
+  parts: SessionParts,
+  spawn: Result<Arc<LevelSpawn>, String>,
+  inputs: XrayInputRecord,
+) -> SessionParts {
+  parts.with::<LevelSpawnPart>(spawn, inputs)
 }
 
 /// The open level's graph points and patrols and every level's place in the world, which a level map's annotations
@@ -63,7 +67,7 @@ pub fn get_level_graph(
   current: &SessionSnapshot<SelectedLevel>,
   probe: &XrayProbe,
 ) -> Result<Arc<SpawnLevelGraph>, String> {
-  current.parts.get_or_init::<LevelGraphPart>(|| {
+  current.parts.get_or_record::<LevelGraphPart>(probe, |probe| {
     let level: String = current
       .source
       .get_name()

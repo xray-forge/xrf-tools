@@ -84,17 +84,15 @@ impl LevelRenderSource {
 }
 
 impl LevelRenderSource {
-  /// The sections the level's spawned objects name, none where its spawn or the configs cannot be read. Read between
-  /// two probes, as the configs mount a tree of their own.
+  /// The sections the level's spawned objects name, none where its spawn or the configs cannot be read.
   fn read_sections(&self) -> XrfResult<Option<Arc<Ltx>>> {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
 
     Ok(
       self
         .assets
-        .with_probe(&level.roots, |probe| get_level_spawn(level, probe))
+        .with_probe(&level.roots, |probe| get_level_sections(level, probe))
         .map_err(XrfError::new_asset_error)?
-        .and_then(|spawn| get_level_sections(level, &spawn))
         .inspect_err(report_missing_sections)
         .ok(),
     )
@@ -332,23 +330,24 @@ impl RenderLevelSource for LevelRenderSource {
     let (read, failures, hemi) = self
       .assets
       .with_probe(&level.roots, |probe| {
-        let visuals: SpawnVisualReader = SpawnVisualReader::new(level, probe);
         let mut failures: Vec<RenderLoadFailure> = Vec::new();
         // A visual that cannot be read is reported by the reader, and left out.
-        let read: Vec<(&str, Arc<LevelSpawnVisual>)> = names
-          .iter()
-          .filter_map(|name| match visuals.get(name) {
-            Ok(visual) => Some((name.as_str(), visual)),
-            Err(error) => {
-              failures.push(RenderLoadFailure {
-                name: name.clone(),
-                reason: error.to_string(),
-              });
+        let read: Vec<(&str, Arc<LevelSpawnVisual>)> = SpawnVisualReader::with(level, probe, |visuals| {
+          names
+            .iter()
+            .filter_map(|name| match visuals.get(name) {
+              Ok(visual) => Some((name.as_str(), visual)),
+              Err(error) => {
+                failures.push(RenderLoadFailure {
+                  name: name.clone(),
+                  reason: error.to_string(),
+                });
 
-              None
-            }
-          })
-          .collect();
+                None
+              }
+            })
+            .collect()
+        });
         let hemi = get_level_hemi(level, probe)
           .map(|estimator| estimate_visuals_hemi(level, probe, &estimator, &read))
           .unwrap_or_default();

@@ -1,6 +1,7 @@
 use std::ops::Deref;
 
 use serde::Serialize;
+use xrf_vfs::XrayInputRecord;
 
 use crate::core::session::{SessionId, SessionParts};
 
@@ -11,6 +12,10 @@ use crate::core::session::{SessionId, SessionParts};
 pub(crate) struct SessionSnapshot<T> {
   pub session_id: SessionId,
   pub value: T,
+  /// What the open read to derive the value, where it recorded its reads; empty where it did not.
+  #[serde(skip)]
+  #[cfg_attr(feature = "typescript-bindings", specta(skip))]
+  pub inputs: XrayInputRecord,
   /// What features derive from the value, built the first time anything asks and let go with the snapshot: a
   /// replacement starts without them, since they were derived from the value it replaces.
   #[serde(skip)]
@@ -19,11 +24,12 @@ pub(crate) struct SessionSnapshot<T> {
 }
 
 impl<T> SessionSnapshot<T> {
-  /// The value as `session_id` opened it, keeping no parts yet.
+  /// The value as `session_id` opened it, keeping no inputs and no parts yet.
   pub fn new(session_id: SessionId, value: T) -> Self {
     Self {
       session_id,
       value,
+      inputs: XrayInputRecord::new(),
       parts: SessionParts::new(),
     }
   }

@@ -36,7 +36,7 @@ impl SessionPart for LevelSpawnVisualsPart {
 /// Reads a level's spawned visuals within one probe, opening the shader library once for all of them, and only if
 /// one is read at all.
 pub struct SpawnVisualReader<'probe, 'vfs> {
-  current: &'probe SessionSnapshot<SelectedLevel>,
+  visuals: Arc<LevelSpawnVisuals>,
   probe: &'probe XrayProbe<'vfs>,
   /// The level's own directory, the engine's `$level$`, where the level's breakables are compiled to.
   level: Option<XrayLogicalPath>,
@@ -45,14 +45,26 @@ pub struct SpawnVisualReader<'probe, 'vfs> {
 }
 
 impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
-  pub fn new(current: &'probe SessionSnapshot<SelectedLevel>, probe: &'probe XrayProbe<'vfs>) -> Self {
-    Self {
-      current,
-      probe,
-      level: current.source.get_logical_directory(),
-      scope: current.source.get_texture_scope(),
-      resolver: OnceCell::new(),
-    }
+  /// Runs `read` with a reader of the open level's spawned visuals, whatever it reads recorded as the visuals' part read
+  /// it.
+  pub fn with<T>(
+    current: &SessionSnapshot<SelectedLevel>,
+    probe: &XrayProbe,
+    read: impl FnOnce(&SpawnVisualReader) -> T,
+  ) -> T {
+    let visuals: Arc<LevelSpawnVisuals> = current
+      .parts
+      .get_or_init::<LevelSpawnVisualsPart>(|| Arc::new(LevelSpawnVisuals::new()));
+
+    current.parts.record::<LevelSpawnVisualsPart, T>(probe, |probe| {
+      read(&SpawnVisualReader {
+        visuals,
+        probe,
+        level: current.source.get_logical_directory(),
+        scope: current.source.get_texture_scope(),
+        resolver: OnceCell::new(),
+      })
+    })
   }
 
   /// A spawned object's visual, read and packed the first time anything asks for it and kept with the level.
@@ -61,12 +73,7 @@ impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
   ///
   /// Returns why it cannot be read, reported the once it is tried: it is not read again.
   pub fn get(&self, name: &str) -> Result<Arc<LevelSpawnVisual>, String> {
-    let visuals: Arc<LevelSpawnVisuals> = self
-      .current
-      .parts
-      .get_or_init::<LevelSpawnVisualsPart>(|| Arc::new(LevelSpawnVisuals::new()));
-
-    visuals.get_or_read(name, || {
+    self.visuals.get_or_read(name, || {
       self
         .read(name)
         .map(Arc::new)

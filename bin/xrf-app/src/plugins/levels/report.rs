@@ -9,6 +9,7 @@ use xrf_particles::ParticleLibrary;
 use xrf_spawn::SpawnLevelObjects;
 use xrf_visual::{LightsDescription, SectorDescription, SectorInstanceGroup, SectorOutline, SectorPackage};
 
+use crate::core::session::SessionSnapshot;
 use crate::plugins::levels::state::{
   LevelEntry, LevelSource, LevelSpawnObjectsDescription, LevelStart, LevelTextureReference, SelectedLevel,
 };
@@ -35,18 +36,20 @@ pub fn report_opening(source: &LevelSource) {
 }
 
 /// What one open came to, and what about it is worth a warning.
-pub fn report_open(selected: &SelectedLevel, started: Instant) {
+pub fn report_open(opened: &SessionSnapshot<SelectedLevel>, started: Instant) {
+  let selected: &SelectedLevel = &opened.value;
   let source: &LevelSource = &selected.source;
 
   log::info!(
-    "Opened level {} in {}: {} sectors, {} visuals, {} drawable, {} textures, {} surfaces",
+    "Opened level {} in {}: {} sectors, {} visuals, {} drawable, {} textures, {} surfaces, {} inputs read",
     source.get_label(),
     xrf_utils::format_duration(started.elapsed()),
     selected.outlines.len(),
     selected.visuals.visuals.len(),
     selected.visuals.count_drawable(),
     selected.textures.len(),
-    selected.surfaces.len()
+    selected.surfaces.len(),
+    opened.inputs.len()
   );
 
   report_sectors(source, &selected.outlines);

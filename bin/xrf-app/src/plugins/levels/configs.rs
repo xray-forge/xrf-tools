@@ -6,10 +6,11 @@ use std::time::Instant;
 
 use xrf_ltx::{Ltx, LtxDialect, LtxProject, LtxProjectOptions, LtxResolution};
 use xrf_material::XrayReducedTextures;
-use xrf_vfs::XrayRoots;
+use xrf_vfs::{XrayInputRecord, XrayProbe, XrayRoots};
 
 use crate::core::session::{SessionPart, SessionParts, SessionSnapshot};
 use crate::plugins::levels::report::report_sections;
+use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::state::{LevelSource, LevelSpawn, SelectedLevel};
 
 /// Where the game keeps its configs, which `system.ltx` is read from.
@@ -27,10 +28,12 @@ impl SessionPart for LevelSectionsPart {
 ///
 /// # Errors
 ///
-/// Returns the reason the configs cannot be read, which every later ask answers with again.
-pub fn get_level_sections(current: &SessionSnapshot<SelectedLevel>, spawn: &LevelSpawn) -> Result<Arc<Ltx>, String> {
-  current.parts.get_or_init::<LevelSectionsPart>(|| {
-    read_level_sections(&current.source, (&current.roots, &current.dialect), spawn)
+/// Returns the reason the spawn or the configs cannot be read, which every later ask answers with again.
+pub fn get_level_sections(current: &SessionSnapshot<SelectedLevel>, probe: &XrayProbe) -> Result<Arc<Ltx>, String> {
+  current.parts.get_or_record::<LevelSectionsPart>(probe, |probe| {
+    let spawn: Arc<LevelSpawn> = get_level_spawn(current, probe)?;
+
+    read_level_sections(&current.source, (&current.roots, &current.dialect), &spawn)
   })
 }
 
@@ -39,9 +42,13 @@ pub fn find_level_sections(current: &SessionSnapshot<SelectedLevel>) -> Option<A
   current.parts.get::<LevelSectionsPart>()?.ok()
 }
 
-/// `parts` with the sections an open read kept as the level's.
-pub fn with_level_sections(parts: SessionParts, sections: Result<Arc<Ltx>, String>) -> SessionParts {
-  parts.with::<LevelSectionsPart>(sections)
+/// `parts` with the sections an open read from `inputs` kept as the level's.
+pub fn with_level_sections(
+  parts: SessionParts,
+  sections: Result<Arc<Ltx>, String>,
+  inputs: XrayInputRecord,
+) -> SessionParts {
+  parts.with::<LevelSectionsPart>(sections, inputs)
 }
 
 /// The sections a level's spawned objects name and [`XrayReducedTextures::SECTION`], out of `system.ltx` with its
@@ -84,6 +91,7 @@ fn read_system_ltx(
   roots: &XrayRoots,
   dialect: &Arc<dyn LtxDialect>,
 ) -> Result<Arc<LtxResolution>, String> {
+  // todo: read the configs through the level's probe, so the sections part records the files they come from.
   let project: LtxProject = LtxProject::open_lean_at_roots_opt(
     roots,
     Some(CONFIGS_DIRECTORY),
