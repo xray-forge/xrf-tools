@@ -5,7 +5,6 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use xrf_error::XrfResult;
 
-use crate::XrayLookupScope;
 use crate::asset::XrayAssetType;
 use crate::cache::xray_cache_flights::{XrayCacheFlightClaim, XrayCacheFlights};
 use crate::cache::xray_cache_key::XrayCacheKey;
@@ -18,7 +17,7 @@ struct XrayCacheEntry {
   bytes: u64,
 }
 
-/// Parsed assets a VFS snapshot keeps, so a second read of the same asset costs a hash lookup.
+/// Parsed assets a VFS snapshot and its forks keep, so a second read of the same copy costs a hash lookup.
 ///
 /// # Statistics
 ///
@@ -48,12 +47,13 @@ impl XrayAssetCache {
     &self.policy
   }
 
-  /// Returns a retained value, if this snapshot is holding one under that identity.
+  /// Returns a retained value, if the store is holding one under that identity.
   ///
   /// A plain lookup, outside the accounting: it reports what the store holds without changing what the run reports
   /// about itself. [`Self::get_or_load`] is the read that counts.
-  pub fn get<T: Send + Sync + 'static>(&self, scope: &XrayLookupScope, path: &str) -> Option<Arc<T>> {
-    self.peek(&XrayCacheKey::of::<T>(scope, path))
+  #[cfg(test)]
+  pub fn get<T: Send + Sync + 'static>(&self, key: &XrayCacheKey) -> Option<Arc<T>> {
+    self.peek(key)
   }
 
   /// Serves a retained value, or loads it once on behalf of every thread asking for it at the same moment.
@@ -67,13 +67,7 @@ impl XrayAssetCache {
   /// Returns whatever `load` answers with. Failures are not retained and are never shared: a waiter whose owner failed
   /// loads again and reports its own error, which is both what a sequential pair would have done and what keeps one
   /// reader's failure from being served to every reader behind it.
-  pub fn get_or_load<T, F>(
-    &self,
-    scope: &XrayLookupScope,
-    path: &str,
-    kind: XrayAssetType,
-    load: F,
-  ) -> XrfResult<Arc<T>>
+  pub fn get_or_load<T, F>(&self, key: XrayCacheKey, kind: XrayAssetType, load: F) -> XrfResult<Arc<T>>
   where
     T: Send + Sync + 'static,
     F: FnOnce() -> XrfResult<(T, u64)>,
@@ -83,8 +77,6 @@ impl XrayAssetCache {
     if !self.policy.is_allowed(kind) {
       return self.load_uncoordinated(load);
     }
-
-    let key: XrayCacheKey = XrayCacheKey::of::<T>(scope, path);
 
     if let Some(retained) = self.serve_retained::<T>(&key) {
       return Ok(retained);
@@ -119,20 +111,14 @@ impl XrayAssetCache {
   }
 
   /// Retains a parsed value if the policy allows its kind and the budget has room.
-  pub fn insert<T: Send + Sync + 'static>(
-    &self,
-    scope: &XrayLookupScope,
-    path: &str,
-    kind: XrayAssetType,
-    bytes: u64,
-    value: Arc<T>,
-  ) {
-    self.retain(XrayCacheKey::of::<T>(scope, path), kind, bytes, value);
+  #[cfg(test)]
+  pub fn insert<T: Send + Sync + 'static>(&self, key: XrayCacheKey, kind: XrayAssetType, bytes: u64, value: Arc<T>) {
+    self.retain(key, kind, bytes, value);
   }
 
-  /// Drops everything retained for one logical path, whatever type or scope held it.
-  pub fn forget(&self, logical_path: &str) -> usize {
-    self.drop_entries(|key, _| key.get_path() != logical_path)
+  /// Drops everything retained for one copy, whatever type or revision held it.
+  pub fn forget_copy(&self, opening: u64, path: &str) -> usize {
+    self.drop_entries(|key, _| !key.is_copy(opening, path))
   }
 
   /// Drops everything no caller is holding, and answers how many entries went.

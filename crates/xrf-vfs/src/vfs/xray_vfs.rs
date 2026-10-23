@@ -6,7 +6,7 @@ use std::sync::Arc;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::cache::{XrayAssetCache, XrayCachePolicy, XrayCacheStats};
+use crate::cache::{XrayAssetCache, XrayCacheKey, XrayCachePolicy, XrayCacheStats};
 use crate::input::{XrayRevision, XrayRevisions};
 use crate::path::{XrayLogicalPath, normalize};
 use crate::search::{XrayDirectoryListing, XrayMountedEntry, XrayShadowedCopy, XrayShadowingEntry};
@@ -25,8 +25,9 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct XrayVfs {
   mounts: Vec<XrayMount>,
-  /// Parsed assets this snapshot retains, governed by its own policy and empty unless a caller sets one.
-  cache: XrayAssetCache,
+  /// Parsed assets this snapshot and every fork of it retain, keyed by the copy each was parsed from, so a mount or a
+  /// fork keeps what is still true; governed by one policy per lineage and empty unless a caller sets one.
+  cache: Arc<XrayAssetCache>,
   /// Per-path account of what was physically read, absent unless a caller asked to be told; one account however many
   /// forks read.
   trace: Option<Arc<XrayReadTrace>>,
@@ -48,9 +49,9 @@ impl XrayVfs {
     Self::default()
   }
 
-  /// Sets what this snapshot may retain after parsing an asset.
+  /// Sets what this snapshot may retain after parsing an asset, starting a cache of its own that its forks share.
   pub fn with_cache_policy(mut self, policy: XrayCachePolicy) -> Self {
-    self.cache = XrayAssetCache::new(policy);
+    self.cache = Arc::new(XrayAssetCache::new(policy));
 
     self
   }
@@ -60,7 +61,7 @@ impl XrayVfs {
     self.cache.get_policy()
   }
 
-  /// How well retention has served this snapshot's reads so far.
+  /// How well retention has served the reads of this snapshot and its lineage so far.
   pub fn get_cache_stats(&self) -> XrayCacheStats {
     self.cache.get_stats()
   }
@@ -77,11 +78,11 @@ impl XrayVfs {
     self.trace.as_deref()
   }
 
-  /// A snapshot over the same mounts, sharing each source and the index read for it rather than reading them again, to
-  /// mount more into while this one goes on serving reads.
+  /// A snapshot over the same mounts, sharing each source, the index read for it and the parsed assets retained rather
+  /// than reading them again, to mount more into while this one goes on serving reads.
   pub fn fork(&self) -> Self {
     Self {
-      cache: XrayAssetCache::new(self.cache.get_policy().clone()),
+      cache: Arc::clone(&self.cache),
       failed: self.failed.clone(),
       mounts: self.mounts.clone(),
       planned: self.planned.clone(),
@@ -99,6 +100,12 @@ impl XrayVfs {
 
   pub(crate) fn get_revisions(&self) -> &XrayRevisions {
     &self.revisions
+  }
+
+  /// Moves a mount's copy of a logical path to `revision`, for a test standing in for a commit.
+  #[cfg(test)]
+  pub(crate) fn set_file_revision(&mut self, mount: XrayMountId, logical_path: &str, revision: XrayRevision) {
+    self.revisions.set_file(mount, logical_path, revision);
   }
 
   /// Reads through a mount, accounting for the read when this snapshot is tracing.
@@ -192,12 +199,9 @@ impl XrayVfs {
 
     log::info!("Mounting {} at base '{base}' as {id:?}", source.get_label());
 
+    // Nothing retained goes stale: a value names the copy it was parsed from, and a path this mount now wins is served
+    // from the new copy rather than the old one.
     self.mounts.push(XrayMount::new(id, base, source)?);
-
-    // A new mount can win any path, so nothing retained can be trusted to describe this snapshot any more. Per-path
-    // reasoning is not available here: the mount is indexed, but which paths it now shadows is exactly the question a
-    // resolve answers, and answering it for every retained entry costs more than parsing them again.
-    self.cache.clear();
 
     Ok(id)
   }
@@ -259,20 +263,32 @@ impl XrayVfs {
   /// X-Ray logical path, or the source's own error when the bytes cannot be read.
   pub(crate) fn read_in(&self, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Vec<u8>> {
     let logical_path: Cow<str> = normalize(logical_path)?;
+    let (mount, source_path) = self.require_winner_in_scope(scope, &logical_path)?;
 
-    match self.get_winner_in_scope(scope, &logical_path) {
-      Some((mount, source_path)) => self.read_from_mount(mount, source_path, &logical_path),
-      // Absence is `NotFound` throughout this crate, so a consumer can tell "the asset is not here" from "the source
-      // holding it failed" without reading the message.
-      None => Err(XrfError::new_not_found_error(format!(
-        "no asset '{logical_path}' in scope across {} mount(s)",
-        self.mounts_in(scope).count()
-      ))),
-    }
+    self.read_from_mount(mount, source_path, &logical_path)
   }
 
-  /// Reads and parses the winning entry for a logical path within a scope, serving a retained value when this snapshot
-  /// is already holding one.
+  /// The highest-priority mount in scope holding a normalized logical path, as [`Self::get_winner_in_scope`] finds it.
+  ///
+  /// # Errors
+  ///
+  /// Returns a not-found error when nothing in scope holds the path. Absence is `NotFound` throughout this crate, so a
+  /// consumer can tell "the asset is not here" from "the source holding it failed" without reading the message.
+  fn require_winner_in_scope<'a>(
+    &self,
+    scope: &XrayLookupScope,
+    logical_path: &'a str,
+  ) -> XrfResult<(&XrayMount, &'a str)> {
+    self.get_winner_in_scope(scope, logical_path).ok_or_else(|| {
+      XrfError::new_not_found_error(format!(
+        "no asset '{logical_path}' in scope across {} mount(s)",
+        self.mounts_in(scope).count()
+      ))
+    })
+  }
+
+  /// Reads and parses the winning entry for a logical path within a scope, serving a retained value when this snapshot's
+  /// lineage already holds one for that copy at its revision.
   ///
   /// # Errors
   ///
@@ -289,8 +305,16 @@ impl XrayVfs {
     T: Send + Sync + 'static,
     F: FnOnce(Vec<u8>) -> XrfResult<T>,
   {
-    self.cache.get_or_load(scope, logical_path, kind, || {
-      let bytes: Vec<u8> = self.read_in(scope, logical_path)?;
+    let logical_path: Cow<str> = normalize(logical_path)?;
+    let (mount, source_path) = self.require_winner_in_scope(scope, &logical_path)?;
+    let key: XrayCacheKey = XrayCacheKey::of::<T>(
+      mount.get_opening(),
+      source_path,
+      self.revisions.get_file(mount.get_id(), &logical_path),
+    );
+
+    self.cache.get_or_load(key, kind, || {
+      let bytes: Vec<u8> = self.read_from_mount(mount, source_path, &logical_path)?;
       let length: u64 = bytes.len() as u64;
 
       Ok((parse(bytes)?, length))
@@ -582,10 +606,8 @@ impl XrayVfs {
 
     mount.get_source().write(source_path, bytes)?;
 
-    // Whatever was parsed from the old bytes now describes a file that no longer exists in that form. Dropped for every
-    // type and scope holding the path rather than for the ones that resolved to this mount: deciding which those were
-    // needs a resolve per scope, where a write is rare and dropping is cheap.
-    self.cache.forget(&logical_path);
+    // Whatever was parsed from the old bytes now describes a file that no longer exists in that form.
+    self.cache.forget_copy(mount.get_opening(), source_path);
 
     Ok(())
   }

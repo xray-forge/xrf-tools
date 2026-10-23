@@ -32,28 +32,17 @@ pub async fn visuals_open_model(
 
   let roots: XrayRoots = roots.centred_on(source.physical_path());
 
-  let (package, dependencies, textures, materials, surfaces, textures_ltx, skeleton) =
-    assets.with_search(&roots, |search| {
-      // Read once and pack from what was read: the skeleton posing needs comes off the same parse, so keeping it costs
-      // no second read of a file that may sit inside a volume.
-      let file: OgfFile = read_source(&source, search)?;
-      let package: VisualPackage = VisualPacker::pack(&file);
-      let dependencies: VisualDependencies = VisualDependencies::resolve(&package.description, search);
-      let textures: HashMap<String, AssetTextureDescriptor> = describe_textures(search, &dependencies);
-      let materials: HashMap<String, XrayMaterialDescriptor> = describe_materials(search, &dependencies);
-      let surfaces: Vec<XraySurfaceDescriptor> = describe_surfaces(search, &package.description);
-      let textures_ltx: Option<XrayAsset> = XrayMaterialResolver::find_textures_ltx(search);
-
-      TauriResult::Ok((
-        package,
-        dependencies,
-        textures,
-        materials,
-        surfaces,
-        textures_ltx,
-        SelectedSkeleton::of(&file),
-      ))
-    })??;
+  let search: XraySearch = assets.search(&roots)?;
+  // Read once and pack from what was read: the skeleton posing needs comes off the same parse, so keeping it costs no
+  // second read of a file that may sit inside a volume.
+  let file: OgfFile = read_source(&source, &search)?;
+  let package: VisualPackage = VisualPacker::pack(&file);
+  let dependencies: VisualDependencies = VisualDependencies::resolve(&package.description, &search);
+  let textures: HashMap<String, AssetTextureDescriptor> = describe_textures(&search, &dependencies);
+  let materials: HashMap<String, XrayMaterialDescriptor> = describe_materials(&search, &dependencies);
+  let surfaces: Vec<XraySurfaceDescriptor> = describe_surfaces(&search, &package.description);
+  let textures_ltx: Option<XrayAsset> = XrayMaterialResolver::find_textures_ltx(&search);
+  let skeleton: Option<SelectedSkeleton> = SelectedSkeleton::of(&file);
 
   let selected: Arc<SessionSnapshot<SelectedVisual>> = state.selected.commit_open(
     session_id,

@@ -167,13 +167,16 @@ impl RenderLevelSource for VisualRenderSource {
       .map(|posed| VisualMotionPose::clone(&posed));
     let posed: VisualMotionPose = match baked {
       Some(posed) => posed,
-      None => self
-        .assets
-        .with_search(&self.visual.roots, |search| {
-          bake_named_motion(search, skeleton, &self.visual.dependencies, name)
-        })
-        .map_err(XrfError::new_asset_error)?
-        .map_err(XrfError::new_asset_error)?,
+      None => bake_named_motion(
+        &self
+          .assets
+          .search(&self.visual.roots)
+          .map_err(XrfError::new_asset_error)?,
+        skeleton,
+        &self.visual.dependencies,
+        name,
+      )
+      .map_err(XrfError::new_asset_error)?,
     };
     // Twelve floats a bone, as the renderer reads them: the basis' three columns, then the translation.
     if posed.description.floats_per_bone as usize != FLOATS_PER_BONE {

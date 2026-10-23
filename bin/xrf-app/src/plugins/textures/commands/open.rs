@@ -28,8 +28,7 @@ pub async fn textures_open(
 
   execution
     .run_blocking("Opening textures", move || {
-      let catalog: TextureCatalog =
-        assets.with_search(&roots, |search| TextureCatalog::list(search, roots.clone(), mode))?;
+      let catalog: TextureCatalog = TextureCatalog::list(&assets.search(&roots)?, roots.clone(), mode);
 
       Ok(
         state

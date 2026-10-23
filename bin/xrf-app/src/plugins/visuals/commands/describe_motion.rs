@@ -25,7 +25,5 @@ pub async fn visuals_describe_motion(
   };
 
   // Read inside the roots the open used, so the animation files are looked for where the model's own references were.
-  assets.with_search(&current.roots, |search| {
-    describe_named_motion(search, skeleton, &current.dependencies, &name)
-  })?
+  describe_named_motion(&assets.search(&current.roots)?, skeleton, &current.dependencies, &name)
 }

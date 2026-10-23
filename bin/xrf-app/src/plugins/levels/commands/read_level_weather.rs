@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use tauri::State;
+use xrf_vfs::XraySearch;
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
@@ -22,9 +23,9 @@ pub async fn levels_read_level_weather(
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let description: LevelWeatherDescription = execution
     .run_blocking("Reading the level weather", move || {
-      assets.with_search(&current.roots, |search| {
-        LevelEnvironment::of(&current, search).map(|environment| environment.describe(&current, search))
-      })?
+      let search: XraySearch = assets.search(&current.roots)?;
+
+      LevelEnvironment::of(&current, &search).map(|environment| environment.describe(&current, &search))
     })
     .await??;
 

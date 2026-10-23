@@ -93,11 +93,9 @@ fn read_texture_bytes(assets: &AssetMountState, request: &TexturesCompareRequest
 
       std::fs::read(&path).map_err(|error| format!("Cannot read '{}': {error}", format_path(&path)))
     }
-    TextureSource::Asset { reference } => assets
-      .with_search(&request.roots, |search| {
-        read_referenced_asset(search, XrayAssetType::Dds, reference)
-      })?
-      .map_err(error_to_string),
+    TextureSource::Asset { reference } => {
+      read_referenced_asset(&assets.search(&request.roots)?, XrayAssetType::Dds, reference).map_err(error_to_string)
+    }
   }
 }
 

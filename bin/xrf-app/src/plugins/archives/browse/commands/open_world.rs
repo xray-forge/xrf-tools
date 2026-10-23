@@ -26,7 +26,7 @@ pub async fn archives_open_world(
 
   let world: ArchiveWorld = execution
     .run_blocking("Opening the archive world", move || {
-      assets.with_fresh_search(&roots, |search| ArchiveWorld::list(search, roots.clone()))
+      TauriResult::Ok(ArchiveWorld::list(&assets.search_fresh(&roots)?, roots.clone()))
     })
     .await?
     .map_err(|error| format!("Failed to open provided game folder: {error}"))?;

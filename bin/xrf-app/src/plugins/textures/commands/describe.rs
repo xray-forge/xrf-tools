@@ -24,9 +24,7 @@ pub async fn textures_describe(
     .run_blocking("Describing texture", move || {
       let roots: XrayRoots = roots.centred_on(source.physical_path());
 
-      assets.with_search(&roots, |search| {
-        TextureDescription::describe(search, source, roots.clone())
-      })?
+      TextureDescription::describe(&assets.search(&roots)?, source, roots.clone())
     })
     .await?
 }

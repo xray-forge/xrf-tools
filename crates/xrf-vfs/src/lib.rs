@@ -11,7 +11,7 @@
 //! - `source` — the mountable surface, and the two sources the engine itself has.
 //! - `mount` — composing sources into a mounted order, and planning one from a path.
 //! - `search` — how a VFS snapshot is read: the ordered search, its steps and what its lookups answer.
-//! - `vfs` — the VFS snapshot itself: mounts, revisions, and what it retains.
+//! - `vfs` — the VFS snapshot itself (mounts, revisions, what it retains) and the host owning the current one.
 //! - `input` — which inputs a recording search resolved, and the revision each had then.
 //! - `cache` — what a snapshot keeps after parsing an asset, the policy deciding what is kept, and the coordination
 //!   that keeps two readers from parsing one asset twice.
@@ -44,4 +44,4 @@ pub use search::{
 };
 pub use source::{XrayArchiveSource, XrayAssetSource, XrayDeclaredRoot, XraySourceKind, label_from_path};
 pub use trace::{XrayReadTrace, XrayReadTraceEntry, XrayReadTraceHotPath, XrayReadTraceSummary};
-pub use vfs::XrayVfs;
+pub use vfs::{XrayVfs, XrayVfsHost};

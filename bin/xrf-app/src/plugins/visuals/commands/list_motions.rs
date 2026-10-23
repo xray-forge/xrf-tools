@@ -27,9 +27,7 @@ pub async fn visuals_list_motions(
     return Ok(Vec::new());
   };
 
-  let names: Vec<String> = assets.with_search(&current.roots, |search| {
-    list_motion_names(search, skeleton, &current.dependencies)
-  })?;
+  let names: Vec<String> = list_motion_names(&assets.search(&current.roots)?, skeleton, &current.dependencies);
 
   log::info!("Listed {} motions for: {}", names.len(), current.source.label());
 

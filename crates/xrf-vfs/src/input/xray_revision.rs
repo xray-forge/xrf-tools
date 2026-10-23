@@ -14,6 +14,12 @@ impl XrayRevision {
   pub fn get(self) -> u64 {
     self.0
   }
+
+  /// The revision a change numbered `revision` left, for a test arranging one before anything commits.
+  #[cfg(test)]
+  pub(crate) const fn of(revision: u64) -> Self {
+    Self(revision)
+  }
 }
 
 /// The revisions a snapshot holds for its loose files and indexed directories, stored only where one moved past
@@ -35,6 +41,16 @@ impl XrayRevisions {
   /// When anything under a mount's normalized logical directory, empty for the root, was last created or deleted.
   pub(crate) fn get_directory(&self, mount: XrayMountId, directory: &str) -> XrayRevision {
     Self::get(&self.directories, mount, directory)
+  }
+
+  /// Moves a mount's copy of a logical path to `revision`, for a test standing in for a commit.
+  #[cfg(test)]
+  pub(crate) fn set_file(&mut self, mount: XrayMountId, logical_path: &str, revision: XrayRevision) {
+    self
+      .files
+      .entry(mount)
+      .or_default()
+      .insert(logical_path.to_owned(), revision);
   }
 
   fn get(
