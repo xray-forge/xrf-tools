@@ -89,9 +89,38 @@ across all six channels; a motion with none is still a well-formed file.
 
 `evaluate(time)` takes seconds and is `COMotion::_Evaluate`: the position from the three position channels and the
 rotation as an object animator hands it to `setXYZi`, the pitch in `x`, the heading in `y` and the bank in `z`.
-`get_looped_time(elapsed)` is the time in seconds a looping `CObjectAnimator` plays at: from the first frame's time,
-wrapped back by whole lengths past the last frame's; a one-frame motion holds its first frame. Envelopes and their
-encoding constraints belong to [xrf-animation-envelope](../xrf-animation-envelope/README.md).
+Envelopes and their encoding constraints belong to [xrf-animation-envelope](../xrf-animation-envelope/README.md).
+
+## Play a motion
+
+`get_played_time(elapsed, playback)` is the time in seconds a `CObjectAnimator` plays a motion at, `elapsed` after
+`Play`: from the first frame's time, and past the last frame's, `AnmPlayback::Looped` wraps back by whole lengths while
+`AnmPlayback::Once` holds there. A one-frame motion holds its first frame either way. Pass the result to `evaluate`:
+
+```rust
+use std::time::Duration;
+
+use xrf_anm::{AnmFile, AnmPlayback};
+
+let motion = AnmFile {
+  name: String::new(),
+  frame_start: 0,
+  frame_end: 60,
+  fps: 30.0,
+  version: AnmFile::CURRENT_VERSION,
+  channels: Default::default(),
+};
+let elapsed = Duration::from_millis(2500);
+
+assert_eq!(motion.get_played_time(elapsed, AnmPlayback::Looped), 0.5);
+assert_eq!(motion.get_played_time(elapsed, AnmPlayback::Once), 2.0);
+```
+
+Torrid zones and cyclic camera effects loop; a camera effect that is not cyclic plays once, and lives
+`get_duration_seconds`, one frame longer than its motion moves, so it ends holding the last frame. A looped time is
+wrapped in whole `Duration` lengths before it becomes seconds, so it keeps its pace however long it has played, where
+the engine accumulates a frame's step in a float. The engine also evaluates a frame's pose before advancing its time,
+a frame behind; that is its update order, which the caller's clock replaces, not part of how a motion plays.
 
 ## Errors and checks
 

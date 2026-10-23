@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use glam::{Mat4, Vec3};
-use xrf_anm::AnmFile;
+use xrf_anm::{AnmFile, AnmPlayback};
 use xrf_renderer::{RenderLevelSource, RenderWorkers};
 use xrf_visual::VisualTransform;
 
@@ -53,7 +53,10 @@ impl LevelObjectMotions {
   pub fn get_pose(&mut self, name: &str) -> Option<(Mat4, Vec3)> {
     let (now, previous) = (self.now, self.previous);
     let motion: &AnmFile = self.get(name)?;
-    let (looped, looped_before): (f32, f32) = (motion.get_looped_time(now), motion.get_looped_time(previous));
+    let (looped, looped_before): (f32, f32) = (
+      motion.get_played_time(now, AnmPlayback::Looped),
+      motion.get_played_time(previous, AnmPlayback::Looped),
+    );
     let (position, rotation) = motion.evaluate(looped);
     let transform: Mat4 =
       Mat4::from_cols_array(&VisualTransform::of_motion(&position, &rotation).mirrored().to_matrix());
@@ -74,13 +77,13 @@ impl LevelObjectMotions {
     Some((transform, velocity))
   }
 
-  /// The motion by its name once it is read, asking for it the first time.
   /// Whether the motion `name` is still on its way from its loader.
   #[cfg(test)]
   pub(crate) fn is_pending(&self, name: &str) -> bool {
     self.motions.is_pending(name)
   }
 
+  /// The motion by its name once it is read, asking for it the first time.
   fn get(&mut self, name: &str) -> Option<&AnmFile> {
     let (source, workers) = (&self.source, &self.workers);
 
