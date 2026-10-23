@@ -11,54 +11,49 @@ use xrf_utils::format_path;
 use crate::ppe_color::PpeColor;
 use crate::ppe_color_map::PpeColorMap;
 
-/// Colour parameters an effect animates, in the order the file stores them.
-pub const PPE_COLORS: [&str; 3] = ["base color", "add color", "gray color"];
-
-/// Channels each colour parameter is assembled from, in the order the file stores them.
-pub const PPE_COLOR_CHANNELS: [&str; 3] = ["red", "green", "blue"];
-
-/// What the colour grading's influence channel is called, which no part of the file spells.
-pub const PPE_COLOR_MAP_INFLUENCE: &str = "colour map influence";
-
-/// Scalar parameters an effect animates, in the order the file stores them.
-pub const PPE_VALUES: [&str; 7] = [
-  "gray value",
-  "blur",
-  "duality horizontal",
-  "duality vertical",
-  "noise intensity",
-  "noise granularity",
-  "noise fps",
-];
-
-/// The post-process effect the engine plays over the screen, `.ppe`.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+/// The post-process effect the engine plays over the screen, `.ppe`: `BasicPostProcessAnimator`'s parameters
+/// (`pp_params`), in the order the file stores them. By default a version 1 effect keyed on nothing, as
+/// `BasicPostProcessAnimator::Create` starts one.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PpeFile {
-  pub version: u32,
-  /// One per parameter of [`PPE_COLORS`], in that order.
-  pub colors: Vec<PpeColor>,
-  /// One per parameter of [`PPE_VALUES`], in that order.
-  pub values: Vec<AnimationEnvelope>,
-  /// The colour grading version 2 appends, absent below it.
+  /// `pp_base_color`, added to the identity's base colour.
+  pub base_color: PpeColor,
+  /// `pp_add_color`, added to the identity's add colour.
+  pub add_color: PpeColor,
+  /// `pp_gray_color`, added to the identity's gray colour.
+  pub gray_color: PpeColor,
+  /// `pp_gray_value`, how far the screen goes gray.
+  pub gray_value: AnimationEnvelope,
+  /// `pp_blur`.
+  pub blur: AnimationEnvelope,
+  /// `pp_dual_h`, how far the screen is doubled sideways.
+  pub duality_horizontal: AnimationEnvelope,
+  /// `pp_dual_v`, how far the screen is doubled upwards.
+  pub duality_vertical: AnimationEnvelope,
+  /// `pp_noise_i`.
+  pub noise_intensity: AnimationEnvelope,
+  /// `pp_noise_g`.
+  pub noise_granularity: AnimationEnvelope,
+  /// `pp_noise_f`, in hundredths of the frames a second the noise changes at.
+  pub noise_fps: AnimationEnvelope,
+  /// `pp_cm_influence` and the gradient it grades with, which version 2 appends and version 1 does not carry. Which of
+  /// them a file is follows from this alone: see [`Self::get_version`].
   pub color_map: Option<PpeColorMap>,
 }
 
 impl PpeFile {
-  /// Versions this reads. 1 stops after the noise parameters; 2 appends the colour grading.
-  pub const SUPPORTED_VERSIONS: [u32; 2] = [1, 2];
+  /// The first version, which stops after the noise parameters.
+  pub const FIRST_VERSION: u32 = 1;
 
-  /// The version `BasicPostProcessAnimator::Save` writes, `POSTPROCESS_FILE_VERSION`.
-  pub const CURRENT_VERSION: u32 = 2;
-
-  /// The version that appended the colour grading, which is what a file below it cannot carry.
+  /// The version that appended the colour grading.
   pub const COLOR_MAP_VERSION: u32 = 2;
 
-  /// Colour parameters an effect carries.
-  pub const COLOR_COUNT: usize = PPE_COLORS.len();
+  /// The version `BasicPostProcessAnimator::Save` writes, `POSTPROCESS_FILE_VERSION`.
+  pub const CURRENT_VERSION: u32 = Self::COLOR_MAP_VERSION;
 
-  /// Scalar parameters an effect carries.
-  pub const VALUE_COUNT: usize = PPE_VALUES.len();
+  /// Versions this reads and writes back.
+  pub const SUPPORTED_VERSIONS: [u32; 2] = [Self::FIRST_VERSION, Self::COLOR_MAP_VERSION];
 
   /// Reads an effect from a path.
   ///
@@ -92,7 +87,7 @@ impl PpeFile {
     Self::read::<T, _>(&mut ChunkReader::from_vec(bytes)?)
   }
 
-  /// Reads an effect off a reader positioned at its first byte.
+  /// Reads an effect off a reader positioned at its first byte, `BasicPostProcessAnimator::Load`.
   ///
   /// # Errors
   ///
@@ -108,50 +103,43 @@ impl PpeFile {
       )));
     }
 
-    let mut colors: Vec<PpeColor> = Vec::with_capacity(Self::COLOR_COUNT);
-
-    for _ in 0..Self::COLOR_COUNT {
-      colors.push(PpeColor::read::<T, D>(reader)?);
-    }
-
-    let mut values: Vec<AnimationEnvelope> = Vec::with_capacity(Self::VALUE_COUNT);
-
-    for _ in 0..Self::VALUE_COUNT {
-      values.push(AnimationEnvelope::read::<T, D>(reader)?);
-    }
-
-    let color_map: Option<PpeColorMap> = if version >= Self::COLOR_MAP_VERSION {
-      Some(PpeColorMap::read::<T, D>(reader)?)
-    } else {
-      None
+    let effect: Self = Self {
+      base_color: PpeColor::read::<T, D>(reader)?,
+      add_color: PpeColor::read::<T, D>(reader)?,
+      gray_color: PpeColor::read::<T, D>(reader)?,
+      gray_value: AnimationEnvelope::read::<T, D>(reader)?,
+      blur: AnimationEnvelope::read::<T, D>(reader)?,
+      duality_horizontal: AnimationEnvelope::read::<T, D>(reader)?,
+      duality_vertical: AnimationEnvelope::read::<T, D>(reader)?,
+      noise_intensity: AnimationEnvelope::read::<T, D>(reader)?,
+      noise_granularity: AnimationEnvelope::read::<T, D>(reader)?,
+      noise_fps: AnimationEnvelope::read::<T, D>(reader)?,
+      color_map: if version >= Self::COLOR_MAP_VERSION {
+        Some(PpeColorMap::read::<T, D>(reader)?)
+      } else {
+        None
+      },
     };
 
     reader.assert_read("Expect all data to be read from post process effect file")?;
 
-    Ok(Self {
-      version,
-      colors,
-      values,
-      color_map,
-    })
+    Ok(effect)
   }
 
-  /// Writes the effect back in the layout its own version declares.
+  /// Writes the effect back in its own version, which keeps a version 1 effect version 1: the engine's own save
+  /// always writes version 2, appending a colour grading the author never stored.
   ///
   /// # Errors
   ///
-  /// Returns an error when the effect is a version this does not write, does not carry one entry per parameter, or
-  /// carries a colour grading its version cannot hold.
+  /// Returns an error when an envelope carries more keys than its `u16` count holds.
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    self.assert_writable()?;
+    writer.write_u32::<T>(self.get_version())?;
 
-    writer.write_u32::<T>(self.version)?;
-
-    for color in &self.colors {
+    for (_, color) in self.get_colors() {
       color.write::<T>(writer)?;
     }
 
-    for value in &self.values {
+    for (_, value) in self.get_values() {
       value.write::<T>(writer)?;
     }
 
@@ -161,80 +149,74 @@ impl PpeFile {
 
     Ok(())
   }
-
-  /// Whether this effect is one the writer can lay out again.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error naming the first thing that does not hold.
-  fn assert_writable(&self) -> XrfResult {
-    if !Self::SUPPORTED_VERSIONS.contains(&self.version) {
-      return Err(XrfError::new_not_implemented_error(format!(
-        "Unexpected post process effect version {} on write, only versions {:?} are implemented",
-        self.version,
-        Self::SUPPORTED_VERSIONS
-      )));
-    }
-
-    if self.colors.len() != Self::COLOR_COUNT || self.values.len() != Self::VALUE_COUNT {
-      return Err(XrfError::new_invalid_error(format!(
-        "Unexpected post process effect parameter count {} colors and {} values on write, {} and {} expected",
-        self.colors.len(),
-        self.values.len(),
-        Self::COLOR_COUNT,
-        Self::VALUE_COUNT
-      )));
-    }
-
-    if self.color_map.is_some() != (self.version >= Self::COLOR_MAP_VERSION) {
-      return Err(XrfError::new_invalid_error(format!(
-        "Post process effect version {} {} a color map on write",
-        self.version,
-        if self.color_map.is_some() {
-          "cannot carry"
-        } else {
-          "requires"
-        }
-      )));
-    }
-
-    Ok(())
-  }
 }
 
 impl PpeFile {
+  /// The version the effect is: the colour grading's, when it carries one, and the first otherwise. The two versions
+  /// differ in nothing else, so the version is never stored apart from what it decides.
+  pub const fn get_version(&self) -> u32 {
+    if self.color_map.is_some() {
+      Self::COLOR_MAP_VERSION
+    } else {
+      Self::FIRST_VERSION
+    }
+  }
+
+  /// The three colour parameters under the names an author knows them by, in the order the file stores them.
+  pub const fn get_colors(&self) -> [(&'static str, &PpeColor); 3] {
+    [
+      ("base color", &self.base_color),
+      ("add color", &self.add_color),
+      ("gray color", &self.gray_color),
+    ]
+  }
+
+  /// The seven scalar parameters under the names an author knows them by, in the order the file stores them.
+  pub const fn get_values(&self) -> [(&'static str, &AnimationEnvelope); 7] {
+    [
+      ("gray value", &self.gray_value),
+      ("blur", &self.blur),
+      ("duality horizontal", &self.duality_horizontal),
+      ("duality vertical", &self.duality_vertical),
+      ("noise intensity", &self.noise_intensity),
+      ("noise granularity", &self.noise_granularity),
+      ("noise fps", &self.noise_fps),
+    ]
+  }
+
   /// Every envelope the effect carries, in the order the file stores them.
   pub fn get_envelopes(&self) -> impl Iterator<Item = &AnimationEnvelope> {
     self
-      .colors
-      .iter()
-      .flat_map(PpeColor::channels)
-      .chain(&self.values)
+      .get_colors()
+      .into_iter()
+      .flat_map(|(_, color)| color.channels())
+      .chain(self.get_values().into_iter().map(|(_, value)| value))
       .chain(self.color_map.as_ref().map(|color_map| &color_map.influence))
   }
 
   /// Every envelope the effect carries under the name an author knows it by, in the order the file stores them: each
   /// colour's channels as `base color red`, then the scalars, then the colour grading's influence.
   pub fn get_named_envelopes(&self) -> Vec<(String, &AnimationEnvelope)> {
-    let colors = PPE_COLORS.iter().zip(&self.colors).flat_map(|(color, parameter)| {
-      PPE_COLOR_CHANNELS
-        .iter()
+    let colors = self.get_colors().into_iter().flat_map(|(color, parameter)| {
+      PpeColor::CHANNEL_NAMES
+        .into_iter()
         .zip(parameter.channels())
         .map(move |(channel, envelope)| (format!("{color} {channel}"), envelope))
     });
-    let values = PPE_VALUES
-      .iter()
-      .zip(&self.values)
-      .map(|(value, envelope)| ((*value).to_owned(), envelope));
+    let values = self
+      .get_values()
+      .into_iter()
+      .map(|(value, envelope)| (value.to_owned(), envelope));
     let influence = self
       .color_map
       .as_ref()
-      .map(|color_map| (PPE_COLOR_MAP_INFLUENCE.to_owned(), &color_map.influence));
+      .map(|color_map| (PpeColorMap::INFLUENCE_NAME.to_owned(), &color_map.influence));
 
     colors.chain(values).chain(influence).collect()
   }
 
-  /// Seconds the effect runs for, `BasicPostProcessAnimator::GetLength`.
+  /// Seconds the effect runs for, `BasicPostProcessAnimator::GetLength`: the longest of its parameters'
+  /// first-to-last-key spans, which is not where its last key sits.
   pub fn get_length_seconds(&self) -> f32 {
     self
       .get_envelopes()

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
 use xrf_anm::{AnmChannel, AnmFile};
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
-use xrf_ppe::{PpeColor, PpeFile};
+use xrf_ppe::PpeFile;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::{
@@ -49,25 +49,13 @@ fn new_motion_bytes(value: f32) -> Vec<u8> {
 
 /// A version 1 effect whose blur is keyed once at `value`.
 fn new_effect_bytes(value: f32) -> Vec<u8> {
-  let color: PpeColor = PpeColor {
-    base: 0.0,
-    red: AnimationEnvelope::default(),
-    green: AnimationEnvelope::default(),
-    blue: AnimationEnvelope::default(),
-  };
-  let mut values: Vec<AnimationEnvelope> = vec![AnimationEnvelope::default(); PpeFile::VALUE_COUNT];
+  let mut effect: PpeFile = PpeFile::default();
 
-  values[1].keys.push(AnimationKey {
+  effect.blur.keys.push(AnimationKey {
     value,
     ..AnimationKey::default()
   });
 
-  let effect: PpeFile = PpeFile {
-    version: 1,
-    colors: vec![color; PpeFile::COLOR_COUNT],
-    values,
-    color_map: None,
-  };
   let mut writer: ChunkWriter = ChunkWriter::new();
 
   effect.write::<XRayByteOrder>(&mut writer).unwrap();

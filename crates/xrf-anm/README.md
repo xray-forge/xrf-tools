@@ -94,13 +94,16 @@ Envelopes and their encoding constraints belong to [xrf-animation-envelope](../x
 ## Play a motion
 
 `get_played_time(elapsed, playback)` is the time in seconds a `CObjectAnimator` plays a motion at, `elapsed` after
-`Play`: from the first frame's time, and past the last frame's, `AnmPlayback::Looped` wraps back by whole lengths while
-`AnmPlayback::Once` holds there. A one-frame motion holds its first frame either way. Pass the result to `evaluate`:
+`Play`: from the first frame's time, and past the last frame's, `AnimationPlayback::Looped` (the shared
+[xrf-animation-envelope](../xrf-animation-envelope/README.md) vocabulary) wraps back by whole lengths while
+`AnimationPlayback::Once` holds there. A one-frame motion holds its first frame either way. Pass the result to
+`evaluate`:
 
 ```rust
 use std::time::Duration;
 
-use xrf_anm::{AnmFile, AnmPlayback};
+use xrf_animation_envelope::AnimationPlayback;
+use xrf_anm::AnmFile;
 
 let motion = AnmFile {
   name: String::new(),
@@ -112,8 +115,8 @@ let motion = AnmFile {
 };
 let elapsed = Duration::from_millis(2500);
 
-assert_eq!(motion.get_played_time(elapsed, AnmPlayback::Looped), 0.5);
-assert_eq!(motion.get_played_time(elapsed, AnmPlayback::Once), 2.0);
+assert_eq!(motion.get_played_time(elapsed, AnimationPlayback::Looped), 0.5);
+assert_eq!(motion.get_played_time(elapsed, AnimationPlayback::Once), 2.0);
 ```
 
 Torrid zones and cyclic camera effects loop; a camera effect that is not cyclic plays once, and lives

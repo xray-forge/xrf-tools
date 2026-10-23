@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_ppe::{PPE_COLOR_CHANNELS, PpeColor};
+use xrf_ppe::PpeColor;
 
 use crate::plugins::archives::describe::animation::ArchiveAnimationChannel;
 
@@ -20,13 +20,9 @@ pub struct ArchivePpeColor {
 }
 
 impl ArchivePpeColor {
-  /// Every colour of an effect, each under the name its position gives it.
-  pub fn of_all<'a>(names: impl IntoIterator<Item = &'a str>, colors: &[PpeColor]) -> Vec<Self> {
-    names
-      .into_iter()
-      .zip(colors)
-      .map(|(name, color)| Self::of(name, color))
-      .collect()
+  /// Every colour of an effect, each under the name the format gives it.
+  pub fn of_all<'a>(named: impl IntoIterator<Item = (&'a str, &'a PpeColor)>) -> Vec<Self> {
+    named.into_iter().map(|(name, color)| Self::of(name, color)).collect()
   }
 
   /// One colour, taken over the three channels it holds.
@@ -36,11 +32,7 @@ impl ArchivePpeColor {
       base: color.base,
       keys: color.get_keys_count(),
       length_seconds: color.get_length_seconds(),
-      channels: PPE_COLOR_CHANNELS
-        .into_iter()
-        .zip(color.channels())
-        .map(|(channel, envelope)| ArchiveAnimationChannel::of(channel, envelope))
-        .collect(),
+      channels: ArchiveAnimationChannel::of_all(PpeColor::CHANNEL_NAMES.into_iter().zip(color.channels())),
     }
   }
 }
@@ -48,7 +40,7 @@ impl ArchivePpeColor {
 #[cfg(test)]
 mod tests {
   use xrf_animation_envelope::{AnimationEnvelope, AnimationKey};
-  use xrf_ppe::{PPE_COLORS, PpeColor};
+  use xrf_ppe::PpeColor;
 
   use super::ArchivePpeColor;
 
@@ -77,7 +69,7 @@ mod tests {
 
   #[test]
   fn a_colour_names_each_of_the_three_channels_the_engine_assembles_it_from() {
-    let colors: Vec<ArchivePpeColor> = ArchivePpeColor::of_all(PPE_COLORS, &[color(0.5)]);
+    let colors: Vec<ArchivePpeColor> = ArchivePpeColor::of_all([("base color", &color(0.5))]);
 
     assert_eq!(colors.len(), 1);
     assert_eq!(colors[0].name, "base color");
@@ -94,7 +86,7 @@ mod tests {
   #[test]
   fn a_colour_is_as_long_as_its_longest_channel_and_counts_every_key() {
     // The engine's own `get_keys_count` answers with red alone, which would say 2 here rather than 4.
-    let colors: Vec<ArchivePpeColor> = ArchivePpeColor::of_all(PPE_COLORS, &[color(0.5)]);
+    let colors: Vec<ArchivePpeColor> = ArchivePpeColor::of_all([("base color", &color(0.5))]);
 
     assert_eq!(colors[0].length_seconds, 5.0);
     assert_eq!(colors[0].keys, 4);
@@ -103,7 +95,7 @@ mod tests {
   #[test]
   fn the_unread_base_is_carried_rather_than_dropped() {
     // Stored by every effect and read by none of them, which is a thing about the file worth being able to see.
-    let colors: Vec<ArchivePpeColor> = ArchivePpeColor::of_all(PPE_COLORS, &[color(0.25)]);
+    let colors: Vec<ArchivePpeColor> = ArchivePpeColor::of_all([("base color", &color(0.25))]);
 
     assert_eq!(colors[0].base, 0.25);
   }

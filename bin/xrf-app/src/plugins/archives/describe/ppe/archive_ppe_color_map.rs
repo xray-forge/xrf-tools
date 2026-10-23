@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_ppe::{PPE_COLOR_MAP_INFLUENCE, PpeColorMap};
+use xrf_ppe::PpeColorMap;
 use xrf_vfs::XrayAssetType;
 
 use crate::plugins::archives::describe::animation::ArchiveAnimationChannel;
@@ -25,7 +25,7 @@ impl ArchivePpeColorMap {
     Self {
       texture: (!color_map.texture.is_empty())
         .then(|| ArchiveReference::resolve(source, XrayAssetType::Dds, &color_map.texture)),
-      influence: ArchiveAnimationChannel::of(PPE_COLOR_MAP_INFLUENCE, &color_map.influence),
+      influence: ArchiveAnimationChannel::of(PpeColorMap::INFLUENCE_NAME, &color_map.influence),
       is_used: color_map.is_used(),
     }
   }

@@ -3,13 +3,13 @@ use std::time::Duration;
 
 use byteorder::WriteBytesExt;
 use xrf_animation_envelope::{
-  AnimationBehavior, AnimationEnvelope, AnimationInterpolation, AnimationKey, AnimationShape,
+  AnimationBehavior, AnimationEnvelope, AnimationInterpolation, AnimationKey, AnimationPlayback, AnimationShape,
 };
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
-use crate::{AnmChannel, AnmFile, AnmPlayback};
+use crate::{AnmChannel, AnmFile};
 
 /// One interpolating key, as version 5 lays it out: value, time, shape, then seven quantised parameters.
 fn new_curved_key_bytes(value: f32, time: f32, quantised: u16) -> Vec<u8> {
@@ -361,7 +361,7 @@ fn new_moving_motion() -> AnmFile {
 #[test]
 fn a_looped_motion_wraps_by_whole_lengths() {
   let motion: AnmFile = new_moving_motion();
-  let looped = |elapsed: Duration| motion.get_played_time(elapsed, AnmPlayback::Looped);
+  let looped = |elapsed: Duration| motion.get_played_time(elapsed, AnimationPlayback::Looped);
 
   assert_eq!(looped(Duration::from_millis(500)), 0.5);
   assert_eq!(looped(Duration::from_secs(2)), 2.0);
@@ -371,7 +371,7 @@ fn a_looped_motion_wraps_by_whole_lengths() {
 #[test]
 fn a_looped_motion_keeps_its_pace_after_a_day() {
   let motion: AnmFile = new_moving_motion();
-  let looped = |elapsed: Duration| motion.get_played_time(elapsed, AnmPlayback::Looped);
+  let looped = |elapsed: Duration| motion.get_played_time(elapsed, AnimationPlayback::Looped);
   let day: Duration = Duration::from_secs(24 * 60 * 60);
   let step: f32 = looped(day + Duration::from_millis(6)) - looped(day);
 
@@ -382,7 +382,7 @@ fn a_looped_motion_keeps_its_pace_after_a_day() {
 fn a_motion_played_once_holds_its_last_frame() {
   // `SAnimParams::Update` sets the time to `max_t` once past it, where a looped motion wraps.
   let motion: AnmFile = new_moving_motion();
-  let once = |elapsed: Duration| motion.get_played_time(elapsed, AnmPlayback::Once);
+  let once = |elapsed: Duration| motion.get_played_time(elapsed, AnimationPlayback::Once);
 
   assert_eq!(once(Duration::from_millis(500)), 0.5);
   assert_eq!(once(Duration::from_secs(2)), 2.0);
@@ -402,14 +402,14 @@ fn a_motion_plays_from_its_first_frame_either_way() {
 
   motion.frame_start = -15;
 
-  for playback in [AnmPlayback::Once, AnmPlayback::Looped] {
+  for playback in [AnimationPlayback::Once, AnimationPlayback::Looped] {
     assert_eq!(motion.get_played_time(Duration::ZERO, playback), -0.5);
     assert_eq!(motion.get_played_time(Duration::from_millis(500), playback), 0.0);
   }
 
   motion.frame_end = motion.frame_start;
 
-  for playback in [AnmPlayback::Once, AnmPlayback::Looped] {
+  for playback in [AnimationPlayback::Once, AnimationPlayback::Looped] {
     assert_eq!(motion.get_played_time(Duration::from_secs(3), playback), -0.5);
   }
 }

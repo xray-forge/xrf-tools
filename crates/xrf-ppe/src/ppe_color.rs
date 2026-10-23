@@ -4,8 +4,9 @@ use xrf_animation_envelope::AnimationEnvelope;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-/// One colour parameter of a post-process effect, `CPostProcessColor`.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+/// One colour parameter of a post-process effect, `CPostProcessColor`. By default a zero base and no keys, as
+/// `CPostProcessColor` starts one.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PpeColor {
   /// `m_fBase`, stored ahead of the envelopes and never read at runtime - `update` assembles the colour from the
@@ -17,6 +18,9 @@ pub struct PpeColor {
 }
 
 impl PpeColor {
+  /// What the three channels are called, in the order [`Self::channels`] gives them.
+  pub const CHANNEL_NAMES: [&'static str; 3] = ["red", "green", "blue"];
+
   /// Reads a colour, `CPostProcessColor::load`.
   ///
   /// # Errors
@@ -49,6 +53,12 @@ impl PpeColor {
   /// The three channels, in the order the format stores and the engine assembles them.
   pub fn channels(&self) -> [&AnimationEnvelope; 3] {
     [&self.red, &self.green, &self.blue]
+  }
+
+  /// The three channels' values at a time in seconds, `CPostProcessColor::update`: what the effect adds to the
+  /// identity's colour, with `base` playing no part.
+  pub fn evaluate(&self, time: f32) -> [f32; 3] {
+    self.channels().map(|channel| channel.evaluate(time))
   }
 
   /// Seconds the longest of the three channels spans, `CPostProcessColor::get_length`.

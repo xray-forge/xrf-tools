@@ -15,6 +15,9 @@ pub struct PpeColorMap {
 }
 
 impl PpeColorMap {
+  /// What the influence channel is called, which no part of the file spells.
+  pub const INFLUENCE_NAME: &'static str = "colour map influence";
+
   /// Reads the colour grading a version 2 effect appends.
   ///
   /// # Errors
