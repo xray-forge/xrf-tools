@@ -6,6 +6,7 @@ use xrf_utils::error_to_string;
 use xrf_vfs::{XrayChangeSet, XrayInputKind, XrayInputRecord, XrayLogicalPath, XraySearch};
 
 use crate::core::assets::AssetMountState;
+use crate::core::execution::ExecutionState;
 use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::state::{TranslationProjectState, TranslationSaveOutcome, TranslationSavePlan};
@@ -15,12 +16,20 @@ use crate::plugins::translations::state::{TranslationProjectState, TranslationSa
 #[tauri::command(rename = "save_file")]
 pub async fn translations_save_file(
   session_id: SessionId,
-  file: &str,
+  file: String,
   edits: HashMap<String, Vec<TranslationEdit>>,
   state: State<'_, TranslationProjectState>,
   assets: State<'_, AssetMountState>,
+  execution: State<'_, ExecutionState>,
 ) -> TauriResult<TranslationSaveOutcome> {
-  save_into_open_project(&state, &assets, session_id, file, &edits)
+  let (state, assets): (TranslationProjectState, AssetMountState) = (state.inner().clone(), assets.inner().clone());
+
+  // Off the async runtime: the commit syncs every file to disk and moves every open session before it answers.
+  execution
+    .run_blocking("Saving translations", move || {
+      save_into_open_project(&state, &assets, session_id, &file, &edits)
+    })
+    .await?
 }
 
 /// Write `edits` into whichever project is open, and answer the project as the commit left it while it still is.
@@ -59,7 +68,7 @@ pub(in crate::plugins::translations) fn write_edits(
   let expected: XrayInputRecord = plan
     .project
     .inputs
-    .filtered(|input| matches!(input.get_kind(), XrayInputKind::File(path) if written.contains(path)));
+    .to_filtered(|input| matches!(input.get_kind(), XrayInputKind::File(path) if written.contains(path)));
 
   assets.commit(
     &build_save_transaction(&sources, &plan.file, &plan.sources, edits)

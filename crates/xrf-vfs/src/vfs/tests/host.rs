@@ -1,13 +1,18 @@
-//! The host's snapshot rules: reads never wait on a mount, a search asked for inside another mounts beside it, and a
-//! failed source stays settled except when a person opens its roots afresh.
+//! The host's snapshot rules: reads never wait on a mount, a search asked for inside another mounts beside it, a
+//! failed source stays settled except when a person opens its roots afresh, and a retained file changed on disk is
+//! applied when its roots are looked at.
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-use crate::{XrayMountMode, XrayRoots, XraySearch, XrayVfsHost};
+use crate::{
+  XrayAsset, XrayCachePolicy, XrayChangeKind, XrayChangeSet, XrayMountMode, XrayRoots, XraySearch, XrayVfs, XrayVfsHost,
+};
 
 /// An installation whose `fsgame.ltx` declares archives and loose files, holding the files it is given.
 fn install(name: &str, files: &[&str]) -> PathBuf {
@@ -180,6 +185,149 @@ fn leaves_other_roots_failures_settled_when_one_is_opened_afresh() {
     reasons(host.search(&roots(&other)).expect("the other roots are found")),
     first
   );
+}
+
+/// Parses a config through `search`, counting the parses that ran.
+fn parse(search: &XraySearch, logical_path: &str, parses: &AtomicUsize) -> String {
+  let asset: XrayAsset = search
+    .find(logical_path)
+    .expect("the lookup succeeds")
+    .expect("the config is there");
+
+  search
+    .read_parsed(&asset, |bytes| {
+      parses.fetch_add(1, Ordering::Relaxed);
+
+      Ok(String::from_utf8_lossy(&bytes).into_owned())
+    })
+    .expect("the config parses")
+    .to_string()
+}
+
+// A retained loose file changed on disk behind every reader is read again once its roots are looked at, one that did
+// not change keeps its retained value, and nothing changed publishes nothing.
+#[test]
+fn applies_a_retained_file_changed_on_disk_and_keeps_an_unchanged_one() {
+  let root: PathBuf = install(
+    "changed_on_disk",
+    &["gamedata/configs/system.ltx", "gamedata/configs/game.ltx"],
+  );
+  let host: XrayVfsHost = XrayVfsHost::new(XrayVfs::new().with_cache_policy(XrayCachePolicy::configs()));
+  let parses: AtomicUsize = AtomicUsize::new(0);
+  let search: XraySearch = host.search_fresh(&roots(&root)).expect("the roots mount");
+
+  parse(&search, "configs\\system.ltx", &parses);
+  parse(&search, "configs\\game.ltx", &parses);
+
+  let unchanged: Arc<XrayVfs> = host.get_vfs();
+
+  assert!(
+    host
+      .apply_changed_on_disk(&search)
+      .expect("the files are looked at")
+      .is_empty()
+  );
+  assert!(
+    Arc::ptr_eq(&unchanged, &host.get_vfs()),
+    "nothing changed publishes nothing"
+  );
+
+  fs::write(root.join("gamedata/configs/system.ltx"), b"edited behind the app").expect("file rewritten");
+
+  let changes: XrayChangeSet = host.apply_changed_on_disk(&search).expect("the change applies");
+  let after: XraySearch = host.search(&roots(&root)).expect("the roots are found");
+
+  assert_eq!(changes.get_changes().len(), 1);
+  assert_eq!(changes.get_changes()[0].get_kind(), XrayChangeKind::Modified);
+  assert_eq!(changes.get_changes()[0].get_path().as_str(), "configs\\system.ltx");
+  assert_eq!(after.get_vfs().get_revision(), changes.get_revision());
+  assert_eq!(parse(&after, "configs\\system.ltx", &parses), "edited behind the app");
+  assert_eq!(parse(&after, "configs\\game.ltx", &parses), "payload");
+  assert_eq!(
+    parses.load(Ordering::Relaxed),
+    3,
+    "the changed file is parsed again and the unchanged one is served"
+  );
+  assert!(
+    host.apply_changed_on_disk(&after).expect("looked at again").is_empty(),
+    "a file read again is not changed again"
+  );
+}
+
+/// Writes a volume storing one uncompressed entry, the least a planned archive mount opens.
+fn write_volume(path: &Path, name: &str, payload: &[u8]) {
+  let mut descriptors: Vec<u8> = Vec::new();
+  let header: u16 = 16 + u16::try_from(name.len()).expect("a short name");
+  let size: u32 = u32::try_from(payload.len()).expect("a short payload");
+
+  descriptors.extend_from_slice(&header.to_le_bytes());
+  descriptors.extend_from_slice(&size.to_le_bytes());
+  descriptors.extend_from_slice(&size.to_le_bytes());
+  descriptors.extend_from_slice(&0u32.to_le_bytes());
+  descriptors.extend_from_slice(name.as_bytes());
+
+  // The payload sits in a data chunk ahead of the table, straight after that chunk's own id and size.
+  descriptors.extend_from_slice(&8u32.to_le_bytes());
+
+  let mut bytes: Vec<u8> = Vec::new();
+
+  bytes.extend_from_slice(&0u32.to_le_bytes());
+  bytes.extend_from_slice(&size.to_le_bytes());
+  bytes.extend_from_slice(payload);
+  bytes.extend_from_slice(&1u32.to_le_bytes());
+  bytes.extend_from_slice(&u32::try_from(descriptors.len()).expect("a short table").to_le_bytes());
+  bytes.extend_from_slice(&descriptors);
+
+  fs::create_dir_all(path.parent().expect("a volume sits in a directory")).expect("directory created");
+  fs::write(path, bytes).expect("volume written");
+}
+
+/// Whether a search answers a path with a loose copy.
+fn answers_loose(search: &XraySearch, logical_path: &str) -> bool {
+  search
+    .find(logical_path)
+    .expect("the lookup succeeds")
+    .expect("the path is there")
+    .to_physical_path()
+    .is_some()
+}
+
+// An installation's loose override beats its archived copy whichever of its sources a person opened first: opening its
+// `db` folder alone mounts the volumes ahead of the installation's gamedata, and the installation then reuses that
+// mount, so its step must search in its own order rather than in mount order.
+#[test]
+fn searches_an_installation_in_its_own_order_after_its_archives_were_opened_alone() {
+  let root: PathBuf = install("plan_order", &["gamedata/configs/system.ltx"]);
+
+  write_volume(&root.join("db/configs.db0"), "configs\\system.ltx", b"archived");
+
+  let host: XrayVfsHost = XrayVfsHost::default();
+  let archives: XraySearch = host
+    .search(&XrayRoots::one(root.join("db"), XrayMountMode::Auto))
+    .expect("the archives mount");
+
+  assert!(!answers_loose(&archives, "configs\\system.ltx"));
+
+  let installation: XraySearch = host.search(&roots(&root)).expect("the installation mounts");
+
+  assert_eq!(
+    host.get_vfs().get_mounts().len(),
+    2,
+    "the installation reuses the archive mount opened first"
+  );
+  assert!(answers_loose(&installation, "configs\\system.ltx"));
+
+  let fresh: XrayVfsHost = XrayVfsHost::default();
+
+  fresh.search(&roots(&root)).expect("the installation mounts");
+
+  assert!(answers_loose(
+    &fresh
+      .search(&XrayRoots::one(root.join("db"), XrayMountMode::Auto))
+      .and_then(|_| fresh.search(&roots(&root)))
+      .expect("both orders mount"),
+    "configs\\system.ltx"
+  ));
 }
 
 // A root that is not there is no failure to open, so opening it afresh publishes no new snapshot for it.

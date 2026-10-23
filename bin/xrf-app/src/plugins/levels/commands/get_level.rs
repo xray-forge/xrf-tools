@@ -6,7 +6,6 @@ use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionRestore, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::level_read::describe_level;
 use crate::plugins::levels::state::{LevelState, SelectedLevel, SelectedLevelDescription};
 
 /// Restore the committed level descriptor without reading the level again; only where it starts is decided again,
@@ -24,7 +23,7 @@ pub async fn levels_get_level(
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let described: SessionSnapshot<SelectedLevelDescription> = execution
     .run_blocking("Describing the level", move || {
-      TauriResult::Ok(describe_level(&current, &assets.search(&current.roots)?))
+      TauriResult::Ok(SelectedLevel::describe_at(&current, &assets.search(&current.roots)?))
     })
     .await??;
 

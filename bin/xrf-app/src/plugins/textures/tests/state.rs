@@ -4,6 +4,7 @@ use std::sync::Arc;
 use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsMipChain, DdsMipmaps, Quality};
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
+use crate::core::assets::AssetMountState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::plugins::textures::catalog::TextureCatalogMode;
 use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingSession};
@@ -13,7 +14,7 @@ use crate::plugins::textures::tests::fixtures::{BASE, source_image};
 
 #[test]
 fn replacing_a_comparison_refuses_old_tokens_even_for_the_same_reference() {
-  let state: TextureState = TextureState::new();
+  let state: TextureState = TextureState::new(AssetMountState::new());
   let first: SessionId = SessionId::new();
 
   state.comparison.begin_open(first).expect("first session");
@@ -52,7 +53,7 @@ fn replacing_a_comparison_refuses_old_tokens_even_for_the_same_reference() {
 
 #[test]
 fn closing_releases_cached_bytes_and_refuses_unfinished_publication() {
-  let state: TextureState = TextureState::new();
+  let state: TextureState = TextureState::new(AssetMountState::new());
   let id: SessionId = SessionId::new();
 
   state.comparison.begin_open(id).expect("session");
@@ -73,7 +74,7 @@ fn closing_releases_cached_bytes_and_refuses_unfinished_publication() {
 
 #[test]
 fn a_late_comparison_cannot_replace_a_reopened_session() {
-  let state: TextureState = TextureState::new();
+  let state: TextureState = TextureState::new(AssetMountState::new());
   let first: SessionId = SessionId::new();
 
   state.comparison.begin_open(first).expect("first session");
@@ -94,7 +95,7 @@ fn a_late_comparison_cannot_replace_a_reopened_session() {
 
 #[test]
 fn a_late_open_cannot_undo_close_or_a_newer_open() {
-  let state: TextureState = TextureState::new();
+  let state: TextureState = TextureState::new(AssetMountState::new());
   let first: SessionId = SessionId::new();
 
   state.browse.begin_open(first).expect("pending open");
@@ -116,7 +117,7 @@ fn a_late_open_cannot_undo_close_or_a_newer_open() {
 
 #[test]
 fn an_accepted_snapshot_outlives_close_without_locking_the_session() {
-  let state: TextureState = TextureState::new();
+  let state: TextureState = TextureState::new(AssetMountState::new());
   let id: SessionId = SessionId::new();
 
   state.comparison.begin_open(id).expect("session");

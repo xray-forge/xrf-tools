@@ -1,17 +1,21 @@
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, RwLock};
 
 use tauri::ipc::Channel;
+use xrf_error::XrfResult;
 use xrf_vfs::{
-  XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayChangeSet, XrayRoots, XraySearch, XrayTransaction, XrayVfs,
-  XrayVfsHost,
+  XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayChangeSet, XrayRevision, XrayRoots, XraySearch, XrayTransaction,
+  XrayVfs, XrayVfsHost,
 };
 
+use crate::core::assets::asset_change_order::AssetChangeOrder;
+use crate::core::assets::asset_change_ticket::AssetChangeTicket;
+use crate::core::assets::asset_fan_out::AssetFanOut;
 use crate::core::assets::{AssetChangeEvent, AssetChangeSubscriber};
 use crate::core::session::{SessionChange, SessionFollower};
 use crate::core::types::TauriResult;
 
-/// Work a session's follow puts off until the fan-out under way has told everyone.
-type AssetFanOutStart = Box<dyn FnOnce() + Send>;
+/// A published change's place in the order it is heard in, with the snapshot it published.
+type AssetPublished = (AssetChangeTicket, Arc<XrayVfs>);
 
 /// The application's VFS host, as the state every asset read takes a search from, and what moves every open session
 /// along when a commit changes the files.
@@ -24,9 +28,9 @@ pub struct AssetMountState {
   subscribers: Arc<RwLock<Vec<Arc<dyn AssetChangeSubscriber>>>>,
   /// The pages told what each commit did, until one stops listening.
   listeners: Arc<Mutex<Vec<Channel<AssetChangeEvent>>>>,
-  /// What a session's follow put off until everyone has heard the change under way: a derivation started off the
-  /// commit, whose own announcement must come after it.
-  after_fan_out: Arc<Mutex<Vec<AssetFanOutStart>>>,
+  /// The order every change is heard in, which is the order the changes were published in. No lock is held while
+  /// sessions move or anyone hears, since a follow reading on the worker pool may take a job that commits or announces.
+  order: Arc<AssetChangeOrder>,
 }
 
 impl AssetMountState {
@@ -42,7 +46,7 @@ impl AssetMountState {
       followers: Arc::new(RwLock::new(Vec::new())),
       subscribers: Arc::new(RwLock::new(Vec::new())),
       listeners: Arc::new(Mutex::new(Vec::new())),
-      after_fan_out: Arc::new(Mutex::new(Vec::new())),
+      order: Arc::default(),
     }
   }
 
@@ -66,10 +70,29 @@ impl AssetMountState {
     self.host.search(spec).map_err(|error| error.to_string())
   }
 
-  /// The same for a person opening the roots: planned from disk again, and every source that failed to open tried
-  /// again, so a volume locked once, by a running game or a scan, opens once it is free.
+  /// The same for a person opening the roots: planned from disk again, every source that failed to open tried again,
+  /// so a volume locked once, by a running game or a scan, opens once it is free, and every retained loose file the
+  /// roots reach looked at on disk, so one edited behind the app is read afresh and every followed session moves as
+  /// after a commit.
   pub fn search_fresh(&self, spec: &XrayRoots) -> TauriResult<XraySearch> {
-    let search: XraySearch = self.host.search_fresh(spec).map_err(|error| error.to_string())?;
+    let opened: XraySearch = self.host.search_fresh(spec).map_err(|error| error.to_string())?;
+    let (changes, published) = self.publish(|host| host.apply_changed_on_disk(&opened))?;
+
+    let search: XraySearch = match published {
+      None => opened,
+      Some(published) => {
+        log::info!(
+          "Read {} retained file(s) changed on disk again, at {:?}",
+          changes.get_changes().len(),
+          changes.get_revision()
+        );
+
+        self.fan_out(published, changes.get_revision());
+
+        // The plan is settled by now, so this is the snapshot the change published, or a newer one.
+        self.search(spec)?
+      }
+    };
     let stats: XrayCacheStats = search.get_vfs().get_cache_stats();
 
     // Once per open a person makes, which is what the ceiling above is judged by.
@@ -85,71 +108,117 @@ impl AssetMountState {
     Ok(search)
   }
 
+  /// A search over every writable loose mount, for a writer naming the files it commits on disk rather than by logical
+  /// path: a file it does not hold is one no snapshot reads.
+  pub fn search_writable(&self) -> XraySearch {
+    self.host.search_writable()
+  }
+
   /// Writes a transaction's files, all or none, and publishes the snapshot they leave, which every search taken after
   /// reads; then moves every followed session to it, tells every subscriber and then every listening page. Answers
   /// what changed.
   ///
-  /// The sessions move and the subscribers hear of it before this returns, so a caller reading its own session
-  /// afterwards sees what it committed; a session deriving its value off the commit is reported `Deriving`, and what it
-  /// derived comes later through [`Self::announce_sessions`].
+  /// The sessions move before this returns, so a caller reading its own session afterwards sees what it committed, and
+  /// the subscribers hear of it before this returns unless an earlier change is still being heard, which then tells of
+  /// this one after it; a session deriving its value off the commit is reported `Deriving`, and what it derived comes
+  /// later through [`Self::announce_sessions`].
   pub fn commit(&self, transaction: &XrayTransaction) -> TauriResult<XrayChangeSet> {
-    let changes: XrayChangeSet = self.host.commit(transaction).map_err(|error| error.to_string())?;
+    let (changes, published) = self.publish(|host| host.commit(transaction))?;
 
     // todo: Record the transaction in an undo history with what it replaced and the editor it came from, capped by total
     //  bytes, oldest dropped; undo and redo then commit through here as transactions of their own.
 
-    // Nothing written is nothing to follow: the project revision did not move.
-    if !changes.get_changes().is_empty() {
-      self.fan_out(AssetChangeEvent {
-        revision: changes.get_revision(),
-        sessions: self.move_sessions(),
-      });
+    if let Some(published) = published {
+      self.fan_out(published, changes.get_revision());
     }
 
     Ok(changes)
   }
 
+  /// Runs a change through the host and, where it moved the project revision, takes the change's place in the order
+  /// events are heard in, with the snapshot it published.
+  fn publish(
+    &self,
+    change: impl FnOnce(&XrayVfsHost) -> XrfResult<XrayChangeSet>,
+  ) -> TauriResult<(XrayChangeSet, Option<AssetPublished>)> {
+    let ((changes, vfs), ticket) = self
+      .order
+      .issue(|| {
+        let changes: XrayChangeSet = change(&self.host)?;
+        // Every change takes the order's lock, so nothing newer than this one has published yet.
+        let vfs: Arc<XrayVfs> = self.host.get_vfs();
+        // Nothing written is nothing to follow: the project revision did not move.
+        let is_changed: bool = !changes.get_changes().is_empty();
+
+        XrfResult::Ok(((changes, vfs), is_changed))
+      })
+      .map_err(|error| error.to_string())?;
+
+    Ok((changes, ticket.map(|ticket| (ticket, vfs))))
+  }
+
+  /// Moves every followed session to the snapshot a change at `revision` published, then has everyone hear of it in its
+  /// turn.
+  fn fan_out(&self, (ticket, vfs): AssetPublished, revision: XrayRevision) {
+    let fan_out: AssetFanOut = AssetFanOut::new(vfs);
+    let sessions: Vec<SessionChange> = self.move_sessions(&fan_out);
+
+    self.deliver(ticket, AssetChangeEvent { revision, sessions }, fan_out);
+  }
+
   /// Tells every subscriber and then every listening page what moved `sessions` after their commit's fan-out, a
-  /// derivation that landed off the commit, as a commit's change at the project revision held now.
-  pub(crate) fn announce_sessions(&self, sessions: Vec<SessionChange>) {
-    self.fan_out(AssetChangeEvent {
+  /// derivation that landed off the commit, as a change at the project revision held now, then starts what their
+  /// follows put off for `fan_out`.
+  pub(crate) fn announce_sessions(&self, sessions: Vec<SessionChange>, fan_out: AssetFanOut) {
+    let ticket: AssetChangeTicket = self.order.issue_next();
+    let event: AssetChangeEvent = AssetChangeEvent {
       revision: self.get_vfs().get_revision(),
       sessions,
+    };
+
+    self.deliver(ticket, event, fan_out);
+  }
+
+  /// Moves `follower` to the newest snapshot at once, telling everyone what that did: for an open that published
+  /// after a change it did not read, which that change's fan-out found nothing to move for.
+  pub(crate) fn catch_up(&self, follower: &dyn SessionFollower) {
+    let fan_out: AssetFanOut = AssetFanOut::new(self.get_vfs());
+
+    match follower.follow_in(self, &fan_out) {
+      Ok(Some(change)) => self.announce_sessions(vec![change], fan_out),
+      Ok(None) => {
+        for start in fan_out.into_starts() {
+          start();
+        }
+      }
+      Err(error) => log::error!("A session could not catch up with a commit: {error}"),
+    }
+  }
+
+  /// Tells every subscriber what `event` did, then every listening page, then runs what the sessions' follows put off
+  /// for it, all in `ticket`'s turn.
+  fn deliver(&self, ticket: AssetChangeTicket, event: AssetChangeEvent, fan_out: AssetFanOut) {
+    let state: AssetMountState = self.clone();
+
+    ticket.deliver(move || {
+      // Copied out, so a subscriber reading through this state never runs under the subscribers' lock.
+      let subscribers: Vec<Arc<dyn AssetChangeSubscriber>> =
+        state.subscribers.read().unwrap_or_else(PoisonError::into_inner).clone();
+
+      for subscriber in &subscribers {
+        subscriber.take_change(&state, &event);
+      }
+
+      state.announce(event);
+
+      for start in fan_out.into_starts() {
+        start();
+      }
     });
   }
 
-  /// Runs `start` once the fan-out under way has told every subscriber and page, for a session's follow that starts
-  /// work announcing a later change of its own, so that change is never heard before this one.
-  pub(crate) fn after_fan_out(&self, start: impl FnOnce() + Send + 'static) {
-    self
-      .after_fan_out
-      .lock()
-      .unwrap_or_else(PoisonError::into_inner)
-      .push(Box::new(start));
-  }
-
-  /// Tells every subscriber what `event` did, then every listening page, then runs what the sessions' follows put off.
-  fn fan_out(&self, event: AssetChangeEvent) {
-    // Copied out, so a subscriber reading through this state never runs under the subscribers' lock.
-    let subscribers: Vec<Arc<dyn AssetChangeSubscriber>> =
-      self.subscribers.read().unwrap_or_else(PoisonError::into_inner).clone();
-
-    for subscriber in &subscribers {
-      subscriber.take_change(self, &event);
-    }
-
-    self.announce(event);
-
-    let started: Vec<AssetFanOutStart> =
-      std::mem::take(&mut *self.after_fan_out.lock().unwrap_or_else(PoisonError::into_inner));
-
-    for start in started {
-      start();
-    }
-  }
-
   /// Follows `session` through every commit from now on.
-  pub(crate) fn follow(&self, session: impl SessionFollower + 'static) {
+  pub(crate) fn add_follower(&self, session: impl SessionFollower + 'static) {
     self
       .followers
       .write()
@@ -158,7 +227,7 @@ impl AssetMountState {
   }
 
   /// Tells `subscriber` what every commit from now on did, in the backend.
-  pub(crate) fn subscribe(&self, subscriber: impl AssetChangeSubscriber + 'static) {
+  pub(crate) fn add_subscriber(&self, subscriber: impl AssetChangeSubscriber + 'static) {
     self
       .subscribers
       .write()
@@ -171,9 +240,9 @@ impl AssetMountState {
     self.lock_listeners().push(channel);
   }
 
-  /// Moves each followed session to the snapshot now current, answering what that did to the ones it reached. A
+  /// Moves each followed session to the snapshot `fan_out` carries, answering what that did to the ones it reached. A
   /// session whose lock is poisoned is passed over and said so, so one broken session leaves the others moving.
-  fn move_sessions(&self) -> Vec<SessionChange> {
+  fn move_sessions(&self, fan_out: &AssetFanOut) -> Vec<SessionChange> {
     // Copied out, so a derivation reading through this state never runs under the followers' lock.
     let followers: Vec<Arc<dyn SessionFollower>> =
       self.followers.read().unwrap_or_else(PoisonError::into_inner).clone();
@@ -182,7 +251,7 @@ impl AssetMountState {
       .iter()
       .filter_map(|follower| {
         follower
-          .follow(self)
+          .follow_in(self, fan_out)
           .inspect_err(|error| log::error!("A session could not follow a commit: {error}"))
           .ok()
           .flatten()

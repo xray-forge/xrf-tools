@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
 use std::sync::Arc;
 
 use xrf_archive::ArchiveDescriptor;
@@ -193,6 +194,14 @@ impl XraySearch {
     containers
   }
 
+  /// Whether a writable loose source this search reaches holds `file` on disk below its root, there yet or not: where
+  /// [`XrayTransaction::with_file_write`](crate::XrayTransaction::with_file_write) can place a write of it.
+  pub fn holds_file(&self, file: &Path) -> bool {
+    let scopes: Vec<XrayLookupScope> = self.steps.iter().map(|step| step.get_scope().clone()).collect();
+
+    !self.vfs.list_writable_holding(&scopes, file).is_empty()
+  }
+
   /// Files any source this search reaches holds but cannot reach, because another file in that same source claims
   /// their identity.
   pub fn list_collisions(&self) -> Vec<XrayPathCollision> {
@@ -246,9 +255,8 @@ impl XraySearch {
   ///
   /// Returns an error when the path is not a valid X-Ray logical path.
   pub fn locate(&self, logical_path: &str) -> XrfResult<XrayResolution> {
+    // An empty search records nothing, as a resolve on one does: nothing it could answer can move.
     if self.is_empty() {
-      self.record_file(logical_path);
-
       return Ok(XrayResolution::NoScope);
     }
 
@@ -350,7 +358,8 @@ impl XraySearch {
     }
   }
 
-  /// The bytes of a copy already located.
+  /// The bytes of the copy an asset already located names, recorded as a read of its logical path, which follows the
+  /// copy this search answers with.
   ///
   /// # Errors
   ///
@@ -361,7 +370,8 @@ impl XraySearch {
     self.vfs.read_asset_bytes(asset)
   }
 
-  /// Reads and parses a copy already located, serving a retained value when the snapshot holds one.
+  /// Reads and parses the copy an asset already located names, the one [`Self::read_asset`] reads, serving a retained
+  /// value when the snapshot holds one, and recorded as that read is.
   ///
   /// # Errors
   ///
@@ -373,23 +383,12 @@ impl XraySearch {
   {
     self.record(|| Some(XrayInputKind::File(asset.get_logical_path().clone())));
 
-    let logical_path: &str = asset.get_logical_path().as_str();
-
-    for step in self.steps.iter() {
-      let scope: &XrayLookupScope = step.get_scope();
-
-      if self.vfs.find_in(scope, logical_path)?.is_some() {
-        return match asset.get_asset_type() {
-          Some(kind) => self.vfs.read_parsed_in(scope, kind, logical_path, parse),
-          // An extension naming no kind is something a retention policy cannot speak about, so it is read and parsed
-          // without being retained.
-          None => Ok(Arc::new(parse(self.vfs.read_in(scope, logical_path)?)?)),
-        };
-      }
+    match asset.get_asset_type() {
+      Some(kind) => self.vfs.read_parsed_asset(asset, kind, parse),
+      // An extension naming no kind is something a retention policy cannot speak about, so it is read and parsed
+      // without being retained.
+      None => Ok(Arc::new(parse(self.vfs.read_asset_bytes(asset)?)?)),
     }
-
-    // Nothing this search reaches holds it, which happens for an asset resolved elsewhere. Read it where it lives.
-    Ok(Arc::new(parse(self.vfs.read_asset_bytes(asset)?)?))
   }
 
   /// The size in bytes of the copy of an exact logical path this search finds, without reading it; `None` where no

@@ -24,6 +24,10 @@ impl XrayRevision {
     Self(self.0 + 1)
   }
 
+  pub(crate) const fn from_count(revision: u64) -> Self {
+    Self(revision)
+  }
+
   /// The revision a change numbered `revision` left, for a test arranging one before anything commits.
   #[cfg(test)]
   pub(crate) const fn of(revision: u64) -> Self {

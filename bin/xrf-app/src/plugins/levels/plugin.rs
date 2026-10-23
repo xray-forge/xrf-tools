@@ -19,7 +19,9 @@ impl LevelsPlugin {
 
         // An open level records what it and its parts read, so a commit carries the parts it did not touch and reads
         // the level again where it moved one of its own files.
-        application.state::<AssetMountState>().follow(state.selected.clone());
+        application
+          .state::<AssetMountState>()
+          .add_follower(state.selected.clone());
         application.manage(state);
 
         Ok(())

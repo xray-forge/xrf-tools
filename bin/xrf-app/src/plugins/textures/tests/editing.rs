@@ -2,6 +2,8 @@
 
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{Duration, SystemTime};
 
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipFilter, DdsMipmaps, ImageFormat, Quality};
@@ -10,9 +12,10 @@ use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_spawn::XRayByteOrder;
 use xrf_texture::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
 use xrf_thm::{ThmBumpMode, ThmFile, ThmFormat, ThmTextureFlag, ThmTextureFlags, ThmTextureType};
-use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayLogicalPath};
+use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayInputRecord, XrayLogicalPath, XrayRevision, XraySearch};
 
-use crate::core::session::SessionId;
+use crate::core::assets::AssetMountState;
+use crate::core::session::{Session, SessionDerived, SessionId, SessionParts};
 use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::edit_targets::TextureEditTargets;
 use crate::plugins::textures::encoding::TextureEncodingFormat;
@@ -22,7 +25,7 @@ use crate::plugins::textures::request::{
 };
 use crate::plugins::textures::save::{TextureSaveOutcome, write_save};
 use crate::plugins::textures::tests::fixtures::{
-  BASE, editing_directory, loose_asset, read_descriptor, source_image, target,
+  BASE, editing_directory, loose_asset, read_descriptor, roots_of, source_image, target,
 };
 
 /// Move a file's modification time on, so a rewrite a test just made is one the guard can actually see.
@@ -145,6 +148,7 @@ fn saving_a_descriptor_writes_it_and_says_where() {
   form.detail_scale = 0.25;
 
   let outcome: TextureSaveOutcome = write_save(
+    &AssetMountState::new(),
     &JobHandle::inert(),
     &TexturesSaveRequest {
       descriptor: Some(TextureDescriptorSave {
@@ -175,6 +179,7 @@ fn saving_a_descriptor_that_is_not_there_yet_creates_one() {
   let path: PathBuf = root.join("ston_beton05.thm");
 
   let outcome: TextureSaveOutcome = write_save(
+    &AssetMountState::new(),
     &JobHandle::inert(),
     &TexturesSaveRequest {
       descriptor: Some(TextureDescriptorSave {
@@ -199,6 +204,77 @@ fn saving_a_descriptor_that_is_not_there_yet_creates_one() {
 }
 
 #[test]
+fn a_save_into_a_mounted_tree_commits_so_its_retained_descriptor_and_sessions_follow() {
+  let tree: FixtureTree = FixtureTree::new("textures_committed")
+    .with_texture(BASE)
+    .with_descriptor(BASE, &ThmFixture::image());
+  let assets: AssetMountState = AssetMountState::new();
+  let search: XraySearch = assets.search(&roots_of(&tree)).expect("the tree mounts");
+  let descriptor: XrayAsset = search
+    .find("textures\\ston\\ston_beton05.thm")
+    .expect("the lookup succeeds")
+    .expect("the descriptor is mounted");
+  let path: PathBuf = descriptor.to_physical_path().expect("the descriptor is loose");
+  let parses: AtomicU32 = AtomicU32::new(0);
+  let read = |search: &XraySearch| -> Arc<Vec<u8>> {
+    search
+      .read_parsed(&descriptor, |bytes| {
+        parses.fetch_add(1, Ordering::Relaxed);
+
+        Ok(bytes)
+      })
+      .expect("the descriptor reads")
+  };
+  let session: Session<&str> =
+    Session::new("test").with_derivation(|_, _| Ok(SessionDerived::new("derived", XrayInputRecord::new())));
+  let inputs: XrayInputRecord = XrayInputRecord::new();
+  let id: SessionId = SessionId::new();
+
+  read(&search.clone().with_recording(&inputs));
+  assets.add_follower(session.clone());
+  session.begin_open(id).unwrap();
+  session
+    .commit_open_with(id, "opened", XrayRevision::MOUNTED, inputs, SessionParts::new())
+    .unwrap();
+
+  let mut form: TextureDescriptorForm = TextureDescriptorForm::read(&read_descriptor(&path));
+
+  form.texture_type = u32::from(ThmTextureType::Terrain);
+
+  let outcome: TextureSaveOutcome = write_save(
+    &assets,
+    &JobHandle::inert(),
+    &TexturesSaveRequest {
+      descriptor: Some(TextureDescriptorSave {
+        target: target(&path),
+        form,
+      }),
+      texture: None,
+    },
+    None,
+  )
+  .expect("save succeeds");
+  let after: XraySearch = assets.search(&roots_of(&tree)).expect("the tree is found");
+  let followed = session.get().unwrap().unwrap();
+
+  assert_eq!(outcome.written, vec![path.display().to_string()]);
+  assert_ne!(
+    assets.get_vfs().get_revision(),
+    XrayRevision::MOUNTED,
+    "the save moved the revision"
+  );
+  assert_eq!(
+    *read(&after),
+    std::fs::read(&path).expect("descriptor is readable"),
+    "the next read parses what was written"
+  );
+  assert_eq!(parses.load(Ordering::Relaxed), 2);
+  assert_eq!(read_descriptor(&path).texture_type, Some(ThmTextureType::Terrain));
+  assert_eq!(**followed, "derived");
+  assert_eq!(followed.revision, assets.get_vfs().get_revision());
+}
+
+#[test]
 fn a_target_that_changed_on_disk_is_refused_rather_than_overwritten() {
   let root: PathBuf = editing_directory("stale");
   let path: PathBuf = root.join("ston_beton05.thm");
@@ -214,6 +290,7 @@ fn a_target_that_changed_on_disk_is_refused_rather_than_overwritten() {
   rewritten_later(&path);
 
   let refused = write_save(
+    &AssetMountState::new(),
     &JobHandle::inert(),
     &TexturesSaveRequest {
       descriptor: Some(TextureDescriptorSave {
@@ -241,6 +318,7 @@ fn a_file_that_appeared_where_the_editor_saw_none_is_refused_too() {
   std::fs::write(&path, ThmFixture::image().to_bytes()).expect("descriptor is writable");
 
   let refused = write_save(
+    &AssetMountState::new(),
     &JobHandle::inert(),
     &TexturesSaveRequest {
       descriptor: Some(TextureDescriptorSave {
@@ -275,6 +353,7 @@ fn saving_a_texture_writes_its_bytes_and_syncs_the_descriptor_format() {
     .expect("bytes");
 
   let outcome: TextureSaveOutcome = write_save(
+    &AssetMountState::new(),
     &JobHandle::inert(),
     &TexturesSaveRequest {
       descriptor: Some(TextureDescriptorSave {
@@ -337,6 +416,7 @@ fn a_bc1_texture_names_the_format_its_own_alpha_flag_says() {
     form.flags = ThmTextureFlags::none().with(ThmTextureFlag::HasAlpha, has_alpha).raw();
 
     let outcome: TextureSaveOutcome = write_save(
+      &AssetMountState::new(),
       &JobHandle::inert(),
       &TexturesSaveRequest {
         descriptor: Some(TextureDescriptorSave {
@@ -376,6 +456,7 @@ fn a_bc7_texture_leaves_the_descriptors_format_alone() {
     .expect("bytes");
 
   let outcome: TextureSaveOutcome = write_save(
+    &AssetMountState::new(),
     &JobHandle::inert(),
     &TexturesSaveRequest {
       descriptor: None,
@@ -400,6 +481,7 @@ fn saving_a_texture_with_nothing_encoded_is_refused_by_name() {
   std::fs::write(&texture_path, b"placeholder").expect("texture is writable");
 
   let refused = write_save(
+    &AssetMountState::new(),
     &JobHandle::inert(),
     &TexturesSaveRequest {
       descriptor: None,
@@ -472,6 +554,7 @@ fn a_save_asked_to_stop_before_it_writes_writes_nothing() {
   job.cancel();
 
   let outcome: TextureSaveOutcome = write_save(
+    &AssetMountState::new(),
     &job,
     &TexturesSaveRequest {
       descriptor: Some(TextureDescriptorSave {
@@ -522,6 +605,7 @@ fn a_save_still_refuses_a_stale_target_before_it_looks_at_cancellation() {
 
   assert!(
     write_save(
+      &AssetMountState::new(),
       &job,
       &TexturesSaveRequest {
         descriptor: Some(TextureDescriptorSave {

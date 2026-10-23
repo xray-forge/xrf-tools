@@ -33,4 +33,16 @@ impl XrayCacheKey {
   pub(crate) fn is_copy(&self, opening: u64, path: &str) -> bool {
     self.opening == opening && self.path == path
   }
+
+  pub(crate) fn get_opening(&self) -> u64 {
+    self.opening
+  }
+
+  pub(crate) fn get_path(&self) -> &str {
+    &self.path
+  }
+
+  pub(crate) fn get_revision(&self) -> XrayRevision {
+    self.revision
+  }
 }

@@ -6,9 +6,9 @@ use std::time::Duration;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::XrayRevision;
 use crate::asset::XrayAssetType;
 use crate::cache::{XrayAssetCache, XrayCacheKey, XrayCachePolicy, XrayCacheStats};
+use crate::{XrayFileStamp, XrayRevision};
 
 /// Stands in for a parsed asset, so the store is exercised without a format crate.
 #[derive(Debug, Eq, PartialEq)]
@@ -71,7 +71,7 @@ fn counts_one_miss_then_one_hit_for_two_reads_of_one_key() {
       .get_or_load(key::<Parsed>("a.omf"), XrayAssetType::Omf, || {
         loads.fetch_add(1, Ordering::Relaxed);
 
-        Ok((Parsed("first"), 64))
+        Ok((Parsed("first"), 64, None))
       })
       .expect("both reads are served");
   }
@@ -176,20 +176,29 @@ fn drops_only_what_nobody_holds() {
   assert_eq!(cache.get_stats().entries, 0);
 }
 
+// At the ceiling an insert drops the oldest values nobody holds, only as many as it needs, rather than the whole warm
+// set.
 #[test]
-fn clears_everything_while_callers_keep_their_own_references() {
-  let cache: XrayAssetCache = cache();
-  cache.insert(key::<Parsed>("a.omf"), XrayAssetType::Omf, 8, Arc::new(Parsed("value")));
+fn makes_room_by_dropping_the_oldest_unheld_entries_alone() {
+  let cache: XrayAssetCache = XrayAssetCache::new(XrayCachePolicy::verification().with_budget(100));
 
-  let held: Arc<Parsed> = cache
-    .get::<Parsed>(&key::<Parsed>("a.omf"))
-    .expect("the entry was inserted");
+  for name in ["oldest.omf", "older.omf", "newer.omf"] {
+    cache.insert(key::<Parsed>(name), XrayAssetType::Omf, 30, Arc::new(Parsed("value")));
+  }
 
-  cache.clear();
+  cache.insert(
+    key::<Parsed>("next.omf"),
+    XrayAssetType::Omf,
+    40,
+    Arc::new(Parsed("next")),
+  );
 
-  assert_eq!(cache.get_stats().entries, 0);
-  // The caller's value stays valid; only the store let go of it.
-  assert_eq!(*held, Parsed("value"));
+  let stats: XrayCacheStats = cache.get_stats();
+
+  assert_eq!((stats.entries, stats.bytes, stats.refused), (3, 100, 0));
+  assert!(cache.get::<Parsed>(&key::<Parsed>("oldest.omf")).is_none());
+  assert!(cache.get::<Parsed>(&key::<Parsed>("older.omf")).is_some());
+  assert!(cache.get::<Parsed>(&key::<Parsed>("newer.omf")).is_some());
 }
 
 #[test]
@@ -290,7 +299,7 @@ fn forgets_one_copy_under_every_type_and_revision() {
 fn race<T, F>(cache: &XrayAssetCache, load: F) -> Vec<XrfResult<Arc<T>>>
 where
   T: Send + Sync + 'static,
-  F: Fn() -> XrfResult<(T, u64)> + Send + Sync,
+  F: Fn() -> XrfResult<(T, u64, Option<XrayFileStamp>)> + Send + Sync,
 {
   let start: Barrier = Barrier::new(2);
 
@@ -322,7 +331,7 @@ fn loads_a_retained_key_once_for_two_concurrent_misses() {
     // Long enough that the second thread is certainly waiting rather than arriving after the fact.
     thread::sleep(Duration::from_millis(50));
 
-    Ok((Parsed("shared"), 64))
+    Ok((Parsed("shared"), 64, None))
   });
 
   assert_eq!(
@@ -366,7 +375,7 @@ fn lets_every_requester_of_an_excluded_kind_load_for_itself() {
             loads.fetch_add(1, Ordering::Relaxed);
             thread::sleep(Duration::from_millis(50));
 
-            Ok((Parsed("visual"), 4096))
+            Ok((Parsed("visual"), 4096, None))
           })
           .expect("both requesters are served");
       });
@@ -429,7 +438,7 @@ fn wakes_waiters_when_the_owners_load_panics() {
       start.wait();
 
       cache.get_or_load(key::<Parsed>("shared.omf"), XrayAssetType::Omf, || {
-        Ok((Parsed("second try"), 64))
+        Ok((Parsed("second try"), 64, None))
       })
     });
 

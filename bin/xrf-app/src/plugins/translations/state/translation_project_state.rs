@@ -1,17 +1,21 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use xrf_translation::{TranslationFile, TranslationProjectDescriptor};
-use xrf_vfs::XrayChangeSet;
+use xrf_translation::{
+  TranslationFile, TranslationProjectDescriptor, TranslationProjectMode, read_gamedata_in, read_source_in,
+};
+use xrf_utils::error_to_string;
+use xrf_vfs::{XrayChangeSet, XrayInputRecord, XrayRoots, XraySearch};
 
+use crate::core::assets::AssetMountState;
 use crate::core::jobs::resolve_lease_path;
-use crate::core::session::{Session, SessionId, SessionSnapshot};
+use crate::core::session::{Session, SessionDerived, SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::translations::project_read::derive_project;
 use crate::plugins::translations::state::{TranslationSaveOutcome, TranslationSavePlan};
 
 /// Owns publication; domain save planning retains exactly the snapshot it read, and a commit moves the open project
 /// along by reading it again.
+#[derive(Clone)]
 pub struct TranslationProjectState {
   /// Publication itself, in the one vocabulary every plugin addresses an opening by.
   pub session: Session<TranslationProjectDescriptor>,
@@ -20,8 +24,46 @@ pub struct TranslationProjectState {
 impl TranslationProjectState {
   pub fn new() -> Self {
     Self {
-      session: Session::new("translations").with_derivation(derive_project),
+      session: Session::new("translations").with_derivation(Self::derive_project),
     }
+  }
+
+  /// Reads a translations project through `search`, recording every file and listing it reads: what an open commits,
+  /// and what a commit's follow derives again.
+  ///
+  /// The caller's mode is obeyed, not re-derived: the two layouts save to different files.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the prefix is not a logical path.
+  pub fn read_project(
+    search: XraySearch,
+    roots: &XrayRoots,
+    mode: TranslationProjectMode,
+    prefix: &str,
+  ) -> TauriResult<SessionDerived<TranslationProjectDescriptor>> {
+    let inputs: XrayInputRecord = XrayInputRecord::new();
+    let search: XraySearch = search.with_recording(&inputs);
+    let descriptor: TranslationProjectDescriptor = match mode {
+      TranslationProjectMode::Source => read_source_in(&search, roots, prefix),
+      TranslationProjectMode::Gamedata => read_gamedata_in(&search, roots, prefix),
+    }
+    .map_err(error_to_string)?;
+
+    Ok(SessionDerived::new(descriptor, inputs))
+  }
+
+  /// The open project read again over the roots it was opened over, once a commit moved a file it read.
+  fn derive_project(
+    project: &SessionSnapshot<TranslationProjectDescriptor>,
+    assets: &AssetMountState,
+  ) -> TauriResult<SessionDerived<TranslationProjectDescriptor>> {
+    Self::read_project(
+      assets.search(&project.roots)?,
+      &project.roots,
+      project.mode,
+      &project.prefix,
+    )
   }
 
   /// Resolves a save against the caller's document before touching any file.

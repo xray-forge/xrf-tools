@@ -14,6 +14,7 @@ mod xray_shadowing_entry;
 
 pub use directory_listing::XrayDirectoryListing;
 pub use xray_lookup_scope::XrayLookupScope;
+pub(crate) use xray_lookup_scope::XrayMountSelection;
 pub use xray_mounted_entry::XrayMountedEntry;
 pub use xray_resolution::XrayResolution;
 pub use xray_search::{XrayReadHandle, XraySearch};

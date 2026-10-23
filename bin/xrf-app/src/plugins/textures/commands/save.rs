@@ -6,6 +6,7 @@ use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress};
 use xrf_utils::error_to_string;
 
+use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::session::SessionSnapshot;
@@ -44,6 +45,7 @@ pub async fn textures_save(
 
   let (job, registration): (JobHandle, JobRegistration) =
     registry.register(start.with_resources(request.to_resources()).with_progress(progress))?;
+  let assets: AssetMountState = AssetMountState::clone(&state.assets);
 
   let outcome: TextureSaveOutcome = run_job(
     &execution,
@@ -55,7 +57,7 @@ pub async fn textures_save(
         _ => None,
       };
 
-      write_save(&job, &request, texture_bytes)
+      write_save(&assets, &job, &request, texture_bytes)
     },
     |outcome| outcome.outcome,
   )

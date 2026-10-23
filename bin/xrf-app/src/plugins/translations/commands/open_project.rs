@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use tauri::State;
 use xrf_translation::TranslationProjectDescriptor;
+use xrf_vfs::{XrayRevision, XraySearch};
 
 use crate::core::assets::AssetMountState;
 use crate::core::session::{SessionDerived, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::translations::project_read::read_project;
 use crate::plugins::translations::request::TranslationsOpenRequest;
 use crate::plugins::translations::state::TranslationProjectState;
 
@@ -37,8 +37,10 @@ pub async fn translations_open_project(
   );
 
   // Through the shared roots, recording what it reads, so a commit to any of those files reads the project again.
+  let search: XraySearch = assets.search_fresh(&roots)?;
+  let revision: XrayRevision = search.get_vfs().get_revision();
   let read: SessionDerived<TranslationProjectDescriptor> =
-    read_project(assets.search_fresh(&roots)?, &roots, mode, &prefix)?;
+    TranslationProjectState::read_project(search, &roots, mode, &prefix)?;
 
   log::info!(
     "Opened {} translation files, {} languages, {} findings, editable: {}",
@@ -49,7 +51,10 @@ pub async fn translations_open_project(
   );
 
   // Committed only once the read succeeded, so a failed open leaves whatever was already open in place.
-  state
-    .session
-    .commit_open_with(session_id, read.value, read.inputs, read.parts)
+  let opened: Arc<SessionSnapshot<TranslationProjectDescriptor>> =
+    state
+      .session
+      .commit_open_with(session_id, read.value, revision, read.inputs, read.parts)?;
+
+  Ok(state.session.catch_up(opened, &assets))
 }

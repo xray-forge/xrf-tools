@@ -9,7 +9,7 @@ pub(crate) enum XrayMountSelection {
   /// Every mount, in mount order.
   #[default]
   All,
-  /// Only the named mounts, still visited in mount order rather than in the order given.
+  /// Only the named mounts, visited in the order given, so a plan reusing a mount opened earlier keeps its own order.
   Only(Vec<XrayMountId>),
   /// Only mounts that can be written to, which excludes every archive.
   Writable,
@@ -38,7 +38,7 @@ impl XrayLookupScope {
     }
   }
 
-  /// Selects the named mounts while preserving VFS priority order.
+  /// Selects the named mounts, searched in the order given, highest priority first.
   pub fn only(mounts: impl IntoIterator<Item = XrayMountId>) -> Self {
     Self {
       selection: XrayMountSelection::Only(mounts.into_iter().collect()),

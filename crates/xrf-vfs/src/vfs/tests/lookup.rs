@@ -117,6 +117,40 @@ fn a_loose_file_overrides_an_archived_one() {
   );
 }
 
+// Handed the copy a loose file hides, a raw read and a parse both read that copy, never the winner.
+#[test]
+fn a_raw_read_and_a_parse_of_a_shadowed_copy_read_that_copy() {
+  let loose: PathBuf = directory("shadowed_parse", &["configs/system.ltx"]);
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs.mount_directory("", &loose).expect("directory mounts");
+  vfs
+    .mount(
+      "",
+      Box::new(FakeArchiveSource::new("archived", &["configs\\system.ltx"])),
+    )
+    .expect("archive mounts");
+
+  let search: crate::XraySearch = crate::XraySearch::new(vfs.with_cache_policy(crate::XrayCachePolicy::configs()))
+    .with_step("all", XrayLookupScope::all());
+  let shadowed: XrayAsset = search
+    .list_shadowing_entries()
+    .pop()
+    .expect("the path is listed")
+    .shadowed
+    .pop()
+    .expect("the archive's copy is hidden")
+    .asset;
+  let parse = |bytes: Vec<u8>| Ok(String::from_utf8(bytes).expect("text"));
+
+  assert_eq!(search.read_asset(&shadowed).unwrap(), b"archived");
+  assert_eq!(search.read_parsed(&shadowed, parse).unwrap().as_str(), "archived");
+
+  let winner: XrayAsset = search.find("configs\\system.ltx").unwrap().expect("found");
+
+  assert_eq!(search.read_parsed(&winner, parse).unwrap().as_str(), "shadowed_parse");
+}
+
 #[test]
 fn a_writable_scope_skips_an_archive_entirely() {
   // A writable scope lets the same operation skip archives.
