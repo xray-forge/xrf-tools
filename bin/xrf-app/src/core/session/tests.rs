@@ -5,9 +5,16 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use rayon::prelude::*;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayInputKind, XrayInputRecord, XrayLookupScope, XraySearch, XrayVfs};
+use xrf_vfs::{
+  XrayInputKind, XrayInputRecord, XrayLookupScope, XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction,
+  XrayVfs,
+};
 
-use crate::core::session::{Session, SessionId, SessionPart, SessionParts, SessionRestore, SessionSnapshot};
+use crate::core::assets::AssetMountState;
+use crate::core::session::{
+  Session, SessionChange, SessionDerived, SessionId, SessionPart, SessionParts, SessionRestore, SessionRootChange,
+  SessionSnapshot,
+};
 
 #[test]
 fn a_failed_replacement_keeps_the_committed_value_readable() {
@@ -68,26 +75,22 @@ fn an_old_teardown_cannot_close_a_new_owners_session_or_opening() {
 }
 
 #[test]
-fn an_accepted_snapshot_outlives_close_and_a_stale_save_cannot_publish() {
+fn an_accepted_snapshot_outlives_close() {
   let session: Session<String> = Session::new("test");
   let id: SessionId = SessionId::new();
 
   session.begin_open(id).unwrap();
 
   let held: Arc<SessionSnapshot<String>> = session.commit_open(id, String::from("before")).unwrap();
-  let saved = session.replace(&held, String::from("saved")).unwrap().unwrap();
-
-  assert!(session.replace(&held, String::from("outdated save")).unwrap().is_none());
 
   session.close(&[id]).unwrap();
 
   assert_eq!(held.as_str(), "before");
-  assert_eq!(saved.as_str(), "saved");
-  assert!(session.replace(&saved, String::from("after close")).unwrap().is_none());
+  assert!(session.get().unwrap().is_none());
 }
 
 #[test]
-fn restoration_and_open_serialize_the_same_identity_and_value() {
+fn restoration_and_open_serialize_the_same_identity_revision_and_value() {
   let session: Session<Vec<u8>> = Session::new("wire test");
   let id: SessionId = SessionId::new();
 
@@ -95,7 +98,7 @@ fn restoration_and_open_serialize_the_same_identity_and_value() {
 
   let opened = session.commit_open(id, vec![1, 2, 3]).unwrap();
   let restored = SessionRestore::from(session.get().unwrap());
-  let expected = serde_json::json!({ "sessionId": id, "value": [1, 2, 3] });
+  let expected = serde_json::json!({ "sessionId": id, "revision": 0, "value": [1, 2, 3] });
 
   assert_eq!(serde_json::to_value(&opened).unwrap(), expected);
   assert_eq!(serde_json::to_value(&restored).unwrap(), expected);
@@ -186,6 +189,8 @@ struct CountedPart;
 impl SessionPart for CountedPart {
   type Value = Arc<u32>;
 
+  const NAME: &'static str = "counted";
+
   const IS_POOLED: bool = false;
 }
 
@@ -194,6 +199,8 @@ struct DependentPart;
 
 impl SessionPart for DependentPart {
   type Value = u32;
+
+  const NAME: &'static str = "dependent";
 }
 
 /// A part built over Rayon while the pool's workers wait on it, pooled as parts are by default.
@@ -201,6 +208,8 @@ struct PooledPart;
 
 impl SessionPart for PooledPart {
   type Value = u64;
+
+  const NAME: &'static str = "pooled";
 }
 
 #[test]
@@ -256,27 +265,6 @@ fn a_pooled_part_built_over_rayon_does_not_deadlock_the_workers_waiting_on_it() 
     .collect();
 
   assert!(sums.iter().all(|sum| *sum == 49_995_000));
-}
-
-#[test]
-fn a_replacement_starts_without_the_parts_of_the_value_it_replaces() {
-  let session: Session<&str> = Session::new("test");
-  let id: SessionId = SessionId::new();
-
-  session.begin_open(id).unwrap();
-
-  let opened: Arc<SessionSnapshot<&str>> = session
-    .commit_open_with(
-      id,
-      "first",
-      XrayInputRecord::new(),
-      SessionParts::new().with::<CountedPart>(Arc::new(1), XrayInputRecord::new()),
-    )
-    .unwrap();
-  let replaced: Arc<SessionSnapshot<&str>> = session.replace(&opened, "second").unwrap().unwrap();
-
-  assert_eq!(opened.parts.get::<CountedPart>().as_deref(), Some(&1));
-  assert_eq!(replaced.parts.get::<CountedPart>(), None);
 }
 
 /// A loose tree of `files` mounted as the whole of a VFS.
@@ -461,5 +449,187 @@ fn a_snapshot_keeps_what_its_value_and_its_kept_parts_were_read_from() {
     opened.parts.list_inputs().len(),
     1,
     "a kept part is listed with its inputs"
+  );
+}
+
+/// A loose tree of `files` behind an asset state, with the search an open over it takes.
+fn opened_tree(name: &str, files: &[&str]) -> (AssetMountState, XraySearch) {
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("session_follow/{name}"));
+
+  let _ = fs::remove_dir_all(&root);
+
+  for file in files {
+    let path: PathBuf = root.join(file);
+
+    fs::create_dir_all(path.parent().expect("a file sits in a directory")).expect("directory created");
+    fs::write(&path, b"payload").expect("file written");
+  }
+
+  let assets: AssetMountState = AssetMountState::new();
+  let search: XraySearch = assets
+    .search(&XrayRoots::one(root, XrayMountMode::Directory))
+    .expect("the tree mounts");
+
+  (assets, search)
+}
+
+/// Opens `value` in `session` as an open reading `paths` through `search` would.
+fn open_reading(
+  session: &Session<&'static str>,
+  search: &XraySearch,
+  value: &'static str,
+  paths: &[&str],
+) -> Arc<SessionSnapshot<&'static str>> {
+  let inputs: XrayInputRecord = XrayInputRecord::new();
+  let recording: XraySearch = search.clone().with_recording(&inputs);
+
+  for path in paths {
+    read(&recording, path);
+  }
+
+  let id: SessionId = SessionId::new();
+
+  session.begin_open(id).unwrap();
+  session
+    .commit_open_with(id, value, inputs, SessionParts::new())
+    .unwrap()
+}
+
+/// Commits new bytes for one file, as a save does.
+fn write(assets: &AssetMountState, search: &XraySearch, path: &str) {
+  assets
+    .commit(&XrayTransaction::new(search).with_write(path, "edited").unwrap())
+    .expect("the write commits");
+}
+
+#[test]
+fn a_commit_moves_a_session_along_sharing_its_value_and_the_parts_it_did_not_touch() {
+  let (assets, search) = opened_tree(
+    "kept",
+    &["configs/system.ltx", "configs/game.ltx", "configs/weather.ltx"],
+  );
+  let session: Session<&str> = Session::new("test");
+  let opened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "level", &["configs\\system.ltx"]);
+
+  opened.parts.get_or_record::<CountedPart>(&search, |search| {
+    read(search, "configs\\system.ltx");
+
+    Arc::new(1)
+  });
+  opened.parts.get_or_record::<PooledPart>(&search, |search| {
+    read(search, "configs\\game.ltx");
+
+    2
+  });
+  // Asked for, never built: what it would read is not known, so it is neither carried nor reported.
+  opened
+    .parts
+    .record::<DependentPart, _>(&search, |search| read(search, "configs\\weather.ltx"));
+
+  write(&assets, &search, "configs\\game.ltx");
+
+  let change: SessionChange = session.follow(&assets).unwrap().expect("the session moved");
+  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap().unwrap();
+
+  assert_eq!(
+    change,
+    SessionChange {
+      session_id: opened.session_id,
+      revision: assets.get_vfs().get_revision(),
+      root: SessionRootChange::Kept,
+      stale_parts: vec!["pooled"],
+    }
+  );
+  assert!(
+    Arc::ptr_eq(&next.value, &opened.value),
+    "the value is shared, not copied"
+  );
+  assert_eq!(next.revision, change.revision);
+  assert_eq!(next.parts.get::<CountedPart>().as_deref(), Some(&1));
+  assert_eq!(next.parts.get::<PooledPart>(), None);
+  assert!(next.parts.get_inputs::<DependentPart>().is_none());
+  assert!(
+    session.follow(&assets).unwrap().is_none(),
+    "a session at the project's revision stays where it is"
+  );
+}
+
+#[test]
+fn a_commit_to_what_the_value_read_derives_it_again_starting_without_parts() {
+  let (assets, search) = opened_tree("derived", &["configs/system.ltx"]);
+  let session: Session<&str> =
+    Session::new("test").with_derivation(|_, _| Ok(SessionDerived::new("derived", XrayInputRecord::new())));
+  let opened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "opened", &["configs\\system.ltx"]);
+
+  opened.parts.get_or_init::<CountedPart>(|| Arc::new(1));
+
+  write(&assets, &search, "configs\\system.ltx");
+
+  let change: SessionChange = session.follow(&assets).unwrap().expect("the session moved");
+  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap().unwrap();
+
+  assert_eq!(change.root, SessionRootChange::Derived);
+  assert_eq!(change.stale_parts, vec!["counted"]);
+  assert_eq!(**next, "derived");
+  assert_eq!(next.session_id, opened.session_id);
+  assert_eq!(next.revision, change.revision);
+  assert_eq!(next.parts.get::<CountedPart>(), None);
+}
+
+#[test]
+fn a_moved_value_nothing_derives_is_kept_and_reported_stale() {
+  let (assets, search) = opened_tree("stale", &["configs/system.ltx"]);
+  let session: Session<&str> = Session::new("test");
+  let opened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "opened", &["configs\\system.ltx"]);
+
+  write(&assets, &search, "configs\\system.ltx");
+
+  let change: SessionChange = session.follow(&assets).unwrap().expect("the session is reported");
+
+  assert_eq!(change.root, SessionRootChange::Stale);
+  assert_eq!(change.revision, XrayRevision::MOUNTED, "it stays at its own revision");
+  assert!(Arc::ptr_eq(&session.get().unwrap().unwrap(), &opened));
+}
+
+#[test]
+fn a_failed_derivation_is_reported_and_leaves_the_snapshot_as_it_was() {
+  let (assets, search) = opened_tree("failed", &["configs/system.ltx"]);
+  let session: Session<&str> = Session::new("test").with_derivation(|_, _| Err(String::from("unreadable")));
+  let opened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "opened", &["configs\\system.ltx"]);
+
+  write(&assets, &search, "configs\\system.ltx");
+
+  assert_eq!(
+    session.follow(&assets).unwrap().expect("the failure is reported").root,
+    SessionRootChange::Failed {
+      reason: String::from("unreadable")
+    }
+  );
+  assert!(Arc::ptr_eq(&session.get().unwrap().unwrap(), &opened));
+}
+
+#[test]
+fn a_commit_moves_every_followed_session_before_it_returns() {
+  let (assets, search) = opened_tree("followed", &["configs/system.ltx", "configs/game.ltx"]);
+  let followed: Session<&str> = Session::new("followed");
+  let unfollowed: Session<&str> = Session::new("unfollowed");
+  let closed: Session<&str> = Session::new("closed");
+
+  assets.follow(followed.clone());
+  assets.follow(closed.clone());
+
+  open_reading(&followed, &search, "followed", &["configs\\system.ltx"]);
+  open_reading(&unfollowed, &search, "unfollowed", &["configs\\system.ltx"]);
+
+  write(&assets, &search, "configs\\game.ltx");
+
+  assert_eq!(
+    followed.get().unwrap().unwrap().revision,
+    assets.get_vfs().get_revision()
+  );
+  assert_eq!(unfollowed.get().unwrap().unwrap().revision, XrayRevision::MOUNTED);
+  assert!(
+    closed.get().unwrap().is_none(),
+    "a session with nothing open stays empty"
   );
 }

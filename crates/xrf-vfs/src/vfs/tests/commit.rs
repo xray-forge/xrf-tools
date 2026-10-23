@@ -315,6 +315,46 @@ fn refuses_a_transaction_whose_reads_moved() {
 }
 
 #[test]
+fn expects_only_what_a_filtered_record_keeps() {
+  let root: PathBuf = directory("commit_expected_filtered", &["configs/system.ltx", "configs/game.ltx"]);
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs.mount_directory("", &root).expect("the tree mounts");
+
+  let record: XrayInputRecord = XrayInputRecord::new();
+  let before: XraySearch = search(vfs).with_recording(&record);
+
+  before.read(SYSTEM_LTX).expect("the author reads the file it writes");
+  before.read("configs\\game.ltx").expect("and another beside it");
+
+  let (after, _) = commit(
+    &before,
+    XrayTransaction::new(&before)
+      .with_write("configs\\game.ltx", "someone else")
+      .unwrap(),
+  );
+  let written: XrayLogicalPath = XrayLogicalPath::new(SYSTEM_LTX).unwrap();
+  let expected: XrayInputRecord =
+    record.filtered(|input| matches!(input.get_kind(), XrayInputKind::File(path) if *path == written));
+
+  assert_eq!(expected.len(), 1);
+
+  after
+    .get_vfs()
+    .commit(
+      &XrayTransaction::new(&before)
+        .with_write(SYSTEM_LTX, "the author")
+        .unwrap()
+        .with_expected(&expected),
+    )
+    .expect("what the author writes did not move, whatever else did");
+  assert!(
+    !record.is_current_in(after.get_vfs()),
+    "the whole record would have refused it"
+  );
+}
+
+#[test]
 fn applies_a_file_written_behind_the_snapshot() {
   let root: PathBuf = directory("apply_created", &["configs/system.ltx"]);
   let mut vfs: XrayVfs = XrayVfs::new();

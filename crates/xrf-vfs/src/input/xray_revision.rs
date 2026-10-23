@@ -1,11 +1,15 @@
 use std::collections::HashMap;
 
+use serde::Serialize;
+
 use crate::XrayMountId;
 
 /// When an input last changed, as the project revision of the change: zero for what is as it was mounted, which every
-/// archived entry always is.
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct XrayRevision(u64);
+/// archived entry always is. Written as the bare number.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[serde(transparent)]
+pub struct XrayRevision(#[cfg_attr(feature = "typescript-bindings", specta(type = u64))] u64);
 
 impl XrayRevision {
   /// The revision of everything as it was mounted.

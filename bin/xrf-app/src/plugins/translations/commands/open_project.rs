@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_translation::{TranslationProjectDescriptor, TranslationProjectMode, read_gamedata, read_source};
-use xrf_utils::error_to_string;
+use xrf_translation::TranslationProjectDescriptor;
 
-use crate::core::session::SessionSnapshot;
+use crate::core::assets::AssetMountState;
+use crate::core::session::{SessionDerived, SessionSnapshot};
 use crate::core::types::TauriResult;
+use crate::plugins::translations::project_read::read_project;
 use crate::plugins::translations::request::TranslationsOpenRequest;
 use crate::plugins::translations::state::TranslationProjectState;
 
@@ -15,6 +16,7 @@ use crate::plugins::translations::state::TranslationProjectState;
 pub async fn translations_open_project(
   request: TranslationsOpenRequest,
   state: State<'_, TranslationProjectState>,
+  assets: State<'_, AssetMountState>,
 ) -> TauriResult<Arc<SessionSnapshot<TranslationProjectDescriptor>>> {
   let TranslationsOpenRequest {
     session_id,
@@ -34,22 +36,20 @@ pub async fn translations_open_project(
     prefix
   );
 
-  // The caller's mode is obeyed, not re-derived: the two layouts save to different files, so a guess
-  // acted on here would decide what a later save overwrites.
-  let descriptor: TranslationProjectDescriptor = match mode {
-    TranslationProjectMode::Source => read_source(&roots, &prefix),
-    TranslationProjectMode::Gamedata => read_gamedata(&roots, &prefix),
-  }
-  .map_err(error_to_string)?;
+  // Through the shared roots, recording what it reads, so a commit to any of those files reads the project again.
+  let read: SessionDerived<TranslationProjectDescriptor> =
+    read_project(assets.search_fresh(&roots)?, &roots, mode, &prefix)?;
 
   log::info!(
     "Opened {} translation files, {} languages, {} findings, editable: {}",
-    descriptor.files.len(),
-    descriptor.languages.len(),
-    descriptor.findings.len(),
-    descriptor.is_editable
+    read.value.files.len(),
+    read.value.languages.len(),
+    read.value.findings.len(),
+    read.value.is_editable
   );
 
   // Committed only once the read succeeded, so a failed open leaves whatever was already open in place.
-  state.session.commit_open(session_id, descriptor)
+  state
+    .session
+    .commit_open_with(session_id, read.value, read.inputs, read.parts)
 }

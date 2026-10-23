@@ -35,7 +35,7 @@ pub async fn visuals_open_model(
   let search: XraySearch = assets.search(&roots)?;
   // Read once and pack from what was read: the skeleton posing needs comes off the same parse, so keeping it costs no
   // second read of a file that may sit inside a volume.
-  let file: OgfFile = read_source(&source, &search)?;
+  let file: Arc<OgfFile> = read_source(&source, &search)?;
   let package: VisualPackage = VisualPacker::pack(&file);
   let dependencies: VisualDependencies = VisualDependencies::resolve(&package.description, &search);
   let textures: HashMap<String, AssetTextureDescriptor> = describe_textures(&search, &dependencies);

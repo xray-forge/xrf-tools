@@ -2,13 +2,16 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use xrf_translation::{TranslationFile, TranslationProjectDescriptor};
+use xrf_vfs::XrayChangeSet;
 
 use crate::core::jobs::resolve_lease_path;
 use crate::core::session::{Session, SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
+use crate::plugins::translations::project_read::derive_project;
 use crate::plugins::translations::state::{TranslationSaveOutcome, TranslationSavePlan};
 
-/// Owns publication; domain save planning retains exactly the snapshot it read.
+/// Owns publication; domain save planning retains exactly the snapshot it read, and a commit moves the open project
+/// along by reading it again.
 pub struct TranslationProjectState {
   /// Publication itself, in the one vocabulary every plugin addresses an opening by.
   pub session: Session<TranslationProjectDescriptor>,
@@ -17,7 +20,7 @@ pub struct TranslationProjectState {
 impl TranslationProjectState {
   pub fn new() -> Self {
     Self {
-      session: Session::new("translations"),
+      session: Session::new("translations").with_derivation(derive_project),
     }
   }
 
@@ -43,16 +46,34 @@ impl TranslationProjectState {
     })
   }
 
-  /// A completed write may report success only for the snapshot it refreshed.
-  pub fn commit_save(
+  /// How a save ended once its commit moved the session along: saved, as the project now reads, while the project it
+  /// began in is still the open one; stale when another open or a close replaced it meanwhile.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the open project did not reach what the commit left, which is a project that could not be
+  /// read again: the edits are on disk all the same.
+  pub fn settle_save(
     &self,
     plan: &TranslationSavePlan,
-    refreshed: TranslationProjectDescriptor,
+    changes: &XrayChangeSet,
   ) -> TauriResult<TranslationSaveOutcome> {
-    Ok(match self.session.replace(&plan.project, refreshed)? {
-      Some(project) => TranslationSaveOutcome::Saved { project },
-      None => TranslationSaveOutcome::Stale,
-    })
+    let Some(project) = self
+      .session
+      .get()?
+      .filter(|project| project.session_id == plan.project.session_id)
+    else {
+      return Ok(TranslationSaveOutcome::Stale);
+    };
+
+    if !changes.get_changes().is_empty() && project.revision < changes.get_revision() {
+      return Err(format!(
+        "Saved '{}', but the project could not be read again from what the save left",
+        plan.file
+      ));
+    }
+
+    Ok(TranslationSaveOutcome::Saved { project })
   }
 
   /// Refuse `directory` while an open editor session overlaps it.

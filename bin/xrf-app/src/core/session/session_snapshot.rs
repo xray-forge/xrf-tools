@@ -1,7 +1,8 @@
 use std::ops::Deref;
+use std::sync::Arc;
 
 use serde::Serialize;
-use xrf_vfs::XrayInputRecord;
+use xrf_vfs::{XrayInputRecord, XrayRevision};
 
 use crate::core::session::{SessionId, SessionParts};
 
@@ -11,13 +12,19 @@ use crate::core::session::{SessionId, SessionParts};
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SessionSnapshot<T> {
   pub session_id: SessionId,
-  pub value: T,
+  /// The project revision the snapshot is current at: what a change moved it to, or where an open left it.
+  pub revision: XrayRevision,
+  /// Shared with the snapshots a change moves the session to while what it was read from stays current, so a commit
+  /// that touched none of it copies nothing.
+  // Written as the value itself, and described so: Specta cannot expand a generic `Arc<T>`.
+  #[cfg_attr(feature = "typescript-bindings", specta(type = T))]
+  pub value: Arc<T>,
   /// What the open read to derive the value, where it recorded its reads; empty where it did not.
   #[serde(skip)]
   #[cfg_attr(feature = "typescript-bindings", specta(skip))]
   pub inputs: XrayInputRecord,
   /// What features derive from the value, built the first time anything asks and let go with the snapshot: a
-  /// replacement starts without them, since they were derived from the value it replaces.
+  /// next snapshot carries those whose inputs are current, and one derived again starts without any.
   #[serde(skip)]
   #[cfg_attr(feature = "typescript-bindings", specta(skip))]
   pub parts: SessionParts,
@@ -28,15 +35,19 @@ impl<T> SessionSnapshot<T> {
   pub fn new(session_id: SessionId, value: T) -> Self {
     Self {
       session_id,
-      value,
+      revision: XrayRevision::MOUNTED,
+      value: Arc::new(value),
       inputs: XrayInputRecord::new(),
       parts: SessionParts::new(),
     }
   }
 
-  /// Projects a value into its wire descriptor while retaining the identity of the snapshot.
+  /// Projects a value into its wire descriptor while retaining the identity and revision of the snapshot.
   pub fn map<U>(&self, describe: impl FnOnce(&T) -> U) -> SessionSnapshot<U> {
-    SessionSnapshot::new(self.session_id, describe(&self.value))
+    SessionSnapshot {
+      revision: self.revision,
+      ..SessionSnapshot::new(self.session_id, describe(&self.value))
+    }
   }
 }
 

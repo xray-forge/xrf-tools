@@ -102,9 +102,9 @@ export enum EXrayResolution {
   RESOLVED = "resolved",
   /** The reference did not resolve, but the fallback the caller offered did. */
   SUBSTITUTED = "substituted",
-  /** Nothing resolved, across every step of the probe. */
+  /** Nothing resolved, across every step of the search. */
   MISSING = "missing",
-  /** There was nothing to search: the probe had no step, or no step selected a mounted source. */
+  /** There was nothing to search: the search had no step, or no step selected a mounted source. */
   NO_SCOPE = "noScope",
   /** The reference could not be turned into a lookup at all, so none was attempted. */
   REJECTED = "rejected",
@@ -116,12 +116,18 @@ export type XrayResolution =
   | { kind: "resolved"; step: string; assets: Array<XrayAsset> }
   /** The reference did not resolve, but the fallback the caller offered did. */
   | { kind: "substituted"; step: string; fallback: string; assets: Array<XrayAsset> }
-  /** Nothing resolved, across every step of the probe. */
+  /** Nothing resolved, across every step of the search. */
   | { kind: "missing"; roots: Array<string> }
-  /** There was nothing to search: the probe had no step, or no step selected a mounted source. */
+  /** There was nothing to search: the search had no step, or no step selected a mounted source. */
   | { kind: "noScope" }
   /** The reference could not be turned into a lookup at all, so none was attempted. */
   | { kind: "rejected"; reason: string };
+
+/**
+ * When an input last changed, as the project revision of the change: zero for what is as it was mounted, which every
+ * archived entry always is. Written as the bare number.
+ */
+export type XrayRevision = number;
 
 /** One place to read from, and how that place becomes mounts. */
 export type XrayRoot = {

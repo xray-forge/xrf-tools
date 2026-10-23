@@ -46,8 +46,10 @@ pub fn run() -> ExitCode {
     execution.get_plan().get_origin().as_str()
   );
 
+  // The asset state too, since every plugin's setup hands it the sessions a commit moves along.
   let builder: Builder<Wry> = Builder::default()
     .manage(execution)
+    .manage(AssetMountState::new())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_shell::init())
@@ -104,7 +106,6 @@ fn show_start_failure(message: &str) {
 
 /// Manage the state that outlives every command and belongs to no single domain.
 fn manage_shared_state(application: &mut App) -> Result<(), Box<dyn Error>> {
-  application.manage(AssetMountState::new());
   application.manage(WindowHandles::default());
   application.manage(WindowCloseApprovals::default());
 

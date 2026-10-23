@@ -33,7 +33,14 @@ import {
   TranslationProjectMode,
   TranslationVerifyLanguageSummary,
 } from "@/core/ipc/types/xrf-translation";
-import { XrayAsset, XrayAssetContainer, XrayPathCollision, XrayRoots, XraySourceKind } from "@/core/ipc/types/xrf-vfs";
+import {
+  XrayAsset,
+  XrayAssetContainer,
+  XrayPathCollision,
+  XrayRevision,
+  XrayRoots,
+  XraySourceKind,
+} from "@/core/ipc/types/xrf-vfs";
 import {
   SectorOutline,
   VisualBounds,
@@ -1296,6 +1303,15 @@ export type ArchivesUnpackRequest = {
   destination: string;
 };
 
+/**
+ * What one commit changed, as every page subscribed to changes is told: the project revision it left, and what it did
+ * to each open session that moved or could not.
+ */
+export type AssetChangeEvent = {
+  revision: XrayRevision;
+  sessions: Array<SessionChange>;
+};
+
 /** What a texture file is, once it has been located. */
 export type AssetTextureDescriptor = {
   /** Bytes the file occupies, which is also what a renderer uploads for a block-compressed texture. */
@@ -2250,15 +2266,57 @@ export type SelectedVisualDescription = {
   texturesLtx: XrayAsset | null;
 };
 
+/** What one committed change did to one open session, as a change event reports it. */
+export type SessionChange = {
+  sessionId: SessionId;
+  /** The revision the session's snapshot is at now: the change's where it moved, its own where it could not. */
+  revision: XrayRevision;
+  root: SessionRootChange;
+  /**
+   * The parts the session let go, by name and sorted: built from something the change moved, or from the value it
+   * replaced. A subscriber refetches what it showed of them.
+   */
+  staleParts: Array<string>;
+};
+
 /** A single opening, allocated by its caller before dispatch so it can also be closed while pending. */
 export type SessionId = string;
 
 /** The optional committed snapshot returned during restoration. */
 export type SessionRestore<T> = SessionSnapshot<T> | null;
 
+/** Every `kind` the `SessionRootChange` union is told apart by, so a switch or a comparison names one. */
+export enum ESessionRootChange {
+  /** Nothing it was read from moved: the next snapshot shares it. */
+  KEPT = "kept",
+  /** Something it was read from moved, and its plugin derived it again. */
+  DERIVED = "derived",
+  /** Something it was read from moved, and nothing derives it again: the session shows it as it was. */
+  STALE = "stale",
+  /** Deriving it again failed: the session stays at the snapshot it had. */
+  FAILED = "failed",
+}
+
+/** What became of a session's value, the root every part derives from. */
+export type SessionRootChange =
+  /** Nothing it was read from moved: the next snapshot shares it. */
+  | { kind: "kept" }
+  /** Something it was read from moved, and its plugin derived it again. */
+  | { kind: "derived" }
+  /** Something it was read from moved, and nothing derives it again: the session shows it as it was. */
+  | { kind: "stale" }
+  /** Deriving it again failed: the session stays at the snapshot it had. */
+  | { kind: "failed"; reason: string };
+
 /** An immutable value addressed by the opening that produced it; a held snapshot survives close. */
 export type SessionSnapshot<T> = {
   sessionId: SessionId;
+  /** The project revision the snapshot is current at: what a change moved it to, or where an open left it. */
+  revision: XrayRevision;
+  /**
+   * Shared with the snapshots a change moves the session to while what it was read from stays current, so a commit
+   * that touched none of it copies nothing.
+   */
   value: T;
 };
 

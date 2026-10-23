@@ -29,6 +29,8 @@ struct LevelEnvironmentPart;
 
 impl SessionPart for LevelEnvironmentPart {
   type Value = Result<Arc<LevelEnvironment>, String>;
+
+  const NAME: &'static str = "environment";
 }
 
 impl LevelEnvironment {

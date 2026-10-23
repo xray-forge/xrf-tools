@@ -11,6 +11,7 @@ import { mockContainer } from "@/fixtures/utils/container";
 /** The level the weather tests open. */
 export const LEVEL_WEATHER_SELECTED: SessionSnapshot<SelectedLevelDescription> = {
   sessionId: "level",
+  revision: 0,
   value: mockSelectedLevelDescription(),
 };
 

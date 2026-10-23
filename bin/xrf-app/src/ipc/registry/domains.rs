@@ -16,6 +16,7 @@ macro_rules! for_each_tauri_command_domain {
         detect_engine => crate::plugins::assets::commands::detect_engine::assets_detect_engine,
         list_assets => crate::plugins::assets::commands::list_assets::assets_list_assets,
         probe_root => crate::plugins::assets::commands::probe_root::assets_probe_root,
+        subscribe_changes => crate::plugins::assets::commands::subscribe_changes::assets_subscribe_changes,
       }
       @bulk {
         read_asset(roots: "XrayRoots", logicalPath: "string") => crate::plugins::assets::routes::read_asset::assets_read_asset,

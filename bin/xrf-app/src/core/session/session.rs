@@ -1,14 +1,23 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use xrf_vfs::XrayInputRecord;
+use xrf_vfs::{XrayInputRecord, XrayRevision, XrayVfs};
 
-use crate::core::session::{SessionId, SessionParts, SessionSnapshot};
+use crate::core::assets::AssetMountState;
+use crate::core::session::{
+  SessionChange, SessionDerived, SessionId, SessionParts, SessionRootChange, SessionSnapshot,
+};
 use crate::core::types::TauriResult;
+
+/// How a session's plugin derives its value again from the snapshot it replaces, reading through `assets` as its open
+/// did.
+type SessionDerivation<T> =
+  dyn Fn(&SessionSnapshot<T>, &AssetMountState) -> TauriResult<SessionDerived<T>> + Send + Sync;
 
 /// Publishes session snapshots atomically, retaining the last success while a replacement is pending.
 pub(crate) struct Session<T> {
   name: &'static str,
   state: Arc<Mutex<SessionState<T>>>,
+  derivation: Option<Arc<SessionDerivation<T>>>,
 }
 
 impl<T> Clone for Session<T> {
@@ -16,6 +25,7 @@ impl<T> Clone for Session<T> {
     Self {
       name: self.name,
       state: Arc::clone(&self.state),
+      derivation: self.derivation.clone(),
     }
   }
 }
@@ -33,7 +43,19 @@ impl<T> Session<T> {
         opening: None,
         opened: None,
       })),
+      derivation: None,
     }
+  }
+
+  /// The session with the derivation its plugin opens with, run when a commit moved what the value was read from.
+  /// Without one, such a value is kept and reported stale.
+  pub fn with_derivation(
+    mut self,
+    derive: impl Fn(&SessionSnapshot<T>, &AssetMountState) -> TauriResult<SessionDerived<T>> + Send + Sync + 'static,
+  ) -> Self {
+    self.derivation = Some(Arc::new(derive));
+
+    self
   }
 
   /// Reserves publication before doing work, without invalidating the committed value's readers.
@@ -87,10 +109,9 @@ impl<T> Session<T> {
     parts: SessionParts,
   ) -> TauriResult<Arc<SessionSnapshot<T>>> {
     let opened: Arc<SessionSnapshot<T>> = Arc::new(SessionSnapshot {
-      session_id: id,
-      value,
       inputs,
       parts,
+      ..SessionSnapshot::new(id, value)
     });
 
     let mut state: MutexGuard<SessionState<T>> = self.lock()?;
@@ -127,26 +148,103 @@ impl<T> Session<T> {
       .ok_or_else(|| format!("The {} session has changed or is closed", self.name))
   }
 
-  /// Replaces a saved snapshot only if no other publication has replaced the snapshot it was based on.
-  pub fn replace(&self, previous: &Arc<SessionSnapshot<T>>, value: T) -> TauriResult<Option<Arc<SessionSnapshot<T>>>> {
-    let opened: Arc<SessionSnapshot<T>> = Arc::new(SessionSnapshot::new(previous.session_id, value));
+  /// Moves the committed snapshot to the project revision `assets` holds now, the change already on disk.
+  ///
+  /// Where nothing the value was read from moved, the next snapshot shares the value and carries every part whose
+  /// inputs are current; where something did, the plugin's derivation reads the value again and the next snapshot
+  /// starts without parts, and without a derivation the snapshot stays as it is, reported stale. A derivation's failure
+  /// is reported, never dropped, and leaves the snapshot as it was. Nothing that moved since is lost to a race: an
+  /// open, a close or another change published meanwhile is followed from instead.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the session's lock is poisoned.
+  pub fn follow(&self, assets: &AssetMountState) -> TauriResult<Option<SessionChange>> {
+    let vfs: Arc<XrayVfs> = assets.get_vfs();
+    let revision: XrayRevision = vfs.get_revision();
 
+    loop {
+      let Some(current) = self.get()? else {
+        return Ok(None);
+      };
+
+      if current.revision >= revision {
+        return Ok(None);
+      }
+
+      let session_id: SessionId = current.session_id;
+      let (next, root, stale_parts) = if current.inputs.is_current_in(&vfs) {
+        let (parts, stale_parts) = current.parts.retain_current(&vfs);
+        let next: SessionSnapshot<T> = SessionSnapshot {
+          session_id,
+          revision,
+          value: Arc::clone(&current.value),
+          inputs: current.inputs.clone(),
+          parts,
+        };
+
+        (next, SessionRootChange::Kept, stale_parts)
+      } else {
+        let Some(derive) = &self.derivation else {
+          return Ok(Some(SessionChange {
+            session_id,
+            revision: current.revision,
+            root: SessionRootChange::Stale,
+            stale_parts: current.parts.list_built(),
+          }));
+        };
+
+        match derive(&current, assets) {
+          Ok(derived) => {
+            let next: SessionSnapshot<T> = SessionSnapshot {
+              session_id,
+              revision,
+              value: Arc::new(derived.value),
+              inputs: derived.inputs,
+              parts: derived.parts,
+            };
+
+            (next, SessionRootChange::Derived, current.parts.list_built())
+          }
+          Err(reason) => {
+            log::warn!("The {} session could not be derived again: {reason}", self.name);
+
+            return Ok(Some(SessionChange {
+              session_id,
+              revision: current.revision,
+              root: SessionRootChange::Failed { reason },
+              stale_parts: Vec::new(),
+            }));
+          }
+        }
+      };
+
+      if self.publish_next(&current, next)? {
+        return Ok(Some(SessionChange {
+          session_id,
+          revision,
+          root,
+          stale_parts,
+        }));
+      }
+    }
+  }
+
+  /// Publishes `next` only while `current` is still the committed snapshot, answering whether it did.
+  fn publish_next(&self, current: &Arc<SessionSnapshot<T>>, next: SessionSnapshot<T>) -> TauriResult<bool> {
+    let next: Arc<SessionSnapshot<T>> = Arc::new(next);
     let mut state: MutexGuard<SessionState<T>> = self.lock()?;
 
-    if !state
-      .opened
-      .as_ref()
-      .is_some_and(|current| Arc::ptr_eq(current, previous))
-    {
-      return Ok(None);
+    if !state.opened.as_ref().is_some_and(|opened| Arc::ptr_eq(opened, current)) {
+      return Ok(false);
     }
 
-    let discarded: Option<Arc<SessionSnapshot<T>>> = state.opened.replace(Arc::clone(&opened));
+    let previous: Option<Arc<SessionSnapshot<T>>> = state.opened.replace(next);
 
     drop(state);
-    drop(discarded);
+    drop(previous);
 
-    Ok(Some(opened))
+    Ok(true)
   }
 
   /// Closes only the caller's committed or pending openings. A delayed teardown cannot close its successor.

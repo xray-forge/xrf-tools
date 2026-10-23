@@ -64,7 +64,7 @@ describe("LevelLookService", () => {
 
     expect(service.look.exposure).toEqual(DEFAULT_RENDER_EXPOSURE_SETTINGS);
 
-    await service.open({ sessionId: "level", value: mockSelectedLevelDescription() });
+    await service.open({ sessionId: "level", revision: 0, value: mockSelectedLevelDescription() });
 
     expect(service.look.lightScales.sun).toBe(2);
     expect(service.look.exposure.middleGray).toBe(1.5);
@@ -85,6 +85,7 @@ describe("LevelLookService", () => {
 
     await service.open({
       sessionId: "extended",
+      revision: 0,
       value: mockSelectedLevelDescription({
         engine: { engine: EXrayEngine.EXTENDED, evidence: EXrayEngineEvidence.ANOMALY_EXECUTABLES, subject: null },
       }),
@@ -93,7 +94,7 @@ describe("LevelLookService", () => {
     expect(service.engine).toBe(EXrayEngine.EXTENDED);
     expect(service.game?.bloom).toEqual(MONOLITH_LEVEL_BLOOM);
 
-    await service.open({ sessionId: "vanilla", value: mockSelectedLevelDescription() });
+    await service.open({ sessionId: "vanilla", revision: 0, value: mockSelectedLevelDescription() });
 
     expect(service.engine).toBe(EXrayEngine.VANILLA);
     expect(service.game?.bloom).toEqual(OPENXRAY_LEVEL_BLOOM);
@@ -104,7 +105,7 @@ describe("LevelLookService", () => {
 
     const { service } = mockInjectedService(LevelLookService, [LevelLoadService]);
 
-    await service.open({ sessionId: "level", value: mockSelectedLevelDescription() });
+    await service.open({ sessionId: "level", revision: 0, value: mockSelectedLevelDescription() });
     await service.open(null);
 
     expect(service.engine).toBeNull();

@@ -123,9 +123,10 @@ impl RenderLevelSource for LevelRenderSource {
     self.level.get_sectors().len() as u32
   }
 
-  /// The level as it was opened: every source of one opening shares a scene, a level opened again streams afresh.
+  /// The level as it was opened: every source of one opening shares a scene, a level opened again streams afresh. Keyed
+  /// by the value rather than its snapshot, which a commit replaces while sharing the value it left untouched.
   fn get_scene_key(&self) -> Option<String> {
-    Some(format!("{:p}", Arc::as_ptr(&self.level)))
+    Some(format!("{:p}", Arc::as_ptr(&self.level.value)))
   }
 
   fn pack_sector(&self, sector: u32) -> XrfResult<SectorPackage> {
