@@ -8,7 +8,7 @@ use xrf_xml::{XmlElementSpan, XmlParseOptions, XmlSourceDocument, escape_xml_tex
 
 use crate::edit::TranslationEdit;
 use crate::language::find_unencodable_character;
-use crate::xml::encoding::{DecodedTranslation, read_decoded};
+use crate::xml::encoding::{DecodedTranslation, TranslationIdentity, decode, read_decoded};
 use crate::xml::layout::{XmlLayout, removal_range};
 
 /// Apply edits to one string table file, leaving every untouched byte as it was found.
@@ -27,7 +27,25 @@ pub fn apply_edits(path: &Path, edits: &[TranslationEdit]) -> XrfResult {
     return Ok(());
   }
 
-  let decoded: DecodedTranslation = read_decoded(path)?;
+  Ok(write_file_staged(
+    path,
+    &encode_edited(path, read_decoded(path)?, edits)?,
+  )?)
+}
+
+/// The bytes a string table holding `existing` holds once `edits` are applied, every untouched byte as it was.
+///
+/// `path` names the file, by its host path or its logical one, for the language its name implies and for refusals.
+///
+/// # Errors
+///
+/// Returns an encoding error when a value cannot be represented in the file's encoding, and a parsing error when
+/// `existing` is not a well-formed string table.
+pub(crate) fn render_edits(path: &Path, existing: &[u8], edits: &[TranslationEdit]) -> XrfResult<Vec<u8>> {
+  encode_edited(path, decode(TranslationIdentity::from_path(path), existing)?, edits)
+}
+
+fn encode_edited(path: &Path, decoded: DecodedTranslation, edits: &[TranslationEdit]) -> XrfResult<Vec<u8>> {
   let encoding: XRayEncoding = decoded.encoding;
   let edited: String = splice_edits(path, decoded.text, edits, encoding)?;
 
@@ -35,7 +53,7 @@ pub fn apply_edits(path: &Path, edits: &[TranslationEdit]) -> XrfResult {
 
   written.extend(encode_string_to_bytes(&edited, encoding)?);
 
-  Ok(write_file_staged(path, &written)?)
+  Ok(written)
 }
 
 /// Takes the source by value because the ranges it produces only address that exact string, and the

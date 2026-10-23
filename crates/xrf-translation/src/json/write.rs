@@ -7,7 +7,7 @@ use xrf_utils::{LineEndings, format_path, write_file_staged, write_new_file_stag
 
 use crate::edit::TranslationEdit;
 use crate::json::normalize::{resolve_line_endings, to_canonical_bytes};
-use crate::json::read::read_json;
+use crate::json::read::{parse_json, read_json};
 use crate::types::TranslationJson;
 
 /// What a canonical rewrite of one source would produce, beside what is there now.
@@ -103,6 +103,39 @@ pub(crate) fn write_canonical_document(
 pub fn apply_edits(path: &Path, language: &str, edits: &[TranslationEdit]) -> XrfResult {
   let mut parsed: TranslationJson = read_json(path)?;
 
+  edit_document(&mut parsed, language, edits);
+
+  // Through the canonical writer, so an editor save and an import leave a file in the same shape. The document keeps
+  // whatever order it was read in: an editor writes back what the translator sees, and reordering their file under
+  // them on save is the formatter's job to be asked for, not a side effect of typing.
+  write_canonical_document(path, &parsed, None)?;
+
+  Ok(())
+}
+
+/// The bytes a multi-language JSON source holding `existing` holds once one language's edits are applied, in the
+/// canonical shape [`apply_edits`] writes and with the line endings `existing` uses.
+///
+/// `subject` names the file only so a refusal can say which one it was.
+///
+/// # Errors
+///
+/// Returns a parsing error when `existing` is not a translation source, and a serialization error when the edited
+/// document cannot be rendered.
+pub(crate) fn render_edits(
+  subject: &str,
+  existing: &[u8],
+  language: &str,
+  edits: &[TranslationEdit],
+) -> XrfResult<Vec<u8>> {
+  let mut parsed: TranslationJson = parse_json(subject, existing)?;
+
+  edit_document(&mut parsed, language, edits);
+
+  to_canonical_bytes(subject, &parsed, resolve_line_endings(None, Some(existing)))
+}
+
+fn edit_document(parsed: &mut TranslationJson, language: &str, edits: &[TranslationEdit]) {
   for edit in edits {
     match edit {
       TranslationEdit::Set { id, value } => {
@@ -126,11 +159,4 @@ pub fn apply_edits(path: &Path, language: &str, edits: &[TranslationEdit]) -> Xr
       }
     }
   }
-
-  // Through the canonical writer, so an editor save and an import leave a file in the same shape. The document keeps
-  // whatever order it was read in: an editor writes back what the translator sees, and reordering their file under
-  // them on save is the formatter's job to be asked for, not a side effect of typing.
-  write_canonical_document(path, &parsed, None)?;
-
-  Ok(())
 }

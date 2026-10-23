@@ -9,6 +9,7 @@ use xrf_translation::{TranslationEdit, TranslationProjectDescriptor, Translation
 use xrf_utils::error_to_string;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
+use crate::core::assets::AssetMountState;
 use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::translations::commands::save_file::{save_into_open_project, write_edits};
@@ -91,7 +92,13 @@ fn a_save_commits_the_project_it_refreshed() -> TauriResult<()> {
 
   open_project(&state, &roots)?;
 
-  match save_into_open_project(&state, current_id(&state), FILE, &edits("after"))? {
+  match save_into_open_project(
+    &state,
+    &AssetMountState::new(),
+    current_id(&state),
+    FILE,
+    &edits("after"),
+  )? {
     TranslationSaveOutcome::Saved { project } => assert_eq!(entry_of(&project), "after"),
     TranslationSaveOutcome::Stale => panic!("a save of the open project is not stale"),
   }
@@ -116,7 +123,7 @@ fn a_project_opened_during_a_save_stays_the_open_one() -> TauriResult<()> {
   open_project(&state, &second)?;
 
   // ...and resumes, writing and re-reading the project it started in, which is the right tree to write.
-  let refreshed: TranslationProjectDescriptor = write_edits(&plan, &edits("first edited"))?;
+  let refreshed: TranslationProjectDescriptor = write_edits(&AssetMountState::new(), &plan, &edits("first edited"))?;
 
   assert!(matches!(
     state.commit_save(&plan, refreshed)?,
@@ -142,7 +149,7 @@ fn a_close_during_a_save_is_not_undone_by_it() -> TauriResult<()> {
 
   state.session.close(&[current_id(&state)])?;
 
-  let refreshed: TranslationProjectDescriptor = write_edits(&plan, &edits("after"))?;
+  let refreshed: TranslationProjectDescriptor = write_edits(&AssetMountState::new(), &plan, &edits("after"))?;
 
   assert!(matches!(
     state.commit_save(&plan, refreshed)?,

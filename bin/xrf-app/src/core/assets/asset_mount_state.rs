@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use xrf_vfs::{XrayCachePolicy, XrayRoots, XraySearch, XrayVfs, XrayVfsHost};
+use xrf_vfs::{XrayCachePolicy, XrayChangeSet, XrayRoots, XraySearch, XrayTransaction, XrayVfs, XrayVfsHost};
 
 use crate::core::types::TauriResult;
 
@@ -35,5 +35,11 @@ impl AssetMountState {
   /// again, so a volume locked once, by a running game or a scan, opens once it is free.
   pub fn search_fresh(&self, spec: &XrayRoots) -> TauriResult<XraySearch> {
     self.host.search_fresh(spec).map_err(|error| error.to_string())
+  }
+
+  /// Writes a transaction's files, all or none, and publishes the snapshot they leave, which every search taken after
+  /// reads; answers what changed.
+  pub fn commit(&self, transaction: &XrayTransaction) -> TauriResult<XrayChangeSet> {
+    self.host.commit(transaction).map_err(|error| error.to_string())
   }
 }
