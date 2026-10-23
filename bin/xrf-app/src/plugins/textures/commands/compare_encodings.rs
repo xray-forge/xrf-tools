@@ -50,7 +50,7 @@ pub async fn textures_compare_encodings(
 
   let session_id: SessionId = request.session_id;
 
-  state.comparison.begin_open(session_id)?;
+  state.comparisons.begin_open(session_id)?;
 
   let state: TextureState = TextureState::clone(&state);
   let assets: AssetMountState = AssetMountState::clone(&assets);
@@ -65,7 +65,7 @@ pub async fn textures_compare_encodings(
       let comparison: TextureEncodingComparison = measured.session.to_comparison(measured.current, measured.outcome);
 
       // Completed candidates from a cancelled run remain usable while this session is current.
-      state.comparison.commit_open(session_id, measured.session)?;
+      state.comparisons.commit_open(session_id, measured.session)?;
 
       log::info!(
         "Compared {} encodings of '{}'",

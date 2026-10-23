@@ -4,6 +4,7 @@ import { KeybindCommandsService } from "@/core/commands";
 import { HelpService } from "@/core/help/services/help";
 import { SessionChangesService } from "@/core/ipc/services/changes";
 import { IpcMetricsService } from "@/core/ipc/services/metrics";
+import { SESSION_TOOL, SessionScopeService, SHELL_SESSION_TOOL } from "@/core/ipc/session";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { KeymapService } from "@/core/keybinds/services/keymap";
 import { ErrorCaptureService } from "@/core/notifications/services/error-capture.service";
@@ -16,9 +17,12 @@ import { EditorShellService } from "@/core/shell/services/editor-shell";
 import { ShellKeybindsService } from "@/core/shell/services/shell-keybinds";
 
 /**
- * The services the root container binds, which every application resolves through.
+ * The services the root container binds, which every application resolves through. The shell's own openings are held
+ * in its scope; each application's container binds a scope of its own over it.
  */
 export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
+  { token: SESSION_TOOL, value: SHELL_SESSION_TOOL },
+  SessionScopeService,
   EditorLifecycleService,
   EditorShellService,
   ErrorCaptureService,

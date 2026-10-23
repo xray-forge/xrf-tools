@@ -1,13 +1,15 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { Maybe } from "@xrf/types";
 
-import { SessionId } from "@/core/ipc/types/xrf-app";
+import { SessionId, SessionScope } from "@/core/ipc/types/xrf-app";
 import { Logger } from "@/lib/logging";
 
+import { SessionScopeService } from "./session-scope.service";
 import { ISessionIdentity } from "./session.types";
 
 /**
- * Owns native openings through completion and teardown, including cancelled frontend flows.
+ * Owns native openings through completion and teardown, including cancelled frontend flows. Each opening is bound to
+ * the scope of the tool that owns it before it opens, so the backend closes it with the tool or the window.
  */
 export class Session {
   private readonly owned: Set<SessionId> = new Set();
@@ -17,8 +19,17 @@ export class Session {
 
   /**
    * @param closeSessions - Backend command releasing the named openings, typically a generated `close` command.
+   * @param scopeService - The scope of the tool owning the openings.
    */
-  public constructor(private readonly closeSessions: (sessionIds: Array<SessionId>) => Promise<unknown>) {}
+  public constructor(
+    private readonly closeSessions: (sessionIds: Array<SessionId>) => Promise<unknown>,
+    private readonly scopeService: SessionScopeService
+  ) {}
+
+  /** The scope the openings are held in, which a restore names to attach to what its tool holds. */
+  public get scope(): SessionScope {
+    return this.scopeService.scope;
+  }
 
   /**
    * Takes responsibility for an opening this view did not allocate.
@@ -54,6 +65,7 @@ export class Session {
     this.pending.add(sessionId);
 
     try {
+      await this.scopeService.bind(sessionId);
       response = await command(sessionId, ...args);
     } catch (error) {
       // Only the open is guarded here, so reaching this means the backend committed nothing there is to release.

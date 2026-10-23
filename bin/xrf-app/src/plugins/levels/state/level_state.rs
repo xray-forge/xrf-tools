@@ -2,21 +2,21 @@ use std::sync::Arc;
 
 use rayon::ThreadPool;
 
-use crate::core::session::Session;
+use crate::core::session::{SessionScopes, Sessions};
 use crate::plugins::levels::opened_level::OpenedLevel;
 use crate::plugins::levels::state::selection::selected_level::SelectedLevel;
 
-/// Ownership for the level a viewer has open.
+/// The levels open, each held by the tool that opened it.
 pub struct LevelState {
-  pub selected: Session<SelectedLevel>,
+  pub levels: Sessions<SelectedLevel>,
 }
 
 impl LevelState {
-  /// The state of a level read again on `pool` once a commit moved one of its own files: a read takes seconds, which no
-  /// save waits for.
-  pub fn new(pool: Arc<ThreadPool>) -> Self {
+  /// The state of levels read again on `pool` once a commit moved one of their own files: a read takes seconds, which no
+  /// save waits for; whatever scope `scopes` releases closes the levels it held.
+  pub fn new(pool: Arc<ThreadPool>, scopes: &SessionScopes) -> Self {
     Self {
-      selected: Session::new("level").with_deferred_derivation(pool, OpenedLevel::derive),
+      levels: Sessions::new("level", scopes).with_deferred_derivation(pool, OpenedLevel::derive),
     }
   }
 }

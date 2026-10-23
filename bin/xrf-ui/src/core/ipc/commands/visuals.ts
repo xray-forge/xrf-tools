@@ -5,6 +5,7 @@ import {
   SelectedVisualDescription,
   SessionId,
   SessionRestore,
+  SessionScope,
   SessionSnapshot,
   VisualSource,
 } from "@/core/ipc/types/xrf-app";
@@ -21,10 +22,11 @@ export const visualsCommands = {
   /** Describe one of the open visual's motions as a pose of it would hold it, its frames, bones and length, posing none. */
   describeMotion: (sessionId: SessionId, name: string) =>
     __TAURI_INVOKE<VisualMotionBake>("plugin:visuals|describe_motion", { sessionId, name }),
-  /** Restore the committed browse scope. */
-  getBrowse: () => __TAURI_INVOKE<SessionRestore<XrayRoots>>("plugin:visuals|get_browse"),
-  /** Restore the committed model descriptor and its exact geometry identity. */
-  getModel: () => __TAURI_INVOKE<SessionRestore<SelectedVisualDescription>>("plugin:visuals|get_model"),
+  /** Restore the roots a tool browses, the newest it opened. */
+  getBrowse: (scope: SessionScope) => __TAURI_INVOKE<SessionRestore<XrayRoots>>("plugin:visuals|get_browse", { scope }),
+  /** Restore the model a tool holds, the newest it opened, with its exact geometry identity. */
+  getModel: (scope: SessionScope) =>
+    __TAURI_INVOKE<SessionRestore<SelectedVisualDescription>>("plugin:visuals|get_model", { scope }),
   /**
    * Every motion the open visual can play, by name.
    *

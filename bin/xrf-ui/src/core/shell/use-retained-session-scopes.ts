@@ -1,0 +1,41 @@
+import { isTauri } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Nullable } from "@xrf/types";
+import { useEffect, useRef } from "react";
+
+import { sessionsCommands } from "@/core/ipc/commands/sessions";
+import { SHELL_SESSION_TOOL } from "@/core/ipc/session";
+import { SessionScope } from "@/core/ipc/types/xrf-app";
+import { IApplicationDescriptor } from "@/core/routing/application";
+import { useCurrentApplication } from "@/core/routing/current-application.context";
+import { Logger } from "@/lib/logging";
+
+const log: Logger = new Logger(__MODULE_NAME__);
+
+/**
+ * Tells the backend once, as the page starts, which of the window's tools are live: the shell's and the application
+ * the page opens on, whose openings it attaches to. A tool the page before it held and this one does not was left
+ * without a teardown, the page having reloaded, so the backend closes what it held.
+ */
+export function useRetainedSessionScopes(): void {
+  const application: Nullable<IApplicationDescriptor> = useCurrentApplication();
+  const isRetained = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (isRetained.current || !isTauri()) {
+      return;
+    }
+
+    isRetained.current = true;
+
+    const window: string = getCurrentWindow().label;
+    const live: Array<SessionScope> = [
+      { tool: SHELL_SESSION_TOOL, window },
+      ...(application ? [{ tool: application.id, window }] : []),
+    ];
+
+    sessionsCommands.retainScopes(window, live).catch((error: unknown) => {
+      log.error("Failed to release what the window's previous page held:", error);
+    });
+  }, [application]);
+}

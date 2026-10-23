@@ -26,7 +26,7 @@ pub fn visuals_show_model(
 ) -> TauriResult<Option<u32>> {
   let source: Option<Arc<dyn RenderLevelSource>> = match session_id {
     Some(session_id) => {
-      let visual: Arc<SessionSnapshot<SelectedVisual>> = visuals.selected.require(session_id)?;
+      let visual: Arc<SessionSnapshot<SelectedVisual>> = visuals.models.require(session_id)?;
 
       reloads.watch(&visual.roots);
 

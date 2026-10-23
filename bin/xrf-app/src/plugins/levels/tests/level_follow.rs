@@ -12,11 +12,13 @@ use xrf_engine_target::{XrayEngine, XrayEngineResolution};
 use xrf_level::{LevelGeomFile, LevelHeaderChunk, LevelVisualsChunk};
 use xrf_renderer::{RenderLevelSource, RenderSceneId, RenderViewportId, RenderWorkers, RenderWorld};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch, XrayTransaction};
+use xrf_vfs::{XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 use xrf_world::{WorldEventSink, WorldViewportEvent};
 
 use crate::core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountState};
-use crate::core::session::{Session, SessionChange, SessionId, SessionRootChange, SessionSnapshot};
+use crate::core::session::{
+  Session, SessionChange, SessionDerived, SessionId, SessionRootChange, SessionScopes, SessionSnapshot, Sessions,
+};
 use crate::plugins::levels::configs::LEVEL_SECTIONS_PART;
 use crate::plugins::levels::details::LEVEL_DETAILS_PART;
 use crate::plugins::levels::level_scene_follower::LevelSceneFollower;
@@ -91,20 +93,43 @@ fn open(
   roots: &XrayRoots,
 ) -> Arc<SessionSnapshot<SelectedLevel>> {
   let id: SessionId = SessionId::new();
-  let source: LevelSource = LevelSource::Asset {
-    logical_path: String::from(LEVEL),
-  };
-  let search: XraySearch = assets.search(roots).expect("the tree mounts");
-  let revision = search.get_vfs().get_revision();
-  let opened = OpenedLevel::read(search, source, roots.clone(), select_ltx_dialect(false), |_, _| {
-    XrayEngineResolution::named(XrayEngine::Vanilla)
-  })
-  .expect("the level reads");
+  let (opened, revision): (SessionDerived<SelectedLevel>, XrayRevision) = read_level(assets, roots);
 
   session.begin_open(id).unwrap();
   session
     .commit_open_with(id, opened.value, revision, opened.inputs, opened.parts)
     .unwrap()
+}
+
+/// Opens the tree's level as one more handle of `levels`, as `levels|open_level` does.
+fn open_handle(
+  levels: &Sessions<SelectedLevel>,
+  assets: &AssetMountState,
+  roots: &XrayRoots,
+) -> Arc<SessionSnapshot<SelectedLevel>> {
+  let id: SessionId = SessionId::new();
+  let (opened, revision): (SessionDerived<SelectedLevel>, XrayRevision) = read_level(assets, roots);
+
+  levels.begin_open(id).unwrap();
+  levels
+    .commit_open_with(id, opened.value, revision, opened.inputs, opened.parts)
+    .unwrap()
+}
+
+/// The tree's level as an open reads it, with the revision of the search it read.
+fn read_level(assets: &AssetMountState, roots: &XrayRoots) -> (SessionDerived<SelectedLevel>, XrayRevision) {
+  let source: LevelSource = LevelSource::Asset {
+    logical_path: String::from(LEVEL),
+  };
+  let search: XraySearch = assets.search(roots).expect("the tree mounts");
+  let revision: XrayRevision = search.get_vfs().get_revision();
+  let opened: SessionDerived<SelectedLevel> =
+    OpenedLevel::read(search, source, roots.clone(), select_ltx_dialect(false), |_, _| {
+      XrayEngineResolution::named(XrayEngine::Vanilla)
+    })
+    .expect("the level reads");
+
+  (opened, revision)
 }
 
 /// Commits `bytes` as one file of the tree, as a save does.
@@ -167,21 +192,21 @@ impl WorldEventSink for Silence {
 fn a_commit_to_a_file_the_level_was_read_from_reads_it_again_and_streams_its_scene_afresh() {
   let (assets, roots, search) = level_tree("derived");
   let pool: Arc<ThreadPool> = test_pool();
-  let state: LevelState = LevelState::new(Arc::clone(&pool));
+  let state: LevelState = LevelState::new(Arc::clone(&pool), &SessionScopes::default());
   let world: WorldState = WorldState::new(RenderWorkers::new(Arc::clone(&pool)));
   let shown: ShownLevels = ShownLevels::default();
   let log: ChangeLog = ChangeLog::default();
   let viewport: RenderViewportId = RenderViewportId(1);
 
-  assets.add_follower(state.selected.clone());
+  assets.add_follower(state.levels.clone());
   assets.add_subscriber(LevelSceneFollower {
-    levels: state.selected.clone(),
+    levels: state.levels.clone(),
     shown: shown.clone(),
     world: world.clone(),
   });
   assets.add_subscriber(log.clone());
 
-  let opened: Arc<SessionSnapshot<SelectedLevel>> = open(&state.selected, &assets, &roots);
+  let opened: Arc<SessionSnapshot<SelectedLevel>> = open_handle(&state.levels, &assets, &roots);
   let source: Arc<LevelRenderSource> = shown.get_source(Arc::clone(&opened), &assets);
   let scene: RenderSceneId = {
     let mut world = world.lock();
@@ -201,7 +226,8 @@ fn a_commit_to_a_file_the_level_was_read_from_reads_it_again_and_streams_its_sce
   );
 
   let changes: Vec<SessionChange> = log.list();
-  let next: Arc<SessionSnapshot<SelectedLevel>> = state.selected.get().unwrap().expect("the level stays open");
+  let next: Arc<SessionSnapshot<SelectedLevel>> =
+    state.levels.require(opened.session_id).expect("the level stays open");
 
   assert_eq!(changes[0].root, SessionRootChange::Deriving);
   assert_eq!(

@@ -4,7 +4,7 @@ use xrf_ltx::{LtxDocumentSource, LtxEntryVerification, LtxProject};
 use xrf_ltx_inspect::{LtxAnchoredFinding, LtxRootReader};
 use xrf_vfs::XrayLogicalPath;
 
-use crate::core::session::Session;
+use crate::core::session::Sessions;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::descriptor::ConfigsProjectDescriptor;
 use crate::plugins::configs::resolved_root::ConfigsResolvedRoot;
@@ -128,5 +128,5 @@ impl ConfigsProject {
   }
 }
 
-/// The committed project and its pending replacement.
-pub type ConfigsState = Session<ConfigsProject>;
+/// The configs projects open, each held by the tool that opened it.
+pub type ConfigsState = Sessions<ConfigsProject>;

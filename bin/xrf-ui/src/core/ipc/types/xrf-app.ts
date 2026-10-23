@@ -2372,6 +2372,17 @@ export type SessionRootChange =
   /** Deriving it again failed: the session stays at the snapshot it had. */
   | { kind: "failed"; reason: string };
 
+/**
+ * Who holds an opening: a tool in a window, named alike across the window's page loads, so a reloaded page attaches to
+ * what its tool held rather than opening it again.
+ */
+export type SessionScope = {
+  /** The window's label. */
+  window: string;
+  /** The tool within the window: its application id, with an instance number where one window runs two. */
+  tool: string;
+};
+
 /** An immutable value addressed by the opening that produced it; a held snapshot survives close. */
 export type SessionSnapshot<T> = {
   sessionId: SessionId;

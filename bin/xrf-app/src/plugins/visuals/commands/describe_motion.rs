@@ -17,7 +17,7 @@ pub async fn visuals_describe_motion(
   state: State<'_, VisualState>,
   assets: State<'_, AssetMountState>,
 ) -> TauriResult<VisualMotionBake> {
-  let current: Arc<SessionSnapshot<SelectedVisual>> = state.selected.require(session_id)?;
+  let current: Arc<SessionSnapshot<SelectedVisual>> = state.models.require(session_id)?;
 
   let Some(motions) = current.motions.as_ref() else {
     return Err(String::from("The open visual carries no bind pose to animate"));

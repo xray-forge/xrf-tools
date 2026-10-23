@@ -22,7 +22,7 @@ pub async fn levels_describe_console_defaults(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<LevelConsoleDefaults>> {
-  let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
+  let current: Arc<SessionSnapshot<SelectedLevel>> = state.levels.require(session_id)?;
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let value: SessionSnapshot<LevelConsoleDefaults> = execution
     .run_blocking("Reading the game's console defaults", move || {

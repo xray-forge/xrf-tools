@@ -7,19 +7,20 @@ use xrf_vfs::{XrayAsset, XrayRoots};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualMotionPose, VisualMotions, VisualPackage};
 
 use crate::core::assets::AssetTextureDescriptor;
-use crate::core::session::Session;
+use crate::core::session::{Session, SessionScopes, Sessions};
 
-/// Independent ownership for the browsed roots and the selected model.
+/// The models open and the roots browsed, each held by the tool that opened it.
 pub struct VisualState {
-  pub selected: Session<SelectedVisual>,
-  pub browsed: Session<XrayRoots>,
+  pub models: Sessions<SelectedVisual>,
+  pub browses: Sessions<XrayRoots>,
 }
 
 impl VisualState {
-  pub fn new() -> Self {
+  /// Whatever scope `scopes` releases closes the models and browses it held.
+  pub fn new(scopes: &SessionScopes) -> Self {
     Self {
-      selected: Session::new("visual"),
-      browsed: Session::new("visual browse"),
+      models: Sessions::new("visual", scopes),
+      browses: Sessions::new("visual browse", scopes),
     }
   }
 }

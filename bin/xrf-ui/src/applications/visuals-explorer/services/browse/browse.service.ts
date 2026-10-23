@@ -1,4 +1,4 @@
-import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
@@ -8,7 +8,7 @@ import { createRoots, describeRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
 import { assetsCommands } from "@/core/ipc/commands/assets";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { Session } from "@/core/ipc/session";
+import { Session, SessionScopeService } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { EXrayAssetType, XrayAsset, XrayRoot, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { Logger, Timer } from "@/lib/logging";
@@ -21,7 +21,7 @@ import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 export class VisualsBrowseService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(visualsCommands.closeBrowse);
+  private readonly session: Session = new Session(visualsCommands.closeBrowse, inject(SessionScopeService));
 
   /** What is being browsed, or null when a single model was opened directly. */
   @Observable()
@@ -129,7 +129,7 @@ export class VisualsBrowseService {
   @ExclusiveFlow("visuals")
   private *restore(): TFlow {
     try {
-      const snapshot = yield* call(visualsCommands.getBrowse());
+      const snapshot = yield* call(visualsCommands.getBrowse(this.session.scope));
 
       this.session.adopt(snapshot);
 

@@ -23,7 +23,7 @@ pub async fn levels_open_spawn_objects(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<LevelSpawnObjectsDescription>> {
-  let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
+  let current: Arc<SessionSnapshot<SelectedLevel>> = state.levels.require(session_id)?;
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let value: SessionSnapshot<LevelSpawnObjectsDescription> = execution
     .run_blocking("Describing the level spawned objects", move || {

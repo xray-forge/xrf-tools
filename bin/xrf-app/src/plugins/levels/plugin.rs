@@ -3,6 +3,7 @@ use tauri::{Manager, Runtime, State};
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
+use crate::core::session::SessionScopes;
 use crate::plugins::levels::level_scene_follower::LevelSceneFollower;
 use crate::plugins::levels::shown_levels::ShownLevels;
 use crate::plugins::levels::state::LevelState;
@@ -18,7 +19,10 @@ impl LevelsPlugin {
 
     Builder::new(Self::NAME)
       .setup(|application, _| {
-        let state: LevelState = LevelState::new(application.state::<ExecutionState>().get_pool());
+        let state: LevelState = LevelState::new(
+          application.state::<ExecutionState>().get_pool(),
+          &application.state::<SessionScopes>(),
+        );
         let shown: ShownLevels = ShownLevels::default();
         let world: WorldState = application
           .try_state::<WorldState>()
@@ -29,9 +33,9 @@ impl LevelsPlugin {
 
         // An open level records what it and its parts read, so a commit carries the parts it did not touch and reads
         // the level again where it moved one of its own files; a shown one's scene follows it.
-        assets.add_follower(state.selected.clone());
+        assets.add_follower(state.levels.clone());
         assets.add_subscriber(LevelSceneFollower {
-          levels: state.selected.clone(),
+          levels: state.levels.clone(),
           shown: shown.clone(),
           world,
         });

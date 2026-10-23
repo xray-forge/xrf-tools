@@ -1,4 +1,4 @@
-import { Injectable, OnDeactivation } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { Session } from "@/core/ipc/session";
+import { Session, SessionScopeService } from "@/core/ipc/session";
 import { SelectedVisualDescription, SessionSnapshot, VisualSource } from "@/core/ipc/types/xrf-app";
 import { RenderTextureReport } from "@/core/ipc/types/xrf-renderer";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
@@ -35,7 +35,7 @@ export interface IOpenVisual {
 export class VisualLoadService implements IVisualRenderSource {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(visualsCommands.closeModel);
+  private readonly session: Session = new Session(visualsCommands.closeModel, inject(SessionScopeService));
 
   @Observable()
   public visual: AsyncState<IOpenVisual> = AsyncState.idle();
@@ -145,7 +145,7 @@ export class VisualLoadService implements IVisualRenderSource {
   @ExclusiveFlow("visual")
   public *restore(): TFlow {
     const timer: Timer = new Timer();
-    const snapshot = yield* call(visualsCommands.getModel());
+    const snapshot = yield* call(visualsCommands.getModel(this.session.scope));
 
     this.session.adopt(snapshot);
 

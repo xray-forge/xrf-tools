@@ -6,7 +6,13 @@ import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
-import { isOlderSessionAnswer, isSessionMovedPast, Session, SESSION_CHANGE_EVENT } from "@/core/ipc/session";
+import {
+  isOlderSessionAnswer,
+  isSessionMovedPast,
+  Session,
+  SESSION_CHANGE_EVENT,
+  SessionScopeService,
+} from "@/core/ipc/session";
 import {
   ESessionRootChange,
   LEVEL_SPAWN_PART,
@@ -39,7 +45,7 @@ export interface IOpenLevel {
 export class LevelLoadService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(levelsCommands.closeLevel);
+  private readonly session: Session = new Session(levelsCommands.closeLevel, inject(SessionScopeService));
 
   /** The last open asked for, which a retry asks for again. */
   private request: Nullable<LevelOpenRequest> = null;
@@ -173,7 +179,7 @@ export class LevelLoadService {
    */
   @ExclusiveFlow("level")
   public *restore(): TFlow {
-    const snapshot: SessionRestore<SelectedLevelDescription> = yield* call(levelsCommands.getLevel());
+    const snapshot: SessionRestore<SelectedLevelDescription> = yield* call(levelsCommands.getLevel(this.session.scope));
 
     this.session.adopt(snapshot);
 
@@ -247,7 +253,7 @@ export class LevelLoadService {
   /** Reads the committed level again, for `onSessionChange`; a failure leaves what is shown, stale. */
   private async refresh(): Promise<void> {
     try {
-      this.adoptRefreshed(await levelsCommands.getLevel());
+      this.adoptRefreshed(await levelsCommands.getLevel(this.session.scope));
     } catch (error: unknown) {
       this.log.warn("Could not read the level again:", transformError(error));
     }

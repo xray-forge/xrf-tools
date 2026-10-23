@@ -29,7 +29,7 @@ pub(crate) async fn textures_read_candidate(
   log::info!("Decoding held encoding candidate: {format:?}");
 
   let held: Arc<SessionSnapshot<TextureEncodingSession>> =
-    app.state::<TextureState>().comparison.require(session_id)?;
+    app.state::<TextureState>().comparisons.require(session_id)?;
   let png: Vec<u8> = app
     .state::<ExecutionState>()
     .run_blocking("Decoding texture candidate", move || {

@@ -1,4 +1,4 @@
-import { Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
@@ -7,7 +7,7 @@ import { Nullable } from "@xrf/types";
 import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
 import { configsCommands } from "@/core/ipc/commands/configs";
-import { Session } from "@/core/ipc/session";
+import { Session, SessionScopeService } from "@/core/ipc/session";
 import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
 import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { Logger, Timer } from "@/lib/logging";
@@ -21,7 +21,7 @@ import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 export class ConfigsProjectService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(configsCommands.closeProject);
+  private readonly session: Session = new Session(configsCommands.closeProject, inject(SessionScopeService));
 
   /** Whether the backend has been asked what it still has open. */
   @Observable()
@@ -144,7 +144,9 @@ export class ConfigsProjectService {
   @ExclusiveFlow("project")
   private *restore(): TFlow {
     try {
-      const descriptor: Nullable<ConfigsProjectDescriptor> = yield* call(configsCommands.getProject());
+      const descriptor: Nullable<ConfigsProjectDescriptor> = yield* call(
+        configsCommands.getProject(this.session.scope)
+      );
 
       this.session.adopt(descriptor);
       this.project = this.project.asReady(descriptor);

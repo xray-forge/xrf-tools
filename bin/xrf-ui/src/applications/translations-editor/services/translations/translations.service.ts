@@ -15,6 +15,7 @@ import {
   requireSessionId,
   Session,
   SESSION_CHANGE_EVENT,
+  SessionScopeService,
 } from "@/core/ipc/session";
 import {
   ESessionRootChange,
@@ -35,7 +36,7 @@ import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 export class TranslationsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(translationsCommands.closeProject);
+  private readonly session: Session = new Session(translationsCommands.closeProject, inject(SessionScopeService));
 
   @Observable()
   public isReady: boolean = false;
@@ -149,7 +150,7 @@ export class TranslationsService {
   /** Reads the committed project again, for `onSessionChange`; a failure leaves what is shown, stale. */
   private async refresh(): Promise<void> {
     try {
-      this.adoptRefreshed(await translationsCommands.getProject());
+      this.adoptRefreshed(await translationsCommands.getProject(this.session.scope));
     } catch (error: unknown) {
       this.log.warn("Could not read the translations project again:", transformError(error));
     }
@@ -180,7 +181,7 @@ export class TranslationsService {
   @ExclusiveFlow("project")
   private *restore(): TFlow {
     const response: Nullable<SessionSnapshot<TranslationProjectDescriptor>> = yield* call(
-      translationsCommands.getProject()
+      translationsCommands.getProject(this.session.scope)
     );
 
     this.log.info(

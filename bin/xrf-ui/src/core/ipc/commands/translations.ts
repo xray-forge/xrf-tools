@@ -6,6 +6,7 @@ import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
   SessionId,
   SessionRestore,
+  SessionScope,
   SessionSnapshot,
   TranslationBuildRequest,
   TranslationBuildSummary,
@@ -42,7 +43,9 @@ export const translationsCommands = {
   /** Normalize the JSON translation sources under a directory. */
   formatProject: (request: TranslationsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TranslationFormatResult>("plugin:translations|format_project", { request, jobId, progress }),
-  getProject: () => __TAURI_INVOKE<SessionRestore<TranslationProjectDescriptor>>("plugin:translations|get_project"),
+  /** The project a tool holds, the newest it opened: for a page attaching to it, or reading it again after a commit. */
+  getProject: (scope: SessionScope) =>
+    __TAURI_INVOKE<SessionRestore<TranslationProjectDescriptor>>("plugin:translations|get_project", { scope }),
   /** Open a translations tree. */
   openProject: (request: TranslationsOpenRequest) =>
     __TAURI_INVOKE<SessionSnapshot<TranslationProjectDescriptor>>("plugin:translations|open_project", { request }),

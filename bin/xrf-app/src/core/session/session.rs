@@ -34,14 +34,27 @@ impl<T> Session<T> {
   pub fn new(name: &'static str) -> Self {
     Self {
       name,
-      state: Arc::new(Mutex::new(SessionState {
-        opening: None,
-        opened: None,
-        deriving: None,
-        stale: Weak::new(),
-      })),
+      state: Self::empty(),
       derivation: None,
     }
+  }
+
+  /// An empty session with this one's name and derivation, for a registry keeping one a handle.
+  pub fn fresh(&self) -> Self {
+    Self {
+      name: self.name,
+      state: Self::empty(),
+      derivation: self.derivation.clone(),
+    }
+  }
+
+  fn empty() -> Arc<Mutex<SessionState<T>>> {
+    Arc::new(Mutex::new(SessionState {
+      opening: None,
+      opened: None,
+      deriving: None,
+      stale: Weak::new(),
+    }))
   }
 
   /// The session with the derivation its plugin opens with, run inside the commit when it moved what the value was read
@@ -149,6 +162,11 @@ impl<T> Session<T> {
     drop(previous);
 
     Ok(opened)
+  }
+
+  /// What the session is called in what it says.
+  pub fn get_name(&self) -> &'static str {
+    self.name
   }
 
   /// What both the early check and the commit say, so a caller cannot tell them apart and need not.

@@ -5,7 +5,7 @@ use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsMipChain, DdsMipmaps, Qua
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::core::assets::AssetMountState;
-use crate::core::session::{SessionId, SessionSnapshot};
+use crate::core::session::{SessionId, SessionScopes, SessionSnapshot};
 use crate::plugins::textures::catalog::TextureCatalogMode;
 use crate::plugins::textures::encoding::TextureEncodingSession;
 use crate::plugins::textures::source::TextureSource;
@@ -14,120 +14,123 @@ use crate::plugins::textures::tests::fixtures::{BASE, source_image};
 use xrf_texture::TextureEncodingFormat;
 
 #[test]
-fn replacing_a_comparison_refuses_old_tokens_even_for_the_same_reference() {
-  let state: TextureState = TextureState::new(AssetMountState::new());
+fn a_comparison_is_known_by_its_own_token_until_its_tool_closes_it() {
+  let state: TextureState = TextureState::new(AssetMountState::new(), &SessionScopes::default());
   let first: SessionId = SessionId::new();
 
-  state.comparison.begin_open(first).expect("first session");
+  state.comparisons.begin_open(first).expect("first session");
 
   state
-    .comparison
+    .comparisons
     .commit_open(first, comparison(first, "first"))
     .expect("first comparison");
 
   let second: SessionId = SessionId::new();
 
-  state.comparison.begin_open(second).expect("second session");
+  state.comparisons.begin_open(second).expect("second session");
 
   assert!(
-    state.comparison.require(first).is_ok(),
-    "a failed replacement must leave the previous candidates readable"
+    state.comparisons.require(first).is_ok(),
+    "an unfinished replacement leaves the previous candidates readable"
   );
   assert!(
-    state.comparison.require(second).is_err(),
+    state.comparisons.require(second).is_err(),
     "an unfinished comparison has no candidates"
   );
   state
-    .comparison
+    .comparisons
     .commit_open(second, comparison(second, "second"))
     .expect("second comparison");
+  state.close(&[first]).expect("the tool lets the first go");
 
   assert!(
-    state.comparison.require(first).is_err(),
+    state.comparisons.require(first).is_err(),
     "matching labels and formats do not identify a comparison"
   );
   assert_eq!(
-    state.comparison.require(second).expect("new comparison").roots,
+    state.comparisons.require(second).expect("new comparison").roots,
     roots("second")
   );
 }
 
 #[test]
 fn closing_releases_cached_bytes_and_refuses_unfinished_publication() {
-  let state: TextureState = TextureState::new(AssetMountState::new());
+  let state: TextureState = TextureState::new(AssetMountState::new(), &SessionScopes::default());
   let id: SessionId = SessionId::new();
 
-  state.comparison.begin_open(id).expect("session");
+  state.comparisons.begin_open(id).expect("session");
 
   state
-    .comparison
+    .comparisons
     .commit_open(id, comparison(id, "first"))
     .expect("comparison");
-  let held = Arc::downgrade(&state.comparison.require(id).expect("snapshot"));
+  let held = Arc::downgrade(&state.comparisons.require(id).expect("snapshot"));
 
   state.close(&[id]).expect("close");
 
   assert!(held.upgrade().is_none(), "closing releases unreferenced encodes");
-  assert!(state.comparison.require(id).is_err());
-  assert!(state.comparison.commit_open(id, comparison(id, "first")).is_err());
-  assert!(state.browse.get().expect("browse").is_none());
+  assert!(state.comparisons.require(id).is_err());
+  assert!(state.comparisons.commit_open(id, comparison(id, "first")).is_err());
+  assert!(state.browses.restore(&[id]).expect("browse").is_none());
 }
 
 #[test]
 fn a_late_comparison_cannot_replace_a_reopened_session() {
-  let state: TextureState = TextureState::new(AssetMountState::new());
+  let state: TextureState = TextureState::new(AssetMountState::new(), &SessionScopes::default());
   let first: SessionId = SessionId::new();
 
-  state.comparison.begin_open(first).expect("first session");
+  state.comparisons.begin_open(first).expect("first session");
 
   state.close(&[first]).expect("close");
 
   let second: SessionId = SessionId::new();
 
-  state.browse.begin_open(second).expect("reopened session");
-  state.browse.commit_open(second, browse("second")).expect("reopen");
+  state.browses.begin_open(second).expect("reopened session");
+  state.browses.commit_open(second, browse("second")).expect("reopen");
 
-  assert!(state.comparison.commit_open(first, comparison(first, "first")).is_err());
-  assert_eq!(
-    *state.browse.get().expect("browse").expect("opened").value,
-    browse("second")
+  assert!(
+    state
+      .comparisons
+      .commit_open(first, comparison(first, "first"))
+      .is_err()
   );
+  assert_eq!(*state.browses.require(second).expect("opened").value, browse("second"));
 }
 
 #[test]
-fn a_late_open_cannot_undo_close_or_a_newer_open() {
-  let state: TextureState = TextureState::new(AssetMountState::new());
+fn a_late_open_cannot_undo_close() {
+  let state: TextureState = TextureState::new(AssetMountState::new(), &SessionScopes::default());
   let first: SessionId = SessionId::new();
 
-  state.browse.begin_open(first).expect("pending open");
+  state.browses.begin_open(first).expect("pending open");
   state.close(&[first]).expect("close");
 
-  assert!(state.browse.commit_open(first, browse("first")).is_err());
+  assert!(state.browses.commit_open(first, browse("first")).is_err());
 
   let second: SessionId = SessionId::new();
 
-  state.browse.begin_open(second).expect("new open");
-  state.browse.commit_open(second, browse("second")).expect("new listing");
+  state.browses.begin_open(second).expect("new open");
+  state
+    .browses
+    .commit_open(second, browse("second"))
+    .expect("new listing");
 
-  assert!(state.browse.commit_open(first, browse("first")).is_err());
-  assert_eq!(
-    *state.browse.get().expect("browse").expect("opened").value,
-    browse("second")
-  );
+  assert!(state.browses.commit_open(first, browse("first")).is_err());
+  assert_eq!(*state.browses.require(second).expect("opened").value, browse("second"));
 }
 
 #[test]
 fn an_accepted_snapshot_outlives_close_without_locking_the_session() {
-  let state: TextureState = TextureState::new(AssetMountState::new());
+  let state: TextureState = TextureState::new(AssetMountState::new(), &SessionScopes::default());
   let id: SessionId = SessionId::new();
 
-  state.comparison.begin_open(id).expect("session");
+  state.comparisons.begin_open(id).expect("session");
   state
-    .comparison
+    .comparisons
     .commit_open(id, comparison(id, "first"))
     .expect("comparison");
 
-  let held: Arc<SessionSnapshot<TextureEncodingSession>> = state.comparison.require(id).expect("snapshot");
+  let held: Arc<SessionSnapshot<TextureEncodingSession>> = state.comparisons.require(id).expect("snapshot");
   let bytes: Vec<u8> = held
     .require(TextureEncodingFormat::Bc3)
     .expect("candidate")
@@ -138,9 +141,9 @@ fn an_accepted_snapshot_outlives_close_without_locking_the_session() {
 
   let next: SessionId = SessionId::new();
 
-  state.comparison.begin_open(next).expect("next session");
+  state.comparisons.begin_open(next).expect("next session");
   state
-    .comparison
+    .comparisons
     .commit_open(next, comparison(next, "second"))
     .expect("new comparison");
 

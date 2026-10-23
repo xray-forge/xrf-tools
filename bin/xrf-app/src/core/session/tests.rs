@@ -16,7 +16,7 @@ use xrf_vfs::{
 use crate::core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountState};
 use crate::core::session::{
   Session, SessionChange, SessionDerived, SessionId, SessionPart, SessionParts, SessionRestore, SessionRootChange,
-  SessionSnapshot,
+  SessionScopes, SessionSnapshot, Sessions,
 };
 
 #[test]
@@ -1084,4 +1084,41 @@ fn a_subscriber_takes_each_commits_changes_once_its_sessions_moved_before_it_ret
       stale_parts: Vec::new(),
     }]
   );
+}
+
+#[test]
+fn a_commit_moves_every_handle_of_a_registry_each_by_what_it_read() {
+  let (assets, search) = opened_tree("registry", &["configs/system.ltx", "configs/game.ltx"]);
+  let sessions: Sessions<&str> = Sessions::new("test", &SessionScopes::default())
+    .with_derivation(|_, _| Ok(SessionDerived::new("derived", XrayInputRecord::new())));
+  let open = |value: &'static str, path: &str| -> SessionId {
+    let inputs: XrayInputRecord = XrayInputRecord::new();
+
+    read(&search.clone().with_recording(&inputs), path);
+
+    let id: SessionId = SessionId::new();
+
+    sessions.begin_open(id).unwrap();
+    sessions
+      .commit_open_with(id, value, search.get_vfs().get_revision(), inputs, SessionParts::new())
+      .unwrap();
+
+    id
+  };
+  let (untouched, touched): (SessionId, SessionId) =
+    (open("system", "configs\\system.ltx"), open("game", "configs\\game.ltx"));
+
+  assets.add_follower(sessions.clone());
+  write(&assets, &search, "configs\\game.ltx");
+
+  let revision: XrayRevision = assets.get_vfs().get_revision();
+
+  assert_eq!(**sessions.require(untouched).unwrap(), "system", "its value is kept");
+  assert_eq!(sessions.require(untouched).unwrap().revision, revision);
+  assert_eq!(
+    **sessions.require(touched).unwrap(),
+    "derived",
+    "its value is read again"
+  );
+  assert_eq!(sessions.require(touched).unwrap().revision, revision);
 }

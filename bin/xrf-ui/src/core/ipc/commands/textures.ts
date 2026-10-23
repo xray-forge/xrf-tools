@@ -9,6 +9,7 @@ import {
   ETextureSurfaceShape,
   SessionId,
   SessionRestore,
+  SessionScope,
   SessionSnapshot,
   TextureBrowseSession,
   TextureBuildOutcome,
@@ -45,8 +46,9 @@ export const texturesCommands = {
   /** Read every descriptor the roots hold and say what each makes of its texture. */
   describeCatalog: (roots: XrayRoots) =>
     __TAURI_INVOKE<Array<TextureMaterialSummary>>("plugin:textures|describe_catalog", { roots }),
-  /** The session the explorer was browsing, or null when nothing is open. */
-  getSession: () => __TAURI_INVOKE<SessionRestore<TextureBrowseSession>>("plugin:textures|get_session"),
+  /** The listing a tool was browsing, the newest it opened, or null when it holds none. */
+  getSession: (scope: SessionScope) =>
+    __TAURI_INVOKE<SessionRestore<TextureBrowseSession>>("plugin:textures|get_session", { scope }),
   /** The names the SDK gives the numbers a descriptor stores. */
   getVocabulary: () => __TAURI_INVOKE<TextureVocabulary>("plugin:textures|get_vocabulary"),
   /** Generate the `_bump` and `_bump#` pair a bumped surface binds, from a height map. */

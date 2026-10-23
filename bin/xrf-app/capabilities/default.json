@@ -38,6 +38,7 @@
     "jobs:default",
     "levels:default",
     "render:default",
+    "sessions:default",
     "spawn:default",
     "sprite-equipment:default",
     "system:default",

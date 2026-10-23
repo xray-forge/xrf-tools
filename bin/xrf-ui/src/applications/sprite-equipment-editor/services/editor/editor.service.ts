@@ -14,7 +14,7 @@ import { AssetService } from "@/core/assets/services";
 import { KeybindCommand } from "@/core/commands";
 import { transformError } from "@/core/error/lib";
 import { spriteEquipmentCommands } from "@/core/ipc/commands/sprite-equipment";
-import { requireSessionId, Session } from "@/core/ipc/session";
+import { requireSessionId, Session, SessionScopeService } from "@/core/ipc/session";
 import {
   EEquipmentConfigSource,
   EquipmentConfigSource,
@@ -52,7 +52,7 @@ export interface IEquipmentRepackTargets {
 export class SpriteEquipmentEditorService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(spriteEquipmentCommands.closeSprite);
+  private readonly session: Session = new Session(spriteEquipmentCommands.closeSprite, inject(SessionScopeService));
 
   @Observable()
   public isReady: boolean = false;

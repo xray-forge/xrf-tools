@@ -9,8 +9,10 @@ use xrf_ltx::{LtxFormatOptions, LtxProjectFormatResult};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayAsset, XrayInputRecord, XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 
-use crate::core::assets::AssetMountState;
-use crate::core::session::{Session, SessionChange, SessionDerived, SessionId, SessionParts, SessionRootChange};
+use crate::core::assets::{AssetFanOut, AssetMountState};
+use crate::core::session::{
+  Session, SessionChange, SessionDerived, SessionFollower, SessionId, SessionParts, SessionRootChange, SessionScopes,
+};
 use crate::plugins::configs::commands::format_directory::format_directory;
 use crate::plugins::configs::opened_configs_project::OpenedConfigsProject;
 use crate::plugins::configs::state::ConfigsState;
@@ -100,7 +102,8 @@ fn an_open_project_lists_a_config_committed_beside_it_once_read_again() {
   let roots: XrayRoots = XrayRoots::one(root.clone(), XrayMountMode::Directory);
   let assets: AssetMountState = AssetMountState::new();
   // Derived inline rather than on a pool, so the follow below has read the project again by the time it returns.
-  let state: ConfigsState = ConfigsState::new("configs").with_derivation(OpenedConfigsProject::derive);
+  let state: ConfigsState =
+    ConfigsState::new("configs", &SessionScopes::default()).with_derivation(OpenedConfigsProject::derive);
   let search: XraySearch = assets.search(&roots).expect("the tree mounts");
   let id: SessionId = SessionId::new();
   let opened: OpenedConfigsProject = OpenedConfigsProject::read(&search, roots.clone(), None, false).expect("it opens");
@@ -121,8 +124,9 @@ fn an_open_project_lists_a_config_committed_beside_it_once_read_again() {
     )
     .expect("the config commits");
 
-  let change: SessionChange = state.follow(&assets).unwrap().expect("the session moved");
-  let followed = state.get().unwrap().unwrap();
+  let changes: Vec<SessionChange> = state.follow_in(&assets, &AssetFanOut::new(assets.get_vfs())).unwrap();
+  let change: &SessionChange = changes.first().expect("the session moved");
+  let followed = state.require(id).unwrap();
 
   assert_eq!(change.root, SessionRootChange::Derived);
   assert_eq!(followed.descriptor.session_id, id);
