@@ -62,8 +62,8 @@ impl TranslationFinding {
 ///
 /// **The physical path is for showing, never for addressing.** It is portable-formatted, so it has
 /// already lost any name that is not valid Unicode and any `\` a host treats as an ordinary character.
-/// A write resolves the logical path through the VFS instead and asks the asset, which still holds the
-/// real one — see `apply_edits_to_asset`.
+/// A save renders the edited bytes by logical path (`render_edits`) and commits them through the VFS,
+/// which resolves where the file really is.
 #[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]

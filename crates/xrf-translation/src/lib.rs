@@ -20,7 +20,7 @@ pub use crate::project::build::translation_builder::TranslationBuilder;
 pub use crate::project::descriptor::{
   TranslationFile, TranslationFinding, TranslationProjectDescriptor, TranslationProjectMode, TranslationSource,
 };
-pub use crate::project::edit::{apply_edits, apply_edits_to_asset, find_unwritable_character};
+pub use crate::project::edit::{apply_edits, build_save_transaction, find_unwritable_character, render_edits};
 pub use crate::project::format::translation_format_options::TranslationFormatOptions;
 pub use crate::project::format::translation_format_result::TranslationFormatResult;
 pub use crate::project::format::translation_formatter::TranslationFormatter;

@@ -1,15 +1,16 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_test_utils::utils::write_generated_test_resource;
 use xrf_utils::to_portable_path_string;
-use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayLogicalPath, require_writable_path};
+use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XraySearch, XrayVfs};
 
 use crate::edit::TranslationEdit;
 use crate::json::read::read_json;
 use crate::project::descriptor::{TranslationFile, TranslationProjectDescriptor, TranslationSource};
-use crate::project::edit::{apply_edits, apply_edits_to_asset, find_unwritable_character};
+use crate::project::edit::{apply_edits, build_save_transaction, find_unwritable_character, render_edits};
 use crate::types::TranslationVariant;
 use crate::xml::read::read_string_table;
 
@@ -134,58 +135,129 @@ fn a_language_with_no_recorded_encoding_is_not_second_guessed() -> XrfResult {
   Ok(())
 }
 
-/// A loose asset at a host path, as a mount would have resolved one.
-fn loose_asset(logical_path: &str, root: &Path, relative_path: &str) -> XrfResult<XrayAsset> {
-  Ok(XrayAsset::new(
-    XrayLogicalPath::new(logical_path)?,
-    XrayAssetContainer::Directory {
-      root: root.to_path_buf(),
-      relative_path: PathBuf::from(relative_path),
-    },
-  ))
-}
-
 #[test]
-fn writes_through_the_asset_the_mount_resolved() -> XrfResult {
-  let path = write_generated_test_resource("project_edit/source_loose.json", r#"{"st_a":{"eng":"A"}}"#)?;
-  let root: &Path = path.parent().expect("the fixture sits in a directory");
-  let asset: XrayAsset = loose_asset(r"translations\source_loose.json", root, "source_loose.json")?;
+fn renders_a_json_source_edited_as_apply_edits_writes_it() -> XrfResult {
+  let existing: &str = "{\r\n  \"st_a\": {\r\n    \"eng\": \"A\"\r\n  }\r\n}\r\n";
+  let path = write_generated_test_resource("project_edit/render.json", existing)?;
 
-  apply_edits_to_asset(&asset, "eng", &[set("st_a", "B")])?;
+  let rendered: Vec<u8> = render_edits(
+    &XrayLogicalPath::new(r"translations\render.json")?,
+    existing.as_bytes(),
+    "eng",
+    &[set("st_a", "B")],
+  )?;
+
+  apply_edits(&path, "eng", &[set("st_a", "B")])?;
 
   assert_eq!(
-    read_json(&path)?["st_a"]["eng"],
-    Some(TranslationVariant::String(String::from("B")))
+    rendered,
+    std::fs::read(&path)?,
+    "a commit writes what an in-place save did"
+  );
+  assert!(
+    String::from_utf8_lossy(&rendered).contains("\r\n"),
+    "the file's line endings stay"
   );
 
   Ok(())
 }
 
 #[test]
-fn refuses_to_edit_an_asset_that_came_out_of_an_archive() -> XrfResult {
-  // The guard is the absence of a physical path, not a test of which kind of mount won: there is no
-  // file inside a volume to replace, so this is refused before anything is written rather than
-  // failing partway through.
-  let asset: XrayAsset = XrayAsset::new(
-    XrayLogicalPath::new(r"configs\text\rus\st_dialogs.xml")?,
-    XrayAssetContainer::Archive {
-      path: PathBuf::from("db"),
-    },
+fn renders_a_string_table_edited_leaving_every_untouched_byte() -> XrfResult {
+  let existing: &str = concat!(
+    "<?xml version=\"1.0\" encoding=\"windows-1251\"?>\n",
+    "<string_table>\n",
+    "  <string id=\"st_a\">\n    <text>A</text>\n  </string>\n",
+    "  <!-- kept -->\n",
+    "</string_table>\n"
   );
 
-  let error = apply_edits_to_asset(&asset, "rus", &[]).unwrap_err();
+  let rendered: String = String::from_utf8(render_edits(
+    &XrayLogicalPath::new(r"configs\text\eng\st_render.xml")?,
+    existing.as_bytes(),
+    "eng",
+    &[set("st_a", "B")],
+  )?)
+  .expect("the table stays ASCII");
 
-  assert!(error.to_string().contains("read out of an archive"));
-  // Named, so a caller can say which file refused rather than reporting the save as generally failed.
-  assert!(error.to_string().contains(r"configs\text\rus\st_dialogs.xml"));
-  // The wording is `xrf-vfs`'s, shared with every other editing domain, so a surface can recognise
-  // this refusal without knowing which crate raised it.
+  assert_eq!(rendered, existing.replace("<text>A</text>", "<text>B</text>"));
+
+  Ok(())
+}
+
+/// A search over one loose tree holding a two-language JSON source, with the source each language reads.
+fn json_project(name: &str) -> XrfResult<(PathBuf, XraySearch, HashMap<String, TranslationSource>)> {
+  let file: PathBuf = write_generated_test_resource(
+    &format!("project_edit/{name}/translations/st_save.json"),
+    r#"{"st_a":{"eng":"A","rus":"А"}}"#,
+  )?;
+  let root: &Path = file
+    .parent()
+    .and_then(Path::parent)
+    .expect("the fixture sits two directories down");
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs.mount_directory("", root)?;
+
+  let source: TranslationSource = TranslationSource::new(r"translations\st_save.json", None);
+
+  Ok((
+    file,
+    XraySearch::new(vfs).with_step("project", XrayLookupScope::all()),
+    HashMap::from([(String::from("eng"), source.clone()), (String::from("rus"), source)]),
+  ))
+}
+
+#[test]
+fn saves_every_language_of_one_json_source_in_one_transaction() -> XrfResult {
+  let (file, search, sources) = json_project("save_languages")?;
+  let edits: HashMap<String, Vec<TranslationEdit>> = HashMap::from([
+    (String::from("eng"), vec![set("st_a", "B")]),
+    (String::from("rus"), vec![set("st_a", "Б")]),
+  ]);
+
+  let transaction = build_save_transaction(&search, "st_save.json", &sources, &edits)?;
+
+  // Nothing is written until the transaction commits.
   assert_eq!(
-    error.to_string(),
-    require_writable_path(r"configs\text\rus\st_dialogs.xml", None)
-      .unwrap_err()
-      .to_string()
+    read_json(&file)?["st_a"]["eng"],
+    Some(TranslationVariant::String(String::from("A")))
   );
+
+  search.get_vfs().commit(&transaction)?;
+
+  let saved = read_json(&file)?;
+
+  assert_eq!(
+    saved["st_a"]["eng"],
+    Some(TranslationVariant::String(String::from("B")))
+  );
+  assert_eq!(
+    saved["st_a"]["rus"],
+    Some(TranslationVariant::String(String::from("Б"))),
+    "the second language applies over the first rather than replacing it"
+  );
+
+  Ok(())
+}
+
+#[test]
+fn refuses_to_save_a_language_with_no_copy() -> XrfResult {
+  let (_, search, sources) = json_project("save_missing")?;
+  let edits: HashMap<String, Vec<TranslationEdit>> = HashMap::from([(String::from("ukr"), vec![set("st_a", "Б")])]);
+
+  let error: XrfError = build_save_transaction(&search, "st_save.json", &sources, &edits).unwrap_err();
+
+  assert!(error.to_string().contains("nothing on disk for 'ukr'"), "{error}");
+
+  Ok(())
+}
+
+#[test]
+fn refuses_to_render_a_file_it_cannot_write() -> XrfResult {
+  let error = render_edits(&XrayLogicalPath::new(r"configs\system.ltx")?, b"", "eng", &[]).unwrap_err();
+
+  assert!(error.to_string().contains(r"configs\system.ltx"), "{error}");
 
   Ok(())
 }
