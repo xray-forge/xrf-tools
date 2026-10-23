@@ -4,13 +4,13 @@ use std::time::Duration;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_animation_envelope::AnimationEnvelope;
+use xrf_animation_envelope::{AnimationEnvelope, AnimationPlayback};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::format_path;
 
-use crate::{AnmChannel, AnmPlayback};
+use crate::AnmChannel;
 
 /// The object motion file the engine plays a camera or an animated object from, `.anm` and `.anm1`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -227,7 +227,7 @@ impl AnmFile {
   /// first frame's time, and past the last frame's, `Update` wraps it back by whole lengths for a looped motion or
   /// holds it there for a motion played once. The lengths are wrapped before the time is taken in seconds, so a looped
   /// motion keeps its pace however long it has played.
-  pub fn get_played_time(&self, elapsed: Duration, playback: AnmPlayback) -> f32 {
+  pub fn get_played_time(&self, elapsed: Duration, playback: AnimationPlayback) -> f32 {
     let fps: f32 = self.get_fps();
     let start: f32 = self.frame_start as f32 / fps;
     let end: f32 = self.frame_end as f32 / fps;
@@ -245,8 +245,8 @@ impl AnmFile {
     }
 
     match playback {
-      AnmPlayback::Once => end,
-      AnmPlayback::Looped => {
+      AnimationPlayback::Once => end,
+      AnimationPlayback::Looped => {
         start + Duration::from_nanos((elapsed.as_nanos() % period.as_nanos()) as u64).as_secs_f32()
       }
     }

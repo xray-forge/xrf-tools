@@ -1,11 +1,11 @@
 use std::io::Write;
+use std::time::Duration;
 
-use xrf_animation_envelope::AnimationEnvelope;
+use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationPlayback, AnimationShape};
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::ppe_color::PpeColor;
-use crate::ppe_file::PpeFile;
+use crate::{PpeColor, PpeColorMap, PpeFile, PpeScreen};
 
 /// One interpolating key, as `st_Key::Load_2` lays it out: value, time, shape, then seven quantised parameters.
 fn new_key_bytes(value: f32, time: f32) -> Vec<u8> {
@@ -58,7 +58,7 @@ fn new_effect_bytes(version: u32) -> Vec<u8> {
   // Gray value is keyed and runs longer than the colour; the six remaining scalars are empty.
   bytes.extend(new_envelope_bytes(&[new_key_bytes(0.0, 0.5), new_key_bytes(0.8, 5.5)]));
 
-  for _ in 1..PpeFile::VALUE_COUNT {
+  for _ in 1..7 {
     bytes.extend(new_envelope_bytes(&[]));
   }
 
@@ -70,16 +70,31 @@ fn new_effect_bytes(version: u32) -> Vec<u8> {
   bytes
 }
 
+/// An envelope rising in a straight line through `(time, value)` keys.
+fn line(keys: &[(f32, f32)]) -> AnimationEnvelope {
+  AnimationEnvelope {
+    keys: keys
+      .iter()
+      .map(|&(time, value)| AnimationKey {
+        value,
+        time,
+        shape: AnimationShape::Linear,
+        ..AnimationKey::default()
+      })
+      .collect(),
+    ..AnimationEnvelope::default()
+  }
+}
+
 #[test]
 fn an_effect_reads_as_the_version_and_the_parameters_it_is() -> XrfResult {
   let effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(2))?;
 
-  assert_eq!(effect.version, 2);
-  assert_eq!(effect.colors.len(), PpeFile::COLOR_COUNT);
-  assert_eq!(effect.values.len(), PpeFile::VALUE_COUNT);
-  assert_eq!(effect.colors[0].red.keys.len(), 2);
-  assert!(effect.colors[0].green.keys.is_empty());
-  assert_eq!(effect.values[0].keys.len(), 2);
+  assert_eq!(effect.get_version(), 2);
+  assert_eq!(effect.base_color.red.keys.len(), 2);
+  assert!(effect.base_color.green.keys.is_empty());
+  assert_eq!(effect.gray_value.keys.len(), 2);
+  assert!(effect.noise_fps.keys.is_empty());
 
   Ok(())
 }
@@ -89,7 +104,7 @@ fn a_version_one_effect_carries_no_color_map_at_all() -> XrfResult {
   // Absent, rather than present and empty: the engine never reads the parameter for such a file.
   let effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(1))?;
 
-  assert_eq!(effect.version, 1);
+  assert_eq!(effect.get_version(), 1);
   assert_eq!(effect.color_map, None);
 
   Ok(())
@@ -98,7 +113,7 @@ fn a_version_one_effect_carries_no_color_map_at_all() -> XrfResult {
 #[test]
 fn a_version_two_effect_carries_the_grading_and_the_texture_it_names() -> XrfResult {
   let effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(2))?;
-  let color_map = effect.color_map.expect("a version 2 effect carries a color map");
+  let color_map: PpeColorMap = effect.color_map.expect("a version 2 effect carries a color map");
 
   assert_eq!(color_map.texture, "grad\\grad_psi");
   assert_eq!(color_map.influence.keys.len(), 1);
@@ -124,16 +139,19 @@ fn an_effect_is_written_back_byte_for_byte() -> XrfResult {
 }
 
 #[test]
-fn a_version_kept_rather_than_raised_is_what_a_write_emits() -> XrfResult {
-  // The engine's own save always writes 2, which would append parameters a version 1 author never stored.
-  let effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(1))?;
+fn an_effect_is_written_in_the_version_its_color_map_decides() -> XrfResult {
+  // The engine's own save always writes 2, which would append a grading a version 1 author never stored.
+  let mut effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(2))?;
+
+  effect.color_map = None;
 
   let mut writer: ChunkWriter = ChunkWriter::new();
 
   effect.write::<XRayByteOrder>(&mut writer)?;
 
-  assert_eq!(writer.buffer.len(), new_effect_bytes(1).len());
-  assert_ne!(effect.version, PpeFile::CURRENT_VERSION);
+  assert_eq!(writer.buffer, new_effect_bytes(1));
+  assert_ne!(effect.get_version(), PpeFile::CURRENT_VERSION);
+  assert_eq!(PpeFile::default().get_version(), PpeFile::FIRST_VERSION);
 
   Ok(())
 }
@@ -149,32 +167,6 @@ fn a_version_nothing_here_reads_is_refused_by_name() {
     .to_string();
 
   assert!(error.contains('7'), "'{error}' names the version it refused");
-}
-
-#[test]
-fn a_color_map_a_version_cannot_hold_is_refused_rather_than_written() -> XrfResult {
-  let mut effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(2))?;
-
-  effect.version = 1;
-
-  assert!(effect.write::<XRayByteOrder>(&mut ChunkWriter::new()).is_err());
-
-  effect.color_map = None;
-
-  assert!(effect.write::<XRayByteOrder>(&mut ChunkWriter::new()).is_ok());
-
-  Ok(())
-}
-
-#[test]
-fn an_effect_missing_a_parameter_is_refused_rather_than_written_short() -> XrfResult {
-  let mut effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(2))?;
-
-  effect.values.pop();
-
-  assert!(effect.write::<XRayByteOrder>(&mut ChunkWriter::new()).is_err());
-
-  Ok(())
 }
 
 #[test]
@@ -202,7 +194,7 @@ fn each_envelope_is_named_as_an_author_knows_its_channel() -> XrfResult {
   );
   assert_eq!(names[9], "gray value");
   assert_eq!(names.last(), Some(&"colour map influence"));
-  assert_eq!(named[9].1, &effect.values[0]);
+  assert_eq!(named[9].1, &effect.gray_value);
 
   let effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(1))?;
 
@@ -227,28 +219,12 @@ fn an_effect_runs_as_long_as_its_longest_parameter() -> XrfResult {
 }
 
 #[test]
-fn an_effect_keyed_on_nothing_runs_for_no_time() -> XrfResult {
-  let mut effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(2))?;
-
-  effect.colors = (0..PpeFile::COLOR_COUNT)
-    .map(|_| PpeColor {
-      base: 0.0,
-      red: AnimationEnvelope::default(),
-      green: AnimationEnvelope::default(),
-      blue: AnimationEnvelope::default(),
-    })
-    .collect();
-  effect.values = (0..PpeFile::VALUE_COUNT)
-    .map(|_| AnimationEnvelope::default())
-    .collect();
-  effect.color_map = None;
-  effect.version = 1;
+fn an_effect_keyed_on_nothing_runs_for_no_time() {
+  let effect: PpeFile = PpeFile::default();
 
   assert_eq!(effect.get_length_seconds(), 0.0);
   assert_eq!(effect.get_keys_count(), 0);
   assert!(!effect.is_keyed());
-
-  Ok(())
 }
 
 #[test]
@@ -256,8 +232,8 @@ fn a_colour_counts_the_keys_of_all_three_channels_rather_than_the_reds() -> XrfR
   // `CPostProcessColor::get_keys_count` answers with the red channel alone, which is an editor convenience.
   let effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(2))?;
 
-  assert_eq!(effect.colors[0].get_keys_count(), 2);
-  assert_eq!(effect.colors[0].get_length_seconds(), 3.0);
+  assert_eq!(effect.base_color.get_keys_count(), 2);
+  assert_eq!(effect.base_color.get_length_seconds(), 3.0);
 
   Ok(())
 }
@@ -274,6 +250,62 @@ fn an_effect_reads_the_same_off_a_reader_as_off_its_bytes() -> XrfResult {
   assert_eq!(
     PpeFile::read::<XRayByteOrder, _>(&mut reader)?,
     PpeFile::read_from_bytes::<XRayByteOrder>(bytes)?
+  );
+
+  Ok(())
+}
+
+#[test]
+fn an_effect_keyed_on_nothing_leaves_the_screen_as_the_identity_has_it() {
+  assert_eq!(PpeFile::default().evaluate(1.5), PpeScreen::IDENTITY);
+}
+
+#[test]
+fn an_effect_adds_its_colours_to_the_identity_and_plays_its_values_as_keyed() {
+  // `CPostprocessAnimator::Process` adds `pp_identity`'s colours, and multiplies a keyed noise fps by 100.
+  let effect: PpeFile = PpeFile {
+    base_color: PpeColor {
+      red: line(&[(0.0, 0.0), (2.0, 0.2)]),
+      ..PpeColor::default()
+    },
+    blur: line(&[(0.0, 0.0), (2.0, 1.0)]),
+    noise_granularity: line(&[(0.0, 0.4)]),
+    noise_fps: line(&[(0.0, 0.2)]),
+    color_map: Some(PpeColorMap {
+      influence: line(&[(0.0, 0.0), (2.0, 0.5)]),
+      texture: String::from("grad\\grad_psi"),
+    }),
+    ..PpeFile::default()
+  };
+  let screen: PpeScreen = effect.evaluate(1.0);
+
+  assert!((screen.base_color[0] - 0.6).abs() < 1e-6, "{screen:?}");
+  assert_eq!(screen.base_color[1..], [0.5, 0.5]);
+  assert_eq!(screen.gray_color, PpeScreen::IDENTITY.gray_color);
+  assert_eq!(screen.blur, 0.5);
+  assert_eq!(screen.noise_intensity, 0.0);
+  assert_eq!(screen.noise_granularity, 0.4);
+  assert!((screen.noise_fps - 20.0).abs() < 1e-4, "{screen:?}");
+  assert_eq!(screen.color_map_influence, 0.25);
+}
+
+#[test]
+fn an_effect_plays_from_zero_and_a_cyclic_one_starts_again_every_length() -> XrfResult {
+  // `m_start_time` is the moment the effect began, not its first key, and a cyclic effect moves it on by
+  // `GetLength`, the longest key span: 5 s here, though the last key sits at 5.5 s.
+  let effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(2))?;
+  let played =
+    |seconds: f32, playback: AnimationPlayback| effect.get_played_time(Duration::from_secs_f32(seconds), playback);
+
+  assert_eq!(played(0.25, AnimationPlayback::Looped), 0.25);
+  assert_eq!(played(5.0, AnimationPlayback::Looped), 5.0);
+  assert!((played(6.5, AnimationPlayback::Looped) - 1.5).abs() < 1e-5);
+  assert_eq!(played(6.5, AnimationPlayback::Once), 6.5);
+
+  // An effect of no length has nothing to start again.
+  assert_eq!(
+    PpeFile::default().get_played_time(Duration::from_secs(9), AnimationPlayback::Looped),
+    9.0
   );
 
   Ok(())

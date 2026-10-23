@@ -42,12 +42,13 @@ and decides which encoding to read. Key times and `evaluate`'s argument are seco
 ## Data model
 
 | Type                     | Contents                                                                     |
-|--------------------------|------------------------------------------------------------------------------|
+| ------------------------ | ---------------------------------------------------------------------------- |
 | `AnimationEnvelope`      | The behaviour before and after its keys, and the keys                        |
 | `AnimationKey`           | Scalar value, time in seconds, shape, and its interpolation parameters       |
 | `AnimationInterpolation` | Tension, continuity, bias, and four additional curve parameters              |
 | `AnimationShape`         | The curve a span is drawn along, `SHAPE_*`                                   |
 | `AnimationBehavior`      | What the envelope does outside its keys, `BEH_*`                             |
+| `AnimationPlayback`      | Whether an animator plays once or looped; each format applies it to its time |
 
 The defaults are the engine's constructors: an envelope with no keys, constant either side (`CEnvelope`), and a key of
 zeros with the TCB shape (`st_Key`). Shapes and behaviours the engine does not name are kept as `Unknown(raw)`, so a

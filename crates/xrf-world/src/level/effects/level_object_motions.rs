@@ -2,7 +2,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use glam::{Mat4, Vec3};
-use xrf_anm::{AnmFile, AnmPlayback};
+use xrf_animation_envelope::AnimationPlayback;
+use xrf_anm::AnmFile;
 use xrf_renderer::{RenderLevelSource, RenderWorkers};
 use xrf_visual::VisualTransform;
 
@@ -54,8 +55,8 @@ impl LevelObjectMotions {
     let (now, previous) = (self.now, self.previous);
     let motion: &AnmFile = self.get(name)?;
     let (looped, looped_before): (f32, f32) = (
-      motion.get_played_time(now, AnmPlayback::Looped),
-      motion.get_played_time(previous, AnmPlayback::Looped),
+      motion.get_played_time(now, AnimationPlayback::Looped),
+      motion.get_played_time(previous, AnimationPlayback::Looped),
     );
     let (position, rotation) = motion.evaluate(looped);
     let transform: Mat4 =

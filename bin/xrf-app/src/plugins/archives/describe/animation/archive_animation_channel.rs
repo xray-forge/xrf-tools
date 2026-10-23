@@ -28,11 +28,10 @@ pub struct ArchiveAnimationChannel {
 }
 
 impl ArchiveAnimationChannel {
-  /// Every envelope of a fixed run, each under the name its position gives it.
-  pub fn of_all<'a>(names: impl IntoIterator<Item = &'a str>, envelopes: &[AnimationEnvelope]) -> Vec<Self> {
-    names
+  /// Every envelope of a format's fixed run, each under the name the format gives it.
+  pub fn of_all<'a>(named: impl IntoIterator<Item = (&'a str, &'a AnimationEnvelope)>) -> Vec<Self> {
+    named
       .into_iter()
-      .zip(envelopes)
       .map(|(name, envelope)| Self::of(name, envelope))
       .collect()
   }
@@ -97,7 +96,6 @@ impl ArchiveAnimationChannel {
 #[cfg(test)]
 mod tests {
   use xrf_animation_envelope::{AnimationBehavior, AnimationEnvelope, AnimationKey, AnimationShape};
-  use xrf_anm::AnmChannel;
 
   use super::ArchiveAnimationChannel;
   use crate::plugins::archives::describe::animation::archive_animation_behavior::ArchiveAnimationBehavior;
@@ -111,11 +109,6 @@ mod tests {
     }
   }
 
-  /// An object motion's channel names, the format names the tests take channels under.
-  fn motion_channel_names() -> [&'static str; 6] {
-    AnmChannel::ALL.map(AnmChannel::get_name)
-  }
-
   fn envelope(keys: Vec<AnimationKey>) -> AnimationEnvelope {
     AnimationEnvelope {
       keys,
@@ -124,97 +117,81 @@ mod tests {
   }
 
   #[test]
-  fn a_channel_is_named_by_the_position_it_holds() {
-    let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(
-      motion_channel_names(),
-      &[envelope(vec![key(0.0, 0.0, AnimationShape::Tcb)]), envelope(Vec::new())],
-    );
+  fn each_channel_is_described_under_the_name_its_format_gives_it() {
+    let (moving, still): (AnimationEnvelope, AnimationEnvelope) =
+      (envelope(vec![key(0.0, 0.0, AnimationShape::Tcb)]), envelope(Vec::new()));
+    let channels: Vec<ArchiveAnimationChannel> =
+      ArchiveAnimationChannel::of_all([("position x", &moving), ("position y", &still)]);
 
     assert_eq!(channels.len(), 2);
-    assert_eq!(channels[0].name, "position x");
-    assert_eq!(channels[1].name, "position y");
-  }
-
-  #[test]
-  fn a_name_no_envelope_answers_describes_nothing() {
-    // A format naming more channels than the file carries describes the ones it has, not an empty row for the rest.
-    let channels: Vec<ArchiveAnimationChannel> =
-      ArchiveAnimationChannel::of_all(["red", "green", "blue"], &[envelope(Vec::new())]);
-
-    assert_eq!(channels.len(), 1);
-    assert_eq!(channels[0].name, "red");
+    assert_eq!((channels[0].name.as_str(), channels[0].keys), ("position x", 1));
+    assert_eq!((channels[1].name.as_str(), channels[1].keys), ("position y", 0));
   }
 
   #[test]
   fn a_channel_reports_the_span_and_the_reach_of_its_own_keys() {
-    let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(
-      motion_channel_names(),
-      &[envelope(vec![
+    let channel: ArchiveAnimationChannel = ArchiveAnimationChannel::of(
+      "position x",
+      &envelope(vec![
         key(0.5, 0.0, AnimationShape::Tcb),
         key(-1.25, 1.5, AnimationShape::Linear),
         key(2.0, 4.0, AnimationShape::Tcb),
-      ])],
+      ]),
     );
 
-    assert_eq!(channels[0].keys, 3);
-    assert_eq!(
-      (channels[0].first_seconds, channels[0].last_seconds),
-      (Some(0.0), Some(4.0))
-    );
-    assert_eq!((channels[0].minimum, channels[0].maximum), (Some(-1.25), Some(2.0)));
-    assert_eq!(channels[0].shapes, vec![String::from("tcb"), String::from("linear")]);
-    assert_eq!(channels[0].get_length_seconds(), 4.0);
+    assert_eq!(channel.keys, 3);
+    assert_eq!((channel.first_seconds, channel.last_seconds), (Some(0.0), Some(4.0)));
+    assert_eq!((channel.minimum, channel.maximum), (Some(-1.25), Some(2.0)));
+    assert_eq!(channel.shapes, vec![String::from("tcb"), String::from("linear")]);
+    assert_eq!(channel.get_length_seconds(), 4.0);
   }
 
   #[test]
   fn a_channel_carrying_no_keys_reports_no_span_rather_than_an_empty_one() {
-    let channels: Vec<ArchiveAnimationChannel> =
-      ArchiveAnimationChannel::of_all(motion_channel_names(), &[envelope(Vec::new())]);
+    let channel: ArchiveAnimationChannel = ArchiveAnimationChannel::of("position x", &envelope(Vec::new()));
 
-    assert_eq!(channels[0].keys, 0);
-    assert_eq!(channels[0].first_seconds, None);
-    assert_eq!(channels[0].minimum, None);
-    assert!(channels[0].shapes.is_empty());
-    assert_eq!(channels[0].get_length_seconds(), 0.0);
+    assert_eq!(channel.keys, 0);
+    assert_eq!(channel.first_seconds, None);
+    assert_eq!(channel.minimum, None);
+    assert!(channel.shapes.is_empty());
+    assert_eq!(channel.get_length_seconds(), 0.0);
   }
 
   #[test]
   fn a_channel_says_what_it_does_at_either_end_of_its_keys() {
-    let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(
-      motion_channel_names(),
-      &[AnimationEnvelope {
+    let channel: ArchiveAnimationChannel = ArchiveAnimationChannel::of(
+      "position x",
+      &AnimationEnvelope {
         behavior_after: AnimationBehavior::Repeat,
         ..envelope(vec![key(0.0, 0.0, AnimationShape::Tcb)])
-      }],
+      },
     );
 
-    assert_eq!(channels[0].behavior_before, ArchiveAnimationBehavior::Constant);
-    assert_eq!(channels[0].behavior_after, ArchiveAnimationBehavior::Repeat);
+    assert_eq!(channel.behavior_before, ArchiveAnimationBehavior::Constant);
+    assert_eq!(channel.behavior_after, ArchiveAnimationBehavior::Repeat);
   }
 
   #[test]
   fn a_channel_names_each_shape_its_keys_use_once_in_the_engine_s_order() {
     // The mix of a vanilla camera effect: mostly tcb with a few linear segments.
-    let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(
-      motion_channel_names(),
-      &[envelope(
+    let channel: ArchiveAnimationChannel = ArchiveAnimationChannel::of(
+      "position x",
+      &envelope(
         [3, 0, 0, 5, 3]
           .into_iter()
           .map(|shape| key(0.0, 0.0, AnimationShape::from(shape)))
           .collect(),
-      )],
+      ),
     );
 
-    assert_eq!(channels[0].shapes, vec!["tcb", "linear", "bezier 2"]);
+    assert_eq!(channel.shapes, vec!["tcb", "linear", "bezier 2"]);
   }
 
   #[test]
   fn a_shape_the_engine_does_not_name_keeps_its_number() {
-    let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(
-      motion_channel_names(),
-      &[envelope(vec![key(0.0, 0.0, AnimationShape::from(7))])],
-    );
+    let channel: ArchiveAnimationChannel =
+      ArchiveAnimationChannel::of("position x", &envelope(vec![key(0.0, 0.0, AnimationShape::from(7))]));
 
-    assert_eq!(channels[0].shapes, vec!["shape 7"]);
+    assert_eq!(channel.shapes, vec!["shape 7"]);
   }
 }

@@ -1,6 +1,6 @@
 use serde::Serialize;
 use xrf_error::XrfResult;
-use xrf_ppe::{PPE_COLORS, PPE_VALUES, PpeFile};
+use xrf_ppe::PpeFile;
 use xrf_spawn::XRayByteOrder;
 
 use crate::plugins::archives::describe::animation::ArchiveAnimationChannel;
@@ -37,11 +37,11 @@ impl ArchivePpeDescription {
     let file: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
 
     Ok(Self {
-      version: file.version,
+      version: file.get_version(),
       length_seconds: file.get_length_seconds(),
       keys: file.get_keys_count(),
-      colors: ArchivePpeColor::of_all(PPE_COLORS, &file.colors),
-      values: ArchiveAnimationChannel::of_all(PPE_VALUES, &file.values),
+      colors: ArchivePpeColor::of_all(file.get_colors()),
+      values: ArchiveAnimationChannel::of_all(file.get_values()),
       color_map: file
         .color_map
         .as_ref()

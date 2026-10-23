@@ -23,7 +23,7 @@ README is also its crate's rustdoc page.
 | [xrf-ogf](xrf-ogf/README.md)                               | Read OGF visuals and patch them in place                                       |
 | [xrf-omf](xrf-omf/README.md)                               | Read and write `.omf` motion libraries                                         |
 | [xrf-particles](xrf-particles/README.md)                   | Read and write `particles.xr` effects, groups, and the actions that drive them |
-| [xrf-ppe](xrf-ppe/README.md)                               | Read and write animated post-process effects (`.ppe`)                          |
+| [xrf-ppe](xrf-ppe/README.md)                               | Read, write and evaluate animated post-process effects (`.ppe`)                |
 | [xrf-skeleton](xrf-skeleton/README.md)                     | Skeleton motion data that OGF visuals and OMF libraries share                  |
 | [xrf-sound](xrf-sound/README.md)                           | Inspect Ogg/Vorbis metadata and validate audio                                 |
 | [xrf-spawn](xrf-spawn/README.md)                           | Read and write spawn sets, alife records, graphs, patrols, and artefact points |

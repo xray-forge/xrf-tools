@@ -45,7 +45,7 @@ impl ArchiveAnmDescription {
   /// What an animation already in hand says about itself.
   pub fn of(file: &AnmFile) -> Self {
     let channels: Vec<ArchiveAnimationChannel> =
-      ArchiveAnimationChannel::of_all(AnmChannel::ALL.map(AnmChannel::get_name), &file.channels);
+      ArchiveAnimationChannel::of_all(AnmChannel::ALL.map(|channel| (channel.get_name(), file.get_channel(channel))));
 
     Self {
       name: Some(file.name.clone()).filter(|name| !name.is_empty()),
