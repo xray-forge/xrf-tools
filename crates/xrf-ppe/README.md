@@ -53,7 +53,7 @@ use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_ppe::{PpeColor, PpeFile};
 
 fn main() -> xrf_error::XrfResult {
-  let empty = AnimationEnvelope { behavior: (1, 1), keys: vec![] };
+  let empty = AnimationEnvelope::default();
   let color = PpeColor {
     base: 0.0,
     red: empty.clone(),
@@ -79,8 +79,8 @@ fn main() -> xrf_error::XrfResult {
 ```
 
 The writer preserves `version`. It requires exactly three colors and seven scalar channels, forbids a color map in
-version 1, and requires one in version 2, even when its texture name is empty. Follow the shared envelope crate's
-[encoding obligations](../xrf-animation-envelope/README.md#encoding-and-caller-obligations) when constructing keys.
+version 1, and requires one in version 2, even when its texture name is empty. Envelopes are written as the shared
+envelope crate's [encoding](../xrf-animation-envelope/README.md#encoding) describes.
 
 ## Errors and checks
 

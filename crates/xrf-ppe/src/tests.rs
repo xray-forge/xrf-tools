@@ -207,25 +207,13 @@ fn an_effect_keyed_on_nothing_runs_for_no_time() -> XrfResult {
   effect.colors = (0..PpeFile::COLOR_COUNT)
     .map(|_| PpeColor {
       base: 0.0,
-      red: AnimationEnvelope {
-        behavior: (1, 1),
-        keys: Vec::new(),
-      },
-      green: AnimationEnvelope {
-        behavior: (1, 1),
-        keys: Vec::new(),
-      },
-      blue: AnimationEnvelope {
-        behavior: (1, 1),
-        keys: Vec::new(),
-      },
+      red: AnimationEnvelope::default(),
+      green: AnimationEnvelope::default(),
+      blue: AnimationEnvelope::default(),
     })
     .collect();
   effect.values = (0..PpeFile::VALUE_COUNT)
-    .map(|_| AnimationEnvelope {
-      behavior: (1, 1),
-      keys: Vec::new(),
-    })
+    .map(|_| AnimationEnvelope::default())
     .collect();
   effect.color_map = None;
   effect.version = 1;

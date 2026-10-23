@@ -42,7 +42,7 @@ fn main() -> xrf_error::XrfResult {
     frame_end: 29,
     fps: ANM_DEFAULT_FPS,
     version: AnmFile::CURRENT_VERSION,
-    channels: vec![AnimationEnvelope { behavior: (1, 1), keys: vec![] }; AnmFile::CHANNEL_COUNT],
+    channels: vec![AnimationEnvelope::default(); AnmFile::CHANNEL_COUNT],
   };
 
   let mut writer = ChunkWriter::new();

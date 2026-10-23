@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec3};
-use xrf_animation_envelope::{AnimationEnvelope, AnimationKey};
+use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
 use xrf_anm::AnmFile;
 use xrf_renderer::RenderLevelSource;
 
@@ -16,13 +16,10 @@ fn create_line_motion() -> AnmFile {
   let key = |time: f32, value: f32| AnimationKey {
     value,
     time,
-    shape: 4,
-    interpolation: None,
+    shape: AnimationShape::Stepped,
+    ..AnimationKey::default()
   };
-  let still = || AnimationEnvelope {
-    behavior: (1, 1),
-    keys: Vec::new(),
-  };
+  let still = AnimationEnvelope::default;
 
   AnmFile {
     name: String::new(),
@@ -32,14 +29,14 @@ fn create_line_motion() -> AnmFile {
     version: AnmFile::CURRENT_VERSION,
     channels: vec![
       AnimationEnvelope {
-        behavior: (1, 1),
         keys: vec![
           key(0.0, 0.0),
           AnimationKey {
-            shape: 3,
+            shape: AnimationShape::Linear,
             ..key(2.0, 6.0)
           },
         ],
+        ..AnimationEnvelope::default()
       },
       still(),
       still(),

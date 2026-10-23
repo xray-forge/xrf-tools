@@ -2,7 +2,9 @@ use std::io::Write;
 use std::time::Duration;
 
 use byteorder::WriteBytesExt;
-use xrf_animation_envelope::{AnimationEnvelope, AnimationInterpolation, AnimationKey};
+use xrf_animation_envelope::{
+  AnimationBehavior, AnimationEnvelope, AnimationInterpolation, AnimationKey, AnimationShape,
+};
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
 
@@ -87,7 +89,8 @@ fn an_animation_reads_as_the_header_and_six_channels_it_is() -> XrfResult {
   assert_eq!(animation.version, 5);
   assert_eq!(animation.channels.len(), AnmFile::CHANNEL_COUNT);
   assert_eq!(animation.channels[0].keys.len(), 2);
-  assert_eq!(animation.channels[0].behavior, (1, 1));
+  assert_eq!(animation.channels[0].behavior_before, AnimationBehavior::Constant);
+  assert_eq!(animation.channels[3].behavior_after, AnimationBehavior::Repeat);
   assert!(animation.channels[2].keys.is_empty());
 
   Ok(())
@@ -118,11 +121,18 @@ fn a_stepped_key_carries_no_curve_at_all() -> XrfResult {
   let animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(new_animation_bytes()?)?;
   let key: &AnimationKey = &animation.channels[1].keys[0];
 
-  assert!(key.is_stepped());
-  assert_eq!(key.interpolation, None, "a stepped key stores no interpolation");
+  assert_eq!(key.shape, AnimationShape::Stepped);
+  assert_eq!(
+    key.interpolation,
+    AnimationInterpolation::default(),
+    "a stepped key stores no interpolation"
+  );
 
   // Against the interpolating key beside it, which does.
-  assert!(animation.channels[0].keys[0].interpolation.is_some());
+  assert_ne!(
+    animation.channels[0].keys[0].interpolation,
+    AnimationInterpolation::default()
+  );
 
   Ok(())
 }
@@ -130,9 +140,7 @@ fn a_stepped_key_carries_no_curve_at_all() -> XrfResult {
 #[test]
 fn a_quantised_parameter_reads_as_the_step_it_sits_on() -> XrfResult {
   let animation: AnmFile = AnmFile::read_from_bytes::<XRayByteOrder>(new_animation_bytes()?)?;
-  let interpolation: AnimationInterpolation = animation.channels[0].keys[0]
-    .interpolation
-    .expect("the first key interpolates");
+  let interpolation: AnimationInterpolation = animation.channels[0].keys[0].interpolation;
 
   // 32768 of 65535 across -32..32 is just past the middle, which is the closest the grid comes to zero.
   assert!(
@@ -284,36 +292,23 @@ fn a_channel_reports_the_span_its_own_keys_cover() -> XrfResult {
 /// keyed in channel 3.
 fn new_moving_motion() -> AnmFile {
   let line = |values: [f32; 2]| AnimationEnvelope {
-    behavior: (1, 1),
     keys: vec![
       AnimationKey {
         value: values[0],
         time: 0.0,
-        shape: 3,
-        interpolation: Some(AnimationInterpolation {
-          tension: 0.0,
-          continuity: 0.0,
-          bias: 0.0,
-          parameters: [0.0; 4],
-        }),
+        shape: AnimationShape::Linear,
+        ..AnimationKey::default()
       },
       AnimationKey {
         value: values[1],
         time: 2.0,
-        shape: 3,
-        interpolation: Some(AnimationInterpolation {
-          tension: 0.0,
-          continuity: 0.0,
-          bias: 0.0,
-          parameters: [0.0; 4],
-        }),
+        shape: AnimationShape::Linear,
+        ..AnimationKey::default()
       },
     ],
+    ..AnimationEnvelope::default()
   };
-  let flat = || AnimationEnvelope {
-    behavior: (1, 1),
-    keys: Vec::new(),
-  };
+  let flat = AnimationEnvelope::default;
 
   AnmFile {
     name: String::new(),

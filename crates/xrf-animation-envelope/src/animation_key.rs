@@ -3,60 +3,28 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-use crate::AnimationInterpolation;
+use crate::{AnimationInterpolation, AnimationShape};
 
-/// One key of an animation envelope: a value at a time, and the curve leading to it.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+/// One key of an animation envelope, `st_Key`: a value at a time, and the curve leading to it. Zero by default, as
+/// `st_Key::st_Key` leaves it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnimationKey {
   pub value: f32,
   /// Seconds from the start of the animation.
   pub time: f32,
-  pub shape: u8,
-  pub interpolation: Option<AnimationInterpolation>,
+  pub shape: AnimationShape,
+  /// Carried by every key, as `st_Key` carries it, though the narrow layout stores it only for a key that is not
+  /// stepped: a stepped key written that way reads back with zeros here.
+  pub interpolation: AnimationInterpolation,
 }
 
 impl AnimationKey {
-  /// `SHAPE_TCB`: a Kochanek-Bartels spline through the key.
-  pub(crate) const SHAPE_TCB: u8 = 0;
-
-  /// `SHAPE_HERM`: a Hermite spline with the key's own tangents.
-  pub(crate) const SHAPE_HERMITE: u8 = 1;
-
-  /// `SHAPE_BEZI`: a Bezier spline with the key's own tangents.
-  pub(crate) const SHAPE_BEZIER: u8 = 2;
-
-  /// `SHAPE_LINE`: straight towards the key.
-  pub(crate) const SHAPE_LINEAR: u8 = 3;
-
-  /// `SHAPE_STEP`: held until the key, which then steps to its value rather than interpolating.
-  pub(crate) const SHAPE_STEPPED: u8 = 4;
-
-  /// `SHAPE_BEZ2`: a Bezier spline whose handles are times and values.
-  pub(crate) const SHAPE_TIMED_BEZIER: u8 = 5;
-
   /// Bytes a stepped key occupies: the value, the time and the shape.
   pub const MIN_SERIALIZED_SIZE: u64 = 4 + 4 + 1;
 
   /// Bytes a wide key occupies, including the seven unquantized interpolation parameters.
   pub(crate) const WIDE_SERIALIZED_SIZE: u64 = 4 + 4 + 4 + 7 * 4;
-
-  /// Its tension, continuity and bias, zero for a stepped key, which carries none.
-  pub fn get_tcb(&self) -> [f32; 3] {
-    self
-      .interpolation
-      .map_or([0.0; 3], |it| [it.tension, it.continuity, it.bias])
-  }
-
-  /// Its four tangent parameters, zero for a stepped key, which carries none.
-  pub fn get_parameters(&self) -> [f32; 4] {
-    self.interpolation.map_or([0.0; 4], |it| it.parameters)
-  }
-
-  /// Whether this key steps to its value rather than interpolating towards it.
-  pub const fn is_stepped(&self) -> bool {
-    self.shape == Self::SHAPE_STEPPED
-  }
 
   /// Reads a key the narrow way, `st_Key::Load_2`.
   ///
@@ -66,21 +34,21 @@ impl AnimationKey {
   pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let value: f32 = reader.read_f32::<T>()?;
     let time: f32 = reader.read_f32::<T>()?;
-    let shape: u8 = reader.read_u8()?;
+    let shape: AnimationShape = AnimationShape::from(reader.read_u8()?);
 
     Ok(Self {
       value,
       time,
       shape,
-      interpolation: if shape == Self::SHAPE_STEPPED {
-        None
+      interpolation: if shape.is_stepped() {
+        AnimationInterpolation::default()
       } else {
-        Some(AnimationInterpolation::read::<T, D>(reader)?)
+        AnimationInterpolation::read::<T, D>(reader)?
       },
     })
   }
 
-  /// Reads a key the wide way, `st_Key::Load_1`.
+  /// Reads a key the wide way, `st_Key::Load_1`, which stores the curve parameters of a stepped key too.
   ///
   /// # Errors
   ///
@@ -88,18 +56,18 @@ impl AnimationKey {
   pub fn read_wide<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let value: f32 = reader.read_f32::<T>()?;
     let time: f32 = reader.read_f32::<T>()?;
-    let shape: u32 = reader.read_u32::<T>()?;
+    // Narrowed the way the engine does, which keeps only the low byte.
+    let shape: AnimationShape = AnimationShape::from((reader.read_u32::<T>()? & 0xff) as u8);
 
     Ok(Self {
       value,
       time,
-      // Narrowed the way the engine does, which keeps only the low byte.
-      shape: (shape & 0xff) as u8,
-      interpolation: Some(AnimationInterpolation::read_wide::<T, D>(reader)?),
+      shape,
+      interpolation: AnimationInterpolation::read_wide::<T, D>(reader)?,
     })
   }
 
-  /// Writes a key the narrow way, `st_Key::Save`.
+  /// Writes a key the narrow way, `st_Key::Save`, which leaves out the curve parameters of a stepped key.
   ///
   /// # Errors
   ///
@@ -107,10 +75,10 @@ impl AnimationKey {
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_f32::<T>(self.value)?;
     writer.write_f32::<T>(self.time)?;
-    writer.write_u8(self.shape)?;
+    writer.write_u8(self.shape.into())?;
 
-    if let Some(interpolation) = &self.interpolation {
-      interpolation.write::<T>(writer)?;
+    if !self.shape.is_stepped() {
+      self.interpolation.write::<T>(writer)?;
     }
 
     Ok(())
@@ -122,7 +90,7 @@ mod tests {
   use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
 
-  use crate::{AnimationInterpolation, AnimationKey};
+  use crate::{AnimationInterpolation, AnimationKey, AnimationShape};
 
   fn new_interpolated_key_bytes() -> Vec<u8> {
     vec![
@@ -133,13 +101,22 @@ mod tests {
     ]
   }
 
+  fn new_interpolation() -> AnimationInterpolation {
+    AnimationInterpolation {
+      tension: -32.0,
+      continuity: 32.0,
+      bias: -32.0,
+      parameters: [32.0, -32.0, 32.0, -32.0],
+    }
+  }
+
   #[test]
   fn test_read_write_stepped() -> XrfResult {
     let original: AnimationKey = AnimationKey {
       value: 1.5,
       time: 2.0,
-      shape: 4,
-      interpolation: None,
+      shape: AnimationShape::Stepped,
+      interpolation: AnimationInterpolation::default(),
     };
     let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -152,7 +129,34 @@ mod tests {
     let key: AnimationKey = AnimationKey::read::<XRayByteOrder, _>(&mut reader)?;
 
     assert_eq!(key, original);
-    assert!(key.is_stepped());
+    reader.assert_read("Expect the stepped key to end after its shape")?;
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_write_stepped_leaves_out_its_parameters() -> XrfResult {
+    let original: AnimationKey = AnimationKey {
+      value: 1.5,
+      time: 2.0,
+      shape: AnimationShape::Stepped,
+      interpolation: new_interpolation(),
+    };
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    original.write::<XRayByteOrder>(&mut writer)?;
+
+    assert_eq!(writer.buffer, [0, 0, 192, 63, 0, 0, 0, 64, 4]);
+
+    let mut reader = ChunkReader::from_vec(writer.buffer)?;
+
+    assert_eq!(
+      AnimationKey::read::<XRayByteOrder, _>(&mut reader)?,
+      AnimationKey {
+        interpolation: AnimationInterpolation::default(),
+        ..original
+      }
+    );
     reader.assert_read("Expect the stepped key to end after its shape")?;
 
     Ok(())
@@ -160,17 +164,12 @@ mod tests {
 
   #[test]
   fn test_read_write_interpolated() -> XrfResult {
-    for shape in [0, 1, 2, 3, 5] {
+    for shape in [0, 1, 2, 3, 5, 7] {
       let original: AnimationKey = AnimationKey {
         value: 1.5,
         time: 2.0,
-        shape,
-        interpolation: Some(AnimationInterpolation {
-          tension: -32.0,
-          continuity: 32.0,
-          bias: -32.0,
-          parameters: [32.0, -32.0, 32.0, -32.0],
-        }),
+        shape: AnimationShape::from(shape),
+        interpolation: new_interpolation(),
       };
       let mut writer: ChunkWriter = ChunkWriter::new();
       let mut expected: Vec<u8> = new_interpolated_key_bytes();
@@ -185,7 +184,6 @@ mod tests {
       let key: AnimationKey = AnimationKey::read::<XRayByteOrder, _>(&mut reader)?;
 
       assert_eq!(key, original);
-      assert!(!key.is_stepped());
       reader.assert_read("Expect all interpolated key fields to be read")?;
     }
 
@@ -210,16 +208,15 @@ mod tests {
       AnimationKey {
         value: 1.5,
         time: 2.0,
-        shape: 4,
-        interpolation: Some(AnimationInterpolation {
+        shape: AnimationShape::Stepped,
+        interpolation: AnimationInterpolation {
           tension: -1.0,
           continuity: 2.0,
           bias: -3.0,
           parameters: [4.0, -5.0, 6.0, -7.0],
-        }),
+        },
       }
     );
-    assert!(key.is_stepped());
     reader.assert_read("Expect the wide stepped key to include interpolation parameters")?;
 
     Ok(())

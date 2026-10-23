@@ -57,16 +57,15 @@ mod tests {
 
   fn envelope(times: &[f32]) -> AnimationEnvelope {
     AnimationEnvelope {
-      behavior: (1, 1),
       keys: times
         .iter()
         .map(|time| AnimationKey {
           value: 1.0,
           time: *time,
-          shape: 0,
-          interpolation: None,
+          ..AnimationKey::default()
         })
         .collect(),
+      ..AnimationEnvelope::default()
     }
   }
 
