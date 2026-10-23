@@ -4,19 +4,16 @@ use std::sync::Arc;
 use xrf_archive::ArchiveDescriptor;
 use xrf_error::XrfResult;
 
+use crate::input::{XrayInput, XrayInputKind, XrayInputRecord, XraySearch};
 use crate::vfs::{
   XrayDirectoryListing, XrayMountedEntry, XrayResolution, XrayScopedVfs, XrayShadowedCopy, XrayShadowingEntry,
 };
 use crate::{
-  XrayAsset, XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMount, XrayMountId, XrayPathCollision,
-  XraySkippedMount, XrayVfs,
+  XrayAsset, XrayAssetRules, XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMount, XrayMountId,
+  XrayPathCollision, XraySkippedMount, XrayVfs,
 };
 
 /// One place a probe looks, and the name a report calls it by.
-///
-/// The label is the caller's, because only the caller knows what a scope means to a reader: `visual root`, `project
-/// gamedata`, `level bundle`. It travels into the outcome so a located asset says where it came from without the reader
-/// reconstructing the search.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct XrayProbeStep {
   label: String,
@@ -63,35 +60,36 @@ pub struct XraySearchedSource<'a> {
 
 impl XrayVfs {
   /// Starts a probe over this VFS, to which steps are added in the order they should be searched.
-  ///
-  /// The counterpart of [`XrayVfs::scoped`] for a lookup that spans several scopes in a fixed order rather than one.
   pub fn probe(&self) -> XrayProbe<'_> {
     XrayProbe {
       vfs: self,
       steps: Vec::new(),
+      recording: None,
     }
   }
 }
 
 /// An ordered search across several scopes of one VFS, with the winner naming the step it came from.
-///
-/// The engine resolves a reference by probing places in a fixed order, and the order differs by domain: a visual is
-/// searched for beside itself, then in its installation, then in the project's gamedata, while `CRender::texture_load`
-/// probes a level bundle before the shared texture tree. Expressing both as steps keeps one mechanism instead of one
-/// resolver per domain, which is how the same rule came to be written four times.
-///
-/// Every lookup here delegates to [`crate::XrayScopedVfs`] — this composes resolution, it does not implement any, so there
-/// is still exactly one place a reference becomes a path.
 #[derive(Clone, Debug)]
 pub struct XrayProbe<'a> {
   vfs: &'a XrayVfs,
   steps: Vec<XrayProbeStep>,
+  /// Where every input a lookup or read resolves is recorded, none for a probe that records nothing.
+  recording: Option<XrayProbeRecording>,
+}
+
+/// A record a probe adds to, and the search each input it records is resolved by.
+#[derive(Clone, Debug)]
+struct XrayProbeRecording {
+  record: XrayInputRecord,
+  search: XraySearch,
 }
 
 impl<'a> XrayProbe<'a> {
   /// Appends a step searched after the ones already added.
   pub fn with_step(mut self, label: impl Into<String>, scope: XrayLookupScope) -> Self {
     self.steps.push(XrayProbeStep::new(label, scope));
+    self.refresh_search();
 
     self
   }
@@ -101,8 +99,34 @@ impl<'a> XrayProbe<'a> {
   /// The counterpart of [`crate::XrayProbePlan::mount_into`], which mounts a declared order and hands back its steps.
   pub fn with_steps(mut self, steps: impl IntoIterator<Item = XrayProbeStep>) -> Self {
     self.steps.extend(steps);
+    self.refresh_search();
 
     self
+  }
+
+  /// This probe recording into `record` every input its lookups and reads resolve, with what answered each: cache hits,
+  /// lookups that find nothing and listings included.
+  pub fn recording(&self, record: &XrayInputRecord) -> XrayProbe<'a> {
+    XrayProbe {
+      recording: Some(XrayProbeRecording {
+        record: record.clone(),
+        search: XraySearch::of(&self.steps),
+      }),
+      ..self.clone()
+    }
+  }
+
+  /// The record this probe adds to, or `None` where it records nothing.
+  pub fn get_record(&self) -> Option<&XrayInputRecord> {
+    self.recording.as_ref().map(|recording| &recording.record)
+  }
+
+  /// Records `inputs` as read through this probe, for a value it was handed that was built from them; nothing where it
+  /// records nothing.
+  pub fn record_inputs(&self, inputs: &XrayInputRecord) {
+    if let Some(recording) = &self.recording {
+      recording.record.extend_from(inputs);
+    }
   }
 
   /// Returns the steps in search order.
@@ -111,9 +135,6 @@ impl<'a> XrayProbe<'a> {
   }
 
   /// Whether this probe has nothing to search, because no step selects a mounted source.
-  ///
-  /// A probe with steps over an empty VFS is empty too: what matters is whether a lookup could reach anything, not how
-  /// many scopes were declared.
   pub fn is_empty(&self) -> bool {
     !self.steps.iter().any(|step| self.has_mounts(step))
   }
@@ -188,9 +209,6 @@ impl<'a> XrayProbe<'a> {
 
   /// Resolves an engine reference of one kind, step by step, first hit winning.
   ///
-  /// Mask-aware, because a reference of some kinds may name a set: a motion reference such as `wpn\wpn_ak74_*.omf` is one
-  /// reference with several answers, and it is still one outcome.
-  ///
   /// # Errors
   ///
   /// Returns an error when the kind has no canonical home, or when the reference cannot be normalized as an X-Ray path.
@@ -211,9 +229,6 @@ impl<'a> XrayProbe<'a> {
   }
 
   /// Resolves a reference, falling back to another reference of the same kind when it is absent.
-  ///
-  /// The fallback is the caller's, because substitution is a per-kind engine rule rather than a VFS one: a texture has the
-  /// renderer's dummy, a motion set has nothing to stand in for it.
   ///
   /// # Errors
   ///
@@ -249,13 +264,12 @@ impl<'a> XrayProbe<'a> {
 
   /// Finds an exact logical path, step by step, first hit winning.
   ///
-  /// The counterpart of [`Self::resolve`] for a path already in engine form — a bundle file, or an asset a previous
-  /// lookup located — where there is no reference to interpret and no kind to interpret it as.
-  ///
   /// # Errors
   ///
   /// Returns an error when the path is not a valid X-Ray logical path.
   pub fn find(&self, logical_path: &str) -> XrfResult<XrayResolution> {
+    self.record(|| XrayLogicalPath::new(logical_path).ok().map(XrayInputKind::File));
+
     if self.is_empty() {
       return Ok(XrayResolution::NoScope);
     }
@@ -303,6 +317,13 @@ impl<'a> XrayProbe<'a> {
   ///
   /// Returns an error when the directory is not a valid X-Ray logical path.
   pub fn list_children(&self, directory: &str) -> XrfResult<XrayDirectoryListing> {
+    self.record(|| match directory {
+      "" => Some(XrayInputKind::Listing(None)),
+      directory => XrayLogicalPath::new(directory)
+        .ok()
+        .map(|directory| XrayInputKind::Listing(Some(directory))),
+    });
+
     let mut listing: XrayDirectoryListing = XrayDirectoryListing::default();
     let mut seen_directories: HashSet<String> = HashSet::new();
     let mut seen_files: HashSet<String> = HashSet::new();
@@ -337,11 +358,9 @@ impl<'a> XrayProbe<'a> {
   }
 
   /// Every asset of one kind this probe can reach, in step order and once per engine identity.
-  ///
-  /// Deduped across steps the way a lookup resolves: an asset present in two steps is the one the earlier step holds,
-  /// so a browsed tree lists what opening that path would actually give. Within a step, mount shadowing has already
-  /// been applied.
   pub fn list_assets_of_type(&self, asset_type: XrayAssetType) -> Vec<XrayAsset> {
+    self.record(|| Some(XrayInputKind::Listing(None)));
+
     let mut assets: Vec<XrayAsset> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
 
@@ -358,12 +377,10 @@ impl<'a> XrayProbe<'a> {
 
   /// Every entry this probe can reach, once per engine identity, with the size of the copy that wins.
   ///
-  /// Folded across steps the way a lookup resolves: a path an earlier step holds wins, and a later step's copy of it is
-  /// dropped. [`Self::list_shadowing_entries`] answers the same winners while keeping those copies, for the one caller
-  /// whose subject they are.
-  ///
   /// Sorted by engine identity, because the per-step listings are each sorted and concatenating them is not.
   pub fn list_mounted_entries(&self) -> Vec<XrayMountedEntry> {
+    self.record(|| Some(XrayInputKind::Listing(None)));
+
     let mut entries: Vec<XrayMountedEntry> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
 
@@ -382,6 +399,8 @@ impl<'a> XrayProbe<'a> {
 
   /// Every entry this probe can reach, once per engine identity, with the sized copies each one hides.
   pub fn list_shadowing_entries(&self) -> Vec<XrayShadowingEntry> {
+    self.record(|| Some(XrayInputKind::Listing(None)));
+
     let mut entries: Vec<XrayShadowingEntry> = Vec::new();
     let mut seen: HashMap<String, usize> = HashMap::new();
 
@@ -415,14 +434,12 @@ impl<'a> XrayProbe<'a> {
   ///
   /// Returns an error when the asset's source cannot produce its bytes.
   pub fn read_asset_bytes(&self, asset: &XrayAsset) -> XrfResult<Vec<u8>> {
+    self.record(|| Some(XrayInputKind::File(asset.get_logical_path().clone())));
+
     self.vfs.read_asset_bytes(asset)
   }
 
   /// Reads and parses an asset, serving a retained value when this world is already holding one.
-  ///
-  /// Keyed on the step that resolved the asset rather than on the probe, so two probes ordering their steps differently
-  /// cannot serve each other a value from a tree the other searches later. The kind comes from the asset itself, which is
-  /// what the retention policy is stated in terms of; an asset whose extension names no kind is never retained.
   ///
   /// # Errors
   ///
@@ -432,6 +449,8 @@ impl<'a> XrayProbe<'a> {
     T: Send + Sync + 'static,
     F: FnOnce(Vec<u8>) -> XrfResult<T>,
   {
+    self.record(|| Some(XrayInputKind::File(asset.get_logical_path().clone())));
+
     let logical_path: &str = asset.get_logical_path().as_str();
 
     for step in &self.steps {
@@ -453,6 +472,19 @@ impl<'a> XrayProbe<'a> {
 
   /// The first step holding the reference, with everything it holds for it.
   fn locate(&self, asset_type: XrayAssetType, reference: &str) -> XrfResult<Option<(&str, Vec<XrayAsset>)>> {
+    self.record(|| {
+      let rules: XrayAssetRules = XrayVfs::get_rules_of(asset_type).ok()?;
+
+      // A mask names whatever its kind's directory holds that matches it, as `XrayVfs::resolve_all_in` lists it.
+      if reference.contains('*') {
+        return Some(XrayInputKind::Listing(XrayLogicalPath::new(rules.directory).ok()));
+      }
+
+      crate::path::join(rules.directory, &rules.to_logical_path(reference))
+        .ok()
+        .map(|path| XrayInputKind::File(XrayLogicalPath::from_normalized(path)))
+    });
+
     for step in &self.steps {
       // A step selecting nothing is skipped rather than answered, so an unconfigured root does not end the search ahead of
       // a configured one behind it.
@@ -472,5 +504,24 @@ impl<'a> XrayProbe<'a> {
 
   fn has_mounts(&self, step: &XrayProbeStep) -> bool {
     self.vfs.scoped(step.get_scope()).list_mounts().next().is_some()
+  }
+
+  /// Records the input `kind` names where this probe records, building it only then; `None` is a lookup the probe
+  /// refuses anyway, which reads nothing.
+  fn record(&self, kind: impl FnOnce() -> Option<XrayInputKind>) {
+    if let Some(recording) = &self.recording
+      && let Some(kind) = kind()
+    {
+      recording
+        .record
+        .record(self.vfs, XrayInput::new(recording.search.clone(), kind));
+    }
+  }
+
+  /// Keeps the search a recording probe files its inputs under in step with its steps.
+  fn refresh_search(&mut self) {
+    if let Some(recording) = &mut self.recording {
+      recording.search = XraySearch::of(&self.steps);
+    }
   }
 }
