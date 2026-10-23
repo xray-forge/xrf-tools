@@ -37,7 +37,7 @@ pub fn get_level_hemi(
   current: &SessionSnapshot<SelectedLevel>,
   probe: &XrayProbe,
 ) -> Result<Arc<HemiEstimator>, String> {
-  current.parts.get_or_init::<LevelHemiPart>(|| {
+  current.parts.get_or_record::<LevelHemiPart>(probe, |probe| {
     read_hemi(current, probe).inspect_err(|error| report_missing_hemi(&current.source, error))
   })
 }

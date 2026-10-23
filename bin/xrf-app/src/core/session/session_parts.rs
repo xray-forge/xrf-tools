@@ -4,15 +4,26 @@ use std::fmt;
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 
 use xrf_job::PoolOnceLock;
+use xrf_vfs::{XrayInputRecord, XrayProbe};
 
 use crate::core::session::SessionPart;
 
-/// The parts a snapshot keeps, each built the first time anything asks and kept until the snapshot is let go.
+/// The parts a snapshot keeps, each built the first time anything asks and kept until the snapshot is let go, with the
+/// inputs its build read.
 pub(crate) struct SessionParts {
-  cells: Mutex<HashMap<TypeId, Arc<dyn Any + Send + Sync>>>,
+  slots: Mutex<HashMap<TypeId, SessionPartSlot>>,
 }
 
-/// One part's place: empty until it is built, then what it keeps.
+/// One part's place: its cell, and what was read for it.
+#[derive(Clone)]
+struct SessionPartSlot {
+  cell: Arc<dyn Any + Send + Sync>,
+  inputs: XrayInputRecord,
+  /// The key's type name, which a report names the part by.
+  name: &'static str,
+}
+
+/// One part's value: empty until it is built, then what it keeps.
 enum SessionPartCell<V> {
   Plain(OnceLock<V>),
   Pooled(PoolOnceLock<V>),
@@ -21,58 +32,139 @@ enum SessionPartCell<V> {
 impl SessionParts {
   pub fn new() -> Self {
     Self {
-      cells: Mutex::new(HashMap::new()),
+      slots: Mutex::new(HashMap::new()),
     }
   }
 
-  /// The store with `value` kept as the part `K` already, for a part the opening read on its way.
-  pub fn with<K: SessionPart>(self, value: K::Value) -> Self {
+  /// The store with `value` kept as the part `K` already, read from `inputs`, for a part the opening read on its way.
+  pub fn with<K: SessionPart>(self, value: K::Value, inputs: XrayInputRecord) -> Self {
     // A kept part is never built, so even a pooled one takes a plain cell rather than a thread to fill it on.
-    self
-      .lock()
-      .entry(TypeId::of::<K>())
-      .or_insert_with(|| Arc::new(SessionPartCell::Plain(OnceLock::from(value))));
+    self.lock().entry(TypeId::of::<K>()).or_insert_with(|| SessionPartSlot {
+      cell: Arc::new(SessionPartCell::Plain(OnceLock::from(value))),
+      inputs,
+      name: std::any::type_name::<K>(),
+    });
 
     self
   }
 
-  /// The part `K`, built by `build` the first time anything asks.
+  /// The part `K`, built by `build` the first time anything asks, for a part that reads nothing of the project.
   ///
   /// # Panics
   ///
   /// Panics where `build` panics, leaving the part unbuilt.
   pub fn get_or_init<K: SessionPart>(&self, build: impl FnOnce() -> K::Value + Send) -> K::Value {
-    match &*self.get_cell::<K>() {
+    self.get_slot::<K>().0.get_or_init(build)
+  }
+
+  /// The part `K`, built by `build` the first time anything asks through a probe recording what it reads into the
+  /// part's inputs.
+  ///
+  /// `probe` is the asker's: where it records, as a part build asking for another does, the part's inputs join its own,
+  /// built now or before.
+  ///
+  /// # Panics
+  ///
+  /// Panics where `build` panics, leaving the part unbuilt.
+  pub fn get_or_record<K: SessionPart>(
+    &self,
+    probe: &XrayProbe,
+    build: impl FnOnce(&XrayProbe) -> K::Value + Send,
+  ) -> K::Value {
+    let (cell, inputs) = self.get_slot::<K>();
+    let value: K::Value = cell.get_or_init(|| build(&probe.recording(&inputs)));
+
+    probe.record_inputs(&inputs);
+
+    value
+  }
+
+  /// Runs `read` through a probe recording into the inputs of the part `K`, for a part whose values are read after it is
+  /// built, one key at a time.
+  ///
+  /// As [`Self::get_or_record`], the part's inputs join the asker's where `probe` records.
+  pub fn record<K: SessionPart, T>(&self, probe: &XrayProbe, read: impl FnOnce(&XrayProbe) -> T) -> T {
+    let inputs: XrayInputRecord = self.get_slot::<K>().1;
+    let read: T = read(&probe.recording(&inputs));
+
+    probe.record_inputs(&inputs);
+
+    read
+  }
+
+  /// The part `K`, where it was built; asking builds nothing.
+  pub fn get<K: SessionPart>(&self) -> Option<K::Value> {
+    self.find_slot::<K>()?.0.get()
+  }
+
+  /// The inputs the part `K` was built from, where anything asked for it.
+  #[cfg(test)]
+  pub fn get_inputs<K: SessionPart>(&self) -> Option<XrayInputRecord> {
+    self.find_slot::<K>().map(|(_, inputs)| inputs)
+  }
+
+  /// Every part asked for, by its key's type name, with the inputs it was built from.
+  #[cfg(test)]
+  pub fn list_inputs(&self) -> Vec<(&'static str, XrayInputRecord)> {
+    self
+      .lock()
+      .values()
+      .map(|slot| (slot.name, slot.inputs.clone()))
+      .collect()
+  }
+
+  fn get_slot<K: SessionPart>(&self) -> (Arc<SessionPartCell<K::Value>>, XrayInputRecord) {
+    let slot: SessionPartSlot = self
+      .lock()
+      .entry(TypeId::of::<K>())
+      .or_insert_with(|| SessionPartSlot {
+        cell: Arc::new(if K::IS_POOLED {
+          SessionPartCell::Pooled(PoolOnceLock::<K::Value>::new())
+        } else {
+          SessionPartCell::Plain(OnceLock::<K::Value>::new())
+        }),
+        inputs: XrayInputRecord::new(),
+        name: std::any::type_name::<K>(),
+      })
+      .clone();
+
+    Self::downcast::<K>(slot)
+  }
+
+  fn find_slot<K: SessionPart>(&self) -> Option<(Arc<SessionPartCell<K::Value>>, XrayInputRecord)> {
+    let slot: SessionPartSlot = self.lock().get(&TypeId::of::<K>())?.clone();
+
+    Some(Self::downcast::<K>(slot))
+  }
+
+  fn downcast<K: SessionPart>(slot: SessionPartSlot) -> (Arc<SessionPartCell<K::Value>>, XrayInputRecord) {
+    let cell: Arc<SessionPartCell<K::Value>> = slot
+      .cell
+      .downcast::<SessionPartCell<K::Value>>()
+      .unwrap_or_else(|_| unreachable!("a part's cell is filed under its own key"));
+
+    (cell, slot.inputs)
+  }
+
+  /// The slots, whatever a panicking ask left: a slot is only ever added whole.
+  fn lock(&self) -> MutexGuard<'_, HashMap<TypeId, SessionPartSlot>> {
+    self.slots.lock().unwrap_or_else(PoisonError::into_inner)
+  }
+}
+
+impl<V: Clone + Send> SessionPartCell<V> {
+  fn get_or_init(&self, build: impl FnOnce() -> V + Send) -> V {
+    match self {
       SessionPartCell::Plain(cell) => cell.get_or_init(build).clone(),
       SessionPartCell::Pooled(cell) => cell.get_or_init(build).clone(),
     }
   }
 
-  /// The part `K`, where it was built; asking builds nothing.
-  pub fn get<K: SessionPart>(&self) -> Option<K::Value> {
-    match &*self.get_cell::<K>() {
+  fn get(&self) -> Option<V> {
+    match self {
       SessionPartCell::Plain(cell) => cell.get().cloned(),
       SessionPartCell::Pooled(cell) => cell.get().cloned(),
     }
-  }
-
-  fn get_cell<K: SessionPart>(&self) -> Arc<SessionPartCell<K::Value>> {
-    let cell: Arc<dyn Any + Send + Sync> = Arc::clone(self.lock().entry(TypeId::of::<K>()).or_insert_with(|| {
-      Arc::new(if K::IS_POOLED {
-        SessionPartCell::Pooled(PoolOnceLock::<K::Value>::new())
-      } else {
-        SessionPartCell::Plain(OnceLock::<K::Value>::new())
-      })
-    }));
-
-    cell
-      .downcast::<SessionPartCell<K::Value>>()
-      .unwrap_or_else(|_| unreachable!("a part's cell is filed under its own key"))
-  }
-
-  /// The cells, whatever a panicking ask left: a cell is only ever added whole.
-  fn lock(&self) -> MutexGuard<'_, HashMap<TypeId, Arc<dyn Any + Send + Sync>>> {
-    self.cells.lock().unwrap_or_else(PoisonError::into_inner)
   }
 }
 
@@ -84,9 +176,8 @@ impl Default for SessionParts {
 
 impl fmt::Debug for SessionParts {
   fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-    formatter
-      .debug_struct("SessionParts")
-      .field("parts", &self.lock().len())
-      .finish()
+    let names: Vec<&'static str> = self.lock().values().map(|slot| slot.name).collect();
+
+    formatter.debug_struct("SessionParts").field("parts", &names).finish()
   }
 }

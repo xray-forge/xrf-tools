@@ -9,7 +9,7 @@ use xrf_level::LevelCformFile;
 use xrf_ltx::{Ltx, LtxDialect};
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_math::Vector3d;
-use xrf_vfs::{XrayProbe, XrayRoots};
+use xrf_vfs::{XrayInputRecord, XrayProbe, XrayRoots};
 use xrf_visual::SectorOutline;
 
 use crate::core::assets::{AssetMountState, detect_probe_engine};
@@ -36,8 +36,12 @@ struct OpenedLevel {
   textures: Vec<LevelTextureReference>,
   surfaces: Vec<XraySurfaceDescriptor>,
   spawn: Result<Arc<LevelSpawn>, String>,
+  /// What the spawn was read from.
+  spawn_inputs: XrayInputRecord,
   /// The sections the spawn names and the textures the configs reduce, none where the spawn could not be read.
   sections: Option<Result<Arc<Ltx>, String>>,
+  /// What the sections were read from.
+  sections_inputs: XrayInputRecord,
   outlines: Vec<SectorOutline>,
   start: Option<LevelStart>,
   level_map: Option<LevelMapDescription>,
@@ -69,14 +73,17 @@ pub async fn levels_open_level(
   let roots: XrayRoots = roots.centred_on(source.get_physical_path());
   let dialect: Arc<dyn LtxDialect> = select_ltx_dialect(is_dltx);
   let assets: AssetMountState = AssetMountState::clone(&assets);
-  let (opened, engine, source, roots, dialect) = execution
+  let (opened, engine, inputs, source, roots, dialect) = execution
     .run_blocking("Opening the level", move || {
+      let inputs: XrayInputRecord = XrayInputRecord::new();
       let (opened, engine): (OpenedLevel, XrayEngineResolution) = assets.with_fresh_probe(&roots, |probe| {
-        open(&source, probe, (&roots, &dialect))
-          .map(|opened| (opened, engine.resolve(|| detect_probe_engine(probe, &roots))))
+        let probe: XrayProbe = probe.recording(&inputs);
+
+        open(&source, &probe, (&roots, &dialect))
+          .map(|opened| (opened, engine.resolve(|| detect_probe_engine(&probe, &roots))))
       })??;
 
-      TauriResult::Ok((opened, engine, source, roots, dialect))
+      TauriResult::Ok((opened, engine, inputs, source, roots, dialect))
     })
     .await??;
 
@@ -85,10 +92,10 @@ pub async fn levels_open_level(
   report_start(&source, opened.start.as_ref());
 
   // The spawn and the sections it names are read as the level opens, so they are kept as its parts already.
-  let mut parts: SessionParts = with_level_spawn(SessionParts::new(), opened.spawn);
+  let mut parts: SessionParts = with_level_spawn(SessionParts::new(), opened.spawn, opened.spawn_inputs);
 
   if let Some(sections) = opened.sections {
-    parts = with_level_sections(parts, sections);
+    parts = with_level_sections(parts, sections, opened.sections_inputs);
   }
 
   let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.commit_open_with(
@@ -107,27 +114,37 @@ pub async fn levels_open_level(
       textures: opened.textures,
       visuals: opened.read.visuals,
     },
+    inputs,
     parts,
   )?;
 
-  report_open(&selected.value, started);
+  report_open(&selected, started);
 
   Ok(selected.map(SelectedLevel::describe))
 }
 
 /// Reads the level and its spawn side by side, outlines its sectors and decides where it opens.
+///
+/// `probe` records what the level itself is read from; the spawn and the sections, kept as parts, record their own.
 fn open(
   source: &LevelSource,
   probe: &XrayProbe,
   configs: (&XrayRoots, &Arc<dyn LtxDialect>),
 ) -> TauriResult<OpenedLevel> {
   let scope: XrayTextureScope = source.get_texture_scope();
+  let spawn_inputs: XrayInputRecord = XrayInputRecord::new();
+  let sections_inputs: XrayInputRecord = XrayInputRecord::new();
   // The spawn, what stands over the places it has an actor at, and the configs' sections it names are read beside the
   // level rather than after it: the renderer's first texture asks whether the configs reduce it.
   let (read, (spawn, open, sections)) = rayon::join(
     || read_source(source, probe),
     || {
-      let spawn: Result<Arc<LevelSpawn>, String> = read_source_spawn(source, probe);
+      let spawn: Result<Arc<LevelSpawn>, String> = read_source_spawn(source, &probe.recording(&spawn_inputs));
+
+      // Where the level starts is decided over its spawn, and the sections are those the spawn names.
+      probe.record_inputs(&spawn_inputs);
+      sections_inputs.extend_from(&spawn_inputs);
+
       let open: Vec<bool> = spawn.as_deref().map_or_else(
         |_| Vec::new(),
         |spawn| find_open(source, probe, &list_level_start_eyes(spawn)),
@@ -164,7 +181,9 @@ fn open(
     outlines,
     read,
     sections,
+    sections_inputs,
     spawn,
+    spawn_inputs,
     start,
     surfaces,
     textures,

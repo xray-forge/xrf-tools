@@ -45,13 +45,11 @@ pub fn pack_lights(
   }
 
   match get_level_spawn(current, probe) {
-    Ok(spawn) => {
-      let visuals: SpawnVisualReader = SpawnVisualReader::new(current, probe);
-
+    Ok(spawn) => SpawnVisualReader::with(current, probe, |visuals| {
       packer.add_objects(spawn.list_kept(), &mut |name| {
         visuals.get(name).ok().and_then(|it| it.rest.clone())
       });
-    }
+    }),
     Err(error) => report_missing_spawned_lights(&current.source, &error),
   }
 

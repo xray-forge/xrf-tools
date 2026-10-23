@@ -1,5 +1,7 @@
 use std::sync::{Arc, Mutex, MutexGuard};
 
+use xrf_vfs::XrayInputRecord;
+
 use crate::core::session::{SessionId, SessionParts, SessionSnapshot};
 use crate::core::types::TauriResult;
 
@@ -72,14 +74,22 @@ impl<T> Session<T> {
 
   /// Publishes only the newest opening; parsing and resource acquisition happen before this call.
   pub fn commit_open(&self, id: SessionId, value: T) -> TauriResult<Arc<SessionSnapshot<T>>> {
-    self.commit_open_with(id, value, SessionParts::new())
+    self.commit_open_with(id, value, XrayInputRecord::new(), SessionParts::new())
   }
 
-  /// Publishes only the newest opening as [`Self::commit_open`] does, keeping the parts the opening read on its way.
-  pub fn commit_open_with(&self, id: SessionId, value: T, parts: SessionParts) -> TauriResult<Arc<SessionSnapshot<T>>> {
+  /// Publishes only the newest opening as [`Self::commit_open`] does, keeping the inputs the value was derived from and
+  /// the parts the opening read on its way.
+  pub fn commit_open_with(
+    &self,
+    id: SessionId,
+    value: T,
+    inputs: XrayInputRecord,
+    parts: SessionParts,
+  ) -> TauriResult<Arc<SessionSnapshot<T>>> {
     let opened: Arc<SessionSnapshot<T>> = Arc::new(SessionSnapshot {
       session_id: id,
       value,
+      inputs,
       parts,
     });
 

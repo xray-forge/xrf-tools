@@ -41,6 +41,7 @@ impl LevelEnvironment {
   ///
   /// Returns the reason the configs cannot be read, which every later ask answers with again.
   pub fn of(current: &SessionSnapshot<SelectedLevel>) -> Result<Arc<Self>, String> {
+    // todo: read the environment configs through the level's probe, so the part records the files they come from.
     current.parts.get_or_init::<LevelEnvironmentPart>(|| {
       let project: LtxProject = open_configs(&current.roots, current.dialect.clone())?;
       let catalog: EnvironmentCatalog = read_catalog(

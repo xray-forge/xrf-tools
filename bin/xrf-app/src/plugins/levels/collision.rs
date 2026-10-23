@@ -31,7 +31,7 @@ pub fn get_level_collision(
 ) -> Result<Arc<LevelCformTracer>, String> {
   current
     .parts
-    .get_or_init::<LevelCollisionPart>(|| read_collision(&current.source, probe))
+    .get_or_record::<LevelCollisionPart>(probe, |probe| read_collision(&current.source, probe))
 }
 
 fn read_collision(source: &LevelSource, probe: &XrayProbe) -> Result<Arc<LevelCformTracer>, String> {
