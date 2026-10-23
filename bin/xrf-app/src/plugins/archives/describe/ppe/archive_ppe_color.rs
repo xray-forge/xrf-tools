@@ -1,10 +1,7 @@
 use serde::Serialize;
-use xrf_ppe::PpeColor;
+use xrf_ppe::{PPE_COLOR_CHANNELS, PpeColor};
 
 use crate::plugins::archives::describe::animation::ArchiveAnimationChannel;
-
-/// The three channels a colour parameter is assembled from, in the order the file stores them.
-const CHANNELS: [&str; 3] = ["red", "green", "blue"];
 
 /// One colour parameter of an effect, and the three channels it is assembled from.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -39,7 +36,7 @@ impl ArchivePpeColor {
       base: color.base,
       keys: color.get_keys_count(),
       length_seconds: color.get_length_seconds(),
-      channels: CHANNELS
+      channels: PPE_COLOR_CHANNELS
         .into_iter()
         .zip(color.channels())
         .map(|(channel, envelope)| ArchiveAnimationChannel::of(channel, envelope))

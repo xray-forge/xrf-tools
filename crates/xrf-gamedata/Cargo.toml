@@ -33,6 +33,9 @@ xrf-omf = { workspace = true }
 xrf-thm = { workspace = true }
 xrf-spawn = { workspace = true }
 xrf-particles = { workspace = true }
+xrf-animation-envelope = { workspace = true }
+xrf-anm = { workspace = true }
+xrf-ppe = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }

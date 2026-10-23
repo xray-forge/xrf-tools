@@ -11,7 +11,7 @@ use xrf_omf::OmfFile;
 use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::project::animations::hud_item_animations_verification_result::GamedataHudItemAnimationsVerificationResult;
+use crate::project::animations::hud::hud_item_animations_verification_result::GamedataHudItemAnimationsVerificationResult;
 use crate::project::weapons::weapons_utils::is_hud_item_section;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 

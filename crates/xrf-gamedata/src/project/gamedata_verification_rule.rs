@@ -8,8 +8,26 @@ pub enum GamedataVerificationRule {
   AnimationsHudItem,
   #[display("animations.motion-collision")]
   AnimationsMotionCollision,
+  /// An object motion (`.anm`) that does not read.
+  #[display("animations.object-motion-read")]
+  AnimationsObjectMotionRead,
+  /// An object motion that does not write back to the bytes it was read from.
+  #[display("animations.object-motion-round-trip")]
+  AnimationsObjectMotionRoundTrip,
+  /// An object motion channel that evaluates to something other than a finite number.
+  #[display("animations.object-motion-value")]
+  AnimationsObjectMotionValue,
   #[display("animations.player-hud")]
   AnimationsPlayerHud,
+  /// A post-process effect (`.ppe`) that does not read.
+  #[display("animations.post-process-read")]
+  AnimationsPostProcessRead,
+  /// A post-process effect that does not write back to the bytes it was read from.
+  #[display("animations.post-process-round-trip")]
+  AnimationsPostProcessRoundTrip,
+  /// A post-process effect channel that evaluates to something other than a finite number.
+  #[display("animations.post-process-value")]
+  AnimationsPostProcessValue,
   #[display("checks.execution")]
   CheckExecution,
   #[display("collisions.unreachable")]
