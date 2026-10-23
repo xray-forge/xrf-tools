@@ -1,11 +1,15 @@
 use std::ffi::{OsStr, OsString};
-use std::fs::{self, File, OpenOptions};
-use std::io::{Error as IoError, ErrorKind, Result as IoResult, Write};
+use std::fs::{self, File};
+use std::io::{Error as IoError, ErrorKind, Result as IoResult};
 use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::path_utils::format_path;
+
+mod staged_file;
+
+pub use staged_file::StagedFile;
 
 static STAGED_FILE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -52,51 +56,34 @@ fn write_staged(path: &Path, contents: &[u8], is_creating_directories: bool) -> 
     fs::create_dir_all(parent)?;
   }
 
-  let sequence: u64 = STAGED_FILE_COUNTER.fetch_add(1, Ordering::Relaxed);
-  let staged_path: PathBuf = get_sibling_path(path, sequence)?;
-
-  let result: IoResult<()> = (|| -> IoResult<()> {
-    let mut staged_file: File = OpenOptions::new().write(true).create_new(true).open(&staged_path)?;
-
-    staged_file.write_all(contents)?;
-
-    #[cfg(feature = "staging-faults")]
-    if let Some(error) = staging_faults::take_injected_failure() {
-      return Err(error);
-    }
-
-    // Only a replacement inherits permissions; a new file takes the platform default.
-    if let Ok(metadata) = fs::metadata(path) {
-      staged_file.set_permissions(metadata.permissions())?;
-    }
-
-    staged_file.sync_all()?;
-    drop(staged_file);
-
-    // One rename on every platform: `fs::rename` replaces an existing destination everywhere Rust supports, Windows
-    // included, through `MoveFileEx` with `MOVEFILE_REPLACE_EXISTING`.
-    fs::rename(&staged_path, path)?;
-
-    sync_parent_directory(path);
-
-    Ok(())
-  })();
-
-  if result.is_err() {
-    let _ = fs::remove_file(&staged_path);
-  }
-
-  result
+  StagedFile::stage(path, &to_staged_sibling(path, "tmp")?, contents)?.publish()
 }
 
-/// Flush the directory entry the rename produced, so the replacement survives a power loss too.
+/// A unique hidden sibling of `path` for `purpose` (`tmp`, `staged`, `replaced`), named `.<name>.xrf-<purpose>-…` so a
+/// leftover says which file it belonged to and [`is_staged_sibling`] knows it.
+///
+/// # Errors
+///
+/// Returns an invalid-input error when `path` names no file in a directory.
+pub fn to_staged_sibling(path: &Path, purpose: &str) -> IoResult<PathBuf> {
+  get_sibling_path(path, purpose, STAGED_FILE_COUNTER.fetch_add(1, Ordering::Relaxed))
+}
+
+/// Whether a file name is one this module stages or sets aside beside a target: hidden, carrying `.xrf-`.
+pub fn is_staged_sibling(name: &OsStr) -> bool {
+  name
+    .to_str()
+    .is_some_and(|name| name.starts_with('.') && name.contains(".xrf-"))
+}
+
+/// Flush the directory entry a rename produced, so the replacement survives a power loss too.
 ///
 /// Best effort, and intentionally not an error: the bytes are already durable by this point, so a directory that
 /// cannot be synced costs at most the file reverting to its previous contents — while failing here would report a
 /// write that did happen as one that did not.
 ///
 /// Windows has no directory handle to sync and its renames are already ordered, so there is nothing to do there.
-fn sync_parent_directory(path: &Path) {
+pub fn sync_parent_directory(path: &Path) {
   if cfg!(windows) {
     return;
   }
@@ -116,7 +103,7 @@ fn sync_parent_directory(path: &Path) {
 /// Built by pushing onto the real `OsStr` rather than formatting `to_string_lossy` into a string, so a destination
 /// whose name is not valid Unicode still stages under a name derived from it. The process id and sequence make it
 /// unique regardless of that.
-fn get_sibling_path(path: &Path, sequence: u64) -> IoResult<PathBuf> {
+fn get_sibling_path(path: &Path, purpose: &str, sequence: u64) -> IoResult<PathBuf> {
   let parent: &Path = path.parent().ok_or_else(|| {
     IoError::new(
       ErrorKind::InvalidInput,
@@ -133,7 +120,7 @@ fn get_sibling_path(path: &Path, sequence: u64) -> IoResult<PathBuf> {
   let mut staged_name: OsString = OsString::from(".");
 
   staged_name.push(file_name);
-  staged_name.push(format!(".xrf-tmp-{}-{sequence}", process::id()));
+  staged_name.push(format!(".xrf-{purpose}-{}-{sequence}", process::id()));
 
   Ok(parent.join(staged_name))
 }
@@ -151,6 +138,8 @@ pub mod staging_faults {
   thread_local! {
     /// Per-thread, so tests running in parallel cannot arm each other's failure.
     static NEXT_WRITE_FAILS: Cell<bool> = const { Cell::new(false) };
+    /// How many publishes on this thread succeed before one fails, when armed.
+    static PUBLISHES_BEFORE_FAILURE: Cell<Option<u32>> = const { Cell::new(None) };
   }
 
   /// Arm the next staged write on this thread to fail as a full device would.
@@ -158,11 +147,34 @@ pub mod staging_faults {
     NEXT_WRITE_FAILS.with(|armed| armed.set(true));
   }
 
+  /// Arm a publish on this thread to fail once `succeeding` more have succeeded, as a rename refused by a locked file
+  /// would.
+  pub fn fail_staged_publish_after(succeeding: u32) {
+    PUBLISHES_BEFORE_FAILURE.with(|armed| armed.set(Some(succeeding)));
+  }
+
   /// Consume the arming, so one call fails and the next publishes normally.
   pub(super) fn take_injected_failure() -> Option<IoError> {
     NEXT_WRITE_FAILS
       .with(|armed| armed.replace(false))
       .then(|| IoError::new(ErrorKind::StorageFull, "Injected staging failure"))
+  }
+
+  /// Counts one publish down, failing it where the arming has run out.
+  pub(super) fn take_injected_publish_failure() -> Option<IoError> {
+    PUBLISHES_BEFORE_FAILURE.with(|armed| match armed.get() {
+      Some(0) => {
+        armed.set(None);
+
+        Some(IoError::new(ErrorKind::PermissionDenied, "Injected publish failure"))
+      }
+      Some(remaining) => {
+        armed.set(Some(remaining - 1));
+
+        None
+      }
+      None => None,
+    })
   }
 }
 
