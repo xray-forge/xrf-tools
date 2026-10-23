@@ -97,7 +97,7 @@ impl ArchiveAnimationChannel {
 #[cfg(test)]
 mod tests {
   use xrf_animation_envelope::{AnimationBehavior, AnimationEnvelope, AnimationKey, AnimationShape};
-  use xrf_anm::ANM_CHANNELS;
+  use xrf_anm::AnmChannel;
 
   use super::ArchiveAnimationChannel;
   use crate::plugins::archives::describe::animation::archive_animation_behavior::ArchiveAnimationBehavior;
@@ -111,6 +111,11 @@ mod tests {
     }
   }
 
+  /// An object motion's channel names, the format names the tests take channels under.
+  fn motion_channel_names() -> [&'static str; 6] {
+    AnmChannel::ALL.map(AnmChannel::get_name)
+  }
+
   fn envelope(keys: Vec<AnimationKey>) -> AnimationEnvelope {
     AnimationEnvelope {
       keys,
@@ -121,7 +126,7 @@ mod tests {
   #[test]
   fn a_channel_is_named_by_the_position_it_holds() {
     let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(
-      ANM_CHANNELS,
+      motion_channel_names(),
       &[envelope(vec![key(0.0, 0.0, AnimationShape::Tcb)]), envelope(Vec::new())],
     );
 
@@ -143,7 +148,7 @@ mod tests {
   #[test]
   fn a_channel_reports_the_span_and_the_reach_of_its_own_keys() {
     let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(
-      ANM_CHANNELS,
+      motion_channel_names(),
       &[envelope(vec![
         key(0.5, 0.0, AnimationShape::Tcb),
         key(-1.25, 1.5, AnimationShape::Linear),
@@ -163,7 +168,8 @@ mod tests {
 
   #[test]
   fn a_channel_carrying_no_keys_reports_no_span_rather_than_an_empty_one() {
-    let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(ANM_CHANNELS, &[envelope(Vec::new())]);
+    let channels: Vec<ArchiveAnimationChannel> =
+      ArchiveAnimationChannel::of_all(motion_channel_names(), &[envelope(Vec::new())]);
 
     assert_eq!(channels[0].keys, 0);
     assert_eq!(channels[0].first_seconds, None);
@@ -175,7 +181,7 @@ mod tests {
   #[test]
   fn a_channel_says_what_it_does_at_either_end_of_its_keys() {
     let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(
-      ANM_CHANNELS,
+      motion_channel_names(),
       &[AnimationEnvelope {
         behavior_after: AnimationBehavior::Repeat,
         ..envelope(vec![key(0.0, 0.0, AnimationShape::Tcb)])
@@ -190,7 +196,7 @@ mod tests {
   fn a_channel_names_each_shape_its_keys_use_once_in_the_engine_s_order() {
     // The mix of a vanilla camera effect: mostly tcb with a few linear segments.
     let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(
-      ANM_CHANNELS,
+      motion_channel_names(),
       &[envelope(
         [3, 0, 0, 5, 3]
           .into_iter()
@@ -204,8 +210,10 @@ mod tests {
 
   #[test]
   fn a_shape_the_engine_does_not_name_keeps_its_number() {
-    let channels: Vec<ArchiveAnimationChannel> =
-      ArchiveAnimationChannel::of_all(ANM_CHANNELS, &[envelope(vec![key(0.0, 0.0, AnimationShape::from(7))])]);
+    let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(
+      motion_channel_names(),
+      &[envelope(vec![key(0.0, 0.0, AnimationShape::from(7))])],
+    );
 
     assert_eq!(channels[0].shapes, vec!["shape 7"]);
   }

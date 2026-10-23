@@ -4,7 +4,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
-use xrf_anm::AnmFile;
+use xrf_anm::{AnmChannel, AnmFile};
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_ppe::{PpeColor, PpeFile};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
@@ -31,9 +31,9 @@ fn new_motion_bytes(value: f32) -> Vec<u8> {
     ],
     ..AnimationEnvelope::default()
   };
-  let mut channels: Vec<AnimationEnvelope> = vec![AnimationEnvelope::default(); AnmFile::CHANNEL_COUNT];
+  let mut channels: [AnimationEnvelope; 6] = Default::default();
 
-  channels[0] = line;
+  channels[AnmChannel::PositionX.get_index()] = line;
 
   let motion: AnmFile = AnmFile {
     name: String::new(),
@@ -43,12 +43,8 @@ fn new_motion_bytes(value: f32) -> Vec<u8> {
     version: AnmFile::CURRENT_VERSION,
     channels,
   };
-  let mut writer: ChunkWriter = ChunkWriter::new();
 
-  motion.write::<XRayByteOrder>(&mut writer).unwrap();
-  writer
-    .flush_chunk_into_buffer::<XRayByteOrder>(AnmFile::CHUNK_ID)
-    .unwrap()
+  motion.write_to_bytes::<XRayByteOrder>().unwrap()
 }
 
 /// A version 1 effect whose blur is keyed once at `value`.

@@ -1,6 +1,6 @@
 use xrf_animation_envelope::AnimationEnvelope;
-use xrf_anm::{ANM_CHANNELS, AnmFile};
-use xrf_chunk::{ChunkWriter, XRayByteOrder};
+use xrf_anm::{AnmChannel, AnmFile};
+use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_vfs::XrayAssetType;
 
@@ -31,20 +31,13 @@ impl EnvelopeAnimation for AnmFile {
       return Ok(None);
     }
 
-    let mut writer: ChunkWriter = ChunkWriter::new();
-
-    self.write::<XRayByteOrder>(&mut writer)?;
-
-    writer
-      .flush_chunk_into_buffer::<XRayByteOrder>(Self::CHUNK_ID)
-      .map(Some)
+    self.write_to_bytes::<XRayByteOrder>().map(Some)
   }
 
   fn get_channels(&self) -> Vec<(String, &AnimationEnvelope)> {
-    ANM_CHANNELS
-      .iter()
-      .zip(&self.channels)
-      .map(|(channel, envelope)| ((*channel).to_owned(), envelope))
+    AnmChannel::ALL
+      .into_iter()
+      .map(|channel| (channel.get_name().to_owned(), self.get_channel(channel)))
       .collect()
   }
 }
