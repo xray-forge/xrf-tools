@@ -76,8 +76,8 @@ pub trait RenderLevelSource: RenderAssetSource {
   /// Returns an error when none of them can be read for a reason they share.
   fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels>;
 
-  /// The level's grass, its slots planted onto its collision form and its models dressed, called once from a loader
-  /// thread; none for a level without a detail library.
+  /// The level's grass, its slots planted onto its collision form and its models dressed, called from a loader thread
+  /// as the level opens and again for a next source that reloads it; none for a level without a detail library.
   ///
   /// # Errors
   ///

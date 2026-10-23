@@ -25,12 +25,13 @@ pub struct TestLevelReads {
   pub weather: AtomicU32,
   pub spawn: AtomicU32,
   pub particles: AtomicU32,
+  pub details: AtomicU32,
 }
 
 impl TestLevelReads {
-  /// The lights, weather, spawn and particles reads asked for so far.
-  pub fn count(&self) -> [u32; 4] {
-    [&self.lights, &self.weather, &self.spawn, &self.particles].map(|count| count.load(Ordering::SeqCst))
+  /// The lights, weather, spawn, particles and grass reads asked for so far.
+  pub fn count(&self) -> [u32; 5] {
+    [&self.lights, &self.weather, &self.spawn, &self.particles, &self.details].map(|count| count.load(Ordering::SeqCst))
   }
 }
 
@@ -117,6 +118,8 @@ impl RenderLevelSource for TestLevelSource {
   }
 
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>> {
+    self.reads.details.fetch_add(1, Ordering::SeqCst);
+
     Ok(None)
   }
 

@@ -97,7 +97,7 @@ impl LevelScene {
     let statics: StaticScene = StaticScene::new(device, queue);
 
     Self {
-      grass: LevelGrass::new(&source, workers),
+      grass: LevelGrass::default(),
       lights: LevelLights::new(device, view_layout),
       particles: LevelParticles::new(device, workers),
       statics,
@@ -127,10 +127,10 @@ impl LevelScene {
   const SECTOR_SEED: f32 = 1e-7;
   const SECTOR_WAIT_MOST: u32 = 4;
 
-  /// Takes a frame the world gave it: applies what it posted, the sectors as `scheduler` grants them, takes the grass
-  /// its loader read, keeps what its effects and motions do, moves the lights its motions carry, readies the static
-  /// draws and, while a view of it traces rays (`is_traced`), their acceleration structures, and asks for the cubes its
-  /// surfaces mix toward; the sectors it could not take in are told back with its feedback.
+  /// Takes a frame the world gave it: applies what it posted, the sectors as `scheduler` grants them, keeps what its
+  /// effects and motions do, moves the lights its motions carry, readies the static draws and, while a view of it
+  /// traces rays (`is_traced`), their acceleration structures, and asks for the cubes its surfaces mix toward; the
+  /// sectors it could not take in are told back with its feedback.
   pub fn advance(
     &mut self,
     (device, queue, encoder): (&wgpu::Device, &wgpu::Queue, &mut FrameEncoder),
@@ -169,7 +169,6 @@ impl LevelScene {
       }
     }
 
-    self.grass.poll(device, textures, &assets);
     self.apply((device, queue, encoder), (&mut *textures, &assets), updates);
 
     let failures: Vec<RenderSectorFailure> =
@@ -184,9 +183,7 @@ impl LevelScene {
     slots.sort_unstable();
     slots.dedup();
     self.texture_slots = slots;
-    self
-      .load
-      .advance(streaming, (self.grass.is_loaded(), &self.texture_slots), textures);
+    self.load.advance(streaming, &self.texture_slots, textures);
     self.driver = driver;
     self.skeleton_segments = skeleton_segments;
     self.gust = gust;
@@ -219,23 +216,17 @@ impl LevelScene {
 
   /// How far the level, the scene `id`, has loaded.
   pub fn describe_load(&self, id: RenderSceneId, textures: &TextureCache) -> RenderLoadReport {
-    self
-      .load
-      .describe(id, (self.grass.is_loaded(), &self.texture_slots), textures)
+    self.load.describe(id, &self.texture_slots, textures)
   }
 
   /// Whether everything the level opens with is resident, so it draws as it will.
   pub fn is_ready(&self, textures: &TextureCache) -> bool {
-    self
-      .load
-      .is_ready(self.grass.is_loaded(), self.list_texture_slots(), textures)
+    self.load.is_ready(self.list_texture_slots(), textures)
   }
 
   /// What the level still waits for before it is ready, said for a log.
   pub fn describe_pending(&self, textures: &TextureCache) -> String {
-    self
-      .load
-      .describe_pending((self.grass.is_loaded(), &self.texture_slots), textures)
+    self.load.describe_pending(&self.texture_slots, textures)
   }
 
   /// Takes in the sectors waiting as `scheduler` grants them, in a round of their own: every one while the level opens,
@@ -378,6 +369,7 @@ impl LevelScene {
           self.statics.remove_object(handle);
         }
         RenderSceneUpdate::AddLights(lights) => self.lights.add_lights(lights, textures, assets),
+        RenderSceneUpdate::AddGrass(details) => self.grass.replace(device, details, (&mut *textures, assets)),
         RenderSceneUpdate::AddParticles(definitions) => {
           self
             .particles

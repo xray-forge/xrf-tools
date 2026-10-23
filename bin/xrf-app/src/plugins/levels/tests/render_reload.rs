@@ -22,6 +22,7 @@ const NONE: WorldLevelReload = WorldLevelReload {
   is_particles: false,
   is_weather: false,
   is_motions: false,
+  is_grass: false,
 };
 
 #[test]
@@ -30,10 +31,6 @@ fn a_commit_leaving_every_part_reloads_nothing() {
   assert!(
     LevelRenderSource::to_reload(&[LEVEL_GRAPH_PART]).is_empty(),
     "nothing drawn is built from the graph"
-  );
-  assert!(
-    LevelRenderSource::to_reload(&[LEVEL_DETAILS_PART]).is_empty(),
-    "the grass cannot reload in place yet"
   );
   assert!(
     LevelRenderSource::to_reload(&[LEVEL_START_PART]).is_empty(),
@@ -72,6 +69,7 @@ fn what_a_render_read_recorded_reloads_that_package_alone() {
         ..NONE
       },
     ),
+    (LEVEL_DETAILS_PART, WorldLevelReload { is_grass: true, ..NONE }),
   ] {
     assert_eq!(LevelRenderSource::to_reload(&[part]), reload, "{part}");
   }

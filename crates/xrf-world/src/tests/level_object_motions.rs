@@ -27,7 +27,7 @@ fn create_line_motion() -> AnmFile {
     frame_end: 60,
     fps: 30.0,
     version: AnmFile::CURRENT_VERSION,
-    channels: vec![
+    channels: [
       AnimationEnvelope {
         keys: vec![
           key(0.0, 0.0),

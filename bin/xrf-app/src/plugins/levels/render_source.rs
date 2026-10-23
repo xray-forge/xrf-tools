@@ -25,7 +25,7 @@ use crate::core::session::{SessionId, SessionSnapshot};
 use crate::plugins::levels::ambients::{to_render_ambient_effects, to_render_ambients};
 use crate::plugins::levels::collision::{LEVEL_COLLISION_PART, get_level_collision};
 use crate::plugins::levels::configs::{LEVEL_SECTIONS_PART, find_level_sections, get_level_sections};
-use crate::plugins::levels::details::{PackedLevelDetails, pack_details};
+use crate::plugins::levels::details::{LEVEL_DETAILS_PART, PackedLevelDetails, pack_details};
 use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
 use crate::plugins::levels::hemi::{LEVEL_HEMI_PART, estimate_visuals_hemi, get_level_hemi};
 use crate::plugins::levels::lens_flares::to_render_lens_flare;
@@ -113,8 +113,6 @@ impl LevelRenderSource {
   /// What the renderer reads again of a level whose next snapshot let `stale_parts` go: each package whose read asks
   /// for any of them, or recorded what it read as one of them. The sectors are the value's, which a next snapshot
   /// shares; the graph feeds nothing drawn, and the start only where a viewer first stands.
-  // todo: Reload the grass when `details` goes stale (`level.details`, the collision form it is planted onto, the game
-  //  materials, its shaders and textures), once a view's grass build follows a replaced grass level.
   pub fn to_reload(stale_parts: &[&str]) -> WorldLevelReload {
     let is_stale = |parts: &[&str]| stale_parts.iter().any(|part| parts.contains(part));
 
@@ -141,6 +139,7 @@ impl LevelRenderSource {
       ]),
       is_weather: is_stale(&[LEVEL_ENVIRONMENT_PART, LEVEL_WEATHER_PART]),
       is_motions: is_stale(&[LEVEL_OBJECT_MOTIONS_PART]),
+      is_grass: is_stale(&[LEVEL_DETAILS_PART]),
     }
   }
 

@@ -55,13 +55,9 @@ impl WorldLevel {
 
     self.effects.follow_motions(&source, reload.is_motions);
 
-    self.streaming.follow(
-      &mut self.queued,
-      &mut self.animation,
-      source,
-      (reload.is_spawn, reload.is_lights),
-      workers,
-    );
+    self
+      .streaming
+      .follow(&mut self.queued, &mut self.animation, source, reload, workers);
   }
 
   pub fn set_pose(&mut self, pose: &WorldModelPose) {

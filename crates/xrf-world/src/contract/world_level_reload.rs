@@ -10,6 +10,8 @@ pub struct WorldLevelReload {
   pub is_weather: bool,
   /// The object motions its moving zones follow, each read again the next time something it carries asks.
   pub is_motions: bool,
+  /// The grass, planted again by every view once read.
+  pub is_grass: bool,
 }
 
 impl WorldLevelReload {
