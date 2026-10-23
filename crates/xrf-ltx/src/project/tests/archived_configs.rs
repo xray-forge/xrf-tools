@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayAssetContainer, XrayAssetSource, XrayLookupScope, XraySourceKind, XrayVfs};
+use xrf_vfs::{XrayAssetContainer, XrayAssetSource, XrayLookupScope, XraySearch, XraySourceKind, XrayVfs};
 
 use crate::project::{LtxProject, LtxProjectFormatResult};
 
@@ -94,10 +94,10 @@ fn archived_project(entries: &[(&str, &str)]) -> LtxProject {
     .mount("", Box::new(ArchivedConfigs::new(entries)))
     .expect("archived configs mount");
 
-  LtxProject::open_at_scope_opt(
+  LtxProject::open_at_search_opt(
     PathBuf::from("C:\\install\\gamedata\\configs"),
-    vfs,
-    XrayLookupScope::all(),
+    &XraySearch::new(vfs).with_step("archive", XrayLookupScope::all()),
+    None,
     Default::default(),
   )
   .expect("project opens over archived configs")

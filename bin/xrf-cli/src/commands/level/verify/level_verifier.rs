@@ -21,7 +21,7 @@ use crate::commands::level::verify::level_verification_state::LevelVerificationS
 /// Reads a compiled level's geometry the way the renderer would address it.
 /// Every check here is an invariant the engine relies on without testing.
 pub struct LevelVerifier<'a> {
-  assets: &'a LevelAssets<'a>,
+  assets: &'a LevelAssets,
 }
 
 impl<'a> LevelVerifier<'a> {
@@ -37,7 +37,7 @@ impl<'a> LevelVerifier<'a> {
   /// The alternative buffers a visual's fast path addresses.
   const DETAIL_GEOMETRY_FILE: &'static str = "level.geomx";
 
-  pub fn new(assets: &'a LevelAssets<'a>) -> Self {
+  pub fn new(assets: &'a LevelAssets) -> Self {
     Self { assets }
   }
 

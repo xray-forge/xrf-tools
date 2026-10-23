@@ -123,6 +123,69 @@ fn records_listings_by_the_directory_they_list() {
 }
 
 #[test]
+fn records_a_listing_of_a_prefixed_search_by_the_subtree_it_covers() {
+  // A whole listing of a search narrowed to `configs` changes only when something below `configs` does, so a texture
+  // created elsewhere must not invalidate it; several prefixes share their longest common directory.
+  let (vfs, loose_id, archive_id) = loose_over_archive(
+    "prefixed_listing",
+    &["configs/weapons/w_ak74.ltx", "configs/system.ltx"],
+    &["configs/weapons/w_pm.ltx"],
+  );
+  let record: XrayInputRecord = XrayInputRecord::new();
+  let narrowed: XraySearch = search_of(&vfs, loose_id, archive_id)
+    .with_prefix("configs")
+    .expect("prefix is valid")
+    .with_recording(&record);
+
+  narrowed.list_files();
+  narrowed.list_entries();
+
+  assert_eq!(record.len(), 1, "both listings are the one input");
+  assert!(record.get(&listing(&narrowed, Some("configs"))).is_some());
+
+  let record: XrayInputRecord = XrayInputRecord::new();
+  let split: XraySearch = XraySearch::new(Arc::clone(&vfs))
+    .with_step(
+      "weapons",
+      XrayLookupScope::only([loose_id])
+        .with_prefix("configs\\weapons")
+        .expect("prefix"),
+    )
+    .with_step(
+      "system",
+      XrayLookupScope::only([archive_id])
+        .with_prefix("configs\\system.ltx")
+        .expect("prefix"),
+    )
+    .with_recording(&record);
+
+  split.list_assets(XrayAssetType::Ltx);
+
+  assert!(
+    record.get(&listing(&split, Some("configs"))).is_some(),
+    "two prefixes record the directory both sit under"
+  );
+
+  let record: XrayInputRecord = XrayInputRecord::new();
+  let unnarrowed: XraySearch = XraySearch::new(Arc::clone(&vfs))
+    .with_step(
+      "configs",
+      XrayLookupScope::only([loose_id])
+        .with_prefix("configs")
+        .expect("prefix"),
+    )
+    .with_step("everything", XrayLookupScope::only([archive_id]))
+    .with_recording(&record);
+
+  unnarrowed.list_shadowing_entries();
+
+  assert!(
+    record.get(&listing(&unnarrowed, None)).is_some(),
+    "a step with no prefix lists the whole root"
+  );
+}
+
+#[test]
 fn records_a_read_served_from_the_cache() {
   let (vfs, loose_id, archive_id) = loose_over_archive("cached", &["configs/system.ltx"], &[]);
   let search: XraySearch = search_of(&vfs, loose_id, archive_id);
@@ -139,7 +202,7 @@ fn records_a_read_served_from_the_cache() {
 
   recording.read_parsed(&asset, parse).expect("second read is served");
 
-  assert_eq!(vfs.get_cache().get_stats().hits, 1, "the second read is a hit");
+  assert_eq!(vfs.get_cache_stats().hits, 1, "the second read is a hit");
   assert_eq!(record.get(&file(&recording, "configs\\system.ltx")), found(loose_id));
 }
 

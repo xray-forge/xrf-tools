@@ -112,8 +112,6 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
     if let Some(visual_path) = &section.get("visual").and_then(|it| {
       self
         .project
-        .vfs()
-        .scoped(self.project.scope())
         .ogf(it)
         .ok()
         .flatten()
@@ -140,7 +138,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
 
             match self
               .project
-              .read_parsed(AssetType::Omf, linked_visual, |chunk| {
+              .read_parsed(linked_visual, |chunk| {
                 OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
               })
               .map(|omf| {
@@ -291,12 +289,7 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
     for motion_ref in &motion_refs {
       self.options.job.check_cancelled()?;
 
-      for location in self
-        .project
-        .vfs()
-        .scoped(self.project.scope())
-        .resolve_all(AssetType::Omf, motion_ref)?
-      {
+      for location in self.project.resolve_all(AssetType::Omf, motion_ref)? {
         self.options.job.check_cancelled()?;
         if location.is_type(AssetType::Omf) {
           assets.insert(location.get_logical_path().to_string());

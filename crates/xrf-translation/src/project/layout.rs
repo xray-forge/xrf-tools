@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_vfs::{XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
+use xrf_vfs::{XrayRoots, XraySearch};
 
 use crate::language::TranslationLanguage;
 use crate::project::constants::MAP_DESC_DIRECTORY;
@@ -8,27 +8,20 @@ use crate::source_file_name::is_json_source_name;
 
 /// Report which layout roots look like, for the open form to preselect.
 ///
-/// Advisory only. The mode a project is opened with is whatever the caller passes, because the two
-/// layouts save to different files and a heuristic must not be what decides that.
-///
 /// # Errors
 ///
 /// Returns an error when the roots cannot be mounted.
 pub fn detect_mode(roots: &XrayRoots) -> XrfResult<TranslationProjectMode> {
-  Ok(detect_mode_in(&roots.open()?))
+  Ok(detect_mode_in(&roots.to_search_plan()?.open()?))
 }
 
 /// Report the layout of roots somebody else mounted.
-///
-/// Each mode is looked for under its own prefix, so the answer does not depend on which directory the
-/// caller happened to name: a tree holding both is a source tree, because only a source tree has the
-/// files that decide it.
-pub fn detect_mode_in(vfs: &XrayVfs) -> TranslationProjectMode {
-  if has_source_files(vfs) {
+pub fn detect_mode_in(search: &XraySearch) -> TranslationProjectMode {
+  if has_source_files(search) {
     return TranslationProjectMode::Source;
   }
 
-  if has_language_directory(vfs) {
+  if has_language_directory(search) {
     return TranslationProjectMode::Gamedata;
   }
 
@@ -36,28 +29,22 @@ pub fn detect_mode_in(vfs: &XrayVfs) -> TranslationProjectMode {
 }
 
 /// A source tree is recognised by what only it has: multi-language JSON maps.
-///
-/// XML under the source prefix decides nothing, because a built tree and a source tree would then
-/// look the same. JSON is the source format, so JSON is the evidence.
-fn has_source_files(vfs: &XrayVfs) -> bool {
-  let Ok(scope) = XrayLookupScope::all().with_prefix(TranslationProjectMode::Source.get_prefix()) else {
+fn has_source_files(search: &XraySearch) -> bool {
+  let Ok(sources) = search.clone().with_prefix(TranslationProjectMode::Source.get_prefix()) else {
     return false;
   };
 
-  vfs
-    .scoped(&scope)
-    .list_entries()
+  sources
+    .list_files()
     .iter()
     .any(|asset| is_json_source_name(asset.get_logical_path().file_name()))
 }
 
 /// Gamedata is recognised by a directory named for a language the engine would load.
-fn has_language_directory(vfs: &XrayVfs) -> bool {
-  let scope: XrayLookupScope = XrayLookupScope::all();
-  let scoped: XrayScopedVfs = vfs.scoped(&scope);
+fn has_language_directory(search: &XraySearch) -> bool {
   let prefix: &str = TranslationProjectMode::Gamedata.get_prefix();
 
-  scoped.list_children(prefix).is_ok_and(|listing| {
+  search.list_children(prefix).is_ok_and(|listing| {
     listing
       .directories
       .iter()

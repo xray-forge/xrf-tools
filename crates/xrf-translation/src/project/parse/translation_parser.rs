@@ -6,7 +6,7 @@ use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_utils::{HostDestination, HostFileName, HostRelativePath, format_path};
-use xrf_vfs::{XrayAsset, XrayLookupScope, XrayScopedVfs, XrayVfs};
+use xrf_vfs::{XrayAsset, XraySearch};
 
 use crate::json::read::parse_json;
 use crate::json::write::{CanonicalRender, render_canonical, write_canonical};
@@ -33,9 +33,7 @@ impl TranslationParser {
   /// the one declared, and when a target cannot be written. An individual unreadable table is a finding,
   /// not a failure: one malformed file in a 136-file mod costs that file and not the import.
   pub fn parse(options: &TranslationParseOptions) -> XrfResult<TranslationParseResult> {
-    let vfs: XrayVfs = options.roots.open()?;
-
-    Self::parse_in(&vfs, options)
+    Self::parse_in(&options.roots.to_search_plan()?.open()?, options)
   }
 
   /// Import over roots somebody else mounted.
@@ -43,13 +41,13 @@ impl TranslationParser {
   /// # Errors
   ///
   /// The same as [`Self::parse`], minus mounting.
-  pub fn parse_in(vfs: &XrayVfs, options: &TranslationParseOptions) -> XrfResult<TranslationParseResult> {
+  pub fn parse_in(search: &XraySearch, options: &TranslationParseOptions) -> XrfResult<TranslationParseResult> {
     let started_at: Instant = Instant::now();
     let language: String = options.language.to_string();
 
     let mut result: TranslationParseResult = TranslationParseResult::new(&language, options.is_dry_run);
 
-    let scope: ResolvedParseScope = resolve(vfs, options.prefix.as_deref(), options.language)?;
+    let scope: ResolvedParseScope = resolve(search, options.prefix.as_deref(), options.language)?;
 
     xrf_output::info!(
       options.output,
@@ -58,19 +56,15 @@ impl TranslationParser {
       if options.is_dry_run { " (dry run)" } else { "" }
     );
 
-    let lookup: XrayLookupScope = XrayLookupScope::all().with_optional_prefix(Some(scope.prefix()))?;
-    let scoped: XrayScopedVfs = vfs.scoped(&lookup);
+    let tables: XraySearch = search.clone().with_optional_prefix(Some(scope.prefix()))?;
 
-    let mut assets: Vec<XrayAsset> = scoped
-      .list_entries()
+    // Ordered by engine identity rather than mount order, so a run is comparable across machines.
+    let assets: Vec<XrayAsset> = tables
+      .list_files()
       .into_iter()
       .filter(|asset| asset.get_logical_path().has_extension(XrayExtension::Xml))
       .filter(|asset| Self::is_selected(asset, options.file.as_deref()))
       .collect();
-
-    // Sorted because mount order is not name order, and a run is only comparable across machines if it
-    // depends on neither.
-    assets.sort_by(|left, right| left.get_logical_path().as_str().cmp(right.get_logical_path().as_str()));
 
     // A run that found nothing is refused rather than reported as a success that wrote no files. A
     // mistyped prefix, a `--file` that names nothing, and a root holding no tables all land here, and
@@ -107,7 +101,7 @@ impl TranslationParser {
         .job
         .set_detail(Some(asset.get_logical_path().as_str().to_owned()));
 
-      Self::import_asset(&scoped, asset, &scope, &language, &destination, options, &mut result)?;
+      Self::import_asset(&tables, asset, &scope, &language, &destination, options, &mut result)?;
 
       parsing.advance();
     }
@@ -127,7 +121,7 @@ impl TranslationParser {
 
   /// Read one string table and merge it into the JSON source it belongs to.
   fn import_asset(
-    scoped: &XrayScopedVfs,
+    search: &XraySearch,
     asset: &XrayAsset,
     scope: &ResolvedParseScope,
     language: &str,
@@ -145,8 +139,8 @@ impl TranslationParser {
       directory_name: Some(language),
     };
 
-    let entries: Vec<(String, String)> = match scoped
-      .read_asset_bytes(asset)
+    let entries: Vec<(String, String)> = match search
+      .read_asset(asset)
       .and_then(|data| parse_required_string_table(identity, &data))
     {
       Ok(entries) => entries,

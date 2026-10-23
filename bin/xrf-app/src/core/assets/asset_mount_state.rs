@@ -123,7 +123,7 @@ impl AssetMountState {
   ) -> Option<(Arc<XrayVfs>, Vec<XraySearchStep>)> {
     plan
       .find_mounted(vfs)
-      .filter(|steps| !is_retrying || steps.iter().all(|step| step.get_skipped().is_empty()))
+      .filter(|_| !is_retrying || !plan.has_failed_in(vfs))
       .map(|steps| (vfs.clone(), steps))
   }
 

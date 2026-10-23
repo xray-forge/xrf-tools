@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{HostDestination, HostRelativePath, encode_string_to_bytes, format_path};
-use xrf_vfs::{XrayAsset, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayRoots, XraySearch};
 
 use crate::json::read::{parse_json, read_json};
 use crate::language::TranslationLanguage;
@@ -33,7 +33,7 @@ impl TranslationBuilder {
   ) -> XrfResult<TranslationBuildResult> {
     ensure_output_outside_roots(roots, &options.output_dir)?;
 
-    Self::build_roots_in(&roots.open()?, prefix, options)
+    Self::build_roots_in(&roots.to_search_plan()?.open()?, prefix, options)
   }
 
   /// Build over roots somebody else mounted.
@@ -42,25 +42,21 @@ impl TranslationBuilder {
   ///
   /// The same as [`Self::build_roots`], minus mounting and the output guard the caller has already applied.
   pub fn build_roots_in(
-    vfs: &XrayVfs,
+    search: &XraySearch,
     prefix: Option<&str>,
     options: &TranslationBuildOptions,
   ) -> XrfResult<TranslationBuildResult> {
-    let scope: XrayLookupScope = XrayLookupScope::all().with_optional_prefix(prefix)?;
-    let scoped: XrayScopedVfs = vfs.scoped(&scope);
+    let sources: XraySearch = search.clone().with_optional_prefix(prefix)?;
 
     let started_at: Instant = Instant::now();
     let mut result: TranslationBuildResult = TranslationBuildResult::new();
 
-    let mut assets: Vec<XrayAsset> = scoped
-      .list_entries()
+    // Ordered by engine identity rather than mount order, so a build is comparable across runs and machines.
+    let assets: Vec<XrayAsset> = sources
+      .list_files()
       .into_iter()
       .filter(|asset| is_json_source_name(asset.get_logical_path().file_name()))
       .collect();
-
-    // Sorted because mount order is not name order, and a build is only comparable across runs and
-    // machines if it depends on neither.
-    assets.sort_by(|left, right| left.get_logical_path().as_str().cmp(right.get_logical_path().as_str()));
 
     let names: Vec<String> = assets
       .iter()
@@ -91,8 +87,8 @@ impl TranslationBuilder {
 
       options.job.set_detail(Some(logical_path.to_owned()));
 
-      let parsed: TranslationJson = scoped
-        .read_asset_bytes(asset)
+      let parsed: TranslationJson = sources
+        .read_asset(asset)
         .and_then(|data| parse_json(logical_path, &data))?;
 
       result.sources += 1;

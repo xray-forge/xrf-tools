@@ -40,9 +40,7 @@ impl<'a> MeshAssetsVerifier<'a> {
     // Enumerated through the VFS, so an installation's archived meshes are verified too.
     let mesh_paths: Vec<String> = self
       .project
-      .vfs()
-      .scoped(&self.project.scope)
-      .list_entries_of_type(AssetType::Ogf)
+      .entries_of_type(AssetType::Ogf)
       .into_iter()
       .map(|location| location.get_logical_path().to_string())
       .collect();
@@ -67,9 +65,10 @@ impl<'a> MeshAssetsVerifier<'a> {
         // Read through the VFS, so a mesh inside an archive volume is verified rather than reported missing.
         let path: &str = relative_path;
 
-        match self.project.read_parsed(AssetType::Ogf, path, |chunk| {
-          OgfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
-        }) {
+        match self
+          .project
+          .read_parsed(path, OgfFile::read_from_chunk::<XRayByteOrder, _>)
+        {
           Ok(ogf) => match self.verify_mesh_findings(output, shader_library, &ogf, Some(path), None) {
             Ok(findings) if findings.is_empty() => Vec::new(),
             Ok(findings) => {
@@ -166,8 +165,6 @@ impl<'a> MeshAssetsVerifier<'a> {
 
         let motion_paths: Vec<String> = self
           .project
-          .vfs()
-          .scoped(&self.project.scope)
           .resolve_all(AssetType::Omf, motion_ref)?
           .into_iter()
           .map(|location| location.get_logical_path().to_string())
@@ -187,7 +184,7 @@ impl<'a> MeshAssetsVerifier<'a> {
 
             // Retained per path, because a shared animation bank is referenced by hundreds of visuals and each read is
             // a whole-entry decompression: four Anomaly banks account for 47GB of a sweep's 77GB without this.
-            match self.project.read_parsed(AssetType::Omf, &motion_path, |chunk| {
+            match self.project.read_parsed(&motion_path, |chunk| {
               OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
             }) {
               Ok(omf) => match self.verify_mesh_motion_findings(output, ogf, &omf, Some(&motion_path)) {
@@ -243,14 +240,7 @@ impl<'a> MeshAssetsVerifier<'a> {
     let mut findings: Vec<Finding> = Vec::new();
 
     if let Some(texture) = &ogf.texture
-      && self
-        .project
-        .vfs()
-        .scoped(&self.project.scope)
-        .dds_texture(&texture.texture_name)
-        .ok()
-        .flatten()
-        .is_none()
+      && self.project.dds_texture(&texture.texture_name).ok().flatten().is_none()
     {
       xrf_output::error!(output, "Cannot read OGF texture: {}", texture.texture_name);
 

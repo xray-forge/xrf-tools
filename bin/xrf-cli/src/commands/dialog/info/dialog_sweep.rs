@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use xrf_dialog::{DialogFile, DialogParseIssue, DialogParseIssueKind, DialogPhrase, DialogProject};
 use xrf_error::XrfResult;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
-use xrf_vfs::{XrayAsset, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayRoots, XraySearch};
 
 /// What a sweep counted, beside what it found.
 ///
@@ -76,18 +76,13 @@ impl<'a> DialogSweep<'a> {
   pub fn run(&self) -> XrfResult<DialogSweepResult> {
     let started: Instant = Instant::now();
 
-    let vfs: XrayVfs = self.roots.open()?;
-    let scope: XrayLookupScope = match self.prefix {
-      Some(prefix) => XrayLookupScope::all().with_prefix(prefix)?,
-      None => XrayLookupScope::all(),
-    };
-    let scoped: XrayScopedVfs = vfs.scoped(&scope);
+    let search: XraySearch = self.roots.to_search_plan()?.open()?.with_optional_prefix(self.prefix)?;
 
     let mut census: DialogSweepCensus = DialogSweepCensus::default();
     let mut read_findings: Vec<Finding> = Vec::new();
     let mut schema_findings: Vec<Finding> = Vec::new();
 
-    for asset in DialogProject::list_dialog_assets(&scoped) {
+    for asset in DialogProject::list_dialog_assets(&search) {
       let logical_path: &str = asset.get_logical_path().as_str();
 
       census.files += 1;
@@ -96,7 +91,7 @@ impl<'a> DialogSweep<'a> {
         census.archived_files += 1;
       }
 
-      match Self::read(&scoped, logical_path) {
+      match Self::read(&search, &asset) {
         Ok(file) => {
           DialogSweepCensus::count(&mut census.encodings, file.get_encoding().name());
           Self::census_file(&mut census, &file);
@@ -148,8 +143,8 @@ impl<'a> DialogSweep<'a> {
     })
   }
 
-  fn read(scoped: &XrayScopedVfs, logical_path: &str) -> XrfResult<DialogFile> {
-    DialogFile::read_from_bytes(&scoped.read_bytes(logical_path)?)
+  fn read(search: &XraySearch, asset: &XrayAsset) -> XrfResult<DialogFile> {
+    DialogFile::read_from_bytes(&search.read_asset(asset)?)
   }
 
   fn census_file(census: &mut DialogSweepCensus, file: &DialogFile) {

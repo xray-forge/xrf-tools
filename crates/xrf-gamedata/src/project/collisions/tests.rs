@@ -6,7 +6,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxProject, LtxProjectOptions};
 use xrf_vfs::{
   XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayLogicalPath, XrayLookupScope, XrayPathCollision,
-  XraySourceKind, XrayVfs,
+  XraySearch, XraySourceKind, XrayVfs,
 };
 
 use crate::{
@@ -93,17 +93,14 @@ fn project(collisions: Vec<XrayPathCollision>) -> GamedataProject {
     .mount("", Box::new(CollidingSource::new(collisions)))
     .expect("the test source mounts at the logical root");
 
+  let search: XraySearch = XraySearch::new(vfs).with_step("gamedata", XrayLookupScope::all());
+
   GamedataProject {
     engine: xrf_engine_target::XrayEngineResolution::named(xrf_engine_target::XrayEngine::Vanilla),
-    ltx_project: LtxProject::open_at_scope_opt(
-      PathBuf::new(),
-      vfs,
-      XrayLookupScope::all(),
-      LtxProjectOptions::default(),
-    )
-    .expect("a project over an empty mount assembles"),
+    ltx_project: LtxProject::open_at_search_opt(PathBuf::new(), &search, None, LtxProjectOptions::default())
+      .expect("a project over an empty mount assembles"),
     root: PathBuf::new(),
-    scope: XrayLookupScope::all(),
+    search,
   }
 }
 

@@ -11,15 +11,11 @@ use crate::search::{
 };
 use crate::{
   XrayAsset, XrayAssetRules, XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMountId, XrayPathCollision,
-  XrayScopedVfs, XraySkippedMount, XrayVfs,
+  XraySkippedMount, XrayVfs,
 };
 
 /// An ordered search across scopes of one VFS snapshot, first hit winning, and the only way to read it: what PhysicsFS
 /// and Source's file system call a search path.
-///
-/// It owns the snapshot it reads, so it has no lifetime, keeps that snapshot alive, and clones for a few reference
-/// counts. A search records nothing unless it is given a record ([`Self::with_recording`]); a plain one checks for a
-/// record and goes no further.
 #[derive(Clone, Debug)]
 pub struct XraySearch {
   vfs: Arc<XrayVfs>,
@@ -84,6 +80,19 @@ impl XraySearch {
     self.refresh_key();
 
     Ok(self)
+  }
+
+  /// This search narrowed as [`Self::with_prefix`] narrows it where there is a prefix to narrow to, and unchanged for
+  /// none or an empty one, which names the logical root.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a prefix is given and is not a valid X-Ray logical path.
+  pub fn with_optional_prefix(self, prefix: Option<&str>) -> XrfResult<Self> {
+    match prefix.filter(|prefix| !prefix.is_empty()) {
+      Some(prefix) => self.with_prefix(prefix),
+      None => Ok(self),
+    }
   }
 
   /// This search reading `vfs` instead, a snapshot of the same lineage (a fork, or the next one a change made), whose
@@ -375,20 +384,40 @@ impl XraySearch {
     let logical_path: &str = asset.get_logical_path().as_str();
 
     for step in self.steps.iter() {
-      let scoped: XrayScopedVfs = self.vfs.scoped(step.get_scope());
+      let scope: &XrayLookupScope = step.get_scope();
 
-      if scoped.find(logical_path)?.is_some() {
+      if self.vfs.find_in(scope, logical_path)?.is_some() {
         return match asset.get_asset_type() {
-          Some(kind) => scoped.read_parsed(kind, logical_path, parse),
+          Some(kind) => self.vfs.read_parsed_in(scope, kind, logical_path, parse),
           // An extension naming no kind is something a retention policy cannot speak about, so it is read and parsed
           // without being retained.
-          None => Ok(Arc::new(parse(scoped.read_bytes(logical_path)?)?)),
+          None => Ok(Arc::new(parse(self.vfs.read_in(scope, logical_path)?)?)),
         };
       }
     }
 
     // Nothing this search reaches holds it, which happens for an asset resolved elsewhere. Read it where it lives.
     Ok(Arc::new(parse(self.vfs.read_asset_bytes(asset)?)?))
+  }
+
+  /// The size in bytes of the copy of an exact logical path this search finds, without reading it; `None` where no
+  /// step holds it or its source cannot say.
+  pub fn read_size(&self, logical_path: &str) -> Option<u64> {
+    self.record_file(logical_path);
+
+    let scope: &XrayLookupScope = self.find_scope_of(logical_path)?;
+
+    self.vfs.read_size_in(scope, logical_path)
+  }
+
+  /// The CRC32 of the copy of an exact logical path this search finds, where its source recorded one; `None` where no
+  /// step holds it or the source would have to read it to know, as a loose file's would.
+  pub fn read_recorded_crc(&self, logical_path: &str) -> Option<u32> {
+    self.record_file(logical_path);
+
+    let scope: &XrayLookupScope = self.find_scope_of(logical_path)?;
+
+    self.vfs.read_recorded_crc_in(scope, logical_path)
   }
 
   /// Opens the copy of an exact logical path to be read in pieces.
@@ -442,7 +471,7 @@ impl XraySearch {
         continue;
       }
 
-      let step_listing: XrayDirectoryListing = self.vfs.scoped(step.get_scope()).list_children(directory)?;
+      let step_listing: XrayDirectoryListing = self.vfs.list_children_in(step.get_scope(), directory)?;
 
       for name in step_listing.directories {
         if seen_directories.insert(name.clone()) {
@@ -466,15 +495,36 @@ impl XraySearch {
     Ok(listing)
   }
 
+  /// Every file this search reaches, once per engine identity and without sizes, ordered by engine identity: the
+  /// cheapest whole listing, for a caller that filters the names or reads what it picks.
+  pub fn list_files(&self) -> Vec<XrayAsset> {
+    self.record_listing();
+
+    let mut files: Vec<XrayAsset> = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
+
+    for step in self.steps.iter() {
+      for asset in self.vfs.list_entries_in(step.get_scope()) {
+        if seen.insert(asset.get_logical_path().as_str().to_string()) {
+          files.push(asset);
+        }
+      }
+    }
+
+    files.sort_by(|first, second| first.get_logical_path().cmp(second.get_logical_path()));
+
+    files
+  }
+
   /// Every asset of one kind this search reaches, in step order and once per engine identity.
   pub fn list_assets(&self, asset_type: XrayAssetType) -> Vec<XrayAsset> {
-    self.record(|| Some(XrayInputKind::Listing(None)));
+    self.record_listing();
 
     let mut assets: Vec<XrayAsset> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
 
     for step in self.steps.iter() {
-      for asset in self.vfs.scoped(step.get_scope()).list_entries_of_type(asset_type) {
+      for asset in self.vfs.list_entries_of_type_in(step.get_scope(), asset_type) {
         if seen.insert(asset.get_logical_path().as_str().to_string()) {
           assets.push(asset);
         }
@@ -488,13 +538,13 @@ impl XraySearch {
   ///
   /// Sorted by engine identity, because the per-step listings are each sorted and concatenating them is not.
   pub fn list_entries(&self) -> Vec<XrayMountedEntry> {
-    self.record(|| Some(XrayInputKind::Listing(None)));
+    self.record_listing();
 
     let mut entries: Vec<XrayMountedEntry> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
 
     for step in self.steps.iter() {
-      for entry in self.vfs.scoped(step.get_scope()).list_mounted_entries() {
+      for entry in self.vfs.list_mounted_entries_in(step.get_scope()) {
         if seen.insert(entry.get_logical_path().to_string()) {
           entries.push(entry);
         }
@@ -508,13 +558,13 @@ impl XraySearch {
 
   /// Every entry this search reaches, once per engine identity, with the sized copies each one hides.
   pub fn list_shadowing_entries(&self) -> Vec<XrayShadowingEntry> {
-    self.record(|| Some(XrayInputKind::Listing(None)));
+    self.record_listing();
 
     let mut entries: Vec<XrayShadowingEntry> = Vec::new();
     let mut seen: HashMap<String, usize> = HashMap::new();
 
     for step in self.steps.iter() {
-      for entry in self.vfs.scoped(step.get_scope()).list_shadowing_entries() {
+      for entry in self.vfs.list_shadowing_entries_in(step.get_scope()) {
         match seen.get(entry.get_logical_path()) {
           Some(&index) => {
             let XrayShadowingEntry { entry, shadowed } = entry;
@@ -542,12 +592,21 @@ impl XraySearch {
     self.record_file(logical_path);
 
     for step in self.steps.iter() {
-      if let Some(asset) = self.vfs.scoped(step.get_scope()).find(logical_path)? {
+      if let Some(asset) = self.vfs.find_in(step.get_scope(), logical_path)? {
         return Ok(Some((step.get_label(), asset)));
       }
     }
 
     Ok(None)
+  }
+
+  /// The scope of the first step holding an exact logical path, for a question about that copy alone.
+  fn find_scope_of(&self, logical_path: &str) -> Option<&XrayLookupScope> {
+    self
+      .steps
+      .iter()
+      .map(XraySearchStep::get_scope)
+      .find(|scope| matches!(self.vfs.find_in(scope, logical_path), Ok(Some(_))))
   }
 
   /// The first step holding a reference, with everything it holds for it.
@@ -572,7 +631,7 @@ impl XraySearch {
         continue;
       }
 
-      let assets: Vec<XrayAsset> = self.vfs.scoped(step.get_scope()).resolve_all(asset_type, reference)?;
+      let assets: Vec<XrayAsset> = self.vfs.resolve_all_in(step.get_scope(), asset_type, reference)?;
 
       if !assets.is_empty() {
         return Ok(Some((step.get_label(), assets)));
@@ -583,7 +642,7 @@ impl XraySearch {
   }
 
   fn has_mounts(&self, step: &XraySearchStep) -> bool {
-    self.vfs.scoped(step.get_scope()).list_mounts().next().is_some()
+    self.vfs.mounts_in(step.get_scope()).next().is_some()
   }
 
   /// Records the input `kind` names where this search records, building it only then; `None` is a lookup the search
@@ -601,6 +660,45 @@ impl XraySearch {
   /// Records a lookup of one exact logical path, which an invalid path never is.
   fn record_file(&self, logical_path: &str) {
     self.record(|| XrayLogicalPath::new(logical_path).ok().map(XrayInputKind::File));
+  }
+
+  /// Records a whole listing as a listing of the directory it covers, so a change outside every step's subtree leaves
+  /// it standing.
+  fn record_listing(&self) {
+    self.record(|| Some(XrayInputKind::Listing(self.get_listed_directory())));
+  }
+
+  /// The directory a whole listing of this search covers: the subtree its steps share, a common ancestor where their
+  /// prefixes differ, and the root where any step has none. Kind filters do not narrow it, since a file of another kind
+  /// moving under the directory moves the listing's revision too.
+  fn get_listed_directory(&self) -> Option<XrayLogicalPath> {
+    let mut prefixes = self.steps.iter().map(|step| step.get_scope().get_prefix());
+    let mut common: &str = prefixes.next()??;
+
+    for prefix in prefixes {
+      common = Self::get_common_directory(common, prefix?);
+
+      if common.is_empty() {
+        return None;
+      }
+    }
+
+    Some(XrayLogicalPath::from_normalized(common.to_string()))
+  }
+
+  /// The longest directory both normalized paths sit under, matching whole components; empty where they share none.
+  fn get_common_directory<'a>(first: &'a str, second: &str) -> &'a str {
+    let mut length: usize = 0;
+
+    for (left, right) in first.split('\\').zip(second.split('\\')) {
+      if left != right {
+        break;
+      }
+
+      length += left.len() + usize::from(length > 0);
+    }
+
+    &first[..length]
   }
 
   /// Keeps the key a recording search files its inputs under in step with its steps.

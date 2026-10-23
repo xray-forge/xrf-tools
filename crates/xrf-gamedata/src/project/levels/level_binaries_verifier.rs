@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use xrf_level::{LevelAiFile, LevelAiHeader, LevelCformFile, LevelCformHeader, LevelFile, LevelShadersChunk};
 use xrf_spawn::XRayByteOrder;
-use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::project::levels::level_bundle::LevelBundle;
 use crate::project::levels::level_engine_constants::{
@@ -55,9 +54,11 @@ impl<'a> LevelBinariesVerifier<'a> {
 
     let asset_path: String = self.bundle.file_path(LEVEL_FILE);
 
-    let level_file: Arc<LevelFile> = match self.bundle.project().read_parsed(AssetType::Level, &path, |chunk| {
-      LevelFile::read_from_chunk::<XRayByteOrder, _>(chunk)
-    }) {
+    let level_file: Arc<LevelFile> = match self
+      .bundle
+      .project()
+      .read_parsed(&path, LevelFile::read_from_chunk::<XRayByteOrder, _>)
+    {
       Ok(level_file) => level_file,
       Err(error) => {
         return LevelBinariesOutcome {
@@ -119,7 +120,7 @@ impl<'a> LevelBinariesVerifier<'a> {
       )];
     }
 
-    let cform: Arc<LevelCformFile> = match self.bundle.project().read_parsed(AssetType::CForm, &path, |chunks| {
+    let cform: Arc<LevelCformFile> = match self.bundle.project().read_parsed(&path, |chunks| {
       LevelCformFile::read_from_chunk::<XRayByteOrder, _>(chunks)
     }) {
       Ok(cform) => cform,
@@ -164,9 +165,11 @@ impl<'a> LevelBinariesVerifier<'a> {
       )];
     }
 
-    let ai: Arc<LevelAiFile> = match self.bundle.project().read_parsed(AssetType::Ai, &path, |chunks| {
-      LevelAiFile::read_from_chunk::<XRayByteOrder, _>(chunks)
-    }) {
+    let ai: Arc<LevelAiFile> = match self
+      .bundle
+      .project()
+      .read_parsed(&path, LevelAiFile::read_from_chunk::<XRayByteOrder, _>)
+    {
       Ok(ai) => ai,
       Err(error) => {
         return vec![GamedataFindingFactory::for_asset(

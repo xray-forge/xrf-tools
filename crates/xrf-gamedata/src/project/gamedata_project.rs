@@ -9,8 +9,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxProject, LtxProjectOptions};
 use xrf_utils::format_path;
 use xrf_vfs::{
-  XrayAsset, XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayLookupScope, XrayMountMode, XrayPathCollision,
-  XrayReadTraceSummary, XrayRoots, XraySkippedMount, XrayVfs,
+  XrayAsset, XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayMountMode, XrayPathCollision, XrayReadTraceSummary,
+  XrayRoots, XraySearch, XraySearchPlan, XraySkippedMount, XrayVfs,
 };
 
 use crate::project::gamedata_project_options::GamedataProjectReadOptions;
@@ -21,11 +21,15 @@ pub(crate) const CONFIGS_DIRECTORY: &str = "configs";
 /// Root config the engine loads, and the one asset whose absence means this is not a usable project.
 const SYSTEM_LTX_LOGICAL_PATH: &str = "configs\\system.ltx";
 
+/// What the one step a project searches is called in a report.
+const SEARCH_STEP: &str = "gamedata";
+
 #[derive(Debug)]
 pub struct GamedataProject {
-  /// Owns the mounted sources, since a config project needs them for the same reasons a check does.
+  /// The config tree, read through the same snapshot as every check, so they share what it retains.
   pub(crate) ltx_project: LtxProject,
-  pub(crate) scope: XrayLookupScope,
+  /// The search every check reads through: the whole tree, as the caller left it once ignored prefixes are out.
+  pub(crate) search: XraySearch,
   /// Location shown in output, which for an installation is the game directory rather than any one mount.
   pub(crate) root: PathBuf,
   /// The engine the tree is meant for, which the environment check reads its configs as, and what decided it.
@@ -62,13 +66,13 @@ impl GamedataProject {
       );
     }
 
-    let plan = mode.plan(&options.root)?;
-    let scope: XrayLookupScope = XrayLookupScope::all();
+    let plan: XraySearchPlan = XraySearchPlan::new().with_root_mode(SEARCH_STEP, &options.root, mode)?;
 
     // Project identity is independent of the inspection filter: a mesh-only check must not be aborted because a caller
     // omitted configs. Resolve through the unfiltered plan so archive-only installations remain valid too.
-    let identity_vfs: XrayVfs = XrayVfs::from_plan(&plan)?;
-    if identity_vfs.scoped(&scope).find(SYSTEM_LTX_LOGICAL_PATH)?.is_none() {
+    let identity: XraySearch = plan.open()?;
+
+    if identity.find(SYSTEM_LTX_LOGICAL_PATH)?.is_none() {
       return Err(
         io::Error::new(
           ErrorKind::NotFound,
@@ -83,14 +87,13 @@ impl GamedataProject {
 
     let engine: XrayEngineResolution = options.engine.resolve(|| {
       XrayEngineDetector::detect(&XrayRoots::one(options.root.clone(), mode), |logical_path| {
-        identity_vfs.scoped(&scope).read_bytes(logical_path).ok()
+        identity.read(logical_path).ok()
       })
     });
 
     // Checks enumerate and read only what the caller left in scope.
     // Retaining motions is what keeps a sweep from re-reading a shared animation bank once per referencing visual.
-    let vfs: XrayVfs =
-      XrayVfs::from_plan(&plan.ignoring(&options.ignored)?)?.with_cache_policy(XrayCachePolicy::verification());
+    let vfs: XrayVfs = XrayVfs::new().with_cache_policy(XrayCachePolicy::verification());
 
     // Applied after the identity probe, so the account describes the sweep rather than the two reads opening it took.
     let vfs: XrayVfs = if options.is_tracing_reads {
@@ -99,11 +102,13 @@ impl GamedataProject {
       vfs
     };
 
-    let ltx_project: LtxProject = LtxProject::open_at_scope_opt(
+    let search: XraySearch = plan.ignoring(&options.ignored)?.open_in(vfs)?;
+
+    let ltx_project: LtxProject = LtxProject::open_at_search_opt(
       // The configs directory, not the game root: this project *is* the config tree, and callers join onto its root.
       options.root.join(CONFIGS_DIRECTORY),
-      vfs,
-      scope.clone().with_prefix(CONFIGS_DIRECTORY)?,
+      &search,
+      Some(CONFIGS_DIRECTORY),
       LtxProjectOptions {
         dialect: options.dialect.clone(),
         // Several verifiers read `system.ltx` and the same config roots, so resolving one twice would be paid work.
@@ -118,7 +123,7 @@ impl GamedataProject {
       engine,
       ltx_project,
       root: options.root.clone(),
-      scope,
+      search,
     })
   }
 
@@ -127,64 +132,68 @@ impl GamedataProject {
     Self::open_with_mode(XrayMountMode::Auto, options)
   }
 
-  /// Mounted sources this project resolves through, owned by its config project.
-  pub(crate) fn vfs(&self) -> &XrayVfs {
-    self.ltx_project.vfs()
+  /// The search every check of this project reads through.
+  pub(crate) fn search(&self) -> &XraySearch {
+    &self.search
   }
 
   /// How well retention has served this project's reads so far.
   pub fn get_cache_stats(&self) -> XrayCacheStats {
-    self.vfs().get_cache().get_stats()
+    self.search.get_vfs().get_cache_stats()
   }
 
   /// What this project physically read, or `None` unless it was opened with `is_tracing_reads`.
   pub fn get_read_trace_summary(&self, hottest: usize) -> Option<XrayReadTraceSummary> {
-    self.vfs().get_read_trace().map(|trace| trace.get_summary(hottest))
-  }
-
-  /// Mounts and subtree the project's operations apply to.
-  pub(crate) fn scope(&self) -> &XrayLookupScope {
-    &self.scope
+    self
+      .search
+      .get_vfs()
+      .get_read_trace()
+      .map(|trace| trace.get_summary(hottest))
   }
 
   /// Reads an asset's bytes through the VFS, whether it is loose or inside an archive volume.
   ///
   /// # Errors
   ///
-  /// Returns an error when nothing in scope holds the path, or the source cannot read it.
+  /// Returns an error when nothing in the project holds the path, or the source cannot read it.
   pub(crate) fn read_bytes(&self, logical_path: &str) -> XrfResult<Vec<u8>> {
-    self.vfs().scoped(&self.scope).read_bytes(logical_path)
+    self.search.read(logical_path)
   }
 
   /// Reads and parses a chunked asset, serving what this project is already holding.
   ///
   /// # Errors
   ///
-  /// Returns whatever reading the asset or parsing it answers with. A failure is not retained, so each caller of a
-  /// broken asset reports the real error rather than a copy of the first one.
-  pub(crate) fn read_parsed<T, F>(&self, kind: XrayAssetType, logical_path: &str, parse: F) -> XrfResult<Arc<T>>
+  /// Returns a not-found error when nothing in the project holds the path, and otherwise whatever reading the asset or
+  /// parsing it answers with. A failure is not retained, so each caller of a broken asset reports the real error
+  /// rather than a copy of the first one.
+  pub(crate) fn read_parsed<T, F>(&self, logical_path: &str, parse: F) -> XrfResult<Arc<T>>
   where
     T: Send + Sync + 'static,
     F: FnOnce(&mut ChunkReader<InMemoryChunkDataSource>) -> XrfResult<T>,
   {
+    let asset: XrayAsset = self
+      .search
+      .find(logical_path)?
+      .ok_or_else(|| XrfError::new_not_found_error(format!("no asset '{logical_path}' in the project")))?;
+
     self
-      .vfs()
-      .scoped(&self.scope)
-      .read_parsed(kind, logical_path, |bytes| parse(&mut ChunkReader::from_vec(bytes)?))
+      .search
+      .read_parsed(&asset, |bytes| parse(&mut ChunkReader::from_vec(bytes)?))
   }
 
   /// Files any mount holds but cannot reach, because another file in the same mount claims their engine identity.
   pub fn collisions(&self) -> Vec<XrayPathCollision> {
-    self.vfs().scoped(&self.scope).list_collisions()
+    self.search.list_collisions()
   }
 
   /// Sources this project's installation declared that could not be opened.
   pub fn skipped_mounts(&self) -> &[XraySkippedMount] {
-    self.vfs().get_skipped_mounts()
+    self.search.get_vfs().get_skipped_mounts()
   }
 }
 
-/// Asset access bound to this project's scope.
+/// Asset access bound to this project's search.
 impl GamedataProject {
   /// The winning asset for a logical path, or `None` when nothing in the project holds it.
   ///
@@ -192,22 +201,22 @@ impl GamedataProject {
   ///
   /// Returns an error when the path is not a valid X-Ray logical path.
   pub(crate) fn find(&self, logical_path: &str) -> XrfResult<Option<XrayAsset>> {
-    self.vfs().scoped(&self.scope).find(logical_path)
+    self.search.find(logical_path)
   }
 
   /// Size of an asset without reading it, for a gate that exists to avoid parsing a truncated file.
   pub(crate) fn size(&self, logical_path: &str) -> Option<u64> {
-    self.vfs().scoped(&self.scope).read_size(logical_path)
+    self.search.read_size(logical_path)
   }
 
   /// Every asset the project resolves, one per logical path, ordered by that path.
   pub(crate) fn entries(&self) -> Vec<XrayAsset> {
-    self.vfs().scoped(&self.scope).list_entries()
+    self.search.list_files()
   }
 
   /// Every asset whose extension identifies one kind, wherever in the tree it lives.
   pub(crate) fn entries_of_type(&self, asset_type: XrayAssetType) -> Vec<XrayAsset> {
-    self.vfs().scoped(&self.scope).list_entries_of_type(asset_type)
+    self.search.list_assets(asset_type)
   }
 
   /// Every asset whose logical path ends with `suffix` on a component boundary.
@@ -216,7 +225,15 @@ impl GamedataProject {
   ///
   /// Returns an error when `suffix` is not a valid X-Ray logical path fragment.
   pub(crate) fn entries_with_suffix(&self, suffix: &str) -> XrfResult<Vec<XrayAsset>> {
-    self.vfs().scoped(&self.scope).list_entries_with_suffix(suffix)
+    let mut found: Vec<XrayAsset> = Vec::new();
+
+    for asset in self.search.list_files() {
+      if asset.get_logical_path().ends_with(suffix)? {
+        found.push(asset);
+      }
+    }
+
+    Ok(found)
   }
 
   /// Resolves a raw engine reference of one kind under that kind's directory and extension.
@@ -225,7 +242,7 @@ impl GamedataProject {
   ///
   /// Returns an error when the kind has no canonical home, or the reference is not a valid X-Ray path.
   pub(crate) fn resolve(&self, asset_type: XrayAssetType, reference: &str) -> XrfResult<Option<XrayAsset>> {
-    self.vfs().scoped(&self.scope).resolve(asset_type, reference)
+    Ok(self.search.resolve(asset_type, reference)?.into_asset())
   }
 
   /// Resolves every asset of one kind a reference names, which may be a `*` mask.
@@ -234,7 +251,7 @@ impl GamedataProject {
   ///
   /// Returns an error when the kind has no canonical home, the reference is invalid, or a mask carries more than one `*`.
   pub(crate) fn resolve_all(&self, asset_type: XrayAssetType, reference: &str) -> XrfResult<Vec<XrayAsset>> {
-    self.vfs().scoped(&self.scope).resolve_all(asset_type, reference)
+    Ok(self.search.resolve(asset_type, reference)?.into_assets())
   }
 
   /// Resolves an OGF reference under the `meshes` namespace.
@@ -270,7 +287,7 @@ impl GamedataProject {
   ///
   /// Returns an error when no mount holds the asset's container, or the source cannot read it.
   pub(crate) fn read_resolved(&self, asset: &XrayAsset) -> XrfResult<Vec<u8>> {
-    self.vfs().read_asset_bytes(asset)
+    self.search.read_asset(asset)
   }
 
   /// Opens a chunk reader over an asset the project already resolved.

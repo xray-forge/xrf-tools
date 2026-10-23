@@ -17,7 +17,7 @@ pub(crate) enum XrayMountSelection {
   OfKind(XraySourceKind),
 }
 
-/// Where one [`crate::XrayVfs`] operation is allowed to look: which mounts, and which logical subtree of them.
+/// Where one search step is allowed to look: which mounts, and which logical subtree of them.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
 pub struct XrayLookupScope {
   selection: XrayMountSelection,

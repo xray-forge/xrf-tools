@@ -109,7 +109,7 @@ impl ListCommand {
     profile: &str,
     text: Option<DialogTextLanguage<'_>>,
   ) -> XrfResult<DialogListReport> {
-    let partners: DialogPartners = DialogPartners::from_vfs(project.get_vfs(), project.get_dialogs_prefix())?;
+    let partners: DialogPartners = DialogPartners::from_search(project.get_search(), project.get_dialogs_prefix())?;
     let mut findings: Vec<DialogFinding> = project.get_findings().to_vec();
 
     findings.extend_from_slice(partners.get_findings());

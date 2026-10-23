@@ -12,22 +12,8 @@ pub(crate) const SOUNDS_DIRECTORY: &str = "sounds";
 pub(crate) const SPAWNS_DIRECTORY: &str = "spawns";
 
 /// The X-Ray root a physical asset path sits under, if any.
-///
-/// Walks upward from the asset and answers with the nearest ancestor holding both a `meshes` and a `textures` directory.
-/// Nearest rather than furthest, so a gamedata tree nested inside another resolves against the one that contains the
-/// asset.
-///
-/// Falls back to the directory holding the asset directory the file itself lives under, so a tree carrying only
-/// `textures/` still names its files. That tree is not an installation and nothing pretends otherwise, but a file
-/// inside it has exactly one engine reference either way, and refusing to read one file because no meshes were shipped
-/// beside it serves nobody. The complete rule is tried first, so a real gamedata still answers with the gamedata root
-/// even where a nested directory happens to be called `textures`.
-///
-/// Finding a root does not promise a reference resolves inside it: a source tree holds both directories while storing
-/// textures one directory per texture under names that do not match their reference. Callers that need a resolvable root
-/// must therefore fall through on a failed lookup rather than on a failed derivation.
-///
-/// Returns the nearest implied root, or `None` when no ancestor looks like one. Behind [`crate::XrayMountPlan::implied_root`].
+/// Returns the nearest implied root, or `None` when no ancestor looks like one. Behind
+/// [`crate::XrayRootProbe::implied_root`].
 pub(crate) fn find_implied_asset_root(path: &Path) -> Option<PathBuf> {
   find_complete_asset_root(path).or_else(|| find_partial_asset_root(path))
 }

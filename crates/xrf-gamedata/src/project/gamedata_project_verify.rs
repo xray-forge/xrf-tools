@@ -123,7 +123,7 @@ mod tests {
   use std::path::PathBuf;
 
   use xrf_ltx::LtxProject;
-  use xrf_vfs::XrayLookupScope;
+  use xrf_vfs::{XraySearch, XrayVfs};
 
   use super::GamedataProject;
   use crate::{
@@ -136,7 +136,7 @@ mod tests {
       engine: xrf_engine_target::XrayEngineResolution::named(xrf_engine_target::XrayEngine::Vanilla),
       ltx_project: LtxProject::empty(PathBuf::new()),
       root: PathBuf::new(),
-      scope: XrayLookupScope::all(),
+      search: XraySearch::new(XrayVfs::new()),
     }
   }
 

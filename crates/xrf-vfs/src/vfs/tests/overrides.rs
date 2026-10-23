@@ -1,8 +1,9 @@
 use std::fs;
 use std::path::PathBuf;
 
+use crate::mount::XrayMountPlan;
 use crate::vfs::tests::fake_source::{FakeArchiveSource, directory};
-use crate::{XrayAsset, XrayLookupScope, XrayMountId, XrayMountPlan, XrayVfs};
+use crate::{XrayAsset, XrayLookupScope, XrayMountId, XrayVfs};
 
 #[test]
 fn an_override_creates_a_loose_file_that_then_wins() {
@@ -36,13 +37,13 @@ fn an_override_creates_a_loose_file_that_then_wins() {
     "it lands in the writable mount"
   );
   assert_eq!(
-    vfs.scoped(&scope).read_bytes("configs\\system.ltx").unwrap(),
+    vfs.read_in(&scope, "configs\\system.ltx").unwrap(),
     b"overridden",
     "and wins immediately, without the caller remounting"
   );
   assert_eq!(
-    vfs.scoped(&scope).find_all("configs\\system.ltx").unwrap().len(),
-    2,
+    vfs.list_entries_all_in(&scope).len(),
+    3,
     "the archived copy is still reportable behind it"
   );
 }
@@ -108,11 +109,21 @@ fn remounting_a_directory_picks_up_a_file_written_behind_the_vfs() {
 
   fs::write(root.join("configs/weather.ltx"), b"weather").expect("file written outside the vfs");
 
-  assert!(vfs.find("configs\\weather.ltx").unwrap().is_none());
+  assert!(
+    vfs
+      .find_in(&XrayLookupScope::all(), "configs\\weather.ltx")
+      .unwrap()
+      .is_none()
+  );
 
   vfs.remount(id).expect("directory remounts");
 
-  assert!(vfs.find("configs\\weather.ltx").unwrap().is_some());
+  assert!(
+    vfs
+      .find_in(&XrayLookupScope::all(), "configs\\weather.ltx")
+      .unwrap()
+      .is_some()
+  );
 }
 
 #[test]
@@ -131,7 +142,10 @@ fn an_override_lands_in_the_highest_priority_writable_mount() {
     .expect("override is created");
 
   assert_eq!(location.get_root(), Some(front.as_path()));
-  assert_eq!(vfs.read_bytes("configs\\system.ltx").unwrap(), b"overridden");
+  assert_eq!(
+    vfs.read_in(&XrayLookupScope::all(), "configs\\system.ltx").unwrap(),
+    b"overridden"
+  );
 }
 
 #[test]
@@ -141,7 +155,10 @@ fn reads_an_asset_from_the_source_that_resolved_it() {
 
   vfs.mount_directory("", &root).expect("root mounts");
 
-  let asset: XrayAsset = vfs.find("configs\\system.ltx").expect("lookup").expect("resolves");
+  let asset: XrayAsset = vfs
+    .find_in(&XrayLookupScope::all(), "configs\\system.ltx")
+    .expect("lookup")
+    .expect("resolves");
 
   // The helper writes the tree's name as each file's contents, so this proves which source answered.
   assert_eq!(vfs.read_asset_bytes(&asset).expect("reads"), b"read_asset");
@@ -157,7 +174,7 @@ fn reading_an_asset_from_another_vfs_is_not_found_rather_than_wrong_bytes() {
   elsewhere.mount_directory("", &other).expect("root mounts");
 
   let asset: XrayAsset = elsewhere
-    .find("configs\\system.ltx")
+    .find_in(&XrayLookupScope::all(), "configs\\system.ltx")
     .expect("lookup")
     .expect("resolves");
 

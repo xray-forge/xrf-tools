@@ -6,7 +6,7 @@ use xrf_translation::{
   read_gamedata_in, read_source_in,
 };
 use xrf_utils::error_to_string;
-use xrf_vfs::{XrayAsset, XrayLookupScope, XrayScopedVfs, XrayVfs};
+use xrf_vfs::{XrayAsset, XraySearch};
 
 use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
@@ -44,11 +44,15 @@ pub(in crate::plugins::translations) fn write_edits(
 ) -> TauriResult<TranslationProjectDescriptor> {
   // Mounted once and kept for the re-read below. Edits replace files in place, so nothing the mount
   // indexed moves, and the default cache policy retains nothing for a stale read to come back from.
-  let vfs: XrayVfs = plan.roots.open().map_err(error_to_string)?;
-  let scope: XrayLookupScope = XrayLookupScope::all()
+  let search: XraySearch = plan
+    .roots
+    .to_search_plan()
+    .and_then(|search_plan| search_plan.open())
+    .map_err(error_to_string)?;
+  let sources: XraySearch = search
+    .clone()
     .with_optional_prefix(Some(&plan.prefix))
     .map_err(error_to_string)?;
-  let scoped: XrayScopedVfs = vfs.scoped(&scope);
 
   for (language, language_edits) in edits {
     if language_edits.is_empty() {
@@ -60,7 +64,7 @@ pub(in crate::plugins::translations) fn write_edits(
       .get(language)
       .ok_or_else(|| format!("Translations file '{}' has nothing on disk for '{language}'", plan.file))?;
 
-    let asset: XrayAsset = scoped
+    let asset: XrayAsset = sources
       .find(&source.logical_path)
       .map_err(error_to_string)?
       .ok_or_else(|| {
@@ -81,8 +85,8 @@ pub(in crate::plugins::translations) fn write_edits(
   }
 
   match plan.mode {
-    TranslationProjectMode::Source => read_source_in(&vfs, &plan.roots, &plan.prefix),
-    TranslationProjectMode::Gamedata => read_gamedata_in(&vfs, &plan.roots, &plan.prefix),
+    TranslationProjectMode::Source => read_source_in(&search, &plan.roots, &plan.prefix),
+    TranslationProjectMode::Gamedata => read_gamedata_in(&search, &plan.roots, &plan.prefix),
   }
   .map_err(error_to_string)
 }

@@ -5,8 +5,9 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 
+use crate::mount::XrayMountPlan;
 use crate::mount::xray_root::implied_install_root;
-use crate::{FsgameFile, XrayMountPlan, XrayRootKind};
+use crate::{FsgameFile, XrayRootKind};
 
 /// How a caller's path is turned into mounts.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -34,7 +35,7 @@ impl XrayMountMode {
   ///
   /// Returns an error when [`Self::Installation`] is asked for a path that declares none, or when a declared
   /// fsgame file cannot be read, decoded, or parsed.
-  pub fn plan(&self, path: impl AsRef<Path>) -> XrfResult<XrayMountPlan> {
+  pub(crate) fn plan(&self, path: impl AsRef<Path>) -> XrfResult<XrayMountPlan> {
     let path: &Path = path.as_ref();
 
     match self {

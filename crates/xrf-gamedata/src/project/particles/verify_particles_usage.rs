@@ -158,7 +158,7 @@ impl GamedataProject {
         continue;
       };
 
-      let spawn_file: Arc<SpawnFile> = match self.read_parsed(AssetType::Spawn, &spawn_path, |chunk| {
+      let spawn_file: Arc<SpawnFile> = match self.read_parsed(&spawn_path, |chunk| {
         SpawnFile::read_from_chunk::<XRayByteOrder, _>(chunk)
       }) {
         Ok(spawn_file) => spawn_file,

@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
 use xrf_utils::to_portable_path_string;
-use xrf_vfs::{XrayAsset, XrayDirectoryListing, XrayLogicalPath, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayDirectoryListing, XrayLogicalPath, XrayRoots, XraySearch};
 
 use crate::language::TranslationLanguage;
 use crate::project::constants::{MAP_DESC_DIRECTORY, OPENXRAY_XML};
@@ -14,20 +14,12 @@ use crate::xml::read::parse_string_table;
 
 /// Read a text root whose subdirectories are languages.
 ///
-/// Reads through `xrf-vfs`, so an installation opens as readily as a loose tree: on Anomaly and CoC
-/// these files come out of `db\configs`, and a reader reaching for the filesystem reports them absent
-/// instead of reading them.
-///
-/// Language discovery mirrors `CStringTable::FillLanguageToken` rather than any list of our own: the
-/// engine has no whitelist, so neither does this. A directory is a language unless it is named
-/// `map_desc`, is empty, or holds nothing but `openxray.xml`.
-///
 /// # Errors
 ///
 /// Returns an error when the roots cannot be mounted or the prefix is not a logical path. Individual
 /// files never fail the read; they are reported as findings instead.
 pub fn read_gamedata(roots: &XrayRoots, prefix: &str) -> XrfResult<TranslationProjectDescriptor> {
-  read_gamedata_in(&roots.open()?, roots, prefix)
+  read_gamedata_in(&roots.to_search_plan()?.open()?, roots, prefix)
 }
 
 /// Read a text root over roots somebody else mounted.
@@ -35,11 +27,13 @@ pub fn read_gamedata(roots: &XrayRoots, prefix: &str) -> XrfResult<TranslationPr
 /// # Errors
 ///
 /// Returns an error when the prefix is not a logical path.
-pub fn read_gamedata_in(vfs: &XrayVfs, roots: &XrayRoots, prefix: &str) -> XrfResult<TranslationProjectDescriptor> {
-  // Unscoped, because this walks down from the text root by name rather than filtering a flat listing:
-  // the language directories are the structure being read, not noise to exclude.
-  let scope: XrayLookupScope = XrayLookupScope::all();
-  let scoped: XrayScopedVfs = vfs.scoped(&scope);
+pub fn read_gamedata_in(
+  search: &XraySearch,
+  roots: &XrayRoots,
+  prefix: &str,
+) -> XrfResult<TranslationProjectDescriptor> {
+  // Not narrowed to the prefix, because this walks down from the text root by name rather than filtering a flat
+  // listing: the language directories are the structure being read, not noise to exclude.
   let root: Option<XrayLogicalPath> = if prefix.is_empty() {
     None
   } else {
@@ -53,20 +47,20 @@ pub fn read_gamedata_in(vfs: &XrayVfs, roots: &XrayRoots, prefix: &str) -> XrfRe
     ..Default::default()
   };
 
-  for language in discover_languages(&scoped, root.as_ref(), &mut descriptor.findings)? {
+  for language in discover_languages(search, root.as_ref(), &mut descriptor.findings)? {
     // Non-recursive, matching the engine's own `text<language>*.xml` mask.
-    let listing: XrayDirectoryListing = scoped.list_children(child(root.as_ref(), &language)?.as_str())?;
+    let listing: XrayDirectoryListing = search.list_children(child(root.as_ref(), &language)?.as_str())?;
     let tables: Vec<XrayAsset> = listing.files.into_iter().filter(is_string_table).collect();
 
     for asset in &tables {
-      merge_file(&scoped, asset, &language, &mut descriptor);
+      merge_file(search, asset, &language, &mut descriptor);
     }
 
     // Read off the first file rather than assumed from the code: these directories carry languages
     // the enum has no mapping for, and their own declaration is the only statement that exists.
     if let Some(encoding) = tables
       .first()
-      .and_then(|asset| read_declared_encoding(&scoped, asset, &language))
+      .and_then(|asset| read_declared_encoding(search, asset, &language))
     {
       descriptor.encodings.insert(language.clone(), encoding);
     }
@@ -85,17 +79,12 @@ fn is_string_table(asset: &XrayAsset) -> bool {
   asset.get_logical_path().has_extension(XrayExtension::Xml)
 }
 
-fn merge_file(
-  scoped: &XrayScopedVfs,
-  asset: &XrayAsset,
-  language: &str,
-  descriptor: &mut TranslationProjectDescriptor,
-) {
+fn merge_file(search: &XraySearch, asset: &XrayAsset, language: &str, descriptor: &mut TranslationProjectDescriptor) {
   let logical_path: &str = asset.get_logical_path().as_str();
   let name: String = asset.get_logical_path().file_name().to_owned();
 
-  let entries: Vec<(String, String)> = match scoped
-    .read_asset_bytes(asset)
+  let entries: Vec<(String, String)> = match search
+    .read_asset(asset)
     .and_then(|data| parse_string_table(identity(asset, language), &data))
   {
     Ok(entries) => entries,
@@ -143,13 +132,13 @@ fn merge_file(
 /// listing is of logical children, so a language split across a loose tree and an archive is one
 /// language here rather than two.
 fn discover_languages(
-  scoped: &XrayScopedVfs,
+  search: &XraySearch,
   root: Option<&XrayLogicalPath>,
   findings: &mut Vec<TranslationFinding>,
 ) -> XrfResult<Vec<String>> {
   let mut languages: Vec<String> = Vec::new();
 
-  for name in scoped
+  for name in search
     .list_children(root.map_or("", XrayLogicalPath::as_str))?
     .directories
   {
@@ -158,7 +147,7 @@ fn discover_languages(
     }
 
     let directory: XrayLogicalPath = child(root, &name)?;
-    let files: Vec<XrayAsset> = scoped.list_children(directory.as_str())?.files;
+    let files: Vec<XrayAsset> = search.list_children(directory.as_str())?.files;
 
     if files.is_empty() {
       continue;
@@ -200,11 +189,8 @@ fn child(prefix: Option<&XrayLogicalPath>, name: &str) -> XrfResult<XrayLogicalP
 }
 
 /// The code page one language's files declare, read off the first of them.
-///
-/// A read failure answers `None` rather than a finding: `merge_file` already reports the same file, so
-/// raising it twice would double every unreadable table in the report.
-fn read_declared_encoding(scoped: &XrayScopedVfs, asset: &XrayAsset, language: &str) -> Option<String> {
-  let data: Vec<u8> = scoped.read_asset_bytes(asset).ok()?;
+fn read_declared_encoding(search: &XraySearch, asset: &XrayAsset, language: &str) -> Option<String> {
+  let data: Vec<u8> = search.read_asset(asset).ok()?;
 
   Some(
     decode(identity(asset, language), &data)

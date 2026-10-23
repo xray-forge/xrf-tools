@@ -2,7 +2,6 @@ use clap::{ArgMatches, Command};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_report::Status;
-use xrf_vfs::{XrayLookupScope, XrayVfs};
 
 use crate::commands::level::level_assets::LevelAssets;
 use crate::commands::level::level_selection::LevelSelection;
@@ -33,9 +32,7 @@ impl GenericCommand for VerifyCommand {
     let output: OutputOptions = context.get_output().clone();
 
     // The mount outlives the assets that borrow from it, so it is taken before the level is opened.
-    let vfs: Option<XrayVfs> = selection.mount()?;
-    let scope: XrayLookupScope = XrayLookupScope::all();
-    let assets: LevelAssets = selection.open(vfs.as_ref(), &scope)?;
+    let assets: LevelAssets = selection.open()?;
 
     xrf_output::info!(output, "Verifying compiled level {}", assets.describe());
 

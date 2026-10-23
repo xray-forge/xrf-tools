@@ -5,7 +5,6 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxProject, LtxProjectOptions};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
-use xrf_vfs::XrayLookupScope;
 
 use crate::commands::ltx::ltx_installation::mount_installation;
 use crate::core::ltx_dialect::requested_ltx_dialect;
@@ -36,8 +35,8 @@ pub fn open_ltx_project(path: &Path, matches: &ArgMatches, output: &OutputOption
   };
 
   match mount_installation(path)? {
-    Some(vfs) => {
-      let project: LtxProject = LtxProject::open_at_scope_opt(path, vfs, XrayLookupScope::all(), options)?;
+    Some(search) => {
+      let project: LtxProject = LtxProject::open_at_search_opt(path, &search, None, options)?;
 
       report_sources(&project, output);
 
@@ -52,7 +51,7 @@ pub fn open_ltx_project(path: &Path, matches: &ArgMatches, output: &OutputOption
 /// An installation keeps nearly every config in an archive volume, so naming only the game directory would leave the
 /// answer silent about where thousands of configs came from.
 fn report_sources(project: &LtxProject, output: &OutputOptions) {
-  for mount in project.vfs().get_mounts() {
+  for mount in project.search().get_vfs().get_mounts() {
     xrf_output::info!(
       output,
       "Source: {:?} {} ({})",

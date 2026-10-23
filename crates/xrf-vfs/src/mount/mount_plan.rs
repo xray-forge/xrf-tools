@@ -1,12 +1,23 @@
 use xrf_error::XrfResult;
 use xrf_utils::format_path;
 
+use crate::mount::{XrayMountPlan, XrayPlannedMount};
 use crate::source::{XrayArchiveSource, XrayDirectorySource};
-use crate::{XrayMountId, XrayMountPlan, XrayPlannedMount, XraySkippedMount, XraySourceKind, XrayVfs};
+use crate::{XrayMountId, XraySkippedMount, XraySourceKind, XrayVfs};
 
 impl XrayVfs {
+  /// A snapshot holding what a plan mounts, for a test about one plan's sources.
+  #[cfg(test)]
+  pub(crate) fn from_plan(plan: &XrayMountPlan) -> XrfResult<Self> {
+    let mut vfs: Self = Self::new();
+
+    vfs.mount_plan(plan)?;
+
+    Ok(vfs)
+  }
+
   /// Mounts each planned source that can be opened, in plan order, behind the mounts already present.
-  pub fn mount_plan(&mut self, plan: &XrayMountPlan) -> XrfResult<Vec<XrayMountId>> {
+  pub(crate) fn mount_plan(&mut self, plan: &XrayMountPlan) -> XrfResult<Vec<XrayMountId>> {
     let mut mounted: Vec<XrayMountId> = Vec::with_capacity(plan.len());
 
     for planned in plan.get_mounts() {
@@ -45,7 +56,7 @@ impl XrayVfs {
 
   /// The mounts a plan produced, in plan order, where every source it names is settled already; `None` where one is
   /// not, which only [`Self::mount_plan`] can settle.
-  pub fn find_mounted_plan(&self, plan: &XrayMountPlan) -> Option<Vec<XrayMountId>> {
+  pub(crate) fn find_mounted_plan(&self, plan: &XrayMountPlan) -> Option<Vec<XrayMountId>> {
     let mut mounted: Vec<XrayMountId> = Vec::with_capacity(plan.len());
 
     for planned in plan.get_mounts() {
@@ -62,7 +73,7 @@ impl XrayVfs {
 
   /// Forgets the recorded failures among the sources a plan names, so mounting it again tries them, and leaves every
   /// other plan's settled.
-  pub fn forget_skipped_mounts_of(&mut self, plan: &XrayMountPlan) {
+  pub(crate) fn forget_skipped_mounts_of(&mut self, plan: &XrayMountPlan) {
     self.forget_skipped(|path, kind| {
       plan
         .get_mounts()
@@ -72,7 +83,7 @@ impl XrayVfs {
   }
 
   /// The recorded failures among the sources a plan names, in plan order.
-  pub fn list_skipped_mounts_of(&self, plan: &XrayMountPlan) -> Vec<XraySkippedMount> {
+  pub(crate) fn list_skipped_mounts_of(&self, plan: &XrayMountPlan) -> Vec<XraySkippedMount> {
     plan
       .get_mounts()
       .iter()

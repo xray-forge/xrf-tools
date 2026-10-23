@@ -30,7 +30,7 @@ fn layered(name: &str) -> XrayVfs {
 fn a_winner_carries_the_copies_it_hides() {
   let vfs: XrayVfs = layered("mounted_entries_layered");
 
-  let entries: Vec<XrayShadowingEntry> = vfs.list_shadowing_entries();
+  let entries: Vec<XrayShadowingEntry> = vfs.list_shadowing_entries_in(&XrayLookupScope::all());
 
   assert_eq!(
     entries
@@ -67,7 +67,7 @@ fn a_winner_carries_the_copies_it_hides() {
 fn the_plain_listing_keeps_the_winner_and_drops_what_it_hides() {
   let vfs: XrayVfs = layered("mounted_entries_lean");
 
-  let entries: Vec<XrayMountedEntry> = vfs.list_mounted_entries();
+  let entries: Vec<XrayMountedEntry> = vfs.list_mounted_entries_in(&XrayLookupScope::all());
 
   assert_eq!(
     entries
@@ -87,7 +87,7 @@ fn the_plain_listing_keeps_the_winner_and_drops_what_it_hides() {
     "and the same copy wins, so the two shapes cannot disagree about priority"
   );
 
-  let shadowing: Vec<XrayShadowingEntry> = vfs.list_shadowing_entries();
+  let shadowing: Vec<XrayShadowingEntry> = vfs.list_shadowing_entries_in(&XrayLookupScope::all());
 
   assert_eq!(
     entries.len(),
@@ -105,7 +105,7 @@ fn the_plain_listing_keeps_the_winner_and_drops_what_it_hides() {
 fn a_hidden_copy_carries_its_own_size() {
   let vfs: XrayVfs = layered("mounted_entries_shadowed_size");
 
-  let entries: Vec<XrayShadowingEntry> = vfs.list_shadowing_entries();
+  let entries: Vec<XrayShadowingEntry> = vfs.list_shadowing_entries_in(&XrayLookupScope::all());
   let shared: &XrayShadowingEntry = &entries[2];
 
   assert_eq!(shared.get_size(), "mounted_entries_shadowed_size".len() as u64);
@@ -125,7 +125,7 @@ fn a_hidden_copy_carries_its_own_size() {
 fn a_listing_carries_the_size_of_the_copy_that_wins() {
   let vfs: XrayVfs = layered("mounted_entries_size");
 
-  let entries: Vec<XrayMountedEntry> = vfs.list_mounted_entries();
+  let entries: Vec<XrayMountedEntry> = vfs.list_mounted_entries_in(&XrayLookupScope::all());
   let shared: &XrayMountedEntry = &entries[2];
 
   // The fixture writes its own name into every loose file, and the fake volume stores its label as each payload.
@@ -135,7 +135,7 @@ fn a_listing_carries_the_size_of_the_copy_that_wins() {
     "the winner is measured, not the copy behind it"
   );
   assert_eq!(
-    vfs.read_size("configs\\system.ltx"),
+    vfs.read_size_in(&XrayLookupScope::all(), "configs\\system.ltx"),
     Some(shared.size),
     "and it agrees with asking for one size on its own"
   );
@@ -153,8 +153,7 @@ fn a_scope_narrows_the_listing_the_way_it_narrows_a_lookup() {
 
   assert_eq!(
     vfs
-      .scoped(&scope)
-      .list_mounted_entries()
+      .list_mounted_entries_in(&scope)
       .iter()
       .map(XrayMountedEntry::get_logical_path)
       .collect::<Vec<&str>>(),
@@ -163,8 +162,7 @@ fn a_scope_narrows_the_listing_the_way_it_narrows_a_lookup() {
 
   assert_eq!(
     vfs
-      .scoped(&scope)
-      .list_shadowing_entries()
+      .list_shadowing_entries_in(&scope)
       .iter()
       .map(XrayShadowingEntry::get_logical_path)
       .collect::<Vec<&str>>(),

@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
-use xrf_vfs::{XrayAsset, XrayMountMode, XrayMountPlan, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayMountMode, XraySearch, XraySearchPlan};
 
 use crate::patch::compare::{ArchivePatchOrigins, ArchivePatchSide};
 use crate::patch::config::ArchivePatchScope;
@@ -11,7 +11,7 @@ use crate::patch::world::{ArchivePatchChecksum, ArchivePatchRole};
 
 /// One comparison root mounted through the VFS, with archive and loose-file reads.
 pub(crate) struct ArchivePatchWorld {
-  vfs: XrayVfs,
+  search: XraySearch,
   root: PathBuf,
   role: ArchivePatchRole,
 }
@@ -28,15 +28,17 @@ impl ArchivePatchWorld {
     Self::of_plan(&Self::plan(root, role)?, root, role)
   }
 
-  /// The mount plan for a root, so a caller that needs both halves of one input can split it before opening anything.
+  /// The search plan for a root, so a caller that needs both halves of one input can split it before opening anything.
   ///
   /// # Errors
   ///
   /// Returns an invalid error naming the role when the path cannot be planned.
-  pub(crate) fn plan(root: &Path, role: ArchivePatchRole) -> XrfResult<XrayMountPlan> {
-    XrayMountMode::Auto.plan(root).map_err(|error| {
-      XrfError::new_invalid_error(format!("Cannot read the {role} root '{}': {error}", format_path(root)))
-    })
+  pub(crate) fn plan(root: &Path, role: ArchivePatchRole) -> XrfResult<XraySearchPlan> {
+    XraySearchPlan::new()
+      .with_root_mode(role.to_string(), root, XrayMountMode::Auto)
+      .map_err(|error| {
+        XrfError::new_invalid_error(format!("Cannot read the {role} root '{}': {error}", format_path(root)))
+      })
   }
 
   /// Mounts an already-planned set of sources, named after `root` in anything it has to say.
@@ -44,14 +46,14 @@ impl ArchivePatchWorld {
   /// # Errors
   ///
   /// Rejects an empty mount set and archive entry points outside gamedata. Propagates mount errors.
-  pub(crate) fn of_plan(plan: &XrayMountPlan, root: &Path, role: ArchivePatchRole) -> XrfResult<Self> {
+  pub(crate) fn of_plan(plan: &XraySearchPlan, root: &Path, role: ArchivePatchRole) -> XrfResult<Self> {
     let world: Self = Self {
-      vfs: XrayVfs::from_plan(plan)?,
+      search: plan.open()?,
       root: root.to_path_buf(),
       role,
     };
 
-    if world.vfs.is_empty() {
+    if world.search.is_empty() {
       return Err(XrfError::new_invalid_error(format!(
         "Nothing mounted from the {role} root '{}'. A comparison needs two worlds, and an empty one would report \
          every file of the other as a difference.",
@@ -59,14 +61,14 @@ impl ArchivePatchWorld {
       )));
     }
 
-    require_gamedata_entry_point(&world.vfs, role)?;
+    require_gamedata_entry_point(world.search.get_vfs(), role)?;
 
     Ok(world)
   }
 
   /// Returns entries in scope, sorted by engine identity.
   pub(crate) fn list_scoped(&self, scope: &ArchivePatchScope) -> Vec<XrayAsset> {
-    let mut entries: Vec<XrayAsset> = self.vfs.list_entries();
+    let mut entries: Vec<XrayAsset> = self.search.list_files();
 
     entries.retain(|asset| scope.admits(asset.get_logical_path().as_str()));
 
@@ -81,7 +83,7 @@ impl ArchivePatchWorld {
     ArchivePatchSide {
       origin: origins.intern(asset.get_container()),
       size: self
-        .vfs
+        .search
         .read_size(asset.get_logical_path().as_str())
         .unwrap_or_default(),
     }
@@ -93,7 +95,7 @@ impl ArchivePatchWorld {
   ///
   /// Propagates payload read errors.
   pub(crate) fn read_checksum(&self, name: &str) -> XrfResult<ArchivePatchChecksum> {
-    match self.vfs.read_recorded_crc(name) {
+    match self.search.read_recorded_crc(name) {
       Some(crc) => Ok(ArchivePatchChecksum::Recorded(crc)),
       None => Ok(ArchivePatchChecksum::Hashed(crc32fast::hash(&self.read_bytes(name)?))),
     }
@@ -105,12 +107,12 @@ impl ArchivePatchWorld {
   ///
   /// Returns the read error of the mounted entry.
   pub(crate) fn read_bytes(&self, name: &str) -> XrfResult<Vec<u8>> {
-    self.vfs.read_bytes(name)
+    self.search.read(name)
   }
 
-  /// The mounted world, for the packer reading payloads out of it.
-  pub(crate) fn get_vfs(&self) -> &XrayVfs {
-    &self.vfs
+  /// The search over this side, for the packer reading payloads out of it.
+  pub(crate) fn get_search(&self) -> &XraySearch {
+    &self.search
   }
 
   /// Whether this side's root holds `path`.

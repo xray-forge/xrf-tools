@@ -6,11 +6,12 @@ Describes the texture dependencies and alpha behavior an X-Ray surface gets from
 
 ```rust,no_run
 use xrf_material::{XrayMaterialResolver, XraySurfaceResolver, XrayTextureScope};
-use xrf_vfs::{XrayLookupScope, XrayMountMode, XraySearch, XrayVfs};
+use xrf_vfs::{XrayMountMode, XraySearchPlan};
 
 fn main() -> xrf_error::XrfResult {
-  let vfs = XrayVfs::open(XrayMountMode::Directory, "gamedata")?;
-  let search = XraySearch::new(vfs).with_step("gamedata", XrayLookupScope::all());
+  let search = XraySearchPlan::new()
+    .with_root_mode("gamedata", "gamedata", XrayMountMode::Directory)?
+    .open()?;
   let material = XrayMaterialResolver::describe_texture(&search, &XrayTextureScope::shared(), "wpn\\wpn_ak74");
 
   println!("Bump outcome: {:?}", material.outcome);

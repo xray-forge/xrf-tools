@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayLookupScope, XrayMountMode, XrayVfs};
+use xrf_vfs::{XrayMountMode, XraySearch};
 
 use crate::commands::level::level_assets::LevelAssets;
 
@@ -86,45 +86,31 @@ impl LevelSelection {
     self.path.is_some()
   }
 
-  /// Mounts the roots this selection names, for a selection that names any.
-  ///
-  /// Kept apart from [`Self::open`] because the mounted VFS outlives the assets borrowed from it.
+  /// Opens the level this selection names, mounting the roots it names where it names a level among them.
   ///
   /// # Errors
   ///
-  /// Returns an error when the roots cannot be mounted.
-  pub fn mount(&self) -> XrfResult<Option<XrayVfs>> {
-    match self.path {
-      Some(_) => Ok(None),
-      None => Ok(Some(LevelAssets::roots_of(&self.roots, self.source).open()?)),
+  /// Returns an error when the roots cannot be mounted, no level was named among them, or the named one holds no
+  /// `level` file.
+  pub fn open(&self) -> XrfResult<LevelAssets> {
+    if let Some(path) = &self.path {
+      return Ok(LevelAssets::open_directory(path));
     }
-  }
 
-  /// Opens the level this selection names.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when no level was named among the roots, or the named one holds no `level` file.
-  pub fn open<'a>(&'a self, vfs: Option<&'a XrayVfs>, scope: &'a XrayLookupScope) -> XrfResult<LevelAssets<'a>> {
-    match (&self.path, vfs) {
-      (Some(path), _) => Ok(LevelAssets::open_directory(path)),
-      (None, Some(vfs)) => {
-        let name: &String = self
-          .name
-          .as_ref()
-          .ok_or_else(|| Self::new_name_required_error(vfs, scope))?;
+    let search: XraySearch = LevelAssets::roots_of(&self.roots, self.source)
+      .to_search_plan()?
+      .open()?;
+    let name: &String = self
+      .name
+      .as_ref()
+      .ok_or_else(|| Self::new_name_required_error(&search))?;
 
-        LevelAssets::open_asset(vfs, scope, name)
-      }
-      (None, None) => Err(XrfError::new_invalid_error(
-        "Expected either a level directory or roots to mount, which the argument group requires",
-      )),
-    }
+    LevelAssets::open_asset(search, name)
   }
 
   /// The error for roots given without a level, which names what they hold so the next run can pick one.
-  fn new_name_required_error(vfs: &XrayVfs, scope: &XrayLookupScope) -> XrfError {
-    match LevelAssets::list_names(vfs, scope) {
+  fn new_name_required_error(search: &XraySearch) -> XrfError {
+    match LevelAssets::list_names(search) {
       Ok(names) if names.is_empty() => {
         XrfError::new_not_found_error("The mounted roots hold no levels, so none can be named with --level")
       }

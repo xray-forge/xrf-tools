@@ -3,9 +3,9 @@ use std::path::{Path, PathBuf};
 
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
+use crate::mount::XrayMountPlan;
 use crate::{
-  FsgameFile, XrayMountMode, XrayMountPlan, XrayRoots, XraySearch, XraySearchPlan, XraySearchStep, XraySourceKind,
-  XrayVfs,
+  FsgameFile, XrayMountMode, XrayRoots, XraySearch, XraySearchPlan, XraySearchStep, XraySourceKind, XrayVfs,
 };
 
 /// The alias order a real `fsgame.ltx` uses: archives declared before gamedata, which is what makes loose files win.
@@ -220,13 +220,6 @@ fn plans_a_bare_root_without_any_fsgame() {
 }
 
 #[test]
-fn plans_a_subtree_at_its_logical_base() {
-  let plan: XrayMountPlan = XrayMountPlan::subtree("C:\\loose\\weapons", "Configs/Weapons").expect("subtree plans");
-
-  assert_eq!(plan.get_mounts()[0].base, "configs\\weapons", "the base is normalized");
-}
-
-#[test]
 fn plans_the_root_implied_by_an_asset_and_nothing_when_there_is_none() {
   let root: PathBuf = build_absolute_generated_test_resource_path("xray_mount_plan/implied");
 
@@ -244,19 +237,6 @@ fn plans_the_root_implied_by_an_asset_and_nothing_when_there_is_none() {
       .is_empty(),
     "a guess that finds nothing plans nothing rather than guessing anyway"
   );
-}
-
-#[test]
-fn chains_a_fallback_behind_a_plan_without_repeating_a_path() {
-  // How the viewer expresses "the tree the model came from, then the configured project".
-  let chained: XrayMountPlan = XrayMountPlan::root("C:\\first")
-    .expect("root plans")
-    .behind(XrayMountPlan::root("C:\\second").expect("root plans"))
-    .behind(XrayMountPlan::root("C:\\first").expect("root plans"));
-
-  let paths: Vec<&Path> = chained.get_mounts().iter().map(|it| it.path.as_path()).collect();
-
-  assert_eq!(paths, vec![Path::new("C:\\first"), Path::new("C:\\second")]);
 }
 
 #[test]

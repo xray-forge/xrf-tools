@@ -49,14 +49,15 @@ produced geometry. Skinning indices address the model's bone list, with four slo
 
 ```rust,no_run
 use xrf_db::{OgfFile, XRayByteOrder};
-use xrf_vfs::{XrayLookupScope, XrayMountMode, XraySearch, XrayVfs};
+use xrf_vfs::{XrayMountMode, XraySearchPlan};
 use xrf_visual::{VisualDependencies, VisualPacker};
 
 fn main() -> xrf_error::XrfResult {
   let file = OgfFile::read_from_path::<XRayByteOrder, _>(&"gamedata/meshes/example.ogf")?;
   let package = VisualPacker::pack(&file);
-  let vfs = XrayVfs::open(XrayMountMode::Directory, "gamedata")?;
-  let search = XraySearch::new(vfs).with_step("gamedata", XrayLookupScope::all());
+  let search = XraySearchPlan::new()
+    .with_root_mode("gamedata", "gamedata", XrayMountMode::Directory)?
+    .open()?;
   let dependencies = VisualDependencies::resolve(&package.description, &search);
 
   println!("First submesh texture: {:?}", dependencies.find_texture(0));

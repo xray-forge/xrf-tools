@@ -23,7 +23,9 @@ fn separates_folders_from_files_directly_inside() {
     ],
   );
 
-  let listing: XrayDirectoryListing = vfs.list_children("configs").expect("listing");
+  let listing: XrayDirectoryListing = vfs
+    .list_children_in(&XrayLookupScope::all(), "configs")
+    .expect("listing");
 
   assert_eq!(listing.directories, vec!["environment", "weapons"]);
   assert_eq!(
@@ -45,14 +47,15 @@ fn does_not_answer_with_everything_below_the_directory() {
     &["textures/wpn/wpn_ak74.dds", "textures/wpn/scopes/scope.dds"],
   );
 
-  let listing: XrayDirectoryListing = vfs.list_children("textures").expect("listing");
+  let listing: XrayDirectoryListing = vfs
+    .list_children_in(&XrayLookupScope::all(), "textures")
+    .expect("listing");
 
   assert_eq!(listing.directories, vec!["wpn"]);
   assert!(listing.files.is_empty());
   assert_eq!(
     vfs
-      .scoped(&XrayLookupScope::all().with_prefix("textures").expect("prefix"))
-      .list_entries()
+      .list_entries_in(&XrayLookupScope::all().with_prefix("textures").expect("prefix"))
       .len(),
     2,
     "entries still answers the whole subtree"
@@ -63,7 +66,7 @@ fn does_not_answer_with_everything_below_the_directory() {
 fn lists_the_logical_root_for_an_empty_directory() {
   let vfs: XrayVfs = mounted("children_root", &["configs/system.ltx", "textures/wpn/wpn_ak74.dds"]);
 
-  let listing: XrayDirectoryListing = vfs.list_children("").expect("listing");
+  let listing: XrayDirectoryListing = vfs.list_children_in(&XrayLookupScope::all(), "").expect("listing");
 
   assert_eq!(listing.directories, vec!["configs", "textures"]);
   assert!(listing.files.is_empty());
@@ -80,7 +83,9 @@ fn merges_children_across_mounts_and_dedupes_folders() {
     )
     .expect("base mounts");
 
-  let listing: XrayDirectoryListing = vfs.list_children("configs").expect("listing");
+  let listing: XrayDirectoryListing = vfs
+    .list_children_in(&XrayLookupScope::all(), "configs")
+    .expect("listing");
 
   assert_eq!(listing.directories, vec!["weapons"], "one folder, not one per mount");
   assert_eq!(listing.files.len(), 1);
@@ -103,7 +108,9 @@ fn sees_archived_children_beside_loose_ones() {
     )
     .expect("archive mounts");
 
-  let listing: XrayDirectoryListing = vfs.list_children("configs").expect("listing");
+  let listing: XrayDirectoryListing = vfs
+    .list_children_in(&XrayLookupScope::all(), "configs")
+    .expect("listing");
 
   assert_eq!(listing.directories, vec!["weapons"]);
   assert_eq!(listing.files.len(), 1);
@@ -113,7 +120,12 @@ fn sees_archived_children_beside_loose_ones() {
 fn answers_an_empty_listing_for_a_directory_nothing_holds() {
   let vfs: XrayVfs = mounted("children_absent", &["configs/system.ltx"]);
 
-  assert!(vfs.list_children("meshes").expect("listing").is_empty());
+  assert!(
+    vfs
+      .list_children_in(&XrayLookupScope::all(), "meshes")
+      .expect("listing")
+      .is_empty()
+  );
 }
 
 #[test]
@@ -127,20 +139,11 @@ fn a_scoped_view_lists_nothing_for_a_directory_outside_its_subtree() {
   let configs: XrayLookupScope = XrayLookupScope::all().with_prefix("configs").expect("prefix");
 
   assert!(
-    vfs
-      .scoped(&configs)
-      .list_children("textures")
-      .expect("listing")
-      .is_empty(),
+    vfs.list_children_in(&configs, "textures").expect("listing").is_empty(),
     "a scoped listing must not reach into a sibling subtree"
   );
   assert_eq!(
-    vfs
-      .scoped(&configs)
-      .list_children("configs")
-      .expect("listing")
-      .files
-      .len(),
+    vfs.list_children_in(&configs, "configs").expect("listing").files.len(),
     1,
     "its own subtree still lists"
   );
@@ -155,7 +158,7 @@ fn a_scoped_view_keeps_its_own_subtree_when_listing_an_ancestor() {
   );
   let weapons: XrayLookupScope = XrayLookupScope::all().with_prefix("configs\\weapons").expect("prefix");
 
-  let listing: XrayDirectoryListing = vfs.scoped(&weapons).list_children("configs").expect("listing");
+  let listing: XrayDirectoryListing = vfs.list_children_in(&weapons, "configs").expect("listing");
 
   assert_eq!(listing.directories, vec!["weapons"]);
   assert!(
@@ -168,5 +171,9 @@ fn a_scoped_view_keeps_its_own_subtree_when_listing_an_ancestor() {
 fn rejects_a_directory_that_is_not_a_logical_path() {
   let vfs: XrayVfs = mounted("children_invalid", &["configs/system.ltx"]);
 
-  assert!(vfs.list_children("configs\\..\\textures").is_err());
+  assert!(
+    vfs
+      .list_children_in(&XrayLookupScope::all(), "configs\\..\\textures")
+      .is_err()
+  );
 }

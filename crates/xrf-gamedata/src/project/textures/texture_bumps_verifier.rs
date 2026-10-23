@@ -40,8 +40,7 @@ impl<'a> TextureBumpsVerifier<'a> {
 
   pub(crate) fn verify(&self) -> GamedataTextureBumpsVerificationResult {
     let descriptors: Vec<XrayAsset> = self.project.entries_of_type(AssetType::Thm);
-    let search: XraySearch = XraySearch::new(Arc::clone(self.project.ltx_project.search().get_vfs()))
-      .with_step("project", self.project.scope.clone());
+    let search: &XraySearch = self.project.search();
 
     // Descriptors are read in parallel; the sequence releases what each one says in path order.
     let sequence: OutputSequence = OutputSequence::new(&self.options.output, descriptors.len());
@@ -56,11 +55,11 @@ impl<'a> TextureBumpsVerifier<'a> {
         let path: &str = descriptor.get_logical_path().as_str();
 
         // Read once for both: what the material comes to, and what the file holds past its chunks' fields.
-        let file: XrfResult<Arc<ThmFile>> = XrayMaterialResolver::read_descriptor(&search, descriptor);
+        let file: XrfResult<Arc<ThmFile>> = XrayMaterialResolver::read_descriptor(search, descriptor);
         let verification: TextureBumpVerification = Self::verify_descriptor(
           output,
           path,
-          &XrayMaterialResolver::describe_read_descriptor(&search, descriptor, &file),
+          &XrayMaterialResolver::describe_read_descriptor(search, descriptor, &file),
         );
 
         match &file {

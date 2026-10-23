@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use indexmap::IndexMap;
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayMountMode, XrayRoots, XrayVfs};
+use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch};
 
 use crate::partner::dialog_character::DialogCharacter;
 use crate::partner::dialog_offer::DialogOffer;
@@ -68,15 +68,17 @@ fn read_partners(name: &str, files: &[(&str, &str)]) -> XrfResult<DialogPartners
     fs::write(gameplay.join(file), content)?;
   }
 
-  let partners: DialogPartners = DialogPartners::from_vfs(&open(&root)?, DialogProjectMode::DIALOGS_PREFIX)?;
+  let partners: DialogPartners = DialogPartners::from_search(&open(&root)?, DialogProjectMode::DIALOGS_PREFIX)?;
 
   fs::remove_dir_all(root)?;
 
   Ok(partners)
 }
 
-fn open(root: &Path) -> XrfResult<XrayVfs> {
-  XrayRoots::one(root.to_path_buf(), XrayMountMode::Directory).open()
+fn open(root: &Path) -> XrfResult<XraySearch> {
+  XrayRoots::one(root.to_path_buf(), XrayMountMode::Directory)
+    .to_search_plan()?
+    .open()
 }
 
 /// Read the shipped-shaped tree under a root of its own, since tests run in parallel.

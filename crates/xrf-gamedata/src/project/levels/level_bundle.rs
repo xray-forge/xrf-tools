@@ -50,14 +50,7 @@ impl<'a> LevelBundle<'a> {
   pub(crate) fn resolved_file(&self, file: &str) -> Option<String> {
     let logical: String = self.file_path(file);
 
-    self
-      .project
-      .vfs()
-      .scoped(self.project.scope())
-      .find(&logical)
-      .ok()
-      .flatten()
-      .map(|_| logical)
+    self.project.find(&logical).ok().flatten().map(|_| logical)
   }
 
   /// Size of a bundle file without reading it, so a truncated asset is caught before parsing.
@@ -82,21 +75,11 @@ impl<'a> LevelBundle<'a> {
 
     let in_bundle: bool = self
       .project
-      .vfs()
-      .scoped(self.project.scope())
       .find(&format!("{}\\{logical}", self.path()))
       .ok()
       .flatten()
       .is_some();
 
-    in_bundle
-      || self
-        .project
-        .vfs()
-        .scoped(self.project.scope())
-        .dds_texture(reference)
-        .ok()
-        .flatten()
-        .is_some()
+    in_bundle || self.project.dds_texture(reference).ok().flatten().is_some()
   }
 }

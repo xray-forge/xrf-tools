@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::vfs::tests::fake_source::{FakeArchiveSource, directory};
-use crate::{XrayAsset, XrayLookupScope, XrayVfs};
+use crate::{XrayAsset, XrayAssetType, XrayLookupScope, XrayVfs};
 
 #[test]
 fn resolves_a_texture_reference_against_a_mounted_root() {
@@ -12,8 +12,9 @@ fn resolves_a_texture_reference_against_a_mounted_root() {
     .expect("root mounts");
 
   let location: XrayAsset = vfs
-    .resolve_dds_texture("wpn\\wpn_ak74")
+    .resolve_all_in(&XrayLookupScope::all(), XrayAssetType::Dds, "wpn\\wpn_ak74")
     .expect("lookup succeeds")
+    .pop()
     .expect("texture resolves");
 
   assert_eq!(location.get_logical_path().as_str(), "textures\\wpn\\wpn_ak74.dds");
@@ -34,25 +35,17 @@ fn the_first_mount_holding_a_name_wins_and_the_shadowed_copy_stays_visible() {
 
   assert_eq!(
     vfs
-      .scoped(&scope)
-      .find("textures\\wpn\\wpn_ak74.dds")
+      .find_in(&scope, "textures\\wpn\\wpn_ak74.dds")
       .unwrap()
       .and_then(|it| it.get_root().map(Path::to_path_buf)),
     Some(overlay)
   );
   assert_eq!(
-    vfs
-      .scoped(&scope)
-      .find_all("textures\\wpn\\wpn_ak74.dds")
-      .unwrap()
-      .len(),
+    vfs.list_entries_all_in(&scope).len(),
     2,
     "the shadowed copy is still reportable"
   );
-  assert_eq!(
-    vfs.scoped(&scope).read_bytes("textures\\wpn\\wpn_ak74.dds").unwrap(),
-    b"overlay"
-  );
+  assert_eq!(vfs.read_in(&scope, "textures\\wpn\\wpn_ak74.dds").unwrap(), b"overlay");
 }
 
 #[test]
@@ -66,15 +59,14 @@ fn a_subtree_mount_carries_engine_identity_through_its_base() {
 
   let scope: XrayLookupScope = XrayLookupScope::all();
 
-  assert!(vfs.scoped(&scope).find("configs\\weapons\\ak74.ltx").unwrap().is_some());
+  assert!(vfs.find_in(&scope, "configs\\weapons\\ak74.ltx").unwrap().is_some());
   assert!(
-    vfs.scoped(&scope).find("ak74.ltx").unwrap().is_none(),
+    vfs.find_in(&scope, "ak74.ltx").unwrap().is_none(),
     "a source relative path is not a logical path"
   );
   assert_eq!(
     vfs
-      .scoped(&scope)
-      .list_entries()
+      .list_entries_in(&scope)
       .first()
       .map(|it| it.get_logical_path().to_string()),
     Some(String::from("configs\\weapons\\ak74.ltx"))
@@ -94,16 +86,12 @@ fn an_archived_entry_resolves_and_reads_but_offers_no_physical_path() {
 
   let scope: XrayLookupScope = XrayLookupScope::all();
   let location: XrayAsset = vfs
-    .scoped(&scope)
-    .find("textures\\wpn\\wpn_ak74.dds")
+    .find_in(&scope, "textures\\wpn\\wpn_ak74.dds")
     .unwrap()
     .expect("entry resolves");
 
   assert_eq!(location.to_physical_path(), None);
-  assert_eq!(
-    vfs.scoped(&scope).read_bytes("textures\\wpn\\wpn_ak74.dds").unwrap(),
-    b"textures"
-  );
+  assert_eq!(vfs.read_in(&scope, "textures\\wpn\\wpn_ak74.dds").unwrap(), b"textures");
 }
 
 #[test]
@@ -121,7 +109,12 @@ fn a_loose_file_overrides_an_archived_one() {
     )
     .expect("archive mounts");
 
-  assert_eq!(vfs.read_bytes("textures\\wpn\\wpn_ak74.dds").unwrap(), b"loose_wins");
+  assert_eq!(
+    vfs
+      .read_in(&XrayLookupScope::all(), "textures\\wpn\\wpn_ak74.dds")
+      .unwrap(),
+    b"loose_wins"
+  );
 }
 
 #[test]
@@ -163,12 +156,12 @@ fn a_writable_scope_skips_an_archive_entirely() {
     .expect("a loose winner is writable");
 
   assert_eq!(
-    vfs.scoped(&writable).list_entries().len(),
+    vfs.list_entries_in(&writable).len(),
     1,
     "only the loose entry is in scope"
   );
   assert!(
-    vfs.scoped(&writable).find("configs\\other.ltx").unwrap().is_none(),
+    vfs.find_in(&writable, "configs\\other.ltx").unwrap().is_none(),
     "the archived entry is out of scope"
   );
 }
@@ -186,16 +179,12 @@ fn a_prefix_scope_cannot_answer_outside_its_subtree() {
 
   let configs: XrayLookupScope = XrayLookupScope::all().with_prefix("configs").expect("prefix is valid");
 
-  assert!(vfs.scoped(&configs).find("configs\\system.ltx").unwrap().is_some());
+  assert!(vfs.find_in(&configs, "configs\\system.ltx").unwrap().is_some());
   assert!(
-    vfs
-      .scoped(&configs)
-      .find("textures\\wpn\\wpn_ak74.dds")
-      .unwrap()
-      .is_none(),
+    vfs.find_in(&configs, "textures\\wpn\\wpn_ak74.dds").unwrap().is_none(),
     "a scoped lookup must not reach outside its subtree"
   );
-  assert_eq!(vfs.scoped(&configs).list_entries().len(), 1);
+  assert_eq!(vfs.list_entries_in(&configs).len(), 1);
 }
 
 #[test]
@@ -222,12 +211,8 @@ fn enumeration_dedupes_across_mounts_and_reports_shadowed_copies_separately() {
 
   let scope: XrayLookupScope = XrayLookupScope::all();
 
-  assert_eq!(vfs.scoped(&scope).list_entries().len(), 2, "winners only");
-  assert_eq!(
-    vfs.scoped(&scope).list_entries_all().len(),
-    3,
-    "including the shadowed copy"
-  );
+  assert_eq!(vfs.list_entries_in(&scope).len(), 2, "winners only");
+  assert_eq!(vfs.list_entries_all_in(&scope).len(), 3, "including the shadowed copy");
 }
 
 #[test]
@@ -246,14 +231,17 @@ fn suffix_enumeration_matches_on_component_boundaries() {
     )
     .expect("mounts");
 
-  let mut found: Vec<String> = vfs
-    .list_entries_with_suffix("particles.xr")
-    .expect("suffix is a valid fragment")
+  let found: Vec<String> = vfs
+    .list_entries_in(&XrayLookupScope::all())
     .into_iter()
+    .filter(|entry| {
+      entry
+        .get_logical_path()
+        .ends_with("particles.xr")
+        .expect("suffix is a valid fragment")
+    })
     .map(|entry| entry.get_logical_path().to_string())
     .collect();
-
-  found.sort();
 
   assert_eq!(found, vec!["mods\\particles.xr", "particles.xr"]);
 }
