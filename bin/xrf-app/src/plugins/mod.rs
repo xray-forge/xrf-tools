@@ -13,6 +13,8 @@ pub mod render;
 pub mod spawn;
 pub mod sprite_equipment;
 pub mod system;
+#[cfg(test)]
+mod tests;
 pub mod textures;
 pub mod translations;
 pub mod transport;
