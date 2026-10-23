@@ -56,7 +56,10 @@ export const levelsCommands = {
    * within the same second.
    */
   findScreenshotPath: (name: string) => __TAURI_INVOKE<string>("plugin:levels|find_screenshot_path", { name }),
-  /** Restore the committed level descriptor without reading the level again. */
+  /**
+   * Restore the committed level descriptor without reading the level again; only where it starts is decided again,
+   * where a commit let it go.
+   */
   getLevel: () => __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>("plugin:levels|get_level"),
   /** The folder the level viewer's views are exported to and imported from by default, made where it is not yet. */
   getViewFolder: () => __TAURI_INVOKE<string>("plugin:levels|get_view_folder"),

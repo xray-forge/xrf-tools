@@ -36,8 +36,6 @@ pub struct SelectedLevel {
   /// What each sector is and where, taken at open from what the visuals declare, so a viewer can decide what to
   /// stream before reading any geometry.
   pub outlines: Vec<SectorOutline>,
-  /// Where the level opens, resolved at open; `None` leaves it to the viewer.
-  pub start: Option<LevelStart>,
   /// Where its map lies over it, read at open; `None` where its config places none.
   pub level_map: Option<LevelMapDescription>,
   /// Render geometry with its payloads still on the heap where they were read, serving whichever range a sector
@@ -46,8 +44,8 @@ pub struct SelectedLevel {
 }
 
 impl SelectedLevel {
-  /// What the viewer is shown of the open level.
-  pub fn describe(&self) -> SelectedLevelDescription {
+  /// What the viewer is shown of the open level, which opens at `start`, its start part.
+  pub fn describe(&self, start: Option<LevelStart>) -> SelectedLevelDescription {
     let level: &LevelFile = &self.level;
 
     SelectedLevelDescription {
@@ -61,7 +59,7 @@ impl SelectedLevel {
       portals: level.portals.as_ref().map_or(0, |it| it.portals.len()) as u32,
       roots: self.roots.clone(),
       sectors: self.outlines.clone(),
-      start: self.start.clone(),
+      start,
       shader_entries: level.shaders.as_ref().map_or(0, |it| it.entries.len()) as u32,
       source: self.source.clone(),
       surfaces: self.surfaces.clone(),

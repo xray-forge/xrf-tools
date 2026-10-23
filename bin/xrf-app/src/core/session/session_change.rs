@@ -26,6 +26,9 @@ pub(crate) enum SessionRootChange {
   Kept,
   /// Something it was read from moved, and its plugin derived it again.
   Derived,
+  /// Something it was read from moved, and its plugin derives it again off the commit: the session shows it as it was
+  /// until a later event reports it `Derived` or `Failed`.
+  Deriving,
   /// Something it was read from moved, and nothing derives it again: the session shows it as it was.
   Stale,
   /// Deriving it again failed: the session stays at the snapshot it had.

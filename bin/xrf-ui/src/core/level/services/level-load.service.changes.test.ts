@@ -37,6 +37,11 @@ function countListings(): number {
   return mockInvoke.mock.calls.filter(([name]) => name === LIST_SPAWN).length;
 }
 
+/** Reads of the committed level, the restore at provision included. */
+function countReads(): number {
+  return mockInvoke.mock.calls.filter(([name]) => name === "plugin:levels|get_level").length;
+}
+
 /** A spawn listing at `revision`, for the level the call names. */
 function listedAt(objects: number, revision: number): InvokeHandler {
   return (args) => mockSessionSnapshot(listing(objects), args?.sessionId as string, revision);
@@ -124,6 +129,46 @@ describe("LevelLoadService changes", () => {
 
     expect(service.spawn?.objects).toHaveLength(2);
     expect(service.spawnRevision).toBe(2);
+  });
+
+  it("reads a level its session derived anew once, and lists its spawn again", async () => {
+    const { container, service, sessionId } = await openLevel();
+    const listings: number = countListings();
+
+    setMockInvokeResponses({
+      ["plugin:levels|get_level"]: () =>
+        mockSessionSnapshot(mockSelectedLevelDescription({ visuals: 7 }), sessionId, 1),
+      [LIST_SPAWN]: listedAt(2, 1),
+    });
+    notify(container, { sessionId, revision: 0, root: { kind: "deriving" }, staleParts: [] });
+    await flush();
+
+    expect(service.isStale).toBe(true);
+    expect(countReads()).toBe(1);
+
+    notify(container, { sessionId, revision: 1, root: { kind: "derived" }, staleParts: [LEVEL_SPAWN_PART] });
+    await flush();
+
+    expect(countReads()).toBe(2);
+    expect(service.level.value?.selected.revision).toBe(1);
+    expect(service.level.value?.selected.value.visuals).toBe(7);
+    expect(service.isStale).toBe(false);
+    expect(countListings() - listings).toBe(1);
+    expect(service.spawn?.objects).toHaveLength(2);
+  });
+
+  it("keeps the level shown where a read again answers another level or an older revision", async () => {
+    const { container, service, sessionId } = await openLevel();
+
+    setMockInvokeResponses({
+      ["plugin:levels|get_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), "another", 1),
+    });
+    notify(container, { sessionId, revision: 1, root: { kind: "derived" }, staleParts: [] });
+    await flush();
+
+    expect(service.level.value?.selected.sessionId).toBe(sessionId);
+    expect(service.level.value?.selected.revision).toBe(0);
+    expect(service.isStale).toBe(true);
   });
 
   it("marks a level whose own files moved stale, reading nothing again", async () => {

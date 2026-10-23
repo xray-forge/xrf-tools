@@ -10,14 +10,31 @@ use xrf_vfs::XraySearch;
 use xrf_visual::{DetailsPackage, DetailsPacker};
 
 use crate::core::assets::read_located_asset;
+use crate::core::session::{SessionPart, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::levels::read::{read_file, read_optional_file};
 use crate::plugins::levels::report::report_unreadable_materials;
-use crate::plugins::levels::state::{COLLISION_FILE, DETAILS_FILE, LevelSource, LevelTextureReference};
+use crate::plugins::levels::state::{COLLISION_FILE, DETAILS_FILE, LevelSource, LevelTextureReference, SelectedLevel};
 use crate::plugins::levels::textures::resolve_reference;
 
 /// The game material library, whose flags say which materials a planting falls through.
 const GAME_MATERIALS_FILE: &str = "gamemtl.xr";
+
+/// What a change event calls what a level's grass was read from when it goes stale.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_DETAILS_PART: &str = "details";
+
+/// What a level's grass was read from: `level.details`, the collision form it is planted onto, the game materials and
+/// the shaders and textures that dress it; the renderer holds the grass itself.
+struct LevelDetailsPart;
+
+impl SessionPart for LevelDetailsPart {
+  type Value = ();
+
+  const NAME: &'static str = LEVEL_DETAILS_PART;
+
+  const IS_POOLED: bool = false;
+}
 
 /// A level's grass, packed and dressed.
 pub struct PackedLevelDetails {
@@ -26,8 +43,19 @@ pub struct PackedLevelDetails {
   pub textures: Vec<LevelTextureReference>,
 }
 
-/// Packs a level's grass, or answers `None` for a level with no detail library.
-pub fn pack_details(source: &LevelSource, search: &XraySearch) -> TauriResult<Option<PackedLevelDetails>> {
+/// Packs the open level's grass, what it is read from recorded as its details part, or answers `None` for a level with
+/// no detail library.
+pub fn pack_details(
+  current: &SessionSnapshot<SelectedLevel>,
+  search: &XraySearch,
+) -> TauriResult<Option<PackedLevelDetails>> {
+  current
+    .parts
+    .record_read::<LevelDetailsPart, _>(search, |search| pack_recorded(&current.source, search))
+}
+
+/// The grass packed, every read through `search`.
+fn pack_recorded(source: &LevelSource, search: &XraySearch) -> TauriResult<Option<PackedLevelDetails>> {
   let Some(details) = read_optional_file(source, search, DETAILS_FILE)? else {
     return Ok(None);
   };

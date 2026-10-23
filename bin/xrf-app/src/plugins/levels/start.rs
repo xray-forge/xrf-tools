@@ -1,13 +1,76 @@
 //! Where a level opens: where the game has a player arrive or spawns its actor, under the open sky.
 
+use xrf_chunk::XRayByteOrder;
+use xrf_level::LevelCformFile;
 use xrf_math::Vector3d;
 use xrf_spawn::AlifeObjectInherited;
-use xrf_visual::{VisualBounds, convert_vector};
+use xrf_vfs::{XrayInputRecord, XraySearch};
+use xrf_visual::{SectorOutline, VisualBounds, convert_vector};
 
-use crate::plugins::levels::state::{LevelSpawn, LevelStart, LevelStartOrigin};
+use crate::core::session::{SessionPart, SessionParts, SessionSnapshot};
+use crate::plugins::levels::read::read_optional_file;
+use crate::plugins::levels::spawn::get_level_spawn;
+use crate::plugins::levels::state::{
+  COLLISION_FILE, LevelSource, LevelSpawn, LevelStart, LevelStartOrigin, SelectedLevel,
+};
 
 /// Metres an actor's eye stands above the ground under it.
 pub const ACTOR_EYE_HEIGHT: f32 = 1.7;
+
+/// What a change event calls where a level opens when it goes stale.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_START_PART: &str = "start";
+
+/// Where the level opens, decided over its spawn and what of `level.cform` stands over each eye, so a change to either
+/// moves the start alone and not the level.
+struct LevelStartPart;
+
+impl SessionPart for LevelStartPart {
+  type Value = Option<LevelStart>;
+
+  const NAME: &'static str = LEVEL_START_PART;
+}
+
+/// The store with `start` kept as the level's start part, decided from `inputs` as the level opened.
+pub fn with_level_start(parts: SessionParts, start: Option<LevelStart>, inputs: XrayInputRecord) -> SessionParts {
+  parts.with::<LevelStartPart>(start, inputs)
+}
+
+/// Where the open level opens, decided the first time anything asks and kept; `None` leaves it to the viewer.
+pub fn get_level_start(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Option<LevelStart> {
+  current.parts.get_or_record::<LevelStartPart>(search, |search| {
+    let spawn = get_level_spawn(current, search).ok();
+    let open: Vec<bool> = spawn.as_deref().map_or_else(Vec::new, |spawn| {
+      find_open(&current.source, search, &list_level_start_eyes(spawn))
+    });
+
+    resolve_level_start(
+      spawn.as_deref(),
+      SectorOutline::merge_bounds(&current.outlines).as_ref(),
+      &open,
+    )
+  })
+}
+
+/// Whether nothing of the collision form stands over each eye; every one for a level without a readable form, which
+/// covers nothing.
+pub fn find_open(source: &LevelSource, search: &XraySearch, eyes: &[Vector3d]) -> Vec<bool> {
+  read_optional_file(source, search, COLLISION_FILE)
+    .map_err(|error| log::warn!("{error}"))
+    .ok()
+    .flatten()
+    .and_then(|bytes| {
+      LevelCformFile::read_open_above_from_bytes::<XRayByteOrder>(bytes, eyes)
+        .map_err(|error| {
+          log::warn!(
+            "Failed to read '{COLLISION_FILE}' of level '{}': {error}",
+            source.get_label()
+          )
+        })
+        .ok()
+    })
+    .unwrap_or_else(|| vec![true; eyes.len()])
+}
 
 /// The eyes a level may open at, in the engine's space: where each of its arrivals and its actor's spawn stand.
 pub fn list_level_start_eyes(spawn: &LevelSpawn) -> Vec<Vector3d> {

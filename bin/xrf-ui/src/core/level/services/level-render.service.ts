@@ -67,6 +67,8 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
   /** The level open, whose extent and start frame the camera. */
   private level: Nullable<SelectedLevelDescription> = null;
+  /** The session of the level open, whose later snapshots the backend moves the viewport's scene onto itself. */
+  private sessionId: Nullable<string> = null;
   /**
    * Where the camera was last stood: the level's start, or a place gone to. The toolbar's speeds and lens are sent
    * with it, so changing one leaves the camera where it has flown rather than taking it back.
@@ -76,6 +78,8 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   private opening: number = 0;
   /** The scene the level open is drawn as, once the renderer has named it: only its load reports reveal the level. */
   private scene: Nullable<number> = null;
+  /** The scene shown before the level was read again, until the scene it streams as is ready; null otherwise. */
+  private followed: Nullable<number> = null;
   /** The last load report, of whichever scene the viewport drew. */
   private loaded: Nullable<RenderLoadReport> = null;
   /** Stops hearing the viewport's focus, while one is attached. */
@@ -384,9 +388,11 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
   protected release(): void {
     this.opening += 1;
+    this.sessionId = null;
     this.level = null;
     this.viewpoint = null;
     this.scene = null;
+    this.followed = null;
     this.loaded = null;
   }
 
@@ -401,6 +407,12 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   protected onLoad(report: RenderLoadReport): void {
     this.viewportService.noteLoad(report);
     this.loaded = report;
+
+    // A level read again streams as a scene of its own, which the viewport's reports name once it shows it.
+    if (this.followed !== null && report.scene !== this.followed) {
+      this.scene = report.scene;
+    }
+
     this.revealWhenReady();
   }
 
@@ -412,6 +424,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     const report: Nullable<RenderLoadReport> = this.loaded;
 
     if (report?.isReady && this.level && this.scene !== null && report.scene === this.scene) {
+      this.followed = null;
       this.viewportService.reveal();
       void this.describeResident();
     }
@@ -458,9 +471,17 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   private openLevel(selected: Nullable<SessionSnapshot<SelectedLevelDescription>>): void {
     const level: Nullable<SelectedLevelDescription> = selected?.value ?? null;
 
+    if (selected && this.isShowing(selected.sessionId)) {
+      this.takeReadAgain(selected.value);
+
+      return;
+    }
+
     this.opening += 1;
+    this.sessionId = selected?.sessionId ?? null;
     this.level = level;
     this.scene = null;
+    this.followed = null;
     this.stand(toLevelStartViewpoint(level?.bounds ?? null, level?.start ?? null));
     // Another level's surfaces and objects are numbered afresh.
     this.viewportService.notePicked(null);
@@ -473,6 +494,35 @@ export class LevelRenderService extends NativeRenderSurfaceService {
         this.revealWhenReady();
       }
     );
+  }
+
+  /**
+   * @param sessionId - The level session a snapshot belongs to.
+   * @returns Whether the viewport shows that session already, its scene named or a level read again on its way.
+   */
+  private isShowing(sessionId: string): boolean {
+    return this.level !== null && this.sessionId === sessionId && (this.scene !== null || this.followed !== null);
+  }
+
+  /**
+   * Takes the level shown, read again in its session: the backend has moved its scene onto it already, so the camera
+   * stays where it has flown and the viewport is revealed again once the scene it streams as is ready.
+   *
+   * @param level - The level as it was read again.
+   */
+  private takeReadAgain(level: SelectedLevelDescription): void {
+    this.opening += 1;
+    this.level = level;
+    this.followed = this.scene ?? this.followed;
+    this.scene = null;
+    // Its surfaces and objects are numbered afresh.
+    this.viewportService.notePicked(null);
+    this.viewportService.conceal();
+
+    // The renderer reports the scene it streams as from the moment the backend moved it, which can be before now.
+    if (this.loaded) {
+      this.onLoad(this.loaded);
+    }
   }
 
   /** The toolbar's speeds and lens, from the same place: the camera keeps where it has flown. */

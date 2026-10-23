@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 mod lua_method_call_collector;
 mod lua_scope;
 mod verify_luajit_script;

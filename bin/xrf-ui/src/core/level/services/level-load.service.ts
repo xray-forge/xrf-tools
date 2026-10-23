@@ -6,7 +6,7 @@ import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
-import { Session, SESSION_CHANGE_EVENT } from "@/core/ipc/session";
+import { isOlderSessionAnswer, isSessionMovedPast, Session, SESSION_CHANGE_EVENT } from "@/core/ipc/session";
 import {
   ESessionRootChange,
   LEVEL_SPAWN_PART,
@@ -68,7 +68,7 @@ export class LevelLoadService {
   @RefObservable()
   public spawnRevision: Nullable<XrayRevision> = null;
 
-  /** Whether a change moved what the open level was read from, which nothing reads again yet: it shows as it opened. */
+  /** Whether a change moved what the open level was read from: it shows as it opened until it is read again. */
   @Observable()
   public isStale: boolean = false;
 
@@ -199,8 +199,9 @@ export class LevelLoadService {
   }
 
   /**
-   * Lists the open level's spawned objects again once a change let its spawn go; a level whose own files moved is
-   * marked stale and left as it opened.
+   * Lists the open level's spawned objects again once a change let its spawn go, and reads the level again once its
+   * session derived it anew; a level whose own files moved is marked stale meanwhile, and left as it opened where it
+   * could not be read again.
    */
   @OnEvent(SESSION_CHANGE_EVENT)
   public onSessionChange({ payload: change }: WireEvent<SessionChange>): void {
@@ -218,8 +219,15 @@ export class LevelLoadService {
 
         return;
 
-      // todo: Read a derived level again through `getLevel` once a level's session derives itself again.
       case ESessionRootChange.DERIVED:
+        if (isSessionMovedPast(open, change)) {
+          this.noteStale();
+          void this.refresh();
+        }
+
+        return;
+
+      case ESessionRootChange.DERIVING:
       case ESessionRootChange.STALE:
       case ESessionRootChange.FAILED:
         this.noteStale();
@@ -234,6 +242,35 @@ export class LevelLoadService {
   @BoundAction()
   private noteStale(): void {
     this.isStale = true;
+  }
+
+  /** Reads the committed level again, for `onSessionChange`; a failure leaves what is shown, stale. */
+  private async refresh(): Promise<void> {
+    try {
+      this.adoptRefreshed(await levelsCommands.getLevel());
+    } catch (error: unknown) {
+      this.log.warn("Could not read the level again:", transformError(error));
+    }
+  }
+
+  /**
+   * Shows a level read again where it is still the one shown and no older than it, listing its spawn afresh; an open
+   * or close in flight decides what is shown instead.
+   */
+  @BoundAction()
+  private adoptRefreshed(answer: SessionRestore<SelectedLevelDescription>): void {
+    const open: Maybe<SessionSnapshot<SelectedLevelDescription>> = this.level.value?.selected;
+
+    if (
+      answer &&
+      open &&
+      !this.level.isLoading &&
+      answer.sessionId === open.sessionId &&
+      !isOlderSessionAnswer(open, answer)
+    ) {
+      this.adopt(answer);
+      this.log.info("Level read again:", describeLevelSource(answer.value.source), `revision ${answer.revision}`);
+    }
   }
 
   /** The level's spawned objects, which the panels list and a pick names; a listing older than the one shown is dropped. */

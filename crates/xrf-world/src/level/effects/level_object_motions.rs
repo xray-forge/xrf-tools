@@ -32,6 +32,16 @@ impl LevelObjectMotions {
     }
   }
 
+  /// Reads from `source`, a next source of the same level, from now on: where `is_reread`, every motion read before is
+  /// let go and read again from it the next time something asks, else each stays as it was read.
+  pub fn follow(&mut self, source: &Arc<dyn RenderLevelSource>, is_reread: bool) {
+    self.source = Arc::clone(source);
+
+    if is_reread {
+      self.motions = LoaderSlots::default();
+    }
+  }
+
   /// Moves on to `now`, the level's clock.
   pub fn prepare(&mut self, now: Duration) {
     self.previous = self.now;

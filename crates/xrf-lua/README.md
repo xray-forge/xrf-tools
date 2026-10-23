@@ -2,32 +2,84 @@
 
 Checks LuaJIT syntax and extracts Lua method calls used by X-Ray tooling.
 
+X-Ray runs gameplay `.script` files and renderer shader scripts (`.s`) through LuaJIT. `xrf-gamedata`'s `scripts`
+check validates syntax with this crate, and `xrf-shaders` reads a shader script's passes from its method calls, such
+as `shader:begin("vertex", "pixel"):blend(true, blend.srcalpha, blend.one)`. Parsing is static: scripts are never
+executed.
+
 ## Read method calls
 
 ```rust
-use xrf_lua::XRayLuaScript;
+use xrf_lua::{XRayLuaBinding, XRayLuaScript, XRayLuaValue};
 
 fn main() -> xrf_error::XrfResult {
   let script = XRayLuaScript::parse(
     "shaders/r3/example.s",
-    "function normal(shader) shader:begin(\"vertex\", \"pixel\") end",
+    r#"
+local tex_base = "water\\water_water"
+
+function normal(shader)
+  shader:begin("vertex", "pixel")
+    : blend (true, blend.srcalpha, blend.one)
+  shader:sampler("s_base"):texture(tex_base)
+end
+"#,
   )?;
 
-  let calls = script.method_calls("shader", "begin");
+  let begin = script.method_calls("shader", "begin")[0];
 
-  assert_eq!(calls.len(), 1);
-  assert_eq!(calls[0].literal_string_arguments().unwrap(), &["vertex", "pixel"]);
+  assert_eq!(begin.literal_string_arguments(), Some(vec![String::from("vertex"), String::from("pixel")]));
+  assert_eq!(begin.function(), Some("normal"));
+
+  let blend = begin.chained_call("blend").expect("a blend in the chain");
+
+  assert!(blend.argument(0).is_some_and(XRayLuaValue::is_true));
+  assert_eq!(blend.argument(1).and_then(XRayLuaValue::as_name), Some("blend.srcalpha"));
+
+  let sampler = script.method_calls("shader", "sampler")[0];
+  let texture = sampler.chained_call("texture").and_then(|call| call.argument(0));
+
+  assert_eq!(
+    texture,
+    Some(&XRayLuaValue::Local {
+      name: String::from("tex_base"),
+      binding: XRayLuaBinding::String(String::from(r"water\water_water")),
+    })
+  );
 
   Ok(())
 }
 ```
 
-The path supplies diagnostic context; parsing uses the supplied source string and does not open that path.
+`XRayLuaScript::parse(path, source)` parses the supplied source string; the path only names the script in diagnostics
+and is never opened. `method_calls(receiver, method)` answers every call of that method on a receiver named directly,
+in source order.
+
+## Call records
+
+Each `XRayLuaMethodCall` exposes its receiver, method, 1-based `line_number`, arguments, the calls chained onto its
+result (`chained`, `chained_call`), and the named `function` it is written in, `None` at the top level.
+`literal_string_arguments` answers the arguments only when every one is a literal string.
+
+Arguments are `XRayLuaValue`s, read as far as a reader that never runs the script can read them:
+
+- literal strings (quoted escapes decoded as LuaJIT's lexer does, long brackets as written), numbers, and booleans;
+- `Name`: a global or a dotted name such as `blend.srcalpha`, kept verbatim;
+- `Local`: a bare name a local or parameter binds where it is written, with its `XRayLuaBinding`: a literal string, the
+  argument at a parameter index (a method's implicit `self` is index 0), or anything else;
+- `Other`: tables, operations, calls, `nil`, varargs, and strings with an escape LuaJIT would refuse.
+
+Names resolve by Lua's scoping: the innermost local or parameter, a local only after the statement declaring it, a
+`repeat` body's locals visible to its `until`, and a loop's variables invisible to its bounds. A local that any
+assignment gives another value reads as `Other` everywhere, because the functions a script declares run after the
+whole chunk and could see either value.
+
+A syntactically valid script may still depend on missing globals or fail at runtime. Nothing here evaluates
+expressions or follows control flow to decide which calls execute.
 
 ## Syntax-only checks
 
-Call `verify_luajit_script(code, path)` for syntax validation. Use `XRayLuaScript::parse(path, source)` when you also
-need calls, then query `method_calls(receiver, method)`.
+Call `verify_luajit_script(code, path)` when only validity matters; it parses the same way and discards the calls.
 
 ```rust
 use std::path::Path;
@@ -41,18 +93,10 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-## Call records and limitations
-
-Each `XRayLuaMethodCall` exposes its receiver, method, source line, and optional literal string arguments. Calls with
-computed arguments cannot provide a literal argument list. This is static parsing; scripts are not executed.
-
-Use `line_number` to place a diagnostic and `receiver` / `method` to identify the call. A syntactically valid script
-may still depend on missing globals or fail at runtime. Literal collection does not evaluate expressions or follow
-the runtime control flow to decide which calls execute.
-
 ## Errors and checks
 
-Syntax validation failures return `XrfError::Verify` with parser diagnostics. Source decoding and file reads belong to
-the caller. Run `cargo test --locked -p xrf-lua` from the repository root.
+Syntax failures return `XrfError::Verify`, naming the path and listing the parser's diagnostics. Source decoding and
+file reads belong to the caller. Run `cargo test --locked -p xrf-lua` from the repository root.
 
-See the [script API](src/xray_lua_script.rs) and [call record](src/xray_lua_method_call.rs).
+See the [script API](src/xray_lua_script.rs), [call record](src/xray_lua_method_call.rs), and
+[argument values](src/xray_lua_value.rs).

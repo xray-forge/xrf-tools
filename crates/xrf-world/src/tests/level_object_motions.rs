@@ -101,6 +101,39 @@ fn keeps_an_object_s_velocity_across_its_loop_s_seam() {
   assert!(velocity.abs_diff_eq(Vec3::new(3.0, 0.0, 0.0), 1e-3), "{velocity}");
 }
 
+/// A next source of the same level, whose `line.anm` stands its object still at the start of its line.
+fn create_still_source() -> Arc<dyn RenderLevelSource> {
+  let mut still: AnmFile = create_line_motion();
+
+  still.channels[0].keys.truncate(1);
+
+  Arc::new(TestLevelSource {
+    motions: HashMap::from([(String::from("line.anm"), still)]),
+    ..TestLevelSource::default()
+  })
+}
+
+#[test]
+fn reads_its_motions_again_from_a_next_source_only_when_told() {
+  let source: Arc<dyn RenderLevelSource> = create_source();
+  let mut motions: LevelObjectMotions = LevelObjectMotions::new(&source, &create_workers());
+
+  motions.prepare(Duration::from_millis(1000));
+  read(&mut motions, "line.anm").expect("the motion to be read");
+
+  motions.follow(&create_still_source(), false);
+
+  let (kept, _) = read(&mut motions, "line.anm").expect("the motion read before");
+
+  assert!(kept.w_axis.truncate().abs_diff_eq(Vec3::new(3.0, 0.0, 0.0), 1e-4));
+
+  motions.follow(&create_still_source(), true);
+
+  let (reread, _) = read(&mut motions, "line.anm").expect("the motion read again");
+
+  assert!(reread.w_axis.truncate().abs_diff_eq(Vec3::ZERO, 1e-4), "{reread}");
+}
+
 #[test]
 fn leaves_an_object_standing_without_its_motion() {
   let source: Arc<dyn RenderLevelSource> = create_source();

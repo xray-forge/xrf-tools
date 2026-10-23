@@ -8,6 +8,8 @@ pub struct WorldLevelReload {
   pub is_particles: bool,
   /// What every weather of the level plays with, in each viewport showing it, the clock and the request kept.
   pub is_weather: bool,
+  /// The object motions its moving zones follow, each read again the next time something it carries asks.
+  pub is_motions: bool,
 }
 
 impl WorldLevelReload {

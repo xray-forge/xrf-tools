@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
+import { EventBus } from "@wirestate/core";
 
 import { createRoots } from "@/core/assets/lib";
+import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
+import { SessionChange } from "@/core/ipc/types/xrf-app";
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import {
   ERenderAntialiasing,
@@ -34,7 +37,7 @@ import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render
 import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
-import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import {
   getMockChannels,
   mockInvoke,
@@ -221,6 +224,51 @@ describe("LevelRenderService", () => {
         reference: "act\\act_none",
       },
     ]);
+  });
+
+  // The backend moves the scene onto a level its session read again, so the page neither shows it again nor stands the
+  // camera anew.
+  it("reveals a level read again in its session once the scene it streams as is resident", async () => {
+    const { container, service } = await mockAttachedLevelRender();
+    const viewport: LevelViewportService = container.get(LevelViewportService);
+    const load: LevelLoadService = container.get(LevelLoadService);
+
+    jest.spyOn(service.log, "error").mockImplementation(() => undefined);
+    emitViewportEvent({
+      kind: ERenderViewportEvent.LOAD,
+      report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE }),
+    });
+    expect(viewport.isRevealed).toBe(true);
+
+    const sessionId: string = load.level.value?.selected.sessionId as string;
+    const resets: number = sentRenderCommand("command_camera").length;
+
+    setMockInvokeResponses({
+      ["plugin:levels|get_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), sessionId, 1),
+    });
+    container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
+      revision: 1,
+      root: { kind: "derived" },
+      sessionId,
+      staleParts: [],
+    });
+    await waitFor(() => expect(load.level.value?.selected.revision).toBe(1));
+
+    expect(sentRenderCommand("show_level")).toHaveLength(1);
+    expect(sentRenderCommand("command_camera")).toHaveLength(resets);
+    expect(viewport.isRevealed).toBe(false);
+
+    emitViewportEvent({
+      kind: ERenderViewportEvent.LOAD,
+      report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE }),
+    });
+    expect(viewport.isRevealed).toBe(false);
+
+    emitViewportEvent({
+      kind: ERenderViewportEvent.LOAD,
+      report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE + 1 }),
+    });
+    expect(viewport.isRevealed).toBe(true);
   });
 
   it("reads frames and the camera into the readouts, and forgets the frame once detached", async () => {

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 use xrf_material::XrayTextureScope;
-use xrf_vfs::XrayLogicalPath;
+use xrf_vfs::{XrayLogicalPath, XrayRootProbe};
 
 use crate::plugins::levels::state::LEVELS_DIRECTORY;
 
@@ -33,18 +33,21 @@ impl LevelSource {
     }
   }
 
-  /// The level's engine identity: the directory its own files are addressed under.
+  /// The level's engine identity: the directory its own files are addressed under, for a directory the path its
+  /// implied root gives it, which its files are read by, else `levels\<name>`.
   pub fn get_logical_directory(&self) -> Option<XrayLogicalPath> {
     match self {
       Self::Asset { logical_path } => XrayLogicalPath::new(logical_path).ok(),
-      Self::Directory { path } => Path::new(path)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .and_then(|name| {
-          XrayLogicalPath::new(LEVELS_DIRECTORY)
-            .and_then(|levels| levels.join(name))
-            .ok()
-        }),
+      Self::Directory { path } => XrayRootProbe::implied_logical_path(path).or_else(|| {
+        Path::new(path)
+          .file_name()
+          .and_then(|name| name.to_str())
+          .and_then(|name| {
+            XrayLogicalPath::new(LEVELS_DIRECTORY)
+              .and_then(|levels| levels.join(name))
+              .ok()
+          })
+      }),
     }
   }
 
