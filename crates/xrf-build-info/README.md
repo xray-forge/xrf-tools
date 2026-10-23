@@ -23,8 +23,10 @@ xrf-build-info = { workspace = true }
 In `build.rs`:
 
 ```rust,no_run
+use xrf_build_info::emit;
+
 fn main() {
-  xrf_build_info::emit();
+  emit();
 }
 ```
 
