@@ -7,14 +7,18 @@ use crate::core::assets::AssetMountState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::levels::state::{LevelState, SelectedLevel};
-use crate::plugins::render::state::RenderState;
+use crate::plugins::render::shown_levels::ShownLevels;
+use crate::plugins::render::texture_reloads::TextureReloads;
+use crate::plugins::render::viewport_shows::ViewportShows;
 
 /// Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. Answers
 /// the scene drawn, which the viewport's load reports name, or none.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "show_level"))]
 #[tauri::command(rename = "show_level")]
 pub fn render_show_level(
-  state: State<'_, RenderState>,
+  shows: State<'_, ViewportShows>,
+  shown: State<'_, ShownLevels>,
+  reloads: State<'_, TextureReloads>,
   levels: State<'_, LevelState>,
   assets: State<'_, AssetMountState>,
   viewport: RenderViewportId,
@@ -24,7 +28,7 @@ pub fn render_show_level(
     Some(session_id) => {
       let level: Arc<SessionSnapshot<SelectedLevel>> = levels.selected.require(session_id)?;
 
-      state.watch_textures(&level.roots);
+      reloads.watch(&level.roots);
 
       log::info!(
         "Showing level '{}' in native viewport {}",
@@ -32,12 +36,12 @@ pub fn render_show_level(
         viewport.0
       );
 
-      Some(state.get_level_source(level, &assets) as Arc<dyn RenderLevelSource>)
+      Some(shown.get_source(level, &assets) as Arc<dyn RenderLevelSource>)
     }
     None => None,
   };
 
-  let ticket: u64 = state.ask_show(viewport);
+  let ticket: u64 = shows.ask(viewport);
 
-  Ok(state.show(viewport, ticket, source).map(|scene| scene.0))
+  Ok(shows.show(viewport, ticket, source).map(|scene| scene.0))
 }

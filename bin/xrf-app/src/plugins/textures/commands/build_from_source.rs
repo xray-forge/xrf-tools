@@ -12,7 +12,7 @@ use xrf_utils::{error_to_string, to_portable_path_string};
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
 use crate::core::types::TauriResult;
-use crate::plugins::render::state::RenderState;
+use crate::plugins::render::texture_reloads::TextureReloads;
 use crate::plugins::textures::lease::TEXTURE_ENCODE_GROUP;
 use crate::plugins::textures::request::TexturesBuildRequest;
 
@@ -53,7 +53,7 @@ pub async fn textures_build_from_source(
   progress: Channel<JobProgress>,
   registry: State<'_, Arc<JobRegistry>>,
   execution: State<'_, ExecutionState>,
-  render: State<'_, RenderState>,
+  reloads: State<'_, TextureReloads>,
 ) -> TauriResult<TextureBuildOutcome> {
   let start: JobStart = JobStart::new(job_id, JobKind::TexturesBuild).with_request(&request);
 
@@ -85,7 +85,7 @@ pub async fn textures_build_from_source(
   .await?;
 
   // Every viewport drawing what was written draws it as written.
-  render.reload_written(&[&outcome.destination]);
+  reloads.reload_written(&[&outcome.destination]);
 
   Ok(outcome)
 }

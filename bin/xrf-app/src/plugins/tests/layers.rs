@@ -12,38 +12,24 @@ const INFRASTRUCTURE: &[&str] = &["render"];
 
 /// References that break the layers and are known, as (source file, plugin referenced). An entry that no longer occurs
 /// fails the test too, so the list only shrinks.
-// todo: Empty once paths live in `core/`, render shows no domain's document and the code two domains share moves
-// below them.
+// todo: Empty once render shows no domain's document and the code two domains share moves below them.
 const KNOWN_BREACHES: &[(&str, &str)] = &[
   ("plugins/levels/spawn_visuals.rs", "visuals"),
   ("plugins/levels/tests/cube_export.rs", "textures"),
   ("plugins/levels/tests/map_export.rs", "textures"),
   ("plugins/levels/texture_resolver.rs", "textures"),
-  ("plugins/levels/viewer/commands/copy_screenshot.rs", "system"),
-  ("plugins/levels/viewer/commands/delete_screenshot.rs", "system"),
-  ("plugins/levels/viewer/commands/export_cube.rs", "system"),
-  ("plugins/levels/viewer/commands/export_map.rs", "system"),
-  ("plugins/levels/viewer/commands/find_screenshot_path.rs", "system"),
-  ("plugins/levels/viewer/commands/get_view_folder.rs", "system"),
-  ("plugins/levels/viewer/commands/write_map_annotations.rs", "system"),
-  ("plugins/levels/viewer/commands/write_screenshot_report.rs", "system"),
   ("plugins/levels/viewer/cube_export_format.rs", "textures"),
   ("plugins/levels/viewer/map_export.rs", "textures"),
   ("plugins/levels/viewer/map_export_format.rs", "textures"),
-  ("plugins/levels/viewer/routes/read_screenshot.rs", "system"),
   ("plugins/render/commands/capture_cube.rs", "levels"),
-  ("plugins/render/commands/capture_cube.rs", "system"),
   ("plugins/render/commands/capture_map.rs", "levels"),
-  ("plugins/render/commands/capture_map.rs", "system"),
   ("plugins/render/commands/save_screenshot.rs", "levels"),
-  ("plugins/render/commands/save_screenshot.rs", "system"),
   ("plugins/render/commands/show_level.rs", "levels"),
   ("plugins/render/commands/show_model.rs", "visuals"),
   ("plugins/render/commands/show_texture.rs", "textures"),
   ("plugins/render/level_scene_follower.rs", "levels"),
   ("plugins/render/plugin.rs", "levels"),
   ("plugins/render/shown_levels.rs", "levels"),
-  ("plugins/render/state.rs", "levels"),
   ("plugins/visuals/render_source.rs", "levels"),
 ];
 

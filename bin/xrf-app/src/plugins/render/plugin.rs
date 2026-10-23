@@ -3,19 +3,28 @@ use std::sync::Arc;
 use tauri::plugin::{Builder, TauriPlugin};
 use tauri::webview::{PageLoadEvent, PageLoadPayload, WebviewWindow};
 use tauri::{AppHandle, Manager, RunEvent, Runtime, Webview, WindowEvent};
-use xrf_renderer::RenderWorkers;
+use xrf_renderer::{RenderQueue, RenderWorkers};
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::window::{WindowCloseApprovals, WindowHandles};
 use crate::plugins::levels::state::LevelState;
 use crate::plugins::render::disk_cache_store::DiskCacheStore;
+use crate::plugins::render::level_scene_follower::LevelSceneFollower;
 use crate::plugins::render::packaged_bundle::PackagedBundle;
-use crate::plugins::render::state::RenderState;
+use crate::plugins::render::render_viewports::RenderViewports;
+use crate::plugins::render::renderer::Renderer;
+use crate::plugins::render::shown_levels::ShownLevels;
+use crate::plugins::render::texture_reloads::TextureReloads;
+use crate::plugins::render::viewport_shows::ViewportShows;
+use crate::plugins::render::world_state::WorldState;
 
-/// The `render` plugin: the native renderer's state (`RenderState`, its loaders on the application's pool, its bundle and
-/// the driver's pipeline cache on disk), every `render|*` command, and the hooks that detach a window's viewports as a
-/// page starts loading over them or the window closes, and stop the renderer as the application exits.
+/// The `render` plugin: the native renderer (`Renderer`, its loaders on the application's pool, its bundle and the
+/// driver's pipeline cache on disk) and the units every `render|*` command takes what it touches from: the world it
+/// draws (`WorldState`), the shows asked of each viewport (`ViewportShows`), the viewports in each window
+/// (`RenderViewports`), the drawn textures kept current with their files (`TextureReloads`) and the source each level
+/// session is drawn from (`ShownLevels`). Its hooks detach a window's viewports as a page starts loading over them or
+/// the window closes, and stop the renderer as the application exits.
 pub struct RenderPlugin {}
 
 impl RenderPlugin {
@@ -36,7 +45,14 @@ impl RenderPlugin {
           .ok()
           .map(|directory| DiskCacheStore::new(directory.join("renderer")));
 
-        let state: RenderState = RenderState::new(workers, Arc::new(bundle), store);
+        let world: WorldState = WorldState::new(workers.clone());
+        let queue: RenderQueue = RenderQueue::new(workers, Arc::new(bundle), world.as_render_world());
+        let renderer: Renderer = Renderer::new(match store {
+          Some(store) => queue.with_cache_store(Arc::new(store)),
+          None => queue,
+        });
+        let shows: ViewportShows = ViewportShows::new(world.clone());
+        let shown: ShownLevels = ShownLevels::default();
 
         let levels = application
           .try_state::<LevelState>()
@@ -44,8 +60,18 @@ impl RenderPlugin {
 
         application
           .state::<AssetMountState>()
-          .add_subscriber(state.follow_levels(levels.selected.clone()));
-        application.manage(state);
+          .add_subscriber(LevelSceneFollower {
+            levels: levels.selected.clone(),
+            shown: shown.clone(),
+            world: world.clone(),
+          });
+
+        application.manage(RenderViewports::new(renderer.clone(), world.clone(), shows.clone()));
+        application.manage(TextureReloads::new(renderer.clone()));
+        application.manage(renderer);
+        application.manage(world);
+        application.manage(shows);
+        application.manage(shown);
 
         Ok(())
       })
@@ -64,8 +90,8 @@ impl RenderPlugin {
       return;
     }
 
-    if let Some(state) = webview.try_state::<RenderState>() {
-      state.detach_window(webview.window().label());
+    if let Some(viewports) = webview.try_state::<RenderViewports>() {
+      viewports.detach_window(webview.window().label());
     }
   }
 
@@ -73,7 +99,7 @@ impl RenderPlugin {
   /// until the renderer let go of it and destroying it then; forgets a destroyed window; stops the renderer as the
   /// application exits. A close the page has not approved is the page's to decide, so it is left alone.
   fn on_event<R: Runtime>(application: &AppHandle<R>, event: &RunEvent) {
-    let Some(state) = application.try_state::<RenderState>() else {
+    let Some(viewports) = application.try_state::<RenderViewports>() else {
       return;
     };
 
@@ -87,7 +113,7 @@ impl RenderPlugin {
           .try_state::<WindowCloseApprovals>()
           .is_some_and(|approvals| approvals.take(label));
 
-        let is_closing: bool = state.is_closing(label);
+        let is_closing: bool = viewports.is_closing(label);
 
         // Asked behind the page's prompt: the page answers, and asks again once it agrees. A window already held stays
         // held whoever asks.
@@ -109,7 +135,7 @@ impl RenderPlugin {
         }
 
         let window: Option<WebviewWindow<R>> = application.get_webview_window(label);
-        let is_held: bool = state.close_window(label, move || {
+        let is_held: bool = viewports.close_window(label, move || {
           if let Some(window) = window {
             match window.destroy() {
               Ok(()) => log::info!("Window '{}' destroyed once the renderer let go of it", window.label()),
@@ -130,13 +156,13 @@ impl RenderPlugin {
         event: WindowEvent::Destroyed,
         ..
       } => {
-        state.forget_window(label);
+        viewports.forget_window(label);
 
         if let Some(handles) = application.try_state::<WindowHandles>() {
           handles.forget(label);
         }
       }
-      RunEvent::Exit => state.shut_down(),
+      RunEvent::Exit => viewports.shut_down(),
       _ => {}
     }
   }

@@ -4,21 +4,21 @@ use std::path::PathBuf;
 
 use tauri::State;
 
+use crate::core::app_directories::AppDirectories;
 use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
 use crate::plugins::levels::viewer::LevelViewerFolder;
-use crate::plugins::system::paths::SystemPathsState;
 
 /// Delete a screenshot of the screenshots folder for good, with what stands beside it: a screenshot's report, a level
 /// map's annotations.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "delete_screenshot"))]
 #[tauri::command(rename = "delete_screenshot")]
 pub async fn levels_delete_screenshot(
-  state: State<'_, SystemPathsState>,
+  directories: State<'_, AppDirectories>,
   execution: State<'_, ExecutionState>,
   path: PathBuf,
 ) -> TauriResult {
-  LevelViewerFolder::require_screenshot(state.local_data.clone(), &path)?;
+  LevelViewerFolder::require_screenshot(&directories, &path)?;
 
   execution
     .run_blocking("Deleting a screenshot", move || {

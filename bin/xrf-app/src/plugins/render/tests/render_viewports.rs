@@ -6,13 +6,16 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer::{
   RenderAssetSource, RenderBundle, RenderEventSink, RenderLevelDetails, RenderLevelParticles, RenderLevelSource,
-  RenderLevelSpawn, RenderLevelWeather, RenderSpawnModels, RenderViewportEvent, RenderViewportId, RenderWindowHost,
-  RenderWorkers, SurfaceTargetUnsafe,
+  RenderLevelSpawn, RenderLevelWeather, RenderQueue, RenderSpawnModels, RenderViewportEvent, RenderViewportId,
+  RenderWindowHost, RenderWorkers, SurfaceTargetUnsafe,
 };
 use xrf_visual::{LightsDescription, SectorPackage};
 use xrf_world::{WorldEventSink, WorldViewportEvent};
 
-use crate::plugins::render::state::RenderState;
+use crate::plugins::render::render_viewports::RenderViewports;
+use crate::plugins::render::renderer::Renderer;
+use crate::plugins::render::viewport_shows::ViewportShows;
+use crate::plugins::render::world_state::WorldState;
 
 /// A bundle holding nothing.
 struct EmptyBundle;
@@ -117,20 +120,37 @@ impl RenderLevelSource for EmptyLevel {
   }
 }
 
-fn create_state() -> RenderState {
+/// The units a render plugin sets up, over a renderer that starts no GPU while no window is drawn.
+struct Units {
+  viewports: RenderViewports,
+  shows: ViewportShows,
+}
+
+fn create_units() -> Units {
   let pool = Arc::new(
     rayon::ThreadPoolBuilder::new()
       .num_threads(2)
       .build()
       .expect("a test pool"),
   );
+  let workers: RenderWorkers = RenderWorkers::new(pool);
+  let world: WorldState = WorldState::new(workers.clone());
+  let renderer: Renderer = Renderer::new(RenderQueue::new(
+    workers,
+    Arc::new(EmptyBundle),
+    world.as_render_world(),
+  ));
+  let shows: ViewportShows = ViewportShows::new(world.clone());
 
-  RenderState::new(RenderWorkers::new(pool), Arc::new(EmptyBundle), None)
+  Units {
+    viewports: RenderViewports::new(renderer, world, shows.clone()),
+    shows,
+  }
 }
 
-fn attach(state: &RenderState, window: &str) -> RenderViewportId {
-  state
-    .attach_viewport(window, Arc::new(HiddenWindow), (Box::new(Silence), Box::new(Silence)))
+fn attach(viewports: &RenderViewports, window: &str) -> RenderViewportId {
+  viewports
+    .attach(window, Arc::new(HiddenWindow), (Box::new(Silence), Box::new(Silence)))
     .expect("a viewport number")
 }
 
@@ -140,46 +160,46 @@ fn level() -> Option<Arc<dyn RenderLevelSource>> {
 
 #[test]
 fn shows_only_what_was_asked_last_of_a_viewport() {
-  let state: RenderState = create_state();
-  let viewport: RenderViewportId = attach(&state, "main");
-  let older: u64 = state.ask_show(viewport);
-  let newer: u64 = state.ask_show(viewport);
+  let Units { viewports, shows } = create_units();
+  let viewport: RenderViewportId = attach(&viewports, "main");
+  let older: u64 = shows.ask(viewport);
+  let newer: u64 = shows.ask(viewport);
 
   assert_eq!(
-    state.show(viewport, older, level()),
+    shows.show(viewport, older, level()),
     None,
     "an older ask gives way to a newer"
   );
-  assert!(state.show(viewport, newer, level()).is_some());
+  assert!(shows.show(viewport, newer, level()).is_some());
 
-  state.shut_down();
+  viewports.shut_down();
 }
 
 // The world would make the viewport again for a show reaching it after its detach, so the ticket is what refuses it.
 #[test]
 fn refuses_a_show_asked_before_its_viewport_was_detached() {
-  let state: RenderState = create_state();
-  let viewport: RenderViewportId = attach(&state, "main");
-  let ticket: u64 = state.ask_show(viewport);
+  let Units { viewports, shows } = create_units();
+  let viewport: RenderViewportId = attach(&viewports, "main");
+  let ticket: u64 = shows.ask(viewport);
 
-  state.detach_viewport(viewport);
+  viewports.detach(viewport);
 
-  assert_eq!(state.show(viewport, ticket, level()), None);
+  assert_eq!(shows.show(viewport, ticket, level()), None);
 
-  state.shut_down();
+  viewports.shut_down();
 }
 
 #[test]
 fn lets_go_only_of_the_viewports_of_a_window_whose_page_went() {
-  let state: RenderState = create_state();
-  let gone: RenderViewportId = attach(&state, "main");
-  let kept: RenderViewportId = attach(&state, "viewer");
-  let (gone_ticket, kept_ticket): (u64, u64) = (state.ask_show(gone), state.ask_show(kept));
+  let Units { viewports, shows } = create_units();
+  let gone: RenderViewportId = attach(&viewports, "main");
+  let kept: RenderViewportId = attach(&viewports, "viewer");
+  let (gone_ticket, kept_ticket): (u64, u64) = (shows.ask(gone), shows.ask(kept));
 
-  assert!(state.detach_window("main"));
-  assert!(!state.detach_window("main"), "nothing is left in it to let go");
-  assert_eq!(state.show(gone, gone_ticket, level()), None);
-  assert!(state.show(kept, kept_ticket, level()).is_some());
+  assert!(viewports.detach_window("main"));
+  assert!(!viewports.detach_window("main"), "nothing is left in it to let go");
+  assert_eq!(shows.show(gone, gone_ticket, level()), None);
+  assert!(shows.show(kept, kept_ticket, level()).is_some());
 
-  state.shut_down();
+  viewports.shut_down();
 }

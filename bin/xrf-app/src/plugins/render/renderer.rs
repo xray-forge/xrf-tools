@@ -11,18 +11,19 @@ use xrf_renderer::{
 };
 
 /// The renderer as the application calls it: each call a command on the render thread's queue, numbering the
-/// viewports it attaches and answering a question through a channel of its own.
+/// viewports it attaches and answering a question through a channel of its own. A clone calls the same renderer.
+#[derive(Clone)]
 pub struct Renderer {
   queue: RenderQueue,
   /// The number the last viewport was attached under, none before the first.
-  last_id: AtomicU32,
+  last_id: Arc<AtomicU32>,
 }
 
 impl Renderer {
   pub fn new(queue: RenderQueue) -> Self {
     Self {
       queue,
-      last_id: AtomicU32::new(0),
+      last_id: Arc::new(AtomicU32::new(0)),
     }
   }
 

@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, MutexGuard};
 
 use xrf_renderer::{RenderLevelSource, RenderSceneId};
 use xrf_world::{World, WorldLevelReload};
@@ -8,6 +8,7 @@ use crate::core::session::{Session, SessionChange, SessionRootChange, SessionSna
 use crate::plugins::levels::render_source::LevelRenderSource;
 use crate::plugins::levels::state::SelectedLevel;
 use crate::plugins::render::shown_levels::ShownLevels;
+use crate::plugins::render::world_state::WorldState;
 
 /// Moves the scene of each level shown along with its session through every commit, in the backend: a kept value's
 /// scene goes on from the next snapshot, reading again only what its stale parts fed; a value derived again streams
@@ -15,8 +16,8 @@ use crate::plugins::render::shown_levels::ShownLevels;
 /// drawn from.
 pub(crate) struct LevelSceneFollower {
   pub levels: Session<SelectedLevel>,
-  pub shown: Arc<ShownLevels>,
-  pub world: Arc<Mutex<World>>,
+  pub shown: ShownLevels,
+  pub world: WorldState,
 }
 
 impl LevelSceneFollower {
@@ -59,7 +60,7 @@ impl LevelSceneFollower {
     };
     let drawn: Arc<dyn RenderLevelSource> = Arc::clone(&source) as Arc<dyn RenderLevelSource>;
     let reload: WorldLevelReload = LevelRenderSource::to_reload(&change.stale_parts);
-    let mut world: MutexGuard<'_, World> = self.world.lock().unwrap_or_else(PoisonError::into_inner);
+    let mut world: MutexGuard<'_, World> = self.world.lock();
     let scene: Option<RenderSceneId> = match is_derived {
       true => world.reopen_scene(&key, drawn),
       false => world.reload_scene(&key, drawn, reload),

@@ -13,7 +13,7 @@ use xrf_level::{LevelGeomFile, LevelHeaderChunk, LevelVisualsChunk};
 use xrf_renderer::{RenderLevelSource, RenderSceneId, RenderViewportId, RenderWorkers, RenderWorld};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch, XrayTransaction};
-use xrf_world::{World, WorldEventSink, WorldViewportEvent};
+use xrf_world::{WorldEventSink, WorldViewportEvent};
 
 use crate::core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountState};
 use crate::core::session::{Session, SessionChange, SessionId, SessionRootChange, SessionSnapshot};
@@ -30,6 +30,7 @@ use crate::plugins::levels::state::level_environment::LEVEL_WEATHER_PART;
 use crate::plugins::levels::state::{LevelEnvironment, LevelSource, LevelState, SelectedLevel};
 use crate::plugins::render::level_scene_follower::LevelSceneFollower;
 use crate::plugins::render::shown_levels::ShownLevels;
+use crate::plugins::render::world_state::WorldState;
 
 /// Longer than a synthetic level takes to read on the test pool.
 const WAIT: Duration = Duration::from_secs(10);
@@ -167,23 +168,23 @@ fn a_commit_to_a_file_the_level_was_read_from_reads_it_again_and_streams_its_sce
   let (assets, roots, search) = level_tree("derived");
   let pool: Arc<ThreadPool> = test_pool();
   let state: LevelState = LevelState::new(Arc::clone(&pool));
-  let world: Arc<Mutex<World>> = Arc::new(Mutex::new(World::new(RenderWorkers::new(Arc::clone(&pool)))));
-  let shown: Arc<ShownLevels> = Arc::default();
+  let world: WorldState = WorldState::new(RenderWorkers::new(Arc::clone(&pool)));
+  let shown: ShownLevels = ShownLevels::default();
   let log: ChangeLog = ChangeLog::default();
   let viewport: RenderViewportId = RenderViewportId(1);
 
   assets.add_follower(state.selected.clone());
   assets.add_subscriber(LevelSceneFollower {
     levels: state.selected.clone(),
-    shown: Arc::clone(&shown),
-    world: Arc::clone(&world),
+    shown: shown.clone(),
+    world: world.clone(),
   });
   assets.add_subscriber(log.clone());
 
   let opened: Arc<SessionSnapshot<SelectedLevel>> = open(&state.selected, &assets, &roots);
   let source: Arc<LevelRenderSource> = shown.get_source(Arc::clone(&opened), &assets);
   let scene: RenderSceneId = {
-    let mut world = world.lock().unwrap();
+    let mut world = world.lock();
 
     world.attach(viewport, Box::new(Silence));
     world
@@ -213,7 +214,7 @@ fn a_commit_to_a_file_the_level_was_read_from_reads_it_again_and_streams_its_sce
   assert!(!Arc::ptr_eq(&next.value, &opened.value), "the value was read again");
   assert_eq!(next.session_id, opened.session_id);
 
-  let reopened: Option<RenderSceneId> = world.lock().unwrap().get_asked_scene(viewport);
+  let reopened: Option<RenderSceneId> = world.lock().get_asked_scene(viewport);
 
   assert!(
     reopened.is_some_and(|reopened| reopened != scene),
