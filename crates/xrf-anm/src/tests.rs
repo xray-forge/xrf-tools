@@ -9,7 +9,7 @@ use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
-use crate::{AnmChannel, AnmFile};
+use crate::{AnmChannel, AnmFile, AnmPlayback};
 
 /// One interpolating key, as version 5 lays it out: value, time, shape, then seven quantised parameters.
 fn new_curved_key_bytes(value: f32, time: f32, quantised: u16) -> Vec<u8> {
@@ -359,21 +359,59 @@ fn new_moving_motion() -> AnmFile {
 }
 
 #[test]
-fn a_looped_time_wraps_by_whole_lengths() {
+fn a_looped_motion_wraps_by_whole_lengths() {
   let motion: AnmFile = new_moving_motion();
+  let looped = |elapsed: Duration| motion.get_played_time(elapsed, AnmPlayback::Looped);
 
-  assert_eq!(motion.get_looped_time(Duration::from_millis(500)), 0.5);
-  assert_eq!(motion.get_looped_time(Duration::from_secs(2)), 2.0);
-  assert!((motion.get_looped_time(Duration::from_millis(5500)) - 1.5).abs() < 1e-5);
+  assert_eq!(looped(Duration::from_millis(500)), 0.5);
+  assert_eq!(looped(Duration::from_secs(2)), 2.0);
+  assert!((looped(Duration::from_millis(5500)) - 1.5).abs() < 1e-5);
 }
 
 #[test]
-fn a_looped_time_keeps_its_pace_after_a_day() {
+fn a_looped_motion_keeps_its_pace_after_a_day() {
   let motion: AnmFile = new_moving_motion();
+  let looped = |elapsed: Duration| motion.get_played_time(elapsed, AnmPlayback::Looped);
   let day: Duration = Duration::from_secs(24 * 60 * 60);
-  let step: f32 = motion.get_looped_time(day + Duration::from_millis(6)) - motion.get_looped_time(day);
+  let step: f32 = looped(day + Duration::from_millis(6)) - looped(day);
 
   assert!((step - 0.006).abs() < 1e-6, "{step}");
+}
+
+#[test]
+fn a_motion_played_once_holds_its_last_frame() {
+  // `SAnimParams::Update` sets the time to `max_t` once past it, where a looped motion wraps.
+  let motion: AnmFile = new_moving_motion();
+  let once = |elapsed: Duration| motion.get_played_time(elapsed, AnmPlayback::Once);
+
+  assert_eq!(once(Duration::from_millis(500)), 0.5);
+  assert_eq!(once(Duration::from_secs(2)), 2.0);
+  assert_eq!(once(Duration::from_millis(5500)), 2.0);
+  assert_eq!(once(Duration::from_secs(24 * 60 * 60)), 2.0);
+  assert_eq!(
+    motion.evaluate(once(Duration::from_secs(9))).0,
+    Vector3d::new(6.0, 0.0, 0.0)
+  );
+}
+
+#[test]
+fn a_motion_plays_from_its_first_frame_either_way() {
+  // `SAnimParams::Set` starts at the first frame's time, -1 for `camera_effects\head_shot.anm`, and a motion of one
+  // frame has no length to play over.
+  let mut motion: AnmFile = new_moving_motion();
+
+  motion.frame_start = -15;
+
+  for playback in [AnmPlayback::Once, AnmPlayback::Looped] {
+    assert_eq!(motion.get_played_time(Duration::ZERO, playback), -0.5);
+    assert_eq!(motion.get_played_time(Duration::from_millis(500), playback), 0.0);
+  }
+
+  motion.frame_end = motion.frame_start;
+
+  for playback in [AnmPlayback::Once, AnmPlayback::Looped] {
+    assert_eq!(motion.get_played_time(Duration::from_secs(3), playback), -0.5);
+  }
 }
 
 #[test]

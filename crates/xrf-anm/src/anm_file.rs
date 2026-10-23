@@ -10,7 +10,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::format_path;
 
-use crate::AnmChannel;
+use crate::{AnmChannel, AnmPlayback};
 
 /// The object motion file the engine plays a camera or an animated object from, `.anm` and `.anm1`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -212,7 +212,8 @@ impl AnmFile {
     if frames > 0 { frames as u32 } else { 0 }
   }
 
-  /// Seconds the animation runs for, `CObjectAnimator::GetLength` (`xrEngine/ObjectAnimator.cpp`).
+  /// Seconds the animation runs for, `CObjectAnimator::GetLength` (`xrEngine/ObjectAnimator.cpp`). A camera effect
+  /// lives this long, which is one frame longer than its motion moves for: played once, it holds the last frame.
   pub fn get_duration_seconds(&self) -> f32 {
     self.get_frame_count() as f32 / self.get_fps()
   }
@@ -222,16 +223,17 @@ impl AnmFile {
     if self.fps > 0.0 { self.fps } else { Self::DEFAULT_FPS }
   }
 
-  /// The time, in seconds, a looping object animator plays it at `elapsed` after it started: `SAnimParams::Set` starts
-  /// at the first frame's time, and `Update` wraps whole lengths back once past the last frame's. The lengths are
-  /// wrapped before the time is taken in seconds, so it keeps its pace however long it has played.
-  pub fn get_looped_time(&self, elapsed: Duration) -> f32 {
+  /// The time, in seconds, an object animator plays it at `elapsed` after `Play`: `SAnimParams::Set` starts at the
+  /// first frame's time, and past the last frame's, `Update` wraps it back by whole lengths for a looped motion or
+  /// holds it there for a motion played once. The lengths are wrapped before the time is taken in seconds, so a looped
+  /// motion keeps its pace however long it has played.
+  pub fn get_played_time(&self, elapsed: Duration, playback: AnmPlayback) -> f32 {
     let fps: f32 = self.get_fps();
     let start: f32 = self.frame_start as f32 / fps;
-    let length: f32 = self.frame_end as f32 / fps - start;
+    let end: f32 = self.frame_end as f32 / fps;
 
-    // A motion of one frame has no length to wrap by, and holds it.
-    let Some(period) = Duration::try_from_secs_f32(length)
+    // A motion of one frame has no length to play over, and holds it.
+    let Some(period) = Duration::try_from_secs_f32(end - start)
       .ok()
       .filter(|period| !period.is_zero())
     else {
@@ -242,7 +244,12 @@ impl AnmFile {
       return start + elapsed.as_secs_f32();
     }
 
-    start + Duration::from_nanos((elapsed.as_nanos() % period.as_nanos()) as u64).as_secs_f32()
+    match playback {
+      AnmPlayback::Once => end,
+      AnmPlayback::Looped => {
+        start + Duration::from_nanos((elapsed.as_nanos() % period.as_nanos()) as u64).as_secs_f32()
+      }
+    }
   }
 
   /// Where it has an object at a time, `COMotion::_Evaluate`: the position, and the rotation as the object animator
