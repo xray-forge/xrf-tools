@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { exportsCommands } from "@/core/ipc/commands/exports";
-import { requireSessionId, Session } from "@/core/ipc/session";
+import { requireSessionId, Session, SessionScopeService } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { ExportSourceContent, ExportsProject } from "@/core/ipc/types/xrf-export";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -18,7 +18,7 @@ import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 export class ExportsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(exportsCommands.closeProject);
+  private readonly session: Session = new Session(exportsCommands.closeProject, inject(SessionScopeService));
 
   @Observable()
   public isReady: boolean = false;

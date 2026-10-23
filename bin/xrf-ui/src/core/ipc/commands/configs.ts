@@ -14,6 +14,7 @@ import {
   ConfigsSectionRequest,
   ConfigsVerifyRequest,
   SessionId,
+  SessionScope,
 } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { LtxProjectFormatResult, LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
@@ -36,8 +37,8 @@ export const configsCommands = {
   /** Rewrite the LTX configs roots exposes. */
   formatDirectory: (request: ConfigsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LtxProjectFormatResult>("plugin:configs|format_directory", { request, jobId, progress }),
-  /** What configs project is open, for a frontend restoring itself after a reload. */
-  getProject: () =>
+  /** What configs project a tool holds, the newest it opened, for a page attaching to it after a reload. */
+  getProject: (scope: SessionScope) =>
     __TAURI_INVOKE<{
       /** Identity every later read is addressed by. */
       sessionId: SessionId;
@@ -58,7 +59,7 @@ export const configsCommands = {
        * against the same set.
        */
       declaredSchemes: Array<string>;
-    } | null>("plugin:configs|get_project"),
+    } | null>("plugin:configs|get_project", { scope }),
   /** Everything wrong with one resolved root, anchored to the file and line a person has to open. */
   listFindings: (request: ConfigsResolvedRequest) =>
     __TAURI_INVOKE<Array<LtxAnchoredFinding>>("plugin:configs|list_findings", { request }),

@@ -151,6 +151,12 @@ macro_rules! for_each_tauri_command_domain {
         set_weather_control => crate::plugins::render::commands::set_weather_control::render_set_weather_control,
         set_world_toggles => crate::plugins::render::commands::set_world_toggles::render_set_world_toggles,
       }
+      // Which tool in which window holds each opening, so whatever a tool, a page or a window leaves is closed.
+      sessions => "sessions" {
+        bind => crate::plugins::sessions::commands::bind::sessions_bind,
+        release_scope => crate::plugins::sessions::commands::release_scope::sessions_release_scope,
+        retain_scopes => crate::plugins::sessions::commands::retain_scopes::sessions_retain_scopes,
+      }
       spawn => "spawn" {
         save_unpacked_directory => crate::plugins::spawn::commands::save_unpacked_directory::spawn_save_unpacked_directory,
         close_file => crate::plugins::spawn::commands::close_file::spawn_close_file,

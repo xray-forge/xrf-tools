@@ -185,8 +185,8 @@ impl AssetMountState {
     let fan_out: AssetFanOut = AssetFanOut::new(self.get_vfs());
 
     match follower.follow_in(self, &fan_out) {
-      Ok(Some(change)) => self.announce_sessions(vec![change], fan_out),
-      Ok(None) => {
+      Ok(changes) if !changes.is_empty() => self.announce_sessions(changes, fan_out),
+      Ok(_) => {
         for start in fan_out.into_starts() {
           start();
         }
@@ -249,12 +249,11 @@ impl AssetMountState {
 
     followers
       .iter()
-      .filter_map(|follower| {
+      .flat_map(|follower| {
         follower
           .follow_in(self, fan_out)
           .inspect_err(|error| log::error!("A session could not follow a commit: {error}"))
-          .ok()
-          .flatten()
+          .unwrap_or_default()
       })
       .collect()
   }

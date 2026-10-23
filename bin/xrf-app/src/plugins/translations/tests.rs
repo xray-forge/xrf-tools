@@ -12,7 +12,7 @@ use xrf_utils::error_to_string;
 use xrf_vfs::{XrayChangeSet, XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 
 use crate::core::assets::AssetMountState;
-use crate::core::session::{SessionDerived, SessionId};
+use crate::core::session::{SessionDerived, SessionId, SessionScopes};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::commands::save_file::{save_into_open_project, write_edits};
 use crate::plugins::translations::state::{TranslationProjectState, TranslationSaveOutcome, TranslationSavePlan};
@@ -33,9 +33,9 @@ const LANGUAGE: &str = "eng";
 /// Translations state followed by its own asset state, as the plugin's setup wires them.
 fn fixture() -> (AssetMountState, TranslationProjectState) {
   let assets: AssetMountState = AssetMountState::new();
-  let state: TranslationProjectState = TranslationProjectState::new();
+  let state: TranslationProjectState = TranslationProjectState::new(&SessionScopes::default());
 
-  assets.add_follower(state.session.clone());
+  assets.add_follower(state.projects.clone());
 
   (assets, state)
 }
@@ -75,21 +75,29 @@ fn value_on_disk(roots: &XrayRoots, file: &str) -> TauriResult<String> {
 
 /// What the state reports as open, or `None` when nothing is.
 fn value_in_state(state: &TranslationProjectState) -> TauriResult<Option<String>> {
-  Ok(state.session.get()?.as_ref().map(|project| entry_of(project)))
+  Ok(state.projects.list_opened()?.first().map(|project| entry_of(project)))
 }
 
-/// Opens the project as the open command does: through the shared roots, recording what it reads.
+/// Opens the project as the editor does: through the shared roots, recording what it reads, and letting the project it
+/// held before go once this one is open.
 fn open_project(assets: &AssetMountState, state: &TranslationProjectState, roots: &XrayRoots) -> TauriResult<()> {
   let id = SessionId::new();
   let search: XraySearch = assets.search_fresh(roots)?;
   let revision: XrayRevision = search.get_vfs().get_revision();
   let read: SessionDerived<TranslationProjectDescriptor> =
     TranslationProjectState::read_project(search, roots, TranslationProjectMode::Source, PREFIX)?;
+  let held: Vec<SessionId> = state
+    .projects
+    .list_opened()?
+    .iter()
+    .map(|project| project.session_id)
+    .collect();
 
-  state.session.begin_open(id)?;
+  state.projects.begin_open(id)?;
   state
-    .session
+    .projects
     .commit_open_with(id, read.value, revision, read.inputs, read.parts)?;
+  state.projects.close(&held)?;
 
   Ok(())
 }
@@ -106,7 +114,7 @@ fn edits(value: &str) -> HashMap<String, Vec<TranslationEdit>> {
 }
 
 fn current_id(state: &TranslationProjectState) -> SessionId {
-  state.session.get().unwrap().unwrap().session_id
+  state.projects.list_opened().unwrap()[0].session_id
 }
 
 /// Writes and settles a save the plan was made for, as the command does once the plan is taken.
@@ -178,7 +186,7 @@ fn a_close_during_a_save_is_not_undone_by_it() -> TauriResult<()> {
 
   let plan: TranslationSavePlan = state.begin_save(current_id(&state), FILE)?;
 
-  state.session.close(&[current_id(&state)])?;
+  state.projects.close(&[current_id(&state)])?;
 
   assert!(matches!(
     finish_save(&assets, &state, &plan, "after")?,
@@ -317,7 +325,7 @@ fn formatting_is_refused_while_a_project_is_open_over_the_same_tree() -> TauriRe
   state.require_no_open_session_over(&sibling.roots[0].path)?;
 
   // Closing releases it.
-  state.session.close(&[current_id(&state)])?;
+  state.projects.close(&[current_id(&state)])?;
   state.require_no_open_session_over(&root)?;
 
   Ok(())

@@ -25,7 +25,7 @@ pub async fn visuals_open_model(
   state: State<'_, VisualState>,
   assets: State<'_, AssetMountState>,
 ) -> TauriResult<SessionSnapshot<SelectedVisualDescription>> {
-  state.selected.begin_open(session_id)?;
+  state.models.begin_open(session_id)?;
 
   log::info!("Opening visual: {}", source.label());
 
@@ -43,7 +43,7 @@ pub async fn visuals_open_model(
   let textures_ltx: Option<XrayAsset> = XrayMaterialResolver::find_textures_ltx(&search);
   let motions: Option<VisualMotions> = VisualMotions::of(&file);
 
-  let selected: Arc<SessionSnapshot<SelectedVisual>> = state.selected.commit_open(
+  let selected: Arc<SessionSnapshot<SelectedVisual>> = state.models.commit_open(
     session_id,
     SelectedVisual {
       source,

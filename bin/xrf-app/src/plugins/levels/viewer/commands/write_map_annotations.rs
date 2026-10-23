@@ -31,7 +31,7 @@ pub async fn levels_write_map_annotations(
   LevelViewerFolder::require_screenshot(&directories, &request.path)?;
   request.area.require_ground()?;
 
-  let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
+  let current: Arc<SessionSnapshot<SelectedLevel>> = state.levels.require(session_id)?;
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let value: SessionSnapshot<String> = execution
     .run_blocking("Drawing a level map's annotations", move || -> TauriResult<_> {

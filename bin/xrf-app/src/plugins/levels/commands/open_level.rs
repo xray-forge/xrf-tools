@@ -32,7 +32,7 @@ pub async fn levels_open_level(
     engine,
   } = request;
 
-  state.selected.begin_open(session_id)?;
+  state.levels.begin_open(session_id)?;
 
   let started: Instant = Instant::now();
 
@@ -60,8 +60,8 @@ pub async fn levels_open_level(
     level.engine.describe()
   );
 
-  let selected: Arc<SessionSnapshot<SelectedLevel>> = state.selected.catch_up(
-    state.selected.commit_open_with(
+  let selected: Arc<SessionSnapshot<SelectedLevel>> = state.levels.catch_up(
+    state.levels.commit_open_with(
       session_id,
       opened.value,
       search.get_vfs().get_revision(),

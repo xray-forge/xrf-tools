@@ -26,7 +26,7 @@ pub fn levels_show_level(
 ) -> TauriResult<Option<u32>> {
   let source: Option<Arc<dyn RenderLevelSource>> = match session_id {
     Some(session_id) => {
-      let level: Arc<SessionSnapshot<SelectedLevel>> = levels.selected.require(session_id)?;
+      let level: Arc<SessionSnapshot<SelectedLevel>> = levels.levels.require(session_id)?;
 
       reloads.watch(&level.roots);
 

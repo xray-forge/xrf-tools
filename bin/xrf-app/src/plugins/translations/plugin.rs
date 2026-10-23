@@ -2,6 +2,7 @@ use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
 
 use crate::core::assets::AssetMountState;
+use crate::core::session::SessionScopes;
 use crate::plugins::translations::state::TranslationProjectState;
 
 pub struct TranslationsPlugin {}
@@ -14,12 +15,12 @@ impl TranslationsPlugin {
 
     tauri::plugin::Builder::new(Self::NAME)
       .setup(|application, _| {
-        let state: TranslationProjectState = TranslationProjectState::new();
+        let state: TranslationProjectState = TranslationProjectState::new(&application.state::<SessionScopes>());
 
         // An open project records every file it read and reads them again when a commit moved one: a save among them.
         application
           .state::<AssetMountState>()
-          .add_follower(state.session.clone());
+          .add_follower(state.projects.clone());
         application.manage(state);
 
         Ok(())

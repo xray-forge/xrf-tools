@@ -4,7 +4,7 @@ use xrf_renderer::{RenderLevelSource, RenderSceneId};
 use xrf_world::{World, WorldLevelReload};
 
 use crate::core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountState};
-use crate::core::session::{Session, SessionChange, SessionRootChange, SessionSnapshot};
+use crate::core::session::{SessionChange, SessionRootChange, SessionSnapshot, Sessions};
 use crate::plugins::levels::render_source::LevelRenderSource;
 use crate::plugins::levels::shown_levels::ShownLevels;
 use crate::plugins::levels::state::SelectedLevel;
@@ -15,7 +15,7 @@ use crate::plugins::render::world_state::WorldState;
 /// afresh; one being derived, left stale or failed stays as it is drawn, since its session kept the snapshot it was
 /// drawn from.
 pub(crate) struct LevelSceneFollower {
-  pub levels: Session<SelectedLevel>,
+  pub levels: Sessions<SelectedLevel>,
   pub shown: ShownLevels,
   pub world: WorldState,
 }
@@ -49,10 +49,9 @@ impl LevelSceneFollower {
     // The snapshot the change left, or a later one where another commit moved the session on since.
     let next: Arc<SessionSnapshot<SelectedLevel>> = self
       .levels
-      .get()
+      .require(change.session_id)
       .ok()
-      .flatten()
-      .filter(|next| next.session_id == change.session_id && next.revision >= change.revision)?;
+      .filter(|next| next.revision >= change.revision)?;
     let key: String = LevelRenderSource::to_scene_key(change.session_id);
     let source: Arc<LevelRenderSource> = match is_derived {
       true => Arc::new(LevelRenderSource::new(next, AssetMountState::clone(assets))),

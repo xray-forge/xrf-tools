@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use xrf_vfs::XrayRoots;
 
 use crate::core::assets::AssetMountState;
-use crate::core::session::{Session, SessionId};
+use crate::core::session::{SessionId, SessionScopes, Sessions};
 use crate::core::types::TauriResult;
 use crate::plugins::textures::catalog::TextureCatalogMode;
 use crate::plugins::textures::encoding::TextureEncodingSession;
@@ -16,29 +16,30 @@ pub struct TextureBrowseSession {
   pub mode: TextureCatalogMode,
 }
 
-/// Browsing and encoded candidates have independent lifetimes; a failed replacement preserves each last success.
+/// Browsing and encoded candidates have independent lifetimes, each held by the tool that opened it.
 #[derive(Clone)]
 pub struct TextureState {
-  /// What the tree is listing.
-  pub browse: Session<TextureBrowseSession>,
-  /// The encodes one comparison weighed, held so a save can write the candidate it reported.
-  pub comparison: Session<TextureEncodingSession>,
+  /// What each tree is listing.
+  pub browses: Sessions<TextureBrowseSession>,
+  /// The encodes each comparison weighed, held so a save can write the candidate it reported.
+  pub comparisons: Sessions<TextureEncodingSession>,
   /// The application's asset state, which a save commits through.
   pub assets: AssetMountState,
 }
 
 impl TextureState {
-  pub fn new(assets: AssetMountState) -> Self {
+  /// Whatever scope `scopes` releases closes the browses and comparisons it held.
+  pub fn new(assets: AssetMountState, scopes: &SessionScopes) -> Self {
     Self {
-      browse: Session::new("texture browse"),
-      comparison: Session::new("texture comparison"),
+      browses: Sessions::new("texture browse", scopes),
+      comparisons: Sessions::new("texture comparison", scopes),
       assets,
     }
   }
 
-  /// Closes both, because a comparison is only ever about the texture the tree is showing.
+  /// Closes the caller's handles of both kinds, because a comparison is only ever about the texture its tree shows.
   pub fn close(&self, ids: &[SessionId]) -> TauriResult<()> {
-    self.browse.close(ids)?;
-    self.comparison.close(ids)
+    self.browses.close(ids)?;
+    self.comparisons.close(ids)
   }
 }

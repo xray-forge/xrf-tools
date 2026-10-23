@@ -10,6 +10,7 @@ pub mod jobs;
 pub mod levels;
 pub mod registry;
 pub mod render;
+pub mod sessions;
 pub mod spawn;
 pub mod sprite_equipment;
 pub mod system;

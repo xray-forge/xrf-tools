@@ -20,7 +20,7 @@ pub async fn levels_read_level_cycle(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<LevelWeatherCycle>> {
-  let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
+  let current: Arc<SessionSnapshot<SelectedLevel>> = state.levels.require(session_id)?;
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let cycle: SessionSnapshot<LevelWeatherCycle> = execution
     .run_blocking("Reading a weather cycle", move || {

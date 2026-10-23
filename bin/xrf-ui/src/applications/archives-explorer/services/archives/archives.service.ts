@@ -18,7 +18,7 @@ import {
 } from "@/core/archive/lib";
 import { transformError } from "@/core/error/lib";
 import { archivesCommands } from "@/core/ipc/commands/archives";
-import { requireSessionId, Session } from "@/core/ipc/session";
+import { requireSessionId, Session, SessionScopeService } from "@/core/ipc/session";
 import {
   ArchiveOverrideReport,
   ArchiveResolution,
@@ -55,7 +55,7 @@ const EMPTY_OVERRIDES: ArchiveOverrideReport = { overridden: [], unreachable: []
 export class ArchivesService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(archivesCommands.closeSubject);
+  private readonly session: Session = new Session(archivesCommands.closeSubject, inject(SessionScopeService));
 
   /** The extraction this service started, while it runs. */
   @Observable()

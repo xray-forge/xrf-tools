@@ -21,7 +21,7 @@ pub async fn textures_open(
 ) -> TauriResult<SessionSnapshot<TextureCatalog>> {
   log::info!("Opening textures in: {} as {mode:?}", roots.describe());
 
-  state.browse.begin_open(session_id)?;
+  state.browses.begin_open(session_id)?;
 
   let state: TextureState = TextureState::clone(&state);
   let assets: AssetMountState = AssetMountState::clone(&assets);
@@ -32,7 +32,7 @@ pub async fn textures_open(
 
       Ok(
         state
-          .browse
+          .browses
           .commit_open(session_id, TextureBrowseSession { roots, mode })?
           .map(|_| catalog),
       )

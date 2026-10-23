@@ -5,7 +5,7 @@ use xrf_job::JobOutcome;
 use xrf_vfs::XrayRoots;
 
 use crate::core::assets::AssetMountState;
-use crate::core::session::SessionId;
+use crate::core::session::{SessionId, SessionScopes};
 use crate::plugins::textures::encoding::{TextureEncodingComparison, TextureEncodingCurrent, TextureEncodingSession};
 use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::state::TextureState;
@@ -77,13 +77,13 @@ fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() 
   // can only exist while that measurement does - and the failure, when the session has moved on, has to say so rather
   // than serve a picture of something else.
   let chain: DdsMipChain = DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain");
-  let state: TextureState = TextureState::new(AssetMountState::new());
+  let state: TextureState = TextureState::new(AssetMountState::new(), &SessionScopes::default());
 
   let session_id: SessionId = SessionId::new();
 
-  state.comparison.begin_open(session_id).expect("session");
+  state.comparisons.begin_open(session_id).expect("session");
 
-  let missing = state.comparison.require(session_id);
+  let missing = state.comparisons.require(session_id);
 
   assert!(
     missing.is_err(),
@@ -91,7 +91,7 @@ fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() 
   );
 
   state
-    .comparison
+    .comparisons
     .commit_open(
       session_id,
       TextureEncodingSession {
@@ -107,7 +107,7 @@ fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() 
     .expect("hold comparison");
 
   let png: Vec<u8> = state
-    .comparison
+    .comparisons
     .require(session_id)
     .expect("comparison")
     .require(TextureEncodingFormat::Bc3)
@@ -118,7 +118,7 @@ fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() 
 
   assert!(!png.is_empty(), "expect the held encode to decode to a picture");
 
-  let held = state.comparison.require(session_id).expect("comparison");
+  let held = state.comparisons.require(session_id).expect("comparison");
   let unweighed = held.require(TextureEncodingFormat::Bc7);
 
   assert!(

@@ -8,7 +8,7 @@ import { IDialogTreeEntry, toDialogTreeEntries } from "@/applications/dialogs-ed
 import { describeRoots } from "@/core/assets/lib/roots";
 import { transformError } from "@/core/error/lib";
 import { dialogsCommands } from "@/core/ipc/commands/dialogs";
-import { requireSessionId, Session } from "@/core/ipc/session";
+import { requireSessionId, Session, SessionScopeService } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
@@ -27,7 +27,7 @@ export interface IDialogSelection {
 export class DialogsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(dialogsCommands.closeProject);
+  private readonly session: Session = new Session(dialogsCommands.closeProject, inject(SessionScopeService));
 
   @Observable()
   public isReady: boolean = false;

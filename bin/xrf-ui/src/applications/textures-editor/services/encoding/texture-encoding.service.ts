@@ -10,7 +10,7 @@ import { fetchBulk } from "@/core/ipc/bulk";
 import { texturesCommands } from "@/core/ipc/commands/textures";
 import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
 import { toEnumMember } from "@/core/ipc/enumeration";
-import { Session } from "@/core/ipc/session";
+import { Session, SessionScopeService } from "@/core/ipc/session";
 import {
   EJobKind,
   SessionId,
@@ -34,7 +34,7 @@ import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 export class TextureEncodingService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(texturesCommands.close);
+  private readonly session: Session = new Session(texturesCommands.close, inject(SessionScopeService));
 
   public readonly compare: JobOperation<TextureEncodingComparison>;
 

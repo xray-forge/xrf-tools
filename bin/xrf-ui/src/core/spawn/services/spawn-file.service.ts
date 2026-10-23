@@ -6,7 +6,7 @@ import { AnyObject, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { spawnCommands } from "@/core/ipc/commands/spawn";
-import { Session } from "@/core/ipc/session";
+import { Session, SessionScopeService } from "@/core/ipc/session";
 import { SessionId, SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app";
 import { SpawnFile } from "@/core/ipc/types/xrf-spawn";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -27,7 +27,7 @@ type TSpawnChunkStates = { readonly [K in keyof SpawnFile]: AsyncState<SpawnFile
 export class SpawnFileService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(spawnCommands.closeFile);
+  private readonly session: Session = new Session(spawnCommands.closeFile, inject(SessionScopeService));
 
   @Observable()
   public isReady: boolean = false;

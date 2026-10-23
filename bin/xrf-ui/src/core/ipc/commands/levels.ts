@@ -20,6 +20,7 @@ import {
   SelectedLevelDescription,
   SessionId,
   SessionRestore,
+  SessionScope,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { WeatherCycleId } from "@/core/ipc/types/xrf-environment";
@@ -70,10 +71,11 @@ export const levelsCommands = {
    */
   findScreenshotPath: (name: string) => __TAURI_INVOKE<string>("plugin:levels|find_screenshot_path", { name }),
   /**
-   * Restore the committed level descriptor without reading the level again; only where it starts is decided again,
-   * where a commit let it go.
+   * Restore the level a tool holds, the newest it opened, without reading the level again: as a page attaches to it, or
+   * reads it again after a commit; only where it starts is decided again, where a commit let it go.
    */
-  getLevel: () => __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>("plugin:levels|get_level"),
+  getLevel: (scope: SessionScope) =>
+    __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>("plugin:levels|get_level", { scope }),
   /** The folder the level viewer's views are exported to and imported from by default, made where it is not yet. */
   getViewFolder: () => __TAURI_INVOKE<string>("plugin:levels|get_view_folder"),
   /** Every compiled level the mounted roots hold, loose or archived alike. */

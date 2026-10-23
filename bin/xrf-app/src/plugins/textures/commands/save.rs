@@ -40,7 +40,7 @@ pub async fn textures_save(
   let comparison: Option<Arc<SessionSnapshot<TextureEncodingSession>>> = request
     .texture
     .as_ref()
-    .map(|save| state.comparison.require(save.session_id))
+    .map(|save| state.comparisons.require(save.session_id))
     .transpose()?;
 
   let (job, registration): (JobHandle, JobRegistration) =

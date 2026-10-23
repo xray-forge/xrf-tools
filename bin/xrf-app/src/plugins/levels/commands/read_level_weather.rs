@@ -19,7 +19,7 @@ pub async fn levels_read_level_weather(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<LevelWeatherDescription>> {
-  let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
+  let current: Arc<SessionSnapshot<SelectedLevel>> = state.levels.require(session_id)?;
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let description: SessionSnapshot<LevelWeatherDescription> = execution
     .run_blocking("Reading the level weather", move || {

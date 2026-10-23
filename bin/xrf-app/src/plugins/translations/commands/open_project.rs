@@ -25,7 +25,7 @@ pub async fn translations_open_project(
     prefix,
   } = request;
 
-  state.session.begin_open(session_id)?;
+  state.projects.begin_open(session_id)?;
 
   let prefix: String = prefix.unwrap_or_else(|| mode.get_prefix().to_owned());
 
@@ -53,8 +53,8 @@ pub async fn translations_open_project(
   // Committed only once the read succeeded, so a failed open leaves whatever was already open in place.
   let opened: Arc<SessionSnapshot<TranslationProjectDescriptor>> =
     state
-      .session
+      .projects
       .commit_open_with(session_id, read.value, revision, read.inputs, read.parts)?;
 
-  Ok(state.session.catch_up(opened, &assets))
+  Ok(state.projects.catch_up(opened, &assets))
 }

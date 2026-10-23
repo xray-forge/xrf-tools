@@ -8,7 +8,7 @@ import { createRoots, describeRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
 import { texturesCommands } from "@/core/ipc/commands/textures";
 import { toEnumMember } from "@/core/ipc/enumeration";
-import { Session } from "@/core/ipc/session";
+import { Session, SessionScopeService } from "@/core/ipc/session";
 import {
   ETextureCatalogMode,
   SessionSnapshot,
@@ -29,7 +29,7 @@ import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 export class TextureCatalogService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(texturesCommands.close);
+  private readonly session: Session = new Session(texturesCommands.close, inject(SessionScopeService));
 
   /**
    * Whether the backend has been asked what it still has open.
@@ -167,7 +167,7 @@ export class TextureCatalogService {
   @ExclusiveFlow("catalog")
   private *restore(): TFlow {
     try {
-      const session = yield* call(texturesCommands.getSession());
+      const session = yield* call(texturesCommands.getSession(this.session.scope));
 
       this.session.adopt(session);
 

@@ -1,6 +1,7 @@
 use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{Manager, Runtime};
 
+use crate::core::session::SessionScopes;
 use crate::plugins::visuals::state::VisualState;
 
 pub struct VisualsPlugin {}
@@ -13,7 +14,7 @@ impl VisualsPlugin {
 
     Builder::new(Self::NAME)
       .setup(|application, _| {
-        application.manage(VisualState::new());
+        application.manage(VisualState::new(&application.state::<SessionScopes>()));
 
         Ok(())
       })

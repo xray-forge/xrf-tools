@@ -2,19 +2,19 @@ use crate::core::assets::{AssetFanOut, AssetMountState};
 use crate::core::session::{Session, SessionChange};
 use crate::core::types::TauriResult;
 
-/// A session the asset state moves to its next snapshot after every commit, whatever value it holds.
+/// Sessions the asset state moves to their next snapshot after every commit, whatever value they hold.
 pub(crate) trait SessionFollower: Send + Sync {
-  /// Moves the session to the snapshot `fan_out` carries, answering what that did, or `None` where nothing is open or
-  /// the snapshot is that current already.
+  /// Moves every opening to the snapshot `fan_out` carries, answering what that did to each that moved; none where
+  /// nothing is open or every snapshot is that current already.
   ///
   /// # Errors
   ///
-  /// Returns an error when the session's lock is poisoned.
-  fn follow_in(&self, assets: &AssetMountState, fan_out: &AssetFanOut) -> TauriResult<Option<SessionChange>>;
+  /// Returns an error when a session's lock is poisoned.
+  fn follow_in(&self, assets: &AssetMountState, fan_out: &AssetFanOut) -> TauriResult<Vec<SessionChange>>;
 }
 
 impl<T: Send + Sync + 'static> SessionFollower for Session<T> {
-  fn follow_in(&self, assets: &AssetMountState, fan_out: &AssetFanOut) -> TauriResult<Option<SessionChange>> {
-    Session::follow_in(self, assets, fan_out)
+  fn follow_in(&self, assets: &AssetMountState, fan_out: &AssetFanOut) -> TauriResult<Vec<SessionChange>> {
+    Ok(Session::follow_in(self, assets, fan_out)?.into_iter().collect())
   }
 }

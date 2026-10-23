@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
-import { mockIsTauri, resetMockIsTauri } from "@/fixtures/mocks/tauri.mocks";
+import { mockInvoke, mockIsTauri, resetMockIsTauri } from "@/fixtures/mocks/tauri.mocks";
 
-import { ISessionIdentity, Session } from "./index";
+import { ISessionIdentity, Session, SessionScopeService } from "./index";
 
 describe("Session", () => {
   beforeEach(resetMockIsTauri);
 
   it("releases an opening before its response and releases a late publication again", async () => {
     const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
-    const session = new Session(release);
+    const session = new Session(release, new SessionScopeService("test"));
 
     let finish!: (value: ISessionIdentity) => void;
     let id: string = "";
@@ -40,7 +40,7 @@ describe("Session", () => {
       .mockImplementationOnce(() => new Promise<void>((resolve) => (finishClose = resolve)))
       .mockResolvedValue(undefined);
 
-    const session = new Session(release);
+    const session = new Session(release, new SessionScopeService("test"));
     const first = await session.open(async (sessionId) => ({ sessionId }));
     const closing = session.close();
     const next = await session.open(async (sessionId) => ({ sessionId }));
@@ -55,7 +55,7 @@ describe("Session", () => {
 
   it("retains the committed session when a replacement fails", async () => {
     const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
-    const session = new Session(release);
+    const session = new Session(release, new SessionScopeService("test"));
     const first = await session.open(async (sessionId) => ({ sessionId }));
 
     await expect(
@@ -71,7 +71,7 @@ describe("Session", () => {
 
   it("releases an adopted opening as its own, and ignores an absent one", async () => {
     const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
-    const session = new Session(release);
+    const session = new Session(release, new SessionScopeService("test"));
 
     session.adopt(null);
     session.adopt(undefined);
@@ -89,7 +89,7 @@ describe("Session", () => {
 
   it("drops an adopted opening once a later open replaces it", async () => {
     const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
-    const session = new Session(release);
+    const session = new Session(release, new SessionScopeService("test"));
 
     session.adopt({ sessionId: "restored" });
 
@@ -106,7 +106,7 @@ describe("Session", () => {
       .mockRejectedValueOnce(new Error("transport unavailable"))
       .mockResolvedValue(undefined);
 
-    const session = new Session(release);
+    const session = new Session(release, new SessionScopeService("test"));
 
     session.adopt({ sessionId: "restored" });
 
@@ -122,7 +122,7 @@ describe("Session", () => {
       .mockRejectedValueOnce(new Error("transport unavailable"))
       .mockResolvedValue(undefined);
 
-    const session = new Session(release);
+    const session = new Session(release, new SessionScopeService("test"));
 
     session.adopt({ sessionId: "restored" });
 
@@ -137,7 +137,7 @@ describe("Session", () => {
 
   it("releases nothing outside the desktop shell, where there is no backend to ask", async () => {
     const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
-    const session = new Session(release);
+    const session = new Session(release, new SessionScopeService("test"));
 
     mockIsTauri.mockReturnValue(false);
     session.adopt({ sessionId: "restored" });
@@ -155,7 +155,7 @@ describe("Session", () => {
       .mockRejectedValueOnce(new Error("transport unavailable"))
       .mockResolvedValue(undefined);
 
-    const session = new Session(release);
+    const session = new Session(release, new SessionScopeService("test"));
 
     let finish!: () => void;
     let id: string = "";
@@ -174,5 +174,26 @@ describe("Session", () => {
     await session.close();
 
     expect(release.mock.calls).toEqual([[[id]], [[id]], [[id]]]);
+  });
+
+  it("binds an opening to its tool's scope before the open is sent", async () => {
+    const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
+    const session = new Session(release, new SessionScopeService("level-viewer"));
+    const sent: Array<string> = [];
+
+    mockInvoke.mockClear();
+
+    await session.open(async (sessionId: string) => {
+      sent.push(...mockInvoke.mock.calls.map(([command]) => command));
+
+      return { sessionId };
+    });
+
+    expect(sent).toEqual(["plugin:sessions|bind"]);
+    expect(mockInvoke.mock.calls[0]?.[1]).toEqual({
+      scope: { tool: "level-viewer", window: "main" },
+      sessionId: expect.any(String),
+    });
+    expect(session.scope).toEqual({ tool: "level-viewer", window: "main" });
   });
 });

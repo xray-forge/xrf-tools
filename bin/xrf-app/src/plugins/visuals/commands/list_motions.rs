@@ -19,7 +19,7 @@ pub async fn visuals_list_motions(
   state: State<'_, VisualState>,
   assets: State<'_, AssetMountState>,
 ) -> TauriResult<Vec<String>> {
-  let current: Arc<SessionSnapshot<SelectedVisual>> = state.selected.require(session_id)?;
+  let current: Arc<SessionSnapshot<SelectedVisual>> = state.models.require(session_id)?;
 
   let Some(motions) = current.motions.as_ref() else {
     // No bind pose means nothing to pose, so the names would be unplayable even where they exist.

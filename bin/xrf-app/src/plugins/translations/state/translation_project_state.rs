@@ -9,22 +9,23 @@ use xrf_vfs::{XrayChangeSet, XrayInputRecord, XrayRoots, XraySearch};
 
 use crate::core::assets::AssetMountState;
 use crate::core::jobs::resolve_lease_path;
-use crate::core::session::{Session, SessionDerived, SessionId, SessionSnapshot};
+use crate::core::session::{SessionDerived, SessionId, SessionScopes, SessionSnapshot, Sessions};
 use crate::core::types::TauriResult;
 use crate::plugins::translations::state::{TranslationSaveOutcome, TranslationSavePlan};
 
-/// Owns publication; domain save planning retains exactly the snapshot it read, and a commit moves the open project
+/// Owns publication; domain save planning retains exactly the snapshot it read, and a commit moves each open project
 /// along by reading it again.
 #[derive(Clone)]
 pub struct TranslationProjectState {
-  /// Publication itself, in the one vocabulary every plugin addresses an opening by.
-  pub session: Session<TranslationProjectDescriptor>,
+  /// The projects open, each held by the tool that opened it.
+  pub projects: Sessions<TranslationProjectDescriptor>,
 }
 
 impl TranslationProjectState {
-  pub fn new() -> Self {
+  /// Whatever scope `scopes` releases closes the projects it held.
+  pub fn new(scopes: &SessionScopes) -> Self {
     Self {
-      session: Session::new("translations").with_derivation(Self::derive_project),
+      projects: Sessions::new("translations", scopes).with_derivation(Self::derive_project),
     }
   }
 
@@ -68,7 +69,7 @@ impl TranslationProjectState {
 
   /// Resolves a save against the caller's document before touching any file.
   pub fn begin_save(&self, id: SessionId, file: &str) -> TauriResult<TranslationSavePlan> {
-    let project: Arc<SessionSnapshot<TranslationProjectDescriptor>> = self.session.require(id)?;
+    let project: Arc<SessionSnapshot<TranslationProjectDescriptor>> = self.projects.require(id)?;
     let entry: &TranslationFile = project
       .files
       .get(file)
@@ -89,7 +90,7 @@ impl TranslationProjectState {
   }
 
   /// How a save ended once its commit moved the session along: saved, as the project now reads, while the project it
-  /// began in is still the open one; stale when another open or a close replaced it meanwhile.
+  /// began in is still open; stale when its tool closed it meanwhile.
   ///
   /// # Errors
   ///
@@ -100,11 +101,7 @@ impl TranslationProjectState {
     plan: &TranslationSavePlan,
     changes: &XrayChangeSet,
   ) -> TauriResult<TranslationSaveOutcome> {
-    let Some(project) = self
-      .session
-      .get()?
-      .filter(|project| project.session_id == plan.project.session_id)
-    else {
+    let Ok(project) = self.projects.require(plan.project.session_id) else {
       return Ok(TranslationSaveOutcome::Stale);
     };
 
@@ -118,15 +115,16 @@ impl TranslationProjectState {
     Ok(TranslationSaveOutcome::Saved { project })
   }
 
-  /// Refuse `directory` while an open editor session overlaps it.
+  /// Refuse `directory` while any open editor session overlaps it.
   pub fn require_no_open_session_over(&self, directory: &Path) -> TauriResult<()> {
-    let Some(project) = self.session.get()? else {
-      return Ok(());
-    };
-
     let target: PathBuf = resolve_lease_path(directory)?;
 
-    for root in &project.roots.roots {
+    for root in self
+      .projects
+      .list_opened()?
+      .iter()
+      .flat_map(|project| project.roots.roots.clone())
+    {
       let open: PathBuf = resolve_lease_path(&root.path)?;
 
       if target.starts_with(&open) || open.starts_with(&target) {

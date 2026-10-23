@@ -120,6 +120,7 @@ describe("LevelLoadService", () => {
     expect(service.spawnReport).toEqual({ failure: null, isListed: true, objects: 2, visuals: 1 });
     expect(isLevelSpawnReading(service.spawnReport)).toBe(false);
     expect(mockInvoke.mock.calls.map(([name]) => name)).toEqual([
+      "plugin:sessions|bind",
       "plugin:levels|open_level",
       "plugin:levels|open_spawn_objects",
     ]);

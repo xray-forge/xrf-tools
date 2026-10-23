@@ -4,7 +4,7 @@ use std::error::Error;
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use tauri::{App, AppHandle, Builder, Manager, RunEvent, Runtime, Wry};
+use tauri::{App, AppHandle, Builder, Manager, RunEvent, Runtime, Window, WindowEvent, Wry};
 use xrf_job::ExecutionRequest;
 
 use crate::core::app_directories::AppDirectories;
@@ -14,6 +14,7 @@ use crate::core::execution::ExecutionState;
 use crate::core::jobs::JobRegistry;
 use crate::core::logging::setup_logger;
 use crate::core::process::process_uptime;
+use crate::core::session::SessionScopes;
 use crate::core::transport::{TransportEndpoint, TransportOrigins, TransportServer, TransportToken};
 use crate::core::window::{WindowCloseApprovals, WindowHandles, build_main_window};
 use crate::ipc::registry::transport_routes;
@@ -79,12 +80,24 @@ pub fn run() -> ExitCode {
 }
 
 /// The domain plugins over the state every one's setup builds on, managed before any of them: the pool, the asset state
-/// every setup hands the sessions a commit moves along, and where the application writes.
+/// every setup hands the sessions a commit moves along, the scopes every session's handles are released by, and where
+/// the application writes. A window that goes releases every scope its pages held.
 fn assemble<R: Runtime>(builder: Builder<R>, execution: ExecutionState, directories: AppDirectories) -> Builder<R> {
   let builder: Builder<R> = builder
     .manage(execution)
     .manage(AssetMountState::new())
-    .manage(directories);
+    .manage(SessionScopes::default())
+    .manage(directories)
+    .on_window_event(|window: &Window<R>, event: &WindowEvent| {
+      if matches!(event, WindowEvent::Destroyed) {
+        let released: usize = window.state::<SessionScopes>().release_window(window.label());
+
+        log::info!(
+          "Window '{}' went, releasing the {released} opening(s) its pages held",
+          window.label()
+        );
+      }
+    });
 
   domain_plugins().into_iter().fold(builder, Builder::plugin)
 }

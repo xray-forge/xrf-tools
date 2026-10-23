@@ -20,7 +20,7 @@ pub async fn visuals_open_motion(
 ) -> TauriResult<SessionSnapshot<VisualMotionBake>> {
   log::info!("Posing motion: {name}");
 
-  let current: Arc<SessionSnapshot<SelectedVisual>> = state.selected.require(session_id)?;
+  let current: Arc<SessionSnapshot<SelectedVisual>> = state.models.require(session_id)?;
 
   current.posed.begin_open(motion_id)?;
 
