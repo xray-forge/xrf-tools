@@ -2,13 +2,14 @@ use std::sync::Arc;
 
 use tauri::State;
 use xrf_dltx::select_ltx_dialect;
-use xrf_error::XrfResult;
 use xrf_ltx::{LtxDocumentSource, LtxProject, LtxProjectOptions};
 use xrf_ltx_inspect::{LtxInventory, LtxInventoryReader};
 use xrf_utils::{error_to_string, format_path};
-use xrf_vfs::XrayRoots;
+use xrf_vfs::{XrayInputRecord, XrayRoots};
 
+use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
+use crate::core::session::SessionParts;
 use crate::core::types::TauriResult;
 use crate::plugins::configs::descriptor::ConfigsProjectDescriptor;
 use crate::plugins::configs::request::ConfigsOpenRequest;
@@ -17,6 +18,8 @@ use crate::plugins::configs::state::{ConfigsProject, ConfigsState};
 /// What opening one configs project produced, on its way back from the blocking thread.
 struct OpenedConfigsProject {
   project: LtxProject,
+  /// What the project was opened and listed from.
+  inputs: XrayInputRecord,
   inventory: LtxInventory,
   roots: XrayRoots,
   prefix: Option<String>,
@@ -28,6 +31,7 @@ struct OpenedConfigsProject {
 pub async fn configs_open_project(
   execution: State<'_, ExecutionState>,
   state: State<'_, ConfigsState>,
+  assets: State<'_, AssetMountState>,
   request: ConfigsOpenRequest,
 ) -> TauriResult<Arc<ConfigsProjectDescriptor>> {
   let ConfigsOpenRequest {
@@ -41,11 +45,13 @@ pub async fn configs_open_project(
 
   state.begin_open(session_id)?;
   let state: ConfigsState = state.inner().clone();
+  let assets: AssetMountState = AssetMountState::clone(&assets);
 
   let opened: OpenedConfigsProject = execution
-    .run_blocking("Configs project open", move || open_and_list(roots, prefix, is_dltx))
-    .await?
-    .map_err(error_to_string)?;
+    .run_blocking("Configs project open", move || {
+      open_and_list(&assets, roots, prefix, is_dltx)
+    })
+    .await??;
 
   let descriptor: Arc<ConfigsProjectDescriptor> = Arc::new(ConfigsProjectDescriptor {
     declared_schemes: opened
@@ -62,36 +68,51 @@ pub async fn configs_open_project(
     session_id,
   });
 
-  state.commit_open(session_id, ConfigsProject::new(opened.project, Arc::clone(&descriptor)))?;
+  state.commit_open_with(
+    session_id,
+    ConfigsProject::new(opened.project, Arc::clone(&descriptor)),
+    opened.inputs,
+    SessionParts::new(),
+  )?;
 
   Ok(descriptor)
 }
 
-/// Mounts the roots, assembles the project, and reads what it holds.
+/// Assembles the project over the shared asset roots, recording what it reads, and reads what it holds.
 ///
 /// # Errors
 ///
 /// Returns an error when the roots cannot be mounted, the project cannot be assembled, or a config it holds cannot be
 /// read.
-fn open_and_list(roots: XrayRoots, prefix: Option<String>, is_dltx: bool) -> XrfResult<OpenedConfigsProject> {
-  let project: LtxProject = LtxProject::open_at_roots_opt(
-    &roots,
-    prefix.as_deref(),
-    LtxProjectOptions {
-      dialect: select_ltx_dialect(is_dltx),
-      is_caching_resolutions: true,
-      is_with_schemes_check: true,
-      is_strict_check: false,
-    },
-  )?;
+fn open_and_list(
+  assets: &AssetMountState,
+  roots: XrayRoots,
+  prefix: Option<String>,
+  is_dltx: bool,
+) -> TauriResult<OpenedConfigsProject> {
+  let inputs: XrayInputRecord = XrayInputRecord::new();
+  let options: LtxProjectOptions = LtxProjectOptions {
+    dialect: select_ltx_dialect(is_dltx),
+    is_caching_resolutions: true,
+    is_with_schemes_check: true,
+    is_strict_check: false,
+  };
+  let project: LtxProject = assets
+    .with_fresh_probe(&roots, |probe| {
+      LtxProject::open_at_probe_opt(roots.describe(), &probe.recording(&inputs), prefix.as_deref(), options)
+    })?
+    .map_err(error_to_string)?;
 
   let inventory: LtxInventory = {
     let source = project.document_source();
 
-    LtxInventoryReader::new(&project, &source as &dyn LtxDocumentSource).read()?
+    LtxInventoryReader::new(&project, &source as &dyn LtxDocumentSource)
+      .read()
+      .map_err(error_to_string)?
   };
 
   Ok(OpenedConfigsProject {
+    inputs,
     inventory,
     prefix,
     project,

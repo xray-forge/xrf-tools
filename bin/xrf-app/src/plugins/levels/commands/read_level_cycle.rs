@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tauri::State;
 use xrf_environment::{WeatherCycle, WeatherCycleId};
 
+use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
@@ -16,12 +17,15 @@ pub async fn levels_read_level_cycle(
   session_id: SessionId,
   cycle: WeatherCycleId,
   state: State<'_, LevelState>,
+  assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<LevelWeatherCycle>> {
   let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
+  let assets: AssetMountState = AssetMountState::clone(&assets);
   let cycle: LevelWeatherCycle = execution
     .run_blocking("Reading a weather cycle", move || {
-      let environment: Arc<LevelEnvironment> = LevelEnvironment::of(&current)?;
+      let environment: Arc<LevelEnvironment> =
+        assets.with_probe(&current.roots, |probe| LevelEnvironment::of(&current, probe))??;
       let found: &WeatherCycle = environment.catalog.find_by_id(&cycle).ok_or_else(|| {
         format!(
           "There is no {} '{}'",

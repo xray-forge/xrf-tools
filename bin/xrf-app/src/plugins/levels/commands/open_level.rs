@@ -153,7 +153,7 @@ fn open(
       let sections: Option<Result<Arc<Ltx>, String>> = spawn
         .as_deref()
         .ok()
-        .map(|spawn| read_level_sections(source, configs, spawn));
+        .map(|spawn| read_level_sections(source, &probe.recording(&sections_inputs), configs, spawn));
 
       (spawn, open, sections)
     },
