@@ -1,4 +1,5 @@
 use serde::Serialize;
+use xrf_animation_envelope::AnimationBehavior;
 
 /// What a channel does outside its keys, `BEH_*` (`xrCore/Animation/Envelope.hpp`).
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -22,35 +23,42 @@ pub enum ArchiveAnimationBehavior {
 }
 
 impl ArchiveAnimationBehavior {
-  /// The behaviour a stored byte names.
-  pub const fn of(value: u8) -> Self {
-    match value {
-      0 => Self::Reset,
-      1 => Self::Constant,
-      2 => Self::Repeat,
-      3 => Self::Oscillate,
-      4 => Self::Offset,
-      5 => Self::Linear,
-      value => Self::Unnamed { value },
+  /// The behaviour an envelope declares.
+  pub const fn of(behavior: AnimationBehavior) -> Self {
+    match behavior {
+      AnimationBehavior::Reset => Self::Reset,
+      AnimationBehavior::Constant => Self::Constant,
+      AnimationBehavior::Repeat => Self::Repeat,
+      AnimationBehavior::Oscillate => Self::Oscillate,
+      AnimationBehavior::Offset => Self::Offset,
+      AnimationBehavior::Linear => Self::Linear,
+      AnimationBehavior::Unknown(value) => Self::Unnamed { value },
     }
   }
 }
 
 #[cfg(test)]
 mod tests {
+  use xrf_animation_envelope::AnimationBehavior;
+
   use super::ArchiveAnimationBehavior;
 
   #[test]
-  fn each_behavior_is_the_one_the_engine_numbers() {
-    assert_eq!(ArchiveAnimationBehavior::of(0), ArchiveAnimationBehavior::Reset);
-    assert_eq!(ArchiveAnimationBehavior::of(1), ArchiveAnimationBehavior::Constant);
-    assert_eq!(ArchiveAnimationBehavior::of(5), ArchiveAnimationBehavior::Linear);
+  fn each_behavior_is_the_one_the_envelope_declares() {
+    assert_eq!(
+      ArchiveAnimationBehavior::of(AnimationBehavior::Reset),
+      ArchiveAnimationBehavior::Reset
+    );
+    assert_eq!(
+      ArchiveAnimationBehavior::of(AnimationBehavior::Linear),
+      ArchiveAnimationBehavior::Linear
+    );
   }
 
   #[test]
   fn a_value_the_engine_does_not_name_keeps_its_number() {
     assert_eq!(
-      ArchiveAnimationBehavior::of(9),
+      ArchiveAnimationBehavior::of(AnimationBehavior::from(9)),
       ArchiveAnimationBehavior::Unnamed { value: 9 }
     );
   }

@@ -75,8 +75,7 @@ mod tests {
     AnimationKey {
       value,
       time,
-      shape: 0,
-      interpolation: None,
+      ..AnimationKey::default()
     }
   }
 
@@ -89,8 +88,8 @@ mod tests {
       version: 5,
       channels: (0..AnmFile::CHANNEL_COUNT)
         .map(|index| AnimationEnvelope {
-          behavior: (1, 1),
           keys: if index == 0 { keys.clone() } else { Vec::new() },
+          ..AnimationEnvelope::default()
         })
         .collect(),
     }

@@ -4,37 +4,21 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_utils::to_format_size;
 
-use crate::AnimationKey;
+use crate::{AnimationBehavior, AnimationKey};
 
 /// One animated channel, `CEnvelope` (`xrCore/Animation/Envelope.hpp`): how it behaves outside its keys, and the
-/// keys themselves.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+/// keys themselves. By default it holds no keys and is constant either side, as `CEnvelope::CEnvelope` starts one.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnimationEnvelope {
-  /// What the channel does before its first key and after its last, `CEnvelope::behavior`.
-  pub behavior: (u8, u8),
+  /// What the channel does before its first key, `CEnvelope::behavior[0]`.
+  pub behavior_before: AnimationBehavior,
+  /// What the channel does after its last key, `CEnvelope::behavior[1]`.
+  pub behavior_after: AnimationBehavior,
   pub keys: Vec<AnimationKey>,
 }
 
 impl AnimationEnvelope {
-  /// `BEH_RESET`: zero outside the keys.
-  pub(crate) const BEHAVIOR_RESET: u8 = 0;
-
-  /// `BEH_CONSTANT`: the nearest end key's value.
-  pub(crate) const BEHAVIOR_CONSTANT: u8 = 1;
-
-  /// `BEH_REPEAT`: the keyed span over again.
-  pub(crate) const BEHAVIOR_REPEAT: u8 = 2;
-
-  /// `BEH_OSCILLATE`: the keyed span forwards and back.
-  pub(crate) const BEHAVIOR_OSCILLATE: u8 = 3;
-
-  /// `BEH_OFFSET`: the keyed span over again, shifted by its rise each time.
-  pub(crate) const BEHAVIOR_OFFSET: u8 = 4;
-
-  /// `BEH_LINEAR`: on along the end key's tangent.
-  pub(crate) const BEHAVIOR_LINEAR: u8 = 5;
-
   /// The two behaviours and the key count of the narrow layout, which is what `CEnvelope::Load_2` reads.
   pub const MIN_SERIALIZED_SIZE: u64 = 1 + 1 + 2;
 
@@ -55,7 +39,8 @@ impl AnimationEnvelope {
   ///
   /// Returns an error when the declared key count does not fit the payload, or the payload ends inside a key.
   pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let behavior: (u8, u8) = (reader.read_u8()?, reader.read_u8()?);
+    let behavior_before: AnimationBehavior = AnimationBehavior::from(reader.read_u8()?);
+    let behavior_after: AnimationBehavior = AnimationBehavior::from(reader.read_u8()?);
     let count: u16 = reader.read_u16::<T>()?;
     let mut keys: Vec<AnimationKey> =
       reader.new_bounded_vec(count.into(), AnimationKey::MIN_SERIALIZED_SIZE, "animation keys")?;
@@ -64,7 +49,11 @@ impl AnimationEnvelope {
       keys.push(AnimationKey::read::<T, D>(reader)?);
     }
 
-    Ok(Self { behavior, keys })
+    Ok(Self {
+      behavior_before,
+      behavior_after,
+      keys,
+    })
   }
 
   /// Reads an envelope the wide way, `CEnvelope::Load_1`, which only an object motion of version 3 stores.
@@ -74,13 +63,9 @@ impl AnimationEnvelope {
   /// Returns an error when the declared key count does not fit the payload, or the payload ends inside a key.
   pub fn read_wide<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     // Two `int`s read as one block by the engine, narrowed here because only the low byte of each is a behaviour.
-    let behavior: (u8, u8) = (
-      (reader.read_u32::<T>()? & 0xff) as u8,
-      (reader.read_u32::<T>()? & 0xff) as u8,
-    );
-
+    let behavior_before: AnimationBehavior = AnimationBehavior::from((reader.read_u32::<T>()? & 0xff) as u8);
+    let behavior_after: AnimationBehavior = AnimationBehavior::from((reader.read_u32::<T>()? & 0xff) as u8);
     let count: u32 = reader.read_u32::<T>()?;
-
     let mut keys: Vec<AnimationKey> =
       reader.new_bounded_vec(count.into(), AnimationKey::WIDE_SERIALIZED_SIZE, "animation keys")?;
 
@@ -88,7 +73,11 @@ impl AnimationEnvelope {
       keys.push(AnimationKey::read_wide::<T, D>(reader)?);
     }
 
-    Ok(Self { behavior, keys })
+    Ok(Self {
+      behavior_before,
+      behavior_after,
+      keys,
+    })
   }
 
   /// Writes an envelope the narrow way, `CEnvelope::Save`, which is the only layout the engine writes.
@@ -97,8 +86,8 @@ impl AnimationEnvelope {
   ///
   /// Returns an error when the key count exceeds what the format's `u16` holds.
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u8(self.behavior.0)?;
-    writer.write_u8(self.behavior.1)?;
+    writer.write_u8(self.behavior_before.into())?;
+    writer.write_u8(self.behavior_after.into())?;
     writer.write_u16::<T>(to_format_size(self.keys.len(), "animation keys")?)?;
 
     for key in &self.keys {
@@ -114,7 +103,7 @@ mod tests {
   use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::{XrfError, XrfResult};
 
-  use crate::{AnimationEnvelope, AnimationInterpolation, AnimationKey};
+  use crate::{AnimationBehavior, AnimationEnvelope, AnimationInterpolation, AnimationKey, AnimationShape};
 
   #[test]
   fn test_read_wide_exact_payload() -> XrfResult {
@@ -140,17 +129,18 @@ mod tests {
     assert_eq!(
       envelope,
       AnimationEnvelope {
-        behavior: (0, 2),
+        behavior_before: AnimationBehavior::Reset,
+        behavior_after: AnimationBehavior::Repeat,
         keys: vec![AnimationKey {
           value: 1.5,
           time: 2.0,
-          shape: 4,
-          interpolation: Some(AnimationInterpolation {
+          shape: AnimationShape::Stepped,
+          interpolation: AnimationInterpolation {
             tension: -1.0,
             continuity: 2.0,
             bias: -3.0,
             parameters: [4.0, -5.0, 6.0, -7.0],
-          }),
+          },
         }],
       }
     );
@@ -171,24 +161,25 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let original: AnimationEnvelope = AnimationEnvelope {
-      behavior: (1, 2),
+      behavior_before: AnimationBehavior::Constant,
+      behavior_after: AnimationBehavior::Repeat,
       keys: vec![
         AnimationKey {
           value: 1.5,
           time: 2.0,
-          shape: 4,
-          interpolation: None,
+          shape: AnimationShape::Stepped,
+          interpolation: AnimationInterpolation::default(),
         },
         AnimationKey {
           value: 4.0,
           time: 5.0,
-          shape: 0,
-          interpolation: Some(AnimationInterpolation {
+          shape: AnimationShape::Tcb,
+          interpolation: AnimationInterpolation {
             tension: -32.0,
             continuity: -32.0,
             bias: -32.0,
             parameters: [-32.0; 4],
-          }),
+          },
         },
       ],
     };
@@ -212,7 +203,8 @@ mod tests {
   #[test]
   fn test_read_write_empty() -> XrfResult {
     let original: AnimationEnvelope = AnimationEnvelope {
-      behavior: (2, 5),
+      behavior_before: AnimationBehavior::Repeat,
+      behavior_after: AnimationBehavior::Linear,
       keys: Vec::new(),
     };
     let mut writer: ChunkWriter = ChunkWriter::new();
@@ -291,13 +283,12 @@ mod tests {
   fn test_write_key_count_limit() -> XrfResult {
     let key: AnimationKey = AnimationKey {
       value: 1.0,
-      time: 0.0,
-      shape: 4,
-      interpolation: None,
+      shape: AnimationShape::Stepped,
+      ..AnimationKey::default()
     };
     let mut envelope: AnimationEnvelope = AnimationEnvelope {
-      behavior: (1, 1),
       keys: vec![key; usize::from(u16::MAX)],
+      ..AnimationEnvelope::default()
     };
     let mut writer: ChunkWriter = ChunkWriter::new();
 
