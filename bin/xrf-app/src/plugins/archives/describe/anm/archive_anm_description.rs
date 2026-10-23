@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_anm::{ANM_CHANNELS, AnmFile};
+use xrf_anm::{AnmChannel, AnmFile};
 use xrf_error::XrfResult;
 use xrf_spawn::XRayByteOrder;
 
@@ -25,7 +25,7 @@ pub struct ArchiveAnmDescription {
   pub keys: usize,
   /// Seconds the last key of any channel sits at, absent when nothing is keyed.
   pub keyed_seconds: Option<f32>,
-  /// One entry per channel, in the order the format stores them.
+  /// One entry per channel, in the engine's channel order whatever order the file's version stores them in.
   pub channels: Vec<ArchiveAnimationChannel>,
 }
 
@@ -44,7 +44,8 @@ impl ArchiveAnmDescription {
 
   /// What an animation already in hand says about itself.
   pub fn of(file: &AnmFile) -> Self {
-    let channels: Vec<ArchiveAnimationChannel> = ArchiveAnimationChannel::of_all(ANM_CHANNELS, &file.channels);
+    let channels: Vec<ArchiveAnimationChannel> =
+      ArchiveAnimationChannel::of_all(AnmChannel::ALL.map(AnmChannel::get_name), &file.channels);
 
     Self {
       name: Some(file.name.clone()).filter(|name| !name.is_empty()),
@@ -67,7 +68,7 @@ impl ArchiveAnmDescription {
 #[cfg(test)]
 mod tests {
   use xrf_animation_envelope::{AnimationEnvelope, AnimationKey};
-  use xrf_anm::AnmFile;
+  use xrf_anm::{AnmChannel, AnmFile};
 
   use super::ArchiveAnmDescription;
 
@@ -80,18 +81,17 @@ mod tests {
   }
 
   fn animation(frame_start: i32, frame_end: i32, keys: Vec<AnimationKey>) -> AnmFile {
+    let mut channels: [AnimationEnvelope; 6] = Default::default();
+
+    channels[AnmChannel::PositionX.get_index()].keys = keys;
+
     AnmFile {
       name: String::new(),
       frame_start,
       frame_end,
       fps: 30.0,
-      version: 5,
-      channels: (0..AnmFile::CHANNEL_COUNT)
-        .map(|index| AnimationEnvelope {
-          keys: if index == 0 { keys.clone() } else { Vec::new() },
-          ..AnimationEnvelope::default()
-        })
-        .collect(),
+      version: AnmFile::CURRENT_VERSION,
+      channels,
     }
   }
 
@@ -101,7 +101,8 @@ mod tests {
 
     assert_eq!(described.frames, 60);
     assert_eq!(described.duration_seconds, 2.0);
-    assert_eq!(described.channels.len(), AnmFile::CHANNEL_COUNT);
+    assert_eq!(described.channels.len(), AnmChannel::ALL.len());
+    assert_eq!(described.channels[3].name, "rotation heading");
   }
 
   #[test]
