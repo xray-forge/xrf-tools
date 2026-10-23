@@ -35,15 +35,14 @@ impl LevelEnvironment {
   /// The level's local weather overrides.
   pub const ENV_MOD_FILE: &'static str = "level.env_mod";
 
-  /// The open level's environment, read the first time anything asks and kept with the level.
+  /// The open level's environment, read through `probe` the first time anything asks and kept with the level.
   ///
   /// # Errors
   ///
   /// Returns the reason the configs cannot be read, which every later ask answers with again.
-  pub fn of(current: &SessionSnapshot<SelectedLevel>) -> Result<Arc<Self>, String> {
-    // todo: read the environment configs through the level's probe, so the part records the files they come from.
-    current.parts.get_or_init::<LevelEnvironmentPart>(|| {
-      let project: LtxProject = open_configs(&current.roots, current.dialect.clone())?;
+  pub fn of(current: &SessionSnapshot<SelectedLevel>, probe: &XrayProbe) -> Result<Arc<Self>, String> {
+    current.parts.get_or_record::<LevelEnvironmentPart>(probe, |probe| {
+      let project: LtxProject = open_configs(&current.roots, probe, current.dialect.clone())?;
       let catalog: EnvironmentCatalog = read_catalog(
         &project,
         &EnvironmentReadOptions::default().with_engine(current.engine.engine),

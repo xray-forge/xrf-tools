@@ -16,6 +16,7 @@ use xrf_renderer::{
   RenderSpawnModels, RenderSpawnObject, RenderThunder, RenderThunderSettings, RenderThunderbolt,
   RenderThunderboltGradient, RenderThunderboltModel, RenderWeatherModel, RenderWetSurfaces,
 };
+use xrf_vfs::XrayProbe;
 use xrf_visual::{LightsDescription, SectorPackage, SectorPacker, VisualPoser};
 
 use crate::core::assets::AssetMountState;
@@ -83,20 +84,11 @@ impl LevelRenderSource {
   }
 }
 
-impl LevelRenderSource {
-  /// The sections the level's spawned objects name, none where its spawn or the configs cannot be read.
-  fn read_sections(&self) -> XrfResult<Option<Arc<Ltx>>> {
-    let level: &SessionSnapshot<SelectedLevel> = &self.level;
-
-    Ok(
-      self
-        .assets
-        .with_probe(&level.roots, |probe| get_level_sections(level, probe))
-        .map_err(XrfError::new_asset_error)?
-        .inspect_err(report_missing_sections)
-        .ok(),
-    )
-  }
+/// The sections a level's spawned objects name, none where its spawn or the configs cannot be read.
+fn read_sections(level: &SessionSnapshot<SelectedLevel>, probe: &XrayProbe) -> Option<Arc<Ltx>> {
+  get_level_sections(level, probe)
+    .inspect_err(report_missing_sections)
+    .ok()
 }
 
 impl RenderAssetSource for LevelRenderSource {
@@ -157,10 +149,11 @@ impl RenderLevelSource for LevelRenderSource {
 
   fn read_lights(&self) -> XrfResult<LightsDescription> {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
-    let sections: Option<Arc<Ltx>> = self.read_sections()?;
     let packed: PackedLevelLights = self
       .assets
-      .with_probe(&level.roots, |probe| pack_lights(level, probe, sections.as_deref()))
+      .with_probe(&level.roots, |probe| {
+        pack_lights(level, probe, read_sections(level, probe).as_deref())
+      })
       .map_err(XrfError::new_asset_error)?;
 
     self.textures.extend(
@@ -175,19 +168,25 @@ impl RenderLevelSource for LevelRenderSource {
 
   fn read_weather(&self) -> XrfResult<RenderLevelWeather> {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
-    let environment: Arc<LevelEnvironment> = LevelEnvironment::of(level).map_err(XrfError::new_asset_error)?;
-    let (modifiers, rain, wet, thunder) = self
+    let (environment, modifiers, rain, wet, thunder) = self
       .assets
       .with_probe(&level.roots, |probe| {
-        let source = environment.get_source(level, probe);
+        LevelEnvironment::of(level, probe).map(|environment| {
+          let source = environment.get_source(level, probe);
+          let rain: LevelRain = LevelRain::read(&source);
+          let wet: LevelWetSurfaces = LevelWetSurfaces::read(&source);
+          let thunder: LevelThunderbolts = LevelThunderbolts::read(&source);
 
-        (
-          LevelEnvironment::read_modifiers(level, probe),
-          LevelRain::read(&source),
-          LevelWetSurfaces::read(&source),
-          LevelThunderbolts::read(&source),
-        )
+          (
+            environment,
+            LevelEnvironment::read_modifiers(level, probe),
+            rain,
+            wet,
+            thunder,
+          )
+        })
       })
+      .and_then(|read| read)
       .map_err(XrfError::new_asset_error)?;
 
     Ok(RenderLevelWeather {
@@ -220,7 +219,11 @@ impl RenderLevelSource for LevelRenderSource {
   }
 
   fn read_weather_cycle(&self, name: &str) -> XrfResult<Vec<WeatherDescriptor>> {
-    let environment: Arc<LevelEnvironment> = LevelEnvironment::of(&self.level).map_err(XrfError::new_asset_error)?;
+    let environment: Arc<LevelEnvironment> = self
+      .assets
+      .with_probe(&self.level.roots, |probe| LevelEnvironment::of(&self.level, probe))
+      .and_then(|environment| environment)
+      .map_err(XrfError::new_asset_error)?;
     let cycle = environment
       .catalog
       .find_cycle(name)
@@ -281,12 +284,11 @@ impl RenderLevelSource for LevelRenderSource {
 
   fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>> {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
-    let sections: Option<Arc<Ltx>> = self.read_sections()?;
     let (packed, collision, hemi) = self
       .assets
       .with_probe(&level.roots, |probe| {
         (
-          pack_particles(level, probe, sections.as_deref()),
+          pack_particles(level, probe, read_sections(level, probe).as_deref()),
           get_level_collision(level, probe),
           get_level_hemi(level, probe),
         )

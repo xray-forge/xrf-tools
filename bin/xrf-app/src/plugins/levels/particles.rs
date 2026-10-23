@@ -69,7 +69,7 @@ pub fn pack_particles(
 
   // An ambient effect plays near the camera whatever stands in the level, so its particles are described with the rest;
   // a level whose configs cannot be read has said why with its weather.
-  let ambient_particles: Vec<String> = LevelEnvironment::of(current)
+  let ambient_particles: Vec<String> = LevelEnvironment::of(current, probe)
     .map(|environment| list_ambient_particles(&environment.catalog))
     .unwrap_or_default();
   let scope: XrayTextureScope = current.source.get_texture_scope();

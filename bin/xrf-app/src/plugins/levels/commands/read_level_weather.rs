@@ -22,10 +22,9 @@ pub async fn levels_read_level_weather(
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let description: LevelWeatherDescription = execution
     .run_blocking("Reading the level weather", move || {
-      // The configs mount a tree of their own, so they are read before the probe the level's own file is read in.
-      let environment: Arc<LevelEnvironment> = LevelEnvironment::of(&current)?;
-
-      assets.with_probe(&current.roots, |probe| environment.describe(&current, probe))
+      assets.with_probe(&current.roots, |probe| {
+        LevelEnvironment::of(&current, probe).map(|environment| environment.describe(&current, probe))
+      })?
     })
     .await??;
 
