@@ -3,13 +3,13 @@
 use std::path::{Path, PathBuf};
 
 use xrf_material::fixtures::FixtureTree;
-use xrf_vfs::{XrayAssetType, XrayProbe};
+use xrf_vfs::{XrayAssetType, XraySearch};
 
 use crate::core::assets::{read_located_asset, read_referenced_asset};
 use crate::plugins::textures::files::TextureFiles;
 use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::tests::fixtures::{
-  BASE, file_source, implied_root_tree, loose_directory, mount, probe_over,
+  BASE, file_source, implied_root_tree, loose_directory, mount, search_over,
 };
 
 #[test]
@@ -131,17 +131,17 @@ fn a_texture_is_read_by_its_reference_and_not_by_its_reference_as_a_path() {
   // takes a reference has to be the one a caller holding a reference reaches for.
   let tree: FixtureTree = FixtureTree::new("textures_read_by_reference").with_texture(BASE);
   let (vfs, id) = mount(&tree);
-  let probe: XrayProbe = probe_over(&vfs, id);
+  let search: XraySearch = search_over(vfs, id);
 
   assert!(
-    read_referenced_asset(&probe, XrayAssetType::Dds, BASE).is_ok(),
+    read_referenced_asset(&search, XrayAssetType::Dds, BASE).is_ok(),
     "expect an engine reference to reach the file it names"
   );
   assert!(
-    read_located_asset(&probe, BASE).is_err(),
+    read_located_asset(&search, BASE).is_err(),
     "expect a reference read as a logical path to resolve to nothing, which is what made this worth pinning"
   );
 
   // And the logical path the listing reports is what the path reader wants.
-  assert!(read_located_asset(&probe, "textures\\ston\\ston_beton05.dds").is_ok());
+  assert!(read_located_asset(&search, "textures\\ston\\ston_beton05.dds").is_ok());
 }

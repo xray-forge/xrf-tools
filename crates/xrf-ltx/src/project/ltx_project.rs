@@ -4,10 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{
-  XrayAsset, XrayAssetType, XrayCachePolicy, XrayLogicalPath, XrayLookupScope, XrayOwnedProbe, XrayProbe,
-  XrayProbeStep, XrayRoots, XrayVfs,
-};
+use xrf_vfs::{XrayAssetType, XrayCachePolicy, XrayLogicalPath, XrayLookupScope, XrayRoots, XraySearch, XrayVfs};
 
 use crate::dialect::{LtxDialect, LtxResolution, LtxResolveRequest, LtxStandardDialect};
 use crate::document::LtxDocument;
@@ -34,8 +31,8 @@ pub struct LtxProject {
   pub ltx_scheme_declarations: LtxSectionSchemes,
   /// Configs the dialect says patch another rather than standing alone, planned once while assembling.
   pub ltx_attachments: Vec<String>,
-  /// The search every project file is read through, over a world of its own.
-  search: XrayOwnedProbe,
+  /// The search every project file is read through.
+  search: XraySearch,
   /// The logical directory relative config paths are read in, none for the logical root.
   prefix: Option<XrayLogicalPath>,
   /// How much reading and parsing this project has done.
@@ -51,7 +48,7 @@ pub struct LtxProject {
 }
 
 impl LtxProject {
-  /// What a project names the one step it searches when it is opened over a VFS scope rather than a probe.
+  /// What a project names the one step it searches when it is opened over a VFS scope rather than a search.
   const SEARCH_STEP: &'static str = "configs";
 
   /// Opens a project over one directory mounted at the logical root.
@@ -105,43 +102,44 @@ impl LtxProject {
 
     Self::assemble(
       root.as_ref().to_path_buf(),
-      XrayOwnedProbe::new(vfs, vec![XrayProbeStep::new(Self::SEARCH_STEP, scope)]),
+      XraySearch::new(vfs).with_step(Self::SEARCH_STEP, scope),
       prefix,
       options,
     )
   }
 
-  /// Opens a project over what `probe` searches, narrowed to `prefix`.
+  /// Opens a project over what `search` reaches, narrowed to `prefix`, reading through it so every read records where
+  /// it records.
   ///
   /// # Errors
   ///
   /// Returns an error when the prefix is not a logical path, a config cannot be read, an include cannot be resolved, or
   /// a scheme declaration is invalid.
-  pub fn open_at_probe_opt(
+  pub fn open_at_search_opt(
     root: impl AsRef<Path>,
-    probe: &XrayProbe,
+    search: &XraySearch,
     prefix: Option<&str>,
     options: LtxProjectOptions,
   ) -> XrfResult<Self> {
-    let (search, prefix) = Self::fork_search(probe, prefix)?;
+    let (search, prefix) = Self::narrow_search(search, prefix)?;
 
     Self::assemble(root.as_ref().to_path_buf(), search, prefix, options)
   }
 
-  /// Opens a project over what `probe` searches, as [`Self::open_at_probe_opt`] does, that reads a config only when one
-  /// is asked for: no listing of the tree, no entry points and no schemes. What a caller resolving a known root, such as
-  /// `system.ltx` for its sections, needs.
+  /// Opens a project over what `search` reaches, as [`Self::open_at_search_opt`] does, that reads a config only when
+  /// one is asked for: no listing of the tree, no entry points and no schemes. What a caller resolving a known root,
+  /// such as `system.ltx` for its sections, needs.
   ///
   /// # Errors
   ///
   /// Returns an error when the prefix is not a logical path.
-  pub fn open_lean_at_probe_opt(
+  pub fn open_lean_at_search_opt(
     root: impl AsRef<Path>,
-    probe: &XrayProbe,
+    search: &XraySearch,
     prefix: Option<&str>,
     options: LtxProjectOptions,
   ) -> XrfResult<Self> {
-    let (search, prefix) = Self::fork_search(probe, prefix)?;
+    let (search, prefix) = Self::narrow_search(search, prefix)?;
 
     Ok(Self {
       dialect: options.dialect,
@@ -152,16 +150,18 @@ impl LtxProject {
     })
   }
 
-  /// A probe's search narrowed to `prefix`, over a fork of its world that retains configs as a project reads them.
-  fn fork_search(probe: &XrayProbe, prefix: Option<&str>) -> XrfResult<(XrayOwnedProbe, Option<XrayLogicalPath>)> {
+  /// A search narrowed to `prefix`, over a fork of its snapshot that retains configs as a project reads them.
+  fn narrow_search(search: &XraySearch, prefix: Option<&str>) -> XrfResult<(XraySearch, Option<XrayLogicalPath>)> {
     let prefix: Option<&str> = prefix.filter(|prefix| !prefix.is_empty());
-    let narrowed: XrayProbe = match prefix {
-      Some(prefix) => probe.clone().within(prefix)?,
-      None => probe.clone(),
+    let narrowed: XraySearch = match prefix {
+      Some(prefix) => search.clone().with_prefix(prefix)?,
+      None => search.clone(),
     };
+    // todo: read through the snapshot's own cache once it is shared across forks, instead of a fork retaining configs.
+    let fork: XrayVfs = search.get_vfs().fork().with_cache_policy(XrayCachePolicy::configs());
 
     Ok((
-      narrowed.fork().with_cache_policy(XrayCachePolicy::configs()),
+      narrowed.with_vfs(Arc::new(fork)),
       prefix.map(XrayLogicalPath::new).transpose()?,
     ))
   }
@@ -182,23 +182,22 @@ impl LtxProject {
       ltx_scheme_files: Vec::new(),
       prefix: None,
       root: root.as_ref().to_path_buf(),
-      search: XrayOwnedProbe::new(XrayVfs::new(), Vec::new()),
+      search: XraySearch::new(XrayVfs::new()),
     }
   }
 
   /// Collects files, identifies entry points from includes, and parses scheme declarations.
   fn assemble(
     root: PathBuf,
-    search: XrayOwnedProbe,
+    search: XraySearch,
     prefix: Option<XrayLogicalPath>,
     options: LtxProjectOptions,
   ) -> XrfResult<Self> {
     let counters: Arc<LtxReadCounters> = LtxReadCounters::new_shared();
     let listings: LtxListingCache = LtxListingCache::default();
-    let probe: XrayProbe = search.probe();
-    let source: LtxVfsSource = LtxVfsSource::new_counted(probe.clone(), &counters).with_listings(&listings);
+    let source: LtxVfsSource = LtxVfsSource::new_counted(search.clone(), &counters).with_listings(&listings);
 
-    let ltx_files: Vec<XrayLogicalPath> = Self::collect_logical_paths(&probe);
+    let ltx_files: Vec<XrayLogicalPath> = Self::collect_logical_paths(&search);
 
     // A name test over the listing, which needs no reading at all and therefore no place in the walk below.
     let ltx_scheme_files: Vec<XrayLogicalPath> = if options.is_with_schemes_check {
@@ -328,7 +327,7 @@ impl LtxProject {
     };
 
     let ltx_scheme_declarations: LtxSectionSchemes = if options.is_with_schemes_check {
-      LtxSchemeParser::parse_from_probe(&probe, &ltx_scheme_file_entries)?
+      LtxSchemeParser::parse_from_search(&search, &ltx_scheme_file_entries)?
     } else {
       Default::default()
     };
@@ -352,9 +351,9 @@ impl LtxProject {
   }
 
   /// Returns the LTX logical paths the search reaches, sorted for deterministic assembly.
-  fn collect_logical_paths(probe: &XrayProbe) -> Vec<XrayLogicalPath> {
-    let mut paths: Vec<XrayLogicalPath> = probe
-      .list_assets_of_type(XrayAssetType::Ltx)
+  fn collect_logical_paths(search: &XraySearch) -> Vec<XrayLogicalPath> {
+    let mut paths: Vec<XrayLogicalPath> = search
+      .list_assets(XrayAssetType::Ltx)
       .into_iter()
       .map(|asset| asset.get_logical_path().clone())
       .collect();
@@ -384,12 +383,12 @@ impl LtxProject {
 
   /// Returns the VFS that resolves this project's files.
   pub fn vfs(&self) -> &XrayVfs {
-    self.search.get_world()
+    self.search.get_vfs()
   }
 
-  /// The search this project reads its files through, recording where the probe it was opened over recorded.
-  pub fn probe(&self) -> XrayProbe<'_> {
-    self.search.probe()
+  /// The search this project reads its files through, recording where the search it was opened over recorded.
+  pub fn search(&self) -> &XraySearch {
+    &self.search
   }
 
   /// Returns the filesystem path for a loose config, or the logical path for an archived or missing config.
@@ -402,11 +401,11 @@ impl LtxProject {
   /// Returns a filesystem path when a loose config resolves.
   pub fn physical_path_of(&self, logical_path: &XrayLogicalPath) -> Option<PathBuf> {
     self
-      .probe()
+      .search
       .find(logical_path.as_str())
-      .ok()?
-      .get_asset()
-      .and_then(XrayAsset::to_physical_path)
+      .ok()
+      .flatten()
+      .and_then(|asset| asset.to_physical_path())
   }
 
   /// Resolves one project config under this project's dialect, including includes and inheritance.
@@ -444,13 +443,13 @@ impl LtxProject {
     )
   }
 
-  /// Reads one config as a parsed document, through whatever the mounted world retains.
+  /// Reads one config as a parsed document, through whatever the VFS snapshot retains.
   ///
   /// # Errors
   ///
   /// Returns an error when the config is not in scope, its bytes are not Windows-1251, or it will not parse.
   pub fn read_document(&self, logical_path: &XrayLogicalPath) -> XrfResult<Arc<LtxDocument>> {
-    LtxVfsSource::new_counted(self.probe(), &self.counters).read_document(logical_path.as_str())
+    LtxVfsSource::new_counted(self.search.clone(), &self.counters).read_document(logical_path.as_str())
   }
 
   /// Reads one config's bytes as authored, counted against this project.
@@ -459,13 +458,7 @@ impl LtxProject {
   ///
   /// Returns an error when the config is not in scope.
   pub(crate) fn read_counted_bytes(&self, logical_path: &XrayLogicalPath) -> XrfResult<Vec<u8>> {
-    let probe: XrayProbe = self.probe();
-    let Some(asset) = probe.find(logical_path.as_str())?.get_asset().cloned() else {
-      return Err(XrfError::new_not_found_error(format!(
-        "no config '{logical_path}' in the project's sources"
-      )));
-    };
-    let bytes: Vec<u8> = probe.read_asset_bytes(&asset)?;
+    let bytes: Vec<u8> = self.search.read(logical_path.as_str())?;
 
     self.counters.record_read(bytes.len() as u64);
 
@@ -518,7 +511,7 @@ impl LtxProject {
 
   /// A counted source over this project's own scope, sharing its directory listings.
   fn source(&self) -> LtxVfsSource<'_> {
-    LtxVfsSource::new_counted(self.probe(), &self.counters).with_listings(&self.listings)
+    LtxVfsSource::new_counted(self.search.clone(), &self.counters).with_listings(&self.listings)
   }
 
   /// Resolves a config in the supplied scope using this project's dialect, without caching the result.
@@ -527,8 +520,9 @@ impl LtxProject {
   ///
   /// Returns an error if the config cannot be read or resolved.
   pub fn read_full_in_scope(&self, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Ltx> {
-    let probe: XrayProbe = self.vfs().probe().with_step(Self::SEARCH_STEP, scope.clone());
-    let source: LtxVfsSource = LtxVfsSource::new_counted(probe, &self.counters);
+    let search: XraySearch =
+      XraySearch::new(Arc::clone(self.search.get_vfs())).with_step(Self::SEARCH_STEP, scope.clone());
+    let source: LtxVfsSource = LtxVfsSource::new_counted(search, &self.counters);
 
     self.counters.record_resolution();
 

@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use rayon::prelude::*;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayInputKind, XrayInputRecord, XrayLookupScope, XrayProbe, XrayVfs};
+use xrf_vfs::{XrayInputKind, XrayInputRecord, XrayLookupScope, XraySearch, XrayVfs};
 
 use crate::core::session::{Session, SessionId, SessionPart, SessionParts, SessionRestore, SessionSnapshot};
 
@@ -279,8 +279,8 @@ fn a_replacement_starts_without_the_parts_of_the_value_it_replaces() {
   assert_eq!(replaced.parts.get::<CountedPart>(), None);
 }
 
-/// A loose tree of `files` mounted as the whole of a world.
-fn world(name: &str, files: &[&str]) -> XrayVfs {
+/// A loose tree of `files` mounted as the whole of a VFS.
+fn mounted(name: &str, files: &[&str]) -> XrayVfs {
   let root: PathBuf = build_absolute_generated_test_resource_path(&format!("session_parts/{name}"));
 
   let _ = fs::remove_dir_all(&root);
@@ -299,13 +299,13 @@ fn world(name: &str, files: &[&str]) -> XrayVfs {
   vfs
 }
 
-fn probe_of(vfs: &XrayVfs) -> XrayProbe<'_> {
-  vfs.probe().with_step("root", XrayLookupScope::all())
+fn search_of(vfs: XrayVfs) -> XraySearch {
+  XraySearch::new(vfs).with_step("root", XrayLookupScope::all())
 }
 
 /// Finds a file, as a build reading it would.
-fn read(probe: &XrayProbe, logical_path: &str) {
-  probe.find(logical_path).expect("the lookup succeeds");
+fn read(search: &XraySearch, logical_path: &str) {
+  search.find(logical_path).expect("the lookup succeeds");
 }
 
 /// The files a record holds, sorted, each with whether a source answered for it.
@@ -332,12 +332,12 @@ fn files(paths: &[(&str, bool)]) -> Vec<(String, bool)> {
 
 #[test]
 fn a_part_records_what_its_build_reads() {
-  let vfs: XrayVfs = world("records", &["configs/system.ltx"]);
+  let vfs: XrayVfs = mounted("records", &["configs/system.ltx"]);
   let parts: SessionParts = SessionParts::new();
 
-  parts.get_or_record::<CountedPart>(&probe_of(&vfs), |probe| {
-    read(probe, "configs\\system.ltx");
-    read(probe, "configs\\absent.ltx");
+  parts.get_or_record::<CountedPart>(&search_of(vfs), |search| {
+    read(search, "configs\\system.ltx");
+    read(search, "configs\\absent.ltx");
 
     Arc::new(1)
   });
@@ -350,10 +350,10 @@ fn a_part_records_what_its_build_reads() {
 
 #[test]
 fn a_part_asked_for_as_another_builds_adds_its_inputs_to_the_askers() {
-  let vfs: XrayVfs = world("nested", &["configs/system.ltx", "configs/game.ltx"]);
-  let probe: XrayProbe = probe_of(&vfs);
-  let build_counted = |probe: &XrayProbe| {
-    read(probe, "configs\\game.ltx");
+  let vfs: XrayVfs = mounted("nested", &["configs/system.ltx", "configs/game.ltx"]);
+  let search: XraySearch = search_of(vfs);
+  let build_counted = |search: &XraySearch| {
+    read(search, "configs\\game.ltx");
 
     Arc::new(2)
   };
@@ -362,13 +362,13 @@ fn a_part_asked_for_as_another_builds_adds_its_inputs_to_the_askers() {
     let parts: SessionParts = SessionParts::new();
 
     if is_built_first {
-      parts.get_or_record::<CountedPart>(&probe, build_counted);
+      parts.get_or_record::<CountedPart>(&search, build_counted);
     }
 
-    let value: u32 = parts.get_or_record::<DependentPart>(&probe, |probe| {
-      read(probe, "configs\\system.ltx");
+    let value: u32 = parts.get_or_record::<DependentPart>(&search, |search| {
+      read(search, "configs\\system.ltx");
 
-      *parts.get_or_record::<CountedPart>(probe, build_counted) * 10
+      *parts.get_or_record::<CountedPart>(search, build_counted) * 10
     });
 
     assert_eq!(value, 20);
@@ -387,14 +387,14 @@ fn a_part_asked_for_as_another_builds_adds_its_inputs_to_the_askers() {
 
 #[test]
 fn a_pooled_part_records_what_its_build_reads() {
-  let vfs: XrayVfs = world("pooled", &["configs/system.ltx"]);
-  let probe: XrayProbe = probe_of(&vfs);
+  let vfs: XrayVfs = mounted("pooled", &["configs/system.ltx"]);
+  let search: XraySearch = search_of(vfs);
   let parts: SessionParts = SessionParts::new();
   let sums: Vec<u64> = (0..64)
     .into_par_iter()
     .map(|_| {
-      parts.get_or_record::<PooledPart>(&probe, |probe| {
-        read(probe, "configs\\system.ltx");
+      parts.get_or_record::<PooledPart>(&search, |search| {
+        read(search, "configs\\system.ltx");
 
         (0..10_000u64).into_par_iter().sum()
       })
@@ -410,13 +410,13 @@ fn a_pooled_part_records_what_its_build_reads() {
 
 #[test]
 fn a_part_read_a_key_at_a_time_records_each_read_as_its_own() {
-  let vfs: XrayVfs = world("keyed", &["meshes/a.ogf", "meshes/b.ogf"]);
-  let probe: XrayProbe = probe_of(&vfs);
+  let vfs: XrayVfs = mounted("keyed", &["meshes/a.ogf", "meshes/b.ogf"]);
+  let search: XraySearch = search_of(vfs);
   let parts: SessionParts = SessionParts::new();
 
   parts.get_or_init::<CountedPart>(|| Arc::new(0));
-  parts.record::<CountedPart, _>(&probe, |probe| read(probe, "meshes\\a.ogf"));
-  parts.record::<CountedPart, _>(&probe, |probe| read(probe, "meshes\\b.ogf"));
+  parts.record::<CountedPart, _>(&search, |search| read(search, "meshes\\a.ogf"));
+  parts.record::<CountedPart, _>(&search, |search| read(search, "meshes\\b.ogf"));
 
   assert_eq!(
     list_files(&parts.get_inputs::<CountedPart>().expect("the part was asked for")),
@@ -426,14 +426,14 @@ fn a_part_read_a_key_at_a_time_records_each_read_as_its_own() {
 
 #[test]
 fn a_snapshot_keeps_what_its_value_and_its_kept_parts_were_read_from() {
-  let vfs: XrayVfs = world("kept", &["levels/l01/level", "spawns/all.spawn"]);
+  let vfs: XrayVfs = mounted("kept", &["levels/l01/level", "spawns/all.spawn"]);
   let root: XrayInputRecord = XrayInputRecord::new();
   let spawn: XrayInputRecord = XrayInputRecord::new();
-  let probe: XrayProbe = probe_of(&vfs).recording(&root);
+  let search: XraySearch = search_of(vfs).with_recording(&root);
 
-  read(&probe, "levels\\l01\\level");
-  read(&probe.recording(&spawn), "spawns\\all.spawn");
-  probe.record_inputs(&spawn);
+  read(&search, "levels\\l01\\level");
+  read(&search.clone().with_recording(&spawn), "spawns\\all.spawn");
+  search.record_inputs(&spawn);
 
   let session: Session<&str> = Session::new("test");
   let id: SessionId = SessionId::new();

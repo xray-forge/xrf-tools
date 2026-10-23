@@ -5,13 +5,13 @@ use std::path::PathBuf;
 use xrf_material::XrayMaterialDescriptor;
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_thm::{ThmFile, ThmTextureFlags};
-use xrf_vfs::{XrayProbe, XrayRoots, XrayVfs};
+use xrf_vfs::{XrayRoots, XraySearch, XrayVfs};
 
 use crate::plugins::textures::description::TextureDescription;
 use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::tests::fixtures::{
-  BASE, BUMP, COMPANION, bumped_tree, file_source, loose_directory, mount, probe_over, roots_of, to_dds_bytes,
+  BASE, BUMP, COMPANION, bumped_tree, file_source, loose_directory, mount, roots_of, search_over, to_dds_bytes,
 };
 
 #[test]
@@ -19,7 +19,7 @@ fn a_description_carries_the_texture_the_material_and_both_bound_halves() {
   let tree: FixtureTree = bumped_tree("description");
   let (vfs, id) = mount(&tree);
   let description: TextureDescription = TextureDescription::describe(
-    &probe_over(&vfs, id),
+    &search_over(vfs, id),
     TextureSource::Asset {
       reference: String::from(BASE),
     },
@@ -57,7 +57,7 @@ fn a_descriptor_without_a_texture_describes_with_no_base() {
   let tree: FixtureTree = FixtureTree::new("textures_describe_orphan").with_descriptor(BASE, &ThmFixture::image());
   let (vfs, id) = mount(&tree);
   let description: TextureDescription = TextureDescription::describe(
-    &probe_over(&vfs, id),
+    &search_over(vfs, id),
     TextureSource::Asset {
       reference: String::from(BASE),
     },
@@ -85,7 +85,7 @@ fn a_texture_outside_every_root_is_described_from_its_own_path() {
 
   let (vfs, id) = mount(&FixtureTree::new("textures_standalone_roots"));
   let description: TextureDescription = TextureDescription::describe(
-    &probe_over(&vfs, id),
+    &search_over(vfs, id),
     file_source(texture.clone()),
     XrayRoots::default(),
   )
@@ -119,11 +119,11 @@ fn a_standalone_texture_reads_the_descriptor_beside_it_and_offers_to_author_one(
   std::fs::write(&texture, to_dds_bytes(8)).expect("texture is writable");
 
   let (vfs, id) = mount(&FixtureTree::new("textures_standalone_descriptor_roots"));
-  let probe: XrayProbe = probe_over(&vfs, id);
+  let search: XraySearch = search_over(vfs, id);
 
   // With no `.thm` beside it the editor authors one from the SDK's defaults; the target says so by expecting nothing.
   let authoring: TextureDescription =
-    TextureDescription::describe(&probe, file_source(texture.clone()), XrayRoots::default()).expect("described");
+    TextureDescription::describe(&search, file_source(texture.clone()), XrayRoots::default()).expect("described");
 
   assert!(!authoring.has_descriptor);
   assert_eq!(authoring.form, TextureDescriptorForm::read(&ThmFile::new_texture()));
@@ -151,7 +151,7 @@ fn a_standalone_texture_reads_the_descriptor_beside_it_and_offers_to_author_one(
   std::fs::write(&descriptor, ThmFixture::image().to_bytes()).expect("descriptor is writable");
 
   let described: TextureDescription =
-    TextureDescription::describe(&probe, file_source(texture), XrayRoots::default()).expect("described");
+    TextureDescription::describe(&search, file_source(texture), XrayRoots::default()).expect("described");
 
   assert!(described.has_descriptor);
   assert!(
@@ -171,7 +171,7 @@ fn a_descriptor_opened_on_its_own_outside_a_root_finds_its_texture() {
 
   let (vfs, id) = mount(&FixtureTree::new("textures_standalone_thm_roots"));
   let description: TextureDescription = TextureDescription::describe(
-    &probe_over(&vfs, id),
+    &search_over(vfs, id),
     file_source(root.join("wall.thm")),
     XrayRoots::default(),
   )
@@ -197,7 +197,7 @@ fn a_standalone_description_is_readable_back_through_the_roots_it_answers() {
 
   let (vfs, id) = mount(&FixtureTree::new("textures_readable_back_roots"));
   let description: TextureDescription = TextureDescription::describe(
-    &probe_over(&vfs, id),
+    &search_over(vfs, id),
     file_source(texture.clone()),
     XrayRoots::default(),
   )
@@ -222,18 +222,16 @@ fn a_standalone_description_is_readable_back_through_the_roots_it_answers() {
   let mut reader: XrayVfs = XrayVfs::new();
   let steps = description
     .roots
-    .to_probe_plan()
+    .to_search_plan()
     .expect("the answered roots plan")
     .mount_into(&mut reader)
     .expect("the answered roots mount");
 
   assert!(
-    reader
-      .probe()
+    XraySearch::new(reader)
       .with_steps(steps)
       .find(&logical_path)
       .expect("lookup")
-      .get_asset()
       .is_some(),
     "expect the texture to resolve back through the roots its own description answered with"
   );

@@ -6,7 +6,7 @@ use xrf_environment::{
 };
 use xrf_level::{EnvModifier, LevelEnvModFile};
 use xrf_ltx::LtxProject;
-use xrf_vfs::XrayProbe;
+use xrf_vfs::XraySearch;
 
 use crate::core::session::{SessionPart, SessionSnapshot};
 use crate::plugins::levels::catalog::{open_configs, read_catalog};
@@ -35,14 +35,14 @@ impl LevelEnvironment {
   /// The level's local weather overrides.
   pub const ENV_MOD_FILE: &'static str = "level.env_mod";
 
-  /// The open level's environment, read through `probe` the first time anything asks and kept with the level.
+  /// The open level's environment, read through `search` the first time anything asks and kept with the level.
   ///
   /// # Errors
   ///
   /// Returns the reason the configs cannot be read, which every later ask answers with again.
-  pub fn of(current: &SessionSnapshot<SelectedLevel>, probe: &XrayProbe) -> Result<Arc<Self>, String> {
-    current.parts.get_or_record::<LevelEnvironmentPart>(probe, |probe| {
-      let project: LtxProject = open_configs(&current.roots, probe, current.dialect.clone())?;
+  pub fn of(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Result<Arc<Self>, String> {
+    current.parts.get_or_record::<LevelEnvironmentPart>(search, |search| {
+      let project: LtxProject = open_configs(&current.roots, search, current.dialect.clone())?;
       let catalog: EnvironmentCatalog = read_catalog(
         &project,
         &EnvironmentReadOptions::default().with_engine(current.engine.engine),
@@ -58,11 +58,11 @@ impl LevelEnvironment {
     })
   }
 
-  /// Everything the viewer plays the level's weather from; the level's own file is read in the probe.
-  pub fn describe(&self, current: &SelectedLevel, probe: &XrayProbe) -> LevelWeatherDescription {
+  /// Everything the viewer plays the level's weather from; the level's own file is read in the search.
+  pub fn describe(&self, current: &SelectedLevel, search: &XraySearch) -> LevelWeatherDescription {
     let catalog: &EnvironmentCatalog = &self.catalog;
     let offered: Vec<&WeatherCycle> = self.list_offered();
-    let source: LevelWeatherSource = self.get_source(current, probe);
+    let source: LevelWeatherSource = self.get_source(current, search);
 
     LevelWeatherDescription {
       cycles: catalog
@@ -76,7 +76,7 @@ impl LevelEnvironment {
         .map(|effect| LevelWeatherCycle::of(effect, catalog))
         .collect(),
       engine: catalog.engine,
-      modifiers: Self::read_modifiers(current, probe),
+      modifiers: Self::read_modifiers(current, search),
       clouds: self.list_textures(&source, WeatherKey::CloudsTexture),
       skies: self.list_textures(&source, WeatherKey::SkyTexture),
       suns: catalog.suns.iter().map(|sun| sun.name.clone()).collect(),
@@ -90,11 +90,11 @@ impl LevelEnvironment {
     }
   }
 
-  /// What the level's cycles are read against, its textures found in the probe.
-  pub fn get_source<'a, 'p>(&'a self, current: &SelectedLevel, probe: &'a XrayProbe<'p>) -> LevelWeatherSource<'a, 'p> {
+  /// What the level's cycles are read against, its textures found in the search.
+  pub fn get_source<'a>(&'a self, current: &SelectedLevel, search: &'a XraySearch) -> LevelWeatherSource<'a> {
     LevelWeatherSource {
       catalog: &self.catalog,
-      probe,
+      search,
       scope: current.source.get_texture_scope(),
     }
   }
@@ -129,8 +129,8 @@ impl LevelEnvironment {
 
   /// The level's `level.env_mod`, none where it has none; one that will not read is said and left out, since the
   /// weather plays without it.
-  pub fn read_modifiers(current: &SelectedLevel, probe: &XrayProbe) -> Vec<EnvModifier> {
-    let read = read_optional_file(&current.source, probe, Self::ENV_MOD_FILE).and_then(|bytes| {
+  pub fn read_modifiers(current: &SelectedLevel, search: &XraySearch) -> Vec<EnvModifier> {
+    let read = read_optional_file(&current.source, search, Self::ENV_MOD_FILE).and_then(|bytes| {
       bytes
         .map(|bytes| LevelEnvModFile::read_from_bytes::<XRayByteOrder>(bytes).map_err(|error| error.to_string()))
         .transpose()

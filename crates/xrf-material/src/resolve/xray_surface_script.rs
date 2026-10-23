@@ -4,7 +4,7 @@ use xrf_shaders::{
   XRayShaderBlendFactor, XRayShaderPass, XRayShaderPassState, XRayShaderSampler, XRayShaderSamplerTexture,
   XRayShaderScript,
 };
-use xrf_vfs::{XrayAsset, XrayProbe};
+use xrf_vfs::{XrayAsset, XraySearch};
 
 use crate::data::xray_material_descriptor::XrayMaterialDescriptor;
 use crate::data::xray_surface_declaration::XraySurfaceDeclaration;
@@ -48,11 +48,11 @@ impl XraySurfaceScript {
   }
 
   /// How a surface naming this shader is drawn, for a shader the roots answer with a script.
-  pub fn describe(probe: &XrayProbe, shader_name: &str, textures: &[String]) -> Option<XraySurfaceDescriptor> {
+  pub fn describe(search: &XraySearch, shader_name: &str, textures: &[String]) -> Option<XraySurfaceDescriptor> {
     let logical_path: String = Self::to_logical_path(shader_name);
-    let asset: XrayAsset = probe.find(&logical_path).ok()?.get_asset().cloned()?;
-    let source: Arc<String> = probe
-      .read_asset_parsed(&asset, |bytes| Ok(String::from_utf8_lossy(&bytes).into_owned()))
+    let asset: XrayAsset = search.find(&logical_path).ok()??;
+    let source: Arc<String> = search
+      .read_parsed(&asset, |bytes| Ok(String::from_utf8_lossy(&bytes).into_owned()))
       .ok()?;
     let script: XRayShaderScript = XRayShaderScript::parse(&logical_path, &source).ok()?;
     let base: Option<&XRayShaderPass> = script.pass_of(XRayShaderPass::BASE_FUNCTION);

@@ -6,7 +6,7 @@ use xrf_material::{
   XrayMaterialDescriptor, XrayMaterialResolver, XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope,
 };
 use xrf_ogf::OgfFile;
-use xrf_vfs::{XrayAsset, XrayProbe, XrayRoots};
+use xrf_vfs::{XrayAsset, XrayRoots, XraySearch};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker};
 
 use crate::core::assets::{AssetMountState, AssetTextureDescriptor};
@@ -33,16 +33,16 @@ pub async fn visuals_open_model(
   let roots: XrayRoots = roots.centred_on(source.physical_path());
 
   let (package, dependencies, textures, materials, surfaces, textures_ltx, skeleton) =
-    assets.with_probe(&roots, |probe| {
+    assets.with_search(&roots, |search| {
       // Read once and pack from what was read: the skeleton posing needs comes off the same parse, so keeping it costs
       // no second read of a file that may sit inside a volume.
-      let file: OgfFile = read_source(&source, probe)?;
+      let file: OgfFile = read_source(&source, search)?;
       let package: VisualPackage = VisualPacker::pack(&file);
-      let dependencies: VisualDependencies = VisualDependencies::resolve(&package.description, probe);
-      let textures: HashMap<String, AssetTextureDescriptor> = describe_textures(probe, &dependencies);
-      let materials: HashMap<String, XrayMaterialDescriptor> = describe_materials(probe, &dependencies);
-      let surfaces: Vec<XraySurfaceDescriptor> = describe_surfaces(probe, &package.description);
-      let textures_ltx: Option<XrayAsset> = XrayMaterialResolver::find_textures_ltx(probe);
+      let dependencies: VisualDependencies = VisualDependencies::resolve(&package.description, search);
+      let textures: HashMap<String, AssetTextureDescriptor> = describe_textures(search, &dependencies);
+      let materials: HashMap<String, XrayMaterialDescriptor> = describe_materials(search, &dependencies);
+      let surfaces: Vec<XraySurfaceDescriptor> = describe_surfaces(search, &package.description);
+      let textures_ltx: Option<XrayAsset> = XrayMaterialResolver::find_textures_ltx(search);
 
       TauriResult::Ok((
         package,
@@ -75,7 +75,10 @@ pub async fn visuals_open_model(
 }
 
 /// Describes the file behind every located texture reference, once per file.
-fn describe_textures(probe: &XrayProbe, dependencies: &VisualDependencies) -> HashMap<String, AssetTextureDescriptor> {
+fn describe_textures(
+  search: &XraySearch,
+  dependencies: &VisualDependencies,
+) -> HashMap<String, AssetTextureDescriptor> {
   let mut described: HashMap<String, AssetTextureDescriptor> = HashMap::new();
 
   for texture in &dependencies.textures {
@@ -86,7 +89,7 @@ fn describe_textures(probe: &XrayProbe, dependencies: &VisualDependencies) -> Ha
         continue;
       }
 
-      if let Some(descriptor) = AssetTextureDescriptor::describe(probe, asset) {
+      if let Some(descriptor) = AssetTextureDescriptor::describe(search, asset) {
         described.insert(String::from(path), descriptor);
       }
     }
@@ -96,7 +99,10 @@ fn describe_textures(probe: &XrayProbe, dependencies: &VisualDependencies) -> Ha
 }
 
 /// Describes the material the renderer builds for every declared texture reference, once per reference.
-fn describe_materials(probe: &XrayProbe, dependencies: &VisualDependencies) -> HashMap<String, XrayMaterialDescriptor> {
+fn describe_materials(
+  search: &XraySearch,
+  dependencies: &VisualDependencies,
+) -> HashMap<String, XrayMaterialDescriptor> {
   let mut described: HashMap<String, XrayMaterialDescriptor> = HashMap::new();
 
   for texture in &dependencies.textures {
@@ -106,7 +112,7 @@ fn describe_materials(probe: &XrayProbe, dependencies: &VisualDependencies) -> H
 
     described.insert(
       texture.reference.clone(),
-      XrayMaterialResolver::describe_texture(probe, &XrayTextureScope::shared(), &texture.reference),
+      XrayMaterialResolver::describe_texture(search, &XrayTextureScope::shared(), &texture.reference),
     );
   }
 
@@ -114,8 +120,8 @@ fn describe_materials(probe: &XrayProbe, dependencies: &VisualDependencies) -> H
 }
 
 /// Describes how the renderer draws each submesh of the model, in the order the model declares them.
-fn describe_surfaces(probe: &XrayProbe, description: &VisualDescription) -> Vec<XraySurfaceDescriptor> {
-  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe, XrayTextureScope::shared());
+fn describe_surfaces(search: &XraySearch, description: &VisualDescription) -> Vec<XraySurfaceDescriptor> {
+  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(search, XrayTextureScope::shared());
 
   description
     .submeshes

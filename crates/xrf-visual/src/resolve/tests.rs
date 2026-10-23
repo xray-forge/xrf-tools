@@ -1,10 +1,11 @@
 //! Resolution of a visual's own references, against small trees built in the test.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use xrf_math::Vector3d;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayLookupScope, XrayMountId, XrayProbe, XrayResolution, XrayVfs};
+use xrf_vfs::{XrayLookupScope, XrayMountId, XrayResolution, XraySearch, XrayVfs};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
 use crate::data::visual::bounds::visual_box::VisualBox;
@@ -76,9 +77,9 @@ fn description(submeshes: Vec<VisualSubmesh>, motion_refs: Vec<String>) -> Visua
   }
 }
 
-/// One mounted tree and a probe naming it, which is the smallest useful search order.
-fn probe_over(vfs: &XrayVfs, id: XrayMountId) -> XrayProbe<'_> {
-  vfs.probe().with_step("tree", XrayLookupScope::only([id]))
+/// One mounted tree and a search naming it, which is the smallest useful search order.
+fn search_over(vfs: impl Into<Arc<XrayVfs>>, id: XrayMountId) -> XraySearch {
+  XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]))
 }
 
 #[test]
@@ -90,7 +91,7 @@ fn resolves_a_declared_texture_and_skips_a_submesh_declaring_none() {
 
   let dependencies: VisualDependencies = VisualDependencies::resolve(
     &description(vec![submesh(0, None), submesh(1, Some("wpn\\wpn_ak74"))], Vec::new()),
-    &probe_over(&vfs, id),
+    &search_over(vfs, id),
   );
 
   assert_eq!(dependencies.textures.len(), 1, "a submesh with no texture has no entry");
@@ -115,7 +116,7 @@ fn substitutes_the_engine_dummy_for_an_absent_texture() {
 
   let dependencies: VisualDependencies = VisualDependencies::resolve(
     &description(vec![submesh(0, Some("wpn\\wpn_absent"))], Vec::new()),
-    &probe_over(&vfs, id),
+    &search_over(vfs, id),
   );
 
   assert!(
@@ -137,7 +138,7 @@ fn reports_a_missing_texture_when_even_the_dummy_is_absent() {
 
   let dependencies: VisualDependencies = VisualDependencies::resolve(
     &description(vec![submesh(0, Some("wpn\\wpn_absent"))], Vec::new()),
-    &probe_over(&vfs, id),
+    &search_over(vfs, id),
   );
 
   assert!(matches!(
@@ -161,7 +162,7 @@ fn resolves_a_motion_reference_without_substituting_anything() {
 
   let dependencies: VisualDependencies = VisualDependencies::resolve(
     &description(Vec::new(), vec!["wpn\\wpn_ak74_hud".into(), "wpn\\wpn_absent".into()]),
-    &probe_over(&vfs, id),
+    &search_over(vfs, id),
   );
 
   assert_eq!(dependencies.motions[0].resolution.get_step(), Some("tree"));
@@ -191,7 +192,7 @@ fn a_masked_motion_reference_holds_every_match() {
 
   let dependencies: VisualDependencies = VisualDependencies::resolve(
     &description(Vec::new(), vec!["wpn\\wpn_ak74_*.omf".into()]),
-    &probe_over(&vfs, id),
+    &search_over(vfs, id),
   );
 
   assert_eq!(dependencies.motions[0].resolution.get_assets().len(), 2);
@@ -210,7 +211,7 @@ fn one_rejected_reference_does_not_cost_the_model_its_other_assets() {
       vec![submesh(0, Some("..\\..\\outside")), submesh(1, Some("wpn\\wpn_ak74"))],
       Vec::new(),
     ),
-    &probe_over(&vfs, id),
+    &search_over(vfs, id),
   );
 
   assert!(matches!(
@@ -229,7 +230,7 @@ fn reports_no_scope_when_no_source_is_mounted() {
       vec![submesh(0, Some("wpn\\wpn_ak74"))],
       vec!["wpn\\wpn_ak74_hud".into()],
     ),
-    &vfs.probe().with_step("nothing", XrayLookupScope::all()),
+    &XraySearch::new(vfs).with_step("nothing", XrayLookupScope::all()),
   );
 
   assert_eq!(dependencies.textures[0].resolution, XrayResolution::NoScope);

@@ -1,8 +1,8 @@
 //! Resolves and inspects textures referenced by OGF visuals.
 //!
 //! Each reference is resolved against the visual's implied X-Ray root and then against whatever further roots the
-//! caller named, through the shared asset probe. DDS header results, including failures, are cached by resolved texture
-//! path.
+//! caller named, through the shared asset search. DDS header results, including failures, are cached by resolved
+//! texture path.
 //!
 //! Naming further roots is what makes an overlay measurable. A mod tree ships the meshes that changed and none of the
 //! textures they still share with the base game: swept alone, `gamedata-openxray-gunslinger` reports 1,076 of 1,229
@@ -10,16 +10,17 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use xrf_dds::{DdsFile, DdsMetadata};
 use xrf_utils::{error_to_string, format_path};
-use xrf_vfs::{XrayAssetType, XrayMountPlan, XrayProbePlan, XrayProbeStep, XrayResolution, XrayVfs};
+use xrf_vfs::{XrayAssetType, XrayMountPlan, XrayResolution, XraySearch, XraySearchPlan, XraySearchStep, XrayVfs};
 
 /// The outcome of resolving and reading one texture reference.
 pub enum TextureResolution {
   /// The visual sits under no directory that looks like an X-Ray root.
   NoRoot,
-  /// Nothing searched holds the reference. `sources` is every root the probe looked in, in order.
+  /// Nothing searched holds the reference. `sources` is every root the search looked in, in order.
   Missing { sources: Vec<String> },
   /// The texture resolved and its DDS header was read.
   Resolved {
@@ -44,7 +45,7 @@ pub enum TextureResolution {
 pub struct OgfTextureResolver {
   /// Roots searched after the visual's own, in the order the caller named them.
   roots: Vec<PathBuf>,
-  vfs: XrayVfs,
+  vfs: Arc<XrayVfs>,
   headers: HashMap<PathBuf, Result<(String, DdsMetadata), String>>,
 }
 
@@ -108,7 +109,7 @@ impl OgfTextureResolver {
   /// does not do is read those archives: an archived hit is reported located rather than inspected, because a header
   /// read there means decompressing a whole entry to look at 148 bytes.
   fn locate(&mut self, root: &Path, reference: &str) -> Option<XrayResolution> {
-    let mut plan: XrayProbePlan = XrayProbePlan::new()
+    let mut plan: XraySearchPlan = XraySearchPlan::new()
       .with_root(Self::VISUAL_ROOT_STEP, root)
       .inspect_err(|error| log::warn!("Failed to plan root {}: {error}", format_path(root)))
       .ok()?;
@@ -120,18 +121,25 @@ impl OgfTextureResolver {
         .ok()?;
     }
 
-    let steps: Vec<XrayProbeStep> = plan
-      .mount_into(&mut self.vfs)
+    let steps: Vec<XraySearchStep> = plan
+      .mount_into(self.vfs_mut())
       .inspect_err(|error| log::warn!("Failed to mount root {}: {error}", format_path(root)))
       .ok()?;
 
-    self
-      .vfs
-      .probe()
+    XraySearch::new(Arc::clone(&self.vfs))
       .with_steps(steps)
       .resolve(XrayAssetType::Dds, reference)
       .inspect_err(|error| log::warn!("Rejected texture reference '{reference}': {error}"))
       .ok()
+  }
+
+  /// The VFS to mount into: this resolver's own where no search still reads it, a fork of it where one does.
+  fn vfs_mut(&mut self) -> &mut XrayVfs {
+    if Arc::get_mut(&mut self.vfs).is_none() {
+      self.vfs = Arc::new(self.vfs.fork());
+    }
+
+    Arc::get_mut(&mut self.vfs).expect("a snapshot just forked has one holder")
   }
 
   /// Returns cached DDS header facts by value.

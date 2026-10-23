@@ -1,7 +1,7 @@
 use rayon::prelude::*;
 use serde::Serialize;
 use xrf_material::{XrayBumpNaming, XrayBumpOutcome, XrayMaterialDescriptor, XrayMaterialResolver};
-use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe, XrayRoots};
+use xrf_vfs::{XrayAsset, XrayAssetType, XrayRoots, XraySearch};
 
 use crate::core::assets::AssetMountState;
 use crate::core::types::TauriResult;
@@ -90,25 +90,24 @@ impl TextureMaterialSummary {
   ///
   /// Returns an error when the roots cannot be planned or mounted.
   pub fn sweep_roots(mounts: &AssetMountState, roots: &XrayRoots) -> TauriResult<Vec<Self>> {
-    let descriptors: Vec<XrayAsset> =
-      mounts.with_probe(roots, |probe| probe.list_assets_of_type(XrayAssetType::Thm))?;
+    let descriptors: Vec<XrayAsset> = mounts.with_search(roots, |search| search.list_assets(XrayAssetType::Thm))?;
     let mut summaries: Vec<Self> = Vec::with_capacity(descriptors.len());
 
     for slice in descriptors.chunks(SWEEP_SLICE) {
-      summaries.extend(mounts.with_probe(roots, |probe| Self::sweep(probe, slice))?);
+      summaries.extend(mounts.with_search(roots, |search| Self::sweep(search, slice))?);
     }
 
     Ok(summaries)
   }
 
   /// Summarizes the given descriptors the way `LoadTHM` reads them, in the order given.
-  pub fn sweep(probe: &XrayProbe, descriptors: &[XrayAsset]) -> Vec<Self> {
+  pub fn sweep(search: &XraySearch, descriptors: &[XrayAsset]) -> Vec<Self> {
     descriptors
       .par_iter()
       .filter_map(|descriptor| {
         Some(Self::of(
           descriptor.to_reference()?,
-          &XrayMaterialResolver::describe_descriptor(probe, descriptor),
+          &XrayMaterialResolver::describe_descriptor(search, descriptor),
         ))
       })
       .collect()

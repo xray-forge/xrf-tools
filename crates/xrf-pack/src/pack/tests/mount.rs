@@ -1,7 +1,7 @@
 //! Round-trips the writer through the reader, which is the only check that matters: an archive is correct when the
 //! code that mounts one can read it back.
 //!
-//! Also where a volume is reached from: a project opened at one file, at a directory of them, or at a root a probe
+//! Also where a volume is reached from: a project opened at one file, at a directory of them, or at a root a search
 //! plan has to recognise. What each entry costs is `payload`, what the rules selected is `selection`.
 
 use std::fs;
@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_archive::ArchiveProject;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayAsset, XrayMountMode, XrayProbe, XrayProbeStep, XrayRoots, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayMountMode, XrayRoots, XraySearch, XraySearchStep, XrayVfs};
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 use crate::pack::tests::fixtures::{BINARY, CONFIG, create_source, open, pack, read};
@@ -74,21 +74,19 @@ fn a_named_volume_is_searched_as_a_root() {
   let first: PathBuf = pack_volume(scope, "first", &[("configs\\first.ltx", CONFIG)]);
   let sibling: PathBuf = pack_volume(scope, "second", &[("configs\\second.ltx", CONFIG)]);
 
-  // Searched the way the asset commands search: a probe plan over the roots, not a plain mount.
+  // Searched the way the asset commands search: a search plan over the roots, not a plain mount.
   fn find(root: &Path, logical_path: &str) -> bool {
     let mut vfs: XrayVfs = XrayVfs::new();
-    let steps: Vec<XrayProbeStep> = XrayRoots::one(root.to_path_buf(), XrayMountMode::Auto)
-      .to_probe_plan()
+    let steps: Vec<XraySearchStep> = XrayRoots::one(root.to_path_buf(), XrayMountMode::Auto)
+      .to_search_plan()
       .expect("roots plan")
       .mount_into(&mut vfs)
       .expect("plan mounts");
 
-    vfs
-      .probe()
+    XraySearch::new(vfs)
       .with_steps(steps)
       .find(logical_path)
       .expect("lookup succeeds")
-      .get_asset()
       .is_some()
   }
 
@@ -127,23 +125,21 @@ fn a_volume_in_a_subdirectory_is_read_through_the_project_root() {
   assert_eq!(project.root, destination);
 
   let mut vfs: XrayVfs = XrayVfs::new();
-  let steps: Vec<XrayProbeStep> = XrayRoots::one(project.root.clone(), XrayMountMode::Volumes)
-    .to_probe_plan()
+  let steps: Vec<XraySearchStep> = XrayRoots::one(project.root.clone(), XrayMountMode::Volumes)
+    .to_search_plan()
     .expect("roots plan")
     .mount_into(&mut vfs)
     .expect("plan mounts");
-  let probe: XrayProbe = vfs.probe().with_steps(steps);
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
 
   for name in ["shaders\\r1\\clouds.vs", "textures\\act.dds"] {
-    let asset: XrayAsset = probe
+    let asset: XrayAsset = search
       .find(name)
       .expect("lookup succeeds")
-      .get_asset()
-      .cloned()
       .unwrap_or_else(|| panic!("'{name}' is listed by the project, so it must resolve through its root"));
 
     assert_eq!(
-      probe.read_asset_bytes(&asset).expect("asset reads"),
+      search.read_asset(&asset).expect("asset reads"),
       read(&project, name),
       "'{name}' reads the same bytes through the root and through the project"
     );

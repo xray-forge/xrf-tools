@@ -4,7 +4,7 @@ use std::path::{Component, Path, PathBuf};
 
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_level::{LevelFile, LevelGeomSource, LevelVisualsChunk};
-use xrf_vfs::{XrayLogicalPath, XrayProbe, XrayResolution};
+use xrf_vfs::{XrayAsset, XrayLogicalPath, XraySearch};
 
 use crate::core::types::TauriResult;
 use crate::plugins::levels::state::{GEOMETRY_FILE, LEVEL_FILE, LevelSource};
@@ -17,9 +17,9 @@ pub struct ReadLevel {
 }
 
 /// Reads a level, whichever way its source names it.
-pub fn read_source(source: &LevelSource, probe: &XrayProbe) -> TauriResult<ReadLevel> {
-  let bundle: Vec<u8> = read_file(source, probe, LEVEL_FILE)?;
-  let geometry: Vec<u8> = read_file(source, probe, GEOMETRY_FILE)?;
+pub fn read_source(source: &LevelSource, search: &XraySearch) -> TauriResult<ReadLevel> {
+  let bundle: Vec<u8> = read_file(source, search, LEVEL_FILE)?;
+  let geometry: Vec<u8> = read_file(source, search, GEOMETRY_FILE)?;
 
   let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bundle)
     .and_then(|mut it| it.read_children())
@@ -45,13 +45,13 @@ pub fn read_source(source: &LevelSource, probe: &XrayProbe) -> TauriResult<ReadL
 }
 
 /// Reads one of the level's files, from disk or out of the mounted roots.
-pub fn read_file(source: &LevelSource, probe: &XrayProbe, file: &str) -> TauriResult<Vec<u8>> {
-  read_optional_file(source, probe, file)?.ok_or_else(|| format!("Level '{}' has no '{file}'", source.get_label()))
+pub fn read_file(source: &LevelSource, search: &XraySearch, file: &str) -> TauriResult<Vec<u8>> {
+  read_optional_file(source, search, file)?.ok_or_else(|| format!("Level '{}' has no '{file}'", source.get_label()))
 }
 
 /// Reads one of the level's files, or `None` where the level has none: only a file that is not there, not one that
 /// cannot be read.
-pub fn read_optional_file(source: &LevelSource, probe: &XrayProbe, file: &str) -> TauriResult<Option<Vec<u8>>> {
+pub fn read_optional_file(source: &LevelSource, search: &XraySearch, file: &str) -> TauriResult<Option<Vec<u8>>> {
   match source {
     LevelSource::Directory { path } => {
       let path: PathBuf = to_level_file_path(Path::new(path), file)?;
@@ -66,13 +66,12 @@ pub fn read_optional_file(source: &LevelSource, probe: &XrayProbe, file: &str) -
       let logical_path: XrayLogicalPath = XrayLogicalPath::new(logical_path)
         .and_then(|directory| directory.join(file))
         .map_err(|error| format!("Rejected level file '{file}' of '{logical_path}': {error}"))?;
-      let resolution: XrayResolution = probe
+      let found: Option<XrayAsset> = search
         .find(logical_path.as_str())
         .map_err(|error| format!("Rejected level file '{logical_path}': {error}"))?;
 
-      resolution
-        .get_asset()
-        .map(|asset| probe.read_asset_bytes(asset))
+      found
+        .map(|asset| search.read_asset(&asset))
         .transpose()
         .map_err(|error| format!("Failed to read level file '{logical_path}': {error}"))
     }

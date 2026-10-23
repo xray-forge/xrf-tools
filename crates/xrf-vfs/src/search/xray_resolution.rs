@@ -15,9 +15,9 @@ pub enum XrayResolution {
     fallback: String,
     assets: Vec<XrayAsset>,
   },
-  /// Nothing resolved, across every step of the probe.
+  /// Nothing resolved, across every step of the search.
   Missing { roots: Vec<String> },
-  /// There was nothing to search: the probe had no step, or no step selected a mounted source.
+  /// There was nothing to search: the search had no step, or no step selected a mounted source.
   NoScope,
   /// The reference could not be turned into a lookup at all, so none was attempted.
   Rejected { reason: String },
@@ -37,7 +37,7 @@ impl XrayResolution {
     self.get_assets().first()
   }
 
-  /// The probe step that answered, for a located outcome.
+  /// The search step that answered, for a located outcome.
   pub fn get_step(&self) -> Option<&str> {
     match self {
       Self::Resolved { step, .. } | Self::Substituted { step, .. } => Some(step),

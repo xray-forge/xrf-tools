@@ -8,7 +8,7 @@ use rayon::prelude::*;
 use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelCformTracer, LevelLight, LevelLightsChunk, LevelLightsFile};
 use xrf_math::Vector3d;
-use xrf_vfs::XrayProbe;
+use xrf_vfs::XraySearch;
 use xrf_visual::{HemiEstimator, VisualSphere, VisualTransform};
 
 use crate::core::session::{SessionPart, SessionSnapshot};
@@ -35,10 +35,10 @@ impl SessionPart for LevelHemiPart {
 /// Returns why the collision form cannot be read, which every later ask answers with again.
 pub fn get_level_hemi(
   current: &SessionSnapshot<SelectedLevel>,
-  probe: &XrayProbe,
+  search: &XraySearch,
 ) -> Result<Arc<HemiEstimator>, String> {
-  current.parts.get_or_record::<LevelHemiPart>(probe, |probe| {
-    read_hemi(current, probe).inspect_err(|error| report_missing_hemi(&current.source, error))
+  current.parts.get_or_record::<LevelHemiPart>(search, |search| {
+    read_hemi(current, search).inspect_err(|error| report_missing_hemi(&current.source, error))
   })
 }
 
@@ -73,11 +73,11 @@ pub fn estimate_spawn_hemi(
 /// How the level lights each object standing as one of the visuals read, none where its spawn cannot be read.
 pub fn estimate_visuals_hemi(
   current: &SessionSnapshot<SelectedLevel>,
-  probe: &XrayProbe,
+  search: &XraySearch,
   estimator: &HemiEstimator,
   read: &[(&str, Arc<LevelSpawnVisual>)],
 ) -> Vec<LevelSpawnObjectHemi> {
-  let Ok(spawn) = get_level_spawn(current, probe) else {
+  let Ok(spawn) = get_level_spawn(current, search) else {
     return Vec::new();
   };
   let spheres: HashMap<&str, &VisualSphere> = read
@@ -88,10 +88,10 @@ pub fn estimate_visuals_hemi(
   estimate_spawn_hemi(estimator, &spawn, &spheres)
 }
 
-fn read_hemi(current: &SessionSnapshot<SelectedLevel>, probe: &XrayProbe) -> Result<Arc<HemiEstimator>, String> {
+fn read_hemi(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Result<Arc<HemiEstimator>, String> {
   let started: Instant = Instant::now();
-  let tracer: Arc<LevelCformTracer> = get_level_collision(current, probe)?;
-  let estimator: HemiEstimator = HemiEstimator::new(tracer, &read_hemi_lights(&current.source, probe));
+  let tracer: Arc<LevelCformTracer> = get_level_collision(current, search)?;
+  let estimator: HemiEstimator = HemiEstimator::new(tracer, &read_hemi_lights(&current.source, search));
 
   report_hemi(&current.source, estimator.get_light_count(), started);
 
@@ -99,9 +99,9 @@ fn read_hemi(current: &SessionSnapshot<SelectedLevel>, probe: &XrayProbe) -> Res
 }
 
 /// The compiled lights `CLight_DB::LoadHemi` reads, none for a level without `build.lights` or with one unreadable.
-fn read_hemi_lights(source: &LevelSource, probe: &XrayProbe) -> Vec<LevelLight> {
+fn read_hemi_lights(source: &LevelSource, search: &XraySearch) -> Vec<LevelLight> {
   let file: Result<Option<LevelLightsFile>, String> =
-    read_optional_file(source, probe, LIGHTS_FILE).and_then(|bytes| {
+    read_optional_file(source, search, LIGHTS_FILE).and_then(|bytes| {
       bytes
         .map(|bytes| LevelLightsFile::read_from_bytes::<XRayByteOrder>(bytes).map_err(|error| error.to_string()))
         .transpose()

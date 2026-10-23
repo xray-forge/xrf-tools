@@ -1,10 +1,10 @@
 //! The four details and mask a terrain class lays over its base, as the deferred renderers compile `B_BmmD`.
 
 use xrf_shaders::fixtures::ShaderBlenderFixture;
-use xrf_vfs::{XrayMountId, XrayProbe, XrayVfs};
+use xrf_vfs::{XrayMountId, XraySearch, XrayVfs};
 
 use crate::fixtures::FixtureTree;
-use crate::tests::material_probe::probe_over;
+use crate::tests::material_search::search_over;
 use crate::{
   XraySurfaceDescriptor, XraySurfaceResolver, XraySurfaceTerrain, XraySurfaceTerrainLayer, XrayTextureScope,
 };
@@ -14,13 +14,13 @@ fn describe_terrain(case: &str, blender: ShaderBlenderFixture, shader: &str) -> 
   let tree: FixtureTree = FixtureTree::new(case).with_shader_library(&[blender]);
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let probe: XrayProbe<'_> = probe_over(&vfs, id);
+  let search: XraySearch = search_over(vfs, id);
   let textures: Vec<String> = vec![
     String::from("terrain\\terrain_zaton"),
     String::from("terrain\\terrain_zaton_lm"),
   ];
 
-  XraySurfaceResolver::open(&probe, XrayTextureScope::shared()).describe(shader, &textures)
+  XraySurfaceResolver::open(&search, XrayTextureScope::shared()).describe(shader, &textures)
 }
 
 fn layer(reference: &str) -> XraySurfaceTerrainLayer {

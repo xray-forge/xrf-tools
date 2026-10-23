@@ -22,8 +22,8 @@ pub async fn levels_read_level_weather(
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let description: LevelWeatherDescription = execution
     .run_blocking("Reading the level weather", move || {
-      assets.with_probe(&current.roots, |probe| {
-        LevelEnvironment::of(&current, probe).map(|environment| environment.describe(&current, probe))
+      assets.with_search(&current.roots, |search| {
+        LevelEnvironment::of(&current, search).map(|environment| environment.describe(&current, search))
       })?
     })
     .await??;

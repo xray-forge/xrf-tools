@@ -6,7 +6,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelCformFile, LevelCformGeometry, LevelDetailsFile};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
-use xrf_vfs::XrayProbe;
+use xrf_vfs::XraySearch;
 use xrf_visual::{DetailsPackage, DetailsPacker};
 
 use crate::core::assets::read_located_asset;
@@ -27,8 +27,8 @@ pub struct PackedLevelDetails {
 }
 
 /// Packs a level's grass, or answers `None` for a level with no detail library.
-pub fn pack_details(source: &LevelSource, probe: &XrayProbe) -> TauriResult<Option<PackedLevelDetails>> {
-  let Some(details) = read_optional_file(source, probe, DETAILS_FILE)? else {
+pub fn pack_details(source: &LevelSource, search: &XraySearch) -> TauriResult<Option<PackedLevelDetails>> {
+  let Some(details) = read_optional_file(source, search, DETAILS_FILE)? else {
     return Ok(None);
   };
 
@@ -39,7 +39,7 @@ pub fn pack_details(source: &LevelSource, probe: &XrayProbe) -> TauriResult<Opti
     )
   })?;
   let collision: LevelCformGeometry =
-    LevelCformFile::read_geometry_from_bytes::<XRayByteOrder>(read_file(source, probe, COLLISION_FILE)?).map_err(
+    LevelCformFile::read_geometry_from_bytes::<XRayByteOrder>(read_file(source, search, COLLISION_FILE)?).map_err(
       |error| {
         format!(
           "Failed to read '{COLLISION_FILE}' of level '{}': {error}",
@@ -47,12 +47,12 @@ pub fn pack_details(source: &LevelSource, probe: &XrayProbe) -> TauriResult<Opti
         )
       },
     )?;
-  let passable: HashSet<u16> = read_passable_materials(probe);
+  let passable: HashSet<u16> = read_passable_materials(search);
   let is_passable = |material: u16| passable.contains(&material);
   let package: DetailsPackage = DetailsPacker::new(&details, &collision, &is_passable).pack();
 
   let scope: XrayTextureScope = source.get_texture_scope();
-  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe, scope.clone());
+  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(search, scope.clone());
   let surfaces: Vec<XraySurfaceDescriptor> = details
     .objects
     .iter()
@@ -71,7 +71,7 @@ pub fn pack_details(source: &LevelSource, probe: &XrayProbe) -> TauriResult<Opti
     textures: references
       .into_iter()
       .map(|reference| LevelTextureReference {
-        logical_path: resolve_reference(probe, &scope, reference),
+        logical_path: resolve_reference(search, &scope, reference),
         reference: reference.to_owned(),
       })
       .collect(),
@@ -80,9 +80,9 @@ pub fn pack_details(source: &LevelSource, probe: &XrayProbe) -> TauriResult<Opti
 
 /// The ids of the game materials a planting falls through, none where the library cannot be read: the engine would
 /// have refused to load the level at all without one.
-fn read_passable_materials(probe: &XrayProbe) -> HashSet<u16> {
+fn read_passable_materials(search: &XraySearch) -> HashSet<u16> {
   let materials: GameMtlFile =
-    match read_located_asset(probe, GAME_MATERIALS_FILE).and_then(GameMtlFile::read_from_bytes::<XRayByteOrder>) {
+    match read_located_asset(search, GAME_MATERIALS_FILE).and_then(GameMtlFile::read_from_bytes::<XRayByteOrder>) {
       Ok(materials) => materials,
       Err(error) => {
         report_unreadable_materials(GAME_MATERIALS_FILE, &error);

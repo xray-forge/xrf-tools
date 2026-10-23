@@ -30,9 +30,9 @@ pub(crate) async fn textures_read_texels(
     .state::<ExecutionState>()
     .run_blocking("Reading texels", move || {
       assets
-        .with_probe(&roots, |probe| {
+        .with_search(&roots, |search| {
           let image: RgbaImage =
-            DdsFile::read_from_bytes(&read_located_asset(probe, &logical_path)?)?.decode_rgba(0)?;
+            DdsFile::read_from_bytes(&read_located_asset(search, &logical_path)?)?.decode_rgba(0)?;
           let mut texels: Vec<u8> = Vec::with_capacity(8 + image.as_raw().len());
 
           texels.extend_from_slice(&image.width().to_le_bytes());

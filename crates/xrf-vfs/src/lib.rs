@@ -2,42 +2,47 @@
 //!
 //! # Module map
 //!
-//! The crate is grouped by the question each part answers:
+//! The crate is grouped by the question each part answers; every module is private and its supported names are
+//! re-exported here:
 //!
-//! - [`path`] — what an engine identity is, and the only place separators and case are decided.
-//! - [`asset`] — what a resolved asset is, plus the per-kind rules that turn a reference into one.
-//! - [`cache`] — what a mounted world keeps after parsing an asset, the policy deciding what is kept, and the coordination that keeps two readers from parsing one asset twice.
-//! - [`source`] — the mountable surface, and the two sources the engine itself has.
-//! - [`mount`] — composing sources into a searchable order, and planning one from a path.
-//! - [`vfs`] — resolving and reading through that order, one scope at a time or as an ordered probe.
-//! - [`fsgame`] — the declaration file an installation describes its own layout with.
-//! - [`trace`] — what a world actually read, when a caller asked to be told.
-//! - [`input`] — which inputs a build read through a recording probe, and the revision each had then.
+//! - `path` — what an engine identity is, and the only place separators and case are decided.
+//! - `asset` — what a resolved asset is, plus the per-kind rules that turn a reference into one.
+//! - `fsgame` — the declaration file an installation describes its own layout with.
+//! - `source` — the mountable surface, and the two sources the engine itself has.
+//! - `mount` — composing sources into a mounted order, and planning one from a path.
+//! - `search` — how a VFS snapshot is read: the ordered search, its steps and what its lookups answer.
+//! - `vfs` — the VFS snapshot itself: mounts, revisions, and the scoped view a step reads through.
+//! - `input` — which inputs a recording search resolved, and the revision each had then.
+//! - `cache` — what a snapshot keeps after parsing an asset, the policy deciding what is kept, and the coordination
+//!   that keeps two readers from parsing one asset twice.
+//! - `trace` — what a snapshot actually read, when a caller asked to be told.
 //!
 //! The `.db` volume format the archive source reads lives below this crate, in `xrf-archive`.
 
-pub mod asset;
-pub mod cache;
-pub mod fsgame;
-pub mod input;
-pub mod mount;
-pub mod path;
-pub mod source;
-pub mod trace;
-pub mod vfs;
+mod asset;
+mod cache;
+mod fsgame;
+mod input;
+mod mount;
+mod path;
+mod search;
+mod source;
+mod trace;
+mod vfs;
 
 pub use asset::{XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetType, require_writable_path};
 pub use cache::{XrayAssetCache, XrayCachePolicy, XrayCacheStats};
 pub use fsgame::{FsgameDeclaration, FsgameFile};
-pub use input::{XrayInput, XrayInputAnswer, XrayInputKind, XrayInputRecord, XrayRevision, XraySearch};
+pub use input::{XrayInput, XrayInputAnswer, XrayInputKind, XrayInputRecord, XrayRevision, XraySearchKey};
 pub use mount::{
-  XrayMount, XrayMountId, XrayMountMode, XrayMountPlan, XrayPlannedMount, XrayProbePlan, XrayRoot, XrayRootKind,
-  XrayRootProbe, XrayRoots, XraySkippedMount,
+  XrayMount, XrayMountId, XrayMountMode, XrayMountPlan, XrayPlannedMount, XrayRoot, XrayRootKind, XrayRootProbe,
+  XrayRoots, XraySkippedMount,
 };
 pub use path::{XrayCollisionSite, XrayLogicalPath, XrayPathCollision};
+pub use search::{
+  XrayDirectoryListing, XrayLookupScope, XrayMountedEntry, XrayReadHandle, XrayResolution, XraySearch, XraySearchPlan,
+  XraySearchStep, XraySearchedSource, XrayShadowedCopy, XrayShadowingEntry,
+};
 pub use source::{XrayArchiveSource, XrayAssetSource, XrayDeclaredRoot, XraySourceKind, label_from_path};
 pub use trace::{XrayReadTrace, XrayReadTraceEntry, XrayReadTraceHotPath, XrayReadTraceSummary};
-pub use vfs::{
-  XrayDirectoryListing, XrayLookupScope, XrayMountedEntry, XrayOwnedProbe, XrayProbe, XrayProbeStep, XrayResolution,
-  XrayScopedVfs, XraySearchedSource, XrayShadowedCopy, XrayShadowingEntry, XrayVfs,
-};
+pub use vfs::{XrayScopedVfs, XrayVfs};

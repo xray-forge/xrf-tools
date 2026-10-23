@@ -4,7 +4,7 @@ use xrf_error::XrfResult;
 
 use crate::document::LtxDocument;
 
-/// What resolving a config tree asks of the world holding it.
+/// What resolving a config tree asks of the VFS holding it.
 pub trait LtxDocumentSource {
   /// One config as a parsed document, or `None` when nothing holds it.
   ///

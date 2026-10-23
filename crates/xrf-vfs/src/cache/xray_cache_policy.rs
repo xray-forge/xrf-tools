@@ -4,21 +4,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::asset::XrayAssetType;
 
-/// What a mounted world is allowed to keep after parsing it.
-///
-/// Default-deny by kind, because an editor and a batch verifier want opposite answers: a preview reopens one model
-/// constantly and wants it resident, while a sweep touches every texture in the installation exactly once and would
-/// only pay to hold them. Naming the kinds makes the memory ceiling something a caller chose rather than something
-/// inherited from whichever consumer was written first.
+/// What a VFS snapshot is allowed to keep after parsing it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct XrayCachePolicy {
   kinds: HashSet<XrayAssetType>,
   /// Last-resort ceiling on retained bytes, not a working budget.
-  ///
-  /// A run that reaches it is expected to be pathological, so the behaviour there is chosen to be safe rather than
-  /// generous: the store stops retaining and hands the value back uncached.
   budget: Option<u64>,
 }
 
@@ -29,10 +21,6 @@ impl XrayCachePolicy {
   }
 
   /// What a verification sweep benefits from.
-  ///
-  /// Motions and configs. A visual is enumerated once per sweep, so retaining it would cost a gigabyte to serve no
-  /// second read, while shared animation banks are read once per referencing visual — the four Anomaly ships are read
-  /// over nine hundred times each.
   pub fn verification() -> Self {
     Self::none().with(XrayAssetType::Omf).with(XrayAssetType::Ltx)
   }

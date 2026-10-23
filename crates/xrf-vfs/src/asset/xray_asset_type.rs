@@ -370,7 +370,7 @@ mod tests {
   #[test]
   fn gathers_the_spellings_the_engine_loads_the_same_way() {
     // The groupings are this crate's knowledge, not the vocabulary's: `anm1` is a different file from `anm`, and a
-    // reader outside a mounted world is free to treat them differently.
+    // reader outside a VFS snapshot is free to treat them differently.
     for extension in [XrayExtension::Anm, XrayExtension::Anm1] {
       assert_eq!(XrayAssetType::of(extension), Some(XrayAssetType::Anm));
     }

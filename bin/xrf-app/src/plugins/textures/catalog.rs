@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 use xrf_material::{XrayBumpNaming, XrayMaterialResolver};
-use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe, XrayRoots};
+use xrf_vfs::{XrayAsset, XrayAssetType, XrayRoots, XraySearch};
 
 use crate::plugins::textures::source::TextureSource;
 
@@ -105,20 +105,20 @@ pub struct TextureCatalog {
 }
 
 impl TextureCatalog {
-  /// Lists what a probe reaches, the way this mode addresses it.
-  pub fn list(probe: &XrayProbe, roots: XrayRoots, mode: TextureCatalogMode) -> Self {
+  /// Lists what a search reaches, the way this mode addresses it.
+  pub fn list(search: &XraySearch, roots: XrayRoots, mode: TextureCatalogMode) -> Self {
     match mode {
-      TextureCatalogMode::Roots => Self::list_roots(probe, roots),
-      TextureCatalogMode::LooseDirectory => Self::list_loose(probe, roots),
+      TextureCatalogMode::Roots => Self::list_roots(search, roots),
+      TextureCatalogMode::LooseDirectory => Self::list_loose(search, roots),
     }
   }
 
-  /// Lists the textures and descriptors a probe reaches, folded onto references.
-  fn list_roots(probe: &XrayProbe, roots: XrayRoots) -> Self {
+  /// Lists the textures and descriptors a search reaches, folded onto references.
+  fn list_roots(search: &XraySearch, roots: XrayRoots) -> Self {
     let mut entries: BTreeMap<String, TextureEntry> = BTreeMap::new();
     let mut outside_textures_count: u32 = 0;
 
-    for asset in probe.list_assets_of_type(XrayAssetType::Dds) {
+    for asset in search.list_assets(XrayAssetType::Dds) {
       match asset.to_reference() {
         Some(reference) => {
           entries
@@ -130,7 +130,7 @@ impl TextureCatalog {
       }
     }
 
-    for asset in probe.list_assets_of_type(XrayAssetType::Thm) {
+    for asset in search.list_assets(XrayAssetType::Thm) {
       if let Some(reference) = asset.to_reference() {
         entries
           .entry(reference.clone())
@@ -142,17 +142,17 @@ impl TextureCatalog {
     Self {
       mode: TextureCatalogMode::Roots,
       roots,
-      textures_ltx: XrayMaterialResolver::find_textures_ltx(probe),
+      textures_ltx: XrayMaterialResolver::find_textures_ltx(search),
       entries: entries.into_values().collect(),
       outside_textures_count,
     }
   }
 
   /// Lists every `.dds` of a plain directory, addressed by its own path.
-  fn list_loose(probe: &XrayProbe, roots: XrayRoots) -> Self {
+  fn list_loose(search: &XraySearch, roots: XrayRoots) -> Self {
     let mut entries: BTreeMap<String, TextureEntry> = BTreeMap::new();
 
-    for asset in probe.list_assets_of_type(XrayAssetType::Dds) {
+    for asset in search.list_assets(XrayAssetType::Dds) {
       if let (Some(key), Some(path)) = (to_loose_key(&asset), asset.to_physical_path()) {
         entries
           .entry(key.clone())
@@ -161,7 +161,7 @@ impl TextureCatalog {
       }
     }
 
-    for asset in probe.list_assets_of_type(XrayAssetType::Thm) {
+    for asset in search.list_assets(XrayAssetType::Thm) {
       if let (Some(key), Some(path)) = (to_loose_key(&asset), asset.to_physical_path()) {
         entries
           .entry(key.clone())

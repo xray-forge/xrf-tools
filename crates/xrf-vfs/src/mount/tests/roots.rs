@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-use crate::{XrayMountMode, XrayMountPlan, XrayProbePlan, XrayRoot, XrayRoots, XrayVfs};
+use crate::{XrayMountMode, XrayMountPlan, XrayRoot, XrayRoots, XraySearchPlan, XrayVfs};
 
 /// Builds a loose root holding one asset, since a plan is decided by what is actually there.
 fn root(name: &str, logical: &str) -> PathBuf {
@@ -104,7 +104,7 @@ fn plans_nothing_for_an_empty_spec() {
 
   assert!(spec.is_empty());
   assert!(spec.to_mount_plan().expect("plan").is_empty());
-  assert!(spec.to_probe_plan().expect("plan").is_empty());
+  assert!(spec.to_search_plan().expect("plan").is_empty());
 }
 
 #[test]
@@ -124,14 +124,14 @@ fn centres_on_an_asset_only_when_none_was_named() {
 }
 
 #[test]
-fn plans_probe_steps_for_an_asset_and_its_roots() {
-  let first: PathBuf = root("probe", r"configs\system.ltx");
+fn plans_search_steps_for_an_asset_and_its_roots() {
+  let first: PathBuf = root("search", r"configs\system.ltx");
   let spec: XrayRoots = XrayRoots {
     asset: Some(first.join("configs/system.ltx")),
     roots: vec![XrayRoot::new(first, XrayMountMode::Directory)],
   };
 
-  let plan: XrayProbePlan = spec.to_probe_plan().expect("plan");
+  let plan: XraySearchPlan = spec.to_search_plan().expect("plan");
 
   assert!(!plan.is_empty());
 }

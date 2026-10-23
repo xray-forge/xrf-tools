@@ -7,8 +7,7 @@ use xrf_utils::format_path;
 use crate::FsgameFile;
 use crate::mount::xray_mount_mode::XrayMountMode;
 use crate::mount::xray_mount_plan::XrayMountPlan;
-use crate::mount::xray_probe_plan::XrayProbePlan;
-use crate::vfs::XrayVfs;
+use crate::{XraySearchPlan, XrayVfs};
 
 /// One place to read from, and how that place becomes mounts.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -121,13 +120,13 @@ impl XrayRoots {
     Ok(plan)
   }
 
-  /// The ordered probe steps these roots mean.
+  /// The ordered search steps these roots mean.
   ///
   /// # Errors
   ///
   /// Returns an error when the asset's own sources or one of the roots cannot be planned.
-  pub fn to_probe_plan(&self) -> XrfResult<XrayProbePlan> {
-    let mut plan: XrayProbePlan = XrayProbePlan::new();
+  pub fn to_search_plan(&self) -> XrfResult<XraySearchPlan> {
+    let mut plan: XraySearchPlan = XraySearchPlan::new();
 
     if let Some(asset) = &self.asset {
       plan = plan.with_asset(Path::new(asset))?;

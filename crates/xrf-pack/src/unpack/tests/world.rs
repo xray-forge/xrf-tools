@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_job::{ExecutionRequest, JobOutcome};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayProbe, XrayProbePlan, XrayProbeStep, XrayVfs};
+use xrf_vfs::{XraySearch, XraySearchPlan, XraySearchStep, XrayVfs};
 
 use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, ArchiveExtractResult};
 use crate::unpack::xray_world_extractor::XrayWorldExtractor;
@@ -25,7 +25,7 @@ fn tree(name: &str, files: &[(&str, &str)]) -> PathBuf {
 }
 
 /// A mod tree in front of the tree it overrides, which is the arrangement extraction has to answer for.
-fn layered(name: &str) -> (XrayVfs, Vec<XrayProbeStep>) {
+fn layered(name: &str) -> (XrayVfs, Vec<XraySearchStep>) {
   let front: PathBuf = tree(
     &format!("{name}_front"),
     &[("configs/system.ltx", "front"), ("configs/only_front.ltx", "front")],
@@ -41,7 +41,7 @@ fn layered(name: &str) -> (XrayVfs, Vec<XrayProbeStep>) {
 
   let mut vfs: XrayVfs = XrayVfs::new();
 
-  let steps: Vec<XrayProbeStep> = XrayProbePlan::new()
+  let steps: Vec<XraySearchStep> = XraySearchPlan::new()
     .with_root("front", &front)
     .expect("front plans")
     .with_root("back", &back)
@@ -63,11 +63,11 @@ fn destination(name: &str) -> PathBuf {
 #[test]
 fn a_directory_extraction_writes_the_copy_the_world_resolves() {
   let (vfs, steps) = layered("directory");
-  let probe: XrayProbe = vfs.probe().with_steps(steps);
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
   let out: PathBuf = destination("directory");
 
   let result: ArchiveExtractDirectoryResult =
-    XrayWorldExtractor::extract_directory(&probe, "configs", &out).expect("the prefix resolves");
+    XrayWorldExtractor::extract_directory(&search, "configs", &out).expect("the prefix resolves");
 
   assert_eq!(result.outcome, JobOutcome::Completed);
   assert_eq!(result.extracted_count, 3, "one file per engine path under the prefix");
@@ -89,28 +89,28 @@ fn a_directory_extraction_writes_the_copy_the_world_resolves() {
 #[test]
 fn an_empty_prefix_extracts_the_whole_world_with_its_layout() {
   let (vfs, steps) = layered("whole");
-  let probe: XrayProbe = vfs.probe().with_steps(steps);
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
   let out: PathBuf = destination("whole");
 
   let result: ArchiveExtractDirectoryResult =
-    XrayWorldExtractor::extract_directory(&probe, "", &out).expect("the root resolves");
+    XrayWorldExtractor::extract_directory(&search, "", &out).expect("the root resolves");
 
   assert_eq!(result.extracted_count, 4);
   assert!(out.join("configs").join("system.ltx").is_file());
   assert!(out.join("textures").join("outside.dds").is_file());
 }
 
-/// Many workers read through one probe at once, and every winner still lands once.
+/// Many workers read through one search at once, and every winner still lands once.
 #[test]
 fn a_whole_world_extracts_across_several_workers() {
   let (vfs, steps) = layered("parallel");
-  let probe: XrayProbe = vfs.probe().with_steps(steps);
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
   let out: PathBuf = destination("parallel");
 
   let result: ArchiveExtractDirectoryResult =
     ExecutionRequest::Workers(NonZeroUsize::new(4).expect("four is not zero"))
       .resolve()
-      .install(|| XrayWorldExtractor::extract_directory(&probe, "", &out))
+      .install(|| XrayWorldExtractor::extract_directory(&search, "", &out))
       .expect("the pool starts")
       .expect("the root resolves");
 
@@ -126,9 +126,9 @@ fn a_whole_world_extracts_across_several_workers() {
 #[test]
 fn a_prefix_nothing_resolves_under_is_refused_rather_than_writing_an_empty_tree() {
   let (vfs, steps) = layered("absent");
-  let probe: XrayProbe = vfs.probe().with_steps(steps);
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
 
-  assert!(XrayWorldExtractor::extract_directory(&probe, "meshes", destination("absent")).is_err());
+  assert!(XrayWorldExtractor::extract_directory(&search, "meshes", destination("absent")).is_err());
 }
 
 #[test]
@@ -140,17 +140,17 @@ fn a_prefix_matches_on_whole_segments() {
   );
 
   let mut vfs: XrayVfs = XrayVfs::new();
-  let steps: Vec<XrayProbeStep> = XrayProbePlan::new()
+  let steps: Vec<XraySearchStep> = XraySearchPlan::new()
     .with_root("root", &root)
     .expect("plans")
     .mount_into(&mut vfs)
     .expect("mounts");
 
-  let probe: XrayProbe = vfs.probe().with_steps(steps);
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
   let out: PathBuf = destination("segments");
 
   let result: ArchiveExtractDirectoryResult =
-    XrayWorldExtractor::extract_directory(&probe, "configs", &out).expect("the prefix resolves");
+    XrayWorldExtractor::extract_directory(&search, "configs", &out).expect("the prefix resolves");
 
   assert_eq!(result.extracted_count, 1);
   assert!(out.join("a.ltx").is_file());
@@ -160,12 +160,12 @@ fn a_prefix_matches_on_whole_segments() {
 #[test]
 fn one_file_is_written_where_the_caller_pointed() {
   let (vfs, steps) = layered("file");
-  let probe: XrayProbe = vfs.probe().with_steps(steps);
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
   let out: PathBuf = destination("file");
   let target: PathBuf = out.join("nested").join("picked.ltx");
 
   let result: ArchiveExtractResult =
-    XrayWorldExtractor::extract_file(&probe, "configs\\system.ltx", &target).expect("the path resolves");
+    XrayWorldExtractor::extract_file(&search, "configs\\system.ltx", &target).expect("the path resolves");
 
   assert_eq!(result.name, "configs\\system.ltx");
   assert_eq!(result.size, "front".len() as u64);
@@ -179,11 +179,11 @@ fn one_file_is_written_where_the_caller_pointed() {
 #[test]
 fn a_file_nothing_resolves_is_refused() {
   let (vfs, steps) = layered("file_absent");
-  let probe: XrayProbe = vfs.probe().with_steps(steps);
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
 
   assert!(
     XrayWorldExtractor::extract_file(
-      &probe,
+      &search,
       "configs\\absent.ltx",
       destination("file_absent").join("absent.ltx")
     )
@@ -196,10 +196,10 @@ fn an_entry_name_cannot_write_outside_the_destination() {
   // Names come from the mounts rather than from the caller, so containment is the writer's property: proven here
   // through the destination the extractor writes every entry through.
   let (vfs, steps) = layered("contained");
-  let probe: XrayProbe = vfs.probe().with_steps(steps);
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
   let out: PathBuf = destination("contained");
 
-  XrayWorldExtractor::extract_directory(&probe, "", &out).expect("the root resolves");
+  XrayWorldExtractor::extract_directory(&search, "", &out).expect("the root resolves");
 
   for entry in walk(&out) {
     assert!(

@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_archive::{ArchiveReadPolicy, ArchiveReadResult};
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayAsset, XrayPathCollision, XrayProbe, XrayRoots, XrayShadowingEntry};
+use xrf_vfs::{XrayAsset, XrayPathCollision, XrayRoots, XraySearch, XrayShadowingEntry};
 
 use crate::plugins::archives::browse::archive_world_entry::ArchiveWorldEntry;
 
@@ -34,14 +34,14 @@ pub struct ArchiveWorld {
 }
 
 impl ArchiveWorld {
-  /// Lists everything a probe reaches, folded into the shape the explorer browses.
-  pub fn list(probe: &XrayProbe, roots: XrayRoots) -> Self {
-    let entries: Vec<XrayShadowingEntry> = probe.list_shadowing_entries();
+  /// Lists everything a search reaches, folded into the shape the explorer browses.
+  pub fn list(search: &XraySearch, roots: XrayRoots) -> Self {
+    let entries: Vec<XrayShadowingEntry> = search.list_shadowing_entries();
 
     Self {
-      collisions: probe.list_collisions(),
-      mounts: probe.list_roots(),
-      sources: probe.list_containers(),
+      collisions: search.list_collisions(),
+      mounts: search.list_roots(),
+      sources: search.list_containers(),
       read_policy: ArchiveReadPolicy::default(),
       roots,
       shadowed_count: entries.iter().filter(|entry| entry.is_shadowing()).count(),
@@ -66,7 +66,7 @@ impl ArchiveWorld {
   ///
   /// Returns an error when this world does not hold the path, the policy refuses it, or the bytes cannot be read or
   /// decoded.
-  pub fn read_text(&self, probe: &XrayProbe, name: &str) -> XrfResult<ArchiveReadResult> {
+  pub fn read_text(&self, search: &XraySearch, name: &str) -> XrfResult<ArchiveReadResult> {
     let entry: &ArchiveWorldEntry = self
       .find(name)
       .ok_or_else(|| XrfError::new_not_found_error(format!("File '{name}' is not found in the opened game folder")))?;
@@ -74,13 +74,11 @@ impl ArchiveWorld {
 
     self.read_policy.assert_can_read_as_text(name, size)?;
 
-    let asset: XrayAsset = probe
+    let asset: XrayAsset = search
       .find(name)?
-      .get_asset()
-      .cloned()
       .ok_or_else(|| XrfError::new_not_found_error(format!("'{name}' resolves to nothing in the mounted roots")))?;
 
-    ArchiveReadResult::decode(name, &probe.read_asset_bytes(&asset)?, size)
+    ArchiveReadResult::decode(name, &search.read_asset(&asset)?, size)
   }
 }
 
@@ -90,7 +88,7 @@ mod tests {
   use std::path::PathBuf;
 
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-  use xrf_vfs::{XrayAssetContainer, XrayMountMode, XrayProbeStep, XrayRoot, XrayRoots, XrayVfs};
+  use xrf_vfs::{XrayAssetContainer, XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchStep, XrayVfs};
 
   use super::ArchiveWorld;
 
@@ -126,13 +124,13 @@ mod tests {
     ]);
 
     let mut vfs: XrayVfs = XrayVfs::new();
-    let steps: Vec<XrayProbeStep> = roots
-      .to_probe_plan()
+    let steps: Vec<XraySearchStep> = roots
+      .to_search_plan()
       .expect("the roots plan")
       .mount_into(&mut vfs)
       .expect("the roots mount");
 
-    ArchiveWorld::list(&vfs.probe().with_steps(steps), roots)
+    ArchiveWorld::list(&XraySearch::new(vfs).with_steps(steps), roots)
   }
 
   #[test]

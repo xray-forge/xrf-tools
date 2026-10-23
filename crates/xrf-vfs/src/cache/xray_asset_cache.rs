@@ -5,12 +5,12 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use xrf_error::XrfResult;
 
+use crate::XrayLookupScope;
 use crate::asset::XrayAssetType;
 use crate::cache::xray_cache_flights::{XrayCacheFlightClaim, XrayCacheFlights};
 use crate::cache::xray_cache_key::XrayCacheKey;
 use crate::cache::xray_cache_policy::XrayCachePolicy;
 use crate::cache::xray_cache_stats::XrayCacheStats;
-use crate::vfs::XrayLookupScope;
 
 #[derive(Debug)]
 struct XrayCacheEntry {
@@ -18,15 +18,7 @@ struct XrayCacheEntry {
   bytes: u64,
 }
 
-/// Parsed assets a mounted world keeps, so a second read of the same asset costs a hash lookup.
-///
-/// Lives on the mount rather than in a global, which is what keeps two open projects from serving each other's assets
-/// and what makes the lifetime obvious — the store dies with the world it describes. The engine reaches the same
-/// arrangement from the other end: `motions_container` in `xray-16` is global because a running game mounts exactly one
-/// world, and it checks its own map before opening a file for the reason this type exists.
-///
-/// Retention is policy, never a property of the call site. A kind the policy excludes flows through the identical read,
-/// parses, and simply is not kept, so enabling it later changes no code.
+/// Parsed assets a VFS snapshot keeps, so a second read of the same asset costs a hash lookup.
 ///
 /// # Statistics
 ///
@@ -56,7 +48,7 @@ impl XrayAssetCache {
     &self.policy
   }
 
-  /// Returns a retained value, if this world is holding one under that identity.
+  /// Returns a retained value, if this snapshot is holding one under that identity.
   ///
   /// A plain lookup, outside the accounting: it reports what the store holds without changing what the run reports
   /// about itself. [`Self::get_or_load`] is the read that counts.
@@ -127,10 +119,6 @@ impl XrayAssetCache {
   }
 
   /// Retains a parsed value if the policy allows its kind and the budget has room.
-  ///
-  /// `bytes` is the source length the value was parsed from, which stands in for its parsed size: within an order of
-  /// magnitude of the real thing, and free to obtain, where a real measurement would need every format crate to
-  /// describe itself.
   pub fn insert<T: Send + Sync + 'static>(
     &self,
     scope: &XrayLookupScope,
@@ -148,9 +136,6 @@ impl XrayAssetCache {
   }
 
   /// Drops everything no caller is holding, and answers how many entries went.
-  ///
-  /// The refcount is the liveness signal, so this is safe at any moment: an entry with one reference is held by this
-  /// store alone. `xray-16` spells the same idea `motions_container::clean(false)` and calls it between levels.
   pub fn clean_unreferenced(&self) -> usize {
     self.drop_entries(|_, entry| Arc::strong_count(&entry.value) > 1)
   }
@@ -173,8 +158,6 @@ impl XrayAssetCache {
   }
 
   /// Answers with a retained value and counts the hit it is.
-  ///
-  /// The only place a hit is counted, so a hit means exactly one thing: this reader was spared a load.
   fn serve_retained<T: Send + Sync + 'static>(&self, key: &XrayCacheKey) -> Option<Arc<T>> {
     let retained: Arc<T> = self.peek(key)?;
 
@@ -184,9 +167,6 @@ impl XrayAssetCache {
   }
 
   /// Runs the load and counts the miss it is.
-  ///
-  /// The only place `load` runs, so a miss means exactly one thing: this reader parsed. Every path that declines to
-  /// coordinate reaches its load through here, which is what keeps the two counters describing one rule.
   ///
   /// # Errors
   ///
@@ -204,9 +184,6 @@ impl XrayAssetCache {
   }
 
   /// Loads for this reader alone, retaining nothing and sharing nothing.
-  ///
-  /// What an excluded kind, a re-entrant load, and a released waiter whose owner failed all do, for one reason: none of
-  /// them can be answered from what the store holds, and each is a read that a sequential run would also have made.
   ///
   /// # Errors
   ///
@@ -253,8 +230,6 @@ impl XrayAssetCache {
   }
 
   /// Keeps the entries `keep` admits, and answers how many went.
-  ///
-  /// Shared by the two operations that drop by a rule; whole-store [`Self::clear`] states itself.
   fn drop_entries<F>(&self, keep: F) -> usize
   where
     F: FnMut(&XrayCacheKey, &mut XrayCacheEntry) -> bool,

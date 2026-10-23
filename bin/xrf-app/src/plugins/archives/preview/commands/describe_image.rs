@@ -40,7 +40,7 @@ pub async fn archives_describe_image(
     .ok_or_else(|| format!("Failed to describe image '{logical_path}': no webview renders this extension"))?;
 
   let bytes: Vec<u8> = assets
-    .with_probe(&roots, |probe| read_located_asset(probe, &logical_path))?
+    .with_search(&roots, |search| read_located_asset(search, &logical_path))?
     .map_err(|error: XrfError| format!("Failed to describe image '{logical_path}': {error}"))?;
 
   let shape: Option<ImageShape> = ImageShape::of_bytes(&bytes);

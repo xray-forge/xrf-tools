@@ -9,10 +9,10 @@ use xrf_level::LevelCformFile;
 use xrf_ltx::{Ltx, LtxDialect};
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_math::Vector3d;
-use xrf_vfs::{XrayInputRecord, XrayProbe, XrayRoots};
+use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch};
 use xrf_visual::SectorOutline;
 
-use crate::core::assets::{AssetMountState, detect_probe_engine};
+use crate::core::assets::{AssetMountState, detect_search_engine};
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionParts, SessionSnapshot};
 use crate::core::types::TauriResult;
@@ -76,11 +76,11 @@ pub async fn levels_open_level(
   let (opened, engine, inputs, source, roots, dialect) = execution
     .run_blocking("Opening the level", move || {
       let inputs: XrayInputRecord = XrayInputRecord::new();
-      let (opened, engine): (OpenedLevel, XrayEngineResolution) = assets.with_fresh_probe(&roots, |probe| {
-        let probe: XrayProbe = probe.recording(&inputs);
+      let (opened, engine): (OpenedLevel, XrayEngineResolution) = assets.with_fresh_search(&roots, |search| {
+        let search: XraySearch = search.clone().with_recording(&inputs);
 
-        open(&source, &probe, (&roots, &dialect))
-          .map(|opened| (opened, engine.resolve(|| detect_probe_engine(&probe, &roots))))
+        open(&source, &search, (&roots, &dialect))
+          .map(|opened| (opened, engine.resolve(|| detect_search_engine(&search, &roots))))
       })??;
 
       TauriResult::Ok((opened, engine, inputs, source, roots, dialect))
@@ -125,10 +125,10 @@ pub async fn levels_open_level(
 
 /// Reads the level and its spawn side by side, outlines its sectors and decides where it opens.
 ///
-/// `probe` records what the level itself is read from; the spawn and the sections, kept as parts, record their own.
+/// `search` records what the level itself is read from; the spawn and the sections, kept as parts, record their own.
 fn open(
   source: &LevelSource,
-  probe: &XrayProbe,
+  search: &XraySearch,
   configs: (&XrayRoots, &Arc<dyn LtxDialect>),
 ) -> TauriResult<OpenedLevel> {
   let scope: XrayTextureScope = source.get_texture_scope();
@@ -137,30 +137,31 @@ fn open(
   // The spawn, what stands over the places it has an actor at, and the configs' sections it names are read beside the
   // level rather than after it: the renderer's first texture asks whether the configs reduce it.
   let (read, (spawn, open, sections)) = rayon::join(
-    || read_source(source, probe),
+    || read_source(source, search),
     || {
-      let spawn: Result<Arc<LevelSpawn>, String> = read_source_spawn(source, &probe.recording(&spawn_inputs));
+      let spawn: Result<Arc<LevelSpawn>, String> =
+        read_source_spawn(source, &search.clone().with_recording(&spawn_inputs));
 
       // Where the level starts is decided over its spawn, and the sections are those the spawn names.
-      probe.record_inputs(&spawn_inputs);
+      search.record_inputs(&spawn_inputs);
       sections_inputs.extend_from(&spawn_inputs);
 
       let open: Vec<bool> = spawn.as_deref().map_or_else(
         |_| Vec::new(),
-        |spawn| find_open(source, probe, &list_level_start_eyes(spawn)),
+        |spawn| find_open(source, search, &list_level_start_eyes(spawn)),
       );
 
       let sections: Option<Result<Arc<Ltx>, String>> = spawn
         .as_deref()
         .ok()
-        .map(|spawn| read_level_sections(source, &probe.recording(&sections_inputs), configs, spawn));
+        .map(|spawn| read_level_sections(source, &search.clone().with_recording(&sections_inputs), configs, spawn));
 
       (spawn, open, sections)
     },
   );
   let read: ReadLevel = read?;
-  let surfaces: Vec<XraySurfaceDescriptor> = resolve_surfaces(&read.level, probe, &scope);
-  let textures: Vec<LevelTextureReference> = resolve_level_textures(&read.level, &surfaces, probe, &scope);
+  let surfaces: Vec<XraySurfaceDescriptor> = resolve_surfaces(&read.level, search, &scope);
+  let textures: Vec<LevelTextureReference> = resolve_level_textures(&read.level, &surfaces, search, &scope);
   let outlines: Vec<SectorOutline> = read
     .level
     .sectors
@@ -177,7 +178,7 @@ fn open(
   );
 
   Ok(OpenedLevel {
-    level_map: read_level_map(source, probe),
+    level_map: read_level_map(source, search),
     outlines,
     read,
     sections,
@@ -192,8 +193,8 @@ fn open(
 
 /// Whether nothing of the collision form stands over each eye; every one for a level without a readable form, which
 /// covers nothing.
-fn find_open(source: &LevelSource, probe: &XrayProbe, eyes: &[Vector3d]) -> Vec<bool> {
-  read_optional_file(source, probe, COLLISION_FILE)
+fn find_open(source: &LevelSource, search: &XraySearch, eyes: &[Vector3d]) -> Vec<bool> {
+  read_optional_file(source, search, COLLISION_FILE)
     .map_err(|error| log::warn!("{error}"))
     .ok()
     .flatten()

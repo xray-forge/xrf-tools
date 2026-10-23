@@ -9,9 +9,9 @@ use xrf_utils::format_path;
 use crate::cache::{XrayAssetCache, XrayCachePolicy};
 use crate::input::{XrayRevision, XrayRevisions};
 use crate::path::{XrayLogicalPath, normalize};
+use crate::search::{XrayDirectoryListing, XrayMountedEntry, XrayShadowedCopy, XrayShadowingEntry};
 use crate::source::XrayDirectorySource;
 use crate::trace::XrayReadTrace;
-use crate::vfs::{XrayDirectoryListing, XrayMountedEntry, XrayShadowedCopy, XrayShadowingEntry};
 use crate::{
   XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetSource, XrayAssetType, XrayLookupScope, XrayMount,
   XrayMountId, XrayPathCollision, XraySkippedMount, XraySourceKind,
@@ -21,7 +21,7 @@ use crate::{
 #[derive(Debug, Default)]
 pub struct XrayVfs {
   mounts: Vec<XrayMount>,
-  /// Parsed assets this world retains, governed by its own policy and empty unless a caller sets one.
+  /// Parsed assets this snapshot retains, governed by its own policy and empty unless a caller sets one.
   cache: XrayAssetCache,
   /// Per-path account of what was physically read, absent unless a caller asked to be told; one account however many
   /// forks read.
@@ -32,7 +32,7 @@ pub struct XrayVfs {
   failed: HashMap<PathBuf, Vec<(XraySourceKind, usize)>>,
   /// Paths already mounted from a plan, so a later plan naming the same source reuses it.
   planned: HashMap<PathBuf, XrayMountId>,
-  /// How many changes were committed to the project this world is a snapshot of.
+  /// How many changes were committed to the project this snapshot is a snapshot of.
   revision: XrayRevision,
   /// When each loose file and indexed directory last changed, where one did.
   revisions: XrayRevisions,
@@ -44,31 +44,31 @@ impl XrayVfs {
     Self::default()
   }
 
-  /// Sets what this world may retain after parsing an asset.
+  /// Sets what this snapshot may retain after parsing an asset.
   pub fn with_cache_policy(mut self, policy: XrayCachePolicy) -> Self {
     self.cache = XrayAssetCache::new(policy);
 
     self
   }
 
-  /// The parsed assets this world is holding.
+  /// The parsed assets this snapshot is holding.
   pub fn get_cache(&self) -> &XrayAssetCache {
     &self.cache
   }
 
-  /// Accounts for every physical read this world performs from here on.
+  /// Accounts for every physical read this snapshot performs from here on.
   pub fn with_read_trace(mut self) -> Self {
     self.trace = Some(Arc::default());
 
     self
   }
 
-  /// What this world has read, or `None` when it was never asked to account for it.
+  /// What this snapshot has read, or `None` when it was never asked to account for it.
   pub fn get_read_trace(&self) -> Option<&XrayReadTrace> {
     self.trace.as_deref()
   }
 
-  /// A world over the same mounts, sharing each source and the index read for it rather than reading them again, to
+  /// A snapshot over the same mounts, sharing each source and the index read for it rather than reading them again, to
   /// mount more into while this one goes on serving reads.
   pub fn fork(&self) -> Self {
     Self {
@@ -83,7 +83,7 @@ impl XrayVfs {
     }
   }
 
-  /// The project revision this world is a snapshot of: how many changes were committed before it.
+  /// The project revision this snapshot is a snapshot of: how many changes were committed before it.
   pub fn get_revision(&self) -> XrayRevision {
     self.revision
   }
@@ -92,7 +92,7 @@ impl XrayVfs {
     &self.revisions
   }
 
-  /// Reads through a mount, accounting for the read when this world is tracing.
+  /// Reads through a mount, accounting for the read when this snapshot is tracing.
   fn read_from_mount(&self, mount: &XrayMount, source_path: &str, logical_path: &str) -> XrfResult<Vec<u8>> {
     let bytes: Vec<u8> = mount.get_source().read(source_path)?;
 
@@ -185,7 +185,7 @@ impl XrayVfs {
 
     self.mounts.push(XrayMount::new(id, base, source)?);
 
-    // A new mount can win any path, so nothing retained can be trusted to describe this world any more. Per-path
+    // A new mount can win any path, so nothing retained can be trusted to describe this snapshot any more. Per-path
     // reasoning is not available here: the mount is indexed, but which paths it now shadows is exactly the question a
     // resolve answers, and answering it for every retained entry costs more than parsing them again.
     self.cache.clear();
@@ -550,7 +550,7 @@ impl XrayVfs {
 
         for copy in hidden.get(source_path.as_str()).into_iter().flatten() {
           // Re-addressed under this mount's base: a source names its copies in its own terms, and a listing answers
-          // in the world's.
+          // in the snapshot's.
           let asset: XrayAsset = XrayAsset::new(
             XrayLogicalPath::from_normalized(logical_path.to_string()),
             copy.asset.get_container().clone(),

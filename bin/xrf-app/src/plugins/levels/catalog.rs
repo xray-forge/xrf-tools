@@ -4,21 +4,25 @@ use std::sync::Arc;
 
 use xrf_environment::{EnvironmentCatalog, EnvironmentReadOptions, EnvironmentReader};
 use xrf_ltx::{LtxDialect, LtxProject, LtxProjectOptions};
-use xrf_vfs::{XrayProbe, XrayRoots};
+use xrf_vfs::{XrayRoots, XraySearch};
 
 /// Where the game keeps its configs.
 pub const CONFIGS_DIRECTORY: &str = "configs";
 
-/// Opens the configs `probe` reaches as a project that reads only what is asked of it, through the probe, so they are
+/// Opens the configs `search` reaches as a project that reads only what is asked of it, through the search, so they are
 /// recorded where it records; `roots` names it in reports.
 ///
 /// # Errors
 ///
 /// Returns the reason the configs directory cannot be named.
-pub fn open_configs(roots: &XrayRoots, probe: &XrayProbe, dialect: Arc<dyn LtxDialect>) -> Result<LtxProject, String> {
-  LtxProject::open_lean_at_probe_opt(
+pub fn open_configs(
+  roots: &XrayRoots,
+  search: &XraySearch,
+  dialect: Arc<dyn LtxDialect>,
+) -> Result<LtxProject, String> {
+  LtxProject::open_lean_at_search_opt(
     roots.describe(),
-    probe,
+    search,
     Some(CONFIGS_DIRECTORY),
     LtxProjectOptions::default().with_dialect(dialect),
   )

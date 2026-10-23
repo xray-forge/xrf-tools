@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, LtxDocument, LtxDocumentSource, LtxProject};
-use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayProbe};
+use xrf_vfs::{XrayAsset, XrayLogicalPath, XraySearch};
 
 use crate::inventory::{LtxInventory, LtxInventoryFile, LtxInventoryRole};
 
@@ -34,10 +34,10 @@ impl<'a> LtxInventoryReader<'a> {
     let mut includers: Includers = self.list_includers()?;
 
     let mut files: Vec<LtxInventoryFile> = Vec::with_capacity(self.project.ltx_files.len());
-    let probe: XrayProbe = self.project.probe();
+    let search: &XraySearch = self.project.search();
 
     for path in &self.project.ltx_files {
-      let asset: Option<XrayAsset> = probe.find(path.as_str())?.get_asset().cloned();
+      let asset: Option<XrayAsset> = search.find(path.as_str())?;
 
       files.push(LtxInventoryFile {
         included_by: includers.remove(path.as_str()).unwrap_or_default(),

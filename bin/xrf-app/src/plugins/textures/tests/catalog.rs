@@ -6,12 +6,12 @@ use std::path::PathBuf;
 
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_thm::{ThmBumpMode, ThmTextureFlag, ThmTextureType};
-use xrf_vfs::{XrayMountId, XrayMountMode, XrayRoots, XrayVfs};
+use xrf_vfs::{XrayMountId, XrayMountMode, XrayRoots, XraySearch, XrayVfs};
 
 use crate::plugins::textures::catalog::{TextureCatalog, TextureCatalogMode, TextureEntry, TextureRole};
 use crate::plugins::textures::summary::{TextureBadges, TextureMaterialSummary};
 use crate::plugins::textures::tests::fixtures::{
-  BASE, BUMP, COMPANION, bumped_tree, catalog, entry, file_source, loose_directory, probe_over, summary, sweep,
+  BASE, BUMP, COMPANION, bumped_tree, catalog, entry, file_source, loose_directory, search_over, summary, sweep,
   to_dds_bytes,
 };
 
@@ -113,9 +113,9 @@ fn a_plain_directory_lists_every_texture_it_holds_rather_than_none() {
     .mount_directory("", &root)
     .expect("a plain directory mounts as a root");
   let roots: XrayRoots = XrayRoots::one(root.clone(), XrayMountMode::Directory);
+  let search: XraySearch = search_over(vfs, id);
 
-  let listed: TextureCatalog =
-    TextureCatalog::list(&probe_over(&vfs, id), roots.clone(), TextureCatalogMode::LooseDirectory);
+  let listed: TextureCatalog = TextureCatalog::list(&search, roots.clone(), TextureCatalogMode::LooseDirectory);
 
   assert_eq!(listed.mode, TextureCatalogMode::LooseDirectory);
   assert_eq!(
@@ -147,7 +147,7 @@ fn a_plain_directory_lists_every_texture_it_holds_rather_than_none() {
   assert_ne!(beside.reference, nested.reference);
 
   // The same directory listed as a game tree, which is what the mode is choosing between.
-  let as_tree: TextureCatalog = TextureCatalog::list(&probe_over(&vfs, id), roots, TextureCatalogMode::Roots);
+  let as_tree: TextureCatalog = TextureCatalog::list(&search, roots, TextureCatalogMode::Roots);
 
   assert!(as_tree.entries.is_empty());
   assert_eq!(as_tree.outside_textures_count, 2);

@@ -4,7 +4,7 @@ use xrf_thm::ThmBumpMode;
 use xrf_vfs::XrayResolution;
 
 use crate::fixtures::{FixtureTree, ThmFixture};
-use crate::tests::material_probe::{BASE, BUMP, COMPANION, describe, located_path, used_bump};
+use crate::tests::material_search::{BASE, BUMP, COMPANION, describe, located_path, used_bump};
 use crate::{XrayBumpFallback, XrayBumpMode, XrayBumpOutcome, XrayMaterialDeclaration, XrayMaterialDescriptor};
 
 #[test]

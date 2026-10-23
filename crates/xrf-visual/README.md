@@ -31,7 +31,7 @@ ranges into that buffer, not independent arrays or file offsets.
 ## Geometry and draw ranges
 
 Read an `OgfFile` with [xrf-db](../xrf-db/README.md), then call `VisualPacker::pack(&file)` to obtain a `VisualPackage`.
-Use `VisualDependencies::resolve` with its description and an `XrayProbe` to locate external textures and motions.
+Use `VisualDependencies::resolve` with its description and an `XraySearch` to locate external textures and motions.
 `bake_motion` prepares skeletal animation poses.
 
 Packing converts coordinates and triangle winding for renderer space. A submesh without drawable geometry becomes
@@ -49,15 +49,15 @@ produced geometry. Skinning indices address the model's bone list, with four slo
 
 ```rust,no_run
 use xrf_db::{OgfFile, XRayByteOrder};
-use xrf_vfs::{XrayLookupScope, XrayMountMode, XrayVfs};
+use xrf_vfs::{XrayLookupScope, XrayMountMode, XraySearch, XrayVfs};
 use xrf_visual::{VisualDependencies, VisualPacker};
 
 fn main() -> xrf_error::XrfResult {
   let file = OgfFile::read_from_path::<XRayByteOrder, _>(&"gamedata/meshes/example.ogf")?;
   let package = VisualPacker::pack(&file);
   let vfs = XrayVfs::open(XrayMountMode::Directory, "gamedata")?;
-  let probe = vfs.probe().with_step("gamedata", XrayLookupScope::all());
-  let dependencies = VisualDependencies::resolve(&package.description, &probe);
+  let search = XraySearch::new(vfs).with_step("gamedata", XrayLookupScope::all());
+  let dependencies = VisualDependencies::resolve(&package.description, &search);
 
   println!("First submesh texture: {:?}", dependencies.find_texture(0));
 
@@ -67,7 +67,7 @@ fn main() -> xrf_error::XrfResult {
 
 Texture dependency records retain the submesh index; motion references can resolve to several assets when they contain
 a mask. Embedded motions are already in the model and are not external dependencies. The caller decides which roots
-the probe searches and in what order.
+the search covers and in what order.
 
 ## Animation and limitations
 

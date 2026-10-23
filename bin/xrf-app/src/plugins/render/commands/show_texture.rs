@@ -38,8 +38,8 @@ pub async fn render_show_texture(
       let source: TextureRenderSource = execution
         .run_blocking("Describing a texture surface", move || {
           let roots: XrayRoots = request.roots.centred_on(request.source.physical_path());
-          let description: TextureDescription = assets.with_probe(&roots, |probe| {
-            TextureDescription::describe(probe, request.source.clone(), roots.clone())
+          let description: TextureDescription = assets.with_search(&roots, |search| {
+            TextureDescription::describe(search, request.source.clone(), roots.clone())
           })??;
 
           TauriResult::Ok(TextureRenderSource::new(&description, &request, assets))

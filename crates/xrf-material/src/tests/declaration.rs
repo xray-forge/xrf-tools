@@ -1,10 +1,10 @@
 //! The seven declaration states, one test each, so a change that collapses two of them fails by name.
 
 use xrf_thm::{ThmBumpMode, ThmTextureType};
-use xrf_vfs::{XrayMountId, XrayProbe, XrayVfs};
+use xrf_vfs::{XrayMountId, XraySearch, XrayVfs};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
-use crate::tests::material_probe::{BASE, BUMP, COMPANION, describe, probe_over, used_bump};
+use crate::tests::material_search::{BASE, BUMP, COMPANION, describe, search_over, used_bump};
 use crate::{
   XrayBumpMode, XrayBumpOutcome, XrayMaterialDeclaration, XrayMaterialDescriptor, XrayMaterialResolver,
   XrayTextureScope,
@@ -142,7 +142,7 @@ fn a_rejected_reference_is_undeclared() {
     let mut vfs: XrayVfs = XrayVfs::new();
     let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
 
-    XrayMaterialResolver::describe_texture(&probe_over(&vfs, id), &XrayTextureScope::shared(), "..\\..\\outside")
+    XrayMaterialResolver::describe_texture(&search_over(vfs, id), &XrayTextureScope::shared(), "..\\..\\outside")
   };
 
   assert_eq!(descriptor, XrayMaterialDescriptor::undeclared());
@@ -157,18 +157,16 @@ fn describing_a_located_descriptor_answers_the_same_as_describing_its_texture() 
     .with_descriptor(BASE, &used_bump());
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let probe: XrayProbe = probe_over(&vfs, id);
+  let search: XraySearch = search_over(vfs, id);
 
-  let located = probe
+  let located = search
     .find("textures\\act\\act_stalker.thm")
     .expect("path is valid")
-    .get_asset()
-    .cloned()
     .expect("descriptor is located");
 
   assert_eq!(
-    XrayMaterialResolver::describe_descriptor(&probe, &located),
-    XrayMaterialResolver::describe_texture(&probe, &XrayTextureScope::shared(), BASE)
+    XrayMaterialResolver::describe_descriptor(&search, &located),
+    XrayMaterialResolver::describe_texture(&search, &XrayTextureScope::shared(), BASE)
   );
 }
 
@@ -182,14 +180,14 @@ fn a_textures_ltx_in_the_roots_is_named_and_otherwise_unread() {
 
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let probe: XrayProbe = probe_over(&vfs, id);
+  let search: XraySearch = search_over(vfs, id);
 
   assert_eq!(
-    XrayMaterialResolver::find_textures_ltx(&probe).map(|asset| asset.get_logical_path().to_string()),
+    XrayMaterialResolver::find_textures_ltx(&search).map(|asset| asset.get_logical_path().to_string()),
     Some(String::from(XrayMaterialResolver::TEXTURES_LTX_LOGICAL_PATH))
   );
   assert_eq!(
-    XrayMaterialResolver::describe_texture(&probe, &XrayTextureScope::shared(), BASE),
+    XrayMaterialResolver::describe_texture(&search, &XrayTextureScope::shared(), BASE),
     XrayMaterialDescriptor::undeclared()
   );
 
@@ -198,7 +196,7 @@ fn a_textures_ltx_in_the_roots_is_named_and_otherwise_unread() {
   let bare_id: XrayMountId = bare_vfs.mount_directory("", bare.root()).expect("tree mounts");
 
   assert_eq!(
-    XrayMaterialResolver::find_textures_ltx(&probe_over(&bare_vfs, bare_id)),
+    XrayMaterialResolver::find_textures_ltx(&search_over(bare_vfs, bare_id)),
     None
   );
 }

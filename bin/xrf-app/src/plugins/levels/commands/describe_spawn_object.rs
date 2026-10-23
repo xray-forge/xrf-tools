@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tauri::State;
 use xrf_spawn::{AlifeObject, AlifeObjectAbstract};
-use xrf_vfs::XrayProbe;
+use xrf_vfs::XraySearch;
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
@@ -25,7 +25,7 @@ pub async fn levels_describe_spawn_object(
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let value: LevelSpawnObjectDetails = execution
     .run_blocking("Describing a level spawned object", move || {
-      assets.with_probe(&current.roots, |probe| describe_object(&current, probe, index))
+      assets.with_search(&current.roots, |search| describe_object(&current, search, index))
     })
     .await???;
 
@@ -34,10 +34,10 @@ pub async fn levels_describe_spawn_object(
 
 fn describe_object(
   current: &SessionSnapshot<SelectedLevel>,
-  probe: &XrayProbe,
+  search: &XraySearch,
   index: u32,
 ) -> TauriResult<LevelSpawnObjectDetails> {
-  let spawn = get_level_spawn(current, probe)?;
+  let spawn = get_level_spawn(current, search)?;
   let object: &AlifeObject = spawn
     .objects
     .get(index as usize)

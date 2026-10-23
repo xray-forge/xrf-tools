@@ -3,7 +3,7 @@ use xrf_ogf::{OgfBone, OgfBoneIkData};
 use xrf_omf::OmfFile;
 use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 use xrf_spawn::XRayByteOrder;
-use xrf_vfs::{XrayAsset, XrayProbe, XrayResolution};
+use xrf_vfs::{XrayAsset, XrayResolution, XraySearch};
 use xrf_visual::{VisualDependencies, VisualMotionBake, VisualMotionPose, bake_motion, describe_motion};
 
 use crate::core::types::TauriResult;
@@ -21,12 +21,12 @@ type MotionReader<T> =
 /// Returns an error when no source the visual names carries the motion, or when the one that does cannot be posed onto
 /// this skeleton.
 pub fn bake_named_motion(
-  probe: &XrayProbe,
+  search: &XraySearch,
   skeleton: &SelectedSkeleton,
   dependencies: &VisualDependencies,
   name: &str,
 ) -> TauriResult<VisualMotionPose> {
-  read_named_motion(probe, skeleton, dependencies, (name, "pose"), bake_motion)
+  read_named_motion(search, skeleton, dependencies, (name, "pose"), bake_motion)
 }
 
 /// Describes one named motion as a bake of it onto a selected visual's skeleton would hold it, posing no frame.
@@ -35,18 +35,18 @@ pub fn bake_named_motion(
 ///
 /// Returns an error where `bake_named_motion` would.
 pub fn describe_named_motion(
-  probe: &XrayProbe,
+  search: &XraySearch,
   skeleton: &SelectedSkeleton,
   dependencies: &VisualDependencies,
   name: &str,
 ) -> TauriResult<VisualMotionBake> {
-  read_named_motion(probe, skeleton, dependencies, (name, "describe"), describe_motion)
+  read_named_motion(search, skeleton, dependencies, (name, "describe"), describe_motion)
 }
 
 /// Reads one named motion through `read`: the embedded one of that name first, then the first referenced file's;
 /// `verb` says what was done in a refusal.
 fn read_named_motion<T>(
-  probe: &XrayProbe,
+  search: &XraySearch,
   skeleton: &SelectedSkeleton,
   dependencies: &VisualDependencies,
   (name, verb): (&str, &str),
@@ -73,7 +73,7 @@ fn read_named_motion<T>(
     for asset in located_assets(&dependency.resolution) {
       searched += 1;
 
-      let Ok(omf) = read_omf(probe, asset) else {
+      let Ok(omf) = read_omf(search, asset) else {
         continue;
       };
 
@@ -97,7 +97,7 @@ fn read_named_motion<T>(
 
 /// Every motion name the visual can play, embedded ones first then each referenced file's.
 pub fn list_motion_names(
-  probe: &XrayProbe,
+  search: &XraySearch,
   skeleton: &SelectedSkeleton,
   dependencies: &VisualDependencies,
 ) -> Vec<String> {
@@ -109,7 +109,7 @@ pub fn list_motion_names(
 
   for dependency in &dependencies.motions {
     for asset in located_assets(&dependency.resolution) {
-      let Ok(omf) = read_omf(probe, asset) else {
+      let Ok(omf) = read_omf(search, asset) else {
         continue;
       };
 
@@ -128,9 +128,9 @@ fn located_assets(resolution: &XrayResolution) -> &[XrayAsset] {
   resolution.get_assets()
 }
 
-fn read_omf(probe: &XrayProbe, asset: &XrayAsset) -> TauriResult<OmfFile> {
-  let bytes: Vec<u8> = probe
-    .read_asset_bytes(asset)
+fn read_omf(search: &XraySearch, asset: &XrayAsset) -> TauriResult<OmfFile> {
+  let bytes: Vec<u8> = search
+    .read_asset(asset)
     .map_err(|error| format!("Failed to read '{}': {error}", asset.get_logical_path()))?;
 
   OmfFile::read_from_bytes::<XRayByteOrder>(bytes)

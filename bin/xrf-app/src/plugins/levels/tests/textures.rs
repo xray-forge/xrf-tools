@@ -8,7 +8,7 @@ use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope}
 use xrf_shaders::ShaderBlenderClass;
 use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_thm::{ThmBumpMode, ThmTextureFlag};
-use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayMountId, XrayProbe, XrayResolution, XrayVfs};
+use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayMountId, XrayResolution, XraySearch, XrayVfs};
 
 use crate::plugins::levels::state::LevelTextureReference;
 use crate::plugins::levels::surfaces::resolve_surfaces;
@@ -48,10 +48,10 @@ fn new_opened(
 ) -> (Vec<XraySurfaceDescriptor>, Vec<LevelTextureReference>) {
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let probe: XrayProbe = vfs.probe().with_step("tree", XrayLookupScope::only([id]));
+  let search: XraySearch = XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]));
   let scope: XrayTextureScope = new_scope(directory);
-  let surfaces: Vec<XraySurfaceDescriptor> = resolve_surfaces(level, &probe, &scope);
-  let references: Vec<LevelTextureReference> = resolve_level_textures(level, &surfaces, &probe, &scope);
+  let surfaces: Vec<XraySurfaceDescriptor> = resolve_surfaces(level, &search, &scope);
+  let references: Vec<LevelTextureReference> = resolve_level_textures(level, &surfaces, &search, &scope);
 
   (surfaces, references)
 }
@@ -244,16 +244,16 @@ fn resolves_the_bump_pair_and_detail_a_models_surface_binds_beside_its_base() {
     .with_texture("detail\\detail_metal");
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let probe: XrayProbe = vfs.probe().with_step("tree", XrayLookupScope::only([id]));
+  let search: XraySearch = XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]));
   let surfaces: Vec<XraySurfaceDescriptor> = vec![
-    XraySurfaceResolver::open(&probe, XrayTextureScope::shared())
+    XraySurfaceResolver::open(&search, XrayTextureScope::shared())
       .describe("def_shaders\\def_vertex", &["lights\\lights_lamp".to_owned()]),
   ];
 
   let references: Vec<LevelTextureReference> = resolve_surface_textures(
     BTreeSet::from(["lights\\lights_lamp".to_owned()]),
     &surfaces,
-    &probe,
+    &search,
     &XrayTextureScope::shared(),
   );
 

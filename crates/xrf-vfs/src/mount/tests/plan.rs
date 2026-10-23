@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::{
-  FsgameFile, XrayMountMode, XrayMountPlan, XrayProbe, XrayProbePlan, XrayProbeStep, XrayRoots, XraySourceKind, XrayVfs,
+  FsgameFile, XrayMountMode, XrayMountPlan, XrayRoots, XraySearch, XraySearchPlan, XraySearchStep, XraySourceKind,
+  XrayVfs,
 };
 
 /// The alias order a real `fsgame.ltx` uses: archives declared before gamedata, which is what makes loose files win.
@@ -316,16 +317,16 @@ fn a_mounted_plan_names_each_source_by_the_alias_that_declared_it() {
   );
 
   let mut vfs: XrayVfs = XrayVfs::new();
-  let steps: Vec<XrayProbeStep> = XrayRoots::one(root, XrayMountMode::Installation)
-    .to_probe_plan()
+  let steps: Vec<XraySearchStep> = XrayRoots::one(root, XrayMountMode::Installation)
+    .to_search_plan()
     .expect("roots plan")
     .mount_into(&mut vfs)
     .expect("roots mount");
 
-  let probe: XrayProbe = vfs.probe().with_steps(steps);
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
 
   assert_eq!(
-    probe
+    search
       .list_sources()
       .iter()
       .map(|source| source.mount.get_origin())
@@ -337,7 +338,7 @@ fn a_mounted_plan_names_each_source_by_the_alias_that_declared_it() {
   // The fixture writes a text file where a volume belongs, which is the one way a declared source is named by the plan
   // and then cannot be opened.
   assert_eq!(
-    probe
+    search
       .list_skipped_sources()
       .iter()
       .map(|skipped| skipped.origin.as_str())
@@ -353,8 +354,8 @@ fn a_source_that_failed_to_open_is_settled_rather_than_retried() {
     "settled_failure",
     &["db\\textures\\textures.db0", "gamedata\\configs\\system.ltx"],
   );
-  let plan: XrayProbePlan = XrayRoots::one(root, XrayMountMode::Installation)
-    .to_probe_plan()
+  let plan: XraySearchPlan = XrayRoots::one(root, XrayMountMode::Installation)
+    .to_search_plan()
     .expect("roots plan");
 
   let mut vfs: XrayVfs = XrayVfs::new();
@@ -365,19 +366,19 @@ fn a_source_that_failed_to_open_is_settled_rather_than_retried() {
     "nothing is settled before the first mount"
   );
 
-  let steps: Vec<XrayProbeStep> = plan.mount_into(&mut vfs).expect("roots mount");
+  let steps: Vec<XraySearchStep> = plan.mount_into(&mut vfs).expect("roots mount");
 
   assert_eq!(
     plan.find_mounted(&vfs),
     Some(steps.clone()),
-    "a recorded failure settles the plan, so a later probe is found under a read"
+    "a recorded failure settles the plan, so a later search is found under a read"
   );
 
   // A second mount of the same plan must neither try the broken volume again nor record it twice.
   assert_eq!(plan.mount_into(&mut vfs).expect("roots mount again"), steps);
   assert_eq!(vfs.get_skipped_mounts().len(), 1);
   assert_eq!(
-    vfs.probe().with_steps(steps).list_skipped_sources().len(),
+    XraySearch::new(vfs).with_steps(steps).list_skipped_sources().len(),
     1,
     "the step still reports what it could not open"
   );
@@ -389,8 +390,8 @@ fn a_forgotten_failure_is_tried_again() {
     "forgotten_failure",
     &["db\\textures\\textures.db0", "gamedata\\configs\\system.ltx"],
   );
-  let plan: XrayProbePlan = XrayRoots::one(root, XrayMountMode::Installation)
-    .to_probe_plan()
+  let plan: XraySearchPlan = XrayRoots::one(root, XrayMountMode::Installation)
+    .to_search_plan()
     .expect("roots plan");
 
   let mut vfs: XrayVfs = XrayVfs::new();
@@ -421,18 +422,18 @@ fn forgets_the_failures_of_the_plan_it_is_asked_about_alone() {
     "forgotten_settled",
     &["db\\textures\\textures.db0", "gamedata\\configs\\game.ltx"],
   );
-  let retried_plan: XrayProbePlan = XrayRoots::one(retried, XrayMountMode::Installation)
-    .to_probe_plan()
+  let retried_plan: XraySearchPlan = XrayRoots::one(retried, XrayMountMode::Installation)
+    .to_search_plan()
     .expect("roots plan");
-  let settled_plan: XrayProbePlan = XrayRoots::one(settled, XrayMountMode::Installation)
-    .to_probe_plan()
+  let settled_plan: XraySearchPlan = XrayRoots::one(settled, XrayMountMode::Installation)
+    .to_search_plan()
     .expect("roots plan");
 
   let mut vfs: XrayVfs = XrayVfs::new();
 
   retried_plan.mount_into(&mut vfs).expect("roots mount");
 
-  let settled_steps: Vec<XrayProbeStep> = settled_plan.mount_into(&mut vfs).expect("roots mount");
+  let settled_steps: Vec<XraySearchStep> = settled_plan.mount_into(&mut vfs).expect("roots mount");
 
   retried_plan.forget_skipped_in(&mut vfs);
 
@@ -445,7 +446,7 @@ fn forgets_the_failures_of_the_plan_it_is_asked_about_alone() {
   assert_eq!(vfs.get_skipped_mounts().len(), 1);
 }
 
-// A fork is what mounts copy-on-write: the world it came from keeps serving reads unchanged while it mounts more.
+// A fork is what mounts copy-on-write: the snapshot it came from keeps serving reads unchanged while it mounts more.
 #[test]
 fn a_fork_mounts_more_without_changing_the_world_it_came_from() {
   let first: PathBuf = install("fork_first", &["gamedata\\configs\\system.ltx"]);
@@ -453,15 +454,15 @@ fn a_fork_mounts_more_without_changing_the_world_it_came_from() {
     "fork_second",
     &["db\\textures\\textures.db0", "gamedata\\configs\\game.ltx"],
   );
-  let first_plan: XrayProbePlan = XrayRoots::one(first, XrayMountMode::Installation)
-    .to_probe_plan()
+  let first_plan: XraySearchPlan = XrayRoots::one(first, XrayMountMode::Installation)
+    .to_search_plan()
     .expect("roots plan");
-  let second_plan: XrayProbePlan = XrayRoots::one(second, XrayMountMode::Installation)
-    .to_probe_plan()
+  let second_plan: XraySearchPlan = XrayRoots::one(second, XrayMountMode::Installation)
+    .to_search_plan()
     .expect("roots plan");
 
   let mut original: XrayVfs = XrayVfs::new();
-  let steps: Vec<XrayProbeStep> = first_plan.mount_into(&mut original).expect("roots mount");
+  let steps: Vec<XraySearchStep> = first_plan.mount_into(&mut original).expect("roots mount");
   let mut fork: XrayVfs = original.fork();
 
   assert_eq!(
@@ -492,7 +493,7 @@ fn a_fork_mounts_more_without_changing_the_world_it_came_from() {
 }
 
 #[test]
-fn a_probe_lists_what_sits_directly_inside_a_directory() {
+fn a_search_lists_what_sits_directly_inside_a_directory() {
   let root: PathBuf = install(
     "children",
     &[
@@ -505,14 +506,14 @@ fn a_probe_lists_what_sits_directly_inside_a_directory() {
   );
 
   let mut vfs: XrayVfs = XrayVfs::new();
-  let steps: Vec<XrayProbeStep> = XrayRoots::one(root, XrayMountMode::Installation)
-    .to_probe_plan()
+  let steps: Vec<XraySearchStep> = XrayRoots::one(root, XrayMountMode::Installation)
+    .to_search_plan()
     .expect("roots plan")
     .mount_into(&mut vfs)
     .expect("roots mount");
 
-  let probe: XrayProbe = vfs.probe().with_steps(steps);
-  let listing: crate::XrayDirectoryListing = probe.list_children("levels").expect("levels listed");
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
+  let listing: crate::XrayDirectoryListing = search.list_children("levels").expect("levels listed");
 
   assert_eq!(
     listing.directories,
@@ -522,18 +523,6 @@ fn a_probe_lists_what_sits_directly_inside_a_directory() {
   assert!(listing.files.is_empty(), "levels holds directories rather than files");
 
   // What tells a level from a directory of lightmaps is the bundle, which is why a caller asks for it by name.
-  assert!(
-    probe
-      .find("levels\\zaton\\level")
-      .expect("zaton resolves")
-      .get_asset()
-      .is_some()
-  );
-  assert!(
-    probe
-      .find("levels\\lmaps\\level")
-      .expect("lmaps resolves")
-      .get_asset()
-      .is_none()
-  );
+  assert!(search.find("levels\\zaton\\level").expect("zaton resolves").is_some());
+  assert!(search.find("levels\\lmaps\\level").expect("lmaps resolves").is_none());
 }

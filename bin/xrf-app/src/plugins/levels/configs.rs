@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use xrf_ltx::{Ltx, LtxDialect, LtxResolution};
 use xrf_material::XrayReducedTextures;
-use xrf_vfs::{XrayInputRecord, XrayProbe, XrayRoots};
+use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch};
 
 use crate::core::session::{SessionPart, SessionParts, SessionSnapshot};
 use crate::plugins::levels::catalog::open_configs;
@@ -27,11 +27,11 @@ impl SessionPart for LevelSectionsPart {
 /// # Errors
 ///
 /// Returns the reason the spawn or the configs cannot be read, which every later ask answers with again.
-pub fn get_level_sections(current: &SessionSnapshot<SelectedLevel>, probe: &XrayProbe) -> Result<Arc<Ltx>, String> {
-  current.parts.get_or_record::<LevelSectionsPart>(probe, |probe| {
-    let spawn: Arc<LevelSpawn> = get_level_spawn(current, probe)?;
+pub fn get_level_sections(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Result<Arc<Ltx>, String> {
+  current.parts.get_or_record::<LevelSectionsPart>(search, |search| {
+    let spawn: Arc<LevelSpawn> = get_level_spawn(current, search)?;
 
-    read_level_sections(&current.source, probe, (&current.roots, &current.dialect), &spawn)
+    read_level_sections(&current.source, search, (&current.roots, &current.dialect), &spawn)
   })
 }
 
@@ -50,7 +50,7 @@ pub fn with_level_sections(
 }
 
 /// The sections a level's spawned objects name and [`XrayReducedTextures::SECTION`], out of `system.ltx` with its
-/// includes merged and every section's parents resolved, read through `probe` with the dialect the level is opened
+/// includes merged and every section's parents resolved, read through `search` with the dialect the level is opened
 /// with.
 ///
 /// # Errors
@@ -58,12 +58,12 @@ pub fn with_level_sections(
 /// Returns the reason the configs cannot be read.
 pub fn read_level_sections(
   source: &LevelSource,
-  probe: &XrayProbe,
+  search: &XraySearch,
   (roots, dialect): (&XrayRoots, &Arc<dyn LtxDialect>),
   spawn: &LevelSpawn,
 ) -> Result<Arc<Ltx>, String> {
   let started: Instant = Instant::now();
-  let resolved: Arc<LtxResolution> = open_configs(roots, probe, dialect.clone())?
+  let resolved: Arc<LtxResolution> = open_configs(roots, search, dialect.clone())?
     .system_ltx()
     .map_err(|error| format!("Failed to read 'system.ltx' for {}: {error}", source.get_label()))?;
   let names: BTreeSet<&str> = spawn

@@ -2,10 +2,10 @@
 
 use xrf_shaders::ShaderBlenderClass;
 use xrf_shaders::fixtures::ShaderBlenderFixture;
-use xrf_vfs::{XrayMountId, XrayProbe, XrayVfs};
+use xrf_vfs::{XrayMountId, XraySearch, XrayVfs};
 
 use crate::fixtures::FixtureTree;
-use crate::tests::material_probe::probe_over;
+use crate::tests::material_search::search_over;
 use crate::{
   XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceResolver, XraySurfaceSampler,
   XrayTextureScope,
@@ -19,19 +19,19 @@ const CUT_OUT: XraySurfaceDraw = XraySurfaceDraw::AlphaTested {
 fn describe(tree: &FixtureTree, shader: &str) -> XraySurfaceDescriptor {
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let probe: XrayProbe<'_> = probe_over(&vfs, id);
+  let search: XraySearch = search_over(vfs, id);
 
-  XraySurfaceResolver::open(&probe, XrayTextureScope::shared()).describe(shader, &[])
+  XraySurfaceResolver::open(&search, XrayTextureScope::shared()).describe(shader, &[])
 }
 
 /// Opens `tree` and describes one shader name in it, dressed with textures.
 fn describe_dressed(tree: &FixtureTree, shader: &str, textures: &[&str]) -> XraySurfaceDescriptor {
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let probe: XrayProbe<'_> = probe_over(&vfs, id);
+  let search: XraySearch = search_over(vfs, id);
   let textures: Vec<String> = textures.iter().map(|it| String::from(*it)).collect();
 
-  XraySurfaceResolver::open(&probe, XrayTextureScope::shared()).describe(shader, &textures)
+  XraySurfaceResolver::open(&search, XrayTextureScope::shared()).describe(shader, &textures)
 }
 
 /// A tree whose library defines exactly `blenders`.
@@ -327,8 +327,8 @@ fn the_library_is_read_once_and_answers_every_surface_of_a_model() {
   let mut vfs: XrayVfs = XrayVfs::new();
 
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let probe: XrayProbe<'_> = probe_over(&vfs, id);
-  let resolver: XraySurfaceResolver<'_, '_> = XraySurfaceResolver::open(&probe, XrayTextureScope::shared());
+  let search: XraySearch = search_over(vfs, id);
+  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(&search, XrayTextureScope::shared());
   let opaque: XraySurfaceDescriptor = resolver.describe("models\\model", &[]);
 
   assert_eq!(opaque.draw, XraySurfaceDraw::Opaque);

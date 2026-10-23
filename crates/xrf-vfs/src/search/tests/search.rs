@@ -1,14 +1,17 @@
 use std::path::{Path, PathBuf};
 
+use xrf_error::XrfError;
+
 use crate::vfs::tests::fake_source::{FakeArchiveSource, directory};
 use crate::{
-  XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMountId, XrayProbe, XrayResolution, XraySearchedSource, XrayVfs,
+  XrayAsset, XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMountId, XrayResolution, XraySearch,
+  XraySearchedSource, XrayVfs,
 };
 
 /// Two directory mounts, returned with the ids a scope selects them by.
 fn two_roots(case: &str, first: &[&str], second: &[&str]) -> (XrayVfs, XrayMountId, XrayMountId, PathBuf, PathBuf) {
-  let near: PathBuf = directory(&format!("probe_{case}_near"), first);
-  let far: PathBuf = directory(&format!("probe_{case}_far"), second);
+  let near: PathBuf = directory(&format!("search_{case}_near"), first);
+  let far: PathBuf = directory(&format!("search_{case}_far"), second);
 
   let mut vfs: XrayVfs = XrayVfs::new();
 
@@ -26,8 +29,7 @@ fn resolves_from_the_first_step_holding_the_reference() {
     &["textures/wpn/wpn_ak74.dds", "textures/wpn/wpn_abakan.dds"],
   );
 
-  let resolution: XrayResolution = vfs
-    .probe()
+  let resolution: XrayResolution = XraySearch::new(vfs)
     .with_step("near", XrayLookupScope::only([near_id]))
     .with_step("far", XrayLookupScope::only([far_id]))
     .resolve(XrayAssetType::Dds, "wpn\\wpn_ak74")
@@ -48,8 +50,7 @@ fn falls_through_to_a_later_step_when_an_earlier_one_does_not_hold_the_reference
     &["textures/wpn/wpn_abakan.dds"],
   );
 
-  let resolution: XrayResolution = vfs
-    .probe()
+  let resolution: XrayResolution = XraySearch::new(vfs)
     .with_step("near", XrayLookupScope::only([near_id]))
     .with_step("far", XrayLookupScope::only([far_id]))
     .resolve(XrayAssetType::Dds, "wpn\\wpn_abakan")
@@ -67,10 +68,9 @@ fn a_step_selecting_no_mount_does_not_end_the_search() {
     &["textures/wpn/wpn_abakan.dds"],
   );
 
-  // An unconfigured root is the ordinary case for a probe assembled from optional sources, and it must not shadow the
+  // An unconfigured root is the ordinary case for a search assembled from optional sources, and it must not shadow the
   // configured step behind it.
-  let resolution: XrayResolution = vfs
-    .probe()
+  let resolution: XrayResolution = XraySearch::new(vfs)
     .with_step("unconfigured", XrayLookupScope::only([]))
     .with_step("far", XrayLookupScope::only([far_id]))
     .resolve(XrayAssetType::Dds, "wpn\\wpn_abakan")
@@ -83,11 +83,11 @@ fn a_step_selecting_no_mount_does_not_end_the_search() {
 #[test]
 fn reports_no_scope_when_nothing_is_searchable() {
   let vfs: XrayVfs = XrayVfs::new();
-  let probe: XrayProbe = vfs.probe().with_step("nothing", XrayLookupScope::all());
+  let search: XraySearch = XraySearch::new(vfs).with_step("nothing", XrayLookupScope::all());
 
-  assert!(probe.is_empty(), "a step over an empty vfs searches nothing");
+  assert!(search.is_empty(), "a step over an empty vfs searches nothing");
   assert_eq!(
-    probe
+    search
       .resolve(XrayAssetType::Dds, "wpn\\wpn_ak74")
       .expect("lookup succeeds"),
     XrayResolution::NoScope
@@ -102,8 +102,7 @@ fn reports_every_searched_root_when_nothing_resolves() {
     &["textures/wpn/wpn_abakan.dds"],
   );
 
-  let resolution: XrayResolution = vfs
-    .probe()
+  let resolution: XrayResolution = XraySearch::new(vfs)
     .with_step("near", XrayLookupScope::only([near_id]))
     .with_step("far", XrayLookupScope::only([far_id]))
     .resolve(XrayAssetType::Dds, "wpn\\wpn_absent")
@@ -125,8 +124,7 @@ fn substitutes_a_fallback_reference_and_names_it() {
     &["textures/ed/ed_not_existing_texture.dds"],
   );
 
-  let resolution: XrayResolution = vfs
-    .probe()
+  let resolution: XrayResolution = XraySearch::new(vfs)
     .with_step("near", XrayLookupScope::only([near_id]))
     .with_step("far", XrayLookupScope::only([far_id]))
     .resolve_with_fallback(XrayAssetType::Dds, "wpn\\wpn_absent", "ed\\ed_not_existing_texture")
@@ -151,8 +149,7 @@ fn a_present_reference_is_never_substituted() {
     &["textures/ed/ed_not_existing_texture.dds"],
   );
 
-  let resolution: XrayResolution = vfs
-    .probe()
+  let resolution: XrayResolution = XraySearch::new(vfs)
     .with_step("near", XrayLookupScope::only([near_id]))
     .with_step("far", XrayLookupScope::only([far_id]))
     .resolve_with_fallback(XrayAssetType::Dds, "wpn\\wpn_ak74", "ed\\ed_not_existing_texture")
@@ -177,8 +174,7 @@ fn a_masked_motion_reference_is_one_outcome_holding_every_match() {
     &[],
   );
 
-  let resolution: XrayResolution = vfs
-    .probe()
+  let resolution: XrayResolution = XraySearch::new(vfs)
     .with_step("near", XrayLookupScope::only([near_id]))
     .resolve(XrayAssetType::Omf, "wpn\\wpn_ak74_*.omf")
     .expect("lookup succeeds");
@@ -198,7 +194,7 @@ fn a_masked_motion_reference_is_one_outcome_holding_every_match() {
 }
 
 #[test]
-fn reads_a_located_asset_through_the_probed_vfs() {
+fn reads_a_located_asset_and_a_path_through_the_searched_vfs() {
   let mut vfs: XrayVfs = XrayVfs::new();
 
   let id: XrayMountId = vfs
@@ -208,18 +204,37 @@ fn reads_a_located_asset_through_the_probed_vfs() {
     )
     .expect("archive mounts");
 
-  let probe: XrayProbe = vfs.probe().with_step("volume", XrayLookupScope::only([id]));
+  let search: XraySearch = XraySearch::new(vfs).with_step("volume", XrayLookupScope::only([id]));
 
-  let resolution: XrayResolution = probe
+  let resolution: XrayResolution = search
     .resolve(XrayAssetType::Ogf, "wpn\\wpn_ak74")
     .expect("lookup succeeds");
 
   let asset: &crate::XrayAsset = resolution.get_asset().expect("model resolves");
 
   assert_eq!(
-    probe.read_asset_bytes(asset).expect("bytes are readable"),
+    search.read_asset(asset).expect("bytes are readable"),
     b"volume".to_vec()
   );
+  assert_eq!(
+    search.read("meshes\\wpn\\wpn_ak74.ogf").expect("the path reads"),
+    b"volume".to_vec()
+  );
+  assert!(
+    matches!(
+      search.read("meshes\\wpn\\wpn_absent.ogf"),
+      Err(XrfError::NotFound { .. })
+    ),
+    "a path no step holds reads as not found"
+  );
+}
+
+#[test]
+fn reserves_reads_in_pieces_and_shared_reads_without_offering_them() {
+  let search: XraySearch = XraySearch::new(XrayVfs::new());
+
+  assert!(search.open("meshes\\wpn\\wpn_ak74.ogf").is_err());
+  assert!(search.read_shared("meshes\\wpn\\wpn_ak74.ogf").is_err());
 }
 
 #[test]
@@ -230,25 +245,17 @@ fn finds_an_exact_logical_path_in_step_order() {
     &["textures/wpn/wpn_ak74.dds", "textures/wpn/wpn_abakan.dds"],
   );
 
-  let probe: XrayProbe = vfs
-    .probe()
+  let search: XraySearch = XraySearch::new(vfs)
     .with_step("near", XrayLookupScope::only([near_id]))
     .with_step("far", XrayLookupScope::only([far_id]));
 
-  let resolution: XrayResolution = probe.find("textures\\wpn\\wpn_ak74.dds").expect("lookup succeeds");
+  let found: Option<XrayAsset> = search.find("textures\\wpn\\wpn_ak74.dds").expect("lookup succeeds");
 
-  assert_eq!(resolution.get_step(), Some("near"));
+  assert_eq!(found.as_ref().and_then(|it| it.get_root()), Some(near.as_path()));
   assert_eq!(
-    resolution.get_asset().and_then(|it| it.get_root()),
-    Some(near.as_path())
-  );
-
-  assert!(
-    matches!(
-      probe.find("textures\\wpn\\wpn_absent.dds").expect("lookup succeeds"),
-      XrayResolution::Missing { .. }
-    ),
-    "an exact path that no step holds is missing, not an error"
+    search.find("textures\\wpn\\wpn_absent.dds").expect("lookup succeeds"),
+    None,
+    "an exact path that no step holds is absent, not an error"
   );
 }
 
@@ -261,25 +268,25 @@ fn finds_a_reference_of_a_kind_beside_a_directory() {
     &["levels/l01_escape/meshes/brkbl#48.ogf", "meshes/brkbl#48.ogf"],
     &[],
   );
-  let probe: XrayProbe = vfs.probe().with_step("near", XrayLookupScope::only([near_id]));
+  let search: XraySearch = XraySearch::new(vfs).with_step("near", XrayLookupScope::only([near_id]));
   let level: XrayLogicalPath = XrayLogicalPath::new("levels\\l01_escape").expect("a level path");
 
-  let beside: XrayResolution = probe
+  let beside: Option<XrayAsset> = search
     .find_beside(&level, XrayAssetType::Ogf, "meshes\\brkbl#48")
     .expect("lookup succeeds");
 
   assert_eq!(
-    beside.get_asset().map(|it| it.get_logical_path().as_str()),
+    beside.as_ref().map(|it| it.get_logical_path().as_str()),
     Some("levels\\l01_escape\\meshes\\brkbl#48.ogf")
   );
-  assert!(matches!(
-    probe
+  assert_eq!(
+    search
       .find_beside(&level, XrayAssetType::Ogf, "meshes\\absent")
       .expect("lookup succeeds"),
-    XrayResolution::Missing { .. }
-  ));
+    None
+  );
   assert!(
-    probe.find_beside(&level, XrayAssetType::Level, "level").is_err(),
+    search.find_beside(&level, XrayAssetType::Level, "level").is_err(),
     "a kind with no home has no path below it to join"
   );
 }
@@ -292,11 +299,10 @@ fn lists_assets_of_a_kind_once_per_identity_with_the_earlier_step_winning() {
     &["meshes/wpn/wpn_ak74.ogf", "meshes/wpn/wpn_abakan.ogf"],
   );
 
-  let assets: Vec<crate::XrayAsset> = vfs
-    .probe()
+  let assets: Vec<crate::XrayAsset> = XraySearch::new(vfs)
     .with_step("near", XrayLookupScope::only([near_id]))
     .with_step("far", XrayLookupScope::only([far_id]))
-    .list_assets_of_type(XrayAssetType::Ogf);
+    .list_assets(XrayAssetType::Ogf);
 
   let mut listed: Vec<(&str, Option<&std::path::Path>)> = assets
     .iter()
@@ -324,13 +330,12 @@ fn lists_the_sources_it_searches_in_search_order_and_once_each() {
   );
 
   // The far root is selected by two steps, which is what a roots spec produces when one root sits inside another.
-  let probe: XrayProbe = vfs
-    .probe()
+  let search: XraySearch = XraySearch::new(vfs)
     .with_step("near", XrayLookupScope::only([near_id]))
     .with_step("far", XrayLookupScope::only([far_id]))
     .with_step("fallback", XrayLookupScope::only([far_id]));
 
-  let sources: Vec<XraySearchedSource<'_>> = probe.list_sources();
+  let sources: Vec<XraySearchedSource<'_>> = search.list_sources();
 
   assert_eq!(
     sources

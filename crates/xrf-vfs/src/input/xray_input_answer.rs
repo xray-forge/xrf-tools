@@ -1,7 +1,7 @@
 use crate::input::{XrayInput, XrayInputKind, XrayRevision};
 use crate::{XrayLogicalPath, XrayLookupScope, XrayMountId, XrayVfs};
 
-/// What a world answers for an input: the source that holds it and its revision there.
+/// What a snapshot answers for an input: the source that holds it and its revision there.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct XrayInputAnswer {
   pub source: Option<XrayMountId>,
@@ -9,9 +9,9 @@ pub struct XrayInputAnswer {
 }
 
 impl XrayVfs {
-  /// What this world answers for an input now: two answers that differ mean what a build read of it changed between.
+  /// What this snapshot answers for an input now: two answers that differ mean what a build read of it changed between.
   pub fn answer_input(&self, input: &XrayInput) -> XrayInputAnswer {
-    let scopes: &[XrayLookupScope] = input.get_search().get_scopes();
+    let scopes: &[XrayLookupScope] = input.get_key().get_scopes();
 
     match input.get_kind() {
       XrayInputKind::File(logical_path) => scopes

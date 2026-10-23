@@ -3,7 +3,7 @@ use std::sync::Arc;
 use xrf_chunk::{ChunkReader, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_thm::{ThmBumpChunk, ThmFile, ThmMaterialChunk, ThmTextureType};
-use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe, XrayResolution};
+use xrf_vfs::{XrayAsset, XrayAssetType, XrayResolution, XraySearch};
 
 use crate::data::xray_bump_fallback::XrayBumpFallback;
 use crate::data::xray_bump_mode::XrayBumpMode;
@@ -25,25 +25,22 @@ impl XrayMaterialResolver {
   pub const TEXTURES_LTX_LOGICAL_PATH: &'static str = "textures\\textures.ltx";
 
   /// The `textures.ltx` the engine would load beside the descriptors, when the roots hold one.
-  pub fn find_textures_ltx(probe: &XrayProbe) -> Option<XrayAsset> {
-    probe
-      .find(Self::TEXTURES_LTX_LOGICAL_PATH)
-      .ok()
-      .and_then(|resolution| resolution.get_asset().cloned())
+  pub fn find_textures_ltx(search: &XraySearch) -> Option<XrayAsset> {
+    search.find(Self::TEXTURES_LTX_LOGICAL_PATH).ok().flatten()
   }
 
   /// Describes the material of a texture named the way a mesh or a config names it, as the renderer holds it within
   /// `scope`: `LoadTHM` reads the shared tree's descriptors and then the level's over them (`TextureDescrManager.cpp`).
-  pub fn describe_texture(probe: &XrayProbe, scope: &XrayTextureScope, reference: &str) -> XrayMaterialDescriptor {
-    let shared: Option<XrayMaterialDescriptor> = probe
+  pub fn describe_texture(search: &XraySearch, scope: &XrayTextureScope, reference: &str) -> XrayMaterialDescriptor {
+    let shared: Option<XrayMaterialDescriptor> = search
       .resolve(XrayAssetType::Thm, reference)
       .ok()
       .and_then(|resolution| resolution.get_asset().cloned())
-      .map(|asset| Self::describe_within(probe, scope, &asset));
+      .map(|asset| Self::describe_within(search, scope, &asset));
     let level: Option<XrayMaterialDescriptor> = scope
-      .find_beside_level(probe, XrayAssetType::Thm, reference)
+      .find_beside_level(search, XrayAssetType::Thm, reference)
       .and_then(|resolution| resolution.get_asset().cloned())
-      .map(|asset| Self::describe_within(probe, scope, &asset));
+      .map(|asset| Self::describe_within(search, scope, &asset));
 
     match (level, shared) {
       (Some(level), Some(shared)) => Self::layer(level, shared),
@@ -53,17 +50,17 @@ impl XrayMaterialResolver {
   }
 
   /// Describes the material a located descriptor declares, outside any level.
-  pub fn describe_descriptor(probe: &XrayProbe, descriptor: &XrayAsset) -> XrayMaterialDescriptor {
-    Self::describe_within(probe, &XrayTextureScope::shared(), descriptor)
+  pub fn describe_descriptor(search: &XraySearch, descriptor: &XrayAsset) -> XrayMaterialDescriptor {
+    Self::describe_within(search, &XrayTextureScope::shared(), descriptor)
   }
 
   /// Describes the material a located descriptor declares, outside any level, from the read a caller already made.
   pub fn describe_read_descriptor(
-    probe: &XrayProbe,
+    search: &XraySearch,
     descriptor: &XrayAsset,
     file: &XrfResult<Arc<ThmFile>>,
   ) -> XrayMaterialDescriptor {
-    Self::describe_read(probe, &XrayTextureScope::shared(), descriptor, file)
+    Self::describe_read(search, &XrayTextureScope::shared(), descriptor, file)
   }
 
   /// What `LoadTHM` leaves for one name once a level's descriptor is read over the shared one: one the type gate skips
@@ -85,13 +82,13 @@ impl XrayMaterialResolver {
   }
 
   /// Describes a located descriptor, resolving what it declares within `scope`.
-  fn describe_within(probe: &XrayProbe, scope: &XrayTextureScope, descriptor: &XrayAsset) -> XrayMaterialDescriptor {
-    Self::describe_read(probe, scope, descriptor, &Self::read_descriptor(probe, descriptor))
+  fn describe_within(search: &XraySearch, scope: &XrayTextureScope, descriptor: &XrayAsset) -> XrayMaterialDescriptor {
+    Self::describe_read(search, scope, descriptor, &Self::read_descriptor(search, descriptor))
   }
 
   /// Describes a located descriptor from its read, resolving what it declares within `scope`.
   fn describe_read(
-    probe: &XrayProbe,
+    search: &XraySearch,
     scope: &XrayTextureScope,
     descriptor: &XrayAsset,
     file: &XrfResult<Arc<ThmFile>>,
@@ -121,7 +118,7 @@ impl XrayMaterialResolver {
       );
     }
 
-    let (declaration, bump) = Self::classify_bump(probe, scope, file.bump.as_ref());
+    let (declaration, bump) = Self::classify_bump(search, scope, file.bump.as_ref());
     let outcome: XrayBumpOutcome = bump.as_ref().map_or(XrayBumpOutcome::Flat, |bump| {
       XrayBumpOutcome::of_pair(&bump.bump.resolution, &bump.companion.resolution)
     });
@@ -141,9 +138,9 @@ impl XrayMaterialResolver {
     u32::from(chunk.material) as f32 + chunk.weight
   }
 
-  /// A located descriptor as the engine's reader parses it, through the probe's cache.
-  pub fn read_descriptor(probe: &XrayProbe, descriptor: &XrayAsset) -> XrfResult<Arc<ThmFile>> {
-    probe.read_asset_parsed(descriptor, |bytes| {
+  /// A located descriptor as the engine's reader parses it, through the search's cache.
+  pub fn read_descriptor(search: &XraySearch, descriptor: &XrayAsset) -> XrfResult<Arc<ThmFile>> {
+    search.read_parsed(descriptor, |bytes| {
       ThmFile::read_from_chunk::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?)
     })
   }
@@ -163,7 +160,7 @@ impl XrayMaterialResolver {
 
   /// The bump chunk as the engine reads it, and the pair it binds when there is one to bind.
   fn classify_bump(
-    probe: &XrayProbe,
+    search: &XraySearch,
     scope: &XrayTextureScope,
     chunk: Option<&ThmBumpChunk>,
   ) -> (XrayMaterialDeclaration, Option<XrayMaterialBump>) {
@@ -192,22 +189,22 @@ impl XrayMaterialResolver {
       Some(XrayMaterialBump {
         mode,
         virtual_height: chunk.virtual_height,
-        bump: Self::resolve_input(probe, scope, chunk.name.clone(), false),
-        companion: Self::resolve_input(probe, scope, XrayBumpNaming::companion_of(&chunk.name), true),
+        bump: Self::resolve_input(search, scope, chunk.name.clone(), false),
+        companion: Self::resolve_input(search, scope, XrayBumpNaming::companion_of(&chunk.name), true),
       }),
     )
   }
 
   /// Resolves one bound input, substituting what `texture_load` would for its name.
   fn resolve_input(
-    probe: &XrayProbe,
+    search: &XraySearch,
     scope: &XrayTextureScope,
     reference: String,
     is_companion: bool,
   ) -> XrayMaterialBumpInput {
     let fallback: XrayBumpFallback = XrayBumpFallback::for_input(&reference, is_companion);
     let resolution: XrayResolution = scope
-      .resolve_bump_input(probe, &reference, fallback.reference())
+      .resolve_bump_input(search, &reference, fallback.reference())
       .unwrap_or_else(|error| XrayResolution::Rejected {
         reason: error.to_string(),
       });

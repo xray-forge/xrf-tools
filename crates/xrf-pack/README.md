@@ -35,7 +35,7 @@ Operations are synchronous. On an async executor, run the call on a blocking thr
 root; `ArchiveExtractOptions::with_link_policy(HostLinkPolicy::Refuse)` refuses them instead. `extract_file` writes to
 the exact path supplied by the caller, which may be linked.
 
-`XrayWorldExtractor::extract_directory` extracts the winning assets from an `XrayProbe`, including loose overrides.
+`XrayWorldExtractor::extract_directory` extracts the winning assets from an `XraySearch`, including loose overrides.
 It preserves paths below the selected prefix; an empty prefix extracts the whole world. Shadowed copies are omitted.
 
 Packing refuses existing volumes with the same name unless forced. Forced packing cannot roll back or remove stale

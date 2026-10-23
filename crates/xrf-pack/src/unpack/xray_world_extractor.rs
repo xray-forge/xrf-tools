@@ -4,7 +4,7 @@ use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{HostDestination, format_path};
-use xrf_vfs::{XrayAsset, XrayMountedEntry, XrayProbe};
+use xrf_vfs::{XrayAsset, XrayMountedEntry, XraySearch};
 
 use crate::path::{relative_to_prefix, to_host_relative};
 use crate::unpack::archive_extract_options::ArchiveExtractOptions;
@@ -24,11 +24,11 @@ impl XrayWorldExtractor {
   /// Returns a not-found error when nothing resolves under the prefix, and whatever reading or writing an entry
   /// answers with.
   pub fn extract_directory<P: AsRef<Path>>(
-    probe: &XrayProbe,
+    search: &XraySearch,
     prefix: &str,
     destination: P,
   ) -> XrfResult<ArchiveExtractDirectoryResult> {
-    Self::extract_directory_opt(probe, prefix, destination, ArchiveExtractOptions::default())
+    Self::extract_directory_opt(search, prefix, destination, ArchiveExtractOptions::default())
   }
 
   /// Write every entry the world resolves under one directory into a destination root, as `options` asks.
@@ -38,7 +38,7 @@ impl XrayWorldExtractor {
   /// Returns a not-found error when nothing resolves under the prefix, and whatever reading or writing an entry
   /// answers with.
   pub fn extract_directory_opt<P: AsRef<Path>>(
-    probe: &XrayProbe,
+    search: &XraySearch,
     prefix: &str,
     destination: P,
     options: ArchiveExtractOptions,
@@ -49,10 +49,10 @@ impl XrayWorldExtractor {
     destination.create_root()?;
 
     // Selected before anything is written, so the run knows how much it is about to do — the same reason an archive
-    // extraction selects first. The world is listed rather than filtered per read, because a probe answers for a
+    // extraction selects first. The world is listed rather than filtered per read, because a search answers for a
     // whole mounted order and asking it once is what makes the total knowable.
-    let selected: Vec<TreeEntry<XrayMountedEntry>> = probe
-      .list_mounted_entries()
+    let selected: Vec<TreeEntry<XrayMountedEntry>> = search
+      .list_entries()
       .into_iter()
       .filter_map(|entry| {
         relative_to_prefix(entry.get_logical_path(), &normalized)
@@ -75,7 +75,7 @@ impl XrayWorldExtractor {
     }
 
     let summary: TreeWriteSummary = TreeWriter::write(&destination, &selected, &options.job, |entry, target| {
-      let bytes: Vec<u8> = probe.read_asset_bytes(&entry.asset)?;
+      let bytes: Vec<u8> = search.read_asset(&entry.asset)?;
 
       target.write_all(&bytes)?;
 
@@ -97,17 +97,15 @@ impl XrayWorldExtractor {
   ///
   /// Returns a not-found error when nothing resolves the path, and whatever reading or writing it answers with.
   pub fn extract_file<P: AsRef<Path>>(
-    probe: &XrayProbe,
+    search: &XraySearch,
     name: &str,
     destination: P,
   ) -> XrfResult<ArchiveExtractResult> {
-    let asset: XrayAsset = probe
+    let asset: XrayAsset = search
       .find(name)?
-      .get_asset()
-      .cloned()
       .ok_or_else(|| XrfError::new_not_found_error(format!("Cannot extract '{name}' - nothing here resolves it.")))?;
 
-    let bytes: Vec<u8> = probe.read_asset_bytes(&asset)?;
+    let bytes: Vec<u8> = search.read_asset(&asset)?;
 
     // The caller named this path, so it is written where it points rather than through a rooted destination — the
     // same rule an archive extraction of one file follows.

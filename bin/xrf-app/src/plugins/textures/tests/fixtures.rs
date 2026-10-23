@@ -3,6 +3,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
@@ -11,7 +12,7 @@ use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_thm::{ThmBumpMode, ThmFile};
 use xrf_vfs::{
   XrayAsset, XrayAssetContainer, XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMountId, XrayMountMode,
-  XrayProbe, XrayRoots, XrayVfs,
+  XrayRoots, XraySearch, XrayVfs,
 };
 
 use crate::plugins::textures::catalog::{TextureCatalog, TextureCatalogMode, TextureEntry};
@@ -25,7 +26,7 @@ pub const BASE: &str = "ston\\ston_beton05";
 pub const BUMP: &str = "ston\\ston_beton05_bump";
 pub const COMPANION: &str = "ston\\ston_beton05_bump#";
 
-/// One mounted tree and a probe naming it.
+/// One mounted tree and a search naming it.
 pub fn mount(tree: &FixtureTree) -> (XrayVfs, XrayMountId) {
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
@@ -33,8 +34,8 @@ pub fn mount(tree: &FixtureTree) -> (XrayVfs, XrayMountId) {
   (vfs, id)
 }
 
-pub fn probe_over(vfs: &XrayVfs, id: XrayMountId) -> XrayProbe<'_> {
-  vfs.probe().with_step("tree", XrayLookupScope::only([id]))
+pub fn search_over(vfs: impl Into<Arc<XrayVfs>>, id: XrayMountId) -> XraySearch {
+  XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]))
 }
 
 pub fn roots_of(tree: &FixtureTree) -> XrayRoots {
@@ -44,15 +45,15 @@ pub fn roots_of(tree: &FixtureTree) -> XrayRoots {
 pub fn catalog(tree: &FixtureTree) -> TextureCatalog {
   let (vfs, id) = mount(tree);
 
-  TextureCatalog::list(&probe_over(&vfs, id), roots_of(tree), TextureCatalogMode::Roots)
+  TextureCatalog::list(&search_over(vfs, id), roots_of(tree), TextureCatalogMode::Roots)
 }
 
-/// The sweep as the command runs it: over every descriptor the probe lists.
+/// The sweep as the command runs it: over every descriptor the search lists.
 pub fn sweep(tree: &FixtureTree) -> Vec<TextureMaterialSummary> {
   let (vfs, id) = mount(tree);
-  let probe: XrayProbe = probe_over(&vfs, id);
+  let search: XraySearch = search_over(vfs, id);
 
-  TextureMaterialSummary::sweep(&probe, &probe.list_assets_of_type(XrayAssetType::Thm))
+  TextureMaterialSummary::sweep(&search, &search.list_assets(XrayAssetType::Thm))
 }
 
 pub fn entry<'a>(catalog: &'a TextureCatalog, reference: &str) -> &'a TextureEntry {

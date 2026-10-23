@@ -169,8 +169,8 @@ impl RenderLevelSource for VisualRenderSource {
       Some(posed) => posed,
       None => self
         .assets
-        .with_probe(&self.visual.roots, |probe| {
-          bake_named_motion(probe, skeleton, &self.visual.dependencies, name)
+        .with_search(&self.visual.roots, |search| {
+          bake_named_motion(search, skeleton, &self.visual.dependencies, name)
         })
         .map_err(XrfError::new_asset_error)?
         .map_err(XrfError::new_asset_error)?,

@@ -17,7 +17,7 @@ impl LevelRain {
   /// The splash's model.
   pub const DROP_MODEL: &'static str = "meshes\\dm\\rain.dm";
 
-  /// Finds the streak's texture and reads the splash's model in the level's probe.
+  /// Finds the streak's texture and reads the splash's model in the level's search.
   pub fn read(source: &LevelWeatherSource) -> Self {
     Self {
       drop: Self::read_drop(source),

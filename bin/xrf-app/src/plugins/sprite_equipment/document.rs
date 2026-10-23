@@ -4,7 +4,7 @@ use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, LtxProject, LtxProjectOptions};
 use xrf_texture::EquipmentSlotOccupant;
 use xrf_utils::error_to_string;
-use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath, XrayProbe, XrayRoots};
+use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath, XrayRoots, XraySearch};
 
 use crate::core::assets::AssetMountState;
 use crate::core::types::TauriResult;
@@ -54,14 +54,14 @@ impl EquipmentSpriteDocument {
         EquipmentSheetLocation::of_file(path),
       )),
       EquipmentSheetSource::Asset { reference } => {
-        assets.with_probe(roots, |probe| Self::read_located_sheet(probe, reference))?
+        assets.with_search(roots, |search| Self::read_located_sheet(search, reference))?
       }
     }
   }
 
   /// Decodes the sheet a reference resolves to in the mounted roots.
-  fn read_located_sheet(probe: &XrayProbe, reference: &str) -> TauriResult<(DdsPng, EquipmentSheetLocation)> {
-    let asset: XrayAsset = probe
+  fn read_located_sheet(search: &XraySearch, reference: &str) -> TauriResult<(DdsPng, EquipmentSheetLocation)> {
+    let asset: XrayAsset = search
       .resolve(XrayAssetType::Dds, reference)
       .map_err(|error| format!("Rejected equipment sheet '{reference}': {error}"))?
       .get_asset()
@@ -69,8 +69,8 @@ impl EquipmentSpriteDocument {
       .ok_or_else(|| format!("Equipment sheet '{reference}' resolves to nothing in the mounted roots"))?;
 
     let preview: DdsPng = Self::to_preview(
-      probe
-        .read_asset_bytes(&asset)
+      search
+        .read_asset(&asset)
         .and_then(|bytes| DdsFile::read_from_bytes(&bytes)),
     )?;
 

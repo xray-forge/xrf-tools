@@ -1,9 +1,6 @@
 use crate::XrayAsset;
 
 /// What sits directly inside one logical directory.
-///
-/// Directories are names rather than located assets, because a directory is not an asset the VFS can resolve — it is
-/// inferred from the paths of the entries below it.
 #[derive(Clone, Debug, Default)]
 pub struct XrayDirectoryListing {
   /// Names of the directories directly inside, sorted, without their parent path.

@@ -5,15 +5,16 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayLookupScope, XrayVfs};
+use xrf_vfs::{XrayLookupScope, XraySearch, XrayVfs};
 
 use crate::ltx::Ltx;
 
 /// Builds a config tree and mounts it, returning the VFS and an all-mounts scope.
-fn mount(name: &str, files: &[(&str, &str)]) -> (XrayVfs, XrayLookupScope) {
+fn mount(name: &str, files: &[(&str, &str)]) -> (Arc<XrayVfs>, XrayLookupScope) {
   let root: PathBuf = build_absolute_generated_test_resource_path(&format!("ltx_vfs_read/{name}"));
 
   let _ = fs::remove_dir_all(&root);
@@ -29,12 +30,15 @@ fn mount(name: &str, files: &[(&str, &str)]) -> (XrayVfs, XrayLookupScope) {
 
   vfs.mount_directory("", &root).expect("root mounts");
 
-  (vfs, XrayLookupScope::all())
+  (Arc::new(vfs), XrayLookupScope::all())
 }
 
-/// Reads a config through a probe searching one scope.
-fn read(vfs: &XrayVfs, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Ltx> {
-  Ltx::read_from_probe(&vfs.probe().with_step("configs", scope.clone()), logical_path)
+/// Reads a config through a search searching one scope.
+fn read(vfs: &Arc<XrayVfs>, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Ltx> {
+  Ltx::read_from_search(
+    &XraySearch::new(Arc::clone(vfs)).with_step("configs", scope.clone()),
+    logical_path,
+  )
 }
 
 #[test]
@@ -200,7 +204,7 @@ fn a_loose_config_overrides_one_lower_in_the_mount_order() {
   vfs.mount_directory("", &overlay).expect("overlay mounts");
   vfs.mount_directory("", &base).expect("base mounts");
 
-  let ltx: Ltx = read(&vfs, &XrayLookupScope::all(), "configs\\system.ltx").expect("config reads");
+  let ltx: Ltx = read(&Arc::new(vfs), &XrayLookupScope::all(), "configs\\system.ltx").expect("config reads");
 
   assert_eq!(ltx.get_from("section", "value"), Some("overridden"));
 }

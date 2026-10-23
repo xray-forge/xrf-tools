@@ -1,4 +1,4 @@
-//! What a mounted world keeps after parsing an asset, the policy deciding what is worth keeping, and the coordination
+//! What a VFS snapshot keeps after parsing an asset, the policy deciding what is worth keeping, and the coordination
 //! that keeps two readers from parsing one asset twice.
 
 #[cfg(test)]

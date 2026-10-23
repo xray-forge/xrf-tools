@@ -1,7 +1,7 @@
 use xrf_archive::{ArchiveProject, ArchiveReadPolicy};
 use xrf_chunk::ChunkReader;
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayAsset, XrayProbe};
+use xrf_vfs::{XrayAsset, XraySearch};
 
 use crate::core::assets::{AssetTextureDescriptor, AssetTextureShape};
 use crate::plugins::archives::browse::ArchiveWorld;
@@ -15,7 +15,7 @@ pub enum ArchiveDescribeSource<'a> {
   },
   World {
     world: &'a ArchiveWorld,
-    probe: &'a XrayProbe<'a>,
+    search: &'a XraySearch,
   },
 }
 
@@ -86,13 +86,13 @@ impl ArchiveDescribeSource<'_> {
       Self::Volumes { project } => Ok(ArchiveEntryReader::Held(ChunkReader::from_vec(
         project.read_file_bytes(name)?,
       )?)),
-      Self::World { probe, .. } => {
-        let asset: XrayAsset = find_mounted_asset(probe, name)?;
+      Self::World { search, .. } => {
+        let asset: XrayAsset = find_mounted_asset(search, name)?;
 
         match asset.to_physical_path() {
           Some(path) => Ok(ArchiveEntryReader::Sliced(ChunkReader::from_path(path)?)),
           None => Ok(ArchiveEntryReader::Held(ChunkReader::from_vec(
-            probe.read_asset_bytes(&asset)?,
+            search.read_asset(&asset)?,
           )?)),
         }
       }
@@ -107,7 +107,7 @@ impl ArchiveDescribeSource<'_> {
   pub fn read_bytes(&self, name: &str) -> XrfResult<Vec<u8>> {
     match self {
       Self::Volumes { project } => project.read_file_bytes(name),
-      Self::World { probe, .. } => probe.read_asset_bytes(&find_mounted_asset(probe, name)?),
+      Self::World { search, .. } => search.read_asset(&find_mounted_asset(search, name)?),
     }
   }
 
@@ -119,8 +119,8 @@ impl ArchiveDescribeSource<'_> {
   pub fn get_texture_shape(&self, name: &str) -> Option<AssetTextureShape> {
     match self {
       Self::Volumes { project } => AssetTextureShape::of_bytes(&project.read_file_bytes(name).ok()?),
-      Self::World { probe, .. } => {
-        AssetTextureDescriptor::describe(probe, &find_mounted_asset(probe, name).ok()?)?.shape
+      Self::World { search, .. } => {
+        AssetTextureDescriptor::describe(search, &find_mounted_asset(search, name).ok()?)?.shape
       }
     }
   }
@@ -131,11 +131,9 @@ impl ArchiveDescribeSource<'_> {
 /// # Errors
 ///
 /// Returns an error when the path resolves to nothing in the mounted roots.
-fn find_mounted_asset(probe: &XrayProbe, name: &str) -> XrfResult<XrayAsset> {
-  probe
+fn find_mounted_asset(search: &XraySearch, name: &str) -> XrfResult<XrayAsset> {
+  search
     .find(name)?
-    .get_asset()
-    .cloned()
     .ok_or_else(|| XrfError::new_not_found_error(format!("'{name}' resolves to nothing in the mounted roots")))
 }
 

@@ -1,7 +1,9 @@
-//! The tree, probe and names every test in this module shares.
+//! The tree, search and names every test in this module shares.
+
+use std::sync::Arc;
 
 use xrf_thm::ThmBumpMode;
-use xrf_vfs::{XrayLookupScope, XrayMountId, XrayProbe, XrayResolution, XrayVfs};
+use xrf_vfs::{XrayLookupScope, XrayMountId, XrayResolution, XraySearch, XrayVfs};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
 use crate::{XrayMaterialDescriptor, XrayMaterialResolver, XrayTextureScope};
@@ -10,16 +12,16 @@ pub(crate) const BASE: &str = "act\\act_stalker";
 pub(crate) const BUMP: &str = "act\\act_stalker_bump";
 pub(crate) const COMPANION: &str = "act\\act_stalker_bump#";
 
-/// One mounted tree and a probe naming it.
-pub(crate) fn probe_over(vfs: &XrayVfs, id: XrayMountId) -> XrayProbe<'_> {
-  vfs.probe().with_step("tree", XrayLookupScope::only([id]))
+/// One mounted tree and a search naming it.
+pub(crate) fn search_over(vfs: impl Into<Arc<XrayVfs>>, id: XrayMountId) -> XraySearch {
+  XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]))
 }
 
 pub(crate) fn describe(tree: &FixtureTree) -> XrayMaterialDescriptor {
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
 
-  XrayMaterialResolver::describe_texture(&probe_over(&vfs, id), &XrayTextureScope::shared(), BASE)
+  XrayMaterialResolver::describe_texture(&search_over(vfs, id), &XrayTextureScope::shared(), BASE)
 }
 
 pub(crate) fn used_bump() -> ThmFixture {
