@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 
 use xrf_utils::HostFileName;
 
-use crate::core::directories::{get_app_data_directories, get_first_unicode_path};
+use crate::core::app_directories::AppDirectories;
+use crate::core::directories::get_first_unicode_path;
 use crate::core::types::TauriResult;
 
 /// A folder of the level viewer's files in the application's own data, `level-viewer/<folder>`.
@@ -38,8 +39,8 @@ impl LevelViewerFolder {
   /// # Errors
   ///
   /// Returns an error when no data directory has a Unicode path or the folder cannot be made.
-  pub fn resolve(self, local_data: Option<PathBuf>) -> TauriResult<PathBuf> {
-    let root: String = get_first_unicode_path(get_app_data_directories(local_data))
+  pub fn resolve(self, directories: &AppDirectories) -> TauriResult<PathBuf> {
+    let root: String = get_first_unicode_path(directories.get_app_data_directories())
       .ok_or_else(|| String::from("No application data directory has a Unicode path"))?;
     let folder: PathBuf = PathBuf::from(root).join("level-viewer").join(self.get_name());
 
@@ -54,8 +55,8 @@ impl LevelViewerFolder {
   /// # Errors
   ///
   /// Returns an error naming the path when it is not one, or when the folder cannot be resolved.
-  pub fn require_screenshot(local_data: Option<PathBuf>, path: &Path) -> TauriResult {
-    if Self::is_screenshot(&Self::Screenshots.resolve(local_data)?, path) {
+  pub fn require_screenshot(directories: &AppDirectories, path: &Path) -> TauriResult {
+    if Self::is_screenshot(&Self::Screenshots.resolve(directories)?, path) {
       Ok(())
     } else {
       Err(format!("'{}' is not a screenshot of the level viewer", path.display()))

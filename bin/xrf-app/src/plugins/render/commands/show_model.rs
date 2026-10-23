@@ -6,7 +6,8 @@ use xrf_renderer::{RenderLevelSource, RenderViewportId};
 use crate::core::assets::AssetMountState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::render::state::RenderState;
+use crate::plugins::render::texture_reloads::TextureReloads;
+use crate::plugins::render::viewport_shows::ViewportShows;
 use crate::plugins::visuals::render_source::VisualRenderSource;
 use crate::plugins::visuals::state::{SelectedVisual, VisualState};
 
@@ -15,7 +16,8 @@ use crate::plugins::visuals::state::{SelectedVisual, VisualState};
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "show_model"))]
 #[tauri::command(rename = "show_model")]
 pub fn render_show_model(
-  state: State<'_, RenderState>,
+  shows: State<'_, ViewportShows>,
+  reloads: State<'_, TextureReloads>,
   visuals: State<'_, VisualState>,
   assets: State<'_, AssetMountState>,
   viewport: RenderViewportId,
@@ -26,7 +28,7 @@ pub fn render_show_model(
     Some(session_id) => {
       let visual: Arc<SessionSnapshot<SelectedVisual>> = visuals.selected.require(session_id)?;
 
-      state.watch_textures(&visual.roots);
+      reloads.watch(&visual.roots);
 
       log::info!(
         "Showing model '{}' in native viewport {} at detail {detail}",
@@ -43,7 +45,7 @@ pub fn render_show_model(
     None => None,
   };
 
-  let ticket: u64 = state.ask_show(viewport);
+  let ticket: u64 = shows.ask(viewport);
 
-  Ok(state.show(viewport, ticket, source).map(|scene| scene.0))
+  Ok(shows.show(viewport, ticket, source).map(|scene| scene.0))
 }

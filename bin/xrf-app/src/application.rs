@@ -4,10 +4,12 @@ use std::error::Error;
 use std::process::ExitCode;
 use std::sync::Arc;
 
-use tauri::{App, AppHandle, Builder, Manager, RunEvent, Wry};
+use tauri::{App, AppHandle, Builder, Manager, RunEvent, Runtime, Wry};
 use xrf_job::ExecutionRequest;
 
+use crate::core::app_directories::AppDirectories;
 use crate::core::assets::AssetMountState;
+use crate::core::directories::get_local_data_directory;
 use crate::core::execution::ExecutionState;
 use crate::core::jobs::JobRegistry;
 use crate::core::logging::setup_logger;
@@ -46,10 +48,8 @@ pub fn run() -> ExitCode {
     execution.get_plan().get_origin().as_str()
   );
 
-  // The asset state too, since every plugin's setup hands it the sessions a commit moves along.
+  let directories: AppDirectories = AppDirectories::new(get_local_data_directory(&context.config().identifier));
   let builder: Builder<Wry> = Builder::default()
-    .manage(execution)
-    .manage(AssetMountState::new())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_shell::init())
@@ -57,16 +57,13 @@ pub fn run() -> ExitCode {
 
   log::info!("Registering domain plugins");
 
-  let builder: Builder<Wry> = domain_plugins()
-    .into_iter()
-    .fold(builder, Builder::plugin)
-    .setup(|application| {
-      manage_shared_state(application)?;
-      start_transport(application)?;
-      build_main_window(application)?;
+  let builder: Builder<Wry> = assemble(builder, execution, directories).setup(|application| {
+    manage_shared_state(application)?;
+    start_transport(application)?;
+    build_main_window(application)?;
 
-      Ok(())
-    });
+    Ok(())
+  });
 
   builder
     .build(context)
@@ -79,6 +76,17 @@ pub fn run() -> ExitCode {
     });
 
   ExitCode::SUCCESS
+}
+
+/// The domain plugins over the state every one's setup builds on, managed before any of them: the pool, the asset state
+/// every setup hands the sessions a commit moves along, and where the application writes.
+fn assemble<R: Runtime>(builder: Builder<R>, execution: ExecutionState, directories: AppDirectories) -> Builder<R> {
+  let builder: Builder<R> = builder
+    .manage(execution)
+    .manage(AssetMountState::new())
+    .manage(directories);
+
+  domain_plugins().into_iter().fold(builder, Builder::plugin)
 }
 
 /// Tells the user of a start that failed before any window could: a release build on Windows has no console to say it
@@ -136,4 +144,45 @@ fn start_transport(application: &mut App) -> Result<(), Box<dyn Error>> {
   });
 
   Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use std::num::NonZeroUsize;
+
+  use tauri::test::{MockRuntime, mock_builder, mock_context, noop_assets};
+  use tauri::{App, Manager};
+  use xrf_job::ExecutionRequest;
+
+  use super::assemble;
+  use crate::core::app_directories::AppDirectories;
+  use crate::core::execution::ExecutionState;
+  use crate::plugins::levels::state::LevelState;
+  use crate::plugins::render::render_viewports::RenderViewports;
+  use crate::plugins::render::renderer::Renderer;
+  use crate::plugins::render::shown_levels::ShownLevels;
+  use crate::plugins::render::texture_reloads::TextureReloads;
+  use crate::plugins::render::viewport_shows::ViewportShows;
+  use crate::plugins::render::world_state::WorldState;
+
+  /// A plugin whose setup misses what it builds on fails the build, so this is where an order or a unit gone wrong
+  /// shows, before any command asks.
+  #[test]
+  fn every_plugin_sets_up_over_the_state_managed_before_it() {
+    let execution: ExecutionState =
+      ExecutionState::new(ExecutionRequest::Workers(NonZeroUsize::new(2).expect("two workers"))).expect("pool starts");
+    let application: App<MockRuntime> = assemble(mock_builder(), execution, AppDirectories::new(None))
+      .build(mock_context(noop_assets()))
+      .expect("every plugin to set up");
+
+    assert!(application.try_state::<AppDirectories>().is_some());
+    assert!(application.try_state::<LevelState>().is_some());
+    assert!(application.try_state::<Renderer>().is_some());
+    assert!(application.try_state::<WorldState>().is_some());
+    assert!(application.try_state::<ViewportShows>().is_some());
+    assert!(application.try_state::<TextureReloads>().is_some());
+    assert!(application.try_state::<ShownLevels>().is_some());
+
+    application.state::<RenderViewports>().shut_down();
+  }
 }

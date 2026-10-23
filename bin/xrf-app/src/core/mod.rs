@@ -1,5 +1,6 @@
 //! Shared infrastructure the plugins and the composition root build on, belonging to no command domain.
 
+pub mod app_directories;
 pub mod assets;
 pub mod directories;
 pub mod execution;

@@ -8,7 +8,7 @@ use xrf_renderer::{RenderViewportId, RenderWindowHost};
 use crate::core::types::TauriResult;
 use crate::core::window::WindowHandles;
 use crate::plugins::render::channel_event_sink::ChannelEventSink;
-use crate::plugins::render::state::RenderState;
+use crate::plugins::render::render_viewports::RenderViewports;
 use crate::plugins::render::viewport_event::ViewportEvent;
 use crate::plugins::render::window_host::WindowHostBuilder;
 
@@ -17,7 +17,7 @@ use crate::plugins::render::window_host::WindowHostBuilder;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "attach_viewport"))]
 #[tauri::command(rename = "attach_viewport")]
 pub fn render_attach_viewport(
-  state: State<'_, RenderState>,
+  viewports: State<'_, RenderViewports>,
   handles: State<'_, WindowHandles>,
   window: String,
   events: Channel<ViewportEvent>,
@@ -27,8 +27,8 @@ pub fn render_attach_viewport(
     .ok_or_else(|| format!("Window '{window}' cannot host a native viewport"))?;
   let host: Arc<dyn RenderWindowHost> = WindowHostBuilder::new(handle).build()?;
 
-  state
-    .attach_viewport(
+  viewports
+    .attach(
       &window,
       host,
       (

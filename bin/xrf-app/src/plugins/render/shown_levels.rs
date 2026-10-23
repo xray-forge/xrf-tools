@@ -7,10 +7,10 @@ use crate::plugins::levels::render_source::LevelRenderSource;
 use crate::plugins::levels::state::SelectedLevel;
 
 /// The source each level session is drawn from, while anything draws it: every viewport showing a snapshot shares
-/// one, and a commit moving the session moves its scene onto the next.
-#[derive(Default)]
-pub(crate) struct ShownLevels {
-  sources: Mutex<HashMap<SessionId, Weak<LevelRenderSource>>>,
+/// one, and a commit moving the session moves its scene onto the next. A clone holds the same sources.
+#[derive(Clone, Default)]
+pub struct ShownLevels {
+  sources: Arc<Mutex<HashMap<SessionId, Weak<LevelRenderSource>>>>,
 }
 
 impl ShownLevels {

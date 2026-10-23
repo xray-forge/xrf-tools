@@ -5,6 +5,7 @@ use tauri::State;
 use xrf_utils::write_file_staged;
 use xrf_vfs::XraySearch;
 
+use crate::core::app_directories::AppDirectories;
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
@@ -15,7 +16,6 @@ use crate::plugins::levels::viewer::LevelViewerFolder;
 use crate::plugins::levels::viewer::annotations::annotation_svg::AnnotationCanvas;
 use crate::plugins::levels::viewer::annotations::level_annotations::LevelAnnotations;
 use crate::plugins::levels::viewer::annotations::map_annotations_request::MapAnnotationsRequest;
-use crate::plugins::system::paths::SystemPathsState;
 
 /// Draw the open level's annotations over one of its level maps and write them beside it as an SVG; answers the SVG.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "write_map_annotations"))]
@@ -24,11 +24,11 @@ pub async fn levels_write_map_annotations(
   session_id: SessionId,
   request: MapAnnotationsRequest,
   state: State<'_, LevelState>,
-  paths: State<'_, SystemPathsState>,
+  directories: State<'_, AppDirectories>,
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<String>> {
-  LevelViewerFolder::require_screenshot(paths.local_data.clone(), &request.path)?;
+  LevelViewerFolder::require_screenshot(&directories, &request.path)?;
   request.area.require_ground()?;
 
   let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;

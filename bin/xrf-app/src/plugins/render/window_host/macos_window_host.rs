@@ -121,7 +121,7 @@ impl MacosWindowHost {
 
 // SAFETY: the view is the window's for as long as the window lives and is never removed from it, and a window whose
 // close its page approved is held open until the render thread handled its viewports' detach, as on Windows
-// (`RenderState::close_window`).
+// (`RenderViewports::close_window`).
 unsafe impl RenderWindowHost for MacosWindowHost {
   fn get_key(&self) -> u64 {
     self.view.get() as u64

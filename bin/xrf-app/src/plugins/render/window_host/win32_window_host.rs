@@ -24,10 +24,10 @@ impl Win32WindowHost {
 }
 
 // SAFETY: a window whose close its page approved, while viewports draw into it, is held open until the render thread
-// answers that it handled their detach, and only then destroyed (`RenderState::close_window`). Only a page draws
+// answers that it handled their detach, and only then destroyed (`RenderViewports::close_window`). Only a page draws
 // viewports, and a page that draws them asks before its window closes, so no close goes ahead unapproved while they
 // draw; nothing in the application destroys a window any other way, and one found destroyed still drawing them is
-// logged as a breach (`RenderState::forget_window`).
+// logged as a breach (`RenderViewports::forget_window`).
 unsafe impl RenderWindowHost for Win32WindowHost {
   fn get_key(&self) -> u64 {
     self.hwnd.get() as u64

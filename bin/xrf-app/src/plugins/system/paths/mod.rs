@@ -4,7 +4,5 @@
 pub mod commands;
 pub mod path_description;
 pub mod reveal;
-mod state;
 
 pub use path_description::PathDescription;
-pub use state::SystemPathsState;

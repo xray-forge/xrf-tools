@@ -7,7 +7,7 @@ use xrf_vfs::XrayRoots;
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::types::TauriResult;
-use crate::plugins::render::state::RenderState;
+use crate::plugins::render::viewport_shows::ViewportShows;
 use crate::plugins::textures::description::TextureDescription;
 use crate::plugins::textures::request::TextureSurfaceRequest;
 use crate::plugins::textures::surface::render_source::TextureRenderSource;
@@ -17,14 +17,14 @@ use crate::plugins::textures::surface::render_source::TextureRenderSource;
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "show_texture"))]
 #[tauri::command(rename = "show_texture")]
 pub async fn render_show_texture(
-  state: State<'_, RenderState>,
+  shows: State<'_, ViewportShows>,
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
   viewport: RenderViewportId,
   request: Option<TextureSurfaceRequest>,
 ) -> TauriResult<Option<u32>> {
   // Taken before the description's hop, so a texture asked for later is never replaced by this one.
-  let ticket: u64 = state.ask_show(viewport);
+  let ticket: u64 = shows.ask(viewport);
   let source: Option<Arc<dyn RenderLevelSource>> = match request {
     Some(request) => {
       log::info!(
@@ -50,5 +50,5 @@ pub async fn render_show_texture(
     None => None,
   };
 
-  Ok(state.show(viewport, ticket, source).map(|scene| scene.0))
+  Ok(shows.show(viewport, ticket, source).map(|scene| scene.0))
 }

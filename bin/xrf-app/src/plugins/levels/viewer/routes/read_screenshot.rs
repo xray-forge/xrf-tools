@@ -4,11 +4,11 @@ use std::path::PathBuf;
 use serde::Deserialize;
 use tauri::{AppHandle, Manager};
 
+use crate::core::app_directories::AppDirectories;
 use crate::core::execution::ExecutionState;
 use crate::core::transport::TransportAnswer;
 use crate::core::types::TauriResult;
 use crate::plugins::levels::viewer::LevelViewerFolder;
-use crate::plugins::system::paths::SystemPathsState;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,9 +22,8 @@ pub(crate) async fn levels_read_screenshot(
   request: LevelsReadScreenshotRequest,
 ) -> TauriResult<TransportAnswer> {
   let LevelsReadScreenshotRequest { path } = request;
-  let local_data: Option<PathBuf> = app.state::<SystemPathsState>().local_data.clone();
 
-  LevelViewerFolder::require_screenshot(local_data, &path)?;
+  LevelViewerFolder::require_screenshot(&app.state::<AppDirectories>(), &path)?;
 
   let png: Vec<u8> = app
     .state::<ExecutionState>()
