@@ -6,8 +6,8 @@ use xrf_world::{World, WorldLevelReload};
 use crate::core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountState};
 use crate::core::session::{Session, SessionChange, SessionRootChange, SessionSnapshot};
 use crate::plugins::levels::render_source::LevelRenderSource;
+use crate::plugins::levels::shown_levels::ShownLevels;
 use crate::plugins::levels::state::SelectedLevel;
-use crate::plugins::render::shown_levels::ShownLevels;
 use crate::plugins::render::world_state::WorldState;
 
 /// Moves the scene of each level shown along with its session through every commit, in the backend: a kept value's

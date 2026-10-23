@@ -19,12 +19,8 @@ import {
   toLevelMapExportSize,
 } from "@/applications/level-viewer/lib/map/level-map-export";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
-import {
-  ELevelAnnotationKind,
-  EMapExportAnnotations,
-  EMapExportFormat,
-  ETextureEncodingFormat,
-} from "@/core/ipc/types/xrf-app";
+import { ELevelAnnotationKind, EMapExportAnnotations, EMapExportFormat } from "@/core/ipc/types/xrf-app";
+import { ETextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
 import { cn } from "@/core/theme/class-name";
 import { CheckboxFormRow, ChoiceFormRow } from "@/core/ui/form";
 import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";

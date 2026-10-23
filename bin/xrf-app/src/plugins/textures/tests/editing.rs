@@ -15,11 +15,10 @@ use xrf_thm::{ThmBumpMode, ThmFile, ThmFormat, ThmTextureFlag, ThmTextureFlags, 
 use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayInputRecord, XrayLogicalPath, XrayRevision, XraySearch};
 
 use crate::core::assets::AssetMountState;
+use crate::core::file_stamp::FileStamp;
 use crate::core::session::{Session, SessionDerived, SessionId, SessionParts};
 use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
 use crate::plugins::textures::edit_targets::TextureEditTargets;
-use crate::plugins::textures::encoding::TextureEncodingFormat;
-use crate::plugins::textures::file_stamp::TextureFileStamp;
 use crate::plugins::textures::request::{
   TextureDescriptorSave, TextureEncodingSave, TextureSaveTarget, TexturesSaveRequest,
 };
@@ -27,6 +26,7 @@ use crate::plugins::textures::save::{TextureSaveOutcome, write_save};
 use crate::plugins::textures::tests::fixtures::{
   BASE, editing_directory, loose_asset, read_descriptor, roots_of, source_image, target,
 };
+use xrf_texture::TextureEncodingFormat;
 
 /// Move a file's modification time on, so a rewrite a test just made is one the guard can actually see.
 fn rewritten_later(path: &Path) {
@@ -507,12 +507,12 @@ fn a_stamp_tells_a_missing_file_from_an_unreadable_one() {
   let root: PathBuf = editing_directory("stamp");
   let path: PathBuf = root.join("ston_beton05.thm");
 
-  assert_eq!(TextureFileStamp::read(&path).expect("absent is not an error"), None);
+  assert_eq!(FileStamp::read(&path).expect("absent is not an error"), None);
 
   std::fs::write(&path, b"twelve bytes").expect("file is writable");
 
   assert_eq!(
-    TextureFileStamp::read(&path)
+    FileStamp::read(&path)
       .expect("present is readable")
       .map(|stamp| stamp.size),
     Some(12)
@@ -522,15 +522,15 @@ fn a_stamp_tells_a_missing_file_from_an_unreadable_one() {
 #[test]
 fn a_stamp_is_the_size_and_the_modification_time_together() {
   // Both, because a rewrite that happens to land on the same length is exactly the change a size alone would miss.
-  let stamp: TextureFileStamp = TextureFileStamp {
+  let stamp: FileStamp = FileStamp {
     size: 12,
     modified_ms: 1_700_000_000_000,
   };
 
-  assert_ne!(stamp, TextureFileStamp { size: 13, ..stamp });
+  assert_ne!(stamp, FileStamp { size: 13, ..stamp });
   assert_ne!(
     stamp,
-    TextureFileStamp {
+    FileStamp {
       modified_ms: 1_700_000_000_001,
       ..stamp
     }

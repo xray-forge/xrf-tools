@@ -5,6 +5,7 @@ import { AsyncState } from "@xrf/async";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
+import { levelsCommands } from "@/core/ipc/commands/levels";
 import { CaptureOutcome, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import {
@@ -16,6 +17,7 @@ import {
   RenderLoadReport,
   RenderMapCapture,
   RenderViewOptions,
+  RenderViewportId,
 } from "@/core/ipc/types/xrf-renderer";
 import {
   EWorldCameraCommand,
@@ -238,7 +240,17 @@ export class LevelRenderService extends NativeRenderSurfaceService {
    * @returns Whether it was written, which it is not with no viewport attached; rejects for a screenshot that failed.
    */
   public async saveScreenshot(path: string): Promise<boolean> {
-    return this.viewport ? this.viewport.saveScreenshot(path) : false;
+    return this.viewport
+      ? this.viewport.ask(
+          "saveScreenshot",
+          async (id: RenderViewportId) => {
+            await levelsCommands.saveScreenshot(id, path);
+
+            return true;
+          },
+          false
+        )
+      : false;
   }
 
   /**
@@ -252,7 +264,13 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     path: string,
     job: [string, Channel<JobProgress>]
   ): Promise<Nullable<CaptureOutcome>> {
-    return this.viewport ? this.viewport.captureMap(capture, path, job) : null;
+    return this.viewport
+      ? this.viewport.ask<Nullable<CaptureOutcome>>(
+          "captureMap",
+          (id: RenderViewportId) => levelsCommands.captureMap({ viewport: id, capture, path }, ...job),
+          null
+        )
+      : null;
   }
 
   /**
@@ -266,7 +284,13 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     path: string,
     job: [string, Channel<JobProgress>]
   ): Promise<Nullable<CaptureOutcome>> {
-    return this.viewport ? this.viewport.captureCube(capture, path, job) : null;
+    return this.viewport
+      ? this.viewport.ask<Nullable<CaptureOutcome>>(
+          "captureCube",
+          (id: RenderViewportId) => levelsCommands.captureCube({ viewport: id, capture, path }, ...job),
+          null
+        )
+      : null;
   }
 
   /**
@@ -488,7 +512,12 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.viewportService.conceal();
 
     this.show(
-      (viewport: NativeViewport) => viewport.showLevel(selected?.sessionId ?? null),
+      (viewport: NativeViewport) =>
+        viewport.ask(
+          "showLevel",
+          (id: RenderViewportId) => levelsCommands.showLevel(id, selected?.sessionId ?? null),
+          null
+        ),
       (scene: Nullable<number>) => {
         this.scene = scene;
         this.revealWhenReady();

@@ -34,6 +34,16 @@ impl XrayTextureScope {
     }
   }
 
+  /// The logical path a texture reference lands on as [`Self::resolve_texture`] locates it; none where it resolves to
+  /// nothing, or the reference is one the search refuses, which reads as absent rather than failing the caller.
+  pub fn locate_texture(&self, search: &XraySearch, reference: &str) -> Option<String> {
+    self
+      .resolve_texture(search, reference)
+      .ok()?
+      .get_asset()
+      .map(|asset| asset.get_logical_path().as_str().to_owned())
+  }
+
   /// Locates one input of a bump pair as `texture_load` does, `fallback` in its place where it finds none: as any
   /// texture, save that a `_bump` name the shared tree lacks is the dummy however many copies the level holds.
   pub(crate) fn resolve_bump_input(

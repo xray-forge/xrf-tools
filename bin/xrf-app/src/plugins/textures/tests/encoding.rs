@@ -6,12 +6,11 @@ use xrf_vfs::XrayRoots;
 
 use crate::core::assets::AssetMountState;
 use crate::core::session::SessionId;
-use crate::plugins::textures::encoding::{
-  TextureEncodingComparison, TextureEncodingCurrent, TextureEncodingFormat, TextureEncodingSession,
-};
+use crate::plugins::textures::encoding::{TextureEncodingComparison, TextureEncodingCurrent, TextureEncodingSession};
 use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::state::TextureState;
 use crate::plugins::textures::tests::fixtures::{BASE, source_image};
+use xrf_texture::TextureEncodingFormat;
 
 #[test]
 fn a_held_session_answers_for_the_candidates_it_weighed_and_no_others() {

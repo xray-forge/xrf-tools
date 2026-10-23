@@ -16,7 +16,7 @@ use crate::plugins::levels::viewer::LevelViewerFolder;
 use crate::plugins::levels::viewer::annotations::annotation_raster::rasterise_annotations;
 use crate::plugins::levels::viewer::map_export_format::MapExportFormat;
 use crate::plugins::levels::viewer::map_export_request::{MapExportAnnotations, MapExportRequest};
-use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingQuality};
+use xrf_texture::{TextureEncodingFormat, TextureEncodingQuality};
 
 /// An export's pixels: the longer side `long_side` at most the capture's, a DDS rounded to whole blocks.
 ///

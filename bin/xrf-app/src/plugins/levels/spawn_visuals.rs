@@ -10,15 +10,15 @@ use xrf_error::XrfResult;
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath, XraySearch};
-use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton};
+use xrf_visual::{
+  VisualDependencies, VisualDescription, VisualMotions, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton,
+};
 
 use crate::core::assets::locate_referenced_asset;
 use crate::core::session::{SessionPart, SessionSnapshot};
 use crate::plugins::levels::report::{report_bind_rest_pose, report_empty_rest_motion, report_undrawn_visual};
 use crate::plugins::levels::state::{LevelSpawnVisual, LevelSpawnVisuals, SelectedLevel};
 use crate::plugins::levels::textures::resolve_surface_textures;
-use crate::plugins::visuals::pose::bake_named_motion;
-use crate::plugins::visuals::skeleton::SelectedSkeleton;
 
 /// The cycle a lamp plays from the moment it spawns (`CHangingLamp::net_Spawn`), whose first frame it stands in.
 const IDLE_MOTION: &str = "idle";
@@ -151,11 +151,11 @@ fn to_rest_pose(
   file: &OgfFile,
   description: &VisualDescription,
 ) -> Option<VisualRestPose> {
-  let skeleton: SelectedSkeleton = SelectedSkeleton::of(file)?;
-  let names: Vec<String> = skeleton.bones.iter().map(|bone| bone.name.clone()).collect();
+  let motions: VisualMotions = VisualMotions::of(file)?;
+  let names: Vec<String> = motions.bones.iter().map(|bone| bone.name.clone()).collect();
   let dependencies: VisualDependencies = VisualDependencies::resolve(description, search);
 
-  match bake_named_motion(search, &skeleton, &dependencies, IDLE_MOTION) {
+  match motions.bake_named(search, &dependencies, IDLE_MOTION) {
     Ok(baked) => VisualRestPose::of_floats(names, &baked.transforms).or_else(|| {
       report_empty_rest_motion(name, IDLE_MOTION);
 

@@ -8,6 +8,7 @@ import {
   SessionSnapshot,
   VisualSource,
 } from "@/core/ipc/types/xrf-app";
+import { RenderViewportId } from "@/core/ipc/types/xrf-renderer";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 
@@ -45,4 +46,10 @@ export const visualsCommands = {
   /** Pose the open visual through one of its motions, and report what came out. */
   openMotion: (sessionId: SessionId, motionId: SessionId, name: string) =>
     __TAURI_INVOKE<SessionSnapshot<VisualMotionBake>>("plugin:visuals|open_motion", { sessionId, motionId, name }),
+  /**
+   * Draw the open model in a viewport, `detail` down its collapse chain, its textures read by the renderer; no session
+   * draws none. Answers the scene drawn, which the viewport's load reports name, or none.
+   */
+  showModel: (viewport: RenderViewportId, sessionId: string | null, detail: number | null) =>
+    __TAURI_INVOKE<number | null>("plugin:visuals|show_model", { viewport, sessionId, detail }),
 };

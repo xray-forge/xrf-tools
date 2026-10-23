@@ -1,7 +1,11 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+import { Channel } from "@tauri-apps/api/core";
+
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
+  CaptureOutcome,
+  CubeCaptureRequest,
   CubeExportRequest,
   LevelConsoleDefaults,
   LevelEntry,
@@ -11,6 +15,7 @@ import {
   LevelWeatherCycle,
   LevelWeatherDescription,
   MapAnnotationsRequest,
+  MapCaptureRequest,
   MapExportRequest,
   SelectedLevelDescription,
   SessionId,
@@ -18,10 +23,18 @@ import {
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { WeatherCycleId } from "@/core/ipc/types/xrf-environment";
+import { JobProgress } from "@/core/ipc/types/xrf-job";
+import { RenderViewportId } from "@/core/ipc/types/xrf-renderer";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
 export const levelsCommands = {
+  /** Capture a cubemap around a viewport's camera face by face and write it to a PNG file as a horizontal cross. */
+  captureCube: (request: CubeCaptureRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<CaptureOutcome>("plugin:levels|capture_cube", { request, jobId, progress }),
+  /** Capture a level map in a viewport tile by tile and write it to a PNG file with its coverage in alpha. */
+  captureMap: (request: MapCaptureRequest, jobId: string, progress: Channel<JobProgress>) =>
+    __TAURI_INVOKE<CaptureOutcome>("plugin:levels|capture_map", { request, jobId, progress }),
   /** Release only the openings owned by the departing viewer. */
   closeLevel: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:levels|close_level", { sessionIds }),
   /** Copy a screenshot of the screenshots folder to where the page names, as Save as does. */
@@ -88,8 +101,20 @@ export const levelsCommands = {
     __TAURI_INVOKE<SessionSnapshot<LevelWeatherDescription>>("plugin:levels|read_level_weather", { sessionId }),
   /** Read a level view's JSON file as text, for the page to check and import. */
   readView: (path: string) => __TAURI_INVOKE<string>("plugin:levels|read_view", { path }),
+  /**
+   * Write a viewport's next finished frame to a PNG file of the level viewer's screenshots folder: the whole viewport at
+   * its drawn size, without its overlays or its selection's outline.
+   */
+  saveScreenshot: (viewport: RenderViewportId, path: string) =>
+    __TAURI_INVOKE<null>("plugin:levels|save_screenshot", { viewport, path }),
   /** Write a level view as its JSON text to the JSON file the page names. */
   saveView: (path: string, text: string) => __TAURI_INVOKE<null>("plugin:levels|save_view", { path, text }),
+  /**
+   * Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. Answers
+   * the scene drawn, which the viewport's load reports name, or none.
+   */
+  showLevel: (viewport: RenderViewportId, sessionId: string | null) =>
+    __TAURI_INVOKE<number | null>("plugin:levels|show_level", { viewport, sessionId }),
   /** Draw the open level's annotations over one of its level maps and write them beside it as an SVG; answers the SVG. */
   writeMapAnnotations: (sessionId: SessionId, request: MapAnnotationsRequest) =>
     __TAURI_INVOKE<SessionSnapshot<string>>("plugin:levels|write_map_annotations", { sessionId, request }),

@@ -3,17 +3,7 @@
 import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
-import {
-  CaptureOutcome,
-  CubeCaptureRequest,
-  ETextureSurfaceAlpha,
-  ETextureSurfaceShape,
-  MapCaptureRequest,
-  RenderPickRequest,
-  TextureSource,
-  ViewportEvent,
-} from "@/core/ipc/types/xrf-app";
-import { JobProgress } from "@/core/ipc/types/xrf-job";
+import { RenderPickRequest, ViewportEvent } from "@/core/ipc/types/xrf-app";
 import {
   RenderAntialiasing,
   RenderBackend,
@@ -39,7 +29,6 @@ import {
   RenderViewportId,
   RenderViewportLayout,
 } from "@/core/ipc/types/xrf-renderer";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import {
   EWorldWeatherTransition,
   WorldCamera,
@@ -61,12 +50,6 @@ export const renderCommands = {
    */
   attachViewport: (window: string, events: Channel<ViewportEvent>) =>
     __TAURI_INVOKE<RenderViewportId>("plugin:render|attach_viewport", { window, events }),
-  /** Capture a cubemap around a viewport's camera face by face and write it to a PNG file as a horizontal cross. */
-  captureCube: (request: CubeCaptureRequest, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<CaptureOutcome>("plugin:render|capture_cube", { request, jobId, progress }),
-  /** Capture a level map in a viewport tile by tile and write it to a PNG file with its coverage in alpha. */
-  captureMap: (request: MapCaptureRequest, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<CaptureOutcome>("plugin:render|capture_map", { request, jobId, progress }),
   /** Ask a viewport's camera to reset or dolly. */
   commandCamera: (viewport: RenderViewportId, command: WorldCameraCommand) =>
     __TAURI_INVOKE<void>("plugin:render|command_camera", { viewport, command }),
@@ -250,12 +233,6 @@ export const renderCommands = {
   /** Write a viewport's next presented frame to a PNG file, as the renderer drew it rather than as the screen shows it. */
   saveCapture: (viewport: RenderViewportId, path: string) =>
     __TAURI_INVOKE<null>("plugin:render|save_capture", { viewport, path }),
-  /**
-   * Write a viewport's next finished frame to a PNG file of the level viewer's screenshots folder: the whole viewport at
-   * its drawn size, without its overlays or its selection's outline.
-   */
-  saveScreenshot: (viewport: RenderViewportId, path: string) =>
-    __TAURI_INVOKE<null>("plugin:render|save_screenshot", { viewport, path }),
   /** Play a viewport's weather on from a time of day, in seconds since midnight, ending the effect playing. */
   seekWeather: (viewport: RenderViewportId, time: number | null) =>
     __TAURI_INVOKE<void>("plugin:render|seek_weather", { viewport, time }),
@@ -292,34 +269,4 @@ export const renderCommands = {
    */
   setWorldToggles: (viewport: RenderViewportId, toggles: WorldToggles) =>
     __TAURI_INVOKE<void>("plugin:render|set_world_toggles", { viewport, toggles }),
-  /**
-   * Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. Answers
-   * the scene drawn, which the viewport's load reports name, or none.
-   */
-  showLevel: (viewport: RenderViewportId, sessionId: string | null) =>
-    __TAURI_INVOKE<number | null>("plugin:render|show_level", { viewport, sessionId }),
-  /**
-   * Draw the open model in a viewport, `detail` down its collapse chain, its textures read by the renderer; no session
-   * draws none. Answers the scene drawn, which the viewport's load reports name, or none.
-   */
-  showModel: (viewport: RenderViewportId, sessionId: string | null, detail: number | null) =>
-    __TAURI_INVOKE<number | null>("plugin:render|show_model", { viewport, sessionId, detail }),
-  /**
-   * Draw a texture laid on a body in a viewport, its files read by the renderer; no request draws none. Answers the
-   * scene drawn, which the viewport's load reports name, or none.
-   */
-  showTexture: (
-    viewport: RenderViewportId,
-    request: {
-      source: TextureSource;
-      /** The roots the texture is resolved in, as its description was. */
-      roots: XrayRoots;
-      shape: ETextureSurfaceShape;
-      /** How many times the texture repeats across the body, which is how a tiling seam becomes visible. */
-      tiling: number | null;
-      alpha: ETextureSurfaceAlpha;
-      /** Width over height of the texture, which the plane is stretched to. */
-      aspect: number | null;
-    } | null
-  ) => __TAURI_INVOKE<number | null>("plugin:render|show_texture", { viewport, request }),
 };

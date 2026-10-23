@@ -15,6 +15,7 @@ serde = { workspace = true }
 specta = { workspace = true, optional = true }
 xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
+xrf-omf = { workspace = true }
 xrf-skeleton = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-error = { workspace = true }

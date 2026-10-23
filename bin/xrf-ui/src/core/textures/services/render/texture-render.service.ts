@@ -2,21 +2,24 @@ import { inject, Injectable } from "@wirestate/core";
 import { comparer, reaction, RefObservable, runInAction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
+import { texturesCommands } from "@/core/ipc/commands/textures";
 import {
   ERenderTextureState,
   RenderLoadReport,
   RenderTextureReport,
   RenderViewOptions,
+  RenderViewportId,
 } from "@/core/ipc/types/xrf-renderer";
 import { EWorldCameraCommand } from "@/core/ipc/types/xrf-world";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
-import { NativeViewport, TNativeTextureRequest } from "@/core/render/lib/native/native-viewport";
+import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import {
   TEXTURE_SURFACE_CAMERA,
   toTextureSurfaceRequest,
   toTextureViewOptions,
+  TTextureSurfaceRequest,
 } from "@/core/textures/lib/render/texture-surface-render";
 import { dragTextureLighting } from "@/core/textures/lib/texture-lighting";
 import { TextureSelectionService } from "@/core/textures/services/selection";
@@ -99,9 +102,9 @@ export class TextureRenderService extends NativeRenderSurfaceService {
         });
       }),
       reaction(
-        (): TNativeTextureRequest =>
+        (): TTextureSurfaceRequest =>
           toTextureSurfaceRequest(this.selectionService.selected.value ?? null, this.viewService.options),
-        (request: TNativeTextureRequest) => this.showTexture(request),
+        (request: TTextureSurfaceRequest) => this.showTexture(request),
         { equals: comparer.structural, fireImmediately: true }
       ),
       reaction(
@@ -164,7 +167,7 @@ export class TextureRenderService extends NativeRenderSurfaceService {
     });
   }
 
-  private showTexture(request: TNativeTextureRequest): void {
+  private showTexture(request: TTextureSurfaceRequest): void {
     this.hasDescribed = false;
     this.scene = null;
 
@@ -173,7 +176,8 @@ export class TextureRenderService extends NativeRenderSurfaceService {
     });
 
     this.show(
-      (viewport: NativeViewport) => viewport.showTexture(request),
+      (viewport: NativeViewport) =>
+        viewport.ask("showTexture", (id: RenderViewportId) => texturesCommands.showTexture(id, request), null),
       (scene: Nullable<number>) => {
         this.scene = scene;
         this.describeWhenReady();

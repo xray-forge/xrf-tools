@@ -50,6 +50,7 @@ import {
   LEVEL_SCENE,
   LEVEL_VIEWPORT,
   mockAttachedLevelRender,
+  sentLevelsCommand,
   sentRenderCommand,
 } from "@/fixtures/utils/level-render";
 
@@ -163,7 +164,7 @@ describe("LevelRenderService", () => {
     const { container } = await mockAttachedLevelRender();
     const viewport: LevelViewportService = container.get(LevelViewportService);
 
-    expect(sentRenderCommand("show_level")).toEqual([{ sessionId: expect.any(String), viewport: LEVEL_VIEWPORT }]);
+    expect(sentLevelsCommand("show_level")).toEqual([{ sessionId: expect.any(String), viewport: LEVEL_VIEWPORT }]);
     expect(viewport.isRevealed).toBe(false);
 
     emitViewportEvent({
@@ -254,7 +255,7 @@ describe("LevelRenderService", () => {
     });
     await waitFor(() => expect(load.level.value?.selected.revision).toBe(1));
 
-    expect(sentRenderCommand("show_level")).toHaveLength(1);
+    expect(sentLevelsCommand("show_level")).toHaveLength(1);
     expect(sentRenderCommand("command_camera")).toHaveLength(resets);
     expect(viewport.isRevealed).toBe(false);
 
@@ -385,14 +386,14 @@ describe("LevelRenderService", () => {
     const { container, service } = await mockAttachedLevelRender();
 
     jest.spyOn(service.log, "error").mockImplementation(() => undefined);
-    setMockInvokeResponses({ ["plugin:render|show_level"]: () => Promise.reject(new Error("The level is closed")) });
+    setMockInvokeResponses({ ["plugin:levels|show_level"]: () => Promise.reject(new Error("The level is closed")) });
     await container.get(LevelLoadService).close();
 
     await waitFor(() => expect(service.failure).toBe("The level is closed"));
 
     setMockInvokeResponses({
       ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
-      ["plugin:render|show_level"]: LEVEL_SCENE,
+      ["plugin:levels|show_level"]: LEVEL_SCENE,
     });
     await container.get(LevelLoadService).load({
       engine: EXrayEngineChoice.VANILLA,
@@ -402,7 +403,7 @@ describe("LevelRenderService", () => {
     });
 
     expect(service.failure).toBeNull();
-    await waitFor(() => expect(sentRenderCommand("show_level")).toHaveLength(3));
+    await waitFor(() => expect(sentLevelsCommand("show_level")).toHaveLength(3));
   });
 
   it("holds why the resident level could not be described, for the panels to say", async () => {

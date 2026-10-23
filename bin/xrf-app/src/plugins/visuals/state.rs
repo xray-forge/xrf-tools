@@ -4,11 +4,10 @@ use std::path::Path;
 use serde::Serialize;
 use xrf_material::{XrayMaterialDescriptor, XraySurfaceDescriptor};
 use xrf_vfs::{XrayAsset, XrayRoots};
-use xrf_visual::{VisualDependencies, VisualDescription, VisualMotionPose, VisualPackage};
+use xrf_visual::{VisualDependencies, VisualDescription, VisualMotionPose, VisualMotions, VisualPackage};
 
 use crate::core::assets::AssetTextureDescriptor;
 use crate::core::session::Session;
-use crate::plugins::visuals::skeleton::SelectedSkeleton;
 
 /// Independent ownership for the browsed roots and the selected model.
 pub struct VisualState {
@@ -33,7 +32,7 @@ pub struct SelectedVisual {
   /// What the visual's own references came to, decided at open so a read is a lookup rather than a search.
   pub dependencies: VisualDependencies,
   /// What posing needs from the file, or `None` when the visual carries no bind pose.
-  pub skeleton: Option<SelectedSkeleton>,
+  pub motions: Option<VisualMotions>,
   /// The motion baked by the last `open_motion`, so the renderer poses by that bake rather than composing it again.
   pub posed: Session<VisualMotionPose>,
   /// What the located texture files are, described at open so a reload reports them without reading anything again.

@@ -8,3 +8,4 @@ pub(crate) mod get_vocabulary;
 pub(crate) mod make_bump;
 pub(crate) mod open;
 pub(crate) mod save;
+pub(crate) mod show_texture;

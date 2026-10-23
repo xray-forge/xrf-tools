@@ -7,8 +7,7 @@ use xrf_renderer::get_texture_name;
 use xrf_vfs::{XrayAssetContainer, XrayRoots};
 
 use crate::core::assets::{AssetMountState, read_located_asset};
-use crate::plugins::levels::textures::resolve_reference;
-use crate::plugins::textures::file_stamp::TextureFileStamp;
+use crate::core::file_stamp::FileStamp;
 
 /// Where a render source's texture references are found and read from: its roots and texture scope, and the file each
 /// reference resolved to, known ahead (as a level resolves its own at open) or once first asked for; `None` for one
@@ -83,7 +82,7 @@ impl TextureResolver {
       .get(reference)
       .cloned()
       .flatten()?;
-    let stamp: Option<TextureFileStamp> = match assets
+    let stamp: Option<FileStamp> = match assets
       .search(&self.roots)
       .ok()?
       .find(&logical_path)
@@ -91,7 +90,7 @@ impl TextureResolver {
       .get_container()
     {
       XrayAssetContainer::Directory { root, relative_path } => {
-        TextureFileStamp::read(&root.join(relative_path)).ok().flatten()
+        FileStamp::read(&root.join(relative_path)).ok().flatten()
       }
       XrayAssetContainer::Archive { .. } => None,
     };
@@ -115,9 +114,8 @@ impl TextureResolver {
     let located: Option<String> = match known {
       Some(located) => located,
       None => {
-        let located: Option<String> = resolve_reference(
+        let located: Option<String> = self.scope.locate_texture(
           &assets.search(&self.roots).map_err(XrfError::new_asset_error)?,
-          &self.scope,
           reference,
         );
 

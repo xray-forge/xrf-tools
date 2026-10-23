@@ -19,17 +19,17 @@ use crate::core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountSta
 use crate::core::session::{Session, SessionChange, SessionId, SessionRootChange, SessionSnapshot};
 use crate::plugins::levels::configs::LEVEL_SECTIONS_PART;
 use crate::plugins::levels::details::LEVEL_DETAILS_PART;
+use crate::plugins::levels::level_scene_follower::LevelSceneFollower;
 use crate::plugins::levels::lights::LEVEL_LIGHTS_PART;
 use crate::plugins::levels::object_motions::LEVEL_OBJECT_MOTIONS_PART;
 use crate::plugins::levels::opened_level::OpenedLevel;
 use crate::plugins::levels::particles::LEVEL_PARTICLES_PART;
 use crate::plugins::levels::render_source::LevelRenderSource;
+use crate::plugins::levels::shown_levels::ShownLevels;
 use crate::plugins::levels::spawn::LEVEL_SPAWN_PART;
 use crate::plugins::levels::start::LEVEL_START_PART;
 use crate::plugins::levels::state::level_environment::LEVEL_WEATHER_PART;
 use crate::plugins::levels::state::{LevelEnvironment, LevelSource, LevelState, SelectedLevel};
-use crate::plugins::render::level_scene_follower::LevelSceneFollower;
-use crate::plugins::render::shown_levels::ShownLevels;
 use crate::plugins::render::world_state::WorldState;
 
 /// Longer than a synthetic level takes to read on the test pool.

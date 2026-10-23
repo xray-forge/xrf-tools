@@ -6,15 +6,15 @@ use serde::{Deserialize, Serialize};
 use xrf_dds::{DdsMipFilter, DdsMipmaps};
 use xrf_vfs::XrayRoots;
 
+use crate::core::file_stamp::FileStamp;
 use crate::core::jobs::JobResource;
 use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
-use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingQuality};
-use crate::plugins::textures::file_stamp::TextureFileStamp;
 use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::surface::texture_surface_alpha::TextureSurfaceAlpha;
 use crate::plugins::textures::surface::texture_surface_shape::TextureSurfaceShape;
+use xrf_texture::{TextureEncodingFormat, TextureEncodingQuality};
 
 /// One file a write addresses, and what was there when the editor read it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -24,7 +24,7 @@ pub struct TextureSaveTarget {
   /// Absolute path of the file to replace or create.
   pub path: String,
   /// The stamp the editor read there, or `None` for a file it is creating.
-  pub expected: Option<TextureFileStamp>,
+  pub expected: Option<FileStamp>,
 }
 
 /// The descriptor half of a save.

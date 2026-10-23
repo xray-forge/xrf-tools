@@ -23,9 +23,9 @@ import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.m
 import { mockContainer } from "@/fixtures/utils/container";
 
 /** What a render command was sent, in order. */
-function sent(command: string): Array<Record<string, unknown>> {
+function sent(command: string, plugin: string = "render"): Array<Record<string, unknown>> {
   return mockInvoke.mock.calls
-    .filter(([name]) => name === `plugin:render|${command}`)
+    .filter(([name]) => name === `plugin:${plugin}|${command}`)
     .map(([, args]) => args as Record<string, unknown>);
 }
 
@@ -43,7 +43,7 @@ function emit(event: ViewportEvent): void {
 const SCENE: number = 6;
 
 async function mockAttached(): Promise<{ container: Container; service: TextureRenderService }> {
-  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: 5, ["plugin:render|show_texture"]: SCENE });
+  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: 5, ["plugin:textures|show_texture"]: SCENE });
 
   const container: Container = mockContainer([TextureSelectionService, TextureViewService, TextureRenderService]);
 
@@ -82,7 +82,7 @@ describe("TextureRenderService", () => {
     });
     await flush();
 
-    const requests = sent("show_texture").map(({ request }) => request as Record<string, unknown>);
+    const requests = sent("show_texture", "textures").map(({ request }) => request as Record<string, unknown>);
 
     expect(requests).toHaveLength(2);
     expect(requests[0]).toMatchObject({ shape: ETextureSurfaceShape.PLANE, source: { reference: MOCK_TEXTURE } });
@@ -93,7 +93,7 @@ describe("TextureRenderService", () => {
     });
     await flush();
 
-    expect(sent("show_texture").at(-1)?.request).toBeNull();
+    expect(sent("show_texture", "textures").at(-1)?.request).toBeNull();
 
     service.dispose();
   });

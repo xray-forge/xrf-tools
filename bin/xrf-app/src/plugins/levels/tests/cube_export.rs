@@ -9,7 +9,7 @@ use crate::core::types::TauriResult;
 use crate::plugins::levels::viewer::cube_export::{export_cube, get_cube_export_paths};
 use crate::plugins::levels::viewer::cube_export_format::CubeExportFormat;
 use crate::plugins::levels::viewer::cube_export_request::CubeExportRequest;
-use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingQuality};
+use xrf_texture::{TextureEncodingFormat, TextureEncodingQuality};
 
 /// A cross of 16 pixel faces in a folder of its own, each face one flat shade by its place in the engine's order.
 fn write_cross(name: &str) -> TauriResult<(PathBuf, PathBuf)> {

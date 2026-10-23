@@ -15,6 +15,10 @@ below the CLI's `dds` and `sprite` commands and the desktop app's texture and sp
 - `PackEquipmentProcessor::pack_sprites` and `UnpackEquipmentProcessor::unpack_sprites` handle the inventory icon sheet.
 - `VerifyEquipmentGridProcessor::find_overlaps` checks occupied inventory rectangles in resolved LTX data.
 
+`TextureEncodingFormat` and `TextureEncodingQuality` are the five formats and three efforts a texture or a capture is
+offered to be written in, as the desktop app's editors ask; `to_candidate` and `to_quality` turn them into
+[xrf-dds](../xrf-dds/README.md)'s encoder inputs.
+
 Each operation takes an options value carrying its inputs, output paths, and policy. Resolve game configs with the
 intended LTX dialect before passing them to equipment operations. `read_image_as_rgba` reads authoring input such as a
 height map or gloss mask in any format the `image` decoder recognises.

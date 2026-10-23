@@ -24,9 +24,9 @@ import { VisualPreviewViewport } from "./VisualPreviewViewport";
 
 let bindings: Array<Binding>;
 
-function sent(command: string): Array<Record<string, unknown>> {
+function sent(command: string, plugin: string = "render"): Array<Record<string, unknown>> {
   return mockInvoke.mock.calls
-    .filter(([name]) => name === `plugin:render|${command}`)
+    .filter(([name]) => name === `plugin:${plugin}|${command}`)
     .map(([, args]) => args as Record<string, unknown>);
 }
 
@@ -62,7 +62,7 @@ describe("VisualPreviewViewport", () => {
     await act(flush);
 
     expect(sent("attach_viewport")).toHaveLength(1);
-    expect(sent("show_model").map(({ sessionId }) => sessionId)).toEqual(["open"]);
+    expect(sent("show_model", "visuals").map(({ sessionId }) => sessionId)).toEqual(["open"]);
 
     unmount();
     await flush();

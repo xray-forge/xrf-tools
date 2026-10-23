@@ -76,7 +76,7 @@ pub fn resolve_surface_textures(
     .into_iter()
     .filter(|reference| !bumps.contains_key(reference))
     .map(|reference| LevelTextureReference {
-      logical_path: resolve_reference(search, scope, &reference),
+      logical_path: scope.locate_texture(search, &reference),
       reference,
     })
     .collect();
@@ -92,16 +92,6 @@ pub fn resolve_surface_textures(
         }),
     )
     .collect()
-}
-
-/// Locates one texture reference the way the engine's own loader does, treating a rejected reference as absent rather
-/// than failing the open.
-pub fn resolve_reference(search: &XraySearch, scope: &XrayTextureScope, reference: &str) -> Option<String> {
-  scope
-    .resolve_texture(search, reference)
-    .ok()
-    .as_ref()
-    .and_then(get_located_path)
 }
 
 /// The logical path a lookup landed on.

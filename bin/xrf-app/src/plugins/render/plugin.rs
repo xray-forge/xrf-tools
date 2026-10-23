@@ -5,26 +5,22 @@ use tauri::webview::{PageLoadEvent, PageLoadPayload, WebviewWindow};
 use tauri::{AppHandle, Manager, RunEvent, Runtime, Webview, WindowEvent};
 use xrf_renderer::{RenderQueue, RenderWorkers};
 
-use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::window::{WindowCloseApprovals, WindowHandles};
-use crate::plugins::levels::state::LevelState;
 use crate::plugins::render::disk_cache_store::DiskCacheStore;
-use crate::plugins::render::level_scene_follower::LevelSceneFollower;
 use crate::plugins::render::packaged_bundle::PackagedBundle;
 use crate::plugins::render::render_viewports::RenderViewports;
 use crate::plugins::render::renderer::Renderer;
-use crate::plugins::render::shown_levels::ShownLevels;
 use crate::plugins::render::texture_reloads::TextureReloads;
 use crate::plugins::render::viewport_shows::ViewportShows;
 use crate::plugins::render::world_state::WorldState;
 
 /// The `render` plugin: the native renderer (`Renderer`, its loaders on the application's pool, its bundle and the
-/// driver's pipeline cache on disk) and the units every `render|*` command takes what it touches from: the world it
-/// draws (`WorldState`), the shows asked of each viewport (`ViewportShows`), the viewports in each window
-/// (`RenderViewports`), the drawn textures kept current with their files (`TextureReloads`) and the source each level
-/// session is drawn from (`ShownLevels`). Its hooks detach a window's viewports as a page starts loading over them or
-/// the window closes, and stop the renderer as the application exits.
+/// driver's pipeline cache on disk) and the units its commands and every domain's show take what they touch from: the
+/// world it draws (`WorldState`), the shows asked of each viewport (`ViewportShows`), the viewports in each window
+/// (`RenderViewports`) and the drawn textures kept current with their files (`TextureReloads`). It knows no domain:
+/// each shows its own documents through these units. Its hooks detach a window's viewports as a page starts loading
+/// over them or the window closes, and stop the renderer as the application exits.
 pub struct RenderPlugin {}
 
 impl RenderPlugin {
@@ -52,26 +48,12 @@ impl RenderPlugin {
           None => queue,
         });
         let shows: ViewportShows = ViewportShows::new(world.clone());
-        let shown: ShownLevels = ShownLevels::default();
-
-        let levels = application
-          .try_state::<LevelState>()
-          .ok_or("The levels plugin is set up before the render plugin, whose scenes follow its session")?;
-
-        application
-          .state::<AssetMountState>()
-          .add_subscriber(LevelSceneFollower {
-            levels: levels.selected.clone(),
-            shown: shown.clone(),
-            world: world.clone(),
-          });
 
         application.manage(RenderViewports::new(renderer.clone(), world.clone(), shows.clone()));
         application.manage(TextureReloads::new(renderer.clone()));
         application.manage(renderer);
         application.manage(world);
         application.manage(shows);
-        application.manage(shown);
 
         Ok(())
       })

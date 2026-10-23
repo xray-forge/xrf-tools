@@ -10,11 +10,11 @@ use xrf_utils::{error_to_string, format_path, write_file_staged};
 use xrf_vfs::{XraySearch, XrayTransaction};
 
 use crate::core::assets::AssetMountState;
+use crate::core::file_stamp::FileStamp;
 use crate::core::types::TauriResult;
 use crate::plugins::textures::descriptor_form::TextureDescriptorForm;
-use crate::plugins::textures::encoding::TextureEncodingFormat;
-use crate::plugins::textures::file_stamp::TextureFileStamp;
 use crate::plugins::textures::request::{TextureDescriptorSave, TexturesSaveRequest};
+use xrf_texture::TextureEncodingFormat;
 
 /// What a save left on disk.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -54,7 +54,7 @@ pub fn write_save(
   if let Some(save) = &request.texture {
     let path: PathBuf = PathBuf::from(&save.target.path);
 
-    TextureFileStamp::check_unchanged(&path, save.target.expected)?;
+    FileStamp::check_unchanged(&path, save.target.expected)?;
 
     prepared.push(PreparedFile {
       path,
@@ -68,7 +68,7 @@ pub fn write_save(
   if let Some(save) = &request.descriptor {
     let path: PathBuf = PathBuf::from(&save.target.path);
 
-    TextureFileStamp::check_unchanged(&path, save.target.expected)?;
+    FileStamp::check_unchanged(&path, save.target.expected)?;
 
     prepared.push(PreparedFile {
       bytes: to_descriptor_bytes(save, &path, descriptor_format)?,

@@ -14,7 +14,7 @@ use crate::plugins::render::renderer::Renderer;
 /// its drawn size, without its overlays or its selection's outline.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "save_screenshot"))]
 #[tauri::command(rename = "save_screenshot")]
-pub async fn render_save_screenshot(
+pub async fn levels_save_screenshot(
   renderer: State<'_, Renderer>,
   directories: State<'_, AppDirectories>,
   execution: State<'_, ExecutionState>,

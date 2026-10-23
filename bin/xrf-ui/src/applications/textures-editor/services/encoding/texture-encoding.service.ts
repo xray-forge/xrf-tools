@@ -13,13 +13,12 @@ import { toEnumMember } from "@/core/ipc/enumeration";
 import { Session } from "@/core/ipc/session";
 import {
   EJobKind,
-  ETextureEncodingFormat,
   SessionId,
   TextureDescription,
   TextureEncodingComparison,
-  TextureEncodingFormat,
   TextureEncodingReport,
 } from "@/core/ipc/types/xrf-app";
+import { ETextureEncodingFormat, TextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

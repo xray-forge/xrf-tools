@@ -3,16 +3,13 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
 import { renderCommands } from "@/core/ipc/commands/render";
-import { CaptureOutcome, RenderPickRequest, ViewportEvent } from "@/core/ipc/types/xrf-app";
-import { JobProgress } from "@/core/ipc/types/xrf-job";
+import { RenderPickRequest, ViewportEvent } from "@/core/ipc/types/xrf-app";
 import {
   ERenderViewportEvent,
   RenderAppliedReport,
-  RenderCubeCapture,
   RenderFrameReport,
   RenderLevelHit,
   RenderLoadReport,
-  RenderMapCapture,
   RenderOverlay,
   RenderSelection,
   RenderTextureReport,
@@ -37,9 +34,6 @@ import {
   WorldWeatherReport,
 } from "@/core/ipc/types/xrf-world";
 import { noop } from "@/lib/callbacks/noop";
-
-/** A texture laid on a body, as the renderer is asked to draw one, or null for none. */
-export type TNativeTextureRequest = Parameters<typeof renderCommands.showTexture>[1];
 
 /**
  * What a native viewport tells its page.
@@ -308,119 +302,28 @@ export class NativeViewport {
   }
 
   /**
-   * Writes the viewport's next finished frame to a PNG file: the whole viewport at its drawn size, without its
-   * overlays or its selection's outline.
+   * Sends a domain's command about this viewport, such as the show of its document or a capture of what it draws, once
+   * it is attached: the renderer knows no domain, so each domain names the viewport in a command of its own.
    *
-   * @param path - The file to write.
-   * @returns Whether it was written, which a viewport not attached is not; rejects for a screenshot that failed.
+   * @param command - What is sent, which a failure is told under.
+   * @param send - Sends it to the attached viewport.
+   * @param detached - What a viewport not attached, or released, answers instead.
+   * @returns What it answered; rejects for a command that failed.
    */
-  public async saveScreenshot(path: string): Promise<boolean> {
+  public async ask<T>(command: string, send: (id: RenderViewportId) => Promise<T>, detached: T): Promise<T> {
     const id: Nullable<RenderViewportId> = await this.attached;
 
     if (id === null || this.isDisposed) {
-      return false;
+      return detached;
     }
 
     try {
-      await renderCommands.saveScreenshot(id, path);
-
-      return true;
+      return await send(id);
     } catch (error: unknown) {
-      this.noteFailure("saveScreenshot", error);
+      this.noteFailure(command, error);
 
       throw error;
     }
-  }
-
-  /**
-   * Captures a level map in the viewport, tile by tile in place of its frames, and writes it to a PNG file.
-   *
-   * @param capture - What it is asked to capture.
-   * @param path - The file to write.
-   * @param job - The job it runs as, by its id, and where its progress is told.
-   * @returns How it ended, or null for a viewport not attached; rejects for a capture that failed.
-   */
-  public async captureMap(
-    capture: RenderMapCapture,
-    path: string,
-    job: [string, Channel<JobProgress>]
-  ): Promise<Nullable<CaptureOutcome>> {
-    const id: Nullable<RenderViewportId> = await this.attached;
-
-    if (id === null || this.isDisposed) {
-      return null;
-    }
-
-    try {
-      return await renderCommands.captureMap({ viewport: id, capture, path }, ...job);
-    } catch (error: unknown) {
-      this.noteFailure("captureMap", error);
-
-      throw error;
-    }
-  }
-
-  /**
-   * Captures a cubemap around the viewport's camera, face by face in place of its frames, and writes its cross to a
-   * PNG file.
-   *
-   * @param capture - What it is asked to capture.
-   * @param path - The file to write.
-   * @param job - The job it runs as, by its id, and where its progress is told.
-   * @returns How it ended, or null for a viewport not attached; rejects for a capture that failed.
-   */
-  public async captureCube(
-    capture: RenderCubeCapture,
-    path: string,
-    job: [string, Channel<JobProgress>]
-  ): Promise<Nullable<CaptureOutcome>> {
-    const id: Nullable<RenderViewportId> = await this.attached;
-
-    if (id === null || this.isDisposed) {
-      return null;
-    }
-
-    try {
-      return await renderCommands.captureCube({ viewport: id, capture, path }, ...job);
-    } catch (error: unknown) {
-      this.noteFailure("captureCube", error);
-
-      throw error;
-    }
-  }
-
-  /**
-   * Draws an open level, or none.
-   *
-   * @param sessionId - The level's open session, as the backend holds it, or null for no level.
-   * @returns The scene drawn, which the viewport's load reports name; null for no level or a viewport not attached;
-   *   rejects for a request that failed.
-   */
-  public showLevel(sessionId: Nullable<string>): Promise<Nullable<number>> {
-    return this.show("showLevel", (id: RenderViewportId) => renderCommands.showLevel(id, sessionId));
-  }
-
-  /**
-   * Draws an open model alone, at the origin, or none.
-   *
-   * @param sessionId - The model's open session, as the backend holds it, or null for no model.
-   * @param detail - How far down each submesh's collapse chain to draw: zero its finest level, one its coarsest.
-   * @returns The scene drawn, which the viewport's load reports name; null for no model or a viewport not attached;
-   *   rejects for a request that failed.
-   */
-  public showModel(sessionId: Nullable<string>, detail: number): Promise<Nullable<number>> {
-    return this.show("showModel", (id: RenderViewportId) => renderCommands.showModel(id, sessionId, detail));
-  }
-
-  /**
-   * Draws a texture laid on a body, or none.
-   *
-   * @param request - The texture, the body and how it is laid on it, or null for none.
-   * @returns The scene drawn, which the viewport's load reports name; null for no texture or a viewport not attached;
-   *   rejects for a request that failed.
-   */
-  public showTexture(request: TNativeTextureRequest): Promise<Nullable<number>> {
-    return this.show("showTexture", (id: RenderViewportId) => renderCommands.showTexture(id, request));
   }
 
   /**
@@ -442,30 +345,6 @@ export class NativeViewport {
         return renderCommands.detachViewport(id).catch(noop);
       }
     });
-  }
-
-  /**
-   * @param command - The show sent, which a failure is told under.
-   * @param send - Sends it to the attached viewport.
-   * @returns The scene it drew, or null for none or a viewport not attached; rejects for a show that failed.
-   */
-  private async show(
-    command: string,
-    send: (id: RenderViewportId) => Promise<Nullable<number>>
-  ): Promise<Nullable<number>> {
-    const id: Nullable<RenderViewportId> = await this.attached;
-
-    if (id === null || this.isDisposed) {
-      return null;
-    }
-
-    try {
-      return (await send(id)) ?? null;
-    } catch (error: unknown) {
-      this.noteFailure(command, error);
-
-      throw error;
-    }
   }
 
   /**

@@ -1,37 +1,14 @@
 use std::time::Duration;
 
-use serde::{Deserialize, Serialize};
-use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsFormatSupport, DdsRenderer, Quality};
+use serde::Serialize;
+use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsFormatSupport, DdsRenderer};
 use xrf_job::JobOutcome;
+use xrf_texture::TextureEncodingFormat;
 use xrf_vfs::XrayRoots;
 
 use crate::core::session::SessionId;
 use crate::core::types::TauriResult;
 use crate::plugins::textures::source::TextureSource;
-
-/// A format the base texture can be written in, of the five worth offering.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum TextureEncodingFormat {
-  Bc1,
-  Bc2,
-  Bc3,
-  Rgba8,
-  Bc7,
-}
-
-/// How hard the encoder works, which trades seconds for fidelity.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum TextureEncodingQuality {
-  Fast,
-  Normal,
-  /// The default, because everything but BC7 costs pennies at it.
-  #[default]
-  Slow,
-}
 
 /// One renderer's answer about a format.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -167,38 +144,6 @@ impl TextureEncodingReport {
           }),
         })
         .collect(),
-    }
-  }
-}
-
-impl TextureEncodingFormat {
-  pub const fn of(candidate: DdsEncodeCandidate) -> Self {
-    match candidate {
-      DdsEncodeCandidate::Bc1 => Self::Bc1,
-      DdsEncodeCandidate::Bc2 => Self::Bc2,
-      DdsEncodeCandidate::Bc3 => Self::Bc3,
-      DdsEncodeCandidate::Rgba8 => Self::Rgba8,
-      DdsEncodeCandidate::Bc7 => Self::Bc7,
-    }
-  }
-
-  pub const fn to_candidate(self) -> DdsEncodeCandidate {
-    match self {
-      Self::Bc1 => DdsEncodeCandidate::Bc1,
-      Self::Bc2 => DdsEncodeCandidate::Bc2,
-      Self::Bc3 => DdsEncodeCandidate::Bc3,
-      Self::Rgba8 => DdsEncodeCandidate::Rgba8,
-      Self::Bc7 => DdsEncodeCandidate::Bc7,
-    }
-  }
-}
-
-impl TextureEncodingQuality {
-  pub const fn to_quality(self) -> Quality {
-    match self {
-      Self::Fast => Quality::Fast,
-      Self::Normal => Quality::Normal,
-      Self::Slow => Quality::Slow,
     }
   }
 }

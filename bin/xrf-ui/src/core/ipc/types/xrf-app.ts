@@ -24,7 +24,12 @@ import {
   RenderViewportId,
 } from "@/core/ipc/types/xrf-renderer";
 import { ClsId, SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
-import { EquipmentSlotOccupant, ImageShape } from "@/core/ipc/types/xrf-texture";
+import {
+  EquipmentSlotOccupant,
+  ImageShape,
+  TextureEncodingFormat,
+  TextureEncodingQuality,
+} from "@/core/ipc/types/xrf-texture";
 import {
   TranslationBuildLanguageSummary,
   TranslationLanguage,
@@ -161,7 +166,7 @@ export type ArchiveAnmDescription = {
   keys: number;
   /** Seconds the last key of any channel sits at, absent when nothing is keyed. */
   keyedSeconds: number | null;
-  /** One entry per channel, in the order the format stores them. */
+  /** One entry per channel, in the engine's channel order whatever order the file's version stores them in. */
   channels: Array<ArchiveAnimationChannel>;
 };
 
@@ -1638,6 +1643,16 @@ export type EquipmentSpriteOpen = {
   isDltx: boolean;
 };
 
+/**
+ * What was read at a path, so a later write cannot overwrite a change it never saw and a reload can tell the file
+ * moved.
+ */
+export type FileStamp = {
+  size: number;
+  /** Milliseconds since the Unix epoch, as the platform reports the file's modification time. */
+  modifiedMs: number;
+};
+
 /** One check's verdict, as the desktop surface shows it. */
 export type GamedataCheckSummary = {
   /** The check that ran, spelled as the command line spells it. */
@@ -2570,29 +2585,6 @@ export type TextureEncodingCurrent = {
   mipmapLevels: number;
 };
 
-/** A format the base texture can be written in, of the five worth offering. */
-export enum ETextureEncodingFormat {
-  BC1 = "bc1",
-  BC2 = "bc2",
-  BC3 = "bc3",
-  RGBA8 = "rgba8",
-  BC7 = "bc7",
-}
-
-/** Every `ETextureEncodingFormat` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type TextureEncodingFormat = `${ETextureEncodingFormat}`;
-
-/** How hard the encoder works, which trades seconds for fidelity. */
-export enum ETextureEncodingQuality {
-  FAST = "fast",
-  NORMAL = "normal",
-  /** The default, because everything but BC7 costs pennies at it. */
-  SLOW = "slow",
-}
-
-/** Every `ETextureEncodingQuality` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type TextureEncodingQuality = `${ETextureEncodingQuality}`;
-
 /** What one candidate cost and what it lost, weighed against the texture as it is now. */
 export type TextureEncodingReport = {
   format: TextureEncodingFormat;
@@ -2630,13 +2622,6 @@ export type TextureEntry = {
   texture: XrayAsset | null;
   /** The `.thm` the roots answer for this reference, winner first. */
   descriptor: XrayAsset | null;
-};
-
-/** What the editor read at a path, so a later write cannot overwrite a change it never saw. */
-export type TextureFileStamp = {
-  size: number;
-  /** Milliseconds since the Unix epoch, as the platform reports the file's modification time. */
-  modifiedMs: number;
 };
 
 /** One bit of the `STextureParams` flag word. */
@@ -2704,7 +2689,7 @@ export type TextureSaveTarget = {
   /** Absolute path of the file to replace or create. */
   path: string;
   /** The stamp the editor read there, or `None` for a file it is creating. */
-  expected: TextureFileStamp | null;
+  expected: FileStamp | null;
 };
 
 /** Every `kind` the `TextureSource` union is told apart by, so a switch or a comparison names one. */

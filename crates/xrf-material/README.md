@@ -52,7 +52,8 @@ covers and in what order.
   level, the level's own `.thm` is read over the shared one as `LoadTHM("$level$")` does: it replaces the bump and the
   material, and the detail only where it names a live one, and one the type gate skips changes nothing. Textures and
   bump inputs resolve beside the level first, save that a `_bump` name the shared tree lacks is the engine's dummy;
-  `resolve_texture` answers that order for any other texture a level binds.
+  `resolve_texture` answers that order for any other texture a level binds, and `locate_texture` the logical path it
+  lands on, a reference the search refuses reading as absent.
 - `XrayReducedTextures` answers whether a texture loads a step coarser, from `system.ltx`'s `reduce_lod_texture_list`.
 
 ## Texture dependencies

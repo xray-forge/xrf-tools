@@ -20,9 +20,11 @@ use crate::plugins::translations::plugin::TranslationsPlugin;
 use crate::plugins::transport::plugin::TransportPlugin;
 use crate::plugins::visuals::plugin::VisualsPlugin;
 
-/// The domain plugins this application registers, in the order their command surfaces are written.
+/// The domain plugins this application registers, set up in this order: the infrastructure plugin first, since a
+/// domain's setup takes the units it manages, then every domain.
 pub(crate) fn domain_plugins<R: Runtime>() -> Vec<TauriPlugin<R>> {
   vec![
+    RenderPlugin::init(),
     AssetsPlugin::init(),
     ArchivesPlugin::init(),
     ConfigsPlugin::init(),
@@ -31,7 +33,6 @@ pub(crate) fn domain_plugins<R: Runtime>() -> Vec<TauriPlugin<R>> {
     GamedataPlugin::init(),
     JobsPlugin::init(),
     LevelsPlugin::init(),
-    RenderPlugin::init(),
     SpawnPlugin::init(),
     SpriteEquipmentPlugin::init(),
     SystemPlugin::init(),

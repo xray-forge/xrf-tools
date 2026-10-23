@@ -5,6 +5,8 @@ import { Channel } from "@tauri-apps/api/core";
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
   ETextureCatalogMode,
+  ETextureSurfaceAlpha,
+  ETextureSurfaceShape,
   SessionId,
   SessionRestore,
   SessionSnapshot,
@@ -24,6 +26,7 @@ import {
   TextureVocabulary,
 } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
+import { RenderViewportId } from "@/core/ipc/types/xrf-renderer";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
@@ -55,4 +58,22 @@ export const texturesCommands = {
   /** Write one node's pending files: its descriptor, its base texture, or both. */
   save: (request: TexturesSaveRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TextureSaveOutcome>("plugin:textures|save", { request, jobId, progress }),
+  /**
+   * Draw a texture laid on a body in a viewport, its files read by the renderer; no request draws none. Answers the
+   * scene drawn, which the viewport's load reports name, or none.
+   */
+  showTexture: (
+    viewport: RenderViewportId,
+    request: {
+      source: TextureSource;
+      /** The roots the texture is resolved in, as its description was. */
+      roots: XrayRoots;
+      shape: ETextureSurfaceShape;
+      /** How many times the texture repeats across the body, which is how a tiling seam becomes visible. */
+      tiling: number | null;
+      alpha: ETextureSurfaceAlpha;
+      /** Width over height of the texture, which the plane is stretched to. */
+      aspect: number | null;
+    } | null
+  ) => __TAURI_INVOKE<number | null>("plugin:textures|show_texture", { viewport, request }),
 };

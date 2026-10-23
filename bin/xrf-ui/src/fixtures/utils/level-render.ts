@@ -21,8 +21,17 @@ export const LEVEL_SCENE: number = 3;
 
 /** The arguments each call of a render command was sent with, in order. */
 export function sentRenderCommand(command: string): Array<Record<string, unknown>> {
+  return sentCommand("render", command);
+}
+
+/** The arguments each call of a levels command was sent with, in order: the level's show is one. */
+export function sentLevelsCommand(command: string): Array<Record<string, unknown>> {
+  return sentCommand("levels", command);
+}
+
+function sentCommand(plugin: string, command: string): Array<Record<string, unknown>> {
   return mockInvoke.mock.calls
-    .filter(([name]) => name === `plugin:render|${command}`)
+    .filter(([name]) => name === `plugin:${plugin}|${command}`)
     .map(([, args]) => args as Record<string, unknown>);
 }
 
@@ -48,7 +57,7 @@ export async function mockAttachedLevelRender(
     ),
     ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
     ["plugin:render|attach_viewport"]: LEVEL_VIEWPORT,
-    ["plugin:render|show_level"]: LEVEL_SCENE,
+    ["plugin:levels|show_level"]: LEVEL_SCENE,
   });
 
   const container: Container = mockContainer([
@@ -68,7 +77,7 @@ export async function mockAttachedLevelRender(
 
   service.attach(element);
   // Attaching ends with the level shown.
-  await waitFor(() => expect(sentRenderCommand("show_level")).toHaveLength(1));
+  await waitFor(() => expect(sentLevelsCommand("show_level")).toHaveLength(1));
 
   return { container, service };
 }

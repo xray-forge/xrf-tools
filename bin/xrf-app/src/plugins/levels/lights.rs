@@ -15,7 +15,6 @@ use crate::plugins::levels::report::{report_lights, report_missing_spawned_light
 use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::spawn_visuals::SpawnVisualReader;
 use crate::plugins::levels::state::{LevelTextureReference, SelectedLevel};
-use crate::plugins::levels::textures::resolve_reference;
 
 /// The colour animations lights name.
 pub(crate) const ANIMATIONS_FILE: &str = "lanims.xr";
@@ -95,7 +94,7 @@ fn pack_recorded(
       .projectors
       .iter()
       .map(|reference| LevelTextureReference {
-        logical_path: resolve_reference(search, &scope, reference),
+        logical_path: scope.locate_texture(search, reference),
         reference: reference.clone(),
       })
       .collect(),

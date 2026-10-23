@@ -2,7 +2,13 @@ import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, reaction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
-import { RenderLoadReport, RenderTextureReport, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
+import { visualsCommands } from "@/core/ipc/commands/visuals";
+import {
+  RenderLoadReport,
+  RenderTextureReport,
+  RenderViewOptions,
+  RenderViewportId,
+} from "@/core/ipc/types/xrf-renderer";
 import { EWorldCameraCommand, WorldModelPose } from "@/core/ipc/types/xrf-world";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
@@ -120,7 +126,8 @@ export class VisualRenderService extends NativeRenderSurfaceService {
     this.hasDescribed = false;
     this.scene = null;
     this.show(
-      (viewport: NativeViewport) => viewport.showModel(sessionId, detail),
+      (viewport: NativeViewport) =>
+        viewport.ask("showModel", (id: RenderViewportId) => visualsCommands.showModel(id, sessionId, detail), null),
       (scene: Nullable<number>) => {
         this.scene = scene;
         this.describeWhenReady();

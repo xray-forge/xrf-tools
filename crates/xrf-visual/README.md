@@ -88,6 +88,10 @@ matched to a bone by name, as the engine resolves it, and bones not driven by a 
 frame count is what the decoded keys hold, not the motion's declared count. Baking fails when the bind records do not
 match the bones or the key payload does not match the partitions.
 
+`VisualMotions::of` keeps what posing a visual needs from its OGF file, or nothing for one without a bind pose, so a
+motion costs no re-read. `bake_named` and `describe_named` look a motion up by name in the file's own motions first,
+then in the OMF files the visual's dependencies located, and `list_names` names every motion it can play in that order.
+
 ## Levels
 
 - `SectorPacker` packs everything one level sector reaches into one buffer of attribute arrays and one index array:

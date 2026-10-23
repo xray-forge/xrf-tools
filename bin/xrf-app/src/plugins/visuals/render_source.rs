@@ -15,8 +15,7 @@ use xrf_visual::{
 
 use crate::core::assets::AssetMountState;
 use crate::core::session::SessionSnapshot;
-use crate::plugins::levels::texture_resolver::TextureResolver;
-use crate::plugins::visuals::pose::bake_named_motion;
+use crate::plugins::render::texture_resolver::TextureResolver;
 use crate::plugins::visuals::state::SelectedVisual;
 
 /// The one object an asset scene stands: the open model at the origin.
@@ -151,7 +150,7 @@ impl RenderLevelSource for VisualRenderSource {
   }
 
   fn read_motion(&self, name: &str) -> XrfResult<RenderMotion> {
-    let Some(skeleton) = self.visual.skeleton.as_ref() else {
+    let Some(motions) = self.visual.motions.as_ref() else {
       return Err(XrfError::new_not_found_error(
         "The open visual carries no bind pose to animate",
       ));
@@ -167,16 +166,14 @@ impl RenderLevelSource for VisualRenderSource {
       .map(|posed| VisualMotionPose::clone(&posed));
     let posed: VisualMotionPose = match baked {
       Some(posed) => posed,
-      None => bake_named_motion(
+      None => motions.bake_named(
         &self
           .assets
           .search(&self.visual.roots)
           .map_err(XrfError::new_asset_error)?,
-        skeleton,
         &self.visual.dependencies,
         name,
-      )
-      .map_err(XrfError::new_asset_error)?,
+      )?,
     };
     // Twelve floats a bone, as the renderer reads them: the basis' three columns, then the translation.
     if posed.description.floats_per_bone as usize != FLOATS_PER_BONE {

@@ -15,8 +15,8 @@ use xrf_vfs::{
   XrayRoots, XraySearch, XrayVfs,
 };
 
+use crate::core::file_stamp::FileStamp;
 use crate::plugins::textures::catalog::{TextureCatalog, TextureCatalogMode, TextureEntry};
-use crate::plugins::textures::file_stamp::TextureFileStamp;
 use crate::plugins::textures::request::TextureSaveTarget;
 use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::summary::TextureMaterialSummary;
@@ -109,7 +109,7 @@ pub fn loose_directory(case: &str) -> PathBuf {
 pub fn target(path: &Path) -> TextureSaveTarget {
   TextureSaveTarget {
     path: path.display().to_string(),
-    expected: TextureFileStamp::read(path).expect("stamp is readable"),
+    expected: FileStamp::read(path).expect("stamp is readable"),
   }
 }
 

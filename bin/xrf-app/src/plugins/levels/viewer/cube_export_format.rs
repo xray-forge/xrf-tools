@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingQuality};
+use xrf_texture::{TextureEncodingFormat, TextureEncodingQuality};
 
 /// What a cubemap is exported as: one cube DDS, six TGAs named `1` to `6` as `CDemoRecord` writes its faces, or six
 /// PNGs named by face.
