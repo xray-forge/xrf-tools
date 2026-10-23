@@ -56,6 +56,8 @@ impl XrayVfsHost {
     let plan: Arc<XraySearchPlan> = self.plan(roots)?;
     let (vfs, steps): (Arc<XrayVfs>, Vec<XraySearchStep>) = self.mount(&plan, false)?;
 
+    // todo: Prepend open editor buffers as an in-memory step of their own, read before every file on disk, which a
+    //  save's transaction skips when it places its writes, so unsaved text is what every reader sees.
     Ok(XraySearch::new(vfs).with_steps(steps))
   }
 
