@@ -2,23 +2,17 @@ use std::sync::Arc;
 
 use xrf_error::XrfResult;
 
-use crate::vfs::{XrayDirectoryListing, XrayMountedEntry, XrayShadowingEntry};
+use crate::search::{XrayDirectoryListing, XrayMountedEntry, XrayShadowingEntry};
 use crate::{XrayAsset, XrayAssetType, XrayLookupScope, XrayMount, XrayPathCollision, XrayVfs};
 
 impl XrayVfs {
   /// Views this VFS through a scope, so the scope is stated once instead of on every call.
-  ///
-  /// The view exposes the same lookups as the VFS itself, narrowed to the mounts and subtree the scope admits. It borrows
-  /// both halves, so a long-lived holder keeps the VFS and the scope and builds the view at the call site.
   pub fn scoped<'a>(&'a self, scope: &'a XrayLookupScope) -> XrayScopedVfs<'a> {
     XrayScopedVfs { scope, vfs: self }
   }
 }
 
 /// One [`XrayVfs`] seen through one [`XrayLookupScope`]: the same lookups, restricted to what the scope admits.
-///
-/// Made by [`XrayVfs::scoped`]. Reads only — a write names its scope explicitly on [`XrayVfs::write`] and
-/// [`XrayVfs::write_override`], because changing bytes deserves the ceremony.
 #[derive(Clone, Copy, Debug)]
 pub struct XrayScopedVfs<'a> {
   vfs: &'a XrayVfs,
@@ -53,11 +47,6 @@ impl XrayScopedVfs<'_> {
 
   /// Reads an asset this view already listed, without resolving its path a second time.
   ///
-  /// What a caller that enumerated and is now reading wants: the bytes of *that* entry, rather than
-  /// whatever the same logical path resolves to now. Scope-independent for the same reason — an asset
-  /// names its own container — so this is here only to spare such a caller reaching past the view it
-  /// was handed.
-  ///
   /// # Errors
   ///
   /// Returns an error when the asset's container cannot be read.
@@ -65,15 +54,7 @@ impl XrayScopedVfs<'_> {
     self.vfs.read_asset_bytes(asset)
   }
 
-  /// Reads and parses an asset, serving a retained value when this world is already holding one.
-  ///
-  /// The parse closure runs only on a miss, so a hit performs no I/O at all — the whole point, since an archived read is
-  /// whole-entry decompression before the parse even begins. Whether the result is retained is the policy's business,
-  /// not this call site's: an excluded kind reads, parses and returns exactly as it would have without a cache.
-  ///
-  /// Concurrent readers of one retained path share a single read and parse rather than each performing their own, which
-  /// is what keeps a sweep's reported cache counters describing its inputs instead of its schedule. The coordination
-  /// and its limits belong to the store: see [`XrayAssetCache::get_or_load`].
+  /// Reads and parses an asset, serving a retained value when this snapshot is already holding one.
   ///
   /// # Errors
   ///

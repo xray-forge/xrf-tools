@@ -196,7 +196,7 @@ impl<'a> EnvironmentReadPass<'a> {
 
   /// Whether a config is in the project's scope at all.
   pub(super) fn exists(&self, path: &XrayLogicalPath) -> XrfResult<bool> {
-    Ok(self.project.probe().find(path.as_str())?.get_asset().is_some())
+    Ok(self.project.search().find(path.as_str())?.is_some())
   }
 
   /// Resolves one config; none, and no finding, where it is not there, since each caller knows whether its absence is
@@ -242,7 +242,7 @@ impl<'a> EnvironmentReadPass<'a> {
     let directory: XrayLogicalPath = self.project.config_path(relative)?;
     let files: Vec<XrayLogicalPath> = self
       .project
-      .probe()
+      .search()
       .list_children(directory.as_str())?
       .files
       .iter()

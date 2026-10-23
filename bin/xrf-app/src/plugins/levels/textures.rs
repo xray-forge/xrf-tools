@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use xrf_level::LevelFile;
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
-use xrf_vfs::{XrayProbe, XrayResolution};
+use xrf_vfs::{XrayResolution, XraySearch};
 
 use crate::plugins::levels::state::LevelTextureReference;
 
@@ -19,7 +19,7 @@ const IMPOSTOR_COMPANION_SUFFIX: &str = "_nm";
 pub fn resolve_level_textures(
   level: &LevelFile,
   surfaces: &[XraySurfaceDescriptor],
-  probe: &XrayProbe,
+  search: &XraySearch,
   scope: &XrayTextureScope,
 ) -> Vec<LevelTextureReference> {
   let mut references: BTreeSet<String> = BTreeSet::new();
@@ -38,7 +38,7 @@ pub fn resolve_level_textures(
     }
   }
 
-  resolve_surface_textures(references, surfaces, probe, scope)
+  resolve_surface_textures(references, surfaces, search, scope)
 }
 
 /// Resolves the textures a run of surfaces binds beside those named for it: each one's detail, the files its script
@@ -46,7 +46,7 @@ pub fn resolve_level_textures(
 pub fn resolve_surface_textures(
   mut references: BTreeSet<String>,
   surfaces: &[XraySurfaceDescriptor],
-  probe: &XrayProbe,
+  search: &XraySearch,
   scope: &XrayTextureScope,
 ) -> Vec<LevelTextureReference> {
   for detail in surfaces.iter().filter_map(|surface| surface.detail.as_ref()) {
@@ -76,7 +76,7 @@ pub fn resolve_surface_textures(
     .into_iter()
     .filter(|reference| !bumps.contains_key(reference))
     .map(|reference| LevelTextureReference {
-      logical_path: resolve_reference(probe, scope, &reference),
+      logical_path: resolve_reference(search, scope, &reference),
       reference,
     })
     .collect();
@@ -96,9 +96,9 @@ pub fn resolve_surface_textures(
 
 /// Locates one texture reference the way the engine's own loader does, treating a rejected reference as absent rather
 /// than failing the open.
-pub fn resolve_reference(probe: &XrayProbe, scope: &XrayTextureScope, reference: &str) -> Option<String> {
+pub fn resolve_reference(search: &XraySearch, scope: &XrayTextureScope, reference: &str) -> Option<String> {
   scope
-    .resolve_texture(probe, reference)
+    .resolve_texture(search, reference)
     .ok()
     .as_ref()
     .and_then(get_located_path)

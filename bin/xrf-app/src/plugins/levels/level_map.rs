@@ -3,7 +3,7 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section, read_engine_floats};
 use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
-use xrf_vfs::XrayProbe;
+use xrf_vfs::XraySearch;
 
 use crate::plugins::levels::read::read_optional_file;
 use crate::plugins::levels::state::{LEVEL_CONFIG_FILE, LevelMapDescription, LevelSource};
@@ -17,8 +17,8 @@ const BOUND_RECT_FIELD: &str = "bound_rect";
 const TEXTURE_FIELD: &str = "texture";
 
 /// The level's map, or `None` where its config is missing, places no map or cannot be read; a failure is logged.
-pub fn read_level_map(source: &LevelSource, probe: &XrayProbe) -> Option<LevelMapDescription> {
-  let bytes: Vec<u8> = read_optional_file(source, probe, LEVEL_CONFIG_FILE)
+pub fn read_level_map(source: &LevelSource, search: &XraySearch) -> Option<LevelMapDescription> {
+  let bytes: Vec<u8> = read_optional_file(source, search, LEVEL_CONFIG_FILE)
     .map_err(|error| log::warn!("{error}"))
     .ok()
     .flatten()?;

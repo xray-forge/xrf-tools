@@ -28,7 +28,7 @@ pub(crate) async fn textures_read_texture(
     .state::<ExecutionState>()
     .run_blocking("Decoding texture", move || {
       assets
-        .with_probe(&roots, |probe| read_texture_png(probe, &logical_path))?
+        .with_search(&roots, |search| read_texture_png(search, &logical_path))?
         .map_err(|error| format!("Failed to decode texture '{logical_path}': {error}"))
     })
     .await??;

@@ -6,7 +6,7 @@ use xrf_environment::{
 };
 use xrf_material::XrayTextureScope;
 use xrf_material::fixtures::FixtureTree;
-use xrf_vfs::{XrayLookupScope, XrayMountId, XrayProbe, XrayVfs};
+use xrf_vfs::{XrayLookupScope, XrayMountId, XraySearch, XrayVfs};
 
 use crate::plugins::levels::state::selection::level_thunderbolts::LevelThunderbolts;
 use crate::plugins::levels::state::selection::level_weather_source::LevelWeatherSource;
@@ -56,10 +56,10 @@ fn read(catalog: &EnvironmentCatalog) -> LevelThunderbolts {
   let tree: FixtureTree = FixtureTree::new("level_thunderbolts");
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let probe: XrayProbe = vfs.probe().with_step("tree", XrayLookupScope::only([id]));
+  let search: XraySearch = XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]));
   let source: LevelWeatherSource = LevelWeatherSource {
     catalog,
-    probe: &probe,
+    search: &search,
     scope: XrayTextureScope::shared(),
   };
 

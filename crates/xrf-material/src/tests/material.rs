@@ -4,7 +4,7 @@ use xrf_thm::{ThmMaterial, ThmTextureType};
 
 use crate::XrayMaterialDescriptor;
 use crate::fixtures::{FixtureTree, ThmFixture};
-use crate::tests::material_probe::{BASE, describe};
+use crate::tests::material_search::{BASE, describe};
 
 #[test]
 fn a_descriptor_sets_its_class_plus_its_weight() {

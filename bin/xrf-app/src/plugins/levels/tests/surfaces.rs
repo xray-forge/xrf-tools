@@ -8,7 +8,7 @@ use xrf_material::{
 };
 use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_thm::{ThmBumpMode, ThmTextureFlag};
-use xrf_vfs::{XrayLookupScope, XrayMountId, XrayProbe, XrayVfs};
+use xrf_vfs::{XrayLookupScope, XrayMountId, XraySearch, XrayVfs};
 
 use crate::plugins::levels::surfaces::resolve_surfaces;
 
@@ -35,9 +35,9 @@ fn new_level(entries: &[&str]) -> LevelFile {
 fn new_resolved(tree: &FixtureTree, level: &LevelFile) -> Vec<XraySurfaceDescriptor> {
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let probe: XrayProbe = vfs.probe().with_step("tree", XrayLookupScope::only([id]));
+  let search: XraySearch = XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]));
 
-  resolve_surfaces(level, &probe, &XrayTextureScope::shared())
+  resolve_surfaces(level, &search, &XrayTextureScope::shared())
 }
 
 #[test]

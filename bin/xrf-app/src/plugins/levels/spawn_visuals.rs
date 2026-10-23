@@ -9,7 +9,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_ogf::OgfFile;
-use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayProbe};
+use xrf_vfs::{XrayAssetType, XrayLogicalPath, XraySearch};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton};
 
 use crate::core::assets::read_referenced_asset;
@@ -33,33 +33,33 @@ impl SessionPart for LevelSpawnVisualsPart {
   const IS_POOLED: bool = false;
 }
 
-/// Reads a level's spawned visuals within one probe, opening the shader library once for all of them, and only if
+/// Reads a level's spawned visuals within one search, opening the shader library once for all of them, and only if
 /// one is read at all.
-pub struct SpawnVisualReader<'probe, 'vfs> {
+pub struct SpawnVisualReader {
   visuals: Arc<LevelSpawnVisuals>,
-  probe: &'probe XrayProbe<'vfs>,
+  search: XraySearch,
   /// The level's own directory, the engine's `$level$`, where the level's breakables are compiled to.
   level: Option<XrayLogicalPath>,
   scope: XrayTextureScope,
-  resolver: OnceCell<XraySurfaceResolver<'probe, 'vfs>>,
+  resolver: OnceCell<XraySurfaceResolver>,
 }
 
-impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
+impl SpawnVisualReader {
   /// Runs `read` with a reader of the open level's spawned visuals, whatever it reads recorded as the visuals' part read
   /// it.
   pub fn with<T>(
     current: &SessionSnapshot<SelectedLevel>,
-    probe: &XrayProbe,
+    search: &XraySearch,
     read: impl FnOnce(&SpawnVisualReader) -> T,
   ) -> T {
     let visuals: Arc<LevelSpawnVisuals> = current
       .parts
       .get_or_init::<LevelSpawnVisualsPart>(|| Arc::new(LevelSpawnVisuals::new()));
 
-    current.parts.record::<LevelSpawnVisualsPart, T>(probe, |probe| {
+    current.parts.record::<LevelSpawnVisualsPart, T>(search, |search| {
       read(&SpawnVisualReader {
         visuals,
-        probe,
+        search: search.clone(),
         level: current.source.get_logical_directory(),
         scope: current.source.get_texture_scope(),
         resolver: OnceCell::new(),
@@ -82,16 +82,16 @@ impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
   }
 
   fn read(&self, name: &str) -> Result<LevelSpawnVisual, String> {
-    let probe: &XrayProbe = self.probe;
+    let search: &XraySearch = &self.search;
     let file: OgfFile = self
       .read_bytes(name)
       .and_then(OgfFile::read_from_bytes::<XRayByteOrder>)
       .map_err(|error| format!("Failed to read visual '{name}': {error}"))?;
     let package: VisualPackage = VisualPacker::pack(&file);
-    let rest: Option<Arc<VisualRestPose>> = to_rest_pose(probe, name, &file, &package.description).map(Arc::new);
+    let rest: Option<Arc<VisualRestPose>> = to_rest_pose(search, name, &file, &package.description).map(Arc::new);
     let resolver: &XraySurfaceResolver = self
       .resolver
-      .get_or_init(|| XraySurfaceResolver::open(probe, self.scope.clone()));
+      .get_or_init(|| XraySurfaceResolver::open(search, self.scope.clone()));
     let surfaces: Vec<XraySurfaceDescriptor> = package
       .description
       .submeshes
@@ -112,7 +112,7 @@ impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
 
     Ok(LevelSpawnVisual {
       // Resolved as a level's own surfaces are, so a model shades with the bump pair and the detail its base declares.
-      textures: resolve_surface_textures(references, &surfaces, probe, &self.scope),
+      textures: resolve_surface_textures(references, &surfaces, search, &self.scope),
       package,
       rest,
       surfaces,
@@ -123,29 +123,28 @@ impl<'probe, 'vfs> SpawnVisualReader<'probe, 'vfs> {
   /// spell is looked up in the shared meshes alone, as a texture's is.
   fn read_bytes(&self, name: &str) -> XrfResult<Vec<u8>> {
     if let Some(level) = &self.level
-      && let Ok(beside) = self.probe.find_beside(level, XrayAssetType::Ogf, name)
-      && let Some(asset) = beside.get_asset()
+      && let Ok(Some(asset)) = self.search.find_beside(level, XrayAssetType::Ogf, name)
     {
-      return self.probe.read_asset_bytes(asset);
+      return self.search.read_asset(&asset);
     }
 
-    read_referenced_asset(self.probe, XrayAssetType::Ogf, name)
+    read_referenced_asset(&self.search, XrayAssetType::Ogf, name)
   }
 }
 
 /// `PlayCycle("idle")` then `CalculateBones`: the first frame of the visual's idle cycle where it has one, its bind
 /// pose where it does not.
 fn to_rest_pose(
-  probe: &XrayProbe,
+  search: &XraySearch,
   name: &str,
   file: &OgfFile,
   description: &VisualDescription,
 ) -> Option<VisualRestPose> {
   let skeleton: SelectedSkeleton = SelectedSkeleton::of(file)?;
   let names: Vec<String> = skeleton.bones.iter().map(|bone| bone.name.clone()).collect();
-  let dependencies: VisualDependencies = VisualDependencies::resolve(description, probe);
+  let dependencies: VisualDependencies = VisualDependencies::resolve(description, search);
 
-  match bake_named_motion(probe, &skeleton, &dependencies, IDLE_MOTION) {
+  match bake_named_motion(search, &skeleton, &dependencies, IDLE_MOTION) {
     Ok(baked) => VisualRestPose::of_floats(names, &baked.transforms).or_else(|| {
       report_empty_rest_motion(name, IDLE_MOTION);
 

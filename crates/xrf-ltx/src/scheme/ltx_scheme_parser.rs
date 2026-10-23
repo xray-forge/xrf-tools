@@ -1,7 +1,7 @@
 use indexmap::map::Entry;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path_or;
-use xrf_vfs::{XrayLogicalPath, XrayProbe};
+use xrf_vfs::{XrayLogicalPath, XraySearch};
 
 use crate::ltx::{Ltx, LtxSectionSchemes, Section};
 use crate::scheme::{LtxFieldDataType, LtxFieldScheme, LtxSectionScheme};
@@ -12,16 +12,16 @@ use crate::syntax::{LTX_SCHEME_FIELD, LTX_SCHEME_STRICT_FIELD, LTX_SYMBOL_SCHEME
 pub struct LtxSchemeParser {}
 
 impl LtxSchemeParser {
-  /// Parses LTX section schemes from logical paths a probe reaches.
+  /// Parses LTX section schemes from logical paths a search reaches.
   ///
   /// # Errors
   ///
   /// Returns an error when a scheme cannot be read or contains invalid, duplicate, or malformed declarations.
-  pub fn parse_from_probe(probe: &XrayProbe, files: &[XrayLogicalPath]) -> XrfResult<LtxSectionSchemes> {
+  pub fn parse_from_search(search: &XraySearch, files: &[XrayLogicalPath]) -> XrfResult<LtxSectionSchemes> {
     let mut schemes: LtxSectionSchemes = Default::default();
 
     for file in files {
-      Self::absorb(&mut schemes, &Ltx::read_from_probe_standard(probe, file.as_str())?)?;
+      Self::absorb(&mut schemes, &Ltx::read_from_search_standard(search, file.as_str())?)?;
     }
 
     Ok(schemes)

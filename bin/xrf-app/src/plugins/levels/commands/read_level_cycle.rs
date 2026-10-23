@@ -25,7 +25,7 @@ pub async fn levels_read_level_cycle(
   let cycle: LevelWeatherCycle = execution
     .run_blocking("Reading a weather cycle", move || {
       let environment: Arc<LevelEnvironment> =
-        assets.with_probe(&current.roots, |probe| LevelEnvironment::of(&current, probe))??;
+        assets.with_search(&current.roots, |search| LevelEnvironment::of(&current, search))??;
       let found: &WeatherCycle = environment.catalog.find_by_id(&cycle).ok_or_else(|| {
         format!(
           "There is no {} '{}'",

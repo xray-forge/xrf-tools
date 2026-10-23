@@ -16,6 +16,13 @@ use crate::scene::texture::texture_role::TextureRole;
 use crate::tests::test_context::create_test_context;
 use crate::tests::test_workers::{TEST_WORKER_NAME, create_workers};
 
+/// Longer than any of these loads should take, even with several suites sharing the machine, so a hung load fails
+/// rather than hangs; a load that lands ends its wait at once.
+const WAIT: Duration = Duration::from_secs(30);
+
+/// How long a read that should not come is given to show up; such a wait always runs to its end.
+const QUIET: Duration = Duration::from_secs(5);
+
 /// A source holding nothing, whose `slow` texture answers only once the test lets it, and then with a failure.
 struct GatedSource {
   gate: Mutex<Receiver<()>>,
@@ -52,7 +59,7 @@ fn settle(cache: &mut TextureCache, context: &GpuContext, slot: u32) -> RenderTe
 
     let state: RenderTextureState = cache.describe(&[slot], RenderTextureGroup::Surfaces).remove(0).state;
 
-    if state != RenderTextureState::Loading || started.elapsed() > Duration::from_secs(5) {
+    if state != RenderTextureState::Loading || started.elapsed() > WAIT {
       return state;
     }
 
@@ -196,7 +203,7 @@ fn reads_a_texture_on_the_pool_it_was_handed() {
 
   cache.request("any", TextureRole::Base, &source);
 
-  let thread: String = heard.recv_timeout(Duration::from_secs(5)).expect("The texture is read");
+  let thread: String = heard.recv_timeout(WAIT).expect("The texture is read");
 
   assert!(thread.starts_with(TEST_WORKER_NAME), "read on '{thread}'");
 }
@@ -242,11 +249,17 @@ impl RenderAssetSource for CountingSource {
   }
 }
 
-/// Updates the cache until `reads` sources' reads come to `count`, or a while passes; answers the count.
-fn wait_reads(cache: &mut TextureCache, context: &GpuContext, reads: &dyn Fn() -> usize, count: usize) -> usize {
+/// Updates the cache until `reads` sources' reads come to `count`, or `within` passes; answers the count.
+fn wait_reads(
+  cache: &mut TextureCache,
+  context: &GpuContext,
+  reads: &dyn Fn() -> usize,
+  count: usize,
+  within: Duration,
+) -> usize {
   let started: Instant = Instant::now();
 
-  while reads() < count && started.elapsed() < Duration::from_secs(5) {
+  while reads() < count && started.elapsed() < within {
     std::thread::sleep(Duration::from_millis(5));
   }
 
@@ -269,13 +282,13 @@ fn reloads_a_texture_by_its_file_name_and_its_source_forgets_it() {
   let reads = || counting.get_reads();
 
   assert_eq!(settle(&mut cache, &context, slot), RenderTextureState::Missing);
-  assert_eq!(wait_reads(&mut cache, &context, &reads, 1), 1);
+  assert_eq!(wait_reads(&mut cache, &context, &reads, 1, WAIT), 1);
 
   cache.reload(&[String::from("other")]);
-  assert_eq!(wait_reads(&mut cache, &context, &reads, 2), 1);
+  assert_eq!(wait_reads(&mut cache, &context, &reads, 2, QUIET), 1);
 
   cache.reload(&[String::from("ston_01")]);
-  assert_eq!(wait_reads(&mut cache, &context, &reads, 2), 2);
+  assert_eq!(wait_reads(&mut cache, &context, &reads, 2, WAIT), 2);
   assert_eq!(*counting.forgotten.lock().unwrap(), vec![String::from("ston_01")]);
 }
 
@@ -302,12 +315,12 @@ fn reloads_a_texture_a_reopened_source_finds_changed_on_disk() {
     TextureRole::Base,
     &(Arc::clone(&same) as Arc<dyn RenderAssetSource>),
   );
-  assert_eq!(wait_reads(&mut cache, &context, &|| same.get_reads(), 1), 0);
+  assert_eq!(wait_reads(&mut cache, &context, &|| same.get_reads(), 1, QUIET), 0);
 
   cache.request(
     "ston_01",
     TextureRole::Base,
     &(Arc::clone(&changed) as Arc<dyn RenderAssetSource>),
   );
-  assert_eq!(wait_reads(&mut cache, &context, &|| changed.get_reads(), 1), 1);
+  assert_eq!(wait_reads(&mut cache, &context, &|| changed.get_reads(), 1, WAIT), 1);
 }

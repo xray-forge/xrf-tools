@@ -5,7 +5,7 @@ use xrf_material::{XrayMaterialBumpInput, XrayMaterialDescriptor, XrayMaterialRe
 use xrf_spawn::XRayByteOrder;
 use xrf_thm::ThmFile;
 use xrf_vfs::{
-  XrayAsset, XrayAssetContainer, XrayAssetType, XrayLogicalPath, XrayMountMode, XrayProbe, XrayRoot, XrayRoots,
+  XrayAsset, XrayAssetContainer, XrayAssetType, XrayLogicalPath, XrayMountMode, XrayRoot, XrayRoots, XraySearch,
 };
 
 use crate::core::assets::AssetTextureDescriptor;
@@ -51,38 +51,38 @@ impl TextureDescription {
   ///
   /// # Errors
   ///
-  /// Returns an error when a reference is refused by the probe, or when a standalone source names no file on disk.
-  pub fn describe(probe: &XrayProbe, source: TextureSource, roots: XrayRoots) -> TauriResult<Self> {
+  /// Returns an error when a reference is refused by the search, or when a standalone source names no file on disk.
+  pub fn describe(search: &XraySearch, source: TextureSource, roots: XrayRoots) -> TauriResult<Self> {
     match source.to_reference() {
-      Some(reference) => Self::describe_in_roots(probe, source, roots, reference),
+      Some(reference) => Self::describe_in_roots(search, source, roots, reference),
       None => Self::describe_standalone(source, roots),
     }
   }
 
   /// Describes a texture the engine has a name for, through the roots that name resolves in.
   fn describe_in_roots(
-    probe: &XrayProbe,
+    search: &XraySearch,
     source: TextureSource,
     roots: XrayRoots,
     reference: String,
   ) -> TauriResult<Self> {
-    let texture: Option<XrayAsset> = probe
+    let texture: Option<XrayAsset> = search
       .resolve(XrayAssetType::Dds, &reference)
       .map_err(|error| format!("Rejected texture '{reference}': {error}"))?
       .get_asset()
       .cloned();
     let material: XrayMaterialDescriptor =
-      XrayMaterialResolver::describe_texture(probe, &XrayTextureScope::shared(), &reference);
+      XrayMaterialResolver::describe_texture(search, &XrayTextureScope::shared(), &reference);
 
     // Whichever file the engine ended up binding for a half, declared or substituted, is the one worth describing.
     let describe_bound = |input: &XrayMaterialBumpInput| -> Option<AssetTextureDescriptor> {
-      AssetTextureDescriptor::describe(probe, input.resolution.get_asset()?)
+      AssetTextureDescriptor::describe(search, input.resolution.get_asset()?)
     };
 
     let descriptor: Option<ThmFile> = material
       .descriptor
       .as_ref()
-      .and_then(|asset| read_descriptor(probe, asset));
+      .and_then(|asset| read_descriptor(search, asset));
 
     Ok(Self {
       has_descriptor: descriptor.is_some(),
@@ -93,7 +93,7 @@ impl TextureDescription {
       },
       base: texture
         .as_ref()
-        .and_then(|asset| AssetTextureDescriptor::describe(probe, asset)),
+        .and_then(|asset| AssetTextureDescriptor::describe(search, asset)),
       bump: material.bump.as_ref().and_then(|bump| describe_bound(&bump.bump)),
       companion: material.bump.as_ref().and_then(|bump| describe_bound(&bump.companion)),
       material: Some(material),
@@ -175,8 +175,8 @@ fn to_loose_asset(path: &Path) -> Option<XrayAsset> {
 }
 
 /// Read a located `.thm`, or nothing when its bytes cannot be reached or are not a descriptor.
-fn read_descriptor(probe: &XrayProbe, asset: &XrayAsset) -> Option<ThmFile> {
-  ThmFile::read_from_bytes::<XRayByteOrder>(probe.read_asset_bytes(asset).ok()?).ok()
+fn read_descriptor(search: &XraySearch, asset: &XrayAsset) -> Option<ThmFile> {
+  ThmFile::read_from_bytes::<XRayByteOrder>(search.read_asset(asset).ok()?).ok()
 }
 
 /// Read a `.thm` straight off disk, for a file no mount holds.

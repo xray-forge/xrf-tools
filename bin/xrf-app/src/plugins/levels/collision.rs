@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelCformFile, LevelCformGeometry, LevelCformTracer};
-use xrf_vfs::XrayProbe;
+use xrf_vfs::XraySearch;
 
 use crate::core::session::{SessionPart, SessionSnapshot};
 use crate::plugins::levels::read::read_file;
@@ -27,17 +27,17 @@ impl SessionPart for LevelCollisionPart {
 /// Returns why the collision form cannot be read, which every later ask answers with again.
 pub fn get_level_collision(
   current: &SessionSnapshot<SelectedLevel>,
-  probe: &XrayProbe,
+  search: &XraySearch,
 ) -> Result<Arc<LevelCformTracer>, String> {
   current
     .parts
-    .get_or_record::<LevelCollisionPart>(probe, |probe| read_collision(&current.source, probe))
+    .get_or_record::<LevelCollisionPart>(search, |search| read_collision(&current.source, search))
 }
 
-fn read_collision(source: &LevelSource, probe: &XrayProbe) -> Result<Arc<LevelCformTracer>, String> {
+fn read_collision(source: &LevelSource, search: &XraySearch) -> Result<Arc<LevelCformTracer>, String> {
   let started: Instant = Instant::now();
   let geometry: LevelCformGeometry =
-    LevelCformFile::read_geometry_from_bytes::<XRayByteOrder>(read_file(source, probe, COLLISION_FILE)?).map_err(
+    LevelCformFile::read_geometry_from_bytes::<XRayByteOrder>(read_file(source, search, COLLISION_FILE)?).map_err(
       |error| {
         format!(
           "Failed to read '{COLLISION_FILE}' of level '{}': {error}",

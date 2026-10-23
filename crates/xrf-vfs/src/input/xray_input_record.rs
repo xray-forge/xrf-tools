@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use crate::XrayVfs;
 use crate::input::{XrayInput, XrayInputAnswer};
 
-/// The inputs some reads resolved, each with what its world answered for it then.
+/// The inputs some reads resolved, each with what its snapshot answered for it then.
 #[derive(Clone, Debug, Default)]
 pub struct XrayInputRecord {
   inputs: Arc<Mutex<HashMap<XrayInput, XrayInputAnswer>>>,

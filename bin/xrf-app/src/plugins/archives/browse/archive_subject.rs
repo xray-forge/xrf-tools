@@ -90,7 +90,7 @@ impl ArchiveSubject {
   pub fn describe_resolution(&self, assets: &AssetMountState) -> TauriResult<ArchiveResolution> {
     match self {
       Self::Volumes { project } => Ok(ArchiveResolution::of_volumes(project)),
-      Self::World { world } => assets.with_probe(&world.roots, ArchiveResolution::of_probe),
+      Self::World { world } => assets.with_search(&world.roots, ArchiveResolution::of_search),
     }
   }
 
@@ -103,7 +103,7 @@ impl ArchiveSubject {
   pub fn read_text(&self, assets: &AssetMountState, name: &str) -> TauriResult<ArchiveReadResult> {
     match self {
       Self::Volumes { project } => project.read_file_as_string(name),
-      Self::World { world } => assets.with_probe(&world.roots, |probe| world.read_text(probe, name))?,
+      Self::World { world } => assets.with_search(&world.roots, |search| world.read_text(search, name))?,
     }
     .map_err(|error| format!("Failed to read '{name}': {error}"))
   }
@@ -117,8 +117,8 @@ impl ArchiveSubject {
   pub fn describe_file(&self, assets: &AssetMountState, name: &str) -> TauriResult<ArchiveFileDescription> {
     match self {
       Self::Volumes { project } => ArchiveFileDescription::of(&ArchiveDescribeSource::Volumes { project }, name),
-      Self::World { world } => assets.with_probe(&world.roots, |probe| {
-        ArchiveFileDescription::of(&ArchiveDescribeSource::World { world, probe }, name)
+      Self::World { world } => assets.with_search(&world.roots, |search| {
+        ArchiveFileDescription::of(&ArchiveDescribeSource::World { world, search }, name)
       })?,
     }
     .map_err(|error| format!("Failed to describe '{name}': {error}"))
@@ -137,8 +137,8 @@ impl ArchiveSubject {
   ) -> TauriResult<ArchiveExtractResult> {
     match self {
       Self::Volumes { project } => ArchiveUnpacker::extract_file(project, name, destination),
-      Self::World { world } => assets.with_probe(&world.roots, |probe| {
-        XrayWorldExtractor::extract_file(probe, name, destination)
+      Self::World { world } => assets.with_search(&world.roots, |search| {
+        XrayWorldExtractor::extract_file(search, name, destination)
       })?,
     }
     .map_err(error_to_string)
@@ -160,8 +160,8 @@ impl ArchiveSubject {
   ) -> TauriResult<ArchiveExtractDirectoryResult> {
     match self {
       Self::Volumes { project } => ArchiveUnpacker::extract_directory_opt(project, prefix, destination, options),
-      Self::World { world } => assets.with_probe(&world.roots, |probe| {
-        XrayWorldExtractor::extract_directory_opt(probe, prefix, destination, options)
+      Self::World { world } => assets.with_search(&world.roots, |search| {
+        XrayWorldExtractor::extract_directory_opt(search, prefix, destination, options)
       })?,
     }
     .map_err(error_to_string)

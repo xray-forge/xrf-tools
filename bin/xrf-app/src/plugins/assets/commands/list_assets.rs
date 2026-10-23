@@ -12,7 +12,7 @@ pub async fn assets_list_assets(
   kind: XrayAssetType,
   state: State<'_, AssetMountState>,
 ) -> TauriResult<Vec<XrayAsset>> {
-  let assets: Vec<XrayAsset> = state.with_probe(&roots, |probe| probe.list_assets_of_type(kind))?;
+  let assets: Vec<XrayAsset> = state.with_search(&roots, |search| search.list_assets(kind))?;
 
   log::info!("Listed {} assets of {kind:?} in the mounted roots", assets.len());
 

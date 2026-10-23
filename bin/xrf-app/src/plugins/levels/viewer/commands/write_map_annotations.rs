@@ -34,14 +34,14 @@ pub async fn levels_write_map_annotations(
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let value: String = execution
     .run_blocking("Drawing a level map's annotations", move || {
-      assets.with_probe(&current.roots, |probe| -> TauriResult<String> {
+      assets.with_search(&current.roots, |search| -> TauriResult<String> {
         let level: String = current
           .source
           .get_name()
           .ok_or_else(|| format!("Level {} has no name to find its spawn by", current.source.get_label()))?;
         let annotations: LevelAnnotations = LevelAnnotations::of(
-          &*get_level_spawn(&current, probe)?,
-          &*get_level_graph(&current, probe)?,
+          &*get_level_spawn(&current, search)?,
+          &*get_level_graph(&current, search)?,
           &level,
         );
         let (width, height): (u32, u32) = image::image_dimensions(&request.path)

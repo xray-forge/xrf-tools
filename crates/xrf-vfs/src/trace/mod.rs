@@ -1,4 +1,4 @@
-//! What a mounted world actually read, when a caller asked to be told.
+//! What a VFS snapshot actually read, when a caller asked to be told.
 
 #[cfg(test)]
 mod tests;

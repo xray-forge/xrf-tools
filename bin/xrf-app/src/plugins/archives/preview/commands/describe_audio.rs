@@ -50,7 +50,7 @@ pub async fn archives_describe_audio(
     .ok_or_else(|| format!("Failed to describe audio '{logical_path}': no webview plays this extension"))?;
 
   let bytes: Vec<u8> = assets
-    .with_probe(&roots, |probe| read_located_asset(probe, &logical_path))?
+    .with_search(&roots, |search| read_located_asset(search, &logical_path))?
     .map_err(|error| format!("Failed to describe audio '{logical_path}': {error}"))?;
 
   // A sound that cannot be parsed is still worth playing: plenty of ogg in a mod was not produced by the x-ray tools,

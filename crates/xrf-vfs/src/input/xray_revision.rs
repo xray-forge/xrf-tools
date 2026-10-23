@@ -16,7 +16,7 @@ impl XrayRevision {
   }
 }
 
-/// The revisions a world holds for its loose files and indexed directories, stored only where one moved past
+/// The revisions a snapshot holds for its loose files and indexed directories, stored only where one moved past
 /// [`XrayRevision::MOUNTED`].
 #[derive(Clone, Debug, Default)]
 pub(crate) struct XrayRevisions {
@@ -25,7 +25,7 @@ pub(crate) struct XrayRevisions {
 }
 
 // todo: bump a file's revision where a commit overwrites it, and its directory's and each ancestor's where a commit
-// creates or deletes it, once a world applies a committed change set.
+// creates or deletes it, once a snapshot applies a committed change set.
 impl XrayRevisions {
   /// When a mount's copy of a normalized logical path last changed.
   pub(crate) fn get_file(&self, mount: XrayMountId, logical_path: &str) -> XrayRevision {

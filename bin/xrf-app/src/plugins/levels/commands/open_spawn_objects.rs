@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use tauri::State;
-use xrf_vfs::XrayProbe;
+use xrf_vfs::XraySearch;
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
@@ -27,7 +27,7 @@ pub async fn levels_open_spawn_objects(
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let value: LevelSpawnObjectsDescription = execution
     .run_blocking("Describing the level spawned objects", move || {
-      assets.with_probe(&current.roots, |probe| describe_objects(&current, probe))
+      assets.with_search(&current.roots, |search| describe_objects(&current, search))
     })
     .await???;
 
@@ -36,11 +36,11 @@ pub async fn levels_open_spawn_objects(
 
 fn describe_objects(
   current: &SessionSnapshot<SelectedLevel>,
-  probe: &XrayProbe,
+  search: &XraySearch,
 ) -> TauriResult<LevelSpawnObjectsDescription> {
   let started: Instant = Instant::now();
   let spawn: Arc<LevelSpawn> =
-    get_level_spawn(current, probe).inspect_err(|error| report_missing_spawn_objects(&current.source, error))?;
+    get_level_spawn(current, search).inspect_err(|error| report_missing_spawn_objects(&current.source, error))?;
   let described: LevelSpawnObjectsDescription = describe_spawn_objects(&spawn);
 
   report_spawn_objects(&current.source, &described, started);

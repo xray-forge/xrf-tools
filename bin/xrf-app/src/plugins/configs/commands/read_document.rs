@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_error::XrfError;
 use xrf_ltx_inspect::{LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxTextReader};
 use xrf_utils::{encode_w1251_bytes_to_string, error_to_string};
-use xrf_vfs::{XrayLogicalPath, XrayProbe};
+use xrf_vfs::XrayLogicalPath;
 
 use crate::core::execution::ExecutionState;
 use crate::core::session::SessionSnapshot;
@@ -40,13 +39,10 @@ pub async fn configs_read_document(
 fn read_document(opened: &ConfigsProject, path: &str) -> TauriResult<ConfigsDocument> {
   let logical: XrayLogicalPath = XrayLogicalPath::new(path).map_err(error_to_string)?;
 
-  let probe: XrayProbe = opened.project.probe();
-  let bytes: Vec<u8> = probe
-    .find(logical.as_str())
-    .and_then(|resolution| match resolution.get_asset() {
-      Some(asset) => probe.read_asset_bytes(asset),
-      None => Err(XrfError::new_not_found_error("the project's sources do not hold it")),
-    })
+  let bytes: Vec<u8> = opened
+    .project
+    .search()
+    .read(logical.as_str())
     .map_err(|error| format!("Cannot read '{path}': {error}"))?;
 
   // Configs are strict Windows-1251, loose and archived alike; a lossy decode would put a viewer and a writer at odds

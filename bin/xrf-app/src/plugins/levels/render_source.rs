@@ -16,7 +16,7 @@ use xrf_renderer::{
   RenderSpawnModels, RenderSpawnObject, RenderThunder, RenderThunderSettings, RenderThunderbolt,
   RenderThunderboltGradient, RenderThunderboltModel, RenderWeatherModel, RenderWetSurfaces,
 };
-use xrf_vfs::XrayProbe;
+use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, SectorPackage, SectorPacker, VisualPoser};
 
 use crate::core::assets::AssetMountState;
@@ -85,8 +85,8 @@ impl LevelRenderSource {
 }
 
 /// The sections a level's spawned objects name, none where its spawn or the configs cannot be read.
-fn read_sections(level: &SessionSnapshot<SelectedLevel>, probe: &XrayProbe) -> Option<Arc<Ltx>> {
-  get_level_sections(level, probe)
+fn read_sections(level: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Option<Arc<Ltx>> {
+  get_level_sections(level, search)
     .inspect_err(report_missing_sections)
     .ok()
 }
@@ -151,8 +151,8 @@ impl RenderLevelSource for LevelRenderSource {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let packed: PackedLevelLights = self
       .assets
-      .with_probe(&level.roots, |probe| {
-        pack_lights(level, probe, read_sections(level, probe).as_deref())
+      .with_search(&level.roots, |search| {
+        pack_lights(level, search, read_sections(level, search).as_deref())
       })
       .map_err(XrfError::new_asset_error)?;
 
@@ -170,16 +170,16 @@ impl RenderLevelSource for LevelRenderSource {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let (environment, modifiers, rain, wet, thunder) = self
       .assets
-      .with_probe(&level.roots, |probe| {
-        LevelEnvironment::of(level, probe).map(|environment| {
-          let source = environment.get_source(level, probe);
+      .with_search(&level.roots, |search| {
+        LevelEnvironment::of(level, search).map(|environment| {
+          let source = environment.get_source(level, search);
           let rain: LevelRain = LevelRain::read(&source);
           let wet: LevelWetSurfaces = LevelWetSurfaces::read(&source);
           let thunder: LevelThunderbolts = LevelThunderbolts::read(&source);
 
           (
             environment,
-            LevelEnvironment::read_modifiers(level, probe),
+            LevelEnvironment::read_modifiers(level, search),
             rain,
             wet,
             thunder,
@@ -221,7 +221,7 @@ impl RenderLevelSource for LevelRenderSource {
   fn read_weather_cycle(&self, name: &str) -> XrfResult<Vec<WeatherDescriptor>> {
     let environment: Arc<LevelEnvironment> = self
       .assets
-      .with_probe(&self.level.roots, |probe| LevelEnvironment::of(&self.level, probe))
+      .with_search(&self.level.roots, |search| LevelEnvironment::of(&self.level, search))
       .and_then(|environment| environment)
       .map_err(XrfError::new_asset_error)?;
     let cycle = environment
@@ -236,7 +236,7 @@ impl RenderLevelSource for LevelRenderSource {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let packed: Option<PackedLevelDetails> = self
       .assets
-      .with_probe(&level.roots, |probe| pack_details(&level.source, probe))
+      .with_search(&level.roots, |search| pack_details(&level.source, search))
       .map_err(XrfError::new_asset_error)?
       .map_err(XrfError::new_asset_error)?;
     let Some(packed) = packed else {
@@ -260,7 +260,7 @@ impl RenderLevelSource for LevelRenderSource {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let spawn = self
       .assets
-      .with_probe(&level.roots, |probe| get_level_spawn(level, probe))
+      .with_search(&level.roots, |search| get_level_spawn(level, search))
       .map_err(XrfError::new_asset_error)?
       .map_err(XrfError::new_asset_error)?;
     let described = describe_spawn_objects(&spawn);
@@ -286,11 +286,11 @@ impl RenderLevelSource for LevelRenderSource {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let (packed, collision, hemi) = self
       .assets
-      .with_probe(&level.roots, |probe| {
+      .with_search(&level.roots, |search| {
         (
-          pack_particles(level, probe, read_sections(level, probe).as_deref()),
-          get_level_collision(level, probe),
-          get_level_hemi(level, probe),
+          pack_particles(level, search, read_sections(level, search).as_deref()),
+          get_level_collision(level, search),
+          get_level_hemi(level, search),
         )
       })
       .map_err(XrfError::new_asset_error)?;
@@ -322,7 +322,7 @@ impl RenderLevelSource for LevelRenderSource {
 
     self
       .assets
-      .with_probe(&level.roots, |probe| read_object_motion(&level.source, probe, name))
+      .with_search(&level.roots, |search| read_object_motion(&level.source, search, name))
       .map_err(XrfError::new_asset_error)?
       .map_err(XrfError::new_asset_error)
   }
@@ -331,10 +331,10 @@ impl RenderLevelSource for LevelRenderSource {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let (read, failures, hemi) = self
       .assets
-      .with_probe(&level.roots, |probe| {
+      .with_search(&level.roots, |search| {
         let mut failures: Vec<RenderLoadFailure> = Vec::new();
         // A visual that cannot be read is reported by the reader, and left out.
-        let read: Vec<(&str, Arc<LevelSpawnVisual>)> = SpawnVisualReader::with(level, probe, |visuals| {
+        let read: Vec<(&str, Arc<LevelSpawnVisual>)> = SpawnVisualReader::with(level, search, |visuals| {
           names
             .iter()
             .filter_map(|name| match visuals.get(name) {
@@ -350,8 +350,8 @@ impl RenderLevelSource for LevelRenderSource {
             })
             .collect()
         });
-        let hemi = get_level_hemi(level, probe)
-          .map(|estimator| estimate_visuals_hemi(level, probe, &estimator, &read))
+        let hemi = get_level_hemi(level, search)
+          .map(|estimator| estimate_visuals_hemi(level, search, &estimator, &read))
           .unwrap_or_default();
 
         (read, failures, hemi)

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::Serialize;
 use xrf_archive::{ArchiveDescriptor, ArchiveProject};
-use xrf_vfs::{XrayAssetSource, XrayProbe, XraySearchedSource, XraySkippedMount, XraySourceKind, label_from_path};
+use xrf_vfs::{XrayAssetSource, XraySearch, XraySearchedSource, XraySkippedMount, XraySourceKind, label_from_path};
 
 /// One volume of a set, in the order a lookup reaches it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -83,14 +83,14 @@ pub struct ArchiveResolution {
 
 impl ArchiveResolution {
   /// How a mounted world resolves, read off the mounts the search actually runs over.
-  pub fn of_probe(probe: &XrayProbe) -> Self {
+  pub fn of_search(search: &XraySearch) -> Self {
     Self {
-      sources: probe
+      sources: search
         .list_sources()
         .into_iter()
         .map(ArchiveResolutionSource::from)
         .collect(),
-      unread: probe
+      unread: search
         .list_skipped_sources()
         .into_iter()
         .map(ArchiveUnreadSource::from)
@@ -159,7 +159,7 @@ mod tests {
 
   use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveReadPolicy};
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-  use xrf_vfs::{XrayMountMode, XrayProbeStep, XrayRoot, XrayRoots, XraySourceKind, XrayVfs};
+  use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchStep, XraySourceKind, XrayVfs};
 
   use super::ArchiveResolution;
 
@@ -258,13 +258,13 @@ mod tests {
     ]);
 
     let mut vfs: XrayVfs = XrayVfs::new();
-    let steps: Vec<XrayProbeStep> = roots
-      .to_probe_plan()
+    let steps: Vec<XraySearchStep> = roots
+      .to_search_plan()
       .expect("the roots plan")
       .mount_into(&mut vfs)
       .expect("the roots mount");
 
-    let resolution: ArchiveResolution = ArchiveResolution::of_probe(&vfs.probe().with_steps(steps));
+    let resolution: ArchiveResolution = ArchiveResolution::of_search(&XraySearch::new(vfs).with_steps(steps));
 
     assert_eq!(
       resolution

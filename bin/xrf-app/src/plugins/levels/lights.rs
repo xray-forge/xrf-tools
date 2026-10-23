@@ -6,7 +6,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_light_anim::LightAnimFile;
 use xrf_ltx::Ltx;
 use xrf_material::XrayTextureScope;
-use xrf_vfs::XrayProbe;
+use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, LightsPacker};
 
 use crate::core::assets::read_located_asset;
@@ -30,11 +30,11 @@ pub struct PackedLevelLights {
 /// configs its zones light nothing and its lamps keep their spawned flags.
 pub fn pack_lights(
   current: &SessionSnapshot<SelectedLevel>,
-  probe: &XrayProbe,
+  search: &XraySearch,
   sections: Option<&Ltx>,
 ) -> PackedLevelLights {
   let started: Instant = Instant::now();
-  let animations: Option<LightAnimFile> = read_located_asset(probe, ANIMATIONS_FILE)
+  let animations: Option<LightAnimFile> = read_located_asset(search, ANIMATIONS_FILE)
     .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
     .inspect_err(|error| report_unreadable_animations(ANIMATIONS_FILE, error))
     .ok();
@@ -44,8 +44,8 @@ pub fn pack_lights(
     packer = packer.with_sections(sections);
   }
 
-  match get_level_spawn(current, probe) {
-    Ok(spawn) => SpawnVisualReader::with(current, probe, |visuals| {
+  match get_level_spawn(current, search) {
+    Ok(spawn) => SpawnVisualReader::with(current, search, |visuals| {
       packer.add_objects(spawn.list_kept(), &mut |name| {
         visuals.get(name).ok().and_then(|it| it.rest.clone())
       });
@@ -67,7 +67,7 @@ pub fn pack_lights(
       .projectors
       .iter()
       .map(|reference| LevelTextureReference {
-        logical_path: resolve_reference(probe, &scope, reference),
+        logical_path: resolve_reference(search, &scope, reference),
         reference: reference.clone(),
       })
       .collect(),

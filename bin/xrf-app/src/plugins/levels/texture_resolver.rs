@@ -84,10 +84,8 @@ impl TextureResolver {
       .cloned()
       .flatten()?;
     let stamp: Option<TextureFileStamp> = assets
-      .with_probe(&self.roots, |probe| {
-        let resolution = probe.find(&logical_path).ok()?;
-
-        match resolution.get_asset()?.get_container() {
+      .with_search(&self.roots, |search| {
+        match search.find(&logical_path).ok()??.get_container() {
           XrayAssetContainer::Directory { root, relative_path } => {
             TextureFileStamp::read(&root.join(relative_path)).ok().flatten()
           }
@@ -117,7 +115,7 @@ impl TextureResolver {
       Some(located) => located,
       None => {
         let located: Option<String> = assets
-          .with_probe(&self.roots, |probe| resolve_reference(probe, &self.scope, reference))
+          .with_search(&self.roots, |search| resolve_reference(search, &self.scope, reference))
           .map_err(XrfError::new_asset_error)?;
 
         self
@@ -134,7 +132,7 @@ impl TextureResolver {
     };
 
     assets
-      .with_probe(&self.roots, |probe| read_located_asset(probe, &logical_path))
+      .with_search(&self.roots, |search| read_located_asset(search, &logical_path))
       .map_err(XrfError::new_asset_error)?
       .map(Some)
   }

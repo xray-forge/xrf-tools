@@ -2,80 +2,89 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, LockResult, Mutex, MutexGuard, RwLock};
 
-use xrf_vfs::{XrayProbe, XrayProbePlan, XrayProbeStep, XrayRoots, XrayVfs};
+use xrf_vfs::{XrayRoots, XraySearch, XraySearchPlan, XraySearchStep, XrayVfs};
 
 use crate::core::types::TauriResult;
 
-/// Every mounted source the application holds, searched through per-request probes.
+/// Every mounted source the application holds, read through per-request searches.
 ///
 /// One VFS for the process rather than one per roots, because mounting is indexed eagerly and idempotent per planned
 /// path: a viewer stepping through fifty models under one root pays for one index instead of fifty. Callers never
-/// receive the VFS itself, only a probe over the steps their spec asked for, so an unscoped lookup cannot silently span
-/// two unrelated roots.
+/// receive the VFS itself, only a search over the steps their spec asked for, so an unscoped lookup cannot silently
+/// span two unrelated roots.
 ///
-/// Mounting is copy-on-write: a consumer is handed an immutable snapshot of the world and holds no lock while it runs,
-/// and a mount forks the newest snapshot, mounts into the fork and publishes it whole. A consumer never waits for a
-/// mount and a mount never waits for a consumer, however long either takes, and a consumer may ask for a probe of its
-/// own; what it cannot see is a mount published after its snapshot was taken.
+/// Mounting is copy-on-write: a search reads an immutable VFS snapshot and holds no lock, and a mount forks the newest
+/// snapshot, mounts into the fork and publishes it whole. A search never waits for a mount and a mount never waits for
+/// a search, however long either takes; what a search cannot see is a mount published after its snapshot was taken.
 #[derive(Clone)]
 pub struct AssetMountState {
-  /// The newest world, locked only for as long as a snapshot is taken of it or a fork replaces it.
-  world: Arc<RwLock<Arc<XrayVfs>>>,
+  /// The newest VFS snapshot, locked only for as long as it is taken or a fork replaces it.
+  vfs: Arc<RwLock<Arc<XrayVfs>>>,
   /// Taken by a mount for its whole run, so two mounting at once do not each publish a fork missing the other's.
   mounting: Arc<Mutex<()>>,
   /// Plans per roots, planned from disk once and again only when an open asks for them afresh.
-  plans: Arc<Mutex<HashMap<XrayRoots, Arc<XrayProbePlan>>>>,
+  plans: Arc<Mutex<HashMap<XrayRoots, Arc<XraySearchPlan>>>>,
   is_poison_reported: Arc<AtomicBool>,
 }
 
 impl AssetMountState {
   pub fn new() -> Self {
     Self {
-      world: Arc::new(RwLock::new(Arc::new(XrayVfs::new()))),
+      vfs: Arc::new(RwLock::new(Arc::new(XrayVfs::new()))),
       mounting: Arc::new(Mutex::new(())),
       plans: Arc::new(Mutex::new(HashMap::new())),
       is_poison_reported: Arc::new(AtomicBool::new(false)),
     }
   }
 
-  /// Mounts what a spec names and hands a probe over it to `consumer`, a source that failed to open before staying
+  /// A search over what a spec names, mounted where it is not yet, a source that failed to open before staying
   /// settled: every asset read goes through here, and trying a broken volume on each would cost every read.
-  pub fn with_probe<T>(&self, spec: &XrayRoots, consumer: impl FnOnce(&XrayProbe) -> T) -> TauriResult<T> {
-    let plan: Arc<XrayProbePlan> = self.plan(spec)?;
-    let (world, steps): (Arc<XrayVfs>, Vec<XrayProbeStep>) = self.mount(&plan, false)?;
+  pub fn search(&self, spec: &XrayRoots) -> TauriResult<XraySearch> {
+    let plan: Arc<XraySearchPlan> = self.plan(spec)?;
+    let (vfs, steps): (Arc<XrayVfs>, Vec<XraySearchStep>) = self.mount(&plan, false)?;
 
-    Ok(consumer(&world.probe().with_steps(steps)))
+    Ok(XraySearch::new(vfs).with_steps(steps))
   }
 
   /// The same for a person opening the roots: planned from disk again, and every source that failed to open tried
   /// again, so a volume locked once, by a running game or a scan, opens once it is free.
-  pub fn with_fresh_probe<T>(&self, spec: &XrayRoots, consumer: impl FnOnce(&XrayProbe) -> T) -> TauriResult<T> {
+  pub fn search_fresh(&self, spec: &XrayRoots) -> TauriResult<XraySearch> {
     self.plans().remove(spec);
 
-    let plan: Arc<XrayProbePlan> = self.plan(spec)?;
-    let (world, steps): (Arc<XrayVfs>, Vec<XrayProbeStep>) = self.mount(&plan, true)?;
+    let plan: Arc<XraySearchPlan> = self.plan(spec)?;
+    let (vfs, steps): (Arc<XrayVfs>, Vec<XraySearchStep>) = self.mount(&plan, true)?;
 
-    Ok(consumer(&world.probe().with_steps(steps)))
+    Ok(XraySearch::new(vfs).with_steps(steps))
   }
 
-  /// The probe plan of a spec, planned from disk only the first time it is asked for.
-  fn plan(&self, spec: &XrayRoots) -> TauriResult<Arc<XrayProbePlan>> {
+  /// Hands [`Self::search`]'s search to `consumer`.
+  pub fn with_search<T>(&self, spec: &XrayRoots, consumer: impl FnOnce(&XraySearch) -> T) -> TauriResult<T> {
+    Ok(consumer(&self.search(spec)?))
+  }
+
+  /// Hands [`Self::search_fresh`]'s search to `consumer`.
+  pub fn with_fresh_search<T>(&self, spec: &XrayRoots, consumer: impl FnOnce(&XraySearch) -> T) -> TauriResult<T> {
+    Ok(consumer(&self.search_fresh(spec)?))
+  }
+
+  /// The search plan of a spec, planned from disk only the first time it is asked for.
+  fn plan(&self, spec: &XrayRoots) -> TauriResult<Arc<XraySearchPlan>> {
     if let Some(plan) = self.plans().get(spec) {
       return Ok(plan.clone());
     }
 
-    let plan: Arc<XrayProbePlan> = Arc::new(
+    let plan: Arc<XraySearchPlan> = Arc::new(
       spec
-        .to_probe_plan()
+        .to_search_plan()
         .map_err(|error| format!("Failed to plan the asset roots: {error}"))?,
     );
 
     Ok(self.plans().entry(spec.clone()).or_insert(plan).clone())
   }
 
-  /// The world a plan is searched in and its steps: the newest snapshot where it settles every source the plan names,
+  /// The snapshot a plan is searched in and its steps: the newest one where it settles every source the plan names,
   /// and a fork mounting the rest where it does not, or where `is_retrying` asks for the failures to be tried again.
-  fn mount(&self, plan: &XrayProbePlan, is_retrying: bool) -> TauriResult<(Arc<XrayVfs>, Vec<XrayProbeStep>)> {
+  fn mount(&self, plan: &XraySearchPlan, is_retrying: bool) -> TauriResult<(Arc<XrayVfs>, Vec<XraySearchStep>)> {
     if let Some(found) = Self::find_settled(&self.snapshot(), plan, is_retrying) {
       return Ok(found);
     }
@@ -95,35 +104,35 @@ impl AssetMountState {
       plan.forget_skipped_in(&mut fork);
     }
 
-    let steps: Vec<XrayProbeStep> = plan
+    let steps: Vec<XraySearchStep> = plan
       .mount_into(&mut fork)
       .map_err(|error| format!("Failed to mount the asset roots: {error}"))?;
     let published: Arc<XrayVfs> = Arc::new(fork);
 
-    *self.recover(self.world.write()) = published.clone();
+    *self.recover(self.vfs.write()) = published.clone();
 
     Ok((published, steps))
   }
 
-  /// A world's steps for a plan where every source it names is settled there, and, for a retry, none of them by a
+  /// A snapshot's steps for a plan where every source it names is settled there, and, for a retry, none of them by a
   /// failure.
   fn find_settled(
-    world: &Arc<XrayVfs>,
-    plan: &XrayProbePlan,
+    vfs: &Arc<XrayVfs>,
+    plan: &XraySearchPlan,
     is_retrying: bool,
-  ) -> Option<(Arc<XrayVfs>, Vec<XrayProbeStep>)> {
+  ) -> Option<(Arc<XrayVfs>, Vec<XraySearchStep>)> {
     plan
-      .find_mounted(world)
+      .find_mounted(vfs)
       .filter(|steps| !is_retrying || steps.iter().all(|step| step.get_skipped().is_empty()))
-      .map(|steps| (world.clone(), steps))
+      .map(|steps| (vfs.clone(), steps))
   }
 
-  /// The newest world, which stays what it is for as long as its holder keeps it.
+  /// The newest snapshot, which stays what it is for as long as its holder keeps it.
   fn snapshot(&self) -> Arc<XrayVfs> {
-    self.recover(self.world.read()).clone()
+    self.recover(self.vfs.read()).clone()
   }
 
-  fn plans(&self) -> MutexGuard<'_, HashMap<XrayRoots, Arc<XrayProbePlan>>> {
+  fn plans(&self) -> MutexGuard<'_, HashMap<XrayRoots, Arc<XraySearchPlan>>> {
     self.recover(self.plans.lock())
   }
 

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use xrf_chunk::ChunkReader;
 use xrf_error::XrfResult;
 use xrf_shaders::{ShaderBlender, ShaderLibraryFile};
-use xrf_vfs::{XrayAsset, XrayAssetType, XrayProbe};
+use xrf_vfs::{XrayAsset, XrayAssetType, XraySearch};
 
 use crate::data::xray_detail_usage::XrayDetailUsage;
 use crate::data::xray_material_bump::XrayMaterialBump;
@@ -22,36 +22,32 @@ use crate::resolve::xray_surface_terrain_rule::XraySurfaceTerrainRule;
 use crate::resolve::xray_texture_scope::XrayTextureScope;
 
 /// Answers how a surface is drawn from the shader name it declares and the textures it dresses with.
-pub struct XraySurfaceResolver<'probe, 'vfs> {
-  probe: &'probe XrayProbe<'vfs>,
+pub struct XraySurfaceResolver {
+  search: XraySearch,
   scope: XrayTextureScope,
   source: XraySurfaceSource,
 }
 
-impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
+impl XraySurfaceResolver {
   /// Where the engine loads the blender library from: the game data root, beside `gamemtl.xr`
   /// (`Layers/xrRender/ResourceManager_Loader.cpp`).
   pub const SHADER_LIBRARY_LOGICAL_PATH: &'static str = XrayAssetType::SHADER_LIBRARY_PATH;
 
   /// Locates and reads the shader library once, recording why it could not rather than failing, for surfaces whose
   /// textures are read within `scope`.
-  pub fn open(probe: &'probe XrayProbe<'vfs>, scope: XrayTextureScope) -> Self {
-    let Some(asset) = probe
-      .find(Self::SHADER_LIBRARY_LOGICAL_PATH)
-      .ok()
-      .and_then(|resolution| resolution.get_asset().cloned())
-    else {
+  pub fn open(search: &XraySearch, scope: XrayTextureScope) -> Self {
+    let Some(asset) = search.find(Self::SHADER_LIBRARY_LOGICAL_PATH).ok().flatten() else {
       return Self {
-        probe,
+        search: search.clone(),
         scope,
         source: XraySurfaceSource::Absent,
       };
     };
 
     Self {
-      probe,
+      search: search.clone(),
       scope,
-      source: match Self::read(probe, &asset) {
+      source: match Self::read(search, &asset) {
         Ok(library) => XraySurfaceSource::Read { asset, library },
         Err(error) => XraySurfaceSource::Unreadable {
           asset,
@@ -77,7 +73,7 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
     // Before the library, because that is the order the engine asks in: a shader with a renderer script **is** that
     // script, and what `shaders.xr` calls its class never reaches the screen. Reading the class alone drew X-Ray's
     // additive glows and its wall marks as opaque black.
-    if let Some(scripted) = XraySurfaceScript::describe(self.probe, shader_name, textures) {
+    if let Some(scripted) = XraySurfaceScript::describe(&self.search, shader_name, textures) {
       return scripted;
     }
 
@@ -109,7 +105,7 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
     // The base texture's descriptor, which says the detail, the bump pair and the lighting model all at once.
     let base: Option<XrayMaterialDescriptor> = blender
       .base_texture(textures)
-      .map(|base| XrayMaterialResolver::describe_texture(self.probe, &self.scope, base));
+      .map(|base| XrayMaterialResolver::describe_texture(&self.search, &self.scope, base));
     let bump: Option<XrayMaterialBump> = base
       .as_ref()
       .filter(|_| XraySurfaceBumpRule::is_bumped(blender.class))
@@ -165,7 +161,7 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
         Some(XrayDetailUsage::Bump | XrayDetailUsage::DiffuseAndBump)
       );
     let bump: Option<XrayMaterialBump> = is_detail_bumped
-      .then(|| XrayMaterialResolver::describe_texture(self.probe, &self.scope, &reference).bump)
+      .then(|| XrayMaterialResolver::describe_texture(&self.search, &self.scope, &reference).bump)
       .flatten();
 
     Some(XraySurfaceDetail {
@@ -175,8 +171,8 @@ impl<'probe, 'vfs> XraySurfaceResolver<'probe, 'vfs> {
     })
   }
 
-  fn read(probe: &XrayProbe, asset: &XrayAsset) -> XrfResult<Arc<ShaderLibraryFile>> {
-    probe.read_asset_parsed(asset, |bytes| {
+  fn read(search: &XraySearch, asset: &XrayAsset) -> XrfResult<Arc<ShaderLibraryFile>> {
+    search.read_parsed(asset, |bytes| {
       ShaderLibraryFile::read_from_chunk(&mut ChunkReader::from_vec(bytes)?)
     })
   }

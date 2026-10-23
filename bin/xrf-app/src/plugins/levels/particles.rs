@@ -10,7 +10,7 @@ use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope}
 use xrf_particles::{ParticleLibrary, ParticlesFile};
 use xrf_renderer::{RenderParticlePlacement, RenderParticleSource};
 use xrf_spawn::{AlifeObject, AlifeObjectCustomZone, AlifeObjectInherited, AlifeObjectMotion, ClsId};
-use xrf_vfs::XrayProbe;
+use xrf_vfs::XraySearch;
 use xrf_visual::{VisualTransform, ZoneSphere};
 
 use crate::core::assets::read_located_asset;
@@ -50,18 +50,18 @@ pub struct PackedLevelParticles {
 /// Returns why the library cannot be read; a level without `level.ps_static` or a spawn plants nothing of it.
 pub fn pack_particles(
   current: &SessionSnapshot<SelectedLevel>,
-  probe: &XrayProbe,
+  search: &XraySearch,
   sections: Option<&Ltx>,
 ) -> Result<PackedLevelParticles, String> {
   let started: Instant = Instant::now();
-  let library: ParticleLibrary = read_library(probe)?;
-  let mut placements: Vec<RenderParticlePlacement> = read_planted(&current.source, probe)?;
+  let library: ParticleLibrary = read_library(search)?;
+  let mut placements: Vec<RenderParticlePlacement> = read_planted(&current.source, search)?;
 
   // todo: Play the systems of space restrictors whose logic starts in `sr_particle` (`name` at `path`'s points, after
   //  each point's delay, `looped` or once), as the b53 steam field's do; condition switches would stay unread.
 
   // Without the configs no zone names its particles; their reader has said why.
-  match (get_level_spawn(current, probe), sections) {
+  match (get_level_spawn(current, search), sections) {
     (Ok(spawn), Some(sections)) => placements.extend(spawn.list_kept().filter_map(|it| place_zone(it, sections))),
     (Err(error), _) => report_missing_zone_particles(&current.source, &error),
     (Ok(_), None) => {}
@@ -69,11 +69,11 @@ pub fn pack_particles(
 
   // An ambient effect plays near the camera whatever stands in the level, so its particles are described with the rest;
   // a level whose configs cannot be read has said why with its weather.
-  let ambient_particles: Vec<String> = LevelEnvironment::of(current, probe)
+  let ambient_particles: Vec<String> = LevelEnvironment::of(current, search)
     .map(|environment| list_ambient_particles(&environment.catalog))
     .unwrap_or_default();
   let scope: XrayTextureScope = current.source.get_texture_scope();
-  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe, scope.clone());
+  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(search, scope.clone());
   let mut surfaces: HashMap<String, XraySurfaceDescriptor> = HashMap::new();
   let mut references: BTreeSet<String> = BTreeSet::new();
 
@@ -93,7 +93,7 @@ pub fn pack_particles(
     textures: references
       .into_iter()
       .map(|reference| LevelTextureReference {
-        logical_path: resolve_reference(probe, &scope, &reference),
+        logical_path: resolve_reference(search, &scope, &reference),
         reference,
       })
       .collect(),
@@ -103,16 +103,16 @@ pub fn pack_particles(
   })
 }
 
-fn read_library(probe: &XrayProbe) -> Result<ParticleLibrary, String> {
-  read_located_asset(probe, PARTICLES_FILE)
+fn read_library(search: &XraySearch) -> Result<ParticleLibrary, String> {
+  read_located_asset(search, PARTICLES_FILE)
     .and_then(ParticlesFile::read_from_bytes::<XRayByteOrder>)
     .map(ParticleLibrary::from)
     .map_err(|error| format!("Failed to read '{PARTICLES_FILE}': {error}"))
 }
 
 /// `CLevel::Load_GameSpecific_After`: each system the level plants for a single player game, lifted a centimetre.
-fn read_planted(source: &LevelSource, probe: &XrayProbe) -> Result<Vec<RenderParticlePlacement>, String> {
-  let Some(bytes) = read_optional_file(source, probe, PS_STATIC_FILE)? else {
+fn read_planted(source: &LevelSource, search: &XraySearch) -> Result<Vec<RenderParticlePlacement>, String> {
+  let Some(bytes) = read_optional_file(source, search, PS_STATIC_FILE)? else {
     return Ok(Vec::new());
   };
   let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes::<XRayByteOrder>(bytes).map_err(|error| {

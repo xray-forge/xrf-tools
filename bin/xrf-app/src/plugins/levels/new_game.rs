@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use xrf_error::XrfResult;
 use xrf_ltx::Ltx;
 use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
-use xrf_vfs::XrayProbe;
+use xrf_vfs::XraySearch;
 
 use crate::plugins::levels::report::report_unreadable_releases;
 use crate::plugins::levels::state::LevelSpawnRelease;
@@ -27,11 +27,11 @@ const RELEASES: [(&str, &str, LevelSpawnRelease); 2] = [
 ];
 
 /// The spawned objects a new game releases by name, and why; none of a list the game does not have, or cannot be read.
-pub fn read_new_game_releases(probe: &XrayProbe) -> HashMap<String, LevelSpawnRelease> {
+pub fn read_new_game_releases(search: &XraySearch) -> HashMap<String, LevelSpawnRelease> {
   let mut released: HashMap<String, LevelSpawnRelease> = HashMap::new();
 
   for (file, section, release) in RELEASES {
-    match read_released(probe, file, section) {
+    match read_released(search, file, section) {
       Ok(names) => {
         for name in names {
           released.entry(name).or_insert(release);
@@ -55,12 +55,11 @@ pub fn list_released(text: &str, section: &str) -> XrfResult<Vec<String>> {
 }
 
 // todo: Resolve both configs under the level's dialect, as Anomaly's `ini_file` applies DLTX `mod_` files to them.
-fn read_released(probe: &XrayProbe, file: &str, section: &str) -> XrfResult<Vec<String>> {
-  let resolution = probe.find(file)?;
-  let Some(asset) = resolution.get_asset() else {
+fn read_released(search: &XraySearch, file: &str, section: &str) -> XrfResult<Vec<String>> {
+  let Some(asset) = search.find(file)? else {
     return Ok(Vec::new());
   };
-  let bytes: Vec<u8> = probe.read_asset_bytes(asset)?;
+  let bytes: Vec<u8> = search.read_asset(&asset)?;
 
   list_released(&decode_bytes_to_string(&bytes, new_windows1251_encoder())?, section)
 }

@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use tauri::State;
-use xrf_vfs::{XrayDirectoryListing, XrayLogicalPath, XrayProbe, XrayRoots};
+use xrf_vfs::{XrayDirectoryListing, XrayLogicalPath, XrayRoots, XraySearch};
 
 use crate::core::assets::AssetMountState;
 use crate::core::types::TauriResult;
@@ -13,7 +13,7 @@ use crate::plugins::levels::state::{GEOMETRY_FILE, LEVEL_FILE, LEVELS_DIRECTORY,
 #[tauri::command(rename = "list_levels")]
 pub async fn levels_list_levels(roots: XrayRoots, assets: State<'_, AssetMountState>) -> TauriResult<Vec<LevelEntry>> {
   let started: Instant = Instant::now();
-  let entries: Vec<LevelEntry> = assets.with_fresh_probe(&roots, list_levels)??;
+  let entries: Vec<LevelEntry> = assets.with_fresh_search(&roots, list_levels)??;
 
   report_listed_levels(&entries, started);
 
@@ -21,10 +21,10 @@ pub async fn levels_list_levels(roots: XrayRoots, assets: State<'_, AssetMountSt
 }
 
 /// Walks `levels` and keeps the names that are levels.
-fn list_levels(probe: &XrayProbe) -> TauriResult<Vec<LevelEntry>> {
+fn list_levels(search: &XraySearch) -> TauriResult<Vec<LevelEntry>> {
   let levels: XrayLogicalPath =
     XrayLogicalPath::new(LEVELS_DIRECTORY).map_err(|error| format!("Failed to list levels: {error}"))?;
-  let listing: XrayDirectoryListing = probe
+  let listing: XrayDirectoryListing = search
     .list_children(levels.as_str())
     .map_err(|error| format!("Failed to list levels: {error}"))?;
 
@@ -35,13 +35,13 @@ fn list_levels(probe: &XrayProbe) -> TauriResult<Vec<LevelEntry>> {
       continue;
     };
 
-    if !is_present(probe, &logical_path, LEVEL_FILE) {
+    if !is_present(search, &logical_path, LEVEL_FILE) {
       continue;
     }
 
     entries.push(LevelEntry {
       // A level shipping no render geometry draws nothing, which is worth saying in the list rather than on open.
-      has_geometry: is_present(probe, &logical_path, GEOMETRY_FILE),
+      has_geometry: is_present(search, &logical_path, GEOMETRY_FILE),
       logical_path: logical_path.as_str().to_owned(),
       name,
     });
@@ -51,9 +51,9 @@ fn list_levels(probe: &XrayProbe) -> TauriResult<Vec<LevelEntry>> {
 }
 
 /// Whether one of a level's files is there, treating an unreadable path as absent rather than failing the listing.
-fn is_present(probe: &XrayProbe, logical_path: &XrayLogicalPath, file: &str) -> bool {
+fn is_present(search: &XraySearch, logical_path: &XrayLogicalPath, file: &str) -> bool {
   logical_path
     .join(file)
-    .and_then(|path| probe.find(path.as_str()))
-    .is_ok_and(|resolution| resolution.get_asset().is_some())
+    .and_then(|path| search.find(path.as_str()))
+    .is_ok_and(|found| found.is_some())
 }

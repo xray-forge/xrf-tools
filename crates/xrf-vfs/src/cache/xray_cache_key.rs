@@ -1,12 +1,8 @@
 use std::any::TypeId;
 
-use crate::vfs::XrayLookupScope;
+use crate::XrayLookupScope;
 
 /// What identifies a retained value.
-///
-/// The scope belongs in the key because a logical path does not name bytes on its own: a scope narrowing to some mounts
-/// can resolve the same path to a lower-priority copy, and an application may hold several scopes against one mount set
-/// at a time. The type belongs in it so one path may hold both a whole parsed file and a cheaper projection of it.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct XrayCacheKey {
   type_id: TypeId,

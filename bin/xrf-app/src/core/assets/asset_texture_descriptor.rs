@@ -2,7 +2,7 @@ use std::path::Path;
 
 use serde::Serialize;
 use xrf_dds::{DdsFile, DdsMetadata};
-use xrf_vfs::{XrayAsset, XrayProbe};
+use xrf_vfs::{XrayAsset, XraySearch};
 
 use crate::core::assets::asset_texture_shape::AssetTextureShape;
 
@@ -23,11 +23,11 @@ impl AssetTextureDescriptor {
   /// A loose file is read by path, which costs only the header. An archived entry has no path to read a prefix of, so
   /// its bytes come out of the volume whole - the same read the frontend makes a moment later to upload it, which is
   /// the price of describing an archived texture at all.
-  pub fn describe(probe: &XrayProbe, asset: &XrayAsset) -> Option<Self> {
+  pub fn describe(search: &XraySearch, asset: &XrayAsset) -> Option<Self> {
     match asset.to_physical_path() {
       Some(path) => Self::describe_path(&path),
       None => {
-        let bytes: Vec<u8> = probe.read_asset_bytes(asset).ok()?;
+        let bytes: Vec<u8> = search.read_asset(asset).ok()?;
 
         Some(Self {
           size: bytes.len() as u64,

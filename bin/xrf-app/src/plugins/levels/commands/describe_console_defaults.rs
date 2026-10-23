@@ -26,8 +26,8 @@ pub async fn levels_describe_console_defaults(
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let value: LevelConsoleDefaults = execution
     .run_blocking("Reading the game's console defaults", move || {
-      assets.with_probe(&current.roots, |probe| {
-        read_level_console(probe, &current.roots).map_err(|error| error.to_string())
+      assets.with_search(&current.roots, |search| {
+        read_level_console(search, &current.roots).map_err(|error| error.to_string())
       })
     })
     .await???;

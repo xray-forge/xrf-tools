@@ -1,13 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// What a mounted world is currently holding, and how well it has served reads.
-///
-/// Reported rather than inferred: retained bytes decide whether a session is healthy, and `refused` is the only signal
-/// that a budget turned caching off, which would otherwise look like a mysterious slowdown.
-///
-/// These numbers are published, so they describe the inputs rather than the run. Two sweeps over one tree report the
-/// same figures however many threads they used, which is what makes two reports comparable. That holds while the policy
-/// carries no byte budget; see [`crate::XrayCachePolicy::with_budget`].
+/// What a VFS snapshot is currently holding, and how well it has served reads.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

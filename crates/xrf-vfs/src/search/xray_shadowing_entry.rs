@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::XrayAsset;
-use crate::vfs::xray_mounted_entry::XrayMountedEntry;
+use crate::search::XrayMountedEntry;
 
 /// One copy of an engine path that no lookup reaches, and how large it is.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -61,9 +61,6 @@ impl XrayShadowingEntry {
   }
 
   /// Unpacked bytes held by the copies no lookup reaches.
-  ///
-  /// What an override arrangement costs over answering every path once, which is the figure the winner's own size
-  /// cannot express.
   pub fn get_shadowed_size(&self) -> u64 {
     self.shadowed.iter().map(|copy| copy.size).sum()
   }

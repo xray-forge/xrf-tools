@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayProbe, XrayResolution};
+use xrf_vfs::{XrayAssetType, XrayLogicalPath, XrayResolution, XraySearch};
 
 use crate::data::xray_bump_naming::XrayBumpNaming;
 
@@ -27,10 +27,10 @@ impl XrayTextureScope {
   }
 
   /// Locates a texture as `texture_load` does: beside the level first, then the shared tree (`Texture.cpp`).
-  pub fn resolve_texture(&self, probe: &XrayProbe, reference: &str) -> XrfResult<XrayResolution> {
-    match self.find_beside_level(probe, XrayAssetType::Dds, reference) {
+  pub fn resolve_texture(&self, search: &XraySearch, reference: &str) -> XrfResult<XrayResolution> {
+    match self.find_beside_level(search, XrayAssetType::Dds, reference) {
       Some(beside) => Ok(beside),
-      None => probe.resolve(XrayAssetType::Dds, reference),
+      None => search.resolve(XrayAssetType::Dds, reference),
     }
   }
 
@@ -38,11 +38,11 @@ impl XrayTextureScope {
   /// texture, save that a `_bump` name the shared tree lacks is the dummy however many copies the level holds.
   pub(crate) fn resolve_bump_input(
     &self,
-    probe: &XrayProbe,
+    search: &XraySearch,
     reference: &str,
     fallback: &str,
   ) -> XrfResult<XrayResolution> {
-    let shared: XrayResolution = probe.resolve_with_fallback(XrayAssetType::Dds, reference, fallback)?;
+    let shared: XrayResolution = search.resolve_with_fallback(XrayAssetType::Dds, reference, fallback)?;
 
     if XrayBumpNaming::carries_marker(reference) && !matches!(shared, XrayResolution::Resolved { .. }) {
       return Ok(shared);
@@ -50,7 +50,7 @@ impl XrayTextureScope {
 
     Ok(
       self
-        .find_beside_level(probe, XrayAssetType::Dds, reference)
+        .find_beside_level(search, XrayAssetType::Dds, reference)
         .unwrap_or(shared),
     )
   }
@@ -59,12 +59,12 @@ impl XrayTextureScope {
   /// name, or where the level holds no such file.
   pub(crate) fn find_beside_level(
     &self,
-    probe: &XrayProbe,
+    search: &XraySearch,
     asset_type: XrayAssetType,
     reference: &str,
   ) -> Option<XrayResolution> {
-    probe
-      .find_beside(self.level.as_ref()?, asset_type, reference)
+    search
+      .locate_beside(self.level.as_ref()?, asset_type, reference)
       .ok()
       .filter(|resolution| matches!(resolution, XrayResolution::Resolved { .. }))
   }

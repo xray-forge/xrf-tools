@@ -6,7 +6,7 @@ use xrf_error::XrfResult;
 use xrf_utils::{
   decode_bytes_to_string, encode_w1251_bytes_to_string, new_windows1251_encoder, read_as_string_from_w1251_encoded,
 };
-use xrf_vfs::{XrayLookupScope, XrayProbe, XrayVfs};
+use xrf_vfs::{XrayLookupScope, XraySearch, XrayVfs};
 
 use crate::dialect::{LtxDialect, LtxResolveRequest, LtxStandardDialect};
 use crate::document::{LtxDocument, LtxParser};
@@ -43,25 +43,25 @@ impl Ltx {
     Self::read_from_path(filename)?.into_included()?.into_inherited()
   }
 
-  /// Read LTX through a probe, injecting includes resolved through it.
+  /// Read LTX through a search, injecting includes resolved through it.
   ///
   /// # Errors
   ///
-  /// Returns an error when the probe does not reach the path, its bytes are not valid Windows-1251, or the contents
+  /// Returns an error when the search does not reach the path, its bytes are not valid Windows-1251, or the contents
   /// will not parse.
-  pub(crate) fn read_from_probe(probe: &XrayProbe, logical_path: &str) -> XrfResult<Self> {
-    let source: LtxVfsSource = LtxVfsSource::new(probe.clone());
+  pub(crate) fn read_from_search(search: &XraySearch, logical_path: &str) -> XrfResult<Self> {
+    let source: LtxVfsSource = LtxVfsSource::new(search.clone());
 
     LtxIncludeConvertor::convert_with(source.read_ltx(logical_path)?, &source)
   }
 
-  /// Read LTX through a probe under standard rules, with includes injected and inheritance flattened.
+  /// Read LTX through a search under standard rules, with includes injected and inheritance flattened.
   ///
   /// # Errors
   ///
   /// Returns an error when reading fails, or when an inherited section cannot be resolved.
-  pub(crate) fn read_from_probe_standard(probe: &XrayProbe, logical_path: &str) -> XrfResult<Self> {
-    Self::read_from_probe(probe, logical_path)?.into_inherited()
+  pub(crate) fn read_from_search_standard(search: &XraySearch, logical_path: &str) -> XrfResult<Self> {
+    Self::read_from_search(search, logical_path)?.into_inherited()
   }
 
   /// Read from a file as generic ltx with LTX descriptor filled.

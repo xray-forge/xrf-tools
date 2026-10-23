@@ -27,7 +27,7 @@ pub(crate) async fn assets_read_asset(app: AppHandle, request: AssetsReadAssetRe
     .state::<ExecutionState>()
     .run_blocking("Reading asset", move || {
       assets
-        .with_probe(&roots, |probe| read_located_asset(probe, &logical_path))?
+        .with_search(&roots, |search| read_located_asset(search, &logical_path))?
         .map_err(|error| format!("Failed to read asset '{logical_path}': {error}"))
     })
     .await??;

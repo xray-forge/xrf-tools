@@ -105,7 +105,7 @@ println!(
 
 Listings are ordered by logical path. `list_entries` returns winners; `list_entries_all` includes shadowed copies;
 `list_mounted_entries` groups each winner with its size and hidden copies. `list_collisions` reports conflicting names
-within mounts. `XrayProbe` offers the same listing shapes across ordered lookup steps.
+within mounts. `XraySearch` offers the same listing shapes across ordered lookup steps.
 
 ## Resolve engine references
 

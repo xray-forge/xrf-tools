@@ -46,13 +46,13 @@ must follow engine path normalization and installation priority.
 ## Summarize a mounted world
 
 Call `ArchiveStatistics::of_world(&entries, &mounts, &sources)` after resolving and listing the sources with an
-`XrayProbe`. Keep all three arguments from the same probe:
+`XraySearch`. Keep all three arguments from the same search:
 
 | Argument  | Contents                                                                                                           |
 | --------- | ------------------------------------------------------------------------------------------------------------------ |
 | `entries` | A slice of winning file entries implementing `ArchiveWorldStatisticsEntry`, each retaining the copies it overrides |
-| `mounts`  | Mount names, as returned by `XrayProbe::list_roots`; their count becomes `overview.sources`                        |
-| `sources` | Loose-root and individual-volume paths in search priority order, as returned by `XrayProbe::list_containers`       |
+| `mounts`  | Mount names, as returned by `XraySearch::list_roots`; their count becomes `overview.sources`                       |
+| `sources` | Loose-root and individual-volume paths in search priority order, as returned by `XraySearch::list_containers`      |
 
 A mount can hold several volumes, so `overview.sources` need not equal `origins.sources.len()`. The collector does
 not resolve conflicts or deduplicate entries: supply one winner per engine path. A single loose gamedata directory

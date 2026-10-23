@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use crate::{XrayLogicalPath, XrayLookupScope, XrayProbeStep};
+use crate::{XrayLogicalPath, XrayLookupScope, XraySearchStep};
 
 /// One thing a build can read and a change can move: a logical path as a search resolves it, or what sits under a
 /// directory.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct XrayInput {
-  search: XraySearch,
+  key: XraySearchKey,
   kind: XrayInputKind,
 }
 
@@ -19,17 +19,17 @@ pub enum XrayInputKind {
   Listing(Option<XrayLogicalPath>),
 }
 
-/// The scopes a probe searches, in its order: a probe's steps without their labels, which name nothing a lookup reads.
+/// The scopes a search searches, in its order: its steps without their labels, which name nothing a lookup reads.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct XraySearch(Arc<[XrayLookupScope]>);
+pub struct XraySearchKey(Arc<[XrayLookupScope]>);
 
 impl XrayInput {
-  pub fn new(search: XraySearch, kind: XrayInputKind) -> Self {
-    Self { search, kind }
+  pub fn new(key: XraySearchKey, kind: XrayInputKind) -> Self {
+    Self { key, kind }
   }
 
-  pub fn get_search(&self) -> &XraySearch {
-    &self.search
+  pub fn get_key(&self) -> &XraySearchKey {
+    &self.key
   }
 
   pub fn get_kind(&self) -> &XrayInputKind {
@@ -37,9 +37,9 @@ impl XrayInput {
   }
 }
 
-impl XraySearch {
-  /// The search of a probe made of `steps`.
-  pub fn of(steps: &[XrayProbeStep]) -> Self {
+impl XraySearchKey {
+  /// The key of a search made of `steps`.
+  pub fn of(steps: &[XraySearchStep]) -> Self {
     Self(steps.iter().map(|step| step.get_scope().clone()).collect())
   }
 

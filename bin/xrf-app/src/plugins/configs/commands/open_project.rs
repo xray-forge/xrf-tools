@@ -98,8 +98,13 @@ fn open_and_list(
     is_strict_check: false,
   };
   let project: LtxProject = assets
-    .with_fresh_probe(&roots, |probe| {
-      LtxProject::open_at_probe_opt(roots.describe(), &probe.recording(&inputs), prefix.as_deref(), options)
+    .with_fresh_search(&roots, |search| {
+      LtxProject::open_at_search_opt(
+        roots.describe(),
+        &search.clone().with_recording(&inputs),
+        prefix.as_deref(),
+        options,
+      )
     })?
     .map_err(error_to_string)?;
 

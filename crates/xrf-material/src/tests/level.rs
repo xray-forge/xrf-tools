@@ -3,10 +3,10 @@
 use xrf_shaders::ShaderBlenderClass;
 use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_thm::{ThmBumpMode, ThmMaterial, ThmTextureFlag, ThmTextureType};
-use xrf_vfs::{XrayLogicalPath, XrayMountId, XrayProbe, XrayResolution, XrayVfs};
+use xrf_vfs::{XrayLogicalPath, XrayMountId, XrayResolution, XraySearch, XrayVfs};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
-use crate::tests::material_probe::{BASE, BUMP, COMPANION, located_path, probe_over, used_bump};
+use crate::tests::material_search::{BASE, BUMP, COMPANION, located_path, search_over, used_bump};
 use crate::{
   XrayBumpMode, XrayBumpOutcome, XrayDetailUsage, XrayMaterialBump, XrayMaterialDeclaration, XrayMaterialDescriptor,
   XrayMaterialDetail, XrayMaterialResolver, XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope,
@@ -28,7 +28,7 @@ fn describe_within(tree: &FixtureTree, scope: &XrayTextureScope) -> XrayMaterial
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
 
-  XrayMaterialResolver::describe_texture(&probe_over(&vfs, id), scope, BASE)
+  XrayMaterialResolver::describe_texture(&search_over(vfs, id), scope, BASE)
 }
 
 fn describe_in_level(tree: &FixtureTree) -> XrayMaterialDescriptor {
@@ -296,10 +296,11 @@ fn a_texture_resolves_beside_the_level_before_the_shared_tree() {
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
   let scope: XrayTextureScope = level_scope();
+  let search: XraySearch = search_over(vfs, id);
 
   let resolve = |reference: &str| -> Option<String> {
     scope
-      .resolve_texture(&probe_over(&vfs, id), reference)
+      .resolve_texture(&search, reference)
       .ok()
       .as_ref()
       .and_then(located_path)
@@ -323,12 +324,12 @@ fn a_surface_in_a_level_binds_the_pair_and_model_the_level_descriptor_declares()
     .with_level_descriptor(LEVEL, BASE, &used_bump().with_material(ThmMaterial::PhongMetal, 0.5));
   let mut vfs: XrayVfs = XrayVfs::new();
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let probe: XrayProbe<'_> = probe_over(&vfs, id);
+  let search: XraySearch = search_over(vfs, id);
 
   let within: XraySurfaceDescriptor =
-    XraySurfaceResolver::open(&probe, level_scope()).describe("default", &[BASE.to_owned()]);
+    XraySurfaceResolver::open(&search, level_scope()).describe("default", &[BASE.to_owned()]);
   let outside: XraySurfaceDescriptor =
-    XraySurfaceResolver::open(&probe, XrayTextureScope::shared()).describe("default", &[BASE.to_owned()]);
+    XraySurfaceResolver::open(&search, XrayTextureScope::shared()).describe("default", &[BASE.to_owned()]);
 
   assert_eq!(
     within.bump.as_ref().map(|bump| bump.bump.reference.as_str()),

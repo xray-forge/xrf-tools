@@ -30,7 +30,7 @@ pub struct LevelThunderbolts {
 }
 
 impl LevelThunderbolts {
-  /// Every collection and bolt of the catalog, their models read and their textures found in the level's probe.
+  /// Every collection and bolt of the catalog, their models read and their textures found in the level's search.
   pub fn read(source: &LevelWeatherSource) -> Self {
     let catalog = source.catalog;
     let mut reader: BoltReader = BoltReader::open(source);
@@ -64,9 +64,9 @@ impl LevelThunderbolts {
 }
 
 /// Reads bolts, adding each model and colour animation once however many bolts name it, a missing one looked for once.
-struct BoltReader<'s, 'a, 'p> {
-  source: &'s LevelWeatherSource<'a, 'p>,
-  resolver: XraySurfaceResolver<'a, 'p>,
+struct BoltReader<'s, 'a> {
+  source: &'s LevelWeatherSource<'a>,
+  resolver: XraySurfaceResolver,
   animations: Option<LightAnimFile>,
   models: Vec<LevelThunderboltModel>,
   model_indices: HashMap<String, Option<u32>>,
@@ -74,10 +74,10 @@ struct BoltReader<'s, 'a, 'p> {
   animator_indices: HashMap<String, Option<u32>>,
 }
 
-impl<'s, 'a, 'p> BoltReader<'s, 'a, 'p> {
-  fn open(source: &'s LevelWeatherSource<'a, 'p>) -> Self {
+impl<'s, 'a> BoltReader<'s, 'a> {
+  fn open(source: &'s LevelWeatherSource<'a>) -> Self {
     Self {
-      animations: read_located_asset(source.probe, ANIMATIONS_FILE)
+      animations: read_located_asset(source.search, ANIMATIONS_FILE)
         .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
         .inspect_err(|error| log::warn!("Thunderbolts are not coloured, '{ANIMATIONS_FILE}' does not read: {error}"))
         .ok(),
@@ -85,7 +85,7 @@ impl<'s, 'a, 'p> BoltReader<'s, 'a, 'p> {
       animators: Vec::new(),
       model_indices: HashMap::new(),
       models: Vec::new(),
-      resolver: XraySurfaceResolver::open(source.probe, source.scope.clone()),
+      resolver: XraySurfaceResolver::open(source.search, source.scope.clone()),
       source,
     }
   }

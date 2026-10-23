@@ -1,24 +1,10 @@
-//! The virtual file system: ordered mounts searched first-hit-wins, the lookup scope that narrows a search to some of
-//! them, and the ordered probe that searches several scopes in turn.
+//! The VFS snapshot: ordered mounts searched first-hit-wins, the revisions of what they hold, and the scoped view a
+//! search step reads through.
 
-mod directory_listing;
 #[cfg(test)]
-mod tests;
-mod xray_lookup_scope;
-mod xray_mounted_entry;
-mod xray_owned_probe;
-mod xray_probe;
-mod xray_resolution;
+pub(crate) mod tests;
 mod xray_scoped_vfs;
-mod xray_shadowing_entry;
 mod xray_vfs;
 
-pub use directory_listing::XrayDirectoryListing;
-pub use xray_lookup_scope::XrayLookupScope;
-pub use xray_mounted_entry::XrayMountedEntry;
-pub use xray_owned_probe::XrayOwnedProbe;
-pub use xray_probe::{XrayProbe, XrayProbeStep, XraySearchedSource};
-pub use xray_resolution::XrayResolution;
 pub use xray_scoped_vfs::XrayScopedVfs;
-pub use xray_shadowing_entry::{XrayShadowedCopy, XrayShadowingEntry};
 pub use xray_vfs::XrayVfs;

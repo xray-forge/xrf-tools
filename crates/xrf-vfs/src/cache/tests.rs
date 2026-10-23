@@ -6,9 +6,9 @@ use std::time::Duration;
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::XrayLookupScope;
 use crate::asset::XrayAssetType;
 use crate::cache::{XrayAssetCache, XrayCachePolicy, XrayCacheStats};
-use crate::vfs::XrayLookupScope;
 
 /// Stands in for a parsed asset, so the store is exercised without a format crate.
 #[derive(Debug, Eq, PartialEq)]

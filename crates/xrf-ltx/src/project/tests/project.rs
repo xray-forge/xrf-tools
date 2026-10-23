@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{
-  XrayInputKind, XrayInputRecord, XrayLogicalPath, XrayLookupScope, XrayMountMode, XrayProbe, XrayRoots, XrayVfs,
+  XrayInputKind, XrayInputRecord, XrayLogicalPath, XrayLookupScope, XrayMountMode, XrayRoots, XraySearch, XrayVfs,
 };
 
 use crate::project::LtxProject;
@@ -222,8 +222,8 @@ fn a_lean_project_lists_nothing_and_still_resolves_system_ltx_with_its_includes_
   )?;
 
   let vfs: XrayVfs = XrayRoots::one(root.clone(), XrayMountMode::Directory).open()?;
-  let probe: XrayProbe = vfs.probe().with_step("root", XrayLookupScope::all());
-  let project: LtxProject = LtxProject::open_lean_at_probe_opt(&root, &probe, Some("configs"), Default::default())?;
+  let search: XraySearch = XraySearch::new(vfs).with_step("root", XrayLookupScope::all());
+  let project: LtxProject = LtxProject::open_lean_at_search_opt(&root, &search, Some("configs"), Default::default())?;
   let system = project.system_ltx()?;
   let campfire = system.ltx.section("campfire").expect("the campfire section to resolve");
 
@@ -235,7 +235,7 @@ fn a_lean_project_lists_nothing_and_still_resolves_system_ltx_with_its_includes_
 }
 
 #[test]
-fn a_project_over_a_recording_probe_records_the_configs_it_resolves() -> XrfResult {
+fn a_project_over_a_recording_search_records_the_configs_it_resolves() -> XrfResult {
   let root: PathBuf = create_root("recorded")?;
   let configs: PathBuf = root.join("configs");
 
@@ -252,8 +252,10 @@ fn a_project_over_a_recording_probe_records_the_configs_it_resolves() -> XrfResu
 
   let vfs: XrayVfs = XrayRoots::one(root.clone(), XrayMountMode::Directory).open()?;
   let record: XrayInputRecord = XrayInputRecord::new();
-  let probe: XrayProbe = vfs.probe().with_step("root", XrayLookupScope::all()).recording(&record);
-  let project: LtxProject = LtxProject::open_lean_at_probe_opt(&root, &probe, Some("configs"), Default::default())?;
+  let search: XraySearch = XraySearch::new(vfs)
+    .with_step("root", XrayLookupScope::all())
+    .with_recording(&record);
+  let project: LtxProject = LtxProject::open_lean_at_search_opt(&root, &search, Some("configs"), Default::default())?;
 
   project.system_ltx()?;
 
@@ -284,8 +286,8 @@ fn a_project_over_a_recording_probe_records_the_configs_it_resolves() -> XrfResu
 }
 
 #[test]
-fn a_project_over_a_probe_reads_what_its_search_reaches_within_the_prefix() -> XrfResult {
-  let root: PathBuf = create_root("over_probe")?;
+fn a_project_over_a_search_reads_what_its_search_reaches_within_the_prefix() -> XrfResult {
+  let root: PathBuf = create_root("over_search")?;
 
   fs::create_dir_all(root.join("configs"))?;
   fs::write(root.join("configs").join("system.ltx"), "#include \"game.ltx\"\n")?;
@@ -293,8 +295,8 @@ fn a_project_over_a_probe_reads_what_its_search_reaches_within_the_prefix() -> X
   fs::write(root.join("unrelated.ltx"), "[unrelated]\n")?;
 
   let vfs: XrayVfs = XrayRoots::one(root.clone(), XrayMountMode::Directory).open()?;
-  let probe: XrayProbe = vfs.probe().with_step("root", XrayLookupScope::all());
-  let project: LtxProject = LtxProject::open_at_probe_opt(&root, &probe, Some("configs"), Default::default())?;
+  let search: XraySearch = XraySearch::new(vfs).with_step("root", XrayLookupScope::all());
+  let project: LtxProject = LtxProject::open_at_search_opt(&root, &search, Some("configs"), Default::default())?;
 
   assert_eq!(
     project.ltx_files,

@@ -45,7 +45,7 @@ pub struct OgfVerificationCensus {
   pub resolved_texture_references: usize,
   /// References that resolved inside an archive, which the sweep locates without reading a header.
   pub located_texture_references: usize,
-  /// Which probe step answered each resolved reference, so an overlay shows what it still takes from its base.
+  /// Which search step answered each resolved reference, so an overlay shows what it still takes from its base.
   pub texture_steps: BTreeMap<String, usize>,
   pub missing_texture_references: usize,
   pub unreadable_textures: usize,

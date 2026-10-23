@@ -4,7 +4,7 @@ use std::fmt;
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, PoisonError};
 
 use xrf_job::PoolOnceLock;
-use xrf_vfs::{XrayInputRecord, XrayProbe};
+use xrf_vfs::{XrayInputRecord, XraySearch};
 
 use crate::core::session::SessionPart;
 
@@ -57,37 +57,34 @@ impl SessionParts {
     self.get_slot::<K>().0.get_or_init(build)
   }
 
-  /// The part `K`, built by `build` the first time anything asks through a probe recording what it reads into the
+  /// The part `K`, built by `build` the first time anything asks through a search recording what it reads into the
   /// part's inputs.
-  ///
-  /// `probe` is the asker's: where it records, as a part build asking for another does, the part's inputs join its own,
-  /// built now or before.
   ///
   /// # Panics
   ///
   /// Panics where `build` panics, leaving the part unbuilt.
   pub fn get_or_record<K: SessionPart>(
     &self,
-    probe: &XrayProbe,
-    build: impl FnOnce(&XrayProbe) -> K::Value + Send,
+    search: &XraySearch,
+    build: impl FnOnce(&XraySearch) -> K::Value + Send,
   ) -> K::Value {
     let (cell, inputs) = self.get_slot::<K>();
-    let value: K::Value = cell.get_or_init(|| build(&probe.recording(&inputs)));
+    let value: K::Value = cell.get_or_init(|| build(&search.clone().with_recording(&inputs)));
 
-    probe.record_inputs(&inputs);
+    search.record_inputs(&inputs);
 
     value
   }
 
-  /// Runs `read` through a probe recording into the inputs of the part `K`, for a part whose values are read after it is
-  /// built, one key at a time.
+  /// Runs `read` through a search recording into the inputs of the part `K`, for a part whose values are read after it
+  /// is built, one key at a time.
   ///
-  /// As [`Self::get_or_record`], the part's inputs join the asker's where `probe` records.
-  pub fn record<K: SessionPart, T>(&self, probe: &XrayProbe, read: impl FnOnce(&XrayProbe) -> T) -> T {
+  /// As [`Self::get_or_record`], the part's inputs join the asker's where `search` records.
+  pub fn record<K: SessionPart, T>(&self, search: &XraySearch, read: impl FnOnce(&XraySearch) -> T) -> T {
     let inputs: XrayInputRecord = self.get_slot::<K>().1;
-    let read: T = read(&probe.recording(&inputs));
+    let read: T = read(&search.clone().with_recording(&inputs));
 
-    probe.record_inputs(&inputs);
+    search.record_inputs(&inputs);
 
     read
   }

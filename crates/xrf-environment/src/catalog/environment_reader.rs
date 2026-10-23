@@ -64,7 +64,7 @@ impl EnvironmentReader {
     level: &str,
   ) -> XrfResult<LevelWeather> {
     let path: XrayLogicalPath = project.config_path(Self::GAME)?;
-    let is_present: bool = project.probe().find(path.as_str())?.get_asset().is_some();
+    let is_present: bool = project.search().find(path.as_str())?.is_some();
     let game: Option<Arc<LtxResolution>> = if is_present {
       Some(project.read_resolution(&path)?)
     } else {

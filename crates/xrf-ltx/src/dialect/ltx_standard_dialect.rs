@@ -88,7 +88,7 @@ impl LtxStandardDialect {
       included.push(String::from(statement));
 
       for path in source.resolve_include(directory, statement)? {
-        // An include the world does not hold is nothing to merge, which is the tolerance a not-yet-generated config
+        // An include the VFS does not hold is nothing to merge, which is the tolerance a not-yet-generated config
         // gets. A wildcard that matches nothing is the same case.
         if let Some(nested) = source.read_document(&path)? {
           merged.merge_sections_from(Self::merge_document(&path, &nested, source, interner)?, &path)?;

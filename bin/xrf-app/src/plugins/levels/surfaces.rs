@@ -2,16 +2,20 @@
 
 use xrf_level::{LevelFile, LevelShaderEntry};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
-use xrf_vfs::XrayProbe;
+use xrf_vfs::XraySearch;
 
 /// Describes how the renderer draws every entry of the level's shader table, in the table's own order, its textures
 /// read within `scope`.
-pub fn resolve_surfaces(level: &LevelFile, probe: &XrayProbe, scope: &XrayTextureScope) -> Vec<XraySurfaceDescriptor> {
+pub fn resolve_surfaces(
+  level: &LevelFile,
+  search: &XraySearch,
+  scope: &XrayTextureScope,
+) -> Vec<XraySurfaceDescriptor> {
   let Some(shaders) = level.shaders.as_ref() else {
     return Vec::new();
   };
 
-  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(probe, scope.clone());
+  let resolver: XraySurfaceResolver = XraySurfaceResolver::open(search, scope.clone());
 
   shaders
     .entries

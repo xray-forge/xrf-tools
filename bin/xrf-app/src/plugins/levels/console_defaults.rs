@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use xrf_error::XrfResult;
 use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
-use xrf_vfs::{FsgameFile, XrayProbe, XrayRoots};
+use xrf_vfs::{FsgameFile, XrayRoots, XraySearch};
 
 use crate::plugins::levels::state::LevelConsoleDefaults;
 
@@ -24,8 +24,8 @@ const APP_DATA_ROOT: &str = "$app_data_root$";
 /// # Errors
 ///
 /// Returns an error when the shipped file is there and cannot be read.
-pub fn read_level_console(probe: &XrayProbe, roots: &XrayRoots) -> XrfResult<LevelConsoleDefaults> {
-  let shipped: LevelConsoleDefaults = read_console_defaults(probe)?;
+pub fn read_level_console(search: &XraySearch, roots: &XrayRoots) -> XrfResult<LevelConsoleDefaults> {
+  let shipped: LevelConsoleDefaults = read_console_defaults(search)?;
 
   let Some((path, text)) = read_user_console(roots) else {
     return Ok(shipped);
@@ -61,12 +61,11 @@ fn read_user_console(roots: &XrayRoots) -> Option<(PathBuf, String)> {
 /// # Errors
 ///
 /// Returns an error when the file is there and cannot be read.
-pub fn read_console_defaults(probe: &XrayProbe) -> XrfResult<LevelConsoleDefaults> {
-  let resolution = probe.find(DEFAULTS)?;
-  let Some(asset) = resolution.get_asset() else {
+pub fn read_console_defaults(search: &XraySearch) -> XrfResult<LevelConsoleDefaults> {
+  let Some(asset) = search.find(DEFAULTS)? else {
     return Ok(LevelConsoleDefaults::default());
   };
-  let bytes: Vec<u8> = probe.read_asset_bytes(asset)?;
+  let bytes: Vec<u8> = search.read_asset(&asset)?;
 
   Ok(LevelConsoleDefaults {
     is_shipped: true,

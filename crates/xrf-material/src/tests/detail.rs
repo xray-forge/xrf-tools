@@ -3,7 +3,7 @@
 use xrf_thm::{ThmTextureFlag, ThmTextureType};
 
 use crate::fixtures::{FixtureTree, ThmFixture};
-use crate::tests::material_probe::{BASE, describe};
+use crate::tests::material_search::{BASE, describe};
 use crate::{XrayDetailUsage, XrayMaterialDescriptor};
 
 #[test]

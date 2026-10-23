@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use crate::vfs::tests::fake_source::{FakeArchiveSource, directory};
 use crate::{
-  XrayAssetContainer, XrayLookupScope, XrayMountedEntry, XrayProbePlan, XrayProbeStep, XrayShadowingEntry, XrayVfs,
+  XrayAssetContainer, XrayLookupScope, XrayMountedEntry, XraySearch, XraySearchPlan, XraySearchStep,
+  XrayShadowingEntry, XrayVfs,
 };
 
 /// A loose tree in front of a volume set, which is what an installation with unpacked files is.
@@ -173,18 +174,18 @@ fn a_scope_narrows_the_listing_the_way_it_narrows_a_lookup() {
 }
 
 #[test]
-fn a_probe_folds_a_later_step_behind_an_earlier_one() {
-  // Two steps holding one path is the probe's own shadowing: the asset's own tree answers before the installation
+fn a_search_folds_a_later_step_behind_an_earlier_one() {
+  // Two steps holding one path is the search's own shadowing: the asset's own tree answers before the installation
   // behind it, and reporting only the winner would hide that arrangement exactly as dropping a mount would.
-  let front: PathBuf = directory("mounted_entries_probe_front", &["configs/system.ltx"]);
+  let front: PathBuf = directory("mounted_entries_search_front", &["configs/system.ltx"]);
   let back: PathBuf = directory(
-    "mounted_entries_probe_back",
+    "mounted_entries_search_back",
     &["configs/system.ltx", "configs/other.ltx"],
   );
 
   let mut vfs: XrayVfs = XrayVfs::new();
 
-  let steps: Vec<XrayProbeStep> = XrayProbePlan::new()
+  let steps: Vec<XraySearchStep> = XraySearchPlan::new()
     .with_root("front", &front)
     .expect("front plans")
     .with_root("back", &back)
@@ -192,7 +193,8 @@ fn a_probe_folds_a_later_step_behind_an_earlier_one() {
     .mount_into(&mut vfs)
     .expect("both mount");
 
-  let entries: Vec<XrayShadowingEntry> = vfs.probe().with_steps(steps.clone()).list_shadowing_entries();
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
+  let entries: Vec<XrayShadowingEntry> = search.list_shadowing_entries();
 
   assert_eq!(
     entries
@@ -207,12 +209,12 @@ fn a_probe_folds_a_later_step_behind_an_earlier_one() {
   assert_eq!(entries[1].shadowed[0].asset.get_root(), Some(back.as_path()));
   assert_eq!(
     entries[1].shadowed[0].size,
-    "mounted_entries_probe_back".len() as u64,
+    "mounted_entries_search_back".len() as u64,
     "a copy hidden across steps is measured by the step that holds it"
   );
 
   // The plain listing folds the same steps and keeps the same winner, holding nothing behind it.
-  let lean: Vec<XrayMountedEntry> = vfs.probe().with_steps(steps).list_mounted_entries();
+  let lean: Vec<XrayMountedEntry> = search.list_entries();
 
   assert_eq!(
     lean

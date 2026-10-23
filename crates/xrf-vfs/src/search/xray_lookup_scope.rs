@@ -18,10 +18,6 @@ pub(crate) enum XrayMountSelection {
 }
 
 /// Where one [`crate::XrayVfs`] operation is allowed to look: which mounts, and which logical subtree of them.
-///
-/// Both halves narrow the same search. `all()` is every mount and the whole tree; `with_prefix("configs")` keeps the mounts
-/// and restricts the paths; `writable()` keeps the tree and restricts the mounts. Passing one of these instead of
-/// hand-filtering results is what lets a config project and an asset lookup share one VFS — they differ only in scope.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
 pub struct XrayLookupScope {
   selection: XrayMountSelection,
@@ -70,11 +66,6 @@ impl XrayLookupScope {
   }
 
   /// Restricts this scope to a subtree only when there is one to restrict to.
-  ///
-  /// Absence is a state this scope already holds, but [`Self::with_prefix`] cannot express it: an
-  /// empty string is not a logical path and is refused. Callers whose prefix is configurable —
-  /// a layout that may name none, a command flag left unset — would otherwise each invent their own
-  /// spelling of "no prefix means the whole root", and three of them did.
   ///
   /// # Errors
   ///

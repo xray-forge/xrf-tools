@@ -2,22 +2,22 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 
-use crate::{XrayLookupScope, XrayMountId, XrayMountMode, XrayMountPlan, XrayProbeStep, XrayVfs};
+use crate::{XrayLookupScope, XrayMountId, XrayMountMode, XrayMountPlan, XraySearchStep, XrayVfs};
 
 /// One declared place to search, before it has been mounted.
 #[derive(Clone, Debug)]
-struct PlannedProbeStep {
+struct PlannedSearchStep {
   label: String,
   plan: XrayMountPlan,
 }
 
 /// An ordered search declared before anything is mounted, so the order survives the mounting.
 #[derive(Clone, Debug, Default)]
-pub struct XrayProbePlan {
-  steps: Vec<PlannedProbeStep>,
+pub struct XraySearchPlan {
+  steps: Vec<PlannedSearchStep>,
 }
 
-impl XrayProbePlan {
+impl XraySearchPlan {
   /// Label of the step covering an asset's own X-Ray root.
   pub const ASSET_STEP: &'static str = "asset root";
   /// Label of the step covering the installation an asset sits in.
@@ -35,11 +35,11 @@ impl XrayProbePlan {
   pub fn with_asset(mut self, asset: impl AsRef<Path>) -> XrfResult<Self> {
     let asset: &Path = asset.as_ref();
 
-    self.steps.push(PlannedProbeStep {
+    self.steps.push(PlannedSearchStep {
       label: Self::ASSET_STEP.to_string(),
       plan: XrayMountPlan::implied(asset)?,
     });
-    self.steps.push(PlannedProbeStep {
+    self.steps.push(PlannedSearchStep {
       label: Self::INSTALLATION_STEP.to_string(),
       plan: XrayMountPlan::implied_install(asset)?,
     });
@@ -69,7 +69,7 @@ impl XrayProbePlan {
   ) -> XrfResult<Self> {
     let root: PathBuf = root.as_ref().to_path_buf();
 
-    self.steps.push(PlannedProbeStep {
+    self.steps.push(PlannedSearchStep {
       label: label.into(),
       // A volume named as a root is a root: dropping it for not being a directory would silently search nothing,
       // which reads exactly like an archive whose entries have all gone missing.
@@ -93,13 +93,13 @@ impl XrayProbePlan {
   /// # Errors
   ///
   /// Returns an error when a mount plan cannot be applied to the VFS.
-  pub fn mount_into(&self, vfs: &mut XrayVfs) -> XrfResult<Vec<XrayProbeStep>> {
-    let mut steps: Vec<XrayProbeStep> = Vec::with_capacity(self.steps.len());
+  pub fn mount_into(&self, vfs: &mut XrayVfs) -> XrfResult<Vec<XraySearchStep>> {
+    let mut steps: Vec<XraySearchStep> = Vec::with_capacity(self.steps.len());
 
     for step in &self.steps {
       let mounts: Vec<XrayMountId> = vfs.mount_plan(&step.plan)?;
 
-      steps.push(XrayProbeStep::planned(
+      steps.push(XraySearchStep::planned(
         &step.label,
         XrayLookupScope::only(mounts),
         vfs.list_skipped_mounts_of(&step.plan),
@@ -120,13 +120,13 @@ impl XrayProbePlan {
   /// one is not.
   ///
   /// A source that failed to open is settled by its recorded failure, which the step reports as skipped.
-  pub fn find_mounted(&self, vfs: &XrayVfs) -> Option<Vec<XrayProbeStep>> {
+  pub fn find_mounted(&self, vfs: &XrayVfs) -> Option<Vec<XraySearchStep>> {
     self
       .steps
       .iter()
       .map(|step| {
         vfs.find_mounted_plan(&step.plan).map(|mounts| {
-          XrayProbeStep::planned(
+          XraySearchStep::planned(
             &step.label,
             XrayLookupScope::only(mounts),
             vfs.list_skipped_mounts_of(&step.plan),
