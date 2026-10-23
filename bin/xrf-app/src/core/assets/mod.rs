@@ -7,9 +7,6 @@ mod asset_texture_descriptor;
 mod asset_texture_png;
 mod asset_texture_shape;
 
-#[cfg(test)]
-mod tests;
-
 pub use asset_engine::{detect_roots_engine, detect_search_engine};
 pub use asset_mount_state::AssetMountState;
 pub use asset_read::{read_located_asset, read_referenced_asset};

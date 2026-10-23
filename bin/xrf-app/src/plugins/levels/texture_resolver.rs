@@ -83,17 +83,18 @@ impl TextureResolver {
       .get(reference)
       .cloned()
       .flatten()?;
-    let stamp: Option<TextureFileStamp> = assets
-      .with_search(&self.roots, |search| {
-        match search.find(&logical_path).ok()??.get_container() {
-          XrayAssetContainer::Directory { root, relative_path } => {
-            TextureFileStamp::read(&root.join(relative_path)).ok().flatten()
-          }
-          XrayAssetContainer::Archive { .. } => None,
-        }
-      })
-      .ok()
-      .flatten();
+    let stamp: Option<TextureFileStamp> = match assets
+      .search(&self.roots)
+      .ok()?
+      .find(&logical_path)
+      .ok()??
+      .get_container()
+    {
+      XrayAssetContainer::Directory { root, relative_path } => {
+        TextureFileStamp::read(&root.join(relative_path)).ok().flatten()
+      }
+      XrayAssetContainer::Archive { .. } => None,
+    };
 
     stamp.map(|stamp| stamp.modified_ms.rotate_left(24) ^ stamp.size)
   }
@@ -114,9 +115,11 @@ impl TextureResolver {
     let located: Option<String> = match known {
       Some(located) => located,
       None => {
-        let located: Option<String> = assets
-          .with_search(&self.roots, |search| resolve_reference(search, &self.scope, reference))
-          .map_err(XrfError::new_asset_error)?;
+        let located: Option<String> = resolve_reference(
+          &assets.search(&self.roots).map_err(XrfError::new_asset_error)?,
+          &self.scope,
+          reference,
+        );
 
         self
           .located
@@ -131,9 +134,10 @@ impl TextureResolver {
       return Ok(None);
     };
 
-    assets
-      .with_search(&self.roots, |search| read_located_asset(search, &logical_path))
-      .map_err(XrfError::new_asset_error)?
-      .map(Some)
+    read_located_asset(
+      &assets.search(&self.roots).map_err(XrfError::new_asset_error)?,
+      &logical_path,
+    )
+    .map(Some)
   }
 }

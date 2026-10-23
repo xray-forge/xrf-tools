@@ -1,15 +1,17 @@
+//! The host's snapshot rules: reads never wait on a mount, a search asked for inside another mounts beside it, and a
+//! failed source stays settled except when a person opens its roots afresh.
+
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::thread;
 
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch};
 
-use crate::core::assets::AssetMountState;
+use crate::{XrayMountMode, XrayRoots, XraySearch, XrayVfsHost};
 
 /// An installation whose `fsgame.ltx` declares archives and loose files, holding the files it is given.
 fn install(name: &str, files: &[&str]) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("asset_mount_state/{name}"));
+  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_vfs_host/{name}"));
 
   let _ = fs::remove_dir_all(&root);
 
@@ -42,30 +44,29 @@ fn holds(search: &XraySearch, logical_path: &str) -> bool {
   search.find(logical_path).is_ok_and(|found| found.is_some())
 }
 
-// A consumer runs over a snapshot and holds no lock, so a search it asks for itself mounts beside it rather than
-// waiting on it, and what it mounts reaches the next search rather than the running one.
+// A search holds no lock, so a search asked for while another is held mounts beside it rather than waiting on it, and
+// what it mounts reaches the next search rather than the held one.
 #[test]
-fn mounts_a_search_asked_for_inside_another_without_waiting_on_it() {
+fn mounts_a_search_asked_for_while_another_is_held() {
   let first: PathBuf = install("nested_first", &["gamedata/configs/system.ltx"]);
   let second: PathBuf = install("nested_second", &["gamedata/configs/game.ltx"]);
-  let state: AssetMountState = AssetMountState::new();
+  let host: XrayVfsHost = XrayVfsHost::default();
 
-  let (is_inner_found, is_outer_found): (bool, bool) = state
-    .with_search(&roots(&first), |outer| {
-      let is_inner_found: bool = state
-        .with_search(&roots(&second), |inner| holds(inner, "configs\\game.ltx"))
-        .expect("the inner roots mount");
+  let outer: XraySearch = host.search(&roots(&first)).expect("the outer roots mount");
+  let inner: XraySearch = host.search(&roots(&second)).expect("the inner roots mount");
 
-      (is_inner_found, holds(outer, "configs\\system.ltx"))
-    })
-    .expect("the outer roots mount");
-
-  assert!(is_inner_found && is_outer_found);
+  assert!(holds(&inner, "configs\\game.ltx"));
+  assert!(holds(&outer, "configs\\system.ltx"));
   assert!(
-    state
-      .with_search(&roots(&second), |search| holds(search, "configs\\game.ltx"))
-      .expect("the second roots are found mounted")
+    !holds(&outer, "configs\\game.ltx"),
+    "the held search keeps the snapshot it was made over"
   );
+  assert!(holds(
+    &host
+      .search(&roots(&second))
+      .expect("the second roots are found mounted"),
+    "configs\\game.ltx"
+  ));
 }
 
 // Reads of mounted roots go on while other roots mount, each over whichever snapshot was newest when it began.
@@ -75,18 +76,19 @@ fn reads_mounted_roots_while_others_mount() {
   let others: Vec<PathBuf> = (0..4)
     .map(|index| install(&format!("concurrent_other_{index}"), &["gamedata/configs/game.ltx"]))
     .collect();
-  let state: AssetMountState = AssetMountState::new();
+  let host: XrayVfsHost = XrayVfsHost::default();
 
-  state.with_search(&roots(&mounted), |_| ()).expect("the roots mount");
+  host.search(&roots(&mounted)).expect("the roots mount");
 
   thread::scope(|scope| {
     let readers: Vec<thread::ScopedJoinHandle<bool>> = (0..4)
       .map(|_| {
         scope.spawn(|| {
           (0..50).all(|_| {
-            state
-              .with_search(&roots(&mounted), |search| holds(search, "configs\\system.ltx"))
-              .expect("the mounted roots are found")
+            holds(
+              &host.search(&roots(&mounted)).expect("the mounted roots are found"),
+              "configs\\system.ltx",
+            )
           })
         })
       })
@@ -95,9 +97,10 @@ fn reads_mounted_roots_while_others_mount() {
       .iter()
       .map(|other| {
         scope.spawn(|| {
-          state
-            .with_search(&roots(other), |search| holds(search, "configs\\game.ltx"))
-            .expect("the other roots mount")
+          holds(
+            &host.search(&roots(other)).expect("the other roots mount"),
+            "configs\\game.ltx",
+          )
         })
       })
       .collect();
@@ -108,11 +111,10 @@ fn reads_mounted_roots_while_others_mount() {
   });
 
   for other in &others {
-    assert!(
-      state
-        .with_search(&roots(other), |search| holds(search, "configs\\game.ltx"))
-        .expect("every mount was published")
-    );
+    assert!(holds(
+      &host.search(&roots(other)).expect("every mount was published"),
+      "configs\\game.ltx"
+    ));
   }
 }
 
@@ -121,34 +123,34 @@ fn reads_mounted_roots_while_others_mount() {
 #[test]
 fn tries_the_roots_again_when_they_are_opened_afresh() {
   let root: PathBuf = install("fresh", &["db/textures.db0"]);
-  let state: AssetMountState = AssetMountState::new();
-  let skipped = |search: &XraySearch| search.list_skipped_sources().len();
+  let host: XrayVfsHost = XrayVfsHost::default();
 
-  assert_eq!(state.with_search(&roots(&root), skipped).expect("the roots mount"), 1);
+  assert_eq!(
+    host
+      .search(&roots(&root))
+      .expect("the roots mount")
+      .list_skipped_sources()
+      .len(),
+    1
+  );
 
   // The volume goes away and the loose tree arrives, as when a mod manager finishes installing.
   fs::remove_file(root.join("db/textures.db0")).expect("volume removed");
   write(&root, "gamedata/configs/system.ltx");
 
+  let settled: XraySearch = host.search(&roots(&root)).expect("the roots are found");
+
   assert_eq!(
-    state.with_search(&roots(&root), skipped).expect("the roots are found"),
+    settled.list_skipped_sources().len(),
     1,
     "a plain read keeps what it settled"
   );
-  assert!(
-    !state
-      .with_search(&roots(&root), |search| holds(search, "configs\\system.ltx"))
-      .expect("the roots are found")
-  );
+  assert!(!holds(&settled, "configs\\system.ltx"));
 
-  let (skipped, is_found): (usize, bool) = state
-    .with_fresh_search(&roots(&root), |search| {
-      (skipped(search), holds(search, "configs\\system.ltx"))
-    })
-    .expect("the roots mount afresh");
+  let fresh: XraySearch = host.search_fresh(&roots(&root)).expect("the roots mount afresh");
 
-  assert_eq!(skipped, 0);
-  assert!(is_found);
+  assert!(fresh.list_skipped_sources().is_empty());
+  assert!(holds(&fresh, "configs\\system.ltx"));
 }
 
 // Opening one set of roots afresh tries its own failures again and leaves another's settled: that one's volume is not
@@ -157,8 +159,8 @@ fn tries_the_roots_again_when_they_are_opened_afresh() {
 fn leaves_other_roots_failures_settled_when_one_is_opened_afresh() {
   let opened: PathBuf = install("fresh_opened", &["db/textures.db0"]);
   let other: PathBuf = install("fresh_other", &["db/textures.db0"]);
-  let state: AssetMountState = AssetMountState::new();
-  let reasons = |search: &XraySearch| -> Vec<String> {
+  let host: XrayVfsHost = XrayVfsHost::default();
+  let reasons = |search: XraySearch| -> Vec<String> {
     search
       .list_skipped_sources()
       .iter()
@@ -166,22 +168,35 @@ fn leaves_other_roots_failures_settled_when_one_is_opened_afresh() {
       .collect()
   };
 
-  state.with_search(&roots(&opened), |_| ()).expect("the roots mount");
+  host.search(&roots(&opened)).expect("the roots mount");
 
-  let first: Vec<String> = state
-    .with_search(&roots(&other), reasons)
-    .expect("the other roots mount");
+  let first: Vec<String> = reasons(host.search(&roots(&other)).expect("the other roots mount"));
 
   fs::remove_file(other.join("db/textures.db0")).expect("volume removed");
-  state
-    .with_fresh_search(&roots(&opened), |_| ())
-    .expect("the roots mount afresh");
+  host.search_fresh(&roots(&opened)).expect("the roots mount afresh");
 
   assert_eq!(first.len(), 1);
   assert_eq!(
-    state
-      .with_search(&roots(&other), reasons)
-      .expect("the other roots are found"),
+    reasons(host.search(&roots(&other)).expect("the other roots are found")),
     first
   );
+}
+
+// A root that is not there is no failure to open, so opening it afresh publishes no new snapshot for it.
+#[test]
+fn opening_a_missing_root_afresh_publishes_nothing() {
+  let present: PathBuf = install("missing_present", &["gamedata/configs/system.ltx"]);
+  let host: XrayVfsHost = XrayVfsHost::default();
+  let spec: XrayRoots = XrayRoots::new([
+    crate::XrayRoot::new(present.clone(), XrayMountMode::Installation),
+    crate::XrayRoot::new(present.with_file_name("missing_absent"), XrayMountMode::Directory),
+  ]);
+
+  host.search(&spec).expect("the roots mount");
+
+  let before = host.get_vfs();
+
+  host.search_fresh(&spec).expect("the roots are found afresh");
+
+  assert!(std::sync::Arc::ptr_eq(&before, &host.get_vfs()));
 }

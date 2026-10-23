@@ -53,9 +53,7 @@ impl EquipmentSpriteDocument {
         Self::to_preview(DdsFile::read_from_path(path))?,
         EquipmentSheetLocation::of_file(path),
       )),
-      EquipmentSheetSource::Asset { reference } => {
-        assets.with_search(roots, |search| Self::read_located_sheet(search, reference))?
-      }
+      EquipmentSheetSource::Asset { reference } => Self::read_located_sheet(&assets.search(roots)?, reference),
     }
   }
 

@@ -97,16 +97,13 @@ fn open_and_list(
     is_with_schemes_check: true,
     is_strict_check: false,
   };
-  let project: LtxProject = assets
-    .with_fresh_search(&roots, |search| {
-      LtxProject::open_at_search_opt(
-        roots.describe(),
-        &search.clone().with_recording(&inputs),
-        prefix.as_deref(),
-        options,
-      )
-    })?
-    .map_err(error_to_string)?;
+  let project: LtxProject = LtxProject::open_at_search_opt(
+    roots.describe(),
+    &assets.search_fresh(&roots)?.with_recording(&inputs),
+    prefix.as_deref(),
+    options,
+  )
+  .map_err(error_to_string)?;
 
   let inventory: LtxInventory = {
     let source = project.document_source();

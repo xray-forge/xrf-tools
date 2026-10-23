@@ -95,14 +95,6 @@ impl XraySearch {
     }
   }
 
-  /// This search reading `vfs` instead, a snapshot of the same lineage (a fork, or the next one a change made), whose
-  /// mount ids its steps still name.
-  pub fn with_vfs(mut self, vfs: Arc<XrayVfs>) -> Self {
-    self.vfs = vfs;
-
-    self
-  }
-
   /// This search recording into `record` every input its lookups and reads resolve, with what answered each: cache
   /// hits, lookups that find nothing and listings included. A search recording into another record records into
   /// `record` instead.

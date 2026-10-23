@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use tauri::State;
 use xrf_utils::write_file_staged;
+use xrf_vfs::XraySearch;
 
 use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
@@ -33,36 +34,35 @@ pub async fn levels_write_map_annotations(
   let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let value: String = execution
-    .run_blocking("Drawing a level map's annotations", move || {
-      assets.with_search(&current.roots, |search| -> TauriResult<String> {
-        let level: String = current
-          .source
-          .get_name()
-          .ok_or_else(|| format!("Level {} has no name to find its spawn by", current.source.get_label()))?;
-        let annotations: LevelAnnotations = LevelAnnotations::of(
-          &*get_level_spawn(&current, search)?,
-          &*get_level_graph(&current, search)?,
-          &level,
-        );
-        let (width, height): (u32, u32) = image::image_dimensions(&request.path)
-          .map_err(|error| format!("Failed to read map '{}': {error}", request.path.display()))?;
-        let svg: String = AnnotationCanvas {
-          area: request.area,
-          width,
-          height,
-          kinds: request.kinds,
-          is_labelled: request.is_labelled,
-        }
-        .draw(&annotations);
-        let target: PathBuf = LevelViewerFolder::get_annotations_path(&request.path);
+    .run_blocking("Drawing a level map's annotations", move || -> TauriResult<String> {
+      let search: XraySearch = assets.search(&current.roots)?;
+      let level: String = current
+        .source
+        .get_name()
+        .ok_or_else(|| format!("Level {} has no name to find its spawn by", current.source.get_label()))?;
+      let annotations: LevelAnnotations = LevelAnnotations::of(
+        &*get_level_spawn(&current, &search)?,
+        &*get_level_graph(&current, &search)?,
+        &level,
+      );
+      let (width, height): (u32, u32) = image::image_dimensions(&request.path)
+        .map_err(|error| format!("Failed to read map '{}': {error}", request.path.display()))?;
+      let svg: String = AnnotationCanvas {
+        area: request.area,
+        width,
+        height,
+        kinds: request.kinds,
+        is_labelled: request.is_labelled,
+      }
+      .draw(&annotations);
+      let target: PathBuf = LevelViewerFolder::get_annotations_path(&request.path);
 
-        write_file_staged(&target, svg.as_bytes())
-          .map_err(|error| format!("Failed to write annotations '{}': {error}", target.display()))?;
+      write_file_staged(&target, svg.as_bytes())
+        .map_err(|error| format!("Failed to write annotations '{}': {error}", target.display()))?;
 
-        Ok(svg)
-      })
+      Ok(svg)
     })
-    .await???;
+    .await??;
 
   Ok(SessionSnapshot::new(session_id, value))
 }

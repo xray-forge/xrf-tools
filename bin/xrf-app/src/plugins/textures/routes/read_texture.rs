@@ -27,8 +27,7 @@ pub(crate) async fn textures_read_texture(
   let png: Vec<u8> = app
     .state::<ExecutionState>()
     .run_blocking("Decoding texture", move || {
-      assets
-        .with_search(&roots, |search| read_texture_png(search, &logical_path))?
+      read_texture_png(&assets.search(&roots)?, &logical_path)
         .map_err(|error| format!("Failed to decode texture '{logical_path}': {error}"))
     })
     .await??;

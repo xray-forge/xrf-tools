@@ -13,7 +13,7 @@ use crate::plugins::levels::state::{GEOMETRY_FILE, LEVEL_FILE, LEVELS_DIRECTORY,
 #[tauri::command(rename = "list_levels")]
 pub async fn levels_list_levels(roots: XrayRoots, assets: State<'_, AssetMountState>) -> TauriResult<Vec<LevelEntry>> {
   let started: Instant = Instant::now();
-  let entries: Vec<LevelEntry> = assets.with_fresh_search(&roots, list_levels)??;
+  let entries: Vec<LevelEntry> = list_levels(&assets.search_fresh(&roots)?)?;
 
   report_listed_levels(&entries, started);
 

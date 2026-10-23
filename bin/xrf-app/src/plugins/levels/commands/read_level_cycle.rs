@@ -24,8 +24,7 @@ pub async fn levels_read_level_cycle(
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let cycle: LevelWeatherCycle = execution
     .run_blocking("Reading a weather cycle", move || {
-      let environment: Arc<LevelEnvironment> =
-        assets.with_search(&current.roots, |search| LevelEnvironment::of(&current, search))??;
+      let environment: Arc<LevelEnvironment> = LevelEnvironment::of(&current, &assets.search(&current.roots)?)?;
       let found: &WeatherCycle = environment.catalog.find_by_id(&cycle).ok_or_else(|| {
         format!(
           "There is no {} '{}'",

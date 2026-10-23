@@ -1,6 +1,6 @@
 use tauri::State;
-use xrf_error::XrfError;
-use xrf_vfs::{XrayAsset, XrayRoots};
+use xrf_error::{XrfError, XrfResult};
+use xrf_vfs::{XrayAsset, XrayRoots, XraySearch};
 
 use crate::core::assets::{AssetMountState, AssetTextureDescriptor};
 use crate::core::types::TauriResult;
@@ -15,15 +15,16 @@ pub async fn archives_describe_texture(
 ) -> TauriResult<AssetTextureDescriptor> {
   log::info!("Describing image: {logical_path}");
 
-  assets
-    .with_search(&roots, |search| {
-      let asset: XrayAsset = search.find(&logical_path)?.ok_or_else(|| {
-        XrfError::new_asset_error(format!("'{logical_path}' resolves to nothing in the mounted roots"))
-      })?;
-
-      // A header that will not parse costs the shape, not the descriptor - the same best-effort the sound path takes.
-      AssetTextureDescriptor::describe(search, &asset)
-        .ok_or_else(|| XrfError::new_asset_error(format!("'{logical_path}' could not be read at all")))
-    })?
+  describe(&assets.search(&roots)?, &logical_path)
     .map_err(|error| format!("Failed to describe image '{logical_path}': {error}"))
+}
+
+fn describe(search: &XraySearch, logical_path: &str) -> XrfResult<AssetTextureDescriptor> {
+  let asset: XrayAsset = search
+    .find(logical_path)?
+    .ok_or_else(|| XrfError::new_asset_error(format!("'{logical_path}' resolves to nothing in the mounted roots")))?;
+
+  // A header that will not parse costs the shape, not the descriptor - the same best-effort the sound path takes.
+  AssetTextureDescriptor::describe(search, &asset)
+    .ok_or_else(|| XrfError::new_asset_error(format!("'{logical_path}' could not be read at all")))
 }

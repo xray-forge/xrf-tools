@@ -76,12 +76,9 @@ pub async fn levels_open_level(
   let (opened, engine, inputs, source, roots, dialect) = execution
     .run_blocking("Opening the level", move || {
       let inputs: XrayInputRecord = XrayInputRecord::new();
-      let (opened, engine): (OpenedLevel, XrayEngineResolution) = assets.with_fresh_search(&roots, |search| {
-        let search: XraySearch = search.clone().with_recording(&inputs);
-
-        open(&source, &search, (&roots, &dialect))
-          .map(|opened| (opened, engine.resolve(|| detect_search_engine(&search, &roots))))
-      })??;
+      let search: XraySearch = assets.search_fresh(&roots)?.with_recording(&inputs);
+      let opened: OpenedLevel = open(&source, &search, (&roots, &dialect))?;
+      let engine: XrayEngineResolution = engine.resolve(|| detect_search_engine(&search, &roots));
 
       TauriResult::Ok((opened, engine, inputs, source, roots, dialect))
     })

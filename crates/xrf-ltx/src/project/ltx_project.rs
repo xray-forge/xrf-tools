@@ -131,25 +131,15 @@ impl LtxProject {
     })
   }
 
-  /// A search narrowed to `prefix` over a snapshot that retains configs as a project reads them: the search's own
-  /// where it already does, so the project shares its cache and read trace, and a fork of it where it does not.
+  /// A search narrowed to `prefix`, reading through the snapshot's own cache: what a project retains is what the
+  /// snapshot's policy retains, shared with every other reader of its lineage.
   fn narrow_search(search: &XraySearch, prefix: Option<&str>) -> XrfResult<(XraySearch, Option<XrayLogicalPath>)> {
     let prefix: Option<&str> = prefix.filter(|prefix| !prefix.is_empty());
-    let narrowed: XraySearch = match prefix {
-      Some(prefix) => search.clone().with_prefix(prefix)?,
-      None => search.clone(),
-    };
-    let narrowed: XraySearch = if search.get_vfs().get_cache_policy().is_allowed(XrayAssetType::Ltx) {
-      narrowed
-    } else {
-      // todo: read through the snapshot's own cache once it is shared across forks, instead of a fork retaining
-      //  configs.
-      narrowed.with_vfs(Arc::new(
-        search.get_vfs().fork().with_cache_policy(XrayCachePolicy::configs()),
-      ))
-    };
 
-    Ok((narrowed, prefix.map(XrayLogicalPath::new).transpose()?))
+    Ok((
+      search.clone().with_optional_prefix(prefix)?,
+      prefix.map(XrayLogicalPath::new).transpose()?,
+    ))
   }
 
   /// Creates an empty project for callers that need the project shape without mounted files.

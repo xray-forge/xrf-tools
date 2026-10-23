@@ -27,9 +27,9 @@ pub async fn levels_open_spawn_objects(
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let value: LevelSpawnObjectsDescription = execution
     .run_blocking("Describing the level spawned objects", move || {
-      assets.with_search(&current.roots, |search| describe_objects(&current, search))
+      describe_objects(&current, &assets.search(&current.roots)?)
     })
-    .await???;
+    .await??;
 
   Ok(SessionSnapshot::new(session_id, value))
 }

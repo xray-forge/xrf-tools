@@ -90,11 +90,11 @@ impl TextureMaterialSummary {
   ///
   /// Returns an error when the roots cannot be planned or mounted.
   pub fn sweep_roots(mounts: &AssetMountState, roots: &XrayRoots) -> TauriResult<Vec<Self>> {
-    let descriptors: Vec<XrayAsset> = mounts.with_search(roots, |search| search.list_assets(XrayAssetType::Thm))?;
+    let descriptors: Vec<XrayAsset> = mounts.search(roots)?.list_assets(XrayAssetType::Thm);
     let mut summaries: Vec<Self> = Vec::with_capacity(descriptors.len());
 
     for slice in descriptors.chunks(SWEEP_SLICE) {
-      summaries.extend(mounts.with_search(roots, |search| Self::sweep(search, slice))?);
+      summaries.extend(Self::sweep(&mounts.search(roots)?, slice));
     }
 
     Ok(summaries)

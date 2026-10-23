@@ -169,8 +169,9 @@ impl RenderAssetSource for TextureRenderSource {
     };
     let bytes: Vec<u8> = self
       .assets
-      .with_search(&self.roots, |search| search.read_asset(asset))
-      .map_err(XrfError::new_asset_error)??;
+      .search(&self.roots)
+      .map_err(XrfError::new_asset_error)?
+      .read_asset(asset)?;
 
     to_flat_texture(bytes).map(Some)
   }

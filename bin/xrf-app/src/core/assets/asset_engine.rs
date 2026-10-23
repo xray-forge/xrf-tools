@@ -12,10 +12,11 @@ pub fn detect_search_engine(search: &XraySearch, roots: &XrayRoots) -> XrayEngin
 /// The engine roots show they target, mounting them only when their installation layout says nothing.
 pub fn detect_roots_engine(assets: &AssetMountState, roots: &XrayRoots) -> XrayEngineResolution {
   XrayEngineDetector::detect(roots, |logical_path| {
-    assets
-      .with_search(roots, |search| read_located_asset(search, logical_path).ok())
+    let search: XraySearch = assets
+      .search(roots)
       .map_err(|error| log::warn!("Engine detection read no data of {}: {error}", roots.describe()))
-      .ok()
-      .flatten()
+      .ok()?;
+
+    read_located_asset(&search, logical_path).ok()
   })
 }
