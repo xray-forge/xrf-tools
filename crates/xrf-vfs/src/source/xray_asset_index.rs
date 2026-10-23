@@ -5,16 +5,18 @@ use std::path::Path;
 
 use xrf_error::XrfResult;
 
-use crate::path::{XrayLogicalPath, is_component_prefix, normalize, normalize_host_relative};
+use crate::path::{XrayLogicalPath, is_component_prefix, normalize, normalize_host_relative, to_host_relative};
 use crate::source::{DirectoryAssetIndex, IndexedAsset};
 use crate::{XrayCollisionSite, XrayPathCollision};
 
 /// Maps X-Ray logical paths onto the files of one physical directory.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct XrayAssetIndex {
   directory: DirectoryAssetIndex,
   assets: BTreeMap<String, usize>,
   collisions: Vec<XrayPathCollision>,
+  /// Normalized prefixes left out of the index, kept so a file created under one later stays out too.
+  ignored: Vec<String>,
 }
 
 impl XrayAssetIndex {
@@ -57,7 +59,43 @@ impl XrayAssetIndex {
       assets,
       collisions,
       directory,
+      ignored,
     })
+  }
+
+  /// This index once the `created` paths were added and the `deleted` ones removed, walking nothing again.
+  ///
+  /// A created path the index already answers for, or one under an ignored prefix, changes nothing, as a walk would
+  /// have kept the first file or skipped it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a path is not a valid X-Ray logical path.
+  pub(crate) fn with_changes(&self, created: &[&str], deleted: &[&str]) -> XrfResult<Self> {
+    let mut next: Self = self.clone();
+
+    for path in deleted {
+      next.assets.remove(normalize(path)?.as_ref());
+    }
+
+    for path in created {
+      let logical_path: String = normalize(path)?.into_owned();
+
+      if next.assets.contains_key(&logical_path)
+        || next
+          .ignored
+          .iter()
+          .any(|prefix| is_component_prefix(&logical_path, prefix))
+      {
+        continue;
+      }
+
+      let index: usize = next.directory.push(to_host_relative(&logical_path));
+
+      next.assets.insert(logical_path, index);
+    }
+
+    Ok(next)
   }
 
   /// Files this index could not reach, because another file already claimed their engine identity.

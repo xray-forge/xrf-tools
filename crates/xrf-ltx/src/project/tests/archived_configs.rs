@@ -69,14 +69,6 @@ impl XrayAssetSource for ArchivedConfigs {
       .ok_or_else(|| XrfError::new_asset_error(format!("no entry {path}")))
   }
 
-  fn write(&self, _path: &str, _bytes: &[u8]) -> XrfResult<()> {
-    Err(XrfError::new_asset_error("archive is read only"))
-  }
-
-  fn create(&self, _path: &str, _bytes: &[u8]) -> XrfResult<()> {
-    Err(XrfError::new_asset_error("archive is read only"))
-  }
-
   fn list_entries<'a>(&'a self, _prefix: Option<&'a str>) -> Box<dyn Iterator<Item = String> + 'a> {
     Box::new(self.entries.keys().cloned())
   }

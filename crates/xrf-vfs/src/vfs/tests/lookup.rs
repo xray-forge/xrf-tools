@@ -118,26 +118,6 @@ fn a_loose_file_overrides_an_archived_one() {
 }
 
 #[test]
-fn writing_an_archived_winner_is_refused_and_names_the_archive() {
-  let mut vfs: XrayVfs = XrayVfs::new();
-
-  vfs
-    .mount(
-      "",
-      Box::new(FakeArchiveSource::new("configs", &["configs\\system.ltx"])),
-    )
-    .expect("archive mounts");
-
-  let error: String = vfs
-    .write(&XrayLookupScope::all(), "configs\\system.ltx", b"formatted")
-    .expect_err("write is refused")
-    .to_string();
-
-  assert!(error.contains("read only"), "{error}");
-  assert!(error.contains("configs"), "the refusal names what holds it: {error}");
-}
-
-#[test]
 fn a_writable_scope_skips_an_archive_entirely() {
   // A writable scope lets the same operation skip archives.
   let loose: PathBuf = directory("writable_scope", &["configs/system.ltx"]);
@@ -150,10 +130,6 @@ fn a_writable_scope_skips_an_archive_entirely() {
   vfs.mount_directory("", &loose).expect("directory mounts");
 
   let writable: XrayLookupScope = XrayLookupScope::writable();
-
-  vfs
-    .write(&writable, "configs\\system.ltx", b"formatted")
-    .expect("a loose winner is writable");
 
   assert_eq!(
     vfs.list_entries_in(&writable).len(),

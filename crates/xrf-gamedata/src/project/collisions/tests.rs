@@ -55,14 +55,6 @@ impl XrayAssetSource for CollidingSource {
     Err(XrfError::new_not_found_error(format!("No entry '{path}'")))
   }
 
-  fn write(&self, _path: &str, _bytes: &[u8]) -> XrfResult<()> {
-    Err(XrfError::new_not_implemented_error("A test source is read-only"))
-  }
-
-  fn create(&self, _path: &str, _bytes: &[u8]) -> XrfResult<()> {
-    Err(XrfError::new_not_implemented_error("A test source is read-only"))
-  }
-
   fn list_entries<'a>(&'a self, _prefix: Option<&'a str>) -> Box<dyn Iterator<Item = String> + 'a> {
     Box::new(std::iter::empty())
   }

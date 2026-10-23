@@ -48,7 +48,19 @@ impl XrayMount {
     })
   }
 
-  /// Stable identity of this mount within its VFS, for scoping and remounting.
+  /// The same mount reading a changed copy of its source: the same id, base and origin, and the same opening, since
+  /// every copy the change left alone is the copy it was.
+  pub(crate) fn with_source(&self, source: Box<dyn XrayAssetSource>) -> Self {
+    Self {
+      base: self.base.clone(),
+      id: self.id,
+      opening: self.opening,
+      origin: self.origin.clone(),
+      source: Arc::from(source),
+    }
+  }
+
+  /// Stable identity of this mount within its VFS, for scoping.
   pub fn get_id(&self) -> XrayMountId {
     self.id
   }

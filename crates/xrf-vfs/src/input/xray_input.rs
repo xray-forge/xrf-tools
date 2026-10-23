@@ -1,3 +1,4 @@
+use std::fmt::{self, Display, Formatter};
 use std::sync::Arc;
 
 use crate::{XrayLogicalPath, XrayLookupScope, XraySearchStep};
@@ -34,6 +35,16 @@ impl XrayInput {
 
   pub fn get_kind(&self) -> &XrayInputKind {
     &self.kind
+  }
+}
+
+impl Display for XrayInput {
+  fn fmt(&self, formatter: &mut Formatter<'_>) -> fmt::Result {
+    match &self.kind {
+      XrayInputKind::File(path) => write!(formatter, "'{path}'"),
+      XrayInputKind::Listing(Some(directory)) => write!(formatter, "the listing of '{directory}'"),
+      XrayInputKind::Listing(None) => write!(formatter, "the listing of the logical root"),
+    }
   }
 }
 

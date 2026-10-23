@@ -372,21 +372,6 @@ impl XrayAssetSource for XrayArchiveSource {
       .map(|descriptor| descriptor.crc)
   }
 
-  fn write(&self, path: &str, _bytes: &[u8]) -> XrfResult<()> {
-    Err(XrfError::new_read_error(format!(
-      "cannot write '{path}': archive '{}' is read only",
-      self.label
-    )))
-  }
-
-  /// Always fails. A volume cannot gain an entry; an override belongs in a loose mount in front of it.
-  fn create(&self, path: &str, _bytes: &[u8]) -> XrfResult<()> {
-    Err(XrfError::new_read_error(format!(
-      "cannot create '{path}': archive '{}' is read only",
-      self.label
-    )))
-  }
-
   fn list_entries<'a>(&'a self, prefix: Option<&'a str>) -> Box<dyn Iterator<Item = String> + 'a> {
     let Some(prefix) = prefix else {
       return Box::new(self.entries.keys().cloned());

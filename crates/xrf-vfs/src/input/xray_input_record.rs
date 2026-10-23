@@ -56,6 +56,24 @@ impl XrayInputRecord {
       .collect()
   }
 
+  /// The inputs `vfs` answers differently for now: what moved since the reads were recorded, in no particular order.
+  pub fn list_moved_in(&self, vfs: &XrayVfs) -> Vec<XrayInput> {
+    self
+      .list()
+      .into_iter()
+      .filter(|(input, answer)| vfs.answer_input(input) != *answer)
+      .map(|(input, _)| input)
+      .collect()
+  }
+
+  /// Whether `vfs` answers every recorded input as it was answered when read.
+  pub fn is_current_in(&self, vfs: &XrayVfs) -> bool {
+    self
+      .list()
+      .iter()
+      .all(|(input, answer)| vfs.answer_input(input) == *answer)
+  }
+
   pub fn len(&self) -> usize {
     self.lock().len()
   }

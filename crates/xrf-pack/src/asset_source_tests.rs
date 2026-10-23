@@ -102,7 +102,7 @@ fn reports_itself_as_a_read_only_archive() {
 
   assert_eq!(source.get_kind(), XraySourceKind::Archive);
   assert!(!source.is_writable());
-  assert!(source.write("textures\\wpn\\wpn_ak74.dds", TEXTURE).is_err());
+  assert!(source.get_writable_path("textures\\wpn\\wpn_ak74.dds").is_none());
 }
 
 #[test]

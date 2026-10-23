@@ -15,6 +15,11 @@ impl XrayRevision {
     self.0
   }
 
+  /// The revision the change after this one makes.
+  pub fn next(self) -> Self {
+    Self(self.0 + 1)
+  }
+
   /// The revision a change numbered `revision` left, for a test arranging one before anything commits.
   #[cfg(test)]
   pub(crate) const fn of(revision: u64) -> Self {
@@ -30,8 +35,6 @@ pub(crate) struct XrayRevisions {
   directories: HashMap<XrayMountId, HashMap<String, XrayRevision>>,
 }
 
-// todo: bump a file's revision where a commit overwrites it, and its directory's and each ancestor's where a commit
-// creates or deletes it, once a snapshot applies a committed change set.
 impl XrayRevisions {
   /// When a mount's copy of a normalized logical path last changed.
   pub(crate) fn get_file(&self, mount: XrayMountId, logical_path: &str) -> XrayRevision {
@@ -43,14 +46,25 @@ impl XrayRevisions {
     Self::get(&self.directories, mount, directory)
   }
 
-  /// Moves a mount's copy of a logical path to `revision`, for a test standing in for a commit.
-  #[cfg(test)]
+  /// Moves a mount's copy of a normalized logical path to `revision`.
   pub(crate) fn set_file(&mut self, mount: XrayMountId, logical_path: &str, revision: XrayRevision) {
     self
       .files
       .entry(mount)
       .or_default()
       .insert(logical_path.to_owned(), revision);
+  }
+
+  /// Moves every directory above a normalized logical path in a mount to `revision`, the logical root included: what
+  /// sits under each of them changed.
+  pub(crate) fn set_directories_above(&mut self, mount: XrayMountId, logical_path: &str, revision: XrayRevision) {
+    let directories: &mut HashMap<String, XrayRevision> = self.directories.entry(mount).or_default();
+
+    directories.insert(String::new(), revision);
+
+    for (index, _) in logical_path.match_indices('\\') {
+      directories.insert(logical_path[..index].to_owned(), revision);
+    }
   }
 
   fn get(
