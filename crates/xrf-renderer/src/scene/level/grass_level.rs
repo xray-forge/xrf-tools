@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use glam::Vec4;
 use wgpu::util::DeviceExt;
@@ -17,6 +18,8 @@ use crate::scene::texture::texture_role::TextureRole;
 /// A level's grass on the GPU as it is planted from, made once: the slot grid, the planted slots and their triangle
 /// bins, the dither, the models with their vertices, and what each frame counts and draws them into.
 pub struct GrassLevel {
+  /// What names it among every grass level made, so a view planting another replants every slot.
+  pub key: u64,
   /// The grid's size in slots, and the world slot its first cell stands for, negated.
   pub grid: [i32; 4],
   pub model_count: u32,
@@ -146,6 +149,7 @@ impl GrassLevel {
     let vertex = wgpu::BufferUsages::VERTEX | read;
 
     Self {
+      key: Self::next_key(),
       grid: [
         description.size_x as i32,
         description.size_z as i32,
@@ -182,6 +186,13 @@ impl GrassLevel {
       cursors,
       args,
     }
+  }
+
+  /// A key no grass level made before holds.
+  fn next_key() -> u64 {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+
+    NEXT.fetch_add(1, Ordering::Relaxed)
   }
 
   fn to_record(

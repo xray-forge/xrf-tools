@@ -3,14 +3,15 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_renderer::{
-  LoaderReceiver, RenderLevelSource, RenderLoadFailure, RenderModelFailure, RenderModelSkeleton, RenderSceneUpdate,
-  RenderSectorFailure, RenderStreamingProgress, RenderWorkers, StaticModelProxy, StaticObjectProxy, StaticSectorProxy,
-  take_answer,
+  LoaderReceiver, RenderLevelDetails, RenderLevelSource, RenderLoadFailure, RenderModelFailure, RenderModelSkeleton,
+  RenderSceneUpdate, RenderSectorFailure, RenderStreamingProgress, RenderWorkers, StaticModelProxy, StaticObjectProxy,
+  StaticSectorProxy, take_answer,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::LightsDescription;
 
 use crate::contract::world_level_problems::WorldLevelProblems;
+use crate::contract::world_level_reload::WorldLevelReload;
 use crate::contract::world_sector_skip::WorldSectorSkip;
 use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
 use crate::level::animation::level_animation::LevelAnimation;
@@ -25,14 +26,15 @@ const SECTORS_PER_FRAME: usize = 4;
 /// Spawned models posted at most in one frame.
 const MODELS_PER_FRAME: usize = 16;
 
-/// What streams a level into its scene: the workers reading its sectors, spawned models and lights, how much of what
-/// they read is posted a frame, the handles its posts name, which spawn groups stand, and what came in and what could
-/// not.
+/// What streams a level into its scene: the workers reading its sectors, spawned models, lights and grass, how much of
+/// what they read is posted a frame, the handles its posts name, which spawn groups stand, and what came in and what
+/// could not.
 pub struct LevelStreaming {
   source: Arc<dyn RenderLevelSource>,
   sectors: LevelLoader,
   spawn: SpawnLoader,
   lights: Option<LoaderReceiver<Result<LightsDescription, String>>>,
+  grass: Option<LoaderReceiver<Result<Option<RenderLevelDetails>, String>>>,
   /// The campfires and the object motions the lights follow, by the campfires' ids and the motions' names.
   light_campfires: Vec<u16>,
   light_motions: Vec<String>,
@@ -61,6 +63,7 @@ impl LevelStreaming {
       sectors: LevelLoader::start(Arc::clone(&source), workers),
       spawn: SpawnLoader::start(Arc::clone(&source), workers),
       lights: Some(Self::read_lights(&source, workers)),
+      grass: Some(Self::read_grass(&source, workers)),
       light_campfires: Vec::new(),
       light_motions: Vec::new(),
       sector_handles: ProxyAllocator::new(),
@@ -99,25 +102,46 @@ impl LevelStreaming {
     receiver
   }
 
+  /// Reads the level's grass on the workers.
+  fn read_grass(
+    source: &Arc<dyn RenderLevelSource>,
+    workers: &RenderWorkers,
+  ) -> LoaderReceiver<Result<Option<RenderLevelDetails>, String>> {
+    let (sender, receiver) = LoaderReceiver::channel();
+    let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
+
+    workers.spawn(move || {
+      let grass: Result<Option<RenderLevelDetails>, String> = source.read_details().map_err(|error| error.to_string());
+
+      if let Err(error) = &grass {
+        log::warn!("The level's grass cannot be drawn: {error}");
+      }
+
+      let _ = sender.send(grass);
+    });
+
+    receiver
+  }
+
   pub fn get_source(&self) -> &Arc<dyn RenderLevelSource> {
     &self.source
   }
 
   /// Streams on from `source`, a next source of the same level: the sectors posted stay, and those still being read
-  /// finish from the source they started from. Where `is_spawn`, every spawned model posted leaves the scene with its
-  /// objects and the spawn streams in again; where `is_lights`, the lights are read again and replace those drawn once
-  /// read.
+  /// finish from the source they started from. Where `reload` names the spawn, every spawned model posted leaves the
+  /// scene with its objects and the spawn streams in again; where it names the lights or the grass, they are read again
+  /// and replace those drawn once read.
   pub fn follow(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     animation: &mut LevelAnimation,
     source: Arc<dyn RenderLevelSource>,
-    (is_spawn, is_lights): (bool, bool),
+    reload: WorldLevelReload,
     workers: &RenderWorkers,
   ) {
     self.source = source;
 
-    if is_spawn {
+    if reload.is_spawn {
       for model in std::mem::take(&mut self.models) {
         for object in model.places.iter().filter_map(|(_, object)| *object) {
           animation.remove(object);
@@ -132,8 +156,12 @@ impl LevelStreaming {
       self.spawn = SpawnLoader::start(Arc::clone(&self.source), workers);
     }
 
-    if is_lights {
+    if reload.is_lights {
       self.lights = Some(Self::read_lights(&self.source, workers));
+    }
+
+    if reload.is_grass {
+      self.grass = Some(Self::read_grass(&self.source, workers));
     }
   }
 
@@ -157,9 +185,13 @@ impl LevelStreaming {
   }
 
   /// Posts this frame's changes: the spawn groups `hidden` names left out and those it no longer names stood again, the
-  /// lights once read, and a few of the sectors and spawned models the workers finished.
+  /// lights and the grass once read, and a few of the sectors and spawned models the workers finished.
   pub fn stream(&mut self, updates: &mut Vec<RenderSceneUpdate>, animation: &mut LevelAnimation, hidden: u32) {
     self.filter_spawn(updates, animation, hidden);
+
+    if let Some(Ok(grass)) = take_answer(&mut self.grass, "grass") {
+      updates.push(RenderSceneUpdate::AddGrass(grass));
+    }
 
     if let Some(Ok(lights)) = take_answer(&mut self.lights, "lights") {
       self.light_campfires = lights.lights.iter().filter_map(|light| light.campfire).collect();
@@ -228,6 +260,7 @@ impl LevelStreaming {
       is_sectors_done: sectors + self.failed_sectors.len() as u32 == sectors_total,
       is_spawn_done: self.spawn.is_done(),
       is_lights_done: self.lights.is_none(),
+      is_grass_done: self.grass.is_none(),
       bytes: self.posted.values().map(|(_, bytes)| bytes).sum(),
       ..RenderStreamingProgress::default()
     }

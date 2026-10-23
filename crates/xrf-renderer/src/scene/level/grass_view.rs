@@ -49,8 +49,9 @@ pub struct GrassView {
   sway: GrassWindUniform,
   /// This frame's puddle sites, and where they stand, which no tuft is planted in.
   puddles: Option<(wgpu::TextureView, GrassPuddlesUniform)>,
-  /// The steps, jitter and slope limit the planting last ran with, which a change of plants every slot again.
-  planted: Option<(i32, u32, u32)>,
+  /// The grass level, steps, jitter and slope limit the planting last ran with, a change of any of which plants every
+  /// slot again.
+  planted: Option<(u64, i32, u32, u32)>,
   /// Whether this frame plants and draws.
   is_drawn: bool,
   /// The cards casting the grass's shadows, while it casts them, and whether the view traces them and whether its sun
@@ -163,11 +164,13 @@ impl GrassView {
       self.planted = None;
     }
 
-    // A slope's limit decides which tufts stand, so a change of it plants every slot again too.
+    // A slope's limit decides which tufts stand, and the scene's grass replaced holds other slots and models, so a
+    // change of either plants every slot again too.
     let slope_limit: f32 = settings.slope_limit.clamp(0.0, 90.0).to_radians();
+    let planted: (u64, i32, u32, u32) = (level.key, steps, jitter.to_bits(), slope_limit.to_bits());
 
-    if self.planted != Some((steps, jitter.to_bits(), slope_limit.to_bits())) {
-      self.planted = Some((steps, jitter.to_bits(), slope_limit.to_bits()));
+    if self.planted != Some(planted) {
+      self.planted = Some(planted);
       self.values.generation += 1;
     }
 
@@ -372,6 +375,12 @@ impl GrassView {
   /// The planting as a traced hit reads it this frame.
   pub fn get_trace_uniform(&self) -> &TraceGrassUniform {
     &self.trace
+  }
+
+  /// What the ring's slots are planted under, moved each time every slot is planted again.
+  #[cfg(test)]
+  pub fn get_generation(&self) -> u32 {
+    self.values.generation
   }
 
   /// The grass as planted, or none where none is.

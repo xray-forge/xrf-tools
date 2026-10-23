@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 /// How far the world has streamed a level into its scene, which its load report is made from with what the renderer
-/// knows of its textures, grass and particles.
+/// knows of its textures.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct RenderStreamingProgress {
   /// When the world began opening the level, which its load is timed from.
@@ -13,6 +13,8 @@ pub struct RenderStreamingProgress {
   pub is_sectors_done: bool,
   pub is_spawn_done: bool,
   pub is_lights_done: bool,
+  /// Whether the level's grass was read, whatever the read answered.
+  pub is_grass_done: bool,
   /// Whether the level's particles were read, whatever the read answered.
   pub is_particles_done: bool,
   /// Bytes of every sector's pack taken in.
