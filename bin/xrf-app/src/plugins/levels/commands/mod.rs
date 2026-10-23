@@ -7,3 +7,4 @@ pub(crate) mod open_level;
 pub(crate) mod open_spawn_objects;
 pub(crate) mod read_level_cycle;
 pub(crate) mod read_level_weather;
+pub(crate) mod show_level;

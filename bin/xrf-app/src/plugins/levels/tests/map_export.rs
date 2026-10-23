@@ -9,7 +9,7 @@ use crate::core::types::TauriResult;
 use crate::plugins::levels::viewer::map_export::{export_map, flatten_onto, get_export_size};
 use crate::plugins::levels::viewer::map_export_format::MapExportFormat;
 use crate::plugins::levels::viewer::map_export_request::{MapExportAnnotations, MapExportRequest};
-use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingQuality};
+use xrf_texture::{TextureEncodingFormat, TextureEncodingQuality};
 
 /// A 30 by 20 map, its left half covered in red and its right clear, and beside it annotations drawing a white square
 /// over its right half, in a folder of its own.

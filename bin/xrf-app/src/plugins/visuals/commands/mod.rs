@@ -7,3 +7,4 @@ pub(crate) mod list_motions;
 pub(crate) mod open_browse;
 pub(crate) mod open_model;
 pub(crate) mod open_motion;
+pub(crate) mod show_model;

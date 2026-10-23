@@ -22,7 +22,6 @@ use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::state::{
   LevelEnvironment, LevelSource, LevelTextureReference, PS_STATIC_FILE, SelectedLevel,
 };
-use crate::plugins::levels::textures::resolve_reference;
 
 /// The game's particle library, at the root of its data (`$game_data$`).
 const PARTICLES_FILE: &str = "particles.xr";
@@ -120,7 +119,7 @@ fn pack_recorded(
     textures: references
       .into_iter()
       .map(|reference| LevelTextureReference {
-        logical_path: resolve_reference(search, &scope, &reference),
+        logical_path: scope.locate_texture(search, &reference),
         reference,
       })
       .collect(),

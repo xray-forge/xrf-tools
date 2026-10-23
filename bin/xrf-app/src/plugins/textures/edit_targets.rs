@@ -3,8 +3,8 @@ use std::path::{Path, PathBuf};
 use serde::Serialize;
 use xrf_vfs::XrayAsset;
 
+use crate::core::file_stamp::FileStamp;
 use crate::core::types::TauriResult;
-use crate::plugins::textures::file_stamp::TextureFileStamp;
 use crate::plugins::textures::files::TextureFiles;
 use crate::plugins::textures::request::TextureSaveTarget;
 
@@ -55,6 +55,6 @@ impl TextureEditTargets {
 fn to_target(path: &Path) -> TauriResult<TextureSaveTarget> {
   Ok(TextureSaveTarget {
     path: path.display().to_string(),
-    expected: TextureFileStamp::read(path)?,
+    expected: FileStamp::read(path)?,
   })
 }

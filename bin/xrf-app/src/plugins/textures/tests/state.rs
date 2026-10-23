@@ -7,10 +7,11 @@ use xrf_vfs::{XrayMountMode, XrayRoots};
 use crate::core::assets::AssetMountState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::plugins::textures::catalog::TextureCatalogMode;
-use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingSession};
+use crate::plugins::textures::encoding::TextureEncodingSession;
 use crate::plugins::textures::source::TextureSource;
 use crate::plugins::textures::state::{TextureBrowseSession, TextureState};
 use crate::plugins::textures::tests::fixtures::{BASE, source_image};
+use xrf_texture::TextureEncodingFormat;
 
 #[test]
 fn replacing_a_comparison_refuses_old_tokens_even_for_the_same_reference() {

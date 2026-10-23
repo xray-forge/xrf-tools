@@ -157,10 +157,10 @@ mod tests {
   use super::assemble;
   use crate::core::app_directories::AppDirectories;
   use crate::core::execution::ExecutionState;
+  use crate::plugins::levels::shown_levels::ShownLevels;
   use crate::plugins::levels::state::LevelState;
   use crate::plugins::render::render_viewports::RenderViewports;
   use crate::plugins::render::renderer::Renderer;
-  use crate::plugins::render::shown_levels::ShownLevels;
   use crate::plugins::render::texture_reloads::TextureReloads;
   use crate::plugins::render::viewport_shows::ViewportShows;
   use crate::plugins::render::world_state::WorldState;

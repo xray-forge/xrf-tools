@@ -8460,6 +8460,7 @@ dependencies = [
  "xrf-ltx",
  "xrf-math",
  "xrf-ogf",
+ "xrf-omf",
  "xrf-particles",
  "xrf-skeleton",
  "xrf-spawn",

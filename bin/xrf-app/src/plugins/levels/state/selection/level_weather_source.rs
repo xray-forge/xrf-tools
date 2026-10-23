@@ -6,7 +6,6 @@ use xrf_utils::error_to_string;
 use xrf_vfs::XraySearch;
 
 use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
-use crate::plugins::levels::textures::resolve_reference;
 
 /// What the open level's cycles are read against: the game's catalog, and where the level finds its textures.
 pub struct LevelWeatherSource<'a> {
@@ -19,7 +18,7 @@ impl LevelWeatherSource<'_> {
   /// One texture a keyframe names, found as the level finds its own.
   pub fn locate(&self, reference: &str) -> LevelTextureReference {
     LevelTextureReference {
-      logical_path: resolve_reference(self.search, &self.scope, reference),
+      logical_path: self.scope.locate_texture(self.search, reference),
       reference: reference.to_owned(),
     }
   }

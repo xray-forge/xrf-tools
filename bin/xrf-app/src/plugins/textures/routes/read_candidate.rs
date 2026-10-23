@@ -8,8 +8,9 @@ use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::transport::TransportAnswer;
 use crate::core::types::TauriResult;
-use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingSession};
+use crate::plugins::textures::encoding::TextureEncodingSession;
 use crate::plugins::textures::state::TextureState;
+use xrf_texture::TextureEncodingFormat;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]

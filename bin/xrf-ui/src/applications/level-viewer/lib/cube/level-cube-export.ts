@@ -1,12 +1,7 @@
 import { assertExhaustive } from "@xrf/types";
 
-import {
-  CubeExportFormat,
-  CubeExportRequest,
-  ECubeExportFormat,
-  ETextureEncodingFormat,
-  ETextureEncodingQuality,
-} from "@/core/ipc/types/xrf-app";
+import { CubeExportFormat, CubeExportRequest, ECubeExportFormat } from "@/core/ipc/types/xrf-app";
+import { ETextureEncodingFormat, ETextureEncodingQuality } from "@/core/ipc/types/xrf-texture";
 
 /** A cubemap's export, as its dialog holds it. */
 export interface ILevelCubeExportSettings {

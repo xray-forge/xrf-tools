@@ -12,8 +12,8 @@ use xrf_vfs::{XrayAsset, XrayRoots};
 use xrf_visual::{LightsDescription, SectorPackage, VisualMesh, VisualPacker, VisualShape};
 
 use crate::core::assets::AssetMountState;
+use crate::core::file_stamp::FileStamp;
 use crate::plugins::textures::description::TextureDescription;
-use crate::plugins::textures::file_stamp::TextureFileStamp;
 use crate::plugins::textures::request::TextureSurfaceRequest;
 use crate::plugins::textures::surface::texture_surface_alpha::TextureSurfaceAlpha;
 use crate::plugins::textures::surface::texture_surface_shape::TextureSurfaceShape;
@@ -63,13 +63,13 @@ impl TextureRenderSource {
       }
     }
 
-    let mut stamps: Vec<(String, Option<TextureFileStamp>)> = files
+    let mut stamps: Vec<(String, Option<FileStamp>)> = files
       .values()
       .flatten()
       .map(|asset| {
-        let stamp: Option<TextureFileStamp> = asset
+        let stamp: Option<FileStamp> = asset
           .to_physical_path()
-          .and_then(|path| TextureFileStamp::read(&path).ok().flatten());
+          .and_then(|path| FileStamp::read(&path).ok().flatten());
 
         (asset.get_logical_path().as_str().to_owned(), stamp)
       })

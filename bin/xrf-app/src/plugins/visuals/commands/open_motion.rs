@@ -6,7 +6,6 @@ use xrf_visual::{VisualMotionBake, VisualMotionPose};
 use crate::core::assets::AssetMountState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::visuals::pose::bake_named_motion;
 use crate::plugins::visuals::state::{SelectedVisual, VisualState};
 
 /// Pose the open visual through one of its motions, and report what came out.
@@ -25,13 +24,14 @@ pub async fn visuals_open_motion(
 
   current.posed.begin_open(motion_id)?;
 
-  let Some(skeleton) = current.skeleton.as_ref() else {
+  let Some(motions) = current.motions.as_ref() else {
     return Err(String::from("The open visual carries no bind pose to animate"));
   };
 
   // Posed inside the roots the open used, so the animation files are looked for where the model's own references were.
-  let posed: VisualMotionPose =
-    bake_named_motion(&assets.search(&current.roots)?, skeleton, &current.dependencies, &name)?;
+  let posed: VisualMotionPose = motions
+    .bake_named(&assets.search(&current.roots)?, &current.dependencies, &name)
+    .map_err(|error| error.to_string())?;
 
   let opened: Arc<SessionSnapshot<VisualMotionPose>> = current.posed.commit_open(motion_id, posed)?;
 

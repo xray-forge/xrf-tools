@@ -29,9 +29,9 @@ const VIEWPORT: number = 3;
 const SCENE: number = 4;
 
 /** What a render command was sent, in order. */
-function sent(command: string): Array<Record<string, unknown>> {
+function sent(command: string, plugin: string = "render"): Array<Record<string, unknown>> {
   return mockInvoke.mock.calls
-    .filter(([name]) => name === `plugin:render|${command}`)
+    .filter(([name]) => name === `plugin:${plugin}|${command}`)
     .map(([, args]) => args as Record<string, unknown>);
 }
 
@@ -58,7 +58,7 @@ async function mockAttached(source: IVisualRenderSource): Promise<{
   service: VisualRenderService;
   viewService: VisualViewService;
 }> {
-  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: VIEWPORT, ["plugin:render|show_model"]: SCENE });
+  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: VIEWPORT, ["plugin:visuals|show_model"]: SCENE });
 
   const container: Container = mockContainer([
     VisualLoadService,
@@ -88,7 +88,7 @@ describe("VisualRenderService", () => {
     runInAction(() => (source.sessionId = "second"));
     await flush();
 
-    expect(sent("show_model").map(({ detail, sessionId }) => [sessionId, detail])).toEqual([
+    expect(sent("show_model", "visuals").map(({ detail, sessionId }) => [sessionId, detail])).toEqual([
       ["first", 0],
       ["first", 0.5],
       ["second", 0.5],

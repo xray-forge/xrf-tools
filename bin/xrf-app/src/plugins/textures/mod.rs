@@ -18,8 +18,7 @@
 //! Writing, which only the editor does:
 //!
 //! - [`descriptor_form`] - the descriptor fields a person edits, read off a `.thm` and written back onto one.
-//! - [`edit_targets`] - where an edit of a texture would land.
-//! - [`file_stamp`] - what a file looked like when it was read, so a write cannot overwrite a change it never saw.
+//! - [`edit_targets`] - where an edit of a texture would land, with the stamp (`core::file_stamp`) of what is there.
 //! - [`save`] - writing a node's two files, or refusing to.
 //! - [`encoding`] - the candidate formats a texture could be written in, and the encodes a comparison keeps.
 //!
@@ -37,7 +36,6 @@ pub mod description;
 pub mod descriptor_form;
 pub mod edit_targets;
 pub mod encoding;
-pub mod file_stamp;
 pub mod files;
 pub mod lease;
 pub mod plugin;

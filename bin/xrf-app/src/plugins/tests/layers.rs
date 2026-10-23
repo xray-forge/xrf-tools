@@ -10,29 +10,6 @@ use std::path::{Path, PathBuf};
 /// The plugins every domain may build on; every other plugin is a domain.
 const INFRASTRUCTURE: &[&str] = &["render"];
 
-/// References that break the layers and are known, as (source file, plugin referenced). An entry that no longer occurs
-/// fails the test too, so the list only shrinks.
-// todo: Empty once render shows no domain's document and the code two domains share moves below them.
-const KNOWN_BREACHES: &[(&str, &str)] = &[
-  ("plugins/levels/spawn_visuals.rs", "visuals"),
-  ("plugins/levels/tests/cube_export.rs", "textures"),
-  ("plugins/levels/tests/map_export.rs", "textures"),
-  ("plugins/levels/texture_resolver.rs", "textures"),
-  ("plugins/levels/viewer/cube_export_format.rs", "textures"),
-  ("plugins/levels/viewer/map_export.rs", "textures"),
-  ("plugins/levels/viewer/map_export_format.rs", "textures"),
-  ("plugins/render/commands/capture_cube.rs", "levels"),
-  ("plugins/render/commands/capture_map.rs", "levels"),
-  ("plugins/render/commands/save_screenshot.rs", "levels"),
-  ("plugins/render/commands/show_level.rs", "levels"),
-  ("plugins/render/commands/show_model.rs", "visuals"),
-  ("plugins/render/commands/show_texture.rs", "textures"),
-  ("plugins/render/level_scene_follower.rs", "levels"),
-  ("plugins/render/plugin.rs", "levels"),
-  ("plugins/render/shown_levels.rs", "levels"),
-  ("plugins/visuals/render_source.rs", "levels"),
-];
-
 /// Where a source file sits among the layers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Owner<'a> {
@@ -43,7 +20,7 @@ enum Owner<'a> {
 #[test]
 fn every_module_references_only_the_layers_below_it() {
   let source: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src");
-  let mut breaches: BTreeSet<(String, String)> = BTreeSet::new();
+  let mut breaches: Vec<String> = Vec::new();
 
   for file in list_sources(&source) {
     let relative: String = file
@@ -63,29 +40,17 @@ fn every_module_references_only_the_layers_below_it() {
 
     for plugin in list_referenced_plugins(&text) {
       if !is_allowed(owner, &plugin) {
-        breaches.insert((relative.clone(), plugin));
+        breaches.push(format!("  {relative} references plugin '{plugin}'"));
       }
     }
   }
 
-  let known: BTreeSet<(String, String)> = KNOWN_BREACHES
-    .iter()
-    .map(|(file, plugin)| ((*file).to_owned(), (*plugin).to_owned()))
-    .collect();
-  let new: Vec<String> = breaches
-    .difference(&known)
-    .map(|(file, plugin)| format!("  {file} references plugin '{plugin}'"))
-    .collect();
-  let gone: Vec<String> = known
-    .difference(&breaches)
-    .map(|(file, plugin)| format!("  {file} no longer references plugin '{plugin}'"))
-    .collect();
+  breaches.sort();
 
   assert!(
-    new.is_empty() && gone.is_empty(),
-    "The application's layers moved.\nReferences across them (move what both need below them, into `core/` or a crate):\n{}\nKnown breaches that are gone (remove them from the list):\n{}",
-    new.join("\n"),
-    gone.join("\n"),
+    breaches.is_empty(),
+    "References across the layers (move what both need below them, into `core/` or a crate):\n{}",
+    breaches.join("\n"),
   );
 }
 

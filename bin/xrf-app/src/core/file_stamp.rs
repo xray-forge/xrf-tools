@@ -1,4 +1,4 @@
-//! What a file looked like when the editor read it, and what it means when it no longer looks like that.
+//! What a file looked like when it was read, and what it means when it no longer looks like that.
 
 use std::fs::Metadata;
 use std::path::Path;
@@ -9,17 +9,18 @@ use xrf_utils::format_path;
 
 use crate::core::types::TauriResult;
 
-/// What the editor read at a path, so a later write cannot overwrite a change it never saw.
+/// What was read at a path, so a later write cannot overwrite a change it never saw and a reload can tell the file
+/// moved.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureFileStamp {
+pub struct FileStamp {
   pub size: u64,
   /// Milliseconds since the Unix epoch, as the platform reports the file's modification time.
   pub modified_ms: u64,
 }
 
-impl TextureFileStamp {
+impl FileStamp {
   /// The stamp a path currently carries, or `None` when nothing is there.
   ///
   /// # Errors
@@ -51,7 +52,7 @@ impl TextureFileStamp {
     Self {
       size: metadata.len(),
       // A filesystem that reports no modification time leaves the size as the whole guard rather than failing the
-      // write. The case is a network mount, and a texture that changed size is the change worth catching either way.
+      // write. The case is a network mount, and a file that changed size is the change worth catching either way.
       modified_ms: metadata
         .modified()
         .ok()

@@ -46,7 +46,7 @@ use crate::plugins::levels::state::selection::level_thunderbolts::LevelThunderbo
 use crate::plugins::levels::state::selection::level_weather_model::LevelWeatherModel;
 use crate::plugins::levels::state::selection::level_wet_surfaces::LevelWetSurfaces;
 use crate::plugins::levels::state::{LevelEnvironment, LevelSpawnCategory, LevelSpawnVisual, SelectedLevel};
-use crate::plugins::levels::texture_resolver::TextureResolver;
+use crate::plugins::render::texture_resolver::TextureResolver;
 
 /// The open level as the native renderer draws it: sectors packed when its loader asks, textures read from the roots
 /// the level was opened in.

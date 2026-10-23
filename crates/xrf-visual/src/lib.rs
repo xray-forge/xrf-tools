@@ -52,6 +52,7 @@ pub use crate::pack::shape::visual_shape::VisualShape;
 pub use crate::pack::visual::motion::visual_motion::{FLOATS_PER_BONE, bake_motion, describe_motion, total_part_bones};
 pub use crate::pack::visual::motion::visual_motion_bake::VisualMotionBake;
 pub use crate::pack::visual::motion::visual_motion_pose::VisualMotionPose;
+pub use crate::pack::visual::motion::visual_motions::VisualMotions;
 pub use crate::pack::visual::visual_mesh::VisualMesh;
 pub use crate::pack::visual::visual_package::VisualPackage;
 pub use crate::pack::visual::visual_packer::VisualPacker;

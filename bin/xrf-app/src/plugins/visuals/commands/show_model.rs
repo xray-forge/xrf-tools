@@ -15,7 +15,7 @@ use crate::plugins::visuals::state::{SelectedVisual, VisualState};
 /// draws none. Answers the scene drawn, which the viewport's load reports name, or none.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "show_model"))]
 #[tauri::command(rename = "show_model")]
-pub fn render_show_model(
+pub fn visuals_show_model(
   shows: State<'_, ViewportShows>,
   reloads: State<'_, TextureReloads>,
   visuals: State<'_, VisualState>,

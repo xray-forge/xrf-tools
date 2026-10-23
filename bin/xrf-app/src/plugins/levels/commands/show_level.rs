@@ -6,8 +6,8 @@ use xrf_renderer::{RenderLevelSource, RenderViewportId};
 use crate::core::assets::AssetMountState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
+use crate::plugins::levels::shown_levels::ShownLevels;
 use crate::plugins::levels::state::{LevelState, SelectedLevel};
-use crate::plugins::render::shown_levels::ShownLevels;
 use crate::plugins::render::texture_reloads::TextureReloads;
 use crate::plugins::render::viewport_shows::ViewportShows;
 
@@ -15,7 +15,7 @@ use crate::plugins::render::viewport_shows::ViewportShows;
 /// the scene drawn, which the viewport's load reports name, or none.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "show_level"))]
 #[tauri::command(rename = "show_level")]
-pub fn render_show_level(
+pub fn levels_show_level(
   shows: State<'_, ViewportShows>,
   shown: State<'_, ShownLevels>,
   reloads: State<'_, TextureReloads>,

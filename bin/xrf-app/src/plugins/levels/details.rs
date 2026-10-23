@@ -15,7 +15,6 @@ use crate::core::types::TauriResult;
 use crate::plugins::levels::read::{read_file, read_optional_file};
 use crate::plugins::levels::report::report_unreadable_materials;
 use crate::plugins::levels::state::{COLLISION_FILE, DETAILS_FILE, LevelSource, LevelTextureReference, SelectedLevel};
-use crate::plugins::levels::textures::resolve_reference;
 
 /// The game material library, whose flags say which materials a planting falls through.
 const GAME_MATERIALS_FILE: &str = "gamemtl.xr";
@@ -99,7 +98,7 @@ fn pack_recorded(source: &LevelSource, search: &XraySearch) -> TauriResult<Optio
     textures: references
       .into_iter()
       .map(|reference| LevelTextureReference {
-        logical_path: resolve_reference(search, &scope, reference),
+        logical_path: scope.locate_texture(search, reference),
         reference: reference.to_owned(),
       })
       .collect(),

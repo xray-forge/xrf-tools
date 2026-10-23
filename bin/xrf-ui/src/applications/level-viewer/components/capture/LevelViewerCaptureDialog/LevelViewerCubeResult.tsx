@@ -12,7 +12,8 @@ import {
 } from "@/applications/level-viewer/lib/cube/level-cube-export";
 import { ILevelViewerImage } from "@/applications/level-viewer/lib/files/level-viewer-image";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
-import { ECubeExportFormat, ETextureEncodingFormat } from "@/core/ipc/types/xrf-app";
+import { ECubeExportFormat } from "@/core/ipc/types/xrf-app";
+import { ETextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
 import { cn } from "@/core/theme/class-name";
 import { CheckboxFormRow, ChoiceFormRow } from "@/core/ui/form";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";

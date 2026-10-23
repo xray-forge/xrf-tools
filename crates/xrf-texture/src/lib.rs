@@ -4,6 +4,7 @@ mod build;
 mod bump;
 mod crop;
 mod description;
+mod encoding;
 mod equipment;
 mod image_file;
 
@@ -18,6 +19,7 @@ pub use crate::description::{
   PackDescriptionOptions, PackDescriptionProcessor, TextureFileDescriptor, TextureSpriteDescriptor,
   UnpackDescriptionProcessor,
 };
+pub use crate::encoding::{TextureEncodingFormat, TextureEncodingQuality};
 pub use crate::equipment::{
   EquipmentGridOverlap, EquipmentSlotClaim, EquipmentSlotOccupant, InventorySpriteDescriptor, PackEquipmentOptions,
   PackEquipmentProcessor, PackEquipmentResult, UnpackEquipmentOptions, UnpackEquipmentProcessor,

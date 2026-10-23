@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::plugins::textures::encoding::{TextureEncodingFormat, TextureEncodingQuality};
+use xrf_texture::{TextureEncodingFormat, TextureEncodingQuality};
 
 /// What a level map is exported as: `CDemoRecord`'s own uncompressed TGA, a PNG, a DDS as the game loads a map, or, for
 /// its annotations alone, their SVG.

@@ -12,10 +12,10 @@ import {
   TextureDescription,
   TextureDescriptorForm,
   TextureEncodingComparison,
-  TextureEncodingFormat,
   TextureSaveOutcome,
   TextureVocabulary,
 } from "@/core/ipc/types/xrf-app";
+import { TextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

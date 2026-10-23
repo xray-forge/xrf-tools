@@ -4,6 +4,7 @@ pub mod app_directories;
 pub mod assets;
 pub mod directories;
 pub mod execution;
+pub mod file_stamp;
 pub mod jobs;
 pub mod logging;
 pub mod preferences;

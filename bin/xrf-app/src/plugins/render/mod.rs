@@ -1,21 +1,19 @@
 pub mod capture_file;
 pub mod capture_outcome;
 pub mod capture_receiver;
-pub mod capture_request;
 pub mod channel_event_sink;
 pub mod commands;
 pub mod disk_cache_store;
-pub mod level_scene_follower;
 pub mod packaged_bundle;
 pub mod plugin;
 pub mod render_answer;
 pub mod render_viewports;
 pub mod renderer;
 pub mod request;
-pub mod shown_levels;
 #[cfg(test)]
 mod tests;
 pub mod texture_reloads;
+pub mod texture_resolver;
 pub mod texture_watcher;
 pub mod viewport_event;
 pub mod viewport_shows;

@@ -7,13 +7,12 @@ use xrf_material::{
 };
 use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayAsset, XrayRoots, XraySearch};
-use xrf_visual::{VisualDependencies, VisualDescription, VisualPackage, VisualPacker};
+use xrf_visual::{VisualDependencies, VisualDescription, VisualMotions, VisualPackage, VisualPacker};
 
 use crate::core::assets::{AssetMountState, AssetTextureDescriptor};
 use crate::core::session::{Session, SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::read::read_source;
-use crate::plugins::visuals::skeleton::SelectedSkeleton;
 use crate::plugins::visuals::state::{SelectedVisual, SelectedVisualDescription, VisualSource, VisualState};
 
 /// Select a visual and return what it contains, with every reference it declares resolved.
@@ -42,7 +41,7 @@ pub async fn visuals_open_model(
   let materials: HashMap<String, XrayMaterialDescriptor> = describe_materials(&search, &dependencies);
   let surfaces: Vec<XraySurfaceDescriptor> = describe_surfaces(&search, &package.description);
   let textures_ltx: Option<XrayAsset> = XrayMaterialResolver::find_textures_ltx(&search);
-  let skeleton: Option<SelectedSkeleton> = SelectedSkeleton::of(&file);
+  let motions: Option<VisualMotions> = VisualMotions::of(&file);
 
   let selected: Arc<SessionSnapshot<SelectedVisual>> = state.selected.commit_open(
     session_id,
@@ -51,7 +50,7 @@ pub async fn visuals_open_model(
       roots,
       package,
       dependencies,
-      skeleton,
+      motions,
       posed: Session::new("visual motion"),
       textures,
       materials,

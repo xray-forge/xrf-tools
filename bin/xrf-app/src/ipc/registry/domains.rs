@@ -93,6 +93,8 @@ macro_rules! for_each_tauri_command_domain {
         list => crate::plugins::jobs::commands::list::jobs_list,
       }
       levels => "levels" {
+        capture_cube => crate::plugins::levels::viewer::commands::capture_cube::levels_capture_cube,
+        capture_map => crate::plugins::levels::viewer::commands::capture_map::levels_capture_map,
         close_level => crate::plugins::levels::commands::close_level::levels_close_level,
         copy_screenshot => crate::plugins::levels::viewer::commands::copy_screenshot::levels_copy_screenshot,
         delete_screenshot => crate::plugins::levels::viewer::commands::delete_screenshot::levels_delete_screenshot,
@@ -109,7 +111,9 @@ macro_rules! for_each_tauri_command_domain {
         read_level_cycle => crate::plugins::levels::commands::read_level_cycle::levels_read_level_cycle,
         read_level_weather => crate::plugins::levels::commands::read_level_weather::levels_read_level_weather,
         read_view => crate::plugins::levels::viewer::commands::read_view::levels_read_view,
+        save_screenshot => crate::plugins::levels::viewer::commands::save_screenshot::levels_save_screenshot,
         save_view => crate::plugins::levels::viewer::commands::save_view::levels_save_view,
+        show_level => crate::plugins::levels::commands::show_level::levels_show_level,
         write_map_annotations => crate::plugins::levels::viewer::commands::write_map_annotations::levels_write_map_annotations,
         write_screenshot_report => crate::plugins::levels::viewer::commands::write_screenshot_report::levels_write_screenshot_report,
       }
@@ -119,8 +123,6 @@ macro_rules! for_each_tauri_command_domain {
       // Native viewports drawn by the renderer into the window the page names, under its webview.
       render => "render" {
         attach_viewport => crate::plugins::render::commands::attach_viewport::render_attach_viewport,
-        capture_cube => crate::plugins::render::commands::capture_cube::render_capture_cube,
-        capture_map => crate::plugins::render::commands::capture_map::render_capture_map,
         command_camera => crate::plugins::render::commands::command_camera::render_command_camera,
         configure => crate::plugins::render::commands::configure::render_configure,
         describe_frame => crate::plugins::render::commands::describe_frame::render_describe_frame,
@@ -139,7 +141,6 @@ macro_rules! for_each_tauri_command_domain {
         play_weather => crate::plugins::render::commands::play_weather::render_play_weather,
         play_weather_effect => crate::plugins::render::commands::play_weather_effect::render_play_weather_effect,
         save_capture => crate::plugins::render::commands::save_capture::render_save_capture,
-        save_screenshot => crate::plugins::render::commands::save_screenshot::render_save_screenshot,
         seek_weather => crate::plugins::render::commands::seek_weather::render_seek_weather,
         send_input => crate::plugins::render::commands::send_input::render_send_input,
         set_camera => crate::plugins::render::commands::set_camera::render_set_camera,
@@ -149,9 +150,6 @@ macro_rules! for_each_tauri_command_domain {
         set_viewport_layout => crate::plugins::render::commands::set_viewport_layout::render_set_viewport_layout,
         set_weather_control => crate::plugins::render::commands::set_weather_control::render_set_weather_control,
         set_world_toggles => crate::plugins::render::commands::set_world_toggles::render_set_world_toggles,
-        show_level => crate::plugins::render::commands::show_level::render_show_level,
-        show_model => crate::plugins::render::commands::show_model::render_show_model,
-        show_texture => crate::plugins::render::commands::show_texture::render_show_texture,
       }
       spawn => "spawn" {
         save_unpacked_directory => crate::plugins::spawn::commands::save_unpacked_directory::spawn_save_unpacked_directory,
@@ -200,6 +198,7 @@ macro_rules! for_each_tauri_command_domain {
         make_bump => crate::plugins::textures::commands::make_bump::textures_make_bump,
         open => crate::plugins::textures::commands::open::textures_open,
         save => crate::plugins::textures::commands::save::textures_save,
+        show_texture => crate::plugins::textures::commands::show_texture::textures_show_texture,
       }
       // Decoded images the page shows: a texture or a save candidate as png, and texels; stored bytes are `assets/read_asset`.
       @bulk {
@@ -217,6 +216,7 @@ macro_rules! for_each_tauri_command_domain {
         open_browse => crate::plugins::visuals::commands::open_browse::visuals_open_browse,
         open_model => crate::plugins::visuals::commands::open_model::visuals_open_model,
         open_motion => crate::plugins::visuals::commands::open_motion::visuals_open_motion,
+        show_model => crate::plugins::visuals::commands::show_model::visuals_show_model,
       }
       translations => "translations" {
         build_project => crate::plugins::translations::commands::build_project::translations_build_project,

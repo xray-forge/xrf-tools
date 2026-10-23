@@ -1,16 +1,19 @@
 import { parseHexColor, toRawColor } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
+import { texturesCommands } from "@/core/ipc/commands/textures";
 import { TextureDescription } from "@/core/ipc/types/xrf-app";
 import { RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
 import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-options";
-import { TNativeTextureRequest } from "@/core/render/lib/native/native-viewport";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { NATIVE_RENDER_OUTPUT, TRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { ITextureSurfaceOptions, toTextureAspect } from "@/core/textures/lib/texture-surface";
 import { VIEWPORT } from "@/core/theme/tokens";
+
+/** A texture laid on a body, as the renderer is asked to draw one, or null for none. */
+export type TTextureSurfaceRequest = Parameters<typeof texturesCommands.showTexture>[1];
 
 /** The camera the body is first seen from, and returned to. */
 export const TEXTURE_SURFACE_CAMERA: WorldCamera = {
@@ -30,7 +33,7 @@ export const TEXTURE_SURFACE_CAMERA: WorldCamera = {
 export function toTextureSurfaceRequest(
   description: Nullable<TextureDescription>,
   options: ITextureSurfaceOptions
-): TNativeTextureRequest {
+): TTextureSurfaceRequest {
   return description
     ? {
         alpha: options.alpha,
