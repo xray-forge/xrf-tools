@@ -57,23 +57,10 @@ pub struct LevelStreaming {
 
 impl LevelStreaming {
   pub fn start(source: Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
-    let (sender, receiver) = LoaderReceiver::channel();
-    let lights_source: Arc<dyn RenderLevelSource> = Arc::clone(&source);
-
-    workers.spawn(move || {
-      let lights: Result<LightsDescription, String> = lights_source.read_lights().map_err(|error| error.to_string());
-
-      if let Err(error) = &lights {
-        log::error!("The level's lights cannot be drawn: {error}");
-      }
-
-      let _ = sender.send(lights);
-    });
-
     Self {
       sectors: LevelLoader::start(Arc::clone(&source), workers),
       spawn: SpawnLoader::start(Arc::clone(&source), workers),
-      lights: Some(receiver),
+      lights: Some(Self::read_lights(&source, workers)),
       light_campfires: Vec::new(),
       light_motions: Vec::new(),
       sector_handles: ProxyAllocator::new(),
@@ -91,8 +78,63 @@ impl LevelStreaming {
     }
   }
 
+  /// Reads the level's lights on the workers.
+  fn read_lights(
+    source: &Arc<dyn RenderLevelSource>,
+    workers: &RenderWorkers,
+  ) -> LoaderReceiver<Result<LightsDescription, String>> {
+    let (sender, receiver) = LoaderReceiver::channel();
+    let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
+
+    workers.spawn(move || {
+      let lights: Result<LightsDescription, String> = source.read_lights().map_err(|error| error.to_string());
+
+      if let Err(error) = &lights {
+        log::error!("The level's lights cannot be drawn: {error}");
+      }
+
+      let _ = sender.send(lights);
+    });
+
+    receiver
+  }
+
   pub fn get_source(&self) -> &Arc<dyn RenderLevelSource> {
     &self.source
+  }
+
+  /// Streams on from `source`, a next source of the same level: the sectors posted stay, and those still being read
+  /// finish from the source they started from. Where `is_spawn`, every spawned model posted leaves the scene with its
+  /// objects and the spawn streams in again; where `is_lights`, the lights are read again and replace those drawn once
+  /// read.
+  pub fn follow(
+    &mut self,
+    updates: &mut Vec<RenderSceneUpdate>,
+    animation: &mut LevelAnimation,
+    source: Arc<dyn RenderLevelSource>,
+    (is_spawn, is_lights): (bool, bool),
+    workers: &RenderWorkers,
+  ) {
+    self.source = source;
+
+    if is_spawn {
+      for model in std::mem::take(&mut self.models) {
+        for object in model.places.iter().filter_map(|(_, object)| *object) {
+          animation.remove(object);
+          self.object_handles.free(object);
+        }
+
+        self.model_handles.free(model.handle);
+        updates.push(RenderSceneUpdate::RemoveModel(model.handle));
+      }
+
+      self.failed_models.clear();
+      self.spawn = SpawnLoader::start(Arc::clone(&self.source), workers);
+    }
+
+    if is_lights {
+      self.lights = Some(Self::read_lights(&self.source, workers));
+    }
   }
 
   /// Records the sectors and the spawned models the scene could not take in of the posts before, forgetting them.

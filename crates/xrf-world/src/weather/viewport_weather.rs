@@ -81,7 +81,22 @@ impl ViewportWeather {
     self.level = None;
     self.player.take(None, WorldWeatherTransition::Cut);
     self.source = source;
+    self.read_level();
+  }
 
+  /// Plays on from `source`, a next source of the level shown: where `is_reread`, what every weather plays with is read
+  /// again from it, the weather playing until then, and the last request plays over it once read, the clock kept.
+  pub fn follow(&mut self, source: Arc<dyn RenderLevelSource>, is_reread: bool) {
+    self.source = Some(source);
+
+    if is_reread {
+      self.level_generation += 1;
+      self.read_level();
+    }
+  }
+
+  /// Reads what every weather of the shown level plays with on the workers, as of the level's generation now.
+  fn read_level(&self) {
     let Some(source) = &self.source else {
       return;
     };

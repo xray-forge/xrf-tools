@@ -21,13 +21,13 @@ pub async fn levels_read_level_weather(
 ) -> TauriResult<SessionSnapshot<LevelWeatherDescription>> {
   let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
   let assets: AssetMountState = AssetMountState::clone(&assets);
-  let description: LevelWeatherDescription = execution
+  let description: SessionSnapshot<LevelWeatherDescription> = execution
     .run_blocking("Reading the level weather", move || {
       let search: XraySearch = assets.search(&current.roots)?;
 
-      LevelEnvironment::of(&current, &search).map(|environment| environment.describe(&current, &search))
+      LevelEnvironment::of(&current, &search).map(|environment| current.answer(environment.describe(&current, &search)))
     })
     .await??;
 
-  Ok(SessionSnapshot::new(session_id, description))
+  Ok(description)
 }

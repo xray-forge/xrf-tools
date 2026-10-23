@@ -7598,6 +7598,7 @@ dependencies = [
  "xrf-extension",
  "xrf-gamedata",
  "xrf-gamemtl",
+ "xrf-ipc",
  "xrf-ipc-typescript",
  "xrf-job",
  "xrf-level",

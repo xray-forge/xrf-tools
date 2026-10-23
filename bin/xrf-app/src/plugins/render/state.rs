@@ -10,11 +10,17 @@ use xrf_renderer::{
 use xrf_vfs::XrayRoots;
 use xrf_world::{World, WorldEventSink};
 
+use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
+use crate::core::session::{Session, SessionSnapshot};
 use crate::core::types::TauriResult;
 
+use crate::plugins::levels::render_source::LevelRenderSource;
+use crate::plugins::levels::state::SelectedLevel;
 use crate::plugins::render::disk_cache_store::DiskCacheStore;
+use crate::plugins::render::level_scene_follower::LevelSceneFollower;
 use crate::plugins::render::renderer::Renderer;
+use crate::plugins::render::shown_levels::ShownLevels;
 use crate::plugins::render::texture_watcher::{TextureWatcher, to_texture_name};
 use crate::plugins::render::viewport_windows::ViewportWindows;
 
@@ -38,6 +44,8 @@ pub struct RenderState {
   closing: Mutex<HashSet<String>>,
   /// The shown sources' roots, watched for texture files written there.
   textures: TextureWatcher,
+  /// The source each level session is drawn from, which a commit moves along.
+  levels: Arc<ShownLevels>,
 }
 
 impl RenderState {
@@ -58,6 +66,25 @@ impl RenderState {
       shows: Mutex::default(),
       windows: Mutex::default(),
       closing: Mutex::default(),
+      levels: Arc::default(),
+    }
+  }
+
+  /// The source drawing a level's snapshot, shared by every viewport showing it.
+  pub fn get_level_source(
+    &self,
+    level: Arc<SessionSnapshot<SelectedLevel>>,
+    assets: &AssetMountState,
+  ) -> Arc<LevelRenderSource> {
+    self.levels.get_source(level, assets)
+  }
+
+  /// What moves the scene of each level shown along with `levels` through every commit.
+  pub(crate) fn follow_levels(&self, levels: Session<SelectedLevel>) -> LevelSceneFollower {
+    LevelSceneFollower {
+      levels,
+      shown: Arc::clone(&self.levels),
+      world: Arc::clone(&self.world),
     }
   }
 

@@ -31,9 +31,9 @@ pub enum RenderSceneUpdate {
     place: StaticModelPlace,
   },
   RemoveObject(ProxyHandle<StaticObjectProxy>),
-  /// The level's lights, once read.
+  /// The level's lights, once read, in place of any read before.
   AddLights(LightsDescription),
-  /// What the level's particles are made from, once read.
+  /// What the level's particles are made from, once read, in place of any read before.
   AddParticles(RenderParticleDefinitions),
   /// A particle emitter, where it stands and the seed its effects' runs start from, nothing playing at it yet.
   AddEmitter {

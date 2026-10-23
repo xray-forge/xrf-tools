@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use xrf_anm::AnmFile;
 use xrf_environment::WeatherDescriptor;
@@ -16,13 +18,30 @@ use crate::world_event_sink::WorldEventSink;
 /// How a test level packs a sector.
 pub type TestSectorPack = Box<dyn Fn(u32) -> XrfResult<SectorPackage> + Send + Sync>;
 
+/// How many times each read of a test level, or of the sources sharing its count, was asked for.
+#[derive(Default)]
+pub struct TestLevelReads {
+  pub lights: AtomicU32,
+  pub weather: AtomicU32,
+  pub spawn: AtomicU32,
+  pub particles: AtomicU32,
+}
+
+impl TestLevelReads {
+  /// The lights, weather, spawn and particles reads asked for so far.
+  pub fn count(&self) -> [u32; 4] {
+    [&self.lights, &self.weather, &self.spawn, &self.particles].map(|count| count.load(Ordering::SeqCst))
+  }
+}
+
 /// A level holding nothing but what a test gives it: the key its scene is shared by, its sectors, each packed as
-/// `pack` says, and its object motions by name; everything else it is asked for is not there.
+/// `pack` says, and its object motions by name; everything else it is asked for is not there, each ask counted.
 pub struct TestLevelSource {
   pub key: Option<String>,
   pub sectors: u32,
   pub pack: TestSectorPack,
   pub motions: HashMap<String, AnmFile>,
+  pub reads: Arc<TestLevelReads>,
 }
 
 impl Default for TestLevelSource {
@@ -32,6 +51,7 @@ impl Default for TestLevelSource {
       sectors: 0,
       pack: Box::new(|_| Err(Self::none())),
       motions: HashMap::new(),
+      reads: Arc::default(),
     }
   }
 }
@@ -71,10 +91,14 @@ impl RenderLevelSource for TestLevelSource {
   }
 
   fn read_lights(&self) -> XrfResult<LightsDescription> {
+    self.reads.lights.fetch_add(1, Ordering::SeqCst);
+
     Err(Self::none())
   }
 
   fn read_weather(&self) -> XrfResult<RenderLevelWeather> {
+    self.reads.weather.fetch_add(1, Ordering::SeqCst);
+
     Err(Self::none())
   }
 
@@ -83,6 +107,8 @@ impl RenderLevelSource for TestLevelSource {
   }
 
   fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {
+    self.reads.spawn.fetch_add(1, Ordering::SeqCst);
+
     Err(Self::none())
   }
 
@@ -95,6 +121,8 @@ impl RenderLevelSource for TestLevelSource {
   }
 
   fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>> {
+    self.reads.particles.fetch_add(1, Ordering::SeqCst);
+
     Ok(None)
   }
 

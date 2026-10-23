@@ -2,6 +2,7 @@ import { Binding } from "@wirestate/core";
 
 import { KeybindCommandsService } from "@/core/commands";
 import { HelpService } from "@/core/help/services/help";
+import { SessionChangesService } from "@/core/ipc/services/changes";
 import { IpcMetricsService } from "@/core/ipc/services/metrics";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { KeymapService } from "@/core/keybinds/services/keymap";
@@ -28,6 +29,7 @@ export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
   KeymapService,
   NotificationsService,
   RenderSettingsService,
+  SessionChangesService,
   SettingsDialogService,
   SettingsService,
   ShellKeybindsService,

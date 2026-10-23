@@ -22,7 +22,7 @@ pub async fn levels_read_level_cycle(
 ) -> TauriResult<SessionSnapshot<LevelWeatherCycle>> {
   let current: Arc<SessionSnapshot<SelectedLevel>> = state.selected.require(session_id)?;
   let assets: AssetMountState = AssetMountState::clone(&assets);
-  let cycle: LevelWeatherCycle = execution
+  let cycle: SessionSnapshot<LevelWeatherCycle> = execution
     .run_blocking("Reading a weather cycle", move || {
       let environment: Arc<LevelEnvironment> = LevelEnvironment::of(&current, &assets.search(&current.roots)?)?;
       let found: &WeatherCycle = environment.catalog.find_by_id(&cycle).ok_or_else(|| {
@@ -33,9 +33,9 @@ pub async fn levels_read_level_cycle(
         )
       })?;
 
-      TauriResult::Ok(LevelWeatherCycle::of(found, &environment.catalog))
+      TauriResult::Ok(current.answer(LevelWeatherCycle::of(found, &environment.catalog)))
     })
     .await??;
 
-  Ok(SessionSnapshot::new(session_id, cycle))
+  Ok(cycle)
 }

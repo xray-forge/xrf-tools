@@ -9,6 +9,7 @@ mod level_loader;
 mod level_object_motions;
 mod level_streaming;
 mod placed_emitter;
+mod scene_reload;
 mod scenes;
 mod surface_tally;
 pub(crate) mod test_workers;

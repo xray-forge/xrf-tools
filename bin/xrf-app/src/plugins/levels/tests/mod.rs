@@ -9,6 +9,7 @@ mod map_export;
 mod new_game;
 mod particles;
 mod read;
+mod render_reload;
 mod spawn_objects;
 mod surfaces;
 mod textures;

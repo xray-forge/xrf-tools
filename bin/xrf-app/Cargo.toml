@@ -63,6 +63,7 @@ xrf-export = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-gamedata = { workspace = true }
 xrf-gamemtl = { workspace = true }
+xrf-ipc = { workspace = true, optional = true }
 xrf-ipc-typescript = { workspace = true, optional = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-level = { workspace = true }
@@ -141,6 +142,7 @@ typescript-bindings = [
   "specta-serde",
   "specta-typescript",
   "specta-util",
+  "xrf-ipc",
   "xrf-ipc-typescript",
   "tauri-specta",
   "xrf-archive/typescript-bindings",

@@ -18,15 +18,16 @@ use xrf_renderer::{
 };
 use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, SectorPackage, SectorPacker, VisualPoser};
+use xrf_world::WorldLevelReload;
 
 use crate::core::assets::AssetMountState;
-use crate::core::session::SessionSnapshot;
+use crate::core::session::{SessionId, SessionSnapshot};
 use crate::plugins::levels::ambients::{to_render_ambient_effects, to_render_ambients};
-use crate::plugins::levels::collision::get_level_collision;
-use crate::plugins::levels::configs::{find_level_sections, get_level_sections};
+use crate::plugins::levels::collision::{LEVEL_COLLISION_PART, get_level_collision};
+use crate::plugins::levels::configs::{LEVEL_SECTIONS_PART, find_level_sections, get_level_sections};
 use crate::plugins::levels::details::{PackedLevelDetails, pack_details};
 use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
-use crate::plugins::levels::hemi::{estimate_visuals_hemi, get_level_hemi};
+use crate::plugins::levels::hemi::{LEVEL_HEMI_PART, estimate_visuals_hemi, get_level_hemi};
 use crate::plugins::levels::lens_flares::to_render_lens_flare;
 use crate::plugins::levels::lights::{PackedLevelLights, pack_lights};
 use crate::plugins::levels::object_motions::read_object_motion;
@@ -35,9 +36,10 @@ use crate::plugins::levels::particles::{PackedLevelParticles, pack_particles};
 use crate::plugins::levels::report::{
   report_missing_particle_collision, report_missing_sections, report_packed_sector,
 };
-use crate::plugins::levels::spawn::get_level_spawn;
+use crate::plugins::levels::spawn::{LEVEL_SPAWN_PART, get_level_spawn};
 use crate::plugins::levels::spawn_objects::describe_spawn_objects;
-use crate::plugins::levels::spawn_visuals::SpawnVisualReader;
+use crate::plugins::levels::spawn_visuals::{LEVEL_SPAWN_VISUALS_PART, SpawnVisualReader};
+use crate::plugins::levels::state::level_environment::LEVEL_ENVIRONMENT_PART;
 use crate::plugins::levels::state::selection::level_rain::LevelRain;
 use crate::plugins::levels::state::selection::level_thunderbolt_gradient::LevelThunderboltGradient;
 use crate::plugins::levels::state::selection::level_thunderbolts::LevelThunderbolts;
@@ -52,8 +54,9 @@ pub struct LevelRenderSource {
   level: Arc<SessionSnapshot<SelectedLevel>>,
   assets: AssetMountState,
   /// Where each texture reference the level's surfaces bind resolved to at open, each projector its lights name once
-  /// they are read, and anything else once asked for, as the weather's skies are.
-  textures: TextureResolver,
+  /// they are read, and anything else once asked for, as the weather's skies are; shared by the session's next
+  /// sources, which keep the value it was resolved for.
+  textures: Arc<TextureResolver>,
   /// The textures the game loads a step coarser at the same texture quality, out of the sections read as it opened.
   reduced: XrayReducedTextures,
 }
@@ -68,18 +71,67 @@ impl LevelRenderSource {
         .iter()
         .map(|texture| (texture.reference.clone(), texture.logical_path.clone())),
     );
-    // Read as the level opened, so no texture load waits on the configs; none where they could not be read.
-    let reduced: XrayReducedTextures = find_level_sections(&level)
+
+    Self {
+      reduced: Self::find_reduced(&level).unwrap_or_default(),
+      level,
+      assets,
+      textures: Arc::new(textures),
+    }
+  }
+
+  /// The textures the sections the level holds already reduce, so no texture load waits on the configs; none where
+  /// they are not read, or could not be.
+  fn find_reduced(level: &SessionSnapshot<SelectedLevel>) -> Option<XrayReducedTextures> {
+    find_level_sections(level)
       .as_ref()
       .and_then(|sections| sections.section(XrayReducedTextures::SECTION))
       .map(|section| XrayReducedTextures::new(section.iter().map(|(key, _)| key)))
-      .unwrap_or_default();
+  }
 
+  /// The same level drawn from `next`, a later snapshot of its session sharing its value, with the textures resolved
+  /// so far, and the reduced ones known until `next` holds sections of its own.
+  pub fn follow(&self, next: Arc<SessionSnapshot<SelectedLevel>>) -> Self {
     Self {
-      level,
-      assets,
-      textures,
-      reduced,
+      reduced: Self::find_reduced(&next).unwrap_or_else(|| self.reduced.clone()),
+      level: next,
+      assets: AssetMountState::clone(&self.assets),
+      textures: Arc::clone(&self.textures),
+    }
+  }
+
+  /// The snapshot it draws.
+  pub fn get_level(&self) -> &Arc<SessionSnapshot<SelectedLevel>> {
+    &self.level
+  }
+
+  /// What every source of a session's level shares its scene by, whichever of its snapshots it draws.
+  pub(crate) fn to_scene_key(session_id: SessionId) -> String {
+    format!("level {session_id}")
+  }
+
+  /// What the renderer reads again of a level whose next snapshot let `stale_parts` go: each package whose read asks
+  /// for any of them. The sectors are the value's, which a next snapshot shares, and the graph feeds nothing drawn.
+  // todo: reload the grass, planted onto the collision form, once a view's grass build follows a replaced grass level.
+  pub fn to_reload(stale_parts: &[&str]) -> WorldLevelReload {
+    let is_stale = |parts: &[&str]| stale_parts.iter().any(|part| parts.contains(part));
+
+    WorldLevelReload {
+      is_spawn: is_stale(&[
+        LEVEL_SPAWN_PART,
+        LEVEL_SPAWN_VISUALS_PART,
+        LEVEL_COLLISION_PART,
+        LEVEL_HEMI_PART,
+      ]),
+      is_lights: is_stale(&[LEVEL_SPAWN_PART, LEVEL_SPAWN_VISUALS_PART, LEVEL_SECTIONS_PART]),
+      is_particles: is_stale(&[
+        LEVEL_SPAWN_PART,
+        LEVEL_SECTIONS_PART,
+        LEVEL_ENVIRONMENT_PART,
+        LEVEL_COLLISION_PART,
+        LEVEL_HEMI_PART,
+      ]),
+      is_weather: is_stale(&[LEVEL_ENVIRONMENT_PART]),
     }
   }
 
@@ -123,10 +175,10 @@ impl RenderLevelSource for LevelRenderSource {
     self.level.get_sectors().len() as u32
   }
 
-  /// The level as it was opened: every source of one opening shares a scene, a level opened again streams afresh. Keyed
-  /// by the value rather than its snapshot, which a commit replaces while sharing the value it left untouched.
+  /// The level's session: every source of one opening shares a scene, its next snapshots' included, and a level opened
+  /// again streams afresh.
   fn get_scene_key(&self) -> Option<String> {
-    Some(format!("{:p}", Arc::as_ptr(&self.level.value)))
+    Some(Self::to_scene_key(self.level.session_id))
   }
 
   fn pack_sector(&self, sector: u32) -> XrfResult<SectorPackage> {

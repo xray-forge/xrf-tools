@@ -5,11 +5,13 @@ pub mod capture_request;
 pub mod channel_event_sink;
 pub mod commands;
 pub mod disk_cache_store;
+pub mod level_scene_follower;
 pub mod packaged_bundle;
 pub mod plugin;
 pub mod render_answer;
 pub mod renderer;
 pub mod request;
+pub mod shown_levels;
 pub mod state;
 #[cfg(test)]
 mod tests;

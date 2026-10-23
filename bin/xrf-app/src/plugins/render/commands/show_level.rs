@@ -6,7 +6,6 @@ use xrf_renderer::{RenderLevelSource, RenderViewportId};
 use crate::core::assets::AssetMountState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::render_source::LevelRenderSource;
 use crate::plugins::levels::state::{LevelState, SelectedLevel};
 use crate::plugins::render::state::RenderState;
 
@@ -33,7 +32,7 @@ pub fn render_show_level(
         viewport.0
       );
 
-      Some(Arc::new(LevelRenderSource::new(level, AssetMountState::clone(&assets))))
+      Some(state.get_level_source(level, &assets) as Arc<dyn RenderLevelSource>)
     }
     None => None,
   };

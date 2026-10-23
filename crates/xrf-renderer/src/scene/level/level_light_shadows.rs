@@ -722,6 +722,14 @@ impl LevelLightShadows {
     self.due.clear();
   }
 
+  /// Lets every light's faces go, for lights that replace them: each light asked for after takes faces anew.
+  pub fn forget_lights(&mut self) {
+    self.entries.clear();
+    self.drawn.clear();
+    self.due.clear();
+    self.allocator = ShadowTileAllocator::new(Self::ATLAS_SIZE, LIGHT_SHADOW_MIN_SIZE);
+  }
+
   /// Makes the atlas while a view casts the lights' shadows, and lets it go, with every light's faces, once none does.
   fn hold_atlas(&mut self, device: &wgpu::Device) {
     match (self.is_cast, self.atlas.is_some()) {
