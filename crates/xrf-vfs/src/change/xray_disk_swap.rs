@@ -10,9 +10,6 @@ use xrf_utils::format_path;
 
 /// Files a commit replaces, creates or deletes on disk together: every new content staged beside its target first, then
 /// every target swapped, and every swap undone when one fails, so the files hold either all of a commit or none of it.
-///
-/// Durable as [`xrf_utils::write_file_staged`] is: each staged file is synced before anything is renamed. A swap moves
-/// the file it replaces aside rather than over-writing it, which is what lets a later failure put it back.
 #[derive(Debug, Default)]
 pub(crate) struct XrayDiskSwap {
   files: Vec<XraySwappedFile>,

@@ -3,10 +3,6 @@ use xrf_error::{XrfError, XrfResult};
 use crate::{XrayInputRecord, XrayLogicalPath, XrayLookupScope, XraySearch, XraySearchKey, XrayVfs};
 
 /// One gesture's writes and deletes, committed all at once or not at all through [`XrayVfs::commit`].
-///
-/// Addressed by logical path through the steps of the search it was made from: a path is written where that search
-/// reads it from, when a writable loose mount holds it, and otherwise created in the first writable loose mount the
-/// search reaches. A transaction may carry what its author read, so a commit refuses it once any of that moved.
 #[derive(Clone, Debug)]
 pub struct XrayTransaction {
   key: XraySearchKey,
