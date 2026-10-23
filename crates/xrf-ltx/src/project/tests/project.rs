@@ -8,7 +8,9 @@ use std::path::PathBuf;
 
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayMountMode, XrayRoots, XrayVfs};
+use xrf_vfs::{
+  XrayInputKind, XrayInputRecord, XrayLogicalPath, XrayLookupScope, XrayMountMode, XrayProbe, XrayRoots, XrayVfs,
+};
 
 use crate::project::LtxProject;
 
@@ -219,14 +221,96 @@ fn a_lean_project_lists_nothing_and_still_resolves_system_ltx_with_its_includes_
     "[zone_base]\nidle_light_range = 8\nidle_light = off\n",
   )?;
 
-  let roots: XrayRoots = XrayRoots::one(root.clone(), XrayMountMode::Directory);
-  let project: LtxProject = LtxProject::open_lean_at_roots_opt(&roots, Some("configs"), Default::default())?;
+  let vfs: XrayVfs = XrayRoots::one(root.clone(), XrayMountMode::Directory).open()?;
+  let probe: XrayProbe = vfs.probe().with_step("root", XrayLookupScope::all());
+  let project: LtxProject = LtxProject::open_lean_at_probe_opt(&root, &probe, Some("configs"), Default::default())?;
   let system = project.system_ltx()?;
   let campfire = system.ltx.section("campfire").expect("the campfire section to resolve");
 
   assert!(project.ltx_files.is_empty(), "nothing is listed up front");
   assert_eq!(campfire.get("idle_light"), Some("on"));
   assert_eq!(campfire.get("idle_light_range"), Some("8"));
+
+  Ok(())
+}
+
+#[test]
+fn a_project_over_a_recording_probe_records_the_configs_it_resolves() -> XrfResult {
+  let root: PathBuf = create_root("recorded")?;
+  let configs: PathBuf = root.join("configs");
+
+  fs::create_dir_all(configs.join("zones"))?;
+  fs::write(
+    configs.join("system.ltx"),
+    "#include \"zones\\*.ltx\"\n[campfire]:zone_base\n",
+  )?;
+  fs::write(
+    configs.join("zones").join("zones.ltx"),
+    "[zone_base]\nidle_light = off\n",
+  )?;
+  fs::write(root.join("unrelated.ltx"), "[unrelated]\n")?;
+
+  let vfs: XrayVfs = XrayRoots::one(root.clone(), XrayMountMode::Directory).open()?;
+  let record: XrayInputRecord = XrayInputRecord::new();
+  let probe: XrayProbe = vfs.probe().with_step("root", XrayLookupScope::all()).recording(&record);
+  let project: LtxProject = LtxProject::open_lean_at_probe_opt(&root, &probe, Some("configs"), Default::default())?;
+
+  project.system_ltx()?;
+
+  let mut read: Vec<String> = record
+    .list()
+    .into_iter()
+    .map(|(input, answer)| match input.get_kind() {
+      XrayInputKind::File(path) => format!("{} {}", path.as_str(), answer.source.is_some()),
+      XrayInputKind::Listing(directory) => {
+        format!("listing {}", directory.as_ref().map_or("", XrayLogicalPath::as_str))
+      }
+    })
+    .collect();
+
+  read.sort();
+
+  // The wildcard include is a listing of its directory, and nothing outside `configs` is read.
+  assert_eq!(
+    read,
+    vec![
+      "configs\\system.ltx true",
+      "configs\\zones\\zones.ltx true",
+      "listing configs\\zones",
+    ]
+  );
+
+  Ok(())
+}
+
+#[test]
+fn a_project_over_a_probe_reads_what_its_search_reaches_within_the_prefix() -> XrfResult {
+  let root: PathBuf = create_root("over_probe")?;
+
+  fs::create_dir_all(root.join("configs"))?;
+  fs::write(root.join("configs").join("system.ltx"), "#include \"game.ltx\"\n")?;
+  fs::write(root.join("configs").join("game.ltx"), "[game]\n")?;
+  fs::write(root.join("unrelated.ltx"), "[unrelated]\n")?;
+
+  let vfs: XrayVfs = XrayRoots::one(root.clone(), XrayMountMode::Directory).open()?;
+  let probe: XrayProbe = vfs.probe().with_step("root", XrayLookupScope::all());
+  let project: LtxProject = LtxProject::open_at_probe_opt(&root, &probe, Some("configs"), Default::default())?;
+
+  assert_eq!(
+    project.ltx_files,
+    vec![
+      XrayLogicalPath::new("configs\\game.ltx")?,
+      XrayLogicalPath::new("configs\\system.ltx")?
+    ]
+  );
+  assert_eq!(
+    project.ltx_file_entries,
+    vec![XrayLogicalPath::new("configs\\system.ltx")?]
+  );
+  assert_eq!(
+    project.config_path("game.ltx")?,
+    XrayLogicalPath::new("configs\\game.ltx")?
+  );
 
   Ok(())
 }

@@ -52,7 +52,7 @@ pub fn open_ltx_project(path: &Path, matches: &ArgMatches, output: &OutputOption
 /// An installation keeps nearly every config in an archive volume, so naming only the game directory would leave the
 /// answer silent about where thousands of configs came from.
 fn report_sources(project: &LtxProject, output: &OutputOptions) {
-  for mount in project.vfs().scoped(project.scope()).list_mounts() {
+  for mount in project.vfs().get_mounts() {
     xrf_output::info!(
       output,
       "Source: {:?} {} ({})",

@@ -38,6 +38,6 @@ pub use path::{XrayCollisionSite, XrayLogicalPath, XrayPathCollision};
 pub use source::{XrayArchiveSource, XrayAssetSource, XrayDeclaredRoot, XraySourceKind, label_from_path};
 pub use trace::{XrayReadTrace, XrayReadTraceEntry, XrayReadTraceHotPath, XrayReadTraceSummary};
 pub use vfs::{
-  XrayDirectoryListing, XrayLookupScope, XrayMountedEntry, XrayProbe, XrayProbeStep, XrayResolution, XrayScopedVfs,
-  XraySearchedSource, XrayShadowedCopy, XrayShadowingEntry, XrayVfs,
+  XrayDirectoryListing, XrayLookupScope, XrayMountedEntry, XrayOwnedProbe, XrayProbe, XrayProbeStep, XrayResolution,
+  XrayScopedVfs, XraySearchedSource, XrayShadowedCopy, XrayShadowingEntry, XrayVfs,
 };
