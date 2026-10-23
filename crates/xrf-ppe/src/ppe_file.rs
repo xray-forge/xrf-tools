@@ -14,6 +14,12 @@ use crate::ppe_color_map::PpeColorMap;
 /// Colour parameters an effect animates, in the order the file stores them.
 pub const PPE_COLORS: [&str; 3] = ["base color", "add color", "gray color"];
 
+/// Channels each colour parameter is assembled from, in the order the file stores them.
+pub const PPE_COLOR_CHANNELS: [&str; 3] = ["red", "green", "blue"];
+
+/// What the colour grading's influence channel is called, which no part of the file spells.
+pub const PPE_COLOR_MAP_INFLUENCE: &str = "colour map influence";
+
 /// Scalar parameters an effect animates, in the order the file stores them.
 pub const PPE_VALUES: [&str; 7] = [
   "gray value",
@@ -205,6 +211,27 @@ impl PpeFile {
       .flat_map(PpeColor::channels)
       .chain(&self.values)
       .chain(self.color_map.as_ref().map(|color_map| &color_map.influence))
+  }
+
+  /// Every envelope the effect carries under the name an author knows it by, in the order the file stores them: each
+  /// colour's channels as `base color red`, then the scalars, then the colour grading's influence.
+  pub fn get_named_envelopes(&self) -> Vec<(String, &AnimationEnvelope)> {
+    let colors = PPE_COLORS.iter().zip(&self.colors).flat_map(|(color, parameter)| {
+      PPE_COLOR_CHANNELS
+        .iter()
+        .zip(parameter.channels())
+        .map(move |(channel, envelope)| (format!("{color} {channel}"), envelope))
+    });
+    let values = PPE_VALUES
+      .iter()
+      .zip(&self.values)
+      .map(|(value, envelope)| ((*value).to_owned(), envelope));
+    let influence = self
+      .color_map
+      .as_ref()
+      .map(|color_map| (PPE_COLOR_MAP_INFLUENCE.to_owned(), &color_map.influence));
+
+    colors.chain(values).chain(influence).collect()
   }
 
   /// Seconds the effect runs for, `BasicPostProcessAnimator::GetLength`.

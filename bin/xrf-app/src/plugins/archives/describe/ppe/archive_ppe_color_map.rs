@@ -1,13 +1,10 @@
 use serde::Serialize;
-use xrf_ppe::PpeColorMap;
+use xrf_ppe::{PPE_COLOR_MAP_INFLUENCE, PpeColorMap};
 use xrf_vfs::XrayAssetType;
 
 use crate::plugins::archives::describe::animation::ArchiveAnimationChannel;
 use crate::plugins::archives::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::plugins::archives::describe::archive_reference::ArchiveReference;
-
-/// The name the influence channel is described under, which no part of the file spells.
-const INFLUENCE: &str = "colour map influence";
 
 /// The colour grading an effect applies, which only version 2 carries.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -28,7 +25,7 @@ impl ArchivePpeColorMap {
     Self {
       texture: (!color_map.texture.is_empty())
         .then(|| ArchiveReference::resolve(source, XrayAssetType::Dds, &color_map.texture)),
-      influence: ArchiveAnimationChannel::of(INFLUENCE, &color_map.influence),
+      influence: ArchiveAnimationChannel::of(PPE_COLOR_MAP_INFLUENCE, &color_map.influence),
       is_used: color_map.is_used(),
     }
   }

@@ -54,8 +54,9 @@ Inspect `skipped_mounts` and `collisions` when diagnosing incomplete or conflict
 
 ## Check selection and results
 
-Use `GamedataVerificationType::get_all()` for all selectable checks. The set covers animations, levels, LTX, meshes,
-particles and their usage, scripts, shaders, sounds, spawns, textures, weapons, and weathers. Passing an empty selection
+Use `GamedataVerificationType::get_all()` for all selectable checks. The set covers animations (HUD animations, object
+motions and post-process effects), levels, LTX, meshes, particles and their usage, scripts, shaders, sounds, spawns,
+textures, weapons, and weathers. Passing an empty selection
 is an error; default verify options do not mean all checks.
 
 Input coverage and name collisions run in addition to the selected checks. Coverage reports sources that could not

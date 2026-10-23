@@ -189,6 +189,32 @@ fn a_payload_the_parameters_do_not_account_for_is_refused() -> XrfResult {
 }
 
 #[test]
+fn each_envelope_is_named_as_an_author_knows_its_channel() -> XrfResult {
+  let effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(2))?;
+  let named: Vec<(String, &AnimationEnvelope)> = effect.get_named_envelopes();
+  let names: Vec<&str> = named.iter().map(|(name, _)| name.as_str()).collect();
+
+  // Nine colour channels, seven scalars and the grading's influence, in the order `get_envelopes` walks them.
+  assert_eq!(names.len(), effect.get_envelopes().count());
+  assert_eq!(
+    &names[..4],
+    ["base color red", "base color green", "base color blue", "add color red"]
+  );
+  assert_eq!(names[9], "gray value");
+  assert_eq!(names.last(), Some(&"colour map influence"));
+  assert_eq!(named[9].1, &effect.values[0]);
+
+  let effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(1))?;
+
+  assert_eq!(
+    effect.get_named_envelopes().last().map(|(name, _)| name.as_str()),
+    Some("noise fps")
+  );
+
+  Ok(())
+}
+
+#[test]
 fn an_effect_runs_as_long_as_its_longest_parameter() -> XrfResult {
   let effect: PpeFile = PpeFile::read_from_bytes::<XRayByteOrder>(new_effect_bytes(2))?;
 

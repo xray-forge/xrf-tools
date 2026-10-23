@@ -1,8 +1,12 @@
 use std::time::Duration;
 
-use crate::project::animations::hud_item_animations_verification_result::GamedataHudItemAnimationsVerificationResult;
-use crate::project::animations::hud_motion_collisions_verification_result::GamedataHudMotionCollisionsVerificationResult;
-use crate::project::animations::player_hud_animations_verification_result::GamedataPlayerHudAnimationsVerificationResult;
+use xrf_anm::AnmFile;
+use xrf_ppe::PpeFile;
+
+use crate::project::animations::envelopes::envelope_animations_verification_result::GamedataEnvelopeAnimationsVerificationResult;
+use crate::project::animations::hud::hud_item_animations_verification_result::GamedataHudItemAnimationsVerificationResult;
+use crate::project::animations::hud::hud_motion_collisions_verification_result::GamedataHudMotionCollisionsVerificationResult;
+use crate::project::animations::hud::player_hud_animations_verification_result::GamedataPlayerHudAnimationsVerificationResult;
 use crate::{Finding, GamedataCheckResult, GamedataVerificationStatus};
 
 pub struct GamedataAnimationsVerificationResult {
@@ -10,7 +14,9 @@ pub struct GamedataAnimationsVerificationResult {
   pub(crate) findings: Vec<Finding>,
   pub(crate) hud_item_animations: GamedataHudItemAnimationsVerificationResult,
   pub(crate) hud_motion_collisions: GamedataHudMotionCollisionsVerificationResult,
+  pub(crate) object_motions: GamedataEnvelopeAnimationsVerificationResult<AnmFile>,
   pub(crate) player_hud_animations: GamedataPlayerHudAnimationsVerificationResult,
+  pub(crate) post_process_effects: GamedataEnvelopeAnimationsVerificationResult<PpeFile>,
 }
 
 impl GamedataCheckResult for GamedataAnimationsVerificationResult {
@@ -23,15 +29,19 @@ impl GamedataCheckResult for GamedataAnimationsVerificationResult {
       self.player_hud_animations.get_status(),
       self.hud_item_animations.get_status(),
       self.hud_motion_collisions.get_status(),
+      self.object_motions.get_status(),
+      self.post_process_effects.get_status(),
     ])
   }
 
   fn get_failure_message(&self) -> String {
     format!(
-      "{}, {}, {}",
+      "{}, {}, {}, {}, {}",
       self.player_hud_animations.get_failure_message(),
       self.hud_item_animations.get_failure_message(),
-      self.hud_motion_collisions.get_failure_message()
+      self.hud_motion_collisions.get_failure_message(),
+      self.object_motions.get_failure_message(),
+      self.post_process_effects.get_failure_message()
     )
   }
 
@@ -45,9 +55,10 @@ mod tests {
   use std::time::Duration;
 
   use super::GamedataAnimationsVerificationResult;
-  use crate::project::animations::hud_item_animations_verification_result::GamedataHudItemAnimationsVerificationResult;
-  use crate::project::animations::hud_motion_collisions_verification_result::GamedataHudMotionCollisionsVerificationResult;
-  use crate::project::animations::player_hud_animations_verification_result::GamedataPlayerHudAnimationsVerificationResult;
+  use crate::project::animations::envelopes::envelope_animations_verification_result::GamedataEnvelopeAnimationsVerificationResult;
+  use crate::project::animations::hud::hud_item_animations_verification_result::GamedataHudItemAnimationsVerificationResult;
+  use crate::project::animations::hud::hud_motion_collisions_verification_result::GamedataHudMotionCollisionsVerificationResult;
+  use crate::project::animations::hud::player_hud_animations_verification_result::GamedataPlayerHudAnimationsVerificationResult;
   use crate::{
     Finding, GamedataFindingFactory, GamedataVerificationReport, GamedataVerificationRule, GamedataVerificationStatus,
     GamedataVerificationType,
@@ -69,6 +80,8 @@ mod tests {
         findings: vec![finding.clone()],
         hud_item_animations: GamedataHudItemAnimationsVerificationResult::default(),
         hud_motion_collisions: GamedataHudMotionCollisionsVerificationResult::default(),
+        object_motions: GamedataEnvelopeAnimationsVerificationResult::default(),
+        post_process_effects: GamedataEnvelopeAnimationsVerificationResult::default(),
         player_hud_animations: GamedataPlayerHudAnimationsVerificationResult {
           checked_huds_count: 1,
           findings: vec![finding.clone()],
@@ -101,6 +114,8 @@ mod tests {
           invalid_items_count: 1,
         },
         hud_motion_collisions: GamedataHudMotionCollisionsVerificationResult::default(),
+        object_motions: GamedataEnvelopeAnimationsVerificationResult::default(),
+        post_process_effects: GamedataEnvelopeAnimationsVerificationResult::default(),
         player_hud_animations: GamedataPlayerHudAnimationsVerificationResult {
           checked_huds_count: 1,
           findings: Vec::new(),
