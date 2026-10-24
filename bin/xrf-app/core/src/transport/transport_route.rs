@@ -5,8 +5,8 @@ use std::sync::Arc;
 use bytes::Bytes;
 use serde::de::DeserializeOwned;
 
+use crate::TauriResult;
 use crate::transport::{TransportAnswer, TransportRefusal};
-use crate::types::TauriResult;
 
 /// What calling a route comes to.
 pub(crate) type TransportFuture = Pin<Box<dyn Future<Output = Result<TransportAnswer, TransportRefusal>> + Send>>;

@@ -5,10 +5,10 @@ use std::net::{SocketAddr, TcpStream};
 use hyper::header::HeaderValue;
 use serde::Deserialize;
 
+use crate::TauriResult;
 use crate::transport::{
   TransportAnswer, TransportOrigins, TransportRoute, TransportRoutes, TransportServer, TransportToken,
 };
-use crate::types::TauriResult;
 
 const ORIGIN: &str = "http://tauri.localhost";
 

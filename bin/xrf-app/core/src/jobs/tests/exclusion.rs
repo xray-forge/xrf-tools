@@ -5,20 +5,21 @@ use uuid::Uuid;
 use xrf_job::JobHandle;
 
 use crate::jobs::job_conclusion::JobConclusion;
-use crate::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart};
+use crate::jobs::tests::kinds;
+use crate::jobs::{JobRegistration, JobRegistry, JobResource, JobStart};
 
 #[test]
 fn texture_save_and_sprite_pack_cannot_write_the_same_file() {
   let output = xrf_test_utils::utils::build_absolute_generated_test_resource_path("job_leases/shared.dds");
   let registry = Arc::new(JobRegistry::new());
   let (_job, _registration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::TexturesSave).with_resources(vec![JobResource::file(&output)]))
+    .register(JobStart::new(Uuid::new_v4(), kinds::TEXTURES_SAVE).with_resources(vec![JobResource::file(&output)]))
     .expect("first writer starts");
 
   assert!(
     registry
       .register(
-        JobStart::new(Uuid::new_v4(), JobKind::SpriteEquipmentPack)
+        JobStart::new(Uuid::new_v4(), kinds::SPRITE_EQUIPMENT_PACK)
           .with_exclusion_group("sprite-equipment.pack")
           .with_resources(vec![JobResource::file(&output)])
       )
@@ -32,7 +33,7 @@ fn extraction_cannot_write_inside_an_unpack_destination() {
   let registry = Arc::new(JobRegistry::new());
   let (_job, _registration) = registry
     .register(
-      JobStart::new(Uuid::new_v4(), JobKind::ArchivesUnpack)
+      JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_UNPACK)
         .with_exclusion_group("archives.unpack")
         .with_resources(vec![JobResource::tree(&output)]),
     )
@@ -41,7 +42,7 @@ fn extraction_cannot_write_inside_an_unpack_destination() {
   assert!(
     registry
       .register(
-        JobStart::new(Uuid::new_v4(), JobKind::ArchivesExtract)
+        JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_EXTRACT)
           .with_exclusion_group("archives.extract")
           .with_resources(vec![JobResource::tree(output.join("textures"))])
       )
@@ -51,7 +52,7 @@ fn extraction_cannot_write_inside_an_unpack_destination() {
 
 #[test]
 fn grouped_modes_stay_exclusive_until_cancelled_work_settles() {
-  for first_kind in [JobKind::ConfigsFormat, JobKind::ConfigsCheckFormat] {
+  for first_kind in [kinds::CONFIGS_FORMAT, kinds::CONFIGS_CHECK_FORMAT] {
     let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
     let id: Uuid = Uuid::new_v4();
     let (_job, registration): (JobHandle, JobRegistration) = registry
@@ -69,7 +70,7 @@ fn grouped_modes_stay_exclusive_until_cancelled_work_settles() {
         registry.cancel(id);
       }
 
-      for second_kind in [JobKind::ConfigsFormat, JobKind::ConfigsCheckFormat] {
+      for second_kind in [kinds::CONFIGS_FORMAT, kinds::CONFIGS_CHECK_FORMAT] {
         assert!(
           registry
             .register(
@@ -89,7 +90,7 @@ fn grouped_modes_stay_exclusive_until_cancelled_work_settles() {
     drop(registration);
 
     registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_exclusion_group("formatter"))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_exclusion_group("formatter"))
       .expect("settlement releases the group");
   }
 }
@@ -99,7 +100,7 @@ fn resource_leases_remain_exclusive_across_different_groups() {
   let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
   let (_job, _registration): (JobHandle, JobRegistration) = registry
     .register(
-      JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack)
+      JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK)
         .with_exclusion_group("builder")
         .with_resources(vec![JobResource::file(
           std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("output/shared"),
@@ -110,7 +111,7 @@ fn resource_leases_remain_exclusive_across_different_groups() {
   assert!(
     registry
       .register(
-        JobStart::new(Uuid::new_v4(), JobKind::ArchivesUnpack)
+        JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_UNPACK)
           .with_resources(vec![JobResource::file(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("output/shared")
           )])
@@ -121,7 +122,7 @@ fn resource_leases_remain_exclusive_across_different_groups() {
 
   registry
     .register(
-      JobStart::new(Uuid::new_v4(), JobKind::ArchivesUnpack)
+      JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_UNPACK)
         .with_exclusion_group("parser")
         .with_resources(vec![JobResource::file(
           std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("output/other"),
@@ -134,14 +135,14 @@ fn resource_leases_remain_exclusive_across_different_groups() {
 fn failed_work_releases_its_group() {
   let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
   let (_job, registration): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_exclusion_group("verifier"))
+    .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_exclusion_group("verifier"))
     .expect("verification starts");
 
   drop(registration);
 
   assert_eq!(registry.list()[0].conclusion, Some(JobConclusion::Failed));
   registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_exclusion_group("verifier"))
+    .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_exclusion_group("verifier"))
     .expect("failure permits a retry");
 }
 
@@ -157,7 +158,7 @@ fn concurrent_registrations_admit_exactly_one_group_owner() {
       thread::spawn(move || {
         barrier.wait();
 
-        registry.register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_exclusion_group("verifier"))
+        registry.register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_exclusion_group("verifier"))
       })
     })
     .collect();

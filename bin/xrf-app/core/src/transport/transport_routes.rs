@@ -31,6 +31,7 @@ impl<C: Send + 'static> TransportRoutes<C> {
     self.routes.get(path.strip_prefix('/').unwrap_or(path))
   }
 
+  /// How many routes are served.
   pub fn len(&self) -> usize {
     self.routes.len()
   }

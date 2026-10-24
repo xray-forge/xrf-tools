@@ -32,6 +32,7 @@ enum SessionPartCell<V> {
 }
 
 impl SessionParts {
+  /// No part built or kept yet.
   pub fn new() -> Self {
     Self {
       slots: Mutex::new(HashMap::new()),
@@ -64,7 +65,7 @@ impl SessionParts {
         carried.insert(
           *key,
           SessionPartSlot {
-            inputs: slot.inputs.to_filtered(|_| true),
+            inputs: slot.inputs.to_detached(),
             ..slot.clone()
           },
         );

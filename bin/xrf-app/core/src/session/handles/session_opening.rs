@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use xrf_vfs::{XrayInputRecord, XrayRevision};
+use xrf_vfs::{XrayInputRecord, XrayRevision, XraySearch};
 
+use crate::TauriResult;
+use crate::assets::AssetMountState;
 use crate::session::{SessionDerived, SessionId, SessionParts, SessionSnapshot, Sessions};
-use crate::types::TauriResult;
 
 /// A handle reserved for one open: committed once with what the open read, or abandoned as it drops, so an open that
 /// fails on its way leaves no handle behind.
@@ -42,22 +43,37 @@ impl<T: Send + Sync + 'static> SessionOpening<T> {
     )
   }
 
-  /// Publishes what an open read at `revision`, the one its search was taken at, with the inputs its value was read
-  /// from and the parts it read on its way.
+  /// Publishes what an open read through `search`, at that search's revision, with the inputs its value was read from
+  /// and the parts it read on its way; then answers what the handle holds once caught up with a change published since
+  /// the search was taken, which no fan-out of that change found the opening to move for.
   ///
   /// # Errors
   ///
   /// Returns an error when the handle was closed while it opened.
-  pub fn commit_derived(self, read: SessionDerived<T>, revision: XrayRevision) -> TauriResult<Arc<SessionSnapshot<T>>> {
+  pub fn commit_read(
+    self,
+    read: SessionDerived<T>,
+    search: &XraySearch,
+    assets: &AssetMountState,
+  ) -> TauriResult<Arc<SessionSnapshot<T>>> {
+    let sessions: Sessions<T> = self.sessions.clone();
+    let opened: Arc<SessionSnapshot<T>> =
+      self.commit_with(read.value, search.get_vfs().get_revision(), read.inputs, read.parts)?;
+
+    Ok(sessions.catch_up(opened, assets))
+  }
+
+  /// Publishes what a test read at `revision`, without the catch-up a real open's commit makes.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the handle was closed while it opened.
+  #[cfg(any(test, feature = "fixtures"))]
+  pub fn commit_fixture(self, read: SessionDerived<T>, revision: XrayRevision) -> TauriResult<Arc<SessionSnapshot<T>>> {
     self.commit_with(read.value, revision, read.inputs, read.parts)
   }
 
-  /// Publishes `value` at `revision` with the inputs and parts it was read with; see [`Self::commit_derived`].
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the handle was closed while it opened.
-  pub fn commit_with(
+  fn commit_with(
     mut self,
     value: T,
     revision: XrayRevision,

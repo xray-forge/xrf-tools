@@ -8,6 +8,7 @@ pub struct LogSink {
 }
 
 impl LogSink {
+  /// A sink writing to the console, and to `file` where the run has one.
   pub fn new(file: Option<File>) -> Self {
     Self { file }
   }

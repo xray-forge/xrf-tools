@@ -21,19 +21,19 @@ impl AssetTextureDescriptor {
   /// Describes a located texture, or nothing when its bytes cannot be reached at all.
   ///
   /// A loose file is read by path, which costs only the header. An archived entry has no path to read a prefix of, so
-  /// its bytes come out of the volume whole - the same read the frontend makes a moment later to upload it, which is
-  /// the price of describing an archived texture at all.
+  /// its bytes come out of the volume whole, which is the price of describing an archived texture at all.
   pub fn describe(search: &XraySearch, asset: &XrayAsset) -> Option<Self> {
     match asset.to_physical_path() {
       Some(path) => Self::describe_path(&path),
-      None => {
-        let bytes: Vec<u8> = search.read_asset(asset).ok()?;
+      None => Some(Self::of_bytes(&search.read_asset(asset).ok()?)),
+    }
+  }
 
-        Some(Self {
-          size: bytes.len() as u64,
-          shape: AssetTextureShape::of_bytes(&bytes),
-        })
-      }
+  /// Describes a texture file held whole, as an entry read out of a volume is.
+  pub fn of_bytes(bytes: &[u8]) -> Self {
+    Self {
+      size: bytes.len() as u64,
+      shape: AssetTextureShape::of_bytes(bytes),
     }
   }
 

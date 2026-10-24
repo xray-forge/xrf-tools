@@ -3,7 +3,9 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use crate::assets::asset_change_order_state::AssetChangeOrderState;
 use crate::assets::asset_change_ticket::AssetChangeTicket;
-use crate::assets::asset_fan_out::AssetFanOutStart;
+
+/// Telling everyone of one change, filed in its turn.
+pub(crate) type AssetChangeDelivery = Box<dyn FnOnce() + Send>;
 
 /// The order change events are heard in: the order their changes were published. Each event's delivery runs once every
 /// one issued before it ran, on whichever thread finishes the run, so no thread ever waits on another's delivery.
@@ -39,7 +41,7 @@ impl AssetChangeOrder {
 
   /// Files a delivery in its place and runs every one whose turn has come, unless another thread is running them,
   /// which then runs this one too.
-  pub(crate) fn file(&self, number: u64, delivery: Option<AssetFanOutStart>) {
+  pub(crate) fn file(&self, number: u64, delivery: Option<AssetChangeDelivery>) {
     let mut state: MutexGuard<AssetChangeOrderState> = self.lock();
 
     state.ready.insert(number, delivery);

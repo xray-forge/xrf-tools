@@ -1,51 +1,29 @@
+use std::fmt::{Display, Formatter, Result as FormatterResult};
+
 use serde::Serialize;
 
-// Serialization, diagnostics and frontend constants share exactly these wire identities.
-macro_rules! job_kinds {
-  ($($variant:ident => $wire:literal),+ $(,)?) => {
-    /// The application operations that can be registered, cancelled and rediscovered.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
-    #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-    pub enum JobKind {
-      $(#[serde(rename = $wire)] $variant),+
-    }
-    impl JobKind {
-      pub const ALL: &[Self] = &[$(Self::$variant),+];
-      pub const fn as_str(self) -> &'static str {
-        match self { $(Self::$variant => $wire),+ }
-      }
-    }
-  };
+/// The kind of an operation that can be registered, cancelled and rediscovered: its domain's plugin name, a dot and the
+/// operation (`archives.pack`).
+///
+/// Each domain declares its own kinds in its registry (`@jobs`), which builds them under its plugin name, so the
+/// registry knows no domain and no domain can spell another's kind.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+pub struct JobKind(&'static str);
+
+impl JobKind {
+  /// The kind spelled `name` on the wire, which a domain's registry builds from its plugin name.
+  pub const fn new(name: &'static str) -> Self {
+    Self(name)
+  }
+
+  pub const fn as_str(self) -> &'static str {
+    self.0
+  }
 }
 
-job_kinds! {
-  ArchivesExtract => "archives.extract",
-  ArchivesCompare => "archives.compare",
-  ArchivesPack => "archives.pack",
-  ArchivesPatch => "archives.patch",
-  ArchivesUnpack => "archives.unpack",
-  ConfigsCheckFormat => "configs.check-format",
-  ConfigsFormat => "configs.format",
-  ConfigsVerify => "configs.verify",
-  SpawnPack => "spawn.pack",
-  SpawnUnpack => "spawn.unpack",
-  SpriteEquipmentPack => "sprite-equipment.pack",
-  GamedataVerify => "gamedata.verify",
-  LevelsCaptureCube => "levels.capture-cube",
-  LevelsCaptureMap => "levels.capture-map",
-  TexturesBuild => "textures.build",
-  TexturesCompareEncodings => "textures.compare-encodings",
-  TexturesMakeBump => "textures.make-bump",
-  TexturesSave => "textures.save",
-  TranslationsBuild => "translations.build",
-  TranslationsCheckFormat => "translations.check-format",
-  TranslationsFormat => "translations.format",
-  TranslationsParse => "translations.parse",
-  TranslationsVerify => "translations.verify",
-}
-
-impl std::fmt::Display for JobKind {
-  fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    formatter.write_str(self.as_str())
+impl Display for JobKind {
+  fn fmt(&self, formatter: &mut Formatter<'_>) -> FormatterResult {
+    formatter.write_str(self.0)
   }
 }

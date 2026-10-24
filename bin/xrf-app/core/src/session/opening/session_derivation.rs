@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use rayon::ThreadPool;
 
+use crate::TauriResult;
 use crate::assets::AssetMountState;
 use crate::session::{SessionDerived, SessionSnapshot};
-use crate::types::TauriResult;
 
 /// How a session's plugin derives its value again from the snapshot it replaces, reading through `assets` as its open
 /// did.

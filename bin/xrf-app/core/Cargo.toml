@@ -8,7 +8,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-bytes = "1.12.1"
+bytes = { workspace = true }
 dirs = "7.0.0"
 env_logger = { workspace = true }
 getrandom = "0.4.3"
@@ -29,6 +29,7 @@ xrf-dds = { workspace = true }
 xrf-engine-target = { workspace = true }
 xrf-env-flags = { workspace = true }
 xrf-error = { workspace = true }
+xrf-ipc-typescript = { workspace = true, optional = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-utils = { workspace = true }
 xrf-vfs = { workspace = true }
@@ -36,7 +37,6 @@ xrf-vfs = { workspace = true }
 [dev-dependencies]
 # The mock runtime, which dispatches a command the way a webview would without one.
 tauri = { workspace = true, features = ["test"] }
-xrf-ipc-typescript = { workspace = true }
 xrf-test-utils = { workspace = true }
 
 [features]
@@ -48,6 +48,7 @@ typescript-bindings = [
   "xrf-engine-target/typescript-bindings",
   "xrf-env-flags/typescript-bindings",
   "xrf-error/typescript-bindings",
+  "xrf-ipc-typescript",
   "xrf-job/typescript-bindings",
   "xrf-vfs/typescript-bindings",
 ]

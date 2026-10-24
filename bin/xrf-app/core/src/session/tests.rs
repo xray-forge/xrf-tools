@@ -15,7 +15,7 @@ use xrf_vfs::{
 
 use crate::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountState};
 use crate::session::{
-  Session, SessionChange, SessionDerived, SessionId, SessionPart, SessionParts, SessionRestore, SessionRootChange,
+  Session, SessionChange, SessionDerived, SessionId, SessionPart, SessionParts, SessionRootChange, SessionScope,
   SessionScopes, SessionSnapshot, Sessions,
 };
 
@@ -24,9 +24,9 @@ fn a_failed_replacement_keeps_the_committed_value_readable() {
   let session: Session<String> = Session::new("test");
   let first: SessionId = SessionId::generate();
 
-  session.begin_open(first).unwrap();
+  session.begin_open(first);
   session.commit_open(first, String::from("first")).unwrap();
-  session.begin_open(SessionId::generate()).unwrap();
+  session.begin_open(SessionId::generate());
 
   assert_eq!(session.require(first).unwrap().as_str(), "first");
 }
@@ -37,16 +37,16 @@ fn a_late_open_cannot_replace_a_newer_open_or_undo_its_close() {
   let first: SessionId = SessionId::generate();
   let second: SessionId = SessionId::generate();
 
-  session.begin_open(first).unwrap();
-  session.begin_open(second).unwrap();
+  session.begin_open(first);
+  session.begin_open(second);
   session.commit_open(second, "second").unwrap();
 
   assert!(session.commit_open(first, "first").is_err());
 
-  session.close(&[second]).unwrap();
+  session.close(&[second]);
 
   assert!(session.commit_open(first, "first").is_err());
-  assert!(session.get().unwrap().is_none());
+  assert!(session.get().is_none());
 }
 
 #[test]
@@ -54,8 +54,8 @@ fn closing_a_pending_open_prevents_its_publication() {
   let session: Session<&str> = Session::new("test");
   let id: SessionId = SessionId::generate();
 
-  session.begin_open(id).unwrap();
-  session.close(&[id]).unwrap();
+  session.begin_open(id);
+  session.close(&[id]);
 
   assert!(session.commit_open(id, "late").is_err());
 }
@@ -66,12 +66,12 @@ fn an_old_teardown_cannot_close_a_new_owners_session_or_opening() {
   let old: SessionId = SessionId::generate();
   let new: SessionId = SessionId::generate();
 
-  session.begin_open(old).unwrap();
+  session.begin_open(old);
   session.commit_open(old, "old").unwrap();
-  session.begin_open(new).unwrap();
-  session.close(&[old]).unwrap();
+  session.begin_open(new);
+  session.close(&[old]);
   session.commit_open(new, "new").unwrap();
-  session.close(&[old]).unwrap();
+  session.close(&[old]);
 
   assert_eq!(**session.require(new).unwrap(), "new");
   assert!(session.require(old).is_err());
@@ -82,34 +82,39 @@ fn an_accepted_snapshot_outlives_close() {
   let session: Session<String> = Session::new("test");
   let id: SessionId = SessionId::generate();
 
-  session.begin_open(id).unwrap();
+  session.begin_open(id);
 
   let held: Arc<SessionSnapshot<String>> = session.commit_open(id, String::from("before")).unwrap();
 
-  session.close(&[id]).unwrap();
+  session.close(&[id]);
 
   assert_eq!(held.as_str(), "before");
-  assert!(session.get().unwrap().is_none());
+  assert!(session.get().is_none());
 }
 
 #[test]
 fn restoration_and_open_serialize_the_same_identity_revision_and_value() {
-  let session: Session<Vec<u8>> = Session::new("wire test");
+  let scopes: SessionScopes = SessionScopes::default();
+  let sessions: Sessions<Vec<u8>> = Sessions::new("wire test", &scopes);
+  let tool: SessionScope = SessionScope::new("main", "tool");
   let id: SessionId = SessionId::generate();
 
-  session.begin_open(id).unwrap();
+  scopes.bind(id, tool.clone());
 
-  let opened = session.commit_open(id, vec![1, 2, 3]).unwrap();
-  let restored = SessionRestore::from(session.get().unwrap());
+  let opened = sessions.begin_open(id).unwrap().commit(vec![1, 2, 3]).unwrap();
   let expected = serde_json::json!({ "sessionId": id, "revision": 0, "value": [1, 2, 3] });
 
   assert_eq!(serde_json::to_value(&opened).unwrap(), expected);
-  assert_eq!(serde_json::to_value(&restored).unwrap(), expected);
+  assert_eq!(serde_json::to_value(sessions.restore(&tool)).unwrap(), expected);
+  assert_eq!(
+    serde_json::to_value(sessions.restore_as(&tool, |value| value.len())).unwrap(),
+    serde_json::json!({ "sessionId": id, "revision": 0, "value": 3 })
+  );
 
-  session.close(&[id]).unwrap();
+  sessions.close(&[id]);
 
   assert_eq!(
-    serde_json::to_value(SessionRestore::from(session.get().unwrap())).unwrap(),
+    serde_json::to_value(sessions.restore(&tool)).unwrap(),
     serde_json::Value::Null
   );
 }
@@ -357,7 +362,7 @@ fn a_snapshot_keeps_what_its_value_and_its_kept_parts_were_read_from() {
   let session: Session<&str> = Session::new("test");
   let id: SessionId = SessionId::generate();
 
-  session.begin_open(id).unwrap();
+  session.begin_open(id);
 
   let opened: Arc<SessionSnapshot<&str>> = session
     .commit_open_with(
@@ -447,7 +452,7 @@ fn open_reading(
 
   let id: SessionId = SessionId::generate();
 
-  session.begin_open(id).unwrap();
+  session.begin_open(id);
   session
     .commit_open_with(id, value, search.get_vfs().get_revision(), inputs, SessionParts::new())
     .unwrap()
@@ -486,8 +491,8 @@ fn a_commit_moves_a_session_along_sharing_its_value_and_the_parts_it_did_not_tou
 
   write(&assets, &search, "configs\\game.ltx");
 
-  let change: SessionChange = session.follow(&assets).unwrap().expect("the session moved");
-  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap().unwrap();
+  let change: SessionChange = session.follow(&assets).expect("the session moved");
+  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap();
 
   assert_eq!(
     change,
@@ -508,7 +513,7 @@ fn a_commit_moves_a_session_along_sharing_its_value_and_the_parts_it_did_not_tou
   assert_eq!(next.parts.get::<PooledPart>(), None);
   assert!(next.parts.get_inputs::<DependentPart>().is_none());
   assert!(
-    session.follow(&assets).unwrap().is_none(),
+    session.follow(&assets).is_none(),
     "a session at the project's revision stays where it is"
   );
 }
@@ -529,7 +534,7 @@ fn a_kept_change_renews_the_view_only_where_it_lets_a_part_the_view_is_built_fro
 
     write(&assets, &search, "configs\\game.ltx");
 
-    let change: SessionChange = session.follow(&assets).unwrap().expect("the session moved");
+    let change: SessionChange = session.follow(&assets).expect("the session moved");
 
     assert_eq!(change.root, SessionRootChange::Kept);
     assert_eq!(change.stale_parts, vec!["pooled"]);
@@ -544,9 +549,9 @@ fn an_answer_read_from_a_moved_snapshot_carries_the_revision_it_was_read_at() {
   let opened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "level", &["configs\\system.ltx"]);
 
   write(&assets, &search, "configs\\game.ltx");
-  session.follow(&assets).unwrap().expect("the session moved");
+  session.follow(&assets).expect("the session moved");
 
-  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap().unwrap();
+  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap();
 
   assert_ne!(next.revision, XrayRevision::MOUNTED);
   assert_eq!(
@@ -566,8 +571,8 @@ fn a_commit_to_what_the_value_read_derives_it_again_starting_without_parts() {
 
   write(&assets, &search, "configs\\system.ltx");
 
-  let change: SessionChange = session.follow(&assets).unwrap().expect("the session moved");
-  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap().unwrap();
+  let change: SessionChange = session.follow(&assets).expect("the session moved");
+  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap();
 
   assert_eq!(change.root, SessionRootChange::Derived);
   assert_eq!(change.stale_parts, vec!["counted"]);
@@ -586,16 +591,16 @@ fn a_moved_value_nothing_derives_is_kept_and_reported_stale() {
 
   write(&assets, &search, "configs\\system.ltx");
 
-  let change: SessionChange = session.follow(&assets).unwrap().expect("the session is reported");
+  let change: SessionChange = session.follow(&assets).expect("the session is reported");
 
   assert_eq!(change.root, SessionRootChange::Stale);
   assert_eq!(change.revision, XrayRevision::MOUNTED, "it stays at its own revision");
-  assert!(Arc::ptr_eq(&session.get().unwrap().unwrap(), &opened));
+  assert!(Arc::ptr_eq(&session.get().unwrap(), &opened));
 
   write(&assets, &search, "configs\\system.ltx");
 
   assert!(
-    session.follow(&assets).unwrap().is_none(),
+    session.follow(&assets).is_none(),
     "a snapshot reported stale is not reported again"
   );
 
@@ -604,7 +609,7 @@ fn a_moved_value_nothing_derives_is_kept_and_reported_stale() {
   write(&assets, &search, "configs\\system.ltx");
 
   assert_eq!(
-    session.follow(&assets).unwrap().map(|change| change.session_id),
+    session.follow(&assets).map(|change| change.session_id),
     Some(reopened.session_id),
     "the snapshot replacing it is followed afresh"
   );
@@ -618,14 +623,14 @@ fn a_carried_part_records_nothing_its_old_snapshot_reads_afterwards() {
 
   opened.parts.get_or_init::<CountedPart>(|| Arc::new(1));
   write(&assets, &search, "configs\\game.ltx");
-  session.follow(&assets).unwrap().expect("the session moved");
+  session.follow(&assets).expect("the session moved");
 
   // A reader still on the old snapshot reads on into its part.
   opened
     .parts
     .record::<CountedPart, _>(&search, |search| read(search, "configs\\system.ltx"));
 
-  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap().unwrap();
+  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap();
 
   assert_eq!(
     next.parts.get::<CountedPart>().as_deref(),
@@ -658,7 +663,7 @@ fn an_open_published_after_a_commit_it_did_not_read_catches_up() {
 
   let id: SessionId = SessionId::generate();
 
-  session.begin_open(id).unwrap();
+  session.begin_open(id);
 
   let opened: Arc<SessionSnapshot<&str>> = session
     .commit_open_with(
@@ -742,12 +747,12 @@ fn a_failed_derivation_is_reported_and_leaves_the_snapshot_as_it_was() {
   write(&assets, &search, "configs\\system.ltx");
 
   assert_eq!(
-    session.follow(&assets).unwrap().expect("the failure is reported").root,
+    session.follow(&assets).expect("the failure is reported").root,
     SessionRootChange::Failed {
       reason: String::from("unreadable")
     }
   );
-  assert!(Arc::ptr_eq(&session.get().unwrap().unwrap(), &opened));
+  assert!(Arc::ptr_eq(&session.get().unwrap(), &opened));
 }
 
 #[test]
@@ -765,16 +770,12 @@ fn a_fresh_search_reads_a_file_changed_behind_the_app_again_and_moves_its_sessio
   let unchanged: XraySearch = assets.search_fresh(&roots_at(&root)).expect("the roots open afresh");
 
   assert_eq!(unchanged.get_vfs().get_revision(), XrayRevision::MOUNTED);
-  assert_eq!(
-    **session.get().unwrap().unwrap(),
-    "opened",
-    "nothing changed moves nothing"
-  );
+  assert_eq!(**session.get().unwrap(), "opened", "nothing changed moves nothing");
 
   fs::write(root.join("configs/system.ltx"), b"edited behind the app").expect("file rewritten");
 
   let fresh: XraySearch = assets.search_fresh(&roots_at(&root)).expect("the roots open afresh");
-  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap().unwrap();
+  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap();
 
   assert_ne!(fresh.get_vfs().get_revision(), XrayRevision::MOUNTED);
   assert_eq!(**next, "derived");
@@ -806,15 +807,9 @@ fn a_commit_moves_every_followed_session_before_it_returns() {
 
   write(&assets, &search, "configs\\game.ltx");
 
-  assert_eq!(
-    followed.get().unwrap().unwrap().revision,
-    assets.get_vfs().get_revision()
-  );
-  assert_eq!(unfollowed.get().unwrap().unwrap().revision, XrayRevision::MOUNTED);
-  assert!(
-    closed.get().unwrap().is_none(),
-    "a session with nothing open stays empty"
-  );
+  assert_eq!(followed.get().unwrap().revision, assets.get_vfs().get_revision());
+  assert_eq!(unfollowed.get().unwrap().revision, XrayRevision::MOUNTED);
+  assert!(closed.get().is_none(), "a session with nothing open stays empty");
 }
 
 /// Each change event a subscriber took, with the revision its session stood at as it took it.
@@ -825,7 +820,7 @@ struct RecordingSubscriber {
 
 impl AssetChangeSubscriber for RecordingSubscriber {
   fn take_change(&self, _: &AssetMountState, event: &AssetChangeEvent) {
-    let revision: XrayRevision = self.session.get().unwrap().unwrap().revision;
+    let revision: XrayRevision = self.session.get().unwrap().revision;
 
     self.taken.lock().unwrap().push((event.clone(), revision));
   }
@@ -930,7 +925,7 @@ fn a_deferred_derivation_is_reported_at_once_and_published_once_it_lands() {
   let first: XrayRevision = assets.get_vfs().get_revision();
 
   assert!(
-    Arc::ptr_eq(&session.get().unwrap().unwrap(), &opened),
+    Arc::ptr_eq(&session.get().unwrap(), &opened),
     "the commit does not wait for it"
   );
 
@@ -938,7 +933,7 @@ fn a_deferred_derivation_is_reported_at_once_and_published_once_it_lands() {
   write(&assets, &search, "configs\\system.ltx");
   held.land();
 
-  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap().unwrap();
+  let next: Arc<SessionSnapshot<&str>> = session.get().unwrap();
   let deriving: SessionChange = SessionChange {
     session_id: opened.session_id,
     revision: XrayRevision::MOUNTED,
@@ -989,17 +984,14 @@ fn a_deferred_derivation_gives_way_to_a_close_or_an_open_published_while_it_read
     held.await_start();
 
     if is_closed {
-      session.close(&[opened.session_id]).unwrap();
+      session.close(&[opened.session_id]);
     } else {
       open_reading(&session, &search, "newer", &[]);
     }
 
     held.land();
 
-    assert_eq!(
-      session.get().unwrap().map(|current| **current),
-      (!is_closed).then_some("newer")
-    );
+    assert_eq!(session.get().map(|current| **current), (!is_closed).then_some("newer"));
     assert!(
       log
         .list()
@@ -1048,8 +1040,9 @@ fn a_subscriber_takes_each_commits_changes_once_its_sessions_moved_before_it_ret
 #[test]
 fn a_commit_moves_every_handle_of_a_registry_each_by_what_it_read() {
   let (assets, search) = opened_tree("registry", &["configs/system.ltx", "configs/game.ltx"]);
-  let sessions: Sessions<&str> = Sessions::new("test", &SessionScopes::default())
-    .with_derivation(|_, _| Ok(SessionDerived::new("derived", XrayInputRecord::new())));
+  let sessions: Sessions<&str> = Sessions::new("test", &SessionScopes::default()).with_derivation(&assets, |_, _| {
+    Ok(SessionDerived::new("derived", XrayInputRecord::new()))
+  });
   let open = |value: &'static str, path: &str| -> SessionId {
     let inputs: XrayInputRecord = XrayInputRecord::new();
 
@@ -1060,7 +1053,7 @@ fn a_commit_moves_every_handle_of_a_registry_each_by_what_it_read() {
     sessions
       .begin_fixture_open(id)
       .unwrap()
-      .commit_with(value, search.get_vfs().get_revision(), inputs, SessionParts::new())
+      .commit_fixture(SessionDerived::new(value, inputs), search.get_vfs().get_revision())
       .unwrap();
 
     id
@@ -1068,7 +1061,6 @@ fn a_commit_moves_every_handle_of_a_registry_each_by_what_it_read() {
   let (untouched, touched): (SessionId, SessionId) =
     (open("system", "configs\\system.ltx"), open("game", "configs\\game.ltx"));
 
-  assets.add_follower(sessions.clone());
   write(&assets, &search, "configs\\game.ltx");
 
   let revision: XrayRevision = assets.get_vfs().get_revision();
@@ -1081,4 +1073,73 @@ fn a_commit_moves_every_handle_of_a_registry_each_by_what_it_read() {
     "its value is read again"
   );
   assert_eq!(sessions.require(touched).unwrap().revision, revision);
+}
+
+/// A subscriber that panics on every change it hears.
+struct PanickingSubscriber;
+
+impl AssetChangeSubscriber for PanickingSubscriber {
+  fn take_change(&self, _: &AssetMountState, _: &AssetChangeEvent) {
+    panic!("a subscriber failing to hear a change");
+  }
+}
+
+#[test]
+fn a_panicking_subscriber_leaves_the_rest_to_hear_and_a_deferred_derivation_to_start() {
+  let (assets, search) = opened_tree("panicking_subscriber", &["configs/system.ltx"]);
+  let (session, held) = HeldDerivation::session();
+  let log: ChangeLog = ChangeLog::default();
+
+  assets.add_follower(session.clone());
+  assets.add_subscriber(PanickingSubscriber);
+  assets.add_subscriber(log.clone());
+
+  open_reading(&session, &search, "opened", &["configs\\system.ltx"]);
+  write(&assets, &search, "configs\\system.ltx");
+  held.await_start();
+  held.land();
+
+  assert_eq!(**session.get().unwrap(), "derived");
+  assert!(
+    log
+      .list()
+      .iter()
+      .any(|change| change.root == SessionRootChange::Derived),
+    "the subscriber after the panicking one heard: {:?}",
+    log.list()
+  );
+}
+
+#[test]
+fn a_deferred_derivation_that_panics_is_reported_failed_and_tried_again_by_the_next_change() {
+  let (assets, search) = opened_tree("panicking_derivation", &["configs/system.ltx"]);
+  let pool: Arc<rayon::ThreadPool> = Arc::new(
+    rayon::ThreadPoolBuilder::new()
+      .num_threads(1)
+      .build()
+      .expect("a test pool"),
+  );
+  let calls: Arc<AtomicU32> = Arc::default();
+  let counted: Arc<AtomicU32> = Arc::clone(&calls);
+  let session: Session<&str> = Session::new("test").with_deferred_derivation(Arc::clone(&pool), move |_, _| {
+    counted.fetch_add(1, Ordering::SeqCst);
+
+    panic!("a derivation failing to read");
+  });
+  let log: ChangeLog = ChangeLog::default();
+
+  assets.add_follower(session.clone());
+  assets.add_subscriber(log.clone());
+  open_reading(&session, &search, "opened", &["configs\\system.ltx"]);
+
+  for _ in 0..2 {
+    write(&assets, &search, "configs\\system.ltx");
+    pool.install(|| ());
+  }
+
+  assert_eq!(calls.load(Ordering::SeqCst), 2, "the failure did not leave it deriving");
+  assert!(log.list().iter().any(|change| change.root
+    == SessionRootChange::Failed {
+      reason: String::from("the derivation panicked")
+    }));
 }

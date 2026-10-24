@@ -6,13 +6,14 @@ use tauri::ipc::{Channel, InvokeResponseBody};
 use uuid::Uuid;
 use xrf_job::{JobHandle, JobProgress, JobScope};
 
+use crate::jobs::JobPhase;
+use crate::jobs::JobResource;
 use crate::jobs::job_conclusion::JobConclusion;
 use crate::jobs::job_description::JobDescription;
-use crate::jobs::job_phases::JOB_PHASE_PREPARE;
 use crate::jobs::job_registration::JobRegistration;
 use crate::jobs::job_registry::JobRegistry;
 use crate::jobs::job_start::JobStart;
-use crate::jobs::{JobKind, JobResource};
+use crate::jobs::tests::kinds;
 
 fn new_registry() -> Arc<JobRegistry> {
   Arc::new(JobRegistry::new())
@@ -53,14 +54,14 @@ fn a_registered_job_is_listed_as_running() {
   let id: Uuid = Uuid::new_v4();
 
   let (_job, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(id, JobKind::ArchivesPack).with_resources(new_resources(&["gamedata.db"])))
+    .register(JobStart::new(id, kinds::ARCHIVES_PACK).with_resources(new_resources(&["gamedata.db"])))
     .expect("nothing else holds the destination");
 
   let listed: Vec<JobDescription> = registry.list();
 
   assert_eq!(listed.len(), 1);
   assert_eq!(listed[0].id, id);
-  assert_eq!(listed[0].kind, JobKind::ArchivesPack);
+  assert_eq!(listed[0].kind, kinds::ARCHIVES_PACK);
   assert_eq!(listed[0].conclusion, None);
   assert!(!listed[0].is_cancel_requested);
 }
@@ -71,11 +72,11 @@ fn a_held_lease_key_refuses_the_second_job_and_names_the_first() {
   let registry: Arc<JobRegistry> = new_registry();
 
   let (_job, _first): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["gamedata.db"])))
+    .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_resources(new_resources(&["gamedata.db"])))
     .expect("the first job takes the destination");
 
   let refused: String = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["gamedata.db"])))
+    .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_resources(new_resources(&["gamedata.db"])))
     // The handle is dropped rather than named: what is under test is the refusal, and a `Result` carrying a job is
     // only asked for its error here.
     .map(|_| ())
@@ -91,11 +92,11 @@ fn an_unrelated_destination_runs_alongside() {
   let registry: Arc<JobRegistry> = new_registry();
 
   let (_job, _first): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["a"])))
+    .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_resources(new_resources(&["a"])))
     .expect("first destination");
 
   let (_job, _second): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["b"])))
+    .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_resources(new_resources(&["b"])))
     .expect("a different destination is not held");
 
   assert_eq!(registry.list().len(), 2);
@@ -107,12 +108,12 @@ fn an_action_group_admits_one_job() {
   let registry: Arc<JobRegistry> = new_registry();
 
   let (_job, _first): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::GamedataVerify).with_exclusion_group("gamedata.verify"))
+    .register(JobStart::new(Uuid::new_v4(), kinds::GAMEDATA_VERIFY).with_exclusion_group("gamedata.verify"))
     .expect("the first verification");
 
   assert!(
     registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::GamedataVerify).with_exclusion_group("gamedata.verify"))
+      .register(JobStart::new(Uuid::new_v4(), kinds::GAMEDATA_VERIFY).with_exclusion_group("gamedata.verify"))
       .is_err(),
     "a constant key admits one job at a time"
   );
@@ -125,17 +126,17 @@ fn a_refused_registration_takes_none_of_its_keys() {
   let registry: Arc<JobRegistry> = new_registry();
 
   let (_job, _holder): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["taken"])))
+    .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_resources(new_resources(&["taken"])))
     .expect("the holder");
 
   assert!(
     registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["free", "taken"])))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_resources(new_resources(&["free", "taken"])))
       .is_err()
   );
 
   registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["free"])))
+    .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_resources(new_resources(&["free"])))
     .expect("the free key was never taken by the refused registration");
 }
 
@@ -145,12 +146,12 @@ fn dropping_a_registration_releases_its_leases() {
 
   {
     let (_job, _running): (JobHandle, JobRegistration) = registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["out"])))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_resources(new_resources(&["out"])))
       .expect("the first job");
   }
 
   registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["out"])))
+    .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_resources(new_resources(&["out"])))
     .expect("the destination was released with the job");
 }
 
@@ -161,7 +162,7 @@ fn a_concluded_job_is_retained_with_its_outcome() {
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
-      .register(JobStart::new(id, JobKind::ArchivesUnpack))
+      .register(JobStart::new(id, kinds::ARCHIVES_UNPACK))
       .expect("nothing is held");
 
     running.conclude(JobConclusion::Completed, None);
@@ -182,7 +183,7 @@ fn a_registration_dropped_without_a_conclusion_is_recorded_as_failed() {
 
   drop(
     registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK))
       .expect("nothing is held"),
   );
 
@@ -195,7 +196,7 @@ fn a_failed_conclusion_carries_why() {
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK))
       .expect("nothing is held");
 
     running.conclude_with::<(), String>(&Err(String::from("volume cap refuses particles.xr")), false);
@@ -215,7 +216,7 @@ fn a_result_that_succeeded_after_a_cancellation_concludes_as_cancelled() {
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesUnpack))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_UNPACK))
       .expect("nothing is held");
 
     running.conclude_with::<u8, String>(&Ok(1), true);
@@ -229,7 +230,7 @@ fn cancelling_a_running_job_reaches_its_handle() {
   let registry: Arc<JobRegistry> = new_registry();
   let id: Uuid = Uuid::new_v4();
   let (handle, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(id, JobKind::ArchivesUnpack))
+    .register(JobStart::new(id, kinds::ARCHIVES_UNPACK))
     .expect("nothing is held");
 
   assert!(registry.cancel(id), "a running job is expected to stop");
@@ -246,7 +247,7 @@ fn a_cancel_that_arrives_before_its_job_still_lands() {
   assert!(!registry.cancel(id), "nothing is running under that identity yet");
 
   let (handle, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(id, JobKind::ArchivesPack))
+    .register(JobStart::new(id, kinds::ARCHIVES_PACK))
     .expect("nothing is held");
 
   assert!(handle.is_cancelled(), "the waiting cancel was applied at registration");
@@ -264,12 +265,12 @@ fn a_tombstone_is_spent_by_the_job_it_named() {
 
   drop(
     registry
-      .register(JobStart::new(id, JobKind::ArchivesPack))
+      .register(JobStart::new(id, kinds::ARCHIVES_PACK))
       .expect("nothing is held"),
   );
 
   let (second, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(id, JobKind::ArchivesPack))
+    .register(JobStart::new(id, kinds::ARCHIVES_PACK))
     .expect("nothing is held");
 
   assert!(
@@ -285,7 +286,7 @@ fn cancelling_a_finished_job_answers_no_and_leaves_nothing_waiting() {
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
-      .register(JobStart::new(id, JobKind::ArchivesPack))
+      .register(JobStart::new(id, kinds::ARCHIVES_PACK))
       .expect("nothing is held");
 
     running.conclude(JobConclusion::Completed, None);
@@ -295,7 +296,7 @@ fn cancelling_a_finished_job_answers_no_and_leaves_nothing_waiting() {
 
   // Nothing was left waiting: registering that identity again is not born cancelled.
   let (handle, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(id, JobKind::ArchivesPack))
+    .register(JobStart::new(id, kinds::ARCHIVES_PACK))
     .expect("nothing is held");
 
   assert!(!handle.is_cancelled());
@@ -309,7 +310,7 @@ fn the_retained_listing_is_bounded_and_keeps_the_newest() {
 
   for index in 0..40 {
     let (_job, running): (JobHandle, JobRegistration) = registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_request(&index))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_request(&index))
       .expect("nothing is held");
 
     running.conclude(JobConclusion::Completed, None);
@@ -328,18 +329,18 @@ fn a_finished_job_never_releases_a_lease_a_later_job_holds() {
   // is worse than never having held a lease at all. Contrived only in its timing: it is what an out-of-order drop does.
   let registry: Arc<JobRegistry> = new_registry();
   let (_job, first): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["out"])))
+    .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_resources(new_resources(&["out"])))
     .expect("the first job");
 
   drop(first);
 
   let (_job, _second): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["out"])))
+    .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_resources(new_resources(&["out"])))
     .expect("released with the first job");
 
   assert!(
     registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_resources(new_resources(&["out"])))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_resources(new_resources(&["out"])))
       .is_err(),
     "the second job still holds it"
   );
@@ -350,7 +351,7 @@ fn a_running_job_reports_the_progress_of_its_own_handle() {
   // Read on demand rather than pushed: nothing has to reach the registry for a listing to be current.
   let registry: Arc<JobRegistry> = new_registry();
   let (handle, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesUnpack))
+    .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_UNPACK))
     .expect("nothing is held");
 
   assert!(registry.list()[0].progress.is_none(), "no level has been entered yet");
@@ -375,7 +376,7 @@ fn attaching_points_a_running_job_at_the_channel_that_asked() {
   let (channel, received) = new_watching_channel();
 
   let (handle, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(id, JobKind::ArchivesPack))
+    .register(JobStart::new(id, kinds::ARCHIVES_PACK))
     .expect("nothing is held");
 
   let writing: JobScope = handle.enter("write", Some(2));
@@ -418,7 +419,7 @@ fn a_completed_job_retains_the_answer_it_gave() {
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK))
       .expect("nothing is held");
 
     running.conclude_with::<Value, String>(&Ok(json!({ "volumes": 3 })), false);
@@ -433,7 +434,7 @@ fn a_failed_job_retains_no_answer_because_it_gave_none() {
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK))
       .expect("nothing is held");
 
     running.conclude_with::<Value, String>(&Err(String::from("volume cap refuses particles.xr")), false);
@@ -450,7 +451,7 @@ fn a_cancelled_job_retains_what_it_managed_to_do() {
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesUnpack))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_UNPACK))
       .expect("nothing is held");
 
     running.conclude_with::<Value, String>(&Ok(json!({ "extracted": 12 })), true);
@@ -469,7 +470,7 @@ fn a_running_job_describes_what_it_was_asked_to_do() {
   let registry: Arc<JobRegistry> = new_registry();
 
   let (_job, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_request(&json!({ "source": "c:\\gamedata" })))
+    .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_request(&json!({ "source": "c:\\gamedata" })))
     .expect("nothing is held");
 
   assert_eq!(registry.list()[0].request, Some(json!({ "source": "c:\\gamedata" })));
@@ -482,7 +483,7 @@ fn a_finished_job_still_describes_what_it_was_asked_to_do() {
 
   {
     let (_job, running): (JobHandle, JobRegistration) = registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_request(&json!({ "name": "textures" })))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_request(&json!({ "name": "textures" })))
       .expect("nothing is held");
 
     running.conclude(JobConclusion::Completed, None);
@@ -499,7 +500,7 @@ fn a_job_that_described_nothing_carries_nothing() {
   let registry: Arc<JobRegistry> = new_registry();
 
   let (_job, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::GamedataVerify))
+    .register(JobStart::new(Uuid::new_v4(), kinds::GAMEDATA_VERIFY))
     .expect("nothing is held");
 
   assert_eq!(registry.list()[0].request, None);
@@ -511,11 +512,11 @@ fn reports_a_running_job_that_has_emitted_nothing_of_its_own() {
   let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = new_watching_channel();
 
   let (job, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ConfigsVerify).with_progress(channel))
+    .register(JobStart::new(Uuid::new_v4(), kinds::CONFIGS_VERIFY).with_progress(channel))
     .expect("the job registers");
 
   // Entering emits once, which is the snapshot a phase gets for free. Everything after this is the registry asking.
-  let _preparing: JobScope = job.enter(JOB_PHASE_PREPARE, None);
+  let _preparing: JobScope = job.enter(JobPhase::PREPARE, None);
   let entered: usize = received.lock().expect("recorded sends").len();
 
   registry.report_live();
@@ -525,7 +526,7 @@ fn reports_a_running_job_that_has_emitted_nothing_of_its_own() {
 
   assert_eq!(sent.len(), entered + 2, "each ask reaches the watcher");
   assert!(
-    sent.last().expect("a snapshot was sent").contains(JOB_PHASE_PREPARE),
+    sent.last().expect("a snapshot was sent").contains(JobPhase::PREPARE),
     "the snapshot names the phase the job is in: {sent:?}"
   );
 }
@@ -538,10 +539,10 @@ fn does_not_report_a_job_that_has_spoken_recently() {
   let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = new_watching_channel();
 
   let (job, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ConfigsVerify).with_progress(channel))
+    .register(JobStart::new(Uuid::new_v4(), kinds::CONFIGS_VERIFY).with_progress(channel))
     .expect("the job registers");
 
-  let _preparing: JobScope = job.enter(JOB_PHASE_PREPARE, None);
+  let _preparing: JobScope = job.enter(JobPhase::PREPARE, None);
   let entered: usize = received.lock().expect("recorded sends").len();
 
   registry.report_live();
@@ -561,7 +562,7 @@ fn reports_nothing_for_a_job_that_is_between_phases() {
   let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = new_watching_channel();
 
   let (_job, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ConfigsVerify).with_progress(channel))
+    .register(JobStart::new(Uuid::new_v4(), kinds::CONFIGS_VERIFY).with_progress(channel))
     .expect("the job registers");
 
   registry.report_live();
@@ -576,10 +577,10 @@ fn stops_reporting_a_job_that_has_finished() {
   let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = new_watching_channel();
 
   let (job, running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(Uuid::new_v4(), JobKind::ConfigsVerify).with_progress(channel))
+    .register(JobStart::new(Uuid::new_v4(), kinds::CONFIGS_VERIFY).with_progress(channel))
     .expect("the job registers");
 
-  let preparing: JobScope = job.enter(JOB_PHASE_PREPARE, None);
+  let preparing: JobScope = job.enter(JobPhase::PREPARE, None);
 
   drop(preparing);
   running.conclude(JobConclusion::Completed, None);

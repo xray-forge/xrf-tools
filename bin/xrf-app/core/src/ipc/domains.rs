@@ -1,12 +1,15 @@
 // The command domains of this crate's plugins, as a token list. The application's build script includes this file to
-// declare the inline plugins and their permissions, and `registry` expands it into the runtime parts, so it holds the
+// declare the inline plugins and their permissions, and `ipc` expands it into the runtime parts, so it holds the
 // macro alone. Keep each wire name beside its Rust command path.
-// A domain's typed commands may be followed by `@raw { .. }`, then `@bulk { .. }`, in that order; either or both. Each
-// entry names its TypeScript arguments, for the generated wrapper Specta cannot write, and its Rust path.
+// A domain's typed commands may be followed by `@raw { .. }`, `@bulk { .. }`, then `@jobs { .. }`, in that order; any
+// of them. A `@raw` or `@bulk` entry names its TypeScript arguments, for the generated wrapper Specta cannot write, and
+// its Rust path.
 // - `@raw`: commands answering a small `tauri::ipc::Response`, dispatched and permitted like any command. No domain
 //   declares one today; the section is kept supported for the next byte answer that fits a command.
 // - `@bulk`: routes answering large bytes, served by the loopback transport (`transport/`) so they never touch the
 //   window's thread; each route function takes the application and a request deserialized from those arguments.
+// - `@jobs`: the kinds of job the domain runs, each a documented constant leading with the domain's name
+//   (`ARCHIVES_JOB_PACK => "pack"`), whose wire name the plugin name prefixes (`archives.pack`).
 macro_rules! for_each_core_domain {
   ($consumer:ident) => {
     $consumer! {
@@ -22,6 +25,7 @@ macro_rules! for_each_core_domain {
       }
       @bulk {
         read_asset(roots: "XrayRoots", logicalPath: "string") => crate::plugins::assets::routes::read_asset::assets_read_asset,
+        read_texture(roots: "XrayRoots", source: "AssetSource") => crate::plugins::assets::routes::read_texture::assets_read_texture,
       }
       // Running work, whatever domain it belongs to: what is going on, and asking it to stop. A domain of its own
       // because identity, exclusion and cancellation are the same questions for a pack, a verification, or a build.
