@@ -1,13 +1,12 @@
-//! Visuals opened as models with their motions, each a session of its own, browsed by folder and shown in a viewport
-//! through render's units.
+#![doc = include_str!("../README.md")]
 
-pub mod commands;
+mod browse;
+mod commands;
+pub mod ipc;
+mod model;
 pub mod plugin;
-pub mod posed_visual_motion;
-pub mod read;
-pub mod registry;
-pub mod render_source;
-pub mod selected_visual;
-pub mod selected_visual_description;
-pub mod state;
-pub mod visual_source;
+mod pose;
+
+pub use browse::VisualBrowses;
+pub use model::{SelectedVisual, SelectedVisualDescription, VisualModels, VisualRenderSource};
+pub use pose::{PosedVisualMotion, VisualPoses};

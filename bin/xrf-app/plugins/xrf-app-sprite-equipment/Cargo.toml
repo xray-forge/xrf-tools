@@ -10,8 +10,8 @@ rust-version.workspace = true
 build = "../../core/build.rs"
 
 [dependencies]
+bytes = { workspace = true }
 log = { workspace = true }
-percent-encoding = "2.3.2"
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 tauri = { workspace = true }
@@ -21,6 +21,7 @@ xrf-app-core = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-dltx = { workspace = true }
 xrf-error = { workspace = true }
+xrf-ipc = { workspace = true, optional = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-ltx = { workspace = true }
 xrf-output = { workspace = true }
@@ -40,6 +41,7 @@ typescript-bindings = [
   "tauri-specta",
   "xrf-app-core/typescript-bindings",
   "xrf-error/typescript-bindings",
+  "xrf-ipc",
   "xrf-job/typescript-bindings",
   "xrf-ltx/typescript-bindings",
   "xrf-texture/typescript-bindings",

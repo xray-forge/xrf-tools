@@ -1,12 +1,11 @@
 use tauri::State;
 use xrf_app_core::session::SessionId;
-use xrf_app_core::types::TauriResult;
 
-use crate::state::VisualState;
+use crate::VisualModels;
 
-/// Release only the openings owned by the departing viewer.
+/// Close the models `session_ids` name, committed or opening; a closed one answers no read.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "close_model"))]
 #[tauri::command(rename = "close_model")]
-pub fn visuals_close_model(session_ids: Vec<SessionId>, state: State<'_, VisualState>) -> TauriResult {
-  state.models.close(&session_ids)
+pub fn visuals_close_model(models: State<'_, VisualModels>, session_ids: Vec<SessionId>) {
+  models.close(&session_ids);
 }

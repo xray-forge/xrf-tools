@@ -1,16 +1,12 @@
 use tauri::State;
 use xrf_app_core::session::SessionId;
-use xrf_app_core::types::TauriResult;
 
-use crate::state::TranslationProjectState;
+use crate::TranslationProjects;
 
+/// Close the translations projects `session_ids` name, committed or opening; a closed one answers no read and takes no
+/// save.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "close_project"))]
 #[tauri::command(rename = "close_project")]
-pub fn translations_close_project(
-  session_ids: Vec<SessionId>,
-  state: State<'_, TranslationProjectState>,
-) -> TauriResult {
-  log::info!("Closing translations project");
-
-  state.projects.close(&session_ids)
+pub fn translations_close_project(projects: State<'_, TranslationProjects>, session_ids: Vec<SessionId>) {
+  projects.close(&session_ids);
 }

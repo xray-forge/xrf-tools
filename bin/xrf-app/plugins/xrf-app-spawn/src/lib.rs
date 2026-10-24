@@ -1,13 +1,13 @@
-//! `all.spawn` files opened as sessions, read section by section, edited, and packed or unpacked.
+#![doc = include_str!("../README.md")]
 
-pub mod commands;
-pub(crate) mod conversion;
-mod descriptor;
-mod loading;
+mod commands;
+mod conversion;
+mod file;
+pub mod ipc;
 pub mod plugin;
-pub mod registry;
-pub(crate) mod request;
-pub mod state;
+mod request;
 #[cfg(test)]
 mod tests;
-pub(crate) use descriptor::SpawnSessionDescriptor;
+
+pub use conversion::{SpawnConversion, SpawnConversionResult};
+pub use file::{SpawnChunk, SpawnChunkKind, SpawnFiles, SpawnSession, SpawnSessionDescriptor};

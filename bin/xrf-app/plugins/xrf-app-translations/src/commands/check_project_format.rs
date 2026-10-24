@@ -3,16 +3,18 @@ use std::sync::Arc;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
+use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
-use xrf_app_core::types::TauriResult;
-use xrf_job::{JobHandle, JobProgress};
+use xrf_app_core::jobs::{JobRegistry, JobStart};
+use xrf_job::JobProgress;
 use xrf_translation::TranslationFormatResult;
 
-use crate::commands::format_project::run;
+use crate::TranslationsFormatRun;
+use crate::ipc::translations::{TRANSLATIONS_JOB_CHECK_FORMAT, TRANSLATIONS_JOB_FORMAT};
 use crate::request::TranslationsFormatRequest;
 
-/// Report which JSON translation sources under a directory are not normalized.
+/// Report which JSON translation sources under a directory are not normalized, in the format's own lane so a check
+/// never reads half a rewrite.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "check_project_format"))]
 #[tauri::command(rename = "check_project_format")]
 pub async fn translations_check_project_format(
@@ -22,7 +24,10 @@ pub async fn translations_check_project_format(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<TranslationFormatResult> {
-  let start: JobStart = JobStart::new(job_id, JobKind::TranslationsCheckFormat).with_request(&request);
+  let start: JobStart = JobStart::new(job_id, TRANSLATIONS_JOB_CHECK_FORMAT)
+    .with_request(&request)
+    .with_exclusion_group(TRANSLATIONS_JOB_FORMAT.as_str())
+    .with_progress(progress);
 
   let TranslationsFormatRequest {
     directory,
@@ -31,18 +36,12 @@ pub async fn translations_check_project_format(
 
   log::info!("Checking translation source format in {}", directory.display());
 
-  let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    start
-      .with_exclusion_group(JobKind::TranslationsFormat.as_str())
-      .with_progress(progress),
-  )?;
-
-  run_job(
-    &execution,
-    "Translations formatting",
-    registration,
-    move || run(job, directory, line_endings, true),
-    |result| result.outcome,
-  )
-  .await
+  registry
+    .run(
+      &execution,
+      start,
+      move |job| TranslationsFormatRun::check(job, directory, line_endings),
+      |result| result.outcome,
+    )
+    .await
 }
