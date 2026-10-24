@@ -29,7 +29,7 @@ pub fn run() -> ExitCode {
   let build: BuildInfo = build_info!();
 
   setup_logger(&context.config().identifier, build.version);
-  log::info!("Starting application");
+
   StartupLog::write(&build);
 
   // One pool for the process, managed before any plugin's setup, since the renderer's loaders run on it too.
