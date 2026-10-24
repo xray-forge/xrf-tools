@@ -1,10 +1,10 @@
 import { isTauri } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { inject, Injectable, InjectionToken, OnDeactivation } from "@wirestate/core";
 
 import { sessionsCommands } from "@/core/ipc/commands/sessions";
 import { SessionId, SessionScope } from "@/core/ipc/types/xrf-app";
 import { Logger } from "@/lib/logging";
+import { resolveAppWindow } from "@/lib/tauri/app-window";
 
 /** The tool a container's services hold their openings for: an application's id, or the shell's. */
 export const SESSION_TOOL: InjectionToken<string> = new InjectionToken<string>("SessionTool");
@@ -27,7 +27,8 @@ export class SessionScopeService {
    * @param tool - The tool the scope is held for.
    */
   public constructor(tool: string = inject(SESSION_TOOL)) {
-    this.scope = { tool, window: getCurrentWindow().label };
+    // Outside a Tauri webview there is no window, and no backend to hold a scope.
+    this.scope = { tool, window: resolveAppWindow()?.label ?? "" };
   }
 
   /**

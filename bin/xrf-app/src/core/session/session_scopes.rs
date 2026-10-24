@@ -1,13 +1,7 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use crate::core::session::{SessionId, SessionScope};
-
-/// What holds openings a released scope closes: a domain's sessions.
-pub(crate) trait SessionRelease: Send + Sync {
-  /// Closes whichever of `ids` it holds, committed or pending; one it never held is no concern of it.
-  fn release(&self, ids: &[SessionId]);
-}
+use crate::core::session::session_scopes_state::SessionScopesState;
+use crate::core::session::{SessionId, SessionRelease, SessionScope};
 
 /// The scope each opening is bound to, and every session that holds openings, so releasing a scope closes what it held
 /// in every domain at once and no domain listens for it. A clone answers for the same bindings.
@@ -17,12 +11,6 @@ pub(crate) trait SessionRelease: Send + Sync {
 #[derive(Clone, Default)]
 pub(crate) struct SessionScopes {
   state: Arc<Mutex<SessionScopesState>>,
-}
-
-#[derive(Default)]
-struct SessionScopesState {
-  bindings: HashMap<SessionId, SessionScope>,
-  sessions: Vec<Arc<dyn SessionRelease>>,
 }
 
 impl SessionScopes {

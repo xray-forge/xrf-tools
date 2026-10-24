@@ -90,12 +90,15 @@ fn assemble<R: Runtime>(builder: Builder<R>, execution: ExecutionState, director
     .manage(directories)
     .on_window_event(|window: &Window<R>, event: &WindowEvent| {
       if matches!(event, WindowEvent::Destroyed) {
-        let released: usize = window.state::<SessionScopes>().release_window(window.label());
+        let scopes: SessionScopes = SessionScopes::clone(&window.state::<SessionScopes>());
+        let label: String = window.label().to_owned();
 
-        log::info!(
-          "Window '{}' went, releasing the {released} opening(s) its pages held",
-          window.label()
-        );
+        // Off the event loop, which the documents dropped with them would otherwise hold up.
+        tauri::async_runtime::spawn_blocking(move || {
+          let released: usize = scopes.release_window(&label);
+
+          log::info!("Window '{label}' went, releasing the {released} opening(s) its pages held");
+        });
       }
     });
 

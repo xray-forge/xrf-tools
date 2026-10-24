@@ -194,6 +194,23 @@ describe("LevelLoadService changes", () => {
     expect(service.level.value?.isSceneStreamedAfresh).toBe(false);
   });
 
+  it("closes the level it held once another opens in its place", async () => {
+    const { service, sessionId } = await openLevel();
+
+    await service.load({
+      engine: EXrayEngineChoice.VANILLA,
+      isDltx: false,
+      roots: createRoots(["C:\\game"]),
+      source: { kind: "asset", logicalPath: "levels\\jupiter" },
+    });
+    await flush();
+
+    expect(service.level.value?.selected.sessionId).not.toBe(sessionId);
+    expect(
+      mockInvoke.mock.calls.filter(([name]) => name === "plugin:levels|close_level").map(([, args]) => args)
+    ).toEqual([{ sessionIds: [sessionId] }]);
+  });
+
   it("keeps the level shown where a read again answers another level or an older revision", async () => {
     const { container, service, sessionId } = await openLevel();
 

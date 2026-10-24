@@ -104,6 +104,8 @@ describe("SpriteEquipmentEditorService object urls", () => {
       "plugin:sprite-equipment|open_sprite",
       "plugin:sprite-equipment|pack_sprite",
       "plugin:sprite-equipment|reopen_sprite",
+      // The opening the reopen replaced, closed once the reopen committed.
+      "plugin:sprite-equipment|close_sprite",
     ]);
     expect(container.get(SpriteEquipmentPackerService).operation.result).toEqual(packed);
     expect(service.spriteImage.value?.image).not.toBe(previousImage);
