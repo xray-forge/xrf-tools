@@ -5,10 +5,10 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::{AssetMountState, detect_search_engine};
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::session::{SessionDerived, SessionId, SessionOpening, SessionSnapshot};
+use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_dltx::select_ltx_dialect;
 use xrf_ltx::LtxDialect;
-use xrf_vfs::{XrayRoots, XraySearch};
+use xrf_vfs::XrayRoots;
 
 use crate::level::{LevelOpenRequest, OpenedLevel, SelectedLevel, SelectedLevelDescription, SelectedLevels};
 use crate::level_report::LevelReport;
@@ -31,33 +31,30 @@ pub async fn levels_open_level(
     engine,
   } = request;
 
-  let opening: SessionOpening<SelectedLevel> = levels.begin_open(session_id)?;
-
   let started: Instant = Instant::now();
 
   LevelReport::opening(&source);
 
-  let roots: XrayRoots = roots.centred_on(source.get_physical_path());
+  let search_roots: XrayRoots = roots.centred_on(source.get_physical_path());
+  let roots: XrayRoots = search_roots.clone();
   let dialect: Arc<dyn LtxDialect> = select_ltx_dialect(is_dltx);
-  let reader: AssetMountState = AssetMountState::clone(&assets);
-  let (opened, search) = execution
-    .run_blocking("Opening the level", move || {
-      let search: XraySearch = reader.search_fresh(&roots)?;
-      let opened: SessionDerived<SelectedLevel> =
-        OpenedLevel::read(search.clone(), source, roots, dialect, |search, roots| {
+  let selected: Arc<SessionSnapshot<SelectedLevel>> = levels
+    .open_followed(
+      &execution,
+      &assets,
+      session_id,
+      search_roots,
+      "Opening the level",
+      move |search| {
+        OpenedLevel::read(search, source, roots, dialect, |search, roots| {
           engine.resolve(|| detect_search_engine(search, roots))
-        })?;
+        })
+      },
+    )
+    .await?;
 
-      TauriResult::Ok((opened, search))
-    })
-    .await??;
-
-  LevelReport::reading(&opened.value.source, &opened.value.engine);
-
-  // Committed at the search's revision, and caught up with any change published since.
-  let selected: Arc<SessionSnapshot<SelectedLevel>> = opening.commit_read(opened, &search, &assets)?;
-
-  // What the open came to, its surfaces and textures as it resolved and kept them.
+  // What the open came to: the level as read, then its surfaces and textures as it resolved and kept them.
+  LevelReport::reading(&selected.value.source, &selected.value.engine);
   LevelReport::opened(
     &selected,
     &LevelSurfacesPart::find(&selected).unwrap_or_default(),

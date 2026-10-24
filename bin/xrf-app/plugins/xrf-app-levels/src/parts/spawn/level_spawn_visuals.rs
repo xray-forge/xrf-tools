@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use xrf_app_core::TauriResult;
 use xrf_job::PoolOnceLock;
 
 use crate::parts::LevelSpawnVisual;
@@ -27,30 +26,19 @@ impl LevelSpawnVisuals {
   ///
   /// # Errors
   ///
-  /// Returns why the visual cannot be read, which every later ask answers with again, or that the lock is poisoned.
+  /// Returns why the visual cannot be read, which every later ask answers with again.
   pub fn get_or_read(
     &self,
     name: &str,
     read: impl FnOnce() -> Result<Arc<LevelSpawnVisual>, String> + Send,
   ) -> Result<Arc<LevelSpawnVisual>, String> {
-    let cell: Cell = Arc::clone(self.lock()?.entry(name.to_owned()).or_default());
+    let cell: Cell = Arc::clone(self.lock().entry(name.to_owned()).or_default());
 
     cell.get_or_init(read).clone()
   }
 
-  /// The visual by name, where one was read.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the lock is poisoned.
-  pub fn get(&self, name: &str) -> TauriResult<Option<Arc<LevelSpawnVisual>>> {
-    Ok(self.lock()?.get(name).and_then(|cell| cell.get()?.clone().ok()))
-  }
-
-  fn lock(&self) -> TauriResult<MutexGuard<'_, HashMap<String, Cell>>> {
-    self
-      .cells
-      .lock()
-      .map_err(|error| format!("The level's spawned visuals are unavailable: {error}"))
+  /// The cells, whole even after a panic under the lock: all it guards is the insert of an empty cell.
+  fn lock(&self) -> MutexGuard<'_, HashMap<String, Cell>> {
+    self.cells.lock().unwrap_or_else(PoisonError::into_inner)
   }
 }

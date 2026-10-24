@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use xrf_app_core::TauriResult;
-use xrf_app_core::session::{SessionId, Sessions};
+use xrf_app_core::session::SessionId;
 use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsMipChain, DdsMipmaps, RgbaImage};
 use xrf_job::{JobHandle, JobOutcome, JobScope};
 use xrf_texture::TextureEncodingFormat;
@@ -25,9 +25,6 @@ pub struct TextureComparison {
   pub files: Option<TextureFiles>,
   pub attempts: Vec<DdsEncodeAttempt>,
 }
-
-/// The comparisons each tool holds, one per texture it weighed.
-pub type TextureComparisons = Sessions<TextureComparison>;
 
 impl TextureComparison {
   /// Weighs every candidate against the texture `request` names, whose `bytes` were read from `files`: decoded once,

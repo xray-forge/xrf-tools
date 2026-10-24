@@ -4,13 +4,15 @@
 pub(crate) mod commands;
 mod summary;
 mod texture_browse;
+mod texture_browses;
 mod texture_catalog;
 mod texture_catalog_mode;
 mod texture_entry;
 mod texture_role;
 
 pub use summary::{TextureBadges, TextureBumpPair, TextureMaterialSummary};
-pub use texture_browse::{TextureBrowse, TextureBrowses};
+pub use texture_browse::TextureBrowse;
+pub use texture_browses::TextureBrowses;
 pub use texture_catalog::TextureCatalog;
 pub use texture_catalog_mode::TextureCatalogMode;
 pub use texture_entry::TextureEntry;

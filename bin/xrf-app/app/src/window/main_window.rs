@@ -18,13 +18,17 @@ pub struct MainWindow;
 
 impl MainWindow {
   /// Build the window and bring it up.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `tauri.conf.json` declares no window, or the window cannot be built.
   pub fn build<R: Runtime>(application: &App<R>) -> Result<(), Box<dyn Error>> {
     let config: &WindowConfig = application
       .config()
       .app
       .windows
       .first()
-      .expect("Main window has to be declared in tauri.conf.json");
+      .ok_or("The main window has to be declared in tauri.conf.json")?;
 
     // A window nobody can open is worse than one that forgot where it was, or what it was set to run with.
     let preferences: Option<Preferences<R>> = match Preferences::open(application.handle()) {
