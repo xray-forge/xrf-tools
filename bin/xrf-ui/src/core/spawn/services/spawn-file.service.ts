@@ -125,7 +125,7 @@ export class SpawnFileService {
   @ExclusiveFlow("isOpening")
   private *restore(): TFlow {
     try {
-      this.adoptSession(yield* call(spawnCommands.getSession()));
+      this.adoptSession(yield* call(spawnCommands.getSession(this.session.scope)));
 
       if (this.sessionDescriptor) {
         this.log.info("Spawn file restored:", this.path, this.sessionId);

@@ -1,6 +1,7 @@
 use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
 
+use crate::core::session::SessionScopes;
 use crate::plugins::exports::state::ExportsProjectState;
 
 pub struct ExportsPlugin {}
@@ -13,7 +14,10 @@ impl ExportsPlugin {
 
     tauri::plugin::Builder::new(Self::NAME)
       .setup(|application, _| {
-        application.manage(ExportsProjectState::new("exports"));
+        application.manage(ExportsProjectState::new(
+          "exports",
+          &application.state::<SessionScopes>(),
+        ));
 
         Ok(())
       })

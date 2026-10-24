@@ -2,15 +2,15 @@ use std::path::PathBuf;
 
 use xrf_spawn::SpawnFile;
 
-use crate::core::session::{Session, SessionId};
+use crate::core::session::{SessionId, SessionScopes, Sessions};
 use crate::core::types::TauriResult;
 use crate::plugins::spawn::SpawnSessionDescriptor;
 
-/// The spawn editor's document lifecycle, with domain-specific descriptor construction.
+/// The spawn editors' documents, each held by the tool that opened it, with domain-specific descriptor construction.
 #[derive(Clone)]
 pub struct SpawnFileState {
-  /// Publication itself, in the one vocabulary every plugin addresses an opening by.
-  pub session: Session<SpawnSession>,
+  /// The spawns open, in the one vocabulary every plugin addresses an opening by.
+  pub files: Sessions<SpawnSession>,
 }
 
 /// An immutable snapshot that remains valid after the active session changes.
@@ -20,9 +20,10 @@ pub struct SpawnSession {
 }
 
 impl SpawnFileState {
-  pub fn new() -> Self {
+  /// Whatever scope `scopes` releases closes the spawns it held.
+  pub fn new(scopes: &SessionScopes) -> Self {
     Self {
-      session: Session::new("spawn"),
+      files: Sessions::new("spawn", scopes),
     }
   }
 
@@ -34,7 +35,7 @@ impl SpawnFileState {
       header: file.header.clone(),
     };
 
-    self.session.commit_open(
+    self.files.commit_open(
       id,
       SpawnSession {
         descriptor: descriptor.clone(),
@@ -45,8 +46,9 @@ impl SpawnFileState {
     Ok(descriptor)
   }
 
-  /// Restores the descriptor alone, so a reload returns without copying the spawn behind it.
-  pub fn get_descriptor(&self) -> TauriResult<Option<SpawnSessionDescriptor>> {
-    Ok(self.session.get()?.map(|opened| opened.descriptor.clone()))
+  /// Restores the descriptor alone of the newest spawn among `ids`, a tool's, so a reload returns without copying the
+  /// spawn behind it.
+  pub fn restore_descriptor(&self, ids: &[SessionId]) -> TauriResult<Option<SpawnSessionDescriptor>> {
+    Ok(self.files.restore(ids)?.map(|opened| opened.descriptor.clone()))
   }
 }

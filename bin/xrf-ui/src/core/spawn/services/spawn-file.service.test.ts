@@ -48,7 +48,7 @@ describe("SpawnFileService sessions", () => {
     setMockInvokeResponses({ "plugin:spawn|get_session": session });
     await service.onProvision(1);
 
-    expect(mockInvoke.mock.calls).toEqual([["plugin:spawn|get_session"]]);
+    expect(mockInvoke.mock.calls).toEqual([["plugin:spawn|get_session", { scope: { tool: "shell", window: "main" } }]]);
     expect(service.chunks.header.value).toEqual(session.header);
     expect(service.path).toBe(session.path);
     expect(service.chunks.graphs.value).toBeNull();

@@ -1,5 +1,5 @@
-use crate::core::session::Session;
+use crate::core::session::Sessions;
 use crate::plugins::sprite_equipment::document::EquipmentSpriteDocument;
 
-/// The one sheet this plugin holds open, published and replaced as a whole.
-pub type EquipmentSpriteState = Session<EquipmentSpriteDocument>;
+/// The sheets open, each held by the tool that opened it, each published and replaced as a whole.
+pub type EquipmentSpriteState = Sessions<EquipmentSpriteDocument>;

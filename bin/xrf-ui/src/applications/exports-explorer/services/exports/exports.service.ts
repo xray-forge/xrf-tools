@@ -55,7 +55,9 @@ export class ExportsService {
   @ExclusiveFlow("project")
   private *restore(): TFlow {
     try {
-      const project: Nullable<SessionSnapshot<ExportsProject>> = yield* call(exportsCommands.getProject());
+      const project: Nullable<SessionSnapshot<ExportsProject>> = yield* call(
+        exportsCommands.getProject(this.session.scope)
+      );
 
       this.log.info(project ? "Existing exports project detected" : "No existing exports project");
 

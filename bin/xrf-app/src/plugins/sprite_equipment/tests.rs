@@ -2,7 +2,7 @@ use tauri::http::{Request, StatusCode};
 use xrf_vfs::XrayRoots;
 
 use crate::core::assets::AssetMountState;
-use crate::core::session::SessionId;
+use crate::core::session::{SessionId, SessionScopes};
 use crate::plugins::sprite_equipment::document::EquipmentSpriteDocument;
 use crate::plugins::sprite_equipment::location::EquipmentSheetLocation;
 use crate::plugins::sprite_equipment::metadata::EquipmentSpriteMetadata;
@@ -39,7 +39,7 @@ fn document(bytes: Vec<u8>) -> EquipmentSpriteDocument {
 
 #[test]
 fn a_stream_url_cannot_read_a_replacement_with_the_same_name() {
-  let state: EquipmentSpriteState = EquipmentSpriteState::new("sprite test");
+  let state: EquipmentSpriteState = EquipmentSpriteState::new("sprite test", &SessionScopes::default());
   let first: SessionId = SessionId::new();
   let second: SessionId = SessionId::new();
 
@@ -79,7 +79,7 @@ fn a_stream_url_cannot_read_a_replacement_with_the_same_name() {
 
 #[test]
 fn a_failed_reload_preserves_the_previous_metadata_and_preview() {
-  let state: EquipmentSpriteState = EquipmentSpriteState::new("sprite test");
+  let state: EquipmentSpriteState = EquipmentSpriteState::new("sprite test", &SessionScopes::default());
   let first: SessionId = SessionId::new();
 
   state.begin_open(first).unwrap();

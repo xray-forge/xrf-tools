@@ -11,7 +11,7 @@ use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use super::loading::{SpawnInput, open_spawn};
 use super::state::SpawnFileState;
 use crate::core::execution::ExecutionState;
-use crate::core::session::SessionId;
+use crate::core::session::{SessionId, SessionScopes};
 
 pub(super) fn synthetic_spawn() -> SpawnFile {
   serde_json::from_value(json!({
@@ -25,74 +25,86 @@ pub(super) fn synthetic_spawn() -> SpawnFile {
   })).expect("synthetic spawn with an empty cross-table")
 }
 
+/// Each open is a handle of its own, which its opener closes once a newer one replaces it: a pending open leaves the one
+/// committed readable, and a restore answers the newest committed.
 #[test]
-fn pending_replacement_keeps_the_committed_file_readable() {
-  let state = SpawnFileState::new();
+fn an_open_beside_another_keeps_it_readable_and_a_restore_answers_the_newest() {
+  let state = SpawnFileState::new(&SessionScopes::default());
   let first = SessionId::new();
 
-  state.session.begin_open(first).unwrap();
+  state.files.begin_open(first).unwrap();
 
   let descriptor = state
     .commit_open(first, "first.spawn".into(), synthetic_spawn())
     .unwrap();
-  let snapshot = state.session.require(first).unwrap();
+  let snapshot = state.files.require(first).unwrap();
   let next = SessionId::new();
 
-  state.session.begin_open(next).unwrap();
+  state.files.begin_open(next).unwrap();
 
-  assert_eq!(state.get_descriptor().unwrap().unwrap().session_id, first);
-  assert!(Arc::ptr_eq(&snapshot, &state.session.require(first).unwrap()));
+  assert_eq!(
+    state.restore_descriptor(&[first, next]).unwrap().unwrap().session_id,
+    first
+  );
+  assert!(Arc::ptr_eq(&snapshot, &state.files.require(first).unwrap()));
   assert_eq!(descriptor.path, PathBuf::from("first.spawn"));
   assert_eq!(descriptor.header.guid, snapshot.file.header.guid);
 
   state.commit_open(next, "next.spawn".into(), synthetic_spawn()).unwrap();
-  assert!(state.session.require(first).is_err());
+
+  assert!(
+    state.files.require(first).is_ok(),
+    "the first stays until its opener closes it"
+  );
   assert_eq!(
-    state.session.require(next).unwrap().descriptor.path,
+    state.restore_descriptor(&[first, next]).unwrap().unwrap().session_id,
+    next
+  );
+  assert_eq!(
+    state.files.require(next).unwrap().descriptor.path,
     PathBuf::from("next.spawn")
   );
-  assert_eq!(snapshot.descriptor.session_id, first);
 }
 
+/// A handle closed while it opened publishes nothing, whatever opens beside it.
 #[test]
-fn newer_open_prevents_an_older_open_from_committing() {
-  let state = SpawnFileState::new();
+fn a_handle_closed_while_it_opened_commits_nothing() {
+  let state = SpawnFileState::new(&SessionScopes::default());
   let older = SessionId::new();
-
-  state.session.begin_open(older).unwrap();
-
   let newer = SessionId::new();
 
-  state.session.begin_open(newer).unwrap();
+  state.files.begin_open(older).unwrap();
+  state.files.begin_open(newer).unwrap();
+  state.files.close(&[older]).unwrap();
 
-  // Reserving a newer open is sufficient, even if that newer load fails.
   assert!(state.commit_open(older, "old.spawn".into(), synthetic_spawn()).is_err());
-  assert!(state.get_descriptor().unwrap().is_none());
 
   state.commit_open(newer, "new.spawn".into(), synthetic_spawn()).unwrap();
 
-  assert!(state.commit_open(older, "old.spawn".into(), synthetic_spawn()).is_err());
-  assert_eq!(state.get_descriptor().unwrap().unwrap().session_id, newer);
+  assert_eq!(
+    state.restore_descriptor(&[older, newer]).unwrap().unwrap().session_id,
+    newer
+  );
 }
 
 #[test]
 fn close_invalidates_pending_opens_and_reads_but_preserves_acquired_snapshots() {
-  let state = SpawnFileState::new();
+  let state = SpawnFileState::new(&SessionScopes::default());
   let first = SessionId::new();
 
-  state.session.begin_open(first).unwrap();
+  state.files.begin_open(first).unwrap();
   state
     .commit_open(first, "first.spawn".into(), synthetic_spawn())
     .unwrap();
 
-  let snapshot = state.session.require(first).unwrap();
+  let snapshot = state.files.require(first).unwrap();
   let pending = SessionId::new();
 
-  state.session.begin_open(pending).unwrap();
-  state.session.detach(&[first, pending]).unwrap();
+  state.files.begin_open(pending).unwrap();
+  state.files.detach(&[first, pending]).unwrap();
 
-  assert!(state.get_descriptor().unwrap().is_none());
-  assert!(state.session.require(first).is_err());
+  assert!(state.restore_descriptor(&[first, pending]).unwrap().is_none());
+  assert!(state.files.require(first).is_err());
   assert!(
     state
       .commit_open(pending, "late.spawn".into(), synthetic_spawn())
@@ -102,13 +114,13 @@ fn close_invalidates_pending_opens_and_reads_but_preserves_acquired_snapshots() 
 
   let reopened = SessionId::new();
 
-  state.session.begin_open(reopened).unwrap();
+  state.files.begin_open(reopened).unwrap();
   state
     .commit_open(reopened, "first.spawn".into(), synthetic_spawn())
     .unwrap();
 
   assert_ne!(first, reopened);
-  assert!(state.session.require(first).is_err());
+  assert!(state.files.require(first).is_err());
 }
 
 #[test]
@@ -123,7 +135,7 @@ fn packed_and_unpacked_opens_preserve_the_session_when_a_replacement_fails() {
   source.export_to_path::<XRayByteOrder, _>(&unpacked).unwrap();
   fs::write(&corrupt, b"invalid spawn").unwrap();
 
-  let state = SpawnFileState::new();
+  let state = SpawnFileState::new(&SessionScopes::default());
   let execution = ExecutionState::new(ExecutionRequest::Auto).unwrap();
 
   tauri::async_runtime::block_on(async {
@@ -134,7 +146,7 @@ fn packed_and_unpacked_opens_preserve_the_session_when_a_replacement_fails() {
 
       assert_eq!(opened.path, path);
       assert_eq!(
-        serde_json::to_value(&state.session.require(opened.session_id).unwrap().file).unwrap(),
+        serde_json::to_value(&state.files.require(opened.session_id).unwrap().file).unwrap(),
         serde_json::to_value(&source).unwrap()
       );
 
@@ -144,8 +156,15 @@ fn packed_and_unpacked_opens_preserve_the_session_when_a_replacement_fails() {
             .await
             .is_err()
         );
-        assert_eq!(state.get_descriptor().unwrap().unwrap().session_id, opened.session_id);
-        assert!(state.session.require(opened.session_id).is_ok());
+        assert_eq!(
+          state
+            .restore_descriptor(&[opened.session_id])
+            .unwrap()
+            .unwrap()
+            .session_id,
+          opened.session_id
+        );
+        assert!(state.files.require(opened.session_id).is_ok());
       }
     }
   });

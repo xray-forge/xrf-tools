@@ -1,6 +1,7 @@
 use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
 
+use crate::core::session::SessionScopes;
 use crate::plugins::dialogs::state::DialogProjectState;
 
 pub struct DialogsPlugin {}
@@ -13,7 +14,10 @@ impl DialogsPlugin {
 
     tauri::plugin::Builder::new(Self::NAME)
       .setup(|application, _| {
-        application.manage(DialogProjectState::new("dialogs"));
+        application.manage(DialogProjectState::new(
+          "dialogs",
+          &application.state::<SessionScopes>(),
+        ));
 
         Ok(())
       })

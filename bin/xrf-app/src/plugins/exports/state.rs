@@ -1,6 +1,6 @@
 use xrf_export::ExportsProject;
 
-use crate::core::session::Session;
+use crate::core::session::Sessions;
 
-/// The committed exports document and its pending replacement.
-pub type ExportsProjectState = Session<ExportsProject>;
+/// The exports projects open, each held by the tool that opened it.
+pub type ExportsProjectState = Sessions<ExportsProject>;

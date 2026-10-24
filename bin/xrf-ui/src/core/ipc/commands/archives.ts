@@ -17,6 +17,7 @@ import {
   ImageDescriptor,
   SessionId,
   SessionRestore,
+  SessionScope,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { ArchiveReadResult, ArchiveSharedPayload } from "@/core/ipc/types/xrf-archive";
@@ -49,8 +50,12 @@ export const archivesCommands = {
   /** Write one file of the open subject to a path the user chose. */
   extractFile: (sessionId: SessionId, name: string, destination: string) =>
     __TAURI_INVOKE<ArchiveExtractResult>("plugin:archives|extract_file", { sessionId, name, destination }),
-  /** What the explorer has open, so a reloaded frontend adopts it instead of asking for it again. */
-  getSubject: () => __TAURI_INVOKE<SessionRestore<ArchiveSubject>>("plugin:archives|get_subject"),
+  /**
+   * What a tool's explorer has open, the newest it opened, so a reloaded frontend adopts it instead of asking for it
+   * again.
+   */
+  getSubject: (scope: SessionScope) =>
+    __TAURI_INVOKE<SessionRestore<ArchiveSubject>>("plugin:archives|get_subject", { scope }),
   /** What the open subject answers with more than one copy, and what it cannot reach at all. */
   listOverrides: (sessionId: SessionId) =>
     __TAURI_INVOKE<ArchiveOverrideReport>("plugin:archives|list_overrides", { sessionId }),

@@ -247,7 +247,9 @@ export class ArchivesService {
     this.log.info("Restoring");
 
     try {
-      const existing: Nullable<SessionSnapshot<ArchiveSubject>> = yield* call(archivesCommands.getSubject());
+      const existing: Nullable<SessionSnapshot<ArchiveSubject>> = yield* call(
+        archivesCommands.getSubject(this.session.scope)
+      );
 
       this.log.info(existing ? `Existing archives ${existing.value.kind} detected` : "No existing archives subject");
 
