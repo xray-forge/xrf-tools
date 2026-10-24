@@ -9,7 +9,7 @@ import {
   SpriteEquipmentEditorService,
 } from "@/applications/sprite-equipment-editor/services/editor";
 import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/grid";
-import { IEquipmentLayout, toCellAt } from "@/core/sprite-equipment/lib";
+import { describeEquipmentSheet, IEquipmentLayout, toCellAt } from "@/core/sprite-equipment/lib";
 import { cn } from "@/core/theme/class-name";
 import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -75,7 +75,7 @@ export function EquipmentSpriteViewer({
     <div data-testid={dataTestId} id={id} className={cn("relative flex h-full min-h-0 w-full min-w-0", className)}>
       <ImageViewport
         src={sprite.image.src}
-        alt={sprite.metadata.name}
+        alt={describeEquipmentSheet(sprite.metadata.open.sheet)}
         width={sprite.image.width}
         height={sprite.image.height}
         renderOverlay={renderOverlay}

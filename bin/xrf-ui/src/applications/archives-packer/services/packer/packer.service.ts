@@ -5,7 +5,7 @@ import { describePackOutcome } from "@/applications/archives-packer/lib/describe
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { ArchiveConfigEditorService } from "@/core/archive/services/config-editor";
 import { archivesCommands } from "@/core/ipc/commands/archives";
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { ARCHIVES_JOB_PACK } from "@/core/ipc/types/xrf-app";
 import { ArchivePackConfig, ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -43,7 +43,7 @@ export class PackerService extends ArchiveConfigEditorService<ArchivePackConfig,
     private readonly eventBus: EventBus = inject(EventBus),
     public readonly jobsService: JobsService = inject(JobsService)
   ) {
-    super(jobsService, [EJobKind.ARCHIVES_PACK]);
+    super(jobsService, [ARCHIVES_JOB_PACK]);
   }
 
   /**
@@ -97,7 +97,7 @@ export class PackerService extends ArchiveConfigEditorService<ArchivePackConfig,
 
     try {
       yield* this.operation.run({
-        kind: EJobKind.ARCHIVES_PACK,
+        kind: ARCHIVES_JOB_PACK,
         invoke: (id: string, progress) => archivesCommands.packDirectory({ config, isForced }, id, progress),
         describe: (outcome: IJobOutcome<ArchivePackResult>): IJobNotice => describePackOutcome(config, outcome),
       });

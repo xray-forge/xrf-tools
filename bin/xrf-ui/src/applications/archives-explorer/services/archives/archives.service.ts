@@ -1,8 +1,17 @@
-import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
+import {
+  EventBus,
+  inject,
+  Injectable,
+  OnDeprovision,
+  OnEvent,
+  OnProvision,
+  ProvisionId,
+  WireEvent,
+} from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
-import { Nullable, Optional } from "@xrf/types";
+import { assertExhaustive, Nullable, Optional } from "@xrf/types";
 
 import { describeExtractOutcome } from "@/applications/archives-explorer/lib/describe-extract-outcome";
 import {
@@ -18,14 +27,23 @@ import {
 } from "@/core/archive/lib";
 import { transformError } from "@/core/error/lib";
 import { archivesCommands } from "@/core/ipc/commands/archives";
-import { requireSessionId, Session, SessionScopeService } from "@/core/ipc/session";
+import {
+  isOlderSessionAnswer,
+  isSessionMovedPast,
+  requireSessionId,
+  Session,
+  SESSION_CHANGE_EVENT,
+  SessionScopeService,
+} from "@/core/ipc/session";
 import {
   ArchiveOverrideReport,
   ArchiveResolution,
+  ARCHIVES_JOB_EXTRACT,
   ArchiveSubject,
   ArchiveWorldEntry,
   EArchiveSubject,
-  EJobKind,
+  ESessionRootChange,
+  SessionChange,
   SessionId,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
@@ -63,7 +81,7 @@ export class ArchivesService {
 
   @Computed()
   public get job(): Nullable<IJobState> {
-    return this.jobId ? this.jobsService.getJob(this.jobId) : this.jobsService.getJobOfKind(EJobKind.ARCHIVES_EXTRACT);
+    return this.jobId ? this.jobsService.getJob(this.jobId) : this.jobsService.getJobOfKind(ARCHIVES_JOB_EXTRACT);
   }
 
   /** Idle until restoration settles; a closed explorer is ready with no value. */
@@ -232,6 +250,92 @@ export class ArchivesService {
   }
 
   /**
+   * Reads the open world again once a commit listed it anew; a world the backend could not list again stays as shown,
+   * with a notice saying why. A volume set follows nothing, so no change names it.
+   */
+  @OnEvent(SESSION_CHANGE_EVENT)
+  public onSessionChange({ payload: change }: WireEvent<SessionChange>): void {
+    const held: Nullable<SessionSnapshot<ArchiveSubject>> = this.subjectState.value;
+
+    if (!change || !held || held.sessionId !== change.sessionId) {
+      return;
+    }
+
+    switch (change.root.kind) {
+      // A later notice says what a derivation under way derived.
+      case ESessionRootChange.KEPT:
+      case ESessionRootChange.DERIVING:
+        return;
+
+      case ESessionRootChange.DERIVED:
+        if (isSessionMovedPast(held, change)) {
+          void this.refresh();
+        }
+
+        return;
+
+      case ESessionRootChange.STALE:
+      case ESessionRootChange.FAILED:
+        this.log.warn("The archive world was not listed again:", change.root);
+
+        emitNotification(this.eventBus, {
+          details: change.root.kind === ESessionRootChange.FAILED ? change.root.reason : undefined,
+          severity: ENotificationSeverity.WARNING,
+          source: EApplicationId.ARCHIVES_EXPLORER,
+          title: "Could not list the changed game folder again",
+        });
+
+        return;
+
+      default:
+        return assertExhaustive(change.root);
+    }
+  }
+
+  /** Reads the committed subject again, for `onSessionChange`; a failure leaves what is shown, stale. */
+  private async refresh(): Promise<void> {
+    try {
+      this.adoptRefreshed(await archivesCommands.restoreSubject(this.session.tool));
+    } catch (error: unknown) {
+      this.log.warn("Could not read the archive world again:", transformError(error));
+    }
+  }
+
+  /**
+   * Shows a subject read again where it is still the one shown and no older than it; an open or close in flight
+   * decides what is shown instead.
+   */
+  @BoundAction()
+  private adoptRefreshed(answer: Nullable<SessionSnapshot<ArchiveSubject>>): void {
+    const held: Nullable<SessionSnapshot<ArchiveSubject>> = this.subjectState.value;
+
+    if (
+      !answer ||
+      !held ||
+      this.subjectState.isLoading ||
+      answer.sessionId !== held.sessionId ||
+      isOlderSessionAnswer(held, answer)
+    ) {
+      return;
+    }
+
+    this.log.info("Archive world listed again at revision:", answer.revision);
+
+    this.subjectState = this.subjectState.map(() => answer);
+    // Both describe the listing they were read for, so the dialogs read them again when next opened.
+    this.statistics = this.statistics.asIdle(null);
+    this.resolution = this.resolution.asIdle(null);
+
+    void this.reloadPanels();
+  }
+
+  /** Reads what the side panels report again, for a subject listed anew; a later listing supersedes it. */
+  @LatestFlow("overrides")
+  private *reloadPanels(): TFlow {
+    yield* this.loadPanels();
+  }
+
+  /**
    * Restores the committed session without superseding a user action in the same flow.
    */
   @ExclusiveFlow("subject")
@@ -240,7 +344,7 @@ export class ArchivesService {
 
     try {
       const existing: Nullable<SessionSnapshot<ArchiveSubject>> = yield* call(
-        archivesCommands.getSubject(this.session.scope)
+        archivesCommands.restoreSubject(this.session.tool)
       );
 
       this.log.info(existing ? `Existing archives ${existing.value.kind} detected` : "No existing archives subject");
@@ -449,7 +553,7 @@ export class ArchivesService {
       // Started through the jobs service rather than invoked here: an empty prefix extracts everything, so this writes
       // as much as an unpack does and wants the same identity, lease, and cancel control.
       const run: IJobRun<ArchiveExtractDirectoryResult> = this.jobsService.run<ArchiveExtractDirectoryResult>({
-        kind: EJobKind.ARCHIVES_EXTRACT,
+        kind: ARCHIVES_JOB_EXTRACT,
         invoke: (id: string, progress) => archivesCommands.extractDirectory(request, id, progress),
         describe: (outcome: IJobOutcome<ArchiveExtractDirectoryResult>): IJobNotice =>
           describeExtractOutcome(prefix, destination, outcome),
@@ -664,11 +768,11 @@ export class ArchivesService {
       case "audio":
       case "texture":
       case "image":
-        return yield* this.readContent(entry, support.kind, subject);
+        return yield* this.readContent(entry, support.kind);
       case "supported":
-        return yield* this.readContent(entry, "text", subject);
+        return yield* this.readContent(entry, "text");
       case "description":
-        return yield* this.readContent(entry, "description", subject);
+        return yield* this.readContent(entry, "description");
       case "model":
       case "too-large":
         return;
@@ -680,16 +784,15 @@ export class ArchivesService {
    *
    * @param entry - File to read.
    * @param kind - Preview representation to request from the backend.
-   * @param subject - Open subject the file is read out of.
    */
-  private *readContent(entry: IArchiveEntry, kind: TArchiveContent["kind"], subject: ArchiveSubject): TFlow {
+  private *readContent(entry: IArchiveEntry, kind: TArchiveContent["kind"]): TFlow {
     const timer: Timer = new Timer();
 
     this.log.info("Reading archive content:", kind, entry.name);
     this.content = this.content.asLoading(null);
 
     try {
-      const content: TArchiveContent = yield* call(this.reader.read(entry, kind, subject));
+      const content: TArchiveContent = yield* call(this.reader.read(entry, kind));
 
       this.log.info("Archive content read in:", formatDuration(timer.elapsed()));
 

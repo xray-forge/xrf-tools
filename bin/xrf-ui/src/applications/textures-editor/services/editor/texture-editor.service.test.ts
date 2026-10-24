@@ -189,7 +189,7 @@ describe("TextureEditorService", () => {
     });
 
     setMockBulkResponses({
-      "textures/read_texture": new ArrayBuffer(0),
+      "assets/read_texture": new ArrayBuffer(0),
     });
 
     await container.get(TextureSelectionService).openFile("C:\\gamedata\\textures\\ston\\ston_beton05.dds");
@@ -234,14 +234,13 @@ describe("TextureEditorService", () => {
       },
       ["plugin:textures|get_vocabulary"]: VOCABULARY,
       ["plugin:textures|save"]: {
-        descriptorFormat: null,
         outcome: "completed",
         written: [`C:\\gamedata\\textures\\${MOCK_TEXTURE}.thm`],
       },
     });
 
     setMockBulkResponses({
-      "textures/read_texture": new ArrayBuffer(0),
+      "assets/read_texture": new ArrayBuffer(0),
     });
 
     await selectionService.openFile(`C:\\gamedata\\textures\\${MOCK_TEXTURE}.dds`);
@@ -281,11 +280,11 @@ describe("TextureEditorService", () => {
     setMockInvokeResponses({
       ["plugin:textures|describe"]: describedTexture(MOCK_TEXTURE),
       ["plugin:textures|compare_encodings"]: mockTextureEncodingComparison(),
-      ["plugin:textures|save"]: { outcome: "completed", written: [], descriptorFormat: null },
+      ["plugin:textures|save"]: { outcome: "completed", written: [] },
     });
 
     setMockBulkResponses({
-      "textures/read_texture": new ArrayBuffer(0),
+      "assets/read_texture": new ArrayBuffer(0),
       "textures/read_candidate": new ArrayBuffer(8),
     });
 

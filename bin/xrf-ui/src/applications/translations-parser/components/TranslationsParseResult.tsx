@@ -2,7 +2,9 @@ import { GridColDef } from "@mui/x-data-grid";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
-import { TranslationParseFinding, TranslationParseSummary } from "@/core/ipc/types/xrf-app";
+import { listTranslationParseFindings } from "@/applications/translations-parser/lib/parse-findings";
+import { Finding } from "@/core/ipc/types/xrf-report";
+import { TranslationParseResult } from "@/core/ipc/types/xrf-translation";
 import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
@@ -11,7 +13,7 @@ import { identifierColumn, pathColumn } from "@/core/ui/table/columns";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface ITranslationsParseResultProps extends BaseComponentProps {
-  result: TranslationParseSummary;
+  result: TranslationParseResult;
   /** Where the sources were written, so the run can be opened; absent while nothing was written. */
   outputPath: Nullable<string>;
 }
@@ -26,15 +28,15 @@ export function TranslationsParseResult({
   const columns: Array<GridColDef> = useMemo(
     () => [
       pathColumn("subject", "File", 280),
-      identifierColumn("rule", "Rule", 220),
+      identifierColumn("ruleId", "Rule", 220),
       { field: "message", headerName: "Detail", flex: 2, minWidth: 320 },
     ],
     []
   );
 
-  const rows: Array<TranslationParseFinding & { id: number }> = useMemo(
-    () => result.findings.map((finding, index) => ({ ...finding, id: index })),
-    [result.findings]
+  const rows: Array<Finding & { id: number }> = useMemo(
+    () => listTranslationParseFindings(result).map((finding: Finding, index: number) => ({ ...finding, id: index })),
+    [result]
   );
 
   const stats: Array<ICommandResultStat> = useMemo(
@@ -57,7 +59,7 @@ export function TranslationsParseResult({
     : `Imported ${result.census.entriesRead} entries as '${result.language}'`;
 
   // Findings outrank the mode, and a preview is neutral rather than a success.
-  const tone: TCommandResultTone = result.findings.length > 0 ? "warning" : result.isDryRun ? "info" : "success";
+  const tone: TCommandResultTone = rows.length > 0 ? "warning" : result.isDryRun ? "info" : "success";
 
   return (
     <CommandResult
@@ -73,11 +75,11 @@ export function TranslationsParseResult({
         ) : null
       }
     >
-      <CommandResultFindings<TranslationParseFinding & { id: number }>
+      <CommandResultFindings<Finding & { id: number }>
         rows={rows}
         columns={columns}
         getRowId={(row) => row.id}
-        getSearchText={(row) => `${row.subject ?? ""} ${row.rule} ${row.message}`}
+        getSearchText={(row) => `${row.subject ?? ""} ${row.ruleId} ${row.message}`}
         emptyLabel={"Every string table was read without complaint."}
         searchPlaceholder={"Filter findings"}
       />

@@ -9,10 +9,10 @@ import {
   ILevelCubeExportSettings,
   isLevelCubeExportSingle,
   LEVEL_CUBE_EXPORT_SIZES,
+  TLevelCubeExportKind,
 } from "@/applications/level-viewer/lib/cube/level-cube-export";
 import { ILevelViewerImage } from "@/applications/level-viewer/lib/files/level-viewer-image";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
-import { ECubeExportFormat } from "@/core/ipc/types/xrf-app";
 import { ETextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
 import { cn } from "@/core/theme/class-name";
 import { CheckboxFormRow, ChoiceFormRow } from "@/core/ui/form";
@@ -41,7 +41,7 @@ export function LevelViewerCubeResult({
   const size: number = Math.min(settings.size, captured);
   const isDds: boolean = isLevelCubeExportSingle(settings.kind);
 
-  const onKind = useCallback((kind: ECubeExportFormat) => captureService.setCubeExport({ kind }), [captureService]);
+  const onKind = useCallback((kind: TLevelCubeExportKind) => captureService.setCubeExport({ kind }), [captureService]);
 
   const onFormat = useCallback(
     (format: ETextureEncodingFormat) => captureService.setCubeExport({ format }),
@@ -78,9 +78,9 @@ export function LevelViewerCubeResult({
           label={"Export as"}
           description={"Six TGAs are named 1 to 6 as the engine writes its faces; six PNGs by face, as _px to _nz."}
           options={[
-            { value: ECubeExportFormat.DDS, label: "Cube DDS" },
-            { value: ECubeExportFormat.TGA, label: "Six TGAs" },
-            { value: ECubeExportFormat.PNG, label: "Six PNGs" },
+            { value: "dds", label: "Cube DDS" },
+            { value: "tga", label: "Six TGAs" },
+            { value: "png", label: "Six PNGs" },
           ]}
           value={settings.kind}
           onChange={onKind}

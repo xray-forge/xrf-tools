@@ -158,7 +158,7 @@ export function toLevelMapRect(levelMap: Nullable<LevelMapDescription>): Nullabl
     return null;
   }
 
-  const { minX, minZ, maxX, maxZ } = levelMap;
+  const { minX, minZ, maxX, maxZ } = levelMap.area;
 
   if (minX === null || minZ === null || maxX === null || maxZ === null) {
     return null;

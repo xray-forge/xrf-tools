@@ -6,7 +6,7 @@ import { VerifierService } from "@/applications/configs-verifier/services/verifi
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
-import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { Logger, useLogger } from "@/lib/logging";
 
 import { ConfigsVerifyResult } from "./components/ConfigsVerifyResult";
@@ -31,20 +31,21 @@ export function ConfigsVerifierApplication(): ReactElement {
   const directory: Nullable<string> = configs.value;
 
   const [isDltx, setDltx] = useState<boolean>(false);
+  const [isStrict, setIsStrict] = useState<boolean>(false);
 
   const onVerify = useCallback(async () => {
     if (!directory) {
       return;
     }
 
-    log.info("Verifying:", { directory, isDltx });
+    log.info("Verifying:", { directory, isDltx, isStrict });
 
-    await verifierService.verify(directory, isDltx);
-  }, [directory, isDltx, log, verifierService]);
+    await verifierService.verify(directory, isDltx, isStrict);
+  }, [directory, isDltx, isStrict, log, verifierService]);
 
   useEffect(() => {
     verifierService.operation.reset();
-  }, [directory, isDltx, verifierService]);
+  }, [directory, isDltx, isStrict, verifierService]);
 
   return (
     <JobPickerForm
@@ -64,6 +65,14 @@ export function ConfigsVerifierApplication(): ReactElement {
       />
 
       <ConfigsDialectFormRow isDltx={isDltx} isDisabled={isRunning} onChange={setDltx} />
+
+      <CheckboxFormRow
+        label={"Strict"}
+        description={"Also report what only a case-sensitive file system breaks on, such as an include in another case"}
+        isChecked={isStrict}
+        isDisabled={isRunning}
+        onChange={setIsStrict}
+      />
     </JobPickerForm>
   );
 }

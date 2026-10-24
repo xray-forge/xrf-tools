@@ -2,7 +2,7 @@ import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 
 import { describeFormatOutcome } from "@/applications/translations-formatter/lib/describe-format-outcome";
 import { translationsCommands } from "@/core/ipc/commands/translations";
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { TRANSLATIONS_JOB_CHECK_FORMAT, TRANSLATIONS_JOB_FORMAT } from "@/core/ipc/types/xrf-app";
 import { TranslationFormatResult } from "@/core/ipc/types/xrf-translation";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
@@ -20,7 +20,7 @@ export class TranslationsFormatterService {
   public readonly operation: JobOperation<TranslationFormatResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.TRANSLATIONS_CHECK_FORMAT, EJobKind.TRANSLATIONS_FORMAT]);
+    this.operation = new JobOperation(jobsService, [TRANSLATIONS_JOB_CHECK_FORMAT, TRANSLATIONS_JOB_FORMAT]);
   }
 
   /**
@@ -41,7 +41,7 @@ export class TranslationsFormatterService {
     this.log.info("Formatting translations:", directory, isCheck);
 
     yield* this.operation.run({
-      kind: isCheck ? EJobKind.TRANSLATIONS_CHECK_FORMAT : EJobKind.TRANSLATIONS_FORMAT,
+      kind: isCheck ? TRANSLATIONS_JOB_CHECK_FORMAT : TRANSLATIONS_JOB_FORMAT,
       invoke: (id: string, progress) =>
         isCheck
           ? translationsCommands.checkProjectFormat({ directory, lineEndings: null }, id, progress)

@@ -3,7 +3,7 @@ import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 import { describeFormatOutcome } from "@/applications/configs-formatter/lib/describe-format-outcome";
 import { createRoots } from "@/core/assets/lib";
 import { configsCommands } from "@/core/ipc/commands/configs";
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT } from "@/core/ipc/types/xrf-app";
 import { LtxProjectFormatResult } from "@/core/ipc/types/xrf-ltx";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
@@ -21,7 +21,7 @@ export class FormatterService {
   public readonly operation: JobOperation<LtxProjectFormatResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.CONFIGS_CHECK_FORMAT, EJobKind.CONFIGS_FORMAT]);
+    this.operation = new JobOperation(jobsService, [CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT]);
   }
 
   /**
@@ -43,7 +43,7 @@ export class FormatterService {
     this.log.info("Formatting:", directory, isCheck);
 
     yield* this.operation.run({
-      kind: isCheck ? EJobKind.CONFIGS_CHECK_FORMAT : EJobKind.CONFIGS_FORMAT,
+      kind: isCheck ? CONFIGS_JOB_CHECK_FORMAT : CONFIGS_JOB_FORMAT,
       invoke: (id: string, progress) =>
         isCheck
           ? configsCommands.checkDirectoryFormat({ roots: createRoots([directory]), prefix: null }, id, progress)

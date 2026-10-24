@@ -2,8 +2,8 @@ import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 
 import { describeTranslationParseOutcome } from "@/applications/translations-parser/lib/describe-parse-outcome";
 import { translationsCommands } from "@/core/ipc/commands/translations";
-import { EJobKind, TranslationParseSummary } from "@/core/ipc/types/xrf-app";
-import { ETranslationLanguage } from "@/core/ipc/types/xrf-translation";
+import { TRANSLATIONS_JOB_PARSE } from "@/core/ipc/types/xrf-app";
+import { ETranslationLanguage, TranslationParseResult } from "@/core/ipc/types/xrf-translation";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -18,10 +18,10 @@ export class TranslationsParserService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** Each source uses a staged replace, so cancellation leaves written sources complete and the rest untouched. */
-  public readonly operation: JobOperation<TranslationParseSummary>;
+  public readonly operation: JobOperation<TranslationParseResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.TRANSLATIONS_PARSE]);
+    this.operation = new JobOperation(jobsService, [TRANSLATIONS_JOB_PARSE]);
   }
 
   /**
@@ -48,7 +48,7 @@ export class TranslationsParserService {
     this.log.info("Importing translations:", sources, language, outputDir);
 
     yield* this.operation.run({
-      kind: EJobKind.TRANSLATIONS_PARSE,
+      kind: TRANSLATIONS_JOB_PARSE,
       invoke: (id: string, progress) =>
         translationsCommands.parseProject(
           {
@@ -65,7 +65,7 @@ export class TranslationsParserService {
           id,
           progress
         ),
-      describe: (outcome: IJobOutcome<TranslationParseSummary>): IJobNotice =>
+      describe: (outcome: IJobOutcome<TranslationParseResult>): IJobNotice =>
         describeTranslationParseOutcome(outputDir, outcome),
     });
   }

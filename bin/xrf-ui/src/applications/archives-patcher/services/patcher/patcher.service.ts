@@ -4,7 +4,7 @@ import { BoundAction, Observable } from "@wirestate/mobx";
 import { describePatchOutcome } from "@/applications/archives-patcher/lib/describe-patch-outcome";
 import { ArchiveConfigEditorService } from "@/core/archive/services/config-editor";
 import { archivesCommands } from "@/core/ipc/commands/archives";
-import { ArchivesPatchRequest, EJobKind } from "@/core/ipc/types/xrf-app";
+import { ARCHIVES_JOB_COMPARE, ARCHIVES_JOB_PATCH, ArchivesPatchRequest, JobKind } from "@/core/ipc/types/xrf-app";
 import { ArchivePatchConfig, ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -34,7 +34,7 @@ export class PatcherService extends ArchiveConfigEditorService<ArchivePatchConfi
   public section: EPatcherSection = EPatcherSection.COMPARISON;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    super(jobsService, [EJobKind.ARCHIVES_COMPARE, EJobKind.ARCHIVES_PATCH]);
+    super(jobsService, [ARCHIVES_JOB_COMPARE, ARCHIVES_JOB_PATCH]);
   }
 
   /**
@@ -67,7 +67,7 @@ export class PatcherService extends ArchiveConfigEditorService<ArchivePatchConfi
    */
   @ExclusiveFlow("operation")
   public *compare(request: ArchivesPatchRequest): TFlow {
-    yield* this.run(EJobKind.ARCHIVES_COMPARE, request);
+    yield* this.run(ARCHIVES_JOB_COMPARE, request);
   }
 
   /**
@@ -77,10 +77,10 @@ export class PatcherService extends ArchiveConfigEditorService<ArchivePatchConfi
    */
   @ExclusiveFlow("operation")
   public *patch(request: ArchivesPatchRequest): TFlow {
-    yield* this.run(EJobKind.ARCHIVES_PATCH, request);
+    yield* this.run(ARCHIVES_JOB_PATCH, request);
   }
 
-  private *run(kind: EJobKind.ARCHIVES_COMPARE | EJobKind.ARCHIVES_PATCH, request: ArchivesPatchRequest): TFlow {
+  private *run(kind: JobKind, request: ArchivesPatchRequest): TFlow {
     if (this.operation.isRunning) {
       return;
     }
@@ -88,7 +88,7 @@ export class PatcherService extends ArchiveConfigEditorService<ArchivePatchConfi
     const config: ArchivePatchConfig = request.config;
 
     this.log.info(
-      kind === EJobKind.ARCHIVES_PATCH ? "Patching:" : "Comparing:",
+      kind === ARCHIVES_JOB_PATCH ? "Patching:" : "Comparing:",
       config.input,
       "against",
       config.target ?? "its own loose gamedata"
@@ -98,7 +98,7 @@ export class PatcherService extends ArchiveConfigEditorService<ArchivePatchConfi
     yield* this.operation.run({
       kind,
       invoke: (id: string, progress) =>
-        kind === EJobKind.ARCHIVES_PATCH
+        kind === ARCHIVES_JOB_PATCH
           ? archivesCommands.patchArchives(request, id, progress)
           : archivesCommands.compareArchives(request, id, progress),
       describe: (outcome: IJobOutcome<ArchivePatchResult>): IJobNotice => describePatchOutcome(config, outcome),

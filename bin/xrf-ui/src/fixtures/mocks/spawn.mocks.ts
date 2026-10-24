@@ -1,6 +1,23 @@
 import { SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
-import { AlifeObject, Patrol, SpawnFile } from "@/core/ipc/types/xrf-spawn";
+import {
+  AlifeObject,
+  Patrol,
+  SpawnALifeSpawnsChunk,
+  SpawnArtefactSpawnsChunk,
+  SpawnGraphsChunk,
+  SpawnHeaderChunk,
+  SpawnPatrolsChunk,
+} from "@/core/ipc/types/xrf-spawn";
+
+/** Every part of a packed spawn a fixture builds: the header an open answers and each large chunk. */
+export interface IMockSpawnFile {
+  header: SpawnHeaderChunk;
+  alifeSpawn: SpawnALifeSpawnsChunk;
+  artefactSpawn: SpawnArtefactSpawnsChunk;
+  patrols: SpawnPatrolsChunk;
+  graphs: SpawnGraphsChunk;
+}
 
 /**
  * Creates a vector fixture.
@@ -89,7 +106,7 @@ export function mockPatrol(overrides: Partial<Patrol> = {}): Patrol {
  * @param overrides - Field values to override.
  * @returns A spawn file fixture.
  */
-export function mockSpawnFile(overrides: Partial<SpawnFile> = {}): SpawnFile {
+export function mockSpawnFile(overrides: Partial<IMockSpawnFile> = {}): IMockSpawnFile {
   return {
     header: {
       version: 124,
@@ -152,10 +169,9 @@ export function mockSpawnFile(overrides: Partial<SpawnFile> = {}): SpawnFile {
   };
 }
 
-/** Creates a committed spawn-session fixture. */
+/** Creates what an open of a spawn answers, without the opening's identity, which its snapshot carries. */
 export function mockSpawnSession(overrides: Partial<SpawnSessionDescriptor> = {}): SpawnSessionDescriptor {
   return {
-    sessionId: "8f1a1b2c-0000-4000-8000-000000000010",
     path: "C:\\game\\all.spawn",
     header: mockSpawnFile().header,
     ...overrides,

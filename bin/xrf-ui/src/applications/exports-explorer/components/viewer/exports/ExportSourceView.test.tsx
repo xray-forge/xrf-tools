@@ -29,7 +29,7 @@ function renderSource(name: string) {
 describe("ExportSourceView", () => {
   beforeEach(() => {
     setMockInvokeResponses({
-      "plugin:exports|get_project": mockSessionSnapshot(mockExportsProject()),
+      "plugin:exports|restore_project": mockSessionSnapshot(mockExportsProject()),
       ["plugin:exports|get_source"]: mockSource("xr_effects.play", 'extern("xr_effects.play", () => {});'),
     });
   });
@@ -42,7 +42,7 @@ describe("ExportSourceView", () => {
 
   it("numbers lines from where the declaration starts in its file", async () => {
     setMockInvokeResponses({
-      "plugin:exports|get_project": mockSessionSnapshot(mockExportsProject()),
+      "plugin:exports|restore_project": mockSessionSnapshot(mockExportsProject()),
       ["plugin:exports|get_source"]: mockSource("play", "line one\nline two\nline three", 18),
     });
 
@@ -55,7 +55,7 @@ describe("ExportSourceView", () => {
 
   it("reports a failed read and retries the same declaration", async () => {
     setMockInvokeResponses({
-      "plugin:exports|get_project": mockSessionSnapshot(mockExportsProject()),
+      "plugin:exports|restore_project": mockSessionSnapshot(mockExportsProject()),
       ["plugin:exports|get_source"]: () => {
         throw new Error("declaration file is gone");
       },
@@ -66,7 +66,7 @@ describe("ExportSourceView", () => {
     expect(await findByRole("alert")).toHaveTextContent("declaration file is gone");
 
     setMockInvokeResponses({
-      "plugin:exports|get_project": mockSessionSnapshot(mockExportsProject()),
+      "plugin:exports|restore_project": mockSessionSnapshot(mockExportsProject()),
       ["plugin:exports|get_source"]: mockSource("play", "restored source"),
     });
 
@@ -86,7 +86,7 @@ describe("ExportSourceView", () => {
     const pending: Record<string, (value: ExportSourceContent) => void> = {};
 
     setMockInvokeResponses({
-      "plugin:exports|get_project": mockSessionSnapshot(mockExportsProject()),
+      "plugin:exports|restore_project": mockSessionSnapshot(mockExportsProject()),
       ["plugin:exports|get_source"]: (parameters?: Record<string, unknown>) =>
         new Promise<ExportSourceContent>((resolve) => {
           pending[parameters?.name as string] = resolve;

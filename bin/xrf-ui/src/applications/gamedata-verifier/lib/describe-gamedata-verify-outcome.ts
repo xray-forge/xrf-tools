@@ -1,4 +1,5 @@
 import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
+import { EStatus } from "@/core/ipc/types/xrf-report";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
@@ -8,7 +9,7 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
  */
 export function selectFailedChecks(summary: GamedataVerifySummary): Array<GamedataCheckSummary> {
   return summary.checks.filter(
-    (check: GamedataCheckSummary) => check.status !== "passed" && check.status !== "skipped"
+    (check: GamedataCheckSummary) => check.status !== EStatus.PASSED && check.status !== EStatus.SKIPPED
   );
 }
 
@@ -60,7 +61,7 @@ export function describeGamedataVerifyOutcome(root: string, outcome: IJobOutcome
 
   return {
     details: [root, ...failed.map((check: GamedataCheckSummary) => `${check.check}: ${check.summary}`)].join("\n"),
-    severity: result.status === "incomplete" ? ENotificationSeverity.WARNING : ENotificationSeverity.ERROR,
+    severity: result.status === EStatus.INCOMPLETE ? ENotificationSeverity.WARNING : ENotificationSeverity.ERROR,
     title: `Gamedata ${result.status}: ${failed.length} of ${result.checks.length} check(s)`,
   };
 }

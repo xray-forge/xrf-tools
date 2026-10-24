@@ -3,7 +3,7 @@ import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 import { describeGamedataVerifyOutcome } from "@/applications/gamedata-verifier/lib/describe-gamedata-verify-outcome";
 import { IGamedataVerification } from "@/applications/gamedata-verifier/lib/gamedata-verification";
 import { gamedataCommands } from "@/core/ipc/commands/gamedata";
-import { EJobKind, GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
+import { GAMEDATA_JOB_VERIFY, GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -20,7 +20,7 @@ export class GamedataVerifierService {
   public readonly operation: JobOperation<GamedataVerifySummary>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.GAMEDATA_VERIFY]);
+    this.operation = new JobOperation(jobsService, [GAMEDATA_JOB_VERIFY]);
   }
 
   /**
@@ -39,7 +39,7 @@ export class GamedataVerifierService {
     this.log.info("Verifying gamedata:", root, isStrict);
 
     yield* this.operation.run({
-      kind: EJobKind.GAMEDATA_VERIFY,
+      kind: GAMEDATA_JOB_VERIFY,
       // Every check this build knows: narrowing the selection is a refinement worth adding once somebody has watched a
       // full run and knows which one they want to repeat.
       invoke: (id: string, progress) => gamedataCommands.verifyProject({ ...verification, checks: null }, id, progress),

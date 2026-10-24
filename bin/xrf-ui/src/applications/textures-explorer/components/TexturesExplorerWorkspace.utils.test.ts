@@ -22,6 +22,14 @@ describe("describeTexturesStatus", () => {
     expect(describeTexturesStatus(catalog, 1, 1)).toEqual(["1 textures", "1 descriptors", "12 outside textures\\"]);
   });
 
+  it("names the files no listing could name back, in either mode", () => {
+    const roots = mockTextureCatalog([mockTextureEntry(MOCK_TEXTURE)], { unnamedCount: 3 });
+    const loose = mockTextureCatalog([mockTextureEntry(MOCK_TEXTURE)], { mode: "looseDirectory", unnamedCount: 2 });
+
+    expect(describeTexturesStatus(roots, 1, 1)).toEqual(["1 textures", "1 descriptors", "3 unnamed files"]);
+    expect(describeTexturesStatus(loose, 1, 0)).toEqual(["1 textures", "listed by path", "2 unnamed files"]);
+  });
+
   it("counts no descriptors for a loose folder, because none were asked for", () => {
     // The zero this replaces was the whole sweep reporting nothing found, when the truth is that a listing addressed
     // by path has no engine references to sweep by at all.

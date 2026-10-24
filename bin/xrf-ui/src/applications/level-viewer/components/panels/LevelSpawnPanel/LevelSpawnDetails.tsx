@@ -53,8 +53,8 @@ export function LevelSpawnDetails({
       {read ? (
         <>
           <EditorPanelProperty label={"ALife id"} value={read.id} />
-          <EditorPanelProperty label={"Game vertex"} value={read.gameVertexId} />
-          <EditorPanelProperty label={"Level vertex"} value={read.levelVertexId} />
+          <EditorPanelProperty label={"Game vertex"} value={read.gameVertexId ?? "None"} />
+          <EditorPanelProperty label={"Level vertex"} value={read.levelVertexId ?? "None"} />
           <EditorPanelProperty label={"Custom data"} value={read.customData.trim() || "None"} isMonospace />
         </>
       ) : (

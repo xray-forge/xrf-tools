@@ -21,7 +21,6 @@ import {
   ESessionRootChange,
   ETranslationSaveOutcome,
   SessionChange,
-  SessionRestore,
   SessionSnapshot,
   TranslationSaveOutcome,
 } from "@/core/ipc/types/xrf-app";
@@ -143,7 +142,7 @@ export class TranslationsService {
   /** Reads the committed project again, for `onSessionChange`; a failure leaves what is shown, stale. */
   private async refresh(): Promise<void> {
     try {
-      this.adoptRefreshed(await translationsCommands.getProject(this.session.scope));
+      this.adoptRefreshed(await translationsCommands.restoreProject(this.session.tool));
     } catch (error: unknown) {
       this.log.warn("Could not read the translations project again:", transformError(error));
     }
@@ -154,7 +153,7 @@ export class TranslationsService {
    * decides what is shown instead.
    */
   @BoundAction()
-  private adoptRefreshed(answer: SessionRestore<TranslationProjectDescriptor>): void {
+  private adoptRefreshed(answer: Nullable<SessionSnapshot<TranslationProjectDescriptor>>): void {
     const held: Nullable<SessionSnapshot<TranslationProjectDescriptor>> = this.projectState.value;
 
     if (
@@ -174,7 +173,7 @@ export class TranslationsService {
   @ExclusiveFlow("project")
   private *restore(): TFlow {
     const response: Nullable<SessionSnapshot<TranslationProjectDescriptor>> = yield* call(
-      translationsCommands.getProject(this.session.scope)
+      translationsCommands.restoreProject(this.session.tool)
     );
 
     this.log.info(

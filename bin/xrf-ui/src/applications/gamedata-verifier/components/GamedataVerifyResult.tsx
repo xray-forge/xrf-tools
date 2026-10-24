@@ -4,6 +4,7 @@ import { ReactElement, useMemo } from "react";
 
 import { selectFailedChecks } from "@/applications/gamedata-verifier/lib/describe-gamedata-verify-outcome";
 import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
+import { EStatus, Status } from "@/core/ipc/types/xrf-report";
 import { cn } from "@/core/theme/class-name";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
@@ -13,11 +14,12 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 /**
  * How each verdict reads in the tone system.
  */
-const STATUS_TONES: Record<string, TCommandResultTone> = {
-  passed: "success",
-  failed: "error",
-  incomplete: "warning",
-  skipped: "info",
+const STATUS_TONES: Record<Status, TCommandResultTone> = {
+  [EStatus.PASSED]: "success",
+  [EStatus.FAILED]: "error",
+  [EStatus.ERROR]: "error",
+  [EStatus.INCOMPLETE]: "warning",
+  [EStatus.SKIPPED]: "info",
 };
 
 interface IGamedataVerifyResultProps extends BaseComponentProps {
@@ -38,7 +40,7 @@ export function GamedataVerifyResult({
         headerName: "Verdict",
         width: 120,
         renderCell: ({ row }: GridRenderCellParams<GamedataCheckSummary>) => {
-          const tone: TCommandResultTone = STATUS_TONES[row.status] ?? "info";
+          const tone: TCommandResultTone = STATUS_TONES[row.status];
 
           return (
             <span
@@ -102,7 +104,7 @@ export function GamedataVerifyResult({
             : `Gamedata passed ${result.checks.length} check(s)`
       }
       // A stopped run is never a verdict, whatever the checks that did run said.
-      tone={result.outcome === "cancelled" ? "info" : (STATUS_TONES[result.status] ?? "info")}
+      tone={result.outcome === "cancelled" ? "info" : STATUS_TONES[result.status]}
       stats={stats}
     >
       <CommandResultFindings

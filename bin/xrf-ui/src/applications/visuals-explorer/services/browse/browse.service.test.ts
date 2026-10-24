@@ -96,7 +96,7 @@ describe("VisualsBrowseService", () => {
     // is cheap because the mounts that listing reads are already cached.
     setMockInvokeResponses({
       ["plugin:visuals|open_browse"]: mockSessionResponse((args?: Record<string, unknown>) => args?.roots),
-      ["plugin:visuals|get_browse"]: mockSessionResponse(createRoots(["C:\\gamedata"])),
+      ["plugin:visuals|restore_browse"]: mockSessionResponse(createRoots(["C:\\gamedata"])),
       ["plugin:assets|list_assets"]: [mockVisual("meshes\\actors\\stalker.ogf")],
     });
 
@@ -144,7 +144,7 @@ describe("VisualsBrowseService", () => {
         return null;
       },
       // A session the backend no longer holds is what a later provisioning must find.
-      ["plugin:visuals|get_browse"]: mockSessionResponse(null),
+      ["plugin:visuals|restore_browse"]: mockSessionResponse(null),
     });
 
     const { service } = mockInjectedService(VisualsBrowseService);

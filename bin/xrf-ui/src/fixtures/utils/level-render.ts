@@ -52,7 +52,7 @@ export async function mockAttachedLevelRender(
   element: HTMLElement = document.createElement("div")
 ): Promise<{ container: Container; service: LevelRenderService }> {
   setMockInvokeResponses({
-    ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+    ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
     ...mockLevelPartResponses({ start: { direction: { x: 0, y: 0, z: -1 }, position: { x: 10, y: 2, z: -5 } } }),
     ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
     ["plugin:render|attach_viewport"]: LEVEL_VIEWPORT,

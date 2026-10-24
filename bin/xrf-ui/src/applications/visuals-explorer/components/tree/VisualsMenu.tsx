@@ -8,7 +8,7 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { EVisualSource, VisualSource } from "@/core/ipc/types/xrf-app";
+import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
@@ -77,8 +77,8 @@ export function VisualsMenu({
     []
   );
 
-  const source: Nullable<VisualSource> = visualsService.selected?.source ?? null;
-  const openItemId: Nullable<string> = source?.kind === EVisualSource.ASSET ? toFileItemId(source.logicalPath) : null;
+  const source: Nullable<AssetSource> = visualsService.selected?.source ?? null;
+  const openItemId: Nullable<string> = source?.kind === EAssetSource.ASSET ? toFileItemId(source.logicalPath) : null;
 
   const onOpenAsset = useCallback((asset: XrayAsset) => onOpenPath(asset.logicalPath), [onOpenPath]);
 

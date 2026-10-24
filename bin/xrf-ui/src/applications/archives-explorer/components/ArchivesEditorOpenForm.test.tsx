@@ -27,7 +27,7 @@ describe("ArchivesEditorOpenForm", () => {
     clearLocalStorage();
 
     setMockInvokeResponses({
-      ["plugin:archives|get_subject"]: mockSessionResponse(null),
+      ["plugin:archives|restore_subject"]: mockSessionResponse(null),
       ["plugin:archives|open_volumes"]: mockSessionResponse(null),
       ["plugin:archives|open_world"]: mockSessionResponse(null),
     });

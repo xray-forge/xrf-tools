@@ -1,15 +1,18 @@
 import { assertExhaustive, Nullable } from "@xrf/types";
 
-import { EMapExportAnnotations, EMapExportFormat, MapExportFormat, MapExportRequest } from "@/core/ipc/types/xrf-app";
+import { EMapExportAnnotations, MapExportFormat, MapExportRequest } from "@/core/ipc/types/xrf-app";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { RENDER_MAP_MOST_PIXELS } from "@/core/ipc/types/xrf-renderer";
 import { ETextureEncodingFormat, ETextureEncodingQuality } from "@/core/ipc/types/xrf-texture";
 
 import { LEVEL_MAP_ANNOTATIONS_EXTENSION } from "./level-map-annotations";
 
+/** What a level map is exported as, by the `kind` its export format is told apart by. */
+export type TLevelMapExportKind = MapExportFormat["kind"];
+
 /** A level map's export, as its dialog holds it. */
 export interface ILevelMapExportSettings {
-  kind: EMapExportFormat;
+  kind: TLevelMapExportKind;
   /** The DDS's layout. */
   format: ETextureEncodingFormat;
   /** Pixels its longer side takes, at most the capture's. */
@@ -30,7 +33,7 @@ export const LEVEL_MAP_EXPORT_LONG_SIDES: ReadonlyArray<number> = [512, 1024, 20
  * than the shipped BC3 at the same size.
  */
 export const DEFAULT_LEVEL_MAP_EXPORT: ILevelMapExportSettings = {
-  kind: EMapExportFormat.DDS,
+  kind: "dds",
   format: ETextureEncodingFormat.BC7,
   longSide: 2048,
   backdrop: null,
@@ -47,10 +50,10 @@ export const LEVEL_MAP_BACKDROP: [number, number, number] = [0, 0, 0];
  * @returns Whether it can be exported so: only its annotations alone are an SVG.
  */
 export function isLevelMapExportKindOffered(
-  kind: EMapExportFormat,
+  kind: TLevelMapExportKind,
   annotations: Nullable<EMapExportAnnotations>
 ): boolean {
-  return kind !== EMapExportFormat.SVG || annotations === EMapExportAnnotations.ALONE;
+  return kind !== "svg" || annotations === EMapExportAnnotations.ALONE;
 }
 
 /**
@@ -64,22 +67,22 @@ export function toLevelMapExportSettings(
 ): ILevelMapExportSettings {
   const next: ILevelMapExportSettings = { ...current, ...patch };
 
-  return isLevelMapExportKindOffered(next.kind, next.annotations) ? next : { ...next, kind: EMapExportFormat.PNG };
+  return isLevelMapExportKindOffered(next.kind, next.annotations) ? next : { ...next, kind: "png" };
 }
 
 /**
  * @param kind - What a map is exported as.
  * @returns The extension its file takes.
  */
-export function toLevelMapExportExtension(kind: EMapExportFormat): string {
+export function toLevelMapExportExtension(kind: TLevelMapExportKind): string {
   switch (kind) {
-    case EMapExportFormat.DDS:
+    case "dds":
       return EXrayExtension.DDS;
-    case EMapExportFormat.PNG:
+    case "png":
       return EXrayExtension.PNG;
-    case EMapExportFormat.TGA:
+    case "tga":
       return EXrayExtension.TGA;
-    case EMapExportFormat.SVG:
+    case "svg":
       return LEVEL_MAP_ANNOTATIONS_EXTENSION;
     default:
       return assertExhaustive(kind);
@@ -92,19 +95,19 @@ export function toLevelMapExportExtension(kind: EMapExportFormat): string {
  */
 export function toMapExportFormat(settings: ILevelMapExportSettings): MapExportFormat {
   switch (settings.kind) {
-    case EMapExportFormat.DDS:
+    case "dds":
       return {
-        kind: EMapExportFormat.DDS,
+        kind: "dds",
         format: settings.format,
         quality: ETextureEncodingQuality.SLOW,
         isMipmapped: settings.isMipmapped,
       };
-    case EMapExportFormat.PNG:
-      return { kind: EMapExportFormat.PNG };
-    case EMapExportFormat.TGA:
-      return { kind: EMapExportFormat.TGA };
-    case EMapExportFormat.SVG:
-      return { kind: EMapExportFormat.SVG };
+    case "png":
+      return { kind: "png" };
+    case "tga":
+      return { kind: "tga" };
+    case "svg":
+      return { kind: "svg" };
     default:
       return assertExhaustive(settings.kind);
   }
@@ -144,7 +147,7 @@ export function toLevelMapExportSize(
   width: number,
   height: number,
   longSide: number,
-  kind: EMapExportFormat
+  kind: TLevelMapExportKind
 ): [number, number] {
   const longest: number = Math.max(width, height, 1);
   const scale: number = Math.min(Math.max(longSide, 1), longest) / longest;
@@ -152,7 +155,7 @@ export function toLevelMapExportSize(
   function side(pixels: number): number {
     const scaled: number = Math.max(1, Math.round(pixels * scale));
 
-    return kind === EMapExportFormat.DDS ? Math.max(1, Math.round(scaled / 4)) * 4 : scaled;
+    return kind === "dds" ? Math.max(1, Math.round(scaled / 4)) * 4 : scaled;
   }
 
   return [side(width), side(height)];

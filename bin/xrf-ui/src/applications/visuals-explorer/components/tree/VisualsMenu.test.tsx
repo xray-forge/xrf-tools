@@ -28,7 +28,7 @@ async function renderMenu(visuals: Array<XrayAsset>): Promise<{ render: RenderRe
   setMockInvokeResponses({
     ["plugin:visuals|open_browse"]: mockSessionResponse((args?: Record<string, unknown>) => args?.roots),
     ["plugin:assets|list_assets"]: visuals,
-    ["plugin:visuals|get_model"]: mockSessionResponse(null),
+    ["plugin:visuals|restore_model"]: mockSessionResponse(null),
   });
 
   const container: Container = mockContainer([

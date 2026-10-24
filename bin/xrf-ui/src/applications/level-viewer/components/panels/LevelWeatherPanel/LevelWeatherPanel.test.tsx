@@ -56,7 +56,7 @@ function mockPanelContainer(): Container {
 
 async function renderPanel(responses: InvokeMap = {}): Promise<RenderResult & { weather: LevelWeatherService }> {
   setMockInvokeResponses({
-    ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+    ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
     ["plugin:levels|read_level_cycle"]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
       mockLevelWeatherCycle({ name: cycle.name })
     ),

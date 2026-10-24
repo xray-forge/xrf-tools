@@ -25,7 +25,10 @@ const ZATON: SelectedLevelDescription = mockSelectedLevelDescription({
   },
 });
 
-const ZATON_MAP: LevelMapDescription = { minX: -600, minZ: -615, maxX: 600, maxZ: 585, texture: "map\\map_zaton" };
+const ZATON_MAP: LevelMapDescription = {
+  area: { minX: -600, minZ: -615, maxX: 600, maxZ: 585 },
+  texture: "map\\map_zaton",
+};
 
 function mockCapture(
   level: Nullable<SelectedLevelDescription> = ZATON,

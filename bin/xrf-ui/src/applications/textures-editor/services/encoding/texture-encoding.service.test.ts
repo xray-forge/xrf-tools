@@ -30,7 +30,7 @@ async function mockService(): Promise<{ service: TextureEncodingService; selecti
 
   setMockBulkResponses({
     "textures/read_candidate": new ArrayBuffer(8),
-    "textures/read_texture": new ArrayBuffer(0),
+    "assets/read_texture": new ArrayBuffer(0),
   });
 
   const container: Container = mockContainer([JobsService, TextureSelectionService, TextureEncodingService]);
@@ -84,7 +84,7 @@ describe("TextureEncodingService", () => {
     });
 
     setMockBulkResponses({
-      "textures/read_texture": new ArrayBuffer(0),
+      "assets/read_texture": new ArrayBuffer(0),
     });
 
     await selection.openFile("C:\\gamedata\\textures\\ston\\ston_beton06.dds");
@@ -211,7 +211,7 @@ describe("TextureEncodingService", () => {
       ["plugin:textures|describe"]: description,
     });
     setMockBulkResponses({
-      "textures/read_texture": new ArrayBuffer(0),
+      "assets/read_texture": new ArrayBuffer(0),
     });
 
     await selection.open(description.source, description.roots);

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { SPRITE_EQUIPMENT_JOB_PACK } from "@/core/ipc/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
@@ -21,7 +21,7 @@ describe("SpriteEquipmentEditorService", () => {
     const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
     setMockInvokeResponses({
-      ["plugin:sprite-equipment|reopen_sprite"]: mockSessionResponse(() => {
+      ["plugin:sprite-equipment|reload_sprite"]: mockSessionResponse(() => {
         throw new Error("backend refused");
       }),
     });
@@ -128,7 +128,7 @@ describe("SpriteEquipmentEditorService", () => {
       container.get(JobsService).jobs = [
         {
           id: "running",
-          kind: EJobKind.SPRITE_EQUIPMENT_PACK,
+          kind: SPRITE_EQUIPMENT_JOB_PACK,
           progress: null,
           request: null,
           isCancelRequested: false,
@@ -145,7 +145,7 @@ describe("SpriteEquipmentEditorService", () => {
     expect(service.spriteImage.error).toBe(previous.error);
     expect(service.spriteImage.isLoading).toBe(false);
     expect(service.repackedAt).toBeNull();
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:sprite-equipment|reopen_sprite", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:sprite-equipment|reload_sprite", expect.anything());
     expect(notices).not.toContainEqual(expect.objectContaining({ severity: ENotificationSeverity.SUCCESS }));
 
     if (outcome === "busy") {

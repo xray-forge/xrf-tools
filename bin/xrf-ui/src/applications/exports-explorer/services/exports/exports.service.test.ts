@@ -14,14 +14,14 @@ const PROJECT: ExportsProject = mockExportsProject();
 describe("ExportsService", () => {
   beforeEach(() => {
     setMockInvokeResponses({
-      ["plugin:exports|get_project"]: mockSessionResponse(null),
+      ["plugin:exports|restore_project"]: mockSessionResponse(null),
       ["plugin:exports|open_project"]: mockSessionResponse(PROJECT),
       ["plugin:exports|close_project"]: undefined,
     });
   });
 
   it("restores an existing backend session", async () => {
-    setMockInvokeResponses({ ["plugin:exports|get_project"]: mockSessionResponse(PROJECT) });
+    setMockInvokeResponses({ ["plugin:exports|restore_project"]: mockSessionResponse(PROJECT) });
 
     const service = mockInjectedService(ExportsService).service;
 
@@ -41,14 +41,14 @@ describe("ExportsService", () => {
     expect(service.project.value).toBeNull();
     expect(mockInvoke).toHaveBeenCalledTimes(1);
     // The restore names the tool's scope, which the backend lists its openings by.
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:exports|get_project", {
-      scope: { tool: "shell", window: "main" },
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:exports|restore_project", {
+      tool: "shell",
     });
   });
 
   it("recovers from a failed session lookup", async () => {
     setMockInvokeResponses({
-      ["plugin:exports|get_project"]: mockSessionResponse(() => {
+      ["plugin:exports|restore_project"]: mockSessionResponse(() => {
         throw new Error("backend unavailable");
       }),
     });
@@ -77,7 +77,7 @@ describe("ExportsService", () => {
 
   it("retains projected data and reports refresh status when a replacement fails", async () => {
     setMockInvokeResponses({
-      ["plugin:exports|get_project"]: mockSessionResponse(PROJECT),
+      ["plugin:exports|restore_project"]: mockSessionResponse(PROJECT),
       ["plugin:exports|open_project"]: mockSessionResponse(() => {
         throw new Error("parse failed");
       }),
@@ -110,7 +110,7 @@ describe("ExportsService", () => {
 
   it("keeps the project and rejects when close fails", async () => {
     setMockInvokeResponses({
-      ["plugin:exports|get_project"]: mockSessionResponse(PROJECT),
+      ["plugin:exports|restore_project"]: mockSessionResponse(PROJECT),
       ["plugin:exports|close_project"]: () => {
         throw new Error("project is busy");
       },

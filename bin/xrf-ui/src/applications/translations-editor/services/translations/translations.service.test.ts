@@ -51,7 +51,7 @@ async function openWithEdit(service: TranslationsService): Promise<void> {
 
 describe("TranslationsService", () => {
   beforeEach(() => {
-    setMockInvokeResponses({ ["plugin:translations|get_project"]: mockSessionResponse(() => null) });
+    setMockInvokeResponses({ ["plugin:translations|restore_project"]: mockSessionResponse(() => null) });
   });
 
   it("resolves and saves draft values using the current committed variant shapes", async () => {

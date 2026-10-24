@@ -22,7 +22,7 @@ interface IRenderedMenu {
 
 async function renderMenu(files: Array<ArchiveFileDescriptor>): Promise<IRenderedMenu> {
   setMockInvokeResponses({
-    ["plugin:archives|get_subject"]: mockSessionResponse(mockArchivesVolumes(files)),
+    ["plugin:archives|restore_subject"]: mockSessionResponse(mockArchivesVolumes(files)),
     ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [] },
     ["plugin:archives|list_shared_payloads"]: [],
     ["plugin:archives|read_file"]: { name: files[0]?.name ?? "", content: "[system]", size: 8 },
@@ -61,7 +61,7 @@ describe("ArchivesMenu", () => {
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
         sessionId: expect.any(String),
-        path: "configs\\system.ltx",
+        name: "configs\\system.ltx",
       })
     );
   });
@@ -100,7 +100,7 @@ describe("ArchivesMenu", () => {
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
         sessionId: expect.any(String),
-        path: "configs\\game.ltx",
+        name: "configs\\game.ltx",
       })
     );
   });
@@ -139,7 +139,7 @@ describe("ArchivesMenu", () => {
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
         sessionId: expect.any(String),
-        path: "configs\\system.ltx",
+        name: "configs\\system.ltx",
       })
     );
 
@@ -168,7 +168,7 @@ describe("ArchivesMenu", () => {
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
         sessionId: expect.any(String),
-        path: "configs\\system.ltx",
+        name: "configs\\system.ltx",
       })
     );
   });

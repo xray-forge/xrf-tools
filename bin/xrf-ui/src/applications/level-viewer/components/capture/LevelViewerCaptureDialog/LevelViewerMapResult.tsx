@@ -16,10 +16,11 @@ import {
   isLevelMapExportKindOffered,
   LEVEL_MAP_BACKDROP,
   LEVEL_MAP_EXPORT_LONG_SIDES,
+  TLevelMapExportKind,
   toLevelMapExportSize,
 } from "@/applications/level-viewer/lib/map/level-map-export";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
-import { ELevelAnnotationKind, EMapExportAnnotations, EMapExportFormat } from "@/core/ipc/types/xrf-app";
+import { ELevelAnnotationKind, EMapExportAnnotations } from "@/core/ipc/types/xrf-app";
 import { ETextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
 import { cn } from "@/core/theme/class-name";
 import { CheckboxFormRow, ChoiceFormRow } from "@/core/ui/form";
@@ -56,8 +57,8 @@ export function LevelViewerMapResult({
     settings.longSide,
     settings.kind
   );
-  const isDds: boolean = settings.kind === EMapExportFormat.DDS;
-  const isSvg: boolean = settings.kind === EMapExportFormat.SVG;
+  const isDds: boolean = settings.kind === "dds";
+  const isSvg: boolean = settings.kind === "svg";
   const annotations: ILevelMapAnnotations = captureService.mapAnnotations;
   const annotationsUrl: Nullable<string> = captureService.annotationsUrl;
 
@@ -86,7 +87,7 @@ export function LevelViewerMapResult({
     [captureService]
   );
 
-  const onKind = useCallback((kind: EMapExportFormat) => captureService.setMapExport({ kind }), [captureService]);
+  const onKind = useCallback((kind: TLevelMapExportKind) => captureService.setMapExport({ kind }), [captureService]);
 
   const onFormat = useCallback(
     (format: ETextureEncodingFormat) => captureService.setMapExport({ format }),
@@ -156,13 +157,13 @@ export function LevelViewerMapResult({
         <ChoiceFormRow
           label={"Export as"}
           options={[
-            { value: EMapExportFormat.DDS, label: "DDS" },
-            { value: EMapExportFormat.PNG, label: "PNG" },
-            { value: EMapExportFormat.TGA, label: "TGA" },
+            { value: "dds", label: "DDS" },
+            { value: "png", label: "PNG" },
+            { value: "tga", label: "TGA" },
             {
-              value: EMapExportFormat.SVG,
+              value: "svg",
               label: "SVG",
-              isDisabled: !isLevelMapExportKindOffered(EMapExportFormat.SVG, settings.annotations),
+              isDisabled: !isLevelMapExportKindOffered("svg", settings.annotations),
             },
           ]}
           value={settings.kind}

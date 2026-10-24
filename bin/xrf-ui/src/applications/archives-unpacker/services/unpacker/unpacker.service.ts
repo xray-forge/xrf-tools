@@ -2,7 +2,7 @@ import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 
 import { describeUnpackOutcome } from "@/applications/archives-unpacker/lib/describe-unpack-outcome";
 import { archivesCommands } from "@/core/ipc/commands/archives";
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { ARCHIVES_JOB_UNPACK } from "@/core/ipc/types/xrf-app";
 import { ArchiveUnpackResult } from "@/core/ipc/types/xrf-pack";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
@@ -21,7 +21,7 @@ export class UnpackerService {
   public readonly operation: JobOperation<ArchiveUnpackResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.ARCHIVES_UNPACK]);
+    this.operation = new JobOperation(jobsService, [ARCHIVES_JOB_UNPACK]);
   }
 
   /**
@@ -39,7 +39,7 @@ export class UnpackerService {
     this.log.info("Unpacking:", source, "to", destination);
 
     yield* this.operation.run({
-      kind: EJobKind.ARCHIVES_UNPACK,
+      kind: ARCHIVES_JOB_UNPACK,
       invoke: (id: string, progress) => archivesCommands.unpackDirectory({ from: source, destination }, id, progress),
       describe: (outcome: IJobOutcome<ArchiveUnpackResult>): IJobNotice =>
         describeUnpackOutcome(source, destination, outcome),

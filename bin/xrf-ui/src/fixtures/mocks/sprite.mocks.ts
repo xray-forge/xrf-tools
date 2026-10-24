@@ -68,7 +68,6 @@ export function mockEquipmentSpriteMetadata(overrides: Partial<EquipmentSpriteMe
   const open: EquipmentSpriteOpen = overrides.open ?? mockEquipmentSpriteOpen();
 
   return {
-    name: "equipment.png",
     open,
     location: mockEquipmentSheetLocation(open),
     configError: null,

@@ -1,8 +1,7 @@
 import { GridColDef } from "@mui/x-data-grid";
 import { ReactElement, useMemo } from "react";
 
-import { TranslationVerifySummary } from "@/core/ipc/types/xrf-app";
-import { TranslationVerifyLanguageSummary } from "@/core/ipc/types/xrf-translation";
+import { TranslationVerifyLanguageSummary, TranslationVerifyResult } from "@/core/ipc/types/xrf-translation";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { identifierColumn, pathColumn } from "@/core/ui/table/columns";
@@ -11,7 +10,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 type TLanguageRow = TranslationVerifyLanguageSummary & { id: string; complete: number };
 
 export interface ITranslationsVerifyResultProps extends BaseComponentProps {
-  result: TranslationVerifySummary;
+  result: TranslationVerifyResult;
 }
 
 export function TranslationsVerifyResult({
@@ -55,8 +54,12 @@ export function TranslationsVerifyResult({
 
   const stats: Array<ICommandResultStat> = useMemo(
     () => [
-      { label: "ids checked", value: result.checked },
-      { label: "missing", value: result.missing, tone: result.missing ? "error" : "success" },
+      { label: "ids checked", value: result.checkedTranslationsCount },
+      {
+        label: "missing",
+        value: result.missingTranslationsCount,
+        tone: result.missingTranslationsCount ? "error" : "success",
+      },
       { label: "files", value: new Set(result.languages.map((summary) => summary.file)).size },
       { label: "languages", value: new Set(result.languages.map((summary) => summary.language)).size },
       {
@@ -74,11 +77,11 @@ export function TranslationsVerifyResult({
       id={id}
       className={className}
       headline={
-        result.missing
-          ? `${result.missing} translation(s) missing across ${incompleteLanguages.length} language(s)`
-          : `Every language is complete across ${result.checked} id(s)`
+        result.missingTranslationsCount
+          ? `${result.missingTranslationsCount} translation(s) missing across ${incompleteLanguages.length} language(s)`
+          : `Every language is complete across ${result.checkedTranslationsCount} id(s)`
       }
-      tone={result.missing ? "error" : "success"}
+      tone={result.missingTranslationsCount ? "error" : "success"}
       stats={stats}
     >
       <CommandResultFindings<TLanguageRow>

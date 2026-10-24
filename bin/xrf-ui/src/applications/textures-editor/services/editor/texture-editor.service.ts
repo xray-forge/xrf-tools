@@ -8,10 +8,10 @@ import { isSameDescriptorForm, toEditableForm } from "@/applications/textures-ed
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { texturesCommands } from "@/core/ipc/commands/textures";
 import {
-  EJobKind,
   TextureDescription,
   TextureDescriptorForm,
   TextureEncodingComparison,
+  TEXTURES_JOB_SAVE,
   TextureSaveOutcome,
   TextureVocabulary,
 } from "@/core/ipc/types/xrf-app";
@@ -99,7 +99,7 @@ export class TextureEditorService {
     private readonly encodingService: TextureEncodingService = inject(TextureEncodingService),
     jobsService: JobsService = inject(JobsService)
   ) {
-    this.save = new JobOperation(jobsService, [EJobKind.TEXTURES_SAVE]);
+    this.save = new JobOperation(jobsService, [TEXTURES_JOB_SAVE]);
   }
 
   /**
@@ -198,7 +198,7 @@ export class TextureEditorService {
     this.log.info("Saving texture descriptor:", reference);
 
     const { error } = yield* this.save.run({
-      kind: EJobKind.TEXTURES_SAVE,
+      kind: TEXTURES_JOB_SAVE,
       invoke: (id: string, progress) =>
         texturesCommands.save(
           {
@@ -208,7 +208,7 @@ export class TextureEditorService {
             texture:
               chosen === null || comparison === null
                 ? null
-                : { sessionId: comparison.sessionId, format: chosen, target: targets.texture },
+                : { sessionId: comparison.sessionId, format: chosen, expected: targets.texture.expected },
           },
           id,
           progress

@@ -119,7 +119,7 @@ describe("ArchivesService world subject", () => {
 
   it("restores whichever subject the backend still holds", async () => {
     setMockInvokeResponses({
-      ["plugin:archives|get_subject"]: mockSessionResponse(mockArchivesWorldSubject()),
+      ["plugin:archives|restore_subject"]: mockSessionResponse(mockArchivesWorldSubject()),
       ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [] },
     });
 

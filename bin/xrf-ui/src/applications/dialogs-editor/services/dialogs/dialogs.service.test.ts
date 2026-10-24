@@ -48,7 +48,7 @@ const DIALOG: DialogDescriptor = {
 
 describe("DialogsService", () => {
   beforeEach(() => {
-    setMockInvokeResponses({ ["plugin:dialogs|get_project"]: mockSessionResponse(() => null) });
+    setMockInvokeResponses({ ["plugin:dialogs|restore_project"]: mockSessionResponse(() => null) });
   });
 
   it("opens a project over roots and the layout mode", async () => {

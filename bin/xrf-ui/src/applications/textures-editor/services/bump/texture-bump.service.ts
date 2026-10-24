@@ -6,7 +6,7 @@ import { describeTextureBumpOutcome } from "@/applications/textures-editor/lib/d
 import { toBumpTarget } from "@/applications/textures-editor/lib/texture-bump-target";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { texturesCommands } from "@/core/ipc/commands/textures";
-import { EJobKind, TextureDescription, TextureMakeBumpOutcome } from "@/core/ipc/types/xrf-app";
+import { TextureDescription, TextureMakeBumpOutcome, TEXTURES_JOB_MAKE_BUMP } from "@/core/ipc/types/xrf-app";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -62,7 +62,7 @@ export class TextureBumpService {
     private readonly editorService: TextureEditorService = inject(TextureEditorService),
     jobsService: JobsService = inject(JobsService)
   ) {
-    this.generate = new JobOperation(jobsService, [EJobKind.TEXTURES_MAKE_BUMP]);
+    this.generate = new JobOperation(jobsService, [TEXTURES_JOB_MAKE_BUMP]);
   }
 
   /**
@@ -85,7 +85,7 @@ export class TextureBumpService {
     this.log.info("Generating bump pair for:", destination);
 
     const { result, error } = yield* this.generate.run({
-      kind: EJobKind.TEXTURES_MAKE_BUMP,
+      kind: TEXTURES_JOB_MAKE_BUMP,
       invoke: (id: string, progress) =>
         texturesCommands.makeBump(
           {

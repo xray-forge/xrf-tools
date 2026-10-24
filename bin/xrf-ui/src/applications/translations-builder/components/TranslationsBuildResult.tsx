@@ -2,8 +2,7 @@ import { GridColDef } from "@mui/x-data-grid";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
-import { TranslationBuildSummary } from "@/core/ipc/types/xrf-app";
-import { TranslationBuildLanguageSummary } from "@/core/ipc/types/xrf-translation";
+import { TranslationBuildLanguageSummary, TranslationBuildResult } from "@/core/ipc/types/xrf-translation";
 import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
@@ -14,7 +13,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 type TLanguageRow = TranslationBuildLanguageSummary & { id: string };
 
 export interface ITranslationsBuildResultProps extends BaseComponentProps {
-  result: TranslationBuildSummary;
+  result: TranslationBuildResult;
   /** Where the build was told to write; the summary does not carry an address. */
   outputPath: Nullable<string>;
 }
