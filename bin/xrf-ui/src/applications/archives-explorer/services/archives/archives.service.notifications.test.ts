@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
 import { AsyncState } from "@xrf/async";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
-import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
+import {
+  mockArchiveExtractDirectoryResult,
+  mockArchiveFileDescriptor,
+  mockArchivesVolumes,
+} from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
 
@@ -36,7 +41,7 @@ function mockWatchedNotifications(): IWatchedService {
 
 describe("ArchivesService notifications", () => {
   beforeEach(() => {
-    setMockInvokeResponses({});
+    mockIpcCommands({});
   });
 
   it("reports a completed extraction, so the outcome survives leaving the editor", async () => {
@@ -54,8 +59,8 @@ describe("ArchivesService notifications", () => {
   it("reports a refused extraction with what the backend said", async () => {
     const { raised, service }: IWatchedService = mockWatchedNotifications();
 
-    setMockInvokeResponses({
-      ["plugin:archives|extract_file"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.EXTRACT_FILE]: () => {
         throw new Error("destination is read only");
       },
     });
@@ -70,13 +75,14 @@ describe("ArchivesService notifications", () => {
   it("counts what a directory extraction wrote", async () => {
     const { raised, service }: IWatchedService = mockWatchedNotifications();
 
-    setMockInvokeResponses({
-      ["plugin:archives|extract_directory"]: () => ({
-        destination: "C:\\out",
-        extractedCount: 12,
-        prefix: "textures",
-        size: 2048,
-      }),
+    mockIpcCommands({
+      [EArchivesCommand.EXTRACT_DIRECTORY]: () =>
+        mockArchiveExtractDirectoryResult({
+          destination: "C:\\out",
+          extractedCount: 12,
+          prefix: "textures",
+          size: 2048,
+        }),
     });
 
     await service.extractArchiveDirectory("textures", "C:\\out");
@@ -89,8 +95,8 @@ describe("ArchivesService notifications", () => {
   it("reports a project that could not be opened", async () => {
     const { raised, service }: IWatchedService = mockWatchedNotifications();
 
-    setMockInvokeResponses({
-      ["plugin:archives|open_volumes"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [EArchivesCommand.OPEN_VOLUMES]: mockSessionResponse(() => {
         throw new Error("not an archive directory");
       }),
     });

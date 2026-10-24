@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
+import { ERenderCommand } from "@xrf/ipc/commands/render";
 import { mockInvoke } from "@xrf/ipc/testing";
 import {
   ERenderAntialiasing,
@@ -18,7 +19,7 @@ import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 
 /** How often the renderer was told its settings. */
 function countConfigured(): number {
-  return mockInvoke.mock.calls.filter(([name]) => name === "plugin:render|configure").length;
+  return mockInvoke.mock.calls.filter(([name]) => name === ERenderCommand.CONFIGURE).length;
 }
 
 describe("RenderSettingsService", () => {

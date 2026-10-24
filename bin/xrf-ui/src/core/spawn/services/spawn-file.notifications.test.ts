@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ESpawnCommand } from "@xrf/ipc/commands/spawn";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { SpawnFileService } from "@/core/spawn/services/spawn-file.service";
@@ -29,13 +30,13 @@ function watchNotifications(): IWatchedService {
 
 describe("SpawnFileService notifications", () => {
   beforeEach(() => {
-    setMockInvokeResponses({});
+    mockIpcCommands({});
   });
 
   it("reports a written save", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({ "plugin:spawn|open_file": mockSessionResponse(mockSpawnSession()) });
+    mockIpcCommands({ [ESpawnCommand.OPEN_FILE]: mockSessionResponse(mockSpawnSession()) });
     await service.openFile("source.spawn");
 
     await service.saveFile("C:\\out\\all.spawn");
@@ -49,11 +50,11 @@ describe("SpawnFileService notifications", () => {
   it("reports a save the backend refused", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({ "plugin:spawn|open_file": mockSessionResponse(mockSpawnSession()) });
+    mockIpcCommands({ [ESpawnCommand.OPEN_FILE]: mockSessionResponse(mockSpawnSession()) });
     await service.openFile("source.spawn");
 
-    setMockInvokeResponses({
-      ["plugin:spawn|save_file"]: () => {
+    mockIpcCommands({
+      [ESpawnCommand.SAVE_FILE]: () => {
         throw new Error("destination is read only");
       },
     });
@@ -70,7 +71,7 @@ describe("SpawnFileService notifications", () => {
   it("reports a written export", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({ "plugin:spawn|open_file": mockSessionResponse(mockSpawnSession()) });
+    mockIpcCommands({ [ESpawnCommand.OPEN_FILE]: mockSessionResponse(mockSpawnSession()) });
     await service.openFile("source.spawn");
 
     await service.saveUnpackedDirectory("C:\\out\\unpacked");
@@ -83,11 +84,11 @@ describe("SpawnFileService notifications", () => {
   it("reports an export the backend refused", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({ "plugin:spawn|open_file": mockSessionResponse(mockSpawnSession()) });
+    mockIpcCommands({ [ESpawnCommand.OPEN_FILE]: mockSessionResponse(mockSpawnSession()) });
     await service.openFile("source.spawn");
 
-    setMockInvokeResponses({
-      ["plugin:spawn|save_unpacked_directory"]: () => {
+    mockIpcCommands({
+      [ESpawnCommand.SAVE_UNPACKED_DIRECTORY]: () => {
         throw new Error("no such directory");
       },
     });
@@ -102,8 +103,8 @@ describe("SpawnFileService notifications", () => {
   it("reports a spawn file that could not be opened", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({
-      ["plugin:spawn|open_file"]: () => {
+    mockIpcCommands({
+      [ESpawnCommand.OPEN_FILE]: () => {
         throw new Error("not a spawn file");
       },
     });
@@ -120,8 +121,8 @@ describe("SpawnFileService notifications", () => {
   it("becomes ready even when the session restore fails", async () => {
     const { service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({
-      ["plugin:spawn|restore_file"]: () => {
+    mockIpcCommands({
+      [ESpawnCommand.RESTORE_FILE]: () => {
         throw new Error("backend is gone");
       },
     });
@@ -136,8 +137,8 @@ describe("SpawnFileService notifications", () => {
   it("says nothing about a file that opened", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({
-      ["plugin:spawn|open_file"]: mockSessionResponse(mockSpawnSession()),
+    mockIpcCommands({
+      [ESpawnCommand.OPEN_FILE]: mockSessionResponse(mockSpawnSession()),
     });
 
     await service.openFile("C:\\game\\all.spawn");

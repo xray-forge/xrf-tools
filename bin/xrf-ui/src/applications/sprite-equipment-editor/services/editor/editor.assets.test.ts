@@ -1,7 +1,9 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { mockInvoke, setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ESpriteEquipmentCommand } from "@xrf/ipc/commands/sprite-equipment";
+import { ESpriteEquipmentBulkRoute } from "@xrf/ipc/commands/sprite-equipment-bulk";
+import { mockInvoke, mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
 import { EquipmentSpriteMetadata } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 import { PackEquipmentResult } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
@@ -30,7 +32,7 @@ const CONFIG_PATH: string = (RESPONSE.open.config as { kind: "file"; path: strin
 function createService(): { service: SpriteEquipmentEditorService; assets: AssetService; container: Container } {
   const { service, container } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
-  setMockBulkResponses({ "sprite-equipment/read_preview": new Uint8Array([0x89, 0x50, 0x4e, 0x47]) });
+  mockIpcBulkRoutes({ [ESpriteEquipmentBulkRoute.READ_PREVIEW]: new Uint8Array([0x89, 0x50, 0x4e, 0x47]) });
 
   // jsdom never loads an image, so `onload` would never fire and the decode would hang. Resolving on
   // assignment keeps the url visible as `src`, which is what these assertions are about.
@@ -69,10 +71,10 @@ describe("SpriteEquipmentEditorService object urls", () => {
       duration: 1000,
     };
 
-    setMockInvokeResponses({
-      "plugin:sprite-equipment|open_sprite": mockSessionResponse(RESPONSE),
-      "plugin:sprite-equipment|pack_sprite": packed,
-      "plugin:sprite-equipment|reload_sprite": mockSessionResponse(RESPONSE),
+    mockIpcCommands({
+      [ESpriteEquipmentCommand.OPEN_SPRITE]: mockSessionResponse(RESPONSE),
+      [ESpriteEquipmentCommand.PACK_SPRITE]: packed,
+      [ESpriteEquipmentCommand.RELOAD_SPRITE]: mockSessionResponse(RESPONSE),
     });
 
     const { service, assets, container } = createService();
@@ -86,7 +88,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
     await service.repackAndOpenProject();
 
     expect(mockInvoke).toHaveBeenCalledWith(
-      "plugin:sprite-equipment|pack_sprite",
+      ESpriteEquipmentCommand.PACK_SPRITE,
       expect.objectContaining({
         request: {
           sourcePath: "C:\\game\\equipment",
@@ -98,14 +100,14 @@ describe("SpriteEquipmentEditorService object urls", () => {
     );
     expect(
       mockInvoke.mock.calls
-        .filter(([command]) => command.startsWith("plugin:sprite-equipment|"))
+        .filter(([command]) => Object.values<string>(ESpriteEquipmentCommand).includes(command))
         .map(([command]) => command)
     ).toEqual([
-      "plugin:sprite-equipment|open_sprite",
-      "plugin:sprite-equipment|pack_sprite",
-      "plugin:sprite-equipment|reload_sprite",
+      ESpriteEquipmentCommand.OPEN_SPRITE,
+      ESpriteEquipmentCommand.PACK_SPRITE,
+      ESpriteEquipmentCommand.RELOAD_SPRITE,
       // The opening the reopen replaced, closed once the reopen committed.
-      "plugin:sprite-equipment|close_sprite",
+      ESpriteEquipmentCommand.CLOSE_SPRITE,
     ]);
     expect(container.get(SpriteEquipmentPackerService).operation.result).toEqual(packed);
     expect(service.spriteImage.value?.image).not.toBe(previousImage);
@@ -115,9 +117,9 @@ describe("SpriteEquipmentEditorService object urls", () => {
   });
 
   it("holds exactly one url no matter how often the sprite is reloaded", async () => {
-    setMockInvokeResponses({
-      ["plugin:sprite-equipment|open_sprite"]: mockSessionResponse(RESPONSE),
-      ["plugin:sprite-equipment|reload_sprite"]: mockSessionResponse(RESPONSE),
+    mockIpcCommands({
+      [ESpriteEquipmentCommand.OPEN_SPRITE]: mockSessionResponse(RESPONSE),
+      [ESpriteEquipmentCommand.RELOAD_SPRITE]: mockSessionResponse(RESPONSE),
     });
 
     const { service, assets } = createService();
@@ -133,9 +135,9 @@ describe("SpriteEquipmentEditorService object urls", () => {
   });
 
   it("keeps the url the reload just produced rather than revoking it", async () => {
-    setMockInvokeResponses({
-      ["plugin:sprite-equipment|open_sprite"]: mockSessionResponse(RESPONSE),
-      ["plugin:sprite-equipment|reload_sprite"]: mockSessionResponse(RESPONSE),
+    mockIpcCommands({
+      [ESpriteEquipmentCommand.OPEN_SPRITE]: mockSessionResponse(RESPONSE),
+      [ESpriteEquipmentCommand.RELOAD_SPRITE]: mockSessionResponse(RESPONSE),
     });
 
     const { service, assets } = createService();
@@ -162,9 +164,9 @@ describe("SpriteEquipmentEditorService object urls", () => {
   });
 
   it("releases the sprite url when the editor is navigated away from", async () => {
-    setMockInvokeResponses({
-      ["plugin:sprite-equipment|open_sprite"]: mockSessionResponse(RESPONSE),
-      ["plugin:sprite-equipment|reload_sprite"]: mockSessionResponse(RESPONSE),
+    mockIpcCommands({
+      [ESpriteEquipmentCommand.OPEN_SPRITE]: mockSessionResponse(RESPONSE),
+      [ESpriteEquipmentCommand.RELOAD_SPRITE]: mockSessionResponse(RESPONSE),
     });
 
     const { service, assets, container } = createService();
@@ -181,7 +183,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
   });
 
   it("releases a cancelled image after decoding without replacing the newer sprite", async () => {
-    setMockInvokeResponses({ "plugin:sprite-equipment|open_sprite": mockSessionResponse(RESPONSE) });
+    mockIpcCommands({ [ESpriteEquipmentCommand.OPEN_SPRITE]: mockSessionResponse(RESPONSE) });
 
     const { service, assets } = createService();
     const decoding: Array<{ src: string; onload: Nullable<() => void> }> = [];

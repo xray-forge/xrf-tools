@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { emitMockChannelMessage, resetMockChannels, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { emitMockChannelMessage, mockIpcCommands, resetMockChannels, resetMockInvoke } from "@xrf/ipc/testing";
 import { ARCHIVES_JOB_PACK } from "@xrf/ipc/types/xrf-app-archives";
 
 import { EApplicationId } from "@/core/routing/application";
@@ -26,7 +26,7 @@ describe("JobsService adoption", () => {
   it("takes over a job the backend was already running", async () => {
     // The reload case. The backend never stopped: its command future lives in the application runtime, so the run kept
     // writing while this window forgot everything it knew about it.
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
 
     const { service } = mockWatchedJobsService();
 
@@ -40,7 +40,7 @@ describe("JobsService adoption", () => {
   it("watches an adopted job over a channel of its own", async () => {
     // The whole point of attaching: the run is still reporting to the channel of the page that reloaded, which is a
     // callback the webview can no longer find. A channel of this window's own replaces it and the bar moves again.
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
 
     const { service } = mockWatchedJobsService();
 
@@ -58,7 +58,7 @@ describe("JobsService adoption", () => {
   it("keeps the listing from overwriting what the channel is reporting", async () => {
     // A listing lags the channel by up to one emission interval, so applying both would let a running bar go backwards
     // — which reads as work being redone.
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
 
     const { service } = mockWatchedJobsService();
 
@@ -70,7 +70,7 @@ describe("JobsService adoption", () => {
       detail: null,
     });
 
-    setMockInvokeResponses({
+    mockIpcCommands({
       [JOBS_LIST_COMMAND]: [
         mockJobDescription({
           progress: {
@@ -90,13 +90,13 @@ describe("JobsService adoption", () => {
 
   it("still follows a job by asking when it cannot be attached to", async () => {
     // The job finished between the listing and the attach, or the command failed. Polling is slower, not broken.
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: false });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: false });
 
     const { service } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
-    setMockInvokeResponses({
+    mockIpcCommands({
       [JOBS_LIST_COMMAND]: [
         mockJobDescription({
           progress: {
@@ -117,7 +117,7 @@ describe("JobsService adoption", () => {
   it("drops an adoption the window that asked for it no longer wants", async () => {
     // Deprovisioning ends the provision that sent the listing. Letting the answer land would take jobs over on behalf
     // of a window that has gone, and start a timer nothing is left to stop.
-    setMockInvokeResponses({
+    mockIpcCommands({
       [JOBS_LIST_COMMAND]: () =>
         new Promise((resolve) => setTimeout(() => resolve([mockJobDescription()]), JOBS_SLOW_LISTING)),
       [JOBS_ATTACH_COMMAND]: true,
@@ -138,7 +138,7 @@ describe("JobsService adoption", () => {
   it("lets the newest provision own the adoption when an older one is still asking", async () => {
     // Two listings in the air at once is what a reload during start-up produces, and what strict mode produces on
     // every mount. The older answer must not adopt behind the newer one.
-    setMockInvokeResponses({
+    mockIpcCommands({
       [JOBS_LIST_COMMAND]: () =>
         new Promise((resolve) => setTimeout(() => resolve([mockJobDescription()]), JOBS_SLOW_LISTING)),
       [JOBS_ATTACH_COMMAND]: true,
@@ -158,7 +158,7 @@ describe("JobsService adoption", () => {
   it("adopts one job once when the same service is provisioned twice", async () => {
     // What React strict mode does on every mount in development: the provider deprovisions and provisions again, and
     // the container it retains hands back the same service. Two entries for one run would draw two bars over one pack.
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
 
     const { service } = mockWatchedJobsService();
 
@@ -170,7 +170,7 @@ describe("JobsService adoption", () => {
   });
 
   it("adopts nothing when the backend has already finished everything", async () => {
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription({ conclusion: "completed" })] });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription({ conclusion: "completed" })] });
 
     const { service } = mockWatchedJobsService();
 
@@ -182,7 +182,7 @@ describe("JobsService adoption", () => {
   it("carries what an adopted job was asked to do", async () => {
     // The arguments live nowhere else once the page that sent them is gone, and a bar with no subject cannot say which
     // of two packs the user is looking at.
-    setMockInvokeResponses({
+    mockIpcCommands({
       [JOBS_LIST_COMMAND]: [mockJobDescription({ request: { source: "c:\\gamedata", destination: "c:\\out" } })],
       [JOBS_ATTACH_COMMAND]: true,
     });
@@ -197,7 +197,7 @@ describe("JobsService adoption", () => {
   it("lets a tool re-attach to an adopted job by kind", async () => {
     // What stops a tool showing an idle form over a pack that is still writing volumes, and stops the user starting a
     // second one that the lease would refuse by naming a job they cannot see.
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
 
     const { service } = mockWatchedJobsService();
 
@@ -209,13 +209,13 @@ describe("JobsService adoption", () => {
   it("attributes an adopted job to the tool that owns its kind", async () => {
     // The notification panel resolves a record's source through the application catalog. Attributing it to the kind
     // string instead left the panel with nothing to look up, and the user with a row labelled `archives.pack`.
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
 
     const { service, raised } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
-    setMockInvokeResponses({
+    mockIpcCommands({
       [JOBS_LIST_COMMAND]: [mockJobDescription({ conclusion: "completed" })],
       [JOBS_ATTACH_COMMAND]: true,
     });

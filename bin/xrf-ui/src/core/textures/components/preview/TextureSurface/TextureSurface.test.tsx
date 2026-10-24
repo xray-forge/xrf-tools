@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent } from "@testing-library/react";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ERenderCommand } from "@xrf/ipc/commands/render";
+import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { EWorldInputEvent, WorldInputEvent } from "@xrf/ipc/types/xrf-world";
 
 import { TextureRenderService } from "@/core/textures/services/render";
@@ -19,7 +20,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   resetMockInvoke();
-  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: 1 });
+  mockIpcCommands({ [ERenderCommand.ATTACH_VIEWPORT]: 1 });
   dragLight.mockClear();
 });
 
@@ -101,7 +102,7 @@ describe("TextureSurface", () => {
     expect(
       mockInvoke.mock.calls.filter(
         ([name, args]) =>
-          name === "plugin:render|send_input" &&
+          name === ERenderCommand.SEND_INPUT &&
           (args as { event: WorldInputEvent }).event.kind === EWorldInputEvent.DRAG_START
       )
     ).toHaveLength(1);

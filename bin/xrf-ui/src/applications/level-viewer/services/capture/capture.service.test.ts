@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { save } from "@tauri-apps/plugin-dialog";
 import { waitFor } from "@testing-library/react";
-import { setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { ELevelsBulkRoute } from "@xrf/ipc/commands/levels-bulk";
+import { mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { ELevelAnnotationKind, LevelMapDescription, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { RenderCubeCapture, RenderMapCapture } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
@@ -13,6 +16,7 @@ import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-opt
 import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/fixtures/utils/level-container";
 
 const PATH: string = "appdata/level-viewer/screenshots/map_zaton-20261021-101500.png";
@@ -44,12 +48,12 @@ function mockCapture(
 beforeEach(() => {
   clearLocalStorage();
   // A PNG's signature and header, 2048 by 2048.
-  setMockBulkResponses({
-    ["levels/read_screenshot"]: Uint8Array.from([
+  mockIpcBulkRoutes({
+    [ELevelsBulkRoute.READ_SCREENSHOT]: Uint8Array.from([
       137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 8, 0, 0, 0, 8, 0,
     ]).buffer,
   });
-  setMockInvokeResponses({ ["plugin:levels|find_screenshot_path"]: PATH });
+  mockIpcCommands({ [ELevelsCommand.FIND_SCREENSHOT_PATH]: PATH });
   URL.createObjectURL = jest.fn(() => "blob:map");
   URL.revokeObjectURL = jest.fn();
 });
@@ -186,12 +190,12 @@ describe("LevelViewerCaptureService", () => {
     jest.spyOn(weather, "cutTo").mockResolvedValue();
     jest.spyOn(weather, "release").mockResolvedValue();
     jest.spyOn(render, "captureMap").mockResolvedValue({ outcome: "completed", width: 2048, height: 2048 });
-    setMockInvokeResponses({
-      ["plugin:levels|find_screenshot_path"]: PATH,
-      ["plugin:levels|write_map_annotations"]: (args?: Record<string, unknown>) => {
-        asked.push(args?.request as Record<string, unknown>);
+    mockIpcCommands({
+      [ELevelsCommand.FIND_SCREENSHOT_PATH]: PATH,
+      [ELevelsCommand.WRITE_MAP_ANNOTATIONS]: ({ request }) => {
+        asked.push(request);
 
-        return { sessionId: "session", value: "<svg/>" };
+        return mockSessionSnapshot("<svg/>", "session");
       },
     });
 
@@ -224,23 +228,21 @@ describe("LevelViewerCaptureService", () => {
     jest.spyOn(weather, "release").mockResolvedValue();
     jest.spyOn(render, "captureMap").mockResolvedValue({ outcome: "completed", width: 2048, height: 2048 });
     jest.mocked(save).mockResolvedValueOnce("C:/out/map_zaton.dds");
-    setMockInvokeResponses({
-      ["plugin:levels|find_screenshot_path"]: PATH,
-      ["plugin:levels|write_map_annotations"]: (args?: Record<string, unknown>) => {
-        const kinds: Array<string> = (args?.request as { kinds: Array<string> }).kinds;
+    mockIpcCommands({
+      [ELevelsCommand.FIND_SCREENSHOT_PATH]: PATH,
+      [ELevelsCommand.WRITE_MAP_ANNOTATIONS]: ({ request }) => {
+        events.push(`write ${request.kinds.length}`);
 
-        events.push(`write ${kinds.length}`);
-
-        return kinds.length
-          ? { sessionId: "session", value: "<svg/>" }
-          : new Promise((resolve: (value: unknown) => void) => {
+        return request.kinds.length
+          ? mockSessionSnapshot("<svg/>", "session")
+          : new Promise((resolve: (value: SessionSnapshot<string>) => void) => {
               firstWrite.finish = () => {
                 events.push("written 0");
-                resolve({ sessionId: "session", value: "<svg/>" });
+                resolve(mockSessionSnapshot("<svg/>", "session"));
               };
             });
       },
-      ["plugin:levels|export_map"]: () => {
+      [ELevelsCommand.EXPORT_MAP]: () => {
         events.push("export");
 
         return [2048, 2048];

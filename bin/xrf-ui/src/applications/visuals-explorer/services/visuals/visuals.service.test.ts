@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 import { Nullable } from "@xrf/types";
@@ -78,8 +79,8 @@ describe("VisualsService bone highlight", () => {
   async function openSkeletal(service: VisualsService): Promise<void> {
     const { selected } = mockSkeletalVisual();
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(selected),
     });
 
     await service.openFile("C:\\gamedata\\wpn_ak74.ogf");
@@ -113,8 +114,8 @@ describe("VisualsService bone highlight", () => {
 
     const { selected } = mockOpenableVisual("C:\\gamedata\\other.ogf");
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(selected),
     });
 
     await service.openFile("C:\\gamedata\\other.ogf");
@@ -149,8 +150,8 @@ describe("VisualsService bone visibility", () => {
   async function openWeapon(service: VisualsService): Promise<void> {
     const { selected } = mockWeaponVisual();
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(selected),
     });
 
     await service.openFile("C:\\gamedata\\wpn_ak74.ogf");
@@ -203,8 +204,8 @@ describe("VisualsService bone visibility", () => {
 
     const { selected } = mockOpenableVisual("C:\\gamedata\\other.ogf");
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(selected),
     });
 
     await service.openFile("C:\\gamedata\\other.ogf");
@@ -223,8 +224,8 @@ describe("VisualsService opening", () => {
     const { selected } = mockOpenableVisual();
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(selected),
     });
 
     await service.openFile("C:\\gamedata\\wpn_ak74.ogf");
@@ -237,8 +238,8 @@ describe("VisualsService opening", () => {
   it("reports a failed open without leaving a stale model on screen", async () => {
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(() => {
         throw new Error("not an ogf file");
       }),
     });
@@ -255,8 +256,8 @@ describe("VisualsService opening", () => {
     const { selected } = mockOpenableVisual("C:\\gamedata\\stalker.ogf");
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
-    setMockInvokeResponses({
-      ["plugin:visuals|restore_model"]: mockSessionResponse(selected),
+    mockIpcCommands({
+      [EVisualsCommand.RESTORE_MODEL]: mockSessionResponse(selected),
     });
 
     await service.onProvision();
@@ -268,7 +269,7 @@ describe("VisualsService opening", () => {
   it("becomes ready with nothing open when the backend has no selection", async () => {
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
-    setMockInvokeResponses({ ["plugin:visuals|restore_model"]: mockSessionResponse(null) });
+    mockIpcCommands({ [EVisualsCommand.RESTORE_MODEL]: mockSessionResponse(null) });
 
     await service.onProvision();
 
@@ -288,8 +289,8 @@ describe("VisualsService opening", () => {
       releaseFirst = resolve;
     });
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(async (parameters?: Record<string, unknown>) => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(async (parameters?: Record<string, unknown>) => {
         const source: AssetSource = (parameters as { source: AssetSource }).source;
 
         if (describeVisualSource(source) !== describeVisualSource(first.selected.source)) {
@@ -320,8 +321,8 @@ describe("VisualsService opening", () => {
 
     const opened: Array<Record<string, unknown>> = [];
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse((parameters?: Record<string, unknown>) => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse((parameters?: Record<string, unknown>) => {
         opened.push(parameters ?? {});
 
         if (opened.length === 1) {
@@ -350,12 +351,12 @@ describe("VisualsService opening", () => {
 
     let openCalls: number = 0;
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: () => {
         openCalls += 1;
 
-        return null;
-      }),
+        throw new Error("Nothing was meant to open");
+      },
     });
 
     await service.retryOpen();
@@ -369,9 +370,8 @@ describe("VisualsService opening", () => {
     const { selected } = mockOpenableVisual();
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-      ["plugin:visuals|close_model"]: null,
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(selected),
     });
 
     await service.openFile("C:\\gamedata\\wpn_ak74.ogf");

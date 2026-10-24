@@ -1,7 +1,12 @@
 import { ISessionIdentity, Session } from "@xrf/ipc/session";
-import { InvokeHandler } from "@xrf/ipc/testing";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
-import { Optional } from "@xrf/types";
+import { Nullable, Optional } from "@xrf/types";
+
+/** The arguments a session-opening command was invoked with, as far as a fixture reads them for an identity. */
+export type MockSessionArgs = Record<string, unknown>;
+
+/** What a fixture opens: the value, or a reader of it given the arguments the open was invoked with. */
+export type MockSessionValue<T, A extends MockSessionArgs = MockSessionArgs> = T | ((args: A) => T | Promise<T>);
 
 /** A native snapshot with an explicit identity for restoration and state fixtures, at the revision an open leaves. */
 export function mockSessionSnapshot<T>(
@@ -25,18 +30,26 @@ export function mockRestoredSession<T extends ISessionIdentity>(service: object,
   return session;
 }
 
+/**
+ * What a fixture's open answers: a snapshot of what it opens, or none where it opens nothing, as a restore holding
+ * nothing answers.
+ */
+export type MockSessionAnswer<T> = null extends T ? Nullable<SessionSnapshot<NonNullable<T>>> : SessionSnapshot<T>;
+
 /** Makes a configured open answer echo the caller's identity, including deferred responses. */
-export function mockSessionResponse(response: unknown | InvokeHandler): InvokeHandler {
-  return async (args) => {
-    const value: unknown = typeof response === "function" ? await response(args) : response;
+export function mockSessionResponse<T, A extends MockSessionArgs = MockSessionArgs>(
+  response: MockSessionValue<T, A>
+): (args: A) => Promise<MockSessionAnswer<T>> {
+  return async (args: A): Promise<MockSessionAnswer<T>> => {
+    const value: T = typeof response === "function" ? await (response as (args: A) => T | Promise<T>)(args) : response;
 
     if (value === null || value === undefined) {
-      return null;
+      return null as MockSessionAnswer<T>;
     }
 
     const request = args?.request as Optional<Record<string, unknown>>;
     const id: unknown = args?.motionId ?? args?.sectorId ?? args?.sessionId ?? request?.sessionId;
 
-    return mockSessionSnapshot(value, typeof id === "string" ? id : "fixture-session");
+    return mockSessionSnapshot(value, typeof id === "string" ? id : "fixture-session") as MockSessionAnswer<T>;
   };
 }

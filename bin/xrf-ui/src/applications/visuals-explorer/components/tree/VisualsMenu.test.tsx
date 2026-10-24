@@ -1,8 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
-import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
+import { EAssetsCommand } from "@xrf/ipc/commands/assets";
+import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
+import { mockIpcCommands } from "@xrf/ipc/testing";
+import { XrayAsset, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
@@ -25,10 +27,10 @@ function mockArchivedVisual(logicalPath: string): XrayAsset {
 
 /** Renders the menu over a browse service that has already listed roots. */
 async function renderMenu(visuals: Array<XrayAsset>): Promise<{ render: RenderResult; container: Container }> {
-  setMockInvokeResponses({
-    ["plugin:visuals|open_browse"]: mockSessionResponse((args?: Record<string, unknown>) => args?.roots),
-    ["plugin:assets|list_assets"]: visuals,
-    ["plugin:visuals|restore_model"]: mockSessionResponse(null),
+  mockIpcCommands({
+    [EVisualsCommand.OPEN_BROWSE]: mockSessionResponse(({ roots }: { roots: XrayRoots }) => roots),
+    [EAssetsCommand.LIST_ASSETS]: visuals,
+    [EVisualsCommand.RESTORE_MODEL]: mockSessionResponse(null),
   });
 
   const container: Container = mockContainer([
@@ -72,12 +74,12 @@ describe("VisualsMenu", () => {
 
     let openCalls: number = 0;
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: () => {
         openCalls += 1;
 
-        return null;
-      }),
+        throw new Error("Nothing was meant to open");
+      },
     });
 
     fireEvent.dblClick(render.getByText("meshes"));
@@ -93,8 +95,8 @@ describe("VisualsMenu", () => {
 
     let openParameters: Record<string, unknown> = {};
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse((parameters?: Record<string, unknown>) => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse((parameters?: Record<string, unknown>) => {
         openParameters = parameters ?? {};
 
         throw new Error("stop before geometry");

@@ -2,7 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult, waitFor, within } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { AsyncState } from "@xrf/async";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 import { ERenderTextureGroup, RenderLoadFailure } from "@xrf/ipc/types/xrf-renderer";
 
@@ -38,11 +39,11 @@ async function renderProblems({
 }: IRenderProblemsOptions): Promise<RenderResult> {
   const level = mockSelectedLevelDescription({ sectors: [mockSectorOutline({ sector: 0 })] });
 
-  setMockInvokeResponses({
-    ["plugin:levels|open_level"]: mockSessionResponse(level),
+  mockIpcCommands({
+    [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(level),
     ...mockLevelPartResponses({ textures: [mockLevelTextureReference("stone", isPresent)] }),
     // A spawn placing one object, or nothing drawn, which a clean level may well have.
-    ["plugin:levels|describe_spawn_objects"]: mockSessionResponse(
+    [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: mockSessionResponse(
       unreadable ? { objects: [mockLevelSpawnObject()], visuals: [unreadable.name] } : { objects: [], visuals: [] }
     ),
   });

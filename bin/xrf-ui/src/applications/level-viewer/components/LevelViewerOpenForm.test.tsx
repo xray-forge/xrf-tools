@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EAssetsCommand } from "@xrf/ipc/commands/assets";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngine, EXrayEngineEvidence, XrayEngineResolution } from "@xrf/ipc/types/xrf-engine-target";
 
@@ -45,7 +47,7 @@ describe("LevelViewerOpenForm", () => {
     clearLocalStorage();
     resetMockInvoke();
 
-    setMockInvokeResponses({ ["plugin:levels|list_levels"]: [mockEntry("zaton"), mockEntry("jupiter")] });
+    mockIpcCommands({ [ELevelsCommand.LIST_LEVELS]: [mockEntry("zaton"), mockEntry("jupiter")] });
   });
 
   it("lists what the root holds", async () => {
@@ -102,9 +104,9 @@ describe("LevelViewerOpenForm", () => {
 
   // The lights of a level are read from the game's configs, which resolve as the dialect the person chose says.
   it("opens the level with the configs dialect chosen", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|list_levels"]: [mockEntry("zaton")],
-      ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+    mockIpcCommands({
+      [ELevelsCommand.LIST_LEVELS]: [mockEntry("zaton")],
+      [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
     });
 
     const form: RenderResult = renderForm();
@@ -116,7 +118,7 @@ describe("LevelViewerOpenForm", () => {
     await userEvent.click(form.getByRole("button", { name: "Open" }));
 
     const opened: ReadonlyArray<unknown> | undefined = mockInvoke.mock.calls.find(
-      ([name]: ReadonlyArray<unknown>) => name === "plugin:levels|open_level"
+      ([name]: ReadonlyArray<unknown>) => name === ELevelsCommand.OPEN_LEVEL
     );
 
     expect(opened?.[1]).toMatchObject({
@@ -125,9 +127,9 @@ describe("LevelViewerOpenForm", () => {
   });
 
   it("says what Auto reads the listed root as, and why", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|list_levels"]: [mockEntry("zaton")],
-      ["plugin:assets|detect_engine"]: ANOMALY_DETECTION,
+    mockIpcCommands({
+      [ELevelsCommand.LIST_LEVELS]: [mockEntry("zaton")],
+      [EAssetsCommand.DETECT_ENGINE]: ANOMALY_DETECTION,
     });
 
     const form: RenderResult = renderForm();
@@ -138,17 +140,17 @@ describe("LevelViewerOpenForm", () => {
     const auto: HTMLElement = await form.findByRole("button", { name: "Auto: Extended (Anomaly executables found)" });
 
     expect(auto).toHaveAttribute("aria-pressed", "true");
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:assets|detect_engine", {
+    expect(mockInvoke).toHaveBeenCalledWith(EAssetsCommand.DETECT_ENGINE, {
       roots: { asset: null, roots: [{ mode: "auto", path: OTHER_INSTALLATION }] },
     });
   });
 
   // An override is a fact about one game: the next time that root is listed it is still read the way it was told.
   it("opens with an override and remembers it for that root alone", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|list_levels"]: [mockEntry("zaton")],
-      ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
-      ["plugin:assets|detect_engine"]: ANOMALY_DETECTION,
+    mockIpcCommands({
+      [ELevelsCommand.LIST_LEVELS]: [mockEntry("zaton")],
+      [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
+      [EAssetsCommand.DETECT_ENGINE]: ANOMALY_DETECTION,
     });
 
     const form: RenderResult = renderForm();
@@ -160,7 +162,7 @@ describe("LevelViewerOpenForm", () => {
     await userEvent.click(form.getByRole("button", { name: "Open" }));
 
     const opened: ReadonlyArray<unknown> | undefined = mockInvoke.mock.calls.find(
-      ([name]: ReadonlyArray<unknown>) => name === "plugin:levels|open_level"
+      ([name]: ReadonlyArray<unknown>) => name === ELevelsCommand.OPEN_LEVEL
     );
 
     expect(opened?.[1]).toMatchObject({ request: { engine: "vanilla" } });
@@ -181,8 +183,8 @@ describe("LevelViewerOpenForm", () => {
   });
 
   it("leaves a failed listing on its own button to retry", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|list_levels"]: () => {
+    mockIpcCommands({
+      [ELevelsCommand.LIST_LEVELS]: () => {
         throw new Error("no roots are mounted");
       },
     });

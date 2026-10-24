@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
@@ -29,7 +30,7 @@ describe("LevelViewerListService", () => {
   it("lists what the roots hold", async () => {
     const { service } = mockInjectedService(LevelViewerListService);
 
-    setMockInvokeResponses({ ["plugin:levels|list_levels"]: [mockEntry("zaton"), mockEntry("jupiter")] });
+    mockIpcCommands({ [ELevelsCommand.LIST_LEVELS]: [mockEntry("zaton"), mockEntry("jupiter")] });
 
     await service.list(ROOTS);
 
@@ -40,7 +41,7 @@ describe("LevelViewerListService", () => {
   it("separates the levels there is something to draw for", async () => {
     const { service } = mockInjectedService(LevelViewerListService);
 
-    setMockInvokeResponses({ ["plugin:levels|list_levels"]: [mockEntry("zaton"), mockEntry("lmaps", false)] });
+    mockIpcCommands({ [ELevelsCommand.LIST_LEVELS]: [mockEntry("zaton"), mockEntry("lmaps", false)] });
 
     await service.list(ROOTS);
 
@@ -51,7 +52,7 @@ describe("LevelViewerListService", () => {
   it("forgets a listing when asked", async () => {
     const { service } = mockInjectedService(LevelViewerListService);
 
-    setMockInvokeResponses({ ["plugin:levels|list_levels"]: [mockEntry("zaton")] });
+    mockIpcCommands({ [ELevelsCommand.LIST_LEVELS]: [mockEntry("zaton")] });
 
     await service.list(ROOTS);
     service.reset();
@@ -63,8 +64,8 @@ describe("LevelViewerListService", () => {
   it("records a failure as state rather than throwing it at the caller", async () => {
     const { service } = mockInjectedService(LevelViewerListService);
 
-    setMockInvokeResponses({
-      ["plugin:levels|list_levels"]: () => {
+    mockIpcCommands({
+      [ELevelsCommand.LIST_LEVELS]: () => {
         throw new Error("no roots are mounted");
       },
     });

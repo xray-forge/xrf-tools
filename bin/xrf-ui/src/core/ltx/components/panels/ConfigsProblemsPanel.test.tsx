@@ -2,7 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EConfigsCommand } from "@xrf/ipc/commands/configs";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { ConfigsDocument, ConfigsProjectDescriptor } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 
@@ -53,12 +54,12 @@ async function renderProblems(findings: Array<LtxAnchoredFinding>): Promise<{
     text: { isNormalized: true, lines: [], path: ENTRY },
   } as ConfigsDocument);
 
-  setMockInvokeResponses({
+  mockIpcCommands({
     // A provisioning restore finds the same project again.
-    "plugin:configs|restore_project": mockSessionSnapshot({} as ConfigsProjectDescriptor, "session-1"),
-    "plugin:configs|list_findings": findings,
+    [EConfigsCommand.RESTORE_PROJECT]: mockSessionSnapshot({} as ConfigsProjectDescriptor, "session-1"),
+    [EConfigsCommand.LIST_FINDINGS]: findings,
     // What the jump reads: the config the finding names, which is not the one on screen.
-    "plugin:configs|read_document": {
+    [EConfigsCommand.READ_DOCUMENT]: {
       findings: [],
       structure: { entryPoints: [ENTRY], includes: [], parseError: null, path: OTHER, rootEntries: [], sections: [] },
       text: { isNormalized: true, lines: ["[wpn_bad]"], path: OTHER },

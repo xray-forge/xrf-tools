@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 
 import { LevelGoToAction } from "@/core/level/components/preview/toolbar/camera/LevelGoToAction";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
@@ -19,7 +20,7 @@ afterEach(() => {
 
 describe("LevelGoToAction", () => {
   it("opens the form at where the camera is as it opens", async () => {
-    setMockInvokeResponses({ ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()) });
+    mockIpcCommands({ [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()) });
 
     const { container, load, viewport } = mockLevelViewContainer();
     const rendered = renderWithProviders(<LevelGoToAction />, { container });

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable } from "@xrf/types";
 
@@ -11,7 +12,7 @@ import { mockRestoredSession, mockSessionSnapshot } from "@/fixtures/mocks/sessi
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 function getStatisticsCallsCount(): number {
-  return mockInvoke.mock.calls.filter((call: Array<unknown>) => call[0] === "plugin:archives|describe_statistics")
+  return mockInvoke.mock.calls.filter((call: Array<unknown>) => call[0] === EArchivesCommand.DESCRIBE_STATISTICS)
     .length;
 }
 
@@ -25,7 +26,7 @@ function mockArchivesService(): ArchivesService {
 
 describe("ArchivesService statistics", () => {
   it("describes the open subject once and keeps the answer", async () => {
-    setMockInvokeResponses({ ["plugin:archives|describe_statistics"]: mockArchiveStatistics() });
+    mockIpcCommands({ [EArchivesCommand.DESCRIBE_STATISTICS]: mockArchiveStatistics() });
 
     const service: ArchivesService = mockArchivesService();
 
@@ -44,7 +45,7 @@ describe("ArchivesService statistics", () => {
   });
 
   it("drops the answer when the subject is reset, so the next one is described afresh", async () => {
-    setMockInvokeResponses({ ["plugin:archives|describe_statistics"]: mockArchiveStatistics() });
+    mockIpcCommands({ [EArchivesCommand.DESCRIBE_STATISTICS]: mockArchiveStatistics() });
 
     const service: ArchivesService = mockArchivesService();
 
@@ -55,8 +56,8 @@ describe("ArchivesService statistics", () => {
   });
 
   it("reports a failed description rather than leaving the dialog blank", async () => {
-    setMockInvokeResponses({
-      ["plugin:archives|describe_statistics"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.DESCRIBE_STATISTICS]: () => {
         throw new Error("the session is gone");
       },
     });

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, waitFor } from "@testing-library/react";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ESystemCommand } from "@xrf/ipc/commands/system";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 
 import { EApplicationId } from "@/core/routing/application";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
@@ -14,7 +15,7 @@ describe("RevealPathButton", () => {
   it("asks the system to show the path", async () => {
     const revealPath = jest.fn((_: unknown) => null);
 
-    setMockInvokeResponses({ "plugin:system|reveal_path": revealPath });
+    mockIpcCommands({ [ESystemCommand.REVEAL_PATH]: revealPath });
 
     const { getByRole } = renderWithProviders(
       <RevealPathButton application={EApplicationId.ARCHIVES_PACKER} path={"C:\\out"} />
@@ -34,8 +35,8 @@ describe("RevealPathButton", () => {
   });
 
   it("reports a file manager that would not open instead of throwing", async () => {
-    setMockInvokeResponses({
-      "plugin:system|reveal_path": () => {
+    mockIpcCommands({
+      [ESystemCommand.REVEAL_PATH]: () => {
         throw new Error("no file manager");
       },
     });

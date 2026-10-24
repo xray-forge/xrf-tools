@@ -1,31 +1,44 @@
 import { jest } from "@jest/globals";
 
-import { TransportEndpoint } from "#/types/xrf-app-core";
+// Types only, as in `invoke.mocks`: no command module may load before a test setup mocks Tauri.
+import type { IIpcBulkRouteSignatures } from "#/commands/signatures";
+import type { TransportEndpoint } from "#/types/xrf-app-core";
 
-export type BulkHandler = (args: Record<string, unknown>) => unknown;
+/** What a route answers: bytes, as a buffer or a view of one. */
+export type IpcBulkBytes = ArrayBuffer | ArrayBufferView;
 
-/** A handler answering bytes, for a test driving a route with a `jest.fn`. */
-export type BulkRead = (args: Record<string, unknown>) => Promise<ArrayBuffer>;
+/** Answers one route of `K` with bytes, given the arguments it was fetched with. */
+export type IpcBulkRouteRead<K extends keyof IIpcBulkRouteSignatures> = (
+  args: IIpcBulkRouteSignatures[K]["args"]
+) => IpcBulkBytes | Promise<IpcBulkBytes>;
+
+/** An asynchronous reader of one route of `K`, the shape a `jest.fn` driving it takes. */
+export type IpcBulkRouteFetch<K extends keyof IIpcBulkRouteSignatures> = (
+  args: IIpcBulkRouteSignatures[K]["args"]
+) => Promise<ArrayBuffer>;
 
 /**
- * Answers keyed by bulk route, such as `levels/read_sector`: bytes, or a handler answering them.
+ * What a test answers one bulk route with: bytes, or a reader given the arguments the route was fetched with.
  *
- * A handler that throws or rejects is the route failing with that message, as the backend answers a failed command.
+ * A reader that throws or rejects is the route failing with that message, as the backend answers a failed command.
  */
-export type BulkMap = Record<string, unknown | BulkHandler>;
+export type IpcBulkRouteMock<K extends keyof IIpcBulkRouteSignatures> = IpcBulkBytes | IpcBulkRouteRead<K>;
+
+/** Answers keyed by bulk route member, each typed by what that route takes. */
+export type IpcBulkRouteMocks = { [K in keyof IIpcBulkRouteSignatures]?: IpcBulkRouteMock<K> };
 
 /** Where the mocked transport listens, which `transport|get_endpoint` answers unless a test says otherwise. */
 export const MOCK_TRANSPORT_ENDPOINT: TransportEndpoint = { origin: "http://127.0.0.1:1", token: "token" };
 
-const state: { handlers: BulkMap } = { handlers: {} };
+const state: { handlers: Partial<Record<string, unknown>> } = { handlers: {} };
 
 /**
  * Configures what the mocked transport answers.
  *
- * @param handlers - Answers or handlers keyed by route.
+ * @param mocks - Answers or readers keyed by route member, such as `ELevelsBulkRoute.READ_SCREENSHOT`.
  */
-export function setMockBulkResponses(handlers: BulkMap): void {
-  state.handlers = handlers;
+export function mockIpcBulkRoutes(mocks: IpcBulkRouteMocks): void {
+  state.handlers = mocks;
 }
 
 /** Clears every mocked transport answer. */
@@ -43,13 +56,15 @@ function toMockBulkRoute(url: string): string {
 }
 
 /**
- * @param route - A bulk route, such as `assets/read_asset`.
+ * @param route - A bulk route member, such as `EAssetsBulkRoute.READ_ASSET`.
  * @returns The arguments of every fetch of it since the last reset, in the order they were made.
  */
-export function listMockBulkCalls(route: string): Array<Record<string, unknown>> {
+export function listMockBulkCalls<K extends keyof IIpcBulkRouteSignatures>(
+  route: K
+): Array<IIpcBulkRouteSignatures[K]["args"]> {
   return mockFetch.mock.calls
     .filter(([input]) => toMockBulkRoute(String(input)) === route)
-    .map(([, init]) => JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>);
+    .map(([, init]) => JSON.parse(String(init?.body ?? "{}")) as IIpcBulkRouteSignatures[K]["args"]);
 }
 
 /**
@@ -96,7 +111,8 @@ export const mockFetch = jest.fn(async (input: string | URL | Request, init?: Re
 
   try {
     const args: Record<string, unknown> = init?.body ? JSON.parse(String(init.body)) : {};
-    const answer: unknown = typeof handler === "function" ? await (handler as BulkHandler)(args) : handler;
+    const answer: unknown =
+      typeof handler === "function" ? await (handler as (args: Record<string, unknown>) => unknown)(args) : handler;
 
     return toResponse(200, toBuffer(answer));
   } catch (error: unknown) {

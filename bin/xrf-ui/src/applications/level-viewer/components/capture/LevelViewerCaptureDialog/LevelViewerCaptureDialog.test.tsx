@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { ELevelsBulkRoute } from "@xrf/ipc/commands/levels-bulk";
+import { mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
 
 import { LevelViewerCaptureActions } from "@/applications/level-viewer/components/capture/LevelViewerCaptureActions";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
@@ -32,12 +34,12 @@ function renderDialog(): TLevelViewRenderResult & { service: LevelViewerCaptureS
 beforeEach(() => {
   clearLocalStorage();
   // A PNG's signature and header, 2048 by 2048.
-  setMockBulkResponses({
-    ["levels/read_screenshot"]: Uint8Array.from([
+  mockIpcBulkRoutes({
+    [ELevelsBulkRoute.READ_SCREENSHOT]: Uint8Array.from([
       137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 8, 0, 0, 0, 8, 0,
     ]).buffer,
   });
-  setMockInvokeResponses({ ["plugin:levels|find_screenshot_path"]: "appdata/screenshots/map_zaton.png" });
+  mockIpcCommands({ [ELevelsCommand.FIND_SCREENSHOT_PATH]: "appdata/screenshots/map_zaton.png" });
   URL.createObjectURL = jest.fn(() => "blob:map");
   URL.revokeObjectURL = jest.fn();
 });

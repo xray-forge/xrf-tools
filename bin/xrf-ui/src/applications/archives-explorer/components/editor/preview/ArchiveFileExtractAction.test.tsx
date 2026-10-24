@@ -3,7 +3,8 @@ import * as dialog from "@tauri-apps/plugin-dialog";
 import { RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Injectable } from "@wirestate/core";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -21,7 +22,7 @@ const FILE: ArchiveFileDescriptor = mockArchiveFileDescriptor({
 class TestArchivesService extends ArchivesService {}
 
 function renderAction(): RenderResult {
-  setMockInvokeResponses({ "plugin:archives|restore_subject": mockSessionResponse(mockArchivesVolumes()) });
+  mockIpcCommands({ [EArchivesCommand.RESTORE_SUBJECT]: mockSessionResponse(mockArchivesVolumes()) });
 
   return renderWithProviders(<ArchiveFileExtractAction entry={FILE} />, {
     bindings: [{ token: ArchivesService, type: "Instance", value: TestArchivesService }],
@@ -29,7 +30,7 @@ function renderAction(): RenderResult {
 }
 
 function extractCalls(): Array<unknown> {
-  return mockInvoke.mock.calls.filter(([command]) => command === "plugin:archives|extract_file");
+  return mockInvoke.mock.calls.filter(([command]) => command === EArchivesCommand.EXTRACT_FILE);
 }
 
 describe("ArchiveFileExtractAction", () => {
@@ -64,7 +65,7 @@ describe("ArchiveFileExtractAction", () => {
     await waitFor(() => expect(extractCalls()).toHaveLength(1));
 
     expect(extractCalls()[0]).toEqual([
-      "plugin:archives|extract_file",
+      EArchivesCommand.EXTRACT_FILE,
       { sessionId: "fixture-session", name: FILE.name, destination: "C:\\out\\dialogs.xml" },
     ]);
 

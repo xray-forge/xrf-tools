@@ -3,7 +3,9 @@ import { act, RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Binding, Container } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
-import { InvokeMap, resetMockInvoke, setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EAssetsBulkRoute } from "@xrf/ipc/commands/assets-bulk";
+import { ETexturesCommand } from "@xrf/ipc/commands/textures";
+import { IpcCommandMocks, mockIpcBulkRoutes, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import {
   TextureDescription,
   TextureDescriptorForm,
@@ -52,7 +54,7 @@ function describedTexture(overrides: Partial<TextureDescription> = {}): TextureD
 
 async function renderWorkspace(
   description: TextureDescription = describedTexture(),
-  responses: InvokeMap = {}
+  responses: IpcCommandMocks = {}
 ): Promise<{
   render: RenderResult;
   container: Container;
@@ -63,12 +65,11 @@ async function renderWorkspace(
   // that kept answering with the pre-save descriptor would leave every save looking refused.
   let written: Nullable<TextureDescriptorForm> = null;
 
-  setMockInvokeResponses({
-    ["plugin:textures|describe"]: (): TextureDescription =>
+  mockIpcCommands({
+    [ETexturesCommand.DESCRIBE]: (): TextureDescription =>
       written ? { ...description, form: written, hasDescriptor: true } : description,
-    ["plugin:textures|get_roots"]: null,
-    ["plugin:textures|get_vocabulary"]: mockTextureVocabulary(),
-    ["plugin:textures|save"]: (args?: Record<string, unknown>): TextureSaveOutcome => {
+    [ETexturesCommand.GET_VOCABULARY]: mockTextureVocabulary(),
+    [ETexturesCommand.SAVE]: (args?: Record<string, unknown>): TextureSaveOutcome => {
       written = (args?.request as TexturesSaveRequest).descriptor.form;
 
       return { outcome: "completed", written: [] };
@@ -76,8 +77,8 @@ async function renderWorkspace(
     ...responses,
   });
 
-  setMockBulkResponses({
-    "assets/read_texture": new ArrayBuffer(0),
+  mockIpcBulkRoutes({
+    [EAssetsBulkRoute.READ_TEXTURE]: new ArrayBuffer(0),
   });
 
   // Built from the application's own bindings, so a workspace that grows a dependency cannot pass here while
@@ -176,7 +177,7 @@ describe("TexturesEditorWorkspace", () => {
       container,
       render: { getByRole },
       selectionService,
-    } = await renderWorkspace(describedTexture(), { ["plugin:textures|make_bump"]: () => answer.promise });
+    } = await renderWorkspace(describedTexture(), { [ETexturesCommand.MAKE_BUMP]: () => answer.promise });
     const lifecycle: EditorLifecycleService = container.get(EditorLifecycleService);
 
     let generation: Promise<void> = Promise.resolve();
@@ -212,7 +213,7 @@ describe("TexturesEditorWorkspace", () => {
       container,
       render: { getByRole },
       selectionService,
-    } = await renderWorkspace(describedTexture(), { ["plugin:textures|compare_encodings"]: () => answer.promise });
+    } = await renderWorkspace(describedTexture(), { [ETexturesCommand.COMPARE_ENCODINGS]: () => answer.promise });
     const lifecycle: EditorLifecycleService = container.get(EditorLifecycleService);
 
     let comparison: Promise<void> = Promise.resolve();

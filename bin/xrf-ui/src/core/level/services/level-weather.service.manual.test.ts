@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { autorun } from "@wirestate/mobx";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { EWorldWeatherTransition, WorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 
@@ -20,8 +21,8 @@ afterEach(() => {
 
 describe("LevelWeatherService, set by hand", () => {
   it("fades into the keyframe set by hand, seeded from what is shown, and back into the cycle kept", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
     });
 
     const service: LevelWeatherService = createLevelWeatherService();
@@ -51,8 +52,8 @@ describe("LevelWeatherService, set by hand", () => {
   });
 
   it("resets keys to the weather it was seeded from, and nothing while the weather plays", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
     });
 
     const service: LevelWeatherService = createLevelWeatherService();
@@ -79,8 +80,8 @@ describe("LevelWeatherService, set by hand", () => {
   });
 
   it("takes manual control at the first edit while the weather plays, seeded so only the edit is seen", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
     });
 
     const service: LevelWeatherService = createLevelWeatherService();
@@ -120,8 +121,8 @@ describe("LevelWeatherService, set by hand", () => {
   // The renderer reports a few times a second while its clock runs, and the level's toolbar is drawn from the keyframe
   // shown.
   it("shows the same keyframe for a report the same as the last, and reads no report lit by hand", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
     });
 
     const service: LevelWeatherService = createLevelWeatherService();

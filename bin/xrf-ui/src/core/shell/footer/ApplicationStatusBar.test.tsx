@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ESystemCommand } from "@xrf/ipc/commands/system";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { ReactElement } from "react";
 
 import { useEditorStatus } from "@/core/shell/editor-shell";
@@ -23,8 +24,8 @@ describe("ApplicationStatusBar", () => {
 
   // Every tool shows what the process holds.
   it("ends every application's status with what the backend and the webview hold, a letter each", async () => {
-    setMockInvokeResponses({
-      ["plugin:system|get_memory_usage"]: {
+    mockIpcCommands({
+      [ESystemCommand.GET_MEMORY_USAGE]: {
         application: { committed: 30 * MB, workingSet: 24 * MB, privateWorkingSet: 20 * MB },
         webview: [
           {
@@ -33,6 +34,7 @@ describe("ApplicationStatusBar", () => {
             pid: 8,
           },
         ],
+        gpu: null,
       },
     });
 
@@ -49,7 +51,7 @@ describe("ApplicationStatusBar", () => {
   });
 
   it("publishes nothing about memory on a platform that cannot read it", async () => {
-    setMockInvokeResponses({ ["plugin:system|get_memory_usage"]: null });
+    mockIpcCommands({ [ESystemCommand.GET_MEMORY_USAGE]: null });
 
     const { findByText, getByTestId } = renderWithProviders(
       <>

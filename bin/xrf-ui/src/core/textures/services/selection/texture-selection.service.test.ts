@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
+import { EAssetsBulkRoute } from "@xrf/ipc/commands/assets-bulk";
 import { texturesCommands } from "@xrf/ipc/commands/textures";
-import { BulkRead, setMockBulkResponses } from "@xrf/ipc/testing";
+import { IpcBulkRouteFetch, mockIpcBulkRoutes } from "@xrf/ipc/testing";
 import { ETextureSource, TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
@@ -24,9 +25,9 @@ function mockService() {
   const description = mockTextureDescription();
   const preview = new ArrayBuffer(8);
   const describeTexture = jest.spyOn(texturesCommands, "describe").mockResolvedValue(description);
-  const readTexture = jest.fn<BulkRead>().mockResolvedValue(preview);
+  const readTexture = jest.fn<IpcBulkRouteFetch<EAssetsBulkRoute.READ_TEXTURE>>().mockResolvedValue(preview);
 
-  setMockBulkResponses({ "assets/read_texture": readTexture });
+  mockIpcBulkRoutes({ [EAssetsBulkRoute.READ_TEXTURE]: readTexture });
 
   return { service, description, preview, describeTexture, readTexture };
 }

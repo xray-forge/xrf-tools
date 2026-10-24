@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { LevelConsoleDefaults } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngine, EXrayEngineEvidence } from "@xrf/ipc/types/xrf-engine-target";
 
@@ -42,20 +43,12 @@ describe("LevelLookService", () => {
   });
 
   it("looks as the open level's game ships, and as the settings say where it ships nothing", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|describe_console_defaults"]: mockSessionResponse({
-        ambientScale: null,
-        colorGrading: null,
-        hemiScale: null,
-        imageExposure: null,
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: mockSessionResponse<LevelConsoleDefaults>({
+        ...UNSET,
         imageGamma: 1.2,
-        imageSaturation: null,
         isShipped: true,
-        isTonemapped: null,
         sunScale: 2,
-        tonemapAdaptation: null,
-        tonemapAmount: null,
-        tonemapLowLuminance: null,
         tonemapMiddleGray: 1.5,
       }),
     });
@@ -79,7 +72,7 @@ describe("LevelLookService", () => {
   // The look and the weather follow one engine, the level's: a look reading a setting of its own disagreed with the
   // weather the level was opened with.
   it("blooms as the engine the open level was read as", async () => {
-    setMockInvokeResponses({ ["plugin:levels|describe_console_defaults"]: mockSessionResponse(UNSET) });
+    mockIpcCommands({ [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: mockSessionResponse(UNSET) });
 
     const { service } = mockInjectedService(LevelLookService, [LevelLoadService]);
 
@@ -101,7 +94,7 @@ describe("LevelLookService", () => {
   });
 
   it("holds no engine with no level open", async () => {
-    setMockInvokeResponses({ ["plugin:levels|describe_console_defaults"]: mockSessionResponse(UNSET) });
+    mockIpcCommands({ [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: mockSessionResponse(UNSET) });
 
     const { service } = mockInjectedService(LevelLookService, [LevelLoadService]);
 
@@ -123,9 +116,9 @@ describe("LevelLookService", () => {
 
   // A read that failed is not a game that ships none: the look says which, while both fall back to the engine's.
   it("holds a failed read of the defaults as failed, not as none shipped", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
-      ["plugin:levels|describe_console_defaults"]: () => {
+    mockIpcCommands({
+      [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
+      [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: () => {
         throw new Error("the level's archive went");
       },
     });
@@ -141,9 +134,9 @@ describe("LevelLookService", () => {
   });
 
   it("reads the defaults of a level as the level opens, with no viewport to draw it, and drops them as it closes", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
-      ["plugin:levels|describe_console_defaults"]: mockSessionResponse(UNSET),
+    mockIpcCommands({
+      [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
+      [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: mockSessionResponse(UNSET),
     });
 
     const container: Container = mockContainer([LevelLoadService, LevelLookService]).provision();

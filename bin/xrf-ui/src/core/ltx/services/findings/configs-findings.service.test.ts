@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EConfigsCommand } from "@xrf/ipc/commands/configs";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";
@@ -15,7 +16,7 @@ describe("ConfigsFindingsService", () => {
       resolve = settle;
     });
 
-    setMockInvokeResponses({ "plugin:configs|list_findings": () => response });
+    mockIpcCommands({ [EConfigsCommand.LIST_FINDINGS]: () => response });
 
     const { service, container } = mockInjectedService(ConfigsFindingsService, [ConfigsProjectService]);
 

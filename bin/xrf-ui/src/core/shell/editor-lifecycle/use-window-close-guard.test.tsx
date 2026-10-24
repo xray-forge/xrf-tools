@@ -1,14 +1,15 @@
 import { describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ESystemCommand } from "@xrf/ipc/commands/system";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ReactElement } from "react";
 
 import { useEditorBusy, useEditorDirty, useWindowCloseGuard } from "@/core/shell/editor-lifecycle";
 import { mockAppWindow, requestMockWindowClose } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
-const APPROVE: string = "plugin:system|approve_window_close";
+const APPROVE: string = ESystemCommand.APPROVE_WINDOW_CLOSE;
 
 function Window({ dirtyCount = 0, isBusy = false }: { dirtyCount?: number; isBusy?: boolean }): ReactElement {
   useEditorDirty(dirtyCount);
@@ -51,7 +52,7 @@ describe("useWindowCloseGuard", () => {
   });
 
   it("stays guarded when the backend refuses the approval, so the next close asks again", async () => {
-    setMockInvokeResponses({
+    mockIpcCommands({
       [APPROVE]: () => {
         throw new Error("refused");
       },

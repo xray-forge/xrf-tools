@@ -2,17 +2,24 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { ERenderCommand } from "@xrf/ipc/commands/render";
+import { ETexturesCommand } from "@xrf/ipc/commands/textures";
 import {
   getMockChannels,
+  listMockInvokeCalls,
   MockChannel,
-  mockInvoke,
+  mockIpcCommands,
   resetMockChannels,
   resetMockInvoke,
-  setMockInvokeResponses,
 } from "@xrf/ipc/testing";
 import { ViewportEvent } from "@xrf/ipc/types/xrf-app-render";
 import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@xrf/ipc/types/xrf-app-textures";
-import { ERenderTextureState, ERenderViewportEvent, RenderViewOptions } from "@xrf/ipc/types/xrf-renderer";
+import {
+  ERenderTextureGroup,
+  ERenderTextureState,
+  ERenderViewportEvent,
+  RenderViewOptions,
+} from "@xrf/ipc/types/xrf-renderer";
 import { EWorldCameraCommand } from "@xrf/ipc/types/xrf-world";
 
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
@@ -22,13 +29,6 @@ import { TextureViewService } from "@/core/textures/services/view";
 import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
-
-/** What a render command was sent, in order. */
-function sent(command: string, plugin: string = "render"): Array<Record<string, unknown>> {
-  return mockInvoke.mock.calls
-    .filter(([name]) => name === `plugin:${plugin}|${command}`)
-    .map(([, args]) => args as Record<string, unknown>);
-}
 
 async function flush(): Promise<void> {
   for (let index: number = 0; index < 10; index += 1) {
@@ -44,7 +44,7 @@ function emit(event: ViewportEvent): void {
 const SCENE: number = 6;
 
 async function mockAttached(): Promise<{ container: Container; service: TextureRenderService }> {
-  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: 5, ["plugin:textures|show_texture"]: SCENE });
+  mockIpcCommands({ [ERenderCommand.ATTACH_VIEWPORT]: 5, [ETexturesCommand.SHOW_TEXTURE]: SCENE });
 
   const container: Container = mockContainer([TextureSelectionService, TextureViewService, TextureRenderService]);
 
@@ -69,7 +69,7 @@ describe("TextureRenderService", () => {
   it("starts nothing until a view attaches", () => {
     mockContainer([TextureSelectionService, TextureViewService, TextureRenderService]).get(TextureRenderService);
 
-    expect(sent("attach_viewport")).toHaveLength(0);
+    expect(listMockInvokeCalls(ERenderCommand.ATTACH_VIEWPORT)).toHaveLength(0);
   });
 
   it("shows the selected texture on the body its view asks for, and again as either changes", async () => {
@@ -83,7 +83,9 @@ describe("TextureRenderService", () => {
     });
     await flush();
 
-    const requests = sent("show_texture", "textures").map(({ request }) => request as Record<string, unknown>);
+    const requests = listMockInvokeCalls(ETexturesCommand.SHOW_TEXTURE).map(
+      ({ request }) => request as Record<string, unknown>
+    );
 
     expect(requests).toHaveLength(2);
     expect(requests[0]).toMatchObject({ shape: ETextureSurfaceShape.PLANE, source: { reference: MOCK_TEXTURE } });
@@ -94,18 +96,18 @@ describe("TextureRenderService", () => {
     });
     await flush();
 
-    expect(sent("show_texture", "textures").at(-1)?.request).toBeNull();
+    expect(listMockInvokeCalls(ETexturesCommand.SHOW_TEXTURE).at(-1)?.request).toBeNull();
 
     service.dispose();
   });
 
   it("draws the body against the alpha checkerboard, under the view's light", async () => {
     const { service } = await mockAttached();
-    const options = sent("set_view_options").at(-1)?.options as RenderViewOptions;
+    const options = listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS).at(-1)?.options as RenderViewOptions;
 
     expect(options.asset.backdropSquares).not.toBeNull();
     expect(options.asset.lighting).toMatchObject({ sunAzimuth: DEFAULT_TEXTURE_LIGHTING.sunAzimuth });
-    expect(sent("set_camera")).toHaveLength(1);
+    expect(listMockInvokeCalls(ERenderCommand.SET_CAMERA)).toHaveLength(1);
 
     service.dispose();
   });
@@ -124,16 +126,20 @@ describe("TextureRenderService", () => {
   it("says why the texture cannot be laid on the body, once the renderer has read it", async () => {
     const { service } = await mockAttached();
 
-    setMockInvokeResponses({
-      ["plugin:render|describe_texture_loads"]: [
-        { reference: MOCK_TEXTURE, state: { kind: ERenderTextureState.FAILED, reason: "Unknown pixel format" } },
+    mockIpcCommands({
+      [ERenderCommand.DESCRIBE_TEXTURE_LOADS]: [
+        {
+          reference: MOCK_TEXTURE,
+          state: { kind: ERenderTextureState.FAILED, reason: "Unknown pixel format" },
+          group: ERenderTextureGroup.SURFACES,
+        },
       ],
     });
     // A ready report of the texture shown before, still in the channel, asks nothing.
     emit({ kind: ERenderViewportEvent.LOAD, report: mockRenderLoadReport({ isReady: true, scene: SCENE - 1 }) });
     await flush();
 
-    expect(sent("describe_texture_loads")).toHaveLength(0);
+    expect(listMockInvokeCalls(ERenderCommand.DESCRIBE_TEXTURE_LOADS)).toHaveLength(0);
 
     emit({
       kind: ERenderViewportEvent.LOAD,
@@ -183,9 +189,9 @@ describe("TextureRenderService", () => {
     service.reset();
     await flush();
 
-    expect(sent("command_camera").map(({ command }) => (command as { kind: string }).kind)).toEqual([
-      EWorldCameraCommand.RESET,
-    ]);
+    expect(
+      listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA).map(({ command }) => (command as { kind: string }).kind)
+    ).toEqual([EWorldCameraCommand.RESET]);
 
     service.dispose();
   });

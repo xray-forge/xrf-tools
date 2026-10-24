@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ETranslationsCommand } from "@xrf/ipc/commands/translations";
+import { IpcCommandAnswer, mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ETranslationSaveOutcome, TranslationSaveOutcome } from "@xrf/ipc/types/xrf-app-translations";
 import { TranslationProjectDescriptor } from "@xrf/ipc/types/xrf-translation";
 
@@ -51,7 +52,7 @@ async function openWithEdit(service: TranslationsService): Promise<void> {
 
 describe("TranslationsService", () => {
   beforeEach(() => {
-    setMockInvokeResponses({ ["plugin:translations|restore_project"]: mockSessionResponse(() => null) });
+    mockIpcCommands({ [ETranslationsCommand.RESTORE_PROJECT]: mockSessionResponse(() => null) });
   });
 
   it("resolves and saves draft values using the current committed variant shapes", async () => {
@@ -66,9 +67,9 @@ describe("TranslationsService", () => {
       },
     };
 
-    setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockSessionResponse(project),
-      ["plugin:translations|save_file"]: () => ({
+    mockIpcCommands({
+      [ETranslationsCommand.OPEN_PROJECT]: mockSessionResponse(project),
+      [ETranslationsCommand.SAVE_FILE]: () => ({
         kind: ETranslationSaveOutcome.SAVED,
         project: mockSessionSnapshot(project),
       }),
@@ -87,7 +88,7 @@ describe("TranslationsService", () => {
     expect(service.resolveValue(FILE, LANGUAGE, "removed")).toBeNull();
     expect(service.hasEdit(FILE, LANGUAGE, "removed")).toBe(true);
     expect(await flowResult(service.saveFile(FILE))).toBe(true);
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:translations|save_file", {
+    expect(mockInvoke).toHaveBeenCalledWith(ETranslationsCommand.SAVE_FILE, {
       sessionId: expect.any(String),
       file: FILE,
       edits: {
@@ -109,13 +110,13 @@ describe("TranslationsService", () => {
       finish = resolve;
     });
     const write = jest
-      .fn()
+      .fn<IpcCommandAnswer<ETranslationsCommand.SAVE_FILE>>()
       .mockImplementationOnce(() => answer)
       .mockImplementation(() => ({ kind: ETranslationSaveOutcome.SAVED, project: mockSessionSnapshot(PROJECT) }));
 
-    setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockSessionResponse(PROJECT),
-      ["plugin:translations|save_file"]: write,
+    mockIpcCommands({
+      [ETranslationsCommand.OPEN_PROJECT]: mockSessionResponse(PROJECT),
+      [ETranslationsCommand.SAVE_FILE]: write,
     });
 
     await openWithEdit(service);
@@ -143,7 +144,7 @@ describe("TranslationsService", () => {
 
   it.each(["failed", "stale"])("stops a batch at the first %s file", async (outcome) => {
     const { service } = mockInjectedService(TranslationsService);
-    const write = jest.fn(() => {
+    const write = jest.fn<IpcCommandAnswer<ETranslationsCommand.SAVE_FILE>>(() => {
       if (outcome === "failed") {
         throw new Error("write failed");
       }
@@ -151,9 +152,9 @@ describe("TranslationsService", () => {
       return { kind: ETranslationSaveOutcome.STALE };
     });
 
-    setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockSessionResponse(PROJECT),
-      ["plugin:translations|save_file"]: write,
+    mockIpcCommands({
+      [ETranslationsCommand.OPEN_PROJECT]: mockSessionResponse(PROJECT),
+      [ETranslationsCommand.SAVE_FILE]: write,
     });
 
     await openWithEdit(service);
@@ -168,9 +169,9 @@ describe("TranslationsService", () => {
   it("adopts what a save left on disk", async () => {
     const { service } = mockInjectedService(TranslationsService);
 
-    setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockSessionResponse(() => PROJECT),
-      ["plugin:translations|save_file"]: () => ({
+    mockIpcCommands({
+      [ETranslationsCommand.OPEN_PROJECT]: mockSessionResponse(() => PROJECT),
+      [ETranslationsCommand.SAVE_FILE]: () => ({
         kind: ETranslationSaveOutcome.SAVED,
         project: mockSessionSnapshot(OTHER_PROJECT),
       }),
@@ -180,7 +181,7 @@ describe("TranslationsService", () => {
 
     expect(await flowResult(service.saveFile(FILE))).toBe(true);
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:translations|save_file", {
+    expect(mockInvoke).toHaveBeenCalledWith(ETranslationsCommand.SAVE_FILE, {
       sessionId: expect.any(String),
       file: FILE,
       edits: { [LANGUAGE]: [{ kind: "set", id: ID, value: "edited" }] },
@@ -193,11 +194,11 @@ describe("TranslationsService", () => {
   it("keeps showing the open project when a save comes back stale", async () => {
     const { service } = mockInjectedService(TranslationsService);
 
-    setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockSessionResponse(() => PROJECT),
+    mockIpcCommands({
+      [ETranslationsCommand.OPEN_PROJECT]: mockSessionResponse(() => PROJECT),
       // What the backend answers when the project was replaced while the edits were being written. It withholds the
       // refreshed tree on purpose, and the shown project has to survive that answer untouched.
-      ["plugin:translations|save_file"]: () => ({ kind: ETranslationSaveOutcome.STALE }),
+      [ETranslationsCommand.SAVE_FILE]: () => ({ kind: ETranslationSaveOutcome.STALE }),
     });
 
     await openWithEdit(service);
@@ -215,9 +216,9 @@ describe("TranslationsService", () => {
   it("leaves the work where it is when a save fails", async () => {
     const { service } = mockInjectedService(TranslationsService);
 
-    setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockSessionResponse(() => PROJECT),
-      ["plugin:translations|save_file"]: () => {
+    mockIpcCommands({
+      [ETranslationsCommand.OPEN_PROJECT]: mockSessionResponse(() => PROJECT),
+      [ETranslationsCommand.SAVE_FILE]: () => {
         throw new Error("Translations file is no longer in the mounted roots");
       },
     });
@@ -234,10 +235,10 @@ describe("TranslationsService", () => {
   it("stops marking a file as saving when an open supersedes the save", async () => {
     const { service } = mockInjectedService(TranslationsService);
 
-    setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockSessionResponse(() => PROJECT),
+    mockIpcCommands({
+      [ETranslationsCommand.OPEN_PROJECT]: mockSessionResponse(() => PROJECT),
       // A save that never answers, so the open below lands while its write is still in flight.
-      ["plugin:translations|save_file"]: () => new Promise(() => undefined),
+      [ETranslationsCommand.SAVE_FILE]: () => new Promise(() => undefined),
     });
 
     await openWithEdit(service);
@@ -261,9 +262,9 @@ describe("TranslationsService", () => {
     const notices: Array<unknown> = [];
 
     container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
-    setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockSessionResponse(PROJECT),
-      ["plugin:translations|close_project"]: () => {
+    mockIpcCommands({
+      [ETranslationsCommand.OPEN_PROJECT]: mockSessionResponse(PROJECT),
+      [ETranslationsCommand.CLOSE_PROJECT]: () => {
         throw "backend refused";
       },
     });
@@ -286,7 +287,7 @@ describe("TranslationsService", () => {
       }),
     ]);
 
-    setMockInvokeResponses({});
+    mockIpcCommands({});
     await service.closeProject();
 
     expect(service.project.isLoading).toBe(false);
@@ -303,9 +304,9 @@ describe("TranslationsService", () => {
       finishClose = resolve;
     });
 
-    setMockInvokeResponses({
-      ["plugin:translations|open_project"]: mockSessionResponse(PROJECT),
-      ["plugin:translations|close_project"]: () => answer,
+    mockIpcCommands({
+      [ETranslationsCommand.OPEN_PROJECT]: mockSessionResponse(PROJECT),
+      [ETranslationsCommand.CLOSE_PROJECT]: () => answer,
     });
 
     await openWithEdit(service);

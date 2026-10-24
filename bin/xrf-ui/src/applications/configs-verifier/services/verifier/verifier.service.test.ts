@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EConfigsCommand } from "@xrf/ipc/commands/configs";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { CONFIGS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx";
 
@@ -26,10 +27,10 @@ const RESULT: LtxProjectVerifyResult = {
 };
 
 describe("VerifierService operation", () => {
-  beforeEach(() => setMockInvokeResponses({}));
+  beforeEach(() => mockIpcCommands({}));
 
   it("preserves command arguments and emits one completion notification", async () => {
-    setMockInvokeResponses({ "plugin:configs|verify_directory": RESULT });
+    mockIpcCommands({ [EConfigsCommand.VERIFY_DIRECTORY]: RESULT });
 
     const { service, container } = mockInjectedService(VerifierService);
     const notices: Array<unknown> = [];
@@ -39,7 +40,7 @@ describe("VerifierService operation", () => {
     await service.verify("C:\\configs", true, true);
 
     expect(mockInvoke).toHaveBeenCalledWith(
-      "plugin:configs|verify_directory",
+      EConfigsCommand.VERIFY_DIRECTORY,
       expect.objectContaining({
         request: {
           roots: { roots: [{ path: "C:\\configs", mode: "auto" }], asset: null },
@@ -79,7 +80,7 @@ describe("VerifierService operation", () => {
       finish = resolve;
     });
 
-    setMockInvokeResponses({ "plugin:configs|verify_directory": () => response });
+    mockIpcCommands({ [EConfigsCommand.VERIFY_DIRECTORY]: () => response });
 
     const { service, container } = mockInjectedService(VerifierService);
     const jobs = container.get(JobsService);

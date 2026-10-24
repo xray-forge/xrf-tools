@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EConfigsCommand } from "@xrf/ipc/commands/configs";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { LtxSectionSchemeReport } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 
@@ -16,7 +17,7 @@ describe("ConfigsSchemeService", () => {
       resolve = settle;
     });
 
-    setMockInvokeResponses({ "plugin:configs|read_section_scheme": () => response });
+    mockIpcCommands({ [EConfigsCommand.READ_SECTION_SCHEME]: () => response });
 
     const { service, container } = mockInjectedService(ConfigsSchemeService, [ConfigsProjectService]);
 

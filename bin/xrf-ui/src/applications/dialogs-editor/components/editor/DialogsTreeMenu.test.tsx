@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EDialogsCommand } from "@xrf/ipc/commands/dialogs";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { DialogProjectDescriptor } from "@xrf/ipc/types/xrf-dialog";
 
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
@@ -31,10 +32,8 @@ const PROJECT: DialogProjectDescriptor = {
 };
 
 async function renderMenu(): Promise<{ render: RenderResult; container: Container }> {
-  setMockInvokeResponses({
-    ["plugin:dialogs|restore_project"]: mockSessionResponse(PROJECT),
-    ["plugin:dialogs|get_dialog"]: null,
-  });
+  // A dialog read answers the null every unlisted command does: these tests count reads, never render one.
+  mockIpcCommands({ [EDialogsCommand.RESTORE_PROJECT]: mockSessionResponse(PROJECT) });
 
   const { container, service } = mockInjectedService(DialogsService);
   const render = renderWithProviders(<DialogsTreeMenu />, { container });
@@ -54,11 +53,11 @@ describe("DialogsTreeMenu", () => {
 
     fireEvent.click(leaf);
 
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:dialogs|get_dialog", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EDialogsCommand.GET_DIALOG, expect.anything());
     expect(leaf.closest("[role='treeitem']")).toHaveAttribute("aria-selected", "true");
 
     fireEvent.dblClick(leaf);
 
-    await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith("plugin:dialogs|get_dialog", expect.anything()));
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith(EDialogsCommand.GET_DIALOG, expect.anything()));
   });
 });

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 import { ERenderTextureGroup, ERenderTextureState } from "@xrf/ipc/types/xrf-renderer";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
@@ -59,8 +60,8 @@ describe("VisualLoadService", () => {
 
     let openParameters: Nullable<Record<string, unknown>> = null;
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse((parameters?: Record<string, unknown>) => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse((parameters?: Record<string, unknown>) => {
         openParameters = parameters ?? null;
 
         return mockLoadable();
@@ -83,8 +84,8 @@ describe("VisualLoadService", () => {
     // A surface that wants to report it reads the error; one that does not is not obliged to catch.
     const { service } = mockInjectedService(VisualLoadService);
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(() => {
         throw new Error("chunk declares more bytes than the entry holds");
       }),
     });
@@ -101,14 +102,14 @@ describe("VisualLoadService", () => {
     // dropping it before the replacement lands would be.
     const { service } = mockInjectedService(VisualLoadService);
 
-    setMockInvokeResponses({ ["plugin:visuals|open_model"]: mockSessionResponse(mockLoadable()) });
+    mockIpcCommands({ [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(mockLoadable()) });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
     let shownWhileOpening: Nullable<string> = null;
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(() => {
         shownWhileOpening = service.sourceLabel;
 
         return mockLoadable({ source: { kind: "file", path: "C:\\gamedata\\meshes\\second.ogf" } });
@@ -125,13 +126,13 @@ describe("VisualLoadService", () => {
     const { service } = mockInjectedService(VisualLoadService);
     const invoked: Array<string> = [];
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(() => {
         invoked.push("open_model");
 
         return mockLoadable();
       }),
-      ["plugin:visuals|restore_model"]: mockSessionResponse(mockLoadable()),
+      [EVisualsCommand.RESTORE_MODEL]: mockSessionResponse(mockLoadable()),
     });
 
     await service.restore();
@@ -143,7 +144,7 @@ describe("VisualLoadService", () => {
   it("drops what it loaded when cleared", async () => {
     const { service } = mockInjectedService(VisualLoadService);
 
-    setMockInvokeResponses({ ["plugin:visuals|open_model"]: mockSessionResponse(mockLoadable()) });
+    mockIpcCommands({ [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(mockLoadable()) });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
     service.clear();
@@ -162,7 +163,7 @@ describe("VisualLoadService textures", () => {
   it("holds a located texture loading until the renderer says what became of it", async () => {
     const { service } = mockInjectedService(VisualLoadService);
 
-    setMockInvokeResponses({ ["plugin:visuals|open_model"]: mockSessionResponse(mockLoadable()) });
+    mockIpcCommands({ [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(mockLoadable()) });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
@@ -186,7 +187,7 @@ describe("VisualLoadService textures", () => {
   it("ignores what the renderer says of a visual since replaced", async () => {
     const { service } = mockInjectedService(VisualLoadService);
 
-    setMockInvokeResponses({ ["plugin:visuals|open_model"]: mockSessionResponse(mockLoadable()) });
+    mockIpcCommands({ [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(mockLoadable()) });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
@@ -200,14 +201,14 @@ describe("VisualLoadService textures", () => {
   it("offers the bump toggle only for a visual whose material binds a located pair", async () => {
     const { service } = mockInjectedService(VisualLoadService);
 
-    setMockInvokeResponses({ ["plugin:visuals|open_model"]: mockSessionResponse(mockLoadable()) });
+    mockIpcCommands({ [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(mockLoadable()) });
 
     await service.load({ kind: "asset", logicalPath: ENTRY }, ROOTS);
 
     expect(service.hasBump).toBe(false);
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(
         mockLoadable({ materials: { "wpn\\wpn_ak74": mockMaterialDescriptor() } })
       ),
     });

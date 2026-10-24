@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { EAssetsCommand } from "@xrf/ipc/commands/assets";
+import { ESessionsCommand } from "@xrf/ipc/commands/sessions";
+import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import { SessionScopeService } from "@xrf/ipc/session";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
-import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
+import { XrayAsset, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse/index";
@@ -37,9 +40,9 @@ describe("VisualsBrowseService", () => {
 
     let listParameters: Nullable<Record<string, unknown>> = null;
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_browse"]: mockSessionResponse((args?: Record<string, unknown>) => args?.roots),
-      ["plugin:assets|list_assets"]: (parameters?: Record<string, unknown>) => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_BROWSE]: mockSessionResponse(({ roots }: { roots: XrayRoots }) => roots),
+      [EAssetsCommand.LIST_ASSETS]: (parameters?: Record<string, unknown>) => {
         listParameters = parameters ?? null;
 
         return [mockVisual("meshes\\wpn\\wpn_ak74.ogf")];
@@ -58,9 +61,9 @@ describe("VisualsBrowseService", () => {
   it("reports a failed listing without pretending the root is empty of intent", async () => {
     const { service } = mockInjectedService(VisualsBrowseService);
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_browse"]: mockSessionResponse((args?: Record<string, unknown>) => args?.roots),
-      ["plugin:assets|list_assets"]: () => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_BROWSE]: mockSessionResponse(({ roots }: { roots: XrayRoots }) => roots),
+      [EAssetsCommand.LIST_ASSETS]: () => {
         throw new Error("root does not exist");
       },
     });
@@ -75,12 +78,12 @@ describe("VisualsBrowseService", () => {
   it("records the browsed roots in the backend rather than keeping it to itself", async () => {
     let recorded: Nullable<Record<string, unknown>> = null;
 
-    setMockInvokeResponses({
-      ["plugin:assets|list_assets"]: [mockVisual("meshes\\actors\\stalker.ogf")],
-      ["plugin:visuals|open_browse"]: mockSessionResponse((parameters?: Record<string, unknown>) => {
-        recorded = parameters ?? null;
+    mockIpcCommands({
+      [EAssetsCommand.LIST_ASSETS]: [mockVisual("meshes\\actors\\stalker.ogf")],
+      [EVisualsCommand.OPEN_BROWSE]: mockSessionResponse((parameters: { roots: XrayRoots }) => {
+        recorded = parameters;
 
-        return parameters?.roots;
+        return parameters.roots;
       }),
     });
 
@@ -94,10 +97,10 @@ describe("VisualsBrowseService", () => {
   it("comes back to the roots the backend is still browsing after a reload", async () => {
     // The session lives where every other application's does; a reload asks for it and derives the listing again, which
     // is cheap because the mounts that listing reads are already cached.
-    setMockInvokeResponses({
-      ["plugin:visuals|open_browse"]: mockSessionResponse((args?: Record<string, unknown>) => args?.roots),
-      ["plugin:visuals|restore_browse"]: mockSessionResponse(createRoots(["C:\\gamedata"])),
-      ["plugin:assets|list_assets"]: [mockVisual("meshes\\actors\\stalker.ogf")],
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_BROWSE]: mockSessionResponse(({ roots }: { roots: XrayRoots }) => roots),
+      [EVisualsCommand.RESTORE_BROWSE]: mockSessionResponse(createRoots(["C:\\gamedata"])),
+      [EAssetsCommand.LIST_ASSETS]: [mockVisual("meshes\\actors\\stalker.ogf")],
     });
 
     const { service } = mockInjectedService(VisualsBrowseService);
@@ -113,11 +116,15 @@ describe("VisualsBrowseService", () => {
     // longer has. A reload runs no deactivation, which is what keeps the restore above working.
     const released: Array<string> = [];
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_browse"]: mockSessionResponse((args?: Record<string, unknown>) => args?.roots),
-      ["plugin:assets|list_assets"]: [mockVisual("meshes\\actors\\stalker.ogf")],
-      ["plugin:visuals|close_browse"]: () => void released.push("closed"),
-      ["plugin:sessions|release_scope"]: () => void released.push("scope released"),
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_BROWSE]: mockSessionResponse(({ roots }: { roots: XrayRoots }) => roots),
+      [EAssetsCommand.LIST_ASSETS]: [mockVisual("meshes\\actors\\stalker.ogf")],
+      [EVisualsCommand.CLOSE_BROWSE]: () => void released.push("closed"),
+      [ESessionsCommand.RELEASE_SCOPE]: () => {
+        released.push("scope released");
+
+        return 1;
+      },
     });
 
     const { service, container } = mockInjectedService(VisualsBrowseService);
@@ -135,16 +142,14 @@ describe("VisualsBrowseService", () => {
   it("forgets the roots when browsing is closed, backend included", async () => {
     const closed: Array<string> = [];
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_browse"]: mockSessionResponse((args?: Record<string, unknown>) => args?.roots),
-      ["plugin:assets|list_assets"]: [],
-      ["plugin:visuals|close_browse"]: () => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_BROWSE]: mockSessionResponse(({ roots }: { roots: XrayRoots }) => roots),
+      [EAssetsCommand.LIST_ASSETS]: [],
+      [EVisualsCommand.CLOSE_BROWSE]: () => {
         closed.push("closed");
-
-        return null;
       },
       // A session the backend no longer holds is what a later provisioning must find.
-      ["plugin:visuals|restore_browse"]: mockSessionResponse(null),
+      [EVisualsCommand.RESTORE_BROWSE]: mockSessionResponse(null),
     });
 
     const { service } = mockInjectedService(VisualsBrowseService);

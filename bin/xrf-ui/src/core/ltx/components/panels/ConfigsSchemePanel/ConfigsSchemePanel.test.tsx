@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EConfigsCommand } from "@xrf/ipc/commands/configs";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxSchemeFieldReport, LtxSectionSchemeReport } from "@xrf/ipc/types/xrf-ltx-inspect";
 
@@ -45,7 +46,7 @@ async function renderScheme(report: LtxSectionSchemeReport): Promise<RenderResul
   } as ConfigsDocument);
   documentService.selectSection(report.section);
 
-  setMockInvokeResponses({ "plugin:configs|read_section_scheme": report });
+  mockIpcCommands({ [EConfigsCommand.READ_SECTION_SCHEME]: report });
 
   return renderWithProviders(<ConfigsSchemePanel />, { container });
 }

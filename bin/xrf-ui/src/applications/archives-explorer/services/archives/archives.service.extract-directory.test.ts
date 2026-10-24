@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { AsyncState } from "@xrf/async";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 
 import { EPathEntryKind } from "@/core/path/entry-kind";
-import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
+import {
+  mockArchiveExtractDirectoryResult,
+  mockArchiveFileDescriptor,
+  mockArchivesVolumes,
+} from "@/fixtures/mocks/archive.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -17,7 +22,7 @@ function getExtractedDirectory(service: ArchivesService): Nullable<ArchiveExtrac
 
 describe("ArchivesService directory extraction", () => {
   beforeEach(() => {
-    setMockInvokeResponses({});
+    mockIpcCommands({});
   });
 
   it("sends the directory prefix and destination root", async () => {
@@ -25,13 +30,13 @@ describe("ArchivesService directory extraction", () => {
 
     service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
 
-    setMockInvokeResponses({
-      ["plugin:archives|extract_directory"]: {
+    mockIpcCommands({
+      [EArchivesCommand.EXTRACT_DIRECTORY]: mockArchiveExtractDirectoryResult({
         prefix: "configs",
         destination: "C:\\out",
         extractedCount: 12,
         size: 4096,
-      },
+      }),
     });
 
     await service.extractArchiveDirectory("configs", "C:\\out");
@@ -39,7 +44,7 @@ describe("ArchivesService directory extraction", () => {
     // The identity and the channel are minted per run, so this names what the caller chose and lets the job's own two
     // arguments be whatever the jobs service made them.
     expect(mockInvoke).toHaveBeenCalledWith(
-      "plugin:archives|extract_directory",
+      EArchivesCommand.EXTRACT_DIRECTORY,
       expect.objectContaining({ request: { sessionId: "fixture-session", prefix: "configs", destination: "C:\\out" } })
     );
     expect(getExtractedDirectory(service)?.extractedCount).toBe(12);
@@ -57,7 +62,7 @@ describe("ArchivesService directory extraction", () => {
     await service.extractArchiveDirectory("", "C:\\out");
 
     expect(mockInvoke).toHaveBeenCalledWith(
-      "plugin:archives|extract_directory",
+      EArchivesCommand.EXTRACT_DIRECTORY,
       expect.objectContaining({ request: { sessionId: "fixture-session", prefix: "", destination: "C:\\out" } })
     );
   });
@@ -67,8 +72,8 @@ describe("ArchivesService directory extraction", () => {
 
     service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
 
-    setMockInvokeResponses({
-      ["plugin:archives|extract_directory"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.EXTRACT_DIRECTORY]: () => {
         throw new Error("destination is read only");
       },
     });

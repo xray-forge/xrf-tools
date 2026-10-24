@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ETexturesCommand } from "@xrf/ipc/commands/textures";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import {
   TextureCatalog,
   TextureDescription,
@@ -50,11 +51,10 @@ async function renderMenu(
 ): Promise<{ render: RenderResult; container: Container }> {
   resetMockInvoke();
 
-  setMockInvokeResponses({
-    ["plugin:textures|describe"]: description,
-    ["plugin:textures|describe_catalog"]: summaries,
-    ["plugin:textures|get_roots"]: null,
-    ["plugin:textures|open_browse"]: mockSessionResponse(catalog),
+  mockIpcCommands({
+    [ETexturesCommand.DESCRIBE]: description,
+    [ETexturesCommand.DESCRIBE_CATALOG]: summaries,
+    [ETexturesCommand.OPEN_BROWSE]: mockSessionResponse(catalog),
   });
 
   // Both halves: the catalog lists, and choosing a row hands the reference to the selection.

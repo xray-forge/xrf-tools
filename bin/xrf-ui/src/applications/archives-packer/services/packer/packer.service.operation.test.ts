@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { EJobsCommand } from "@xrf/ipc/commands/jobs";
+import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { ARCHIVES_JOB_PACK, ARCHIVES_JOB_UNPACK } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchivePackConfig, ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
 
@@ -39,7 +41,7 @@ describe("PackerService operation", () => {
   it("locks configuration I/O for a locally started pack", async () => {
     const response = mockDeferred<ArchivePackResult>();
 
-    setMockInvokeResponses({ "plugin:archives|pack_directory": () => response.promise });
+    mockIpcCommands({ [EArchivesCommand.PACK_DIRECTORY]: () => response.promise });
 
     const { service } = mockPacker();
     const packing = service.pack(CONFIG, true);
@@ -50,10 +52,10 @@ describe("PackerService operation", () => {
     const importing = service.importConfig("pack.ltx");
     const exporting = service.exportConfig("pack.ltx");
 
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|import_pack_config", expect.anything());
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|export_pack_config", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.IMPORT_PACK_CONFIG, expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.EXPORT_PACK_CONFIG, expect.anything());
     expect(mockInvoke).toHaveBeenCalledWith(
-      "plugin:archives|pack_directory",
+      EArchivesCommand.PACK_DIRECTORY,
       expect.objectContaining({ request: { config: CONFIG, isForced: true } })
     );
 
@@ -92,13 +94,13 @@ describe("PackerService operation", () => {
 
     service.operation.cancel();
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:jobs|cancel", { id: "adopted-pack" });
+    expect(mockInvoke).toHaveBeenCalledWith(EJobsCommand.CANCEL, { id: "adopted-pack" });
   });
 
   it("keeps the eventual partial result after requesting pack cancellation", async () => {
     const response = mockDeferred<ArchivePackResult>();
 
-    setMockInvokeResponses({ "plugin:archives|pack_directory": () => response.promise });
+    mockIpcCommands({ [EArchivesCommand.PACK_DIRECTORY]: () => response.promise });
 
     const { service } = mockPacker();
     const packing = service.pack(CONFIG, false);
@@ -106,7 +108,7 @@ describe("PackerService operation", () => {
 
     service.operation.cancel();
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:jobs|cancel", { id });
+    expect(mockInvoke).toHaveBeenCalledWith(EJobsCommand.CANCEL, { id });
     expect(service.isBusy).toBe(true);
 
     const partial: ArchivePackResult = mockArchivePackResult({ outcome: "cancelled", volumes: [], volumesOpened: [] });
@@ -121,7 +123,7 @@ describe("PackerService operation", () => {
   it("unlocks an abandoned view without cancelling the backend pack or publishing its response", async () => {
     const response = mockDeferred<ArchivePackResult>();
 
-    setMockInvokeResponses({ "plugin:archives|pack_directory": () => response.promise });
+    mockIpcCommands({ [EArchivesCommand.PACK_DIRECTORY]: () => response.promise });
 
     const { service, container } = mockPacker();
     const packing = service.pack(CONFIG, false);
@@ -131,7 +133,7 @@ describe("PackerService operation", () => {
 
     expect(service.isBusy).toBe(false);
     expect(container.get(JobsService).jobs).toHaveLength(1);
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:jobs|cancel", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EJobsCommand.CANCEL, expect.anything());
 
     response.resolve(RESULT);
     await response.promise;
@@ -142,9 +144,9 @@ describe("PackerService operation", () => {
   it("keeps the old configuration and pack result until an import succeeds", async () => {
     const response = mockDeferred<ArchivePackConfig>();
 
-    setMockInvokeResponses({
-      "plugin:archives|pack_directory": RESULT,
-      "plugin:archives|import_pack_config": () => response.promise,
+    mockIpcCommands({
+      [EArchivesCommand.PACK_DIRECTORY]: RESULT,
+      [EArchivesCommand.IMPORT_PACK_CONFIG]: () => response.promise,
     });
 
     const { service } = mockPacker();
@@ -168,9 +170,9 @@ describe("PackerService operation", () => {
   });
 
   it("retains the previous pack result when importing fails", async () => {
-    setMockInvokeResponses({
-      "plugin:archives|pack_directory": RESULT,
-      "plugin:archives|import_pack_config": () => {
+    mockIpcCommands({
+      [EArchivesCommand.PACK_DIRECTORY]: RESULT,
+      [EArchivesCommand.IMPORT_PACK_CONFIG]: () => {
         throw new Error("Invalid configuration");
       },
     });
@@ -187,9 +189,9 @@ describe("PackerService operation", () => {
   });
 
   it("clears a previous pack error while exporting without discarding its partial result", async () => {
-    const response = mockDeferred<void>();
+    const response = mockDeferred<null>();
 
-    setMockInvokeResponses({ "plugin:archives|export_pack_config": () => response.promise });
+    mockIpcCommands({ [EArchivesCommand.EXPORT_PACK_CONFIG]: () => response.promise });
 
     const { service } = mockPacker();
 
@@ -207,7 +209,7 @@ describe("PackerService operation", () => {
     expect(service.operation.result).toEqual(RESULT);
     expect(service.isBusy).toBe(true);
 
-    response.resolve();
+    response.resolve(null);
     await exporting;
 
     expect(service.operation.result).toEqual(RESULT);
@@ -215,9 +217,9 @@ describe("PackerService operation", () => {
   });
 
   it("clears a configuration error when a retained pack outcome is accepted", async () => {
-    setMockInvokeResponses({
-      "plugin:archives|default_pack_config": CONFIG,
-      "plugin:archives|import_pack_config": () => {
+    mockIpcCommands({
+      [EArchivesCommand.DEFAULT_PACK_CONFIG]: CONFIG,
+      [EArchivesCommand.IMPORT_PACK_CONFIG]: () => {
         throw new Error("Invalid configuration");
       },
     });
@@ -243,9 +245,9 @@ describe("PackerService operation", () => {
   });
 
   it("keeps configuration errors when another application's outcome arrives", async () => {
-    setMockInvokeResponses({
-      "plugin:archives|default_pack_config": CONFIG,
-      "plugin:archives|export_pack_config": () => {
+    mockIpcCommands({
+      [EArchivesCommand.DEFAULT_PACK_CONFIG]: CONFIG,
+      [EArchivesCommand.EXPORT_PACK_CONFIG]: () => {
         throw new Error("Cannot write configuration");
       },
     });

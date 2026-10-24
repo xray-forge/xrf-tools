@@ -1,10 +1,16 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { ESystemCommand } from "@xrf/ipc/commands/system";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
+import {
+  mockArchiveExtractDirectoryResult,
+  mockArchiveFileDescriptor,
+  mockArchivesVolumes,
+} from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -12,12 +18,12 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 import { ArchiveUnpackDialog } from "./ArchiveUnpackDialog";
 
 async function renderDialog(onClose: () => void): Promise<RenderResult> {
-  setMockInvokeResponses({
-    ["plugin:archives|restore_subject"]: mockSessionResponse(
+  mockIpcCommands({
+    [EArchivesCommand.RESTORE_SUBJECT]: mockSessionResponse(
       mockArchivesVolumes([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })])
     ),
-    ["plugin:system|get_default_output_root"]: "C:\\xrf\\out",
-    ["plugin:archives|extract_directory"]: { prefix: "", destination: "", extractedCount: 1, size: 9 },
+    [ESystemCommand.GET_DEFAULT_OUTPUT_ROOT]: "C:\\xrf\\out",
+    [EArchivesCommand.EXTRACT_DIRECTORY]: mockArchiveExtractDirectoryResult(),
   });
 
   const { container, service } = mockInjectedService(ArchivesService);
@@ -45,7 +51,7 @@ describe("ArchiveUnpackDialog", () => {
 
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith(
-        "plugin:archives|extract_directory",
+        EArchivesCommand.EXTRACT_DIRECTORY,
         expect.objectContaining({
           request: { sessionId: "fixture-session", prefix: "", destination: "C:\\xrf\\out\\archives-explorer" },
         })

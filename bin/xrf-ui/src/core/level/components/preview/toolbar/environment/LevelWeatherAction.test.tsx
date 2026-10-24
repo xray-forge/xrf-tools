@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 
 import { LevelWeatherAction } from "@/core/level/components/preview/toolbar/environment/LevelWeatherAction";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
@@ -19,9 +20,9 @@ import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 async function renderAction(): Promise<{ weather: LevelWeatherService } & ReturnType<typeof renderWithProviders>> {
-  setMockInvokeResponses({
-    ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
-    ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+  mockIpcCommands({
+    [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
+    [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
   });
 
   const container: Container = mockContainer([

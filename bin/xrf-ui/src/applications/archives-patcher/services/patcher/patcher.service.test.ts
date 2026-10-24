@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
 import { BYTES_PER_MEGABYTE } from "@xrf/format";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { ArchivePatchConfig, ArchivePatchResult } from "@xrf/ipc/types/xrf-pack";
 
@@ -41,7 +42,7 @@ describe("PatcherService configuration", () => {
   it("opens on the configuration the backend owns", async () => {
     const defaults: ArchivePatchConfig = { ...CONFIG, name: "from-backend" };
 
-    setMockInvokeResponses({ ["plugin:archives|default_patch_config"]: defaults });
+    mockIpcCommands({ [EArchivesCommand.DEFAULT_PATCH_CONFIG]: defaults });
 
     const { service } = mockInjectedService(PatcherService);
 
@@ -63,7 +64,7 @@ describe("PatcherService configuration", () => {
   });
 
   it("counts an edit after an import as unsaved", async () => {
-    setMockInvokeResponses({ ["plugin:archives|import_patch_config"]: { ...CONFIG, include: ["configs"] } });
+    mockIpcCommands({ [EArchivesCommand.IMPORT_PATCH_CONFIG]: { ...CONFIG, include: ["configs"] } });
 
     const service: PatcherService = mockPatcherService();
 
@@ -79,7 +80,7 @@ describe("PatcherService configuration", () => {
 
   it("does not count a path as an edit, since a file never carries one", async () => {
     // What keeps a freshly imported configuration from reading as unsaved the moment a game is chosen.
-    setMockInvokeResponses({ ["plugin:archives|import_patch_config"]: CONFIG });
+    mockIpcCommands({ [EArchivesCommand.IMPORT_PATCH_CONFIG]: CONFIG });
 
     const service: PatcherService = mockPatcherService();
 
@@ -91,7 +92,7 @@ describe("PatcherService configuration", () => {
   });
 
   it("sends the whole configuration when exporting, and remembers the file", async () => {
-    setMockInvokeResponses({ ["plugin:archives|export_patch_config"]: null });
+    mockIpcCommands({ [EArchivesCommand.EXPORT_PATCH_CONFIG]: null });
 
     const service: PatcherService = mockPatcherService();
 
@@ -100,7 +101,7 @@ describe("PatcherService configuration", () => {
     await service.exportConfig("C:\\work\\patch.json");
 
     expect(mockInvoke).toHaveBeenCalledWith(
-      "plugin:archives|export_patch_config",
+      EArchivesCommand.EXPORT_PATCH_CONFIG,
       expect.objectContaining({ path: "C:\\work\\patch.json" })
     );
     expect(service.configName).toBe("patch.json");
@@ -108,8 +109,8 @@ describe("PatcherService configuration", () => {
   });
 
   it("reports an import failure without losing the open configuration", async () => {
-    setMockInvokeResponses({
-      ["plugin:archives|import_patch_config"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.IMPORT_PATCH_CONFIG]: () => {
         throw new Error("not a patching configuration");
       },
     });
@@ -144,11 +145,11 @@ describe("PatcherService error recovery", () => {
       packDuration: 0,
     };
 
-    setMockInvokeResponses({
-      ["plugin:archives|import_patch_config"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.IMPORT_PATCH_CONFIG]: () => {
         throw new Error("invalid configuration");
       },
-      ["plugin:archives|compare_archives"]: result,
+      [EArchivesCommand.COMPARE_ARCHIVES]: result,
     });
 
     const service: PatcherService = mockPatcherService();
@@ -164,11 +165,11 @@ describe("PatcherService error recovery", () => {
   });
 
   it("clears a job failure when configuration export succeeds", async () => {
-    setMockInvokeResponses({
-      ["plugin:archives|compare_archives"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.COMPARE_ARCHIVES]: () => {
         throw new Error("cannot read input");
       },
-      ["plugin:archives|export_patch_config"]: null,
+      [EArchivesCommand.EXPORT_PATCH_CONFIG]: null,
     });
 
     const service: PatcherService = mockPatcherService();
@@ -195,13 +196,13 @@ describe("PatcherService destination check", () => {
     const config: ArchivePatchConfig = { ...CONFIG, destination: "C:\\out" };
     const volumes: Array<string> = ["C:\\out\\patch.db0"];
 
-    setMockInvokeResponses({ ["plugin:archives|list_patch_volumes"]: volumes });
+    mockIpcCommands({ [EArchivesCommand.LIST_PATCH_VOLUMES]: volumes });
 
     const service: PatcherService = mockPatcherService();
 
     await service.checkDestination(config);
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|list_patch_volumes", { config });
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.LIST_PATCH_VOLUMES, { config });
     expect(service.publishedVolumes).toEqual(volumes);
   });
 
@@ -211,13 +212,13 @@ describe("PatcherService destination check", () => {
       resolveOlder = resolve;
     });
 
-    setMockInvokeResponses({ ["plugin:archives|list_patch_volumes"]: () => olderResponse });
+    mockIpcCommands({ [EArchivesCommand.LIST_PATCH_VOLUMES]: () => olderResponse });
 
     const service: PatcherService = mockPatcherService();
     const olderCheck = flowResult(service.checkDestination({ ...CONFIG, destination: "C:\\old" }));
     const newerVolumes: Array<string> = ["C:\\new\\patch.db0"];
 
-    setMockInvokeResponses({ ["plugin:archives|list_patch_volumes"]: newerVolumes });
+    mockIpcCommands({ [EArchivesCommand.LIST_PATCH_VOLUMES]: newerVolumes });
 
     await service.checkDestination({ ...CONFIG, destination: "C:\\new" });
 

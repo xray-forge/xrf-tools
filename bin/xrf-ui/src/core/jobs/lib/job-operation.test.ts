@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { autorun, flow } from "@wirestate/mobx";
+import { EJobsCommand } from "@xrf/ipc/commands/jobs";
 import { mockInvoke, resetMockInvoke } from "@xrf/ipc/testing";
 import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT, CONFIGS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-configs";
 import { JobKind } from "@xrf/ipc/types/xrf-app-core";
@@ -112,7 +113,7 @@ describe("JobOperation", () => {
 
     operation.cancel();
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:jobs|cancel", { id });
+    expect(mockInvoke).toHaveBeenCalledWith(EJobsCommand.CANCEL, { id });
     expect(operation.job?.isCancelRequested).toBe(true);
     expect(operation.isRunning).toBe(true);
 
@@ -165,7 +166,7 @@ describe("JobOperation", () => {
 
     operation.cancel();
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:jobs|cancel", { id: "format" });
+    expect(mockInvoke).toHaveBeenCalledWith(EJobsCommand.CANCEL, { id: "format" });
   });
 
   it("adopts matching success and failure outcomes but ignores other commands", () => {

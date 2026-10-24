@@ -1,8 +1,9 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, fireEvent, RenderResult } from "@testing-library/react";
 import { AsyncState } from "@xrf/async";
+import { EAssetsBulkRoute } from "@xrf/ipc/commands/assets-bulk";
 import { texturesCommands } from "@xrf/ipc/commands/textures";
-import { BulkRead, setMockBulkResponses } from "@xrf/ipc/testing";
+import { IpcBulkRouteFetch, mockIpcBulkRoutes } from "@xrf/ipc/testing";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
 
@@ -142,11 +143,11 @@ describe("TexturePreview", () => {
     const { service, container } = mockInjectedService(TextureSelectionService, [AssetService, TextureViewService]);
     const describeTexture = jest.spyOn(texturesCommands, "describe").mockResolvedValue(SHAPED);
     const readTexture = jest
-      .fn<BulkRead>()
+      .fn<IpcBulkRouteFetch<EAssetsBulkRoute.READ_TEXTURE>>()
       .mockRejectedValueOnce(new Error("Archive is temporarily unavailable"))
       .mockResolvedValue(new ArrayBuffer(4));
 
-    setMockBulkResponses({ "assets/read_texture": readTexture });
+    mockIpcBulkRoutes({ [EAssetsBulkRoute.READ_TEXTURE]: readTexture });
 
     await service.open(SHAPED.source, SHAPED.roots);
 

@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, fireEvent, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { CommandBus, Container, QueryBus } from "@wirestate/core";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EJobsCommand } from "@xrf/ipc/commands/jobs";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { ReactElement, ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -132,7 +133,7 @@ describe("ApplicationShellFrame", () => {
   it("offers the jobs listing beside the notification centre in dev mode", async () => {
     // Reachability rather than rendering: the panel is registered in one list and its button rendered from another, so
     // a panel can be perfectly correct and still have no way to open it. That is exactly how it shipped invisible.
-    setMockInvokeResponses({ "plugin:jobs|list": [] });
+    mockIpcCommands({ [EJobsCommand.LIST]: [] });
 
     const { getByLabelText, findByText } = renderFrame(<div>bare editor</div>);
 

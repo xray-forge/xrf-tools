@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Optional } from "@xrf/types";
 
+import { EConfigsCommand } from "#/commands/configs";
 import { invoke } from "#/invoke";
 import { IIpcCommandMetrics, IPC_METRICS, setIpcProfilingEnabled } from "#/metrics/index";
-import { mockInvoke, setMockInvokeResponses } from "#/testing/index";
+import { mockInvoke, mockIpcCommands } from "#/testing/index";
 
-const COMMAND: string = "plugin:configs|read_document";
+const COMMAND: string = EConfigsCommand.READ_DOCUMENT;
 
 /** @returns What the recorder holds for the command under test, if anything. */
 function mockRecorded(): Optional<IIpcCommandMetrics> {
@@ -19,7 +20,7 @@ describe("invoke", () => {
   });
 
   it("passes the command and arguments straight through and answers what the command answered", async () => {
-    setMockInvokeResponses({ [COMMAND]: { text: "ok" } });
+    mockIpcCommands({ [COMMAND]: { text: "ok" } });
 
     await expect(invoke(COMMAND, { path: "system.ltx" })).resolves.toEqual({ text: "ok" });
 
@@ -29,7 +30,7 @@ describe("invoke", () => {
   });
 
   it("counts a call without weighing what it carried", async () => {
-    setMockInvokeResponses({ [COMMAND]: { text: "ok" } });
+    mockIpcCommands({ [COMMAND]: { text: "ok" } });
 
     await invoke(COMMAND, { path: "system.ltx" });
 
@@ -40,7 +41,7 @@ describe("invoke", () => {
   });
 
   it("weighs both directions once profiling is on", async () => {
-    setMockInvokeResponses({ [COMMAND]: { text: "ok" } });
+    mockIpcCommands({ [COMMAND]: { text: "ok" } });
     setIpcProfilingEnabled(true);
 
     await invoke(COMMAND, { path: "system.ltx" });
@@ -51,7 +52,7 @@ describe("invoke", () => {
   });
 
   it("counts a rejection as a failure and lets it through untouched", async () => {
-    setMockInvokeResponses({
+    mockIpcCommands({
       [COMMAND]: () => {
         throw new Error("session is not open");
       },

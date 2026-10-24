@@ -64,7 +64,7 @@ import {
 } from "@xrf/ipc/types/xrf-archive";
 import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
-import { ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
+import { ArchiveExtractDirectoryResult, ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
 import { EXrayAssetContainer, XrayAssetContainer, XrayPathCollision } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
@@ -91,6 +91,25 @@ export function mockArchivePackResult(overrides: Partial<ArchivePackResult> = {}
     writeDuration: 800,
     finalizeDuration: 100,
     speed: 100,
+    ...overrides,
+  };
+}
+
+/**
+ * Creates the complete result of extracting one archived directory.
+ *
+ * @param overrides - Result fields to override.
+ * @returns A finished extraction of one file.
+ */
+export function mockArchiveExtractDirectoryResult(
+  overrides: Partial<ArchiveExtractDirectoryResult> = {}
+): ArchiveExtractDirectoryResult {
+  return {
+    prefix: "",
+    destination: "",
+    outcome: "completed",
+    extractedCount: 1,
+    size: 9,
     ...overrides,
   };
 }

@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
-import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 
@@ -39,18 +40,16 @@ function mockBake(name: string): VisualMotionBake {
 function mockMotions(failing: Array<string> = []): Array<string> {
   const calls: Array<string> = [];
 
-  setMockInvokeResponses({
-    ["plugin:visuals|describe_motion"]: ((args) => {
-      const name: string = String(args?.name);
+  mockIpcCommands({
+    [EVisualsCommand.DESCRIBE_MOTION]: (args) => {
+      calls.push(`open:${args.name}`);
 
-      calls.push(`open:${name}`);
-
-      if (failing.includes(name)) {
-        throw new Error(`Motion '${name}' is not one this visual references`);
+      if (failing.includes(args.name)) {
+        throw new Error(`Motion '${args.name}' is not one this visual references`);
       }
 
-      return mockBake(name);
-    }) as InvokeHandler,
+      return mockBake(args.name);
+    },
   });
 
   return calls;

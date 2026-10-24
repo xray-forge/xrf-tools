@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container, EventBus } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
-import { InvokeHandler, mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { IpcCommandAnswer, mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionChange, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
   LEVEL_ENVIRONMENT_PART,
@@ -25,7 +26,7 @@ import { mockContainer } from "@/fixtures/utils/container";
 
 import { LevelLoadService } from "./level-load.service";
 
-const LIST_SPAWN: string = "plugin:levels|describe_spawn_objects";
+const LIST_SPAWN: string = ELevelsCommand.DESCRIBE_SPAWN_OBJECTS;
 
 function listing(objects: number): LevelSpawnObjectsDescription {
   return {
@@ -46,12 +47,12 @@ function countListings(): number {
 
 /** Reads of the committed level, the restore at provision included. */
 function countReads(): number {
-  return mockInvoke.mock.calls.filter(([name]) => name === "plugin:levels|restore_level").length;
+  return mockInvoke.mock.calls.filter(([name]) => name === ELevelsCommand.RESTORE_LEVEL).length;
 }
 
 /** A spawn listing at `revision`, for the level the call names. */
-function listedAt(objects: number, revision: number): InvokeHandler {
-  return (args) => mockSessionSnapshot(listing(objects), args?.sessionId as string, revision);
+function listedAt(objects: number, revision: number): IpcCommandAnswer<ELevelsCommand.DESCRIBE_SPAWN_OBJECTS> {
+  return (args) => mockSessionSnapshot(listing(objects), args.sessionId, revision);
 }
 
 interface IOpenedLevel {
@@ -65,9 +66,9 @@ async function openLevel(): Promise<IOpenedLevel> {
   const container: Container = mockContainer([LevelLoadService]);
   const service: LevelLoadService = container.get(LevelLoadService);
 
-  setMockInvokeResponses({
-    ["plugin:levels|restore_level"]: null,
-    ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+  mockIpcCommands({
+    [ELevelsCommand.RESTORE_LEVEL]: null,
+    [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
     ...mockLevelPartResponses(),
     [LIST_SPAWN]: listedAt(1, 0),
   });
@@ -109,18 +110,18 @@ async function openHeld(): Promise<IHeldOpen> {
   const starts: Array<() => void> = [];
   let sessionId: string = "";
 
-  setMockInvokeResponses({
-    ["plugin:levels|restore_level"]: null,
+  mockIpcCommands({
+    [ELevelsCommand.RESTORE_LEVEL]: null,
     ...mockLevelPartResponses(),
     [LIST_SPAWN]: listedAt(1, 0),
-    ["plugin:levels|open_level"]: mockSessionResponse((args?: Record<string, unknown>) => {
+    [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse((args?: Record<string, unknown>) => {
       const request = args?.request as Record<string, unknown> | undefined;
 
       sessionId = (args?.sessionId ?? request?.sessionId) as string;
 
       return new Promise((resolve) => opens.push(() => resolve(mockSelectedLevelDescription())));
     }),
-    ["plugin:levels|describe_start"]: () =>
+    [ELevelsCommand.DESCRIBE_START]: () =>
       new Promise((resolve) => starts.push(() => resolve(mockSessionSnapshot(null, sessionId, 0)))),
   });
 
@@ -151,10 +152,10 @@ async function openHeld(): Promise<IHeldOpen> {
     container,
     getSessionId: () => sessionId,
     readsAgainAt: (revision: number, visuals: number) =>
-      setMockInvokeResponses({
+      mockIpcCommands({
         ...mockLevelPartResponses(),
         [LIST_SPAWN]: listedAt(1, 0),
-        ["plugin:levels|restore_level"]: () =>
+        [ELevelsCommand.RESTORE_LEVEL]: () =>
           mockSessionSnapshot(mockSelectedLevelDescription({ visuals }), sessionId, revision),
       }),
     service,
@@ -174,7 +175,7 @@ describe("LevelLoadService changes", () => {
     const { container, service, sessionId } = await openLevel();
     const before: number = countListings();
 
-    setMockInvokeResponses({ [LIST_SPAWN]: listedAt(3, 1) });
+    mockIpcCommands({ [LIST_SPAWN]: listedAt(3, 1) });
     notify(container, {
       sessionId,
       revision: 1,
@@ -218,7 +219,7 @@ describe("LevelLoadService changes", () => {
     const { container, service, sessionId } = await openLevel();
     const answers: Array<(snapshot: SessionSnapshot<LevelSpawnObjectsDescription>) => void> = [];
 
-    setMockInvokeResponses({ [LIST_SPAWN]: () => new Promise((resolve) => answers.push(resolve)) });
+    mockIpcCommands({ [LIST_SPAWN]: () => new Promise((resolve) => answers.push(resolve)) });
 
     notify(container, {
       sessionId,
@@ -249,8 +250,8 @@ describe("LevelLoadService changes", () => {
     const { container, service, sessionId } = await openLevel();
     const listings: number = countListings();
 
-    setMockInvokeResponses({
-      ["plugin:levels|restore_level"]: () =>
+    mockIpcCommands({
+      [ELevelsCommand.RESTORE_LEVEL]: () =>
         mockSessionSnapshot(mockSelectedLevelDescription({ visuals: 7 }), sessionId, 1),
       [LIST_SPAWN]: listedAt(2, 1),
     });
@@ -284,8 +285,8 @@ describe("LevelLoadService changes", () => {
 
     expect(opened).toEqual({ revision: 0, sessionId });
 
-    setMockInvokeResponses({
-      ["plugin:levels|describe_level_map"]: (args?: Record<string, unknown>) =>
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_LEVEL_MAP]: (args?: Record<string, unknown>) =>
         mockSessionSnapshot(
           { area: { maxX: 1, maxZ: 1, minX: 0, minZ: 0 }, texture: null },
           args?.sessionId as string,
@@ -405,9 +406,9 @@ describe("LevelLoadService changes", () => {
 
     expect(service.spawn?.objects).toHaveLength(1);
 
-    setMockInvokeResponses({
+    mockIpcCommands({
       ...mockLevelPartResponses(),
-      ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+      [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
       [LIST_SPAWN]: (args?: Record<string, unknown>) =>
         new Promise((resolve) => (answer = () => resolve(mockSessionSnapshot(listing(4), args?.sessionId as string)))),
     });
@@ -443,15 +444,15 @@ describe("LevelLoadService changes", () => {
 
     expect(service.level.value?.selected.sessionId).not.toBe(sessionId);
     expect(
-      mockInvoke.mock.calls.filter(([name]) => name === "plugin:levels|close_level").map(([, args]) => args)
+      mockInvoke.mock.calls.filter(([name]) => name === ELevelsCommand.CLOSE_LEVEL).map(([, args]) => args)
     ).toEqual([{ sessionIds: [sessionId] }]);
   });
 
   it("keeps the level shown where a read again answers another level or an older revision", async () => {
     const { container, service, sessionId } = await openLevel();
 
-    setMockInvokeResponses({
-      ["plugin:levels|restore_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), "another", 1),
+    mockIpcCommands({
+      [ELevelsCommand.RESTORE_LEVEL]: () => mockSessionSnapshot(mockSelectedLevelDescription(), "another", 1),
     });
     notify(container, { sessionId, revision: 1, root: { kind: "derived" }, staleParts: [], isViewRenewed: true });
     await flush();

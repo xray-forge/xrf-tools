@@ -3,7 +3,8 @@ import { act, fireEvent, RenderResult, waitFor, within } from "@testing-library/
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ESystemCommand } from "@xrf/ipc/commands/system";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
 import { IPoint3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
@@ -277,8 +278,8 @@ describe("LevelViewerLayout", () => {
   it("says what the backend and the webview hold in the status bar", async () => {
     const megabyte: number = 1024 * 1024;
 
-    setMockInvokeResponses({
-      ["plugin:system|get_memory_usage"]: {
+    mockIpcCommands({
+      [ESystemCommand.GET_MEMORY_USAGE]: {
         application: { committed: 410 * megabyte, workingSet: 300 * megabyte, privateWorkingSet: 260 * megabyte },
         webview: [
           {
@@ -287,6 +288,7 @@ describe("LevelViewerLayout", () => {
             memory: { committed: 3667 * megabyte, workingSet: 2100 * megabyte, privateWorkingSet: 2048 * megabyte },
           },
         ],
+        gpu: null,
       },
     });
 

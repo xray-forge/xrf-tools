@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isObservableProp } from "@wirestate/mobx";
-import { listMockBulkCalls, resetMockInvoke, setMockBulkResponses } from "@xrf/ipc/testing";
+import { EAssetsBulkRoute } from "@xrf/ipc/commands/assets-bulk";
+import { ETexturesBulkRoute } from "@xrf/ipc/commands/textures-bulk";
+import { listMockBulkCalls, mockIpcBulkRoutes, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 
 import { EMPTY_TEXTURE_SURFACE } from "@/core/textures/lib/texture-surface";
@@ -33,7 +35,7 @@ describe("TextureSurfaceService", () => {
 
   beforeEach(() => {
     resetMockInvoke();
-    setMockBulkResponses({ "textures/read_texels": mockTexels() });
+    mockIpcBulkRoutes({ [ETexturesBulkRoute.READ_TEXELS]: mockTexels() });
   });
 
   afterEach(() => {
@@ -58,8 +60,8 @@ describe("TextureSurfaceService", () => {
 
     expect(files.bump?.bump).toMatchObject({ height: 2, width: 2 });
     expect(files.bump?.companion.data).toHaveLength(16);
-    expect(listMockBulkCalls("textures/read_texels")).toHaveLength(2);
-    expect(listMockBulkCalls("assets/read_asset")).toHaveLength(0);
+    expect(listMockBulkCalls(ETexturesBulkRoute.READ_TEXELS)).toHaveLength(2);
+    expect(listMockBulkCalls(EAssetsBulkRoute.READ_ASSET)).toHaveLength(0);
     expect(service.reference).toBe(MOCK_TEXTURE);
   });
 
@@ -69,15 +71,15 @@ describe("TextureSurfaceService", () => {
     await service.load(mockTextureDescription());
 
     expect(service.files.value?.bump).toBeNull();
-    expect(listMockBulkCalls("textures/read_texels")).toHaveLength(0);
+    expect(listMockBulkCalls(ETexturesBulkRoute.READ_TEXELS)).toHaveLength(0);
   });
 
   it("publishes no pair when a half cannot be read", async () => {
     const { service } = mockInjectedService(TextureSurfaceService);
     let calls: number = 0;
 
-    setMockBulkResponses({
-      "textures/read_texels": () => {
+    mockIpcBulkRoutes({
+      [ETexturesBulkRoute.READ_TEXELS]: () => {
         calls += 1;
 
         if (calls === 2) {
@@ -117,7 +119,7 @@ describe("TextureSurfaceService", () => {
       release = resolve;
     });
 
-    setMockBulkResponses({ "textures/read_texels": () => pending });
+    mockIpcBulkRoutes({ [ETexturesBulkRoute.READ_TEXELS]: () => pending });
 
     const abandoned = service.load(mockBumpedDescription());
 

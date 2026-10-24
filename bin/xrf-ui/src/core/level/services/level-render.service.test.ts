@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { EventBus } from "@wirestate/core";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { ERenderCommand } from "@xrf/ipc/commands/render";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import {
   getMockChannels,
+  listMockInvokeCalls,
   mockInvoke,
+  mockIpcCommands,
   resetMockChannels,
   resetMockInvoke,
-  setMockInvokeResponses,
 } from "@xrf/ipc/testing";
 import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
 import { LEVEL_GEOMETRY_PART, LEVEL_MAP_PART } from "@xrf/ipc/types/xrf-app-levels";
@@ -46,14 +49,7 @@ import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import {
-  emitViewportEvent,
-  LEVEL_SCENE,
-  LEVEL_VIEWPORT,
-  mockAttachedLevelRender,
-  sentLevelsCommand,
-  sentRenderCommand,
-} from "@/fixtures/utils/level-render";
+import { emitViewportEvent, LEVEL_SCENE, LEVEL_VIEWPORT, mockAttachedLevelRender } from "@/fixtures/utils/level-render";
 
 const SPAN: WorldSurfaceSpan = { uMax: 2, uMin: 0, vMax: 1, vMin: -1 };
 
@@ -135,8 +131,8 @@ describe("LevelRenderService", () => {
   it("attaches a native viewport to its window and stands the camera at the level's start", async () => {
     await mockAttachedLevelRender();
 
-    expect(sentRenderCommand("attach_viewport")).toEqual([{ events: getMockChannels()[0] }]);
-    expect(sentRenderCommand("configure")).toEqual([
+    expect(listMockInvokeCalls(ERenderCommand.ATTACH_VIEWPORT)).toEqual([{ events: getMockChannels()[0] }]);
+    expect(listMockInvokeCalls(ERenderCommand.CONFIGURE)).toEqual([
       {
         settings: {
           backend: null,
@@ -151,11 +147,11 @@ describe("LevelRenderService", () => {
       },
     ]);
 
-    const camera: WorldCamera = sentRenderCommand("set_camera").at(-1)?.camera as WorldCamera;
+    const camera: WorldCamera = listMockInvokeCalls(ERenderCommand.SET_CAMERA).at(-1)?.camera as WorldCamera;
 
-    expect(sentRenderCommand("set_camera").at(-1)?.viewport).toBe(LEVEL_VIEWPORT);
+    expect(listMockInvokeCalls(ERenderCommand.SET_CAMERA).at(-1)?.viewport).toBe(LEVEL_VIEWPORT);
     expect(camera.kind).toBe(EWorldCamera.FLY);
-    expect(sentRenderCommand("command_camera").at(-1)).toEqual({
+    expect(listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA).at(-1)).toEqual({
       command: { kind: EWorldCameraCommand.RESET },
       viewport: LEVEL_VIEWPORT,
     });
@@ -165,7 +161,9 @@ describe("LevelRenderService", () => {
     const { container } = await mockAttachedLevelRender();
     const viewport: LevelViewportService = container.get(LevelViewportService);
 
-    expect(sentLevelsCommand("show_level")).toEqual([{ sessionId: expect.any(String), viewport: LEVEL_VIEWPORT }]);
+    expect(listMockInvokeCalls(ELevelsCommand.SHOW_LEVEL)).toEqual([
+      { sessionId: expect.any(String), viewport: LEVEL_VIEWPORT },
+    ]);
     expect(viewport.isRevealed).toBe(false);
 
     emitViewportEvent({
@@ -189,8 +187,8 @@ describe("LevelRenderService", () => {
     });
     expect(viewport.isRevealed).toBe(false);
 
-    setMockInvokeResponses({
-      ["plugin:render|describe_texture_loads"]: [
+    mockIpcCommands({
+      [ERenderCommand.DESCRIBE_TEXTURE_LOADS]: [
         {
           group: ERenderTextureGroup.SURFACES,
           reference: "terrain\\terrain_escape",
@@ -198,7 +196,7 @@ describe("LevelRenderService", () => {
         },
         { group: ERenderTextureGroup.SURFACES, reference: "act\\act_none", state: { kind: "missing" } },
       ],
-      ["plugin:render|measure_surfaces"]: [{ drawables: 3, narrowest: SPAN, shaderId: 7, span: SPAN, triangles: 40 }],
+      [ERenderCommand.MEASURE_SURFACES]: [{ drawables: 3, narrowest: SPAN, shaderId: 7, span: SPAN, triangles: 40 }],
     });
     emitViewportEvent({
       kind: ERenderViewportEvent.LOAD,
@@ -243,10 +241,10 @@ describe("LevelRenderService", () => {
     expect(viewport.isRevealed).toBe(true);
 
     const sessionId: string = load.level.value?.selected.sessionId as string;
-    const resets: number = sentRenderCommand("command_camera").length;
+    const resets: number = listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA).length;
 
-    setMockInvokeResponses({
-      ["plugin:levels|restore_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), sessionId, 1),
+    mockIpcCommands({
+      [ELevelsCommand.RESTORE_LEVEL]: () => mockSessionSnapshot(mockSelectedLevelDescription(), sessionId, 1),
     });
     container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
       revision: 1,
@@ -257,8 +255,8 @@ describe("LevelRenderService", () => {
     });
     await waitFor(() => expect(load.level.value?.selected.revision).toBe(1));
 
-    expect(sentLevelsCommand("show_level")).toHaveLength(1);
-    expect(sentRenderCommand("command_camera")).toHaveLength(resets);
+    expect(listMockInvokeCalls(ELevelsCommand.SHOW_LEVEL)).toHaveLength(1);
+    expect(listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA)).toHaveLength(resets);
     expect(viewport.isRevealed).toBe(false);
 
     emitViewportEvent({
@@ -286,8 +284,8 @@ describe("LevelRenderService", () => {
 
     const sessionId: string = load.level.value?.selected.sessionId as string;
 
-    setMockInvokeResponses({
-      ["plugin:levels|describe_level_map"]: (args?: Record<string, unknown>) =>
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_LEVEL_MAP]: (args?: Record<string, unknown>) =>
         mockSessionSnapshot(null, args?.sessionId as string, 1),
     });
     container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
@@ -299,7 +297,7 @@ describe("LevelRenderService", () => {
     });
     await waitFor(() => expect(load.levelMap.snapshot?.revision).toBe(1));
 
-    expect(sentLevelsCommand("show_level")).toHaveLength(1);
+    expect(listMockInvokeCalls(ELevelsCommand.SHOW_LEVEL)).toHaveLength(1);
     expect(viewport.isRevealed).toBe(true);
   });
 
@@ -316,7 +314,7 @@ describe("LevelRenderService", () => {
     });
 
     const sessionId: string = load.level.value?.selected.sessionId as string;
-    const resets: number = sentRenderCommand("command_camera").length;
+    const resets: number = listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA).length;
 
     container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
       revision: 1,
@@ -327,8 +325,8 @@ describe("LevelRenderService", () => {
     });
 
     expect(viewport.isRevealed).toBe(false);
-    expect(sentLevelsCommand("show_level")).toHaveLength(1);
-    expect(sentRenderCommand("command_camera")).toHaveLength(resets);
+    expect(listMockInvokeCalls(ELevelsCommand.SHOW_LEVEL)).toHaveLength(1);
+    expect(listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA)).toHaveLength(resets);
 
     emitViewportEvent({
       kind: ERenderViewportEvent.LOAD,
@@ -365,10 +363,10 @@ describe("LevelRenderService", () => {
       shaderId: 11,
     };
 
-    setMockInvokeResponses({ ["plugin:render|pick"]: hit });
+    mockIpcCommands({ [ERenderCommand.PICK]: hit });
     await service.pick({ x: 10, y: 20 }, true);
 
-    expect(sentRenderCommand("pick").at(-1)).toEqual({
+    expect(listMockInvokeCalls(ERenderCommand.PICK).at(-1)).toEqual({
       viewport: LEVEL_VIEWPORT,
       request: { x: 10, y: 20, isThrough: true },
     });
@@ -415,8 +413,10 @@ describe("LevelRenderService", () => {
 
     await mockAttachedLevelRender();
 
-    await waitFor(() => expect(sentRenderCommand("seek_weather")).toEqual([{ time: 7_200, viewport: LEVEL_VIEWPORT }]));
-    expect(sentRenderCommand("play_weather").at(-1)?.play).toEqual({
+    await waitFor(() =>
+      expect(listMockInvokeCalls(ERenderCommand.SEEK_WEATHER)).toEqual([{ time: 7_200, viewport: LEVEL_VIEWPORT }])
+    );
+    expect(listMockInvokeCalls(ERenderCommand.PLAY_WEATHER).at(-1)?.play).toEqual({
       kind: EWorldWeatherPlay.CYCLE,
       name: "default_clear",
     });
@@ -427,7 +427,7 @@ describe("LevelRenderService", () => {
     const { service } = await mockAttachedLevelRender();
     const warn = jest.spyOn(service.log, "warn").mockImplementation(() => undefined);
 
-    setMockInvokeResponses({ ["plugin:render|seek_weather"]: () => Promise.reject(new Error("invalid time")) });
+    mockIpcCommands({ [ERenderCommand.SEEK_WEATHER]: () => Promise.reject(new Error("invalid time")) });
     service.seekWeather(60);
     service.seekWeather(120);
 
@@ -444,7 +444,9 @@ describe("LevelRenderService", () => {
 
     service.detach();
 
-    await waitFor(() => expect(sentRenderCommand("detach_viewport")).toEqual([{ viewport: LEVEL_VIEWPORT }]));
+    await waitFor(() =>
+      expect(listMockInvokeCalls(ERenderCommand.DETACH_VIEWPORT)).toEqual([{ viewport: LEVEL_VIEWPORT }])
+    );
   });
 
   // A show the renderer refused would otherwise leave the cover spinning over nothing.
@@ -452,14 +454,14 @@ describe("LevelRenderService", () => {
     const { container, service } = await mockAttachedLevelRender();
 
     jest.spyOn(service.log, "error").mockImplementation(() => undefined);
-    setMockInvokeResponses({ ["plugin:levels|show_level"]: () => Promise.reject(new Error("The level is closed")) });
+    mockIpcCommands({ [ELevelsCommand.SHOW_LEVEL]: () => Promise.reject(new Error("The level is closed")) });
     await container.get(LevelLoadService).close();
 
     await waitFor(() => expect(service.failure).toBe("The level is closed"));
 
-    setMockInvokeResponses({
-      ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
-      ["plugin:levels|show_level"]: LEVEL_SCENE,
+    mockIpcCommands({
+      [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
+      [ELevelsCommand.SHOW_LEVEL]: LEVEL_SCENE,
     });
     await container.get(LevelLoadService).load({
       engine: EXrayEngineChoice.VANILLA,
@@ -469,7 +471,7 @@ describe("LevelRenderService", () => {
     });
 
     expect(service.failure).toBeNull();
-    await waitFor(() => expect(sentLevelsCommand("show_level")).toHaveLength(3));
+    await waitFor(() => expect(listMockInvokeCalls(ELevelsCommand.SHOW_LEVEL)).toHaveLength(3));
   });
 
   it("holds why the resident level could not be described, for the panels to say", async () => {
@@ -477,8 +479,8 @@ describe("LevelRenderService", () => {
     const viewport: LevelViewportService = container.get(LevelViewportService);
 
     jest.spyOn(service.log, "error").mockImplementation(() => undefined);
-    setMockInvokeResponses({
-      ["plugin:render|describe_problems"]: () => Promise.reject(new Error("The viewport is gone")),
+    mockIpcCommands({
+      [ERenderCommand.DESCRIBE_PROBLEMS]: () => Promise.reject(new Error("The viewport is gone")),
     });
     emitViewportEvent({
       kind: ERenderViewportEvent.LOAD,

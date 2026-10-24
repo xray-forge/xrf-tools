@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
-import { resetMockInvoke, setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EAssetsBulkRoute } from "@xrf/ipc/commands/assets-bulk";
+import { ETexturesCommand } from "@xrf/ipc/commands/textures";
+import { mockIpcBulkRoutes, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureMakeBumpOutcome } from "@xrf/ipc/types/xrf-app-textures";
 
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
@@ -45,14 +47,14 @@ async function mockService(outcome: TextureMakeBumpOutcome = mockOutcome()): Pro
   bumpService: TextureBumpService;
   editorService: TextureEditorService;
 }> {
-  setMockInvokeResponses({
-    ["plugin:textures|describe"]: describedTexture(),
-    ["plugin:textures|get_vocabulary"]: mockTextureVocabulary(),
-    ["plugin:textures|make_bump"]: outcome,
+  mockIpcCommands({
+    [ETexturesCommand.DESCRIBE]: describedTexture(),
+    [ETexturesCommand.GET_VOCABULARY]: mockTextureVocabulary(),
+    [ETexturesCommand.MAKE_BUMP]: outcome,
   });
 
-  setMockBulkResponses({
-    "assets/read_texture": new ArrayBuffer(0),
+  mockIpcBulkRoutes({
+    [EAssetsBulkRoute.READ_TEXTURE]: new ArrayBuffer(0),
   });
 
   const container: Container = mockContainer([
@@ -85,13 +87,13 @@ describe("TextureBumpService", () => {
   });
 
   it("cannot generate for a texture served out of an archive", async () => {
-    setMockInvokeResponses({
-      ["plugin:textures|describe"]: describedTexture({ targets: null }),
-      ["plugin:textures|get_vocabulary"]: mockTextureVocabulary(),
+    mockIpcCommands({
+      [ETexturesCommand.DESCRIBE]: describedTexture({ targets: null }),
+      [ETexturesCommand.GET_VOCABULARY]: mockTextureVocabulary(),
     });
 
-    setMockBulkResponses({
-      "assets/read_texture": new ArrayBuffer(0),
+    mockIpcBulkRoutes({
+      [EAssetsBulkRoute.READ_TEXTURE]: new ArrayBuffer(0),
     });
 
     const container: Container = mockContainer([

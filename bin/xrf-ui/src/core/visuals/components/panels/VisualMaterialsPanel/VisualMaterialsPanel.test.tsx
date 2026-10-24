@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 
 import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
@@ -32,8 +33,8 @@ async function renderPanel(overrides: Partial<SelectedVisualDescription>): Promi
     ...overrides,
   });
 
-  setMockInvokeResponses({
-    ["plugin:visuals|open_model"]: mockSessionResponse(selected),
+  mockIpcCommands({
+    [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(selected),
   });
 
   const container: Container = mockContainer([

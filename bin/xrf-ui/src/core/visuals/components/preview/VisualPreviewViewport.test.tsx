@@ -2,13 +2,15 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult } from "@testing-library/react";
 import { Binding } from "@wirestate/core";
 import { makeAutoObservable } from "@wirestate/mobx";
+import { ERenderCommand } from "@xrf/ipc/commands/render";
+import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import {
   getMockChannels,
+  listMockInvokeCalls,
   MockChannel,
-  mockInvoke,
+  mockIpcCommands,
   resetMockChannels,
   resetMockInvoke,
-  setMockInvokeResponses,
 } from "@xrf/ipc/testing";
 import { ViewportEvent } from "@xrf/ipc/types/xrf-app-render";
 import { ERenderViewportEvent } from "@xrf/ipc/types/xrf-renderer";
@@ -24,12 +26,6 @@ import { VisualPreviewViewport } from "./VisualPreviewViewport";
 
 let bindings: Array<Binding>;
 
-function sent(command: string, plugin: string = "render"): Array<Record<string, unknown>> {
-  return mockInvoke.mock.calls
-    .filter(([name]) => name === `plugin:${plugin}|${command}`)
-    .map(([, args]) => args as Record<string, unknown>);
-}
-
 async function flush(): Promise<void> {
   for (let index: number = 0; index < 10; index += 1) {
     await Promise.resolve();
@@ -39,7 +35,7 @@ async function flush(): Promise<void> {
 beforeEach(() => {
   resetMockInvoke();
   resetMockChannels();
-  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: 1 });
+  mockIpcCommands({ [ERenderCommand.ATTACH_VIEWPORT]: 1 });
 
   const source: IVisualRenderSource = makeAutoObservable<IVisualRenderSource>(
     { hasBump: false, model: mockVisualModelViews(), pose: BIND_POSE, sessionId: "open" },
@@ -61,13 +57,13 @@ describe("VisualPreviewViewport", () => {
 
     await act(flush);
 
-    expect(sent("attach_viewport")).toHaveLength(1);
-    expect(sent("show_model", "visuals").map(({ sessionId }) => sessionId)).toEqual(["open"]);
+    expect(listMockInvokeCalls(ERenderCommand.ATTACH_VIEWPORT)).toHaveLength(1);
+    expect(listMockInvokeCalls(EVisualsCommand.SHOW_MODEL).map(({ sessionId }) => sessionId)).toEqual(["open"]);
 
     unmount();
     await flush();
 
-    expect(sent("detach_viewport")).toHaveLength(1);
+    expect(listMockInvokeCalls(ERenderCommand.DETACH_VIEWPORT)).toHaveLength(1);
   });
 
   it("covers the viewport and says why when the renderer fails", async () => {
