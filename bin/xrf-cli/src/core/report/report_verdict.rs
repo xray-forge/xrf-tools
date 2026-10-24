@@ -12,22 +12,29 @@ use crate::core::command::{CommandError, CommandResult};
 pub struct ReportVerdict;
 
 impl ReportVerdict {
-  /// Prints each check that found something on the failure channel, and its findings at verbose level: a sweep of
-  /// thousands of files can find more than a terminal is useful for, and the report is the artifact meant for reading
-  /// them.
+  /// Prints each check that found something, and its findings at verbose level: a sweep of thousands of files can find
+  /// more than a terminal is useful for, and the report is the artifact meant for reading them.
+  ///
+  /// The channel follows the check's verdict: a failed check on the failure channel, one that broke on the error
+  /// channel, and one whose findings do not fail it (passed with warnings, incomplete, skipped) as a warning.
   pub fn print_findings(output: &OutputOptions, report: &Report) {
     for check in report.checks() {
       if check.findings().is_empty() {
         continue;
       }
 
-      xrf_output::failure!(
-        output,
+      let line: String = format!(
         "Check '{}' is {} with {} finding(s)",
         check.id(),
         check.status(),
         check.findings().len()
       );
+
+      match check.status() {
+        Status::Failed => xrf_output::failure!(output, "{line}"),
+        Status::Error => xrf_output::error!(output, "{line}"),
+        Status::Incomplete | Status::Passed | Status::Skipped => xrf_output::warning!(output, "{line}"),
+      }
 
       for finding in check.findings() {
         xrf_output::verbose!(

@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
+use xrf_error::XrfError;
 use xrf_extension::XrayExtension;
 use xrf_ogf::OgfFile;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
@@ -96,12 +97,16 @@ impl<'a> OgfVerifier<'a> {
     let mut texture_findings: Vec<Finding> = Vec::new();
     let mut textures: OgfTextureResolver = OgfTextureResolver::new(self.roots.clone());
 
+    // Files the sweep could not read at all, as opposed to files it read and judged malformed.
+    let mut io_failures: usize = 0;
+
     for path in HostWalk::files_with(self.root, XrayExtension::Ogf) {
       // A directory the sweep could not walk is a read finding: its visuals were never judged, which is no pass.
       let path: PathBuf = match path {
         Ok(path) => path,
         Err(error) => {
           census.unreadable_files += 1;
+          io_failures += 1;
           read_findings.push(Finding::new(Self::rule("ogf.read"), None, error.to_string()));
 
           continue;
@@ -116,6 +121,11 @@ impl<'a> OgfVerifier<'a> {
         Ok(file) => file,
         Err(error) => {
           census.unreadable_files += 1;
+
+          if matches!(error, XrfError::Io { .. }) {
+            io_failures += 1;
+          }
+
           read_findings.push(Finding::new(
             Self::rule("ogf.read"),
             Some(self.subject(&path)),
@@ -147,10 +157,14 @@ impl<'a> OgfVerifier<'a> {
       }
     }
 
-    // A rejected file is invalid input, which `Status::from_is_valid` grades as failed. `Status::Error`
-    // is reserved for the checker itself breaking, and a reader that breaks panics rather than
-    // returning, so the sweep aborts instead of reaching this.
-    let read_status: Status = Status::from_is_valid(read_findings.is_empty());
+    // A rejected file is invalid input, which `Status::from_is_valid` grades as failed. A file or directory that could
+    // not be read at all is the run's own failure: `Status::Error` outranks every verdict, so the sweep answers an
+    // execution failure rather than a judgement on visuals it never saw.
+    let read_status: Status = if io_failures > 0 {
+      Status::Error
+    } else {
+      Status::from_is_valid(read_findings.is_empty())
+    };
     let geometry_status: Status = if census.malformed_submeshes > 0 {
       Status::Failed
     } else if census.unsupported_submeshes > 0 {
@@ -174,6 +188,14 @@ impl<'a> OgfVerifier<'a> {
     };
 
     census.distinct_textures = textures.distinct_textures();
+
+    // Nothing swept is not a pass: a path holding no visual judged nothing, which every check says.
+    let [read_status, geometry_status, bounds_status, texture_status]: [Status; 4] =
+      if census.files == 0 && read_findings.is_empty() {
+        [Status::Skipped; 4]
+      } else {
+        [read_status, geometry_status, bounds_status, texture_status]
+      };
 
     let duration: Duration = started_at.elapsed();
 
@@ -319,6 +341,26 @@ impl<'a> OgfVerifier<'a> {
           census.resolved_texture_references += 1;
           census.located_texture_references += 1;
           OgfVerificationCensus::count(&mut census.texture_steps, step);
+        }
+        // Counted as missing, which leaves the check incomplete: what the root holds was never looked at.
+        TextureResolution::RootUnreadable { root, reason } => {
+          census.missing_texture_references += 1;
+          findings.push(Finding::new(
+            Self::rule("ogf.textures.root_unreadable"),
+            Some(subject),
+            format!(
+              "'{reference}' was not looked for, {} could not be searched: {reason}",
+              format_path(&root)
+            ),
+          ));
+        }
+        TextureResolution::Rejected { reason } => {
+          census.missing_texture_references += 1;
+          findings.push(Finding::new(
+            Self::rule("ogf.textures.rejected"),
+            Some(subject),
+            format!("'{reference}' names no path the engine resolves: {reason}"),
+          ));
         }
         TextureResolution::Unreadable { path: texture, reason } => {
           census.unreadable_textures += 1;

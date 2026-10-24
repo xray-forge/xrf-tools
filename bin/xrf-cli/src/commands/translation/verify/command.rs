@@ -4,6 +4,7 @@ use std::str::FromStr;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
+use xrf_report::Report;
 use xrf_translation::{TranslationLanguage, TranslationVerifier, TranslationVerifyOptions, TranslationVerifyResult};
 use xrf_utils::format_path;
 use xrf_vfs::{XrayMountMode, XrayRoots};
@@ -11,6 +12,7 @@ use xrf_vfs::{XrayMountMode, XrayRoots};
 use super::report::TranslationVerifyReport;
 use crate::core::arguments::XrayRootsArguments;
 use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::report::ReportVerdict;
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
@@ -114,11 +116,17 @@ impl GenericCommand for VerifyCommand {
       result.missing_translations_count
     );
 
-    if options.is_strict && result.missing_translations_count > 0 {
-      return Err(CommandError::new_check_failed(
-        result.missing_translations_count as usize,
-      ));
+    // Missing translations are reported and answered as success by default, as a project mid-translation always has
+    // some; `--strict` is the mode that judges them, so only it sums them up as a check's verdict.
+    if options.is_strict {
+      let report: Report = result.to_report();
+
+      ReportVerdict::print_findings(&options.output, &report);
+
+      return ReportVerdict::conclude(&options.output, &report, "Translation verification");
     }
+
+    xrf_output::success!(options.output, "Translation sources are well formed");
 
     Ok(())
   }
