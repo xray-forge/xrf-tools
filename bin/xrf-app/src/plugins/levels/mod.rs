@@ -6,6 +6,7 @@ pub mod configs;
 pub mod console_defaults;
 pub mod details;
 pub mod drawn_attributes;
+pub mod geometry;
 pub mod hemi;
 pub mod lens_flares;
 pub mod level_map;

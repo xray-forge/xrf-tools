@@ -5,17 +5,15 @@ use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayRootProbe, XraySearch};
 use crate::core::types::TauriResult;
 use crate::plugins::levels::state::{GEOMETRY_FILE, LEVEL_FILE, LevelSource};
 
-/// What one compiled level is read as: the bundle, its visuals, and geometry left where it lies.
+/// What one compiled level's bundle is read as: the level and its visuals.
 pub struct ReadLevel {
   pub level: LevelFile,
   pub visuals: LevelVisualsChunk,
-  pub geometry: LevelGeomSource<InMemoryChunkDataSource>,
 }
 
-/// Reads a level, whichever way its source names it.
+/// Reads a level's bundle, whichever way its source names it.
 pub fn read_source(source: &LevelSource, search: &XraySearch) -> TauriResult<ReadLevel> {
   let bundle: Vec<u8> = read_file(source, search, LEVEL_FILE)?;
-  let geometry: Vec<u8> = read_file(source, search, GEOMETRY_FILE)?;
 
   let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bundle)
     .and_then(|mut it| it.read_children())
@@ -32,12 +30,17 @@ pub fn read_source(source: &LevelSource, search: &XraySearch) -> TauriResult<Rea
       )
     })?;
 
-  Ok(ReadLevel {
-    geometry: LevelGeomSource::open_from_bytes::<XRayByteOrder>(geometry)
-      .map_err(|error| failure(source, GEOMETRY_FILE, &error))?,
-    level,
-    visuals,
-  })
+  Ok(ReadLevel { level, visuals })
+}
+
+/// Reads a level's render geometry, its payloads left on the heap where they were read, serving whichever range a
+/// sector names.
+pub fn read_geometry(
+  source: &LevelSource,
+  search: &XraySearch,
+) -> TauriResult<LevelGeomSource<InMemoryChunkDataSource>> {
+  LevelGeomSource::open_from_bytes::<XRayByteOrder>(read_file(source, search, GEOMETRY_FILE)?)
+    .map_err(|error| failure(source, GEOMETRY_FILE, &error))
 }
 
 /// Reads one of the level's files, from disk or out of the mounted roots.

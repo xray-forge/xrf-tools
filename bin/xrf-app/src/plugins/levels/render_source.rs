@@ -27,6 +27,7 @@ use crate::plugins::levels::collision::{LEVEL_COLLISION_PART, get_level_collisio
 use crate::plugins::levels::configs::{LEVEL_SECTIONS_PART, find_level_sections, get_level_sections};
 use crate::plugins::levels::details::{LEVEL_DETAILS_PART, PackedLevelDetails, pack_details};
 use crate::plugins::levels::drawn_attributes::DRAWN_ATTRIBUTES;
+use crate::plugins::levels::geometry::{LEVEL_GEOMETRY_PART, LevelGeometry, get_level_geometry};
 use crate::plugins::levels::hemi::{LEVEL_HEMI_PART, estimate_visuals_hemi, get_level_hemi};
 use crate::plugins::levels::lens_flares::to_render_lens_flare;
 use crate::plugins::levels::lights::{LEVEL_LIGHTS_PART, PackedLevelLights, pack_lights};
@@ -46,6 +47,7 @@ use crate::plugins::levels::state::selection::level_thunderbolts::LevelThunderbo
 use crate::plugins::levels::state::selection::level_weather_model::LevelWeatherModel;
 use crate::plugins::levels::state::selection::level_wet_surfaces::LevelWetSurfaces;
 use crate::plugins::levels::state::{LevelEnvironment, LevelSpawnCategory, LevelSpawnVisual, SelectedLevel};
+use crate::plugins::levels::surfaces::{LEVEL_SURFACES_PART, LevelSurfaces, find_level_surfaces, get_level_surfaces};
 use crate::plugins::render::texture_resolver::TextureResolver;
 
 /// The open level as the native renderer draws it: sectors packed when its loader asks, textures read from the roots
@@ -53,9 +55,11 @@ use crate::plugins::render::texture_resolver::TextureResolver;
 pub struct LevelRenderSource {
   level: Arc<SessionSnapshot<SelectedLevel>>,
   assets: AssetMountState,
+  /// How the level's shader table is drawn, as its surfaces part holds it for the snapshot drawn.
+  surfaces: Arc<LevelSurfaces>,
   /// Where each texture reference the level's surfaces bind resolved to at open, each projector its lights name once
   /// they are read, and anything else once asked for, as the weather's skies are; shared by the session's next
-  /// sources, which keep the value it was resolved for.
+  /// sources, which keep the surfaces it was resolved for.
   textures: Arc<TextureResolver>,
   /// The textures the game loads a step coarser at the same texture quality, out of the sections read as it opened.
   reduced: XrayReducedTextures,
@@ -63,10 +67,11 @@ pub struct LevelRenderSource {
 
 impl LevelRenderSource {
   pub fn new(level: Arc<SessionSnapshot<SelectedLevel>>, assets: AssetMountState) -> Self {
+    let surfaces: Arc<LevelSurfaces> = Self::find_surfaces(&level, &assets);
     let textures: TextureResolver = TextureResolver::new(
       level.roots.clone(),
       level.source.get_texture_scope(),
-      level
+      surfaces
         .textures
         .iter()
         .map(|texture| (texture.reference.clone(), texture.logical_path.clone())),
@@ -74,10 +79,30 @@ impl LevelRenderSource {
 
     Self {
       reduced: Self::find_reduced(&level).unwrap_or_default(),
+      surfaces,
       level,
       assets,
       textures: Arc::new(textures),
     }
+  }
+
+  /// The level's surfaces as its part holds them, resolved where a commit let them go; none where its roots cannot be
+  /// searched, which draws every surface flat.
+  fn find_surfaces(level: &SessionSnapshot<SelectedLevel>, assets: &AssetMountState) -> Arc<LevelSurfaces> {
+    find_level_surfaces(level)
+      .or_else(|| {
+        assets
+          .search(&level.roots)
+          .inspect_err(|error| {
+            log::warn!(
+              "The surfaces of level '{}' cannot be resolved: {error}",
+              level.source.get_label()
+            )
+          })
+          .ok()
+          .map(|search| get_level_surfaces(level, &search))
+      })
+      .unwrap_or_default()
   }
 
   /// The textures the sections the level holds already reduce, so no texture load waits on the configs; none where
@@ -89,11 +114,12 @@ impl LevelRenderSource {
       .map(|section| XrayReducedTextures::new(section.iter().map(|(key, _)| key)))
   }
 
-  /// The same level drawn from `next`, a later snapshot of its session sharing its value, with the textures resolved
-  /// so far, and the reduced ones known until `next` holds sections of its own.
+  /// The same level drawn from `next`, a later snapshot of its session sharing its value and its surfaces, with the
+  /// textures resolved so far, and the reduced ones known until `next` holds sections of its own.
   pub fn follow(&self, next: Arc<SessionSnapshot<SelectedLevel>>) -> Self {
     Self {
       reduced: Self::find_reduced(&next).unwrap_or_else(|| self.reduced.clone()),
+      surfaces: find_level_surfaces(&next).unwrap_or_else(|| Arc::clone(&self.surfaces)),
       level: next,
       assets: AssetMountState::clone(&self.assets),
       textures: Arc::clone(&self.textures),
@@ -110,9 +136,18 @@ impl LevelRenderSource {
     format!("level {session_id}")
   }
 
+  /// Whether a level whose next snapshot let `stale_parts` go streams afresh rather than reloading packages: its sectors
+  /// are packed from its geometry and drawn with its surfaces, which no package reload replaces.
+  pub fn is_streamed_afresh(stale_parts: &[&str]) -> bool {
+    stale_parts
+      .iter()
+      .any(|part| [LEVEL_GEOMETRY_PART, LEVEL_SURFACES_PART].contains(part))
+  }
+
   /// What the renderer reads again of a level whose next snapshot let `stale_parts` go: each package whose read asks
-  /// for any of them, or recorded what it read as one of them. The sectors are the value's, which a next snapshot
-  /// shares; the graph feeds nothing drawn, and the start only where a viewer first stands.
+  /// for any of them, or recorded what it read as one of them. The sectors stream afresh instead, on their geometry or
+  /// surfaces (`is_streamed_afresh`); the graph feeds nothing drawn, the map is the page's, and the start only matters
+  /// where a viewer first stands.
   pub fn to_reload(stale_parts: &[&str]) -> WorldLevelReload {
     let is_stale = |parts: &[&str]| stale_parts.iter().any(|part| parts.contains(part));
 
@@ -196,13 +231,11 @@ impl RenderLevelSource for LevelRenderSource {
       .ok_or_else(|| XrfError::new_not_found_error(format!("The level has no sector {sector}")))?
       .root;
     let composition: LevelSectorComposition = LevelSectorComposition::of(&self.level.visuals, root);
+    let geometry: Arc<LevelGeometry> =
+      get_level_geometry(&self.level, &self.search()?).map_err(XrfError::new_read_error)?;
     let started: Instant = Instant::now();
-    let package: SectorPackage = SectorPacker::new(
-      &self.level.visuals,
-      self.level.level.shaders.as_ref(),
-      &self.level.geometry,
-    )
-    .pack::<XRayByteOrder>(sector, &composition, DRAWN_ATTRIBUTES);
+    let package: SectorPackage = SectorPacker::new(&self.level.visuals, self.level.level.shaders.as_ref(), &geometry)
+      .pack::<XRayByteOrder>(sector, &composition, DRAWN_ATTRIBUTES);
 
     report_packed_sector(&package, started);
 
@@ -210,7 +243,7 @@ impl RenderLevelSource for LevelRenderSource {
   }
 
   fn get_surfaces(&self) -> &[XraySurfaceDescriptor] {
-    &self.level.surfaces
+    &self.surfaces.surfaces
   }
 
   fn read_lights(&self) -> XrfResult<LightsDescription> {

@@ -3,10 +3,39 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section, read_engine_floats};
 use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
-use xrf_vfs::XraySearch;
+use xrf_vfs::{XrayInputRecord, XraySearch};
 
+use crate::core::session::{SessionPart, SessionParts, SessionSnapshot};
 use crate::plugins::levels::read::read_optional_file;
-use crate::plugins::levels::state::{LEVEL_CONFIG_FILE, LevelMapDescription, LevelSource};
+use crate::plugins::levels::state::{LEVEL_CONFIG_FILE, LevelMapDescription, LevelSource, SelectedLevel};
+
+/// What a change event calls where a level's map lies when it goes stale.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub(crate) const LEVEL_MAP_PART: &str = "levelMap";
+
+/// Where the level's map lies, read from its `level.ltx` alone, so an edit of the config moves the map and not the level.
+struct LevelMapPart;
+
+impl SessionPart for LevelMapPart {
+  type Value = Option<LevelMapDescription>;
+
+  const NAME: &'static str = LEVEL_MAP_PART;
+
+  // Read from one small config, which a thread of its own would only delay.
+  const IS_POOLED: bool = false;
+}
+
+/// The store with `map` kept as the level's map part, read from `inputs` as the level opened.
+pub fn with_level_map(parts: SessionParts, map: Option<LevelMapDescription>, inputs: XrayInputRecord) -> SessionParts {
+  parts.with::<LevelMapPart>(map, inputs)
+}
+
+/// Where the open level's map lies, read the first time anything asks and kept; `None` where its config places none.
+pub fn get_level_map(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Option<LevelMapDescription> {
+  current
+    .parts
+    .get_or_record::<LevelMapPart>(search, |search| read_level_map(&current.source, search))
+}
 
 /// The section of `level.ltx` placing the map.
 const LEVEL_MAP_SECTION: &str = "level_map";

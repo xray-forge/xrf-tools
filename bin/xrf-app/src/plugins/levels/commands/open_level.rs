@@ -14,6 +14,7 @@ use crate::plugins::levels::opened_level::OpenedLevel;
 use crate::plugins::levels::report::{report_open, report_opening};
 use crate::plugins::levels::request::LevelOpenRequest;
 use crate::plugins::levels::state::{LevelState, SelectedLevel, SelectedLevelDescription};
+use crate::plugins::levels::surfaces::get_level_surfaces;
 
 /// Select a compiled level and report what it is built out of, without reading any of its geometry.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_level"))]
@@ -71,8 +72,8 @@ pub async fn levels_open_level(
     &assets,
   );
 
-  report_open(&selected, started);
+  report_open(&selected, &get_level_surfaces(&selected, &search), started);
 
-  // The start was decided as the level opened, so describing it reads nothing.
+  // The start, map and surfaces were read as the level opened, so describing it reads nothing.
   Ok(SelectedLevel::describe_at(&selected, &search))
 }

@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use rayon::ThreadPool;
 use xrf_dltx::select_ltx_dialect;
 use xrf_engine_target::{XrayEngine, XrayEngineResolution};
-use xrf_level::{LevelGeomFile, LevelHeaderChunk, LevelVisualsChunk};
+use xrf_level::{LevelGeomFile, LevelHeaderChunk, LevelShadersChunk, LevelVisualsChunk};
 use xrf_renderer::{RenderLevelSource, RenderSceneId, RenderViewportId, RenderWorkers, RenderWorld};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
@@ -21,6 +21,8 @@ use crate::core::session::{
 };
 use crate::plugins::levels::configs::LEVEL_SECTIONS_PART;
 use crate::plugins::levels::details::LEVEL_DETAILS_PART;
+use crate::plugins::levels::geometry::LEVEL_GEOMETRY_PART;
+use crate::plugins::levels::level_map::LEVEL_MAP_PART;
 use crate::plugins::levels::level_scene_follower::LevelSceneFollower;
 use crate::plugins::levels::lights::LEVEL_LIGHTS_PART;
 use crate::plugins::levels::object_motions::LEVEL_OBJECT_MOTIONS_PART;
@@ -32,6 +34,7 @@ use crate::plugins::levels::spawn::LEVEL_SPAWN_PART;
 use crate::plugins::levels::start::LEVEL_START_PART;
 use crate::plugins::levels::state::level_environment::LEVEL_WEATHER_PART;
 use crate::plugins::levels::state::{LevelEnvironment, LevelSource, LevelState, SelectedLevel};
+use crate::plugins::levels::surfaces::LEVEL_SURFACES_PART;
 use crate::plugins::render::world_state::WorldState;
 
 /// Longer than a synthetic level takes to read on the test pool.
@@ -50,10 +53,16 @@ fn chunk(id: u32, payload: &[u8]) -> Vec<u8> {
   bytes
 }
 
-/// The smallest `level` a read takes: a header and an empty run of visuals.
+/// The texture the level's one shader entry binds.
+const TEXTURE: &str = "textures\\prop\\prop_fence.dds";
+
+/// The smallest `level` a read takes: a header, a shader table of one entry and an empty run of visuals.
 fn level_bytes() -> Vec<u8> {
   let mut bytes: Vec<u8> = chunk(LevelHeaderChunk::CHUNK_ID, &[14, 0, 1, 0]);
+  let mut shaders: Vec<u8> = 1u32.to_le_bytes().to_vec();
 
+  shaders.extend_from_slice(b"def_shaders\\def_vertex/prop\\prop_fence\0");
+  bytes.extend(chunk(LevelShadersChunk::CHUNK_ID, &shaders));
   bytes.extend(chunk(LevelVisualsChunk::CHUNK_ID, &[]));
 
   bytes
@@ -278,6 +287,11 @@ fn a_commit_to_a_file_only_a_part_read_names_that_part_stale() {
     (String::from("lanims.xr"), vec![LEVEL_LIGHTS_PART]),
     (String::from("anims\\zone.anm"), vec![LEVEL_OBJECT_MOTIONS_PART]),
     (format!("{LEVEL}\\level.env_mod"), vec![LEVEL_WEATHER_PART]),
+    // The map, the geometry and the textures the surfaces bind are read from files of their own, so an edit of any
+    // moves that part and not the level.
+    (format!("{LEVEL}\\level.ltx"), vec![LEVEL_MAP_PART]),
+    (format!("{LEVEL}\\level.geom"), vec![LEVEL_GEOMETRY_PART]),
+    (String::from(TEXTURE), vec![LEVEL_SURFACES_PART]),
     // Where the level starts is decided over its spawn apart from the level itself, as the sections the lights asked
     // for are chosen by it.
     (

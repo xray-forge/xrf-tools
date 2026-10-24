@@ -13,6 +13,7 @@ use crate::core::session::SessionSnapshot;
 use crate::plugins::levels::state::{
   LevelEntry, LevelSource, LevelSpawnObjectsDescription, LevelStart, LevelTextureReference, SelectedLevel,
 };
+use crate::plugins::levels::surfaces::LevelSurfaces;
 
 /// How many names a log line about a set of them carries before it stops listing and starts counting.
 const LISTED_NAMES: usize = 6;
@@ -35,8 +36,8 @@ pub fn report_opening(source: &LevelSource) {
   log::info!("Opening level: {}", source.get_label());
 }
 
-/// What one open came to, and what about it is worth a warning.
-pub fn report_open(opened: &SessionSnapshot<SelectedLevel>, started: Instant) {
+/// What one open came to, its surfaces as the open resolved them, and what about it is worth a warning.
+pub fn report_open(opened: &SessionSnapshot<SelectedLevel>, surfaces: &LevelSurfaces, started: Instant) {
   let selected: &SelectedLevel = &opened.value;
   let source: &LevelSource = &selected.source;
 
@@ -47,18 +48,21 @@ pub fn report_open(opened: &SessionSnapshot<SelectedLevel>, started: Instant) {
     selected.outlines.len(),
     selected.visuals.visuals.len(),
     selected.visuals.count_drawable(),
-    selected.textures.len(),
-    selected.surfaces.len(),
+    surfaces.textures.len(),
+    surfaces.surfaces.len(),
     opened.inputs.len()
   );
 
   report_sectors(source, &selected.outlines);
-  report_unresolved(source, &selected.textures);
-  report_surfaces(source, &named_surfaces(selected));
+  report_unresolved(source, &surfaces.textures);
+  report_surfaces(source, &named_surfaces(selected, &surfaces.surfaces));
 }
 
 /// The surfaces the table actually dresses something with, each beside the shader it names.
-fn named_surfaces(selected: &SelectedLevel) -> Vec<(&str, &XraySurfaceDescriptor)> {
+fn named_surfaces<'a>(
+  selected: &'a SelectedLevel,
+  surfaces: &'a [XraySurfaceDescriptor],
+) -> Vec<(&'a str, &'a XraySurfaceDescriptor)> {
   let Some(shaders) = selected.level.shaders.as_ref() else {
     return Vec::new();
   };
@@ -66,7 +70,7 @@ fn named_surfaces(selected: &SelectedLevel) -> Vec<(&str, &XraySurfaceDescriptor
   shaders
     .entries
     .iter()
-    .zip(&selected.surfaces)
+    .zip(surfaces)
     .filter_map(|(entry, surface)| match entry {
       LevelShaderEntry::Reference(reference) => Some((reference.shader.as_str(), surface)),
       LevelShaderEntry::Empty | LevelShaderEntry::Malformed(_) => None,

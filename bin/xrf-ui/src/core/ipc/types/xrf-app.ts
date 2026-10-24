@@ -64,6 +64,9 @@ export const LEVEL_DETAILS_PART: string = "details";
 /** What a change event calls a level's environment when it goes stale. */
 export const LEVEL_ENVIRONMENT_PART: string = "environment";
 
+/** What a change event calls a level's render geometry when it goes stale. */
+export const LEVEL_GEOMETRY_PART: string = "geometry";
+
 /** What a change event calls a level's graph when it goes stale. */
 export const LEVEL_GRAPH_PART: string = "graph";
 
@@ -72,6 +75,9 @@ export const LEVEL_HEMI_PART: string = "hemi";
 
 /** What a change event calls what a level's lights were read from when it goes stale. */
 export const LEVEL_LIGHTS_PART: string = "lights";
+
+/** What a change event calls where a level's map lies when it goes stale. */
+export const LEVEL_MAP_PART: string = "levelMap";
 
 /** What a change event calls what a level's object motions were read from when it goes stale. */
 export const LEVEL_OBJECT_MOTIONS_PART: string = "objectMotions";
@@ -90,6 +96,9 @@ export const LEVEL_SPAWN_VISUALS_PART: string = "spawnVisuals";
 
 /** What a change event calls where a level opens when it goes stale. */
 export const LEVEL_START_PART: string = "start";
+
+/** What a change event calls a level's surfaces and their textures when they go stale. */
+export const LEVEL_SURFACES_PART: string = "surfaces";
 
 /** What a change event calls what a level's weather plays with beyond its environment when it goes stale. */
 export const LEVEL_WEATHER_PART: string = "weather";

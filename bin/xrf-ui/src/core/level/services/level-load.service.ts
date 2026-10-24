@@ -25,6 +25,7 @@ import {
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { XrayRevision } from "@/core/ipc/types/xrf-vfs";
+import { isLevelReadAgain, isLevelSceneStreamedAfresh } from "@/core/level/lib/load/level-session-change";
 import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { EMPTY_LEVEL_SPAWN_REPORT, ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -32,9 +33,14 @@ import { EApplicationId } from "@/core/routing/application";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
-/** A level that is open: what it is. */
+/** A level that is open: what it is, and whether its scene streams afresh from what was shown of it before. */
 export interface IOpenLevel {
   selected: SessionSnapshot<SelectedLevelDescription>;
+  /**
+   * True for a level opened or restored, and for one read again after what its sectors are packed and drawn from moved;
+   * one read again for its map or start alone keeps the scene shown.
+   */
+  isSceneStreamedAfresh: boolean;
 }
 
 /**
@@ -61,6 +67,9 @@ export class LevelLoadService {
 
   /** Opens begun, so one taken over by a later open leaves that one's name. */
   private openings: number = 0;
+
+  /** Whether a change moved what the open level's scene is streamed from since it was last read. */
+  private isSceneMoved: boolean = false;
 
   /** The objects the open level's spawn places, once listed; null before, and for a spawn that could not be read. */
   @RefObservable()
@@ -192,11 +201,13 @@ export class LevelLoadService {
   /**
    * Takes one opening as the level this loader holds, and lists its spawned objects.
    *
-   * @param selected - The opening the backend holds, from an open or from a restore.
+   * @param selected - The opening the backend holds, from an open, a restore or a read again.
+   * @param isSceneStreamedAfresh - Whether its scene streams afresh from what was shown of it before.
    */
   @BoundAction()
-  private adopt(selected: SessionSnapshot<SelectedLevelDescription>): void {
-    this.level = this.level.asReady({ selected });
+  private adopt(selected: SessionSnapshot<SelectedLevelDescription>, isSceneStreamedAfresh: boolean = true): void {
+    this.level = this.level.asReady({ isSceneStreamedAfresh, selected });
+    this.isSceneMoved = false;
     this.spawn = null;
     this.spawnReport = EMPTY_LEVEL_SPAWN_REPORT;
     this.spawnRevision = null;
@@ -206,8 +217,8 @@ export class LevelLoadService {
 
   /**
    * Lists the open level's spawned objects again once a change let its spawn go, and reads the level again once its
-   * session derived it anew; a level whose own files moved is marked stale meanwhile, and left as it opened where it
-   * could not be read again.
+   * session derived it anew or what it describes or streams its scene from moved; a level whose own files moved is
+   * marked stale meanwhile, and left as it opened where it could not be read again.
    */
   @OnEvent(SESSION_CHANGE_EVENT)
   public onSessionChange({ payload: change }: WireEvent<SessionChange>): void {
@@ -223,13 +234,12 @@ export class LevelLoadService {
           void this.readSpawn(open.sessionId);
         }
 
+        this.readAgainPast(open, change);
+
         return;
 
       case ESessionRootChange.DERIVED:
-        if (isSessionMovedPast(open, change)) {
-          this.noteStale();
-          void this.refresh();
-        }
+        this.readAgainPast(open, change);
 
         return;
 
@@ -242,6 +252,19 @@ export class LevelLoadService {
 
       default:
         return assertExhaustive(change.root);
+    }
+  }
+
+  /**
+   * Reads the level again for a change past the one shown that derived it anew or moved what it describes or streams
+   * its scene from, noting whether the scene streams afresh; a change already shown is ignored, so it cannot hide a
+   * later read again's scene.
+   */
+  private readAgainPast(open: SessionSnapshot<SelectedLevelDescription>, change: SessionChange): void {
+    if (isLevelReadAgain(change) && isSessionMovedPast(open, change)) {
+      this.isSceneMoved ||= isLevelSceneStreamedAfresh(change);
+      this.noteStale();
+      void this.refresh();
     }
   }
 
@@ -274,7 +297,7 @@ export class LevelLoadService {
       answer.sessionId === open.sessionId &&
       !isOlderSessionAnswer(open, answer)
     ) {
-      this.adopt(answer);
+      this.adopt(answer, this.isSceneMoved);
       this.log.info("Level read again:", describeLevelSource(answer.value.source), `revision ${answer.revision}`);
     }
   }
