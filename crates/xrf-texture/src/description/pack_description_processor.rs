@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::time::Instant;
 
 use image::{GenericImage, ImageBuffer, Rgba, RgbaImage};
 use xrf_dds::DdsFile;
@@ -6,16 +7,19 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_utils::{HostDestination, HostRelativePath, assert_equal, format_path};
 
-use crate::description::{PackDescriptionOptions, TextureFileDescriptor, XmlDescriptionCollection};
+use crate::description::{
+  SpriteDescriptionOptions, SpriteDescriptionResult, TextureFileDescriptor, XmlDescriptionCollection,
+};
 use crate::image_file::{UI_MIPMAP_LEVELS, UI_MIPMAPS, save_image_as_ui_dds, warn_on_reshaped_ui_dds};
 
 pub struct PackDescriptionProcessor {}
 
 impl PackDescriptionProcessor {
-  /// Pack list of xml files by options.
-  pub fn pack_xml_descriptions(options: &PackDescriptionOptions) -> XrfResult {
+  /// Packs the sheets the description declares, every one or those `options` names, and answers what was written.
+  pub fn pack_xml_descriptions(options: &SpriteDescriptionOptions) -> XrfResult<SpriteDescriptionResult> {
+    let started_at: Instant = Instant::now();
     let description: XmlDescriptionCollection = XmlDescriptionCollection::get_descriptions(options)?;
-    let mut count: u32 = 0;
+    let mut result: SpriteDescriptionResult = SpriteDescriptionResult::default();
 
     let selected: Vec<&TextureFileDescriptor> = description.select_files(options)?;
 
@@ -34,17 +38,22 @@ impl PackDescriptionProcessor {
     for file in selected {
       packing.advance();
 
-      if Self::pack_xml_description(options, file)? {
-        count += 1;
-      }
+      result = result.merged(Self::pack_xml_description(options, file)?);
     }
 
-    xrf_output::info!(options.output, "Packed {count} files");
+    xrf_output::info!(options.output, "Packed {} files", result.files);
 
-    Ok(())
+    Ok(SpriteDescriptionResult {
+      duration: started_at.elapsed(),
+      ..result
+    })
   }
 
-  pub fn pack_xml_description(options: &PackDescriptionOptions, file: &TextureFileDescriptor) -> XrfResult<bool> {
+  /// Packs one described sheet, answering how many of its sprites were placed and how many could not be read.
+  pub fn pack_xml_description(
+    options: &SpriteDescriptionOptions,
+    file: &TextureFileDescriptor,
+  ) -> XrfResult<SpriteDescriptionResult> {
     let relative_path: HostRelativePath = file.to_host_relative_path()?;
     let sprite_paths: Vec<HostRelativePath> = file.to_sprite_paths()?;
     let full_name: PathBuf = options
@@ -53,6 +62,8 @@ impl PackDescriptionProcessor {
 
     let (width, height) = file.get_dimension_boundaries();
     let mut result: ImageBuffer<Rgba<u8>, Vec<u8>> = RgbaImage::new(width, height);
+    let mut placed: u32 = 0;
+    let mut skipped: u32 = 0;
 
     xrf_output::verbose!(
       options.output,
@@ -90,6 +101,8 @@ impl PackDescriptionProcessor {
           result
             .copy_from(&texture_dds, texture.x, texture.y)
             .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
+
+          placed += 1;
         }
         Err(error) => {
           if options.is_strict {
@@ -100,16 +113,18 @@ impl PackDescriptionProcessor {
               format_path(&full_name),
               error
             )));
-          } else {
-            xrf_output::warning!(
-              options.output,
-              "Failed to read texture dds {} for {} ({}): {}",
-              texture.id,
-              file.name,
-              format_path(&full_name),
-              error
-            )
           }
+
+          xrf_output::warning!(
+            options.output,
+            "Failed to read texture dds {} for {} ({}): {}",
+            texture.id,
+            file.name,
+            format_path(&full_name),
+            error
+          );
+
+          skipped += 1;
         }
       }
     }
@@ -126,6 +141,6 @@ impl PackDescriptionProcessor {
 
     save_image_as_ui_dds(&destination, &result, options.dds_compression_format, UI_MIPMAPS)?;
 
-    Ok(true)
+    Ok(SpriteDescriptionResult::written(placed, skipped))
   }
 }

@@ -456,4 +456,24 @@ mod tests {
 
     assert!(GenerateBumpProcessor::generate(&mismatched).is_err());
   }
+
+  #[test]
+  fn a_generation_asked_to_stop_leaves_neither_half() -> XrfResult {
+    // Both halves are encoded before either is written, so there is no point at which stopping could leave a `_bump`
+    // whose `_bump#` never arrived - which is the pair half of a bumped surface the engine would then substitute for.
+    let stopped: GenerateBumpOptions = options("stopped", level(16, 128));
+
+    stopped.job.cancel();
+
+    let result: GenerateBumpResult = GenerateBumpProcessor::generate(&stopped)?;
+
+    assert_eq!(result.outcome, xrf_job::JobOutcome::Cancelled);
+    assert!(!result.bump.exists() && !result.companion.exists());
+    assert!(
+      result.gloss_power > 0.0,
+      "expect the gloss it did measure to be reported, since a dark mask is worth saying even about a stopped run"
+    );
+
+    Ok(())
+  }
 }

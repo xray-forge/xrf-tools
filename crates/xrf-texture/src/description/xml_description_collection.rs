@@ -9,7 +9,7 @@ use xrf_utils::format_path;
 use xrf_xml::{XmlDocument, XmlElement, XmlParseOptions};
 
 use crate::description::{
-  PackDescriptionOptions, TextureFileDescriptor, TextureSpriteDescriptor, XML_ATTRIBUTE_ID, XML_ATTRIBUTE_NAME,
+  SpriteDescriptionOptions, TextureFileDescriptor, TextureSpriteDescriptor, XML_ATTRIBUTE_ID, XML_ATTRIBUTE_NAME,
   XML_TAG_FILE, XML_TAG_TEXTURE, XML_TAG_WINDOW,
 };
 
@@ -23,7 +23,7 @@ impl XmlDescriptionCollection {
   /// A description usually names several sheets, and packing rewrites every one of them. Selecting by
   /// name keeps a change to a single sheet from touching its neighbours. An unknown name is an error
   /// rather than a silently empty run, because that is almost always a typo.
-  pub fn select_files(&self, options: &PackDescriptionOptions) -> XrfResult<Vec<&TextureFileDescriptor>> {
+  pub fn select_files(&self, options: &SpriteDescriptionOptions) -> XrfResult<Vec<&TextureFileDescriptor>> {
     if options.files.is_empty() {
       return Ok(self.files.values().collect());
     }
@@ -85,7 +85,7 @@ impl XmlDescriptionCollection {
 
   /// Get descriptions from provided options.
   /// Handle both directory and single file as inputs.
-  pub fn get_descriptions(options: &PackDescriptionOptions) -> XrfResult<Self> {
+  pub fn get_descriptions(options: &SpriteDescriptionOptions) -> XrfResult<Self> {
     if options.description.is_dir() {
       xrf_output::info!(
         options.output,
@@ -127,7 +127,7 @@ impl XmlDescriptionCollection {
 
   /// Get descriptions from provided file path.
   pub fn get_description(
-    options: &PackDescriptionOptions,
+    options: &SpriteDescriptionOptions,
     path: &Path,
   ) -> XrfResult<HashMap<String, TextureFileDescriptor>> {
     xrf_output::verbose!(options.output, "Found texture description: {}", format_path(path));
@@ -230,14 +230,14 @@ mod tests {
   use xrf_test_utils::utils::write_generated_test_resource;
 
   use super::XmlDescriptionCollection;
-  use crate::PackDescriptionOptions;
+  use crate::SpriteDescriptionOptions;
 
   #[test]
   fn returns_an_error_for_invalid_xml_in_strict_mode() {
     let path: PathBuf =
       write_generated_test_resource("xml_description/invalid.xml", "<w>").expect("generated description to be written");
 
-    let options: PackDescriptionOptions = PackDescriptionOptions {
+    let options: SpriteDescriptionOptions = SpriteDescriptionOptions {
       job: Default::default(),
       description: path.clone(),
       base: PathBuf::new(),
@@ -270,7 +270,7 @@ mod tests {
     .expect("the description sits in a directory")
     .to_path_buf();
 
-    let options: PackDescriptionOptions = PackDescriptionOptions {
+    let options: SpriteDescriptionOptions = SpriteDescriptionOptions {
       job: Default::default(),
       description: directory,
       base: PathBuf::new(),
@@ -297,7 +297,7 @@ mod select_files_tests {
   use xrf_dds::ImageFormat;
 
   use super::XmlDescriptionCollection;
-  use crate::description::{PackDescriptionOptions, TextureFileDescriptor};
+  use crate::description::{SpriteDescriptionOptions, TextureFileDescriptor};
 
   fn collection_of(names: &[&str]) -> XmlDescriptionCollection {
     let mut files: HashMap<String, TextureFileDescriptor> = HashMap::new();
@@ -309,8 +309,8 @@ mod select_files_tests {
     XmlDescriptionCollection { files }
   }
 
-  fn options_for(files: &[&str]) -> PackDescriptionOptions {
-    PackDescriptionOptions {
+  fn options_for(files: &[&str]) -> SpriteDescriptionOptions {
+    SpriteDescriptionOptions {
       job: Default::default(),
       description: PathBuf::from("ui_actor_upgrades.xml"),
       base: PathBuf::new(),
