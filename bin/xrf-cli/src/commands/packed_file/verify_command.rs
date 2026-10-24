@@ -31,7 +31,7 @@ impl<F: PackedFileFormat> GenericCommand for VerifyCommand<F> {
   fn declare(&self, command: Command) -> Command {
     let command: Command = command.about(format!("Verify that a {} reads", F::FILE_NAME));
 
-    PackedFileArguments::<F>::declare_path(
+    PackedFileArguments::declare_path(
       command,
       format!("Packed {}, or its unpacked folder with --unpacked", F::FILE_NAME),
     )
@@ -45,7 +45,7 @@ impl<F: PackedFileFormat> GenericCommand for VerifyCommand<F> {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = PackedFileArguments::<F>::path_of(matches);
+    let path: &PathBuf = PackedFileArguments::path_of(matches);
     let is_unpacked: bool = matches.get_flag(Self::UNPACKED);
     let output: OutputOptions = context.get_output().clone();
 

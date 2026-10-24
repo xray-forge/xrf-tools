@@ -6,7 +6,7 @@ use clap::{ArgMatches, Command};
 use xrf_output::OutputOptions;
 use xrf_utils::{format_duration, format_path};
 
-use crate::commands::packed_file::{PackedFileArguments, PackedFileFormat};
+use crate::commands::packed_file::{PackedFileArguments, PackedFileDestination, PackedFileFormat};
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::reports::FileConversionReport;
 
@@ -29,15 +29,19 @@ impl<F: PackedFileFormat> GenericCommand for ReUnpackCommand<F> {
       "Read an unpacked {} folder and write it unpacked again",
       F::NOUN
     ));
-    let command: Command = PackedFileArguments::<F>::declare_path(command, format!("Unpacked {} folder", F::NOUN));
+    let command: Command = PackedFileArguments::declare_path(command, format!("Unpacked {} folder", F::NOUN));
+    let command: Command =
+      PackedFileArguments::declare_dest(command, format!("Folder the re-unpacked {} is written to", F::NOUN));
 
-    PackedFileArguments::<F>::declare_dest(command, format!("Folder the re-unpacked {} is written to", F::NOUN))
+    PackedFileArguments::declare_force(command)
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = PackedFileArguments::<F>::path_of(matches);
-    let dest: &PathBuf = PackedFileArguments::<F>::dest_of(matches);
+    let path: &PathBuf = PackedFileArguments::path_of(matches);
+    let dest: &PathBuf = PackedFileArguments::dest_of(matches);
     let output: OutputOptions = context.get_output().clone();
+
+    PackedFileDestination::require_free(dest, PackedFileArguments::is_forced(matches))?;
 
     xrf_output::info!(output, "Re-unpacking {} into {}", format_path(path), format_path(dest));
 
@@ -45,7 +49,8 @@ impl<F: PackedFileFormat> GenericCommand for ReUnpackCommand<F> {
     let file: F = F::import(path)?;
     let read_duration: Duration = started_at.elapsed();
 
-    file.export(dest)?;
+    // Replaced whole, as unpack replaces it: exporting into the old folder would leave its stale files beside the new.
+    PackedFileDestination::write_folder(dest, |folder| file.export(folder))?;
 
     let write_duration: Duration = started_at.elapsed() - read_duration;
 

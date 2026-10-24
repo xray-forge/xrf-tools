@@ -6,7 +6,7 @@ use clap::{ArgMatches, Command};
 use xrf_output::OutputOptions;
 use xrf_utils::{format_duration, format_path};
 
-use crate::commands::packed_file::{PackedFileArguments, PackedFileFormat};
+use crate::commands::packed_file::{PackedFileArguments, PackedFileDestination, PackedFileFormat};
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::reports::FileConversionReport;
 
@@ -26,15 +26,18 @@ impl<F: PackedFileFormat> GenericCommand for RepackCommand<F> {
 
   fn declare(&self, command: Command) -> Command {
     let command: Command = command.about(format!("Read a {} and write it packed again", F::FILE_NAME));
-    let command: Command = PackedFileArguments::<F>::declare_path(command, format!("Packed {}", F::FILE_NAME));
+    let command: Command = PackedFileArguments::declare_path(command, format!("Packed {}", F::FILE_NAME));
+    let command: Command = PackedFileArguments::declare_dest(command, format!("Repacked {} written", F::FILE_NAME));
 
-    PackedFileArguments::<F>::declare_dest(command, format!("Repacked {} written", F::FILE_NAME))
+    PackedFileArguments::declare_force(command)
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = PackedFileArguments::<F>::path_of(matches);
-    let dest: &PathBuf = PackedFileArguments::<F>::dest_of(matches);
+    let path: &PathBuf = PackedFileArguments::path_of(matches);
+    let dest: &PathBuf = PackedFileArguments::dest_of(matches);
     let output: OutputOptions = context.get_output().clone();
+
+    PackedFileDestination::require_free(dest, PackedFileArguments::is_forced(matches))?;
 
     xrf_output::info!(output, "Repacking {} into {}", format_path(path), format_path(dest));
 

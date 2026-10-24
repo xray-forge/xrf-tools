@@ -10,7 +10,7 @@ use crate::commands::archive::pack_patch::archive_patch_summary::ArchivePatchSum
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 /// Options a configuration file also carries, so naming both would leave the winner unstated.
-const SELECTION_ARGUMENTS: [&str; 4] = ["include", "ignore", "exclude-extension", "header"];
+const SELECTION_ARGUMENTS: [&str; 4] = ["include", "ignore", "exclude-extension", ArchiveVolumeArguments::HEADER];
 
 #[derive(Default)]
 pub struct PackPatchCommand;
