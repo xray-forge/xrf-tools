@@ -7,7 +7,6 @@ import {
   toRenderCubeCapture,
 } from "@/applications/level-viewer/lib/cube/level-cube-capture";
 import { DEFAULT_LEVEL_CUBE_EXPORT, toCubeExportRequest } from "@/applications/level-viewer/lib/cube/level-cube-export";
-import { ECubeExportFormat } from "@/core/ipc/types/xrf-app";
 import { ETextureEncodingFormat, ETextureEncodingQuality } from "@/core/ipc/types/xrf-texture";
 
 describe("level cubemap capture", () => {
@@ -32,7 +31,7 @@ describe("level cubemap capture", () => {
       path: "cross.png",
       target: "cube.dds",
       format: {
-        kind: ECubeExportFormat.DDS,
+        kind: "dds",
         format: ETextureEncodingFormat.BC7,
         quality: ETextureEncodingQuality.SLOW,
         isMipmapped: true,
@@ -40,7 +39,7 @@ describe("level cubemap capture", () => {
       size: 512,
     });
     expect(
-      toCubeExportRequest({ ...DEFAULT_LEVEL_CUBE_EXPORT, kind: ECubeExportFormat.TGA, size: 64 }, "x.png", "out", 512)
-    ).toMatchObject({ format: { kind: ECubeExportFormat.TGA }, size: 64 });
+      toCubeExportRequest({ ...DEFAULT_LEVEL_CUBE_EXPORT, kind: "tga", size: 64 }, "x.png", "out", 512)
+    ).toMatchObject({ format: { kind: "tga" }, size: 64 });
   });
 });

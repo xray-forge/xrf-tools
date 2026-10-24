@@ -89,6 +89,7 @@ export function mockTextureCatalog(
     outsideTexturesCount: 0,
     roots: mockTextureRoots(),
     texturesLtx: null,
+    unnamedCount: 0,
     ...overrides,
   };
 }
@@ -148,6 +149,7 @@ export function mockTextureDescription(
     source: { kind: "asset", reference },
     targets: null,
     texture: mockTextureAsset(`textures\\${reference}.dds`),
+    textureSource: { kind: "asset", logicalPath: `textures\\${reference}.dds` },
     ...overrides,
   };
 }

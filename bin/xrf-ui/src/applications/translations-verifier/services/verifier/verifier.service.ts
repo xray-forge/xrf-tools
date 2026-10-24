@@ -3,8 +3,8 @@ import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 import { describeTranslationVerifyOutcome } from "@/applications/translations-verifier/lib/describe-verify-outcome";
 import { createRoots } from "@/core/assets/lib";
 import { translationsCommands } from "@/core/ipc/commands/translations";
-import { EJobKind, TranslationVerifySummary } from "@/core/ipc/types/xrf-app";
-import { ETranslationLanguage } from "@/core/ipc/types/xrf-translation";
+import { TRANSLATIONS_JOB_VERIFY } from "@/core/ipc/types/xrf-app";
+import { ETranslationLanguage, TranslationVerifyResult } from "@/core/ipc/types/xrf-translation";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -18,10 +18,10 @@ import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 export class TranslationsVerifierService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  public readonly operation: JobOperation<TranslationVerifySummary>;
+  public readonly operation: JobOperation<TranslationVerifyResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.TRANSLATIONS_VERIFY]);
+    this.operation = new JobOperation(jobsService, [TRANSLATIONS_JOB_VERIFY]);
   }
 
   /**
@@ -39,10 +39,10 @@ export class TranslationsVerifierService {
     this.log.info("Verifying translations:", sources, language);
 
     yield* this.operation.run({
-      kind: EJobKind.TRANSLATIONS_VERIFY,
+      kind: TRANSLATIONS_JOB_VERIFY,
       invoke: (id: string, progress) =>
         translationsCommands.verifyProject({ roots: createRoots([sources]), prefix: null, language }, id, progress),
-      describe: (outcome: IJobOutcome<TranslationVerifySummary>): IJobNotice =>
+      describe: (outcome: IJobOutcome<TranslationVerifyResult>): IJobNotice =>
         describeTranslationVerifyOutcome(sources, outcome),
     });
   }

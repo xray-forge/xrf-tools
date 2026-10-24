@@ -5,7 +5,7 @@ import { Nullable, Optional } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
-import { EVisualSource, VisualSource } from "@/core/ipc/types/xrf-app";
+import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { VisualBone } from "@/core/ipc/types/xrf-visual";
@@ -27,7 +27,7 @@ import { Logger } from "@/lib/logging";
  * the failure is picked up instead of being repeated as it was wrong.
  */
 interface IVisualOpenAttempt {
-  source: VisualSource;
+  source: AssetSource;
   roots: Array<Nullable<string>>;
   asset: Nullable<string>;
 }
@@ -117,9 +117,9 @@ export class VisualsService extends VisualInspectionService {
    */
   @Computed()
   public get containingRoot(): Nullable<string> {
-    const source: Nullable<VisualSource> = this.selected?.source ?? null;
+    const source: Nullable<AssetSource> = this.selected?.source ?? null;
 
-    if (source?.kind !== EVisualSource.FILE) {
+    if (source?.kind !== EAssetSource.FILE) {
       return null;
     }
 
@@ -211,7 +211,7 @@ export class VisualsService extends VisualInspectionService {
   public async openFile(path: string, assetRoot: Nullable<string> = null): Promise<void> {
     // Centred on the file, so its own tree is searched for its textures - and searched again when those textures are
     // read, because the roots travel with the description. The named root falls in behind it.
-    await this.open({ kind: EVisualSource.FILE, path }, [assetRoot], path);
+    await this.open({ kind: EAssetSource.FILE, path }, [assetRoot], path);
   }
 
   /**
@@ -225,7 +225,7 @@ export class VisualsService extends VisualInspectionService {
    */
   @BoundAction()
   public async openAsset(logicalPath: string, roots: Array<Nullable<string>>): Promise<void> {
-    await this.open({ kind: EVisualSource.ASSET, logicalPath }, roots);
+    await this.open({ kind: EAssetSource.ASSET, logicalPath }, roots);
   }
 
   /**
@@ -263,7 +263,7 @@ export class VisualsService extends VisualInspectionService {
    * @param asset - Asset the roots is centred on, whose own tree is searched first.
    */
   private async open(
-    source: VisualSource,
+    source: AssetSource,
     roots: Array<Nullable<string>> = [],
     asset: Nullable<string> = null
   ): Promise<void> {

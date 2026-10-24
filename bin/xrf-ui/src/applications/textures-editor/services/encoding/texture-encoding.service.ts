@@ -12,11 +12,11 @@ import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
 import { toEnumMember } from "@/core/ipc/enumeration";
 import { Session, SessionScopeService } from "@/core/ipc/session";
 import {
-  EJobKind,
   SessionId,
   TextureDescription,
   TextureEncodingComparison,
   TextureEncodingReport,
+  TEXTURES_JOB_COMPARE_ENCODINGS,
 } from "@/core/ipc/types/xrf-app";
 import { ETextureEncodingFormat, TextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
@@ -34,7 +34,7 @@ import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 export class TextureEncodingService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(texturesCommands.close, inject(SessionScopeService));
+  private readonly session: Session = new Session(texturesCommands.closeComparison, inject(SessionScopeService));
 
   public readonly compare: JobOperation<TextureEncodingComparison>;
 
@@ -90,7 +90,7 @@ export class TextureEncodingService {
     private readonly selectionService: TextureSelectionService = inject(TextureSelectionService),
     jobsService: JobsService = inject(JobsService)
   ) {
-    this.compare = new JobOperation(jobsService, [EJobKind.TEXTURES_COMPARE_ENCODINGS]);
+    this.compare = new JobOperation(jobsService, [TEXTURES_JOB_COMPARE_ENCODINGS]);
   }
 
   @OnDeactivation()
@@ -200,7 +200,7 @@ export class TextureEncodingService {
     this.log.info("Comparing texture encodings:", description.reference);
 
     yield* this.compare.run({
-      kind: EJobKind.TEXTURES_COMPARE_ENCODINGS,
+      kind: TEXTURES_JOB_COMPARE_ENCODINGS,
       invoke: (id: string, progress) =>
         this.session.open((sessionId) =>
           texturesCommands.compareEncodings(

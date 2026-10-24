@@ -1,5 +1,4 @@
 import { path } from "@tauri-apps/api";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { exists } from "@tauri-apps/plugin-fs";
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
@@ -13,11 +12,13 @@ import { urlToImage } from "@/core/assets/lib/image";
 import { AssetService } from "@/core/assets/services";
 import { KeybindCommand } from "@/core/commands";
 import { transformError } from "@/core/error/lib";
+import { fetchBulk } from "@/core/ipc/bulk";
 import { spriteEquipmentCommands } from "@/core/ipc/commands/sprite-equipment";
+import { spriteEquipmentBulkRoutes } from "@/core/ipc/commands/sprite-equipment-bulk";
 import { requireSessionId, Session, SessionScopeService } from "@/core/ipc/session";
 import {
-  EEquipmentConfigSource,
-  EquipmentConfigSource,
+  AssetSource,
+  EAssetSource,
   EquipmentSpriteMetadata,
   EquipmentSpriteOpen,
   SessionSnapshot,
@@ -99,10 +100,10 @@ export class SpriteEquipmentEditorService {
       return null;
     }
 
-    const config: Nullable<EquipmentConfigSource> = metadata.open.config;
+    const config: Nullable<AssetSource> = metadata.open.config;
     const sheet: Nullable<string> = metadata.location.path;
 
-    return sheet && config?.kind === EEquipmentConfigSource.FILE ? { sheet, config: config.path } : null;
+    return sheet && config?.kind === EAssetSource.FILE ? { sheet, config: config.path } : null;
   }
 
   @OnProvision()
@@ -132,7 +133,7 @@ export class SpriteEquipmentEditorService {
   @ExclusiveFlow("spriteImage")
   private *restore(): TFlow {
     const response: Nullable<SessionSnapshot<EquipmentSpriteMetadata>> = yield* call(
-      spriteEquipmentCommands.getSprite(this.session.scope)
+      spriteEquipmentCommands.restoreSprite(this.session.tool)
     );
 
     if (!response) {
@@ -254,8 +255,8 @@ export class SpriteEquipmentEditorService {
       this.spriteImage = this.spriteImage.asLoading();
 
       const response: SessionSnapshot<EquipmentSpriteMetadata> = yield* call(
-        this.session.open((openingId) =>
-          spriteEquipmentCommands.reopenSprite(requireSessionId(this.spriteImage.value), openingId)
+        this.session.open((sessionId) =>
+          spriteEquipmentCommands.reloadSprite(sessionId, requireSessionId(this.spriteImage.value))
         )
       );
 
@@ -439,8 +440,8 @@ export class SpriteEquipmentEditorService {
   private async spriteFromResponse(response: SessionSnapshot<EquipmentSpriteMetadata>): Promise<IOpenEquipmentSprite> {
     const { sessionId, value: metadata } = response;
 
-    const preview: Response = await fetch(convertFileSrc(sessionId + "/" + metadata.name, "stream"));
-    const url: string = this.assetService.create(await preview.blob());
+    const preview: ArrayBuffer = await fetchBulk(spriteEquipmentBulkRoutes.readPreview(sessionId));
+    const url: string = this.assetService.create(new Blob([preview], { type: "image/png" }));
 
     try {
       return { sessionId, metadata, image: await urlToImage(url) };

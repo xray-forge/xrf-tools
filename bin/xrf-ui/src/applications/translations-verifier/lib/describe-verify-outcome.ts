@@ -1,6 +1,6 @@
 import { formatCount } from "@xrf/format";
 
-import { TranslationVerifySummary } from "@/core/ipc/types/xrf-app";
+import { TranslationVerifyResult } from "@/core/ipc/types/xrf-translation";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
@@ -16,7 +16,7 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
  */
 export function describeTranslationVerifyOutcome(
   sources: string,
-  outcome: IJobOutcome<TranslationVerifySummary>
+  outcome: IJobOutcome<TranslationVerifyResult>
 ): IJobNotice {
   const { result, error } = outcome;
 
@@ -26,15 +26,17 @@ export function describeTranslationVerifyOutcome(
 
   if (result?.outcome === "cancelled") {
     return {
-      details: [`Checked ${formatCount(result.checked)} id(s) before stopping.`, sources].join("\n"),
+      details: [`Checked ${formatCount(result.checkedTranslationsCount)} id(s) before stopping.`, sources].join("\n"),
       severity: ENotificationSeverity.INFO,
       title: "Stopped checking translations",
     };
   }
 
+  const missing: number = result?.missingTranslationsCount ?? 0;
+
   return {
     details: sources,
-    severity: result?.missing ? ENotificationSeverity.WARNING : ENotificationSeverity.SUCCESS,
-    title: result?.missing ? `Translations are incomplete: ${result.missing} missing` : "Translations are complete",
+    severity: missing ? ENotificationSeverity.WARNING : ENotificationSeverity.SUCCESS,
+    title: missing ? `Translations are incomplete: ${missing} missing` : "Translations are complete",
   };
 }

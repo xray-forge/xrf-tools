@@ -7,6 +7,7 @@ import { AssetService } from "@/core/assets/services";
 import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app";
 import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
+import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockEquipmentSpriteMetadata, mockEquipmentSpriteOpen } from "@/fixtures/mocks/sprite.mocks";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -22,15 +23,15 @@ const SHEET_PATH: string = RESPONSE.location.path as string;
 const CONFIG_PATH: string = (RESPONSE.open.config as { kind: "file"; path: string }).path;
 
 /**
- * The sprite is fetched through `convertFileSrc` and `fetch`, neither of which jsdom provides, so the
- * blob arrives from a stub. What matters here is the url lifetime, not what the bytes decode to.
+ * The sprite's preview arrives from the mocked transport. What matters here is the url lifetime, not what the bytes
+ * decode to.
  *
  * @returns The service, its asset service, and their provisioned container.
  */
 function createService(): { service: SpriteEquipmentEditorService; assets: AssetService; container: Container } {
   const { service, container } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
-  global.fetch = jest.fn(async () => ({ blob: async () => new Blob() })) as unknown as typeof fetch;
+  setMockBulkResponses({ "sprite-equipment/read_preview": new Uint8Array([0x89, 0x50, 0x4e, 0x47]) });
 
   // jsdom never loads an image, so `onload` would never fire and the decode would hang. Resolving on
   // assignment keeps the url visible as `src`, which is what these assertions are about.
@@ -72,7 +73,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
     setMockInvokeResponses({
       "plugin:sprite-equipment|open_sprite": mockSessionResponse(RESPONSE),
       "plugin:sprite-equipment|pack_sprite": packed,
-      "plugin:sprite-equipment|reopen_sprite": mockSessionResponse(RESPONSE),
+      "plugin:sprite-equipment|reload_sprite": mockSessionResponse(RESPONSE),
     });
 
     const { service, assets, container } = createService();
@@ -103,7 +104,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
     ).toEqual([
       "plugin:sprite-equipment|open_sprite",
       "plugin:sprite-equipment|pack_sprite",
-      "plugin:sprite-equipment|reopen_sprite",
+      "plugin:sprite-equipment|reload_sprite",
       // The opening the reopen replaced, closed once the reopen committed.
       "plugin:sprite-equipment|close_sprite",
     ]);
@@ -117,7 +118,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
   it("holds exactly one url no matter how often the sprite is reloaded", async () => {
     setMockInvokeResponses({
       ["plugin:sprite-equipment|open_sprite"]: mockSessionResponse(RESPONSE),
-      ["plugin:sprite-equipment|reopen_sprite"]: mockSessionResponse(RESPONSE),
+      ["plugin:sprite-equipment|reload_sprite"]: mockSessionResponse(RESPONSE),
     });
 
     const { service, assets } = createService();
@@ -135,7 +136,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
   it("keeps the url the reload just produced rather than revoking it", async () => {
     setMockInvokeResponses({
       ["plugin:sprite-equipment|open_sprite"]: mockSessionResponse(RESPONSE),
-      ["plugin:sprite-equipment|reopen_sprite"]: mockSessionResponse(RESPONSE),
+      ["plugin:sprite-equipment|reload_sprite"]: mockSessionResponse(RESPONSE),
     });
 
     const { service, assets } = createService();
@@ -164,7 +165,7 @@ describe("SpriteEquipmentEditorService object urls", () => {
   it("releases the sprite url when the editor is navigated away from", async () => {
     setMockInvokeResponses({
       ["plugin:sprite-equipment|open_sprite"]: mockSessionResponse(RESPONSE),
-      ["plugin:sprite-equipment|reopen_sprite"]: mockSessionResponse(RESPONSE),
+      ["plugin:sprite-equipment|reload_sprite"]: mockSessionResponse(RESPONSE),
     });
 
     const { service, assets, container } = createService();

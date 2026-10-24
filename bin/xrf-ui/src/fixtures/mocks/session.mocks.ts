@@ -36,7 +36,7 @@ export function mockSessionResponse(response: unknown | InvokeHandler): InvokeHa
     }
 
     const request = args?.request as Optional<Record<string, unknown>>;
-    const id: unknown = args?.openingId ?? args?.motionId ?? args?.sectorId ?? args?.sessionId ?? request?.sessionId;
+    const id: unknown = args?.motionId ?? args?.sectorId ?? args?.sessionId ?? request?.sessionId;
 
     return mockSessionSnapshot(value, typeof id === "string" ? id : "fixture-session");
   };

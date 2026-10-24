@@ -49,7 +49,7 @@ export class ExportsService {
   private *restore(): TFlow {
     try {
       const project: Nullable<SessionSnapshot<ExportsProject>> = yield* call(
-        exportsCommands.getProject(this.session.scope)
+        exportsCommands.restoreProject(this.session.tool)
       );
 
       this.log.info(project ? "Existing exports project detected" : "No existing exports project");

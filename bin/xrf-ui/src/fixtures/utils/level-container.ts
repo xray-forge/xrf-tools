@@ -96,7 +96,7 @@ export async function renderOpenLevelView(
   opening: ILevelViewOpening = {}
 ): Promise<TLevelViewRenderResult> {
   setMockInvokeResponses({
-    ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription(opening.level)),
+    ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription(opening.level)),
     ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription(opening.weather)),
   });
 

@@ -68,7 +68,7 @@ async function renderPanel(
   arrange?: (container: Container) => void
 ): Promise<RenderResult> {
   setMockInvokeResponses({
-    ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+    ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
     ...mockLevelPartResponses({ surfaces: TABLE }),
   });
 

@@ -51,7 +51,7 @@ function renderPanel(nodeId: Nullable<string>, dialog: Nullable<DialogDescriptor
 
 describe("DialogInspectorPanel", () => {
   beforeEach(() => {
-    setMockInvokeResponses({ ["plugin:dialogs|get_project"]: mockSessionResponse(null) });
+    setMockInvokeResponses({ ["plugin:dialogs|restore_project"]: mockSessionResponse(null) });
   });
 
   it("invites a selection when nothing on the canvas is picked", () => {

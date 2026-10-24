@@ -1,10 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { AsyncState } from "@xrf/async";
 
-import { createRoot } from "@/core/assets/lib";
 import { AudioDescriptor } from "@/core/ipc/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchiveReadPolicy, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { listMockBulkCalls, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
@@ -13,7 +11,7 @@ import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { ArchivesService } from "./archives.service";
 
-const ROOTS: XrayRoots = { asset: null, roots: [createRoot("C:\\game\\database", "volumes")] };
+const SESSION: string = "archives-session";
 const BYTES: ArrayBuffer = new Uint8Array([0x4f, 0x67, 0x67, 0x53]).buffer;
 const TEXTURE: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "textures\\ui.dds" });
 
@@ -33,7 +31,7 @@ const DESCRIPTOR: AudioDescriptor = {
 function mockService(sound: ArchiveFileDescriptor = SOUND): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes([sound, TEXTURE])));
+  service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes([sound, TEXTURE]), SESSION));
 
   return service;
 }
@@ -44,7 +42,7 @@ describe("ArchivesService audio preview", () => {
       ["plugin:archives|describe_audio"]: DESCRIPTOR,
     });
     setMockBulkResponses({
-      "assets/read_asset": BYTES,
+      "archives/read_entry": BYTES,
     });
   });
 
@@ -75,12 +73,12 @@ describe("ArchivesService audio preview", () => {
     await service.selectArchiveFile(sound);
 
     expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_audio", {
-      roots: ROOTS,
-      logicalPath: sound.name,
+      sessionId: SESSION,
+      name: sound.name,
     });
-    expect(listMockBulkCalls("assets/read_asset")).toContainEqual({
-      roots: ROOTS,
-      logicalPath: sound.name,
+    expect(listMockBulkCalls("archives/read_entry")).toContainEqual({
+      sessionId: SESSION,
+      name: sound.name,
     });
     expect(service.content.value?.kind).toBe("audio");
   });
@@ -91,14 +89,14 @@ describe("ArchivesService audio preview", () => {
     await service.selectArchiveFile(SOUND);
 
     expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_audio", {
-      roots: ROOTS,
-      logicalPath: SOUND.name,
+      sessionId: SESSION,
+      name: SOUND.name,
     });
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
     expect(service.content.value?.kind).toBe("audio");
   });
 
-  it("describes and reads one file, from the same roots", async () => {
+  it("describes and reads one file, of the same subject", async () => {
     const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(SOUND);
@@ -108,7 +106,7 @@ describe("ArchivesService audio preview", () => {
     const [describeArguments] = mockInvoke.mock.calls
       .filter(([command]) => command === "plugin:archives|describe_audio")
       .map(([, args]) => args);
-    const [readArguments] = listMockBulkCalls("assets/read_asset");
+    const [readArguments] = listMockBulkCalls("archives/read_entry");
 
     expect(describeArguments).toEqual(readArguments);
   });
@@ -144,7 +142,7 @@ describe("ArchivesService audio preview", () => {
       },
     });
     setMockBulkResponses({
-      "assets/read_asset": BYTES,
+      "archives/read_entry": BYTES,
     });
 
     await service.selectArchiveFile(SOUND);
@@ -160,8 +158,8 @@ describe("ArchivesService audio preview", () => {
       ["plugin:archives|describe_audio"]: DESCRIPTOR,
     });
     setMockBulkResponses({
-      "assets/read_asset": () => {
-        throw new Error("resolves to nothing in the mounted roots");
+      "archives/read_entry": () => {
+        throw new Error("resolves to nothing in the open subject");
       },
     });
 

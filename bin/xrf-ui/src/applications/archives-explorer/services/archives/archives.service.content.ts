@@ -1,13 +1,12 @@
-import { getSubjectRoots, IArchiveEntry, TArchiveContent } from "@/core/archive/lib";
+import { IArchiveEntry, TArchiveContent } from "@/core/archive/lib";
 import { fetchBulk } from "@/core/ipc/bulk";
 import { archivesCommands } from "@/core/ipc/commands/archives";
 import { archivesBulkRoutes } from "@/core/ipc/commands/archives-bulk";
-import { assetsBulkRoutes } from "@/core/ipc/commands/assets-bulk";
-import { ArchiveSubject, SessionId } from "@/core/ipc/types/xrf-app";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { SessionId } from "@/core/ipc/types/xrf-app";
 
 /**
- * Reads one archived file as whatever a preview can draw it with.
+ * Reads one file of the open subject as whatever a preview can draw it with, every read addressed by the subject's
+ * session, so the bytes always come from what the subject lists.
  */
 export class ArchiveContentReader {
   /** The session every read of the open subject is addressed by, which only the service knows. */
@@ -22,20 +21,19 @@ export class ArchiveContentReader {
    *
    * @param entry - File to read.
    * @param kind - Representation to request.
-   * @param subject - Open subject the file is read out of.
    * @returns What a preview draws.
    */
-  public read(entry: IArchiveEntry, kind: TArchiveContent["kind"], subject: ArchiveSubject): Promise<TArchiveContent> {
+  public read(entry: IArchiveEntry, kind: TArchiveContent["kind"]): Promise<TArchiveContent> {
     // Exhaustive by the union rather than by a default, so a new previewable kind fails to compile here first.
     switch (kind) {
       case "audio":
-        return this.readAudio(entry, subject);
+        return this.readAudio(entry);
 
       case "texture":
-        return this.readTexture(entry, subject);
+        return this.readTexture(entry);
 
       case "image":
-        return this.readImage(entry, subject);
+        return this.readImage(entry);
 
       case "description":
         return this.readDescription(entry);
@@ -59,36 +57,36 @@ export class ArchiveContentReader {
   }
 
   /** Reads a sound as the description the engine would read plus the bytes the webview plays. */
-  private async readAudio(entry: IArchiveEntry, subject: ArchiveSubject): Promise<TArchiveContent> {
-    const roots: XrayRoots = getSubjectRoots(subject);
+  private async readAudio(entry: IArchiveEntry): Promise<TArchiveContent> {
+    const sessionId: SessionId = this.session();
 
     const [audio, bytes] = await Promise.all([
-      archivesCommands.describeAudio(roots, entry.name),
-      fetchBulk(assetsBulkRoutes.readAsset(roots, entry.name)),
+      archivesCommands.describeAudio(sessionId, entry.name),
+      fetchBulk(archivesBulkRoutes.readEntry(sessionId, entry.name)),
     ]);
 
     return { bytes: new Uint8Array(bytes), descriptor: audio, kind: "audio" };
   }
 
   /** Reads a texture as its source shape plus the png the backend decoded it into. */
-  private async readTexture(entry: IArchiveEntry, subject: ArchiveSubject): Promise<TArchiveContent> {
-    const roots: XrayRoots = getSubjectRoots(subject);
+  private async readTexture(entry: IArchiveEntry): Promise<TArchiveContent> {
+    const sessionId: SessionId = this.session();
 
     const [texture, bytes] = await Promise.all([
-      archivesCommands.describeTexture(roots, entry.name),
-      fetchBulk(archivesBulkRoutes.readTexture(roots, entry.name)),
+      archivesCommands.describeTexture(sessionId, entry.name),
+      fetchBulk(archivesBulkRoutes.readTexture(sessionId, entry.name)),
     ]);
 
     return { bytes: new Uint8Array(bytes), descriptor: texture, kind: "texture" };
   }
 
   /** Reads a picture the webview draws itself: its shape plus the bytes exactly as stored. */
-  private async readImage(entry: IArchiveEntry, subject: ArchiveSubject): Promise<TArchiveContent> {
-    const roots: XrayRoots = getSubjectRoots(subject);
+  private async readImage(entry: IArchiveEntry): Promise<TArchiveContent> {
+    const sessionId: SessionId = this.session();
 
     const [image, bytes] = await Promise.all([
-      archivesCommands.describeImage(roots, entry.name),
-      fetchBulk(assetsBulkRoutes.readAsset(roots, entry.name)),
+      archivesCommands.describeImage(sessionId, entry.name),
+      fetchBulk(archivesBulkRoutes.readEntry(sessionId, entry.name)),
     ]);
 
     return { bytes: new Uint8Array(bytes), descriptor: image, kind: "image" };

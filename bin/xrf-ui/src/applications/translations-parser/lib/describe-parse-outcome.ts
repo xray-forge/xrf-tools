@@ -1,8 +1,10 @@
 import { formatCount } from "@xrf/format";
 
-import { TranslationParseSummary } from "@/core/ipc/types/xrf-app";
+import { TranslationParseResult } from "@/core/ipc/types/xrf-translation";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+
+import { listTranslationParseFindings } from "./parse-findings";
 
 /**
  * What the notification centre says when a translation import ends.
@@ -16,7 +18,7 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
  */
 export function describeTranslationParseOutcome(
   output: string,
-  outcome: IJobOutcome<TranslationParseSummary>
+  outcome: IJobOutcome<TranslationParseResult>
 ): IJobNotice {
   const { result, error } = outcome;
 
@@ -36,7 +38,7 @@ export function describeTranslationParseOutcome(
     };
   }
 
-  const findings: number = result?.findings.length ?? 0;
+  const findings: number = result ? listTranslationParseFindings(result).length : 0;
 
   if (result?.isDryRun) {
     return {

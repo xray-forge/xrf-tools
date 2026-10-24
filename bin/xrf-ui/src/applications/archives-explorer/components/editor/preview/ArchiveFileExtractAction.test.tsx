@@ -21,7 +21,7 @@ const FILE: ArchiveFileDescriptor = mockArchiveFileDescriptor({
 class TestArchivesService extends ArchivesService {}
 
 function renderAction(): RenderResult {
-  setMockInvokeResponses({ "plugin:archives|get_subject": mockSessionResponse(mockArchivesVolumes()) });
+  setMockInvokeResponses({ "plugin:archives|restore_subject": mockSessionResponse(mockArchivesVolumes()) });
 
   return renderWithProviders(<ArchiveFileExtractAction entry={FILE} />, {
     bindings: [{ token: ArchivesService, type: "Instance", value: TestArchivesService }],

@@ -70,15 +70,15 @@ async function renderWorkspace(
     ["plugin:textures|get_roots"]: null,
     ["plugin:textures|get_vocabulary"]: mockTextureVocabulary(),
     ["plugin:textures|save"]: (args?: Record<string, unknown>): TextureSaveOutcome => {
-      written = (args?.request as TexturesSaveRequest).descriptor?.form ?? null;
+      written = (args?.request as TexturesSaveRequest).descriptor.form;
 
-      return { descriptorFormat: null, outcome: "completed", written: [] };
+      return { outcome: "completed", written: [] };
     },
     ...responses,
   });
 
   setMockBulkResponses({
-    "textures/read_texture": new ArrayBuffer(0),
+    "assets/read_texture": new ArrayBuffer(0),
   });
 
   // Built from the application's own bindings, so a workspace that grows a dependency cannot pass here while

@@ -3,7 +3,7 @@ import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
-import { EVisualSource, SelectedVisualDescription, VisualSource } from "@/core/ipc/types/xrf-app";
+import { AssetSource, EAssetSource, SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
@@ -28,7 +28,7 @@ function mockOpenableVisual(path: string = "C:\\gamedata\\wpn_ak74.ogf"): {
 
   return {
     selected: mockSelectedVisual({
-      source: { kind: EVisualSource.FILE, path },
+      source: { kind: EAssetSource.FILE, path },
       description: mockVisualDescription({ submeshes: [submesh], bufferLength: buffer.byteLength }),
     }),
   };
@@ -255,7 +255,7 @@ describe("VisualsService opening", () => {
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
     setMockInvokeResponses({
-      ["plugin:visuals|get_model"]: mockSessionResponse(selected),
+      ["plugin:visuals|restore_model"]: mockSessionResponse(selected),
     });
 
     await service.onProvision();
@@ -267,7 +267,7 @@ describe("VisualsService opening", () => {
   it("becomes ready with nothing open when the backend has no selection", async () => {
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
-    setMockInvokeResponses({ ["plugin:visuals|get_model"]: mockSessionResponse(null) });
+    setMockInvokeResponses({ ["plugin:visuals|restore_model"]: mockSessionResponse(null) });
 
     await service.onProvision();
 
@@ -289,7 +289,7 @@ describe("VisualsService opening", () => {
 
     setMockInvokeResponses({
       ["plugin:visuals|open_model"]: mockSessionResponse(async (parameters?: Record<string, unknown>) => {
-        const source: VisualSource = (parameters as { source: VisualSource }).source;
+        const source: AssetSource = (parameters as { source: AssetSource }).source;
 
         if (describeVisualSource(source) !== describeVisualSource(first.selected.source)) {
           return second.selected;

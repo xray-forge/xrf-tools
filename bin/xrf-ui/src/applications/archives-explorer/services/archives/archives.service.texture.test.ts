@@ -1,10 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { AsyncState } from "@xrf/async";
 
-import { createRoot } from "@/core/assets/lib";
 import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
 import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchiveReadPolicy, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { listMockBulkCalls, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
@@ -13,7 +11,7 @@ import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { ArchivesService } from "./archives.service";
 
-const ROOTS: XrayRoots = { asset: null, roots: [createRoot("C:\\game\\database", "volumes")] };
+const SESSION: string = "archives-session";
 const BYTES: ArrayBuffer = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer;
 const TEXT: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
 
@@ -31,7 +29,7 @@ const DESCRIPTOR: AssetTextureDescriptor = {
 function mockService(texture: ArchiveFileDescriptor = TEXTURE): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes([texture, TEXT])));
+  service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes([texture, TEXT]), SESSION));
 
   return service;
 }
@@ -73,12 +71,12 @@ describe("ArchivesService texture preview", () => {
     await service.selectArchiveFile(texture);
 
     expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_texture", {
-      roots: ROOTS,
-      logicalPath: texture.name,
+      sessionId: SESSION,
+      name: texture.name,
     });
     expect(listMockBulkCalls("archives/read_texture")).toContainEqual({
-      roots: ROOTS,
-      logicalPath: texture.name,
+      sessionId: SESSION,
+      name: texture.name,
     });
     expect(service.content.value?.kind).toBe("texture");
   });
@@ -89,21 +87,21 @@ describe("ArchivesService texture preview", () => {
     await service.selectArchiveFile(TEXTURE);
 
     expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_texture", {
-      roots: ROOTS,
-      logicalPath: TEXTURE.name,
+      sessionId: SESSION,
+      name: TEXTURE.name,
     });
     // The text path would have refused it anyway: this entry is compressed and .dds is not readable.
     expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
     expect(service.content.value?.kind === "texture" ? service.content.value.descriptor.shape?.width : null).toBe(256);
   });
 
-  it("describes and reads one file, from the same roots", async () => {
+  it("describes and reads one file, of the same subject", async () => {
     const service: ArchivesService = mockService();
 
     await service.selectArchiveFile(TEXTURE);
 
     // The dimensions the viewport lays out against come from the description, the pixels from the read. Addressed
-    // apart, they could belong to different volumes of the same tree.
+    // apart, they could belong to different subjects.
     const [describeArguments] = mockInvoke.mock.calls
       .filter(([command]) => command === "plugin:archives|describe_texture")
       .map(([, args]) => args);

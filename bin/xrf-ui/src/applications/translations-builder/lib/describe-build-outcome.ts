@@ -1,6 +1,6 @@
 import { formatCount } from "@xrf/format";
 
-import { TranslationBuildSummary } from "@/core/ipc/types/xrf-app";
+import { TranslationBuildResult } from "@/core/ipc/types/xrf-translation";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 
@@ -16,7 +16,7 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
  */
 export function describeTranslationBuildOutcome(
   output: string,
-  outcome: IJobOutcome<TranslationBuildSummary>
+  outcome: IJobOutcome<TranslationBuildResult>
 ): IJobNotice {
   const { result, error } = outcome;
 

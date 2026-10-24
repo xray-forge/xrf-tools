@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 
 import { VerifierService } from "@/applications/configs-verifier/services/verifier";
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { CONFIGS_JOB_VERIFY } from "@/core/ipc/types/xrf-app";
 import { LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -36,12 +36,17 @@ describe("VerifierService operation", () => {
 
     container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
 
-    await service.verify("C:\\configs", true);
+    await service.verify("C:\\configs", true, true);
 
     expect(mockInvoke).toHaveBeenCalledWith(
       "plugin:configs|verify_directory",
       expect.objectContaining({
-        request: { roots: { roots: [{ path: "C:\\configs", mode: "auto" }], asset: null }, prefix: null, isDltx: true },
+        request: {
+          roots: { roots: [{ path: "C:\\configs", mode: "auto" }], asset: null },
+          prefix: null,
+          isDltx: true,
+          isStrict: true,
+        },
       })
     );
     expect(service.operation.result).toEqual(RESULT);
@@ -56,7 +61,7 @@ describe("VerifierService operation", () => {
 
     container.get(EventBus).emit<IJobSettledPayload>(JOB_SETTLED_EVENT, {
       id: "before-reload",
-      kind: EJobKind.CONFIGS_VERIFY,
+      kind: CONFIGS_JOB_VERIFY,
       result: RESULT,
       error: null,
       conclusion: "completed",
@@ -82,7 +87,7 @@ describe("VerifierService operation", () => {
 
     container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
 
-    const running = service.verify("C:\\configs", false);
+    const running = service.verify("C:\\configs", false, false);
 
     container.unbind(VerifierService);
 

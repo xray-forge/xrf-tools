@@ -53,7 +53,7 @@ async function mockService(outcome: TextureMakeBumpOutcome = mockOutcome()): Pro
   });
 
   setMockBulkResponses({
-    "textures/read_texture": new ArrayBuffer(0),
+    "assets/read_texture": new ArrayBuffer(0),
   });
 
   const container: Container = mockContainer([
@@ -92,7 +92,7 @@ describe("TextureBumpService", () => {
     });
 
     setMockBulkResponses({
-      "textures/read_texture": new ArrayBuffer(0),
+      "assets/read_texture": new ArrayBuffer(0),
     });
 
     const container: Container = mockContainer([

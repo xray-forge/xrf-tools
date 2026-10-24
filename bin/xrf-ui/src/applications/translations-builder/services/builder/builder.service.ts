@@ -3,8 +3,8 @@ import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 import { describeTranslationBuildOutcome } from "@/applications/translations-builder/lib/describe-build-outcome";
 import { createRoots } from "@/core/assets/lib";
 import { translationsCommands } from "@/core/ipc/commands/translations";
-import { EJobKind, TranslationBuildSummary } from "@/core/ipc/types/xrf-app";
-import { ETranslationLanguage } from "@/core/ipc/types/xrf-translation";
+import { TRANSLATIONS_JOB_BUILD } from "@/core/ipc/types/xrf-app";
+import { ETranslationLanguage, TranslationBuildResult } from "@/core/ipc/types/xrf-translation";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -22,10 +22,10 @@ export class TranslationsBuilderService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** Cancellation leaves written string tables complete; another build supplies those not reached. */
-  public readonly operation: JobOperation<TranslationBuildSummary>;
+  public readonly operation: JobOperation<TranslationBuildResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.TRANSLATIONS_BUILD]);
+    this.operation = new JobOperation(jobsService, [TRANSLATIONS_JOB_BUILD]);
   }
 
   /**
@@ -45,14 +45,14 @@ export class TranslationsBuilderService {
     this.log.info("Building translations:", sources, language, outputDir);
 
     yield* this.operation.run({
-      kind: EJobKind.TRANSLATIONS_BUILD,
+      kind: TRANSLATIONS_JOB_BUILD,
       invoke: (id: string, progress) =>
         translationsCommands.buildProject(
           { roots: createRoots([sources]), prefix: null, language, outputDir, isSorted },
           id,
           progress
         ),
-      describe: (outcome: IJobOutcome<TranslationBuildSummary>): IJobNotice =>
+      describe: (outcome: IJobOutcome<TranslationBuildResult>): IJobNotice =>
         describeTranslationBuildOutcome(outputDir, outcome),
     });
   }

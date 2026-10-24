@@ -7,6 +7,8 @@ export const CONFIGS_VERIFIER_HELP: IApplicationHelp = {
   workflow: [
     "Pick the configs directory. LTX files in its subdirectories are included.",
     "Choose `DLTX` for configs that use Monolith/Anomaly patch rules, or `LTX` for standard rules.",
+    "Tick `Strict` to also report what only a case-sensitive file system breaks on, such as an include naming a " +
+      "file in another case, which the vanilla game data does.",
     "Click `Verify`, then review the checked, skipped and invalid section counts. Filter the findings by " +
       "section, field or file to locate a problem.",
   ],

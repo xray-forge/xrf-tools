@@ -125,7 +125,9 @@ export class VisualsBrowseService {
   @ExclusiveFlow("visuals")
   private *restore(): TFlow {
     try {
-      const snapshot = yield* call(visualsCommands.getBrowse(this.session.scope));
+      const snapshot: Nullable<SessionSnapshot<XrayRoots>> = yield* call(
+        visualsCommands.restoreBrowse(this.session.tool)
+      );
 
       this.session.adopt(snapshot);
 

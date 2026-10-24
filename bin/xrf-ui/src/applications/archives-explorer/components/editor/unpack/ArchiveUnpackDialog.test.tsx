@@ -13,7 +13,7 @@ import { ArchiveUnpackDialog } from "./ArchiveUnpackDialog";
 
 async function renderDialog(onClose: () => void): Promise<RenderResult> {
   setMockInvokeResponses({
-    ["plugin:archives|get_subject"]: mockSessionResponse(
+    ["plugin:archives|restore_subject"]: mockSessionResponse(
       mockArchivesVolumes([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })])
     ),
     ["plugin:system|get_default_output_root"]: "C:\\xrf\\out",

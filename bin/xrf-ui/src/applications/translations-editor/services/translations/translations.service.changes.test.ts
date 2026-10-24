@@ -17,7 +17,7 @@ const FILE: string = "st_test.json";
 const ID: string = "st_test";
 const LANGUAGE: string = "eng";
 const ROOT: string = "C:\\project";
-const GET_PROJECT: string = "plugin:translations|get_project";
+const GET_PROJECT: string = "plugin:translations|restore_project";
 
 function createProject(value: string): TranslationProjectDescriptor {
   return {

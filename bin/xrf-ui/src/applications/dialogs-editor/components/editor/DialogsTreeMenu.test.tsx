@@ -32,7 +32,7 @@ const PROJECT: DialogProjectDescriptor = {
 
 async function renderMenu(): Promise<{ render: RenderResult; container: Container }> {
   setMockInvokeResponses({
-    ["plugin:dialogs|get_project"]: mockSessionResponse(PROJECT),
+    ["plugin:dialogs|restore_project"]: mockSessionResponse(PROJECT),
     ["plugin:dialogs|get_dialog"]: null,
   });
 

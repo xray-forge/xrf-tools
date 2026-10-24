@@ -3,7 +3,7 @@ import { EventBus } from "@wirestate/core";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { PackerService } from "@/applications/archives-packer/services/packer";
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { ARCHIVES_JOB_PACK, ARCHIVES_JOB_UNPACK } from "@/core/ipc/types/xrf-app";
 import { ArchivePackConfig, ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -71,7 +71,7 @@ describe("PackerService operation", () => {
     jobs.jobs = [
       {
         id: "adopted-pack",
-        kind: EJobKind.ARCHIVES_PACK,
+        kind: ARCHIVES_JOB_PACK,
         request: null,
         progress: null,
         isAdopted: true,
@@ -195,7 +195,7 @@ describe("PackerService operation", () => {
 
     service.operation.adopt({
       id: "failed-pack",
-      kind: EJobKind.ARCHIVES_PACK,
+      kind: ARCHIVES_JOB_PACK,
       conclusion: "failed",
       error: "Could not finish",
       result: RESULT,
@@ -232,7 +232,7 @@ describe("PackerService operation", () => {
 
     container.get(EventBus).emit<IJobSettledPayload>(JOB_SETTLED_EVENT, {
       id: "adopted-pack",
-      kind: EJobKind.ARCHIVES_PACK,
+      kind: ARCHIVES_JOB_PACK,
       conclusion: "completed",
       error: null,
       result: RESULT,
@@ -258,7 +258,7 @@ describe("PackerService operation", () => {
 
     container.get(EventBus).emit<IJobSettledPayload>(JOB_SETTLED_EVENT, {
       id: "adopted-unpack",
-      kind: EJobKind.ARCHIVES_UNPACK,
+      kind: ARCHIVES_JOB_UNPACK,
       conclusion: "completed",
       error: null,
       result: null,

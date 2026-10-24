@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import { toAssetLocation } from "@/core/assets/lib";
-import { EVisualSource, VisualSource } from "@/core/ipc/types/xrf-app";
+import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 
@@ -16,14 +16,14 @@ import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
  * @returns The disk path, or null while the asset is not listed.
  */
 export function toVisualLocation(
-  source: Nullable<VisualSource>,
+  source: Nullable<AssetSource>,
   assets: ReadonlyArray<XrayAsset>
 ): Nullable<IEditorLocation> {
   if (!source) {
     return null;
   }
 
-  if (source.kind === EVisualSource.FILE) {
+  if (source.kind === EAssetSource.FILE) {
     return { path: source.path };
   }
 
@@ -40,7 +40,7 @@ export function toVisualLocation(
  */
 export function toVisualSessionLocation(
   rootsLabel: Nullable<string>,
-  source: Nullable<VisualSource>,
+  source: Nullable<AssetSource>,
   assets: ReadonlyArray<XrayAsset>
 ): Nullable<IEditorLocation> {
   return rootsLabel ? { path: rootsLabel } : toVisualLocation(source, assets);

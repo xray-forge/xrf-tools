@@ -66,8 +66,10 @@ import { levelsCommands } from "@/core/ipc/commands/levels";
 import { systemCommands } from "@/core/ipc/commands/system";
 import {
   CaptureOutcome,
-  EJobKind,
+  JobKind,
   LevelMapDescription,
+  LEVELS_JOB_CAPTURE_CUBE,
+  LEVELS_JOB_CAPTURE_MAP,
   SelectedLevelDescription,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
@@ -106,9 +108,9 @@ const CAPTURE_PREFIXES: Record<ELevelCaptureMode, string> = {
 };
 
 /** The job each mode's capture runs as. */
-const CAPTURE_JOB_KINDS: Record<ELevelCaptureMode, EJobKind> = {
-  [ELevelCaptureMode.MAP]: EJobKind.LEVELS_CAPTURE_MAP,
-  [ELevelCaptureMode.CUBEMAP]: EJobKind.LEVELS_CAPTURE_CUBE,
+const CAPTURE_JOB_KINDS: Record<ELevelCaptureMode, JobKind> = {
+  [ELevelCaptureMode.MAP]: LEVELS_JOB_CAPTURE_MAP,
+  [ELevelCaptureMode.CUBEMAP]: LEVELS_JOB_CAPTURE_CUBE,
 };
 
 /** What one capture takes: a map's parameters or a cubemap's. */
@@ -209,7 +211,7 @@ export class LevelViewerCaptureService {
     private readonly weatherService: LevelWeatherService = inject(LevelWeatherService),
     jobsService: JobsService = inject(JobsService)
   ) {
-    this.operation = new JobOperation(jobsService, [EJobKind.LEVELS_CAPTURE_MAP, EJobKind.LEVELS_CAPTURE_CUBE]);
+    this.operation = new JobOperation(jobsService, [LEVELS_JOB_CAPTURE_MAP, LEVELS_JOB_CAPTURE_CUBE]);
   }
 
   @OnDeactivation()

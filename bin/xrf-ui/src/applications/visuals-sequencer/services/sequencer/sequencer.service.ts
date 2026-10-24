@@ -8,7 +8,7 @@ import { VisualSequenceService } from "@/applications/visuals-sequencer/services
 import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { EVisualSource, VisualSource } from "@/core/ipc/types/xrf-app";
+import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
@@ -93,7 +93,7 @@ export class SequencerService extends VisualInspectionService {
   public async openFile(path: string, assetRoot: Nullable<string> = null): Promise<void> {
     // Centred on the file, so its own tree is searched for its textures and its animation banks, with the named root
     // behind it.
-    await this.open({ kind: EVisualSource.FILE, path }, path, assetRoot);
+    await this.open({ kind: EAssetSource.FILE, path }, path, assetRoot);
   }
 
   /** Close what is open, on screen and in the backend. */
@@ -120,7 +120,7 @@ export class SequencerService extends VisualInspectionService {
    * @param assetRoot - A further tree searched behind it.
    */
   private async open(
-    source: VisualSource,
+    source: AssetSource,
     asset: Nullable<string> = null,
     assetRoot: Nullable<string> = null
   ): Promise<void> {

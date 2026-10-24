@@ -110,7 +110,7 @@ export class DialogsService {
   @ExclusiveFlow("project")
   private *restore(): TFlow {
     const response: Nullable<SessionSnapshot<DialogProjectDescriptor>> = yield* call(
-      dialogsCommands.getProject(this.session.scope)
+      dialogsCommands.restoreProject(this.session.tool)
     );
 
     this.log.info(

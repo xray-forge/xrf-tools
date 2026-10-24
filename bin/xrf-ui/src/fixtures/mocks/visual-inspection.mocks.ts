@@ -1,7 +1,7 @@
 import { inject, Injectable } from "@wirestate/core";
 
 import { createRoots } from "@/core/assets/lib";
-import { EVisualSource } from "@/core/ipc/types/xrf-app";
+import { EAssetSource } from "@/core/ipc/types/xrf-app";
 import { VisualInspectionService } from "@/core/visuals/services/visual-inspection.service";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 
@@ -26,6 +26,6 @@ export class MockVisualInspectionService extends VisualInspectionService {
    * @returns Once the loader settled.
    */
   public async openFile(path: string): Promise<void> {
-    await this.loadService.load({ kind: EVisualSource.FILE, path }, createRoots([], path));
+    await this.loadService.load({ kind: EAssetSource.FILE, path }, createRoots([], path));
   }
 }

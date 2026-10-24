@@ -63,7 +63,7 @@ describe("ArchivesService file selection", () => {
     expect(service.content.value?.kind === "text" ? service.content.value.result : null).toEqual(result);
     expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
       sessionId: expect.any(String),
-      path: descriptor.name,
+      name: descriptor.name,
     });
   });
 
@@ -94,7 +94,7 @@ describe("ArchivesService file selection", () => {
     expect(service.content.value).toEqual({ kind: "description", description });
     expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_file", {
       sessionId: expect.any(String),
-      path: descriptor.name,
+      name: descriptor.name,
     });
   });
 
@@ -130,7 +130,7 @@ describe("ArchivesService file selection", () => {
 
     setMockInvokeResponses({
       ["plugin:archives|read_file"]: (args?: Record<string, unknown>) =>
-        args?.path === first.name ? firstResult : secondResult,
+        args?.name === first.name ? firstResult : secondResult,
     });
 
     const service: ArchivesService = mockArchivesService([first, second]);
