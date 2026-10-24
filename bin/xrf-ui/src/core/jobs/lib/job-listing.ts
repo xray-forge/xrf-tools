@@ -1,6 +1,6 @@
 import { assertExhaustive } from "@xrf/types";
 
-import { EJobConclusion, JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
+import { EJobConclusion, JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app-core";
 
 /** What every run of one kind came to. */
 export interface IJobKindSummary {

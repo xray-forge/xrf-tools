@@ -3,7 +3,7 @@ import { act, RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 
-import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
+import { ConfigsDocument } from "@/core/ipc/types/xrf-app-configs";
 import { LtxAnchoredFinding } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsAuthoredView } from "@/core/ltx/components/ConfigsDocumentView/ConfigsAuthoredView";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";

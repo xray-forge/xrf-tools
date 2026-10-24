@@ -8,7 +8,7 @@ import {
   ArchiveOmfQuantized,
   ArchiveOmfTarget,
   EArchiveOmfTarget,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 import { MOTION_DEFAULT_SPEED } from "@/core/visuals/lib/visual-motion";
 
 /** Decimals a mark's own interval keeps, matching what `formatSeconds` gives the durations beside it. */

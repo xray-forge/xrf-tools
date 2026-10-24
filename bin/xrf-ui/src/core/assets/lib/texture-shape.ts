@@ -1,4 +1,4 @@
-import { AssetTextureShape } from "@/core/ipc/types/xrf-app";
+import { AssetTextureShape } from "@/core/ipc/types/xrf-app-core";
 
 /**
  * Names a mip chain by what it means rather than by its count.

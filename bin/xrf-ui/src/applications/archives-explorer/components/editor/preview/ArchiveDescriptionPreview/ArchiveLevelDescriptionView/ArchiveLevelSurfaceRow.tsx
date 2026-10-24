@@ -8,7 +8,7 @@ import {
   ArchiveReference,
   EArchiveLevelEntry,
   EArchiveReferenceStatus,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 import { cn } from "@/core/theme/class-name";
 import { inline } from "@/lib/callbacks/inline";
 import { BaseComponentProps } from "@/lib/dom/element-types";

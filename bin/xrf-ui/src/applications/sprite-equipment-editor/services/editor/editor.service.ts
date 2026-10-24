@@ -17,13 +17,8 @@ import { fetchBulk } from "@/core/ipc/bulk";
 import { spriteEquipmentCommands } from "@/core/ipc/commands/sprite-equipment";
 import { spriteEquipmentBulkRoutes } from "@/core/ipc/commands/sprite-equipment-bulk";
 import { requireSessionId, Session, SessionScopeService } from "@/core/ipc/session";
-import {
-  AssetSource,
-  EAssetSource,
-  EquipmentSpriteMetadata,
-  EquipmentSpriteOpen,
-  SessionSnapshot,
-} from "@/core/ipc/types/xrf-app";
+import { AssetSource, EAssetSource, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+import { EquipmentSpriteMetadata, EquipmentSpriteOpen } from "@/core/ipc/types/xrf-app-sprite-equipment";
 import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";

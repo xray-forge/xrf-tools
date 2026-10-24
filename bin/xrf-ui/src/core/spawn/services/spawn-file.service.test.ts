@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
 
-import { ESpawnChunkKind, SessionSnapshot, SpawnChunk, SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+import { ESpawnChunkKind, SpawnChunk, SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app-spawn";
 import { SpawnGraphsChunk } from "@/core/ipc/types/xrf-spawn";
 import { SpawnFileService } from "@/core/spawn/services/spawn-file.service";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";

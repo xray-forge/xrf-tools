@@ -3,7 +3,7 @@ import { ABSENT_VALUE } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
+import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualSubmesh, VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";

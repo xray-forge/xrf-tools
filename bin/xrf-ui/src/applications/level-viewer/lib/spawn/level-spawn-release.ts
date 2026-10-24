@@ -1,4 +1,4 @@
-import { ELevelSpawnRelease, LevelSpawnRelease } from "@/core/ipc/types/xrf-app";
+import { ELevelSpawnRelease, LevelSpawnRelease } from "@/core/ipc/types/xrf-app-levels";
 
 /** Why a new game releases an object, as the panel says it: the config and section naming it, and what it then does. */
 const RELEASE_REASONS: Readonly<Record<LevelSpawnRelease, string>> = {

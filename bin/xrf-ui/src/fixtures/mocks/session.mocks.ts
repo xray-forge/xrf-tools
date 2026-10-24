@@ -1,7 +1,7 @@
 import { Optional } from "@xrf/types";
 
 import { ISessionIdentity, Session } from "@/core/ipc/session";
-import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
 import { InvokeHandler } from "@/fixtures/mocks/tauri.mocks";
 
 /** A native snapshot with an explicit identity for restoration and state fixtures, at the revision an open leaves. */

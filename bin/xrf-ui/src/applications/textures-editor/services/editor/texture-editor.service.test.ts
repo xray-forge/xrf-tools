@@ -3,7 +3,7 @@ import { Container } from "@wirestate/core";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
-import { TextureDescription, TextureVocabulary } from "@/core/ipc/types/xrf-app";
+import { TextureDescription, TextureVocabulary } from "@/core/ipc/types/xrf-app-textures";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";

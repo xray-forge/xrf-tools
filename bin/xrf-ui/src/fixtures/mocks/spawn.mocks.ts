@@ -1,4 +1,4 @@
-import { SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app";
+import { SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app-spawn";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import {
   AlifeObject,

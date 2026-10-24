@@ -3,7 +3,7 @@ import { formatCount } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { ArchiveDescribeScope, ArchiveLevelWallmarkSlot } from "@/core/ipc/types/xrf-app";
+import { ArchiveDescribeScope, ArchiveLevelWallmarkSlot } from "@/core/ipc/types/xrf-app-archives";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

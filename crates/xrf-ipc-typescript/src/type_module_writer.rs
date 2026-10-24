@@ -13,6 +13,7 @@ use crate::command_typescript::CommandTypescript;
 use crate::constants::GENERATED_HEADER;
 use crate::enumerations::Enumerations;
 use crate::generated_output::{normalize_doc_indentation, write_generated};
+use crate::mirror_imports::MirrorImports;
 use crate::type_modules::TypeModules;
 use crate::type_ownership::TypeOwnership;
 use crate::typescript::format::TypeScriptFormat;
@@ -24,14 +25,15 @@ impl TypeModuleWriter {
   /// The largest integer a JavaScript number holds exactly, `Number.MAX_SAFE_INTEGER`.
   const MAX_SAFE_INTEGER: u64 = (1 << 53) - 1;
 
-  /// Writes one module per declaring crate, or crate family as `type_modules` groups them, answering with the ownership
-  /// and the enums those modules establish.
+  /// Writes one module per declaring crate, or crate family as `type_modules` groups them, each importing another as
+  /// `imports` addresses it, answering with the ownership and the enums those modules establish.
   ///
   /// A crate's constants marked `#[xrf_ipc::constant]` open its module, after the imports and before the types.
   pub(crate) fn write_all(
     output: &Path,
     collected: &Types,
     type_modules: &TypeModules,
+    imports: &MirrorImports,
   ) -> (TypeOwnership, Enumerations) {
     let types: Types = TypeScriptFormat::default()
       .map_types(collected)
@@ -39,7 +41,7 @@ impl TypeModuleWriter {
       .into_owned();
     let exporter: Exporter = CommandTypescript::configured().into();
     let enumerations: Enumerations = Enumerations::resolve(collected, &types);
-    let (mut ownership, modules) = TypeOwnership::resolve(&types, type_modules);
+    let (mut ownership, modules) = TypeOwnership::resolve(&types, type_modules, imports);
 
     for (module, named) in &modules {
       for declared in named {
@@ -149,6 +151,9 @@ impl TypeModuleWriter {
 
   /// One constant as the frontend declares it: its doc comment, then `export const NAME: type = value;`.
   ///
+  /// A string is its own literal (`export const NAME = "value" as const;`), so the page can name one kind of value (a
+  /// job kind) by the union of the constants declaring them; a number or a boolean is typed as its primitive.
+  ///
   /// Fails on a name a type of the module already takes, on a value that does not serialize, on one neither a number,
   /// a string nor a boolean, and on an integer a JavaScript number does not hold exactly.
   fn render_constant(constant: &IpcConstant, module: &str, ownership: &TypeOwnership) -> String {
@@ -164,7 +169,11 @@ impl TypeModuleWriter {
         constant.name, constant.module_path
       )
     });
+    let doc: String = Self::render_doc(constant.doc);
+
     let kind: &str = match &value {
+      // Its own literal, by assertion rather than annotation, as the frontend's lint asks of a literal type.
+      serde_json::Value::String(_) => return format!("{doc}export const {} = {value} as const;\n", constant.name),
       serde_json::Value::Number(number) => {
         assert!(
           number
@@ -179,7 +188,6 @@ impl TypeModuleWriter {
 
         "number"
       }
-      serde_json::Value::String(_) => "string",
       serde_json::Value::Bool(_) => "boolean",
       other => panic!(
         "Constant `{}` of {module} serializes to {other}, which is not a number, a string or a boolean",
@@ -187,11 +195,7 @@ impl TypeModuleWriter {
       ),
     };
 
-    format!(
-      "{}export const {}: {kind} = {value};\n",
-      Self::render_doc(constant.doc),
-      constant.name
-    )
+    format!("{doc}export const {}: {kind} = {value};\n", constant.name)
   }
 
   /// A doc comment as JSDoc, on one line where it is one line; nothing where there is none.
@@ -229,13 +233,16 @@ mod tests {
   use xrf_ipc::IpcConstant;
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
+  use crate::mirror_imports::MirrorImports;
   use crate::type_module_writer::TypeModuleWriter;
   use crate::type_modules::TypeModules;
   use crate::type_ownership::TypeOwnership;
 
+  const IMPORTS: MirrorImports = MirrorImports::new("@/fixture");
+
   /// One constant rendered alone, into a module with no types.
   fn render(constant: &IpcConstant) -> String {
-    let (ownership, _) = TypeOwnership::resolve(&Types::default(), &TypeModules::default());
+    let (ownership, _) = TypeOwnership::resolve(&Types::default(), &TypeModules::default(), &IMPORTS);
 
     TypeModuleWriter::render_constant(constant, "xrf-fixture", &ownership)
   }
@@ -261,7 +268,7 @@ mod tests {
 
     fs::create_dir_all(&output).expect("directory to be created");
 
-    TypeModuleWriter::write_all(&output, &Types::default(), &TypeModules::default());
+    TypeModuleWriter::write_all(&output, &Types::default(), &TypeModules::default(), &IMPORTS);
 
     let module: String = fs::read_to_string(output.join("xrf-ipc-typescript.ts")).expect("module to be written");
 
@@ -272,12 +279,12 @@ mod tests {
       module,
       "// Auto-generated rust bindings. Do not edit it manually.\n\n\
        /** A name the test exports beside the steps. */\n\
-       export const EXPORTED_NAME: string = \"steps\";\n\n\
+       export const EXPORTED_NAME = \"steps\" as const;\n\n\
        /**\n \
        * A pattern the test exports as written:\n \
        *   its indent and its ` *  ` kept.\n \
        */\n\
-       export const EXPORTED_PATTERN: string = \"a *  b\";\n\n\
+       export const EXPORTED_PATTERN = \"a *  b\" as const;\n\n\
        /**\n \
        * Steps a test exports to its crate's module.\n \
        *\n \

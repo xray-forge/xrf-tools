@@ -6,7 +6,7 @@ import {
   ArchiveDescribeScope,
   ArchiveLevelSndStaticDescription,
   EArchiveDescribeScope,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 import { mockArchiveLevelSndStaticDescription } from "@/fixtures/mocks/archive.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

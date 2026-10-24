@@ -4,7 +4,8 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect, useState } from "react";
 
 import { describeTextureShape } from "@/core/assets/lib";
-import { AssetTextureShape, TextureDescription } from "@/core/ipc/types/xrf-app";
+import { AssetTextureShape } from "@/core/ipc/types/xrf-app-core";
+import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import { TextureSurface } from "@/core/textures/components/preview/TextureSurface";
 import {
   describeTexturePreviewGap,

@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 import { ArchiveTexturePreview } from "@/applications/archives-explorer/components/editor/preview/ArchiveTexturePreview";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes } from "@/core/archive/lib";
-import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
+import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

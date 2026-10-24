@@ -1,4 +1,4 @@
-import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
+import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app-levels";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import { WorldWeatherReport } from "@/core/ipc/types/xrf-world";

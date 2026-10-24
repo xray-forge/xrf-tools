@@ -4,7 +4,7 @@ import { Container } from "@wirestate/core";
 import { Nullable } from "@xrf/types";
 
 import { AssetService } from "@/core/assets/services";
-import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app";
+import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app-sprite-equipment";
 import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";

@@ -2,7 +2,7 @@ import { expect } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { ViewportEvent } from "@/core/ipc/types/xrf-app";
+import { ViewportEvent } from "@/core/ipc/types/xrf-app-render";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";

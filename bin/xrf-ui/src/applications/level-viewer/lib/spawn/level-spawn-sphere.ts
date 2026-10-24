@@ -1,7 +1,7 @@
 import { IPoint3, toPoint3, toXraySpace } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
-import { LevelSpawnObject } from "@/core/ipc/types/xrf-app";
+import { LevelSpawnObject } from "@/core/ipc/types/xrf-app-levels";
 import { VisualTransform } from "@/core/ipc/types/xrf-visual";
 
 /** What an object is taken to span before its model is drawn: a metre about where it stands. */

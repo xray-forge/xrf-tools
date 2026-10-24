@@ -1,4 +1,4 @@
-import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
+import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app-levels";
 import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";

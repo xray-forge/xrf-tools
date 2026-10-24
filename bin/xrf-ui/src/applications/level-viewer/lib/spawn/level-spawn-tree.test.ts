@@ -7,7 +7,7 @@ import {
   toLevelSpawnObjectId,
   toLevelSpawnTree,
 } from "@/applications/level-viewer/lib/spawn/level-spawn-tree";
-import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app";
+import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app-levels";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { mockLevelSpawnObject } from "@/fixtures/mocks/level.mocks";
 

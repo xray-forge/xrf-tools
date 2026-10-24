@@ -1,4 +1,4 @@
-import { ETextureSource, TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
+import { ETextureSource, TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app-textures";
 
 /**
  * Identifies the texture a source names, independently of the roots it was resolved in.

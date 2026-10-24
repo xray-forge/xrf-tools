@@ -6,7 +6,7 @@ import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
-import { TextureSource } from "@/core/ipc/types/xrf-app";
+import { TextureSource } from "@/core/ipc/types/xrf-app-textures";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";

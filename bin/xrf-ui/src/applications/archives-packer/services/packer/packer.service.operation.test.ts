@@ -3,7 +3,7 @@ import { EventBus } from "@wirestate/core";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { PackerService } from "@/applications/archives-packer/services/packer";
-import { ARCHIVES_JOB_PACK, ARCHIVES_JOB_UNPACK } from "@/core/ipc/types/xrf-app";
+import { ARCHIVES_JOB_PACK, ARCHIVES_JOB_UNPACK } from "@/core/ipc/types/xrf-app-archives";
 import { ArchivePackConfig, ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";

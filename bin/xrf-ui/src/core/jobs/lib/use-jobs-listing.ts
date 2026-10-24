@@ -1,5 +1,5 @@
 import { jobsCommands } from "@/core/ipc/commands/jobs";
-import { JobDescription } from "@/core/ipc/types/xrf-app";
+import { JobDescription } from "@/core/ipc/types/xrf-app-core";
 import { usePolledValue } from "@/lib/react";
 import { EMPTY_ARRAY } from "@/lib/types/array";
 

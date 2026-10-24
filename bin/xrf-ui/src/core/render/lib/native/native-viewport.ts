@@ -2,7 +2,7 @@ import { Channel } from "@tauri-apps/api/core";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
 import { renderCommands } from "@/core/ipc/commands/render";
-import { RenderPickRequest, ViewportEvent } from "@/core/ipc/types/xrf-app";
+import { RenderPickRequest, ViewportEvent } from "@/core/ipc/types/xrf-app-render";
 import {
   ERenderViewportEvent,
   RenderAppliedReport,

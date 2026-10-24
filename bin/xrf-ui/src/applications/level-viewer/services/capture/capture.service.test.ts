@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 import { ELevelCaptureMode } from "@/applications/level-viewer/lib/capture/level-capture";
 import { ELevelMapArea, ELevelMapLook } from "@/applications/level-viewer/lib/map/level-map-capture";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
-import { ELevelAnnotationKind, LevelMapDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
+import { ELevelAnnotationKind, LevelMapDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app-levels";
 import { RenderCubeCapture, RenderMapCapture } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";

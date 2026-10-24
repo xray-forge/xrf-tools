@@ -9,7 +9,7 @@ import {
   LevelStart,
   LevelTextureReference,
   SelectedLevelDescription,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-levels";
 import { EXrayEngine, EXrayEngineEvidence } from "@/core/ipc/types/xrf-engine-target";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ERenderTextureGroup } from "@/core/ipc/types/xrf-renderer";

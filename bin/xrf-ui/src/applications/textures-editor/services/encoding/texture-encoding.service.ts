@@ -12,13 +12,13 @@ import { texturesCommands } from "@/core/ipc/commands/textures";
 import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
 import { toEnumMember } from "@/core/ipc/enumeration";
 import { Session, SessionScopeService } from "@/core/ipc/session";
+import { SessionId } from "@/core/ipc/types/xrf-app-core";
 import {
-  SessionId,
   TextureDescription,
   TextureEncodingComparison,
   TextureEncodingReport,
   TEXTURES_JOB_COMPARE_ENCODINGS,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-textures";
 import { ETextureEncodingFormat, TextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";

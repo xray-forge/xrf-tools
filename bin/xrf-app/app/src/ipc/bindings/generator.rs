@@ -9,20 +9,23 @@
 
 use std::path::PathBuf;
 
-use xrf_ipc_typescript::{IpcBindingsGenerator, SurfaceDrift, TypeModules};
+use xrf_ipc_typescript::{IpcBindingsGenerator, MirrorImports, SurfaceDrift, TypeModules};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::ipc::bindings::command_surfaces::command_surfaces;
+
+/// How the mirror's modules address one another and the runtime beside them: through the frontend's alias.
+const MIRROR_IMPORTS: MirrorImports = MirrorImports::new("@/core/ipc");
 
 /// Path of the mirrors the frontend compiles against.
 fn bindings_output_path() -> PathBuf {
   PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../xrf-ui/src/core/ipc")
 }
 
-/// Every crate of the application (`xrf_app` and each `xrf_app_<part>`) writes into the one `xrf-app` module: one
-/// surface to the page, however the application is split into crates.
+/// Every crate writes its own module, the application's crates (`xrf_app_core`, each plugin) included, so a page
+/// imports a type from the crate that owns it.
 fn type_modules() -> TypeModules {
-  TypeModules::default().with_family("xrf_app", "xrf-app")
+  TypeModules::default()
 }
 
 /// Rewrite the committed mirrors in place.
@@ -33,6 +36,7 @@ fn export_typescript_bindings() {
     &bindings_output_path(),
     &command_surfaces::<tauri::Wry>(),
     &type_modules(),
+    &MIRROR_IMPORTS,
   );
 }
 
@@ -44,6 +48,7 @@ fn verify_typescript_bindings() {
     &build_absolute_generated_test_resource_path("bindings"),
     &command_surfaces::<tauri::Wry>(),
     &type_modules(),
+    &MIRROR_IMPORTS,
   );
 
   assert!(!drift.is_breaking(), "{}", drift.describe());

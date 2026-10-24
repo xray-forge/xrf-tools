@@ -8,7 +8,7 @@ import {
   EArchiveDescribeScope,
   EArchiveLevelEntry,
   EArchiveReferenceStatus,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 import {
   mockArchiveLevelDescription,
   mockArchiveLevelSurface,

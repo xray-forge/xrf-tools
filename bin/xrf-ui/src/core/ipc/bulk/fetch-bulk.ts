@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { IBulkCall } from "@/core/ipc/bulk/bulk-call";
 import { BULK_ENDPOINT } from "@/core/ipc/bulk/bulk-endpoint";
 import { IPC_METRICS, IpcCallMeasurement, weighIpcPayload } from "@/core/ipc/metrics";
-import { TransportEndpoint } from "@/core/ipc/types/xrf-app";
+import { TransportEndpoint } from "@/core/ipc/types/xrf-app-core";
 
 /**
  * Fetches a bulk route over the loopback transport, counting what it cost the way an IPC call is counted.

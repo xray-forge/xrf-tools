@@ -65,15 +65,14 @@ import {
 import { KeybindCommand } from "@/core/commands";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { systemCommands } from "@/core/ipc/commands/system";
+import { JobKind, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
 import {
-  CaptureOutcome,
-  JobKind,
   LevelMapDescription,
   LEVELS_JOB_CAPTURE_CUBE,
   LEVELS_JOB_CAPTURE_MAP,
   SelectedLevelDescription,
-  SessionSnapshot,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-levels";
+import { CaptureOutcome } from "@/core/ipc/types/xrf-app-render";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { describeJobFailure, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";

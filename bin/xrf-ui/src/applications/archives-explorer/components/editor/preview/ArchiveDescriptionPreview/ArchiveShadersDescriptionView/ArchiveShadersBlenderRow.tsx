@@ -1,7 +1,7 @@
 import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { ArchiveDescribeScope, ArchiveShadersBlender, ArchiveShadersProperty } from "@/core/ipc/types/xrf-app";
+import { ArchiveDescribeScope, ArchiveShadersBlender, ArchiveShadersProperty } from "@/core/ipc/types/xrf-app-archives";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

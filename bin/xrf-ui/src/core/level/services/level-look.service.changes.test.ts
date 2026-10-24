@@ -3,7 +3,8 @@ import { waitFor } from "@testing-library/react";
 import { EventBus } from "@wirestate/core";
 
 import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
-import { LEVEL_CONSOLE_PART, LEVEL_SPAWN_PART, LevelConsoleDefaults, SessionChange } from "@/core/ipc/types/xrf-app";
+import { SessionChange } from "@/core/ipc/types/xrf-app-core";
+import { LEVEL_CONSOLE_PART, LEVEL_SPAWN_PART, LevelConsoleDefaults } from "@/core/ipc/types/xrf-app-levels";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { clearLocalStorage } from "@/core/storage";

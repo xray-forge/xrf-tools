@@ -4,7 +4,7 @@ import { transformError } from "@xrf/errors";
 import { Logger } from "@xrf/logging";
 import { Nullable, Optional } from "@xrf/types";
 
-import { JobKind } from "@/core/ipc/types/xrf-app";
+import { JobKind } from "@/core/ipc/types/xrf-app-core";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { call, TFlow } from "@/lib/mobx";
 

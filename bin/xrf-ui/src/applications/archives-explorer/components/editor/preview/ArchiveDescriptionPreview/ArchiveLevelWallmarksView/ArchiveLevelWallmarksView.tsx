@@ -5,7 +5,7 @@ import {
   ArchiveDescribeScope,
   ArchiveLevelWallmarksDescription,
   ArchiveLevelWallmarkSlot,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

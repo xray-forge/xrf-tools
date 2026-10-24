@@ -6,7 +6,7 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
+import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app-levels";
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
 import { LevelWeatherCycleSelect } from "@/core/level/components/weather/LevelWeatherCycleSelect";
 import { LevelWeatherEffectSelect } from "@/core/level/components/weather/LevelWeatherEffectSelect";

@@ -5,7 +5,7 @@ import { Nullable } from "@xrf/types";
 
 import { AssetService } from "@/core/assets/services";
 import { texturesCommands } from "@/core/ipc/commands/textures";
-import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,
   ETexturePreviewMode,

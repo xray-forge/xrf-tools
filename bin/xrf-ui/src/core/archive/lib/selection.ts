@@ -1,9 +1,5 @@
-import {
-  ArchiveFileDescription,
-  AssetTextureDescriptor,
-  AudioDescriptor,
-  ImageDescriptor,
-} from "@/core/ipc/types/xrf-app";
+import { ArchiveFileDescription, AudioDescriptor, ImageDescriptor } from "@/core/ipc/types/xrf-app-archives";
+import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
 import { ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
 import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
 import { EPathEntryKind } from "@/core/path/entry-kind";

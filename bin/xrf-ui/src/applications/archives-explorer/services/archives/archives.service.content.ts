@@ -2,7 +2,7 @@ import { IArchiveEntry, TArchiveContent } from "@/core/archive/lib";
 import { fetchBulk } from "@/core/ipc/bulk";
 import { archivesCommands } from "@/core/ipc/commands/archives";
 import { archivesBulkRoutes } from "@/core/ipc/commands/archives-bulk";
-import { SessionId } from "@/core/ipc/types/xrf-app";
+import { SessionId } from "@/core/ipc/types/xrf-app-core";
 
 /**
  * Reads one file of the open subject as whatever a preview can draw it with, every read addressed by the subject's

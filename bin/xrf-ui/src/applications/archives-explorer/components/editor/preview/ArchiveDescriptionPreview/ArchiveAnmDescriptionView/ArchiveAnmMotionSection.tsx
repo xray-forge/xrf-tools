@@ -1,7 +1,7 @@
 import { formatNumber, formatSeconds } from "@xrf/format";
 import { ReactElement } from "react";
 
-import { ArchiveAnmDescription } from "@/core/ipc/types/xrf-app";
+import { ArchiveAnmDescription } from "@/core/ipc/types/xrf-app-archives";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

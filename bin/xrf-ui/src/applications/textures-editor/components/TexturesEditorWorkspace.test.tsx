@@ -16,7 +16,7 @@ import {
   TextureMakeBumpOutcome,
   TextureSaveOutcome,
   TexturesSaveRequest,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-textures";
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";

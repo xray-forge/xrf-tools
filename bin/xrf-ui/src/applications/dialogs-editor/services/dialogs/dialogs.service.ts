@@ -10,7 +10,7 @@ import { IDialogTreeEntry, toDialogTreeEntries } from "@/applications/dialogs-ed
 import { describeRoots } from "@/core/assets/lib/roots";
 import { dialogsCommands } from "@/core/ipc/commands/dialogs";
 import { requireSessionId, Session, SessionScopeService } from "@/core/ipc/session";
-import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
 import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";

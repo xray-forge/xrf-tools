@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
+import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app-levels";
 import { EXrayEngine, EXrayEngineEvidence } from "@/core/ipc/types/xrf-engine-target";
 import { MONOLITH_LEVEL_BLOOM, OPENXRAY_LEVEL_BLOOM } from "@/core/level/lib/look/level-look";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";

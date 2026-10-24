@@ -3,7 +3,12 @@ import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { Nullable } from "@xrf/types";
 
-import { TextureCatalog, TextureDescription, TextureEntry, TextureMaterialSummary } from "@/core/ipc/types/xrf-app";
+import {
+  TextureCatalog,
+  TextureDescription,
+  TextureEntry,
+  TextureMaterialSummary,
+} from "@/core/ipc/types/xrf-app-textures";
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";

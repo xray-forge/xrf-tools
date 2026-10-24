@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { TextureEntry, TextureMaterialSummary } from "@/core/ipc/types/xrf-app";
+import { TextureEntry, TextureMaterialSummary } from "@/core/ipc/types/xrf-app-textures";
 import {
   buildTextureNodes,
   countTextureBadges,

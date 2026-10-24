@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
+import { ConfigsDocument } from "@/core/ipc/types/xrf-app-configs";
 import {
   ELtxFindingKind,
   LtxAnchoredFinding,

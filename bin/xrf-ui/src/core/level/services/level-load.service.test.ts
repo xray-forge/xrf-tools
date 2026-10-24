@@ -3,7 +3,7 @@ import { EventBus, WireEvent } from "@wirestate/core";
 import { isObservableProp } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib";
-import { LevelSource, LevelSpawnObjectsDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
+import { LevelSource, LevelSpawnObjectsDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { EMPTY_LEVEL_SPAWN_REPORT, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";

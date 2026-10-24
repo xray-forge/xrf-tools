@@ -5,7 +5,7 @@ import { Container } from "@wirestate/core";
 
 import { LevelViewerListService } from "@/applications/level-viewer/services/list";
 import { AssetService } from "@/core/assets/services";
-import { LevelEntry } from "@/core/ipc/types/xrf-app";
+import { LevelEntry } from "@/core/ipc/types/xrf-app-levels";
 import { EXrayEngine, EXrayEngineEvidence, XrayEngineResolution } from "@/core/ipc/types/xrf-engine-target";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { clearLocalStorage } from "@/core/storage";

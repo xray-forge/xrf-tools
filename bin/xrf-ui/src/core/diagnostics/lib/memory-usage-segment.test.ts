@@ -7,7 +7,7 @@ import {
   MemoryUsage,
   WebviewProcessKind,
   WebviewProcessMemory,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-system";
 import { IEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
 
 const MB: number = 1024 * 1024;

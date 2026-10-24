@@ -1,4 +1,4 @@
-import { LevelSource } from "@/core/ipc/types/xrf-app";
+import { LevelSource } from "@/core/ipc/types/xrf-app-levels";
 
 /**
  * @param source - Where a level was opened from.

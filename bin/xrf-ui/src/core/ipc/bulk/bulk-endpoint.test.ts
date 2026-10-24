@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
 import { BulkEndpoint } from "@/core/ipc/bulk/bulk-endpoint";
-import { TransportEndpoint } from "@/core/ipc/types/xrf-app";
+import { TransportEndpoint } from "@/core/ipc/types/xrf-app-core";
 
 const ENDPOINT: TransportEndpoint = { origin: "http://127.0.0.1:5", token: "secret" };
 

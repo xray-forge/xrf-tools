@@ -8,7 +8,8 @@ import { Nullable } from "@xrf/types";
 
 import { visualsCommands } from "@/core/ipc/commands/visuals";
 import { Session, SessionScopeService } from "@/core/ipc/session";
-import { AssetSource, SelectedVisualDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { AssetSource, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
 import { RenderTextureReport } from "@/core/ipc/types/xrf-renderer";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { IRenderSurfaceDraw } from "@/core/render/lib/surface/render-surface-draw";

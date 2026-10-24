@@ -1,6 +1,6 @@
 import { assertExhaustive, Nullable } from "@xrf/types";
 
-import { EMapExportAnnotations, MapExportFormat, MapExportRequest } from "@/core/ipc/types/xrf-app";
+import { EMapExportAnnotations, MapExportFormat, MapExportRequest } from "@/core/ipc/types/xrf-app-levels";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { RENDER_MAP_MOST_PIXELS } from "@/core/ipc/types/xrf-renderer";
 import { ETextureEncodingFormat, ETextureEncodingQuality } from "@/core/ipc/types/xrf-texture";

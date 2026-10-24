@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { describeRoots } from "@/core/assets/lib";
-import { TextureCatalog } from "@/core/ipc/types/xrf-app";
+import { TextureCatalog } from "@/core/ipc/types/xrf-app-textures";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";

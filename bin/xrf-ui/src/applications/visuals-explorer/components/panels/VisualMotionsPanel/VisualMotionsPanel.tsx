@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect, useState } from "react";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
 import { VisualMotionDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";

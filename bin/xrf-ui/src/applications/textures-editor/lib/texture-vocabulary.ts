@@ -1,4 +1,4 @@
-import { TextureVocabularyEntry } from "@/core/ipc/types/xrf-app";
+import { TextureVocabularyEntry } from "@/core/ipc/types/xrf-app-textures";
 
 /**
  * The named values to offer for a descriptor field, with an unrecognised stored value appended.

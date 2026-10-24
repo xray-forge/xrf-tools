@@ -5,7 +5,7 @@ import {
   ArchiveLevelShader,
   EArchiveDescribeScope,
   EArchiveReferenceStatus,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 
 /**
  * What became of a shader name, worded for a definition rather than for a file.

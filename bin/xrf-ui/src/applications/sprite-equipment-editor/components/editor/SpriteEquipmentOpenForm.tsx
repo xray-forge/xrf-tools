@@ -7,7 +7,7 @@ import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { createRoots } from "@/core/assets/lib";
-import { EquipmentSpriteOpen } from "@/core/ipc/types/xrf-app";
+import { EquipmentSpriteOpen } from "@/core/ipc/types/xrf-app-sprite-equipment";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
 import { DDS_FILE_FILTERS, LTX_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";

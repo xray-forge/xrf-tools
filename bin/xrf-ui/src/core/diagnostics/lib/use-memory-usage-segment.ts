@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { TMemoryDetailSource } from "@/core/diagnostics/lib/memory-detail-source";
 import { describeMemoryUsage } from "@/core/diagnostics/lib/memory-usage-segment";
 import { useMemoryUsage } from "@/core/diagnostics/lib/use-memory-usage";
-import { MemoryUsage } from "@/core/ipc/types/xrf-app";
+import { MemoryUsage } from "@/core/ipc/types/xrf-app-system";
 import { IEditorStatusDetail } from "@/core/shell/editor-shell/editor-status-detail";
 import { IEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
 

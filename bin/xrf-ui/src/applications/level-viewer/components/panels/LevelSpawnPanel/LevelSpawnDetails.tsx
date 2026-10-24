@@ -5,7 +5,7 @@ import { ReactElement } from "react";
 
 import { describeLevelSpawnRelease } from "@/applications/level-viewer/lib/spawn/level-spawn-release";
 import { toLevelSpawnPosition } from "@/applications/level-viewer/lib/spawn/level-spawn-sphere";
-import { LevelSpawnObject, LevelSpawnObjectDetails } from "@/core/ipc/types/xrf-app";
+import { LevelSpawnObject, LevelSpawnObjectDetails } from "@/core/ipc/types/xrf-app-levels";
 import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";

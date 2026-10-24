@@ -9,7 +9,7 @@ import { ReactElement, useCallback, useId } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getSubjectRoot, getSubjectSize } from "@/core/archive/lib";
-import { ArchiveSubject } from "@/core/ipc/types/xrf-app";
+import { ArchiveSubject } from "@/core/ipc/types/xrf-app-archives";
 import { EApplicationId } from "@/core/routing/application";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";

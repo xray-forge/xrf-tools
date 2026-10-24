@@ -3,7 +3,7 @@ import { Container } from "@wirestate/core";
 
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
-import { TextureMakeBumpOutcome } from "@/core/ipc/types/xrf-app";
+import { TextureMakeBumpOutcome } from "@/core/ipc/types/xrf-app-textures";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";

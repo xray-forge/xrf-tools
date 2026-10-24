@@ -1,6 +1,6 @@
 import { assertExhaustive } from "@xrf/types";
 
-import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app";
+import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app-core";
 
 /**
  * Human readable name of where a visual came from.

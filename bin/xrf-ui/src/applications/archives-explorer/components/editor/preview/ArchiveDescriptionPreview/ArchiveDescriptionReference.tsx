@@ -1,6 +1,6 @@
 import { ReactElement } from "react";
 
-import { ArchiveDescribeScope, ArchiveReference } from "@/core/ipc/types/xrf-app";
+import { ArchiveDescribeScope, ArchiveReference } from "@/core/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { describeReferenceStatus } from "./ArchiveDescriptionPreview.utils";

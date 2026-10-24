@@ -1,6 +1,6 @@
 import { formatCount } from "@xrf/format";
 
-import { ArchiveLevelGeomDescription, ArchiveLevelGeomLayout } from "@/core/ipc/types/xrf-app";
+import { ArchiveLevelGeomDescription, ArchiveLevelGeomLayout } from "@/core/ipc/types/xrf-app-archives";
 
 /**
  * What one vertex layout is made of.

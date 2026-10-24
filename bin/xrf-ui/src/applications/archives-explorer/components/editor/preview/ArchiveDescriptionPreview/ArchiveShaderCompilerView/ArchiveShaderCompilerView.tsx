@@ -1,6 +1,6 @@
 import { ReactElement } from "react";
 
-import { ArchiveShaderCompilerDescription, ArchiveShaderCompilerShader } from "@/core/ipc/types/xrf-app";
+import { ArchiveShaderCompilerDescription, ArchiveShaderCompilerShader } from "@/core/ipc/types/xrf-app-archives";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

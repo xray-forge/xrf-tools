@@ -2,7 +2,7 @@ import { Channel } from "@tauri-apps/api/core";
 import { EventType } from "@wirestate/core";
 import { Nullable } from "@xrf/types";
 
-import { JobConclusion, JobKind } from "@/core/ipc/types/xrf-app";
+import { JobConclusion, JobKind } from "@/core/ipc/types/xrf-app-core";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { INotificationPayload } from "@/core/notifications/lib";
 

@@ -4,7 +4,7 @@ import {
   ArchiveParticlesEffect,
   ArchiveParticlesEffectName,
   ArchiveParticlesGroupEffect,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 
 /**
  * How much of an emitter there is.

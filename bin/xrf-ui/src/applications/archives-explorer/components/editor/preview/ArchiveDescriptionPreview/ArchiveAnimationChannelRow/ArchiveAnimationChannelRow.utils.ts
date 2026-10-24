@@ -1,7 +1,11 @@
 import { formatNumber } from "@xrf/format";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
-import { ArchiveAnimationBehavior, ArchiveAnimationChannel, EArchiveAnimationBehavior } from "@/core/ipc/types/xrf-app";
+import {
+  ArchiveAnimationBehavior,
+  ArchiveAnimationChannel,
+  EArchiveAnimationBehavior,
+} from "@/core/ipc/types/xrf-app-archives";
 
 /**
  * What a channel does outside its keys, in the words the engine's own name stands for.

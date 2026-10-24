@@ -5,15 +5,14 @@ import { flowResult } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib";
 import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
+import { SessionChange, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
 import {
   LEVEL_ENVIRONMENT_PART,
   LEVEL_GEOMETRY_PART,
   LEVEL_MAP_PART,
   LEVEL_SPAWN_PART,
   LevelSpawnObjectsDescription,
-  SessionChange,
-  SessionSnapshot,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import {
   mockLevelPartResponses,

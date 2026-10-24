@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 
 import { AssetTextureDetails } from "@/core/assets/components/AssetTextureDetails";
 import { describeResolution, getLocatedAsset } from "@/core/assets/lib/resolution";
-import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
+import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";

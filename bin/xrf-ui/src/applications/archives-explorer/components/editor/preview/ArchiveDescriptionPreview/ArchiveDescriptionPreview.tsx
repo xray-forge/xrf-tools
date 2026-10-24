@@ -11,7 +11,7 @@ import {
   ArchiveFileDescription,
   EArchiveDescribeRefusal,
   EArchiveFormatDescription,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { BaseComponentProps } from "@/lib/dom/element-types";

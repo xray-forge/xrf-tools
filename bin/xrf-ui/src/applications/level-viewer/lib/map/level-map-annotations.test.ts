@@ -5,7 +5,7 @@ import {
   toLevelMapAnnotationsWith,
   toMapAnnotationsRequest,
 } from "@/applications/level-viewer/lib/map/level-map-annotations";
-import { ELevelAnnotationKind } from "@/core/ipc/types/xrf-app";
+import { ELevelAnnotationKind } from "@/core/ipc/types/xrf-app-levels";
 
 describe("level map annotations", () => {
   it("draws none by default", () => {

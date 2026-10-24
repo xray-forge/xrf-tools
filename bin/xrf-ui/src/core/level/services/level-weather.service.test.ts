@@ -3,7 +3,8 @@ import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { autorun } from "@wirestate/mobx";
 
-import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app-levels";
 import { EXrayEngine, EXrayEngineEvidence, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherCycleId } from "@/core/ipc/types/xrf-environment";
 import { EWorldWeatherPlay, EWorldWeatherTransition } from "@/core/ipc/types/xrf-world";

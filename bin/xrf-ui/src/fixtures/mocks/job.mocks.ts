@@ -1,4 +1,5 @@
-import { ARCHIVES_JOB_PACK, JobDescription } from "@/core/ipc/types/xrf-app";
+import { ARCHIVES_JOB_PACK } from "@/core/ipc/types/xrf-app-archives";
+import { JobDescription } from "@/core/ipc/types/xrf-app-core";
 
 /** A job the backend lists: an archives pack running a second, nothing reported yet, unless told. */
 export function mockJobDescription(patch: Partial<JobDescription> = {}): JobDescription {

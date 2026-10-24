@@ -5,7 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use specta::Types;
 use specta::datatype::NamedDataType;
 
-use crate::constants::{BINDINGS_ROOT, TYPES_DIRECTORY};
+use crate::mirror_imports::MirrorImports;
 use crate::type_modules::TypeModules;
 use crate::typescript::source::{for_each_identifier, without_comments_and_strings};
 
@@ -18,20 +18,24 @@ pub(crate) struct TypeOwnership {
   /// Tauri Specta registers `std::result::Result` whether or not the error handling mode makes use of it. One
   /// that stays unreferenced is simply absent from the output; one that is referenced has nowhere to live.
   foreign: BTreeMap<String, String>,
+  /// How an import names the module declaring a type.
+  imports: MirrorImports,
 }
 
 impl TypeOwnership {
   /// Resolves every collected type to its module as `modules` groups the crates, grouping the declarations each module
-  /// has to render.
+  /// has to render; an import of one names it as `imports` addresses it.
   ///
   /// Fails when one name resolves to two modules, which would put the same declaration in two files again.
   pub(crate) fn resolve<'a>(
     types: &'a Types,
     modules: &TypeModules,
+    imports: &MirrorImports,
   ) -> (Self, BTreeMap<String, Vec<&'a NamedDataType>>) {
     let mut ownership: Self = Self {
       owners: BTreeMap::new(),
       foreign: BTreeMap::new(),
+      imports: imports.clone(),
     };
     let mut declared: BTreeMap<String, Vec<&NamedDataType>> = BTreeMap::new();
 
@@ -91,7 +95,7 @@ impl TypeOwnership {
   }
 
   pub(crate) fn imports(&self, referenced: &BTreeSet<&str>) -> String {
-    Self::render_imports(referenced, &self.owners)
+    self.render_imports(referenced)
   }
 
   /// The import statements a module carrying `source` needs, where `owner` declares nothing of its own.
@@ -130,13 +134,14 @@ impl TypeOwnership {
   }
 
   /// Import statements pulling every referenced type from the module that declares it.
-  pub(crate) fn render_imports(referenced: &BTreeSet<&str>, owners: &BTreeMap<String, String>) -> String {
+  fn render_imports(&self, referenced: &BTreeSet<&str>) -> String {
     let mut grouped: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
 
     for name in referenced {
       grouped
         .entry(
-          owners
+          self
+            .owners
             .get(*name)
             .unwrap_or_else(|| panic!("`{name}` is referenced but has no owning module"))
             .as_str(),
@@ -149,8 +154,9 @@ impl TypeOwnership {
       .into_iter()
       .map(|(module, names)| {
         format!(
-          "import {{ {} }} from \"{BINDINGS_ROOT}/{TYPES_DIRECTORY}/{module}\";\n",
-          names.join(", ")
+          "import {{ {} }} from \"{}\";\n",
+          names.join(", "),
+          self.imports.type_module(module)
         )
       })
       .collect()

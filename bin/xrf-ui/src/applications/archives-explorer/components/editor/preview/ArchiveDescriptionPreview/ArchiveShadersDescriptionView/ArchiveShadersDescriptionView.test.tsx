@@ -7,7 +7,7 @@ import {
   ArchiveShadersDescription,
   EArchiveDescribeScope,
   EArchiveReferenceStatus,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 import {
   mockArchiveReference,
   mockArchiveShadersBlender,

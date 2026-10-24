@@ -1,6 +1,6 @@
 import { formatCount } from "@xrf/format";
 
-import { ArchiveLevelLightsGroup } from "@/core/ipc/types/xrf-app";
+import { ArchiveLevelLightsGroup } from "@/core/ipc/types/xrf-app-archives";
 
 /**
  * What one chunk of the file holds.

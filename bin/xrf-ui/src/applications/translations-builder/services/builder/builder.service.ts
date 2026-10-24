@@ -4,7 +4,7 @@ import { Logger } from "@xrf/logging";
 import { describeTranslationBuildOutcome } from "@/applications/translations-builder/lib/describe-build-outcome";
 import { createRoots } from "@/core/assets/lib";
 import { translationsCommands } from "@/core/ipc/commands/translations";
-import { TRANSLATIONS_JOB_BUILD } from "@/core/ipc/types/xrf-app";
+import { TRANSLATIONS_JOB_BUILD } from "@/core/ipc/types/xrf-app-translations";
 import { ETranslationLanguage, TranslationBuildResult } from "@/core/ipc/types/xrf-translation";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";

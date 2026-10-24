@@ -1,7 +1,7 @@
 import { formatNumber } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 
-import { ArchiveLevelSndStaticSound } from "@/core/ipc/types/xrf-app";
+import { ArchiveLevelSndStaticSound } from "@/core/ipc/types/xrf-app-archives";
 
 /**
  * How loudly and how fast one planted sound plays.

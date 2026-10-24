@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
+import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app-configs";
 import { ConfigsDocumentView } from "@/core/ltx/components/ConfigsDocumentView";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/core/ltx/services/document";
 import { ConfigsProjectService } from "@/core/ltx/services/project";

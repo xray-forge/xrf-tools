@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { JobDescription } from "@/core/ipc/types/xrf-app";
+import { JobDescription } from "@/core/ipc/types/xrf-app-core";
 
 import { describeJobStatus } from "./job-status";
 

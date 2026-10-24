@@ -9,7 +9,7 @@ import { Nullable } from "@xrf/types";
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { createRoots } from "@/core/assets/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app";
+import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app-core";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";

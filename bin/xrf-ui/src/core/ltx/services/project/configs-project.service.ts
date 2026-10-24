@@ -9,7 +9,8 @@ import { Nullable } from "@xrf/types";
 import { createRoots } from "@/core/assets/lib";
 import { configsCommands } from "@/core/ipc/commands/configs";
 import { Session, SessionScopeService } from "@/core/ipc/session";
-import { ConfigsProjectDescriptor, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app-configs";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
 import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 

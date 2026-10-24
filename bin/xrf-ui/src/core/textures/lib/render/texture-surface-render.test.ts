@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/ipc/types/xrf-app";
+import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/ipc/types/xrf-app-textures";
 import { RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import { toTextureSurfaceRequest, toTextureViewOptions } from "@/core/textures/lib/render/texture-surface-render";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";

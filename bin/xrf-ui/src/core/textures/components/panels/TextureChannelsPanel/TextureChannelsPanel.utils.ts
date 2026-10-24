@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import { getLocatedAsset } from "@/core/assets/lib";
-import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import { ETextureBumpPlane } from "@/core/textures/lib/texture-bump-plane";
 import { ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 

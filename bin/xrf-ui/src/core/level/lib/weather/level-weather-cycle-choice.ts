@@ -1,4 +1,4 @@
-import { EnvironmentCycleEntry, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
+import { EnvironmentCycleEntry, LevelWeatherDescription } from "@/core/ipc/types/xrf-app-levels";
 import { EWeatherCycleKind, LevelWeatherOption } from "@/core/ipc/types/xrf-environment";
 
 /**

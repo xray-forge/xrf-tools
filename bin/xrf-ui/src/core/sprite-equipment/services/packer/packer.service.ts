@@ -3,7 +3,7 @@ import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { spriteEquipmentCommands } from "@/core/ipc/commands/sprite-equipment";
-import { SPRITE_EQUIPMENT_JOB_PACK } from "@/core/ipc/types/xrf-app";
+import { SPRITE_EQUIPMENT_JOB_PACK } from "@/core/ipc/types/xrf-app-sprite-equipment";
 import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobCompletion, JobOperation } from "@/core/jobs/lib/job-operation";

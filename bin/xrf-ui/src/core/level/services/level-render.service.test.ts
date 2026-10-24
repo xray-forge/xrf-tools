@@ -4,7 +4,8 @@ import { EventBus } from "@wirestate/core";
 
 import { createRoots } from "@/core/assets/lib";
 import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
-import { LEVEL_GEOMETRY_PART, LEVEL_MAP_PART, SessionChange } from "@/core/ipc/types/xrf-app";
+import { SessionChange } from "@/core/ipc/types/xrf-app-core";
+import { LEVEL_GEOMETRY_PART, LEVEL_MAP_PART } from "@/core/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import {
   ERenderAntialiasing,

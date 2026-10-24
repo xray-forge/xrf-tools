@@ -9,7 +9,7 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { describeTextureShape } from "@/core/assets/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-import { AssetTextureShape } from "@/core/ipc/types/xrf-app";
+import { AssetTextureShape } from "@/core/ipc/types/xrf-app-core";
 import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";

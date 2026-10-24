@@ -1,6 +1,6 @@
 import { jest } from "@jest/globals";
 
-import { TransportEndpoint } from "@/core/ipc/types/xrf-app";
+import { TransportEndpoint } from "@/core/ipc/types/xrf-app-core";
 
 export type BulkHandler = (args: Record<string, unknown>) => unknown;
 
