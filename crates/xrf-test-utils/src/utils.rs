@@ -94,6 +94,26 @@ pub fn build_absolute_generated_test_resource_path(resource_path: &str) -> PathB
   root.join(resource_path)
 }
 
+/// Make an empty directory for a generated test resource, clearing whatever an earlier run of the same test left there,
+/// and answer its absolute path.
+///
+/// # Errors
+///
+/// Returns an IO error when the old directory cannot be removed or the new one made.
+pub fn create_generated_test_resource_dir(resource_path: &str) -> IoResult<PathBuf> {
+  let directory: PathBuf = build_absolute_generated_test_resource_path(resource_path);
+
+  match std::fs::remove_dir_all(&directory) {
+    Ok(()) => {}
+    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+    Err(error) => return Err(error),
+  }
+
+  std::fs::create_dir_all(&directory)?;
+
+  Ok(directory)
+}
+
 /// Get absolute path to a generated sample resource.
 pub fn build_absolute_generated_test_sample_file_path(file: &str, resource: &str) -> PathBuf {
   build_absolute_generated_test_resource_path(&build_relative_test_sample_file_path(file, resource))

@@ -28,6 +28,33 @@ pub enum DdsEncodeCandidate {
 impl DdsEncodeCandidate {
   pub const ALL: [Self; 5] = [Self::Bc1, Self::Bc2, Self::Bc3, Self::Rgba8, Self::Bc7];
 
+  /// Every candidate's [`Self::name`], in [`Self::ALL`] order, for a parser offering them.
+  pub const NAMES: [&'static str; 5] = [
+    Self::Bc1.name(),
+    Self::Bc2.name(),
+    Self::Bc3.name(),
+    Self::Rgba8.name(),
+    Self::Bc7.name(),
+  ];
+
+  /// The short lowercase name a person types for the format.
+  pub const fn name(self) -> &'static str {
+    match self {
+      Self::Bc1 => "bc1",
+      Self::Bc2 => "bc2",
+      Self::Bc3 => "bc3",
+      Self::Rgba8 => "rgba8",
+      Self::Bc7 => "bc7",
+    }
+  }
+
+  /// The candidate [`Self::name`] names, ignoring case.
+  pub fn from_name(name: &str) -> Option<Self> {
+    Self::ALL
+      .into_iter()
+      .find(|candidate| candidate.name().eq_ignore_ascii_case(name))
+  }
+
   /// Name of the format, with the DXT name the descriptor and the SDK use for it.
   pub const fn label(self) -> &'static str {
     match self {

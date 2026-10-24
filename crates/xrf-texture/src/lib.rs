@@ -16,8 +16,8 @@ pub use crate::build::{
 pub use crate::bump::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
 pub use crate::crop::{CropTextureOptions, CropTextureProcessor, CropTextureResult};
 pub use crate::description::{
-  PackDescriptionOptions, PackDescriptionProcessor, TextureFileDescriptor, TextureSpriteDescriptor,
-  UnpackDescriptionProcessor,
+  PackDescriptionProcessor, SpriteDescriptionOptions, SpriteDescriptionResult, TextureFileDescriptor,
+  TextureSpriteDescriptor, UnpackDescriptionProcessor,
 };
 pub use crate::encoding::{TextureEncodingFormat, TextureEncodingQuality};
 pub use crate::equipment::{
