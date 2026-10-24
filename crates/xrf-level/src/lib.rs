@@ -13,6 +13,7 @@ pub(crate) mod lights;
 pub(crate) mod ps_static;
 pub(crate) mod snd_static;
 pub(crate) mod som;
+pub(crate) mod verify;
 pub(crate) mod wallmarks;
 
 #[cfg(test)]
@@ -76,6 +77,10 @@ pub use crate::snd_static::level_snd_static_sound::*;
 pub use crate::snd_static::level_snd_static_window::*;
 pub use crate::som::level_som_file::*;
 pub use crate::som::level_som_polygon::*;
+pub use crate::verify::level_file_source::*;
+pub use crate::verify::level_geometry_census::*;
+pub use crate::verify::level_geometry_verifier::*;
+pub use crate::verify::level_geometry_verify_result::*;
 pub use crate::wallmarks::level_wallmark::*;
 pub use crate::wallmarks::level_wallmark_slot::*;
 pub use crate::wallmarks::level_wallmark_vertex::*;

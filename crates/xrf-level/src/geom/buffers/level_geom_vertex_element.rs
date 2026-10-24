@@ -36,6 +36,59 @@ impl LevelGeomVertexElement {
   /// `D3DDECLMETHOD_UV`, which the tessellator generates rather than reading, so it occupies no vertex bytes.
   pub const METHOD_UV: u8 = 4;
 
+  /// `D3DDECLUSAGE` names by value.
+  const USAGE_NAMES: [&'static str; 14] = [
+    "POSITION",
+    "BLENDWEIGHT",
+    "BLENDINDICES",
+    "NORMAL",
+    "PSIZE",
+    "TEXCOORD",
+    "TANGENT",
+    "BINORMAL",
+    "TESSFACTOR",
+    "POSITIONT",
+    "COLOR",
+    "FOG",
+    "DEPTH",
+    "SAMPLE",
+  ];
+
+  /// `D3DDECLTYPE` names by value, in the order `DECLARATION_TYPE_SIZES` sizes them.
+  const KIND_NAMES: [&'static str; 17] = [
+    "FLOAT1",
+    "FLOAT2",
+    "FLOAT3",
+    "FLOAT4",
+    "D3DCOLOR",
+    "UBYTE4",
+    "SHORT2",
+    "SHORT4",
+    "UBYTE4N",
+    "SHORT2N",
+    "SHORT4N",
+    "USHORT2N",
+    "USHORT4N",
+    "UDEC3",
+    "DEC3N",
+    "FLOAT16_2",
+    "FLOAT16_4",
+  ];
+
+  /// Its `D3DDECLUSAGE` by name, or `USAGE(<value>)` for one the enumeration does not name.
+  pub fn get_usage_name(&self) -> String {
+    Self::USAGE_NAMES
+      .get(self.usage as usize)
+      .map_or_else(|| format!("USAGE({})", self.usage), |name| String::from(*name))
+  }
+
+  /// Its `D3DDECLTYPE` by name, or `TYPE(<value>)` for one the enumeration does not name.
+  pub fn get_kind_name(&self) -> String {
+    Self::KIND_NAMES
+      .get(self.kind as usize)
+      .map_or_else(|| format!("TYPE({})", self.kind), |name| String::from(*name))
+  }
+
   /// Whether this element ends the declaration rather than describing anything.
   pub const fn is_terminator(&self) -> bool {
     self.stream == Self::TERMINATOR_STREAM

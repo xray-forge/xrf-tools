@@ -10,6 +10,7 @@ use xrf_utils::format_path;
 use crate::level::dynamic_lights::level_dynamic_lights_chunk::LevelDynamicLightsChunk;
 use crate::level::level_header_chunk::LevelHeaderChunk;
 use crate::level::portals::level_portals_chunk::LevelPortalsChunk;
+use crate::level::sectors::level_sector::LevelSector;
 use crate::level::sectors::level_sectors_chunk::LevelSectorsChunk;
 use crate::level::shaders::level_shaders_chunk::LevelShadersChunk;
 use crate::level::visuals::level_visuals_chunk::LevelVisualsChunk;
@@ -44,6 +45,14 @@ pub struct LevelFile {
 }
 
 impl LevelFile {
+  /// The file a compiled level's bundle is shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level";
+
+  /// The sectors the level names, none for a level built without them.
+  pub fn get_sectors(&self) -> &[LevelSector] {
+    self.sectors.as_ref().map_or(&[], |chunk| &chunk.sectors)
+  }
+
   /// Read level file from provided path.
   pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
     Self::read_from_file::<T>(File::open(path).map_err(|error| {
