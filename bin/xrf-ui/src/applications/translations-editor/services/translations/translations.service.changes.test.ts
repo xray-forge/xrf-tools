@@ -80,7 +80,7 @@ function notify(container: Container, change: SessionChange): void {
 }
 
 function derived(sessionId: string, revision: number): SessionChange {
-  return { sessionId, revision, root: { kind: "derived" }, staleParts: [] };
+  return { sessionId, revision, root: { kind: "derived" }, staleParts: [], isViewRenewed: true };
 }
 
 describe("TranslationsService changes", () => {
@@ -106,7 +106,7 @@ describe("TranslationsService changes", () => {
     const before: number = countReads();
 
     notify(container, derived("another", 1));
-    notify(container, { sessionId, revision: 1, root: { kind: "kept" }, staleParts: [] });
+    notify(container, { sessionId, revision: 1, root: { kind: "kept" }, staleParts: [], isViewRenewed: false });
     await flush();
 
     expect(countReads()).toBe(before);
@@ -171,6 +171,7 @@ describe("TranslationsService changes", () => {
       revision: 0,
       root: { kind: "failed", reason: "st_test.json: bad JSON" },
       staleParts: [],
+      isViewRenewed: false,
     });
     await flush();
 

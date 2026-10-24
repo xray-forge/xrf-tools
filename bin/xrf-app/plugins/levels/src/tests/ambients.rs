@@ -9,7 +9,7 @@ use xrf_environment::{
 };
 use xrf_renderer::{RenderAmbient, RenderAmbientEffect, RenderWindBlast};
 
-use crate::ambients::{list_ambient_particles, to_render_ambient_effects, to_render_ambients};
+use crate::level_render_ambients::LevelRenderAmbients;
 
 fn new_ambient(name: &str, effects: &[&str], period: [f32; 2]) -> Ambient {
   let mut ambient: Ambient = Ambient::new(name, "environment\\ambients.ltx");
@@ -94,14 +94,14 @@ fn takes_a_levels_own_ambient_over_the_shared_one() {
   let catalog: EnvironmentCatalog = new_catalog();
 
   assert_eq!(
-    to_render_ambients(&catalog, "zaton").get("day"),
+    LevelRenderAmbients::to_render(&catalog, "zaton").get("day"),
     Some(&RenderAmbient {
       effects: vec![String::from("fog")],
       period: (Duration::from_secs(5), Duration::from_secs(6)),
     })
   );
   assert_eq!(
-    to_render_ambients(&catalog, "jupiter")
+    LevelRenderAmbients::to_render(&catalog, "jupiter")
       .get("day")
       .map(|it| it.effects.len()),
     Some(2)
@@ -111,7 +111,7 @@ fn takes_a_levels_own_ambient_over_the_shared_one() {
 // `iFloor(life_time * 1000)`: the life in whole milliseconds; a blast only where its strength is written.
 #[test]
 fn reads_an_effects_life_and_wind_as_the_engine_does() {
-  let effects = to_render_ambient_effects(&new_catalog());
+  let effects = LevelRenderAmbients::to_render_effects(&new_catalog());
 
   assert_eq!(
     effects.get("fog"),
@@ -146,7 +146,7 @@ fn reads_an_unbounded_wind_blast_ramp_as_an_hour() {
     ],
   ));
 
-  let blast: RenderWindBlast = to_render_ambient_effects(&catalog)
+  let blast: RenderWindBlast = LevelRenderAmbients::to_render_effects(&catalog)
     .get("endless")
     .map(|it| it.wind_blast)
     .unwrap_or_default();
@@ -157,7 +157,7 @@ fn reads_an_unbounded_wind_blast_ramp_as_an_hour() {
 
 #[test]
 fn lists_every_effects_particles() {
-  let mut particles: Vec<String> = list_ambient_particles(&new_catalog());
+  let mut particles: Vec<String> = LevelRenderAmbients::list_particles(&new_catalog());
 
   particles.sort();
 

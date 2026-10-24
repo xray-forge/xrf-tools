@@ -8,8 +8,9 @@ use xrf_ltx_inspect::LtxResolvedIndex;
 use xrf_utils::error_to_string;
 use xrf_vfs::XrayLogicalPath;
 
+use crate::configs_project::ConfigsProject;
 use crate::request::ConfigsResolvedRequest;
-use crate::state::{ConfigsProject, ConfigsState};
+use crate::state::ConfigsState;
 
 /// Lists every section one entry point resolves to, named and counted.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_resolved_sections"))]

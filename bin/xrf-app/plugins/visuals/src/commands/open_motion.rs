@@ -7,7 +7,8 @@ use xrf_app_core::types::TauriResult;
 use xrf_visual::{VisualMotionBake, VisualMotionPose};
 
 use crate::posed_visual_motion::PosedVisualMotion;
-use crate::state::{SelectedVisual, VisualState};
+use crate::selected_visual::SelectedVisual;
+use crate::state::VisualState;
 
 /// Pose the open visual through one of its motions, held as `motion_id`, an opening of the viewer's own, and report
 /// what came out.

@@ -166,8 +166,8 @@ export const renderCommands = {
   describeProblems: (viewport: RenderViewportId) =>
     __TAURI_INVOKE<WorldLevelProblems>("plugin:render|describe_problems", { viewport }),
   /** Say what became of every texture a viewport's level samples. */
-  describeTextures: (viewport: RenderViewportId) =>
-    __TAURI_INVOKE<Array<RenderTextureReport>>("plugin:render|describe_textures", { viewport }),
+  describeTextureLoads: (viewport: RenderViewportId) =>
+    __TAURI_INVOKE<Array<RenderTextureReport>>("plugin:render|describe_texture_loads", { viewport }),
   /** Stop drawing a viewport; the GPU goes a few seconds after the last one. */
   detachViewport: (viewport: RenderViewportId) => __TAURI_INVOKE<void>("plugin:render|detach_viewport", { viewport }),
   /**

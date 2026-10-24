@@ -17,7 +17,7 @@ use xrf_visual::{
 };
 
 use crate::posed_visual_motion::PosedVisualMotion;
-use crate::state::SelectedVisual;
+use crate::selected_visual::SelectedVisual;
 
 /// The one object an asset scene stands: the open model at the origin.
 const MODEL_OBJECT: u32 = 0;

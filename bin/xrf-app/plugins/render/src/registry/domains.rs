@@ -13,7 +13,7 @@ macro_rules! for_each_render_domain {
         describe_libraries => crate::commands::describe_libraries::render_describe_libraries,
         describe_load => crate::commands::describe_load::render_describe_load,
         describe_problems => crate::commands::describe_problems::render_describe_problems,
-        describe_textures => crate::commands::describe_textures::render_describe_textures,
+        describe_texture_loads => crate::commands::describe_texture_loads::render_describe_texture_loads,
         detach_viewport => crate::commands::detach_viewport::render_detach_viewport,
         list_backends => crate::commands::list_backends::render_list_backends,
         locate_spawn_object => crate::commands::locate_spawn_object::render_locate_spawn_object,

@@ -10,9 +10,9 @@ use xrf_math::Vector3d;
 use xrf_vfs::XraySearch;
 use xrf_visual::{HemiEstimator, VisualSphere, VisualTransform};
 
+use crate::level_report::LevelReport;
 use crate::parts::{LevelCollisionPart, LevelSpawnPart};
-use crate::report::{report_hemi, report_missing_hemi, report_unreadable_lights};
-use crate::spawn_objects::get_drawn_visual;
+use crate::state::LevelSpawnCategory;
 use crate::state::{LIGHTS_FILE, LevelSource, LevelSpawn, LevelSpawnObjectHemi, LevelSpawnVisual, SelectedLevel};
 
 /// What a change event calls a level's hemisphere lighting when it goes stale.
@@ -37,7 +37,7 @@ impl LevelHemiPart {
   /// Returns why the collision form cannot be read, which every later ask answers with again.
   pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Result<Arc<HemiEstimator>, String> {
     current.parts.get_or_record::<Self>(search, |search| {
-      Self::read(current, search).inspect_err(|error| report_missing_hemi(&current.source, error))
+      Self::read(current, search).inspect_err(|error| LevelReport::missing_hemi(&current.source, error))
     })
   }
 
@@ -53,7 +53,7 @@ impl LevelHemiPart {
       .par_iter()
       .enumerate()
       .filter_map(|(index, object)| {
-        let (_, visual) = get_drawn_visual(object)?;
+        let (_, visual) = LevelSpawnCategory::get_drawn_visual(object)?;
         let sphere: &VisualSphere = spheres.get(visual)?;
         // The visual's sphere is in renderer space, and so is where the object stands it; the form is the engine's.
         let centre: Vector3d =
@@ -92,7 +92,7 @@ impl LevelHemiPart {
     let tracer: Arc<LevelCformTracer> = LevelCollisionPart::get(current, search)?;
     let estimator: HemiEstimator = HemiEstimator::new(tracer, &Self::read_lights(&current.source, search));
 
-    report_hemi(&current.source, estimator.get_light_count(), started);
+    LevelReport::hemi(&current.source, estimator.get_light_count(), started);
 
     Ok(Arc::new(estimator))
   }
@@ -115,7 +115,7 @@ impl LevelHemiPart {
         .cloned()
         .collect(),
       Err(error) => {
-        report_unreadable_lights(source, &error);
+        LevelReport::unreadable_lights(source, &error);
 
         Vec::new()
       }

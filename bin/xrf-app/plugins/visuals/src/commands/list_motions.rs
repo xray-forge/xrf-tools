@@ -5,7 +5,8 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 
-use crate::state::{SelectedVisual, VisualState};
+use crate::selected_visual::SelectedVisual;
+use crate::state::VisualState;
 
 /// Every motion the open visual can play, by name.
 ///

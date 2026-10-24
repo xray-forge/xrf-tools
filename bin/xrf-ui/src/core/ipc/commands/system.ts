@@ -21,7 +21,7 @@ export const systemCommands = {
   describePath: (path: string) => __TAURI_INVOKE<PathDescription>("plugin:system|describe_path", { path }),
   /** Where the application keeps its own files, as its logs are kept: its first data directory with a Unicode path. */
   getAppDataRoot: () => __TAURI_INVOKE<string>("plugin:system|get_app_data_root"),
-  /** Report which build of the application is running. */
+  /** Report which build of the application is running, as the application recorded it. */
   getBuildInfo: () => __TAURI_INVOKE<BuildInfo>("plugin:system|get_build_info"),
   /** Where tools write when no output directory has been configured. */
   getDefaultOutputRoot: () => __TAURI_INVOKE<string>("plugin:system|get_default_output_root"),

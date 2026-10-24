@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_spawn::AlifeObjectInherited;
+use xrf_spawn::{AlifeObject, AlifeObjectInherited};
 
 /// What a spawned object is, by the engine class its spawn stores: what the viewer groups and toggles it by.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -52,5 +52,11 @@ impl LevelSpawnCategory {
       | AlifeObjectInherited::SeSmartTerrain(_)
       | AlifeObjectInherited::SeLevelChanger(_) => None,
     }
+  }
+
+  /// What an object is drawn in and as, or `None` for one drawn as nothing: the one rule every reader of the drawn
+  /// objects goes by.
+  pub fn get_drawn_visual(object: &AlifeObject) -> Option<(Self, &str)> {
+    Some((Self::of(&object.inherited)?, object.inherited.get_visual()?))
   }
 }

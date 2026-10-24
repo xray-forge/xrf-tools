@@ -3,7 +3,7 @@
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{EnvironmentValue, LensFlare, LensFlareKey};
 
-use crate::lens_flares::to_render_lens_flare;
+use crate::level_lens_flares::LevelLensFlares;
 
 fn new_flare(values: Vec<(LensFlareKey, EnvironmentValue)>) -> LensFlare {
   let mut flare: LensFlare = LensFlare::new("partly_halo", "environment\\suns.ltx");
@@ -48,7 +48,7 @@ fn reads_the_sprite_flares_and_gradient_a_section_draws() {
     (LensFlareKey::BlendDownTime, EnvironmentValue::Number(20.0)),
   ]);
 
-  let flare = to_render_lens_flare(&new_flare(values), XrayEngine::Extended);
+  let flare = LevelLensFlares::to_render(&new_flare(values), XrayEngine::Extended);
   let sprite = flare.sprite.expect("the sprite is drawn");
 
   assert_eq!(sprite.texture, "fx\\fx_sun_halo.tga");
@@ -70,7 +70,7 @@ fn reads_the_sprite_flares_and_gradient_a_section_draws() {
 // The engine reads `atof` of an item it does not find, a zero.
 #[test]
 fn reads_a_flare_short_of_its_lists_as_zero() {
-  let flare = to_render_lens_flare(
+  let flare = LevelLensFlares::to_render(
     &new_flare(vec![
       (LensFlareKey::Flares, EnvironmentValue::Flag(true)),
       (LensFlareKey::FlareTextures, list(&["fx\\a", "fx\\b"])),
@@ -96,7 +96,7 @@ fn takes_the_sprite_from_source_unless_sun_is_written_over_it() {
     (LensFlareKey::SourceIgnoreColor, EnvironmentValue::Flag(true)),
   ];
 
-  let only_source = to_render_lens_flare(&new_flare(sourced.clone()), XrayEngine::Vanilla);
+  let only_source = LevelLensFlares::to_render(&new_flare(sourced.clone()), XrayEngine::Vanilla);
 
   assert_eq!(
     only_source.sprite.map(|it| (it.texture, it.is_colorless)),
@@ -106,7 +106,7 @@ fn takes_the_sprite_from_source_unless_sun_is_written_over_it() {
   sourced.extend(sun_sprite(false, "fx\\fx_sun_halo"));
 
   assert!(
-    to_render_lens_flare(&new_flare(sourced), XrayEngine::Vanilla)
+    LevelLensFlares::to_render(&new_flare(sourced), XrayEngine::Vanilla)
       .sprite
       .is_none()
   );

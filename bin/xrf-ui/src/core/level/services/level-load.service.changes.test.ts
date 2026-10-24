@@ -86,6 +86,82 @@ async function openLevel(): Promise<IOpenedLevel> {
   return { container, service, sessionId: service.level.value?.selected.sessionId as string };
 }
 
+interface IHeldOpen {
+  container: Container;
+  service: LevelLoadService;
+  /** The id the open asked for. */
+  getSessionId: () => string;
+  /** Answers the open, then waits for its start to be asked for. */
+  answerOpen: () => Promise<void>;
+  /** Answers the start, then waits for the open to settle. */
+  answerStart: () => Promise<void>;
+  /**
+   * Answers a read of the level again at \`revision\`, with \`visuals\`; asked once the start is, since it replaces every
+   * answer the open is still to ask for but the start's own.
+   */
+  readsAgainAt: (revision: number, visuals: number) => void;
+}
+
+/** Provisions the loader and opens a level whose answers wait to be given, the open's and then its start's. */
+async function openHeld(): Promise<IHeldOpen> {
+  const container: Container = mockContainer([LevelLoadService]);
+  const service: LevelLoadService = container.get(LevelLoadService);
+  const opens: Array<() => void> = [];
+  const starts: Array<() => void> = [];
+  let sessionId: string = "";
+
+  setMockInvokeResponses({
+    ["plugin:levels|get_level"]: null,
+    ...mockLevelPartResponses(),
+    [LIST_SPAWN]: listedAt(1, 0),
+    ["plugin:levels|open_level"]: mockSessionResponse((args?: Record<string, unknown>) => {
+      const request = args?.request as Record<string, unknown> | undefined;
+
+      sessionId = (args?.sessionId ?? request?.sessionId) as string;
+
+      return new Promise((resolve) => opens.push(() => resolve(mockSelectedLevelDescription())));
+    }),
+    ["plugin:levels|describe_start"]: () =>
+      new Promise((resolve) => starts.push(() => resolve(mockSessionSnapshot(null, sessionId, 0)))),
+  });
+
+  container.provision();
+  await flush();
+
+  const loading: Promise<unknown> = flowResult(
+    service.load({
+      engine: EXrayEngineChoice.VANILLA,
+      isDltx: false,
+      roots: createRoots(["C:\\game"]),
+      source: { kind: "asset", logicalPath: "levels\\zaton" },
+    })
+  );
+
+  await waitFor(() => expect(opens).toHaveLength(1));
+
+  return {
+    answerOpen: async () => {
+      opens[0]();
+      await waitFor(() => expect(starts).toHaveLength(1));
+    },
+    answerStart: async () => {
+      starts[0]();
+      await loading;
+      await flush();
+    },
+    container,
+    getSessionId: () => sessionId,
+    readsAgainAt: (revision: number, visuals: number) =>
+      setMockInvokeResponses({
+        ...mockLevelPartResponses(),
+        [LIST_SPAWN]: listedAt(1, 0),
+        ["plugin:levels|get_level"]: () =>
+          mockSessionSnapshot(mockSelectedLevelDescription({ visuals }), sessionId, revision),
+      }),
+    service,
+  };
+}
+
 function notify(container: Container, change: SessionChange): void {
   container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, change);
 }
@@ -100,7 +176,13 @@ describe("LevelLoadService changes", () => {
     const before: number = countListings();
 
     setMockInvokeResponses({ [LIST_SPAWN]: listedAt(3, 1) });
-    notify(container, { sessionId, revision: 1, root: { kind: "kept" }, staleParts: [LEVEL_SPAWN_PART] });
+    notify(container, {
+      sessionId,
+      revision: 1,
+      root: { kind: "kept" },
+      staleParts: [LEVEL_SPAWN_PART],
+      isViewRenewed: false,
+    });
     await flush();
 
     expect(countListings() - before).toBe(1);
@@ -113,8 +195,20 @@ describe("LevelLoadService changes", () => {
     const { container, service, sessionId } = await openLevel();
     const before: number = countListings();
 
-    notify(container, { sessionId: "another", revision: 1, root: { kind: "kept" }, staleParts: [LEVEL_SPAWN_PART] });
-    notify(container, { sessionId, revision: 1, root: { kind: "kept" }, staleParts: [LEVEL_ENVIRONMENT_PART] });
+    notify(container, {
+      sessionId: "another",
+      revision: 1,
+      root: { kind: "kept" },
+      staleParts: [LEVEL_SPAWN_PART],
+      isViewRenewed: false,
+    });
+    notify(container, {
+      sessionId,
+      revision: 1,
+      root: { kind: "kept" },
+      staleParts: [LEVEL_ENVIRONMENT_PART],
+      isViewRenewed: false,
+    });
     await flush();
 
     expect(countListings()).toBe(before);
@@ -127,8 +221,20 @@ describe("LevelLoadService changes", () => {
 
     setMockInvokeResponses({ [LIST_SPAWN]: () => new Promise((resolve) => answers.push(resolve)) });
 
-    notify(container, { sessionId, revision: 1, root: { kind: "kept" }, staleParts: [LEVEL_SPAWN_PART] });
-    notify(container, { sessionId, revision: 2, root: { kind: "kept" }, staleParts: [LEVEL_SPAWN_PART] });
+    notify(container, {
+      sessionId,
+      revision: 1,
+      root: { kind: "kept" },
+      staleParts: [LEVEL_SPAWN_PART],
+      isViewRenewed: false,
+    });
+    notify(container, {
+      sessionId,
+      revision: 2,
+      root: { kind: "kept" },
+      staleParts: [LEVEL_SPAWN_PART],
+      isViewRenewed: false,
+    });
     await flush();
 
     answers[1](mockSessionSnapshot(listing(2), sessionId, 2));
@@ -149,13 +255,19 @@ describe("LevelLoadService changes", () => {
         mockSessionSnapshot(mockSelectedLevelDescription({ visuals: 7 }), sessionId, 1),
       [LIST_SPAWN]: listedAt(2, 1),
     });
-    notify(container, { sessionId, revision: 0, root: { kind: "deriving" }, staleParts: [] });
+    notify(container, { sessionId, revision: 0, root: { kind: "deriving" }, staleParts: [], isViewRenewed: false });
     await flush();
 
     expect(service.isStale).toBe(true);
     expect(countReads()).toBe(1);
 
-    notify(container, { sessionId, revision: 1, root: { kind: "derived" }, staleParts: [LEVEL_SPAWN_PART] });
+    notify(container, {
+      sessionId,
+      revision: 1,
+      root: { kind: "derived" },
+      staleParts: [LEVEL_SPAWN_PART],
+      isViewRenewed: true,
+    });
     await flush();
 
     expect(countReads()).toBe(2);
@@ -177,14 +289,26 @@ describe("LevelLoadService changes", () => {
       ["plugin:levels|describe_level_map"]: (args?: Record<string, unknown>) =>
         mockSessionSnapshot({ maxX: 1, maxZ: 1, minX: 0, minZ: 0, texture: null }, args?.sessionId as string, 1),
     });
-    notify(container, { sessionId, revision: 1, root: { kind: "kept" }, staleParts: [LEVEL_MAP_PART] });
+    notify(container, {
+      sessionId,
+      revision: 1,
+      root: { kind: "kept" },
+      staleParts: [LEVEL_MAP_PART],
+      isViewRenewed: false,
+    });
     await flush();
 
     expect(service.levelMap.value?.maxX).toBe(1);
     expect(countReads()).toBe(reads);
     expect(service.scene).toBe(opened);
 
-    notify(container, { sessionId, revision: 2, root: { kind: "kept" }, staleParts: [LEVEL_GEOMETRY_PART] });
+    notify(container, {
+      sessionId,
+      revision: 2,
+      root: { kind: "kept" },
+      staleParts: [LEVEL_GEOMETRY_PART],
+      isViewRenewed: true,
+    });
     await flush();
 
     expect(service.scene).toEqual({ revision: 2, sessionId });
@@ -193,10 +317,81 @@ describe("LevelLoadService changes", () => {
     // A notice of a change the scene streams as already moves it nowhere.
     const moved = service.scene;
 
-    notify(container, { sessionId, revision: 2, root: { kind: "kept" }, staleParts: [LEVEL_GEOMETRY_PART] });
+    notify(container, {
+      sessionId,
+      revision: 2,
+      root: { kind: "kept" },
+      staleParts: [LEVEL_GEOMETRY_PART],
+      isViewRenewed: true,
+    });
     await flush();
 
     expect(service.scene).toBe(moved);
+  });
+
+  // A change heard while a level is opened is not lost to the wait: the level derived anew meanwhile is read again once
+  // it is adopted, and its scene moves on.
+  it("hears a change to a level opening while its start is read, once the level is adopted", async () => {
+    const held: IHeldOpen = await openHeld();
+
+    await held.answerOpen();
+    held.readsAgainAt(1, 7);
+    notify(held.container, {
+      sessionId: held.getSessionId(),
+      revision: 1,
+      root: { kind: "derived" },
+      staleParts: [],
+      isViewRenewed: true,
+    });
+
+    expect(held.service.level.value).toBeNull();
+
+    await held.answerStart();
+
+    expect(held.service.level.value?.selected.revision).toBe(1);
+    expect(held.service.level.value?.selected.value.visuals).toBe(7);
+    expect(held.service.scene).toEqual({ revision: 1, sessionId: held.getSessionId() });
+    expect(held.service.isStale).toBe(false);
+  });
+
+  // A change that cannot move the level comes at the revision it was opened at, and still marks it stale once adopted.
+  it("marks a level stale for a change heard while it was opened, at the revision it was opened at", async () => {
+    for (const root of [{ kind: "deriving" }, { kind: "failed", reason: "cannot read" }] as const) {
+      const held: IHeldOpen = await openHeld();
+
+      await held.answerOpen();
+      notify(held.container, {
+        sessionId: held.getSessionId(),
+        revision: 0,
+        root,
+        staleParts: [],
+        isViewRenewed: false,
+      });
+      await held.answerStart();
+
+      expect(held.service.level.value?.selected.revision).toBe(0);
+      expect(held.service.isStale).toBe(true);
+    }
+  });
+
+  // The change event can come before the open's own answer resumes its flow.
+  it("hears a change heard before the open answered, once the level is adopted", async () => {
+    const held: IHeldOpen = await openHeld();
+
+    notify(held.container, {
+      sessionId: held.getSessionId(),
+      revision: 1,
+      root: { kind: "derived" },
+      staleParts: [],
+      isViewRenewed: true,
+    });
+
+    await held.answerOpen();
+    held.readsAgainAt(1, 0);
+    await held.answerStart();
+
+    expect(held.service.level.value?.selected.revision).toBe(1);
+    expect(held.service.scene).toEqual({ revision: 1, sessionId: held.getSessionId() });
   });
 
   // The next level is shown once its start is read, its other parts after it: nothing shows one level's parts beside
@@ -255,7 +450,7 @@ describe("LevelLoadService changes", () => {
     setMockInvokeResponses({
       ["plugin:levels|get_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), "another", 1),
     });
-    notify(container, { sessionId, revision: 1, root: { kind: "derived" }, staleParts: [] });
+    notify(container, { sessionId, revision: 1, root: { kind: "derived" }, staleParts: [], isViewRenewed: true });
     await flush();
 
     expect(service.level.value?.selected.sessionId).toBe(sessionId);
@@ -267,7 +462,13 @@ describe("LevelLoadService changes", () => {
     const { container, service, sessionId } = await openLevel();
     const before: number = countListings();
 
-    notify(container, { sessionId, revision: 0, root: { kind: "stale" }, staleParts: [LEVEL_SPAWN_PART] });
+    notify(container, {
+      sessionId,
+      revision: 0,
+      root: { kind: "stale" },
+      staleParts: [LEVEL_SPAWN_PART],
+      isViewRenewed: false,
+    });
     await flush();
 
     expect(service.isStale).toBe(true);

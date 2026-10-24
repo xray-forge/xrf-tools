@@ -9,7 +9,8 @@ use xrf_app_render::viewport_shows::ViewportShows;
 use xrf_renderer::{RenderLevelSource, RenderViewportId};
 
 use crate::render_source::VisualRenderSource;
-use crate::state::{SelectedVisual, VisualState};
+use crate::selected_visual::SelectedVisual;
+use crate::state::VisualState;
 
 /// Draw the open model in a viewport, `detail` down its collapse chain, its textures read by the renderer; no session
 /// draws none. Answers the scene drawn, which the viewport's load reports name, or none.

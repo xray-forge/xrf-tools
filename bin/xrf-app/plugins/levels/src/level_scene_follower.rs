@@ -27,8 +27,7 @@ impl LevelSceneFollower {
     let shown: Arc<LevelRenderSource> = self.shown.find_source(change.session_id)?;
     // A kept level whose geometry or surfaces moved streams afresh as a derived one does: its sectors are packed anew.
     let is_afresh: bool = match &change.root {
-      SessionRootChange::Kept => LevelRenderSource::is_streamed_afresh(&change.stale_parts),
-      SessionRootChange::Derived => true,
+      SessionRootChange::Kept | SessionRootChange::Derived => change.is_view_renewed,
       SessionRootChange::Deriving => {
         log::info!(
           "Level '{}' stays as drawn while its session reads it again",

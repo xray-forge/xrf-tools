@@ -35,7 +35,6 @@ import {
 } from "@/core/ipc/types/xrf-app";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { XrayRevision } from "@/core/ipc/types/xrf-vfs";
-import { isLevelSceneStreamedAfresh } from "@/core/level/lib/load/level-session-change";
 import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { EMPTY_LEVEL_SPAWN_REPORT, ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -100,6 +99,13 @@ export class LevelLoadService {
 
   /** Opens begun, so one taken over by a later open leaves that one's name. */
   private openings: number = 0;
+
+  /**
+   * The changes heard while an open or a restore is under way, for any opening but the level shown: the new opening's
+   * id is known only once its answer resumes the flow, and its start is read before it is adopted, so a change to it
+   * may come first. Those of the opening adopted, not older than it, are heard then.
+   */
+  private heard: Nullable<Array<SessionChange>> = null;
 
   /**
    * The scene the open level streams as, moved on each time the backend streams it afresh: the level derived anew, or
@@ -167,6 +173,7 @@ export class LevelLoadService {
 
     try {
       this.opening = source;
+      this.heard = [];
       this.level = this.level.asLoading();
 
       const selected: SessionSnapshot<SelectedLevelDescription> = yield* call(
@@ -201,6 +208,7 @@ export class LevelLoadService {
         yield* call(this.release());
       }
 
+      this.heard = null;
       this.detachParts();
       this.level = this.level.asFailed(transformed, null);
       this.scene = null;
@@ -244,11 +252,15 @@ export class LevelLoadService {
    */
   @ExclusiveFlow("level")
   public *restore(): TFlow {
+    this.heard = [];
+
     const snapshot: SessionRestore<SelectedLevelDescription> = yield* call(levelsCommands.getLevel(this.session.scope));
 
     this.session.adopt(snapshot);
 
-    if (snapshot) {
+    if (!snapshot) {
+      this.heard = null;
+    } else {
       yield* call(this.start.attach(snapshot.sessionId));
 
       this.adopt(snapshot);
@@ -260,12 +272,19 @@ export class LevelLoadService {
 
   /**
    * Takes one opening as the level this loader holds, the scene it streams as with it, letting the parts of the level
-   * held before go at once, so nothing shows one level's parts beside another; its start is read already.
+   * held before go at once, so nothing shows one level's parts beside another; its start is read already. The changes
+   * heard for it while it was opened are heard now, those not older than the snapshot adopted: a change that derives,
+   * leaves stale or fails it comes at its own revision.
    *
    * @param selected - The opening the backend holds, from an open or a restore.
    */
   @BoundAction()
   private adopt(selected: SessionSnapshot<SelectedLevelDescription>): void {
+    const heard: Array<SessionChange> = (this.heard ?? []).filter(
+      (change: SessionChange) => change.sessionId === selected.sessionId && !isOlderSessionAnswer(selected, change)
+    );
+
+    this.heard = null;
     this.level = this.level.asReady({ selected });
     this.scene = { revision: selected.revision, sessionId: selected.sessionId };
     this.isStale = false;
@@ -273,21 +292,35 @@ export class LevelLoadService {
     this.surfaces.detach();
     this.textures.detach();
     this.spawnObjects.detach();
+
+    for (const change of heard) {
+      this.follow(selected, change);
+    }
   }
 
   /**
    * Reads the level itself again once its session derived it anew, and moves its scene on once the backend streams it
    * afresh; a level whose own files moved is marked stale meanwhile, and left as it opened where it could not be read
-   * again. Each part reads itself again as a change names it.
+   * again. Each part reads itself again as a change names it. A change heard while an open or a restore is under way
+   * waits for its adopt.
    */
   @OnEvent(SESSION_CHANGE_EVENT)
   public onSessionChange({ payload: change }: WireEvent<SessionChange>): void {
-    const open: Maybe<SessionSnapshot<SelectedLevelDescription>> = this.level.value?.selected;
-
-    if (!change || !open || open.sessionId !== change.sessionId) {
+    if (!change) {
       return;
     }
 
+    const open: Maybe<SessionSnapshot<SelectedLevelDescription>> = this.level.value?.selected;
+
+    if (open && open.sessionId === change.sessionId) {
+      this.follow(open, change);
+    } else {
+      this.heard?.push(change);
+    }
+  }
+
+  /** Follows one change to the level shown, `open`. */
+  private follow(open: SessionSnapshot<SelectedLevelDescription>, change: SessionChange): void {
     this.noteScene(change);
 
     switch (change.root.kind) {
@@ -314,12 +347,12 @@ export class LevelLoadService {
     }
   }
 
-  /** Moves the scene on for a change past the one it streams as that streams it afresh. */
+  /** Moves the scene on for a change past the one it streams as that streams it afresh, as the backend says. */
   @BoundAction()
   private noteScene(change: SessionChange): void {
     if (
       this.scene &&
-      isLevelSceneStreamedAfresh(change) &&
+      change.isViewRenewed &&
       isSessionMovedPast({ revision: this.scene.revision, sessionId: this.scene.sessionId }, change)
     ) {
       this.scene = { revision: change.revision, sessionId: change.sessionId };
@@ -452,6 +485,7 @@ export class LevelLoadService {
 
   private clearView(): void {
     runInAction(() => {
+      this.heard = null;
       this.detachParts();
       this.level = this.level.asIdle();
       this.scene = null;

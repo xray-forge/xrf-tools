@@ -10,9 +10,9 @@ use xrf_dltx::select_ltx_dialect;
 use xrf_ltx::LtxDialect;
 use xrf_vfs::{XrayRoots, XraySearch};
 
+use crate::level_report::LevelReport;
 use crate::opened_level::OpenedLevel;
 use crate::parts::{LevelSurfacesPart, LevelTexturesPart};
-use crate::report::{report_open, report_opening};
 use crate::request::LevelOpenRequest;
 use crate::state::{LevelState, SelectedLevel, SelectedLevelDescription};
 
@@ -37,7 +37,7 @@ pub async fn levels_open_level(
 
   let started: Instant = Instant::now();
 
-  report_opening(&source);
+  LevelReport::opening(&source);
 
   let roots: XrayRoots = roots.centred_on(source.get_physical_path());
   let dialect: Arc<dyn LtxDialect> = select_ltx_dialect(is_dltx);
@@ -70,7 +70,7 @@ pub async fn levels_open_level(
   )?;
 
   // What the open came to, its surfaces and textures as it resolved and kept them.
-  report_open(
+  LevelReport::opened(
     &committed,
     (
       &LevelSurfacesPart::find(&committed).unwrap_or_default(),

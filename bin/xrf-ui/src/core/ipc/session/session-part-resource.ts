@@ -22,17 +22,14 @@ export type TSessionPartQuery<T> = (sessionId: SessionId) => Promise<SessionSnap
  *
  * Attached to an opening, it reads its part and reads it again once a change names one of the parts it is read from
  * stale or derives the opening anew, past what it holds; an answer older than the one held, or for an opening it no
- * longer follows, is dropped. A change it cannot read past yet (`deriving`, `stale`, `failed`) marks what it holds stale
- * meanwhile. A failed read keeps what was shown.
+ * longer follows, is dropped. A change it cannot read past yet (`deriving`, `stale`, `failed`) leaves what it holds as
+ * it is: whoever holds the opening's root says it is stale (`LevelLoadService.isStale` for a level). A failed read
+ * keeps what was shown.
  */
 export class SessionPartResource<T> {
   /** The part's last answer, with its opening and revision. */
   @Observable()
   private answer: AsyncState<SessionSnapshot<T>> = AsyncState.idle<SessionSnapshot<T>>();
-
-  /** Whether a change moved what the part was read from, and it shows as read until it is read again. */
-  @Observable()
-  public isStale: boolean = false;
 
   /** The opening followed, or none. */
   private sessionId: Nullable<SessionId> = null;
@@ -126,12 +123,10 @@ export class SessionPartResource<T> {
     this.sessionId = null;
     this.reads += 1;
     this.answer = this.answer.asIdle(null);
-    this.isStale = false;
   }
 
   /**
-   * Reads the part again where `change` names it stale or derived its opening anew past what is held, and marks it
-   * stale where the opening's own files moved.
+   * Reads the part again where `change` names it stale or derived its opening anew past what is held.
    *
    * @param event - A change to some open session.
    */
@@ -147,7 +142,6 @@ export class SessionPartResource<T> {
       case ESessionRootChange.KEPT:
       case ESessionRootChange.DERIVED:
         if (this.isNamedBy(change) && this.isMovedPast(change)) {
-          this.isStale = true;
           void this.fetch();
         }
 
@@ -156,8 +150,6 @@ export class SessionPartResource<T> {
       case ESessionRootChange.DERIVING:
       case ESessionRootChange.STALE:
       case ESessionRootChange.FAILED:
-        this.isStale = true;
-
         return;
 
       default:
@@ -197,7 +189,6 @@ export class SessionPartResource<T> {
     }
 
     this.answer = this.answer.asReady(answer);
-    this.isStale = false;
   }
 
   @BoundAction()

@@ -5,7 +5,7 @@ use xrf_environment::{EnvironmentCatalog, EnvironmentReadOptions, EnvironmentRea
 use xrf_ltx::LtxProject;
 use xrf_vfs::XraySearch;
 
-use crate::catalog::{open_configs, read_catalog};
+use crate::level_catalog::LevelCatalog;
 use crate::state::{LevelEnvironment, SelectedLevel};
 
 /// What a change event calls a level's environment when it goes stale.
@@ -30,8 +30,8 @@ impl LevelEnvironmentPart {
   /// Returns the reason the configs cannot be read, which every later ask answers with again.
   pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Result<Arc<LevelEnvironment>, String> {
     current.parts.get_or_record::<Self>(search, |search| {
-      let project: LtxProject = open_configs(&current.roots, search, current.dialect.clone())?;
-      let catalog: EnvironmentCatalog = read_catalog(
+      let project: LtxProject = LevelCatalog::open_configs(&current.roots, search, current.dialect.clone())?;
+      let catalog: EnvironmentCatalog = LevelCatalog::read(
         &project,
         &EnvironmentReadOptions::default().with_engine(current.engine.engine),
       )?;

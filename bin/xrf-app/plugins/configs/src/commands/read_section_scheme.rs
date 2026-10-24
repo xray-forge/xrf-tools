@@ -8,8 +8,9 @@ use xrf_ltx_inspect::LtxSectionSchemeReport;
 use xrf_utils::error_to_string;
 use xrf_vfs::XrayLogicalPath;
 
+use crate::configs_project::ConfigsProject;
 use crate::request::ConfigsSectionRequest;
-use crate::state::{ConfigsProject, ConfigsState};
+use crate::state::ConfigsState;
 
 /// What one section is judged by, and how it measures against that.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "read_section_scheme"))]

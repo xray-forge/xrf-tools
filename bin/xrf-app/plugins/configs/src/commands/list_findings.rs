@@ -8,8 +8,9 @@ use xrf_ltx_inspect::LtxAnchoredFinding;
 use xrf_utils::error_to_string;
 use xrf_vfs::XrayLogicalPath;
 
+use crate::configs_project::ConfigsProject;
 use crate::request::ConfigsResolvedRequest;
-use crate::state::{ConfigsProject, ConfigsState};
+use crate::state::ConfigsState;
 
 /// Everything wrong with one resolved root, anchored to the file and line a person has to open.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_findings"))]

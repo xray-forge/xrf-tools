@@ -7,4 +7,7 @@ pub mod posed_visual_motion;
 pub mod read;
 pub mod registry;
 pub mod render_source;
+pub mod selected_visual;
+pub mod selected_visual_description;
 pub mod state;
+pub mod visual_source;

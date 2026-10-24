@@ -4,9 +4,9 @@ use xrf_app_core::session::{SessionId, SessionPart};
 use xrf_world::WorldLevelReload;
 
 use crate::parts::{
-  LevelCollisionPart, LevelDetailsPart, LevelEnvironmentPart, LevelGeometryPart, LevelGraphPart, LevelHemiPart,
-  LevelLightsPart, LevelMapPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart,
-  LevelSpawnVisualsPart, LevelStartPart, LevelSurfacesPart, LevelTexturesPart, LevelWeatherPart,
+  LevelCollisionPart, LevelDetailsPart, LevelEnvironmentPart, LevelGraphPart, LevelHemiPart, LevelLightsPart,
+  LevelMapPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelSpawnVisualsPart,
+  LevelStartPart, LevelTexturesPart, LevelWeatherPart,
 };
 use crate::render_source::LevelRenderSource;
 
@@ -38,22 +38,6 @@ fn a_commit_leaving_every_part_reloads_nothing() {
     LevelRenderSource::to_reload(&[LevelTexturesPart::NAME]).is_empty(),
     "a texture come or gone is loaded afresh by the texture watcher"
   );
-}
-
-#[test]
-fn a_level_streams_afresh_only_on_what_its_sectors_are_packed_and_drawn_from() {
-  assert!(LevelRenderSource::is_streamed_afresh(&[LevelGeometryPart::NAME]));
-  assert!(LevelRenderSource::is_streamed_afresh(&[
-    LevelMapPart::NAME,
-    LevelSurfacesPart::NAME
-  ]));
-  assert!(!LevelRenderSource::is_streamed_afresh(&[LevelMapPart::NAME]));
-  assert!(!LevelRenderSource::is_streamed_afresh(&[LevelTexturesPart::NAME]));
-  assert!(!LevelRenderSource::is_streamed_afresh(&[
-    LevelSpawnPart::NAME,
-    LevelWeatherPart::NAME
-  ]));
-  assert!(!LevelRenderSource::is_streamed_afresh(&[]));
 }
 
 #[test]

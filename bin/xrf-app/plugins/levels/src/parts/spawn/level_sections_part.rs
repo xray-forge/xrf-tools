@@ -7,9 +7,9 @@ use xrf_ltx::{Ltx, LtxDialect, LtxResolution};
 use xrf_material::XrayReducedTextures;
 use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch};
 
-use crate::catalog::open_configs;
+use crate::level_catalog::LevelCatalog;
+use crate::level_report::LevelReport;
 use crate::parts::LevelSpawnPart;
-use crate::report::report_sections;
 use crate::state::{LevelSource, LevelSpawn, SelectedLevel};
 
 /// What a change event calls a level's sections when they go stale.
@@ -65,7 +65,7 @@ impl LevelSectionsPart {
     spawn: &LevelSpawn,
   ) -> Result<Arc<Ltx>, String> {
     let started: Instant = Instant::now();
-    let resolved: Arc<LtxResolution> = open_configs(roots, search, dialect.clone())?
+    let resolved: Arc<LtxResolution> = LevelCatalog::open_configs(roots, search, dialect.clone())?
       .system_ltx()
       .map_err(|error| format!("Failed to read 'system.ltx' for {}: {error}", source.get_label()))?;
     let names: BTreeSet<&str> = spawn
@@ -82,7 +82,7 @@ impl LevelSectionsPart {
       }
     }
 
-    report_sections(source, kept.len(), resolved.ltx.len(), started);
+    LevelReport::sections(source, kept.len(), resolved.ltx.len(), started);
 
     Ok(Arc::new(kept))
   }

@@ -8,9 +8,8 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 use xrf_vfs::XraySearch;
 
+use crate::level_report::LevelReport;
 use crate::parts::LevelSpawnPart;
-use crate::report::{report_missing_spawn_objects, report_spawn_objects};
-use crate::spawn_objects::describe_spawn_objects;
 use crate::state::{LevelSpawn, LevelSpawnObjectsDescription, LevelState, SelectedLevel};
 
 /// Describe the open level's spawned objects the viewer draws, and the visuals they stand as, reading no visual; an
@@ -39,11 +38,11 @@ fn describe_objects(
   search: &XraySearch,
 ) -> TauriResult<LevelSpawnObjectsDescription> {
   let started: Instant = Instant::now();
-  let spawn: Arc<LevelSpawn> =
-    LevelSpawnPart::get(current, search).inspect_err(|error| report_missing_spawn_objects(&current.source, error))?;
-  let described: LevelSpawnObjectsDescription = describe_spawn_objects(&spawn);
+  let spawn: Arc<LevelSpawn> = LevelSpawnPart::get(current, search)
+    .inspect_err(|error| LevelReport::missing_spawn_objects(&current.source, error))?;
+  let described: LevelSpawnObjectsDescription = LevelSpawnObjectsDescription::describe(&spawn);
 
-  report_spawn_objects(&current.source, &described, started);
+  LevelReport::spawn_objects(&current.source, &described, started);
 
   Ok(described)
 }

@@ -13,7 +13,10 @@ use xrf_vfs::{XrayAsset, XrayRoots, XraySearch};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualMotions, VisualPackage, VisualPacker};
 
 use crate::read::read_source;
-use crate::state::{SelectedVisual, SelectedVisualDescription, VisualSource, VisualState};
+use crate::selected_visual::SelectedVisual;
+use crate::selected_visual_description::SelectedVisualDescription;
+use crate::state::VisualState;
+use crate::visual_source::VisualSource;
 
 /// Select a visual and return what it contains, with every reference it declares resolved.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_model"))]

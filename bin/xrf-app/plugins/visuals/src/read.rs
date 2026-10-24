@@ -5,7 +5,7 @@ use xrf_ogf::OgfFile;
 use xrf_spawn::XRayByteOrder;
 use xrf_vfs::XraySearch;
 
-use crate::state::VisualSource;
+use crate::visual_source::VisualSource;
 
 /// Reads a visual, whichever way its source names it.
 pub fn read_source(source: &VisualSource, search: &XraySearch) -> TauriResult<Arc<OgfFile>> {

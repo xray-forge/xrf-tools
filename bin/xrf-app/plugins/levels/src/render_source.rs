@@ -23,9 +23,10 @@ use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, SectorPackage, SectorPacker, VisualPoser};
 use xrf_world::WorldLevelReload;
 
-use crate::ambients::{to_render_ambient_effects, to_render_ambients};
 use crate::drawn_attributes::DRAWN_ATTRIBUTES;
-use crate::lens_flares::to_render_lens_flare;
+use crate::level_lens_flares::LevelLensFlares;
+use crate::level_render_ambients::LevelRenderAmbients;
+use crate::level_report::LevelReport;
 use crate::particle_collider::LevelParticleCollider;
 use crate::parts::{
   LevelCollisionPart, LevelDetailsPart, LevelEnvironmentPart, LevelGeometryPart, LevelHemiPart, LevelLightsPart,
@@ -33,8 +34,7 @@ use crate::parts::{
   LevelSurfacesPart, LevelTexturesPart, LevelWeatherPart, PackedLevelDetails, PackedLevelLights, PackedLevelParticles,
   SpawnVisualReader,
 };
-use crate::report::{report_missing_particle_collision, report_missing_sections, report_packed_sector};
-use crate::spawn_objects::describe_spawn_objects;
+use crate::state::LevelSpawnObjectsDescription;
 use crate::state::selection::level_rain::LevelRain;
 use crate::state::selection::level_thunderbolt_gradient::LevelThunderboltGradient;
 use crate::state::selection::level_thunderbolts::LevelThunderbolts;
@@ -135,18 +135,15 @@ impl LevelRenderSource {
     format!("level {session_id}")
   }
 
-  /// Whether a level whose next snapshot let `stale_parts` go streams afresh rather than reloading packages: its sectors
-  /// are packed from its geometry and drawn with its surfaces, which no package reload replaces. Textures alone keep the
-  /// scene, a file come or gone being loaded afresh by the texture watcher.
-  pub fn is_streamed_afresh(stale_parts: &[&str]) -> bool {
-    stale_parts
-      .iter()
-      .any(|part| [LevelGeometryPart::NAME, LevelSurfacesPart::NAME].contains(part))
-  }
+  /// The parts a level's scene is built from, whose going stale streams it afresh rather than reloading packages
+  /// (`SessionChange::is_view_renewed`): its sectors are packed from its geometry and drawn with its surfaces, which no
+  /// package reload replaces. Textures alone keep the scene, a file come or gone being loaded afresh by the texture
+  /// watcher.
+  pub const VIEW_PARTS: &'static [&'static str] = &[LevelGeometryPart::NAME, LevelSurfacesPart::NAME];
 
   /// What the renderer reads again of a level whose next snapshot let `stale_parts` go: each package whose read asks
   /// for any of them, or recorded what it read as one of them. The sectors stream afresh instead, on their geometry or
-  /// surfaces (`is_streamed_afresh`); the graph feeds nothing drawn, the map and the textures' list are the page's, and
+  /// surfaces (`VIEW_PARTS`); the graph feeds nothing drawn, the map and the textures' list are the page's, and
   /// the start only matters where a viewer first stands.
   pub fn to_reload(stale_parts: &[&str]) -> WorldLevelReload {
     let is_stale = |parts: &[&str]| stale_parts.iter().any(|part| parts.contains(part));
@@ -186,7 +183,7 @@ impl LevelRenderSource {
   /// The sections a level's spawned objects name, none where its spawn or the configs cannot be read.
   fn read_sections(level: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Option<Arc<Ltx>> {
     LevelSectionsPart::get(level, search)
-      .inspect_err(report_missing_sections)
+      .inspect_err(LevelReport::missing_sections)
       .ok()
   }
 
@@ -237,8 +234,8 @@ impl LevelRenderSource {
       }),
       thunder: Some(Self::to_thunder(thunder)),
       suns: Self::to_suns(&environment.catalog),
-      ambients: to_render_ambients(&environment.catalog, &level.source.get_name().unwrap_or_default()),
-      ambient_effects: to_render_ambient_effects(&environment.catalog),
+      ambients: LevelRenderAmbients::to_render(&environment.catalog, &level.source.get_name().unwrap_or_default()),
+      ambient_effects: LevelRenderAmbients::to_render_effects(&environment.catalog),
     }
   }
 
@@ -276,7 +273,7 @@ impl LevelRenderSource {
     catalog
       .suns
       .iter()
-      .map(|sun| (sun.name.clone(), to_render_lens_flare(sun, catalog.engine)))
+      .map(|sun| (sun.name.clone(), LevelLensFlares::to_render(sun, catalog.engine)))
       .collect()
   }
 
@@ -379,7 +376,7 @@ impl RenderLevelSource for LevelRenderSource {
     let package: SectorPackage = SectorPacker::new(&self.level.visuals, self.level.level.shaders.as_ref(), &geometry)
       .pack::<XRayByteOrder>(sector, &composition, DRAWN_ATTRIBUTES);
 
-    report_packed_sector(&package, started);
+    LevelReport::packed_sector(&package, started);
 
     Ok(package)
   }
@@ -449,7 +446,7 @@ impl RenderLevelSource for LevelRenderSource {
   fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let spawn = LevelSpawnPart::get(level, &self.search()?).map_err(XrfError::new_asset_error)?;
-    let described = describe_spawn_objects(&spawn);
+    let described = LevelSpawnObjectsDescription::describe(&spawn);
 
     Ok(RenderLevelSpawn {
       objects: described
@@ -490,7 +487,7 @@ impl RenderLevelSource for LevelRenderSource {
       placements: packed.placements,
       surfaces: packed.surfaces,
       collider: collision
-        .inspect_err(|error| report_missing_particle_collision(&level.source, error))
+        .inspect_err(|error| LevelReport::missing_particle_collision(&level.source, error))
         .ok()
         .map(|tracer| Arc::new(LevelParticleCollider::new(tracer)) as Arc<dyn ParticleCollider>),
       // Its failure is reported where the estimator is built.

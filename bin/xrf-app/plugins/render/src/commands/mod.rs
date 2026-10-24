@@ -5,7 +5,7 @@ pub mod describe_frame;
 pub mod describe_libraries;
 pub mod describe_load;
 pub mod describe_problems;
-pub mod describe_textures;
+pub mod describe_texture_loads;
 pub mod detach_viewport;
 pub mod list_backends;
 pub mod locate_spawn_object;
