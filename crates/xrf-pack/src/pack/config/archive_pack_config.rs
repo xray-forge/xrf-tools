@@ -124,13 +124,26 @@ impl ArchivePackConfig {
     Ok(self)
   }
 
-  /// Refuses a volume size outside the range the engine can mount, past `VOLUME_SIZE_MAX` only where oversized volumes
-  /// are allowed, and never past `VOLUME_SIZE_HARD_MAX`.
+  /// Refuses a volume size a person asks for outside the range the engine can mount: under `VOLUME_SIZE_MIN`, which is
+  /// more likely a unit mistaken than a set meant to hold a few kilobytes a volume, or past what
+  /// [`Self::check_volume_bounds`] refuses.
   pub(crate) fn check_volume_size(size: u64, is_oversized_allowed: bool) -> XrfResult {
     if size < VOLUME_SIZE_MIN {
       return Err(XrfError::new_invalid_error(format!(
         "Archive volume size must be at least {VOLUME_SIZE_MIN} bytes, got {size}"
       )));
+    }
+
+    Self::check_volume_bounds(size, is_oversized_allowed)
+  }
+
+  /// Refuses a volume size no set can be packed at: none, past `VOLUME_SIZE_MAX` unless oversized volumes are allowed,
+  /// and past `VOLUME_SIZE_HARD_MAX` ever.
+  fn check_volume_bounds(size: u64, is_oversized_allowed: bool) -> XrfResult {
+    if size == 0 {
+      return Err(XrfError::new_invalid_error(
+        "Archive volume size must be greater than zero",
+      ));
     }
 
     if size > VOLUME_SIZE_HARD_MAX {
@@ -173,25 +186,9 @@ impl ArchivePackConfig {
       require_loadable_header(header)?;
     }
 
-    if self.max_volume_size == 0 {
-      return Err(XrfError::new_invalid_error(
-        "Archive volume size must be greater than zero".to_string(),
-      ));
-    }
-
-    if self.max_volume_size > VOLUME_SIZE_HARD_MAX {
-      return Err(XrfError::new_invalid_error(format!(
-        "Archive volume size must not exceed {VOLUME_SIZE_HARD_MAX} bytes"
-      )));
-    }
-
-    if self.max_volume_size > VOLUME_SIZE_MAX && !self.is_with_oversized_volumes {
-      return Err(XrfError::new_invalid_error(format!(
-        "Archive volume size must not exceed {VOLUME_SIZE_MAX} bytes"
-      )));
-    }
-
-    Ok(())
+    // The minimum is a guard on what a person types, kept by the setters; a configuration packs at any size the
+    // engine can mount.
+    Self::check_volume_bounds(self.max_volume_size, self.is_with_oversized_volumes)
   }
 
   /// Name of one volume of a set, as `<base>.db<index>`.

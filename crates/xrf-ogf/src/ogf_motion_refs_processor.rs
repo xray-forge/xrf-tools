@@ -202,7 +202,7 @@ mod tests {
     fs::write(&path, &patched)?;
 
     assert_eq!(
-      OgfFile::read_motion_refs_from_path::<XRayByteOrder, _>(&path)?,
+      OgfFile::read_motion_refs_from_bytes::<XRayByteOrder>(fs::read(&path)?)?,
       vec![String::from("new\\much\\longer\\ref"), String::from("second")],
       "Expect patched file to read back new refs"
     );
@@ -235,7 +235,7 @@ mod tests {
     );
 
     assert_eq!(
-      OgfFile::read_motion_refs_from_path::<XRayByteOrder, _>(&path)?,
+      OgfFile::read_motion_refs_from_bytes::<XRayByteOrder>(fs::read(&path)?)?,
       vec![String::from("replacement")]
     );
 

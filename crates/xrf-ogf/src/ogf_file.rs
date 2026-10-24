@@ -146,16 +146,6 @@ impl OgfFile {
     })
   }
 
-  /// Read only list of motion refs specifically and skip other data parts.
-  pub fn read_motion_refs_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Vec<String>> {
-    Self::read_motion_refs_from_file::<T>(File::open(path)?)
-  }
-
-  /// Read only list of motion refs specifically and skip other data parts.
-  pub fn read_motion_refs_from_file<T: ByteOrder>(file: File) -> XrfResult<Vec<String>> {
-    Self::read_motion_refs_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
-  }
-
   /// The motion refs of the visual `bytes` hold, skipping its other data.
   pub fn read_motion_refs_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Vec<String>> {
     Self::read_motion_refs_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
@@ -179,11 +169,6 @@ impl OgfFile {
     )?;
 
     Ok(OgfKinematicsChunk::read::<T, _>(&mut chunk, chunk_id)?.motion_refs)
-  }
-
-  /// Collect the texture reference of every nested child visual.
-  pub fn read_texture_refs_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Vec<String>> {
-    Ok(Self::read_from_path::<T, _>(path)?.list_texture_refs())
   }
 
   /// The texture reference of every nested child visual the visual `bytes` hold.

@@ -40,10 +40,10 @@ impl SpriteDescriptionResult {
     }
   }
 
-  /// Both counts together.
+  /// Both counts together; the duration is the whole run's, set once the counts are in.
   pub(crate) fn merged(self, other: Self) -> Self {
     Self {
-      duration: self.duration.max(other.duration),
+      duration: self.duration,
       files: self.files + other.files,
       skipped_files: self.skipped_files + other.skipped_files,
       sprites: self.sprites + other.sprites,

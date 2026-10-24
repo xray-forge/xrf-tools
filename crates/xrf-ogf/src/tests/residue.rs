@@ -171,7 +171,7 @@ fn surveys_report_residue_rather_than_tolerating_it() -> XrfResult {
     &build_relative_test_sample_file_path(file!(), "survey.ogf"),
     fixtures::split_motion_ref()?,
   )?;
-  let survey = OgfChunksProcessor::collect_chunks::<XRayByteOrder>(std::fs::File::open(path)?)?;
+  let survey = OgfChunksProcessor::collect_chunks_from_bytes::<XRayByteOrder>(std::fs::read(path)?)?;
 
   assert_eq!(
     survey.entries.iter().map(|it| it.id).collect::<Vec<u32>>(),

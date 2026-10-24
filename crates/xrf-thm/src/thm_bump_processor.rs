@@ -115,11 +115,10 @@ impl ThmBumpProcessor {
   /// The whole source, read once for every view a patch takes of it.
   fn read_source(source: &Path) -> XrfResult<Vec<u8>> {
     fs::read(source).map_err(|error| {
-      XrfError::new_not_found_error(format!(
-        "THM file was not read: {}, error: {}",
-        format_path(source),
-        error
-      ))
+      XrfError::new_io_error(
+        format!("THM file was not read: {}, error: {error}", format_path(source)),
+        error.kind(),
+      )
     })
   }
 
@@ -148,7 +147,9 @@ impl ThmBumpProcessor {
 
   /// Guard that the patched bytes read back exactly the requested declaration.
   fn assert_patched_bump_matches(source: &Path, patched: Vec<u8>, expected: &ThmBumpChunk) -> XrfResult {
-    let read_back: ThmBumpChunk = Self::read_bump(source, patched)?;
+    let read_back: ThmBumpChunk = ThmFile::read_from_bytes::<xrf_chunk::XRayByteOrder>(patched)?
+      .bump
+      .ok_or_else(|| XrfError::new_verify_error(format!("Patched {} declares no bump chunk", format_path(source))))?;
 
     if &read_back != expected {
       return Err(XrfError::new_verify_error(format!(

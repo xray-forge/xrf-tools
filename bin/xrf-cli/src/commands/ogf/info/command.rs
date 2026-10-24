@@ -131,27 +131,28 @@ impl GenericCommand for InfoCommand {
 
     // Kept for the report: which chunks went unparsed is how an unsupported visual is told apart
     // from an empty one, and a survey that could not run says nothing rather than "none".
-    let unknown_chunks: Option<Vec<u32>> = match OgfChunksProcessor::find_unknown_chunk_ids::<XRayByteOrder>(bytes) {
-      Ok(unknown) if !unknown.is_empty() => {
-        xrf_output::info!(
-          output,
-          "Unparsed chunk ids: {}",
-          unknown.iter().map(u32::to_string).collect::<Vec<String>>().join(", ")
-        );
+    let unknown_chunks: Option<Vec<u32>> =
+      match OgfChunksProcessor::find_unknown_chunk_ids_from_bytes::<XRayByteOrder>(bytes) {
+        Ok(unknown) if !unknown.is_empty() => {
+          xrf_output::info!(
+            output,
+            "Unparsed chunk ids: {}",
+            unknown.iter().map(u32::to_string).collect::<Vec<String>>().join(", ")
+          );
 
-        Some(unknown)
-      }
-      Ok(unknown) => {
-        xrf_output::verbose!(output, "Unparsed chunk ids: none");
+          Some(unknown)
+        }
+        Ok(unknown) => {
+          xrf_output::verbose!(output, "Unparsed chunk ids: none");
 
-        Some(unknown)
-      }
-      Err(error) => {
-        xrf_output::warning!(output, "Could not survey chunks: {}", error);
+          Some(unknown)
+        }
+        Err(error) => {
+          xrf_output::warning!(output, "Could not survey chunks: {}", error);
 
-        None
-      }
-    };
+          None
+        }
+      };
 
     if let Some(children) = &ogf_file.children {
       xrf_output::info!(output, "OGF children ({}):", children.nested.len());
