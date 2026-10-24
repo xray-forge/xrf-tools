@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsMipChain, DdsMipmaps, Quality, RgbaImage};
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
@@ -107,13 +107,12 @@ impl GenericCommand for ConvertCommand {
 
 impl ConvertCommand {
   fn get_candidate(matches: &ArgMatches) -> XrfResult<DdsEncodeCandidate> {
-    let name: &str = matches
-      .get_one::<String>("format")
-      .map(String::as_str)
-      .unwrap_or_default();
-
-    DdsEncodeCandidate::from_name(name)
-      .ok_or_else(|| XrfError::new_invalid_error(format!("Unexpected texture format '{name}'")))
+    DdsEncodeCandidate::try_from(
+      matches
+        .get_one::<String>("format")
+        .map(String::as_str)
+        .unwrap_or_default(),
+    )
   }
 
   fn get_mipmaps(matches: &ArgMatches) -> XrfResult<DdsMipmaps> {

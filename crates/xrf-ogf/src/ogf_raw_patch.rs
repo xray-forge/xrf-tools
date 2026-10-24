@@ -16,11 +16,10 @@ impl OgfRawPatch {
   /// The whole source, read once for every view a patch takes of it.
   pub(crate) fn read_source(source: &Path) -> XrfResult<Vec<u8>> {
     fs::read(source).map_err(|error| {
-      XrfError::new_not_found_error(format!(
-        "OGF file was not read: {}, error: {}",
-        format_path(source),
-        error
-      ))
+      XrfError::new_io_error(
+        format!("OGF file was not read: {}, error: {error}", format_path(source)),
+        error.kind(),
+      )
     })
   }
 

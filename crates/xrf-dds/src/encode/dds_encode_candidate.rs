@@ -1,5 +1,6 @@
 use ddsfile::DxgiFormat;
 use image_dds::ImageFormat;
+use xrf_error::XrfError;
 
 use crate::renderer::dds_format_support::DdsFormatSupport;
 use crate::renderer::dds_renderer::DdsRenderer;
@@ -28,17 +29,17 @@ pub enum DdsEncodeCandidate {
 impl DdsEncodeCandidate {
   pub const ALL: [Self; 5] = [Self::Bc1, Self::Bc2, Self::Bc3, Self::Rgba8, Self::Bc7];
 
-  /// Every candidate's [`Self::name`], in [`Self::ALL`] order, for a parser offering them.
+  /// Every candidate's [`Self::as_str`], in [`Self::ALL`] order, for a parser offering them.
   pub const NAMES: [&'static str; 5] = [
-    Self::Bc1.name(),
-    Self::Bc2.name(),
-    Self::Bc3.name(),
-    Self::Rgba8.name(),
-    Self::Bc7.name(),
+    Self::Bc1.as_str(),
+    Self::Bc2.as_str(),
+    Self::Bc3.as_str(),
+    Self::Rgba8.as_str(),
+    Self::Bc7.as_str(),
   ];
 
   /// The short lowercase name a person types for the format.
-  pub const fn name(self) -> &'static str {
+  pub const fn as_str(self) -> &'static str {
     match self {
       Self::Bc1 => "bc1",
       Self::Bc2 => "bc2",
@@ -46,13 +47,6 @@ impl DdsEncodeCandidate {
       Self::Rgba8 => "rgba8",
       Self::Bc7 => "bc7",
     }
-  }
-
-  /// The candidate [`Self::name`] names, ignoring case.
-  pub fn from_name(name: &str) -> Option<Self> {
-    Self::ALL
-      .into_iter()
-      .find(|candidate| candidate.name().eq_ignore_ascii_case(name))
   }
 
   /// Name of the format, with the DXT name the descriptor and the SDK use for it.
@@ -138,6 +132,23 @@ impl DdsEncodeCandidate {
       .filter(|renderer| self.support(*renderer) == answer)
       .map(DdsRenderer::label)
       .collect()
+  }
+}
+
+impl TryFrom<&str> for DdsEncodeCandidate {
+  type Error = XrfError;
+
+  /// The candidate [`DdsEncodeCandidate::as_str`] spells `value`.
+  fn try_from(value: &str) -> Result<Self, Self::Error> {
+    Self::ALL
+      .into_iter()
+      .find(|candidate| candidate.as_str() == value)
+      .ok_or_else(|| {
+        XrfError::new_invalid_error(format!(
+          "Unexpected texture format '{value}', expected {}",
+          Self::NAMES.join(", ")
+        ))
+      })
   }
 }
 
