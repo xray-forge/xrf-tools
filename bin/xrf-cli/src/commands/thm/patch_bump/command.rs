@@ -1,14 +1,13 @@
 use std::path::{Path, PathBuf};
 
-use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use xrf_error::{XrfError, XrfResult};
+use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
+use xrf_error::XrfResult;
 use xrf_output::OutputOptions;
 use xrf_spawn::XRayByteOrder;
 use xrf_thm::{ThmBumpPatchReport, ThmBumpProcessor};
 use xrf_utils::format_path;
 
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct PatchBumpCommand;
@@ -18,10 +17,9 @@ impl GenericCommand for PatchBumpCommand {
     "patch-bump"
   }
 
-  /// Create command for repointing the bump declaration of a thm file.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to repoint the bump texture reference of provided thm file")
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("Repoint the bump texture reference of a THM file")
       .arg(
         Arg::new("path")
           .help("Path to thm file")
@@ -41,16 +39,15 @@ impl GenericCommand for PatchBumpCommand {
       .arg(
         Arg::new("to")
           .help("Bump texture reference to write, engine style without extension, for example 'wpn\\wpn_pm\\wpn_pm_bump'")
-          .long("to")
-          .required(false),
+          .long("to"),
       )
       .arg(
         Arg::new("off")
           .help("Declare no bump at all, clearing the mode and the name; use for a bump that does not exist and is not going to")
           .long("off")
-          .action(ArgAction::SetTrue)
-          .conflicts_with("to"),
+          .action(ArgAction::SetTrue),
       )
+      .group(ArgGroup::new("bump").args(["to", "off"]).required(true))
       .arg(
         Arg::new("dry-run")
           .help("Validate the change and report the result without writing any file")
@@ -59,20 +56,12 @@ impl GenericCommand for PatchBumpCommand {
       )
   }
 
-  /// Repoint or disable the bump declaration of provided thm file.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
       .expect("Expected valid input path to be provided");
 
-    let is_off: bool = matches.get_flag("off");
     let to: Option<&String> = matches.get_one::<String>("to");
-
-    if to.is_none() && !is_off {
-      return Err(
-        XrfError::new_invalid_error("Expected either --to with a bump reference or --off to declare no bump").into(),
-      );
-    }
 
     let destination: &Path = matches
       .get_one::<PathBuf>("dest")

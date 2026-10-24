@@ -1,6 +1,5 @@
-//! Visuals in the shapes `ogf fix` meets, laid out the way `xrf-db`'s own residue fixtures are.
+//! Visuals in the shapes `ogf fix` meets, laid out the way `xrf-ogf`'s own residue fixtures are.
 
-use std::fs;
 use std::path::PathBuf;
 
 use xrf_chunk::ChunkWriter;
@@ -8,7 +7,7 @@ use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 use xrf_ogf::{OgfBox, OgfHeaderChunk, OgfKinematicsChunk, OgfSphere};
 use xrf_spawn::XRayByteOrder;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 
 /// The four references shipped Anomaly zombied faces declare.
 pub(super) const DECLARED_REFS: [&str; 4] = [
@@ -109,13 +108,7 @@ pub(super) fn unexplained_residue() -> XrfResult<Vec<u8>> {
 
 /// An empty directory of this test's own.
 pub(super) fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("ogf-fix/{name}"));
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
-
-  fs::create_dir_all(&root)?;
+  let root: PathBuf = create_generated_test_resource_dir(&format!("ogf-fix/{name}"))?;
 
   Ok(root)
 }

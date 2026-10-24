@@ -4,7 +4,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use rayon::prelude::*;
-use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_ogf::OgfNormalization;
@@ -16,6 +15,7 @@ use crate::commands::ogf::fix::ogf_fix_file_report::OgfFixFileReport;
 use crate::commands::ogf::fix::ogf_fix_finding_report::OgfFixFindingReport;
 use crate::commands::ogf::fix::ogf_fix_outcome::OgfFixOutcome;
 use crate::commands::ogf::fix::report::OgfFixReport;
+use crate::core::host_walk::HostWalk;
 
 pub struct OgfFixer<'a> {
   output: &'a OutputOptions,
@@ -66,13 +66,10 @@ impl<'a> OgfFixer<'a> {
       )));
     }
 
-    let files: Vec<PathBuf> = WalkDir::new(path)
-      .sort_by_file_name()
+    // A directory the walk cannot read fails the run: a fix that skipped it would claim a tree it never saw.
+    let files: Vec<PathBuf> = HostWalk::files_with(path, XrayExtension::Ogf)
       .into_iter()
-      .filter_map(Result::ok)
-      .map(DirEntry::into_path)
-      .filter(|it| it.is_file() && XrayExtension::Ogf.matches_path(it))
-      .collect();
+      .collect::<XrfResult<_>>()?;
 
     // A directory holding no visuals is refused rather than swept successfully: a mistyped path would otherwise report
     // a clean run over nothing.

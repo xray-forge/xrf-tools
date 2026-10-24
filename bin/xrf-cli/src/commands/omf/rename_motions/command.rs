@@ -10,8 +10,7 @@ use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::OmfRenameMotionsReport;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct RenameMotionsCommand;
@@ -21,10 +20,9 @@ impl GenericCommand for RenameMotionsCommand {
     "rename-motions"
   }
 
-  /// Create command for renaming omf motions.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to rename motions of provided omf file")
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("Rename the motions of an OMF file")
       .arg(
         Arg::new("path")
           .help("Path to omf file")
@@ -63,7 +61,6 @@ impl GenericCommand for RenameMotionsCommand {
       )
   }
 
-  /// Rename motions of provided omf file.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
@@ -103,7 +100,7 @@ impl RenameMotionsCommand {
     let output: OutputOptions = context.get_output().clone();
 
     let renames: HashMap<String, String> = Self::read_map(map_path)?;
-    let mut omf_file: Box<OmfFile> = Box::new(OmfFile::read_from_path::<XRayByteOrder, _>(&path)?);
+    let mut omf_file: OmfFile = OmfFile::read_from_path::<XRayByteOrder, _>(&path)?;
 
     if is_strict && let Err(error) = Self::assert_map_covers_all_motions(path, &omf_file, &renames) {
       // The guard refuses before anything is renamed, but the names the file holds are exactly what

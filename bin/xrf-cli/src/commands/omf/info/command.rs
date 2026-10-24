@@ -7,8 +7,7 @@ use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::OmfInfoReport;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct InfoCommand;
@@ -18,21 +17,17 @@ impl GenericCommand for InfoCommand {
     "info"
   }
 
-  /// Create command for printing omf file info.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to print information about provided omf file")
-      .arg(
-        Arg::new("path")
-          .help("Path to ogf file")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
+  fn declare(&self, command: Command) -> Command {
+    command.about("Print what an OMF file holds").arg(
+      Arg::new("path")
+        .help("Path to the OMF file")
+        .short('p')
+        .long("path")
+        .required(true)
+        .value_parser(value_parser!(PathBuf)),
+    )
   }
 
-  /// Print information about ogf file.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
@@ -42,7 +37,7 @@ impl GenericCommand for InfoCommand {
 
     xrf_output::info!(output, "Read omf file {}", format_path(path));
 
-    let omf_file: Box<OmfFile> = Box::new(OmfFile::read_from_path::<XRayByteOrder, _>(path)?);
+    let omf_file: OmfFile = OmfFile::read_from_path::<XRayByteOrder, _>(path)?;
 
     xrf_output::info!(output, "Omf file information");
 

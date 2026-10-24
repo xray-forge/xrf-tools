@@ -10,11 +10,10 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use xrf_dds::{DdsFile, DdsMetadata};
 use xrf_utils::{error_to_string, format_path};
-use xrf_vfs::{XrayAssetType, XrayResolution, XrayRootProbe, XraySearch, XraySearchPlan, XraySearchStep, XrayVfs};
+use xrf_vfs::{XrayAssetType, XrayResolution, XrayRootProbe, XraySearch, XraySearchPlan};
 
 /// The outcome of resolving and reading one texture reference.
 pub enum TextureResolution {
@@ -38,14 +37,16 @@ pub enum TextureResolution {
   Unreadable { path: PathBuf, reason: String },
 }
 
-/// Caches mounted roots and DDS header results across a verification sweep.
+/// Caches mounted searches and DDS header results across a verification sweep.
 ///
-/// Repeated references reuse the success or failure cached for their resolved texture path.
+/// The visuals of one tree share one implied root, so its search is planned and mounted once, not once per texture
+/// reference. Repeated references reuse the success or failure cached for their resolved texture path.
 #[derive(Default)]
 pub struct OgfTextureResolver {
   /// Roots searched after the visual's own, in the order the caller named them.
   roots: Vec<PathBuf>,
-  vfs: Arc<XrayVfs>,
+  /// The search for each implied root, none for one that could not be planned or mounted.
+  searches: HashMap<PathBuf, Option<XraySearch>>,
   headers: HashMap<PathBuf, Result<(String, DdsMetadata), String>>,
 }
 
@@ -109,37 +110,36 @@ impl OgfTextureResolver {
   /// does not do is read those archives: an archived hit is reported located rather than inspected, because a header
   /// read there means decompressing a whole entry to look at 148 bytes.
   fn locate(&mut self, root: &Path, reference: &str) -> Option<XrayResolution> {
+    let roots: &[PathBuf] = &self.roots;
+
+    self
+      .searches
+      .entry(root.to_path_buf())
+      .or_insert_with(|| Self::open_search(root, roots))
+      .as_ref()?
+      .resolve(XrayAssetType::Dds, reference)
+      .inspect_err(|error| log::warn!("Rejected texture reference '{reference}': {error}"))
+      .ok()
+  }
+
+  /// The search over the visual root `root`, then each named root, or none where one cannot be planned or mounted.
+  fn open_search(root: &Path, roots: &[PathBuf]) -> Option<XraySearch> {
     let mut plan: XraySearchPlan = XraySearchPlan::new()
       .with_root(Self::VISUAL_ROOT_STEP, root)
       .inspect_err(|error| log::warn!("Failed to plan root {}: {error}", format_path(root)))
       .ok()?;
 
-    for named in &self.roots {
+    for named in roots {
       plan = plan
         .with_root(named.display().to_string(), named)
         .inspect_err(|error| log::warn!("Failed to plan root {}: {error}", format_path(named)))
         .ok()?;
     }
 
-    let steps: Vec<XraySearchStep> = plan
-      .mount_into(self.vfs_mut())
+    plan
+      .open()
       .inspect_err(|error| log::warn!("Failed to mount root {}: {error}", format_path(root)))
-      .ok()?;
-
-    XraySearch::new(Arc::clone(&self.vfs))
-      .with_steps(steps)
-      .resolve(XrayAssetType::Dds, reference)
-      .inspect_err(|error| log::warn!("Rejected texture reference '{reference}': {error}"))
       .ok()
-  }
-
-  /// The VFS to mount into: this resolver's own where no search still reads it, a fork of it where one does.
-  fn vfs_mut(&mut self) -> &mut XrayVfs {
-    if Arc::get_mut(&mut self.vfs).is_none() {
-      self.vfs = Arc::new(self.vfs.fork());
-    }
-
-    Arc::get_mut(&mut self.vfs).expect("a snapshot just forked has one holder")
   }
 
   /// Returns cached DDS header facts by value.
