@@ -1,19 +1,25 @@
+use std::sync::Arc;
+
 use tauri::State;
-use xrf_app_core::session::{SessionOpening, SessionSnapshot};
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
+use xrf_app_core::assets::AssetMountState;
+use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::session::SessionSnapshot;
 use xrf_dialog::{DialogProject, DialogProjectDescriptor, DialogProjectLayout};
 use xrf_utils::error_to_string;
 
 use crate::request::DialogsOpenRequest;
-use crate::state::DialogProjectState;
+use crate::{DialogProjects, OpenedDialogProject};
 
-/// Open a dialog tree.
+/// Open a dialog tree, reading every dialog file and string table it holds on the pool.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_project"))]
 #[tauri::command(rename = "open_project")]
 pub async fn dialogs_open_project(
   request: DialogsOpenRequest,
-  state: State<'_, DialogProjectState>,
-) -> TauriResult<SessionSnapshot<DialogProjectDescriptor>> {
+  projects: State<'_, DialogProjects>,
+  assets: State<'_, AssetMountState>,
+  execution: State<'_, ExecutionState>,
+) -> TauriResult<SessionSnapshot<Arc<DialogProjectDescriptor>>> {
   let DialogsOpenRequest {
     session_id,
     roots,
@@ -22,8 +28,6 @@ pub async fn dialogs_open_project(
     translations_prefix,
   } = request;
 
-  let opening: SessionOpening<DialogProject> = state.begin_open(session_id)?;
-
   log::info!("Opening dialogs project: {} root(s), {:?}", roots.roots.len(), mode);
 
   let layout: DialogProjectLayout = DialogProjectLayout {
@@ -31,17 +35,24 @@ pub async fn dialogs_open_project(
     translations_prefix,
     ..DialogProjectLayout::new(mode)
   };
+  let assets: AssetMountState = AssetMountState::clone(&assets);
+  let opened: Arc<SessionSnapshot<OpenedDialogProject>> = projects
+    .open_on_pool(&execution, session_id, "Opening a dialogs project", move || {
+      // Through the shared mounts, read afresh, as every open a person makes is.
+      let project: DialogProject =
+        DialogProject::from_search(assets.search_fresh(&roots)?, &roots, &layout).map_err(error_to_string)?;
 
-  let project: DialogProject = DialogProject::open(&roots, &layout).map_err(error_to_string)?;
-  let descriptor: DialogProjectDescriptor = project.describe();
+      Ok(OpenedDialogProject::new(project))
+    })
+    .await?;
 
   log::info!(
     "Opened {} dialog files, {} dialogs, {} findings, editable: {}",
-    descriptor.files.len(),
-    project.sum_dialogs(),
-    descriptor.findings.len(),
-    descriptor.is_editable
+    opened.descriptor.files.len(),
+    opened.project.sum_dialogs(),
+    opened.descriptor.findings.len(),
+    opened.descriptor.is_editable
   );
 
-  Ok(opening.commit(project)?.map(|_| descriptor))
+  Ok(opened.map(OpenedDialogProject::describe))
 }

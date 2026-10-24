@@ -1,89 +1,31 @@
 use std::sync::Arc;
 
 use tauri::State;
+use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::SessionSnapshot;
-use xrf_app_core::types::TauriResult;
-use xrf_ltx_inspect::{LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxTextReader};
-use xrf_utils::{encode_w1251_bytes_to_string, error_to_string};
-use xrf_vfs::XrayLogicalPath;
 
-use crate::configs_project::ConfigsProject;
-use crate::descriptor::ConfigsDocument;
 use crate::request::ConfigsReadDocumentRequest;
-use crate::state::ConfigsState;
+use crate::{ConfigsDocument, ConfigsProject, ConfigsProjects};
 
 /// Reads one config as the authored view renders it: its lines, and what only the parser knows about them.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "read_document"))]
 #[tauri::command(rename = "read_document")]
 pub async fn configs_read_document(
   execution: State<'_, ExecutionState>,
-  state: State<'_, ConfigsState>,
+  projects: State<'_, ConfigsProjects>,
   request: ConfigsReadDocumentRequest,
 ) -> TauriResult<ConfigsDocument> {
   let ConfigsReadDocumentRequest { session_id, path } = request;
 
-  // Taken before the hop and the guard dropped with it, so the work does not hold the session against every other
-  // command. A snapshot outlives its state: closing the project mid-read leaves this answering what it was asked for,
-  // which is sound because reading commits nothing back.
-  let opened: Arc<SessionSnapshot<ConfigsProject>> = state.require(session_id)?;
+  // Taken before the hop, so the work does not hold the session against every other command. A snapshot outlives its
+  // handle: closing the project mid-read leaves this answering what it was asked for, which is sound because reading
+  // commits nothing back.
+  let opened: Arc<SessionSnapshot<ConfigsProject>> = projects.require(session_id)?;
 
   // Bounded by the include tree of whichever entry point the file belongs to, which on a game tree is `system.ltx` and
   // most of the configs under it.
   execution
-    .run_blocking("Configs document read", move || read_document(&opened, &path))
-    .await
-    .and_then(|document| document)
-}
-
-/// The read itself: the text as authored, and the structure judged against its entry point's resolution.
-fn read_document(opened: &ConfigsProject, path: &str) -> TauriResult<ConfigsDocument> {
-  let logical: XrayLogicalPath = XrayLogicalPath::new(path).map_err(error_to_string)?;
-
-  let bytes: Vec<u8> = opened
-    .project
-    .search()
-    .read(logical.as_str())
-    .map_err(|error| format!("Cannot read '{path}': {error}"))?;
-
-  // Configs are strict Windows-1251, loose and archived alike; a lossy decode would put a viewer and a writer at odds
-  // about what the file says.
-  let contents: String =
-    encode_w1251_bytes_to_string(&bytes).map_err(|error| format!("Cannot decode '{path}': {error}"))?;
-
-  let text: LtxFileText = LtxTextReader::read(logical.as_str(), &contents);
-
-  // An entry point answers itself, so this is the file's own resolution when nothing includes it. A config reached by
-  // two entry points takes the first in project order; the frontend is told which through the structure it gets back.
-  let entry_points: Vec<String> = opened.descriptor.inventory.list_entry_points_of(logical.as_str());
-
-  let Some(first) = entry_points.first() else {
-    // A config the project holds but no entry point reaches: an attachment under a dialect that has them. Its text is
-    // still worth showing, and there is no resolution it participates in to judge it against.
-    return Ok(ConfigsDocument {
-      findings: Vec::new(),
-      structure: LtxFileStructure::new_unreached(logical.as_str()),
-      text,
-    });
-  };
-
-  let entry: XrayLogicalPath = XrayLogicalPath::new(first).map_err(error_to_string)?;
-
-  let (structure, findings): (LtxFileStructure, Vec<LtxAnchoredFinding>) =
-    // No origins: a structure read asks whether a parent resolves and what `$scheme` a section ends with, and a
-    // plain resolution answers both for half the time and half the memory of one that records every field's origin.
-    opened.with_reader(&entry, false, |reader, _| {
-      let structure: LtxFileStructure = reader
-        .read_structure(logical.as_str(), &entry_points)
-        .map_err(|error| format!("Cannot read the structure of '{path}': {error}"))?;
-      let findings: Vec<LtxAnchoredFinding> = reader.read_file_findings(&structure);
-
-      Ok((structure, findings))
-    })?;
-
-  Ok(ConfigsDocument {
-    findings,
-    structure,
-    text,
-  })
+    .run_blocking("Configs document read", move || opened.read_document(&path))
+    .await?
 }

@@ -1,1 +1,1 @@
-pub mod verify_project;
+pub(crate) mod verify_project;

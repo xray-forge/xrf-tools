@@ -2,34 +2,23 @@ use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
 use xrf_app_core::session::SessionScopes;
 
-use crate::state::ExportsProjectState;
+use crate::ExportsProjects;
 
-pub struct ExportsPlugin {}
+/// The `exports` plugin: the scripts projects whose externs a tool browses and writes manifests of.
+pub struct ExportsPlugin;
 
 impl ExportsPlugin {
-  pub const NAME: &'static str = crate::registry::exports::NAME;
-
+  /// The plugin, its projects managed as it sets up.
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
-    log::info!("Initialize plugin {}", Self::NAME);
-
-    tauri::plugin::Builder::new(Self::NAME)
+    crate::ipc::exports::builder()
       .setup(|application, _| {
-        application.manage(ExportsProjectState::new(
-          "exports",
+        application.manage(ExportsProjects::new(
+          "exports project",
           &application.state::<SessionScopes>(),
         ));
 
         Ok(())
       })
-      .invoke_handler(xrf_app_core::logging::warn_on_unhandled_command(
-        Self::NAME,
-        crate::registry::exports::handler(),
-      ))
       .build()
-  }
-
-  #[cfg(feature = "typescript-bindings")]
-  pub fn specta_builder<R: Runtime>() -> tauri_specta::Builder<R> {
-    crate::registry::exports::specta_builder()
   }
 }

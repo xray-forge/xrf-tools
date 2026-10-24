@@ -1,6 +1,8 @@
-//! The externs a scripts project declares, opened as a session, read back from their sources and written as manifests.
+#![doc = include_str!("../README.md")]
 
-pub mod commands;
+mod commands;
+pub mod ipc;
 pub mod plugin;
-pub mod registry;
-pub mod state;
+mod project;
+
+pub use project::ExportsProjects;
