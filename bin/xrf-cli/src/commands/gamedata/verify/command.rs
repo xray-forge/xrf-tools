@@ -1,22 +1,18 @@
 use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use xrf_error::XrfError;
 use xrf_gamedata::{
   GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataVerificationResult,
-  GamedataVerificationStatus, GamedataVerificationType,
+  GamedataVerificationType,
 };
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
-use super::verification_report::GamedataVerificationReportPayload;
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::engine_target::{EngineTargetArguments, requested_engine};
-use crate::core::execution::ExecutionArguments;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::ltx_dialect::{LtxDialectArguments, requested_ltx_dialect};
-use crate::core::progress::new_logging_job;
+use super::report::GamedataVerifyReport;
+use crate::core::arguments::{EngineTargetArgument, JobsArgument, LtxDialectArgument};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::report::ReportVerdict;
+use crate::core::terminal::CliJob;
 
 /// How many of the most-read paths `--trace-reads` names individually.
 const HOTTEST_READ_PATHS_REPORTED: usize = 25;
@@ -29,26 +25,25 @@ impl GenericCommand for VerifyCommand {
     "verify"
   }
 
-  /// Create command to verify gamedata.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to verify gamedata")
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command
+      .about("Verify an assembled gamedata tree")
       .arg(
-        Arg::new("root")
-          .help("Path to assembled gamedata root")
+        Arg::new("path")
+          .help("Path to the assembled gamedata root")
+          .short('p')
+          .long("path")
           .required(true)
-          .value_name("ROOT")
-          .num_args(1)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("ignore")
-          .help("Ignored assets in the gamedata root")
+          .help("Root entries to skip, replacing the defaults. Repeat to skip several")
           .short('i')
           .long("ignore")
-          .required(false)
-          .value_delimiter(',')
-          .num_args(1..=10)
+          .action(ArgAction::Append)
+          .num_args(1..)
+          .default_values(GamedataProjectReadOptions::DEFAULT_IGNORED)
           .value_parser(value_parser!(String)),
       )
       .arg(
@@ -63,47 +58,32 @@ impl GenericCommand for VerifyCommand {
         Arg::new("strict")
           .help("Fully validate expensive asset payloads")
           .long("strict")
-          .required(false)
           .action(ArgAction::SetTrue),
       )
       .arg(
         Arg::new("trace-reads")
           .help("Account for every asset read, reporting redundancy against unique paths")
           .long("trace-reads")
-          .required(false)
           .action(ArgAction::SetTrue),
-      )
-      .with_ltx_dialect()
-      .with_engine_target()
-      .with_jobs()
+      );
+
+    JobsArgument::declare(EngineTargetArgument::declare(LtxDialectArgument::declare(command)))
   }
 
-  /// Unpack xray engine database archive.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let root: PathBuf = matches
-      .get_one::<PathBuf>("root")
-      .expect("Expected a valid gamedata root to be provided")
+      .get_one::<PathBuf>("path")
+      .expect("Expected a gamedata root to be provided")
       .clone();
 
     let ignored: Vec<String> = matches
       .get_many::<String>("ignore")
-      .map(|it| it.cloned().collect::<Vec<String>>())
-      .unwrap_or_else(|| {
-        vec![
-          String::from(".git"),
-          String::from(".idea"),
-          String::from("particles_unpacked"),
-          String::from("textures_unpacked"),
-          String::from(".gitignore"),
-          String::from(".gitattributes"),
-          String::from("README.md"),
-          String::from("LICENSE"),
-        ]
-      });
+      .map(|values| values.cloned().collect())
+      .unwrap_or_default();
 
     let checks: Vec<GamedataVerificationType> = matches
       .get_many::<GamedataVerificationType>("checks")
-      .map(|it| it.cloned().collect::<Vec<_>>())
+      .map(|values| values.copied().collect())
       .unwrap_or_else(GamedataVerificationType::get_all);
 
     let output: OutputOptions = context.get_output().clone();
@@ -115,126 +95,53 @@ impl GenericCommand for VerifyCommand {
       output: output.clone(),
       is_strict,
       is_tracing_reads: matches.get_flag("trace-reads"),
-      dialect: requested_ltx_dialect(matches),
-      engine: requested_engine(matches),
+      dialect: LtxDialectArgument::of(matches),
+      engine: EngineTargetArgument::of(matches),
     };
 
     // Created before the project opens, so the reported total covers mounting and indexing.
     let verify_options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions {
-      output,
+      output: output.clone(),
       is_strict,
       checks,
-      job: new_logging_job(),
+      job: CliJob::new_logging(),
     };
 
-    xrf_output::heading!(open_options.output, "Opening gamedata project");
+    xrf_output::heading!(output, "Opening gamedata project");
     xrf_output::info!(
-      open_options.output,
+      output,
       "Root: {}, ignored: [{}]",
       format_path(&open_options.root),
       open_options.ignored.join(", "),
     );
 
-    let project: Box<GamedataProject> = Box::new(GamedataProject::open(&open_options)?);
+    let project: GamedataProject = GamedataProject::open(&open_options)?;
 
-    xrf_output::info!(open_options.output, "Engine: {}", project.get_engine().describe());
+    xrf_output::info!(output, "Engine: {}", project.get_engine().describe());
 
-    let verify_result: GamedataVerificationResult = project.verify(&verify_options)?;
-    let status: GamedataVerificationStatus = verify_result.get_status();
+    let result: GamedataVerificationResult = project.verify(&verify_options)?;
 
     // Deposited before the verdict is turned into an outcome, so a failing check still reports the findings.
     context.set_result(|| {
-      GamedataVerificationReportPayload::new(
+      GamedataVerifyReport::new(
         &root,
         project.get_engine(),
-        &verify_result,
+        &result,
         project.skipped_mounts(),
         project.get_cache_stats(),
         project.get_read_trace_summary(HOTTEST_READ_PATHS_REPORTED),
       )
-      .build()
     })?;
 
-    match status {
-      GamedataVerificationStatus::Passed => {
-        xrf_output::info!(verify_options.output, "");
-        xrf_output::success!(verify_options.output, "Project gamedata is valid");
-        xrf_output::info!(
-          verify_options.output,
-          "Gamedata project verified in {}",
-          xrf_utils::format_duration(verify_result.get_duration())
-        );
+    let report: xrf_report::Report = result.to_report();
 
-        Ok(())
-      }
-      GamedataVerificationStatus::Failed
-      | GamedataVerificationStatus::Error
-      | GamedataVerificationStatus::Incomplete
-      | GamedataVerificationStatus::Skipped => {
-        xrf_output::error!(verify_options.output, "");
+    ReportVerdict::print_findings(&output, &report);
+    xrf_output::info!(
+      output,
+      "Gamedata project checked in {}",
+      xrf_utils::format_duration(result.get_duration())
+    );
 
-        let status_message = match status {
-          GamedataVerificationStatus::Failed => "Project gamedata is invalid",
-          GamedataVerificationStatus::Error => "Project gamedata verification has errors",
-          GamedataVerificationStatus::Incomplete => "Project gamedata verification is incomplete",
-          GamedataVerificationStatus::Skipped => "Project gamedata verification was skipped",
-          GamedataVerificationStatus::Passed => unreachable!(),
-        };
-
-        match status {
-          GamedataVerificationStatus::Failed | GamedataVerificationStatus::Error => {
-            verify_options.output.failure(status_message);
-          }
-          GamedataVerificationStatus::Incomplete | GamedataVerificationStatus::Skipped => {
-            verify_options.output.warning(status_message);
-          }
-          GamedataVerificationStatus::Passed => unreachable!(),
-        }
-
-        for message in verify_result.get_failure_messages() {
-          xrf_output::error!(verify_options.output, "- {message}");
-        }
-
-        for report in verify_result.get_failure_reports() {
-          for finding in report.get_findings() {
-            match finding.subject() {
-              Some(subject) => xrf_output::error!(
-                verify_options.output,
-                "  - [{}] {}: {}",
-                report.get_verification_type(),
-                subject,
-                finding.message()
-              ),
-              None => xrf_output::error!(
-                verify_options.output,
-                "  - [{}] {}",
-                report.get_verification_type(),
-                finding.message()
-              ),
-            }
-          }
-        }
-
-        xrf_output::error!(
-          verify_options.output,
-          "Gamedata project checked in {}",
-          xrf_utils::format_duration(verify_result.get_duration())
-        );
-
-        if status == GamedataVerificationStatus::Failed {
-          let findings: usize = verify_result
-            .get_failure_reports()
-            .map(|report| report.get_findings().len())
-            .sum::<usize>()
-            .max(1);
-
-          Err(CommandError::new_check_failed(findings))
-        } else {
-          // Error, incomplete, and skipped runs did not judge the content to the end, so they are
-          // execution failures rather than check verdicts.
-          Err(XrfError::new_verify_error(status_message).into())
-        }
-      }
-    }
+    ReportVerdict::conclude(&output, &report, "Gamedata project")
   }
 }

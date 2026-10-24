@@ -6,12 +6,11 @@ use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_translation::{TranslationBuildOptions, TranslationBuildResult, TranslationBuilder, TranslationLanguage};
 use xrf_utils::format_path;
-use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
+use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::link_policy::{LinkPolicyArguments, requested_link_policy};
-use crate::core::progress::new_logging_job;
+use crate::core::arguments::{LinkPolicyArgument, XrayRootsArguments};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::terminal::CliJob;
 
 #[derive(Default)]
 pub struct BuildCommand;
@@ -21,71 +20,45 @@ impl GenericCommand for BuildCommand {
     "build"
   }
 
-  /// Create command for building of translation files.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to build translation files into gamedata")
-      .arg(
-        Arg::new("path")
-          .help("Root holding translation sources, or one source file. Repeat to layer roots, highest priority first")
-          .short('p')
-          .long("path")
-          .required(true)
-          // Both spellings layer: repeat the flag, or list several values after one of them.
-          .action(ArgAction::Append)
-          .num_args(1..)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("source")
-          .help(
-            "How to read the path: auto treats it as an installation only when it declares one, directory ignores any declaration, volumes mounts every archive volume beneath it, installation requires one, containing-installation searches parent directories for one",
-          )
-          .long("source")
-          .default_value("containing-installation")
-          .value_parser(["auto", "directory", "volumes", "installation", "containing-installation"]),
-      )
-      .arg(
-        Arg::new("prefix")
-          .help("Limit to one logical subtree, such as translations")
-          .long("prefix")
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("output")
-          .help("Path to output translation")
-          .short('o')
-          .long("output")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("language")
-          .help("Target language to translate")
-          .short('l')
-          .long("language")
-          .required(false)
-          .default_value("all")
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("sort")
-          .help("Preserve source order instead of sorting dynamic translation files")
-          .long("no-sort")
-          .required(false)
-          .action(ArgAction::SetFalse),
-      )
-      .with_link_policy()
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = XrayRootsArguments::declare(
+      command.about("Build translation files into gamedata"),
+      "Root holding translation sources, or one source file. Repeat to layer roots, highest priority first",
+      "Limit to one logical subtree, such as translations",
+    )
+    .arg(
+      Arg::new("dest")
+        .help("Directory the built string tables are written to")
+        .short('d')
+        .long("dest")
+        .required(true)
+        .value_parser(value_parser!(PathBuf)),
+    )
+    .arg(
+      Arg::new("language")
+        .help("Language to build, or all of them")
+        .short('l')
+        .long("language")
+        .required(false)
+        .default_value("all")
+        .value_parser(value_parser!(String)),
+    )
+    .arg(
+      Arg::new("sort")
+        .help("Preserve source order instead of sorting dynamic translation files")
+        .long("no-sort")
+        .required(false)
+        .action(ArgAction::SetFalse),
+    );
+
+    LinkPolicyArgument::declare(command)
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let paths: Vec<&PathBuf> = matches
-      .get_many::<PathBuf>("path")
-      .expect("Expected at least one path to be provided")
-      .collect();
+    let paths: Vec<&PathBuf> = XrayRootsArguments::list_paths(matches);
 
     let output_dir: &PathBuf = matches
-      .get_one::<PathBuf>("output")
+      .get_one::<PathBuf>("dest")
       .expect("Expected valid output folder path to be provided");
 
     let language: &String = matches
@@ -96,12 +69,12 @@ impl GenericCommand for BuildCommand {
     let output: OutputOptions = context.get_output().clone();
 
     let options: TranslationBuildOptions = TranslationBuildOptions {
-      job: new_logging_job(),
+      job: CliJob::new_logging(),
       is_sorted,
       output,
       output_dir: output_dir.clone(),
       language: TranslationLanguage::from_str(language).map_err(XrfError::new_unknown_language_error)?,
-      link_policy: requested_link_policy(matches),
+      link_policy: LinkPolicyArgument::of(matches),
     };
 
     // A single source keeps working through the path-taking reader: a VFS mounts a directory, never a
@@ -117,31 +90,18 @@ impl GenericCommand for BuildCommand {
 
       TranslationBuilder::build_file(paths[0], &options)?
     } else {
-      let source: XrayMountMode = XrayMountMode::try_from(
-        matches
-          .get_one::<String>("source")
-          .expect("Expected source mode to default")
-          .as_str(),
-      )?;
-
-      // One vocabulary for naming roots, so repeating `--path` layers a tree in front of an
-      // installation exactly as the desktop app does it.
-      let roots: XrayRoots = XrayRoots::new(paths.iter().map(|path| XrayRoot::new(path.to_path_buf(), source)));
+      let source: XrayMountMode = XrayRootsArguments::source_of(matches)?;
+      let roots: XrayRoots = XrayRootsArguments::of(matches)?;
 
       xrf_output::info!(
         options.output,
-        "Building translations in {} ({:?}), language - {}, sorted - {}",
+        "Building translations in {} ({source}), language - {}, sorted - {}",
         roots.describe(),
-        source,
         language,
         is_sorted
       );
 
-      TranslationBuilder::build_roots(
-        &roots,
-        matches.get_one::<String>("prefix").map(String::as_str),
-        &options,
-      )?
+      TranslationBuilder::build_roots(&roots, XrayRootsArguments::prefix_of(matches), &options)?
     };
 
     xrf_output::info!(
@@ -161,10 +121,10 @@ mod tests {
   use clap::ArgMatches;
 
   use super::BuildCommand;
-  use crate::core::generic_command::GenericCommand;
+  use crate::core::command::GenericCommand;
 
   fn parse_matches(extra: &[&str]) -> ArgMatches {
-    let mut arguments = vec!["build", "--path", "translations", "--output", "output"];
+    let mut arguments = vec!["build", "--path", "translations", "--dest", "output"];
 
     arguments.extend_from_slice(extra);
 

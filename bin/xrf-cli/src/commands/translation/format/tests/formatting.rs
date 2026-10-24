@@ -5,23 +5,17 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 
 use crate::commands::translation::format::command::FormatCommand;
-use crate::core::command_testing::{run_command, run_command_with_result};
-use crate::core::generic_command::CommandResult;
+use crate::core::command::CommandResult;
+use crate::core::command::command_testing::{run_command, run_command_with_result};
 
 const UNSORTED: &str = "{\n  \"st_b\": {\n    \"eng\": \"B\"\n  },\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n";
 const CANONICAL: &str = "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  },\n  \"st_b\": {\n    \"eng\": \"B\"\n  }\n}\n";
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("translation_format/{name}"));
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
-
-  fs::create_dir_all(&root)?;
+  let root: PathBuf = create_generated_test_resource_dir(&format!("translation_format/{name}"))?;
 
   Ok(root)
 }

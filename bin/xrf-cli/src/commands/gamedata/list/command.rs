@@ -1,17 +1,16 @@
-use std::path::PathBuf;
-
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
-use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
+use xrf_vfs::XrayRoots;
 
 use crate::commands::gamedata::list::asset_lister::{AssetLister, AssetListing};
 use crate::commands::gamedata::list::report::GamedataListReport;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::arguments::XrayRootsArguments;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::terminal::{MountDescription, SourceReachability};
 
-/// Maximum entries printed per section before reporting the omitted count.
-const PRINT_LIMIT: usize = 40;
+/// Maximum entries printed per section before reporting the omitted count: the same as a set of sources' listings.
+const PRINT_LIMIT: usize = SourceReachability::PRINT_LIMIT;
 
 #[derive(Default)]
 pub struct ListCommand;
@@ -21,85 +20,38 @@ impl GenericCommand for ListCommand {
     "list"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("List assets resolved by an installation or gamedata tree")
-      .arg(
-        Arg::new("path")
-          .help("Path to a game installation or a gamedata tree")
-          .short('p')
-          .long("path")
-          .required(true)
-          // Both spellings layer: repeat the flag, or list several values after one of them.
-          .action(ArgAction::Append)
-          .num_args(1..)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("source")
-          .help(
-            "How to read the path: auto treats it as an installation only when it declares one, directory ignores any \
-             declaration, volumes mounts every archive volume beneath it, installation requires one, \
-             containing-installation searches parent directories for one",
-          )
-          .long("source")
-          .default_value("containing-installation")
-          .value_parser([
-            "auto",
-            "directory",
-            "volumes",
-            "installation",
-            "containing-installation",
-          ]),
-      )
-      .arg(
-        Arg::new("prefix")
-          .help("Limit to one logical subtree, such as configs or textures\\wpn")
-          .long("prefix")
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("ignore")
-          .help("Logical prefixes the directory mounts omit, such as textures\\wip")
-          .short('i')
-          .long("ignore")
-          .num_args(1..)
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("loose")
-          .help("List only loose files, ignoring archived entries")
-          .long("loose")
-          .action(ArgAction::SetTrue),
-      )
-      .arg(
-        Arg::new("shadowed")
-          .help("Also report entries hidden by a higher-priority source, mount or volume")
-          .long("shadowed")
-          .action(ArgAction::SetTrue),
-      )
+  fn declare(&self, command: Command) -> Command {
+    XrayRootsArguments::declare(
+      command.about("List assets resolved by an installation or gamedata tree"),
+      "Path to a game installation or a gamedata tree. Repeat to layer roots, highest priority first",
+      "Limit to one logical subtree, such as configs or textures\\wpn",
+    )
+    .arg(
+      Arg::new("ignore")
+        .help("Logical prefixes the directory mounts omit, such as textures\\wip. Repeat to omit several")
+        .short('i')
+        .long("ignore")
+        .action(ArgAction::Append)
+        .num_args(1..)
+        .value_parser(value_parser!(String)),
+    )
+    .arg(
+      Arg::new("loose")
+        .help("List only loose files, ignoring archived entries")
+        .long("loose")
+        .action(ArgAction::SetTrue),
+    )
+    .arg(
+      Arg::new("shadowed")
+        .help("Also report entries hidden by a higher-priority source, mount or volume")
+        .long("shadowed")
+        .action(ArgAction::SetTrue),
+    )
   }
 
-  /// Reports the assets a path resolves and their source mounts.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let paths: Vec<&PathBuf> = matches
-      .get_many::<PathBuf>("path")
-      .expect("Expected at least one path to be provided")
-      .collect();
-    let prefix: Option<&String> = matches.get_one::<_>("prefix");
-
     let output: OutputOptions = context.get_output().clone();
-
-    let mode: XrayMountMode = XrayMountMode::try_from(
-      matches
-        .get_one::<String>("source")
-        .expect("Expected source mode to default")
-        .as_str(),
-    )?;
-
-    // One vocabulary for naming roots, so a loose tree can be listed in front of an installation.
-    let roots: XrayRoots = XrayRoots::new(paths.iter().map(|path| XrayRoot::new(path.to_path_buf(), mode)));
-
+    let roots: XrayRoots = XrayRootsArguments::of(matches)?;
     let ignored: Vec<String> = matches
       .get_many::<String>("ignore")
       .map(|values| values.cloned().collect())
@@ -107,7 +59,7 @@ impl GenericCommand for ListCommand {
 
     let listing: AssetListing = AssetLister::new(&roots)
       .with_ignored(&ignored)
-      .with_prefix(prefix.map(String::as_str))
+      .with_prefix(XrayRootsArguments::prefix_of(matches))
       .with_loose_only(matches.get_flag("loose"))
       .with_shadowed(matches.get_flag("shadowed"))
       .run()?;
@@ -117,7 +69,7 @@ impl GenericCommand for ListCommand {
     xrf_output::info!(output, "Listing {}", listing.origin);
 
     for mount in &listing.mounts {
-      xrf_output::info!(output, "  {mount}");
+      xrf_output::info!(output, "  {}", MountDescription::describe(mount));
     }
 
     Self::print_entries(&output, &listing);
@@ -126,7 +78,7 @@ impl GenericCommand for ListCommand {
       Self::print_shadowed(&output, &listing);
     }
 
-    crate::core::collisions::print_collisions(&output, &listing.collisions, PRINT_LIMIT);
+    SourceReachability::print_collisions(&output, &listing.collisions);
     Self::print_skipped(&output, &listing);
 
     xrf_output::success!(
