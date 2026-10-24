@@ -1,4 +1,4 @@
-//! What an `archive unpack --dry` run reports to a machine.
+//! What an `archive unpack --dry-run` run reports to a machine.
 //!
 //! A completed run reports `xrf_pack::ArchiveUnpackResult` directly: it is already this workspace's
 //! shape for what unpacking produced, shared with the desktop app over IPC, and a second CLI-only
@@ -16,8 +16,10 @@ use xrf_archive::ArchiveProject;
 pub struct ArchiveUnpackDryReport {
   archives: usize,
   destination: String,
-  entries: usize,
-  is_dry: bool,
+  /// Directory records, which a run creates as folders rather than writes as files.
+  directories: usize,
+  files: usize,
+  is_dry_run: bool,
   size_compressed: u64,
   size_real: u64,
   source: String,
@@ -28,8 +30,9 @@ impl ArchiveUnpackDryReport {
     Self {
       archives: project.archives.len(),
       destination: String::from(destination),
-      entries: project.files.len(),
-      is_dry: true,
+      directories: project.count_directories(),
+      files: project.count_files(),
+      is_dry_run: true,
       size_compressed: project.get_compressed_size(),
       size_real: project.get_real_size(),
       source: String::from(source),

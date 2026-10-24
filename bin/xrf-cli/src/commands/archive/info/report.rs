@@ -22,11 +22,9 @@ pub struct ArchiveInfoReport {
 
 impl ArchiveInfoReport {
   pub fn new(project: &ArchiveProject) -> Self {
-    let files: usize = project.files.values().filter(|entry| !entry.is_directory).count();
-
     Self {
-      directories: project.files.len() - files,
-      files,
+      directories: project.count_directories(),
+      files: project.count_files(),
       root: xrf_utils::to_portable_path_string(&project.root),
       size_compressed: project.get_compressed_size(),
       size_real: project.get_real_size(),

@@ -8,8 +8,7 @@ use xrf_utils::format_path;
 
 use super::archive_shared_payload_index::ArchiveSharedPayloadIndex;
 use super::report::ArchiveListReport;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct ListCommand;
@@ -27,8 +26,8 @@ impl GenericCommand for ListCommand {
     "list"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
+  fn declare(&self, command: Command) -> Command {
+    command
       .about("List the merged entries in an X-Ray archive volume or volume set")
       .arg(
         Arg::new("path")
@@ -69,7 +68,7 @@ impl GenericCommand for ListCommand {
     let shared: ArchiveSharedPayloadIndex = ArchiveSharedPayloadIndex::new(&shared);
 
     for entry in &entries {
-      if matches.get_flag("verbose") {
+      if context.is_verbose() {
         let (compressed, unpacked): (String, String) =
           xrf_utils::format_bytes_pair(u64::from(entry.size_compressed), u64::from(entry.size_real));
 
@@ -129,7 +128,7 @@ impl ListCommand {
 #[cfg(test)]
 mod tests {
   use super::ListCommand;
-  use crate::core::generic_command::GenericCommand;
+  use crate::core::command::GenericCommand;
 
   #[test]
   fn rejects_conflicting_entry_kind_filters() {

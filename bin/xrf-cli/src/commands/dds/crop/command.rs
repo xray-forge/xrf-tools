@@ -7,8 +7,7 @@ use xrf_texture::{CropTextureOptions, CropTextureProcessor, CropTextureResult};
 use xrf_utils::format_path;
 
 use super::report::DdsCropReport;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct CropCommand;
@@ -18,21 +17,22 @@ impl GenericCommand for CropCommand {
     "crop"
   }
 
-  /// Create command for cropping a region out of a dds file.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to crop a rectangular region out of a dds file into a new dds file")
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("Crop a rectangular region out of a DDS file into a new DDS file")
       .arg(
-        Arg::new("source")
+        Arg::new("path")
           .help("Path to the dds file to read the region from")
-          .long("source")
+          .short('p')
+          .long("path")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("output")
+        Arg::new("dest")
           .help("Path of the dds file to write")
-          .long("output")
+          .short('d')
+          .long("dest")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
@@ -80,13 +80,12 @@ impl GenericCommand for CropCommand {
       )
   }
 
-  /// Crop a region out of a dds file, optionally scaling it into different bounds.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let source: &PathBuf = matches
-      .get_one::<PathBuf>("source")
+      .get_one::<PathBuf>("path")
       .expect("Expected valid source path to be provided");
     let output_path: &PathBuf = matches
-      .get_one::<PathBuf>("output")
+      .get_one::<PathBuf>("dest")
       .expect("Expected valid output path to be provided");
 
     let x: u32 = *matches.get_one::<u32>("x").expect("Expected valid x");
@@ -116,7 +115,7 @@ impl GenericCommand for CropCommand {
 
     context.set_result(|| DdsCropReport::new(&options, &result))?;
 
-    xrf_output::info!(
+    xrf_output::success!(
       output,
       "Wrote {}x{} region from {}:{} of {} to {}",
       result.width,

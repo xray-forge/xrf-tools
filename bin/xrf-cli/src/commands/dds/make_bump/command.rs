@@ -10,11 +10,8 @@ use xrf_texture::{
 use xrf_utils::format_path;
 
 use super::report::DdsMakeBumpReport;
-use crate::commands::dds::dds_encode_arguments::{
-  DEFAULT_BUMP_MIP_FILTER, get_mip_filter, get_quality, new_mip_filter_argument, new_quality_argument,
-};
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::commands::dds::dds_encode_arguments::DdsEncodeArguments;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct MakeBumpCommand;
@@ -24,20 +21,22 @@ impl GenericCommand for MakeBumpCommand {
     "make-bump"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to generate the `_bump` and `_bump#` pair a bumped surface binds, from a height map")
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command
+      .about("Generate the `_bump` and `_bump#` pair a bumped surface binds, from a height map")
       .arg(
-        Arg::new("height")
-          .help("Path of the image the relief is read from, averaged across its colour channels")
-          .value_name("HEIGHT")
+        Arg::new("path")
+          .help("Path of the height map the relief is read from, averaged across its colour channels")
+          .short('p')
+          .long("path")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("destination")
+        Arg::new("dest")
           .help("Path of the texture the pair belongs to, without the `_bump` suffix or an extension")
-          .value_name("DESTINATION")
+          .short('d')
+          .long("dest")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
@@ -59,16 +58,15 @@ impl GenericCommand for MakeBumpCommand {
           .help("Path of a normal map to use instead of deriving one from the height, of the same size")
           .long("normal-map")
           .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(new_mip_filter_argument(DEFAULT_BUMP_MIP_FILTER))
-      .arg(new_quality_argument())
-      .arg(
-        Arg::new("virtual-height")
-          .help("Relief depth the normals are derived at, `bump_virtual_height` of the descriptor")
-          .long("virtual-height")
-          .default_value("0.05")
-          .value_parser(value_parser!(f32)),
-      )
+      );
+
+    DdsEncodeArguments::declare(command, DdsEncodeArguments::BUMP_MIP_FILTER).arg(
+      Arg::new("virtual-height")
+        .help("Relief depth the normals are derived at, `bump_virtual_height` of the descriptor")
+        .long("virtual-height")
+        .default_value("0.05")
+        .value_parser(value_parser!(f32)),
+    )
   }
 
   /// Generate the pair and say what it came to.
@@ -76,8 +74,8 @@ impl GenericCommand for MakeBumpCommand {
   /// A gloss too dark to show a specular response is reported rather than refused, exactly as the SDK reports it and
   /// keeps the files: a matte surface is a thing somebody may have meant.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let height: &PathBuf = matches.get_one("height").expect("Expected valid height path");
-    let destination: &PathBuf = matches.get_one("destination").expect("Expected valid destination path");
+    let height: &PathBuf = matches.get_one("path").expect("Expected valid height path");
+    let destination: &PathBuf = matches.get_one("dest").expect("Expected valid destination path");
     let output: OutputOptions = context.get_output().clone();
 
     let options: GenerateBumpOptions = GenerateBumpOptions {
@@ -92,13 +90,13 @@ impl GenericCommand for MakeBumpCommand {
       virtual_height: *matches
         .get_one::<f32>("virtual-height")
         .expect("Expected valid virtual height"),
-      mip_filter: get_mip_filter(matches)?,
-      quality: get_quality(matches)?,
+      mip_filter: DdsEncodeArguments::mip_filter_of(matches)?,
+      quality: DdsEncodeArguments::quality_of(matches)?,
     };
 
     let result: GenerateBumpResult = GenerateBumpProcessor::generate(&options)?;
 
-    xrf_output::info!(
+    xrf_output::success!(
       output,
       "Generated {} and {} from {}",
       format_path(&result.bump),

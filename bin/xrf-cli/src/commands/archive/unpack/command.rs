@@ -7,11 +7,9 @@ use xrf_pack::{ArchiveExtractOptions, ArchiveUnpackResult, ArchiveUnpacker};
 use xrf_utils::format_path;
 
 use super::report::ArchiveUnpackDryReport;
-use crate::core::command_context::CommandContext;
-use crate::core::execution::ExecutionArguments;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::link_policy::{LinkPolicyArguments, requested_link_policy};
-use crate::core::progress::new_logging_job;
+use crate::core::arguments::{JobsArgument, LinkPolicyArgument};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::terminal::CliJob;
 
 #[derive(Default)]
 pub struct UnpackCommand;
@@ -21,13 +19,12 @@ impl GenericCommand for UnpackCommand {
     "unpack"
   }
 
-  /// Create command to unpack archive.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to unpack provided *.db into separate files")
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command
+      .about("Unpack an archive into separate files")
       .arg(
         Arg::new("path")
-          .help("Path to *.db file")
+          .help("Path to the *.db archive")
           .short('p')
           .long("path")
           .required(true)
@@ -35,24 +32,22 @@ impl GenericCommand for UnpackCommand {
       )
       .arg(
         Arg::new("dest")
-          .help("Path to folder for exporting")
+          .help("Folder to unpack into")
           .short('d')
           .long("dest")
           .default_value("unpacked")
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("dry")
-          .help("Run in dry mode without actually unpacking to disk")
-          .long("dry")
-          .required(false)
+        Arg::new("dry-run")
+          .help("Report what would be unpacked without writing anything")
+          .long("dry-run")
           .action(ArgAction::SetTrue),
-      )
-      .with_jobs()
-      .with_link_policy()
+      );
+
+    LinkPolicyArgument::declare(JobsArgument::declare(command))
   }
 
-  /// Unpack xray engine database archive.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: PathBuf = xrf_utils::to_absolute_path(
       matches
@@ -65,32 +60,33 @@ impl GenericCommand for UnpackCommand {
         .expect("Expected valid output path to be provided"),
     )?;
 
-    let is_dry: bool = matches.get_flag("dry");
+    let is_dry_run: bool = matches.get_flag("dry-run");
 
     let output: OutputOptions = context.get_output().clone();
 
-    if is_dry {
+    if is_dry_run {
       xrf_output::info!(output, "Unpack in dry mode");
     }
 
     xrf_output::info!(output, "Unpack source: {}", format_path(&path));
     xrf_output::info!(output, "Unpack destination: {}", format_path(&destination));
 
-    let archive_project: Box<ArchiveProject> = Box::new(ArchiveProject::new(&path)?);
+    let archive_project: ArchiveProject = ArchiveProject::new(&path)?;
 
     let (compressed_size, real_size): (String, String) =
       xrf_utils::format_bytes_pair(archive_project.get_compressed_size(), archive_project.get_real_size());
 
     xrf_output::info!(
       output,
-      "Summary: {} archive(s), {} file(s), {} compressed, {} real",
+      "Summary: {} archive(s), {} file(s), {} directory record(s), {} compressed, {} real",
       archive_project.archives.len(),
-      archive_project.files.len(),
+      archive_project.count_files(),
+      archive_project.count_directories(),
       compressed_size,
       real_size,
     );
 
-    if is_dry {
+    if is_dry_run {
       // A dry run's whole result is what it would have written, which is the summary it just printed.
       context.set_result(|| {
         ArchiveUnpackDryReport::new(
@@ -104,8 +100,8 @@ impl GenericCommand for UnpackCommand {
         &archive_project,
         &destination,
         ArchiveExtractOptions::default()
-          .with_job(new_logging_job())
-          .with_link_policy(requested_link_policy(matches)),
+          .with_job(CliJob::new_logging())
+          .with_link_policy(LinkPolicyArgument::of(matches)),
       )?;
 
       xrf_output::success!(
@@ -128,8 +124,8 @@ mod tests {
   use xrf_job::ExecutionRequest;
 
   use super::UnpackCommand;
-  use crate::core::execution::requested_execution;
-  use crate::core::generic_command::GenericCommand;
+  use crate::core::arguments::JobsArgument;
+  use crate::core::command::GenericCommand;
 
   fn parse(arguments: &[&str]) -> Result<clap::ArgMatches, clap::Error> {
     UnpackCommand.init().try_get_matches_from(arguments)
@@ -149,7 +145,7 @@ mod tests {
     let matches = parse(&["unpack", "--path", "archive.db", "-j", "4"]).expect("the arguments parse");
 
     assert_eq!(
-      requested_execution(&matches),
+      JobsArgument::of(&matches),
       Some(ExecutionRequest::Workers(4.try_into().expect("four is not zero")))
     );
   }
@@ -159,6 +155,6 @@ mod tests {
   fn unpacks_at_the_host_width_when_nobody_says_otherwise() {
     let matches = parse(&["unpack", "--path", "archive.db"]).expect("the arguments parse");
 
-    assert_eq!(requested_execution(&matches), Some(ExecutionRequest::Auto));
+    assert_eq!(JobsArgument::of(&matches), Some(ExecutionRequest::Auto));
   }
 }

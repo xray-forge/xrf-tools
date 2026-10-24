@@ -4,19 +4,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 
 use crate::commands::archive::pack::command::PackCommand;
-use crate::core::command_testing::{run_command, run_command_for_result};
-use crate::core::generic_command::CommandResult;
+use crate::core::command::CommandResult;
+use crate::core::command::command_testing::{run_command, run_command_for_result};
 
 /// A source tree of two directories, so a configuration that selects one proves it selected.
 fn create_roots(name: &str) -> CommandResult<(PathBuf, PathBuf)> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("archive_pack_config/{name}"));
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
+  let root: PathBuf = create_generated_test_resource_dir(&format!("archive_pack_config/{name}"))?;
 
   fs::create_dir_all(root.join("source").join("configs"))?;
   fs::create_dir_all(root.join("source").join("meshes"))?;
@@ -32,6 +28,7 @@ fn create_roots(name: &str) -> CommandResult<(PathBuf, PathBuf)> {
 fn pack_arguments(source: &Path, destination: &Path, name: &str) -> Vec<String> {
   vec![
     String::from("pack"),
+    String::from("--path"),
     source.display().to_string(),
     String::from("--dest"),
     destination.display().to_string(),

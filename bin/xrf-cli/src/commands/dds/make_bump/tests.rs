@@ -7,8 +7,8 @@ use xrf_dds::{DdsFile, Rgba, RgbaImage};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::commands::dds::make_bump::command::MakeBumpCommand;
-use crate::core::command_testing::run_command_for_result;
-use crate::core::generic_command::CommandResult;
+use crate::core::command::CommandResult;
+use crate::core::command::command_testing::run_command_for_result;
 
 /// A height map whose relief climbs with y, written as a png the way an author would hand one over.
 fn height(case: &str) -> CommandResult<PathBuf> {
@@ -33,7 +33,9 @@ fn run(case: &str, arguments: &[&str]) -> CommandResult<(PathBuf, Value)> {
 
   let mut command: Vec<String> = vec![
     String::from("make-bump"),
+    String::from("-p"),
     source.display().to_string(),
+    String::from("-d"),
     destination.display().to_string(),
   ];
 

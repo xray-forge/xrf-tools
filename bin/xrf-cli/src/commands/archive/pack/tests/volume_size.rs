@@ -5,19 +5,15 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_pack::{VOLUME_SIZE_HARD_MAX, VOLUME_SIZE_MAX};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 
 use crate::commands::archive::pack::command::PackCommand;
-use crate::core::command_testing::run_command;
-use crate::core::generic_command::CommandResult;
+use crate::core::command::CommandResult;
+use crate::core::command::command_testing::run_command;
 
 /// A source tree holding one small file, and a destination beside it that packing creates.
 fn create_roots(name: &str) -> XrfResult<(PathBuf, PathBuf)> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("archive_pack/{name}"));
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
+  let root: PathBuf = create_generated_test_resource_dir(&format!("archive_pack/{name}"))?;
 
   fs::create_dir_all(root.join("configs"))?;
   fs::write(
@@ -33,6 +29,7 @@ value = 1
 fn pack(source: &Path, destination: &Path, megabytes: u64, is_oversized_allowed: bool) -> CommandResult {
   let mut arguments: Vec<String> = vec![
     String::from("pack"),
+    String::from("--path"),
     source.display().to_string(),
     String::from("--dest"),
     destination.display().to_string(),

@@ -6,11 +6,9 @@ use xrf_archive::ArchiveProject;
 use xrf_output::OutputOptions;
 use xrf_pack::{ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtractResult, ArchiveUnpacker};
 
-use crate::core::command_context::CommandContext;
-use crate::core::execution::ExecutionArguments;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::link_policy::{LinkPolicyArguments, requested_link_policy};
-use crate::core::progress::new_logging_job;
+use crate::core::arguments::{JobsArgument, LinkPolicyArgument};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::terminal::CliJob;
 
 #[derive(Default)]
 pub struct ExtractCommand;
@@ -20,8 +18,8 @@ impl GenericCommand for ExtractCommand {
     "extract"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command
       .about("Extract one archive file or directory without unpacking the complete set")
       .arg(
         Arg::new("path")
@@ -54,9 +52,9 @@ impl GenericCommand for ExtractCommand {
           .long("dest")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
-      )
-      .with_jobs()
-      .with_link_policy()
+      );
+
+    LinkPolicyArgument::declare(JobsArgument::declare(command))
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -93,8 +91,8 @@ impl GenericCommand for ExtractCommand {
         directory,
         destination,
         ArchiveExtractOptions::default()
-          .with_job(new_logging_job())
-          .with_link_policy(requested_link_policy(matches)),
+          .with_job(CliJob::new_logging())
+          .with_link_policy(LinkPolicyArgument::of(matches)),
       )?;
 
       xrf_output::success!(
@@ -119,9 +117,8 @@ mod tests {
   use xrf_utils::HostLinkPolicy;
 
   use super::ExtractCommand;
-  use crate::core::execution::requested_execution;
-  use crate::core::generic_command::GenericCommand;
-  use crate::core::link_policy::requested_link_policy;
+  use crate::core::arguments::{JobsArgument, LinkPolicyArgument};
+  use crate::core::command::GenericCommand;
 
   fn parse(arguments: &[&str]) -> Result<clap::ArgMatches, clap::Error> {
     ExtractCommand.init().try_get_matches_from(arguments)
@@ -143,7 +140,7 @@ mod tests {
     .expect("the arguments parse");
 
     assert_eq!(
-      requested_execution(&matches),
+      JobsArgument::of(&matches),
       Some(ExecutionRequest::Workers(1.try_into().expect("one is not zero")))
     );
   }
@@ -164,8 +161,8 @@ mod tests {
     ])
     .expect("the arguments parse");
 
-    assert_eq!(requested_link_policy(&following), HostLinkPolicy::Follow);
-    assert_eq!(requested_link_policy(&refusing), HostLinkPolicy::Refuse);
+    assert_eq!(LinkPolicyArgument::of(&following), HostLinkPolicy::Follow);
+    assert_eq!(LinkPolicyArgument::of(&refusing), HostLinkPolicy::Refuse);
   }
 
   #[test]
@@ -173,6 +170,6 @@ mod tests {
     let matches =
       parse(&["extract", "-p", "archive.db", "--directory", "scripts", "-d", "out"]).expect("the arguments parse");
 
-    assert_eq!(requested_execution(&matches), Some(ExecutionRequest::Auto));
+    assert_eq!(JobsArgument::of(&matches), Some(ExecutionRequest::Auto));
   }
 }
