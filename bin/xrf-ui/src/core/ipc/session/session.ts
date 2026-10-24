@@ -77,23 +77,22 @@ export class Session {
     }
 
     if (revision === this.revision) {
-      // Successful publication replaced the committed value; unfinished calls retain their own identities.
-      for (const id of this.owned) {
-        if (id !== sessionId && !this.pending.has(id)) {
-          this.owned.delete(id);
-        }
+      // The backend holds every opening apart, so the ones this publication replaces are closed rather than forgotten;
+      // unfinished calls retain their own identities, and one that fails to close is retried by the next close.
+      const replaced: Array<SessionId> = [...this.owned].filter((id) => id !== sessionId && !this.pending.has(id));
+
+      if (replaced.length > 0) {
+        this.closeOwned(replaced).catch((error: unknown) => {
+          Logger.error("Failed to release replaced sessions:", error);
+        });
       }
 
       return response;
     }
 
-    // A close finished before this publication reached us, so releasing it falls to this call. Re-owned first because
-    // that close already forgot it, which is what leaves it retryable when the release below fails.
-    this.owned.add(sessionId);
-
-    await this.closeSessions([sessionId]);
-
-    this.owned.delete(sessionId);
+    // A close finished before this publication reached us, so releasing it falls to this call; it stays owned, and so
+    // retryable, only where the release fails.
+    await this.closeOwned([sessionId]);
 
     return response;
   }
@@ -112,10 +111,26 @@ export class Session {
       return;
     }
 
-    await this.closeSessions(ids);
+    await this.closeOwned(ids);
+  }
 
+  /**
+   * Releases openings, owned no longer while the release is under way so another close does not send them again, and
+   * owned again where it fails, so the next close retries them.
+   */
+  private async closeOwned(ids: Array<SessionId>): Promise<void> {
     for (const id of ids) {
       this.owned.delete(id);
+    }
+
+    try {
+      await this.closeSessions(ids);
+    } catch (error) {
+      for (const id of ids) {
+        this.owned.add(id);
+      }
+
+      throw error;
     }
   }
 

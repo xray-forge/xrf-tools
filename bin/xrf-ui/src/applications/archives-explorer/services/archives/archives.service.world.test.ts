@@ -92,24 +92,29 @@ describe("ArchivesService world subject", () => {
     expect(service.selectedDescriptor).toBeNull();
   });
 
-  it("replaces a volume set without closing anything, because one subject is open at a time", async () => {
-    const closed: Array<string> = [];
+  it("replaces a volume set, closing only the volume set it replaced", async () => {
+    const closed: Array<Array<string>> = [];
 
     setMockInvokeResponses({
       ["plugin:archives|open_volumes"]: mockSessionResponse(mockArchivesVolumes([])),
       ["plugin:archives|open_world"]: mockSessionResponse(mockArchivesWorldSubject()),
       ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [] },
       ["plugin:archives|list_shared_payloads"]: [],
-      ["plugin:archives|close_subject"]: () => void closed.push("subject"),
+      ["plugin:archives|close_subject"]: (args?: Record<string, unknown>) =>
+        void closed.push(args?.sessionIds as Array<string>),
     });
 
     const { service } = mockInjectedService(ArchivesService);
 
     await service.openVolumes("C:\\game\\db");
+
+    const volumes: unknown = mockInvoke.mock.calls.find(([name]) => name === "plugin:archives|open_volumes")?.[1]
+      ?.sessionId;
+
     await service.openWorld(mockInstallationRoots());
 
     expect(service.subject.value?.kind).toBe(EArchiveSubject.WORLD);
-    expect(closed).toEqual([]);
+    expect(closed).toEqual([[volumes]]);
   });
 
   it("restores whichever subject the backend still holds", async () => {

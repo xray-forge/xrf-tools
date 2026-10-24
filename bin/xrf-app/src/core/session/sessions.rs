@@ -1,10 +1,10 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use rayon::ThreadPool;
 use xrf_vfs::{XrayInputRecord, XrayRevision};
 
 use crate::core::assets::{AssetFanOut, AssetMountState};
+use crate::core::session::sessions_state::SessionsState;
 use crate::core::session::{
   Session, SessionChange, SessionDerived, SessionFollower, SessionId, SessionParts, SessionRelease, SessionScopes,
   SessionSnapshot,
@@ -13,24 +13,14 @@ use crate::core::types::TauriResult;
 
 /// Every opening of one kind of document, each a handle its opener closes: the many a domain holds at once, one for each
 /// tool and document. Each handle publishes its snapshots as one [`Session`] does, and is followed through commits with
-/// the rest. A clone answers for the same handles.
+/// the rest. A clone answers for the same handles, and opens new ones with the same derivation.
 pub(crate) struct Sessions<T> {
-  /// What a new handle starts as: no opening, and the derivation every handle reads its value again with.
-  template: Session<T>,
   state: Arc<Mutex<SessionsState<T>>>,
-}
-
-struct SessionsState<T> {
-  handles: HashMap<SessionId, Session<T>>,
-  /// When each handle last committed an open, in order, so a restore answers the newest.
-  committed: HashMap<SessionId, u64>,
-  sequence: u64,
 }
 
 impl<T> Clone for Sessions<T> {
   fn clone(&self) -> Self {
     Self {
-      template: self.template.clone(),
       state: Arc::clone(&self.state),
     }
   }
@@ -40,12 +30,7 @@ impl<T: Send + Sync + 'static> Sessions<T> {
   /// The openings of one kind, named `name` in what they say, closed with whatever scope `scopes` releases.
   pub fn new(name: &'static str, scopes: &SessionScopes) -> Self {
     let sessions: Self = Self {
-      template: Session::new(name),
-      state: Arc::new(Mutex::new(SessionsState {
-        handles: HashMap::new(),
-        committed: HashMap::new(),
-        sequence: 0,
-      })),
+      state: Arc::new(Mutex::new(SessionsState::new(Session::new(name)))),
     };
 
     scopes.register(sessions.clone());
@@ -56,10 +41,10 @@ impl<T: Send + Sync + 'static> Sessions<T> {
   /// The openings with the derivation their plugin opens with, run inside the commit; see
   /// [`Session::with_derivation`].
   pub fn with_derivation(
-    mut self,
+    self,
     derive: impl Fn(&SessionSnapshot<T>, &AssetMountState) -> TauriResult<SessionDerived<T>> + Send + Sync + 'static,
   ) -> Self {
-    self.template = self.template.with_derivation(derive);
+    self.update_template(|template| template.with_derivation(derive));
 
     self
   }
@@ -67,43 +52,25 @@ impl<T: Send + Sync + 'static> Sessions<T> {
   /// The openings with a derivation run on `pool`, which the commit does not wait for; see
   /// [`Session::with_deferred_derivation`].
   pub fn with_deferred_derivation(
-    mut self,
+    self,
     pool: Arc<ThreadPool>,
     derive: impl Fn(&SessionSnapshot<T>, &AssetMountState) -> TauriResult<SessionDerived<T>> + Send + Sync + 'static,
   ) -> Self {
-    self.template = self.template.with_deferred_derivation(pool, derive);
+    self.update_template(|template| template.with_deferred_derivation(pool, derive));
 
     self
   }
 
   /// Reserves a handle's publication before doing work; other handles, open or opening, are left as they are.
   pub fn begin_open(&self, id: SessionId) -> TauriResult<()> {
-    let handle: Session<T> = self
-      .lock()
-      .handles
-      .entry(id)
-      .or_insert_with(|| self.template.fresh())
-      .clone();
+    let handle: Session<T> = {
+      let mut state: MutexGuard<'_, SessionsState<T>> = self.lock();
+      let fresh: Session<T> = state.template.fresh();
+
+      state.handles.entry(id).or_insert(fresh).clone()
+    };
 
     handle.begin_open(id)
-  }
-
-  /// Reserves `id` to open again what `previous` holds, while `previous` is still open, answering what it holds.
-  pub fn begin_reload(&self, id: SessionId, previous: SessionId) -> TauriResult<Arc<SessionSnapshot<T>>> {
-    let opened: Arc<SessionSnapshot<T>> = self.require(previous)?;
-
-    self.begin_open(id)?;
-
-    Ok(opened)
-  }
-
-  /// Whether `id` is still opening, for work worth abandoning once it was closed.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the handle was closed, or when the lock is poisoned.
-  pub fn require_opening(&self, id: SessionId) -> TauriResult<()> {
-    self.require_handle(id)?.require_opening(id)
   }
 
   /// Publishes a handle's opening; see [`Session::commit_open`].
@@ -118,7 +85,7 @@ impl<T: Send + Sync + 'static> Sessions<T> {
   }
 
   /// Publishes a handle's opening at `revision`, with the inputs its value was read from and the parts it read on its
-  /// way; see [`Session::commit_open_with`].
+  /// way; see [`Session::commit_open_with`]. A handle closed as it commits is not one a restore answers.
   pub fn commit_open_with(
     &self,
     id: SessionId,
@@ -132,11 +99,13 @@ impl<T: Send + Sync + 'static> Sessions<T> {
       .commit_open_with(id, value, revision, inputs, parts)?;
     let mut state: MutexGuard<'_, SessionsState<T>> = self.lock();
 
-    state.sequence += 1;
+    if state.handles.contains_key(&id) {
+      state.sequence += 1;
 
-    let sequence: u64 = state.sequence;
+      let sequence: u64 = state.sequence;
 
-    state.committed.insert(id, sequence);
+      state.committed.insert(id, sequence);
+    }
 
     Ok(opened)
   }
@@ -146,17 +115,17 @@ impl<T: Send + Sync + 'static> Sessions<T> {
     self.require_handle(id)?.require(id)
   }
 
-  /// The newest committed snapshot among `ids`, for a page attaching to what its scope holds; none where none of them
-  /// holds one.
+  /// The newest committed snapshot among `ids` still open, for a page attaching to what its scope holds; none where
+  /// none of them holds one.
   pub fn restore(&self, ids: &[SessionId]) -> TauriResult<Option<Arc<SessionSnapshot<T>>>> {
     let newest: Option<Session<T>> = {
       let state: MutexGuard<'_, SessionsState<T>> = self.lock();
 
       ids
         .iter()
-        .filter_map(|id| state.committed.get(id).map(|sequence| (*sequence, id)))
+        .filter_map(|id| Some((*state.committed.get(id)?, state.handles.get(id)?)))
         .max_by_key(|(sequence, _)| *sequence)
-        .and_then(|(_, id)| state.handles.get(id).cloned())
+        .map(|(_, handle)| handle.clone())
     };
 
     match newest {
@@ -216,10 +185,23 @@ impl<T: Send + Sync + 'static> Sessions<T> {
     Ok(detached)
   }
 
+  /// Replaces what new handles start as, for every clone at once, so the clone a scope release holds opens nothing
+  /// with a template the plugin has since replaced.
+  fn update_template(&self, update: impl FnOnce(Session<T>) -> Session<T>) {
+    let mut state: MutexGuard<'_, SessionsState<T>> = self.lock();
+    let template: Session<T> = state.template.clone();
+
+    state.template = update(template);
+  }
+
   fn require_handle(&self, id: SessionId) -> TauriResult<Session<T>> {
-    self
-      .find_handle(id)
-      .ok_or_else(|| format!("The {} session has changed or is closed", self.template.get_name()))
+    let state: MutexGuard<'_, SessionsState<T>> = self.lock();
+
+    state
+      .handles
+      .get(&id)
+      .cloned()
+      .ok_or_else(|| format!("The {} session has changed or is closed", state.template.get_name()))
   }
 
   fn find_handle(&self, id: SessionId) -> Option<Session<T>> {
@@ -315,6 +297,14 @@ mod tests {
     assert_eq!(restored.map(|it| **it), Some("newer"));
     assert_eq!(sessions.restore(&[other]).unwrap().map(|it| **it), Some("other"));
     assert!(sessions.restore(&[]).unwrap().is_none());
+
+    sessions.close(&[newer]).unwrap();
+
+    assert_eq!(
+      sessions.restore(&[newer, older]).unwrap().map(|it| **it),
+      Some("older"),
+      "a closed handle gives way to the newest still open"
+    );
   }
 
   #[test]

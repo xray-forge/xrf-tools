@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 
 import { mockInvoke, mockIsTauri, resetMockIsTauri } from "@/fixtures/mocks/tauri.mocks";
+import { Logger } from "@/lib/logging";
 
 import { ISessionIdentity, Session, SessionScopeService } from "./index";
 
@@ -87,17 +88,37 @@ describe("Session", () => {
     expect(release).toHaveBeenCalledWith(["restored"]);
   });
 
-  it("drops an adopted opening once a later open replaces it", async () => {
+  // The backend holds each opening apart, so one replaced and only forgotten would stay open until its tool is left.
+  it("closes an opening, adopted or opened, once a later open replaces it", async () => {
     const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
     const session = new Session(release, new SessionScopeService("test"));
 
     session.adopt({ sessionId: "restored" });
 
-    const opened = await session.open(async (sessionId) => ({ sessionId }));
+    const first = await session.open(async (sessionId) => ({ sessionId }));
+    const second = await session.open(async (sessionId) => ({ sessionId }));
 
     await session.close();
 
-    expect(release.mock.calls).toEqual([[[opened.sessionId]]]);
+    expect(release.mock.calls).toEqual([[["restored"]], [[first.sessionId]], [[second.sessionId]]]);
+  });
+
+  it("retries a replaced opening on the next close where closing it failed", async () => {
+    const release = jest
+      .fn<(ids: Array<string>) => Promise<void>>()
+      .mockRejectedValueOnce(new Error("transport unavailable"))
+      .mockResolvedValue(undefined);
+    const session = new Session(release, new SessionScopeService("test"));
+
+    jest.spyOn(Logger, "error").mockImplementation(() => undefined);
+    session.adopt({ sessionId: "restored" });
+
+    const opened = await session.open(async (sessionId) => ({ sessionId }));
+
+    await Promise.resolve();
+    await session.close();
+
+    expect(release.mock.calls).toEqual([[["restored"]], [[opened.sessionId, "restored"]]]);
   });
 
   it("can retry a failed release and includes the adopted session", async () => {
@@ -195,5 +216,11 @@ describe("Session", () => {
       sessionId: expect.any(String),
     });
     expect(session.scope).toEqual({ tool: "level-viewer", window: "main" });
+  });
+
+  it("makes a scope outside a Tauri webview, where there is no window to name", () => {
+    mockIsTauri.mockReturnValue(false);
+
+    expect(new SessionScopeService("level-viewer").scope).toEqual({ tool: "level-viewer", window: "" });
   });
 });
