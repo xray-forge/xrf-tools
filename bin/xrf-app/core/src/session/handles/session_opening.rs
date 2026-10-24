@@ -12,14 +12,17 @@ use crate::session::{SessionDerived, SessionId, SessionParts, SessionSnapshot, S
 pub struct SessionOpening<T: Send + Sync + 'static> {
   sessions: Sessions<T>,
   id: SessionId,
+  /// The reservation this opening holds in its handle, which giving it up releases and nothing begun after it.
+  token: u64,
   is_settled: bool,
 }
 
 impl<T: Send + Sync + 'static> SessionOpening<T> {
-  pub(super) fn new(sessions: Sessions<T>, id: SessionId) -> Self {
+  pub(super) fn new(sessions: Sessions<T>, id: SessionId, token: u64) -> Self {
     Self {
       sessions,
       id,
+      token,
       is_settled: false,
     }
   }
@@ -50,7 +53,7 @@ impl<T: Send + Sync + 'static> SessionOpening<T> {
   /// # Errors
   ///
   /// Returns an error when the handle was closed while it opened.
-  pub fn commit_read(
+  pub(crate) fn commit_read(
     self,
     read: SessionDerived<T>,
     search: &XraySearch,
@@ -89,7 +92,7 @@ impl<T: Send + Sync + 'static> SessionOpening<T> {
 impl<T: Send + Sync + 'static> Drop for SessionOpening<T> {
   fn drop(&mut self) {
     if !self.is_settled {
-      self.sessions.abandon(self.id);
+      self.sessions.abandon(self.id, self.token);
     }
   }
 }

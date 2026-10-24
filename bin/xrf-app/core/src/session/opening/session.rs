@@ -56,6 +56,7 @@ impl<T> Session<T> {
   fn empty() -> Arc<Mutex<SessionState<T>>> {
     Arc::new(Mutex::new(SessionState {
       opening: None,
+      reservations: 0,
       opened: None,
       deriving: None,
       stale: Weak::new(),
@@ -97,18 +98,30 @@ impl<T> Session<T> {
     self
   }
 
-  /// Reserves publication before doing work, without invalidating the committed value's readers.
-  pub(crate) fn begin_open(&self, id: SessionId) {
-    self.lock().opening = Some(id);
-  }
-
-  /// Gives up the opening `id` reserved, keeping whatever the slot committed before it.
-  pub(crate) fn give_up_open(&self, id: SessionId) {
+  /// Reserves publication before doing work, without invalidating the committed value's readers, answering the
+  /// reservation's token.
+  pub(crate) fn begin_open(&self, id: SessionId) -> u64 {
     let mut state: MutexGuard<SessionState<T>> = self.lock();
 
-    if state.opening == Some(id) {
+    state.reservations += 1;
+    state.opening = Some((id, state.reservations));
+
+    state.reservations
+  }
+
+  /// Gives up the reservation `token` names, keeping whatever the slot committed before it; one made since is left.
+  pub(crate) fn give_up_open(&self, id: SessionId, token: u64) {
+    let mut state: MutexGuard<SessionState<T>> = self.lock();
+
+    if state.opening == Some((id, token)) {
       state.opening = None;
     }
+  }
+
+  /// Whether an opening is reserved and not yet committed or given up.
+  #[cfg(test)]
+  pub(crate) fn is_opening(&self) -> bool {
+    self.lock().opening.is_some()
   }
 
   /// Publishes only the newest opening; parsing and resource acquisition happen before this call.
@@ -142,7 +155,7 @@ impl<T> Session<T> {
 
     let mut state: MutexGuard<SessionState<T>> = self.lock();
 
-    if state.opening != Some(id) {
+    if state.opening.map(|(opening, _)| opening) != Some(id) {
       return Err(self.superseded());
     }
 
@@ -204,7 +217,7 @@ impl<T> Session<T> {
   pub(crate) fn detach(&self, ids: &[SessionId]) -> Option<Arc<SessionSnapshot<T>>> {
     let mut state: MutexGuard<SessionState<T>> = self.lock();
 
-    if state.opening.is_some_and(|id| ids.contains(&id)) {
+    if state.opening.is_some_and(|(id, _)| ids.contains(&id)) {
       state.opening = None;
     }
 

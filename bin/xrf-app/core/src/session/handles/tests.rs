@@ -92,12 +92,32 @@ fn a_reopen_given_up_keeps_the_committed_handle() {
 
   drop(sessions.begin_open(id).unwrap());
 
+  assert!(!sessions.is_opening(id), "the open given up holds no reservation");
   assert_eq!(**sessions.require(id).unwrap(), "committed");
   assert_eq!(scopes.list(&tool), vec![id]);
 
   sessions.begin_open(id).unwrap().commit("reopened").unwrap();
 
   assert_eq!(**sessions.require(id).unwrap(), "reopened");
+}
+
+/// An open given up releases only its own reservation, never one begun after it.
+#[test]
+fn a_reopen_given_up_leaves_a_later_one_to_publish() {
+  let scopes: SessionScopes = SessionScopes::default();
+  let sessions: Sessions<&'static str> = Sessions::new("test", &scopes);
+  let tool: SessionScope = SessionScope::new("main", "tool");
+  let id: SessionId = open(&sessions, &scopes, &tool, "committed");
+  let failed = sessions.begin_open(id).unwrap();
+  let later = sessions.begin_open(id).unwrap();
+
+  drop(failed);
+
+  assert!(sessions.is_opening(id), "the later reservation stands");
+
+  later.commit("later").unwrap();
+
+  assert_eq!(**sessions.require(id).unwrap(), "later");
 }
 
 #[test]
