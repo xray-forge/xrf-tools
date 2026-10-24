@@ -4,7 +4,7 @@ use rayon::ThreadPool;
 use xrf_vfs::{XrayInputRecord, XrayRevision};
 
 use crate::assets::{AssetFanOut, AssetMountState};
-use crate::session::sessions_state::SessionsState;
+use crate::session::handles::sessions_state::SessionsState;
 use crate::session::{
   Session, SessionChange, SessionDerived, SessionFollower, SessionId, SessionParts, SessionRelease, SessionScopes,
   SessionSnapshot,
@@ -57,6 +57,13 @@ impl<T: Send + Sync + 'static> Sessions<T> {
     derive: impl Fn(&SessionSnapshot<T>, &AssetMountState) -> TauriResult<SessionDerived<T>> + Send + Sync + 'static,
   ) -> Self {
     self.update_template(|template| template.with_deferred_derivation(pool, derive));
+
+    self
+  }
+
+  /// The openings with the parts a view drawn from one is built from; see [`Session::with_view_parts`].
+  pub fn with_view_parts(self, parts: &'static [&'static str]) -> Self {
+    self.update_template(|template| template.with_view_parts(parts));
 
     self
   }

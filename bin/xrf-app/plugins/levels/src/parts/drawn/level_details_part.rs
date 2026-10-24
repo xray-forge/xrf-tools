@@ -10,8 +10,8 @@ use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope}
 use xrf_vfs::XraySearch;
 use xrf_visual::{DetailsPackage, DetailsPacker};
 
+use crate::level_report::LevelReport;
 use crate::parts::{LevelCollisionPart, PackedLevelDetails};
-use crate::report::report_unreadable_materials;
 use crate::state::{DETAILS_FILE, LevelSource, LevelTextureReference, SelectedLevel};
 
 /// What a change event calls what a level's grass was read from when it goes stale.
@@ -94,7 +94,7 @@ impl LevelDetailsPart {
     {
       Ok(materials) => materials,
       Err(error) => {
-        report_unreadable_materials(Self::GAME_MATERIALS_FILE, &error);
+        LevelReport::unreadable_materials(Self::GAME_MATERIALS_FILE, &error);
 
         return HashSet::new();
       }

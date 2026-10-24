@@ -8,9 +8,10 @@ use xrf_ltx_inspect::{LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxText
 use xrf_utils::{encode_w1251_bytes_to_string, error_to_string};
 use xrf_vfs::XrayLogicalPath;
 
+use crate::configs_project::ConfigsProject;
 use crate::descriptor::ConfigsDocument;
 use crate::request::ConfigsReadDocumentRequest;
-use crate::state::{ConfigsProject, ConfigsState};
+use crate::state::ConfigsState;
 
 /// Reads one config as the authored view renders it: its lines, and what only the parser knows about them.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "read_document"))]

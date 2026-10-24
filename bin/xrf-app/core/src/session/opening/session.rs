@@ -6,8 +6,8 @@ use rayon::ThreadPool;
 use xrf_vfs::{XrayInputRecord, XrayRevision, XrayVfs};
 
 use crate::assets::{AssetFanOut, AssetMountState};
-use crate::session::session_derivation::{SessionDerivation, SessionDerive};
-use crate::session::session_state::SessionState;
+use crate::session::opening::SessionState;
+use crate::session::opening::{SessionDerivation, SessionDerive};
 use crate::session::{SessionChange, SessionDerived, SessionId, SessionParts, SessionRootChange, SessionSnapshot};
 use crate::types::TauriResult;
 
@@ -16,6 +16,8 @@ pub struct Session<T> {
   name: &'static str,
   state: Arc<Mutex<SessionState<T>>>,
   derivation: Option<SessionDerivation<T>>,
+  /// The parts a view drawn from the session is built from, whose going stale renews it.
+  view_parts: &'static [&'static str],
 }
 
 impl<T> Clone for Session<T> {
@@ -24,6 +26,7 @@ impl<T> Clone for Session<T> {
       name: self.name,
       state: Arc::clone(&self.state),
       derivation: self.derivation.clone(),
+      view_parts: self.view_parts,
     }
   }
 }
@@ -34,15 +37,17 @@ impl<T> Session<T> {
       name,
       state: Self::empty(),
       derivation: None,
+      view_parts: &[],
     }
   }
 
-  /// An empty session with this one's name and derivation, for a registry keeping one a handle.
+  /// An empty session with this one's name, derivation and view parts, for a registry keeping one a handle.
   pub fn fresh(&self) -> Self {
     Self {
       name: self.name,
       state: Self::empty(),
       derivation: self.derivation.clone(),
+      view_parts: self.view_parts,
     }
   }
 
@@ -78,6 +83,14 @@ impl<T> Session<T> {
       derive: Arc::new(derive),
       pool,
     });
+
+    self
+  }
+
+  /// The session with the parts a view drawn from it is built from: a change that lets one of them go, the value kept,
+  /// renews the view (`SessionChange::is_view_renewed`), as a derived value always does.
+  pub fn with_view_parts(mut self, parts: &'static [&'static str]) -> Self {
+    self.view_parts = parts;
 
     self
   }
@@ -303,12 +316,12 @@ impl<T: Send + Sync + 'static> Session<T> {
               continue;
             }
 
-            return Ok(Some(SessionChange {
+            return Ok(Some(self.to_change(
               session_id,
-              revision: current.revision,
-              root: SessionRootChange::Stale,
-              stale_parts: current.parts.list_built(),
-            }));
+              current.revision,
+              SessionRootChange::Stale,
+              current.parts.list_built(),
+            )));
           }
         };
 
@@ -323,12 +336,7 @@ impl<T: Send + Sync + 'static> Session<T> {
       };
 
       if self.publish_next(&current, next)? {
-        return Ok(Some(SessionChange {
-          session_id,
-          revision,
-          root,
-          stale_parts,
-        }));
+        return Ok(Some(self.to_change(session_id, revision, root, stale_parts)));
       }
     }
   }
@@ -386,12 +394,12 @@ impl<T: Send + Sync + 'static> Session<T> {
       fan_out.after(move || pool.spawn(move || session.land(&current, derive.as_ref(), &landing)));
     }
 
-    Ok(SessionChange {
-      session_id: current.session_id,
-      revision: current.revision,
-      root: SessionRootChange::Deriving,
-      stale_parts: Vec::new(),
-    })
+    Ok(self.to_change(
+      current.session_id,
+      current.revision,
+      SessionRootChange::Deriving,
+      Vec::new(),
+    ))
   }
 
   /// Reads `current` again as a deferred derivation, then publishes what it read while `current` is still the committed
@@ -411,12 +419,12 @@ impl<T: Send + Sync + 'static> Session<T> {
           started.elapsed().as_millis()
         );
 
-        let change: SessionChange = SessionChange {
-          session_id: current.session_id,
+        let change: SessionChange = self.to_change(
+          current.session_id,
           revision,
-          root: SessionRootChange::Derived,
-          stale_parts: current.parts.list_built(),
-        };
+          SessionRootChange::Derived,
+          current.parts.list_built(),
+        );
 
         (Some(Self::to_derived(current, revision, derived)), change)
       }
@@ -500,11 +508,34 @@ impl<T: Send + Sync + 'static> Session<T> {
   fn to_failed(&self, current: &SessionSnapshot<T>, reason: String) -> SessionChange {
     log::warn!("The {} session could not be derived again: {reason}", self.name);
 
+    self.to_change(
+      current.session_id,
+      current.revision,
+      SessionRootChange::Failed { reason },
+      Vec::new(),
+    )
+  }
+
+  /// What a change reports of the session, saying whether it renews a view drawn from it.
+  fn to_change(
+    &self,
+    session_id: SessionId,
+    revision: XrayRevision,
+    root: SessionRootChange,
+    stale_parts: Vec<&'static str>,
+  ) -> SessionChange {
+    let is_view_renewed: bool = match root {
+      SessionRootChange::Derived => true,
+      SessionRootChange::Kept => stale_parts.iter().any(|part| self.view_parts.contains(part)),
+      SessionRootChange::Deriving | SessionRootChange::Stale | SessionRootChange::Failed { .. } => false,
+    };
+
     SessionChange {
-      session_id: current.session_id,
-      revision: current.revision,
-      root: SessionRootChange::Failed { reason },
-      stale_parts: Vec::new(),
+      session_id,
+      revision,
+      root,
+      stale_parts,
+      is_view_renewed,
     }
   }
 }

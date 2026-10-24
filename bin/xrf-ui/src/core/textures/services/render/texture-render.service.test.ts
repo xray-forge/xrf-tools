@@ -124,7 +124,7 @@ describe("TextureRenderService", () => {
     const { service } = await mockAttached();
 
     setMockInvokeResponses({
-      ["plugin:render|describe_textures"]: [
+      ["plugin:render|describe_texture_loads"]: [
         { reference: MOCK_TEXTURE, state: { kind: ERenderTextureState.FAILED, reason: "Unknown pixel format" } },
       ],
     });
@@ -132,7 +132,7 @@ describe("TextureRenderService", () => {
     emit({ kind: ERenderViewportEvent.LOAD, report: mockRenderLoadReport({ isReady: true, scene: SCENE - 1 }) });
     await flush();
 
-    expect(sent("describe_textures")).toHaveLength(0);
+    expect(sent("describe_texture_loads")).toHaveLength(0);
 
     emit({
       kind: ERenderViewportEvent.LOAD,

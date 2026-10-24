@@ -2,6 +2,7 @@
 //! findings of its verification, and the formatting and verification of a directory.
 
 pub mod commands;
+pub mod configs_project;
 pub mod descriptor;
 mod opened_configs_project;
 pub mod plugin;

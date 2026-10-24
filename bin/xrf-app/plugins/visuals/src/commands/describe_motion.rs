@@ -6,7 +6,8 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 use xrf_visual::VisualMotionBake;
 
-use crate::state::{SelectedVisual, VisualState};
+use crate::selected_visual::SelectedVisual;
+use crate::state::VisualState;
 
 /// Describe one of the open visual's motions as a pose of it would hold it, its frames, bones and length, posing none.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_motion"))]

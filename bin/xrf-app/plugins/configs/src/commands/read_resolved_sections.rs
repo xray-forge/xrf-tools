@@ -8,8 +8,9 @@ use xrf_ltx_inspect::LtxResolvedSection;
 use xrf_utils::error_to_string;
 use xrf_vfs::XrayLogicalPath;
 
+use crate::configs_project::ConfigsProject;
 use crate::request::ConfigsReadSectionsRequest;
-use crate::state::{ConfigsProject, ConfigsState};
+use crate::state::ConfigsState;
 
 /// How many sections one request may ask for.
 /// todo: Vertically tuned wide screen?

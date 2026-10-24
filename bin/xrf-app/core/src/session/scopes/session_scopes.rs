@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use crate::session::session_scopes_state::SessionScopesState;
+use crate::session::scopes::session_scopes_state::SessionScopesState;
 use crate::session::{SessionId, SessionRelease, SessionScope};
 
 /// The scope each opening is bound to, and every session that holds openings, so releasing a scope closes what it held

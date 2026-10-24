@@ -131,8 +131,9 @@ impl AssetMountState {
   pub fn commit(&self, transaction: &XrayTransaction) -> TauriResult<XrayChangeSet> {
     let (changes, published) = self.publish(|host| host.commit(transaction))?;
 
-    // todo: Record the transaction in an undo history with what it replaced and the editor it came from, capped by total
-    //  bytes, oldest dropped; undo and redo then commit through here as transactions of their own.
+    // todo: Record the transaction in an undo history of the session scope it came from, with what it replaced, capped by
+    //  total bytes, oldest dropped, and dropped as `SessionScopes` releases the scope; undo and redo then commit through
+    //  here as transactions of their own.
 
     if let Some(published) = published {
       self.fan_out(published, changes.get_revision());

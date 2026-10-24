@@ -13,8 +13,8 @@ use xrf_visual::{
   VisualDependencies, VisualDescription, VisualMotions, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton,
 };
 
+use crate::level_report::LevelReport;
 use crate::parts::LevelSpawnVisualsPart;
-use crate::report::{report_bind_rest_pose, report_empty_rest_motion, report_undrawn_visual};
 use crate::state::{LevelSpawnVisual, LevelSpawnVisuals, LevelTextureReference, SelectedLevel};
 
 /// Reads a level's spawned visuals within one search, opening the shader library once for all of them, and only if
@@ -64,7 +64,7 @@ impl SpawnVisualReader {
       self
         .read(name)
         .map(Arc::new)
-        .inspect_err(|error| report_undrawn_visual(name, error))
+        .inspect_err(|error| LevelReport::undrawn_visual(name, error))
     })
   }
 
@@ -137,12 +137,12 @@ impl SpawnVisualReader {
 
     match motions.bake_named(search, &dependencies, Self::IDLE_MOTION) {
       Ok(baked) => VisualRestPose::of_floats(names, &baked.transforms).or_else(|| {
-        report_empty_rest_motion(name, Self::IDLE_MOTION);
+        LevelReport::empty_rest_motion(name, Self::IDLE_MOTION);
 
         VisualSkeleton::get_rest_pose(file)
       }),
       Err(error) => {
-        report_bind_rest_pose(name, &error);
+        LevelReport::bind_rest_pose(name, &error);
 
         VisualSkeleton::get_rest_pose(file)
       }

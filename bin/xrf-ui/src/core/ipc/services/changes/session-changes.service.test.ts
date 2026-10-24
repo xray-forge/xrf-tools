@@ -45,8 +45,20 @@ describe("SessionChangesService", () => {
   it("tells each session a change reached as a notice of its own", async () => {
     const { container, service } = mockInjectedService(SessionChangesService);
     const notices: Array<SessionChange> = [];
-    const level: SessionChange = { sessionId: "level", revision: 3, root: { kind: "kept" }, staleParts: ["spawn"] };
-    const project: SessionChange = { sessionId: "project", revision: 3, root: { kind: "derived" }, staleParts: [] };
+    const level: SessionChange = {
+      sessionId: "level",
+      revision: 3,
+      root: { kind: "kept" },
+      staleParts: ["spawn"],
+      isViewRenewed: false,
+    };
+    const project: SessionChange = {
+      sessionId: "project",
+      revision: 3,
+      root: { kind: "derived" },
+      staleParts: [],
+      isViewRenewed: true,
+    };
 
     container
       .get(EventBus)

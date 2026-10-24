@@ -189,7 +189,7 @@ describe("LevelRenderService", () => {
     expect(viewport.isRevealed).toBe(false);
 
     setMockInvokeResponses({
-      ["plugin:render|describe_textures"]: [
+      ["plugin:render|describe_texture_loads"]: [
         {
           group: ERenderTextureGroup.SURFACES,
           reference: "terrain\\terrain_escape",
@@ -252,6 +252,7 @@ describe("LevelRenderService", () => {
       root: { kind: "derived" },
       sessionId,
       staleParts: [],
+      isViewRenewed: true,
     });
     await waitFor(() => expect(load.level.value?.selected.revision).toBe(1));
 
@@ -293,6 +294,7 @@ describe("LevelRenderService", () => {
       root: { kind: "kept" },
       sessionId,
       staleParts: [LEVEL_MAP_PART],
+      isViewRenewed: false,
     });
     await waitFor(() => expect(load.levelMap.snapshot?.revision).toBe(1));
 
@@ -320,6 +322,7 @@ describe("LevelRenderService", () => {
       root: { kind: "kept" },
       sessionId,
       staleParts: [LEVEL_GEOMETRY_PART],
+      isViewRenewed: true,
     });
 
     expect(viewport.isRevealed).toBe(false);

@@ -13,9 +13,9 @@ use xrf_spawn::{AlifeObject, AlifeObjectCustomZone, AlifeObjectInherited, AlifeO
 use xrf_vfs::XraySearch;
 use xrf_visual::{VisualTransform, ZoneSphere};
 
-use crate::ambients::list_ambient_particles;
+use crate::level_render_ambients::LevelRenderAmbients;
+use crate::level_report::LevelReport;
 use crate::parts::{LevelEnvironmentPart, LevelSpawnPart, PackedLevelParticles};
-use crate::report::{report_missing_zone_particles, report_particles, report_unknown_particles};
 use crate::state::{LevelSource, LevelTextureReference, PS_STATIC_FILE, SelectedLevel};
 
 /// What a change event calls what a level's particle systems were read from when it goes stale.
@@ -95,14 +95,14 @@ impl LevelParticlesPart {
       (Ok(spawn), Some(sections)) => {
         placements.extend(spawn.list_kept().filter_map(|it| Self::place_zone(it, sections)))
       }
-      (Err(error), _) => report_missing_zone_particles(&current.source, &error),
+      (Err(error), _) => LevelReport::missing_zone_particles(&current.source, &error),
       (Ok(_), None) => {}
     }
 
     // An ambient effect plays near the camera whatever stands in the level, so its particles are described with the
     // rest; a level whose configs cannot be read has said why with its weather.
     let ambient_particles: Vec<String> = LevelEnvironmentPart::get(current, search)
-      .map(|environment| list_ambient_particles(&environment.catalog))
+      .map(|environment| LevelRenderAmbients::list_particles(&environment.catalog))
       .unwrap_or_default();
     let scope: XrayTextureScope = current.source.get_texture_scope();
     let resolver: XraySurfaceResolver = XraySurfaceResolver::open(search, scope.clone());
@@ -119,7 +119,7 @@ impl LevelParticlesPart {
       surfaces.insert(name, resolver.describe(&effect.sprite.shader_name, &textures));
     }
 
-    report_particles(&current.source, &library, placements.len(), surfaces.len(), started);
+    LevelReport::particles(&current.source, &library, placements.len(), surfaces.len(), started);
 
     Ok(PackedLevelParticles {
       textures: references
@@ -250,7 +250,7 @@ impl LevelParticlesPart {
     }
 
     if !unknown.is_empty() {
-      report_unknown_particles(&unknown.into_iter().collect::<Vec<&str>>());
+      LevelReport::unknown_particles(&unknown.into_iter().collect::<Vec<&str>>());
     }
 
     reached

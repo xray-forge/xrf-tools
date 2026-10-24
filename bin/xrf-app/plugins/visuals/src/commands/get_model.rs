@@ -2,7 +2,9 @@ use tauri::State;
 use xrf_app_core::session::{SessionRestore, SessionScope, SessionScopes};
 use xrf_app_core::types::TauriResult;
 
-use crate::state::{SelectedVisual, SelectedVisualDescription, VisualState};
+use crate::selected_visual::SelectedVisual;
+use crate::selected_visual_description::SelectedVisualDescription;
+use crate::state::VisualState;
 
 /// Restore the model a tool holds, the newest it opened, with its exact geometry identity.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_model"))]

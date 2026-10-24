@@ -6,7 +6,7 @@ use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelCformFile, LevelCformGeometry, LevelCformTracer};
 use xrf_vfs::XraySearch;
 
-use crate::report::report_collision;
+use crate::level_report::LevelReport;
 use crate::state::{COLLISION_FILE, LevelSource, SelectedLevel};
 
 /// What a change event calls a level's collision form when it goes stale.
@@ -52,7 +52,7 @@ impl LevelCollisionPart {
     let read: Duration = started.elapsed();
     let tracer: LevelCformTracer = LevelCformTracer::new(&geometry);
 
-    report_collision(source, tracer.get_triangle_count(), read, started);
+    LevelReport::collision(source, tracer.get_triangle_count(), read, started);
 
     Ok(Arc::new(tracer))
   }

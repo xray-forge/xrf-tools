@@ -66,6 +66,7 @@ describe("LevelWeatherService changes", () => {
       revision: 1,
       root: { kind: "kept" },
       staleParts: [LEVEL_ENVIRONMENT_PART],
+      isViewRenewed: false,
     });
     await flush();
 
@@ -96,7 +97,13 @@ describe("LevelWeatherService changes", () => {
     const service: LevelWeatherService = container.get(LevelWeatherService);
 
     await waitFor(() => expect(answers).toHaveLength(1));
-    notify(container, { sessionId: SESSION, revision: 1, root: { kind: "derived" }, staleParts: [] });
+    notify(container, {
+      sessionId: SESSION,
+      revision: 1,
+      root: { kind: "derived" },
+      staleParts: [],
+      isViewRenewed: true,
+    });
     await flush();
     answers[0]();
     await flush();
@@ -117,6 +124,7 @@ describe("LevelWeatherService changes", () => {
       revision: 1,
       root: { kind: "kept" },
       staleParts: [LEVEL_ENVIRONMENT_PART],
+      isViewRenewed: false,
     });
     await flush();
 
@@ -136,8 +144,15 @@ describe("LevelWeatherService changes", () => {
       revision: 1,
       root: { kind: "kept" },
       staleParts: [LEVEL_ENVIRONMENT_PART],
+      isViewRenewed: false,
     });
-    notify(container, { sessionId: SESSION, revision: 1, root: { kind: "kept" }, staleParts: [LEVEL_SPAWN_PART] });
+    notify(container, {
+      sessionId: SESSION,
+      revision: 1,
+      root: { kind: "kept" },
+      staleParts: [LEVEL_SPAWN_PART],
+      isViewRenewed: false,
+    });
     await flush();
 
     expect(countReads()).toBe(before);

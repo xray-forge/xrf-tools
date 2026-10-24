@@ -9,8 +9,8 @@ use xrf_material::XrayTextureScope;
 use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, LightsPacker};
 
+use crate::level_report::LevelReport;
 use crate::parts::{LevelSpawnPart, PackedLevelLights, SpawnVisualReader};
-use crate::report::{report_lights, report_missing_spawned_lights, report_unreadable_animations};
 use crate::state::{LevelTextureReference, SelectedLevel};
 
 /// What a change event calls what a level's lights were read from when it goes stale.
@@ -55,7 +55,7 @@ impl LevelLightsPart {
     let started: Instant = Instant::now();
     let animations: Option<LightAnimFile> = read_located_asset(search, Self::ANIMATIONS_FILE)
       .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
-      .inspect_err(|error| report_unreadable_animations(Self::ANIMATIONS_FILE, error))
+      .inspect_err(|error| LevelReport::unreadable_animations(Self::ANIMATIONS_FILE, error))
       .ok();
     let mut packer: LightsPacker = LightsPacker::new(animations.as_ref());
 
@@ -69,7 +69,7 @@ impl LevelLightsPart {
           visuals.get(name).ok().and_then(|it| it.rest.clone())
         });
       }),
-      Err(error) => report_missing_spawned_lights(&current.source, &error),
+      Err(error) => LevelReport::missing_spawned_lights(&current.source, &error),
     }
 
     if let Some(lights) = current.level.lights.as_ref() {
@@ -79,7 +79,7 @@ impl LevelLightsPart {
     let lights: LightsDescription = packer.pack();
     let scope: XrayTextureScope = current.source.get_texture_scope();
 
-    report_lights(&current.source, &lights, started);
+    LevelReport::lights(&current.source, &lights, started);
 
     PackedLevelLights {
       projectors: lights

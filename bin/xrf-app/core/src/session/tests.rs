@@ -572,6 +572,7 @@ fn a_commit_moves_a_session_along_sharing_its_value_and_the_parts_it_did_not_tou
       revision: assets.get_vfs().get_revision(),
       root: SessionRootChange::Kept,
       stale_parts: vec!["dependent", "pooled"],
+      is_view_renewed: false,
     }
   );
   assert!(
@@ -586,6 +587,30 @@ fn a_commit_moves_a_session_along_sharing_its_value_and_the_parts_it_did_not_tou
     session.follow(&assets).unwrap().is_none(),
     "a session at the project's revision stays where it is"
   );
+}
+
+#[test]
+fn a_kept_change_renews_the_view_only_where_it_lets_a_part_the_view_is_built_from_go() {
+  for (view_parts, is_renewed) in [(&["pooled"][..], true), (&["counted"][..], false)] {
+    let (assets, search) = opened_tree("view", &["configs/system.ltx", "configs/game.ltx"]);
+    let session: Session<&str> = Session::new("test").with_view_parts(view_parts);
+    let opened: Arc<SessionSnapshot<&str>> = open_reading(&session, &search, "level", &["configs\\system.ltx"]);
+
+    opened.parts.get_or_init::<CountedPart>(|| Arc::new(1));
+    opened.parts.get_or_record::<PooledPart>(&search, |search| {
+      read(search, "configs\\game.ltx");
+
+      2
+    });
+
+    write(&assets, &search, "configs\\game.ltx");
+
+    let change: SessionChange = session.follow(&assets).unwrap().expect("the session moved");
+
+    assert_eq!(change.root, SessionRootChange::Kept);
+    assert_eq!(change.stale_parts, vec!["pooled"]);
+    assert_eq!(change.is_view_renewed, is_renewed, "view parts {view_parts:?}");
+  }
 }
 
 #[test]
@@ -622,6 +647,7 @@ fn a_commit_to_what_the_value_read_derives_it_again_starting_without_parts() {
 
   assert_eq!(change.root, SessionRootChange::Derived);
   assert_eq!(change.stale_parts, vec!["counted"]);
+  assert!(change.is_view_renewed, "a value derived again renews any view of it");
   assert_eq!(**next, "derived");
   assert_eq!(next.session_id, opened.session_id);
   assert_eq!(next.revision, change.revision);
@@ -732,6 +758,7 @@ fn an_open_published_after_a_commit_it_did_not_read_catches_up() {
       revision: caught_up.revision,
       root: SessionRootChange::Kept,
       stale_parts: Vec::new(),
+      is_view_renewed: false,
     }]
   );
   assert!(
@@ -993,6 +1020,7 @@ fn a_deferred_derivation_is_reported_at_once_and_published_once_it_lands() {
     revision: XrayRevision::MOUNTED,
     root: SessionRootChange::Deriving,
     stale_parts: Vec::new(),
+    is_view_renewed: false,
   };
 
   assert_eq!(held.calls.load(Ordering::SeqCst), 1);
@@ -1008,12 +1036,14 @@ fn a_deferred_derivation_is_reported_at_once_and_published_once_it_lands() {
         revision: first,
         root: SessionRootChange::Derived,
         stale_parts: vec!["counted"],
+        is_view_renewed: true,
       },
       SessionChange {
         session_id: opened.session_id,
         revision: next.revision,
         root: SessionRootChange::Kept,
         stale_parts: Vec::new(),
+        is_view_renewed: false,
       },
     ]
   );
@@ -1086,6 +1116,7 @@ fn a_subscriber_takes_each_commits_changes_once_its_sessions_moved_before_it_ret
       revision,
       root: SessionRootChange::Kept,
       stale_parts: Vec::new(),
+      is_view_renewed: false,
     }]
   );
 }

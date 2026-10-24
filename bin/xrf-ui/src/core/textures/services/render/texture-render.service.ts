@@ -141,7 +141,7 @@ export class TextureRenderService extends NativeRenderSurfaceService {
 
     if (report?.isReady && report.scene === this.scene && reference && !this.hasDescribed && this.viewport) {
       this.hasDescribed = true;
-      void this.viewport.describeTextures().then((reports: Array<RenderTextureReport>) => {
+      void this.viewport.describeTextureLoads().then((reports: Array<RenderTextureReport>) => {
         const base: Nullable<RenderTextureReport> = reports.find((it) => it.reference === reference) ?? null;
 
         runInAction(() => {

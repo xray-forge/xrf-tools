@@ -1,4 +1,3 @@
-use crate::console_defaults::parse_console_defaults;
 use crate::state::LevelConsoleDefaults;
 
 #[test]
@@ -8,7 +7,7 @@ fn reads_the_lighting_anomaly_ships_among_its_other_commands() {
     r2_ls_bloom_threshold 0.\nr2_ls_bloom_kernel_g 1.\nr2_ls_bloom_kernel_scale 0.05\n";
 
   assert_eq!(
-    parse_console_defaults(text),
+    LevelConsoleDefaults::parse(text),
     LevelConsoleDefaults {
       is_tonemapped: Some(true),
       tonemap_middle_gray: Some(1.5),
@@ -26,7 +25,7 @@ fn reads_the_lighting_anomaly_ships_among_its_other_commands() {
 
 #[test]
 fn leaves_to_the_engine_whatever_no_command_sets_or_it_cannot_read() {
-  let defaults: LevelConsoleDefaults = parse_console_defaults("r2_tonemap maybe\nr__gamma bright\n");
+  let defaults: LevelConsoleDefaults = LevelConsoleDefaults::parse("r2_tonemap maybe\nr__gamma bright\n");
 
   assert_eq!(defaults.is_tonemapped, None);
   assert_eq!(defaults.image_gamma, None);
@@ -35,7 +34,8 @@ fn leaves_to_the_engine_whatever_no_command_sets_or_it_cannot_read() {
 // A vanilla installation that has been run has a `user.ltx` and no shipped defaults: its console ships none.
 #[test]
 fn says_nothing_shipped_for_a_user_console_alone() {
-  let console: LevelConsoleDefaults = parse_console_defaults("r2_tonemap on\n").over(LevelConsoleDefaults::default());
+  let console: LevelConsoleDefaults =
+    LevelConsoleDefaults::parse("r2_tonemap on\n").over(LevelConsoleDefaults::default());
 
   assert!(!console.is_shipped);
   assert_eq!(console.is_tonemapped, Some(true));

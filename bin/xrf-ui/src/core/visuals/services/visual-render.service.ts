@@ -149,7 +149,7 @@ export class VisualRenderService extends NativeRenderSurfaceService {
 
     this.hasDescribed = true;
     void this.viewport
-      .describeTextures()
+      .describeTextureLoads()
       .then((reports: Array<RenderTextureReport>) => this.loadService.noteTextures(sessionId, reports));
   }
 

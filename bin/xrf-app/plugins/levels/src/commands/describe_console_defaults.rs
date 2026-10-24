@@ -6,7 +6,6 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 
-use crate::console_defaults::read_level_console;
 use crate::state::{LevelConsoleDefaults, LevelState, SelectedLevel};
 
 /// Describe what the open level's game runs its console with of how levels are lit and exposed: its `user.ltx` over
@@ -26,7 +25,7 @@ pub async fn levels_describe_console_defaults(
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let value: SessionSnapshot<LevelConsoleDefaults> = execution
     .run_blocking("Reading the game's console defaults", move || {
-      read_level_console(&assets.search(&current.roots)?, &current.roots)
+      LevelConsoleDefaults::read(&assets.search(&current.roots)?, &current.roots)
         .map(|defaults| current.answer(defaults))
         .map_err(|error| error.to_string())
     })

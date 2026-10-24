@@ -285,7 +285,7 @@ export class NativeViewport {
    * @returns Each texture's reference and state, or none for a viewport not attached; rejects for a description that
    *   failed.
    */
-  public async describeTextures(): Promise<Array<RenderTextureReport>> {
+  public async describeTextureLoads(): Promise<Array<RenderTextureReport>> {
     const id: Nullable<RenderViewportId> = await this.attached;
 
     if (id === null || this.isDisposed) {
@@ -293,9 +293,9 @@ export class NativeViewport {
     }
 
     try {
-      return await renderCommands.describeTextures(id);
+      return await renderCommands.describeTextureLoads(id);
     } catch (error: unknown) {
-      this.noteFailure("describeTextures", error);
+      this.noteFailure("describeTextureLoads", error);
 
       throw error;
     }

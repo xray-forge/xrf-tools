@@ -8,8 +8,7 @@ use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_spawn::{AlifeObject, ClsId, SpawnFile, SpawnLevelObjects};
 use xrf_vfs::{XrayInputRecord, XrayLogicalPath, XraySearch};
 
-use crate::new_game::read_new_game_releases;
-use crate::report::{report_new_game_releases, report_spawn};
+use crate::level_report::LevelReport;
 use crate::state::{LevelSource, LevelSpawn, LevelSpawnRelease, SelectedLevel};
 
 /// What a change event calls a level's spawn when it goes stale.
@@ -89,9 +88,9 @@ impl LevelSpawnPart {
     let read: SpawnLevelObjects = SpawnFile::read_level_objects_from_chunks::<XRayByteOrder, _>(&chunks, level)
       .map_err(|error| format!("Failed to read '{path}': {error}"))?;
 
-    report_spawn(level, path.as_str(), &read, started);
+    LevelReport::spawn(level, path.as_str(), &read, started);
 
-    let released: HashMap<String, LevelSpawnRelease> = read_new_game_releases(search);
+    let released: HashMap<String, LevelSpawnRelease> = LevelSpawnRelease::read_new_game(search);
     let objects: Vec<AlifeObject> = read.objects;
     let releases: HashMap<usize, LevelSpawnRelease> = objects
       .iter()
@@ -101,7 +100,7 @@ impl LevelSpawnPart {
       .filter(|(index, release)| *release != LevelSpawnRelease::ReplaceItems || objects[*index].clsid != ClsId::SInvBox)
       .collect();
 
-    report_new_game_releases(level, releases.len());
+    LevelReport::new_game_releases(level, releases.len());
 
     Ok(LevelSpawn {
       arrivals: read.arrivals,

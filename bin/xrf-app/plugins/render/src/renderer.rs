@@ -76,7 +76,7 @@ impl Renderer {
   }
 
   /// What became of every texture a viewport's level samples, answered at once.
-  pub fn describe_textures(&self, id: RenderViewportId) -> Receiver<Vec<RenderTextureReport>> {
+  pub fn describe_texture_loads(&self, id: RenderViewportId) -> Receiver<Vec<RenderTextureReport>> {
     self.ask(|reply| RenderCommand::DescribeTextures { id, reply })
   }
 

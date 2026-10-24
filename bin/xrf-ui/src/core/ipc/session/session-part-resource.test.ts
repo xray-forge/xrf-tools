@@ -13,7 +13,7 @@ function snapshot(value: string, revision: number, sessionId: string = "level"):
 }
 
 function kept(revision: number, staleParts: Array<string>, sessionId: string = "level"): SessionChange {
-  return { revision, root: { kind: ESessionRootChange.KEPT }, sessionId, staleParts };
+  return { revision, root: { kind: ESessionRootChange.KEPT }, sessionId, staleParts, isViewRenewed: false };
 }
 
 async function flush(): Promise<void> {
@@ -41,7 +41,6 @@ describe("SessionPartResource", () => {
     expect(query).toHaveBeenCalledTimes(2);
     expect(resource.value).toBe("second");
     expect(resource.snapshot?.revision).toBe(1);
-    expect(resource.isStale).toBe(false);
   });
 
   it("reads nothing again for another part, another opening, or a change it holds already", async () => {
@@ -76,6 +75,7 @@ describe("SessionPartResource", () => {
       root: { kind: ESessionRootChange.DERIVED },
       sessionId: "level",
       staleParts: [],
+      isViewRenewed: true,
     });
     await flush();
 
@@ -109,7 +109,7 @@ describe("SessionPartResource", () => {
     expect(resource.value).toBeNull();
   });
 
-  it("marks what it holds stale while the opening's own files move, and keeps it where a read fails", async () => {
+  it("keeps what it holds while the opening's own files move, and where a read fails", async () => {
     const bus: EventBus = mockContainer().get(EventBus);
     const query = jest
       .fn<(sessionId: string) => Promise<SessionSnapshot<string>>>()
@@ -124,9 +124,10 @@ describe("SessionPartResource", () => {
       root: { kind: ESessionRootChange.DERIVING },
       sessionId: "level",
       staleParts: [],
+      isViewRenewed: false,
     });
 
-    expect(resource.isStale).toBe(true);
+    expect(resource.value).toBe("shown");
     expect(query).toHaveBeenCalledTimes(1);
 
     bus.emit<SessionChange>(SESSION_CHANGE_EVENT, kept(1, [PART]));
@@ -134,7 +135,6 @@ describe("SessionPartResource", () => {
 
     expect(resource.value).toBe("shown");
     expect(resource.error?.message).toBe("cannot read");
-    expect(resource.isStale).toBe(true);
   });
 
   // An open's first read overtaken by its catch-up: whoever waits on the attach finds the part read, not dropped.
@@ -156,6 +156,7 @@ describe("SessionPartResource", () => {
       root: { kind: ESessionRootChange.DERIVED },
       sessionId: "level",
       staleParts: [],
+      isViewRenewed: true,
     });
     answers[0](snapshot("overtaken", 0));
     await flush();

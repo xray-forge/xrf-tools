@@ -7,7 +7,8 @@ use crate::change::xray_transaction_write::XrayTransactionWrite;
 use crate::{XrayInputRecord, XrayLogicalPath, XrayLookupScope, XraySearch, XraySearchKey, XrayVfs};
 
 /// One gesture's writes and deletes, committed all at once or not at all through [`XrayVfs::commit`].
-// todo: Tag a transaction with the editor or document that issued it, so undoing it is that editor's alone.
+// todo: Tag a transaction with the owner that issued it (the application's session scope), so undoing it is that
+//  owner's alone.
 #[derive(Clone, Debug)]
 pub struct XrayTransaction {
   key: XraySearchKey,

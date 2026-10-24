@@ -5,7 +5,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::types::TauriResult;
 use xrf_vfs::{XrayDirectoryListing, XrayLogicalPath, XrayRoots, XraySearch};
 
-use crate::report::report_listed_levels;
+use crate::level_report::LevelReport;
 use crate::state::{GEOMETRY_FILE, LEVEL_FILE, LEVELS_DIRECTORY, LevelEntry};
 
 /// Every compiled level the mounted roots hold, loose or archived alike.
@@ -15,7 +15,7 @@ pub async fn levels_list_levels(roots: XrayRoots, assets: State<'_, AssetMountSt
   let started: Instant = Instant::now();
   let entries: Vec<LevelEntry> = list_levels(&assets.search_fresh(&roots)?)?;
 
-  report_listed_levels(&entries, started);
+  LevelReport::listed_levels(&entries, started);
 
   Ok(entries)
 }

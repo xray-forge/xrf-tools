@@ -179,7 +179,7 @@ describe("VisualRenderService", () => {
       views: mockVisualModelViews(),
     });
     setMockInvokeResponses({
-      ["plugin:render|describe_textures"]: [
+      ["plugin:render|describe_texture_loads"]: [
         {
           reference: mockTextureDependency().reference,
           state: {
@@ -198,7 +198,7 @@ describe("VisualRenderService", () => {
     emit({ kind: ERenderViewportEvent.LOAD, report: mockRenderLoadReport({ isReady: true, scene: SCENE - 1 }) });
     await flush();
 
-    expect(sent("describe_textures")).toHaveLength(0);
+    expect(sent("describe_texture_loads")).toHaveLength(0);
 
     emit({
       kind: ERenderViewportEvent.LOAD,
@@ -214,7 +214,7 @@ describe("VisualRenderService", () => {
     });
     await flush();
 
-    expect(sent("describe_textures")).toHaveLength(1);
+    expect(sent("describe_texture_loads")).toHaveLength(1);
     expect(loadService.textureStatuses.get(0)?.state).toBe(EVisualTextureState.DECODED);
 
     service.dispose();

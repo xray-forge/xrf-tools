@@ -476,7 +476,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     try {
       const [measured, textures, problems] = await Promise.all([
         viewport.measureSurfaces(),
-        viewport.describeTextures(),
+        viewport.describeTextureLoads(),
         viewport.describeProblems(),
       ]);
 

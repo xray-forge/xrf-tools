@@ -261,12 +261,36 @@ fn a_commit_to_a_file_the_level_was_read_from_reads_it_again_and_streams_its_sce
   ));
 }
 
+/// The levels a tool opens renew their view by the parts a level's scene is built from, which the state itself names.
+#[test]
+fn a_commit_to_the_geometry_of_an_open_level_renews_its_view() {
+  let (assets, roots, search) = level_tree("view_parts");
+  let state: LevelState = LevelState::new(test_pool(), &SessionScopes::default());
+  let log: ChangeLog = ChangeLog::default();
+
+  assets.add_follower(state.levels.clone());
+  assets.add_subscriber(log.clone());
+
+  let opened: Arc<SessionSnapshot<SelectedLevel>> = open_handle(&state.levels, &assets, &roots);
+
+  write(&assets, &search, &format!("{LEVEL}\\level.geom"), "edited");
+
+  assert!(wait_until(|| !log.list().is_empty()), "the level moved");
+
+  let change: SessionChange = log.list().remove(0);
+
+  assert_eq!(change.session_id, opened.session_id);
+  assert_eq!(change.root, SessionRootChange::Kept);
+  assert_eq!(change.stale_parts, vec![LevelGeometryPart::NAME]);
+  assert!(change.is_view_renewed, "the sectors are packed from the geometry");
+}
+
 /// The textures are resolved over the surfaces, so what moves the surfaces moves them too: as the open kept them, and
 /// as a read of the textures again asks for the surfaces.
 #[test]
 fn a_commit_to_what_the_surfaces_read_lets_the_textures_go_with_them() {
   let (assets, roots, search) = level_tree("surface_reads");
-  let session: Session<SelectedLevel> = Session::new("level");
+  let session: Session<SelectedLevel> = Session::new("level").with_view_parts(LevelRenderSource::VIEW_PARTS);
 
   open(&session, &assets, &roots);
   write(&assets, &search, SHADER_SCRIPT, "created");
@@ -278,6 +302,7 @@ fn a_commit_to_what_the_surfaces_read_lets_the_textures_go_with_them() {
     change.stale_parts,
     vec![LevelSurfacesPart::NAME, LevelTexturesPart::NAME]
   );
+  assert!(change.is_view_renewed, "the surfaces the scene is drawn with moved");
 
   // Read again, the textures ask for the surfaces, whose inputs join theirs.
   let current: Arc<SessionSnapshot<SelectedLevel>> = session.get().unwrap().unwrap();
@@ -297,7 +322,7 @@ fn a_commit_to_what_the_surfaces_read_lets_the_textures_go_with_them() {
 #[test]
 fn a_commit_to_a_file_only_a_part_read_names_that_part_stale() {
   let (assets, roots, search) = level_tree("render_reads");
-  let session: Session<SelectedLevel> = Session::new("level");
+  let session: Session<SelectedLevel> = Session::new("level").with_view_parts(LevelRenderSource::VIEW_PARTS);
   let opened: Arc<SessionSnapshot<SelectedLevel>> = open(&session, &assets, &roots);
   let source: LevelRenderSource = LevelRenderSource::new(Arc::clone(&opened), AssetMountState::clone(&assets));
 
@@ -310,22 +335,28 @@ fn a_commit_to_a_file_only_a_part_read_names_that_part_stale() {
     LevelEnvironment::read_modifiers(&opened, search)
   });
 
-  for (path, parts) in [
-    (format!("{LEVEL}\\level.details"), vec![LevelDetailsPart::NAME]),
-    (String::from("particles.xr"), vec![LevelParticlesPart::NAME]),
-    (String::from("lanims.xr"), vec![LevelLightsPart::NAME]),
-    (String::from("anims\\zone.anm"), vec![LevelObjectMotionsPart::NAME]),
-    (format!("{LEVEL}\\level.env_mod"), vec![LevelWeatherPart::NAME]),
+  for (path, parts, is_view_renewed) in [
+    (format!("{LEVEL}\\level.details"), vec![LevelDetailsPart::NAME], false),
+    (String::from("particles.xr"), vec![LevelParticlesPart::NAME], false),
+    (String::from("lanims.xr"), vec![LevelLightsPart::NAME], false),
+    (
+      String::from("anims\\zone.anm"),
+      vec![LevelObjectMotionsPart::NAME],
+      false,
+    ),
+    (format!("{LEVEL}\\level.env_mod"), vec![LevelWeatherPart::NAME], false),
     // The map, the geometry and the textures the surfaces bind are read from files of their own, so an edit of any
-    // moves that part and not the level: a texture come or gone moves the textures alone, the surfaces kept.
-    (format!("{LEVEL}\\level.ltx"), vec![LevelMapPart::NAME]),
-    (format!("{LEVEL}\\level.geom"), vec![LevelGeometryPart::NAME]),
-    (String::from(TEXTURE), vec![LevelTexturesPart::NAME]),
+    // moves that part and not the level: a texture come or gone moves the textures alone, the surfaces kept. Only the
+    // geometry renews the scene: its sectors are packed from it.
+    (format!("{LEVEL}\\level.ltx"), vec![LevelMapPart::NAME], false),
+    (format!("{LEVEL}\\level.geom"), vec![LevelGeometryPart::NAME], true),
+    (String::from(TEXTURE), vec![LevelTexturesPart::NAME], false),
     // Where the level starts is decided over its spawn apart from the level itself, as the sections the lights asked
     // for are chosen by it.
     (
       String::from("spawns\\all.spawn"),
       vec![LevelSectionsPart::NAME, LevelSpawnPart::NAME, LevelStartPart::NAME],
+      false,
     ),
   ] {
     write(&assets, &search, &path, "created");
@@ -334,6 +365,7 @@ fn a_commit_to_a_file_only_a_part_read_names_that_part_stale() {
 
     assert_eq!(change.root, SessionRootChange::Kept, "{path}");
     assert_eq!(change.stale_parts, parts, "{path}");
+    assert_eq!(change.is_view_renewed, is_view_renewed, "{path}");
   }
 
   let current: Arc<SessionSnapshot<SelectedLevel>> = session.get().unwrap().unwrap();

@@ -15,4 +15,7 @@ pub struct SessionChange {
   /// The parts the session let go, by name and sorted: built from something the change moved, or from the value it
   /// replaced. A subscriber refetches what it showed of them.
   pub stale_parts: Vec<&'static str>,
+  /// Whether a view drawn from the session is built anew rather than updated: its value was derived again, or, the value
+  /// kept, a part its owner builds the view from went stale (`Session::with_view_parts`).
+  pub is_view_renewed: bool,
 }

@@ -6,7 +6,6 @@ use xrf_spawn::{
   AlifeObjectInherited, AlifeObjectItem, AlifeObjectPhysic, AlifeObjectSkeleton, ClsId,
 };
 
-use crate::spawn_objects::describe_spawn_objects;
 use crate::state::{LevelSpawn, LevelSpawnCategory, LevelSpawnObject, LevelSpawnObjectsDescription, LevelSpawnRelease};
 
 fn new_abstract(story_id: u32) -> AlifeObjectAbstract {
@@ -121,7 +120,7 @@ fn new_object(name: &str, section: &str, clsid: ClsId, inherited: AlifeObjectInh
 }
 
 fn describe(objects: Vec<AlifeObject>) -> LevelSpawnObjectsDescription {
-  describe_spawn_objects(&LevelSpawn {
+  LevelSpawnObjectsDescription::describe(&LevelSpawn {
     arrivals: Vec::new(),
     objects,
     releases: HashMap::new(),
@@ -187,7 +186,7 @@ fn passes_over_what_the_game_draws_nothing_of() {
 // A new game's releases stay in the description, so a panel can say what the level loses and a view can draw them.
 #[test]
 fn marks_what_a_new_game_releases_and_why() {
-  let described: LevelSpawnObjectsDescription = describe_spawn_objects(&LevelSpawn {
+  let described: LevelSpawnObjectsDescription = LevelSpawnObjectsDescription::describe(&LevelSpawn {
     arrivals: Vec::new(),
     objects: vec![
       new_object("kept", "medkit", ClsId::SFood, new_item("dynamics\\medkit")),

@@ -11,12 +11,12 @@ use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch};
 use xrf_visual::SectorOutline;
 
+use crate::level_report::LevelReport;
 use crate::parts::{
   LevelGeometryPart, LevelMapPart, LevelSectionsPart, LevelSpawnPart, LevelStartPart, LevelSurfacesPart,
   LevelTexturesPart,
 };
 use crate::read_level::ReadLevel;
-use crate::report::report_start;
 use crate::state::{LevelMapDescription, LevelSource, LevelSpawn, LevelStart, LevelTextureReference, SelectedLevel};
 
 /// A compiled level read through the shared asset state: what an open commits, and what a commit's follow derives
@@ -60,7 +60,7 @@ impl OpenedLevel {
     let opened: OpenedLevel = Self::open(&source, &search, (&roots, &dialect))?;
     let engine: XrayEngineResolution = engine(&search, &roots);
 
-    report_start(&source, opened.start.as_ref());
+    LevelReport::start(&source, opened.start.as_ref());
 
     let mut parts: SessionParts = LevelSpawnPart::with(SessionParts::new(), opened.spawn, opened.spawn_inputs);
 
