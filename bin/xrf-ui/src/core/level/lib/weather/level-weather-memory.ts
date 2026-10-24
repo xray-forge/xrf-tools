@@ -1,7 +1,7 @@
 import { clamp } from "@xrf/math";
 import { isRecord, Maybe, Nullable } from "@xrf/types";
 
-import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
+import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app-levels";
 import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import {
   ILevelManualWeather,

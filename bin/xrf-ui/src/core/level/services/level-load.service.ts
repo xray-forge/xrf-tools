@@ -15,8 +15,8 @@ import {
   SessionPartResource,
   SessionScopeService,
 } from "@/core/ipc/session";
+import { ESessionRootChange, SessionChange, SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
 import {
-  ESessionRootChange,
   LEVEL_MAP_PART,
   LEVEL_SPAWN_PART,
   LEVEL_START_PART,
@@ -29,10 +29,7 @@ import {
   LevelStart,
   LevelTextureReference,
   SelectedLevelDescription,
-  SessionChange,
-  SessionId,
-  SessionSnapshot,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-levels";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { XrayRevision } from "@/core/ipc/types/xrf-vfs";
 import { describeLevelSource } from "@/core/level/lib/source/level-source";

@@ -3,7 +3,7 @@ import { RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
-import { ConfigsDocument, ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
+import { ConfigsDocument, ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app-configs";
 import { LtxAnchoredFinding } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsProblemsPanel } from "@/core/ltx/components/panels/ConfigsProblemsPanel";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";

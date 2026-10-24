@@ -4,7 +4,7 @@ import { Binding, Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 import { ReactNode } from "react";
 
-import { LevelWeatherDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
+import { LevelWeatherDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app-levels";
 import { RenderAppliedReport, RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";

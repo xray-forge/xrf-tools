@@ -1,7 +1,7 @@
 import { InjectionToken } from "@wirestate/core";
 import { Nullable } from "@xrf/types";
 
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
 import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";

@@ -7,6 +7,7 @@ import { Maybe, Nullable } from "@xrf/types";
 
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { SessionPartResource } from "@/core/ipc/session";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
 import {
   EnvironmentCycleEntry,
   LEVEL_ENVIRONMENT_PART,
@@ -14,8 +15,7 @@ import {
   LevelWeatherCycle,
   LevelWeatherDescription,
   SelectedLevelDescription,
-  SessionSnapshot,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-levels";
 import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import {

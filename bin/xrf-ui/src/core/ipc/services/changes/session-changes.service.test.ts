@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
 
 import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
-import { AssetChangeEvent, SessionChange } from "@/core/ipc/types/xrf-app";
+import { AssetChangeEvent, SessionChange } from "@/core/ipc/types/xrf-app-core";
 import {
   MockChannel,
   mockInvoke,

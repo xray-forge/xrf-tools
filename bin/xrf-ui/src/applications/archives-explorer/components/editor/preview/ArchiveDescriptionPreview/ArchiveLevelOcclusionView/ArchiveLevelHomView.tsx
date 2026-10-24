@@ -1,7 +1,7 @@
 import { formatCount } from "@xrf/format";
 import { ReactElement } from "react";
 
-import { ArchiveLevelHomDescription } from "@/core/ipc/types/xrf-app";
+import { ArchiveLevelHomDescription } from "@/core/ipc/types/xrf-app-archives";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

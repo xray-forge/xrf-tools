@@ -1,4 +1,4 @@
-import { ELevelAnnotationKind, MapAnnotationsRequest } from "@/core/ipc/types/xrf-app";
+import { ELevelAnnotationKind, MapAnnotationsRequest } from "@/core/ipc/types/xrf-app-levels";
 
 import { ILevelMapRect } from "./level-map-capture";
 

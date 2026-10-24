@@ -4,7 +4,7 @@ import { formatDegrees, formatPercent } from "@xrf/format";
 import { ReactElement } from "react";
 
 import { LevelWeatherTextureField } from "@/applications/level-viewer/components/weather/LevelWeatherTextureField";
-import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
+import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app-levels";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";

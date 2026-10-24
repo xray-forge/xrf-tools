@@ -1,6 +1,6 @@
 import { ReactElement } from "react";
 
-import { ArchiveOmfDescription } from "@/core/ipc/types/xrf-app";
+import { ArchiveOmfDescription } from "@/core/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";

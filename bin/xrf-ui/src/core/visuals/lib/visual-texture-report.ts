@@ -2,7 +2,7 @@ import { toLogicalKey } from "@xrf/path";
 import { assertExhaustive, Nullable, Optional } from "@xrf/types";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
 import { XrayMaterialBumpInput } from "@/core/ipc/types/xrf-material";
 import { ERenderTextureState, RenderTextureReport } from "@/core/ipc/types/xrf-renderer";
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";

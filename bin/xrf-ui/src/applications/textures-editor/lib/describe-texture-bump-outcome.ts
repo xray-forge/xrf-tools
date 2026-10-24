@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import { TextureMakeBumpOutcome } from "@/core/ipc/types/xrf-app";
+import { TextureMakeBumpOutcome } from "@/core/ipc/types/xrf-app-textures";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

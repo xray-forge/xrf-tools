@@ -3,7 +3,7 @@ import { flowResult } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib";
 import { texturesCommands } from "@/core/ipc/commands/textures";
-import { ETextureSource, TextureDescription } from "@/core/ipc/types/xrf-app";
+import { ETextureSource, TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BulkRead, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";

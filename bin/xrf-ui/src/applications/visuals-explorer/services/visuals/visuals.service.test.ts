@@ -3,7 +3,8 @@ import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
-import { AssetSource, EAssetSource, SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app-core";
+import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";

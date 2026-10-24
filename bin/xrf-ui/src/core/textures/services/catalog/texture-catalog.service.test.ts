@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 
-import { TextureCatalogMode } from "@/core/ipc/types/xrf-app";
+import { TextureCatalogMode } from "@/core/ipc/types/xrf-app-textures";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";

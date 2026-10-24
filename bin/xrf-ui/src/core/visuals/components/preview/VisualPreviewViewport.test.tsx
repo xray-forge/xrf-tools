@@ -3,7 +3,7 @@ import { act, RenderResult } from "@testing-library/react";
 import { Binding } from "@wirestate/core";
 import { makeAutoObservable } from "@wirestate/mobx";
 
-import { ViewportEvent } from "@/core/ipc/types/xrf-app";
+import { ViewportEvent } from "@/core/ipc/types/xrf-app-render";
 import { ERenderViewportEvent } from "@/core/ipc/types/xrf-renderer";
 import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";

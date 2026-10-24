@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 
 import { assetsCommands } from "@/core/ipc/commands/assets";
 import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
-import { AssetChangeEvent, SessionChange } from "@/core/ipc/types/xrf-app";
+import { AssetChangeEvent, SessionChange } from "@/core/ipc/types/xrf-app-core";
 
 /**
  * The window's one subscription to committed changes: each change's sessions go out one at a time as

@@ -1,7 +1,7 @@
 import { Typography } from "@mui/material";
 import { ReactElement } from "react";
 
-import { ArchiveThmTextureType } from "@/core/ipc/types/xrf-app";
+import { ArchiveThmTextureType } from "@/core/ipc/types/xrf-app-archives";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

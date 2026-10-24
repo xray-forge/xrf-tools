@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchiveDescribeScope, ArchiveDetailModel, EArchiveDescribeScope } from "@/core/ipc/types/xrf-app";
+import { ArchiveDescribeScope, ArchiveDetailModel, EArchiveDescribeScope } from "@/core/ipc/types/xrf-app-archives";
 import { mockArchiveDetailModel } from "@/fixtures/mocks/archive.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

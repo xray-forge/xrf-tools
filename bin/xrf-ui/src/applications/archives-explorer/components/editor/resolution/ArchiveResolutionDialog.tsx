@@ -5,7 +5,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect, useId } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchiveResolution, ArchiveResolutionSource, ArchiveUnreadSource } from "@/core/ipc/types/xrf-app";
+import { ArchiveResolution, ArchiveResolutionSource, ArchiveUnreadSource } from "@/core/ipc/types/xrf-app-archives";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { BaseComponentProps } from "@/lib/dom/element-types";

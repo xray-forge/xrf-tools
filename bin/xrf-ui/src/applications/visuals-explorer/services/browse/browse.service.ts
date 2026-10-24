@@ -10,7 +10,7 @@ import { createRoots, describeRoots } from "@/core/assets/lib";
 import { assetsCommands } from "@/core/ipc/commands/assets";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
 import { Session, SessionScopeService } from "@/core/ipc/session";
-import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
 import { EXrayAssetType, XrayAsset, XrayRoot, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 

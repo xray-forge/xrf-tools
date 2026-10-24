@@ -4,7 +4,7 @@ import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
 
-import { ESessionRootChange, SessionChange, SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { ESessionRootChange, SessionChange, SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
 
 import { SESSION_CHANGE_EVENT } from "./session.types";
 import { isOlderSessionAnswer, isSessionMovedPast } from "./session.utils";

@@ -1,6 +1,6 @@
 import { ReactElement } from "react";
 
-import { ArchiveDescribeScope, ArchiveThmTexture } from "@/core/ipc/types/xrf-app";
+import { ArchiveDescribeScope, ArchiveThmTexture } from "@/core/ipc/types/xrf-app-archives";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

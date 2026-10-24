@@ -6,7 +6,7 @@ import { findLastSeparator } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app";
+import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app-core";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { VisualBone } from "@/core/ipc/types/xrf-visual";

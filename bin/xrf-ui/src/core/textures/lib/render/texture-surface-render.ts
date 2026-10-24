@@ -2,7 +2,7 @@ import { parseHexColor, toRawColor } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { texturesCommands } from "@/core/ipc/commands/textures";
-import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import { RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";

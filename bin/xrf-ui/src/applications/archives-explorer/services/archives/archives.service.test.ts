@@ -4,7 +4,7 @@ import { AsyncState } from "@xrf/async";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
 import { SessionScopeService } from "@/core/ipc/session";
-import { ArchiveFileDescription } from "@/core/ipc/types/xrf-app";
+import { ArchiveFileDescription } from "@/core/ipc/types/xrf-app-archives";
 import { ArchiveFileDescriptor, ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
 import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesVolumes, mockPathCollision } from "@/fixtures/mocks/archive.mocks";

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 
-import { SPRITE_EQUIPMENT_JOB_PACK } from "@/core/ipc/types/xrf-app";
+import { SPRITE_EQUIPMENT_JOB_PACK } from "@/core/ipc/types/xrf-app-sprite-equipment";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";

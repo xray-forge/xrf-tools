@@ -3,7 +3,8 @@ import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 
-import { ETextureSurfaceAlpha, ETextureSurfaceShape, ViewportEvent } from "@/core/ipc/types/xrf-app";
+import { ViewportEvent } from "@/core/ipc/types/xrf-app-render";
+import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/ipc/types/xrf-app-textures";
 import { ERenderTextureState, ERenderViewportEvent, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
 import { EWorldCameraCommand } from "@/core/ipc/types/xrf-world";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";

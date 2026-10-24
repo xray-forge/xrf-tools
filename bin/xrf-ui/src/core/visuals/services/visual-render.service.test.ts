@@ -3,7 +3,7 @@ import { Container } from "@wirestate/core";
 import { makeAutoObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 
-import { ViewportEvent } from "@/core/ipc/types/xrf-app";
+import { ViewportEvent } from "@/core/ipc/types/xrf-app-render";
 import { ERenderOverlay, ERenderTextureState, ERenderViewportEvent } from "@/core/ipc/types/xrf-renderer";
 import { EWorldCameraCommand } from "@/core/ipc/types/xrf-world";
 import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";

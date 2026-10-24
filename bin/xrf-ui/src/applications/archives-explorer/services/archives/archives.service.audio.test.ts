@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { AsyncState } from "@xrf/async";
 
-import { AudioDescriptor } from "@/core/ipc/types/xrf-app";
+import { AudioDescriptor } from "@/core/ipc/types/xrf-app-archives";
 import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
 import { mockArchiveFileDescriptor, mockArchiveReadPolicy, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { listMockBulkCalls, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";

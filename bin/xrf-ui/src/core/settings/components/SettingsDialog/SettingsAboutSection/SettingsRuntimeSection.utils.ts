@@ -2,7 +2,7 @@ import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 
 import { describeProcessCount, IMemoryFigures, sumWebviewMemory, toMemoryFigures } from "@/core/diagnostics/lib";
-import { MemoryUsage, RuntimeSnapshot } from "@/core/ipc/types/xrf-app";
+import { MemoryUsage, RuntimeSnapshot } from "@/core/ipc/types/xrf-app-system";
 
 /** One memory figure of the Runtime section, and what it is of. */
 export interface IRuntimeMemoryFigure {

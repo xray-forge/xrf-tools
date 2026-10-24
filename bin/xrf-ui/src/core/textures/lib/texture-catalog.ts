@@ -8,7 +8,7 @@ import {
   TextureMaterialSummary,
   TextureRole,
   TextureSource,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-textures";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 
 /**

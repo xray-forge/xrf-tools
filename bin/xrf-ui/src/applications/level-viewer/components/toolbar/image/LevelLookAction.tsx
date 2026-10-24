@@ -15,7 +15,7 @@ import {
   LEVEL_LOOK_LIGHT_SCALE_FIELDS,
   LEVEL_LOOK_TONEMAP_FIELDS,
 } from "@/applications/level-viewer/lib/look/level-look-fields";
-import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app";
+import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app-levels";
 import {
   ERenderBloomMode,
   ERenderLightLevel,

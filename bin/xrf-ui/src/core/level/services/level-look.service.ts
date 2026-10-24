@@ -6,12 +6,8 @@ import { Nullable } from "@xrf/types";
 
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { SessionPartResource } from "@/core/ipc/session";
-import {
-  LEVEL_CONSOLE_PART,
-  LevelConsoleDefaults,
-  SelectedLevelDescription,
-  SessionSnapshot,
-} from "@/core/ipc/types/xrf-app";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+import { LEVEL_CONSOLE_PART, LevelConsoleDefaults, SelectedLevelDescription } from "@/core/ipc/types/xrf-app-levels";
 import { XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { ILevelLook, toGameLevelLook } from "@/core/level/lib/look/level-look";
 import {

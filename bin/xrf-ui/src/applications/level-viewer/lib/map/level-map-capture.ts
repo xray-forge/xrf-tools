@@ -2,7 +2,7 @@ import { IPoint3 } from "@xrf/math";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
 import { LEVEL_CAPTURE_DRAWN_MOST } from "@/applications/level-viewer/lib/capture/level-capture";
-import { LevelMapDescription } from "@/core/ipc/types/xrf-app";
+import { LevelMapDescription } from "@/core/ipc/types/xrf-app-levels";
 import {
   RENDER_MAP_MOST_PIXELS,
   RENDER_MAP_MOST_SUPERSAMPLING,

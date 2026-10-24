@@ -2,7 +2,7 @@ import { Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { ArchiveGameMtlMaterial } from "@/core/ipc/types/xrf-app";
+import { ArchiveGameMtlMaterial } from "@/core/ipc/types/xrf-app-archives";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

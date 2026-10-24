@@ -1,5 +1,6 @@
 import { createRoots } from "@/core/assets/lib";
-import { AssetTextureDescriptor, SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
+import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import {

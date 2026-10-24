@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
 import { Nullable } from "@xrf/types";
 
-import { ARCHIVES_JOB_PACK, ARCHIVES_JOB_UNPACK } from "@/core/ipc/types/xrf-app";
+import { ARCHIVES_JOB_PACK, ARCHIVES_JOB_UNPACK } from "@/core/ipc/types/xrf-app-archives";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";

@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
 import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";

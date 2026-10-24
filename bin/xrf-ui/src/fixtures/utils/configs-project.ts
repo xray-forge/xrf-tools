@@ -1,4 +1,4 @@
-import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
+import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app-configs";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInvoke } from "@/fixtures/mocks/tauri.mocks";

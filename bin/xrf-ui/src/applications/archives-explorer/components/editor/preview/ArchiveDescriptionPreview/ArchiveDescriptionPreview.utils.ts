@@ -7,7 +7,7 @@ import {
   ArchiveReference,
   EArchiveDescribeScope,
   EArchiveReferenceStatus,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 
 /** Shown where a file declares no value at all, which is not the same as declaring a default one. */
 export const NOT_DECLARED: string = "Not declared";

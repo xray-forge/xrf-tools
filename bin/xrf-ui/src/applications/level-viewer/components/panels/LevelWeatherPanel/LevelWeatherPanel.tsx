@@ -7,7 +7,7 @@ import { LevelWeatherClockSection } from "@/applications/level-viewer/components
 import { LevelWeatherFindingsSection } from "@/applications/level-viewer/components/panels/LevelWeatherPanel/LevelWeatherFindingsSection";
 import { LevelWeatherModifiersSection } from "@/applications/level-viewer/components/panels/LevelWeatherPanel/LevelWeatherModifiersSection";
 import { LevelWeatherPlaySection } from "@/applications/level-viewer/components/panels/LevelWeatherPanel/LevelWeatherPlaySection";
-import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app";
+import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app-levels";
 import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { ILevelWeatherCycleChoice, listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
 import { LevelLoadService } from "@/core/level/services/level-load.service";

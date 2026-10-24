@@ -2,7 +2,7 @@ import { Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { LevelWeatherCycle } from "@/core/ipc/types/xrf-app";
+import { LevelWeatherCycle } from "@/core/ipc/types/xrf-app-levels";
 import { WorldWeatherEffectReport } from "@/core/ipc/types/xrf-world";
 import { LevelWeatherCycleSelect } from "@/core/level/components/weather/LevelWeatherCycleSelect";
 import { LevelWeatherEffectSelect } from "@/core/level/components/weather/LevelWeatherEffectSelect";

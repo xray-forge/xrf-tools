@@ -18,13 +18,8 @@ import {
   SESSION_CHANGE_EVENT,
   SessionScopeService,
 } from "@/core/ipc/session";
-import {
-  ESessionRootChange,
-  ETranslationSaveOutcome,
-  SessionChange,
-  SessionSnapshot,
-  TranslationSaveOutcome,
-} from "@/core/ipc/types/xrf-app";
+import { ESessionRootChange, SessionChange, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+import { ETranslationSaveOutcome, TranslationSaveOutcome } from "@/core/ipc/types/xrf-app-translations";
 import { TranslationProjectDescriptor, TranslationProjectMode } from "@/core/ipc/types/xrf-translation";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";

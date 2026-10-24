@@ -8,7 +8,7 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app";
+import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app-core";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";

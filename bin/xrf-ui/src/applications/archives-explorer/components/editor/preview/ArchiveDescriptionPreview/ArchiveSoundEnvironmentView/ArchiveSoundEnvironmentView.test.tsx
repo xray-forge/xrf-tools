@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 
-import { ArchiveSoundEnvironmentDescription } from "@/core/ipc/types/xrf-app";
+import { ArchiveSoundEnvironmentDescription } from "@/core/ipc/types/xrf-app-archives";
 import { mockArchiveSoundEnvironmentDescription } from "@/fixtures/mocks/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import { ETextureBumpPlane } from "@/core/textures/lib/texture-bump-plane";
 import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";

@@ -3,7 +3,7 @@ import { Autocomplete, TextField } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ReactElement, SyntheticEvent, useCallback } from "react";
 
-import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
+import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app-levels";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

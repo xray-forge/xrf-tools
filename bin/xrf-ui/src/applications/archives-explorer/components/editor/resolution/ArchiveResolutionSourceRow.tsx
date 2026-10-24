@@ -4,7 +4,7 @@ import { Chip, chipClasses, Typography } from "@mui/material";
 import { formatCount } from "@xrf/format";
 import { ReactElement } from "react";
 
-import { ArchiveResolutionSource, ArchiveResolutionVolume } from "@/core/ipc/types/xrf-app";
+import { ArchiveResolutionSource, ArchiveResolutionVolume } from "@/core/ipc/types/xrf-app-archives";
 import { EXraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";

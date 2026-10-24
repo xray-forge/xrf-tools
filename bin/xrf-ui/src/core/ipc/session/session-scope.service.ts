@@ -3,7 +3,7 @@ import { inject, Injectable, InjectionToken, OnDeactivation } from "@wirestate/c
 import { Logger } from "@xrf/logging";
 
 import { sessionsCommands } from "@/core/ipc/commands/sessions";
-import { SessionId } from "@/core/ipc/types/xrf-app";
+import { SessionId } from "@/core/ipc/types/xrf-app-core";
 
 import { IScopedSession } from "./session.types";
 

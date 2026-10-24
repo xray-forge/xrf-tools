@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 
 import { transportCommands } from "@/core/ipc/commands/transport";
-import { TransportEndpoint } from "@/core/ipc/types/xrf-app";
+import { TransportEndpoint } from "@/core/ipc/types/xrf-app-core";
 
 /**
  * Where the transport listens, asked of the backend once and kept for as long as the page lives: the port and token

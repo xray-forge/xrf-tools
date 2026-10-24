@@ -7,7 +7,7 @@ import { Logger, Timer } from "@xrf/logging";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { jobsCommands } from "@/core/ipc/commands/jobs";
-import { EJobConclusion, JobConclusion, JobDescription, JobKind } from "@/core/ipc/types/xrf-app";
+import { EJobConclusion, JobConclusion, JobDescription, JobKind } from "@/core/ipc/types/xrf-app-core";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { describeAdoptedOutcome } from "@/core/jobs/lib/describe-adopted-outcome";
 import { findJobKind, IJobKindDescriptor } from "@/core/jobs/lib/job-kinds";

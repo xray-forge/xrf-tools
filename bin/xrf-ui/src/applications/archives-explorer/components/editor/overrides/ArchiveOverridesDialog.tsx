@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement, useCallback, useEffect, useId, useMemo, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchiveWorldEntry } from "@/core/ipc/types/xrf-app";
+import { ArchiveWorldEntry } from "@/core/ipc/types/xrf-app-archives";
 import { ArchiveSourceUsage, ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { cn } from "@/core/theme/class-name";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";

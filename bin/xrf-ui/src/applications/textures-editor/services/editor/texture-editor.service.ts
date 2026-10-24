@@ -15,7 +15,7 @@ import {
   TEXTURES_JOB_SAVE,
   TextureSaveOutcome,
   TextureVocabulary,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-textures";
 import { TextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";

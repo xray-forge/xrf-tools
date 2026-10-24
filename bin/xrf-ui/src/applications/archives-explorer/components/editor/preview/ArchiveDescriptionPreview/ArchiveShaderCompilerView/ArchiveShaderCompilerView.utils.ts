@@ -1,6 +1,6 @@
 import { formatNumber } from "@xrf/format";
 
-import { ArchiveShaderCompilerShader } from "@/core/ipc/types/xrf-app";
+import { ArchiveShaderCompilerShader } from "@/core/ipc/types/xrf-app-archives";
 
 /**
  * What a surface costs the compiler to bake.

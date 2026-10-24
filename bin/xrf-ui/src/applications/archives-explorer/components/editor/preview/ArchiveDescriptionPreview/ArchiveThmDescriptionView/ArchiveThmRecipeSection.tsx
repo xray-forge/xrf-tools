@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { ArchiveThmParameters } from "@/core/ipc/types/xrf-app";
+import { ArchiveThmParameters } from "@/core/ipc/types/xrf-app-archives";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

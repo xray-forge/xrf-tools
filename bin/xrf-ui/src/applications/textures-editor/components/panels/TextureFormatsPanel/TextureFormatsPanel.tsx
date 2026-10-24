@@ -5,7 +5,11 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
-import { TextureDescription, TextureEncodingComparison, TextureEncodingReport } from "@/core/ipc/types/xrf-app";
+import {
+  TextureDescription,
+  TextureEncodingComparison,
+  TextureEncodingReport,
+} from "@/core/ipc/types/xrf-app-textures";
 import {
   EditorPanel,
   EditorPanelEmpty,

@@ -8,7 +8,7 @@ import {
   EArchiveDescribeRefusal,
   EArchiveDescribeScope,
   EArchiveFormatDescription,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 import {
   mockArchiveFileDescription,
   mockArchiveReference,

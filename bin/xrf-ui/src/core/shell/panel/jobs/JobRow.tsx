@@ -3,7 +3,7 @@ import { formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { JobDescription } from "@/core/ipc/types/xrf-app";
+import { JobDescription } from "@/core/ipc/types/xrf-app-core";
 import { ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { findJobKind, IJobKindDescriptor } from "@/core/jobs/lib";
 import { describeJobStatus, IJobStatus } from "@/core/jobs/lib/job-status";

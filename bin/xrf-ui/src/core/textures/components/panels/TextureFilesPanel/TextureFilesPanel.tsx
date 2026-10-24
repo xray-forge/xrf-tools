@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { AssetTextureDetails } from "@/core/assets/components/AssetTextureDetails";
-import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import {
   EditorPanel,
   EditorPanelEmpty,

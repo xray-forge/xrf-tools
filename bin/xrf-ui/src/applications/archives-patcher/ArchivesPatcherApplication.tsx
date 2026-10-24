@@ -10,7 +10,7 @@ import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher";
 import { ARCHIVE_CONFIG_EXTENSIONS, withArchiveConfigExtension } from "@/core/archive/lib";
 import { ARCHIVE_CONFIG_EXPORT_FILTERS } from "@/core/archive/lib/config-format";
-import { ArchivesPatchRequest } from "@/core/ipc/types/xrf-app";
+import { ArchivesPatchRequest } from "@/core/ipc/types/xrf-app-archives";
 import { ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";

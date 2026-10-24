@@ -1,6 +1,6 @@
 import { formatCount, formatNumber } from "@xrf/format";
 
-import { ArchiveLevelSomDescription } from "@/core/ipc/types/xrf-app";
+import { ArchiveLevelSomDescription } from "@/core/ipc/types/xrf-app-archives";
 
 import { NOTHING_TO_MEASURE } from "../ArchiveDescriptionPreview.utils";
 

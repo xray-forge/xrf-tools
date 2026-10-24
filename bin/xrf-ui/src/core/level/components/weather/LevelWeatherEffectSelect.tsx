@@ -2,7 +2,7 @@ import { ListItemText, MenuItem, TextField } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement } from "react";
 
-import { LevelWeatherCycle } from "@/core/ipc/types/xrf-app";
+import { LevelWeatherCycle } from "@/core/ipc/types/xrf-app-levels";
 import { WorldWeatherEffectReport } from "@/core/ipc/types/xrf-world";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { CONTROL } from "@/core/theme/tokens";

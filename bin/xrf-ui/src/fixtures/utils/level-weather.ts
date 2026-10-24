@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 
-import { SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app-levels";
 import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import { EWorldWeatherPlay, WorldWeatherPlay } from "@/core/ipc/types/xrf-world";
 import { LevelLoadService } from "@/core/level/services/level-load.service";

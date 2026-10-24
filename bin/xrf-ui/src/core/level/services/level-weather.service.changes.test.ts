@@ -3,7 +3,8 @@ import { waitFor } from "@testing-library/react";
 import { Container, EventBus } from "@wirestate/core";
 
 import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
-import { LEVEL_ENVIRONMENT_PART, LEVEL_SPAWN_PART, SessionChange } from "@/core/ipc/types/xrf-app";
+import { SessionChange } from "@/core/ipc/types/xrf-app-core";
+import { LEVEL_ENVIRONMENT_PART, LEVEL_SPAWN_PART } from "@/core/ipc/types/xrf-app-levels";
 import { EWorldWeatherPlay } from "@/core/ipc/types/xrf-world";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";

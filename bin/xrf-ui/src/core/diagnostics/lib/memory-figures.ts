@@ -1,4 +1,4 @@
-import { ProcessMemory, WebviewProcessMemory } from "@/core/ipc/types/xrf-app";
+import { ProcessMemory, WebviewProcessMemory } from "@/core/ipc/types/xrf-app-system";
 
 /** What a process, or several summed, holds: what it occupies alone, and what is charged to it. */
 export interface IMemoryFigures {

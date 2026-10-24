@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelWeatherTextureField } from "@/applications/level-viewer/components/weather/LevelWeatherTextureField";
-import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app";
+import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app-levels";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 function texture(reference: string): LevelWeatherTexture {

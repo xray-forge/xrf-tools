@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ELevelSpawnCategory } from "@/core/ipc/types/xrf-app";
+import { ELevelSpawnCategory } from "@/core/ipc/types/xrf-app-levels";
 
 import { ILevelSpawnCategoryEntry, LEVEL_SPAWN_CATEGORIES } from "./level-spawn-categories";
 

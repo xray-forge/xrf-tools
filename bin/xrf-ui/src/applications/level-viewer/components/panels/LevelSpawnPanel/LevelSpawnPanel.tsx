@@ -18,7 +18,11 @@ import {
   toLevelSpawnSectionId,
   toLevelSpawnTree,
 } from "@/applications/level-viewer/lib/spawn/level-spawn-tree";
-import { LevelSpawnObject, LevelSpawnObjectDetails, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app";
+import {
+  LevelSpawnObject,
+  LevelSpawnObjectDetails,
+  LevelSpawnObjectsDescription,
+} from "@/core/ipc/types/xrf-app-levels";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelSpawnReport, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";

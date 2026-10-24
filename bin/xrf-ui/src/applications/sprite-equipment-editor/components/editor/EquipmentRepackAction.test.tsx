@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { AssetService } from "@/core/assets/services";
-import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app";
+import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app-sprite-equipment";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockEquipmentSpriteMetadata, mockEquipmentSpriteOpen } from "@/fixtures/mocks/sprite.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";

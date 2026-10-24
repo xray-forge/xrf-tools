@@ -3,7 +3,7 @@ import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container, Injectable } from "@wirestate/core";
 
-import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app";
+import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";

@@ -3,12 +3,26 @@
 import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
-import { GamedataVerifyRequest, GamedataVerifySummary } from "@/core/ipc/types/xrf-app";
+import { IIpcCommandSignature } from "@/core/ipc/signature";
+import { GamedataVerifyRequest, GamedataVerifySummary } from "@/core/ipc/types/xrf-app-gamedata";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
+
+/** The wire name of every command of the `gamedata` plugin. */
+export enum EGamedataCommand {
+  VERIFY_PROJECT = "plugin:gamedata|verify_project",
+}
 
 /** Commands */
 export const gamedataCommands = {
   /** Run the selected checks over a gamedata project, one verification at a time. */
   verifyProject: (request: GamedataVerifyRequest, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<GamedataVerifySummary>("plugin:gamedata|verify_project", { request, jobId, progress }),
+    __TAURI_INVOKE<GamedataVerifySummary>(EGamedataCommand.VERIFY_PROJECT, { request, jobId, progress }),
 };
+
+/** What each command of the `gamedata` plugin takes and resolves to, keyed by its wire name. */
+export interface IGamedataCommandSignatures {
+  [EGamedataCommand.VERIFY_PROJECT]: IIpcCommandSignature<
+    typeof gamedataCommands.verifyProject,
+    ["request", "jobId", "progress"]
+  >;
+}

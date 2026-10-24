@@ -4,7 +4,8 @@ import { flowResult } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib/roots";
 import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
-import { ETranslationSaveOutcome, SessionChange, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { SessionChange, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+import { ETranslationSaveOutcome } from "@/core/ipc/types/xrf-app-translations";
 import { TranslationProjectDescriptor } from "@/core/ipc/types/xrf-translation";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";

@@ -1,12 +1,8 @@
 import { Nullable } from "@xrf/types";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
-import {
-  AssetTextureShape,
-  ETextureSurfaceAlpha,
-  ETextureSurfaceShape,
-  TextureDescription,
-} from "@/core/ipc/types/xrf-app";
+import { AssetTextureShape } from "@/core/ipc/types/xrf-app-core";
+import { ETextureSurfaceAlpha, ETextureSurfaceShape, TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { ITextureTexels } from "@/core/textures/lib/texture-texels";
 

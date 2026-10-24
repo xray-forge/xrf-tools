@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { EWebviewProcessKind, MemoryUsage, RuntimeSnapshot } from "@/core/ipc/types/xrf-app";
+import { EWebviewProcessKind, MemoryUsage, RuntimeSnapshot } from "@/core/ipc/types/xrf-app-system";
 
 import { describeBackendMemory, describeWebviewMemory, IRuntimeMemoryFigure } from "./SettingsRuntimeSection.utils";
 

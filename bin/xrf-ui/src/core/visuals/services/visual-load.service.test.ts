@@ -3,7 +3,7 @@ import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app";
+import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
 import { ERenderTextureGroup, ERenderTextureState } from "@/core/ipc/types/xrf-renderer";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";

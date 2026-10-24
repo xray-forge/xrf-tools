@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
+import { ConfigsDocument } from "@/core/ipc/types/xrf-app-configs";
 import { LtxAnchoredFinding, LtxStructureSection } from "@/core/ipc/types/xrf-ltx-inspect";
 import { useRevealed } from "@/core/ltx/components/ConfigsDocumentView/use-revealed";
 import { toFindingMarks } from "@/core/ltx/lib/findings";

@@ -5,7 +5,7 @@ import { formatCount, formatDegrees } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { LevelSunDescription } from "@/core/ipc/types/xrf-app";
+import { LevelSunDescription } from "@/core/ipc/types/xrf-app-levels";
 import { ERenderVolumetricMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";

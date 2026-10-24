@@ -7,7 +7,7 @@ import { describeTextureBumpOutcome } from "@/applications/textures-editor/lib/d
 import { toBumpTarget } from "@/applications/textures-editor/lib/texture-bump-target";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { texturesCommands } from "@/core/ipc/commands/textures";
-import { TextureDescription, TextureMakeBumpOutcome, TEXTURES_JOB_MAKE_BUMP } from "@/core/ipc/types/xrf-app";
+import { TextureDescription, TextureMakeBumpOutcome, TEXTURES_JOB_MAKE_BUMP } from "@/core/ipc/types/xrf-app-textures";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

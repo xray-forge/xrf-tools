@@ -8,13 +8,8 @@ import { AnyObject, Nullable } from "@xrf/types";
 
 import { spawnCommands } from "@/core/ipc/commands/spawn";
 import { Session, SessionScopeService } from "@/core/ipc/session";
-import {
-  ESpawnChunkKind,
-  SessionId,
-  SessionSnapshot,
-  SpawnChunk,
-  SpawnSessionDescriptor,
-} from "@/core/ipc/types/xrf-app";
+import { SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+import { ESpawnChunkKind, SpawnChunk, SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app-spawn";
 import { SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";

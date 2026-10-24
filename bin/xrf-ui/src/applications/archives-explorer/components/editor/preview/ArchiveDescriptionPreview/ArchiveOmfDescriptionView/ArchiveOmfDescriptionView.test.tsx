@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 
-import { ArchiveOmfDescription, EArchiveOmfTarget } from "@/core/ipc/types/xrf-app";
+import { ArchiveOmfDescription, EArchiveOmfTarget } from "@/core/ipc/types/xrf-app-archives";
 import { mockArchiveOmfDescription, mockArchiveOmfMotion } from "@/fixtures/mocks/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

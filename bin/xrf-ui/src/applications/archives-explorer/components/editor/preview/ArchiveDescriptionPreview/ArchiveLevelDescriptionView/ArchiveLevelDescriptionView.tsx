@@ -7,7 +7,7 @@ import {
   ArchiveLevelDescription,
   ArchiveLevelSurface,
   EArchiveLevelEntry,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";

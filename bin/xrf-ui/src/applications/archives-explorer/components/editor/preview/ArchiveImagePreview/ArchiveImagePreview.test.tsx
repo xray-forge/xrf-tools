@@ -5,7 +5,7 @@ import { Nullable } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes } from "@/core/archive/lib";
-import { ImageDescriptor } from "@/core/ipc/types/xrf-app";
+import { ImageDescriptor } from "@/core/ipc/types/xrf-app-archives";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

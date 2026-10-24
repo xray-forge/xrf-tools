@@ -7,7 +7,9 @@ import { Logger } from "@xrf/logging";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { levelsCommands } from "@/core/ipc/commands/levels";
-import { CaptureOutcome, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app-levels";
+import { CaptureOutcome } from "@/core/ipc/types/xrf-app-render";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import {
   ERenderDlssAvailability,

@@ -5,7 +5,7 @@ import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { systemCommands } from "@/core/ipc/commands/system";
-import { ELeaveDecision } from "@/core/ipc/types/xrf-app";
+import { ELeaveDecision } from "@/core/ipc/types/xrf-app-system";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { APPLICATION_SOURCE } from "@/core/routing/application";
 

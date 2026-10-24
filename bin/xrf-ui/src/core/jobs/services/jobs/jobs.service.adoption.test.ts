@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 
-import { ARCHIVES_JOB_PACK } from "@/core/ipc/types/xrf-app";
+import { ARCHIVES_JOB_PACK } from "@/core/ipc/types/xrf-app-archives";
 import { EApplicationId } from "@/core/routing/application";
 import { mockJobDescription } from "@/fixtures/mocks/job.mocks";
 import {

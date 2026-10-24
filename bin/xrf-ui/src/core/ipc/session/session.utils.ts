@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import { SessionId } from "@/core/ipc/types/xrf-app";
+import { SessionId } from "@/core/ipc/types/xrf-app-core";
 
 import { ISessionIdentity, ISessionRevision } from "./session.types";
 

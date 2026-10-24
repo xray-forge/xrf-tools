@@ -1,7 +1,7 @@
 import { formatBytes } from "@xrf/format";
 
 import { listLocatedAssets } from "@/core/assets/lib/resolution";
-import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app";
+import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
 import { EXrayBumpOutcome, XrayBumpOutcome, XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 

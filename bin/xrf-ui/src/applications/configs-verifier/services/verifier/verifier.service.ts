@@ -4,7 +4,7 @@ import { Logger } from "@xrf/logging";
 import { describeVerifyOutcome } from "@/applications/configs-verifier/lib/describe-verify-outcome";
 import { createRoots } from "@/core/assets/lib";
 import { configsCommands } from "@/core/ipc/commands/configs";
-import { CONFIGS_JOB_VERIFY } from "@/core/ipc/types/xrf-app";
+import { CONFIGS_JOB_VERIFY } from "@/core/ipc/types/xrf-app-configs";
 import { LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";

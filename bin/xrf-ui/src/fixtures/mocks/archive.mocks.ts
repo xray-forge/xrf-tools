@@ -56,7 +56,7 @@ import {
   EArchiveOmfTarget,
   EArchiveReferenceStatus,
   EArchiveSubject,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 import {
   ArchiveDescriptor,
   ArchiveFileDescriptor,

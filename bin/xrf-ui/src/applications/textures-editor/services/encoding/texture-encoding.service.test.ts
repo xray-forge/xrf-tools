@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { isComputedProp } from "@wirestate/mobx";
 
-import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { listMockBulkCalls, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";

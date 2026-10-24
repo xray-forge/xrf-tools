@@ -6,7 +6,7 @@ import { describePackOutcome } from "@/applications/archives-packer/lib/describe
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { ArchiveConfigEditorService } from "@/core/archive/services/config-editor";
 import { archivesCommands } from "@/core/ipc/commands/archives";
-import { ARCHIVES_JOB_PACK } from "@/core/ipc/types/xrf-app";
+import { ARCHIVES_JOB_PACK } from "@/core/ipc/types/xrf-app-archives";
 import { ArchivePackConfig, ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";

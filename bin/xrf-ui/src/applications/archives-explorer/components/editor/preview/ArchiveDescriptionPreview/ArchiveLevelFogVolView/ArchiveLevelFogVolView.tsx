@@ -1,7 +1,11 @@
 import { formatCount } from "@xrf/format";
 import { ReactElement } from "react";
 
-import { ArchiveDescribeScope, ArchiveLevelFogVolDescription, ArchiveLevelFogVolume } from "@/core/ipc/types/xrf-app";
+import {
+  ArchiveDescribeScope,
+  ArchiveLevelFogVolDescription,
+  ArchiveLevelFogVolume,
+} from "@/core/ipc/types/xrf-app-archives";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

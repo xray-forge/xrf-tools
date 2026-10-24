@@ -1,6 +1,10 @@
 import { Nullable } from "@xrf/types";
 
-import { EquipmentSheetLocation, EquipmentSpriteMetadata, EquipmentSpriteOpen } from "@/core/ipc/types/xrf-app";
+import {
+  EquipmentSheetLocation,
+  EquipmentSpriteMetadata,
+  EquipmentSpriteOpen,
+} from "@/core/ipc/types/xrf-app-sprite-equipment";
 import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 
 /**

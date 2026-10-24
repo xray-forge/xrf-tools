@@ -7,7 +7,7 @@ import {
   ArchiveParticlesDescription,
   EArchiveDescribeScope,
   EArchiveReferenceStatus,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
 import {
   mockArchiveParticlesDescription,
   mockArchiveParticlesEffect,

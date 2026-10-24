@@ -6,7 +6,7 @@ import { ReactElement, useCallback, useState } from "react";
 import { DEFAULT_GLOSS_POWER } from "@/applications/textures-editor/lib/texture-bump-gloss";
 import { TextureBumpService } from "@/applications/textures-editor/services/bump";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
-import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { EApplicationId } from "@/core/routing/application";
 import {

@@ -9,7 +9,7 @@ import { Nullable } from "@xrf/types";
 
 import { visualsCommands } from "@/core/ipc/commands/visuals";
 import { requireSessionId, Session, SessionScopeService } from "@/core/ipc/session";
-import { SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";

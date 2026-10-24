@@ -3,7 +3,7 @@ import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 
 import { LevelViewerListService } from "@/applications/level-viewer/services/list";
 import { createRoots } from "@/core/assets/lib";
-import { LevelEntry } from "@/core/ipc/types/xrf-app";
+import { LevelEntry } from "@/core/ipc/types/xrf-app-levels";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";

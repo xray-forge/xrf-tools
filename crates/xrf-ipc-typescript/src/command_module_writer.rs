@@ -1,14 +1,22 @@
-//! Writing `core/ipc/commands/`, one module per Tauri plugin.
+//! Writing `commands/`, one module per Tauri plugin, its raw and bulk companions, and the signatures they all merge
+//! into.
 
 use std::fs;
 use std::path::Path;
 
-use xrf_utils::{format_path, to_camel_case};
+use xrf_utils::format_path;
 
 use crate::constants::GENERATED_HEADER;
 use crate::enumerations::Enumerations;
 use crate::generated_output::write_generated;
+use crate::mirror_imports::MirrorImports;
+use crate::plugin_symbols::PluginSymbols;
+use crate::specta_command::SpectaCommand;
 use crate::type_ownership::TypeOwnership;
+
+/// One plugin's modules as the merged signatures import them: its name, and whether it has raw commands or bulk
+/// routes, which are the modules beside its typed one.
+pub(crate) type PluginModules<'a> = (&'a str, bool, bool);
 
 /// Writes `commands/`, one module per Tauri plugin.
 pub(crate) struct CommandModuleWriter;
@@ -20,6 +28,9 @@ impl CommandModuleWriter {
   /// where those copies are dropped in favour of imports.
   const TYPES_MARKER: &'static str = "/* Types */";
 
+  /// Marker Tauri Specta writes before the command object, where the enum naming its commands goes.
+  const COMMANDS_MARKER: &'static str = "/** Commands */";
+
   /// Tauri Specta's own invoke import, for a module that also carries a job command's channel.
   const SPECTA_INVOKE_IMPORT_WITH_CHANNEL: &'static str =
     "import { invoke as __TAURI_INVOKE, Channel } from \"@tauri-apps/api/core\";";
@@ -27,60 +38,110 @@ impl CommandModuleWriter {
   /// The same import for a module with no channel, which is the only other spelling Specta writes.
   const SPECTA_INVOKE_IMPORT: &'static str = "import { invoke as __TAURI_INVOKE } from \"@tauri-apps/api/core\";";
 
-  /// Where a generated module takes `invoke` from instead.
-  ///
-  /// The wrapper counts every call, which is why the redirect is written here rather than left to a hundred call
-  /// sites to remember: a command added later is measured by existing. `Channel` still comes from Tauri, being a
-  /// transport handle the wrapper has no business in.
-  const COUNTED_INVOKE_IMPORT: &'static str = "import { invoke as __TAURI_INVOKE } from \"@/core/ipc/invoke\";";
-
-  /// The channel-carrying spelling, split so the redirect leaves `Channel` where it was.
-  const CHANNEL_IMPORT_AND_COUNTED_INVOKE: &'static str = "import { Channel } from \"@tauri-apps/api/core\";
-import { invoke as __TAURI_INVOKE } from \"@/core/ipc/invoke\";";
-
-  /// Replaces the types Tauri Specta inlined into a command module with imports, and names its commands.
+  /// Replaces the types Tauri Specta inlined into a command module with imports, names its commands, has each wrapper
+  /// invoke its command by the plugin's enum, and declares the commands' signatures.
   ///
   /// The generated symbol was `commands` in every module, which left nine identical names in the directory and
-  /// made every call site alias it by hand.
-  pub(crate) fn finalize(path: &Path, plugin: &str, ownership: &TypeOwnership, enumerations: &Enumerations) {
+  /// made every call site alias it by hand. `invoke` is taken from the counted wrapper instead of Tauri: it counts
+  /// every call, which is why the redirect is written here rather than left to a hundred call sites to remember, so a
+  /// command added later is measured by existing. `Channel` still comes from Tauri, being a transport handle the
+  /// wrapper has no business in.
+  pub(crate) fn finalize(
+    path: &Path,
+    plugin: &str,
+    commands: &[SpectaCommand],
+    ownership: &TypeOwnership,
+    enumerations: &Enumerations,
+    imports: &MirrorImports,
+  ) {
+    let symbols: PluginSymbols = PluginSymbols::new(plugin);
+    let counted_invoke_import: String = format!("import {{ invoke as __TAURI_INVOKE }} from \"{}\";", imports.invoke());
     let contents: String =
       fs::read_to_string(path).unwrap_or_else(|error| panic!("Failed to read {}: {error}", format_path(path)));
-    let commands: String = contents
+    let mut wrappers: String = contents
       .split_once(Self::TYPES_MARKER)
       .map_or(contents.as_str(), |(before, _)| before)
       .trim_end()
       .replace(
         "export const commands = {",
-        &format!("export const {}Commands = {{", to_camel_case(plugin)),
+        &format!("export const {} = {{", symbols.commands()),
       )
       // The wider spelling first: replacing the bare one first would leave its `, Channel` behind.
       .replace(
         Self::SPECTA_INVOKE_IMPORT_WITH_CHANNEL,
-        Self::CHANNEL_IMPORT_AND_COUNTED_INVOKE,
+        &format!("import {{ Channel }} from \"@tauri-apps/api/core\";\n{counted_invoke_import}"),
       )
-      .replace(Self::SPECTA_INVOKE_IMPORT, Self::COUNTED_INVOKE_IMPORT);
+      .replace(Self::SPECTA_INVOKE_IMPORT, &counted_invoke_import);
 
-    let commands: String = enumerations.rewrite_parameters(&commands);
+    for command in commands {
+      let literal: String = format!("\"plugin:{plugin}|{}\"", command.name);
+
+      assert_eq!(
+        wrappers.matches(&literal).count(),
+        1,
+        "{} does not invoke {literal} exactly once; Tauri Specta's wrapper spelling has changed",
+        format_path(path)
+      );
+
+      wrappers = wrappers.replace(
+        &literal,
+        &format!("{}.{}", symbols.command_enum(), PluginSymbols::member(&command.name)),
+      );
+    }
+
+    let wrappers: String = enumerations.rewrite_parameters(&wrappers);
 
     // A module still importing `invoke` from Tauri would be dispatched and never counted, and nothing downstream would
     // say so. Specta changing how it writes that import is the way this stops being true, so it is asserted here.
     assert!(
-      commands.contains(Self::COUNTED_INVOKE_IMPORT),
+      wrappers.contains(&counted_invoke_import),
       "{} does not route invoke through the counted wrapper; Tauri Specta's import spelling has changed",
       format_path(path)
     );
+    assert!(
+      wrappers.contains(Self::COMMANDS_MARKER),
+      "{} has no `{}` marker; Tauri Specta's module layout has changed",
+      format_path(path),
+      Self::COMMANDS_MARKER
+    );
 
-    ownership.assert_no_foreign_references(&commands, plugin);
+    ownership.assert_no_foreign_references(&wrappers, plugin);
 
-    let (header, body) = commands
+    let type_imports: String = ownership.imports_for(&wrappers);
+    let enumeration: String = Self::render_enum(
+      &format!("The wire name of every command of the `{plugin}` plugin."),
+      &symbols.command_enum(),
+      commands
+        .iter()
+        .map(|command| (command.name.as_str(), format!("plugin:{plugin}|{}", command.name))),
+    );
+    let signatures: String = Self::render_signatures(
+      &format!("What each command of the `{plugin}` plugin takes and resolves to, keyed by its wire name."),
+      &symbols.command_signatures(),
+      &symbols.command_enum(),
+      &symbols.commands(),
+      "IIpcCommandSignature",
+      commands.iter().map(|command| {
+        (
+          command.name.as_str(),
+          command.arguments.iter().map(String::as_str).collect(),
+        )
+      }),
+    );
+    let wrappers: String = wrappers.replacen(
+      Self::COMMANDS_MARKER,
+      &format!("{enumeration}\n{}", Self::COMMANDS_MARKER),
+      1,
+    );
+    let (header, body) = wrappers
       .split_once("\n\n")
       .unwrap_or_else(|| panic!("{} has no header", format_path(path)));
 
     write_generated(
       path,
       &format!(
-        "{header}\n\n{}{}\n",
-        ownership.imports_for(&commands),
+        "{header}\n\nimport {{ IIpcCommandSignature }} from \"{}\";\n{type_imports}{}\n\n{signatures}",
+        imports.signature(),
         body.trim_start()
       ),
     );
@@ -97,19 +158,23 @@ import { invoke as __TAURI_INVOKE } from \"@/core/ipc/invoke\";";
     commands: &[(&str, &[(&str, &str)])],
     ownership: &TypeOwnership,
     enumerations: &Enumerations,
+    imports: &MirrorImports,
   ) {
     if commands.is_empty() {
       return;
     }
 
+    let symbols: PluginSymbols = PluginSymbols::new(plugin);
     let wrappers: String = commands
       .iter()
       .map(|(wire_name, arguments)| {
         let (parameters, payload): (String, String) = Self::render_arguments(arguments);
 
         format!(
-          "  {}: ({parameters}): Promise<ArrayBuffer> =>\n    invokeRaw(\"plugin:{plugin}|{wire_name}\", {{ {payload} }}),\n",
-          to_camel_case(wire_name)
+          "  {}: ({parameters}): Promise<ArrayBuffer> =>\n    invokeRaw({}.{}, {{ {payload} }}),\n",
+          PluginSymbols::wrapper(wire_name),
+          symbols.raw_command_enum(),
+          PluginSymbols::member(wire_name)
         )
       })
       .collect();
@@ -118,10 +183,29 @@ import { invoke as __TAURI_INVOKE } from \"@/core/ipc/invoke\";";
       path,
       plugin,
       &wrappers,
-      "import { invokeRaw } from \"@/core/ipc/raw\";",
       &format!(
-        "/** Commands answering with raw bytes over IPC, which Specta cannot type. */\nexport const {}RawCommands",
-        to_camel_case(plugin)
+        "import {{ invokeRaw }} from \"{}\";\nimport {{ IIpcCommandSignature }} from \"{}\";",
+        imports.raw(),
+        imports.signature()
+      ),
+      &Self::render_enum(
+        &format!("The wire name of every raw command of the `{plugin}` plugin."),
+        &symbols.raw_command_enum(),
+        commands
+          .iter()
+          .map(|(wire_name, _)| (*wire_name, format!("plugin:{plugin}|{wire_name}"))),
+      ),
+      &format!(
+        "/** Commands answering with raw bytes over IPC, which Specta cannot type. */\nexport const {}",
+        symbols.raw_commands()
+      ),
+      &Self::render_signatures(
+        &format!("What each raw command of the `{plugin}` plugin takes and resolves to, keyed by its wire name."),
+        &symbols.raw_command_signatures(),
+        &symbols.raw_command_enum(),
+        &symbols.raw_commands(),
+        "IIpcCommandSignature",
+        Self::declared_arguments(commands),
       ),
       ownership,
       enumerations,
@@ -139,19 +223,23 @@ import { invoke as __TAURI_INVOKE } from \"@/core/ipc/invoke\";";
     routes: &[(&str, &[(&str, &str)])],
     ownership: &TypeOwnership,
     enumerations: &Enumerations,
+    imports: &MirrorImports,
   ) {
     if routes.is_empty() {
       return;
     }
 
+    let symbols: PluginSymbols = PluginSymbols::new(plugin);
     let wrappers: String = routes
       .iter()
       .map(|(route, arguments)| {
         let (parameters, payload): (String, String) = Self::render_arguments(arguments);
 
         format!(
-          "  {}: ({parameters}): IBulkCall => ({{ args: {{ {payload} }}, route: \"{plugin}/{route}\" }}),\n",
-          to_camel_case(route)
+          "  {}: ({parameters}): IBulkCall => ({{ args: {{ {payload} }}, route: {}.{} }}),\n",
+          PluginSymbols::wrapper(route),
+          symbols.bulk_route_enum(),
+          PluginSymbols::member(route)
         )
       })
       .collect();
@@ -160,13 +248,83 @@ import { invoke as __TAURI_INVOKE } from \"@/core/ipc/invoke\";";
       path,
       plugin,
       &wrappers,
-      "import { IBulkCall } from \"@/core/ipc/bulk\";",
       &format!(
-        "/** Routes answering with bytes over the loopback transport, which Specta never sees. */\nexport const {}BulkRoutes",
-        to_camel_case(plugin)
+        "import {{ IBulkCall }} from \"{}\";\nimport {{ IIpcBulkRouteSignature }} from \"{}\";",
+        imports.bulk(),
+        imports.signature()
+      ),
+      &Self::render_enum(
+        &format!("Every bulk route of the `{plugin}` plugin, as the transport serves it."),
+        &symbols.bulk_route_enum(),
+        routes.iter().map(|(route, _)| (*route, format!("{plugin}/{route}"))),
+      ),
+      &format!(
+        "/** Routes answering with bytes over the loopback transport, which Specta never sees. */\nexport const {}",
+        symbols.bulk_routes()
+      ),
+      &Self::render_signatures(
+        &format!("What each bulk route of the `{plugin}` plugin takes, keyed by its route."),
+        &symbols.bulk_route_signatures(),
+        &symbols.bulk_route_enum(),
+        &symbols.bulk_routes(),
+        "IIpcBulkRouteSignature",
+        Self::declared_arguments(routes),
       ),
       ownership,
       enumerations,
+    );
+  }
+
+  /// Writes `signatures.ts`: every plugin's command signatures merged into one interface, and every plugin's bulk
+  /// route signatures into another, so a test or a tool names any command by its enum and gets its types.
+  pub(crate) fn write_signatures(path: &Path, plugins: &[PluginModules], imports: &MirrorImports) {
+    let mut import_lines: Vec<String> = Vec::new();
+    let mut commands: Vec<String> = Vec::new();
+    let mut routes: Vec<String> = Vec::new();
+
+    for (plugin, has_raw, has_bulk) in plugins {
+      let symbols: PluginSymbols = PluginSymbols::new(plugin);
+
+      import_lines.push(format!(
+        "import {{ {} }} from \"{}\";",
+        symbols.command_signatures(),
+        imports.command_module(plugin)
+      ));
+      commands.push(symbols.command_signatures());
+
+      if *has_raw {
+        import_lines.push(format!(
+          "import {{ {} }} from \"{}\";",
+          symbols.raw_command_signatures(),
+          imports.command_module(&format!("{plugin}-raw"))
+        ));
+        commands.push(symbols.raw_command_signatures());
+      }
+
+      if *has_bulk {
+        import_lines.push(format!(
+          "import {{ {} }} from \"{}\";",
+          symbols.bulk_route_signatures(),
+          imports.command_module(&format!("{plugin}-bulk"))
+        ));
+        routes.push(symbols.bulk_route_signatures());
+      }
+    }
+
+    import_lines.sort();
+
+    write_generated(
+      path,
+      &format!(
+        "{GENERATED_HEADER}\n{}\n\n\
+         /** Every command any plugin answers, raw ones included, keyed by its wire name. */\n\
+         export interface IIpcCommandSignatures{} {{}}\n\n\
+         /** Every bulk route any plugin serves, keyed by its route. */\n\
+         export interface IIpcBulkRouteSignatures{} {{}}\n",
+        import_lines.join("\n"),
+        Self::render_extends(&commands),
+        Self::render_extends(&routes)
+      ),
     );
   }
 
@@ -186,13 +344,73 @@ import { invoke as __TAURI_INVOKE } from \"@/core/ipc/invoke\";";
     (parameters, payload)
   }
 
-  /// Writes a module of wrappers the registry spells by hand, under `declaration` and importing what they call.
+  /// A registry's declarations as each one's name and its arguments' names, which is what a signature reads.
+  fn declared_arguments<'a>(
+    declarations: &'a [(&'a str, &'a [(&'a str, &'a str)])],
+  ) -> impl Iterator<Item = (&'a str, Vec<&'a str>)> {
+    declarations
+      .iter()
+      .map(|(name, arguments)| (*name, arguments.iter().map(|(argument, _)| *argument).collect()))
+  }
+
+  /// An exported string enum under `doc`, one member per `(name, value)`, its member named after the name.
+  fn render_enum<'a>(doc: &str, name: &str, members: impl Iterator<Item = (&'a str, String)>) -> String {
+    let members: String = members
+      .map(|(member, value)| format!("  {} = \"{value}\",\n", PluginSymbols::member(member)))
+      .collect();
+
+    format!("/** {doc} */\nexport enum {name} {{\n{members}}}\n")
+  }
+
+  /// An exported interface under `doc` keying each declaration by its enum member, its signature read off the
+  /// wrapper of the same name in `object` through `signature`, with its arguments named in order.
+  fn render_signatures<'a>(
+    doc: &str,
+    name: &str,
+    enumeration: &str,
+    object: &str,
+    signature: &str,
+    declarations: impl Iterator<Item = (&'a str, Vec<&'a str>)>,
+  ) -> String {
+    let fields: String = declarations
+      .map(|(declaration, arguments)| {
+        let names: String = arguments
+          .iter()
+          .map(|argument| format!("\"{argument}\""))
+          .collect::<Vec<String>>()
+          .join(", ");
+
+        format!(
+          "  [{enumeration}.{}]: {signature}<typeof {object}.{}, [{names}]>;\n",
+          PluginSymbols::member(declaration),
+          PluginSymbols::wrapper(declaration)
+        )
+      })
+      .collect();
+
+    format!("/** {doc} */\nexport interface {name} {{\n{fields}}}\n")
+  }
+
+  /// ` extends A, B` for the interfaces `names`, nothing for none.
+  fn render_extends(names: &[String]) -> String {
+    if names.is_empty() {
+      String::new()
+    } else {
+      format!(" extends {}", names.join(", "))
+    }
+  }
+
+  /// Writes a module of wrappers the registry spells by hand: its enum, the wrappers under `declaration`, and their
+  /// signatures, importing what they call.
+  #[allow(clippy::too_many_arguments)]
   fn write_wrappers(
     path: &Path,
     plugin: &str,
     wrappers: &str,
     import: &str,
+    enumeration: &str,
     declaration: &str,
+    signatures: &str,
     ownership: &TypeOwnership,
     enumerations: &Enumerations,
   ) {
@@ -204,7 +422,7 @@ import { invoke as __TAURI_INVOKE } from \"@/core/ipc/invoke\";";
     write_generated(
       path,
       &format!(
-        "{GENERATED_HEADER}\n{import}\n{}\n{declaration} = {{\n{wrappers}}};\n",
+        "{GENERATED_HEADER}\n{import}\n{}\n{enumeration}\n{declaration} = {{\n{wrappers}}};\n\n{signatures}",
         ownership.imports_for(&wrappers)
       ),
     );
@@ -221,13 +439,17 @@ mod tests {
 
   use crate::command_module_writer::CommandModuleWriter;
   use crate::enumerations::Enumerations;
+  use crate::mirror_imports::MirrorImports;
+  use crate::specta_command::SpectaCommand;
   use crate::type_modules::TypeModules;
   use crate::type_ownership::TypeOwnership;
+
+  const IMPORTS: MirrorImports = MirrorImports::new("#");
 
   /// Writes one kind of wrapper module with nothing collected, answering where it went.
   fn written(name: &str, write: impl FnOnce(&PathBuf, &TypeOwnership, &Enumerations)) -> PathBuf {
     let types: Types = Types::default();
-    let (ownership, _): (TypeOwnership, _) = TypeOwnership::resolve(&types, &TypeModules::default());
+    let (ownership, _): (TypeOwnership, _) = TypeOwnership::resolve(&types, &TypeModules::default(), &IMPORTS);
     let enumerations: Enumerations = Enumerations::resolve(&types, &types);
     let path: PathBuf = build_absolute_generated_test_resource_path("command-module-writer").join(name);
 
@@ -239,6 +461,63 @@ mod tests {
   }
 
   #[test]
+  fn a_typed_module_names_its_commands_by_enum_and_declares_their_signatures() {
+    let path: PathBuf = written("fixture.ts", |path, ownership, enumerations| {
+      fs::write(
+        path,
+        "// Auto-generated rust bindings. Do not edit it manually.\n\n\
+         import { invoke as __TAURI_INVOKE } from \"@tauri-apps/api/core\";\n\n\
+         /** Commands */\n\
+         export const commands = {\n  \
+         openThing: (sessionId: string, jobId: string) => __TAURI_INVOKE<number>(\"plugin:fixture|open_thing\", { sessionId, jobId }),\n  \
+         listThings: () => __TAURI_INVOKE<Array<string>>(\"plugin:fixture|list_things\"),\n\
+         };\n\n/* Types */\n",
+      )
+      .expect("module to be written");
+
+      CommandModuleWriter::finalize(
+        path,
+        "fixture",
+        &[
+          SpectaCommand {
+            name: String::from("open_thing"),
+            arguments: vec![String::from("sessionId"), String::from("jobId")],
+          },
+          SpectaCommand {
+            name: String::from("list_things"),
+            arguments: Vec::new(),
+          },
+        ],
+        ownership,
+        enumerations,
+        &IMPORTS,
+      );
+    });
+
+    assert_eq!(
+      fs::read_to_string(&path).expect("module to be written"),
+      "// Auto-generated rust bindings. Do not edit it manually.\n\n\
+       import { IIpcCommandSignature } from \"#/signature\";\n\
+       import { invoke as __TAURI_INVOKE } from \"#/invoke\";\n\n\
+       /** The wire name of every command of the `fixture` plugin. */\n\
+       export enum EFixtureCommand {\n  \
+       OPEN_THING = \"plugin:fixture|open_thing\",\n  \
+       LIST_THINGS = \"plugin:fixture|list_things\",\n\
+       }\n\n\
+       /** Commands */\n\
+       export const fixtureCommands = {\n  \
+       openThing: (sessionId: string, jobId: string) => __TAURI_INVOKE<number>(EFixtureCommand.OPEN_THING, { sessionId, jobId }),\n  \
+       listThings: () => __TAURI_INVOKE<Array<string>>(EFixtureCommand.LIST_THINGS),\n\
+       };\n\n\
+       /** What each command of the `fixture` plugin takes and resolves to, keyed by its wire name. */\n\
+       export interface IFixtureCommandSignatures {\n  \
+       [EFixtureCommand.OPEN_THING]: IIpcCommandSignature<typeof fixtureCommands.openThing, [\"sessionId\", \"jobId\"]>;\n  \
+       [EFixtureCommand.LIST_THINGS]: IIpcCommandSignature<typeof fixtureCommands.listThings, []>;\n\
+       }\n"
+    );
+  }
+
+  #[test]
   fn a_raw_command_is_written_as_a_wrapper_invoking_it_raw() {
     let path: PathBuf = written("fixture-raw.ts", |path, ownership, enumerations| {
       CommandModuleWriter::write_raw(
@@ -247,12 +526,28 @@ mod tests {
         &[("read_bytes", &[("sessionId", "string"), ("length", "number")])],
         ownership,
         enumerations,
+        &IMPORTS,
       );
     });
 
     assert_eq!(
       fs::read_to_string(&path).expect("module to be written"),
-      "// Auto-generated rust bindings. Do not edit it manually.\n\nimport { invokeRaw } from \"@/core/ipc/raw\";\n\n/** Commands answering with raw bytes over IPC, which Specta cannot type. */\nexport const fixtureRawCommands = {\n  readBytes: (sessionId: string, length: number): Promise<ArrayBuffer> =>\n    invokeRaw(\"plugin:fixture|read_bytes\", { sessionId, length }),\n};\n"
+      "// Auto-generated rust bindings. Do not edit it manually.\n\n\
+       import { invokeRaw } from \"#/raw\";\n\
+       import { IIpcCommandSignature } from \"#/signature\";\n\n\
+       /** The wire name of every raw command of the `fixture` plugin. */\n\
+       export enum EFixtureRawCommand {\n  \
+       READ_BYTES = \"plugin:fixture|read_bytes\",\n\
+       }\n\n\
+       /** Commands answering with raw bytes over IPC, which Specta cannot type. */\n\
+       export const fixtureRawCommands = {\n  \
+       readBytes: (sessionId: string, length: number): Promise<ArrayBuffer> =>\n    \
+       invokeRaw(EFixtureRawCommand.READ_BYTES, { sessionId, length }),\n\
+       };\n\n\
+       /** What each raw command of the `fixture` plugin takes and resolves to, keyed by its wire name. */\n\
+       export interface IFixtureRawCommandSignatures {\n  \
+       [EFixtureRawCommand.READ_BYTES]: IIpcCommandSignature<typeof fixtureRawCommands.readBytes, [\"sessionId\", \"length\"]>;\n\
+       }\n"
     );
   }
 
@@ -265,21 +560,55 @@ mod tests {
         &[("read_bytes", &[("length", "number")])],
         ownership,
         enumerations,
+        &IMPORTS,
       );
     });
 
     assert_eq!(
       fs::read_to_string(&path).expect("module to be written"),
-      "// Auto-generated rust bindings. Do not edit it manually.\n\nimport { IBulkCall } from \"@/core/ipc/bulk\";\n\n/** Routes answering with bytes over the loopback transport, which Specta never sees. */\nexport const fixtureBulkRoutes = {\n  readBytes: (length: number): IBulkCall => ({ args: { length }, route: \"fixture/read_bytes\" }),\n};\n"
+      "// Auto-generated rust bindings. Do not edit it manually.\n\n\
+       import { IBulkCall } from \"#/bulk\";\n\
+       import { IIpcBulkRouteSignature } from \"#/signature\";\n\n\
+       /** Every bulk route of the `fixture` plugin, as the transport serves it. */\n\
+       export enum EFixtureBulkRoute {\n  \
+       READ_BYTES = \"fixture/read_bytes\",\n\
+       }\n\n\
+       /** Routes answering with bytes over the loopback transport, which Specta never sees. */\n\
+       export const fixtureBulkRoutes = {\n  \
+       readBytes: (length: number): IBulkCall => ({ args: { length }, route: EFixtureBulkRoute.READ_BYTES }),\n\
+       };\n\n\
+       /** What each bulk route of the `fixture` plugin takes, keyed by its route. */\n\
+       export interface IFixtureBulkRouteSignatures {\n  \
+       [EFixtureBulkRoute.READ_BYTES]: IIpcBulkRouteSignature<typeof fixtureBulkRoutes.readBytes, [\"length\"]>;\n\
+       }\n"
     );
   }
 
   #[test]
   fn a_plugin_without_raw_commands_gets_no_raw_module() {
     let path: PathBuf = written("empty-raw.ts", |path, ownership, enumerations| {
-      CommandModuleWriter::write_raw(path, "empty", &[], ownership, enumerations);
+      CommandModuleWriter::write_raw(path, "empty", &[], ownership, enumerations, &IMPORTS);
     });
 
     assert!(!path.exists());
+  }
+
+  #[test]
+  fn the_signatures_merge_every_plugin_s_modules() {
+    let path: PathBuf = written("signatures.ts", |path, _, _| {
+      CommandModuleWriter::write_signatures(path, &[("jobs", false, false), ("archives", false, true)], &IMPORTS);
+    });
+
+    assert_eq!(
+      fs::read_to_string(&path).expect("module to be written"),
+      "// Auto-generated rust bindings. Do not edit it manually.\n\n\
+       import { IArchivesBulkRouteSignatures } from \"#/commands/archives-bulk\";\n\
+       import { IArchivesCommandSignatures } from \"#/commands/archives\";\n\
+       import { IJobsCommandSignatures } from \"#/commands/jobs\";\n\n\
+       /** Every command any plugin answers, raw ones included, keyed by its wire name. */\n\
+       export interface IIpcCommandSignatures extends IJobsCommandSignatures, IArchivesCommandSignatures {}\n\n\
+       /** Every bulk route any plugin serves, keyed by its route. */\n\
+       export interface IIpcBulkRouteSignatures extends IArchivesBulkRouteSignatures {}\n"
+    );
   }
 }

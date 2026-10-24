@@ -7,7 +7,7 @@ import { Logger, Timer } from "@xrf/logging";
 
 import { describeRoots } from "@/core/assets/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
-import { LevelEntry } from "@/core/ipc/types/xrf-app";
+import { LevelEntry } from "@/core/ipc/types/xrf-app-levels";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";
 

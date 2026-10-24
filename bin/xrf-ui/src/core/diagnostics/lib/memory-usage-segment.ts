@@ -8,7 +8,7 @@ import {
   MemoryUsage,
   WebviewProcessKind,
   WebviewProcessMemory,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-system";
 import { IEditorStatusDetail } from "@/core/shell/editor-shell/editor-status-detail";
 import { IEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
 

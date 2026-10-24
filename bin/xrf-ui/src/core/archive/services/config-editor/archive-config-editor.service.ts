@@ -6,7 +6,7 @@ import { getPathName } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 
 import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/archive/lib/volume-size";
-import { JobKind } from "@/core/ipc/types/xrf-app";
+import { JobKind } from "@/core/ipc/types/xrf-app-core";
 import { IJobSettledPayload } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchiveReference } from "@/core/ipc/types/xrf-app";
+import { ArchiveReference } from "@/core/ipc/types/xrf-app-archives";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

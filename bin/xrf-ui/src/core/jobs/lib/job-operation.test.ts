@@ -1,13 +1,9 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { autorun, flow } from "@wirestate/mobx";
 
-import {
-  CONFIGS_JOB_CHECK_FORMAT,
-  CONFIGS_JOB_FORMAT,
-  CONFIGS_JOB_VERIFY,
-  JobKind,
-  TRANSLATIONS_JOB_BUILD,
-} from "@/core/ipc/types/xrf-app";
+import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT, CONFIGS_JOB_VERIFY } from "@/core/ipc/types/xrf-app-configs";
+import { JobKind } from "@/core/ipc/types/xrf-app-core";
+import { TRANSLATIONS_JOB_BUILD } from "@/core/ipc/types/xrf-app-translations";
 import { IJobDescriptor, IJobSettledPayload } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { ENotificationSeverity } from "@/core/notifications/lib";

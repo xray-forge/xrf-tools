@@ -7,7 +7,7 @@ import { ReactElement } from "react";
 
 import { useMemoryUsage } from "@/core/diagnostics/lib";
 import { systemCommands } from "@/core/ipc/commands/system";
-import { MemoryUsage, RuntimeSnapshot } from "@/core/ipc/types/xrf-app";
+import { MemoryUsage, RuntimeSnapshot } from "@/core/ipc/types/xrf-app-system";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { usePolledValue } from "@/lib/react";

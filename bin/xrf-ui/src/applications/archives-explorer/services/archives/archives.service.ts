@@ -43,11 +43,8 @@ import {
   ArchiveSubject,
   ArchiveWorldEntry,
   EArchiveSubject,
-  ESessionRootChange,
-  SessionChange,
-  SessionId,
-  SessionSnapshot,
-} from "@/core/ipc/types/xrf-app";
+} from "@/core/ipc/types/xrf-app-archives";
+import { ESessionRootChange, SessionChange, SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
 import {
   ArchiveDescriptor,
   ArchiveFileDescriptor,
