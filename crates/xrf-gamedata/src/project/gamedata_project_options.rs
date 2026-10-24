@@ -21,6 +21,21 @@ pub struct GamedataProjectReadOptions {
   pub engine: XrayEngineChoice,
 }
 
+impl GamedataProjectReadOptions {
+  /// Root entries a gamedata repository keeps beside its assets, which a project opened over the repository skips
+  /// unless told otherwise: version control, editor state, unpacked working copies and the repository's own documents.
+  pub const DEFAULT_IGNORED: [&'static str; 8] = [
+    ".git",
+    ".idea",
+    "particles_unpacked",
+    "textures_unpacked",
+    ".gitignore",
+    ".gitattributes",
+    "README.md",
+    "LICENSE",
+  ];
+}
+
 impl Default for GamedataProjectReadOptions {
   fn default() -> Self {
     Self {

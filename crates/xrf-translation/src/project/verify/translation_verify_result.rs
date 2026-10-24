@@ -20,21 +20,26 @@ pub struct TranslationVerifyLanguageSummary {
   pub missing: u32,
 }
 
+/// What a completeness check found, per file and language.
 #[derive(Debug, Default, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct TranslationVerifyResult {
   /// Whether the run checked every source or was stopped between them.
   pub outcome: xrf_job::JobOutcome,
   #[serde(with = "xrf_utils::duration_ms")]
+  #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
   pub duration: Duration,
   pub checked_translations_count: u32,
   pub missing_translations_count: u32,
   /// Per file and language, in discovery order.
   pub languages: Vec<TranslationVerifyLanguageSummary>,
   #[serde(skip_serializing)]
+  #[cfg_attr(feature = "typescript-bindings", specta(skip))]
   findings: Vec<Finding>,
   /// Keyed by file and language so repeated calls for one file accumulate into one row.
   #[serde(skip_serializing)]
+  #[cfg_attr(feature = "typescript-bindings", specta(skip))]
   summary_index: IndexMap<(String, String), usize>,
 }
 

@@ -8,6 +8,8 @@ rust-version.workspace = true
 [dependencies]
 derive_more = { workspace = true, features = ["display"] }
 rayon = { workspace = true }
+serde = { workspace = true }
+specta = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["v4"] }
 xrf-chunk = { workspace = true }
 xrf-math = { workspace = true }
@@ -39,6 +41,7 @@ xrf-ppe = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
+serde_json = { workspace = true }
 xrf-material = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
 
@@ -47,6 +50,10 @@ xrf-test-utils = { workspace = true }
 [[bench]]
 name = "bone_matching"
 harness = false
+
+[features]
+# Emits TypeScript mirrors of the types a command takes or answers. Nothing in a normal build turns this on.
+typescript-bindings = ["specta", "xrf-report/typescript-bindings"]
 
 [lints]
 workspace = true

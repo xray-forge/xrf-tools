@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter};
 use serde::Serialize;
 
 /// The outcome of a completed check.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Status {

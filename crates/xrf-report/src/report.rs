@@ -3,6 +3,7 @@ use serde::Serialize;
 use crate::{CheckReport, Status};
 
 /// Immutable, finalized account of a command's checks and findings.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Report {
@@ -20,6 +21,11 @@ impl Report {
 
   pub fn checks(&self) -> &[CheckReport] {
     &self.checks
+  }
+
+  /// How many findings every check made together.
+  pub fn count_findings(&self) -> usize {
+    self.checks.iter().map(|check| check.findings().len()).sum()
   }
 
   pub const fn status(&self) -> Status {
@@ -73,5 +79,6 @@ mod tests {
 
     assert_eq!(report.checks()[0].id().as_str(), "textures");
     assert_eq!(report.checks()[1].id().as_str(), "scripts");
+    assert_eq!(report.count_findings(), 3);
   }
 }

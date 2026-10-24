@@ -36,6 +36,7 @@ impl From<IdentifierError> for XrfError {
 
 macro_rules! identifier {
   ($name:ident, $kind:literal) => {
+    #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
     #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize)]
     #[serde(transparent)]
     pub struct $name(String);

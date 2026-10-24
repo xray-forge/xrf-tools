@@ -18,7 +18,9 @@ pub struct TranslationBuildLanguageSummary {
   pub entries: u32,
 }
 
+/// What a build produced, across every language it built.
 #[derive(Debug, Default, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct TranslationBuildResult {
   /// Whether the run compiled every source or was stopped between them.
@@ -27,6 +29,7 @@ pub struct TranslationBuildResult {
   /// state running it again resolves.
   pub outcome: xrf_job::JobOutcome,
   #[serde(with = "xrf_utils::duration_ms")]
+  #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
   pub duration: Duration,
   /// Sources read, whatever they built into.
   pub sources: u32,
@@ -35,6 +38,7 @@ pub struct TranslationBuildResult {
   /// Per language, in build order.
   pub languages: Vec<TranslationBuildLanguageSummary>,
   #[serde(skip_serializing)]
+  #[cfg_attr(feature = "typescript-bindings", specta(skip))]
   language_index: IndexMap<String, usize>,
 }
 
