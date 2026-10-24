@@ -39,7 +39,7 @@ function armLevel(level: SelectedLevelDescription = mockSelectedLevelDescription
   setMockInvokeResponses({
     ["plugin:levels|close_level"]: null,
     ["plugin:levels|open_level"]: mockSessionResponse(level),
-    ["plugin:levels|open_spawn_objects"]: mockSessionResponse(SPAWN),
+    ["plugin:levels|describe_spawn_objects"]: mockSessionResponse(SPAWN),
   });
 }
 
@@ -57,7 +57,7 @@ describe("LevelLoadService", () => {
       ["plugin:levels|get_level"]: mockSessionResponse(
         mockSelectedLevelDescription({ sectors: [mockSectorOutline()] })
       ),
-      ["plugin:levels|open_spawn_objects"]: mockSessionResponse(SPAWN),
+      ["plugin:levels|describe_spawn_objects"]: mockSessionResponse(SPAWN),
     });
 
     await service.restore();
@@ -127,7 +127,7 @@ describe("LevelLoadService", () => {
       "plugin:levels|describe_level_map",
       "plugin:levels|describe_surfaces",
       "plugin:levels|describe_textures",
-      "plugin:levels|open_spawn_objects",
+      "plugin:levels|describe_spawn_objects",
     ]);
   });
 
@@ -136,7 +136,7 @@ describe("LevelLoadService", () => {
 
     setMockInvokeResponses({
       ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
-      ["plugin:levels|open_spawn_objects"]: mockSessionResponse(() => {
+      ["plugin:levels|describe_spawn_objects"]: mockSessionResponse(() => {
         throw new Error("all.spawn names no level graph");
       }),
     });

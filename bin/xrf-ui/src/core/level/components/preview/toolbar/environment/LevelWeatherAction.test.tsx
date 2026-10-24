@@ -21,7 +21,7 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 async function renderAction(): Promise<{ weather: LevelWeatherService } & ReturnType<typeof renderWithProviders>> {
   setMockInvokeResponses({
     ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
-    ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+    ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
   });
 
   const container: Container = mockContainer([

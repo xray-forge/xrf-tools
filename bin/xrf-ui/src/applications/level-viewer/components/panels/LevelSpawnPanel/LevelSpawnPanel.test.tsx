@@ -77,7 +77,7 @@ async function renderPanel(
       levelVertexId: 3456,
     }),
     ["plugin:levels|open_level"]: mockSessionResponse(level),
-    ["plugin:levels|open_spawn_objects"]: mockSessionResponse(objects),
+    ["plugin:levels|describe_spawn_objects"]: mockSessionResponse(objects),
   });
 
   const container: Container = mockContainer([

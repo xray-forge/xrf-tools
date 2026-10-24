@@ -20,14 +20,15 @@ export type TSessionPartQuery<T> = (sessionId: SessionId) => Promise<SessionSnap
 /**
  * One part of an open session as the page shows it, kept with the revision it was read at.
  *
- * Attached to an opening, it reads its part and reads it again once a change names the part stale or derives the
- * opening anew, past what it holds; an answer older than the one held, or for an opening it no longer follows, is
- * dropped. A change it cannot read past yet (`deriving`, `stale`, `failed`) marks what it holds stale meanwhile.
- * A failed read keeps what was shown.
+ * Attached to an opening, it reads its part and reads it again once a change names one of the parts it is read from
+ * stale or derives the opening anew, past what it holds; an answer older than the one held, or for an opening it no
+ * longer follows, is dropped. A change it cannot read past yet (`deriving`, `stale`, `failed`) marks what it holds stale
+ * meanwhile. A failed read keeps what was shown.
  */
 export class SessionPartResource<T> {
+  /** The part's last answer, with its opening and revision. */
   @Observable()
-  private state: AsyncState<SessionSnapshot<T>> = AsyncState.idle<SessionSnapshot<T>>();
+  private answer: AsyncState<SessionSnapshot<T>> = AsyncState.idle<SessionSnapshot<T>>();
 
   /** Whether a change moved what the part was read from, and it shows as read until it is read again. */
   @Observable()
@@ -39,50 +40,60 @@ export class SessionPartResource<T> {
   /** Reads begun, so one overtaken by a later read, or by another opening, is dropped. */
   private reads: number = 0;
 
+  /** The latest read begun, which an attach waits for through any that overtake it. */
+  private pending: Promise<void> = Promise.resolve();
+
   private unsubscribe: Nullable<EventUnsubscribe> = null;
 
   /**
    * @param eventBus - The bus the session changes are told on.
-   * @param part - The part's name, a generated `*_PART` constant: what a change names stale.
+   * @param parts - The names of the parts it is read from, generated `*_PART` constants: what a change names stale.
    * @param query - The part's `describe_<part>` query.
    */
   public constructor(
     private readonly eventBus: EventBus,
-    private readonly part: string,
+    private readonly parts: ReadonlyArray<string>,
     private readonly query: TSessionPartQuery<T>
   ) {
     // Composed state is not activated by the container's observable plugin.
     makeObservable(this);
   }
 
+  /** The part's read as a view shows its lifecycle: what is held kept while a read goes on, or where one fails. */
+  @Computed()
+  public get state(): AsyncState<T> {
+    return this.answer.map((snapshot: SessionSnapshot<T>) => snapshot.value);
+  }
+
   /** The part as last read, or none before it is. */
   @Computed()
   public get value(): Nullable<T> {
-    return this.state.value?.value ?? null;
+    return this.answer.value?.value ?? null;
   }
 
   /** The part's snapshot as last read: the value, its opening and the revision it was read at. */
   @Computed()
   public get snapshot(): Nullable<SessionSnapshot<T>> {
-    return this.state.value;
+    return this.answer.value;
   }
 
   @Computed()
   public get isLoading(): boolean {
-    return this.state.isLoading;
+    return this.answer.isLoading;
   }
 
   /** Why the last read failed, or none. */
   @Computed()
   public get error(): Nullable<Error> {
-    return this.state.error;
+    return this.answer.error;
   }
 
   /**
    * Follows `sessionId`'s part, reading it now; another opening followed before is let go.
    *
    * @param sessionId - The opening whose part to read.
-   * @returns Resolves once the read settles, dropped or not.
+   * @returns Resolves once the latest read settles: a change overtaking this one is waited for too, so the part is
+   *   read, or has failed, by then.
    */
   @BoundAction()
   public attach(sessionId: SessionId): Promise<void> {
@@ -92,7 +103,19 @@ export class SessionPartResource<T> {
       this.unsubscribe = this.eventBus.subscribe(SESSION_CHANGE_EVENT, this.onSessionChange);
     }
 
-    return this.read();
+    void this.fetch();
+
+    return this.settle();
+  }
+
+  /** Waits for the latest read, and for each that overtakes it meanwhile. */
+  private async settle(): Promise<void> {
+    let pending: Promise<void>;
+
+    do {
+      pending = this.pending;
+      await pending;
+    } while (pending !== this.pending);
   }
 
   /** Lets the opening go, and what was read of it. */
@@ -102,7 +125,7 @@ export class SessionPartResource<T> {
     this.unsubscribe = null;
     this.sessionId = null;
     this.reads += 1;
-    this.state = this.state.asIdle(null);
+    this.answer = this.answer.asIdle(null);
     this.isStale = false;
   }
 
@@ -125,7 +148,7 @@ export class SessionPartResource<T> {
       case ESessionRootChange.DERIVED:
         if (this.isNamedBy(change) && this.isMovedPast(change)) {
           this.isStale = true;
-          void this.read();
+          void this.fetch();
         }
 
         return;
@@ -143,55 +166,58 @@ export class SessionPartResource<T> {
   }
 
   /** Reads the part of the opening followed, keeping what was shown until the answer lands. */
-  private async read(): Promise<void> {
+  private fetch(): Promise<void> {
     const sessionId: Nullable<SessionId> = this.sessionId;
     const read: number = ++this.reads;
 
     if (!sessionId) {
-      return;
+      return this.pending;
     }
 
     this.noteLoading();
+    // An answer that cannot be taken fails the read as a query that failed does.
+    this.pending = this.query(sessionId)
+      .then((answer: SessionSnapshot<T>) => this.noteAnswer(read, answer))
+      .catch((error: unknown) => this.noteFailure(read, transformError(error)));
 
-    try {
-      this.noteAnswer(read, await this.query(sessionId));
-    } catch (error: unknown) {
-      this.noteFailure(read, transformError(error));
-    }
+    return this.pending;
   }
 
   @BoundAction()
   private noteLoading(): void {
-    this.state = this.state.asLoading();
+    this.answer = this.answer.asLoading();
   }
 
   @BoundAction()
   private noteAnswer(read: number, answer: SessionSnapshot<T>): void {
-    const held: Nullable<SessionSnapshot<T>> = this.state.value;
+    const held: Nullable<SessionSnapshot<T>> = this.answer.value;
 
     if (read !== this.reads || answer.sessionId !== this.sessionId || (held && isOlderSessionAnswer(held, answer))) {
       return;
     }
 
-    this.state = this.state.asReady(answer);
+    this.answer = this.answer.asReady(answer);
     this.isStale = false;
   }
 
   @BoundAction()
   private noteFailure(read: number, error: Error): void {
     if (read === this.reads) {
-      this.state = this.state.asFailed(error, this.state.value);
+      this.answer = this.answer.asFailed(error, this.answer.value);
     }
   }
 
-  /** Whether `change` names the part stale, or derived the opening anew, which lets every part go. */
+  /** Whether `change` names a part it is read from stale, or derived the opening anew, which lets every part go. */
   private isNamedBy(change: SessionChange): boolean {
-    return change.root.kind === ESessionRootChange.DERIVED || change.staleParts.includes(this.part);
+    return (
+      change.root.kind === ESessionRootChange.DERIVED ||
+      change.staleParts.some((part: string) => this.parts.includes(part))
+    );
   }
 
   /** Whether `change` moved the opening past the revision the part was read at; anything does before it is read. */
   private isMovedPast(change: SessionChange): boolean {
-    const held: Nullable<SessionSnapshot<T>> = this.state.value;
+    const held: Nullable<SessionSnapshot<T>> = this.answer.value;
 
     return !held || isSessionMovedPast(held, change);
   }

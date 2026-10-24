@@ -29,7 +29,7 @@ describe("SessionPartResource", () => {
       .fn<(sessionId: string) => Promise<SessionSnapshot<string>>>()
       .mockResolvedValueOnce(snapshot("first", 0))
       .mockResolvedValueOnce(snapshot("second", 1));
-    const resource: SessionPartResource<string> = new SessionPartResource(bus, PART, query);
+    const resource: SessionPartResource<string> = new SessionPartResource(bus, [PART], query);
 
     await resource.attach("level");
 
@@ -49,7 +49,7 @@ describe("SessionPartResource", () => {
     const query = jest
       .fn<(sessionId: string) => Promise<SessionSnapshot<string>>>()
       .mockResolvedValue(snapshot("held", 2));
-    const resource: SessionPartResource<string> = new SessionPartResource(bus, PART, query);
+    const resource: SessionPartResource<string> = new SessionPartResource(bus, [PART], query);
 
     await resource.attach("level");
 
@@ -67,7 +67,7 @@ describe("SessionPartResource", () => {
       .fn<(sessionId: string) => Promise<SessionSnapshot<string>>>()
       .mockResolvedValueOnce(snapshot("first", 0))
       .mockResolvedValueOnce(snapshot("derived", 1));
-    const resource: SessionPartResource<string> = new SessionPartResource(bus, PART, query);
+    const resource: SessionPartResource<string> = new SessionPartResource(bus, [PART], query);
 
     await resource.attach("level");
 
@@ -88,7 +88,7 @@ describe("SessionPartResource", () => {
     const query = jest.fn<(sessionId: string) => Promise<SessionSnapshot<string>>>(
       () => new Promise((resolve) => answers.push(resolve))
     );
-    const resource: SessionPartResource<string> = new SessionPartResource(bus, PART, query);
+    const resource: SessionPartResource<string> = new SessionPartResource(bus, [PART], query);
 
     const attached: Promise<void> = resource.attach("level");
 
@@ -115,7 +115,7 @@ describe("SessionPartResource", () => {
       .fn<(sessionId: string) => Promise<SessionSnapshot<string>>>()
       .mockResolvedValueOnce(snapshot("shown", 0))
       .mockRejectedValueOnce(new Error("cannot read"));
-    const resource: SessionPartResource<string> = new SessionPartResource(bus, PART, query);
+    const resource: SessionPartResource<string> = new SessionPartResource(bus, [PART], query);
 
     await resource.attach("level");
 
@@ -137,12 +137,43 @@ describe("SessionPartResource", () => {
     expect(resource.isStale).toBe(true);
   });
 
+  // An open's first read overtaken by its catch-up: whoever waits on the attach finds the part read, not dropped.
+  it("settles an attach once the read overtaking its own lands", async () => {
+    const bus: EventBus = mockContainer().get(EventBus);
+    const answers: Array<(answer: SessionSnapshot<string>) => void> = [];
+    const query = jest.fn<(sessionId: string) => Promise<SessionSnapshot<string>>>(
+      () => new Promise((resolve) => answers.push(resolve))
+    );
+    const resource: SessionPartResource<string> = new SessionPartResource(bus, [PART], query);
+    let isSettled: boolean = false;
+
+    const attached: Promise<void> = resource.attach("level").then(() => {
+      isSettled = true;
+    });
+
+    bus.emit<SessionChange>(SESSION_CHANGE_EVENT, {
+      revision: 1,
+      root: { kind: ESessionRootChange.DERIVED },
+      sessionId: "level",
+      staleParts: [],
+    });
+    answers[0](snapshot("overtaken", 0));
+    await flush();
+
+    expect(isSettled).toBe(false);
+
+    answers[1](snapshot("derived", 1));
+    await attached;
+
+    expect(resource.value).toBe("derived");
+  });
+
   it("hears no change once let go", async () => {
     const bus: EventBus = mockContainer().get(EventBus);
     const query = jest
       .fn<(sessionId: string) => Promise<SessionSnapshot<string>>>()
       .mockResolvedValue(snapshot("held", 0));
-    const resource: SessionPartResource<string> = new SessionPartResource(bus, PART, query);
+    const resource: SessionPartResource<string> = new SessionPartResource(bus, [PART], query);
 
     await resource.attach("level");
     resource.detach();

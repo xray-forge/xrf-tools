@@ -31,9 +31,17 @@ pub async fn visuals_open_motion(
   state.poses.begin_open(motion_id)?;
 
   // Posed inside the roots the open used, so the animation files are looked for where the model's own references were.
-  let pose: VisualMotionPose = motions
-    .bake_named(&assets.search(&current.roots)?, &current.dependencies, &name)
-    .map_err(|error| error.to_string())?;
+  let baked: TauriResult<VisualMotionPose> = assets.search(&current.roots).and_then(|search| {
+    motions
+      .bake_named(&search, &current.dependencies, &name)
+      .map_err(|error| error.to_string())
+  });
+  // A pose that does not bake leaves no opening behind: the page forgets one whose open failed.
+  let pose: VisualMotionPose = baked.inspect_err(|_| {
+    if let Err(error) = state.poses.close(&[motion_id]) {
+      log::error!("A pose that did not bake could not be let go: {error}");
+    }
+  })?;
   let opened: Arc<SessionSnapshot<PosedVisualMotion>> = state.poses.commit_open(
     motion_id,
     PosedVisualMotion {

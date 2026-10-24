@@ -21,7 +21,7 @@ afterEach(() => {
 describe("LevelWeatherService, set by hand", () => {
   it("fades into the keyframe set by hand, seeded from what is shown, and back into the cycle kept", async () => {
     setMockInvokeResponses({
-      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
     });
 
     const service: LevelWeatherService = createLevelWeatherService();
@@ -52,7 +52,7 @@ describe("LevelWeatherService, set by hand", () => {
 
   it("resets keys to the weather it was seeded from, and nothing while the weather plays", async () => {
     setMockInvokeResponses({
-      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
     });
 
     const service: LevelWeatherService = createLevelWeatherService();
@@ -80,7 +80,7 @@ describe("LevelWeatherService, set by hand", () => {
 
   it("takes manual control at the first edit while the weather plays, seeded so only the edit is seen", async () => {
     setMockInvokeResponses({
-      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
     });
 
     const service: LevelWeatherService = createLevelWeatherService();
@@ -121,7 +121,7 @@ describe("LevelWeatherService, set by hand", () => {
   // shown.
   it("shows the same keyframe for a report the same as the last, and reads no report lit by hand", async () => {
     setMockInvokeResponses({
-      ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
     });
 
     const service: LevelWeatherService = createLevelWeatherService();

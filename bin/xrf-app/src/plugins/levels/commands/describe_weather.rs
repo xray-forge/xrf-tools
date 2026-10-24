@@ -12,9 +12,9 @@ use crate::plugins::levels::state::{LevelState, LevelWeatherDescription, Selecte
 
 /// Read the open level's weather as its engine loads it: the cycles it plays, the effects, what they strike with,
 /// the sun table and the level's own overrides.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "read_level_weather"))]
-#[tauri::command(rename = "read_level_weather")]
-pub async fn levels_read_level_weather(
+#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_weather"))]
+#[tauri::command(rename = "describe_weather")]
+pub async fn levels_describe_weather(
   session_id: SessionId,
   state: State<'_, LevelState>,
   assets: State<'_, AssetMountState>,

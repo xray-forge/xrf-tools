@@ -84,11 +84,11 @@ export class LevelLoadService {
   public readonly spawnObjects: SessionPartResource<LevelSpawnObjectsDescription>;
 
   public constructor(private readonly eventBus: EventBus = inject(EventBus)) {
-    this.start = new SessionPartResource(eventBus, LEVEL_START_PART, levelsCommands.describeStart);
-    this.levelMap = new SessionPartResource(eventBus, LEVEL_MAP_PART, levelsCommands.describeLevelMap);
-    this.surfaces = new SessionPartResource(eventBus, LEVEL_SURFACES_PART, levelsCommands.describeSurfaces);
-    this.textures = new SessionPartResource(eventBus, LEVEL_TEXTURES_PART, levelsCommands.describeTextures);
-    this.spawnObjects = new SessionPartResource(eventBus, LEVEL_SPAWN_PART, levelsCommands.openSpawnObjects);
+    this.start = new SessionPartResource(eventBus, [LEVEL_START_PART], levelsCommands.describeStart);
+    this.levelMap = new SessionPartResource(eventBus, [LEVEL_MAP_PART], levelsCommands.describeLevelMap);
+    this.surfaces = new SessionPartResource(eventBus, [LEVEL_SURFACES_PART], levelsCommands.describeSurfaces);
+    this.textures = new SessionPartResource(eventBus, [LEVEL_TEXTURES_PART], levelsCommands.describeTextures);
+    this.spawnObjects = new SessionPartResource(eventBus, [LEVEL_SPAWN_PART], levelsCommands.describeSpawnObjects);
   }
 
   @Observable()
@@ -150,8 +150,9 @@ export class LevelLoadService {
   }
 
   /**
-   * Open a level and report what it is built out of, its parts read before it shows. One that fails closes the level
-   * open before it, so the viewer shows the failure rather than the level it was asked to replace.
+   * Open a level and report what it is built out of: where it starts read before it shows, the rest of its parts
+   * after. One that fails closes the level open before it, so the viewer shows the failure rather than the level it was
+   * asked to replace.
    *
    * @param request - The level to open, the roots it is searched in, and how the game's configs beside it are read.
    */
@@ -172,9 +173,11 @@ export class LevelLoadService {
         this.session.open(levelsCommands.openLevel, request)
       );
 
-      yield* call(this.attachParts(selected.sessionId));
+      yield* call(this.start.attach(selected.sessionId));
 
       this.adopt(selected);
+
+      yield* call(this.attachParts(selected.sessionId));
 
       this.log.info(
         "Level opened in:",
@@ -236,7 +239,8 @@ export class LevelLoadService {
   }
 
   /**
-   * Restores the native selection unless a user action has taken the level flow, its parts read before it shows.
+   * Restores the native selection unless a user action has taken the level flow: where it starts read before it shows,
+   * the rest of its parts after.
    */
   @ExclusiveFlow("level")
   public *restore(): TFlow {
@@ -245,15 +249,18 @@ export class LevelLoadService {
     this.session.adopt(snapshot);
 
     if (snapshot) {
-      yield* call(this.attachParts(snapshot.sessionId));
+      yield* call(this.start.attach(snapshot.sessionId));
 
       this.adopt(snapshot);
       this.log.info("Level restored:", describeLevelSource(snapshot.value.source), snapshot.sessionId);
+
+      yield* call(this.attachParts(snapshot.sessionId));
     }
   }
 
   /**
-   * Takes one opening as the level this loader holds, the scene it streams as with it.
+   * Takes one opening as the level this loader holds, the scene it streams as with it, letting the parts of the level
+   * held before go at once, so nothing shows one level's parts beside another; its start is read already.
    *
    * @param selected - The opening the backend holds, from an open or a restore.
    */
@@ -262,6 +269,10 @@ export class LevelLoadService {
     this.level = this.level.asReady({ selected });
     this.scene = { revision: selected.revision, sessionId: selected.sessionId };
     this.isStale = false;
+    this.levelMap.detach();
+    this.surfaces.detach();
+    this.textures.detach();
+    this.spawnObjects.detach();
   }
 
   /**
@@ -351,12 +362,11 @@ export class LevelLoadService {
   }
 
   /**
-   * Reads every part of an opening the page shows, side by side, each settling on its own; a part that fails is told
-   * by its resource.
+   * Reads the parts of an adopted opening the page shows beside its start, side by side, each settling on its own; a
+   * part that fails is told by its resource.
    */
   private async attachParts(sessionId: SessionId): Promise<void> {
     await Promise.all([
-      this.start.attach(sessionId),
       this.levelMap.attach(sessionId),
       this.surfaces.attach(sessionId),
       this.textures.attach(sessionId),

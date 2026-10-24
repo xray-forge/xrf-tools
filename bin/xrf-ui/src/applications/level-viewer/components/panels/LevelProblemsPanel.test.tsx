@@ -42,7 +42,7 @@ async function renderProblems({
     ["plugin:levels|open_level"]: mockSessionResponse(level),
     ...mockLevelPartResponses({ textures: [mockLevelTextureReference("stone", isPresent)] }),
     // A spawn placing one object, or nothing drawn, which a clean level may well have.
-    ["plugin:levels|open_spawn_objects"]: mockSessionResponse(
+    ["plugin:levels|describe_spawn_objects"]: mockSessionResponse(
       unreadable ? { objects: [mockLevelSpawnObject()], visuals: [unreadable.name] } : { objects: [], visuals: [] }
     ),
   });

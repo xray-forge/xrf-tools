@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { waitFor } from "@testing-library/react";
 import { Container, EventBus } from "@wirestate/core";
+import { flowResult } from "@wirestate/mobx";
 
 import { createRoots } from "@/core/assets/lib";
 import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
@@ -24,7 +26,7 @@ import { mockContainer } from "@/fixtures/utils/container";
 
 import { LevelLoadService } from "./level-load.service";
 
-const LIST_SPAWN: string = "plugin:levels|open_spawn_objects";
+const LIST_SPAWN: string = "plugin:levels|describe_spawn_objects";
 
 function listing(objects: number): LevelSpawnObjectsDescription {
   return {
@@ -195,6 +197,39 @@ describe("LevelLoadService changes", () => {
     await flush();
 
     expect(service.scene).toBe(moved);
+  });
+
+  // The next level is shown once its start is read, its other parts after it: nothing shows one level's parts beside
+  // another's.
+  it("lets the parts of the level held go as the next one shows, before its own are read", async () => {
+    const { service, sessionId } = await openLevel();
+    let answer!: () => void;
+
+    expect(service.spawn?.objects).toHaveLength(1);
+
+    setMockInvokeResponses({
+      ...mockLevelPartResponses(),
+      ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+      [LIST_SPAWN]: (args?: Record<string, unknown>) =>
+        new Promise((resolve) => (answer = () => resolve(mockSessionSnapshot(listing(4), args?.sessionId as string)))),
+    });
+
+    const loading: Promise<unknown> = flowResult(
+      service.load({
+        engine: EXrayEngineChoice.VANILLA,
+        isDltx: false,
+        roots: createRoots(["C:\\game"]),
+        source: { kind: "asset", logicalPath: "levels\\jupiter" },
+      })
+    );
+
+    await waitFor(() => expect(service.level.value?.selected.sessionId).not.toBe(sessionId));
+    expect(service.spawn).toBeNull();
+
+    answer();
+    await loading;
+
+    expect(service.spawn?.objects).toHaveLength(4);
   });
 
   it("closes the level it held once another opens in its place", async () => {
