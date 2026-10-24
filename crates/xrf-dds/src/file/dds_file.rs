@@ -6,7 +6,7 @@ use ddsfile::{Dds, DxgiFormat};
 use image::codecs::png::PngEncoder;
 use image::{ExtendedColorType, ImageEncoder, RgbaImage};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, write_file_staged};
+use xrf_utils::{format_path, write_new_file_staged};
 
 use crate::file::dds_metadata::DdsMetadata;
 use crate::file::dds_png::DdsPng;
@@ -187,8 +187,9 @@ impl DdsFile {
     })
   }
 
+  /// Write the file to `path`, making the directories above it, staged as every format's file is written.
   pub fn write_to_path(&self, path: &Path) -> XrfResult {
-    Ok(write_file_staged(path, &self.write_to_bytes()?)?)
+    Ok(write_new_file_staged(path, &self.write_to_bytes()?)?)
   }
 
   pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {

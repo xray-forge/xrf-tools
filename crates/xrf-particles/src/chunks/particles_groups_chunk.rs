@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, META_TYPE_FIELD};
-use xrf_utils::{format_path, open_export_file, to_format_size};
+use xrf_utils::{format_path, to_format_size};
 
 use crate::data::particle_group::ParticleGroup;
 
@@ -89,7 +89,7 @@ impl FileImportExport for ParticlesGroupsChunk {
       group.export(&group.name, &mut particles_effects_ltx)?;
     }
 
-    particles_effects_ltx.write_to(&mut open_export_file(path.as_ref().join("groups.ltx"))?)?;
+    particles_effects_ltx.write_to_path(path.as_ref().join("groups.ltx"))?;
 
     log::info!("Exported groups chunk");
 

@@ -39,10 +39,10 @@ pub fn write_file_staged(path: &Path, contents: &[u8]) -> IoResult<()> {
   write_staged(path, contents, false)
 }
 
-/// Write a file that is not there yet, creating the directories above it.
+/// Write a file, creating the directories above it where they are missing, and replacing the file where it exists.
 ///
-/// Staged the same way regardless: an importer writing a hundred files should not leave a half-written one behind when
-/// the disk fills on the ninety-ninth.
+/// Staged the same way as [`write_file_staged`]: an importer writing a hundred files should not leave a half-written
+/// one behind when the disk fills on the ninety-ninth.
 ///
 /// # Errors
 ///
