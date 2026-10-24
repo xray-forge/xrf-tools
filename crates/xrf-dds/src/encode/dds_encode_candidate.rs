@@ -12,11 +12,6 @@ use crate::renderer::dds_renderer::DdsRenderer;
 pub const DDS_BLOCK_SIZE: u32 = 4;
 
 /// A format a texture can be re-encoded into, of the five worth offering.
-///
-/// The list is short on purpose. It is what the engine's own textures are authored in - the three DXT families and
-/// uncompressed - plus BC7, which is the one modern block format worth the trade and which only the DX11 path loads.
-/// Everything else `image_dds` can write is either a channel layout no X-Ray shader samples or a floating point
-/// format the engine has no path for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DdsEncodeCandidate {
   Bc1,
