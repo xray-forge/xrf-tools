@@ -2,22 +2,13 @@
 
 use xrf_world::WorldLevelReload;
 
-use crate::core::session::SessionId;
-use crate::plugins::levels::collision::LEVEL_COLLISION_PART;
-use crate::plugins::levels::configs::LEVEL_SECTIONS_PART;
-use crate::plugins::levels::details::LEVEL_DETAILS_PART;
-use crate::plugins::levels::geometry::LEVEL_GEOMETRY_PART;
-use crate::plugins::levels::hemi::LEVEL_HEMI_PART;
-use crate::plugins::levels::level_map::LEVEL_MAP_PART;
-use crate::plugins::levels::lights::LEVEL_LIGHTS_PART;
-use crate::plugins::levels::object_motions::LEVEL_OBJECT_MOTIONS_PART;
-use crate::plugins::levels::particles::LEVEL_PARTICLES_PART;
+use crate::core::session::{SessionId, SessionPart};
+use crate::plugins::levels::parts::{
+  LevelCollisionPart, LevelDetailsPart, LevelEnvironmentPart, LevelGeometryPart, LevelGraphPart, LevelHemiPart,
+  LevelLightsPart, LevelMapPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart,
+  LevelSpawnVisualsPart, LevelStartPart, LevelSurfacesPart, LevelTexturesPart, LevelWeatherPart,
+};
 use crate::plugins::levels::render_source::LevelRenderSource;
-use crate::plugins::levels::spawn::{LEVEL_GRAPH_PART, LEVEL_SPAWN_PART};
-use crate::plugins::levels::spawn_visuals::LEVEL_SPAWN_VISUALS_PART;
-use crate::plugins::levels::start::LEVEL_START_PART;
-use crate::plugins::levels::state::level_environment::{LEVEL_ENVIRONMENT_PART, LEVEL_WEATHER_PART};
-use crate::plugins::levels::surfaces::LEVEL_SURFACES_PART;
 
 const NONE: WorldLevelReload = WorldLevelReload {
   is_spawn: false,
@@ -32,30 +23,35 @@ const NONE: WorldLevelReload = WorldLevelReload {
 fn a_commit_leaving_every_part_reloads_nothing() {
   assert!(LevelRenderSource::to_reload(&[]).is_empty());
   assert!(
-    LevelRenderSource::to_reload(&[LEVEL_GRAPH_PART]).is_empty(),
+    LevelRenderSource::to_reload(&[LevelGraphPart::NAME]).is_empty(),
     "nothing drawn is built from the graph"
   );
   assert!(
-    LevelRenderSource::to_reload(&[LEVEL_START_PART]).is_empty(),
+    LevelRenderSource::to_reload(&[LevelStartPart::NAME]).is_empty(),
     "where a viewer first stands draws nothing"
   );
   assert!(
-    LevelRenderSource::to_reload(&[LEVEL_MAP_PART]).is_empty(),
+    LevelRenderSource::to_reload(&[LevelMapPart::NAME]).is_empty(),
     "the map is the page's"
+  );
+  assert!(
+    LevelRenderSource::to_reload(&[LevelTexturesPart::NAME]).is_empty(),
+    "a texture come or gone is loaded afresh by the texture watcher"
   );
 }
 
 #[test]
 fn a_level_streams_afresh_only_on_what_its_sectors_are_packed_and_drawn_from() {
-  assert!(LevelRenderSource::is_streamed_afresh(&[LEVEL_GEOMETRY_PART]));
+  assert!(LevelRenderSource::is_streamed_afresh(&[LevelGeometryPart::NAME]));
   assert!(LevelRenderSource::is_streamed_afresh(&[
-    LEVEL_MAP_PART,
-    LEVEL_SURFACES_PART
+    LevelMapPart::NAME,
+    LevelSurfacesPart::NAME
   ]));
-  assert!(!LevelRenderSource::is_streamed_afresh(&[LEVEL_MAP_PART]));
+  assert!(!LevelRenderSource::is_streamed_afresh(&[LevelMapPart::NAME]));
+  assert!(!LevelRenderSource::is_streamed_afresh(&[LevelTexturesPart::NAME]));
   assert!(!LevelRenderSource::is_streamed_afresh(&[
-    LEVEL_SPAWN_PART,
-    LEVEL_WEATHER_PART
+    LevelSpawnPart::NAME,
+    LevelWeatherPart::NAME
   ]));
   assert!(!LevelRenderSource::is_streamed_afresh(&[]));
 }
@@ -64,34 +60,34 @@ fn a_level_streams_afresh_only_on_what_its_sectors_are_packed_and_drawn_from() {
 fn what_a_render_read_recorded_reloads_that_package_alone() {
   for (part, reload) in [
     (
-      LEVEL_LIGHTS_PART,
+      LevelLightsPart::NAME,
       WorldLevelReload {
         is_lights: true,
         ..NONE
       },
     ),
     (
-      LEVEL_PARTICLES_PART,
+      LevelParticlesPart::NAME,
       WorldLevelReload {
         is_particles: true,
         ..NONE
       },
     ),
     (
-      LEVEL_WEATHER_PART,
+      LevelWeatherPart::NAME,
       WorldLevelReload {
         is_weather: true,
         ..NONE
       },
     ),
     (
-      LEVEL_OBJECT_MOTIONS_PART,
+      LevelObjectMotionsPart::NAME,
       WorldLevelReload {
         is_motions: true,
         ..NONE
       },
     ),
-    (LEVEL_DETAILS_PART, WorldLevelReload { is_grass: true, ..NONE }),
+    (LevelDetailsPart::NAME, WorldLevelReload { is_grass: true, ..NONE }),
   ] {
     assert_eq!(LevelRenderSource::to_reload(&[part]), reload, "{part}");
   }
@@ -100,7 +96,7 @@ fn what_a_render_read_recorded_reloads_that_package_alone() {
 #[test]
 fn a_stale_part_reloads_only_the_packages_built_from_it() {
   assert_eq!(
-    LevelRenderSource::to_reload(&[LEVEL_ENVIRONMENT_PART]),
+    LevelRenderSource::to_reload(&[LevelEnvironmentPart::NAME]),
     WorldLevelReload {
       is_particles: true,
       is_weather: true,
@@ -108,7 +104,7 @@ fn a_stale_part_reloads_only_the_packages_built_from_it() {
     }
   );
   assert_eq!(
-    LevelRenderSource::to_reload(&[LEVEL_SECTIONS_PART]),
+    LevelRenderSource::to_reload(&[LevelSectionsPart::NAME]),
     WorldLevelReload {
       is_lights: true,
       is_particles: true,
@@ -116,7 +112,7 @@ fn a_stale_part_reloads_only_the_packages_built_from_it() {
     }
   );
   assert_eq!(
-    LevelRenderSource::to_reload(&[LEVEL_SPAWN_VISUALS_PART]),
+    LevelRenderSource::to_reload(&[LevelSpawnVisualsPart::NAME]),
     WorldLevelReload {
       is_spawn: true,
       is_lights: true,
@@ -124,7 +120,7 @@ fn a_stale_part_reloads_only_the_packages_built_from_it() {
     }
   );
   assert_eq!(
-    LevelRenderSource::to_reload(&[LEVEL_COLLISION_PART, LEVEL_HEMI_PART]),
+    LevelRenderSource::to_reload(&[LevelCollisionPart::NAME, LevelHemiPart::NAME]),
     WorldLevelReload {
       is_spawn: true,
       is_particles: true,
@@ -132,7 +128,7 @@ fn a_stale_part_reloads_only_the_packages_built_from_it() {
     }
   );
   assert_eq!(
-    LevelRenderSource::to_reload(&[LEVEL_SPAWN_PART]),
+    LevelRenderSource::to_reload(&[LevelSpawnPart::NAME]),
     WorldLevelReload {
       is_spawn: true,
       is_lights: true,

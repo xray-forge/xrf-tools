@@ -13,7 +13,6 @@ use crate::core::session::SessionSnapshot;
 use crate::plugins::levels::state::{
   LevelEntry, LevelSource, LevelSpawnObjectsDescription, LevelStart, LevelTextureReference, SelectedLevel,
 };
-use crate::plugins::levels::surfaces::LevelSurfaces;
 
 /// How many names a log line about a set of them carries before it stops listing and starts counting.
 const LISTED_NAMES: usize = 6;
@@ -36,8 +35,13 @@ pub fn report_opening(source: &LevelSource) {
   log::info!("Opening level: {}", source.get_label());
 }
 
-/// What one open came to, its surfaces as the open resolved them, and what about it is worth a warning.
-pub fn report_open(opened: &SessionSnapshot<SelectedLevel>, surfaces: &LevelSurfaces, started: Instant) {
+/// What one open came to, its surfaces and their textures as the open resolved them, and what about it is worth a
+/// warning.
+pub fn report_open(
+  opened: &SessionSnapshot<SelectedLevel>,
+  (surfaces, textures): (&[XraySurfaceDescriptor], &[LevelTextureReference]),
+  started: Instant,
+) {
   let selected: &SelectedLevel = &opened.value;
   let source: &LevelSource = &selected.source;
 
@@ -48,14 +52,14 @@ pub fn report_open(opened: &SessionSnapshot<SelectedLevel>, surfaces: &LevelSurf
     selected.outlines.len(),
     selected.visuals.visuals.len(),
     selected.visuals.count_drawable(),
-    surfaces.textures.len(),
-    surfaces.surfaces.len(),
+    textures.len(),
+    surfaces.len(),
     opened.inputs.len()
   );
 
   report_sectors(source, &selected.outlines);
-  report_unresolved(source, &surfaces.textures);
-  report_surfaces(source, &named_surfaces(selected, &surfaces.surfaces));
+  report_unresolved(source, textures);
+  report_surfaces(source, &named_surfaces(selected, surfaces));
 }
 
 /// The surfaces the table actually dresses something with, each beside the shader it names.

@@ -172,7 +172,13 @@ mod tests {
 
   use super::assemble;
   use crate::core::app_directories::AppDirectories;
+  use crate::core::assets::AssetMountState;
   use crate::core::execution::ExecutionState;
+  use crate::core::session::SessionScopes;
+  use crate::plugins::archives::browse::ArchiveBrowseState;
+  use crate::plugins::configs::state::ConfigsState;
+  use crate::plugins::dialogs::state::DialogProjectState;
+  use crate::plugins::exports::state::ExportsProjectState;
   use crate::plugins::levels::shown_levels::ShownLevels;
   use crate::plugins::levels::state::LevelState;
   use crate::plugins::render::render_viewports::RenderViewports;
@@ -180,9 +186,16 @@ mod tests {
   use crate::plugins::render::texture_reloads::TextureReloads;
   use crate::plugins::render::viewport_shows::ViewportShows;
   use crate::plugins::render::world_state::WorldState;
+  use crate::plugins::spawn::state::SpawnFileState;
+  use crate::plugins::sprite_equipment::state::EquipmentSpriteState;
+  use crate::plugins::system::diagnostics::MachineProbeState;
+  use crate::plugins::textures::state::TextureState;
+  use crate::plugins::translations::state::TranslationProjectState;
+  use crate::plugins::visuals::state::VisualState;
 
-  /// A plugin whose setup misses what it builds on fails the build, so this is where an order or a unit gone wrong
-  /// shows, before any command asks.
+  /// A plugin whose setup misses what it builds on fails the build, and a unit no setup manages fails here, so an order
+  /// or a unit gone wrong shows before any command asks. What the running application manages beside them
+  /// (`manage_shared_state`) is not built here.
   #[test]
   fn every_plugin_sets_up_over_the_state_managed_before_it() {
     let execution: ExecutionState =
@@ -191,13 +204,27 @@ mod tests {
       .build(mock_context(noop_assets()))
       .expect("every plugin to set up");
 
+    assert!(application.try_state::<ExecutionState>().is_some());
+    assert!(application.try_state::<AssetMountState>().is_some());
+    assert!(application.try_state::<SessionScopes>().is_some());
     assert!(application.try_state::<AppDirectories>().is_some());
-    assert!(application.try_state::<LevelState>().is_some());
     assert!(application.try_state::<Renderer>().is_some());
     assert!(application.try_state::<WorldState>().is_some());
     assert!(application.try_state::<ViewportShows>().is_some());
+    assert!(application.try_state::<RenderViewports>().is_some());
     assert!(application.try_state::<TextureReloads>().is_some());
+    assert!(application.try_state::<LevelState>().is_some());
     assert!(application.try_state::<ShownLevels>().is_some());
+    assert!(application.try_state::<VisualState>().is_some());
+    assert!(application.try_state::<TextureState>().is_some());
+    assert!(application.try_state::<ConfigsState>().is_some());
+    assert!(application.try_state::<TranslationProjectState>().is_some());
+    assert!(application.try_state::<ArchiveBrowseState>().is_some());
+    assert!(application.try_state::<ExportsProjectState>().is_some());
+    assert!(application.try_state::<DialogProjectState>().is_some());
+    assert!(application.try_state::<SpawnFileState>().is_some());
+    assert!(application.try_state::<EquipmentSpriteState>().is_some());
+    assert!(application.try_state::<MachineProbeState>().is_some());
 
     application.state::<RenderViewports>().shut_down();
   }

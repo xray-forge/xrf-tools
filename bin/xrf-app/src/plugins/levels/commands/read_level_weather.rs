@@ -7,7 +7,8 @@ use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::state::{LevelEnvironment, LevelState, LevelWeatherDescription, SelectedLevel};
+use crate::plugins::levels::parts::LevelEnvironmentPart;
+use crate::plugins::levels::state::{LevelState, LevelWeatherDescription, SelectedLevel};
 
 /// Read the open level's weather as its engine loads it: the cycles it plays, the effects, what they strike with,
 /// the sun table and the level's own overrides.
@@ -25,7 +26,8 @@ pub async fn levels_read_level_weather(
     .run_blocking("Reading the level weather", move || {
       let search: XraySearch = assets.search(&current.roots)?;
 
-      LevelEnvironment::of(&current, &search).map(|environment| current.answer(environment.describe(&current, &search)))
+      LevelEnvironmentPart::get(&current, &search)
+        .map(|environment| current.answer(environment.describe(&current, &search)))
     })
     .await??;
 

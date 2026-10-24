@@ -4,6 +4,7 @@ import {
   LEVEL_MAP_PART,
   LEVEL_START_PART,
   LEVEL_SURFACES_PART,
+  LEVEL_TEXTURES_PART,
   SessionChange,
 } from "@/core/ipc/types/xrf-app";
 
@@ -14,10 +15,15 @@ import {
 const LEVEL_SCENE_PARTS: ReadonlyArray<string> = [LEVEL_GEOMETRY_PART, LEVEL_SURFACES_PART];
 
 /**
- * The parts the page reads a level again for, beside the level itself: where it starts, its map and its surfaces,
- * which its description shows, and its geometry, which the scene it is shown in streams from.
+ * The parts the page reads a level again for, beside the level itself: where it starts, its map, its surfaces and
+ * their textures, which its description shows, and its geometry, which the scene it is shown in streams from.
  */
-const LEVEL_READ_PARTS: ReadonlyArray<string> = [LEVEL_START_PART, LEVEL_MAP_PART, ...LEVEL_SCENE_PARTS];
+const LEVEL_READ_PARTS: ReadonlyArray<string> = [
+  LEVEL_START_PART,
+  LEVEL_MAP_PART,
+  LEVEL_TEXTURES_PART,
+  ...LEVEL_SCENE_PARTS,
+];
 
 /**
  * @param change - A change to a level's session.

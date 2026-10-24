@@ -1,6 +1,3 @@
-//! The visuals the game's spawned objects stand as, packed once a level and shared by whatever reads them: the models
-//! drawn, and the lights placed on their bones.
-
 use std::cell::OnceCell;
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -15,29 +12,10 @@ use xrf_visual::{
 };
 
 use crate::core::assets::locate_referenced_asset;
-use crate::core::session::{SessionPart, SessionSnapshot};
+use crate::core::session::SessionSnapshot;
+use crate::plugins::levels::parts::LevelSpawnVisualsPart;
 use crate::plugins::levels::report::{report_bind_rest_pose, report_empty_rest_motion, report_undrawn_visual};
-use crate::plugins::levels::state::{LevelSpawnVisual, LevelSpawnVisuals, SelectedLevel};
-use crate::plugins::levels::textures::resolve_surface_textures;
-
-/// The cycle a lamp plays from the moment it spawns (`CHangingLamp::net_Spawn`), whose first frame it stands in.
-const IDLE_MOTION: &str = "idle";
-
-/// What a change event calls a level's spawned objects' visuals when they go stale.
-#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
-pub(crate) const LEVEL_SPAWN_VISUALS_PART: &str = "spawnVisuals";
-
-/// Each visual a level's spawned objects stand as, read the first time anything asks and kept, or why it cannot be.
-struct LevelSpawnVisualsPart;
-
-impl SessionPart for LevelSpawnVisualsPart {
-  type Value = Arc<LevelSpawnVisuals>;
-
-  const NAME: &'static str = LEVEL_SPAWN_VISUALS_PART;
-
-  // Built empty, its visuals each read into a cell of its own later, so its build never reaches Rayon.
-  const IS_POOLED: bool = false;
-}
+use crate::plugins::levels::state::{LevelSpawnVisual, LevelSpawnVisuals, LevelTextureReference, SelectedLevel};
 
 /// Reads a level's spawned visuals within one search, opening the shader library once for all of them, and only if
 /// one is read at all.
@@ -51,6 +29,9 @@ pub struct SpawnVisualReader {
 }
 
 impl SpawnVisualReader {
+  /// The cycle a lamp plays from the moment it spawns (`CHangingLamp::net_Spawn`), whose first frame it stands in.
+  const IDLE_MOTION: &'static str = "idle";
+
   /// Runs `read` with a reader of the open level's spawned visuals, whatever it reads recorded as the visuals' part read
   /// it.
   pub fn with<T>(
@@ -93,7 +74,7 @@ impl SpawnVisualReader {
       .read_file(name)
       .map_err(|error| format!("Failed to read visual '{name}': {error}"))?;
     let package: VisualPackage = VisualPacker::pack(&file);
-    let rest: Option<Arc<VisualRestPose>> = to_rest_pose(search, name, &file, &package.description).map(Arc::new);
+    let rest: Option<Arc<VisualRestPose>> = Self::to_rest_pose(search, name, &file, &package.description).map(Arc::new);
     let resolver: &XraySurfaceResolver = self
       .resolver
       .get_or_init(|| XraySurfaceResolver::open(search, self.scope.clone()));
@@ -117,7 +98,7 @@ impl SpawnVisualReader {
 
     Ok(LevelSpawnVisual {
       // Resolved as a level's own surfaces are, so a model shades with the bump pair and the detail its base declares.
-      textures: resolve_surface_textures(references, &surfaces, search, &self.scope),
+      textures: LevelTextureReference::resolve_bound(references, &surfaces, search, &self.scope),
       package,
       rest,
       surfaces,
@@ -141,30 +122,30 @@ impl SpawnVisualReader {
       .search
       .read_parsed(&asset, OgfFile::read_from_bytes::<XRayByteOrder>)
   }
-}
 
-/// `PlayCycle("idle")` then `CalculateBones`: the first frame of the visual's idle cycle where it has one, its bind
-/// pose where it does not.
-fn to_rest_pose(
-  search: &XraySearch,
-  name: &str,
-  file: &OgfFile,
-  description: &VisualDescription,
-) -> Option<VisualRestPose> {
-  let motions: VisualMotions = VisualMotions::of(file)?;
-  let names: Vec<String> = motions.bones.iter().map(|bone| bone.name.clone()).collect();
-  let dependencies: VisualDependencies = VisualDependencies::resolve(description, search);
+  /// `PlayCycle("idle")` then `CalculateBones`: the first frame of the visual's idle cycle where it has one, its bind
+  /// pose where it does not.
+  fn to_rest_pose(
+    search: &XraySearch,
+    name: &str,
+    file: &OgfFile,
+    description: &VisualDescription,
+  ) -> Option<VisualRestPose> {
+    let motions: VisualMotions = VisualMotions::of(file)?;
+    let names: Vec<String> = motions.bones.iter().map(|bone| bone.name.clone()).collect();
+    let dependencies: VisualDependencies = VisualDependencies::resolve(description, search);
 
-  match motions.bake_named(search, &dependencies, IDLE_MOTION) {
-    Ok(baked) => VisualRestPose::of_floats(names, &baked.transforms).or_else(|| {
-      report_empty_rest_motion(name, IDLE_MOTION);
+    match motions.bake_named(search, &dependencies, Self::IDLE_MOTION) {
+      Ok(baked) => VisualRestPose::of_floats(names, &baked.transforms).or_else(|| {
+        report_empty_rest_motion(name, Self::IDLE_MOTION);
 
-      VisualSkeleton::get_rest_pose(file)
-    }),
-    Err(error) => {
-      report_bind_rest_pose(name, &error);
+        VisualSkeleton::get_rest_pose(file)
+      }),
+      Err(error) => {
+        report_bind_rest_pose(name, &error);
 
-      VisualSkeleton::get_rest_pose(file)
+        VisualSkeleton::get_rest_pose(file)
+      }
     }
   }
 }

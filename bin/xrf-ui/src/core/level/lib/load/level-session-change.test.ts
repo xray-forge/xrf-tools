@@ -6,6 +6,7 @@ import {
   LEVEL_MAP_PART,
   LEVEL_SPAWN_PART,
   LEVEL_SURFACES_PART,
+  LEVEL_TEXTURES_PART,
   SessionChange,
 } from "@/core/ipc/types/xrf-app";
 
@@ -20,6 +21,7 @@ describe("level session changes", () => {
     expect(isLevelReadAgain(kept([LEVEL_MAP_PART]))).toBe(true);
     expect(isLevelReadAgain(kept([LEVEL_SURFACES_PART]))).toBe(true);
     expect(isLevelReadAgain(kept([LEVEL_GEOMETRY_PART]))).toBe(true);
+    expect(isLevelReadAgain(kept([LEVEL_TEXTURES_PART]))).toBe(true);
     expect(isLevelReadAgain(kept([LEVEL_SPAWN_PART]))).toBe(false);
     expect(
       isLevelReadAgain({
@@ -43,6 +45,7 @@ describe("level session changes", () => {
     expect(isLevelSceneStreamedAfresh(kept([LEVEL_GEOMETRY_PART]))).toBe(true);
     expect(isLevelSceneStreamedAfresh(kept([LEVEL_SURFACES_PART]))).toBe(true);
     expect(isLevelSceneStreamedAfresh(kept([LEVEL_MAP_PART]))).toBe(false);
+    expect(isLevelSceneStreamedAfresh(kept([LEVEL_TEXTURES_PART]))).toBe(false);
     expect(
       isLevelSceneStreamedAfresh({
         revision: 2,

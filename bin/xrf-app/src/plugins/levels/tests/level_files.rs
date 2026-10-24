@@ -3,7 +3,6 @@ use std::path::PathBuf;
 
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-use crate::plugins::levels::read::to_level_logical_path;
 use crate::plugins::levels::state::LevelSource;
 
 fn zaton() -> LevelSource {
@@ -15,11 +14,11 @@ fn zaton() -> LevelSource {
 #[test]
 fn names_a_level_file_by_its_logical_path_inside_the_level() {
   assert_eq!(
-    to_level_logical_path(&zaton(), "level.geom").unwrap().as_str(),
+    zaton().to_file_logical_path("level.geom").unwrap().as_str(),
     "levels\\zaton\\level.geom"
   );
   assert_eq!(
-    to_level_logical_path(&zaton(), "motions/door.anm").unwrap().as_str(),
+    zaton().to_file_logical_path("motions/door.anm").unwrap().as_str(),
     "levels\\zaton\\motions\\door.anm"
   );
 }
@@ -37,7 +36,7 @@ fn refuses_a_name_leaving_the_level() {
     "C:\\Windows\\win.ini",
     "\\level.geom",
   ] {
-    assert!(to_level_logical_path(&zaton(), file).is_err(), "'{file}' was taken");
+    assert!(zaton().to_file_logical_path(file).is_err(), "'{file}' was taken");
   }
 }
 
@@ -60,11 +59,11 @@ fn names_a_level_directorys_files_by_the_root_it_lies_under() {
   };
 
   assert_eq!(
-    to_level_logical_path(&directory(&level), "level").unwrap().as_str(),
+    directory(&level).to_file_logical_path("level").unwrap().as_str(),
     "levels\\l01\\level"
   );
   assert!(
-    to_level_logical_path(&directory(&stray), "level").is_err(),
+    directory(&stray).to_file_logical_path("level").is_err(),
     "a directory under no root is refused rather than read unrecorded"
   );
 }

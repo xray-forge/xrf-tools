@@ -7,7 +7,7 @@ use xrf_material::{XraySurfaceDraw, XraySurfaceResolver};
 use xrf_visual::LightAnimatorDescription;
 
 use crate::core::assets::read_located_asset;
-use crate::plugins::levels::lights::ANIMATIONS_FILE;
+use crate::plugins::levels::parts::LevelLightsPart;
 use crate::plugins::levels::state::selection::level_thunderbolt::LevelThunderbolt;
 use crate::plugins::levels::state::selection::level_thunderbolt_gradient::LevelThunderboltGradient;
 use crate::plugins::levels::state::selection::level_thunderbolt_model::LevelThunderboltModel;
@@ -77,9 +77,14 @@ struct BoltReader<'s, 'a> {
 impl<'s, 'a> BoltReader<'s, 'a> {
   fn open(source: &'s LevelWeatherSource<'a>) -> Self {
     Self {
-      animations: read_located_asset(source.search, ANIMATIONS_FILE)
+      animations: read_located_asset(source.search, LevelLightsPart::ANIMATIONS_FILE)
         .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
-        .inspect_err(|error| log::warn!("Thunderbolts are not coloured, '{ANIMATIONS_FILE}' does not read: {error}"))
+        .inspect_err(|error| {
+          log::warn!(
+            "Thunderbolts are not coloured, '{}' does not read: {error}",
+            LevelLightsPart::ANIMATIONS_FILE
+          )
+        })
         .ok(),
       animator_indices: HashMap::new(),
       animators: Vec::new(),
