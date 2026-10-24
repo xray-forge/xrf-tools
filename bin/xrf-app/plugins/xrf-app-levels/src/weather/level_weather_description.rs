@@ -1,0 +1,37 @@
+use serde::Serialize;
+use xrf_engine_target::XrayEngine;
+use xrf_environment::{LevelWeather, SunPosition, ThunderboltCollection};
+use xrf_level::EnvModifier;
+
+use crate::weather::EnvironmentCycleEntry;
+use crate::weather::LevelWeatherCycle;
+use crate::weather::LevelWeatherTexture;
+
+/// Everything a viewer plays the open level's weather from, as its engine loads it.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelWeatherDescription {
+  pub engine: XrayEngine,
+  /// What the level's `weathers` resolves to.
+  pub weather: LevelWeather,
+  /// The cycles it resolves to that the game has, in the order it offers them.
+  pub offered: Vec<LevelWeatherCycle>,
+  /// Every cycle of the game, which a viewer offers after the level's own.
+  pub cycles: Vec<EnvironmentCycleEntry>,
+  /// Every weather effect, which the game plays over a cycle.
+  pub effects: Vec<LevelWeatherCycle>,
+  /// Every thunderbolt collection of the game, which a keyframe set by hand may strike with as well as the level's own.
+  pub thunderbolt_collections: Vec<ThunderboltCollection>,
+  /// Monolith's table of where the sun stands, midnight first; none on OpenXRay.
+  pub sun_table: Option<Vec<SunPosition>>,
+  /// The level's local overrides, `level.env_mod`; none where it has none.
+  pub modifiers: Vec<EnvModifier>,
+  /// Every sky the cycles and effects name, by reference, for a hand-set keyframe to be given.
+  pub skies: Vec<LevelWeatherTexture>,
+  /// Every clouds texture they name.
+  pub clouds: Vec<LevelWeatherTexture>,
+  /// Every lens flare of the game a keyframe can name by `sun`: `suns.ltx`'s sections, and on OpenXRay any `system.ltx`
+  /// one a keyframe names in their place.
+  pub suns: Vec<String>,
+}

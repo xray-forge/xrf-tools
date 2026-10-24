@@ -4,7 +4,9 @@ use xrf_ltx::{Ltx, Section, read_engine_floats};
 use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
 use xrf_vfs::{XrayInputRecord, XraySearch};
 
-use crate::state::{LEVEL_CONFIG_FILE, LevelMapDescription, LevelSource, SelectedLevel};
+use crate::level::{LevelSource, SelectedLevel};
+use crate::level_report::LevelReport;
+use crate::parts::{LevelMapArea, LevelMapDescription};
 
 /// What a change event calls where a level's map lies when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
@@ -24,6 +26,9 @@ impl SessionPart for LevelMapPart {
 }
 
 impl LevelMapPart {
+  /// The level's own config, whose `[level_map]` places its map.
+  pub const FILE: &'static str = "level.ltx";
+
   /// The section of `level.ltx` placing the map.
   const SECTION: &'static str = "level_map";
 
@@ -47,15 +52,15 @@ impl LevelMapPart {
   /// The level's map, or `None` where its config is missing, places no map or cannot be read; a failure is logged.
   pub fn read(source: &LevelSource, search: &XraySearch) -> Option<LevelMapDescription> {
     let bytes: Vec<u8> = source
-      .read_optional_file(search, LEVEL_CONFIG_FILE)
-      .map_err(|error| log::warn!("{error}"))
+      .read_optional_file(search, Self::FILE)
+      .inspect_err(|error| LevelReport::unreadable_map(source, error))
       .ok()
       .flatten()?;
 
     decode_bytes_to_string(&bytes, new_windows1251_encoder())
       .map_err(XrfError::from)
       .and_then(|text| Self::parse(&text))
-      .map_err(|error| log::warn!("{}", source.describe_read_failure(LEVEL_CONFIG_FILE, &error)))
+      .inspect_err(|error| LevelReport::unreadable_map(source, &source.describe_read_failure(Self::FILE, error)))
       .ok()
       .flatten()
   }
@@ -71,20 +76,19 @@ impl LevelMapPart {
       return Ok(None);
     };
     let [min_x, min_z, max_x, max_z]: [f32; 4] = Self::read_bound_rect(section)?;
-
-    if !(min_x < max_x && min_z < max_z) {
-      return Err(XrfError::new_invalid_error(format!(
-        "[{}] {} spans no area: {min_x}, {min_z}, {max_x}, {max_z}",
-        Self::SECTION,
-        Self::BOUND_RECT_FIELD
-      )));
-    }
-
-    Ok(Some(LevelMapDescription {
+    let area: LevelMapArea = LevelMapArea {
       min_x,
       min_z,
       max_x,
       max_z,
+    };
+
+    area.require_ground().map_err(|error| {
+      XrfError::new_invalid_error(format!("[{}] {}: {error}", Self::SECTION, Self::BOUND_RECT_FIELD))
+    })?;
+
+    Ok(Some(LevelMapDescription {
+      area,
       texture: section.get(Self::TEXTURE_FIELD).map(str::to_owned),
     }))
   }

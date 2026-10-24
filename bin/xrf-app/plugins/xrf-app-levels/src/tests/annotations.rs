@@ -1,32 +1,22 @@
 use std::collections::HashMap;
 
 use uuid::Uuid;
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 use xrf_math::Vector3d;
 use xrf_spawn::{
   AlifeLevelChanger, AlifeObject, AlifeObjectAbstract, AlifeObjectInherited, AlifeObjectSpaceRestrictor, ClsId,
   GraphLevel, Patrol, PatrolLink, PatrolPoint, Shape, SpawnLevelGraph,
 };
 
-use crate::state::LevelSpawn;
-use crate::viewer::annotations::annotation_raster::rasterise_annotations;
-use crate::viewer::annotations::annotation_svg::AnnotationCanvas;
-use crate::viewer::annotations::level_annotation_kind::LevelAnnotationKind;
-use crate::viewer::annotations::level_annotations::{AnnotationOutline, AnnotationVolume, LevelAnnotations};
-use crate::viewer::annotations::map_annotations_request::MapAnnotationsArea;
+use crate::parts::{LevelMapArea, LevelSpawn};
+use crate::tests::fixtures;
+use crate::viewer::map::annotations::{
+  AnnotationCanvas, AnnotationOutline, AnnotationVolume, LevelAnnotationKind, LevelAnnotations,
+};
 
 fn new_restrictor(shape: Vec<Shape>, restrictor_type: u8) -> AlifeObjectSpaceRestrictor {
   AlifeObjectSpaceRestrictor {
-    base: AlifeObjectAbstract {
-      game_vertex_id: 0,
-      distance: 0.0,
-      direct_control: 1,
-      level_vertex_id: 0,
-      flags: 0,
-      custom_data: String::new(),
-      story_id: AlifeObjectAbstract::INVALID_STORY_ID,
-      spawn_story_id: AlifeObjectAbstract::INVALID_STORY_ID,
-    },
+    base: fixtures::new_abstract(AlifeObjectAbstract::INVALID_STORY_ID),
     shape,
     restrictor_type,
   }
@@ -34,26 +24,9 @@ fn new_restrictor(shape: Vec<Shape>, restrictor_type: u8) -> AlifeObjectSpaceRes
 
 fn new_object(name: &str, position: Vector3d, heading: f32, inherited: AlifeObjectInherited) -> AlifeObject {
   AlifeObject {
-    id: 0,
-    net_action: 1,
-    section: String::from("space_restrictor"),
-    clsid: ClsId::SpcRsS,
-    name: String::from(name),
-    script_game_id: 0,
-    script_rp: 0,
     position,
     direction: Vector3d::new(0.0, heading, 0.0),
-    respawn_time: 0,
-    parent_id: u16::MAX,
-    phantom_id: u16::MAX,
-    script_flags: 0,
-    version: 128,
-    game_type: 0,
-    script_version: 12,
-    client_data_size: 0,
-    spawn_id: 0,
-    inherited,
-    update_data: Vec::new(),
+    ..fixtures::new_object(name, "space_restrictor", ClsId::SpcRsS, inherited)
   }
 }
 
@@ -116,7 +89,7 @@ fn new_graph() -> SpawnLevelGraph {
 
 fn zaton_canvas(kinds: Vec<LevelAnnotationKind>, is_labelled: bool) -> AnnotationCanvas {
   AnnotationCanvas {
-    area: MapAnnotationsArea {
+    area: LevelMapArea {
       min_x: -600.0,
       min_z: -615.0,
       max_x: 600.0,
@@ -214,7 +187,7 @@ fn points_a_level_changer_toward_its_destination_across_the_world() {
 
 #[test]
 fn refuses_an_area_spanning_no_ground() {
-  let area = |min_x: f32, max_x: f32| MapAnnotationsArea {
+  let area = |min_x: f32, max_x: f32| LevelMapArea {
     min_x,
     min_z: -10.0,
     max_x,
@@ -284,7 +257,7 @@ fn draws_a_group_a_kind_asked_and_names_only_what_it_names() {
 #[test]
 fn rasterises_the_svg_at_any_size_clear_where_it_draws_nothing() -> TauriResult<()> {
   let svg: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="0" y="0" width="50" height="100" fill="#ff0000"/></svg>"##;
-  let image = rasterise_annotations(svg, (40, 20))?;
+  let image = AnnotationCanvas::rasterise(svg, (40, 20))?;
 
   assert_eq!(image.dimensions(), (40, 20));
   assert_eq!(image.get_pixel(5, 10).0, [255, 0, 0, 255]);

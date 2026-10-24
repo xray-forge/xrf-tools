@@ -2,14 +2,13 @@ use std::fs;
 use std::path::PathBuf;
 
 use image::{ImageFormat, Rgba, RgbaImage};
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 use xrf_dds::DdsFile;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_texture::{TextureEncodingFormat, TextureEncodingQuality};
 
-use crate::viewer::cube_export::{export_cube, get_cube_export_paths};
-use crate::viewer::cube_export_format::CubeExportFormat;
-use crate::viewer::cube_export_request::CubeExportRequest;
+use crate::viewer::ViewerDdsExport;
+use crate::viewer::cube::{CubeExportFormat, CubeExportRequest, CubeExporter};
 
 /// A cross of 16 pixel faces in a folder of its own, each face one flat shade by its place in the engine's order.
 fn write_cross(name: &str) -> TauriResult<(PathBuf, PathBuf)> {
@@ -45,13 +44,13 @@ fn names_six_faces_as_the_engine_and_by_face() {
   };
 
   assert_eq!(
-    get_cube_export_paths(&request(CubeExportFormat::Tga)),
+    CubeExporter::list_paths(&request(CubeExportFormat::Tga)),
     (1..=6)
       .map(|face| PathBuf::from(format!("out/{face}.tga")))
       .collect::<Vec<_>>()
   );
   assert_eq!(
-    get_cube_export_paths(&request(CubeExportFormat::Png))[3],
+    CubeExporter::list_paths(&request(CubeExportFormat::Png))[3],
     PathBuf::from("out/cube_zaton_ny.png")
   );
 }
@@ -60,14 +59,14 @@ fn names_six_faces_as_the_engine_and_by_face() {
 fn writes_the_faces_as_one_cube_dds_at_the_size_asked() -> TauriResult<()> {
   let (folder, path) = write_cross("dds")?;
   let target: PathBuf = folder.join("cube.dds");
-  let written: Vec<PathBuf> = export_cube(&CubeExportRequest {
+  let written: Vec<PathBuf> = CubeExporter::export(&CubeExportRequest {
     path,
     target: target.clone(),
-    format: CubeExportFormat::Dds {
+    format: CubeExportFormat::Dds(ViewerDdsExport {
       format: TextureEncodingFormat::Bc3,
       quality: TextureEncodingQuality::Fast,
       is_mipmapped: true,
-    },
+    }),
     size: 8,
   })?;
   let metadata = DdsFile::read_from_path(&target)
@@ -86,7 +85,7 @@ fn writes_six_faces_as_tgas_and_pngs() -> TauriResult<()> {
   let (folder, path) = write_cross("faces")?;
 
   for format in [CubeExportFormat::Tga, CubeExportFormat::Png] {
-    let written: Vec<PathBuf> = export_cube(&CubeExportRequest {
+    let written: Vec<PathBuf> = CubeExporter::export(&CubeExportRequest {
       path: path.clone(),
       target: folder.clone(),
       format,
@@ -121,7 +120,7 @@ fn refuses_a_picture_that_is_no_cross() -> TauriResult<()> {
     .map_err(|error| error.to_string())?;
 
   assert!(
-    export_cube(&CubeExportRequest {
+    CubeExporter::export(&CubeExportRequest {
       path,
       target: folder,
       format: CubeExportFormat::Png,

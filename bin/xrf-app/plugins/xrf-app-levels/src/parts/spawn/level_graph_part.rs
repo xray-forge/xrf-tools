@@ -5,8 +5,8 @@ use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_spawn::{SpawnFile, SpawnLevelGraph};
 use xrf_vfs::{XrayLogicalPath, XraySearch};
 
+use crate::level::SelectedLevel;
 use crate::parts::LevelSpawnPart;
-use crate::state::SelectedLevel;
 
 /// What a change event calls a level's graph when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]

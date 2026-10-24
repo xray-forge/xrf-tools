@@ -1,7 +1,7 @@
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_vfs::XraySearch;
 
-use crate::state::SelectedLevel;
+use crate::level::SelectedLevel;
 
 /// What a change event calls what a level's weather plays with beyond its environment when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
@@ -20,6 +20,9 @@ impl SessionPart for LevelWeatherPart {
 }
 
 impl LevelWeatherPart {
+  /// The level's local weather overrides.
+  pub const ENV_MOD_FILE: &'static str = "level.env_mod";
+
   /// Runs `read` of what the open level's weather plays with through a search recording into its weather part.
   pub fn record<T>(
     current: &SessionSnapshot<SelectedLevel>,

@@ -2,14 +2,13 @@ use std::fs;
 use std::path::PathBuf;
 
 use image::{ImageFormat, Rgba, RgbaImage};
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 use xrf_dds::DdsFile;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_texture::{TextureEncodingFormat, TextureEncodingQuality};
 
-use crate::viewer::map_export::{export_map, flatten_onto, get_export_size};
-use crate::viewer::map_export_format::MapExportFormat;
-use crate::viewer::map_export_request::{MapExportAnnotations, MapExportRequest};
+use crate::viewer::map::{MapExportAnnotations, MapExportFormat, MapExportRequest, MapExporter};
+use crate::viewer::{ViewerDdsExport, ViewerImage};
 
 /// A 30 by 20 map, its left half covered in red and its right clear, and beside it annotations drawing a white square
 /// over its right half, in a folder of its own.
@@ -53,16 +52,16 @@ fn new_request(path: PathBuf, target: PathBuf, format: MapExportFormat) -> MapEx
 
 #[test]
 fn exports_at_most_the_capture_keeping_its_shape() {
-  assert_eq!(get_export_size((4096, 2732), 2048, false), (2048, 1366));
-  assert_eq!(get_export_size((4096, 2732), 8192, false), (4096, 2732));
-  assert_eq!(get_export_size((1000, 3000), 1500, false), (500, 1500));
+  assert_eq!(ViewerImage::get_export_size((4096, 2732), 2048, false), (2048, 1366));
+  assert_eq!(ViewerImage::get_export_size((4096, 2732), 8192, false), (4096, 2732));
+  assert_eq!(ViewerImage::get_export_size((1000, 3000), 1500, false), (500, 1500));
 }
 
 #[test]
 fn rounds_a_dds_to_whole_blocks() {
   // 2732 / 2 is 1366, between the blocks 1364 and 1368, nearer the second.
-  assert_eq!(get_export_size((4096, 2732), 2048, true), (2048, 1368));
-  assert_eq!(get_export_size((5, 3), 5, true), (4, 4));
+  assert_eq!(ViewerImage::get_export_size((4096, 2732), 2048, true), (2048, 1368));
+  assert_eq!(ViewerImage::get_export_size((5, 3), 5, true), (4, 4));
 }
 
 #[test]
@@ -70,7 +69,7 @@ fn lays_a_map_over_its_backdrop_opaque() {
   let mut image: RgbaImage = RgbaImage::from_pixel(2, 1, Rgba([200, 100, 0, 255]));
 
   image.put_pixel(1, 0, Rgba([200, 100, 0, 0]));
-  flatten_onto(&mut image, [10, 20, 30]);
+  ViewerImage::flatten_onto(&mut image, [10, 20, 30]);
 
   assert_eq!(image.get_pixel(0, 0).0, [200, 100, 0, 255]);
   assert_eq!(image.get_pixel(1, 0).0, [10, 20, 30, 255]);
@@ -80,14 +79,17 @@ fn lays_a_map_over_its_backdrop_opaque() {
 fn writes_a_dds_of_whole_blocks_still_covering_the_map() -> TauriResult<()> {
   let (folder, path) = write_map("dds")?;
   let target: PathBuf = folder.join("map_zaton.dds");
-  let format: MapExportFormat = MapExportFormat::Dds {
+  let format: MapExportFormat = MapExportFormat::Dds(ViewerDdsExport {
     format: TextureEncodingFormat::Bc3,
     quality: TextureEncodingQuality::Fast,
     is_mipmapped: true,
-  };
+  });
 
   // 30 pixels across are seven blocks and a half, resampled to eight rather than padded.
-  assert_eq!(export_map(&new_request(path, target.clone(), format))?, (32, 20));
+  assert_eq!(
+    MapExporter::export(&new_request(path, target.clone(), format))?,
+    (32, 20)
+  );
 
   let metadata = DdsFile::read_from_path(&target)
     .map_err(|error| error.to_string())?
@@ -105,11 +107,11 @@ fn lays_the_annotations_over_the_map_or_alone() -> TauriResult<()> {
   let over: PathBuf = folder.join("over.png");
   let alone: PathBuf = folder.join("alone.png");
 
-  export_map(&MapExportRequest {
+  MapExporter::export(&MapExportRequest {
     annotations: Some(MapExportAnnotations::Over),
     ..new_request(path.clone(), over.clone(), MapExportFormat::Png)
   })?;
-  export_map(&MapExportRequest {
+  MapExporter::export(&MapExportRequest {
     annotations: Some(MapExportAnnotations::Alone),
     backdrop: Some([0, 0, 255]),
     ..new_request(path, alone.clone(), MapExportFormat::Png)
@@ -132,10 +134,10 @@ fn writes_an_svg_only_of_the_annotations_alone() -> TauriResult<()> {
   let (folder, path) = write_map("svg")?;
   let target: PathBuf = folder.join("annotations.svg");
 
-  assert!(export_map(&new_request(path.clone(), target.clone(), MapExportFormat::Svg)).is_err());
+  assert!(MapExporter::export(&new_request(path.clone(), target.clone(), MapExportFormat::Svg)).is_err());
   assert!(!target.exists(), "a refused export writes nothing");
   assert_eq!(
-    export_map(&MapExportRequest {
+    MapExporter::export(&MapExportRequest {
       annotations: Some(MapExportAnnotations::Alone),
       ..new_request(path.clone(), target.clone(), MapExportFormat::Svg)
     })?,

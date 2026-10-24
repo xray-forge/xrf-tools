@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-use crate::state::LevelSource;
+use crate::level::LevelSource;
 
 fn zaton() -> LevelSource {
   LevelSource::Asset {

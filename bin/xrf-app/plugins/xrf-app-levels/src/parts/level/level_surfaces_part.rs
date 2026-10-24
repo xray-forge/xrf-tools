@@ -5,7 +5,7 @@ use xrf_level::{LevelFile, LevelShaderEntry};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_vfs::{XrayInputRecord, XraySearch};
 
-use crate::state::SelectedLevel;
+use crate::level::SelectedLevel;
 
 /// What a change event calls how a level's surfaces are drawn when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]

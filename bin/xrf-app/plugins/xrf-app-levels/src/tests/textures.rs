@@ -2,35 +2,19 @@
 
 use std::collections::BTreeSet;
 
-use xrf_level::{LevelFile, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
+use xrf_level::LevelFile;
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_shaders::ShaderBlenderClass;
 use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_thm::{ThmBumpMode, ThmTextureFlag};
-use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayMountId, XrayResolution, XraySearch, XrayVfs};
+use xrf_vfs::{XrayLogicalPath, XrayResolution, XraySearch};
 
-use crate::parts::{LevelSurfacesPart, LevelTexturesPart};
-use crate::state::LevelTextureReference;
+use crate::parts::{LevelSurfacesPart, LevelTextureReference, LevelTexturesPart};
+use crate::tests::fixtures::{mount_search, new_level};
 
 const LEVEL: &str = "k00_marsh";
 const DIRECTORY: &str = "levels\\k00_marsh";
-
-/// A level whose one table entry names a base texture and the two lightmaps after it.
-fn new_level(entries: &[&str]) -> LevelFile {
-  LevelFile {
-    header: LevelHeaderChunk {
-      xrlc_quality: 1,
-      xrlc_version: 14,
-    },
-    lights: None,
-    portals: None,
-    sectors: None,
-    shaders: Some(LevelShadersChunk {
-      entries: entries.iter().map(|raw| LevelShaderEntry::parse(raw)).collect(),
-    }),
-  }
-}
 
 /// The level's own directory as the engine mounts it, or the shared tree alone for a level with none.
 fn new_scope(directory: Option<&str>) -> XrayTextureScope {
@@ -45,9 +29,7 @@ fn new_opened(
   level: &LevelFile,
   directory: Option<&str>,
 ) -> (Vec<XraySurfaceDescriptor>, Vec<LevelTextureReference>) {
-  let mut vfs: XrayVfs = XrayVfs::new();
-  let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let search: XraySearch = XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]));
+  let search: XraySearch = mount_search(tree);
   let scope: XrayTextureScope = new_scope(directory);
   let surfaces: Vec<XraySurfaceDescriptor> = LevelSurfacesPart::resolve(level, &search, &scope);
   let references: Vec<LevelTextureReference> = LevelTexturesPart::resolve(level, &surfaces, &search, &scope);
@@ -241,9 +223,7 @@ fn resolves_the_bump_pair_and_detail_a_models_surface_binds_beside_its_base() {
     .with_texture("lights\\lights_lamp_bump")
     .with_texture("lights\\lights_lamp_bump#")
     .with_texture("detail\\detail_metal");
-  let mut vfs: XrayVfs = XrayVfs::new();
-  let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let search: XraySearch = XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]));
+  let search: XraySearch = mount_search(&tree);
   let surfaces: Vec<XraySurfaceDescriptor> = vec![
     XraySurfaceResolver::open(&search, XrayTextureScope::shared())
       .describe("def_shaders\\def_vertex", &["lights\\lights_lamp".to_owned()]),

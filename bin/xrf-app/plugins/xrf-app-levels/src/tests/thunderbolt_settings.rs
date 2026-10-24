@@ -3,7 +3,7 @@
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{EnvironmentValue, ThunderboltSettings, ThunderboltSettingsKey};
 
-use crate::state::selection::level_thunderbolt_settings::LevelThunderboltSettings;
+use crate::weather::render::LevelThunderboltSettings;
 
 fn new_settings(altitude: &[f32], min_distance: f32, second: f32) -> ThunderboltSettings {
   let mut settings: ThunderboltSettings = ThunderboltSettings::new("environment", "environment\\environment.ltx");

@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
 use tauri::State;
-use xrf_app_core::app_directories::AppDirectories;
+use xrf_app_core::TauriResult;
+use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::types::TauriResult;
-use xrf_app_render::capture_file::save_capture_file;
-use xrf_app_render::renderer::Renderer;
+use xrf_app_render::CaptureFile;
+use xrf_app_render::Renderer;
 use xrf_renderer::RenderViewportId;
 
 use crate::viewer::LevelViewerFolder;
@@ -23,7 +23,7 @@ pub async fn levels_save_screenshot(
 ) -> TauriResult {
   LevelViewerFolder::require_screenshot(&directories, &path)?;
 
-  save_capture_file(
+  CaptureFile::save(
     &execution,
     renderer.screenshot_viewport(viewport),
     path,

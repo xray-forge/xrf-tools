@@ -1,25 +1,13 @@
 use std::collections::HashMap;
 
-use xrf_math::Vector3d;
 use xrf_spawn::{
   AlifeGraphPoint, AlifeObject, AlifeObjectAbstract, AlifeObjectDynamicVisual, AlifeObjectHangingLamp,
   AlifeObjectInherited, AlifeObjectItem, AlifeObjectPhysic, AlifeObjectSkeleton, ClsId,
 };
 
-use crate::state::{LevelSpawn, LevelSpawnCategory, LevelSpawnObject, LevelSpawnObjectsDescription, LevelSpawnRelease};
-
-fn new_abstract(story_id: u32) -> AlifeObjectAbstract {
-  AlifeObjectAbstract {
-    game_vertex_id: 0,
-    distance: 0.0,
-    direct_control: 1,
-    level_vertex_id: 0,
-    flags: 0,
-    custom_data: String::new(),
-    story_id,
-    spawn_story_id: AlifeObjectAbstract::INVALID_STORY_ID,
-  }
-}
+use crate::parts::LevelSpawn;
+use crate::spawn::{LevelSpawnCategory, LevelSpawnObject, LevelSpawnObjectsDescription, LevelSpawnRelease};
+use crate::tests::fixtures::{new_abstract, new_object};
 
 fn new_visual(visual: &str, story_id: u32) -> AlifeObjectDynamicVisual {
   AlifeObjectDynamicVisual {
@@ -92,31 +80,6 @@ fn new_graph_point() -> AlifeObjectInherited {
     location2: 0,
     location3: 0,
   }))
-}
-
-fn new_object(name: &str, section: &str, clsid: ClsId, inherited: AlifeObjectInherited) -> AlifeObject {
-  AlifeObject {
-    id: 0,
-    net_action: 1,
-    section: String::from(section),
-    clsid,
-    name: String::from(name),
-    script_game_id: 0,
-    script_rp: 0,
-    position: Vector3d::new(1.0, 2.0, 3.0),
-    direction: Vector3d::new(0.0, 0.0, 0.0),
-    respawn_time: 0,
-    parent_id: u16::MAX,
-    phantom_id: u16::MAX,
-    script_flags: 0,
-    version: 128,
-    game_type: 0,
-    script_version: 12,
-    client_data_size: 0,
-    spawn_id: 0,
-    inherited,
-    update_data: Vec::new(),
-  }
 }
 
 fn describe(objects: Vec<AlifeObject>) -> LevelSpawnObjectsDescription {

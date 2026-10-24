@@ -2,8 +2,8 @@ use std::fs;
 use std::path::PathBuf;
 
 use tauri::State;
+use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::types::TauriResult;
 
 use crate::viewer::LevelViewerFolder;
 

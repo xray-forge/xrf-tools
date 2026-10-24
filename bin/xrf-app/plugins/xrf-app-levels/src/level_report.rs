@@ -1,18 +1,23 @@
 use std::fmt::Display;
+use std::path::Path;
 use std::time::{Duration, Instant};
 
 use xrf_app_core::session::SessionSnapshot;
+use xrf_engine_target::XrayEngineResolution;
 use xrf_level::LevelShaderEntry;
 use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
 use xrf_particles::ParticleLibrary;
+use xrf_renderer::{RenderSceneId, RenderViewportId};
 use xrf_spawn::SpawnLevelObjects;
 use xrf_visual::{LightsDescription, SectorDescription, SectorInstanceGroup, SectorOutline, SectorPackage};
+use xrf_world::WorldLevelReload;
 
-use crate::state::{
-  LevelEntry, LevelSource, LevelSpawnObjectsDescription, LevelStart, LevelTextureReference, SelectedLevel,
-};
+use crate::level::{LevelEntry, LevelSource, SelectedLevel};
+use crate::parts::{LevelStart, LevelTextureReference};
+use crate::spawn::LevelSpawnObjectsDescription;
 
-/// What the level plugin says to the log, in one place rather than beside each command that says it.
+/// What the level plugin says to the log, in one place rather than beside each command that says it; the viewer's
+/// lines are `LevelViewerReport`'s.
 pub struct LevelReport;
 
 impl LevelReport {
@@ -37,11 +42,22 @@ impl LevelReport {
     log::info!("Opening level: {}", source.get_label());
   }
 
+  /// That a level's bundle was read, and the engine its configs are read as.
+  pub fn reading(source: &LevelSource, engine: &XrayEngineResolution) {
+    log::info!("Reading level {} as {}", source.get_label(), engine.describe());
+  }
+
+  /// That a level is shown in a viewport.
+  pub fn showing(source: &LevelSource, viewport: RenderViewportId) {
+    log::info!("Showing level {} in native viewport {}", source.get_label(), viewport.0);
+  }
+
   /// What one open came to, its surfaces and their textures as the open resolved them, and what about it is worth a
   /// warning.
   pub fn opened(
     opened: &SessionSnapshot<SelectedLevel>,
-    (surfaces, textures): (&[XraySurfaceDescriptor], &[LevelTextureReference]),
+    surfaces: &[XraySurfaceDescriptor],
+    textures: &[LevelTextureReference],
     started: Instant,
   ) {
     let selected: &SelectedLevel = &opened.value;
@@ -403,5 +419,81 @@ impl LevelReport {
   /// That the collision form could not be read, so no particle effect collides with anything.
   pub fn missing_particle_collision(source: &LevelSource, error: &impl Display) {
     log::warn!("Particles of {} collide with nothing: {error}", source.get_label());
+  }
+
+  /// That a level's surfaces could not be resolved for its drawing, so every surface draws flat.
+  pub fn unresolved_surfaces(source: &LevelSource, error: &impl Display) {
+    log::warn!(
+      "The surfaces of level {} cannot be resolved, so they draw flat: {error}",
+      source.get_label()
+    );
+  }
+
+  /// That a shown level stays as it is drawn while its session reads it again.
+  pub fn follow_deriving(source: &LevelSource) {
+    log::info!(
+      "Level {} stays as drawn while its session reads it again",
+      source.get_label()
+    );
+  }
+
+  /// That a shown level stays as it is drawn, its session having kept the snapshot at `revision`.
+  pub fn follow_kept(source: &LevelSource, revision: impl Display) {
+    log::info!(
+      "Level {} stays as drawn: its session kept revision {revision}",
+      source.get_label()
+    );
+  }
+
+  /// That a shown level's scene followed its session to `revision`, streamed afresh or reloading what `reload` names.
+  pub fn followed(
+    source: &LevelSource,
+    revision: impl Display,
+    scene: Option<RenderSceneId>,
+    reload: Option<&WorldLevelReload>,
+  ) {
+    log::info!(
+      "Level {} follows revision {revision} in scene {scene:?}: {}",
+      source.get_label(),
+      reload.map_or_else(|| String::from("streamed afresh"), |reload| format!("{reload:?}"))
+    );
+  }
+
+  /// That a level's `level.env_mod` could not be read, so its weather plays without its local overrides.
+  pub fn unreadable_modifiers(source: &LevelSource, error: &impl Display) {
+    log::warn!("Level {} weather modifiers were not read: {error}", source.get_label());
+  }
+
+  /// That a level's `level.ltx` could not be read, so it places no map.
+  pub fn unreadable_map(source: &LevelSource, error: &impl Display) {
+    log::warn!("Level {} places no map: {error}", source.get_label());
+  }
+
+  /// That a level's collision form could not be read for its start, so every eye is taken as under the open sky.
+  pub fn unreadable_open_sky(source: &LevelSource, error: &impl Display) {
+    log::warn!(
+      "Level {} takes every start as under the open sky: {error}",
+      source.get_label()
+    );
+  }
+
+  /// That the game's console is read from an installation's own `user.ltx`.
+  pub fn console_read(path: &Path) {
+    log::info!("Reading the game's console from {}", path.display());
+  }
+
+  /// That rain draws no splashes, its model not reading.
+  pub fn undrawn_rain(error: &impl Display) {
+    log::warn!("Rain splashes are not drawn: {error}");
+  }
+
+  /// That thunderbolts are not coloured, the colour animation library not reading.
+  pub fn uncoloured_thunderbolts(file: &str, error: &impl Display) {
+    log::warn!("Thunderbolts are not coloured, '{file}' does not read: {error}");
+  }
+
+  /// That a thunderbolt's model is not drawn.
+  pub fn undrawn_thunderbolt_model(name: &str, error: &impl Display) {
+    log::warn!("Thunderbolt model '{name}' is not drawn: {error}");
   }
 }

@@ -1,47 +1,52 @@
 use std::sync::Arc;
 
 use tauri::State;
+use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
+use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
-use xrf_app_core::types::TauriResult;
-use xrf_app_render::texture_reloads::TextureReloads;
-use xrf_app_render::viewport_shows::ViewportShows;
+use xrf_app_render::{TextureReloads, ViewportShows};
 use xrf_renderer::{RenderLevelSource, RenderViewportId};
 
-use crate::shown_levels::ShownLevels;
-use crate::state::{LevelState, SelectedLevel};
+use crate::level::{SelectedLevel, SelectedLevels};
+use crate::level_report::LevelReport;
+use crate::render::{LevelRenderSource, ShownLevels};
 
 /// Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. Answers
-/// the scene drawn, which the viewport's load reports name, or none.
+/// the scene drawn, which the viewport's load reports name, or none. The source may resolve the level's surfaces, so
+/// it is made on the pool, after the ticket that keeps a level asked for later from being replaced by this one.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "show_level"))]
 #[tauri::command(rename = "show_level")]
-pub fn levels_show_level(
+// Tauri injects each managed state as an argument of its own.
+#[allow(clippy::too_many_arguments)]
+pub async fn levels_show_level(
   shows: State<'_, ViewportShows>,
   shown: State<'_, ShownLevels>,
   reloads: State<'_, TextureReloads>,
-  levels: State<'_, LevelState>,
+  levels: State<'_, SelectedLevels>,
   assets: State<'_, AssetMountState>,
+  execution: State<'_, ExecutionState>,
   viewport: RenderViewportId,
   session_id: Option<SessionId>,
 ) -> TauriResult<Option<u32>> {
+  let ticket: u64 = shows.ask(viewport);
   let source: Option<Arc<dyn RenderLevelSource>> = match session_id {
     Some(session_id) => {
-      let level: Arc<SessionSnapshot<SelectedLevel>> = levels.levels.require(session_id)?;
+      let level: Arc<SessionSnapshot<SelectedLevel>> = levels.require(session_id)?;
 
       reloads.watch(&level.roots);
+      LevelReport::showing(&level.source, viewport);
 
-      log::info!(
-        "Showing level '{}' in native viewport {}",
-        level.source.get_label(),
-        viewport.0
-      );
+      let shown: ShownLevels = ShownLevels::clone(&shown);
+      let assets: AssetMountState = AssetMountState::clone(&assets);
+      let source: Arc<LevelRenderSource> = execution
+        .run_blocking("Showing the level", move || shown.get_source(level, &assets))
+        .await?;
 
-      Some(shown.get_source(level, &assets) as Arc<dyn RenderLevelSource>)
+      Some(source)
     }
     None => None,
   };
-
-  let ticket: u64 = shows.ask(viewport);
 
   Ok(shows.show(viewport, ticket, source).map(|scene| scene.0))
 }
