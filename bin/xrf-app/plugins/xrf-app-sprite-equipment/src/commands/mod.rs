@@ -1,5 +1,5 @@
-pub mod close_sprite;
-pub mod get_sprite;
-pub mod open_sprite;
-pub mod pack_sprite;
-pub mod reopen_sprite;
+pub(crate) mod close_sprite;
+pub(crate) mod open_sprite;
+pub(crate) mod pack_sprite;
+pub(crate) mod reload_sprite;
+pub(crate) mod restore_sprite;

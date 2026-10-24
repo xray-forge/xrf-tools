@@ -1,22 +1,28 @@
 use std::path::PathBuf;
 
 use tauri::State;
+use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::session::SessionId;
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::session::{SessionId, SessionSnapshot};
 
-use crate::SpawnSessionDescriptor;
-use crate::loading::{SpawnInput, open_spawn};
-use crate::state::SpawnFileState;
+use crate::{SpawnFiles, SpawnSession, SpawnSessionDescriptor};
 
-/// Open a packed spawn and return its identity, path, and header together.
+/// Open the packed spawn at `path`, read on the pool, answering what describes it without its large chunks.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_file"))]
 #[tauri::command(rename = "open_file")]
 pub async fn spawn_open_file(
   session_id: SessionId,
   path: PathBuf,
-  state: State<'_, SpawnFileState>,
+  files: State<'_, SpawnFiles>,
   execution: State<'_, ExecutionState>,
-) -> TauriResult<SpawnSessionDescriptor> {
-  open_spawn(session_id, path, SpawnInput::Packed, &state, &execution).await
+) -> TauriResult<SessionSnapshot<SpawnSessionDescriptor>> {
+  log::info!("Opening spawn '{}'", path.display());
+
+  let opened = files
+    .open_on_pool(&execution, session_id, "Opening a spawn", move || {
+      SpawnSession::read(path)
+    })
+    .await?;
+
+  Ok(opened.map(SpawnSession::describe))
 }

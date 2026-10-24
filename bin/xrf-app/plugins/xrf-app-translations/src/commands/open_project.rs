@@ -1,22 +1,24 @@
 use std::sync::Arc;
 
 use tauri::State;
+use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
-use xrf_app_core::session::{SessionDerived, SessionOpening, SessionSnapshot};
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::session::SessionSnapshot;
 use xrf_translation::TranslationProjectDescriptor;
-use xrf_vfs::{XrayRevision, XraySearch};
 
 use crate::request::TranslationsOpenRequest;
-use crate::state::TranslationProjectState;
+use crate::{TranslationProjectRead, TranslationProjects};
 
-/// Open a translations tree.
+/// Open a translations tree through the shared roots, read on the pool, recording what it reads so a commit to any of
+/// those files reads the project again.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_project"))]
 #[tauri::command(rename = "open_project")]
 pub async fn translations_open_project(
   request: TranslationsOpenRequest,
-  state: State<'_, TranslationProjectState>,
+  projects: State<'_, TranslationProjects>,
   assets: State<'_, AssetMountState>,
+  execution: State<'_, ExecutionState>,
 ) -> TauriResult<Arc<SessionSnapshot<TranslationProjectDescriptor>>> {
   let TranslationsOpenRequest {
     session_id,
@@ -24,10 +26,6 @@ pub async fn translations_open_project(
     mode,
     prefix,
   } = request;
-
-  // Given up as the open fails, so a failed open leaves the tool's other openings as they were.
-  let opening: SessionOpening<TranslationProjectDescriptor> = state.projects.begin_open(session_id)?;
-
   let prefix: String = prefix.unwrap_or_else(|| mode.get_prefix().to_owned());
 
   log::info!(
@@ -37,21 +35,25 @@ pub async fn translations_open_project(
     prefix
   );
 
-  // Through the shared roots, recording what it reads, so a commit to any of those files reads the project again.
-  let search: XraySearch = assets.search_fresh(&roots)?;
-  let revision: XrayRevision = search.get_vfs().get_revision();
-  let read: SessionDerived<TranslationProjectDescriptor> =
-    TranslationProjectState::read_project(search, &roots, mode, &prefix)?;
+  let read_roots = roots.clone();
+  let opened: Arc<SessionSnapshot<TranslationProjectDescriptor>> = projects
+    .open_followed(
+      &execution,
+      &assets,
+      session_id,
+      roots,
+      "Opening a translations project",
+      move |search| TranslationProjectRead::read(search, &read_roots, mode, &prefix),
+    )
+    .await?;
 
   log::info!(
     "Opened {} translation files, {} languages, {} findings, editable: {}",
-    read.value.files.len(),
-    read.value.languages.len(),
-    read.value.findings.len(),
-    read.value.is_editable
+    opened.files.len(),
+    opened.languages.len(),
+    opened.findings.len(),
+    opened.is_editable
   );
 
-  let opened: Arc<SessionSnapshot<TranslationProjectDescriptor>> = opening.commit_derived(read, revision)?;
-
-  Ok(state.projects.catch_up(opened, &assets))
+  Ok(opened)
 }

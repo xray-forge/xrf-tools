@@ -1,14 +1,12 @@
-use tauri::http::{Request, StatusCode};
+use bytes::Bytes;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionId, SessionScope, SessionScopes};
 use xrf_vfs::XrayRoots;
 
-use crate::document::EquipmentSpriteDocument;
-use crate::location::EquipmentSheetLocation;
-use crate::metadata::EquipmentSpriteMetadata;
-use crate::source::{EquipmentSheetSource, EquipmentSpriteOpen};
-use crate::state::EquipmentSpriteState;
-use crate::stream::sprite_response;
+use crate::{
+  EquipmentSheetLocation, EquipmentSheetSource, EquipmentSpriteDocument, EquipmentSpriteMetadata, EquipmentSpriteOpen,
+  EquipmentSprites,
+};
 
 /// An open naming one loose sheet and no configuration.
 fn open_of(path: &str) -> EquipmentSpriteOpen {
@@ -20,96 +18,67 @@ fn open_of(path: &str) -> EquipmentSpriteOpen {
   }
 }
 
-fn document(bytes: Vec<u8>) -> EquipmentSpriteDocument {
+fn document(bytes: &'static [u8]) -> EquipmentSpriteDocument {
   EquipmentSpriteDocument {
     metadata: EquipmentSpriteMetadata {
-      name: String::from("equipment.png"),
       open: open_of("equipment.dds"),
-      location: EquipmentSheetLocation {
-        asset: None,
-        path: Some(String::from("equipment.dds")),
-        write_target: Some(String::from("equipment.dds")),
-      },
+      location: EquipmentSheetLocation::of_file("equipment.dds"),
       config_error: None,
       occupants: Vec::new(),
     },
-    preview: bytes,
+    preview: Bytes::from_static(bytes),
   }
 }
 
 #[test]
-fn a_stream_url_cannot_read_a_replacement_with_the_same_name() {
-  let state: EquipmentSpriteState = EquipmentSpriteState::new("sprite test", &SessionScopes::default());
-  let first: SessionId = SessionId::generate();
-  let second: SessionId = SessionId::generate();
+fn a_preview_is_read_from_the_handle_that_holds_it_and_none_closed() {
+  let sprites: EquipmentSprites = EquipmentSprites::new("sprite test", &SessionScopes::default());
+  let (first, second): (SessionId, SessionId) = (SessionId::generate(), SessionId::generate());
 
-  state
+  sprites
     .begin_fixture_open(first)
     .unwrap()
-    .commit(document(vec![1]))
+    .commit(document(&[1]))
     .unwrap();
-
-  let request = Request::builder()
-    .uri(format!("/{first}/equipment.png"))
-    .body(Vec::new())
-    .unwrap();
-
-  assert_eq!(sprite_response(&state, &request).unwrap().body(), &[1]);
-
-  state
+  sprites
     .begin_fixture_open(second)
     .unwrap()
-    .commit(document(vec![2]))
-    .unwrap();
-  state.close(&[first]).unwrap();
-
-  assert_eq!(
-    sprite_response(&state, &request).unwrap().status(),
-    StatusCode::NOT_FOUND
-  );
-
-  let request = Request::builder()
-    .uri(format!("/{second}/equipment.png"))
-    .body(Vec::new())
+    .commit(document(&[2]))
     .unwrap();
 
-  assert_eq!(sprite_response(&state, &request).unwrap().body(), &[2]);
+  assert_eq!(sprites.require(first).unwrap().preview, Bytes::from_static(&[1]));
+  assert_eq!(sprites.require(second).unwrap().preview, Bytes::from_static(&[2]));
 
-  state.close(&[second]).unwrap();
+  sprites.close(&[first]);
 
-  assert_eq!(
-    sprite_response(&state, &request).unwrap().status(),
-    StatusCode::NOT_FOUND
-  );
+  assert!(sprites.require(first).is_err(), "a closed sheet serves no picture");
+  assert_eq!(sprites.require(second).unwrap().preview, Bytes::from_static(&[2]));
 }
 
 #[test]
-fn a_failed_reload_preserves_the_previous_metadata_and_preview() {
+fn a_failed_reload_leaves_the_previous_sheet_and_binds_no_handle() {
   let scopes: SessionScopes = SessionScopes::default();
-  let state: EquipmentSpriteState = EquipmentSpriteState::new("sprite test", &scopes);
+  let sprites: EquipmentSprites = EquipmentSprites::new("sprite test", &scopes);
+  let tool: SessionScope = SessionScope::new("main", "sprite-equipment-editor");
   let (first, reload): (SessionId, SessionId) = (SessionId::generate(), SessionId::generate());
 
-  state
-    .begin_fixture_open(first)
-    .unwrap()
-    .commit(document(vec![1, 2, 3]))
-    .unwrap();
-  scopes.bind(
-    reload,
-    SessionScope {
-      window: String::from("main"),
-      tool: String::from("sprite-equipment-editor"),
-    },
-  );
+  scopes.bind(first, tool.clone());
+  sprites.begin_open(first).unwrap().commit(document(&[1, 2, 3])).unwrap();
+  scopes.bind(reload, tool.clone());
 
-  let _reloading = state.begin_reload(reload, first).unwrap();
+  let (opening, previous) = sprites.begin_reload(reload, first).unwrap();
 
   // A sheet that cannot be decoded is the ordinary way a reload fails, and it must leave the open one alone rather
   // than half-replacing it.
   assert!(EquipmentSpriteDocument::read(&AssetMountState::new(), open_of("nothing-here.dds")).is_err());
+  assert_eq!(previous.metadata.open, open_of("equipment.dds"));
 
-  let opened = state.require(first).unwrap();
+  drop(opening);
 
-  assert_eq!(opened.preview, [1, 2, 3]);
+  let opened = sprites.require(first).unwrap();
+
+  assert_eq!(opened.preview, Bytes::from_static(&[1, 2, 3]));
   assert_eq!(opened.metadata.location.path.as_deref(), Some("equipment.dds"));
+  assert!(sprites.require(reload).is_err());
+  assert_eq!(scopes.list(&tool), vec![first], "the given-up reload is unbound");
 }

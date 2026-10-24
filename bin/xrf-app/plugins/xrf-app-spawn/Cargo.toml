@@ -17,6 +17,8 @@ tauri = { workspace = true }
 tauri-specta = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 xrf-app-core = { workspace = true }
+xrf-chunk = { workspace = true }
+xrf-ipc = { workspace = true, optional = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-spawn = { workspace = true }
 xrf-utils = { workspace = true }
@@ -34,6 +36,7 @@ typescript-bindings = [
   "specta",
   "tauri-specta",
   "xrf-app-core/typescript-bindings",
+  "xrf-ipc",
   "xrf-job/typescript-bindings",
   "xrf-spawn/typescript-bindings",
 ]

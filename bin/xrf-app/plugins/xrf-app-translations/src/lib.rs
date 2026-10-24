@@ -1,9 +1,15 @@
-//! Translation projects opened as sessions, verified, formatted and built, and the edits of one file saved into them.
+#![doc = include_str!("../README.md")]
 
-pub mod commands;
+mod commands;
+mod format;
+pub mod ipc;
 pub mod plugin;
-pub mod registry;
-pub mod request;
-pub mod state;
+mod project;
+mod request;
+mod save;
 #[cfg(test)]
 mod tests;
+
+pub use format::{TranslationFormatGuard, TranslationsFormatRun};
+pub use project::{TranslationProjectRead, TranslationProjects};
+pub use save::{TranslationSaveOutcome, TranslationSavePlan};
