@@ -1,4 +1,4 @@
-import { RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
+import { RenderGraphSettings } from "@xrf/ipc/types/xrf-renderer";
 
 /** Every mechanism of the frame graph on: what frames compile with unless one is turned off to bisect a capture. */
 export const DEFAULT_RENDER_GRAPH_SETTINGS: Readonly<RenderGraphSettings> = {

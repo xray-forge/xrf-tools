@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container, EventBus, WireEvent } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
+import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
+import { InvokeMap, mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { SessionChange, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { ETranslationSaveOutcome } from "@xrf/ipc/types/xrf-app-translations";
+import { TranslationProjectDescriptor } from "@xrf/ipc/types/xrf-translation";
 
 import { createRoots } from "@/core/assets/lib/roots";
-import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
-import { SessionChange, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
-import { ETranslationSaveOutcome } from "@/core/ipc/types/xrf-app-translations";
-import { TranslationProjectDescriptor } from "@/core/ipc/types/xrf-translation";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { InvokeMap, mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { TranslationsService } from "./translations.service";

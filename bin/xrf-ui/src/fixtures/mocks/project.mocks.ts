@@ -1,8 +1,9 @@
+import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject } from "@xrf/ipc/types/xrf-archive";
+import { ExportDescriptor, ExportsProject } from "@xrf/ipc/types/xrf-export";
+import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
+import { TranslationProjectDescriptor, TranslationSource } from "@xrf/ipc/types/xrf-translation";
+
 import { TCallableExportDescriptor } from "@/core/exports";
-import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject } from "@/core/ipc/types/xrf-archive";
-import { ExportDescriptor, ExportsProject } from "@/core/ipc/types/xrf-export";
-import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
-import { TranslationProjectDescriptor, TranslationSource } from "@/core/ipc/types/xrf-translation";
 
 import { mockArchiveFileDescriptor, mockArchiveReadPolicy } from "./archive.mocks";
 import { mockEquipmentOccupant } from "./sprite.mocks";

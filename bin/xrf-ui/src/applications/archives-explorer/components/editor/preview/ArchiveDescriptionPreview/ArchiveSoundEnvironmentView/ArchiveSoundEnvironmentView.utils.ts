@@ -1,6 +1,5 @@
 import { formatNumber, formatSeconds } from "@xrf/format";
-
-import { ArchiveSoundEnvironment } from "@/core/ipc/types/xrf-app-archives";
+import { ArchiveSoundEnvironment } from "@xrf/ipc/types/xrf-app-archives";
 
 /**
  * How a space sounds, taken over the two figures a listener hears first.

@@ -1,9 +1,6 @@
 import { default as HighQualityIcon } from "@mui/icons-material/HighQuality";
 import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { Nullable } from "@xrf/types";
-import { ReactElement } from "react";
-
 import {
   ERenderAntialiasing,
   ERenderLightModel,
@@ -13,7 +10,10 @@ import {
   RenderDlssPreset,
   RenderRayReconstructionPreset,
   RenderScale,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+import { Nullable } from "@xrf/types";
+import { ReactElement } from "react";
+
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";

@@ -2,11 +2,11 @@ import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as ImageIcon } from "@mui/icons-material/Image";
 import { useInjection } from "@wirestate/react";
+import { TextureSource } from "@xrf/ipc/types/xrf-app-textures";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
-import { TextureSource } from "@/core/ipc/types/xrf-app-textures";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";

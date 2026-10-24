@@ -1,10 +1,10 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { translationsCommands } from "@xrf/ipc/commands/translations";
+import { TRANSLATIONS_JOB_PARSE } from "@xrf/ipc/types/xrf-app-translations";
+import { ETranslationLanguage, TranslationParseResult } from "@xrf/ipc/types/xrf-translation";
 import { Logger } from "@xrf/logging";
 
 import { describeTranslationParseOutcome } from "@/applications/translations-parser/lib/describe-parse-outcome";
-import { translationsCommands } from "@/core/ipc/commands/translations";
-import { TRANSLATIONS_JOB_PARSE } from "@/core/ipc/types/xrf-app-translations";
-import { ETranslationLanguage, TranslationParseResult } from "@/core/ipc/types/xrf-translation";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

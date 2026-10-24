@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
+import { ERenderVolumetricMode, RenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { ERenderVolumetricMode, RenderVolumetricMode } from "@/core/ipc/types/xrf-renderer";
 import {
   explainRenderVolumetricMode,
   formatVolumetricDistance,

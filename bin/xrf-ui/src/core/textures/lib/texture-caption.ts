@@ -1,8 +1,7 @@
 import { formatBytes } from "@xrf/format";
+import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
+import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
-
-import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
-import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 
 /**
  * What an open texture is called above the view showing it: where its file is.

@@ -1,9 +1,5 @@
-import {
-  ERenderAntialiasing,
-  ERenderScale,
-  RenderAppliedReport,
-  RenderLoadReport,
-} from "@/core/ipc/types/xrf-renderer";
+import { ERenderAntialiasing, ERenderScale, RenderAppliedReport, RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
+
 import { DEFAULT_RENDER_FEATURE_CHOICE, resolveRenderFeatures } from "@/core/render/lib/settings/render-feature-choice";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 

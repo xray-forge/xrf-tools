@@ -1,6 +1,5 @@
+import { ProgressUnit } from "@xrf/ipc/types/xrf-job";
 import { Nullable } from "@xrf/types";
-
-import { ProgressUnit } from "@/core/ipc/types/xrf-job";
 
 /**
  * One phase of a run, and what it cost.

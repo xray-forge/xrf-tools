@@ -1,11 +1,11 @@
 import { useInjection } from "@wirestate/react";
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
+import { WorldLevelProblems } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { describeLevelDescriptionWait } from "@/applications/level-viewer/lib/load/level-description-wait";
 import { listLevelProblems } from "@/applications/level-viewer/lib/problems/level-problems";
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { WorldLevelProblems } from "@/core/ipc/types/xrf-world";
 import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService } from "@/core/level/services/level-load.service";

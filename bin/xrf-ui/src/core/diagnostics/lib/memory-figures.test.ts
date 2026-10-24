@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { EWebviewProcessKind } from "@xrf/ipc/types/xrf-app-system";
 
 import { sumWebviewMemory, toMemoryFigures } from "@/core/diagnostics/lib/memory-figures";
-import { EWebviewProcessKind } from "@/core/ipc/types/xrf-app-system";
 
 describe("toMemoryFigures", () => {
   it("counts the private working set as in use", () => {

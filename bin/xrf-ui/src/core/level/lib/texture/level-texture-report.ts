@@ -4,7 +4,8 @@ import {
   RenderTextureGroup,
   RenderTextureReport,
   RenderTextureState,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+
 import { ELevelSurfaceDressing, ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 
 /** One reference the textures have something to say about, for a viewer reporting what a level is missing. */

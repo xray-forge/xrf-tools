@@ -1,9 +1,9 @@
 import { formatBytes } from "@xrf/format";
+import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
+import { EXrayBumpOutcome, XrayBumpOutcome, XrayMaterialDescriptor } from "@xrf/ipc/types/xrf-material";
+import { VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
 
 import { listLocatedAssets } from "@/core/assets/lib/resolution";
-import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
-import { EXrayBumpOutcome, XrayBumpOutcome, XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
-import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 
 /** What a model's textures weigh, how much of what it asked for that accounts for, and what the renderer bumps. */
 export interface IVisualTextureSummary {

@@ -3,6 +3,8 @@ import { act, fireEvent, RenderResult, waitFor, within } from "@testing-library/
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
+import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
 import { IPoint3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
@@ -10,7 +12,6 @@ import { LevelViewerLayout } from "@/applications/level-viewer/components/LevelV
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
 import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
-import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
@@ -24,7 +25,6 @@ import { SettingsRendererDisplay } from "@/core/settings/components/SettingsDial
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { clearLocalStorage } from "@/core/storage";
 import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

@@ -1,15 +1,15 @@
 import { describe, expect, it } from "@jest/globals";
 import { flowResult, isComputedProp } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { SessionScopeService } from "@xrf/ipc/session";
+import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ArchiveFileDescription } from "@xrf/ipc/types/xrf-app-archives";
+import { ArchiveFileDescriptor, ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
+import { XrayPathCollision } from "@xrf/ipc/types/xrf-vfs";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
-import { SessionScopeService } from "@/core/ipc/session";
-import { ArchiveFileDescription } from "@/core/ipc/types/xrf-app-archives";
-import { ArchiveFileDescriptor, ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
-import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 import { mockArchiveFileDescriptor, mockArchivesVolumes, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
 import { mockRestoredSession, mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 function ignoreReadResult(): void {}

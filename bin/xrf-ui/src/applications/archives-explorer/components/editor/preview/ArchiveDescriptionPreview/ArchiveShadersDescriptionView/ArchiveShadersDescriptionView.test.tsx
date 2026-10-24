@@ -1,13 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
-
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import {
   ArchiveDescribeScope,
   ArchiveShadersDescription,
   EArchiveDescribeScope,
   EArchiveReferenceStatus,
-} from "@/core/ipc/types/xrf-app-archives";
+} from "@xrf/ipc/types/xrf-app-archives";
+
+import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import {
   mockArchiveReference,
   mockArchiveShadersBlender,

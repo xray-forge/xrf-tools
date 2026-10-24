@@ -1,4 +1,4 @@
-import { mockFetch } from "@/fixtures/mocks/bulk.mocks";
+import { mockFetch } from "@xrf/ipc/testing";
 
 /**
  * Stands the mocked loopback transport in for the page's `fetch`, which is the only thing that reaches it.

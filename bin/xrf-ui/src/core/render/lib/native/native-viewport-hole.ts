@@ -1,4 +1,5 @@
-import { RenderPageBackdrop } from "@/core/ipc/types/xrf-renderer";
+import { RenderPageBackdrop } from "@xrf/ipc/types/xrf-renderer";
+
 import { readNativePageBackdrop } from "@/core/render/lib/native/native-page-backdrop";
 import { INativePagePlanes, readNativePagePlanes } from "@/core/render/lib/native/native-page-planes";
 import { readColorScheme, watchColorScheme } from "@/core/theme/color-scheme";

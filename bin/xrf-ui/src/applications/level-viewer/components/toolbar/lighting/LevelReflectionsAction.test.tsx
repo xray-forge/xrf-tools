@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { ERenderReflectionMode, ERenderTraceSize, ERenderWaterMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelReflectionsAction } from "@/applications/level-viewer/components/toolbar/lighting/LevelReflectionsAction";
-import { ERenderReflectionMode, ERenderTraceSize, ERenderWaterMode } from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_RENDER_REFLECTION_SETTINGS,
   DEFAULT_RENDER_WATER_SETTINGS,

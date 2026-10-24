@@ -1,9 +1,10 @@
-import { LEVEL_CAPTURE_DRAWN_MOST } from "@/applications/level-viewer/lib/capture/level-capture";
 import {
   RENDER_CUBE_MOST_PIXELS,
   RENDER_CUBE_MOST_SUPERSAMPLING,
   RenderCubeCapture,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+
+import { LEVEL_CAPTURE_DRAWN_MOST } from "@/applications/level-viewer/lib/capture/level-capture";
 
 /** Everything a cubemap is captured with, as its dialog holds it. */
 export interface ILevelCubeParameters {

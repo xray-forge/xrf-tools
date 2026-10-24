@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 
 import { describeResolution, getLocatedAsset, listLocatedAssets } from "./resolution";
 

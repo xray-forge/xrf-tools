@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 
 import { ESequenceMotionState } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
-import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { InvokeHandler, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

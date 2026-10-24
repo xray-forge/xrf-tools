@@ -5,7 +5,7 @@ import {
   RenderAntialiasing,
   RenderDebugView,
   RenderSurfaceColor,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
 
 /**
  * What the level viewport shows of its surfaces: the finished frame, the frame with every surface clay or tinted by

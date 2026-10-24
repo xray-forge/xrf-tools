@@ -1,4 +1,4 @@
-import { EnvFlagReading } from "@/core/ipc/types/xrf-env-flags";
+import { EnvFlagReading } from "@xrf/ipc/types/xrf-env-flags";
 
 import { IAboutRow } from "./about-row";
 

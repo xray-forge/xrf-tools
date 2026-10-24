@@ -3,12 +3,12 @@ import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { levelsCommands } from "@xrf/ipc/commands/levels";
+import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger, Timer } from "@xrf/logging";
 
 import { describeRoots } from "@/core/assets/lib";
-import { levelsCommands } from "@/core/ipc/commands/levels";
-import { LevelEntry } from "@/core/ipc/types/xrf-app-levels";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { call, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**

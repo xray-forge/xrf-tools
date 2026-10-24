@@ -1,10 +1,10 @@
 import { formatBytes } from "@xrf/format";
+import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { formatMipmapLevels } from "@/core/assets/lib/texture-shape";
-import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

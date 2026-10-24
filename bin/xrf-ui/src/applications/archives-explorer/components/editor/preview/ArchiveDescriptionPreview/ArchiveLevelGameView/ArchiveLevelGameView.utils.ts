@@ -1,7 +1,6 @@
 import { formatCount } from "@xrf/format";
+import { ArchiveLevelGameSpawn } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
-
-import { ArchiveLevelGameSpawn } from "@/core/ipc/types/xrf-app-archives";
 
 /**
  * What one group of respawn points spawns.

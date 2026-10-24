@@ -1,8 +1,8 @@
 import { Chip } from "@mui/material";
+import { XrayMaterialDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
 import {
   describeBumpDeclaration,
   describeBumpInput,

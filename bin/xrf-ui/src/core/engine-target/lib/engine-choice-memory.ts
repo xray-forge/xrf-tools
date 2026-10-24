@@ -1,6 +1,6 @@
+import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 import { Nullable } from "@xrf/types";
 
-import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { ENGINE_CHOICES_STORAGE_KEY, parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
 
 /** Roots remembered at most, the least recently told let go first. */

@@ -2,12 +2,12 @@ import { default as PhotoCameraIcon } from "@mui/icons-material/PhotoCameraOutli
 import { Button, Dialog, DialogActions, DialogContent, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatMilliseconds, formatNumber } from "@xrf/format";
+import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useId, useState } from "react";
 
 import { ILevelViewerScreenshot } from "@/applications/level-viewer/lib/screenshot/level-viewer-screenshot";
 import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
-import { RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

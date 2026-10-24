@@ -1,11 +1,5 @@
+import { ETranslationEdit, TranslationEdit, TranslationFile, TranslationVariant } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
-
-import {
-  ETranslationEdit,
-  TranslationEdit,
-  TranslationFile,
-  TranslationVariant,
-} from "@/core/ipc/types/xrf-translation";
 
 /** The engine's literal line separator, used to display array variants as one editable line. */
 const LINE_BREAK: string = "\\n";

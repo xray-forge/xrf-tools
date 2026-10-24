@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
+import { setMockInvokeResponses } from "@xrf/ipc/testing";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { SpawnFileService } from "@/core/spawn/services/spawn-file.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockSpawnSession } from "@/fixtures/mocks/spawn.mocks";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
 
 interface IWatchedService {

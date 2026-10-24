@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
+import { ERenderGlassMode, RenderGlassMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { ERenderGlassMode, RenderGlassMode } from "@/core/ipc/types/xrf-renderer";
 import {
   explainRenderGlassMode,
   formatGlassStrength,

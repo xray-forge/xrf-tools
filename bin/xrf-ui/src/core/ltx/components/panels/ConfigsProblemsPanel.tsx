@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
+import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { LtxAnchoredFinding } from "@/core/ipc/types/xrf-ltx-inspect";
 import { toOrderedFindings } from "@/core/ltx/lib/findings";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";

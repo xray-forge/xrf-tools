@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { ETextureEncodingFormat, ETextureEncodingQuality } from "@xrf/ipc/types/xrf-texture";
 
 import {
   isLevelCubeSupersamplingDrawn,
@@ -7,7 +8,6 @@ import {
   toRenderCubeCapture,
 } from "@/applications/level-viewer/lib/cube/level-cube-capture";
 import { DEFAULT_LEVEL_CUBE_EXPORT, toCubeExportRequest } from "@/applications/level-viewer/lib/cube/level-cube-export";
-import { ETextureEncodingFormat, ETextureEncodingQuality } from "@/core/ipc/types/xrf-texture";
 
 describe("level cubemap capture", () => {
   it("draws faces twice over but the largest once", () => {

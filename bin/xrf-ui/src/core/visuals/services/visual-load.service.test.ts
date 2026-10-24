@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
+import { ERenderTextureGroup, ERenderTextureState } from "@xrf/ipc/types/xrf-renderer";
+import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
-import { ERenderTextureGroup, ERenderTextureState } from "@/core/ipc/types/xrf-renderer";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockMaterialDescriptor,
   mockPackedSubmesh,

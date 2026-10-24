@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
@@ -6,7 +7,6 @@ import { TEXTURES_EDITOR_PANELS } from "@/applications/textures-editor/component
 import { TextureBumpService } from "@/applications/textures-editor/services/bump";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
-import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";

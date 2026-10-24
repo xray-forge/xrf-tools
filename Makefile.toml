@@ -213,7 +213,7 @@ args = [
 [tasks.format-typescript-bindings]
 description = "Apply the frontend formatting and lint rules to the generated mirrors."
 category = "Code generation"
-cwd = "bin/xrf-ui"
+cwd = "packages/xrf-ipc"
 script_runner = "@shell"
 script = "pnpm run format:bindings"
 

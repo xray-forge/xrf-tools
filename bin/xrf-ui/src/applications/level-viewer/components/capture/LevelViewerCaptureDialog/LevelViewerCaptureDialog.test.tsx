@@ -1,14 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
 
 import { LevelViewerCaptureActions } from "@/applications/level-viewer/components/capture/LevelViewerCaptureActions";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { clearLocalStorage } from "@/core/storage";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockLevelViewContainer, renderLevelView, TLevelViewRenderResult } from "@/fixtures/utils/level-container";
 
 /**

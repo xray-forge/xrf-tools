@@ -1,9 +1,9 @@
 import { Stack } from "@mui/material";
+import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ArchiveVolumeOptionsFields } from "@/core/archive/components/ArchiveVolumeOptionsFields";
-import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
 import { SwitchFormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

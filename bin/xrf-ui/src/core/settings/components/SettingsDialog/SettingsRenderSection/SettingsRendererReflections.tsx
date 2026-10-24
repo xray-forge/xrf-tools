@@ -1,13 +1,13 @@
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
-import { ReactElement } from "react";
-
 import {
   ERenderAntialiasing,
   ERenderReflectionMode,
   RenderReflectionProbe,
   RenderTraceSize,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+import { ReactElement } from "react";
+
 import {
   explainRenderReflectionMode,
   formatReflectionDistance,

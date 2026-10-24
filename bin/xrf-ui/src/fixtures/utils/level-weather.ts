@@ -1,9 +1,9 @@
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { WeatherDescriptor } from "@xrf/ipc/types/xrf-environment";
+import { EWorldWeatherPlay, WorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 
-import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
-import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app-levels";
-import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
-import { EWorldWeatherPlay, WorldWeatherPlay } from "@/core/ipc/types/xrf-world";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";

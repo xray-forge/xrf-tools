@@ -1,4 +1,4 @@
-import { EEquipmentSheetSource, EquipmentSheetSource } from "@/core/ipc/types/xrf-app-sprite-equipment";
+import { EEquipmentSheetSource, EquipmentSheetSource } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 
 /**
  * What to call a sheet in a message about it.

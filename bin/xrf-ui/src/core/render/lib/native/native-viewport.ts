@@ -1,8 +1,6 @@
 import { Channel } from "@tauri-apps/api/core";
-import { assertExhaustive, Nullable } from "@xrf/types";
-
-import { renderCommands } from "@/core/ipc/commands/render";
-import { RenderPickRequest, ViewportEvent } from "@/core/ipc/types/xrf-app-render";
+import { renderCommands } from "@xrf/ipc/commands/render";
+import { RenderPickRequest, ViewportEvent } from "@xrf/ipc/types/xrf-app-render";
 import {
   ERenderViewportEvent,
   RenderAppliedReport,
@@ -15,7 +13,7 @@ import {
   RenderViewOptions,
   RenderViewportId,
   RenderViewportLayout,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
 import {
   EWorldCamera,
   EWorldViewportEvent,
@@ -31,7 +29,9 @@ import {
   WorldWeatherControl,
   WorldWeatherPlay,
   WorldWeatherReport,
-} from "@/core/ipc/types/xrf-world";
+} from "@xrf/ipc/types/xrf-world";
+import { assertExhaustive, Nullable } from "@xrf/types";
+
 import { noop } from "@/lib/callbacks/noop";
 
 /**

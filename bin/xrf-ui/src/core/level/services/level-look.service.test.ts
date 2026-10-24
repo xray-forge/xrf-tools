@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { LevelConsoleDefaults } from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngine, EXrayEngineEvidence } from "@xrf/ipc/types/xrf-engine-target";
 
-import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app-levels";
-import { EXrayEngine, EXrayEngineEvidence } from "@/core/ipc/types/xrf-engine-target";
 import { MONOLITH_LEVEL_BLOOM, OPENXRAY_LEVEL_BLOOM } from "@/core/level/lib/look/level-look";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
@@ -12,7 +13,6 @@ import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/ren
 import { clearLocalStorage, getLocalStorageValue, LEVEL_LOOK_STORAGE_KEY } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 
 /** A game that leaves its bloom to the engine, as Call of Pripyat ships no console defaults at all. */

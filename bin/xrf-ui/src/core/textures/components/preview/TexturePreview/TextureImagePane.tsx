@@ -1,9 +1,9 @@
 import { AsyncState } from "@xrf/async";
+import { AssetTextureShape } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-import { AssetTextureShape } from "@/core/ipc/types/xrf-app-core";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";

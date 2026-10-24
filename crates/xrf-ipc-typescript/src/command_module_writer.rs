@@ -567,7 +567,7 @@ mod tests {
     assert_eq!(
       fs::read_to_string(&path).expect("module to be written"),
       "// Auto-generated rust bindings. Do not edit it manually.\n\n\
-       import { IBulkCall } from \"#/bulk\";\n\
+       import { IBulkCall } from \"#/bulk/bulk-call\";\n\
        import { IIpcBulkRouteSignature } from \"#/signature\";\n\n\
        /** Every bulk route of the `fixture` plugin, as the transport serves it. */\n\
        export enum EFixtureBulkRoute {\n  \

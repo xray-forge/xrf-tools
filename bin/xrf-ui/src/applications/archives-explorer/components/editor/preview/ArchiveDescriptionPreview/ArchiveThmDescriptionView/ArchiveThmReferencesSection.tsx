@@ -1,13 +1,13 @@
 import { formatNumber } from "@xrf/format";
-import { Nullable } from "@xrf/types";
-import { ReactElement } from "react";
-
 import {
   ArchiveDescribeScope,
   ArchiveReference,
   ArchiveThmBump,
   ArchiveThmDetail,
-} from "@/core/ipc/types/xrf-app-archives";
+} from "@xrf/ipc/types/xrf-app-archives";
+import { Nullable } from "@xrf/types";
+import { ReactElement } from "react";
+
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

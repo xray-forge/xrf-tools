@@ -1,8 +1,8 @@
 import { AsyncState } from "@xrf/async";
+import { ArchiveFileDescriptor, ArchiveSharedPayload } from "@xrf/ipc/types/xrf-archive";
 import { ReactElement, useMemo } from "react";
 
 import { listPayloadSharersOf } from "@/core/archive/lib";
-import { ArchiveFileDescriptor, ArchiveSharedPayload } from "@/core/ipc/types/xrf-archive";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

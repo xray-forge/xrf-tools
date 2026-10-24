@@ -3,14 +3,14 @@ import { Observable, RefObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { fetchBulk } from "@xrf/ipc";
+import { texturesBulkRoutes } from "@xrf/ipc/commands/textures-bulk";
+import { EAssetSource } from "@xrf/ipc/types/xrf-app-core";
+import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
+import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { fetchBulk } from "@/core/ipc/bulk";
-import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
-import { EAssetSource } from "@/core/ipc/types/xrf-app-core";
-import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import {
   EMPTY_TEXTURE_SURFACE,
   ITextureBumpAssets,

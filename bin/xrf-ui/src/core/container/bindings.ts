@@ -1,10 +1,14 @@
 import { Binding } from "@wirestate/core";
+import {
+  IpcMetricsService,
+  SESSION_TOOL,
+  SessionChangesService,
+  SessionScopeService,
+  SHELL_SESSION_TOOL,
+} from "@xrf/ipc/session";
 
 import { KeybindCommandsService } from "@/core/commands";
 import { HelpService } from "@/core/help/services/help";
-import { SessionChangesService } from "@/core/ipc/services/changes";
-import { IpcMetricsService } from "@/core/ipc/services/metrics";
-import { SESSION_TOOL, SessionScopeService, SHELL_SESSION_TOOL } from "@/core/ipc/session";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { KeymapService } from "@/core/keybinds/services/keymap";
 import { ErrorCaptureService } from "@/core/notifications/services/error-capture.service";

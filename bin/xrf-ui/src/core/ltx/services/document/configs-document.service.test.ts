@@ -1,19 +1,19 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { ConfigsDocument } from "@/core/ipc/types/xrf-app-configs";
+import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
 import {
   ELtxFindingKind,
   LtxAnchoredFinding,
   LtxResolvedIndex,
   LtxResolvedSection,
   LtxSectionSchemeReport,
-} from "@/core/ipc/types/xrf-ltx-inspect";
+} from "@xrf/ipc/types/xrf-ltx-inspect";
+
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
-import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";

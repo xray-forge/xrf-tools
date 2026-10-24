@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { RenderOverlaySegment } from "@xrf/ipc/types/xrf-renderer";
 import { toRawColor } from "@xrf/math";
 
-import { RenderOverlaySegment } from "@/core/ipc/types/xrf-renderer";
 import { toRenderAxesLines, toRenderBoxLines, toRenderGridLines } from "@/core/render/lib/scene/render-grid-lines";
 
 /** Segments one grid line takes: one along each axis. */

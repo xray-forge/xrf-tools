@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
 import { isTemporalAntialiasing } from "@/core/render/lib/features/render-antialiasing-choices";
 
 describe("temporal antialiasing", () => {

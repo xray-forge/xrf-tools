@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
+import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ETranslationSaveOutcome, TranslationSaveOutcome } from "@xrf/ipc/types/xrf-app-translations";
+import { TranslationProjectDescriptor } from "@xrf/ipc/types/xrf-translation";
 
 import { createRoots } from "@/core/assets/lib/roots";
-import { ETranslationSaveOutcome, TranslationSaveOutcome } from "@/core/ipc/types/xrf-app-translations";
-import { TranslationProjectDescriptor } from "@/core/ipc/types/xrf-translation";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 

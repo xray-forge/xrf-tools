@@ -1,6 +1,6 @@
 import { formatNumber } from "@xrf/format";
+import { ERenderFoliageMode, RenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderFoliageMode, RenderFoliageMode } from "@/core/ipc/types/xrf-renderer";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { DEFAULT_RENDER_GRASS_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";

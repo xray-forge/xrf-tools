@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { TranslationFile } from "@/core/ipc/types/xrf-translation";
+import { TranslationFile } from "@xrf/ipc/types/xrf-translation";
 
 import { TranslationDraft } from "./translation-draft";
 

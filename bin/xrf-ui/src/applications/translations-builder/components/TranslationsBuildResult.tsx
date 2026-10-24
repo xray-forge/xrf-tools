@@ -1,8 +1,8 @@
 import { GridColDef } from "@mui/x-data-grid";
+import { TranslationBuildLanguageSummary, TranslationBuildResult } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
-import { TranslationBuildLanguageSummary, TranslationBuildResult } from "@/core/ipc/types/xrf-translation";
 import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";

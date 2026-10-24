@@ -1,4 +1,5 @@
-import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
+import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
+
 import { TEquipmentCell } from "@/core/sprite-equipment/lib/equipment";
 import { IEquipmentGrid, isOccupantOutsideSheet, toEquipmentGrid } from "@/core/sprite-equipment/lib/grid";
 import { EMPTY_ARRAY } from "@/lib/types/array";

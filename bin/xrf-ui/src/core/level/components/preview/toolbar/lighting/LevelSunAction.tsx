@@ -2,11 +2,11 @@ import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
 import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatCount, formatDegrees } from "@xrf/format";
+import { LevelSunDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { LevelSunDescription } from "@/core/ipc/types/xrf-app-levels";
-import { ERenderVolumetricMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";

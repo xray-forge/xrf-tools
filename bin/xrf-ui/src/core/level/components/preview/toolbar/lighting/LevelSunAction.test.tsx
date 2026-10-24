@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { resetMockInvoke } from "@xrf/ipc/testing";
+import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderVolumetricMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting/LevelSunAction";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
 import { clearLocalStorage } from "@/core/storage";
-import { resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import {
   ILevelViewContainerDescriptor,
   ILevelViewOpening,

@@ -1,6 +1,6 @@
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Nullable } from "@xrf/types";
 
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ERenderPass, toRenderPass } from "@/core/render/lib/surface/render-pass";
 import {
   IRenderSurfaceDraw,

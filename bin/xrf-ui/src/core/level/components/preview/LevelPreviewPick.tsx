@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Maybe, Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { UNNAMED_LEVEL_SURFACE } from "@/core/level/lib/surface/level-surface-summary";

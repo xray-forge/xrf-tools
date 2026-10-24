@@ -1,6 +1,6 @@
+import { WorldCameraPose } from "@xrf/ipc/types/xrf-world";
 import { toXrayHeading, toXraySpace } from "@xrf/math";
 
-import { WorldCameraPose } from "@/core/ipc/types/xrf-world";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 
 /**

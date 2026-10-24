@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERenderAntialiasing, ERenderDebugView } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderAntialiasing, ERenderDebugView } from "@/core/ipc/types/xrf-renderer";
 import {
   ELevelShading,
   getLevelShadings,

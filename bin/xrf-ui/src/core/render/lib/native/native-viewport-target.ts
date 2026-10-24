@@ -1,6 +1,4 @@
-import { assertExhaustive, Nullable } from "@xrf/types";
-
-import { RenderViewportLayout } from "@/core/ipc/types/xrf-renderer";
+import { RenderViewportLayout } from "@xrf/ipc/types/xrf-renderer";
 import {
   EWorldCamera,
   EWorldDragEndReason,
@@ -8,7 +6,9 @@ import {
   WorldCamera,
   WorldInputEvent,
   WorldInputModifiers,
-} from "@/core/ipc/types/xrf-world";
+} from "@xrf/ipc/types/xrf-world";
+import { assertExhaustive, Nullable } from "@xrf/types";
+
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { requestNativePointerLock } from "@/core/render/lib/native/native-pointer-lock";
 import { toNativeRect } from "@/core/render/lib/native/native-rect";

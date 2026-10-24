@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
+import { ERenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
 import {
   formatReflectionTraceInterval,
   RENDER_REFLECTION_LIMITS,

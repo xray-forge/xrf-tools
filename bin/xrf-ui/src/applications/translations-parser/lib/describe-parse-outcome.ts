@@ -1,6 +1,6 @@
 import { formatCount } from "@xrf/format";
+import { TranslationParseResult } from "@xrf/ipc/types/xrf-translation";
 
-import { TranslationParseResult } from "@/core/ipc/types/xrf-translation";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

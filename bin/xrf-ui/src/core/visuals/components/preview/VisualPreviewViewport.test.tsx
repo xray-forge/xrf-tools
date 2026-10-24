@@ -2,13 +2,6 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult } from "@testing-library/react";
 import { Binding } from "@wirestate/core";
 import { makeAutoObservable } from "@wirestate/mobx";
-
-import { ViewportEvent } from "@/core/ipc/types/xrf-app-render";
-import { ERenderViewportEvent } from "@/core/ipc/types/xrf-renderer";
-import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
-import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
-import { VisualViewService } from "@/core/visuals/services/visual-view.service";
 import {
   getMockChannels,
   MockChannel,
@@ -16,7 +9,14 @@ import {
   resetMockChannels,
   resetMockInvoke,
   setMockInvokeResponses,
-} from "@/fixtures/mocks/tauri.mocks";
+} from "@xrf/ipc/testing";
+import { ViewportEvent } from "@xrf/ipc/types/xrf-app-render";
+import { ERenderViewportEvent } from "@xrf/ipc/types/xrf-renderer";
+
+import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
+import { VisualViewService } from "@/core/visuals/services/visual-view.service";
 import { mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

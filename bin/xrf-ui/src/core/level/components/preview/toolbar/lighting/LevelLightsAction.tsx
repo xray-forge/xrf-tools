@@ -1,8 +1,8 @@
 import { default as LightIcon } from "@mui/icons-material/Light";
 import { Button } from "@mui/material";
+import { RenderLightShadowFilter } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { RenderLightShadowFilter } from "@/core/ipc/types/xrf-renderer";
 import { LevelVolumetricSettings } from "@/core/level/components/preview/toolbar/lighting/LevelVolumetricSettings";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";

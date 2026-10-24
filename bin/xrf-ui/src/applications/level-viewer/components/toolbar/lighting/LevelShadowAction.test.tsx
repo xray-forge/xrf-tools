@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { ERenderContactShadowMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelShadowAction } from "@/applications/level-viewer/components/toolbar/lighting/LevelShadowAction";
-import { ERenderContactShadowMode } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_RENDER_SHADOW_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { clearLocalStorage } from "@/core/storage";

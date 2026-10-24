@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { AsyncState } from "@xrf/async";
+import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { DialogDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Nullable } from "@xrf/types";
 
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
-import { DialogDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

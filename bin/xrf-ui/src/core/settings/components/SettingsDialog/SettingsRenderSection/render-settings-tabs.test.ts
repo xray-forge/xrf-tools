@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
 import { resolveRenderFeatures } from "@/core/render/lib/settings/render-feature-choice";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";

@@ -1,15 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
 import { ReactElement } from "react";
 
 import { useEditorBusy, useEditorDirty, useWindowCloseGuard } from "@/core/shell/editor-lifecycle";
-import {
-  mockAppWindow,
-  mockInvoke,
-  requestMockWindowClose,
-  setMockInvokeResponses,
-} from "@/fixtures/mocks/tauri.mocks";
+import { mockAppWindow, requestMockWindowClose } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 const APPROVE: string = "plugin:system|approve_window_close";

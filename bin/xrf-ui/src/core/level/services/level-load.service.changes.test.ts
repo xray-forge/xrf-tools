@@ -2,25 +2,25 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container, EventBus } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
-
-import { createRoots } from "@/core/assets/lib";
-import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
-import { SessionChange, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
+import { InvokeHandler, mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { SessionChange, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
   LEVEL_ENVIRONMENT_PART,
   LEVEL_GEOMETRY_PART,
   LEVEL_MAP_PART,
   LEVEL_SPAWN_PART,
   LevelSpawnObjectsDescription,
-} from "@/core/ipc/types/xrf-app-levels";
-import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
+} from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
+
+import { createRoots } from "@/core/assets/lib";
 import {
   mockLevelPartResponses,
   mockLevelSpawnObject,
   mockSelectedLevelDescription,
 } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { InvokeHandler, mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 import { LevelLoadService } from "./level-load.service";

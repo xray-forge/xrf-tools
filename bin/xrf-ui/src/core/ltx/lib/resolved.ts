@@ -1,13 +1,13 @@
-import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
-import { Nullable } from "@xrf/types";
-
 import {
   ELtxResolvedFieldOrigin,
   LtxResolvedField,
   LtxResolvedFieldOrigin,
   LtxResolvedIndexEntry,
   LtxResolvedSection,
-} from "@/core/ipc/types/xrf-ltx-inspect";
+} from "@xrf/ipc/types/xrf-ltx-inspect";
+import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
+import { Nullable } from "@xrf/types";
+
 import { ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
 
 /** The unnamed section a resolution carries whatever was written before the first header in. */

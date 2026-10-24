@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
+import { XrayMaterialDescriptor } from "@xrf/ipc/types/xrf-material";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 
-import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

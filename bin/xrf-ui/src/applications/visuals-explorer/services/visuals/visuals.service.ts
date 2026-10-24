@@ -1,15 +1,15 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { transformError } from "@xrf/errors";
+import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
+import { Vector3d } from "@xrf/ipc/types/xrf-math";
+import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
+import { VisualBone } from "@xrf/ipc/types/xrf-visual";
 import { Logger } from "@xrf/logging";
 import { findLastSeparator } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app-core";
-import { Vector3d } from "@/core/ipc/types/xrf-math";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { IVisualBoneControls } from "@/core/visuals/components/panels/visual-inspection";

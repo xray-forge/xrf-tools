@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
+import { ArchiveLevelEnvModDescription } from "@xrf/ipc/types/xrf-app-archives";
 
-import { ArchiveLevelEnvModDescription } from "@/core/ipc/types/xrf-app-archives";
 import { mockArchiveLevelEnvModDescription, mockArchiveLevelEnvModifier } from "@/fixtures/mocks/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

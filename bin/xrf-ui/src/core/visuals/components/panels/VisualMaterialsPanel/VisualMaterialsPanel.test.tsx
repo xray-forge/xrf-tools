@@ -1,12 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
 import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { MockVisualInspectionService } from "@/fixtures/mocks/visual-inspection.mocks";
 import {
   mockMaterialDescriptor,

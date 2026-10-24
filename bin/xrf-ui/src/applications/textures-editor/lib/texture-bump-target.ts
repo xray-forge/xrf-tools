@@ -1,7 +1,6 @@
+import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { findLastSeparator } from "@xrf/path";
 import { Nullable } from "@xrf/types";
-
-import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 
 /**
  * Where a generated pair is written: the texture's own path, without its extension.

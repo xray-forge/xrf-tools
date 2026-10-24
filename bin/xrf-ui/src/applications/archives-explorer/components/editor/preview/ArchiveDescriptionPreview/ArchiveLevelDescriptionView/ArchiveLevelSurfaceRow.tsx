@@ -1,14 +1,14 @@
 import { Typography } from "@mui/material";
-import { assertExhaustive } from "@xrf/types";
-import { Fragment, ReactElement } from "react";
-
 import {
   ArchiveDescribeScope,
   ArchiveLevelSurface,
   ArchiveReference,
   EArchiveLevelEntry,
   EArchiveReferenceStatus,
-} from "@/core/ipc/types/xrf-app-archives";
+} from "@xrf/ipc/types/xrf-app-archives";
+import { assertExhaustive } from "@xrf/types";
+import { Fragment, ReactElement } from "react";
+
 import { cn } from "@/core/theme/class-name";
 import { inline } from "@/lib/callbacks/inline";
 import { BaseComponentProps } from "@/lib/dom/element-types";

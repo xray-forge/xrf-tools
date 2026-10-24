@@ -1,8 +1,8 @@
+import { LtxInventoryFile } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";

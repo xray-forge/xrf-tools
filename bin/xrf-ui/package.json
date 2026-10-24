@@ -19,9 +19,7 @@
     "preview": "vite preview",
     "preview:prod": "pnpm run build && vite preview",
     "lint": "eslint . --config cli/lint/eslint.config.mjs --max-warnings 0 --cache --cache-location target/eslint/cache.json --cache-strategy content",
-    "format": "prettier --write \"**/*.(js|ts|tsx|md)\" && pnpm run lint --fix",
-    "generate:bindings": "cargo make --cwd ../.. generate-typescript",
-    "format:bindings": "eslint --config cli/lint/eslint.generated.config.mjs --no-cache --fix src/core/ipc/commands src/core/ipc/types && prettier --write --log-level warn \"src/core/ipc/commands/**/*.ts\" \"src/core/ipc/types/**/*.ts\""
+    "format": "prettier --write \"**/*.(js|ts|tsx|md)\" && pnpm run lint --fix"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",
@@ -45,6 +43,7 @@
     "@xrf/async": "workspace:*",
     "@xrf/errors": "workspace:*",
     "@xrf/format": "workspace:*",
+    "@xrf/ipc": "workspace:*",
     "@xrf/logging": "workspace:*",
     "@xrf/math": "workspace:*",
     "@xrf/path": "workspace:*",

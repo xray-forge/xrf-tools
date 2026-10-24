@@ -1,7 +1,4 @@
 import { formatNumber } from "@xrf/format";
-import { assertExhaustive, Nullable } from "@xrf/types";
-
-import { describeResolution, getLocatedAsset } from "@/core/assets/lib/resolution";
 import {
   EXrayBumpMode,
   EXrayBumpOutcome,
@@ -14,8 +11,11 @@ import {
   XrayMaterialDeclaration,
   XrayMaterialDescriptor,
   XrayMaterialDetail,
-} from "@/core/ipc/types/xrf-material";
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
+} from "@xrf/ipc/types/xrf-material";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
+import { assertExhaustive, Nullable } from "@xrf/types";
+
+import { describeResolution, getLocatedAsset } from "@/core/assets/lib/resolution";
 
 /** How a material state reads, and how loudly. */
 export interface IMaterialStateDescriptor {

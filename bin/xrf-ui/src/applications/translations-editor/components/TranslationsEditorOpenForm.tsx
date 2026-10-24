@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { TranslationProjectMode } from "@xrf/ipc/types/xrf-translation";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
@@ -6,7 +7,6 @@ import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import { createRoots } from "@/core/assets/lib/roots";
-import { TranslationProjectMode } from "@/core/ipc/types/xrf-translation";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceFormRow, IChoiceFormRowOption, IPathField, PathFormRow, usePathField } from "@/core/ui/form";

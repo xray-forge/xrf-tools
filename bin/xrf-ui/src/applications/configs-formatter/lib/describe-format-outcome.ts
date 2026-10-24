@@ -1,6 +1,6 @@
 import { formatCount } from "@xrf/format";
+import { LtxProjectFormatResult } from "@xrf/ipc/types/xrf-ltx";
 
-import { LtxProjectFormatResult } from "@/core/ipc/types/xrf-ltx";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

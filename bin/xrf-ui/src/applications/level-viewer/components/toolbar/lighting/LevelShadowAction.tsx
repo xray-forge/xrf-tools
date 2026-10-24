@@ -1,8 +1,8 @@
 import { default as TonalityIcon } from "@mui/icons-material/Tonality";
 import { Button } from "@mui/material";
+import { ERenderContactShadowMode, RenderContactShadowMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement, useCallback } from "react";
 
-import { ERenderContactShadowMode, RenderContactShadowMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";

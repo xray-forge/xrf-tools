@@ -1,4 +1,5 @@
-import { ERenderTraceSize, RenderTraceSize } from "@/core/ipc/types/xrf-renderer";
+import { ERenderTraceSize, RenderTraceSize } from "@xrf/ipc/types/xrf-renderer";
+
 import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 const RENDER_TRACE_SIZE_NAMES: Readonly<Record<RenderTraceSize, string>> = {

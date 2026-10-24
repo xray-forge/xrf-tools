@@ -1,4 +1,4 @@
-import { JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app-core";
+import { JobConclusion, JobDescription } from "@xrf/ipc/types/xrf-app-core";
 
 /** How a job's status is painted, in the palette the rest of the application uses for the same meanings. */
 export type TJobStatusColor = "success.main" | "error.main" | "text.secondary";

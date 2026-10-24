@@ -1,5 +1,6 @@
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { VisualSubmesh } from "@/core/ipc/types/xrf-visual";
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
+import { VisualSubmesh } from "@xrf/ipc/types/xrf-visual";
+
 import { getRenderSurfaceDraw, IRenderSurfaceDraw } from "@/core/render/lib/surface/render-surface-draw";
 
 /**

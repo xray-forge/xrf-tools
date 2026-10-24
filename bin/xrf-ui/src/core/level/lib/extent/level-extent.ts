@@ -1,7 +1,6 @@
+import { VisualBounds } from "@xrf/ipc/types/xrf-visual";
 import { IPoint3, toPoint3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
-
-import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 
 /** What an empty box answers for a reach, so a grid built from one is still a grid rather than a point. */
 const EMPTY_REACH: number = 1;

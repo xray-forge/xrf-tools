@@ -1,8 +1,7 @@
+import { LevelSpawnObject, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { ERenderLevelHit, RenderLevelHit } from "@xrf/ipc/types/xrf-renderer";
 import { IPoint3, toXraySpace } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
-
-import { LevelSpawnObject, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app-levels";
-import { ERenderLevelHit, RenderLevelHit } from "@/core/ipc/types/xrf-renderer";
 
 /** What a click in the viewport picked. */
 export enum ELevelPick {

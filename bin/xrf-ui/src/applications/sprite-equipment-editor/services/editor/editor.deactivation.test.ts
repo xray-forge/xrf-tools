@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
 
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockRestoredSession } from "@/fixtures/mocks/session.mocks";
 import { mockEquipmentSpriteMetadata } from "@/fixtures/mocks/sprite.mocks";
-import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { SpriteEquipmentEditorService } from "./editor.service";

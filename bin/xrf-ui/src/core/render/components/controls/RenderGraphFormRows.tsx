@@ -1,6 +1,6 @@
+import { RenderGraphSettings } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

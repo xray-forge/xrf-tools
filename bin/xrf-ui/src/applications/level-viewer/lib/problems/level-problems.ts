@@ -1,6 +1,7 @@
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { RenderLoadFailure } from "@/core/ipc/types/xrf-renderer";
-import { WorldSectorSkip } from "@/core/ipc/types/xrf-world";
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
+import { RenderLoadFailure } from "@xrf/ipc/types/xrf-renderer";
+import { WorldSectorSkip } from "@xrf/ipc/types/xrf-world";
+
 import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-report";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";

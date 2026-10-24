@@ -1,16 +1,16 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
+import { LtxSchemeFieldReport, LtxSectionSchemeReport } from "@xrf/ipc/types/xrf-ltx-inspect";
 
-import { ConfigsDocument } from "@/core/ipc/types/xrf-app-configs";
-import { LtxSchemeFieldReport, LtxSectionSchemeReport } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsSchemePanel } from "@/core/ltx/components/panels/ConfigsSchemePanel/ConfigsSchemePanel";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

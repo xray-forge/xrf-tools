@@ -1,6 +1,7 @@
 import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
+import { ImageShape } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -8,7 +9,6 @@ import { ArchivePreviewError } from "@/applications/archives-explorer/components
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-import { ImageShape } from "@/core/ipc/types/xrf-texture";
 import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";

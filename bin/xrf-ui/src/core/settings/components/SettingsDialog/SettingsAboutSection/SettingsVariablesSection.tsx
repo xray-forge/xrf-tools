@@ -1,11 +1,11 @@
 import { Stack, Typography } from "@mui/material";
+import { systemCommands } from "@xrf/ipc/commands/system";
+import { EnvFlagReading } from "@xrf/ipc/types/xrf-env-flags";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useState } from "react";
 
-import { systemCommands } from "@/core/ipc/commands/system";
-import { EnvFlagReading } from "@/core/ipc/types/xrf-env-flags";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { useMountEffect } from "@/lib/react";
 

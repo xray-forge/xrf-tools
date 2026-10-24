@@ -1,6 +1,4 @@
 import { useInjection } from "@wirestate/react";
-import { ReactElement } from "react";
-
 import {
   ERenderAntialiasing,
   ERenderScale,
@@ -10,7 +8,9 @@ import {
   RenderRayReconstructionPreset,
   RenderScale,
   RenderTextureFiltering,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+import { ReactElement } from "react";
+
 import {
   explainRenderAntialiasing,
   isTemporalAntialiasing,

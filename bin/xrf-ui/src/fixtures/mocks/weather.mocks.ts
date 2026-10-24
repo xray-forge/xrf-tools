@@ -1,7 +1,8 @@
-import { LevelWeatherCycle, LevelWeatherDescription } from "@/core/ipc/types/xrf-app-levels";
-import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
-import { EWeatherCycleKind, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
-import { WorldWeatherReport } from "@/core/ipc/types/xrf-world";
+import { LevelWeatherCycle, LevelWeatherDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngine } from "@xrf/ipc/types/xrf-engine-target";
+import { EWeatherCycleKind, WeatherDescriptor } from "@xrf/ipc/types/xrf-environment";
+import { WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
+
 import { DEFAULT_LEVEL_MANUAL_WEATHER, toLevelManualDescriptor } from "@/core/level/lib/weather/level-manual-weather";
 
 /**

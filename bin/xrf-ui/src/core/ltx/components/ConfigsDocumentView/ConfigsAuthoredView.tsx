@@ -1,10 +1,10 @@
 import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
+import { LtxAnchoredFinding, LtxStructureSection } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { ConfigsDocument } from "@/core/ipc/types/xrf-app-configs";
-import { LtxAnchoredFinding, LtxStructureSection } from "@/core/ipc/types/xrf-ltx-inspect";
 import { useRevealed } from "@/core/ltx/components/ConfigsDocumentView/use-revealed";
 import { toFindingMarks } from "@/core/ltx/lib/findings";
 import { TConfigsReveal } from "@/core/ltx/lib/reveal";

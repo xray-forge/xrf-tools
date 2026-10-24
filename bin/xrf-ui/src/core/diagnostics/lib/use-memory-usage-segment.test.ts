@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { renderHook, waitFor } from "@testing-library/react";
+import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { MemoryUsage } from "@xrf/ipc/types/xrf-app-system";
 
 import { TMemoryDetailSource } from "@/core/diagnostics/lib/memory-detail-source";
 import { useMemoryUsageSegment } from "@/core/diagnostics/lib/use-memory-usage-segment";
-import { MemoryUsage } from "@/core/ipc/types/xrf-app-system";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 
 const MB: number = 1024 * 1024;
 

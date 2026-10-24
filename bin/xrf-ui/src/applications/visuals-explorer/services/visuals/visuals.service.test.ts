@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
+import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 import { Nullable } from "@xrf/types";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
-import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app-core";
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockPackedSubmesh,
   mockSelectedVisual,

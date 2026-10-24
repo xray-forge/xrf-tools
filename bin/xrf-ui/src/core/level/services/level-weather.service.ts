@@ -2,12 +2,9 @@ import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvisio
 import { BoundAction, comparer, Computed, reaction, RefObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
-import { Logger } from "@xrf/logging";
-import { Maybe, Nullable } from "@xrf/types";
-
-import { levelsCommands } from "@/core/ipc/commands/levels";
-import { SessionPartResource } from "@/core/ipc/session";
-import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+import { levelsCommands } from "@xrf/ipc/commands/levels";
+import { SessionPartResource } from "@xrf/ipc/session";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
   EnvironmentCycleEntry,
   LEVEL_ENVIRONMENT_PART,
@@ -15,15 +12,18 @@ import {
   LevelWeatherCycle,
   LevelWeatherDescription,
   SelectedLevelDescription,
-} from "@/core/ipc/types/xrf-app-levels";
-import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
-import { EWeatherCycleKind, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
+} from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngine, XrayEngine } from "@xrf/ipc/types/xrf-engine-target";
+import { EWeatherCycleKind, WeatherDescriptor } from "@xrf/ipc/types/xrf-environment";
 import {
   EWorldWeatherPlay,
   EWorldWeatherTransition,
   WorldWeatherPlay,
   WorldWeatherReport,
-} from "@/core/ipc/types/xrf-world";
+} from "@xrf/ipc/types/xrf-world";
+import { Logger } from "@xrf/logging";
+import { Maybe, Nullable } from "@xrf/types";
+
 import {
   DEFAULT_LEVEL_MANUAL_WEATHER,
   ILevelManualWeather,

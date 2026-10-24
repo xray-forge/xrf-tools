@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { getXrayExtension, withSupportedExtension } from "@/core/path/extension";
 
 describe("getXrayExtension", () => {

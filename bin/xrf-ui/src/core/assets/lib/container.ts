@@ -1,6 +1,5 @@
+import { EXrayAssetContainer, XrayAssetContainer } from "@xrf/ipc/types/xrf-vfs";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
-
-import { EXrayAssetContainer, XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * Where a located asset physically sits, in one line meant to be read beside its engine path.

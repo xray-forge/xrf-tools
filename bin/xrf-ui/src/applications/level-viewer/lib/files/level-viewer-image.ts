@@ -1,7 +1,6 @@
+import { fetchBulk } from "@xrf/ipc";
+import { levelsBulkRoutes } from "@xrf/ipc/commands/levels-bulk";
 import { getPathName } from "@xrf/path";
-
-import { fetchBulk } from "@/core/ipc/bulk";
-import { levelsBulkRoutes } from "@/core/ipc/commands/levels-bulk";
 
 /** A PNG of the screenshots folder as the viewer holds it: its file, its size, and its pixels for the page. */
 export interface ILevelViewerImage {

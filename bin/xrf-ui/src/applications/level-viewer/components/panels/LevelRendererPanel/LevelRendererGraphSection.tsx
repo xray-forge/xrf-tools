@@ -1,8 +1,8 @@
 import { formatBytes } from "@xrf/format";
+import { RenderGraphReport, RenderGraphSettings } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { RenderGraphReport, RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
 import { RenderGraphFormRows } from "@/core/render/components/controls/RenderGraphFormRows";
 import {
   DEFAULT_RENDER_GRAPH_SETTINGS,

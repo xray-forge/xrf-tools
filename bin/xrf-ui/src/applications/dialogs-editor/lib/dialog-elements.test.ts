@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { DialogElementDescriptor } from "@/core/ipc/types/xrf-dialog";
+import { DialogElementDescriptor } from "@xrf/ipc/types/xrf-dialog";
 
 import { groupDialogElements, IDialogElementGroup } from "./dialog-elements";
 

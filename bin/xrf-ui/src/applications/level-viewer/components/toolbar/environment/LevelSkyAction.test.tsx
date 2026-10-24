@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { resetMockInvoke } from "@xrf/ipc/testing";
 
 import { LevelSkyAction } from "@/applications/level-viewer/components/toolbar/environment/LevelSkyAction";
 import { clearLocalStorage } from "@/core/storage";
 import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
-import { resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import {
   ILevelViewContainerDescriptor,
   ILevelViewOpening,

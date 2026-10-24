@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
+import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 
-import { LtxAnchoredFinding } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";

@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
 import { BYTES_PER_MEGABYTE } from "@xrf/format";
+import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
+import { ArchivePatchConfig, ArchivePatchResult } from "@xrf/ipc/types/xrf-pack";
 
 import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher/index";
-import { EJobOutcome } from "@/core/ipc/types/xrf-job";
-import { ArchivePatchConfig, ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 

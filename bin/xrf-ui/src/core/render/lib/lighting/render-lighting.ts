@@ -1,6 +1,5 @@
+import { RenderAssetLighting } from "@xrf/ipc/types/xrf-renderer";
 import { toRawColor } from "@xrf/math";
-
-import { RenderAssetLighting } from "@/core/ipc/types/xrf-renderer";
 
 /**
  * How a preview is lit, which is the viewer's own answer rather than anything an X-Ray file carries.

@@ -1,11 +1,11 @@
 import { formatPercent } from "@xrf/format";
-
 import {
   ERenderRainDropsMode,
   ERenderRainMode,
   RenderRainDropsMode,
   RenderRainMode,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 

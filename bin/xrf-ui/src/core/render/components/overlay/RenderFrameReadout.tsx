@@ -1,8 +1,8 @@
 import { formatCount, formatMilliseconds } from "@xrf/format";
+import { RenderFrameReport, RenderPassCost } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { Fragment, ReactElement, ReactNode } from "react";
 
-import { RenderFrameReport, RenderPassCost } from "@/core/ipc/types/xrf-renderer";
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
 import {
   describeRenderAntialiasing,

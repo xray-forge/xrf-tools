@@ -1,4 +1,4 @@
-import { ArchivePatchConfig } from "@/core/ipc/types/xrf-pack";
+import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
 
 /**
  * What a configuration file actually carries, as one comparable value.

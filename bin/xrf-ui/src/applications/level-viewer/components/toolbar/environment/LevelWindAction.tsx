@@ -2,9 +2,9 @@ import { default as AirIcon } from "@mui/icons-material/Air";
 import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatDegrees, formatNumber, formatPercent } from "@xrf/format";
+import { ERenderFoliageMode, RenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement, useCallback } from "react";
 
-import { ERenderFoliageMode, RenderFoliageMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";

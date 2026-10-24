@@ -1,8 +1,8 @@
 import { Button, LinearProgress, Typography } from "@mui/material";
 import { formatDuration } from "@xrf/format";
+import { ProgressLevel } from "@xrf/ipc/types/xrf-job";
 import { ReactElement } from "react";
 
-import { ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { IJobState } from "@/core/jobs/lib";
 import { describeActiveProgress, RENDERED_PROGRESS_LEVELS } from "@/core/jobs/lib/progress-format";
 import { cn } from "@/core/theme/class-name";

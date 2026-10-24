@@ -1,6 +1,5 @@
 import { formatCount } from "@xrf/format";
-
-import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
+import { RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
 
 /**
  * @param load - How far the renderer has read the open level, short of ready.

@@ -1,7 +1,7 @@
 import { ListItemText, MenuItem, TextField } from "@mui/material";
+import { ThunderboltCollection } from "@xrf/ipc/types/xrf-environment";
 import { ChangeEvent, ReactElement } from "react";
 
-import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
 import {
   describeLevelManualWeatherKey,
   LEVEL_MANUAL_WEATHER_LABELS,

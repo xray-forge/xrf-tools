@@ -1,7 +1,7 @@
 import { formatBytes, formatCount } from "@xrf/format";
+import { ArchiveOverview } from "@xrf/ipc/types/xrf-archive-stats";
 import { ReactElement } from "react";
 
-import { ArchiveOverview } from "@/core/ipc/types/xrf-archive-stats";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { BaseComponentProps } from "@/lib/dom/element-types";

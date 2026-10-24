@@ -1,7 +1,6 @@
 import { formatCount } from "@xrf/format";
+import { WorldSurfaceGeometry, WorldSurfaceSpan } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
-
-import { WorldSurfaceGeometry, WorldSurfaceSpan } from "@/core/ipc/types/xrf-world";
 
 /** The range a coordinate covers over one entry's geometry, or null where its geometry carries none. */
 export interface ILevelSurfaceSpan {

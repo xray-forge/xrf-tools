@@ -3,11 +3,11 @@ import { Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { configsCommands } from "@xrf/ipc/commands/configs";
+import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { configsCommands } from "@/core/ipc/commands/configs";
-import { LtxAnchoredFinding } from "@/core/ipc/types/xrf-ltx-inspect";
 import { toOrderedFindings } from "@/core/ltx/lib/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";

@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
+import { LtxFileStructure } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { LtxFileStructure } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/core/ltx/services/document";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";

@@ -26,7 +26,8 @@ import {
   RenderViewOutput,
   RenderVolumetricSettings,
   RenderWaterSettings,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+
 import { TSettled } from "@/core/render/lib/settings/render-settled";
 
 /** The features a viewport resolves from the application's settings, a view overriding some of them. */

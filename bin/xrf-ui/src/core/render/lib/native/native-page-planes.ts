@@ -1,6 +1,6 @@
+import { RenderColor } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 
-import { RenderColor } from "@/core/ipc/types/xrf-renderer";
 import {
   ICssCorners,
   ICssEdges,

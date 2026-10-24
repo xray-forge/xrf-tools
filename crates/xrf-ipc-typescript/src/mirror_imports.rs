@@ -2,8 +2,8 @@
 ///
 /// Every specifier is the root joined with a path relative to the mirror's output directory, so one mirror can sit
 /// under an application's path alias (`@/core/ipc`) or inside a package that maps its own files (`#`). The runtime
-/// beside the mirror provides `invoke` (the counted wrapper commands call), `raw` (`invokeRaw`), `bulk` (`IBulkCall`)
-/// and `signature` (`IIpcCommandSignature`, `IIpcBulkRouteSignature`).
+/// beside the mirror provides `invoke` (the counted wrapper commands call), `raw` (`invokeRaw`), `bulk/bulk-call`
+/// (`IBulkCall`) and `signature` (`IIpcCommandSignature`, `IIpcBulkRouteSignature`).
 #[derive(Clone, Debug)]
 pub struct MirrorImports {
   root: &'static str,
@@ -25,9 +25,10 @@ impl MirrorImports {
     format!("{}/raw", self.root)
   }
 
-  /// `IBulkCall`, which bulk route wrappers answer.
+  /// `IBulkCall`, which bulk route wrappers answer: the module declaring it, since a package's own `#/*` mapping
+  /// resolves a file and never a directory's barrel.
   pub(crate) fn bulk(&self) -> String {
-    format!("{}/bulk", self.root)
+    format!("{}/bulk/bulk-call", self.root)
   }
 
   /// The helper types each plugin's signatures are read through.
@@ -56,7 +57,7 @@ mod tests {
 
     assert_eq!(imports.invoke(), "#/invoke");
     assert_eq!(imports.raw(), "#/raw");
-    assert_eq!(imports.bulk(), "#/bulk");
+    assert_eq!(imports.bulk(), "#/bulk/bulk-call");
     assert_eq!(imports.signature(), "#/signature");
     assert_eq!(imports.type_module("xrf-app-core"), "#/types/xrf-app-core");
     assert_eq!(imports.command_module("levels-bulk"), "#/commands/levels-bulk");

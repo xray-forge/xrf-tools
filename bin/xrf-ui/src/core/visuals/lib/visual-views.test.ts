@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { VisualDescription } from "@xrf/ipc/types/xrf-visual";
 
-import { VisualDescription } from "@/core/ipc/types/xrf-visual";
 import { ERenderDraw } from "@/core/render/lib/surface/render-draw";
 import { OPAQUE_RENDER_SURFACE_DRAW } from "@/core/render/lib/surface/render-surface-draw";
 import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";

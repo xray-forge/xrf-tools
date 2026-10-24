@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { reaction } from "@wirestate/mobx";
+import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ExportsProject } from "@xrf/ipc/types/xrf-export";
 
-import { ExportsProject } from "@/core/ipc/types/xrf-export";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { ExportsService } from "./exports.service";

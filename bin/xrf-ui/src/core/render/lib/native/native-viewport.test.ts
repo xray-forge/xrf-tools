@@ -1,7 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { ERenderViewportEvent } from "@/core/ipc/types/xrf-renderer";
-import { EWorldViewportEvent } from "@/core/ipc/types/xrf-world";
+import { ERenderViewportEvent } from "@xrf/ipc/types/xrf-renderer";
+import { EWorldViewportEvent } from "@xrf/ipc/types/xrf-world";
 
 describe("NativeViewport", () => {
   // The app sends both crates' events as one untagged union, which the page tells apart by `kind` alone.

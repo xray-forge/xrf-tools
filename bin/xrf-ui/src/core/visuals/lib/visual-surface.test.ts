@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
+import { VisualSubmesh } from "@xrf/ipc/types/xrf-visual";
 
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { VisualSubmesh } from "@/core/ipc/types/xrf-visual";
 import { ERenderDraw } from "@/core/render/lib/surface/render-draw";
 import { IRenderSurfaceDraw, OPAQUE_RENDER_SURFACE_DRAW } from "@/core/render/lib/surface/render-surface-draw";
 import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";

@@ -4,7 +4,7 @@ Generates the TypeScript mirror of a Tauri command surface and the Rust types it
 against the Rust sources. The crate knows nothing of any one application: the caller supplies each plugin's Specta
 builder, the output directory, which crates share a types module, and how the generated modules address one another and
 the runtime beside them (`MirrorImports`). The desktop app drives it from `bin/xrf-app/app/src/ipc/bindings/generator.rs`,
-writing `bin/xrf-ui/src/core/ipc/`; `cargo make generate-typescript` regenerates and then formats that tree.
+writing `packages/xrf-ipc/src/`; `cargo make generate-typescript` regenerates and then formats that tree.
 
 ## Generate and verify
 
@@ -28,8 +28,9 @@ fn verify<R: tauri::Runtime>(committed: &Path, scratch: &Path, surfaces: &[IpcCo
 
 `MirrorImports::new(root)` names the output directory as its modules import it: `@/core/ipc` under an application's
 alias, `#` inside a package mapping `"#/*"` to its own sources. The runtime beside the mirror provides `invoke` (the
-counted `invoke`), `raw` (`invokeRaw`), `bulk` (`IBulkCall`) and `signature` (`IIpcCommandSignature`,
-`IIpcBulkRouteSignature`).
+counted `invoke`), `raw` (`invokeRaw`), `bulk/bulk-call` (`IBulkCall`; a file, since a package's `#/*` resolves no
+directory barrel) and `signature` (`IIpcCommandSignature`, `IIpcBulkRouteSignature`). The desktop app's mirror lives in
+the `@xrf/ipc` package (`packages/xrf-ipc/src/`), generated with the root `#`.
 
 An `IpcCommandSurface` is one plugin: its name (the wire namespace and the command module's file stem), its
 `tauri_specta::Builder`, and the raw commands and bulk routes that builder cannot hold, each declared by hand as a name

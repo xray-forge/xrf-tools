@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchiveFileDescriptor } from "@/core/ipc/types/xrf-archive";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockArchiveFileDescriptor } from "@/fixtures/mocks/archive.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";

@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { autorun, flow } from "@wirestate/mobx";
+import { mockInvoke, resetMockInvoke } from "@xrf/ipc/testing";
+import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT, CONFIGS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-configs";
+import { JobKind } from "@xrf/ipc/types/xrf-app-core";
+import { TRANSLATIONS_JOB_BUILD } from "@xrf/ipc/types/xrf-app-translations";
 
-import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT, CONFIGS_JOB_VERIFY } from "@/core/ipc/types/xrf-app-configs";
-import { JobKind } from "@/core/ipc/types/xrf-app-core";
-import { TRANSLATIONS_JOB_BUILD } from "@/core/ipc/types/xrf-app-translations";
 import { IJobDescriptor, IJobSettledPayload } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { ENotificationSeverity } from "@/core/notifications/lib";
-import { mockInvoke, resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 

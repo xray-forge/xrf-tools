@@ -1,6 +1,5 @@
+import { RenderSunShafts } from "@xrf/ipc/types/xrf-renderer";
 import { clamp } from "@xrf/math";
-
-import { RenderSunShafts } from "@/core/ipc/types/xrf-renderer";
 
 /** How a level's sun shafts are drawn: how finely they step, and the floor under their density. */
 export interface ILevelSunShaftsOptions extends RenderSunShafts {

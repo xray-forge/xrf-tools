@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { ERenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelWindAction } from "@/applications/level-viewer/components/toolbar/environment/LevelWindAction";
-import { ERenderFoliageMode } from "@/core/ipc/types/xrf-renderer";
 import { TRenderFoliageSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { clearLocalStorage } from "@/core/storage";
 import {

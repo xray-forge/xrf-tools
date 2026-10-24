@@ -1,11 +1,10 @@
-import { assertExhaustive, Nullable } from "@xrf/types";
-
 import {
   ArchiveDescribeScope,
   ArchiveLevelShader,
   EArchiveDescribeScope,
   EArchiveReferenceStatus,
-} from "@/core/ipc/types/xrf-app-archives";
+} from "@xrf/ipc/types/xrf-app-archives";
+import { assertExhaustive, Nullable } from "@xrf/types";
 
 /**
  * What became of a shader name, worded for a definition rather than for a file.

@@ -1,7 +1,7 @@
+import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { ESyntaxLanguage } from "@xrf/syntax";
 import { Nullable } from "@xrf/types";
 
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { getXrayExtension } from "@/core/path/extension";
 
 /**

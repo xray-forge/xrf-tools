@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { render } from "@testing-library/react";
+import { EBuildKind } from "@xrf/ipc/types/xrf-build-info";
 
 import { XrfMark } from "@/core/brand/XrfMark";
-import { EBuildKind } from "@/core/ipc/types/xrf-build-info";
 import { setMockBuildKind } from "@/fixtures/mocks/build-kind.mocks";
 
 describe("XrfMark", () => {

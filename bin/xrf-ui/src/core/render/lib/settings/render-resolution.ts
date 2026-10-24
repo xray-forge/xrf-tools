@@ -1,4 +1,4 @@
-import { RenderViewOutput } from "@/core/ipc/types/xrf-renderer";
+import { RenderViewOutput } from "@xrf/ipc/types/xrf-renderer";
 
 /**
  * What every viewport resolves its frame at before it is put into the viewport: the viewport's own size times a

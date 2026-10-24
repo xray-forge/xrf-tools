@@ -1,12 +1,12 @@
 import { BYTES_PER_MEGABYTE } from "@xrf/format";
-
-import { DEFAULT_ENTRY_POINT } from "@/core/archive/lib";
 import {
   ArchivePackConfig,
   ArchivePackDirectory,
   EArchivePackMode,
   EArchiveVolumeExtension,
-} from "@/core/ipc/types/xrf-pack";
+} from "@xrf/ipc/types/xrf-pack";
+
+import { DEFAULT_ENTRY_POINT } from "@/core/archive/lib";
 
 /**
  * What the editor opens on before the packer answers with its own defaults.

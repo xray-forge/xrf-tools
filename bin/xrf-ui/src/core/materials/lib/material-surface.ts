@@ -1,13 +1,12 @@
-import { assertExhaustive, Nullable } from "@xrf/types";
-
 import {
   EXraySurfaceDeclaration,
   EXraySurfaceDraw,
   XraySurfaceDeclaration,
   XraySurfaceDescriptor,
   XraySurfaceDraw,
-} from "@/core/ipc/types/xrf-material";
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
+} from "@xrf/ipc/types/xrf-material";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
+import { assertExhaustive, Nullable } from "@xrf/types";
 
 import { IMaterialStateDescriptor } from "./material-description";
 

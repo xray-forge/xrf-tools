@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
+import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
 import { ReactElement } from "react";
 
 import { useEditorStatus } from "@/core/shell/editor-shell";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 const MB: number = 1024 * 1024;

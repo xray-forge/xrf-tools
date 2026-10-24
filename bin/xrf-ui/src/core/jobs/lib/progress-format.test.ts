@@ -1,7 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { JobProgress, ProgressLevel, ProgressUnit } from "@xrf/ipc/types/xrf-job";
 import { Nullable } from "@xrf/types";
-
-import { JobProgress, ProgressLevel, ProgressUnit } from "@/core/ipc/types/xrf-job";
 
 import {
   describeActiveProgress,

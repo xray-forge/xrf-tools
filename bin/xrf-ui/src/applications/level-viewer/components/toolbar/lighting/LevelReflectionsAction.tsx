@@ -2,16 +2,16 @@ import { default as FlipIcon } from "@mui/icons-material/Flip";
 import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
-import { ReactElement } from "react";
-
-import { LevelGlassSettings } from "@/applications/level-viewer/components/toolbar/lighting/LevelGlassSettings";
 import {
   ERenderReflectionMode,
   ERenderTraceSize,
   ERenderWaterMode,
   RenderReflectionProbe,
   RenderTraceSize,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+import { ReactElement } from "react";
+
+import { LevelGlassSettings } from "@/applications/level-viewer/components/toolbar/lighting/LevelGlassSettings";
 import { ILevelFeature, useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";

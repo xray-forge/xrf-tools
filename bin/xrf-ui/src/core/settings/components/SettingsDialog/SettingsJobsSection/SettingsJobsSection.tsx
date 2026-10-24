@@ -1,9 +1,9 @@
 import { Button, Divider, Stack, Typography } from "@mui/material";
 import { formatDuration } from "@xrf/format";
+import { JobDescription } from "@xrf/ipc/types/xrf-app-core";
 import { Callable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
-import { JobDescription } from "@/core/ipc/types/xrf-app-core";
 import { IJobKindSummary, IJobLease, listHeldLeases, summarizeJobKinds } from "@/core/jobs/lib/job-listing";
 import { useJobsListing } from "@/core/jobs/lib/use-jobs-listing";
 import { JOB_PROFILES } from "@/core/jobs/metrics";

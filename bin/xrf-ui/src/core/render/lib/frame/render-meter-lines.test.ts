@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { ABSENT_VALUE } from "@xrf/format";
+import { RenderMeterReading } from "@xrf/ipc/types/xrf-renderer";
 
-import { RenderMeterReading } from "@/core/ipc/types/xrf-renderer";
 import { formatRenderLuminance, toRenderMeterLines } from "@/core/render/lib/frame/render-meter-lines";
 
 const UNREAD: RenderMeterReading = {

@@ -1,9 +1,9 @@
 import { Typography } from "@mui/material";
 import { formatBytes, formatCount } from "@xrf/format";
+import { ArchiveLevelSpawnDescription, ArchiveLevelSpawnSection } from "@xrf/ipc/types/xrf-app-archives";
 import { filterByName } from "@xrf/search";
 import { ReactElement, useMemo, useState } from "react";
 
-import { ArchiveLevelSpawnDescription, ArchiveLevelSpawnSection } from "@/core/ipc/types/xrf-app-archives";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";

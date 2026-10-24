@@ -1,8 +1,8 @@
 import { Chip } from "@mui/material";
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import {
   describeSurfaceDeclaration,
   describeSurfaceDraw,

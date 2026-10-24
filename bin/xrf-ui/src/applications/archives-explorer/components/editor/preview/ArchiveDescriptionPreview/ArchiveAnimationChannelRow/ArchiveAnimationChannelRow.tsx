@@ -1,6 +1,6 @@
+import { ArchiveAnimationChannel } from "@xrf/ipc/types/xrf-app-archives";
 import { ReactElement } from "react";
 
-import { ArchiveAnimationChannel } from "@/core/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";

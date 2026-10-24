@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERenderTextureGroup, ERenderTextureState, RenderTextureReport } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderTextureGroup, ERenderTextureState, RenderTextureReport } from "@/core/ipc/types/xrf-renderer";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelTextureReport, toLevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 

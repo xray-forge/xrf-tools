@@ -3,14 +3,11 @@ import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
-import { Logger } from "@xrf/logging";
-import { Maybe, Nullable } from "@xrf/types";
-
-import { levelsCommands } from "@/core/ipc/commands/levels";
-import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
-import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app-levels";
-import { CaptureOutcome } from "@/core/ipc/types/xrf-app-render";
-import { JobProgress } from "@/core/ipc/types/xrf-job";
+import { levelsCommands } from "@xrf/ipc/commands/levels";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { CaptureOutcome } from "@xrf/ipc/types/xrf-app-render";
+import { JobProgress } from "@xrf/ipc/types/xrf-job";
 import {
   ERenderDlssAvailability,
   RenderAntialiasing,
@@ -21,7 +18,7 @@ import {
   RenderMapCapture,
   RenderViewOptions,
   RenderViewportId,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
 import {
   EWorldCameraCommand,
   EWorldWeatherPlay,
@@ -31,7 +28,10 @@ import {
   WorldWeatherControl,
   WorldWeatherPlay,
   WorldWeatherReport,
-} from "@/core/ipc/types/xrf-world";
+} from "@xrf/ipc/types/xrf-world";
+import { Logger } from "@xrf/logging";
+import { Maybe, Nullable } from "@xrf/types";
+
 import { ILevelGoTo, toLevelGoToViewpoint } from "@/core/level/lib/camera/level-camera-goto";
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";

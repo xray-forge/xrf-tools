@@ -1,12 +1,12 @@
 import { beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent } from "@testing-library/react";
+import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EWorldInputEvent, WorldInputEvent } from "@xrf/ipc/types/xrf-world";
 
-import { EWorldInputEvent, WorldInputEvent } from "@/core/ipc/types/xrf-world";
 import { TextureRenderService } from "@/core/textures/services/render";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { TextureViewService } from "@/core/textures/services/view";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { TextureSurface } from "./TextureSurface";

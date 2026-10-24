@@ -1,11 +1,11 @@
 import { Stack, Typography } from "@mui/material";
+import { systemCommands } from "@xrf/ipc/commands/system";
+import { BuildInfo } from "@xrf/ipc/types/xrf-build-info";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useState } from "react";
 
-import { systemCommands } from "@/core/ipc/commands/system";
-import { BuildInfo } from "@/core/ipc/types/xrf-build-info";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { useMountEffect } from "@/lib/react";
 

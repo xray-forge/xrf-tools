@@ -1,5 +1,5 @@
-import { SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app-spawn";
-import { Vector3d } from "@/core/ipc/types/xrf-math";
+import { SpawnSessionDescriptor } from "@xrf/ipc/types/xrf-app-spawn";
+import { Vector3d } from "@xrf/ipc/types/xrf-math";
 import {
   AlifeObject,
   Patrol,
@@ -8,7 +8,7 @@ import {
   SpawnGraphsChunk,
   SpawnHeaderChunk,
   SpawnPatrolsChunk,
-} from "@/core/ipc/types/xrf-spawn";
+} from "@xrf/ipc/types/xrf-spawn";
 
 /** Every part of a packed spawn a fixture builds: the header an open answers and each large chunk. */
 export interface IMockSpawnFile {

@@ -1,13 +1,7 @@
 import { inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
-import { Logger } from "@xrf/logging";
-import { Nullable } from "@xrf/types";
-
-import { describeTextureSaveOutcome } from "@/applications/textures-editor/lib/describe-texture-save-outcome";
-import { isSameDescriptorForm, toEditableForm } from "@/applications/textures-editor/lib/texture-descriptor-form";
-import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
-import { texturesCommands } from "@/core/ipc/commands/textures";
+import { texturesCommands } from "@xrf/ipc/commands/textures";
 import {
   TextureDescription,
   TextureDescriptorForm,
@@ -15,8 +9,14 @@ import {
   TEXTURES_JOB_SAVE,
   TextureSaveOutcome,
   TextureVocabulary,
-} from "@/core/ipc/types/xrf-app-textures";
-import { TextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
+} from "@xrf/ipc/types/xrf-app-textures";
+import { TextureEncodingFormat } from "@xrf/ipc/types/xrf-texture";
+import { Logger } from "@xrf/logging";
+import { Nullable } from "@xrf/types";
+
+import { describeTextureSaveOutcome } from "@/applications/textures-editor/lib/describe-texture-save-outcome";
+import { isSameDescriptorForm, toEditableForm } from "@/applications/textures-editor/lib/texture-descriptor-form";
+import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

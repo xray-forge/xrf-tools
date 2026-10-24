@@ -1,10 +1,10 @@
 import { default as ViewListIcon } from "@mui/icons-material/ViewList";
 import { useInjection } from "@wirestate/react";
+import { SpawnHeaderChunk } from "@xrf/ipc/types/xrf-spawn";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 import { Route, Routes } from "react-router-dom";
 
-import { SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";

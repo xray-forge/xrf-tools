@@ -1,6 +1,7 @@
 import { default as ReportProblemIcon } from "@mui/icons-material/ReportProblem";
 import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
+import { TranslationFinding, TranslationProjectDescriptor } from "@xrf/ipc/types/xrf-translation";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
@@ -8,7 +9,6 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
 import { describeRoots } from "@/core/assets/lib";
-import { TranslationFinding, TranslationProjectDescriptor } from "@/core/ipc/types/xrf-translation";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";

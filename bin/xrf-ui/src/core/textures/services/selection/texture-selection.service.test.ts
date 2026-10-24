@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
+import { texturesCommands } from "@xrf/ipc/commands/textures";
+import { BulkRead, setMockBulkResponses } from "@xrf/ipc/testing";
+import { ETextureSource, TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
+import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
 import { createRoots } from "@/core/assets/lib";
-import { texturesCommands } from "@/core/ipc/commands/textures";
-import { ETextureSource, TextureDescription } from "@/core/ipc/types/xrf-app-textures";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { BulkRead, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";

@@ -1,9 +1,9 @@
 import { Typography } from "@mui/material";
 import { formatPercent } from "@xrf/format";
+import { WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { WorldWeatherReport } from "@/core/ipc/types/xrf-world";
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
 import { ILevelWeatherControl, LEVEL_WEATHER_FACTOR_LIMITS } from "@/core/level/lib/weather/level-weather-control";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";

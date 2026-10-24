@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
+import { ArchiveDescribeScope, ArchivePpeDescription, EArchiveDescribeScope } from "@xrf/ipc/types/xrf-app-archives";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchiveDescribeScope, ArchivePpeDescription, EArchiveDescribeScope } from "@/core/ipc/types/xrf-app-archives";
 import {
   mockArchiveAnimationChannel,
   mockArchivePpeColor,

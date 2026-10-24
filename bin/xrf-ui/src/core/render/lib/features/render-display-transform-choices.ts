@@ -1,4 +1,5 @@
-import { ERenderDisplayTransform, RenderDisplayTransform } from "@/core/ipc/types/xrf-renderer";
+import { ERenderDisplayTransform, RenderDisplayTransform } from "@xrf/ipc/types/xrf-renderer";
+
 import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 const RENDER_DISPLAY_TRANSFORM_DESCRIPTIONS: Readonly<Record<RenderDisplayTransform, string>> = {

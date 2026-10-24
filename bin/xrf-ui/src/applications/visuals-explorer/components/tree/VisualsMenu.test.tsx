@@ -1,15 +1,15 @@
 import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { createRoots } from "@/core/assets/lib";
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

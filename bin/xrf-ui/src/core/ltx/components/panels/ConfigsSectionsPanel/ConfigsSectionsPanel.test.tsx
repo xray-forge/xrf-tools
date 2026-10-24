@@ -2,9 +2,9 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
+import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
+import { LtxFileStructure } from "@xrf/ipc/types/xrf-ltx-inspect";
 
-import { ConfigsDocument } from "@/core/ipc/types/xrf-app-configs";
-import { LtxFileStructure } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";

@@ -1,6 +1,5 @@
+import { IIpcCommandMetrics } from "@xrf/ipc";
 import { Nullable } from "@xrf/types";
-
-import { IIpcCommandMetrics } from "@/core/ipc/metrics";
 
 /** What the table can be ordered by, each of them a different question about the same calls. */
 export enum EIpcSort {

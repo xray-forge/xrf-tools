@@ -1,11 +1,11 @@
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { Button } from "@mui/material";
+import { systemCommands } from "@xrf/ipc/commands/system";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
-import { systemCommands } from "@/core/ipc/commands/system";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { BaseComponentProps } from "@/lib/dom/element-types";

@@ -1,10 +1,10 @@
 import { GridColDef } from "@mui/x-data-grid";
+import { Finding } from "@xrf/ipc/types/xrf-report";
+import { TranslationParseResult } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { listTranslationParseFindings } from "@/applications/translations-parser/lib/parse-findings";
-import { Finding } from "@/core/ipc/types/xrf-report";
-import { TranslationParseResult } from "@/core/ipc/types/xrf-translation";
 import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";

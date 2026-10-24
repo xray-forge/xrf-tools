@@ -1,7 +1,6 @@
 import { ABSENT_VALUE, formatNumber } from "@xrf/format";
+import { Vector3d } from "@xrf/ipc/types/xrf-math";
 import { Nullable } from "@xrf/types";
-
-import { Vector3d } from "@/core/ipc/types/xrf-math";
 
 /**
  * Decimals a model coordinate is worth showing.

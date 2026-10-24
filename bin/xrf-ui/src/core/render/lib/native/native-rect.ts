@@ -1,4 +1,5 @@
-import { RenderRect } from "@/core/ipc/types/xrf-renderer";
+import { RenderRect } from "@xrf/ipc/types/xrf-renderer";
+
 import { ICssBox } from "@/lib/dom/css-box";
 
 /**

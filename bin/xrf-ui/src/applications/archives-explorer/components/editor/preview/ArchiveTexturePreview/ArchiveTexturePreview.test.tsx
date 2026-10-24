@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { AsyncState } from "@xrf/async";
+import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
 
 import { ArchiveTexturePreview } from "@/applications/archives-explorer/components/editor/preview/ArchiveTexturePreview";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes } from "@/core/archive/lib";
-import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

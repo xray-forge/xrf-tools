@@ -3,12 +3,7 @@ import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
-import { Logger, Timer } from "@xrf/logging";
-import { assertExhaustive, Nullable } from "@xrf/types";
-
-import { TranslationDraft, TTranslationFileEdits } from "@/applications/translations-editor/lib/translation-draft";
-import { describeRoots } from "@/core/assets/lib/roots";
-import { translationsCommands } from "@/core/ipc/commands/translations";
+import { translationsCommands } from "@xrf/ipc/commands/translations";
 import {
   ISessionRevision,
   isOlderSessionAnswer,
@@ -17,11 +12,16 @@ import {
   Session,
   SESSION_CHANGE_EVENT,
   SessionScopeService,
-} from "@/core/ipc/session";
-import { ESessionRootChange, SessionChange, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
-import { ETranslationSaveOutcome, TranslationSaveOutcome } from "@/core/ipc/types/xrf-app-translations";
-import { TranslationProjectDescriptor, TranslationProjectMode } from "@/core/ipc/types/xrf-translation";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
+} from "@xrf/ipc/session";
+import { ESessionRootChange, SessionChange, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { ETranslationSaveOutcome, TranslationSaveOutcome } from "@xrf/ipc/types/xrf-app-translations";
+import { TranslationProjectDescriptor, TranslationProjectMode } from "@xrf/ipc/types/xrf-translation";
+import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
+import { Logger, Timer } from "@xrf/logging";
+import { assertExhaustive, Nullable } from "@xrf/types";
+
+import { TranslationDraft, TTranslationFileEdits } from "@/applications/translations-editor/lib/translation-draft";
+import { describeRoots } from "@/core/assets/lib/roots";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";

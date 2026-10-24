@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, fireEvent } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { useInjection } from "@wirestate/react";
+import { setMockInvokeResponses } from "@xrf/ipc/testing";
 import { ReactElement, useEffect } from "react";
 import { NavigateFunction, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
@@ -9,7 +10,6 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { clearLocalStorage } from "@/core/storage";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 /** Injects the way the archives menu does, which is what makes the handover observable. */

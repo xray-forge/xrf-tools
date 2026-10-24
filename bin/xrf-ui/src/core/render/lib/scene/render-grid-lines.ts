@@ -1,6 +1,6 @@
+import { RenderOverlaySegment } from "@xrf/ipc/types/xrf-renderer";
 import { IPoint3, toRawColor, TRawColor } from "@xrf/math";
 
-import { RenderOverlaySegment } from "@/core/ipc/types/xrf-renderer";
 import { toRenderGridStep } from "@/core/render/lib/scene/render-grid-step";
 
 /** What a grid is drawn with. */

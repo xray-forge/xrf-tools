@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
+import { ERenderIndirectLightMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { ERenderIndirectLightMode } from "@/core/ipc/types/xrf-renderer";
 import { formatOcclusionRadius } from "@/core/render/lib/features/render-ambient-occlusion-choices";
 import {
   explainRenderIndirectLightMode,

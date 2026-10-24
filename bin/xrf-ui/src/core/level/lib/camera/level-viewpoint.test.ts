@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { VisualBounds } from "@xrf/ipc/types/xrf-visual";
 
-import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { mockVisualBounds } from "@/fixtures/mocks/visual.mocks";
 

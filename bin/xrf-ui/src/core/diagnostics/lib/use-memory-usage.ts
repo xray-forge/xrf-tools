@@ -1,9 +1,9 @@
+import { systemCommands } from "@xrf/ipc/commands/system";
+import { MemoryUsage } from "@xrf/ipc/types/xrf-app-system";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 
-import { systemCommands } from "@/core/ipc/commands/system";
-import { MemoryUsage } from "@/core/ipc/types/xrf-app-system";
 import { usePolledValue } from "@/lib/react";
 
 /** How often memory is read: slow enough to cost nothing, fast enough to watch a level stream in. */

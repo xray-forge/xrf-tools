@@ -1,6 +1,5 @@
+import { XrayAssetContainer } from "@xrf/ipc/types/xrf-vfs";
 import { toLogicalKey } from "@xrf/path";
-
-import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * One file the explorer browses, whichever subject it came from.

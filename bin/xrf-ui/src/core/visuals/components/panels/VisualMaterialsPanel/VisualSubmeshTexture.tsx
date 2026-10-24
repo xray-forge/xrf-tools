@@ -1,12 +1,12 @@
 import { Chip } from "@mui/material";
+import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
+import { VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { AssetTextureDetails } from "@/core/assets/components/AssetTextureDetails";
 import { describeResolution, getLocatedAsset } from "@/core/assets/lib/resolution";
-import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
-import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { EVisualTextureState, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { BaseComponentProps } from "@/lib/dom/element-types";

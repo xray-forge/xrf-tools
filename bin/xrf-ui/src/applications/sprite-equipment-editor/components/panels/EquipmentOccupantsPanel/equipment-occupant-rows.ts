@@ -1,6 +1,6 @@
+import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 
-import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 import { IEquipmentLayout, TEquipmentCell } from "@/core/sprite-equipment/lib";
 
 /** One occupant as the list shows it, with the cell revealing it lands on. */

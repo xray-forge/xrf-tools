@@ -2,6 +2,10 @@ import { join } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, RefObservable, runInAction } from "@wirestate/mobx";
+import { levelsCommands } from "@xrf/ipc/commands/levels";
+import { systemCommands } from "@xrf/ipc/commands/system";
+import { BuildInfo } from "@xrf/ipc/types/xrf-build-info";
+import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { Logger } from "@xrf/logging";
 import { getPathName } from "@xrf/path";
 import { Maybe, Nullable } from "@xrf/types";
@@ -24,10 +28,6 @@ import {
   readLevelViewerSnapshot,
   writeLevelViewerSnapshot,
 } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot-files";
-import { levelsCommands } from "@/core/ipc/commands/levels";
-import { systemCommands } from "@/core/ipc/commands/system";
-import { BuildInfo } from "@/core/ipc/types/xrf-build-info";
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { isLevelGoTo, toLevelGoTo, toRoundedLevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import {

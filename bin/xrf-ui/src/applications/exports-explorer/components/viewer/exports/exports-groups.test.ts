@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { ExportDescriptor } from "@xrf/ipc/types/xrf-export";
 
 import { TCallableExportDescriptor } from "@/core/exports";
-import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { getFileItemPath, IPathTreeItem, toDirectoryItemId, TREE_ROOT_ID } from "@/core/ui/tree/path-tree";
 

@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { RenderResult, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
-
 import {
   ERenderDebandingMode,
   ERenderFogMode,
@@ -11,7 +10,8 @@ import {
   ERenderRainMode,
   ERenderReflectionMode,
   ERenderVolumetricMode,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";

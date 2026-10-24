@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { EWeatherCycleKind } from "@xrf/ipc/types/xrf-environment";
 
-import { EWeatherCycleKind } from "@/core/ipc/types/xrf-environment";
 import { listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { mockLevelWeatherCycle, mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";

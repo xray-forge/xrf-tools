@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERenderLightLevel } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderLightLevel } from "@/core/ipc/types/xrf-renderer";
 import {
   getRenderLightLevelOptions,
   toDrawnRenderLightLevel,

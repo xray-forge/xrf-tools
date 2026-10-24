@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
+import { ERenderTextureGroup } from "@xrf/ipc/types/xrf-renderer";
+import { SectorSkip } from "@xrf/ipc/types/xrf-visual";
+import { WorldSectorSkip } from "@xrf/ipc/types/xrf-world";
 
 import { ELevelProblemRule } from "@/applications/level-viewer/lib/problems/level-problem-rule";
 import { ILevelProblemSources, listLevelProblems } from "@/applications/level-viewer/lib/problems/level-problems";
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { ERenderTextureGroup } from "@/core/ipc/types/xrf-renderer";
-import { SectorSkip } from "@/core/ipc/types/xrf-visual";
-import { WorldSectorSkip } from "@/core/ipc/types/xrf-world";
 import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn/level-spawn-report";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";

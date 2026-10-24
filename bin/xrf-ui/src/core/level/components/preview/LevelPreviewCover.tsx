@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
+import { RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { describeLevelLoad } from "@/core/level/lib/load/level-load-progress";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";

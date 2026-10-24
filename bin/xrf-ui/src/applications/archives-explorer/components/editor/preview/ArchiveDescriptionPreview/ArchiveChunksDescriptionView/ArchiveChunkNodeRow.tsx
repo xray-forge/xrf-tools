@@ -1,8 +1,8 @@
 import { Typography } from "@mui/material";
 import { formatBytes } from "@xrf/format";
+import { ArchiveChunkNode } from "@xrf/ipc/types/xrf-app-archives";
 import { Fragment, ReactElement } from "react";
 
-import { ArchiveChunkNode } from "@/core/ipc/types/xrf-app-archives";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

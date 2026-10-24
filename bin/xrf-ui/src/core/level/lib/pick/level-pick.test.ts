@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERenderLevelHit, RenderLevelHit } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderLevelHit, RenderLevelHit } from "@/core/ipc/types/xrf-renderer";
 import { ELevelPick, toLevelPick } from "@/core/level/lib/pick/level-pick";
 import { mockLevelSpawnObject } from "@/fixtures/mocks/level.mocks";
 

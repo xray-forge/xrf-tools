@@ -1,10 +1,10 @@
 import { formatCount, formatNumber, formatPercent } from "@xrf/format";
-
 import {
   ERenderAmbientOcclusionMethod,
   RenderAmbientOcclusionMethod,
   RenderAmbientOcclusionSettings,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";

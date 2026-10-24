@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
 import { formatCount } from "@xrf/format";
+import { LevelSpawnObject, LevelSpawnObjectDetails, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { Maybe, Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -18,11 +19,6 @@ import {
   toLevelSpawnSectionId,
   toLevelSpawnTree,
 } from "@/applications/level-viewer/lib/spawn/level-spawn-tree";
-import {
-  LevelSpawnObject,
-  LevelSpawnObjectDetails,
-  LevelSpawnObjectsDescription,
-} from "@/core/ipc/types/xrf-app-levels";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelSpawnReport, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";

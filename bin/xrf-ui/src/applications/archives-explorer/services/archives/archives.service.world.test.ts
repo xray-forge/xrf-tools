@@ -1,9 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
+import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ArchiveWorldEntry, EArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
+import { ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
+import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
-import { ArchiveWorldEntry, EArchiveSubject } from "@/core/ipc/types/xrf-app-archives";
-import { ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import {
   mockArchiveShadowedCopy,
   mockArchivesVolumes,
@@ -11,7 +12,6 @@ import {
   mockArchiveWorldEntry,
 } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 const INSTALLATION: string = "C:\\game";

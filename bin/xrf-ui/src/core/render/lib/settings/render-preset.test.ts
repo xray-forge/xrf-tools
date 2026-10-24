@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERenderAmbientOcclusionMethod, ERenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderAmbientOcclusionMethod, ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_RENDER_FEATURE_CHOICE,
   resolveRenderFeatures,

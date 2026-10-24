@@ -1,4 +1,5 @@
-import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
+import { EXrayEngine, XrayEngine } from "@xrf/ipc/types/xrf-engine-target";
+
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { LEVEL_MANUAL_WEATHER_KEYS } from "@/core/level/lib/weather/level-manual-weather-keys";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";

@@ -1,31 +1,31 @@
-import { Nullable } from "@xrf/types";
-
 import {
   ARCHIVES_JOB_COMPARE,
   ARCHIVES_JOB_EXTRACT,
   ARCHIVES_JOB_PACK,
   ARCHIVES_JOB_PATCH,
   ARCHIVES_JOB_UNPACK,
-} from "@/core/ipc/types/xrf-app-archives";
-import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT, CONFIGS_JOB_VERIFY } from "@/core/ipc/types/xrf-app-configs";
-import { JobKind } from "@/core/ipc/types/xrf-app-core";
-import { GAMEDATA_JOB_VERIFY } from "@/core/ipc/types/xrf-app-gamedata";
-import { LEVELS_JOB_CAPTURE_CUBE, LEVELS_JOB_CAPTURE_MAP } from "@/core/ipc/types/xrf-app-levels";
-import { SPAWN_JOB_PACK, SPAWN_JOB_UNPACK } from "@/core/ipc/types/xrf-app-spawn";
-import { SPRITE_EQUIPMENT_JOB_PACK } from "@/core/ipc/types/xrf-app-sprite-equipment";
+} from "@xrf/ipc/types/xrf-app-archives";
+import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT, CONFIGS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-configs";
+import { JobKind } from "@xrf/ipc/types/xrf-app-core";
+import { GAMEDATA_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-gamedata";
+import { LEVELS_JOB_CAPTURE_CUBE, LEVELS_JOB_CAPTURE_MAP } from "@xrf/ipc/types/xrf-app-levels";
+import { SPAWN_JOB_PACK, SPAWN_JOB_UNPACK } from "@xrf/ipc/types/xrf-app-spawn";
+import { SPRITE_EQUIPMENT_JOB_PACK } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 import {
   TEXTURES_JOB_BUILD,
   TEXTURES_JOB_COMPARE_ENCODINGS,
   TEXTURES_JOB_MAKE_BUMP,
   TEXTURES_JOB_SAVE,
-} from "@/core/ipc/types/xrf-app-textures";
+} from "@xrf/ipc/types/xrf-app-textures";
 import {
   TRANSLATIONS_JOB_BUILD,
   TRANSLATIONS_JOB_CHECK_FORMAT,
   TRANSLATIONS_JOB_FORMAT,
   TRANSLATIONS_JOB_PARSE,
   TRANSLATIONS_JOB_VERIFY,
-} from "@/core/ipc/types/xrf-app-translations";
+} from "@xrf/ipc/types/xrf-app-translations";
+import { Nullable } from "@xrf/types";
+
 import { EApplicationId } from "@/core/routing/application";
 
 /**

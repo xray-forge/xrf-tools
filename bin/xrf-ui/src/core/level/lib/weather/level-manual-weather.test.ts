@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { WeatherDescriptor } from "@xrf/ipc/types/xrf-environment";
 
-import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
 import {
   DEFAULT_LEVEL_MANUAL_WEATHER,
   readLevelManualBase,

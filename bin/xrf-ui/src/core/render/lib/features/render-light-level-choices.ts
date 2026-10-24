@@ -1,6 +1,6 @@
 import { formatNumber } from "@xrf/format";
+import { ERenderLightLevel, RenderLightLevel } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderLightLevel, RenderLightLevel } from "@/core/ipc/types/xrf-renderer";
 import { IRenderLimits, toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";

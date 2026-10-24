@@ -1,7 +1,7 @@
+import { RenderBackend, RenderBackendAvailability, RenderGpu } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { RenderBackend, RenderBackendAvailability, RenderGpu } from "@/core/ipc/types/xrf-renderer";
 import {
   describeRenderBackend,
   describeRenderDrawing,

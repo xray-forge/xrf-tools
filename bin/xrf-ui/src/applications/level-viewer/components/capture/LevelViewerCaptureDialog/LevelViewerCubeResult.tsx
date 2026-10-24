@@ -1,6 +1,7 @@
 import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
+import { ETextureEncodingFormat } from "@xrf/ipc/types/xrf-texture";
 import { ReactElement, useCallback } from "react";
 
 import { LEVEL_CAPTURE_DDS_FORMATS } from "@/applications/level-viewer/lib/capture/level-capture";
@@ -13,7 +14,6 @@ import {
 } from "@/applications/level-viewer/lib/cube/level-cube-export";
 import { ILevelViewerImage } from "@/applications/level-viewer/lib/files/level-viewer-image";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
-import { ETextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
 import { cn } from "@/core/theme/class-name";
 import { CheckboxFormRow, ChoiceFormRow } from "@/core/ui/form";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";

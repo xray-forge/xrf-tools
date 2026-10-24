@@ -1,6 +1,6 @@
 import { formatCount, formatNumber } from "@xrf/format";
+import { ERenderDebandingMode, RenderDebandingMode } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderDebandingMode, RenderDebandingMode } from "@/core/ipc/types/xrf-renderer";
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 

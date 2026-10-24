@@ -1,8 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { render } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { ERenderBackend, RenderBackendAvailability } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderBackend, RenderBackendAvailability } from "@/core/ipc/types/xrf-renderer";
 import { RENDER_BACKEND_AUTO, TRenderBackendChoice } from "@/core/render/lib/settings/render-backend-choice";
 
 import { RenderBackendFormRow } from "./RenderBackendFormRow";

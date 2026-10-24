@@ -1,11 +1,11 @@
 import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { formatBytes, formatDuration } from "@xrf/format";
+import { ArchivePatchClass, ArchivePatchResult } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { describePatchHeadline } from "@/applications/archives-patcher/lib/describe-patch-headline";
 import { type IPatchChangeRow, toPatchChangeRows } from "@/applications/archives-patcher/lib/patch-change-rows";
-import { ArchivePatchClass, ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
 import { EApplicationId } from "@/core/routing/application";
 import { cn } from "@/core/theme/class-name";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";

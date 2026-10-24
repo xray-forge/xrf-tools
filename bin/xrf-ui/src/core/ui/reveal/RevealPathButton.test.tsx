@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, waitFor } from "@testing-library/react";
+import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
 
 import { EApplicationId } from "@/core/routing/application";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 describe("RevealPathButton", () => {

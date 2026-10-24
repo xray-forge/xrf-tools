@@ -1,6 +1,4 @@
-import { Nullable } from "@xrf/types";
-
-import { createRoots } from "@/core/assets/lib";
+import { InvokeHandler, InvokeMap } from "@xrf/ipc/testing";
 import {
   ELevelSpawnCategory,
   LevelEntry,
@@ -9,17 +7,19 @@ import {
   LevelStart,
   LevelTextureReference,
   SelectedLevelDescription,
-} from "@/core/ipc/types/xrf-app-levels";
-import { EXrayEngine, EXrayEngineEvidence } from "@/core/ipc/types/xrf-engine-target";
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { ERenderTextureGroup } from "@/core/ipc/types/xrf-renderer";
-import { EClsId } from "@/core/ipc/types/xrf-spawn";
-import { SectorOutline } from "@/core/ipc/types/xrf-visual";
+} from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngine, EXrayEngineEvidence } from "@xrf/ipc/types/xrf-engine-target";
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
+import { ERenderTextureGroup } from "@xrf/ipc/types/xrf-renderer";
+import { EClsId } from "@xrf/ipc/types/xrf-spawn";
+import { SectorOutline } from "@xrf/ipc/types/xrf-visual";
+import { Nullable } from "@xrf/types";
+
+import { createRoots } from "@/core/assets/lib";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { InvokeHandler, InvokeMap } from "@/fixtures/mocks/tauri.mocks";
 import { mockVisualBounds, mockVisualTransform } from "@/fixtures/mocks/visual.mocks";
 
 /**

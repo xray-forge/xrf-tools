@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
+import { ArchiveLevelGeomDescription } from "@xrf/ipc/types/xrf-app-archives";
 
-import { ArchiveLevelGeomDescription } from "@/core/ipc/types/xrf-app-archives";
 import { mockArchiveLevelGeomDescription } from "@/fixtures/mocks/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

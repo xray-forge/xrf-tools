@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
-import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import {
   clearLocalStorage,
   ENGINE_CHOICES_STORAGE_KEY,

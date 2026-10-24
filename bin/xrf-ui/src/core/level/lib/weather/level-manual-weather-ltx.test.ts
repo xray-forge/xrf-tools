@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { EXrayEngine } from "@xrf/ipc/types/xrf-engine-target";
 
-import { EXrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
 import { toLevelManualWeatherLtx } from "@/core/level/lib/weather/level-manual-weather-ltx";
 

@@ -1,8 +1,8 @@
+import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
 import { toAssetLocation } from "@/core/assets/lib";
-import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app-core";
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 
 /**

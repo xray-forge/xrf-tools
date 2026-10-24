@@ -1,4 +1,4 @@
-import { ETranslationLanguage } from "@/core/ipc/types/xrf-translation";
+import { ETranslationLanguage } from "@xrf/ipc/types/xrf-translation";
 
 /**
  * Languages a translation source can carry, as the backend's `TranslationLanguage` names them, in code order.

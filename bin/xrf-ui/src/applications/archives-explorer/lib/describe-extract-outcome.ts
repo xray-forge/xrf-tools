@@ -1,6 +1,6 @@
 import { formatCount } from "@xrf/format";
+import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 
-import { ArchiveExtractDirectoryResult } from "@/core/ipc/types/xrf-pack";
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

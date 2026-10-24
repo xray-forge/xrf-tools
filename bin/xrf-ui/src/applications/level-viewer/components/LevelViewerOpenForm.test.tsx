@@ -2,16 +2,16 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
+import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngine, EXrayEngineEvidence, XrayEngineResolution } from "@xrf/ipc/types/xrf-engine-target";
 
 import { LevelViewerListService } from "@/applications/level-viewer/services/list";
 import { AssetService } from "@/core/assets/services";
-import { LevelEntry } from "@/core/ipc/types/xrf-app-levels";
-import { EXrayEngine, EXrayEngineEvidence, XrayEngineResolution } from "@/core/ipc/types/xrf-engine-target";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

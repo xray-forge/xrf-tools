@@ -1,8 +1,8 @@
+import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 
 import { ILevelViewerImage } from "@/applications/level-viewer/lib/files/level-viewer-image";
 import { ILevelViewerSnapshot } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
-import { RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
 
 /** A screenshot as the viewer holds it once taken: its image, and the report beside it. */
 export interface ILevelViewerScreenshot extends ILevelViewerImage {

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { resetMockChannels, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
 
 import { mockJobDescription } from "@/fixtures/mocks/job.mocks";
-import { resetMockChannels, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   JOBS_ATTACH_COMMAND,
   JOBS_LIST_COMMAND,

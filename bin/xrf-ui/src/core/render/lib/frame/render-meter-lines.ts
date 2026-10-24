@@ -1,7 +1,6 @@
 import { ABSENT_VALUE, formatNumber } from "@xrf/format";
+import { RenderMeterReading } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
-
-import { RenderMeterReading } from "@/core/ipc/types/xrf-renderer";
 
 /**
  * @param value - A luminance, or null where none was read.

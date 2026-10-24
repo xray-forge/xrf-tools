@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { ERenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import {
   DEFAULT_LEVEL_HEMI_STRENGTH,

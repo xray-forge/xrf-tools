@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ArchivePackConfig, ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
 
-import { ArchivePackConfig, ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

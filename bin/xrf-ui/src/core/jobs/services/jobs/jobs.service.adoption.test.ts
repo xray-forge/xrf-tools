@@ -1,14 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { emitMockChannelMessage, resetMockChannels, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ARCHIVES_JOB_PACK } from "@xrf/ipc/types/xrf-app-archives";
 
-import { ARCHIVES_JOB_PACK } from "@/core/ipc/types/xrf-app-archives";
 import { EApplicationId } from "@/core/routing/application";
 import { mockJobDescription } from "@/fixtures/mocks/job.mocks";
-import {
-  emitMockChannelMessage,
-  resetMockChannels,
-  resetMockInvoke,
-  setMockInvokeResponses,
-} from "@/fixtures/mocks/tauri.mocks";
 import {
   JOBS_ATTACH_COMMAND,
   JOBS_LIST_COMMAND,

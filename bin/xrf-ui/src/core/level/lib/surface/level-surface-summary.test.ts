@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import {
   ILevelSurfaceSummary,
   listLevelSurfaces,

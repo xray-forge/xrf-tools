@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { DialogDescriptor, DialogPhraseDescriptor } from "@xrf/ipc/types/xrf-dialog";
 
 import { TGraphEdge, TGraphNode } from "@/core/graph/lib";
-import { DialogDescriptor, DialogPhraseDescriptor } from "@/core/ipc/types/xrf-dialog";
 
 import {
   buildDialogGraph,

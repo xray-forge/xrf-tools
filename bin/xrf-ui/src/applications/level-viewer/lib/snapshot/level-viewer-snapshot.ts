@@ -1,7 +1,7 @@
 import { XrfApplicationError } from "@xrf/errors";
+import { BuildInfo } from "@xrf/ipc/types/xrf-build-info";
 import { isRecord, Nullable } from "@xrf/types";
 
-import { BuildInfo } from "@/core/ipc/types/xrf-build-info";
 import { toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { toLevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { ELevelLookSource, toLevelLookChoice } from "@/core/level/lib/look/level-look-choice";

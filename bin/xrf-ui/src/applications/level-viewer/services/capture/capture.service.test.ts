@@ -1,19 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { save } from "@tauri-apps/plugin-dialog";
 import { waitFor } from "@testing-library/react";
+import { setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelAnnotationKind, LevelMapDescription, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { RenderCubeCapture, RenderMapCapture } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 
 import { ELevelCaptureMode } from "@/applications/level-viewer/lib/capture/level-capture";
 import { ELevelMapArea, ELevelMapLook } from "@/applications/level-viewer/lib/map/level-map-capture";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
-import { ELevelAnnotationKind, LevelMapDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app-levels";
-import { RenderCubeCapture, RenderMapCapture } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";
 import { clearLocalStorage } from "@/core/storage";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/fixtures/utils/level-container";
 
 const PATH: string = "appdata/level-viewer/screenshots/map_zaton-20261021-101500.png";

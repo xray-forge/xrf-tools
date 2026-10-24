@@ -2,14 +2,14 @@ import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
 import { useInjection } from "@wirestate/react";
+import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app-core";
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";

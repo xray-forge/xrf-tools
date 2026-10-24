@@ -1,15 +1,15 @@
 import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult, within } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
 import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VisualBonesPanel } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBonesPanel";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   mockPackedSubmesh,
   mockSelectedVisual,

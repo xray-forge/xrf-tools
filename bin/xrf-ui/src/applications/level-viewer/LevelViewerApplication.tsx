@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
+import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
-import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app-levels";
 import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";

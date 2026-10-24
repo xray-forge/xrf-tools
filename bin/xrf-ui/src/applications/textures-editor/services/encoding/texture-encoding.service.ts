@@ -3,23 +3,22 @@ import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
-import { Logger, Timer } from "@xrf/logging";
-import { Nullable } from "@xrf/types";
-
-import { describeTextureCompareOutcome } from "@/applications/textures-editor/lib/describe-texture-compare-outcome";
-import { fetchBulk } from "@/core/ipc/bulk";
-import { texturesCommands } from "@/core/ipc/commands/textures";
-import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
-import { toEnumMember } from "@/core/ipc/enumeration";
-import { Session, SessionScopeService } from "@/core/ipc/session";
-import { SessionId } from "@/core/ipc/types/xrf-app-core";
+import { fetchBulk, toEnumMember } from "@xrf/ipc";
+import { texturesCommands } from "@xrf/ipc/commands/textures";
+import { texturesBulkRoutes } from "@xrf/ipc/commands/textures-bulk";
+import { Session, SessionScopeService } from "@xrf/ipc/session";
+import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 import {
   TextureDescription,
   TextureEncodingComparison,
   TextureEncodingReport,
   TEXTURES_JOB_COMPARE_ENCODINGS,
-} from "@/core/ipc/types/xrf-app-textures";
-import { ETextureEncodingFormat, TextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
+} from "@xrf/ipc/types/xrf-app-textures";
+import { ETextureEncodingFormat, TextureEncodingFormat } from "@xrf/ipc/types/xrf-texture";
+import { Logger, Timer } from "@xrf/logging";
+import { Nullable } from "@xrf/types";
+
+import { describeTextureCompareOutcome } from "@/applications/textures-editor/lib/describe-texture-compare-outcome";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

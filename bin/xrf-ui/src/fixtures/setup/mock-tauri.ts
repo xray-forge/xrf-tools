@@ -1,6 +1,7 @@
 import { jest } from "@jest/globals";
+import { MockChannel, mockInvoke, mockIsTauri } from "@xrf/ipc/testing";
 
-import { mockAppWindow, MockChannel, mockInvoke, mockIsTauri } from "@/fixtures/mocks/tauri.mocks";
+import { mockAppWindow } from "@/fixtures/mocks/tauri.mocks";
 
 /**
  * Registers the Tauri API mocks used by jsdom tests.

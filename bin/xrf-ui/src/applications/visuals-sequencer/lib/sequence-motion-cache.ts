@@ -1,12 +1,12 @@
 import { BoundAction, Computed, makeObservable, Observable } from "@wirestate/mobx";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { visualsCommands } from "@xrf/ipc/commands/visuals";
+import { requireSessionId } from "@xrf/ipc/session";
+import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { requireSessionId } from "@/core/ipc/session";
-import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 
 /**

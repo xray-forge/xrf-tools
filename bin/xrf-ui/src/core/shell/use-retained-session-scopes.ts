@@ -1,10 +1,10 @@
 import { isTauri } from "@tauri-apps/api/core";
+import { sessionsCommands } from "@xrf/ipc/commands/sessions";
+import { SHELL_SESSION_TOOL } from "@xrf/ipc/session";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 import { useEffect, useRef } from "react";
 
-import { sessionsCommands } from "@/core/ipc/commands/sessions";
-import { SHELL_SESSION_TOOL } from "@/core/ipc/session";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { useCurrentApplication } from "@/core/routing/current-application.context";
 

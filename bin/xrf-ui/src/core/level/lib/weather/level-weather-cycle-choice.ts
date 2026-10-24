@@ -1,5 +1,5 @@
-import { EnvironmentCycleEntry, LevelWeatherDescription } from "@/core/ipc/types/xrf-app-levels";
-import { EWeatherCycleKind, LevelWeatherOption } from "@/core/ipc/types/xrf-environment";
+import { EnvironmentCycleEntry, LevelWeatherDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { EWeatherCycleKind, LevelWeatherOption } from "@xrf/ipc/types/xrf-environment";
 
 /**
  * One cycle a viewer can play.

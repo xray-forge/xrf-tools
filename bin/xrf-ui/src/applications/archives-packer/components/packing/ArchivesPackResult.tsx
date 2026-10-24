@@ -1,7 +1,7 @@
 import { formatBytesPair, formatDuration } from "@xrf/format";
+import { ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
 import { ReactElement, useMemo } from "react";
 
-import { ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { EApplicationId } from "@/core/routing/application";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultPathList } from "@/core/ui/command-result/CommandResultPathList";

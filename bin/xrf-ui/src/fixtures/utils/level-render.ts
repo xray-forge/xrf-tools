@@ -1,8 +1,9 @@
 import { expect } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { getMockChannels, MockChannel, mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ViewportEvent } from "@xrf/ipc/types/xrf-app-render";
 
-import { ViewportEvent } from "@/core/ipc/types/xrf-app-render";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
@@ -11,7 +12,6 @@ import { LevelViewportService } from "@/core/level/services/level-viewport.servi
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { mockLevelPartResponses, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { getMockChannels, MockChannel, mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 

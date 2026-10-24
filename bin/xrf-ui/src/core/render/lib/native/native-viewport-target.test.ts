@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { RenderViewportLayout } from "@xrf/ipc/types/xrf-renderer";
+import { EWorldCamera, EWorldDragEndReason, EWorldInputEvent, WorldInputEvent } from "@xrf/ipc/types/xrf-world";
 
-import { RenderViewportLayout } from "@/core/ipc/types/xrf-renderer";
-import { EWorldCamera, EWorldDragEndReason, EWorldInputEvent, WorldInputEvent } from "@/core/ipc/types/xrf-world";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { NativeViewportTarget } from "@/core/render/lib/native/native-viewport-target";
 

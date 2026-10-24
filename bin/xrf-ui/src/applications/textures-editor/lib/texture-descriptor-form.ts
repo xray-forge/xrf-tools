@@ -1,6 +1,5 @@
+import { TextureDescription, TextureDescriptorForm } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
-
-import { TextureDescription, TextureDescriptorForm } from "@/core/ipc/types/xrf-app-textures";
 
 /**
  * The form to edit for a described texture, shaped by the file beside it.

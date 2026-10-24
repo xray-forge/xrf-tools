@@ -1,6 +1,5 @@
 import { alpha, Theme } from "@mui/material";
-
-import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
+import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
 
 /**
  * What each part of the lattice is drawn in.

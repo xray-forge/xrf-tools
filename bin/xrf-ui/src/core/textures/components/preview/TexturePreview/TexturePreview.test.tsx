@@ -1,11 +1,12 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, fireEvent, RenderResult } from "@testing-library/react";
 import { AsyncState } from "@xrf/async";
+import { texturesCommands } from "@xrf/ipc/commands/textures";
+import { BulkRead, setMockBulkResponses } from "@xrf/ipc/testing";
+import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
 
 import { AssetService } from "@/core/assets/services";
-import { texturesCommands } from "@/core/ipc/commands/textures";
-import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,
   ETexturePreviewMode,
@@ -13,7 +14,6 @@ import {
 } from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureViewService } from "@/core/textures/services/view";
-import { BulkRead, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

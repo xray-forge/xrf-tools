@@ -1,7 +1,6 @@
+import { CubeExportFormat, CubeExportRequest } from "@xrf/ipc/types/xrf-app-levels";
+import { ETextureEncodingFormat, ETextureEncodingQuality } from "@xrf/ipc/types/xrf-texture";
 import { assertExhaustive } from "@xrf/types";
-
-import { CubeExportFormat, CubeExportRequest } from "@/core/ipc/types/xrf-app-levels";
-import { ETextureEncodingFormat, ETextureEncodingQuality } from "@/core/ipc/types/xrf-texture";
 
 /** What a cubemap is exported as, by the `kind` its export format is told apart by. */
 export type TLevelCubeExportKind = CubeExportFormat["kind"];

@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
+import { RenderLightShadowFilter } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { RenderLightShadowFilter } from "@/core/ipc/types/xrf-renderer";
 import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features/render-shadow-choices";
 import { TRenderLightsSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings";

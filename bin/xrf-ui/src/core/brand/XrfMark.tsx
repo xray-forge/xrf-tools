@@ -1,7 +1,7 @@
+import { EBuildKind } from "@xrf/ipc/types/xrf-build-info";
 import { ReactElement } from "react";
 
 import { getBuildKind } from "@/core/configs";
-import { EBuildKind } from "@/core/ipc/types/xrf-build-info";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

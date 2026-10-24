@@ -14,12 +14,12 @@ use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::ipc::bindings::command_surfaces::command_surfaces;
 
-/// How the mirror's modules address one another and the runtime beside them: through the frontend's alias.
-const MIRROR_IMPORTS: MirrorImports = MirrorImports::new("@/core/ipc");
+/// How the mirror's modules address one another and the runtime beside them: through the package's own `#/*` mapping.
+const MIRROR_IMPORTS: MirrorImports = MirrorImports::new("#");
 
-/// Path of the mirrors the frontend compiles against.
+/// Path of the mirrors the frontend compiles against: the sources of the `@xrf/ipc` package, beside its runtime.
 fn bindings_output_path() -> PathBuf {
-  PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../xrf-ui/src/core/ipc")
+  PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../packages/xrf-ipc/src")
 }
 
 /// Every crate writes its own module, the application's crates (`xrf_app_core`, each plugin) included, so a page

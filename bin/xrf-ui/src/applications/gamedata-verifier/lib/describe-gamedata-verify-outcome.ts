@@ -1,5 +1,6 @@
-import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/ipc/types/xrf-app-gamedata";
-import { EStatus } from "@/core/ipc/types/xrf-report";
+import { GamedataCheckSummary, GamedataVerifySummary } from "@xrf/ipc/types/xrf-app-gamedata";
+import { EStatus } from "@xrf/ipc/types/xrf-report";
+
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

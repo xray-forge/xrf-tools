@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ArchiveReadPolicy } from "@xrf/ipc/types/xrf-archive";
 
-import { ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
 import { mockArchiveFileDescriptor, mockArchiveReadPolicy } from "@/fixtures/mocks/archive.mocks";
 
 import { getArchivePreviewSupport } from "./preview";
