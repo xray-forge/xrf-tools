@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 
 use crate::commands::particle::fixtures::{create_library, run_for_result};
 use crate::commands::particle::list::command::ListCommand;
-use crate::core::generic_command::CommandResult;
+use crate::core::command::CommandResult;
 
 #[test]
 fn lists_every_effect_then_every_group_with_what_tells_each_apart() -> CommandResult {
