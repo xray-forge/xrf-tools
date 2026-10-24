@@ -117,6 +117,16 @@ impl ArchivePackConfig {
   /// Returns an invalid error below `VOLUME_SIZE_MIN`, or above `VOLUME_SIZE_MAX` unless oversized volumes are
   /// allowed.
   pub fn with_max_volume_size(mut self, size: u64) -> XrfResult<Self> {
+    Self::check_volume_size(size, self.is_with_oversized_volumes)?;
+
+    self.max_volume_size = size;
+
+    Ok(self)
+  }
+
+  /// Refuses a volume size outside the range the engine can mount, past `VOLUME_SIZE_MAX` only where oversized volumes
+  /// are allowed, and never past `VOLUME_SIZE_HARD_MAX`.
+  pub(crate) fn check_volume_size(size: u64, is_oversized_allowed: bool) -> XrfResult {
     if size < VOLUME_SIZE_MIN {
       return Err(XrfError::new_invalid_error(format!(
         "Archive volume size must be at least {VOLUME_SIZE_MIN} bytes, got {size}"
@@ -130,16 +140,14 @@ impl ArchivePackConfig {
       )));
     }
 
-    if size > VOLUME_SIZE_MAX && !self.is_with_oversized_volumes {
+    if size > VOLUME_SIZE_MAX && !is_oversized_allowed {
       return Err(XrfError::new_invalid_error(format!(
         "Archive volume size must not exceed {VOLUME_SIZE_MAX} bytes, got {size}. No unmodified engine mounts \
          a larger volume; allow oversized volumes to pack one anyway."
       )));
     }
 
-    self.max_volume_size = size;
-
-    Ok(self)
+    Ok(())
   }
 
   /// Allow a volume size past `VOLUME_SIZE_MAX`, which only an engine fork that raised `XRP_MAX_SIZE` can open.
