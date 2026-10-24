@@ -1,6 +1,7 @@
 use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
 
+use crate::core::session::SessionScopes;
 use crate::plugins::spawn::state::SpawnFileState;
 
 pub struct SpawnPlugin {}
@@ -13,7 +14,7 @@ impl SpawnPlugin {
 
     tauri::plugin::Builder::new(Self::NAME)
       .setup(|application, _| {
-        application.manage(SpawnFileState::new());
+        application.manage(SpawnFileState::new(&application.state::<SessionScopes>()));
 
         Ok(())
       })

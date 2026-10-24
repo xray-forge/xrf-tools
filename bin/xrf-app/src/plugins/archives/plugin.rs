@@ -1,6 +1,7 @@
 use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{Manager, Runtime};
 
+use crate::core::session::SessionScopes;
 use crate::plugins::archives::browse::ArchiveBrowseState;
 
 pub struct ArchivesPlugin {}
@@ -13,7 +14,10 @@ impl ArchivesPlugin {
 
     Builder::new(Self::NAME)
       .setup(|application, _| {
-        application.manage(ArchiveBrowseState::new("archive browse"));
+        application.manage(ArchiveBrowseState::new(
+          "archive browse",
+          &application.state::<SessionScopes>(),
+        ));
 
         Ok(())
       })

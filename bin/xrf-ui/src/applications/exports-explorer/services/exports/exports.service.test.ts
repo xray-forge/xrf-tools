@@ -40,7 +40,10 @@ describe("ExportsService", () => {
     expect(service.isReady).toBe(true);
     expect(service.project.value).toBeNull();
     expect(mockInvoke).toHaveBeenCalledTimes(1);
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:exports|get_project");
+    // The restore names the tool's scope, which the backend lists its openings by.
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:exports|get_project", {
+      scope: { tool: "shell", window: "main" },
+    });
   });
 
   it("recovers from a failed session lookup", async () => {

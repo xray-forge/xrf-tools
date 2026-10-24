@@ -1,12 +1,17 @@
 use tauri::State;
 
-use crate::core::session::SessionRestore;
+use crate::core::session::{SessionRestore, SessionScope, SessionScopes};
 use crate::core::types::TauriResult;
 use crate::plugins::archives::browse::{ArchiveBrowseState, ArchiveSubject};
 
-/// What the explorer has open, so a reloaded frontend adopts it instead of asking for it again.
+/// What a tool's explorer has open, the newest it opened, so a reloaded frontend adopts it instead of asking for it
+/// again.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_subject"))]
 #[tauri::command(rename = "get_subject")]
-pub async fn archives_get_subject(state: State<'_, ArchiveBrowseState>) -> TauriResult<SessionRestore<ArchiveSubject>> {
-  Ok(SessionRestore::from(state.get()?))
+pub async fn archives_get_subject(
+  state: State<'_, ArchiveBrowseState>,
+  scopes: State<'_, SessionScopes>,
+  scope: SessionScope,
+) -> TauriResult<SessionRestore<ArchiveSubject>> {
+  Ok(SessionRestore::from(state.restore(&scopes.list(&scope))?))
 }

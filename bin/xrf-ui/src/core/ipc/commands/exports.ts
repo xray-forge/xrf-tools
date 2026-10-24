@@ -1,7 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
-import { SessionId, SessionRestore, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { SessionId, SessionRestore, SessionScope, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { ExportSourceContent, ExportsProject } from "@/core/ipc/types/xrf-export";
 
 /** Commands */
@@ -12,7 +12,9 @@ export const exportsCommands = {
     __TAURI_INVOKE<null>("plugin:exports|export_manifest", { sessionId, path }),
   openProject: (sessionId: SessionId, projectPath: string) =>
     __TAURI_INVOKE<SessionSnapshot<ExportsProject>>("plugin:exports|open_project", { sessionId, projectPath }),
-  getProject: () => __TAURI_INVOKE<SessionRestore<ExportsProject>>("plugin:exports|get_project"),
+  /** What exports project a tool holds, the newest it opened, for a page attaching to it after a reload. */
+  getProject: (scope: SessionScope) =>
+    __TAURI_INVOKE<SessionRestore<ExportsProject>>("plugin:exports|get_project", { scope }),
   getSource: (sessionId: SessionId, name: string) =>
     __TAURI_INVOKE<ExportSourceContent>("plugin:exports|get_source", { sessionId, name }),
 };

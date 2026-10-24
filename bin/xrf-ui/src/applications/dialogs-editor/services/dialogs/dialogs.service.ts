@@ -116,7 +116,9 @@ export class DialogsService {
    */
   @ExclusiveFlow("project")
   private *restore(): TFlow {
-    const response: Nullable<SessionSnapshot<DialogProjectDescriptor>> = yield* call(dialogsCommands.getProject());
+    const response: Nullable<SessionSnapshot<DialogProjectDescriptor>> = yield* call(
+      dialogsCommands.getProject(this.session.scope)
+    );
 
     this.log.info(
       response ? "Dialogs project restored:" : "No existing dialogs project",

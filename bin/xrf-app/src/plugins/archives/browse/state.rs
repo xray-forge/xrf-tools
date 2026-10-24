@@ -1,5 +1,5 @@
-use crate::core::session::Session;
+use crate::core::session::Sessions;
 use crate::plugins::archives::browse::archive_subject::ArchiveSubject;
 
-/// What the explorer has open, and its pending replacement.
-pub type ArchiveBrowseState = Session<ArchiveSubject>;
+/// What each explorer has open, held by the tool that opened it.
+pub type ArchiveBrowseState = Sessions<ArchiveSubject>;

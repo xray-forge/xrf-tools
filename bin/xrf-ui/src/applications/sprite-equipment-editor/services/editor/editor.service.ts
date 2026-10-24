@@ -134,7 +134,7 @@ export class SpriteEquipmentEditorService {
   @ExclusiveFlow("spriteImage")
   private *restore(): TFlow {
     const response: Nullable<SessionSnapshot<EquipmentSpriteMetadata>> = yield* call(
-      spriteEquipmentCommands.getSprite()
+      spriteEquipmentCommands.getSprite(this.session.scope)
     );
 
     if (!response) {

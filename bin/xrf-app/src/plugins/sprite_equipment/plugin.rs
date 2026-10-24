@@ -3,6 +3,7 @@ use tauri::http::{Response, StatusCode};
 use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
 
+use crate::core::session::SessionScopes;
 use crate::plugins::sprite_equipment::state::EquipmentSpriteState;
 use crate::plugins::sprite_equipment::stream::get_sprite_stream_response;
 
@@ -16,7 +17,10 @@ impl SpriteEquipmentPlugin {
 
     tauri::plugin::Builder::new(Self::NAME)
       .setup(|application, _| {
-        application.manage(EquipmentSpriteState::new("equipment sprite"));
+        application.manage(EquipmentSpriteState::new(
+          "equipment sprite",
+          &application.state::<SessionScopes>(),
+        ));
 
         Ok(())
       })

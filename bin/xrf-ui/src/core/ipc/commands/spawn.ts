@@ -5,6 +5,7 @@ import { Channel } from "@tauri-apps/api/core";
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
   SessionId,
+  SessionScope,
   SpawnConversionRequest,
   SpawnConversionResult,
   SpawnSessionDescriptor,
@@ -40,13 +41,13 @@ export const spawnCommands = {
   getHeader: (sessionId: SessionId) => __TAURI_INVOKE<SpawnHeaderChunk>("plugin:spawn|get_header", { sessionId }),
   /** Read patrols from the requested opening, refusing a replaced session. */
   getPatrols: (sessionId: SessionId) => __TAURI_INVOKE<SpawnPatrolsChunk>("plugin:spawn|get_patrols", { sessionId }),
-  /** Restore a coherent session without cloning any of the large chunks. */
-  getSession: () =>
+  /** Restore the spawn a tool holds, the newest it opened, without cloning any of the large chunks. */
+  getSession: (scope: SessionScope) =>
     __TAURI_INVOKE<{
       sessionId: SessionId;
       path: string;
       header: SpawnHeaderChunk;
-    } | null>("plugin:spawn|get_session"),
+    } | null>("plugin:spawn|get_session", { scope }),
   /** Open a unpacked spawn and return its identity, path, and header together. */
   openUnpackedDirectory: (sessionId: SessionId, path: string) =>
     __TAURI_INVOKE<SpawnSessionDescriptor>("plugin:spawn|open_unpacked_directory", { sessionId, path }),

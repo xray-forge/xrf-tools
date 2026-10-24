@@ -8,6 +8,7 @@ import {
   PackSpriteRequest,
   SessionId,
   SessionRestore,
+  SessionScope,
   SessionSnapshot,
   SpriteEquipmentOpenRequest,
 } from "@/core/ipc/types/xrf-app";
@@ -18,7 +19,9 @@ import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 export const spriteEquipmentCommands = {
   closeSprite: (sessionIds: Array<SessionId>) =>
     __TAURI_INVOKE<null>("plugin:sprite-equipment|close_sprite", { sessionIds }),
-  getSprite: () => __TAURI_INVOKE<SessionRestore<EquipmentSpriteMetadata>>("plugin:sprite-equipment|get_sprite"),
+  /** What sheet a tool holds, the newest it opened, for a page attaching to it after a reload. */
+  getSprite: (scope: SessionScope) =>
+    __TAURI_INVOKE<SessionRestore<EquipmentSpriteMetadata>>("plugin:sprite-equipment|get_sprite", { scope }),
   openSprite: (request: SpriteEquipmentOpenRequest) =>
     __TAURI_INVOKE<SessionSnapshot<EquipmentSpriteMetadata>>("plugin:sprite-equipment|open_sprite", { request }),
   reopenSprite: (sessionId: SessionId, openingId: SessionId) =>

@@ -6,6 +6,7 @@ import {
   DialogsReadRequest,
   SessionId,
   SessionRestore,
+  SessionScope,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
@@ -20,7 +21,9 @@ export const dialogsCommands = {
   /** One dialog, with every phrase it declares. */
   getDialog: (request: DialogsReadRequest) =>
     __TAURI_INVOKE<DialogDescriptor>("plugin:dialogs|get_dialog", { request }),
-  getProject: () => __TAURI_INVOKE<SessionRestore<DialogProjectDescriptor>>("plugin:dialogs|get_project"),
+  /** What dialogs project a tool holds, the newest it opened, for a page attaching to it after a reload. */
+  getProject: (scope: SessionScope) =>
+    __TAURI_INVOKE<SessionRestore<DialogProjectDescriptor>>("plugin:dialogs|get_project", { scope }),
   /** Open a dialog tree. */
   openProject: (request: DialogsOpenRequest) =>
     __TAURI_INVOKE<SessionSnapshot<DialogProjectDescriptor>>("plugin:dialogs|open_project", { request }),

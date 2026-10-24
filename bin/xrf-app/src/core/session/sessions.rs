@@ -73,6 +73,20 @@ impl<T: Send + Sync + 'static> Sessions<T> {
     handle.begin_open(id)
   }
 
+  /// Reserves `id` to open again what `previous` holds, while `previous` is still open, answering what it holds: a
+  /// reload is a new handle, which the opener closes `previous` for once it commits.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `previous` holds nothing, or `id` cannot be reserved.
+  pub fn begin_reload(&self, id: SessionId, previous: SessionId) -> TauriResult<Arc<SessionSnapshot<T>>> {
+    let opened: Arc<SessionSnapshot<T>> = self.require(previous)?;
+
+    self.begin_open(id)?;
+
+    Ok(opened)
+  }
+
   /// Publishes a handle's opening; see [`Session::commit_open`].
   pub fn commit_open(&self, id: SessionId, value: T) -> TauriResult<Arc<SessionSnapshot<T>>> {
     self.commit_open_with(
