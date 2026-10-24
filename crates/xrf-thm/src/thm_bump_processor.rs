@@ -1,12 +1,11 @@
 use std::fs;
-use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, open_export_file};
+use xrf_utils::{format_path, write_new_file_staged};
 
 use crate::chunks::thm_bump_chunk::ThmBumpChunk;
 use crate::thm_bump_mode::ThmBumpMode;
@@ -37,6 +36,9 @@ impl ThmBumpProcessor {
   }
 
   /// Rewrite the bump declaration of a thm file, verifying the result before letting it survive.
+  ///
+  /// The source is read once, and the patched bytes are checked before anything is written, so a refused patch leaves
+  /// the destination as it was and a written one replaces it whole.
   pub fn patch_bump_to_path<T: ByteOrder>(
     source: &Path,
     destination: &Path,
@@ -44,8 +46,8 @@ impl ThmBumpProcessor {
     mode: Option<ThmBumpMode>,
     is_dry_run: bool,
   ) -> XrfResult<ThmBumpPatchReport> {
-    let original: Vec<u8> = fs::read(source)?;
-    let existing: ThmBumpChunk = Self::read_bump(source)?;
+    let original: Vec<u8> = Self::read_source(source)?;
+    let existing: ThmBumpChunk = Self::read_bump(source, original.clone())?;
 
     Self::assert_chunk_copy_is_lossless::<T>(source, &original, &existing)?;
 
@@ -55,7 +57,9 @@ impl ThmBumpProcessor {
       name: bump_name.map_or_else(|| existing.name.clone(), str::to_owned),
     };
 
-    let patched: Vec<u8> = Self::write_bump_name_to_buffer::<T>(Self::open_source(source)?, &patch)?;
+    let patched: Vec<u8> = Self::write_bump_name_to_buffer::<T>(original.clone(), &patch)?;
+
+    Self::assert_patched_bump_matches(source, patched.clone(), &patch)?;
 
     let report: ThmBumpPatchReport = ThmBumpPatchReport {
       original_size: original.len(),
@@ -65,29 +69,17 @@ impl ThmBumpProcessor {
       is_dry_run,
     };
 
-    if is_dry_run {
-      return Ok(report);
-    }
-
-    if let Some(parent) = destination.parent() {
-      fs::create_dir_all(parent)?;
-    }
-
-    open_export_file(destination)?.write_all(&patched)?;
-
-    if let Err(error) = Self::assert_written_bump_matches(destination, &patch) {
-      Self::revert_destination(source, destination, &original)?;
-
-      return Err(error);
+    if !is_dry_run {
+      write_new_file_staged(destination, &patched)?;
     }
 
     Ok(report)
   }
 
-  /// Rewrite the bump chunk of a thm file, copying every other chunk verbatim.
-  pub fn write_bump_name_to_buffer<T: ByteOrder>(file: File, bump: &ThmBumpChunk) -> XrfResult<Vec<u8>> {
+  /// Rewrite the bump chunk of the thm file `bytes` hold, copying every other chunk verbatim.
+  pub fn write_bump_name_to_buffer<T: ByteOrder>(bytes: Vec<u8>, bump: &ThmBumpChunk) -> XrfResult<Vec<u8>> {
     let mut chunks: Vec<ChunkReader<InMemoryChunkDataSource>> =
-      ChunkReader::from_file(file)?.read_children_including_compressed()?;
+      ChunkReader::from_vec(bytes)?.read_children_including_compressed()?;
     let mut buffer: Vec<u8> = Vec::new();
     let mut patched_count: u32 = 0;
 
@@ -120,8 +112,9 @@ impl ThmBumpProcessor {
     Ok(buffer)
   }
 
-  fn open_source(source: &Path) -> XrfResult<File> {
-    File::open(source).map_err(|error| {
+  /// The whole source, read once for every view a patch takes of it.
+  fn read_source(source: &Path) -> XrfResult<Vec<u8>> {
+    fs::read(source).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "THM file was not read: {}, error: {}",
         format_path(source),
@@ -130,15 +123,16 @@ impl ThmBumpProcessor {
     })
   }
 
-  fn read_bump(source: &Path) -> XrfResult<ThmBumpChunk> {
-    ThmFile::read_from_path::<xrf_chunk::XRayByteOrder, _>(&source)?
+  /// The bump declaration of the thm file `bytes` hold, read from `source`.
+  fn read_bump(source: &Path, bytes: Vec<u8>) -> XrfResult<ThmBumpChunk> {
+    ThmFile::read_from_bytes::<xrf_chunk::XRayByteOrder>(bytes)?
       .bump
       .ok_or_else(|| XrfError::new_not_found_error(format!("THM file declares no bump chunk: {}", format_path(source))))
   }
 
   /// Guard that rewriting the declaration a file already has reproduces that file byte for byte.
   fn assert_chunk_copy_is_lossless<T: ByteOrder>(source: &Path, original: &[u8], existing: &ThmBumpChunk) -> XrfResult {
-    let reverted: Vec<u8> = Self::write_bump_name_to_buffer::<T>(Self::open_source(source)?, existing)?;
+    let reverted: Vec<u8> = Self::write_bump_name_to_buffer::<T>(original.to_vec(), existing)?;
 
     if reverted != original {
       return Err(XrfError::new_verify_error(format!(
@@ -152,28 +146,17 @@ impl ThmBumpProcessor {
     Ok(())
   }
 
-  /// Guard that the written file reads back exactly the requested declaration.
-  fn assert_written_bump_matches(destination: &Path, expected: &ThmBumpChunk) -> XrfResult {
-    let read_back: ThmBumpChunk = Self::read_bump(destination)?;
+  /// Guard that the patched bytes read back exactly the requested declaration.
+  fn assert_patched_bump_matches(source: &Path, patched: Vec<u8>, expected: &ThmBumpChunk) -> XrfResult {
+    let read_back: ThmBumpChunk = Self::read_bump(source, patched)?;
 
     if &read_back != expected {
       return Err(XrfError::new_verify_error(format!(
         "Patched {} reads back bump {:?} instead of {:?}",
-        format_path(destination),
+        format_path(source),
         read_back,
         expected
       )));
-    }
-
-    Ok(())
-  }
-
-  /// Undo a failed write, leaving neither a corrupted source nor a partial destination behind.
-  fn revert_destination(source: &Path, destination: &Path, original: &[u8]) -> XrfResult {
-    if destination == source {
-      fs::write(destination, original)?;
-    } else if destination.exists() {
-      fs::remove_file(destination)?;
     }
 
     Ok(())
@@ -235,7 +218,7 @@ mod tests {
     let path: PathBuf = write_sample(&filename, &bump)?;
 
     assert_eq!(
-      ThmBumpProcessor::write_bump_name_to_buffer::<XRayByteOrder>(File::open(&path)?, &bump)?,
+      ThmBumpProcessor::write_bump_name_to_buffer::<XRayByteOrder>(fs::read(&path)?, &bump)?,
       fs::read(&path)?,
       "Expect rewriting the existing declaration to reproduce source bytes"
     );

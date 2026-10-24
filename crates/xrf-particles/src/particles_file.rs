@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::XrfResult;
 use xrf_ltx::FileImportExport;
-use xrf_utils::{assert, assert_length, format_path, open_export_file};
+use xrf_utils::{assert, assert_length, format_path, write_new_file_staged};
 
 use crate::chunks::particles_effects_chunk::ParticlesEffectsChunk;
 use crate::chunks::particles_firstgen_chunk::ParticlesFirstgenChunk;
@@ -62,9 +62,11 @@ impl ParticlesFile {
 
   /// Write particles file data to the file by provided path.
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    fs::create_dir_all(path.as_ref().parent().expect("Parent directory"))?;
+    let mut bytes: Vec<u8> = Vec::new();
 
-    self.write_to::<T>(&mut open_export_file(path)?)
+    self.write_to::<T>(&mut bytes)?;
+
+    Ok(write_new_file_staged(path.as_ref(), &bytes)?)
   }
 
   /// Write particles file data to the writer.

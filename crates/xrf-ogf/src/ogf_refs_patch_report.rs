@@ -14,4 +14,6 @@ pub struct OgfRefsPatchReport {
   pub discarded_size: usize,
   /// Whether the patched buffer was actually written to the destination.
   pub is_dry_run: bool,
+  /// The references the source held before the patch.
+  pub previous_refs: Vec<String>,
 }

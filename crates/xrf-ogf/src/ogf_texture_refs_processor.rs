@@ -1,12 +1,10 @@
-use std::fs;
-use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, open_export_file};
+use xrf_utils::{format_path, write_new_file_staged};
 
 use crate::chunks::ogf_children_chunk::OgfChildrenChunk;
 use crate::chunks::ogf_texture_chunk::OgfTextureChunk;
@@ -20,6 +18,9 @@ pub struct OgfTextureRefsProcessor {}
 
 impl OgfTextureRefsProcessor {
   /// Rename a texture reference of an ogf file, verifying the result before letting it survive.
+  ///
+  /// The source is read once, and the patched bytes are checked before anything is written, so a refused patch leaves
+  /// the destination as it was and a written one replaces it whole.
   pub fn patch_texture_refs_to_path<T: ByteOrder>(
     source: &Path,
     destination: &Path,
@@ -27,13 +28,12 @@ impl OgfTextureRefsProcessor {
     to: &str,
     is_dry_run: bool,
   ) -> XrfResult<OgfRefsPatchReport> {
-    let original: Vec<u8> = fs::read(source)?;
-    let existing: Vec<String> = OgfFile::read_texture_refs_from_path::<T, _>(&source)?;
+    let original: Vec<u8> = OgfRawPatch::read_source(source)?;
+    let existing: Vec<String> = OgfFile::read_texture_refs_from_bytes::<T>(original.clone())?;
 
     Self::assert_chunk_copy_is_lossless::<T>(source, &original, from)?;
 
-    let (patched, patched_count) =
-      Self::write_texture_refs_to_buffer::<T>(OgfRawPatch::open_source(source)?, from, to)?;
+    let (patched, patched_count) = Self::write_texture_refs_to_buffer::<T>(original.clone(), from, to)?;
 
     if patched_count == 0 {
       return Err(XrfError::new_verify_error(format!(
@@ -44,6 +44,8 @@ impl OgfTextureRefsProcessor {
       )));
     }
 
+    Self::assert_patched_refs_match::<T>(source, &patched, from, to)?;
+
     let report: OgfRefsPatchReport = OgfRefsPatchReport {
       original_size: original.len(),
       patched_size: patched.len(),
@@ -52,31 +54,20 @@ impl OgfTextureRefsProcessor {
         .len()
         .saturating_sub(OgfNormalization::normalize_bytes::<T>(&original)?.len()),
       is_dry_run,
+      previous_refs: existing,
     };
 
-    if is_dry_run {
-      return Ok(report);
-    }
-
-    if let Some(parent) = destination.parent() {
-      fs::create_dir_all(parent)?;
-    }
-
-    open_export_file(destination)?.write_all(&patched)?;
-
-    if let Err(error) = Self::assert_written_refs_match::<T>(destination, from, to) {
-      OgfRawPatch::revert_destination(source, destination, &original)?;
-
-      return Err(error);
+    if !is_dry_run {
+      write_new_file_staged(destination, &patched)?;
     }
 
     Ok(report)
   }
 
-  /// Rename texture references of an ogf file, copying every other chunk verbatim.
-  pub fn write_texture_refs_to_buffer<T: ByteOrder>(file: File, from: &str, to: &str) -> XrfResult<(Vec<u8>, u32)> {
+  /// Rename texture references of the ogf file `bytes` hold, copying every other chunk verbatim.
+  pub fn write_texture_refs_to_buffer<T: ByteOrder>(bytes: Vec<u8>, from: &str, to: &str) -> XrfResult<(Vec<u8>, u32)> {
     let (mut chunks, _) =
-      OgfResidue::read_root_chunks::<T, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_file(file)?)?;
+      OgfResidue::read_root_chunks::<T, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_vec(bytes)?)?;
     let mut buffer: Vec<u8> = Vec::new();
     let mut patched_count: u32 = 0;
 
@@ -154,7 +145,7 @@ impl OgfTextureRefsProcessor {
 
   /// Guard that a rename which changes nothing reproduces the source file, normalized.
   fn assert_chunk_copy_is_lossless<T: ByteOrder>(source: &Path, original: &[u8], from: &str) -> XrfResult {
-    let (reverted, _) = Self::write_texture_refs_to_buffer::<T>(OgfRawPatch::open_source(source)?, from, from)?;
+    let (reverted, _) = Self::write_texture_refs_to_buffer::<T>(original.to_vec(), from, from)?;
 
     OgfRawPatch::assert_chunk_copy_is_lossless::<T>(
       source,
@@ -164,37 +155,26 @@ impl OgfTextureRefsProcessor {
     )
   }
 
-  /// Verify the written file names the new reference and no longer names the old one.
-  fn assert_written_refs_match<T: ByteOrder>(destination: &Path, from: &str, to: &str) -> XrfResult {
-    let written: Vec<String> = OgfFile::read_texture_refs_from_path::<T, _>(&destination)?;
+  /// Verify the patched bytes name the new reference and no longer name the old one.
+  fn assert_patched_refs_match<T: ByteOrder>(source: &Path, patched: &[u8], from: &str, to: &str) -> XrfResult {
+    let patched_refs: Vec<String> = OgfFile::read_texture_refs_from_bytes::<T>(patched.to_vec())?;
 
-    if written.iter().any(|it| it == from) {
+    if patched_refs.iter().any(|it| it == from) {
       return Err(XrfError::new_verify_error(format!(
-        "Wrote {} but it still names '{}', refs are {:?}",
-        format_path(destination),
+        "Patched {} still names '{}', refs are {:?}",
+        format_path(source),
         from,
-        written
+        patched_refs
       )));
     }
 
-    if !written.iter().any(|it| it == to) {
+    if !patched_refs.iter().any(|it| it == to) {
       return Err(XrfError::new_verify_error(format!(
-        "Wrote {} but it does not name '{}', refs are {:?}",
-        format_path(destination),
+        "Patched {} does not name '{}', refs are {:?}",
+        format_path(source),
         to,
-        written
+        patched_refs
       )));
-    }
-
-    Ok(())
-  }
-
-  /// Restore the destination after a failed verification, so a bad patch never survives.
-  fn revert_destination(source: &Path, destination: &Path, original: &[u8]) -> XrfResult {
-    if destination == source {
-      fs::write(destination, original)?;
-    } else if destination.exists() {
-      fs::remove_file(destination)?;
     }
 
     Ok(())

@@ -1,12 +1,12 @@
 use std::fs::File;
-use std::io::{BufWriter, Cursor, Read, Write};
+use std::io::{Cursor, Read, Write};
 use std::path::Path;
 
 use ddsfile::{Dds, DxgiFormat};
 use image::codecs::png::PngEncoder;
 use image::{ExtendedColorType, ImageEncoder, RgbaImage};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::format_path;
+use xrf_utils::{format_path, write_file_staged};
 
 use crate::file::dds_metadata::DdsMetadata;
 use crate::file::dds_png::DdsPng;
@@ -188,12 +188,7 @@ impl DdsFile {
   }
 
   pub fn write_to_path(&self, path: &Path) -> XrfResult {
-    self
-      .dds
-      .write(&mut BufWriter::new(File::create(path)?))
-      .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
-
-    Ok(())
+    Ok(write_file_staged(path, &self.write_to_bytes()?)?)
   }
 
   pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {

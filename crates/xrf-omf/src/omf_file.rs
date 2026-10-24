@@ -1,4 +1,3 @@
-use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -7,7 +6,7 @@ use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::{XrfError, XrfResult};
 use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk};
-use xrf_utils::{assert_equal, format_path, open_export_file};
+use xrf_utils::{assert_equal, format_path, write_new_file_staged};
 
 // c++ CKinematicsAnimated
 #[derive(Debug)]
@@ -72,11 +71,11 @@ impl OmfFile {
 impl OmfFile {
   /// Write omf file data into provided path.
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    if let Some(parent) = path.as_ref().parent() {
-      fs::create_dir_all(parent)?;
-    }
+    let mut bytes: Vec<u8> = Vec::new();
 
-    self.write_to::<T>(&mut open_export_file(path)?)
+    self.write_to::<T>(&mut bytes)?;
+
+    Ok(write_new_file_staged(path.as_ref(), &bytes)?)
   }
 
   /// Write omf file data into the writer.
