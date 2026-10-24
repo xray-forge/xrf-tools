@@ -7,11 +7,8 @@ use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
 use super::report::DdsConvertReport;
-use crate::commands::dds::dds_encode_arguments::{
-  DEFAULT_CONVERT_MIP_FILTER, get_mip_filter, get_quality, new_mip_filter_argument, new_quality_argument,
-};
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::commands::dds::dds_encode_arguments::DdsEncodeArguments;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct ConvertCommand;
@@ -21,20 +18,22 @@ impl GenericCommand for ConvertCommand {
     "convert"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to re-encode a dds file into another format, with its mip chain rebuilt")
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command
+      .about("Re-encode a DDS file into another format, with its mip chain rebuilt")
       .arg(
-        Arg::new("source")
+        Arg::new("path")
           .help("Path of the dds file to read")
-          .value_name("SOURCE")
+          .short('p')
+          .long("path")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("destination")
+        Arg::new("dest")
           .help("Path of the dds file to write")
-          .value_name("DESTINATION")
+          .short('d')
+          .long("dest")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
@@ -43,10 +42,10 @@ impl GenericCommand for ConvertCommand {
           .help("Format to write, of the five worth offering for an X-Ray texture")
           .long("format")
           .required(true)
-          .value_parser(["bc1", "bc2", "bc3", "bc7", "rgba8"]),
-      )
-      .arg(new_mip_filter_argument(DEFAULT_CONVERT_MIP_FILTER))
-      .arg(new_quality_argument())
+          .value_parser(DdsEncodeCandidate::NAMES),
+      );
+
+    DdsEncodeArguments::declare(command, DdsEncodeArguments::CONVERT_MIP_FILTER)
       .arg(
         Arg::new("no-mipmaps")
           .help("Write only the base level, for a texture the engine never minifies")
@@ -66,10 +65,10 @@ impl GenericCommand for ConvertCommand {
   /// The source is decoded once and reduced once; every candidate is then encoded from those same levels, so a
   /// comparison weighs formats rather than weighing one format against a differently built chain.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let source: &PathBuf = matches.get_one("source").expect("Expected valid source path");
-    let destination: &PathBuf = matches.get_one("destination").expect("Expected valid destination path");
+    let source: &PathBuf = matches.get_one("path").expect("Expected valid source path");
+    let destination: &PathBuf = matches.get_one("dest").expect("Expected valid destination path");
     let candidate: DdsEncodeCandidate = Self::get_candidate(matches)?;
-    let quality: Quality = get_quality(matches)?;
+    let quality: Quality = DdsEncodeArguments::quality_of(matches)?;
     let output: OutputOptions = context.get_output().clone();
 
     let base: RgbaImage = DdsFile::read_from_path(source)?.decode_rgba(0)?;
@@ -90,7 +89,7 @@ impl GenericCommand for ConvertCommand {
       Vec::new()
     };
 
-    xrf_output::info!(
+    xrf_output::success!(
       output,
       "Converted {} to {} as {}, {} levels, {} bytes",
       format_path(source),
@@ -108,17 +107,13 @@ impl GenericCommand for ConvertCommand {
 
 impl ConvertCommand {
   fn get_candidate(matches: &ArgMatches) -> XrfResult<DdsEncodeCandidate> {
-    match matches.get_one::<String>("format").map(String::as_str) {
-      Some("bc1") => Ok(DdsEncodeCandidate::Bc1),
-      Some("bc2") => Ok(DdsEncodeCandidate::Bc2),
-      Some("bc3") => Ok(DdsEncodeCandidate::Bc3),
-      Some("bc7") => Ok(DdsEncodeCandidate::Bc7),
-      Some("rgba8") => Ok(DdsEncodeCandidate::Rgba8),
-      other => Err(XrfError::new_invalid_error(format!(
-        "Unexpected texture format '{}'",
-        other.unwrap_or_default()
-      ))),
-    }
+    let name: &str = matches
+      .get_one::<String>("format")
+      .map(String::as_str)
+      .unwrap_or_default();
+
+    DdsEncodeCandidate::from_name(name)
+      .ok_or_else(|| XrfError::new_invalid_error(format!("Unexpected texture format '{name}'")))
   }
 
   fn get_mipmaps(matches: &ArgMatches) -> XrfResult<DdsMipmaps> {
@@ -126,6 +121,6 @@ impl ConvertCommand {
       return Ok(DdsMipmaps::Disabled);
     }
 
-    Ok(DdsMipmaps::Filtered(get_mip_filter(matches)?))
+    Ok(DdsMipmaps::Filtered(DdsEncodeArguments::mip_filter_of(matches)?))
   }
 }

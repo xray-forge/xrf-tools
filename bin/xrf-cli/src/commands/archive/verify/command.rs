@@ -10,16 +10,8 @@ use xrf_vfs::{XrayArchiveSource, XrayPathCollision, XrayShadowingEntry};
 use super::archive_verify_finding_report::ArchiveVerifyFindingReport;
 use super::report::ArchiveVerifyReport;
 use crate::commands::archive::list::ListCommand;
-use crate::core::collisions::{print_collisions, print_overrides};
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-
-/// Maximum unreachable entries printed before reporting the omitted count.
-const COLLISION_PRINT_LIMIT: usize = 40;
-
-/// Maximum contested paths printed before reporting the omitted count.
-const OVERRIDE_PRINT_LIMIT: usize = 40;
+use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::terminal::SourceReachability;
 
 #[derive(Default)]
 pub struct VerifyCommand;
@@ -29,8 +21,8 @@ impl GenericCommand for VerifyCommand {
     "verify"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
+  fn declare(&self, command: Command) -> Command {
+    command
       .about("Read every archive payload and verify decompression and CRC checks")
       .arg(
         Arg::new("path")
@@ -82,8 +74,8 @@ impl GenericCommand for VerifyCommand {
 
     let finding_count: usize = findings.len();
 
-    print_overrides(&output, &overrides, OVERRIDE_PRINT_LIMIT);
-    print_collisions(&output, &collisions, COLLISION_PRINT_LIMIT);
+    SourceReachability::print_overrides(&output, &overrides);
+    SourceReachability::print_collisions(&output, &collisions);
 
     // Deposited before the verdict becomes an outcome, so a failing check still reports what failed.
     context.set_result(|| ArchiveVerifyReport::new(checked, &overrides, collisions, findings))?;

@@ -9,8 +9,7 @@ use xrf_utils::format_path;
 use super::report::ArchiveFindReport;
 use crate::commands::archive::list::ListCommand;
 use crate::commands::archive::list::archive_shared_payload_index::ArchiveSharedPayloadIndex;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct FindCommand;
@@ -20,8 +19,8 @@ impl GenericCommand for FindCommand {
     "find"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
+  fn declare(&self, command: Command) -> Command {
+    command
       .about("Find archive entries whose logical path contains text")
       .arg(
         Arg::new("path")
@@ -63,11 +62,12 @@ impl GenericCommand for FindCommand {
     let output: OutputOptions = context.get_output().clone();
 
     let project: ArchiveProject = ArchiveProject::new(path)?;
-    let query: String = query.to_ascii_lowercase();
+    // Lowercased for matching only: the report echoes the query as it was typed.
+    let needle: String = query.to_ascii_lowercase();
     let entries = ListCommand::entries(&project, ListCommand::selection(matches));
     let entries: Vec<_> = entries
       .into_iter()
-      .filter(|entry| entry.name.to_ascii_lowercase().contains(&query))
+      .filter(|entry| entry.name.to_ascii_lowercase().contains(&needle))
       .collect();
 
     // Over the whole table, not the matches: a match shares its payload with entries the query did not name.
@@ -77,7 +77,7 @@ impl GenericCommand for FindCommand {
     for entry in &entries {
       let size: String = xrf_utils::format_bytes(u64::from(entry.size_real));
 
-      if matches.get_flag("verbose") {
+      if context.is_verbose() {
         let (compressed, unpacked): (String, String) =
           xrf_utils::format_bytes_pair(u64::from(entry.size_compressed), u64::from(entry.size_real));
 
@@ -101,7 +101,7 @@ impl GenericCommand for FindCommand {
       xrf_utils::format_duration(started_at.elapsed())
     );
 
-    context.set_result(|| ArchiveFindReport::new(&project, &query, &entries, &shared))?;
+    context.set_result(|| ArchiveFindReport::new(&project, query, &entries, &shared))?;
 
     Ok(())
   }
