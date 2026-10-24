@@ -7,43 +7,43 @@ use std::{env, fs, io};
 #[path = "../core/src/registry/domains.rs"]
 mod core_domains;
 #[macro_use]
-#[path = "../plugins/render/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-render/src/registry/domains.rs"]
 mod render_domains;
 #[macro_use]
-#[path = "../plugins/archives/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-archives/src/registry/domains.rs"]
 mod archives_domains;
 #[macro_use]
-#[path = "../plugins/configs/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-configs/src/registry/domains.rs"]
 mod configs_domains;
 #[macro_use]
-#[path = "../plugins/dialogs/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-dialogs/src/registry/domains.rs"]
 mod dialogs_domains;
 #[macro_use]
-#[path = "../plugins/exports/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-exports/src/registry/domains.rs"]
 mod exports_domains;
 #[macro_use]
-#[path = "../plugins/gamedata/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-gamedata/src/registry/domains.rs"]
 mod gamedata_domains;
 #[macro_use]
-#[path = "../plugins/levels/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-levels/src/registry/domains.rs"]
 mod levels_domains;
 #[macro_use]
-#[path = "../plugins/spawn/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-spawn/src/registry/domains.rs"]
 mod spawn_domains;
 #[macro_use]
-#[path = "../plugins/sprite-equipment/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-sprite-equipment/src/registry/domains.rs"]
 mod sprite_equipment_domains;
 #[macro_use]
-#[path = "../plugins/system/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-system/src/registry/domains.rs"]
 mod system_domains;
 #[macro_use]
-#[path = "../plugins/textures/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-textures/src/registry/domains.rs"]
 mod textures_domains;
 #[macro_use]
-#[path = "../plugins/translations/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-translations/src/registry/domains.rs"]
 mod translations_domains;
 #[macro_use]
-#[path = "../plugins/visuals/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-visuals/src/registry/domains.rs"]
 mod visuals_domains;
 
 #[path = "src/ipc/registry/build.rs"]
