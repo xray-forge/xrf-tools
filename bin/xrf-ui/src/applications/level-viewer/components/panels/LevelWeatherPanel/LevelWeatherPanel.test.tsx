@@ -60,7 +60,7 @@ async function renderPanel(responses: InvokeMap = {}): Promise<RenderResult & { 
     ["plugin:levels|read_level_cycle"]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
       mockLevelWeatherCycle({ name: cycle.name })
     ),
-    ["plugin:levels|read_level_weather"]: mockSessionResponse(
+    ["plugin:levels|describe_weather"]: mockSessionResponse(
       mockLevelWeatherDescription({
         cycles: [{ file: "", findings: 3, keyframes: 24, kind: "cycle", name: "default_rain" }],
         effects: [mockLevelWeatherCycle({ kind: "effect", name: "fx_blowout" })],
@@ -155,7 +155,7 @@ describe("LevelWeatherPanel", () => {
 
   it("says why the weather cannot light a level whose weather does not read, and keeps it manual", async () => {
     const { getByRole, getByTestId } = await renderPanel({
-      ["plugin:levels|read_level_weather"]: () => Promise.reject(new Error("The configs are gone")),
+      ["plugin:levels|describe_weather"]: () => Promise.reject(new Error("The configs are gone")),
     });
 
     expect(getByRole("button", { name: "Weather" })).toBeDisabled();
@@ -165,7 +165,7 @@ describe("LevelWeatherPanel", () => {
 
   it("stands the sun by the table on extended where the game has one", async () => {
     const { getByTestId, queryByRole } = await renderPanel({
-      ["plugin:levels|read_level_weather"]: mockSessionResponse(
+      ["plugin:levels|describe_weather"]: mockSessionResponse(
         mockLevelWeatherDescription({ engine: EXrayEngine.EXTENDED, sunTable: [] })
       ),
     });
@@ -177,7 +177,7 @@ describe("LevelWeatherPanel", () => {
   // A game made for OpenXRay, opened on extended, has no table: its keyframes stand the sun, as on vanilla.
   it("stands the sun by the keyframes on extended where the game has no table", async () => {
     const { getByRole, getByTestId } = await renderPanel({
-      ["plugin:levels|read_level_weather"]: mockSessionResponse(
+      ["plugin:levels|describe_weather"]: mockSessionResponse(
         mockLevelWeatherDescription({ engine: EXrayEngine.EXTENDED, sunTable: null })
       ),
     });
@@ -233,7 +233,7 @@ describe("LevelWeatherPanel", () => {
 
   it("says how many of the level's own overrides there are, and how many reach the camera", async () => {
     const { getByTestId, weather } = await renderPanel({
-      ["plugin:levels|read_level_weather"]: mockSessionResponse(
+      ["plugin:levels|describe_weather"]: mockSessionResponse(
         mockLevelWeatherDescription({
           modifiers: [
             {

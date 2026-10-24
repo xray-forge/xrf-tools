@@ -62,7 +62,7 @@ export const levelsCommands = {
    */
   describeLevelMap: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelMapDescription | null>>("plugin:levels|describe_level_map", { sessionId }),
-  /** Describe one of the open level's spawned objects, by its place among them, as open_spawn_objects numbered it. */
+  /** Describe one of the open level's spawned objects, by its place among them, as describe_spawn_objects numbered it. */
   describeSpawnObject: (sessionId: SessionId, index: number) =>
     __TAURI_INVOKE<SessionSnapshot<LevelSpawnObjectDetails>>("plugin:levels|describe_spawn_object", {
       sessionId,
@@ -109,8 +109,10 @@ export const levelsCommands = {
    * Describe the open level's spawned objects the viewer draws, and the visuals they stand as, reading no visual; an
    * error where the spawn cannot be read.
    */
-  openSpawnObjects: (sessionId: SessionId) =>
-    __TAURI_INVOKE<SessionSnapshot<LevelSpawnObjectsDescription>>("plugin:levels|open_spawn_objects", { sessionId }),
+  describeSpawnObjects: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelSpawnObjectsDescription>>("plugin:levels|describe_spawn_objects", {
+      sessionId,
+    }),
   /**
    * Read any cycle or effect of the game as the open level's engine loads it, for a viewer playing one the level does
    * not offer itself.
@@ -121,8 +123,8 @@ export const levelsCommands = {
    * Read the open level's weather as its engine loads it: the cycles it plays, the effects, what they strike with,
    * the sun table and the level's own overrides.
    */
-  readLevelWeather: (sessionId: SessionId) =>
-    __TAURI_INVOKE<SessionSnapshot<LevelWeatherDescription>>("plugin:levels|read_level_weather", { sessionId }),
+  describeWeather: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelWeatherDescription>>("plugin:levels|describe_weather", { sessionId }),
   /** Read a level view's JSON file as text, for the page to check and import. */
   readView: (path: string) => __TAURI_INVOKE<string>("plugin:levels|read_view", { path }),
   /**

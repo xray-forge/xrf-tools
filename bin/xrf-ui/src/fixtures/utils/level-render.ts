@@ -54,7 +54,7 @@ export async function mockAttachedLevelRender(
   setMockInvokeResponses({
     ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
     ...mockLevelPartResponses({ start: { direction: { x: 0, y: 0, z: -1 }, position: { x: 10, y: 2, z: -5 } } }),
-    ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+    ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
     ["plugin:render|attach_viewport"]: LEVEL_VIEWPORT,
     ["plugin:levels|show_level"]: LEVEL_SCENE,
   });

@@ -1,25 +1,22 @@
-import { inject, Injectable, OnDeactivation, OnDeprovision, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
-import { BoundAction, comparer, Computed, RefObservable, runInAction } from "@wirestate/mobx";
+import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvision } from "@wirestate/core";
+import { BoundAction, comparer, Computed, reaction, RefObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
-import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
+import { SessionPartResource } from "@/core/ipc/session";
 import {
   EnvironmentCycleEntry,
-  ESessionRootChange,
   LEVEL_ENVIRONMENT_PART,
   LEVEL_WEATHER_PART,
   LevelWeatherCycle,
   LevelWeatherDescription,
   SelectedLevelDescription,
-  SessionChange,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine, XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { EWeatherCycleKind, WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
-import { XrayRevision } from "@/core/ipc/types/xrf-vfs";
 import {
   EWorldWeatherPlay,
   EWorldWeatherTransition,
@@ -58,14 +55,16 @@ import { Logger } from "@/lib/logging";
  * The open level's weather: what it plays, how, and where the renderer's clock stands. The renderer reads the cycle
  * and plays it, or the keyframe set by hand, by itself; this only says which and how, hears the time back, and
  * remembers it per level. The keyframe set by hand is also what lights a level whose weather does not play.
+ *
+ * What the level's weather is - its cycles, effects and textures - is document data, a part of the level read and read
+ * again by its own resource; what plays and how is this service's view of it.
  */
 @Injectable()
 export class LevelWeatherService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  /** The open level's weather: idle with none open, loading while it is read, failed where it does not read. */
-  @RefObservable()
-  public description: AsyncState<LevelWeatherDescription> = AsyncState.idle();
+  /** The open level's weather as its part holds it, read again once its environment or what it plays with moves. */
+  private readonly described: SessionPartResource<LevelWeatherDescription>;
 
   /**
    * The cycle played: loading while another is read, the one played held meanwhile; failed where the one asked for
@@ -114,8 +113,6 @@ export class LevelWeatherService {
 
   /** The level whose weather is held or being read. */
   private sessionId: Nullable<string> = null;
-  /** The revision the weather shown was read at, which a weather or a cycle read before it gives way to. */
-  private revision: Nullable<XrayRevision> = null;
   /** What the level's weather is remembered under. */
   private memoryKey: Nullable<string> = null;
   /** The level open, which a cycle is read against and the engine is named by. */
@@ -126,38 +123,52 @@ export class LevelWeatherService {
   /** The cycle last asked for, which a read of another one since gives way to. */
   @RefObservable()
   private requested: Nullable<string> = null;
-  /** Stops following the open level, while provisioned. */
-  private unfollow: Nullable<() => void> = null;
+  /** Stops following the open level and its weather, while provisioned. */
+  private unfollow: Array<() => void> = [];
 
-  public constructor(private readonly loadService: LevelLoadService = inject(LevelLoadService)) {}
+  public constructor(
+    private readonly loadService: LevelLoadService = inject(LevelLoadService),
+    eventBus: EventBus = inject(EventBus)
+  ) {
+    this.described = new SessionPartResource(
+      eventBus,
+      [LEVEL_ENVIRONMENT_PART, LEVEL_WEATHER_PART],
+      levelsCommands.describeWeather
+    );
+  }
 
-  /** Opens each level's weather as the level opens, whether or not a viewport plays it. */
+  /** The open level's weather: idle with none open, loading while it is read, failed where it does not read. */
+  @Computed()
+  public get description(): AsyncState<LevelWeatherDescription> {
+    return this.described.state;
+  }
+
+  /**
+   * Opens each level's weather as the level opens, whether or not a viewport plays it, and reads the cycle played
+   * again each time the weather it is played from is read again.
+   */
   @OnProvision()
   public onProvision(): void {
-    this.unfollow = this.loadService.followLevel((selected) => void this.open(selected));
+    this.unfollow = [
+      this.loadService.followLevel((selected) => void this.open(selected)),
+      reaction(
+        () => this.described.snapshot,
+        (
+          read: Nullable<SessionSnapshot<LevelWeatherDescription>>,
+          previous: Maybe<Nullable<SessionSnapshot<LevelWeatherDescription>>>
+        ) => {
+          if (read && previous && read.sessionId === previous.sessionId && read.revision > previous.revision) {
+            void this.rereadCycle(read.sessionId);
+          }
+        }
+      ),
+    ];
   }
 
   @OnDeprovision()
   public onDeprovision(): void {
-    this.unfollow?.();
-    this.unfollow = null;
-  }
-
-  /**
-   * Reads the open level's weather again once a change let its environment or what its weather plays with go, the
-   * level kept or read again, and the cycle played with it.
-   */
-  @OnEvent(SESSION_CHANGE_EVENT)
-  public onSessionChange({ payload: change }: WireEvent<SessionChange>): void {
-    if (
-      change &&
-      change.sessionId === this.sessionId &&
-      (change.root.kind === ESessionRootChange.KEPT || change.root.kind === ESessionRootChange.DERIVED) &&
-      (change.staleParts.includes(LEVEL_ENVIRONMENT_PART) || change.staleParts.includes(LEVEL_WEATHER_PART)) &&
-      change.revision > (this.revision ?? this.selected?.revision ?? 0)
-    ) {
-      void this.reread(change.sessionId);
-    }
+    this.unfollow.forEach((stop: () => void) => stop());
+    this.unfollow = [];
   }
 
   /**
@@ -179,9 +190,14 @@ export class LevelWeatherService {
     return this.cycle.value ? { kind: EWorldWeatherPlay.CYCLE, name: this.cycle.value.name } : manual;
   }
 
-  /** Why the level's weather, or the cycle last asked for, does not play; null while both do. */
+  /**
+   * Why the level's weather, or the cycle last asked for, does not play; null while both do. A weather that failed to
+   * be read again plays on as it was read, so says nothing.
+   */
   public get failure(): Nullable<string> {
-    return (this.description.error ?? this.cycle.error)?.message ?? null;
+    const description: Nullable<Error> = this.description.value ? null : this.description.error;
+
+    return (description ?? this.cycle.error)?.message ?? null;
   }
 
   /** The cycle being read, or null while none is. */
@@ -259,19 +275,23 @@ export class LevelWeatherService {
    * @param remembered - The cycle it was last played with, empty for none.
    */
   private async read(selected: SessionSnapshot<SelectedLevelDescription>, remembered: string): Promise<void> {
-    runInAction(() => {
-      this.description = this.description.asLoading();
-    });
+    await this.described.attach(selected.sessionId);
+
+    if (this.sessionId !== selected.sessionId) {
+      return;
+    }
+
+    const description: Nullable<LevelWeatherDescription> = this.described.value;
+
+    // The keyframe set by hand is what lights a level whose weather does not read.
+    if (!description) {
+      this.log.warn("The level's weather is not played:", this.described.error?.message);
+      this.playManual(EWorldWeatherTransition.CUT);
+
+      return;
+    }
 
     try {
-      const read: SessionSnapshot<LevelWeatherDescription> = await levelsCommands.readLevelWeather(selected.sessionId);
-
-      if (this.sessionId !== selected.sessionId) {
-        return;
-      }
-
-      const description: LevelWeatherDescription = this.noteDescription(read);
-
       // Lit by hand, the keyframe is handed over first, so the cycle is never shown before it.
       if (this.source === ELevelWeatherSource.MANUAL) {
         this.playManual(EWorldWeatherTransition.CUT);
@@ -537,11 +557,10 @@ export class LevelWeatherService {
   public clear(): void {
     this.persist();
     this.sessionId = null;
-    this.revision = null;
     this.memoryKey = null;
     this.selected = null;
     this.remembered = "";
-    this.description = AsyncState.idle();
+    this.described.detach();
     this.cycle = AsyncState.idle();
     this.requested = null;
     this.manual = null;
@@ -706,23 +725,21 @@ export class LevelWeatherService {
       name,
     });
 
-    return read.revision < (this.revision ?? read.revision) ? this.readCycle(sessionId, name) : read.value;
+    const shown: Maybe<number> = this.described.snapshot?.revision;
+
+    return read.revision < (shown ?? read.revision) ? this.readCycle(sessionId, name) : read.value;
   }
 
   /**
-   * Reads the level's weather again, and the cycle played from it, keeping what plays and how.
+   * Reads the cycle played again from the level's weather read again, keeping what plays and how.
    *
    * @param sessionId - The level open.
    */
-  private async reread(sessionId: string): Promise<void> {
+  private async rereadCycle(sessionId: string): Promise<void> {
     try {
-      const read: SessionSnapshot<LevelWeatherDescription> = await levelsCommands.readLevelWeather(sessionId);
-
       if (this.sessionId !== sessionId) {
         return;
       }
-
-      this.noteDescription(read);
 
       const name: Maybe<string> = this.cycle.value?.name;
 
@@ -738,24 +755,8 @@ export class LevelWeatherService {
         });
       }
     } catch (error: unknown) {
-      this.log.warn("The level's weather was not read again:", transformError(error).message);
+      this.log.warn("The level's cycle played was not read again:", transformError(error).message);
     }
-  }
-
-  /**
-   * Shows a weather read, unless one read at a later revision is shown already.
-   *
-   * @param read - The weather and the revision it was read at.
-   * @returns The weather shown now.
-   */
-  @BoundAction()
-  private noteDescription(read: SessionSnapshot<LevelWeatherDescription>): LevelWeatherDescription {
-    if (this.revision === null || read.revision >= this.revision) {
-      this.revision = read.revision;
-      this.description = this.description.asReady(read.value);
-    }
-
-    return this.description.value ?? read.value;
   }
 
   /**
@@ -771,7 +772,7 @@ export class LevelWeatherService {
   }
 
   /**
-   * Notes why the weather does not play: the level's weather where it never read, the cycle asked for otherwise.
+   * Notes why the cycle asked for does not play; why the level's weather does not read is its resource's to say.
    *
    * @param sessionId - The level the failed read belongs to.
    * @param error - Why it failed.
@@ -783,11 +784,7 @@ export class LevelWeatherService {
 
     if (this.sessionId === sessionId) {
       runInAction(() => {
-        if (this.description.isReady) {
-          this.cycle = this.cycle.asFailed(failure);
-        } else {
-          this.description = this.description.asFailed(failure);
-        }
+        this.cycle = this.cycle.asFailed(failure);
       });
     }
   }

@@ -97,7 +97,7 @@ export async function renderOpenLevelView(
 ): Promise<TLevelViewRenderResult> {
   setMockInvokeResponses({
     ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription(opening.level)),
-    ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription(opening.weather)),
+    ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription(opening.weather)),
   });
 
   const rendered: TLevelViewRenderResult = renderLevelView(ui, descriptor);

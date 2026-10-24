@@ -24,7 +24,7 @@ use crate::plugins::levels::level_scene_follower::LevelSceneFollower;
 use crate::plugins::levels::opened_level::OpenedLevel;
 use crate::plugins::levels::parts::{
   LevelDetailsPart, LevelGeometryPart, LevelLightsPart, LevelMapPart, LevelObjectMotionsPart, LevelParticlesPart,
-  LevelSectionsPart, LevelSpawnPart, LevelStartPart, LevelTexturesPart, LevelWeatherPart,
+  LevelSectionsPart, LevelSpawnPart, LevelStartPart, LevelSurfacesPart, LevelTexturesPart, LevelWeatherPart,
 };
 use crate::plugins::levels::render_source::LevelRenderSource;
 use crate::plugins::levels::shown_levels::ShownLevels;
@@ -49,6 +49,9 @@ fn chunk(id: u32, payload: &[u8]) -> Vec<u8> {
 
 /// The texture the level's one shader entry binds.
 const TEXTURE: &str = "textures\\prop\\prop_fence.dds";
+
+/// The renderer script the entry's shader is looked up as, which its surface is described from where it is found.
+const SHADER_SCRIPT: &str = "shaders\\r2\\def_shaders_def_vertex.s";
 
 /// The smallest `level` a read takes: a header, a shader table of one entry and an empty run of visuals.
 fn level_bytes() -> Vec<u8> {
@@ -256,6 +259,38 @@ fn a_commit_to_a_file_the_level_was_read_from_reads_it_again_and_streams_its_sce
       .get_level(),
     &next
   ));
+}
+
+/// The textures are resolved over the surfaces, so what moves the surfaces moves them too: as the open kept them, and
+/// as a read of the textures again asks for the surfaces.
+#[test]
+fn a_commit_to_what_the_surfaces_read_lets_the_textures_go_with_them() {
+  let (assets, roots, search) = level_tree("surface_reads");
+  let session: Session<SelectedLevel> = Session::new("level");
+
+  open(&session, &assets, &roots);
+  write(&assets, &search, SHADER_SCRIPT, "created");
+
+  let change: SessionChange = session.follow(&assets).unwrap().expect("the level moved");
+
+  assert_eq!(change.root, SessionRootChange::Kept);
+  assert_eq!(
+    change.stale_parts,
+    vec![LevelSurfacesPart::NAME, LevelTexturesPart::NAME]
+  );
+
+  // Read again, the textures ask for the surfaces, whose inputs join theirs.
+  let current: Arc<SessionSnapshot<SelectedLevel>> = session.get().unwrap().unwrap();
+
+  LevelTexturesPart::get(&current, &assets.search(&roots).expect("the tree mounts"));
+  write(&assets, &search, SHADER_SCRIPT, "edited");
+
+  let change: SessionChange = session.follow(&assets).unwrap().expect("the level moved");
+
+  assert_eq!(
+    change.stale_parts,
+    vec![LevelSurfacesPart::NAME, LevelTexturesPart::NAME]
+  );
 }
 
 /// The lights' read joins the spawn it asks for, so the spawn is committed after the lights went stale on their own.

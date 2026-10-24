@@ -15,9 +15,9 @@ use crate::plugins::levels::state::{LevelSpawn, LevelSpawnObjectsDescription, Le
 
 /// Describe the open level's spawned objects the viewer draws, and the visuals they stand as, reading no visual; an
 /// error where the spawn cannot be read.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_spawn_objects"))]
-#[tauri::command(rename = "open_spawn_objects")]
-pub async fn levels_open_spawn_objects(
+#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_spawn_objects"))]
+#[tauri::command(rename = "describe_spawn_objects")]
+pub async fn levels_describe_spawn_objects(
   session_id: SessionId,
   state: State<'_, LevelState>,
   assets: State<'_, AssetMountState>,
