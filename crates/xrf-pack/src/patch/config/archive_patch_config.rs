@@ -57,6 +57,27 @@ impl ArchivePatchConfig {
     }
   }
 
+  /// Take an explicit volume size, refusing one outside the range the engine can mount, as packing does.
+  ///
+  /// # Errors
+  ///
+  /// Returns an invalid error below `VOLUME_SIZE_MIN`, or above `VOLUME_SIZE_MAX` unless oversized volumes are
+  /// allowed.
+  pub fn with_max_volume_size(mut self, size: u64) -> XrfResult<Self> {
+    ArchivePackConfig::check_volume_size(size, self.is_with_oversized_volumes)?;
+
+    self.max_volume_size = size;
+
+    Ok(self)
+  }
+
+  /// Allow a volume size past `VOLUME_SIZE_MAX`, which only an engine fork that raised `XRP_MAX_SIZE` can open.
+  pub fn with_oversized_volumes(mut self, is_allowed: bool) -> Self {
+    self.is_with_oversized_volumes = is_allowed;
+
+    self
+  }
+
   /// The same run delivering a tree of its own rather than the input's loose half.
   pub fn with_target<T: AsRef<Path>>(mut self, target: T) -> Self {
     self.target = Some(target.as_ref().into());

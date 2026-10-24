@@ -151,6 +151,16 @@ impl ArchiveProject {
     self.files.values().map(|file| u64::from(file.size_compressed)).sum()
   }
 
+  /// Entries of the merged name table that are files, leaving out the directory records a volume also lists.
+  pub fn count_files(&self) -> usize {
+    self.files.values().filter(|entry| !entry.is_directory).count()
+  }
+
+  /// Directory records of the merged name table, which name a folder rather than hold bytes.
+  pub fn count_directories(&self) -> usize {
+    self.files.len() - self.count_files()
+  }
+
   fn root_from_volumes(volumes: &[PathBuf]) -> PathBuf {
     let Some(first) = volumes.first() else {
       return PathBuf::new();
