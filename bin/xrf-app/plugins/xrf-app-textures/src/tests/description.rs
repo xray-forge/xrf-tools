@@ -2,14 +2,14 @@
 
 use std::path::PathBuf;
 
+use xrf_app_core::assets::{AssetMountState, AssetSource};
 use xrf_material::XrayMaterialDescriptor;
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_thm::{ThmFile, ThmTextureFlags};
-use xrf_vfs::{XrayRoots, XraySearch, XrayVfs};
+use xrf_vfs::{XrayRoots, XraySearch};
 
-use crate::description::TextureDescription;
-use crate::descriptor_form::TextureDescriptorForm;
-use crate::source::TextureSource;
+use crate::describe::{TextureDescription, TextureSource};
+use crate::edit::TextureDescriptorForm;
 use crate::tests::fixtures::{
   BASE, BUMP, COMPANION, bumped_tree, file_source, loose_directory, mount, roots_of, search_over, to_dds_bytes,
 };
@@ -185,11 +185,10 @@ fn a_descriptor_opened_on_its_own_outside_a_root_finds_its_texture() {
 }
 
 #[test]
-fn a_standalone_description_is_readable_back_through_the_roots_it_answers() {
-  // The description is not the end of the story: the preview decodes the texture and the lit surface uploads it, and
-  // both ask for bytes by logical path through these roots. A file no tree can place answers to its own name in its
-  // own folder, so that folder has to be one of them - without it the panels read a texture that resolves nowhere and
-  // the screen says the picture is unavailable while the descriptor beside it renders perfectly.
+fn a_standalone_description_is_readable_back_by_its_own_path_with_nothing_mounted() {
+  // The description is not the end of the story: the preview decodes the texture and the lit surface uploads it. A
+  // file no tree can place is read back by its own path; mounting its folder instead would index everything below it
+  // for the life of the process, and every new folder a person opened a texture from would add another.
   let root: PathBuf = loose_directory("readable_back");
   let texture: PathBuf = root.join("wall.dds");
 
@@ -202,37 +201,30 @@ fn a_standalone_description_is_readable_back_through_the_roots_it_answers() {
     XrayRoots::default(),
   )
   .expect("a loose texture is described");
+  let source: AssetSource = description.texture_source.clone().expect("the texture is readable");
 
-  let logical_path: String = description
-    .texture
-    .as_ref()
-    .expect("the file is located")
-    .get_logical_path()
-    .as_str()
-    .to_owned();
-
-  assert_eq!(logical_path, "wall.dds");
   assert_eq!(
-    description.roots.roots.first().map(|it| it.path.as_path()),
-    Some(root.as_path()),
-    "expect the file's own folder searched first, so the name it answers to is the one it was described under"
+    source,
+    AssetSource::File {
+      path: texture.display().to_string()
+    }
+  );
+  assert_eq!(
+    description.roots,
+    XrayRoots::default(),
+    "expect the roots answered as asked, the file's folder added to none of them"
   );
 
   // What the preview does, over the roots the description came back with.
-  let mut reader: XrayVfs = XrayVfs::new();
-  let steps = description
-    .roots
-    .to_search_plan()
-    .expect("the answered roots plan")
-    .mount_into(&mut reader)
-    .expect("the answered roots mount");
+  let assets: AssetMountState = AssetMountState::new();
 
-  assert!(
-    XraySearch::new(reader)
-      .with_steps(steps)
-      .find(&logical_path)
-      .expect("lookup")
-      .is_some(),
-    "expect the texture to resolve back through the roots its own description answered with"
+  assert_eq!(
+    source.read_in(&assets, &description.roots).expect("the texture reads"),
+    to_dds_bytes(8)
+  );
+  assert_eq!(
+    assets.get_vfs().get_mounts().len(),
+    0,
+    "expect reading it to mount nothing"
   );
 }

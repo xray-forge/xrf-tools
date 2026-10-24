@@ -8,8 +8,9 @@ use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_thm::{ThmBumpMode, ThmTextureFlag, ThmTextureType};
 use xrf_vfs::{XrayMountId, XrayMountMode, XrayRoots, XraySearch, XrayVfs};
 
-use crate::catalog::{TextureCatalog, TextureCatalogMode, TextureEntry, TextureRole};
-use crate::summary::{TextureBadges, TextureMaterialSummary};
+use crate::browse::{
+  TextureBadges, TextureCatalog, TextureCatalogMode, TextureEntry, TextureMaterialSummary, TextureRole,
+};
 use crate::tests::fixtures::{
   BASE, BUMP, COMPANION, bumped_tree, catalog, entry, file_source, loose_directory, search_over, summary, sweep,
   to_dds_bytes,
@@ -99,7 +100,7 @@ fn entries_come_back_in_reference_order() {
 
 #[test]
 fn a_plain_directory_lists_every_texture_it_holds_rather_than_none() {
-  // The case decision 21 exists for: a folder somebody is authoring in yields no engine reference for anything, so
+  // The case the loose mode exists for: a folder somebody is authoring in yields no engine reference for anything, so
   // listed as a game tree it is an empty tree with a count beside it. Listed as itself, every file is the point.
   let root: PathBuf = loose_directory("loose_listing");
 

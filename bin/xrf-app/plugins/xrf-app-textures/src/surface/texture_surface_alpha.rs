@@ -4,7 +4,7 @@ use xrf_material::XraySurfaceDraw;
 /// Which of the engine's three readings of a texture's alpha the body is drawn with.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "camelCase")]
 pub enum TextureSurfaceAlpha {
   /// Not read at all, which is what the plain deferred base shader does.
   Ignored,

@@ -6,8 +6,7 @@ use xrf_app_core::assets::{read_located_asset, read_referenced_asset};
 use xrf_material::fixtures::FixtureTree;
 use xrf_vfs::{XrayAssetType, XraySearch};
 
-use crate::files::TextureFiles;
-use crate::source::TextureSource;
+use crate::describe::{TextureFiles, TextureSource};
 use crate::tests::fixtures::{BASE, file_source, implied_root_tree, loose_directory, mount, search_over};
 
 #[test]
@@ -84,9 +83,9 @@ fn a_source_naming_the_descriptor_still_answers_the_texture_beside_it() {
 
 #[test]
 fn the_two_files_a_texture_is_are_named_from_either_half() {
-  // The rule the whole plugin rests on, pinned at its owner rather than at each of the four surfaces that used to
-  // spell it: a description reads both halves, a save writes both, a comparison decodes the texture, and a person
-  // opens whichever of the two they picked.
+  // The rule the whole plugin rests on, pinned at its owner rather than at each surface that relies on it: a
+  // description reads both halves, a save writes both, a comparison decodes the texture, and a person opens whichever
+  // of the two they picked.
   let root: PathBuf = loose_directory("texture_files");
   let texture: PathBuf = root.join("wall.dds");
   let descriptor: PathBuf = root.join("wall.thm");

@@ -5,10 +5,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use xrf_app_core::file_stamp::FileStamp;
+use xrf_app_core::assets::FileStamp;
+use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
-use xrf_spawn::XRayByteOrder;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_thm::{ThmBumpMode, ThmFile};
 use xrf_vfs::{
@@ -16,10 +16,9 @@ use xrf_vfs::{
   XrayRoots, XraySearch, XrayVfs,
 };
 
-use crate::catalog::{TextureCatalog, TextureCatalogMode, TextureEntry};
-use crate::request::TextureSaveTarget;
-use crate::source::TextureSource;
-use crate::summary::TextureMaterialSummary;
+use crate::browse::{TextureCatalog, TextureCatalogMode, TextureEntry, TextureMaterialSummary};
+use crate::describe::TextureSource;
+use crate::edit::TextureSaveTarget;
 
 /// One texture and the two halves of the pair it declares, which most of these start from.
 pub const BASE: &str = "ston\\ston_beton05";
