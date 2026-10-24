@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 
 use crate::commands::dialog::fixtures::{create_tree, run_for_result};
 use crate::commands::dialog::list::command::ListCommand;
-use crate::core::generic_command::CommandResult;
+use crate::core::command::CommandResult;
 
 #[test]
 fn lists_every_dialog_with_its_caption_and_conditions() -> CommandResult {

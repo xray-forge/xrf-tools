@@ -1,18 +1,14 @@
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_report::Status;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use crate::commands::dialog::dialog_roots::{
-  DialogRootsArguments, requested_dialog_prefix, requested_dialog_roots, requested_dialog_source,
-};
-use crate::commands::dialog::info::dialog_sweep::{
-  DialogSweep, DialogSweepCensus, DialogSweepResult, list_distribution, sum_findings,
-};
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::commands::dialog::dialog_project_opening::DialogProjectOpening;
+use crate::commands::dialog::info::dialog_sweep::{DialogSweep, DialogSweepCensus, DialogSweepResult};
+use crate::commands::dialog::info::report::DialogInfoReport;
+use crate::core::arguments::XrayRootsArguments;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::report::ReportVerdict;
 
 #[derive(Default)]
 pub struct InfoCommand;
@@ -22,16 +18,13 @@ impl GenericCommand for InfoCommand {
     "info"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to read dialog xml and report what it holds")
-      .with_dialog_roots()
-      .arg(
-        Arg::new("strict")
-          .help("Answer with a check failure when anything was unreadable or off schema")
-          .long("strict")
-          .action(ArgAction::SetTrue),
-      )
+  fn declare(&self, command: Command) -> Command {
+    DialogProjectOpening::declare_roots(command.about("Read dialog XML and report what it holds")).arg(
+      Arg::new("strict")
+        .help("Answer with a check failure when anything was unreadable or off schema")
+        .long("strict")
+        .action(ArgAction::SetTrue),
+    )
   }
 
   /// Read every dialog file under the provided path and report the census and findings.
@@ -43,47 +36,35 @@ impl GenericCommand for InfoCommand {
     let is_strict: bool = matches.get_flag("strict");
 
     let output: OutputOptions = context.get_output().clone();
-    let source: XrayMountMode = requested_dialog_source(matches)?;
-    let roots: XrayRoots = requested_dialog_roots(matches)?;
+    let source: XrayMountMode = XrayRootsArguments::source_of(matches)?;
+    let roots: XrayRoots = XrayRootsArguments::of(matches)?;
 
-    xrf_output::info!(output, "Reading dialogs in {} ({:?})", roots.describe(), source);
+    xrf_output::info!(output, "Reading dialogs in {} ({source})", roots.describe());
 
     // A roots that cannot be mounted is an execution failure, which the mount itself answers with, so
     // no separate existence check is needed here.
-    let result: DialogSweepResult = DialogSweep::new(&roots, requested_dialog_prefix(matches)).run()?;
+    let result: DialogSweepResult = DialogSweep::new(&roots, XrayRootsArguments::prefix_of(matches)).run()?;
 
     Self::print_census(&output, &result);
-    Self::print_findings(&output, &result);
+    ReportVerdict::print_findings(&output, &result.report);
 
     // Deposited before the verdict becomes an outcome, so a failing check still reports the findings that explain it.
-    context.set_result(|| &result.report)?;
+    context.set_result(|| DialogInfoReport::new(&result.census, &result.report))?;
 
-    let status: Status = result.report.status();
+    // Findings are reported and answered as success by default: a tally that also fails the build cannot be run
+    // casually. `--strict` is the mode that judges, and it is what a CI step uses. A sweep that reached no verdict
+    // fails either way.
+    if !is_strict && result.report.status() == Status::Failed {
+      xrf_output::success!(output, "Read {} files, status: {}", result.census.files, Status::Failed);
 
-    match status {
-      Status::Passed => {
-        xrf_output::success!(output, "Read {} files, status: {}", result.census.files, status);
-
-        Ok(())
-      }
-      // Findings are reported and answered as success by default: a tally that also fails the build
-      // cannot be run casually. `--strict` is the mode that judges, and it is what a CI step uses.
-      Status::Failed if is_strict => Err(CommandError::new_check_failed(sum_findings(&result.report).max(1))),
-      Status::Failed => {
-        xrf_output::success!(output, "Read {} files, status: {}", result.census.files, status);
-
-        Ok(())
-      }
-      // The sweep reached no verdict, so this is an execution failure rather than a check result,
-      // whether or not `--strict` was asked for.
-      Status::Error | Status::Incomplete | Status::Skipped => Err(
-        XrfError::new_verify_error(format!(
-          "No dialog files were read under {}, status: {status}",
-          roots.describe()
-        ))
-        .into(),
-      ),
+      return Ok(());
     }
+
+    ReportVerdict::conclude(
+      &output,
+      &result.report,
+      &format!("Reading dialogs in {}", roots.describe()),
+    )
   }
 }
 
@@ -125,43 +106,13 @@ impl InfoCommand {
       );
     }
 
-    xrf_output::info!(output, "Encodings: {}", list_distribution(&census.encodings).join(", "));
-    xrf_output::info!(
-      output,
-      "Dialog elements: {}",
-      list_distribution(&census.dialog_elements).join(", ")
-    );
-    xrf_output::info!(
-      output,
-      "Phrase elements: {}",
-      list_distribution(&census.phrase_elements).join(", ")
-    );
-  }
-
-  /// List findings under verbose output only: a sweep of a whole tree can produce more of them than a
-  /// terminal is useful for, and the json report is the artifact meant for comparison.
-  fn print_findings(output: &OutputOptions, result: &DialogSweepResult) {
-    for check in result.report.checks() {
-      if check.findings().is_empty() {
-        continue;
-      }
-
-      xrf_output::info!(
-        output,
-        "Check '{}' is {} with {} findings",
-        check.id(),
-        check.status(),
-        check.findings().len()
-      );
-
-      for finding in check.findings() {
-        xrf_output::verbose!(
-          output,
-          "  [{}] {}: {}",
-          finding.rule_id(),
-          finding.subject().unwrap_or("-"),
-          finding.message()
-        );
+    for (label, counts) in [
+      ("Encodings", &census.encodings),
+      ("Dialog elements", &census.dialog_elements),
+      ("Phrase elements", &census.phrase_elements),
+    ] {
+      if let Some(rendered) = ReportVerdict::format_distribution(counts) {
+        xrf_output::info!(output, "{label}: {rendered}");
       }
     }
   }

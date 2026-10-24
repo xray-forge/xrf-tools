@@ -6,10 +6,9 @@ use xrf_ltx::{LtxFilesFormatter, LtxFormatOptions, LtxProjectFormatResult};
 use xrf_output::OutputOptions;
 
 use crate::commands::ltx::format::ltx_format_selection::LtxFormatSelection;
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::progress::new_logging_job;
+use crate::commands::ltx::format::report::LtxFormatReport;
+use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::terminal::CliJob;
 
 /// Names this many declined configs before reporting the remainder count.
 const DECLINED_LIMIT: usize = 20;
@@ -22,9 +21,9 @@ impl GenericCommand for FormatCommand {
     "format"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to format ltx and ini files")
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("Format LTX and INI files")
       .arg(
         Arg::new("path")
           .help("Paths to ltx files or folders with ltx files")
@@ -56,29 +55,27 @@ impl GenericCommand for FormatCommand {
 
     // Created before the files are discovered, because its clock is what the result reports as the total: selecting
     // them over a large tree is part of the wait.
-    let job: JobHandle = new_logging_job();
+    let job: JobHandle = CliJob::new_logging();
 
     let selection: LtxFormatSelection = LtxFormatSelection::select(&paths)?;
 
     Self::report_selection(&output, &selection, is_check, paths.len());
 
-    let files: Vec<PathBuf> = selection.files;
-
     let options: LtxFormatOptions = LtxFormatOptions {
       output: output.clone(),
       job,
     };
-
-    if is_check {
-      let result: LtxProjectFormatResult = LtxFilesFormatter::check_format_opt(&files, options)?;
-
-      context.set_result(|| &result)?;
-
-      if result.invalid_files > 0 {
-        return Err(CommandError::new_check_failed(result.invalid_files));
-      }
+    let result: LtxProjectFormatResult = if is_check {
+      LtxFilesFormatter::check_format_opt(&selection.files, options)?
     } else {
-      LtxFilesFormatter::format_opt(&files, options)?;
+      LtxFilesFormatter::format_opt(&selection.files, options)?
+    };
+
+    // Deposited in both modes, before a check's verdict becomes an outcome.
+    context.set_result(|| LtxFormatReport::new(&result, &selection.declined))?;
+
+    if is_check && result.invalid_files > 0 {
+      return Err(CommandError::new_check_failed(result.invalid_files));
     }
 
     Ok(())

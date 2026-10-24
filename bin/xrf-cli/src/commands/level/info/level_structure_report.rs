@@ -5,13 +5,13 @@ use xrf_level::{LevelFile, LevelSector};
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelStructureReport {
-  pub sectors: usize,
-  pub portals: usize,
+  sectors: usize,
+  portals: usize,
   /// Portals named by a sector, which is twice the portals when every one joins two of them.
-  pub sector_portal_references: usize,
-  pub lights: usize,
+  sector_portal_references: usize,
+  lights: usize,
   /// Whether the compiler wrote the directional light the loader keeps as the sun.
-  pub has_sun: bool,
+  has_sun: bool,
 }
 
 impl LevelStructureReport {

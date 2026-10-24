@@ -10,11 +10,8 @@ use xrf_output::OutputOptions;
 use super::dialog_list_entry::DialogListEntry;
 use super::dialog_list_profile::DialogListProfile;
 use super::report::DialogListReport;
-use crate::commands::dialog::dialog_project_open::{
-  DialogProjectArguments, open_dialog_project, requested_dialog_text,
-};
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::commands::dialog::dialog_project_opening::DialogProjectOpening;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct ListCommand;
@@ -24,33 +21,33 @@ impl GenericCommand for ListCommand {
     "list"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("List the dialogs a tree holds, or the ones reaching the actor from an NPC of one profile")
-      .with_dialog_project()
-      .arg(
-        Arg::new("profile")
-          .help("NPC profile, as profile_name() answers it, to list only the dialogs the actor gets talking to one")
-          .long("profile")
-          .value_parser(value_parser!(String)),
-      )
+  fn declare(&self, command: Command) -> Command {
+    DialogProjectOpening::declare(
+      command.about("List the dialogs a tree holds, or the ones reaching the actor from an NPC of one profile"),
+    )
+    .arg(
+      Arg::new("profile")
+        .help("NPC profile, as profile_name() answers it, to list only the dialogs the actor gets talking to one")
+        .long("profile")
+        .value_parser(value_parser!(String)),
+    )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
-    let project: DialogProject = open_dialog_project(matches)?;
-    let text: Option<DialogTextLanguage<'_>> = requested_dialog_text(matches, &project);
+    let project: DialogProject = DialogProjectOpening::open(matches)?;
+    let text: Option<DialogTextLanguage<'_>> = DialogProjectOpening::text_of(matches, &project);
 
     let report: DialogListReport = match matches.get_one::<String>("profile") {
       Some(profile) => Self::list_offered(&project, profile, text)?,
       None => Self::list_all(&project, text),
     };
 
-    for entry in &report.dialogs {
+    for entry in report.dialogs() {
       xrf_output::info!(output, "{}", Self::describe(entry));
     }
 
-    for finding in &report.findings {
+    for finding in report.findings() {
       xrf_output::verbose!(
         output,
         "  [{}] {}: {}",
@@ -60,15 +57,15 @@ impl GenericCommand for ListCommand {
       );
     }
 
-    match &report.profile {
+    match report.profile() {
       Some(profile) => xrf_output::success!(
         output,
         "Profile '{}' ({}) offers {} dialogs",
         profile.id,
         profile.characters.join(", "),
-        report.dialogs.len()
+        report.dialogs().len()
       ),
-      None => xrf_output::success!(output, "Listed {} dialogs", report.dialogs.len()),
+      None => xrf_output::success!(output, "Listed {} dialogs", report.dialogs().len()),
     }
 
     context.set_result(|| &report)?;
@@ -80,10 +77,10 @@ impl GenericCommand for ListCommand {
 impl ListCommand {
   /// Every dialog the tree holds, file by file.
   fn list_all(project: &DialogProject, text: Option<DialogTextLanguage<'_>>) -> DialogListReport {
-    DialogListReport {
-      language: text.map(|text| text.get_language().to_owned()),
-      profile: None,
-      dialogs: project
+    DialogListReport::new(
+      text.map(|text| text.get_language().to_owned()),
+      None,
+      project
         .get_files()
         .iter()
         .flat_map(|file| {
@@ -94,8 +91,8 @@ impl ListCommand {
             .map(move |dialog| DialogListEntry::new(file, dialog, text, Vec::new()))
         })
         .collect(),
-      findings: project.get_findings().to_vec(),
-    }
+      project.get_findings().to_vec(),
+    )
   }
 
   /// The dialogs reaching the actor from an NPC of one profile, each with every way it does.
@@ -148,9 +145,9 @@ impl ListCommand {
       }
     }
 
-    Ok(DialogListReport {
-      language: text.map(|text| text.get_language().to_owned()),
-      profile: Some(DialogListProfile {
+    Ok(DialogListReport::new(
+      text.map(|text| text.get_language().to_owned()),
+      Some(DialogListProfile {
         id: profile.get_id().to_owned(),
         characters: characters
           .iter()
@@ -159,7 +156,7 @@ impl ListCommand {
       }),
       dialogs,
       findings,
-    })
+    ))
   }
 
   /// Which partner files could not be read, since a missing profile or character is most often declared in one.

@@ -11,11 +11,10 @@ use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
 use super::report::LtxInspectReport;
-use crate::commands::ltx::ltx_installation::INSTALLATION_PATH_HELP;
-use crate::commands::ltx::ltx_project_open::open_ltx_project;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::ltx_dialect::LtxDialectArguments;
+use crate::commands::ltx::ltx_installation::LtxInstallation;
+use crate::commands::ltx::ltx_project_opening::LtxProjectOpening;
+use crate::core::arguments::LtxDialectArgument;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 /// How wide the value column may grow before a value simply takes the room it needs.
 ///
@@ -31,12 +30,12 @@ impl GenericCommand for InspectCommand {
     "inspect"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command
       .about("Explain one resolved section: its fields, and where each value is written")
       .arg(
         Arg::new("path")
-          .help(INSTALLATION_PATH_HELP)
+          .help(LtxInstallation::PATH_HELP)
           .short('p')
           .long("path")
           .required(true)
@@ -54,8 +53,9 @@ impl GenericCommand for InspectCommand {
           .short('e')
           .long("entry")
           .value_parser(value_parser!(String)),
-      )
-      .with_ltx_dialect()
+      );
+
+    LtxDialectArgument::declare(command)
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -70,7 +70,7 @@ impl GenericCommand for InspectCommand {
 
     xrf_output::heading!(output, "Inspect path: {}", format_path(path));
 
-    let project: LtxProject = open_ltx_project(path, matches, &output)?;
+    let project: LtxProject = LtxProjectOpening::open(path, matches, &output)?;
     let entry: XrayLogicalPath = Self::locate(&project, section, matches.get_one::<String>("entry"), &output)?;
 
     let resolution: LtxResolution = project.resolve_explained(&entry)?;
@@ -99,11 +99,7 @@ impl GenericCommand for InspectCommand {
 
     Self::render(&resolved, &diagnostics, dialect, &output);
 
-    context.set_result(|| LtxInspectReport {
-      dialect: String::from(dialect),
-      diagnostics,
-      section: resolved,
-    })?;
+    context.set_result(|| LtxInspectReport::new(dialect, resolved, diagnostics))?;
 
     Ok(())
   }

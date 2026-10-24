@@ -8,21 +8,21 @@ use xrf_ogf::OgfModelType;
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelVisualsReport {
-  pub total: usize,
+  total: usize,
   /// Visuals naming a range in the level's shared buffers. A hierarchy visual names none.
-  pub drawable: usize,
+  drawable: usize,
   /// Visuals the compiler also gave a `level.geomx` range.
-  pub fastpath: usize,
+  fastpath: usize,
   /// Visuals carrying their own shader and texture names rather than taking them from the shader table.
-  pub textured: usize,
+  textured: usize,
   /// Vertices the drawable visuals address, counting a shared vertex once per visual that names it.
-  pub vertices: u64,
-  pub indices: u64,
-  pub triangles: u64,
+  vertices: u64,
+  indices: u64,
+  triangles: u64,
   /// Distinct geometry ranges the drawable visuals name.
-  pub unique_ranges: usize,
+  unique_ranges: usize,
   /// How many visuals of each engine model type, by `MT_*` identifier.
-  pub model_types: BTreeMap<String, usize>,
+  model_types: BTreeMap<String, usize>,
 }
 
 impl LevelVisualsReport {

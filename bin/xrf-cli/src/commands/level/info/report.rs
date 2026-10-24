@@ -11,15 +11,15 @@ use crate::commands::level::info::level_visuals_report::LevelVisualsReport;
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelInfoReport {
-  pub header: LevelHeaderReport,
-  pub shaders: LevelShadersReport,
+  header: LevelHeaderReport,
+  shaders: LevelShadersReport,
   /// Absent for a level carrying no visuals chunk, which is a level that draws nothing.
-  pub visuals: Option<LevelVisualsReport>,
+  visuals: Option<LevelVisualsReport>,
   /// `level.geom`, absent when the directory holds none.
-  pub geometry: Option<LevelGeomReport>,
+  geometry: Option<LevelGeomReport>,
   /// `level.geomx`, the fast-path twin, absent when the directory holds none.
-  pub detail_geometry: Option<LevelGeomReport>,
-  pub structure: LevelStructureReport,
+  detail_geometry: Option<LevelGeomReport>,
+  structure: LevelStructureReport,
 }
 
 impl LevelInfoReport {
@@ -30,10 +30,7 @@ impl LevelInfoReport {
     detail_geometry: Option<&LevelGeomFile>,
   ) -> Self {
     Self {
-      header: LevelHeaderReport {
-        xrlc_quality: level.header.xrlc_quality,
-        xrlc_version: level.header.xrlc_version,
-      },
+      header: LevelHeaderReport::of(level),
       shaders: LevelShadersReport::of(level),
       visuals: visuals.map(LevelVisualsReport::of),
       geometry: geometry.map(LevelGeomReport::of),

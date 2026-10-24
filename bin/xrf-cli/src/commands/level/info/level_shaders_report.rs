@@ -5,13 +5,13 @@ use xrf_level::{LevelFile, LevelShaderEntry};
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelShadersReport {
-  pub total: usize,
-  pub references: usize,
-  pub lightmapped: usize,
+  total: usize,
+  references: usize,
+  lightmapped: usize,
   /// Entries the renderer skips because they name nothing.
-  pub empty: usize,
+  empty: usize,
   /// Entries without the `/` delimiter, which the renderer dereferences without a null check.
-  pub malformed: usize,
+  malformed: usize,
 }
 
 impl LevelShadersReport {

@@ -6,14 +6,13 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use xrf_error::XrfResult;
 use xrf_report::Status;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::commands::dialog::info::command::InfoCommand;
-use crate::commands::dialog::info::dialog_sweep::{DialogSweep, DialogSweepResult, sum_findings};
-use crate::core::command_error::CommandError;
-use crate::core::command_testing::run_command_for_result;
-use crate::core::generic_command::CommandResult;
+use crate::commands::dialog::info::dialog_sweep::{DialogSweep, DialogSweepResult};
+use crate::core::command::command_testing::run_command_for_result;
+use crate::core::command::{CommandError, CommandResult};
 
 /// A generated root declares no installation, so name the mode rather than letting Auto search upward.
 fn roots(root: &Path) -> XrayRoots {
@@ -21,13 +20,7 @@ fn roots(root: &Path) -> XrayRoots {
 }
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("dialog_info/sweep/{name}"));
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
-
-  fs::create_dir_all(&root)?;
+  let root: PathBuf = create_generated_test_resource_dir(&format!("dialog_info/sweep/{name}"))?;
 
   Ok(root)
 }
@@ -111,7 +104,7 @@ fn reports_an_off_schema_element_as_a_schema_finding() -> XrfResult {
 
   let result: DialogSweepResult = DialogSweep::new(&roots(&root), None).run()?;
 
-  assert_eq!(sum_findings(&result.report), 1);
+  assert_eq!(result.report.count_findings(), 1);
   assert_eq!(result.report.status(), Status::Failed);
 
   let schema = result
@@ -279,7 +272,7 @@ fn refuses_a_directory_holding_no_dialogs() -> XrfResult {
 
   // Skipped is not a verdict, so it is an execution failure even without `--strict`.
   match run(&root, &["--source", "directory"]) {
-    Err(CommandError::Execution(error)) => assert!(error.to_string().contains("No dialog files were read")),
+    Err(CommandError::Execution(error)) => assert!(error.to_string().contains("status: skipped")),
     other => panic!("expected an execution failure, got {other:?}"),
   }
 

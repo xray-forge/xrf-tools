@@ -1,18 +1,16 @@
 use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
-use xrf_error::XrfError;
 use xrf_job::JobHandle;
-use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOptions};
+use xrf_ltx::{LtxProject, LtxProjectVerifyResult, LtxVerifyOptions};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
-use crate::commands::ltx::ltx_installation::{INSTALLATION_PATH_HELP, mount_installation};
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::ltx_dialect::{LtxDialectArguments, requested_ltx_dialect};
-use crate::core::progress::new_logging_job;
+use crate::commands::ltx::ltx_installation::LtxInstallation;
+use crate::commands::ltx::ltx_project_opening::LtxProjectOpening;
+use crate::core::arguments::LtxDialectArgument;
+use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::terminal::CliJob;
 
 #[derive(Default)]
 pub struct VerifyCommand;
@@ -22,22 +20,19 @@ impl GenericCommand for VerifyCommand {
     "verify"
   }
 
-  /// Add command for verifying of ltx files.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command for verification of ltx and ini files")
-      .arg(
-        Arg::new("path")
-          .help(INSTALLATION_PATH_HELP)
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .with_ltx_dialect()
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command.about("Verify LTX and INI configs").arg(
+      Arg::new("path")
+        .help(LtxInstallation::PATH_HELP)
+        .short('p')
+        .long("path")
+        .required(true)
+        .value_parser(value_parser!(PathBuf)),
+    );
+
+    LtxDialectArgument::declare(command)
   }
 
-  /// Verify ltx file or folder based on provided arguments.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
@@ -45,40 +40,16 @@ impl GenericCommand for VerifyCommand {
 
     let output: OutputOptions = context.get_output().clone();
 
-    if !path.is_dir() {
-      return Err(
-        XrfError::new_read_error("Expected configs root directory path for validation as --path parameter").into(),
-      );
-    }
-
-    log::info!("Verifying ltx folder: {}", format_path(path));
-
-    let options: LtxProjectOptions = LtxProjectOptions {
-      // A sweep reads every root once; retaining them would hold the whole tree resolved to no end.
-      is_caching_resolutions: false,
-      dialect: requested_ltx_dialect(matches),
-      is_with_schemes_check: true,
-      is_strict_check: true,
-    };
+    xrf_output::info!(output, "Verifying LTX configs in {}", format_path(path));
 
     // Created before the project is opened, because its clock is what the result reports as the total: mounting and
     // indexing a cold installation is most of the wait.
-    let job: JobHandle = new_logging_job();
+    let job: JobHandle = CliJob::new_logging();
 
     // Verification only reads, so an installation is verified over every declared source. Narrowing it to loose configs
     // would leave archived includes unresolved and report their sections as missing, so the scope a person picks is the
     // path they name rather than a flag.
-    let project: Box<LtxProject> = Box::new(match mount_installation(path)? {
-      Some(search) => {
-        let project: LtxProject = LtxProject::open_at_search_opt(path, &search, None, options)?;
-
-        Self::report_sources(&project, &output);
-
-        project
-      }
-      None => LtxProject::open_at_path_opt(path, options)?,
-    });
-
+    let project: LtxProject = LtxProjectOpening::open(path, matches, &output)?;
     let result: LtxProjectVerifyResult = project.verify_entries_opt(LtxVerifyOptions { output, job })?;
 
     // Deposited before the verdict becomes an outcome, so a failing check still reports what failed.
@@ -88,24 +59,6 @@ impl GenericCommand for VerifyCommand {
       Ok(())
     } else {
       Err(CommandError::new_check_failed(result.errors.len()))
-    }
-  }
-}
-
-impl VerifyCommand {
-  /// Reports the sources an installation's verification searched.
-  ///
-  /// An installation keeps nearly every config in an archive volume, so naming only the game directory would leave a report
-  /// silent about where thousands of verified files came from.
-  fn report_sources(project: &LtxProject, output: &OutputOptions) {
-    for mount in project.search().get_vfs().get_mounts() {
-      xrf_output::info!(
-        output,
-        "Source: {:?} {} ({})",
-        mount.get_kind(),
-        format_path(mount.get_source().get_root_path()),
-        mount.get_label()
-      );
     }
   }
 }

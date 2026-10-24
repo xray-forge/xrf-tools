@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 
 use crate::commands::dialog::fixtures::{create_tree, run_for_result};
 use crate::commands::dialog::inspect::command::InspectCommand;
-use crate::core::generic_command::CommandResult;
+use crate::core::command::CommandResult;
 
 #[test]
 fn explains_a_dialog_with_its_conditions_and_every_phrase() -> CommandResult {

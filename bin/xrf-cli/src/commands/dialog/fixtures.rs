@@ -5,10 +5,10 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 
-use crate::core::command_testing::run_command_for_result;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::command_testing::run_command_for_result;
+use crate::core::command::{CommandResult, GenericCommand};
 
 const DIALOGS: &str = r#"<?xml version="1.0" encoding="windows-1251"?>
 <game_dialogs>
@@ -57,13 +57,9 @@ const STRINGS: &str = r#"<string_table>
 
 /// Lay out the tree under a root of its own, since tests run in parallel.
 pub fn create_tree(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("dialog_commands/{name}"));
+  let root: PathBuf = create_generated_test_resource_dir(&format!("dialog_commands/{name}"))?;
   let gameplay: PathBuf = root.join("configs").join("gameplay");
   let text: PathBuf = root.join("configs").join("text").join("eng");
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
 
   fs::create_dir_all(&gameplay)?;
   fs::create_dir_all(&text)?;

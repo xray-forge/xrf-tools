@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayMountMode, XraySearch};
+use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch};
 
 use crate::commands::level::level_assets::LevelAssets;
 
@@ -47,14 +47,8 @@ impl LevelSelection {
         Arg::new("source")
           .help("How a root is mounted, which for an installation is the default")
           .long("source")
-          .default_value("auto")
-          .value_parser([
-            "auto",
-            "directory",
-            "volumes",
-            "installation",
-            "containing-installation",
-          ]),
+          .default_value(XrayMountMode::Auto.as_str())
+          .value_parser(XrayMountMode::NAMES),
       )
       .group(ArgGroup::new("selection").args(["path", "root"]).required(true))
   }
@@ -97,7 +91,7 @@ impl LevelSelection {
       return Ok(LevelAssets::open_directory(path));
     }
 
-    let search: XraySearch = LevelAssets::roots_of(&self.roots, self.source)
+    let search: XraySearch = XrayRoots::from_paths(self.roots.iter().cloned(), self.source)
       .to_search_plan()?
       .open()?;
     let name: &String = self

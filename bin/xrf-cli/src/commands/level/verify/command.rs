@@ -1,15 +1,12 @@
 use clap::{ArgMatches, Command};
-use xrf_error::XrfError;
+use xrf_level::{LevelGeometryVerifier, LevelGeometryVerifyResult};
 use xrf_output::OutputOptions;
-use xrf_report::Status;
 
 use crate::commands::level::level_assets::LevelAssets;
 use crate::commands::level::level_selection::LevelSelection;
-use crate::commands::level::verify::level_verification_result::LevelVerificationResult;
-use crate::commands::level::verify::level_verifier::LevelVerifier;
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::commands::level::verify::report::LevelVerifyReport;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::report::ReportVerdict;
 
 #[derive(Default)]
 pub struct VerifyCommand;
@@ -19,14 +16,12 @@ impl GenericCommand for VerifyCommand {
     "verify"
   }
 
-  fn init(&self) -> Command {
+  fn declare(&self, command: Command) -> Command {
     LevelSelection::declare(
-      Command::new(self.operation())
-        .about("Command to verify a compiled level's geometry can be drawn the way the renderer addresses it"),
+      command.about("Verify that a compiled level's geometry can be drawn the way the renderer addresses it"),
     )
   }
 
-  /// Read every drawable visual's range and report what the renderer could not draw.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let selection: LevelSelection = LevelSelection::of(matches)?;
     let output: OutputOptions = context.get_output().clone();
@@ -36,42 +31,20 @@ impl GenericCommand for VerifyCommand {
 
     xrf_output::info!(output, "Verifying compiled level {}", assets.describe());
 
-    let result: LevelVerificationResult = LevelVerifier::new(&assets).run();
+    let result: LevelGeometryVerifyResult = LevelGeometryVerifier::new(&assets).run();
 
     Self::print_census(&output, &result);
-    Self::print_findings(&output, &result);
+    ReportVerdict::print_findings(&output, &result.report);
 
     // Deposited before the verdict becomes an outcome, so a failing check still reports what explains it.
-    context.set_result(|| &result.report)?;
+    context.set_result(|| LevelVerifyReport::new(&result.census, &result.report))?;
 
-    let status: Status = result.report.status();
-
-    match status {
-      Status::Passed => {
-        xrf_output::success!(output, "Verification passed, status: {}", status);
-
-        Ok(())
-      }
-      Status::Failed => {
-        let findings: usize = result
-          .report
-          .checks()
-          .iter()
-          .map(|check| check.findings().len())
-          .sum::<usize>()
-          .max(1);
-
-        Err(CommandError::new_check_failed(findings))
-      }
-      Status::Error | Status::Incomplete | Status::Skipped => {
-        Err(XrfError::new_verify_error(format!("Verification of the level did not complete, status: {status}")).into())
-      }
-    }
+    ReportVerdict::conclude(&output, &result.report, "Verification of the level")
   }
 }
 
 impl VerifyCommand {
-  fn print_census(output: &OutputOptions, result: &LevelVerificationResult) {
+  fn print_census(output: &OutputOptions, result: &LevelGeometryVerifyResult) {
     xrf_output::info!(
       output,
       "Read {} visuals in {}, {} drawable and {} with a fast path",
@@ -143,14 +116,6 @@ impl VerifyCommand {
 
     for (model_type, count) in &result.census.model_types {
       xrf_output::verbose!(output, "{model_type}: {count} visuals");
-    }
-  }
-
-  fn print_findings(output: &OutputOptions, result: &LevelVerificationResult) {
-    for check in result.report.checks() {
-      for finding in check.findings() {
-        xrf_output::warning!(output, "[{}] {}", finding.rule_id(), finding.message());
-      }
     }
   }
 }

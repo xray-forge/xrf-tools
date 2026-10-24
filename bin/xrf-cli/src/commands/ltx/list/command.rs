@@ -6,11 +6,10 @@ use xrf_ltx_inspect::{LtxInventory, LtxInventoryFile, LtxInventoryReader, LtxInv
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
-use crate::commands::ltx::ltx_installation::INSTALLATION_PATH_HELP;
-use crate::commands::ltx::ltx_project_open::open_ltx_project;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::ltx_dialect::LtxDialectArguments;
+use crate::commands::ltx::ltx_installation::LtxInstallation;
+use crate::commands::ltx::ltx_project_opening::LtxProjectOpening;
+use crate::core::arguments::LtxDialectArgument;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct ListCommand;
@@ -20,18 +19,19 @@ impl GenericCommand for ListCommand {
     "list"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command
       .about("List the LTX configs a project holds, and the role each one plays")
       .arg(
         Arg::new("path")
-          .help(INSTALLATION_PATH_HELP)
+          .help(LtxInstallation::PATH_HELP)
           .short('p')
           .long("path")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
-      )
-      .with_ltx_dialect()
+      );
+
+    LtxDialectArgument::declare(command)
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -43,12 +43,12 @@ impl GenericCommand for ListCommand {
 
     xrf_output::heading!(output, "List path: {}", format_path(path));
 
-    let project: LtxProject = open_ltx_project(path, matches, &output)?;
+    let project: LtxProject = LtxProjectOpening::open(path, matches, &output)?;
     let source = project.document_source();
     let inventory: LtxInventory = LtxInventoryReader::new(&project, &source as &dyn LtxDocumentSource).read()?;
 
     for file in &inventory.files {
-      xrf_output::info!(output, "{}", Self::describe(file, matches.get_flag("verbose")));
+      xrf_output::info!(output, "{}", Self::describe(file, context.is_verbose()));
     }
 
     xrf_output::success!(output, "{}", Self::summarize(&inventory));
