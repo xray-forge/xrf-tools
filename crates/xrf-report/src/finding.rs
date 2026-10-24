@@ -5,6 +5,7 @@ use serde::Serialize;
 use crate::RuleId;
 
 /// A single rule violation or checker error.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Finding {

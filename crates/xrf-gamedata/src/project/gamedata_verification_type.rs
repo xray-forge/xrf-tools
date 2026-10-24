@@ -1,11 +1,15 @@
 use std::str::FromStr;
 
 use derive_more::Display;
+use serde::{Deserialize, Serialize};
 use xrf_error::XrfError;
 
 use crate::{GamedataCheckResult, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationCheckReport};
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display)]
+/// One check a verification runs, spelled on the wire and the command line as it displays.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Display, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum GamedataVerificationType {
   /// Files one source holds but the engine cannot reach, rather than any kind of asset authored inside them.
   #[display("collisions")]
@@ -115,6 +119,16 @@ impl FromStr for GamedataVerificationType {
 #[cfg(test)]
 mod tests {
   use super::GamedataVerificationType;
+
+  #[test]
+  fn serializes_as_it_displays() {
+    for verification_type in GamedataVerificationType::ALL {
+      assert_eq!(
+        serde_json::to_value(verification_type).expect("serializes"),
+        serde_json::Value::String(verification_type.to_string())
+      );
+    }
+  }
 
   #[test]
   fn parses_every_registered_verification_type() {

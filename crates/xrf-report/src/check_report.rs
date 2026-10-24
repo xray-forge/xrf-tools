@@ -5,12 +5,14 @@ use serde::Serialize;
 use crate::{CheckId, Finding, Status};
 
 /// Immutable report data for one command check.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CheckReport {
   /// Absent when the check did not measure itself; a millisecond count otherwise, like every other
   /// duration on the wire.
   #[serde(with = "xrf_utils::optional_duration_ms")]
+  #[cfg_attr(feature = "typescript-bindings", specta(type = Option<u64>))]
   duration: Option<Duration>,
   findings: Vec<Finding>,
   id: CheckId,

@@ -11,6 +11,7 @@ use xrf_utils::to_portable_path_string;
 /// a count says how much moved, a finding says which file has a problem and why. `subject` on a
 /// finding is what makes a per-file breakdown unnecessary.
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct TranslationParseResult {
   /// Whether the run read every table or was stopped between them.
@@ -19,6 +20,7 @@ pub struct TranslationParseResult {
   /// complete and the rest untouched.
   pub outcome: xrf_job::JobOutcome,
   #[serde(with = "xrf_utils::duration_ms")]
+  #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
   pub duration: Duration,
   /// The language this run filed every entry under.
   pub language: String,
@@ -35,6 +37,7 @@ pub struct TranslationParseResult {
   /// cannot drift apart by restating it differently.
   pub report: Report,
   #[serde(skip_serializing)]
+  #[cfg_attr(feature = "typescript-bindings", specta(skip))]
   findings: Vec<Finding>,
 }
 
