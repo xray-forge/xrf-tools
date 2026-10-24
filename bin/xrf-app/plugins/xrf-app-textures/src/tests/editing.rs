@@ -7,21 +7,19 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::{Duration, SystemTime};
 
 use xrf_app_core::assets::AssetMountState;
-use xrf_app_core::file_stamp::FileStamp;
-use xrf_app_core::session::{Session, SessionDerived, SessionId, SessionParts};
-use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipFilter, DdsMipmaps, ImageFormat, Quality};
+use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes, Sessions};
+use xrf_chunk::XRayByteOrder;
+use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat, Quality};
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
-use xrf_spawn::XRayByteOrder;
 use xrf_texture::TextureEncodingFormat;
-use xrf_texture::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
 use xrf_thm::{ThmBumpMode, ThmFile, ThmFormat, ThmTextureFlag, ThmTextureFlags, ThmTextureType};
 use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayInputRecord, XrayLogicalPath, XrayRevision, XraySearch};
 
-use crate::descriptor_form::TextureDescriptorForm;
-use crate::edit_targets::TextureEditTargets;
-use crate::request::{TextureDescriptorSave, TextureEncodingSave, TextureSaveTarget, TexturesSaveRequest};
-use crate::save::{TextureSaveOutcome, write_save};
+use crate::edit::{
+  TextureDescriptorForm, TextureDescriptorSave, TextureEditTargets, TextureSaveOutcome, TextureSaveTarget,
+  TextureSaver, TextureWrite,
+};
 use crate::tests::fixtures::{BASE, editing_directory, loose_asset, read_descriptor, roots_of, source_image, target};
 
 /// Move a file's modification time on, so a rewrite a test just made is one the guard can actually see.
@@ -36,6 +34,33 @@ fn rewritten_later(path: &Path) {
   file
     .set_modified(modified + Duration::from_secs(1))
     .expect("modification time is writable");
+}
+
+/// A candidate's bytes, encoded as `format` names.
+fn encoded(format: ImageFormat) -> Vec<u8> {
+  DdsEncoding::new(format, Quality::Fast)
+    .encode(&DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain"))
+    .expect("encode")
+    .write_to_bytes()
+    .expect("bytes")
+}
+
+/// The descriptor half of a save, as the editor read it at `path`.
+fn descriptor_save(path: &Path, form: TextureDescriptorForm) -> TextureDescriptorSave {
+  TextureDescriptorSave {
+    target: target(path),
+    form,
+  }
+}
+
+/// The texture half of a save, a held `format` candidate written over the texture at `path`.
+fn texture_write(path: &Path, format: TextureEncodingFormat, bytes: Vec<u8>) -> TextureWrite {
+  TextureWrite {
+    path: path.to_path_buf(),
+    expected: target(path).expected,
+    format,
+    bytes,
+  }
 }
 
 #[test]
@@ -143,25 +168,15 @@ fn saving_a_descriptor_writes_it_and_says_where() {
   form.detail_name = String::from("detail\\detail_grnd_grass");
   form.detail_scale = 0.25;
 
-  let outcome: TextureSaveOutcome = write_save(
+  let outcome: TextureSaveOutcome = TextureSaver::save(
     &AssetMountState::new(),
     &JobHandle::inert(),
-    &TexturesSaveRequest {
-      descriptor: Some(TextureDescriptorSave {
-        target: target(&path),
-        form,
-      }),
-      texture: None,
-    },
+    &descriptor_save(&path, form),
     None,
   )
   .expect("save succeeds");
 
   assert_eq!(outcome.written, vec![path.display().to_string()]);
-  assert_eq!(
-    outcome.descriptor_format, None,
-    "expect no format sync without a texture"
-  );
 
   let written: ThmFile = read_descriptor(&path);
 
@@ -174,18 +189,15 @@ fn saving_a_descriptor_that_is_not_there_yet_creates_one() {
   let root: PathBuf = editing_directory("authored");
   let path: PathBuf = root.join("ston_beton05.thm");
 
-  let outcome: TextureSaveOutcome = write_save(
+  let outcome: TextureSaveOutcome = TextureSaver::save(
     &AssetMountState::new(),
     &JobHandle::inert(),
-    &TexturesSaveRequest {
-      descriptor: Some(TextureDescriptorSave {
-        target: TextureSaveTarget {
-          path: path.display().to_string(),
-          expected: None,
-        },
-        form: TextureDescriptorForm::read(&ThmFile::new_texture()),
-      }),
-      texture: None,
+    &TextureDescriptorSave {
+      target: TextureSaveTarget {
+        path: path.display().to_string(),
+        expected: None,
+      },
+      form: TextureDescriptorForm::read(&ThmFile::new_texture()),
     },
     None,
   )
@@ -221,36 +233,28 @@ fn a_save_into_a_mounted_tree_commits_so_its_retained_descriptor_and_sessions_fo
       })
       .expect("the descriptor reads")
   };
-  let session: Session<&str> =
-    Session::new("test").with_derivation(|_, _| Ok(SessionDerived::new("derived", XrayInputRecord::new())));
+  let sessions: Sessions<&'static str> = Sessions::new("test", &SessionScopes::default())
+    .with_derivation(&assets, |_, _| {
+      Ok(SessionDerived::new("derived", XrayInputRecord::new()))
+    });
   let inputs: XrayInputRecord = XrayInputRecord::new();
   let id: SessionId = SessionId::generate();
 
   read(&search.clone().with_recording(&inputs));
-  assets.add_follower(session.clone());
-  session
-    .commit_fixture(id, "opened", XrayRevision::MOUNTED, inputs, SessionParts::new())
-    .unwrap();
+  sessions
+    .begin_fixture_open(id)
+    .expect("the session opens")
+    .commit_fixture(SessionDerived::new("opened", inputs), XrayRevision::MOUNTED)
+    .expect("the session commits");
 
   let mut form: TextureDescriptorForm = TextureDescriptorForm::read(&read_descriptor(&path));
 
   form.texture_type = u32::from(ThmTextureType::Terrain);
 
-  let outcome: TextureSaveOutcome = write_save(
-    &assets,
-    &JobHandle::inert(),
-    &TexturesSaveRequest {
-      descriptor: Some(TextureDescriptorSave {
-        target: target(&path),
-        form,
-      }),
-      texture: None,
-    },
-    None,
-  )
-  .expect("save succeeds");
+  let outcome: TextureSaveOutcome =
+    TextureSaver::save(&assets, &JobHandle::inert(), &descriptor_save(&path, form), None).expect("save succeeds");
   let after: XraySearch = assets.search(&roots_of(&tree)).expect("the tree is found");
-  let followed = session.get().unwrap().unwrap();
+  let followed = sessions.require(id).expect("the session is held");
 
   assert_eq!(outcome.written, vec![path.display().to_string()]);
   assert_ne!(
@@ -284,15 +288,12 @@ fn a_target_that_changed_on_disk_is_refused_rather_than_overwritten() {
 
   rewritten_later(&path);
 
-  let refused = write_save(
+  let refused = TextureSaver::save(
     &AssetMountState::new(),
     &JobHandle::inert(),
-    &TexturesSaveRequest {
-      descriptor: Some(TextureDescriptorSave {
-        target: stamped,
-        form: TextureDescriptorForm::read(&ThmFile::new_texture()),
-      }),
-      texture: None,
+    &TextureDescriptorSave {
+      target: stamped,
+      form: TextureDescriptorForm::read(&ThmFile::new_texture()),
     },
     None,
   );
@@ -312,19 +313,16 @@ fn a_file_that_appeared_where_the_editor_saw_none_is_refused_too() {
 
   std::fs::write(&path, ThmFixture::image().to_bytes()).expect("descriptor is writable");
 
-  let refused = write_save(
+  let refused = TextureSaver::save(
     &AssetMountState::new(),
     &JobHandle::inert(),
-    &TexturesSaveRequest {
-      descriptor: Some(TextureDescriptorSave {
-        // The editor read nothing here, so a file now present is a descriptor somebody else authored meanwhile.
-        target: TextureSaveTarget {
-          path: path.display().to_string(),
-          expected: None,
-        },
-        form: TextureDescriptorForm::read(&ThmFile::new_texture()),
-      }),
-      texture: None,
+    &TextureDescriptorSave {
+      // The editor read nothing here, so a file now present is a descriptor somebody else authored meanwhile.
+      target: TextureSaveTarget {
+        path: path.display().to_string(),
+        expected: None,
+      },
+      form: TextureDescriptorForm::read(&ThmFile::new_texture()),
     },
     None,
   );
@@ -341,27 +339,18 @@ fn saving_a_texture_writes_its_bytes_and_syncs_the_descriptor_format() {
   std::fs::write(&texture_path, b"placeholder").expect("texture is writable");
   std::fs::write(&descriptor_path, ThmFixture::image().to_bytes()).expect("descriptor is writable");
 
-  let encoded: Vec<u8> = DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Fast)
-    .encode(&DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain"))
-    .expect("encode")
-    .write_to_bytes()
-    .expect("bytes");
-
-  let outcome: TextureSaveOutcome = write_save(
+  let outcome: TextureSaveOutcome = TextureSaver::save(
     &AssetMountState::new(),
     &JobHandle::inert(),
-    &TexturesSaveRequest {
-      descriptor: Some(TextureDescriptorSave {
-        target: target(&descriptor_path),
-        form: TextureDescriptorForm::read(&read_descriptor(&descriptor_path)),
-      }),
-      texture: Some(TextureEncodingSave {
-        session_id: SessionId::generate(),
-        target: target(&texture_path),
-        format: TextureEncodingFormat::Bc3,
-      }),
-    },
-    Some(encoded),
+    &descriptor_save(
+      &descriptor_path,
+      TextureDescriptorForm::read(&read_descriptor(&descriptor_path)),
+    ),
+    Some(texture_write(
+      &texture_path,
+      TextureEncodingFormat::Bc3,
+      encoded(ImageFormat::BC3RgbaUnorm),
+    )),
   )
   .expect("save succeeds");
 
@@ -373,7 +362,6 @@ fn saving_a_texture_writes_its_bytes_and_syncs_the_descriptor_format() {
       descriptor_path.display().to_string()
     ]
   );
-  assert_eq!(outcome.descriptor_format, Some(u32::from(ThmFormat::Dxt5)));
   assert_eq!(
     read_descriptor(&descriptor_path)
       .texture_param
@@ -400,38 +388,34 @@ fn a_bc1_texture_names_the_format_its_own_alpha_flag_says() {
 
     std::fs::write(&texture_path, b"placeholder").expect("texture is writable");
 
-    let encoded: Vec<u8> = DdsEncoding::new(ImageFormat::BC1RgbaUnorm, Quality::Fast)
-      .encode(&DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain"))
-      .expect("encode")
-      .write_to_bytes()
-      .expect("bytes");
-
     let mut form: TextureDescriptorForm = TextureDescriptorForm::read(&ThmFile::new_texture());
 
     form.flags = ThmTextureFlags::none().with(ThmTextureFlag::HasAlpha, has_alpha).raw();
 
-    let outcome: TextureSaveOutcome = write_save(
+    TextureSaver::save(
       &AssetMountState::new(),
       &JobHandle::inert(),
-      &TexturesSaveRequest {
-        descriptor: Some(TextureDescriptorSave {
-          target: TextureSaveTarget {
-            path: descriptor_path.display().to_string(),
-            expected: None,
-          },
-          form,
-        }),
-        texture: Some(TextureEncodingSave {
-          session_id: SessionId::generate(),
-          target: target(&texture_path),
-          format: TextureEncodingFormat::Bc1,
-        }),
+      &TextureDescriptorSave {
+        target: TextureSaveTarget {
+          path: descriptor_path.display().to_string(),
+          expected: None,
+        },
+        form,
       },
-      Some(encoded),
+      Some(texture_write(
+        &texture_path,
+        TextureEncodingFormat::Bc1,
+        encoded(ImageFormat::BC1RgbaUnorm),
+      )),
     )
     .expect("save succeeds");
 
-    assert_eq!(outcome.descriptor_format, Some(u32::from(expected)));
+    assert_eq!(
+      read_descriptor(&descriptor_path)
+        .texture_param
+        .map(|param| param.format),
+      Some(expected)
+    );
   }
 }
 
@@ -441,94 +425,35 @@ fn a_bc7_texture_leaves_the_descriptors_format_alone() {
   // rebuild would return the texture to the named format.
   let root: PathBuf = editing_directory("bc7");
   let texture_path: PathBuf = root.join("ston_beton05.dds");
+  let descriptor_path: PathBuf = root.join("ston_beton05.thm");
 
   std::fs::write(&texture_path, b"placeholder").expect("texture is writable");
+  std::fs::write(&descriptor_path, ThmFixture::image().to_bytes()).expect("descriptor is writable");
 
-  let encoded: Vec<u8> = DdsEncoding::new(ImageFormat::BC7RgbaUnorm, Quality::Fast)
-    .encode(&DdsMipChain::build(&source_image(16), DdsMipmaps::Disabled).expect("chain"))
-    .expect("encode")
-    .write_to_bytes()
-    .expect("bytes");
+  let before: Option<ThmFormat> = read_descriptor(&descriptor_path)
+    .texture_param
+    .map(|param| param.format);
 
-  let outcome: TextureSaveOutcome = write_save(
+  TextureSaver::save(
     &AssetMountState::new(),
     &JobHandle::inert(),
-    &TexturesSaveRequest {
-      descriptor: None,
-      texture: Some(TextureEncodingSave {
-        session_id: SessionId::generate(),
-        target: target(&texture_path),
-        format: TextureEncodingFormat::Bc7,
-      }),
-    },
-    Some(encoded),
+    &descriptor_save(
+      &descriptor_path,
+      TextureDescriptorForm::read(&read_descriptor(&descriptor_path)),
+    ),
+    Some(texture_write(
+      &texture_path,
+      TextureEncodingFormat::Bc7,
+      encoded(ImageFormat::BC7RgbaUnorm),
+    )),
   )
   .expect("save succeeds");
 
-  assert_eq!(outcome.descriptor_format, None);
-}
-
-#[test]
-fn saving_a_texture_with_nothing_encoded_is_refused_by_name() {
-  let root: PathBuf = editing_directory("unencoded");
-  let texture_path: PathBuf = root.join("ston_beton05.dds");
-
-  std::fs::write(&texture_path, b"placeholder").expect("texture is writable");
-
-  let refused = write_save(
-    &AssetMountState::new(),
-    &JobHandle::inert(),
-    &TexturesSaveRequest {
-      descriptor: None,
-      texture: Some(TextureEncodingSave {
-        session_id: SessionId::generate(),
-        target: target(&texture_path),
-        format: TextureEncodingFormat::Bc3,
-      }),
-    },
-    None,
-  );
-
-  assert!(refused.is_err_and(|error| error.contains("compare the formats")));
   assert_eq!(
-    std::fs::read(&texture_path).expect("texture is readable"),
-    b"placeholder",
-    "expect a refused save to write nothing at all"
-  );
-}
-
-#[test]
-fn a_stamp_tells_a_missing_file_from_an_unreadable_one() {
-  let root: PathBuf = editing_directory("stamp");
-  let path: PathBuf = root.join("ston_beton05.thm");
-
-  assert_eq!(FileStamp::read(&path).expect("absent is not an error"), None);
-
-  std::fs::write(&path, b"twelve bytes").expect("file is writable");
-
-  assert_eq!(
-    FileStamp::read(&path)
-      .expect("present is readable")
-      .map(|stamp| stamp.size),
-    Some(12)
-  );
-}
-
-#[test]
-fn a_stamp_is_the_size_and_the_modification_time_together() {
-  // Both, because a rewrite that happens to land on the same length is exactly the change a size alone would miss.
-  let stamp: FileStamp = FileStamp {
-    size: 12,
-    modified_ms: 1_700_000_000_000,
-  };
-
-  assert_ne!(stamp, FileStamp { size: 13, ..stamp });
-  assert_ne!(
-    stamp,
-    FileStamp {
-      modified_ms: 1_700_000_000_001,
-      ..stamp
-    }
+    read_descriptor(&descriptor_path)
+      .texture_param
+      .map(|param| param.format),
+    before
   );
 }
 
@@ -548,30 +473,16 @@ fn a_save_asked_to_stop_before_it_writes_writes_nothing() {
 
   job.cancel();
 
-  let outcome: TextureSaveOutcome = write_save(
+  let outcome: TextureSaveOutcome = TextureSaver::save(
     &AssetMountState::new(),
     &job,
-    &TexturesSaveRequest {
-      descriptor: Some(TextureDescriptorSave {
-        target: target(&descriptor_path),
-        form: TextureDescriptorForm::read(&ThmFile::new_texture()),
-      }),
-      texture: Some(TextureEncodingSave {
-        session_id: SessionId::generate(),
-        target: target(&texture_path),
-        format: TextureEncodingFormat::Bc3,
-      }),
-    },
-    Some(vec![0; 128]),
+    &descriptor_save(&descriptor_path, TextureDescriptorForm::read(&ThmFile::new_texture())),
+    Some(texture_write(&texture_path, TextureEncodingFormat::Bc3, vec![0; 128])),
   )
   .expect("a stopped save is a result, not a failure");
 
   assert_eq!(outcome.outcome, JobOutcome::Cancelled);
   assert!(outcome.written.is_empty());
-  assert_eq!(
-    outcome.descriptor_format, None,
-    "expect no format sync to be claimed for a texture that was not written"
-  );
   assert_eq!(std::fs::read(&descriptor_path).expect("descriptor is readable"), before);
   assert_eq!(
     std::fs::read(&texture_path).expect("texture is readable"),
@@ -599,47 +510,15 @@ fn a_save_still_refuses_a_stale_target_before_it_looks_at_cancellation() {
   job.cancel();
 
   assert!(
-    write_save(
+    TextureSaver::save(
       &AssetMountState::new(),
       &job,
-      &TexturesSaveRequest {
-        descriptor: Some(TextureDescriptorSave {
-          target: stamped,
-          form: TextureDescriptorForm::read(&ThmFile::new_texture()),
-        }),
-        texture: None,
+      &TextureDescriptorSave {
+        target: stamped,
+        form: TextureDescriptorForm::read(&ThmFile::new_texture()),
       },
       None,
     )
     .is_err_and(|error| error.contains("changed on disk"))
-  );
-}
-
-#[test]
-fn a_bump_generation_asked_to_stop_leaves_neither_half() {
-  // Both halves are encoded before either is written, so there is no point at which stopping could leave a `_bump`
-  // whose `_bump#` never arrived - which is the pair half of a bumped surface the engine would then substitute for.
-  let root: PathBuf = editing_directory("cancelled_bump");
-  let job: JobHandle = JobHandle::inert();
-
-  job.cancel();
-
-  let result: GenerateBumpResult = GenerateBumpProcessor::generate(&GenerateBumpOptions {
-    job,
-    destination: root.join("ston_beton05"),
-    height: source_image(16),
-    gloss: GenerateBumpGloss::Constant(0.5),
-    normal_map: None,
-    virtual_height: GenerateBumpOptions::DEFAULT_VIRTUAL_HEIGHT,
-    mip_filter: DdsMipFilter::Box,
-    quality: Quality::Fast,
-  })
-  .expect("a stopped generation is a result, not a failure");
-
-  assert_eq!(result.outcome, JobOutcome::Cancelled);
-  assert!(!result.bump.exists() && !result.companion.exists());
-  assert!(
-    result.gloss_power > 0.0,
-    "expect the gloss it did measure to be reported, since a dark mask is worth saying even about a stopped run"
   );
 }

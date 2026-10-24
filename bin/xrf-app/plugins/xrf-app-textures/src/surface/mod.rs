@@ -1,3 +1,13 @@
-pub mod render_source;
-pub mod texture_surface_alpha;
-pub mod texture_surface_shape;
+//! Drawing, which the lit body does through the native renderer: a texture laid on a plane, a sphere or a cube, read by
+//! the renderer from the files its description located.
+
+pub(crate) mod commands;
+mod texture_render_source;
+mod texture_surface_alpha;
+mod texture_surface_request;
+mod texture_surface_shape;
+
+pub use texture_render_source::TextureRenderSource;
+pub use texture_surface_alpha::TextureSurfaceAlpha;
+pub use texture_surface_request::TextureSurfaceRequest;
+pub use texture_surface_shape::TextureSurfaceShape;
