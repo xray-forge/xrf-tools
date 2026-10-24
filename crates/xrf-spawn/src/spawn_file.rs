@@ -6,10 +6,10 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_ltx::FileImportExport;
 use xrf_math::Vector3d;
-use xrf_utils::{assert_equal, assert_length, open_export_file};
+use xrf_utils::{assert_equal, assert_length, write_new_file_staged};
 
 use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
 use crate::chunks::spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk;
@@ -221,19 +221,14 @@ impl SpawnFile {
     })
   }
 
-  /// Write spawn file data to the file by provided path.
+  /// Write spawn file data to the file by provided path, making the directories above it: encoded whole first and
+  /// staged beside it, so a failure leaves whatever was there before.
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let path_ref: &Path = path.as_ref();
+    let mut bytes: Vec<u8> = Vec::new();
 
-    if let Some(parent) = path_ref.parent() {
-      fs::create_dir_all(parent)?;
-      self.write_to::<T>(&mut open_export_file(path)?)
-    } else {
-      Err(XrfError::new_not_found_error(format!(
-        "Spawn file parent directory was not found for {:?}",
-        path_ref.to_str()
-      )))
-    }
+    self.write_to::<T>(&mut bytes)?;
+
+    Ok(write_new_file_staged(path.as_ref(), &bytes)?)
   }
 
   /// Write spawn file data to the writer.

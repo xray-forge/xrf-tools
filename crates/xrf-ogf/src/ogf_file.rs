@@ -156,6 +156,11 @@ impl OgfFile {
     Self::read_motion_refs_from_chunk::<T, _>(&mut ChunkReader::from_file(file)?)
   }
 
+  /// The motion refs of the visual `bytes` hold, skipping its other data.
+  pub fn read_motion_refs_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Vec<String>> {
+    Self::read_motion_refs_from_chunk::<T, _>(&mut ChunkReader::from_vec(bytes)?)
+  }
+
   /// Lists motion references from a chunk reader over any data source.
   pub fn read_motion_refs_from_chunk<T: ByteOrder, D: ChunkDataSource>(
     reader: &mut ChunkReader<D>,
@@ -178,18 +183,25 @@ impl OgfFile {
 
   /// Collect the texture reference of every nested child visual.
   pub fn read_texture_refs_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Vec<String>> {
-    Ok(
-      Self::read_from_path::<T, _>(path)?
-        .children
-        .map(|children| {
-          children
-            .nested
-            .iter()
-            .filter_map(|it| it.texture.as_ref().map(|it| it.texture_name.clone()))
-            .collect()
-        })
-        .unwrap_or_default(),
-    )
+    Ok(Self::read_from_path::<T, _>(path)?.list_texture_refs())
+  }
+
+  /// The texture reference of every nested child visual the visual `bytes` hold.
+  pub fn read_texture_refs_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Vec<String>> {
+    Ok(Self::read_from_bytes::<T>(bytes)?.list_texture_refs())
+  }
+
+  fn list_texture_refs(self) -> Vec<String> {
+    self
+      .children
+      .map(|children| {
+        children
+          .nested
+          .iter()
+          .filter_map(|it| it.texture.as_ref().map(|it| it.texture_name.clone()))
+          .collect()
+      })
+      .unwrap_or_default()
   }
 
   /// Rejects embedded motion chunks that cannot be paired by ordinal.

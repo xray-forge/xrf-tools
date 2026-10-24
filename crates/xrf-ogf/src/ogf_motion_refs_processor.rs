@@ -1,12 +1,10 @@
-use std::fs;
-use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, open_export_file};
+use xrf_utils::{format_path, write_new_file_staged};
 
 use crate::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::ogf_file::OgfFile;
@@ -19,18 +17,23 @@ pub struct OgfMotionRefsProcessor {}
 
 impl OgfMotionRefsProcessor {
   /// Rewrite motion refs of an ogf file, verifying the result before letting it survive.
+  ///
+  /// The source is read once, and the patched bytes are checked before anything is written, so a refused patch leaves
+  /// the destination as it was and a written one replaces it whole.
   pub fn patch_motion_refs_to_path<T: ByteOrder>(
     source: &Path,
     destination: &Path,
     motion_refs: &[String],
     is_dry_run: bool,
   ) -> XrfResult<OgfRefsPatchReport> {
-    let original: Vec<u8> = fs::read(source)?;
-    let existing: Vec<String> = OgfFile::read_motion_refs_from_path::<T, _>(&source)?;
+    let original: Vec<u8> = OgfRawPatch::read_source(source)?;
+    let existing: Vec<String> = OgfFile::read_motion_refs_from_bytes::<T>(original.clone())?;
 
     Self::assert_chunk_copy_is_lossless::<T>(source, &original, &existing)?;
 
-    let patched: Vec<u8> = Self::write_motion_refs_to_buffer::<T>(OgfRawPatch::open_source(source)?, motion_refs)?;
+    let patched: Vec<u8> = Self::write_motion_refs_to_buffer::<T>(original.clone(), motion_refs)?;
+
+    Self::assert_patched_refs_match::<T>(source, &patched, motion_refs)?;
 
     let report: OgfRefsPatchReport = OgfRefsPatchReport {
       original_size: original.len(),
@@ -41,31 +44,20 @@ impl OgfMotionRefsProcessor {
         .len()
         .saturating_sub(OgfNormalization::normalize_bytes::<T>(&original)?.len()),
       is_dry_run,
+      previous_refs: existing,
     };
 
-    if is_dry_run {
-      return Ok(report);
-    }
-
-    if let Some(parent) = destination.parent() {
-      fs::create_dir_all(parent)?;
-    }
-
-    open_export_file(destination)?.write_all(&patched)?;
-
-    if let Err(error) = Self::assert_written_refs_match::<T>(destination, motion_refs) {
-      OgfRawPatch::revert_destination(source, destination, &original)?;
-
-      return Err(error);
+    if !is_dry_run {
+      write_new_file_staged(destination, &patched)?;
     }
 
     Ok(report)
   }
 
-  /// Rewrite motion refs of an ogf file, copying every other chunk verbatim.
-  pub fn write_motion_refs_to_buffer<T: ByteOrder>(file: File, motion_refs: &[String]) -> XrfResult<Vec<u8>> {
+  /// Rewrite motion refs of the ogf file `bytes` hold, copying every other chunk verbatim.
+  pub fn write_motion_refs_to_buffer<T: ByteOrder>(bytes: Vec<u8>, motion_refs: &[String]) -> XrfResult<Vec<u8>> {
     let (mut chunks, _) =
-      OgfResidue::read_root_chunks::<T, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_file(file)?)?;
+      OgfResidue::read_root_chunks::<T, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_vec(bytes)?)?;
     let mut buffer: Vec<u8> = Vec::new();
     let mut patched_count: u32 = 0;
 
@@ -106,19 +98,19 @@ impl OgfMotionRefsProcessor {
 
   /// Guard that rewriting the refs a file already has reproduces that file, normalized.
   fn assert_chunk_copy_is_lossless<T: ByteOrder>(source: &Path, original: &[u8], existing: &[String]) -> XrfResult {
-    let reverted: Vec<u8> = Self::write_motion_refs_to_buffer::<T>(OgfRawPatch::open_source(source)?, existing)?;
+    let reverted: Vec<u8> = Self::write_motion_refs_to_buffer::<T>(original.to_vec(), existing)?;
 
     OgfRawPatch::assert_chunk_copy_is_lossless::<T>(source, original, &reverted, "rewriting its existing motion refs")
   }
 
-  /// Guard that the written file reads back exactly the requested motion refs.
-  fn assert_written_refs_match<T: ByteOrder>(destination: &Path, motion_refs: &[String]) -> XrfResult {
-    let read_back: Vec<String> = OgfFile::read_motion_refs_from_path::<T, _>(&destination)?;
+  /// Guard that the patched bytes read back exactly the requested motion refs.
+  fn assert_patched_refs_match<T: ByteOrder>(source: &Path, patched: &[u8], motion_refs: &[String]) -> XrfResult {
+    let read_back: Vec<String> = OgfFile::read_motion_refs_from_bytes::<T>(patched.to_vec())?;
 
     if read_back != motion_refs {
       return Err(XrfError::new_verify_error(format!(
         "Patched {} reads back motion refs {:?} instead of {:?}",
-        format_path(destination),
+        format_path(source),
         read_back,
         motion_refs
       )));
@@ -176,7 +168,7 @@ mod tests {
     let path: PathBuf = write_sample(&filename, OgfKinematicsChunk::CHUNK_ID, &refs)?;
 
     let rewritten: Vec<u8> =
-      OgfMotionRefsProcessor::write_motion_refs_to_buffer::<XRayByteOrder>(File::open(&path)?, &refs)?;
+      OgfMotionRefsProcessor::write_motion_refs_to_buffer::<XRayByteOrder>(fs::read(&path)?, &refs)?;
 
     assert_eq!(
       rewritten,
@@ -193,7 +185,7 @@ mod tests {
     let path: PathBuf = write_sample(&filename, OgfKinematicsChunk::CHUNK_ID, &[String::from("old\\ref")])?;
 
     let patched: Vec<u8> = OgfMotionRefsProcessor::write_motion_refs_to_buffer::<XRayByteOrder>(
-      File::open(&path)?,
+      fs::read(&path)?,
       &[String::from("new\\much\\longer\\ref"), String::from("second")],
     )?;
 
@@ -224,7 +216,7 @@ mod tests {
     let path: PathBuf = write_sample(&filename, OgfKinematicsChunk::CHUNK_ID_OLD, &[String::from("old\\ref")])?;
 
     let patched: Vec<u8> = OgfMotionRefsProcessor::write_motion_refs_to_buffer::<XRayByteOrder>(
-      File::open(&path)?,
+      fs::read(&path)?,
       &[String::from("replacement")],
     )?;
 
@@ -261,7 +253,7 @@ mod tests {
     let path: PathBuf = build_absolute_generated_test_resource_path(&filename);
 
     assert!(
-      OgfMotionRefsProcessor::write_motion_refs_to_buffer::<XRayByteOrder>(File::open(&path)?, &[String::from("any")])
+      OgfMotionRefsProcessor::write_motion_refs_to_buffer::<XRayByteOrder>(fs::read(&path)?, &[String::from("any")])
         .is_err(),
       "Expect rewrite to be refused when file has no motion refs chunk"
     );

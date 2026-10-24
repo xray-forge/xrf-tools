@@ -1,4 +1,3 @@
-use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -7,7 +6,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, open_export_file};
+use xrf_utils::{format_path, write_new_file_staged};
 
 use crate::chunks::thm_bump_chunk::ThmBumpChunk;
 use crate::chunks::thm_detail_chunk::ThmDetailChunk;
@@ -173,11 +172,7 @@ impl ThmFile {
 impl ThmFile {
   /// Writes the descriptor to a path, creating the directories leading to it.
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    if let Some(parent) = path.as_ref().parent() {
-      fs::create_dir_all(parent)?;
-    }
-
-    self.write_to::<T>(&mut open_export_file(path)?)
+    Ok(write_new_file_staged(path.as_ref(), &self.write_to_bytes::<T>()?)?)
   }
 
   /// The descriptor as the bytes of a file.

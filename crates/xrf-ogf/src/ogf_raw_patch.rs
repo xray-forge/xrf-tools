@@ -1,5 +1,4 @@
 use std::fs;
-use std::fs::File;
 use std::path::Path;
 
 use byteorder::ByteOrder;
@@ -14,8 +13,9 @@ use crate::residue::OgfNormalization;
 pub(crate) struct OgfRawPatch {}
 
 impl OgfRawPatch {
-  pub(crate) fn open_source(source: &Path) -> XrfResult<File> {
-    File::open(source).map_err(|error| {
+  /// The whole source, read once for every view a patch takes of it.
+  pub(crate) fn read_source(source: &Path) -> XrfResult<Vec<u8>> {
+    fs::read(source).map_err(|error| {
       XrfError::new_not_found_error(format!(
         "OGF file was not read: {}, error: {}",
         format_path(source),
@@ -42,17 +42,6 @@ impl OgfRawPatch {
         expected.len(),
         reverted.len()
       )));
-    }
-
-    Ok(())
-  }
-
-  /// Undo a failed write, leaving neither a corrupted source nor a partial destination behind.
-  pub(crate) fn revert_destination(source: &Path, destination: &Path, original: &[u8]) -> XrfResult {
-    if destination == source {
-      fs::write(destination, original)?;
-    } else if destination.exists() {
-      fs::remove_file(destination)?;
     }
 
     Ok(())

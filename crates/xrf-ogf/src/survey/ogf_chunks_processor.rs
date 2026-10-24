@@ -56,8 +56,18 @@ impl OgfChunksProcessor {
   }
 
   pub fn collect_chunks<T: ByteOrder>(file: File) -> XrfResult<OgfChunkSurvey> {
-    let (mut chunks, residue) =
-      OgfResidue::read_root_chunks::<T, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_file(file)?)?;
+    Self::collect_chunks_from_reader::<T>(&mut ChunkReader::<InMemoryChunkDataSource>::from_file(file)?)
+  }
+
+  /// The chunk tree of a visual already in memory, for a caller that also reads the visual from the same bytes.
+  pub fn collect_chunks_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<OgfChunkSurvey> {
+    Self::collect_chunks_from_reader::<T>(&mut ChunkReader::<InMemoryChunkDataSource>::from_vec(bytes)?)
+  }
+
+  fn collect_chunks_from_reader<T: ByteOrder>(
+    reader: &mut ChunkReader<InMemoryChunkDataSource>,
+  ) -> XrfResult<OgfChunkSurvey> {
+    let (mut chunks, residue) = OgfResidue::read_root_chunks::<T, _>(reader)?;
     let mut entries: Vec<OgfChunkEntry> = Vec::new();
 
     Self::walk(&mut chunks, 0, &mut entries)?;
@@ -65,9 +75,9 @@ impl OgfChunksProcessor {
     Ok(OgfChunkSurvey { entries, residue })
   }
 
-  /// Chunk ids present in the file that the reader does not understand, deduplicated and sorted.
-  pub fn find_unknown_chunk_ids<T: ByteOrder, P: AsRef<Path>>(path: P) -> XrfResult<Vec<u32>> {
-    let mut unknown: Vec<u32> = Self::collect_chunks_from_path::<T, _>(path)?
+  /// Chunk ids present in the visual `bytes` hold that the reader does not understand, deduplicated and sorted.
+  pub fn find_unknown_chunk_ids<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Vec<u32>> {
+    let mut unknown: Vec<u32> = Self::collect_chunks_from_bytes::<T>(bytes)?
       .entries
       .into_iter()
       .map(|it| it.id)
