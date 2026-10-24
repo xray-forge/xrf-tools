@@ -1,5 +1,5 @@
 use tauri::State;
-use xrf_app_core::session::{SessionRestore, SessionScope, SessionScopes};
+use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::types::TauriResult;
 use xrf_vfs::XrayRoots;
 
@@ -10,8 +10,7 @@ use crate::state::VisualState;
 #[tauri::command(rename = "get_browse")]
 pub async fn visuals_get_browse(
   state: State<'_, VisualState>,
-  scopes: State<'_, SessionScopes>,
   scope: SessionScope,
 ) -> TauriResult<SessionRestore<XrayRoots>> {
-  Ok(SessionRestore::from(state.browses.restore(&scopes.list(&scope))?))
+  Ok(SessionRestore::from(state.browses.restore(&scope)?))
 }

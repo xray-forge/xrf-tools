@@ -1,5 +1,5 @@
 use tauri::State;
-use xrf_app_core::session::{SessionRestore, SessionScope, SessionScopes};
+use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::types::TauriResult;
 use xrf_translation::TranslationProjectDescriptor;
 
@@ -10,8 +10,7 @@ use crate::state::TranslationProjectState;
 #[tauri::command(rename = "get_project")]
 pub async fn translations_get_project(
   state: State<'_, TranslationProjectState>,
-  scopes: State<'_, SessionScopes>,
   scope: SessionScope,
 ) -> TauriResult<SessionRestore<TranslationProjectDescriptor>> {
-  Ok(SessionRestore::from(state.projects.restore(&scopes.list(&scope))?))
+  Ok(SessionRestore::from(state.projects.restore(&scope)?))
 }

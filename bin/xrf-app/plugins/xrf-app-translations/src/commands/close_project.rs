@@ -6,7 +6,7 @@ use crate::state::TranslationProjectState;
 
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "close_project"))]
 #[tauri::command(rename = "close_project")]
-pub async fn translations_close_project(
+pub fn translations_close_project(
   session_ids: Vec<SessionId>,
   state: State<'_, TranslationProjectState>,
 ) -> TauriResult {

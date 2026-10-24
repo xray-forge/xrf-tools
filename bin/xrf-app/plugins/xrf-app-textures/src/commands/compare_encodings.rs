@@ -7,7 +7,7 @@ use uuid::Uuid;
 use xrf_app_core::assets::{AssetMountState, read_referenced_asset};
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
-use xrf_app_core::session::SessionId;
+use xrf_app_core::session::{SessionId, SessionOpening};
 use xrf_app_core::types::TauriResult;
 use xrf_dds::{DdsEncodeAttempt, DdsEncodeCandidate, DdsFile, DdsMetadata, DdsMipChain, DdsMipmaps, RgbaImage};
 use xrf_job::{JobHandle, JobOutcome, JobProgress, JobScope};
@@ -50,9 +50,7 @@ pub async fn textures_compare_encodings(
 
   let session_id: SessionId = request.session_id;
 
-  state.comparisons.begin_open(session_id)?;
-
-  let state: TextureState = TextureState::clone(&state);
+  let opening: SessionOpening<TextureEncodingSession> = state.comparisons.begin_open(session_id)?;
   let assets: AssetMountState = AssetMountState::clone(&assets);
 
   run_job(
@@ -65,7 +63,7 @@ pub async fn textures_compare_encodings(
       let comparison: TextureEncodingComparison = measured.session.to_comparison(measured.current, measured.outcome);
 
       // Completed candidates from a cancelled run remain usable while this session is current.
-      state.comparisons.commit_open(session_id, measured.session)?;
+      opening.commit(measured.session)?;
 
       log::info!(
         "Compared {} encodings of '{}'",

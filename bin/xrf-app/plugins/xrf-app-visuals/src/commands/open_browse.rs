@@ -15,6 +15,5 @@ pub async fn visuals_open_browse(
   roots: XrayRoots,
   state: State<'_, VisualState>,
 ) -> TauriResult<Arc<SessionSnapshot<XrayRoots>>> {
-  state.browses.begin_open(session_id)?;
-  state.browses.commit_open(session_id, roots)
+  state.browses.begin_open(session_id)?.commit(roots)
 }

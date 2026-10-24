@@ -1,5 +1,5 @@
 use tauri::State;
-use xrf_app_core::session::SessionSnapshot;
+use xrf_app_core::session::{SessionOpening, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 use xrf_dialog::{DialogProject, DialogProjectDescriptor, DialogProjectLayout};
 use xrf_utils::error_to_string;
@@ -22,7 +22,7 @@ pub async fn dialogs_open_project(
     translations_prefix,
   } = request;
 
-  state.begin_open(session_id)?;
+  let opening: SessionOpening<DialogProject> = state.begin_open(session_id)?;
 
   log::info!("Opening dialogs project: {} root(s), {:?}", roots.roots.len(), mode);
 
@@ -43,5 +43,5 @@ pub async fn dialogs_open_project(
     descriptor.is_editable
   );
 
-  Ok(state.commit_open(session_id, project)?.map(|_| descriptor))
+  Ok(opening.commit(project)?.map(|_| descriptor))
 }

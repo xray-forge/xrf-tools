@@ -1,5 +1,5 @@
 use tauri::State;
-use xrf_app_core::session::{SessionRestore, SessionScope, SessionScopes};
+use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::types::TauriResult;
 
 use crate::browse::{ArchiveBrowseState, ArchiveSubject};
@@ -10,8 +10,7 @@ use crate::browse::{ArchiveBrowseState, ArchiveSubject};
 #[tauri::command(rename = "get_subject")]
 pub async fn archives_get_subject(
   state: State<'_, ArchiveBrowseState>,
-  scopes: State<'_, SessionScopes>,
   scope: SessionScope,
 ) -> TauriResult<SessionRestore<ArchiveSubject>> {
-  Ok(SessionRestore::from(state.restore(&scopes.list(&scope))?))
+  Ok(SessionRestore::from(state.restore(&scope)?))
 }

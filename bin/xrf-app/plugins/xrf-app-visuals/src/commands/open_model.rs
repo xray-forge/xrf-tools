@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use tauri::State;
 use xrf_app_core::assets::{AssetMountState, AssetTextureDescriptor};
-use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_app_core::session::{SessionId, SessionOpening, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 use xrf_material::{
   XrayMaterialDescriptor, XrayMaterialResolver, XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope,
@@ -28,7 +28,7 @@ pub async fn visuals_open_model(
   state: State<'_, VisualState>,
   assets: State<'_, AssetMountState>,
 ) -> TauriResult<SessionSnapshot<SelectedVisualDescription>> {
-  state.models.begin_open(session_id)?;
+  let opening: SessionOpening<SelectedVisual> = state.models.begin_open(session_id)?;
 
   log::info!("Opening visual: {}", source.label());
 
@@ -46,20 +46,17 @@ pub async fn visuals_open_model(
   let textures_ltx: Option<XrayAsset> = XrayMaterialResolver::find_textures_ltx(&search);
   let motions: Option<VisualMotions> = VisualMotions::of(&file);
 
-  let selected: Arc<SessionSnapshot<SelectedVisual>> = state.models.commit_open(
-    session_id,
-    SelectedVisual {
-      source,
-      roots,
-      package,
-      dependencies,
-      motions,
-      textures,
-      materials,
-      surfaces,
-      textures_ltx,
-    },
-  )?;
+  let selected: Arc<SessionSnapshot<SelectedVisual>> = opening.commit(SelectedVisual {
+    source,
+    roots,
+    package,
+    dependencies,
+    motions,
+    textures,
+    materials,
+    surfaces,
+    textures_ltx,
+  })?;
 
   Ok(selected.map(SelectedVisual::describe))
 }

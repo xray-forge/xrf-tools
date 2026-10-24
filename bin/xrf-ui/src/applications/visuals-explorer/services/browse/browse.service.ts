@@ -63,14 +63,10 @@ export class VisualsBrowseService {
   }
 
   /**
-   * Drop the browsed roots on the way out of the application.
+   * Forget the browsed roots on the way out of the application, which the tool's scope closes.
    */
   @OnDeactivation()
   public onDeactivation(): void {
-    this.log.info("Deactivating, release");
-
-    this.session.release();
-
     runInAction(() => {
       this.browsed = null;
       this.visuals = this.visuals.asIdle([]);

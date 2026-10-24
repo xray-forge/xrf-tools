@@ -4,6 +4,7 @@ import { Nullable } from "@xrf/types";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse/index";
 import { createRoots } from "@/core/assets/lib";
+import { SessionScopeService } from "@/core/ipc/session";
 import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
@@ -107,7 +108,7 @@ describe("VisualsBrowseService", () => {
     expect(service.visuals.value ?? []).toHaveLength(1);
   });
 
-  it("releases the browsed roots on deactivation, so leaving closes in place", async () => {
+  it("forgets the browsed roots on deactivation, and the tool's scope closes them in place", async () => {
     // The selection is dropped on the way out, so a session left open would come back beside a model the backend no
     // longer has. A reload runs no deactivation, which is what keeps the restore above working.
     const released: Array<string> = [];
@@ -115,22 +116,20 @@ describe("VisualsBrowseService", () => {
     setMockInvokeResponses({
       ["plugin:visuals|open_browse"]: mockSessionResponse((args?: Record<string, unknown>) => args?.roots),
       ["plugin:assets|list_assets"]: [mockVisual("meshes\\actors\\stalker.ogf")],
-      ["plugin:visuals|close_browse"]: () => {
-        released.push("closed");
-
-        return null;
-      },
+      ["plugin:visuals|close_browse"]: () => void released.push("closed"),
+      ["plugin:sessions|release_scope"]: () => void released.push("scope released"),
     });
 
-    const { service } = mockInjectedService(VisualsBrowseService);
+    const { service, container } = mockInjectedService(VisualsBrowseService);
 
     await service.openRoot("C:\\gamedata");
 
     service.onDeactivation();
+    container.get(SessionScopeService).release();
 
     expect(service.rootsLabel).toBeNull();
     expect(service.visuals.value ?? []).toEqual([]);
-    expect(released).toEqual(["closed"]);
+    expect(released).toEqual(["scope released"]);
   });
 
   it("forgets the roots when browsing is closed, backend included", async () => {

@@ -3,6 +3,7 @@ import { flowResult, isComputedProp } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
+import { SessionScopeService } from "@/core/ipc/session";
 import { ArchiveFileDescription } from "@/core/ipc/types/xrf-app";
 import { ArchiveFileDescriptor, ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
 import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
@@ -232,17 +233,25 @@ describe("ArchivesService visual preview lifecycle", () => {
     expect(invoked).toEqual(["plugin:archives|close_subject"]);
   });
 
-  it("releases only its owned document when the application deactivates", () => {
+  it("leaves its document to the tool's scope, released once, as the application deactivates", async () => {
     const invoked: Array<string> = [];
 
     setMockInvokeResponses({
       ["plugin:archives|close_subject"]: () => void invoked.push("plugin:archives|close_subject"),
       ["plugin:visuals|close_model"]: () => void invoked.push("plugin:visuals|close_model"),
+      ["plugin:sessions|release_scope"]: () => void invoked.push("plugin:sessions|release_scope"),
     });
 
-    mockArchivesService([]).onDeactivation();
+    const { service, container } = mockInjectedService(ArchivesService);
 
-    expect(invoked).toEqual(["plugin:archives|close_subject"]);
+    service["subjectState"] = AsyncState.ready(
+      mockRestoredSession(service, mockSessionSnapshot(mockArchivesVolumes([])))
+    );
+    container.get(SessionScopeService).release();
+    // Retired with the scope, the document is no longer the service's to close.
+    await service.closeSubject();
+
+    expect(invoked).toEqual(["plugin:sessions|release_scope"]);
   });
 });
 

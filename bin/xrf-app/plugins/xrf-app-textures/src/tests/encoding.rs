@@ -81,7 +81,7 @@ fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() 
 
   let session_id: SessionId = SessionId::generate();
 
-  state.comparisons.begin_open(session_id).expect("session");
+  let opening = state.comparisons.begin_fixture_open(session_id).expect("session");
 
   let missing = state.comparisons.require(session_id);
 
@@ -90,20 +90,16 @@ fn a_candidate_can_be_looked_at_only_while_its_own_comparison_is_the_held_one() 
     "expect nothing to read before anything has been weighed"
   );
 
-  state
-    .comparisons
-    .commit_open(
+  opening
+    .commit(TextureEncodingSession {
       session_id,
-      TextureEncodingSession {
-        session_id,
-        roots: XrayRoots::default(),
-        source: TextureSource::Asset {
-          reference: String::from(BASE),
-        },
-        label: String::from(BASE),
-        attempts: vec![DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Bc3, Quality::Fast).expect("bc3")],
+      roots: XrayRoots::default(),
+      source: TextureSource::Asset {
+        reference: String::from(BASE),
       },
-    )
+      label: String::from(BASE),
+      attempts: vec![DdsEncodeAttempt::measure(&chain, DdsEncodeCandidate::Bc3, Quality::Fast).expect("bc3")],
+    })
     .expect("hold comparison");
 
   let png: Vec<u8> = state

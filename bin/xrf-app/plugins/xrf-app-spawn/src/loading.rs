@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::session::SessionId;
+use xrf_app_core::session::{SessionId, SessionOpening};
 use xrf_app_core::types::TauriResult;
 use xrf_spawn::{SpawnFile, XRayByteOrder};
 
 use crate::SpawnSessionDescriptor;
-use crate::state::SpawnFileState;
+use crate::state::{SpawnFileState, SpawnSession};
 
 /// The two representations accepted by the editor's open commands.
 pub enum SpawnInput {
@@ -22,9 +22,7 @@ pub async fn open_spawn(
   state: &SpawnFileState,
   execution: &ExecutionState,
 ) -> TauriResult<SpawnSessionDescriptor> {
-  state.files.begin_open(id)?;
-
-  let state: SpawnFileState = state.clone();
+  let opening: SessionOpening<SpawnSession> = state.files.begin_open(id)?;
 
   execution
     .run_blocking("Opening spawn", move || {
@@ -34,7 +32,7 @@ pub async fn open_spawn(
       }
       .map_err(|error| format!("Cannot open spawn '{}': {error}", path.display()))?;
 
-      state.commit_open(id, path, file)
+      SpawnFileState::commit_open(opening, path, file)
     })
     .await?
 }

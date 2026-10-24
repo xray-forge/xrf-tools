@@ -94,23 +94,20 @@ fn assemble<R: Runtime>(
   execution: ExecutionState,
   directories: AppDirectories,
 ) -> Builder<R> {
+  // Closed documents are dropped on the pool, so neither a command nor the event loop waits for a level to go.
+  let scopes: SessionScopes = SessionScopes::new(execution.get_pool());
   let builder: Builder<R> = builder
     .manage(build)
     .manage(execution)
     .manage(AssetMountState::new())
-    .manage(SessionScopes::default())
+    .manage(scopes)
     .manage(directories)
     .on_window_event(|window: &Window<R>, event: &WindowEvent| {
       if matches!(event, WindowEvent::Destroyed) {
-        let scopes: SessionScopes = SessionScopes::clone(&window.state::<SessionScopes>());
-        let label: String = window.label().to_owned();
+        let label: &str = window.label();
+        let released: usize = window.state::<SessionScopes>().release_window(label);
 
-        // Off the event loop, which the documents dropped with them would otherwise hold up.
-        tauri::async_runtime::spawn_blocking(move || {
-          let released: usize = scopes.release_window(&label);
-
-          log::info!("Window '{label}' went, releasing the {released} opening(s) its pages held");
-        });
+        log::info!("Window '{label}' went, releasing the {released} opening(s) its pages held");
       }
     });
 

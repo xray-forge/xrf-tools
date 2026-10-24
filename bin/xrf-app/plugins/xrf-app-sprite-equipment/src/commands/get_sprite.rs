@@ -1,5 +1,5 @@
 use tauri::State;
-use xrf_app_core::session::{SessionRestore, SessionScope, SessionScopes};
+use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::types::TauriResult;
 
 use crate::metadata::EquipmentSpriteMetadata;
@@ -10,12 +10,11 @@ use crate::state::EquipmentSpriteState;
 #[tauri::command(rename = "get_sprite")]
 pub async fn sprite_equipment_get_sprite(
   state: State<'_, EquipmentSpriteState>,
-  scopes: State<'_, SessionScopes>,
   scope: SessionScope,
 ) -> TauriResult<SessionRestore<EquipmentSpriteMetadata>> {
   Ok(SessionRestore::from(
     state
-      .restore(&scopes.list(&scope))?
+      .restore(&scope)?
       .map(|opened| opened.map(|document| document.metadata.clone())),
   ))
 }

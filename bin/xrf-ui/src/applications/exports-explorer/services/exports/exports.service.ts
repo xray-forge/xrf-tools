@@ -1,4 +1,4 @@
-import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
+import { EventBus, inject, Injectable, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
@@ -40,13 +40,6 @@ export class ExportsService {
   @OnProvision()
   public async onProvision(): Promise<void> {
     await flowResult(this.restore());
-  }
-
-  @OnDeactivation()
-  public onDeactivation(): void {
-    this.log.info("Deactivating, release");
-
-    this.session.release();
   }
 
   /**

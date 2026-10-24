@@ -95,44 +95,17 @@ impl<T> Session<T> {
     self
   }
 
-  /// Reserves publication before doing work, without invalidating the committed value's readers.
-  pub fn begin_open(&self, id: SessionId) -> TauriResult<()> {
+  /// Reserves publication before doing work, without invalidating the committed value's readers. A domain opens through
+  /// `Sessions`, whose handles a scope releases; this slot is its building block.
+  pub(crate) fn begin_open(&self, id: SessionId) -> TauriResult<()> {
     self.lock()?.opening = Some(id);
 
     Ok(())
   }
 
-  /// Reserves a reload only while the value it reloads is still committed.
-  pub fn begin_reload(&self, id: SessionId, previous: SessionId) -> TauriResult<Arc<SessionSnapshot<T>>> {
-    let mut state: MutexGuard<SessionState<T>> = self.lock()?;
-
-    let opened: Arc<SessionSnapshot<T>> = state
-      .opened
-      .as_ref()
-      .filter(|opened| opened.session_id == previous)
-      .cloned()
-      .ok_or_else(|| format!("The {} session has changed or is closed", self.name))?;
-
-    state.opening = Some(id);
-
-    Ok(opened)
-  }
-
-  /// Whether this opening is still the one that would be published, for work that is worth abandoning when it is not.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when a newer open or a close has taken the opening, or when the lock is poisoned.
-  pub fn require_opening(&self, id: SessionId) -> TauriResult<()> {
-    if self.lock()?.opening == Some(id) {
-      return Ok(());
-    }
-
-    Err(self.superseded())
-  }
-
   /// Publishes only the newest opening; parsing and resource acquisition happen before this call.
-  pub fn commit_open(&self, id: SessionId, value: T) -> TauriResult<Arc<SessionSnapshot<T>>> {
+  #[cfg(test)]
+  pub(crate) fn commit_open(&self, id: SessionId, value: T) -> TauriResult<Arc<SessionSnapshot<T>>> {
     self.commit_open_with(
       id,
       value,
@@ -144,7 +117,7 @@ impl<T> Session<T> {
 
   /// Publishes only the newest opening as [`Self::commit_open`] does, at `revision`, the one the search it read was
   /// taken at, keeping the inputs the value was derived from and the parts the opening read on its way.
-  pub fn commit_open_with(
+  pub(crate) fn commit_open_with(
     &self,
     id: SessionId,
     value: T,
@@ -180,9 +153,9 @@ impl<T> Session<T> {
     self.name
   }
 
-  /// What both the early check and the commit say, so a caller cannot tell them apart and need not.
+  /// What a commit says of an opening it no longer publishes: closed while it opened, or replaced in a slot held alone.
   fn superseded(&self) -> String {
-    format!("The {} opening was superseded by another open or close", self.name)
+    format!("The {} opening was closed or replaced while it opened", self.name)
   }
 
   /// Restores the committed value without copying its content or exposing the session lock.
@@ -199,14 +172,29 @@ impl<T> Session<T> {
   }
 
   /// Closes only the caller's committed or pending openings. A delayed teardown cannot close its successor.
-  pub fn close(&self, ids: &[SessionId]) -> TauriResult<()> {
+  pub(crate) fn close(&self, ids: &[SessionId]) -> TauriResult<()> {
     drop(self.detach(ids)?);
 
     Ok(())
   }
 
+  /// Opens `value` as `id` at `revision` with the inputs and parts it was read with, for a test following a slot
+  /// through commits without a registry or a scope.
+  #[cfg(any(test, feature = "fixtures"))]
+  pub fn commit_fixture(
+    &self,
+    id: SessionId,
+    value: T,
+    revision: XrayRevision,
+    inputs: XrayInputRecord,
+    parts: SessionParts,
+  ) -> TauriResult<Arc<SessionSnapshot<T>>> {
+    self.begin_open(id)?;
+    self.commit_open_with(id, value, revision, inputs, parts)
+  }
+
   /// Detaches ownership so a caller can dispose a large value on its execution pool.
-  pub fn detach(&self, ids: &[SessionId]) -> TauriResult<Option<Arc<SessionSnapshot<T>>>> {
+  pub(crate) fn detach(&self, ids: &[SessionId]) -> TauriResult<Option<Arc<SessionSnapshot<T>>>> {
     let mut state: MutexGuard<SessionState<T>> = self.lock()?;
 
     if state.opening.is_some_and(|id| ids.contains(&id)) {

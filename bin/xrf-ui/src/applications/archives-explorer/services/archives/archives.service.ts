@@ -1,4 +1,4 @@
-import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
+import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
@@ -229,14 +229,6 @@ export class ArchivesService {
   @OnDeprovision()
   public onDeprovision(provisionId: ProvisionId): void {
     this.log.info("Deprovisioning:", provisionId);
-  }
-
-  /** Releases this editor's subject; visual previews own their model sessions separately. */
-  @OnDeactivation()
-  public onDeactivation(): void {
-    this.log.info("Deactivating, release");
-
-    this.session.release();
   }
 
   /**

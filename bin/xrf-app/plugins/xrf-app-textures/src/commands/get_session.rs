@@ -1,5 +1,5 @@
 use tauri::State;
-use xrf_app_core::session::{SessionRestore, SessionScope, SessionScopes};
+use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::types::TauriResult;
 
 use crate::state::{TextureBrowseSession, TextureState};
@@ -9,8 +9,7 @@ use crate::state::{TextureBrowseSession, TextureState};
 #[tauri::command(rename = "get_session")]
 pub async fn textures_get_session(
   state: State<'_, TextureState>,
-  scopes: State<'_, SessionScopes>,
   scope: SessionScope,
 ) -> TauriResult<SessionRestore<TextureBrowseSession>> {
-  Ok(SessionRestore::from(state.browses.restore(&scopes.list(&scope))?))
+  Ok(SessionRestore::from(state.browses.restore(&scope)?))
 }

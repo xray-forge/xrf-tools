@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_app_core::session::{SessionRestore, SessionScope, SessionScopes, SessionSnapshot};
+use xrf_app_core::session::{SessionRestore, SessionScope, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 
 use crate::state::{LevelState, SelectedLevel, SelectedLevelDescription};
@@ -12,10 +12,9 @@ use crate::state::{LevelState, SelectedLevel, SelectedLevelDescription};
 #[tauri::command(rename = "get_level")]
 pub fn levels_get_level(
   state: State<'_, LevelState>,
-  scopes: State<'_, SessionScopes>,
   scope: SessionScope,
 ) -> TauriResult<SessionRestore<SelectedLevelDescription>> {
-  let current: Option<Arc<SessionSnapshot<SelectedLevel>>> = state.levels.restore(&scopes.list(&scope))?;
+  let current: Option<Arc<SessionSnapshot<SelectedLevel>>> = state.levels.restore(&scope)?;
 
   Ok(SessionRestore::from(
     current.map(|current| current.answer(current.describe())),

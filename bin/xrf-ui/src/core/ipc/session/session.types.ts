@@ -13,6 +13,12 @@ export interface ISessionRevision extends ISessionIdentity {
   revision: XrayRevision;
 }
 
+/** What a scope's release retires: the openings one service holds in it, which the backend closes with the scope. */
+export interface IScopedSession {
+  /** Forgets every opening without closing it one by one, so a publication landing later closes itself. */
+  retire(): void;
+}
+
 /**
  * What one committed change did to one open session, a `SessionChange`, told to every service: the one holding that
  * session's snapshot reads again what went stale.
