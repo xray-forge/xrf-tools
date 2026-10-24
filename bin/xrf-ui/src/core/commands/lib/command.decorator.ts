@@ -1,6 +1,5 @@
+import { XrfApplicationError } from "@xrf/errors";
 import { Optional } from "@xrf/types";
-
-import { XrfApplicationError } from "@/core/error/lib";
 
 import { IKeybindCommand } from "./command-descriptor";
 import { appendKeybindCommandHandler } from "./command-metadata";

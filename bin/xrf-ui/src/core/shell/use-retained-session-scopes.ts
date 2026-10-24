@@ -1,4 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 import { useEffect, useRef } from "react";
 
@@ -6,7 +7,6 @@ import { sessionsCommands } from "@/core/ipc/commands/sessions";
 import { SHELL_SESSION_TOOL } from "@/core/ipc/session";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { useCurrentApplication } from "@/core/routing/current-application.context";
-import { Logger } from "@/lib/logging";
 
 const log: Logger = new Logger(__MODULE_NAME__);
 

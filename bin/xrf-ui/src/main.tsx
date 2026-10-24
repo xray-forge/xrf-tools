@@ -1,3 +1,4 @@
+import { Logger } from "@xrf/logging";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -6,7 +7,6 @@ import { ApplicationRouter } from "@/ApplicationRouter";
 import { ErrorBoundary } from "@/core/error/components/ErrorBoundary";
 import { RootCrash } from "@/core/error/components/RootCrash";
 import { suppressNativeContextMenu } from "@/lib/dom/event";
-import { Logger } from "@/lib/logging";
 
 Logger.info("Start application");
 

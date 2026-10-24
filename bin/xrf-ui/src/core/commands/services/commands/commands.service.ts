@@ -1,10 +1,10 @@
 import { CommandBus, EventBus, inject, Injectable, QueryBus } from "@wirestate/core";
+import { transformError } from "@xrf/errors";
+import { Logger } from "@xrf/logging";
 
 import { IKeybindCommand, toKeybindCommandEnabledQuery } from "@/core/commands/lib/command-descriptor";
-import { transformError } from "@/core/error/lib";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { APPLICATION_SOURCE } from "@/core/routing/application";
-import { Logger } from "@/lib/logging";
 import { isCancellation } from "@/lib/mobx";
 
 /** Invokes declared keybind commands and answers whether one can be invoked, for every surface that offers them. */

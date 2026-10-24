@@ -1,4 +1,5 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { Logger } from "@xrf/logging";
 
 import { describeTranslationParseOutcome } from "@/applications/translations-parser/lib/describe-parse-outcome";
 import { translationsCommands } from "@/core/ipc/commands/translations";
@@ -7,7 +8,6 @@ import { ETranslationLanguage, TranslationParseResult } from "@/core/ipc/types/x
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { Logger } from "@/lib/logging";
 import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**

@@ -1,6 +1,6 @@
+import { transformError } from "@xrf/errors";
 import { Nullable } from "@xrf/types";
 
-import { transformError } from "@/core/error/lib";
 import { IBulkCall } from "@/core/ipc/bulk/bulk-call";
 import { BULK_ENDPOINT } from "@/core/ipc/bulk/bulk-endpoint";
 import { IPC_METRICS, IpcCallMeasurement, weighIpcPayload } from "@/core/ipc/metrics";

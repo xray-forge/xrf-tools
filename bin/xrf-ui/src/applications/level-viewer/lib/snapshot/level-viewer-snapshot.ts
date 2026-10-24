@@ -1,6 +1,6 @@
+import { XrfApplicationError } from "@xrf/errors";
 import { isRecord, Nullable } from "@xrf/types";
 
-import { XrfApplicationError } from "@/core/error/lib";
 import { BuildInfo } from "@/core/ipc/types/xrf-build-info";
 import { toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { toLevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";

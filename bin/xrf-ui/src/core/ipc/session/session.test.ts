@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { Logger } from "@xrf/logging";
 
 import { mockInvoke, mockIsTauri, resetMockIsTauri } from "@/fixtures/mocks/tauri.mocks";
-import { Logger } from "@/lib/logging";
 
 import { ISessionIdentity, Session, SessionScopeService } from "./index";
 

@@ -1,15 +1,15 @@
 import { inject, Injectable } from "@wirestate/core";
 import { Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { transformError } from "@/core/error/lib";
 import { configsCommands } from "@/core/ipc/commands/configs";
 import { LtxAnchoredFinding } from "@/core/ipc/types/xrf-ltx-inspect";
 import { toOrderedFindings } from "@/core/ltx/lib/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
-import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**

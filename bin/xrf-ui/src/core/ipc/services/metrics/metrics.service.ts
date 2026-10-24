@@ -1,8 +1,8 @@
 import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Observable } from "@wirestate/mobx";
+import { Logger } from "@xrf/logging";
 
 import { IIpcMetricsSnapshot, IPC_METRICS, isIpcProfilingEnabled, setIpcProfilingEnabled } from "@/core/ipc/metrics";
-import { Logger } from "@/lib/logging";
 
 /**
  * What the frontend has asked of the backend, as a surface can read it.

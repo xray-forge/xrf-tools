@@ -1,13 +1,13 @@
 import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
+import { transformError } from "@xrf/errors";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { transformError } from "@/core/error/lib";
 import { systemCommands } from "@/core/ipc/commands/system";
 import { ELeaveDecision } from "@/core/ipc/types/xrf-app";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { APPLICATION_SOURCE } from "@/core/routing/application";
-import { Logger } from "@/lib/logging";
 
 /** Writes all pending edits; false keeps the editor open. */
 export type EditorSaver = () => Promise<boolean>;

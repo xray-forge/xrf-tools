@@ -1,10 +1,11 @@
 import { inject, Injectable } from "@wirestate/core";
 import { Computed, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { transformError } from "@/core/error/lib";
 import { configsCommands } from "@/core/ipc/commands/configs";
 import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
 import { TConfigsReveal } from "@/core/ltx/lib/reveal";
@@ -12,7 +13,6 @@ import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
-import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /** The two ways one config can be read. */

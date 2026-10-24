@@ -1,15 +1,15 @@
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { Logger, Timer } from "@xrf/logging";
 import { getPathName } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 
 import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/archive/lib/volume-size";
-import { transformError } from "@/core/error/lib";
 import { JobKind } from "@/core/ipc/types/xrf-app";
 import { IJobSettledPayload } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /** What every archive configuration carries that this editor reads: the packer's own volume ceiling. */

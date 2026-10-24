@@ -1,18 +1,18 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { Logger, Timer } from "@xrf/logging";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
-import { transformError } from "@/core/error/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
 import { requireSessionId, Session, SessionScopeService } from "@/core/ipc/session";
 import { SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**

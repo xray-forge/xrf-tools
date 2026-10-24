@@ -2,6 +2,8 @@ import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
 import { default as ReportProblemIcon } from "@mui/icons-material/ReportProblem";
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
@@ -13,7 +15,6 @@ import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
-import { Logger, useLogger } from "@/lib/logging";
 
 import { DialogsEditorWorkspace } from "./DialogsEditorWorkspace";
 import { DialogInspectorPanel } from "./editor/DialogInspectorPanel";

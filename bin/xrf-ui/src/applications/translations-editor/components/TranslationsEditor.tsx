@@ -1,6 +1,8 @@
 import { default as ReportProblemIcon } from "@mui/icons-material/ReportProblem";
 import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
@@ -12,7 +14,6 @@ import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
-import { Logger, useLogger } from "@/lib/logging";
 
 import { TranslationsEditorActions } from "./editor/TranslationsEditorActions";
 import { TranslationsProblemsPanel } from "./editor/TranslationsProblemsPanel";

@@ -1,5 +1,7 @@
 import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
@@ -8,7 +10,6 @@ import { DDS_FILE_FILTERS, LTX_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
-import { Logger, useLogger } from "@/lib/logging";
 
 import { EquipmentPackResult } from "./components/EquipmentPackResult";
 

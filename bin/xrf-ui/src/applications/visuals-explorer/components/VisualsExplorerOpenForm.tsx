@@ -1,4 +1,6 @@
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback } from "react";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
@@ -10,7 +12,6 @@ import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceFormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Logger, useLogger } from "@/lib/logging";
 
 import { EVisualOpenMode, OPEN_MODE_OPTIONS, OPEN_MODES } from "./VisualsExplorerOpenForm.utils";
 

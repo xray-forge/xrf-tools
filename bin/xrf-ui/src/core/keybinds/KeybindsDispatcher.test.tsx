@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { act, fireEvent } from "@testing-library/react";
 import { Container, Injectable } from "@wirestate/core";
+import { Logger } from "@xrf/logging";
 
 import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/applications/sprite-equipment-editor/commands";
 import { KeybindCommand } from "@/core/commands";
@@ -9,7 +10,6 @@ import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { SettingsService } from "@/core/settings/services/settings";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { Logger } from "@/lib/logging";
 
 import { KeybindsDispatcher } from "./KeybindsDispatcher";
 

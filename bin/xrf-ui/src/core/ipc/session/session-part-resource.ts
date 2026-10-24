@@ -1,9 +1,9 @@
 import { EventBus, EventUnsubscribe, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, makeObservable, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
 import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
 
-import { transformError } from "@/core/error/lib";
 import { ESessionRootChange, SessionChange, SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 
 import { SESSION_CHANGE_EVENT } from "./session.types";

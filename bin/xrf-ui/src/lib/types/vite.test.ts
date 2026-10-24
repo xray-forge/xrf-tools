@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { Logger } from "@/lib/logging/Logger";
+import { Logger } from "@xrf/logging";
 
 describe("module name token", () => {
   it("resolves to this file's own name", () => {

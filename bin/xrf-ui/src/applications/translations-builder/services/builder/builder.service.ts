@@ -1,4 +1,5 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { Logger } from "@xrf/logging";
 
 import { describeTranslationBuildOutcome } from "@/applications/translations-builder/lib/describe-build-outcome";
 import { createRoots } from "@/core/assets/lib";
@@ -8,7 +9,6 @@ import { ETranslationLanguage, TranslationBuildResult } from "@/core/ipc/types/x
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { Logger } from "@/lib/logging";
 import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**

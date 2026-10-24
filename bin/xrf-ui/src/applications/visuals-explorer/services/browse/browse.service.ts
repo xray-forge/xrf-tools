@@ -1,17 +1,17 @@
 import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { createRoots, describeRoots } from "@/core/assets/lib";
-import { transformError } from "@/core/error/lib";
 import { assetsCommands } from "@/core/ipc/commands/assets";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
 import { Session, SessionScopeService } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { EXrayAssetType, XrayAsset, XrayRoot, XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**

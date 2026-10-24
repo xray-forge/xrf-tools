@@ -1,4 +1,5 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { spriteEquipmentCommands } from "@/core/ipc/commands/sprite-equipment";
@@ -8,7 +9,6 @@ import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "
 import { JobCompletion, JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { describePackSpriteOutcome } from "@/core/sprite-equipment/lib";
-import { Logger } from "@/lib/logging";
 import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /** Packing shared by the standalone runner and the editor's repack action. */

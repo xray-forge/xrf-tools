@@ -3,6 +3,7 @@ import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
 import { Window } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-shell";
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 import { useCallback, useState } from "react";
 
@@ -20,7 +21,6 @@ import { useEditorMenusRegistry } from "@/core/shell/editor-shell/use-editor-men
 import { IMenubarItem, IMenubarMenu, toCommandMenubarItem } from "@/core/shell/menu/components/Menubar";
 import { assembleMenus, IAssembledMenu, IMenuContribution, TMenuEntry } from "@/core/shell/menu/lib";
 import { FILE_MENU, HELP_MENU } from "@/core/shell/menu/menus";
-import { Logger } from "@/lib/logging";
 import { resolveAppWindow } from "@/lib/tauri/app-window";
 import { EMPTY_ARRAY } from "@/lib/types/array";
 

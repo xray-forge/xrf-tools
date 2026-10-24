@@ -1,4 +1,6 @@
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
@@ -25,7 +27,6 @@ import {
   usePathField,
   useRememberedValue,
 } from "@/core/ui/form";
-import { Logger, useLogger } from "@/lib/logging";
 
 const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ETextureOpenMode>> = TEXTURE_OPEN_MODES.map(
   (mode: ITextureOpenModeDescriptor) => ({

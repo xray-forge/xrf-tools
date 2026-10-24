@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 
-import { Timer } from "./Timer";
+import { Timer } from "#/timer";
 
 describe("Timer", () => {
   // Jest's modern fake timers fake `performance` as well as the scheduler, so advancing the clock is what

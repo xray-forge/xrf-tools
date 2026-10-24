@@ -1,6 +1,8 @@
 import { default as FilterDramaIcon } from "@mui/icons-material/FilterDrama";
 import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
@@ -18,7 +20,6 @@ import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Logger, useLogger } from "@/lib/logging";
 import { useCopiedText } from "@/lib/react/use-copied-text";
 
 /**

@@ -1,13 +1,13 @@
 import { BoundAction, Computed, makeObservable, Observable } from "@wirestate/mobx";
+import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { transformError } from "@/core/error/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
 import { requireSessionId } from "@/core/ipc/session";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { Logger, Timer } from "@/lib/logging";
 
 /**
  * Availability of a motion's description.

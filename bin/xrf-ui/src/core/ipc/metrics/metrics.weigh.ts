@@ -1,6 +1,5 @@
+import { Logger } from "@xrf/logging";
 import { Nullable, Optional } from "@xrf/types";
-
-import { Logger } from "@/lib/logging";
 
 /** One encoder for the process: constructing one per call would cost more than the measurement it serves. */
 const ENCODER: TextEncoder = new TextEncoder();

@@ -1,17 +1,17 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { transformError } from "@/core/error/lib";
 import { fetchBulk } from "@/core/ipc/bulk";
 import { assetsBulkRoutes } from "@/core/ipc/commands/assets-bulk";
 import { texturesCommands } from "@/core/ipc/commands/textures";
 import { AssetSource, ETextureSource, TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /** A texture inspection and the search roots needed to repeat it. */

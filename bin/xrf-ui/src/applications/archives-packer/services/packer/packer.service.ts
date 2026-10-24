@@ -1,5 +1,6 @@
 import { EventBus, inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
+import { Logger } from "@xrf/logging";
 
 import { describePackOutcome } from "@/applications/archives-packer/lib/describe-pack-outcome";
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
@@ -11,7 +12,6 @@ import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "
 import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 import { toSavedState } from "./packer.service.utils";

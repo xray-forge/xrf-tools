@@ -1,6 +1,7 @@
 import { EventBus, inject, Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { levelsCommands } from "@/core/ipc/commands/levels";
@@ -23,7 +24,6 @@ import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { LEVEL_LOOK_STORAGE_KEY, parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
-import { Logger } from "@/lib/logging";
 
 /**
  * How a level is exposed, lit and corrected: the game's console defaults, the settings', a built-in engine's, or a

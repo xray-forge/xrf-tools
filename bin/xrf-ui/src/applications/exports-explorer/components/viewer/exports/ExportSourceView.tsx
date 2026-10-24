@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
-import { transformError } from "@/core/error/lib";
 import { ExportSourceContent } from "@/core/ipc/types/xrf-export";
 import { CodeView } from "@/core/syntax/components/CodeView";
 import { getSyntaxLanguage } from "@/core/syntax/lib/syntax-language";

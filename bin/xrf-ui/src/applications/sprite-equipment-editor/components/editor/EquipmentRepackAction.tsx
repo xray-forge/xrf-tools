@@ -1,6 +1,8 @@
 import { default as Inventory2Icon } from "@mui/icons-material/Inventory2";
 import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
@@ -11,7 +13,6 @@ import {
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Logger, useLogger } from "@/lib/logging";
 
 /**
  * Toolbar command that rebuilds the open sprite from its unpacked icons.

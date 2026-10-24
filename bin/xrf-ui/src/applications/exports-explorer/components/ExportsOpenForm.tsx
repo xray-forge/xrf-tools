@@ -1,11 +1,12 @@
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback } from "react";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
-import { Logger, useLogger } from "@/lib/logging";
 
 export function ExportsOpenForm(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);

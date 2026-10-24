@@ -3,7 +3,9 @@ import { exists } from "@tauri-apps/plugin-fs";
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { Logger, Timer } from "@xrf/logging";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
@@ -11,7 +13,6 @@ import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/applications/sprite-e
 import { urlToImage } from "@/core/assets/lib/image";
 import { AssetService } from "@/core/assets/services";
 import { KeybindCommand } from "@/core/commands";
-import { transformError } from "@/core/error/lib";
 import { fetchBulk } from "@/core/ipc/bulk";
 import { spriteEquipmentCommands } from "@/core/ipc/commands/sprite-equipment";
 import { spriteEquipmentBulkRoutes } from "@/core/ipc/commands/sprite-equipment-bulk";
@@ -28,7 +29,6 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EApplicationGroupId } from "@/core/routing/application";
 import { describeEquipmentSheet, ENGINE_GRID_SQUARE } from "@/core/sprite-equipment/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
-import { Logger, Timer } from "@/lib/logging";
 import { all, call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**
