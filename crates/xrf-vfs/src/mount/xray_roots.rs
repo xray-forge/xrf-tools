@@ -53,6 +53,11 @@ impl XrayRoots {
     }
   }
 
+  /// A root for each of `paths`, in search order, every one read as `mode`.
+  pub fn from_paths(paths: impl IntoIterator<Item = PathBuf>, mode: XrayMountMode) -> Self {
+    Self::new(paths.into_iter().map(|path| XrayRoot::new(path, mode)))
+  }
+
   /// The same roots, centred on an asset when it does not already name one.
   pub fn centred_on(&self, asset: Option<&Path>) -> Self {
     Self {
