@@ -98,10 +98,8 @@ impl<T: Send + Sync + 'static> Sessions<T> {
 
       state.handles.entry(id).or_insert(fresh).clone()
     };
-    // Made at once, so whatever refuses the open below abandons the handle with it.
-    let opening: SessionOpening<T> = SessionOpening::new(self.clone(), id);
-
-    handle.begin_open(id);
+    // Made with the reservation, so whatever refuses the open below abandons the handle with it.
+    let opening: SessionOpening<T> = SessionOpening::new(self.clone(), id, handle.begin_open(id));
 
     if !self.bindings.is_bound(id) {
       return Err(format!(
@@ -214,8 +212,8 @@ impl<T: Send + Sync + 'static> Sessions<T> {
   }
 
   /// Lets go of a handle whose open was given up before it committed. One that committed before is the opener's to
-  /// close: it keeps what it holds, and only the open given up is forgotten.
-  pub(super) fn abandon(&self, id: SessionId) {
+  /// close: it keeps what it holds, and only the reservation `token` names is forgotten.
+  pub(super) fn abandon(&self, id: SessionId, token: u64) {
     let handle: Option<Session<T>> = {
       let mut state: MutexGuard<'_, SessionsState<T>> = self.lock();
 
@@ -225,7 +223,7 @@ impl<T: Send + Sync + 'static> Sessions<T> {
         drop(state);
 
         if let Some(handle) = handle {
-          handle.give_up_open(id);
+          handle.give_up_open(id, token);
         }
 
         return;
@@ -239,6 +237,12 @@ impl<T: Send + Sync + 'static> Sessions<T> {
     }
 
     self.bindings.unbind(&[id]);
+  }
+
+  /// Whether `id` holds a reservation not yet committed or given up.
+  #[cfg(test)]
+  pub(crate) fn is_opening(&self, id: SessionId) -> bool {
+    self.lock().handles.get(&id).is_some_and(Session::is_opening)
   }
 
   /// The snapshot a handle holds, never another's.
