@@ -7,5 +7,19 @@ use crate::commands::particle::list::particle_list_entry::ParticleListEntry;
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticleListReport {
-  pub entries: Vec<ParticleListEntry>,
+  entries: Vec<ParticleListEntry>,
+  total: usize,
+}
+
+impl ParticleListReport {
+  pub fn new(entries: Vec<ParticleListEntry>) -> Self {
+    Self {
+      total: entries.len(),
+      entries,
+    }
+  }
+
+  pub fn entries(&self) -> &[ParticleListEntry] {
+    &self.entries
+  }
 }

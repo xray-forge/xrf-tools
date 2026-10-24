@@ -18,7 +18,7 @@ pub enum ParticleFindReason {
   /// A group spawns the effect at each birth of one of its effects' particles.
   BirthChild(String),
   /// A group spawns the effect at each death of one of its effects' particles.
-  DeadChild(String),
+  DeathChild(String),
 }
 
 impl ParticleFindReason {
@@ -27,7 +27,7 @@ impl ParticleFindReason {
     match child {
       ParticleGroupChild::Play => Self::PlayChild(effect.to_owned()),
       ParticleGroupChild::Birth => Self::BirthChild(effect.to_owned()),
-      ParticleGroupChild::Death => Self::DeadChild(effect.to_owned()),
+      ParticleGroupChild::Death => Self::DeathChild(effect.to_owned()),
     }
   }
 
@@ -40,7 +40,7 @@ impl ParticleFindReason {
       Self::Effect(effect) => format!("effect {effect}"),
       Self::PlayChild(effect) => format!("play child {effect}"),
       Self::BirthChild(effect) => format!("birth child {effect}"),
-      Self::DeadChild(effect) => format!("death child {effect}"),
+      Self::DeathChild(effect) => format!("death child {effect}"),
     }
   }
 }

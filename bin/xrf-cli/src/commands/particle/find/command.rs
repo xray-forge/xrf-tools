@@ -6,10 +6,9 @@ use super::particle_find_match::ParticleFindMatch;
 use super::particle_find_reason::ParticleFindReason;
 use super::report::ParticleFindReport;
 use crate::commands::particle::list::particle_list_entry::ParticleListEntry;
-use crate::commands::particle::particle_names::{to_name_key, to_texture_key};
-use crate::commands::particle::particles_file_open::{ParticlesFileArguments, open_particles_file};
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::commands::particle::particle_names::ParticleNames;
+use crate::commands::particle::particles_file_arguments::ParticlesFileArguments;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 const TEXTURE_ARGUMENT: &str = "texture";
 const SHADER_ARGUMENT: &str = "shader";
@@ -24,10 +23,8 @@ impl GenericCommand for FindCommand {
     "find"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Find the effects drawing with a texture or shader or running an action, and the groups playing an effect")
-      .with_particles_file()
+  fn declare(&self, command: Command) -> Command {
+    ParticlesFileArguments::declare(command.about("Find the effects drawing with a texture or shader or running an action, and the groups playing an effect"))
       .arg(
         Arg::new(TEXTURE_ARGUMENT)
           .help("Texture to find the effects sampling, with or without its extension. Repeat to find several")
@@ -70,7 +67,7 @@ impl GenericCommand for FindCommand {
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
-    let file: ParticlesFile = open_particles_file(matches)?;
+    let file: ParticlesFile = ParticlesFileArguments::open(matches)?;
     let mut report: ParticleFindReport = ParticleFindReport {
       textures: Self::requested(matches, TEXTURE_ARGUMENT),
       shaders: Self::requested(matches, SHADER_ARGUMENT),
@@ -138,7 +135,7 @@ impl FindCommand {
       if report
         .textures
         .iter()
-        .any(|query| to_texture_key(query) == to_texture_key(texture))
+        .any(|query| ParticleNames::texture_key(query) == ParticleNames::texture_key(texture))
       {
         reasons.push(ParticleFindReason::Texture(texture.clone()));
       }
@@ -147,7 +144,7 @@ impl FindCommand {
     if report
       .shaders
       .iter()
-      .any(|query| to_name_key(query) == to_name_key(shader))
+      .any(|query| ParticleNames::name_key(query) == ParticleNames::name_key(shader))
     {
       reasons.push(ParticleFindReason::Shader(shader.clone()));
     }
@@ -163,7 +160,11 @@ impl FindCommand {
 
   /// How a group matches the effect queries: each of its effects named, and each child it spawns.
   fn match_group(queries: &[String], group: &ParticleGroup) -> Vec<ParticleFindReason> {
-    let is_queried = |name: &str| queries.iter().any(|query| to_name_key(query) == to_name_key(name));
+    let is_queried = |name: &str| {
+      queries
+        .iter()
+        .any(|query| ParticleNames::name_key(query) == ParticleNames::name_key(name))
+    };
     let mut reasons: Vec<ParticleFindReason> = Vec::new();
     let mut add = |reason: ParticleFindReason| {
       if !reasons.contains(&reason) {

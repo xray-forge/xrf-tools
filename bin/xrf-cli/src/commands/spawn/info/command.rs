@@ -6,8 +6,7 @@ use xrf_spawn::{SpawnFile, XRayByteOrder};
 use xrf_utils::format_path;
 
 use super::report::SpawnInfoReport;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct InfoCommand;
@@ -17,21 +16,17 @@ impl GenericCommand for InfoCommand {
     "info"
   }
 
-  /// Create command for printing spawn file info.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to print information about provided spawn file")
-      .arg(
-        Arg::new("path")
-          .help("Path to spawn file")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
+  fn declare(&self, command: Command) -> Command {
+    command.about("Print what a spawn file holds").arg(
+      Arg::new("path")
+        .help("Path to spawn file")
+        .short('p')
+        .long("path")
+        .required(true)
+        .value_parser(value_parser!(PathBuf)),
+    )
   }
 
-  /// Print information about spawn file.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<_>("path")
@@ -41,7 +36,7 @@ impl GenericCommand for InfoCommand {
 
     xrf_output::info!(output, "Read spawn file {}", format_path(path));
 
-    let spawn_file: Box<SpawnFile> = Box::new(SpawnFile::read_from_path::<XRayByteOrder, _>(path)?);
+    let spawn_file: SpawnFile = SpawnFile::read_from_path::<XRayByteOrder, _>(path)?;
 
     xrf_output::info!(output, "Spawn file information:");
 

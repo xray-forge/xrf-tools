@@ -8,12 +8,9 @@ use xrf_particles::{
 use xrf_utils::format_path;
 
 use super::report::ParticleInspectReport;
-use crate::commands::particle::particle_names::to_name_key;
-use crate::commands::particle::particles_file_open::{
-  ParticlesFileArguments, open_particles_file, requested_particles_path,
-};
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::commands::particle::particle_names::ParticleNames;
+use crate::commands::particle::particles_file_arguments::ParticlesFileArguments;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 const NAME_ARGUMENT: &str = "name";
 
@@ -28,25 +25,25 @@ impl GenericCommand for InspectCommand {
     "inspect"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Explain one effect or group: its sprite, frames and actions, or the effects it plays and spawns")
-      .with_particles_file()
-      .arg(
-        Arg::new(NAME_ARGUMENT)
-          .help("Name of the effect or group, in any case and with either slash, such as explosions\\campfire")
-          .required(true)
-          .value_parser(value_parser!(String)),
-      )
+  fn declare(&self, command: Command) -> Command {
+    ParticlesFileArguments::declare(
+      command.about("Explain one effect or group: its sprite, frames and actions, or the effects it plays and spawns"),
+    )
+    .arg(
+      Arg::new(NAME_ARGUMENT)
+        .help("Name of the effect or group, in any case and with either slash, such as explosions\\campfire")
+        .required(true)
+        .value_parser(value_parser!(String)),
+    )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
-    let file: ParticlesFile = open_particles_file(matches)?;
+    let file: ParticlesFile = ParticlesFileArguments::open(matches)?;
     let name: &String = matches
       .get_one::<String>(NAME_ARGUMENT)
       .expect("Expected the required name");
-    let is_named = |candidate: &str| to_name_key(candidate) == to_name_key(name);
+    let is_named = |candidate: &str| ParticleNames::name_key(candidate) == ParticleNames::name_key(name);
     let report: ParticleInspectReport<'_> = ParticleInspectReport {
       effect: file.effects.effects.iter().find(|it| is_named(&it.name)),
       group: file.groups.groups.iter().find(|it| is_named(&it.name)),
@@ -56,7 +53,7 @@ impl GenericCommand for InspectCommand {
       return Err(
         XrfError::new_not_found_error(format!(
           "No effect or group '{name}' in {}{}",
-          format_path(requested_particles_path(matches)),
+          format_path(ParticlesFileArguments::path_of(matches)),
           Self::describe_suggestions(&file, name)
         ))
         .into(),
@@ -168,12 +165,12 @@ impl InspectCommand {
 
   /// The names holding the one asked for, as a clause for the not-found error, or nothing where none does.
   fn describe_suggestions(file: &ParticlesFile, name: &str) -> String {
-    let query: String = to_name_key(name);
+    let query: String = ParticleNames::name_key(name);
     let effects = file.effects.effects.iter().map(|it| it.name.as_str());
     let groups = file.groups.groups.iter().map(|it| it.name.as_str());
     let similar: Vec<&str> = effects
       .chain(groups)
-      .filter(|it| to_name_key(it).contains(&query))
+      .filter(|it| ParticleNames::name_key(it).contains(&query))
       .take(SUGGESTIONS)
       .collect();
 

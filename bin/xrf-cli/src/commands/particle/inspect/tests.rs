@@ -4,8 +4,8 @@ use serde_json::Value;
 
 use crate::commands::particle::fixtures::{create_library, run_for_result};
 use crate::commands::particle::inspect::command::InspectCommand;
-use crate::core::command_testing::run_command_for_result;
-use crate::core::generic_command::CommandResult;
+use crate::core::command::CommandResult;
+use crate::core::command::command_testing::run_command_for_result;
 
 #[test]
 fn deposits_an_effect_whole_found_in_any_case_and_with_either_slash() -> CommandResult {
