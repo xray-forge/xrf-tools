@@ -7,7 +7,7 @@ use xrf_extension::XrayExtension;
 use xrf_utils::format_path;
 use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayAssetType, XraySearch};
 
-use crate::commands::ltx::ltx_installation::mount_installation;
+use crate::commands::ltx::ltx_installation::LtxInstallation;
 
 /// The files a formatting run will touch, and what it declined to.
 pub struct LtxFormatSelection {
@@ -33,7 +33,7 @@ impl LtxFormatSelection {
     let mut visited: HashSet<PathBuf> = HashSet::new();
 
     for path in paths {
-      match mount_installation(path)? {
+      match LtxInstallation::mount(path)? {
         Some(search) => Self::select_installation(&search, &mut files, &mut declined, &mut visited)?,
         None => Self::select_path(path, &mut files, &mut visited)?,
       }

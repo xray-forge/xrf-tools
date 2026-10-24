@@ -7,6 +7,7 @@
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
+use serde::Serialize;
 use xrf_dialog::{DialogFile, DialogParseIssue, DialogParseIssueKind, DialogPhrase, DialogProject};
 use xrf_error::XrfResult;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
@@ -17,7 +18,8 @@ use xrf_vfs::{XrayAsset, XrayRoots, XraySearch};
 /// These are the numbers the reader's premises rest on: that phrases nearly always sit in a
 /// `phrase_list`, that a dialog may legitimately declare none, and that the element set is the one
 /// `DialogElementKind` classifies.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DialogSweepCensus {
   pub files: usize,
   pub unreadable_files: usize,
@@ -220,18 +222,4 @@ impl<'a> DialogSweep<'a> {
   fn rule(id: &str) -> RuleId {
     RuleId::new(format!("dialog.{id}")).expect("dialog rule ids are not empty")
   }
-}
-
-/// Total findings across every check, which is what the failure line counts.
-pub fn sum_findings(report: &Report) -> usize {
-  report
-    .checks()
-    .iter()
-    .map(|check| check.findings().len())
-    .sum::<usize>()
-}
-
-/// Render a counted distribution as `name: count` pairs, in name order.
-pub fn list_distribution(counts: &BTreeMap<String, usize>) -> Vec<String> {
-  counts.iter().map(|(name, count)| format!("{name}: {count}")).collect()
 }

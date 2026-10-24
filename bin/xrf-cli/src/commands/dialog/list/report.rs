@@ -9,10 +9,40 @@ use crate::commands::dialog::list::dialog_list_profile::DialogListProfile;
 #[serde(rename_all = "camelCase")]
 pub struct DialogListReport {
   /// The language captions were resolved in, echoed back.
-  pub language: Option<String>,
+  language: Option<String>,
   /// The profile the list was narrowed to, when it was.
-  pub profile: Option<DialogListProfile>,
-  pub dialogs: Vec<DialogListEntry>,
+  profile: Option<DialogListProfile>,
+  dialogs: Vec<DialogListEntry>,
   /// What opening the tree had to say about it, and offered dialogs no file declares.
-  pub findings: Vec<DialogFinding>,
+  findings: Vec<DialogFinding>,
+  total: usize,
+}
+
+impl DialogListReport {
+  pub fn new(
+    language: Option<String>,
+    profile: Option<DialogListProfile>,
+    dialogs: Vec<DialogListEntry>,
+    findings: Vec<DialogFinding>,
+  ) -> Self {
+    Self {
+      language,
+      profile,
+      total: dialogs.len(),
+      dialogs,
+      findings,
+    }
+  }
+
+  pub fn profile(&self) -> Option<&DialogListProfile> {
+    self.profile.as_ref()
+  }
+
+  pub fn dialogs(&self) -> &[DialogListEntry] {
+    &self.dialogs
+  }
+
+  pub fn findings(&self) -> &[DialogFinding] {
+    &self.findings
+  }
 }

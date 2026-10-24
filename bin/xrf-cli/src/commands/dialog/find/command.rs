@@ -3,10 +3,8 @@ use xrf_dialog::{DialogElement, DialogElementKind, DialogProject, DialogReferenc
 use xrf_output::OutputOptions;
 
 use super::report::DialogFindReport;
-use crate::commands::dialog::dialog_project_open::open_dialog_project_keys;
-use crate::commands::dialog::dialog_roots::DialogRootsArguments;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::commands::dialog::dialog_project_opening::DialogProjectOpening;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 const INFO_ARGUMENT: &str = "info";
 const FUNCTOR_ARGUMENT: &str = "functor";
@@ -19,10 +17,11 @@ impl GenericCommand for FindCommand {
     "find"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Find every dialog and phrase naming an info portion or a script function, and what each does with it")
-      .with_dialog_roots()
+  fn declare(&self, command: Command) -> Command {
+    DialogProjectOpening::declare_roots(
+      command
+        .about("Find every dialog and phrase naming an info portion or a script function, and what each does with it"),
+    )
       .arg(
         Arg::new(INFO_ARGUMENT)
           .help("Info portion to find where dialogs check, give or take it. Repeat to find several")
@@ -51,7 +50,7 @@ impl GenericCommand for FindCommand {
     let output: OutputOptions = context.get_output().clone();
     let infos: Vec<String> = Self::requested(matches, INFO_ARGUMENT);
     let functors: Vec<String> = Self::requested(matches, FUNCTOR_ARGUMENT);
-    let project: DialogProject = open_dialog_project_keys(matches)?;
+    let project: DialogProject = DialogProjectOpening::open_keys(matches)?;
 
     let report: DialogFindReport = DialogFindReport {
       references: project.list_references(|element| {

@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch};
 
 use crate::commands::level::level_assets::LevelAssets;
@@ -18,11 +18,7 @@ fn search(root: &Path) -> XrfResult<XraySearch> {
 
 /// A root holding the named levels, each with a `level` file and a `level.geom` beside it.
 fn create_root(name: &str, levels: &[&str]) -> XrfResult<PathBuf> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("level/selection/{name}"));
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
+  let root: PathBuf = create_generated_test_resource_dir(&format!("level/selection/{name}"))?;
 
   for level in levels {
     fs::create_dir_all(root.join("levels").join(level))?;
@@ -38,7 +34,7 @@ fn create_root(name: &str, levels: &[&str]) -> XrfResult<PathBuf> {
 }
 
 #[test]
-fn test_reads_a_level_of_mounted_roots_by_name() -> XrfResult {
+fn reads_a_level_of_mounted_roots_by_name() -> XrfResult {
   let root: PathBuf = create_root("by_name", &["jupiter", "zaton"])?;
   let assets: LevelAssets = LevelAssets::open_asset(search(&root)?, "zaton")?;
 
@@ -56,7 +52,7 @@ fn test_reads_a_level_of_mounted_roots_by_name() -> XrfResult {
 }
 
 #[test]
-fn test_a_name_no_level_answers_to_is_refused() -> XrfResult {
+fn a_name_no_level_answers_to_is_refused() -> XrfResult {
   let root: PathBuf = create_root("unknown_name", &["jupiter"])?;
   let search: XraySearch = search(&root)?;
 
@@ -73,7 +69,7 @@ fn test_a_name_no_level_answers_to_is_refused() -> XrfResult {
 }
 
 #[test]
-fn test_lists_only_the_names_that_are_levels() -> XrfResult {
+fn lists_only_the_names_that_are_levels() -> XrfResult {
   let root: PathBuf = create_root("listing", &["jupiter", "zaton", "l01_escape"])?;
   assert_eq!(
     LevelAssets::list_names(&search(&root)?)?,
@@ -89,7 +85,7 @@ fn test_lists_only_the_names_that_are_levels() -> XrfResult {
 }
 
 #[test]
-fn test_reads_a_level_directory_as_it_sits_on_disk() -> XrfResult {
+fn reads_a_level_directory_as_it_sits_on_disk() -> XrfResult {
   let root: PathBuf = create_root("directory", &["jupiter"])?;
   let assets: LevelAssets = LevelAssets::open_directory(&root.join("levels").join("jupiter"));
 

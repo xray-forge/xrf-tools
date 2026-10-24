@@ -4,8 +4,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_level::{LevelFile, LevelFileSource};
 use xrf_utils::format_path;
-use xrf_vfs::{XrayRoots, XraySearch};
+use xrf_vfs::XraySearch;
 
 /// The directory every installation keeps its levels under.
 const LEVELS_DIRECTORY: &str = "levels";
@@ -36,10 +37,10 @@ impl LevelAssets {
       search,
     };
 
-    if assets.read("level")?.is_none() {
+    if assets.read(LevelFile::FILE_NAME)?.is_none() {
       return Err(XrfError::new_not_found_error(format!(
         "Level '{name}' was not found in the mounted roots, which hold no '{}' for it",
-        assets.describe_file("level")
+        assets.describe_file(LevelFile::FILE_NAME)
       )));
     }
 
@@ -99,7 +100,10 @@ impl LevelAssets {
     let mut names: Vec<String> = Vec::new();
 
     for child in search.list_children(LEVELS_DIRECTORY)?.directories {
-      if search.find(&format!("{LEVELS_DIRECTORY}\\{child}\\level"))?.is_some() {
+      if search
+        .find(&format!("{LEVELS_DIRECTORY}\\{child}\\{}", LevelFile::FILE_NAME))?
+        .is_some()
+      {
         names.push(child);
       }
     }
@@ -108,13 +112,14 @@ impl LevelAssets {
 
     Ok(names)
   }
+}
 
-  /// Roots taken from repeated command line paths, in the order they were given.
-  pub fn roots_of(paths: &[PathBuf], source: xrf_vfs::XrayMountMode) -> XrayRoots {
-    XrayRoots::new(
-      paths
-        .iter()
-        .map(|path| xrf_vfs::XrayRoot::new(path.to_path_buf(), source)),
-    )
+impl LevelFileSource for LevelAssets {
+  fn read(&self, name: &str) -> XrfResult<Option<Vec<u8>>> {
+    LevelAssets::read(self, name)
+  }
+
+  fn describe(&self, name: &str) -> String {
+    self.describe_file(name)
   }
 }
