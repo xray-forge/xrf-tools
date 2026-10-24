@@ -1,10 +1,10 @@
 use tauri::State;
+use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::types::TauriResult;
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldLevelProblems;
 
-use crate::world_state::WorldState;
+use crate::WorldState;
 
 /// Say what a viewport's level could not draw: drawables the packer left out, sectors and spawned models unread.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_problems"))]

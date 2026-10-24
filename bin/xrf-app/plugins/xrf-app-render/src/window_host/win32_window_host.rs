@@ -14,6 +14,7 @@ pub struct Win32WindowHost {
 }
 
 impl Win32WindowHost {
+  /// A host over the window `hwnd` names.
   pub fn new(hwnd: NonZeroIsize) -> Self {
     Self { hwnd }
   }

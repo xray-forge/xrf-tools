@@ -1,12 +1,12 @@
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Duration;
 
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 
-use crate::render_answer::await_answer;
+use crate::RenderAnswer;
 
 fn wait(answer: Receiver<u32>) -> TauriResult<u32> {
-  tauri::async_runtime::block_on(await_answer(
+  tauri::async_runtime::block_on(RenderAnswer::await_answer(
     answer,
     Duration::from_millis(10),
     String::from("Viewport 3 answered no frame"),

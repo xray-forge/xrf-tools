@@ -1,4 +1,4 @@
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 use xrf_renderer::RenderBackendAvailability;
 
 /// Say which graphics backends the renderer can draw with on this machine, and on which GPU, for the settings to offer

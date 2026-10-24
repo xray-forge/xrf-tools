@@ -1,11 +1,10 @@
 use std::sync::mpsc::Receiver;
 
 use tauri::State;
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 use xrf_renderer::RenderViewportId;
 
-use crate::render_answer::{ANSWER_TIMEOUT, await_answer};
-use crate::renderer::Renderer;
+use crate::{RenderAnswer, Renderer};
 
 /// Find a spawned object's bounding sphere in a viewport's level, centre then radius in renderer space; none until
 /// its model is drawn.
@@ -18,10 +17,5 @@ pub async fn render_locate_spawn_object(
 ) -> TauriResult<Option<[f32; 4]>> {
   let answer: Receiver<Option<[f32; 4]>> = renderer.locate_spawn_object(viewport, object);
 
-  await_answer(
-    answer,
-    ANSWER_TIMEOUT,
-    format!("Viewport {} answered no location", viewport.0),
-  )
-  .await
+  RenderAnswer::await_viewport(answer, viewport, "location").await
 }

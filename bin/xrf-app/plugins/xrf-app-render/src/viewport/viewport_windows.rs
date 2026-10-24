@@ -4,11 +4,12 @@ use xrf_renderer::RenderViewportId;
 
 /// The window each attached viewport draws into, by the label its page named.
 #[derive(Default)]
-pub struct ViewportWindows {
+pub(crate) struct ViewportWindows {
   windows: HashMap<RenderViewportId, String>,
 }
 
 impl ViewportWindows {
+  /// Records that a viewport draws into a window.
   pub fn insert(&mut self, viewport: RenderViewportId, window: &str) {
     self.windows.insert(viewport, window.to_string());
   }

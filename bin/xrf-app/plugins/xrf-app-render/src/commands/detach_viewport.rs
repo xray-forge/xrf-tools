@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_renderer::RenderViewportId;
 
-use crate::render_viewports::RenderViewports;
+use crate::RenderViewports;
 
 /// Stop drawing a viewport; the GPU goes a few seconds after the last one.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "detach_viewport"))]

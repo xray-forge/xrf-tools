@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_renderer::{RenderOverlay, RenderViewportId};
 
-use crate::renderer::Renderer;
+use crate::Renderer;
 
 /// Set the helpers drawn over one viewport's frame.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "set_overlays"))]

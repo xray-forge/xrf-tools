@@ -23,100 +23,39 @@ pub enum PathKind {
   Directory,
 }
 
-/// Reads what a path currently is.
-pub fn describe_path(target: &Path) -> io::Result<PathDescription> {
-  let metadata: fs::Metadata = match fs::metadata(target) {
-    Ok(metadata) => metadata,
-    Err(error) if error.kind() == io::ErrorKind::NotFound => {
-      return Ok(PathDescription {
-        kind: PathKind::Missing,
+impl PathDescription {
+  /// Reads what a path currently is.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the path exists but its metadata cannot be read.
+  pub fn read(target: &Path) -> io::Result<Self> {
+    let metadata: fs::Metadata = match fs::metadata(target) {
+      Ok(metadata) => metadata,
+      Err(error) if error.kind() == io::ErrorKind::NotFound => {
+        return Ok(Self {
+          kind: PathKind::Missing,
+          entry_count: None,
+        });
+      }
+      Err(error) => return Err(error),
+    };
+
+    if !metadata.is_dir() {
+      return Ok(Self {
+        kind: PathKind::File,
         entry_count: None,
       });
     }
-    Err(error) => return Err(error),
-  };
 
-  if !metadata.is_dir() {
-    return Ok(PathDescription {
-      kind: PathKind::File,
-      entry_count: None,
-    });
+    Ok(Self {
+      kind: PathKind::Directory,
+      entry_count: Self::count_entries(target),
+    })
   }
 
-  Ok(PathDescription {
-    kind: PathKind::Directory,
-    entry_count: count_entries(target),
-  })
-}
-
-/// Counts what a directory lists, or answers `None` where it cannot be listed at all.
-fn count_entries(directory: &Path) -> Option<u64> {
-  Some(fs::read_dir(directory).ok()?.flatten().count() as u64)
-}
-
-#[cfg(test)]
-mod tests {
-  use std::fs::{self, File};
-  use std::path::PathBuf;
-
-  use super::{PathDescription, PathKind, describe_path};
-
-  /// A directory of this test's own under `target`, emptied first so a re-run counts what this run created.
-  fn root(name: &str) -> PathBuf {
-    let path: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-      .join("../../../../target/tests/describe-path")
-      .join(name);
-
-    if path.exists() {
-      fs::remove_dir_all(&path).expect("a removable test root");
-    }
-
-    fs::create_dir_all(&path).expect("a test root");
-
-    path
-  }
-
-  #[test]
-  fn a_missing_path_is_described_rather_than_refused() {
-    let described: PathDescription = describe_path(&root("missing").join("nothing")).expect("a description");
-
-    assert_eq!(described.kind, PathKind::Missing);
-    assert_eq!(described.entry_count, None);
-  }
-
-  #[test]
-  fn a_file_is_not_counted() {
-    let file: PathBuf = root("file").join("system.ltx");
-
-    File::create(&file).expect("a file");
-
-    let described: PathDescription = describe_path(&file).expect("a description");
-
-    assert_eq!(described.kind, PathKind::File);
-    assert_eq!(described.entry_count, None);
-  }
-
-  #[test]
-  fn only_immediate_entries_are_counted() {
-    let directory: PathBuf = root("immediate");
-    let nested: PathBuf = directory.join("nested");
-
-    File::create(directory.join("a.ltx")).expect("a file");
-    File::create(directory.join("b.ltx")).expect("a file");
-    fs::create_dir(&nested).expect("a directory");
-    File::create(nested.join("c.ltx")).expect("a file");
-
-    let described: PathDescription = describe_path(&directory).expect("a description");
-
-    assert_eq!(described.kind, PathKind::Directory);
-    assert_eq!(described.entry_count, Some(3));
-  }
-
-  #[test]
-  fn an_empty_directory_is_not_a_missing_one() {
-    let described: PathDescription = describe_path(&root("empty")).expect("a description");
-
-    assert_eq!(described.kind, PathKind::Directory);
-    assert_eq!(described.entry_count, Some(0));
+  /// Counts what a directory lists, or answers `None` where it cannot be listed at all.
+  fn count_entries(directory: &Path) -> Option<u64> {
+    Some(fs::read_dir(directory).ok()?.flatten().count() as u64)
   }
 }

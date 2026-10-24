@@ -2,8 +2,8 @@ use std::path::Path;
 
 use xrf_vfs::XrayRoots;
 
-use crate::renderer::Renderer;
-use crate::texture_watcher::{TextureWatcher, to_texture_name};
+use crate::Renderer;
+use crate::texture::texture_watcher::TextureWatcher;
 
 /// Keeps every drawn texture current with its file: the roots shown sources read are watched for texture files written
 /// there by anything, and a file this application wrote elsewhere is reloaded as its writer says.
@@ -13,6 +13,7 @@ pub struct TextureReloads {
 }
 
 impl TextureReloads {
+  /// Reloads into what `renderer` draws, watching no root yet.
   pub fn new(renderer: Renderer) -> Self {
     Self {
       watcher: TextureWatcher::new(renderer.get_queue()),
@@ -32,7 +33,7 @@ impl TextureReloads {
       .iter()
       .map(AsRef::as_ref)
       .filter(|path| !self.watcher.is_watched(path))
-      .filter_map(to_texture_name)
+      .filter_map(TextureWatcher::to_texture_name)
       .collect();
 
     self.renderer.reload_textures(names);

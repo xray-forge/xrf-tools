@@ -1,13 +1,12 @@
 use std::sync::mpsc::Receiver;
 
 use tauri::State;
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 use xrf_error::XrfResult;
 use xrf_renderer::{RenderLevelHit, RenderPick, RenderViewportId};
 
-use crate::render_answer::{ANSWER_TIMEOUT, await_answer};
-use crate::renderer::Renderer;
 use crate::request::RenderPickRequest;
+use crate::{RenderAnswer, Renderer};
 
 /// Name what a viewport's level draws under a point, or nothing; glass is the nearest thing a click meets unless the
 /// pick passes it by.
@@ -21,12 +20,8 @@ pub async fn render_pick(
   let RenderPickRequest { x, y, is_through } = request;
   let answer: Receiver<XrfResult<RenderPick>> = renderer.pick(viewport, x, y, is_through);
 
-  await_answer(
-    answer,
-    ANSWER_TIMEOUT,
-    format!("Viewport {} drew no frame to pick in", viewport.0),
-  )
-  .await?
-  .map(|pick| pick.hit)
-  .map_err(|error| error.to_string())
+  RenderAnswer::await_viewport(answer, viewport, "pick")
+    .await?
+    .map(|pick| pick.hit)
+    .map_err(|error| error.to_string())
 }

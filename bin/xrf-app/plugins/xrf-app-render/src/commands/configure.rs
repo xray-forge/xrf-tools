@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_renderer::RenderSettings;
 
-use crate::renderer::Renderer;
+use crate::Renderer;
 
 /// Apply settings every native viewport draws with.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "configure"))]

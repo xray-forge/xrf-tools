@@ -1,6 +1,6 @@
 // This crate's command domain, as a token list: the application's build script includes this file to declare the inline
-// plugin and its permissions, and `registry` expands it into the runtime parts, so it holds the macro alone. Keep each
-// wire name beside its Rust command path; `xrf_app_core::registry` describes the sections.
+// plugin and its permissions, and `ipc` expands it into the runtime parts, so it holds the macro alone. Keep each
+// wire name beside its Rust command path; `xrf_app_core::ipc` describes the sections.
 macro_rules! for_each_render_domain {
   ($consumer:ident) => {
     $consumer! {

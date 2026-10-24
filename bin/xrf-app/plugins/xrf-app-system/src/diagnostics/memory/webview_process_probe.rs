@@ -1,6 +1,6 @@
 use tauri::async_runtime::{Receiver, Sender, channel};
 use tauri::{AppHandle, Runtime};
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 
 use crate::diagnostics::memory::WebviewProcess;
 
@@ -16,8 +16,9 @@ pub struct WebviewProcessProbe {
 }
 
 impl WebviewProcessProbe {
+  /// A probe of the main window of `application`.
   pub fn new<R: Runtime>(application: AppHandle<R>) -> Self {
-    // The window `tauri.conf.json` declares first is the one `build_main_window` builds.
+    // The window `tauri.conf.json` declares first is the one `MainWindow::build` builds.
     let label: Option<String> = application
       .config()
       .app
@@ -26,7 +27,7 @@ impl WebviewProcessProbe {
       .map(|window| window.label.clone());
 
     Self {
-      dispatch: Box::new(move |sender| dispatch_listing(&application, label.as_deref(), sender)),
+      dispatch: Box::new(move |sender| Self::dispatch_listing(&application, label.as_deref(), sender)),
     }
   }
 
@@ -41,79 +42,81 @@ impl WebviewProcessProbe {
       .await
       .ok_or_else(|| String::from("The webview closed before it listed its processes"))?
   }
-}
 
-#[cfg(windows)]
-fn dispatch_listing<R: Runtime>(
-  application: &AppHandle<R>,
-  label: Option<&str>,
-  sender: Sender<WebviewProcessListing>,
-) -> TauriResult {
-  use tauri::Manager;
-  use tauri::webview::WebviewWindow;
+  /// Asks the window labelled `label` to list its webview's processes on its own thread, answering through `sender`.
+  #[cfg(windows)]
+  fn dispatch_listing<R: Runtime>(
+    application: &AppHandle<R>,
+    label: Option<&str>,
+    sender: Sender<WebviewProcessListing>,
+  ) -> TauriResult {
+    use tauri::Manager;
+    use tauri::webview::WebviewWindow;
 
-  let window: WebviewWindow<R> = label
-    .and_then(|label| application.get_webview_window(label))
-    .ok_or("The main window is not open")?;
+    let window: WebviewWindow<R> = label
+      .and_then(|label| application.get_webview_window(label))
+      .ok_or("The main window is not open")?;
 
-  window
-    .with_webview(move |platform| {
-      // The receiver waits for exactly this one answer, so a full or closed channel has nobody left to tell.
-      let _ = sender.try_send(list_environment_processes(&platform));
-    })
-    .map_err(|error| format!("Failed to reach the main window's webview: {error}"))
-}
+    window
+      .with_webview(move |platform| {
+        // The receiver waits for exactly this one answer, so a full or closed channel has nobody left to tell.
+        let _ = sender.try_send(Self::list_environment_processes(&platform));
+      })
+      .map_err(|error| format!("Failed to reach the main window's webview: {error}"))
+  }
 
-/// List nothing, on the platforms whose webview is not WebView2.
-#[cfg(not(windows))]
-fn dispatch_listing<R: Runtime>(
-  _application: &AppHandle<R>,
-  _label: Option<&str>,
-  sender: Sender<WebviewProcessListing>,
-) -> TauriResult {
-  sender
-    .try_send(Ok(Vec::new()))
-    .map_err(|error| format!("Failed to answer the webview process listing: {error}"))
-}
+  /// Lists nothing, on the platforms whose webview is not WebView2.
+  #[cfg(not(windows))]
+  fn dispatch_listing<R: Runtime>(
+    _application: &AppHandle<R>,
+    _label: Option<&str>,
+    sender: Sender<WebviewProcessListing>,
+  ) -> TauriResult {
+    sender
+      .try_send(Ok(Vec::new()))
+      .map_err(|error| format!("Failed to answer the webview process listing: {error}"))
+  }
 
-/// Every process of the webview's environment: browser, renderers, GPU and utilities.
-#[cfg(windows)]
-fn list_environment_processes(platform: &tauri::webview::PlatformWebview) -> WebviewProcessListing {
-  use webview2_com::Microsoft::Web::WebView2::Win32::{
-    COREWEBVIEW2_PROCESS_KIND, ICoreWebView2Environment8, ICoreWebView2ProcessInfo, ICoreWebView2ProcessInfoCollection,
-  };
-  use windows::core::Interface;
+  /// Every process of the webview's environment: browser, renderers, GPU and utilities.
+  #[cfg(windows)]
+  fn list_environment_processes(platform: &tauri::webview::PlatformWebview) -> WebviewProcessListing {
+    use webview2_com::Microsoft::Web::WebView2::Win32::{
+      COREWEBVIEW2_PROCESS_KIND, ICoreWebView2Environment8, ICoreWebView2ProcessInfo,
+      ICoreWebView2ProcessInfoCollection,
+    };
+    use windows::core::Interface;
 
-  let read = || -> windows::core::Result<Vec<WebviewProcess>> {
-    let environment: ICoreWebView2Environment8 = platform.environment().cast()?;
-    let mut count: u32 = 0;
+    let read = || -> windows::core::Result<Vec<WebviewProcess>> {
+      let environment: ICoreWebView2Environment8 = platform.environment().cast()?;
+      let mut count: u32 = 0;
 
-    // SAFETY: `with_webview` runs this on the thread the environment was created on, which WebView2 requires.
-    let collection: ICoreWebView2ProcessInfoCollection = unsafe { environment.GetProcessInfos()? };
+      // SAFETY: `with_webview` runs this on the thread the environment was created on, which WebView2 requires.
+      let collection: ICoreWebView2ProcessInfoCollection = unsafe { environment.GetProcessInfos()? };
 
-    // SAFETY: as above; `count` outlives the call.
-    unsafe { collection.Count(&mut count)? };
+      // SAFETY: as above; `count` outlives the call.
+      unsafe { collection.Count(&mut count)? };
 
-    let mut processes: Vec<WebviewProcess> = Vec::with_capacity(count as usize);
+      let mut processes: Vec<WebviewProcess> = Vec::with_capacity(count as usize);
 
-    for index in 0..count {
-      let mut pid: i32 = 0;
-      let mut kind: COREWEBVIEW2_PROCESS_KIND = COREWEBVIEW2_PROCESS_KIND::default();
+      for index in 0..count {
+        let mut pid: i32 = 0;
+        let mut kind: COREWEBVIEW2_PROCESS_KIND = COREWEBVIEW2_PROCESS_KIND::default();
 
-      // SAFETY: as above; `index` is below the collection's own count, and both outputs outlive the calls.
-      let info: ICoreWebView2ProcessInfo = unsafe { collection.GetValueAtIndex(index)? };
-      unsafe {
-        info.ProcessId(&mut pid)?;
-        info.Kind(&mut kind)?;
+        // SAFETY: as above; `index` is below the collection's own count, and both outputs outlive the calls.
+        let info: ICoreWebView2ProcessInfo = unsafe { collection.GetValueAtIndex(index)? };
+        unsafe {
+          info.ProcessId(&mut pid)?;
+          info.Kind(&mut kind)?;
+        }
+
+        if let Ok(pid) = u32::try_from(pid) {
+          processes.push(WebviewProcess { kind: kind.into(), pid });
+        }
       }
 
-      if let Ok(pid) = u32::try_from(pid) {
-        processes.push(WebviewProcess { kind: kind.into(), pid });
-      }
-    }
+      Ok(processes)
+    };
 
-    Ok(processes)
-  };
-
-  read().map_err(|error| format!("Failed to list the webview's processes: {error}"))
+    read().map_err(|error| format!("Failed to list the webview's processes: {error}"))
+  }
 }

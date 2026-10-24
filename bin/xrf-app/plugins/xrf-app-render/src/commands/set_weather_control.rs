@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldWeatherControl;
 
-use crate::world_state::WorldState;
+use crate::WorldState;
 
 /// Set how a viewport's weather clock runs.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "set_weather_control"))]

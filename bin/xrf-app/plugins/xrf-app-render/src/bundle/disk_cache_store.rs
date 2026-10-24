@@ -8,6 +8,7 @@ pub struct DiskCacheStore {
 }
 
 impl DiskCacheStore {
+  /// A store in `directory`, made when the first entry is written.
   pub fn new(directory: PathBuf) -> Self {
     Self { directory }
   }

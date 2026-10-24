@@ -2,9 +2,9 @@ use std::sync::mpsc::Receiver;
 use std::time::Duration;
 
 use tauri::State;
-use xrf_app_core::types::TauriResult;
-use xrf_app_render::render_answer::await_answer;
-use xrf_app_render::renderer::Renderer;
+use xrf_app_core::TauriResult;
+use xrf_app_render::RenderAnswer;
+use xrf_app_render::Renderer;
 use xrf_renderer::RenderMemoryReport;
 
 use crate::diagnostics::memory::{GpuMemoryUsage, MemoryUsage, WebviewProcess, WebviewProcessProbe};
@@ -25,7 +25,7 @@ pub async fn system_get_memory_usage(
   let processes: Vec<WebviewProcess> = probe.list().await?;
   // No render thread lets the reply go, and a busy one is not waited on past the timeout: both read as no GPU.
   let report: Option<RenderMemoryReport> =
-    await_answer(answer, GPU_ANSWER_TIMEOUT, String::from("The renderer's GPU memory"))
+    RenderAnswer::await_answer(answer, GPU_ANSWER_TIMEOUT, String::from("The renderer's GPU memory"))
       .await
       .ok()
       .flatten();

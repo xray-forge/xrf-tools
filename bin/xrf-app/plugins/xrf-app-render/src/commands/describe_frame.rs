@@ -1,11 +1,10 @@
 use std::sync::mpsc::Receiver;
 
 use tauri::State;
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 use xrf_renderer::{RenderFrameReport, RenderViewportId};
 
-use crate::render_answer::{ANSWER_TIMEOUT, await_answer};
-use crate::renderer::Renderer;
+use crate::{RenderAnswer, Renderer};
 
 /// Say what a viewport's frames cost when it last reported them, as its `Frame` events do, for a caller polling rather
 /// than listening; none before its first report.
@@ -17,10 +16,5 @@ pub async fn render_describe_frame(
 ) -> TauriResult<Option<RenderFrameReport>> {
   let answer: Receiver<Option<RenderFrameReport>> = renderer.describe_frame(viewport);
 
-  await_answer(
-    answer,
-    ANSWER_TIMEOUT,
-    format!("Viewport {} answered no frame", viewport.0),
-  )
-  .await
+  RenderAnswer::await_viewport(answer, viewport, "frame").await
 }

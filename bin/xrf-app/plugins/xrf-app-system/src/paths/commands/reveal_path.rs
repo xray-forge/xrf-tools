@@ -1,8 +1,8 @@
 use std::path::Path;
 
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 
-use crate::paths::reveal::reveal_path;
+use crate::paths::PathReveal;
 
 /// Show a path in the desktop's own file manager.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "reveal_path"))]
@@ -16,5 +16,5 @@ pub async fn system_reveal_path(path: &str) -> TauriResult<()> {
 
   log::info!("Revealing path: {}", path);
 
-  reveal_path(target).map_err(|error| format!("Could not show {path}: {error}"))
+  PathReveal::reveal(target).map_err(|error| format!("Could not show {path}: {error}"))
 }
