@@ -1,6 +1,6 @@
 use xrf_error::XrfResult;
 
-use crate::plugins::levels::level_map::parse_level_map;
+use crate::plugins::levels::parts::LevelMapPart;
 use crate::plugins::levels::state::LevelMapDescription;
 
 #[test]
@@ -10,7 +10,7 @@ fn reads_the_map_corners_and_texture_a_level_config_places() -> XrfResult {
                     texture = map\\map_zaton\n;\n;\n[sub_level_map]\n0 = 255\n";
 
   assert_eq!(
-    parse_level_map(text)?,
+    LevelMapPart::parse(text)?,
     Some(LevelMapDescription {
       min_x: -600.0,
       min_z: -615.0,
@@ -25,7 +25,7 @@ fn reads_the_map_corners_and_texture_a_level_config_places() -> XrfResult {
 
 #[test]
 fn reads_no_map_of_a_config_without_its_section() -> XrfResult {
-  assert_eq!(parse_level_map("[map_usage]\nver = 1.0\n")?, None);
+  assert_eq!(LevelMapPart::parse("[map_usage]\nver = 1.0\n")?, None);
 
   Ok(())
 }
@@ -33,7 +33,7 @@ fn reads_no_map_of_a_config_without_its_section() -> XrfResult {
 #[test]
 fn reads_a_map_without_a_texture() -> XrfResult {
   assert_eq!(
-    parse_level_map("[level_map]\nbound_rect = -10, -20, 30, 40\n")?.and_then(|map| map.texture),
+    LevelMapPart::parse("[level_map]\nbound_rect = -10, -20, 30, 40\n")?.and_then(|map| map.texture),
     None
   );
 
@@ -43,10 +43,10 @@ fn reads_a_map_without_a_texture() -> XrfResult {
 #[test]
 fn refuses_corners_the_engine_reads_short() {
   // `sscanf("%f,%f,%f,%f")` stops at the suffix, so the engine reads one number of this.
-  assert!(parse_level_map("[level_map]\nbound_rect = -10.0f, -10.0f, 10.0f, 10.0f\n").is_err());
+  assert!(LevelMapPart::parse("[level_map]\nbound_rect = -10.0f, -10.0f, 10.0f, 10.0f\n").is_err());
 }
 
 #[test]
 fn refuses_corners_spanning_no_area() {
-  assert!(parse_level_map("[level_map]\nbound_rect = 10, -10, -10, 10\n").is_err());
+  assert!(LevelMapPart::parse("[level_map]\nbound_rect = 10, -10, -10, 10\n").is_err());
 }

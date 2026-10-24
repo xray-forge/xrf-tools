@@ -8,8 +8,8 @@ use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
+use crate::plugins::levels::parts::LevelSpawnPart;
 use crate::plugins::levels::report::{report_missing_spawn_objects, report_spawn_objects};
-use crate::plugins::levels::spawn::get_level_spawn;
 use crate::plugins::levels::spawn_objects::describe_spawn_objects;
 use crate::plugins::levels::state::{LevelSpawn, LevelSpawnObjectsDescription, LevelState, SelectedLevel};
 
@@ -40,7 +40,7 @@ fn describe_objects(
 ) -> TauriResult<LevelSpawnObjectsDescription> {
   let started: Instant = Instant::now();
   let spawn: Arc<LevelSpawn> =
-    get_level_spawn(current, search).inspect_err(|error| report_missing_spawn_objects(&current.source, error))?;
+    LevelSpawnPart::get(current, search).inspect_err(|error| report_missing_spawn_objects(&current.source, error))?;
   let described: LevelSpawnObjectsDescription = describe_spawn_objects(&spawn);
 
   report_spawn_objects(&current.source, &described, started);

@@ -8,7 +8,7 @@ use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::spawn::get_level_spawn;
+use crate::plugins::levels::parts::LevelSpawnPart;
 use crate::plugins::levels::state::{LevelSpawnObjectDetails, LevelState, SelectedLevel};
 
 /// Describe one of the open level's spawned objects, by its place among them, as open_spawn_objects numbered it.
@@ -37,7 +37,7 @@ fn describe_object(
   search: &XraySearch,
   index: u32,
 ) -> TauriResult<LevelSpawnObjectDetails> {
-  let spawn = get_level_spawn(current, search)?;
+  let spawn = LevelSpawnPart::get(current, search)?;
   let object: &AlifeObject = spawn
     .objects
     .get(index as usize)

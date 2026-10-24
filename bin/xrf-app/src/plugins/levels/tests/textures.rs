@@ -10,9 +10,8 @@ use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_thm::{ThmBumpMode, ThmTextureFlag};
 use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayMountId, XrayResolution, XraySearch, XrayVfs};
 
+use crate::plugins::levels::parts::{LevelSurfacesPart, LevelTexturesPart};
 use crate::plugins::levels::state::LevelTextureReference;
-use crate::plugins::levels::surfaces::resolve_surfaces;
-use crate::plugins::levels::textures::{resolve_level_textures, resolve_surface_textures};
 
 const LEVEL: &str = "k00_marsh";
 const DIRECTORY: &str = "levels\\k00_marsh";
@@ -50,8 +49,8 @@ fn new_opened(
   let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
   let search: XraySearch = XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]));
   let scope: XrayTextureScope = new_scope(directory);
-  let surfaces: Vec<XraySurfaceDescriptor> = resolve_surfaces(level, &search, &scope);
-  let references: Vec<LevelTextureReference> = resolve_level_textures(level, &surfaces, &search, &scope);
+  let surfaces: Vec<XraySurfaceDescriptor> = LevelSurfacesPart::resolve(level, &search, &scope);
+  let references: Vec<LevelTextureReference> = LevelTexturesPart::resolve(level, &surfaces, &search, &scope);
 
   (surfaces, references)
 }
@@ -250,7 +249,7 @@ fn resolves_the_bump_pair_and_detail_a_models_surface_binds_beside_its_base() {
       .describe("def_shaders\\def_vertex", &["lights\\lights_lamp".to_owned()]),
   ];
 
-  let references: Vec<LevelTextureReference> = resolve_surface_textures(
+  let references: Vec<LevelTextureReference> = LevelTextureReference::resolve_bound(
     BTreeSet::from(["lights\\lights_lamp".to_owned()]),
     &surfaces,
     &search,

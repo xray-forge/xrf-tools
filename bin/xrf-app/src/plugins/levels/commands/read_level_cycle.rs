@@ -7,6 +7,7 @@ use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
+use crate::plugins::levels::parts::LevelEnvironmentPart;
 use crate::plugins::levels::state::{LevelEnvironment, LevelState, LevelWeatherCycle, SelectedLevel};
 
 /// Read any cycle or effect of the game as the open level's engine loads it, for a viewer playing one the level does
@@ -24,7 +25,7 @@ pub async fn levels_read_level_cycle(
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let cycle: SessionSnapshot<LevelWeatherCycle> = execution
     .run_blocking("Reading a weather cycle", move || {
-      let environment: Arc<LevelEnvironment> = LevelEnvironment::of(&current, &assets.search(&current.roots)?)?;
+      let environment: Arc<LevelEnvironment> = LevelEnvironmentPart::get(&current, &assets.search(&current.roots)?)?;
       let found: &WeatherCycle = environment.catalog.find_by_id(&cycle).ok_or_else(|| {
         format!(
           "There is no {} '{}'",

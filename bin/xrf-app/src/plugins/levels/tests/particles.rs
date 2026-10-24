@@ -2,7 +2,7 @@ use xrf_level::PsStaticPlacement;
 use xrf_math::Matrix4x4;
 use xrf_renderer::RenderParticleSource;
 
-use crate::plugins::levels::particles::place_planted;
+use crate::plugins::levels::parts::LevelParticlesPart;
 
 #[test]
 fn lifts_a_planted_system_a_centimetre() {
@@ -15,7 +15,7 @@ fn lifts_a_planted_system_a_centimetre() {
   values[13] = 2.0;
   values[15] = 1.0;
 
-  let placement = place_planted(&PsStaticPlacement {
+  let placement = LevelParticlesPart::place_planted(&PsStaticPlacement {
     game_types: Some(1),
     effect: String::from("zones\\zone_thermal_idle"),
     transform: Matrix4x4 { values },

@@ -17,24 +17,18 @@ use xrf_world::{WorldEventSink, WorldViewportEvent};
 
 use crate::core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountState};
 use crate::core::session::{
-  Session, SessionChange, SessionDerived, SessionId, SessionRootChange, SessionScopes, SessionSnapshot, Sessions,
+  Session, SessionChange, SessionDerived, SessionId, SessionPart, SessionRootChange, SessionScopes, SessionSnapshot,
+  Sessions,
 };
-use crate::plugins::levels::configs::LEVEL_SECTIONS_PART;
-use crate::plugins::levels::details::LEVEL_DETAILS_PART;
-use crate::plugins::levels::geometry::LEVEL_GEOMETRY_PART;
-use crate::plugins::levels::level_map::LEVEL_MAP_PART;
 use crate::plugins::levels::level_scene_follower::LevelSceneFollower;
-use crate::plugins::levels::lights::LEVEL_LIGHTS_PART;
-use crate::plugins::levels::object_motions::LEVEL_OBJECT_MOTIONS_PART;
 use crate::plugins::levels::opened_level::OpenedLevel;
-use crate::plugins::levels::particles::LEVEL_PARTICLES_PART;
+use crate::plugins::levels::parts::{
+  LevelDetailsPart, LevelGeometryPart, LevelLightsPart, LevelMapPart, LevelObjectMotionsPart, LevelParticlesPart,
+  LevelSectionsPart, LevelSpawnPart, LevelStartPart, LevelTexturesPart, LevelWeatherPart,
+};
 use crate::plugins::levels::render_source::LevelRenderSource;
 use crate::plugins::levels::shown_levels::ShownLevels;
-use crate::plugins::levels::spawn::LEVEL_SPAWN_PART;
-use crate::plugins::levels::start::LEVEL_START_PART;
-use crate::plugins::levels::state::level_environment::LEVEL_WEATHER_PART;
 use crate::plugins::levels::state::{LevelEnvironment, LevelSource, LevelState, SelectedLevel};
-use crate::plugins::levels::surfaces::LEVEL_SURFACES_PART;
 use crate::plugins::render::world_state::WorldState;
 
 /// Longer than a synthetic level takes to read on the test pool.
@@ -277,26 +271,26 @@ fn a_commit_to_a_file_only_a_part_read_names_that_part_stale() {
   assert!(source.read_particles().is_err());
   assert!(source.read_lights().is_ok());
   assert!(source.read_object_motion("zone.anm").is_err());
-  LevelEnvironment::record_weather(&opened, &search, |search| {
+  LevelWeatherPart::record(&opened, &search, |search| {
     LevelEnvironment::read_modifiers(&opened, search)
   });
 
   for (path, parts) in [
-    (format!("{LEVEL}\\level.details"), vec![LEVEL_DETAILS_PART]),
-    (String::from("particles.xr"), vec![LEVEL_PARTICLES_PART]),
-    (String::from("lanims.xr"), vec![LEVEL_LIGHTS_PART]),
-    (String::from("anims\\zone.anm"), vec![LEVEL_OBJECT_MOTIONS_PART]),
-    (format!("{LEVEL}\\level.env_mod"), vec![LEVEL_WEATHER_PART]),
+    (format!("{LEVEL}\\level.details"), vec![LevelDetailsPart::NAME]),
+    (String::from("particles.xr"), vec![LevelParticlesPart::NAME]),
+    (String::from("lanims.xr"), vec![LevelLightsPart::NAME]),
+    (String::from("anims\\zone.anm"), vec![LevelObjectMotionsPart::NAME]),
+    (format!("{LEVEL}\\level.env_mod"), vec![LevelWeatherPart::NAME]),
     // The map, the geometry and the textures the surfaces bind are read from files of their own, so an edit of any
-    // moves that part and not the level.
-    (format!("{LEVEL}\\level.ltx"), vec![LEVEL_MAP_PART]),
-    (format!("{LEVEL}\\level.geom"), vec![LEVEL_GEOMETRY_PART]),
-    (String::from(TEXTURE), vec![LEVEL_SURFACES_PART]),
+    // moves that part and not the level: a texture come or gone moves the textures alone, the surfaces kept.
+    (format!("{LEVEL}\\level.ltx"), vec![LevelMapPart::NAME]),
+    (format!("{LEVEL}\\level.geom"), vec![LevelGeometryPart::NAME]),
+    (String::from(TEXTURE), vec![LevelTexturesPart::NAME]),
     // Where the level starts is decided over its spawn apart from the level itself, as the sections the lights asked
     // for are chosen by it.
     (
       String::from("spawns\\all.spawn"),
-      vec![LEVEL_SECTIONS_PART, LEVEL_SPAWN_PART, LEVEL_START_PART],
+      vec![LevelSectionsPart::NAME, LevelSpawnPart::NAME, LevelStartPart::NAME],
     ),
   ] {
     write(&assets, &search, &path, "created");

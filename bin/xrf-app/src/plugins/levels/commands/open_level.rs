@@ -11,10 +11,10 @@ use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionDerived, SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::levels::opened_level::OpenedLevel;
+use crate::plugins::levels::parts::{LevelSurfacesPart, LevelTexturesPart};
 use crate::plugins::levels::report::{report_open, report_opening};
 use crate::plugins::levels::request::LevelOpenRequest;
 use crate::plugins::levels::state::{LevelState, SelectedLevel, SelectedLevelDescription};
-use crate::plugins::levels::surfaces::get_level_surfaces;
 
 /// Select a compiled level and report what it is built out of, without reading any of its geometry.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_level"))]
@@ -71,9 +71,24 @@ pub async fn levels_open_level(
     )?,
     &assets,
   );
+  let reader: AssetMountState = AssetMountState::clone(&assets);
 
-  report_open(&selected, &get_level_surfaces(&selected, &search), started);
+  // Described through a search of the revision it caught up to, which a commit published while it opened moves past
+  // the open's own: the parts the open read are kept, and only those that commit let go are read again.
+  execution
+    .run_blocking("Describing the level", move || {
+      let search: XraySearch = reader.search(&selected.roots)?;
 
-  // The start, map and surfaces were read as the level opened, so describing it reads nothing.
-  Ok(SelectedLevel::describe_at(&selected, &search))
+      report_open(
+        &selected,
+        (
+          &LevelSurfacesPart::get(&selected, &search),
+          &LevelTexturesPart::get(&selected, &search),
+        ),
+        started,
+      );
+
+      TauriResult::Ok(SelectedLevel::describe_at(&selected, &search))
+    })
+    .await?
 }

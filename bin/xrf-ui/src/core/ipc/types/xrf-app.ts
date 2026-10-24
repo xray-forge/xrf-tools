@@ -97,8 +97,11 @@ export const LEVEL_SPAWN_VISUALS_PART: string = "spawnVisuals";
 /** What a change event calls where a level opens when it goes stale. */
 export const LEVEL_START_PART: string = "start";
 
-/** What a change event calls a level's surfaces and their textures when they go stale. */
+/** What a change event calls how a level's surfaces are drawn when it goes stale. */
 export const LEVEL_SURFACES_PART: string = "surfaces";
+
+/** What a change event calls what a level's surfaces' textures resolved to when it goes stale. */
+export const LEVEL_TEXTURES_PART: string = "textures";
 
 /** What a change event calls what a level's weather plays with beyond its environment when it goes stale. */
 export const LEVEL_WEATHER_PART: string = "weather";

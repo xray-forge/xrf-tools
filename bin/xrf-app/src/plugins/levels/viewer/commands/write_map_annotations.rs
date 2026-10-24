@@ -10,7 +10,7 @@ use crate::core::assets::AssetMountState;
 use crate::core::execution::ExecutionState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
-use crate::plugins::levels::spawn::{get_level_graph, get_level_spawn};
+use crate::plugins::levels::parts::{LevelGraphPart, LevelSpawnPart};
 use crate::plugins::levels::state::{LevelState, SelectedLevel};
 use crate::plugins::levels::viewer::LevelViewerFolder;
 use crate::plugins::levels::viewer::annotations::annotation_svg::AnnotationCanvas;
@@ -41,8 +41,8 @@ pub async fn levels_write_map_annotations(
         .get_name()
         .ok_or_else(|| format!("Level {} has no name to find its spawn by", current.source.get_label()))?;
       let annotations: LevelAnnotations = LevelAnnotations::of(
-        &*get_level_spawn(&current, &search)?,
-        &*get_level_graph(&current, &search)?,
+        &*LevelSpawnPart::get(&current, &search)?,
+        &*LevelGraphPart::get(&current, &search)?,
         &level,
       );
       let (width, height): (u32, u32) = image::image_dimensions(&request.path)

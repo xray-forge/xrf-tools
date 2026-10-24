@@ -6,22 +6,23 @@ use xrf_ltx::LtxDialect;
 use xrf_vfs::{XrayRoots, XraySearch};
 use xrf_visual::SectorOutline;
 
+use xrf_material::XraySurfaceDescriptor;
+
 use crate::core::session::SessionSnapshot;
-use crate::plugins::levels::level_map::get_level_map;
-use crate::plugins::levels::start::get_level_start;
+use crate::plugins::levels::parts::{LevelMapPart, LevelStartPart, LevelSurfacesPart, LevelTexturesPart};
 use crate::plugins::levels::state::level_source::LevelSource;
 use crate::plugins::levels::state::selection::level_map_description::LevelMapDescription;
 use crate::plugins::levels::state::selection::level_start::LevelStart;
 use crate::plugins::levels::state::selection::level_sun_description::LevelSunDescription;
+use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
 use crate::plugins::levels::state::selection::selected_level_description::SelectedLevelDescription;
-use crate::plugins::levels::surfaces::{LevelSurfaces, get_level_surfaces};
 
 /// The level a viewer has open as the open read it: what names it, and the `level` bundle every part reads, which a
 /// later call reads without opening it again.
 ///
 /// What is read from other files, such as its map, geometry, surfaces, spawn, collision form or environment, is kept as
-/// its session snapshot's parts by the module that reads it, rather than here, so a change to one of them moves that
-/// part and not the level.
+/// its session snapshot's parts by the part type that reads it (`plugins/levels/parts/`), rather than here, so a change
+/// to one of them moves that part and not the level.
 pub struct SelectedLevel {
   pub source: LevelSource,
   /// The roots the level was opened in, kept so a later read searches what the open searched.
@@ -38,26 +39,28 @@ pub struct SelectedLevel {
 }
 
 impl SelectedLevel {
-  /// What the viewer is shown of the open level under its snapshot's identity: its start, map and surfaces as its parts
-  /// hold them, each read again through `search` where a commit let it go.
+  /// What the viewer is shown of the open level under its snapshot's identity: its start, map, surfaces and textures as
+  /// its parts hold them, each read again through `search` where a commit let it go.
   pub fn describe_at(
     current: &SessionSnapshot<Self>,
     search: &XraySearch,
   ) -> SessionSnapshot<SelectedLevelDescription> {
     current.answer(current.describe(
-      get_level_start(current, search),
-      get_level_map(current, search),
-      &get_level_surfaces(current, search),
+      LevelStartPart::get(current, search),
+      LevelMapPart::get(current, search),
+      &LevelSurfacesPart::get(current, search),
+      &LevelTexturesPart::get(current, search),
     ))
   }
 
-  /// What the viewer is shown of the open level, which opens at `start`, its map placed by `level_map` and its
-  /// surfaces resolved as `surfaces`.
+  /// What the viewer is shown of the open level, which opens at `start`, its map placed by `level_map`, its surfaces
+  /// drawn as `surfaces` and their textures resolved as `textures`.
   pub fn describe(
     &self,
     start: Option<LevelStart>,
     level_map: Option<LevelMapDescription>,
-    surfaces: &LevelSurfaces,
+    surfaces: &[XraySurfaceDescriptor],
+    textures: &[LevelTextureReference],
   ) -> SelectedLevelDescription {
     let level: &LevelFile = &self.level;
 
@@ -75,8 +78,8 @@ impl SelectedLevel {
       start,
       shader_entries: level.shaders.as_ref().map_or(0, |it| it.entries.len()) as u32,
       source: self.source.clone(),
-      surfaces: surfaces.surfaces.clone(),
-      textures: surfaces.textures.clone(),
+      surfaces: surfaces.to_vec(),
+      textures: textures.to_vec(),
       visuals: self.visuals.visuals.len() as u32,
       xrlc_quality: level.header.xrlc_quality,
       xrlc_version: level.header.xrlc_version,
