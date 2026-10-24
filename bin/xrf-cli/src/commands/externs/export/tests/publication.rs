@@ -1,22 +1,21 @@
-//! What `externs export --output` leaves behind when publication succeeds and when it fails.
+//! What a writing `externs export` leaves behind when publication succeeds and when it fails.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 use xrf_utils::staging_faults::fail_next_staged_write;
 
 use crate::commands::externs::export::command::ExportCommand;
-use crate::core::command_error::CommandError;
-use crate::core::command_testing::run_command_with_result;
-use crate::core::generic_command::CommandResult;
+use crate::core::command::command_testing::run_command_with_result;
+use crate::core::command::{CommandError, CommandResult};
 
 const PREVIOUS: &str = "{\n  \"exports\": { \"sentinel\": true }\n}\n";
 
 /// A declarations root beside an artifact a previous run already published.
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("externs-export-publication/{name}"));
+  let root: PathBuf = create_generated_test_resource_dir(&format!("externs-export-publication/{name}"))?;
 
   fs::create_dir_all(root.join("declarations"))?;
   fs::write(
@@ -33,11 +32,10 @@ fn export(root: &Path) -> CommandResult {
     &ExportCommand,
     &[
       String::from("export"),
+      String::from("-p"),
       root.join("declarations").display().to_string(),
-      String::from("--output"),
+      String::from("-d"),
       root.join("externs.json").display().to_string(),
-      String::from("--format"),
-      String::from("json"),
       String::from("--json"),
     ],
   )

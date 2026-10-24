@@ -190,7 +190,7 @@ args = ["doc", "--workspace", "--no-deps"]
 description = "Generate the CLI command reference from the clap definitions into target/doc-commands."
 category = "Documentation"
 command = "cargo"
-args = ["run", "-p", "xrf-cli", "--", "docs", "generate", "--output", "target/doc-commands"]
+args = ["run", "-p", "xrf-cli", "--", "docs", "generate", "--dest", "target/doc-commands"]
 
 [tasks.generate-typescript-bindings]
 description = "Emit the Specta-generated frontend types and Tauri command bindings."

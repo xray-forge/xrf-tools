@@ -8,9 +8,7 @@ use xrf_utils::format_path;
 use super::command_reference::GroupReference;
 use super::markdown_renderer::ReferenceMarkdownRenderer;
 use super::report::DocsGenerateReport;
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandError, CommandGroup, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct GenerateCommand;
@@ -20,14 +18,14 @@ impl GenericCommand for GenerateCommand {
     "generate"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to generate markdown reference for all CLI commands")
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("Generate the markdown reference of every CLI command")
       .arg(
-        Arg::new("output")
-          .help("Path to fully generated documentation directory")
-          .short('o')
-          .long("output")
+        Arg::new("dest")
+          .help("Directory the reference is generated into, whole")
+          .short('d')
+          .long("dest")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
@@ -36,19 +34,18 @@ impl GenericCommand for GenerateCommand {
           .help("Verify existing documentation is up to date instead of writing it")
           .short('c')
           .long("check")
-          .required(false)
           .action(ArgAction::SetTrue),
       )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let output_dir: &PathBuf = matches
-      .get_one::<PathBuf>("output")
+      .get_one::<PathBuf>("dest")
       .expect("Expected valid output directory to be provided");
 
     let output: OutputOptions = context.get_output().clone();
 
-    let groups: Vec<GroupReference> = crate::registry::setup_command_groups()
+    let groups: Vec<GroupReference> = CommandGroup::list_all()
       .iter()
       .map(GroupReference::from_group)
       .collect();
@@ -84,7 +81,7 @@ impl GenerateCommand {
       fs::write(directory.join(name), content)?;
     }
 
-    xrf_output::info!(
+    xrf_output::success!(
       output,
       "Generated {} documentation pages in {}",
       pages.len(),
@@ -116,7 +113,7 @@ impl GenerateCommand {
     }
 
     if stale.is_empty() {
-      xrf_output::info!(
+      xrf_output::success!(
         output,
         "CLI documentation in {} is up to date ({} pages)",
         format_path(directory),
@@ -164,10 +161,10 @@ mod tests {
   use clap::ArgMatches;
 
   use super::GenerateCommand;
-  use crate::core::generic_command::GenericCommand;
+  use crate::core::command::GenericCommand;
 
   fn parse_matches(extra: &[&str]) -> ArgMatches {
-    let mut arguments = vec!["generate", "--output", "docs"];
+    let mut arguments = vec!["generate", "--dest", "docs"];
 
     arguments.extend_from_slice(extra);
 

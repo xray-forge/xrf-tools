@@ -7,10 +7,8 @@ use xrf_output::OutputOptions;
 use xrf_texture::{EquipmentGridOverlap, VerifyEquipmentGridProcessor};
 
 use super::report::SpriteEquipmentVerifyReport;
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::ltx_dialect::{LtxDialectArguments, requested_ltx_dialect};
+use crate::core::arguments::LtxDialectArgument;
+use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct VerifyEquipmentCommand;
@@ -20,18 +18,18 @@ impl GenericCommand for VerifyEquipmentCommand {
     "verify-equipment"
   }
 
-  /// Create command for verifying the inventory icon grid.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to check an equipment sprite's inventory icon grid rects for overlaps")
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command
+      .about("Check an equipment sprite's inventory icon grid rects for overlaps")
       .arg(
         Arg::new("system-ltx")
           .help("Path to system ltx file or root folder with ltx files")
           .long("system-ltx")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
-      )
-      .with_ltx_dialect()
+      );
+
+    LtxDialectArgument::declare(command)
   }
 
   /// Report inventory icon rects that overlap, exiting non zero when any are found.
@@ -48,11 +46,12 @@ impl GenericCommand for VerifyEquipmentCommand {
 
     // The system ltx is the judged content: an unparseable file fails the check, while an
     // unreadable one is an execution failure.
-    let ltx: Ltx = match Ltx::read_from_file_with_dialect(path, requested_ltx_dialect(matches).as_ref()) {
+    let ltx: Ltx = match Ltx::read_from_file_with_dialect(path, LtxDialectArgument::of(matches).as_ref()) {
       Ok(ltx) => ltx,
       Err(error @ XrfError::Io { .. }) => return Err(error.into()),
       Err(error) => {
         xrf_output::failure!(output, "Provided system ltx is invalid: {error}");
+        context.set_result(|| SpriteEquipmentVerifyReport::malformed(path, &error))?;
 
         return Err(CommandError::new_check_failed(1));
       }
@@ -65,13 +64,13 @@ impl GenericCommand for VerifyEquipmentCommand {
     context.set_result(|| SpriteEquipmentVerifyReport::new(path, &overlaps))?;
 
     if overlaps.is_empty() {
-      xrf_output::info!(output, "Inventory icon grid is clean, no overlapping rects");
+      xrf_output::success!(output, "Inventory icon grid is clean, no overlapping rects");
 
       return Ok(());
     }
 
     for overlap in &overlaps {
-      xrf_output::error!(
+      xrf_output::failure!(
         output,
         "Overlapping icon rects at {}:{}, {} cell(s) shared by '{}' and '{}'",
         overlap.cell.0,
@@ -82,7 +81,7 @@ impl GenericCommand for VerifyEquipmentCommand {
       );
     }
 
-    xrf_output::error!(output, "Found {} overlapping icon rect pair(s)", overlaps.len());
+    xrf_output::failure!(output, "Found {} overlapping icon rect pair(s)", overlaps.len());
 
     Err(CommandError::new_check_failed(overlaps.len()))
   }

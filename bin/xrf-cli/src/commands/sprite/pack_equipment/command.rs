@@ -9,10 +9,9 @@ use xrf_output::OutputOptions;
 use xrf_texture::{PackEquipmentOptions, PackEquipmentProcessor, PackEquipmentResult};
 use xrf_utils::format_path;
 
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::ltx_dialect::{LtxDialectArguments, requested_ltx_dialect};
-use crate::core::progress::new_logging_job;
+use crate::core::arguments::LtxDialectArgument;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::terminal::CliJob;
 
 #[derive(Default)]
 pub struct PackEquipmentCommand;
@@ -22,10 +21,9 @@ impl GenericCommand for PackEquipmentCommand {
     "pack-equipment"
   }
 
-  /// Create command for packing the equipment sprite.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to pack an equipment sprite from separate icon files")
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command
+      .about("Pack an equipment sprite from separate icon files")
       .arg(
         Arg::new("system-ltx")
           .help("Path to system ltx file or root folder with ltx files")
@@ -34,16 +32,18 @@ impl GenericCommand for PackEquipmentCommand {
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("source")
-          .help("Path to source folder with section icons")
-          .long("source")
+        Arg::new("path")
+          .help("Folder holding one icon per section")
+          .short('p')
+          .long("path")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("output")
-          .help("Path to output dds file")
-          .long("output")
+        Arg::new("dest")
+          .help("Equipment sprite dds file to write")
+          .short('d')
+          .long("dest")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
@@ -51,33 +51,31 @@ impl GenericCommand for PackEquipmentCommand {
         Arg::new("gamedata")
           .help("Path to gamedata folder for resources usage")
           .long("gamedata")
-          .required(false)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("strict")
-          .help("Turn on strict mode")
+          .help("Fail on an icon that cannot be read or placed instead of skipping it")
           .long("strict")
-          .required(false)
           .action(ArgAction::SetTrue),
-      )
-      .with_ltx_dialect()
+      );
+
+    LtxDialectArgument::declare(command)
   }
 
-  /// Command to pack separate icon files into the equipment sprite.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let system_ltx_path: &PathBuf = matches
       .get_one::<PathBuf>("system-ltx")
       .expect("Expected valid path to be provided for system-ltx");
 
     let source: &PathBuf = matches
-      .get_one::<PathBuf>("source")
+      .get_one::<PathBuf>("path")
       .expect("Expected valid source path to be provided");
 
     let gamedata: Option<&PathBuf> = matches.get_one::<PathBuf>("gamedata");
 
     let output: &PathBuf = matches
-      .get_one::<PathBuf>("output")
+      .get_one::<PathBuf>("dest")
       .expect("Expected valid output path to be provided");
 
     let is_strict: bool = matches.get_flag("strict");
@@ -94,16 +92,16 @@ impl GenericCommand for PackEquipmentCommand {
       );
     }
 
-    xrf_output::info!(output_options, "Starting packing the equipment sprite, parallel");
+    xrf_output::info!(output_options, "Packing the equipment sprite");
     xrf_output::info!(output_options, "System ltx: {}", format_path(system_ltx_path));
-    xrf_output::info!(output_options, "Source icons dir: {}", format_path(source));
-    xrf_output::info!(output_options, "Output dir: {}", format_path(output));
+    xrf_output::info!(output_options, "Source icons folder: {}", format_path(source));
+    xrf_output::info!(output_options, "Sprite file: {}", format_path(output));
 
     let started_at: Instant = Instant::now();
-    let system_ltx: Ltx = Ltx::read_from_file_with_dialect(system_ltx_path, requested_ltx_dialect(matches).as_ref())?;
+    let system_ltx: Ltx = Ltx::read_from_file_with_dialect(system_ltx_path, LtxDialectArgument::of(matches).as_ref())?;
 
     let options = PackEquipmentOptions {
-      job: new_logging_job(),
+      job: CliJob::new_logging(),
       ltx: system_ltx,
       source: source.into(),
       output: output_options.clone(),
@@ -113,20 +111,16 @@ impl GenericCommand for PackEquipmentCommand {
       is_strict,
     };
 
-    log::info!("DDS format: {}", options.dds_compression_format);
+    xrf_output::verbose!(output_options, "DDS format: {}", options.dds_compression_format);
 
     let result: PackEquipmentResult = PackEquipmentProcessor::pack_sprites(options)?;
 
     context.set_result(|| &result)?;
 
-    xrf_output::info!(
+    xrf_output::success!(
       output_options,
-      "Saved the packed equipment sprite {}",
-      format_path(output)
-    );
-
-    log::info!(
-      "Pack equipment took: {}",
+      "Saved the packed equipment sprite {} in {}",
+      format_path(output),
       xrf_utils::format_duration(started_at.elapsed())
     );
 

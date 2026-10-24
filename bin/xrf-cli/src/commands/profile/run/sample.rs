@@ -9,7 +9,7 @@ use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System};
 use xrf_error::XrfError;
 use xrf_utils::format_path;
 
-use crate::core::generic_command::CommandResult;
+use crate::core::command::CommandResult;
 
 /// How often a running child's resident set is read.
 ///
@@ -28,6 +28,59 @@ pub struct SampledRun {
   pub peak_bytes: Option<u64>,
   /// Mean resident set across the samples, which is what the process cost the machine for most of its life.
   pub mean_bytes: Option<u64>,
+}
+
+impl SampledRun {
+  /// Runs one invocation, sampling its resident set on a second thread while it lives.
+  ///
+  /// The wait is blocking on this thread rather than a poll loop, so the duration is the real one: a loop that slept
+  /// between checks would quantize every measurement to the sampling interval, which on a fast command is most of the
+  /// figure. Sampling needs only the process id, so it costs the timing nothing.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the binary cannot be started, or when waiting on it fails.
+  pub fn measure(path: &Path, arguments: &[String]) -> CommandResult<Self> {
+    // Discarded rather than inherited or piped: inherited streams put the child's logging into this run's, and a pipe
+    // nobody drains can fill its buffer and block the very work being timed.
+    let mut child: Child = ChildCommand::new(path)
+      .args(arguments)
+      .stdout(Stdio::null())
+      .stderr(Stdio::null())
+      .spawn()
+      .map_err(|error| {
+        XrfError::new_io_error(format!("Failed to run '{}': {error}", format_path(path)), error.kind())
+      })?;
+
+    let samples: Arc<ResidentSamples> = Arc::new(ResidentSamples::default());
+    let is_running: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
+    let sampler: JoinHandle<()> = ResidentSamples::spawn_sampler(&samples, child.id(), Arc::clone(&is_running));
+
+    let started_at: Instant = Instant::now();
+    let status = child.wait();
+    let elapsed: Duration = started_at.elapsed();
+
+    is_running.store(false, Ordering::Relaxed);
+
+    // Joined before reading the totals, so the last sample is included rather than raced against.
+    let _ = sampler.join();
+
+    let status = status.map_err(|error| {
+      XrfError::new_io_error(
+        format!("Failed to wait on '{}': {error}", format_path(path)),
+        error.kind(),
+      )
+    })?;
+
+    let (peak_bytes, mean_bytes) = samples.summarize();
+
+    Ok(Self {
+      elapsed,
+      exit_code: status.code().unwrap_or(-1),
+      peak_bytes,
+      mean_bytes,
+    })
+  }
 }
 
 /// Running totals a sampler thread writes and its owner reads once the child is reaped.
@@ -55,77 +108,30 @@ impl ResidentSamples {
       ),
     }
   }
-}
 
-/// Runs one invocation, sampling its resident set on a second thread while it lives.
-///
-/// The wait is blocking on this thread rather than a poll loop, so the duration is the real one: a loop that slept
-/// between checks would quantize every measurement to the sampling interval, which on a fast command is most of the
-/// figure. Sampling needs only the process id, so it costs the timing nothing.
-///
-/// # Errors
-///
-/// Returns an error when the binary cannot be started, or when waiting on it fails.
-pub fn run_sampled(path: &Path, arguments: &[String]) -> CommandResult<SampledRun> {
-  // Discarded rather than inherited or piped: inherited streams put the child's logging into this run's, and a pipe
-  // nobody drains can fill its buffer and block the very work being timed.
-  let mut child: Child = ChildCommand::new(path)
-    .args(arguments)
-    .stdout(Stdio::null())
-    .stderr(Stdio::null())
-    .spawn()
-    .map_err(|error| XrfError::new_io_error(format!("Failed to run '{}': {error}", format_path(path)), error.kind()))?;
+  /// Watches one process id until told to stop, recording every resident set it saw into `samples`.
+  ///
+  /// Stops on the flag rather than on the process disappearing, so the window in which the operating system could hand
+  /// this id to something else is one interval at most — and the flag is set the instant the child is reaped.
+  fn spawn_sampler(samples: &Arc<Self>, pid: u32, is_running: Arc<AtomicBool>) -> JoinHandle<()> {
+    let samples: Arc<Self> = Arc::clone(samples);
 
-  let samples: Arc<ResidentSamples> = Arc::new(ResidentSamples::default());
-  let is_running: Arc<AtomicBool> = Arc::new(AtomicBool::new(true));
-  let sampler: JoinHandle<()> = spawn_sampler(child.id(), Arc::clone(&samples), Arc::clone(&is_running));
+    thread::spawn(move || {
+      let pid: Pid = Pid::from_u32(pid);
+      let refresh: ProcessRefreshKind = ProcessRefreshKind::nothing().with_memory();
+      let mut system: System = System::new();
 
-  let started_at: Instant = Instant::now();
-  let status = child.wait();
-  let elapsed: Duration = started_at.elapsed();
+      while is_running.load(Ordering::Relaxed) {
+        system.refresh_processes_specifics(ProcessesToUpdate::Some(&[pid]), true, refresh);
 
-  is_running.store(false, Ordering::Relaxed);
+        if let Some(process) = system.process(pid) {
+          samples.record(process.memory());
+        }
 
-  // Joined before reading the totals, so the last sample is included rather than raced against.
-  let _ = sampler.join();
-
-  let status = status.map_err(|error| {
-    XrfError::new_io_error(
-      format!("Failed to wait on '{}': {error}", format_path(path)),
-      error.kind(),
-    )
-  })?;
-
-  let (peak_bytes, mean_bytes) = samples.summarize();
-
-  Ok(SampledRun {
-    elapsed,
-    exit_code: status.code().unwrap_or(-1),
-    peak_bytes,
-    mean_bytes,
-  })
-}
-
-/// Watches one process id until told to stop, recording every resident set it saw.
-///
-/// Stops on the flag rather than on the process disappearing, so the window in which the operating system could hand
-/// this id to something else is one interval at most — and the flag is set the instant the child is reaped.
-fn spawn_sampler(pid: u32, samples: Arc<ResidentSamples>, is_running: Arc<AtomicBool>) -> JoinHandle<()> {
-  thread::spawn(move || {
-    let pid: Pid = Pid::from_u32(pid);
-    let refresh: ProcessRefreshKind = ProcessRefreshKind::nothing().with_memory();
-    let mut system: System = System::new();
-
-    while is_running.load(Ordering::Relaxed) {
-      system.refresh_processes_specifics(ProcessesToUpdate::Some(&[pid]), true, refresh);
-
-      if let Some(process) = system.process(pid) {
-        samples.record(process.memory());
+        thread::sleep(SAMPLE_INTERVAL);
       }
-
-      thread::sleep(SAMPLE_INTERVAL);
-    }
-  })
+    })
+  }
 }
 
 #[cfg(test)]

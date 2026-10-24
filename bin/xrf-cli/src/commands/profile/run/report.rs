@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::commands::profile::run::profiled_binary_output::ProfiledBinaryOutput;
+use crate::commands::profile::run::profile_run_binary_report::ProfileRunBinaryReport;
 
 /// What one profiling session measured.
 ///
@@ -9,11 +9,22 @@ use crate::commands::profile::run::profiled_binary_output::ProfiledBinaryOutput;
 /// than a stopwatch and a note.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ProfileReportOutput {
+pub struct ProfileRunReport {
   /// The argument vector handed to every binary, so a reader never reconstructs it from prose.
-  pub command: Vec<String>,
-  pub rounds: usize,
+  command: Vec<String>,
+  rounds: usize,
   /// Rounds run and discarded before measuring, because a cold file cache costs up to twice the warm figure.
-  pub warmup: usize,
-  pub binaries: Vec<ProfiledBinaryOutput>,
+  warmup: usize,
+  binaries: Vec<ProfileRunBinaryReport>,
+}
+
+impl ProfileRunReport {
+  pub fn new(command: Vec<String>, rounds: usize, warmup: usize, binaries: Vec<ProfileRunBinaryReport>) -> Self {
+    Self {
+      command,
+      rounds,
+      warmup,
+      binaries,
+    }
+  }
 }

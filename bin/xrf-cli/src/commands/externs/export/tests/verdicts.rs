@@ -5,16 +5,15 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 
 use crate::commands::externs::export::command::ExportCommand;
-use crate::core::command_error::CommandError;
-use crate::core::command_testing::run_command_with_result;
-use crate::core::generic_command::CommandResult;
+use crate::core::command::command_testing::run_command_with_result;
+use crate::core::command::{CommandError, CommandResult};
 
 /// A declarations root holding one source, beside the artifact a `--check` run compares against.
 fn create_root(name: &str, declarations: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("externs-export/{name}"));
+  let root: PathBuf = create_generated_test_resource_dir(&format!("externs-export/{name}"))?;
 
   fs::create_dir_all(root.join("declarations"))?;
   fs::write(root.join("declarations/externs.ts"), declarations)?;
@@ -29,9 +28,11 @@ fn check(root: &Path) -> (CommandResult, Option<Value>) {
     &ExportCommand,
     &[
       String::from("export"),
+      String::from("-p"),
       root.join("declarations").display().to_string(),
-      String::from("--check"),
+      String::from("-d"),
       root.join("externs.json").display().to_string(),
+      String::from("--check"),
       String::from("--json"),
     ],
   )
@@ -113,16 +114,15 @@ fn keeps_invalid_declarations_an_execution_failure_when_writing() -> XrfResult {
     "export {}; extern(\"callbacks.run\", (): void => {}); extern(\"callbacks.run\", (): void => {});",
   )?;
 
-  // `--output` judges nothing, so the same declarations have no verdict to fail.
+  // Writing judges nothing, so the same declarations have no verdict to fail.
   let (verdict, _) = run_command_with_result(
     &ExportCommand,
     &[
       String::from("export"),
+      String::from("-p"),
       root.join("declarations").display().to_string(),
-      String::from("--output"),
+      String::from("-d"),
       root.join("written.json").display().to_string(),
-      String::from("--format"),
-      String::from("json"),
       String::from("--json"),
     ],
   );

@@ -10,11 +10,9 @@ use xrf_texture::{UnpackEquipmentOptions, UnpackEquipmentProcessor};
 use xrf_utils::format_path;
 
 use super::report::SpriteEquipmentUnpackReport;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::link_policy::{LinkPolicyArguments, requested_link_policy};
-use crate::core::ltx_dialect::{LtxDialectArguments, requested_ltx_dialect};
-use crate::core::progress::new_logging_job;
+use crate::core::arguments::{LinkPolicyArgument, LtxDialectArgument};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::terminal::CliJob;
 
 #[derive(Default)]
 pub struct UnpackEquipmentCommand;
@@ -24,10 +22,9 @@ impl GenericCommand for UnpackEquipmentCommand {
     "unpack-equipment"
   }
 
-  /// Create command to unpack the equipment sprite.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to unpack separate icon files out of an equipment sprite")
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command
+      .about("Unpack separate icon files out of an equipment sprite")
       .arg(
         Arg::new("system-ltx")
           .help("Path to system ltx file or root folder with ltx files")
@@ -36,21 +33,23 @@ impl GenericCommand for UnpackEquipmentCommand {
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("source")
-          .help("Path to source dds file")
-          .long("source")
+        Arg::new("path")
+          .help("Equipment sprite dds file to read")
+          .short('p')
+          .long("path")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("output")
-          .help("Path to output folder for sections icons")
-          .long("output")
+        Arg::new("dest")
+          .help("Folder the section icons are written to")
+          .short('d')
+          .long("dest")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
-      )
-      .with_ltx_dialect()
-      .with_link_policy()
+      );
+
+    LinkPolicyArgument::declare(LtxDialectArgument::declare(command))
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -59,11 +58,11 @@ impl GenericCommand for UnpackEquipmentCommand {
       .expect("Expected valid path to be provided for system-ltx");
 
     let source: &PathBuf = matches
-      .get_one::<PathBuf>("source")
+      .get_one::<PathBuf>("path")
       .expect("Expected valid source path to be provided");
 
     let output: &PathBuf = matches
-      .get_one::<PathBuf>("output")
+      .get_one::<PathBuf>("dest")
       .expect("Expected valid output folder path to be provided");
 
     let output_options: OutputOptions = context.get_output().clone();
@@ -85,7 +84,7 @@ impl GenericCommand for UnpackEquipmentCommand {
     );
 
     let source_dds = source_file.decode_rgba(0)?;
-    let system_ltx: Ltx = Ltx::read_from_file_with_dialect(system_ltx_path, requested_ltx_dialect(matches).as_ref())?;
+    let system_ltx: Ltx = Ltx::read_from_file_with_dialect(system_ltx_path, LtxDialectArgument::of(matches).as_ref())?;
 
     xrf_output::info!(
       output_options,
@@ -96,24 +95,20 @@ impl GenericCommand for UnpackEquipmentCommand {
     create_dir_all(output)?;
 
     UnpackEquipmentProcessor::unpack_sprites(UnpackEquipmentOptions {
-      job: new_logging_job(),
+      job: CliJob::new_logging(),
       ltx: system_ltx,
       source: source_dds,
       output: output_options.clone(),
       output_path: output.into(),
       dds_compression_format: ImageFormat::BC3RgbaUnorm,
-      link_policy: requested_link_policy(matches),
+      link_policy: LinkPolicyArgument::of(matches),
     })?;
 
     context.set_result(|| SpriteEquipmentUnpackReport::new(source, system_ltx_path, output, &metadata))?;
 
-    xrf_output::info!(
+    xrf_output::success!(
       output_options,
-      "Unpacked the equipment sprite into icons named by its LTX sections"
-    );
-
-    log::info!(
-      "Unpack equipment took: {}",
+      "Unpacked the equipment sprite into icons named by its LTX sections in {}",
       xrf_utils::format_duration(started_at.elapsed())
     );
 
