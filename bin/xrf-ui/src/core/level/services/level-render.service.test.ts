@@ -4,7 +4,7 @@ import { EventBus } from "@wirestate/core";
 
 import { createRoots } from "@/core/assets/lib";
 import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
-import { SessionChange } from "@/core/ipc/types/xrf-app";
+import { LEVEL_MAP_PART, SessionChange } from "@/core/ipc/types/xrf-app";
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import {
   ERenderAntialiasing,
@@ -269,6 +269,33 @@ describe("LevelRenderService", () => {
       kind: ERenderViewportEvent.LOAD,
       report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE + 1 }),
     });
+    expect(viewport.isRevealed).toBe(true);
+  });
+
+  it("keeps a level read again for its map alone revealed in the scene it is shown in", async () => {
+    const { container } = await mockAttachedLevelRender();
+    const viewport: LevelViewportService = container.get(LevelViewportService);
+    const load: LevelLoadService = container.get(LevelLoadService);
+
+    emitViewportEvent({
+      kind: ERenderViewportEvent.LOAD,
+      report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE }),
+    });
+
+    const sessionId: string = load.level.value?.selected.sessionId as string;
+
+    setMockInvokeResponses({
+      ["plugin:levels|get_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), sessionId, 1),
+    });
+    container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
+      revision: 1,
+      root: { kind: "kept" },
+      sessionId,
+      staleParts: [LEVEL_MAP_PART],
+    });
+    await waitFor(() => expect(load.level.value?.selected.revision).toBe(1));
+
+    expect(sentLevelsCommand("show_level")).toHaveLength(1);
     expect(viewport.isRevealed).toBe(true);
   });
 

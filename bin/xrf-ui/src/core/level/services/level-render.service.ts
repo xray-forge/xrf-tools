@@ -496,7 +496,12 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     const level: Nullable<SelectedLevelDescription> = selected?.value ?? null;
 
     if (selected && this.isShowing(selected.sessionId)) {
-      this.takeReadAgain(selected.value);
+      // A level read again for its map or start alone keeps its scene, and stays shown.
+      if (this.loadService.level.value?.isSceneStreamedAfresh) {
+        this.takeReadAgain(selected.value);
+      } else {
+        this.level = level;
+      }
 
       return;
     }

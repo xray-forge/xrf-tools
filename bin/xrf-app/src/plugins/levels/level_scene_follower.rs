@@ -25,8 +25,9 @@ impl LevelSceneFollower {
   /// session, or nothing about it moved.
   fn follow(&self, assets: &AssetMountState, change: &SessionChange) -> Option<RenderSceneId> {
     let shown: Arc<LevelRenderSource> = self.shown.find_source(change.session_id)?;
-    let is_derived: bool = match &change.root {
-      SessionRootChange::Kept => false,
+    // A kept level whose geometry or surfaces moved streams afresh as a derived one does: its sectors are packed anew.
+    let is_afresh: bool = match &change.root {
+      SessionRootChange::Kept => LevelRenderSource::is_streamed_afresh(&change.stale_parts),
       SessionRootChange::Derived => true,
       SessionRootChange::Deriving => {
         log::info!(
@@ -53,14 +54,14 @@ impl LevelSceneFollower {
       .ok()
       .filter(|next| next.revision >= change.revision)?;
     let key: String = LevelRenderSource::to_scene_key(change.session_id);
-    let source: Arc<LevelRenderSource> = match is_derived {
+    let source: Arc<LevelRenderSource> = match is_afresh {
       true => Arc::new(LevelRenderSource::new(next, AssetMountState::clone(assets))),
       false => Arc::new(shown.follow(next)),
     };
     let drawn: Arc<dyn RenderLevelSource> = Arc::clone(&source) as Arc<dyn RenderLevelSource>;
     let reload: WorldLevelReload = LevelRenderSource::to_reload(&change.stale_parts);
     let mut world: MutexGuard<'_, World> = self.world.lock();
-    let scene: Option<RenderSceneId> = match is_derived {
+    let scene: Option<RenderSceneId> = match is_afresh {
       true => world.reopen_scene(&key, drawn),
       false => world.reload_scene(&key, drawn, reload),
     };
@@ -76,7 +77,7 @@ impl LevelSceneFollower {
       "Level '{}' follows revision {} in scene {scene:?}: {}",
       source.get_level().source.get_label(),
       change.revision.get(),
-      match is_derived {
+      match is_afresh {
         true => "streamed afresh".to_owned(),
         false => format!("{reload:?}"),
       }

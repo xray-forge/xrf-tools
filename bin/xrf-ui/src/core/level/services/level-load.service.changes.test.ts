@@ -5,6 +5,8 @@ import { createRoots } from "@/core/assets/lib";
 import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
 import {
   LEVEL_ENVIRONMENT_PART,
+  LEVEL_GEOMETRY_PART,
+  LEVEL_MAP_PART,
   LEVEL_SPAWN_PART,
   LevelSpawnObjectsDescription,
   SessionChange,
@@ -155,6 +157,41 @@ describe("LevelLoadService changes", () => {
     expect(service.isStale).toBe(false);
     expect(countListings() - listings).toBe(1);
     expect(service.spawn?.objects).toHaveLength(2);
+  });
+
+  it("reads a level again for its map keeping its scene, and for its geometry streaming the scene afresh", async () => {
+    const { container, service, sessionId } = await openLevel();
+
+    expect(service.level.value?.isSceneStreamedAfresh).toBe(true);
+
+    setMockInvokeResponses({
+      ["plugin:levels|get_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), sessionId, 1),
+    });
+    notify(container, { sessionId, revision: 1, root: { kind: "kept" }, staleParts: [LEVEL_MAP_PART] });
+    await flush();
+
+    expect(service.level.value?.selected.revision).toBe(1);
+    expect(service.level.value?.isSceneStreamedAfresh).toBe(false);
+
+    setMockInvokeResponses({
+      ["plugin:levels|get_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), sessionId, 2),
+    });
+    notify(container, { sessionId, revision: 2, root: { kind: "kept" }, staleParts: [LEVEL_GEOMETRY_PART] });
+    await flush();
+
+    expect(service.level.value?.selected.revision).toBe(2);
+    expect(service.level.value?.isSceneStreamedAfresh).toBe(true);
+
+    // A notice of a change shown already leaves the scene of the next read again as it is.
+    setMockInvokeResponses({
+      ["plugin:levels|get_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), sessionId, 3),
+    });
+    notify(container, { sessionId, revision: 2, root: { kind: "kept" }, staleParts: [LEVEL_GEOMETRY_PART] });
+    notify(container, { sessionId, revision: 3, root: { kind: "kept" }, staleParts: [LEVEL_MAP_PART] });
+    await flush();
+
+    expect(service.level.value?.selected.revision).toBe(3);
+    expect(service.level.value?.isSceneStreamedAfresh).toBe(false);
   });
 
   it("keeps the level shown where a read again answers another level or an older revision", async () => {
