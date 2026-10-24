@@ -22,31 +22,35 @@ impl XrayRootsArguments {
   /// Declares the three on `command`: `path_help` says what a path holds, `prefix_help` what a prefix limits it to.
   /// The paths are read as their containing installation unless `--source` says otherwise.
   pub fn declare(command: Command, path_help: &'static str, prefix_help: &'static str) -> Command {
-    command
-      .arg(
-        Arg::new(Self::PATH)
-          .help(path_help)
-          .short('p')
-          .long(Self::PATH)
-          .required(true)
-          // Both spellings layer: repeat the flag, or list several values after one of them.
-          .action(ArgAction::Append)
-          .num_args(1..)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new(Self::SOURCE)
-          .help(Self::SOURCE_HELP)
-          .long(Self::SOURCE)
-          .default_value(XrayMountMode::ContainingInstallation.as_str())
-          .value_parser(XrayMountMode::NAMES),
-      )
-      .arg(
-        Arg::new(Self::PREFIX)
-          .help(prefix_help)
-          .long(Self::PREFIX)
-          .value_parser(value_parser!(String)),
-      )
+    let command: Command = command.arg(
+      Arg::new(Self::PATH)
+        .help(path_help)
+        .short('p')
+        .long(Self::PATH)
+        .required(true)
+        // Both spellings layer: repeat the flag, or list several values after one of them.
+        .action(ArgAction::Append)
+        .num_args(1..)
+        .value_parser(value_parser!(PathBuf)),
+    );
+
+    Self::declare_source(command, XrayMountMode::ContainingInstallation).arg(
+      Arg::new(Self::PREFIX)
+        .help(prefix_help)
+        .long(Self::PREFIX)
+        .value_parser(value_parser!(String)),
+    )
+  }
+
+  /// Declares `--source` alone, defaulting to `default`, for a command that names its roots its own way.
+  pub fn declare_source(command: Command, default: XrayMountMode) -> Command {
+    command.arg(
+      Arg::new(Self::SOURCE)
+        .help(Self::SOURCE_HELP)
+        .long(Self::SOURCE)
+        .default_value(default.as_str())
+        .value_parser(XrayMountMode::NAMES),
+    )
   }
 
   /// The roots the command was asked to read, in the order they layer.
