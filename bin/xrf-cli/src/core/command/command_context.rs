@@ -1,9 +1,9 @@
 use serde::Serialize;
 use serde_json::Value;
-use xrf_output::OutputOptions;
+use xrf_output::{OutputChannel, OutputOptions};
 
-use crate::core::generic_command::CommandResult;
-use crate::core::reporting::ReportingOptions;
+use crate::core::command::CommandResult;
+use crate::core::report::ReportingOptions;
 
 /// What a command is handed, beyond its own parsed arguments.
 ///
@@ -22,6 +22,7 @@ pub struct CommandContext {
 }
 
 impl CommandContext {
+  /// The context of a run started with `reporting`, holding no result yet.
   pub fn new(reporting: &ReportingOptions) -> Self {
     Self {
       is_result_requested: reporting.destination.is_requested(),
@@ -33,6 +34,12 @@ impl CommandContext {
   /// Where this run's human-facing messages go.
   pub const fn get_output(&self) -> &OutputOptions {
     &self.output
+  }
+
+  /// Whether the run asked for verbose output, for a command whose line itself changes shape when it did; a line that
+  /// only adds detail goes out through `xrf_output::verbose!` instead.
+  pub fn is_verbose(&self) -> bool {
+    self.output.is_visible(OutputChannel::Verbose)
   }
 
   /// Records what this command found, for whatever machine-readable report was requested.
@@ -62,17 +69,15 @@ mod tests {
   use serde_json::json;
   use xrf_output::OutputVerbosity;
 
-  use super::CommandContext;
-  use crate::core::reporting::{ReportingArguments, ReportingOptions};
+  use crate::core::arguments::ReportingArguments;
+  use crate::core::command::CommandContext;
 
   fn context(arguments: &[&str]) -> CommandContext {
-    let matches = Command::new("xrf-cli")
-      .no_binary_name(true)
-      .with_reporting()
+    let matches = ReportingArguments::declare(Command::new("xrf-cli").no_binary_name(true))
       .try_get_matches_from(arguments)
       .expect("reporting arguments to parse");
 
-    CommandContext::new(&ReportingOptions::from_matches(&matches))
+    CommandContext::new(&ReportingArguments::of(&matches))
   }
 
   #[test]
@@ -113,5 +118,7 @@ mod tests {
       OutputVerbosity::Silent
     );
     assert_eq!(context(&[]).get_output().get_verbosity(), OutputVerbosity::Normal);
+    assert!(context(&["--verbose"]).is_verbose());
+    assert!(!context(&[]).is_verbose());
   }
 }

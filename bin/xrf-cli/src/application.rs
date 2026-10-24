@@ -7,12 +7,9 @@ use xrf_build_info::{BuildInfo, build_info};
 use xrf_env_flags::{EnvFlag, EnvFlags};
 use xrf_job::{ExecutionPlan, ExecutionRequest};
 
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::execution::{report_execution_plan, requested_execution};
-use crate::core::generic_command::{CommandGroup, CommandResult};
-use crate::core::reporting::{CommandEnvelope, ReportingArguments, ReportingOptions, find_conflicting_selection};
-use crate::registry::setup_command_groups;
+use crate::core::arguments::{JobsArgument, ReportingArguments};
+use crate::core::command::{CommandContext, CommandError, CommandGroup, CommandResult};
+use crate::core::report::{CommandEnvelope, ReportingOptions};
 
 /// Assemble the CLI from the registered commands and run the one the caller asked for.
 ///
@@ -24,24 +21,23 @@ use crate::registry::setup_command_groups;
 /// report finding details and never exit.
 pub fn run() -> ExitCode {
   let build: BuildInfo = build_info!();
-  let groups: Vec<CommandGroup> = setup_command_groups();
+  let groups: Vec<CommandGroup> = CommandGroup::list_all();
 
-  let mut application: Command = Command::new("xrf-cli")
-    .about("XRF forge CLI tools application")
-    .version(get_short_version(&build))
-    .long_version(build.to_string())
-    .after_help(get_environment_help())
-    .arg_required_else_help(true)
-    .with_reporting();
+  let mut application: Command = groups.iter().fold(
+    ReportingArguments::declare(
+      Command::new("xrf-cli")
+        .about("XRF forge CLI tools application")
+        .version(get_short_version(&build))
+        .long_version(build.to_string())
+        .after_help(get_environment_help())
+        .arg_required_else_help(true),
+    ),
+    |application, group| application.subcommand(group.init()),
+  );
 
-  for group in &groups {
-    application = application.subcommand(group.init());
-  }
-
-  // Kept past parsing so a selection clap cannot refuse on its own is still refused the way clap
-  // refuses one: the same message shape, the same exit code, from the same command.
-  let mut parser: Command = application.clone();
-  let matches: ArgMatches = application.get_matches();
+  // Parsed in place, so a selection clap cannot refuse on its own is still refused the way clap refuses one: the same
+  // message shape, the same exit code, from the same command.
+  let matches: ArgMatches = application.get_matches_mut();
 
   // `arg_required_else_help` already answered the empty invocation, and clap rejects a subcommand it
   // never advertised, so both misses below mean the registry and the parser disagree.
@@ -63,8 +59,8 @@ pub fn run() -> ExitCode {
 
   // Global arguments reach the operation's own matches, which is also what the command reads - and
   // is where a pair written at two different levels finally meets.
-  if let Some((first, second)) = find_conflicting_selection(arguments) {
-    parser
+  if let Some((first, second)) = ReportingArguments::find_conflicting_selection(arguments) {
+    application
       .error(
         ErrorKind::ArgumentConflict,
         format!("the argument '{first}' cannot be used with '{second}'"),
@@ -72,7 +68,7 @@ pub fn run() -> ExitCode {
       .exit()
   }
 
-  let reporting: ReportingOptions = ReportingOptions::from_matches(arguments);
+  let reporting: ReportingOptions = ReportingArguments::of(arguments);
   let mut context: CommandContext = CommandContext::new(&reporting);
 
   // Every command runs inside a pool, including the ones that declare no `--jobs`. A command with no
@@ -80,11 +76,11 @@ pub fn run() -> ExitCode {
   // and sprite work, and anything reaching the global pool is bounded by nothing. Installing here is
   // what makes the count an upper bound provable in one place rather than a convention every command
   // has to remember; a command that offers no say simply gets what the machine offers.
-  let requested: Option<ExecutionRequest> = requested_execution(arguments);
+  let requested: Option<ExecutionRequest> = JobsArgument::of(arguments);
   let plan: ExecutionPlan = requested.unwrap_or(ExecutionRequest::Auto).resolve();
 
   if requested.is_some() {
-    report_execution_plan(&reporting.output, &plan);
+    JobsArgument::report(&reporting.output, &plan);
   }
 
   let started_at: Instant = Instant::now();

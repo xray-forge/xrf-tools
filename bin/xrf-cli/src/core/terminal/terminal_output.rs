@@ -52,12 +52,6 @@ impl TerminalOutput {
   }
 }
 
-impl Default for TerminalOutput {
-  fn default() -> Self {
-    Self::new(true)
-  }
-}
-
 impl Output for TerminalOutput {
   fn write(&self, channel: OutputChannel, message: &dyn Display) {
     match channel {
