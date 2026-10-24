@@ -6,7 +6,6 @@ use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::{FileImportExport, Ltx, Section, read_ltx_field};
-use xrf_utils::open_export_file;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -88,7 +87,7 @@ impl FileImportExport for SpawnHeaderChunk {
       .set("objects", self.objects_count.to_string())
       .set("level_count", self.levels_count.to_string());
 
-    ltx.write_to(&mut open_export_file(path.as_ref().join("header.ltx"))?)?;
+    ltx.write_to_path(path.as_ref().join("header.ltx"))?;
 
     log::info!("Exported header chunk");
 

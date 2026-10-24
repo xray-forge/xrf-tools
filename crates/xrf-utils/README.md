@@ -99,8 +99,7 @@ caller enforces any overwrite policy. Both return `std::io::Result` so the calle
 `ErrorKind`.
 
 The `staging-faults` feature exposes `staging_faults::fail_next_staged_write()`, which makes the next staged write on
-the current thread fail with `StorageFull`; enable it only in a dependent crate's tests. `open_export_file` is an
-unstaged, truncating create.
+the current thread fail with `StorageFull`; enable it only in a dependent crate's tests.
 
 ## Text
 

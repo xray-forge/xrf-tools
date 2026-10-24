@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{FileImportExport, Ltx, LtxImportExport};
-use xrf_utils::{assert_count_fits, assert_equal, assert_length, open_export_file, to_format_size};
+use xrf_utils::{assert_count_fits, assert_equal, assert_length, to_format_size};
 
 use crate::data::alife::alife_object::AlifeObject;
 
@@ -213,7 +213,7 @@ impl FileImportExport for SpawnALifeSpawnsChunk {
       object.export(&index.to_string(), &mut ltx)?;
     }
 
-    ltx.write_to(&mut open_export_file(path.as_ref().join("alife_spawns.ltx"))?)?;
+    ltx.write_to_path(path.as_ref().join("alife_spawns.ltx"))?;
 
     log::info!("Exported ALife spawns chunk");
 

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_ltx::{FileImportExport, Ltx, LtxImportExport};
-use xrf_utils::{assert_length, open_export_file};
+use xrf_utils::{assert_length, write_new_file_staged};
 
 use crate::data::graph::graph_cross_table::GraphCrossTable;
 use crate::data::graph::graph_edge::GraphEdge;
@@ -197,7 +197,7 @@ impl FileImportExport for SpawnGraphsChunk {
 
     self.header.export("header", &mut graphs_header_ltx)?;
 
-    graphs_header_ltx.write_to(&mut open_export_file(path.as_ref().join("graphs_header.ltx"))?)?;
+    graphs_header_ltx.write_to_path(path.as_ref().join("graphs_header.ltx"))?;
 
     let mut graphs_level_ltx: Ltx = Ltx::new();
 
@@ -205,7 +205,7 @@ impl FileImportExport for SpawnGraphsChunk {
       level.export(&index.to_string(), &mut graphs_level_ltx)?;
     }
 
-    graphs_level_ltx.write_to(&mut open_export_file(path.as_ref().join("graphs_levels.ltx"))?)?;
+    graphs_level_ltx.write_to_path(path.as_ref().join("graphs_levels.ltx"))?;
 
     log::info!("Exported graph levels");
 
@@ -215,7 +215,7 @@ impl FileImportExport for SpawnGraphsChunk {
       vertex.export(&index.to_string(), &mut graphs_vertices_ltx)?;
     }
 
-    graphs_vertices_ltx.write_to(&mut open_export_file(path.as_ref().join("graphs_vertices.ltx"))?)?;
+    graphs_vertices_ltx.write_to_path(path.as_ref().join("graphs_vertices.ltx"))?;
 
     log::info!("Exported graph vertices");
 
@@ -225,7 +225,7 @@ impl FileImportExport for SpawnGraphsChunk {
       point.export(&index.to_string(), &mut graphs_points_ltx)?;
     }
 
-    graphs_points_ltx.write_to(&mut open_export_file(path.as_ref().join("graphs_points.ltx"))?)?;
+    graphs_points_ltx.write_to_path(path.as_ref().join("graphs_points.ltx"))?;
 
     log::info!("Exported graph points");
 
@@ -235,14 +235,14 @@ impl FileImportExport for SpawnGraphsChunk {
       edge.export(&index.to_string(), &mut graphs_edges_ltx)?;
     }
 
-    graphs_edges_ltx.write_to(&mut open_export_file(path.as_ref().join("graphs_edges.ltx"))?)?;
+    graphs_edges_ltx.write_to_path(path.as_ref().join("graphs_edges.ltx"))?;
 
     log::info!("Exported graph edges");
 
-    GraphCrossTable::export_list::<XRayByteOrder>(
-      &self.cross_tables,
-      &mut open_export_file(path.as_ref().join("graphs_cross_tables.gct"))?,
-    )?;
+    let mut cross_tables: Vec<u8> = Vec::new();
+
+    GraphCrossTable::export_list::<XRayByteOrder>(&self.cross_tables, &mut cross_tables)?;
+    write_new_file_staged(&path.as_ref().join("graphs_cross_tables.gct"), &cross_tables)?;
 
     log::info!("Exported graph cross tables");
 

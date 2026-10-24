@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{FileImportExport, Ltx, META_TYPE_FIELD, Section, read_ltx_field};
-use xrf_utils::{assert_equal, format_path, open_export_file};
+use xrf_utils::{assert_equal, format_path};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -85,7 +85,7 @@ impl FileImportExport for ParticlesHeaderChunk {
       .set(META_TYPE_FIELD, Self::META_TYPE)
       .set("version", self.version.to_string());
 
-    ltx.write_to(&mut open_export_file(path.as_ref().join("header.ltx"))?)?;
+    ltx.write_to_path(path.as_ref().join("header.ltx"))?;
 
     log::info!("Exported header chunk");
 

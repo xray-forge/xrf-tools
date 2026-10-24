@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::{FileImportExport, Ltx};
-use xrf_utils::{assert_length, open_export_file, to_format_size};
+use xrf_utils::{assert_length, to_format_size};
 
 use crate::data::patrols::patrol::Patrol;
 
@@ -107,9 +107,9 @@ impl FileImportExport for SpawnPatrolsChunk {
       )?;
     }
 
-    patrols_ltx.write_to(&mut open_export_file(path.as_ref().join("patrols.ltx"))?)?;
-    patrol_points_ltx.write_to(&mut open_export_file(path.as_ref().join("patrol_points.ltx"))?)?;
-    patrol_links_ltx.write_to(&mut open_export_file(path.as_ref().join("patrol_links.ltx"))?)?;
+    patrols_ltx.write_to_path(path.as_ref().join("patrols.ltx"))?;
+    patrol_points_ltx.write_to_path(path.as_ref().join("patrol_points.ltx"))?;
+    patrol_links_ltx.write_to_path(path.as_ref().join("patrol_links.ltx"))?;
 
     log::info!("Exported patrols chunk");
 

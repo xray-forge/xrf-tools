@@ -40,8 +40,8 @@ impl GraphCrossTable {
     Ok(cross_tables)
   }
 
-  /// Export cross-tables as separate gct chunk file.
-  pub fn export_list<T: ByteOrder>(cross_tables: &[Self], file: &mut File) -> XrfResult {
+  /// Export cross-tables as a separate gct chunk file's bytes.
+  pub fn export_list<T: ByteOrder>(cross_tables: &[Self], file: &mut dyn Write) -> XrfResult {
     let mut cross_tables_writer: ChunkWriter = ChunkWriter::new();
 
     for cross_table in cross_tables {

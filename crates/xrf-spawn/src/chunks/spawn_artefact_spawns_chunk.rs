@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::{FileImportExport, Ltx, LtxImportExport};
-use xrf_utils::{assert_length, open_export_file, to_format_size};
+use xrf_utils::{assert_length, to_format_size};
 
 use crate::data::artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint;
 
@@ -86,7 +86,7 @@ impl FileImportExport for SpawnArtefactSpawnsChunk {
       spawn_point.export(&index.to_string(), &mut ltx)?;
     }
 
-    ltx.write_to(&mut open_export_file(path.as_ref().join("artefact_spawns.ltx"))?)?;
+    ltx.write_to_path(path.as_ref().join("artefact_spawns.ltx"))?;
 
     log::info!("Exported artefact spawns chunk");
 
