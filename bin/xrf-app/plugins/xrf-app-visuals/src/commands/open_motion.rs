@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use tauri::State;
 use xrf_app_core::assets::AssetMountState;
-use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_app_core::session::{SessionId, SessionOpening, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
+use xrf_vfs::XraySearch;
 use xrf_visual::{VisualMotionBake, VisualMotionPose};
 
 use crate::posed_visual_motion::PosedVisualMotion;
@@ -29,27 +30,18 @@ pub async fn visuals_open_motion(
     return Err(String::from("The open visual carries no bind pose to animate"));
   };
 
-  state.poses.begin_open(motion_id)?;
+  // A pose that does not bake drops its opening, so the page, which forgets an open that failed, leaves nothing behind.
+  let opening: SessionOpening<PosedVisualMotion> = state.poses.begin_open(motion_id)?;
 
   // Posed inside the roots the open used, so the animation files are looked for where the model's own references were.
-  let baked: TauriResult<VisualMotionPose> = assets.search(&current.roots).and_then(|search| {
-    motions
-      .bake_named(&search, &current.dependencies, &name)
-      .map_err(|error| error.to_string())
-  });
-  // A pose that does not bake leaves no opening behind: the page forgets one whose open failed.
-  let pose: VisualMotionPose = baked.inspect_err(|_| {
-    if let Err(error) = state.poses.close(&[motion_id]) {
-      log::error!("A pose that did not bake could not be let go: {error}");
-    }
+  let search: XraySearch = assets.search(&current.roots)?;
+  let pose: VisualMotionPose = motions
+    .bake_named(&search, &current.dependencies, &name)
+    .map_err(|error| error.to_string())?;
+  let opened: Arc<SessionSnapshot<PosedVisualMotion>> = opening.commit(PosedVisualMotion {
+    model: session_id,
+    pose,
   })?;
-  let opened: Arc<SessionSnapshot<PosedVisualMotion>> = state.poses.commit_open(
-    motion_id,
-    PosedVisualMotion {
-      model: session_id,
-      pose,
-    },
-  )?;
 
   Ok(opened.map(|posed| posed.pose.description.clone()))
 }

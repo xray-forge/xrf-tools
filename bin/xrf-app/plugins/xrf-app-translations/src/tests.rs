@@ -93,10 +93,7 @@ fn open_project(assets: &AssetMountState, state: &TranslationProjectState, roots
     .map(|project| project.session_id)
     .collect();
 
-  state.projects.begin_open(id)?;
-  state
-    .projects
-    .commit_open_with(id, read.value, revision, read.inputs, read.parts)?;
+  state.projects.begin_fixture_open(id)?.commit_derived(read, revision)?;
   state.projects.close(&held)?;
 
   Ok(())

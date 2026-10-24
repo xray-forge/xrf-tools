@@ -1,5 +1,5 @@
 use tauri::State;
-use xrf_app_core::session::{SessionRestore, SessionScope, SessionScopes};
+use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::types::TauriResult;
 use xrf_dialog::{DialogProject, DialogProjectDescriptor};
 
@@ -10,12 +10,9 @@ use crate::state::DialogProjectState;
 #[tauri::command(rename = "get_project")]
 pub async fn dialogs_get_project(
   state: State<'_, DialogProjectState>,
-  scopes: State<'_, SessionScopes>,
   scope: SessionScope,
 ) -> TauriResult<SessionRestore<DialogProjectDescriptor>> {
   Ok(SessionRestore::from(
-    state
-      .restore(&scopes.list(&scope))?
-      .map(|opened| opened.map(DialogProject::describe)),
+    state.restore(&scope)?.map(|opened| opened.map(DialogProject::describe)),
   ))
 }

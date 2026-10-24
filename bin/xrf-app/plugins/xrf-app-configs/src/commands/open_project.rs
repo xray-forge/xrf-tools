@@ -3,10 +3,11 @@ use std::sync::Arc;
 use tauri::State;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::session::SessionParts;
+use xrf_app_core::session::{SessionOpening, SessionParts};
 use xrf_app_core::types::TauriResult;
 use xrf_vfs::XrayRevision;
 
+use crate::configs_project::ConfigsProject;
 use crate::descriptor::ConfigsProjectDescriptor;
 use crate::opened_configs_project::OpenedConfigsProject;
 use crate::request::ConfigsOpenRequest;
@@ -30,8 +31,7 @@ pub async fn configs_open_project(
 
   log::info!("Opening ltx configs project in {}", roots.describe());
 
-  state.begin_open(session_id)?;
-  let state: ConfigsState = state.inner().clone();
+  let opening: SessionOpening<ConfigsProject> = state.begin_open(session_id)?;
   let reader: AssetMountState = AssetMountState::clone(&assets);
 
   let opened: OpenedConfigsProject = execution
@@ -44,7 +44,7 @@ pub async fn configs_open_project(
   let descriptor: Arc<ConfigsProjectDescriptor> = Arc::clone(&project.descriptor);
 
   state.catch_up(
-    state.commit_open_with(session_id, project, revision, inputs, SessionParts::new())?,
+    opening.commit_with(project, revision, inputs, SessionParts::new())?,
     &assets,
   );
 

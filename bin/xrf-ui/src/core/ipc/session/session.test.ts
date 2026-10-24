@@ -33,6 +33,35 @@ describe("Session", () => {
     expect(release).toHaveBeenCalledTimes(2);
   });
 
+  it("leaves its openings to the scope's release, and closes one published after it", async () => {
+    const release = jest.fn<(ids: Array<string>) => Promise<void>>().mockResolvedValue(undefined);
+    const scopeService: SessionScopeService = new SessionScopeService("test");
+    const session = new Session(release, scopeService);
+
+    await session.open(async (sessionId) => ({ sessionId }));
+
+    let finish!: (value: ISessionIdentity) => void;
+    let late: string = "";
+
+    const pending = session.open(async (sessionId) => {
+      late = sessionId;
+
+      return new Promise<ISessionIdentity>((resolve) => (finish = resolve));
+    });
+
+    // The open reaches its command once its binding is sent.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    scopeService.release();
+    await session.close();
+
+    expect(release).not.toHaveBeenCalled();
+
+    finish({ sessionId: late });
+    await pending;
+
+    expect(release.mock.calls).toEqual([[[late]]]);
+  });
+
   it("does not release a newer opening when an older close finishes", async () => {
     let finishClose!: () => void;
 

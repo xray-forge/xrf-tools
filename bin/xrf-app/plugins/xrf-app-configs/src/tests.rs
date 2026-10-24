@@ -58,9 +58,8 @@ fn a_format_commits_its_rewrites_so_retained_configs_and_sessions_follow() {
   read(&search.clone().with_recording(&inputs), SYSTEM_LTX, &parses);
   read(&search, GAME_LTX, &parses);
   assets.add_follower(session.clone());
-  session.begin_open(id).unwrap();
   session
-    .commit_open_with(id, "opened", XrayRevision::MOUNTED, inputs, SessionParts::new())
+    .commit_fixture(id, "opened", XrayRevision::MOUNTED, inputs, SessionParts::new())
     .unwrap();
 
   let result: LtxProjectFormatResult =
@@ -112,9 +111,10 @@ fn an_open_project_lists_a_config_committed_beside_it_once_read_again() {
 
   assert_eq!(project.descriptor.inventory.files.len(), 2);
 
-  state.begin_open(id).unwrap();
   state
-    .commit_open_with(id, project, revision, inputs, SessionParts::new())
+    .begin_fixture_open(id)
+    .unwrap()
+    .commit_with(project, revision, inputs, SessionParts::new())
     .unwrap();
   assets
     .commit(

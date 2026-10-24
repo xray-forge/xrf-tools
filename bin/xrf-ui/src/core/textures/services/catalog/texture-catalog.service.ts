@@ -85,14 +85,10 @@ export class TextureCatalogService {
   }
 
   /**
-   * Drop the browsed roots on the way out of the application.
+   * Forget the browsed roots on the way out of the application, which the tool's scope closes.
    */
   @OnDeactivation()
   public onDeactivation(): void {
-    this.log.info("Deactivating, release");
-
-    this.session.release();
-
     runInAction(() => {
       this.catalogState = this.catalogState.asIdle();
       this.summaries = this.summaries.asIdle([]);

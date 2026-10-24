@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use tauri::State;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_app_core::session::{SessionId, SessionOpening, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 use xrf_archive::ArchiveProject;
 
@@ -18,7 +18,8 @@ pub async fn archives_open_volumes(
   path: &str,
   state: State<'_, ArchiveBrowseState>,
 ) -> TauriResult<Arc<SessionSnapshot<ArchiveSubject>>> {
-  state.begin_open(session_id)?;
+  let opening: SessionOpening<ArchiveSubject> = state.begin_open(session_id)?;
+
   log::info!("Opening archive volumes: {path}");
 
   let source: PathBuf = PathBuf::from(path);
@@ -31,5 +32,5 @@ pub async fn archives_open_volumes(
   log::info!("Opened {} archive volume(s)", project.archives.len());
 
   // Shared rather than copied: the frontend and the session hold the same index.
-  state.commit_open(session_id, ArchiveSubject::Volumes { project })
+  opening.commit(ArchiveSubject::Volumes { project })
 }

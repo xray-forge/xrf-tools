@@ -1,5 +1,5 @@
 use tauri::State;
-use xrf_app_core::session::{SessionRestore, SessionScope, SessionScopes};
+use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::types::TauriResult;
 use xrf_export::ExportsProject;
 
@@ -10,8 +10,7 @@ use crate::state::ExportsProjectState;
 #[tauri::command(rename = "get_project")]
 pub async fn exports_get_project(
   state: State<'_, ExportsProjectState>,
-  scopes: State<'_, SessionScopes>,
   scope: SessionScope,
 ) -> TauriResult<SessionRestore<ExportsProject>> {
-  Ok(SessionRestore::from(state.restore(&scopes.list(&scope))?))
+  Ok(SessionRestore::from(state.restore(&scope)?))
 }

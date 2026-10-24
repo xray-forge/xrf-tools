@@ -4,7 +4,7 @@ use std::time::Instant;
 use tauri::State;
 use xrf_app_core::assets::{AssetMountState, detect_search_engine};
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::session::{SessionDerived, SessionId, SessionSnapshot};
+use xrf_app_core::session::{SessionDerived, SessionId, SessionOpening, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 use xrf_dltx::select_ltx_dialect;
 use xrf_ltx::LtxDialect;
@@ -33,7 +33,7 @@ pub async fn levels_open_level(
     engine,
   } = request;
 
-  state.levels.begin_open(session_id)?;
+  let opening: SessionOpening<SelectedLevel> = state.levels.begin_open(session_id)?;
 
   let started: Instant = Instant::now();
 
@@ -61,13 +61,8 @@ pub async fn levels_open_level(
     level.engine.describe()
   );
 
-  let committed: Arc<SessionSnapshot<SelectedLevel>> = state.levels.commit_open_with(
-    session_id,
-    opened.value,
-    search.get_vfs().get_revision(),
-    opened.inputs,
-    opened.parts,
-  )?;
+  let committed: Arc<SessionSnapshot<SelectedLevel>> =
+    opening.commit_derived(opened, search.get_vfs().get_revision())?;
 
   // What the open came to, its surfaces and textures as it resolved and kept them.
   LevelReport::opened(

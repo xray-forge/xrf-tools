@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use tauri::State;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_app_core::session::{SessionId, SessionOpening, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 
 use crate::document::EquipmentSpriteDocument;
@@ -18,7 +20,11 @@ pub async fn sprite_equipment_reopen_sprite(
   execution: State<'_, ExecutionState>,
   state: State<'_, EquipmentSpriteState>,
 ) -> TauriResult<SessionSnapshot<EquipmentSpriteMetadata>> {
-  let open: EquipmentSpriteOpen = state.begin_reload(opening_id, session_id)?.metadata.open.clone();
+  let (opening, previous): (
+    SessionOpening<EquipmentSpriteDocument>,
+    Arc<SessionSnapshot<EquipmentSpriteDocument>>,
+  ) = state.begin_reload(opening_id, session_id)?;
+  let open: EquipmentSpriteOpen = previous.metadata.open.clone();
 
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let document = execution
@@ -27,9 +33,5 @@ pub async fn sprite_equipment_reopen_sprite(
     })
     .await??;
 
-  Ok(
-    state
-      .commit_open(opening_id, document)?
-      .map(|document| document.metadata.clone()),
-  )
+  Ok(opening.commit(document)?.map(|document| document.metadata.clone()))
 }

@@ -1,4 +1,4 @@
-import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
+import { EventBus, inject, Injectable, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
@@ -102,13 +102,6 @@ export class DialogsService {
 
       throw error;
     }
-  }
-
-  @OnDeactivation()
-  public onDeactivation(): void {
-    this.log.info("Deactivating, release");
-
-    this.session.release();
   }
 
   /**

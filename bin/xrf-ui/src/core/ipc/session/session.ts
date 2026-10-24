@@ -5,13 +5,15 @@ import { SessionId, SessionScope } from "@/core/ipc/types/xrf-app";
 import { Logger } from "@/lib/logging";
 
 import { SessionScopeService } from "./session-scope.service";
-import { ISessionIdentity } from "./session.types";
+import { IScopedSession, ISessionIdentity } from "./session.types";
 
 /**
  * Owns native openings through completion and teardown, including cancelled frontend flows. Each opening is bound to
- * the scope of the tool that owns it before it opens, so the backend closes it with the tool or the window.
+ * the scope of the tool that owns it before it opens, so the backend closes it with the tool or the window, and the
+ * session is retired with that scope: a service closes its openings itself only when it lets them go while its tool
+ * stays.
  */
-export class Session {
+export class Session implements IScopedSession {
   private readonly owned: Set<SessionId> = new Set();
   private readonly pending: Set<SessionId> = new Set();
 
@@ -24,7 +26,9 @@ export class Session {
   public constructor(
     private readonly closeSessions: (sessionIds: Array<SessionId>) => Promise<unknown>,
     private readonly scopeService: SessionScopeService
-  ) {}
+  ) {
+    scopeService.register(this);
+  }
 
   /** The scope the openings are held in, which a restore names to attach to what its tool holds. */
   public get scope(): SessionScope {
@@ -132,6 +136,15 @@ export class Session {
 
       throw error;
     }
+  }
+
+  /**
+   * Forgets every opening as the scope's release closes them on the backend, so nothing is sent for each; a publication
+   * landing later closes itself, as after any close.
+   */
+  public retire(): void {
+    this.revision += 1;
+    this.owned.clear();
   }
 
   /**

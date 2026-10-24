@@ -9,9 +9,10 @@ mod scopes;
 
 pub use changes::{SessionChange, SessionFollower, SessionRootChange};
 pub(crate) use handles::SessionRelease;
-pub use handles::{SessionRestore, Sessions};
+pub use handles::{SessionOpening, SessionRestore, Sessions};
 pub use opening::{Session, SessionDerived, SessionId, SessionSnapshot};
 pub use parts::{SessionPart, SessionParts};
+pub(crate) use scopes::SessionBindings;
 pub use scopes::{SessionScope, SessionScopes};
 
 #[cfg(test)]

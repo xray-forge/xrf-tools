@@ -8,8 +8,14 @@ import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { SpriteEquipmentEditorService } from "./editor.service";
 
+/** How many times the tool's scope was released, which closes the sprite with whatever else the tool held. */
 function closeCalls(): number {
-  return mockInvoke.mock.calls.filter(([command]) => command === "plugin:sprite-equipment|close_sprite").length;
+  return mockInvoke.mock.calls.filter(([command]) => command === "plugin:sessions|release_scope").length;
+}
+
+/** Whether the service closed its sprite itself, which leaving the tool leaves to the scope. */
+function hasClosedItself(): boolean {
+  return mockInvoke.mock.calls.some(([command]) => command === "plugin:sprite-equipment|close_sprite");
 }
 
 /** Puts a sprite on screen the way a restore does, so the service owns the opening its teardown releases. */
@@ -56,6 +62,7 @@ describe("SpriteEquipmentEditorService deactivation", () => {
     container.unbindAll();
 
     expect(closeCalls()).toBe(1);
+    expect(hasClosedItself()).toBe(false);
   });
 
   it("survives a strict mode style remount without releasing", async () => {

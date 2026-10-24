@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_app_core::session::{SessionId, SessionOpening, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 use xrf_export::{ExportsProject, ExportsProjectParser};
 use xrf_utils::error_to_string;
@@ -15,10 +15,12 @@ pub async fn exports_open_project(
   project_path: &str,
   state: State<'_, ExportsProjectState>,
 ) -> TauriResult<Arc<SessionSnapshot<ExportsProject>>> {
-  state.begin_open(session_id)?;
+  let opening: SessionOpening<ExportsProject> = state.begin_open(session_id)?;
+
   log::info!("Parsing externs from project: {project_path}");
 
   let parser: ExportsProjectParser = ExportsProjectParser::new();
   let project: ExportsProject = parser.parse_project_from_path(project_path).map_err(error_to_string)?;
-  state.commit_open(session_id, project)
+
+  opening.commit(project)
 }

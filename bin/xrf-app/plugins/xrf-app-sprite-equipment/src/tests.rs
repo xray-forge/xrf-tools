@@ -1,6 +1,6 @@
 use tauri::http::{Request, StatusCode};
 use xrf_app_core::assets::AssetMountState;
-use xrf_app_core::session::{SessionId, SessionScopes};
+use xrf_app_core::session::{SessionId, SessionScope, SessionScopes};
 use xrf_vfs::XrayRoots;
 
 use crate::document::EquipmentSpriteDocument;
@@ -43,8 +43,11 @@ fn a_stream_url_cannot_read_a_replacement_with_the_same_name() {
   let first: SessionId = SessionId::generate();
   let second: SessionId = SessionId::generate();
 
-  state.begin_open(first).unwrap();
-  state.commit_open(first, document(vec![1])).unwrap();
+  state
+    .begin_fixture_open(first)
+    .unwrap()
+    .commit(document(vec![1]))
+    .unwrap();
 
   let request = Request::builder()
     .uri(format!("/{first}/equipment.png"))
@@ -53,8 +56,11 @@ fn a_stream_url_cannot_read_a_replacement_with_the_same_name() {
 
   assert_eq!(sprite_response(&state, &request).unwrap().body(), &[1]);
 
-  state.begin_open(second).unwrap();
-  state.commit_open(second, document(vec![2])).unwrap();
+  state
+    .begin_fixture_open(second)
+    .unwrap()
+    .commit(document(vec![2]))
+    .unwrap();
   state.close(&[first]).unwrap();
 
   assert_eq!(
@@ -79,12 +85,24 @@ fn a_stream_url_cannot_read_a_replacement_with_the_same_name() {
 
 #[test]
 fn a_failed_reload_preserves_the_previous_metadata_and_preview() {
-  let state: EquipmentSpriteState = EquipmentSpriteState::new("sprite test", &SessionScopes::default());
-  let first: SessionId = SessionId::generate();
+  let scopes: SessionScopes = SessionScopes::default();
+  let state: EquipmentSpriteState = EquipmentSpriteState::new("sprite test", &scopes);
+  let (first, reload): (SessionId, SessionId) = (SessionId::generate(), SessionId::generate());
 
-  state.begin_open(first).unwrap();
-  state.commit_open(first, document(vec![1, 2, 3])).unwrap();
-  state.begin_reload(SessionId::generate(), first).unwrap();
+  state
+    .begin_fixture_open(first)
+    .unwrap()
+    .commit(document(vec![1, 2, 3]))
+    .unwrap();
+  scopes.bind(
+    reload,
+    SessionScope {
+      window: String::from("main"),
+      tool: String::from("sprite-equipment-editor"),
+    },
+  );
+
+  let _reloading = state.begin_reload(reload, first).unwrap();
 
   // A sheet that cannot be decoded is the ordinary way a reload fails, and it must leave the open one alone rather
   // than half-replacing it.

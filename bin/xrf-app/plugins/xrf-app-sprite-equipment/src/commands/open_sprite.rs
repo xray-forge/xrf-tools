@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::session::SessionSnapshot;
+use xrf_app_core::session::{SessionOpening, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 
 use crate::document::EquipmentSpriteDocument;
@@ -21,7 +21,7 @@ pub async fn sprite_equipment_open_sprite(
 
   log::info!("Opening equipment sheet: {}", open.sheet.label());
 
-  state.begin_open(session_id)?;
+  let opening: SessionOpening<EquipmentSpriteDocument> = state.begin_open(session_id)?;
 
   let assets: AssetMountState = AssetMountState::clone(&assets);
   let document = execution
@@ -30,9 +30,5 @@ pub async fn sprite_equipment_open_sprite(
     })
     .await??;
 
-  Ok(
-    state
-      .commit_open(session_id, document)?
-      .map(|document| document.metadata.clone()),
-  )
+  Ok(opening.commit(document)?.map(|document| document.metadata.clone()))
 }

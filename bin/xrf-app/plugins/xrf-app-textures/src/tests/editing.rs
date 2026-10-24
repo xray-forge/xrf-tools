@@ -228,9 +228,8 @@ fn a_save_into_a_mounted_tree_commits_so_its_retained_descriptor_and_sessions_fo
 
   read(&search.clone().with_recording(&inputs));
   assets.add_follower(session.clone());
-  session.begin_open(id).unwrap();
   session
-    .commit_open_with(id, "opened", XrayRevision::MOUNTED, inputs, SessionParts::new())
+    .commit_fixture(id, "opened", XrayRevision::MOUNTED, inputs, SessionParts::new())
     .unwrap();
 
   let mut form: TextureDescriptorForm = TextureDescriptorForm::read(&read_descriptor(&path));

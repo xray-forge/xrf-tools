@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use xrf_app_core::session::{SessionId, SessionScopes, Sessions};
+use xrf_app_core::session::{SessionOpening, SessionScope, SessionScopes, Sessions};
 use xrf_app_core::types::TauriResult;
 use xrf_spawn::SpawnFile;
 
@@ -28,27 +28,28 @@ impl SpawnFileState {
   }
 
   /// Publishes the parsed file and the descriptor that names it, which are decided together.
-  pub fn commit_open(&self, id: SessionId, path: PathBuf, file: SpawnFile) -> TauriResult<SpawnSessionDescriptor> {
+  pub fn commit_open(
+    opening: SessionOpening<SpawnSession>,
+    path: PathBuf,
+    file: SpawnFile,
+  ) -> TauriResult<SpawnSessionDescriptor> {
     let descriptor: SpawnSessionDescriptor = SpawnSessionDescriptor {
-      session_id: id,
+      session_id: opening.get_id(),
       path,
       header: file.header.clone(),
     };
 
-    self.files.commit_open(
-      id,
-      SpawnSession {
-        descriptor: descriptor.clone(),
-        file,
-      },
-    )?;
+    opening.commit(SpawnSession {
+      descriptor: descriptor.clone(),
+      file,
+    })?;
 
     Ok(descriptor)
   }
 
-  /// Restores the descriptor alone of the newest spawn among `ids`, a tool's, so a reload returns without copying the
-  /// spawn behind it.
-  pub fn restore_descriptor(&self, ids: &[SessionId]) -> TauriResult<Option<SpawnSessionDescriptor>> {
-    Ok(self.files.restore(ids)?.map(|opened| opened.descriptor.clone()))
+  /// Restores the descriptor alone of the newest spawn `scope` holds, so a reload returns without copying the spawn
+  /// behind it.
+  pub fn restore_descriptor(&self, scope: &SessionScope) -> TauriResult<Option<SpawnSessionDescriptor>> {
+    Ok(self.files.restore(scope)?.map(|opened| opened.descriptor.clone()))
   }
 }

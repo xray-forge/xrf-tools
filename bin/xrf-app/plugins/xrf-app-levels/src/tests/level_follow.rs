@@ -101,9 +101,8 @@ fn open(
   let id: SessionId = SessionId::generate();
   let (opened, revision): (SessionDerived<SelectedLevel>, XrayRevision) = read_level(assets, roots);
 
-  session.begin_open(id).unwrap();
   session
-    .commit_open_with(id, opened.value, revision, opened.inputs, opened.parts)
+    .commit_fixture(id, opened.value, revision, opened.inputs, opened.parts)
     .unwrap()
 }
 
@@ -116,9 +115,10 @@ fn open_handle(
   let id: SessionId = SessionId::generate();
   let (opened, revision): (SessionDerived<SelectedLevel>, XrayRevision) = read_level(assets, roots);
 
-  levels.begin_open(id).unwrap();
   levels
-    .commit_open_with(id, opened.value, revision, opened.inputs, opened.parts)
+    .begin_fixture_open(id)
+    .unwrap()
+    .commit_derived(opened, revision)
     .unwrap()
 }
 

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tauri::State;
 use xrf_app_core::assets::AssetMountState;
-use xrf_app_core::session::{SessionDerived, SessionSnapshot};
+use xrf_app_core::session::{SessionDerived, SessionOpening, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 use xrf_translation::TranslationProjectDescriptor;
 use xrf_vfs::{XrayRevision, XraySearch};
@@ -25,7 +25,8 @@ pub async fn translations_open_project(
     prefix,
   } = request;
 
-  state.projects.begin_open(session_id)?;
+  // Given up as the open fails, so a failed open leaves the tool's other openings as they were.
+  let opening: SessionOpening<TranslationProjectDescriptor> = state.projects.begin_open(session_id)?;
 
   let prefix: String = prefix.unwrap_or_else(|| mode.get_prefix().to_owned());
 
@@ -50,11 +51,7 @@ pub async fn translations_open_project(
     read.value.is_editable
   );
 
-  // Committed only once the read succeeded, so a failed open leaves whatever was already open in place.
-  let opened: Arc<SessionSnapshot<TranslationProjectDescriptor>> =
-    state
-      .projects
-      .commit_open_with(session_id, read.value, revision, read.inputs, read.parts)?;
+  let opened: Arc<SessionSnapshot<TranslationProjectDescriptor>> = opening.commit_derived(read, revision)?;
 
   Ok(state.projects.catch_up(opened, &assets))
 }

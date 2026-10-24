@@ -67,14 +67,10 @@ export class ConfigsProjectService {
   }
 
   /**
-   * Drop the project on the way out of the application.
+   * Forget the project on the way out of the application, which the tool's scope closes.
    */
   @OnDeactivation()
   public onDeactivation(): void {
-    this.log.info("Deactivating, release");
-
-    this.session.release();
-
     runInAction(() => {
       this.project = this.project.asIdle(null);
     });

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tauri::State;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_app_core::session::{SessionId, SessionOpening, SessionSnapshot};
 use xrf_app_core::types::TauriResult;
 use xrf_vfs::XrayRoots;
 
@@ -19,7 +19,8 @@ pub async fn archives_open_world(
   assets: State<'_, AssetMountState>,
   state: State<'_, ArchiveBrowseState>,
 ) -> TauriResult<Arc<SessionSnapshot<ArchiveSubject>>> {
-  state.begin_open(session_id)?;
+  let opening: SessionOpening<ArchiveSubject> = state.begin_open(session_id)?;
+
   log::info!("Opening archive world: {}", roots.describe());
 
   let assets: AssetMountState = AssetMountState::clone(&assets);
@@ -38,5 +39,5 @@ pub async fn archives_open_world(
     world.mounts.len()
   );
 
-  state.commit_open(session_id, ArchiveSubject::World { world })
+  opening.commit(ArchiveSubject::World { world })
 }

@@ -117,15 +117,13 @@ export class SpriteEquipmentEditorService {
   }
 
   /**
-   * Release the sprite when the editor is navigated away from.
+   * Release the sprite's image when the editor is navigated away from; the tool's scope closes the sprite.
    */
   @OnDeactivation()
   public onDeactivation(): void {
     cancelFlow(this, "spriteImage");
 
     this.assetService.release(this.spriteImage.value?.image.src ?? null);
-
-    this.session.release();
   }
 
   /**
