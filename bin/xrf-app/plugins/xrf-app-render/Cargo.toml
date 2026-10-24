@@ -27,7 +27,7 @@ xrf-utils = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-world = { workspace = true }
 
-# The child window under the webview that native viewports are drawn in.
+# The window's client area and instance, which native viewports draw their surface over.
 [target.'cfg(windows)'.dependencies]
 windows = { workspace = true, features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
 
@@ -57,6 +57,7 @@ rayon = { workspace = true }
 tauri = { workspace = true, features = ["test"] }
 xrf-app-core = { workspace = true, features = ["fixtures"] }
 xrf-environment = { workspace = true }
+xrf-test-utils = { workspace = true }
 xrf-visual = { workspace = true }
 
 [features]

@@ -1,11 +1,13 @@
 use tauri::State;
-use xrf_app_core::window::WindowCloseApprovals;
+use xrf_app_core::window::{InvokingWindow, WindowCloseApprovals};
 
-/// Let the next close asked of a window, named by its label, go ahead: its page asked first and was answered.
+/// Let the next close asked of the calling window go ahead: its page asked first and was answered.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "approve_window_close"))]
 #[tauri::command(rename = "approve_window_close")]
-pub fn system_approve_window_close(approvals: State<'_, WindowCloseApprovals>, window: String) {
-  log::info!("Window '{window}' may close: its page agreed");
+pub fn system_approve_window_close(approvals: State<'_, WindowCloseApprovals>, window: InvokingWindow) {
+  let label: &str = window.get_label();
 
-  approvals.approve(&window);
+  log::info!("Window '{label}' may close: its page agreed");
+
+  approvals.approve(label);
 }

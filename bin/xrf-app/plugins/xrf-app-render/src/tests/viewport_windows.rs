@@ -1,6 +1,6 @@
 use xrf_renderer::RenderViewportId;
 
-use crate::viewport_windows::ViewportWindows;
+use crate::viewport::viewport_windows::ViewportWindows;
 
 #[test]
 fn a_window_gives_up_only_its_own_viewports_in_attach_order() {

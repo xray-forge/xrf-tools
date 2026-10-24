@@ -2,15 +2,15 @@ use tauri::ipc::Channel;
 use xrf_renderer::{RenderEventSink, RenderViewportEvent};
 use xrf_world::{WorldEventSink, WorldViewportEvent};
 
-use crate::viewport_event::ViewportEvent;
+use crate::ViewportEvent;
 
 /// A viewport's events, the renderer's and the world's alike, sent down the channel its page attached it with.
-pub struct ChannelEventSink {
+pub(crate) struct ChannelEventSink {
   channel: Channel<ViewportEvent>,
 }
 
 impl ChannelEventSink {
-  pub fn new(channel: Channel<ViewportEvent>) -> Self {
+  pub(crate) fn new(channel: Channel<ViewportEvent>) -> Self {
     Self { channel }
   }
 

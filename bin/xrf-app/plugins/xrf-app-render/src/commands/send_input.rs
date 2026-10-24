@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldInputEvent;
 
-use crate::world_state::WorldState;
+use crate::WorldState;
 
 /// Hand a viewport one gesture the page heard over it.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "send_input"))]

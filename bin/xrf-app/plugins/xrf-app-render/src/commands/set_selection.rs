@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_renderer::{RenderSelection, RenderViewportId};
 
-use crate::renderer::Renderer;
+use crate::Renderer;
 
 /// Mark what of one viewport's level is selected, or nothing.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "set_selection"))]

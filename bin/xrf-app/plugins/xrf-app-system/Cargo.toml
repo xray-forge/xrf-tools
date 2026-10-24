@@ -33,6 +33,7 @@ serde_json = { workspace = true }
 # The mock runtime, which dispatches a command the way a webview would without one.
 tauri = { workspace = true, features = ["test"] }
 xrf-app-core = { workspace = true, features = ["fixtures"] }
+xrf-test-utils = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors and command bindings. Nothing in a normal build turns this on.

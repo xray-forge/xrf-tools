@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldModelPose;
 
-use crate::world_state::WorldState;
+use crate::WorldState;
 
 /// Stand one viewport's skinned models in a pose.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "pose_model"))]

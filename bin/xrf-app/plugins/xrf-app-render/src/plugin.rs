@@ -1,19 +1,15 @@
 use std::sync::Arc;
 
-use tauri::plugin::{Builder, TauriPlugin};
+use tauri::plugin::TauriPlugin;
 use tauri::webview::{PageLoadEvent, PageLoadPayload, WebviewWindow};
 use tauri::{AppHandle, Manager, RunEvent, Runtime, Webview, WindowEvent};
+use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::window::{WindowCloseApprovals, WindowHandles};
 use xrf_renderer::{RenderQueue, RenderWorkers};
 
-use crate::disk_cache_store::DiskCacheStore;
-use crate::packaged_bundle::PackagedBundle;
-use crate::render_viewports::RenderViewports;
-use crate::renderer::Renderer;
-use crate::texture_reloads::TextureReloads;
-use crate::viewport_shows::ViewportShows;
-use crate::world_state::WorldState;
+use crate::bundle::{DiskCacheStore, PackagedBundle};
+use crate::{RenderViewports, Renderer, TextureReloads, ViewportShows, WorldState};
 
 /// The `render` plugin: the native renderer (`Renderer`, its loaders on the application's pool, its bundle and the
 /// driver's pipeline cache on disk) and the units its commands and every domain's show take what they touch from: the
@@ -21,25 +17,24 @@ use crate::world_state::WorldState;
 /// (`RenderViewports`) and the drawn textures kept current with their files (`TextureReloads`). It knows no domain:
 /// each shows its own documents through these units. Its hooks detach a window's viewports as a page starts loading
 /// over them or the window closes, and stop the renderer as the application exits.
-pub struct RenderPlugin {}
+pub struct RenderPlugin;
 
 impl RenderPlugin {
-  pub const NAME: &'static str = crate::registry::render::NAME;
+  /// The cache, among the application's own, the driver's compiled pipelines are kept in between runs.
+  const PIPELINE_CACHE: &'static str = "renderer";
 
+  /// The plugin, its state managed as it sets up.
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
-    log::info!("Initialize plugin {}", Self::NAME);
-
-    Builder::new(Self::NAME)
+    crate::ipc::render::builder()
       .setup(|application, _| {
         // The renderer's loaders run on the application's one pool, beside every other job.
         let workers: RenderWorkers = RenderWorkers::new(application.state::<ExecutionState>().get_pool());
         let bundle: PackagedBundle = PackagedBundle::locate(application.path().resource_dir().ok().as_deref());
         // The driver's compiled pipelines, kept between runs where the backend keeps them.
         let store: Option<DiskCacheStore> = application
-          .path()
-          .app_cache_dir()
-          .ok()
-          .map(|directory| DiskCacheStore::new(directory.join("renderer")));
+          .state::<AppDirectories>()
+          .get_cache_directory(Self::PIPELINE_CACHE)
+          .map(DiskCacheStore::new);
 
         let world: WorldState = WorldState::new(workers.clone());
         let queue: RenderQueue = RenderQueue::new(workers, Arc::new(bundle), world.as_render_world());
@@ -59,10 +54,6 @@ impl RenderPlugin {
       })
       .on_page_load(Self::on_page_load)
       .on_event(Self::on_event)
-      .invoke_handler(xrf_app_core::logging::warn_on_unhandled_command(
-        Self::NAME,
-        crate::registry::render::handler(),
-      ))
       .build()
   }
 
@@ -147,10 +138,5 @@ impl RenderPlugin {
       RunEvent::Exit => viewports.shut_down(),
       _ => {}
     }
-  }
-
-  #[cfg(feature = "typescript-bindings")]
-  pub fn specta_builder<R: Runtime>() -> tauri_specta::Builder<R> {
-    crate::registry::render::specta_builder()
   }
 }

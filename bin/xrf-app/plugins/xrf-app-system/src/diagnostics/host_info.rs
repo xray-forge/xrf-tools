@@ -45,24 +45,24 @@ impl HostInfo {
       os_version: System::os_version(),
       kernel_version: System::kernel_version(),
       arch: System::cpu_arch(),
-      cpu_count: logical_cpu_count(),
+      cpu_count: Self::count_logical_cpus(),
       physical_core_count: System::physical_core_count().map(|it| it as u32),
-      total_memory: total_memory(),
+      total_memory: Self::read_total_memory(),
       pid: std::process::id(),
     }
   }
-}
 
-/// Logical processors visible to this process, which is the figure the execution pool sizes itself from.
-fn logical_cpu_count() -> u32 {
-  thread::available_parallelism().map_or(0, |it| it.get() as u32)
-}
+  /// Logical processors visible to this process, which is the figure the execution pool sizes itself from.
+  fn count_logical_cpus() -> u32 {
+    thread::available_parallelism().map_or(0, |it| it.get() as u32)
+  }
 
-/// Physical memory installed, read through a throwaway view because it is the only machine-wide figure wanted here.
-fn total_memory() -> u64 {
-  let mut system: System = System::new();
+  /// Physical memory installed, read through a throwaway view because it is the only machine-wide figure wanted here.
+  fn read_total_memory() -> u64 {
+    let mut system: System = System::new();
 
-  system.refresh_memory_specifics(MemoryRefreshKind::nothing().with_ram());
+    system.refresh_memory_specifics(MemoryRefreshKind::nothing().with_ram());
 
-  system.total_memory()
+    system.total_memory()
+  }
 }

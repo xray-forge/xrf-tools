@@ -20,6 +20,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
+  /// The renderer whose render thread `queue` feeds, no viewport attached yet.
   pub fn new(queue: RenderQueue) -> Self {
     Self {
       queue,
@@ -45,6 +46,7 @@ impl Renderer {
     Some(id)
   }
 
+  /// Stops drawing a viewport, letting go of its swapchain on the render thread.
   pub fn detach_viewport(&self, id: RenderViewportId) {
     self.queue.send(RenderCommand::Detach { id });
   }
@@ -59,6 +61,7 @@ impl Renderer {
     self.queue.stop(wait)
   }
 
+  /// Places a viewport within its window and sizes it.
   pub fn set_layout(&self, id: RenderViewportId, layout: RenderViewportLayout) {
     self.queue.send(RenderCommand::Layout { id, layout });
   }
@@ -135,6 +138,7 @@ impl Renderer {
     receiver
   }
 
+  /// Sets how a viewport draws what it shows: its mode, its passes and what it overlays.
   pub fn set_view_options(&self, id: RenderViewportId, options: RenderViewOptions) {
     self.queue.send(RenderCommand::Options {
       id,

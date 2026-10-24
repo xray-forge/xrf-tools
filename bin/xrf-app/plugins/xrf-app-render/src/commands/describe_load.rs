@@ -1,11 +1,10 @@
 use std::sync::mpsc::Receiver;
 
 use tauri::State;
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 use xrf_renderer::{RenderLoadReport, RenderViewportId};
 
-use crate::render_answer::{ANSWER_TIMEOUT, await_answer};
-use crate::renderer::Renderer;
+use crate::{RenderAnswer, Renderer};
 
 /// Say how far the level a viewport was last asked to show has loaded, for a caller polling rather than listening; none
 /// before its view is made.
@@ -17,10 +16,5 @@ pub async fn render_describe_load(
 ) -> TauriResult<Option<RenderLoadReport>> {
   let answer: Receiver<Option<RenderLoadReport>> = renderer.describe_load(viewport);
 
-  await_answer(
-    answer,
-    ANSWER_TIMEOUT,
-    format!("Viewport {} answered no load", viewport.0),
-  )
-  .await
+  RenderAnswer::await_viewport(answer, viewport, "load").await
 }

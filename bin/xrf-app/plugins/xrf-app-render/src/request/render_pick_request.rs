@@ -1,5 +1,3 @@
-//! What the render commands that take more than an address were asked to do.
-
 use serde::{Deserialize, Serialize};
 
 /// A point of a viewport to name what its level draws under.

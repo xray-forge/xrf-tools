@@ -2,10 +2,10 @@
 
 use serde::Serialize;
 use sysinfo::{Pid, Process, System};
-use xrf_app_core::process::{process_started_at_epoch_millis, process_uptime};
+use xrf_app_core::logging::ProcessStart;
 use xrf_utils::duration_to_millis;
 
-use crate::diagnostics::process_tree::{DescendantUsage, sum_descendants};
+use crate::diagnostics::DescendantUsage;
 
 /// One reading of what the application costs, and of how long it has been running.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -51,10 +51,10 @@ impl RuntimeSnapshot {
   /// Reads one snapshot off a refreshed view of the machine.
   pub fn read(system: &System, pid: Pid) -> Self {
     Self {
-      started_at: process_started_at_epoch_millis(),
-      uptime: duration_to_millis(process_uptime()),
+      started_at: ProcessStart::get_started_at(),
+      uptime: duration_to_millis(ProcessStart::get_uptime()),
       process: ProcessUsage::of(system, pid),
-      descendants: sum_descendants(system, pid),
+      descendants: DescendantUsage::sum(system, pid),
       machine: MachineUsage::of(system),
     }
   }

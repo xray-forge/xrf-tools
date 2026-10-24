@@ -1,6 +1,6 @@
 use sysinfo::Pid;
 use tauri::State;
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 
 use crate::diagnostics::{MachineProbeState, RuntimeSnapshot};
 
@@ -10,5 +10,5 @@ use crate::diagnostics::{MachineProbeState, RuntimeSnapshot};
 pub async fn system_get_runtime_snapshot(state: State<'_, MachineProbeState>) -> TauriResult<RuntimeSnapshot> {
   let pid: Pid = Pid::from_u32(std::process::id());
 
-  state.with_reader(|system| RuntimeSnapshot::read(system, pid))
+  state.read(move |system| RuntimeSnapshot::read(system, pid)).await
 }

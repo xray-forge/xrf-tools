@@ -2,7 +2,7 @@ use tauri::State;
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldToggles;
 
-use crate::world_state::WorldState;
+use crate::WorldState;
 
 /// Set what of one viewport's world plays: the weather's rain, bolts and wind, the campfires, the ambient effects, and
 /// which spawn groups stream in.

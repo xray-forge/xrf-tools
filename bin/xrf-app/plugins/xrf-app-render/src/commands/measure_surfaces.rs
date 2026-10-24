@@ -1,10 +1,10 @@
 use tauri::State;
+use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::types::TauriResult;
 use xrf_renderer::RenderViewportId;
 use xrf_world::WorldSurfaceGeometry;
 
-use crate::world_state::WorldState;
+use crate::WorldState;
 
 /// Count what each shader table entry of a viewport's level draws across the sectors resident.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "measure_surfaces"))]

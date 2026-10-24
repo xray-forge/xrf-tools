@@ -15,6 +15,7 @@ pub struct WindowHostBuilder {
 }
 
 impl WindowHostBuilder {
+  /// A builder of hosts over the native window `handle` names.
   pub fn new(handle: NonZeroIsize) -> Self {
     Self { handle }
   }

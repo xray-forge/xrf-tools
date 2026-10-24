@@ -1,21 +1,20 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::mpsc::{Receiver, Sender, channel};
+use std::time::Duration;
 
+use tauri::ipc::Channel;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer::{
-  RenderAssetSource, RenderBundle, RenderEventSink, RenderLevelDetails, RenderLevelParticles, RenderLevelSource,
-  RenderLevelSpawn, RenderLevelWeather, RenderQueue, RenderSpawnModels, RenderViewportEvent, RenderViewportId,
-  RenderWindowHost, RenderWorkers, SurfaceTargetUnsafe,
+  RenderAssetSource, RenderBundle, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
+  RenderLevelWeather, RenderQueue, RenderSpawnModels, RenderViewportId, RenderWindowHost, RenderWorkers,
+  SurfaceTargetUnsafe,
 };
 use xrf_visual::{LightsDescription, SectorPackage};
-use xrf_world::{WorldEventSink, WorldViewportEvent};
 
-use crate::render_viewports::RenderViewports;
-use crate::renderer::Renderer;
-use crate::viewport_shows::ViewportShows;
-use crate::world_state::WorldState;
+use crate::{RenderViewports, Renderer, ViewportShows, WorldState};
 
 /// A bundle holding nothing.
 struct EmptyBundle;
@@ -50,19 +49,6 @@ unsafe impl RenderWindowHost for HiddenWindow {
   fn is_hidden(&self) -> bool {
     true
   }
-}
-
-/// A page that hears nothing.
-struct Silence;
-
-impl RenderEventSink for Silence {
-  fn send(&self, _: RenderViewportEvent) -> bool {
-    true
-  }
-}
-
-impl WorldEventSink for Silence {
-  fn send(&self, _: WorldViewportEvent) {}
 }
 
 /// A level holding nothing, which a viewport can be asked to show.
@@ -148,9 +134,10 @@ fn create_units() -> Units {
   }
 }
 
+/// Attaches a viewport to `window` for a page that hears nothing.
 fn attach(viewports: &RenderViewports, window: &str) -> RenderViewportId {
   viewports
-    .attach(window, Arc::new(HiddenWindow), (Box::new(Silence), Box::new(Silence)))
+    .attach(window, Arc::new(HiddenWindow), Channel::new(|_| Ok(())))
     .expect("a viewport number")
 }
 
@@ -200,6 +187,34 @@ fn lets_go_only_of_the_viewports_of_a_window_whose_page_went() {
   assert!(!viewports.detach_window("main"), "nothing is left in it to let go");
   assert_eq!(shows.show(gone, gone_ticket, level()), None);
   assert!(shows.show(kept, kept_ticket, level()).is_some());
+
+  viewports.shut_down();
+}
+
+// Held no longer once the renderer let go, whatever the destroy answers, so a window that failed to go still closes.
+#[test]
+fn a_window_whose_viewports_drew_is_held_until_released_then_let_go() {
+  let Units { viewports, .. } = create_units();
+  let (destroyed, heard): (Sender<()>, Receiver<()>) = channel();
+
+  attach(&viewports, "main");
+
+  assert!(
+    !viewports.close_window("tool", || {}),
+    "a window that drew nothing closes at once"
+  );
+  assert!(viewports.close_window("main", move || destroyed.send(()).expect("the test listening")));
+  assert!(
+    viewports.close_window("main", || {}),
+    "a window held stays held whoever asks"
+  );
+
+  heard
+    .recv_timeout(Duration::from_secs(5))
+    .expect("the window destroyed once the renderer let go of it");
+
+  assert!(!viewports.is_closing("main"));
+  assert!(!viewports.close_window("main", || {}), "nothing is left to hold it for");
 
   viewports.shut_down();
 }
