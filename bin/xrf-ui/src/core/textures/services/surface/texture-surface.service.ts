@@ -7,7 +7,7 @@ import { Nullable } from "@xrf/types";
 import { transformError } from "@/core/error/lib";
 import { fetchBulk } from "@/core/ipc/bulk";
 import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
-import { TextureDescription } from "@/core/ipc/types/xrf-app";
+import { EAssetSource, TextureDescription } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import {
   EMPTY_TEXTURE_SURFACE,
@@ -104,12 +104,14 @@ export class TextureSurfaceService {
    * Reads one half of the pair as texels, decoded by the backend from whatever layout it is stored in.
    *
    * @param roots - Roots the description was resolved in, so the read reaches the same file.
-   * @param logicalPath - Engine identity of the file.
+   * @param logicalPath - Engine identity of the file, an asset of those roots.
    * @returns Its texels, or nothing for a read that failed.
    */
   private async readTexels(roots: XrayRoots, logicalPath: string): Promise<Nullable<ITextureTexels>> {
     try {
-      return readTextureTexels(await fetchBulk(texturesBulkRoutes.readTexels(roots, logicalPath)));
+      return readTextureTexels(
+        await fetchBulk(texturesBulkRoutes.readTexels(roots, { kind: EAssetSource.ASSET, logicalPath }))
+      );
     } catch (error: unknown) {
       this.log.error(`Failed to read '${logicalPath}':`, transformError(error));
 

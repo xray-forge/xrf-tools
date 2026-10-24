@@ -2,7 +2,7 @@ import { Channel } from "@tauri-apps/api/core";
 import { EventType } from "@wirestate/core";
 import { Nullable } from "@xrf/types";
 
-import { EJobKind, JobConclusion } from "@/core/ipc/types/xrf-app";
+import { JobConclusion, JobKind } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { INotificationPayload } from "@/core/notifications/lib";
 
@@ -35,7 +35,7 @@ export interface IJobOutcome<T> {
  */
 export interface IJobDescriptor<T> {
   /** What kind of work this is. Also how a tool finds its own run again after its view was torn down. */
-  kind: EJobKind;
+  kind: JobKind;
   /**
    * Sends the command, with the identity and channel the jobs service minted for it.
    *

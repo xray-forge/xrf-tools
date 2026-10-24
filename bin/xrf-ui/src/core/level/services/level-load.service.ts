@@ -30,7 +30,6 @@ import {
   SelectedLevelDescription,
   SessionChange,
   SessionId,
-  SessionRestore,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
@@ -254,7 +253,9 @@ export class LevelLoadService {
   public *restore(): TFlow {
     this.heard = [];
 
-    const snapshot: SessionRestore<SelectedLevelDescription> = yield* call(levelsCommands.getLevel(this.session.scope));
+    const snapshot: Nullable<SessionSnapshot<SelectedLevelDescription>> = yield* call(
+      levelsCommands.restoreLevel(this.session.tool)
+    );
 
     this.session.adopt(snapshot);
 
@@ -367,7 +368,7 @@ export class LevelLoadService {
   /** Reads the committed level again, for `onSessionChange`; a failure leaves what is shown, stale. */
   private async refresh(): Promise<void> {
     try {
-      this.adoptRefreshed(await levelsCommands.getLevel(this.session.scope));
+      this.adoptRefreshed(await levelsCommands.restoreLevel(this.session.tool));
     } catch (error: unknown) {
       this.log.warn("Could not read the level again:", transformError(error));
     }
@@ -378,7 +379,7 @@ export class LevelLoadService {
    * what is shown instead.
    */
   @BoundAction()
-  private adoptRefreshed(answer: SessionRestore<SelectedLevelDescription>): void {
+  private adoptRefreshed(answer: Nullable<SessionSnapshot<SelectedLevelDescription>>): void {
     const open: Maybe<SessionSnapshot<SelectedLevelDescription>> = this.level.value?.selected;
 
     if (

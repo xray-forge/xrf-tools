@@ -19,7 +19,7 @@ afterEach(() => {
 
 describe("LevelGoToAction", () => {
   it("opens the form at where the camera is as it opens", async () => {
-    setMockInvokeResponses({ ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()) });
+    setMockInvokeResponses({ ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()) });
 
     const { container, load, viewport } = mockLevelViewContainer();
     const rendered = renderWithProviders(<LevelGoToAction />, { container });

@@ -14,61 +14,43 @@ import {
   ConfigsSectionRequest,
   ConfigsVerifyRequest,
   SessionId,
-  SessionScope,
+  SessionRestore,
+  SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { LtxProjectFormatResult, LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
 import {
   LtxAnchoredFinding,
-  LtxInventory,
   LtxResolvedIndex,
   LtxResolvedSection,
   LtxSchemeFieldReport,
 } from "@/core/ipc/types/xrf-ltx-inspect";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
 export const configsCommands = {
-  /** Report which LTX configs roots exposes are misformatted. */
+  /**
+   * Report which LTX configs roots exposes are misformatted, in the format's own lane so a check never reads half a
+   * rewrite.
+   */
   checkDirectoryFormat: (request: ConfigsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LtxProjectFormatResult>("plugin:configs|check_directory_format", { request, jobId, progress }),
-  /** Closes the configs project, releasing its mounts and whatever it had resolved. */
-  closeProject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:configs|close_project", { sessionIds }),
-  /** Rewrite the LTX configs roots exposes. */
+  /** Close the configs projects `session_ids` name, committed or opening, and whatever each had resolved. */
+  closeProject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<void>("plugin:configs|close_project", { sessionIds }),
+  /** Rewrite the LTX configs roots exposes, as one commit, one format or format check at a time. */
   formatDirectory: (request: ConfigsFormatRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LtxProjectFormatResult>("plugin:configs|format_directory", { request, jobId, progress }),
-  /** What configs project a tool holds, the newest it opened, for a page attaching to it after a reload. */
-  getProject: (scope: SessionScope) =>
-    __TAURI_INVOKE<{
-      /** Identity every later read is addressed by. */
-      sessionId: SessionId;
-      /** The trees this project searched, as the backend resolved them, so a reload restores the same open. */
-      roots: XrayRoots;
-      /** Scope inside those trees, or nothing for all of them. */
-      prefix: string | null;
-      /** Whether configs resolve under the Monolith/Anomaly patch dialect. */
-      isDltx: boolean;
-      /** Host path the project reports itself at, for a crumb that names something a person recognises. */
-      root: string;
-      /** Every config the project holds, and what each one is to it. */
-      inventory: LtxInventory;
-      /**
-       * Section schemes the project's `*.scheme.ltx` files declare, by name.
-       *
-       * Sent once with the open rather than per document: a tree declares tens of them and every structure read joins
-       * against the same set.
-       */
-      declaredSchemes: Array<string>;
-    } | null>("plugin:configs|get_project", { scope }),
-  /** Everything wrong with one resolved root, anchored to the file and line a person has to open. */
+  /**
+   * Everything wrong with one resolved root, anchored to the file and line a person has to open; verified once and
+   * answered as held.
+   */
   listFindings: (request: ConfigsResolvedRequest) =>
     __TAURI_INVOKE<Array<LtxAnchoredFinding>>("plugin:configs|list_findings", { request }),
   /** Lists every section one entry point resolves to, named and counted. */
   listResolvedSections: (request: ConfigsResolvedRequest) =>
     __TAURI_INVOKE<LtxResolvedIndex>("plugin:configs|list_resolved_sections", { request }),
-  /** Opens a configs project for browsing, and lists what it holds. */
+  /** Open a configs project for browsing over the shared asset roots, read on the pool, and list what it holds. */
   openProject: (request: ConfigsOpenRequest) =>
-    __TAURI_INVOKE<ConfigsProjectDescriptor>("plugin:configs|open_project", { request }),
+    __TAURI_INVOKE<SessionSnapshot<ConfigsProjectDescriptor>>("plugin:configs|open_project", { request }),
   /** Reads one config as the authored view renders it: its lines, and what only the parser knows about them. */
   readDocument: (request: ConfigsReadDocumentRequest) =>
     __TAURI_INVOKE<ConfigsDocument>("plugin:configs|read_document", { request }),
@@ -92,7 +74,13 @@ export const configsCommands = {
       /** Every field the scheme declares and every field the section holds, merged. */
       fields: Array<LtxSchemeFieldReport>;
     } | null>("plugin:configs|read_section_scheme", { request }),
-  /** Verifies LTX configs through the VFS, including archived files. */
+  /**
+   * The configs project `tool` holds in the asking window, the newest it opened, for a page attaching to it after a
+   * reload.
+   */
+  restoreProject: (tool: string) =>
+    __TAURI_INVOKE<SessionRestore<ConfigsProjectDescriptor>>("plugin:configs|restore_project", { tool }),
+  /** Verifies LTX configs through the VFS, including archived files, one verification at a time. */
   verifyDirectory: (request: ConfigsVerifyRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<LtxProjectVerifyResult>("plugin:configs|verify_directory", { request, jobId, progress }),
 };

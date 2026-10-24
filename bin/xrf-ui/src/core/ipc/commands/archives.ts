@@ -17,7 +17,6 @@ import {
   ImageDescriptor,
   SessionId,
   SessionRestore,
-  SessionScope,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { ArchiveReadResult, ArchiveSharedPayload } from "@/core/ipc/types/xrf-archive";
@@ -36,8 +35,8 @@ import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** Commands */
 export const archivesCommands = {
-  /** Releases only the committed and pending openings owned by the closing frontend. */
-  closeSubject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:archives|close_subject", { sessionIds }),
+  /** Close the subjects `session_ids` name, committed or opening. */
+  closeSubject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<void>("plugin:archives|close_subject", { sessionIds }),
   /** Where the open subject looks for an engine path, in the order it looks. */
   describeResolution: (sessionId: SessionId) =>
     __TAURI_INVOKE<ArchiveResolution>("plugin:archives|describe_resolution", { sessionId }),
@@ -50,12 +49,6 @@ export const archivesCommands = {
   /** Write one file of the open subject to a path the user chose. */
   extractFile: (sessionId: SessionId, name: string, destination: string) =>
     __TAURI_INVOKE<ArchiveExtractResult>("plugin:archives|extract_file", { sessionId, name, destination }),
-  /**
-   * What a tool's explorer has open, the newest it opened, so a reloaded frontend adopts it instead of asking for it
-   * again.
-   */
-  getSubject: (scope: SessionScope) =>
-    __TAURI_INVOKE<SessionRestore<ArchiveSubject>>("plugin:archives|get_subject", { scope }),
   /** What the open subject answers with more than one copy, and what it cannot reach at all. */
   listOverrides: (sessionId: SessionId) =>
     __TAURI_INVOKE<ArchiveOverrideReport>("plugin:archives|list_overrides", { sessionId }),
@@ -65,37 +58,43 @@ export const archivesCommands = {
   /** Open one archive volume, or every volume beneath a directory, as a single name table. */
   openVolumes: (sessionId: SessionId, path: string) =>
     __TAURI_INVOKE<SessionSnapshot<ArchiveSubject>>("plugin:archives|open_volumes", { sessionId, path }),
-  /** Open a game folder as the engine mounts it: its archives and the loose tree standing in front of them. */
+  /**
+   * Open a game folder as the engine mounts it: its archives and the loose tree standing in front of them. The world
+   * follows commits: one that moves what its listing read lists it again, at the revision a page then refreshes to.
+   */
   openWorld: (sessionId: SessionId, roots: XrayRoots) =>
     __TAURI_INVOKE<SessionSnapshot<ArchiveSubject>>("plugin:archives|open_world", { sessionId, roots }),
-  /** Read one file of the open subject as text, subject to the viewer's read policy. */
-  readFile: (sessionId: SessionId, path: string) =>
-    __TAURI_INVOKE<ArchiveReadResult>("plugin:archives|read_file", { sessionId, path }),
+  /** Read one file of the open subject as text, subject to the viewer's read policy, whose ceiling keeps it a short read. */
+  readFile: (sessionId: SessionId, name: string) =>
+    __TAURI_INVOKE<ArchiveReadResult>("plugin:archives|read_file", { sessionId, name }),
   /**
-   * Describe one entry of the open subject in words, for a format the viewer cannot draw.
-   *
-   * Addressed by the session rather than by roots, because the answer is about an entry of what is open: the subject
-   * owns the name table a reference is resolved against and the policy the read is bounded by. The picture and sound
-   * commands take roots instead because they exist to serve bytes to the webview, which is a different question.
+   * What `tool`'s explorer has open in the asking window, the newest it opened, so a reloaded frontend adopts it
+   * instead of asking for it again.
    */
-  describeFile: (sessionId: SessionId, path: string) =>
-    __TAURI_INVOKE<ArchiveFileDescription>("plugin:archives|describe_file", { sessionId, path }),
-  /** Report whatever the engine would read out of a sound, without handing over the sound. */
-  describeAudio: (roots: XrayRoots, logicalPath: string) =>
-    __TAURI_INVOKE<AudioDescriptor>("plugin:archives|describe_audio", { roots, logicalPath }),
-  /** Report the shape of a texture, without decoding it into a picture. */
-  describeTexture: (roots: XrayRoots, logicalPath: string) =>
-    __TAURI_INVOKE<AssetTextureDescriptor>("plugin:archives|describe_texture", { roots, logicalPath }),
+  restoreSubject: (tool: string) =>
+    __TAURI_INVOKE<SessionRestore<ArchiveSubject>>("plugin:archives|restore_subject", { tool }),
   /**
-   * Report the shape of a picture the webview draws as it stands.
+   * Describe one entry of the open subject in words, for a format the viewer cannot draw: on the pool, since a
+   * describer may parse a whole level bundle or walk a large file by seeking.
+   */
+  describeFile: (sessionId: SessionId, name: string) =>
+    __TAURI_INVOKE<ArchiveFileDescription>("plugin:archives|describe_file", { sessionId, name }),
+  /** Report whatever the engine would read out of a sound of the open subject, without handing over the sound. */
+  describeAudio: (sessionId: SessionId, name: string) =>
+    __TAURI_INVOKE<AudioDescriptor>("plugin:archives|describe_audio", { sessionId, name }),
+  /** Report the shape of a texture of the open subject, without decoding it into a picture. */
+  describeTexture: (sessionId: SessionId, name: string) =>
+    __TAURI_INVOKE<AssetTextureDescriptor>("plugin:archives|describe_texture", { sessionId, name }),
+  /**
+   * Report the shape of a picture of the open subject the webview draws as it stands.
    *
    * # Errors
    *
-   * Returns an error when the path resolves to nothing, its bytes cannot be read, or its extension is not one a
+   * Returns an error when the subject holds no such file, its bytes cannot be read, or its extension is not one a
    * webview draws - which the caller decided before asking, so reaching it means the two disagree.
    */
-  describeImage: (roots: XrayRoots, logicalPath: string) =>
-    __TAURI_INVOKE<ImageDescriptor>("plugin:archives|describe_image", { roots, logicalPath }),
+  describeImage: (sessionId: SessionId, name: string) =>
+    __TAURI_INVOKE<ImageDescriptor>("plugin:archives|describe_image", { sessionId, name }),
   /** Hand back a packing configuration with nothing chosen yet. */
   defaultPackConfig: () => __TAURI_INVOKE<ArchivePackConfig>("plugin:archives|default_pack_config"),
   /** Write the selection rules of a configuration out as a packing configuration file. */

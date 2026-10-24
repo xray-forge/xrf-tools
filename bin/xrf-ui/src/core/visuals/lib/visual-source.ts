@@ -1,6 +1,6 @@
 import { assertExhaustive } from "@xrf/types";
 
-import { EVisualSource, VisualSource } from "@/core/ipc/types/xrf-app";
+import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app";
 
 /**
  * Human readable name of where a visual came from.
@@ -14,12 +14,12 @@ import { EVisualSource, VisualSource } from "@/core/ipc/types/xrf-app";
  * @param source - The visual source to describe.
  * @returns A label identifying the source.
  */
-export function describeVisualSource(source: VisualSource): string {
+export function describeVisualSource(source: AssetSource): string {
   switch (source.kind) {
-    case EVisualSource.FILE:
+    case EAssetSource.FILE:
       return source.path;
 
-    case EVisualSource.ASSET:
+    case EAssetSource.ASSET:
       return source.logicalPath;
 
     default:

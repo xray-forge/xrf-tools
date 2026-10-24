@@ -3,7 +3,7 @@ import { ArchiveProject } from "@/core/ipc/types/xrf-archive";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /**
- * The roots an archived asset is read out of, which is the project's own tree.
+ * The roots an archived model is opened in by the visuals viewer, which is the project's own tree.
  *
  * Centred on nothing: an entry has no filesystem path of its own to search beside, so the volumes under the project
  * root are the whole roots.

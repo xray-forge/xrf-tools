@@ -11,6 +11,7 @@ import {
   WeatherCycleKind,
   WeatherDescriptor,
 } from "@/core/ipc/types/xrf-environment";
+import { GamedataVerificationType } from "@/core/ipc/types/xrf-gamedata";
 import { JobOutcome, JobProgress } from "@/core/ipc/types/xrf-job";
 import { EnvModifier } from "@/core/ipc/types/xrf-level";
 import { LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxInventory } from "@/core/ipc/types/xrf-ltx-inspect";
@@ -23,7 +24,15 @@ import {
   RenderViewportEvent,
   RenderViewportId,
 } from "@/core/ipc/types/xrf-renderer";
-import { ClsId, SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
+import { Status } from "@/core/ipc/types/xrf-report";
+import {
+  ClsId,
+  SpawnALifeSpawnsChunk,
+  SpawnArtefactSpawnsChunk,
+  SpawnGraphsChunk,
+  SpawnHeaderChunk,
+  SpawnPatrolsChunk,
+} from "@/core/ipc/types/xrf-spawn";
 import {
   EquipmentSlotOccupant,
   ImageShape,
@@ -31,12 +40,9 @@ import {
   TextureEncodingQuality,
 } from "@/core/ipc/types/xrf-texture";
 import {
-  TranslationBuildLanguageSummary,
   TranslationLanguage,
-  TranslationParseCensus,
   TranslationProjectDescriptor,
   TranslationProjectMode,
-  TranslationVerifyLanguageSummary,
 } from "@/core/ipc/types/xrf-translation";
 import {
   XrayAsset,
@@ -55,8 +61,44 @@ import {
 } from "@/core/ipc/types/xrf-visual";
 import { WorldViewportEvent } from "@/core/ipc/types/xrf-world";
 
+/** Comparing two trees without writing. */
+export const ARCHIVES_JOB_COMPARE: string = "archives.compare";
+
+/** Extracting a directory of the open subject. */
+export const ARCHIVES_JOB_EXTRACT: string = "archives.extract";
+
+/** Packing a tree into volumes. */
+export const ARCHIVES_JOB_PACK: string = "archives.pack";
+
+/** Publishing a tree's difference as patch volumes. */
+export const ARCHIVES_JOB_PATCH: string = "archives.patch";
+
+/** Unpacking a volume set whole. */
+export const ARCHIVES_JOB_UNPACK: string = "archives.unpack";
+
+/** Checking that a directory's configs are formatted, writing nothing. */
+export const CONFIGS_JOB_CHECK_FORMAT: string = "configs.check-format";
+
+/** Formatting a directory's configs as one commit. */
+export const CONFIGS_JOB_FORMAT: string = "configs.format";
+
+/** Verifying a directory's configs. */
+export const CONFIGS_JOB_VERIFY: string = "configs.verify";
+
+/** Verifying a gamedata project. */
+export const GAMEDATA_JOB_VERIFY: string = "gamedata.verify";
+
+/** Capturing a cubemap around a viewport's camera, face by face. */
+export const LEVELS_JOB_CAPTURE_CUBE: string = "levels.capture-cube";
+
+/** Capturing a level map in a viewport, tile by tile. */
+export const LEVELS_JOB_CAPTURE_MAP: string = "levels.capture-map";
+
 /** What a change event calls a level's collision form when it goes stale. */
 export const LEVEL_COLLISION_PART: string = "collision";
+
+/** What a change event calls a level's console defaults when they go stale. */
+export const LEVEL_CONSOLE_PART: string = "console";
 
 /** What a change event calls what a level's grass was read from when it goes stale. */
 export const LEVEL_DETAILS_PART: string = "details";
@@ -105,6 +147,42 @@ export const LEVEL_TEXTURES_PART: string = "textures";
 
 /** What a change event calls what a level's weather plays with beyond its environment when it goes stale. */
 export const LEVEL_WEATHER_PART: string = "weather";
+
+/** Packing a directory of spawn chunks into one file. */
+export const SPAWN_JOB_PACK: string = "spawn.pack";
+
+/** Unpacking a spawn file into a directory of chunks. */
+export const SPAWN_JOB_UNPACK: string = "spawn.unpack";
+
+/** Packing loose inventory icons into an equipment sprite sheet. */
+export const SPRITE_EQUIPMENT_JOB_PACK: string = "sprite-equipment.pack";
+
+/** Rebuilding a texture from a source image, as its descriptor says to. */
+export const TEXTURES_JOB_BUILD: string = "textures.build";
+
+/** Weighing every candidate format against one texture. */
+export const TEXTURES_JOB_COMPARE_ENCODINGS: string = "textures.compare-encodings";
+
+/** Generating a bump pair from a height map. */
+export const TEXTURES_JOB_MAKE_BUMP: string = "textures.make-bump";
+
+/** Saving a node's descriptor, and its texture with it. */
+export const TEXTURES_JOB_SAVE: string = "textures.save";
+
+/** Compiling translation sources into string tables. */
+export const TRANSLATIONS_JOB_BUILD: string = "translations.build";
+
+/** Checking that translation sources are normalized, writing nothing. */
+export const TRANSLATIONS_JOB_CHECK_FORMAT: string = "translations.check-format";
+
+/** Normalizing translation sources. */
+export const TRANSLATIONS_JOB_FORMAT: string = "translations.format";
+
+/** Importing raw XML string tables into translation sources. */
+export const TRANSLATIONS_JOB_PARSE: string = "translations.parse";
+
+/** Reporting which translations are missing from which languages. */
+export const TRANSLATIONS_JOB_VERIFY: string = "translations.verify";
 
 /** Every `kind` the `ArchiveAnimationBehavior` union is told apart by, so a switch or a comparison names one. */
 export enum EArchiveAnimationBehavior {
@@ -1297,7 +1375,7 @@ export type ArchiveUnreadSource = {
 
 /** One mounted world the explorer browses: an installation, or any tree read as the engine would read it. */
 export type ArchiveWorld = {
-  /** How the world was opened, so every later read of it addresses exactly these mounts. */
+  /** How the world was opened, so a commit's follow lists it again over the same mounts. */
   roots: XrayRoots;
   /** Sources searched, highest priority first, as each one names itself. */
   mounts: Array<string>;
@@ -1367,6 +1445,24 @@ export type AssetChangeEvent = {
   revision: XrayRevision;
   sessions: Array<SessionChange>;
 };
+
+/** Every `kind` the `AssetSource` union is told apart by, so a switch or a comparison names one. */
+export enum EAssetSource {
+  /** A file on disk, named by its filesystem path. */
+  FILE = "file",
+  /** An asset of the roots, named by its logical path such as `meshes\actors\stalker.ogf`. */
+  ASSET = "asset",
+}
+
+/**
+ * Where a document is read from: a file on disk, read by its path and mounted nowhere, or an asset of the roots, loose
+ * or archived, read by its logical path.
+ */
+export type AssetSource =
+  /** A file on disk, named by its filesystem path. */
+  | { kind: "file"; path: string }
+  /** An asset of the roots, named by its logical path such as `meshes\actors\stalker.ogf`. */
+  | { kind: "asset"; logicalPath: string };
 
 /** What a texture file is, once it has been located. */
 export type AssetTextureDescriptor = {
@@ -1442,10 +1538,8 @@ export type ConfigsOpenRequest = {
   isDltx: boolean;
 };
 
-/** What one open of the configs explorer answers with. */
+/** What one open of the configs explorer answers with, under the opening's identity. */
 export type ConfigsProjectDescriptor = {
-  /** Identity every later read is addressed by. */
-  sessionId: SessionId;
   /** The trees this project searched, as the backend resolved them, so a reload restores the same open. */
   roots: XrayRoots;
   /** Scope inside those trees, or nothing for all of them. */
@@ -1467,7 +1561,7 @@ export type ConfigsProjectDescriptor = {
 
 /** Which config of which open a reader wants. */
 export type ConfigsReadDocumentRequest = {
-  /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
+  /** The open this read is addressed to; a read naming one closed is refused rather than answered. */
   sessionId: SessionId;
   /** Engine identity of the config to read. */
   path: string;
@@ -1475,7 +1569,7 @@ export type ConfigsReadDocumentRequest = {
 
 /** Which sections of a resolved root a page wants. */
 export type ConfigsReadSectionsRequest = {
-  /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
+  /** The open this read is addressed to; a read naming one closed is refused rather than answered. */
   sessionId: SessionId;
   /** Engine identity of the entry point the sections belong to. */
   entry: string;
@@ -1485,7 +1579,7 @@ export type ConfigsReadSectionsRequest = {
 
 /** Which resolved root a reader wants, of which open. */
 export type ConfigsResolvedRequest = {
-  /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
+  /** The open this read is addressed to; a read naming one closed is refused rather than answered. */
   sessionId: SessionId;
   /** Engine identity of the entry point to resolve. */
   entry: string;
@@ -1493,7 +1587,7 @@ export type ConfigsResolvedRequest = {
 
 /** Which section of a resolved root a reader wants explained. */
 export type ConfigsSectionRequest = {
-  /** The open this read is addressed to; a read naming a replaced one is refused rather than answered. */
+  /** The open this read is addressed to; a read naming one closed is refused rather than answered. */
   sessionId: SessionId;
   /** Engine identity of the entry point the section belongs to. */
   entry: string;
@@ -1509,21 +1603,19 @@ export type ConfigsVerifyRequest = {
   prefix: string | null;
   /** Whether to resolve with the Monolith/Anomaly DLTX patch dialect. */
   isDltx: boolean;
+  /**
+   * Whether to check what only a case-sensitive file system breaks on too, such as an include naming a file in
+   * another case, which the vanilla game data does.
+   */
+  isStrict: boolean;
 };
 
-/** A cubemap asked of a viewport, around its camera, and the PNG its cross is written to. */
+/** A cubemap asked of a viewport, and the cross PNG it is written to. */
 export type CubeCaptureRequest = {
   viewport: RenderViewportId;
   capture: RenderCubeCapture;
   path: string;
 };
-
-/** Every `kind` the `CubeExportFormat` union is told apart by, so a switch or a comparison names one. */
-export enum ECubeExportFormat {
-  PNG = "png",
-  TGA = "tga",
-  DDS = "dds",
-}
 
 /**
  * What a cubemap is exported as: one cube DDS, six TGAs named `1` to `6` as `CDemoRecord` writes its faces, or six
@@ -1532,13 +1624,9 @@ export enum ECubeExportFormat {
 export type CubeExportFormat =
   | { kind: "png" }
   | { kind: "tga" }
-  | {
+  | ({
       kind: "dds";
-      format: TextureEncodingFormat;
-      quality: TextureEncodingQuality;
-      /** Whether each face carries its whole mip chain, reduced with the X-Ray converter's Kaiser kernel. */
-      isMipmapped: boolean;
-    };
+    } & ViewerDdsExport);
 
 /** A cubemap's capture written again in another shape. */
 export type CubeExportRequest = {
@@ -1590,21 +1678,6 @@ export type EnvironmentCycleEntry = {
   findings: number;
 };
 
-/** Every `kind` the `EquipmentConfigSource` union is told apart by, so a switch or a comparison names one. */
-export enum EEquipmentConfigSource {
-  /** A `system.ltx` on disk, named by its filesystem path. */
-  FILE = "file",
-  /** An entry point of the roots, named by its logical path such as `configs\system.ltx`. */
-  ASSET = "asset",
-}
-
-/** Where the configuration that annotates a sheet is read from. */
-export type EquipmentConfigSource =
-  /** A `system.ltx` on disk, named by its filesystem path. */
-  | { kind: "file"; path: string }
-  /** An entry point of the roots, named by its logical path such as `configs\system.ltx`. */
-  | { kind: "asset"; logicalPath: string };
-
 /** Where an opened sheet turned out to be, and whether anything can write there. */
 export type EquipmentSheetLocation = {
   /** The sheet as the roots located it, or nothing for a file opened by path outside any tree. */
@@ -1632,8 +1705,6 @@ export type EquipmentSheetSource =
 
 /** Everything the editor is told about one opened sheet. */
 export type EquipmentSpriteMetadata = {
-  /** Name the sheet is streamed to the webview under. */
-  name: string;
   /** What this open was asked to read, so a reload repeats the request rather than a reconstruction of it. */
   open: EquipmentSpriteOpen;
   /** Which copy of the sheet this is, and whether anything can write to it. */
@@ -1649,8 +1720,11 @@ export type EquipmentSpriteOpen = {
   /** Trees to search, and how each is read. */
   roots: XrayRoots;
   sheet: EquipmentSheetSource;
-  /** The configuration naming what sits on the sheet, or nothing to open it unannotated. */
-  config: EquipmentConfigSource | null;
+  /**
+   * The `system.ltx` naming what sits on the sheet, a file or an entry point of the roots, or nothing to open it
+   * unannotated.
+   */
+  config: AssetSource | null;
   /** Whether to resolve that configuration with the Monolith/Anomaly DLTX patch dialect. */
   isDltx: boolean;
 };
@@ -1667,10 +1741,9 @@ export type FileStamp = {
 
 /** One check's verdict, as the desktop surface shows it. */
 export type GamedataCheckSummary = {
-  /** The check that ran, spelled as the command line spells it. */
-  check: string;
-  /** `passed`, `failed`, `incomplete`, or `skipped`. */
-  status: string;
+  /** The check that ran. */
+  check: GamedataVerificationType;
+  status: Status;
   /** The check's own one-line verdict. */
   summary: string;
   findings: number;
@@ -1683,7 +1756,7 @@ export type GamedataVerifyRequest = {
   /** Gamedata root to verify. */
   root: string;
   /** Checks to run, or nothing for every one this build knows. */
-  checks: Array<string> | null;
+  checks: Array<GamedataVerificationType> | null;
   /** Whether a check that would warn should fail instead. */
   isStrict: boolean;
   /** The engine the tree is meant for, which configs the engines read differently are read as; detected on `auto`. */
@@ -1695,7 +1768,7 @@ export type GamedataVerifySummary = {
   /** Whether every selected check finished, or the run stopped before or inside a check. */
   outcome: JobOutcome;
   /** The aggregate verdict over the checks that ran. */
-  status: string;
+  status: Status;
   checks: Array<GamedataCheckSummary>;
   duration: number;
 };
@@ -1795,35 +1868,14 @@ export type JobDescription = {
   startedAt: number;
 };
 
-/** The application operations that can be registered, cancelled and rediscovered. */
-export enum EJobKind {
-  ARCHIVES_EXTRACT = "archives.extract",
-  ARCHIVES_COMPARE = "archives.compare",
-  ARCHIVES_PACK = "archives.pack",
-  ARCHIVES_PATCH = "archives.patch",
-  ARCHIVES_UNPACK = "archives.unpack",
-  CONFIGS_CHECK_FORMAT = "configs.check-format",
-  CONFIGS_FORMAT = "configs.format",
-  CONFIGS_VERIFY = "configs.verify",
-  SPAWN_PACK = "spawn.pack",
-  SPAWN_UNPACK = "spawn.unpack",
-  SPRITE_EQUIPMENT_PACK = "sprite-equipment.pack",
-  GAMEDATA_VERIFY = "gamedata.verify",
-  LEVELS_CAPTURE_CUBE = "levels.capture-cube",
-  LEVELS_CAPTURE_MAP = "levels.capture-map",
-  TEXTURES_BUILD = "textures.build",
-  TEXTURES_COMPARE_ENCODINGS = "textures.compare-encodings",
-  TEXTURES_MAKE_BUMP = "textures.make-bump",
-  TEXTURES_SAVE = "textures.save",
-  TRANSLATIONS_BUILD = "translations.build",
-  TRANSLATIONS_CHECK_FORMAT = "translations.check-format",
-  TRANSLATIONS_FORMAT = "translations.format",
-  TRANSLATIONS_PARSE = "translations.parse",
-  TRANSLATIONS_VERIFY = "translations.verify",
-}
-
-/** Every `EJobKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type JobKind = `${EJobKind}`;
+/**
+ * The kind of an operation that can be registered, cancelled and rediscovered: its domain's plugin name, a dot and the
+ * operation (`archives.pack`).
+ *
+ * Each domain declares its own kinds in its registry (`@jobs`), which builds them under its plugin name, so the
+ * registry knows no domain and no domain can spell another's kind.
+ */
+export type JobKind = string;
 
 /** What the page decided when asked to leave what is open or to close the window, which only the page knows. */
 export enum ELeaveDecision {
@@ -1927,14 +1979,20 @@ export type LevelEntry = {
   hasGeometry: boolean;
 };
 
-/** Where the PDA lays the level's map over it, as the level's `level.ltx` places it in `[level_map]`. */
-export type LevelMapDescription = {
-  /** `bound_rect`'s first corner, the least `x` and `z` in engine space. */
+/** The ground a level map covers, engine space: its least and greatest `x` and `z`, as `bound_rect` places it. */
+export type LevelMapArea = {
+  /** The first corner, the least `x` and `z`. */
   minX: number | null;
   minZ: number | null;
-  /** Its second corner, the greatest `x` and `z`. */
+  /** The second corner, the greatest `x` and `z`. */
   maxX: number | null;
   maxZ: number | null;
+};
+
+/** Where the PDA lays the level's map over it, as the level's `level.ltx` places it in `[level_map]`. */
+export type LevelMapDescription = {
+  /** The ground the map covers, as `bound_rect` places it. */
+  area: LevelMapArea;
   /** The map's texture, as `texture` names it, where it names one. */
   texture: string | null;
 };
@@ -2003,15 +2061,12 @@ export type LevelSpawnObjectDetails = {
   /** Its ALife id in the spawn. */
   id: number;
   /**
-   * The game graph vertex it stands at, which places it among the levels; the engine's invalid `u16::MAX` for an
-   * object without the abstract part that carries it.
+   * The game graph vertex it stands at, which places it among the levels; none for an object without the abstract
+   * part that carries it.
    */
-  gameVertexId: number;
-  /**
-   * The level graph vertex it stands at, which places it on the level's AI map; the engine's invalid `u32::MAX` where
-   * it has none.
-   */
-  levelVertexId: number;
+  gameVertexId: number | null;
+  /** The level graph vertex it stands at, which places it on the level's AI map; none where it has none. */
+  levelVertexId: number | null;
   /** Its `custom_data`, the logic and settings a script reads, empty where it has none. */
   customData: string;
 };
@@ -2120,21 +2175,13 @@ export type MachineUsage = {
   availableMemory: number;
 };
 
-/** The ground a level map covers, engine space: its least and greatest `x` and `z`. */
-export type MapAnnotationsArea = {
-  minX: number | null;
-  minZ: number | null;
-  maxX: number | null;
-  maxZ: number | null;
-};
-
 /**
  * The annotations asked of a level map: its PNG in the screenshots folder, beside which they are written as an SVG,
  * the ground it covers, what of them is drawn, and whether every volume is named.
  */
 export type MapAnnotationsRequest = {
   path: string;
-  area: MapAnnotationsArea;
+  area: LevelMapArea;
   kinds: Array<LevelAnnotationKind>;
   isLabelled: boolean;
 };
@@ -2157,14 +2204,6 @@ export enum EMapExportAnnotations {
 /** Every `EMapExportAnnotations` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type MapExportAnnotations = `${EMapExportAnnotations}`;
 
-/** Every `kind` the `MapExportFormat` union is told apart by, so a switch or a comparison names one. */
-export enum EMapExportFormat {
-  PNG = "png",
-  TGA = "tga",
-  SVG = "svg",
-  DDS = "dds",
-}
-
 /**
  * What a level map is exported as: `CDemoRecord`'s own uncompressed TGA, a PNG, a DDS as the game loads a map, or, for
  * its annotations alone, their SVG.
@@ -2173,13 +2212,9 @@ export type MapExportFormat =
   | { kind: "png" }
   | { kind: "tga" }
   | { kind: "svg" }
-  | {
+  | ({
       kind: "dds";
-      format: TextureEncodingFormat;
-      quality: TextureEncodingQuality;
-      /** Whether it carries its whole mip chain, reduced with the X-Ray converter's Kaiser kernel. */
-      isMipmapped: boolean;
-    };
+    } & ViewerDdsExport);
 
 /** A level map's capture written again in another shape. */
 export type MapExportRequest = {
@@ -2203,18 +2238,6 @@ export type MemoryUsage = {
   webview: Array<WebviewProcessMemory>;
   /** The application's GPU memory, none while no renderer runs a GPU. */
   gpu: GpuMemoryUsage | null;
-};
-
-/** What an equipment sprite pack was asked to do. */
-export type PackSpriteRequest = {
-  /** Directory of loose icons to draw from. */
-  sourcePath: string;
-  /** Sheet to write. */
-  outputPath: string;
-  /** `system.ltx` declaring which icons exist and where they sit. */
-  systemLtxPath: string;
-  /** Whether to resolve that config with the Monolith/Anomaly DLTX patch dialect. */
-  isDltx: boolean;
 };
 
 /** What a path is right now, for a form field that has to say what it points at before a command runs. */
@@ -2290,27 +2313,37 @@ export type SelectedLevelDescription = {
   roots: XrayRoots;
   /** The engine everything engine-dependent about the level follows, and what decided it. */
   engine: XrayEngineResolution;
+  /** The compiler version the header records, which decides how the level's chunks are laid out. */
   xrlcVersion: number;
+  /** The quality the compiler built the level at, as its header records it. */
   xrlcQuality: number;
+  /** Visuals the level declares, the hierarchy's inner nodes with them. */
   visuals: number;
+  /** Visuals that draw something themselves, the hierarchy's leaves. */
   drawables: number;
+  /** Entries of the shader table, each a shader and the textures it binds. */
   shaderEntries: number;
+  /** Portals joining the level's sectors. */
   portals: number;
+  /** Lights the level places, its sun among them. */
   lights: number;
+  /** Whether one of its lights is the sun. */
   hasSun: boolean;
   /** The directional light the level names its sun, which is what its baked occlusion was computed for. */
   sun: LevelSunDescription | null;
+  /** What each sector is and where, as the visuals declare them. */
   sectors: Array<SectorOutline>;
   /** Extent every sector together covers, which is where a camera is framed from. */
   bounds: VisualBounds | null;
 };
 
-/** What the viewer is showing, paired with where it came from. */
+/** What the viewer is showing, paired with where it came from: described once at the open and answered as held. */
 export type SelectedVisualDescription = {
-  source: VisualSource;
-  /** The roots used to resolve this selection's texture files. */
+  source: AssetSource;
+  /** The roots the visual was opened in, which every later read searches. */
   roots: XrayRoots;
   description: VisualDescription;
+  /** What the visual's own references came to, decided at open so a read is a lookup rather than a search. */
   dependencies: VisualDependencies;
   /** What each located texture file is, keyed by the logical path that located it. */
   textures: { [key in string]: AssetTextureDescriptor };
@@ -2318,7 +2351,7 @@ export type SelectedVisualDescription = {
   materials: { [key in string]: XrayMaterialDescriptor };
   /** How the renderer draws each submesh, in the order the model declares them. */
   surfaces: Array<XraySurfaceDescriptor>;
-  /** A `textures.ltx` the searched roots hold, or `None`. */
+  /** A `textures.ltx` the searched roots hold, or `None`, since its declarations are not read. */
   texturesLtx: XrayAsset | null;
 };
 
@@ -2343,7 +2376,13 @@ export type SessionChange = {
 /** A single opening, allocated by its caller before dispatch so it can also be closed while pending. */
 export type SessionId = string;
 
-/** The optional committed snapshot returned during restoration. */
+/**
+ * What a restore answers: the snapshot a tool holds, or none.
+ *
+ * A command answering `Option<SessionSnapshot<T>>` itself would be described with an unbound `T`: Tauri Specta
+ * inlines an optional named result, and the snapshot's value is described through its parameter. A named answer is
+ * referenced instead, with its parameter bound.
+ */
 export type SessionRestore<T> = SessionSnapshot<T> | null;
 
 /** Every `kind` the `SessionRootChange` union is told apart by, so a switch or a comparison names one. */
@@ -2379,17 +2418,6 @@ export type SessionRootChange =
   /** Deriving it again failed: the session stays at the snapshot it had. */
   | { kind: "failed"; reason: string };
 
-/**
- * Who holds an opening: a tool in a window, named alike across the window's page loads, so a reloaded page attaches to
- * what its tool held rather than opening it again.
- */
-export type SessionScope = {
-  /** The window's label. */
-  window: string;
-  /** The tool within the window: its application id, with an instance number where one window runs two. */
-  tool: string;
-};
-
 /** An immutable value addressed by the opening that produced it; a held snapshot survives close. */
 export type SessionSnapshot<T> = {
   sessionId: SessionId;
@@ -2401,6 +2429,32 @@ export type SessionSnapshot<T> = {
    */
   value: T;
 };
+
+/** One large chunk of an opened spawn, tagged by its `kind` as [`crate::SpawnChunkKind`] names it. */
+export type SpawnChunk =
+  | ({
+      kind: "alifeSpawn";
+    } & SpawnALifeSpawnsChunk)
+  | ({
+      kind: "artefactSpawn";
+    } & SpawnArtefactSpawnsChunk)
+  | ({
+      kind: "patrols";
+    } & SpawnPatrolsChunk)
+  | ({
+      kind: "graphs";
+    } & SpawnGraphsChunk);
+
+/** Which of an opened spawn's large chunks to read. */
+export enum ESpawnChunkKind {
+  ALIFE_SPAWN = "alifeSpawn",
+  ARTEFACT_SPAWN = "artefactSpawn",
+  PATROLS = "patrols",
+  GRAPHS = "graphs",
+}
+
+/** Every `ESpawnChunkKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type SpawnChunkKind = `${ESpawnChunkKind}`;
 
 /** The conversion performed, retained with the result after a window reload. */
 export enum ESpawnConversion {
@@ -2424,9 +2478,11 @@ export type SpawnConversionResult = {
   outcome: JobOutcome;
 };
 
-/** One coherent opening, restored without reading the large chunks. */
+/**
+ * What an opened spawn is, without its large chunks: where it was read from and its header, which an open and a
+ * restore answer under the opening's identity.
+ */
 export type SpawnSessionDescriptor = {
-  sessionId: SessionId;
   path: string;
   header: SpawnHeaderChunk;
 };
@@ -2435,6 +2491,18 @@ export type SpawnSessionDescriptor = {
 export type SpriteEquipmentOpenRequest = {
   sessionId: SessionId;
 } & EquipmentSpriteOpen;
+
+/** What an equipment sprite pack was asked to do. */
+export type SpriteEquipmentPackRequest = {
+  /** Directory of loose icons to draw from. */
+  sourcePath: string;
+  /** Sheet to write. */
+  outputPath: string;
+  /** `system.ltx` declaring which icons exist and where they sit. */
+  systemLtxPath: string;
+  /** Whether to resolve that config with the Monolith/Anomaly DLTX patch dialect. */
+  isDltx: boolean;
+};
 
 /** What a tree shows on a texture before anyone opens it, read from its descriptor alone. */
 export type TextureBadges = {
@@ -2450,8 +2518,8 @@ export type TextureBadges = {
   isUnreadable: boolean;
 };
 
-/** The roots and listing mode restored after a frontend reload. */
-export type TextureBrowseSession = {
+/** What a tree is listing: the roots and how it addresses them, restored after a frontend reload. */
+export type TextureBrowse = {
   roots: XrayRoots;
   mode: TextureCatalogMode;
 };
@@ -2495,6 +2563,8 @@ export type TextureCatalog = {
   entries: Array<TextureEntry>;
   /** `.dds` files the roots hold outside `textures\`, which no engine reference names and this catalog leaves out. */
   outsideTexturesCount: number;
+  /** Loose files whose path is not Unicode, which the page could not name back and this catalog leaves out. */
+  unnamedCount: number;
 };
 
 /** How a listing addressed what it found. */
@@ -2517,6 +2587,11 @@ export type TextureDescription = {
   roots: XrayRoots;
   /** The `.dds` the reference resolves to, or `None` for a descriptor with no texture. */
   texture: XrayAsset | null;
+  /**
+   * Where the texture's pixels are read from: an asset of `roots`, or a standalone file by its path, which nothing
+   * mounts; `None` for a descriptor with no texture.
+   */
+  textureSource: AssetSource | null;
   /** What the base texture file is, when it is located and its bytes can be reached. */
   base: AssetTextureDescriptor | null;
   /** What the renderer would build for this texture, or `None` for a file outside every tree. */
@@ -2564,7 +2639,7 @@ export type TextureDescriptorForm = {
   height: number;
 };
 
-/** The descriptor half of a save. */
+/** The descriptor half of a save, which every save writes. */
 export type TextureDescriptorSave = {
   target: TextureSaveTarget;
   form: TextureDescriptorForm;
@@ -2580,15 +2655,16 @@ export type TextureEditTargets = {
 
 /** Every candidate weighed against one texture, with the texture itself for a baseline. */
 export type TextureEncodingComparison = {
+  /** The comparison holding the encodes, which a save names to claim one. */
   sessionId: SessionId;
   source: TextureSource;
   roots: XrayRoots;
   /** Whether every candidate was weighed or the run stopped because it was asked to. */
   outcome: JobOutcome;
-  /** The texture the encodes were made from, which a save has to name to claim them. */
+  /** What to call the texture the encodes were made from. */
   reference: string;
   current: TextureEncodingCurrent;
-  /** The candidates weighed, in the order [`DdsEncodeCandidate::ALL`] lists them, cheapest first. */
+  /** The candidates weighed, in the order `DdsEncodeCandidate::ALL` lists them, cheapest first. */
   candidates: Array<TextureEncodingReport>;
 };
 
@@ -2622,11 +2698,16 @@ export type TextureEncodingReport = {
   compatibility: Array<TextureRendererSupport>;
 };
 
-/** The texture half of a save, which is one of the candidates a comparison already encoded. */
+/**
+ * The texture half of a save: one candidate a held comparison encoded, written over the texture that comparison was
+ * made of, which it names itself.
+ */
 export type TextureEncodingSave = {
+  /** The comparison holding the candidate. */
   sessionId: SessionId;
-  target: TextureSaveTarget;
   format: TextureEncodingFormat;
+  /** The stamp the editor read on the texture, or `None` where it saw none. */
+  expected: FileStamp | null;
 };
 
 /** One texture name and the files the roots hold for it. */
@@ -2648,6 +2729,17 @@ export type TextureFlagEntry = {
   bit: number;
   label: string;
 };
+
+/** What one renderer makes of a format. */
+export enum ETextureFormatSupport {
+  SUPPORTED = "supported",
+  UNSUPPORTED = "unsupported",
+  /** A path nobody has read, not a refusal. */
+  UNVERIFIED = "unverified",
+}
+
+/** Every `ETextureFormatSupport` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type TextureFormatSupport = `${ETextureFormatSupport}`;
 
 /** What a generated pair came to. */
 export type TextureMakeBumpOutcome = {
@@ -2675,8 +2767,7 @@ export type TextureMaterialSummary = {
 /** One renderer's answer about a format. */
 export type TextureRendererSupport = {
   renderer: string;
-  /** `supported`, `unsupported`, or `unverified` - the third being a path nobody has read, not a refusal. */
-  support: string;
+  support: TextureFormatSupport;
 };
 
 /** What a texture name is by convention, before any descriptor has been read. */
@@ -2698,8 +2789,6 @@ export type TextureSaveOutcome = {
   outcome: JobOutcome;
   /** The files written, in the order they were written. */
   written: Array<string>;
-  /** The format the descriptor ended up naming, when writing a texture changed it. */
-  descriptorFormat: number | null;
 };
 
 /** One file a write addresses, and what was there when the editor read it. */
@@ -2730,7 +2819,7 @@ export enum ETextureSurfaceAlpha {
   /** Not read at all, which is what the plain deferred base shader does. */
   IGNORED = "ignored",
   /** Clipped against `def_aref`, which is what every `_aref` shader does. */
-  CUT_OUT = "cut-out",
+  CUT_OUT = "cutOut",
   /** Composited over what is behind it, which the deferred pass never does. */
   BLENDED = "blended",
 }
@@ -2834,14 +2923,32 @@ export type TexturesMakeBumpRequest = {
   quality: TextureEncodingQuality;
 };
 
-/** What one node's save was asked to write. */
+/**
+ * What one node's save was asked to write: its descriptor every time, and a re-encoded texture with it when one was
+ * chosen, so a written texture is never left beside a descriptor naming its old format.
+ */
 export type TexturesSaveRequest = {
-  descriptor: TextureDescriptorSave | null;
+  descriptor: TextureDescriptorSave;
   texture: TextureEncodingSave | null;
 };
 
+/** Every `kind` the `TranslationSaveOutcome` union is told apart by, so a switch or a comparison names one. */
+export enum ETranslationSaveOutcome {
+  /** The edits are on disk, and this is the project as it now reads. */
+  SAVED = "saved",
+  /** The edits are on disk, but the tool that asked for them closed the project while they were being written. */
+  STALE = "stale",
+}
+
+/** How a save ended, once its edits were on disk. */
+export type TranslationSaveOutcome =
+  /** The edits are on disk, and this is the project as it now reads. */
+  | { kind: "saved"; project: SessionSnapshot<TranslationProjectDescriptor> }
+  /** The edits are on disk, but the tool that asked for them closed the project while they were being written. */
+  | { kind: "stale" };
+
 /** What a build was asked to do. */
-export type TranslationBuildRequest = {
+export type TranslationsBuildRequest = {
   /** Where the sources are read from, through the VFS. */
   roots: XrayRoots;
   /** Where inside those roots to look, or nothing for the whole set. */
@@ -2852,84 +2959,6 @@ export type TranslationBuildRequest = {
   outputDir: string;
   /** Whether to sort entries within each table. */
   isSorted: boolean;
-};
-
-/** What a build reports back to the desktop surface. */
-export type TranslationBuildSummary = {
-  /** Whether the run compiled every source or was stopped between them. */
-  outcome: JobOutcome;
-  /** The language built, or `all`. */
-  language: string;
-  /** Sources read. */
-  sources: number;
-  /** String tables written, across every language. */
-  files: number;
-  languages: Array<TranslationBuildLanguageSummary>;
-};
-
-/** One thing worth reporting about a file the run met. */
-export type TranslationParseFinding = {
-  rule: string;
-  subject: string | null;
-  message: string;
-};
-
-/** What an import was asked to do. */
-export type TranslationParseRequest = {
-  /** Roots holding the raw XML, read through the VFS so an installation imports like a loose tree. */
-  roots: XrayRoots;
-  /** The language every entry this run reads is filed under. Never `all`. */
-  language: TranslationLanguage;
-  /** Where inside those roots to look, or nothing to let the run resolve it. */
-  prefix: string | null;
-  /** Directory the JSON sources are written to, which may already hold some. */
-  outputDir: string;
-  /** Restrict the run to one table, by the file name it has in the scope. */
-  file: string | null;
-  /** Let incoming text replace existing text that differs, instead of keeping what is there. */
-  isOverwrite: boolean;
-  /** Do everything except write, so a caller can see what a run would change. */
-  isDryRun: boolean;
-};
-
-/** What an import run reports back to the desktop surface. */
-export type TranslationParseSummary = {
-  /** Whether the run read every table or was stopped between them. */
-  outcome: JobOutcome;
-  /** The language every entry this run read was filed under. */
-  language: string;
-  /** Whether the run computed its answer without writing it. */
-  isDryRun: boolean;
-  census: TranslationParseCensus;
-  findings: Array<TranslationParseFinding>;
-};
-
-/** Every `kind` the `TranslationSaveOutcome` union is told apart by, so a switch or a comparison names one. */
-export enum ETranslationSaveOutcome {
-  /** The edits are on disk, and this is the project as it now reads. */
-  SAVED = "saved",
-  /** The edits are on disk, but another project replaced this one while they were being written. */
-  STALE = "stale",
-}
-
-/** How a save ended, once its edits were on disk. */
-export type TranslationSaveOutcome =
-  /** The edits are on disk, and this is the project as it now reads. */
-  | { kind: "saved"; project: SessionSnapshot<TranslationProjectDescriptor> }
-  /** The edits are on disk, but another project replaced this one while they were being written. */
-  | { kind: "stale" };
-
-/** What a completeness check reports back to the desktop surface. */
-export type TranslationVerifySummary = {
-  /** Whether the run checked every source or was stopped between them. */
-  outcome: JobOutcome;
-  /** The language the check was narrowed to, or `all`. */
-  language: string;
-  /** Ids checked across every source. */
-  checked: number;
-  /** Ids with no text, counted once per language that lacks them. */
-  missing: number;
-  languages: Array<TranslationVerifyLanguageSummary>;
 };
 
 /** What a translation formatting run, or a check of one, was asked to do. */
@@ -2946,6 +2975,24 @@ export type TranslationsOpenRequest = {
   roots: XrayRoots;
   mode: TranslationProjectMode;
   prefix: string | null;
+};
+
+/** What an import was asked to do. */
+export type TranslationsParseRequest = {
+  /** Roots holding the raw XML, read through the VFS so an installation imports like a loose tree. */
+  roots: XrayRoots;
+  /** The language every entry this run reads is filed under. Never `all`. */
+  language: TranslationLanguage;
+  /** Where inside those roots to look, or nothing to let the run resolve it. */
+  prefix: string | null;
+  /** Directory the JSON sources are written to, which may already hold some. */
+  outputDir: string;
+  /** Restrict the run to one table, by the file name it has in the scope. */
+  file: string | null;
+  /** Let incoming text replace existing text that differs, instead of keeping what is there. */
+  isOverwrite: boolean;
+  /** Do everything except write, so a caller can see what a run would change. */
+  isDryRun: boolean;
 };
 
 /** What a translation verification was asked to do. */
@@ -2966,23 +3013,16 @@ export type TransportEndpoint = {
   token: string;
 };
 
+/** A DDS an export writes, as the game loads a map or a cubemap: its format, how hard it is encoded, and its mipmaps. */
+export type ViewerDdsExport = {
+  format: TextureEncodingFormat;
+  quality: TextureEncodingQuality;
+  /** Whether it carries its whole mip chain, reduced with the X-Ray converter's Kaiser kernel. */
+  isMipmapped: boolean;
+};
+
 /** What a native viewport tells its page, from the renderer drawing it or the world it shows; each tells its own kinds. */
 export type ViewportEvent = RenderViewportEvent | WorldViewportEvent;
-
-/** Every `kind` the `VisualSource` union is told apart by, so a switch or a comparison names one. */
-export enum EVisualSource {
-  /** A loose `.ogf` file on disk, named by its filesystem path. */
-  FILE = "file",
-  /** An asset of the roots, loose or archived, named by its engine identity. */
-  ASSET = "asset",
-}
-
-/** Where a visual is read from. */
-export type VisualSource =
-  /** A loose `.ogf` file on disk, named by its filesystem path. */
-  | { kind: "file"; path: string }
-  /** An asset of the roots, loose or archived, named by its engine identity. */
-  | { kind: "asset"; logicalPath: string };
 
 /** What a webview process does, as WebView2 names it (`COREWEBVIEW2_PROCESS_KIND`). */
 export enum EWebviewProcessKind {

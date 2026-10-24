@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { ARCHIVES_JOB_PACK } from "@/core/ipc/types/xrf-app";
 import { EApplicationId } from "@/core/routing/application";
 import { mockJobDescription } from "@/fixtures/mocks/job.mocks";
 import {
@@ -208,7 +208,7 @@ describe("JobsService adoption", () => {
 
     await service.onProvision(1);
 
-    expect(service.getJobOfKind(EJobKind.ARCHIVES_PACK)?.id).toBe("b8f0");
+    expect(service.getJobOfKind(ARCHIVES_JOB_PACK)?.id).toBe("b8f0");
   });
 
   it("attributes an adopted job to the tool that owns its kind", async () => {

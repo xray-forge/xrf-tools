@@ -47,7 +47,7 @@ function countListings(): number {
 
 /** Reads of the committed level, the restore at provision included. */
 function countReads(): number {
-  return mockInvoke.mock.calls.filter(([name]) => name === "plugin:levels|get_level").length;
+  return mockInvoke.mock.calls.filter(([name]) => name === "plugin:levels|restore_level").length;
 }
 
 /** A spawn listing at `revision`, for the level the call names. */
@@ -67,7 +67,7 @@ async function openLevel(): Promise<IOpenedLevel> {
   const service: LevelLoadService = container.get(LevelLoadService);
 
   setMockInvokeResponses({
-    ["plugin:levels|get_level"]: null,
+    ["plugin:levels|restore_level"]: null,
     ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
     ...mockLevelPartResponses(),
     [LIST_SPAWN]: listedAt(1, 0),
@@ -111,7 +111,7 @@ async function openHeld(): Promise<IHeldOpen> {
   let sessionId: string = "";
 
   setMockInvokeResponses({
-    ["plugin:levels|get_level"]: null,
+    ["plugin:levels|restore_level"]: null,
     ...mockLevelPartResponses(),
     [LIST_SPAWN]: listedAt(1, 0),
     ["plugin:levels|open_level"]: mockSessionResponse((args?: Record<string, unknown>) => {
@@ -155,7 +155,7 @@ async function openHeld(): Promise<IHeldOpen> {
       setMockInvokeResponses({
         ...mockLevelPartResponses(),
         [LIST_SPAWN]: listedAt(1, 0),
-        ["plugin:levels|get_level"]: () =>
+        ["plugin:levels|restore_level"]: () =>
           mockSessionSnapshot(mockSelectedLevelDescription({ visuals }), sessionId, revision),
       }),
     service,
@@ -251,7 +251,7 @@ describe("LevelLoadService changes", () => {
     const listings: number = countListings();
 
     setMockInvokeResponses({
-      ["plugin:levels|get_level"]: () =>
+      ["plugin:levels|restore_level"]: () =>
         mockSessionSnapshot(mockSelectedLevelDescription({ visuals: 7 }), sessionId, 1),
       [LIST_SPAWN]: listedAt(2, 1),
     });
@@ -287,7 +287,11 @@ describe("LevelLoadService changes", () => {
 
     setMockInvokeResponses({
       ["plugin:levels|describe_level_map"]: (args?: Record<string, unknown>) =>
-        mockSessionSnapshot({ maxX: 1, maxZ: 1, minX: 0, minZ: 0, texture: null }, args?.sessionId as string, 1),
+        mockSessionSnapshot(
+          { area: { maxX: 1, maxZ: 1, minX: 0, minZ: 0 }, texture: null },
+          args?.sessionId as string,
+          1
+        ),
     });
     notify(container, {
       sessionId,
@@ -298,7 +302,7 @@ describe("LevelLoadService changes", () => {
     });
     await flush();
 
-    expect(service.levelMap.value?.maxX).toBe(1);
+    expect(service.levelMap.value?.area.maxX).toBe(1);
     expect(countReads()).toBe(reads);
     expect(service.scene).toBe(opened);
 
@@ -448,7 +452,7 @@ describe("LevelLoadService changes", () => {
     const { container, service, sessionId } = await openLevel();
 
     setMockInvokeResponses({
-      ["plugin:levels|get_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), "another", 1),
+      ["plugin:levels|restore_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), "another", 1),
     });
     notify(container, { sessionId, revision: 1, root: { kind: "derived" }, staleParts: [], isViewRenewed: true });
     await flush();

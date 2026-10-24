@@ -4,62 +4,39 @@ import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "@/core/ipc/invoke";
 import {
+  ESpawnChunkKind,
   SessionId,
-  SessionScope,
+  SessionRestore,
+  SessionSnapshot,
+  SpawnChunk,
   SpawnConversionRequest,
   SpawnConversionResult,
   SpawnSessionDescriptor,
 } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
-import {
-  SpawnALifeSpawnsChunk,
-  SpawnArtefactSpawnsChunk,
-  SpawnFile,
-  SpawnGraphsChunk,
-  SpawnHeaderChunk,
-  SpawnPatrolsChunk,
-} from "@/core/ipc/types/xrf-spawn";
 
 /** Commands */
 export const spawnCommands = {
-  /** Write the requested session using the existing spawn format writer. */
-  saveUnpackedDirectory: (path: string, sessionId: SessionId) =>
-    __TAURI_INVOKE<null>("plugin:spawn|save_unpacked_directory", { path, sessionId }),
-  /** Close the committed file and prevent unfinished opens from restoring it. */
-  closeFile: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:spawn|close_file", { sessionIds }),
-  /** Read the whole file from the requested opening, refusing a replaced session. */
-  getFile: (sessionId: SessionId) => __TAURI_INVOKE<SpawnFile>("plugin:spawn|get_file", { sessionId }),
-  /** Read alife_spawn from the requested opening, refusing a replaced session. */
-  getAlifeSpawns: (sessionId: SessionId) =>
-    __TAURI_INVOKE<SpawnALifeSpawnsChunk>("plugin:spawn|get_alife_spawns", { sessionId }),
-  /** Read artefact_spawn from the requested opening, refusing a replaced session. */
-  getArtefactSpawns: (sessionId: SessionId) =>
-    __TAURI_INVOKE<SpawnArtefactSpawnsChunk>("plugin:spawn|get_artefact_spawns", { sessionId }),
-  /** Read graphs from the requested opening, refusing a replaced session. */
-  getGraphs: (sessionId: SessionId) => __TAURI_INVOKE<SpawnGraphsChunk>("plugin:spawn|get_graphs", { sessionId }),
-  /** Read header from the requested opening, refusing a replaced session. */
-  getHeader: (sessionId: SessionId) => __TAURI_INVOKE<SpawnHeaderChunk>("plugin:spawn|get_header", { sessionId }),
-  /** Read patrols from the requested opening, refusing a replaced session. */
-  getPatrols: (sessionId: SessionId) => __TAURI_INVOKE<SpawnPatrolsChunk>("plugin:spawn|get_patrols", { sessionId }),
-  /** Restore the spawn a tool holds, the newest it opened, without cloning any of the large chunks. */
-  getSession: (scope: SessionScope) =>
-    __TAURI_INVOKE<{
-      sessionId: SessionId;
-      path: string;
-      header: SpawnHeaderChunk;
-    } | null>("plugin:spawn|get_session", { scope }),
-  /** Open a unpacked spawn and return its identity, path, and header together. */
-  openUnpackedDirectory: (sessionId: SessionId, path: string) =>
-    __TAURI_INVOKE<SpawnSessionDescriptor>("plugin:spawn|open_unpacked_directory", { sessionId, path }),
-  /** Open a packed spawn and return its identity, path, and header together. */
+  /** Close the spawns `session_ids` name, committed or opening; a closed one answers no read. */
+  closeFile: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<void>("plugin:spawn|close_file", { sessionIds }),
+  /** Open the packed spawn at `path`, read on the pool, answering what describes it without its large chunks. */
   openFile: (sessionId: SessionId, path: string) =>
-    __TAURI_INVOKE<SpawnSessionDescriptor>("plugin:spawn|open_file", { sessionId, path }),
-  /** Pack a spawn file as an exclusive, tracked background job. */
+    __TAURI_INVOKE<SessionSnapshot<SpawnSessionDescriptor>>("plugin:spawn|open_file", { sessionId, path }),
+  /** Pack a directory of spawn chunks into one file, as a tracked job sharing one lane with unpacking. */
   packFile: (request: SpawnConversionRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<SpawnConversionResult>("plugin:spawn|pack_file", { request, jobId, progress }),
-  /** Write the requested session using the existing spawn format writer. */
+  /** One large chunk of the spawn `session_id` holds, copied on the pool. */
+  readChunk: (sessionId: SessionId, chunk: ESpawnChunkKind) =>
+    __TAURI_INVOKE<SessionSnapshot<SpawnChunk>>("plugin:spawn|read_chunk", { sessionId, chunk }),
+  /** The spawn `tool` holds in the asking window, the newest it opened, described without its large chunks. */
+  restoreFile: (tool: string) =>
+    __TAURI_INVOKE<SessionRestore<SpawnSessionDescriptor>>("plugin:spawn|restore_file", { tool }),
+  /** Write the spawn `session_id` holds to `path` as a packed file, on the pool. */
   saveFile: (path: string, sessionId: SessionId) => __TAURI_INVOKE<null>("plugin:spawn|save_file", { path, sessionId }),
-  /** Unpack a spawn file as an exclusive, tracked background job. */
+  /** Write the spawn `session_id` holds into the directory `path` as unpacked chunks, on the pool. */
+  saveUnpackedDirectory: (path: string, sessionId: SessionId) =>
+    __TAURI_INVOKE<null>("plugin:spawn|save_unpacked_directory", { path, sessionId }),
+  /** Unpack a spawn file into a directory of chunks, as a tracked job sharing one lane with packing. */
   unpackFile: (request: SpawnConversionRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<SpawnConversionResult>("plugin:spawn|unpack_file", { request, jobId, progress }),
 };

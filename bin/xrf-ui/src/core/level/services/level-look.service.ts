@@ -1,11 +1,16 @@
-import { inject, Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
+import { EventBus, inject, Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 
-import { transformError } from "@/core/error/lib/transform-error";
 import { levelsCommands } from "@/core/ipc/commands/levels";
-import { LevelConsoleDefaults, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { SessionPartResource } from "@/core/ipc/session";
+import {
+  LEVEL_CONSOLE_PART,
+  LevelConsoleDefaults,
+  SelectedLevelDescription,
+  SessionSnapshot,
+} from "@/core/ipc/types/xrf-app";
 import { XrayEngine } from "@/core/ipc/types/xrf-engine-target";
 import { ILevelLook, toGameLevelLook } from "@/core/level/lib/look/level-look";
 import {
@@ -30,9 +35,8 @@ export class LevelLookService {
   @RefObservable()
   public choice: ILevelLookChoice;
 
-  /** What the open level's game ships as its console defaults: idle with no level open, then read, or failed to. */
-  @RefObservable()
-  public defaults: AsyncState<LevelConsoleDefaults> = AsyncState.idle();
+  /** The open level's console defaults, read again where a commit lets the shipped ones go. */
+  private readonly console: SessionPartResource<LevelConsoleDefaults>;
 
   private readonly log: Logger = new Logger(__MODULE_NAME__);
   /** The engine the open level is read as, which a look the game leaves to its engine follows; null with none open. */
@@ -46,10 +50,18 @@ export class LevelLookService {
   private unfollow: Nullable<() => void> = null;
 
   public constructor(
+    eventBus: EventBus = inject(EventBus),
     private readonly loadService: LevelLoadService = inject(LevelLoadService),
     private readonly renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
   ) {
+    this.console = new SessionPartResource(eventBus, [LEVEL_CONSOLE_PART], levelsCommands.describeConsoleDefaults);
     this.choice = toLevelLookChoice(parseLocalStorageValueSafe(LEVEL_LOOK_STORAGE_KEY), this.exposure);
+  }
+
+  /** What the open level's game ships as its console defaults: idle with no level open, then read, or failed to. */
+  @Computed()
+  public get defaults(): AsyncState<LevelConsoleDefaults> {
+    return this.console.state;
   }
 
   /** Reads each level's defaults as it opens, whether or not a viewport draws it. */
@@ -62,6 +74,8 @@ export class LevelLookService {
   public onDeprovision(): void {
     this.unfollow?.();
     this.unfollow = null;
+    this.sessionId = null;
+    this.console.detach();
   }
 
   /**
@@ -82,7 +96,7 @@ export class LevelLookService {
   }
 
   /**
-   * Reads the console defaults of a level's game, once per level.
+   * Follows the console defaults of a level's game, read as the level opens and again as commits let them go.
    *
    * @param selected - The level open now, or null for none.
    */
@@ -95,32 +109,22 @@ export class LevelLookService {
 
     this.sessionId = sessionId;
     runInAction(() => {
-      this.defaults = sessionId ? AsyncState.loading() : AsyncState.idle();
       this.engine = selected?.value.engine.engine ?? null;
     });
 
     if (!sessionId) {
+      this.console.detach();
+
       return;
     }
 
-    try {
-      const { value } = await levelsCommands.describeConsoleDefaults(sessionId);
+    await this.console.attach(sessionId);
 
-      if (this.sessionId === sessionId) {
-        runInAction(() => {
-          this.defaults = AsyncState.ready(value);
-        });
-      }
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.warn("The game's console defaults cannot be read, so its levels look as the settings say:", transformed);
-
-      if (this.sessionId === sessionId) {
-        runInAction(() => {
-          this.defaults = AsyncState.failed(transformed);
-        });
-      }
+    if (this.sessionId === sessionId && this.console.error) {
+      this.log.warn(
+        "The game's console defaults cannot be read, so its levels look as the settings say:",
+        this.console.error
+      );
     }
   }
 

@@ -17,10 +17,13 @@ export const assetsCommands = {
     __TAURI_INVOKE<XrayRevision>("plugin:assets|commit_text", { roots, logicalPath, text }),
   /** Detect which engine roots target, as an open left to detection would read them. */
   detectEngine: (roots: XrayRoots) => __TAURI_INVOKE<XrayEngineResolution>("plugin:assets|detect_engine", { roots }),
-  /** Every asset of one kind the roots hold, winner first and shadowed copies omitted. */
+  /**
+   * Every asset of one kind the roots hold, winner first and shadowed copies omitted; read on the pool, since a first
+   * listing plans and mounts the roots.
+   */
   listAssets: (roots: XrayRoots, kind: EXrayAssetType) =>
     __TAURI_INVOKE<Array<XrayAsset>>("plugin:assets|list_assets", { roots, kind }),
-  /** Describe what a path is, without mounting it. */
+  /** Describe what a path is, without mounting it; on the pool, since a probe scans the directory. */
   probeRoot: (path: string) => __TAURI_INVOKE<XrayRootProbe>("plugin:assets|probe_root", { path }),
   /** Be told what every commit from now on changes: the project revision it leaves, and what it did to each open session. */
   subscribeChanges: (changes: Channel<AssetChangeEvent>) =>

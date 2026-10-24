@@ -7,7 +7,7 @@ import { Nullable } from "@xrf/types";
 import { transformError } from "@/core/error/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
 import { Session, SessionScopeService } from "@/core/ipc/session";
-import { SelectedVisualDescription, SessionSnapshot, VisualSource } from "@/core/ipc/types/xrf-app";
+import { AssetSource, SelectedVisualDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { RenderTextureReport } from "@/core/ipc/types/xrf-renderer";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { IRenderSurfaceDraw } from "@/core/render/lib/surface/render-surface-draw";
@@ -80,7 +80,7 @@ export class VisualLoadService implements IVisualRenderSource {
    */
   @Computed()
   public get sourceLabel(): Nullable<string> {
-    const source: Nullable<VisualSource> = this.visual.value?.selected.value.source ?? null;
+    const source: Nullable<AssetSource> = this.visual.value?.selected.value.source ?? null;
 
     return source ? describeVisualSource(source) : null;
   }
@@ -107,7 +107,7 @@ export class VisualLoadService implements IVisualRenderSource {
    * @param roots - Roots the source and its references are searched in.
    */
   @LatestFlow("visual")
-  public *load(source: VisualSource, roots: XrayRoots): TFlow {
+  public *load(source: AssetSource, roots: XrayRoots): TFlow {
     const timer: Timer = new Timer();
 
     this.log.info("Loading visual:", describeVisualSource(source));
@@ -145,7 +145,9 @@ export class VisualLoadService implements IVisualRenderSource {
   @ExclusiveFlow("visual")
   public *restore(): TFlow {
     const timer: Timer = new Timer();
-    const snapshot = yield* call(visualsCommands.getModel(this.session.scope));
+    const snapshot: Nullable<SessionSnapshot<SelectedVisualDescription>> = yield* call(
+      visualsCommands.restoreModel(this.session.tool)
+    );
 
     this.session.adopt(snapshot);
 

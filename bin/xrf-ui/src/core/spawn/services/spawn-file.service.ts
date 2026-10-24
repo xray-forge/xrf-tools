@@ -7,8 +7,14 @@ import { AnyObject, Nullable } from "@xrf/types";
 import { transformError } from "@/core/error/lib";
 import { spawnCommands } from "@/core/ipc/commands/spawn";
 import { Session, SessionScopeService } from "@/core/ipc/session";
-import { SessionId, SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app";
-import { SpawnFile } from "@/core/ipc/types/xrf-spawn";
+import {
+  ESpawnChunkKind,
+  SessionId,
+  SessionSnapshot,
+  SpawnChunk,
+  SpawnSessionDescriptor,
+} from "@/core/ipc/types/xrf-app";
+import { SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
 import { Logger, Timer } from "@/lib/logging";
@@ -21,7 +27,25 @@ export interface ISpawnRowSelection {
   row: AnyObject;
 }
 
-type TSpawnChunkStates = { readonly [K in keyof SpawnFile]: AsyncState<SpawnFile[K]> };
+/** What one large chunk reads as, by the kind it is asked for: `read_chunk` answers every kind as one tagged union. */
+type TSpawnChunkOf<K extends ESpawnChunkKind> = Extract<SpawnChunk, { kind: `${K}` }>;
+
+/** Each large chunk as it is read, by the kind it is read as. */
+type TSpawnLargeChunkStates = { readonly [K in ESpawnChunkKind]: AsyncState<TSpawnChunkOf<K>> };
+
+/** The header the open answers, and each large chunk as it is read. */
+type TSpawnChunkStates = { readonly header: AsyncState<SpawnHeaderChunk> } & TSpawnLargeChunkStates;
+
+/**
+ * Whether a chunk read back is the kind that was asked for.
+ *
+ * @param chunk - What the read answered.
+ * @param kind - What it was asked for.
+ * @returns Whether the chunk is of that kind.
+ */
+function isSpawnChunkOf<K extends ESpawnChunkKind>(chunk: SpawnChunk, kind: K): chunk is TSpawnChunkOf<K> {
+  return chunk.kind === kind;
+}
 
 @Injectable()
 export class SpawnFileService {
@@ -33,7 +57,7 @@ export class SpawnFileService {
   public isReady: boolean = false;
 
   @Observable()
-  private sessionDescriptor: Nullable<SpawnSessionDescriptor> = null;
+  private sessionState: Nullable<SessionSnapshot<SpawnSessionDescriptor>> = null;
 
   @Observable()
   public isOpening: boolean = false;
@@ -49,17 +73,17 @@ export class SpawnFileService {
 
   @Computed()
   public get sessionId(): Nullable<SessionId> {
-    return this.sessionDescriptor?.sessionId ?? null;
+    return this.sessionState?.sessionId ?? null;
   }
 
   @Computed()
   public get isOpen(): boolean {
-    return this.sessionDescriptor !== null;
+    return this.sessionState !== null;
   }
 
   @Computed()
   public get path(): Nullable<string> {
-    return this.sessionDescriptor?.path ?? null;
+    return this.sessionState?.value.path ?? null;
   }
 
   /** The last write to disk, so whichever surface started it can report the outcome. */
@@ -115,9 +139,13 @@ export class SpawnFileService {
   @ExclusiveFlow("isOpening")
   private *restore(): TFlow {
     try {
-      this.adoptSession(yield* call(spawnCommands.getSession(this.session.scope)));
+      const snapshot: Nullable<SessionSnapshot<SpawnSessionDescriptor>> = yield* call(
+        spawnCommands.restoreFile(this.session.tool)
+      );
 
-      if (this.sessionDescriptor) {
+      this.adoptSession(snapshot);
+
+      if (this.sessionState) {
         this.log.info("Spawn file restored:", this.path, this.sessionId);
       }
     } catch (error: unknown) {
@@ -137,8 +165,8 @@ export class SpawnFileService {
 
     this.isOpening = true;
 
-    if (!this.sessionDescriptor) {
-      this.setChunk("header", AsyncState.idle());
+    if (!this.sessionState) {
+      this.setHeader(AsyncState.idle());
     }
 
     try {
@@ -147,8 +175,8 @@ export class SpawnFileService {
     } catch (error: unknown) {
       this.log.error("Failed to open spawn file:", path, "after", formatDuration(timer.elapsed()), error);
 
-      if (!this.sessionDescriptor) {
-        this.setChunk("header", this.chunks.header.asFailed(transformError(error), null));
+      if (!this.sessionState) {
+        this.setHeader(this.chunks.header.asFailed(transformError(error), null));
       }
 
       emitNotification(this.eventBus, {
@@ -189,7 +217,7 @@ export class SpawnFileService {
 
   @LatestFlow("operation")
   public *saveFile(path: string): TFlow {
-    const session = this.sessionDescriptor;
+    const session = this.sessionState;
 
     if (!session) {
       return;
@@ -230,7 +258,7 @@ export class SpawnFileService {
 
   @LatestFlow("operation")
   public *saveUnpackedDirectory(path: string): TFlow {
-    const session = this.sessionDescriptor;
+    const session = this.sessionState;
 
     if (!session) {
       return;
@@ -284,33 +312,33 @@ export class SpawnFileService {
 
   @ExclusiveFlow()
   public *loadAlifeSpawn(): TFlow {
-    yield* this.fetchChunk("alifeSpawn", spawnCommands.getAlifeSpawns);
+    yield* this.fetchChunk(ESpawnChunkKind.ALIFE_SPAWN);
   }
 
   @ExclusiveFlow()
   public *loadArtefactSpawn(): TFlow {
-    yield* this.fetchChunk("artefactSpawn", spawnCommands.getArtefactSpawns);
+    yield* this.fetchChunk(ESpawnChunkKind.ARTEFACT_SPAWN);
   }
 
   @ExclusiveFlow()
   public *loadPatrols(): TFlow {
-    yield* this.fetchChunk("patrols", spawnCommands.getPatrols);
+    yield* this.fetchChunk(ESpawnChunkKind.PATROLS);
   }
 
   @ExclusiveFlow()
   public *loadGraphs(): TFlow {
-    yield* this.fetchChunk("graphs", spawnCommands.getGraphs);
+    yield* this.fetchChunk(ESpawnChunkKind.GRAPHS);
   }
 
   /**
    * Fetch one chunk, at most once.
    *
-   * @param key - State field that stores the requested chunk.
-   * @param read - Command returning that chunk for the committed session.
+   * @param key - The chunk to read, which also names the state field it is kept in.
    */
-  private *fetchChunk<K extends keyof SpawnFile>(key: K, read: (sessionId: SessionId) => Promise<SpawnFile[K]>): TFlow {
-    const session = this.sessionDescriptor;
-    const current: AsyncState<SpawnFile[K]> = this.chunks[key];
+  private *fetchChunk<K extends ESpawnChunkKind>(key: K): TFlow {
+    const session = this.sessionState;
+    const chunks: TSpawnLargeChunkStates = this.chunks;
+    const current: AsyncState<TSpawnChunkOf<K>> = chunks[key];
 
     if (!session || current.isLoading || current.isReady) {
       return;
@@ -321,18 +349,22 @@ export class SpawnFileService {
     const path: Nullable<string> = this.path;
 
     this.log.info("Reading spawn chunk:", path, key);
-    this.setChunk(key, loading);
+    this.setLargeChunk(key, loading);
 
     try {
-      const chunk: SpawnFile[K] = yield* call(read(session.sessionId));
+      const answer: SessionSnapshot<SpawnChunk> = yield* call(spawnCommands.readChunk(session.sessionId, key));
 
-      this.setChunk(key, loading.asReady(chunk));
+      if (!isSpawnChunkOf(answer.value, key)) {
+        throw new Error(`Asked for the ${key} chunk, read the ${answer.value.kind} chunk`);
+      }
+
+      this.setLargeChunk(key, loading.asReady(answer.value));
 
       this.log.info("Spawn chunk read:", path, key, "in", formatDuration(timer.elapsed()));
     } catch (error: unknown) {
       this.log.error("Failed to read spawn chunk:", path, key, "after", formatDuration(timer.elapsed()), error);
 
-      this.setChunk(key, loading.asFailed(transformError(error)));
+      this.setLargeChunk(key, loading.asFailed(transformError(error)));
 
       emitNotification(this.eventBus, {
         details: transformError(error).message,
@@ -343,24 +375,28 @@ export class SpawnFileService {
     } finally {
       // Cancelling a read leaves it retryable without replacing a newer state.
       if (this.chunks[key] === loading) {
-        this.setChunk(key, current);
+        this.setLargeChunk(key, current);
       }
     }
   }
 
-  private setChunk<K extends keyof SpawnFile>(key: K, value: AsyncState<SpawnFile[K]>): void {
+  private setHeader(value: AsyncState<SpawnHeaderChunk>): void {
+    this.chunks = { ...this.chunks, header: value };
+  }
+
+  private setLargeChunk<K extends ESpawnChunkKind>(key: K, value: AsyncState<TSpawnChunkOf<K>>): void {
     this.chunks = { ...this.chunks, [key]: value };
   }
 
-  private adoptSession(session: Nullable<SpawnSessionDescriptor>): void {
-    if (!session || this.sessionDescriptor?.sessionId !== session.sessionId) {
+  private adoptSession(session: Nullable<SessionSnapshot<SpawnSessionDescriptor>>): void {
+    if (!session || this.sessionState?.sessionId !== session.sessionId) {
       this.resetChunks();
     }
 
     this.session.adopt(session);
-    this.sessionDescriptor = session;
+    this.sessionState = session;
 
-    this.setChunk("header", session ? AsyncState.ready(session.header) : AsyncState.idle());
+    this.setHeader(session ? AsyncState.ready(session.value.header) : AsyncState.idle());
   }
 
   private resetChunks(): void {

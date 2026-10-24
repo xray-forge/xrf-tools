@@ -680,24 +680,6 @@ export type SpawnArtefactSpawnsChunk = {
   nodes: Array<ArtefactSpawnPoint>;
 };
 
-/**
- * Descriptor of generic spawn file used by xray game engine.
- *
- * Root level samples by ID:
- * 0 - header
- * 1 - alife spawns
- * 2 - alife objects
- * 3 - patrols
- * 4 - game graphs
- */
-export type SpawnFile = {
-  header: SpawnHeaderChunk;
-  alifeSpawn: SpawnALifeSpawnsChunk;
-  artefactSpawn: SpawnArtefactSpawnsChunk;
-  patrols: SpawnPatrolsChunk;
-  graphs: SpawnGraphsChunk;
-};
-
 /** `GameGraph::CHeader::load`, `GameGraph::SLevel::load`, `CGameGraph::Initialize` */
 export type SpawnGraphsChunk = {
   header: GraphHeader;

@@ -15,7 +15,7 @@ import { mockLevelWeatherCycle, mockLevelWeatherDescription } from "@/fixtures/m
 import { mockContainer } from "@/fixtures/utils/container";
 
 const READ_WEATHER: string = "plugin:levels|describe_weather";
-/** The level `get_level` restores, as `mockSessionResponse` names a call carrying no session. */
+/** The level `restore_level` restores, as `mockSessionResponse` names a call carrying no session. */
 const SESSION: string = "fixture-session";
 
 function countReads(): number {
@@ -31,7 +31,7 @@ async function flush(): Promise<void> {
 /** Provisions the weather over a restored level, once its first cycle plays. */
 async function openWeather(): Promise<{ container: Container; service: LevelWeatherService }> {
   setMockInvokeResponses({
-    ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+    ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
     [READ_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
   });
 
@@ -84,7 +84,7 @@ describe("LevelWeatherService changes", () => {
     const answers: Array<() => void> = [];
 
     setMockInvokeResponses({
-      ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+      ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
       [READ_WEATHER]: (args?: Record<string, unknown>) =>
         new Promise((resolve) =>
           answers.push(() =>

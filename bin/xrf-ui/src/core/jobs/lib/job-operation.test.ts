@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { autorun, flow } from "@wirestate/mobx";
 
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import {
+  CONFIGS_JOB_CHECK_FORMAT,
+  CONFIGS_JOB_FORMAT,
+  CONFIGS_JOB_VERIFY,
+  JobKind,
+  TRANSLATIONS_JOB_BUILD,
+} from "@/core/ipc/types/xrf-app";
 import { IJobDescriptor, IJobSettledPayload } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { ENotificationSeverity } from "@/core/notifications/lib";
@@ -25,7 +31,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function setup(kinds: ReadonlyArray<EJobKind> = [EJobKind.CONFIGS_VERIFY]) {
+function setup(kinds: ReadonlyArray<JobKind> = [CONFIGS_JOB_VERIFY]) {
   const { service: jobs } = mockInjectedService(JobsService);
   const operation = new JobOperation<IResult>(jobs, kinds);
 
@@ -34,7 +40,7 @@ function setup(kinds: ReadonlyArray<EJobKind> = [EJobKind.CONFIGS_VERIFY]) {
 
 function descriptor(answer: Promise<IResult>): IJobDescriptor<IResult> {
   return {
-    kind: EJobKind.CONFIGS_VERIFY,
+    kind: CONFIGS_JOB_VERIFY,
     invoke: () => answer,
     describe: () => ({ title: "Verified", severity: ENotificationSeverity.SUCCESS }),
   };
@@ -43,7 +49,7 @@ function descriptor(answer: Promise<IResult>): IJobDescriptor<IResult> {
 function settled(patch: Partial<IJobSettledPayload> = {}): IJobSettledPayload {
   return {
     id: "adopted",
-    kind: EJobKind.CONFIGS_VERIFY,
+    kind: CONFIGS_JOB_VERIFY,
     conclusion: "completed",
     error: null,
     result: { count: 4 },
@@ -63,7 +69,7 @@ describe("JobOperation", () => {
       return yield* operation.run(descriptor(answer.promise));
     })();
 
-    expect(operation.job?.kind).toBe(EJobKind.CONFIGS_VERIFY);
+    expect(operation.job?.kind).toBe(CONFIGS_JOB_VERIFY);
     expect(operation.isRunning).toBe(true);
 
     answer.resolve({ count: 7 });
@@ -146,12 +152,12 @@ describe("JobOperation", () => {
   });
 
   it("rediscovers either formatter mode and cancels the adopted job", () => {
-    const { operation, jobs } = setup([EJobKind.CONFIGS_CHECK_FORMAT, EJobKind.CONFIGS_FORMAT]);
+    const { operation, jobs } = setup([CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT]);
 
     jobs.jobs = [
       {
         id: "format",
-        kind: EJobKind.CONFIGS_FORMAT,
+        kind: CONFIGS_JOB_FORMAT,
         request: null,
         progress: null,
         isAdopted: true,
@@ -170,7 +176,7 @@ describe("JobOperation", () => {
     const { operation } = setup();
 
     expect(operation.adopt(settled())).toBe(true);
-    expect(operation.adopt(settled({ kind: EJobKind.TRANSLATIONS_BUILD, result: { count: 99 } }))).toBe(false);
+    expect(operation.adopt(settled({ kind: TRANSLATIONS_JOB_BUILD, result: { count: 99 } }))).toBe(false);
 
     expect(operation.result).toEqual({ count: 4 });
 

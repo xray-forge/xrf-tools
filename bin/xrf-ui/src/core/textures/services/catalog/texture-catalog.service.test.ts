@@ -38,8 +38,8 @@ function mockService(): { service: TextureCatalogService; asked: IAsked } {
 
       return [mockTextureSummary(MOCK_TEXTURE)];
     },
-    ["plugin:textures|get_session"]: mockSessionResponse(null),
-    ["plugin:textures|open"]: mockSessionResponse((args?: Record<string, unknown>) => {
+    ["plugin:textures|restore_browse"]: mockSessionResponse(null),
+    ["plugin:textures|open_browse"]: mockSessionResponse((args?: Record<string, unknown>) => {
       const mode: TextureCatalogMode = args?.mode as TextureCatalogMode;
 
       asked.openModes.push(mode);
@@ -49,7 +49,7 @@ function mockService(): { service: TextureCatalogService; asked: IAsked } {
   });
 
   setMockBulkResponses({
-    "textures/read_texture": new ArrayBuffer(0),
+    "assets/read_texture": new ArrayBuffer(0),
   });
 
   const container: Container = mockContainer([TextureSelectionService, TextureCatalogService]);

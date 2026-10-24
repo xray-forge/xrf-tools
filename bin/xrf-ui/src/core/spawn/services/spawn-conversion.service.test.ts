@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 
-import { EJobKind, SpawnConversionResult } from "@/core/ipc/types/xrf-app";
+import { SPAWN_JOB_UNPACK, SpawnConversionResult } from "@/core/ipc/types/xrf-app";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
@@ -117,7 +117,7 @@ describe("SpawnConversionService", () => {
     jobs.jobs = [
       {
         id: "adopted",
-        kind: EJobKind.SPAWN_UNPACK,
+        kind: SPAWN_JOB_UNPACK,
         progress: null,
         request: null,
         isCancelRequested: false,
@@ -133,7 +133,7 @@ describe("SpawnConversionService", () => {
     jobs.jobs = [];
     container.get(EventBus).emit<IJobSettledPayload>(JOB_SETTLED_EVENT, {
       id: "adopted",
-      kind: EJobKind.SPAWN_UNPACK,
+      kind: SPAWN_JOB_UNPACK,
       conclusion: "completed",
       error: null,
       result: { ...RESULT, operation: "unpack" },

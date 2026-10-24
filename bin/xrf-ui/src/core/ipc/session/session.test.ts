@@ -240,16 +240,7 @@ describe("Session", () => {
     });
 
     expect(sent).toEqual(["plugin:sessions|bind"]);
-    expect(mockInvoke.mock.calls[0]?.[1]).toEqual({
-      scope: { tool: "level-viewer", window: "main" },
-      sessionId: expect.any(String),
-    });
-    expect(session.scope).toEqual({ tool: "level-viewer", window: "main" });
-  });
-
-  it("makes a scope outside a Tauri webview, where there is no window to name", () => {
-    mockIsTauri.mockReturnValue(false);
-
-    expect(new SessionScopeService("level-viewer").scope).toEqual({ tool: "level-viewer", window: "" });
+    expect(mockInvoke.mock.calls[0]?.[1]).toEqual({ sessionId: expect.any(String), tool: "level-viewer" });
+    expect(session.tool).toBe("level-viewer");
   });
 });

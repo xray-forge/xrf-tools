@@ -26,7 +26,7 @@ function mockService() {
   const describeTexture = jest.spyOn(texturesCommands, "describe").mockResolvedValue(description);
   const readTexture = jest.fn<BulkRead>().mockResolvedValue(preview);
 
-  setMockBulkResponses({ "textures/read_texture": readTexture });
+  setMockBulkResponses({ "assets/read_texture": readTexture });
 
   return { service, description, preview, describeTexture, readTexture };
 }

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
 import { Nullable } from "@xrf/types";
 
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { ARCHIVES_JOB_PACK, ARCHIVES_JOB_UNPACK } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
@@ -38,7 +38,7 @@ function pending(): { descriptor: Parameters<JobsService["run"]>[0]; settle: (va
 
   return {
     descriptor: {
-      kind: EJobKind.ARCHIVES_PACK,
+      kind: ARCHIVES_JOB_PACK,
       invoke: () => promise,
       describe: (): IJobNotice => ({
         severity: ENotificationSeverity.SUCCESS,
@@ -159,7 +159,7 @@ describe("JobsService", () => {
     const { service } = mockInjectedService(JobsService);
 
     const run = service.run({
-      kind: EJobKind.ARCHIVES_PACK,
+      kind: ARCHIVES_JOB_PACK,
       invoke: () => Promise.reject(new Error("volume cap refuses particles.xr")),
       describe: (): IJobNotice => ({
         severity: ENotificationSeverity.ERROR,
@@ -179,13 +179,13 @@ describe("JobsService", () => {
 
     const run = service.run(descriptor);
 
-    expect(service.getJobOfKind(EJobKind.ARCHIVES_PACK)?.id).toBe(run.id);
-    expect(service.getJobOfKind(EJobKind.ARCHIVES_UNPACK)).toBeNull();
+    expect(service.getJobOfKind(ARCHIVES_JOB_PACK)?.id).toBe(run.id);
+    expect(service.getJobOfKind(ARCHIVES_JOB_UNPACK)).toBeNull();
 
     settle(null);
     await run.promise;
 
-    expect(service.getJobOfKind(EJobKind.ARCHIVES_PACK)).toBeNull();
+    expect(service.getJobOfKind(ARCHIVES_JOB_PACK)).toBeNull();
   });
 
   it("notifies exactly once, when the job ends and not while it runs", async () => {
@@ -252,7 +252,7 @@ describe("JobsService", () => {
     });
 
     const run = service.run({
-      kind: EJobKind.ARCHIVES_PACK,
+      kind: ARCHIVES_JOB_PACK,
       invoke: () => pendingPromise,
       describe,
     });

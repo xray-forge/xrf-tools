@@ -8,7 +8,7 @@ import { JobProgress } from "@/core/ipc/types/xrf-job";
 
 /** Commands */
 export const gamedataCommands = {
-  /** Run the selected checks over a gamedata project. */
+  /** Run the selected checks over a gamedata project, one verification at a time. */
   verifyProject: (request: GamedataVerifyRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<GamedataVerifySummary>("plugin:gamedata|verify_project", { request, jobId, progress }),
 };

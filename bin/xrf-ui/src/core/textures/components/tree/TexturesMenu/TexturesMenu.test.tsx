@@ -49,7 +49,7 @@ async function renderMenu(
     ["plugin:textures|describe"]: description,
     ["plugin:textures|describe_catalog"]: summaries,
     ["plugin:textures|get_roots"]: null,
-    ["plugin:textures|open"]: mockSessionResponse(catalog),
+    ["plugin:textures|open_browse"]: mockSessionResponse(catalog),
   });
 
   // Both halves: the catalog lists, and choosing a row hands the reference to the selection.

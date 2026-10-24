@@ -79,7 +79,8 @@ export function getSubjectRoot(subject: Nullable<ArchiveSubject>): string {
 }
 
 /**
- * The roots every asset read of a subject is addressed by.
+ * The roots a model of a subject is opened in, since the visuals viewer reads through roots rather than through the
+ * subject's session as every other preview does.
  *
  * A world already carries the roots it was opened with, so a read answers for the arrangement the listing on screen
  * describes rather than for whatever the path means now.
@@ -88,5 +89,6 @@ export function getSubjectRoot(subject: Nullable<ArchiveSubject>): string {
  * @returns The roots spec the backend can mount.
  */
 export function getSubjectRoots(subject: ArchiveSubject): XrayRoots {
+  // todo: Open an archived model through the subject's session, so a volume set is not mounted a second time for it.
   return subject.kind === EArchiveSubject.WORLD ? subject.world.roots : createArchiveRoots(subject.project);
 }

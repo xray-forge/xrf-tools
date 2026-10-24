@@ -45,11 +45,11 @@ import {
 /** Commands */
 export const renderCommands = {
   /**
-   * Start drawing a native viewport into a window, named by its label, telling the page what it costs and where its
-   * camera is through `events`.
+   * Start drawing a native viewport into the calling window, telling the page what it costs and where its camera is
+   * through `events`.
    */
-  attachViewport: (window: string, events: Channel<ViewportEvent>) =>
-    __TAURI_INVOKE<RenderViewportId>("plugin:render|attach_viewport", { window, events }),
+  attachViewport: (events: Channel<ViewportEvent>) =>
+    __TAURI_INVOKE<RenderViewportId>("plugin:render|attach_viewport", { events }),
   /** Ask a viewport's camera to reset or dolly. */
   commandCamera: (viewport: RenderViewportId, command: WorldCameraCommand) =>
     __TAURI_INVOKE<void>("plugin:render|command_camera", { viewport, command }),

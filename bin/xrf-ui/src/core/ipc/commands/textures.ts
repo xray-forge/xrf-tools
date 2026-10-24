@@ -9,9 +9,8 @@ import {
   ETextureSurfaceShape,
   SessionId,
   SessionRestore,
-  SessionScope,
   SessionSnapshot,
-  TextureBrowseSession,
+  TextureBrowse,
   TextureBuildOutcome,
   TextureCatalog,
   TextureDescription,
@@ -35,9 +34,12 @@ export const texturesCommands = {
   /** Rebuild a texture from a source image, the way its descriptor says to. */
   buildFromSource: (request: TexturesBuildRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TextureBuildOutcome>("plugin:textures|build_from_source", { request, jobId, progress }),
-  /** Close browse state and invalidate held or unfinished comparisons. */
-  close: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:textures|close", { sessionIds }),
-  /** Weigh every candidate format against one texture, and keep the encodes. */
+  /** Close the listings `session_ids` name, committed or opening. */
+  closeBrowse: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<void>("plugin:textures|close_browse", { sessionIds }),
+  /** Close the comparisons `session_ids` name, held or still weighing, letting their encodes go. */
+  closeComparison: (sessionIds: Array<SessionId>) =>
+    __TAURI_INVOKE<void>("plugin:textures|close_comparison", { sessionIds }),
+  /** Weigh every candidate format against one texture, and keep the encodes with the texture they were made of. */
   compareEncodings: (request: TexturesCompareRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TextureEncodingComparison>("plugin:textures|compare_encodings", { request, jobId, progress }),
   /** Describe one texture: its file, its descriptor as the engine reads it, and the pair the engine binds. */
@@ -46,18 +48,21 @@ export const texturesCommands = {
   /** Read every descriptor the roots hold and say what each makes of its texture. */
   describeCatalog: (roots: XrayRoots) =>
     __TAURI_INVOKE<Array<TextureMaterialSummary>>("plugin:textures|describe_catalog", { roots }),
-  /** The listing a tool was browsing, the newest it opened, or null when it holds none. */
-  getSession: (scope: SessionScope) =>
-    __TAURI_INVOKE<SessionRestore<TextureBrowseSession>>("plugin:textures|get_session", { scope }),
   /** The names the SDK gives the numbers a descriptor stores. */
   getVocabulary: () => __TAURI_INVOKE<TextureVocabulary>("plugin:textures|get_vocabulary"),
   /** Generate the `_bump` and `_bump#` pair a bumped surface binds, from a height map. */
   makeBump: (request: TexturesMakeBumpRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TextureMakeBumpOutcome>("plugin:textures|make_bump", { request, jobId, progress }),
-  /** Open a root set and list every texture it holds. */
-  open: (sessionId: SessionId, roots: XrayRoots, mode: ETextureCatalogMode) =>
-    __TAURI_INVOKE<SessionSnapshot<TextureCatalog>>("plugin:textures|open", { sessionId, roots, mode }),
-  /** Write one node's pending files: its descriptor, its base texture, or both. */
+  /** Open a root set and list every texture it holds, read fresh as an open a person makes is. */
+  openBrowse: (sessionId: SessionId, roots: XrayRoots, mode: ETextureCatalogMode) =>
+    __TAURI_INVOKE<SessionSnapshot<TextureCatalog>>("plugin:textures|open_browse", { sessionId, roots, mode }),
+  /** The listing `tool` browses in the asking window, the newest it opened, or null when it holds none. */
+  restoreBrowse: (tool: string) =>
+    __TAURI_INVOKE<SessionRestore<TextureBrowse>>("plugin:textures|restore_browse", { tool }),
+  /**
+   * Write one node's descriptor, and the base texture with it when a held candidate is chosen: written over the texture
+   * that candidate's comparison was made of, whose descriptor the request has to name.
+   */
   save: (request: TexturesSaveRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TextureSaveOutcome>("plugin:textures|save", { request, jobId, progress }),
   /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ConfigsDocument, ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
+import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
 import {
   ELtxFindingKind,
   LtxAnchoredFinding,
@@ -14,6 +14,7 @@ import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 
@@ -25,16 +26,15 @@ function mockDocumentOf(path: string): ConfigsDocument {
   };
 }
 
-function mockOpenedService(): IInjectedServiceMockDescriptor<ConfigsDocumentService> {
+async function mockOpenedService(): Promise<IInjectedServiceMockDescriptor<ConfigsDocumentService>> {
   const { service, container } = mockInjectedService(ConfigsDocumentService, [
     ConfigsProjectService,
     ConfigsFindingsService,
     ConfigsResolvedService,
     ConfigsSchemeService,
   ]);
-  const project = container.get(ConfigsProjectService);
 
-  project.project = project.project.asReady({ sessionId: "session-1" } as ConfigsProjectDescriptor);
+  await mockRestoredConfigsProject(container.get(ConfigsProjectService));
 
   return { service, container };
 }
@@ -48,7 +48,7 @@ describe("ConfigsDocumentService", () => {
 
     setMockInvokeResponses({ "plugin:configs|read_document": () => response });
 
-    const { service } = mockOpenedService();
+    const { service } = await mockOpenedService();
     const reading = service.select("system.ltx");
 
     service.clear();
@@ -68,7 +68,7 @@ describe("ConfigsDocumentService", () => {
 
     setMockInvokeResponses({ "plugin:configs|read_document": () => response });
 
-    const { service } = mockOpenedService();
+    const { service } = await mockOpenedService();
     const reading = service.select("system.ltx");
 
     service.clear();
@@ -89,7 +89,7 @@ describe("ConfigsDocumentService", () => {
 
     setMockInvokeResponses({ "plugin:configs|read_document": previous });
 
-    const { service } = mockOpenedService();
+    const { service } = await mockOpenedService();
 
     await service.select("previous.ltx");
     setMockInvokeResponses({ "plugin:configs|read_document": () => response });
@@ -146,7 +146,7 @@ describe("ConfigsDocumentService", () => {
         "plugin:configs|read_section_scheme": report,
       });
 
-      const { service, container } = mockOpenedService();
+      const { service, container } = await mockOpenedService();
       const project = container.get(ConfigsProjectService);
       const resolved = container.get(ConfigsResolvedService);
       const problems = container.get(ConfigsFindingsService);
@@ -231,7 +231,7 @@ describe("ConfigsDocumentService", () => {
 
     setMockInvokeResponses({ "plugin:configs|list_resolved_sections": () => pending });
 
-    const { service, container } = mockOpenedService();
+    const { service, container } = await mockOpenedService();
     const resolved = container.get(ConfigsResolvedService);
     const reading = resolved.open("system.ltx");
 

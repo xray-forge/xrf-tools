@@ -1,12 +1,16 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { IBulkCall } from "@/core/ipc/bulk";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
+import { SessionId } from "@/core/ipc/types/xrf-app";
 
 /** Routes answering with bytes over the loopback transport, which Specta never sees. */
 export const archivesBulkRoutes = {
-  readTexture: (roots: XrayRoots, logicalPath: string): IBulkCall => ({
-    args: { roots, logicalPath },
+  readEntry: (sessionId: SessionId, name: string): IBulkCall => ({
+    args: { sessionId, name },
+    route: "archives/read_entry",
+  }),
+  readTexture: (sessionId: SessionId, name: string): IBulkCall => ({
+    args: { sessionId, name },
     route: "archives/read_texture",
   }),
 };

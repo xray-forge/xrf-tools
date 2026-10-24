@@ -7,9 +7,9 @@ import { Nullable } from "@xrf/types";
 import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
 import { fetchBulk } from "@/core/ipc/bulk";
+import { assetsBulkRoutes } from "@/core/ipc/commands/assets-bulk";
 import { texturesCommands } from "@/core/ipc/commands/textures";
-import { texturesBulkRoutes } from "@/core/ipc/commands/textures-bulk";
-import { ETextureSource, TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
+import { AssetSource, ETextureSource, TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
@@ -180,9 +180,9 @@ export class TextureSelectionService {
    * @param description - The texture just resolved.
    */
   private *decode(description: TextureDescription): TFlow {
-    const logicalPath: Nullable<string> = description.texture?.logicalPath ?? null;
+    const source: Nullable<AssetSource> = description.textureSource;
 
-    if (!logicalPath) {
+    if (!source) {
       this.preview = this.preview.asIdle();
 
       return;
@@ -193,7 +193,7 @@ export class TextureSelectionService {
     this.preview = this.preview.asLoading(null);
 
     try {
-      const bytes: ArrayBuffer = yield* call(fetchBulk(texturesBulkRoutes.readTexture(description.roots, logicalPath)));
+      const bytes: ArrayBuffer = yield* call(fetchBulk(assetsBulkRoutes.readTexture(description.roots, source)));
 
       this.preview = this.preview.asReady(bytes);
 
@@ -210,7 +210,7 @@ export class TextureSelectionService {
       this.log.error(
         "Failed to decode texture:",
         description.reference,
-        logicalPath,
+        source,
         "after",
         formatDuration(timer.elapsed()),
         transformed

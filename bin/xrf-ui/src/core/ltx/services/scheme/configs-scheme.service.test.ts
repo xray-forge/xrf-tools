@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
 import { Nullable } from "@xrf/types";
 
-import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
 import { LtxSectionSchemeReport } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 
@@ -19,9 +19,8 @@ describe("ConfigsSchemeService", () => {
     setMockInvokeResponses({ "plugin:configs|read_section_scheme": () => response });
 
     const { service, container } = mockInjectedService(ConfigsSchemeService, [ConfigsProjectService]);
-    const project = container.get(ConfigsProjectService);
 
-    project.project = project.project.asReady({ sessionId: "session-1" } as ConfigsProjectDescriptor);
+    await mockRestoredConfigsProject(container.get(ConfigsProjectService));
 
     const reading = service.read("system.ltx", "wpn_base");
 

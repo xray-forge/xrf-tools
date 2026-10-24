@@ -1,5 +1,4 @@
 import { Channel } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
 import { renderCommands } from "@/core/ipc/commands/render";
@@ -103,7 +102,7 @@ export class NativeViewport {
       }
     };
 
-    this.attached = renderCommands.attachViewport(getCurrentWindow().label, events).then(
+    this.attached = renderCommands.attachViewport(events).then(
       (id: RenderViewportId) => {
         // Released before the renderer answered: what it attached goes at once.
         if (this.isDisposed) {

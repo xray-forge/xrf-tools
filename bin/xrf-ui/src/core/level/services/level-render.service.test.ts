@@ -134,7 +134,7 @@ describe("LevelRenderService", () => {
   it("attaches a native viewport to its window and stands the camera at the level's start", async () => {
     await mockAttachedLevelRender();
 
-    expect(sentRenderCommand("attach_viewport")).toEqual([{ events: getMockChannels()[0], window: "main" }]);
+    expect(sentRenderCommand("attach_viewport")).toEqual([{ events: getMockChannels()[0] }]);
     expect(sentRenderCommand("configure")).toEqual([
       {
         settings: {
@@ -245,7 +245,7 @@ describe("LevelRenderService", () => {
     const resets: number = sentRenderCommand("command_camera").length;
 
     setMockInvokeResponses({
-      ["plugin:levels|get_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), sessionId, 1),
+      ["plugin:levels|restore_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), sessionId, 1),
     });
     container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
       revision: 1,

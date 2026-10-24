@@ -124,7 +124,7 @@ describe("LevelLookService", () => {
   // A read that failed is not a game that ships none: the look says which, while both fall back to the engine's.
   it("holds a failed read of the defaults as failed, not as none shipped", async () => {
     setMockInvokeResponses({
-      ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+      ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
       ["plugin:levels|describe_console_defaults"]: () => {
         throw new Error("the level's archive went");
       },
@@ -142,7 +142,7 @@ describe("LevelLookService", () => {
 
   it("reads the defaults of a level as the level opens, with no viewport to draw it, and drops them as it closes", async () => {
     setMockInvokeResponses({
-      ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+      ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
       ["plugin:levels|describe_console_defaults"]: mockSessionResponse(UNSET),
     });
 

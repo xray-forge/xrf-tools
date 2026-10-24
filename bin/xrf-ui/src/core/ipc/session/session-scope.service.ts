@@ -2,9 +2,8 @@ import { isTauri } from "@tauri-apps/api/core";
 import { inject, Injectable, InjectionToken, OnDeactivation } from "@wirestate/core";
 
 import { sessionsCommands } from "@/core/ipc/commands/sessions";
-import { SessionId, SessionScope } from "@/core/ipc/types/xrf-app";
+import { SessionId } from "@/core/ipc/types/xrf-app";
 import { Logger } from "@/lib/logging";
-import { resolveAppWindow } from "@/lib/tauri/app-window";
 
 import { IScopedSession } from "./session.types";
 
@@ -15,26 +14,21 @@ export const SESSION_TOOL: InjectionToken<string> = new InjectionToken<string>("
 export const SHELL_SESSION_TOOL: string = "shell";
 
 /**
- * The scope a container's openings are held in: its window and tool, named alike across the window's page loads, so a
- * reloaded page attaches to what its tool held. Released as the container goes, which is when its tool is left: one
- * call closes what every service of the tool held, and each service's sessions are retired with it. A page that
- * reloads releases nothing, since the backend holds what it opened.
+ * The scope a container's openings are held in: its tool, named alike across the window's page loads, so a reloaded
+ * page attaches to what its tool held; the backend reads the window from the call itself. Released as the container
+ * goes, which is when its tool is left: one call closes what every service of the tool held, and each service's
+ * sessions are retired with it. A page that reloads releases nothing, since the backend holds what it opened.
  */
 @Injectable()
 export class SessionScopeService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
-
-  public readonly scope: SessionScope;
 
   private readonly sessions: Set<IScopedSession> = new Set();
 
   /**
    * @param tool - The tool the scope is held for.
    */
-  public constructor(tool: string = inject(SESSION_TOOL)) {
-    // Outside a Tauri webview there is no window, and no backend to hold a scope.
-    this.scope = { tool, window: resolveAppWindow()?.label ?? "" };
-  }
+  public constructor(public readonly tool: string = inject(SESSION_TOOL)) {}
 
   /**
    * Binds an opening to this scope before it opens, so a scope released while it opens closes it.
@@ -44,7 +38,7 @@ export class SessionScopeService {
    */
   public async bind(sessionId: SessionId): Promise<void> {
     if (isTauri()) {
-      await sessionsCommands.bind(sessionId, this.scope);
+      await sessionsCommands.bind(sessionId, this.tool);
     }
   }
 
@@ -68,7 +62,7 @@ export class SessionScopeService {
       return;
     }
 
-    sessionsCommands.releaseScope(this.scope).catch((error: unknown) => {
+    sessionsCommands.releaseScope(this.tool).catch((error: unknown) => {
       this.log.error("Failed to release a tool's openings:", error);
     });
   }
