@@ -7,7 +7,7 @@ import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -22,6 +22,13 @@ function mockService() {
   });
 
   return result;
+}
+
+/** One argument of every `visuals` command of a name sent so far, in order. */
+function listSent(command: string, argument: string): Array<unknown> {
+  return mockInvoke.mock.calls
+    .filter(([name]) => name === `plugin:visuals|${command}`)
+    .map(([, args]) => (args as Record<string, unknown>)?.[argument]);
 }
 
 function mockMotion(bake: VisualMotionBake = BAKE): void {
@@ -199,6 +206,27 @@ describe("VisualMotionService", () => {
     expect(service.motions.value ?? []).toEqual([]);
     expect(service.frame).toBe(0);
     expect(service.isPlaying).toBe(false);
+  });
+
+  // What is played is the viewer's, so the backend holds it apart from the model and lets it go with the viewer.
+  it("holds each motion posed as an opening of its own, closing the one it replaces and the one held when cleared", async () => {
+    mockMotion();
+
+    const { service } = mockService();
+
+    await service.open("norm_walk_fwd_1");
+    await service.open("norm_idle_0");
+    await Promise.resolve();
+
+    const [first, second] = listSent("open_motion", "motionId");
+
+    expect(first).not.toBe(second);
+    expect(listSent("close_motion", "sessionIds")).toEqual([[first]]);
+
+    service.clear();
+    await Promise.resolve();
+
+    expect(listSent("close_motion", "sessionIds")).toEqual([[first], [second]]);
   });
 });
 

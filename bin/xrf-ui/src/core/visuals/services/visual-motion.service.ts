@@ -7,8 +7,8 @@ import { Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { requireSessionId } from "@/core/ipc/session";
-import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import { requireSessionId, Session, SessionScopeService } from "@/core/ipc/session";
+import { SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { VisualMotionBake } from "@/core/ipc/types/xrf-visual";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
@@ -24,6 +24,9 @@ import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx"
 @Injectable()
 export class VisualMotionService {
   public readonly log: Logger = new Logger(this.constructor.name);
+
+  /** The posed motion, an opening of this viewer's own beside the model's: what it plays is its view, not the model. */
+  private readonly session: Session = new Session(visualsCommands.closeMotion, inject(SessionScopeService));
 
   private ticker: Nullable<ReturnType<typeof setInterval>> = null;
 
@@ -133,7 +136,7 @@ export class VisualMotionService {
     try {
       const sessionId: string = requireSessionId(this.loadService.visual.value?.selected ?? null);
       const snapshot: SessionSnapshot<VisualMotionBake> = yield* call(
-        visualsCommands.openMotion(sessionId, crypto.randomUUID(), name)
+        this.session.open((motionId: SessionId) => visualsCommands.openMotion(sessionId, motionId, name))
       );
 
       const bake: VisualMotionBake = snapshot.value;
@@ -213,7 +216,8 @@ export class VisualMotionService {
   }
 
   /**
-   * Drops the posed motion and stops playing, which is what leaving or opening another model means.
+   * Drops the posed motion, letting the backend's bake go, and stops playing, which is what leaving or opening another
+   * model means.
    *
    * The playback rate survives: it is a preference about looking at motions rather than a property of the one that was
    * open. The list does not, because it named the previous model's motions; whoever shows them lists again for the
@@ -222,6 +226,7 @@ export class VisualMotionService {
   @BoundAction()
   public clear(): void {
     cancelFlows(this);
+    this.session.release();
 
     this.stopTicker();
     this.isPlaying = false;

@@ -6,9 +6,11 @@ use xrf_visual::{VisualMotionBake, VisualMotionPose};
 use crate::core::assets::AssetMountState;
 use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
+use crate::plugins::visuals::posed_visual_motion::PosedVisualMotion;
 use crate::plugins::visuals::state::{SelectedVisual, VisualState};
 
-/// Pose the open visual through one of its motions, and report what came out.
+/// Pose the open visual through one of its motions, held as `motion_id`, an opening of the viewer's own, and report
+/// what came out.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_motion"))]
 #[tauri::command(rename = "open_motion")]
 pub async fn visuals_open_motion(
@@ -21,19 +23,24 @@ pub async fn visuals_open_motion(
   log::info!("Posing motion: {name}");
 
   let current: Arc<SessionSnapshot<SelectedVisual>> = state.models.require(session_id)?;
-
-  current.posed.begin_open(motion_id)?;
-
+  // Refused before the pose is reserved, so a model with nothing to animate leaves no opening behind.
   let Some(motions) = current.motions.as_ref() else {
     return Err(String::from("The open visual carries no bind pose to animate"));
   };
 
+  state.poses.begin_open(motion_id)?;
+
   // Posed inside the roots the open used, so the animation files are looked for where the model's own references were.
-  let posed: VisualMotionPose = motions
+  let pose: VisualMotionPose = motions
     .bake_named(&assets.search(&current.roots)?, &current.dependencies, &name)
     .map_err(|error| error.to_string())?;
+  let opened: Arc<SessionSnapshot<PosedVisualMotion>> = state.poses.commit_open(
+    motion_id,
+    PosedVisualMotion {
+      model: session_id,
+      pose,
+    },
+  )?;
 
-  let opened: Arc<SessionSnapshot<VisualMotionPose>> = current.posed.commit_open(motion_id, posed)?;
-
-  Ok(opened.map(|pose| pose.description.clone()))
+  Ok(opened.map(|posed| posed.pose.description.clone()))
 }

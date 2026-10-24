@@ -19,6 +19,8 @@ export const visualsCommands = {
   closeBrowse: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:visuals|close_browse", { sessionIds }),
   /** Release only the openings owned by the departing viewer. */
   closeModel: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:visuals|close_model", { sessionIds }),
+  /** Release only the posed motions owned by the departing viewer. */
+  closeMotion: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:visuals|close_motion", { sessionIds }),
   /** Describe one of the open visual's motions as a pose of it would hold it, its frames, bones and length, posing none. */
   describeMotion: (sessionId: SessionId, name: string) =>
     __TAURI_INVOKE<VisualMotionBake>("plugin:visuals|describe_motion", { sessionId, name }),
@@ -45,7 +47,10 @@ export const visualsCommands = {
       source,
       roots,
     }),
-  /** Pose the open visual through one of its motions, and report what came out. */
+  /**
+   * Pose the open visual through one of its motions, held as `motion_id`, an opening of the viewer's own, and report
+   * what came out.
+   */
   openMotion: (sessionId: SessionId, motionId: SessionId, name: string) =>
     __TAURI_INVOKE<SessionSnapshot<VisualMotionBake>>("plugin:visuals|open_motion", { sessionId, motionId, name }),
   /**

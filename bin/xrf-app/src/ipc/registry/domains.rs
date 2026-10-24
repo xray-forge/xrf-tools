@@ -215,6 +215,7 @@ macro_rules! for_each_tauri_command_domain {
       visuals => "visuals" {
         close_browse => crate::plugins::visuals::commands::close_browse::visuals_close_browse,
         close_model => crate::plugins::visuals::commands::close_model::visuals_close_model,
+        close_motion => crate::plugins::visuals::commands::close_motion::visuals_close_motion,
         describe_motion => crate::plugins::visuals::commands::describe_motion::visuals_describe_motion,
         get_browse => crate::plugins::visuals::commands::get_browse::visuals_get_browse,
         get_model => crate::plugins::visuals::commands::get_model::visuals_get_model,
