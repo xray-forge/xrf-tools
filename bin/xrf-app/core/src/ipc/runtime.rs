@@ -1,7 +1,11 @@
-/// Expands a crate's command domains into a module per domain, carrying its dispatch handler, plugin name, Specta
-/// collection and transport routes, and `list_routes`, every route the crate's domains serve.
+/// Expands a crate's command domains into a module per domain, carrying its plugin builder, dispatch handler, plugin
+/// name, Specta collection, bindings surface, transport routes and job kinds; and, for the whole crate, `list_routes`,
+/// `list_surfaces` and `list_job_kinds`.
 ///
 /// Expanded in the crate that declares the domains, so its command paths and `typescript-bindings` feature are its own.
+/// A domain's job kinds are its plugin name, a dot and the kind's own wire name (`archives.pack`), each a constant the
+/// frontend's bindings export under the name declared, which by convention leads with the domain (`ARCHIVES_JOB_PACK`):
+/// no domain can spell another's kind, and no two constants share a name in the one module the bindings write.
 #[macro_export]
 macro_rules! define_runtime_domains {
   (
@@ -17,6 +21,9 @@ macro_rules! define_runtime_domains {
         $($route_name:ident ( $($route_arg:ident : $route_arg_type:literal),* $(,)? )
           => $route_head:ident $(:: $route_tail:ident)*,)*
       })?
+      $(@jobs {
+        $($(#[$job_meta:meta])* $job_name:ident => $job_wire:literal,)*
+      })?
     )*
   ) => {
     $(
@@ -25,6 +32,16 @@ macro_rules! define_runtime_domains {
         use tauri::ipc::Invoke;
 
         pub const NAME: &str = $plugin_name;
+
+        $($(
+          $(#[$job_meta])*
+          #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+          pub const $job_name: $crate::jobs::JobKind =
+            $crate::jobs::JobKind::new(concat!($plugin_name, ".", $job_wire));
+        )*)?
+
+        /// The kinds of job this domain runs, each with the name of its constant.
+        pub const JOB_KINDS: &[(&str, $crate::jobs::JobKind)] = &[$($((stringify!($job_name), $job_name),)*)?];
 
         /// Raw commands of this domain as `(wire name, [(argument, TypeScript type)])`.
         ///
@@ -62,6 +79,13 @@ macro_rules! define_runtime_domains {
           ]
         }
 
+        /// This domain's plugin, named and dispatching its commands, for its crate to add its setup and hooks to.
+        pub fn builder<R: Runtime>() -> tauri::plugin::Builder<R> {
+          log::info!("Initialize plugin {NAME}");
+
+          tauri::plugin::Builder::new(NAME).invoke_handler($crate::ipc::warn_on_unhandled_command(NAME, handler()))
+        }
+
         #[cfg(feature = "typescript-bindings")]
         pub fn specta_builder<R: Runtime>() -> tauri_specta::Builder<R> {
           // Raw commands are absent from this collection by construction. A command returning
@@ -76,12 +100,29 @@ macro_rules! define_runtime_domains {
             .disable_serde_phases()
             .dangerously_cast_bigints_to_number()
         }
+
+        /// This domain's commands, raw commands and routes, as the frontend's bindings are generated from them.
+        #[cfg(feature = "typescript-bindings")]
+        pub fn surface<R: Runtime>() -> $crate::ipc::IpcCommandSurface<R> {
+          $crate::ipc::IpcCommandSurface::new(NAME, specta_builder(), RAW_COMMANDS, BULK_ROUTES)
+        }
       }
     )*
 
     /// Every route this crate's domains serve, for the transport the application starts.
     pub fn list_routes() -> Vec<$crate::transport::TransportRoute<tauri::AppHandle>> {
       [$($domain::routes(),)*].into_iter().flatten().collect()
+    }
+
+    /// Every surface this crate's domains expose to the frontend, as its bindings are generated from them.
+    #[cfg(feature = "typescript-bindings")]
+    pub fn list_surfaces<R: tauri::Runtime>() -> Vec<$crate::ipc::IpcCommandSurface<R>> {
+      vec![$($domain::surface(),)*]
+    }
+
+    /// Every kind of job this crate's domains run, each with the name of its constant.
+    pub fn list_job_kinds() -> Vec<(&'static str, $crate::jobs::JobKind)> {
+      [$($domain::JOB_KINDS,)*].concat()
     }
   };
 }

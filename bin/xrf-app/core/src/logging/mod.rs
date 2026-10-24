@@ -3,10 +3,10 @@
 
 mod log_file;
 mod log_sink;
+mod process_start;
 mod setup_logger;
 #[cfg(test)]
 mod tests;
-mod warn_on_unhandled_command;
 
+pub use process_start::ProcessStart;
 pub use setup_logger::setup_logger;
-pub use warn_on_unhandled_command::warn_on_unhandled_command;

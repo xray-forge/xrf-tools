@@ -4,7 +4,7 @@ use rayon::ThreadPool;
 use xrf_error::XrfResult;
 use xrf_job::{ExecutionPlan, ExecutionRequest};
 
-use crate::types::TauriResult;
+use crate::TauriResult;
 
 /// The one pool this application runs bounded work on, and the plan describing it.
 ///

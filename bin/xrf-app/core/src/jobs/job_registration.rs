@@ -25,14 +25,16 @@ impl JobRegistration {
     }
   }
 
-  pub fn id(&self) -> Uuid {
+  /// The identity the job registered under.
+  pub fn get_id(&self) -> Uuid {
     self.id
   }
 
   /// Record how the job ended, before its leases are released.
   ///
   /// For a run with nothing to hand back. Where there is an answer, `conclude_with` keeps it.
-  pub fn conclude(&self, conclusion: JobConclusion, error: Option<String>) {
+  #[cfg(test)]
+  pub(super) fn conclude(&self, conclusion: JobConclusion, error: Option<String>) {
     self.record(JobEnding {
       conclusion,
       error,

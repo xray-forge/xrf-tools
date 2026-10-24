@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::num::NonZeroIsize;
-use std::sync::RwLock;
+use std::sync::{PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use tauri::Runtime;
 use tauri::webview::WebviewWindow;
@@ -8,8 +8,8 @@ use tauri::webview::WebviewWindow;
 /// The native handle of every window that can host a native viewport, by its label, recorded as each is built: its HWND
 /// on Windows, its `NSWindow` on macOS, which the render plugin's window hosts draw through.
 ///
-/// Commands are not generic over the runtime, so a command cannot take the calling window itself; it names the window
-/// by label and finds its handle here.
+/// A command takes the window it was invoked from and finds its handle here by its label: the handle itself is read on
+/// the main thread as the window is built, which a command on an async worker is not.
 #[derive(Default)]
 pub struct WindowHandles {
   handles: RwLock<HashMap<String, NonZeroIsize>>,
@@ -24,11 +24,7 @@ impl WindowHandles {
 
     match read.ok().and_then(NonZeroIsize::new) {
       Some(handle) => {
-        self
-          .handles
-          .write()
-          .unwrap_or_else(|poisoned| poisoned.into_inner())
-          .insert(window.label().to_string(), handle);
+        self.write().insert(window.label().to_string(), handle);
       }
       None => log::error!(
         "Window '{}' has no native handle, so it cannot host a native viewport",
@@ -39,20 +35,21 @@ impl WindowHandles {
 
   /// Forgets a destroyed window, so no viewport is attached to a handle that names nothing.
   pub fn forget(&self, label: &str) {
-    self
-      .handles
-      .write()
-      .unwrap_or_else(|poisoned| poisoned.into_inner())
-      .remove(label);
+    self.write().remove(label);
   }
 
+  /// The native handle of the window labelled `label`, none where no such window was built or it is gone.
   pub fn get(&self, label: &str) -> Option<NonZeroIsize> {
-    self
-      .handles
-      .read()
-      .unwrap_or_else(|poisoned| poisoned.into_inner())
-      .get(label)
-      .copied()
+    self.read().get(label).copied()
+  }
+
+  /// The handles, whatever a panicking writer left: an entry is only ever added or removed whole.
+  fn read(&self) -> RwLockReadGuard<'_, HashMap<String, NonZeroIsize>> {
+    self.handles.read().unwrap_or_else(PoisonError::into_inner)
+  }
+
+  fn write(&self) -> RwLockWriteGuard<'_, HashMap<String, NonZeroIsize>> {
+    self.handles.write().unwrap_or_else(PoisonError::into_inner)
   }
 
   #[cfg(windows)]

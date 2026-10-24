@@ -12,6 +12,7 @@ pub struct AssetFanOut {
 }
 
 impl AssetFanOut {
+  /// A change moving sessions to `vfs`, nothing put off yet.
   pub fn new(vfs: Arc<XrayVfs>) -> Self {
     Self {
       vfs,

@@ -1,25 +1,12 @@
 use tauri::Runtime;
-use tauri::plugin::{Builder, TauriPlugin};
+use tauri::plugin::TauriPlugin;
 
-pub struct AssetsPlugin {}
+/// The asset roots over IPC, without owning them: the composition root manages the `AssetMountState`.
+pub struct AssetsPlugin;
 
 impl AssetsPlugin {
-  pub const NAME: &'static str = crate::registry::assets::NAME;
-
-  /// Exposes the asset roots over IPC, without owning it.
+  /// The plugin, reading and committing through the mounted asset roots.
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
-    log::info!("Initialize plugin {}", Self::NAME);
-
-    Builder::new(Self::NAME)
-      .invoke_handler(crate::logging::warn_on_unhandled_command(
-        Self::NAME,
-        crate::registry::assets::handler(),
-      ))
-      .build()
-  }
-
-  #[cfg(feature = "typescript-bindings")]
-  pub fn specta_builder<R: Runtime>() -> tauri_specta::Builder<R> {
-    crate::registry::assets::specta_builder()
+    crate::ipc::assets::builder().build()
   }
 }

@@ -231,7 +231,7 @@ impl<C: Clone + Send + Sync + 'static> TransportServer<C> {
   fn deliver(answer: TransportAnswer) -> Response<Full<Bytes>> {
     Self::respond(
       StatusCode::OK,
-      Full::new(Bytes::from(answer.bytes)),
+      Full::new(answer.bytes),
       Some(HeaderValue::from_static(answer.media_type)),
     )
   }

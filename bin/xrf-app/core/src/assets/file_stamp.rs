@@ -1,5 +1,3 @@
-//! What a file looked like when it was read, and what it means when it no longer looks like that.
-
 use std::fs::Metadata;
 use std::path::Path;
 use std::time::UNIX_EPOCH;
@@ -7,7 +5,7 @@ use std::time::UNIX_EPOCH;
 use serde::{Deserialize, Serialize};
 use xrf_utils::format_path;
 
-use crate::types::TauriResult;
+use crate::TauriResult;
 
 /// What was read at a path, so a later write cannot overwrite a change it never saw and a reload can tell the file
 /// moved.

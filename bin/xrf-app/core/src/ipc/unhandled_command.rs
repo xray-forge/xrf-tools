@@ -2,6 +2,9 @@ use tauri::Runtime;
 use tauri::ipc::Invoke;
 
 /// Wrap a generated invoke handler so a command the plugin does not define is reported.
+///
+/// Public only for the expansion of [`crate::define_runtime_domains`] in another crate.
+#[doc(hidden)]
 pub fn warn_on_unhandled_command<R, F>(
   plugin: &'static str,
   handler: F,

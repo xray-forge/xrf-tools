@@ -2,11 +2,12 @@
 
 mod session_opening;
 mod session_release;
-mod session_restore;
 mod sessions;
 mod sessions_state;
 
+#[cfg(test)]
+mod tests;
+
 pub use session_opening::SessionOpening;
 pub(crate) use session_release::SessionRelease;
-pub use session_restore::SessionRestore;
 pub use sessions::Sessions;

@@ -1,18 +1,21 @@
+use std::panic::{self, AssertUnwindSafe};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, RwLock};
 
 use tauri::ipc::Channel;
+use xrf_engine_target::{XrayEngineDetector, XrayEngineResolution};
 use xrf_error::XrfResult;
 use xrf_vfs::{
   XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayChangeSet, XrayRevision, XrayRoots, XraySearch, XrayTransaction,
   XrayVfs, XrayVfsHost,
 };
 
+use crate::TauriResult;
 use crate::assets::asset_change_order::AssetChangeOrder;
 use crate::assets::asset_change_ticket::AssetChangeTicket;
 use crate::assets::asset_fan_out::AssetFanOut;
+use crate::assets::asset_read::read_located_asset;
 use crate::assets::{AssetChangeEvent, AssetChangeSubscriber};
 use crate::session::{SessionChange, SessionFollower};
-use crate::types::TauriResult;
 
 /// A published change's place in the order it is heard in, with the snapshot it published.
 type AssetPublished = (AssetChangeTicket, Arc<XrayVfs>);
@@ -41,11 +44,12 @@ impl Default for AssetMountState {
 
 impl AssetMountState {
   /// What the process may retain of parsed configs, models and texture descriptors, across every snapshot and every
-  /// reader, before it drops what no reader is holding: twice what one session held steady on Anomaly (2026-10-23:
-  /// Zaton, ten models opened twice and Jupiter left 30.3 MiB of source bytes in 1,433 entries), a ceiling, not a
-  /// working budget.
+  /// reader, before it drops what no reader is holding: twice one session's steady size, measured on Anomaly over
+  /// Zaton, ten models opened twice and Jupiter, at 30.3 MiB of source bytes in 1,433 entries; a ceiling, not a working
+  /// budget.
   const CACHE_BUDGET: u64 = 64 * 1024 * 1024;
 
+  /// An empty host under the process's cache policy, following no session and heard by nobody yet.
   pub fn new() -> Self {
     Self {
       host: Arc::new(XrayVfsHost::new(XrayVfs::new().with_cache_policy(Self::cache_policy()))),
@@ -112,6 +116,18 @@ impl AssetMountState {
     );
 
     Ok(search)
+  }
+
+  /// The engine `roots` show they target, mounting them only when their installation layout says nothing.
+  pub fn detect_engine(&self, roots: &XrayRoots) -> XrayEngineResolution {
+    XrayEngineDetector::detect(roots, |logical_path| {
+      let search: XraySearch = self
+        .search(roots)
+        .map_err(|error| log::warn!("Engine detection read no data of {}: {error}", roots.describe()))
+        .ok()?;
+
+      read_located_asset(&search, logical_path).ok()
+    })
   }
 
   /// A search over every writable loose mount, for a writer naming the files it commits on disk rather than by logical
@@ -190,20 +206,20 @@ impl AssetMountState {
   /// after a change it did not read, which that change's fan-out found nothing to move for.
   pub(crate) fn catch_up(&self, follower: &dyn SessionFollower) {
     let fan_out: AssetFanOut = AssetFanOut::new(self.get_vfs());
+    let changes: Vec<SessionChange> = follower.follow_in(self, &fan_out);
 
-    match follower.follow_in(self, &fan_out) {
-      Ok(changes) if !changes.is_empty() => self.announce_sessions(changes, fan_out),
-      Ok(_) => {
-        for start in fan_out.into_starts() {
-          start();
-        }
+    if changes.is_empty() {
+      for start in fan_out.into_starts() {
+        start();
       }
-      Err(error) => log::error!("A session could not catch up with a commit: {error}"),
+    } else {
+      self.announce_sessions(changes, fan_out);
     }
   }
 
   /// Tells every subscriber what `event` did, then every listening page, then runs what the sessions' follows put off
-  /// for it, all in `ticket`'s turn.
+  /// for it, all in `ticket`'s turn. A subscriber that panics is said aloud and passed over, so the rest hear of the
+  /// change and what the follows put off still starts.
   fn deliver(&self, ticket: AssetChangeTicket, event: AssetChangeEvent, fan_out: AssetFanOut) {
     let state: AssetMountState = self.clone();
 
@@ -213,7 +229,9 @@ impl AssetMountState {
         state.subscribers.read().unwrap_or_else(PoisonError::into_inner).clone();
 
       for subscriber in &subscribers {
-        subscriber.take_change(&state, &event);
+        if panic::catch_unwind(AssertUnwindSafe(|| subscriber.take_change(&state, &event))).is_err() {
+          log::error!("A subscriber panicked hearing the change at {:?}", event.revision);
+        }
       }
 
       state.announce(event);
@@ -225,7 +243,7 @@ impl AssetMountState {
   }
 
   /// Follows `session` through every commit from now on.
-  pub fn add_follower(&self, session: impl SessionFollower + 'static) {
+  pub(crate) fn add_follower(&self, session: impl SessionFollower + 'static) {
     self
       .followers
       .write()
@@ -247,8 +265,7 @@ impl AssetMountState {
     self.lock_listeners().push(channel);
   }
 
-  /// Moves each followed session to the snapshot `fan_out` carries, answering what that did to the ones it reached. A
-  /// session whose lock is poisoned is passed over and said so, so one broken session leaves the others moving.
+  /// Moves each followed session to the snapshot `fan_out` carries, answering what that did to the ones it reached.
   fn move_sessions(&self, fan_out: &AssetFanOut) -> Vec<SessionChange> {
     // Copied out, so a derivation reading through this state never runs under the followers' lock.
     let followers: Vec<Arc<dyn SessionFollower>> =
@@ -256,12 +273,7 @@ impl AssetMountState {
 
     followers
       .iter()
-      .flat_map(|follower| {
-        follower
-          .follow_in(self, fan_out)
-          .inspect_err(|error| log::error!("A session could not follow a commit: {error}"))
-          .unwrap_or_default()
-      })
+      .flat_map(|follower| follower.follow_in(self, fan_out))
       .collect()
   }
 

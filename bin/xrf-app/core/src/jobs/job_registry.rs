@@ -1,16 +1,20 @@
 use std::cmp::Reverse;
 use std::collections::{HashMap, VecDeque};
+use std::fmt::Display;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use serde::Serialize;
 use serde_json::Value;
 use tauri::ipc::Channel;
 use uuid::Uuid;
-use xrf_job::{DEFAULT_PROGRESS_INTERVAL, JobHandle, JobProgress, ProgressSink};
-use xrf_utils::{format_duration, wall_clock_millis};
+use xrf_job::{DEFAULT_PROGRESS_INTERVAL, JobHandle, JobOutcome, JobProgress, ProgressSink};
+use xrf_utils::{error_to_string, format_duration, wall_clock_millis};
 
+use crate::TauriResult;
+use crate::execution::ExecutionState;
 use crate::jobs::job_conclusion::JobConclusion;
 use crate::jobs::job_description::JobDescription;
 use crate::jobs::job_ending::JobEnding;
@@ -19,7 +23,6 @@ use crate::jobs::job_progress_sink::JobProgressSink;
 use crate::jobs::job_registration::JobRegistration;
 use crate::jobs::job_start::JobStart;
 use crate::jobs::{JobKind, JobResource};
-use crate::types::TauriResult;
 
 /// Finished jobs the listing keeps.
 const RETAINED_JOBS: usize = 20;
@@ -140,6 +143,42 @@ impl JobRegistry {
       interval,
       is_reporting: AtomicBool::new(false),
     }
+  }
+
+  /// Register the job, run `work` over its handle on the application's pool, and record how it ended, its answer
+  /// retained for the listing, before its leases are released. `get_outcome` reads whether the answer is a cancelled
+  /// run's.
+  ///
+  /// # Errors
+  ///
+  /// Returns why the job could not start, the work's error, or a failure of the blocking hop.
+  pub async fn run<T, E, F>(
+    self: &Arc<Self>,
+    execution: &ExecutionState,
+    start: JobStart,
+    work: F,
+    get_outcome: fn(&T) -> JobOutcome,
+  ) -> TauriResult<T>
+  where
+    T: Serialize + Send + 'static,
+    E: Display,
+    F: FnOnce(JobHandle) -> Result<T, E> + Send + 'static,
+  {
+    let kind: JobKind = start.kind;
+    let (job, registration): (JobHandle, JobRegistration) = self.register(start)?;
+
+    execution
+      .run_blocking(&format!("Job {kind}"), move || {
+        let result: TauriResult<T> = work(job).map_err(error_to_string);
+        let cancelled: bool = result
+          .as_ref()
+          .is_ok_and(|value| get_outcome(value) == JobOutcome::Cancelled);
+
+        registration.conclude_with(&result, cancelled);
+
+        result
+      })
+      .await?
   }
 
   /// Take the job's lease keys and start reporting it as running.

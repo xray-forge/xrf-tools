@@ -1,7 +1,7 @@
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
-use crate::directories::{get_app_data_directories, get_local_data_directory};
+use crate::directories::AppDirectories;
 
 /// This run's log file, opened fresh with the last run's kept beside it: under `logs` in the application's own data
 /// directory, `appdata` beside the executable as X-Ray keeps its own, else its local data directory.
@@ -27,7 +27,8 @@ impl LogFile {
   pub fn open(identifier: &str) -> Result<Self, String> {
     let mut refusals: Vec<String> = Vec::new();
 
-    for directory in get_app_data_directories(get_local_data_directory(identifier))
+    for directory in AppDirectories::for_identifier(identifier)
+      .get_app_data_directories()
       .into_iter()
       .map(|directory| directory.join(Self::DIRECTORY))
     {

@@ -7,11 +7,12 @@ use std::time::Duration;
 use serde::Serialize;
 use serde_json::json;
 use uuid::Uuid;
-use xrf_job::{ExecutionRequest, JobHandle, JobOutcome};
+use xrf_job::{ExecutionRequest, JobOutcome};
 
 use crate::execution::ExecutionState;
 use crate::jobs::job_conclusion::JobConclusion;
-use crate::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
+use crate::jobs::tests::kinds;
+use crate::jobs::{JobRegistry, JobResource, JobStart};
 
 #[derive(Debug, Serialize)]
 struct ResultSummary {
@@ -23,16 +24,12 @@ fn new_execution() -> ExecutionState {
   ExecutionState::new(ExecutionRequest::Workers(NonZeroUsize::new(1).expect("one worker"))).expect("pool starts")
 }
 
-fn register(registry: &Arc<JobRegistry>) -> (JobHandle, JobRegistration) {
-  registry
-    .register(
-      JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack)
-        .with_exclusion_group("test")
-        .with_resources(vec![JobResource::file(
-          std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("output"),
-        )]),
-    )
-    .expect("job registers")
+fn new_start() -> JobStart {
+  JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK)
+    .with_exclusion_group("test")
+    .with_resources(vec![JobResource::file(
+      std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("output"),
+    )])
 }
 
 #[test]
@@ -41,13 +38,10 @@ fn result_classifies_completion_even_after_a_cancel_request() {
     let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
     let execution: ExecutionState = new_execution();
 
-    let (job, registration): (JobHandle, JobRegistration) = register(&registry);
-
-    let result = tauri::async_runtime::block_on(run_job(
+    let result = tauri::async_runtime::block_on(registry.run(
       &execution,
-      "test",
-      registration,
-      move || {
+      new_start(),
+      move |job| {
         job.cancel();
 
         Ok::<_, String>(ResultSummary { outcome, count: 3 })
@@ -74,15 +68,14 @@ fn a_worker_error_is_retained_and_releases_the_leases() {
   let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
   let execution: ExecutionState = new_execution();
 
-  let (job, registration): (JobHandle, JobRegistration) = register(&registry);
-
-  job.cancel();
-
-  let result = tauri::async_runtime::block_on(run_job(
+  let result = tauri::async_runtime::block_on(registry.run(
     &execution,
-    "test",
-    registration,
-    || Err::<ResultSummary, _>("cannot write"),
+    new_start(),
+    |job| {
+      job.cancel();
+
+      Err::<ResultSummary, _>("cannot write")
+    },
     |summary| summary.outcome,
   ));
 
@@ -90,26 +83,48 @@ fn a_worker_error_is_retained_and_releases_the_leases() {
   assert_eq!(registry.list()[0].conclusion, Some(JobConclusion::Failed));
   assert_eq!(registry.list()[0].error.as_deref(), Some("cannot write"));
 
-  register(&registry);
+  registry.register(new_start()).expect("leases released");
+}
+
+#[test]
+fn a_start_the_registry_refuses_runs_nothing() {
+  let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
+  let execution: ExecutionState = new_execution();
+  let (_job, _registration) = registry.register(new_start()).expect("first job registers");
+  let (ran, wait_ran) = mpsc::channel::<()>();
+
+  let result = tauri::async_runtime::block_on(registry.run(
+    &execution,
+    new_start(),
+    move |_| {
+      ran.send(()).expect("ran signal");
+
+      Ok::<_, String>(ResultSummary {
+        outcome: JobOutcome::Completed,
+        count: 0,
+      })
+    },
+    |summary| summary.outcome,
+  ));
+
+  assert!(result.is_err());
+  assert!(wait_ran.try_recv().is_err());
 }
 
 #[test]
 fn dropping_the_awaiting_future_keeps_running_work_registered() {
   let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
   let execution: ExecutionState = new_execution();
-
-  let (_job, registration): (JobHandle, JobRegistration) = register(&registry);
-
-  let id: Uuid = registration.id();
+  let start: JobStart = new_start();
+  let id: Uuid = start.get_id();
 
   let (started, wait_started) = mpsc::channel();
   let (finish, wait_finish) = mpsc::channel();
 
-  let mut future = Box::pin(run_job(
+  let mut future = Box::pin(registry.run(
     &execution,
-    "test",
-    registration,
-    move || {
+    start,
+    move |_| {
       started.send(()).expect("started signal");
       wait_finish.recv_timeout(Duration::from_secs(5)).expect("finish signal");
 
@@ -140,13 +155,13 @@ fn dropping_the_awaiting_future_keeps_running_work_registered() {
   assert!(listed[0].is_cancel_requested);
   assert!(
     registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_exclusion_group("test"))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_exclusion_group("test"))
       .is_err()
   );
   assert!(
     registry
       .register(
-        JobStart::new(Uuid::new_v4(), JobKind::ArchivesUnpack).with_resources(vec![JobResource::file(
+        JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_UNPACK).with_resources(vec![JobResource::file(
           std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("output")
         )])
       )
@@ -163,7 +178,7 @@ fn dropping_the_awaiting_future_keeps_running_work_registered() {
   assert_eq!(listed[0].conclusion, Some(JobConclusion::Completed));
   assert_eq!(listed[0].result, Some(json!({ "outcome": "completed", "count": 7 })));
 
-  register(&registry);
+  registry.register(new_start()).expect("leases released");
 }
 
 #[test]
@@ -188,14 +203,12 @@ fn dropping_a_queued_job_future_keeps_registration_until_the_worker_runs() {
     .recv_timeout(Duration::from_secs(5))
     .expect("worker occupied");
 
-  let (_job, registration): (JobHandle, JobRegistration) = register(&registry);
   let (finished, wait_finished) = mpsc::channel();
 
-  let mut queued = Box::pin(run_job(
+  let mut queued = Box::pin(registry.run(
     &execution,
-    "queued job",
-    registration,
-    move || {
+    new_start(),
+    move |_| {
       finished.send(()).expect("work ran");
 
       Ok::<_, String>(ResultSummary {
@@ -217,7 +230,7 @@ fn dropping_a_queued_job_future_keeps_registration_until_the_worker_runs() {
   assert_eq!(registry.list()[0].conclusion, None);
   assert!(
     registry
-      .register(JobStart::new(Uuid::new_v4(), JobKind::ArchivesPack).with_exclusion_group("test"))
+      .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_exclusion_group("test"))
       .is_err()
   );
 
@@ -233,7 +246,7 @@ fn dropping_a_queued_job_future_keeps_registration_until_the_worker_runs() {
 
   assert_eq!(registry.list()[0].conclusion, Some(JobConclusion::Completed));
 
-  register(&registry);
+  registry.register(new_start()).expect("leases released");
 }
 
 #[test]
@@ -241,18 +254,15 @@ fn a_panicking_worker_releases_registration_as_failed() {
   let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
   let execution: ExecutionState = new_execution();
 
-  let (_job, registration): (JobHandle, JobRegistration) = register(&registry);
-
-  let result = tauri::async_runtime::block_on(run_job(
+  let result = tauri::async_runtime::block_on(registry.run(
     &execution,
-    "test",
-    registration,
-    || -> Result<ResultSummary, String> { panic!("worker panicked") },
+    new_start(),
+    |_| -> Result<ResultSummary, String> { panic!("worker panicked") },
     |summary| summary.outcome,
   ));
 
-  assert!(result.unwrap_err().contains("test did not finish"));
+  assert!(result.unwrap_err().contains("Job archives.pack did not finish"));
   assert_eq!(registry.list()[0].conclusion, Some(JobConclusion::Failed));
 
-  register(&registry);
+  registry.register(new_start()).expect("leases released");
 }

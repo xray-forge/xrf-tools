@@ -5,20 +5,20 @@ use tauri::test::{INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder, mock_
 use tauri::webview::InvokeRequest;
 use tauri::{App, AppHandle, WebviewWindow, WebviewWindowBuilder};
 
+use crate::TauriResult;
 use crate::transport::{TransportAnswer, TransportRoutes};
-use crate::types::TauriResult;
 
 /// A domain declaring every kind of entry, since no real domain declares a raw command today.
 mod fixture_registry {
   define_runtime_domains! {
     fixture => "fixture" {
-      ping => crate::registry::tests::fixture_ping,
+      ping => crate::ipc::tests::fixture_ping,
     }
     @raw {
-      read_bytes(length: "number") => crate::registry::tests::fixture_read_bytes,
+      read_bytes(length: "number") => crate::ipc::tests::fixture_read_bytes,
     }
     @bulk {
-      read_route(length: "number") => crate::registry::tests::fixture_read_route,
+      read_route(length: "number") => crate::ipc::tests::fixture_read_route,
     }
   }
 }
@@ -105,7 +105,7 @@ mod bindings {
   use xrf_ipc_typescript::{IpcBindingsGenerator, IpcCommandSurface, TypeModules};
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
-  use crate::registry::tests::fixture;
+  use crate::ipc::tests::fixture;
 
   #[test]
   fn a_raw_command_is_listed_for_the_bindings_and_a_bulk_route_apart() {
