@@ -62,6 +62,12 @@ impl XrayInputRecord {
     }
   }
 
+  /// A copy of every input and answer this record holds, sharing nothing with it: a clone shares the record, so what
+  /// either records later the other sees, which a snapshot keeping its own account must not.
+  pub fn to_detached(&self) -> XrayInputRecord {
+    self.to_filtered(|_| true)
+  }
+
   /// Every input recorded, with its answer, in no particular order.
   pub fn list(&self) -> Vec<(XrayInput, XrayInputAnswer)> {
     self

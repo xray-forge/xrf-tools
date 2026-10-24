@@ -117,6 +117,23 @@ fn a_loose_file_overrides_an_archived_one() {
   );
 }
 
+// Two steps over one mount, as a root named twice is, list its files once and hidden by nothing.
+#[test]
+fn a_mount_searched_by_two_steps_hides_none_of_its_own_files() {
+  let loose: PathBuf = directory("repeated_step", &["configs/system.ltx"]);
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs.mount_directory("", &loose).expect("directory mounts");
+
+  let search: crate::XraySearch = crate::XraySearch::new(vfs)
+    .with_step("first", XrayLookupScope::all())
+    .with_step("second", XrayLookupScope::all());
+  let entries = search.list_shadowing_entries();
+
+  assert_eq!(entries.len(), 1);
+  assert!(entries[0].shadowed.is_empty(), "a copy cannot hide itself");
+}
+
 // Handed the copy a loose file hides, a raw read and a parse both read that copy, never the winner.
 #[test]
 fn a_raw_read_and_a_parse_of_a_shadowed_copy_read_that_copy() {

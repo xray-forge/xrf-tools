@@ -553,8 +553,14 @@ impl XraySearch {
 
     let mut entries: Vec<XrayShadowingEntry> = Vec::new();
     let mut seen: HashMap<String, usize> = HashMap::new();
+    let mut searched: HashSet<&XrayLookupScope> = HashSet::new();
 
     for step in self.steps.iter() {
+      // A root named twice is mounted once, and its copies cannot hide themselves.
+      if !searched.insert(step.get_scope()) {
+        continue;
+      }
+
       for entry in self.vfs.list_shadowing_entries_in(step.get_scope()) {
         match seen.get(entry.get_logical_path()) {
           Some(&index) => {

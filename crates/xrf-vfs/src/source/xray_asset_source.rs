@@ -19,6 +19,16 @@ pub enum XraySourceKind {
   Archive,
 }
 
+impl XraySourceKind {
+  /// The kind as it is serialized, for a line that names it the same way a report does.
+  pub const fn as_str(self) -> &'static str {
+    match self {
+      Self::Directory => "directory",
+      Self::Archive => "archive",
+    }
+  }
+}
+
 /// Names a source after the directory or volume set it was opened from, for [`XrayAssetSource::get_label`].
 pub fn label_from_path(path: &Path) -> String {
   path
