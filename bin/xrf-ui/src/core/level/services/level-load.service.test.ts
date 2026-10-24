@@ -119,9 +119,14 @@ describe("LevelLoadService", () => {
     expect(service.spawn).toEqual(SPAWN);
     expect(service.spawnReport).toEqual({ failure: null, isListed: true, objects: 2, visuals: 1 });
     expect(isLevelSpawnReading(service.spawnReport)).toBe(false);
+    // The level itself, then each part the page shows read on its own, side by side.
     expect(mockInvoke.mock.calls.map(([name]) => name)).toEqual([
       "plugin:sessions|bind",
       "plugin:levels|open_level",
+      "plugin:levels|describe_start",
+      "plugin:levels|describe_level_map",
+      "plugin:levels|describe_surfaces",
+      "plugin:levels|describe_textures",
       "plugin:levels|open_spawn_objects",
     ]);
   });

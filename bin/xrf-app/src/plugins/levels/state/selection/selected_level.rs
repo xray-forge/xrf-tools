@@ -3,18 +3,11 @@ use std::sync::Arc;
 use xrf_engine_target::XrayEngineResolution;
 use xrf_level::{LevelFile, LevelSector, LevelVisualsChunk};
 use xrf_ltx::LtxDialect;
-use xrf_vfs::{XrayRoots, XraySearch};
+use xrf_vfs::XrayRoots;
 use xrf_visual::SectorOutline;
 
-use xrf_material::XraySurfaceDescriptor;
-
-use crate::core::session::SessionSnapshot;
-use crate::plugins::levels::parts::{LevelMapPart, LevelStartPart, LevelSurfacesPart, LevelTexturesPart};
 use crate::plugins::levels::state::level_source::LevelSource;
-use crate::plugins::levels::state::selection::level_map_description::LevelMapDescription;
-use crate::plugins::levels::state::selection::level_start::LevelStart;
 use crate::plugins::levels::state::selection::level_sun_description::LevelSunDescription;
-use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
 use crate::plugins::levels::state::selection::selected_level_description::SelectedLevelDescription;
 
 /// The level a viewer has open as the open read it: what names it, and the `level` bundle every part reads, which a
@@ -39,29 +32,9 @@ pub struct SelectedLevel {
 }
 
 impl SelectedLevel {
-  /// What the viewer is shown of the open level under its snapshot's identity: its start, map, surfaces and textures as
-  /// its parts hold them, each read again through `search` where a commit let it go.
-  pub fn describe_at(
-    current: &SessionSnapshot<Self>,
-    search: &XraySearch,
-  ) -> SessionSnapshot<SelectedLevelDescription> {
-    current.answer(current.describe(
-      LevelStartPart::get(current, search),
-      LevelMapPart::get(current, search),
-      &LevelSurfacesPart::get(current, search),
-      &LevelTexturesPart::get(current, search),
-    ))
-  }
-
-  /// What the viewer is shown of the open level, which opens at `start`, its map placed by `level_map`, its surfaces
-  /// drawn as `surfaces` and their textures resolved as `textures`.
-  pub fn describe(
-    &self,
-    start: Option<LevelStart>,
-    level_map: Option<LevelMapDescription>,
-    surfaces: &[XraySurfaceDescriptor],
-    textures: &[LevelTextureReference],
-  ) -> SelectedLevelDescription {
+  /// What the viewer is shown of the open level itself, its root, which reads nothing: each part it shows beside it has
+  /// a query of its own.
+  pub fn describe(&self) -> SelectedLevelDescription {
     let level: &LevelFile = &self.level;
 
     SelectedLevelDescription {
@@ -70,16 +43,12 @@ impl SelectedLevel {
       engine: self.engine.clone(),
       has_sun: level.lights.as_ref().is_some_and(|it| it.get_sun().is_some()),
       sun: LevelSunDescription::of(level.lights.as_ref().and_then(|it| it.get_sun())),
-      level_map,
       lights: level.lights.as_ref().map_or(0, |it| it.lights.len()) as u32,
       portals: level.portals.as_ref().map_or(0, |it| it.portals.len()) as u32,
       roots: self.roots.clone(),
       sectors: self.outlines.clone(),
-      start,
       shader_entries: level.shaders.as_ref().map_or(0, |it| it.entries.len()) as u32,
       source: self.source.clone(),
-      surfaces: surfaces.to_vec(),
-      textures: textures.to_vec(),
       visuals: self.visuals.visuals.len() as u32,
       xrlc_quality: level.header.xrlc_quality,
       xrlc_version: level.header.xrlc_version,

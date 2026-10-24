@@ -4,17 +4,22 @@ import { createRoots } from "@/core/assets/lib";
 import {
   ELevelSpawnCategory,
   LevelEntry,
+  LevelMapDescription,
   LevelSpawnObject,
+  LevelStart,
   LevelTextureReference,
   SelectedLevelDescription,
 } from "@/core/ipc/types/xrf-app";
 import { EXrayEngine, EXrayEngineEvidence } from "@/core/ipc/types/xrf-engine-target";
+import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ERenderTextureGroup } from "@/core/ipc/types/xrf-renderer";
 import { EClsId } from "@/core/ipc/types/xrf-spawn";
 import { SectorOutline } from "@/core/ipc/types/xrf-visual";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
+import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { InvokeHandler, InvokeMap } from "@/fixtures/mocks/tauri.mocks";
 import { mockVisualBounds, mockVisualTransform } from "@/fixtures/mocks/visual.mocks";
 
 /**
@@ -93,21 +98,48 @@ export function mockSelectedLevelDescription(
     engine: { engine: EXrayEngine.VANILLA, evidence: EXrayEngineEvidence.NAMED, subject: null },
     sun: null,
     hasSun: true,
-    levelMap: null,
     lights: 2,
     portals: 0,
     roots: createRoots([]),
     sectors: [mockSectorOutline()],
-    start: null,
     shaderEntries: 4,
     source: { kind: "directory", path: "C:\\levels\\zaton" },
-    surfaces: [],
-    textures: [],
     visuals: 2,
     xrlcQuality: 1,
     xrlcVersion: 14,
     ...overrides,
   };
+}
+
+/** The parts of an open level a fixture answers, beside the level itself; each missing one answers as empty. */
+export interface IMockLevelParts {
+  levelMap?: Nullable<LevelMapDescription>;
+  start?: Nullable<LevelStart>;
+  surfaces?: Array<XraySurfaceDescriptor>;
+  textures?: Array<LevelTextureReference>;
+}
+
+/**
+ * What the open level's part queries answer, each a snapshot of the opening asked about.
+ *
+ * @param parts - The parts to answer with.
+ * @returns Responses for the `describe_*` queries of a level's parts.
+ */
+export function mockLevelPartResponses(parts: IMockLevelParts = {}): InvokeMap {
+  return {
+    ["plugin:levels|describe_level_map"]: mockLevelPartAnswer(parts.levelMap ?? null),
+    ["plugin:levels|describe_start"]: mockLevelPartAnswer(parts.start ?? null),
+    ["plugin:levels|describe_surfaces"]: mockLevelPartAnswer(parts.surfaces ?? []),
+    ["plugin:levels|describe_textures"]: mockLevelPartAnswer(parts.textures ?? []),
+  };
+}
+
+/**
+ * @param value - What a part query answers, null included.
+ * @returns A query answering it as a snapshot of the opening asked about.
+ */
+export function mockLevelPartAnswer(value: unknown): InvokeHandler {
+  return (args?: Record<string, unknown>) => mockSessionSnapshot(value, args?.sessionId as string);
 }
 
 /** What one reference came to, for a report fixture. */

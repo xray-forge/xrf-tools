@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
-import { BoundAction, flowResult, Observable, reaction, RefObservable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, flowResult, Observable, reaction, RefObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { formatDuration } from "@xrf/format";
 import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
@@ -11,21 +11,31 @@ import {
   isSessionMovedPast,
   Session,
   SESSION_CHANGE_EVENT,
+  SessionPartResource,
   SessionScopeService,
 } from "@/core/ipc/session";
 import {
   ESessionRootChange,
+  LEVEL_MAP_PART,
   LEVEL_SPAWN_PART,
+  LEVEL_START_PART,
+  LEVEL_SURFACES_PART,
+  LEVEL_TEXTURES_PART,
+  LevelMapDescription,
   LevelOpenRequest,
   LevelSource,
   LevelSpawnObjectsDescription,
+  LevelStart,
+  LevelTextureReference,
   SelectedLevelDescription,
   SessionChange,
+  SessionId,
   SessionRestore,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
+import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { XrayRevision } from "@/core/ipc/types/xrf-vfs";
-import { isLevelReadAgain, isLevelSceneStreamedAfresh } from "@/core/level/lib/load/level-session-change";
+import { isLevelSceneStreamedAfresh } from "@/core/level/lib/load/level-session-change";
 import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { EMPTY_LEVEL_SPAWN_REPORT, ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
@@ -33,19 +43,21 @@ import { EApplicationId } from "@/core/routing/application";
 import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
-/** A level that is open: what it is, and whether its scene streams afresh from what was shown of it before. */
+/** A level that is open: the level itself, its root, as its session holds it. */
 export interface IOpenLevel {
   selected: SessionSnapshot<SelectedLevelDescription>;
-  /**
-   * True for a level opened or restored, and for one read again after what its sectors are packed and drawn from moved;
-   * one read again for its map or start alone keeps the scene shown.
-   */
-  isSceneStreamedAfresh: boolean;
+}
+
+/** The scene an open level streams as: its session, and the revision it last streamed afresh at. */
+export interface ILevelScene {
+  sessionId: SessionId;
+  revision: XrayRevision;
 }
 
 /**
- * Opens a compiled level, and lists its spawned objects for the panels: the renderer reads and draws everything else
- * the level holds itself.
+ * Opens a compiled level, the level itself, and keeps each part of it the page shows - where it starts, its map, its
+ * surfaces and their textures, its spawned objects - as a resource read apart from it and again apart from it: the
+ * renderer reads and draws everything else the level holds itself.
  */
 @Injectable()
 export class LevelLoadService {
@@ -56,7 +68,28 @@ export class LevelLoadService {
   /** The last open asked for, which a retry asks for again. */
   private request: Nullable<LevelOpenRequest> = null;
 
-  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
+  /** Where the open level opens, or none for a viewer to decide. */
+  public readonly start: SessionPartResource<Nullable<LevelStart>>;
+
+  /** Where the open level's map lies over it, or none where its config places none. */
+  public readonly levelMap: SessionPartResource<Nullable<LevelMapDescription>>;
+
+  /** How the renderer draws each entry of the open level's shader table, indexed by the shader id a surface carries. */
+  public readonly surfaces: SessionPartResource<Array<XraySurfaceDescriptor>>;
+
+  /** What every texture the open level's surfaces bind resolved to. */
+  public readonly textures: SessionPartResource<Array<LevelTextureReference>>;
+
+  /** The objects the open level's spawn places, which the panels list and a pick names. */
+  public readonly spawnObjects: SessionPartResource<LevelSpawnObjectsDescription>;
+
+  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {
+    this.start = new SessionPartResource(eventBus, LEVEL_START_PART, levelsCommands.describeStart);
+    this.levelMap = new SessionPartResource(eventBus, LEVEL_MAP_PART, levelsCommands.describeLevelMap);
+    this.surfaces = new SessionPartResource(eventBus, LEVEL_SURFACES_PART, levelsCommands.describeSurfaces);
+    this.textures = new SessionPartResource(eventBus, LEVEL_TEXTURES_PART, levelsCommands.describeTextures);
+    this.spawnObjects = new SessionPartResource(eventBus, LEVEL_SPAWN_PART, levelsCommands.openSpawnObjects);
+  }
 
   @Observable()
   public level: AsyncState<IOpenLevel> = AsyncState.idle();
@@ -68,20 +101,12 @@ export class LevelLoadService {
   /** Opens begun, so one taken over by a later open leaves that one's name. */
   private openings: number = 0;
 
-  /** Whether a change moved what the open level's scene is streamed from since it was last read. */
-  private isSceneMoved: boolean = false;
-
-  /** The objects the open level's spawn places, once listed; null before, and for a spawn that could not be read. */
+  /**
+   * The scene the open level streams as, moved on each time the backend streams it afresh: the level derived anew, or
+   * what its sectors are packed and drawn from changed. None while no level is open.
+   */
   @RefObservable()
-  public spawn: Nullable<LevelSpawnObjectsDescription> = null;
-
-  /** How the spawn's listing went. */
-  @RefObservable()
-  public spawnReport: ILevelSpawnReport = EMPTY_LEVEL_SPAWN_REPORT;
-
-  /** The revision the spawn's listing was read at, which a listing read before it gives way to; null before one is. */
-  @RefObservable()
-  public spawnRevision: Nullable<XrayRevision> = null;
+  public scene: Nullable<ILevelScene> = null;
 
   /** Whether a change moved what the open level was read from: it shows as it opened until it is read again. */
   @Observable()
@@ -93,14 +118,40 @@ export class LevelLoadService {
   @Observable()
   public isReady: boolean = false;
 
+  /** The objects the open level's spawn places, once listed; null before, and for a spawn that could not be read. */
+  @Computed()
+  public get spawn(): Nullable<LevelSpawnObjectsDescription> {
+    return this.spawnObjects.error ? null : this.spawnObjects.value;
+  }
+
+  /** How the spawn's listing went. */
+  @Computed()
+  public get spawnReport(): ILevelSpawnReport {
+    const { error, value } = this.spawnObjects;
+
+    if (error) {
+      return { ...EMPTY_LEVEL_SPAWN_REPORT, failure: error.message, isListed: true };
+    }
+
+    return value
+      ? { failure: null, isListed: true, objects: value.objects.length, visuals: value.visuals.length }
+      : EMPTY_LEVEL_SPAWN_REPORT;
+  }
+
+  /** The revision the spawn's listing was read at; null before one is. */
+  @Computed()
+  public get spawnRevision(): Nullable<XrayRevision> {
+    return this.spawnObjects.snapshot?.revision ?? null;
+  }
+
   @OnDeactivation()
   public onDeactivation(): void {
     this.clear();
   }
 
   /**
-   * Open a level and report what it is built out of. One that fails closes the level open before it, so the viewer
-   * shows the failure rather than the level it was asked to replace.
+   * Open a level and report what it is built out of, its parts read before it shows. One that fails closes the level
+   * open before it, so the viewer shows the failure rather than the level it was asked to replace.
    *
    * @param request - The level to open, the roots it is searched in, and how the game's configs beside it are read.
    */
@@ -120,6 +171,8 @@ export class LevelLoadService {
       const selected: SessionSnapshot<SelectedLevelDescription> = yield* call(
         this.session.open(levelsCommands.openLevel, request)
       );
+
+      yield* call(this.attachParts(selected.sessionId));
 
       this.adopt(selected);
 
@@ -145,10 +198,9 @@ export class LevelLoadService {
         yield* call(this.release());
       }
 
+      this.detachParts();
       this.level = this.level.asFailed(transformed, null);
-      this.spawn = null;
-      this.spawnReport = EMPTY_LEVEL_SPAWN_REPORT;
-      this.spawnRevision = null;
+      this.scene = null;
       this.isStale = false;
     } finally {
       // A later open took the flow over meanwhile, and names its own level.
@@ -184,7 +236,7 @@ export class LevelLoadService {
   }
 
   /**
-   * Restores the native selection unless a user action has taken the level flow.
+   * Restores the native selection unless a user action has taken the level flow, its parts read before it shows.
    */
   @ExclusiveFlow("level")
   public *restore(): TFlow {
@@ -193,32 +245,29 @@ export class LevelLoadService {
     this.session.adopt(snapshot);
 
     if (snapshot) {
+      yield* call(this.attachParts(snapshot.sessionId));
+
       this.adopt(snapshot);
       this.log.info("Level restored:", describeLevelSource(snapshot.value.source), snapshot.sessionId);
     }
   }
 
   /**
-   * Takes one opening as the level this loader holds, and lists its spawned objects.
+   * Takes one opening as the level this loader holds, the scene it streams as with it.
    *
-   * @param selected - The opening the backend holds, from an open, a restore or a read again.
-   * @param isSceneStreamedAfresh - Whether its scene streams afresh from what was shown of it before.
+   * @param selected - The opening the backend holds, from an open or a restore.
    */
   @BoundAction()
-  private adopt(selected: SessionSnapshot<SelectedLevelDescription>, isSceneStreamedAfresh: boolean = true): void {
-    this.level = this.level.asReady({ isSceneStreamedAfresh, selected });
-    this.isSceneMoved = false;
-    this.spawn = null;
-    this.spawnReport = EMPTY_LEVEL_SPAWN_REPORT;
-    this.spawnRevision = null;
+  private adopt(selected: SessionSnapshot<SelectedLevelDescription>): void {
+    this.level = this.level.asReady({ selected });
+    this.scene = { revision: selected.revision, sessionId: selected.sessionId };
     this.isStale = false;
-    void this.readSpawn(selected.sessionId);
   }
 
   /**
-   * Lists the open level's spawned objects again once a change let its spawn go, and reads the level again once its
-   * session derived it anew or what it describes or streams its scene from moved; a level whose own files moved is
-   * marked stale meanwhile, and left as it opened where it could not be read again.
+   * Reads the level itself again once its session derived it anew, and moves its scene on once the backend streams it
+   * afresh; a level whose own files moved is marked stale meanwhile, and left as it opened where it could not be read
+   * again. Each part reads itself again as a change names it.
    */
   @OnEvent(SESSION_CHANGE_EVENT)
   public onSessionChange({ payload: change }: WireEvent<SessionChange>): void {
@@ -228,18 +277,17 @@ export class LevelLoadService {
       return;
     }
 
+    this.noteScene(change);
+
     switch (change.root.kind) {
       case ESessionRootChange.KEPT:
-        if (change.staleParts.includes(LEVEL_SPAWN_PART) && change.revision > (this.spawnRevision ?? open.revision)) {
-          void this.readSpawn(open.sessionId);
-        }
-
-        this.readAgainPast(open, change);
-
         return;
 
       case ESessionRootChange.DERIVED:
-        this.readAgainPast(open, change);
+        if (isSessionMovedPast(open, change)) {
+          this.noteStale();
+          void this.refresh();
+        }
 
         return;
 
@@ -255,16 +303,15 @@ export class LevelLoadService {
     }
   }
 
-  /**
-   * Reads the level again for a change past the one shown that derived it anew or moved what it describes or streams
-   * its scene from, noting whether the scene streams afresh; a change already shown is ignored, so it cannot hide a
-   * later read again's scene.
-   */
-  private readAgainPast(open: SessionSnapshot<SelectedLevelDescription>, change: SessionChange): void {
-    if (isLevelReadAgain(change) && isSessionMovedPast(open, change)) {
-      this.isSceneMoved ||= isLevelSceneStreamedAfresh(change);
-      this.noteStale();
-      void this.refresh();
+  /** Moves the scene on for a change past the one it streams as that streams it afresh. */
+  @BoundAction()
+  private noteScene(change: SessionChange): void {
+    if (
+      this.scene &&
+      isLevelSceneStreamedAfresh(change) &&
+      isSessionMovedPast({ revision: this.scene.revision, sessionId: this.scene.sessionId }, change)
+    ) {
+      this.scene = { revision: change.revision, sessionId: change.sessionId };
     }
   }
 
@@ -283,8 +330,8 @@ export class LevelLoadService {
   }
 
   /**
-   * Shows a level read again where it is still the one shown and no older than it, listing its spawn afresh; an open
-   * or close in flight decides what is shown instead.
+   * Shows a level read again where it is still the one shown and no older than it; an open or close in flight decides
+   * what is shown instead.
    */
   @BoundAction()
   private adoptRefreshed(answer: SessionRestore<SelectedLevelDescription>): void {
@@ -297,54 +344,32 @@ export class LevelLoadService {
       answer.sessionId === open.sessionId &&
       !isOlderSessionAnswer(open, answer)
     ) {
-      this.adopt(answer, this.isSceneMoved);
+      this.level = this.level.asReady({ selected: answer });
+      this.isStale = false;
       this.log.info("Level read again:", describeLevelSource(answer.value.source), `revision ${answer.revision}`);
     }
   }
 
-  /** The level's spawned objects, which the panels list and a pick names; a listing older than the one shown is dropped. */
-  private async readSpawn(sessionId: string): Promise<void> {
-    const timer: Timer = new Timer();
-
-    try {
-      const { revision, value }: SessionSnapshot<LevelSpawnObjectsDescription> =
-        await levelsCommands.openSpawnObjects(sessionId);
-
-      if (this.isOpen(sessionId) && revision >= (this.spawnRevision ?? revision)) {
-        this.log.info(
-          "Level spawned objects listed in:",
-          formatDuration(timer.elapsed()),
-          `${value.objects.length} objects,`,
-          `${value.visuals.length} visuals`
-        );
-        this.noteSpawn(
-          value,
-          { failure: null, isListed: true, objects: value.objects.length, visuals: value.visuals.length },
-          revision
-        );
-      }
-    } catch (error: unknown) {
-      this.log.error("Failed to read the level's spawned objects:", transformError(error));
-
-      if (this.isOpen(sessionId)) {
-        this.noteSpawn(
-          null,
-          { ...EMPTY_LEVEL_SPAWN_REPORT, failure: transformError(error).message, isListed: true },
-          this.spawnRevision
-        );
-      }
-    }
+  /**
+   * Reads every part of an opening the page shows, side by side, each settling on its own; a part that fails is told
+   * by its resource.
+   */
+  private async attachParts(sessionId: SessionId): Promise<void> {
+    await Promise.all([
+      this.start.attach(sessionId),
+      this.levelMap.attach(sessionId),
+      this.surfaces.attach(sessionId),
+      this.textures.attach(sessionId),
+      this.spawnObjects.attach(sessionId),
+    ]);
   }
 
-  @BoundAction()
-  private noteSpawn(
-    spawn: Nullable<LevelSpawnObjectsDescription>,
-    report: ILevelSpawnReport,
-    revision: Nullable<XrayRevision>
-  ): void {
-    this.spawn = spawn;
-    this.spawnReport = report;
-    this.spawnRevision = revision;
+  private detachParts(): void {
+    this.start.detach();
+    this.levelMap.detach();
+    this.surfaces.detach();
+    this.textures.detach();
+    this.spawnObjects.detach();
   }
 
   /**
@@ -406,21 +431,20 @@ export class LevelLoadService {
   }
 
   /**
-   * @param sessionId - The level opening a read belongs to.
-   * @returns Whether that level is still the one this loader holds.
+   * Tells a listener each time the open level's scene moves on, streamed afresh, until stopped.
+   *
+   * @param listener - Hears the scene the level now streams as, or null for none.
+   * @returns What stops it.
    */
-  private isOpen(sessionId: string): boolean {
-    const open: Nullable<IOpenLevel> = this.level.value;
-
-    return Boolean(open && open.selected.sessionId === sessionId);
+  public followScene(listener: (scene: Nullable<ILevelScene>) => void): () => void {
+    return reaction(() => this.scene, listener);
   }
 
   private clearView(): void {
     runInAction(() => {
+      this.detachParts();
       this.level = this.level.asIdle();
-      this.spawn = null;
-      this.spawnReport = EMPTY_LEVEL_SPAWN_REPORT;
-      this.spawnRevision = null;
+      this.scene = null;
       this.isStale = false;
     });
   }

@@ -39,7 +39,7 @@ export function LevelPreviewPick({
   const loadService: LevelLoadService = useInjection(LevelLoadService);
 
   const picked: Nullable<TLevelPick> = viewportService.picked;
-  const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = loadService.level.value?.selected.value.surfaces;
+  const surfaces: Nullable<ReadonlyArray<XraySurfaceDescriptor>> = loadService.surfaces.value;
 
   if (!picked) {
     return <></>;

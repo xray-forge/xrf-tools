@@ -61,34 +61,26 @@ pub async fn levels_open_level(
     level.engine.describe()
   );
 
-  let selected: Arc<SessionSnapshot<SelectedLevel>> = state.levels.catch_up(
-    state.levels.commit_open_with(
-      session_id,
-      opened.value,
-      search.get_vfs().get_revision(),
-      opened.inputs,
-      opened.parts,
-    )?,
-    &assets,
+  let committed: Arc<SessionSnapshot<SelectedLevel>> = state.levels.commit_open_with(
+    session_id,
+    opened.value,
+    search.get_vfs().get_revision(),
+    opened.inputs,
+    opened.parts,
+  )?;
+
+  // What the open came to, its surfaces and textures as it resolved and kept them.
+  report_open(
+    &committed,
+    (
+      &LevelSurfacesPart::find(&committed).unwrap_or_default(),
+      &LevelTexturesPart::find(&committed).unwrap_or_default(),
+    ),
+    started,
   );
-  let reader: AssetMountState = AssetMountState::clone(&assets);
 
-  // Described through a search of the revision it caught up to, which a commit published while it opened moves past
-  // the open's own: the parts the open read are kept, and only those that commit let go are read again.
-  execution
-    .run_blocking("Describing the level", move || {
-      let search: XraySearch = reader.search(&selected.roots)?;
+  let selected: Arc<SessionSnapshot<SelectedLevel>> = state.levels.catch_up(committed, &assets);
 
-      report_open(
-        &selected,
-        (
-          &LevelSurfacesPart::get(&selected, &search),
-          &LevelTexturesPart::get(&selected, &search),
-        ),
-        started,
-      );
-
-      TauriResult::Ok(SelectedLevel::describe_at(&selected, &search))
-    })
-    .await?
+  // The level itself reads nothing to describe; the page asks for each part it shows apart from it.
+  Ok(selected.answer(selected.describe()))
 }

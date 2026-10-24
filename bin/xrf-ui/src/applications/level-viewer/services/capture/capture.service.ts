@@ -64,7 +64,13 @@ import {
 import { KeybindCommand } from "@/core/commands";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { systemCommands } from "@/core/ipc/commands/system";
-import { CaptureOutcome, EJobKind, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
+import {
+  CaptureOutcome,
+  EJobKind,
+  LevelMapDescription,
+  SelectedLevelDescription,
+  SessionSnapshot,
+} from "@/core/ipc/types/xrf-app";
 import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { describeJobFailure, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
@@ -223,10 +229,16 @@ export class LevelViewerCaptureService {
     return this.loadService.level.value?.selected.sessionId ?? null;
   }
 
+  /** Where the open level's `level.ltx` places its map, or null where it places none or it is not read yet. */
+  @Computed()
+  public get levelMap(): Nullable<LevelMapDescription> {
+    return this.loadService.levelMap.value;
+  }
+
   /** Where the open level's `level.ltx` lays its map, or null where it lays none. */
   @Computed()
   public get levelMapRect(): Nullable<ILevelMapRect> {
-    return toLevelMapRect(this.level?.levelMap ?? null);
+    return toLevelMapRect(this.levelMap);
   }
 
   /** The box the open level's sectors cover, engine space, or null for none. */
