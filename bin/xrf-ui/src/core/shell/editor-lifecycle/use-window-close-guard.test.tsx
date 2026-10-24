@@ -48,7 +48,7 @@ describe("useWindowCloseGuard", () => {
     expect(await requestClose()).toBe(true);
 
     await waitFor(() => expect(mockAppWindow.close).toHaveBeenCalledTimes(1));
-    expect(mockInvoke).toHaveBeenCalledWith(APPROVE, { window: "main" });
+    expect(mockInvoke).toHaveBeenCalledWith(APPROVE);
 
     // Asked again, the close must go through: the page stopped listening before asking.
     expect(await requestClose()).toBe(false);
@@ -64,7 +64,7 @@ describe("useWindowCloseGuard", () => {
     await renderWindow(<Window />);
 
     expect(await requestClose()).toBe(true);
-    await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith(APPROVE, { window: "main" }));
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith(APPROVE));
 
     expect(mockAppWindow.close).not.toHaveBeenCalled();
     expect(await requestClose()).toBe(true);

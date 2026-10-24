@@ -1,7 +1,7 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 
 import { spawnCommands } from "@/core/ipc/commands/spawn";
-import { EJobKind, SpawnConversionResult } from "@/core/ipc/types/xrf-app";
+import { SPAWN_JOB_PACK, SPAWN_JOB_UNPACK, SpawnConversionResult } from "@/core/ipc/types/xrf-app";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -17,7 +17,7 @@ export class SpawnConversionService {
   public readonly operation: JobOperation<SpawnConversionResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.SPAWN_PACK, EJobKind.SPAWN_UNPACK]);
+    this.operation = new JobOperation(jobsService, [SPAWN_JOB_PACK, SPAWN_JOB_UNPACK]);
   }
 
   /**
@@ -35,7 +35,7 @@ export class SpawnConversionService {
     this.log.info("Packing spawn:", source, "to", destination);
 
     yield* this.operation.run({
-      kind: EJobKind.SPAWN_PACK,
+      kind: SPAWN_JOB_PACK,
       invoke: (id, progress) => spawnCommands.packFile({ source, destination }, id, progress),
       describe: (outcome) => describeSpawnConversionOutcome("pack", source, destination, outcome),
     });
@@ -56,7 +56,7 @@ export class SpawnConversionService {
     this.log.info("Unpacking spawn:", source, "to", destination);
 
     yield* this.operation.run({
-      kind: EJobKind.SPAWN_UNPACK,
+      kind: SPAWN_JOB_UNPACK,
       invoke: (id, progress) => spawnCommands.unpackFile({ source, destination }, id, progress),
       describe: (outcome) => describeSpawnConversionOutcome("unpack", source, destination, outcome),
     });

@@ -2,7 +2,7 @@ import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 import { Nullable } from "@xrf/types";
 
 import { spriteEquipmentCommands } from "@/core/ipc/commands/sprite-equipment";
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { SPRITE_EQUIPMENT_JOB_PACK } from "@/core/ipc/types/xrf-app";
 import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobCompletion, JobOperation } from "@/core/jobs/lib/job-operation";
@@ -20,7 +20,7 @@ export class SpriteEquipmentPackerService {
   public readonly operation: JobOperation<PackEquipmentResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [EJobKind.SPRITE_EQUIPMENT_PACK]);
+    this.operation = new JobOperation(jobsService, [SPRITE_EQUIPMENT_JOB_PACK]);
   }
 
   /**
@@ -49,7 +49,7 @@ export class SpriteEquipmentPackerService {
     this.log.info("Packing equipment editor:", sourcePath, outputPath, systemLtxPath);
 
     const completion: JobCompletion<PackEquipmentResult> = yield* this.operation.run({
-      kind: EJobKind.SPRITE_EQUIPMENT_PACK,
+      kind: SPRITE_EQUIPMENT_JOB_PACK,
       invoke: (id: string, progress) =>
         spriteEquipmentCommands.packSprite({ sourcePath, outputPath, systemLtxPath, isDltx }, id, progress),
       describe: (outcome: IJobOutcome<PackEquipmentResult>): IJobNotice =>

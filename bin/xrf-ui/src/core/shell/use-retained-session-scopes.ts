@@ -1,11 +1,9 @@
 import { isTauri } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Nullable } from "@xrf/types";
 import { useEffect, useRef } from "react";
 
 import { sessionsCommands } from "@/core/ipc/commands/sessions";
 import { SHELL_SESSION_TOOL } from "@/core/ipc/session";
-import { SessionScope } from "@/core/ipc/types/xrf-app";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { useCurrentApplication } from "@/core/routing/current-application.context";
 import { Logger } from "@/lib/logging";
@@ -28,13 +26,9 @@ export function useRetainedSessionScopes(): void {
 
     isRetained.current = true;
 
-    const window: string = getCurrentWindow().label;
-    const live: Array<SessionScope> = [
-      { tool: SHELL_SESSION_TOOL, window },
-      ...(application ? [{ tool: application.id, window }] : []),
-    ];
+    const live: Array<string> = [SHELL_SESSION_TOOL, ...(application ? [application.id] : [])];
 
-    sessionsCommands.retainScopes(window, live).catch((error: unknown) => {
+    sessionsCommands.retainScopes(live).catch((error: unknown) => {
       log.error("Failed to release what the window's previous page held:", error);
     });
   }, [application]);

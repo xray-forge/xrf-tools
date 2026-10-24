@@ -1,7 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { Maybe } from "@xrf/types";
 
-import { SessionId, SessionScope } from "@/core/ipc/types/xrf-app";
+import { SessionId } from "@/core/ipc/types/xrf-app";
 import { Logger } from "@/lib/logging";
 
 import { SessionScopeService } from "./session-scope.service";
@@ -30,9 +30,9 @@ export class Session implements IScopedSession {
     scopeService.register(this);
   }
 
-  /** The scope the openings are held in, which a restore names to attach to what its tool holds. */
-  public get scope(): SessionScope {
-    return this.scopeService.scope;
+  /** The tool the openings are held for, which a restore names to attach to what that tool holds. */
+  public get tool(): string {
+    return this.scopeService.tool;
   }
 
   /**

@@ -1,7 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { IBulkCall } from "@/core/ipc/bulk";
-import { SessionId } from "@/core/ipc/types/xrf-app";
+import { AssetSource, SessionId } from "@/core/ipc/types/xrf-app";
 import { ETextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
@@ -11,12 +11,8 @@ export const texturesBulkRoutes = {
     args: { sessionId, format },
     route: "textures/read_candidate",
   }),
-  readTexels: (roots: XrayRoots, logicalPath: string): IBulkCall => ({
-    args: { roots, logicalPath },
+  readTexels: (roots: XrayRoots, source: AssetSource): IBulkCall => ({
+    args: { roots, source },
     route: "textures/read_texels",
-  }),
-  readTexture: (roots: XrayRoots, logicalPath: string): IBulkCall => ({
-    args: { roots, logicalPath },
-    route: "textures/read_texture",
   }),
 };

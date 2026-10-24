@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
 import { LtxResolvedIndex, LtxResolvedSection } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 
@@ -29,11 +29,10 @@ function getSectionOf(name: string): LtxResolvedSection {
   return { entry: "system.ltx", fields: [], name, origin: "items\\w_base.ltx", parents: [] };
 }
 
-function mockOpenedService(): ConfigsResolvedService {
+async function mockOpenedService(): Promise<ConfigsResolvedService> {
   const { service, container } = mockInjectedService(ConfigsResolvedService, [ConfigsProjectService]);
-  const project = container.get(ConfigsProjectService);
 
-  project.project = project.project.asReady({ sessionId: "session-1" } as ConfigsProjectDescriptor);
+  await mockRestoredConfigsProject(container.get(ConfigsProjectService));
 
   return service;
 }
@@ -46,7 +45,7 @@ describe("ConfigsResolvedService", () => {
       "plugin:configs|list_resolved_sections": getIndexOf([getEntryOf("wpn_base", "items\\w_base.ltx")]),
     });
 
-    const service: ConfigsResolvedService = mockOpenedService();
+    const service: ConfigsResolvedService = await mockOpenedService();
 
     await service.open("system.ltx");
     await service.open("system.ltx");
@@ -61,7 +60,7 @@ describe("ConfigsResolvedService", () => {
       "plugin:configs|read_resolved_sections": [getSectionOf("a")],
     });
 
-    const service: ConfigsResolvedService = mockOpenedService();
+    const service: ConfigsResolvedService = await mockOpenedService();
 
     await service.open("system.ltx");
     await service.request(["a"]);
@@ -81,7 +80,7 @@ describe("ConfigsResolvedService", () => {
       "plugin:configs|read_resolved_sections": [getSectionOf("a")],
     });
 
-    const service: ConfigsResolvedService = mockOpenedService();
+    const service: ConfigsResolvedService = await mockOpenedService();
 
     await service.open("system.ltx");
 
@@ -102,7 +101,7 @@ describe("ConfigsResolvedService", () => {
       ]),
     });
 
-    const service: ConfigsResolvedService = mockOpenedService();
+    const service: ConfigsResolvedService = await mockOpenedService();
 
     await service.open("system.ltx");
 
@@ -127,7 +126,7 @@ describe("ConfigsResolvedService", () => {
 
     setMockInvokeResponses({ "plugin:configs|list_resolved_sections": () => response });
 
-    const service = mockOpenedService();
+    const service = await mockOpenedService();
     const opening = service.open("system.ltx");
 
     service.clear();
@@ -147,7 +146,7 @@ describe("ConfigsResolvedService", () => {
       "plugin:configs|read_resolved_sections": () => response.promise,
     });
 
-    const service = mockOpenedService();
+    const service = await mockOpenedService();
 
     await service.open("system.ltx");
 
@@ -172,7 +171,7 @@ describe("ConfigsResolvedService", () => {
       "plugin:configs|read_resolved_sections": () => response.promise,
     });
 
-    const service = mockOpenedService();
+    const service = await mockOpenedService();
 
     await service.open("system.ltx");
 
@@ -200,7 +199,7 @@ describe("ConfigsResolvedService", () => {
       "plugin:configs|read_resolved_sections": () => older.promise,
     });
 
-    const service = mockOpenedService();
+    const service = await mockOpenedService();
 
     await service.open("system.ltx");
 
@@ -234,7 +233,7 @@ describe("ConfigsResolvedService", () => {
       "plugin:configs|read_resolved_sections": () => first.promise,
     });
 
-    const service = mockOpenedService();
+    const service = await mockOpenedService();
 
     await service.open("system.ltx");
 

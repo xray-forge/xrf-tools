@@ -54,7 +54,7 @@ describe("LevelLoadService", () => {
     const { service } = mockInjectedService(LevelLoadService);
 
     setMockInvokeResponses({
-      ["plugin:levels|get_level"]: mockSessionResponse(
+      ["plugin:levels|restore_level"]: mockSessionResponse(
         mockSelectedLevelDescription({ sectors: [mockSectorOutline()] })
       ),
       ["plugin:levels|describe_spawn_objects"]: mockSessionResponse(SPAWN),
@@ -69,7 +69,7 @@ describe("LevelLoadService", () => {
   it("reports itself ready even when there is nothing to restore", async () => {
     const { service } = mockInjectedService(LevelLoadService);
 
-    setMockInvokeResponses({ ["plugin:levels|get_level"]: null });
+    setMockInvokeResponses({ ["plugin:levels|restore_level"]: null });
 
     await service.onProvision();
 

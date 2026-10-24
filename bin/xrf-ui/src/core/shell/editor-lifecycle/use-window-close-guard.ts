@@ -52,7 +52,7 @@ export function useWindowCloseGuard(): void {
       log.info("Approving window close:", target.label);
 
       systemCommands
-        .approveWindowClose(target.label)
+        .approveWindowClose()
         .then(() => {
           log.info("Window close approved, closing:", target.label);
 

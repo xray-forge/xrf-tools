@@ -1,13 +1,38 @@
 import { Nullable } from "@xrf/types";
 
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import {
+  ARCHIVES_JOB_COMPARE,
+  ARCHIVES_JOB_EXTRACT,
+  ARCHIVES_JOB_PACK,
+  ARCHIVES_JOB_PATCH,
+  ARCHIVES_JOB_UNPACK,
+  CONFIGS_JOB_CHECK_FORMAT,
+  CONFIGS_JOB_FORMAT,
+  CONFIGS_JOB_VERIFY,
+  GAMEDATA_JOB_VERIFY,
+  JobKind,
+  LEVELS_JOB_CAPTURE_CUBE,
+  LEVELS_JOB_CAPTURE_MAP,
+  SPAWN_JOB_PACK,
+  SPAWN_JOB_UNPACK,
+  SPRITE_EQUIPMENT_JOB_PACK,
+  TEXTURES_JOB_BUILD,
+  TEXTURES_JOB_COMPARE_ENCODINGS,
+  TEXTURES_JOB_MAKE_BUMP,
+  TEXTURES_JOB_SAVE,
+  TRANSLATIONS_JOB_BUILD,
+  TRANSLATIONS_JOB_CHECK_FORMAT,
+  TRANSLATIONS_JOB_FORMAT,
+  TRANSLATIONS_JOB_PARSE,
+  TRANSLATIONS_JOB_VERIFY,
+} from "@/core/ipc/types/xrf-app";
 import { EApplicationId } from "@/core/routing/application";
 
 /**
  * Display metadata for a backend job kind.
  */
 export interface IJobKindDescriptor {
-  kind: EJobKind;
+  kind: JobKind;
   /**
    * Application credited in job notifications.
    */
@@ -19,121 +44,122 @@ export interface IJobKindDescriptor {
 }
 
 /**
- * Job metadata available independently of application lifetimes.
+ * Job metadata available independently of application lifetimes, keyed by the generated job kind constants; a test
+ * holds it to every kind the backend declares.
  */
-export const JOB_KINDS: Record<EJobKind, IJobKindDescriptor> = {
-  [EJobKind.ARCHIVES_COMPARE]: {
-    kind: EJobKind.ARCHIVES_COMPARE,
+export const JOB_KINDS: Readonly<Record<JobKind, IJobKindDescriptor>> = {
+  [ARCHIVES_JOB_COMPARE]: {
+    kind: ARCHIVES_JOB_COMPARE,
     source: EApplicationId.ARCHIVES_PATCHER,
     label: "Archive comparison",
   },
-  [EJobKind.ARCHIVES_PATCH]: {
-    kind: EJobKind.ARCHIVES_PATCH,
+  [ARCHIVES_JOB_PATCH]: {
+    kind: ARCHIVES_JOB_PATCH,
     source: EApplicationId.ARCHIVES_PATCHER,
     label: "Archive patching",
   },
-  [EJobKind.SPAWN_PACK]: {
-    kind: EJobKind.SPAWN_PACK,
+  [SPAWN_JOB_PACK]: {
+    kind: SPAWN_JOB_PACK,
     source: EApplicationId.SPAWN_PACKER,
     label: "Spawn packing",
   },
-  [EJobKind.SPAWN_UNPACK]: {
-    kind: EJobKind.SPAWN_UNPACK,
+  [SPAWN_JOB_UNPACK]: {
+    kind: SPAWN_JOB_UNPACK,
     source: EApplicationId.SPAWN_UNPACKER,
     label: "Spawn unpacking",
   },
-  [EJobKind.ARCHIVES_EXTRACT]: {
-    kind: EJobKind.ARCHIVES_EXTRACT,
+  [ARCHIVES_JOB_EXTRACT]: {
+    kind: ARCHIVES_JOB_EXTRACT,
     source: EApplicationId.ARCHIVES_EXPLORER,
     label: "Archive extraction",
   },
-  [EJobKind.ARCHIVES_PACK]: {
-    kind: EJobKind.ARCHIVES_PACK,
+  [ARCHIVES_JOB_PACK]: {
+    kind: ARCHIVES_JOB_PACK,
     source: EApplicationId.ARCHIVES_PACKER,
     label: "Archive packing",
   },
-  [EJobKind.ARCHIVES_UNPACK]: {
-    kind: EJobKind.ARCHIVES_UNPACK,
+  [ARCHIVES_JOB_UNPACK]: {
+    kind: ARCHIVES_JOB_UNPACK,
     source: EApplicationId.ARCHIVES_UNPACKER,
     label: "Archive unpacking",
   },
-  [EJobKind.CONFIGS_CHECK_FORMAT]: {
-    kind: EJobKind.CONFIGS_CHECK_FORMAT,
+  [CONFIGS_JOB_CHECK_FORMAT]: {
+    kind: CONFIGS_JOB_CHECK_FORMAT,
     source: EApplicationId.CONFIGS_FORMATTER,
     label: "Config format check",
   },
-  [EJobKind.CONFIGS_FORMAT]: {
-    kind: EJobKind.CONFIGS_FORMAT,
+  [CONFIGS_JOB_FORMAT]: {
+    kind: CONFIGS_JOB_FORMAT,
     source: EApplicationId.CONFIGS_FORMATTER,
     label: "Config formatting",
   },
-  [EJobKind.CONFIGS_VERIFY]: {
-    kind: EJobKind.CONFIGS_VERIFY,
+  [CONFIGS_JOB_VERIFY]: {
+    kind: CONFIGS_JOB_VERIFY,
     source: EApplicationId.CONFIGS_VERIFIER,
     label: "Config verification",
   },
-  [EJobKind.TRANSLATIONS_BUILD]: {
-    kind: EJobKind.TRANSLATIONS_BUILD,
+  [TRANSLATIONS_JOB_BUILD]: {
+    kind: TRANSLATIONS_JOB_BUILD,
     source: EApplicationId.TRANSLATIONS_BUILDER,
     label: "Translation build",
   },
-  [EJobKind.TRANSLATIONS_CHECK_FORMAT]: {
-    kind: EJobKind.TRANSLATIONS_CHECK_FORMAT,
+  [TRANSLATIONS_JOB_CHECK_FORMAT]: {
+    kind: TRANSLATIONS_JOB_CHECK_FORMAT,
     source: EApplicationId.TRANSLATIONS_FORMATTER,
     label: "Translation format check",
   },
-  [EJobKind.TRANSLATIONS_FORMAT]: {
-    kind: EJobKind.TRANSLATIONS_FORMAT,
+  [TRANSLATIONS_JOB_FORMAT]: {
+    kind: TRANSLATIONS_JOB_FORMAT,
     source: EApplicationId.TRANSLATIONS_FORMATTER,
     label: "Translation formatting",
   },
-  [EJobKind.TRANSLATIONS_PARSE]: {
-    kind: EJobKind.TRANSLATIONS_PARSE,
+  [TRANSLATIONS_JOB_PARSE]: {
+    kind: TRANSLATIONS_JOB_PARSE,
     source: EApplicationId.TRANSLATIONS_PARSER,
     label: "Translation import",
   },
-  [EJobKind.TRANSLATIONS_VERIFY]: {
-    kind: EJobKind.TRANSLATIONS_VERIFY,
+  [TRANSLATIONS_JOB_VERIFY]: {
+    kind: TRANSLATIONS_JOB_VERIFY,
     source: EApplicationId.TRANSLATIONS_VERIFIER,
     label: "Translation check",
   },
-  [EJobKind.SPRITE_EQUIPMENT_PACK]: {
-    kind: EJobKind.SPRITE_EQUIPMENT_PACK,
+  [SPRITE_EQUIPMENT_JOB_PACK]: {
+    kind: SPRITE_EQUIPMENT_JOB_PACK,
     source: EApplicationId.SPRITE_EQUIPMENT_PACKER,
     label: "Equipment sprite packing",
   },
-  [EJobKind.GAMEDATA_VERIFY]: {
-    kind: EJobKind.GAMEDATA_VERIFY,
+  [GAMEDATA_JOB_VERIFY]: {
+    kind: GAMEDATA_JOB_VERIFY,
     source: EApplicationId.GAMEDATA_VERIFIER,
     label: "Gamedata verification",
   },
-  [EJobKind.LEVELS_CAPTURE_CUBE]: {
-    kind: EJobKind.LEVELS_CAPTURE_CUBE,
+  [LEVELS_JOB_CAPTURE_CUBE]: {
+    kind: LEVELS_JOB_CAPTURE_CUBE,
     source: EApplicationId.LEVEL_VIEWER,
     label: "Cubemap capture",
   },
-  [EJobKind.LEVELS_CAPTURE_MAP]: {
-    kind: EJobKind.LEVELS_CAPTURE_MAP,
+  [LEVELS_JOB_CAPTURE_MAP]: {
+    kind: LEVELS_JOB_CAPTURE_MAP,
     source: EApplicationId.LEVEL_VIEWER,
     label: "Level map capture",
   },
-  [EJobKind.TEXTURES_SAVE]: {
-    kind: EJobKind.TEXTURES_SAVE,
+  [TEXTURES_JOB_SAVE]: {
+    kind: TEXTURES_JOB_SAVE,
     source: EApplicationId.TEXTURES_EXPLORER,
     label: "Texture save",
   },
-  [EJobKind.TEXTURES_BUILD]: {
-    kind: EJobKind.TEXTURES_BUILD,
+  [TEXTURES_JOB_BUILD]: {
+    kind: TEXTURES_JOB_BUILD,
     source: EApplicationId.TEXTURES_EXPLORER,
     label: "Texture build",
   },
-  [EJobKind.TEXTURES_MAKE_BUMP]: {
-    kind: EJobKind.TEXTURES_MAKE_BUMP,
+  [TEXTURES_JOB_MAKE_BUMP]: {
+    kind: TEXTURES_JOB_MAKE_BUMP,
     source: EApplicationId.TEXTURES_EXPLORER,
     label: "Bump pair generation",
   },
-  [EJobKind.TEXTURES_COMPARE_ENCODINGS]: {
-    kind: EJobKind.TEXTURES_COMPARE_ENCODINGS,
+  [TEXTURES_JOB_COMPARE_ENCODINGS]: {
+    kind: TEXTURES_JOB_COMPARE_ENCODINGS,
     source: EApplicationId.TEXTURES_EXPLORER,
     label: "Texture format comparison",
   },
@@ -145,6 +171,6 @@ export const JOB_KINDS: Record<EJobKind, IJobKindDescriptor> = {
  * @param kind - Backend job identifier.
  * @returns Metadata, or `null` for an unknown kind.
  */
-export function findJobKind(kind: string): Nullable<IJobKindDescriptor> {
-  return JOB_KINDS[kind as EJobKind] ?? null;
+export function findJobKind(kind: JobKind): Nullable<IJobKindDescriptor> {
+  return JOB_KINDS[kind] ?? null;
 }

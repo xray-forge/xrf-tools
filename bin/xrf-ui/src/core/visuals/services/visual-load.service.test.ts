@@ -131,7 +131,7 @@ describe("VisualLoadService", () => {
 
         return mockLoadable();
       }),
-      ["plugin:visuals|get_model"]: mockSessionResponse(mockLoadable()),
+      ["plugin:visuals|restore_model"]: mockSessionResponse(mockLoadable()),
     });
 
     await service.restore();

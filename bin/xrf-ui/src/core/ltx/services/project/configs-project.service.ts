@@ -8,7 +8,7 @@ import { createRoots } from "@/core/assets/lib";
 import { transformError } from "@/core/error/lib";
 import { configsCommands } from "@/core/ipc/commands/configs";
 import { Session, SessionScopeService } from "@/core/ipc/session";
-import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
+import { ConfigsProjectDescriptor, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
@@ -27,9 +27,14 @@ export class ConfigsProjectService {
   @Observable()
   public isReady: boolean = false;
 
-  /** The open project, or null when nothing is open. */
   @Observable()
-  public project: AsyncState<ConfigsProjectDescriptor> = AsyncState.idle();
+  private projectState: AsyncState<SessionSnapshot<ConfigsProjectDescriptor>> = AsyncState.idle();
+
+  /** The open project, or null when nothing is open. */
+  @Computed()
+  public get project(): AsyncState<ConfigsProjectDescriptor> {
+    return this.projectState.map((snapshot) => snapshot.value);
+  }
 
   /**
    * @returns Whether a project is open, which is what puts the tree on screen.
@@ -52,7 +57,7 @@ export class ConfigsProjectService {
    */
   @Computed()
   public get sessionId(): Nullable<string> {
-    return this.project.value?.sessionId ?? null;
+    return this.projectState.value?.sessionId ?? null;
   }
 
   /**
@@ -72,7 +77,7 @@ export class ConfigsProjectService {
   @OnDeactivation()
   public onDeactivation(): void {
     runInAction(() => {
-      this.project = this.project.asIdle(null);
+      this.projectState = this.projectState.asIdle(null);
     });
   }
 
@@ -88,10 +93,10 @@ export class ConfigsProjectService {
     const timer: Timer = new Timer();
 
     this.log.info("Opening configs project:", root, { isDltx, prefix });
-    this.project = this.project.asLoading();
+    this.projectState = this.projectState.asLoading();
 
     try {
-      const descriptor: ConfigsProjectDescriptor = yield* call(
+      const snapshot: SessionSnapshot<ConfigsProjectDescriptor> = yield* call(
         this.session.open((sessionId) =>
           configsCommands.openProject({
             sessionId,
@@ -102,13 +107,13 @@ export class ConfigsProjectService {
         )
       );
 
-      this.log.info("Opened configs project:", descriptor.root, "in", formatDuration(timer.elapsed()));
+      this.log.info("Opened configs project:", snapshot.value.root, "in", formatDuration(timer.elapsed()));
 
-      this.project = this.project.asReady(descriptor);
+      this.projectState = this.projectState.asReady(snapshot);
     } catch (error) {
       this.log.error("Failed to open the configs project:", root, "after", formatDuration(timer.elapsed()), error);
 
-      this.project = this.project.asFailed(transformError(error));
+      this.projectState = this.projectState.asFailed(transformError(error));
     } finally {
       this.isReady = true;
     }
@@ -124,7 +129,7 @@ export class ConfigsProjectService {
     try {
       yield* call(this.session.close());
 
-      this.project = this.project.asIdle(null);
+      this.projectState = this.projectState.asIdle(null);
 
       if (root) {
         this.log.info("Configs project closed:", root);
@@ -140,15 +145,15 @@ export class ConfigsProjectService {
   @ExclusiveFlow("project")
   private *restore(): TFlow {
     try {
-      const descriptor: Nullable<ConfigsProjectDescriptor> = yield* call(
-        configsCommands.getProject(this.session.scope)
+      const snapshot: Nullable<SessionSnapshot<ConfigsProjectDescriptor>> = yield* call(
+        configsCommands.restoreProject(this.session.tool)
       );
 
-      this.session.adopt(descriptor);
-      this.project = this.project.asReady(descriptor);
+      this.session.adopt(snapshot);
+      this.projectState = this.projectState.asReady(snapshot);
 
-      if (descriptor) {
-        this.log.info("Configs project restored:", descriptor.root, descriptor.sessionId);
+      if (snapshot) {
+        this.log.info("Configs project restored:", snapshot.value.root, snapshot.sessionId);
       }
     } catch (error) {
       this.log.error("Failed to restore the configs project:", error);

@@ -417,7 +417,7 @@ describe("LevelWeatherService", () => {
 
   it("opens the weather of a level as the level opens, with no viewport to play it, and forgets it as it closes", async () => {
     setMockInvokeResponses({
-      ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+      ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
       ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
     });
 

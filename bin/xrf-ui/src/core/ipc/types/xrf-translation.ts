@@ -1,6 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { JobOutcome } from "@/core/ipc/types/xrf-job";
+import { Report } from "@/core/ipc/types/xrf-report";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /** What one language's build produced. */
@@ -15,6 +16,24 @@ export type TranslationBuildLanguageSummary = {
    * this counts what the tables hold rather than what was translated.
    */
   entries: number;
+};
+
+/** What a build produced, across every language it built. */
+export type TranslationBuildResult = {
+  /**
+   * Whether the run compiled every source or was stopped between them.
+   *
+   * A stopped build leaves the string tables it had already written valid and the rest simply absent, which is a
+   * state running it again resolves.
+   */
+  outcome: JobOutcome;
+  duration: number;
+  /** Sources read, whatever they built into. */
+  sources: number;
+  /** String tables written, across every language. */
+  files: number;
+  /** Per language, in build order. */
+  languages: Array<TranslationBuildLanguageSummary>;
 };
 
 /** Every `kind` the `TranslationEdit` union is told apart by, so a switch or a comparison names one. */
@@ -145,6 +164,42 @@ export type TranslationParseCensus = {
   placeholdersAdded: number;
 };
 
+/**
+ * What one import run read, changed, and objected to.
+ *
+ * The census counts and the findings answer different questions and are kept apart for that reason:
+ * a count says how much moved, a finding says which file has a problem and why. `subject` on a
+ * finding is what makes a per-file breakdown unnecessary.
+ */
+export type TranslationParseResult = {
+  /**
+   * Whether the run read every table or was stopped between them.
+   *
+   * Each source is written whole through a staged replace, so a stopped import leaves the ones already written
+   * complete and the rest untouched.
+   */
+  outcome: JobOutcome;
+  duration: number;
+  /** The language this run filed every entry under. */
+  language: string;
+  /**
+   * Whether the run computed its answer without writing it.
+   *
+   * A dry run's whole result is what it would have written, so the counts below mean "would" rather
+   * than "did" whenever this is set.
+   */
+  isDryRun: boolean;
+  census: TranslationParseCensus;
+  /**
+   * The findings, in the shape every other XRF command reports them in.
+   *
+   * Sealed by `finalize` once the run is over, so the crate's own result is
+   * what both the CLI and the desktop app deposit — neither has to restate the shape, and they
+   * cannot drift apart by restating it differently.
+   */
+  report: Report;
+};
+
 /** An opened translations root, whichever layout it turned out to have. */
 export type TranslationProjectDescriptor = {
   mode: TranslationProjectMode;
@@ -215,4 +270,15 @@ export type TranslationVerifyLanguageSummary = {
   checked: number;
   /** Ids with no text for this language, counting an explicit `null` as missing. */
   missing: number;
+};
+
+/** What a completeness check found, per file and language. */
+export type TranslationVerifyResult = {
+  /** Whether the run checked every source or was stopped between them. */
+  outcome: JobOutcome;
+  duration: number;
+  checkedTranslationsCount: number;
+  missingTranslationsCount: number;
+  /** Per file and language, in discovery order. */
+  languages: Array<TranslationVerifyLanguageSummary>;
 };

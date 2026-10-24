@@ -3,7 +3,7 @@ import { RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
-import { ConfigsDocument } from "@/core/ipc/types/xrf-app";
+import { ConfigsDocument, ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app";
 import { LtxAnchoredFinding } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsProblemsPanel } from "@/core/ltx/components/panels/ConfigsProblemsPanel";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
@@ -11,7 +11,9 @@ import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
+import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -31,10 +33,10 @@ const SCHEME_FINDING: LtxAnchoredFinding = {
 };
 
 /** The panel with one config open, over whatever the root's verification answers. */
-function renderProblems(findings: Array<LtxAnchoredFinding>): {
+async function renderProblems(findings: Array<LtxAnchoredFinding>): Promise<{
   render: RenderResult;
   documentService: ConfigsDocumentService;
-} {
+}> {
   const container: Container = mockContainer([
     ConfigsProjectService,
     ConfigsDocumentService,
@@ -42,10 +44,9 @@ function renderProblems(findings: Array<LtxAnchoredFinding>): {
     ConfigsResolvedService,
     ConfigsSchemeService,
   ]);
-  const project = container.get(ConfigsProjectService);
   const documentService: ConfigsDocumentService = container.get(ConfigsDocumentService);
 
-  project.project = project.project.asReady({ sessionId: "session-1" } as never);
+  await mockRestoredConfigsProject(container.get(ConfigsProjectService));
   documentService.document = documentService.document.asReady({
     findings: [],
     structure: { entryPoints: [ENTRY], includes: [], parseError: null, path: ENTRY, rootEntries: [], sections: [] },
@@ -53,7 +54,8 @@ function renderProblems(findings: Array<LtxAnchoredFinding>): {
   } as ConfigsDocument);
 
   setMockInvokeResponses({
-    "plugin:configs|get_project": project.project.value,
+    // A provisioning restore finds the same project again.
+    "plugin:configs|restore_project": mockSessionSnapshot({} as ConfigsProjectDescriptor, "session-1"),
     "plugin:configs|list_findings": findings,
     // What the jump reads: the config the finding names, which is not the one on screen.
     "plugin:configs|read_document": {
@@ -68,7 +70,7 @@ function renderProblems(findings: Array<LtxAnchoredFinding>): {
 
 describe("ConfigsProblemsPanel", () => {
   it("verifies the root only once it is on screen, and says what it found", async () => {
-    const { render } = renderProblems([SCHEME_FINDING]);
+    const { render } = await renderProblems([SCHEME_FINDING]);
 
     await waitFor(() => expect(render.getByText(/unsigned 32 bit number/)).toBeInTheDocument());
 
@@ -78,7 +80,7 @@ describe("ConfigsProblemsPanel", () => {
   });
 
   it("opens the config a finding names, which is rarely the one on screen", async () => {
-    const { render, documentService } = renderProblems([SCHEME_FINDING]);
+    const { render, documentService } = await renderProblems([SCHEME_FINDING]);
 
     await waitFor(() => expect(render.getByText("w_bad.ltx:8")).toBeInTheDocument());
     await userEvent.click(render.getByText("w_bad.ltx:8"));
@@ -91,7 +93,7 @@ describe("ConfigsProblemsPanel", () => {
   });
 
   it("says what was checked when a root has nothing to report", async () => {
-    const { render } = renderProblems([]);
+    const { render } = await renderProblems([]);
 
     await waitFor(() => expect(render.getByText(new RegExp("No problems found"))).toBeInTheDocument());
   });

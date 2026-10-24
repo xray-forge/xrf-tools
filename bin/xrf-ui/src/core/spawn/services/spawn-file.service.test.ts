@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
 
-import { SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app";
+import { ESpawnChunkKind, SessionSnapshot, SpawnChunk, SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app";
 import { SpawnGraphsChunk } from "@/core/ipc/types/xrf-spawn";
 import { SpawnFileService } from "@/core/spawn/services/spawn-file.service";
+import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockSpawnFile, mockSpawnSession } from "@/fixtures/mocks/spawn.mocks";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { InvokeHandler, mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 import { cancelFlow } from "@/lib/mobx";
@@ -21,11 +22,17 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
+/** Answers `read_chunk` with the graphs a test hands it, tagged and under the opening that asked. */
+function answerGraphs(read: () => SpawnGraphsChunk | Promise<SpawnGraphsChunk>): InvokeHandler {
+  return async (args) =>
+    mockSessionSnapshot<SpawnChunk>({ kind: ESpawnChunkKind.GRAPHS, ...(await read()) }, String(args?.sessionId));
+}
+
 async function mockOpenedService() {
   const { service } = mockInjectedService(SpawnFileService);
   const session = mockSpawnSession();
 
-  setMockInvokeResponses({ "plugin:spawn|open_file": session });
+  setMockInvokeResponses({ "plugin:spawn|open_file": mockSessionResponse(session) });
   await service.openFile(session.path);
 
   return { service, session };
@@ -45,10 +52,11 @@ describe("SpawnFileService sessions", () => {
     await service.loadGraphs();
     expect(mockInvoke).not.toHaveBeenCalled();
 
-    setMockInvokeResponses({ "plugin:spawn|get_session": session });
+    setMockInvokeResponses({ "plugin:spawn|restore_file": mockSessionSnapshot(session, "restored") });
     await service.onProvision(1);
 
-    expect(mockInvoke.mock.calls).toEqual([["plugin:spawn|get_session", { scope: { tool: "shell", window: "main" } }]]);
+    expect(mockInvoke.mock.calls).toEqual([["plugin:spawn|restore_file", { tool: "shell" }]]);
+    expect(service.sessionId).toBe("restored");
     expect(service.chunks.header.value).toEqual(session.header);
     expect(service.path).toBe(session.path);
     expect(service.chunks.graphs.value).toBeNull();
@@ -56,22 +64,37 @@ describe("SpawnFileService sessions", () => {
   });
 
   it.each([
-    ["alifeSpawn", "loadAlifeSpawn", "get_alife_spawns"],
-    ["artefactSpawn", "loadArtefactSpawn", "get_artefact_spawns"],
-    ["patrols", "loadPatrols", "get_patrols"],
-    ["graphs", "loadGraphs", "get_graphs"],
-  ] as const)("caches the addressed %s chunk", async (key, load, command) => {
-    const { service, session } = await mockOpenedService();
-    const chunk = mockSpawnFile()[key];
-    const read = jest.fn(() => chunk);
+    [ESpawnChunkKind.ALIFE_SPAWN, "loadAlifeSpawn"],
+    [ESpawnChunkKind.ARTEFACT_SPAWN, "loadArtefactSpawn"],
+    [ESpawnChunkKind.PATROLS, "loadPatrols"],
+    [ESpawnChunkKind.GRAPHS, "loadGraphs"],
+  ] as const)("caches the addressed %s chunk", async (kind, load) => {
+    const { service } = await mockOpenedService();
+    const chunk = { kind, ...mockSpawnFile()[kind] } as SpawnChunk;
+    const read = jest.fn((args?: Record<string, unknown>) => mockSessionSnapshot(chunk, String(args?.sessionId)));
 
-    setMockInvokeResponses({ ["plugin:spawn|" + command]: read });
+    setMockInvokeResponses({ "plugin:spawn|read_chunk": read });
     await service[load]();
     await service[load]();
 
     expect(read).toHaveBeenCalledTimes(1);
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:spawn|" + command, { sessionId: session.sessionId });
-    expect(service.chunks[key].value).toEqual(chunk);
+    expect(mockInvoke).toHaveBeenCalledWith("plugin:spawn|read_chunk", { sessionId: service.sessionId, chunk: kind });
+    expect(service.chunks[kind].value).toEqual(chunk);
+  });
+
+  it("refuses a chunk of another kind than it asked for", async () => {
+    const { service } = await mockOpenedService();
+
+    setMockInvokeResponses({
+      "plugin:spawn|read_chunk": mockSessionSnapshot<SpawnChunk>({
+        kind: ESpawnChunkKind.PATROLS,
+        ...mockSpawnFile().patrols,
+      }),
+    });
+    await service.loadGraphs();
+
+    expect(service.chunks.graphs.value).toBeNull();
+    expect(service.chunks.graphs.error?.message).toBe("Asked for the graphs chunk, read the patrols chunk");
   });
 
   it("joins a pending read and retries after failure", async () => {
@@ -79,7 +102,7 @@ describe("SpawnFileService sessions", () => {
     const error = new Error("cannot read graphs");
 
     setMockInvokeResponses({
-      "plugin:spawn|get_graphs": () => {
+      "plugin:spawn|read_chunk": () => {
         throw error;
       },
     });
@@ -87,9 +110,9 @@ describe("SpawnFileService sessions", () => {
     expect(service.chunks.graphs.error).toBe(error);
 
     const answer = deferred<SpawnGraphsChunk>();
-    const read = jest.fn(() => answer.promise);
+    const read = jest.fn(answerGraphs(() => answer.promise));
 
-    setMockInvokeResponses({ "plugin:spawn|get_graphs": read });
+    setMockInvokeResponses({ "plugin:spawn|read_chunk": read });
 
     const first = flowResult(service.loadGraphs());
     const second = flowResult(service.loadGraphs());
@@ -99,16 +122,16 @@ describe("SpawnFileService sessions", () => {
     expect(read).toHaveBeenCalledTimes(1);
     answer.resolve(mockSpawnFile().graphs);
     await Promise.all([first, second]);
-    expect(service.chunks.graphs.value).toEqual(mockSpawnFile().graphs);
+    expect(service.chunks.graphs.value).toEqual({ kind: ESpawnChunkKind.GRAPHS, ...mockSpawnFile().graphs });
     expect(service.chunks.graphs.isLoading).toBe(false);
   });
 
   it("keeps the committed file and caches after a failed replacement", async () => {
     const { service, session } = await mockOpenedService();
-    const answer = deferred<SpawnSessionDescriptor>();
+    const answer = deferred<SessionSnapshot<SpawnSessionDescriptor>>();
     const graphs = mockSpawnFile().graphs;
 
-    setMockInvokeResponses({ "plugin:spawn|get_graphs": graphs });
+    setMockInvokeResponses({ "plugin:spawn|read_chunk": answerGraphs(() => graphs) });
     await service.loadGraphs();
     service.selectRow("graphs", 1, { name: "selection" });
 
@@ -117,7 +140,7 @@ describe("SpawnFileService sessions", () => {
 
     setMockInvokeResponses({
       "plugin:spawn|open_file": () => answer.promise,
-      "plugin:spawn|get_session": session,
+      "plugin:spawn|restore_file": mockSessionSnapshot(session),
     });
 
     const opening = flowResult(service.openFile("broken.spawn"));
@@ -138,18 +161,18 @@ describe("SpawnFileService sessions", () => {
 
   it("ignores an older open that finishes after its replacement", async () => {
     const { service } = await mockOpenedService();
-    const older = deferred<SpawnSessionDescriptor>();
-    const latest = mockSpawnSession({ sessionId: "latest", path: "latest.spawn" });
+    const older = deferred<SessionSnapshot<SpawnSessionDescriptor>>();
+    const latest = mockSpawnSession({ path: "latest.spawn" });
 
     setMockInvokeResponses({ "plugin:spawn|open_file": () => older.promise });
 
     const oldOpen = flowResult(service.openFile("old.spawn"));
 
-    setMockInvokeResponses({ "plugin:spawn|open_file": latest });
+    setMockInvokeResponses({ "plugin:spawn|open_file": mockSessionResponse(latest) });
 
     await service.openFile(latest.path);
 
-    older.resolve(mockSpawnSession({ sessionId: "old", path: "old.spawn" }));
+    older.resolve(mockSessionSnapshot(mockSpawnSession({ path: "old.spawn" }), "old"));
 
     await oldOpen;
 
@@ -159,18 +182,18 @@ describe("SpawnFileService sessions", () => {
 
   it("retains the previous document when a replacement fails and a superseded open answers late", async () => {
     const { service, session } = await mockOpenedService();
-    const older = deferred<SpawnSessionDescriptor>();
-    const committed = mockSpawnSession({ sessionId: "committed", path: "committed.spawn" });
+    const older = deferred<SessionSnapshot<SpawnSessionDescriptor>>();
+    const committed = mockSessionSnapshot(mockSpawnSession({ path: "committed.spawn" }), "committed");
 
     setMockInvokeResponses({ "plugin:spawn|open_file": () => older.promise });
 
-    const oldOpen = flowResult(service.openFile(committed.path));
+    const oldOpen = flowResult(service.openFile(committed.value.path));
 
     setMockInvokeResponses({
       "plugin:spawn|open_file": () => {
         throw new Error("later open failed");
       },
-      "plugin:spawn|get_session": committed,
+      "plugin:spawn|restore_file": committed,
     });
 
     await service.openFile("broken.spawn");
@@ -183,14 +206,14 @@ describe("SpawnFileService sessions", () => {
 
   it("keeps close authoritative over a pending open", async () => {
     const { service } = await mockOpenedService();
-    const answer = deferred<SpawnSessionDescriptor>();
+    const answer = deferred<SessionSnapshot<SpawnSessionDescriptor>>();
 
     setMockInvokeResponses({ "plugin:spawn|open_file": () => answer.promise });
 
     const opening = flowResult(service.openFile("late.spawn"));
 
     await service.closeFile();
-    answer.resolve(mockSpawnSession());
+    answer.resolve(mockSessionSnapshot(mockSpawnSession()));
     await opening;
     expect(service.isOpen).toBe(false);
     expect(service.path).toBeNull();
@@ -202,7 +225,7 @@ describe("SpawnFileService sessions", () => {
     const { service } = await mockOpenedService();
     const answer = deferred<SpawnGraphsChunk>();
 
-    setMockInvokeResponses({ "plugin:spawn|get_graphs": () => answer.promise });
+    setMockInvokeResponses({ "plugin:spawn|read_chunk": answerGraphs(() => answer.promise) });
 
     const reading = flowResult(service.loadGraphs());
 
@@ -212,11 +235,11 @@ describe("SpawnFileService sessions", () => {
 
     const graphs = mockSpawnFile().graphs;
 
-    setMockInvokeResponses({ "plugin:spawn|get_graphs": graphs });
+    setMockInvokeResponses({ "plugin:spawn|read_chunk": answerGraphs(() => graphs) });
     await service.loadGraphs();
     answer.resolve(mockSpawnFile({ graphs: { ...graphs, levels: [] } }).graphs);
     await answer.promise;
-    expect(service.chunks.graphs.value).toEqual(graphs);
+    expect(service.chunks.graphs.value).toEqual({ kind: ESpawnChunkKind.GRAPHS, ...graphs });
   });
 
   it.each(["replace", "close"] as const)("discards a pending chunk after %s", async (action) => {
@@ -224,8 +247,8 @@ describe("SpawnFileService sessions", () => {
     const answer = deferred<SpawnGraphsChunk>();
 
     setMockInvokeResponses({
-      "plugin:spawn|get_graphs": () => answer.promise,
-      "plugin:spawn|open_file": mockSpawnSession({ sessionId: "replacement" }),
+      "plugin:spawn|read_chunk": answerGraphs(() => answer.promise),
+      "plugin:spawn|open_file": mockSessionResponse(mockSpawnSession({ path: "replacement.spawn" })),
     });
 
     const reading = flowResult(service.loadGraphs());
@@ -238,7 +261,6 @@ describe("SpawnFileService sessions", () => {
 
     answer.resolve(mockSpawnFile().graphs);
     await reading;
-    expect(service.chunks.graphs.value).toBeNull();
     expect(service.chunks.graphs.value).toBeNull();
   });
 });

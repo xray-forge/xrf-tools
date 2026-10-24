@@ -5,7 +5,7 @@ import { Nullable, Optional } from "@xrf/types";
 
 import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/archive/lib/volume-size";
 import { transformError } from "@/core/error/lib";
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { JobKind } from "@/core/ipc/types/xrf-app";
 import { IJobSettledPayload } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -59,7 +59,7 @@ export abstract class ArchiveConfigEditorService<TConfig extends IArchiveEditedC
   @Observable()
   private savedState: Nullable<string> = null;
 
-  protected constructor(jobsService: JobsService, kinds: ReadonlyArray<EJobKind>) {
+  protected constructor(jobsService: JobsService, kinds: ReadonlyArray<JobKind>) {
     this.operation = new JobOperation(jobsService, kinds);
   }
 

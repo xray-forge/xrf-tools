@@ -146,7 +146,7 @@ describe("TexturePreview", () => {
       .mockRejectedValueOnce(new Error("Archive is temporarily unavailable"))
       .mockResolvedValue(new ArrayBuffer(4));
 
-    setMockBulkResponses({ "textures/read_texture": readTexture });
+    setMockBulkResponses({ "assets/read_texture": readTexture });
 
     await service.open(SHAPED.source, SHAPED.roots);
 

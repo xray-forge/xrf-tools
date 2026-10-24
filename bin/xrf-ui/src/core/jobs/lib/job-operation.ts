@@ -3,7 +3,7 @@ import { AsyncState } from "@xrf/async";
 import { Nullable, Optional } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
-import { EJobKind } from "@/core/ipc/types/xrf-app";
+import { JobKind } from "@/core/ipc/types/xrf-app";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { Logger } from "@/lib/logging";
 import { call, TFlow } from "@/lib/mobx";
@@ -61,7 +61,7 @@ export class JobOperation<T> {
 
   public constructor(
     private readonly jobsService: JobsService,
-    private readonly kinds: ReadonlyArray<EJobKind>
+    private readonly kinds: ReadonlyArray<JobKind>
   ) {
     // Composed state is not activated by the container's observable plugin.
     makeObservable(this);

@@ -6,7 +6,7 @@ import { Maybe, Nullable } from "@xrf/types";
 
 import { transformError } from "@/core/error/lib";
 import { jobsCommands } from "@/core/ipc/commands/jobs";
-import { EJobConclusion, EJobKind, JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app";
+import { EJobConclusion, JobConclusion, JobDescription, JobKind } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
 import { describeAdoptedOutcome } from "@/core/jobs/lib/describe-adopted-outcome";
 import { findJobKind, IJobKindDescriptor } from "@/core/jobs/lib/job-kinds";
@@ -135,7 +135,7 @@ export class JobsService {
    * @param kind - Kind of work to look for.
    * @returns The running job of that kind, or null.
    */
-  public getJobOfKind(kind: EJobKind): Nullable<IJobState> {
+  public getJobOfKind(kind: JobKind): Nullable<IJobState> {
     return this.jobs.find((job: IJobState) => job.kind === kind) ?? null;
   }
 

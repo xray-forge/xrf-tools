@@ -11,6 +11,7 @@ import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
+import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -26,7 +27,7 @@ function fieldOf(name: string, declared: LtxSchemeFieldReport["declared"], value
 }
 
 /** The panel over one report, with a section already selected. */
-function renderScheme(report: LtxSectionSchemeReport): RenderResult {
+async function renderScheme(report: LtxSectionSchemeReport): Promise<RenderResult> {
   const container: Container = mockContainer([
     ConfigsProjectService,
     ConfigsDocumentService,
@@ -34,10 +35,9 @@ function renderScheme(report: LtxSectionSchemeReport): RenderResult {
     ConfigsFindingsService,
     ConfigsResolvedService,
   ]);
-  const project = container.get(ConfigsProjectService);
   const documentService: ConfigsDocumentService = container.get(ConfigsDocumentService);
 
-  project.project = project.project.asReady({ sessionId: "session-1" } as never);
+  await mockRestoredConfigsProject(container.get(ConfigsProjectService));
   documentService.document = documentService.document.asReady({
     findings: [],
     structure: { entryPoints: [ENTRY], includes: [], parseError: null, path: ENTRY, rootEntries: [], sections: [] },
@@ -52,7 +52,7 @@ function renderScheme(report: LtxSectionSchemeReport): RenderResult {
 
 describe("ConfigsSchemePanel", () => {
   it("names the rule, where the binding is written, and what each field is asked for", async () => {
-    const { getByText } = renderScheme({
+    const { getByText } = await renderScheme({
       entry: ENTRY,
       fields: [
         fieldOf("cost", { dataType: "u32", isAny: false, isArray: false, isOptional: false }, "4000"),
@@ -79,7 +79,7 @@ describe("ConfigsSchemePanel", () => {
 
   it("draws plain rows for a section no scheme judges", async () => {
     // Most of a game tree: section schemes are an XRF convention, so nothing is undeclared against nothing.
-    const { getByText, queryByText } = renderScheme({
+    const { getByText, queryByText } = await renderScheme({
       entry: ENTRY,
       fields: [fieldOf("cost", null, "100")],
       inheritedFrom: null,
@@ -96,7 +96,7 @@ describe("ConfigsSchemePanel", () => {
   });
 
   it("marks a field the scheme never named, once a scheme is judging the section", async () => {
-    const { getByText } = renderScheme({
+    const { getByText } = await renderScheme({
       entry: ENTRY,
       fields: [fieldOf("unexpected_field", null, "1")],
       inheritedFrom: null,

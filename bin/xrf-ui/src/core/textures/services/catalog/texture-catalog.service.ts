@@ -12,6 +12,7 @@ import { Session, SessionScopeService } from "@/core/ipc/session";
 import {
   ETextureCatalogMode,
   SessionSnapshot,
+  TextureBrowse,
   TextureCatalog,
   TextureMaterialSummary,
   TextureSource,
@@ -29,7 +30,7 @@ import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 export class TextureCatalogService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(texturesCommands.close, inject(SessionScopeService));
+  private readonly session: Session = new Session(texturesCommands.closeBrowse, inject(SessionScopeService));
 
   /**
    * Whether the backend has been asked what it still has open.
@@ -163,7 +164,9 @@ export class TextureCatalogService {
   @ExclusiveFlow("catalog")
   private *restore(): TFlow {
     try {
-      const session = yield* call(texturesCommands.getSession(this.session.scope));
+      const session: Nullable<SessionSnapshot<TextureBrowse>> = yield* call(
+        texturesCommands.restoreBrowse(this.session.tool)
+      );
 
       this.session.adopt(session);
 
@@ -193,7 +196,7 @@ export class TextureCatalogService {
 
     try {
       const catalog: SessionSnapshot<TextureCatalog> = yield* call(
-        this.session.open(texturesCommands.open, roots, mode)
+        this.session.open(texturesCommands.openBrowse, roots, mode)
       );
 
       this.catalogState = this.catalogState.asReady(catalog);

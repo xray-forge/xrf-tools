@@ -23,7 +23,6 @@ import {
   SelectedLevelDescription,
   SessionId,
   SessionRestore,
-  SessionScope,
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { WeatherCycleId } from "@/core/ipc/types/xrf-environment";
@@ -40,9 +39,12 @@ export const levelsCommands = {
   /** Capture a level map in a viewport tile by tile and write it to a PNG file with its coverage in alpha. */
   captureMap: (request: MapCaptureRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<CaptureOutcome>("plugin:levels|capture_map", { request, jobId, progress }),
-  /** Release only the openings owned by the departing viewer. */
-  closeLevel: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<null>("plugin:levels|close_level", { sessionIds }),
-  /** Copy a screenshot of the screenshots folder to where the page names, as Save as does. */
+  /** Close the levels `session_ids` name, each once, unbinding it from its scope. */
+  closeLevel: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<void>("plugin:levels|close_level", { sessionIds }),
+  /**
+   * Copy a screenshot of the screenshots folder to where the page names, as Save as does; read whole first, so a failed
+   * copy leaves no partial file and keeps any file it would have replaced.
+   */
   copyScreenshot: (path: string, target: string) =>
     __TAURI_INVOKE<null>("plugin:levels|copy_screenshot", { path, target }),
   /**
@@ -52,7 +54,7 @@ export const levelsCommands = {
   deleteScreenshot: (path: string) => __TAURI_INVOKE<null>("plugin:levels|delete_screenshot", { path }),
   /**
    * Describe what the open level's game runs its console with of how levels are lit and exposed: its `user.ltx` over
-   * its shipped defaults.
+   * its shipped defaults; read again where a commit let the shipped ones go.
    */
   describeConsoleDefaults: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelConsoleDefaults>>("plugin:levels|describe_console_defaults", { sessionId }),
@@ -68,6 +70,14 @@ export const levelsCommands = {
       sessionId,
       index,
     }),
+  /**
+   * Describe the open level's spawned objects the viewer draws, and the visuals they stand as, reading no visual; an
+   * error where the spawn cannot be read.
+   */
+  describeSpawnObjects: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelSpawnObjectsDescription>>("plugin:levels|describe_spawn_objects", {
+      sessionId,
+    }),
   /** Describe where the open level opens, or none for a viewer to decide; decided again where a commit let it go. */
   describeStart: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelStart | null>>("plugin:levels|describe_start", { sessionId }),
@@ -80,6 +90,12 @@ export const levelsCommands = {
   /** Describe what every texture the open level's surfaces bind resolved to; resolved again where a commit let it go. */
   describeTextures: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<Array<LevelTextureReference>>>("plugin:levels|describe_textures", { sessionId }),
+  /**
+   * Describe the open level's weather as its engine loads it: the cycles it plays, the effects, what they strike with,
+   * the sun table and the level's own overrides.
+   */
+  describeWeather: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelWeatherDescription>>("plugin:levels|describe_weather", { sessionId }),
   /** Write a cubemap of the screenshots folder again as a cube DDS, six TGAs or six PNGs; answers the files written. */
   exportCube: (request: CubeExportRequest) => __TAURI_INVOKE<Array<string>>("plugin:levels|export_cube", { request }),
   /**
@@ -92,41 +108,27 @@ export const levelsCommands = {
    * within the same second.
    */
   findScreenshotPath: (name: string) => __TAURI_INVOKE<string>("plugin:levels|find_screenshot_path", { name }),
-  /**
-   * Restore the level a tool holds, the newest it opened, without reading the level again: as a page attaches to it, or
-   * reads it again after a commit derived it anew. Its parts are read by their own queries.
-   */
-  getLevel: (scope: SessionScope) =>
-    __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>("plugin:levels|get_level", { scope }),
   /** The folder the level viewer's views are exported to and imported from by default, made where it is not yet. */
   getViewFolder: () => __TAURI_INVOKE<string>("plugin:levels|get_view_folder"),
-  /** Every compiled level the mounted roots hold, loose or archived alike. */
+  /** Every compiled level the mounted roots hold, loose or archived alike, listed on the pool from a fresh search. */
   listLevels: (roots: XrayRoots) => __TAURI_INVOKE<Array<LevelEntry>>("plugin:levels|list_levels", { roots }),
   /** Select a compiled level and report what it is built out of, without reading any of its geometry. */
   openLevel: (sessionId: SessionId, request: LevelOpenRequest) =>
     __TAURI_INVOKE<SessionSnapshot<SelectedLevelDescription>>("plugin:levels|open_level", { sessionId, request }),
-  /**
-   * Describe the open level's spawned objects the viewer draws, and the visuals they stand as, reading no visual; an
-   * error where the spawn cannot be read.
-   */
-  describeSpawnObjects: (sessionId: SessionId) =>
-    __TAURI_INVOKE<SessionSnapshot<LevelSpawnObjectsDescription>>("plugin:levels|describe_spawn_objects", {
-      sessionId,
-    }),
   /**
    * Read any cycle or effect of the game as the open level's engine loads it, for a viewer playing one the level does
    * not offer itself.
    */
   readLevelCycle: (sessionId: SessionId, cycle: WeatherCycleId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelWeatherCycle>>("plugin:levels|read_level_cycle", { sessionId, cycle }),
-  /**
-   * Read the open level's weather as its engine loads it: the cycles it plays, the effects, what they strike with,
-   * the sun table and the level's own overrides.
-   */
-  describeWeather: (sessionId: SessionId) =>
-    __TAURI_INVOKE<SessionSnapshot<LevelWeatherDescription>>("plugin:levels|describe_weather", { sessionId }),
   /** Read a level view's JSON file as text, for the page to check and import. */
   readView: (path: string) => __TAURI_INVOKE<string>("plugin:levels|read_view", { path }),
+  /**
+   * Restore the level `tool` holds in the asking window, the newest it opened, without reading the level again: as a
+   * page attaches to it, or reads it again after a commit derived it anew. Its parts are read by their own queries.
+   */
+  restoreLevel: (tool: string) =>
+    __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>("plugin:levels|restore_level", { tool }),
   /**
    * Write a viewport's next finished frame to a PNG file of the level viewer's screenshots folder: the whole viewport at
    * its drawn size, without its overlays or its selection's outline.
@@ -137,7 +139,8 @@ export const levelsCommands = {
   saveView: (path: string, text: string) => __TAURI_INVOKE<null>("plugin:levels|save_view", { path, text }),
   /**
    * Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. Answers
-   * the scene drawn, which the viewport's load reports name, or none.
+   * the scene drawn, which the viewport's load reports name, or none. The source may resolve the level's surfaces, so
+   * it is made on the pool, after the ticket that keeps a level asked for later from being replaced by this one.
    */
   showLevel: (viewport: RenderViewportId, sessionId: string | null) =>
     __TAURI_INVOKE<number | null>("plugin:levels|show_level", { viewport, sessionId }),
