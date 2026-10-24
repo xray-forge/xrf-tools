@@ -6,8 +6,9 @@ use xrf_spawn::AlifeObjectInherited;
 use xrf_vfs::{XrayInputRecord, XraySearch};
 use xrf_visual::{SectorOutline, VisualBounds, convert_vector};
 
-use crate::parts::LevelSpawnPart;
-use crate::state::{COLLISION_FILE, LevelSource, LevelSpawn, LevelStart, LevelStartOrigin, SelectedLevel};
+use crate::level::{LevelSource, SelectedLevel};
+use crate::level_report::LevelReport;
+use crate::parts::{LevelCollisionPart, LevelSpawn, LevelSpawnPart, LevelStart, LevelStartOrigin};
 
 /// What a change event calls where a level opens when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
@@ -52,13 +53,15 @@ impl LevelStartPart {
   /// covers nothing.
   pub fn find_open(source: &LevelSource, search: &XraySearch, eyes: &[Vector3d]) -> Vec<bool> {
     source
-      .read_optional_file(search, COLLISION_FILE)
-      .map_err(|error| log::warn!("{error}"))
+      .read_optional_file(search, LevelCollisionPart::FILE)
+      .inspect_err(|error| LevelReport::unreadable_open_sky(source, error))
       .ok()
       .flatten()
       .and_then(|bytes| {
         LevelCformFile::read_open_above_from_bytes::<XRayByteOrder>(bytes, eyes)
-          .map_err(|error| log::warn!("{}", source.describe_read_failure(COLLISION_FILE, &error)))
+          .inspect_err(|error| {
+            LevelReport::unreadable_open_sky(source, &source.describe_read_failure(LevelCollisionPart::FILE, error))
+          })
           .ok()
       })
       .unwrap_or_else(|| vec![true; eyes.len()])

@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use xrf_app_core::session::SessionPart;
 
-use crate::state::LevelSpawnVisuals;
+use crate::parts::LevelSpawnVisuals;
 
 /// What a change event calls a level's spawned objects' visuals when they go stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
@@ -18,6 +18,6 @@ impl SessionPart for LevelSpawnVisualsPart {
 
   const NAME: &'static str = LEVEL_SPAWN_VISUALS_PART;
 
-  // Built empty, its visuals each read into a cell of its own later, so its build never reaches Rayon.
+  // Built empty, so its build never reaches Rayon; its visuals are each read later into a pool-aware cell of their own.
   const IS_POOLED: bool = false;
 }

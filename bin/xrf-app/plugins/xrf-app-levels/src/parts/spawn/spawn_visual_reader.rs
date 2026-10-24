@@ -1,6 +1,5 @@
-use std::cell::OnceCell;
 use std::collections::BTreeSet;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use xrf_app_core::assets::locate_referenced_asset;
 use xrf_app_core::session::SessionSnapshot;
@@ -13,9 +12,9 @@ use xrf_visual::{
   VisualDependencies, VisualDescription, VisualMotions, VisualPackage, VisualPacker, VisualRestPose, VisualSkeleton,
 };
 
+use crate::level::SelectedLevel;
 use crate::level_report::LevelReport;
-use crate::parts::LevelSpawnVisualsPart;
-use crate::state::{LevelSpawnVisual, LevelSpawnVisuals, LevelTextureReference, SelectedLevel};
+use crate::parts::{LevelSpawnVisual, LevelSpawnVisuals, LevelSpawnVisualsPart, LevelTextureReference};
 
 /// Reads a level's spawned visuals within one search, opening the shader library once for all of them, and only if
 /// one is read at all.
@@ -25,7 +24,8 @@ pub struct SpawnVisualReader {
   /// The level's own directory, the engine's `$level$`, where the level's breakables are compiled to.
   level: Option<XrayLogicalPath>,
   scope: XrayTextureScope,
-  resolver: OnceCell<XraySurfaceResolver>,
+  /// Shared with the pool a visual is read on, so held in a lock.
+  resolver: OnceLock<XraySurfaceResolver>,
 }
 
 impl SpawnVisualReader {
@@ -49,7 +49,7 @@ impl SpawnVisualReader {
         search: search.clone(),
         level: current.source.get_logical_directory(),
         scope: current.source.get_texture_scope(),
-        resolver: OnceCell::new(),
+        resolver: OnceLock::new(),
       })
     })
   }

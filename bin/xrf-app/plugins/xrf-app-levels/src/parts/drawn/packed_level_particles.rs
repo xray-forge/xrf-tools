@@ -4,7 +4,7 @@ use xrf_material::XraySurfaceDescriptor;
 use xrf_particles::ParticleLibrary;
 use xrf_renderer::RenderParticlePlacement;
 
-use crate::state::LevelTextureReference;
+use crate::parts::LevelTextureReference;
 
 /// A level's particle systems as the renderer takes them.
 pub struct PackedLevelParticles {

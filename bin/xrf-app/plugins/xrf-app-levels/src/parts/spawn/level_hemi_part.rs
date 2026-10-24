@@ -10,10 +10,11 @@ use xrf_math::Vector3d;
 use xrf_vfs::XraySearch;
 use xrf_visual::{HemiEstimator, VisualSphere, VisualTransform};
 
+use crate::level::{LevelSource, SelectedLevel};
 use crate::level_report::LevelReport;
 use crate::parts::{LevelCollisionPart, LevelSpawnPart};
-use crate::state::LevelSpawnCategory;
-use crate::state::{LIGHTS_FILE, LevelSource, LevelSpawn, LevelSpawnObjectHemi, LevelSpawnVisual, SelectedLevel};
+use crate::parts::{LevelSpawn, LevelSpawnObjectHemi, LevelSpawnVisual};
+use crate::spawn::LevelSpawnCategory;
 
 /// What a change event calls a level's hemisphere lighting when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
@@ -30,6 +31,9 @@ impl SessionPart for LevelHemiPart {
 }
 
 impl LevelHemiPart {
+  /// The compiled lights, whose point lights light the level's dynamic objects (`CLight_DB::LoadHemi`).
+  pub const LIGHTS_FILE: &'static str = "build.lights";
+
   /// The open level's estimator, built the first time anything asks and kept.
   ///
   /// # Errors
@@ -100,7 +104,7 @@ impl LevelHemiPart {
   /// The compiled lights `CLight_DB::LoadHemi` reads, none for a level without `build.lights` or with one unreadable.
   fn read_lights(source: &LevelSource, search: &XraySearch) -> Vec<LevelLight> {
     let file: Result<Option<LevelLightsFile>, String> =
-      source.read_optional_file(search, LIGHTS_FILE).and_then(|bytes| {
+      source.read_optional_file(search, Self::LIGHTS_FILE).and_then(|bytes| {
         bytes
           .map(|bytes| LevelLightsFile::read_from_bytes::<XRayByteOrder>(bytes).map_err(|error| error.to_string()))
           .transpose()

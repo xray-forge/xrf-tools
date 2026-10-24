@@ -1,43 +1,23 @@
 //! What a level's shader table comes to, which is what decides whether its foliage is cut out or drawn as a card,
 //! and what its ground is detailed with.
 
-use xrf_level::{LevelFile, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
+use xrf_level::LevelFile;
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_material::{
   XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDetail, XraySurfaceDraw, XrayTextureScope,
 };
 use xrf_shaders::fixtures::ShaderBlenderFixture;
 use xrf_thm::{ThmBumpMode, ThmTextureFlag};
-use xrf_vfs::{XrayLookupScope, XrayMountId, XraySearch, XrayVfs};
 
 use crate::parts::LevelSurfacesPart;
+use crate::tests::fixtures::{mount_search, new_level};
 
 const CUT_OUT: XraySurfaceDraw = XraySurfaceDraw::AlphaTested {
   reference: XraySurfaceDraw::DEFERRED_ALPHA_REFERENCE,
 };
 
-/// A level whose table holds exactly these raw entries.
-fn new_level(entries: &[&str]) -> LevelFile {
-  LevelFile {
-    header: LevelHeaderChunk {
-      xrlc_quality: 1,
-      xrlc_version: 14,
-    },
-    lights: None,
-    portals: None,
-    sectors: None,
-    shaders: Some(LevelShadersChunk {
-      entries: entries.iter().map(|raw| LevelShaderEntry::parse(raw)).collect(),
-    }),
-  }
-}
-
 fn new_resolved(tree: &FixtureTree, level: &LevelFile) -> Vec<XraySurfaceDescriptor> {
-  let mut vfs: XrayVfs = XrayVfs::new();
-  let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let search: XraySearch = XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]));
-
-  LevelSurfacesPart::resolve(level, &search, &XrayTextureScope::shared())
+  LevelSurfacesPart::resolve(level, &mount_search(tree), &XrayTextureScope::shared())
 }
 
 #[test]

@@ -1,4 +1,4 @@
-use crate::state::LevelConsoleDefaults;
+use crate::console::LevelConsoleDefaults;
 
 #[test]
 fn reads_the_lighting_anomaly_ships_among_its_other_commands() {

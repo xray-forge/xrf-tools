@@ -9,9 +9,10 @@ use xrf_material::XrayTextureScope;
 use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, LightsPacker};
 
+use crate::level::SelectedLevel;
 use crate::level_report::LevelReport;
+use crate::parts::LevelTextureReference;
 use crate::parts::{LevelSpawnPart, PackedLevelLights, SpawnVisualReader};
-use crate::state::{LevelTextureReference, SelectedLevel};
 
 /// What a change event calls what a level's lights were read from when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]

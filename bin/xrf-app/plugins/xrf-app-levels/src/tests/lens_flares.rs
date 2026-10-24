@@ -3,7 +3,7 @@
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{EnvironmentValue, LensFlare, LensFlareKey};
 
-use crate::level_lens_flares::LevelLensFlares;
+use crate::render::LevelLensFlares;
 
 fn new_flare(values: Vec<(LensFlareKey, EnvironmentValue)>) -> LensFlare {
   let mut flare: LensFlare = LensFlare::new("partly_halo", "environment\\suns.ltx");

@@ -3,14 +3,13 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_app_core::session::{SessionPart, SessionParts, SessionSnapshot};
-use xrf_ltx::{Ltx, LtxDialect, LtxResolution};
+use xrf_ltx::{Ltx, LtxResolution};
 use xrf_material::XrayReducedTextures;
-use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch};
+use xrf_vfs::{XrayInputRecord, XraySearch};
 
-use crate::level_catalog::LevelCatalog;
+use crate::level::{LevelConfigs, LevelSource, SelectedLevel};
 use crate::level_report::LevelReport;
-use crate::parts::LevelSpawnPart;
-use crate::state::{LevelSource, LevelSpawn, SelectedLevel};
+use crate::parts::{LevelSpawn, LevelSpawnPart};
 
 /// What a change event calls a level's sections when they go stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
@@ -37,7 +36,7 @@ impl LevelSectionsPart {
     current.parts.get_or_record::<Self>(search, |search| {
       let spawn: Arc<LevelSpawn> = LevelSpawnPart::get(current, search)?;
 
-      Self::read(&current.source, search, (&current.roots, &current.dialect), &spawn)
+      Self::read(&current.source, search, &LevelConfigs::of(current), &spawn)
     })
   }
 
@@ -61,11 +60,12 @@ impl LevelSectionsPart {
   pub fn read(
     source: &LevelSource,
     search: &XraySearch,
-    (roots, dialect): (&XrayRoots, &Arc<dyn LtxDialect>),
+    configs: &LevelConfigs,
     spawn: &LevelSpawn,
   ) -> Result<Arc<Ltx>, String> {
     let started: Instant = Instant::now();
-    let resolved: Arc<LtxResolution> = LevelCatalog::open_configs(roots, search, dialect.clone())?
+    let resolved: Arc<LtxResolution> = configs
+      .open(search)?
       .system_ltx()
       .map_err(|error| format!("Failed to read 'system.ltx' for {}: {error}", source.get_label()))?;
     let names: BTreeSet<&str> = spawn

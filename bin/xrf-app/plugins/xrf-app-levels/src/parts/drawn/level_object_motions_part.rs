@@ -4,7 +4,7 @@ use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
 use xrf_vfs::XraySearch;
 
-use crate::state::{LevelSource, SelectedLevel};
+use crate::level::{LevelSource, SelectedLevel};
 
 /// What a change event calls what a level's object motions were read from when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]

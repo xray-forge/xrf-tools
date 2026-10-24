@@ -2,19 +2,17 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use tauri::State;
+use xrf_app_core::TauriResult;
 use xrf_app_core::assets::{AssetMountState, detect_search_engine};
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionDerived, SessionId, SessionOpening, SessionSnapshot};
-use xrf_app_core::types::TauriResult;
 use xrf_dltx::select_ltx_dialect;
 use xrf_ltx::LtxDialect;
 use xrf_vfs::{XrayRoots, XraySearch};
 
+use crate::level::{LevelOpenRequest, OpenedLevel, SelectedLevel, SelectedLevelDescription, SelectedLevels};
 use crate::level_report::LevelReport;
-use crate::opened_level::OpenedLevel;
 use crate::parts::{LevelSurfacesPart, LevelTexturesPart};
-use crate::request::LevelOpenRequest;
-use crate::state::{LevelState, SelectedLevel, SelectedLevelDescription};
 
 /// Select a compiled level and report what it is built out of, without reading any of its geometry.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_level"))]
@@ -22,7 +20,7 @@ use crate::state::{LevelState, SelectedLevel, SelectedLevelDescription};
 pub async fn levels_open_level(
   session_id: SessionId,
   request: LevelOpenRequest,
-  state: State<'_, LevelState>,
+  levels: State<'_, SelectedLevels>,
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<SessionSnapshot<SelectedLevelDescription>> {
@@ -33,7 +31,7 @@ pub async fn levels_open_level(
     engine,
   } = request;
 
-  let opening: SessionOpening<SelectedLevel> = state.levels.begin_open(session_id)?;
+  let opening: SessionOpening<SelectedLevel> = levels.begin_open(session_id)?;
 
   let started: Instant = Instant::now();
 
@@ -53,29 +51,20 @@ pub async fn levels_open_level(
       TauriResult::Ok((opened, search))
     })
     .await??;
-  let level: &SelectedLevel = &opened.value;
 
-  log::info!(
-    "Reading level '{}' as {}",
-    level.source.get_label(),
-    level.engine.describe()
-  );
+  LevelReport::reading(&opened.value.source, &opened.value.engine);
 
-  let committed: Arc<SessionSnapshot<SelectedLevel>> =
-    opening.commit_derived(opened, search.get_vfs().get_revision())?;
+  // Committed at the search's revision, and caught up with any change published since.
+  let selected: Arc<SessionSnapshot<SelectedLevel>> = opening.commit_read(opened, &search, &assets)?;
 
   // What the open came to, its surfaces and textures as it resolved and kept them.
   LevelReport::opened(
-    &committed,
-    (
-      &LevelSurfacesPart::find(&committed).unwrap_or_default(),
-      &LevelTexturesPart::find(&committed).unwrap_or_default(),
-    ),
+    &selected,
+    &LevelSurfacesPart::find(&selected).unwrap_or_default(),
+    &LevelTexturesPart::find(&selected).unwrap_or_default(),
     started,
   );
 
-  let selected: Arc<SessionSnapshot<SelectedLevel>> = state.levels.catch_up(committed, &assets);
-
   // The level itself reads nothing to describe; the page asks for each part it shows apart from it.
-  Ok(selected.answer(selected.describe()))
+  Ok(selected.map(SelectedLevel::describe))
 }

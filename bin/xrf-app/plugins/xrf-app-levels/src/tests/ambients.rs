@@ -2,14 +2,13 @@
 
 use std::time::Duration;
 
-use xrf_engine_target::XrayEngine;
 use xrf_environment::{
   Ambient, AmbientEffect, AmbientEffectKey, AmbientKey, EnvironmentCatalog, EnvironmentValue, LevelAmbients,
-  WeatherGraphs,
 };
 use xrf_renderer::{RenderAmbient, RenderAmbientEffect, RenderWindBlast};
 
-use crate::level_render_ambients::LevelRenderAmbients;
+use crate::render::LevelRenderAmbients;
+use crate::tests::fixtures;
 
 fn new_ambient(name: &str, effects: &[&str], period: [f32; 2]) -> Ambient {
   let mut ambient: Ambient = Ambient::new(name, "environment\\ambients.ltx");
@@ -69,23 +68,12 @@ fn new_catalog() -> EnvironmentCatalog {
       ),
     ],
     ambients: vec![new_ambient("day", &["fog", "blast"], [30.0, 60.0])],
-    configs: Vec::new(),
-    cycles: Vec::new(),
-    effects: Vec::new(),
-    engine: XrayEngine::Vanilla,
-    findings: Vec::new(),
-    graphs: WeatherGraphs::default(),
     level_ambients: vec![LevelAmbients {
       level: String::from("zaton"),
       file: String::from("environment\\ambients\\zaton.ltx"),
       ambients: vec![new_ambient("day", &["fog"], [5.0, 6.0])],
     }],
-    sound_channels: Vec::new(),
-    sun_table: None,
-    suns: Vec::new(),
-    thunderbolt_collections: Vec::new(),
-    thunderbolt_settings: None,
-    thunderbolts: Vec::new(),
+    ..fixtures::new_catalog()
   }
 }
 

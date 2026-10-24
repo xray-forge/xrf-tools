@@ -1,23 +1,18 @@
-//! Levels opened as documents: a minimal root and the parts read apart from it, each with its own query, followed as
-//! their files change; shown in a viewport through render's units, and captured or exported through the viewer.
+#![doc = include_str!("../README.md")]
 
-pub mod commands;
-pub mod drawn_attributes;
-pub mod level_catalog;
-pub mod level_lens_flares;
-pub mod level_render_ambients;
-pub mod level_report;
-pub mod level_scene_follower;
-pub mod opened_level;
-pub mod particle_collider;
-pub mod parts;
+mod commands;
+mod console;
+pub mod ipc;
+mod level;
+mod level_report;
+mod parts;
 pub mod plugin;
-pub mod read_level;
-pub mod registry;
-pub mod render_source;
-pub mod request;
-pub mod shown_levels;
-pub mod state;
+mod render;
+mod spawn;
 #[cfg(test)]
 mod tests;
-pub mod viewer;
+mod viewer;
+mod weather;
+
+pub use level::SelectedLevels;
+pub use render::ShownLevels;

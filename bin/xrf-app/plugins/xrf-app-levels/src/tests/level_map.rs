@@ -1,7 +1,6 @@
 use xrf_error::XrfResult;
 
-use crate::parts::LevelMapPart;
-use crate::state::LevelMapDescription;
+use crate::parts::{LevelMapArea, LevelMapDescription, LevelMapPart};
 
 #[test]
 fn reads_the_map_corners_and_texture_a_level_config_places() -> XrfResult {
@@ -12,10 +11,12 @@ fn reads_the_map_corners_and_texture_a_level_config_places() -> XrfResult {
   assert_eq!(
     LevelMapPart::parse(text)?,
     Some(LevelMapDescription {
-      min_x: -600.0,
-      min_z: -615.0,
-      max_x: 600.0,
-      max_z: 585.0,
+      area: LevelMapArea {
+        min_x: -600.0,
+        min_z: -615.0,
+        max_x: 600.0,
+        max_z: 585.0,
+      },
       texture: Some(String::from("map\\map_zaton")),
     })
   );

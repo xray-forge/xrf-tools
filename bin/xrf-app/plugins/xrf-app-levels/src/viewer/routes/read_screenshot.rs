@@ -3,10 +3,10 @@ use std::path::PathBuf;
 
 use serde::Deserialize;
 use tauri::{AppHandle, Manager};
-use xrf_app_core::app_directories::AppDirectories;
+use xrf_app_core::TauriResult;
+use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::transport::TransportAnswer;
-use xrf_app_core::types::TauriResult;
 
 use crate::viewer::LevelViewerFolder;
 

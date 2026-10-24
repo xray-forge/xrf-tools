@@ -1,8 +1,8 @@
 use std::collections::{BTreeSet, HashSet};
 
+use xrf_app_core::TauriResult;
 use xrf_app_core::assets::read_located_asset;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
-use xrf_app_core::types::TauriResult;
 use xrf_chunk::XRayByteOrder;
 use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelCformGeometry, LevelDetailsFile};
@@ -10,9 +10,10 @@ use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope}
 use xrf_vfs::XraySearch;
 use xrf_visual::{DetailsPackage, DetailsPacker};
 
+use crate::level::{LevelSource, SelectedLevel};
 use crate::level_report::LevelReport;
+use crate::parts::LevelTextureReference;
 use crate::parts::{LevelCollisionPart, PackedLevelDetails};
-use crate::state::{DETAILS_FILE, LevelSource, LevelTextureReference, SelectedLevel};
 
 /// What a change event calls what a level's grass was read from when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
@@ -31,6 +32,9 @@ impl SessionPart for LevelDetailsPart {
 }
 
 impl LevelDetailsPart {
+  /// The detail library and planting grid, which the grass is planted from.
+  pub const FILE: &'static str = "level.details";
+
   /// The game material library, whose flags say which materials a planting falls through.
   const GAME_MATERIALS_FILE: &'static str = "gamemtl.xr";
 
@@ -51,12 +55,12 @@ impl LevelDetailsPart {
 
   /// The grass packed, every read through `search`.
   fn pack_recorded(source: &LevelSource, search: &XraySearch) -> TauriResult<Option<PackedLevelDetails>> {
-    let Some(details) = source.read_optional_file(search, DETAILS_FILE)? else {
+    let Some(details) = source.read_optional_file(search, Self::FILE)? else {
       return Ok(None);
     };
 
     let details: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(details)
-      .map_err(|error| source.describe_read_failure(DETAILS_FILE, &error))?;
+      .map_err(|error| source.describe_read_failure(Self::FILE, &error))?;
     let collision: LevelCformGeometry = LevelCollisionPart::read_geometry(source, search)?;
     let passable: HashSet<u16> = Self::read_passable_materials(search);
     let is_passable = |material: u16| passable.contains(&material);

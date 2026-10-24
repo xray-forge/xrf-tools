@@ -1,6 +1,6 @@
 use xrf_error::XrfResult;
 
-use crate::state::LevelSpawnRelease;
+use crate::spawn::LevelSpawnRelease;
 
 #[test]
 fn lists_the_names_a_section_keys_without_values() -> XrfResult {

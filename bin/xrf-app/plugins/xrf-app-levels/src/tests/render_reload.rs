@@ -8,7 +8,7 @@ use crate::parts::{
   LevelMapPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelSpawnVisualsPart,
   LevelStartPart, LevelTexturesPart, LevelWeatherPart,
 };
-use crate::render_source::LevelRenderSource;
+use crate::render::LevelRenderSource;
 
 const NONE: WorldLevelReload = WorldLevelReload {
   is_spawn: false,

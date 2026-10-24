@@ -1,7 +1,7 @@
 use xrf_material::XraySurfaceDescriptor;
 use xrf_visual::DetailsPackage;
 
-use crate::state::LevelTextureReference;
+use crate::parts::LevelTextureReference;
 
 /// A level's grass, packed and dressed.
 pub struct PackedLevelDetails {

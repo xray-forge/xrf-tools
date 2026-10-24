@@ -13,10 +13,11 @@ use xrf_spawn::{AlifeObject, AlifeObjectCustomZone, AlifeObjectInherited, AlifeO
 use xrf_vfs::XraySearch;
 use xrf_visual::{VisualTransform, ZoneSphere};
 
-use crate::level_render_ambients::LevelRenderAmbients;
+use crate::level::{LevelSource, SelectedLevel};
 use crate::level_report::LevelReport;
+use crate::parts::LevelTextureReference;
 use crate::parts::{LevelEnvironmentPart, LevelSpawnPart, PackedLevelParticles};
-use crate::state::{LevelSource, LevelTextureReference, PS_STATIC_FILE, SelectedLevel};
+use crate::render::LevelRenderAmbients;
 
 /// What a change event calls what a level's particle systems were read from when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
@@ -35,6 +36,9 @@ impl SessionPart for LevelParticlesPart {
 }
 
 impl LevelParticlesPart {
+  /// The particle systems the level plants and where, `CLevel::Load_GameSpecific_After`.
+  pub const PS_STATIC_FILE: &'static str = "level.ps_static";
+
   /// The game's particle library, at the root of its data (`$game_data$`).
   const PARTICLES_FILE: &'static str = "particles.xr";
 
@@ -141,11 +145,11 @@ impl LevelParticlesPart {
 
   /// `CLevel::Load_GameSpecific_After`: each system the level plants for a single player game, lifted a centimetre.
   fn read_planted(source: &LevelSource, search: &XraySearch) -> Result<Vec<RenderParticlePlacement>, String> {
-    let Some(bytes) = source.read_optional_file(search, PS_STATIC_FILE)? else {
+    let Some(bytes) = source.read_optional_file(search, Self::PS_STATIC_FILE)? else {
       return Ok(Vec::new());
     };
     let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes::<XRayByteOrder>(bytes)
-      .map_err(|error| source.describe_read_failure(PS_STATIC_FILE, &error))?;
+      .map_err(|error| source.describe_read_failure(Self::PS_STATIC_FILE, &error))?;
 
     Ok(
       file

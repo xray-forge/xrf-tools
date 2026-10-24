@@ -6,8 +6,9 @@ use xrf_level::LevelFile;
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_vfs::{XrayInputRecord, XraySearch};
 
+use crate::level::SelectedLevel;
 use crate::parts::LevelSurfacesPart;
-use crate::state::{LevelTextureReference, SelectedLevel};
+use crate::parts::LevelTextureReference;
 
 /// What a change event calls what a level's surfaces' textures resolved to when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]

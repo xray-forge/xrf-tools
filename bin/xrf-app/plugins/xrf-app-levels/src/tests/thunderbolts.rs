@@ -1,15 +1,12 @@
 //! What the game's weather strikes with, as the open level finds it.
 
-use xrf_engine_target::XrayEngine;
-use xrf_environment::{
-  EnvironmentCatalog, EnvironmentValue, Thunderbolt, ThunderboltCollection, ThunderboltKey, WeatherGraphs,
-};
+use xrf_environment::{EnvironmentCatalog, EnvironmentValue, Thunderbolt, ThunderboltCollection, ThunderboltKey};
 use xrf_material::XrayTextureScope;
 use xrf_material::fixtures::FixtureTree;
-use xrf_vfs::{XrayLookupScope, XrayMountId, XraySearch, XrayVfs};
+use xrf_vfs::XraySearch;
 
-use crate::state::selection::level_thunderbolts::LevelThunderbolts;
-use crate::state::selection::level_weather_source::LevelWeatherSource;
+use crate::tests::fixtures;
+use crate::weather::render::{LevelThunderbolts, LevelWeatherSource};
 
 const FILE: &str = "environment\\thunderbolts.ltx";
 
@@ -34,29 +31,14 @@ fn new_bolt(name: &str, model: &str, color: &str) -> Thunderbolt {
 
 fn new_catalog(collections: Vec<ThunderboltCollection>, thunderbolts: Vec<Thunderbolt>) -> EnvironmentCatalog {
   EnvironmentCatalog {
-    ambient_effects: Vec::new(),
-    ambients: Vec::new(),
-    configs: Vec::new(),
-    cycles: Vec::new(),
-    effects: Vec::new(),
-    engine: XrayEngine::Vanilla,
-    findings: Vec::new(),
-    graphs: WeatherGraphs::default(),
-    level_ambients: Vec::new(),
-    sound_channels: Vec::new(),
-    sun_table: None,
-    suns: Vec::new(),
     thunderbolt_collections: collections,
-    thunderbolt_settings: None,
     thunderbolts,
+    ..fixtures::new_catalog()
   }
 }
 
 fn read(catalog: &EnvironmentCatalog) -> LevelThunderbolts {
-  let tree: FixtureTree = FixtureTree::new("level_thunderbolts");
-  let mut vfs: XrayVfs = XrayVfs::new();
-  let id: XrayMountId = vfs.mount_directory("", tree.root()).expect("tree mounts");
-  let search: XraySearch = XraySearch::new(vfs).with_step("tree", XrayLookupScope::only([id]));
+  let search: XraySearch = fixtures::mount_search(&FixtureTree::new("level_thunderbolts"));
   let source: LevelWeatherSource = LevelWeatherSource {
     catalog,
     search: &search,

@@ -6,8 +6,8 @@ use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelCformFile, LevelCformGeometry, LevelCformTracer};
 use xrf_vfs::XraySearch;
 
+use crate::level::{LevelSource, SelectedLevel};
 use crate::level_report::LevelReport;
-use crate::state::{COLLISION_FILE, LevelSource, SelectedLevel};
 
 /// What a change event calls a level's collision form when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
@@ -25,6 +25,9 @@ impl SessionPart for LevelCollisionPart {
 }
 
 impl LevelCollisionPart {
+  /// The collision form, which the grass is planted onto and which says whether a start is under the open sky.
+  pub const FILE: &'static str = "level.cform";
+
   /// The open level's collision form in its tracer's hierarchy, built the first time anything asks and kept.
   ///
   /// # Errors
@@ -42,8 +45,8 @@ impl LevelCollisionPart {
   ///
   /// Returns why the collision form cannot be read.
   pub fn read_geometry(source: &LevelSource, search: &XraySearch) -> Result<LevelCformGeometry, String> {
-    LevelCformFile::read_geometry_from_bytes::<XRayByteOrder>(source.read_file(search, COLLISION_FILE)?)
-      .map_err(|error| source.describe_read_failure(COLLISION_FILE, &error))
+    LevelCformFile::read_geometry_from_bytes::<XRayByteOrder>(source.read_file(search, Self::FILE)?)
+      .map_err(|error| source.describe_read_failure(Self::FILE, &error))
   }
 
   fn read(source: &LevelSource, search: &XraySearch) -> Result<Arc<LevelCformTracer>, String> {

@@ -1,12 +1,11 @@
 use tauri::State;
 use xrf_app_core::session::SessionId;
-use xrf_app_core::types::TauriResult;
 
-use crate::state::LevelState;
+use crate::level::SelectedLevels;
 
-/// Release only the openings owned by the departing viewer.
+/// Close the levels `session_ids` name, each once, unbinding it from its scope.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "close_level"))]
 #[tauri::command(rename = "close_level")]
-pub fn levels_close_level(session_ids: Vec<SessionId>, state: State<'_, LevelState>) -> TauriResult {
-  state.levels.close(&session_ids)
+pub fn levels_close_level(levels: State<'_, SelectedLevels>, session_ids: Vec<SessionId>) {
+  levels.close(&session_ids);
 }
