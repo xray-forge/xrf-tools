@@ -1,5 +1,5 @@
-use crate::window::monitor_work_area::MonitorWorkArea;
-use crate::window::window_geometry::WindowGeometry;
+use crate::window::geometry::monitor_work_area::MonitorWorkArea;
+use crate::window::geometry::window_geometry::WindowGeometry;
 
 /// The primary monitor of a plain desktop, with room taken by a taskbar along the bottom.
 pub const PRIMARY: MonitorWorkArea = MonitorWorkArea {
