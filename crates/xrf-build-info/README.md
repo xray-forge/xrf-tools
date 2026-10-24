@@ -125,5 +125,5 @@ cargo doc --locked -p xrf-build-info --no-deps
 
 Source: the [emitter](src/emit.rs), the [record, display and macro](src/build_info.rs), and the
 [kind mapping](src/build_kind.rs). The [CLI build script](../../bin/xrf-cli/build.rs) and the
-[desktop build-info command](../../bin/xrf-app/plugins/system/src/diagnostics/commands/get_build_info.rs) show the two
+[desktop build-info command](../../bin/xrf-app/plugins/xrf-app-system/src/diagnostics/commands/get_build_info.rs) show the two
 halves in use.
