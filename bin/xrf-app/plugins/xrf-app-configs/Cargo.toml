@@ -19,6 +19,7 @@ uuid = { workspace = true, features = ["serde", "v4"] }
 xrf-app-core = { workspace = true }
 xrf-dltx = { workspace = true }
 xrf-error = { workspace = true }
+xrf-ipc = { workspace = true, optional = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-ltx = { workspace = true }
 xrf-ltx-inspect = { workspace = true }
@@ -38,6 +39,7 @@ typescript-bindings = [
   "tauri-specta",
   "xrf-app-core/typescript-bindings",
   "xrf-error/typescript-bindings",
+  "xrf-ipc",
   "xrf-job/typescript-bindings",
   "xrf-ltx/typescript-bindings",
   "xrf-ltx-inspect/typescript-bindings",

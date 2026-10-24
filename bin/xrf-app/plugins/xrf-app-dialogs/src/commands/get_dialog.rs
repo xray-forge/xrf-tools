@@ -1,16 +1,16 @@
 use tauri::State;
-use xrf_app_core::types::TauriResult;
-use xrf_dialog::DialogDescriptor;
+use xrf_app_core::TauriResult;
+use xrf_dialog::{DialogDescriptor, DialogProject};
 
+use crate::DialogProjects;
 use crate::request::DialogsReadRequest;
-use crate::state::DialogProjectState;
 
 /// One dialog, with every phrase it declares.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_dialog"))]
 #[tauri::command(rename = "get_dialog")]
 pub async fn dialogs_get_dialog(
   request: DialogsReadRequest,
-  state: State<'_, DialogProjectState>,
+  projects: State<'_, DialogProjects>,
 ) -> TauriResult<DialogDescriptor> {
   let DialogsReadRequest {
     session_id,
@@ -18,7 +18,8 @@ pub async fn dialogs_get_dialog(
     id,
     language,
   } = request;
-  let project = state.require(session_id)?;
+  let opened = projects.require(session_id)?;
+  let project: &DialogProject = &opened.project;
 
   if project.find_file(&logical_path).is_none() {
     return Err(format!("The open dialogs project holds no file '{logical_path}'"));

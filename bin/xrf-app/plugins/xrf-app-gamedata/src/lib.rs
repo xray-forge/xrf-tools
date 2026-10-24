@@ -1,5 +1,9 @@
-//! Verification of a gamedata project, run as a job.
+#![doc = include_str!("../README.md")]
 
-pub mod commands;
+mod commands;
+pub mod ipc;
 pub mod plugin;
-pub mod registry;
+mod request;
+mod verify;
+
+pub use verify::{GamedataCheckSummary, GamedataVerifySummary};

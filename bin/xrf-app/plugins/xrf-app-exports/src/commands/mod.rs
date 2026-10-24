@@ -1,5 +1,5 @@
-pub mod close_project;
-pub mod export_manifest;
-pub mod get_project;
-pub mod get_source;
-pub mod open_project;
+pub(crate) mod close_project;
+pub(crate) mod export_manifest;
+pub(crate) mod get_source;
+pub(crate) mod open_project;
+pub(crate) mod restore_project;

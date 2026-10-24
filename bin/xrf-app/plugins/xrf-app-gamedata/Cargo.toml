@@ -20,7 +20,9 @@ xrf-app-core = { workspace = true }
 xrf-engine-target = { workspace = true }
 xrf-error = { workspace = true }
 xrf-gamedata = { workspace = true }
+xrf-ipc = { workspace = true, optional = true }
 xrf-job = { workspace = true, features = ["rayon"] }
+xrf-report = { workspace = true }
 xrf-utils = { workspace = true }
 
 [dev-dependencies]
@@ -37,7 +39,10 @@ typescript-bindings = [
   "xrf-app-core/typescript-bindings",
   "xrf-engine-target/typescript-bindings",
   "xrf-error/typescript-bindings",
+  "xrf-gamedata/typescript-bindings",
+  "xrf-ipc",
   "xrf-job/typescript-bindings",
+  "xrf-report/typescript-bindings",
 ]
 
 [lints]

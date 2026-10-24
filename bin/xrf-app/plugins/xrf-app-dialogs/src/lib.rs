@@ -1,7 +1,9 @@
-//! Dialog projects: the dialogs a project's roots hold, each read with its phrases in a chosen language.
+#![doc = include_str!("../README.md")]
 
-pub mod commands;
+mod commands;
+pub mod ipc;
 pub mod plugin;
-pub mod registry;
-pub mod request;
-pub mod state;
+mod project;
+mod request;
+
+pub use project::{DialogProjects, OpenedDialogProject};

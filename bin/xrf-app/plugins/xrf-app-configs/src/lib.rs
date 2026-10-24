@@ -1,14 +1,15 @@
-//! LTX configuration projects: a project opened as a session of the roots it reads, its resolved sections and the
-//! findings of its verification, and the formatting and verification of a directory.
+#![doc = include_str!("../README.md")]
 
-pub mod commands;
-pub mod configs_project;
-pub mod descriptor;
-mod opened_configs_project;
+mod commands;
+mod format;
+pub mod ipc;
 pub mod plugin;
-pub mod registry;
-pub mod request;
-pub mod resolved_root;
-pub mod state;
+mod project;
+mod request;
 #[cfg(test)]
 mod tests;
+
+pub use format::ConfigsFormat;
+pub use project::{
+  ConfigsDocument, ConfigsProject, ConfigsProjectDescriptor, ConfigsProjects, ConfigsResolvedRoot, OpenedConfigsProject,
+};

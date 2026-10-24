@@ -1,26 +1,31 @@
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_app_core::session::{SessionId, SessionOpening, SessionSnapshot};
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
+use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_export::{ExportsProject, ExportsProjectParser};
 use xrf_utils::error_to_string;
 
-use crate::state::ExportsProjectState;
+use crate::ExportsProjects;
 
+/// Open the scripts project at `project_path` and parse every extern it declares, answering the whole project, which
+/// the page lists in full.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_project"))]
 #[tauri::command(rename = "open_project")]
 pub async fn exports_open_project(
   session_id: SessionId,
-  project_path: &str,
-  state: State<'_, ExportsProjectState>,
+  project_path: String,
+  projects: State<'_, ExportsProjects>,
+  execution: State<'_, ExecutionState>,
 ) -> TauriResult<Arc<SessionSnapshot<ExportsProject>>> {
-  let opening: SessionOpening<ExportsProject> = state.begin_open(session_id)?;
-
   log::info!("Parsing externs from project: {project_path}");
 
-  let parser: ExportsProjectParser = ExportsProjectParser::new();
-  let project: ExportsProject = parser.parse_project_from_path(project_path).map_err(error_to_string)?;
-
-  opening.commit(project)
+  projects
+    .open_on_pool(&execution, session_id, "Opening an exports project", move || {
+      ExportsProjectParser::new()
+        .parse_project_from_path(&project_path)
+        .map_err(error_to_string)
+    })
+    .await
 }

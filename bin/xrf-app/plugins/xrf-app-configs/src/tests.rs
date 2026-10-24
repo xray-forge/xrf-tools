@@ -5,17 +5,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use xrf_app_core::assets::{AssetFanOut, AssetMountState};
-use xrf_app_core::session::{
-  Session, SessionChange, SessionDerived, SessionFollower, SessionId, SessionParts, SessionRootChange, SessionScopes,
-};
+use xrf_app_core::assets::AssetMountState;
+use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes, Sessions};
 use xrf_ltx::{LtxFormatOptions, LtxProjectFormatResult};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayAsset, XrayInputRecord, XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 
-use crate::commands::format_directory::format_directory;
-use crate::opened_configs_project::OpenedConfigsProject;
-use crate::state::ConfigsState;
+use crate::{ConfigsFormat, ConfigsProjects, OpenedConfigsProject};
 
 const SYSTEM_LTX: &str = "configs\\system.ltx";
 const GAME_LTX: &str = "configs\\game.ltx";
@@ -50,22 +46,24 @@ fn a_format_commits_its_rewrites_so_retained_configs_and_sessions_follow() {
   let assets: AssetMountState = AssetMountState::new();
   let search: XraySearch = assets.search(&roots).expect("the tree mounts");
   let parses: AtomicU32 = AtomicU32::new(0);
-  let session: Session<&str> =
-    Session::new("test").with_derivation(|_, _| Ok(SessionDerived::new("derived", XrayInputRecord::new())));
+  let sessions: Sessions<&str> = Sessions::new("test", &SessionScopes::default()).with_derivation(&assets, |_, _| {
+    Ok(SessionDerived::new("derived", XrayInputRecord::new()))
+  });
   let inputs: XrayInputRecord = XrayInputRecord::new();
   let id: SessionId = SessionId::generate();
 
   read(&search.clone().with_recording(&inputs), SYSTEM_LTX, &parses);
   read(&search, GAME_LTX, &parses);
-  assets.add_follower(session.clone());
-  session
-    .commit_fixture(id, "opened", XrayRevision::MOUNTED, inputs, SessionParts::new())
+  sessions
+    .begin_fixture_open(id)
+    .unwrap()
+    .commit_fixture(SessionDerived::new("opened", inputs), XrayRevision::MOUNTED)
     .unwrap();
 
   let result: LtxProjectFormatResult =
-    format_directory(&assets, &roots, None, LtxFormatOptions::default()).expect("the format runs");
+    ConfigsFormat::format(&assets, &roots, None, LtxFormatOptions::default()).expect("the format runs");
   let after: XraySearch = assets.search(&roots).expect("the tree is found");
-  let followed = session.get().unwrap().unwrap();
+  let followed = sessions.require(id).unwrap();
 
   assert_eq!((result.total_files, result.invalid_files), (2, 1));
   assert_eq!(
@@ -100,21 +98,19 @@ fn an_open_project_lists_a_config_committed_beside_it_once_read_again() {
 
   let roots: XrayRoots = XrayRoots::one(root.clone(), XrayMountMode::Directory);
   let assets: AssetMountState = AssetMountState::new();
-  // Derived inline rather than on a pool, so the follow below has read the project again by the time it returns.
-  let state: ConfigsState =
-    ConfigsState::new("configs", &SessionScopes::default()).with_derivation(OpenedConfigsProject::derive);
+  // Derived inline rather than on a pool, so the commit below has read the project again by the time it returns.
+  let projects: ConfigsProjects = ConfigsProjects::new("configs project", &SessionScopes::default())
+    .with_derivation(&assets, OpenedConfigsProject::derive);
   let search: XraySearch = assets.search(&roots).expect("the tree mounts");
   let id: SessionId = SessionId::generate();
-  let opened: OpenedConfigsProject = OpenedConfigsProject::read(&search, roots.clone(), None, false).expect("it opens");
-  let revision: XrayRevision = opened.get_revision();
-  let (project, inputs) = opened.into_project(id);
+  let read = OpenedConfigsProject::read(&search, roots.clone(), None, false).expect("it opens");
 
-  assert_eq!(project.descriptor.inventory.files.len(), 2);
+  assert_eq!(read.value.descriptor.inventory.files.len(), 2);
 
-  state
+  projects
     .begin_fixture_open(id)
     .unwrap()
-    .commit_with(project, revision, inputs, SessionParts::new())
+    .commit_fixture(read, search.get_vfs().get_revision())
     .unwrap();
   assets
     .commit(
@@ -124,11 +120,8 @@ fn an_open_project_lists_a_config_committed_beside_it_once_read_again() {
     )
     .expect("the config commits");
 
-  let changes: Vec<SessionChange> = state.follow_in(&assets, &AssetFanOut::new(assets.get_vfs())).unwrap();
-  let change: &SessionChange = changes.first().expect("the session moved");
-  let followed = state.require(id).unwrap();
+  let followed = projects.require(id).unwrap();
 
-  assert_eq!(change.root, SessionRootChange::Derived);
-  assert_eq!(followed.descriptor.session_id, id);
+  assert_eq!(followed.revision, assets.get_vfs().get_revision(), "the session moved");
   assert_eq!(followed.descriptor.inventory.files.len(), 3);
 }

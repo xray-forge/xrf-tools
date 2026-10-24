@@ -1,12 +1,11 @@
 use tauri::State;
 use xrf_app_core::session::SessionId;
-use xrf_app_core::types::TauriResult;
 
-use crate::state::ExportsProjectState;
+use crate::ExportsProjects;
 
-/// Releases only the committed and pending openings owned by the closing frontend.
+/// Close the exports projects `session_ids` name, committed or opening; a closed one answers no read.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "close_project"))]
 #[tauri::command(rename = "close_project")]
-pub fn exports_close_project(session_ids: Vec<SessionId>, state: State<'_, ExportsProjectState>) -> TauriResult {
-  state.close(&session_ids)
+pub fn exports_close_project(projects: State<'_, ExportsProjects>, session_ids: Vec<SessionId>) {
+  projects.close(&session_ids);
 }
