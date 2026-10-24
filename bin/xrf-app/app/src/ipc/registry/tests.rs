@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use tauri::AppHandle;
 use tauri::plugin::Plugin;
 use tauri::test::MockRuntime;
+use xrf_app_core::jobs::JobKind;
 use xrf_app_core::transport::TransportRoutes;
 
 use crate::ipc::registry::transport_routes;
@@ -34,16 +35,46 @@ fn every_inline_plugin_is_mirrored_and_nothing_else() {
   assert_eq!(mirrored, INLINE_PLUGINS.iter().copied().collect());
 }
 
+/// Every kind of job is its own, and spelled under its own domain twice over: its wire value leads with the domain's
+/// plugin name, and its constant with the same name upper-cased, a hyphen an underscore, so no two domains' kinds or
+/// constants can meet.
+#[test]
+fn every_job_kind_is_unique_and_carries_its_domains_prefix() {
+  macro_rules! collect_job_kinds {
+    ($($krate:ident),*) => {
+      [$($krate::ipc::list_job_kinds(),)*].concat()
+    };
+  }
+
+  let kinds: Vec<(&str, JobKind)> = for_each_plugin_crate!(collect_job_kinds);
+  let wires: BTreeSet<&str> = kinds.iter().map(|(_, kind)| kind.as_str()).collect();
+
+  assert!(!kinds.is_empty());
+  assert_eq!(wires.len(), kinds.len(), "a job kind is declared twice: {kinds:?}");
+
+  for (constant, kind) in &kinds {
+    let (domain, operation) = kind.as_str().split_once('.').expect("a kind to lead with its domain");
+
+    assert!(!operation.is_empty(), "'{kind}' names no operation");
+    assert!(
+      constant.starts_with(&format!("{}_JOB_", domain.to_uppercase().replace('-', "_"))),
+      "'{constant}' does not lead with its domain '{domain}'"
+    );
+  }
+}
+
 #[test]
 fn every_bulk_route_is_served_at_its_plugin_and_name() {
   let routes: TransportRoutes<AppHandle> = transport_routes();
-  let paths: [&str; 6] = [
-    "assets/read_asset",
+  let paths: [&str; 8] = [
+    "archives/read_entry",
     "archives/read_texture",
+    "assets/read_asset",
+    "assets/read_texture",
     "levels/read_screenshot",
+    "sprite-equipment/read_preview",
     "textures/read_candidate",
     "textures/read_texels",
-    "textures/read_texture",
   ];
 
   assert_eq!(routes.len(), paths.len());

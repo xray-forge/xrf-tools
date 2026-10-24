@@ -19,6 +19,9 @@ macro_rules! inline_plugins {
         $($route_name:ident ( $($route_arg:ident : $route_arg_type:literal),* $(,)? )
           => $route_head:ident $(:: $route_tail:ident)*,)*
       })?
+      $(@jobs {
+        $($(#[$job_meta:meta])* $job_name:ident => $job_wire:literal,)*
+      })?
     )*
   ) => {
     vec![

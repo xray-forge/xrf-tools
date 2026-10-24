@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Permissions that were migrated from v1.",
+  "description": "What the main window's pages may call: window controls, path checks, the shell's open, file dialogs, and every inline plugin's commands.",
   "local": true,
   "windows": [
     "main"
@@ -22,11 +22,6 @@
         "**"
       ]
     },
-    "shell:allow-open",
-    "dialog:allow-open",
-    "dialog:allow-save",
-    "dialog:allow-ask",
-    "dialog:allow-confirm",
     "shell:default",
     "dialog:default",
     "assets:default",

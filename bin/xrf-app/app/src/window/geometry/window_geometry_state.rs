@@ -1,6 +1,6 @@
 use std::mem;
 
-use crate::window::window_geometry::WindowGeometry;
+use crate::window::geometry::window_geometry::WindowGeometry;
 
 /// What the main window is at, and what the disk is owed about it.
 #[derive(Debug)]
@@ -12,6 +12,7 @@ pub struct WindowGeometryState {
 }
 
 impl WindowGeometryState {
+  /// The state of a window last at `geometry`.
   pub fn new(geometry: WindowGeometry) -> Self {
     Self {
       geometry,

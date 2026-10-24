@@ -4,46 +4,46 @@ use std::{env, fs, io};
 // Each plugin crate's command domains, which the inline plugins and their permissions are declared from: the macro
 // alone, as the build script compiles none of the crates.
 #[macro_use]
-#[path = "../core/src/registry/domains.rs"]
+#[path = "../core/src/ipc/domains.rs"]
 mod core_domains;
 #[macro_use]
-#[path = "../plugins/xrf-app-render/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-render/src/ipc/domains.rs"]
 mod render_domains;
 #[macro_use]
-#[path = "../plugins/xrf-app-archives/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-archives/src/ipc/domains.rs"]
 mod archives_domains;
 #[macro_use]
-#[path = "../plugins/xrf-app-configs/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-configs/src/ipc/domains.rs"]
 mod configs_domains;
 #[macro_use]
-#[path = "../plugins/xrf-app-dialogs/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-dialogs/src/ipc/domains.rs"]
 mod dialogs_domains;
 #[macro_use]
-#[path = "../plugins/xrf-app-exports/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-exports/src/ipc/domains.rs"]
 mod exports_domains;
 #[macro_use]
-#[path = "../plugins/xrf-app-gamedata/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-gamedata/src/ipc/domains.rs"]
 mod gamedata_domains;
 #[macro_use]
-#[path = "../plugins/xrf-app-levels/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-levels/src/ipc/domains.rs"]
 mod levels_domains;
 #[macro_use]
-#[path = "../plugins/xrf-app-spawn/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-spawn/src/ipc/domains.rs"]
 mod spawn_domains;
 #[macro_use]
-#[path = "../plugins/xrf-app-sprite-equipment/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-sprite-equipment/src/ipc/domains.rs"]
 mod sprite_equipment_domains;
 #[macro_use]
-#[path = "../plugins/xrf-app-system/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-system/src/ipc/domains.rs"]
 mod system_domains;
 #[macro_use]
-#[path = "../plugins/xrf-app-textures/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-textures/src/ipc/domains.rs"]
 mod textures_domains;
 #[macro_use]
-#[path = "../plugins/xrf-app-translations/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-translations/src/ipc/domains.rs"]
 mod translations_domains;
 #[macro_use]
-#[path = "../plugins/xrf-app-visuals/src/registry/domains.rs"]
+#[path = "../plugins/xrf-app-visuals/src/ipc/domains.rs"]
 mod visuals_domains;
 
 #[path = "src/ipc/registry/build.rs"]

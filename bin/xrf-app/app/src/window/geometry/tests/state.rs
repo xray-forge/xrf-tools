@@ -1,6 +1,6 @@
-use crate::window::tests::fixtures::geometry;
-use crate::window::window_geometry::WindowGeometry;
-use crate::window::window_geometry_state::WindowGeometryState;
+use crate::window::geometry::tests::fixtures::geometry;
+use crate::window::geometry::window_geometry::WindowGeometry;
+use crate::window::geometry::window_geometry_state::WindowGeometryState;
 
 #[test]
 fn only_the_first_record_of_a_drag_waits_for_it_to_settle() {
