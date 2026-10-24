@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EExportsCommand } from "@xrf/ipc/commands/exports";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
@@ -29,14 +30,14 @@ function watchNotifications(): IWatchedService {
 
 describe("ExportsService notifications", () => {
   beforeEach(() => {
-    setMockInvokeResponses({});
+    mockIpcCommands({});
   });
 
   it("reports a project that could not be parsed", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({
-      ["plugin:exports|open_project"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [EExportsCommand.OPEN_PROJECT]: mockSessionResponse(() => {
         throw new Error("no scripts directory");
       }),
     });
@@ -52,12 +53,12 @@ describe("ExportsService notifications", () => {
   it("reports a refresh that could not complete", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({ ["plugin:exports|open_project"]: mockSessionResponse(mockExportsProject()) });
+    mockIpcCommands({ [EExportsCommand.OPEN_PROJECT]: mockSessionResponse(mockExportsProject()) });
 
     await service.openExportsProject("C:\\game\\scripts");
 
-    setMockInvokeResponses({
-      ["plugin:exports|open_project"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [EExportsCommand.OPEN_PROJECT]: mockSessionResponse(() => {
         throw new Error("scripts moved");
       }),
     });
@@ -72,7 +73,7 @@ describe("ExportsService notifications", () => {
   it("reports the manifest it wrote", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({ ["plugin:exports|open_project"]: mockSessionResponse(mockExportsProject()) });
+    mockIpcCommands({ [EExportsCommand.OPEN_PROJECT]: mockSessionResponse(mockExportsProject()) });
 
     await service.openExportsProject("C:\\game\\scripts");
     await service.exportManifest("C:\\out\\extern.json");
@@ -85,9 +86,9 @@ describe("ExportsService notifications", () => {
   it("reports a manifest that could not be written", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({
-      ["plugin:exports|open_project"]: mockSessionResponse(mockExportsProject()),
-      ["plugin:exports|export_manifest"]: () => {
+    mockIpcCommands({
+      [EExportsCommand.OPEN_PROJECT]: mockSessionResponse(mockExportsProject()),
+      [EExportsCommand.EXPORT_MANIFEST]: () => {
         throw new Error("destination is read only");
       },
     });
@@ -104,7 +105,7 @@ describe("ExportsService notifications", () => {
   it("says nothing about a project that opened", async () => {
     const { raised, service }: IWatchedService = watchNotifications();
 
-    setMockInvokeResponses({ ["plugin:exports|open_project"]: mockSessionResponse(mockExportsProject()) });
+    mockIpcCommands({ [EExportsCommand.OPEN_PROJECT]: mockSessionResponse(mockExportsProject()) });
 
     await service.openExportsProject("C:\\game\\scripts");
 

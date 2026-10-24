@@ -1,33 +1,51 @@
 import { jest } from "@jest/globals";
 import { Optional } from "@xrf/types";
 
+// Types only: a command module's runtime imports the real `invoke`, which would bind Tauri's own `invoke` before a test
+// setup's `jest.mock` of it takes effect.
+import type { IIpcCommandSignatures } from "#/commands/signatures";
+import type { ETransportCommand } from "#/commands/transport";
 import { MOCK_TRANSPORT_ENDPOINT } from "#/testing/bulk.mocks";
 
-export type InvokeHandler = (args?: Record<string, unknown>) => unknown;
+/** Answers one command of `K` with what it resolves to, given the arguments it was invoked with. */
+export type IpcCommandAnswer<K extends keyof IIpcCommandSignatures> = (
+  args: IIpcCommandSignatures[K]["args"]
+) => IIpcCommandSignatures[K]["result"] | Promise<IIpcCommandSignatures[K]["result"]>;
+
+/**
+ * What a test answers one command with: what it resolves to, or an answer given the arguments it was invoked with.
+ *
+ * An answer that throws or rejects is the command failing with that error, as the backend rejects one.
+ */
+export type IpcCommandMock<K extends keyof IIpcCommandSignatures> =
+  IIpcCommandSignatures[K]["result"] | IpcCommandAnswer<K>;
+
+/**
+ * Answers keyed by command member, each typed by what that command takes and resolves to.
+ *
+ * Anything not listed resolves to `null` rather than throwing, so a test only has to describe the commands it actually
+ * cares about.
+ */
+export type IpcCommandMocks = { [K in keyof IIpcCommandSignatures]?: IpcCommandMock<K> };
 
 /** Whether tests are running in the mocked desktop runtime. */
 export const mockIsTauri = jest.fn((): boolean => true);
 
-/**
- * Responses keyed by tauri command name.
- *
- * Anything not listed resolves to `null` rather than throwing, so a test only has to describe the
- * commands it actually cares about.
- */
-export type InvokeMap = Record<string, unknown | InvokeHandler>;
+const state: { handlers: Partial<Record<string, unknown>> } = { handlers: {} };
 
-const state: { handlers: InvokeMap } = { handlers: {} };
+/** The transport's endpoint command, spelled out since its enum cannot be loaded here, and checked against it. */
+const GET_ENDPOINT: `${ETransportCommand.GET_ENDPOINT}` = "plugin:transport|get_endpoint";
 
 /** What a command answers when a test configures nothing for it, beside the null everything else answers. */
-const DEFAULT_RESPONSES: InvokeMap = { "plugin:transport|get_endpoint": MOCK_TRANSPORT_ENDPOINT };
+const DEFAULT_RESPONSES: Partial<Record<string, unknown>> = { [GET_ENDPOINT]: MOCK_TRANSPORT_ENDPOINT };
 
 /**
- * Configures responses for mocked Tauri commands.
+ * Configures what mocked commands answer.
  *
- * @param handlers - Responses or handlers keyed by command name.
+ * @param mocks - Answers keyed by command member, such as `EVisualsCommand.OPEN_MODEL`.
  */
-export function setMockInvokeResponses(handlers: InvokeMap): void {
-  state.handlers = handlers;
+export function mockIpcCommands(mocks: IpcCommandMocks): void {
+  state.handlers = mocks;
 }
 
 /**
@@ -55,11 +73,23 @@ export const mockInvoke = jest.fn(async (command: string, args?: Record<string, 
   const handler: unknown = state.handlers[command] ?? DEFAULT_RESPONSES[command];
 
   if (typeof handler === "function") {
-    return (handler as InvokeHandler)(args);
+    return (handler as (args?: Record<string, unknown>) => unknown)(args);
   }
 
   return handler ?? null;
 });
+
+/**
+ * @param command - A command member, such as `ERenderCommand.SET_CAMERA`.
+ * @returns The arguments of every invoke of it since the last reset, in the order they were made.
+ */
+export function listMockInvokeCalls<K extends keyof IIpcCommandSignatures>(
+  command: K
+): Array<IIpcCommandSignatures[K]["args"]> {
+  return mockInvoke.mock.calls
+    .filter(([name]) => name === command)
+    .map(([, args]) => args as IIpcCommandSignatures[K]["args"]);
+}
 
 /**
  * Channels constructed since the last reset, in creation order.

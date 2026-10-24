@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { renderHook, waitFor } from "@testing-library/react";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ESystemCommand } from "@xrf/ipc/commands/system";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { MemoryUsage } from "@xrf/ipc/types/xrf-app-system";
 
 import { TMemoryDetailSource } from "@/core/diagnostics/lib/memory-detail-source";
@@ -20,7 +21,7 @@ describe("useMemoryUsageSegment", () => {
   });
 
   it("adds each source's row to the hover, in order, and leaves out a source with nothing to say", async () => {
-    setMockInvokeResponses({ "plugin:system|get_memory_usage": USAGE });
+    mockIpcCommands({ [ESystemCommand.GET_MEMORY_USAGE]: USAGE });
 
     const sources: ReadonlyArray<TMemoryDetailSource> = [
       () => ({ label: "First", value: "1 MB" }),
@@ -39,8 +40,8 @@ describe("useMemoryUsageSegment", () => {
   it("publishes nothing on a platform that cannot read memory", async () => {
     let reads: number = 0;
 
-    setMockInvokeResponses({
-      "plugin:system|get_memory_usage": () => {
+    mockIpcCommands({
+      [ESystemCommand.GET_MEMORY_USAGE]: () => {
         reads += 1;
 
         return null;

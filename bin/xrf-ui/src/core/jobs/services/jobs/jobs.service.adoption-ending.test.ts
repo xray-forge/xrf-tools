@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { resetMockChannels, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { mockIpcCommands, resetMockChannels, resetMockInvoke } from "@xrf/ipc/testing";
 
 import { mockJobDescription } from "@/fixtures/mocks/job.mocks";
 import {
@@ -23,13 +23,13 @@ describe("JobsService adoption ending", () => {
   it("hands the answer of a settled adopted job to whoever owns that kind", async () => {
     // Nothing here awaited this run: the command answered a page that no longer exists. The copy the backend retained
     // is the only way the tool can render what the pack produced.
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
 
     const { service, settled } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
-    setMockInvokeResponses({
+    mockIpcCommands({
       [JOBS_LIST_COMMAND]: [mockJobDescription({ conclusion: "completed", result: { volumes: ["textures.db0"] } })],
       [JOBS_ATTACH_COMMAND]: true,
     });
@@ -43,13 +43,13 @@ describe("JobsService adoption ending", () => {
   });
 
   it("announces a settled adopted job that answered nothing", async () => {
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
 
     const { service, settled } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
-    setMockInvokeResponses({
+    mockIpcCommands({
       [JOBS_LIST_COMMAND]: [mockJobDescription({ conclusion: "failed", error: "volume cap refuses particles.xr" })],
       [JOBS_ATTACH_COMMAND]: true,
     });
@@ -61,13 +61,13 @@ describe("JobsService adoption ending", () => {
   });
 
   it("follows an adopted job by asking, because its channel died with the page", async () => {
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
 
     const { service } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
-    setMockInvokeResponses({
+    mockIpcCommands({
       [JOBS_LIST_COMMAND]: [
         mockJobDescription({
           progress: {
@@ -86,7 +86,7 @@ describe("JobsService adoption ending", () => {
 
   it("announces an adopted job that ended, and forgets it", async () => {
     // Nobody is awaiting its answer, so the polled conclusion is the only way the user learns their pack finished.
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
 
     const { service, raised } = mockWatchedJobsService();
 
@@ -94,7 +94,7 @@ describe("JobsService adoption ending", () => {
 
     expect(raised).toHaveLength(0);
 
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription({ conclusion: "completed" })] });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription({ conclusion: "completed" })] });
 
     await jest.advanceTimersByTimeAsync(JOBS_POLL_INTERVAL);
 
@@ -104,13 +104,13 @@ describe("JobsService adoption ending", () => {
   });
 
   it("stops asking once nothing is adopted", async () => {
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
 
     const { service } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription({ conclusion: "completed" })] });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription({ conclusion: "completed" })] });
 
     await jest.advanceTimersByTimeAsync(JOBS_POLL_INTERVAL);
 
@@ -119,13 +119,13 @@ describe("JobsService adoption ending", () => {
 
   it("treats a job that left the listing as ended with an unrecorded outcome", async () => {
     // Twenty finished jobs push it out of the retained ring. It ended; how is no longer knowable.
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()] });
 
     const { service, raised } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [] });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [] });
 
     await jest.advanceTimersByTimeAsync(JOBS_POLL_INTERVAL);
 
@@ -135,7 +135,7 @@ describe("JobsService adoption ending", () => {
 
   it("keeps working when the listing cannot be read", async () => {
     // A start-up is a bad moment to fail loudly, and the lease still prevents a duplicate from doing any damage.
-    setMockInvokeResponses({
+    mockIpcCommands({
       [JOBS_LIST_COMMAND]: () => {
         throw new Error("state unavailable");
       },
@@ -148,13 +148,13 @@ describe("JobsService adoption ending", () => {
   });
 
   it("keeps watching through a failed poll and settles only after recovery", async () => {
-    setMockInvokeResponses({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
+    mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
 
     const { service, raised, settled } = mockWatchedJobsService();
 
     await service.onProvision(1);
 
-    setMockInvokeResponses({
+    mockIpcCommands({
       [JOBS_LIST_COMMAND]: () => {
         throw new Error("temporarily unavailable");
       },
@@ -166,7 +166,7 @@ describe("JobsService adoption ending", () => {
     expect(raised).toHaveLength(0);
     expect(settled).toHaveLength(0);
 
-    setMockInvokeResponses({
+    mockIpcCommands({
       [JOBS_LIST_COMMAND]: [mockJobDescription({ conclusion: "completed", result: { volumes: ["textures.db0"] } })],
     });
 

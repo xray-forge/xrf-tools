@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { IIpcCommandSignatures } from "@xrf/ipc/commands/signatures";
+import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
+import { listMockInvokeCalls, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 
@@ -24,17 +26,18 @@ function mockService() {
   return result;
 }
 
-/** One argument of every `visuals` command of a name sent so far, in order. */
-function listSent(command: string, argument: string): Array<unknown> {
-  return mockInvoke.mock.calls
-    .filter(([name]) => name === `plugin:visuals|${command}`)
-    .map(([, args]) => (args as Record<string, unknown>)?.[argument]);
+/** One argument of every call of `command` so far, in order. */
+function listSent<K extends keyof IIpcCommandSignatures>(
+  command: K,
+  argument: keyof IIpcCommandSignatures[K]["args"]
+): Array<unknown> {
+  return listMockInvokeCalls(command).map((args) => args[argument]);
 }
 
 function mockMotion(bake: VisualMotionBake = BAKE): void {
-  setMockInvokeResponses({
-    ["plugin:visuals|list_motions"]: [bake.name, "norm_idle_0"],
-    ["plugin:visuals|open_motion"]: mockSessionResponse(bake),
+  mockIpcCommands({
+    [EVisualsCommand.LIST_MOTIONS]: [bake.name, "norm_idle_0"],
+    [EVisualsCommand.OPEN_MOTION]: mockSessionResponse(bake),
   });
 }
 
@@ -63,8 +66,8 @@ describe("VisualMotionService", () => {
   it("lists the open visual's motions once", async () => {
     let calls: number = 0;
 
-    setMockInvokeResponses({
-      ["plugin:visuals|list_motions"]: () => {
+    mockIpcCommands({
+      [EVisualsCommand.LIST_MOTIONS]: () => {
         calls += 1;
 
         return ["norm_walk_fwd_1"];
@@ -83,8 +86,8 @@ describe("VisualMotionService", () => {
   it("does not repopulate motions listed for a model that was cleared mid-flight", async () => {
     const listing: { resolve: Nullable<(names: Array<string>) => void> } = { resolve: null };
 
-    setMockInvokeResponses({
-      ["plugin:visuals|list_motions"]: () =>
+    mockIpcCommands({
+      [EVisualsCommand.LIST_MOTIONS]: () =>
         new Promise<Array<string>>((resolve) => {
           listing.resolve = resolve;
         }),
@@ -218,15 +221,15 @@ describe("VisualMotionService", () => {
     await service.open("norm_idle_0");
     await Promise.resolve();
 
-    const [first, second] = listSent("open_motion", "motionId");
+    const [first, second] = listSent(EVisualsCommand.OPEN_MOTION, "motionId");
 
     expect(first).not.toBe(second);
-    expect(listSent("close_motion", "sessionIds")).toEqual([[first]]);
+    expect(listSent(EVisualsCommand.CLOSE_MOTION, "sessionIds")).toEqual([[first]]);
 
     service.clear();
     await Promise.resolve();
 
-    expect(listSent("close_motion", "sessionIds")).toEqual([[first], [second]]);
+    expect(listSent(EVisualsCommand.CLOSE_MOTION, "sessionIds")).toEqual([[first], [second]]);
   });
 });
 
@@ -282,8 +285,8 @@ describe("VisualMotionService playback state", () => {
       releaseSecond = () => resolve(second);
     });
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_motion"]: mockSessionResponse((parameters?: Record<string, unknown>) => {
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MOTION]: mockSessionResponse((parameters?: Record<string, unknown>) => {
         if (parameters?.name === first.name) {
           return first;
         }

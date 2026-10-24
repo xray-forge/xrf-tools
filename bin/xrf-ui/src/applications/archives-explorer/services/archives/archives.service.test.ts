@@ -1,8 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
 import { flowResult, isComputedProp } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { ESessionsCommand } from "@xrf/ipc/commands/sessions";
+import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import { SessionScopeService } from "@xrf/ipc/session";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescription } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveFileDescriptor, ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
 import { XrayPathCollision } from "@xrf/ipc/types/xrf-vfs";
@@ -53,7 +56,7 @@ describe("ArchivesService file selection", () => {
     const descriptor = mockArchiveFileDescriptor();
     const result: ArchiveReadResult = { name: descriptor.name, content: "[system]", size: 8 };
 
-    setMockInvokeResponses({ ["plugin:archives|read_file"]: result });
+    mockIpcCommands({ [EArchivesCommand.READ_FILE]: result });
 
     const service: ArchivesService = mockArchivesService([descriptor]);
 
@@ -61,7 +64,7 @@ describe("ArchivesService file selection", () => {
 
     expect(service.selectedEntry).toStrictEqual(descriptor);
     expect(service.content.value?.kind === "text" ? service.content.value.result : null).toEqual(result);
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.READ_FILE, {
       sessionId: expect.any(String),
       name: descriptor.name,
     });
@@ -84,7 +87,7 @@ describe("ArchivesService file selection", () => {
       format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
     };
 
-    setMockInvokeResponses({ ["plugin:archives|describe_file"]: description });
+    mockIpcCommands({ [EArchivesCommand.DESCRIBE_FILE]: description });
 
     const descriptor = mockArchiveFileDescriptor({ name: "meshes\\actor.omf" });
     const service: ArchivesService = mockArchivesService([descriptor]);
@@ -92,7 +95,7 @@ describe("ArchivesService file selection", () => {
     await service.selectArchiveFile(descriptor);
 
     expect(service.content.value).toEqual({ kind: "description", description });
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_file", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.DESCRIBE_FILE, {
       sessionId: expect.any(String),
       name: descriptor.name,
     });
@@ -128,8 +131,8 @@ describe("ArchivesService file selection", () => {
       resolveSecond = resolve;
     });
 
-    setMockInvokeResponses({
-      ["plugin:archives|read_file"]: (args?: Record<string, unknown>) =>
+    mockIpcCommands({
+      [EArchivesCommand.READ_FILE]: (args?: Record<string, unknown>) =>
         args?.name === first.name ? firstResult : secondResult,
     });
 
@@ -152,10 +155,10 @@ describe("ArchivesService file selection", () => {
     // open, so treating it as busy is what dropped the second gesture entirely.
     const descriptor = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
 
-    setMockInvokeResponses({
+    mockIpcCommands({
       // Neither settles, so both stay in flight for the length of the assertion.
-      ["plugin:archives|read_file"]: () => new Promise(() => {}),
-      ["plugin:archives|extract_file"]: () => new Promise(() => {}),
+      [EArchivesCommand.READ_FILE]: () => new Promise(() => {}),
+      [EArchivesCommand.EXTRACT_FILE]: () => new Promise(() => {}),
     });
 
     const service: ArchivesService = mockArchivesService([descriptor]);
@@ -173,7 +176,7 @@ describe("ArchivesService file selection", () => {
   it("clears file state when the project closes", async () => {
     const descriptor = mockArchiveFileDescriptor({ name: "textures\\ui.dds" });
 
-    setMockInvokeResponses({ ["plugin:archives|close_subject"]: undefined });
+    mockIpcCommands({ [EArchivesCommand.CLOSE_SUBJECT]: undefined });
 
     const service: ArchivesService = mockArchivesService([descriptor]);
 
@@ -202,8 +205,8 @@ describe("ArchivesService file selection", () => {
   it("preserves the open project and selection when closing fails", async () => {
     const descriptor = mockArchiveFileDescriptor({ name: "textures\\ui.dds" });
 
-    setMockInvokeResponses({
-      ["plugin:archives|close_subject"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.CLOSE_SUBJECT]: () => {
         throw new Error("archive is busy");
       },
     });
@@ -223,23 +226,27 @@ describe("ArchivesService visual preview lifecycle", () => {
     // explorer restores next time it is opened - which is the leak issue 0010 records.
     const invoked: Array<string> = [];
 
-    setMockInvokeResponses({
-      ["plugin:archives|close_subject"]: () => void invoked.push("plugin:archives|close_subject"),
-      ["plugin:visuals|close_model"]: () => void invoked.push("plugin:visuals|close_model"),
+    mockIpcCommands({
+      [EArchivesCommand.CLOSE_SUBJECT]: () => void invoked.push(EArchivesCommand.CLOSE_SUBJECT),
+      [EVisualsCommand.CLOSE_MODEL]: () => void invoked.push(EVisualsCommand.CLOSE_MODEL),
     });
 
     await mockArchivesService([]).closeSubject();
 
-    expect(invoked).toEqual(["plugin:archives|close_subject"]);
+    expect(invoked).toEqual([EArchivesCommand.CLOSE_SUBJECT]);
   });
 
   it("leaves its document to the tool's scope, released once, as the application deactivates", async () => {
     const invoked: Array<string> = [];
 
-    setMockInvokeResponses({
-      ["plugin:archives|close_subject"]: () => void invoked.push("plugin:archives|close_subject"),
-      ["plugin:visuals|close_model"]: () => void invoked.push("plugin:visuals|close_model"),
-      ["plugin:sessions|release_scope"]: () => void invoked.push("plugin:sessions|release_scope"),
+    mockIpcCommands({
+      [EArchivesCommand.CLOSE_SUBJECT]: () => void invoked.push(EArchivesCommand.CLOSE_SUBJECT),
+      [EVisualsCommand.CLOSE_MODEL]: () => void invoked.push(EVisualsCommand.CLOSE_MODEL),
+      [ESessionsCommand.RELEASE_SCOPE]: () => {
+        invoked.push(ESessionsCommand.RELEASE_SCOPE);
+
+        return 1;
+      },
     });
 
     const { service, container } = mockInjectedService(ArchivesService);
@@ -251,7 +258,7 @@ describe("ArchivesService visual preview lifecycle", () => {
     // Retired with the scope, the document is no longer the service's to close.
     await service.closeSubject();
 
-    expect(invoked).toEqual(["plugin:sessions|release_scope"]);
+    expect(invoked).toEqual([ESessionsCommand.RELEASE_SCOPE]);
   });
 });
 
@@ -259,9 +266,9 @@ describe("ArchivesService reachability", () => {
   it("asks what the opened volume set overrides and what it cannot reach, in one fold", async () => {
     const collision: XrayPathCollision = mockPathCollision();
 
-    setMockInvokeResponses({
-      ["plugin:archives|open_volumes"]: mockSessionResponse(mockArchivesVolumes([])),
-      ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [collision] },
+    mockIpcCommands({
+      [EArchivesCommand.OPEN_VOLUMES]: mockSessionResponse(mockArchivesVolumes([])),
+      [EArchivesCommand.LIST_OVERRIDES]: { overridden: [], unreachable: [collision] },
     });
 
     const { service } = mockInjectedService(ArchivesService);
@@ -272,13 +279,13 @@ describe("ArchivesService reachability", () => {
 
     // One command for both halves: a volume set walks its whole merged name table to answer either, so asking
     // separately folded an installation-sized table twice.
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|list_overrides", { sessionId: expect.any(String) });
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.LIST_OVERRIDES, { sessionId: expect.any(String) });
   });
 
   it("keeps a project browsable when reachability cannot be answered", async () => {
-    setMockInvokeResponses({
-      ["plugin:archives|open_volumes"]: mockSessionResponse(mockArchivesVolumes([])),
-      ["plugin:archives|list_overrides"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.OPEN_VOLUMES]: mockSessionResponse(mockArchivesVolumes([])),
+      [EArchivesCommand.LIST_OVERRIDES]: () => {
         throw new Error("fold failed");
       },
     });
@@ -293,10 +300,10 @@ describe("ArchivesService reachability", () => {
   });
 
   it("forgets them when the project closes", async () => {
-    setMockInvokeResponses({
-      ["plugin:archives|open_volumes"]: mockSessionResponse(mockArchivesVolumes([])),
-      ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [mockPathCollision()] },
-      ["plugin:archives|close_subject"]: undefined,
+    mockIpcCommands({
+      [EArchivesCommand.OPEN_VOLUMES]: mockSessionResponse(mockArchivesVolumes([])),
+      [EArchivesCommand.LIST_OVERRIDES]: { overridden: [], unreachable: [mockPathCollision()] },
+      [EArchivesCommand.CLOSE_SUBJECT]: undefined,
     });
 
     const { service } = mockInjectedService(ArchivesService);

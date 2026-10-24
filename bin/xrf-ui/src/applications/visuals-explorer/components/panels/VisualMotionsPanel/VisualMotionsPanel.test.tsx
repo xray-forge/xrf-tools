@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { act, fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 import { VisualMotionBake, VisualMotionDependency } from "@xrf/ipc/types/xrf-visual";
 
@@ -59,14 +60,14 @@ async function renderPanel(
 
   let listed: number = 0;
 
-  setMockInvokeResponses({
-    ["plugin:visuals|open_model"]: mockSessionResponse(selected),
-    ["plugin:visuals|list_motions"]: () => {
+  mockIpcCommands({
+    [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(selected),
+    [EVisualsCommand.LIST_MOTIONS]: () => {
       listed += 1;
 
       return names;
     },
-    ["plugin:visuals|open_motion"]: mockSessionResponse((parameters?: Record<string, unknown>) => ({
+    [EVisualsCommand.OPEN_MOTION]: mockSessionResponse((parameters?: Record<string, unknown>) => ({
       ...bake,
       name: String((parameters as { name: string }).name),
     })),
@@ -177,8 +178,8 @@ describe("VisualMotionsPanel listing", () => {
 
     const buffer: MockVisualBuffer = new MockVisualBuffer();
 
-    setMockInvokeResponses({
-      ["plugin:visuals|open_model"]: mockSessionResponse(
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(
         mockSelectedVisual({
           dependencies: { motions: [mockMotionRef()], textures: [] },
           description: mockVisualDescription({
@@ -188,7 +189,7 @@ describe("VisualMotionsPanel listing", () => {
         })
       ),
       // Never settles, which is the state a 2,500-name actor is in for as long as its omf files are being read.
-      ["plugin:visuals|list_motions"]: () => new Promise<Array<string>>(() => {}),
+      [EVisualsCommand.LIST_MOTIONS]: () => new Promise<Array<string>>(() => {}),
     });
 
     const container: Container = mockContainer([VisualLoadService, VisualMotionService, VisualsService]);

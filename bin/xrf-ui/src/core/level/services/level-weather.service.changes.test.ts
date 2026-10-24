@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container, EventBus } from "@wirestate/core";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
 import { LEVEL_ENVIRONMENT_PART, LEVEL_SPAWN_PART } from "@xrf/ipc/types/xrf-app-levels";
 import { EWorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
@@ -15,7 +16,7 @@ import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/sessi
 import { mockLevelWeatherCycle, mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
-const READ_WEATHER: string = "plugin:levels|describe_weather";
+const READ_WEATHER: string = ELevelsCommand.DESCRIBE_WEATHER;
 /** The level `restore_level` restores, as `mockSessionResponse` names a call carrying no session. */
 const SESSION: string = "fixture-session";
 
@@ -31,8 +32,8 @@ async function flush(): Promise<void> {
 
 /** Provisions the weather over a restored level, once its first cycle plays. */
 async function openWeather(): Promise<{ container: Container; service: LevelWeatherService }> {
-  setMockInvokeResponses({
-    ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+  mockIpcCommands({
+    [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
     [READ_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
   });
 
@@ -59,7 +60,7 @@ describe("LevelWeatherService changes", () => {
     const before: number = countReads();
     const edited = mockLevelWeatherCycle({ file: "environment\\weathers\\default_clear_edited.ltx" });
 
-    setMockInvokeResponses({
+    mockIpcCommands({
       [READ_WEATHER]: mockSessionSnapshot(mockLevelWeatherDescription({ offered: [edited] }), SESSION, 1),
     });
     notify(container, {
@@ -84,8 +85,8 @@ describe("LevelWeatherService changes", () => {
   it("plays the weather read again while it was first being read", async () => {
     const answers: Array<() => void> = [];
 
-    setMockInvokeResponses({
-      ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+    mockIpcCommands({
+      [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
       [READ_WEATHER]: (args?: Record<string, unknown>) =>
         new Promise((resolve) =>
           answers.push(() =>
@@ -119,7 +120,7 @@ describe("LevelWeatherService changes", () => {
   it("plays on as read where the weather fails to be read again, saying nothing failed", async () => {
     const { container, service } = await openWeather();
 
-    setMockInvokeResponses({ [READ_WEATHER]: () => Promise.reject(new Error("cannot read")) });
+    mockIpcCommands({ [READ_WEATHER]: () => Promise.reject(new Error("cannot read")) });
     notify(container, {
       sessionId: SESSION,
       revision: 1,

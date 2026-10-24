@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
-import { mockInvoke, resetMockInvoke, setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EAssetsBulkRoute } from "@xrf/ipc/commands/assets-bulk";
+import { ETexturesCommand } from "@xrf/ipc/commands/textures";
+import { ETexturesBulkRoute } from "@xrf/ipc/commands/textures-bulk";
+import { mockInvoke, mockIpcBulkRoutes, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureDescription, TextureVocabulary } from "@xrf/ipc/types/xrf-app-textures";
 
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
@@ -34,9 +37,8 @@ function describedTexture(reference: string, overrides: Partial<TextureDescripti
 }
 
 function mockEditorService(): TextureEditorService {
-  setMockInvokeResponses({
-    ["plugin:textures|get_roots"]: null,
-    ["plugin:textures|get_vocabulary"]: VOCABULARY,
+  mockIpcCommands({
+    [ETexturesCommand.GET_VOCABULARY]: VOCABULARY,
   });
 
   const container: Container = mockContainer([
@@ -182,13 +184,13 @@ describe("TextureEditorService", () => {
     const service: TextureEditorService = container.get(TextureEditorService);
     const encodingService: TextureEncodingService = container.get(TextureEncodingService);
 
-    setMockInvokeResponses({
-      ["plugin:textures|compare_encodings"]: mockTextureEncodingComparison(),
-      ["plugin:textures|describe"]: mockTextureDescription(),
+    mockIpcCommands({
+      [ETexturesCommand.COMPARE_ENCODINGS]: mockTextureEncodingComparison(),
+      [ETexturesCommand.DESCRIBE]: mockTextureDescription(),
     });
 
-    setMockBulkResponses({
-      "assets/read_texture": new ArrayBuffer(0),
+    mockIpcBulkRoutes({
+      [EAssetsBulkRoute.READ_TEXTURE]: new ArrayBuffer(0),
     });
 
     await container.get(TextureSelectionService).openFile("C:\\gamedata\\textures\\ston\\ston_beton05.dds");
@@ -223,23 +225,23 @@ describe("TextureEditorService", () => {
 
     let describeCount: number = 0;
 
-    setMockInvokeResponses({
-      ["plugin:textures|describe"]: () => {
+    mockIpcCommands({
+      [ETexturesCommand.DESCRIBE]: () => {
         describeCount += 1;
 
         return describedTexture(MOCK_TEXTURE, {
           form: mockTextureDescriptorForm({ bumpName: `read-${describeCount}` }),
         });
       },
-      ["plugin:textures|get_vocabulary"]: VOCABULARY,
-      ["plugin:textures|save"]: {
+      [ETexturesCommand.GET_VOCABULARY]: VOCABULARY,
+      [ETexturesCommand.SAVE]: {
         outcome: "completed",
         written: [`C:\\gamedata\\textures\\${MOCK_TEXTURE}.thm`],
       },
     });
 
-    setMockBulkResponses({
-      "assets/read_texture": new ArrayBuffer(0),
+    mockIpcBulkRoutes({
+      [EAssetsBulkRoute.READ_TEXTURE]: new ArrayBuffer(0),
     });
 
     await selectionService.openFile(`C:\\gamedata\\textures\\${MOCK_TEXTURE}.dds`);
@@ -276,15 +278,15 @@ describe("TextureEditorService", () => {
     const encoding: TextureEncodingService = container.get(TextureEncodingService);
     const editor: TextureEditorService = container.get(TextureEditorService);
 
-    setMockInvokeResponses({
-      ["plugin:textures|describe"]: describedTexture(MOCK_TEXTURE),
-      ["plugin:textures|compare_encodings"]: mockTextureEncodingComparison(),
-      ["plugin:textures|save"]: { outcome: "completed", written: [] },
+    mockIpcCommands({
+      [ETexturesCommand.DESCRIBE]: describedTexture(MOCK_TEXTURE),
+      [ETexturesCommand.COMPARE_ENCODINGS]: mockTextureEncodingComparison(),
+      [ETexturesCommand.SAVE]: { outcome: "completed", written: [] },
     });
 
-    setMockBulkResponses({
-      "assets/read_texture": new ArrayBuffer(0),
-      "textures/read_candidate": new ArrayBuffer(8),
+    mockIpcBulkRoutes({
+      [EAssetsBulkRoute.READ_TEXTURE]: new ArrayBuffer(0),
+      [ETexturesBulkRoute.READ_CANDIDATE]: new ArrayBuffer(8),
     });
 
     await selection.openFile("C:/gamedata/textures/ston/ston_beton05.dds");
@@ -296,7 +298,7 @@ describe("TextureEditorService", () => {
     await editor.commit();
 
     expect(mockInvoke).toHaveBeenCalledWith(
-      "plugin:textures|save",
+      ETexturesCommand.SAVE,
       expect.objectContaining({
         request: expect.objectContaining({
           texture: expect.objectContaining({ sessionId: mockTextureEncodingComparison().sessionId, format: "bc3" }),

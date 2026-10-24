@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
 import { isObservableProp } from "@wirestate/mobx";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { ESessionsCommand } from "@xrf/ipc/commands/sessions";
+import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { LevelSource, LevelSpawnObjectsDescription, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
@@ -36,10 +38,9 @@ async function flush(): Promise<void> {
 
 /** Arms an open of a one-sector level whose spawn lists the two objects above. */
 function armLevel(level: SelectedLevelDescription = mockSelectedLevelDescription({ sectors: [mockSectorOutline()] })) {
-  setMockInvokeResponses({
-    ["plugin:levels|close_level"]: null,
-    ["plugin:levels|open_level"]: mockSessionResponse(level),
-    ["plugin:levels|describe_spawn_objects"]: mockSessionResponse(SPAWN),
+  mockIpcCommands({
+    [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(level),
+    [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: mockSessionResponse(SPAWN),
   });
 }
 
@@ -53,23 +54,23 @@ describe("LevelLoadService", () => {
   it("takes back the level the backend still has open, without opening it again", async () => {
     const { service } = mockInjectedService(LevelLoadService);
 
-    setMockInvokeResponses({
-      ["plugin:levels|restore_level"]: mockSessionResponse(
+    mockIpcCommands({
+      [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(
         mockSelectedLevelDescription({ sectors: [mockSectorOutline()] })
       ),
-      ["plugin:levels|describe_spawn_objects"]: mockSessionResponse(SPAWN),
+      [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: mockSessionResponse(SPAWN),
     });
 
     await service.restore();
 
     expect(service.level.value?.selected.value.sectors).toHaveLength(1);
-    expect(countCalls("plugin:levels|open_level")).toBe(0);
+    expect(countCalls(ELevelsCommand.OPEN_LEVEL)).toBe(0);
   });
 
   it("reports itself ready even when there is nothing to restore", async () => {
     const { service } = mockInjectedService(LevelLoadService);
 
-    setMockInvokeResponses({ ["plugin:levels|restore_level"]: null });
+    mockIpcCommands({ [ELevelsCommand.RESTORE_LEVEL]: null });
 
     await service.onProvision();
 
@@ -121,22 +122,22 @@ describe("LevelLoadService", () => {
     expect(isLevelSpawnReading(service.spawnReport)).toBe(false);
     // The level itself, then each part the page shows read on its own, side by side.
     expect(mockInvoke.mock.calls.map(([name]) => name)).toEqual([
-      "plugin:sessions|bind",
-      "plugin:levels|open_level",
-      "plugin:levels|describe_start",
-      "plugin:levels|describe_level_map",
-      "plugin:levels|describe_surfaces",
-      "plugin:levels|describe_textures",
-      "plugin:levels|describe_spawn_objects",
+      ESessionsCommand.BIND,
+      ELevelsCommand.OPEN_LEVEL,
+      ELevelsCommand.DESCRIBE_START,
+      ELevelsCommand.DESCRIBE_LEVEL_MAP,
+      ELevelsCommand.DESCRIBE_SURFACES,
+      ELevelsCommand.DESCRIBE_TEXTURES,
+      ELevelsCommand.DESCRIBE_SPAWN_OBJECTS,
     ]);
   });
 
   it("says why the spawn could not be listed, and lists nothing", async () => {
     const { service } = mockInjectedService(LevelLoadService);
 
-    setMockInvokeResponses({
-      ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
-      ["plugin:levels|describe_spawn_objects"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
+      [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: mockSessionResponse(() => {
         throw new Error("all.spawn names no level graph");
       }),
     });
@@ -175,18 +176,18 @@ describe("LevelLoadService", () => {
     await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
     await flush();
 
-    setMockInvokeResponses({
-      ["plugin:levels|close_level"]: () => Promise.reject(new Error("The level is busy")),
+    mockIpcCommands({
+      [ELevelsCommand.CLOSE_LEVEL]: () => Promise.reject(new Error("The level is busy")),
     });
 
     await expect(service.close()).resolves.toBeUndefined();
     expect(service.level.value).toBeNull();
     expect(service.level.isLoading).toBe(false);
 
-    setMockInvokeResponses({ ["plugin:levels|close_level"]: null });
+    mockIpcCommands({});
     await service.close();
 
-    expect(countCalls("plugin:levels|close_level")).toBe(2);
+    expect(countCalls(ELevelsCommand.CLOSE_LEVEL)).toBe(2);
   });
 
   it("tells a close the backend failed as a notice", async () => {
@@ -204,8 +205,8 @@ describe("LevelLoadService", () => {
     await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
     await flush();
 
-    setMockInvokeResponses({
-      ["plugin:levels|close_level"]: () => Promise.reject(new Error("The level is busy")),
+    mockIpcCommands({
+      [ELevelsCommand.CLOSE_LEVEL]: () => Promise.reject(new Error("The level is busy")),
     });
 
     await service.close();
@@ -225,8 +226,8 @@ describe("LevelLoadService", () => {
     await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
     await flush();
 
-    setMockInvokeResponses({
-      ["plugin:levels|open_level"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(() => {
         throw new Error("level carries no visuals chunk, so it draws nothing");
       }),
     });
@@ -236,14 +237,14 @@ describe("LevelLoadService", () => {
     expect(service.level.value).toBeNull();
     expect(service.level.error?.message).toBe("level carries no visuals chunk, so it draws nothing");
     expect(service.spawn).toBeNull();
-    expect(countCalls("plugin:levels|close_level")).toBe(1);
+    expect(countCalls(ELevelsCommand.CLOSE_LEVEL)).toBe(1);
   });
 
   it("opens the last level asked for again on a retry", async () => {
     const { service } = mockInjectedService(LevelLoadService);
 
-    setMockInvokeResponses({
-      ["plugin:levels|open_level"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(() => {
         throw new Error("The archive is locked");
       }),
     });
@@ -257,7 +258,7 @@ describe("LevelLoadService", () => {
     await service.retry();
 
     expect(service.level.value?.selected.value.sectors).toHaveLength(1);
-    expect(mockInvoke.mock.calls.filter(([name]) => name === "plugin:levels|open_level").at(-1)?.[1]).toEqual(
+    expect(mockInvoke.mock.calls.filter(([name]) => name === ELevelsCommand.OPEN_LEVEL).at(-1)?.[1]).toEqual(
       expect.objectContaining({ request: expect.objectContaining({ source: SOURCE }) })
     );
   });
@@ -265,8 +266,8 @@ describe("LevelLoadService", () => {
   it("records a failure as state rather than throwing it at the caller", async () => {
     const { service } = mockInjectedService(LevelLoadService);
 
-    setMockInvokeResponses({
-      ["plugin:levels|open_level"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(() => {
         throw new Error("level carries no visuals chunk, so it draws nothing");
       }),
     });

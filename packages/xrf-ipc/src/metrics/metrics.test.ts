@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Optional } from "@xrf/types";
 
+import { EConfigsCommand } from "#/commands/configs";
 import { IIpcCommandMetrics, IIpcMetricsSnapshot, IPC_METRICS, setIpcProfilingEnabled } from "#/metrics/index";
 
 function getEntryOf(command: string): IIpcCommandMetrics {
@@ -22,15 +23,15 @@ describe("ipc metrics", () => {
   });
 
   it("counts a call under the command name without its plugin prefix", () => {
-    IPC_METRICS.measure("plugin:configs|read_document").recordAnswer(null, null);
+    IPC_METRICS.measure(EConfigsCommand.READ_DOCUMENT).recordAnswer(null, null);
 
     expect(getEntryOf("configs|read_document").calls).toBe(1);
   });
 
   it("keeps failures out of the success pool, so an instant refusal cannot flatter an average", () => {
-    IPC_METRICS.measure("plugin:configs|read_document").recordAnswer(null, null);
-    IPC_METRICS.measure("plugin:configs|read_document").recordFailure();
-    IPC_METRICS.measure("plugin:configs|read_document").recordFailure();
+    IPC_METRICS.measure(EConfigsCommand.READ_DOCUMENT).recordAnswer(null, null);
+    IPC_METRICS.measure(EConfigsCommand.READ_DOCUMENT).recordFailure();
+    IPC_METRICS.measure(EConfigsCommand.READ_DOCUMENT).recordFailure();
 
     const entry: IIpcCommandMetrics = getEntryOf("configs|read_document");
 
@@ -55,11 +56,11 @@ describe("ipc metrics", () => {
   });
 
   it("decides weighing when the call starts, so a switch flipped mid-flight cannot split one call", () => {
-    const before = IPC_METRICS.measure("plugin:configs|read_document");
+    const before = IPC_METRICS.measure(EConfigsCommand.READ_DOCUMENT);
 
     setIpcProfilingEnabled(true);
 
-    const after = IPC_METRICS.measure("plugin:configs|read_document");
+    const after = IPC_METRICS.measure(EConfigsCommand.READ_DOCUMENT);
 
     expect(before.isWeighing).toBe(false);
     expect(after.isWeighing).toBe(true);
@@ -69,11 +70,11 @@ describe("ipc metrics", () => {
   });
 
   it("keeps what was counted before profiling was switched on", () => {
-    IPC_METRICS.measure("plugin:configs|read_document").recordAnswer(null, null);
+    IPC_METRICS.measure(EConfigsCommand.READ_DOCUMENT).recordAnswer(null, null);
 
     setIpcProfilingEnabled(true);
 
-    IPC_METRICS.measure("plugin:configs|read_document").recordAnswer(64, 32);
+    IPC_METRICS.measure(EConfigsCommand.READ_DOCUMENT).recordAnswer(64, 32);
 
     const entry: IIpcCommandMetrics = getEntryOf("configs|read_document");
 

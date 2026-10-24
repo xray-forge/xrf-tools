@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container, Injectable } from "@wirestate/core";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
@@ -69,15 +70,15 @@ async function renderPanel(
 ): Promise<{ container: Container; view: RenderResult }> {
   const level = mockSelectedLevelDescription({ sectors: [] });
 
-  setMockInvokeResponses({
-    ["plugin:levels|describe_spawn_object"]: mockSessionResponse({
+  mockIpcCommands({
+    [ELevelsCommand.DESCRIBE_SPAWN_OBJECT]: mockSessionResponse({
       customData: "[logic]\nactive = ph_idle",
       gameVertexId: 12,
       id: 400,
       levelVertexId: 3456,
     }),
-    ["plugin:levels|open_level"]: mockSessionResponse(level),
-    ["plugin:levels|describe_spawn_objects"]: mockSessionResponse(objects),
+    [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(level),
+    [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: mockSessionResponse(objects),
   });
 
   const container: Container = mockContainer([

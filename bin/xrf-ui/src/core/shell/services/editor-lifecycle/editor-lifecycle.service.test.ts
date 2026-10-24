@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
+import { ESystemCommand } from "@xrf/ipc/commands/system";
 import { mockInvoke } from "@xrf/ipc/testing";
 import { ELeaveDecision } from "@xrf/ipc/types/xrf-app-system";
 
@@ -162,7 +163,7 @@ describe("EditorLifecycleService", () => {
     service.exitAnyway();
 
     const reported: Array<unknown> = mockInvoke.mock.calls
-      .filter(([command]) => command === "plugin:system|report_leave_decision")
+      .filter(([command]) => command === ESystemCommand.REPORT_LEAVE_DECISION)
       .map(([, args]) => args);
 
     expect(reported).toEqual([

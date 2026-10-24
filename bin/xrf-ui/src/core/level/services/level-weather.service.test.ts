@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { autorun } from "@wirestate/mobx";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngine, EXrayEngineEvidence, XrayEngine } from "@xrf/ipc/types/xrf-engine-target";
@@ -37,8 +38,8 @@ afterEach(() => {
 
 describe("LevelWeatherService", () => {
   it("plays the first cycle the level offers, by name", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
     });
 
     const service: LevelWeatherService = createLevelWeatherService();
@@ -52,8 +53,8 @@ describe("LevelWeatherService", () => {
   });
 
   it("plays the keyframe set by hand, without failing, where neither the level nor its game offers a cycle", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription({ offered: [] })),
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription({ offered: [] })),
     });
 
     const service: LevelWeatherService = createLevelWeatherService();
@@ -69,8 +70,8 @@ describe("LevelWeatherService", () => {
   // XRF's levels write `weathers = dynamic`, which its weather manager turns into a graph by the level's periods; any
   // fork's script-chosen weather looks the same, and the game's own cycles stand in for it.
   it("plays the game's first cycle where the level's weathers leads to none, saying so", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(
         mockLevelWeatherDescription({
           cycles: [
             {
@@ -92,7 +93,7 @@ describe("LevelWeatherService", () => {
           weather: { key: "dynamic", level: "zaton", options: [{ cycle: "dynamic", graph: null, state: null }] },
         })
       ),
-      ["plugin:levels|read_level_cycle"]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
+      [ELevelsCommand.READ_LEVEL_CYCLE]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
         mockLevelWeatherCycle({ name: cycle.name })
       ),
     });
@@ -117,9 +118,9 @@ describe("LevelWeatherService", () => {
       sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
       time: 600,
     });
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription({ offered: [] })),
-      ["plugin:levels|read_level_cycle"]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription({ offered: [] })),
+      [ELevelsCommand.READ_LEVEL_CYCLE]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
         mockLevelWeatherCycle({ name: cycle.name })
       ),
     });
@@ -135,8 +136,8 @@ describe("LevelWeatherService", () => {
   });
 
   it("plays the keyframe set by hand where the level's weather does not read", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: () => Promise.reject(new Error("No weather")),
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: () => Promise.reject(new Error("No weather")),
     });
 
     const service: LevelWeatherService = createLevelWeatherService();
@@ -150,8 +151,8 @@ describe("LevelWeatherService", () => {
   it("reads a level once, and forgets it when it closes", async () => {
     let reads: number = 0;
 
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(() => {
         reads += 1;
 
         return mockLevelWeatherDescription();
@@ -173,9 +174,9 @@ describe("LevelWeatherService", () => {
   });
 
   it("plays another cycle of the game, read for the level, and remembers it with the clock per level", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
-      ["plugin:levels|read_level_cycle"]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
+      [ELevelsCommand.READ_LEVEL_CYCLE]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
         mockLevelWeatherCycle({ name: cycle.name })
       ),
     });
@@ -218,9 +219,9 @@ describe("LevelWeatherService", () => {
   });
 
   it("holds the clock, cuts to a borrowed cycle not remembered, and back to what it held", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
-      ["plugin:levels|read_level_cycle"]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
+      [ELevelsCommand.READ_LEVEL_CYCLE]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
         mockLevelWeatherCycle({ name: cycle.name })
       ),
     });
@@ -260,9 +261,9 @@ describe("LevelWeatherService", () => {
       value: mockSelectedLevelDescription({ source: { kind: "directory", path: "C:/levels/jupiter" } }),
     };
 
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
-      ["plugin:levels|read_level_cycle"]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
+      [ELevelsCommand.READ_LEVEL_CYCLE]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
         mockLevelWeatherCycle({ name: cycle.name })
       ),
     });
@@ -289,9 +290,9 @@ describe("LevelWeatherService", () => {
   it("keeps the held cycle picked again while another one is read", async () => {
     let release!: () => void;
 
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
-      ["plugin:levels|read_level_cycle"]: mockSessionResponse(
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
+      [ELevelsCommand.READ_LEVEL_CYCLE]: mockSessionResponse(
         ({ cycle }: { cycle: WeatherCycleId }) =>
           new Promise((resolve) => {
             release = () => resolve(mockLevelWeatherCycle({ name: cycle.name }));
@@ -336,9 +337,9 @@ describe("LevelWeatherService", () => {
       sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
       time: 600,
     });
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
-      ["plugin:levels|read_level_cycle"]: mockSessionResponse(
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
+      [ELevelsCommand.READ_LEVEL_CYCLE]: mockSessionResponse(
         ({ cycle }: { cycle: WeatherCycleId }) =>
           new Promise((resolve) => {
             release = () => resolve(mockLevelWeatherCycle({ name: cycle.name }));
@@ -363,8 +364,8 @@ describe("LevelWeatherService", () => {
 
   // Read while rendering, so a level opened since must reach whatever shows it.
   it("names the engine its weather is read for as each level opens", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
     });
 
     const service: LevelWeatherService = createLevelWeatherService();
@@ -396,9 +397,9 @@ describe("LevelWeatherService", () => {
       sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
       time: 600,
     });
-    setMockInvokeResponses({
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
-      ["plugin:levels|read_level_cycle"]: () => Promise.reject(new Error("There is no weather 'gone'")),
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
+      [ELevelsCommand.READ_LEVEL_CYCLE]: () => Promise.reject(new Error("There is no weather 'gone'")),
     });
 
     const service: LevelWeatherService = createLevelWeatherService();
@@ -417,9 +418,9 @@ describe("LevelWeatherService", () => {
   });
 
   it("opens the weather of a level as the level opens, with no viewport to play it, and forgets it as it closes", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
-      ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
+    mockIpcCommands({
+      [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
     });
 
     const container: Container = mockContainer([LevelLoadService, LevelWeatherService]).provision();

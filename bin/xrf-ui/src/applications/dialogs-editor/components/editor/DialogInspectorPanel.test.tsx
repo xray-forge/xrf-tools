@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { AsyncState } from "@xrf/async";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EDialogsCommand } from "@xrf/ipc/commands/dialogs";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { DialogDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Nullable } from "@xrf/types";
 
@@ -51,7 +52,7 @@ function renderPanel(nodeId: Nullable<string>, dialog: Nullable<DialogDescriptor
 
 describe("DialogInspectorPanel", () => {
   beforeEach(() => {
-    setMockInvokeResponses({ ["plugin:dialogs|restore_project"]: mockSessionResponse(null) });
+    mockIpcCommands({ [EDialogsCommand.RESTORE_PROJECT]: mockSessionResponse(null) });
   });
 
   it("invites a selection when nothing on the canvas is picked", () => {

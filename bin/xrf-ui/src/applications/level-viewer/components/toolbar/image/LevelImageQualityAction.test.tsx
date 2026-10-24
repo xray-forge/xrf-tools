@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ERenderCommand } from "@xrf/ipc/commands/render";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import {
   ERenderAntialiasing,
   ERenderDlssAvailability,
@@ -46,7 +47,7 @@ interface IImageQualitySetup {
  */
 function renderAction(setup: IImageQualitySetup = {}): TLevelViewRenderResult {
   if (setup.backends) {
-    setMockInvokeResponses({ ["plugin:render|list_backends"]: setup.backends });
+    mockIpcCommands({ [ERenderCommand.LIST_BACKENDS]: setup.backends });
   }
 
   const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();

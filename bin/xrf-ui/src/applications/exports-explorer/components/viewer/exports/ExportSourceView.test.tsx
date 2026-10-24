@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EExportsCommand } from "@xrf/ipc/commands/exports";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ExportSourceContent } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 
@@ -28,9 +29,9 @@ function renderSource(name: string) {
 
 describe("ExportSourceView", () => {
   beforeEach(() => {
-    setMockInvokeResponses({
-      "plugin:exports|restore_project": mockSessionSnapshot(mockExportsProject()),
-      ["plugin:exports|get_source"]: mockSource("xr_effects.play", 'extern("xr_effects.play", () => {});'),
+    mockIpcCommands({
+      [EExportsCommand.RESTORE_PROJECT]: mockSessionSnapshot(mockExportsProject()),
+      [EExportsCommand.GET_SOURCE]: mockSource("xr_effects.play", 'extern("xr_effects.play", () => {});'),
     });
   });
 
@@ -41,9 +42,9 @@ describe("ExportSourceView", () => {
   });
 
   it("numbers lines from where the declaration starts in its file", async () => {
-    setMockInvokeResponses({
-      "plugin:exports|restore_project": mockSessionSnapshot(mockExportsProject()),
-      ["plugin:exports|get_source"]: mockSource("play", "line one\nline two\nline three", 18),
+    mockIpcCommands({
+      [EExportsCommand.RESTORE_PROJECT]: mockSessionSnapshot(mockExportsProject()),
+      [EExportsCommand.GET_SOURCE]: mockSource("play", "line one\nline two\nline three", 18),
     });
 
     const { findByLabelText } = renderSource("play");
@@ -54,9 +55,9 @@ describe("ExportSourceView", () => {
   });
 
   it("reports a failed read and retries the same declaration", async () => {
-    setMockInvokeResponses({
-      "plugin:exports|restore_project": mockSessionSnapshot(mockExportsProject()),
-      ["plugin:exports|get_source"]: () => {
+    mockIpcCommands({
+      [EExportsCommand.RESTORE_PROJECT]: mockSessionSnapshot(mockExportsProject()),
+      [EExportsCommand.GET_SOURCE]: () => {
         throw new Error("declaration file is gone");
       },
     });
@@ -65,18 +66,18 @@ describe("ExportSourceView", () => {
 
     expect(await findByRole("alert")).toHaveTextContent("declaration file is gone");
 
-    setMockInvokeResponses({
-      "plugin:exports|restore_project": mockSessionSnapshot(mockExportsProject()),
-      ["plugin:exports|get_source"]: mockSource("play", "restored source"),
+    mockIpcCommands({
+      [EExportsCommand.RESTORE_PROJECT]: mockSessionSnapshot(mockExportsProject()),
+      [EExportsCommand.GET_SOURCE]: mockSource("play", "restored source"),
     });
 
     await userEvent.click(getByRole("button", { name: "Retry" }));
 
     expect(await findByLabelText("Source of play")).toHaveTextContent("restored source");
     expect(queryByRole("alert")).not.toBeInTheDocument();
-    expect(mockInvoke.mock.calls.filter(([command]) => command === "plugin:exports|get_source")).toEqual([
-      ["plugin:exports|get_source", { name: "play", sessionId: "fixture-session" }],
-      ["plugin:exports|get_source", { name: "play", sessionId: "fixture-session" }],
+    expect(mockInvoke.mock.calls.filter(([command]) => command === EExportsCommand.GET_SOURCE)).toEqual([
+      [EExportsCommand.GET_SOURCE, { name: "play", sessionId: "fixture-session" }],
+      [EExportsCommand.GET_SOURCE, { name: "play", sessionId: "fixture-session" }],
     ]);
   });
 
@@ -85,9 +86,9 @@ describe("ExportSourceView", () => {
     // so the body of one already navigated away from must never replace what is on screen.
     const pending: Record<string, (value: ExportSourceContent) => void> = {};
 
-    setMockInvokeResponses({
-      "plugin:exports|restore_project": mockSessionSnapshot(mockExportsProject()),
-      ["plugin:exports|get_source"]: (parameters?: Record<string, unknown>) =>
+    mockIpcCommands({
+      [EExportsCommand.RESTORE_PROJECT]: mockSessionSnapshot(mockExportsProject()),
+      [EExportsCommand.GET_SOURCE]: (parameters?: Record<string, unknown>) =>
         new Promise<ExportSourceContent>((resolve) => {
           pending[parameters?.name as string] = resolve;
         }),

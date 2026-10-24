@@ -1,27 +1,28 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ESpriteEquipmentCommand } from "@xrf/ipc/commands/sprite-equipment";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { SPRITE_EQUIPMENT_JOB_PACK } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockEquipmentSpriteMetadata } from "@/fixtures/mocks/sprite.mocks";
+import { mockEquipmentSpriteMetadata, mockPackEquipmentResult } from "@/fixtures/mocks/sprite.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { SpriteEquipmentEditorService } from "./editor.service";
 
 describe("SpriteEquipmentEditorService", () => {
   beforeEach(() => {
-    setMockInvokeResponses({});
+    mockIpcCommands({});
   });
 
   it("reports a failed reload instead of staying loading forever", async () => {
     const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
 
-    setMockInvokeResponses({
-      ["plugin:sprite-equipment|reload_sprite"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [ESpriteEquipmentCommand.RELOAD_SPRITE]: mockSessionResponse(() => {
         throw new Error("backend refused");
       }),
     });
@@ -65,8 +66,8 @@ describe("SpriteEquipmentEditorService", () => {
     });
     service.repackSourcePath = "C:\\game\\equipment";
 
-    setMockInvokeResponses({
-      ["plugin:sprite-equipment|pack_sprite"]: () => {
+    mockIpcCommands({
+      [ESpriteEquipmentCommand.PACK_SPRITE]: () => {
         throw new Error("pack failed");
       },
     });
@@ -136,7 +137,7 @@ describe("SpriteEquipmentEditorService", () => {
         },
       ];
     } else {
-      setMockInvokeResponses({ "plugin:sprite-equipment|pack_sprite": { outcome: "cancelled" } });
+      mockIpcCommands({ [ESpriteEquipmentCommand.PACK_SPRITE]: mockPackEquipmentResult({ outcome: "cancelled" }) });
     }
 
     await service.repackAndOpenProject();
@@ -145,7 +146,7 @@ describe("SpriteEquipmentEditorService", () => {
     expect(service.spriteImage.error).toBe(previous.error);
     expect(service.spriteImage.isLoading).toBe(false);
     expect(service.repackedAt).toBeNull();
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:sprite-equipment|reload_sprite", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(ESpriteEquipmentCommand.RELOAD_SPRITE, expect.anything());
     expect(notices).not.toContainEqual(expect.objectContaining({ severity: ENotificationSeverity.SUCCESS }));
 
     if (outcome === "busy") {

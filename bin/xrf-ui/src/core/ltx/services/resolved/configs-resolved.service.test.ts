@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EConfigsCommand } from "@xrf/ipc/commands/configs";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { LtxResolvedIndex, LtxResolvedSection } from "@xrf/ipc/types/xrf-ltx-inspect";
 
 import { ConfigsProjectService } from "@/core/ltx/services/project";
@@ -38,11 +39,11 @@ async function mockOpenedService(): Promise<ConfigsResolvedService> {
 }
 
 describe("ConfigsResolvedService", () => {
-  beforeEach(() => setMockInvokeResponses({}));
+  beforeEach(() => mockIpcCommands({}));
 
   it("indexes an entry point once and answers the second ask from what it holds", async () => {
-    setMockInvokeResponses({
-      "plugin:configs|list_resolved_sections": getIndexOf([getEntryOf("wpn_base", "items\\w_base.ltx")]),
+    mockIpcCommands({
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("wpn_base", "items\\w_base.ltx")]),
     });
 
     const service: ConfigsResolvedService = await mockOpenedService();
@@ -50,14 +51,14 @@ describe("ConfigsResolvedService", () => {
     await service.open("system.ltx");
     await service.open("system.ltx");
 
-    expect(mockInvoke.mock.calls.filter(([name]) => name === "plugin:configs|list_resolved_sections")).toHaveLength(1);
+    expect(mockInvoke.mock.calls.filter(([name]) => name === EConfigsCommand.LIST_RESOLVED_SECTIONS)).toHaveLength(1);
     expect(service.index.value?.sections).toHaveLength(1);
   });
 
   it("asks only for the sections it does not already hold", async () => {
-    setMockInvokeResponses({
-      "plugin:configs|list_resolved_sections": getIndexOf([getEntryOf("a", "one.ltx"), getEntryOf("b", "one.ltx")]),
-      "plugin:configs|read_resolved_sections": [getSectionOf("a")],
+    mockIpcCommands({
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("a", "one.ltx"), getEntryOf("b", "one.ltx")]),
+      [EConfigsCommand.READ_RESOLVED_SECTIONS]: [getSectionOf("a")],
     });
 
     const service: ConfigsResolvedService = await mockOpenedService();
@@ -68,16 +69,16 @@ describe("ConfigsResolvedService", () => {
 
     // A page turn that scrolls back over what it already read must not re-ask: the whole point of paging by name is
     // that a name answered once stays answered.
-    const pages = mockInvoke.mock.calls.filter(([name]) => name === "plugin:configs|read_resolved_sections");
+    const pages = mockInvoke.mock.calls.filter(([name]) => name === EConfigsCommand.READ_RESOLVED_SECTIONS);
 
     expect(pages).toHaveLength(1);
     expect(service.sections.get("a")).toBeDefined();
   });
 
   it("drops a page that lands after the entry point it was asked for was replaced", async () => {
-    setMockInvokeResponses({
-      "plugin:configs|list_resolved_sections": getIndexOf([getEntryOf("a", "one.ltx")]),
-      "plugin:configs|read_resolved_sections": [getSectionOf("a")],
+    mockIpcCommands({
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("a", "one.ltx")]),
+      [EConfigsCommand.READ_RESOLVED_SECTIONS]: [getSectionOf("a")],
     });
 
     const service: ConfigsResolvedService = await mockOpenedService();
@@ -94,8 +95,8 @@ describe("ConfigsResolvedService", () => {
   });
 
   it("narrows to what one config declared, and widens back", async () => {
-    setMockInvokeResponses({
-      "plugin:configs|list_resolved_sections": getIndexOf([
+    mockIpcCommands({
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([
         getEntryOf("wpn_base", "items\\w_base.ltx"),
         getEntryOf("system", "system.ltx"),
       ]),
@@ -124,7 +125,7 @@ describe("ConfigsResolvedService", () => {
       resolve = settle;
     });
 
-    setMockInvokeResponses({ "plugin:configs|list_resolved_sections": () => response });
+    mockIpcCommands({ [EConfigsCommand.LIST_RESOLVED_SECTIONS]: () => response });
 
     const service = await mockOpenedService();
     const opening = service.open("system.ltx");
@@ -141,9 +142,9 @@ describe("ConfigsResolvedService", () => {
   it("drops a page that lands after clear", async () => {
     const response = mockDeferredSections();
 
-    setMockInvokeResponses({
-      "plugin:configs|list_resolved_sections": getIndexOf([getEntryOf("a", "one.ltx")]),
-      "plugin:configs|read_resolved_sections": () => response.promise,
+    mockIpcCommands({
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("a", "one.ltx")]),
+      [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => response.promise,
     });
 
     const service = await mockOpenedService();
@@ -166,9 +167,9 @@ describe("ConfigsResolvedService", () => {
   it("drops a page from an earlier opening of the same entry", async () => {
     const response = mockDeferredSections();
 
-    setMockInvokeResponses({
-      "plugin:configs|list_resolved_sections": getIndexOf([getEntryOf("a", "one.ltx")]),
-      "plugin:configs|read_resolved_sections": () => response.promise,
+    mockIpcCommands({
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("a", "one.ltx")]),
+      [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => response.promise,
     });
 
     const service = await mockOpenedService();
@@ -194,9 +195,9 @@ describe("ConfigsResolvedService", () => {
     const older = mockDeferredSections();
     const newer = mockDeferredSections();
 
-    setMockInvokeResponses({
-      "plugin:configs|list_resolved_sections": getIndexOf([getEntryOf("a", "one.ltx")]),
-      "plugin:configs|read_resolved_sections": () => older.promise,
+    mockIpcCommands({
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("a", "one.ltx")]),
+      [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => older.promise,
     });
 
     const service = await mockOpenedService();
@@ -208,7 +209,7 @@ describe("ConfigsResolvedService", () => {
     service.clear();
     await service.open("system.ltx");
 
-    setMockInvokeResponses({ "plugin:configs|read_resolved_sections": () => newer.promise });
+    mockIpcCommands({ [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => newer.promise });
 
     const second = service.request(["a"]);
 
@@ -220,7 +221,7 @@ describe("ConfigsResolvedService", () => {
     newer.resolve([getSectionOf("a")]);
     await Promise.all([second, repeated]);
 
-    expect(mockInvoke.mock.calls.filter(([name]) => name === "plugin:configs|read_resolved_sections")).toHaveLength(2);
+    expect(mockInvoke.mock.calls.filter(([name]) => name === EConfigsCommand.READ_RESOLVED_SECTIONS)).toHaveLength(2);
     expect(service.sections.get("a")).toEqual(getSectionOf("a"));
   });
 
@@ -228,9 +229,9 @@ describe("ConfigsResolvedService", () => {
     const first = mockDeferredSections();
     const second = mockDeferredSections();
 
-    setMockInvokeResponses({
-      "plugin:configs|list_resolved_sections": getIndexOf([getEntryOf("a", "one.ltx"), getEntryOf("b", "one.ltx")]),
-      "plugin:configs|read_resolved_sections": () => first.promise,
+    mockIpcCommands({
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("a", "one.ltx"), getEntryOf("b", "one.ltx")]),
+      [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => first.promise,
     });
 
     const service = await mockOpenedService();
@@ -239,7 +240,7 @@ describe("ConfigsResolvedService", () => {
 
     const firstPage = service.request(["a"]);
 
-    setMockInvokeResponses({ "plugin:configs|read_resolved_sections": () => second.promise });
+    mockIpcCommands({ [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => second.promise });
 
     const secondPage = service.request(["b"]);
 

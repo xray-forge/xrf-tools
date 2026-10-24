@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { AsyncState } from "@xrf/async";
-import { listMockBulkCalls, mockInvoke, setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { EArchivesBulkRoute } from "@xrf/ipc/commands/archives-bulk";
+import { listMockBulkCalls, mockInvoke, mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
 import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
@@ -35,11 +37,11 @@ function mockService(texture: ArchiveFileDescriptor = TEXTURE): ArchivesService 
 
 describe("ArchivesService texture preview", () => {
   beforeEach(() => {
-    setMockInvokeResponses({
-      ["plugin:archives|describe_texture"]: DESCRIPTOR,
+    mockIpcCommands({
+      [EArchivesCommand.DESCRIBE_TEXTURE]: DESCRIPTOR,
     });
-    setMockBulkResponses({
-      "archives/read_texture": BYTES,
+    mockIpcBulkRoutes({
+      [EArchivesBulkRoute.READ_TEXTURE]: BYTES,
     });
   });
 
@@ -69,11 +71,11 @@ describe("ArchivesService texture preview", () => {
 
     await service.selectArchiveFile(texture);
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_texture", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.DESCRIBE_TEXTURE, {
       sessionId: SESSION,
       name: texture.name,
     });
-    expect(listMockBulkCalls("archives/read_texture")).toContainEqual({
+    expect(listMockBulkCalls(EArchivesBulkRoute.READ_TEXTURE)).toContainEqual({
       sessionId: SESSION,
       name: texture.name,
     });
@@ -85,12 +87,12 @@ describe("ArchivesService texture preview", () => {
 
     await service.selectArchiveFile(TEXTURE);
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_texture", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.DESCRIBE_TEXTURE, {
       sessionId: SESSION,
       name: TEXTURE.name,
     });
     // The text path would have refused it anyway: this entry is compressed and .dds is not readable.
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
     expect(service.content.value?.kind === "texture" ? service.content.value.descriptor.shape?.width : null).toBe(256);
   });
 
@@ -102,9 +104,9 @@ describe("ArchivesService texture preview", () => {
     // The dimensions the viewport lays out against come from the description, the pixels from the read. Addressed
     // apart, they could belong to different subjects.
     const [describeArguments] = mockInvoke.mock.calls
-      .filter(([command]) => command === "plugin:archives|describe_texture")
+      .filter(([command]) => command === EArchivesCommand.DESCRIBE_TEXTURE)
       .map(([, args]) => args);
-    const [readArguments] = listMockBulkCalls("archives/read_texture");
+    const [readArguments] = listMockBulkCalls(EArchivesBulkRoute.READ_TEXTURE);
 
     expect(describeArguments).toEqual(readArguments);
   });
@@ -125,18 +127,18 @@ describe("ArchivesService texture preview", () => {
 
     await service.selectArchiveFile(TEXT);
 
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|describe_texture", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.DESCRIBE_TEXTURE, expect.anything());
     expect(service.content.value?.kind).not.toBe("texture");
   });
 
   it("reports a failed decode instead of staying loading", async () => {
     const service: ArchivesService = mockService();
 
-    setMockInvokeResponses({
-      ["plugin:archives|describe_texture"]: DESCRIPTOR,
+    mockIpcCommands({
+      [EArchivesCommand.DESCRIBE_TEXTURE]: DESCRIPTOR,
     });
-    setMockBulkResponses({
-      "archives/read_texture": () => {
+    mockIpcBulkRoutes({
+      [EArchivesBulkRoute.READ_TEXTURE]: () => {
         throw new Error("unsupported DXT format");
       },
     });
@@ -153,10 +155,10 @@ describe("ArchivesService texture preview", () => {
     await service.selectArchiveFile(TEXTURE);
     await service.retrySelectedFile();
 
-    const imageCalls = listMockBulkCalls("archives/read_texture");
+    const imageCalls = listMockBulkCalls(EArchivesBulkRoute.READ_TEXTURE);
 
     expect(imageCalls).toHaveLength(2);
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
   });
 
   it("drops the decoded texture when the selection changes", async () => {

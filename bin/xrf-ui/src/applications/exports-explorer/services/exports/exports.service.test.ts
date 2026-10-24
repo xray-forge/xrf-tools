@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { reaction } from "@wirestate/mobx";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EExportsCommand } from "@xrf/ipc/commands/exports";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ExportsProject } from "@xrf/ipc/types/xrf-export";
 
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
@@ -13,15 +14,15 @@ const PROJECT: ExportsProject = mockExportsProject();
 
 describe("ExportsService", () => {
   beforeEach(() => {
-    setMockInvokeResponses({
-      ["plugin:exports|restore_project"]: mockSessionResponse(null),
-      ["plugin:exports|open_project"]: mockSessionResponse(PROJECT),
-      ["plugin:exports|close_project"]: undefined,
+    mockIpcCommands({
+      [EExportsCommand.RESTORE_PROJECT]: mockSessionResponse(null),
+      [EExportsCommand.OPEN_PROJECT]: mockSessionResponse(PROJECT),
+      [EExportsCommand.CLOSE_PROJECT]: undefined,
     });
   });
 
   it("restores an existing backend session", async () => {
-    setMockInvokeResponses({ ["plugin:exports|restore_project"]: mockSessionResponse(PROJECT) });
+    mockIpcCommands({ [EExportsCommand.RESTORE_PROJECT]: mockSessionResponse(PROJECT) });
 
     const service = mockInjectedService(ExportsService).service;
 
@@ -29,7 +30,7 @@ describe("ExportsService", () => {
 
     expect(service.isReady).toBe(true);
     expect(service.project.value).toEqual(PROJECT);
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:exports|open_project", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EExportsCommand.OPEN_PROJECT, expect.anything());
   });
 
   it("does not open a project when no retained session exists", async () => {
@@ -41,14 +42,14 @@ describe("ExportsService", () => {
     expect(service.project.value).toBeNull();
     expect(mockInvoke).toHaveBeenCalledTimes(1);
     // The restore names the tool's scope, which the backend lists its openings by.
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:exports|restore_project", {
+    expect(mockInvoke).toHaveBeenCalledWith(EExportsCommand.RESTORE_PROJECT, {
       tool: "shell",
     });
   });
 
   it("recovers from a failed session lookup", async () => {
-    setMockInvokeResponses({
-      ["plugin:exports|restore_project"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [EExportsCommand.RESTORE_PROJECT]: mockSessionResponse(() => {
         throw new Error("backend unavailable");
       }),
     });
@@ -68,7 +69,7 @@ describe("ExportsService", () => {
     await service.onProvision();
     await service.openExportsProject("C:\\chosen\\xrf");
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:exports|open_project", {
+    expect(mockInvoke).toHaveBeenCalledWith(EExportsCommand.OPEN_PROJECT, {
       sessionId: expect.any(String),
       projectPath: "C:\\chosen\\xrf",
     });
@@ -76,9 +77,9 @@ describe("ExportsService", () => {
   });
 
   it("retains projected data and reports refresh status when a replacement fails", async () => {
-    setMockInvokeResponses({
-      ["plugin:exports|restore_project"]: mockSessionResponse(PROJECT),
-      ["plugin:exports|open_project"]: mockSessionResponse(() => {
+    mockIpcCommands({
+      [EExportsCommand.RESTORE_PROJECT]: mockSessionResponse(PROJECT),
+      [EExportsCommand.OPEN_PROJECT]: mockSessionResponse(() => {
         throw new Error("parse failed");
       }),
     });
@@ -109,9 +110,9 @@ describe("ExportsService", () => {
   });
 
   it("keeps the project and rejects when close fails", async () => {
-    setMockInvokeResponses({
-      ["plugin:exports|restore_project"]: mockSessionResponse(PROJECT),
-      ["plugin:exports|close_project"]: () => {
+    mockIpcCommands({
+      [EExportsCommand.RESTORE_PROJECT]: mockSessionResponse(PROJECT),
+      [EExportsCommand.CLOSE_PROJECT]: () => {
         throw new Error("project is busy");
       },
     });

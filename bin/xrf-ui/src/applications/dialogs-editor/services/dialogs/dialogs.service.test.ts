@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EDialogsCommand } from "@xrf/ipc/commands/dialogs";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { DialogDescriptor, DialogProjectDescriptor } from "@xrf/ipc/types/xrf-dialog";
 
 import { createRoots } from "@/core/assets/lib/roots";
@@ -48,18 +49,18 @@ const DIALOG: DialogDescriptor = {
 
 describe("DialogsService", () => {
   beforeEach(() => {
-    setMockInvokeResponses({ ["plugin:dialogs|restore_project"]: mockSessionResponse(() => null) });
+    mockIpcCommands({ [EDialogsCommand.RESTORE_PROJECT]: mockSessionResponse(() => null) });
   });
 
   it("opens a project over roots and the layout mode", async () => {
     const { service } = mockInjectedService(DialogsService);
 
-    setMockInvokeResponses({ ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT) });
+    mockIpcCommands({ [EDialogsCommand.OPEN_PROJECT]: mockSessionResponse(() => PROJECT) });
 
     await service.openProject(createRoots(["C:\\game"]), "gamedata");
 
     // One request object rather than loose arguments, which is how every command with more than three is shaped.
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:dialogs|open_project", {
+    expect(mockInvoke).toHaveBeenCalledWith(EDialogsCommand.OPEN_PROJECT, {
       request: {
         sessionId: expect.any(String),
         roots: createRoots(["C:\\game"]),
@@ -75,15 +76,15 @@ describe("DialogsService", () => {
   it("fetches one dialog on selection rather than carrying every dialog in the project", async () => {
     const { service } = mockInjectedService(DialogsService);
 
-    setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT),
-      ["plugin:dialogs|get_dialog"]: () => DIALOG,
+    mockIpcCommands({
+      [EDialogsCommand.OPEN_PROJECT]: mockSessionResponse(() => PROJECT),
+      [EDialogsCommand.GET_DIALOG]: () => DIALOG,
     });
 
     await service.openProject(createRoots(["C:\\game"]), "gamedata");
     await service.selectDialog("configs\\gameplay\\dialogs.xml", "trader");
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:dialogs|get_dialog", {
+    expect(mockInvoke).toHaveBeenCalledWith(EDialogsCommand.GET_DIALOG, {
       request: {
         sessionId: expect.any(String),
         ...{
@@ -101,9 +102,9 @@ describe("DialogsService", () => {
   it("re-fetches the open dialog when the language changes", async () => {
     const { service } = mockInjectedService(DialogsService);
 
-    setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT),
-      ["plugin:dialogs|get_dialog"]: () => DIALOG,
+    mockIpcCommands({
+      [EDialogsCommand.OPEN_PROJECT]: mockSessionResponse(() => PROJECT),
+      [EDialogsCommand.GET_DIALOG]: () => DIALOG,
     });
 
     await service.openProject(createRoots(["C:\\game"]), "gamedata");
@@ -113,7 +114,7 @@ describe("DialogsService", () => {
 
     // The index is resident on the backend, so switching costs a lookup rather than a re-read, which
     // is why this re-asks instead of the response carrying every language.
-    expect(mockInvoke).toHaveBeenLastCalledWith("plugin:dialogs|get_dialog", {
+    expect(mockInvoke).toHaveBeenLastCalledWith(EDialogsCommand.GET_DIALOG, {
       request: {
         sessionId: expect.any(String),
         ...{
@@ -128,9 +129,9 @@ describe("DialogsService", () => {
   it("keeps the selection when a dialog cannot be read, so the tree still shows what failed", async () => {
     const { service } = mockInjectedService(DialogsService);
 
-    setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT),
-      ["plugin:dialogs|get_dialog"]: () => {
+    mockIpcCommands({
+      [EDialogsCommand.OPEN_PROJECT]: mockSessionResponse(() => PROJECT),
+      [EDialogsCommand.GET_DIALOG]: () => {
         throw new Error("No dialog 'trader' in 'configs\\gameplay\\dialogs.xml'");
       },
     });
@@ -147,9 +148,9 @@ describe("DialogsService", () => {
   it("drops the open dialog when a new project is opened", async () => {
     const { service } = mockInjectedService(DialogsService);
 
-    setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT),
-      ["plugin:dialogs|get_dialog"]: () => DIALOG,
+    mockIpcCommands({
+      [EDialogsCommand.OPEN_PROJECT]: mockSessionResponse(() => PROJECT),
+      [EDialogsCommand.GET_DIALOG]: () => DIALOG,
     });
 
     await service.openProject(createRoots(["C:\\game"]), "gamedata");
@@ -164,8 +165,8 @@ describe("DialogsService", () => {
   it("reports no languages for a project whose text tree was not read", async () => {
     const { service } = mockInjectedService(DialogsService);
 
-    setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: mockSessionResponse(() => ({ ...PROJECT, languages: [], textKeys: 0 })),
+    mockIpcCommands({
+      [EDialogsCommand.OPEN_PROJECT]: mockSessionResponse(() => ({ ...PROJECT, languages: [], textKeys: 0 })),
     });
 
     await service.openProject(createRoots(["C:\\game"]), "gamedata");
@@ -177,9 +178,9 @@ describe("DialogsService", () => {
   it("places the open dialog in the listing, which is how a tree addresses it", async () => {
     const { service } = mockInjectedService(DialogsService);
 
-    setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT),
-      ["plugin:dialogs|get_dialog"]: () => DIALOG,
+    mockIpcCommands({
+      [EDialogsCommand.OPEN_PROJECT]: mockSessionResponse(() => PROJECT),
+      [EDialogsCommand.GET_DIALOG]: () => DIALOG,
     });
 
     await service.openProject(createRoots(["C:\\game"]), "gamedata");
@@ -206,9 +207,9 @@ describe("DialogsService", () => {
   it("places no row for a selection the open project does not hold", async () => {
     const { service } = mockInjectedService(DialogsService);
 
-    setMockInvokeResponses({
-      ["plugin:dialogs|open_project"]: mockSessionResponse(() => PROJECT),
-      ["plugin:dialogs|get_dialog"]: () => DIALOG,
+    mockIpcCommands({
+      [EDialogsCommand.OPEN_PROJECT]: mockSessionResponse(() => PROJECT),
+      [EDialogsCommand.GET_DIALOG]: () => DIALOG,
     });
 
     await service.openProject(createRoots(["C:\\game"]), "gamedata");

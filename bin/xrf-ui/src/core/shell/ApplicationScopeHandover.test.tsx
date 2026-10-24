@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, fireEvent } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { useInjection } from "@wirestate/react";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { ReactElement, useEffect } from "react";
 import { NavigateFunction, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 
@@ -55,7 +55,7 @@ function ArchivesNavigationProbe({ onObserve }: { onObserve: (service: ArchivesS
 describe("panel handover between applications", () => {
   beforeEach(() => {
     clearLocalStorage();
-    setMockInvokeResponses({});
+    mockIpcCommands({});
   });
 
   it("keeps the loaded services during navigation within an application", async () => {

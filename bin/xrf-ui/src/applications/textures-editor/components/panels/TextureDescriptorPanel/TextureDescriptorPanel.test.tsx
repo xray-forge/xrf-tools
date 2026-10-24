@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { act, fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ETexturesCommand } from "@xrf/ipc/commands/textures";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureDescription, TextureVocabulary } from "@xrf/ipc/types/xrf-app-textures";
 
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
@@ -21,10 +22,9 @@ async function renderPanel(
 ): Promise<{ render: RenderResult; service: TextureEditorService }> {
   resetMockInvoke();
 
-  setMockInvokeResponses({
-    ["plugin:textures|describe"]: description,
-    ["plugin:textures|get_roots"]: null,
-    ["plugin:textures|get_vocabulary"]: VOCABULARY,
+  mockIpcCommands({
+    [ETexturesCommand.DESCRIBE]: description,
+    [ETexturesCommand.GET_VOCABULARY]: VOCABULARY,
   });
 
   const container: Container = mockContainer([
@@ -180,7 +180,7 @@ describe("TextureDescriptorPanel", () => {
 
   it("says what it would show when nothing is selected", async () => {
     resetMockInvoke();
-    setMockInvokeResponses({ ["plugin:textures|get_roots"]: null, ["plugin:textures|get_vocabulary"]: VOCABULARY });
+    mockIpcCommands({ [ETexturesCommand.GET_VOCABULARY]: VOCABULARY });
 
     const container: Container = mockContainer([
       JobsService,

@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 import { BYTES_PER_MEGABYTE } from "@xrf/format";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { EJobsCommand } from "@xrf/ipc/commands/jobs";
+import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
+import { JobDescription } from "@xrf/ipc/types/xrf-app-core";
 import { ArchivePackConfig, ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { PackerService } from "@/applications/archives-packer/services/packer/index";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { mockArchivePackResult } from "@/fixtures/mocks/archive.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
 
 function mockPackerService(config: ArchivePackConfig = FALLBACK_PACK_CONFIG): PackerService {
@@ -25,7 +29,7 @@ describe("PackerService defaults", () => {
   it("opens on the configuration the packer owns", async () => {
     const defaults: ArchivePackConfig = { ...FALLBACK_PACK_CONFIG, name: "from-packer" };
 
-    setMockInvokeResponses({ ["plugin:archives|default_pack_config"]: defaults });
+    mockIpcCommands({ [EArchivesCommand.DEFAULT_PACK_CONFIG]: defaults });
 
     const { service } = mockInjectedService(PackerService);
 
@@ -35,8 +39,8 @@ describe("PackerService defaults", () => {
   });
 
   it("opens an editable configuration even when the packer cannot answer", async () => {
-    setMockInvokeResponses({
-      ["plugin:archives|default_pack_config"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.DEFAULT_PACK_CONFIG]: () => {
         throw new Error("no backend");
       },
     });
@@ -57,8 +61,8 @@ describe("PackerService editing", () => {
   it("drops the last result when the configuration it described changes", async () => {
     const service: PackerService = mockPackerService();
 
-    setMockInvokeResponses({
-      ["plugin:archives|pack_directory"]: { volumes: ["gamedata.db"], filesTotal: 1 },
+    mockIpcCommands({
+      [EArchivesCommand.PACK_DIRECTORY]: mockArchivePackResult({ volumes: ["gamedata.db"], filesTotal: 1 }),
     });
 
     await service.pack({ ...FALLBACK_PACK_CONFIG, source: "C:\\in", destination: "C:\\out" }, false);
@@ -73,8 +77,8 @@ describe("PackerService editing", () => {
   it("keeps a failed run reportable instead of throwing at the editor", async () => {
     const service: PackerService = mockPackerService();
 
-    setMockInvokeResponses({
-      ["plugin:archives|pack_directory"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.PACK_DIRECTORY]: () => {
         throw new Error("source is empty");
       },
     });
@@ -91,8 +95,8 @@ describe("PackerService volume ceiling", () => {
   it("clears the previous result when the ceiling changes", async () => {
     const service = mockPackerService();
 
-    setMockInvokeResponses({
-      ["plugin:archives|pack_directory"]: { volumes: ["gamedata.db"], filesTotal: 1 },
+    mockIpcCommands({
+      [EArchivesCommand.PACK_DIRECTORY]: mockArchivePackResult({ volumes: ["gamedata.db"], filesTotal: 1 }),
     });
 
     await service.pack({ ...FALLBACK_PACK_CONFIG, source: "C:\\in", destination: "C:\\out" }, false);
@@ -109,8 +113,8 @@ describe("PackerService volume ceiling", () => {
   it("clears the previous failure when the ceiling changes", async () => {
     const service = mockPackerService();
 
-    setMockInvokeResponses({
-      ["plugin:archives|pack_directory"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.PACK_DIRECTORY]: () => {
         throw new Error("cannot pack");
       },
     });
@@ -170,7 +174,7 @@ describe("PackerService configuration files", () => {
   it("counts edits made after an import as unsaved", async () => {
     const imported: ArchivePackConfig = { ...FALLBACK_PACK_CONFIG, excludeExtensions: [".thm"] };
 
-    setMockInvokeResponses({ ["plugin:archives|import_pack_config"]: imported });
+    mockIpcCommands({ [EArchivesCommand.IMPORT_PACK_CONFIG]: imported });
 
     const service: PackerService = mockPackerService();
 
@@ -185,7 +189,7 @@ describe("PackerService configuration files", () => {
   });
 
   it("does not count the paths a run chooses as unsaved edits", async () => {
-    setMockInvokeResponses({ ["plugin:archives|import_pack_config"]: FALLBACK_PACK_CONFIG });
+    mockIpcCommands({ [EArchivesCommand.IMPORT_PACK_CONFIG]: FALLBACK_PACK_CONFIG });
 
     const service: PackerService = mockPackerService();
 
@@ -197,7 +201,7 @@ describe("PackerService configuration files", () => {
   });
 
   it("settles the configuration once it is written back", async () => {
-    setMockInvokeResponses({ ["plugin:archives|import_pack_config"]: FALLBACK_PACK_CONFIG });
+    mockIpcCommands({ [EArchivesCommand.IMPORT_PACK_CONFIG]: FALLBACK_PACK_CONFIG });
 
     const service: PackerService = mockPackerService();
 
@@ -211,7 +215,7 @@ describe("PackerService configuration files", () => {
 
     expect(service.isDirty).toBe(false);
     expect(service.configName).toBe("other.ltx");
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|export_pack_config", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.EXPORT_PACK_CONFIG, {
       path: "C:\\configs\\other.ltx",
       config: service.config,
     });
@@ -222,7 +226,7 @@ describe("PackerService configuration files", () => {
   it.each(["ltx", "json"])("tracks the same unsaved state whichever format a file names (%s)", async (extension) => {
     const imported: ArchivePackConfig = { ...FALLBACK_PACK_CONFIG, excludeExtensions: [".thm"] };
 
-    setMockInvokeResponses({ ["plugin:archives|import_pack_config"]: imported });
+    mockIpcCommands({ [EArchivesCommand.IMPORT_PACK_CONFIG]: imported });
 
     const service: PackerService = mockPackerService();
 
@@ -240,7 +244,7 @@ describe("PackerService configuration files", () => {
 
     expect(service.isDirty).toBe(false);
     expect(service.configName).toBe(`other.${extension}`);
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|export_pack_config", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.EXPORT_PACK_CONFIG, {
       path: `C:\\configs\\other.${extension}`,
       config: service.config,
     });
@@ -248,8 +252,8 @@ describe("PackerService configuration files", () => {
 
   it("reports what the backend refused about a configuration file it cannot read", async () => {
     // An unsupported extension is the backend's refusal, not this service's rule; it only has to surface it.
-    setMockInvokeResponses({
-      ["plugin:archives|import_pack_config"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.IMPORT_PACK_CONFIG]: () => {
         throw new Error("'.txt' is not a packing configuration");
       },
     });
@@ -277,11 +281,11 @@ describe("PackerService adoption", () => {
    * @param listed - What the jobs listing answers, which is how a pack is already running before this window loads.
    * @returns The packer and its container.
    */
-  function provisionedPacker(listed: Array<unknown> = []): IInjectedServiceMockDescriptor<PackerService> {
-    setMockInvokeResponses({
-      ["plugin:jobs|list"]: listed,
-      ["plugin:jobs|attach"]: true,
-      ["plugin:archives|default_pack_config"]: FALLBACK_PACK_CONFIG,
+  function provisionedPacker(listed: Array<JobDescription> = []): IInjectedServiceMockDescriptor<PackerService> {
+    mockIpcCommands({
+      [EJobsCommand.LIST]: listed,
+      [EJobsCommand.ATTACH]: true,
+      [EArchivesCommand.DEFAULT_PACK_CONFIG]: FALLBACK_PACK_CONFIG,
     });
 
     const descriptor: IInjectedServiceMockDescriptor<PackerService> = mockInjectedService(PackerService);

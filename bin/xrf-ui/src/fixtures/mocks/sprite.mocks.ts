@@ -3,7 +3,7 @@ import {
   EquipmentSpriteMetadata,
   EquipmentSpriteOpen,
 } from "@xrf/ipc/types/xrf-app-sprite-equipment";
-import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
+import { EEquipmentSlotClaim, EquipmentSlotOccupant, PackEquipmentResult } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 
 /**
@@ -75,6 +75,25 @@ export function mockEquipmentSpriteMetadata(overrides: Partial<EquipmentSpriteMe
     location: mockEquipmentSheetLocation(open),
     configError: null,
     occupants: [],
+    ...overrides,
+  };
+}
+
+/**
+ * What a pack run answers: a finished sheet, unless the case varies it.
+ *
+ * @param overrides - What this case varies.
+ * @returns The result as it crosses IPC.
+ */
+export function mockPackEquipmentResult(overrides: Partial<PackEquipmentResult> = {}): PackEquipmentResult {
+  return {
+    outcome: "completed",
+    duration: 1000,
+    savedAt: "C:\\out\\equipment.dds",
+    savedWidth: 1024,
+    savedHeight: 512,
+    packedCount: 12,
+    skippedCount: 2,
     ...overrides,
   };
 }

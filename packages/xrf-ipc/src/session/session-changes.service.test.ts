@@ -3,19 +3,20 @@ import { EventBus, WireEvent } from "@wirestate/core";
 
 import { mockInjectedService } from "../../test/container";
 
+import { EAssetsCommand } from "#/commands/assets";
 import { SessionChangesService } from "#/session/session-changes.service";
 import { SESSION_CHANGE_EVENT } from "#/session/session.types";
 import {
   MockChannel,
   mockInvoke,
+  mockIpcCommands,
   mockIsTauri,
   resetMockInvoke,
   resetMockIsTauri,
-  setMockInvokeResponses,
 } from "#/testing/index";
 import { AssetChangeEvent, SessionChange } from "#/types/xrf-app-core";
 
-const SUBSCRIBE: string = "plugin:assets|subscribe_changes";
+const SUBSCRIBE: string = EAssetsCommand.SUBSCRIBE_CHANGES;
 
 function countSubscriptions(): number {
   return mockInvoke.mock.calls.filter(([name]) => name === SUBSCRIBE).length;
@@ -76,11 +77,11 @@ describe("SessionChangesService", () => {
   it("subscribes again after the backend refused, and nowhere outside the desktop shell", async () => {
     const { service } = mockInjectedService(SessionChangesService);
 
-    setMockInvokeResponses({ [SUBSCRIBE]: () => Promise.reject(new Error("no window")) });
+    mockIpcCommands({ [SUBSCRIBE]: () => Promise.reject(new Error("no window")) });
 
     await service.listen();
 
-    setMockInvokeResponses({});
+    mockIpcCommands({});
 
     await service.listen();
 

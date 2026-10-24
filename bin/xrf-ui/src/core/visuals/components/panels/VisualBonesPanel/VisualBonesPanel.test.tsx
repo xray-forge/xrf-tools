@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult, within } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
@@ -33,8 +34,8 @@ async function renderPanel(): Promise<{ render: RenderResult; service: VisualsSe
     }),
   });
 
-  setMockInvokeResponses({
-    ["plugin:visuals|open_model"]: mockSessionResponse(selected),
+  mockIpcCommands({
+    [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(selected),
   });
 
   const container: Container = mockContainer([

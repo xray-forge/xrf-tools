@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { isComputedProp } from "@wirestate/mobx";
-import { listMockBulkCalls, resetMockInvoke, setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EAssetsBulkRoute } from "@xrf/ipc/commands/assets-bulk";
+import { ETexturesCommand } from "@xrf/ipc/commands/textures";
+import { ETexturesBulkRoute } from "@xrf/ipc/commands/textures-bulk";
+import { listMockBulkCalls, mockIpcBulkRoutes, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -22,14 +25,14 @@ function pendingPreview() {
 }
 
 async function mockService(): Promise<{ service: TextureEncodingService; selection: TextureSelectionService }> {
-  setMockInvokeResponses({
-    ["plugin:textures|compare_encodings"]: mockTextureEncodingComparison(),
-    ["plugin:textures|describe"]: mockTextureDescription(),
+  mockIpcCommands({
+    [ETexturesCommand.COMPARE_ENCODINGS]: mockTextureEncodingComparison(),
+    [ETexturesCommand.DESCRIBE]: mockTextureDescription(),
   });
 
-  setMockBulkResponses({
-    "textures/read_candidate": new ArrayBuffer(8),
-    "assets/read_texture": new ArrayBuffer(0),
+  mockIpcBulkRoutes({
+    [ETexturesBulkRoute.READ_CANDIDATE]: new ArrayBuffer(8),
+    [EAssetsBulkRoute.READ_TEXTURE]: new ArrayBuffer(0),
   });
 
   const container: Container = mockContainer([JobsService, TextureSelectionService, TextureEncodingService]);
@@ -78,12 +81,12 @@ describe("TextureEncodingService", () => {
 
     await service.run("kaiser");
 
-    setMockInvokeResponses({
-      ["plugin:textures|describe"]: mockTextureDescription("ston\\ston_beton06"),
+    mockIpcCommands({
+      [ETexturesCommand.DESCRIBE]: mockTextureDescription("ston\\ston_beton06"),
     });
 
-    setMockBulkResponses({
-      "assets/read_texture": new ArrayBuffer(0),
+    mockIpcBulkRoutes({
+      [EAssetsBulkRoute.READ_TEXTURE]: new ArrayBuffer(0),
     });
 
     await selection.openFile("C:\\gamedata\\textures\\ston\\ston_beton06.dds");
@@ -169,8 +172,8 @@ describe("TextureEncodingService", () => {
 
     await service.run(null);
 
-    setMockBulkResponses({
-      "textures/read_candidate": () => {
+    mockIpcBulkRoutes({
+      [ETexturesBulkRoute.READ_CANDIDATE]: () => {
         throw new Error("The held comparison does not carry that format");
       },
     });
@@ -188,7 +191,7 @@ describe("TextureEncodingService", () => {
     await service.run(null);
     await service.choose("bc3");
 
-    expect(listMockBulkCalls("textures/read_candidate").at(-1)).toEqual({
+    expect(listMockBulkCalls(ETexturesBulkRoute.READ_CANDIDATE).at(-1)).toEqual({
       sessionId: mockTextureEncodingComparison().sessionId,
       format: "bc3",
     });
@@ -206,11 +209,11 @@ describe("TextureEncodingService", () => {
         : { source: { kind: "file", path: "D:/other/ston_beton05.dds" } }),
     });
 
-    setMockInvokeResponses({
-      ["plugin:textures|describe"]: description,
+    mockIpcCommands({
+      [ETexturesCommand.DESCRIBE]: description,
     });
-    setMockBulkResponses({
-      "assets/read_texture": new ArrayBuffer(0),
+    mockIpcBulkRoutes({
+      [EAssetsBulkRoute.READ_TEXTURE]: new ArrayBuffer(0),
     });
 
     await selection.open(description.source, description.roots);
@@ -226,7 +229,7 @@ describe("TextureEncodingService", () => {
 
     await service.run(null);
 
-    setMockBulkResponses({ "textures/read_candidate": () => pending.promise });
+    mockIpcBulkRoutes({ [ETexturesBulkRoute.READ_CANDIDATE]: () => pending.promise });
 
     const choosing = service.choose("bc3");
 
@@ -244,13 +247,13 @@ describe("TextureEncodingService", () => {
 
     await service.run(null);
 
-    setMockInvokeResponses({
-      ["plugin:textures|compare_encodings"]: mockTextureEncodingComparison({
+    mockIpcCommands({
+      [ETexturesCommand.COMPARE_ENCODINGS]: mockTextureEncodingComparison({
         sessionId: "5ffb9fb7-b48b-4b55-b713-d7941d623cbe",
       }),
     });
-    setMockBulkResponses({
-      "textures/read_candidate": () => pending.promise,
+    mockIpcBulkRoutes({
+      [ETexturesBulkRoute.READ_CANDIDATE]: () => pending.promise,
     });
 
     const choosing = service.choose("bc3");

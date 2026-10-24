@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, RenderResult } from "@testing-library/react";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EJobsCommand } from "@xrf/ipc/commands/jobs";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { JobDescription } from "@xrf/ipc/types/xrf-app-core";
 
 import { JobsPanel } from "@/core/shell/panel/jobs/JobsPanel";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
-const LIST_COMMAND: string = "plugin:jobs|list";
-const CANCEL_COMMAND: string = "plugin:jobs|cancel";
+const LIST_COMMAND: string = EJobsCommand.LIST;
+const CANCEL_COMMAND: string = EJobsCommand.CANCEL;
 
 function described(patch: Partial<JobDescription> = {}): JobDescription {
   return {
@@ -40,7 +41,7 @@ describe("JobsPanel", () => {
   });
 
   it("names the work rather than the kind that addressed it", async () => {
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()] });
+    mockIpcCommands({ [LIST_COMMAND]: [described()] });
 
     const rendered: RenderResult = renderWithProviders(<JobsPanel />);
 
@@ -49,7 +50,7 @@ describe("JobsPanel", () => {
 
   it("shows the leases a running job holds, which is why another was refused", async () => {
     // The question this panel exists to answer: a refused start names a job the user cannot otherwise see.
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()] });
+    mockIpcCommands({ [LIST_COMMAND]: [described()] });
 
     const rendered: RenderResult = renderWithProviders(<JobsPanel />);
 
@@ -57,7 +58,7 @@ describe("JobsPanel", () => {
   });
 
   it("reports how a finished job ended", async () => {
-    setMockInvokeResponses({ [LIST_COMMAND]: [described({ conclusion: "failed", error: "volume cap refused" })] });
+    mockIpcCommands({ [LIST_COMMAND]: [described({ conclusion: "failed", error: "volume cap refused" })] });
 
     const rendered: RenderResult = renderWithProviders(<JobsPanel />);
 
@@ -66,7 +67,7 @@ describe("JobsPanel", () => {
   });
 
   it("says plainly when there is nothing to show", async () => {
-    setMockInvokeResponses({ [LIST_COMMAND]: [] });
+    mockIpcCommands({ [LIST_COMMAND]: [] });
 
     const rendered: RenderResult = await act(async () => renderWithProviders(<JobsPanel />));
 
@@ -74,7 +75,7 @@ describe("JobsPanel", () => {
   });
 
   it("offers no cancel for a job that has already ended", async () => {
-    setMockInvokeResponses({
+    mockIpcCommands({
       [LIST_COMMAND]: [described({ conclusion: "completed" })],
       [CANCEL_COMMAND]: true,
     });
@@ -89,13 +90,13 @@ describe("JobsPanel", () => {
   it("keeps the last answer when the backend cannot be read", async () => {
     // The backend being briefly unreadable is not evidence that nothing is running, and a list that emptied itself
     // would say it was.
-    setMockInvokeResponses({ [LIST_COMMAND]: [described()] });
+    mockIpcCommands({ [LIST_COMMAND]: [described()] });
 
     const rendered: RenderResult = renderWithProviders(<JobsPanel />);
 
     await rendered.findByText("Archive packing");
 
-    setMockInvokeResponses({
+    mockIpcCommands({
       [LIST_COMMAND]: () => {
         throw new Error("state unavailable");
       },

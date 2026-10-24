@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container, EventBus, WireEvent } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
+import { ETranslationsCommand } from "@xrf/ipc/commands/translations";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
-import { InvokeMap, mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { IpcCommandMocks, mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionChange, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { ETranslationSaveOutcome } from "@xrf/ipc/types/xrf-app-translations";
 import { TranslationProjectDescriptor } from "@xrf/ipc/types/xrf-translation";
@@ -18,7 +19,7 @@ const FILE: string = "st_test.json";
 const ID: string = "st_test";
 const LANGUAGE: string = "eng";
 const ROOT: string = "C:\\project";
-const GET_PROJECT: string = "plugin:translations|restore_project";
+const GET_PROJECT: string = ETranslationsCommand.RESTORE_PROJECT;
 
 function createProject(value: string): TranslationProjectDescriptor {
   return {
@@ -55,13 +56,13 @@ interface IOpenedProject {
 }
 
 /** Provisions the editor, as its application does, and opens a project whose one cell reads `opened`. */
-async function openProject(responses: InvokeMap = {}): Promise<IOpenedProject> {
+async function openProject(responses: IpcCommandMocks = {}): Promise<IOpenedProject> {
   const { container, service } = mockInjectedService(TranslationsService);
   let sessionId: string = "";
 
-  setMockInvokeResponses({
+  mockIpcCommands({
     [GET_PROJECT]: null,
-    ["plugin:translations|open_project"]: mockSessionResponse((args?: Record<string, unknown>) => {
+    [ETranslationsCommand.OPEN_PROJECT]: mockSessionResponse((args?: Record<string, unknown>) => {
       sessionId = (args?.request as { sessionId: string }).sessionId;
 
       return createProject("opened");
@@ -93,7 +94,7 @@ describe("TranslationsService changes", () => {
     const { container, service, sessionId } = await openProject();
     const before: number = countReads();
 
-    setMockInvokeResponses({ [GET_PROJECT]: mockSessionSnapshot(createProject("saved elsewhere"), sessionId, 1) });
+    mockIpcCommands({ [GET_PROJECT]: mockSessionSnapshot(createProject("saved elsewhere"), sessionId, 1) });
     notify(container, derived(sessionId, 1));
     await flush();
 
@@ -119,7 +120,7 @@ describe("TranslationsService changes", () => {
     const { container, service, sessionId } = await openProject();
     const reads: Array<(snapshot: SessionSnapshot<TranslationProjectDescriptor>) => void> = [];
 
-    setMockInvokeResponses({ [GET_PROJECT]: () => new Promise((resolve) => reads.push(resolve)) });
+    mockIpcCommands({ [GET_PROJECT]: () => new Promise((resolve) => reads.push(resolve)) });
 
     notify(container, derived(sessionId, 1));
     notify(container, derived(sessionId, 2));
@@ -139,7 +140,7 @@ describe("TranslationsService changes", () => {
 
   it("reads nothing again for the change its own save made", async () => {
     const { container, service, sessionId } = await openProject({
-      ["plugin:translations|save_file"]: (args?: Record<string, unknown>) => ({
+      [ETranslationsCommand.SAVE_FILE]: (args?: Record<string, unknown>) => ({
         kind: ETranslationSaveOutcome.SAVED,
         project: mockSessionSnapshot(createProject("saved"), args?.sessionId as string, 1),
       }),

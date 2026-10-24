@@ -2,7 +2,8 @@ import { expect } from "@jest/globals";
 import { act, RenderResult, waitFor } from "@testing-library/react";
 import { Binding, Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { LevelWeatherDescription, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { RenderAppliedReport, RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
 import { ReactNode } from "react";
@@ -95,9 +96,9 @@ export async function renderOpenLevelView(
   descriptor: ILevelViewContainerDescriptor,
   opening: ILevelViewOpening = {}
 ): Promise<TLevelViewRenderResult> {
-  setMockInvokeResponses({
-    ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription(opening.level)),
-    ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription(opening.weather)),
+  mockIpcCommands({
+    [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(mockSelectedLevelDescription(opening.level)),
+    [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription(opening.weather)),
   });
 
   const rendered: TLevelViewRenderResult = renderLevelView(ui, descriptor);

@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
-import { setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { ELevelsBulkRoute } from "@xrf/ipc/commands/levels-bulk";
+import { mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
 import { Nullable } from "@xrf/types";
 
 import { ILevelViewerScreenshot } from "@/applications/level-viewer/lib/screenshot/level-viewer-screenshot";
@@ -32,8 +34,8 @@ function mockScreenshots(): ILevelViewContainerDescriptor & { screenshots: Level
 beforeEach(() => {
   clearLocalStorage();
   // A PNG's signature and header, 1920 by 1080.
-  setMockBulkResponses({
-    ["levels/read_screenshot"]: Uint8Array.from([
+  mockIpcBulkRoutes({
+    [ELevelsBulkRoute.READ_SCREENSHOT]: Uint8Array.from([
       137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 7, 128, 0, 0, 4, 56,
     ]).buffer,
   });
@@ -49,9 +51,9 @@ describe("LevelViewerScreenshotService", () => {
   it("saves the frame at once and its report with the timed frame, timed for the shot alone", async () => {
     const saved: Array<Record<string, unknown>> = [];
 
-    setMockInvokeResponses({
-      ["plugin:levels|find_screenshot_path"]: PATH,
-      ["plugin:levels|write_screenshot_report"]: (args?: Record<string, unknown>) => {
+    mockIpcCommands({
+      [ELevelsCommand.FIND_SCREENSHOT_PATH]: PATH,
+      [ELevelsCommand.WRITE_SCREENSHOT_REPORT]: (args?: Record<string, unknown>) => {
         saved.push(args ?? {});
 
         return REPORT_PATH;
@@ -96,9 +98,9 @@ describe("LevelViewerScreenshotService", () => {
   it("reports the frame as it stands where the passes are timed already", async () => {
     const saved: Array<Record<string, unknown>> = [];
 
-    setMockInvokeResponses({
-      ["plugin:levels|find_screenshot_path"]: PATH,
-      ["plugin:levels|write_screenshot_report"]: (args?: Record<string, unknown>) => {
+    mockIpcCommands({
+      [ELevelsCommand.FIND_SCREENSHOT_PATH]: PATH,
+      [ELevelsCommand.WRITE_SCREENSHOT_REPORT]: (args?: Record<string, unknown>) => {
         saved.push(args ?? {});
 
         return REPORT_PATH;
@@ -120,9 +122,9 @@ describe("LevelViewerScreenshotService", () => {
   });
 
   it("keeps the screenshot when its report cannot be written, and says so apart", async () => {
-    setMockInvokeResponses({
-      ["plugin:levels|find_screenshot_path"]: PATH,
-      ["plugin:levels|write_screenshot_report"]: () => {
+    mockIpcCommands({
+      [ELevelsCommand.FIND_SCREENSHOT_PATH]: PATH,
+      [ELevelsCommand.WRITE_SCREENSHOT_REPORT]: () => {
         throw new Error("disk full");
       },
     });
@@ -140,11 +142,15 @@ describe("LevelViewerScreenshotService", () => {
   });
 
   it("deletes the screenshot through the backend and forgets it", async () => {
-    const deleted: Array<unknown> = [];
+    const deleted: Array<string> = [];
 
-    setMockInvokeResponses({
-      ["plugin:levels|delete_screenshot"]: (args?: Record<string, unknown>) => deleted.push(args?.path),
-      ["plugin:levels|find_screenshot_path"]: PATH,
+    mockIpcCommands({
+      [ELevelsCommand.DELETE_SCREENSHOT]: ({ path }) => {
+        deleted.push(path);
+
+        return null;
+      },
+      [ELevelsCommand.FIND_SCREENSHOT_PATH]: PATH,
     });
 
     const { screenshots, render, renderSettings } = mockScreenshots();

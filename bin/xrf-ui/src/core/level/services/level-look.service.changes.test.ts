@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { EventBus } from "@wirestate/core";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
 import { LEVEL_CONSOLE_PART, LEVEL_SPAWN_PART, LevelConsoleDefaults } from "@xrf/ipc/types/xrf-app-levels";
 
@@ -36,7 +37,7 @@ function mockDefaults(sunScale: number): LevelConsoleDefaults {
 }
 
 function countReads(): number {
-  return mockInvoke.mock.calls.filter(([command]) => command === "plugin:levels|describe_console_defaults").length;
+  return mockInvoke.mock.calls.filter(([command]) => command === ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS).length;
 }
 
 afterEach(() => {
@@ -48,8 +49,8 @@ describe("LevelLookService session changes", () => {
   it("reads the console defaults again for a change naming them, and for no other part", async () => {
     let revision: number = 0;
 
-    setMockInvokeResponses({
-      ["plugin:levels|describe_console_defaults"]: () =>
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: () =>
         mockSessionSnapshot(mockDefaults(revision + 1), "level", revision),
     });
 

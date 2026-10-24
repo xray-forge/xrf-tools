@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EConfigsCommand } from "@xrf/ipc/commands/configs";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
 import {
   ELtxFindingKind,
@@ -46,7 +47,7 @@ describe("ConfigsDocumentService", () => {
       resolve = settle;
     });
 
-    setMockInvokeResponses({ "plugin:configs|read_document": () => response });
+    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: () => response });
 
     const { service } = await mockOpenedService();
     const reading = service.select("system.ltx");
@@ -66,7 +67,7 @@ describe("ConfigsDocumentService", () => {
       reject = fail;
     });
 
-    setMockInvokeResponses({ "plugin:configs|read_document": () => response });
+    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: () => response });
 
     const { service } = await mockOpenedService();
     const reading = service.select("system.ltx");
@@ -87,12 +88,12 @@ describe("ConfigsDocumentService", () => {
       resolve = settle;
     });
 
-    setMockInvokeResponses({ "plugin:configs|read_document": previous });
+    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: previous });
 
     const { service } = await mockOpenedService();
 
     await service.select("previous.ltx");
-    setMockInvokeResponses({ "plugin:configs|read_document": () => response });
+    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: () => response });
 
     const reading = service.select("replacement.ltx");
 
@@ -139,11 +140,11 @@ describe("ConfigsDocumentService", () => {
         section: section.name,
       };
 
-      setMockInvokeResponses({
-        "plugin:configs|read_document": mockDocumentOf(entry),
-        "plugin:configs|list_resolved_sections": index,
-        "plugin:configs|list_findings": findings,
-        "plugin:configs|read_section_scheme": report,
+      mockIpcCommands({
+        [EConfigsCommand.READ_DOCUMENT]: mockDocumentOf(entry),
+        [EConfigsCommand.LIST_RESOLVED_SECTIONS]: index,
+        [EConfigsCommand.LIST_FINDINGS]: findings,
+        [EConfigsCommand.READ_SECTION_SCHEME]: report,
       });
 
       const { service, container } = await mockOpenedService();
@@ -167,11 +168,11 @@ describe("ConfigsDocumentService", () => {
         finish = () => (outcome === "succeed" ? resolve() : reject(new Error("Late read failed")));
       });
 
-      setMockInvokeResponses({
-        "plugin:configs|read_document": () => pending.then(() => mockDocumentOf("other.ltx")),
-        "plugin:configs|read_resolved_sections": () => pending.then(() => [section]),
-        "plugin:configs|list_findings": () => pending.then(() => findings),
-        "plugin:configs|read_section_scheme": () => pending.then(() => report),
+      mockIpcCommands({
+        [EConfigsCommand.READ_DOCUMENT]: () => pending.then(() => mockDocumentOf("other.ltx")),
+        [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => pending.then(() => [section]),
+        [EConfigsCommand.LIST_FINDINGS]: () => pending.then(() => findings),
+        [EConfigsCommand.READ_SECTION_SCHEME]: () => pending.then(() => report),
       });
 
       const reads = [
@@ -229,7 +230,7 @@ describe("ConfigsDocumentService", () => {
       finish = resolve;
     });
 
-    setMockInvokeResponses({ "plugin:configs|list_resolved_sections": () => pending });
+    mockIpcCommands({ [EConfigsCommand.LIST_RESOLVED_SECTIONS]: () => pending });
 
     const { service, container } = await mockOpenedService();
     const resolved = container.get(ConfigsResolvedService);

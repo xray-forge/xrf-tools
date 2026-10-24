@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EAssetsCommand } from "@xrf/ipc/commands/assets";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 import { Nullable } from "@xrf/types";
 
 import { IPathField } from "@/core/ui/form/use-path-field";
@@ -33,8 +34,8 @@ describe("AssetRootFormRow", () => {
   });
 
   it("reports what the backend made of the directory", async () => {
-    setMockInvokeResponses({
-      ["plugin:assets|probe_root"]: { evidence: [], kind: "installation", mounts: 12 },
+    mockIpcCommands({
+      [EAssetsCommand.PROBE_ROOT]: { evidence: [], kind: "installation", mounts: 12 },
     });
 
     const { findByText, getByRole } = renderWithProviders(<AssetRootFormRow field={mockField(INSTALLATION)} />);
@@ -55,8 +56,8 @@ describe("AssetRootFormRow", () => {
   });
 
   it("says what is wrong instead of what it is, when the path is not there", async () => {
-    setMockInvokeResponses({
-      ["plugin:assets|probe_root"]: { evidence: ["textures"], kind: "root", mounts: 1 },
+    mockIpcCommands({
+      [EAssetsCommand.PROBE_ROOT]: { evidence: ["textures"], kind: "root", mounts: 1 },
     });
 
     const { findByText, queryByText, getByRole } = renderWithProviders(

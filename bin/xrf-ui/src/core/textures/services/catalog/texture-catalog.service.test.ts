@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
-import { resetMockInvoke, setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EAssetsBulkRoute } from "@xrf/ipc/commands/assets-bulk";
+import { ETexturesCommand } from "@xrf/ipc/commands/textures";
+import { mockIpcBulkRoutes, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureCatalogMode } from "@xrf/ipc/types/xrf-app-textures";
 
 import { TextureSelectionService } from "@/core/textures/services/selection";
@@ -26,19 +28,19 @@ interface IAsked {
 function mockService(): { service: TextureCatalogService; asked: IAsked } {
   const asked: IAsked = { describes: [], openModes: [], sweeps: 0 };
 
-  setMockInvokeResponses({
-    ["plugin:textures|describe"]: (args?: Record<string, unknown>) => {
+  mockIpcCommands({
+    [ETexturesCommand.DESCRIBE]: (args?: Record<string, unknown>) => {
       asked.describes.push(args?.source);
 
       return mockTextureDescription();
     },
-    ["plugin:textures|describe_catalog"]: () => {
+    [ETexturesCommand.DESCRIBE_CATALOG]: () => {
       asked.sweeps += 1;
 
       return [mockTextureSummary(MOCK_TEXTURE)];
     },
-    ["plugin:textures|restore_browse"]: mockSessionResponse(null),
-    ["plugin:textures|open_browse"]: mockSessionResponse((args?: Record<string, unknown>) => {
+    [ETexturesCommand.RESTORE_BROWSE]: mockSessionResponse(null),
+    [ETexturesCommand.OPEN_BROWSE]: mockSessionResponse((args?: Record<string, unknown>) => {
       const mode: TextureCatalogMode = args?.mode as TextureCatalogMode;
 
       asked.openModes.push(mode);
@@ -47,8 +49,8 @@ function mockService(): { service: TextureCatalogService; asked: IAsked } {
     }),
   });
 
-  setMockBulkResponses({
-    "assets/read_texture": new ArrayBuffer(0),
+  mockIpcBulkRoutes({
+    [EAssetsBulkRoute.READ_TEXTURE]: new ArrayBuffer(0),
   });
 
   const container: Container = mockContainer([TextureSelectionService, TextureCatalogService]);

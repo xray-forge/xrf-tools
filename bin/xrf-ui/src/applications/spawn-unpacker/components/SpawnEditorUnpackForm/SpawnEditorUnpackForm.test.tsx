@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { fireEvent, waitFor } from "@testing-library/react";
-import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ESpawnCommand } from "@xrf/ipc/commands/spawn";
+import { mockIpcCommands } from "@xrf/ipc/testing";
 
 import { SpawnConversionService } from "@/core/spawn/services/spawn-conversion.service";
 import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
@@ -17,8 +18,8 @@ describe("SpawnEditorUnpackForm outcomes", () => {
 
   describe.each(["Source", "Destination"])("editing %s", (label) => {
     it.each(["success", "failure"])("clears the previous %s", async (outcome) => {
-      setMockInvokeResponses({
-        ["plugin:spawn|unpack_file"]: () => {
+      mockIpcCommands({
+        [ESpawnCommand.UNPACK_FILE]: () => {
           if (outcome === "failure") {
             throw new Error("Cannot process spawn");
           }

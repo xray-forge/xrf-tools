@@ -1,30 +1,24 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ESpriteEquipmentCommand } from "@xrf/ipc/commands/sprite-equipment";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { PackEquipmentResult } from "@xrf/ipc/types/xrf-texture";
 
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT } from "@/core/notifications/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
+import { mockPackEquipmentResult } from "@/fixtures/mocks/sprite.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 
-const RESULT: PackEquipmentResult = {
-  outcome: "completed",
-  duration: 1000,
-  savedAt: "C:\\out\\equipment.dds",
-  savedWidth: 1024,
-  savedHeight: 512,
-  packedCount: 12,
-  skippedCount: 2,
-};
+const RESULT: PackEquipmentResult = mockPackEquipmentResult();
 
 describe("SpriteEquipmentPackerService", () => {
-  beforeEach(() => setMockInvokeResponses({}));
+  beforeEach(() => mockIpcCommands({}));
 
   it("returns the packed sheet, preserves arguments, and emits one completion notice", async () => {
-    setMockInvokeResponses({ "plugin:sprite-equipment|pack_sprite": RESULT });
+    mockIpcCommands({ [ESpriteEquipmentCommand.PACK_SPRITE]: RESULT });
 
     const { service, container } = mockInjectedService(SpriteEquipmentPackerService);
     const notices: Array<unknown> = [];
@@ -37,7 +31,7 @@ describe("SpriteEquipmentPackerService", () => {
     expect(service.operation.result).toEqual(RESULT);
     expect(service.operation.isRunning).toBe(false);
     expect(mockInvoke).toHaveBeenCalledWith(
-      "plugin:sprite-equipment|pack_sprite",
+      ESpriteEquipmentCommand.PACK_SPRITE,
       expect.objectContaining({
         request: { sourcePath: "C:\\icons", outputPath: RESULT.savedAt, systemLtxPath: "C:\\system.ltx", isDltx: true },
       })
@@ -46,8 +40,8 @@ describe("SpriteEquipmentPackerService", () => {
   });
 
   it("reports the failure to both the runner and an awaiting editor", async () => {
-    setMockInvokeResponses({
-      "plugin:sprite-equipment|pack_sprite": () => {
+    mockIpcCommands({
+      [ESpriteEquipmentCommand.PACK_SPRITE]: () => {
         throw new Error("Cannot write sheet");
       },
     });
@@ -69,7 +63,7 @@ describe("SpriteEquipmentPackerService", () => {
       finish = resolve;
     });
 
-    setMockInvokeResponses({ "plugin:sprite-equipment|pack_sprite": () => response });
+    mockIpcCommands({ [ESpriteEquipmentCommand.PACK_SPRITE]: () => response });
 
     const { service, container } = mockInjectedService(SpriteEquipmentPackerService);
     const jobs = container.get(JobsService);

@@ -2,16 +2,23 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { makeAutoObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { ERenderCommand } from "@xrf/ipc/commands/render";
+import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import {
   getMockChannels,
+  listMockInvokeCalls,
   MockChannel,
-  mockInvoke,
+  mockIpcCommands,
   resetMockChannels,
   resetMockInvoke,
-  setMockInvokeResponses,
 } from "@xrf/ipc/testing";
 import { ViewportEvent } from "@xrf/ipc/types/xrf-app-render";
-import { ERenderOverlay, ERenderTextureState, ERenderViewportEvent } from "@xrf/ipc/types/xrf-renderer";
+import {
+  ERenderOverlay,
+  ERenderTextureGroup,
+  ERenderTextureState,
+  ERenderViewportEvent,
+} from "@xrf/ipc/types/xrf-renderer";
 import { EWorldCameraCommand } from "@xrf/ipc/types/xrf-world";
 
 import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
@@ -27,13 +34,6 @@ import { mockContainer } from "@/fixtures/utils/container";
 const VIEWPORT: number = 3;
 /** The scene the mocked renderer draws every model shown as. */
 const SCENE: number = 4;
-
-/** What a render command was sent, in order. */
-function sent(command: string, plugin: string = "render"): Array<Record<string, unknown>> {
-  return mockInvoke.mock.calls
-    .filter(([name]) => name === `plugin:${plugin}|${command}`)
-    .map(([, args]) => args as Record<string, unknown>);
-}
 
 async function flush(): Promise<void> {
   for (let index: number = 0; index < 10; index += 1) {
@@ -58,7 +58,7 @@ async function mockAttached(source: IVisualRenderSource): Promise<{
   service: VisualRenderService;
   viewService: VisualViewService;
 }> {
-  setMockInvokeResponses({ ["plugin:render|attach_viewport"]: VIEWPORT, ["plugin:visuals|show_model"]: SCENE });
+  mockIpcCommands({ [ERenderCommand.ATTACH_VIEWPORT]: VIEWPORT, [EVisualsCommand.SHOW_MODEL]: SCENE });
 
   const container: Container = mockContainer([
     VisualLoadService,
@@ -88,11 +88,13 @@ describe("VisualRenderService", () => {
     runInAction(() => (source.sessionId = "second"));
     await flush();
 
-    expect(sent("show_model", "visuals").map(({ detail, sessionId }) => [sessionId, detail])).toEqual([
-      ["first", 0],
-      ["first", 0.5],
-      ["second", 0.5],
-    ]);
+    expect(listMockInvokeCalls(EVisualsCommand.SHOW_MODEL).map(({ detail, sessionId }) => [sessionId, detail])).toEqual(
+      [
+        ["first", 0],
+        ["first", 0.5],
+        ["second", 0.5],
+      ]
+    );
 
     service.dispose();
   });
@@ -107,7 +109,7 @@ describe("VisualRenderService", () => {
     });
     await flush();
 
-    expect(sent("pose_model").map(({ pose }) => pose)).toEqual([
+    expect(listMockInvokeCalls(ERenderCommand.POSE_MODEL).map(({ pose }) => pose)).toEqual([
       { ...BIND_POSE, hiddenBones: [] },
       { frame: 4, hiddenBones: [2, 3], motion: "walk" },
     ]);
@@ -124,7 +126,9 @@ describe("VisualRenderService", () => {
     const { service, viewService } = await mockAttached(source);
 
     function kinds(): Array<string> {
-      return ((sent("set_overlays").at(-1)?.overlays ?? []) as Array<{ kind: string }>).map(({ kind }) => kind);
+      return ((listMockInvokeCalls(ERenderCommand.SET_OVERLAYS).at(-1)?.overlays ?? []) as Array<{ kind: string }>).map(
+        ({ kind }) => kind
+      );
     }
 
     expect(kinds()).not.toContain(ERenderOverlay.SKELETON);
@@ -145,9 +149,10 @@ describe("VisualRenderService", () => {
 
     function framings(): Array<number> {
       return [
-        sent("set_camera").length,
-        sent("command_camera").filter(({ command }) => (command as { kind: string }).kind === EWorldCameraCommand.RESET)
-          .length,
+        listMockInvokeCalls(ERenderCommand.SET_CAMERA).length,
+        listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA).filter(
+          ({ command }) => (command as { kind: string }).kind === EWorldCameraCommand.RESET
+        ).length,
       ];
     }
 
@@ -178,8 +183,8 @@ describe("VisualRenderService", () => {
       ),
       views: mockVisualModelViews(),
     });
-    setMockInvokeResponses({
-      ["plugin:render|describe_texture_loads"]: [
+    mockIpcCommands({
+      [ERenderCommand.DESCRIBE_TEXTURE_LOADS]: [
         {
           reference: mockTextureDependency().reference,
           state: {
@@ -190,6 +195,7 @@ describe("VisualRenderService", () => {
             levels: 1,
             width: 4,
           },
+          group: ERenderTextureGroup.SURFACES,
         },
       ],
     });
@@ -198,7 +204,7 @@ describe("VisualRenderService", () => {
     emit({ kind: ERenderViewportEvent.LOAD, report: mockRenderLoadReport({ isReady: true, scene: SCENE - 1 }) });
     await flush();
 
-    expect(sent("describe_texture_loads")).toHaveLength(0);
+    expect(listMockInvokeCalls(ERenderCommand.DESCRIBE_TEXTURE_LOADS)).toHaveLength(0);
 
     emit({
       kind: ERenderViewportEvent.LOAD,
@@ -214,7 +220,7 @@ describe("VisualRenderService", () => {
     });
     await flush();
 
-    expect(sent("describe_texture_loads")).toHaveLength(1);
+    expect(listMockInvokeCalls(ERenderCommand.DESCRIBE_TEXTURE_LOADS)).toHaveLength(1);
     expect(loadService.textureStatuses.get(0)?.state).toBe(EVisualTextureState.DECODED);
 
     service.dispose();
@@ -235,6 +241,6 @@ describe("VisualRenderService", () => {
     service.dispose();
     await flush();
 
-    expect(sent("detach_viewport")).toHaveLength(1);
+    expect(listMockInvokeCalls(ERenderCommand.DETACH_VIEWPORT)).toHaveLength(1);
   });
 });

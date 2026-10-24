@@ -3,7 +3,7 @@ import { Optional } from "@xrf/types";
 
 import { IIpcCommandMetrics, IPC_METRICS } from "#/metrics/index";
 import { invokeRaw } from "#/raw";
-import { mockInvoke, setMockInvokeResponses } from "#/testing/index";
+import { mockInvoke, mockIpcCommands } from "#/testing/index";
 
 const COMMAND: string = "plugin:fixture|read_bytes";
 
@@ -22,7 +22,7 @@ describe("invokeRaw", () => {
   });
 
   it("passes the command and arguments straight through", async () => {
-    setMockInvokeResponses({ [COMMAND]: bytes([1, 2, 3]) });
+    mockIpcCommands({ [COMMAND]: bytes([1, 2, 3]) });
 
     await invokeRaw(COMMAND, { source: { kind: "file", path: "a.ogf" } });
 
@@ -32,7 +32,7 @@ describe("invokeRaw", () => {
   it("returns an array buffer unchanged", async () => {
     const buffer: ArrayBuffer = bytes([1, 2, 3, 4]);
 
-    setMockInvokeResponses({ [COMMAND]: buffer });
+    mockIpcCommands({ [COMMAND]: buffer });
 
     const result: ArrayBuffer = await invokeRaw(COMMAND, {});
 
@@ -43,7 +43,7 @@ describe("invokeRaw", () => {
   it("converts a typed array to the buffer it views", async () => {
     // The postMessage fallback can deliver bytes as a view rather than a buffer. Usable, but only by
     // accident, so it is converted explicitly instead of being handed on as the wrong type.
-    setMockInvokeResponses({ [COMMAND]: new Uint8Array([9, 8, 7]) });
+    mockIpcCommands({ [COMMAND]: new Uint8Array([9, 8, 7]) });
 
     const result: ArrayBuffer = await invokeRaw(COMMAND, {});
 
@@ -55,7 +55,7 @@ describe("invokeRaw", () => {
     // A view over part of a larger buffer must not leak the bytes around it.
     const backing: Uint8Array = new Uint8Array([0, 0, 5, 6, 0]);
 
-    setMockInvokeResponses({ [COMMAND]: backing.subarray(2, 4) });
+    mockIpcCommands({ [COMMAND]: backing.subarray(2, 4) });
 
     const result: ArrayBuffer = await invokeRaw(COMMAND, {});
 
@@ -66,13 +66,13 @@ describe("invokeRaw", () => {
   it("rejects anything that is not bytes rather than returning a plausible value", async () => {
     // The transport falls back silently, so an unexpected shape must fail loudly: the alternative is a
     // caller building typed array views over nonsense and rendering the result.
-    setMockInvokeResponses({ [COMMAND]: { unexpected: true } });
+    mockIpcCommands({ [COMMAND]: { unexpected: true } });
 
     await expect(invokeRaw(COMMAND, {})).rejects.toThrow(/Expected raw bytes from 'plugin:fixture\|read_bytes'/);
   });
 
   it("names the custom protocol in the failure, since that is what went wrong", async () => {
-    setMockInvokeResponses({ [COMMAND]: "not bytes" });
+    mockIpcCommands({ [COMMAND]: "not bytes" });
 
     await expect(invokeRaw(COMMAND, {})).rejects.toThrow(/custom protocol is likely unavailable/);
   });
@@ -82,7 +82,7 @@ describe("invokeRaw", () => {
   });
 
   it("propagates a command failure untouched", async () => {
-    setMockInvokeResponses({
+    mockIpcCommands({
       [COMMAND]: () => {
         throw new Error("session is not open");
       },
@@ -94,7 +94,7 @@ describe("invokeRaw", () => {
   it("counts the bytes it answered with, without being asked to weigh anything", async () => {
     // These are the commands whose size costs nothing to know, which is why they are measured whether or not
     // payload weighing is on.
-    setMockInvokeResponses({ [COMMAND]: bytes([1, 2, 3, 4, 5]) });
+    mockIpcCommands({ [COMMAND]: bytes([1, 2, 3, 4, 5]) });
 
     await invokeRaw(COMMAND, {});
 
@@ -104,7 +104,7 @@ describe("invokeRaw", () => {
   });
 
   it("counts a rejected call as a failure and not as a call", async () => {
-    setMockInvokeResponses({
+    mockIpcCommands({
       [COMMAND]: () => {
         throw new Error("session is not open");
       },
@@ -117,7 +117,7 @@ describe("invokeRaw", () => {
   });
 
   it("counts an answer that was not bytes as a failure of this call", async () => {
-    setMockInvokeResponses({ [COMMAND]: { unexpected: true } });
+    mockIpcCommands({ [COMMAND]: { unexpected: true } });
 
     await expect(invokeRaw(COMMAND, {})).rejects.toThrow(/Expected raw bytes/);
 

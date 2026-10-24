@@ -3,7 +3,8 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { Maybe } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -26,11 +27,8 @@ describe("ArchivesEditorOpenForm", () => {
   beforeEach(() => {
     clearLocalStorage();
 
-    setMockInvokeResponses({
-      ["plugin:archives|restore_subject"]: mockSessionResponse(null),
-      ["plugin:archives|open_volumes"]: mockSessionResponse(null),
-      ["plugin:archives|open_world"]: mockSessionResponse(null),
-    });
+    // The opens themselves are not what these tests read, so they answer the null every unlisted command does.
+    mockIpcCommands({ [EArchivesCommand.RESTORE_SUBJECT]: mockSessionResponse(null) });
   });
 
   function renderForm(): RenderResult {
@@ -103,7 +101,7 @@ describe("ArchivesEditorOpenForm", () => {
     await userEvent.click(getByLabelText("Browse"));
     await userEvent.click(getByRole("button", { name: "Open" }));
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|open_volumes", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.OPEN_VOLUMES, {
       sessionId: expect.any(String),
       path: ARCHIVE_VOLUME,
     });
@@ -164,7 +162,7 @@ describe("ArchivesEditorOpenForm", () => {
 
     // `auto` rather than `installation`: a folder that declares no `fsgame.ltx` is still read as the game data tree
     // it looks like, instead of being refused for not declaring one.
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|open_world", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.OPEN_WORLD, {
       sessionId: expect.any(String),
       roots: { asset: null, roots: [{ mode: "auto", path: INSTALLATION }] },
     });
@@ -211,11 +209,11 @@ describe("ArchivesEditorOpenForm", () => {
 
     await userEvent.click(getByRole("button", { name: "Open" }));
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|open_world", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.OPEN_WORLD, {
       sessionId: expect.any(String),
       roots: { asset: null, roots: [{ mode: "directory", path: GAMEDATA }] },
     });
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|open_volumes", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.OPEN_VOLUMES, expect.anything());
   });
 
   it("remembers gamedata independently of the game and archives directories", async () => {

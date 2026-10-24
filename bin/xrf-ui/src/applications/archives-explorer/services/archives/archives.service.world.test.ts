@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveWorldEntry, EArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
@@ -23,13 +24,13 @@ function mockInstallationRoots(): XrayRoots {
 
 describe("ArchivesService world subject", () => {
   it("opens a game folder as the roots the form named", async () => {
-    setMockInvokeResponses({ ["plugin:archives|open_world"]: mockSessionResponse(mockArchivesWorldSubject()) });
+    mockIpcCommands({ [EArchivesCommand.OPEN_WORLD]: mockSessionResponse(mockArchivesWorldSubject()) });
 
     const { service } = mockInjectedService(ArchivesService);
 
     await service.openWorld(mockInstallationRoots());
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|open_world", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.OPEN_WORLD, {
       sessionId: expect.any(String),
       roots: mockInstallationRoots(),
     });
@@ -43,10 +44,10 @@ describe("ArchivesService world subject", () => {
     const entry: ArchiveWorldEntry = mockArchiveWorldEntry();
     const result: ArchiveReadResult = { name: entry.name, content: "[system]", size: 8 };
 
-    setMockInvokeResponses({
-      ["plugin:archives|open_world"]: mockSessionResponse(mockArchivesWorldSubject([entry])),
-      ["plugin:archives|read_file"]: result,
-      ["plugin:archives|extract_file"]: { name: entry.name, destination: "C:\\out\\system.ltx", size: 8 },
+    mockIpcCommands({
+      [EArchivesCommand.OPEN_WORLD]: mockSessionResponse(mockArchivesWorldSubject([entry])),
+      [EArchivesCommand.READ_FILE]: result,
+      [EArchivesCommand.EXTRACT_FILE]: { name: entry.name, destination: "C:\\out\\system.ltx", size: 8 },
     });
 
     const { service } = mockInjectedService(ArchivesService);
@@ -56,7 +57,7 @@ describe("ArchivesService world subject", () => {
     await service.extractFile(entry, "C:\\out\\system.ltx");
 
     expect(service.content.value?.kind === "text" ? service.content.value.result : null).toEqual(result);
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|extract_file", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.EXTRACT_FILE, {
       sessionId: expect.any(String),
       name: entry.name,
       destination: "C:\\out\\system.ltx",
@@ -64,23 +65,23 @@ describe("ArchivesService world subject", () => {
   });
 
   it("asks what a world cannot reach, and not for a name table it has none of", async () => {
-    setMockInvokeResponses({
-      ["plugin:archives|open_world"]: mockSessionResponse(mockArchivesWorldSubject()),
-      ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [] },
+    mockIpcCommands({
+      [EArchivesCommand.OPEN_WORLD]: mockSessionResponse(mockArchivesWorldSubject()),
+      [EArchivesCommand.LIST_OVERRIDES]: { overridden: [], unreachable: [] },
     });
 
     const { service } = mockInjectedService(ArchivesService);
 
     await service.openWorld(mockInstallationRoots());
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|list_overrides", { sessionId: expect.any(String) });
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|list_shared_payloads", expect.anything());
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.LIST_OVERRIDES, { sessionId: expect.any(String) });
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.LIST_SHARED_PAYLOADS, expect.anything());
   });
 
   it("publishes where the selected file came from and what it hides", async () => {
     const entry: ArchiveWorldEntry = mockArchiveWorldEntry({ shadowed: [mockArchiveShadowedCopy()] });
 
-    setMockInvokeResponses({ ["plugin:archives|open_world"]: mockSessionResponse(mockArchivesWorldSubject([entry])) });
+    mockIpcCommands({ [EArchivesCommand.OPEN_WORLD]: mockSessionResponse(mockArchivesWorldSubject([entry])) });
 
     const { service } = mockInjectedService(ArchivesService);
 
@@ -95,12 +96,12 @@ describe("ArchivesService world subject", () => {
   it("replaces a volume set, closing only the volume set it replaced", async () => {
     const closed: Array<Array<string>> = [];
 
-    setMockInvokeResponses({
-      ["plugin:archives|open_volumes"]: mockSessionResponse(mockArchivesVolumes([])),
-      ["plugin:archives|open_world"]: mockSessionResponse(mockArchivesWorldSubject()),
-      ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [] },
-      ["plugin:archives|list_shared_payloads"]: [],
-      ["plugin:archives|close_subject"]: (args?: Record<string, unknown>) =>
+    mockIpcCommands({
+      [EArchivesCommand.OPEN_VOLUMES]: mockSessionResponse(mockArchivesVolumes([])),
+      [EArchivesCommand.OPEN_WORLD]: mockSessionResponse(mockArchivesWorldSubject()),
+      [EArchivesCommand.LIST_OVERRIDES]: { overridden: [], unreachable: [] },
+      [EArchivesCommand.LIST_SHARED_PAYLOADS]: [],
+      [EArchivesCommand.CLOSE_SUBJECT]: (args?: Record<string, unknown>) =>
         void closed.push(args?.sessionIds as Array<string>),
     });
 
@@ -108,7 +109,7 @@ describe("ArchivesService world subject", () => {
 
     await service.openVolumes("C:\\game\\db");
 
-    const volumes: unknown = mockInvoke.mock.calls.find(([name]) => name === "plugin:archives|open_volumes")?.[1]
+    const volumes: unknown = mockInvoke.mock.calls.find(([name]) => name === EArchivesCommand.OPEN_VOLUMES)?.[1]
       ?.sessionId;
 
     await service.openWorld(mockInstallationRoots());
@@ -118,9 +119,9 @@ describe("ArchivesService world subject", () => {
   });
 
   it("restores whichever subject the backend still holds", async () => {
-    setMockInvokeResponses({
-      ["plugin:archives|restore_subject"]: mockSessionResponse(mockArchivesWorldSubject()),
-      ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [] },
+    mockIpcCommands({
+      [EArchivesCommand.RESTORE_SUBJECT]: mockSessionResponse(mockArchivesWorldSubject()),
+      [EArchivesCommand.LIST_OVERRIDES]: { overridden: [], unreachable: [] },
     });
 
     const { service } = mockInjectedService(ArchivesService);

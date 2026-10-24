@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { AsyncState } from "@xrf/async";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
@@ -22,8 +23,8 @@ async function renderTrack(names: ReadonlyArray<string> = ["first", "second"]) {
     views: mockVisualModelViews(),
   });
 
-  setMockInvokeResponses({
-    ["plugin:visuals|describe_motion"]: bake,
+  mockIpcCommands({
+    [EVisualsCommand.DESCRIBE_MOTION]: bake,
   });
 
   for (const name of names) {

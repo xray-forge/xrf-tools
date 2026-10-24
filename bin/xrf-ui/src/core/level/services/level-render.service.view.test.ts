@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
-import { mockInvoke, resetMockChannels, resetMockInvoke } from "@xrf/ipc/testing";
+import { ERenderCommand } from "@xrf/ipc/commands/render";
+import { listMockInvokeCalls, mockInvoke, resetMockChannels, resetMockInvoke } from "@xrf/ipc/testing";
 import { ERenderDebugView, ERenderLightLevel, ERenderOverlay, ERenderSurfaceColor } from "@xrf/ipc/types/xrf-renderer";
 import {
   EWorldCameraCommand,
@@ -22,7 +23,6 @@ import {
   LEVEL_VIEWPORT,
   mockAttachedLevelRender,
   sentOverlayKinds,
-  sentRenderCommand,
 } from "@/fixtures/utils/level-render";
 
 describe("LevelRenderService view", () => {
@@ -39,8 +39,8 @@ describe("LevelRenderService view", () => {
     mockInvoke.mockClear();
     service.goTo({ heading: 90, pitch: 0, x: 4, y: 5, z: 6 });
 
-    await waitFor(() => expect(sentRenderCommand("set_camera")).toHaveLength(1));
-    expect(sentRenderCommand("command_camera")).toEqual([
+    await waitFor(() => expect(listMockInvokeCalls(ERenderCommand.SET_CAMERA)).toHaveLength(1));
+    expect(listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA)).toEqual([
       { command: { kind: EWorldCameraCommand.RESET }, viewport: LEVEL_VIEWPORT },
     ]);
   });
@@ -52,15 +52,15 @@ describe("LevelRenderService view", () => {
     mockInvoke.mockClear();
     view.setCameraOptions({ ...view.cameraOptions, speed: view.cameraOptions.speed * 2 });
 
-    await waitFor(() => expect(sentRenderCommand("set_camera")).toHaveLength(1));
-    expect(sentRenderCommand("command_camera")).toHaveLength(0);
+    await waitFor(() => expect(listMockInvokeCalls(ERenderCommand.SET_CAMERA)).toHaveLength(1));
+    expect(listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA)).toHaveLength(0);
   });
 
   it("draws with what the toolbar and the settings come to", async () => {
     const { container } = await mockAttachedLevelRender();
     const view: LevelViewService = container.get(LevelViewService);
 
-    expect(sentRenderCommand("set_view_options").at(-1)).toEqual({
+    expect(listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS).at(-1)).toEqual({
       options: expect.objectContaining({
         // The settings' level of detail: the impostors twice as far as the engine's by default, the rest its own.
         features: expect.objectContaining({
@@ -74,8 +74,8 @@ describe("LevelRenderService view", () => {
     mockInvoke.mockClear();
     view.setShading(ELevelShading.CLAY);
 
-    await waitFor(() => expect(sentRenderCommand("set_view_options")).not.toHaveLength(0));
-    expect(sentRenderCommand("set_view_options")).toEqual([
+    await waitFor(() => expect(listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS)).not.toHaveLength(0));
+    expect(listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS)).toEqual([
       {
         options: expect.objectContaining({
           mode: expect.objectContaining({ debugView: ERenderDebugView.FINAL, surfaceColor: ERenderSurfaceColor.CLAY }),
@@ -89,27 +89,27 @@ describe("LevelRenderService view", () => {
     const { container } = await mockAttachedLevelRender();
     const view: LevelViewService = container.get(LevelViewService);
 
-    expect(sentRenderCommand("set_world_toggles").at(-1)).toEqual({
+    expect(listMockInvokeCalls(ERenderCommand.SET_WORLD_TOGGLES).at(-1)).toEqual({
       toggles: expect.objectContaining({ isRainy: true, isSpawnedLamps: true }),
       viewport: LEVEL_VIEWPORT,
     });
-    expect(sentRenderCommand("set_view_options").at(-1)).not.toHaveProperty("options.world");
+    expect(listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS).at(-1)).not.toHaveProperty("options.world");
 
     mockInvoke.mockClear();
     view.setOptions({ ...view.options, isRainy: false, isSpawnedLamps: false });
 
-    await waitFor(() => expect(sentRenderCommand("set_world_toggles")).not.toHaveLength(0));
-    expect(sentRenderCommand("set_world_toggles")).toEqual([
+    await waitFor(() => expect(listMockInvokeCalls(ERenderCommand.SET_WORLD_TOGGLES)).not.toHaveLength(0));
+    expect(listMockInvokeCalls(ERenderCommand.SET_WORLD_TOGGLES)).toEqual([
       { toggles: expect.objectContaining({ isRainy: false, isSpawnedLamps: false }), viewport: LEVEL_VIEWPORT },
     ]);
-    expect(sentRenderCommand("set_view_options")).toEqual([]);
+    expect(listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS)).toEqual([]);
   });
 
   it("draws as a wireframe and at the height the settings ask for", async () => {
     const { container } = await mockAttachedLevelRender();
     const view: LevelViewService = container.get(LevelViewService);
 
-    expect(sentRenderCommand("set_view_options").at(-1)).toEqual({
+    expect(listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS).at(-1)).toEqual({
       options: expect.objectContaining({
         mode: expect.objectContaining({ isWireframe: false }),
         output: expect.objectContaining({ outputHeight: null, outputScale: 1 }),
@@ -121,7 +121,7 @@ describe("LevelRenderService view", () => {
     container.get(RenderSettingsService).setRenderResolution(ERenderResolution.HEIGHT_720);
 
     await waitFor(() =>
-      expect(sentRenderCommand("set_view_options").at(-1)).toEqual({
+      expect(listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS).at(-1)).toEqual({
         options: expect.objectContaining({
           mode: expect.objectContaining({ isWireframe: true }),
           output: expect.objectContaining({ outputHeight: 720 }),
@@ -137,7 +137,7 @@ describe("LevelRenderService view", () => {
     container.get(RenderSettingsService).setRenderOutputScale(1.5);
 
     await waitFor(() =>
-      expect(sentRenderCommand("set_view_options").at(-1)).toEqual({
+      expect(listMockInvokeCalls(ERenderCommand.SET_VIEW_OPTIONS).at(-1)).toEqual({
         options: expect.objectContaining({
           output: expect.objectContaining({ outputHeight: null, outputScale: 1.5 }),
         }),
@@ -192,13 +192,13 @@ describe("LevelRenderService view", () => {
     const weather: LevelWeatherService = container.get(LevelWeatherService);
 
     await waitFor(() =>
-      expect(sentRenderCommand("play_weather").at(-1)).toEqual({
+      expect(listMockInvokeCalls(ERenderCommand.PLAY_WEATHER).at(-1)).toEqual({
         play: { kind: EWorldWeatherPlay.CYCLE, name: "default_clear" },
         transition: EWorldWeatherTransition.CUT,
         viewport: LEVEL_VIEWPORT,
       })
     );
-    expect(sentRenderCommand("set_weather_control").at(-1)).toEqual({
+    expect(listMockInvokeCalls(ERenderCommand.SET_WEATHER_CONTROL).at(-1)).toEqual({
       control: { factor: 12, isDynamicSun: false, isPaused: true },
       viewport: LEVEL_VIEWPORT,
     });
@@ -212,17 +212,19 @@ describe("LevelRenderService view", () => {
     service.playAmbientEffect();
     service.playAmbientEffect();
 
-    await waitFor(() => expect(sentRenderCommand("play_ambient_effect")).toHaveLength(2));
-    expect(sentRenderCommand("set_weather_control")).toEqual([
+    await waitFor(() => expect(listMockInvokeCalls(ERenderCommand.PLAY_AMBIENT_EFFECT)).toHaveLength(2));
+    expect(listMockInvokeCalls(ERenderCommand.SET_WEATHER_CONTROL)).toEqual([
       { control: { factor: 12, isDynamicSun: false, isPaused: false }, viewport: LEVEL_VIEWPORT },
     ]);
-    expect(sentRenderCommand("seek_weather")).toEqual([
+    expect(listMockInvokeCalls(ERenderCommand.SEEK_WEATHER)).toEqual([
       { time: 3_600, viewport: LEVEL_VIEWPORT },
       { time: 3_600, viewport: LEVEL_VIEWPORT },
     ]);
     expect(weather.time).toBe(3_600);
-    expect(sentRenderCommand("play_weather_effect")).toEqual([{ name: "fx_storm", viewport: LEVEL_VIEWPORT }]);
-    expect(sentRenderCommand("play_ambient_effect")).toEqual([
+    expect(listMockInvokeCalls(ERenderCommand.PLAY_WEATHER_EFFECT)).toEqual([
+      { name: "fx_storm", viewport: LEVEL_VIEWPORT },
+    ]);
+    expect(listMockInvokeCalls(ERenderCommand.PLAY_AMBIENT_EFFECT)).toEqual([
       { viewport: LEVEL_VIEWPORT },
       { viewport: LEVEL_VIEWPORT },
     ]);

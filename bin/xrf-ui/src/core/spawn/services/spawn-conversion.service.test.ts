@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EJobsCommand } from "@xrf/ipc/commands/jobs";
+import { ESpawnCommand } from "@xrf/ipc/commands/spawn";
+import { listMockInvokeCalls, mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { SPAWN_JOB_UNPACK, SpawnConversionResult } from "@xrf/ipc/types/xrf-app-spawn";
 
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
@@ -22,12 +24,15 @@ function deferred() {
 }
 
 describe("SpawnConversionService", () => {
-  beforeEach(() => setMockInvokeResponses({}));
+  beforeEach(() => mockIpcCommands({}));
 
-  it.each(["pack", "unpack"] as const)("runs %s with a job identity and progress channel", async (operation) => {
+  it.each([
+    ["pack", ESpawnCommand.PACK_FILE],
+    ["unpack", ESpawnCommand.UNPACK_FILE],
+  ] as const)("runs %s with a job identity and progress channel", async (operation, command) => {
     const result: SpawnConversionResult = { ...RESULT, operation };
 
-    setMockInvokeResponses({ [`plugin:spawn|${operation}_file`]: result });
+    mockIpcCommands({ [command]: result });
 
     const { service, container } = mockInjectedService(SpawnConversionService);
     const notices: Array<unknown> = [];
@@ -36,7 +41,7 @@ describe("SpawnConversionService", () => {
 
     await service[operation]("C:\\source", RESULT.destination);
 
-    expect(mockInvoke).toHaveBeenCalledWith(`plugin:spawn|${operation}_file`, {
+    expect(mockInvoke).toHaveBeenCalledWith(command, {
       request: { source: "C:\\source", destination: RESULT.destination },
       jobId: expect.any(String),
       progress: expect.anything(),
@@ -49,7 +54,7 @@ describe("SpawnConversionService", () => {
   it("ignores repeated and opposite actions while the shared flow is running", async () => {
     const response = deferred();
 
-    setMockInvokeResponses({ "plugin:spawn|pack_file": () => response.promise });
+    mockIpcCommands({ [ESpawnCommand.PACK_FILE]: () => response.promise });
 
     const { service } = mockInjectedService(SpawnConversionService);
     const first = service.pack("source", "output");
@@ -57,7 +62,10 @@ describe("SpawnConversionService", () => {
     const opposite = service.unpack("output", "chunks");
 
     expect(service.operation.isRunning).toBe(true);
-    expect(mockInvoke.mock.calls.filter(([command]) => command.startsWith("plugin:spawn|"))).toHaveLength(1);
+    expect([
+      ...listMockInvokeCalls(ESpawnCommand.PACK_FILE),
+      ...listMockInvokeCalls(ESpawnCommand.UNPACK_FILE),
+    ]).toHaveLength(1);
 
     response.resolve(RESULT);
     await Promise.all([first, repeated, opposite]);
@@ -68,7 +76,7 @@ describe("SpawnConversionService", () => {
   it("also refuses a conversion in a new tool scope while the root jobs service tracks one", async () => {
     const response = deferred();
 
-    setMockInvokeResponses({ "plugin:spawn|pack_file": () => response.promise });
+    mockIpcCommands({ [ESpawnCommand.PACK_FILE]: () => response.promise });
 
     const { service, container } = mockInjectedService(SpawnConversionService);
     const nextTool = new SpawnConversionService(container.get(JobsService));
@@ -77,7 +85,7 @@ describe("SpawnConversionService", () => {
     await nextTool.unpack("output", "chunks");
 
     expect(nextTool.operation.isRunning).toBe(true);
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:spawn|unpack_file", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(ESpawnCommand.UNPACK_FILE, expect.anything());
 
     response.resolve(RESULT);
     await running;
@@ -86,7 +94,7 @@ describe("SpawnConversionService", () => {
   it("keeps a cancelled job exclusive until the backend settles and reports completed writes as success", async () => {
     const response = deferred();
 
-    setMockInvokeResponses({ "plugin:spawn|pack_file": () => response.promise });
+    mockIpcCommands({ [ESpawnCommand.PACK_FILE]: () => response.promise });
 
     const { service, container } = mockInjectedService(SpawnConversionService);
     const notices: Array<unknown> = [];
@@ -99,7 +107,7 @@ describe("SpawnConversionService", () => {
     service.operation.cancel();
 
     expect(service.operation.isRunning).toBe(true);
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:jobs|cancel", { id });
+    expect(mockInvoke).toHaveBeenCalledWith(EJobsCommand.CANCEL, { id });
 
     response.resolve(RESULT);
     await running;
@@ -128,7 +136,7 @@ describe("SpawnConversionService", () => {
     await service.pack("source", "output");
 
     expect(service.operation.isRunning).toBe(true);
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:spawn|pack_file", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(ESpawnCommand.PACK_FILE, expect.anything());
 
     jobs.jobs = [];
     container.get(EventBus).emit<IJobSettledPayload>(JOB_SETTLED_EVENT, {
@@ -146,7 +154,7 @@ describe("SpawnConversionService", () => {
   });
 
   it("normalizes backend failures and permits a later retry", async () => {
-    setMockInvokeResponses({ "plugin:spawn|pack_file": () => Promise.reject("Spawn output is busy") });
+    mockIpcCommands({ [ESpawnCommand.PACK_FILE]: () => Promise.reject("Spawn output is busy") });
 
     const { service } = mockInjectedService(SpawnConversionService);
 
@@ -155,7 +163,7 @@ describe("SpawnConversionService", () => {
     expect(service.operation.error).toBe("Spawn output is busy");
     expect(service.operation.isRunning).toBe(false);
 
-    setMockInvokeResponses({ "plugin:spawn|pack_file": RESULT });
+    mockIpcCommands({ [ESpawnCommand.PACK_FILE]: RESULT });
     await service.pack("source", "output");
 
     expect(service.operation.error).toBeNull();
@@ -163,7 +171,7 @@ describe("SpawnConversionService", () => {
   });
 
   it("reports accepted cancellation without claiming output was written", async () => {
-    setMockInvokeResponses({ "plugin:spawn|pack_file": { ...RESULT, outcome: "cancelled" } });
+    mockIpcCommands({ [ESpawnCommand.PACK_FILE]: { ...RESULT, outcome: "cancelled" } });
 
     const { service, container } = mockInjectedService(SpawnConversionService);
     const notices: Array<unknown> = [];
@@ -183,7 +191,7 @@ describe("SpawnConversionService", () => {
   it("stops publishing after deactivation while the job continues and notifies once", async () => {
     const response = deferred();
 
-    setMockInvokeResponses({ "plugin:spawn|pack_file": () => response.promise });
+    mockIpcCommands({ [ESpawnCommand.PACK_FILE]: () => response.promise });
 
     const { service, container } = mockInjectedService(SpawnConversionService);
     const jobs = container.get(JobsService);

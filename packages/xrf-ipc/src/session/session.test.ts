@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { Logger } from "@xrf/logging";
 
+import { ESessionsCommand } from "#/commands/sessions";
 import { ISessionIdentity, Session, SessionScopeService } from "#/session/index";
 import { mockInvoke, mockIsTauri, resetMockIsTauri } from "#/testing/index";
 
@@ -238,7 +239,7 @@ describe("Session", () => {
       return { sessionId };
     });
 
-    expect(sent).toEqual(["plugin:sessions|bind"]);
+    expect(sent).toEqual([ESessionsCommand.BIND]);
     expect(mockInvoke.mock.calls[0]?.[1]).toEqual({ sessionId: expect.any(String), tool: "level-viewer" });
     expect(session.tool).toBe("level-viewer");
   });

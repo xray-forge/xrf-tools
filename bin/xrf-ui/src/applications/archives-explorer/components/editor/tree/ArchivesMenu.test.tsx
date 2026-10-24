@@ -2,7 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { act, fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -21,11 +22,11 @@ interface IRenderedMenu {
 }
 
 async function renderMenu(files: Array<ArchiveFileDescriptor>): Promise<IRenderedMenu> {
-  setMockInvokeResponses({
-    ["plugin:archives|restore_subject"]: mockSessionResponse(mockArchivesVolumes(files)),
-    ["plugin:archives|list_overrides"]: { overridden: [], unreachable: [] },
-    ["plugin:archives|list_shared_payloads"]: [],
-    ["plugin:archives|read_file"]: { name: files[0]?.name ?? "", content: "[system]", size: 8 },
+  mockIpcCommands({
+    [EArchivesCommand.RESTORE_SUBJECT]: mockSessionResponse(mockArchivesVolumes(files)),
+    [EArchivesCommand.LIST_OVERRIDES]: { overridden: [], unreachable: [] },
+    [EArchivesCommand.LIST_SHARED_PAYLOADS]: [],
+    [EArchivesCommand.READ_FILE]: { name: files[0]?.name ?? "", content: "[system]", size: 8 },
   });
 
   const { container, service } = mockInjectedService(ArchivesService);
@@ -48,7 +49,7 @@ describe("ArchivesMenu", () => {
     fireEvent.dblClick(render.getByText("configs"));
     fireEvent.click(await render.findByText("system.ltx"));
 
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
     expect(fileRow(render, "system.ltx")).toHaveAttribute("aria-selected", "true");
   });
 
@@ -59,7 +60,7 @@ describe("ArchivesMenu", () => {
     fireEvent.dblClick(await render.findByText("system.ltx"));
 
     await waitFor(() =>
-      expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
+      expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.READ_FILE, {
         sessionId: expect.any(String),
         name: "configs\\system.ltx",
       })
@@ -98,7 +99,7 @@ describe("ArchivesMenu", () => {
 
     // The read in flight is abandoned for this one rather than swallowing the gesture that replaces it.
     await waitFor(() =>
-      expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
+      expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.READ_FILE, {
         sessionId: expect.any(String),
         name: "configs\\game.ltx",
       })
@@ -115,7 +116,7 @@ describe("ArchivesMenu", () => {
 
     fireEvent.dblClick(await render.findByText("system.ltx"));
 
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
   });
 
   it("blocks Enter on search results during extraction and opens them after it finishes", async () => {
@@ -126,7 +127,7 @@ describe("ArchivesMenu", () => {
     await act(() => runInAction(() => (service.operation = service.operation.asLoading(null))));
     fireEvent.keyDown(input, { key: "Enter" });
 
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
 
     fireEvent.change(input, { target: { value: "missing" } });
 
@@ -137,7 +138,7 @@ describe("ArchivesMenu", () => {
     fireEvent.keyDown(input, { key: "Enter" });
 
     await waitFor(() =>
-      expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
+      expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.READ_FILE, {
         sessionId: expect.any(String),
         name: "configs\\system.ltx",
       })
@@ -160,13 +161,13 @@ describe("ArchivesMenu", () => {
 
     fireEvent.click(result);
 
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
 
     await act(() => runInAction(() => (service.operation = service.operation.asIdle())));
     fireEvent.click(render.getByRole("button", { name: "system.ltx configs" }));
 
     await waitFor(() =>
-      expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|read_file", {
+      expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.READ_FILE, {
         sessionId: expect.any(String),
         name: "configs\\system.ltx",
       })

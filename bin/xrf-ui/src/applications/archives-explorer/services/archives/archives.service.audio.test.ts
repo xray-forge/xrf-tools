@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { AsyncState } from "@xrf/async";
-import { listMockBulkCalls, mockInvoke, setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { EArchivesBulkRoute } from "@xrf/ipc/commands/archives-bulk";
+import { listMockBulkCalls, mockInvoke, mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
 import { AudioDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
@@ -37,11 +39,11 @@ function mockService(sound: ArchiveFileDescriptor = SOUND): ArchivesService {
 
 describe("ArchivesService audio preview", () => {
   beforeEach(() => {
-    setMockInvokeResponses({
-      ["plugin:archives|describe_audio"]: DESCRIPTOR,
+    mockIpcCommands({
+      [EArchivesCommand.DESCRIBE_AUDIO]: DESCRIPTOR,
     });
-    setMockBulkResponses({
-      "archives/read_entry": BYTES,
+    mockIpcBulkRoutes({
+      [EArchivesBulkRoute.READ_ENTRY]: BYTES,
     });
   });
 
@@ -71,11 +73,11 @@ describe("ArchivesService audio preview", () => {
 
     await service.selectArchiveFile(sound);
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_audio", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.DESCRIBE_AUDIO, {
       sessionId: SESSION,
       name: sound.name,
     });
-    expect(listMockBulkCalls("archives/read_entry")).toContainEqual({
+    expect(listMockBulkCalls(EArchivesBulkRoute.READ_ENTRY)).toContainEqual({
       sessionId: SESSION,
       name: sound.name,
     });
@@ -87,11 +89,11 @@ describe("ArchivesService audio preview", () => {
 
     await service.selectArchiveFile(SOUND);
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_audio", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.DESCRIBE_AUDIO, {
       sessionId: SESSION,
       name: SOUND.name,
     });
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|read_file", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
     expect(service.content.value?.kind).toBe("audio");
   });
 
@@ -103,9 +105,9 @@ describe("ArchivesService audio preview", () => {
     // The description and the bytes come from different commands, and nothing but this pairing stops a sound from
     // being played with another file's numbers beside it.
     const [describeArguments] = mockInvoke.mock.calls
-      .filter(([command]) => command === "plugin:archives|describe_audio")
+      .filter(([command]) => command === EArchivesCommand.DESCRIBE_AUDIO)
       .map(([, args]) => args);
-    const [readArguments] = listMockBulkCalls("archives/read_entry");
+    const [readArguments] = listMockBulkCalls(EArchivesBulkRoute.READ_ENTRY);
 
     expect(describeArguments).toEqual(readArguments);
   });
@@ -128,20 +130,20 @@ describe("ArchivesService audio preview", () => {
 
     await service.selectArchiveFile(TEXTURE);
 
-    expect(mockInvoke).not.toHaveBeenCalledWith("plugin:archives|describe_audio", expect.anything());
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|describe_texture", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.DESCRIBE_AUDIO, expect.anything());
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.DESCRIBE_TEXTURE, expect.anything());
   });
 
   it("reports a failed read instead of staying loading", async () => {
     const service: ArchivesService = mockService();
 
-    setMockInvokeResponses({
-      ["plugin:archives|describe_audio"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.DESCRIBE_AUDIO]: () => {
         throw new Error("not a playable sound");
       },
     });
-    setMockBulkResponses({
-      "archives/read_entry": BYTES,
+    mockIpcBulkRoutes({
+      [EArchivesBulkRoute.READ_ENTRY]: BYTES,
     });
 
     await service.selectArchiveFile(SOUND);
@@ -153,11 +155,11 @@ describe("ArchivesService audio preview", () => {
   it("reports a failed byte read even when the description succeeds", async () => {
     const service: ArchivesService = mockService();
 
-    setMockInvokeResponses({
-      ["plugin:archives|describe_audio"]: DESCRIPTOR,
+    mockIpcCommands({
+      [EArchivesCommand.DESCRIBE_AUDIO]: DESCRIPTOR,
     });
-    setMockBulkResponses({
-      "archives/read_entry": () => {
+    mockIpcBulkRoutes({
+      [EArchivesBulkRoute.READ_ENTRY]: () => {
         throw new Error("resolves to nothing in the open subject");
       },
     });
@@ -176,7 +178,7 @@ describe("ArchivesService audio preview", () => {
     await service.selectArchiveFile(SOUND);
     await service.retrySelectedFile();
 
-    const describeCalls = mockInvoke.mock.calls.filter(([command]) => command === "plugin:archives|describe_audio");
+    const describeCalls = mockInvoke.mock.calls.filter(([command]) => command === EArchivesCommand.DESCRIBE_AUDIO);
 
     expect(describeCalls).toHaveLength(2);
   });

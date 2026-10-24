@@ -1,7 +1,9 @@
 import { expect } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { getMockChannels, MockChannel, mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { ERenderCommand } from "@xrf/ipc/commands/render";
+import { getMockChannels, listMockInvokeCalls, MockChannel, mockIpcCommands } from "@xrf/ipc/testing";
 import { ViewportEvent } from "@xrf/ipc/types/xrf-app-render";
 
 import { LevelLoadService } from "@/core/level/services/level-load.service";
@@ -19,27 +21,9 @@ import { mockContainer } from "@/fixtures/utils/container";
 export const LEVEL_VIEWPORT: number = 7;
 export const LEVEL_SCENE: number = 3;
 
-/** The arguments each call of a render command was sent with, in order. */
-export function sentRenderCommand(command: string): Array<Record<string, unknown>> {
-  return sentCommand("render", command);
-}
-
-/** The arguments each call of a levels command was sent with, in order: the level's show is one. */
-export function sentLevelsCommand(command: string): Array<Record<string, unknown>> {
-  return sentCommand("levels", command);
-}
-
-function sentCommand(plugin: string, command: string): Array<Record<string, unknown>> {
-  return mockInvoke.mock.calls
-    .filter(([name]) => name === `plugin:${plugin}|${command}`)
-    .map(([, args]) => args as Record<string, unknown>);
-}
-
 /** The kinds of the overlays last sent, in order. */
 export function sentOverlayKinds(): Array<string> {
-  return ((sentRenderCommand("set_overlays").at(-1)?.overlays ?? []) as Array<{ kind: string }>).map(
-    ({ kind }) => kind
-  );
+  return (listMockInvokeCalls(ERenderCommand.SET_OVERLAYS).at(-1)?.overlays ?? []).map(({ kind }) => kind);
 }
 
 /**
@@ -51,12 +35,12 @@ export function sentOverlayKinds(): Array<string> {
 export async function mockAttachedLevelRender(
   element: HTMLElement = document.createElement("div")
 ): Promise<{ container: Container; service: LevelRenderService }> {
-  setMockInvokeResponses({
-    ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+  mockIpcCommands({
+    [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
     ...mockLevelPartResponses({ start: { direction: { x: 0, y: 0, z: -1 }, position: { x: 10, y: 2, z: -5 } } }),
-    ["plugin:levels|describe_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
-    ["plugin:render|attach_viewport"]: LEVEL_VIEWPORT,
-    ["plugin:levels|show_level"]: LEVEL_SCENE,
+    [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
+    [ERenderCommand.ATTACH_VIEWPORT]: LEVEL_VIEWPORT,
+    [ELevelsCommand.SHOW_LEVEL]: LEVEL_SCENE,
   });
 
   const container: Container = mockContainer([
@@ -76,7 +60,7 @@ export async function mockAttachedLevelRender(
 
   service.attach(element);
   // Attaching ends with the level shown.
-  await waitFor(() => expect(sentLevelsCommand("show_level")).toHaveLength(1));
+  await waitFor(() => expect(listMockInvokeCalls(ELevelsCommand.SHOW_LEVEL)).toHaveLength(1));
 
   return { container, service };
 }

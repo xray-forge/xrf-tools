@@ -3,7 +3,8 @@ import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 import { AsyncState } from "@xrf/async";
-import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Nullable } from "@xrf/types";
 
@@ -67,8 +68,8 @@ async function renderPanel(
   textures?: ILevelTextureReport,
   arrange?: (container: Container) => void
 ): Promise<RenderResult> {
-  setMockInvokeResponses({
-    ["plugin:levels|restore_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+  mockIpcCommands({
+    [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
     ...mockLevelPartResponses({ surfaces: TABLE }),
   });
 

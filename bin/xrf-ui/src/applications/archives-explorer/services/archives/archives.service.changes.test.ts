@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container, EventBus, WireEvent } from "@wirestate/core";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
@@ -11,7 +12,7 @@ import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { ArchivesService } from "./archives.service";
 
-const RESTORE: string = "plugin:archives|restore_subject";
+const RESTORE: string = EArchivesCommand.RESTORE_SUBJECT;
 
 async function flush(): Promise<void> {
   for (let index: number = 0; index < 10; index += 1) {
@@ -35,8 +36,8 @@ async function openWorld() {
   const { container, service } = mockInjectedService(ArchivesService);
   let sessionId: string = "";
 
-  setMockInvokeResponses({
-    ["plugin:archives|open_world"]: mockSessionResponse((args?: Record<string, unknown>) => {
+  mockIpcCommands({
+    [EArchivesCommand.OPEN_WORLD]: mockSessionResponse((args?: Record<string, unknown>) => {
       sessionId = String(args?.sessionId);
 
       return mockArchivesWorldSubject([mockArchiveWorldEntry()]);

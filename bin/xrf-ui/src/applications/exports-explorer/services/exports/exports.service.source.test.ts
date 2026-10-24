@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { AsyncState } from "@xrf/async";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EExportsCommand } from "@xrf/ipc/commands/exports";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ExportSourceContent } from "@xrf/ipc/types/xrf-export";
 
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
@@ -19,7 +20,7 @@ const SOURCE: ExportSourceContent = {
 
 describe("ExportsService export source", () => {
   beforeEach(() => {
-    setMockInvokeResponses({ ["plugin:exports|get_source"]: SOURCE });
+    mockIpcCommands({ [EExportsCommand.GET_SOURCE]: SOURCE });
   });
 
   it("reads the source of one declaration by name", async () => {
@@ -29,7 +30,7 @@ describe("ExportsService export source", () => {
 
     await expect(service.readExportSource("xr_effects.play")).resolves.toEqual(SOURCE);
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:exports|get_source", {
+    expect(mockInvoke).toHaveBeenCalledWith(EExportsCommand.GET_SOURCE, {
       sessionId: expect.any(String),
       name: "xr_effects.play",
     });
@@ -41,8 +42,8 @@ describe("ExportsService export source", () => {
 
     service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockExportsProject()));
 
-    setMockInvokeResponses({
-      ["plugin:exports|get_source"]: () => {
+    mockIpcCommands({
+      [EExportsCommand.GET_SOURCE]: () => {
         throw new Error("declaration file is gone");
       },
     });

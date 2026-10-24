@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { AsyncState } from "@xrf/async";
-import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 import { Nullable } from "@xrf/types";
 
@@ -18,7 +19,7 @@ function getExtractedFile(service: ArchivesService): Nullable<string> {
 
 describe("ArchivesService extraction", () => {
   beforeEach(() => {
-    setMockInvokeResponses({});
+    mockIpcCommands({});
   });
 
   it("asks the backend for the file by its archived name", async () => {
@@ -28,7 +29,7 @@ describe("ArchivesService extraction", () => {
 
     await service.extractFile(FILE, "C:\\out\\system.ltx");
 
-    expect(mockInvoke).toHaveBeenCalledWith("plugin:archives|extract_file", {
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.EXTRACT_FILE, {
       sessionId: expect.any(String),
       name: "configs\\system.ltx",
       destination: "C:\\out\\system.ltx",
@@ -42,8 +43,8 @@ describe("ArchivesService extraction", () => {
 
     service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
 
-    setMockInvokeResponses({
-      ["plugin:archives|extract_file"]: () => {
+    mockIpcCommands({
+      [EArchivesCommand.EXTRACT_FILE]: () => {
         throw new Error("destination is read only");
       },
     });

@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
+import { EJobsCommand } from "@xrf/ipc/commands/jobs";
 import {
   emitMockChannelMessage,
   getMockChannels,
+  mockIpcCommands,
   resetMockChannels,
   resetMockInvoke,
-  setMockInvokeResponses,
 } from "@xrf/ipc/testing";
 import { ARCHIVES_JOB_PACK, ARCHIVES_JOB_UNPACK } from "@xrf/ipc/types/xrf-app-archives";
 import { JobProgress } from "@xrf/ipc/types/xrf-job";
@@ -18,7 +19,7 @@ import { noop } from "@/lib/callbacks/noop";
 
 import { JobsService } from "./jobs.service";
 
-const CANCEL_COMMAND: string = "plugin:jobs|cancel";
+const CANCEL_COMMAND: string = EJobsCommand.CANCEL;
 
 function progress(completed: number, total: Nullable<number> = 10): JobProgress {
   return {
@@ -127,7 +128,7 @@ describe("JobsService", () => {
   it("marks a job as asked to stop and tells the backend", async () => {
     // The request is recorded rather than the job removed: cancellation lands at a boundary the run chooses, and
     // hiding the gap would make the control look broken.
-    setMockInvokeResponses({ [CANCEL_COMMAND]: true });
+    mockIpcCommands({ [CANCEL_COMMAND]: true });
 
     const { service } = mockInjectedService(JobsService);
     const { descriptor, settle } = pending();
@@ -237,7 +238,7 @@ describe("JobsService", () => {
 
   it("tells the tool whether stopping was asked for when it describes the outcome", async () => {
     // The service knows the request was made; only the tool can read its own payload to see what the run then did.
-    setMockInvokeResponses({ [CANCEL_COMMAND]: true });
+    mockIpcCommands({ [CANCEL_COMMAND]: true });
 
     const { service } = mockInjectedService(JobsService);
     const describe = jest.fn((outcome: IJobOutcome<unknown>): INotificationPayload => {
@@ -284,7 +285,7 @@ describe("JobsService", () => {
 
   it("keeps working when a cancel is refused because the job already finished", async () => {
     // Ordinary: the control was pressed a moment too late. The run's own answer reports the outcome either way.
-    setMockInvokeResponses({
+    mockIpcCommands({
       [CANCEL_COMMAND]: () => {
         throw new Error("no such job");
       },

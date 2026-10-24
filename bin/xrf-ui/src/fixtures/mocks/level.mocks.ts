@@ -1,4 +1,6 @@
-import { InvokeHandler, InvokeMap } from "@xrf/ipc/testing";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { IpcCommandMocks } from "@xrf/ipc/testing";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
   ELevelSpawnCategory,
   LevelEntry,
@@ -125,12 +127,12 @@ export interface IMockLevelParts {
  * @param parts - The parts to answer with.
  * @returns Responses for the `describe_*` queries of a level's parts.
  */
-export function mockLevelPartResponses(parts: IMockLevelParts = {}): InvokeMap {
+export function mockLevelPartResponses(parts: IMockLevelParts = {}): IpcCommandMocks {
   return {
-    ["plugin:levels|describe_level_map"]: mockLevelPartAnswer(parts.levelMap ?? null),
-    ["plugin:levels|describe_start"]: mockLevelPartAnswer(parts.start ?? null),
-    ["plugin:levels|describe_surfaces"]: mockLevelPartAnswer(parts.surfaces ?? []),
-    ["plugin:levels|describe_textures"]: mockLevelPartAnswer(parts.textures ?? []),
+    [ELevelsCommand.DESCRIBE_LEVEL_MAP]: mockLevelPartAnswer(parts.levelMap ?? null),
+    [ELevelsCommand.DESCRIBE_START]: mockLevelPartAnswer(parts.start ?? null),
+    [ELevelsCommand.DESCRIBE_SURFACES]: mockLevelPartAnswer(parts.surfaces ?? []),
+    [ELevelsCommand.DESCRIBE_TEXTURES]: mockLevelPartAnswer(parts.textures ?? []),
   };
 }
 
@@ -138,8 +140,8 @@ export function mockLevelPartResponses(parts: IMockLevelParts = {}): InvokeMap {
  * @param value - What a part query answers, null included.
  * @returns A query answering it as a snapshot of the opening asked about.
  */
-export function mockLevelPartAnswer(value: unknown): InvokeHandler {
-  return (args?: Record<string, unknown>) => mockSessionSnapshot(value, args?.sessionId as string);
+export function mockLevelPartAnswer<T>(value: T): (args: { sessionId: string }) => SessionSnapshot<T> {
+  return (args: { sessionId: string }) => mockSessionSnapshot(value, args.sessionId);
 }
 
 /** What one reference came to, for a report fixture. */

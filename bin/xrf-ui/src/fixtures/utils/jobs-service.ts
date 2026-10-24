@@ -1,4 +1,5 @@
 import { EventBus, WireEvent } from "@wirestate/core";
+import { EJobsCommand } from "@xrf/ipc/commands/jobs";
 
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -6,8 +7,8 @@ import { EMIT_NOTIFICATION_EVENT, INotificationPayload } from "@/core/notificati
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
 
 /** The commands the service lists the backend's jobs by and attaches to one by. */
-export const JOBS_LIST_COMMAND: string = "plugin:jobs|list";
-export const JOBS_ATTACH_COMMAND: string = "plugin:jobs|attach";
+export const JOBS_LIST_COMMAND: string = EJobsCommand.LIST;
+export const JOBS_ATTACH_COMMAND: string = EJobsCommand.ATTACH;
 
 /** How long the service waits between asking an adopted job where it has got to. */
 export const JOBS_POLL_INTERVAL: number = 1000;
