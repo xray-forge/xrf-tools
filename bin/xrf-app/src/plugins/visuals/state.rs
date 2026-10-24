@@ -4,22 +4,26 @@ use std::path::Path;
 use serde::Serialize;
 use xrf_material::{XrayMaterialDescriptor, XraySurfaceDescriptor};
 use xrf_vfs::{XrayAsset, XrayRoots};
-use xrf_visual::{VisualDependencies, VisualDescription, VisualMotionPose, VisualMotions, VisualPackage};
+use xrf_visual::{VisualDependencies, VisualDescription, VisualMotions, VisualPackage};
 
 use crate::core::assets::AssetTextureDescriptor;
-use crate::core::session::{Session, SessionScopes, Sessions};
+use crate::core::session::{SessionScopes, Sessions};
+use crate::plugins::visuals::posed_visual_motion::PosedVisualMotion;
 
-/// The models open and the roots browsed, each held by the tool that opened it.
+/// The models open, the motions they are posed by and the roots browsed, each held by the tool that opened it.
 pub struct VisualState {
   pub models: Sessions<SelectedVisual>,
+  /// The motion each viewer plays its model by, an opening of the viewer's rather than a part of the model.
+  pub poses: Sessions<PosedVisualMotion>,
   pub browses: Sessions<XrayRoots>,
 }
 
 impl VisualState {
-  /// Whatever scope `scopes` releases closes the models and browses it held.
+  /// Whatever scope `scopes` releases closes the models, poses and browses it held.
   pub fn new(scopes: &SessionScopes) -> Self {
     Self {
       models: Sessions::new("visual", scopes),
+      poses: Sessions::new("visual motion", scopes),
       browses: Sessions::new("visual browse", scopes),
     }
   }
@@ -34,8 +38,6 @@ pub struct SelectedVisual {
   pub dependencies: VisualDependencies,
   /// What posing needs from the file, or `None` when the visual carries no bind pose.
   pub motions: Option<VisualMotions>,
-  /// The motion baked by the last `open_motion`, so the renderer poses by that bake rather than composing it again.
-  pub posed: Session<VisualMotionPose>,
   /// What the located texture files are, described at open so a reload reports them without reading anything again.
   pub textures: HashMap<String, AssetTextureDescriptor>,
   /// What the renderer builds for each declared texture, keyed by the reference as the mesh declares it.

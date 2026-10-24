@@ -38,6 +38,7 @@ pub fn visuals_show_model(
 
       Some(Arc::new(VisualRenderSource::new(
         visual,
+        visuals.poses.clone(),
         AssetMountState::clone(&assets),
         detail,
       )))

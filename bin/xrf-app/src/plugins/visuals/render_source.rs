@@ -14,8 +14,9 @@ use xrf_visual::{
 };
 
 use crate::core::assets::AssetMountState;
-use crate::core::session::SessionSnapshot;
+use crate::core::session::{SessionSnapshot, Sessions};
 use crate::plugins::render::texture_resolver::TextureResolver;
+use crate::plugins::visuals::posed_visual_motion::PosedVisualMotion;
 use crate::plugins::visuals::state::SelectedVisual;
 
 /// The one object an asset scene stands: the open model at the origin.
@@ -30,6 +31,8 @@ const IDENTITY: [f32; 16] = [
 /// roots it was opened in, its skin kept for the renderer to pose, and its motions baked when a pose names one.
 pub struct VisualRenderSource {
   visual: Arc<SessionSnapshot<SelectedVisual>>,
+  /// The motions viewers posed their models by, the bake of one of this model's reused when a pose names it.
+  poses: Sessions<PosedVisualMotion>,
   assets: AssetMountState,
   /// How far down each submesh's collapse chain to draw: zero its finest level, one its coarsest.
   detail: f32,
@@ -38,15 +41,32 @@ pub struct VisualRenderSource {
 }
 
 impl VisualRenderSource {
-  pub fn new(visual: Arc<SessionSnapshot<SelectedVisual>>, assets: AssetMountState, detail: f32) -> Self {
+  pub fn new(
+    visual: Arc<SessionSnapshot<SelectedVisual>>,
+    poses: Sessions<PosedVisualMotion>,
+    assets: AssetMountState,
+    detail: f32,
+  ) -> Self {
     let textures: TextureResolver = TextureResolver::new(visual.roots.clone(), XrayTextureScope::shared(), []);
 
     Self {
       visual,
+      poses,
       assets,
       detail,
       textures,
     }
+  }
+
+  /// The bake a viewer posed this model by under `name`, which a pose naming it draws rather than composing it again.
+  fn find_baked(&self, name: &str) -> Option<VisualMotionPose> {
+    self
+      .poses
+      .list_opened()
+      .ok()?
+      .into_iter()
+      .find(|posed| posed.model == self.visual.session_id && posed.pose.description.name == name)
+      .map(|posed| posed.pose.clone())
   }
 }
 
@@ -156,15 +176,7 @@ impl RenderLevelSource for VisualRenderSource {
       ));
     };
     // The bake `open_motion` just made of it, when that is the one asked for, rather than composing it again.
-    let baked: Option<VisualMotionPose> = self
-      .visual
-      .posed
-      .get()
-      .ok()
-      .flatten()
-      .filter(|posed| posed.description.name == name)
-      .map(|posed| VisualMotionPose::clone(&posed));
-    let posed: VisualMotionPose = match baked {
+    let posed: VisualMotionPose = match self.find_baked(name) {
       Some(posed) => posed,
       None => motions.bake_named(
         &self

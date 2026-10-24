@@ -10,7 +10,7 @@ use xrf_vfs::{XrayAsset, XrayRoots, XraySearch};
 use xrf_visual::{VisualDependencies, VisualDescription, VisualMotions, VisualPackage, VisualPacker};
 
 use crate::core::assets::{AssetMountState, AssetTextureDescriptor};
-use crate::core::session::{Session, SessionId, SessionSnapshot};
+use crate::core::session::{SessionId, SessionSnapshot};
 use crate::core::types::TauriResult;
 use crate::plugins::visuals::read::read_source;
 use crate::plugins::visuals::state::{SelectedVisual, SelectedVisualDescription, VisualSource, VisualState};
@@ -51,7 +51,6 @@ pub async fn visuals_open_model(
       package,
       dependencies,
       motions,
-      posed: Session::new("visual motion"),
       textures,
       materials,
       surfaces,
