@@ -1,15 +1,16 @@
 use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
-use xrf_utils::format_path;
-use xrf_vfs::{XrayAsset, XrayPathCollision, XrayRoots, XraySearch, XraySearchPlan, XraySkippedMount, XraySourceKind};
+use xrf_vfs::{
+  XrayAsset, XrayMount, XrayPathCollision, XrayRoots, XraySearch, XraySearchPlan, XraySkippedMount, XraySourceKind,
+};
 
 /// Resolved assets and source metadata for one listing.
 pub struct AssetListing {
   /// How the path was interpreted when planning its mounts.
   pub origin: String,
-  /// One line per mount, in search order.
-  pub mounts: Vec<String>,
+  /// Every mount, in search order.
+  pub mounts: Vec<XrayMount>,
   /// Winning entries, one per logical path.
   pub entries: Vec<XrayAsset>,
   /// Entries shadowed by a higher-priority mount, absent unless asked for.
@@ -48,7 +49,7 @@ impl AssetLister {
     }
   }
 
-  /// Logical prefixes the directory mounts omit, as `verify-gamedata --ignore` means them.
+  /// Logical prefixes the directory mounts omit.
   pub fn with_ignored(mut self, ignored: &[String]) -> Self {
     self.ignored = ignored.to_vec();
 
@@ -99,14 +100,7 @@ impl AssetLister {
       mounts: search
         .list_sources()
         .iter()
-        .map(|source| {
-          format!(
-            "{:<9} {} ({})",
-            format!("{:?}", source.mount.get_kind()),
-            format_path(source.mount.get_source().get_root_path()),
-            source.mount.get_label()
-          )
-        })
+        .map(|source| source.mount.clone())
         .collect(),
       origin: self.roots.describe(),
       shadowed,

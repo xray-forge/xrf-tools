@@ -4,13 +4,10 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
 use xrf_report::Status;
 use xrf_translation::{TranslationLanguage, TranslationParseOptions, TranslationParseResult, TranslationParser};
-use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::link_policy::{LinkPolicyArguments, requested_link_policy};
-use crate::core::progress::new_logging_job;
+use crate::core::arguments::{LinkPolicyArgument, XrayRootsArguments};
+use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::terminal::CliJob;
 
 #[derive(Default)]
 pub struct ParseCommand;
@@ -20,37 +17,13 @@ impl GenericCommand for ParseCommand {
     "parse"
   }
 
-  /// Create translation parsing command.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to parse xml translations into json sources")
-      .arg(
-        Arg::new("path")
-          .help("Root holding raw xml translations. Repeat to layer roots, highest priority first")
-          .short('p')
-          .long("path")
-          .required(true)
-          // Both spellings layer: repeat the flag, or list several values after one of them.
-          .action(ArgAction::Append)
-          .num_args(1..)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("source")
-          .help(
-            "How to read the path: auto treats it as an installation only when it declares one, directory ignores any declaration, volumes mounts every archive volume beneath it, installation requires one, containing-installation searches parent directories for one",
-          )
-          .long("source")
-          .default_value("containing-installation")
-          .value_parser(["auto", "directory", "volumes", "installation", "containing-installation"]),
-      )
-      .arg(
-        Arg::new("prefix")
-          .help("Limit to one logical subtree, such as configs\\text\\eng")
-          .long("prefix")
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = XrayRootsArguments::declare(
+      command.about("Parse XML translations into JSON sources"),
+      "Root holding raw xml translations. Repeat to layer roots, highest priority first",
+      "Limit to one logical subtree, such as configs\\text\\eng",
+    )
+    .arg(
         Arg::new("language")
           .help("Language every entry read by this run is filed under. Raw xml carries no language, so it is declared rather than guessed")
           .short('l')
@@ -59,10 +32,10 @@ impl GenericCommand for ParseCommand {
           .value_parser(value_parser!(String)),
       )
       .arg(
-        Arg::new("output")
+        Arg::new("dest")
           .help("Directory the json sources are written to, merging with any already there")
-          .short('o')
-          .long("output")
+          .short('d')
+          .long("dest")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
@@ -89,8 +62,9 @@ impl GenericCommand for ParseCommand {
           .help("Answer with a check failure when anything was unreadable or off schema")
           .long("strict")
           .action(ArgAction::SetTrue),
-      )
-      .with_link_policy()
+      );
+
+    LinkPolicyArgument::declare(command)
   }
 
   /// Import one language's raw string tables into json sources.
@@ -99,29 +73,12 @@ impl GenericCommand for ParseCommand {
   /// costs that file, and an import over somebody else's mod is expected to meet a few. `--strict` is
   /// the mode that judges, and it is the one a build step uses.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let paths: Vec<&PathBuf> = matches
-      .get_many::<PathBuf>("path")
-      .expect("Expected at least one path to be provided")
-      .collect();
-
     let output: OutputOptions = context.get_output().clone();
-
-    let source: XrayMountMode = XrayMountMode::try_from(
-      matches
-        .get_one::<String>("source")
-        .expect("Expected source mode to default")
-        .as_str(),
-    )?;
-
-    // One vocabulary for naming roots, so repeating `--path` layers a tree in front of an
-    // installation exactly as the desktop app does it.
-    let roots: XrayRoots = XrayRoots::new(paths.iter().map(|path| XrayRoot::new(path.to_path_buf(), source)));
-
     let options: TranslationParseOptions = TranslationParseOptions {
-      job: new_logging_job(),
+      job: CliJob::new_logging(),
       output: output.clone(),
-      roots,
-      prefix: matches.get_one::<String>("prefix").cloned(),
+      roots: XrayRootsArguments::of(matches)?,
+      prefix: XrayRootsArguments::prefix_of(matches).map(str::to_owned),
       // Rejects `all`: a run files every entry it reads under one key, and there is no such key.
       language: TranslationLanguage::from_str_single(
         matches
@@ -129,13 +86,13 @@ impl GenericCommand for ParseCommand {
           .expect("Expected valid language for translation"),
       )?,
       output_dir: matches
-        .get_one::<PathBuf>("output")
+        .get_one::<PathBuf>("dest")
         .expect("Expected valid output folder path to be provided")
         .clone(),
       file: matches.get_one::<String>("file").cloned(),
       is_overwrite: matches.get_flag("overwrite"),
       is_dry_run: matches.get_flag("dry-run"),
-      link_policy: requested_link_policy(matches),
+      link_policy: LinkPolicyArgument::of(matches),
     };
 
     let is_strict: bool = matches.get_flag("strict");

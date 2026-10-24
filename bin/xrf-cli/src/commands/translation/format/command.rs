@@ -6,10 +6,8 @@ use xrf_output::OutputOptions;
 use xrf_translation::{TranslationFormatOptions, TranslationFormatResult, TranslationFormatter};
 use xrf_utils::LineEndings;
 
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::progress::new_logging_job;
+use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::terminal::CliJob;
 
 #[derive(Default)]
 pub struct FormatCommand;
@@ -19,10 +17,9 @@ impl GenericCommand for FormatCommand {
     "format"
   }
 
-  /// Create translation formatting command.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to normalize json translation sources")
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("Normalize JSON translation sources")
       .arg(
         Arg::new("path")
           .help("Paths to json translation sources or folders holding them")
@@ -71,7 +68,7 @@ impl GenericCommand for FormatCommand {
     let options: TranslationFormatOptions = TranslationFormatOptions::default()
       // Created before the sources are discovered, because its clock is what the result reports as the total:
       // selecting them over a large tree is part of the wait.
-      .with_job(new_logging_job())
+      .with_job(CliJob::new_logging())
       .with_output(output)
       .with_line_endings(line_endings);
 

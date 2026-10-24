@@ -6,13 +6,12 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 use xrf_translation::{TranslationLanguage, TranslationVerifier, TranslationVerifyOptions, TranslationVerifyResult};
 use xrf_utils::format_path;
-use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
+use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use super::translation_verification_report::TranslationVerificationReportPayload;
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::generic_command::{CommandResult, GenericCommand};
-use crate::core::progress::new_logging_job;
+use super::report::TranslationVerifyReport;
+use crate::core::arguments::XrayRootsArguments;
+use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::terminal::CliJob;
 
 #[derive(Default)]
 pub struct VerifyCommand;
@@ -22,59 +21,32 @@ impl GenericCommand for VerifyCommand {
     "verify"
   }
 
-  /// Create command for verifying of translation files.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to verify translation files integrity")
-      .arg(
-        Arg::new("path")
-          .help("Root holding translation sources, or one source file. Repeat to layer roots, highest priority first")
-          .short('p')
-          .long("path")
-          .required(true)
-          // Both spellings layer: repeat the flag, or list several values after one of them.
-          .action(ArgAction::Append)
-          .num_args(1..)
-          .value_parser(value_parser!(PathBuf)),
-      )
-      .arg(
-        Arg::new("source")
-          .help(
-            "How to read the path: auto treats it as an installation only when it declares one, directory ignores any declaration, volumes mounts every archive volume beneath it, installation requires one, containing-installation searches parent directories for one",
-          )
-          .long("source")
-          .default_value("containing-installation")
-          .value_parser(["auto", "directory", "volumes", "installation", "containing-installation"]),
-      )
-      .arg(
-        Arg::new("prefix")
-          .help("Limit to one logical subtree, such as translations")
-          .long("prefix")
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("language")
-          .help("Target language to translate")
-          .short('l')
-          .long("language")
-          .required(false)
-          .default_value("all")
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("strict")
-          .help("Fail with non 0 error code if translation are missing")
-          .long("strict")
-          .required(false)
-          .action(ArgAction::SetTrue),
-      )
+  fn declare(&self, command: Command) -> Command {
+    XrayRootsArguments::declare(
+      command.about("Verify that translation sources are well formed and translated into every language"),
+      "Root holding translation sources, or one source file. Repeat to layer roots, highest priority first",
+      "Limit to one logical subtree, such as translations",
+    )
+    .arg(
+      Arg::new("language")
+        .help("Language to verify, or all of them")
+        .short('l')
+        .long("language")
+        .required(false)
+        .default_value("all")
+        .value_parser(value_parser!(String)),
+    )
+    .arg(
+      Arg::new("strict")
+        .help("Answer with a check failure when any translation is missing")
+        .long("strict")
+        .required(false)
+        .action(ArgAction::SetTrue),
+    )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let paths: Vec<&PathBuf> = matches
-      .get_many::<PathBuf>("path")
-      .expect("Expected at least one path to be provided")
-      .collect();
+    let paths: Vec<&PathBuf> = XrayRootsArguments::list_paths(matches);
 
     let language: &String = matches
       .get_one::<String>("language")
@@ -85,7 +57,7 @@ impl GenericCommand for VerifyCommand {
     let output: OutputOptions = context.get_output().clone();
 
     let options: TranslationVerifyOptions = TranslationVerifyOptions {
-      job: new_logging_job(),
+      job: CliJob::new_logging(),
       is_strict,
       output,
       language: TranslationLanguage::from_str(language).map_err(XrfError::new_unknown_language_error)?,
@@ -105,30 +77,17 @@ impl GenericCommand for VerifyCommand {
 
       TranslationVerifier::verify_file(paths[0], &options)
     } else {
-      let source: XrayMountMode = XrayMountMode::try_from(
-        matches
-          .get_one::<String>("source")
-          .expect("Expected source mode to default")
-          .as_str(),
-      )?;
-
-      // One vocabulary for naming roots, so repeating `--path` layers a tree in front of an
-      // installation exactly as the desktop app does it.
-      let roots: XrayRoots = XrayRoots::new(paths.iter().map(|path| XrayRoot::new(path.to_path_buf(), source)));
+      let source: XrayMountMode = XrayRootsArguments::source_of(matches)?;
+      let roots: XrayRoots = XrayRootsArguments::of(matches)?;
 
       xrf_output::info!(
         options.output,
-        "Verifying translations in {} ({:?}), language - {}",
+        "Verifying translations in {} ({source}), language - {}",
         roots.describe(),
-        source,
         language
       );
 
-      TranslationVerifier::verify_roots(
-        &roots,
-        matches.get_one::<String>("prefix").map(String::as_str),
-        &options,
-      )
+      TranslationVerifier::verify_roots(&roots, XrayRootsArguments::prefix_of(matches), &options)
     };
 
     let result: TranslationVerifyResult = match verify_result {
@@ -137,6 +96,7 @@ impl GenericCommand for VerifyCommand {
       Err(error @ XrfError::Io { .. }) => return Err(error.into()),
       Err(error) => {
         xrf_output::failure!(options.output, "Provided translations are invalid: {error}");
+        context.set_result(|| TranslationVerifyReport::malformed(&error))?;
 
         return Err(CommandError::new_check_failed(1));
       }
@@ -144,7 +104,7 @@ impl GenericCommand for VerifyCommand {
 
     // Deposited before the verdict becomes an outcome, so a failing check still reports the findings
     // that explain it.
-    context.set_result(|| TranslationVerificationReportPayload::new(&result).build())?;
+    context.set_result(|| TranslationVerifyReport::new(&result))?;
 
     xrf_output::info!(
       options.output,

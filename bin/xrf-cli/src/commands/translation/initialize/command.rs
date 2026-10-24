@@ -5,8 +5,7 @@ use xrf_output::OutputOptions;
 use xrf_translation::{TranslationInitializeOptions, TranslationInitializeResult, TranslationInitializer};
 use xrf_utils::format_path;
 
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct InitializeCommand;
@@ -16,18 +15,15 @@ impl GenericCommand for InitializeCommand {
     "initialize"
   }
 
-  /// Create command for initialization of translation files.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to initialize translation files")
-      .arg(
-        Arg::new("path")
-          .help("Path to translation folder")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
+  fn declare(&self, command: Command) -> Command {
+    command.about("Initialize translation files").arg(
+      Arg::new("path")
+        .help("Path to translation folder")
+        .short('p')
+        .long("path")
+        .required(true)
+        .value_parser(value_parser!(PathBuf)),
+    )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
