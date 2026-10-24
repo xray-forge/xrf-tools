@@ -39,9 +39,4 @@ impl ArchiveLevelPsStaticEffect {
       })
       .collect()
   }
-
-  /// Whether every placement of this effect is one a single-player session loads.
-  pub const fn is_every_game_type(&self) -> bool {
-    self.restricted == 0
-  }
 }

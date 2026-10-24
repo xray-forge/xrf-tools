@@ -1,10 +1,14 @@
+use std::sync::Arc;
+
 use serde::Serialize;
 use tauri::State;
-use xrf_app_core::assets::{AssetMountState, read_located_asset};
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
+use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_extension::XrayExtensionOf;
 use xrf_sound::{SoundFile, SoundMetadata};
-use xrf_vfs::XrayRoots;
+
+use crate::browse::{ArchiveSubject, ArchiveSubjects};
 
 /// The X-Ray source parameters carried in a sound's first vorbis comment.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -33,48 +37,58 @@ pub struct AudioDescriptor {
   pub media_type: String,
 }
 
-/// Report whatever the engine would read out of a sound, without handing over the sound.
+impl AudioDescriptor {
+  /// What the engine would read out of a sound's bytes, handed over as `media_type`.
+  fn of(name: &str, bytes: &[u8], media_type: &str) -> Self {
+    // A sound that cannot be parsed is still worth playing: plenty of ogg in a mod was not produced by the x-ray tools,
+    // and refusing to describe it would take the playable bytes down with the description.
+    let sound: Option<SoundFile> = match SoundFile::read_from_bytes(bytes) {
+      Ok(sound) => Some(sound),
+      Err(error) => {
+        log::warn!("Sound '{name}' carries no readable x-ray headers: {error}");
+
+        None
+      }
+    };
+
+    Self {
+      channels: sound.as_ref().map(|it| it.channels),
+      sample_rate: sound.as_ref().map(|it| it.sample_rate),
+      parameters: sound.as_ref().and_then(|it| match &it.metadata {
+        SoundMetadata::XRay { parameters, .. } => Some(AudioSourceParameters {
+          min_distance: parameters.min_distance,
+          max_distance: parameters.max_distance,
+          base_volume: parameters.base_volume,
+          game_type: parameters.game_type,
+          max_ai_distance: parameters.max_ai_distance,
+        }),
+        SoundMetadata::EngineDefaults => None,
+      }),
+      media_type: media_type.to_owned(),
+    }
+  }
+}
+
+/// Report whatever the engine would read out of a sound of the open subject, without handing over the sound.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_audio"))]
 #[tauri::command(rename = "describe_audio")]
 pub async fn archives_describe_audio(
-  roots: XrayRoots,
-  logical_path: String,
-  assets: State<'_, AssetMountState>,
+  session_id: SessionId,
+  name: String,
+  execution: State<'_, ExecutionState>,
+  subjects: State<'_, ArchiveSubjects>,
 ) -> TauriResult<AudioDescriptor> {
-  log::info!("Describing audio: {logical_path}");
+  log::info!("Describing audio: {name}");
 
-  let media_type: &'static str = XrayExtensionOf::of(&logical_path)
+  let media_type: &'static str = XrayExtensionOf::of(&name)
     .known()
     .and_then(|extension| extension.get_media_type())
-    .ok_or_else(|| format!("Failed to describe audio '{logical_path}': no webview plays this extension"))?;
+    .ok_or_else(|| format!("Failed to describe audio '{name}': no webview plays this extension"))?;
+  let subject: Arc<SessionSnapshot<ArchiveSubject>> = subjects.require(session_id)?;
 
-  let bytes: Vec<u8> = read_located_asset(&assets.search(&roots)?, &logical_path)
-    .map_err(|error| format!("Failed to describe audio '{logical_path}': {error}"))?;
-
-  // A sound that cannot be parsed is still worth playing: plenty of ogg in a mod was not produced by the x-ray tools,
-  // and refusing to describe it would take the playable bytes down with the description.
-  let sound: Option<SoundFile> = match SoundFile::read_from_bytes(&bytes) {
-    Ok(sound) => Some(sound),
-    Err(error) => {
-      log::warn!("Sound '{logical_path}' carries no readable x-ray headers: {error}");
-
-      None
-    }
-  };
-
-  Ok(AudioDescriptor {
-    channels: sound.as_ref().map(|it| it.channels),
-    sample_rate: sound.as_ref().map(|it| it.sample_rate),
-    parameters: sound.as_ref().and_then(|it| match &it.metadata {
-      SoundMetadata::XRay { parameters, .. } => Some(AudioSourceParameters {
-        min_distance: parameters.min_distance,
-        max_distance: parameters.max_distance,
-        base_volume: parameters.base_volume,
-        game_type: parameters.game_type,
-        max_ai_distance: parameters.max_ai_distance,
-      }),
-      SoundMetadata::EngineDefaults => None,
-    }),
-    media_type: media_type.to_owned(),
-  })
+  execution
+    .run_blocking("Describing audio", move || {
+      Ok::<_, String>(AudioDescriptor::of(&name, &subject.read_bytes(&name)?, media_type))
+    })
+    .await?
 }

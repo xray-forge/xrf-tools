@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::Serialize;
 use xrf_particles::{ParticleActionType, ParticleEffect};
 use xrf_vfs::XrayAssetType;
@@ -31,8 +29,6 @@ pub struct ArchiveParticlesEffect {
 impl ArchiveParticlesEffect {
   /// Every effect of a library, each with its texture resolved.
   pub fn of_all(source: &ArchiveDescribeSource, effects: &[ParticleEffect]) -> Vec<Self> {
-    let mut resolved: HashMap<&str, ArchiveReference> = HashMap::new();
-
     effects
       .iter()
       .map(|effect| Self {
@@ -40,10 +36,7 @@ impl ArchiveParticlesEffect {
         max_particles: effect.max_particles,
         time_limit: effect.time_limit,
         shader: effect.sprite.shader_name.clone(),
-        texture: resolved
-          .entry(effect.sprite.texture_name.as_str())
-          .or_insert_with(|| ArchiveReference::resolve(source, XrayAssetType::Dds, &effect.sprite.texture_name))
-          .clone(),
+        texture: ArchiveReference::resolve(source, XrayAssetType::Dds, &effect.sprite.texture_name),
         actions: Self::to_action_kinds(effect),
         actions_count: effect.actions.len(),
         flags: effect.flags,

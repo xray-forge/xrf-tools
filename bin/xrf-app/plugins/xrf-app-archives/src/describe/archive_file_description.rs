@@ -207,9 +207,7 @@ impl ArchiveFileDescription {
     }
 
     Ok(match ArchiveChunksDescription::read(source, name)? {
-      Some(description) => ArchiveFormatDescription::Chunks {
-        description: Box::new(description),
-      },
+      Some(description) => description.into(),
       None => ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::NoDescriber {
         extension: XrayExtensionOf::of(name).as_str().unwrap_or_default().to_owned(),
       }),
@@ -219,7 +217,54 @@ impl ArchiveFileDescription {
 
 impl ArchiveFormatDescription {
   /// The description that says nothing was described, and why.
-  fn refuse(reason: ArchiveDescribeRefusal) -> Self {
+  pub(crate) fn refuse(reason: ArchiveDescribeRefusal) -> Self {
     Self::Unsupported { reason }
   }
+}
+
+/// Each describer's answer as the variant of the union it is, so a describer is named once beside its variant.
+macro_rules! impl_format_description_from {
+  ($($variant:ident => $description:ty),* $(,)?) => {
+    $(
+      impl From<$description> for ArchiveFormatDescription {
+        fn from(description: $description) -> Self {
+          Self::$variant {
+            description: Box::new(description),
+          }
+        }
+      }
+    )*
+  };
+}
+
+impl_format_description_from! {
+  Chunks => ArchiveChunksDescription,
+  Spawn => ArchiveSpawnDescription,
+  LevelSpawn => ArchiveLevelSpawnDescription,
+  Anm => ArchiveAnmDescription,
+  Detail => ArchiveDetailModel,
+  DetailLibrary => ArchiveDetailLibraryDescription,
+  LevelEnvMod => ArchiveLevelEnvModDescription,
+  LevelFogVol => ArchiveLevelFogVolDescription,
+  LevelGame => ArchiveLevelGameDescription,
+  GameMtl => ArchiveGameMtlDescription,
+  LevelHom => ArchiveLevelHomDescription,
+  LevelGeom => ArchiveLevelGeomDescription,
+  LightAnim => ArchiveLightAnimDescription,
+  ShaderCompiler => ArchiveShaderCompilerDescription,
+  SoundEnvironment => ArchiveSoundEnvironmentDescription,
+  LevelLights => ArchiveLevelLightsDescription,
+  LevelPsStatic => ArchiveLevelPsStaticDescription,
+  LevelSndStatic => ArchiveLevelSndStaticDescription,
+  LevelSom => ArchiveLevelSomDescription,
+  LevelWallmarks => ArchiveLevelWallmarksDescription,
+  Efd => ArchiveEfdDescription,
+  Level => ArchiveLevelDescription,
+  LevelAi => ArchiveLevelAiDescription,
+  LevelCollision => ArchiveLevelCollisionDescription,
+  Omf => ArchiveOmfDescription,
+  Particles => ArchiveParticlesDescription,
+  Ppe => ArchivePpeDescription,
+  Shaders => ArchiveShadersDescription,
+  Thm => ArchiveThmDescription,
 }

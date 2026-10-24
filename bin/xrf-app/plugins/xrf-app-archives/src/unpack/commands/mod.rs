@@ -1,1 +1,1 @@
-pub mod unpack_directory;
+pub(crate) mod unpack_directory;

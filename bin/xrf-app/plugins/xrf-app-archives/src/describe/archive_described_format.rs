@@ -1,10 +1,11 @@
+use xrf_archive::ArchiveReadPolicy;
 use xrf_error::XrfResult;
 use xrf_extension::{XrayExtension, XrayExtensionOf};
 use xrf_vfs::XrayLogicalPath;
 
 use crate::describe::anm::ArchiveAnmDescription;
 use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::archive_file_description::ArchiveFormatDescription;
+use crate::describe::archive_file_description::{ArchiveDescribeRefusal, ArchiveFormatDescription};
 use crate::describe::detail::{ArchiveDetailLibraryDescription, ArchiveDetailModel};
 use crate::describe::efd::ArchiveEfdDescription;
 use crate::describe::gamemtl::ArchiveGameMtlDescription;
@@ -92,8 +93,8 @@ impl ArchiveDescribedFormat {
   /// Three reasons land here. `.xr` says only that a file is a chunked X-Ray library, and six unrelated formats share
   /// it; `level` has no extension at all; `.details` is a real format, but vanilla also ships a compiler intermediate
   /// under it, so only the file called `level.details` is the detail layer. Either way the name the engine loads the
-  /// file under is the whole of the answer. All six `.xr` libraries are named here now, so the extension has no
-  /// unclaimed spelling left in the trees.
+  /// file under is the whole of the answer. All six `.xr` libraries are named here, so the extension has no unclaimed
+  /// spelling left in the trees.
   const NAMED: [(&'static str, Self); 8] = [
     ("gamemtl.xr", Self::GameMtl),
     ("lanims.xr", Self::LightAnim),
@@ -151,100 +152,63 @@ impl ArchiveDescribedFormat {
   ///
   /// Returns an error when the entry's bytes cannot be read, or when they are not the format this claimed them as.
   pub fn describe(self, source: &ArchiveDescribeSource, name: &str) -> XrfResult<Option<ArchiveFormatDescription>> {
-    Ok(match self {
-      Self::Anm => Some(ArchiveFormatDescription::Anm {
-        description: Box::new(ArchiveAnmDescription::read(source, name)?),
-      }),
-      Self::Detail => Some(ArchiveFormatDescription::Detail {
-        description: Box::new(ArchiveDetailModel::read(source, name)?),
-      }),
-      Self::DetailLibrary => Some(ArchiveFormatDescription::DetailLibrary {
-        description: Box::new(ArchiveDetailLibraryDescription::read(source, name)?),
-      }),
-      Self::LevelEnvMod => Some(ArchiveFormatDescription::LevelEnvMod {
-        description: Box::new(ArchiveLevelEnvModDescription::read(source, name)?),
-      }),
-      Self::LevelFogVol => Some(ArchiveFormatDescription::LevelFogVol {
-        description: Box::new(ArchiveLevelFogVolDescription::read(source, name)?),
-      }),
-      Self::LevelGame => Some(ArchiveFormatDescription::LevelGame {
-        description: Box::new(ArchiveLevelGameDescription::read(source, name)?),
-      }),
-      Self::GameMtl => Some(ArchiveFormatDescription::GameMtl {
-        description: Box::new(ArchiveGameMtlDescription::read(source, name)?),
-      }),
-      Self::LevelHom => Some(ArchiveFormatDescription::LevelHom {
-        description: Box::new(ArchiveLevelHomDescription::read(source, name)?),
-      }),
-      Self::LevelGeom => Some(ArchiveFormatDescription::LevelGeom {
-        description: Box::new(ArchiveLevelGeomDescription::read(source, name, false)?),
-      }),
-      Self::LevelGeomDetail => Some(ArchiveFormatDescription::LevelGeom {
-        description: Box::new(ArchiveLevelGeomDescription::read(source, name, true)?),
-      }),
-      Self::LightAnim => Some(ArchiveFormatDescription::LightAnim {
-        description: Box::new(ArchiveLightAnimDescription::read(source, name)?),
-      }),
-      Self::ShaderCompiler => Some(ArchiveFormatDescription::ShaderCompiler {
-        description: Box::new(ArchiveShaderCompilerDescription::read(source, name)?),
-      }),
-      Self::SoundEnvironment => Some(ArchiveFormatDescription::SoundEnvironment {
-        description: Box::new(ArchiveSoundEnvironmentDescription::read(source, name)?),
-      }),
-      Self::LevelLights => Some(ArchiveFormatDescription::LevelLights {
-        description: Box::new(ArchiveLevelLightsDescription::read(source, name)?),
-      }),
-      Self::LevelPsStatic => Some(ArchiveFormatDescription::LevelPsStatic {
-        description: Box::new(ArchiveLevelPsStaticDescription::read(source, name)?),
-      }),
-      Self::LevelSndStatic => Some(ArchiveFormatDescription::LevelSndStatic {
-        description: Box::new(ArchiveLevelSndStaticDescription::read(source, name)?),
-      }),
-      Self::LevelSom => Some(ArchiveFormatDescription::LevelSom {
-        description: Box::new(ArchiveLevelSomDescription::read(source, name)?),
-      }),
-      Self::LevelWallmarks => Some(ArchiveFormatDescription::LevelWallmarks {
-        description: Box::new(ArchiveLevelWallmarksDescription::read(source, name)?),
-      }),
-      Self::Efd => Some(ArchiveFormatDescription::Efd {
-        description: Box::new(ArchiveEfdDescription::read(source, name)?),
-      }),
-      Self::LevelAi => Some(ArchiveFormatDescription::LevelAi {
-        description: Box::new(ArchiveLevelAiDescription::read(source, name)?),
-      }),
-      Self::LevelCollision => Some(ArchiveFormatDescription::LevelCollision {
-        description: Box::new(ArchiveLevelCollisionDescription::read(source, name)?),
-      }),
-      Self::Level => Some(ArchiveFormatDescription::Level {
-        description: Box::new(ArchiveLevelDescription::read(source, name)?),
-      }),
-      Self::Omf => Some(ArchiveFormatDescription::Omf {
-        description: Box::new(ArchiveOmfDescription::read(source, name)?),
-      }),
-      Self::Particles => Some(ArchiveFormatDescription::Particles {
-        description: Box::new(ArchiveParticlesDescription::read(source, name)?),
-      }),
-      Self::Ppe => Some(ArchiveFormatDescription::Ppe {
-        description: Box::new(ArchivePpeDescription::read(source, name)?),
-      }),
-      Self::Shaders => Some(ArchiveFormatDescription::Shaders {
-        description: Box::new(ArchiveShadersDescription::read(source, name)?),
-      }),
-      Self::Spawn => match ArchiveSpawnDescription::read(source, name)? {
-        Some(description) => Some(ArchiveFormatDescription::Spawn {
-          description: Box::new(description),
-        }),
-        // Not a set, so try the other format under this extension before giving the entry up to the container walk.
-        None => {
-          ArchiveLevelSpawnDescription::read(source, name)?.map(|description| ArchiveFormatDescription::LevelSpawn {
-            description: Box::new(description),
-          })
-        }
-      },
-      Self::Thm => Some(ArchiveFormatDescription::Thm {
-        description: Box::new(ArchiveThmDescription::read(source, name)?),
-      }),
-    })
+    Ok(Some(match self {
+      Self::Anm => ArchiveAnmDescription::read(source, name)?.into(),
+      Self::Detail => ArchiveDetailModel::read(source, name)?.into(),
+      Self::DetailLibrary => ArchiveDetailLibraryDescription::read(source, name)?.into(),
+      Self::LevelEnvMod => ArchiveLevelEnvModDescription::read(source, name)?.into(),
+      Self::LevelFogVol => ArchiveLevelFogVolDescription::read(source, name)?.into(),
+      Self::LevelGame => ArchiveLevelGameDescription::read(source, name)?.into(),
+      Self::GameMtl => ArchiveGameMtlDescription::read(source, name)?.into(),
+      Self::LevelHom => ArchiveLevelHomDescription::read(source, name)?.into(),
+      Self::LevelGeom => ArchiveLevelGeomDescription::read(source, name, false)?.into(),
+      Self::LevelGeomDetail => ArchiveLevelGeomDescription::read(source, name, true)?.into(),
+      Self::LightAnim => ArchiveLightAnimDescription::read(source, name)?.into(),
+      Self::ShaderCompiler => ArchiveShaderCompilerDescription::read(source, name)?.into(),
+      Self::SoundEnvironment => ArchiveSoundEnvironmentDescription::read(source, name)?.into(),
+      Self::LevelLights => ArchiveLevelLightsDescription::read(source, name)?.into(),
+      Self::LevelPsStatic => ArchiveLevelPsStaticDescription::read(source, name)?.into(),
+      Self::LevelSndStatic => ArchiveLevelSndStaticDescription::read(source, name)?.into(),
+      Self::LevelSom => ArchiveLevelSomDescription::read(source, name)?.into(),
+      Self::LevelWallmarks => ArchiveLevelWallmarksDescription::read(source, name)?.into(),
+      Self::Efd => ArchiveEfdDescription::read(source, name)?.into(),
+      Self::LevelAi => ArchiveLevelAiDescription::read(source, name)?.into(),
+      Self::LevelCollision => ArchiveLevelCollisionDescription::read(source, name)?.into(),
+      Self::Level => ArchiveLevelDescription::read(source, name)?.into(),
+      Self::Omf => ArchiveOmfDescription::read(source, name)?.into(),
+      Self::Particles => ArchiveParticlesDescription::read(source, name)?.into(),
+      Self::Ppe => ArchivePpeDescription::read(source, name)?.into(),
+      Self::Shaders => ArchiveShadersDescription::read(source, name)?.into(),
+      Self::Spawn => return Self::describe_spawn(source, name),
+      Self::Thm => ArchiveThmDescription::read(source, name)?.into(),
+    }))
+  }
+
+  /// Reads a `.spawn` as a set where it carries a header, else as a level's object list, else answers `None` for the
+  /// container walk. A set is read by seeking, but an object list is read whole, so the list answers to the ceiling a
+  /// held read does: a damaged set the size of a whole game's spawn must not be held and parsed as a list.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the entry's bytes cannot be read.
+  fn describe_spawn(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Option<ArchiveFormatDescription>> {
+    if let Some(set) = ArchiveSpawnDescription::read(source, name)? {
+      return Ok(Some(set.into()));
+    }
+
+    let size: u64 = source.get_size_of(name).unwrap_or(u64::MAX);
+    let policy: &ArchiveReadPolicy = source.get_read_policy();
+
+    if !policy.allows_describe_read(u32::try_from(size).unwrap_or(u32::MAX)) {
+      return Ok(Some(ArchiveFormatDescription::refuse(
+        ArchiveDescribeRefusal::TooLarge {
+          size,
+          maximum: policy.maximum_describe_size,
+        },
+      )));
+    }
+
+    Ok(ArchiveLevelSpawnDescription::read(source, name)?.map(ArchiveFormatDescription::from))
   }
 
   /// Which named file an entry is, folded the way the engine addresses it.
@@ -423,8 +387,8 @@ mod tests {
 
   #[test]
   fn a_library_no_name_claims_stays_unclaimed_though_it_shares_the_extension() {
-    // The four libraries this used to pin as unclaimed now have readers. What it guards is unchanged: `.xr` claims
-    // nothing by its extension, so a library nobody named falls through rather than being read as another one.
+    // `.xr` claims nothing by its extension, so a library nobody named falls through rather than being read as
+    // another one.
     for name in ["unknown.xr", "shaders_xrlc_backup.xr", "gamemtl2.xr"] {
       assert_eq!(ArchiveDescribedFormat::of(name), None, "'{name}' has no describer yet");
     }

@@ -1,29 +1,28 @@
-use tauri::State;
-use xrf_app_core::assets::{AssetMountState, AssetTextureDescriptor};
-use xrf_app_core::types::TauriResult;
-use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayAsset, XrayRoots, XraySearch};
+use std::sync::Arc;
 
-/// Report the shape of a texture, without decoding it into a picture.
+use tauri::State;
+use xrf_app_core::TauriResult;
+use xrf_app_core::assets::AssetTextureDescriptor;
+use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::session::{SessionId, SessionSnapshot};
+
+use crate::browse::{ArchiveSubject, ArchiveSubjects};
+
+/// Report the shape of a texture of the open subject, without decoding it into a picture.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_texture"))]
 #[tauri::command(rename = "describe_texture")]
 pub async fn archives_describe_texture(
-  roots: XrayRoots,
-  logical_path: String,
-  assets: State<'_, AssetMountState>,
+  session_id: SessionId,
+  name: String,
+  execution: State<'_, ExecutionState>,
+  subjects: State<'_, ArchiveSubjects>,
 ) -> TauriResult<AssetTextureDescriptor> {
-  log::info!("Describing image: {logical_path}");
+  log::info!("Describing texture: {name}");
 
-  describe(&assets.search(&roots)?, &logical_path)
-    .map_err(|error| format!("Failed to describe image '{logical_path}': {error}"))
-}
-
-fn describe(search: &XraySearch, logical_path: &str) -> XrfResult<AssetTextureDescriptor> {
-  let asset: XrayAsset = search
-    .find(logical_path)?
-    .ok_or_else(|| XrfError::new_asset_error(format!("'{logical_path}' resolves to nothing in the mounted roots")))?;
+  let subject: Arc<SessionSnapshot<ArchiveSubject>> = subjects.require(session_id)?;
 
   // A header that will not parse costs the shape, not the descriptor - the same best-effort the sound path takes.
-  AssetTextureDescriptor::describe(search, &asset)
-    .ok_or_else(|| XrfError::new_asset_error(format!("'{logical_path}' could not be read at all")))
+  execution
+    .run_blocking("Describing texture", move || subject.describe_texture(&name))
+    .await?
 }

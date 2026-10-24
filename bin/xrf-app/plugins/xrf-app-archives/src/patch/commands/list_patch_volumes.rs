@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 use xrf_pack::{ArchivePatchConfig, ArchivePatcher};
 use xrf_utils::{error_to_string, format_path};
 

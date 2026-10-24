@@ -1,7 +1,7 @@
 use serde::Serialize;
+use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_ppe::PpeFile;
-use xrf_spawn::XRayByteOrder;
 
 use crate::describe::animation::ArchiveAnimationChannel;
 use crate::describe::archive_describe_source::ArchiveDescribeSource;

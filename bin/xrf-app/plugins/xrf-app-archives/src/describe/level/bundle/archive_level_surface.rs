@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::Serialize;
 use xrf_level::LevelShaderEntry;
 use xrf_shaders::ShaderLibraryFile;
@@ -7,7 +5,7 @@ use xrf_vfs::XrayAssetType;
 
 use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::archive_reference::ArchiveReference;
-use crate::describe::level::archive_level_shader::ArchiveLevelShader;
+use crate::describe::level::bundle::ArchiveLevelShader;
 
 /// One row of the level's shader table.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -43,8 +41,6 @@ impl ArchiveLevelSurface {
     entries: &[LevelShaderEntry],
     library: Option<&ShaderLibraryFile>,
   ) -> Vec<Self> {
-    let mut resolved: HashMap<String, ArchiveReference> = HashMap::new();
-
     entries
       .iter()
       .enumerate()
@@ -58,12 +54,7 @@ impl ArchiveLevelSurface {
             textures: reference
               .textures
               .iter()
-              .map(|texture| {
-                resolved
-                  .entry(texture.clone())
-                  .or_insert_with(|| ArchiveReference::resolve(source, XrayAssetType::Dds, texture))
-                  .clone()
-              })
+              .map(|texture| ArchiveReference::resolve(source, XrayAssetType::Dds, texture))
               .collect(),
           },
         },

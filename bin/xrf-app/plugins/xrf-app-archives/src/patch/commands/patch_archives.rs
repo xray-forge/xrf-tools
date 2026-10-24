@@ -3,13 +3,14 @@ use std::sync::Arc;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
+use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
-use xrf_app_core::types::TauriResult;
-use xrf_job::{JobHandle, JobProgress};
+use xrf_app_core::jobs::{JobRegistry, JobResource, JobStart};
+use xrf_job::JobProgress;
 use xrf_pack::{ArchivePatchOptions, ArchivePatchResult, ArchivePatcher};
 use xrf_utils::format_path;
 
+use crate::ipc::archives::ARCHIVES_JOB_PATCH;
 use crate::lease::PUBLISH_ACTION_GROUP;
 use crate::patch::ArchivesPatchRequest;
 
@@ -23,7 +24,11 @@ pub async fn archives_patch_archives(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<ArchivePatchResult> {
-  let start: JobStart = JobStart::new(job_id, JobKind::ArchivesPatch).with_request(&request);
+  let start: JobStart = JobStart::new(job_id, ARCHIVES_JOB_PATCH)
+    .with_request(&request)
+    .with_exclusion_group(PUBLISH_ACTION_GROUP)
+    .with_resources(vec![JobResource::tree(&request.config.destination)])
+    .with_progress(progress);
 
   let ArchivesPatchRequest {
     config,
@@ -41,27 +46,20 @@ pub async fn archives_patch_archives(
     config.name
   );
 
-  let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    start
-      .with_exclusion_group(PUBLISH_ACTION_GROUP)
-      .with_resources(vec![JobResource::tree(&config.destination)])
-      .with_progress(progress),
-  )?;
-
-  run_job(
-    &execution,
-    "Archive patch",
-    registration,
-    move || {
-      ArchivePatcher::patch_opt(
-        &config,
-        ArchivePatchOptions::default()
-          .with_job(job)
-          .with_force(is_forced)
-          .with_verified_payloads(is_verifying_payload),
-      )
-    },
-    |result| result.outcome,
-  )
-  .await
+  registry
+    .run(
+      &execution,
+      start,
+      move |job| {
+        ArchivePatcher::patch_opt(
+          &config,
+          ArchivePatchOptions::default()
+            .with_job(job)
+            .with_force(is_forced)
+            .with_verified_payloads(is_verifying_payload),
+        )
+      },
+      |result| result.outcome,
+    )
+    .await
 }

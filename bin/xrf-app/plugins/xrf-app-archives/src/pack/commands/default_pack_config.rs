@@ -1,4 +1,4 @@
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 use xrf_pack::ArchivePackConfig;
 
 /// Hand back a packing configuration with nothing chosen yet.

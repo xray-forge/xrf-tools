@@ -1,6 +1,6 @@
 //! Writing a tree into archive volumes, and the configuration a run is authored in.
 
-pub mod commands;
+pub(crate) mod commands;
 mod request;
 
 #[cfg(test)]

@@ -21,7 +21,7 @@ impl ArchiveThmDetail {
   /// The detail chunk as the viewer reads it, with the texture it names resolved.
   ///
   /// `usage` is [`ThmFile::used_detail_usage`](xrf_thm::ThmFile::used_detail_usage)'s answer rather than a second
-  /// reading of the flag word: which flags make an association live is engine behavior, and `xrf-db` owns it.
+  /// reading of the flag word: which flags make an association live is engine behavior, and `xrf-thm` owns it.
   pub fn of(source: &ArchiveDescribeSource, detail: &ThmDetailChunk, usage: Option<ThmDetailUsage>) -> Self {
     Self {
       scale: detail.scale,

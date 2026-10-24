@@ -1,10 +1,7 @@
-use std::collections::HashMap;
-
 use serde::Serialize;
 use xrf_shaders::ShaderBlender;
 
 use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::archive_reference::ArchiveReference;
 use crate::describe::shaders::archive_shaders_property::ArchiveShadersProperty;
 
 /// One definition of the library: what a shader name resolves to.
@@ -28,10 +25,6 @@ pub struct ArchiveShadersBlender {
 impl ArchiveShadersBlender {
   /// Every blender of a library, in name order.
   pub fn of_all<'a>(source: &ArchiveDescribeSource, blenders: impl Iterator<Item = &'a ShaderBlender>) -> Vec<Self> {
-    // Shared across the library rather than per blender: 713 of vanilla's 205 blenders' properties are textures and
-    // they name far fewer distinct files, while a lookup that misses walks the whole name table.
-    let mut resolved: HashMap<String, ArchiveReference> = HashMap::new();
-
     let mut described: Vec<Self> = blenders
       .map(|blender| Self {
         name: blender.name.clone(),
@@ -39,7 +32,7 @@ impl ArchiveShadersBlender {
         version: blender.version,
         computer: blender.computer.clone(),
         time: blender.time,
-        properties: ArchiveShadersProperty::of_all(source, &blender.properties, &mut resolved),
+        properties: ArchiveShadersProperty::of_all(source, &blender.properties),
       })
       .collect();
 

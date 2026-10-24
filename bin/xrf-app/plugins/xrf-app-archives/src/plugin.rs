@@ -1,35 +1,30 @@
-use tauri::plugin::{Builder, TauriPlugin};
+use tauri::plugin::TauriPlugin;
 use tauri::{Manager, Runtime};
+use xrf_app_core::assets::AssetMountState;
+use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::SessionScopes;
 
-use crate::browse::ArchiveBrowseState;
+use crate::browse::{ArchiveSubject, ArchiveSubjects};
 
-pub struct ArchivesPlugin {}
+/// The `archives` plugin: volume sets and game folders browsed, read, described and extracted, and trees packed,
+/// patched and unpacked as jobs.
+pub struct ArchivesPlugin;
 
 impl ArchivesPlugin {
-  pub const NAME: &'static str = crate::registry::archives::NAME;
-
+  /// The plugin, its subjects managed as it sets up: a world listed again on the pool once a commit moved what it read.
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
-    log::info!("Initialize plugin {}", Self::NAME);
-
-    Builder::new(Self::NAME)
+    crate::ipc::archives::builder()
       .setup(|application, _| {
-        application.manage(ArchiveBrowseState::new(
-          "archive browse",
-          &application.state::<SessionScopes>(),
-        ));
+        application.manage(
+          ArchiveSubjects::new("archive subject", &application.state::<SessionScopes>()).with_deferred_derivation(
+            &application.state::<AssetMountState>(),
+            application.state::<ExecutionState>().get_pool(),
+            ArchiveSubject::derive,
+          ),
+        );
 
         Ok(())
       })
-      .invoke_handler(xrf_app_core::logging::warn_on_unhandled_command(
-        Self::NAME,
-        crate::registry::archives::handler(),
-      ))
       .build()
-  }
-
-  #[cfg(feature = "typescript-bindings")]
-  pub fn specta_builder<R: Runtime>() -> tauri_specta::Builder<R> {
-    crate::registry::archives::specta_builder()
   }
 }

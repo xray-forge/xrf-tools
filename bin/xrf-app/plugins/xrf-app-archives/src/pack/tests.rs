@@ -4,9 +4,10 @@ use std::fs;
 use std::future::Future;
 use std::path::PathBuf;
 
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 use xrf_pack::ArchivePackConfig;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_utils::staging_faults::fail_next_staged_write;
 
 use crate::pack::commands::export_pack_config::archives_export_pack_config;
 use crate::pack::commands::import_pack_config::archives_import_pack_config;
@@ -112,11 +113,11 @@ fn keeps_the_previous_configuration_when_an_export_is_refused() {
 
     fs::write(&path, b"previous").expect("previous configuration is written");
 
-    // A destination inside a directory that does not exist cannot be staged, in either format.
-    let unreachable: String = directory.join("missing").join(name).display().to_string();
+    // The write over the existing file fails as a full device would, in either format.
+    fail_next_staged_write();
 
     assert!(
-      run(archives_export_pack_config(&unreachable, open_form())).is_err(),
+      run(archives_export_pack_config(&path.display().to_string(), open_form())).is_err(),
       "{name}"
     );
     assert_eq!(fs::read(&path).expect("previous is readable"), b"previous", "{name}");

@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use serde::Serialize;
 use xrf_shaders::{ShaderBlenderProperty, ShaderBlenderPropertyKind, ShaderBlenderPropertyValue, ShaderBlenderToken};
 use xrf_vfs::XrayAssetType;
@@ -25,19 +23,15 @@ pub struct ArchiveShadersProperty {
 }
 
 impl ArchiveShadersProperty {
-  /// Every property of one blender, with texture names resolved through a lookup shared across the library.
-  pub fn of_all(
-    source: &ArchiveDescribeSource,
-    properties: &[ShaderBlenderProperty],
-    resolved: &mut HashMap<String, ArchiveReference>,
-  ) -> Vec<Self> {
+  /// Every property of one blender, with the texture names among them resolved.
+  pub fn of_all(source: &ArchiveDescribeSource, properties: &[ShaderBlenderProperty]) -> Vec<Self> {
     properties
       .iter()
       .map(|property| Self {
         name: property.name.clone(),
         kind: Self::to_kind_label(property.value.kind()).to_owned(),
         value: Self::to_value(&property.value),
-        texture: Self::to_texture(source, &property.value, resolved),
+        texture: Self::to_texture(source, &property.value),
       })
       .collect()
   }
@@ -98,11 +92,7 @@ impl ArchiveShadersProperty {
   }
 
   /// The file a texture property names, or `None` for a property that is not one or names a slot.
-  fn to_texture(
-    source: &ArchiveDescribeSource,
-    value: &ShaderBlenderPropertyValue,
-    resolved: &mut HashMap<String, ArchiveReference>,
-  ) -> Option<ArchiveReference> {
+  fn to_texture(source: &ArchiveDescribeSource, value: &ShaderBlenderPropertyValue) -> Option<ArchiveReference> {
     let name: &String = match value {
       ShaderBlenderPropertyValue::Texture(name) => name,
       _ => return None,
@@ -112,12 +102,7 @@ impl ArchiveShadersProperty {
       return None;
     }
 
-    Some(
-      resolved
-        .entry(name.clone())
-        .or_insert_with(|| ArchiveReference::resolve(source, XrayAssetType::Dds, name))
-        .clone(),
-    )
+    Some(ArchiveReference::resolve(source, XrayAssetType::Dds, name))
   }
 }
 
