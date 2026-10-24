@@ -13,6 +13,7 @@ use crate::command_typescript::CommandTypescript;
 use crate::constants::GENERATED_HEADER;
 use crate::enumerations::Enumerations;
 use crate::generated_output::{normalize_doc_indentation, write_generated};
+use crate::type_modules::TypeModules;
 use crate::type_ownership::TypeOwnership;
 use crate::typescript::format::TypeScriptFormat;
 
@@ -23,17 +24,22 @@ impl TypeModuleWriter {
   /// The largest integer a JavaScript number holds exactly, `Number.MAX_SAFE_INTEGER`.
   const MAX_SAFE_INTEGER: u64 = (1 << 53) - 1;
 
-  /// Writes one module per declaring crate, answering with the ownership and the enums those modules establish.
+  /// Writes one module per declaring crate, or crate family as `type_modules` groups them, answering with the ownership
+  /// and the enums those modules establish.
   ///
   /// A crate's constants marked `#[xrf_ipc::constant]` open its module, after the imports and before the types.
-  pub(crate) fn write_all(output: &Path, collected: &Types) -> (TypeOwnership, Enumerations) {
+  pub(crate) fn write_all(
+    output: &Path,
+    collected: &Types,
+    type_modules: &TypeModules,
+  ) -> (TypeOwnership, Enumerations) {
     let types: Types = TypeScriptFormat::default()
       .map_types(collected)
       .expect("Failed to apply the TypeScript format to the collected types")
       .into_owned();
     let exporter: Exporter = CommandTypescript::configured().into();
     let enumerations: Enumerations = Enumerations::resolve(collected, &types);
-    let (mut ownership, modules) = TypeOwnership::resolve(&types);
+    let (mut ownership, modules) = TypeOwnership::resolve(&types, type_modules);
 
     for (module, named) in &modules {
       for declared in named {
@@ -43,7 +49,7 @@ impl TypeModuleWriter {
       }
     }
 
-    let constants: BTreeMap<String, Vec<&IpcConstant>> = Self::group_constants();
+    let constants: BTreeMap<String, Vec<&IpcConstant>> = Self::group_constants(type_modules);
     let mut graph: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     let mut rendered: BTreeMap<String, String> = BTreeMap::new();
 
@@ -112,11 +118,11 @@ impl TypeModuleWriter {
   /// Every registered constant by the module of the crate declaring it, each module's sorted by name.
   ///
   /// Fails on a constant no workspace crate declares, and on two of one name in one module.
-  fn group_constants() -> BTreeMap<String, Vec<&'static IpcConstant>> {
+  fn group_constants(type_modules: &TypeModules) -> BTreeMap<String, Vec<&'static IpcConstant>> {
     let mut grouped: BTreeMap<String, Vec<&IpcConstant>> = BTreeMap::new();
 
     for constant in IpcConstant::list() {
-      let module: String = TypeOwnership::owning_module_of(constant.module_path).unwrap_or_else(|| {
+      let module: String = type_modules.module_of(constant.module_path).unwrap_or_else(|| {
         panic!(
           "Constant `{}` is declared in `{}`, outside the workspace, and has no module to live in",
           constant.name, constant.module_path
@@ -224,11 +230,12 @@ mod tests {
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use crate::type_module_writer::TypeModuleWriter;
+  use crate::type_modules::TypeModules;
   use crate::type_ownership::TypeOwnership;
 
   /// One constant rendered alone, into a module with no types.
   fn render(constant: &IpcConstant) -> String {
-    let (ownership, _) = TypeOwnership::resolve(&Types::default());
+    let (ownership, _) = TypeOwnership::resolve(&Types::default(), &TypeModules::default());
 
     TypeModuleWriter::render_constant(constant, "xrf-fixture", &ownership)
   }
@@ -254,7 +261,7 @@ mod tests {
 
     fs::create_dir_all(&output).expect("directory to be created");
 
-    TypeModuleWriter::write_all(&output, &Types::default());
+    TypeModuleWriter::write_all(&output, &Types::default(), &TypeModules::default());
 
     let module: String = fs::read_to_string(output.join("xrf-ipc-typescript.ts")).expect("module to be written");
 

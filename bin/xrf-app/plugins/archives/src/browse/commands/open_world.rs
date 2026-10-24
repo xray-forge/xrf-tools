@@ -1,0 +1,42 @@
+use std::sync::Arc;
+
+use tauri::State;
+use xrf_app_core::assets::AssetMountState;
+use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_app_core::types::TauriResult;
+use xrf_vfs::XrayRoots;
+
+use crate::browse::{ArchiveBrowseState, ArchiveSubject, ArchiveWorld};
+
+/// Open a game folder as the engine mounts it: its archives and the loose tree standing in front of them.
+#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_world"))]
+#[tauri::command(rename = "open_world")]
+pub async fn archives_open_world(
+  session_id: SessionId,
+  execution: State<'_, ExecutionState>,
+  roots: XrayRoots,
+  assets: State<'_, AssetMountState>,
+  state: State<'_, ArchiveBrowseState>,
+) -> TauriResult<Arc<SessionSnapshot<ArchiveSubject>>> {
+  state.begin_open(session_id)?;
+  log::info!("Opening archive world: {}", roots.describe());
+
+  let assets: AssetMountState = AssetMountState::clone(&assets);
+
+  let world: ArchiveWorld = execution
+    .run_blocking("Opening the archive world", move || {
+      TauriResult::Ok(ArchiveWorld::list(&assets.search_fresh(&roots)?, roots.clone()))
+    })
+    .await?
+    .map_err(|error| format!("Failed to open provided game folder: {error}"))?;
+
+  log::info!(
+    "Opened archive world: {} files, {} overridden, {} source(s)",
+    world.files.len(),
+    world.shadowed_count,
+    world.mounts.len()
+  );
+
+  state.commit_open(session_id, ArchiveSubject::World { world })
+}

@@ -1,0 +1,171 @@
+use std::path::Path;
+
+use serde::Serialize;
+use xrf_app_core::assets::AssetMountState;
+use xrf_app_core::types::TauriResult;
+use xrf_archive::{ArchiveProject, ArchiveReadPolicy, ArchiveReadResult};
+use xrf_archive_stats::ArchiveStatistics;
+use xrf_pack::{
+  ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtractResult, ArchiveUnpacker, XrayWorldExtractor,
+};
+use xrf_utils::error_to_string;
+use xrf_vfs::XrayArchiveSource;
+
+use crate::browse::archive_override_report::ArchiveOverrideReport;
+use crate::browse::archive_resolution::ArchiveResolution;
+use crate::browse::archive_world::ArchiveWorld;
+use crate::browse::archive_world_entry::ArchiveWorldEntry;
+use crate::describe::{ArchiveDescribeSource, ArchiveFileDescription};
+
+/// What the explorer has open: a set of `.db` volumes, or a whole mounted world.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum ArchiveSubject {
+  /// The volumes at one path, merged into a single name table.
+  Volumes { project: ArchiveProject },
+  /// A game folder read as the engine mounts it, archives and loose tree together.
+  World { world: ArchiveWorld },
+}
+
+impl ArchiveSubject {
+  /// What a viewer may read out of this subject, which is one policy for both.
+  pub fn get_read_policy(&self) -> &ArchiveReadPolicy {
+    match self {
+      Self::Volumes { project } => &project.read_policy,
+      Self::World { world } => &world.read_policy,
+    }
+  }
+
+  /// The volume set this subject is, or a refusal naming what it is instead.
+  ///
+  /// # Errors
+  ///
+  /// Returns a message naming the requirement when a world is open.
+  pub fn require_volumes(&self) -> TauriResult<&ArchiveProject> {
+    match self {
+      Self::Volumes { project } => Ok(project),
+      Self::World { .. } => Err(String::from(
+        "This command needs an archive volume set open, not a game folder",
+      )),
+    }
+  }
+
+  /// What this subject holds, broken down the ways a person asks about it.
+  pub fn describe_statistics(&self) -> ArchiveStatistics {
+    match self {
+      Self::Volumes { project } => ArchiveStatistics::of_volumes(project),
+      Self::World { world } => ArchiveStatistics::of_world(&world.files, &world.mounts, &world.sources),
+    }
+  }
+
+  /// What this subject's fold onto engine identities found, in one pass.
+  pub fn describe_overrides(&self) -> ArchiveOverrideReport {
+    match self {
+      Self::Volumes { project } => {
+        let (overridden, unreachable) = XrayArchiveSource::describe_overrides_of(project);
+
+        ArchiveOverrideReport {
+          overridden: overridden.into_iter().map(ArchiveWorldEntry::from).collect(),
+          unreachable,
+        }
+      }
+      Self::World { world } => ArchiveOverrideReport {
+        overridden: world
+          .files
+          .iter()
+          .filter(|entry| !entry.shadowed.is_empty())
+          .cloned()
+          .collect(),
+        unreachable: world.collisions.clone(),
+      },
+    }
+  }
+
+  /// Every source this subject searches, in the order it searches them.
+  ///
+  /// # Errors
+  ///
+  /// Returns a message when the world's roots can no longer be planned or mounted.
+  pub fn describe_resolution(&self, assets: &AssetMountState) -> TauriResult<ArchiveResolution> {
+    match self {
+      Self::Volumes { project } => Ok(ArchiveResolution::of_volumes(project)),
+      Self::World { world } => Ok(ArchiveResolution::of_search(&assets.search(&world.roots)?)),
+    }
+  }
+
+  /// Reads one file as text, subject to the viewer's read policy.
+  ///
+  /// # Errors
+  ///
+  /// Returns a message when the subject does not hold the path, the policy refuses it, or the bytes cannot be read or
+  /// decoded.
+  pub fn read_text(&self, assets: &AssetMountState, name: &str) -> TauriResult<ArchiveReadResult> {
+    match self {
+      Self::Volumes { project } => project.read_file_as_string(name),
+      Self::World { world } => world.read_text(&assets.search(&world.roots)?, name),
+    }
+    .map_err(|error| format!("Failed to read '{name}': {error}"))
+  }
+
+  /// Describes one file in words, for a format the viewer cannot draw.
+  ///
+  /// # Errors
+  ///
+  /// Returns a message when the subject does not hold the path, or a describer that claimed the entry could not read
+  /// it. A format nothing describes is an answer rather than a failure.
+  pub fn describe_file(&self, assets: &AssetMountState, name: &str) -> TauriResult<ArchiveFileDescription> {
+    match self {
+      Self::Volumes { project } => ArchiveFileDescription::of(&ArchiveDescribeSource::Volumes { project }, name),
+      Self::World { world } => ArchiveFileDescription::of(
+        &ArchiveDescribeSource::World {
+          world,
+          search: &assets.search(&world.roots)?,
+        },
+        name,
+      ),
+    }
+    .map_err(|error| format!("Failed to describe '{name}': {error}"))
+  }
+
+  /// Writes one file to a path the caller chose.
+  ///
+  /// # Errors
+  ///
+  /// Returns a message when the subject does not hold the path, or the bytes cannot be read or written.
+  pub fn extract_file(
+    &self,
+    assets: &AssetMountState,
+    name: &str,
+    destination: &str,
+  ) -> TauriResult<ArchiveExtractResult> {
+    match self {
+      Self::Volumes { project } => ArchiveUnpacker::extract_file(project, name, destination),
+      Self::World { world } => XrayWorldExtractor::extract_file(&assets.search(&world.roots)?, name, destination),
+    }
+    .map_err(error_to_string)
+  }
+
+  /// Writes everything under one directory into a destination root, as `options` asks.
+  ///
+  /// An empty prefix means the whole tree, so this is a full unpack in everything but name.
+  ///
+  /// # Errors
+  ///
+  /// Returns a message when nothing lies under the prefix, or an entry cannot be read or written.
+  pub fn extract_directory(
+    &self,
+    assets: &AssetMountState,
+    prefix: &str,
+    destination: &Path,
+    options: ArchiveExtractOptions,
+  ) -> TauriResult<ArchiveExtractDirectoryResult> {
+    match self {
+      Self::Volumes { project } => ArchiveUnpacker::extract_directory_opt(project, prefix, destination, options),
+      Self::World { world } => {
+        XrayWorldExtractor::extract_directory_opt(&assets.search(&world.roots)?, prefix, destination, options)
+      }
+    }
+    .map_err(error_to_string)
+  }
+}

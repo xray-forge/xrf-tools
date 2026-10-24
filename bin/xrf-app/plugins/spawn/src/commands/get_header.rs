@@ -1,0 +1,24 @@
+use std::sync::Arc;
+
+use tauri::State;
+use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_app_core::types::TauriResult;
+use xrf_spawn::SpawnHeaderChunk;
+
+use crate::state::{SpawnFileState, SpawnSession};
+
+/// Read header from the requested opening, refusing a replaced session.
+#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_header"))]
+#[tauri::command(rename = "get_header")]
+pub async fn spawn_get_header(
+  session_id: SessionId,
+  state: State<'_, SpawnFileState>,
+  execution: State<'_, ExecutionState>,
+) -> TauriResult<SpawnHeaderChunk> {
+  let opened: Arc<SessionSnapshot<SpawnSession>> = state.files.require(session_id)?;
+
+  execution
+    .run_blocking("Reading spawn header", move || opened.file.header.clone())
+    .await
+}

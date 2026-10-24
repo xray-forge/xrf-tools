@@ -221,12 +221,13 @@ mod tests {
 
   use crate::command_module_writer::CommandModuleWriter;
   use crate::enumerations::Enumerations;
+  use crate::type_modules::TypeModules;
   use crate::type_ownership::TypeOwnership;
 
   /// Writes one kind of wrapper module with nothing collected, answering where it went.
   fn written(name: &str, write: impl FnOnce(&PathBuf, &TypeOwnership, &Enumerations)) -> PathBuf {
     let types: Types = Types::default();
-    let (ownership, _): (TypeOwnership, _) = TypeOwnership::resolve(&types);
+    let (ownership, _): (TypeOwnership, _) = TypeOwnership::resolve(&types, &TypeModules::default());
     let enumerations: Enumerations = Enumerations::resolve(&types, &types);
     let path: PathBuf = build_absolute_generated_test_resource_path("command-module-writer").join(name);
 

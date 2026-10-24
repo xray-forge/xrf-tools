@@ -1,0 +1,51 @@
+[package]
+name = "xrf-app-visuals"
+version = "0.1.0"
+publish = false
+description = "XRF development tools: visuals opened as models with their motions, shown in viewports"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+# Core's, which embeds the manifest a Tauri test binary needs on Windows.
+build = "../../core/build.rs"
+
+[dependencies]
+log = { workspace = true }
+serde = { workspace = true }
+specta = { workspace = true, optional = true }
+tauri = { workspace = true }
+tauri-specta = { workspace = true, optional = true }
+xrf-app-core = { workspace = true }
+xrf-app-render = { workspace = true }
+xrf-environment = { workspace = true }
+xrf-error = { workspace = true }
+xrf-material = { workspace = true }
+xrf-ogf = { workspace = true }
+xrf-renderer = { workspace = true }
+xrf-spawn = { workspace = true }
+xrf-vfs = { workspace = true }
+xrf-visual = { workspace = true }
+
+[dev-dependencies]
+# The mock runtime, which dispatches a command the way a webview would without one.
+tauri = { workspace = true, features = ["test"] }
+xrf-app-core = { workspace = true, features = ["fixtures"] }
+
+[features]
+# Emits TypeScript mirrors and command bindings. Nothing in a normal build turns this on.
+typescript-bindings = [
+  "specta",
+  "tauri-specta",
+  "xrf-app-core/typescript-bindings",
+  "xrf-app-render/typescript-bindings",
+  "xrf-environment/typescript-bindings",
+  "xrf-error/typescript-bindings",
+  "xrf-material/typescript-bindings",
+  "xrf-renderer/typescript-bindings",
+  "xrf-spawn/typescript-bindings",
+  "xrf-vfs/typescript-bindings",
+  "xrf-visual/typescript-bindings",
+]
+
+[lints]
+workspace = true

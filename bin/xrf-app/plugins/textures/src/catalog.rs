@@ -1,0 +1,192 @@
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
+use xrf_material::{XrayBumpNaming, XrayMaterialResolver};
+use xrf_vfs::{XrayAsset, XrayAssetType, XrayRoots, XraySearch};
+
+use crate::source::TextureSource;
+
+/// What a texture name is by convention, before any descriptor has been read.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TextureRole {
+  /// A texture a mesh or a level binds by name.
+  Texture,
+  /// The first half of a bump pair: packed normal and gloss.
+  Bump,
+  /// The second half of a bump pair: packed error and height.
+  BumpCompanion,
+}
+
+impl TextureRole {
+  pub fn of_reference(reference: &str) -> Self {
+    if XrayBumpNaming::is_companion(reference) {
+      Self::BumpCompanion
+    } else if XrayBumpNaming::is_conventional_bump(reference) {
+      Self::Bump
+    } else {
+      Self::Texture
+    }
+  }
+}
+
+/// How a listing addressed what it found.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum TextureCatalogMode {
+  /// The game tree: listed by engine reference, archives included, files outside `textures\` counted not listed.
+  #[default]
+  Roots,
+  /// A plain directory: every `.dds` under it, addressed by its own path.
+  LooseDirectory,
+}
+
+/// One texture name and the files the roots hold for it.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TextureEntry {
+  /// What to call this row: an engine reference such as `ston\ston_beton05`, or a loose file's path below its root.
+  pub reference: String,
+  /// How to open this row, which is the address the describe and every write take.
+  pub source: TextureSource,
+  pub role: TextureRole,
+  /// The `.dds` the roots answer for this reference, winner first.
+  pub texture: Option<XrayAsset>,
+  /// The `.thm` the roots answer for this reference, winner first.
+  pub descriptor: Option<XrayAsset>,
+}
+
+impl TextureEntry {
+  /// A row of the game tree, opened by the reference it is listed under.
+  fn of_reference(reference: String) -> Self {
+    Self {
+      role: TextureRole::of_reference(&reference),
+      source: TextureSource::Asset {
+        reference: reference.clone(),
+      },
+      reference,
+      texture: None,
+      descriptor: None,
+    }
+  }
+
+  /// A row of a loose directory, opened by the file itself.
+  fn of_file(label: String, path: PathBuf) -> Self {
+    Self {
+      role: TextureRole::of_reference(&label),
+      source: TextureSource::File {
+        path: path.to_string_lossy().into_owned(),
+      },
+      reference: label,
+      texture: None,
+      descriptor: None,
+    }
+  }
+}
+
+/// Every texture the roots hold, once per reference, in reference order.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TextureCatalog {
+  /// How this listing was made, which decides what its rows are addressed by and whether a sweep can badge them.
+  pub mode: TextureCatalogMode,
+  /// The roots the catalog was listed from, so a later read searches what the listing searched.
+  pub roots: XrayRoots,
+  /// A `textures.ltx` the roots hold, or `None`. Its declarations are not read, so a surface says where it matters.
+  pub textures_ltx: Option<XrayAsset>,
+  pub entries: Vec<TextureEntry>,
+  /// `.dds` files the roots hold outside `textures\`, which no engine reference names and this catalog leaves out.
+  pub outside_textures_count: u32,
+}
+
+impl TextureCatalog {
+  /// Lists what a search reaches, the way this mode addresses it.
+  pub fn list(search: &XraySearch, roots: XrayRoots, mode: TextureCatalogMode) -> Self {
+    match mode {
+      TextureCatalogMode::Roots => Self::list_roots(search, roots),
+      TextureCatalogMode::LooseDirectory => Self::list_loose(search, roots),
+    }
+  }
+
+  /// Lists the textures and descriptors a search reaches, folded onto references.
+  fn list_roots(search: &XraySearch, roots: XrayRoots) -> Self {
+    let mut entries: BTreeMap<String, TextureEntry> = BTreeMap::new();
+    let mut outside_textures_count: u32 = 0;
+
+    for asset in search.list_assets(XrayAssetType::Dds) {
+      match asset.to_reference() {
+        Some(reference) => {
+          entries
+            .entry(reference.clone())
+            .or_insert_with(|| TextureEntry::of_reference(reference))
+            .texture = Some(asset);
+        }
+        None => outside_textures_count += 1,
+      }
+    }
+
+    for asset in search.list_assets(XrayAssetType::Thm) {
+      if let Some(reference) = asset.to_reference() {
+        entries
+          .entry(reference.clone())
+          .or_insert_with(|| TextureEntry::of_reference(reference))
+          .descriptor = Some(asset);
+      }
+    }
+
+    Self {
+      mode: TextureCatalogMode::Roots,
+      roots,
+      textures_ltx: XrayMaterialResolver::find_textures_ltx(search),
+      entries: entries.into_values().collect(),
+      outside_textures_count,
+    }
+  }
+
+  /// Lists every `.dds` of a plain directory, addressed by its own path.
+  fn list_loose(search: &XraySearch, roots: XrayRoots) -> Self {
+    let mut entries: BTreeMap<String, TextureEntry> = BTreeMap::new();
+
+    for asset in search.list_assets(XrayAssetType::Dds) {
+      if let (Some(key), Some(path)) = (to_loose_key(&asset), asset.to_physical_path()) {
+        entries
+          .entry(key.clone())
+          .or_insert_with(|| TextureEntry::of_file(key, path))
+          .texture = Some(asset);
+      }
+    }
+
+    for asset in search.list_assets(XrayAssetType::Thm) {
+      if let (Some(key), Some(path)) = (to_loose_key(&asset), asset.to_physical_path()) {
+        entries
+          .entry(key.clone())
+          .or_insert_with(|| TextureEntry::of_file(key, path))
+          .descriptor = Some(asset);
+      }
+    }
+
+    Self {
+      mode: TextureCatalogMode::LooseDirectory,
+      roots,
+      textures_ltx: None,
+      entries: entries.into_values().collect(),
+      outside_textures_count: 0,
+    }
+  }
+}
+
+/// What a loose row is keyed and labelled by: its path below the root, without the extension.
+fn to_loose_key(asset: &XrayAsset) -> Option<String> {
+  let path: &str = asset.get_logical_path().as_str();
+
+  if !asset.get_asset_type()?.get_rules()?.extension.matches(path) {
+    return None;
+  }
+
+  path.rsplit_once('.').map(|(stem, _)| stem.to_owned())
+}

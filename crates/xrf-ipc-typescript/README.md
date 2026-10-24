@@ -2,7 +2,7 @@
 
 Generates the TypeScript mirror of a Tauri command surface and the Rust types it carries, and checks a committed mirror
 against the Rust sources. The crate knows nothing of any one application: the caller supplies each plugin's Specta
-builder and the output directory. The desktop app drives it from `bin/xrf-app/src/ipc/bindings/generator.rs`, writing
+builder, the output directory, and which crates share a types module. The desktop app drives it from `bin/xrf-app/app/src/ipc/bindings/generator.rs`, writing
 `bin/xrf-ui/src/core/ipc/`; `cargo make generate-typescript` regenerates and then formats that tree.
 
 ## Generate and verify
@@ -10,14 +10,15 @@ builder and the output directory. The desktop app drives it from `bin/xrf-app/sr
 ```rust,no_run
 use std::path::Path;
 
-use xrf_ipc_typescript::{IpcBindingsGenerator, IpcCommandSurface, SurfaceDrift};
+use xrf_ipc_typescript::{IpcBindingsGenerator, IpcCommandSurface, SurfaceDrift, TypeModules};
 
 fn generate<R: tauri::Runtime>(output: &Path, surfaces: &[IpcCommandSurface<R>]) {
-  IpcBindingsGenerator::generate(output, surfaces);
+  IpcBindingsGenerator::generate(output, surfaces, &TypeModules::default());
 }
 
 fn verify<R: tauri::Runtime>(committed: &Path, scratch: &Path, surfaces: &[IpcCommandSurface<R>]) {
-  let drift: SurfaceDrift = IpcBindingsGenerator::verify(committed, scratch, surfaces);
+  let modules: TypeModules = TypeModules::default().with_family("xrf_app", "xrf-app");
+  let drift: SurfaceDrift = IpcBindingsGenerator::verify(committed, scratch, surfaces, &modules);
 
   assert!(!drift.is_breaking(), "{}", drift.describe());
 }
@@ -40,14 +41,16 @@ each command module is finalized last, because the type modules say which import
 
 | Path                        | Contents                                                        |
 | --------------------------- | --------------------------------------------------------------- |
-| `types/xrf-<crate>.ts`      | Every exported type and constant one workspace crate declares   |
+| `types/xrf-<crate>.ts`      | Every exported type and constant one crate or family declares   |
 | `commands/<plugin>.ts`      | The plugin's typed commands as `export const <plugin>Commands`  |
 | `commands/<plugin>-raw.ts`  | `<plugin>RawCommands`, only for a plugin declaring raw commands |
 | `commands/<plugin>-bulk.ts` | `<plugin>BulkRoutes`, only for a plugin declaring bulk routes   |
 
 A type is written once, into the module of the crate that declares it, read off the first segment of its
-`module_path!()` (`xrf_renderer` becomes `xrf-renderer.ts`) rather than from any hand-written list. Only `xrf_*` crates
-have modules; a command referencing a type declared anywhere else fails generation. Modules import one another as
+`module_path!()` (`xrf_renderer` becomes `xrf-renderer.ts`) rather than from any hand-written list. A caller may group a
+family of crates into one module (`TypeModules::with_family("xrf_app", "xrf-app")` puts `xrf_app` and every
+`xrf_app_<part>` into `xrf-app.ts`), so one surface split into crates stays one module to the frontend. Only `xrf_*`
+crates have modules; a command referencing a type declared anywhere else fails generation. Modules import one another as
 `@/core/ipc/types/<module>`, the frontend's path alias.
 
 A command module keeps Specta's command object, renamed from `commands` to `<plugin>Commands` in camelCase, with the
@@ -116,7 +119,8 @@ Run `cargo test --locked -p xrf-ipc-typescript`.
 
 One type per file, named for it: [`IpcBindingsGenerator`](src/ipc_bindings_generator.rs) owns the run,
 [`TypeModuleWriter`](src/type_module_writer.rs) and [`CommandModuleWriter`](src/command_module_writer.rs) write the two
-directories, [`TypeOwnership`](src/type_ownership.rs) answers which module declares what, and
+directories, [`TypeModules`](src/type_modules.rs) names a crate's module, [`TypeOwnership`](src/type_ownership.rs)
+answers which module declares what, and
 [`Surface`](src/bindings_surface.rs) reads a generated tree back.
 
 [`typescript/`](src/typescript/) is vocabulary rather than a layer: `source` reads generated text, `syntax` emits it,

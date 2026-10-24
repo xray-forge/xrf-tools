@@ -260,9 +260,11 @@ jobs:
           cache-workspace-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      # Plain commands instead of the Makefile tasks, because Linux builds without DLSS and the frontend bindings.
+      # Plain commands instead of the Makefile tasks, because Linux builds without DLSS and the frontend bindings. The
+      # desktop application's crates (`xrf-app*`) and its bindings generator link Tauri, whose GTK and WebKit
+      # development packages this runner does not install; the Windows job checks them.
       - name: Run workspace tests on default features
-        run: cargo test --verbose --workspace --lib --locked --exclude xrf-ipc-typescript
+        run: cargo test --verbose --workspace --lib --locked --exclude xrf-ipc-typescript --exclude 'xrf-app*'
 
       - name: Run CLI tests
         run: cargo test --verbose -p xrf-cli --bins --locked
@@ -271,7 +273,7 @@ jobs:
         run: cargo test --verbose --workspace --test ui --locked
 
       - name: Run documentation examples
-        run: cargo test --verbose --workspace --doc --locked --exclude xrf-ipc-typescript
+        run: cargo test --verbose --workspace --doc --locked --exclude xrf-ipc-typescript --exclude 'xrf-app*'
 
       - name: Discard trybuild scratch crates
         run: rm -rf target/tests

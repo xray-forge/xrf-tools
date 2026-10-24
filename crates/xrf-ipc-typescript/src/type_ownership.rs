@@ -6,6 +6,7 @@ use specta::Types;
 use specta::datatype::NamedDataType;
 
 use crate::constants::{BINDINGS_ROOT, TYPES_DIRECTORY};
+use crate::type_modules::TypeModules;
 use crate::typescript::source::{for_each_identifier, without_comments_and_strings};
 
 /// Where each collected type is declared, split by whether a workspace crate owns it.
@@ -20,22 +21,26 @@ pub(crate) struct TypeOwnership {
 }
 
 impl TypeOwnership {
-  /// Resolves every collected type to its module, grouping the declarations each module has to render.
+  /// Resolves every collected type to its module as `modules` groups the crates, grouping the declarations each module
+  /// has to render.
   ///
   /// Fails when one name resolves to two modules, which would put the same declaration in two files again.
-  pub(crate) fn resolve(types: &Types) -> (Self, BTreeMap<String, Vec<&NamedDataType>>) {
+  pub(crate) fn resolve<'a>(
+    types: &'a Types,
+    modules: &TypeModules,
+  ) -> (Self, BTreeMap<String, Vec<&'a NamedDataType>>) {
     let mut ownership: Self = Self {
       owners: BTreeMap::new(),
       foreign: BTreeMap::new(),
     };
-    let mut modules: BTreeMap<String, Vec<&NamedDataType>> = BTreeMap::new();
+    let mut declared: BTreeMap<String, Vec<&NamedDataType>> = BTreeMap::new();
 
     for named in types.into_sorted_iter() {
       if named.ty.is_none() {
         continue;
       }
 
-      let Some(module) = Self::owning_module(named) else {
+      let Some(module) = Self::owning_module(named, modules) else {
         ownership
           .foreign
           .insert(named.name.to_string(), named.module_path.to_string());
@@ -51,10 +56,10 @@ impl TypeOwnership {
         );
       }
 
-      modules.entry(module).or_default().push(named);
+      declared.entry(module).or_default().push(named);
     }
 
-    (ownership, modules)
+    (ownership, declared)
   }
 
   /// Records a further name a module declares, so a consumer of it imports from the right module.
@@ -189,24 +194,14 @@ impl TypeOwnership {
     }
   }
 
-  /// The bindings module owning a type, taken from the crate that declares it.
+  /// The bindings module owning a type, taken from the crate that declares it, as `modules` groups the crates.
   ///
   /// `module_path!()` records the declaring crate as its first segment, so ownership is readable off every
   /// collected type and nothing has to be listed by hand. A hand-written list is what previously let the crate
   /// mirrors fall behind the command modules, duplicating a hundred declarations between them.
   ///
   /// Answers `None` for a type no workspace crate declares, which has no module to live in.
-  fn owning_module(named: &NamedDataType) -> Option<String> {
-    Self::owning_module_of(&named.module_path)
-  }
-
-  /// The bindings module owning what `module_path!()` places at `module_path`: its crate's, read off its first
-  /// segment, `None` outside the workspace. Types and constants share it, so both land in their crate's module.
-  pub(crate) fn owning_module_of(module_path: &str) -> Option<String> {
-    let declaring_crate: &str = module_path.split("::").next()?;
-
-    declaring_crate
-      .starts_with("xrf_")
-      .then(|| declaring_crate.replace('_', "-"))
+  fn owning_module(named: &NamedDataType, modules: &TypeModules) -> Option<String> {
+    modules.module_of(&named.module_path)
   }
 }

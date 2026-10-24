@@ -1,0 +1,83 @@
+[package]
+name = "xrf-app"
+version = "0.1.0"
+publish = false
+description = "XRF development tools"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+
+[build-dependencies]
+xrf-build-info = { workspace = true }
+tauri-build = { version = "2.6.3", features = [
+  "codegen"
+] }
+
+[dependencies]
+log = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tauri = { workspace = true }
+tauri-plugin-dialog = "2.7.3"
+tauri-plugin-fs = "2.5.2"
+tauri-plugin-shell = "2.3.6"
+tauri-plugin-store = "2.4.5"
+xrf-app-archives = { workspace = true }
+xrf-app-configs = { workspace = true }
+xrf-app-core = { workspace = true }
+xrf-app-dialogs = { workspace = true }
+xrf-app-exports = { workspace = true }
+xrf-app-gamedata = { workspace = true }
+xrf-app-levels = { workspace = true }
+xrf-app-render = { workspace = true }
+xrf-app-spawn = { workspace = true }
+xrf-app-sprite-equipment = { workspace = true }
+xrf-app-system = { workspace = true }
+xrf-app-textures = { workspace = true }
+xrf-app-translations = { workspace = true }
+xrf-app-visuals = { workspace = true }
+xrf-build-info = { workspace = true }
+xrf-env-flags = { workspace = true }
+xrf-ipc-typescript = { workspace = true, optional = true }
+xrf-job = { workspace = true, features = ["rayon"] }
+xrf-renderer = { workspace = true }
+xrf-utils = { workspace = true }
+
+# The message a release build shows when it cannot start.
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = ["Win32_UI_WindowsAndMessaging"] }
+
+[dev-dependencies]
+# The mock runtime, which dispatches a command the way a webview would without one.
+tauri = { workspace = true, features = ["test"] }
+xrf-app-core = { workspace = true, features = ["fixtures"] }
+xrf-test-utils = { workspace = true }
+
+[features]
+# This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
+custom-protocol = ["tauri/custom-protocol"]
+# Zones, GPU zones and frame marks for a Tracy capture; built with the `tracy` profile.
+tracy = ["xrf-renderer/tracy"]
+# Upscales with NVIDIA DLSS on Vulkan and D3D12, built against its SDK as DEVELOPMENT.md sets it up.
+dlss = ["xrf-renderer/dlss"]
+# Emits TypeScript mirrors and command bindings. Nothing in a normal build turns this on.
+typescript-bindings = [
+  "xrf-ipc-typescript",
+  "xrf-app-archives/typescript-bindings",
+  "xrf-app-configs/typescript-bindings",
+  "xrf-app-core/typescript-bindings",
+  "xrf-app-dialogs/typescript-bindings",
+  "xrf-app-exports/typescript-bindings",
+  "xrf-app-gamedata/typescript-bindings",
+  "xrf-app-levels/typescript-bindings",
+  "xrf-app-render/typescript-bindings",
+  "xrf-app-spawn/typescript-bindings",
+  "xrf-app-sprite-equipment/typescript-bindings",
+  "xrf-app-system/typescript-bindings",
+  "xrf-app-textures/typescript-bindings",
+  "xrf-app-translations/typescript-bindings",
+  "xrf-app-visuals/typescript-bindings",
+]
+
+[lints]
+workspace = true

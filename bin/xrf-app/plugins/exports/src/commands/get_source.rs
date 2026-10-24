@@ -1,0 +1,23 @@
+use tauri::State;
+use xrf_app_core::session::SessionId;
+use xrf_app_core::types::TauriResult;
+use xrf_export::ExportSourceContent;
+use xrf_utils::error_to_string;
+
+use crate::state::ExportsProjectState;
+
+#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_source"))]
+#[tauri::command(rename = "get_source")]
+pub async fn exports_get_source(
+  session_id: SessionId,
+  name: &str,
+  state: State<'_, ExportsProjectState>,
+) -> TauriResult<ExportSourceContent> {
+  log::info!("Reading source of xr export: {name}");
+
+  let project = state.require(session_id)?;
+
+  let source: ExportSourceContent = project.read_declaration_source(name).map_err(error_to_string)?;
+
+  Ok(source)
+}

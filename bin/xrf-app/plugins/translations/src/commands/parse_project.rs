@@ -1,0 +1,151 @@
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
+use tauri::State;
+use tauri::ipc::Channel;
+use uuid::Uuid;
+use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
+use xrf_app_core::types::TauriResult;
+use xrf_job::{JobHandle, JobProgress};
+use xrf_translation::{
+  TranslationLanguage, TranslationParseCensus, TranslationParseOptions, TranslationParseResult, TranslationParser,
+};
+use xrf_utils::{error_to_string, format_path};
+use xrf_vfs::XrayRoots;
+
+/// What an import was asked to do.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct TranslationParseRequest {
+  /// Roots holding the raw XML, read through the VFS so an installation imports like a loose tree.
+  pub roots: XrayRoots,
+  /// The language every entry this run reads is filed under. Never `all`.
+  pub language: TranslationLanguage,
+  /// Where inside those roots to look, or nothing to let the run resolve it.
+  pub prefix: Option<String>,
+  /// Directory the JSON sources are written to, which may already hold some.
+  pub output_dir: PathBuf,
+  /// Restrict the run to one table, by the file name it has in the scope.
+  pub file: Option<String>,
+  /// Let incoming text replace existing text that differs, instead of keeping what is there.
+  pub is_overwrite: bool,
+  /// Do everything except write, so a caller can see what a run would change.
+  pub is_dry_run: bool,
+}
+
+/// What an import run reports back to the desktop surface.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct TranslationParseSummary {
+  /// Whether the run read every table or was stopped between them.
+  pub outcome: xrf_job::JobOutcome,
+  /// The language every entry this run read was filed under.
+  pub language: String,
+  /// Whether the run computed its answer without writing it.
+  pub is_dry_run: bool,
+  pub census: TranslationParseCensus,
+  pub findings: Vec<TranslationParseFinding>,
+}
+
+/// One thing worth reporting about a file the run met.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[serde(rename_all = "camelCase")]
+pub struct TranslationParseFinding {
+  pub rule: String,
+  pub subject: Option<String>,
+  pub message: String,
+}
+
+/// Import one language's raw XML string tables into JSON sources.
+#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "parse_project"))]
+#[tauri::command(rename = "parse_project")]
+pub async fn translations_parse_project(
+  execution: State<'_, ExecutionState>,
+  registry: State<'_, Arc<JobRegistry>>,
+  request: TranslationParseRequest,
+  job_id: Uuid,
+  progress: Channel<JobProgress>,
+) -> TauriResult<TranslationParseSummary> {
+  let start: JobStart = JobStart::new(job_id, JobKind::TranslationsParse).with_request(&request);
+
+  let language: TranslationLanguage = request.language.into_single().map_err(error_to_string)?;
+
+  log::info!(
+    "Parsing translations: {} root(s), '{language}', into {}{}",
+    request.roots.roots.len(),
+    format_path(&request.output_dir),
+    if request.is_dry_run { " (dry run)" } else { "" }
+  );
+
+  let (job, registration): (JobHandle, JobRegistration) = registry.register(
+    start
+      .with_exclusion_group(JobKind::TranslationsParse.as_str())
+      .with_resources(vec![JobResource::tree(&request.output_dir)])
+      .with_progress(progress),
+  )?;
+
+  let TranslationParseRequest {
+    roots,
+    prefix,
+    output_dir,
+    file,
+    is_overwrite,
+    is_dry_run,
+    ..
+  } = request;
+
+  let options: TranslationParseOptions = TranslationParseOptions {
+    job,
+    output: xrf_output::OutputOptions::default(),
+    roots,
+    prefix,
+    language,
+    output_dir,
+    file,
+    is_overwrite,
+    is_dry_run,
+    link_policy: Default::default(),
+  };
+
+  let outcome: TauriResult<TranslationParseSummary> = run_job(
+    &execution,
+    "Translation import",
+    registration,
+    move || {
+      TranslationParser::parse(&options).map(|result: TranslationParseResult| TranslationParseSummary {
+        language: result.language.clone(),
+        outcome: result.outcome,
+        is_dry_run: result.is_dry_run,
+        census: result.census.clone(),
+        findings: result
+          .get_findings()
+          .iter()
+          .map(|finding| TranslationParseFinding {
+            rule: finding.rule_id().to_string(),
+            subject: finding.subject().map(String::from),
+            message: finding.message().to_string(),
+          })
+          .collect(),
+      })
+    },
+    |summary| summary.outcome,
+  )
+  .await;
+
+  if let Ok(summary) = &outcome {
+    log::info!(
+      "Parsed {} translation file(s), {} created, {} updated, {} finding(s)",
+      summary.census.files_read,
+      summary.census.files_created,
+      summary.census.files_updated,
+      summary.findings.len()
+    );
+  }
+
+  outcome
+}

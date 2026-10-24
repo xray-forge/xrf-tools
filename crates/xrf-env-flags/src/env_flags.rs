@@ -40,7 +40,7 @@ impl EnvFlags {
     name: "XRF_APP_EXTENSIONS_DIR",
     kind: EnvFlagKind::Runtime,
     value: EnvFlagValue::Path,
-    default: "`bin/xrf-app/extensions/unpacked` in the checkout",
+    default: "`bin/xrf-app/app/extensions/unpacked` in the checkout",
     readers: &["xrf-app"],
     condition: Some("debug builds on Windows"),
     description: "Directory to load unpacked browser extensions into the webview from. Each entry must be a folder \
