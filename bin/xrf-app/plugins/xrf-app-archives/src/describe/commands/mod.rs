@@ -1,1 +1,1 @@
-pub mod describe_file;
+pub(crate) mod describe_file;

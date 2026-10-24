@@ -1,12 +1,11 @@
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_app_core::assets::AssetMountState;
+use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
-use xrf_app_core::types::TauriResult;
 
-use crate::browse::{ArchiveBrowseState, ArchiveResolution, ArchiveSubject};
+use crate::browse::{ArchiveResolution, ArchiveSubject, ArchiveSubjects};
 
 /// Where the open subject looks for an engine path, in the order it looks.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_resolution"))]
@@ -14,19 +13,17 @@ use crate::browse::{ArchiveBrowseState, ArchiveResolution, ArchiveSubject};
 pub async fn archives_describe_resolution(
   session_id: SessionId,
   execution: State<'_, ExecutionState>,
-  assets: State<'_, AssetMountState>,
-  state: State<'_, ArchiveBrowseState>,
+  subjects: State<'_, ArchiveSubjects>,
 ) -> TauriResult<ArchiveResolution> {
   log::info!("Describing archive resolution");
 
-  let subject: Arc<SessionSnapshot<ArchiveSubject>> = state.require(session_id)?;
-  let assets: AssetMountState = AssetMountState::clone(&assets);
+  let subject: Arc<SessionSnapshot<ArchiveSubject>> = subjects.require(session_id)?;
 
   let resolution: ArchiveResolution = execution
     .run_blocking("Describing the archive resolution", move || {
-      subject.describe_resolution(&assets)
+      subject.describe_resolution()
     })
-    .await??;
+    .await?;
 
   log::info!(
     "Described {} searched source(s), {} unread",

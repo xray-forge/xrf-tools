@@ -1,11 +1,14 @@
+use std::sync::Arc;
+
 use serde::Serialize;
 use tauri::State;
-use xrf_app_core::assets::{AssetMountState, read_located_asset};
-use xrf_app_core::types::TauriResult;
-use xrf_error::XrfError;
+use xrf_app_core::TauriResult;
+use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_extension::XrayExtensionOf;
 use xrf_texture::ImageShape;
-use xrf_vfs::XrayRoots;
+
+use crate::browse::{ArchiveSubject, ArchiveSubjects};
 
 /// What a picture the webview renders itself turns out to be.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -18,37 +21,40 @@ pub struct ImageDescriptor {
   pub media_type: String,
 }
 
-/// Report the shape of a picture the webview draws as it stands.
+/// Report the shape of a picture of the open subject the webview draws as it stands.
 ///
 /// # Errors
 ///
-/// Returns an error when the path resolves to nothing, its bytes cannot be read, or its extension is not one a
+/// Returns an error when the subject holds no such file, its bytes cannot be read, or its extension is not one a
 /// webview draws - which the caller decided before asking, so reaching it means the two disagree.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_image"))]
 #[tauri::command(rename = "describe_image")]
 pub async fn archives_describe_image(
-  roots: XrayRoots,
-  logical_path: String,
-  assets: State<'_, AssetMountState>,
+  session_id: SessionId,
+  name: String,
+  execution: State<'_, ExecutionState>,
+  subjects: State<'_, ArchiveSubjects>,
 ) -> TauriResult<ImageDescriptor> {
-  log::info!("Describing image: {logical_path}");
+  log::info!("Describing image: {name}");
 
-  let media_type: &'static str = XrayExtensionOf::of(&logical_path)
+  let media_type: &'static str = XrayExtensionOf::of(&name)
     .known()
     .and_then(|extension| extension.get_media_type())
-    .ok_or_else(|| format!("Failed to describe image '{logical_path}': no webview renders this extension"))?;
+    .ok_or_else(|| format!("Failed to describe image '{name}': no webview renders this extension"))?;
+  let subject: Arc<SessionSnapshot<ArchiveSubject>> = subjects.require(session_id)?;
 
-  let bytes: Vec<u8> = read_located_asset(&assets.search(&roots)?, &logical_path)
-    .map_err(|error: XrfError| format!("Failed to describe image '{logical_path}': {error}"))?;
+  execution
+    .run_blocking("Describing image", move || {
+      let shape: Option<ImageShape> = ImageShape::of_bytes(&subject.read_bytes(&name)?);
 
-  let shape: Option<ImageShape> = ImageShape::of_bytes(&bytes);
+      if shape.is_none() {
+        log::warn!("Image '{name}' carries no header this reads");
+      }
 
-  if shape.is_none() {
-    log::warn!("Image '{logical_path}' carries no header this reads");
-  }
-
-  Ok(ImageDescriptor {
-    shape,
-    media_type: media_type.to_owned(),
-  })
+      Ok::<_, String>(ImageDescriptor {
+        shape,
+        media_type: media_type.to_owned(),
+      })
+    })
+    .await?
 }

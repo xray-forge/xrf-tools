@@ -1,10 +1,10 @@
 use serde::Serialize;
+use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::LevelSndStaticFile;
-use xrf_spawn::XRayByteOrder;
 
 use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::level::archive_level_snd_static_sound::ArchiveLevelSndStaticSound;
+use crate::describe::level::snd_static::ArchiveLevelSndStaticSound;
 
 /// Everything the viewer says about the sounds a level plants.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

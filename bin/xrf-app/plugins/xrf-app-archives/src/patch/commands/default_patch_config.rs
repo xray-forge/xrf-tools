@@ -1,4 +1,4 @@
-use xrf_app_core::types::TauriResult;
+use xrf_app_core::TauriResult;
 use xrf_pack::ArchivePatchConfig;
 
 /// Returns the format defaults with empty paths and the volume name `patch`.

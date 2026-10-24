@@ -26,6 +26,7 @@ xrf-efd = { workspace = true }
 xrf-error = { workspace = true }
 xrf-extension = { workspace = true }
 xrf-gamemtl = { workspace = true }
+xrf-ipc = { workspace = true, optional = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-level = { workspace = true }
 xrf-light-anim = { workspace = true }
@@ -48,6 +49,7 @@ xrf-vfs = { workspace = true }
 tauri = { workspace = true, features = ["test"] }
 xrf-app-core = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
+xrf-utils = { workspace = true, features = ["staging-faults"] }
 
 [features]
 # Emits TypeScript mirrors and command bindings. Nothing in a normal build turns this on.
@@ -58,6 +60,7 @@ typescript-bindings = [
   "xrf-archive/typescript-bindings",
   "xrf-archive-stats/typescript-bindings",
   "xrf-error/typescript-bindings",
+  "xrf-ipc",
   "xrf-job/typescript-bindings",
   "xrf-level/typescript-bindings",
   "xrf-math/typescript-bindings",

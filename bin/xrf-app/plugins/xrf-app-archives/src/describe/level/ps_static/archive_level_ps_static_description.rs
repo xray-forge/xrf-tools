@@ -1,10 +1,10 @@
 use serde::Serialize;
+use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::LevelPsStaticFile;
-use xrf_spawn::XRayByteOrder;
 
 use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::level::archive_level_ps_static_effect::ArchiveLevelPsStaticEffect;
+use crate::describe::level::ps_static::ArchiveLevelPsStaticEffect;
 
 /// Everything the viewer says about the particle effects a level plants.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

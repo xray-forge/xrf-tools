@@ -1,10 +1,10 @@
 use xrf_app_core::assets::{AssetTextureDescriptor, AssetTextureShape};
-use xrf_archive::{ArchiveProject, ArchiveReadPolicy};
+use xrf_archive::{ArchiveFileDescriptor, ArchiveProject, ArchiveReadPolicy};
 use xrf_chunk::ChunkReader;
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayAsset, XraySearch};
+use xrf_vfs::XrayAsset;
 
-use crate::browse::ArchiveWorld;
+use crate::browse::{ArchiveNameIndex, ArchiveWorld};
 use crate::describe::archive_describe_scope::ArchiveDescribeScope;
 use crate::describe::archive_entry_reader::ArchiveEntryReader;
 
@@ -12,10 +12,10 @@ use crate::describe::archive_entry_reader::ArchiveEntryReader;
 pub enum ArchiveDescribeSource<'a> {
   Volumes {
     project: &'a ArchiveProject,
+    names: &'a ArchiveNameIndex,
   },
   World {
     world: &'a ArchiveWorld,
-    search: &'a XraySearch,
   },
 }
 
@@ -23,7 +23,7 @@ impl ArchiveDescribeSource<'_> {
   /// What this source's lookups search, for a surface wording an absence.
   pub fn get_scope(&self) -> ArchiveDescribeScope {
     match self {
-      Self::Volumes { project } => ArchiveDescribeScope::Volumes {
+      Self::Volumes { project, .. } => ArchiveDescribeScope::Volumes {
         volumes: project.archives.len(),
       },
       Self::World { .. } => ArchiveDescribeScope::World,
@@ -33,8 +33,8 @@ impl ArchiveDescribeSource<'_> {
   /// What this source may be read under, which is the policy of the subject it is.
   pub fn get_read_policy(&self) -> &ArchiveReadPolicy {
     match self {
-      Self::Volumes { project } => &project.read_policy,
-      Self::World { world, .. } => &world.read_policy,
+      Self::Volumes { project, .. } => &project.read_policy,
+      Self::World { world } => &world.read_policy,
     }
   }
 
@@ -48,7 +48,8 @@ impl ArchiveDescribeSource<'_> {
     self.find_file(path).map(|(name, _)| name.to_owned())
   }
 
-  /// The one file this source lists for an engine path, as the name it is listed under and its unpacked size.
+  /// The one file this source lists for an engine path, however it is spelled, as the name it is listed under and its
+  /// unpacked size: one lookup either way.
   ///
   /// Both public lookups answer from here, so describing an entry and resolving a reference to it can never disagree
   /// about which file that is.
@@ -57,21 +58,10 @@ impl ArchiveDescribeSource<'_> {
   /// describe an empty payload as a malformed descriptor.
   fn find_file(&self, path: &str) -> Option<(&str, u64)> {
     match self {
-      Self::Volumes { project } => project
-        .files
-        .get(path)
-        .filter(|descriptor| !descriptor.is_directory)
-        .or_else(|| {
-          project
-            .files
-            .values()
-            .find(|descriptor| !descriptor.is_directory && is_same_logical_name(&descriptor.name, path))
-        })
-        .map(|descriptor| (descriptor.name.as_ref(), u64::from(descriptor.size_real))),
-      Self::World { world, .. } => world
-        .find(path)
-        .or_else(|| world.files.iter().find(|entry| is_same_logical_name(&entry.name, path)))
-        .map(|entry| (entry.name.as_str(), entry.size_real)),
+      Self::Volumes { project, names } => names
+        .find(project, path)
+        .map(|descriptor: &ArchiveFileDescriptor| (descriptor.name.as_ref(), u64::from(descriptor.size_real))),
+      Self::World { world } => world.find(path).map(|entry| (entry.name.as_str(), entry.size_real)),
     }
   }
 
@@ -83,16 +73,16 @@ impl ArchiveDescribeSource<'_> {
   /// be read out of the container.
   pub fn open_entry(&self, name: &str) -> XrfResult<ArchiveEntryReader> {
     match self {
-      Self::Volumes { project } => Ok(ArchiveEntryReader::Held(ChunkReader::from_vec(
+      Self::Volumes { project, .. } => Ok(ArchiveEntryReader::Held(ChunkReader::from_vec(
         project.read_file_bytes(name)?,
       )?)),
-      Self::World { search, .. } => {
-        let asset: XrayAsset = find_mounted_asset(search, name)?;
+      Self::World { world } => {
+        let asset: XrayAsset = world.find_asset(name)?;
 
         match asset.to_physical_path() {
           Some(path) => Ok(ArchiveEntryReader::Sliced(ChunkReader::from_path(path)?)),
           None => Ok(ArchiveEntryReader::Held(ChunkReader::from_vec(
-            search.read_asset(&asset)?,
+            world.search.read_asset(&asset)?,
           )?)),
         }
       }
@@ -106,8 +96,8 @@ impl ArchiveDescribeSource<'_> {
   /// Returns an error when the source holds no such entry, or its bytes cannot be read out of the container.
   pub fn read_bytes(&self, name: &str) -> XrfResult<Vec<u8>> {
     match self {
-      Self::Volumes { project } => project.read_file_bytes(name),
-      Self::World { search, .. } => search.read_asset(&find_mounted_asset(search, name)?),
+      Self::Volumes { project, .. } => project.read_file_bytes(name),
+      Self::World { world } => world.search.read_asset(&world.find_asset(name)?),
     }
   }
 
@@ -117,59 +107,19 @@ impl ArchiveDescribeSource<'_> {
   /// A loose file costs only the header; an archived entry has no path to read a prefix of and so costs its payload,
   /// which is the standing price of describing anything inside a volume.
   pub fn get_texture_shape(&self, name: &str) -> Option<AssetTextureShape> {
+    self.describe_texture(name).ok()?.shape
+  }
+
+  /// What a texture this source lists is: its size, and its header's facts where the header parses.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the source holds no such entry, or its bytes cannot be reached at all.
+  pub fn describe_texture(&self, name: &str) -> XrfResult<AssetTextureDescriptor> {
     match self {
-      Self::Volumes { project } => AssetTextureShape::of_bytes(&project.read_file_bytes(name).ok()?),
-      Self::World { search, .. } => {
-        AssetTextureDescriptor::describe(search, &find_mounted_asset(search, name).ok()?)?.shape
-      }
+      Self::Volumes { project, .. } => Ok(AssetTextureDescriptor::of_bytes(&project.read_file_bytes(name)?)),
+      Self::World { world } => AssetTextureDescriptor::describe(&world.search, &world.find_asset(name)?)
+        .ok_or_else(|| XrfError::new_asset_error(format!("'{name}' could not be read at all"))),
     }
-  }
-}
-
-/// The mounted asset behind an engine path.
-///
-/// # Errors
-///
-/// Returns an error when the path resolves to nothing in the mounted roots.
-fn find_mounted_asset(search: &XraySearch, name: &str) -> XrfResult<XrayAsset> {
-  search
-    .find(name)?
-    .ok_or_else(|| XrfError::new_not_found_error(format!("'{name}' resolves to nothing in the mounted roots")))
-}
-
-/// Whether an authored entry name is the same engine path as an already normalized one.
-fn is_same_logical_name(authored: &str, normalized: &str) -> bool {
-  authored.len() == normalized.len()
-    && authored.bytes().zip(normalized.bytes()).all(|(candidate, expected)| {
-      let candidate: u8 = if candidate == b'/' {
-        b'\\'
-      } else {
-        candidate.to_ascii_lowercase()
-      };
-
-      candidate == expected
-    })
-}
-
-#[cfg(test)]
-mod tests {
-  use super::is_same_logical_name;
-
-  #[test]
-  fn an_entry_matches_its_engine_identity_whatever_its_spelling() {
-    let path: &str = "textures\\act\\act_arm_1.dds";
-
-    assert!(is_same_logical_name(path, path));
-    assert!(is_same_logical_name("textures\\Act\\ACT_arm_1.DDS", path));
-    assert!(is_same_logical_name("textures/act/act_arm_1.dds", path));
-  }
-
-  #[test]
-  fn a_different_entry_does_not_match() {
-    let path: &str = "textures\\act\\act_arm_1.dds";
-
-    assert!(!is_same_logical_name("textures\\act\\act_arm_2.dds", path));
-    assert!(!is_same_logical_name("textures\\act\\act_arm_1.thm", path));
-    assert!(!is_same_logical_name("textures\\act\\act_arm_1", path));
   }
 }

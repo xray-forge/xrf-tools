@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_archive::{ArchiveReadPolicy, ArchiveReadResult};
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayAsset, XrayPathCollision, XrayRoots, XraySearch, XrayShadowingEntry};
+use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayPathCollision, XrayRoots, XraySearch, XrayShadowingEntry};
 
 use crate::browse::archive_world_entry::ArchiveWorldEntry;
 
@@ -10,8 +10,13 @@ use crate::browse::archive_world_entry::ArchiveWorldEntry;
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveWorld {
-  /// How the world was opened, so every later read of it addresses exactly these mounts.
+  /// How the world was opened, so a commit's follow lists it again over the same mounts.
   pub roots: XrayRoots,
+  /// The snapshot the listing was built from, which every read of this world goes through, so what is listed and
+  /// what is read never come from two revisions.
+  #[serde(skip)]
+  #[cfg_attr(feature = "typescript-bindings", specta(skip))]
+  pub search: XraySearch,
   /// Sources searched, highest priority first, as each one names itself.
   pub mounts: Vec<String>,
   /// The same search order at the grain a container names — one entry per volume, not per merged mount.
@@ -34,16 +39,18 @@ pub struct ArchiveWorld {
 }
 
 impl ArchiveWorld {
-  /// Lists everything a search reaches, folded into the shape the explorer browses.
-  pub fn list(search: &XraySearch, roots: XrayRoots) -> Self {
-    let entries: Vec<XrayShadowingEntry> = search.list_shadowing_entries();
+  /// Lists everything `listed` reaches, folded into the shape the explorer browses, read later through `search`: the
+  /// same snapshot, though `listed` may be a clone of it recording what the listing read.
+  pub fn list(listed: &XraySearch, search: XraySearch, roots: XrayRoots) -> Self {
+    let entries: Vec<XrayShadowingEntry> = listed.list_shadowing_entries();
 
     Self {
-      collisions: search.list_collisions(),
-      mounts: search.list_roots(),
-      sources: search.list_containers(),
+      collisions: listed.list_collisions(),
+      mounts: listed.list_roots(),
+      sources: listed.list_containers(),
       read_policy: ArchiveReadPolicy::default(),
       roots,
+      search,
       shadowed_count: entries.iter().filter(|entry| entry.is_shadowing()).count(),
       shadowed_size_real: entries.iter().map(XrayShadowingEntry::get_shadowed_size).sum(),
       size_real: entries.iter().map(XrayShadowingEntry::get_size).sum(),
@@ -51,8 +58,17 @@ impl ArchiveWorld {
     }
   }
 
-  /// The entry answering for one engine path, or `None` when this world holds none.
+  /// The entry answering for one engine path, however it is spelled, or `None` when this world holds none.
   pub fn find(&self, name: &str) -> Option<&ArchiveWorldEntry> {
+    self.find_listed(name).or_else(|| {
+      let identity: XrayLogicalPath = XrayLogicalPath::new(name).ok()?;
+
+      self.find_listed(identity.as_str())
+    })
+  }
+
+  /// The entry listed under exactly `name`, which the listing holds normalized and in order.
+  fn find_listed(&self, name: &str) -> Option<&ArchiveWorldEntry> {
     self
       .files
       .binary_search_by(|entry| entry.name.as_str().cmp(name))
@@ -66,7 +82,7 @@ impl ArchiveWorld {
   ///
   /// Returns an error when this world does not hold the path, the policy refuses it, or the bytes cannot be read or
   /// decoded.
-  pub fn read_text(&self, search: &XraySearch, name: &str) -> XrfResult<ArchiveReadResult> {
+  pub fn read_text(&self, name: &str) -> XrfResult<ArchiveReadResult> {
     let entry: &ArchiveWorldEntry = self
       .find(name)
       .ok_or_else(|| XrfError::new_not_found_error(format!("File '{name}' is not found in the opened game folder")))?;
@@ -74,11 +90,19 @@ impl ArchiveWorld {
 
     self.read_policy.assert_can_read_as_text(name, size)?;
 
-    let asset: XrayAsset = search
-      .find(name)?
-      .ok_or_else(|| XrfError::new_not_found_error(format!("'{name}' resolves to nothing in the mounted roots")))?;
+    ArchiveReadResult::decode(name, &self.search.read_asset(&self.find_asset(name)?)?, size)
+  }
 
-    ArchiveReadResult::decode(name, &search.read_asset(&asset)?, size)
+  /// The mounted asset behind an engine path, in the snapshot this world was listed from.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the path resolves to nothing there.
+  pub fn find_asset(&self, name: &str) -> XrfResult<XrayAsset> {
+    self
+      .search
+      .find(name)?
+      .ok_or_else(|| XrfError::new_not_found_error(format!("'{name}' resolves to nothing in the mounted roots")))
   }
 }
 
@@ -130,7 +154,9 @@ mod tests {
       .mount_into(&mut vfs)
       .expect("the roots mount");
 
-    ArchiveWorld::list(&XraySearch::new(vfs).with_steps(steps), roots)
+    let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
+
+    ArchiveWorld::list(&search, search.clone(), roots)
   }
 
   #[test]
@@ -197,5 +223,29 @@ mod tests {
     }
 
     assert!(world.find("configs\\absent.ltx").is_none());
+  }
+
+  #[test]
+  fn a_world_finds_an_entry_however_a_reference_spells_it() {
+    let world: ArchiveWorld = layered("spelling");
+
+    assert_eq!(
+      world.find("Configs/System.LTX").map(|found| found.name.as_str()),
+      Some("configs\\system.ltx"),
+      "a reference authored in another case or with forward slashes is the same engine path"
+    );
+  }
+
+  #[test]
+  fn a_world_reads_from_the_snapshot_it_was_listed_from() {
+    let world: ArchiveWorld = layered("snapshot");
+
+    assert_eq!(
+      world
+        .read_text("configs\\system.ltx")
+        .expect("the winner reads")
+        .content,
+      "front"
+    );
   }
 }

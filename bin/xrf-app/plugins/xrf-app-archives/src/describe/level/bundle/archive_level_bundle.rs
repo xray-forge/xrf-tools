@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use serde::Serialize;
 
 use crate::describe::archive_reference::{ArchiveReference, ArchiveReferenceStatus};
-use crate::describe::level::archive_level_surface::{ArchiveLevelEntry, ArchiveLevelSurface};
+use crate::describe::level::bundle::{ArchiveLevelEntry, ArchiveLevelSurface};
 
 /// What the bundle holds, taken over the whole of it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -84,8 +84,8 @@ impl ArchiveLevelBundle {
 mod tests {
   use super::ArchiveLevelBundle;
   use crate::describe::archive_reference::{ArchiveReference, ArchiveReferenceStatus};
-  use crate::describe::level::archive_level_shader::ArchiveLevelShader;
-  use crate::describe::level::archive_level_surface::{ArchiveLevelEntry, ArchiveLevelSurface};
+  use crate::describe::level::bundle::ArchiveLevelShader;
+  use crate::describe::level::bundle::{ArchiveLevelEntry, ArchiveLevelSurface};
 
   fn texture(name: &str, status: ArchiveReferenceStatus) -> ArchiveReference {
     ArchiveReference {

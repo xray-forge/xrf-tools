@@ -35,7 +35,7 @@ mod tests {
 
   #[test]
   fn a_name_no_library_can_be_asked_about_is_unknown_rather_than_absent() {
-    // An absence nobody looked for is the signal decision 10 exists to keep out of the view.
+    // An absence nobody looked for must not read as one: a shader no library was asked about is not a missing shader.
     assert_eq!(
       ArchiveLevelShader::of("default", None).status,
       ArchiveReferenceStatus::Unknown

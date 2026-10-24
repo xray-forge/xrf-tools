@@ -3,13 +3,14 @@ use std::sync::Arc;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
+use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::jobs::{JobKind, JobRegistration, JobRegistry, JobStart, run_job};
-use xrf_app_core::types::TauriResult;
-use xrf_job::{JobHandle, JobProgress};
+use xrf_app_core::jobs::{JobRegistry, JobStart};
+use xrf_job::JobProgress;
 use xrf_pack::{ArchivePatchOptions, ArchivePatchResult, ArchivePatcher};
 use xrf_utils::format_path;
 
+use crate::ipc::archives::ARCHIVES_JOB_COMPARE;
 use crate::patch::ArchivesPatchRequest;
 
 /// Compares two roots without writing files.
@@ -22,7 +23,10 @@ pub async fn archives_compare_archives(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<ArchivePatchResult> {
-  let start: JobStart = JobStart::new(job_id, JobKind::ArchivesCompare).with_request(&request);
+  let start: JobStart = JobStart::new(job_id, ARCHIVES_JOB_COMPARE)
+    .with_request(&request)
+    .with_kind_exclusion()
+    .with_progress(progress);
 
   let ArchivesPatchRequest {
     config,
@@ -39,25 +43,19 @@ pub async fn archives_compare_archives(
     )
   );
 
-  let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    start
-      .with_exclusion_group(JobKind::ArchivesCompare.as_str())
-      .with_progress(progress),
-  )?;
-
-  run_job(
-    &execution,
-    "Archive comparison",
-    registration,
-    move || {
-      ArchivePatcher::compare_opt(
-        &config,
-        ArchivePatchOptions::default()
-          .with_job(job)
-          .with_verified_payloads(is_verifying_payload),
-      )
-    },
-    |result| result.outcome,
-  )
-  .await
+  registry
+    .run(
+      &execution,
+      start,
+      move |job| {
+        ArchivePatcher::compare_opt(
+          &config,
+          ArchivePatchOptions::default()
+            .with_job(job)
+            .with_verified_payloads(is_verifying_payload),
+        )
+      },
+      |result| result.outcome,
+    )
+    .await
 }

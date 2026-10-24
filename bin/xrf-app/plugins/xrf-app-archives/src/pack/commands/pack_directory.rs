@@ -3,13 +3,14 @@ use std::sync::Arc;
 use tauri::State;
 use tauri::ipc::Channel;
 use uuid::Uuid;
+use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
-use xrf_app_core::types::TauriResult;
-use xrf_job::{JobHandle, JobProgress};
+use xrf_app_core::jobs::{JobRegistry, JobResource, JobStart};
+use xrf_job::JobProgress;
 use xrf_pack::{ArchivePackOptions, ArchivePackResult, ArchivePacker};
 use xrf_utils::format_path;
 
+use crate::ipc::archives::ARCHIVES_JOB_PACK;
 use crate::lease::PUBLISH_ACTION_GROUP;
 use crate::pack::ArchivesPackRequest;
 
@@ -23,7 +24,11 @@ pub async fn archives_pack_directory(
   job_id: Uuid,
   progress: Channel<JobProgress>,
 ) -> TauriResult<ArchivePackResult> {
-  let start: JobStart = JobStart::new(job_id, JobKind::ArchivesPack).with_request(&request);
+  let start: JobStart = JobStart::new(job_id, ARCHIVES_JOB_PACK)
+    .with_request(&request)
+    .with_exclusion_group(PUBLISH_ACTION_GROUP)
+    .with_resources(vec![JobResource::tree(&request.config.destination)])
+    .with_progress(progress);
 
   let ArchivesPackRequest { config, is_forced } = request;
 
@@ -34,24 +39,17 @@ pub async fn archives_pack_directory(
     config.name
   );
 
-  let (job, registration): (JobHandle, JobRegistration) = registry.register(
-    start
-      .with_exclusion_group(PUBLISH_ACTION_GROUP)
-      .with_resources(vec![JobResource::tree(&config.destination)])
-      .with_progress(progress),
-  )?;
-
-  run_job(
-    &execution,
-    "Archive pack",
-    registration,
-    move || {
-      ArchivePacker::pack_opt(
-        &config,
-        ArchivePackOptions::default().with_job(job).with_force(is_forced),
-      )
-    },
-    |result| result.outcome,
-  )
-  .await
+  registry
+    .run(
+      &execution,
+      start,
+      move |job| {
+        ArchivePacker::pack_opt(
+          &config,
+          ArchivePackOptions::default().with_job(job).with_force(is_forced),
+        )
+      },
+      |result| result.outcome,
+    )
+    .await
 }

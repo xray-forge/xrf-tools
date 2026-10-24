@@ -15,7 +15,7 @@ mod archive_entry_reader;
 mod archive_file_description;
 mod archive_reference;
 mod chunks;
-pub mod commands;
+pub(crate) mod commands;
 mod detail;
 mod efd;
 mod gamemtl;
@@ -28,6 +28,8 @@ mod shader_compiler;
 mod shaders;
 mod sound;
 mod spawn;
+#[cfg(test)]
+mod tests;
 mod thm;
 
 pub use archive_describe_source::ArchiveDescribeSource;

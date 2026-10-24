@@ -1,11 +1,11 @@
 use serde::Serialize;
+use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::LevelLightsFile;
-use xrf_spawn::XRayByteOrder;
 
 use crate::describe::archive_bounds::ArchiveBounds;
 use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::level::archive_level_lights_group::ArchiveLevelLightsGroup;
+use crate::describe::level::lights::ArchiveLevelLightsGroup;
 
 /// Everything the viewer says about a level's compiled lights.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

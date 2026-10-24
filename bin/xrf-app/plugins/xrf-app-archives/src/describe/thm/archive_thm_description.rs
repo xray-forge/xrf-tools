@@ -1,6 +1,6 @@
 use serde::Serialize;
+use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
-use xrf_spawn::XRayByteOrder;
 use xrf_thm::{ThmFile, ThmTextureParamChunk};
 use xrf_vfs::XrayAssetType;
 

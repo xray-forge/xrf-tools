@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use tauri::State;
+use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
-use xrf_app_core::types::TauriResult;
 
-use crate::browse::{ArchiveBrowseState, ArchiveOverrideReport, ArchiveSubject};
+use crate::browse::{ArchiveOverrideReport, ArchiveSubject, ArchiveSubjects};
 
 /// What the open subject answers with more than one copy, and what it cannot reach at all.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_overrides"))]
@@ -13,11 +13,11 @@ use crate::browse::{ArchiveBrowseState, ArchiveOverrideReport, ArchiveSubject};
 pub async fn archives_list_overrides(
   session_id: SessionId,
   execution: State<'_, ExecutionState>,
-  state: State<'_, ArchiveBrowseState>,
+  subjects: State<'_, ArchiveSubjects>,
 ) -> TauriResult<ArchiveOverrideReport> {
   log::info!("Describing archive overrides");
 
-  let subject: Arc<SessionSnapshot<ArchiveSubject>> = state.require(session_id)?;
+  let subject: Arc<SessionSnapshot<ArchiveSubject>> = subjects.require(session_id)?;
 
   let report: ArchiveOverrideReport = execution
     .run_blocking("Describing the archive overrides", move || subject.describe_overrides())

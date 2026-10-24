@@ -1,7 +1,7 @@
 use serde::Serialize;
+use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_gamemtl::GameMtlFile;
-use xrf_spawn::XRayByteOrder;
 
 use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::gamemtl::archive_game_mtl_material::ArchiveGameMtlMaterial;

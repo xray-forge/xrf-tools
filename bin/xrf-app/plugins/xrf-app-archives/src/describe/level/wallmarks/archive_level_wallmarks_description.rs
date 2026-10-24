@@ -1,10 +1,10 @@
 use serde::Serialize;
+use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::LevelWallmarksFile;
-use xrf_spawn::XRayByteOrder;
 
 use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::level::archive_level_wallmark_slot::ArchiveLevelWallmarkSlot;
+use crate::describe::level::wallmarks::ArchiveLevelWallmarkSlot;
 
 /// Everything the viewer says about a level's baked decals.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

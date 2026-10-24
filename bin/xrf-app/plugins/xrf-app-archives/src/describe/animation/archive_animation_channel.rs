@@ -51,14 +51,6 @@ impl ArchiveAnimationChannel {
     }
   }
 
-  /// Seconds between its first and last key, which is `CEnvelope::GetLength`.
-  pub fn get_length_seconds(&self) -> f32 {
-    match (self.first_seconds, self.last_seconds) {
-      (Some(first), Some(last)) => last - first,
-      _ => 0.0,
-    }
-  }
-
   /// The one value a fold over a channel's keys leaves, or `None` for a channel carrying none.
   fn fold_values(envelope: &AnimationEnvelope, fold: fn(f32, f32) -> f32) -> Option<f32> {
     envelope
@@ -143,7 +135,6 @@ mod tests {
     assert_eq!((channel.first_seconds, channel.last_seconds), (Some(0.0), Some(4.0)));
     assert_eq!((channel.minimum, channel.maximum), (Some(-1.25), Some(2.0)));
     assert_eq!(channel.shapes, vec![String::from("tcb"), String::from("linear")]);
-    assert_eq!(channel.get_length_seconds(), 4.0);
   }
 
   #[test]
@@ -154,7 +145,6 @@ mod tests {
     assert_eq!(channel.first_seconds, None);
     assert_eq!(channel.minimum, None);
     assert!(channel.shapes.is_empty());
-    assert_eq!(channel.get_length_seconds(), 0.0);
   }
 
   #[test]

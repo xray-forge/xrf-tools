@@ -1,3 +1,3 @@
-pub mod describe_audio;
-pub mod describe_image;
-pub mod describe_texture;
+pub(crate) mod describe_audio;
+pub(crate) mod describe_image;
+pub(crate) mod describe_texture;

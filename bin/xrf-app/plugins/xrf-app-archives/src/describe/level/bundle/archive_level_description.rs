@@ -1,13 +1,13 @@
 use serde::Serialize;
+use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::{LevelFile, LevelShaderEntry};
 use xrf_shaders::ShaderLibraryFile;
-use xrf_spawn::XRayByteOrder;
 
 use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::archive_reference::ArchiveReference;
-use crate::describe::level::archive_level_bundle::ArchiveLevelBundle;
-use crate::describe::level::archive_level_surface::ArchiveLevelSurface;
+use crate::describe::level::bundle::ArchiveLevelBundle;
+use crate::describe::level::bundle::ArchiveLevelSurface;
 
 /// Where the engine loads the blender library from, which is the root of whatever tree is open.
 const SHADER_LIBRARY: &str = "shaders.xr";

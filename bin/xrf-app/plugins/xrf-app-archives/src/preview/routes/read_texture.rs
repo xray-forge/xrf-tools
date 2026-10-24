@@ -1,38 +1,39 @@
+use std::sync::Arc;
+
 use serde::Deserialize;
 use tauri::{AppHandle, Manager};
-use xrf_app_core::assets::{AssetMountState, read_texture_png};
+use xrf_app_core::TauriResult;
+use xrf_app_core::assets::AssetTextureImage;
 use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_app_core::transport::TransportAnswer;
-use xrf_app_core::types::TauriResult;
-use xrf_vfs::XrayRoots;
+
+use crate::browse::{ArchiveSubject, ArchiveSubjects};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ArchivesReadTextureRequest {
-  roots: XrayRoots,
-  logical_path: String,
+  session_id: SessionId,
+  name: String,
 }
 
-/// Decode a located DDS into the PNG bytes the webview displays.
+/// One texture of the open subject decoded into the PNG bytes the webview displays.
 pub(crate) async fn archives_read_texture(
   app: AppHandle,
   request: ArchivesReadTextureRequest,
 ) -> TauriResult<TransportAnswer> {
-  let ArchivesReadTextureRequest { roots, logical_path } = request;
+  let ArchivesReadTextureRequest { session_id, name } = request;
 
-  log::info!("Reading image: {logical_path}");
+  log::info!("Decoding texture: {name}");
 
-  let described: String = logical_path.clone();
-  let assets: AssetMountState = AssetMountState::clone(&app.state::<AssetMountState>());
+  let subject: Arc<SessionSnapshot<ArchiveSubject>> = app.state::<ArchiveSubjects>().require(session_id)?;
   let png: Vec<u8> = app
     .state::<ExecutionState>()
-    .run_blocking("Decoding image", move || {
-      read_texture_png(&assets.search(&roots)?, &logical_path)
-        .map_err(|error| format!("Failed to read image '{logical_path}': {error}"))
+    .run_blocking("Decoding texture", move || {
+      AssetTextureImage::encode_png(&subject.read_bytes(&name)?)
+        .map_err(|error| format!("Failed to decode texture '{name}': {error}"))
     })
     .await??;
-
-  log::info!("Serving {} png bytes for '{described}'", png.len());
 
   Ok(TransportAnswer::png(png))
 }
