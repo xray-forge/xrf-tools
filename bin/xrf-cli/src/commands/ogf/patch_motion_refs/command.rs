@@ -2,13 +2,12 @@ use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfResult;
-use xrf_ogf::{OgfFile, OgfMotionRefsProcessor, OgfRefsPatchReport};
+use xrf_ogf::{OgfMotionRefsProcessor, OgfRefsPatchReport};
 use xrf_output::OutputOptions;
 use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct PatchMotionRefsCommand;
@@ -18,10 +17,9 @@ impl GenericCommand for PatchMotionRefsCommand {
     "patch-motion-refs"
   }
 
-  /// Create command for rewriting ogf motion refs.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to rewrite motion refs of provided ogf file")
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("Rewrite the motion refs of an OGF visual")
       .arg(
         Arg::new("path")
           .help("Path to ogf file")
@@ -55,7 +53,6 @@ impl GenericCommand for PatchMotionRefsCommand {
       )
   }
 
-  /// Rewrite motion refs of provided ogf file.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
@@ -91,18 +88,16 @@ impl PatchMotionRefsCommand {
     motion_refs: &[String],
     is_dry_run: bool,
   ) -> XrfResult<OgfRefsPatchReport> {
-    let existing: Vec<String> = OgfFile::read_motion_refs_from_path::<XRayByteOrder, _>(&path)?;
+    let report: OgfRefsPatchReport =
+      OgfMotionRefsProcessor::patch_motion_refs_to_path::<XRayByteOrder>(path, destination, motion_refs, is_dry_run)?;
 
     xrf_output::info!(
       output,
-      "Patch ogf motion refs {}, {:?} -> {:?}",
+      "Patch ogf motion refs {}, [{}] -> [{}]",
       format_path(path),
-      existing,
-      motion_refs
+      report.previous_refs.join(", "),
+      motion_refs.join(", ")
     );
-
-    let report: OgfRefsPatchReport =
-      OgfMotionRefsProcessor::patch_motion_refs_to_path::<XRayByteOrder>(path, destination, motion_refs, is_dry_run)?;
 
     if report.is_dry_run {
       xrf_output::info!(

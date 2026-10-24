@@ -2,15 +2,13 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use xrf_error::XrfError;
 use xrf_output::OutputOptions;
-use xrf_report::Status;
 use xrf_utils::format_path;
 
 use crate::commands::ogf::verify::ogf_verifier::{OgfVerificationCensus, OgfVerificationResult, OgfVerifier};
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::commands::ogf::verify::report::OgfVerifyReport;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::report::ReportVerdict;
 
 #[derive(Default)]
 pub struct VerifyCommand;
@@ -20,9 +18,9 @@ impl GenericCommand for VerifyCommand {
     "verify"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to verify ogf visuals can be packed for rendering")
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("Verify that OGF visuals can be packed for rendering")
       .arg(
         Arg::new("path")
           .help("Path to an ogf file or a directory to sweep")
@@ -40,7 +38,6 @@ impl GenericCommand for VerifyCommand {
       )
   }
 
-  /// Pack every visual under the provided path and report what could not be drawn.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<_>("path")
@@ -61,40 +58,12 @@ impl GenericCommand for VerifyCommand {
     let result: OgfVerificationResult = OgfVerifier::new(path, roots.clone()).run();
 
     Self::print_census(&output, &result);
-    Self::print_findings(&output, &result);
+    ReportVerdict::print_findings(&output, &result.report);
 
-    // Deposited before the verdict becomes an outcome, so a failing check still reports the findings
-    // that explain it.
-    context.set_result(|| &result.report)?;
+    // Deposited before the verdict becomes an outcome, so a failing check still reports the findings that explain it.
+    context.set_result(|| OgfVerifyReport::new(&result.census, &result.report))?;
 
-    let status: Status = result.report.status();
-
-    match status {
-      Status::Passed => {
-        xrf_output::success!(output, "Verification passed, status: {}", status);
-
-        Ok(())
-      }
-      Status::Failed => {
-        let findings: usize = result
-          .report
-          .checks()
-          .iter()
-          .map(|check| check.findings().len())
-          .sum::<usize>()
-          .max(1);
-
-        Err(CommandError::new_check_failed(findings))
-      }
-      // The sweep did not judge the content to the end, so this is an execution failure rather
-      // than a check verdict.
-      Status::Error | Status::Incomplete | Status::Skipped => Err(
-        XrfError::new_verify_error(format!(
-          "Verification of ogf visuals did not complete, status: {status}"
-        ))
-        .into(),
-      ),
-    }
+    ReportVerdict::conclude(&output, &result.report, "Verification of ogf visuals")
   }
 }
 
@@ -163,44 +132,9 @@ impl VerifyCommand {
   }
 
   /// Prints one distribution, or nothing when it counted nothing.
-  ///
-  /// A sweep that resolved no texture has no formats and no answering steps to report, and a label followed by an empty
-  /// line reads as a distribution that came back empty rather than a question that was never answered.
   fn print_distribution<K: std::fmt::Display>(output: &OutputOptions, label: &str, counts: &BTreeMap<K, usize>) {
-    if counts.is_empty() {
-      return;
-    }
-
-    let rendered: Vec<String> = counts.iter().map(|(key, count)| format!("{key}: {count}")).collect();
-
-    xrf_output::info!(output, "{}: {}", label, rendered.join(", "));
-  }
-
-  /// List findings under verbose output only: a sweep of thousands of files can produce more of them
-  /// than a terminal is useful for, and the json report is the artifact meant for comparison.
-  fn print_findings(output: &OutputOptions, result: &OgfVerificationResult) {
-    for check in result.report.checks() {
-      if check.findings().is_empty() {
-        continue;
-      }
-
-      xrf_output::info!(
-        output,
-        "Check '{}' is {} with {} findings",
-        check.id(),
-        check.status(),
-        check.findings().len()
-      );
-
-      for finding in check.findings() {
-        xrf_output::verbose!(
-          output,
-          "  [{}] {}: {}",
-          finding.rule_id(),
-          finding.subject().unwrap_or("-"),
-          finding.message()
-        );
-      }
+    if let Some(rendered) = ReportVerdict::format_distribution(counts) {
+      xrf_output::info!(output, "{label}: {rendered}");
     }
   }
 }
@@ -210,7 +144,7 @@ mod tests {
   use std::path::PathBuf;
 
   use super::VerifyCommand;
-  use crate::core::generic_command::GenericCommand;
+  use crate::core::command::GenericCommand;
 
   fn roots(arguments: &[&str]) -> Option<Vec<PathBuf>> {
     VerifyCommand

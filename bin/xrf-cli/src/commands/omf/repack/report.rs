@@ -1,8 +1,7 @@
 use serde::Serialize;
 use xrf_report::Status;
 
-use super::statistics::RepackOmfStatistics;
-use crate::commands::omf::repack::omf_repack_finding_report::OmfRepackFindingReport;
+use crate::commands::omf::repack::{OmfRepackFindingReport, OmfRepackStatistics};
 
 /// The verdict `omf repack` reached while verifying round trips.
 #[derive(Debug, Serialize)]
@@ -17,7 +16,8 @@ pub struct OmfRepackVerifyReport {
 }
 
 impl OmfRepackVerifyReport {
-  pub fn new(statistics: &RepackOmfStatistics, findings: Vec<OmfRepackFindingReport>) -> Self {
+  /// The report of round trips counted in `statistics`, with what each failing one found.
+  pub fn new(statistics: &OmfRepackStatistics, findings: Vec<OmfRepackFindingReport>) -> Self {
     Self {
       checked: statistics.checked(),
       failed: statistics.failed(),

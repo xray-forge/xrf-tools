@@ -2,13 +2,12 @@ use std::path::{Path, PathBuf};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfResult;
-use xrf_ogf::{OgfFile, OgfRefsPatchReport, OgfTextureRefsProcessor};
+use xrf_ogf::{OgfRefsPatchReport, OgfTextureRefsProcessor};
 use xrf_output::OutputOptions;
 use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct PatchTextureRefsCommand;
@@ -18,10 +17,9 @@ impl GenericCommand for PatchTextureRefsCommand {
     "patch-texture-refs"
   }
 
-  /// Create command for renaming ogf texture refs.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to rename a texture reference of provided ogf file")
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("Rename a texture reference of an OGF visual")
       .arg(
         Arg::new("path")
           .help("Path to ogf file")
@@ -58,7 +56,6 @@ impl GenericCommand for PatchTextureRefsCommand {
       )
   }
 
-  /// Rename a texture reference of provided ogf file.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
@@ -99,19 +96,17 @@ impl PatchTextureRefsCommand {
     to: &str,
     is_dry_run: bool,
   ) -> XrfResult<OgfRefsPatchReport> {
-    let existing: Vec<String> = OgfFile::read_texture_refs_from_path::<XRayByteOrder, _>(&path)?;
+    let report: OgfRefsPatchReport =
+      OgfTextureRefsProcessor::patch_texture_refs_to_path::<XRayByteOrder>(path, destination, from, to, is_dry_run)?;
 
     xrf_output::info!(
       output,
-      "Patch ogf texture refs {}, '{}' -> '{}', existing {:?}",
+      "Patch ogf texture refs {}, '{}' -> '{}', existing [{}]",
       format_path(path),
       from,
       to,
-      existing
+      report.previous_refs.join(", ")
     );
-
-    let report: OgfRefsPatchReport =
-      OgfTextureRefsProcessor::patch_texture_refs_to_path::<XRayByteOrder>(path, destination, from, to, is_dry_run)?;
 
     if report.is_dry_run {
       xrf_output::info!(

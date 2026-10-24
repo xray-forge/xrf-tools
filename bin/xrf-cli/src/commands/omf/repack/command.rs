@@ -3,19 +3,18 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
-use walkdir::WalkDir;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_omf::OmfFile;
 use xrf_output::OutputOptions;
 use xrf_spawn::XRayByteOrder;
-use xrf_utils::format_path;
+use xrf_utils::{format_duration, format_path};
 
-use super::omf_repack_finding_report::OmfRepackFindingReport;
-use super::report::OmfRepackVerifyReport;
-use super::statistics::{RepackOmfOutcome, RepackOmfStatistics};
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::commands::omf::repack::{
+  OmfRepackFindingReport, OmfRepackOutcome, OmfRepackStatistics, OmfRepackVerifyReport,
+};
+use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::host_walk::HostWalk;
 use crate::core::reports::FileConversionReport;
 
 #[derive(Default)]
@@ -26,13 +25,12 @@ impl GenericCommand for RepackCommand {
     "repack"
   }
 
-  /// Create command for repack of omf file.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to repack provided omf file or directory of omf files")
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("Repack an OMF file, or verify that OMF files repack into the bytes they were read from")
       .arg(
         Arg::new("path")
-          .help("Path to omf file or directory containing omf files")
+          .help("Omf file to repack, or with --verify an omf file or a directory of them")
           .short('p')
           .long("path")
           .required(true)
@@ -40,52 +38,64 @@ impl GenericCommand for RepackCommand {
       )
       .arg(
         Arg::new("dest")
-          .help("Path to resulting omf file, not applicable when verifying a directory")
+          .help("Repacked omf file written")
           .short('d')
           .long("dest")
-          .required(false)
+          .required_unless_present("verify")
+          .conflicts_with("verify")
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("verify")
-          .help("Verify that repacked bytes match the source file instead of writing output")
+          .help("Verify that repacked bytes match the source instead of writing them")
           .long("verify")
           .action(ArgAction::SetTrue),
       )
   }
 
-  /// Repack provided omf file or verify omf files in provided directory.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
       .expect("Expected valid input path to be provided");
 
-    let destination: Option<&PathBuf> = matches.get_one::<PathBuf>("dest");
+    if matches.get_flag("verify") {
+      return Self::verify(context, path);
+    }
 
     if path.is_dir() {
-      Self::verify_directory(context, path, destination)
-    } else if matches.get_flag("verify") {
-      Self::verify_file(context, path)
-    } else {
-      Self::repack_file(context, path, destination)
+      return Err(XrfError::new_invalid_error("A directory of omf files is only verified: pass --verify").into());
     }
+
+    Self::repack_file(
+      context,
+      path,
+      matches
+        .get_one::<PathBuf>("dest")
+        .expect("Expected a destination outside --verify"),
+    )
   }
 }
 
 impl RepackCommand {
-  /// Verify that every omf file in provided directory is serialized back into identical bytes.
-  fn verify_directory(context: &mut CommandContext, path: &Path, destination: Option<&PathBuf>) -> CommandResult {
-    if destination.is_some() {
-      return Err(XrfError::new_invalid_error("Destination path is not applicable when repacking a directory").into());
-    }
-
+  /// Verifies that every omf file `path` names, itself or below it, serializes back into identical bytes.
+  fn verify(context: &mut CommandContext, path: &Path) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
-
-    let mut statistics: RepackOmfStatistics = RepackOmfStatistics::default();
+    let mut statistics: OmfRepackStatistics = OmfRepackStatistics::default();
     let mut findings: Vec<OmfRepackFindingReport> = Vec::new();
 
-    for path in Self::list_omf_files(path) {
-      statistics.register(Self::verify_single(&output, &path, &mut findings));
+    for file in HostWalk::files_with(path, XrayExtension::Omf) {
+      let outcome: OmfRepackOutcome = match file {
+        Ok(file) => Self::verify_single(&output, &file, &mut findings),
+        // A directory the walk cannot read is a failure of the run: its files were never judged.
+        Err(error) => {
+          xrf_output::error!(output, "{error}");
+          findings.push(OmfRepackFindingReport::new(path, error.to_string()));
+
+          OmfRepackOutcome::Failed
+        }
+      };
+
+      statistics.register(outcome);
     }
 
     xrf_output::info!(
@@ -96,15 +106,14 @@ impl RepackCommand {
       statistics.failed()
     );
 
-    // Deposited before the verdict becomes an outcome, so a failing sweep still reports the files
-    // that explain it.
+    // Deposited before the verdict becomes an outcome, so a failing sweep still reports the files that explain it.
     context.set_result(|| OmfRepackVerifyReport::new(&statistics, findings))?;
 
-    if !statistics.is_valid() {
+    // A file that could not be read is the run failing; a round trip that came back different is a verdict on content.
+    if statistics.failed() > 0 {
       return Err(
         XrfError::new_verify_error(format!(
-          "Omf repack verification failed, {} mismatched and {} errored of {} files",
-          statistics.mismatched(),
+          "Omf repack verification could not read {} of {} files",
           statistics.failed(),
           statistics.checked()
         ))
@@ -112,111 +121,81 @@ impl RepackCommand {
       );
     }
 
+    if statistics.mismatched() > 0 {
+      return Err(CommandError::new_check_failed(statistics.mismatched() as usize));
+    }
+
+    xrf_output::success!(output, "Every omf file repacked into identical bytes");
+
     Ok(())
   }
 
-  /// Verify that provided omf file is serialized back into identical bytes.
-  fn verify_file(context: &mut CommandContext, path: &Path) -> CommandResult {
+  /// Reads `path` and writes it repacked to `destination`.
+  fn repack_file(context: &mut CommandContext, path: &Path, destination: &Path) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
 
-    let mut statistics: RepackOmfStatistics = RepackOmfStatistics::default();
-    let mut findings: Vec<OmfRepackFindingReport> = Vec::new();
-
-    statistics.register(Self::verify_single(&output, path, &mut findings));
-
-    // The census of one: a caller pointing at a file reads the same payload as one pointing at a
-    // directory, and reads it whether the verdict passed or failed.
-    context.set_result(|| OmfRepackVerifyReport::new(&statistics, findings))?;
-
-    if statistics.is_valid() {
-      return Ok(());
-    }
-
-    Err(XrfError::new_verify_error(format!("Omf repack verification failed for {}", format_path(path))).into())
-  }
-
-  /// Read provided omf file and write it into destination path.
-  fn repack_file(context: &mut CommandContext, path: &Path, destination: Option<&PathBuf>) -> CommandResult {
-    let destination: &PathBuf =
-      destination.ok_or_else(|| XrfError::new_invalid_error("Destination path is required when not verifying"))?;
-
-    let output: OutputOptions = context.get_output().clone();
-
-    xrf_output::info!(output, "Repack omf file {}", format_path(path));
+    xrf_output::info!(
+      output,
+      "Repacking {} into {}",
+      format_path(path),
+      format_path(destination)
+    );
 
     let started_at: Instant = Instant::now();
-    let omf_file: Box<OmfFile> = Box::new(OmfFile::read_from_path::<XRayByteOrder, _>(&path)?);
+    let omf_file: OmfFile = OmfFile::read_from_path::<XRayByteOrder, _>(&path)?;
     let read_duration: Duration = started_at.elapsed();
 
-    omf_file.write_to_path::<XRayByteOrder, _>(destination)?;
+    omf_file.write_to_path::<XRayByteOrder, _>(&destination)?;
 
     let write_duration: Duration = started_at.elapsed() - read_duration;
 
-    xrf_output::info!(output, "Omf file repacked into {}", format_path(destination));
+    xrf_output::success!(
+      output,
+      "Repacked {} in {}",
+      format_path(destination),
+      format_duration(started_at.elapsed())
+    );
 
-    context.set_result(|| FileConversionReport::new(path, destination, read_duration, write_duration))?;
-
-    Ok(())
+    context.set_result(|| FileConversionReport::new(path, destination, read_duration, write_duration))
   }
 
-  /// Collect omf files stored in provided directory and its nested directories.
-  fn list_omf_files(path: &Path) -> Vec<PathBuf> {
-    WalkDir::new(path)
-      .into_iter()
-      .filter_map(Result::ok)
-      .map(|it| it.into_path())
-      .filter(|it| it.is_file() && XrayExtension::Omf.matches_path(it))
-      .collect()
-  }
-
-  /// Read and re-serialize single omf file, comparing the result with source bytes.
+  /// Reads and re-serializes one omf file, comparing the result with its bytes.
   fn verify_single(
     output: &OutputOptions,
     path: &Path,
     findings: &mut Vec<OmfRepackFindingReport>,
-  ) -> RepackOmfOutcome {
+  ) -> OmfRepackOutcome {
     match Self::repack_into_buffer(path) {
+      Ok((original, repacked)) if original == repacked => {
+        xrf_output::verbose!(output, "Byte identical: {}", format_path(path));
+
+        OmfRepackOutcome::Identical
+      }
       Ok((original, repacked)) => {
-        if original == repacked {
-          xrf_output::verbose!(output, "Byte identical: {}", format_path(path));
+        let message: String = format!(
+          "Repacked bytes differ, {} bytes original, {} bytes repacked",
+          original.len(),
+          repacked.len()
+        );
 
-          RepackOmfOutcome::Identical
-        } else {
-          xrf_output::error!(
-            output,
-            "Repacked bytes differ: {}, {} bytes original, {} bytes repacked",
-            format_path(path),
-            original.len(),
-            repacked.len()
-          );
+        xrf_output::failure!(output, "{}: {message}", format_path(path));
+        findings.push(OmfRepackFindingReport::new(path, message));
 
-          findings.push(OmfRepackFindingReport::new(
-            path,
-            format!(
-              "Repacked bytes differ, {} bytes original, {} bytes repacked",
-              original.len(),
-              repacked.len()
-            ),
-          ));
-
-          RepackOmfOutcome::Mismatched
-        }
+        OmfRepackOutcome::Mismatched
       }
       Err(error) => {
-        xrf_output::error!(output, "Failed to repack {}: {}", format_path(path), error);
-
+        xrf_output::error!(output, "Failed to repack {}: {error}", format_path(path));
         findings.push(OmfRepackFindingReport::new(path, error.to_string()));
 
-        RepackOmfOutcome::Failed
+        OmfRepackOutcome::Failed
       }
     }
   }
 
-  /// Read omf file and write it back into memory buffer.
+  /// One omf file's bytes, and the same file read from them and written back.
   fn repack_into_buffer(path: &Path) -> XrfResult<(Vec<u8>, Vec<u8>)> {
     let original: Vec<u8> = fs::read(path)?;
-    let omf_file: Box<OmfFile> = Box::new(OmfFile::read_from_path::<XRayByteOrder, _>(&path)?);
-
+    let omf_file: OmfFile = OmfFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
     let mut repacked: Vec<u8> = Vec::with_capacity(original.len());
 
     omf_file.write_to::<XRayByteOrder>(&mut repacked)?;

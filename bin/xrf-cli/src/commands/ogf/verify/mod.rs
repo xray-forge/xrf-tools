@@ -1,5 +1,6 @@
 pub(crate) mod command;
 pub(crate) mod ogf_texture_resolver;
 pub(crate) mod ogf_verifier;
+pub(crate) mod report;
 
 pub(crate) use command::VerifyCommand;

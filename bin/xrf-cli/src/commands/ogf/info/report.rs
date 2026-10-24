@@ -3,6 +3,7 @@ use xrf_ogf::OgfFile;
 
 use crate::commands::ogf::info::ogf_bone_report::OgfBoneReport;
 use crate::commands::ogf::info::ogf_bounds_report::OgfBoundsReport;
+use crate::commands::ogf::info::ogf_description_report::OgfDescriptionReport;
 use crate::commands::ogf::info::ogf_material_report::OgfMaterialReport;
 use crate::commands::ogf::info::ogf_residue_report::OgfResidueReport;
 
@@ -13,7 +14,7 @@ pub struct OgfInfoReport {
   bones: Vec<OgfBoneReport>,
   bounds: OgfBoundsReport,
   children: Vec<OgfMaterialReport>,
-  description: Option<String>,
+  description: Option<OgfDescriptionReport>,
   material: Option<OgfMaterialReport>,
   model_type: u8,
   motion_refs: Vec<String>,
@@ -40,7 +41,7 @@ impl OgfInfoReport {
           .map(OgfMaterialReport::new)
           .collect()
       }),
-      description: file.description.as_ref().map(|description| format!("{description:?}")),
+      description: file.description.as_ref().map(OgfDescriptionReport::new),
       material: file.texture.as_ref().map(OgfMaterialReport::new),
       model_type: file.header.model_type,
       motion_refs: file
