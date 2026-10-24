@@ -7,6 +7,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch};
 
 use crate::commands::level::level_assets::LevelAssets;
+use crate::core::arguments::XrayRootsArguments;
 
 /// A level named either as a directory on disk or as one of an installation's.
 pub struct LevelSelection {
@@ -19,7 +20,7 @@ pub struct LevelSelection {
 impl LevelSelection {
   /// Declares the arguments on a command of the domain, so every one of them names a level the same way.
   pub fn declare(command: Command) -> Command {
-    command
+    let command: Command = command
       .arg(
         Arg::new("path")
           .help("Path to a compiled level directory, the one holding `level` and `level.geom`")
@@ -43,14 +44,11 @@ impl LevelSelection {
           .requires("root")
           .value_parser(value_parser!(String)),
       )
-      .arg(
-        Arg::new("source")
-          .help("How a root is mounted, which for an installation is the default")
-          .long("source")
-          .default_value(XrayMountMode::Auto.as_str())
-          .value_parser(XrayMountMode::NAMES),
-      )
-      .group(ArgGroup::new("selection").args(["path", "root"]).required(true))
+      .group(ArgGroup::new("selection").args(["path", "root"]).required(true));
+
+    // A level's roots are read in auto mode by default, so an installation brings its archives and a bare tree is
+    // read as it is.
+    XrayRootsArguments::declare_source(command, XrayMountMode::Auto)
   }
 
   /// Takes the selection out of parsed arguments.
@@ -66,18 +64,8 @@ impl LevelSelection {
         .get_many::<PathBuf>("root")
         .map(|values| values.cloned().collect())
         .unwrap_or_default(),
-      source: XrayMountMode::try_from(
-        matches
-          .get_one::<String>("source")
-          .expect("Expected source mode to default")
-          .as_str(),
-      )?,
+      source: XrayRootsArguments::source_of(matches)?,
     })
-  }
-
-  /// Whether the level was named as a directory rather than as one of an installation's.
-  pub const fn is_directory(&self) -> bool {
-    self.path.is_some()
   }
 
   /// Opens the level this selection names, mounting the roots it names where it names a level among them.

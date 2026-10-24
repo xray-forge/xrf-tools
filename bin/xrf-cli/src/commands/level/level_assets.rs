@@ -36,11 +36,14 @@ impl LevelAssets {
       name: name.to_owned(),
       search,
     };
+    let bundle: String = assets.describe_file(LevelFile::FILE_NAME);
 
-    if assets.read(LevelFile::FILE_NAME)?.is_none() {
+    // Found, not read: an archived bundle is the largest file a level ships, and its reader reads it next.
+    if let Self::Asset { search, .. } = &assets
+      && search.find(&bundle)?.is_none()
+    {
       return Err(XrfError::new_not_found_error(format!(
-        "Level '{name}' was not found in the mounted roots, which hold no '{}' for it",
-        assets.describe_file(LevelFile::FILE_NAME)
+        "Level '{name}' was not found in the mounted roots, which hold no '{bundle}' for it"
       )));
     }
 
