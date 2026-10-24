@@ -11,6 +11,7 @@ pub struct OmfRepackVerifyReport {
   failed: u32,
   findings: Vec<OmfRepackFindingReport>,
   identical: u32,
+  malformed: u32,
   mismatched: u32,
   status: Status,
 }
@@ -23,8 +24,9 @@ impl OmfRepackVerifyReport {
       failed: statistics.failed(),
       findings,
       identical: statistics.identical(),
+      malformed: statistics.malformed(),
       mismatched: statistics.mismatched(),
-      status: Status::from_is_valid(statistics.is_valid()),
+      status: statistics.status(),
     }
   }
 }

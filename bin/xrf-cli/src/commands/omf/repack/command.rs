@@ -7,6 +7,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_omf::OmfFile;
 use xrf_output::OutputOptions;
+use xrf_report::Status;
 use xrf_spawn::XRayByteOrder;
 use xrf_utils::{format_duration, format_path};
 
@@ -100,34 +101,37 @@ impl RepackCommand {
 
     xrf_output::info!(
       output,
-      "Repacked omf files, {}/{} byte identical, {} failed to read or write",
+      "Repacked omf files, {}/{} byte identical, {} malformed, {} failed to read",
       statistics.identical(),
       statistics.checked(),
+      statistics.malformed(),
       statistics.failed()
     );
 
     // Deposited before the verdict becomes an outcome, so a failing sweep still reports the files that explain it.
     context.set_result(|| OmfRepackVerifyReport::new(&statistics, findings))?;
 
-    // A file that could not be read is the run failing; a round trip that came back different is a verdict on content.
-    if statistics.failed() > 0 {
-      return Err(
+    // A file that could not be read, or no file at all, is the run failing; a file that would not parse or came back
+    // different is a verdict on content.
+    match statistics.status() {
+      Status::Skipped => {
+        Err(XrfError::new_verify_error(format!("No omf file found under {}", format_path(path))).into())
+      }
+      Status::Error => Err(
         XrfError::new_verify_error(format!(
           "Omf repack verification could not read {} of {} files",
           statistics.failed(),
           statistics.checked()
         ))
         .into(),
-      );
+      ),
+      Status::Failed => Err(CommandError::new_check_failed(statistics.judged_defective() as usize)),
+      Status::Passed | Status::Incomplete => {
+        xrf_output::success!(output, "Every omf file repacked into identical bytes");
+
+        Ok(())
+      }
     }
-
-    if statistics.mismatched() > 0 {
-      return Err(CommandError::new_check_failed(statistics.mismatched() as usize));
-    }
-
-    xrf_output::success!(output, "Every omf file repacked into identical bytes");
-
-    Ok(())
   }
 
   /// Reads `path` and writes it repacked to `destination`.
@@ -183,11 +187,18 @@ impl RepackCommand {
 
         OmfRepackOutcome::Mismatched
       }
-      Err(error) => {
-        xrf_output::error!(output, "Failed to repack {}: {error}", format_path(path));
+      // A file that could not be read is the run's own failure; one read and refused is judged content.
+      Err(error @ XrfError::Io { .. }) => {
+        xrf_output::error!(output, "Failed to read {}: {error}", format_path(path));
         findings.push(OmfRepackFindingReport::new(path, error.to_string()));
 
         OmfRepackOutcome::Failed
+      }
+      Err(error) => {
+        xrf_output::failure!(output, "{}: {error}", format_path(path));
+        findings.push(OmfRepackFindingReport::new(path, error.to_string()));
+
+        OmfRepackOutcome::Malformed
       }
     }
   }
