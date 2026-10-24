@@ -115,7 +115,7 @@ on an RTX GPU, with either graphics API. `dev-app` and `build-app` build without
   first. `.cargo/config.toml` points `DLSS_SDK`, `VULKAN_SDK` and `LIBCLANG_PATH` there; any set in the environment wins.
 - Elsewhere than Windows, libclang comes from the system (libclang-dev or LLVM), or `LIBCLANG_PATH`.
 - A build with the feature copies `nvngx_dlss.dll`, `nvngx_dlssd.dll` and NVIDIA's `LICENSE.txt` into its profile's
-  `resources/renderer/dlss/` (`bin/xrf-app/tauri.dlss.conf.json`). NVIDIA's licence lets them ship only inside the
+  `resources/renderer/dlss/` (`bin/xrf-app/app/tauri.dlss.conf.json`). NVIDIA's licence lets them ship only inside the
   application, under terms as protective as its own, so they are never committed.
 - wgpu and naga come from the `xray-forge/xrf-wgpu` fork (`[patch.crates-io]` in `Cargo.toml`): a wgpu release with
   its commits on top: the D3D12 command list a HAL encoder records into exposed, which NGX records DLSS into, with the

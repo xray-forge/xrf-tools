@@ -9,9 +9,11 @@ mod generated_output;
 mod ipc_bindings_generator;
 mod ipc_command_surface;
 mod type_module_writer;
+mod type_modules;
 mod type_ownership;
 mod typescript;
 
 pub use bindings_surface::SurfaceDrift;
 pub use ipc_bindings_generator::IpcBindingsGenerator;
 pub use ipc_command_surface::{BulkRouteDeclaration, IpcCommandSurface, RawCommandDeclaration};
+pub use type_modules::TypeModules;

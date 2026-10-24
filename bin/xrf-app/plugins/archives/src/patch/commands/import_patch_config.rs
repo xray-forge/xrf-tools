@@ -1,0 +1,12 @@
+use xrf_app_core::types::TauriResult;
+use xrf_pack::ArchivePatchConfig;
+use xrf_utils::error_to_string;
+
+/// Read a patching configuration file over the configuration the caller holds.
+#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "import_patch_config"))]
+#[tauri::command(rename = "import_patch_config")]
+pub async fn archives_import_patch_config(path: &str, config: ArchivePatchConfig) -> TauriResult<ArchivePatchConfig> {
+  log::info!("Importing patch config: {path}");
+
+  config.with_config_file(path).map_err(error_to_string)
+}

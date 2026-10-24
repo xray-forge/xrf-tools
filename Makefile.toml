@@ -6,9 +6,9 @@ skip_core_tasks = true
 # Cargo features that every Cargo check task enables, so they share one build. CI runs the same tasks, so it uses the
 # same list.
 CHECK_FEATURES = "xrf-app/typescript-bindings,xrf-app/dlss,xrf-job/rayon"
-# Tauri CLI version pinned by the `bin/xrf-ui` lockfile. Desktop tasks run it with Node from `bin/xrf-app`, which
+# Tauri CLI version pinned by the `bin/xrf-ui` lockfile. Desktop tasks run it with Node from `bin/xrf-app/app`, which
 # holds `tauri.conf.json`.
-NODE_TAURI = "../xrf-ui/node_modules/@tauri-apps/cli/tauri.js"
+NODE_TAURI = "../../xrf-ui/node_modules/@tauri-apps/cli/tauri.js"
 
 # Checks.
 
@@ -100,7 +100,7 @@ args = ["build", "-p", "xrf-cli", "--release", "--locked"]
 description = "Build the desktop application in debug mode, without DLSS."
 category = "Build"
 dependencies = ["install-ui", "fetch-sdks"]
-cwd = "bin/xrf-app"
+cwd = "bin/xrf-app/app"
 command = "node"
 args = ["${NODE_TAURI}", "build", "--debug", "--no-bundle"]
 
@@ -120,7 +120,7 @@ args = ["-e", "require('node:fs').rmSync('target/release/resources', { recursive
 description = "Build the desktop application in release mode, with DLSS."
 category = "Build"
 dependencies = ["install-ui", "fetch-sdks", "clear-app-resources"]
-cwd = "bin/xrf-app"
+cwd = "bin/xrf-app/app"
 command = "node"
 args = ["${NODE_TAURI}", "build", "--no-bundle", "--features", "dlss", "--config", "tauri.dlss.conf.json"]
 
@@ -143,7 +143,7 @@ PACKAGE_NAME = { value = "xrf-app-windows-x64", condition = { env_not_set = ["PA
 description = "Run the desktop backend and UI in watch mode."
 category = "Development"
 dependencies = ["install-ui", "fetch-sdks"]
-cwd = "bin/xrf-app"
+cwd = "bin/xrf-app/app"
 command = "node"
 args = ["${NODE_TAURI}", "dev"]
 
@@ -151,7 +151,7 @@ args = ["${NODE_TAURI}", "dev"]
 description = "Run the desktop application in watch mode with DLSS and the dev-optimized profile (workspace opt-level 1, dependencies 3)."
 category = "Development"
 dependencies = ["fetch-sdks", "install-ui"]
-cwd = "bin/xrf-app"
+cwd = "bin/xrf-app/app"
 command = "node"
 args = ["${NODE_TAURI}", "dev", "--features", "dlss", "--config", "tauri.dlss.conf.json", "--", "--profile", "dev-optimized"]
 
@@ -159,7 +159,7 @@ args = ["${NODE_TAURI}", "dev", "--features", "dlss", "--config", "tauri.dlss.co
 description = "Run the desktop application in watch mode with DLSS and the profiling profile (release code with line tables)."
 category = "Development"
 dependencies = ["fetch-sdks", "install-ui"]
-cwd = "bin/xrf-app"
+cwd = "bin/xrf-app/app"
 command = "node"
 args = ["${NODE_TAURI}", "dev", "--features", "dlss", "--config", "tauri.dlss.conf.json", "--", "--profile", "profiling"]
 

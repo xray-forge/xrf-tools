@@ -1,0 +1,225 @@
+use serde::Serialize;
+use xrf_archive::ArchiveReadPolicy;
+use xrf_error::{XrfError, XrfResult};
+use xrf_extension::XrayExtensionOf;
+
+use crate::describe::anm::ArchiveAnmDescription;
+use crate::describe::archive_describe_scope::ArchiveDescribeScope;
+use crate::describe::archive_describe_source::ArchiveDescribeSource;
+use crate::describe::archive_described_format::ArchiveDescribedFormat;
+use crate::describe::chunks::ArchiveChunksDescription;
+use crate::describe::detail::{ArchiveDetailLibraryDescription, ArchiveDetailModel};
+use crate::describe::efd::ArchiveEfdDescription;
+use crate::describe::gamemtl::ArchiveGameMtlDescription;
+use crate::describe::level::{
+  ArchiveLevelAiDescription, ArchiveLevelCollisionDescription, ArchiveLevelDescription, ArchiveLevelEnvModDescription,
+  ArchiveLevelFogVolDescription, ArchiveLevelGameDescription, ArchiveLevelGeomDescription, ArchiveLevelHomDescription,
+  ArchiveLevelLightsDescription, ArchiveLevelPsStaticDescription, ArchiveLevelSndStaticDescription,
+  ArchiveLevelSomDescription, ArchiveLevelWallmarksDescription,
+};
+use crate::describe::light_anim::ArchiveLightAnimDescription;
+use crate::describe::omf::ArchiveOmfDescription;
+use crate::describe::particles::ArchiveParticlesDescription;
+use crate::describe::ppe::ArchivePpeDescription;
+use crate::describe::shader_compiler::ArchiveShaderCompilerDescription;
+use crate::describe::shaders::ArchiveShadersDescription;
+use crate::describe::sound::ArchiveSoundEnvironmentDescription;
+use crate::describe::spawn::{ArchiveLevelSpawnDescription, ArchiveSpawnDescription};
+use crate::describe::thm::ArchiveThmDescription;
+
+/// What the explorer can say about one entry it cannot draw.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum ArchiveFormatDescription {
+  Chunks {
+    description: Box<ArchiveChunksDescription>,
+  },
+  Spawn {
+    description: Box<ArchiveSpawnDescription>,
+  },
+  LevelSpawn {
+    description: Box<ArchiveLevelSpawnDescription>,
+  },
+  Anm {
+    description: Box<ArchiveAnmDescription>,
+  },
+  Detail {
+    description: Box<ArchiveDetailModel>,
+  },
+  DetailLibrary {
+    description: Box<ArchiveDetailLibraryDescription>,
+  },
+  LevelEnvMod {
+    description: Box<ArchiveLevelEnvModDescription>,
+  },
+  LevelFogVol {
+    description: Box<ArchiveLevelFogVolDescription>,
+  },
+  LevelGame {
+    description: Box<ArchiveLevelGameDescription>,
+  },
+  GameMtl {
+    description: Box<ArchiveGameMtlDescription>,
+  },
+  LevelHom {
+    description: Box<ArchiveLevelHomDescription>,
+  },
+  LevelGeom {
+    description: Box<ArchiveLevelGeomDescription>,
+  },
+  LightAnim {
+    description: Box<ArchiveLightAnimDescription>,
+  },
+  ShaderCompiler {
+    description: Box<ArchiveShaderCompilerDescription>,
+  },
+  SoundEnvironment {
+    description: Box<ArchiveSoundEnvironmentDescription>,
+  },
+  LevelLights {
+    description: Box<ArchiveLevelLightsDescription>,
+  },
+  LevelPsStatic {
+    description: Box<ArchiveLevelPsStaticDescription>,
+  },
+  LevelSndStatic {
+    description: Box<ArchiveLevelSndStaticDescription>,
+  },
+  LevelSom {
+    description: Box<ArchiveLevelSomDescription>,
+  },
+  LevelWallmarks {
+    description: Box<ArchiveLevelWallmarksDescription>,
+  },
+  Efd {
+    description: Box<ArchiveEfdDescription>,
+  },
+  Level {
+    description: Box<ArchiveLevelDescription>,
+  },
+  LevelAi {
+    description: Box<ArchiveLevelAiDescription>,
+  },
+  LevelCollision {
+    description: Box<ArchiveLevelCollisionDescription>,
+  },
+  Omf {
+    description: Box<ArchiveOmfDescription>,
+  },
+  Particles {
+    description: Box<ArchiveParticlesDescription>,
+  },
+  Ppe {
+    description: Box<ArchivePpeDescription>,
+  },
+  Shaders {
+    description: Box<ArchiveShadersDescription>,
+  },
+  Thm {
+    description: Box<ArchiveThmDescription>,
+  },
+  Unsupported {
+    reason: ArchiveDescribeRefusal,
+  },
+}
+
+/// Why an entry was not described.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum ArchiveDescribeRefusal {
+  /// Nothing describes this format yet, and the file is not a container whose shape could be shown instead. The
+  /// extension is the authored spelling, empty for a name without one.
+  NoDescriber { extension: String },
+  /// The entry is larger than the policy admits for a read that holds the payload.
+  TooLarge { size: u64, maximum: u32 },
+}
+
+/// One described entry, and what the lookups behind it searched.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArchiveFileDescription {
+  pub scope: ArchiveDescribeScope,
+  pub format: ArchiveFormatDescription,
+}
+
+impl ArchiveFileDescription {
+  /// Describes one entry of the subject being browsed.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the subject holds no such file, or when a describer that claimed the entry could not read
+  /// it. A format nothing describes, and an entry too large to read whole, are answers rather than failures.
+  pub fn of(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+    let size: u64 = source
+      .get_size_of(name)
+      .ok_or_else(|| XrfError::new_not_found_error(format!("File '{name}' is not held by the open subject")))?;
+
+    // Narrowed rather than compared as a `u64`: an entry past `u32` is past every ceiling this policy sets anyway.
+    let weighed: u32 = u32::try_from(size).unwrap_or(u32::MAX);
+    let policy: &ArchiveReadPolicy = source.get_read_policy();
+
+    let format: ArchiveFormatDescription = match ArchiveDescribedFormat::of(name) {
+      None => Self::describe_container(source, name, size, weighed)?,
+      // The ceiling bounds what a describer holds, and one that seeks holds a chunk header at a time however large
+      // the entry is. Where the subject can only hand the entry over whole it is held after all, and the format is
+      // what says whether that is a size worth refusing - see `reads_by_seeking`.
+      Some(format) if !format.reads_by_seeking() && !policy.allows_describe_read(weighed) => {
+        ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::TooLarge {
+          size,
+          maximum: policy.maximum_describe_size,
+        })
+      }
+      // A claim that did not hold is offered whatever the container walk can say, exactly as an unclaimed
+      // entry is: the file is still a file, and its shape is still readable.
+      Some(format) => match format.describe(source, name)? {
+        Some(description) => description,
+        None => Self::describe_container(source, name, size, weighed)?,
+      },
+    };
+
+    Ok(Self {
+      scope: source.get_scope(),
+      format,
+    })
+  }
+
+  /// What can be said about an entry no describer claimed, which is its container or nothing.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the entry's bytes cannot be read.
+  fn describe_container(
+    source: &ArchiveDescribeSource,
+    name: &str,
+    size: u64,
+    weighed: u32,
+  ) -> XrfResult<ArchiveFormatDescription> {
+    let policy: &ArchiveReadPolicy = source.get_read_policy();
+
+    if !policy.allows_chunk_tree_read(weighed) {
+      return Ok(ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::TooLarge {
+        size,
+        maximum: policy.maximum_chunk_tree_size,
+      }));
+    }
+
+    Ok(match ArchiveChunksDescription::read(source, name)? {
+      Some(description) => ArchiveFormatDescription::Chunks {
+        description: Box::new(description),
+      },
+      None => ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::NoDescriber {
+        extension: XrayExtensionOf::of(name).as_str().unwrap_or_default().to_owned(),
+      }),
+    })
+  }
+}
+
+impl ArchiveFormatDescription {
+  /// The description that says nothing was described, and why.
+  fn refuse(reason: ArchiveDescribeRefusal) -> Self {
+    Self::Unsupported { reason }
+  }
+}

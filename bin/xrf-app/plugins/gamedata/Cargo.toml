@@ -1,0 +1,44 @@
+[package]
+name = "xrf-app-gamedata"
+version = "0.1.0"
+publish = false
+description = "XRF development tools: verification of a gamedata project"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+# Core's, which embeds the manifest a Tauri test binary needs on Windows.
+build = "../../core/build.rs"
+
+[dependencies]
+log = { workspace = true }
+serde = { workspace = true }
+specta = { workspace = true, optional = true }
+tauri = { workspace = true }
+tauri-specta = { workspace = true, optional = true }
+uuid = { workspace = true, features = ["serde", "v4"] }
+xrf-app-core = { workspace = true }
+xrf-engine-target = { workspace = true }
+xrf-error = { workspace = true }
+xrf-gamedata = { workspace = true }
+xrf-job = { workspace = true, features = ["rayon"] }
+xrf-utils = { workspace = true }
+
+[dev-dependencies]
+# The mock runtime, which dispatches a command the way a webview would without one.
+tauri = { workspace = true, features = ["test"] }
+xrf-app-core = { workspace = true, features = ["fixtures"] }
+xrf-test-utils = { workspace = true }
+
+[features]
+# Emits TypeScript mirrors and command bindings. Nothing in a normal build turns this on.
+typescript-bindings = [
+  "specta",
+  "tauri-specta",
+  "xrf-app-core/typescript-bindings",
+  "xrf-engine-target/typescript-bindings",
+  "xrf-error/typescript-bindings",
+  "xrf-job/typescript-bindings",
+]
+
+[lints]
+workspace = true

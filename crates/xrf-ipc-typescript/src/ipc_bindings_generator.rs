@@ -12,6 +12,7 @@ use crate::enumerations::Enumerations;
 use crate::generated_output::reset_directory;
 use crate::ipc_command_surface::IpcCommandSurface;
 use crate::type_module_writer::TypeModuleWriter;
+use crate::type_modules::TypeModules;
 use crate::type_ownership::TypeOwnership;
 
 /// Writes the frontend's TypeScript mirror of an IPC command surface.
@@ -23,14 +24,15 @@ use crate::type_ownership::TypeOwnership;
 pub struct IpcBindingsGenerator;
 
 impl IpcBindingsGenerator {
-  /// Writes the mirror of `surfaces` into `output`, replacing the `types/` and `commands/` it already held.
+  /// Writes the mirror of `surfaces` into `output`, replacing the `types/` and `commands/` it already held, each type
+  /// in the module `type_modules` gives its crate.
   ///
   /// # Panics
   ///
   /// Panics when the output cannot be written, or when a generated module no longer satisfies an invariant the
   /// mirrors rest on — a type owned by two modules, a type module importing another, a foreign declaration with
   /// nowhere to live, or an `invoke` that would bypass the counted wrapper.
-  pub fn generate<R: Runtime>(output: &Path, surfaces: &[IpcCommandSurface<R>]) {
+  pub fn generate<R: Runtime>(output: &Path, surfaces: &[IpcCommandSurface<R>], type_modules: &TypeModules) {
     let types: PathBuf = output.join(TYPES_DIRECTORY);
     let commands: PathBuf = output.join(COMMANDS_DIRECTORY);
 
@@ -38,7 +40,8 @@ impl IpcBindingsGenerator {
     reset_directory(&commands);
 
     let collected: Types = Self::export_commands(&commands, surfaces);
-    let (ownership, enumerations): (TypeOwnership, Enumerations) = TypeModuleWriter::write_all(&types, &collected);
+    let (ownership, enumerations): (TypeOwnership, Enumerations) =
+      TypeModuleWriter::write_all(&types, &collected, type_modules);
 
     for surface in surfaces {
       CommandModuleWriter::finalize(
@@ -75,8 +78,13 @@ impl IpcBindingsGenerator {
   /// # Panics
   ///
   /// Panics on anything [`Self::generate`] panics on, and when either tree cannot be read back as TypeScript.
-  pub fn verify<R: Runtime>(committed: &Path, scratch: &Path, surfaces: &[IpcCommandSurface<R>]) -> SurfaceDrift {
-    Self::generate(scratch, surfaces);
+  pub fn verify<R: Runtime>(
+    committed: &Path,
+    scratch: &Path,
+    surfaces: &[IpcCommandSurface<R>],
+    type_modules: &TypeModules,
+  ) -> SurfaceDrift {
+    Self::generate(scratch, surfaces, type_modules);
 
     Surface::read(committed).compare_to(&Surface::read(scratch))
   }

@@ -29,7 +29,7 @@ Set it off to stop the renderer using hardware ray queries. Traced effects then 
 Directory to load unpacked browser extensions into the webview from. Each entry must be a folder with a `manifest.json`.
 
 - Takes: a path.
-- Default: `bin/xrf-app/extensions/unpacked` in the checkout.
+- Default: `bin/xrf-app/app/extensions/unpacked` in the checkout.
 - Read by: `xrf-app`.
 - Only in: debug builds on Windows.
 

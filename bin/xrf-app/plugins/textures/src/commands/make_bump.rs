@@ -1,0 +1,126 @@
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use serde::Serialize;
+use tauri::State;
+use tauri::ipc::Channel;
+use uuid::Uuid;
+use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::jobs::{JobKind, JobRegistration, JobRegistry, JobResource, JobStart, run_job};
+use xrf_app_core::types::TauriResult;
+use xrf_app_render::texture_reloads::TextureReloads;
+use xrf_dds::DdsMipFilter;
+use xrf_job::{JobHandle, JobOutcome, JobProgress};
+use xrf_texture::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, read_image_as_rgba};
+use xrf_utils::{error_to_string, to_portable_path_string};
+
+use crate::lease::TEXTURE_ENCODE_GROUP;
+use crate::request::TexturesMakeBumpRequest;
+
+/// What a generated pair came to.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TextureMakeBumpOutcome {
+  /// Whether the pair was written or the run stopped because it was asked to.
+  pub outcome: JobOutcome,
+  /// The normals and gloss, written as `<name>_bump.dds`.
+  pub bump: String,
+  /// The compression error and the height, written as `<name>_bump#.dds`.
+  pub companion: String,
+  /// Mean gloss over the whole surface, in `0..=1`.
+  pub gloss_power: f32,
+  /// Whether the gloss is too dark for the surface to show a specular response worth having.
+  pub is_gloss_too_dark: bool,
+}
+
+/// Generate the `_bump` and `_bump#` pair a bumped surface binds, from a height map.
+#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "make_bump"))]
+#[tauri::command(rename = "make_bump")]
+pub async fn textures_make_bump(
+  request: TexturesMakeBumpRequest,
+  job_id: Uuid,
+  progress: Channel<JobProgress>,
+  registry: State<'_, Arc<JobRegistry>>,
+  execution: State<'_, ExecutionState>,
+  reloads: State<'_, TextureReloads>,
+) -> TauriResult<TextureMakeBumpOutcome> {
+  let start: JobStart = JobStart::new(job_id, JobKind::TexturesMakeBump).with_request(&request);
+
+  log::info!("Generating bump pair for: {}", request.destination);
+
+  if !(0.0..=1.0).contains(&request.gloss_constant) {
+    return Err(format!(
+      "Gloss level {} is outside the 0 to 1 range a gloss is measured in",
+      request.gloss_constant
+    ));
+  }
+
+  let mip_filter: DdsMipFilter = request.to_mip_filter()?;
+  let (job, registration): (JobHandle, JobRegistration) = registry.register(
+    start
+      .with_exclusion_group(TEXTURE_ENCODE_GROUP)
+      .with_resources(to_pair_resources(&request))
+      .with_progress(progress),
+  )?;
+
+  let outcome: TextureMakeBumpOutcome = run_job(
+    &execution,
+    "Bump pair generation",
+    registration,
+    move || {
+      let options: GenerateBumpOptions = to_options(&request, job, mip_filter)?;
+
+      GenerateBumpProcessor::generate(&options)
+        .map_err(error_to_string)
+        .map(|result| TextureMakeBumpOutcome {
+          outcome: result.outcome,
+          bump: to_portable_path_string(&result.bump),
+          companion: to_portable_path_string(&result.companion),
+          gloss_power: result.gloss_power,
+          is_gloss_too_dark: result.is_gloss_too_dark(),
+        })
+    },
+    |outcome| outcome.outcome,
+  )
+  .await?;
+
+  // Every viewport drawing what was written draws it as written.
+  reloads.reload_written(&[&outcome.bump, &outcome.companion]);
+
+  Ok(outcome)
+}
+
+/// Both output paths follow the generator's naming rule without decoding input images.
+fn to_pair_resources(request: &TexturesMakeBumpRequest) -> Vec<JobResource> {
+  GenerateBumpProcessor::pair_paths(std::path::Path::new(&request.destination))
+    .iter()
+    .map(JobResource::file)
+    .collect()
+}
+
+/// Read every image the request names and settle the gloss it asks for.
+fn to_options(
+  request: &TexturesMakeBumpRequest,
+  job: JobHandle,
+  mip_filter: DdsMipFilter,
+) -> TauriResult<GenerateBumpOptions> {
+  Ok(GenerateBumpOptions {
+    job,
+    destination: PathBuf::from(&request.destination),
+    height: read_image_as_rgba(&request.height).map_err(error_to_string)?,
+    gloss: match &request.gloss {
+      Some(path) => GenerateBumpGloss::Mask(read_image_as_rgba(path).map_err(error_to_string)?),
+      None => GenerateBumpGloss::Constant(request.gloss_constant),
+    },
+    normal_map: match &request.normal_map {
+      Some(path) => Some(read_image_as_rgba(path).map_err(error_to_string)?),
+      None => None,
+    },
+    virtual_height: request
+      .virtual_height
+      .unwrap_or(GenerateBumpOptions::DEFAULT_VIRTUAL_HEIGHT),
+    mip_filter,
+    quality: request.quality.to_quality(),
+  })
+}

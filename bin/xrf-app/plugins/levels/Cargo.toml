@@ -1,0 +1,85 @@
+[package]
+name = "xrf-app-levels"
+version = "0.1.0"
+publish = false
+description = "XRF development tools: levels opened as documents of parts, shown in viewports, captured and exported"
+authors = ["Neloreck"]
+edition.workspace = true
+rust-version.workspace = true
+# Core's, which embeds the manifest a Tauri test binary needs on Windows.
+build = "../../core/build.rs"
+
+[dependencies]
+glam = { workspace = true }
+image = { workspace = true, features = ["png", "tga"] }
+log = { workspace = true }
+rayon = { workspace = true }
+# Rasterises a level map's annotations, which it draws as an SVG.
+resvg = { version = "0.48.1", default-features = false, features = ["text", "system-fonts"] }
+serde = { workspace = true }
+specta = { workspace = true, optional = true }
+tauri = { workspace = true }
+tauri-specta = { workspace = true, optional = true }
+uuid = { workspace = true, features = ["serde", "v4"] }
+xrf-anm = { workspace = true }
+xrf-app-core = { workspace = true }
+xrf-app-render = { workspace = true }
+xrf-chunk = { workspace = true }
+xrf-dds = { workspace = true }
+xrf-dltx = { workspace = true }
+xrf-engine-target = { workspace = true }
+xrf-environment = { workspace = true }
+xrf-error = { workspace = true }
+xrf-gamemtl = { workspace = true }
+xrf-ipc = { workspace = true, optional = true }
+xrf-job = { workspace = true, features = ["rayon"] }
+xrf-level = { workspace = true }
+xrf-light-anim = { workspace = true }
+xrf-ltx = { workspace = true }
+xrf-material = { workspace = true }
+xrf-math = { workspace = true }
+xrf-ogf = { workspace = true }
+xrf-particles = { workspace = true }
+xrf-renderer = { workspace = true }
+xrf-spawn = { workspace = true }
+xrf-texture = { workspace = true }
+xrf-utils = { workspace = true }
+xrf-vfs = { workspace = true }
+xrf-visual = { workspace = true }
+xrf-world = { workspace = true }
+
+[dev-dependencies]
+# The mock runtime, which dispatches a command the way a webview would without one.
+tauri = { workspace = true, features = ["test"] }
+xrf-app-core = { workspace = true, features = ["fixtures"] }
+xrf-material = { workspace = true, features = ["fixtures"] }
+xrf-shaders = { workspace = true, features = ["fixtures"] }
+xrf-test-utils = { workspace = true }
+xrf-thm = { workspace = true }
+
+[features]
+# Emits TypeScript mirrors and command bindings. Nothing in a normal build turns this on.
+typescript-bindings = [
+  "specta",
+  "tauri-specta",
+  "xrf-ipc",
+  "xrf-app-core/typescript-bindings",
+  "xrf-app-render/typescript-bindings",
+  "xrf-engine-target/typescript-bindings",
+  "xrf-environment/typescript-bindings",
+  "xrf-error/typescript-bindings",
+  "xrf-job/typescript-bindings",
+  "xrf-level/typescript-bindings",
+  "xrf-ltx/typescript-bindings",
+  "xrf-material/typescript-bindings",
+  "xrf-math/typescript-bindings",
+  "xrf-renderer/typescript-bindings",
+  "xrf-spawn/typescript-bindings",
+  "xrf-texture/typescript-bindings",
+  "xrf-vfs/typescript-bindings",
+  "xrf-visual/typescript-bindings",
+  "xrf-world/typescript-bindings",
+]
+
+[lints]
+workspace = true

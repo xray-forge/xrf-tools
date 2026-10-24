@@ -12,7 +12,7 @@ interface IXrfMarkProps extends BaseComponentProps {
   title?: string;
 }
 
-/** Core colour per build kind, matching the application icons in `bin/xrf-app/icons`. */
+/** Core colour per build kind, matching the application icons in `bin/xrf-app/app/icons`. */
 const CORE_COLORS: Readonly<Record<EBuildKind, string>> = {
   [EBuildKind.OPTIMIZED]: "#FFA200",
   [EBuildKind.DEVELOPMENT]: "#8B9AFF",

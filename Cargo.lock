@@ -7543,77 +7543,67 @@ dependencies = [
 name = "xrf-app"
 version = "0.1.0"
 dependencies = [
- "bytes",
- "dirs",
- "env_logger",
- "getrandom 0.4.3",
- "glam",
- "http-body-util",
- "hyper",
- "hyper-util",
- "image",
  "log",
- "notify",
- "objc2",
- "objc2-app-kit",
- "objc2-foundation",
- "objc2-quartz-core",
- "percent-encoding",
- "profiling",
- "rayon",
- "resvg",
  "serde",
  "serde_json",
- "specta",
- "specta-serde",
- "specta-typescript",
- "specta-util",
- "sysinfo",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-fs",
  "tauri-plugin-shell",
  "tauri-plugin-store",
- "tauri-specta",
- "tokio",
- "uuid",
- "webview2-com",
  "windows",
+ "xrf-app-archives",
+ "xrf-app-configs",
+ "xrf-app-core",
+ "xrf-app-dialogs",
+ "xrf-app-exports",
+ "xrf-app-gamedata",
+ "xrf-app-levels",
+ "xrf-app-render",
+ "xrf-app-spawn",
+ "xrf-app-sprite-equipment",
+ "xrf-app-system",
+ "xrf-app-textures",
+ "xrf-app-translations",
+ "xrf-app-visuals",
+ "xrf-build-info",
+ "xrf-env-flags",
+ "xrf-ipc-typescript",
+ "xrf-job",
+ "xrf-renderer",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-app-archives"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
  "xrf-animation-envelope",
  "xrf-anm",
+ "xrf-app-core",
  "xrf-archive",
  "xrf-archive-stats",
- "xrf-build-info",
  "xrf-chunk",
- "xrf-dds",
- "xrf-dialog",
- "xrf-dltx",
  "xrf-efd",
- "xrf-engine-target",
- "xrf-env-flags",
- "xrf-environment",
  "xrf-error",
- "xrf-export",
  "xrf-extension",
- "xrf-gamedata",
  "xrf-gamemtl",
- "xrf-ipc",
- "xrf-ipc-typescript",
  "xrf-job",
  "xrf-level",
  "xrf-light-anim",
- "xrf-ltx",
- "xrf-ltx-inspect",
- "xrf-material",
  "xrf-math",
- "xrf-ogf",
  "xrf-omf",
- "xrf-output",
  "xrf-pack",
  "xrf-particles",
  "xrf-ppe",
- "xrf-renderer",
  "xrf-shaders",
  "xrf-skeleton",
  "xrf-sound",
@@ -7621,12 +7611,313 @@ dependencies = [
  "xrf-test-utils",
  "xrf-texture",
  "xrf-thm",
- "xrf-translation",
- "xrf-typescript",
+ "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-app-configs"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-app-core",
+ "xrf-dltx",
+ "xrf-error",
+ "xrf-job",
+ "xrf-ltx",
+ "xrf-ltx-inspect",
+ "xrf-test-utils",
+ "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-app-core"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "dirs",
+ "env_logger",
+ "getrandom 0.4.3",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "log",
+ "rayon",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-specta",
+ "tokio",
+ "uuid",
+ "xrf-dds",
+ "xrf-engine-target",
+ "xrf-env-flags",
+ "xrf-error",
+ "xrf-ipc-typescript",
+ "xrf-job",
+ "xrf-test-utils",
+ "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-app-dialogs"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "xrf-app-core",
+ "xrf-dialog",
+ "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-app-exports"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "xrf-app-core",
+ "xrf-export",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-app-gamedata"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-app-core",
+ "xrf-engine-target",
+ "xrf-error",
+ "xrf-gamedata",
+ "xrf-job",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-app-levels"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "image",
+ "log",
+ "rayon",
+ "resvg",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-anm",
+ "xrf-app-core",
+ "xrf-app-render",
+ "xrf-chunk",
+ "xrf-dds",
+ "xrf-dltx",
+ "xrf-engine-target",
+ "xrf-environment",
+ "xrf-error",
+ "xrf-gamemtl",
+ "xrf-ipc",
+ "xrf-job",
+ "xrf-level",
+ "xrf-light-anim",
+ "xrf-ltx",
+ "xrf-material",
+ "xrf-math",
+ "xrf-ogf",
+ "xrf-particles",
+ "xrf-renderer",
+ "xrf-shaders",
+ "xrf-spawn",
+ "xrf-test-utils",
+ "xrf-texture",
+ "xrf-thm",
  "xrf-utils",
  "xrf-vfs",
  "xrf-visual",
  "xrf-world",
+]
+
+[[package]]
+name = "xrf-app-render"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "log",
+ "notify",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "objc2-quartz-core",
+ "profiling",
+ "rayon",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "windows",
+ "xrf-app-core",
+ "xrf-environment",
+ "xrf-error",
+ "xrf-job",
+ "xrf-material",
+ "xrf-renderer",
+ "xrf-utils",
+ "xrf-vfs",
+ "xrf-visual",
+ "xrf-world",
+]
+
+[[package]]
+name = "xrf-app-spawn"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-app-core",
+ "xrf-job",
+ "xrf-spawn",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-app-sprite-equipment"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "percent-encoding",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-app-core",
+ "xrf-dds",
+ "xrf-dltx",
+ "xrf-error",
+ "xrf-job",
+ "xrf-ltx",
+ "xrf-output",
+ "xrf-texture",
+ "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-app-system"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "specta",
+ "sysinfo",
+ "tauri",
+ "tauri-specta",
+ "webview2-com",
+ "windows",
+ "xrf-app-core",
+ "xrf-app-render",
+ "xrf-build-info",
+ "xrf-env-flags",
+ "xrf-renderer",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-app-textures"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "rayon",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-app-core",
+ "xrf-app-render",
+ "xrf-dds",
+ "xrf-environment",
+ "xrf-error",
+ "xrf-job",
+ "xrf-material",
+ "xrf-renderer",
+ "xrf-spawn",
+ "xrf-test-utils",
+ "xrf-texture",
+ "xrf-thm",
+ "xrf-utils",
+ "xrf-vfs",
+ "xrf-visual",
+]
+
+[[package]]
+name = "xrf-app-translations"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-app-core",
+ "xrf-job",
+ "xrf-output",
+ "xrf-test-utils",
+ "xrf-translation",
+ "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-app-visuals"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "xrf-app-core",
+ "xrf-app-render",
+ "xrf-environment",
+ "xrf-error",
+ "xrf-material",
+ "xrf-ogf",
+ "xrf-renderer",
+ "xrf-spawn",
+ "xrf-vfs",
+ "xrf-visual",
 ]
 
 [[package]]
