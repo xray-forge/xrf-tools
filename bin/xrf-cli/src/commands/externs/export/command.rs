@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_export::{
   ExternFormat, ExternManifest, ExternManifestParser, ParsedExternManifest, render_extern_manifest,
@@ -12,9 +12,7 @@ use xrf_output::OutputOptions;
 use xrf_utils::{LineEndings, format_path, normalize_line_endings};
 
 use super::report::ExternsExportReport;
-use crate::core::command_context::CommandContext;
-use crate::core::command_error::CommandError;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
 
 /// Generate or verify a stable extern manifest from TypeScript declarations.
 #[derive(Default)]
@@ -25,34 +23,37 @@ impl GenericCommand for ExportCommand {
     "export"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
+  fn declare(&self, command: Command) -> Command {
+    command
       .about("Export TypeScript extern declarations as JSON, XML, or HTML")
       .arg(
-        Arg::new("declarations-root")
+        Arg::new("path")
           .help("Root directory containing TypeScript declaration sources")
+          .short('p')
+          .long("path")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
-        Arg::new("format")
-          .help("Output format; required with --output and inferred from --check when omitted")
-          .long("format")
-          .value_parser(ExternFormat::NAMES),
-      )
-      .arg(
-        Arg::new("output")
-          .help("Artifact to create or replace")
-          .long("output")
-          .conflicts_with("check")
+        Arg::new("dest")
+          .help("Artifact to create or replace, or with --check to verify")
+          .short('d')
+          .long("dest")
+          .required(true)
           .value_parser(value_parser!(PathBuf)),
       )
       .arg(
         Arg::new("check")
-          .help("Existing artifact to verify without writing")
+          .help("Verify the artifact against the declarations without writing")
+          .short('c')
           .long("check")
-          .conflicts_with("output")
-          .value_parser(value_parser!(PathBuf)),
+          .action(ArgAction::SetTrue),
+      )
+      .arg(
+        Arg::new("format")
+          .help("Artifact format, inferred from the artifact's extension when omitted")
+          .long("format")
+          .value_parser(ExternFormat::NAMES),
       )
       .arg(
         Arg::new("line-endings")
@@ -63,15 +64,8 @@ impl GenericCommand for ExportCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let declarations_root: &PathBuf = matches
-      .get_one("declarations-root")
-      .expect("Expected declarations root");
-    let output_dir: Option<&PathBuf> = matches.get_one("output");
-    let check: Option<&PathBuf> = matches.get_one("check");
-
-    if output_dir.is_none() && check.is_none() {
-      return Err(XrfError::new_invalid_error("Specify exactly one of --output or --check.").into());
-    }
+    let declarations_root: &PathBuf = matches.get_one("path").expect("Expected declarations root");
+    let path: &PathBuf = matches.get_one("dest").expect("Expected an artifact path");
 
     let line_endings: Option<LineEndings> = matches
       .get_one::<String>("line-endings")
@@ -79,23 +73,21 @@ impl GenericCommand for ExportCommand {
       .transpose()?;
 
     let output: OutputOptions = context.get_output().clone();
-    let format: ExternFormat = Self::resolve_format(matches, output_dir, check)?;
+    let format: ExternFormat = Self::resolve_format(matches, path)?;
 
-    if let Some(path) = output_dir {
-      // Writing judges nothing, so invalid declarations are simply work the command cannot do.
-      let parsed: ParsedExternManifest = ExternManifestParser::new().parse_directory(declarations_root)?;
-      let externs: usize = parsed.manifest.exports.len();
-
-      write_extern_manifest(&parsed.manifest, path, format, line_endings)?;
-
-      xrf_output::info!(output, "Exported {externs} externs to '{}'.", format_path(path));
-
-      return context.set_result(|| ExternsExportReport::written(declarations_root, path, format, externs));
+    if matches.get_flag("check") {
+      return Self::check_artifact(context, declarations_root, path, format, line_endings);
     }
 
-    let path: &PathBuf = check.expect("Checked path is required after validation");
+    // Writing judges nothing, so invalid declarations are simply work the command cannot do.
+    let parsed: ParsedExternManifest = ExternManifestParser::new().parse_directory(declarations_root)?;
+    let externs: usize = parsed.manifest.exports.len();
 
-    Self::check_artifact(context, declarations_root, path, format, line_endings)
+    write_extern_manifest(&parsed.manifest, path, format, line_endings)?;
+
+    xrf_output::success!(output, "Exported {externs} externs to '{}'.", format_path(path));
+
+    context.set_result(|| ExternsExportReport::written(declarations_root, path, format, externs))
   }
 }
 
@@ -132,7 +124,7 @@ impl ExportCommand {
       };
 
     let Some(error) = finding else {
-      xrf_output::info!(
+      xrf_output::success!(
         output,
         "Extern artifact '{}' matches {externs} declarations.",
         format_path(path)
@@ -150,25 +142,12 @@ impl ExportCommand {
     Err(CommandError::new_check_failed(1))
   }
 
-  fn resolve_format(
-    matches: &ArgMatches,
-    output: Option<&PathBuf>,
-    check: Option<&PathBuf>,
-  ) -> Result<ExternFormat, XrfError> {
-    if let Some(value) = matches.get_one::<String>("format") {
-      return ExternFormat::from_str(value);
+  /// The format `--format` names, or the one the artifact's extension says.
+  fn resolve_format(matches: &ArgMatches, path: &Path) -> Result<ExternFormat, XrfError> {
+    match matches.get_one::<String>("format") {
+      Some(value) => ExternFormat::from_str(value),
+      None => ExternFormat::from_extension(path),
     }
-
-    if let Some(path) = check {
-      return ExternFormat::from_extension(path);
-    }
-
-    let path: &PathBuf = output.expect("Output is required after validation");
-
-    Err(XrfError::new_invalid_error(format!(
-      "--format is required when writing '{}'.",
-      format_path(path)
-    )))
   }
 
   fn verify_artifact(
@@ -225,36 +204,33 @@ mod tests {
   use xrf_export::ExternFormat;
 
   use super::ExportCommand;
-  use crate::core::generic_command::GenericCommand;
+  use crate::core::command::GenericCommand;
 
+  fn parse(arguments: &[&str]) -> ArgMatches {
+    ExportCommand.init().try_get_matches_from(arguments).unwrap()
+  }
+
+  /// Writing and checking name the artifact the same way, so both read its format off the extension.
   #[test]
-  fn infers_check_format_from_extension() {
-    let matches: ArgMatches = ExportCommand::new()
-      .init()
-      .try_get_matches_from(["export", "declarations", "--check", "extern.xml"])
-      .unwrap();
-    let check: Option<&PathBuf> = matches.get_one("check");
-
-    assert_eq!(
-      ExportCommand::resolve_format(&matches, None, check).unwrap(),
-      ExternFormat::Xml
-    );
+  fn infers_the_format_from_the_extension_in_both_modes() {
+    for arguments in [
+      ["export", "-p", "declarations", "-d", "extern.xml"].as_slice(),
+      ["export", "-p", "declarations", "-d", "extern.xml", "--check"].as_slice(),
+    ] {
+      assert_eq!(
+        ExportCommand::resolve_format(&parse(arguments), &PathBuf::from("extern.xml")).unwrap(),
+        ExternFormat::Xml
+      );
+    }
   }
 
   #[test]
-  fn rejects_conflicting_output_modes() {
-    assert!(
-      ExportCommand::new()
-        .init()
-        .try_get_matches_from([
-          "export",
-          "declarations",
-          "--output",
-          "extern.json",
-          "--check",
-          "extern.json",
-        ])
-        .is_err()
+  fn takes_an_explicit_format_over_the_extension() {
+    let matches: ArgMatches = parse(&["export", "-p", "declarations", "-d", "extern.txt", "--format", "json"]);
+
+    assert_eq!(
+      ExportCommand::resolve_format(&matches, &PathBuf::from("extern.txt")).unwrap(),
+      ExternFormat::Json
     );
   }
 }

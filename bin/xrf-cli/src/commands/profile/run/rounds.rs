@@ -33,42 +33,42 @@ impl RoundStatistics {
       median: sorted[(sorted.len() - 1) / 2],
       fastest: sorted[0],
       slowest: sorted[sorted.len() - 1],
-      peak_bytes: median_bytes(peaks),
-      mean_bytes: median_bytes(means),
+      peak_bytes: Self::median_bytes(peaks),
+      mean_bytes: Self::median_bytes(means),
     })
   }
-}
 
-/// The middle value of a byte measurement taken over several rounds, or `None` when none was taken.
-///
-/// The same lower-middle rule the durations use, for the same reason: a figure that no round reached is a worse thing to
-/// quote than one that a round did.
-fn median_bytes(values: &[u64]) -> Option<u64> {
-  if values.is_empty() {
-    return None;
+  /// The order rounds are executed in: every binary once per round, rather than every round of one binary.
+  ///
+  /// Interleaving is the whole protocol. Running all rounds of A and then all of B compares two different machine
+  /// states — file cache, background load, thermal headroom — and has already produced a 10–16% difference that did
+  /// not exist. Alternating means a drift over the session lands on every binary rather than on whichever went second.
+  pub fn interleaved(binaries: usize, rounds: usize) -> impl Iterator<Item = (usize, usize)> {
+    (0..rounds).flat_map(move |round| (0..binaries).map(move |binary| (round, binary)))
   }
 
-  let mut sorted: Vec<u64> = values.to_vec();
+  /// The middle value of a byte measurement taken over several rounds, or `None` when none was taken.
+  ///
+  /// The same lower-middle rule the durations use, for the same reason: a figure that no round reached is a worse thing
+  /// to quote than one that a round did.
+  fn median_bytes(values: &[u64]) -> Option<u64> {
+    if values.is_empty() {
+      return None;
+    }
 
-  sorted.sort_unstable();
+    let mut sorted: Vec<u64> = values.to_vec();
 
-  Some(sorted[(sorted.len() - 1) / 2])
-}
+    sorted.sort_unstable();
 
-/// The order rounds are executed in: every binary once per round, rather than every round of one binary.
-///
-/// Interleaving is the whole protocol. Running all rounds of A and then all of B compares two different machine states
-/// — file cache, background load, thermal headroom — and has already produced a 10–16% difference that did not exist.
-/// Alternating means a drift over the session lands on every binary rather than on whichever went second.
-pub fn interleaved(binaries: usize, rounds: usize) -> impl Iterator<Item = (usize, usize)> {
-  (0..rounds).flat_map(move |round| (0..binaries).map(move |binary| (round, binary)))
+    Some(sorted[(sorted.len() - 1) / 2])
+  }
 }
 
 #[cfg(test)]
 mod tests {
   use std::time::Duration;
 
-  use super::{RoundStatistics, interleaved};
+  use super::RoundStatistics;
 
   fn ms(values: &[u64]) -> Vec<Duration> {
     values.iter().copied().map(Duration::from_millis).collect()
@@ -132,18 +132,21 @@ mod tests {
   #[test]
   fn alternates_binaries_within_each_round() {
     assert_eq!(
-      interleaved(2, 3).collect::<Vec<_>>(),
+      RoundStatistics::interleaved(2, 3).collect::<Vec<_>>(),
       vec![(0, 0), (0, 1), (1, 0), (1, 1), (2, 0), (2, 1)]
     );
   }
 
   #[test]
   fn measures_one_binary_in_plain_sequence() {
-    assert_eq!(interleaved(1, 3).collect::<Vec<_>>(), vec![(0, 0), (1, 0), (2, 0)]);
+    assert_eq!(
+      RoundStatistics::interleaved(1, 3).collect::<Vec<_>>(),
+      vec![(0, 0), (1, 0), (2, 0)]
+    );
   }
 
   #[test]
   fn measures_nothing_when_no_round_was_asked_for() {
-    assert_eq!(interleaved(2, 0).count(), 0);
+    assert_eq!(RoundStatistics::interleaved(2, 0).count(), 0);
   }
 }
