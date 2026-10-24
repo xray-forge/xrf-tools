@@ -1,6 +1,7 @@
 import { Divider, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
+import { AudioDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
@@ -8,7 +9,6 @@ import { ArchivePreviewError } from "@/applications/archives-explorer/components
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-import { AudioDescriptor } from "@/core/ipc/types/xrf-app-archives";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { cn } from "@/core/theme/class-name";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";

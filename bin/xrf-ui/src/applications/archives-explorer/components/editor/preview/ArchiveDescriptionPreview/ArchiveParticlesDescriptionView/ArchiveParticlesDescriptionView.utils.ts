@@ -1,10 +1,9 @@
 import { formatSeconds } from "@xrf/format";
-
 import {
   ArchiveParticlesEffect,
   ArchiveParticlesEffectName,
   ArchiveParticlesGroupEffect,
-} from "@/core/ipc/types/xrf-app-archives";
+} from "@xrf/ipc/types/xrf-app-archives";
 
 /**
  * How much of an emitter there is.

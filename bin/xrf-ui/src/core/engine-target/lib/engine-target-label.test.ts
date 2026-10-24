@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { EXrayEngine, EXrayEngineEvidence } from "@/core/ipc/types/xrf-engine-target";
+import { EXrayEngine, EXrayEngineEvidence } from "@xrf/ipc/types/xrf-engine-target";
 
 import { describeEngineResolution, toAutoEngineLabel } from "./engine-target-label";
 

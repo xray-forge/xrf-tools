@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
+import { ArchiveLightAnimDescription } from "@xrf/ipc/types/xrf-app-archives";
 
-import { ArchiveLightAnimDescription } from "@/core/ipc/types/xrf-app-archives";
 import { mockArchiveLightAnimDescription } from "@/fixtures/mocks/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

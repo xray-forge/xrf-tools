@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-
-import { LevelImageQualityAction } from "@/applications/level-viewer/components/toolbar/image/LevelImageQualityAction";
+import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
 import {
   ERenderAntialiasing,
   ERenderDlssAvailability,
@@ -14,11 +13,12 @@ import {
   RenderBackendAvailability,
   RenderDlssAvailability,
   RenderScale,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+
+import { LevelImageQualityAction } from "@/applications/level-viewer/components/toolbar/image/LevelImageQualityAction";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { clearLocalStorage } from "@/core/storage";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { RenderMemoryReport } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelRendererResidentSection } from "@/applications/level-viewer/components/panels/LevelRendererPanel/LevelRendererResidentSection";
-import { RenderMemoryReport } from "@/core/ipc/types/xrf-renderer";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 const MEMORY: RenderMemoryReport = {

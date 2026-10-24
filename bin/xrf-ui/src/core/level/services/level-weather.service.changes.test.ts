@@ -1,17 +1,17 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container, EventBus } from "@wirestate/core";
+import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
+import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
+import { LEVEL_ENVIRONMENT_PART, LEVEL_SPAWN_PART } from "@xrf/ipc/types/xrf-app-levels";
+import { EWorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
 
-import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
-import { SessionChange } from "@/core/ipc/types/xrf-app-core";
-import { LEVEL_ENVIRONMENT_PART, LEVEL_SPAWN_PART } from "@/core/ipc/types/xrf-app-levels";
-import { EWorldWeatherPlay } from "@/core/ipc/types/xrf-world";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockLevelWeatherCycle, mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 

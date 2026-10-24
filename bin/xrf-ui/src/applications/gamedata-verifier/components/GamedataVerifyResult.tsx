@@ -1,10 +1,10 @@
 import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { formatDuration } from "@xrf/format";
+import { GamedataCheckSummary, GamedataVerifySummary } from "@xrf/ipc/types/xrf-app-gamedata";
+import { EStatus, Status } from "@xrf/ipc/types/xrf-report";
 import { ReactElement, useMemo } from "react";
 
 import { selectFailedChecks } from "@/applications/gamedata-verifier/lib/describe-gamedata-verify-outcome";
-import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/ipc/types/xrf-app-gamedata";
-import { EStatus, Status } from "@/core/ipc/types/xrf-report";
 import { cn } from "@/core/theme/class-name";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";

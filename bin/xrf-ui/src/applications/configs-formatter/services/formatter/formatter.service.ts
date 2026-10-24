@@ -1,11 +1,11 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { configsCommands } from "@xrf/ipc/commands/configs";
+import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT } from "@xrf/ipc/types/xrf-app-configs";
+import { LtxProjectFormatResult } from "@xrf/ipc/types/xrf-ltx";
 import { Logger } from "@xrf/logging";
 
 import { describeFormatOutcome } from "@/applications/configs-formatter/lib/describe-format-outcome";
 import { createRoots } from "@/core/assets/lib";
-import { configsCommands } from "@/core/ipc/commands/configs";
-import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT } from "@/core/ipc/types/xrf-app-configs";
-import { LtxProjectFormatResult } from "@/core/ipc/types/xrf-ltx";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

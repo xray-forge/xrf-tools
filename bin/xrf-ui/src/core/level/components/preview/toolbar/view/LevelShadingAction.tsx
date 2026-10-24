@@ -1,8 +1,8 @@
 import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { useInjection } from "@wirestate/react";
+import { ERenderParallaxMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { ERenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelParallaxSettings } from "@/core/level/components/preview/toolbar/view/LevelParallaxSettings";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";

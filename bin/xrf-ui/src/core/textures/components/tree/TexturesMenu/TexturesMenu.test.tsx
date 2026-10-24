@@ -1,18 +1,18 @@
 import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { Nullable } from "@xrf/types";
-
+import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
 import {
   TextureCatalog,
   TextureDescription,
   TextureEntry,
   TextureMaterialSummary,
-} from "@/core/ipc/types/xrf-app-textures";
+} from "@xrf/ipc/types/xrf-app-textures";
+import { Nullable } from "@xrf/types";
+
 import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   MOCK_BUMP,
   MOCK_COMPANION,

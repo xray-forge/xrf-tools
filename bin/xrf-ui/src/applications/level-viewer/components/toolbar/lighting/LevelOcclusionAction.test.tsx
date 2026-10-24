@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { ERenderAmbientOcclusionMethod, ERenderIndirectLightMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelOcclusionAction } from "@/applications/level-viewer/components/toolbar/lighting/LevelOcclusionAction";
-import { ERenderAmbientOcclusionMethod, ERenderIndirectLightMode } from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
   DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,

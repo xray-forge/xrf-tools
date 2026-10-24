@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
+import { setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
 import { Nullable } from "@xrf/types";
 
 import { ILevelViewerScreenshot } from "@/applications/level-viewer/lib/screenshot/level-viewer-screenshot";
@@ -7,8 +8,6 @@ import { LEVEL_VIEWER_SNAPSHOT_FORMAT } from "@/applications/level-viewer/lib/sn
 import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { clearLocalStorage } from "@/core/storage";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,

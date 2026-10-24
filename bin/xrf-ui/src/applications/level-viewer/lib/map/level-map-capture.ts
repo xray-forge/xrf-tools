@@ -1,16 +1,16 @@
-import { IPoint3 } from "@xrf/math";
-import { assertExhaustive, Nullable } from "@xrf/types";
-
-import { LEVEL_CAPTURE_DRAWN_MOST } from "@/applications/level-viewer/lib/capture/level-capture";
-import { LevelMapDescription } from "@/core/ipc/types/xrf-app-levels";
+import { LevelMapDescription } from "@xrf/ipc/types/xrf-app-levels";
 import {
   RENDER_MAP_MOST_PIXELS,
   RENDER_MAP_MOST_SUPERSAMPLING,
   RENDER_MAP_TILE,
   RENDER_MAP_TILE_MARGIN,
   RenderMapCapture,
-} from "@/core/ipc/types/xrf-renderer";
-import { VisualBounds } from "@/core/ipc/types/xrf-visual";
+} from "@xrf/ipc/types/xrf-renderer";
+import { VisualBounds } from "@xrf/ipc/types/xrf-visual";
+import { IPoint3 } from "@xrf/math";
+import { assertExhaustive, Nullable } from "@xrf/types";
+
+import { LEVEL_CAPTURE_DRAWN_MOST } from "@/applications/level-viewer/lib/capture/level-capture";
 
 /** Where a level map's area comes from. */
 export enum ELevelMapArea {

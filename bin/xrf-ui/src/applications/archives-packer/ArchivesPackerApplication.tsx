@@ -2,13 +2,13 @@ import { default as TuneIcon } from "@mui/icons-material/Tune";
 import { Alert, Divider, Stack, Typography } from "@mui/material";
 import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
+import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
 import { ARCHIVE_CONFIG_EXTENSIONS, withArchiveConfigExtension } from "@/core/archive/lib";
 import { ARCHIVE_CONFIG_EXPORT_FILTERS } from "@/core/archive/lib/config-format";
-import { ArchivePackConfig } from "@/core/ipc/types/xrf-pack";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { DialogProjectDescriptor } from "@/core/ipc/types/xrf-dialog";
+import { DialogProjectDescriptor } from "@xrf/ipc/types/xrf-dialog";
 
 import { IDialogTreeEntry, toDialogTreeEntries } from "./dialog-tree";
 

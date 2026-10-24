@@ -1,17 +1,17 @@
 import { inject, Injectable } from "@wirestate/core";
 import { comparer, reaction, RefObservable, runInAction } from "@wirestate/mobx";
-import { Logger } from "@xrf/logging";
-import { Nullable } from "@xrf/types";
-
-import { texturesCommands } from "@/core/ipc/commands/textures";
+import { texturesCommands } from "@xrf/ipc/commands/textures";
 import {
   ERenderTextureState,
   RenderLoadReport,
   RenderTextureReport,
   RenderViewOptions,
   RenderViewportId,
-} from "@/core/ipc/types/xrf-renderer";
-import { EWorldCameraCommand } from "@/core/ipc/types/xrf-world";
+} from "@xrf/ipc/types/xrf-renderer";
+import { EWorldCameraCommand } from "@xrf/ipc/types/xrf-world";
+import { Logger } from "@xrf/logging";
+import { Nullable } from "@xrf/types";
+
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { runInAction } from "@wirestate/mobx";
+import { ERenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 
 import {
   ELevelViewerSnapshotStatus,
@@ -8,7 +9,6 @@ import {
   LEVEL_VIEWER_SNAPSHOT_FORMAT,
 } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
 import { ILevelViewerSnapshotApplied, LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
-import { ERenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { clearLocalStorage } from "@/core/storage";
 import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/fixtures/utils/level-container";

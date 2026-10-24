@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
+import { VisualBone } from "@xrf/ipc/types/xrf-visual";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { cn } from "@/core/theme/class-name";
 import { ITreeNode } from "@/core/ui/tree/tree-node";

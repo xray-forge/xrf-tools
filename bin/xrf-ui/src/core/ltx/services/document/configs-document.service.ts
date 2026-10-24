@@ -3,11 +3,11 @@ import { Computed, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { configsCommands } from "@xrf/ipc/commands/configs";
+import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { configsCommands } from "@/core/ipc/commands/configs";
-import { ConfigsDocument } from "@/core/ipc/types/xrf-app-configs";
 import { TConfigsReveal } from "@/core/ltx/lib/reveal";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";

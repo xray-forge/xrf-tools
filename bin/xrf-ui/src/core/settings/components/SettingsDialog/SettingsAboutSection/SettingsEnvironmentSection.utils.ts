@@ -1,6 +1,5 @@
 import { formatBytes } from "@xrf/format";
-
-import { HostInfo } from "@/core/ipc/types/xrf-app-system";
+import { HostInfo } from "@xrf/ipc/types/xrf-app-system";
 
 import { IAboutRow, statedRows } from "./about-row";
 

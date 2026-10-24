@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { EJobConclusion, JobConclusion, JobDescription } from "@/core/ipc/types/xrf-app-core";
+import { EJobConclusion, JobConclusion, JobDescription } from "@xrf/ipc/types/xrf-app-core";
 
 import { listHeldLeases, summarizeJobKinds } from "./job-listing";
 

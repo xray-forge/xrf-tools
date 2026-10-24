@@ -1,13 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { describeMemoryUsage } from "@/core/diagnostics/lib/memory-usage-segment";
 import {
   EWebviewProcessKind,
   GpuMemoryUsage,
   MemoryUsage,
   WebviewProcessKind,
   WebviewProcessMemory,
-} from "@/core/ipc/types/xrf-app-system";
+} from "@xrf/ipc/types/xrf-app-system";
+
+import { describeMemoryUsage } from "@/core/diagnostics/lib/memory-usage-segment";
 import { IEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
 
 const MB: number = 1024 * 1024;

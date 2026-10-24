@@ -1,12 +1,12 @@
-import { Nullable } from "@xrf/types";
-
 import {
   ERenderBackend,
   RenderBackend,
   RenderBackendAvailability,
   RenderGpu,
   RenderGpuDescription,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+import { Nullable } from "@xrf/types";
+
 import { resolveRenderGpu } from "@/core/render/lib/settings/render-gpu-choice";
 
 /** The choice that names no backend: the renderer starts on the first that works. */

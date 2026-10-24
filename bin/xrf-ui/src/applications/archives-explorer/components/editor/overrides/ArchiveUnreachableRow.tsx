@@ -1,7 +1,7 @@
 import { Typography } from "@mui/material";
+import { XrayPathCollision } from "@xrf/ipc/types/xrf-vfs";
 import { ReactElement } from "react";
 
-import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

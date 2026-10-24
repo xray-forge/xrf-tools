@@ -1,12 +1,12 @@
 import { Chip, Stack } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
 import { groupDialogElements, IDialogElementGroup } from "@/applications/dialogs-editor/lib/dialog-elements";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
-import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } from "@/core/ipc/types/xrf-dialog";
 import {
   EditorPanel,
   EditorPanelEmpty,

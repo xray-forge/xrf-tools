@@ -1,8 +1,8 @@
 import { Typography } from "@mui/material";
+import { ArchiveDescribeScope, ArchiveParticlesEffect } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { ArchiveDescribeScope, ArchiveParticlesEffect } from "@/core/ipc/types/xrf-app-archives";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

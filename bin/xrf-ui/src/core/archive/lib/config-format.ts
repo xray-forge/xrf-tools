@@ -1,6 +1,6 @@
 import { DialogFilter } from "@tauri-apps/plugin-dialog";
+import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { withSupportedExtension } from "@/core/path/extension";
 import { toFormatFilters } from "@/core/path/file-filters";
 

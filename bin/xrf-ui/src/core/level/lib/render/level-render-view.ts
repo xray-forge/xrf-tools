@@ -1,5 +1,6 @@
-import { RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
-import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
+import { RenderViewOptions } from "@xrf/ipc/types/xrf-renderer";
+import { EWorldCamera, WorldCamera } from "@xrf/ipc/types/xrf-world";
+
 import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelFeatureOptions, toLevelRendererFeatures } from "@/core/level/lib/features/level-feature-options";

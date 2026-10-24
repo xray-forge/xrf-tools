@@ -1,4 +1,5 @@
-import { ESpawnConversion, SpawnConversion, SpawnConversionResult } from "@/core/ipc/types/xrf-app-spawn";
+import { ESpawnConversion, SpawnConversion, SpawnConversionResult } from "@xrf/ipc/types/xrf-app-spawn";
+
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
+import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { SPRITE_EQUIPMENT_JOB_PACK } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 
-import { SPRITE_EQUIPMENT_JOB_PACK } from "@/core/ipc/types/xrf-app-sprite-equipment";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockEquipmentSpriteMetadata } from "@/fixtures/mocks/sprite.mocks";
-import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { SpriteEquipmentEditorService } from "./editor.service";

@@ -3,15 +3,15 @@ import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { assetsCommands } from "@xrf/ipc/commands/assets";
+import { visualsCommands } from "@xrf/ipc/commands/visuals";
+import { Session, SessionScopeService } from "@xrf/ipc/session";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { EXrayAssetType, XrayAsset, XrayRoot, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { createRoots, describeRoots } from "@/core/assets/lib";
-import { assetsCommands } from "@/core/ipc/commands/assets";
-import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { Session, SessionScopeService } from "@/core/ipc/session";
-import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
-import { EXrayAssetType, XrayAsset, XrayRoot, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**

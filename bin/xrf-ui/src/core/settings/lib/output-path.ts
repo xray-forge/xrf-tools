@@ -1,7 +1,7 @@
 import * as path from "@tauri-apps/api/path";
+import { systemCommands } from "@xrf/ipc/commands/system";
 import { Nullable } from "@xrf/types";
 
-import { systemCommands } from "@/core/ipc/commands/system";
 import { EApplicationId } from "@/core/routing/application";
 
 /**

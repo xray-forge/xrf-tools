@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { autorun } from "@wirestate/mobx";
+import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EWorldWeatherTransition, WorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 
-import { EWorldWeatherTransition, WorldWeatherPlay } from "@/core/ipc/types/xrf-world";
 import { ILevelManualWeather, toLevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { readLevelWeatherMemory, toLevelWeatherMemoryKey } from "@/core/level/lib/weather/level-weather-memory";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockLevelWeatherDescription, mockWorldWeatherReport } from "@/fixtures/mocks/weather.mocks";
 import { createLevelWeatherService, LEVEL_WEATHER_SELECTED, toWeatherKeyframe } from "@/fixtures/utils/level-weather";
 

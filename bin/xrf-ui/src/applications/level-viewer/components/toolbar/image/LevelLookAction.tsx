@@ -2,6 +2,16 @@ import { default as ExposureIcon } from "@mui/icons-material/Exposure";
 import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
+import { LevelConsoleDefaults } from "@xrf/ipc/types/xrf-app-levels";
+import {
+  ERenderBloomMode,
+  ERenderLightLevel,
+  ERenderLightModel,
+  RenderBloomMode,
+  RenderDisplayTransform,
+  RenderLightLevel,
+  RenderLightModel,
+} from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement, useCallback } from "react";
 
 import { LevelDebandingSettings } from "@/applications/level-viewer/components/toolbar/image/LevelDebandingSettings";
@@ -15,16 +25,6 @@ import {
   LEVEL_LOOK_LIGHT_SCALE_FIELDS,
   LEVEL_LOOK_TONEMAP_FIELDS,
 } from "@/applications/level-viewer/lib/look/level-look-fields";
-import { LevelConsoleDefaults } from "@/core/ipc/types/xrf-app-levels";
-import {
-  ERenderBloomMode,
-  ERenderLightLevel,
-  ERenderLightModel,
-  RenderBloomMode,
-  RenderDisplayTransform,
-  RenderLightLevel,
-  RenderLightModel,
-} from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";

@@ -1,8 +1,8 @@
 import { Button, Typography } from "@mui/material";
+import { WorldAmbientReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { WorldAmbientReport } from "@/core/ipc/types/xrf-world";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

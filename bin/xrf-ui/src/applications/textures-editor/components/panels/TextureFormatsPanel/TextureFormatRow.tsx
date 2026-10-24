@@ -1,8 +1,8 @@
 import { Chip, ListItemButton, Typography } from "@mui/material";
 import { formatBytes } from "@xrf/format";
+import { TextureEncodingReport } from "@xrf/ipc/types/xrf-app-textures";
 import { ReactElement } from "react";
 
-import { TextureEncodingReport } from "@/core/ipc/types/xrf-app-textures";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";

@@ -1,7 +1,7 @@
 import { formatBytes, formatCount, formatPercent } from "@xrf/format";
+import { RenderMemoryReport, RenderMemorySection } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { RenderMemoryReport, RenderMemorySection } from "@/core/ipc/types/xrf-renderer";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

@@ -1,6 +1,6 @@
+import { ArchiveOmfPart } from "@xrf/ipc/types/xrf-app-archives";
 import { ReactElement } from "react";
 
-import { ArchiveOmfPart } from "@/core/ipc/types/xrf-app-archives";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

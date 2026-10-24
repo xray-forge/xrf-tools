@@ -1,13 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
-import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
 import { mockArchiveStatistics, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockRestoredSession, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 function getStatisticsCallsCount(): number {

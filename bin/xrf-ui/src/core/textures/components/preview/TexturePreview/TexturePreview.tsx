@@ -1,11 +1,11 @@
 import { useInjection } from "@wirestate/react";
+import { AssetTextureShape } from "@xrf/ipc/types/xrf-app-core";
+import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { PAN_ZOOM_FIT } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect, useState } from "react";
 
 import { describeTextureShape } from "@/core/assets/lib";
-import { AssetTextureShape } from "@/core/ipc/types/xrf-app-core";
-import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import { TextureSurface } from "@/core/textures/components/preview/TextureSurface";
 import {
   describeTexturePreviewGap,

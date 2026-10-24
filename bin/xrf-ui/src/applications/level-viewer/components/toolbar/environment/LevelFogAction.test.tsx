@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { ERenderFogMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelFogAction } from "@/applications/level-viewer/components/toolbar/environment/LevelFogAction";
-import { ERenderFogMode } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_RENDER_FOG_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { clearLocalStorage } from "@/core/storage";
 import {

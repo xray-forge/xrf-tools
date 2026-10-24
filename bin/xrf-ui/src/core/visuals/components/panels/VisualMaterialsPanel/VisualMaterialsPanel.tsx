@@ -1,10 +1,10 @@
 import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
+import { VisualDescription, VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
-import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
-import { VisualDescription, VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import {

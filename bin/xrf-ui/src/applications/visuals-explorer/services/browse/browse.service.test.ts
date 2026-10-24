@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { SessionScopeService } from "@xrf/ipc/session";
+import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse/index";
 import { createRoots } from "@/core/assets/lib";
-import { SessionScopeService } from "@/core/ipc/session";
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 function mockVisual(logicalPath: string): XrayAsset {

@@ -1,9 +1,9 @@
 import { default as GrassIcon } from "@mui/icons-material/Grass";
 import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { ERenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement, useCallback } from "react";
 
-import { ERenderFoliageMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";

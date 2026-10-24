@@ -1,7 +1,7 @@
 import { Button } from "@mui/material";
+import { ERenderGlassMode, RenderGlassMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { ERenderGlassMode, RenderGlassMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";

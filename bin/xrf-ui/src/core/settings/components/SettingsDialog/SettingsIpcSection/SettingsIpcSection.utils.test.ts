@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { IIpcCommandMetrics } from "@/core/ipc/metrics";
+import { IIpcCommandMetrics } from "@xrf/ipc";
 
 import { describeWeighedCalls, EIpcSort, formatCallDuration, sortIpcCommands } from "./SettingsIpcSection.utils";
 

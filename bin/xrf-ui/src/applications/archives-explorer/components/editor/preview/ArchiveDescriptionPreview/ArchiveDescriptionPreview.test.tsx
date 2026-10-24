@@ -1,14 +1,14 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { AsyncState } from "@xrf/async";
-
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import {
   ArchiveFileDescription,
   EArchiveDescribeRefusal,
   EArchiveDescribeScope,
   EArchiveFormatDescription,
-} from "@/core/ipc/types/xrf-app-archives";
+} from "@xrf/ipc/types/xrf-app-archives";
+
+import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import {
   mockArchiveFileDescription,
   mockArchiveReference,

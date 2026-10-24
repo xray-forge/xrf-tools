@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
+import { ERenderBloomMode, RenderBloomMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { ERenderBloomMode, RenderBloomMode } from "@/core/ipc/types/xrf-renderer";
 import {
   explainRenderBloomMode,
   formatBloomStrength,

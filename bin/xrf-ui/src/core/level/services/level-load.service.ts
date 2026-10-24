@@ -3,10 +3,7 @@ import { BoundAction, Computed, flowResult, Observable, reaction, RefObservable,
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
-import { Logger, Timer } from "@xrf/logging";
-import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
-
-import { levelsCommands } from "@/core/ipc/commands/levels";
+import { levelsCommands } from "@xrf/ipc/commands/levels";
 import {
   isOlderSessionAnswer,
   isSessionMovedPast,
@@ -14,8 +11,8 @@ import {
   SESSION_CHANGE_EVENT,
   SessionPartResource,
   SessionScopeService,
-} from "@/core/ipc/session";
-import { ESessionRootChange, SessionChange, SessionId, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+} from "@xrf/ipc/session";
+import { ESessionRootChange, SessionChange, SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
   LEVEL_MAP_PART,
   LEVEL_SPAWN_PART,
@@ -29,9 +26,12 @@ import {
   LevelStart,
   LevelTextureReference,
   SelectedLevelDescription,
-} from "@/core/ipc/types/xrf-app-levels";
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { XrayRevision } from "@/core/ipc/types/xrf-vfs";
+} from "@xrf/ipc/types/xrf-app-levels";
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
+import { XrayRevision } from "@xrf/ipc/types/xrf-vfs";
+import { Logger, Timer } from "@xrf/logging";
+import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
+
 import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { EMPTY_LEVEL_SPAWN_REPORT, ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";

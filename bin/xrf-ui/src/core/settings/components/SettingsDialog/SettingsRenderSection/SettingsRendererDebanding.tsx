@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
+import { ERenderDebandingMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { ERenderDebandingMode } from "@/core/ipc/types/xrf-renderer";
 import {
   explainRenderDebandingMode,
   formatDebandingPasses,

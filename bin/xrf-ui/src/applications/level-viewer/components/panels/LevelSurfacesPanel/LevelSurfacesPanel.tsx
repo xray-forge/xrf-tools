@@ -1,5 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Maybe, Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -11,7 +12,6 @@ import {
   toLevelSurfaceShaderId,
   toLevelSurfaceTree,
 } from "@/applications/level-viewer/lib/surface/level-surface-tree";
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelSurfaceGeometry, NO_LEVEL_SURFACE_GEOMETRY } from "@/core/level/lib/surface/level-surface-geometry";

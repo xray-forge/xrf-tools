@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
+import { ERenderRainDropsMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { ERenderRainDropsMode } from "@/core/ipc/types/xrf-renderer";
 import { formatGrassRadius } from "@/core/render/lib/features/render-grass-choices";
 import {
   explainRenderRainDropsMode,

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
+import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
+import { VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
 
-import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
-import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import {
   describeVisualTextureSummary,
   IVisualTextureSummary,

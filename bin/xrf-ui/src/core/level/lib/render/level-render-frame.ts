@@ -1,7 +1,7 @@
+import { ERenderOverlay, RenderOverlay } from "@xrf/ipc/types/xrf-renderer";
 import { toRawColor } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
-import { ERenderOverlay, RenderOverlay } from "@/core/ipc/types/xrf-renderer";
 import { ILevelBox, toBoxFloor, toBoxReach, toOriginReach } from "@/core/level/lib/extent/level-extent";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";

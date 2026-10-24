@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { EXrayMountMode } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { assertExhaustive, Nullable } from "@xrf/types";
@@ -7,7 +8,6 @@ import { ReactElement, useCallback } from "react";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { createRoot } from "@/core/assets/lib";
 import { useRootProbe } from "@/core/assets/lib/use-root-probe";
-import { EXrayMountMode } from "@/core/ipc/types/xrf-vfs";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceFormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";

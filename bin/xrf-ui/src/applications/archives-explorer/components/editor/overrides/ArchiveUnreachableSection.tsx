@@ -1,6 +1,6 @@
+import { XrayPathCollision } from "@xrf/ipc/types/xrf-vfs";
 import { ReactElement } from "react";
 
-import { XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

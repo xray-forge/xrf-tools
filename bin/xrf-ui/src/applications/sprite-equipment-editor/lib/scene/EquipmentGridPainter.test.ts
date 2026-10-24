@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
+import { EEquipmentSlotClaim } from "@xrf/ipc/types/xrf-texture";
 
-import { EEquipmentSlotClaim } from "@/core/ipc/types/xrf-texture";
 import { toEquipmentLayout } from "@/core/sprite-equipment/lib";
 import { mockEquipmentOccupant } from "@/fixtures/mocks/sprite.mocks";
 

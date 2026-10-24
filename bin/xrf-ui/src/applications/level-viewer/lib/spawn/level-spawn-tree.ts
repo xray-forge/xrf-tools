@@ -1,4 +1,5 @@
-import { LevelSpawnCategory, LevelSpawnObject, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app-levels";
+import { LevelSpawnCategory, LevelSpawnObject, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
+
 import { ILevelSpawnCategoryEntry, LEVEL_SPAWN_CATEGORIES } from "@/core/level/lib/spawn/level-spawn-categories";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 

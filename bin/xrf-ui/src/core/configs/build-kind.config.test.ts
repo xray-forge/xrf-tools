@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { EBuildKind } from "@xrf/ipc/types/xrf-build-info";
 
 import { getBuildKind } from "@/core/configs/build-kind.config";
-import { EBuildKind } from "@/core/ipc/types/xrf-build-info";
 import { setMockBuildKind } from "@/fixtures/mocks/build-kind.mocks";
 
 describe("getBuildKind", () => {

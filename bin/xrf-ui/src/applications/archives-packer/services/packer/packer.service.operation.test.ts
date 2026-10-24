@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
+import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ARCHIVES_JOB_PACK, ARCHIVES_JOB_UNPACK } from "@xrf/ipc/types/xrf-app-archives";
+import { ArchivePackConfig, ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { PackerService } from "@/applications/archives-packer/services/packer";
-import { ARCHIVES_JOB_PACK, ARCHIVES_JOB_UNPACK } from "@/core/ipc/types/xrf-app-archives";
-import { ArchivePackConfig, ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { mockArchivePackResult } from "@/fixtures/mocks/archive.mocks";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 import { cancelFlows } from "@/lib/mobx";

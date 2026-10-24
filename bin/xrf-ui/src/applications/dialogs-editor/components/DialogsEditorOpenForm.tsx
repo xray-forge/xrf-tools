@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { DialogProjectMode } from "@xrf/ipc/types/xrf-dialog";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
@@ -6,7 +7,6 @@ import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { createRoots } from "@/core/assets/lib/roots";
-import { DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";

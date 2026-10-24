@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderVolumetricMode } from "@/core/ipc/types/xrf-renderer";
 import { LevelVolumetricSettings } from "@/core/level/components/preview/toolbar/lighting/LevelVolumetricSettings";
 import { clearLocalStorage } from "@/core/storage";
 import { mockLevelViewContainer } from "@/fixtures/utils/level-container";

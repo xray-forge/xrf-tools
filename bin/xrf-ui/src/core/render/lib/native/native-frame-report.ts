@@ -8,7 +8,7 @@ import {
   RenderLightsReport,
   RenderParticlesReport,
   RenderStaticReport,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
 
 /** Nothing used of a pool that holds nothing. */
 const EMPTY_POOL = { capacity: 0, used: 0 } as const;

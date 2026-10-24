@@ -1,10 +1,10 @@
 import { default as DataObjectIcon } from "@mui/icons-material/DataObject";
 import { default as FolderIcon } from "@mui/icons-material/Folder";
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
+import { ExportDescriptor } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { EmptyListing } from "@/core/ui/layout";

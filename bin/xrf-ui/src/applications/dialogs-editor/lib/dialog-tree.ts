@@ -1,7 +1,6 @@
+import { DialogFileDescriptor, DialogProjectDescriptor, DialogSummaryDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable } from "@xrf/types";
-
-import { DialogFileDescriptor, DialogProjectDescriptor, DialogSummaryDescriptor } from "@/core/ipc/types/xrf-dialog";
 
 /** Which dialog a tree leaf stands for: the pair that addresses one. */
 export interface IDialogTreeLeaf {

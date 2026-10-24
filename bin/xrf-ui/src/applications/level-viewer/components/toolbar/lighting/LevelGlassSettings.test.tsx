@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { ERenderGlassMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelGlassSettings } from "@/applications/level-viewer/components/toolbar/lighting/LevelGlassSettings";
-import { ERenderGlassMode } from "@/core/ipc/types/xrf-renderer";
 import { clearLocalStorage } from "@/core/storage";
 import { mockLevelViewContainer } from "@/fixtures/utils/level-container";
 import { renderWithProviders } from "@/fixtures/utils/render";

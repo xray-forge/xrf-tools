@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { EventBus } from "@wirestate/core";
-
-import { createRoots } from "@/core/assets/lib";
-import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
-import { SessionChange } from "@/core/ipc/types/xrf-app-core";
-import { LEVEL_GEOMETRY_PART, LEVEL_MAP_PART } from "@/core/ipc/types/xrf-app-levels";
-import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
+import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
+import {
+  getMockChannels,
+  mockInvoke,
+  resetMockChannels,
+  resetMockInvoke,
+  setMockInvokeResponses,
+} from "@xrf/ipc/testing";
+import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
+import { LEVEL_GEOMETRY_PART, LEVEL_MAP_PART } from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 import {
   ERenderAntialiasing,
   ERenderDlssAvailability,
@@ -17,7 +22,7 @@ import {
   RENDER_DEFAULT_PERIODIC_BUDGET,
   RenderFrameReport,
   RenderLevelHit,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
 import {
   EWorldCamera,
   EWorldCameraCommand,
@@ -25,7 +30,9 @@ import {
   EWorldWeatherPlay,
   WorldCamera,
   WorldSurfaceSpan,
-} from "@/core/ipc/types/xrf-world";
+} from "@xrf/ipc/types/xrf-world";
+
+import { createRoots } from "@/core/assets/lib";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level-sun-shafts-options";
 import { DEFAULT_LEVEL_WEATHER_CONTROL } from "@/core/level/lib/weather/level-weather-control";
@@ -39,13 +46,6 @@ import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import {
-  getMockChannels,
-  mockInvoke,
-  resetMockChannels,
-  resetMockInvoke,
-  setMockInvokeResponses,
-} from "@/fixtures/mocks/tauri.mocks";
 import {
   emitViewportEvent,
   LEVEL_SCENE,

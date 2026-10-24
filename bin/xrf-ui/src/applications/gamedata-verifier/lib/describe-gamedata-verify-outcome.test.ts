@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { GamedataCheckSummary, GamedataVerifySummary } from "@xrf/ipc/types/xrf-app-gamedata";
 
-import { GamedataCheckSummary, GamedataVerifySummary } from "@/core/ipc/types/xrf-app-gamedata";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

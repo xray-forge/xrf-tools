@@ -2,9 +2,9 @@ import { default as FoggyIcon } from "@mui/icons-material/Foggy";
 import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatNumber, formatPercent } from "@xrf/format";
+import { ERenderFogMode, RenderFogMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { ERenderFogMode, RenderFogMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";

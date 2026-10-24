@@ -1,10 +1,10 @@
 import { default as NightsStayIcon } from "@mui/icons-material/NightsStay";
 import { useInjection } from "@wirestate/react";
 import { formatDegrees, formatPercent } from "@xrf/format";
+import { LevelWeatherTexture } from "@xrf/ipc/types/xrf-app-levels";
 import { ReactElement } from "react";
 
 import { LevelWeatherTextureField } from "@/applications/level-viewer/components/weather/LevelWeatherTextureField";
-import { LevelWeatherTexture } from "@/core/ipc/types/xrf-app-levels";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
 import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";

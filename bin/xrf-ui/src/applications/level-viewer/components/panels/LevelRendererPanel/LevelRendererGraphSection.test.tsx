@@ -1,8 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { RenderGraphSettings } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelRendererGraphSection } from "@/applications/level-viewer/components/panels/LevelRendererPanel/LevelRendererGraphSection";
-import { RenderGraphSettings } from "@/core/ipc/types/xrf-renderer";
 import {
   DEFAULT_RENDER_GRAPH_SETTINGS,
   SERIAL_RENDER_GRAPH_SETTINGS,

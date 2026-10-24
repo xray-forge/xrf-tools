@@ -1,17 +1,17 @@
 import { inject, Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
 import { BoundAction, comparer, Computed, Observable, reaction, RefObservable, runInAction } from "@wirestate/mobx";
-import { Logger } from "@xrf/logging";
-import { clamp } from "@xrf/math";
-import { Nullable } from "@xrf/types";
-
-import { renderCommands } from "@/core/ipc/commands/render";
+import { renderCommands } from "@xrf/ipc/commands/render";
 import {
   RENDER_DEFAULT_PERIODIC_BUDGET,
   RenderBackendAvailability,
   RenderGpu,
   RenderGraphSettings,
   RenderSettings,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+import { Logger } from "@xrf/logging";
+import { clamp } from "@xrf/math";
+import { Nullable } from "@xrf/types";
+
 import { toDrawnRenderLightLevel } from "@/core/render/lib/features/render-light-level-choices";
 import {
   toRenderBackend,

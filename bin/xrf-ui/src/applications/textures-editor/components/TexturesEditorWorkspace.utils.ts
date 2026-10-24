@@ -1,7 +1,6 @@
+import { AssetTextureShape } from "@xrf/ipc/types/xrf-app-core";
+import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
-
-import { AssetTextureShape } from "@/core/ipc/types/xrf-app-core";
-import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 
 /**
  * What the status bar says about the texture being worked on.

@@ -1,9 +1,9 @@
 import { Typography } from "@mui/material";
 import { formatBytes, formatCount } from "@xrf/format";
+import { ArchiveCompression, ArchiveExtensionUsage } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
-import { ArchiveCompression, ArchiveExtensionUsage } from "@/core/ipc/types/xrf-archive-stats";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { BaseComponentProps } from "@/lib/dom/element-types";

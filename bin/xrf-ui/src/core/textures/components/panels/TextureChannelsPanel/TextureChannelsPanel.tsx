@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { ABSENT_VALUE } from "@xrf/format";
+import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable, Optional } from "@xrf/types";
 import { PointerEvent, ReactElement, RefCallback, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import {
   EditorPanel,
   EditorPanelEmpty,

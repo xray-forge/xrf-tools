@@ -1,9 +1,9 @@
 import { Computed } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
+import { VisualBone } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
-import { VisualBone } from "@/core/ipc/types/xrf-visual";
 import { IVisualBoneControls, IVisualInspection } from "@/core/visuals/components/panels/visual-inspection";
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";

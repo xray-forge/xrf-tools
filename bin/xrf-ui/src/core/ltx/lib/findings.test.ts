@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { LtxAnchoredFinding, LtxFindingKind } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 
-import { LtxAnchoredFinding, LtxFindingKind } from "@/core/ipc/types/xrf-ltx-inspect";
 import { toFindingMark, toFindingMarks, toOrderedFindings } from "@/core/ltx/lib/findings";
 import { ECodeLineMark } from "@/core/ui/code/code-line";
 

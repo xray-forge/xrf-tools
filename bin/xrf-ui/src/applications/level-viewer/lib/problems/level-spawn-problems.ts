@@ -1,4 +1,5 @@
-import { RenderLoadFailure } from "@/core/ipc/types/xrf-renderer";
+import { RenderLoadFailure } from "@xrf/ipc/types/xrf-renderer";
+
 import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 

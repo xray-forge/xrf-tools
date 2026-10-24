@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { LtxResolvedIndex, LtxResolvedSection } from "@xrf/ipc/types/xrf-ltx-inspect";
 
-import { LtxResolvedIndex, LtxResolvedSection } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
-import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";

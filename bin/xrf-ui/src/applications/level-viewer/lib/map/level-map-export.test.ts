@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { EMapExportAnnotations } from "@xrf/ipc/types/xrf-app-levels";
 
 import {
   DEFAULT_LEVEL_MAP_EXPORT,
@@ -7,7 +8,6 @@ import {
   toLevelMapExportSize,
   toMapExportRequest,
 } from "@/applications/level-viewer/lib/map/level-map-export";
-import { EMapExportAnnotations } from "@/core/ipc/types/xrf-app-levels";
 
 describe("level map export", () => {
   it("keeps an SVG only while the annotations stand alone", () => {

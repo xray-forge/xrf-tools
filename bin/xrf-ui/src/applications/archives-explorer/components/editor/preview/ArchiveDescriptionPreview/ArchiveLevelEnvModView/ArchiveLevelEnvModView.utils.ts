@@ -1,4 +1,4 @@
-import { ArchiveLevelEnvModifier } from "@/core/ipc/types/xrf-app-archives";
+import { ArchiveLevelEnvModifier } from "@xrf/ipc/types/xrf-app-archives";
 
 /**
  * Which of the sky's values an override mixes into.

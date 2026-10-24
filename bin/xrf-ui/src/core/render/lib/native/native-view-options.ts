@@ -7,8 +7,9 @@ import {
   RenderViewFeatures,
   RenderViewMode,
   RenderViewOptions,
-} from "@/core/ipc/types/xrf-renderer";
-import { WorldToggles } from "@/core/ipc/types/xrf-world";
+} from "@xrf/ipc/types/xrf-renderer";
+import { WorldToggles } from "@xrf/ipc/types/xrf-world";
+
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { NATIVE_RENDER_OUTPUT, TRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { TSettled } from "@/core/render/lib/settings/render-settled";

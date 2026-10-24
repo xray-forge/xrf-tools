@@ -1,7 +1,7 @@
 import { Typography } from "@mui/material";
+import { EnvironmentFinding } from "@xrf/ipc/types/xrf-environment";
 import { ReactElement } from "react";
 
-import { EnvironmentFinding } from "@/core/ipc/types/xrf-environment";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

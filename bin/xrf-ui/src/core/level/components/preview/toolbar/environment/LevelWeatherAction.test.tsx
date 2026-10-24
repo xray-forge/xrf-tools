@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
+import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
 
 import { LevelWeatherAction } from "@/core/level/components/preview/toolbar/environment/LevelWeatherAction";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
@@ -13,7 +14,6 @@ import { LevelWeatherService } from "@/core/level/services/level-weather.service
 import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

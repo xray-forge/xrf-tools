@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container, EventBus, WireEvent } from "@wirestate/core";
+import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
+import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
 
-import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
-import { SessionChange } from "@/core/ipc/types/xrf-app-core";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockArchivesWorldSubject, mockArchiveWorldEntry } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { ArchivesService } from "./archives.service";

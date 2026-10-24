@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderFoliageMode } from "@/core/ipc/types/xrf-renderer";
 import {
   LEVEL_FOLIAGE_LIGHT_KEYS,
   LEVEL_FOLIAGE_MOTION_KEYS,

@@ -1,13 +1,13 @@
 import { Typography } from "@mui/material";
 import { formatBytes, formatDuration, formatInstant } from "@xrf/format";
+import { systemCommands } from "@xrf/ipc/commands/system";
+import { MemoryUsage, RuntimeSnapshot } from "@xrf/ipc/types/xrf-app-system";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { useMemoryUsage } from "@/core/diagnostics/lib";
-import { systemCommands } from "@/core/ipc/commands/system";
-import { MemoryUsage, RuntimeSnapshot } from "@/core/ipc/types/xrf-app-system";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { usePolledValue } from "@/lib/react";

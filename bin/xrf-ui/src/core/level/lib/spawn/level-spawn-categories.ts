@@ -1,4 +1,4 @@
-import { ELevelSpawnCategory } from "@/core/ipc/types/xrf-app-levels";
+import { ELevelSpawnCategory } from "@xrf/ipc/types/xrf-app-levels";
 
 /** The view options that show each category of spawned objects. */
 export type TLevelSpawnOption = "isSpawnedProps" | "isSpawnedItems" | "isSpawnedWeapons" | "isSpawnedLamps";

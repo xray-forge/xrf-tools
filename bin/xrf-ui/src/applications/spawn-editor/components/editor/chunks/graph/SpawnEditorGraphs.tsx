@@ -1,10 +1,10 @@
 import { Tab, Tabs } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { SpawnGraphsChunk } from "@xrf/ipc/types/xrf-spawn";
 import { ReactElement } from "react";
 
 import { SpawnChunkView } from "@/applications/spawn-editor/components/editor/chunks/SpawnChunkView";
 import { TChunkTabChange, useChunkTab } from "@/applications/spawn-editor/components/editor/chunks/use-chunk-tab";
-import { SpawnGraphsChunk } from "@/core/ipc/types/xrf-spawn";
 import { SpawnFileService } from "@/core/spawn/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

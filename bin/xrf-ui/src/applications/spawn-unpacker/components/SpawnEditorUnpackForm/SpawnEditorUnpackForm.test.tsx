@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { fireEvent, waitFor } from "@testing-library/react";
+import { setMockInvokeResponses } from "@xrf/ipc/testing";
 
 import { SpawnConversionService } from "@/core/spawn/services/spawn-conversion.service";
 import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { SpawnEditorUnpackForm } from "./SpawnEditorUnpackForm";

@@ -1,14 +1,14 @@
 import { ABSENT_VALUE, formatBytes, formatBytesCompact } from "@xrf/format";
-import { Nullable } from "@xrf/types";
-
-import { IMemoryFigures, sumWebviewMemory, toMemoryFigures } from "@/core/diagnostics/lib/memory-figures";
 import {
   EWebviewProcessKind,
   GpuMemoryUsage,
   MemoryUsage,
   WebviewProcessKind,
   WebviewProcessMemory,
-} from "@/core/ipc/types/xrf-app-system";
+} from "@xrf/ipc/types/xrf-app-system";
+import { Nullable } from "@xrf/types";
+
+import { IMemoryFigures, sumWebviewMemory, toMemoryFigures } from "@/core/diagnostics/lib/memory-figures";
 import { IEditorStatusDetail } from "@/core/shell/editor-shell/editor-status-detail";
 import { IEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
 

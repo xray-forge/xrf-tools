@@ -1,8 +1,8 @@
+import { ERenderOverlay, RenderOverlay, RenderViewOptions } from "@xrf/ipc/types/xrf-renderer";
+import { EWorldCamera, WorldCamera } from "@xrf/ipc/types/xrf-world";
 import { addVectors, normalise, scaleVector, toRadians, toRawColor, toSphereFitDistance } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
-import { ERenderOverlay, RenderOverlay, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
-import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
 import { toNativeLines } from "@/core/render/lib/native/native-overlay";
 import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-options";

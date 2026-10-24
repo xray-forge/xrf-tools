@@ -1,6 +1,5 @@
+import { EBuildKind } from "@xrf/ipc/types/xrf-build-info";
 import { Maybe } from "@xrf/types";
-
-import { EBuildKind } from "@/core/ipc/types/xrf-build-info";
 
 /**
  * Kind of build the running binary is, as it told the document before any script ran.

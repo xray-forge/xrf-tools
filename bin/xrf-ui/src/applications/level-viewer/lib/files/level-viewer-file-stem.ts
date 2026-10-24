@@ -1,7 +1,7 @@
+import { LevelSource } from "@xrf/ipc/types/xrf-app-levels";
 import { getPathName } from "@xrf/path";
 import { Maybe, Nullable } from "@xrf/types";
 
-import { LevelSource } from "@/core/ipc/types/xrf-app-levels";
 import { describeLevelSource } from "@/core/level/lib/source/level-source";
 
 /**

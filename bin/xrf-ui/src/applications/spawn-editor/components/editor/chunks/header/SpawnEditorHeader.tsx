@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
+import { SpawnHeaderChunk } from "@xrf/ipc/types/xrf-spawn";
 import { ReactElement } from "react";
 
 import { SpawnChunkView } from "@/applications/spawn-editor/components/editor/chunks/SpawnChunkView";
-import { SpawnHeaderChunk } from "@/core/ipc/types/xrf-spawn";
 import { SpawnFileService } from "@/core/spawn/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

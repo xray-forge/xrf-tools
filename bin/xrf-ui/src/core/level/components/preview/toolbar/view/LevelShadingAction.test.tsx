@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { ERenderAntialiasing, ERenderDlssAvailability, RenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderAntialiasing, ERenderDlssAvailability, RenderAntialiasing } from "@/core/ipc/types/xrf-renderer";
 import { LevelShadingAction } from "@/core/level/components/preview/toolbar/view/LevelShadingAction";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";

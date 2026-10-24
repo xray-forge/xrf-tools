@@ -1,4 +1,5 @@
-import { ERenderLightModel, RenderLightModel } from "@/core/ipc/types/xrf-renderer";
+import { ERenderLightModel, RenderLightModel } from "@xrf/ipc/types/xrf-renderer";
+
 import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 const RENDER_LIGHT_MODEL_DESCRIPTIONS: Readonly<Record<RenderLightModel, string>> = {

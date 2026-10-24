@@ -1,8 +1,7 @@
+import { LevelStart } from "@xrf/ipc/types/xrf-app-levels";
+import { VisualBounds } from "@xrf/ipc/types/xrf-visual";
 import { IPoint3, toPoint3 } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
-
-import { LevelStart } from "@/core/ipc/types/xrf-app-levels";
-import { VisualBounds } from "@/core/ipc/types/xrf-visual";
 
 /** Where the camera stands and what it looks at, both in renderer space. */
 export interface ILevelViewpoint {

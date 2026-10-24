@@ -1,11 +1,11 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, RefObservable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
+import { WorldLevelProblems } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 
 import { KeybindCommand } from "@/core/commands";
-import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
-import { WorldLevelProblems } from "@/core/ipc/types/xrf-world";
 import { CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND } from "@/core/level/commands";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { TLevelPick } from "@/core/level/lib/pick/level-pick";

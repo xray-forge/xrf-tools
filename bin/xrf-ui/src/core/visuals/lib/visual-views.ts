@@ -1,14 +1,8 @@
+import { Vector3d } from "@xrf/ipc/types/xrf-math";
+import { VisualBone, VisualBounds, VisualDescription, VisualDrawRange, VisualSubmesh } from "@xrf/ipc/types/xrf-visual";
 import { saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
-import { Vector3d } from "@/core/ipc/types/xrf-math";
-import {
-  VisualBone,
-  VisualBounds,
-  VisualDescription,
-  VisualDrawRange,
-  VisualSubmesh,
-} from "@/core/ipc/types/xrf-visual";
 import { IRenderSurfaceDraw, OPAQUE_RENDER_SURFACE_DRAW } from "@/core/render/lib/surface/render-surface-draw";
 
 /** Framing values a camera needs, derived from what the model actually spans. */

@@ -1,5 +1,3 @@
-import { Nullable } from "@xrf/types";
-
 import {
   ArchivePatchChange,
   ArchivePatchClass,
@@ -7,7 +5,8 @@ import {
   ArchivePatchResult,
   ArchivePatchSide,
   EArchivePatchOrigin,
-} from "@/core/ipc/types/xrf-pack";
+} from "@xrf/ipc/types/xrf-pack";
+import { Nullable } from "@xrf/types";
 
 /** One classified entry, flattened into the columns a findings grid shows. */
 export interface IPatchChangeRow {

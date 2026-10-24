@@ -1,11 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
+import { ELevelAnnotationKind } from "@xrf/ipc/types/xrf-app-levels";
 
 import {
   DEFAULT_LEVEL_MAP_ANNOTATIONS,
   toLevelMapAnnotationsWith,
   toMapAnnotationsRequest,
 } from "@/applications/level-viewer/lib/map/level-map-annotations";
-import { ELevelAnnotationKind } from "@/core/ipc/types/xrf-app-levels";
 
 describe("level map annotations", () => {
   it("draws none by default", () => {

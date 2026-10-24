@@ -1,16 +1,15 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
+import { mockInvoke, setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EquipmentSpriteMetadata } from "@xrf/ipc/types/xrf-app-sprite-equipment";
+import { PackEquipmentResult } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 
 import { AssetService } from "@/core/assets/services";
-import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app-sprite-equipment";
-import { PackEquipmentResult } from "@/core/ipc/types/xrf-texture";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockEquipmentSpriteMetadata, mockEquipmentSpriteOpen } from "@/fixtures/mocks/sprite.mocks";
-import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { SpriteEquipmentEditorService } from "./editor.service";

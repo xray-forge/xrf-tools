@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { AsyncState } from "@xrf/async";
+import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ExportSourceContent } from "@xrf/ipc/types/xrf-export";
 
-import { ExportSourceContent } from "@/core/ipc/types/xrf-export";
 import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { ExportsService } from "./exports.service";

@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
+import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
+import { VisualMotionDependency } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect, useState } from "react";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
-import { VisualMotionDependency } from "@/core/ipc/types/xrf-visual";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { cn } from "@/core/theme/class-name";

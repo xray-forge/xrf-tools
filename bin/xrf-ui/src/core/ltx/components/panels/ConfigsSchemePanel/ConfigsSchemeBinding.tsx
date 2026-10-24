@@ -1,7 +1,6 @@
 import { Chip, Stack, Typography } from "@mui/material";
+import { LtxSectionSchemeReport } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { ReactElement } from "react";
-
-import { LtxSectionSchemeReport } from "@/core/ipc/types/xrf-ltx-inspect";
 
 interface IConfigsSchemeBindingProps {
   report: LtxSectionSchemeReport;

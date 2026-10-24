@@ -1,7 +1,6 @@
 import { formatNumber } from "@xrf/format";
+import { ArchiveAnmDescription } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
-
-import { ArchiveAnmDescription } from "@/core/ipc/types/xrf-app-archives";
 
 /** How far a keyed reach may sit from the declared end before it is worth saying so, in seconds. */
 const REACH_TOLERANCE: number = 0.05;

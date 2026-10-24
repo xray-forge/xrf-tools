@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, RenderResult } from "@testing-library/react";
+import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { JobDescription } from "@xrf/ipc/types/xrf-app-core";
 
-import { JobDescription } from "@/core/ipc/types/xrf-app-core";
 import { JobsPanel } from "@/core/shell/panel/jobs/JobsPanel";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 const LIST_COMMAND: string = "plugin:jobs|list";

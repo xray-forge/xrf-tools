@@ -1,4 +1,4 @@
-import { ArchiveSpawnSection } from "@/core/ipc/types/xrf-app-archives";
+import { ArchiveSpawnSection } from "@xrf/ipc/types/xrf-app-archives";
 
 import { formatChunkId } from "../ArchiveDescriptionPreview.utils";
 

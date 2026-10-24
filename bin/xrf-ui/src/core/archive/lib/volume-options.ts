@@ -1,4 +1,4 @@
-import { EArchiveVolumeExtension } from "@/core/ipc/types/xrf-pack";
+import { EArchiveVolumeExtension } from "@xrf/ipc/types/xrf-pack";
 
 /**
  * The extension a volume actually carries, mirroring `ArchiveVolumeExtension::as_str`.

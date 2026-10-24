@@ -1,8 +1,8 @@
 import { GridColDef, GridRowId } from "@mui/x-data-grid";
+import { GraphVertex } from "@xrf/ipc/types/xrf-spawn";
 import { ReactElement, useMemo } from "react";
 
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
-import { GraphVertex } from "@/core/ipc/types/xrf-spawn";
 import { textColumn, tupleColumn, vectorColumn } from "@/core/ui/table";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

@@ -1,9 +1,9 @@
+import { XrayMaterialDescriptor } from "@xrf/ipc/types/xrf-material";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
+import { VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 
 import { getLocatedAsset } from "@/core/assets/lib/resolution";
-import { XrayMaterialDescriptor } from "@/core/ipc/types/xrf-material";
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
-import { VisualTextureDependency } from "@/core/ipc/types/xrf-visual";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 
 /** A submesh whose material binds a bump pair, and the two located files the renderer reads for it. */

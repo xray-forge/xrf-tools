@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
+import { resetMockInvoke, setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { TextureCatalogMode } from "@xrf/ipc/types/xrf-app-textures";
 
-import { TextureCatalogMode } from "@/core/ipc/types/xrf-app-textures";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   MOCK_TEXTURE,
   mockTextureCatalog,

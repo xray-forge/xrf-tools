@@ -2,6 +2,7 @@ import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
 import { default as ReportProblemIcon } from "@mui/icons-material/ReportProblem";
 import { useInjection } from "@wirestate/react";
+import { DialogFinding, DialogProjectDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
@@ -9,7 +10,6 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { describeRoots } from "@/core/assets/lib";
-import { DialogFinding, DialogProjectDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";

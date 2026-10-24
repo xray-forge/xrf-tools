@@ -1,8 +1,7 @@
-import { createRoots } from "@/core/assets/lib";
-import { AssetTextureDescriptor } from "@/core/ipc/types/xrf-app-core";
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
-import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
-import { Vector3d } from "@/core/ipc/types/xrf-math";
+import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
+import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
+import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
+import { Vector3d } from "@xrf/ipc/types/xrf-math";
 import {
   VisualBone,
   VisualBounds,
@@ -13,7 +12,9 @@ import {
   VisualSubmesh,
   VisualTextureDependency,
   VisualTransform,
-} from "@/core/ipc/types/xrf-visual";
+} from "@xrf/ipc/types/xrf-visual";
+
+import { createRoots } from "@/core/assets/lib";
 import { MOTION_DEFAULT_SPEED, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 

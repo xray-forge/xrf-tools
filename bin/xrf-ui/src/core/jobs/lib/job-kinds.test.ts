@@ -1,14 +1,16 @@
 import { readdirSync } from "fs";
-import { resolve } from "path";
+import { dirname, resolve } from "path";
 
 import { describe, expect, it, jest } from "@jest/globals";
-
-import { ARCHIVES_JOB_PACK } from "@/core/ipc/types/xrf-app-archives";
+import { ARCHIVES_JOB_PACK } from "@xrf/ipc/types/xrf-app-archives";
 
 import { findJobKind, JOB_KINDS } from "./job-kinds";
 
-/** Where the generated type modules are, one per crate, each app crate declaring its own domain's job kinds. */
-const TYPES_DIRECTORY: string = resolve(__dirname, "../../ipc/types");
+/**
+ * Where the generated type modules are, one per crate, each app crate declaring its own domain's job kinds: found
+ * through one of them, as the package exports it.
+ */
+const TYPES_DIRECTORY: string = dirname(require.resolve("@xrf/ipc/types/xrf-app-core"));
 
 /**
  * Every job kind the backend declares, as the generated `<DOMAIN>_JOB_<OPERATION>` constants of the app crates' modules

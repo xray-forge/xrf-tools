@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, fireEvent, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { CommandBus, Container, QueryBus } from "@wirestate/core";
+import { setMockInvokeResponses } from "@xrf/ipc/testing";
 import { ReactElement, ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -15,7 +16,6 @@ import {
   PANEL_SET_ACTIVE_COMMAND,
 } from "@/core/shell/panel/panel-messages";
 import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

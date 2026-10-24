@@ -3,14 +3,14 @@ import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wir
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { visualsCommands } from "@xrf/ipc/commands/visuals";
+import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
+import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { createRoots } from "@/core/assets/lib";
-import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app-core";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { IVisualPose } from "@/core/visuals/lib/render";

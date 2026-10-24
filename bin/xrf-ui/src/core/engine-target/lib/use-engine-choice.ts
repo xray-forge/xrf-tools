@@ -1,9 +1,9 @@
+import { assetsCommands } from "@xrf/ipc/commands/assets";
+import { EXrayEngineChoice, XrayEngineResolution } from "@xrf/ipc/types/xrf-engine-target";
 import { Nullable } from "@xrf/types";
 import { useCallback, useEffect, useState } from "react";
 
 import { createRoots } from "@/core/assets/lib/roots";
-import { assetsCommands } from "@/core/ipc/commands/assets";
-import { EXrayEngineChoice, XrayEngineResolution } from "@/core/ipc/types/xrf-engine-target";
 
 import { readEngineChoice, writeEngineChoice } from "./engine-choice-memory";
 

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
 import { ESyntaxToken } from "@xrf/syntax";
 import { Nullable } from "@xrf/types";
 
-import { ArchiveReadResult } from "@/core/ipc/types/xrf-archive";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { setVirtualizationEnabled } from "@/fixtures/utils/virtualization";
 

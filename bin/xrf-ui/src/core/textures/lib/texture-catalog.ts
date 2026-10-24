@@ -1,5 +1,3 @@
-import { Nullable, Optional } from "@xrf/types";
-
 import {
   ETextureRole,
   TextureBadges,
@@ -8,8 +6,9 @@ import {
   TextureMaterialSummary,
   TextureRole,
   TextureSource,
-} from "@/core/ipc/types/xrf-app-textures";
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
+} from "@xrf/ipc/types/xrf-app-textures";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
+import { Nullable, Optional } from "@xrf/types";
 
 /**
  * What a texture turns out to be, once its listing and its descriptor have been joined.

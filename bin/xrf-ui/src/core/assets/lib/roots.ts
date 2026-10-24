@@ -1,6 +1,5 @@
+import { XrayMountMode, XrayRoot, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
-
-import { XrayMountMode, XrayRoot, XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * How a path the user picked is read.

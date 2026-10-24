@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
 import { LevelRendererAppliedSection } from "@/applications/level-viewer/components/panels/LevelRendererPanel/LevelRendererAppliedSection";
@@ -11,7 +12,6 @@ import { LevelRendererParticlesSection } from "@/applications/level-viewer/compo
 import { LevelRendererResidentSection } from "@/applications/level-viewer/components/panels/LevelRendererPanel/LevelRendererResidentSection";
 import { LevelRendererStaticDrawsSection } from "@/applications/level-viewer/components/panels/LevelRendererPanel/LevelRendererStaticDrawsSection";
 import { LevelRendererTexturesSection } from "@/applications/level-viewer/components/panels/LevelRendererPanel/LevelRendererTexturesSection";
-import { RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";

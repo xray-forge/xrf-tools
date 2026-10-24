@@ -1,7 +1,7 @@
+import { ERenderSelectionTarget, RenderSelection } from "@xrf/ipc/types/xrf-renderer";
 import { parseHexColor, toRawColor } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
-import { ERenderSelectionTarget, RenderSelection } from "@/core/ipc/types/xrf-renderer";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { VIEWPORT_INK } from "@/core/theme/tokens";
 

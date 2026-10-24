@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
-
+import { mockInvoke } from "@xrf/ipc/testing";
 import {
   ERenderAntialiasing,
   ERenderLightLevel,
   ERenderScale,
   ERenderTextureFiltering,
   RENDER_DEFAULT_PERIODIC_BUDGET,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+
 import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/render-feature-choice";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
 import { RenderSettingsService } from "@/core/render/services/render-settings/render-settings.service";
 import { SettingsService } from "@/core/settings/services/settings";
 import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
-import { mockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 
 /** How often the renderer was told its settings. */

@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
+import { ERenderWaterMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { ERenderWaterMode } from "@/core/ipc/types/xrf-renderer";
 import { RENDER_REFLECTION_LIMITS } from "@/core/render/lib/features/render-reflection-choices";
 import { IRenderFeatureSettings, TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings";

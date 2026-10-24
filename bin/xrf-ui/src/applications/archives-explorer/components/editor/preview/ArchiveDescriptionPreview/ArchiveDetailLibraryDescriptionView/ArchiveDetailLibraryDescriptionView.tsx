@@ -1,6 +1,6 @@
+import { ArchiveDetailLibraryDescription } from "@xrf/ipc/types/xrf-app-archives";
 import { ReactElement } from "react";
 
-import { ArchiveDetailLibraryDescription } from "@/core/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";

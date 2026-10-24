@@ -1,13 +1,12 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { mockInvoke, resetMockInvoke, setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { TextureDescription, TextureVocabulary } from "@xrf/ipc/types/xrf-app-textures";
 
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
-import { TextureDescription, TextureVocabulary } from "@/core/ipc/types/xrf-app-textures";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   MOCK_TEXTURE,
   mockTextureDescription,

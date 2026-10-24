@@ -1,11 +1,11 @@
-import { Nullable } from "@xrf/types";
-
 import {
   RenderBackendAvailability,
   RenderGpu,
   RenderGpuDescription,
   RenderLibraries,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+import { Nullable } from "@xrf/types";
+
 import {
   describeRenderBackend,
   describeRenderDrawing,

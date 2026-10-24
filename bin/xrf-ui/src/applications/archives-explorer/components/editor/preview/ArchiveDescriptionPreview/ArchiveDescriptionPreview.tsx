@@ -1,17 +1,17 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
 import { formatBytes } from "@xrf/format";
-import { assertExhaustive, Nullable } from "@xrf/types";
-import { ReactElement, useCallback } from "react";
-
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { TArchiveContent, useLastContent } from "@/core/archive/lib";
 import {
   ArchiveDescribeRefusal,
   ArchiveFileDescription,
   EArchiveDescribeRefusal,
   EArchiveFormatDescription,
-} from "@/core/ipc/types/xrf-app-archives";
+} from "@xrf/ipc/types/xrf-app-archives";
+import { assertExhaustive, Nullable } from "@xrf/types";
+import { ReactElement, useCallback } from "react";
+
+import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { BaseComponentProps } from "@/lib/dom/element-types";

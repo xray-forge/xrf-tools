@@ -3,16 +3,16 @@ import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx"
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { fetchBulk } from "@xrf/ipc";
+import { assetsBulkRoutes } from "@xrf/ipc/commands/assets-bulk";
+import { texturesCommands } from "@xrf/ipc/commands/textures";
+import { AssetSource } from "@xrf/ipc/types/xrf-app-core";
+import { ETextureSource, TextureDescription, TextureSource } from "@xrf/ipc/types/xrf-app-textures";
+import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { fetchBulk } from "@/core/ipc/bulk";
-import { assetsBulkRoutes } from "@/core/ipc/commands/assets-bulk";
-import { texturesCommands } from "@/core/ipc/commands/textures";
-import { AssetSource } from "@/core/ipc/types/xrf-app-core";
-import { ETextureSource, TextureDescription, TextureSource } from "@/core/ipc/types/xrf-app-textures";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /** A texture inspection and the search roots needed to repeat it. */

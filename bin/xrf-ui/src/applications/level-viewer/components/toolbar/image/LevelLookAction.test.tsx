@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { act, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { ERenderBloomMode, ERenderDisplayTransform, ERenderLightModel } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelLookAction } from "@/applications/level-viewer/components/toolbar/image/LevelLookAction";
-import { ERenderBloomMode, ERenderDisplayTransform, ERenderLightModel } from "@/core/ipc/types/xrf-renderer";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { clearLocalStorage } from "@/core/storage";
 import {

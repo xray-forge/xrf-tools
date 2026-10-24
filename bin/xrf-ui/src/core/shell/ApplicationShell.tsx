@@ -1,6 +1,6 @@
+import { useSessionChanges } from "@xrf/ipc/react";
 import { ReactElement, ReactNode } from "react";
 
-import { useSessionChanges } from "@/core/ipc/services/changes";
 import { KeybindsDispatcher } from "@/core/keybinds";
 import { SettingsDialog } from "@/core/settings/components/SettingsDialog";
 

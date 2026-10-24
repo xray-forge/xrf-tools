@@ -1,7 +1,6 @@
+import { ArchiveReadPolicy } from "@xrf/ipc/types/xrf-archive";
+import { EXrayExtension, XrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { getFoldedFileExtension } from "@xrf/path";
-
-import { ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
-import { EXrayExtension, XrayExtension } from "@/core/ipc/types/xrf-extension";
 
 import { IArchiveEntry } from "./entry";
 

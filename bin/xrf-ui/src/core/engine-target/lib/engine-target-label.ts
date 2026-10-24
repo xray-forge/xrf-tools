@@ -1,6 +1,5 @@
+import { XrayEngine, XrayEngineEvidence, XrayEngineResolution } from "@xrf/ipc/types/xrf-engine-target";
 import { Nullable } from "@xrf/types";
-
-import { XrayEngine, XrayEngineEvidence, XrayEngineResolution } from "@/core/ipc/types/xrf-engine-target";
 
 const ENGINE_LABELS: Record<XrayEngine, string> = {
   extended: "Extended",

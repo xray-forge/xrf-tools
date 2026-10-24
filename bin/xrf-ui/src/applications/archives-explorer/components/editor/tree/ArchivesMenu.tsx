@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { XrayAssetContainer } from "@xrf/ipc/types/xrf-vfs";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
@@ -6,7 +7,6 @@ import { ReactElement, useCallback, useEffect, useMemo } from "react";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveEntry, IArchiveTreeItem, parseTree, toArchiveSelectionItemId } from "@/core/archive/lib";
 import { isLooseContainer } from "@/core/assets/lib";
-import { XrayAssetContainer } from "@/core/ipc/types/xrf-vfs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
 import { EmptyListing } from "@/core/ui/layout";

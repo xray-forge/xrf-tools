@@ -1,9 +1,9 @@
 import { Chip } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import {
   describeBumpDeclaration,
   describeBumpInput,

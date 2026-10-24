@@ -1,4 +1,4 @@
-import { ERenderOverlay, RenderOverlay, RenderOverlaySegment } from "@/core/ipc/types/xrf-renderer";
+import { ERenderOverlay, RenderOverlay, RenderOverlaySegment } from "@xrf/ipc/types/xrf-renderer";
 
 /**
  * @param segments - Line segments with a colour at every end.

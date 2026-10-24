@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { ABSENT_VALUE } from "@xrf/format";
+import { VisualDescription } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { VisualDescription } from "@/core/ipc/types/xrf-visual";
 import {
   EditorPanel,
   EditorPanelEmpty,

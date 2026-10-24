@@ -1,4 +1,5 @@
-import { LtxAnchoredFinding, LtxFindingKind } from "@/core/ipc/types/xrf-ltx-inspect";
+import { LtxAnchoredFinding, LtxFindingKind } from "@xrf/ipc/types/xrf-ltx-inspect";
+
 import { ECodeLineMark } from "@/core/ui/code/code-line";
 
 /**

@@ -1,6 +1,4 @@
 import { useInjection } from "@wirestate/react";
-import { ReactElement } from "react";
-
 import {
   ERenderLightLevel,
   ERenderLightModel,
@@ -8,7 +6,9 @@ import {
   RenderLightLevel,
   RenderLightModel,
   RenderTonemapMode,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+import { ReactElement } from "react";
+
 import {
   explainRenderDisplayTransform,
   RENDER_DISPLAY_TRANSFORM_OPTIONS,

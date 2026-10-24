@@ -1,4 +1,5 @@
-import { DialogProjectMode } from "@/core/ipc/types/xrf-dialog";
+import { DialogProjectMode } from "@xrf/ipc/types/xrf-dialog";
+
 import { IChoiceFormRowOption } from "@/core/ui/form";
 
 export const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<DialogProjectMode>> = [

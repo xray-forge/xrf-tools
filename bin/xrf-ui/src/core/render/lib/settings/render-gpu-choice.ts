@@ -1,6 +1,5 @@
+import { RenderBackendAvailability, RenderGpu, RenderGpuDescription } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
-
-import { RenderBackendAvailability, RenderGpu, RenderGpuDescription } from "@/core/ipc/types/xrf-renderer";
 
 /** Row value for the automatic GPU: the graphics API's high-performance GPU. */
 export const RENDER_GPU_AUTO = "auto";

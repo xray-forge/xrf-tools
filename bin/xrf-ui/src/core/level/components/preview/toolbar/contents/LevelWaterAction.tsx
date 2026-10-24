@@ -2,9 +2,9 @@ import { default as WaterIcon } from "@mui/icons-material/Water";
 import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatPercent } from "@xrf/format";
+import { ERenderWaterMode, RenderWaterMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement, useCallback } from "react";
 
-import { ERenderWaterMode, RenderWaterMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";

@@ -1,10 +1,10 @@
+import { texturesCommands } from "@xrf/ipc/commands/textures";
+import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
+import { RenderViewOptions } from "@xrf/ipc/types/xrf-renderer";
+import { EWorldCamera, WorldCamera } from "@xrf/ipc/types/xrf-world";
 import { parseHexColor, toRawColor } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
-import { texturesCommands } from "@/core/ipc/commands/textures";
-import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
-import { RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
-import { EWorldCamera, WorldCamera } from "@/core/ipc/types/xrf-world";
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
 import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-options";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";

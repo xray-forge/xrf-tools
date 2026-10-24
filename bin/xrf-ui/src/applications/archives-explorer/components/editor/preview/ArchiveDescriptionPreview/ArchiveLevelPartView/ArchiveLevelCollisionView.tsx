@@ -1,7 +1,7 @@
 import { formatBytes, formatCount } from "@xrf/format";
+import { ArchiveLevelCollisionDescription } from "@xrf/ipc/types/xrf-app-archives";
 import { ReactElement } from "react";
 
-import { ArchiveLevelCollisionDescription } from "@/core/ipc/types/xrf-app-archives";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

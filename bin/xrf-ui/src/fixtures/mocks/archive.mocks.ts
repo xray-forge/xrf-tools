@@ -1,5 +1,3 @@
-import { Nullable } from "@xrf/types";
-
 import {
   ArchiveAnimationChannel,
   ArchiveAnmDescription,
@@ -56,18 +54,19 @@ import {
   EArchiveOmfTarget,
   EArchiveReferenceStatus,
   EArchiveSubject,
-} from "@/core/ipc/types/xrf-app-archives";
+} from "@xrf/ipc/types/xrf-app-archives";
 import {
   ArchiveDescriptor,
   ArchiveFileDescriptor,
   ArchiveProject,
   ArchiveReadPolicy,
   ArchiveSharedPayload,
-} from "@/core/ipc/types/xrf-archive";
-import { ArchiveStatistics } from "@/core/ipc/types/xrf-archive-stats";
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
-import { ArchivePackResult } from "@/core/ipc/types/xrf-pack";
-import { EXrayAssetContainer, XrayAssetContainer, XrayPathCollision } from "@/core/ipc/types/xrf-vfs";
+} from "@xrf/ipc/types/xrf-archive";
+import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
+import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
+import { ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
+import { EXrayAssetContainer, XrayAssetContainer, XrayPathCollision } from "@xrf/ipc/types/xrf-vfs";
+import { Nullable } from "@xrf/types";
 
 /**
  * Creates the complete result of a packing run.

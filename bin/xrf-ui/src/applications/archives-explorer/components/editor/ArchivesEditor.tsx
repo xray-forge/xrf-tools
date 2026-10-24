@@ -6,6 +6,7 @@ import { Alert } from "@mui/material";
 import { CommandBus } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
 import { formatBytes } from "@xrf/format";
+import { ArchiveSubject, EArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
@@ -17,7 +18,6 @@ import {
   getSubjectSourceCount,
   IArchiveEntry,
 } from "@/core/archive/lib";
-import { ArchiveSubject, EArchiveSubject } from "@/core/ipc/types/xrf-app-archives";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";

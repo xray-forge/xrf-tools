@@ -1,12 +1,12 @@
-import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
-
 import {
   EXraySurfaceDeclaration,
   EXraySurfaceDraw,
   XraySurfaceDeclaration,
   XraySurfaceDescriptor,
   XraySurfaceDraw,
-} from "@/core/ipc/types/xrf-material";
+} from "@xrf/ipc/types/xrf-material";
+import { assertExhaustive, Maybe, Nullable } from "@xrf/types";
+
 import { ERenderDraw } from "@/core/render/lib/surface/render-draw";
 
 /**

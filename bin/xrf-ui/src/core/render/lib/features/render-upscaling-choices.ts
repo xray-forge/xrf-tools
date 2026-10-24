@@ -1,6 +1,4 @@
 import { formatNumber } from "@xrf/format";
-import { Nullable } from "@xrf/types";
-
 import {
   ERenderDlssAvailability,
   ERenderDlssPreset,
@@ -10,7 +8,9 @@ import {
   RenderDlssPreset,
   RenderRayReconstructionPreset,
   RenderScale,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+import { Nullable } from "@xrf/types";
+
 import { IRenderLimits, toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";

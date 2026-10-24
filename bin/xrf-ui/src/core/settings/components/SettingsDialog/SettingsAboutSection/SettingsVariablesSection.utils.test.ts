@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { EnvFlagReading } from "@/core/ipc/types/xrf-env-flags";
+import { EnvFlagReading } from "@xrf/ipc/types/xrf-env-flags";
 
 import { describeVariables } from "./SettingsVariablesSection.utils";
 

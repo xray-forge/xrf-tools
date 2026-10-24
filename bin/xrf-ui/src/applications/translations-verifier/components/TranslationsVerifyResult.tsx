@@ -1,7 +1,7 @@
 import { GridColDef } from "@mui/x-data-grid";
+import { TranslationVerifyLanguageSummary, TranslationVerifyResult } from "@xrf/ipc/types/xrf-translation";
 import { ReactElement, useMemo } from "react";
 
-import { TranslationVerifyLanguageSummary, TranslationVerifyResult } from "@/core/ipc/types/xrf-translation";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { identifierColumn, pathColumn } from "@/core/ui/table/columns";

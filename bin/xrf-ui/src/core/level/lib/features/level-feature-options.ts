@@ -1,12 +1,12 @@
-import { isRecord, Nullable } from "@xrf/types";
-
 import {
   ERenderAntialiasing,
   RenderAntialiasing,
   RenderDisplayTransform,
   RenderLightLevel,
   RenderLightModel,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+import { isRecord, Nullable } from "@xrf/types";
+
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { toRenderFeatureChoice } from "@/core/render/lib/settings/render-feature-choice";
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";

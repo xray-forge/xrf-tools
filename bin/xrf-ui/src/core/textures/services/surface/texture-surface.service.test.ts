@@ -1,11 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isObservableProp } from "@wirestate/mobx";
+import { listMockBulkCalls, resetMockInvoke, setMockBulkResponses } from "@xrf/ipc/testing";
+import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 
-import { TextureDescription } from "@/core/ipc/types/xrf-app-textures";
 import { EMPTY_TEXTURE_SURFACE } from "@/core/textures/lib/texture-surface";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
-import { listMockBulkCalls, setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
-import { resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { muteConsole } from "@/fixtures/utils/console";

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { ArchivePatchChange, ArchivePatchResult } from "@/core/ipc/types/xrf-pack";
+import { ArchivePatchChange, ArchivePatchResult } from "@xrf/ipc/types/xrf-pack";
 
 import { IPatchChangeRow, toPatchChangeRows } from "./patch-change-rows";
 

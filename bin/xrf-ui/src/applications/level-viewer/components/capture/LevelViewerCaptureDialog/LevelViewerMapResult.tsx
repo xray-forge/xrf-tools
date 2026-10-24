@@ -1,6 +1,8 @@
 import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
+import { ELevelAnnotationKind, EMapExportAnnotations } from "@xrf/ipc/types/xrf-app-levels";
+import { ETextureEncodingFormat } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback } from "react";
 
@@ -20,8 +22,6 @@ import {
   toLevelMapExportSize,
 } from "@/applications/level-viewer/lib/map/level-map-export";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
-import { ELevelAnnotationKind, EMapExportAnnotations } from "@/core/ipc/types/xrf-app-levels";
-import { ETextureEncodingFormat } from "@/core/ipc/types/xrf-texture";
 import { cn } from "@/core/theme/class-name";
 import { CheckboxFormRow, ChoiceFormRow } from "@/core/ui/form";
 import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";

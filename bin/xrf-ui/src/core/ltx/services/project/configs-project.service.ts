@@ -3,15 +3,15 @@ import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { configsCommands } from "@xrf/ipc/commands/configs";
+import { Session, SessionScopeService } from "@xrf/ipc/session";
+import { ConfigsProjectDescriptor } from "@xrf/ipc/types/xrf-app-configs";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { LtxInventoryFile } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { configsCommands } from "@/core/ipc/commands/configs";
-import { Session, SessionScopeService } from "@/core/ipc/session";
-import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app-configs";
-import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
-import { LtxInventoryFile } from "@/core/ipc/types/xrf-ltx-inspect";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**

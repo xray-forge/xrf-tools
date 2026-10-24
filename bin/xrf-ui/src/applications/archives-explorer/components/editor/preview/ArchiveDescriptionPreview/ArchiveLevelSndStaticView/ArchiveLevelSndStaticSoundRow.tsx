@@ -1,8 +1,8 @@
 import { Typography } from "@mui/material";
+import { ArchiveDescribeScope, ArchiveLevelSndStaticSound } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { ArchiveDescribeScope, ArchiveLevelSndStaticSound } from "@/core/ipc/types/xrf-app-archives";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

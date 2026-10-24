@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
+import { InvokeHandler, mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { ESpawnChunkKind, SpawnChunk, SpawnSessionDescriptor } from "@xrf/ipc/types/xrf-app-spawn";
+import { SpawnGraphsChunk } from "@xrf/ipc/types/xrf-spawn";
 
-import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
-import { ESpawnChunkKind, SpawnChunk, SpawnSessionDescriptor } from "@/core/ipc/types/xrf-app-spawn";
-import { SpawnGraphsChunk } from "@/core/ipc/types/xrf-spawn";
 import { SpawnFileService } from "@/core/spawn/services/spawn-file.service";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockSpawnFile, mockSpawnSession } from "@/fixtures/mocks/spawn.mocks";
-import { InvokeHandler, mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 import { cancelFlow } from "@/lib/mobx";

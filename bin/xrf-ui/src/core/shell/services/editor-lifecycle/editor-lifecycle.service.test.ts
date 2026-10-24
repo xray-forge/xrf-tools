@@ -1,9 +1,9 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
+import { mockInvoke } from "@xrf/ipc/testing";
+import { ELeaveDecision } from "@xrf/ipc/types/xrf-app-system";
 
-import { ELeaveDecision } from "@/core/ipc/types/xrf-app-system";
 import { EMIT_NOTIFICATION_EVENT } from "@/core/notifications/lib";
-import { mockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 

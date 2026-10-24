@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERenderOverlay, RenderOverlaySegment } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderOverlay, RenderOverlaySegment } from "@/core/ipc/types/xrf-renderer";
 import { toNativeLines } from "@/core/render/lib/native/native-overlay";
 
 const SEGMENT: RenderOverlaySegment = {

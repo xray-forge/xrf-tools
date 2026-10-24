@@ -2,9 +2,10 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container, Injectable } from "@wirestate/core";
+import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
-import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app-levels";
-import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
@@ -15,7 +16,6 @@ import { LevelViewportService } from "@/core/level/services/level-viewport.servi
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockVisualTransform } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

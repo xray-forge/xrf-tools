@@ -1,7 +1,6 @@
 import { formatNumber } from "@xrf/format";
+import { ArchiveGameMtlMaterial } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
-
-import { ArchiveGameMtlMaterial } from "@/core/ipc/types/xrf-app-archives";
 
 /**
  * What a material does to what meets it.

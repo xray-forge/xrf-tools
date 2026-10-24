@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
+import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { CONFIGS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-configs";
+import { LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx";
 
 import { VerifierService } from "@/applications/configs-verifier/services/verifier";
-import { CONFIGS_JOB_VERIFY } from "@/core/ipc/types/xrf-app-configs";
-import { LtxProjectVerifyResult } from "@/core/ipc/types/xrf-ltx";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT } from "@/core/notifications/lib";
-import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 

@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
+import { DialogDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { DialogsService, IDialogSelection } from "@/applications/dialogs-editor/services/dialogs";
-import { DialogDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";

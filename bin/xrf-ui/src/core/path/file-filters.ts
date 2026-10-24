@@ -1,6 +1,5 @@
 import { DialogFilter } from "@tauri-apps/plugin-dialog";
-
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
+import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 
 /** A packed `all.spawn`, or any other spawn file. */
 export const SPAWN_FILE_FILTERS: Array<DialogFilter> = [{ name: "spawn", extensions: [EXrayExtension.SPAWN] }];

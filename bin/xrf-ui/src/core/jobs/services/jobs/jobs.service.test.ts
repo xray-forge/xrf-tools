@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
-import { Nullable } from "@xrf/types";
-
-import { ARCHIVES_JOB_PACK, ARCHIVES_JOB_UNPACK } from "@/core/ipc/types/xrf-app-archives";
-import { JobProgress } from "@/core/ipc/types/xrf-job";
-import { IJobNotice, IJobOutcome, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
-import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import {
   emitMockChannelMessage,
   getMockChannels,
   resetMockChannels,
   resetMockInvoke,
   setMockInvokeResponses,
-} from "@/fixtures/mocks/tauri.mocks";
+} from "@xrf/ipc/testing";
+import { ARCHIVES_JOB_PACK, ARCHIVES_JOB_UNPACK } from "@xrf/ipc/types/xrf-app-archives";
+import { JobProgress } from "@xrf/ipc/types/xrf-job";
+import { Nullable } from "@xrf/types";
+
+import { IJobNotice, IJobOutcome, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 

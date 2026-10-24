@@ -1,18 +1,14 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
-
-import {
-  ERenderDebugView,
-  ERenderLightLevel,
-  ERenderOverlay,
-  ERenderSurfaceColor,
-} from "@/core/ipc/types/xrf-renderer";
+import { mockInvoke, resetMockChannels, resetMockInvoke } from "@xrf/ipc/testing";
+import { ERenderDebugView, ERenderLightLevel, ERenderOverlay, ERenderSurfaceColor } from "@xrf/ipc/types/xrf-renderer";
 import {
   EWorldCameraCommand,
   EWorldViewportEvent,
   EWorldWeatherPlay,
   EWorldWeatherTransition,
-} from "@/core/ipc/types/xrf-world";
+} from "@xrf/ipc/types/xrf-world";
+
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
@@ -20,7 +16,6 @@ import { ERenderResolution } from "@/core/render/lib/settings/render-resolution"
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { SettingsService } from "@/core/settings/services/settings";
 import { clearLocalStorage } from "@/core/storage";
-import { mockInvoke, resetMockChannels, resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 import { mockWorldWeatherReport } from "@/fixtures/mocks/weather.mocks";
 import {
   emitViewportEvent,

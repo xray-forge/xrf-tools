@@ -1,10 +1,10 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { gamedataCommands } from "@xrf/ipc/commands/gamedata";
+import { GAMEDATA_JOB_VERIFY, GamedataVerifySummary } from "@xrf/ipc/types/xrf-app-gamedata";
 import { Logger } from "@xrf/logging";
 
 import { describeGamedataVerifyOutcome } from "@/applications/gamedata-verifier/lib/describe-gamedata-verify-outcome";
 import { IGamedataVerification } from "@/applications/gamedata-verifier/lib/gamedata-verification";
-import { gamedataCommands } from "@/core/ipc/commands/gamedata";
-import { GAMEDATA_JOB_VERIFY, GamedataVerifySummary } from "@/core/ipc/types/xrf-app-gamedata";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";

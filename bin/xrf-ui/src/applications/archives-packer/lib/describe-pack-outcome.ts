@@ -1,4 +1,5 @@
-import { ArchivePackConfig, ArchivePackResult } from "@/core/ipc/types/xrf-pack";
+import { ArchivePackConfig, ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
+
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 

@@ -1,9 +1,9 @@
 import { MenuItem, Stack, TextField } from "@mui/material";
+import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement, useId } from "react";
 
 import { ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/lib";
-import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@/core/ipc/types/xrf-pack";
 import { FormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

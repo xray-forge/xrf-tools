@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
+import { ERenderParallaxMode, RenderParallaxMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { ERenderParallaxMode, RenderParallaxMode } from "@/core/ipc/types/xrf-renderer";
 import {
   explainRenderParallaxMode,
   formatParallaxHeight,

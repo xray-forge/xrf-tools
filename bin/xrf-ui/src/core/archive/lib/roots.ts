@@ -1,6 +1,7 @@
+import { ArchiveProject } from "@xrf/ipc/types/xrf-archive";
+import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
+
 import { createRoot } from "@/core/assets/lib";
-import { ArchiveProject } from "@/core/ipc/types/xrf-archive";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * The roots an archived model is opened in by the visuals viewer, which is the project's own tree.

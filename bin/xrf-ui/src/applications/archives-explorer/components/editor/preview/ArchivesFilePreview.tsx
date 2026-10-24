@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
 import { formatBytes } from "@xrf/format";
+import { ArchiveReadPolicy } from "@xrf/ipc/types/xrf-archive";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
@@ -13,7 +14,6 @@ import {
   TArchiveContent,
   TArchiveSelection,
 } from "@/core/archive/lib";
-import { ArchiveReadPolicy } from "@/core/ipc/types/xrf-archive";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";

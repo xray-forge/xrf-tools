@@ -2,11 +2,11 @@ import { default as WaterDropIcon } from "@mui/icons-material/WaterDrop";
 import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatPercent, formatSeconds } from "@xrf/format";
+import { ThunderboltCollection } from "@xrf/ipc/types/xrf-environment";
+import { ERenderRainDropsMode, ERenderRainMode } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
 import { LevelWeatherCollectionSelect } from "@/applications/level-viewer/components/weather/LevelWeatherCollectionSelect";
-import { ThunderboltCollection } from "@/core/ipc/types/xrf-environment";
-import { ERenderRainDropsMode, ERenderRainMode } from "@/core/ipc/types/xrf-renderer";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";

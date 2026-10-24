@@ -1,8 +1,8 @@
 import { LinearProgress, Typography } from "@mui/material";
+import { ProgressLevel } from "@xrf/ipc/types/xrf-job";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { ProgressLevel } from "@/core/ipc/types/xrf-job";
 import { formatProgressCounts, toProgressPercent } from "@/core/jobs/lib/progress-format";
 
 export interface IJobProgressLevelProps {

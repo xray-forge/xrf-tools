@@ -1,4 +1,4 @@
-import { RenderFrameRate } from "@/core/ipc/types/xrf-renderer";
+import { RenderFrameRate } from "@xrf/ipc/types/xrf-renderer";
 
 /**
  * How often a viewport is allowed to redraw: a cap in frames a second, or none.

@@ -1,7 +1,7 @@
 import { MenuItem, Select } from "@mui/material";
+import { ETranslationLanguage } from "@xrf/ipc/types/xrf-translation";
 import { ReactElement } from "react";
 
-import { ETranslationLanguage } from "@/core/ipc/types/xrf-translation";
 import { TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES_WITH_ALL } from "@/core/translations/translations.config";
 import { FormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";

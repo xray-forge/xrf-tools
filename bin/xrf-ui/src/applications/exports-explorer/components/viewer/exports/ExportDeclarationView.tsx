@@ -1,8 +1,8 @@
 import { default as DataObjectIcon } from "@mui/icons-material/DataObject";
 import { Chip, Typography } from "@mui/material";
+import { ExportDescriptor } from "@xrf/ipc/types/xrf-export";
 import { ReactElement } from "react";
 
-import { ExportDescriptor } from "@/core/ipc/types/xrf-export";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

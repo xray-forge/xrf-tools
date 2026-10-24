@@ -1,7 +1,8 @@
-import { ConfigsProjectDescriptor } from "@/core/ipc/types/xrf-app-configs";
+import { mockInvoke } from "@xrf/ipc/testing";
+import { ConfigsProjectDescriptor } from "@xrf/ipc/types/xrf-app-configs";
+
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockInvoke } from "@/fixtures/mocks/tauri.mocks";
 
 /**
  * Puts an open configs project on a service the way a reload restores one, answering only that restore, so the

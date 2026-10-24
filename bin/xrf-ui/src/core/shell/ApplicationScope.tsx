@@ -1,9 +1,9 @@
 import { Container, ContainerConfig } from "@wirestate/core";
 import { ContainerProvider, useContainer } from "@wirestate/react";
+import { SESSION_TOOL, SessionScopeService } from "@xrf/ipc/session";
 import { Nullable } from "@xrf/types";
 import { Fragment, ReactElement, ReactNode, use, useMemo } from "react";
 
-import { SESSION_TOOL, SessionScopeService } from "@/core/ipc/session";
 import { IApplicationDescriptor } from "@/core/routing/application";
 
 interface IApplicationScopeProps {

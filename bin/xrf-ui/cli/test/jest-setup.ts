@@ -2,10 +2,10 @@ import "@testing-library/jest-dom";
 
 import { afterEach, jest } from "@jest/globals";
 import { cleanup } from "@testing-library/react";
+import { resetMockBulk, resetMockInvoke, resetMockIsTauri } from "@xrf/ipc/testing";
 
 import { resetMockBuildKind } from "@/fixtures/mocks/build-kind.mocks";
-import { resetMockBulk } from "@/fixtures/mocks/bulk.mocks";
-import { resetMockAppWindow, resetMockInvoke, resetMockIsTauri } from "@/fixtures/mocks/tauri.mocks";
+import { resetMockAppWindow } from "@/fixtures/mocks/tauri.mocks";
 import { mockLogger } from "@/fixtures/setup/mock-logger";
 import { mockTauri } from "@/fixtures/setup/mock-tauri";
 import { mockTransport } from "@/fixtures/setup/mock-transport";

@@ -1,4 +1,4 @@
-import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 
 /**
  * One row of a level's shader table, as a reader asking how it is drawn needs it.

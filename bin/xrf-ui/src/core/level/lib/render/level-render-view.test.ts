@@ -1,12 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
-
 import {
   ERenderAntialiasing,
   ERenderDebugView,
   ERenderScale,
   ERenderSurfaceColor,
   RenderViewOptions,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+
 import { DEFAULT_LEVEL_LOD_OPTIONS } from "@/core/level/lib/lod/level-lod-options";
 import { OPENXRAY_LEVEL_LOOK } from "@/core/level/lib/look/level-look";
 import { ILevelViewOptionsInputs, toLevelViewOptions } from "@/core/level/lib/render/level-render-view";

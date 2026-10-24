@@ -1,11 +1,11 @@
 import { Button, Divider, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ABSENT_VALUE, formatBytes, formatDuration } from "@xrf/format";
+import { IIpcCommandMetrics, IIpcMetricsSnapshot } from "@xrf/ipc";
+import { IpcMetricsService } from "@xrf/ipc/session";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useState } from "react";
 
-import { IIpcCommandMetrics, IIpcMetricsSnapshot } from "@/core/ipc/metrics";
-import { IpcMetricsService } from "@/core/ipc/services/metrics";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";

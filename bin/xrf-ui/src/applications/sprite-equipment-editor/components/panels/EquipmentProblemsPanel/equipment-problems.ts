@@ -1,7 +1,7 @@
+import { EquipmentSpriteMetadata } from "@xrf/ipc/types/xrf-app-sprite-equipment";
+import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 
-import { EquipmentSpriteMetadata } from "@/core/ipc/types/xrf-app-sprite-equipment";
-import { EquipmentSlotOccupant } from "@/core/ipc/types/xrf-texture";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 import { IEquipmentLayout } from "@/core/sprite-equipment/lib";
 

@@ -3,22 +3,22 @@ import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
-import { Logger, Timer } from "@xrf/logging";
-import { Nullable } from "@xrf/types";
-
-import { createRoots, describeRoots } from "@/core/assets/lib";
-import { texturesCommands } from "@/core/ipc/commands/textures";
-import { toEnumMember } from "@/core/ipc/enumeration";
-import { Session, SessionScopeService } from "@/core/ipc/session";
-import { SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
+import { toEnumMember } from "@xrf/ipc";
+import { texturesCommands } from "@xrf/ipc/commands/textures";
+import { Session, SessionScopeService } from "@xrf/ipc/session";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
   ETextureCatalogMode,
   TextureBrowse,
   TextureCatalog,
   TextureMaterialSummary,
   TextureSource,
-} from "@/core/ipc/types/xrf-app-textures";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
+} from "@xrf/ipc/types/xrf-app-textures";
+import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
+import { Logger, Timer } from "@xrf/logging";
+import { Nullable } from "@xrf/types";
+
+import { createRoots, describeRoots } from "@/core/assets/lib";
 import { buildTextureNodes, ITextureNode } from "@/core/textures/lib/texture-catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";

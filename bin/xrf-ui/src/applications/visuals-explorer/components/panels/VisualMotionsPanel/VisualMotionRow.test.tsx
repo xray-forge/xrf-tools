@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { VisualMotionRow } from "./VisualMotionRow";

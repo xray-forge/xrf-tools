@@ -2,10 +2,10 @@ import { default as FolderIcon } from "@mui/icons-material/FolderOutlined";
 import { default as ArchiveIcon } from "@mui/icons-material/Inventory2Outlined";
 import { Chip, chipClasses, Typography } from "@mui/material";
 import { formatCount } from "@xrf/format";
+import { ArchiveResolutionSource, ArchiveResolutionVolume } from "@xrf/ipc/types/xrf-app-archives";
+import { EXraySourceKind } from "@xrf/ipc/types/xrf-vfs";
 import { ReactElement } from "react";
 
-import { ArchiveResolutionSource, ArchiveResolutionVolume } from "@/core/ipc/types/xrf-app-archives";
-import { EXraySourceKind } from "@/core/ipc/types/xrf-vfs";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

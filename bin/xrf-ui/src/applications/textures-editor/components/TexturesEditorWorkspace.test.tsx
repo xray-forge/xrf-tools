@@ -3,12 +3,7 @@ import { act, RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Binding, Container } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
-import { Nullable } from "@xrf/types";
-
-import { TEXTURES_EDITOR_APPLICATION } from "@/applications/textures-editor/application";
-import { ITextureBumpSources, TextureBumpService } from "@/applications/textures-editor/services/bump";
-import { TextureEditorService } from "@/applications/textures-editor/services/editor";
-import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
+import { InvokeMap, resetMockInvoke, setMockBulkResponses, setMockInvokeResponses } from "@xrf/ipc/testing";
 import {
   TextureDescription,
   TextureDescriptorForm,
@@ -16,11 +11,15 @@ import {
   TextureMakeBumpOutcome,
   TextureSaveOutcome,
   TexturesSaveRequest,
-} from "@/core/ipc/types/xrf-app-textures";
+} from "@xrf/ipc/types/xrf-app-textures";
+import { Nullable } from "@xrf/types";
+
+import { TEXTURES_EDITOR_APPLICATION } from "@/applications/textures-editor/application";
+import { ITextureBumpSources, TextureBumpService } from "@/applications/textures-editor/services/bump";
+import { TextureEditorService } from "@/applications/textures-editor/services/editor";
+import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { setMockBulkResponses } from "@/fixtures/mocks/bulk.mocks";
-import { InvokeMap, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import {
   MOCK_TEXTURE,
   mockTextureDescription,

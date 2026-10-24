@@ -2,6 +2,7 @@ import { default as UnarchiveIcon } from "@mui/icons-material/Unarchive";
 import { Button, Dialog, DialogActions, DialogContent, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
+import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
@@ -9,7 +10,6 @@ import { ReactElement, useCallback, useId } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getSubjectRoot, getSubjectSize } from "@/core/archive/lib";
-import { ArchiveSubject } from "@/core/ipc/types/xrf-app-archives";
 import { EApplicationId } from "@/core/routing/application";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";

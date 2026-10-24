@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { renderHook } from "@testing-library/react";
+import { mockInvoke, resetMockInvoke } from "@xrf/ipc/testing";
 
 import { useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
-import { mockInvoke, resetMockInvoke } from "@/fixtures/mocks/tauri.mocks";
 
 describe("useEngineChoice", () => {
   afterEach(() => {

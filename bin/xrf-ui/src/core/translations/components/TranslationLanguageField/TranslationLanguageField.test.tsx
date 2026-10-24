@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { ETranslationLanguage } from "@xrf/ipc/types/xrf-translation";
 
-import { ETranslationLanguage } from "@/core/ipc/types/xrf-translation";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { TranslationLanguageField } from "./TranslationLanguageField";

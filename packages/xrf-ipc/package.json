@@ -1,0 +1,65 @@
+{
+  "name": "@xrf/ipc",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "The desktop app's IPC: the generated command and type mirror, the counted invoke, raw and bulk clients, their metrics, the session protocol and its React hook.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./commands/*": "./src/commands/*.ts",
+    "./react": "./src/react/index.ts",
+    "./session": "./src/session/index.ts",
+    "./testing": "./src/testing/index.ts",
+    "./types/*": "./src/types/*.ts"
+  },
+  "imports": {
+    "#/*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "lint": "eslint . --max-warnings 0 --cache --cache-location target/eslint/cache.json --cache-strategy content",
+    "format": "prettier --write --ignore-path ../../.prettierignore \"**/*.(js|cjs|mjs|ts|md)\" && pnpm run lint --fix",
+    "generate:bindings": "cargo make --cwd ../.. generate-typescript",
+    "format:bindings": "eslint --config eslint.generated.config.mjs --no-cache --fix src/commands src/types && prettier --write --log-level warn \"src/commands/**/*.ts\" \"src/types/**/*.ts\""
+  },
+  "dependencies": {
+    "@xrf/async": "workspace:*",
+    "@xrf/errors": "workspace:*",
+    "@xrf/logging": "workspace:*",
+    "@xrf/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "@tauri-apps/api": "^2.12.4",
+    "@wirestate/core": "1.0.0",
+    "@wirestate/mobx": "1.0.0",
+    "@wirestate/react": "1.0.0",
+    "react": "^19.3.1"
+  },
+  "peerDependenciesMeta": {
+    "@wirestate/react": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@jest/globals": "catalog:",
+    "@swc/core": "catalog:",
+    "@swc/jest": "catalog:",
+    "@tauri-apps/api": "^2.12.4",
+    "@types/react": "^19.3.0",
+    "@typescript/native": "catalog:",
+    "@wirestate/core": "1.0.0",
+    "@wirestate/mobx": "1.0.0",
+    "@wirestate/react": "1.0.0",
+    "eslint": "catalog:",
+    "jest": "catalog:",
+    "mobx": "^6.16.1",
+    "prettier": "catalog:",
+    "react": "^19.3.1",
+    "typescript": "catalog:",
+    "@xrf/toolchain": "workspace:*"
+  }
+}

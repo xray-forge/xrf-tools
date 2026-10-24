@@ -1,13 +1,13 @@
 import { formatCount, formatNumber } from "@xrf/format";
-import { Nullable } from "@xrf/types";
-import { ReactElement } from "react";
-
 import {
   ERenderAntialiasing,
   ERenderBloomMode,
   RenderAppliedReport,
   RenderViewOptions,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+import { Nullable } from "@xrf/types";
+import { ReactElement } from "react";
+
 import {
   describeRenderAmbientOcclusionMethod,
   describeRenderAmbientOcclusionSearch,

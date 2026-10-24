@@ -1,7 +1,7 @@
 import { Chip, Stack } from "@mui/material";
+import { ArchivePackDirectory } from "@xrf/ipc/types/xrf-pack";
 import { ReactElement } from "react";
 
-import { ArchivePackDirectory } from "@/core/ipc/types/xrf-pack";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERenderSelectionTarget } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderSelectionTarget } from "@/core/ipc/types/xrf-renderer";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection";
 import { mockLevelSpawnObject } from "@/fixtures/mocks/level.mocks";

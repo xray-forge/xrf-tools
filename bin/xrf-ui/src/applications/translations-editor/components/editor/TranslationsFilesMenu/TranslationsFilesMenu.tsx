@@ -1,8 +1,8 @@
 import { default as CircleIcon } from "@mui/icons-material/Circle";
+import { TranslationFile } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { TranslationFile } from "@/core/ipc/types/xrf-translation";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";

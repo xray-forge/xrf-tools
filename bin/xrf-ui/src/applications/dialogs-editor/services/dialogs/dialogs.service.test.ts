@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { mockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { DialogDescriptor, DialogProjectDescriptor } from "@xrf/ipc/types/xrf-dialog";
 
 import { createRoots } from "@/core/assets/lib/roots";
-import { DialogDescriptor, DialogProjectDescriptor } from "@/core/ipc/types/xrf-dialog";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { DialogsService } from "./dialogs.service";

@@ -2,9 +2,10 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult, waitFor, within } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { AsyncState } from "@xrf/async";
+import { setMockInvokeResponses } from "@xrf/ipc/testing";
+import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
+import { ERenderTextureGroup, RenderLoadFailure } from "@xrf/ipc/types/xrf-renderer";
 
-import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
-import { ERenderTextureGroup, RenderLoadFailure } from "@/core/ipc/types/xrf-renderer";
 import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
@@ -16,7 +17,6 @@ import {
   mockSelectedLevelDescription,
 } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

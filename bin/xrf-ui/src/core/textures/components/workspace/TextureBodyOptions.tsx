@@ -1,9 +1,9 @@
 import { default as ViewQuiltIcon } from "@mui/icons-material/ViewQuilt";
 import { ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
+import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/ipc/types/xrf-app-textures";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ETexturePreviewMode, ITexturePreviewOptions, TEXTURE_TILING_STEPS } from "@/core/textures/lib/texture-preview";
 import { describeTextureSurfaceAlpha, describeTextureSurfaceShape } from "@/core/textures/lib/texture-surface";

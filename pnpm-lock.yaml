@@ -226,6 +226,9 @@ importers:
       '@xrf/format':
         specifier: workspace:*
         version: link:../../packages/xrf-format
+      '@xrf/ipc':
+        specifier: workspace:*
+        version: link:../../packages/xrf-ipc
       '@xrf/logging':
         specifier: workspace:*
         version: link:../../packages/xrf-logging
@@ -497,6 +500,70 @@ importers:
       prettier:
         specifier: 'catalog:'
         version: 3.9.10
+      typescript:
+        specifier: 'catalog:'
+        version: '@typescript/typescript6@6.0.2'
+
+  packages/xrf-ipc:
+    dependencies:
+      '@xrf/async':
+        specifier: workspace:*
+        version: link:../xrf-async
+      '@xrf/errors':
+        specifier: workspace:*
+        version: link:../xrf-errors
+      '@xrf/logging':
+        specifier: workspace:*
+        version: link:../xrf-logging
+      '@xrf/types':
+        specifier: workspace:*
+        version: link:../xrf-types
+    devDependencies:
+      '@jest/globals':
+        specifier: 'catalog:'
+        version: 30.5.2(supports-color@8.1.1)
+      '@swc/core':
+        specifier: 'catalog:'
+        version: 1.16.18(@swc/helpers@0.5.23)
+      '@swc/jest':
+        specifier: 'catalog:'
+        version: 0.2.39(@swc/core@1.16.18(@swc/helpers@0.5.23))
+      '@tauri-apps/api':
+        specifier: ^2.12.4
+        version: 2.12.4
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
+      '@typescript/native':
+        specifier: 'catalog:'
+        version: typescript@7.0.2
+      '@wirestate/core':
+        specifier: 1.0.0
+        version: 1.0.0
+      '@wirestate/mobx':
+        specifier: 1.0.0
+        version: 1.0.0(@wirestate/core@1.0.0)(mobx@6.16.1)
+      '@wirestate/react':
+        specifier: 1.0.0
+        version: 1.0.0(@wirestate/core@1.0.0)(react@19.3.1)
+      '@xrf/toolchain':
+        specifier: workspace:*
+        version: link:../../cli
+      eslint:
+        specifier: 'catalog:'
+        version: 10.12.0(jiti@2.7.0)(supports-color@8.1.1)
+      jest:
+        specifier: 'catalog:'
+        version: 30.5.2(@types/node@24.19.2)(babel-plugin-macros@3.1.0)(supports-color@8.1.1)
+      mobx:
+        specifier: ^6.16.1
+        version: 6.16.1
+      prettier:
+        specifier: 'catalog:'
+        version: 3.9.10
+      react:
+        specifier: ^19.3.1
+        version: 19.3.1
       typescript:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'

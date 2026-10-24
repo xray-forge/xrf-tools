@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
 import { LevelViewerListService } from "@/applications/level-viewer/services/list";
 import { createRoots } from "@/core/assets/lib";
-import { LevelEntry } from "@/core/ipc/types/xrf-app-levels";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
-import { resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 const ROOTS: XrayRoots = createRoots(["C:\\game\\db"]);

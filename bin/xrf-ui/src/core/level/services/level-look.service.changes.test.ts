@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { EventBus } from "@wirestate/core";
+import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
+import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@xrf/ipc/testing";
+import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
+import { LEVEL_CONSOLE_PART, LEVEL_SPAWN_PART, LevelConsoleDefaults } from "@xrf/ipc/types/xrf-app-levels";
 
-import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
-import { SessionChange } from "@/core/ipc/types/xrf-app-core";
-import { LEVEL_CONSOLE_PART, LEVEL_SPAWN_PART, LevelConsoleDefaults } from "@/core/ipc/types/xrf-app-levels";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 /** Console defaults setting only the sun's scale, which tells one read from the next. */

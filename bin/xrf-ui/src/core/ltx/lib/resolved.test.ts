@@ -1,13 +1,13 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
-
 import {
   ELtxResolvedFieldOrigin,
   LtxResolvedField,
   LtxResolvedFieldOrigin,
   LtxResolvedIndexEntry,
   LtxResolvedSection,
-} from "@/core/ipc/types/xrf-ltx-inspect";
+} from "@xrf/ipc/types/xrf-ltx-inspect";
+import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
+
 import { describeResolvedFieldOrigin, IResolvedLayout, toResolvedLayout } from "@/core/ltx/lib/resolved";
 import { ICodeLineSource } from "@/core/ui/code/code-line";
 

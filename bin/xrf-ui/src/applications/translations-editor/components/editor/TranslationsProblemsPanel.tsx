@@ -1,6 +1,6 @@
+import { TranslationFinding } from "@xrf/ipc/types/xrf-translation";
 import { ReactElement } from "react";
 
-import { TranslationFinding } from "@/core/ipc/types/xrf-translation";
 import { EditorProblemsPanel } from "@/core/shell/editor/EditorProblemsPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

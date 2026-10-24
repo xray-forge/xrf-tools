@@ -1,12 +1,12 @@
 import { Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { renderCommands } from "@xrf/ipc/commands/render";
+import { RenderLibraries } from "@xrf/ipc/types/xrf-renderer";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useState } from "react";
 
-import { renderCommands } from "@/core/ipc/commands/render";
-import { RenderLibraries } from "@/core/ipc/types/xrf-renderer";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { useMountEffect } from "@/lib/react";

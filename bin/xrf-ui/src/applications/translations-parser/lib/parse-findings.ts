@@ -1,5 +1,5 @@
-import { Finding } from "@/core/ipc/types/xrf-report";
-import { TranslationParseResult } from "@/core/ipc/types/xrf-translation";
+import { Finding } from "@xrf/ipc/types/xrf-report";
+import { TranslationParseResult } from "@xrf/ipc/types/xrf-translation";
 
 /**
  * @param result - What an import run read.

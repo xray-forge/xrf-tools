@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { WorldAmbientReport } from "@xrf/ipc/types/xrf-world";
 
-import { WorldAmbientReport } from "@/core/ipc/types/xrf-world";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { LevelWeatherAmbientSection } from "./LevelWeatherAmbientSection";

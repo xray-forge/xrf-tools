@@ -2,9 +2,9 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
+import { LtxResolvedIndex } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 
-import { LtxResolvedIndex } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsResolvedView } from "@/core/ltx/components/ConfigsDocumentView/ConfigsResolvedView";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";

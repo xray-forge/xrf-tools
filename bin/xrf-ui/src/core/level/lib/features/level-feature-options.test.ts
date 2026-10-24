@@ -1,5 +1,4 @@
 import { describe, expect, it } from "@jest/globals";
-
 import {
   ERenderAntialiasing,
   ERenderBloomMode,
@@ -15,7 +14,8 @@ import {
   ERenderReflectionMode,
   ERenderVolumetricMode,
   ERenderWaterMode,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+
 import {
   describeLevelFeatureToggle,
   ILevelFeatureOptions,

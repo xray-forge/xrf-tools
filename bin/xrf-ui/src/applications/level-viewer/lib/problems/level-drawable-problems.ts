@@ -1,7 +1,8 @@
+import { RenderLoadFailure } from "@xrf/ipc/types/xrf-renderer";
+import { EVisualSkipCause, SectorSkip } from "@xrf/ipc/types/xrf-visual";
+import { WorldSectorSkip } from "@xrf/ipc/types/xrf-world";
+
 import { ELevelProblemRule } from "@/applications/level-viewer/lib/problems/level-problem-rule";
-import { RenderLoadFailure } from "@/core/ipc/types/xrf-renderer";
-import { EVisualSkipCause, SectorSkip } from "@/core/ipc/types/xrf-visual";
-import { WorldSectorSkip } from "@/core/ipc/types/xrf-world";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 
 /**

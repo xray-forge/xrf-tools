@@ -1,4 +1,4 @@
-import { RenderPassCost } from "@/core/ipc/types/xrf-renderer";
+import { RenderPassCost } from "@xrf/ipc/types/xrf-renderer";
 
 /** One row of a frame's GPU readout: a pass alone, or a run of a family's passes summed under the words they share. */
 export interface IRenderPassGroup {

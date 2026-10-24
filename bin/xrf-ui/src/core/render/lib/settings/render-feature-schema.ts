@@ -29,7 +29,8 @@ import {
   RENDER_MAX_CONTACT_SHADOW_LIGHTS,
   RENDER_MAX_SHADOW_CASCADES,
   RENDER_MAX_SHADOW_FILTER,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import {
   ERenderSettingKind,

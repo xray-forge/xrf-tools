@@ -1,4 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
+import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
 
 import {
   listLevelSpawnGroupIds,
@@ -7,7 +8,6 @@ import {
   toLevelSpawnObjectId,
   toLevelSpawnTree,
 } from "@/applications/level-viewer/lib/spawn/level-spawn-tree";
-import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app-levels";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { mockLevelSpawnObject } from "@/fixtures/mocks/level.mocks";
 

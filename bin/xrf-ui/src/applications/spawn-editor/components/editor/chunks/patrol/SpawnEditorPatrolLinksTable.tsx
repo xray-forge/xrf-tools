@@ -1,9 +1,9 @@
 import { GridColDef, GridRowId } from "@mui/x-data-grid";
+import { Patrol, PatrolLink } from "@xrf/ipc/types/xrf-spawn";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
-import { Patrol, PatrolLink } from "@/core/ipc/types/xrf-spawn";
 import { identifierColumn, textColumn } from "@/core/ui/table";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { TranslationFile, TranslationProjectDescriptor } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -7,7 +8,6 @@ import {
   useTranslationValidation,
 } from "@/applications/translations-editor/lib/use-translation-validation";
 import { TranslationsService } from "@/applications/translations-editor/services/translations";
-import { TranslationFile, TranslationProjectDescriptor } from "@/core/ipc/types/xrf-translation";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 

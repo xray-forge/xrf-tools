@@ -1,7 +1,7 @@
+import { EXraySurfaceDeclaration, XraySurfaceDeclaration, XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Nullable } from "@xrf/types";
 
 import { ELevelProblemRule } from "@/applications/level-viewer/lib/problems/level-problem-rule";
-import { EXraySurfaceDeclaration, XraySurfaceDeclaration, XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 
 /**

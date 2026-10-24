@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { ERenderBackend, RenderBackendAvailability } from "@xrf/ipc/types/xrf-renderer";
 
-import { ERenderBackend, RenderBackendAvailability } from "@/core/ipc/types/xrf-renderer";
 import { RENDER_BACKEND_AUTO } from "@/core/render/lib/settings/render-backend-choice";
 
 import { describeGraphics } from "./SettingsGraphicsSection.utils";

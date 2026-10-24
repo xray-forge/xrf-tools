@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
 
-import { RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { describeLevelLoad } from "@/core/level/lib/load/level-load-progress";
 import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 

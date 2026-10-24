@@ -3,15 +3,15 @@ import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx"
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { visualsCommands } from "@xrf/ipc/commands/visuals";
+import { Session, SessionScopeService } from "@xrf/ipc/session";
+import { AssetSource, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
+import { RenderTextureReport } from "@xrf/ipc/types/xrf-renderer";
+import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { visualsCommands } from "@/core/ipc/commands/visuals";
-import { Session, SessionScopeService } from "@/core/ipc/session";
-import { AssetSource, SessionSnapshot } from "@/core/ipc/types/xrf-app-core";
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
-import { RenderTextureReport } from "@/core/ipc/types/xrf-renderer";
-import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { IRenderSurfaceDraw } from "@/core/render/lib/surface/render-surface-draw";
 import { IVisualRenderSource } from "@/core/visuals/lib/render/visual-render-source";
 import { IVisualBumpStatus, toLoadableBumps } from "@/core/visuals/lib/visual-bump";

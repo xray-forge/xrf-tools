@@ -1,11 +1,10 @@
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { levelsCommands } from "@xrf/ipc/commands/levels";
+import { LevelSpawnObjectDetails } from "@xrf/ipc/types/xrf-app-levels";
+import { XrayRevision } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 import { useEffect, useState } from "react";
-
-import { levelsCommands } from "@/core/ipc/commands/levels";
-import { LevelSpawnObjectDetails } from "@/core/ipc/types/xrf-app-levels";
-import { XrayRevision } from "@/core/ipc/types/xrf-vfs";
 
 /**
  * What the backend says of one spawned object beyond what the tree holds, read when it is chosen.

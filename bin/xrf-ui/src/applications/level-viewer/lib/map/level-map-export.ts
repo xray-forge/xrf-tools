@@ -1,9 +1,8 @@
+import { EMapExportAnnotations, MapExportFormat, MapExportRequest } from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
+import { RENDER_MAP_MOST_PIXELS } from "@xrf/ipc/types/xrf-renderer";
+import { ETextureEncodingFormat, ETextureEncodingQuality } from "@xrf/ipc/types/xrf-texture";
 import { assertExhaustive, Nullable } from "@xrf/types";
-
-import { EMapExportAnnotations, MapExportFormat, MapExportRequest } from "@/core/ipc/types/xrf-app-levels";
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
-import { RENDER_MAP_MOST_PIXELS } from "@/core/ipc/types/xrf-renderer";
-import { ETextureEncodingFormat, ETextureEncodingQuality } from "@/core/ipc/types/xrf-texture";
 
 import { LEVEL_MAP_ANNOTATIONS_EXTENSION } from "./level-map-annotations";
 

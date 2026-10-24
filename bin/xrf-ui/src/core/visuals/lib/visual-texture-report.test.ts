@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
+import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
+import { ERenderTextureGroup, ERenderTextureState, RenderTextureReport } from "@xrf/ipc/types/xrf-renderer";
 
-import { SelectedVisualDescription } from "@/core/ipc/types/xrf-app-visuals";
-import { ERenderTextureGroup, ERenderTextureState, RenderTextureReport } from "@/core/ipc/types/xrf-renderer";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { toVisualBumpStatuses, toVisualTextureStatuses } from "@/core/visuals/lib/visual-texture-report";
 import { mockMaterialDescriptor, mockSelectedVisual, mockTextureDependency } from "@/fixtures/mocks/visual.mocks";

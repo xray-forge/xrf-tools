@@ -1,11 +1,11 @@
 import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 import { transformError } from "@xrf/errors";
+import { systemCommands } from "@xrf/ipc/commands/system";
+import { ELeaveDecision } from "@xrf/ipc/types/xrf-app-system";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { systemCommands } from "@/core/ipc/commands/system";
-import { ELeaveDecision } from "@/core/ipc/types/xrf-app-system";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { APPLICATION_SOURCE } from "@/core/routing/application";
 

@@ -1,8 +1,7 @@
+import { WeatherDescriptor } from "@xrf/ipc/types/xrf-environment";
+import { Vector3d } from "@xrf/ipc/types/xrf-math";
 import { IPoint3, saturate, toDegrees, toDirection, toHeadingPitch, toPoint3, toRadians, TVector3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
-
-import { WeatherDescriptor } from "@/core/ipc/types/xrf-environment";
-import { Vector3d } from "@/core/ipc/types/xrf-math";
 
 /** What names a sky's irradiance cube after the sky's own reference. */
 const ENVIRONMENT_SUFFIX: string = "#small";

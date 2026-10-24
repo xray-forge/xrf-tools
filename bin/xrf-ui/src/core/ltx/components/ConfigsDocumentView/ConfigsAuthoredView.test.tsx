@@ -2,9 +2,9 @@ import { describe, expect, it } from "@jest/globals";
 import { act, RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
+import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
+import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 
-import { ConfigsDocument } from "@/core/ipc/types/xrf-app-configs";
-import { LtxAnchoredFinding } from "@/core/ipc/types/xrf-ltx-inspect";
 import { ConfigsAuthoredView } from "@/core/ltx/components/ConfigsDocumentView/ConfigsAuthoredView";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";

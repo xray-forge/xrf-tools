@@ -2,11 +2,11 @@ import { default as ListAltIcon } from "@mui/icons-material/ListAlt";
 import { default as RefreshIcon } from "@mui/icons-material/Refresh";
 import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { ExportDescriptor, ExportsProject } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
-import { ExportDescriptor, ExportsProject } from "@/core/ipc/types/xrf-export";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";

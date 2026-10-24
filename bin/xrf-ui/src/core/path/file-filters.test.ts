@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
+import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 
 import { toFormatFilters } from "./file-filters";
 

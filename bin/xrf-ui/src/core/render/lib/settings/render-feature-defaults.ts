@@ -19,7 +19,8 @@ import {
   ERenderTraceSize,
   ERenderVolumetricMode,
   ERenderWaterMode,
-} from "@/core/ipc/types/xrf-renderer";
+} from "@xrf/ipc/types/xrf-renderer";
+
 import {
   TRenderAmbientOcclusionGtaoSettings,
   TRenderAmbientOcclusionRtaoSettings,

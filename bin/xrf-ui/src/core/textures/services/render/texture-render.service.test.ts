@@ -2,16 +2,6 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
-
-import { ViewportEvent } from "@/core/ipc/types/xrf-app-render";
-import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@/core/ipc/types/xrf-app-textures";
-import { ERenderTextureState, ERenderViewportEvent, RenderViewOptions } from "@/core/ipc/types/xrf-renderer";
-import { EWorldCameraCommand } from "@/core/ipc/types/xrf-world";
-import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
-import { TextureRenderService } from "@/core/textures/services/render";
-import { TextureSelectionService } from "@/core/textures/services/selection";
-import { TextureViewService } from "@/core/textures/services/view";
-import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import {
   getMockChannels,
   MockChannel,
@@ -19,7 +9,17 @@ import {
   resetMockChannels,
   resetMockInvoke,
   setMockInvokeResponses,
-} from "@/fixtures/mocks/tauri.mocks";
+} from "@xrf/ipc/testing";
+import { ViewportEvent } from "@xrf/ipc/types/xrf-app-render";
+import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@xrf/ipc/types/xrf-app-textures";
+import { ERenderTextureState, ERenderViewportEvent, RenderViewOptions } from "@xrf/ipc/types/xrf-renderer";
+import { EWorldCameraCommand } from "@xrf/ipc/types/xrf-world";
+
+import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
+import { TextureRenderService } from "@/core/textures/services/render";
+import { TextureSelectionService } from "@/core/textures/services/selection";
+import { TextureViewService } from "@/core/textures/services/view";
+import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 

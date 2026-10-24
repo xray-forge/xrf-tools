@@ -1,13 +1,13 @@
 import { EventBus, inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
+import { archivesCommands } from "@xrf/ipc/commands/archives";
+import { ARCHIVES_JOB_PACK } from "@xrf/ipc/types/xrf-app-archives";
+import { ArchivePackConfig, ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
 import { Logger } from "@xrf/logging";
 
 import { describePackOutcome } from "@/applications/archives-packer/lib/describe-pack-outcome";
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { ArchiveConfigEditorService } from "@/core/archive/services/config-editor";
-import { archivesCommands } from "@/core/ipc/commands/archives";
-import { ARCHIVES_JOB_PACK } from "@/core/ipc/types/xrf-app-archives";
-import { ArchivePackConfig, ArchivePackResult } from "@/core/ipc/types/xrf-pack";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";

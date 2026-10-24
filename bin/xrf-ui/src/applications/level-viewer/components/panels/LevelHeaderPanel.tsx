@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
+import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { SelectedLevelDescription } from "@/core/ipc/types/xrf-app-levels";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import {
   EditorPanel,

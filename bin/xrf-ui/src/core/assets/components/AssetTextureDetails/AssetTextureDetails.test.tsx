@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 
-import { XrayAsset } from "@/core/ipc/types/xrf-vfs";
 import { mockTextureDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
