@@ -9,6 +9,7 @@ import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/texture/level-textu
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import {
+  mockLevelPartResponses,
   mockLevelSpawnObject,
   mockLevelTextureReference,
   mockSectorOutline,
@@ -35,13 +36,11 @@ async function renderProblems({
   unreadable,
   description = AsyncState.ready<void>(null),
 }: IRenderProblemsOptions): Promise<RenderResult> {
-  const level = mockSelectedLevelDescription({
-    sectors: [mockSectorOutline({ sector: 0 })],
-    textures: [mockLevelTextureReference("stone", isPresent)],
-  });
+  const level = mockSelectedLevelDescription({ sectors: [mockSectorOutline({ sector: 0 })] });
 
   setMockInvokeResponses({
     ["plugin:levels|open_level"]: mockSessionResponse(level),
+    ...mockLevelPartResponses({ textures: [mockLevelTextureReference("stone", isPresent)] }),
     // A spawn placing one object, or nothing drawn, which a clean level may well have.
     ["plugin:levels|open_spawn_objects"]: mockSessionResponse(
       unreadable ? { objects: [mockLevelSpawnObject()], visuals: [unreadable.name] } : { objects: [], visuals: [] }

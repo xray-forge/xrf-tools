@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 import { ELevelCaptureMode } from "@/applications/level-viewer/lib/capture/level-capture";
 import { ELevelMapArea, ELevelMapLook } from "@/applications/level-viewer/lib/map/level-map-capture";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
-import { ELevelAnnotationKind, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
+import { ELevelAnnotationKind, LevelMapDescription, SelectedLevelDescription } from "@/core/ipc/types/xrf-app";
 import { RenderCubeCapture, RenderMapCapture } from "@/core/ipc/types/xrf-renderer";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";
@@ -23,15 +23,18 @@ const ZATON: SelectedLevelDescription = mockSelectedLevelDescription({
     boundingBox: { min: { x: -700, y: -20, z: -700 }, max: { x: 700, y: 80, z: 700 } },
     boundingSphere: { center: { x: 0, y: 30, z: 0 }, radius: 990 },
   },
-  levelMap: { minX: -600, minZ: -615, maxX: 600, maxZ: 585, texture: "map\\map_zaton" },
 });
 
+const ZATON_MAP: LevelMapDescription = { minX: -600, minZ: -615, maxX: 600, maxZ: 585, texture: "map\\map_zaton" };
+
 function mockCapture(
-  level: Nullable<SelectedLevelDescription> = ZATON
+  level: Nullable<SelectedLevelDescription> = ZATON,
+  levelMap: Nullable<LevelMapDescription> = level ? ZATON_MAP : null
 ): ILevelViewContainerDescriptor & { service: LevelViewerCaptureService } {
   const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer([LevelViewerCaptureService]);
 
   jest.spyOn(LevelViewerCaptureService.prototype, "level", "get").mockReturnValue(level);
+  jest.spyOn(LevelViewerCaptureService.prototype, "levelMap", "get").mockReturnValue(levelMap);
 
   return { ...descriptor, service: descriptor.container.get(LevelViewerCaptureService) };
 }
@@ -74,7 +77,7 @@ describe("LevelViewerCaptureService", () => {
   });
 
   it("opens on the level's box, engine space, where it lays no map", () => {
-    const { service } = mockCapture({ ...ZATON, levelMap: null });
+    const { service } = mockCapture(ZATON, null);
 
     service.open();
 

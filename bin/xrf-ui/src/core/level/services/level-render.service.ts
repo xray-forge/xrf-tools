@@ -43,7 +43,7 @@ import { toLevelCameraAt, toLevelViewOptions } from "@/core/level/lib/render/lev
 import { toLevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
 import { toLevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { ELevelShading, toShownLevelShading } from "@/core/level/lib/view/level-shading";
-import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { ILevelScene, LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
@@ -80,8 +80,10 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   private opening: number = 0;
   /** The scene the level open is drawn as, once the renderer has named it: only its load reports reveal the level. */
   private scene: Nullable<number> = null;
-  /** The scene shown before the level was read again, until the scene it streams as is ready; null otherwise. */
+  /** The scene shown before the level was streamed afresh, until the scene it streams as is ready; null otherwise. */
   private followed: Nullable<number> = null;
+  /** The scene of the open level last followed, whose next move the viewport waits for anew. */
+  private shownScene: Nullable<ILevelScene> = null;
   /** The last load report, of whichever scene the viewport drew. */
   private loaded: Nullable<RenderLoadReport> = null;
   /** Stops hearing the viewport's focus, while one is attached. */
@@ -321,6 +323,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   protected start(viewport: NativeViewport): Array<() => void> {
     return [
       this.loadService.followLevel(this.openLevel),
+      this.loadService.followScene(this.moveScene),
       reaction(() => this.viewService.cameraOptions, this.applyCamera),
       reaction(
         () => this.viewOptions,
@@ -495,13 +498,9 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   private openLevel(selected: Nullable<SessionSnapshot<SelectedLevelDescription>>): void {
     const level: Nullable<SelectedLevelDescription> = selected?.value ?? null;
 
+    // A level read again in its session stays shown: the scene it streams as moves apart (`moveScene`).
     if (selected && this.isShowing(selected.sessionId)) {
-      // A level read again for its map or start alone keeps its scene, and stays shown.
-      if (this.loadService.level.value?.isSceneStreamedAfresh) {
-        this.takeReadAgain(selected.value);
-      } else {
-        this.level = level;
-      }
+      this.level = level;
 
       return;
     }
@@ -509,9 +508,10 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.opening += 1;
     this.sessionId = selected?.sessionId ?? null;
     this.level = level;
+    this.shownScene = this.loadService.scene;
     this.scene = null;
     this.followed = null;
-    this.stand(toLevelStartViewpoint(level?.bounds ?? null, level?.start ?? null));
+    this.stand(toLevelStartViewpoint(level?.bounds ?? null, this.loadService.start.value));
     // Another level's surfaces and objects are numbered afresh.
     this.viewportService.notePicked(null);
     this.viewportService.conceal();
@@ -539,14 +539,20 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * Takes the level shown, read again in its session: the backend has moved its scene onto it already, so the camera
-   * stays where it has flown and the viewport is revealed again once the scene it streams as is ready.
+   * Follows the level shown into the scene the backend streams it as afresh, in its session: the camera stays where it
+   * has flown and the viewport is revealed again once that scene is ready. A scene of another level, or the one the
+   * level opened as, is the opening's own.
    *
-   * @param level - The level as it was read again.
+   * @param scene - The scene the open level streams as now.
    */
-  private takeReadAgain(level: SelectedLevelDescription): void {
+  @BoundAction()
+  private moveScene(scene: Nullable<ILevelScene>): void {
+    if (!scene || scene === this.shownScene || !this.isShowing(scene.sessionId)) {
+      return;
+    }
+
+    this.shownScene = scene;
     this.opening += 1;
-    this.level = level;
     this.followed = this.scene ?? this.followed;
     this.scene = null;
     // Its surfaces and objects are numbered afresh.
@@ -563,7 +569,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   @BoundAction()
   private applyCamera(camera: ILevelCameraOptions): void {
     const viewpoint: ILevelViewpoint =
-      this.viewpoint ?? toLevelStartViewpoint(this.level?.bounds ?? null, this.level?.start ?? null);
+      this.viewpoint ?? toLevelStartViewpoint(this.level?.bounds ?? null, this.loadService.start.value);
 
     this.viewport?.setCamera(this.toCamera(viewpoint, camera));
   }

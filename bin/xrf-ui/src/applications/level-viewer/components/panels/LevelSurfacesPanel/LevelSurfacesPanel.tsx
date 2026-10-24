@@ -54,7 +54,7 @@ export function LevelSurfacesPanel({
   const [filter, setFilter] = useState<string>("");
 
   const picked: Nullable<TLevelPick> = viewportService.picked;
-  const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = loadService.level.value?.selected.value.surfaces;
+  const surfaces: Nullable<ReadonlyArray<XraySurfaceDescriptor>> = loadService.surfaces.value;
 
   const named: Array<ILevelSurfaceSummary> = useMemo(
     () => listNamedLevelSurfaces(listLevelSurfaces(surfaces ?? [])),

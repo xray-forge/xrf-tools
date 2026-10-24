@@ -9,7 +9,7 @@ import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockLevelPartResponses, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { getMockChannels, MockChannel, mockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
@@ -52,9 +52,8 @@ export async function mockAttachedLevelRender(
   element: HTMLElement = document.createElement("div")
 ): Promise<{ container: Container; service: LevelRenderService }> {
   setMockInvokeResponses({
-    ["plugin:levels|get_level"]: mockSessionResponse(
-      mockSelectedLevelDescription({ start: { direction: { x: 0, y: 0, z: -1 }, position: { x: 10, y: 2, z: -5 } } })
-    ),
+    ["plugin:levels|get_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+    ...mockLevelPartResponses({ start: { direction: { x: 0, y: 0, z: -1 }, position: { x: 10, y: 2, z: -5 } } }),
     ["plugin:levels|read_level_weather"]: mockSessionResponse(mockLevelWeatherDescription()),
     ["plugin:render|attach_viewport"]: LEVEL_VIEWPORT,
     ["plugin:levels|show_level"]: LEVEL_SCENE,

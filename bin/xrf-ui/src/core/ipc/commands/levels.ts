@@ -9,9 +9,12 @@ import {
   CubeExportRequest,
   LevelConsoleDefaults,
   LevelEntry,
+  LevelMapDescription,
   LevelOpenRequest,
   LevelSpawnObjectDetails,
   LevelSpawnObjectsDescription,
+  LevelStart,
+  LevelTextureReference,
   LevelWeatherCycle,
   LevelWeatherDescription,
   MapAnnotationsRequest,
@@ -25,6 +28,7 @@ import {
 } from "@/core/ipc/types/xrf-app";
 import { WeatherCycleId } from "@/core/ipc/types/xrf-environment";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
+import { XraySurfaceDescriptor } from "@/core/ipc/types/xrf-material";
 import { RenderViewportId } from "@/core/ipc/types/xrf-renderer";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 
@@ -52,12 +56,30 @@ export const levelsCommands = {
    */
   describeConsoleDefaults: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelConsoleDefaults>>("plugin:levels|describe_console_defaults", { sessionId }),
+  /**
+   * Describe where the open level's map lies over it, as its `level.ltx` places it, or none where it places none; read
+   * again where a commit let it go.
+   */
+  describeLevelMap: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelMapDescription | null>>("plugin:levels|describe_level_map", { sessionId }),
   /** Describe one of the open level's spawned objects, by its place among them, as open_spawn_objects numbered it. */
   describeSpawnObject: (sessionId: SessionId, index: number) =>
     __TAURI_INVOKE<SessionSnapshot<LevelSpawnObjectDetails>>("plugin:levels|describe_spawn_object", {
       sessionId,
       index,
     }),
+  /** Describe where the open level opens, or none for a viewer to decide; decided again where a commit let it go. */
+  describeStart: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelStart | null>>("plugin:levels|describe_start", { sessionId }),
+  /**
+   * Describe how the renderer draws each entry of the open level's shader table, in its order, so the page names a
+   * surface by the shader id a packed surface carries; resolved again where a commit let it go.
+   */
+  describeSurfaces: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<Array<XraySurfaceDescriptor>>>("plugin:levels|describe_surfaces", { sessionId }),
+  /** Describe what every texture the open level's surfaces bind resolved to; resolved again where a commit let it go. */
+  describeTextures: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<Array<LevelTextureReference>>>("plugin:levels|describe_textures", { sessionId }),
   /** Write a cubemap of the screenshots folder again as a cube DDS, six TGAs or six PNGs; answers the files written. */
   exportCube: (request: CubeExportRequest) => __TAURI_INVOKE<Array<string>>("plugin:levels|export_cube", { request }),
   /**
@@ -72,7 +94,7 @@ export const levelsCommands = {
   findScreenshotPath: (name: string) => __TAURI_INVOKE<string>("plugin:levels|find_screenshot_path", { name }),
   /**
    * Restore the level a tool holds, the newest it opened, without reading the level again: as a page attaches to it, or
-   * reads it again after a commit; only where it starts is decided again, where a commit let it go.
+   * reads it again after a commit derived it anew. Its parts are read by their own queries.
    */
   getLevel: (scope: SessionScope) =>
     __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>("plugin:levels|get_level", { scope }),

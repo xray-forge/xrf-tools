@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { Maybe } from "@xrf/types";
+import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
 import { describeLevelDescriptionWait } from "@/applications/level-viewer/lib/load/level-description-wait";
@@ -26,7 +26,7 @@ export function LevelProblemsPanel({
   const loadService: LevelLoadService = useInjection(LevelLoadService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
-  const surfaces: Maybe<ReadonlyArray<XraySurfaceDescriptor>> = loadService.level.value?.selected.value.surfaces;
+  const surfaces: Nullable<ReadonlyArray<XraySurfaceDescriptor>> = loadService.surfaces.value;
   const spawn: ILevelSpawnReport = loadService.spawnReport;
   const report: ILevelTextureReport = viewportService.textureReport;
   const native: WorldLevelProblems = viewportService.problems;

@@ -1,16 +1,14 @@
 use serde::Serialize;
 use xrf_engine_target::XrayEngineResolution;
-use xrf_material::XraySurfaceDescriptor;
 use xrf_vfs::XrayRoots;
 use xrf_visual::{SectorOutline, VisualBounds};
 
 use crate::plugins::levels::state::level_source::LevelSource;
-use crate::plugins::levels::state::selection::level_map_description::LevelMapDescription;
-use crate::plugins::levels::state::selection::level_start::LevelStart;
 use crate::plugins::levels::state::selection::level_sun_description::LevelSunDescription;
-use crate::plugins::levels::state::selection::level_texture_reference::LevelTextureReference;
 
-/// What the viewer is showing, paired with where it came from.
+/// What the viewer is showing, paired with where it came from: the level itself, its root. What is read of it from
+/// other files - where it starts, its map, its surfaces and their textures - each has a query of its own
+/// (`describe_start`, `describe_level_map`, `describe_surfaces`, `describe_textures`), read again apart from it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -31,16 +29,6 @@ pub struct SelectedLevelDescription {
   /// The directional light the level names its sun, which is what its baked occlusion was computed for.
   pub sun: Option<LevelSunDescription>,
   pub sectors: Vec<SectorOutline>,
-  /// Where it opens, or `None` for a viewer to decide.
-  pub start: Option<LevelStart>,
-  /// Every texture the level's surfaces bind, resolved once so a sector arriving later is a lookup rather than a
-  /// search.
-  pub textures: Vec<LevelTextureReference>,
-  /// How the renderer draws each entry of the shader table, in its order, so a surface is cut out, blended and
-  /// detailed the way its blender says rather than drawn flat. Indexed by the shader id a packed surface carries.
-  pub surfaces: Vec<XraySurfaceDescriptor>,
   /// Extent every sector together covers, which is where a camera is framed from.
   pub bounds: Option<VisualBounds>,
-  /// Where the level's map lies over it, as its `level.ltx` places it; `None` where it places none.
-  pub level_map: Option<LevelMapDescription>,
 }

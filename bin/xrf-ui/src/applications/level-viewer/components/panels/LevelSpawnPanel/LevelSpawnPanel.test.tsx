@@ -2,13 +2,11 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container, Injectable } from "@wirestate/core";
-import { runInAction } from "@wirestate/mobx";
 
 import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@/core/ipc/types/xrf-app";
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
-import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn/level-spawn-report";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
@@ -267,7 +265,8 @@ describe("LevelSpawnPanel", () => {
 
     expect(view.getByText("The level's spawn places nothing the viewer draws.")).toBeInTheDocument();
 
-    act(() => runInAction(() => (service.spawnReport = EMPTY_LEVEL_SPAWN_REPORT)));
+    // Let go and not listed yet: what the report says before a spawn's first listing.
+    act(() => service.spawnObjects.detach());
 
     expect(view.getByText("Reading the level's spawn.")).toBeInTheDocument();
   });

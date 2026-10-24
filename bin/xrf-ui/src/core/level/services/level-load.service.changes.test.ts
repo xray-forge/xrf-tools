@@ -13,7 +13,11 @@ import {
   SessionSnapshot,
 } from "@/core/ipc/types/xrf-app";
 import { EXrayEngineChoice } from "@/core/ipc/types/xrf-engine-target";
-import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import {
+  mockLevelPartResponses,
+  mockLevelSpawnObject,
+  mockSelectedLevelDescription,
+} from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { InvokeHandler, mockInvoke, resetMockInvoke, setMockInvokeResponses } from "@/fixtures/mocks/tauri.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -63,6 +67,7 @@ async function openLevel(): Promise<IOpenedLevel> {
   setMockInvokeResponses({
     ["plugin:levels|get_level"]: null,
     ["plugin:levels|open_level"]: mockSessionResponse(mockSelectedLevelDescription()),
+    ...mockLevelPartResponses(),
     [LIST_SPAWN]: listedAt(1, 0),
   });
 
@@ -159,39 +164,37 @@ describe("LevelLoadService changes", () => {
     expect(service.spawn?.objects).toHaveLength(2);
   });
 
-  it("reads a level again for its map keeping its scene, and for its geometry streaming the scene afresh", async () => {
+  it("reads a part named stale alone, the level itself kept, and moves the scene for what its sectors are drawn from", async () => {
     const { container, service, sessionId } = await openLevel();
+    const reads: number = countReads();
+    const opened = service.scene;
 
-    expect(service.level.value?.isSceneStreamedAfresh).toBe(true);
+    expect(opened).toEqual({ revision: 0, sessionId });
 
     setMockInvokeResponses({
-      ["plugin:levels|get_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), sessionId, 1),
+      ["plugin:levels|describe_level_map"]: (args?: Record<string, unknown>) =>
+        mockSessionSnapshot({ maxX: 1, maxZ: 1, minX: 0, minZ: 0, texture: null }, args?.sessionId as string, 1),
     });
     notify(container, { sessionId, revision: 1, root: { kind: "kept" }, staleParts: [LEVEL_MAP_PART] });
     await flush();
 
-    expect(service.level.value?.selected.revision).toBe(1);
-    expect(service.level.value?.isSceneStreamedAfresh).toBe(false);
+    expect(service.levelMap.value?.maxX).toBe(1);
+    expect(countReads()).toBe(reads);
+    expect(service.scene).toBe(opened);
 
-    setMockInvokeResponses({
-      ["plugin:levels|get_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), sessionId, 2),
-    });
     notify(container, { sessionId, revision: 2, root: { kind: "kept" }, staleParts: [LEVEL_GEOMETRY_PART] });
     await flush();
 
-    expect(service.level.value?.selected.revision).toBe(2);
-    expect(service.level.value?.isSceneStreamedAfresh).toBe(true);
+    expect(service.scene).toEqual({ revision: 2, sessionId });
+    expect(countReads()).toBe(reads);
 
-    // A notice of a change shown already leaves the scene of the next read again as it is.
-    setMockInvokeResponses({
-      ["plugin:levels|get_level"]: () => mockSessionSnapshot(mockSelectedLevelDescription(), sessionId, 3),
-    });
+    // A notice of a change the scene streams as already moves it nowhere.
+    const moved = service.scene;
+
     notify(container, { sessionId, revision: 2, root: { kind: "kept" }, staleParts: [LEVEL_GEOMETRY_PART] });
-    notify(container, { sessionId, revision: 3, root: { kind: "kept" }, staleParts: [LEVEL_MAP_PART] });
     await flush();
 
-    expect(service.level.value?.selected.revision).toBe(3);
-    expect(service.level.value?.isSceneStreamedAfresh).toBe(false);
+    expect(service.scene).toBe(moved);
   });
 
   it("closes the level it held once another opens in its place", async () => {

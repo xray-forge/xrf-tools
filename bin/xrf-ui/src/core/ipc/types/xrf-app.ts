@@ -2279,7 +2279,11 @@ export type RuntimeSnapshot = {
   machine: MachineUsage;
 };
 
-/** What the viewer is showing, paired with where it came from. */
+/**
+ * What the viewer is showing, paired with where it came from: the level itself, its root. What is read of it from
+ * other files - where it starts, its map, its surfaces and their textures - each has a query of its own
+ * (`describe_start`, `describe_level_map`, `describe_surfaces`, `describe_textures`), read again apart from it.
+ */
 export type SelectedLevelDescription = {
   source: LevelSource;
   /** The roots the level and its textures were resolved in, centred on the level itself. */
@@ -2297,22 +2301,8 @@ export type SelectedLevelDescription = {
   /** The directional light the level names its sun, which is what its baked occlusion was computed for. */
   sun: LevelSunDescription | null;
   sectors: Array<SectorOutline>;
-  /** Where it opens, or `None` for a viewer to decide. */
-  start: LevelStart | null;
-  /**
-   * Every texture the level's surfaces bind, resolved once so a sector arriving later is a lookup rather than a
-   * search.
-   */
-  textures: Array<LevelTextureReference>;
-  /**
-   * How the renderer draws each entry of the shader table, in its order, so a surface is cut out, blended and
-   * detailed the way its blender says rather than drawn flat. Indexed by the shader id a packed surface carries.
-   */
-  surfaces: Array<XraySurfaceDescriptor>;
   /** Extent every sector together covers, which is where a camera is framed from. */
   bounds: VisualBounds | null;
-  /** Where the level's map lies over it, as its `level.ltx` places it; `None` where it places none. */
-  levelMap: LevelMapDescription | null;
 };
 
 /** What the viewer is showing, paired with where it came from. */
