@@ -20,7 +20,7 @@ const SELECTION_ARGUMENTS: [&str; 7] = [
   "exclude-directory",
   "exclude-directory-shallow",
   "exclude-extension",
-  "header",
+  ArchiveVolumeArguments::HEADER,
 ];
 
 #[derive(Default)]

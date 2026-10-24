@@ -1,15 +1,12 @@
-use std::marker::PhantomData;
 use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 
-use crate::commands::packed_file::PackedFileFormat;
-
 /// The arguments every packed-file command reads: what it reads (`-p`), what it writes (`-d`), and whether it may
 /// replace that (`-f`).
-pub struct PackedFileArguments<F>(PhantomData<F>);
+pub struct PackedFileArguments;
 
-impl<F: PackedFileFormat> PackedFileArguments<F> {
+impl PackedFileArguments {
   const PATH: &'static str = "path";
   const DEST: &'static str = "dest";
   const FORCE: &'static str = "force";

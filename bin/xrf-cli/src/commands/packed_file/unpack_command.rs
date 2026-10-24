@@ -26,19 +26,19 @@ impl<F: PackedFileFormat> GenericCommand for UnpackCommand<F> {
 
   fn declare(&self, command: Command) -> Command {
     let command: Command = command.about(format!("Unpack a {} into a folder of text files", F::FILE_NAME));
-    let command: Command = PackedFileArguments::<F>::declare_path(command, format!("Packed {}", F::FILE_NAME));
+    let command: Command = PackedFileArguments::declare_path(command, format!("Packed {}", F::FILE_NAME));
     let command: Command =
-      PackedFileArguments::<F>::declare_dest(command, format!("Folder the unpacked {} is written to", F::NOUN));
+      PackedFileArguments::declare_dest(command, format!("Folder the unpacked {} is written to", F::NOUN));
 
-    PackedFileArguments::<F>::declare_force(command)
+    PackedFileArguments::declare_force(command)
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let path: &PathBuf = PackedFileArguments::<F>::path_of(matches);
-    let dest: &PathBuf = PackedFileArguments::<F>::dest_of(matches);
+    let path: &PathBuf = PackedFileArguments::path_of(matches);
+    let dest: &PathBuf = PackedFileArguments::dest_of(matches);
     let output: OutputOptions = context.get_output().clone();
 
-    PackedFileDestination::require_free(dest, PackedFileArguments::<F>::is_forced(matches))?;
+    PackedFileDestination::require_free(dest, PackedFileArguments::is_forced(matches))?;
 
     xrf_output::info!(output, "Unpacking {} into {}", format_path(path), format_path(dest));
 
