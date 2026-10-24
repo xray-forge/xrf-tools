@@ -25,6 +25,12 @@ pub struct LevelGeomFile {
 }
 
 impl LevelGeomFile {
+  /// The file a level's render geometry is shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level.geom";
+
+  /// The file a level's fast-path geometry is shipped as, absent for a level with none.
+  pub const DETAIL_FILE_NAME: &'static str = "level.geomx";
+
   /// `fsL_VB` (`Common/LevelStructure.hpp`).
   pub const VERTEX_BUFFERS_CHUNK_ID: u32 = 9;
 
