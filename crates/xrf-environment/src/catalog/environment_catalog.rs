@@ -43,7 +43,7 @@ pub struct EnvironmentCatalog {
 
 impl EnvironmentCatalog {
   /// The findings read out of one config file, in the order they were found.
-  pub fn list_findings_of<'a>(&'a self, file: &'a str) -> impl Iterator<Item = &'a EnvironmentFinding> {
+  pub fn list_findings_of<'a>(&'a self, file: &str) -> impl Iterator<Item = &'a EnvironmentFinding> {
     self.findings.iter().filter(move |finding| finding.file == file)
   }
 

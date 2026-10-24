@@ -16,12 +16,12 @@ pub struct LevelStructureReport {
 
 impl LevelStructureReport {
   pub fn of(level: &LevelFile) -> Self {
-    let sectors: &[LevelSector] = level.sectors.as_ref().map_or(&[], |chunk| &chunk.sectors);
+    let sectors: &[LevelSector] = level.get_sectors();
 
     Self {
       has_sun: level.lights.as_ref().is_some_and(|chunk| chunk.get_sun().is_some()),
       lights: level.lights.as_ref().map_or(0, |chunk| chunk.lights.len()),
-      portals: level.portals.as_ref().map_or(0, |chunk| chunk.portals.len()),
+      portals: level.get_portals().len(),
       sector_portal_references: sectors.iter().map(|sector| sector.portals.len()).sum(),
       sectors: sectors.len(),
     }

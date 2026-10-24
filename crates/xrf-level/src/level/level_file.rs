@@ -9,6 +9,7 @@ use xrf_utils::format_path;
 
 use crate::level::dynamic_lights::level_dynamic_lights_chunk::LevelDynamicLightsChunk;
 use crate::level::level_header_chunk::LevelHeaderChunk;
+use crate::level::portals::level_portal::LevelPortal;
 use crate::level::portals::level_portals_chunk::LevelPortalsChunk;
 use crate::level::sectors::level_sector::LevelSector;
 use crate::level::sectors::level_sectors_chunk::LevelSectorsChunk;
@@ -51,6 +52,11 @@ impl LevelFile {
   /// The sectors the level names, none for a level built without them.
   pub fn get_sectors(&self) -> &[LevelSector] {
     self.sectors.as_ref().map_or(&[], |chunk| &chunk.sectors)
+  }
+
+  /// The portals the level names, none for a level built without them.
+  pub fn get_portals(&self) -> &[LevelPortal] {
+    self.portals.as_ref().map_or(&[], |chunk| &chunk.portals)
   }
 
   /// Read level file from provided path.

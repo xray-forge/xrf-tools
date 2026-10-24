@@ -57,8 +57,8 @@ impl GenericCommand for InfoCommand {
     xrf_output::info!(
       output,
       "{} sectors, {} portals, {} static lights{}",
-      level.sectors.as_ref().map_or(0, |it| it.sectors.len()),
-      level.portals.as_ref().map_or(0, |it| it.portals.len()),
+      level.get_sectors().len(),
+      level.get_portals().len(),
       level.lights.as_ref().map_or(0, |it| it.lights.len()),
       match level.lights.as_ref().and_then(|it| it.get_sun()) {
         Some(_) => ", one of them the sun",

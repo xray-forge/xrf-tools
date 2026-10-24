@@ -53,6 +53,8 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
     let visuals: Option<LevelVisualsChunk> = bundle
       .as_deref()
       .and_then(|chunks| self.read_visuals(chunks, &mut state));
+    // Either geometry file may be absent: the visuals that address it are then never drawn from, which leaves nothing to
+    // check rather than a range read wrong, and a fast path falls back to its visual's ordinary container.
     let mut geometry: Option<LevelGeomSource<_>> = self.open(Self::GEOMETRY_FILE, &mut state);
     let mut detail: Option<LevelGeomSource<_>> = self.open(Self::DETAIL_GEOMETRY_FILE, &mut state);
 
@@ -329,8 +331,8 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
       return;
     };
 
-    let sectors: &[LevelSector] = level.sectors.as_ref().map_or(&[], |chunk| &chunk.sectors);
-    let portals: &[LevelPortal] = level.portals.as_ref().map_or(&[], |chunk| &chunk.portals);
+    let sectors: &[LevelSector] = level.get_sectors();
+    let portals: &[LevelPortal] = level.get_portals();
     let visual_count: usize = visuals.map_or(0, |visuals| visuals.visuals.len());
 
     state.census.sectors = sectors.len();
@@ -487,7 +489,7 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
     }
   }
 
-  /// Opens one render geometry file, reporting a read failure rather than stopping the sweep.
+  /// Opens one render geometry file where the level ships it, reporting a read failure rather than stopping the sweep.
   fn open(&self, name: &str, state: &mut LevelGeometryFindings) -> Option<LevelGeomSource<InMemoryChunkDataSource>> {
     let bytes: Vec<u8> = self.read_file(name, "level.geometry.read", state)?;
 
@@ -527,7 +529,7 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
     }
   }
 
-  /// Reads one of the level's files, where the level not having it is ordinary, as `level.geomx` is.
+  /// Reads one of the level's files, where the level not having it is ordinary, as either geometry file is.
   fn read_file(&self, name: &str, rule: &str, state: &mut LevelGeometryFindings) -> Option<Vec<u8>> {
     match self.source.read(name) {
       Ok(Some(bytes)) => Some(bytes),
