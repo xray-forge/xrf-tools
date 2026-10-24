@@ -1,4 +1,4 @@
-import { XrfApplicationError } from "@/core/error/lib";
+import { XrfApplicationError } from "@xrf/errors";
 
 import { createMenuSections, IMenu, IMenuSection } from "./menu-descriptor";
 

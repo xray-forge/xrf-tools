@@ -1,9 +1,7 @@
 import { AnyCallable } from "@xrf/types";
 
-import { noop } from "@/lib/callbacks/noop";
-
-import { ILogger } from "./ILogger";
-import { PREFIX_TIMESTAMP_TAG } from "./prefix";
+import { PREFIX_TIMESTAMP_TAG } from "#/logger-prefix";
+import { ILogger } from "#/logger.types";
 
 /**
  * A lightweight wrapper around `console` methods that adds a styled prefix.
@@ -59,11 +57,11 @@ export class Logger implements ILogger {
       this.error = console.error.bind(console, ...tags);
       this.debug = console.debug.bind(console, ...tags);
     } else {
-      this.log = noop;
-      this.info = noop;
-      this.warn = noop;
-      this.error = noop;
-      this.debug = noop;
+      this.log = () => {};
+      this.info = () => {};
+      this.warn = () => {};
+      this.error = () => {};
+      this.debug = () => {};
     }
   }
 

@@ -1,5 +1,6 @@
 import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, Observable } from "@wirestate/mobx";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
@@ -10,7 +11,6 @@ import {
   setLocalStorageValue,
 } from "@/core/storage";
 import { isDevelopmentBuild } from "@/lib/env";
-import { Logger } from "@/lib/logging";
 
 /**
  * Application wide switches that are not tied to any one editor.

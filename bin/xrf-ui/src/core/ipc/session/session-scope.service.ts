@@ -1,9 +1,9 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { inject, Injectable, InjectionToken, OnDeactivation } from "@wirestate/core";
+import { Logger } from "@xrf/logging";
 
 import { sessionsCommands } from "@/core/ipc/commands/sessions";
 import { SessionId } from "@/core/ipc/types/xrf-app";
-import { Logger } from "@/lib/logging";
 
 import { IScopedSession } from "./session.types";
 

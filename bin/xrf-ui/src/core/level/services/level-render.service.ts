@@ -2,9 +2,10 @@ import { Channel } from "@tauri-apps/api/core";
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
+import { Logger } from "@xrf/logging";
 import { Maybe, Nullable } from "@xrf/types";
 
-import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { CaptureOutcome, SelectedLevelDescription, SessionSnapshot } from "@/core/ipc/types/xrf-app";
 import { JobProgress } from "@/core/ipc/types/xrf-job";
@@ -56,7 +57,6 @@ import { toNativeWorldToggles } from "@/core/render/lib/native/native-view-optio
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
-import { Logger } from "@/lib/logging";
 
 /**
  * Owns the native viewport the open level is drawn in, and everything said to it.

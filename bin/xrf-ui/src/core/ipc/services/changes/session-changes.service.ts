@@ -1,12 +1,12 @@
 import { Channel, isTauri } from "@tauri-apps/api/core";
 import { EventBus, inject, Injectable } from "@wirestate/core";
+import { transformError } from "@xrf/errors";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { transformError } from "@/core/error/lib";
 import { assetsCommands } from "@/core/ipc/commands/assets";
 import { SESSION_CHANGE_EVENT } from "@/core/ipc/session";
 import { AssetChangeEvent, SessionChange } from "@/core/ipc/types/xrf-app";
-import { Logger } from "@/lib/logging";
 
 /**
  * The window's one subscription to committed changes: each change's sessions go out one at a time as

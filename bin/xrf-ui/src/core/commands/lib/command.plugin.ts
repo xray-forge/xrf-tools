@@ -1,6 +1,5 @@
 import { CommandBus, Container, QueryBus, ServiceToken, WirestatePlugin } from "@wirestate/core";
-
-import { XrfApplicationError } from "@/core/error/lib";
+import { XrfApplicationError } from "@xrf/errors";
 
 import { toKeybindCommandEnabledQuery } from "./command-descriptor";
 import {

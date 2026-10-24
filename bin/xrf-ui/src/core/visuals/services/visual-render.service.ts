@@ -1,5 +1,6 @@
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, reaction } from "@wirestate/mobx";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { visualsCommands } from "@/core/ipc/commands/visuals";
@@ -20,7 +21,6 @@ import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG, IVisualPreviewSceneConfig } from "
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
-import { Logger } from "@/lib/logging";
 
 /**
  * Owns the native viewport the open model is drawn in, and everything said to it.

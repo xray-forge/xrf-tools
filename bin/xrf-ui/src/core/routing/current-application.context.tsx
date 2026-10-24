@@ -1,7 +1,7 @@
+import { XrfApplicationError } from "@xrf/errors";
 import { Maybe, Nullable } from "@xrf/types";
 import { createContext, ReactElement, ReactNode, useContext } from "react";
 
-import { XrfApplicationError } from "@/core/error/lib";
 import { IApplicationDescriptor } from "@/core/routing/application";
 
 const CurrentApplicationContext = createContext<Maybe<IApplicationDescriptor>>(undefined);

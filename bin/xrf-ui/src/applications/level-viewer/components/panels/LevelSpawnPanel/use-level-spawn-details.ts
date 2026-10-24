@@ -1,8 +1,8 @@
 import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
 import { Nullable } from "@xrf/types";
 import { useEffect, useState } from "react";
 
-import { transformError } from "@/core/error/lib";
 import { levelsCommands } from "@/core/ipc/commands/levels";
 import { LevelSpawnObjectDetails } from "@/core/ipc/types/xrf-app";
 import { XrayRevision } from "@/core/ipc/types/xrf-vfs";

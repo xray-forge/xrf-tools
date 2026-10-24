@@ -1,6 +1,5 @@
+import { XrfApplicationError } from "@xrf/errors";
 import { ReactNode } from "react";
-
-import { XrfApplicationError } from "@/core/error/lib";
 
 /**
  * The family a keybind command belongs to, used to group it in listings.

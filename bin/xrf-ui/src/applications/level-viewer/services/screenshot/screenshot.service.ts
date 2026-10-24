@@ -1,6 +1,7 @@
 import { save } from "@tauri-apps/plugin-dialog";
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, reaction, RefObservable, runInAction } from "@wirestate/mobx";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND } from "@/applications/level-viewer/commands";
@@ -27,7 +28,6 @@ import { EXrayExtension } from "@/core/ipc/types/xrf-extension";
 import { RenderFrameReport } from "@/core/ipc/types/xrf-renderer";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
-import { Logger } from "@/lib/logging";
 
 /** Timed reports waited for once the GPU timing is switched on: the first may still hold frames from before it. */
 const TIMED_REPORTS: number = 2;

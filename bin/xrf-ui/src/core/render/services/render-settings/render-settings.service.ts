@@ -1,5 +1,6 @@
 import { inject, Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
 import { BoundAction, comparer, Computed, Observable, reaction, RefObservable, runInAction } from "@wirestate/mobx";
+import { Logger } from "@xrf/logging";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
@@ -55,7 +56,6 @@ import {
   setLocalStorageValueSafe,
   VSYNC_STORAGE_KEY,
 } from "@/core/storage";
-import { Logger } from "@/lib/logging";
 
 /**
  * What every viewport is drawn with: how often, on which graphics API, at what resolution, and with which features.

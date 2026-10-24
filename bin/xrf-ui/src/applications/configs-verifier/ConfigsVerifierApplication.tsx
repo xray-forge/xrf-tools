@@ -1,4 +1,6 @@
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
@@ -7,7 +9,6 @@ import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
 import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
-import { Logger, useLogger } from "@/lib/logging";
 
 import { ConfigsVerifyResult } from "./components/ConfigsVerifyResult";
 

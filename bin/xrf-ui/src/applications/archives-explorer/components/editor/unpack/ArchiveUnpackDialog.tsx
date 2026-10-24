@@ -2,6 +2,8 @@ import { default as UnarchiveIcon } from "@mui/icons-material/Unarchive";
 import { Button, Dialog, DialogActions, DialogContent, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useId } from "react";
 
@@ -13,7 +15,6 @@ import { resolveOutputPath } from "@/core/settings/lib/output-path";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Logger, useLogger } from "@/lib/logging";
 
 interface IArchiveUnpackDialogProps extends BaseComponentProps {
   isOpen: boolean;

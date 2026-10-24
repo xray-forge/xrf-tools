@@ -1,4 +1,6 @@
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback } from "react";
 
 import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
@@ -7,7 +9,6 @@ import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { SpawnFileService } from "@/core/spawn/services";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Logger, useLogger } from "@/lib/logging";
 
 export function SpawnEditorOpenForm({
   "data-testid": dataTestId = "spawn-editor-open-form",

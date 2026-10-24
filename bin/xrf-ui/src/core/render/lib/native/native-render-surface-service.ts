@@ -1,8 +1,9 @@
 import { OnDeactivation } from "@wirestate/core";
 import { Computed, RefObservable, runInAction } from "@wirestate/mobx";
+import { transformError } from "@xrf/errors";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { transformError } from "@/core/error/lib";
 import { RenderAppliedReport, RenderFrameReport, RenderLoadReport } from "@/core/ipc/types/xrf-renderer";
 import { WorldCameraPose, WorldWeatherReport } from "@/core/ipc/types/xrf-world";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
@@ -11,7 +12,6 @@ import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { NativeViewportTarget } from "@/core/render/lib/native/native-viewport-target";
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
-import { Logger } from "@/lib/logging";
 
 /**
  * A service owning one native viewport: attached where a view hands it an element, told everything through reactions

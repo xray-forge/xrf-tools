@@ -1,4 +1,6 @@
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback } from "react";
 
 import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
@@ -9,7 +11,6 @@ import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Logger, useLogger } from "@/lib/logging";
 
 /**
  * The way into the editor: one texture.

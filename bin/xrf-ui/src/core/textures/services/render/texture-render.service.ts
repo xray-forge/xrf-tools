@@ -1,5 +1,6 @@
 import { inject, Injectable } from "@wirestate/core";
 import { comparer, reaction, RefObservable, runInAction } from "@wirestate/mobx";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { texturesCommands } from "@/core/ipc/commands/textures";
@@ -25,7 +26,6 @@ import { dragTextureLighting } from "@/core/textures/lib/texture-lighting";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureViewService } from "@/core/textures/services/view";
 import { watchDevicePixelRatio } from "@/lib/dom/device-pixel-ratio";
-import { Logger } from "@/lib/logging";
 
 /**
  * Owns the native viewport the selected texture is drawn in, on the body its view asks for.

@@ -1,11 +1,12 @@
 import { Stack, Typography } from "@mui/material";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useState } from "react";
 
 import { systemCommands } from "@/core/ipc/commands/system";
 import { BuildInfo } from "@/core/ipc/types/xrf-build-info";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { Logger, useLogger } from "@/lib/logging";
 import { useMountEffect } from "@/lib/react";
 
 import { IAboutRow } from "./about-row";

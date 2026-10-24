@@ -108,7 +108,6 @@ export default createEslintConfig(
       "src/core/shell/title-bar/WindowControlButton.tsx",
       "src/core/ui/media/media.styles.ts",
       "src/core/ui/media/ImageViewport/ImageViewport.tsx",
-      "src/lib/logging/**",
     ],
     rules: {
       "no-restricted-syntax": [

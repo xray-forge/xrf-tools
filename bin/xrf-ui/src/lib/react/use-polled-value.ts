@@ -1,7 +1,6 @@
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 import { useEffect, useRef, useState } from "react";
-
-import { Logger } from "@/lib/logging";
 
 /**
  * Re-reads a value on an interval for as long as the component is mounted and the document is visible.

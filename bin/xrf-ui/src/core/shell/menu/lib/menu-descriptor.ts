@@ -1,6 +1,5 @@
+import { XrfApplicationError } from "@xrf/errors";
 import { Nullable } from "@xrf/types";
-
-import { XrfApplicationError } from "@/core/error/lib";
 
 /** One ordered run of entries inside a menu, which entries are published into. */
 export interface IMenuSection {

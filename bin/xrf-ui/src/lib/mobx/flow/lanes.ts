@@ -1,6 +1,6 @@
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { Logger } from "@/lib/logging";
 import { swallowCancellation } from "@/lib/mobx/flow/cancellation";
 import { TCancellablePromise } from "@/lib/mobx/flow/types";
 

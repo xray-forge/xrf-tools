@@ -7,6 +7,8 @@ import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
 import { default as TerminalIcon } from "@mui/icons-material/Terminal";
 import { default as WarningAmberIcon } from "@mui/icons-material/WarningAmber";
 import { Box, Button, IconButton, Tooltip, Typography } from "@mui/material";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { format } from "date-fns";
 import { ReactElement, ReactNode, useCallback, useState } from "react";
@@ -16,7 +18,6 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
 import { IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { INotificationEntry, isAttentionSeverity } from "@/core/shell/panel/notifications/notification-list";
 import { cn } from "@/core/theme/class-name";
-import { Logger, useLogger } from "@/lib/logging";
 import { ICopiedText, useCopiedText } from "@/lib/react/use-copied-text";
 
 /** Lines of `details` shown inline before the rest has to be asked for. */

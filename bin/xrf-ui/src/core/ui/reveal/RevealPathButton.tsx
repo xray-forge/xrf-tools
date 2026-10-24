@@ -1,5 +1,7 @@
 import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { Button } from "@mui/material";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
@@ -7,7 +9,6 @@ import { systemCommands } from "@/core/ipc/commands/system";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { Logger, useLogger } from "@/lib/logging";
 
 interface IRevealPathButtonProps extends BaseComponentProps {
   /** Which application the failure notification is attributed to. */

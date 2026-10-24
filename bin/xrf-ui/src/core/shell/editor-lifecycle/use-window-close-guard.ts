@@ -1,11 +1,12 @@
 import { CloseRequestedEvent, Window } from "@tauri-apps/api/window";
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { useEffect } from "react";
 
 import { systemCommands } from "@/core/ipc/commands/system";
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
-import { Logger, useLogger } from "@/lib/logging";
 import { resolveAppWindow } from "@/lib/tauri/app-window";
 
 /** Asks about unsaved or running work before the window closes, however the close was asked for. */

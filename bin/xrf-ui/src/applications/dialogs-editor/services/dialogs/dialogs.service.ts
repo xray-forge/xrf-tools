@@ -1,12 +1,13 @@
 import { EventBus, inject, Injectable, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { IDialogTreeEntry, toDialogTreeEntries } from "@/applications/dialogs-editor/lib/dialog-tree";
 import { describeRoots } from "@/core/assets/lib/roots";
-import { transformError } from "@/core/error/lib";
 import { dialogsCommands } from "@/core/ipc/commands/dialogs";
 import { requireSessionId, Session, SessionScopeService } from "@/core/ipc/session";
 import { SessionSnapshot } from "@/core/ipc/types/xrf-app";
@@ -14,7 +15,6 @@ import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@/
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { Logger, Timer } from "@/lib/logging";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /** Which dialog is open, by the pair that addresses one: the file holding it and its id. */

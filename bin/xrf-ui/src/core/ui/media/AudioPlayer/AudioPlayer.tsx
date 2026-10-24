@@ -1,10 +1,11 @@
 import { Alert } from "@mui/material";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { ReactElement, SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { IMediaVolume, useMediaVolume } from "@/core/ui/media/use-media-volume";
-import { Logger, useLogger } from "@/lib/logging";
 
 import { describeAudioError, describePlaybackError } from "./AudioPlayer.errors";
 import { AudioPlayerControls } from "./AudioPlayerControls";

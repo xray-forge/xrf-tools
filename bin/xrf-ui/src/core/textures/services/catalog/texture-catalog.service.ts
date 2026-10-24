@@ -1,11 +1,12 @@
 import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { createRoots, describeRoots } from "@/core/assets/lib";
-import { transformError } from "@/core/error/lib";
 import { texturesCommands } from "@/core/ipc/commands/textures";
 import { toEnumMember } from "@/core/ipc/enumeration";
 import { Session, SessionScopeService } from "@/core/ipc/session";
@@ -20,7 +21,6 @@ import {
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { buildTextureNodes, ITextureNode } from "@/core/textures/lib/texture-catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**

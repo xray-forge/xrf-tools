@@ -1,12 +1,13 @@
 import { EventBus, inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
+import { Logger, Timer } from "@xrf/logging";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
 import { TranslationDraft, TTranslationFileEdits } from "@/applications/translations-editor/lib/translation-draft";
 import { describeRoots } from "@/core/assets/lib/roots";
-import { transformError } from "@/core/error/lib";
 import { translationsCommands } from "@/core/ipc/commands/translations";
 import {
   ISessionRevision,
@@ -28,7 +29,6 @@ import { TranslationProjectDescriptor, TranslationProjectMode } from "@/core/ipc
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { Logger, Timer } from "@/lib/logging";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 @Injectable()

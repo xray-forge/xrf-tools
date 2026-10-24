@@ -1,5 +1,6 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, RefObservable } from "@wirestate/mobx";
+import { Logger } from "@xrf/logging";
 
 import { ILevelCameraOptions, toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelFeatureOptions, toLevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
@@ -17,7 +18,6 @@ import {
   parseLocalStorageValueSafe,
   setLocalStorageValueSafe,
 } from "@/core/storage";
-import { Logger } from "@/lib/logging";
 
 /**
  * How a level is drawn: what the viewer has switched on, rather than what the level is.

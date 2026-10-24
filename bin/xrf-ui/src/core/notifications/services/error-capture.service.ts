@@ -1,10 +1,10 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction } from "@wirestate/mobx";
+import { transformError } from "@xrf/errors";
+import { Logger } from "@xrf/logging";
 
-import { transformError } from "@/core/error/lib";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { APPLICATION_SOURCE } from "@/core/routing/application";
-import { Logger } from "@/lib/logging";
 
 /**
  * Records the failures nothing else reports.

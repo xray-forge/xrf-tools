@@ -1,5 +1,6 @@
+import { Logger } from "@xrf/logging";
+
 import { noop } from "@/lib/callbacks/noop";
-import { Logger } from "@/lib/logging";
 
 /**
  * Disables application logging for tests.

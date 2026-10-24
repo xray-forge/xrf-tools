@@ -1,8 +1,9 @@
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 
 import { systemCommands } from "@/core/ipc/commands/system";
 import { MemoryUsage } from "@/core/ipc/types/xrf-app";
-import { Logger, useLogger } from "@/lib/logging";
 import { usePolledValue } from "@/lib/react";
 
 /** How often memory is read: slow enough to cost nothing, fast enough to watch a level stream in. */

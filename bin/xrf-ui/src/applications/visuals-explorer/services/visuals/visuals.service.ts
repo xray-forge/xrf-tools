@@ -1,10 +1,11 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
+import { transformError } from "@xrf/errors";
+import { Logger } from "@xrf/logging";
 import { findLastSeparator } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { transformError } from "@/core/error/lib";
 import { AssetSource, EAssetSource } from "@/core/ipc/types/xrf-app";
 import { Vector3d } from "@/core/ipc/types/xrf-math";
 import { XrayRoots } from "@/core/ipc/types/xrf-vfs";
@@ -18,7 +19,6 @@ import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { VisualInspectionService } from "@/core/visuals/services/visual-inspection.service";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { Logger } from "@/lib/logging";
 
 /**
  * What one open asked for, kept so the same request can be made again.

@@ -1,5 +1,6 @@
 import { Injectable, OnDeprovision } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { IKeybindCommand } from "@/core/commands";
@@ -9,7 +10,6 @@ import { buildKeymap, IKeymap } from "@/core/keybinds/lib/keymap";
 import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { KEYBINDS_STORAGE_KEY, parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
-import { Logger } from "@/lib/logging";
 import { EMPTY_ARRAY } from "@/lib/types/array";
 
 /** Stored shape of the overlay: command id to the chords bound in its place. */

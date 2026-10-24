@@ -1,6 +1,5 @@
+import { XrfApplicationError } from "@xrf/errors";
 import { Optional } from "@xrf/types";
-
-import { XrfApplicationError } from "@/core/error/lib";
 
 /**
  * The member of `enumeration` that `value` spells.

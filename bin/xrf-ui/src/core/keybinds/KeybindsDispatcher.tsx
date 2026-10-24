@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect } from "react";
 
@@ -10,7 +11,6 @@ import { useCurrentApplication } from "@/core/routing/current-application.contex
 import { SettingsService } from "@/core/settings/services/settings";
 import { isModalOpen } from "@/lib/dom/modal";
 import { isTextEntryTarget } from "@/lib/dom/text-entry";
-import { Logger } from "@/lib/logging";
 
 /**
  * Turns key events into commands, for the whole window.

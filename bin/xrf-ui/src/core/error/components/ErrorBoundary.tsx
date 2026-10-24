@@ -1,7 +1,6 @@
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 import { Component, ComponentType, ErrorInfo, ReactNode } from "react";
-
-import { Logger } from "@/lib/logging";
 
 export interface IErrorBoundaryFallbackProps {
   error: Error;

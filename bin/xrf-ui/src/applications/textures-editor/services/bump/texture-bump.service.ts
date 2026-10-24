@@ -1,5 +1,6 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 import { Computed, flowResult } from "@wirestate/mobx";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { describeTextureBumpOutcome } from "@/applications/textures-editor/lib/describe-texture-bump-outcome";
@@ -11,7 +12,6 @@ import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { Logger } from "@/lib/logging";
 import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /** What a generation was asked to build the pair from. */
