@@ -8,6 +8,7 @@ pub(crate) mod level;
 pub(crate) mod ltx;
 pub(crate) mod ogf;
 pub(crate) mod omf;
+pub(crate) mod packed_file;
 pub(crate) mod particle;
 pub(crate) mod profile;
 pub(crate) mod spawn;

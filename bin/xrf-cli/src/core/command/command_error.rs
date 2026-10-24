@@ -4,6 +4,9 @@ use std::io::Error as IoError;
 
 use xrf_error::XrfError;
 
+/// What a command answers: nothing, or what it is, on success; why it failed otherwise.
+pub type CommandResult<T = ()> = Result<T, CommandError>;
+
 /// Failure of a CLI command, classified for the process exit contract.
 ///
 /// Exit codes are the CLI's machine contract: 0 success, 1 execution failure, 2 clap usage error,
@@ -19,10 +22,12 @@ pub enum CommandError {
 }
 
 impl CommandError {
+  /// A check that judged its input invalid, with `findings` defects.
   pub fn new_check_failed(findings: usize) -> Self {
     Self::CheckFailed { findings }
   }
 
+  /// The process exit code the failure ends the run with.
   pub const fn exit_code(&self) -> u8 {
     match self {
       Self::Execution(_) => 1,
