@@ -5,9 +5,9 @@ use xrf_level::DetailModel;
 use xrf_math::Vector3d;
 use xrf_vfs::XrayAssetType;
 
-use crate::describe::archive_bounds::ArchiveBounds;
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::archive_reference::ArchiveReference;
+use crate::describe::description::ArchiveBounds;
+use crate::describe::description::ArchiveReference;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about one detail object.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

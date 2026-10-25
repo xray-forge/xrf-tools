@@ -3,9 +3,9 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_gamemtl::GameMtlFile;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::gamemtl::archive_game_mtl_material::ArchiveGameMtlMaterial;
 use crate::describe::gamemtl::archive_game_mtl_property::ArchiveGameMtlProperty;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about the game material library.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

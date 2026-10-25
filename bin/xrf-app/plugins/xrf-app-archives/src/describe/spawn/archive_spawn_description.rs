@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_spawn::SpawnHeaderChunk;
 
-use crate::describe::archive_entry_reader::ArchiveEntryReader;
+use crate::describe::source::ArchiveEntryReader;
 use crate::describe::spawn::archive_spawn_section::ArchiveSpawnSection;
 
 /// What a spawn set holds, taken from its header and the weight of its sections.

@@ -3,8 +3,8 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::LevelSndStaticFile;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::level::snd_static::ArchiveLevelSndStaticSound;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about the sounds a level plants.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

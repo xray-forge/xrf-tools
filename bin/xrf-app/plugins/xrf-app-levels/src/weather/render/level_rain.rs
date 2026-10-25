@@ -1,5 +1,5 @@
-use crate::level_report::LevelReport;
 use crate::parts::LevelTextureReference;
+use crate::report::LevelReport;
 use crate::weather::render::{LevelWeatherModel, LevelWeatherSource};
 
 /// What rain is drawn with, as `dxRainRender` loads it: the streak's texture and the splash's model.

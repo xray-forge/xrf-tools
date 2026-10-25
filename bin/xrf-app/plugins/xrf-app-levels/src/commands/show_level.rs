@@ -9,8 +9,8 @@ use xrf_app_render::{TextureReloads, ViewportShows};
 use xrf_renderer::{RenderLevelSource, RenderViewportId};
 
 use crate::level::{SelectedLevel, SelectedLevels};
-use crate::level_report::LevelReport;
 use crate::render::{LevelRenderSource, ShownLevels};
+use crate::report::LevelReport;
 
 /// Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. Answers
 /// the scene drawn, which the viewport's load reports name, or none. The source may resolve the level's surfaces, so

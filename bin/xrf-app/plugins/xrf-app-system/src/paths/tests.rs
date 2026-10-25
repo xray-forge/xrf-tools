@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::paths::PathDescription;
-use crate::paths::path_description::PathKind;
+use crate::paths::description::PathKind;
 
 /// A directory of this test's own among the generated test resources, emptied first so a re-run counts what this run
 /// created.

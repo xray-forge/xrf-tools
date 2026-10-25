@@ -3,8 +3,8 @@ use xrf_ppe::PpeColorMap;
 use xrf_vfs::XrayAssetType;
 
 use crate::describe::animation::ArchiveAnimationChannel;
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::archive_reference::ArchiveReference;
+use crate::describe::description::ArchiveReference;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// The colour grading an effect applies, which only version 2 carries.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

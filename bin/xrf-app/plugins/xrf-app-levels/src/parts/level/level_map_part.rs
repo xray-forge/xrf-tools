@@ -5,8 +5,8 @@ use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
 use xrf_vfs::{XrayInputRecord, XraySearch};
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::level_report::LevelReport;
 use crate::parts::{LevelMapArea, LevelMapDescription};
+use crate::report::LevelReport;
 
 /// What a change event calls where a level's map lies when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]

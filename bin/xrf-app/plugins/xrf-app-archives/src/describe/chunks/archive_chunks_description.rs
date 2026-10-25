@@ -2,9 +2,9 @@ use serde::Serialize;
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::describe::archive_entry_container::ArchiveEntryContainer;
-use crate::describe::archive_entry_reader::ArchiveEntryReader;
 use crate::describe::chunks::archive_chunk_node::ArchiveChunkNode;
+use crate::describe::source::ArchiveEntryContainer;
+use crate::describe::source::ArchiveEntryReader;
 
 /// The container a file is, for a file nothing here reads.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

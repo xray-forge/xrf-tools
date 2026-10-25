@@ -3,8 +3,8 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_light_anim::LightAnimFile;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::light_anim::archive_light_anim_item::ArchiveLightAnimItem;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about the colour animation library.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

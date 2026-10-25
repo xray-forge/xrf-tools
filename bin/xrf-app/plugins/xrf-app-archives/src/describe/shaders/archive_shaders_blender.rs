@@ -1,8 +1,8 @@
 use serde::Serialize;
 use xrf_shaders::ShaderBlender;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::shaders::archive_shaders_property::ArchiveShadersProperty;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// One definition of the library: what a shader name resolves to.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

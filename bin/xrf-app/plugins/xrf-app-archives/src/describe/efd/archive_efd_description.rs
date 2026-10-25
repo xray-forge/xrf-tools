@@ -3,8 +3,8 @@ use xrf_chunk::XRayByteOrder;
 use xrf_efd::{EfdFile, EfdVariable};
 use xrf_error::XrfResult;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::efd::archive_efd_pattern::ArchiveEfdPattern;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about one trained evaluation function.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

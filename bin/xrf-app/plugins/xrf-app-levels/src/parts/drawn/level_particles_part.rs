@@ -14,10 +14,10 @@ use xrf_vfs::XraySearch;
 use xrf_visual::{VisualTransform, ZoneSphere};
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::level_report::LevelReport;
 use crate::parts::LevelTextureReference;
 use crate::parts::{LevelEnvironmentPart, LevelSpawnPart, PackedLevelParticles};
 use crate::render::LevelRenderAmbients;
+use crate::report::LevelReport;
 
 /// What a change event calls what a level's particle systems were read from when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]

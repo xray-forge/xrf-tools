@@ -3,8 +3,8 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_shaders::ShaderCompilerFile;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::shader_compiler::archive_shader_compiler_shader::ArchiveShaderCompilerShader;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about the compiler shader library.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

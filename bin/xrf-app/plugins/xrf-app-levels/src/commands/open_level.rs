@@ -11,8 +11,8 @@ use xrf_ltx::LtxDialect;
 use xrf_vfs::XrayRoots;
 
 use crate::level::{LevelOpenRequest, OpenedLevel, SelectedLevel, SelectedLevelDescription, SelectedLevels};
-use crate::level_report::LevelReport;
 use crate::parts::{LevelSurfacesPart, LevelTexturesPart};
+use crate::report::LevelReport;
 
 /// Select a compiled level and report what it is built out of, without reading any of its geometry.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_level"))]

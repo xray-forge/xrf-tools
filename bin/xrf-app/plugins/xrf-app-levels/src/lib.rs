@@ -4,10 +4,10 @@ mod commands;
 mod console;
 pub mod ipc;
 mod level;
-mod level_report;
 mod parts;
 pub mod plugin;
 mod render;
+mod report;
 mod spawn;
 #[cfg(test)]
 mod tests;

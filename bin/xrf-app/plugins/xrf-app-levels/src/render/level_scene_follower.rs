@@ -7,8 +7,8 @@ use xrf_renderer::{RenderLevelSource, RenderSceneId};
 use xrf_world::{World, WorldLevelReload};
 
 use crate::level::{SelectedLevel, SelectedLevels};
-use crate::level_report::LevelReport;
 use crate::render::{LevelRenderSource, ShownLevels};
+use crate::report::LevelReport;
 
 /// Moves the scene of each level shown along with its session through every commit, in the backend: a kept value's
 /// scene goes on from the next snapshot, reading again only what its stale parts fed; a value derived again streams

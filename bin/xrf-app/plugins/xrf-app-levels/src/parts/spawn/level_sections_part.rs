@@ -8,8 +8,8 @@ use xrf_material::XrayReducedTextures;
 use xrf_vfs::{XrayInputRecord, XraySearch};
 
 use crate::level::{LevelConfigs, LevelSource, SelectedLevel};
-use crate::level_report::LevelReport;
 use crate::parts::{LevelSpawn, LevelSpawnPart};
+use crate::report::LevelReport;
 
 /// What a change event calls a level's sections when they go stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]

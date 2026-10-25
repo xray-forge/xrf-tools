@@ -1,8 +1,8 @@
 use serde::Serialize;
 use xrf_spawn::LevelSpawnFile;
 
-use crate::describe::archive_bounds::ArchiveBounds;
-use crate::describe::archive_entry_reader::ArchiveEntryReader;
+use crate::describe::description::ArchiveBounds;
+use crate::describe::source::ArchiveEntryReader;
 use crate::describe::spawn::archive_level_spawn_section::ArchiveLevelSpawnSection;
 
 /// Everything the viewer says about the objects a level spawns.

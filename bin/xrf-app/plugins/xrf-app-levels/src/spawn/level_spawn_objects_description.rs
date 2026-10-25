@@ -11,8 +11,8 @@ use xrf_vfs::XraySearch;
 use xrf_visual::VisualTransform;
 
 use crate::level::SelectedLevel;
-use crate::level_report::LevelReport;
 use crate::parts::{LevelSpawn, LevelSpawnPart};
+use crate::report::LevelReport;
 use crate::spawn::{LevelSpawnCategory, LevelSpawnObject};
 
 /// The spawned objects the viewer draws, and the visuals they stand as, each named once.

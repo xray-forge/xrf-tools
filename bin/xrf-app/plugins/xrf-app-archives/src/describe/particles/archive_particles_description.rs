@@ -5,10 +5,10 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_particles::ParticlesFile;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::particles::archive_particles_effect::ArchiveParticlesEffect;
 use crate::describe::particles::archive_particles_group::ArchiveParticlesGroup;
 use crate::describe::particles::archive_particles_library::ArchiveParticlesLibrary;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about the particle library.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

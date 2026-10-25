@@ -7,7 +7,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_vfs::XrayRoots;
 
 use crate::level::LevelEntry;
-use crate::level_report::LevelReport;
+use crate::report::LevelReport;
 
 /// Every compiled level the mounted roots hold, loose or archived alike, listed on the pool from a fresh search.
 #[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_levels"))]

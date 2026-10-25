@@ -6,7 +6,7 @@ use xrf_ltx::Ltx;
 use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
 use xrf_vfs::XraySearch;
 
-use crate::level_report::LevelReport;
+use crate::report::LevelReport;
 
 /// Why a new game releases a spawned object before the actor first stands on its level, as Anomaly's
 /// `game_setup.script` does: the config and section naming it.

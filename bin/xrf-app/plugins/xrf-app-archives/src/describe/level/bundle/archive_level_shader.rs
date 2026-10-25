@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_shaders::ShaderLibraryFile;
 
-use crate::describe::archive_reference::ArchiveReferenceStatus;
+use crate::describe::description::ArchiveReferenceStatus;
 
 /// The blender a surface draws with, and whether the subject being browsed defines it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -31,7 +31,7 @@ mod tests {
   use xrf_shaders::ShaderLibraryFile;
 
   use super::ArchiveLevelShader;
-  use crate::describe::archive_reference::ArchiveReferenceStatus;
+  use crate::describe::description::ArchiveReferenceStatus;
 
   #[test]
   fn a_name_no_library_can_be_asked_about_is_unknown_rather_than_absent() {

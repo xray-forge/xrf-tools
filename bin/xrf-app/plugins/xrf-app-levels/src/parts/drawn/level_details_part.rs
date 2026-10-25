@@ -11,9 +11,9 @@ use xrf_vfs::XraySearch;
 use xrf_visual::{DetailsPackage, DetailsPacker};
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::level_report::LevelReport;
 use crate::parts::LevelTextureReference;
 use crate::parts::{LevelCollisionPart, PackedLevelDetails};
+use crate::report::LevelReport;
 
 /// What a change event calls what a level's grass was read from when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]

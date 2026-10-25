@@ -3,10 +3,10 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_omf::OmfFile;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::omf::archive_omf_bank::ArchiveOmfBank;
 use crate::describe::omf::archive_omf_motion::ArchiveOmfMotion;
 use crate::describe::omf::archive_omf_part::ArchiveOmfPart;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about one motion bank.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

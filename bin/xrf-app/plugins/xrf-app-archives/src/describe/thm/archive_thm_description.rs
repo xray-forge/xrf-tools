@@ -4,8 +4,8 @@ use xrf_error::XrfResult;
 use xrf_thm::{ThmFile, ThmTextureParamChunk};
 use xrf_vfs::XrayAssetType;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::archive_reference::ArchiveReference;
+use crate::describe::description::ArchiveReference;
+use crate::describe::source::ArchiveDescribeSource;
 use crate::describe::thm::archive_thm_bump::ArchiveThmBump;
 use crate::describe::thm::archive_thm_detail::ArchiveThmDetail;
 use crate::describe::thm::archive_thm_file::ArchiveThmFile;

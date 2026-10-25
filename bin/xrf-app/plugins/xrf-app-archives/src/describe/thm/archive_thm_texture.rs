@@ -3,8 +3,8 @@ use xrf_app_core::assets::AssetTextureShape;
 use xrf_thm::{ThmTextureParamChunk, ThmTextureType};
 use xrf_vfs::XrayLogicalPath;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::archive_reference::ArchiveReference;
+use crate::describe::description::ArchiveReference;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// The texture a descriptor sits beside, and what that file actually is.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

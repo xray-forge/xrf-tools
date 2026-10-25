@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use serde::Serialize;
 
-use crate::describe::archive_reference::{ArchiveReference, ArchiveReferenceStatus};
+use crate::describe::description::{ArchiveReference, ArchiveReferenceStatus};
 use crate::describe::level::bundle::{ArchiveLevelEntry, ArchiveLevelSurface};
 
 /// What the bundle holds, taken over the whole of it.
@@ -83,7 +83,7 @@ impl ArchiveLevelBundle {
 #[cfg(test)]
 mod tests {
   use super::ArchiveLevelBundle;
-  use crate::describe::archive_reference::{ArchiveReference, ArchiveReferenceStatus};
+  use crate::describe::description::{ArchiveReference, ArchiveReferenceStatus};
   use crate::describe::level::bundle::ArchiveLevelShader;
   use crate::describe::level::bundle::{ArchiveLevelEntry, ArchiveLevelSurface};
 

@@ -8,7 +8,7 @@ use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchStep, XrayVfs};
 
 use crate::browse::ArchiveWorld;
-use crate::describe::archive_file_description::{ArchiveDescribeRefusal, ArchiveFormatDescription};
+use crate::describe::description::{ArchiveDescribeRefusal, ArchiveFormatDescription};
 use crate::describe::{ArchiveDescribeSource, ArchiveFileDescription};
 
 /// A world over a tree of its own holding `files`, emptied first so a re-run reads what this run wrote.

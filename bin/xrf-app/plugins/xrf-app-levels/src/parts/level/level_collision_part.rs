@@ -7,7 +7,7 @@ use xrf_level::{LevelCformFile, LevelCformGeometry, LevelCformTracer};
 use xrf_vfs::XraySearch;
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::level_report::LevelReport;
+use crate::report::LevelReport;
 
 /// What a change event calls a level's collision form when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]

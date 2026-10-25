@@ -2,12 +2,8 @@
 //! the renderer from the files its description located.
 
 pub(crate) mod commands;
-mod texture_render_source;
-mod texture_surface_alpha;
-mod texture_surface_shape;
-mod textures_show_request;
+mod render;
+mod request;
 
-pub use texture_render_source::TextureRenderSource;
-pub use texture_surface_alpha::TextureSurfaceAlpha;
-pub use texture_surface_shape::TextureSurfaceShape;
-pub use textures_show_request::TexturesShowRequest;
+pub use render::TextureRenderSource;
+pub use request::{TextureSurfaceAlpha, TextureSurfaceShape, TexturesShowRequest};
