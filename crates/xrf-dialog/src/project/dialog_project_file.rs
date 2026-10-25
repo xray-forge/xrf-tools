@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::file::DialogFile;
+use crate::dialog_file::DialogFile;
 
 /// One file the project holds, parsed, with where the engine found it.
 #[derive(Debug)]

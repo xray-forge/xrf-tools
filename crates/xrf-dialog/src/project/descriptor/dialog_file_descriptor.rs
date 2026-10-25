@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::project::dialog_summary_descriptor::DialogSummaryDescriptor;
+use crate::project::descriptor::dialog_summary_descriptor::DialogSummaryDescriptor;
 
 /// One dialog file the project holds.
 ///

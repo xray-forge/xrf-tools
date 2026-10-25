@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::dialog_element::DialogElement;
-use crate::dialog_element_kind::DialogElementKind;
+use crate::conversation::dialog_element::DialogElement;
+use crate::conversation::dialog_element_kind::DialogElementKind;
 
 /// One child element of a dialog or a phrase, as written.
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]

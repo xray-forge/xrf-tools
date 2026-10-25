@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::conversation::dialog::Dialog;
+
 /// One dialog, as the project index lists it.
 ///
 /// Named for the reduction it is. A descriptor carrying a domain type's own name mirrors that type —
@@ -11,4 +13,14 @@ pub struct DialogSummaryDescriptor {
   pub id: String,
   pub phrases: usize,
   pub priority: Option<i32>,
+}
+
+impl From<&Dialog> for DialogSummaryDescriptor {
+  fn from(dialog: &Dialog) -> Self {
+    Self {
+      id: dialog.get_id().to_owned(),
+      phrases: dialog.get_phrases().len(),
+      priority: dialog.get_priority(),
+    }
+  }
 }

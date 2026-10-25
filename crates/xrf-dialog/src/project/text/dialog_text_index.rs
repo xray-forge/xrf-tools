@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use xrf_translation::{TranslationEntry, TranslationProjectDescriptor, TranslationVariant};
 
-use crate::project::dialog_text_language::DialogTextLanguage;
+use crate::project::text::dialog_text_language::DialogTextLanguage;
 
 /// Every translation key a project's text tree offers, flattened across the files holding them.
 ///

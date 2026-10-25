@@ -1,10 +1,10 @@
 use xrf_error::XrfResult;
 use xrf_utils::new_windows1251_encoder;
 
-use crate::dialog_element::DialogElement;
-use crate::dialog_element_kind::DialogElementKind;
-use crate::file::DialogFile;
-use crate::phrase::DialogPhrase;
+use crate::conversation::dialog_element::DialogElement;
+use crate::conversation::dialog_element_kind::DialogElementKind;
+use crate::conversation::dialog_phrase::DialogPhrase;
+use crate::dialog_file::DialogFile;
 
 /// Parse one dialog holding one phrase with the given body.
 fn phrase_of(body: &str) -> XrfResult<DialogPhrase> {

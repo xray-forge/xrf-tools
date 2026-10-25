@@ -1,13 +1,16 @@
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::write_generated_test_resource;
 
-use crate::encoding::{decode, resolve_encoding};
-use crate::file::DialogFile;
+use crate::dialog_file::DialogFile;
+use crate::dialog_source::DialogSource;
 
 #[test]
 fn falls_back_to_windows_1251_when_nothing_is_declared() -> XrfResult {
   // What the engine assumes for gameplay configs.
-  assert_eq!(resolve_encoding(b"<game_dialogs/>")?.name(), "windows-1251");
+  assert_eq!(
+    DialogSource::resolve_encoding(b"<game_dialogs/>")?.name(),
+    "windows-1251"
+  );
 
   Ok(())
 }
@@ -15,7 +18,7 @@ fn falls_back_to_windows_1251_when_nothing_is_declared() -> XrfResult {
 #[test]
 fn honours_a_declared_encoding() -> XrfResult {
   assert_eq!(
-    resolve_encoding(br#"<?xml version="1.0" encoding="utf-8" ?><game_dialogs/>"#)?.name(),
+    DialogSource::resolve_encoding(br#"<?xml version="1.0" encoding="utf-8" ?><game_dialogs/>"#)?.name(),
     "UTF-8"
   );
 
@@ -53,7 +56,7 @@ fn keeps_a_byte_order_mark_out_of_the_text_and_holds_it_for_a_rewrite() -> XrfRe
   ]
   .concat();
 
-  let decoded = decode(&bytes)?;
+  let decoded: DialogSource = DialogSource::decode(&bytes)?;
 
   assert_eq!(decoded.byte_order_mark, vec![0xEF, 0xBB, 0xBF]);
   assert_eq!(decoded.encoding.name(), "UTF-8");

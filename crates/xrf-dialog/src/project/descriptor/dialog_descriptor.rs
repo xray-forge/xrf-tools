@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::dialog::Dialog;
-use crate::project::dialog_element_descriptor::DialogElementDescriptor;
-use crate::project::dialog_phrase_descriptor::DialogPhraseDescriptor;
-use crate::project::dialog_text_language::DialogTextLanguage;
+use crate::conversation::dialog::Dialog;
+use crate::project::descriptor::dialog_element_descriptor::DialogElementDescriptor;
+use crate::project::descriptor::dialog_phrase_descriptor::DialogPhraseDescriptor;
+use crate::project::text::dialog_text_language::DialogTextLanguage;
 
 /// One whole dialog: its own elements and every phrase it declares.
 ///

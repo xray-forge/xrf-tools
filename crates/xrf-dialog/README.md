@@ -79,8 +79,8 @@ Both modes read dialogs from `configs\gameplay`, selecting files by name (`dialo
 gameplay XML as a dialog. The mode decides only where dialog text sits: gamedata mode (the default) reads the
 per-language string tables under `configs\text`, source mode the XRF JSON under `translations`. The layout's optional
 prefixes override those defaults, and `is_text_skipped` leaves the text unread for a caller that shows no lines.
-`detect_mode` and `detect_mode_in` suggest a mode from the roots' contents; the suggestion is advisory, and the layout
-passed to `open` selects the interpretation. `open` fails when the roots hold no dialog files under the prefix.
+`DialogProjectMode::detect` and `detect_in` suggest a mode from the roots' contents; the suggestion is advisory, and the
+layout passed to `open` selects the interpretation. `open` fails when the roots hold no dialog files under the prefix.
 
 `get_files` and `get_findings` expose parsed content and problems. `describe` summarizes the project;
 `describe_dialog` returns one conversation with its lines resolved through the project's `DialogTextIndex`. A dialog is
@@ -139,13 +139,15 @@ are returned through `XrfResult`.
 
 ## Module map
 
-The modules follow the data: an `element` is one written child, a `phrase` is one line, a `dialog` is one conversation,
-a `file` is one document together with the text its ranges address, and `project` is a whole tree of them. A `partner`
-is who the actor talks to: the characters, profiles and info portions that decide which dialogs reach it.
+The modules follow the data. `conversation` is one conversation as written: the dialog, its phrases (one line each),
+their child elements, and the parse issues reading them raised. `dialog_file` is one document together with the text
+its ranges address, decoded by `dialog_source`. `project` is a whole tree of them, with the `descriptor`s it sends
+across the wire and the `text` tree its lines resolve through. `partner` is who the actor talks to: the characters,
+profiles and info portions that decide which dialogs reach it.
 
 ## Checks
 
 Run `cargo test --locked -p xrf-dialog` from the repository root.
 
-See the [file model](src/file.rs), [project API](src/project/dialog_project.rs),
+See the [file model](src/dialog_file.rs), [project API](src/project/dialog_project.rs),
 [partners](src/partner/dialog_partners.rs), and [tests](src/tests).
