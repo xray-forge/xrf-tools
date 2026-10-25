@@ -8,13 +8,13 @@ The `#[constant]` attribute that [xrf-ipc](../xrf-ipc/README.md) re-exports. Dep
 On a module-level `const` item, public or private and of any name, it keeps the item as written and adds a hidden
 module beside it, `__xrf_ipc_constant_<NAME>`, that submits an `xrf_ipc::IpcConstant` to `inventory`:
 
-| Field         | Value                                                                                         |
-| ------------- | --------------------------------------------------------------------------------------------- |
-| `module_path` | The module declaring the constant, not the hidden one                                         |
-| `name`        | The constant's identifier                                                                     |
-| `doc`         | Its `///` lines, each without the one space after the slashes, joined by `\n`, then trimmed   |
-| `value`       | A function serializing the constant through `xrf_ipc::to_value`, so its type must `Serialize` |
-| `data_type`   | Its type's definition through `xrf_ipc::data_type_of`, so its type must be a `specta::Type`   |
+| Field         | Value                                                                                          |
+| ------------- | ---------------------------------------------------------------------------------------------- |
+| `module_path` | The module declaring the constant, not the hidden one (`IpcConstant::enclosing_module`)        |
+| `name`        | The constant's identifier                                                                      |
+| `doc`         | Its `///` lines, each without the one space after the slashes, joined by `\n`, then trimmed    |
+| `value`       | A function serializing it through `IpcConstant::serialize_value`, so its type must `Serialize` |
+| `data_type`   | Its type's definition through `IpcConstant::define_type`, so its type must be a `specta::Type` |
 
 Inner indentation of a doc line survives; `#[doc(hidden)]` and other list-form doc attributes are skipped.
 
@@ -45,5 +45,5 @@ static RENDER_MAX_SHADOW_FILTER: u32 = 3;
 ## Checks
 
 Run `cargo test --locked -p xrf-ipc-derive`. The trybuild cases are in `tests/ui`: `pass/` compiles and runs, `fail/`
-holds each refused form with the diagnostic it must produce in its `.stderr`. The expansion is in
-[`constant.rs`](src/constant.rs).
+holds each refused form with the diagnostic it must produce in its `.stderr`. The expansion is `ConstantAttribute`, in
+[`constant_attribute.rs`](src/constant_attribute.rs).

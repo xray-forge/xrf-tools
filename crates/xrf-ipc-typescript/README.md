@@ -142,22 +142,21 @@ Run `cargo test --locked -p xrf-ipc-typescript`.
 
 ## Layout
 
-One type per file, named for it: [`IpcBindingsGenerator`](src/ipc_bindings_generator.rs) owns the run,
-[`TypeModuleWriter`](src/type_module_writer.rs) and [`CommandModuleWriter`](src/command_module_writer.rs) write the two
-directories, [`TypeModules`](src/type_modules.rs) names a crate's module, [`MirrorImports`](src/mirror_imports.rs)
-addresses it, [`TypeOwnership`](src/type_ownership.rs) answers which module declares what,
-[`PluginSymbols`](src/plugin_symbols.rs) spells a plugin's generated names, and [`Surface`](src/surface.rs) reads a
-generated tree back.
+One type per file, named for it. [`IpcBindingsGenerator`](src/ipc_bindings_generator.rs) owns the run, in the order
+above; the steps live in one directory each:
 
-[`collected/`](src/collected/) holds what the run gathers before it writes anything:
-[`CollectedCommands`](src/collected/collected_commands.rs), what the export collected, each command a
-[`SpectaCommand`](src/specta_command.rs), and [`CollectedConstants`](src/collected/collected_constants.rs), every
-marked constant beside its type, added to the same collection.
-
-[`typescript/`](src/typescript/) is vocabulary rather than a layer: `source` reads generated text, `syntax` emits it,
-`normalization` canonicalizes a parsed declaration, and `format` is the Specta shape the frontend expects. Every module
-in it is a leaf, depended on from above and depending on nothing else here, which is why it is free functions rather
-than types. `generated_output` is the one other such module, writing a file the frontend toolchain will reformat.
-
-The rest is one layer, not two: the writers of `types/` and `commands/` share ownership, enumerations, output and the
-exporter, so there is no `types/` and `commands/` split to make.
+- [`input/`](src/input/): what the caller hands it, `IpcCommandSurface`, `TypeModules` naming a crate's module and
+  `MirrorImports` addressing one.
+- [`collected/`](src/collected/): what the run gathers before it writes anything. `CommandTypescript` is the exporter
+  recording into `CollectedCommands`, each command a `SpectaCommand`; `CollectedConstants` is every marked constant
+  beside its type, added to the same collection.
+- [`write/`](src/write/): `TypeModuleWriter` and `CommandModuleWriter` write the two directories through
+  `GeneratedOutput`, which owns the tree's layout and header; `TypeOwnership` answers which module declares what,
+  `PluginSymbols` spells a plugin's generated names and `PluginModules` says which of its modules exist. The writers of
+  `types/` and `commands/` share ownership, enumerations, output and the exporter, so they are one layer, not two.
+- [`verify/`](src/verify/): `Surface` reads a generated tree back, and `SurfaceDrift` is how two differ.
+- [`enumerations/`](src/enumerations/): the `E*` enums, each an `Enumeration` of its `EnumerationSubject`.
+- [`typescript/`](src/typescript/): vocabulary rather than a layer. `source` reads generated text, `syntax` emits it,
+  `normalization` canonicalizes a parsed declaration, and `format` is the Specta shape the frontend expects. Every
+  module in it is a leaf, depended on from above and depending on nothing else here, which is why it is free functions
+  rather than types.

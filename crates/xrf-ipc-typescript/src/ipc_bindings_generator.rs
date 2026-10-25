@@ -1,30 +1,16 @@
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use tauri::Runtime;
 
-use crate::collected::{CollectedCommands, CollectedConstants};
-use crate::command_module_writer::{CommandModuleWriter, PluginModules};
-use crate::command_typescript::CommandTypescript;
-use crate::constants::{COMMANDS_DIRECTORY, TYPES_DIRECTORY};
+use crate::collected::{CollectedCommands, CollectedConstants, CommandTypescript};
 use crate::enumerations::Enumerations;
-use crate::generated_output::reset_directory;
-use crate::ipc_command_surface::IpcCommandSurface;
-use crate::mirror_imports::MirrorImports;
-use crate::surface::Surface;
-use crate::surface_drift::SurfaceDrift;
-use crate::type_module_writer::TypeModuleWriter;
-use crate::type_modules::TypeModules;
-use crate::type_ownership::TypeOwnership;
+use crate::input::{IpcCommandSurface, MirrorImports, TypeModules};
+use crate::verify::{Surface, SurfaceDrift};
+use crate::write::{CommandModuleWriter, GeneratedOutput, PluginModules, TypeModuleWriter, TypeOwnership};
 
 /// Writes the frontend's TypeScript mirror of an IPC command surface.
-///
-/// The order below is the whole contract and it is not a caller's to reproduce: every plugin's commands are exported
-/// first, because that is what collects the types they reference and the commands themselves; the marked constants are
-/// collected next, adding the types they carry; the type modules are written then, because only then is it known which
-/// module declares what; each command module is finalized after,
-/// because it is the type modules that say which imports replace the copies Specta inlined; and the merged signatures
-/// last, because they import every command module.
 pub struct IpcBindingsGenerator;
 
 impl IpcBindingsGenerator {
@@ -46,11 +32,13 @@ impl IpcBindingsGenerator {
     type_modules: &TypeModules,
     imports: &MirrorImports,
   ) {
-    let types: PathBuf = output.join(TYPES_DIRECTORY);
-    let commands: PathBuf = output.join(COMMANDS_DIRECTORY);
+    Self::assert_distinct_names(surfaces);
 
-    reset_directory(&types);
-    reset_directory(&commands);
+    let types: PathBuf = output.join(GeneratedOutput::TYPES_DIRECTORY);
+    let commands: PathBuf = output.join(GeneratedOutput::COMMANDS_DIRECTORY);
+
+    GeneratedOutput::reset_directory(&types);
+    GeneratedOutput::reset_directory(&commands);
 
     let mut collected: CollectedCommands = Self::export_commands(&commands, surfaces);
     let constants: CollectedConstants = CollectedConstants::collect(type_modules, &mut collected.types);
@@ -90,7 +78,11 @@ impl IpcBindingsGenerator {
         );
       }
 
-      plugins.push((surface.name, !surface.raw.is_empty(), !surface.bulk.is_empty()));
+      plugins.push(PluginModules {
+        name: surface.name,
+        has_raw: !surface.raw.is_empty(),
+        has_bulk: !surface.bulk.is_empty(),
+      });
     }
 
     CommandModuleWriter::write_signatures(&commands.join(Self::SIGNATURES_MODULE), &plugins, imports);
@@ -134,6 +126,20 @@ impl IpcBindingsGenerator {
       .unwrap_or_else(|_| panic!("An exporter still holds the collected commands"))
       .into_inner()
       .expect("Collected commands lock is poisoned")
+  }
+
+  /// Fails when two surfaces carry one name: both would write one command module, and the commands exported second
+  /// would be the only ones collected for it.
+  fn assert_distinct_names<R: Runtime>(surfaces: &[IpcCommandSurface<R>]) {
+    let mut names: BTreeSet<&str> = BTreeSet::new();
+
+    for surface in surfaces {
+      assert!(
+        names.insert(surface.name),
+        "Two command surfaces are named `{}`",
+        surface.name
+      );
+    }
   }
 
   /// Where one plugin's command module is written, which is also where it is read back to be finalized.

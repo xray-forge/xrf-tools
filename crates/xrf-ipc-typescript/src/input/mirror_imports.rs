@@ -1,9 +1,4 @@
 /// How the generated modules address one another and the runtime they call.
-///
-/// Every specifier is the root joined with a path relative to the mirror's output directory, so one mirror can sit
-/// under an application's path alias (`@/core/ipc`) or inside a package that maps its own files (`#`). The runtime
-/// beside the mirror provides `invoke` (the counted wrapper commands call), `raw` (`invokeRaw`), `bulk/bulk-call`
-/// (`IBulkCall`) and `signature` (`IIpcCommandSignature`, `IIpcBulkRouteSignature`).
 #[derive(Clone, Debug)]
 pub struct MirrorImports {
   root: &'static str,

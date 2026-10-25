@@ -6,17 +6,13 @@ use std::path::Path;
 
 use xrf_utils::format_path;
 
-use crate::constants::GENERATED_HEADER;
-use crate::enumerations::Enumerations;
-use crate::generated_output::write_generated;
-use crate::mirror_imports::MirrorImports;
-use crate::plugin_symbols::PluginSymbols;
-use crate::specta_command::SpectaCommand;
-use crate::type_ownership::TypeOwnership;
+use std::collections::BTreeSet;
 
-/// One plugin's modules as the merged signatures import them: its name, and whether it has raw commands or bulk
-/// routes, which are the modules beside its typed one.
-pub(crate) type PluginModules<'a> = (&'a str, bool, bool);
+use crate::collected::SpectaCommand;
+use crate::enumerations::Enumerations;
+use crate::input::MirrorImports;
+use crate::write::plugin_symbols::PluginSymbols;
+use crate::write::{GeneratedOutput, PluginModules, TypeOwnership};
 
 /// Writes `commands/`, one module per Tauri plugin.
 pub(crate) struct CommandModuleWriter;
@@ -38,14 +34,16 @@ impl CommandModuleWriter {
   /// The same import for a module with no channel, which is the only other spelling Specta writes.
   const SPECTA_INVOKE_IMPORT: &'static str = "import { invoke as __TAURI_INVOKE } from \"@tauri-apps/api/core\";";
 
+  /// Specta's name for the command object, which every module would otherwise export under the same name.
+  const SPECTA_COMMANDS: &'static str = "export const commands = {";
+
   /// Replaces the types Tauri Specta inlined into a command module with imports, names its commands, has each wrapper
   /// invoke its command by the plugin's enum, and declares the commands' signatures.
   ///
-  /// The generated symbol was `commands` in every module, which left nine identical names in the directory and
-  /// made every call site alias it by hand. `invoke` is taken from the counted wrapper instead of Tauri: it counts
-  /// every call, which is why the redirect is written here rather than left to a hundred call sites to remember, so a
-  /// command added later is measured by existing. `Channel` still comes from Tauri, being a transport handle the
-  /// wrapper has no business in.
+  /// The command object is renamed after the plugin, so no call site has to alias one of a dozen identical names.
+  /// `invoke` is taken from the counted wrapper instead of Tauri: it counts every call, which is why the redirect is
+  /// written here rather than left to every call site to remember, so a command added later is measured by existing.
+  /// `Channel` still comes from Tauri, being a transport handle the wrapper has no business in.
   pub(crate) fn finalize(
     path: &Path,
     plugin: &str,
@@ -58,12 +56,21 @@ impl CommandModuleWriter {
     let counted_invoke_import: String = format!("import {{ invoke as __TAURI_INVOKE }} from \"{}\";", imports.invoke());
     let contents: String =
       fs::read_to_string(path).unwrap_or_else(|error| panic!("Failed to read {}: {error}", format_path(path)));
-    let mut wrappers: String = contents
+    let specta: &str = contents
       .split_once(Self::TYPES_MARKER)
       .map_or(contents.as_str(), |(before, _)| before)
-      .trim_end()
+      .trim_end();
+
+    assert!(
+      specta.contains(Self::SPECTA_COMMANDS),
+      "{} declares no `{}`; Tauri Specta's command object spelling has changed",
+      format_path(path),
+      Self::SPECTA_COMMANDS
+    );
+
+    let mut wrappers: String = specta
       .replace(
-        "export const commands = {",
+        Self::SPECTA_COMMANDS,
         &format!("export const {} = {{", symbols.commands()),
       )
       // The wider spelling first: replacing the bare one first would leave its `, Channel` behind.
@@ -137,7 +144,7 @@ impl CommandModuleWriter {
       .split_once("\n\n")
       .unwrap_or_else(|| panic!("{} has no header", format_path(path)));
 
-    write_generated(
+    GeneratedOutput::write(
       path,
       &format!(
         "{header}\n\nimport {{ IIpcCommandSignature }} from \"{}\";\n{type_imports}{}\n\n{signatures}",
@@ -163,6 +170,8 @@ impl CommandModuleWriter {
     if commands.is_empty() {
       return;
     }
+
+    Self::assert_distinct(path, commands.iter().map(|(wire_name, _)| *wire_name));
 
     let symbols: PluginSymbols = PluginSymbols::new(plugin);
     let wrappers: String = commands
@@ -229,6 +238,8 @@ impl CommandModuleWriter {
       return;
     }
 
+    Self::assert_distinct(path, routes.iter().map(|(route, _)| *route));
+
     let symbols: PluginSymbols = PluginSymbols::new(plugin);
     let wrappers: String = routes
       .iter()
@@ -282,7 +293,12 @@ impl CommandModuleWriter {
     let mut commands: Vec<String> = Vec::new();
     let mut routes: Vec<String> = Vec::new();
 
-    for (plugin, has_raw, has_bulk) in plugins {
+    for PluginModules {
+      name: plugin,
+      has_raw,
+      has_bulk,
+    } in plugins
+    {
       let symbols: PluginSymbols = PluginSymbols::new(plugin);
 
       import_lines.push(format!(
@@ -313,14 +329,15 @@ impl CommandModuleWriter {
 
     import_lines.sort();
 
-    write_generated(
+    GeneratedOutput::write(
       path,
       &format!(
-        "{GENERATED_HEADER}\n{}\n\n\
+        "{}\n{}\n\n\
          /** Every command any plugin answers, raw ones included, keyed by its wire name. */\n\
          export interface IIpcCommandSignatures{} {{}}\n\n\
          /** Every bulk route any plugin serves, keyed by its route. */\n\
          export interface IIpcBulkRouteSignatures{} {{}}\n",
+        GeneratedOutput::HEADER,
         import_lines.join("\n"),
         Self::render_extends(&commands),
         Self::render_extends(&routes)
@@ -419,13 +436,28 @@ impl CommandModuleWriter {
 
     ownership.assert_no_foreign_references(&wrappers, plugin);
 
-    write_generated(
+    GeneratedOutput::write(
       path,
       &format!(
-        "{GENERATED_HEADER}\n{import}\n{}\n{enumeration}\n{declaration} = {{\n{wrappers}}};\n\n{signatures}",
+        "{}\n{import}\n{}\n{enumeration}\n{declaration} = {{\n{wrappers}}};\n\n{signatures}",
+        GeneratedOutput::HEADER,
         ownership.imports_for(&wrappers)
       ),
     );
+  }
+
+  /// Fails when two declarations of one module fold to one enum member, which TypeScript would reject as a duplicate
+  /// identifier only once the frontend compiles.
+  fn assert_distinct<'a>(path: &Path, names: impl Iterator<Item = &'a str>) {
+    let mut members: BTreeSet<String> = BTreeSet::new();
+
+    for name in names {
+      assert!(
+        members.insert(PluginSymbols::member(name)),
+        "{} declares `{name}` twice",
+        format_path(path)
+      );
+    }
   }
 }
 
@@ -437,12 +469,10 @@ mod tests {
   use specta::Types;
   use xrf_test_utils::GeneratedResources;
 
-  use crate::command_module_writer::CommandModuleWriter;
+  use crate::collected::SpectaCommand;
   use crate::enumerations::Enumerations;
-  use crate::mirror_imports::MirrorImports;
-  use crate::specta_command::SpectaCommand;
-  use crate::type_modules::TypeModules;
-  use crate::type_ownership::TypeOwnership;
+  use crate::input::{MirrorImports, TypeModules};
+  use crate::write::{CommandModuleWriter, PluginModules, TypeOwnership};
 
   const IMPORTS: MirrorImports = MirrorImports::new("#");
 
@@ -585,6 +615,36 @@ mod tests {
   }
 
   #[test]
+  #[should_panic(expected = "declares `read_bytes` twice")]
+  fn a_route_declared_twice_fails_rather_than_writing_one_member_twice() {
+    written("twice-bulk.ts", |path, ownership, enumerations| {
+      CommandModuleWriter::write_bulk(
+        path,
+        "fixture",
+        &[("read_bytes", &[]), ("read_bytes", &[("length", "number")])],
+        ownership,
+        enumerations,
+        &IMPORTS,
+      );
+    });
+  }
+
+  #[test]
+  #[should_panic(expected = "declares no `export const commands = {`")]
+  fn a_module_without_specta_s_command_object_fails() {
+    written("renamed.ts", |path, ownership, enumerations| {
+      fs::write(
+        path,
+        "// header\n\nimport { invoke as __TAURI_INVOKE } from \"@tauri-apps/api/core\";\n\n/** Commands */\n\
+         export const fixture = {\n};\n",
+      )
+      .expect("module to be written");
+
+      CommandModuleWriter::finalize(path, "fixture", &[], ownership, enumerations, &IMPORTS);
+    });
+  }
+
+  #[test]
   fn a_plugin_without_raw_commands_gets_no_raw_module() {
     let path: PathBuf = written("empty-raw.ts", |path, ownership, enumerations| {
       CommandModuleWriter::write_raw(path, "empty", &[], ownership, enumerations, &IMPORTS);
@@ -596,7 +656,22 @@ mod tests {
   #[test]
   fn the_signatures_merge_every_plugin_s_modules() {
     let path: PathBuf = written("signatures.ts", |path, _, _| {
-      CommandModuleWriter::write_signatures(path, &[("jobs", false, false), ("archives", false, true)], &IMPORTS);
+      CommandModuleWriter::write_signatures(
+        path,
+        &[
+          PluginModules {
+            name: "jobs",
+            has_raw: false,
+            has_bulk: false,
+          },
+          PluginModules {
+            name: "archives",
+            has_raw: false,
+            has_bulk: true,
+          },
+        ],
+        &IMPORTS,
+      );
     });
 
     assert_eq!(

@@ -8,9 +8,9 @@ use xrf_typescript::swc_ecma_ast::{Decl, ModuleDecl, ModuleItem, Pat, Program};
 use xrf_typescript::{parse_typescript_file, render_module_item};
 use xrf_utils::format_path;
 
-use crate::constants::{COMMANDS_DIRECTORY, TYPES_DIRECTORY};
-use crate::surface_drift::SurfaceDrift;
 use crate::typescript::normalization::normalize_module_item;
+use crate::verify::SurfaceDrift;
+use crate::write::GeneratedOutput;
 
 /// Every exported declaration of a bindings tree, keyed by `<directory>/<file>::<exported name>`.
 pub(crate) struct Surface {
@@ -28,7 +28,7 @@ impl Surface {
       declarations: BTreeMap::new(),
     };
 
-    for directory in [TYPES_DIRECTORY, COMMANDS_DIRECTORY] {
+    for directory in [GeneratedOutput::TYPES_DIRECTORY, GeneratedOutput::COMMANDS_DIRECTORY] {
       surface.read_directory(&root.join(directory), directory);
     }
 
@@ -63,9 +63,7 @@ impl Surface {
         .collect(),
     }
   }
-}
 
-impl Surface {
   /// Reads one generated directory, keying every declaration by the module it is exported from.
   fn read_directory(&mut self, path: &Path, directory: &str) {
     let entries = fs::read_dir(path).unwrap_or_else(|error| panic!("Failed to read {}: {error}", format_path(path)));
@@ -103,9 +101,9 @@ impl Surface {
         continue;
       };
 
-      let declaration: String = Self::to_canonical_declaration(item, &source.source_map);
+      let declaration: String = Self::canonicalize(item, &source.source_map);
 
-      for name in Self::to_declaration_names(&export.decl) {
+      for name in Self::list_names(&export.decl) {
         self
           .declarations
           .insert(format!("{module}::{name}"), declaration.clone());
@@ -114,7 +112,7 @@ impl Surface {
   }
 
   /// Names an export declaration introduces, which is what a frontend module imports it by.
-  fn to_declaration_names(declaration: &Decl) -> Vec<String> {
+  fn list_names(declaration: &Decl) -> Vec<String> {
     match declaration {
       Decl::Class(declared) => vec![declared.ident.sym.to_string()],
       Decl::Fn(declared) => vec![declared.ident.sym.to_string()],
@@ -138,7 +136,7 @@ impl Surface {
   ///
   /// Normalizing first is what makes the rendering answer only to shape: the frontend toolchain rewrites
   /// syntax as well as whitespace, so two spellings of one type reach here as different trees.
-  fn to_canonical_declaration(item: &ModuleItem, source_map: &Lrc<SourceMap>) -> String {
+  fn canonicalize(item: &ModuleItem, source_map: &Lrc<SourceMap>) -> String {
     let mut normalized: ModuleItem = item.clone();
 
     normalize_module_item(&mut normalized);
@@ -155,19 +153,22 @@ mod tests {
 
   use xrf_test_utils::GeneratedResources;
 
-  use crate::constants::{COMMANDS_DIRECTORY, TYPES_DIRECTORY};
-  use crate::surface::Surface;
-  use crate::surface_drift::SurfaceDrift;
+  use crate::verify::{Surface, SurfaceDrift};
+  use crate::write::GeneratedOutput;
 
   /// The surface of a bindings tree whose one type module holds `source`.
   fn read(name: &str, source: &str) -> Surface {
     let root: PathBuf = GeneratedResources::path("bindings-surface").join(name);
 
-    for directory in [TYPES_DIRECTORY, COMMANDS_DIRECTORY] {
+    for directory in [GeneratedOutput::TYPES_DIRECTORY, GeneratedOutput::COMMANDS_DIRECTORY] {
       fs::create_dir_all(root.join(directory)).expect("directory to be created");
     }
 
-    fs::write(root.join(TYPES_DIRECTORY).join("xrf-fixture.ts"), source).expect("module to be written");
+    fs::write(
+      root.join(GeneratedOutput::TYPES_DIRECTORY).join("xrf-fixture.ts"),
+      source,
+    )
+    .expect("module to be written");
 
     Surface::read(&root)
   }

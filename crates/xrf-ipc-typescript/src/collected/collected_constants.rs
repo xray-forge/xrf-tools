@@ -4,7 +4,7 @@ use specta::Types;
 use specta::datatype::DataType;
 use xrf_ipc::IpcConstant;
 
-use crate::type_modules::TypeModules;
+use crate::input::TypeModules;
 
 /// Every constant marked `#[xrf_ipc::constant]`, by the bindings module it lands in, each beside its type's definition.
 pub(crate) struct CollectedConstants {
@@ -84,22 +84,22 @@ mod tests {
   use xrf_ipc::IpcConstant;
 
   use super::CollectedConstants;
-  use crate::type_modules::TypeModules;
+  use crate::input::TypeModules;
 
   static FIRST: IpcConstant = IpcConstant {
     module_path: "xrf_fixture::limits",
     name: "LIMIT",
     doc: "",
-    value: || xrf_ipc::to_value(&1_u32),
-    data_type: |types| xrf_ipc::data_type_of(&1_u32, types),
+    value: || IpcConstant::serialize_value(&1_u32),
+    data_type: |types| IpcConstant::define_type(&1_u32, types),
   };
 
   static SECOND: IpcConstant = IpcConstant {
     module_path: "xrf_fixture::other",
     name: "LIMIT",
     doc: "",
-    value: || xrf_ipc::to_value(&2_u32),
-    data_type: |types| xrf_ipc::data_type_of(&2_u32, types),
+    value: || IpcConstant::serialize_value(&2_u32),
+    data_type: |types| IpcConstant::define_type(&2_u32, types),
   };
 
   #[test]

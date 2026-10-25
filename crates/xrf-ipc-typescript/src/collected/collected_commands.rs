@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use specta::Types;
 
-use crate::specta_command::SpectaCommand;
+use crate::collected::SpectaCommand;
 
 /// What exporting every plugin collected: the types their commands referenced, and each plugin's commands.
 #[derive(Default)]
