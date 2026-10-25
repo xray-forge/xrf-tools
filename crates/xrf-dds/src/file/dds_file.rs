@@ -140,7 +140,7 @@ impl DdsFile {
   /// Decode one mip level to RGBA, for whatever wants pixels rather than the file.
   ///
   /// Two decoders, in order. `image_dds` owns every block compressed layout and the packings it has names for; what it
-  /// refuses goes to [`decode_uncompressed`], which expands a packing from the channel masks its header declares.
+  /// refuses goes to `decode_uncompressed`, which expands a packing from the channel masks its header declares.
   /// Between them they cover every layout in the reference trees - 28,606 files across `gamedata`, `gamedata-anomaly`,
   /// `gamedata-coc`, `gamedata-cop-ee`, `gamedata-cs` and `gamedata-openxray-gunslinger`:
   ///

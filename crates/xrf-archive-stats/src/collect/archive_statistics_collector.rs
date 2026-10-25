@@ -237,7 +237,7 @@ impl ArchiveStatisticsCollector {
     rows
   }
 
-  /// The extension an engine path's last segment spells, lower-cased, or `None` when it has none.
+  /// The extension an engine path's last segment spells, as it spells it, or `None` when it has none.
   fn extension_of(name: &str) -> Option<&str> {
     let base: &str = name.rsplit(['\\', '/']).next()?;
     let dot: usize = base.rfind('.')?;

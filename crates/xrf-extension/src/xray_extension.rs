@@ -177,7 +177,8 @@ impl XrayExtension {
     }
   }
 
-  /// Whether `name` carries this extension, compared the way [`has_extension`] compares one.
+  /// Whether `name` carries this extension: the token after its final dot, compared undotted and ASCII
+  /// case-insensitively.
   pub fn matches(self, name: &str) -> bool {
     has_extension(name, self.as_str())
   }

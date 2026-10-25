@@ -59,9 +59,8 @@ impl XRayShaderScript {
     &self.passes
   }
 
-  /// The first pass one of the script's functions declares, for a reader that wants the one the engine compiles.
-  ///
-  /// @param function - Name of the function, `normal` for the base element every surface is drawn by.
+  /// The first pass the script's `function` declares, for a reader that wants the one the engine compiles: `normal`
+  /// is the base element every surface is drawn by.
   pub fn pass_of(&self, function: &str) -> Option<&XRayShaderPass> {
     self.passes.iter().find(|pass| pass.function() == Some(function))
   }

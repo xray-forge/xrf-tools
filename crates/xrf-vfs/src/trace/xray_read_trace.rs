@@ -23,7 +23,7 @@ pub struct XrayReadTraceEntry {
 /// time. Present, it answers what no timing can: whether a run reads the same bytes more than once. A full Anomaly
 /// verification once read 77.0GB to inspect 18.6GB unique, four animation banks up to 950 times each.
 ///
-/// Counts physical reads only. A read served from [`crate::XrayAssetCache`] performs no I/O and is not one, which is
+/// Counts physical reads only. A read served from the VFS's asset cache performs no I/O and is not one, which is
 /// the point: with retention working, a traced sweep's reads fall towards its unique paths.
 #[derive(Debug, Default)]
 pub struct XrayReadTrace {

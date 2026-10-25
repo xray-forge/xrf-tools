@@ -18,7 +18,8 @@ pub struct XraySurfaceDescriptor {
   pub shader: Option<String>,
   /// The textures the entry dresses with, in the order it names them: the base, then whatever its class binds.
   pub textures: Vec<String>,
-  /// The `shaders.xr` the answer was read from, or `None` when no root holds one.
+  /// The file the answer was read from: the renderer script a scripted shader is, or else the `shaders.xr` asked for
+  /// its blender. `None` when the surface names no shader, or no root holds a library to ask.
   pub library: Option<XrayAsset>,
   pub declaration: XraySurfaceDeclaration,
   /// What to draw. Always answerable: a surface nothing could be read for is drawn the way the engine draws one whose

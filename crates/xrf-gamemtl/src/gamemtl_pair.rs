@@ -99,7 +99,7 @@ impl GameMtlPair {
     Ok(())
   }
 
-  /// Whether the pair declares its own behaviour rather than taking another pair's.
+  /// Whether the pair takes its unset properties from another pair, rather than inheriting from nothing.
   pub const fn has_parent(&self) -> bool {
     self.parent_id != Self::NO_PARENT_ID
   }

@@ -10,7 +10,10 @@ export type BuildInfo = {
   commit: string | null;
   /** Branch or tag the build ran from. */
   reference: string | null;
-  /** Whether the checkout carried uncommitted changes, which only a local build can. */
+  /**
+   * Whether `git status` reported anything when the build ran: uncommitted changes or untracked files, in whichever
+   * checkout built it.
+   */
   isDirty: boolean;
   /** RFC 3339 instant the build script ran. */
   builtAt: string | null;
@@ -20,7 +23,10 @@ export type BuildInfo = {
   rustc: string | null;
   /** Cargo profile name, as opposed to the optimisation settings below. */
   profile: string | null;
-  /** Optimisation level, link-time optimisation and codegen unit count, as cargo resolved them. */
+  /**
+   * The optimisation level cargo built with, and the link-time optimisation and codegen unit count the environment
+   * overrode, `profile default` where it overrode neither: cargo hands a build script the level, not the profile.
+   */
   optimization: string | null;
   /** Identifier of the workflow run that produced the binary, absent for a local build. */
   runId: string | null;

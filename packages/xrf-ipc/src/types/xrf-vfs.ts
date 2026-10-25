@@ -12,7 +12,7 @@ export type XrayAsset = {
 export enum EXrayAssetContainer {
   /** A loose file, preserving its root so consumers can identify the winning overlay. */
   DIRECTORY = "directory",
-  /** An entry inside the archive volume set at `path`. */
+  /** An entry inside the archive volume file at `path`: the one volume holding this copy, not its set's root. */
   ARCHIVE = "archive",
 }
 
@@ -20,7 +20,7 @@ export enum EXrayAssetContainer {
 export type XrayAssetContainer =
   /** A loose file, preserving its root so consumers can identify the winning overlay. */
   | { kind: "directory"; root: string; relativePath: string }
-  /** An entry inside the archive volume set at `path`. */
+  /** An entry inside the archive volume file at `path`: the one volume holding this copy, not its set's root. */
   | { kind: "archive"; path: string };
 
 /** Asset category inferred from an X-Ray logical path's extension or recognized suffix. */

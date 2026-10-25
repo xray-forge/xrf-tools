@@ -7,13 +7,13 @@ pub const BYTES_PER_MEGABYTE: u64 = 1024 * BYTES_PER_KILOBYTE;
 /// Bytes in one binary gigabyte.
 pub const BYTES_PER_GIGABYTE: u64 = 1024 * BYTES_PER_MEGABYTE;
 
-/// Unit labels by binary magnitude, matching `BYTE_UNITS` in the UI's `lib/memory/format.ts`.
+/// Unit labels by binary magnitude, matching `BYTE_UNITS` in `@xrf/format` (`packages/xrf-format/src/bytes.ts`).
 const BYTE_UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
 
 /// Convert a byte count to megabytes, unrounded.
 ///
 /// Rounding is left to the caller because the callers differ: a summary shows a fraction, a form field
-/// wants a whole number. Mirrors `bytesToMegabytes` in the UI's `lib/memory/size.ts`.
+/// wants a whole number. Mirrors `bytesToMegabytes` in `@xrf/format` (`packages/xrf-format/src/byte-size.ts`).
 #[inline]
 pub fn bytes_to_megabytes(bytes: u64) -> f64 {
   bytes as f64 / BYTES_PER_MEGABYTE as f64
@@ -29,7 +29,7 @@ pub fn megabytes_to_bytes(megabytes: u64) -> u64 {
 
 /// Format a byte count with the largest binary unit it fills: `512 B`, `1.5 KB`, `1.17 GB`.
 ///
-/// Mirrors the UI's `formatBytes` in `lib/memory/format.ts` rule for rule — magnitude-scaled precision
+/// Mirrors `@xrf/format`'s `formatBytes` (`packages/xrf-format/src/bytes.ts`) rule for rule — magnitude-scaled precision
 /// with trailing zeros dropped — so the CLI and the desktop app render the same size identically. For two
 /// sizes a reader is meant to compare, use [`format_bytes_pair`] so both carry the same unit.
 pub fn format_bytes(bytes: u64) -> String {
@@ -113,7 +113,7 @@ mod tests {
 
   #[test]
   fn test_format_bytes_matches_the_ui_formatter() {
-    // The expectations the UI's own formatBytes test pins.
+    // The expectations `@xrf/format`'s own `formatBytes` test pins.
     assert_eq!(format_bytes(0), "0 B");
     assert_eq!(format_bytes(1536), "1.5 KB");
     assert_eq!(format_bytes(10 * BYTES_PER_MEGABYTE), "10 MB");
