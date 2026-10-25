@@ -232,7 +232,7 @@ impl RenderLevelSource for VisualRenderSource {
     Ok(RenderMotion {
       frames: posed.description.frame_count,
       bones: posed.description.bone_count,
-      transforms: posed.transforms.clone(),
+      transforms: Arc::clone(&posed.transforms),
     })
   }
 }

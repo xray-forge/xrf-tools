@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
 use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
-use xrf_app_core::session::{SessionId, SessionOpening, SessionSnapshot};
+use xrf_app_core::session::{SessionId, SessionSnapshot};
 
-use crate::{EquipmentSpriteDocument, EquipmentSpriteMetadata, EquipmentSpriteOpen, EquipmentSprites};
+use crate::{EquipmentSpriteDocument, EquipmentSpriteMetadata, EquipmentSprites};
 
 /// Read the sheet `previous_id` holds again, as it was asked for, into the new handle `session_id`; the previous handle
 /// is left as it is, for the page to close once the reload is shown, and a failed reload leaves it untouched.
@@ -19,20 +17,7 @@ pub async fn sprite_equipment_reload_sprite(
   execution: State<'_, ExecutionState>,
   sprites: State<'_, EquipmentSprites>,
 ) -> TauriResult<SessionSnapshot<EquipmentSpriteMetadata>> {
-  let (opening, previous): (
-    SessionOpening<EquipmentSpriteDocument>,
-    Arc<SessionSnapshot<EquipmentSpriteDocument>>,
-  ) = sprites.begin_reload(session_id, previous_id)?;
-  let open: EquipmentSpriteOpen = previous.metadata.open.clone();
+  let reloaded = EquipmentSpriteDocument::reload(&sprites, &execution, &assets, session_id, previous_id).await?;
 
-  log::info!("Reloading equipment sheet: {}", open.sheet.label());
-
-  let assets: AssetMountState = AssetMountState::clone(&assets);
-  let document: EquipmentSpriteDocument = execution
-    .run_blocking("Reloading an equipment sheet", move || {
-      EquipmentSpriteDocument::read(&assets, open)
-    })
-    .await??;
-
-  Ok(opening.commit(document)?.map(|document| document.metadata.clone()))
+  Ok(reloaded.map(|document| document.metadata.clone()))
 }

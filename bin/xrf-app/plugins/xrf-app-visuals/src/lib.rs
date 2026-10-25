@@ -6,6 +6,8 @@ pub mod ipc;
 mod model;
 pub mod plugin;
 mod pose;
+#[cfg(test)]
+mod tests;
 
 pub use browse::VisualBrowses;
 pub use model::{SelectedVisual, SelectedVisualDescription, VisualModels, VisualRenderSource};

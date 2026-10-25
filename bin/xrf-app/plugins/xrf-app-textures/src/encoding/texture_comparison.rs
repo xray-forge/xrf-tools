@@ -12,7 +12,6 @@ use crate::describe::{TextureFiles, TextureSource};
 use crate::encoding::{
   TextureEncodingComparison, TextureEncodingCurrent, TextureEncodingReport, TexturesCompareRequest,
 };
-use crate::lease::TEXTURE_PHASE_WEIGH;
 
 /// The encodes one comparison produced, kept until somebody saves one or asks for another texture, with the texture
 /// they were made of: the only file a save may write them over.
@@ -27,6 +26,10 @@ pub struct TextureComparison {
 }
 
 impl TextureComparison {
+  /// The phase a comparison reports while it weighs the candidates, its own loop over them, since the image crate
+  /// encodes one candidate at a time.
+  pub const PHASE_WEIGH: &str = "weigh";
+
   /// Weighs every candidate against the texture `request` names, whose `bytes` were read from `files`: decoded once,
   /// reduced once over `mipmaps`, and encoded from those levels. Answers the comparison, the texture as it stands, and
   /// whether every candidate was reached.
@@ -45,7 +48,7 @@ impl TextureComparison {
     let base: RgbaImage = file.decode_rgba(0).map_err(error_to_string)?;
     let chain: DdsMipChain = DdsMipChain::build(&base, mipmaps).map_err(error_to_string)?;
 
-    let weighing: JobScope = job.enter(TEXTURE_PHASE_WEIGH, Some(DdsEncodeCandidate::ALL.len() as u64));
+    let weighing: JobScope = job.enter(Self::PHASE_WEIGH, Some(DdsEncodeCandidate::ALL.len() as u64));
     let mut attempts: Vec<DdsEncodeAttempt> = Vec::with_capacity(DdsEncodeCandidate::ALL.len());
     let mut outcome: JobOutcome = JobOutcome::Completed;
 

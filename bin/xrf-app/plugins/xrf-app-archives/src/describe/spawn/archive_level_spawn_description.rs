@@ -1,10 +1,8 @@
 use serde::Serialize;
-use xrf_chunk::XRayByteOrder;
-use xrf_error::XrfResult;
 use xrf_spawn::LevelSpawnFile;
 
 use crate::describe::archive_bounds::ArchiveBounds;
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
+use crate::describe::archive_entry_reader::ArchiveEntryReader;
 use crate::describe::spawn::archive_level_spawn_section::ArchiveLevelSpawnSection;
 
 /// Everything the viewer says about the objects a level spawns.
@@ -21,24 +19,16 @@ pub struct ArchiveLevelSpawnDescription {
 }
 
 impl ArchiveLevelSpawnDescription {
-  /// Reads the spawn list an entry holds, or `None` for a `.spawn` that is a set instead.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the entry's bytes cannot be read.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Option<Self>> {
-    let bytes: Vec<u8> = source.read_bytes(name)?;
-    let size: u64 = bytes.len() as u64;
+  /// The spawn list an opened entry holds, or `None` for a `.spawn` that is not one; every object is read, so the
+  /// caller weighs the entry against the ceiling first.
+  pub fn of_entry(entry: &mut ArchiveEntryReader) -> Option<Self> {
+    let file: LevelSpawnFile = entry.read_container::<LevelSpawnFile>().ok()?;
 
-    let Ok(file) = LevelSpawnFile::read_from_bytes::<XRayByteOrder>(bytes) else {
-      return Ok(None);
-    };
-
-    Ok(Some(Self {
+    Some(Self {
       objects: file.objects.len(),
       sections: ArchiveLevelSpawnSection::of_all(&file),
       bounds: ArchiveBounds::of_points(file.objects.iter().map(|object| &object.position)),
-      size,
-    }))
+      size: entry.size(),
+    })
   }
 }

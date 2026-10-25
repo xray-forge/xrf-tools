@@ -1,6 +1,7 @@
 use xrf_chunk::{ChunkDataSource, ChunkReader, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_level::LevelGeomFile;
+use xrf_spawn::LevelSpawnFile;
 
 /// A container an entry can be read as wherever it sits.
 pub trait ArchiveEntryContainer: Sized {
@@ -13,6 +14,12 @@ pub trait ArchiveEntryContainer: Sized {
 }
 
 impl ArchiveEntryContainer for LevelGeomFile {
+  fn read_container<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    Self::read_from_chunk::<XRayByteOrder, D>(reader)
+  }
+}
+
+impl ArchiveEntryContainer for LevelSpawnFile {
   fn read_container<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Self::read_from_chunk::<XRayByteOrder, D>(reader)
   }

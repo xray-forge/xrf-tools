@@ -16,6 +16,7 @@ use xrf_app_system::StartupLog;
 use xrf_build_info::{BuildInfo, build_info};
 use xrf_job::ExecutionRequest;
 
+use crate::application_failure::ApplicationFailure;
 use crate::ipc::registry::transport_routes;
 use crate::plugins::domain_plugins;
 use crate::window::MainWindow;
@@ -35,7 +36,7 @@ pub fn run() -> ExitCode {
   // One pool for the process, managed before any plugin's setup, since the renderer's loaders run on it too.
   let execution: ExecutionState = match ExecutionState::new(ExecutionRequest::Auto) {
     Ok(execution) => execution,
-    Err(error) => return fail_to_start(&format!("Cannot start the application's worker pool: {error}")),
+    Err(error) => return ApplicationFailure::report(&format!("Cannot start the application's worker pool: {error}")),
   };
 
   log::info!(
@@ -66,7 +67,7 @@ pub fn run() -> ExitCode {
   // A plugin's setup, the transport or the window failing ends the build here, before anything is on screen.
   let application: App<Wry> = match built {
     Ok(application) => application,
-    Err(error) => return fail_to_start(&format!("Cannot start the application: {error}")),
+    Err(error) => return ApplicationFailure::report(&format!("Cannot start the application: {error}")),
   };
 
   application.run(|_, event| match event {
@@ -110,30 +111,6 @@ fn assemble<R: Runtime>(
     });
 
   domain_plugins().into_iter().fold(builder, Builder::plugin)
-}
-
-/// Logs why the application cannot start and tells the user, whom a release build on Windows has no console to tell,
-/// only a log file they do not know to open; answers the failure the process ends with.
-fn fail_to_start(message: &str) -> ExitCode {
-  log::error!("{message}");
-
-  #[cfg(all(windows, not(debug_assertions)))]
-  {
-    use windows::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
-    use windows::core::HSTRING;
-
-    // SAFETY: both strings outlive the call, and it names no owner window.
-    unsafe {
-      MessageBoxW(
-        None,
-        &HSTRING::from(message),
-        &HSTRING::from("The application cannot start"),
-        MB_OK | MB_ICONERROR,
-      )
-    };
-  }
-
-  ExitCode::FAILURE
 }
 
 #[cfg(test)]

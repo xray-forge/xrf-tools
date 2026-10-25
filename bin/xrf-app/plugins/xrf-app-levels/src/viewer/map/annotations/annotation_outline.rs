@@ -2,8 +2,7 @@ use xrf_math::Vector3d;
 use xrf_spawn::Shape;
 use xrf_visual::VisualTransform;
 
-/// A point seen from above, engine `x` and `z`.
-pub type AnnotationPoint = [f32; 2];
+use crate::viewer::map::annotations::AnnotationPoint;
 
 /// What a volume's shape covers seen from above.
 #[derive(Clone, Debug, PartialEq)]

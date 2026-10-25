@@ -1,8 +1,6 @@
 use serde::Serialize;
-use xrf_error::XrfResult;
 use xrf_spawn::SpawnHeaderChunk;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::archive_entry_reader::ArchiveEntryReader;
 use crate::describe::spawn::archive_spawn_section::ArchiveSpawnSection;
 
@@ -24,28 +22,17 @@ pub struct ArchiveSpawnDescription {
 }
 
 impl ArchiveSpawnDescription {
-  /// The spawn set an entry holds, or `None` for a `.spawn` that is not one.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the entry's bytes cannot be read, or when they are not a chunked container at all.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Option<Self>> {
-    let mut reader: ArchiveEntryReader = source.open_entry(name)?;
-    let size: u64 = reader.size();
-
-    let Ok(sections) = reader.read_sections() else {
-      return Ok(None);
-    };
-
-    let Some(header) = reader
+  /// The spawn set an opened entry holds, or `None` for a `.spawn` that is not one, read by the headers and the one
+  /// chunk that names the set.
+  pub fn of_entry(entry: &mut ArchiveEntryReader) -> Option<Self> {
+    let size: u64 = entry.size();
+    let sections: Vec<(u32, u64)> = entry.read_sections().ok()?;
+    let header: SpawnHeaderChunk = entry
       .read_chunk::<SpawnHeaderChunk>(SpawnHeaderChunk::CHUNK_ID)
       .ok()
-      .flatten()
-    else {
-      return Ok(None);
-    };
+      .flatten()?;
 
-    Ok(Some(Self {
+    Some(Self {
       version: header.version,
       guid: header.guid.to_string(),
       graph_guid: header.graph_guid.to_string(),
@@ -53,6 +40,6 @@ impl ArchiveSpawnDescription {
       levels: header.levels_count,
       sections: ArchiveSpawnSection::of_all(&sections),
       size,
-    }))
+    })
   }
 }

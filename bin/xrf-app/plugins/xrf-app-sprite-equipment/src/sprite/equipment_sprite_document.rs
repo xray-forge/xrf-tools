@@ -1,6 +1,10 @@
+use std::sync::Arc;
+
 use bytes::Bytes;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::{AssetMountState, AssetSource};
+use xrf_app_core::execution::ExecutionState;
+use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_dds::{DdsFile, DdsPng};
 use xrf_dltx::select_ltx_dialect;
 use xrf_error::XrfResult;
@@ -9,7 +13,9 @@ use xrf_texture::EquipmentSlotOccupant;
 use xrf_utils::error_to_string;
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath, XraySearch};
 
-use crate::{EquipmentSheetLocation, EquipmentSheetSource, EquipmentSpriteMetadata, EquipmentSpriteOpen};
+use crate::{
+  EquipmentSheetLocation, EquipmentSheetSource, EquipmentSpriteMetadata, EquipmentSpriteOpen, EquipmentSprites,
+};
 
 /// One opened sheet: what the editor is told about it, and the picture it is drawn from.
 pub struct EquipmentSpriteDocument {
@@ -47,6 +53,30 @@ impl EquipmentSpriteDocument {
       },
       preview: Bytes::from(preview.bytes),
     })
+  }
+
+  /// Reads the sheet `previous` holds again, as it was asked for, into the new handle `id` on the pool; a read that
+  /// fails gives the new handle up and leaves `previous` as it was.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where `previous` holds nothing, `id` cannot be reserved, or the sheet cannot be read again.
+  pub async fn reload(
+    sprites: &EquipmentSprites,
+    execution: &ExecutionState,
+    assets: &AssetMountState,
+    id: SessionId,
+    previous: SessionId,
+  ) -> TauriResult<Arc<SessionSnapshot<Self>>> {
+    let assets: AssetMountState = AssetMountState::clone(assets);
+
+    sprites
+      .reload_on_pool(execution, id, previous, "Reloading an equipment sheet", move |held| {
+        log::info!("Reloading equipment sheet: {}", held.metadata.open.sheet.label());
+
+        Self::read(&assets, held.metadata.open.clone())
+      })
+      .await
   }
 
   /// Decodes the sheet and works out where it came from.

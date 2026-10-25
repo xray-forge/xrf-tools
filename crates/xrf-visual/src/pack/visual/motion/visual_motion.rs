@@ -61,7 +61,7 @@ pub fn bake_motion(
 
   Ok(VisualMotionPose {
     description,
-    transforms,
+    transforms: transforms.into(),
   })
 }
 

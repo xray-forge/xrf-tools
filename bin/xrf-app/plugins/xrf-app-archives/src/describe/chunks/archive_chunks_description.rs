@@ -1,7 +1,9 @@
 use serde::Serialize;
-use xrf_error::XrfResult;
+use xrf_chunk::{ChunkDataSource, ChunkReader};
+use xrf_error::{XrfError, XrfResult};
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
+use crate::describe::archive_entry_container::ArchiveEntryContainer;
+use crate::describe::archive_entry_reader::ArchiveEntryReader;
 use crate::describe::chunks::archive_chunk_node::ArchiveChunkNode;
 
 /// The container a file is, for a file nothing here reads.
@@ -20,26 +22,27 @@ pub struct ArchiveChunksDescription {
 }
 
 impl ArchiveChunksDescription {
-  /// The container an entry is, or `None` for one that is not a container at all.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the entry's bytes cannot be read. Bytes that read fine and are not a container are an
-  /// answer rather than a failure, which is why this is an `Option` inside a `Result`.
-  pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Option<Self>> {
-    let bytes: Vec<u8> = source.read_bytes(name)?;
-    let size: u64 = bytes.len() as u64;
-    let chunks: Vec<ArchiveChunkNode> = ArchiveChunkNode::of_bytes(bytes);
+  /// The container an opened entry is, or `None` for one that is not a container at all, which is an answer rather
+  /// than a failure.
+  pub fn of_entry(entry: &mut ArchiveEntryReader) -> Option<Self> {
+    entry.read_container::<Self>().ok()
+  }
+}
+
+impl ArchiveEntryContainer for ArchiveChunksDescription {
+  fn read_container<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let size: u64 = reader.size;
+    let chunks: Vec<ArchiveChunkNode> = ArchiveChunkNode::of_reader(reader);
 
     if chunks.is_empty() {
-      return Ok(None);
+      return Err(XrfError::new_invalid_error("The entry is not a chunked container"));
     }
 
-    Ok(Some(Self {
+    Ok(Self {
       nodes: ArchiveChunkNode::count(&chunks),
       depth: ArchiveChunkNode::depth(&chunks),
       chunks,
       size,
-    }))
+    })
   }
 }

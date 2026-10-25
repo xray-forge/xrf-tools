@@ -24,10 +24,10 @@ pub struct ArchiveChunkNode {
 
 impl ArchiveChunkNode {
   /// The container a file is, or nothing for bytes that are not one.
-  pub fn of_bytes(bytes: Vec<u8>) -> Vec<Self> {
+  pub fn of_reader<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> Vec<Self> {
     let mut budget: usize = MAXIMUM_NODES;
 
-    ChunkReader::from_vec(bytes).map_or_else(|_| Vec::new(), |mut reader| Self::walk(&mut reader, &mut budget, 0))
+    Self::walk(reader, &mut budget, 0)
   }
 
   /// Every node of a tree, the nested ones included.
@@ -83,9 +83,14 @@ impl ArchiveChunkNode {
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::CHUNK_ID_COMPRESSED_MASK;
+  use xrf_chunk::{CHUNK_ID_COMPRESSED_MASK, ChunkReader};
 
   use super::ArchiveChunkNode;
+
+  /// The tree `bytes` hold, walked as an archived entry is, out of memory.
+  fn of_bytes(bytes: Vec<u8>) -> Vec<ArchiveChunkNode> {
+    ArchiveChunkNode::of_reader(&mut ChunkReader::from_vec(bytes).expect("bytes in memory open"))
+  }
 
   /// One chunk as a container frames it: the id, the payload length, then the payload.
   fn chunk(id: u32, payload: &[u8]) -> Vec<u8> {
@@ -103,7 +108,7 @@ mod tests {
 
     bytes.extend(chunk(2, b"second"));
 
-    let nodes: Vec<ArchiveChunkNode> = ArchiveChunkNode::of_bytes(bytes);
+    let nodes: Vec<ArchiveChunkNode> = of_bytes(bytes);
 
     assert_eq!(nodes.len(), 2);
     assert_eq!((nodes[0].id, nodes[0].size), (1, 5));
@@ -114,7 +119,7 @@ mod tests {
   #[test]
   fn a_payload_that_is_itself_a_container_is_descended_into() {
     let nested: Vec<u8> = [chunk(10, b"a"), chunk(11, b"b")].concat();
-    let nodes: Vec<ArchiveChunkNode> = ArchiveChunkNode::of_bytes(chunk(1, &nested));
+    let nodes: Vec<ArchiveChunkNode> = of_bytes(chunk(1, &nested));
 
     assert_eq!(ArchiveChunkNode::count(&nodes), 3);
     assert_eq!(ArchiveChunkNode::depth(&nodes), 2);
@@ -129,7 +134,7 @@ mod tests {
 
     payload.extend_from_slice(b"trailing");
 
-    let nodes: Vec<ArchiveChunkNode> = ArchiveChunkNode::of_bytes(chunk(1, &payload));
+    let nodes: Vec<ArchiveChunkNode> = of_bytes(chunk(1, &payload));
 
     assert_eq!(nodes.len(), 1);
     assert!(nodes[0].children.is_empty(), "a partial walk is data, not a container");
@@ -137,14 +142,14 @@ mod tests {
 
   #[test]
   fn bytes_that_are_not_a_container_read_as_none() {
-    assert!(ArchiveChunkNode::of_bytes(b"not a chunk at all".to_vec()).is_empty());
+    assert!(of_bytes(b"not a chunk at all".to_vec()).is_empty());
   }
 
   #[test]
   fn a_compressed_chunk_is_reported_by_its_unmasked_id_and_not_walked() {
     // `gamemtl.xr` carries one, and a walk that refused it would report nothing for the richest container there is.
     let nested: Vec<u8> = chunk(10, b"a");
-    let nodes: Vec<ArchiveChunkNode> = ArchiveChunkNode::of_bytes(chunk(7 | CHUNK_ID_COMPRESSED_MASK, &nested));
+    let nodes: Vec<ArchiveChunkNode> = of_bytes(chunk(7 | CHUNK_ID_COMPRESSED_MASK, &nested));
 
     assert_eq!(nodes.len(), 1);
     assert_eq!(nodes[0].id, 7);

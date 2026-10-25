@@ -3,13 +3,13 @@ use std::error::Error;
 use tauri::utils::config::WindowConfig;
 use tauri::webview::{WebviewWindow, WebviewWindowBuilder};
 use tauri::window::Color;
-use tauri::{App, Manager, Runtime};
+use tauri::{App, AppHandle, Manager, Runtime};
 use xrf_app_core::window::WindowHandles;
 use xrf_build_info::BuildInfo;
 
 use crate::preferences::Preferences;
 use crate::window::geometry::{WindowGeometry, WindowGeometryTracker};
-use crate::window::webview_extensions::DevExtensions;
+use crate::window::webview_extensions::WebviewExtensions;
 use crate::window::window_build_kind::WindowBuildKind;
 use crate::window::window_reveal::WindowReveal;
 
@@ -40,11 +40,11 @@ impl MainWindow {
       }
     };
 
-    let window: WebviewWindow<R> = WebviewWindowBuilder::from_config(application.handle(), config)?
-      .background_color(Self::to_see_through(config.background_color))
-      .with_dev_extensions()
-      .with_build_kind(application.state::<BuildInfo>().kind)?
-      .build()?;
+    let builder: WebviewWindowBuilder<'_, R, AppHandle<R>> =
+      WebviewWindowBuilder::from_config(application.handle(), config)?
+        .background_color(Self::to_see_through(config.background_color));
+    let window: WebviewWindow<R> =
+      WindowBuildKind::apply(WebviewExtensions::apply(builder), application.state::<BuildInfo>().kind)?.build()?;
 
     log::info!("Built main window");
 
