@@ -6,7 +6,7 @@ use uuid::Uuid;
 use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobPhase, JobRegistry, JobStart};
-use xrf_dltx::select_ltx_dialect;
+use xrf_dltx::DltxDialect;
 use xrf_job::{JobProgress, JobScope};
 use xrf_ltx::{LtxProject, LtxProjectOptions, LtxProjectVerifyResult, LtxVerifyOptions};
 
@@ -51,7 +51,7 @@ pub async fn configs_verify_directory(
             LtxProjectOptions {
               // One sweep over a directory, then the project is dropped; nothing asks twice.
               is_caching_resolutions: false,
-              dialect: select_ltx_dialect(is_dltx),
+              dialect: DltxDialect::select(is_dltx),
               is_with_schemes_check: true,
               is_strict_check: is_strict,
             },

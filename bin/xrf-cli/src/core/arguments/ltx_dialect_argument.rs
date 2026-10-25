@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use xrf_dltx::select_ltx_dialect;
+use xrf_dltx::DltxDialect;
 use xrf_ltx::LtxDialect;
 
 use crate::core::arguments::OptionalArgument;
@@ -26,6 +26,6 @@ impl LtxDialectArgument {
   /// The dialect the command was asked to resolve configs under: standard LTX for a command that never declared the
   /// flag, which is what it would have used anyway.
   pub fn of(matches: &ArgMatches) -> Arc<dyn LtxDialect> {
-    select_ltx_dialect(OptionalArgument::read::<bool>(matches, Self::NAME) == Some(&true))
+    DltxDialect::select(OptionalArgument::read::<bool>(matches, Self::NAME) == Some(&true))
   }
 }

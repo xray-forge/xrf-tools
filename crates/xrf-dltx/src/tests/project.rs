@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use xrf_error::XrfResult;
-use xrf_ltx::{LtxDialect, LtxProject, LtxProjectOptions, LtxResolution, LtxStandardDialect};
+use xrf_ltx::{Ltx, LtxDialect, LtxProject, LtxProjectOptions, LtxResolution, LtxStandardDialect};
 use xrf_test_utils::utils::create_generated_test_resource_dir;
 use xrf_vfs::{XrayLogicalPath, XrayMountMode, XrayRoots};
 
@@ -109,6 +109,25 @@ fn the_same_tree_resolves_differently_under_each_dialect() -> XrfResult {
   // LTX cannot see the patch file at all, because nothing includes it.
   assert_eq!(standard.ltx.get_from("wpn_ak74", "cost"), Some("4000"));
   assert_eq!(dltx.ltx.get_from("wpn_ak74", "cost"), Some("9999"));
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+#[test]
+fn a_config_read_by_a_forward_slash_path_still_finds_its_patches() -> XrfResult {
+  // A host path, as a file read by path hands it over: forward slashes on Linux, and wherever a caller writes them on
+  // Windows. Its directory is where the patch files are listed and the includes resolved from.
+  let root: PathBuf = patched_tree("forward_slash")?;
+  let path: String = format!("{}/system.ltx", root.to_string_lossy().replace('\\', "/"));
+  let ltx: Ltx = Ltx::read_from_file_with_dialect(&path, &DltxDialect)?;
+
+  assert_eq!(
+    ltx.get_from("wpn_ak74", "cost"),
+    Some("9999"),
+    "the patch beside it wins"
+  );
 
   fs::remove_dir_all(root)?;
 

@@ -6,7 +6,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::{AssetMountState, detect_search_engine};
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
-use xrf_dltx::select_ltx_dialect;
+use xrf_dltx::DltxDialect;
 use xrf_ltx::LtxDialect;
 use xrf_vfs::XrayRoots;
 
@@ -37,7 +37,7 @@ pub async fn levels_open_level(
 
   let search_roots: XrayRoots = roots.centred_on(source.get_physical_path());
   let roots: XrayRoots = search_roots.clone();
-  let dialect: Arc<dyn LtxDialect> = select_ltx_dialect(is_dltx);
+  let dialect: Arc<dyn LtxDialect> = DltxDialect::select(is_dltx);
   let selected: Arc<SessionSnapshot<SelectedLevel>> = levels
     .open_followed(
       &execution,

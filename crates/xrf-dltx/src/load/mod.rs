@@ -6,4 +6,4 @@
 pub(crate) mod dltx_item;
 pub(crate) mod dltx_load_result;
 pub(crate) mod dltx_loader;
-pub(crate) mod dltx_logical_path;
+pub(crate) mod dltx_source_path;
