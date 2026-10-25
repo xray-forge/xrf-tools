@@ -66,7 +66,7 @@ See [xrf-job](../xrf-job/README.md) for cancellation.
 
 ## Conversions
 
-`?` converts these errors through the `From` impls in [from.rs](src/from.rs):
+`?` converts these errors through the `From` impls beside [the variants](src/xrf_error.rs):
 
 | Source                         | Variant             |
 | ------------------------------ | ------------------- |
@@ -86,5 +86,5 @@ a surface reports about the data it judged is that domain's own finding type (`x
 is a scheme file that cannot be read as a declaration. The crate does not log errors, choose exit codes, or decide how a
 UI shows them.
 
-Run `cargo test --locked -p xrf-error` from the repository root. See the [variants and constructors](src/error.rs) and
-the [result alias](src/types.rs).
+Run `cargo test --locked -p xrf-error` from the repository root. See the [variants, constructors and conversions](src/xrf_error.rs)
+and the [result alias](src/xrf_result.rs).

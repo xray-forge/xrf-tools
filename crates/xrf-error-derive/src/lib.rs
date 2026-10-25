@@ -6,6 +6,8 @@ use proc_macro2::{Ident, TokenStream as TokenStream2};
 use quote::quote;
 use syn::{Attribute, Data, DataEnum, DeriveInput, Error, Fields, LitStr, Meta, Variant, parse_macro_input};
 
+/// Generates a `new_<variant>_error(message)` constructor, or one named by `#[constructor("name")]`, for each variant
+/// marked `#[constructor]`; see the crate's README.
 #[proc_macro_derive(ErrorConstructors, attributes(constructor))]
 pub fn error_constructors_derive(input: TokenStream) -> TokenStream {
   let input: DeriveInput = parse_macro_input!(input as DeriveInput);
@@ -46,8 +48,10 @@ fn expand_error_constructors(input: &DeriveInput) -> syn::Result<TokenStream2> {
     return Err(errors);
   }
 
+  let (impl_generics, type_generics, where_clause) = input.generics.split_for_impl();
+
   Ok(quote! {
-      impl #enum_name {
+      impl #impl_generics #enum_name #type_generics #where_clause {
           #(#constructors)*
       }
   })
@@ -77,7 +81,10 @@ fn expand_constructor(variant: &Variant) -> syn::Result<Option<TokenStream2>> {
     ),
     Meta::List(_) => {
       let literal: LitStr = attribute.parse_args()?;
-      syn::parse_str::<Ident>(&literal.value())
+
+      // Parsed through the literal so the name carries its span, and a collision points at the attribute.
+      literal
+        .parse::<Ident>()
         .map_err(|_| Error::new(literal.span(), "constructor name must be a valid Rust identifier"))?
     }
     Meta::NameValue(_) => {
@@ -89,12 +96,12 @@ fn expand_constructor(variant: &Variant) -> syn::Result<Option<TokenStream2>> {
   };
 
   let variant_name: &Ident = &variant.ident;
+  let documentation: String = format!("A [`Self::{variant_name}`] error carrying `message`.");
 
+  // No named type parameter, which could clash with one of a generic enum's, and paths the caller cannot shadow.
   Ok(Some(quote! {
-          pub fn #function_name<T>(message: T) -> Self
-          where
-              T: Into<String>,
-          {
+          #[doc = #documentation]
+          pub fn #function_name(message: impl ::core::convert::Into<::std::string::String>) -> Self {
               Self::#variant_name { message: message.into() }
           }
   }))
