@@ -3,11 +3,10 @@ use std::fs::File;
 use std::io::ErrorKind::UnexpectedEof;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use byteorder::ReadBytesExt;
-use regex::Regex;
 use xrf_chunk::{CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_MASK, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_lzhuf::decompress;
@@ -21,14 +20,6 @@ use crate::volume::archive_constants::{
 };
 use crate::volume::archive_header::ArchiveHeader;
 use crate::volume::{ArchiveDescriptor, ArchiveFileDescriptor};
-
-/// Patterns of the `[header]` metadata chunk, compiled once.
-static SECTION_PATTERN: LazyLock<Regex> =
-  LazyLock::new(|| Regex::new(r"^.*\[(?P<name>\w*)\]$").expect("section pattern is valid"));
-static VARIABLE_PATTERN: LazyLock<Regex> =
-  LazyLock::new(|| Regex::new(r"^\s*(?P<name>\w+)\s*=\s*(?P<value>.+)\s*$").expect("variable pattern is valid"));
-static ROOT_ALIAS_PATTERN: LazyLock<Regex> =
-  LazyLock::new(|| Regex::new(r"^\$\w+?\$\\").expect("root alias pattern is valid"));
 
 /// Reads one archive volume's header chunks.
 pub(crate) struct ArchiveReader {
@@ -144,7 +135,7 @@ impl ArchiveReader {
       } else if CHUNK_ID_METADATA_READ.contains(&chunk_id) {
         let chunk_data: Vec<u8> = Self::read_chunk(&mut self.file, chunk_usize, compressed)?;
 
-        root_path = self.read_root_path(chunk_data.as_slice())?.ok_or_else(|| {
+        root_path = Self::read_root_path(chunk_data.as_slice())?.ok_or_else(|| {
           XrfError::new_read_error(format!(
             "archive {} has a metadata chunk without an [header] entry_point",
             format_path(&self.path)
@@ -163,30 +154,57 @@ impl ArchiveReader {
     }))
   }
 
-  fn read_root_path(&self, chunk_data: &[u8]) -> XrfResult<Option<String>> {
-    let mut last_section_name: String = String::new();
+  // todo: read the metadata as `CInifile::Load` does: strip `;` and `//` comments outside quotes, open a section only on
+  // a line starting with `[` and name it up to its first `]` in any case, and trim and unquote the value.
+  fn read_root_path(chunk_data: &[u8]) -> XrfResult<Option<String>> {
+    let text: String = decode_bytes_to_string_without_bom_handling(chunk_data, Self::header_encoding())?;
+    let mut section: &str = "";
 
-    for line in decode_bytes_to_string_without_bom_handling(chunk_data, Self::header_encoding())?.lines() {
-      let section_captures = SECTION_PATTERN.captures(line);
-      match (section_captures, last_section_name.as_str()) {
+    for line in text.lines() {
+      match (Self::parse_section_name(line), section) {
         (None, "header") => {
-          let variable_captures = VARIABLE_PATTERN.captures(line);
-
-          if let Some(captures) = variable_captures
-            && &captures["name"] == "entry_point"
-          {
-            let entry_point = captures["value"].to_string();
-            return Ok(Some(ROOT_ALIAS_PATTERN.replace(entry_point.as_str(), "").to_string()));
+          if let Some(("entry_point", value)) = Self::parse_variable(line) {
+            return Ok(Some(Self::strip_root_alias(value).to_owned()));
           }
         }
-        (Some(capture), _) => {
-          last_section_name = capture["name"].to_string();
+        (Some(name), _) => {
+          section = name;
         }
         _ => {}
       }
     }
 
     Ok(None)
+  }
+
+  /// The name of a line ending in `[name]`, whatever precedes the bracket.
+  fn parse_section_name(line: &str) -> Option<&str> {
+    let (_, name) = line.strip_suffix(']')?.rsplit_once('[')?;
+
+    name.chars().all(Self::is_word_char).then_some(name)
+  }
+
+  /// The `name = value` of a line, the value with its leading whitespace trimmed and its trailing whitespace kept.
+  fn parse_variable(line: &str) -> Option<(&str, &str)> {
+    let (name, value) = line.split_once('=')?;
+    let name: &str = name.trim();
+    let value: &str = value.trim_start();
+
+    (!name.is_empty() && name.chars().all(Self::is_word_char) && !value.is_empty()).then_some((name, value))
+  }
+
+  /// The entry point without its leading `$alias$\`, the root alias an unpack does not recreate.
+  fn strip_root_alias(entry_point: &str) -> &str {
+    entry_point
+      .strip_prefix('$')
+      .and_then(|rest| rest.split_once('$'))
+      .filter(|(alias, _)| !alias.is_empty() && alias.chars().all(Self::is_word_char))
+      .and_then(|(_, path)| path.strip_prefix('\\'))
+      .unwrap_or(entry_point)
+  }
+
+  fn is_word_char(character: char) -> bool {
+    character.is_alphanumeric() || character == '_'
   }
 
   fn read_chunk<T: Read>(file: &mut T, chunk_usize: usize, compressed: bool) -> XrfResult<Vec<u8>> {
@@ -323,6 +341,68 @@ mod tests {
       .expect_err("header smaller than its prefix");
 
     assert!(error.to_string().contains("16-byte prefix"), "got: {error}");
+  }
+
+  /// Reads the root path of a metadata chunk holding `text`.
+  fn root_path_of(text: &str) -> Option<String> {
+    ArchiveReader::read_root_path(text.as_bytes()).expect("metadata decodes")
+  }
+
+  #[test]
+  fn the_entry_point_loses_its_root_alias() {
+    assert_eq!(
+      root_path_of("[header]\nauto_load = true\nentry_point = $game_data$\\levels\\\n").as_deref(),
+      Some("levels\\")
+    );
+    assert_eq!(
+      root_path_of("[header]\n  entry_point=gamedata").as_deref(),
+      Some("gamedata")
+    );
+    assert_eq!(
+      root_path_of("[header]\r\nentry_point = $fs_root$\\\r\n").as_deref(),
+      Some("")
+    );
+  }
+
+  #[test]
+  fn an_entry_point_outside_the_header_section_is_ignored() {
+    assert_eq!(root_path_of("entry_point = gamedata\n[header]\nauto_load = true"), None);
+    assert_eq!(root_path_of("[header]\n[other]\nentry_point = gamedata"), None);
+  }
+
+  /// Unlike `CInifile`, which drops the comment and so never opens the section.
+  #[test]
+  fn a_comment_ending_in_a_section_name_opens_that_section() {
+    assert_eq!(
+      root_path_of("; comment [header]\nentry_point = gamedata").as_deref(),
+      Some("gamedata")
+    );
+  }
+
+  #[test]
+  fn header_lines_split_into_sections_variables_and_aliases() {
+    assert_eq!(ArchiveReader::parse_section_name("[header]"), Some("header"));
+    assert_eq!(ArchiveReader::parse_section_name("[]"), Some(""));
+    assert_eq!(ArchiveReader::parse_section_name("[head er]"), None);
+    assert_eq!(ArchiveReader::parse_section_name("[header] "), None);
+
+    assert_eq!(
+      ArchiveReader::parse_variable(" name = a = b "),
+      Some(("name", "a = b "))
+    );
+    assert_eq!(ArchiveReader::parse_variable("name ="), None);
+    assert_eq!(ArchiveReader::parse_variable("two words = value"), None);
+
+    assert_eq!(ArchiveReader::strip_root_alias("$game_data$\\meshes"), "meshes");
+    assert_eq!(ArchiveReader::strip_root_alias("$$\\meshes"), "$$\\meshes");
+    assert_eq!(
+      ArchiveReader::strip_root_alias("$game data$\\meshes"),
+      "$game data$\\meshes"
+    );
+    assert_eq!(
+      ArchiveReader::strip_root_alias("$game_data$meshes"),
+      "$game_data$meshes"
+    );
   }
 
   #[test]
