@@ -15,8 +15,8 @@ pub struct ArchiveEfdDescription {
   pub data_format: u32,
   /// Which base function this one registers itself as.
   pub function_type: u32,
-  pub minimum_result: f32,
-  pub maximum_result: f32,
+  pub minimum_result: f64,
+  pub maximum_result: f64,
   /// Discrete buckets each input is divided into, in the order the function declares them.
   pub variable_ranges: Vec<u32>,
   /// The base function each input reads its value from.
@@ -37,7 +37,7 @@ impl ArchiveEfdDescription {
 
     Ok(Self {
       builder_version: file.builder_version,
-      data_format: file.data_format,
+      data_format: file.data_format.to_value(),
       function_type: file.function_type,
       minimum_result: file.minimum_result,
       maximum_result: file.maximum_result,
