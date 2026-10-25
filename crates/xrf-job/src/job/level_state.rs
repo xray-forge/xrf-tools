@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::progress_level::ProgressLevel;
-use crate::progress_unit::ProgressUnit;
+use crate::progress::ProgressLevel;
+use crate::progress::ProgressUnit;
 
 /// One entered level, while it is entered.
 ///

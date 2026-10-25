@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::job_state::JobState;
-use crate::level_state::LevelState;
+use crate::job::JobState;
+use crate::job::LevelState;
 
 /// A level of a job, entered until this is dropped.
 ///

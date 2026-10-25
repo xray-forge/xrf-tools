@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use serde::Serialize;
 
-use crate::progress_level::ProgressLevel;
+use crate::progress::ProgressLevel;
 
 /// One snapshot of a running job, as it crosses to whoever is watching.
 ///

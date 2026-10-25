@@ -6,7 +6,7 @@ use serde::Serialize;
 #[cfg(feature = "rayon")]
 use xrf_error::{XrfError, XrfResult};
 
-use crate::execution_origin::ExecutionOrigin;
+use crate::execution::ExecutionOrigin;
 
 /// How much of the machine one operation may use, and whether anybody chose it.
 ///

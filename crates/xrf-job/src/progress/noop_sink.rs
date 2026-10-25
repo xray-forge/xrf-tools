@@ -1,5 +1,5 @@
-use crate::job_progress::JobProgress;
-use crate::progress_sink::ProgressSink;
+use crate::progress::JobProgress;
+use crate::progress::ProgressSink;
 
 /// Discards every snapshot.
 ///

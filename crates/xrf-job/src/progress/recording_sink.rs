@@ -1,7 +1,7 @@
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
-use crate::job_progress::JobProgress;
-use crate::progress_sink::ProgressSink;
+use crate::progress::JobProgress;
+use crate::progress::ProgressSink;
 
 /// Retains every snapshot instead of delivering it.
 ///
