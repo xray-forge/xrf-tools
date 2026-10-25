@@ -78,9 +78,9 @@ impl TypeOwnership {
     }
   }
 
-  /// Whether `module` declares a type, or a type's enum, of `name`.
-  pub(crate) fn is_declared_by(&self, name: &str, module: &str) -> bool {
-    self.owners.get(name).is_some_and(|owner| owner == module)
+  /// The module declaring a type, or a type's enum, of `name`, where one does.
+  pub(crate) fn owner_of(&self, name: &str) -> Option<&str> {
+    self.owners.get(name).map(String::as_str)
   }
 
   /// Names `source` references, excluding the ones `owner` declares itself.

@@ -25,7 +25,8 @@ impl IpcBindingsGenerator {
   ///
   /// Panics when the output cannot be written, or when a generated module no longer satisfies an invariant the
   /// mirrors rest on — a type owned by two modules, a type module importing another, a foreign declaration with
-  /// nowhere to live, a wrapper Specta spelled differently, or an `invoke` that would bypass the counted wrapper.
+  /// nowhere to live, two surfaces or declarations of one name, or a builder configured otherwise than its wrappers
+  /// are rendered for.
   pub fn generate<R: Runtime>(
     output: &Path,
     surfaces: &[IpcCommandSurface<R>],
@@ -47,10 +48,10 @@ impl IpcBindingsGenerator {
     let mut plugins: Vec<PluginModules> = Vec::with_capacity(surfaces.len());
 
     for surface in surfaces {
-      CommandModuleWriter::finalize(
+      CommandModuleWriter::write(
         &Self::module_path(&commands, surface.name),
         surface.name,
-        collected.commands_of(surface.name),
+        collected.of(surface.name),
         &ownership,
         &enumerations,
         imports,
@@ -107,8 +108,8 @@ impl IpcBindingsGenerator {
 
   /// Exports every plugin's commands, answering with the commands and the types those commands referenced.
   ///
-  /// Specta inlines the full transitive closure of a plugin's signatures and cannot reference a declaration living in
-  /// another file, so the closure is collected here to be written once and imported afterwards.
+  /// The exporter writes nothing: each command module is written once the type modules say what it imports, and
+  /// every type exactly once, into the module of the crate declaring it.
   fn export_commands<R: Runtime>(commands: &Path, surfaces: &[IpcCommandSurface<R>]) -> CollectedCommands {
     let collected: Arc<Mutex<CollectedCommands>> = Arc::new(Mutex::new(CollectedCommands::default()));
 
@@ -142,7 +143,7 @@ impl IpcBindingsGenerator {
     }
   }
 
-  /// Where one plugin's command module is written, which is also where it is read back to be finalized.
+  /// Where one plugin's command module is written.
   fn module_path(commands: &Path, plugin: &str) -> PathBuf {
     commands.join(format!("{plugin}.ts"))
   }

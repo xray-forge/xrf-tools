@@ -127,11 +127,13 @@ impl TypeModuleWriter {
     exporter: &Exporter,
     types: &Types,
   ) -> String {
-    assert!(
-      !ownership.is_declared_by(constant.name, module),
-      "Constant `{}` takes the name of a type {module} declares",
-      constant.name
-    );
+    // Another module's type of the name would be imported into this one, where it collides with the constant.
+    if let Some(owner) = ownership.owner_of(constant.name) {
+      panic!(
+        "Constant `{}` of {module} takes the name of a type {owner} declares",
+        constant.name
+      );
+    }
 
     let value: serde_json::Value = (constant.value)().unwrap_or_else(|error| {
       panic!(
@@ -405,6 +407,20 @@ mod tests {
     });
 
     assert_eq!(rendered, "export const STEPS: number[] = [1, 2, 3];\n");
+  }
+
+  #[test]
+  #[should_panic(
+    expected = "Constant `ExportedLimits` of xrf-fixture takes the name of a type xrf-ipc-typescript declares"
+  )]
+  fn refuses_a_constant_named_as_a_type_of_another_module() {
+    render(&IpcConstant {
+      module_path: "xrf_fixture::limits",
+      name: "ExportedLimits",
+      doc: "",
+      value: || IpcConstant::serialize_value(&EXPORTED_LIMITS),
+      data_type: |types| IpcConstant::define_type(&EXPORTED_LIMITS, types),
+    });
   }
 
   #[test]
