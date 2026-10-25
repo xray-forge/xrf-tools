@@ -9,9 +9,11 @@ use crate::constants::{
   PRIORITY_ATTRIBUTE, ROOT_ELEMENT,
 };
 use crate::dialog::Dialog;
-use crate::element::{DialogElement, DialogElementKind};
+use crate::dialog_element::DialogElement;
+use crate::dialog_element_kind::DialogElementKind;
+use crate::dialog_parse_issue::DialogParseIssue;
+use crate::dialog_parse_issue_kind::DialogParseIssueKind;
 use crate::encoding::{DecodedDialogSource, decode, read_decoded};
-use crate::issue::{DialogParseIssue, DialogParseIssueKind};
 use crate::phrase::DialogPhrase;
 
 /// One dialog XML document, with the text every range in it addresses.

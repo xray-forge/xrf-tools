@@ -9,8 +9,10 @@ use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XraySearch, XrayVfs};
 
 use crate::edit::TranslationEdit;
 use crate::json::read::read_json;
-use crate::project::descriptor::{TranslationFile, TranslationProjectDescriptor, TranslationSource};
 use crate::project::edit::{apply_edits, build_save_transaction, find_unwritable_character, render_edits};
+use crate::project::translation_file::TranslationFile;
+use crate::project::translation_project_descriptor::TranslationProjectDescriptor;
+use crate::project::translation_source::TranslationSource;
 use crate::types::TranslationVariant;
 use crate::xml::read::read_string_table;
 

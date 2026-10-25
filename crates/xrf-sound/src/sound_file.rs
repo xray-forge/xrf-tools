@@ -7,8 +7,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
 use crate::SoundMetadata;
-use crate::sound_file_metadata::read_sound_metadata;
 use crate::sound_file_vorbis::{VorbisHeaders, decode_vorbis_stream, parse_identification_packet, read_vorbis_headers};
+use crate::sound_metadata::read_sound_metadata;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SoundFile {

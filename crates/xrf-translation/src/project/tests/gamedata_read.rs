@@ -1,7 +1,7 @@
 use xrf_test_utils::utils::write_generated_test_resource;
 
-use super::{roots, table};
 use crate::project::gamedata_read::read_gamedata;
+use crate::project::tests::fixtures::{roots, table};
 use crate::types::TranslationVariant;
 
 #[test]

@@ -21,7 +21,9 @@ use xrf_extension::XrayExtension;
 use xrf_typescript::{TypeScriptSymbolResolver, parse_typescript_file};
 use xrf_utils::{format_path, to_portable_path_string};
 
-use crate::extern_manifest::{ExternExport, ExternManifest, ParsedExternManifest};
+use crate::extern_export::ExternExport;
+use crate::extern_manifest::ExternManifest;
+use crate::parsed_extern_manifest::ParsedExternManifest;
 
 /// Parses TypeScript extern declarations into the canonical manifest model.
 ///

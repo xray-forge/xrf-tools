@@ -3,7 +3,9 @@ use std::path::Path;
 use xrf_error::{XrfError, XrfResult};
 use xrf_xml::{XmlElementSpan, XmlParseOptions, XmlSourceDocument};
 
-use crate::xml::encoding::{DecodedTranslation, TranslationIdentity, decode, read_decoded};
+use crate::xml::decoded_translation::DecodedTranslation;
+use crate::xml::encoding::{decode, read_decoded};
+use crate::xml::translation_identity::TranslationIdentity;
 
 /// The root element every string table has, and the two elements an entry is made of.
 const STRING_TABLE_ELEMENT: &str = "string_table";

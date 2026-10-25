@@ -8,15 +8,20 @@ mod archive_pack_config_codec;
 mod archive_pack_config_json;
 mod archive_pack_config_ltx;
 mod archive_pack_config_rules;
+mod archive_pack_directory;
 mod archive_pack_header_entry;
 mod archive_pack_header_rules;
+mod archive_pack_mode;
+mod archive_volume_extension;
 
 #[cfg(test)]
 mod tests;
 
 pub use archive_pack_config::{
-  ArchivePackConfig, ArchivePackDirectory, ArchivePackMode, ArchiveVolumeExtension, VOLUME_SIZE_HARD_MAX,
-  VOLUME_SIZE_MAX, VOLUME_SIZE_MIN, default_header,
+  ArchivePackConfig, VOLUME_SIZE_HARD_MAX, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN, default_header,
 };
 pub use archive_pack_config_json::ArchivePackConfigJson;
+pub use archive_pack_directory::ArchivePackDirectory;
 pub use archive_pack_header_entry::ArchivePackHeaderEntry;
+pub use archive_pack_mode::ArchivePackMode;
+pub use archive_volume_extension::ArchiveVolumeExtension;

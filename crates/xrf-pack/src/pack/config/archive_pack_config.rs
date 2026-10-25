@@ -4,7 +4,10 @@ use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::HostFileName;
 
+use crate::pack::config::archive_pack_directory::ArchivePackDirectory;
 use crate::pack::config::archive_pack_header_rules::require_loadable_header;
+use crate::pack::config::archive_pack_mode::ArchivePackMode;
+use crate::pack::config::archive_volume_extension::ArchiveVolumeExtension;
 
 /// Largest volume the engine will open, and the default (`XRP_MAX_SIZE` in `xrCompress.h`).
 pub const VOLUME_SIZE_MAX: u64 = 1900 * xrf_utils::BYTES_PER_MEGABYTE;
@@ -21,44 +24,6 @@ pub const DEFAULT_ENTRY_POINT: &str = "$fs_root$\\gamedata\\";
 /// Header written unless a configuration supplies its own.
 pub fn default_header() -> String {
   format!("[header]\r\nauto_load = true\r\nentry_point = {DEFAULT_ENTRY_POINT}\r\n")
-}
-
-/// How file payloads are stored in the archive.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ArchivePackMode {
-  /// Compress what the engine expects to be compressed and store the rest.
-  #[default]
-  Compress,
-  /// Store everything, the `-store` flag of xrCompress.
-  Store,
-}
-
-/// Extension the produced volumes carry, which also decides how the engine treats a missing header.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ArchiveVolumeExtension {
-  #[default]
-  Db,
-  Xdb,
-}
-
-impl ArchiveVolumeExtension {
-  pub fn as_str(&self) -> &'static str {
-    match self {
-      Self::Db => "db",
-      Self::Xdb => "xdb",
-    }
-  }
-}
-
-/// One `[include_folders]` or `[exclude_folders]` entry.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArchivePackDirectory {
-  pub path: String,
-  pub is_recursive: bool,
 }
 
 /// Everything needed to pack one archive volume set.

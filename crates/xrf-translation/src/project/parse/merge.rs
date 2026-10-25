@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use crate::json::normalize::sort_document;
-use crate::project::parse::translation_parse_result::TranslationParseCensus;
+use crate::project::parse::translation_parse_census::TranslationParseCensus;
 use crate::types::{TranslationEntry, TranslationJson, TranslationVariant};
 
 /// The engine reads this literal pair of characters in a string table as a line break.

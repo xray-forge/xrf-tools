@@ -1,7 +1,7 @@
 use xrf_test_utils::utils::write_generated_test_resource;
 
-use super::roots;
 use crate::project::source_read::read_source;
+use crate::project::tests::fixtures::roots;
 
 #[test]
 fn reads_a_json_map_as_one_file_carrying_every_language() {

@@ -3,7 +3,6 @@ use std::sync::{Arc, Mutex};
 
 use tauri::Runtime;
 
-use crate::bindings_surface::{Surface, SurfaceDrift};
 use crate::collected_commands::CollectedCommands;
 use crate::command_module_writer::{CommandModuleWriter, PluginModules};
 use crate::command_typescript::CommandTypescript;
@@ -12,6 +11,8 @@ use crate::enumerations::Enumerations;
 use crate::generated_output::reset_directory;
 use crate::ipc_command_surface::IpcCommandSurface;
 use crate::mirror_imports::MirrorImports;
+use crate::surface::Surface;
+use crate::surface_drift::SurfaceDrift;
 use crate::type_module_writer::TypeModuleWriter;
 use crate::type_modules::TypeModules;
 use crate::type_ownership::TypeOwnership;

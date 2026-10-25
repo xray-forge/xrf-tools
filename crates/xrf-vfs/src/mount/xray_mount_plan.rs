@@ -1,29 +1,15 @@
 use std::borrow::Cow;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use xrf_archive::{ArchiveDescriptor, ArchiveProject};
 use xrf_error::XrfResult;
 use xrf_utils::format_path;
 
+use crate::mount::XrayPlannedMount;
 use crate::mount::xray_root::{find_implied_asset_root, implied_install_root};
 use crate::path::{normalize, normalize_base};
 use crate::{FsgameFile, XraySourceKind};
-
-/// One source to mount before it is opened or indexed.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct XrayPlannedMount {
-  /// Where the source lives.
-  pub path: PathBuf,
-  /// Logical base the source mounts at, empty for a root.
-  pub base: String,
-  /// Source implementation to construct for this path.
-  pub kind: XraySourceKind,
-  /// Caller-supplied diagnostic label, such as an `fsgame.ltx` alias.
-  pub origin: String,
-  /// Logical prefixes this source omits when indexed.
-  pub ignored: Vec<String>,
-}
 
 /// What listing a declared directory said about the archive volumes it holds directly.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -15,8 +15,8 @@ use crate::project::parse::scope::{ResolvedParseScope, resolve};
 use crate::project::parse::translation_parse_options::TranslationParseOptions;
 use crate::project::parse::translation_parse_result::TranslationParseResult;
 use crate::types::TranslationJson;
-use crate::xml::encoding::TranslationIdentity;
 use crate::xml::read::parse_required_string_table;
+use crate::xml::translation_identity::TranslationIdentity;
 
 /// One file's entries while duplicates are being resolved, in the order the table declared them.
 type StringTableEntries = IndexMap<String, String>;

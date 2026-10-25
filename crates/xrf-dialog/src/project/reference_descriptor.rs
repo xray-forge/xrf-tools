@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::project::descriptor::DialogElementDescriptor;
+use crate::project::dialog_element_descriptor::DialogElementDescriptor;
 
 /// One dialog or phrase element a reference search matched.
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]

@@ -1,5 +1,5 @@
 use super::callable_signature::function_signature;
-use super::symbol::TypeScriptSymbol;
+use super::typescript_symbol::TypeScriptSymbol;
 use super::value_inference::{object_symbol, value_expression};
 use crate::ast::canonical_ts_type_to_string;
 use crate::swc_common::SourceMap;

@@ -1,13 +1,6 @@
-use ddsfile::{Caps2, D3DFormat, Dds, DxgiFormat};
+use ddsfile::{Caps2, Dds, DxgiFormat};
 
-/// Format identity reported by a DDS header.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[non_exhaustive]
-pub enum DdsFormat {
-  D3d(D3DFormat),
-  Dxgi(DxgiFormat),
-  Unknown,
-}
+use crate::file::dds_format::DdsFormat;
 
 /// Header and payload facts needed by DDS consumers without exposing header layout.
 #[derive(Clone, Debug, PartialEq, Eq)]

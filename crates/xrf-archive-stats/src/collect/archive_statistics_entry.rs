@@ -1,5 +1,4 @@
 use xrf_archive::ArchiveFileDescriptor;
-use xrf_vfs::XrayAssetContainer;
 
 /// One entry a breakdown measures: what it is called, and what it weighs.
 pub trait ArchiveStatisticsEntry {
@@ -36,13 +35,4 @@ impl ArchiveStatisticsEntry for ArchiveFileDescriptor {
   fn is_directory(&self) -> bool {
     self.is_directory
   }
-}
-
-/// What a mounted world adds: where the winning copy sits, and the sized copies it hides.
-pub trait ArchiveWorldStatisticsEntry: ArchiveStatisticsEntry {
-  /// Where the winning copy physically sits.
-  fn get_container(&self) -> &XrayAssetContainer;
-
-  /// Copies of this engine path no lookup reaches, each with its own unpacked size.
-  fn list_shadowed(&self) -> impl Iterator<Item = (&XrayAssetContainer, u64)>;
 }

@@ -9,7 +9,8 @@ use xrf_xml::encoding_from_label;
 
 use crate::edit::TranslationEdit;
 use crate::language::find_unencodable_character;
-use crate::project::descriptor::{TranslationProjectDescriptor, TranslationSource};
+use crate::project::translation_project_descriptor::TranslationProjectDescriptor;
+use crate::project::translation_source::TranslationSource;
 use crate::{json, xml};
 
 /// Apply edits to whichever kind of translation file holds them.

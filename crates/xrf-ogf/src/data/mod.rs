@@ -21,6 +21,7 @@ pub(crate) mod ogf_slide_window;
 pub(crate) mod ogf_sphere;
 pub(crate) mod ogf_tree_definition;
 pub(crate) mod ogf_vertex;
+pub(crate) mod ogf_vertex_link;
 pub(crate) mod ogf_vertices;
 pub(crate) mod ogf_visual;
 pub(crate) mod rgb_color;

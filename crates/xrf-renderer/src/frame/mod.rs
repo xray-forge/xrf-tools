@@ -5,6 +5,7 @@ pub(crate) mod frame_pacer;
 pub(crate) mod frame_phases;
 pub(crate) mod frame_span_timer;
 pub(crate) mod frame_statistics;
+pub(crate) mod frame_summary;
 pub(crate) mod frame_texture;
 pub(crate) mod gpu_memory;
 pub(crate) mod gpu_readback;

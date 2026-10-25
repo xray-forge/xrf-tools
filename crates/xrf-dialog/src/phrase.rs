@@ -1,6 +1,7 @@
 use std::ops::Range;
 
-use crate::element::{DialogElement, DialogElementKind};
+use crate::dialog_element::DialogElement;
+use crate::dialog_element_kind::DialogElementKind;
 
 /// One line of a conversation.
 #[derive(Clone, Debug, Eq, PartialEq)]

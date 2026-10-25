@@ -1,4 +1,5 @@
-use super::symbol::{TypeScriptFunctionParameter, TypeScriptFunctionSignature};
+use super::typescript_function_parameter::TypeScriptFunctionParameter;
+use super::typescript_function_signature::TypeScriptFunctionSignature;
 use crate::ast::canonical_ts_type_to_string;
 use crate::swc_common::SourceMap;
 use crate::swc_ecma_ast::{ArrowExpr, Function, Pat};

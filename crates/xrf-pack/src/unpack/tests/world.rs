@@ -6,7 +6,8 @@ use xrf_job::{ExecutionRequest, JobOutcome};
 use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
 use xrf_vfs::{XraySearch, XraySearchPlan, XraySearchStep, XrayVfs};
 
-use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, ArchiveExtractResult};
+use crate::unpack::archive_extract_directory_result::ArchiveExtractDirectoryResult;
+use crate::unpack::archive_extract_result::ArchiveExtractResult;
 use crate::unpack::xray_world_extractor::XrayWorldExtractor;
 
 fn tree(name: &str, files: &[(&str, &str)]) -> PathBuf {

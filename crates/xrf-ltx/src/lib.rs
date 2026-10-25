@@ -11,8 +11,9 @@ pub(crate) mod scheme;
 pub(crate) mod source;
 pub(crate) mod syntax;
 
+pub use crate::binding::file_import_export::FileImportExport;
 pub use crate::binding::ltx_field::{read_ltx_field, read_ltx_optional_field};
-pub use crate::binding::ltx_import_export::{FileImportExport, LtxImportExport, META_TYPE_FIELD};
+pub use crate::binding::ltx_import_export::{LtxImportExport, META_TYPE_FIELD};
 pub use crate::condlist::{Condlist, CondlistBranch, CondlistCondition};
 pub use crate::dialect::{
   LtxDialect, LtxFieldOrigin, LtxProvenance, LtxResolution, LtxResolutionDiagnostic, LtxResolveRequest,

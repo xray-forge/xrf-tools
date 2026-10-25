@@ -5,25 +5,8 @@ use xrf_error::XrfResult;
 use xrf_utils::format_path;
 
 use crate::mount::xray_mount_mode::XrayMountMode;
+use crate::mount::xray_root::XrayRoot;
 use crate::{FsgameFile, XraySearchPlan};
-
-/// One place to read from, and how that place becomes mounts.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct XrayRoot {
-  /// Native host address, retained without rendering it as text.
-  pub path: PathBuf,
-  /// How this path becomes mounts. `Auto` unless the caller says otherwise.
-  #[serde(default)]
-  pub mode: XrayMountMode,
-}
-
-impl XrayRoot {
-  pub fn new(path: PathBuf, mode: XrayMountMode) -> Self {
-    Self { path, mode }
-  }
-}
 
 /// Everywhere a caller wants read: an optional subject asset, then ordered roots.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

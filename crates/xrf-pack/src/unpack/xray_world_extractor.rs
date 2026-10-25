@@ -6,8 +6,9 @@ use xrf_utils::{HostDestination, format_path, write_new_file_staged};
 use xrf_vfs::{XrayAsset, XrayMountedEntry, XraySearch};
 
 use crate::path::{relative_to_prefix, to_host_relative};
+use crate::unpack::archive_extract_directory_result::ArchiveExtractDirectoryResult;
 use crate::unpack::archive_extract_options::ArchiveExtractOptions;
-use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, ArchiveExtractResult};
+use crate::unpack::archive_extract_result::ArchiveExtractResult;
 use crate::unpack::tree_entry::TreeEntry;
 use crate::unpack::tree_write_summary::TreeWriteSummary;
 use crate::unpack::tree_writer::TreeWriter;

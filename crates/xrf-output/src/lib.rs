@@ -1,16 +1,24 @@
 #![doc = include_str!("../README.md")]
 
 mod channel;
-mod options;
+mod noop_output;
 mod output;
+mod output_options;
+mod output_sequence;
+mod output_slot;
+mod output_verbosity;
 mod record;
-mod sequence;
+mod recording_output;
 
 pub use channel::OutputChannel;
-pub use options::{OutputOptions, OutputVerbosity};
-pub use output::{NoopOutput, Output, RecordingOutput};
+pub use noop_output::NoopOutput;
+pub use output::Output;
+pub use output_options::OutputOptions;
+pub use output_sequence::OutputSequence;
+pub use output_slot::OutputSlot;
+pub use output_verbosity::OutputVerbosity;
 pub use record::OutputRecord;
-pub use sequence::{OutputSequence, OutputSlot};
+pub use recording_output::RecordingOutput;
 
 /// Sends a section-heading message through workflow output options.
 #[macro_export]

@@ -128,6 +128,7 @@ selection; a check that fails to run becomes an `Error` check report instead.
 
 Run `cargo test --locked -p xrf-gamedata` from the repository root.
 
-See the [opening API](src/project/gamedata_project.rs), [options](src/project/gamedata_project_options.rs),
+See the [opening API](src/project/gamedata_project.rs), options for [reading](src/project/gamedata_project_read_options.rs)
+and [verifying](src/project/gamedata_project_verify_options.rs),
 [verification API](src/project/gamedata_project_verify.rs),
 [check selection](src/project/gamedata_verification_type.rs), and [rule ids](src/project/gamedata_verification_rule.rs).

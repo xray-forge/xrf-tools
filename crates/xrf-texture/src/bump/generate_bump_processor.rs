@@ -7,7 +7,8 @@ use xrf_extension::XrayExtension;
 use xrf_job::{JobOutcome, JobScope};
 
 use crate::bump::bump_normal_map::{GreyPlane, derive_normal_map};
-use crate::bump::generate_bump_options::{GenerateBumpGloss, GenerateBumpOptions};
+use crate::bump::generate_bump_gloss::GenerateBumpGloss;
+use crate::bump::generate_bump_options::GenerateBumpOptions;
 use crate::bump::generate_bump_result::GenerateBumpResult;
 use crate::job_phases::TEXTURE_PHASE_GENERATE_BUMP;
 
@@ -283,7 +284,8 @@ mod tests {
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use super::GenerateBumpProcessor;
-  use crate::bump::generate_bump_options::{GenerateBumpGloss, GenerateBumpOptions};
+  use crate::bump::generate_bump_gloss::GenerateBumpGloss;
+  use crate::bump::generate_bump_options::GenerateBumpOptions;
   use crate::bump::generate_bump_result::GenerateBumpResult;
 
   /// A height map of one level everywhere, written into all three colour channels.

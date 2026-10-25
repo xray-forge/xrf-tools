@@ -3,7 +3,7 @@ use xrf_test_utils::utils::write_generated_test_resource;
 
 use super::super::scope::resolve;
 use crate::language::TranslationLanguage;
-use crate::project::tests::{roots, table};
+use crate::project::tests::fixtures::{roots, table};
 
 #[test]
 fn an_installation_root_resolves_down_to_the_language_directory() -> XrfResult {

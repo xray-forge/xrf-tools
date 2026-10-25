@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_vfs::XrayAssetContainer;
 
-use crate::collect::archive_statistics_entry::ArchiveWorldStatisticsEntry;
+use crate::collect::archive_world_statistics_entry::ArchiveWorldStatisticsEntry;
 use crate::report::archive_measure::ArchiveMeasure;
-use crate::report::archive_origins::{ArchiveOrigins, ArchiveSourceUsage};
+use crate::report::archive_origins::ArchiveOrigins;
+use crate::report::archive_source_usage::ArchiveSourceUsage;
 
 /// What one source has won and lost so far, while the walk is still running.
 #[derive(Default)]

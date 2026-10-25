@@ -3,6 +3,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::{assert_count_fits, new_bounded_vec};
 
+use crate::quaternion::Quaternion;
+use crate::skeleton_bone_motion::SkeletonBoneMotion;
 use crate::skeleton_motion::SkeletonMotion;
 
 /// Divisor the format quantises rotation components by, from `SkeletonMotionDefs.hpp:11`.
@@ -22,34 +24,6 @@ const ROTATION_KEY_SIZE: usize = 8;
 /// Bytes one quantised translation key occupies, in each of the two widths the flags select.
 const TRANSLATION_KEY_16_SIZE: usize = 6;
 const TRANSLATION_KEY_8_SIZE: usize = 3;
-
-/// A rotation, as the format stores one: a quaternion, dequantised.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Quaternion {
-  pub x: f32,
-  pub y: f32,
-  pub z: f32,
-  pub w: f32,
-}
-
-/// One bone's animation within one motion, dequantised into renderer-ready values.
-#[derive(Clone, Debug, PartialEq)]
-pub struct SkeletonBoneMotion {
-  pub rotations: Vec<Quaternion>,
-  pub translations: Vec<Vector3d>,
-}
-
-impl SkeletonBoneMotion {
-  /// The rotation at a frame, clamped to what the stream holds.
-  pub fn get_rotation(&self, frame: usize) -> Quaternion {
-    self.rotations[frame.min(self.rotations.len().saturating_sub(1))]
-  }
-
-  /// The translation at a frame, clamped to what the stream holds.
-  pub fn get_translation(&self, frame: usize) -> &Vector3d {
-    &self.translations[frame.min(self.translations.len().saturating_sub(1))]
-  }
-}
 
 impl SkeletonMotion {
   /// How many seconds the motion's frames span at the format's fixed sample rate.

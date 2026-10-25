@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
@@ -8,47 +6,22 @@ use xrf_utils::to_portable_path_string;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayRoots, XraySearch};
 
 use crate::dialog::Dialog;
-use crate::element::DialogElement;
+use crate::dialog_element::DialogElement;
 use crate::file::DialogFile;
-use crate::project::descriptor::{
-  DialogDescriptor, DialogFileDescriptor, DialogFinding, DialogProjectDescriptor, DialogSummaryDescriptor,
-};
+use crate::project::dialog_descriptor::DialogDescriptor;
+use crate::project::dialog_file_descriptor::DialogFileDescriptor;
+use crate::project::dialog_finding::DialogFinding;
+use crate::project::dialog_project_descriptor::DialogProjectDescriptor;
+use crate::project::dialog_project_file::DialogProjectFile;
+use crate::project::dialog_summary_descriptor::DialogSummaryDescriptor;
+use crate::project::dialog_text_index::DialogTextIndex;
+use crate::project::dialog_text_language::DialogTextLanguage;
 use crate::project::layout::DialogProjectLayout;
 use crate::project::mode::DialogProjectMode;
 use crate::project::reference_descriptor::DialogReferenceDescriptor;
-use crate::project::text_index::{DialogTextIndex, DialogTextLanguage};
 
 /// Filename prefix that marks a logical path as dialog data.
 const DIALOG_FILE_PREFIX: &str = "dialog";
-
-/// One file the project holds, parsed, with where the engine found it.
-#[derive(Debug)]
-pub struct DialogProjectFile {
-  logical_path: String,
-  physical_path: Option<PathBuf>,
-  file: DialogFile,
-}
-
-impl DialogProjectFile {
-  /// The engine identity, which is how the project keys it.
-  pub fn get_logical_path(&self) -> &str {
-    &self.logical_path
-  }
-
-  /// The host path, when the winning mount is a loose directory.
-  pub fn get_physical_path(&self) -> Option<&Path> {
-    self.physical_path.as_deref()
-  }
-
-  /// Whether an edit could write this file back.
-  pub fn is_editable(&self) -> bool {
-    self.physical_path.is_some()
-  }
-
-  pub fn get_file(&self) -> &DialogFile {
-    &self.file
-  }
-}
 
 /// An open dialog project: mounted roots, and every dialog file under its dialogs prefix.
 pub struct DialogProject {

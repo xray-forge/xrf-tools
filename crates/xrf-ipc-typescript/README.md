@@ -145,7 +145,7 @@ directories, [`TypeModules`](src/type_modules.rs) names a crate's module, [`Mirr
 addresses it, [`TypeOwnership`](src/type_ownership.rs) answers which module declares what,
 [`CollectedCommands`](src/collected_commands.rs) holds what the export collected, each command a
 [`SpectaCommand`](src/specta_command.rs), [`PluginSymbols`](src/plugin_symbols.rs) spells a plugin's generated names,
-and [`Surface`](src/bindings_surface.rs) reads a generated tree back.
+and [`Surface`](src/surface.rs) reads a generated tree back.
 
 [`typescript/`](src/typescript/) is vocabulary rather than a layer: `source` reads generated text, `syntax` emits it,
 `normalization` canonicalizes a parsed declaration, and `format` is the Specta shape the frontend expects. Every module

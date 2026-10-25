@@ -1,5 +1,7 @@
 use serde::Serialize;
 
+use crate::structure::{LtxStructureEntry, LtxStructureInclude, LtxStructureParseError, LtxStructureSection};
+
 /// One config as written, carrying only what reading the text cannot answer.
 ///
 /// Keys and values are intentionally absent: a highlighter already colours them from the line itself, and a config tree
@@ -46,78 +48,4 @@ impl LtxFileStructure {
       sections: Vec::new(),
     }
   }
-}
-
-/// One key written before the first section header, which is how a list config declares its members.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LtxStructureEntry {
-  /// One-based line the key was written on.
-  pub line: u32,
-  /// The key as written, which for a list is the whole line.
-  pub name: String,
-  /// Whether the line spelled a value at all: a list declares bare names, anything else writes `name = value`.
-  pub has_value: bool,
-}
-
-/// One section header, and what resolving the file it belongs to made of it.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LtxStructureSection {
-  /// One-based line the header was written on.
-  pub line: u32,
-  /// The name exactly as bracketed, padding included - `[ wpn_base ]` is not `[wpn_base]` and nothing inherits it.
-  pub name: String,
-  /// The header's operation prefix, spelled as the engine spells it: empty, `!`, `@` or `!!`.
-  pub operation: String,
-  pub parents: Vec<LtxStructureParent>,
-  /// The scheme the resolved section is bound to, directly or through a parent.
-  pub scheme: Option<LtxStructureScheme>,
-}
-
-/// One name after the `:` of a header, and whether the resolution holds it.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LtxStructureParent {
-  pub name: String,
-  /// Whether a section by this name exists in the resolution this file was read against.
-  pub resolves: bool,
-}
-
-/// The `$scheme` a resolved section ends up carrying, and whether the project declares it.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LtxStructureScheme {
-  pub name: String,
-  /// Whether a scheme file declares it. False is itself a finding, and the verifier reports it as one.
-  pub is_declared: bool,
-}
-
-/// One `#include`, and the configs it actually reached.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LtxStructureInclude {
-  /// One-based line the statement was written on.
-  pub line: u32,
-  /// The path or wildcard mask as authored.
-  pub statement: String,
-  /// Engine identities the statement resolved to. Empty means it reached nothing.
-  pub resolved: Vec<String>,
-}
-
-/// Why one config would not parse.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LtxStructureParseError {
-  /// One-based line the parser stopped on.
-  pub line: u32,
-  /// One-based column the parser stopped on.
-  pub column: u32,
-  pub message: String,
 }

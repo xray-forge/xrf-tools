@@ -1,33 +1,9 @@
-use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_math::{Matrix4x4, Vector3d};
+use xrf_math::Matrix4x4;
 
-/// The static lighting terms a tree is shaded with, the engine's `_5color`.
-#[derive(Clone, Debug, PartialEq)]
-pub struct OgfTreeColor {
-  pub rgb: Vector3d,
-  pub hemi: f32,
-  pub sun: f32,
-}
-
-impl ChunkReadWrite for OgfTreeColor {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    Ok(Self {
-      rgb: reader.read_xr::<T, _>()?,
-      hemi: reader.read_f32::<T>()?,
-      sun: reader.read_f32::<T>()?,
-    })
-  }
-
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.rgb)?;
-    writer.write_f32::<T>(self.hemi)?;
-    writer.write_f32::<T>(self.sun)?;
-
-    Ok(())
-  }
-}
+use crate::chunks::ogf_tree_color::OgfTreeColor;
 
 /// Where a tree stands and how it is lit, `OGF_TREEDEF2`.
 #[derive(Clone, Debug, PartialEq)]
@@ -78,7 +54,8 @@ mod tests {
     overwrite_generated_test_resource_as_file,
   };
 
-  use crate::chunks::ogf_tree_definition_chunk::{OgfTreeColor, OgfTreeDefinitionChunk};
+  use crate::chunks::ogf_tree_color::OgfTreeColor;
+  use crate::chunks::ogf_tree_definition_chunk::OgfTreeDefinitionChunk;
 
   fn color(hemi: f32, sun: f32) -> OgfTreeColor {
     OgfTreeColor {

@@ -5,8 +5,9 @@ use xrf_error::XrfResult;
 use xrf_test_utils::utils::create_generated_test_resource_dir;
 use xrf_vfs::{XrayLogicalPath, XrayMountMode, XrayRoots};
 
-use crate::project::descriptor::{DialogDescriptor, DialogProjectDescriptor};
+use crate::project::dialog_descriptor::DialogDescriptor;
 use crate::project::dialog_project::DialogProject;
+use crate::project::dialog_project_descriptor::DialogProjectDescriptor;
 use crate::project::layout::{DialogProjectLayout, detect_mode};
 use crate::project::mode::DialogProjectMode;
 use crate::project::reference_descriptor::DialogReferenceDescriptor;

@@ -2,9 +2,9 @@ use std::time::{Duration, Instant};
 
 use xrf_renderer_core::ExecutedGroup;
 
-use crate::contract::render_frame_phases::RenderFramePhases;
 use crate::contract::render_group_cost::RenderGroupCost;
 use crate::frame::frame_phases::FramePhases;
+use crate::frame::frame_summary::FrameSummary;
 
 /// A viewport's frames since its last report.
 #[derive(Clone, Debug)]
@@ -21,21 +21,6 @@ pub struct FrameStatistics {
   phase_sums: FramePhases,
   /// Each encode group's record and finish milliseconds summed, by name in the order first seen.
   group_sums: Vec<(&'static str, f32, f32)>,
-}
-
-/// What a span of frames cost, in milliseconds.
-#[derive(Clone, Debug, PartialEq)]
-pub struct FrameSummary {
-  pub frames_per_second: f32,
-  pub frame_time: f32,
-  pub frame_time_max: f32,
-  pub frame_times: Vec<f32>,
-  pub cpu_time: f32,
-  pub cpu_times: Vec<f32>,
-  pub gpu_time: Option<f32>,
-  pub gpu_times: Vec<f32>,
-  pub phases: RenderFramePhases,
-  pub groups: Vec<RenderGroupCost>,
 }
 
 impl FrameStatistics {

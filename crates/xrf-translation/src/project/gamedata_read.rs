@@ -5,12 +5,15 @@ use xrf_vfs::{XrayAsset, XrayDirectoryListing, XrayLogicalPath, XrayRoots, XrayS
 
 use crate::language::TranslationLanguage;
 use crate::project::constants::{MAP_DESC_DIRECTORY, OPENXRAY_XML};
-use crate::project::descriptor::{
-  TranslationFile, TranslationFinding, TranslationProjectDescriptor, TranslationProjectMode, TranslationSource,
-};
+use crate::project::translation_file::TranslationFile;
+use crate::project::translation_finding::TranslationFinding;
+use crate::project::translation_project_descriptor::TranslationProjectDescriptor;
+use crate::project::translation_project_mode::TranslationProjectMode;
+use crate::project::translation_source::TranslationSource;
 use crate::types::{TranslationEntry, TranslationVariant};
-use crate::xml::encoding::{TranslationIdentity, decode};
+use crate::xml::encoding::decode;
 use crate::xml::read::parse_string_table;
+use crate::xml::translation_identity::TranslationIdentity;
 
 /// Read a text root whose subdirectories are languages.
 ///

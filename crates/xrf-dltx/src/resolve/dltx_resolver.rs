@@ -7,7 +7,8 @@ use xrf_ltx::{LtxKeyOperation, LtxTextInterner};
 use crate::load::dltx_item::DltxItem;
 use crate::load::dltx_load_result::DltxLoadResult;
 use crate::resolve::dltx_diagnostic::DltxDiagnostic;
-use crate::resolve::dltx_provenance::{DltxFieldOrigin, DltxProvenance};
+use crate::resolve::dltx_field_origin::DltxFieldOrigin;
+use crate::resolve::dltx_provenance::DltxProvenance;
 use crate::resolve::dltx_resolve_result::DltxResolveResult;
 
 /// One section resolved to its fields, in the order the engine emits them.

@@ -8,8 +8,10 @@ use xrf_xml::{XmlElementSpan, XmlParseOptions, XmlSourceDocument, escape_xml_tex
 
 use crate::edit::TranslationEdit;
 use crate::language::find_unencodable_character;
-use crate::xml::encoding::{DecodedTranslation, TranslationIdentity, decode, read_decoded};
+use crate::xml::decoded_translation::DecodedTranslation;
+use crate::xml::encoding::{decode, read_decoded};
 use crate::xml::layout::{XmlLayout, removal_range};
+use crate::xml::translation_identity::TranslationIdentity;
 
 /// Apply edits to one string table file, leaving every untouched byte as it was found.
 ///

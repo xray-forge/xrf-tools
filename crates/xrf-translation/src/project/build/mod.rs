@@ -2,6 +2,7 @@
 
 pub(crate) mod compile;
 pub(crate) mod targets;
+pub(crate) mod translation_build_language_summary;
 pub(crate) mod translation_build_options;
 pub(crate) mod translation_build_result;
 pub(crate) mod translation_builder;

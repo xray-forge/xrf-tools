@@ -2,7 +2,9 @@
 
 pub(crate) mod chunk_constants;
 pub(crate) mod chunk_io;
-pub(crate) mod chunk_trait;
+pub(crate) mod chunk_read_write;
+pub(crate) mod chunk_read_write_list;
+pub(crate) mod chunk_read_write_optional;
 pub(crate) mod chunk_types;
 pub(crate) mod iterator;
 pub(crate) mod reader;
@@ -13,7 +15,9 @@ pub(crate) mod writer;
 pub use crate::chunk_constants::{
   CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_FIELD_SIZE, CHUNK_ID_MASK, CHUNK_SIZE_FIELD_SIZE,
 };
-pub use crate::chunk_trait::{ChunkReadWrite, ChunkReadWriteList, ChunkReadWriteOptional};
+pub use crate::chunk_read_write::ChunkReadWrite;
+pub use crate::chunk_read_write_list::ChunkReadWriteList;
+pub use crate::chunk_read_write_optional::ChunkReadWriteOptional;
 pub use crate::chunk_types::XRayByteOrder;
 pub use crate::iterator::chunk_iterator::ChunkIterator;
 pub use crate::iterator::chunk_size_packed_iterator::ChunkSizePackedIterator;

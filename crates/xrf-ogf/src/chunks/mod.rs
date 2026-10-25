@@ -11,5 +11,6 @@ pub(crate) mod ogf_lods_chunk;
 pub(crate) mod ogf_swi_container_chunk;
 pub(crate) mod ogf_swi_data_chunk;
 pub(crate) mod ogf_texture_chunk;
+pub(crate) mod ogf_tree_color;
 pub(crate) mod ogf_tree_definition_chunk;
 pub(crate) mod ogf_user_data_chunk;

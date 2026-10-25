@@ -5,21 +5,7 @@
 //! depends on them: this is the one part of a run that exists only to be reported.
 
 use crate::pack::ArchivePackSkipReason;
-
-/// One file the rules left out, by full engine name.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct ArchivePackSkippedFile {
-  pub(crate) name: String,
-  pub(crate) reason: ArchivePackSkipReason,
-}
-
-/// One directory the rules left out, so a run can say so without the walk having read below it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct ArchivePackExcludedDirectory {
-  pub(crate) name: String,
-  /// Whether everything below it was pruned as well, or only the directory row itself.
-  pub(crate) is_recursive: bool,
-}
+use crate::pack::source::{ArchivePackExcludedDirectory, ArchivePackSkippedFile};
 
 /// Everything one walk rejected, counted always and named only for a run that is going to say them.
 ///

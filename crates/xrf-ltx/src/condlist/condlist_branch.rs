@@ -1,5 +1,6 @@
 use xrf_error::XrfResult;
 
+use super::condlist_condition::CondlistCondition;
 use super::source_span::SourceSpan;
 
 /// One comma-separated condition-list branch.
@@ -9,26 +10,6 @@ pub struct CondlistBranch {
   pub effects: Vec<CondlistCondition>,
   pub result: Option<String>,
   pub span: SourceSpan,
-}
-
-/// A condition or effect in a condition-list branch.
-#[derive(Clone, Debug, PartialEq)]
-pub enum CondlistCondition {
-  InfoPortion {
-    name: String,
-    required: bool,
-    span: SourceSpan,
-  },
-  Probability {
-    value: f64,
-    span: SourceSpan,
-  },
-  Function {
-    expected: bool,
-    name: String,
-    parameters: Option<Vec<String>>,
-    span: SourceSpan,
-  },
 }
 
 impl CondlistBranch {

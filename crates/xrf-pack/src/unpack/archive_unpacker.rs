@@ -8,8 +8,9 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{HostDestination, HostRelativePath, format_path};
 
 use crate::path::{relative_to_prefix, to_host_relative};
+use crate::unpack::archive_extract_directory_result::ArchiveExtractDirectoryResult;
 use crate::unpack::archive_extract_options::ArchiveExtractOptions;
-use crate::unpack::archive_extract_result::{ArchiveExtractDirectoryResult, ArchiveExtractResult};
+use crate::unpack::archive_extract_result::ArchiveExtractResult;
 use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
 use crate::unpack::tree_entry::TreeEntry;
 use crate::unpack::tree_write_summary::TreeWriteSummary;
