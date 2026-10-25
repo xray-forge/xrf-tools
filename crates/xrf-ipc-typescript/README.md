@@ -38,13 +38,14 @@ and `(argument, TypeScript type)` pairs.
 
 `generate` deletes and rewrites `types/` and `commands/` under `output`. It panics rather than returning an error: when
 the output cannot be written, or when an invariant the mirror rests on breaks (a type owned by two modules, type
-modules importing each other, a referenced type declared outside the workspace, an `invoke` that bypasses the counted
-wrapper). The app runs it as an ignored `#[test]`, because the test harness is what links the Specta builders in.
+modules importing each other, a referenced type declared outside the workspace, two surfaces or declarations of one
+name, a builder configured otherwise than its wrappers are rendered for). The app runs it as an ignored `#[test]`,
+because the test harness is what links the Specta builders in.
 
 The order of its steps belongs to the generator, not the caller: commands are exported first, because that collects the
-types they reference and the commands themselves; the type modules are written next, because only then is it known which
-module declares what; each command module is finalized after, because the type modules say which imports replace the
-copies Specta inlined; and the merged signatures last, because they import every command module.
+types they reference and renders the commands' wrappers; the type modules are written next, because only then is it
+known which module declares what; each command module is written after, because the type modules say what its wrappers
+import; and the merged signatures last, because they import every command module.
 
 ## What it writes
 
@@ -63,17 +64,20 @@ family of crates into one module (`TypeModules::with_family("xrf_app", "xrf-app"
 crates have modules; a command referencing a type declared anywhere else fails generation. Modules import one another as
 `<root>/types/<module>`, the root `MirrorImports` was given.
 
-A command module keeps Specta's command object, renamed from `commands` to `<plugin>Commands` in camelCase, with the
-inlined type copies cut and replaced by imports. Its `invoke` import is redirected from `@tauri-apps/api/core` to the
-counting wrapper `<root>/invoke` (`Channel` still comes from Tauri), and generation fails if Specta's import spelling
-changes so that the redirect no longer applies. Raw command wrappers call `invokeRaw` from `<root>/raw` and return
+A command module is written from data, never from text Specta wrote: `CommandWrappers` renders each wrapper from the
+builder's own function data through Specta's exporter, `(arguments) => __TAURI_INVOKE<Return>(member, { arguments })`,
+as Tauri Specta does for a builder that throws on error, keeps no serde phases, casts big integers to numbers and
+declares no events, semantic types or constants, which it asserts every builder does. The object is
+`<plugin>Commands`, its `invoke` the counting wrapper from `<root>/invoke`, and `Channel` comes from Tauri for a module
+whose wrappers carry one. A Specta upgrade therefore shows up as a compile error on its datatype API rather than as a
+layout the generator no longer recognises. Raw command wrappers call `invokeRaw` from `<root>/raw` and return
 `Promise<ArrayBuffer>`, a raw command being a Tauri command answering `tauri::ipc::Response`. Bulk route wrappers are
 served outside IPC, so they answer the call as data, an `IBulkCall` holding its route and arguments.
 
 Each module names what it wraps in a string enum, so a caller or a test names a command by a member the compiler checks
 instead of quoting its wire name: `EJobsCommand.ATTACH = "plugin:jobs|attach"`, `EArchivesBulkRoute.READ_ENTRY =
 "archives/read_entry"`, members named after the Rust command (`open_level` is `OPEN_LEVEL`). The wrappers invoke the
-members; generation fails when a wrapper Specta wrote does not invoke its wire name exactly once. Beside the wrappers,
+members. Beside the wrappers,
 `I<Plugin>CommandSignatures` keys each member to `IIpcCommandSignature<typeof <plugin>Commands.<wrapper>, [<argument
 names>]>`: the record the command is invoked with and what it resolves to, read off the wrapper in TypeScript, so a
 signature is the wrapper's own types, retyped enum parameters included. The argument names come from Specta's function
@@ -148,8 +152,9 @@ above; the steps live in one directory each:
 - [`input/`](src/input/): what the caller hands it, `IpcCommandSurface`, `TypeModules` naming a crate's module and
   `MirrorImports` addressing one.
 - [`collected/`](src/collected/): what the run gathers before it writes anything. `CommandTypescript` is the exporter
-  recording into `CollectedCommands`, each command a `SpectaCommand`; `CollectedConstants` is every marked constant
-  beside its type, added to the same collection.
+  recording into `CollectedCommands` each plugin's `PluginCommands`, its commands (`SpectaCommand`) and the wrappers
+  `CommandWrappers` rendered for them; `CollectedConstants` is every marked constant beside its type, added to the same
+  collection.
 - [`write/`](src/write/): `TypeModuleWriter` and `CommandModuleWriter` write the two directories through
   `GeneratedOutput`, which owns the tree's layout and header; `TypeOwnership` answers which module declares what,
   `PluginSymbols` spells a plugin's generated names and `PluginModules` says which of its modules exist. The writers of
