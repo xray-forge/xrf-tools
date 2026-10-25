@@ -10,14 +10,8 @@ import {
   toProgressPercent,
 } from "./progress-format";
 
-function level(
-  id: string,
-  completed: number,
-  total: Nullable<number>,
-  unit: ProgressUnit = "items",
-  label: Nullable<string> = null
-): ProgressLevel {
-  return { id, label, completed, total, unit };
+function level(id: string, completed: number, total: Nullable<number>, unit: ProgressUnit = "items"): ProgressLevel {
+  return { id, completed, total, unit };
 }
 
 function progress(levels: Array<ProgressLevel>, detail: Nullable<string> = null): JobProgress {

@@ -5,7 +5,7 @@ import { Nullable } from "@xrf/types";
 import { IJobProfile, JOB_PROFILES } from "@/core/jobs/metrics";
 
 function mockLevel(id: string, completed: number): ProgressLevel {
-  return { id, label: null, completed, total: null, unit: "items" };
+  return { id, completed, total: null, unit: "items" };
 }
 
 function mockReport(duration: number, levels: Array<ProgressLevel>): JobProgress {

@@ -11,12 +11,8 @@ use crate::progress_unit::ProgressUnit;
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProgressLevel {
-  /// Stable machine identity, declared as a constant beside the operation that enters it.
-  ///
-  /// Separate from `label` because a reader keying on a phase must not be keying on wording somebody will improve.
+  /// Stable machine identity, declared as a constant beside the operation that enters it, and what a reader shows.
   pub id: String,
-  /// What to call this level in front of a person, where the id is not already presentable.
-  pub label: Option<String>,
   pub completed: u64,
   /// Absent where the work cannot be counted before it is done.
   ///

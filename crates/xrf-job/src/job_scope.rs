@@ -11,7 +11,6 @@ use crate::progress_unit::ProgressUnit;
 /// stack: a parallel operation would otherwise take a shared lock once per entry to discover where it is.
 pub(crate) struct LevelState {
   pub(crate) id: String,
-  pub(crate) label: Option<String>,
   pub(crate) unit: ProgressUnit,
   pub(crate) total: Option<u64>,
   /// Relaxed throughout: nothing is published through this counter, and a progress snapshot is not a checkpoint.
@@ -22,7 +21,6 @@ impl LevelState {
   pub(crate) fn describe(&self) -> ProgressLevel {
     ProgressLevel {
       id: self.id.clone(),
-      label: self.label.clone(),
       completed: self.completed.load(Ordering::Relaxed),
       total: self.total,
       unit: self.unit,

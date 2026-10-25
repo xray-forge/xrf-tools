@@ -18,9 +18,6 @@ pub enum XrfError {
   #[error("Convert error: {message}")]
   Convert { message: String },
   #[constructor]
-  #[error("Ltx format error: {message}")]
-  Format { message: String },
-  #[constructor]
   #[error("Verify error: {message}")]
   Verify { message: String },
   #[constructor]
@@ -50,9 +47,6 @@ pub enum XrfError {
   #[constructor]
   #[error("Unknown language: {message}")]
   UnknownLanguage { message: String },
-  #[constructor]
-  #[error("Invalid source: {message}")]
-  InvalidSource { message: String },
   #[constructor]
   #[error("Serialization error: {message}")]
   Serialization { message: String },

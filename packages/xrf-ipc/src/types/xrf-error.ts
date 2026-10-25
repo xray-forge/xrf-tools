@@ -12,10 +12,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -41,10 +39,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -70,39 +66,8 @@ export type XrfError =
       Cancelled?: never;
       ChunkNotEnded?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
-      Io?: never;
-      LtxParse?: never;
-      LtxScheme?: never;
-      NoTerminator?: never;
-      NotFound?: never;
-      NotImplemented?: never;
-      Parsing?: never;
-      Read?: never;
-      Serde?: never;
-      Serialization?: never;
-      TextureProcessing?: never;
-      Unexpected?: never;
-      UnknownLanguage?: never;
-      Verify?: never;
-    })
-  | ({
-      Format: {
-        message: string;
-      };
-    } & {
-      Assertion?: never;
-      Asset?: never;
-      Cancelled?: never;
-      ChunkNotEnded?: never;
-      Convert?: never;
-      Encoding?: never;
-      Generic?: never;
-      Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -129,10 +94,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -158,10 +121,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -187,10 +148,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -216,10 +175,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -245,10 +202,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -274,9 +229,7 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -303,10 +256,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -331,10 +282,8 @@ export type XrfError =
       Cancelled?: never;
       ChunkNotEnded?: never;
       Convert?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -361,10 +310,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -390,36 +337,6 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
-      Generic?: never;
-      Invalid?: never;
-      InvalidSource?: never;
-      Io?: never;
-      LtxParse?: never;
-      LtxScheme?: never;
-      NoTerminator?: never;
-      NotFound?: never;
-      NotImplemented?: never;
-      Parsing?: never;
-      Read?: never;
-      Serde?: never;
-      Serialization?: never;
-      TextureProcessing?: never;
-      Unexpected?: never;
-      Verify?: never;
-    })
-  | ({
-      InvalidSource: {
-        message: string;
-      };
-    } & {
-      Assertion?: never;
-      Asset?: never;
-      Cancelled?: never;
-      ChunkNotEnded?: never;
-      Convert?: never;
-      Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
       Io?: never;
@@ -434,7 +351,6 @@ export type XrfError =
       Serialization?: never;
       TextureProcessing?: never;
       Unexpected?: never;
-      UnknownLanguage?: never;
       Verify?: never;
     })
   | ({
@@ -448,10 +364,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -477,10 +391,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -506,10 +418,8 @@ export type XrfError =
       Cancelled?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -538,10 +448,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxScheme?: never;
       NoTerminator?: never;
@@ -578,10 +486,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       NoTerminator?: never;
@@ -613,10 +519,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -643,9 +547,7 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -672,10 +574,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       Io?: never;
       LtxParse?: never;
       LtxScheme?: never;
@@ -701,10 +601,8 @@ export type XrfError =
       ChunkNotEnded?: never;
       Convert?: never;
       Encoding?: never;
-      Format?: never;
       Generic?: never;
       Invalid?: never;
-      InvalidSource?: never;
       LtxParse?: never;
       LtxScheme?: never;
       NoTerminator?: never;
