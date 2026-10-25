@@ -1,6 +1,6 @@
 import { Checkbox, Typography } from "@mui/material";
 import { formatCount } from "@xrf/format";
-import { ReactElement } from "react";
+import { ChangeEvent, ReactElement, useCallback, useMemo } from "react";
 
 import { toLevelViewerImportGroupLabel } from "@/applications/level-viewer/components/snapshot/LevelViewerImportDialog/LevelViewerImportDialog.utils";
 import { LevelViewerImportRow } from "@/applications/level-viewer/components/snapshot/LevelViewerImportDialog/LevelViewerImportRow";
@@ -29,8 +29,15 @@ export function LevelViewerImportGroup({
   onToggle,
 }: ILevelViewerImportGroupProps): ReactElement {
   const label: string = toLevelViewerImportGroupLabel(group);
-  const keys: Array<string> = entries.map((it: ILevelViewerSnapshotEntry) => it.key);
+  const keys: Array<string> = useMemo(() => entries.map((it: ILevelViewerSnapshotEntry) => it.key), [entries]);
   const count: number = keys.filter((key: string) => chosen.has(key)).length;
+
+  const onToggleAll = useCallback(
+    (_: ChangeEvent<HTMLInputElement>, isChecked: boolean): void => onToggle(keys, isChecked),
+    [onToggle, keys]
+  );
+
+  const onToggleEntry = useCallback((key: string, isChosen: boolean): void => onToggle([key], isChosen), [onToggle]);
 
   return (
     <section data-testid={dataTestId} id={id} className={className} aria-label={label}>
@@ -41,7 +48,7 @@ export function LevelViewerImportGroup({
           checked={count === keys.length}
           indeterminate={count > 0 && count < keys.length}
           slotProps={{ input: { "aria-label": `Apply ${label}` } }}
-          onChange={(_, isChecked: boolean) => onToggle(keys, isChecked)}
+          onChange={onToggleAll}
         />
 
         <Typography variant={"subtitle2"}>{label}</Typography>
@@ -52,12 +59,7 @@ export function LevelViewerImportGroup({
       </div>
 
       {entries.map((entry: ILevelViewerSnapshotEntry) => (
-        <LevelViewerImportRow
-          key={entry.key}
-          entry={entry}
-          isChosen={chosen.has(entry.key)}
-          onToggle={(key: string, isChosen: boolean) => onToggle([key], isChosen)}
-        />
+        <LevelViewerImportRow key={entry.key} entry={entry} isChosen={chosen.has(entry.key)} onToggle={onToggleEntry} />
       ))}
     </section>
   );

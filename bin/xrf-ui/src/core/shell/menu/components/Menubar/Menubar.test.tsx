@@ -134,19 +134,19 @@ describe("Menubar", () => {
 
   it("keeps the caret in the bar when the menu holding it leaves while the bar is open", async () => {
     const file: IMenubarMenu = menu("File", [[item("Exit")]]);
-    const result: RenderResult = await renderExpanded([file, menu("Sprite", [[item("Reload")]])]);
+    const { getByRole, queryByRole, rerender } = await renderExpanded([file, menu("Sprite", [[item("Reload")]])]);
 
     await userEvent.keyboard("{ArrowRight}");
-    expect(result.getByRole("menuitem", { name: "Sprite" })).toHaveFocus();
+    expect(getByRole("menuitem", { name: "Sprite" })).toHaveFocus();
 
     // The tool publishing Sprite went away, and its button with it.
-    result.rerender(<Host menus={[file]} />);
+    rerender(<Host menus={[file]} />);
 
-    expect(result.getByRole("menuitem", { name: "File" })).toHaveFocus();
+    expect(getByRole("menuitem", { name: "File" })).toHaveFocus();
 
     await userEvent.keyboard("{Escape}");
 
-    expect(result.queryByRole("menubar")).not.toBeInTheDocument();
+    expect(queryByRole("menubar")).not.toBeInTheDocument();
   });
 
   it("draws a switch with its state and a disabled row that cannot be chosen", async () => {
