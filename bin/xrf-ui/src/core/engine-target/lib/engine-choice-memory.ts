@@ -1,5 +1,5 @@
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
-import { Nullable } from "@xrf/types";
+import { isRecord, Nullable } from "@xrf/types";
 
 import { ENGINE_CHOICES_STORAGE_KEY, parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
 
@@ -56,9 +56,7 @@ export function writeEngineChoice(root: string, choice: EXrayEngineChoice): void
 function readChoices(): Record<string, unknown> {
   const stored: unknown = parseLocalStorageValueSafe(ENGINE_CHOICES_STORAGE_KEY);
 
-  return stored && typeof stored === "object" && !Array.isArray(stored)
-    ? { ...(stored as Record<string, unknown>) }
-    : {};
+  return isRecord(stored) ? { ...stored } : {};
 }
 
 function isOverride(value: unknown): value is EXrayEngineChoice.VANILLA | EXrayEngineChoice.EXTENDED {

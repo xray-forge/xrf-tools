@@ -1,5 +1,5 @@
 import { Checkbox, Typography } from "@mui/material";
-import { ReactElement } from "react";
+import { ChangeEvent, ReactElement, useCallback } from "react";
 
 import { formatLevelViewerImportValue } from "@/applications/level-viewer/components/snapshot/LevelViewerImportDialog/LevelViewerImportDialog.utils";
 import {
@@ -31,6 +31,11 @@ export function LevelViewerImportRow({
   const isBounded: boolean =
     entry.status === ELevelViewerSnapshotStatus.CHANGE && JSON.stringify(entry.applied) !== JSON.stringify(entry.value);
 
+  const onChange = useCallback(
+    (_: ChangeEvent<HTMLInputElement>, isChecked: boolean): void => onToggle?.(entry.key, isChecked),
+    [onToggle, entry.key]
+  );
+
   return (
     <div
       data-testid={dataTestId}
@@ -47,7 +52,7 @@ export function LevelViewerImportRow({
           size={"small"}
           checked={Boolean(isChosen)}
           slotProps={{ input: { "aria-label": `Apply ${entry.key}` } }}
-          onChange={(_, isChecked: boolean) => onToggle(entry.key, isChecked)}
+          onChange={onChange}
         />
       ) : (
         <span />

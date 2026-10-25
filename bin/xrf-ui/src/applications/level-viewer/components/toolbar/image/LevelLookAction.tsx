@@ -28,6 +28,7 @@ import {
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
+import { ILevelLook } from "@/core/level/lib/look/level-look";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
@@ -162,6 +163,54 @@ export function LevelLookAction({
     [lookService]
   );
 
+  const onEdit = useCallback((edited: ILevelLook): void => lookService.edit(edited), [lookService]);
+
+  const onLightModel = useCallback(
+    (lightModel: RenderLightModel): void => viewService.setFeatures({ ...features, lightModel }),
+    [viewService, features]
+  );
+
+  const onLightLevel = useCallback(
+    (lightLevel: RenderLightLevel): void => viewService.setFeatures({ ...features, lightLevel }),
+    [viewService, features]
+  );
+
+  const onSunTint = useCallback(
+    (sunTint: number): void => viewService.setFeatures({ ...features, sunTint }),
+    [viewService, features]
+  );
+
+  const onDisplayTransform = useCallback(
+    (displayTransform: RenderDisplayTransform): void => viewService.setFeatures({ ...features, displayTransform }),
+    [viewService, features]
+  );
+
+  const onAutoExposure = useCallback(
+    (isEnabled: boolean): void => lookService.edit({ ...look, exposure: { ...look.exposure, isEnabled } }),
+    [lookService, look]
+  );
+
+  const onCompensation = useCallback(
+    (compensation: number): void => lookService.edit({ ...look, exposure: { ...look.exposure, compensation } }),
+    [lookService, look]
+  );
+
+  const onEngineBloom = useCallback(
+    (isEnabled: boolean): void => lookService.edit({ ...look, bloom: { ...look.bloom, isEnabled } }),
+    [lookService, look]
+  );
+
+  const onContrast = useCallback((contrast: number): void => setGrading({ contrast }), [setGrading]);
+
+  const onSaturation = useCallback((saturation: number): void => setGrading({ saturation }), [setGrading]);
+
+  const onBloomMode = useCallback((mode: RenderBloomMode): void => setBloom({ mode }), [setBloom]);
+
+  const onBloomStrength = useCallback(
+    (key: ILevelEnhancedBloomField["key"], value: number): void => setBloom({ [key]: value }),
+    [setBloom]
+  );
+
   return (
     <EditorPopoverAction
       data-testid={dataTestId}
@@ -190,7 +239,7 @@ export function LevelLookAction({
             label={"Model"}
             options={RENDER_LIGHT_MODEL_OPTIONS}
             value={lightModel}
-            onChange={(next: RenderLightModel) => viewService.setFeatures({ ...features, lightModel: next })}
+            onChange={onLightModel}
           />
 
           <RenderValueChoice
@@ -198,7 +247,7 @@ export function LevelLookAction({
             options={getRenderLightLevelOptions(isPhysicalLevelAvailable)}
             value={lightLevel}
             isDisabled={!isPhysical}
-            onChange={(next: RenderLightLevel) => viewService.setFeatures({ ...features, lightLevel: next })}
+            onChange={onLightLevel}
           />
 
           {isPhysical ? <p className={"text-xs text-text-secondary"}>{explainRenderLightLevel(lightLevel)}</p> : null}
@@ -209,7 +258,7 @@ export function LevelLookAction({
             {...RENDER_SUN_TINT_LIMITS}
             isDisabled={!isPhysicalLevels}
             format={formatSunTint}
-            onChange={(sunTint: number) => viewService.setFeatures({ ...features, sunTint })}
+            onChange={onSunTint}
           />
 
           <LevelLookSliders
@@ -217,7 +266,7 @@ export function LevelLookAction({
             look={look}
             isPhysical={isPhysical}
             isPhysicalLevels={isPhysicalLevels}
-            onEdit={(edited) => lookService.edit(edited)}
+            onEdit={onEdit}
           />
         </LevelLookSection>
 
@@ -228,7 +277,7 @@ export function LevelLookAction({
               "Adapts the exposure to how bright the frame is; off, a fixed scale. Game setting: r2_tonemap."
             }
             isChecked={look.exposure.isEnabled}
-            onChange={(isEnabled: boolean) => lookService.edit({ ...look, exposure: { ...look.exposure, isEnabled } })}
+            onChange={onAutoExposure}
           />
 
           <RenderValueSlider
@@ -237,9 +286,7 @@ export function LevelLookAction({
             {...RENDER_EXPOSURE_LIMITS.compensation}
             isDisabled={!isPhysical}
             format={formatStops}
-            onChange={(compensation: number) =>
-              lookService.edit({ ...look, exposure: { ...look.exposure, compensation } })
-            }
+            onChange={onCompensation}
           />
 
           <LevelLookSliders
@@ -247,7 +294,7 @@ export function LevelLookAction({
             look={look}
             isPhysical={isPhysical}
             isPhysicalLevels={isPhysicalLevels}
-            onEdit={(edited) => lookService.edit(edited)}
+            onEdit={onEdit}
           />
         </LevelLookSection>
 
@@ -260,9 +307,7 @@ export function LevelLookAction({
             options={RENDER_DISPLAY_TRANSFORM_OPTIONS}
             value={displayTransform}
             isDisabled={!isPhysical}
-            onChange={(next: RenderDisplayTransform) =>
-              viewService.setFeatures({ ...features, displayTransform: next })
-            }
+            onChange={onDisplayTransform}
           />
 
           <RenderValueSlider
@@ -271,7 +316,7 @@ export function LevelLookAction({
             {...RENDER_GRADING_LIMITS.contrast}
             isDisabled={!isPhysical}
             format={formatGrading}
-            onChange={(contrast: number) => setGrading({ contrast })}
+            onChange={onContrast}
           />
 
           <RenderValueSlider
@@ -280,7 +325,7 @@ export function LevelLookAction({
             {...RENDER_GRADING_LIMITS.saturation}
             isDisabled={!isPhysical}
             format={formatGrading}
-            onChange={(saturation: number) => setGrading({ saturation })}
+            onChange={onSaturation}
           />
         </LevelLookSection>
 
@@ -289,7 +334,7 @@ export function LevelLookAction({
             label={"Mode"}
             options={RENDER_BLOOM_MODE_OPTIONS}
             value={bloom.mode}
-            onChange={(mode: RenderBloomMode) => setBloom({ mode })}
+            onChange={onBloomMode}
           />
 
           {isEnhancedBloom ? (
@@ -301,7 +346,7 @@ export function LevelLookAction({
                   value={bloom[field.key]}
                   {...RENDER_ENHANCED_BLOOM_LIMITS[field.key]}
                   format={formatBloomStrength}
-                  onChange={(value: number) => setBloom({ [field.key]: value })}
+                  onChange={(value: number) => onBloomStrength(field.key, value)}
                 />
               ))}
             </div>
@@ -311,7 +356,7 @@ export function LevelLookAction({
                 label={"Bloom"}
                 description={"Blurs the frame's bright parts over it. Game setting: phase_bloom."}
                 isChecked={look.bloom.isEnabled}
-                onChange={(isEnabled: boolean) => lookService.edit({ ...look, bloom: { ...look.bloom, isEnabled } })}
+                onChange={onEngineBloom}
               />
 
               <LevelLookSliders
@@ -319,7 +364,7 @@ export function LevelLookAction({
                 look={look}
                 isPhysical={isPhysical}
                 isPhysicalLevels={isPhysicalLevels}
-                onEdit={(edited) => lookService.edit(edited)}
+                onEdit={onEdit}
               />
             </>
           )}
@@ -338,7 +383,7 @@ export function LevelLookAction({
             look={look}
             isPhysical={isPhysical}
             isPhysicalLevels={isPhysicalLevels}
-            onEdit={(edited) => lookService.edit(edited)}
+            onEdit={onEdit}
           />
 
           <LevelDebandingSettings className={"flex flex-col gap-2"} />

@@ -1,5 +1,5 @@
 import { formatNumber } from "@xrf/format";
-import { ReactElement } from "react";
+import { ReactElement, useCallback } from "react";
 
 import { ELevelLookFieldOff } from "@/applications/level-viewer/lib/look/level-look-field-off";
 import { ILevelLookField } from "@/applications/level-viewer/lib/look/level-look-fields";
@@ -27,16 +27,21 @@ export function LevelLookSliders({
   isPhysicalLevels,
   onEdit,
 }: ILevelLookSlidersProps): ReactElement {
-  function isOff(field: ILevelLookField): boolean {
-    switch (field.offUnder) {
-      case ELevelLookFieldOff.PHYSICAL_LIGHT:
-        return isPhysical;
-      case ELevelLookFieldOff.PHYSICAL_LEVELS:
-        return isPhysicalLevels;
-      default:
-        return false;
-    }
-  }
+  const isOff = useCallback(
+    (field: ILevelLookField): boolean => {
+      switch (field.offUnder) {
+        case ELevelLookFieldOff.PHYSICAL_LIGHT:
+          return isPhysical;
+        case ELevelLookFieldOff.PHYSICAL_LEVELS:
+          return isPhysicalLevels;
+        default:
+          return false;
+      }
+    },
+    [isPhysical, isPhysicalLevels]
+  );
+
+  const onFormat = useCallback((value: number): string => formatNumber(value, 2), []);
 
   return (
     <div className={"flex flex-col gap-1"}>
@@ -49,7 +54,7 @@ export function LevelLookSliders({
           max={field.max}
           step={field.step}
           isDisabled={isOff(field)}
-          format={(value: number) => formatNumber(value, 2)}
+          format={onFormat}
           onChange={(value: number) => onEdit(field.write(look, value))}
         />
       ))}
