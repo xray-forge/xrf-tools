@@ -4,6 +4,7 @@ use crate::commands::dialog::DialogGroup;
 use crate::commands::docs::DocsGroup;
 use crate::commands::externs::ExternsGroup;
 use crate::commands::gamedata::GamedataGroup;
+use crate::commands::gamemtl::GameMtlGroup;
 use crate::commands::level::LevelGroup;
 use crate::commands::ltx::LtxGroup;
 use crate::commands::ogf::OgfGroup;
@@ -26,6 +27,7 @@ impl CommandGroup {
       DocsGroup::declare(),
       ExternsGroup::declare(),
       GamedataGroup::declare(),
+      GameMtlGroup::declare(),
       LevelGroup::declare(),
       LtxGroup::declare(),
       OgfGroup::declare(),

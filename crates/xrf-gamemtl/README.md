@@ -2,60 +2,53 @@
 
 Reads and writes `gamemtl.xr`, the game material library: the physical materials a collision face names, and the pairs
 that decide what happens when two materials meet (step and impact sounds, particles and marks). `GameMtlFile` holds the
-library; the desktop app's archive describer reads it, and its level grass packing asks which materials are passable.
+library. The desktop app's archive describer reads it, its level grass packing asks which materials are passable,
+`xrf-cli gamemtl info` reports on it, and [xrf-gamedata](../xrf-gamedata/README.md) checks it and everything resolved
+against it.
 
 ## Read and write a library
 
 ```rust
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
-use xrf_gamemtl::{GameMtlFile, GameMtlMaterial, GameMtlVersion};
+use xrf_gamemtl::{GameMtlFile, GameMtlMaterial, GameMtlPair, GameMtlVersion};
 
 fn main() -> xrf_error::XrfResult {
-  let grass = GameMtlMaterial {
-    id: 0,
-    name: "materials\\grass".into(),
-    description: None,
-    flags: GameMtlMaterial::FLAG_PASSABLE,
-    ph_friction: 1.0,
-    ph_damping: 1.0,
-    ph_spring: 1.0,
-    ph_bounce_start_velocity: 0.0,
-    ph_bouncing: 0.0,
-    shoot_factor: 1.0,
-    bounce_damage_factor: 1.0,
-    visual_transparency_factor: 0.0,
-    sound_occlusion_factor: 0.0,
-    flotation_factor: Some(1.0),
-    injurious_speed: Some(0.0),
-    density_factor: Some(0.0),
-    shoot_factor_mp: None,
-    acoustics: None,
-  };
-  let library = GameMtlFile {
-    version: GameMtlFile::CURRENT_VERSION,
-    material_index: 1,
-    material_pair_index: 0,
-    materials: vec![grass],
-    pairs: Vec::new(),
-  };
+  let mut grass = GameMtlMaterial::new(0, "materials\\grass");
+  let mut barrel = GameMtlMaterial::new(1, "objects\\barrel");
 
+  grass.flags = GameMtlMaterial::FLAG_PASSABLE;
+  barrel.flags = GameMtlMaterial::FLAG_DYNAMIC;
+
+  let mut pair = GameMtlPair::new(0, 0, 1);
+
+  pair.step_sounds = String::from("material\\grass\\step_1, material\\grass\\step_2");
+
+  let library = GameMtlFile::new(vec![grass, barrel], vec![pair]);
   let mut writer = ChunkWriter::new();
+
   library.write::<XRayByteOrder>(&mut writer)?;
 
   let restored = GameMtlFile::read_from_bytes::<XRayByteOrder>(writer.buffer)?;
 
   assert_eq!(restored, library);
+  assert_eq!(restored.material_index, 2);
   assert!(restored.find_material_by_name("Materials\\Grass").is_some_and(GameMtlMaterial::is_passable));
-  assert_eq!(restored.materials[0].get_named_flags(), ["passable"]);
-  assert_eq!(restored.materials[0].get_shoot_factor_mp(), 1.0);
-  assert_eq!(restored.get_game_version(), GameMtlVersion::ClearSky);
+  assert_eq!(
+    restored.find_pair(1, 0).map(|pair| restored.get_pair_label(pair)).as_deref(),
+    Some("materials\\grass - objects\\barrel")
+  );
+  assert_eq!(GameMtlPair::split_list(&restored.pairs[0].step_sounds).len(), 2);
+  assert_eq!(restored.get_game_version(), GameMtlVersion::CallOfPripyat);
 
   Ok(())
 }
 ```
 
-Read a library with `read_from_path`, `read_from_file`, `read_from_bytes` for an archived entry, or `read_from_chunk`.
-`write` emits the whole library as top-level chunks in the writer's buffer.
+Read a library with `read_from_path`, `read_from_file`, `read_from_bytes` for an archived entry, or `read_from_chunk`;
+`FILE_NAME` is where the engine reads it under `$game_data$`. `write` emits the whole library as top-level chunks in the
+writer's buffer. `GameMtlFile::new`, `GameMtlMaterial::new` and `GameMtlPair::new` build what the SDK editor would: the
+library numbers on from its highest numbers, a material holds `SGameMtl`'s defaults with every optional chunk present,
+and a pair inherits from nothing and lists nothing.
 
 ## Library, materials and pairs
 
@@ -77,16 +70,19 @@ Description, flotation, injurious speed, density, the multiplayer shoot factor a
 occludes. No shipped library carries acoustics.
 
 `FLAG_*` are the sixteen flag bits the engine names and `FLAG_NAMES` their labels, read by `get_named_flags` and
-`is_passable`. The editor recomputes slow down, shootable, transparent and injurious from the factors on every save; the
-crate keeps the stored bits as they are.
+`is_passable`; `get_dynamic_materials_count` counts the materials moving objects and bones are made of. The editor
+recomputes slow down, shootable, transparent and injurious from the factors on every save; the crate keeps the stored
+bits as they are.
 
 `GameMtlPair` is `SGameMtlPair`: two material numbers, the pair's own number, a parent pair (`NO_PARENT_ID` for none),
 the `PROPERTY_*` bits it sets itself (`PROPERTY_NAMES`, read by `get_own_properties`), and its breaking, step and
 collision sound, particle and mark lists as stored strings. The editor writes inherited lists into the child on save,
 so the engine plays the stored strings and only the editor reads the parent. `split_list` gives a list's entries as the
-engine counts and trims them, which stops at the first empty entry between two commas; the engine asserts on more than
-`MAX_SOUNDS` sounds or `MAX_EFFECTS` particles or marks. `is_pair` and `find_pair` match two materials in either order,
-and `get_inheriting_pairs_count` counts the pairs naming a parent.
+engine counts and trims them, which stops at the first empty entry between two commas, and `get_list_entries` gathers
+one list's entries across the library with how many pairs name each; the engine asserts on more than `MAX_SOUNDS`
+sounds or `MAX_EFFECTS` particles or marks. `is_pair` and `find_pair` match two materials in either order,
+`get_pair_label` names a pair as the engine's debug name does, and `get_inheriting_pairs_count` counts the pairs naming
+a parent.
 
 ## Chunk order
 
@@ -101,7 +97,8 @@ zero in list order on write.
 Reads reject a file that cannot be opened, a missing version or numbering chunk, another version, a material or pair
 missing a chunk the engine asserts on, and a chunk holding more than its fields, which the writer could not give back.
 Chunks the engine does not know are skipped, as the engine skips them. The crate does not resolve sound, particle or
-mark names to assets, nor check a library against the engine's other load-time assertions.
+mark names to assets, nor check a library against the engine's other load-time assertions; `xrf-gamedata`'s
+`materials` check does both.
 
 Run `cargo test --locked -p xrf-gamemtl` from the repository root. See the [library](src/gamemtl_file.rs),
 [material](src/gamemtl_material.rs), [pair](src/gamemtl_pair.rs), [acoustics](src/gamemtl_acoustics.rs),

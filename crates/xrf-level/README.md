@@ -17,7 +17,7 @@ this crate reads the visuals run through [xrf-ogf](../xrf-ogf/README.md)'s chunk
 | `level`                     | `LevelVisualsChunk`  | The visuals run, through `LevelFile::read_visuals_*` | No     |
 | `level.geom`, `level.geomx` | `LevelGeomFile`      | Buffer declarations and counts, slide windows        | No     |
 | `level.geom`, `level.geomx` | `LevelGeomSource`    | The same, plus the vertices and indices of a range   | No     |
-| `level.cform`               | `LevelCformFile`     | The 36-byte header; geometry on request              | Header |
+| `level.cform`               | `LevelCformFile`     | The 36-byte header; geometry or face materials       | Header |
 | `level.ai`                  | `LevelAiFile`        | The 56-byte header only                              | Header |
 | `level.details`             | `LevelDetailsFile`   | Detail object library and planting grid              | Yes    |
 | `.dm`                       | `DetailModel`        | One detail object, also a library entry              | Yes    |
@@ -84,7 +84,9 @@ a range, refusing one that reaches past what its buffer declares. Every vertex d
   so one malformed impostor or window table costs that visual the part, not the level.
 - `level.cform` and `level.ai` are headers the engine casts its file pointer onto; only the header is read by default,
   which is what makes a 36- or 56-byte read off a file of up to 191 MB legal. The `level.ai` guid is the graph identity
-  a spawn set carries.
+  a spawn set carries. `LevelCformFile::read_with_materials_from_chunk` walks the faces for the `gamemtl.xr` ids they
+  name (`LevelCformMaterials`), keeping nothing else, which is what checking a level against the material library
+  wants.
 - `LevelDetailsFile` keeps its slot grid packed as the file's 16-byte words, up to 667,489 slots a level, and answers
   totals by folding over it; `LevelDetailsSlot` is a view built per slot. A `.dm` is one `CDetail`, so `DetailModel`
   reads both a library entry and a whole `.dm`.

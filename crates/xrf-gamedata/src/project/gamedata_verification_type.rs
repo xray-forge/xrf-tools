@@ -26,6 +26,9 @@ pub enum GamedataVerificationType {
   Levels,
   #[display("ltx")]
   Ltx,
+  /// The game material library, and every name the engine, configs and spawn objects resolve against it.
+  #[display("materials")]
+  Materials,
   #[display("meshes")]
   Meshes,
   #[display("particles")]
@@ -48,11 +51,12 @@ pub enum GamedataVerificationType {
 
 impl GamedataVerificationType {
   /// Every check a caller can select, which is every kind of authored asset.
-  pub const ALL: [Self; 13] = [
+  pub const ALL: [Self; 14] = [
     Self::Animations,
     Self::Environment,
     Self::Levels,
     Self::Ltx,
+    Self::Materials,
     Self::Meshes,
     Self::Particles,
     Self::ParticlesUsage,
@@ -80,6 +84,7 @@ impl GamedataVerificationType {
       Self::Environment => Self::check_report(self, project.verify_environment(options)),
       Self::Levels => Self::check_report(self, project.verify_levels(options)),
       Self::Ltx => Self::check_report(self, project.verify_ltx(options)),
+      Self::Materials => Self::check_report(self, project.verify_materials(options)),
       Self::Meshes => Self::check_report(self, project.verify_meshes(options)),
       Self::Particles => Self::check_report(self, project.verify_particles(options)),
       Self::ParticlesUsage => Self::check_report(self, project.verify_particles_usage(options)),

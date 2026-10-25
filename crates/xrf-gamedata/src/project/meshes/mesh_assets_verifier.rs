@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use rayon::prelude::*;
 use xrf_error::{XrfError, XrfResult};
+use xrf_gamemtl::GameMtlFile;
 use xrf_job::JobHandle;
 use xrf_ogf::{OgfFile, OgfResidueCause};
 use xrf_omf::OmfFile;
@@ -17,6 +18,7 @@ pub(crate) struct MeshAssetsVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,
   project: &'a GamedataProject,
   shader_library: &'a ShaderLibraryFile,
+  game_materials: Option<&'a GameMtlFile>,
 }
 
 impl<'a> MeshAssetsVerifier<'a> {
@@ -24,11 +26,13 @@ impl<'a> MeshAssetsVerifier<'a> {
     project: &'a GamedataProject,
     options: &'a GamedataProjectVerifyOptions,
     shader_library: &'a ShaderLibraryFile,
+    game_materials: Option<&'a GameMtlFile>,
   ) -> Self {
     Self {
       options,
       project,
       shader_library,
+      game_materials,
     }
   }
 
@@ -141,6 +145,7 @@ impl<'a> MeshAssetsVerifier<'a> {
 
     findings.extend(self.verify_mesh_shader_findings(output, shader_library, ogf, mesh_path));
     findings.extend(self.verify_mesh_skeleton_findings(ogf, mesh_path));
+    findings.extend(self.verify_mesh_material_findings(ogf, mesh_path));
     findings.extend(self.verify_mesh_geometry_findings(ogf, mesh_path, bones_count));
     findings.extend(Self::verify_motion_label_findings(
       ogf.get_diverging_labels_count(),
@@ -300,6 +305,38 @@ impl<'a> MeshAssetsVerifier<'a> {
     .into_iter()
     .map(|message| Self::new_mesh_finding(GamedataVerificationRule::MeshesValidation, mesh_path, message))
     .collect()
+  }
+
+  /// `CModelPool::Instance_Load` resolves every bone's material of a skeleton by name and asserts it is dynamic.
+  fn verify_mesh_material_findings(&self, ogf: &OgfFile, mesh_path: Option<&str>) -> Vec<Finding> {
+    let (Some(library), Some(ik_data), Some(bones)) = (self.game_materials, &ogf.ik_data, &ogf.bones) else {
+      return Vec::new();
+    };
+
+    ik_data
+      .bones
+      .iter()
+      .zip(&bones.bones)
+      .filter_map(|(ik, bone)| {
+        let message: String = match library.find_material_by_name(&ik.game_material) {
+          None => format!(
+            "Mesh bone '{}' is made of game material '{}', which gamemtl.xr does not define",
+            bone.name, ik.game_material
+          ),
+          Some(material) if !material.is_dynamic() => format!(
+            "Mesh bone '{}' is made of static game material '{}', and the engine asserts a bone's is dynamic",
+            bone.name, ik.game_material
+          ),
+          Some(_) => return None,
+        };
+
+        Some(Self::new_mesh_finding(
+          GamedataVerificationRule::MeshesGameMaterial,
+          mesh_path,
+          message,
+        ))
+      })
+      .collect()
   }
 
   fn verify_mesh_geometry_findings(

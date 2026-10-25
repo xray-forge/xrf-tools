@@ -8,6 +8,7 @@ use xrf_test_utils::GeneratedResources;
 use crate::project::levels::level_engine_constants::{AI_CURRENT_VERSION, LEVEL_PRODUCTION_VERSION};
 use crate::project::levels::tests::fixtures::*;
 use crate::project::levels::verify_levels_result::GamedataLevelsVerificationResult;
+use crate::project::tests::fixtures::engine_game_materials;
 use crate::{
   GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
   GamedataVerificationStatus,
@@ -33,6 +34,41 @@ fn passes_on_a_consistent_level_tree() {
     result.get_failure_message(),
     "1/1 level bundles valid; 2/2 level shader references valid"
   );
+}
+
+#[test]
+fn accepts_collision_faces_of_static_materials_the_library_defines() {
+  let result: GamedataLevelsVerificationResult = GamedataFixture::new()
+    .with_game_materials(engine_game_materials())
+    .with_bundles(vec![
+      LevelBundleFixture::valid("zaton").with("level.cform", cform_faces_bytes(&[0, 5])),
+    ])
+    .verify();
+
+  assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
+}
+
+#[test]
+fn reports_collision_faces_of_undefined_or_dynamic_materials() {
+  let result: GamedataLevelsVerificationResult = GamedataFixture::new()
+    .with_game_materials(engine_game_materials())
+    .with_bundles(vec![
+      LevelBundleFixture::valid("zaton").with("level.cform", cform_faces_bytes(&[5, 6, 42, 5])),
+    ])
+    .verify();
+
+  assert_only_rule(&result, "levels.game-material");
+  assert_eq!(result.get_findings().len(), 2);
+  assert!(result.get_findings()[0].message().contains("'objects\\barrel' (6)"));
+  assert!(result.get_findings()[1].message().contains("game material 42,"));
+}
+
+#[test]
+fn reads_only_the_collision_form_header_without_a_library() {
+  // The face payload is absent, which only matters once faces are read for their materials.
+  let result: GamedataLevelsVerificationResult = GamedataFixture::new().verify();
+
+  assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
 }
 
 #[test]

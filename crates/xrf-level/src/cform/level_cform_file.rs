@@ -10,6 +10,7 @@ use xrf_utils::format_path;
 
 use crate::cform::level_cform_cover::LevelCformCover;
 use crate::cform::level_cform_geometry::LevelCformGeometry;
+use crate::cform::level_cform_materials::LevelCformMaterials;
 
 /// `hdrCFORM` in c++ codebase, stored raw at the very start of the `level.cform` file.
 ///
@@ -85,6 +86,21 @@ impl LevelCformFile {
     Ok(Self {
       header: reader.read_xr::<T, _>()?,
     })
+  }
+
+  /// Reads the header and the game materials its faces are made of, which is what checking the form against the
+  /// material library wants.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the header or the payload it counts is truncated.
+  pub fn read_with_materials_from_chunk<T: ByteOrder, D: ChunkDataSource>(
+    reader: &mut ChunkReader<D>,
+  ) -> XrfResult<(Self, LevelCformMaterials)> {
+    let file: Self = Self::read_from_chunk::<T, _>(reader)?;
+    let materials: LevelCformMaterials = LevelCformMaterials::read_from_chunk::<T, _>(reader, &file.header)?;
+
+    Ok((file, materials))
   }
 
   /// Reads the header and the vertices and faces it counts, which only a consumer walking the collision form wants.

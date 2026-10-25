@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_error::XrfResult;
+use xrf_gamemtl::GameMtlFile;
 use xrf_shaders::ShaderLibraryFile;
 
 use crate::project::levels::level_binaries_outcome::LevelBinariesOutcome;
@@ -51,6 +52,7 @@ impl<'a> LevelsVerifier<'a> {
     findings.extend(reconciliation.verify(&roster, &bundles)?);
 
     let shader_library: Option<Arc<ShaderLibraryFile>> = LevelReferencesVerifier::read_library(self.project);
+    let game_materials: Option<Arc<GameMtlFile>> = self.project.game_materials().ok();
 
     let mut checked_references_count: u32 = 0;
     let mut invalid_references_count: u32 = 0;
@@ -65,7 +67,7 @@ impl<'a> LevelsVerifier<'a> {
       let level = roster.find(name);
 
       let mut bundle_findings: Vec<Finding> = LevelManifestVerifier::new(&bundle).verify(level);
-      let binaries: LevelBinariesOutcome = LevelBinariesVerifier::new(&bundle).verify(level);
+      let binaries: LevelBinariesOutcome = LevelBinariesVerifier::new(&bundle, game_materials.as_deref()).verify(level);
 
       bundle_findings.extend(binaries.findings);
 

@@ -63,6 +63,9 @@ pub enum GamedataVerificationRule {
   LevelsFileEmpty,
   #[display("levels.file-truncated")]
   LevelsFileTruncated,
+  /// A collision face made of a material the library does not define, or of a dynamic one, which stops level loading.
+  #[display("levels.game-material")]
+  LevelsGameMaterial,
   #[display("levels.graph-duplicate")]
   LevelsGraphDuplicate,
   #[display("levels.graph-guid")]
@@ -100,8 +103,29 @@ pub enum GamedataVerificationRule {
   LtxSchema,
   #[display("ltx.verification")]
   LtxVerification,
+  /// A material the engine looks up by a name of its own that the library does not define as the engine needs it.
+  #[display("materials.engine")]
+  MaterialsEngine,
+  /// The game material library is missing or does not read.
+  #[display("materials.library")]
+  MaterialsLibrary,
+  /// A pair list holding more entries than the engine's load asserts it may.
+  #[display("materials.list")]
+  MaterialsList,
+  /// A wallmark texture a pair names that the game does not hold.
+  #[display("materials.mark")]
+  MaterialsMark,
+  /// A pair naming a material number the library does not define.
+  #[display("materials.pair")]
+  MaterialsPair,
+  /// A config or spawn object naming a material the library does not define.
+  #[display("materials.reference")]
+  MaterialsReference,
   #[display("meshes.chunk-residue")]
   MeshesChunkResidue,
+  /// A bone made of a material the library does not define, or of one that is not dynamic.
+  #[display("meshes.game-material")]
+  MeshesGameMaterial,
   #[display("meshes.motion-label")]
   MeshesMotionLabel,
   #[display("meshes.motion-read")]

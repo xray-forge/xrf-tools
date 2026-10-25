@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use uuid::{Uuid, uuid};
 use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
+use xrf_gamemtl::GameMtlFile;
 use xrf_level::{LevelAiHeader, LevelCformHeader, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
 use xrf_math::Vector3d;
 use xrf_spawn::{GraphCrossTable, GraphHeader, GraphLevel, SpawnGraphsChunk};
@@ -15,6 +16,7 @@ use crate::project::levels::level_engine_constants::{
   AI_CURRENT_VERSION, CFORM_CURRENT_VERSION, LEVEL_PRODUCTION_VERSION,
 };
 use crate::project::levels::verify_levels_result::GamedataLevelsVerificationResult;
+use crate::project::tests::fixtures::game_materials_bytes;
 use crate::{GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions};
 
 pub(crate) static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
@@ -153,6 +155,32 @@ pub(crate) fn cform_bytes(version: u32) -> Vec<u8> {
   writer.flush_raw_into_buffer().unwrap()
 }
 
+/// A collision form of one vertex and a face of each material given, all naming that vertex.
+pub(crate) fn cform_faces_bytes(materials: &[u16]) -> Vec<u8> {
+  let mut writer: ChunkWriter = ChunkWriter::new();
+
+  LevelCformHeader {
+    version: CFORM_CURRENT_VERSION,
+    vertex_count: 1,
+    face_count: materials.len() as u32,
+    aabb_min: Vector3d::new(0.0, 0.0, 0.0),
+    aabb_max: Vector3d::new(0.0, 0.0, 0.0),
+  }
+  .write::<XRayByteOrder>(&mut writer)
+  .unwrap();
+
+  let mut bytes: Vec<u8> = writer.flush_raw_into_buffer().unwrap();
+
+  bytes.extend_from_slice(&[0; 12]);
+
+  for material in materials {
+    bytes.extend_from_slice(&[0; 12]);
+    bytes.extend_from_slice(&u32::from(*material).to_le_bytes());
+  }
+
+  bytes
+}
+
 pub(crate) fn level_ltx_bytes(texture: &str) -> Vec<u8> {
   format!("[level_map]\nbound_rect = -1.0, -1.0, 1.0, 1.0\ntexture = {texture}\n").into_bytes()
 }
@@ -212,6 +240,7 @@ pub(crate) struct GamedataFixture {
   spawn: Option<Vec<u8>>,
   declared_maps: Vec<String>,
   textures: Vec<String>,
+  game_materials: Option<GameMtlFile>,
 }
 
 impl GamedataFixture {
@@ -227,7 +256,13 @@ impl GamedataFixture {
       )),
       declared_maps: vec![String::from("zaton")],
       textures: vec![String::from("map\\map_zaton"), String::from("level\\ground")],
+      game_materials: None,
     }
+  }
+
+  pub(crate) fn with_game_materials(mut self, game_materials: GameMtlFile) -> Self {
+    self.game_materials = Some(game_materials);
+    self
   }
 
   pub(crate) fn with_bundles(mut self, bundles: Vec<LevelBundleFixture>) -> Self {
@@ -285,6 +320,14 @@ impl GamedataFixture {
 
     for bundle in &self.bundles {
       bundle.write(&self.root);
+    }
+
+    if let Some(game_materials) = &self.game_materials {
+      fs::write(
+        self.root.join(GameMtlFile::FILE_NAME),
+        game_materials_bytes(game_materials),
+      )
+      .unwrap();
     }
 
     if let Some(spawn) = &self.spawn {
