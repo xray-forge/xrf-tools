@@ -16,7 +16,8 @@ pub struct StagedFile {
 }
 
 impl StagedFile {
-  /// Writes and syncs `contents` at `staged`, a name from [`to_staged_sibling`], to replace `target` once published;
+  /// Writes and syncs `contents` at `staged`, a name from [`to_staged_sibling`](crate::to_staged_sibling), to replace
+  /// `target` once published;
   /// a replacement inherits `target`'s permissions.
   ///
   /// # Errors

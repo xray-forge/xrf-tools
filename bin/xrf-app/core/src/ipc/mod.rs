@@ -3,7 +3,7 @@
 //! A plugin crate declares its command domains once, in its `ipc/domains.rs`: a macro pairing every wire name with
 //! its Rust command path, for typed commands, raw commands answering bytes over IPC, and bulk routes answering bytes over
 //! the loopback transport, and naming the kinds of job the domain runs. The crate expands it through
-//! [`define_runtime_domains`] into a module per domain, carrying its plugin builder, dispatch handler, plugin name,
+//! [`define_runtime_domains!`](crate::define_runtime_domains) into a module per domain, carrying its plugin builder, dispatch handler, plugin name,
 //! Specta collection, bindings surface, routes and job kinds; the application's build script expands every crate's list
 //! into the inline plugin and ACL declarations, so a domain's wire names and permissions come from one place.
 

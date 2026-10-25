@@ -57,9 +57,7 @@ impl XrayCachePolicy {
   ///
   /// Without a budget those counters describe the inputs alone, which is what lets a verification report be compared
   /// across runs and across worker counts. Nothing else in the store reintroduces the dependence: concurrent misses of
-  /// one retained key are coordinated into a single load by [`XrayAssetCache::get_or_load`].
-  ///
-  /// [`XrayAssetCache::get_or_load`]: crate::XrayAssetCache::get_or_load
+  /// one retained key are coordinated into a single load by the store's `get_or_load`.
   pub fn with_budget(mut self, bytes: u64) -> Self {
     self.budget = Some(bytes);
 

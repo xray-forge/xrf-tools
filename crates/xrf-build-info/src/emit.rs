@@ -58,7 +58,8 @@ fn emit_variable(name: &str, value: Option<String>) {
   }
 }
 
-/// How hard the compiler was asked to work, as cargo resolved it for this build.
+/// How hard the compiler was asked to work: the level cargo resolved, and the `CARGO_PROFILE_RELEASE_*` overrides for
+/// link-time optimisation and codegen units, since a build script is told nothing else of the profile.
 fn optimization() -> String {
   let level: String = env::var("OPT_LEVEL").unwrap_or_else(|_| String::from("unknown"));
   let lto: String = env::var("CARGO_PROFILE_RELEASE_LTO").unwrap_or_else(|_| String::from("profile default"));

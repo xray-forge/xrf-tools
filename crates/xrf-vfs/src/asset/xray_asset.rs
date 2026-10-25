@@ -15,7 +15,7 @@ use crate::path::XrayLogicalPath;
 pub enum XrayAssetContainer {
   /// A loose file, preserving its root so consumers can identify the winning overlay.
   Directory { root: PathBuf, relative_path: PathBuf },
-  /// An entry inside the archive volume set at `path`.
+  /// An entry inside the archive volume file at `path`: the one volume holding this copy, not its set's root.
   Archive { path: PathBuf },
 }
 

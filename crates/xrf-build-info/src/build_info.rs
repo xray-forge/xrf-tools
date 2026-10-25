@@ -17,7 +17,8 @@ pub struct BuildInfo {
   pub commit: Option<&'static str>,
   /// Branch or tag the build ran from.
   pub reference: Option<&'static str>,
-  /// Whether the checkout carried uncommitted changes, which only a local build can.
+  /// Whether `git status` reported anything when the build ran: uncommitted changes or untracked files, in whichever
+  /// checkout built it.
   pub is_dirty: bool,
   /// RFC 3339 instant the build script ran.
   pub built_at: Option<&'static str>,
@@ -27,7 +28,8 @@ pub struct BuildInfo {
   pub rustc: Option<&'static str>,
   /// Cargo profile name, as opposed to the optimisation settings below.
   pub profile: Option<&'static str>,
-  /// Optimisation level, link-time optimisation and codegen unit count, as cargo resolved them.
+  /// The optimisation level cargo built with, and the link-time optimisation and codegen unit count the environment
+  /// overrode, `profile default` where it overrode neither: cargo hands a build script the level, not the profile.
   pub optimization: Option<&'static str>,
   /// Identifier of the workflow run that produced the binary, absent for a local build.
   pub run_id: Option<&'static str>,
@@ -69,7 +71,7 @@ impl fmt::Display for BuildInfo {
   }
 }
 
-/// Read back the description this crate's [`emit`] wrote for the binary being compiled.
+/// Read back the description this crate's [`emit`](crate::emit) wrote for the binary being compiled.
 #[macro_export]
 macro_rules! build_info {
   () => {

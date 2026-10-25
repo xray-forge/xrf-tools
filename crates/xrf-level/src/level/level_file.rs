@@ -26,9 +26,8 @@ use crate::level::visuals::level_visuals_chunk::LevelVisualsChunk;
 /// 6 - dynamic light
 /// 7 - glows
 /// 8 - sectors
-/// 9 - vertex buffer
-/// 10 - index buffer
-/// 11 - slide window items
+///
+/// The buffers the visuals draw from (chunks 9 to 11) live in `level.geom`, read by [`crate::LevelGeomFile`].
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelFile {

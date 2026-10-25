@@ -41,7 +41,7 @@ impl ArchivePacker {
   ///
   /// `max_volume_size` is a hard maximum on each finished file. An entry is placed only once its
   /// stored-or-compressed payload and its descriptor row are known, and a cap that cannot hold some entry in a
-  /// volume of its own is refused rather than exceeded; see [`ArchiveVolumeLayout`].
+  /// volume of its own is refused rather than exceeded (`ArchiveVolumeLayout` places them).
   ///
   /// A destination already holding volumes of this set is refused unless `options` forces it, because publication is
   /// destructive: volumes are opened at their final names, so a run that fails or is stopped partway cannot give back

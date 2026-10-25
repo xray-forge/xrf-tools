@@ -237,7 +237,10 @@ export type XraySurfaceDescriptor = {
   shader: string | null;
   /** The textures the entry dresses with, in the order it names them: the base, then whatever its class binds. */
   textures: Array<string>;
-  /** The `shaders.xr` the answer was read from, or `None` when no root holds one. */
+  /**
+   * The file the answer was read from: the renderer script a scripted shader is, or else the `shaders.xr` asked for
+   * its blender. `None` when the surface names no shader, or no root holds a library to ask.
+   */
   library: XrayAsset | null;
   declaration: XraySurfaceDeclaration;
   /**

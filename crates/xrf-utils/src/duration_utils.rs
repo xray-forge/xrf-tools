@@ -11,7 +11,7 @@ pub fn duration_to_millis(duration: Duration) -> u64 {
 
 /// Format a duration the way every surface reports elapsed time: `742 ms`, `3.2 s`, `1 m 12 s`.
 ///
-/// Mirrors the UI's `formatDuration` in `lib/format/duration.ts` threshold for threshold, so the CLI and
+/// Mirrors `@xrf/format`'s `formatDuration` (`packages/xrf-format/src/duration.ts`) threshold for threshold, so the CLI and
 /// the desktop app render the same run identically.
 pub fn format_duration(duration: Duration) -> String {
   let seconds: f64 = duration.as_secs_f64();

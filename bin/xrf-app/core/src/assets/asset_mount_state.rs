@@ -143,7 +143,7 @@ impl AssetMountState {
   /// The sessions move before this returns, so a caller reading its own session afterwards sees what it committed, and
   /// the subscribers hear of it before this returns unless an earlier change is still being heard, which then tells of
   /// this one after it; a session deriving its value off the commit is reported `Deriving`, and what it derived comes
-  /// later through [`Self::announce_sessions`].
+  /// later, announced once the derivation lands.
   pub fn commit(&self, transaction: &XrayTransaction) -> TauriResult<XrayChangeSet> {
     let (changes, published) = self.publish(|host| host.commit(transaction))?;
 
