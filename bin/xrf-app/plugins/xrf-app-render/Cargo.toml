@@ -20,6 +20,7 @@ tauri = { workspace = true }
 tauri-specta = { workspace = true, optional = true }
 xrf-app-core = { workspace = true }
 xrf-error = { workspace = true }
+xrf-extension = { workspace = true }
 xrf-job = { workspace = true, features = ["rayon"] }
 xrf-material = { workspace = true }
 xrf-renderer = { workspace = true }

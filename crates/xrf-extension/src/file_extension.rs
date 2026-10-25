@@ -4,8 +4,7 @@ use std::path::Path;
 ///
 /// X-Ray's own rule rather than `Path::extension`'s, on one point that matters: a name beginning with a dot is an
 /// extension here, not a hidden file. The engine ships `shaders\r1\.s` and `shaders\r2\.s` — Lua scripts it loads
-/// like any other shader — and `Path::extension` answers `None` for both, which had a viewer refusing to show them.
-/// Nothing in game data is a Unix dotfile.
+/// like any other shader — and `Path::extension` answers `None` for both. Nothing in game data is a Unix dotfile.
 ///
 /// Returned as authored. A name table records a name as it was written, so folding case is the caller's decision.
 pub(crate) fn get_file_extension(name: &str) -> Option<&str> {
@@ -28,11 +27,9 @@ pub fn get_path_extension(path: &Path) -> Option<&str> {
 /// Whether `name` carries `extension`, compared without case.
 ///
 /// `extension` is undotted, the spelling [`get_file_extension`] answers with, and it is compared against that answer
-/// rather than against the end of the name. The workspace had both rules at once: a logical path matched `".xml"` as a
-/// byte suffix, while a name table matched `"xml"` against the split extension. The suffix form needed its dot only to
-/// keep `notes.myxml` from passing as XML — which is the splitter's job anyway — and it disagreed with the splitter
-/// about the engine's own leading-dot names, refusing a name that *is* its extension because it required a character
-/// before the dot. One rule, and it is the splitter's.
+/// rather than against the end of the name. A byte suffix such as `".xml"` needs its dot only to keep `notes.myxml`
+/// from passing as XML, which is the splitter's job anyway, and it refuses the engine's leading-dot names, which are
+/// nothing but their extension. One rule, and it is the splitter's.
 pub(crate) fn has_extension(name: &str, extension: &str) -> bool {
   get_file_extension(name).is_some_and(|found| found.eq_ignore_ascii_case(extension))
 }
@@ -85,7 +82,7 @@ mod tests {
 
   #[test]
   fn refuses_a_name_that_merely_ends_with_the_extension() {
-    // What the dot in the retired suffix form was there for. The splitter closes it without one.
+    // What a dotted suffix test needs its dot for; the splitter refuses these without one.
     assert!(!has_extension("notes.myxml", "xml"));
     assert!(!has_extension("xml", "xml"));
     assert!(!has_extension("configs\\myltx", "ltx"));
@@ -104,9 +101,8 @@ mod tests {
 
   #[test]
   fn reads_a_path_extension_through_a_parent_directory_that_is_not_valid_text() {
-    // The regression this door exists for. Converting the whole path with `to_str` answers `None` here, so every
-    // caller that did decided the file had no extension - silently, because each of them asked `is_some_and`.
-    // `Path::extension` never had that failure mode: it compared `OsStr` and never looked at a parent.
+    // Converting the whole path with `to_str` answers `None` here, which reads as no extension; the file name alone
+    // still carries one.
     let directory: PathBuf = PathBuf::from(build_non_unicode_file_name());
     let path: PathBuf = directory.join("ak74.dds");
 

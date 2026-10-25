@@ -4,10 +4,6 @@ use crate::file_extension::{get_file_extension, get_path_extension};
 use crate::xray_extension::XrayExtension;
 
 /// What a file name's extension turned out to be: one this workspace models, one it does not, or none at all.
-///
-/// The one door from a name to its extension, because both answers have a caller and asking twice is what let them
-/// diverge. Logic wants the variant; a person-facing message wants the text of a spelling the vocabulary does not
-/// cover, so that a viewer can say *why* it will not open a `.psd` instead of showing nothing.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum XrayExtensionOf<'a> {
   Known(XrayExtension),
@@ -48,9 +44,6 @@ impl<'a> XrayExtensionOf<'a> {
   }
 
   /// The extension as text, for naming it to a person.
-  ///
-  /// A known extension answers with its declared spelling rather than with the authored case, because that is the one
-  /// spelling every surface renders it as. An unknown one answers as authored — there is no canonical form to offer.
   pub fn as_str(self) -> Option<&'a str> {
     match self {
       Self::Known(extension) => Some(extension.as_str()),
@@ -140,8 +133,8 @@ mod tests {
 
   #[test]
   fn reads_a_path_extension_through_a_parent_directory_that_is_not_valid_text() {
-    // Whole-path conversion answered `None` here, so a caller selecting a codec reported "it has no extension" for a
-    // configuration that plainly had one.
+    // Whole-path conversion answers `None` here, which would report a configuration that has an extension as having
+    // none.
     let path: PathBuf = PathBuf::from(build_non_unicode_file_name()).join("pack.ltx");
 
     assert!(path.to_str().is_none(), "the whole path has to be unreadable as text");
