@@ -2,7 +2,7 @@ use std::cmp::max;
 
 use image::{ImageBuffer, Rgba, RgbaImage};
 use serde::Serialize;
-use xrf_dds::DDS_BLOCK_SIZE;
+use xrf_dds::DdsEncoding;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_ltx::{Ltx, Section};
@@ -102,7 +102,7 @@ impl InventorySpriteDescriptor {
     }
   }
 
-  /// Smallest `DDS_BLOCK_SIZE`-aligned canvas that holds every icon claiming a grid slot.
+  /// Smallest `DdsEncoding::BLOCK_SIZE`-aligned canvas that holds every icon claiming a grid slot.
   ///
   /// A grid square is 50 pixels, so a slot boundary lands on a whole block only every other column and
   /// row, and the rounding adds at most two pixels per axis. An already aligned canvas is returned
@@ -132,9 +132,11 @@ impl InventorySpriteDescriptor {
     }
 
     (
-      max_width.checked_next_multiple_of(DDS_BLOCK_SIZE).unwrap_or(max_width),
+      max_width
+        .checked_next_multiple_of(DdsEncoding::BLOCK_SIZE)
+        .unwrap_or(max_width),
       max_height
-        .checked_next_multiple_of(DDS_BLOCK_SIZE)
+        .checked_next_multiple_of(DdsEncoding::BLOCK_SIZE)
         .unwrap_or(max_height),
     )
   }

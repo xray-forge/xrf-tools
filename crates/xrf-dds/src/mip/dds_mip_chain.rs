@@ -35,7 +35,7 @@ impl DdsMipChain {
 
     if let DdsMipmaps::Filtered(filter) = mipmaps {
       for level in 1..Self::level_count(base.width(), base.height()) {
-        let size: (u32, u32) = (mip_dimension(base.width(), level), mip_dimension(base.height(), level));
+        let size: (u32, u32) = Self::level_size(base.width(), base.height(), level);
 
         levels.push(DdsMipResampler::new(base.dimensions(), size, filter).resample(base));
       }
@@ -117,15 +117,17 @@ impl DdsMipChain {
     })
   }
 
+  /// The size of one mip level of a base this size, which halves on each axis and never falls below one pixel.
+  ///
+  /// The one rule for it, shared by building a chain and by reading one back out of a payload.
+  pub(crate) fn level_size(width: u32, height: u32, level: u32) -> (u32, u32) {
+    ((width >> level).max(1), (height >> level).max(1))
+  }
+
   /// Levels a texture of this size carries, counting the base.
   fn level_count(width: u32, height: u32) -> u32 {
     width.max(height).ilog2() + 1
   }
-}
-
-/// The size of one axis at a mip level, which never falls below one pixel.
-fn mip_dimension(base: u32, level: u32) -> u32 {
-  (base >> level).max(1)
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
 use std::cmp::max;
 
-use xrf_dds::DDS_BLOCK_SIZE;
+use xrf_dds::DdsEncoding;
 use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
 use xrf_utils::HostRelativePath;
@@ -52,7 +52,7 @@ impl TextureFileDescriptor {
       .collect()
   }
 
-  /// Smallest `DDS_BLOCK_SIZE`-aligned canvas that holds every described sprite.
+  /// Smallest `DdsEncoding::BLOCK_SIZE`-aligned canvas that holds every described sprite.
   ///
   /// The rounding only ever adds what alignment needs, at most three pixels per axis. A canvas that is
   /// already aligned is returned untouched.
@@ -68,9 +68,11 @@ impl TextureFileDescriptor {
     }
 
     (
-      max_width.checked_next_multiple_of(DDS_BLOCK_SIZE).unwrap_or(max_width),
+      max_width
+        .checked_next_multiple_of(DdsEncoding::BLOCK_SIZE)
+        .unwrap_or(max_width),
       max_height
-        .checked_next_multiple_of(DDS_BLOCK_SIZE)
+        .checked_next_multiple_of(DdsEncoding::BLOCK_SIZE)
         .unwrap_or(max_height),
     )
   }

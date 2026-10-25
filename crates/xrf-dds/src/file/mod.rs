@@ -4,7 +4,7 @@ pub(crate) mod dds_file;
 pub(crate) mod dds_format;
 pub(crate) mod dds_metadata;
 pub(crate) mod dds_png;
-pub(crate) mod dds_uncompressed;
+pub(crate) mod dds_uncompressed_decoder;
 
 pub use dds_file::DdsFile;
 pub use dds_format::DdsFormat;

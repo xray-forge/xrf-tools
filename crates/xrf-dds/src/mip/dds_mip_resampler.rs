@@ -51,12 +51,17 @@ impl DdsMipResampler {
       for x in 0..width {
         for channel in 0..CHANNELS {
           destination.get_pixel_mut(x as u32, y as u32).0[channel] =
-            to_byte(taps.weigh(|sample| rows[(sample * width + x) * CHANNELS + channel]));
+            Self::to_byte(taps.weigh(|sample| rows[(sample * width + x) * CHANNELS + channel]));
         }
       }
     }
 
     destination
+  }
+
+  /// Rounds a resampled value back into a byte, clamping the overshoot a kernel with negative lobes produces.
+  fn to_byte(value: f64) -> u8 {
+    value.round().clamp(0.0, f64::from(u8::MAX)) as u8
   }
 }
 
@@ -130,16 +135,11 @@ impl DdsMipTaps {
   }
 }
 
-/// Rounds a resampled value back into a byte, clamping the overshoot a kernel with negative lobes produces.
-fn to_byte(value: f64) -> u8 {
-  value.round().clamp(0.0, f64::from(u8::MAX)) as u8
-}
-
 #[cfg(test)]
 mod tests {
   use image::{Rgba, RgbaImage};
 
-  use super::{DdsMipResampler, to_byte};
+  use super::DdsMipResampler;
   use crate::mip::dds_mip_filter::DdsMipFilter;
 
   /// A row of grey steps, opaque, so every figure below is one channel of arithmetic.
@@ -180,9 +180,9 @@ mod tests {
   fn rounds_and_clamps_a_resampled_value_into_a_byte() {
     // Where a kernel with negative lobes lands: Catrom undershoots at a hard edge and overshoots after it, and both
     // are outside a byte before this. Halves round away from zero, which is what decides the middle grey.
-    assert_eq!(to_byte(-12.5), 0);
-    assert_eq!(to_byte(300.0), u8::MAX);
-    assert_eq!(to_byte(127.5), 128);
-    assert_eq!(to_byte(126.5), 127);
+    assert_eq!(DdsMipResampler::to_byte(-12.5), 0);
+    assert_eq!(DdsMipResampler::to_byte(300.0), u8::MAX);
+    assert_eq!(DdsMipResampler::to_byte(127.5), 128);
+    assert_eq!(DdsMipResampler::to_byte(126.5), 127);
   }
 }
