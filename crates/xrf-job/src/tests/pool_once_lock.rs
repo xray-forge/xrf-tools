@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use rayon::{ThreadPool, ThreadPoolBuilder};
 
-use crate::pool_once_lock::PoolOnceLock;
+use crate::execution::PoolOnceLock;
 
 /// Long enough for any step here on a loaded machine; reached only where the lock deadlocked.
 const WAIT: Duration = Duration::from_secs(10);

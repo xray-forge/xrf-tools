@@ -1,12 +1,12 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::job_handle::JobHandle;
-use crate::job_progress::JobProgress;
-use crate::job_scope::JobScope;
-use crate::progress_level::ProgressLevel;
-use crate::progress_unit::ProgressUnit;
-use crate::recording_sink::RecordingSink;
+use crate::job::JobHandle;
+use crate::job::JobScope;
+use crate::progress::JobProgress;
+use crate::progress::ProgressLevel;
+use crate::progress::ProgressUnit;
+use crate::progress::RecordingSink;
 
 /// A handle reporting every unit, which is what an assertion over the sequence needs and what production never asks
 /// for.

@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::progress_unit::ProgressUnit;
+use crate::progress::ProgressUnit;
 
 /// One level of an active job's progress, as reported.
 ///

@@ -1,4 +1,4 @@
-use crate::job_progress::JobProgress;
+use crate::progress::JobProgress;
 
 /// Delivers a job's progress snapshots to whoever is watching.
 ///

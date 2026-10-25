@@ -3,12 +3,12 @@ use std::time::Duration;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::job_progress::JobProgress;
-use crate::job_scope::JobScope;
-use crate::job_state::JobState;
-use crate::noop_sink::NoopSink;
-use crate::progress_sink::ProgressSink;
-use crate::progress_unit::ProgressUnit;
+use crate::job::JobScope;
+use crate::job::JobState;
+use crate::progress::JobProgress;
+use crate::progress::NoopSink;
+use crate::progress::ProgressSink;
+use crate::progress::ProgressUnit;
 
 /// A job's progress and its cancellation, as one thing an operation is handed.
 ///

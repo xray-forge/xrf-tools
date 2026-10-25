@@ -4,8 +4,8 @@ use std::thread;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::execution_origin::ExecutionOrigin;
-use crate::execution_plan::ExecutionPlan;
+use crate::execution::ExecutionOrigin;
+use crate::execution::ExecutionPlan;
 
 /// How much of the machine a caller asked for, before the machine has been consulted.
 ///

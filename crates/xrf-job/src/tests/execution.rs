@@ -2,9 +2,9 @@ use std::num::NonZeroUsize;
 use std::str::FromStr;
 use std::thread;
 
-use crate::execution_origin::ExecutionOrigin;
-use crate::execution_plan::ExecutionPlan;
-use crate::execution_request::ExecutionRequest;
+use crate::execution::ExecutionOrigin;
+use crate::execution::ExecutionPlan;
+use crate::execution::ExecutionRequest;
 
 fn read(text: &str) -> ExecutionRequest {
   ExecutionRequest::from_str(text).expect("the request is readable")

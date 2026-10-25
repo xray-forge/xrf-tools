@@ -2,13 +2,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::time::Duration;
 
-use crate::emission_gate::EmissionGate;
-use crate::job_progress::JobProgress;
-use crate::job_scope::JobScope;
-use crate::level_state::LevelState;
-use crate::progress_level::ProgressLevel;
-use crate::progress_sink::ProgressSink;
-use crate::progress_unit::ProgressUnit;
+use crate::job::EmissionGate;
+use crate::job::JobScope;
+use crate::job::LevelState;
+use crate::progress::JobProgress;
+use crate::progress::ProgressLevel;
+use crate::progress::ProgressSink;
+use crate::progress::ProgressUnit;
 
 /// Everything one job run shares, however many threads are doing its work.
 pub(crate) struct JobState {

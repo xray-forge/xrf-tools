@@ -105,5 +105,7 @@ The `typescript-bindings` feature derives Specta types for the snapshot, outcome
 ## Checks
 
 Run `cargo test --locked -p xrf-job --features rayon` from the repository root; this page's examples run as doc tests.
-See the [handle](src/job_handle.rs), [scope](src/job_scope.rs) and [execution plan](src/execution_plan.rs). Live
+See the [handle](src/job/job_handle.rs), [scope](src/job/job_scope.rs) and
+[execution plan](src/execution/execution_plan.rs). The sources group into `job/`, `progress/` and `execution/`; every
+type is exported from the crate root. Live
 messages belong to [xrf-output](../xrf-output/README.md), and final findings to [xrf-report](../xrf-report/README.md).
