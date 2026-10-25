@@ -5,6 +5,12 @@ use byteorder::{ByteOrder, WriteBytesExt};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::to_format_size;
 
+use crate::chunk_constants::CHUNK_HEADER_SIZE;
+
+/// A chunk payload being built, framed with its header only when flushed.
+///
+/// Flushing copies the payload out and leaves the buffer as it was, so one payload can be flushed to several places;
+/// clear it or create another writer before building an unrelated payload.
 #[derive(Default)]
 pub struct ChunkWriter {
   pub buffer: Vec<u8>,
@@ -16,14 +22,14 @@ impl ChunkWriter {
     Self::default()
   }
 
-  /// Writes the buffered payload as an X-Ray chunk to `destination` without clearing the buffer.
+  /// Writes the buffered payload as an X-Ray chunk to `destination`.
   ///
-  /// The header contains `id` and the payload length in the selected byte order.
+  /// The header contains `id` and the payload length in the selected byte order. Returns the payload length.
   ///
   /// # Errors
   ///
   /// Returns an error when the payload exceeds the format's `u32` length limit or the destination rejects a write.
-  pub fn flush_chunk_into<T: ByteOrder>(&mut self, destination: &mut dyn Write, id: u32) -> XrfResult<usize> {
+  pub fn flush_chunk_into<T: ByteOrder>(&self, destination: &mut dyn Write, id: u32) -> XrfResult<usize> {
     let payload_size: u32 = to_format_size(self.buffer.len(), "Chunk payload")?;
 
     destination.write_u32::<T>(id)?;
@@ -33,41 +39,32 @@ impl ChunkWriter {
     Ok(self.buffer.len())
   }
 
-  /// Writes the buffered payload without a chunk header, leaving the buffer unchanged.
-  pub fn flush_raw_into(&mut self, file: &mut dyn Write) -> XrfResult {
-    Ok(file.write_all(&self.buffer)?)
+  /// Writes the buffered payload to `destination` without a chunk header.
+  pub fn flush_raw_into(&self, destination: &mut dyn Write) -> XrfResult {
+    Ok(destination.write_all(&self.buffer)?)
   }
 
-  /// Returns the buffered payload framed as an X-Ray chunk, without clearing the buffer.
+  /// Returns the buffered payload framed as an X-Ray chunk.
   ///
   /// # Errors
   ///
   /// Returns an error when the framed size exceeds platform capacity or the payload exceeds the format's `u32` limit.
-  pub fn flush_chunk_into_buffer<T: ByteOrder>(&mut self, id: u32) -> XrfResult<Vec<u8>> {
+  pub fn flush_chunk_into_buffer<T: ByteOrder>(&self, id: u32) -> XrfResult<Vec<u8>> {
     let capacity: usize = self
       .buffer
       .len()
-      .checked_add(size_of::<u32>() * 2)
+      .checked_add(CHUNK_HEADER_SIZE as usize)
       .ok_or_else(|| XrfError::new_invalid_error("Framed chunk size exceeds the platform limit"))?;
+    let mut framed: Vec<u8> = Vec::with_capacity(capacity);
 
-    let mut buffer: Vec<u8> = Vec::with_capacity(capacity);
+    self.flush_chunk_into::<T>(&mut framed, id)?;
 
-    let payload_size: u32 = to_format_size(self.buffer.len(), "Chunk payload")?;
-
-    buffer.write_u32::<T>(id)?;
-    buffer.write_u32::<T>(payload_size)?;
-    buffer.write_all(&self.buffer)?;
-
-    Ok(buffer)
+    Ok(framed)
   }
 
   /// Returns a copy of the buffered payload without a chunk header.
-  pub fn flush_raw_into_buffer(&mut self) -> XrfResult<Vec<u8>> {
-    let mut buffer: Vec<u8> = Vec::with_capacity(self.buffer.len());
-
-    buffer.write_all(&self.buffer)?;
-
-    Ok(buffer)
+  pub fn flush_raw_into_buffer(&self) -> XrfResult<Vec<u8>> {
+    Ok(self.buffer.clone())
   }
 
   /// Returns the current payload length in bytes.
@@ -126,6 +123,21 @@ mod tests {
 
     assert_eq!(chunk.flush_chunk_into::<XRayByteOrder>(&mut destination, 7)?, 4);
     assert_eq!(destination.bytes, [7, 0, 0, 0, 4, 0, 0, 0, 1, 2, 3, 4]);
+
+    Ok(())
+  }
+
+  #[test]
+  fn flushing_into_a_buffer_frames_the_payload_and_keeps_it() -> XrfResult {
+    let mut chunk: ChunkWriter = ChunkWriter::new();
+
+    chunk.write_all(&[1, 2])?;
+
+    assert_eq!(
+      chunk.flush_chunk_into_buffer::<XRayByteOrder>(3)?,
+      [3, 0, 0, 0, 2, 0, 0, 0, 1, 2]
+    );
+    assert_eq!(chunk.flush_raw_into_buffer()?, [1, 2], "the payload survives a flush");
 
     Ok(())
   }

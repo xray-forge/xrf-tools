@@ -5,7 +5,7 @@ use std::path::Path;
 
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::FileImportExport;
 use xrf_math::Vector3d;
@@ -70,11 +70,12 @@ impl SpawnFile {
 
     let spawn_file: Self = {
       Self {
-        header: find_required_chunk_by_id(chunks, SpawnHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-        alife_spawn: find_required_chunk_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-        artefact_spawn: find_required_chunk_by_id(chunks, SpawnArtefactSpawnsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-        patrols: find_required_chunk_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-        graphs: find_required_chunk_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+        header: ChunkReader::find_required_by_id(chunks, SpawnHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+        alife_spawn: ChunkReader::find_required_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+        artefact_spawn: ChunkReader::find_required_by_id(chunks, SpawnArtefactSpawnsChunk::CHUNK_ID)?
+          .read_xr::<T, _>()?,
+        patrols: ChunkReader::find_required_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+        graphs: ChunkReader::find_required_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
       }
     };
 
@@ -121,7 +122,7 @@ impl SpawnFile {
   pub fn read_graphs_from_chunks<T: ByteOrder, D: ChunkDataSource>(
     chunks: &[ChunkReader<D>],
   ) -> XrfResult<SpawnGraphsChunk> {
-    find_required_chunk_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?.read_xr::<T, _>()
+    ChunkReader::find_required_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?.read_xr::<T, _>()
   }
 
   /// Reads which level each game vertex stands on out of a spawn file's root chunks, and nothing else of the graph.
@@ -132,7 +133,10 @@ impl SpawnFile {
   pub(crate) fn read_vertex_levels_from_chunks<T: ByteOrder, D: ChunkDataSource>(
     chunks: &[ChunkReader<D>],
   ) -> XrfResult<GraphVertexLevels> {
-    GraphVertexLevels::read::<T, _>(&mut find_required_chunk_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?)
+    GraphVertexLevels::read::<T, _>(&mut ChunkReader::find_required_by_id(
+      chunks,
+      SpawnGraphsChunk::CHUNK_ID,
+    )?)
   }
 
   /// The alife objects a spawn file places on one level, by the level each one's game vertex stands on, reading nothing
@@ -150,7 +154,7 @@ impl SpawnFile {
     let mut arrivals: Vec<SpawnLevelArrival> = Vec::new();
     let mut skipped: Vec<SpawnSkippedObject> = Vec::new();
     let total: u32 = SpawnALifeSpawnsChunk::read_each::<T, _>(
-      &mut find_required_chunk_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?,
+      &mut ChunkReader::find_required_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?,
       |index, object| match object {
         Ok(object) => {
           if let AlifeObjectInherited::SeLevelChanger(changer) = &object.inherited {
@@ -202,7 +206,7 @@ impl SpawnFile {
       .filter(|(id, _)| is_on_level(*id))
       .map(|(id, vertex)| (id, vertex.level_point.clone()))
       .collect();
-    let patrols: Vec<Patrol> = find_required_chunk_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?
+    let patrols: Vec<Patrol> = ChunkReader::find_required_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?
       .read_xr::<T, SpawnPatrolsChunk>()?
       .patrols
       .into_iter()

@@ -3,7 +3,7 @@ use std::path::Path;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -66,8 +66,8 @@ impl LevelHomFile {
   /// Returns an error when a chunk is absent, or the geometry is not whole triangles.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
-    let version: u32 = find_required_chunk_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u32::<T>()?;
-    let mut geometry: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::GEOMETRY_CHUNK_ID)?;
+    let version: u32 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u32::<T>()?;
+    let mut geometry: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::GEOMETRY_CHUNK_ID)?;
 
     let count: u64 = geometry.read_bytes_remain();
 

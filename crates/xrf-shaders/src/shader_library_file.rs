@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, XRayByteOrder, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -37,7 +37,7 @@ impl ShaderLibraryFile {
 
   pub fn read_from_chunk<D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
-    let mut blenders: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::BLENDERS_CHUNK_ID)?;
+    let mut blenders: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::BLENDERS_CHUNK_ID)?;
 
     Self::read_blenders(&mut blenders)
   }

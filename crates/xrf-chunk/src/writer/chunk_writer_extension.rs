@@ -4,8 +4,11 @@ use byteorder::{ByteOrder, WriteBytesExt};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{encode_string_to_w1251_bytes, to_format_size};
 
-use crate::reader::chunk_line::is_line_terminator;
-use crate::{ChunkReadWrite, ChunkReadWriteList, ChunkReadWriteOptional, ChunkWriter};
+use crate::read_write::chunk_read_write::ChunkReadWrite;
+use crate::read_write::chunk_read_write_list::ChunkReadWriteList;
+use crate::read_write::chunk_read_write_optional::ChunkReadWriteOptional;
+use crate::reader::chunk_line::ChunkLine;
+use crate::writer::chunk_writer::ChunkWriter;
 
 impl ChunkWriter {
   #[inline]
@@ -42,9 +45,14 @@ impl ChunkWriter {
     Ok(size_of::<u16>())
   }
 
-  /// Write null terminated windows1251 encoded string.
+  /// Write a null-terminated Windows-1251 string, returning the bytes written.
   pub fn write_w1251_string(&mut self, data: &str) -> XrfResult<usize> {
-    Ok(self.write(&encode_string_to_w1251_bytes(data)?)? + self.write(&[0u8])?)
+    let bytes: Vec<u8> = encode_string_to_w1251_bytes(data)?;
+
+    self.write_all(&bytes)?;
+    self.write_u8(0)?;
+
+    Ok(bytes.len() + 1)
   }
 
   /// Write a windows1251 encoded string closed by the line terminator it was read with.
@@ -57,14 +65,19 @@ impl ChunkWriter {
   /// Returns an error when the terminator is not a non-empty run of `\r` and `\n`, which would write a field no
   /// reader can find the end of.
   pub fn write_w1251_line(&mut self, data: &str, terminator: &str) -> XrfResult<usize> {
-    if terminator.is_empty() || !terminator.bytes().all(is_line_terminator) {
+    if terminator.is_empty() || !terminator.bytes().all(ChunkLine::is_terminator) {
       return Err(XrfError::new_invalid_error(format!(
         "Cannot write line '{data}' terminated by '{}', expected a run of CR and LF",
         terminator.escape_debug()
       )));
     }
 
-    Ok(self.write(&encode_string_to_w1251_bytes(data)?)? + self.write(terminator.as_bytes())?)
+    let bytes: Vec<u8> = encode_string_to_w1251_bytes(data)?;
+
+    self.write_all(&bytes)?;
+    self.write_all(terminator.as_bytes())?;
+
+    Ok(bytes.len() + terminator.len())
   }
 
   /// Write serialized vector into vector, where u32 count N is followed by N u16 entries.

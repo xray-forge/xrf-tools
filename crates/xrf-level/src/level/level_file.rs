@@ -3,7 +3,7 @@ use std::path::Path;
 
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, find_optional_chunk_by_id, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -140,7 +140,7 @@ impl LevelFile {
   pub fn read_visuals_from_chunks<T: ByteOrder, D: ChunkDataSource>(
     chunks: &[ChunkReader<D>],
   ) -> XrfResult<Option<LevelVisualsChunk>> {
-    match find_optional_chunk_by_id(chunks, LevelVisualsChunk::CHUNK_ID) {
+    match ChunkReader::find_optional_by_id(chunks, LevelVisualsChunk::CHUNK_ID) {
       Some(mut chunk) => Ok(Some(LevelVisualsChunk::read_from_chunk::<T, _>(&mut chunk)?)),
       None => Ok(None),
     }
@@ -149,20 +149,20 @@ impl LevelFile {
   /// Read level file from chunks.
   pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
     Ok(Self {
-      header: find_required_chunk_by_id(chunks, LevelHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-      lights: match find_optional_chunk_by_id(chunks, LevelDynamicLightsChunk::CHUNK_ID) {
+      header: ChunkReader::find_required_by_id(chunks, LevelHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      lights: match ChunkReader::find_optional_by_id(chunks, LevelDynamicLightsChunk::CHUNK_ID) {
         Some(mut it) => Some(LevelDynamicLightsChunk::read_from_chunk::<T, _>(&mut it)?),
         None => None,
       },
-      portals: match find_optional_chunk_by_id(chunks, LevelPortalsChunk::CHUNK_ID) {
+      portals: match ChunkReader::find_optional_by_id(chunks, LevelPortalsChunk::CHUNK_ID) {
         Some(mut it) => Some(LevelPortalsChunk::read_from_chunk::<T, _>(&mut it)?),
         None => None,
       },
-      sectors: match find_optional_chunk_by_id(chunks, LevelSectorsChunk::CHUNK_ID) {
+      sectors: match ChunkReader::find_optional_by_id(chunks, LevelSectorsChunk::CHUNK_ID) {
         Some(mut it) => Some(LevelSectorsChunk::read_from_chunk::<T, _>(&mut it)?),
         None => None,
       },
-      shaders: match find_optional_chunk_by_id(chunks, LevelShadersChunk::CHUNK_ID) {
+      shaders: match ChunkReader::find_optional_by_id(chunks, LevelShadersChunk::CHUNK_ID) {
         Some(mut it) => Some(it.read_xr::<T, _>()?),
         None => None,
       },

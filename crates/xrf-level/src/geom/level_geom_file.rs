@@ -4,7 +4,7 @@ use std::path::Path;
 
 use byteorder::{ByteOrder, ReadBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, find_optional_chunk_by_id, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -89,18 +89,18 @@ impl LevelGeomFile {
   /// Returns an error when a required chunk is absent, a declaration names a type `D3DDECLTYPE` does not, or a
   /// chunk does not end exactly where its buffers say it should.
   pub fn read_from_children<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
-    let mut vertices: ChunkReader<D> = find_required_chunk_by_id(chunks, Self::VERTEX_BUFFERS_CHUNK_ID)?;
+    let mut vertices: ChunkReader<D> = ChunkReader::find_required_by_id(chunks, Self::VERTEX_BUFFERS_CHUNK_ID)?;
     let vertex_buffers: Vec<LevelGeomVertexBuffer> = Self::read_vertex_buffers::<T, D>(&mut vertices)?;
 
     vertices.assert_read("Expect all data to be read from level render geometry vertex buffers chunk")?;
 
-    let mut indices: ChunkReader<D> = find_required_chunk_by_id(chunks, Self::INDEX_BUFFERS_CHUNK_ID)?;
+    let mut indices: ChunkReader<D> = ChunkReader::find_required_by_id(chunks, Self::INDEX_BUFFERS_CHUNK_ID)?;
     let index_buffers: Vec<LevelGeomIndexBuffer> = Self::read_index_buffers::<T, D>(&mut indices)?;
 
     indices.assert_read("Expect all data to be read from level render geometry index buffers chunk")?;
 
     let slide_windows: Vec<LevelGeomSlideWindowItem> =
-      match find_optional_chunk_by_id(chunks, Self::SLIDE_WINDOWS_CHUNK_ID) {
+      match ChunkReader::find_optional_by_id(chunks, Self::SLIDE_WINDOWS_CHUNK_ID) {
         Some(mut chunk) => {
           let windows: Vec<LevelGeomSlideWindowItem> = Self::read_slide_windows::<T, D>(&mut chunk)?;
 

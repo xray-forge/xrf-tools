@@ -138,7 +138,7 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut count_writer: ChunkWriter = ChunkWriter::new();
     let mut objects_writer: ChunkWriter = ChunkWriter::new();
-    let mut vertex_writer: ChunkWriter = ChunkWriter::new();
+    let vertex_writer: ChunkWriter = ChunkWriter::new();
 
     count_writer.write_u32::<T>(to_format_size(self.objects.len(), "alife objects")?)?;
 
@@ -513,8 +513,8 @@ mod tests {
   #[test]
   fn rejects_object_count_larger_than_the_objects_chunk_before_reserving_it() -> XrfResult {
     let mut count_writer: ChunkWriter = ChunkWriter::new();
-    let mut objects_writer: ChunkWriter = ChunkWriter::new();
-    let mut vertex_writer: ChunkWriter = ChunkWriter::new();
+    let objects_writer: ChunkWriter = ChunkWriter::new();
+    let vertex_writer: ChunkWriter = ChunkWriter::new();
 
     count_writer.write_u32::<XRayByteOrder>(u32::MAX)?;
 

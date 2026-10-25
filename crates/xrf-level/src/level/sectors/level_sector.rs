@@ -1,6 +1,6 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 
 /// One sector of a compiled level: the portals it is seen through, and the visual it draws.
@@ -31,7 +31,7 @@ impl LevelSector {
   /// `u32` - each of which the engine asserts on rather than tolerates.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
-    let mut portals_chunk: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::PORTALS_CHUNK_ID)?;
+    let mut portals_chunk: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::PORTALS_CHUNK_ID)?;
     let size: u64 = portals_chunk.read_bytes_remain();
 
     if !size.is_multiple_of(Self::PORTAL_ID_SIZE) {
@@ -48,7 +48,7 @@ impl LevelSector {
 
     portals_chunk.assert_read("Expect all data to be read from level sector portals chunk")?;
 
-    let mut root_chunk: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::ROOT_CHUNK_ID)?;
+    let mut root_chunk: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::ROOT_CHUNK_ID)?;
     let root: u32 = byteorder::ReadBytesExt::read_u32::<T>(&mut root_chunk)?;
 
     root_chunk.assert_read("Expect all data to be read from level sector root chunk")?;

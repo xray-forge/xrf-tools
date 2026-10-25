@@ -5,7 +5,7 @@ use std::path::Path;
 
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::FileImportExport;
 use xrf_utils::{assert, assert_length, format_path, write_new_file_staged};
@@ -54,9 +54,9 @@ impl ParticlesFile {
     assert_length(chunks, 3, "Unexpected chunks in particles file root")?;
 
     Ok(Self {
-      header: find_required_chunk_by_id(chunks, ParticlesHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-      effects: find_required_chunk_by_id(chunks, ParticlesEffectsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-      groups: find_required_chunk_by_id(chunks, ParticlesGroupsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      header: ChunkReader::find_required_by_id(chunks, ParticlesHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      effects: ChunkReader::find_required_by_id(chunks, ParticlesEffectsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      groups: ChunkReader::find_required_by_id(chunks, ParticlesGroupsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
     })
   }
 

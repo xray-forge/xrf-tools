@@ -2,10 +2,7 @@ use std::fs::File;
 use std::path::Path;
 
 use byteorder::ByteOrder;
-use xrf_chunk::{
-  ChunkDataSource, ChunkReader, find_one_of_optional_chunk_by_id, find_one_of_required_chunks_by_id,
-  find_optional_chunk_by_id, find_required_chunk_by_id,
-};
+use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk};
 use xrf_utils::format_path;
@@ -77,25 +74,28 @@ impl OgfFile {
   pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
     // Bones are read up front because the ik data chunk stores no count of its own and has one record
     // per bone, so it can only be read once the bone list is known.
-    let bones: Option<OgfBonesChunk> = match find_optional_chunk_by_id(chunks, OgfBonesChunk::CHUNK_ID) {
+    let bones: Option<OgfBonesChunk> = match ChunkReader::find_optional_by_id(chunks, OgfBonesChunk::CHUNK_ID) {
       Some(mut it) => Some(it.read_xr::<T, _>()?),
       None => None,
     };
 
-    let ik_data: Option<OgfIkDataChunk> = match (&bones, find_optional_chunk_by_id(chunks, OgfIkDataChunk::CHUNK_ID)) {
+    let ik_data: Option<OgfIkDataChunk> = match (
+      &bones,
+      ChunkReader::find_optional_by_id(chunks, OgfIkDataChunk::CHUNK_ID),
+    ) {
       (Some(bones), Some(mut it)) => Some(OgfIkDataChunk::read::<T, _>(&mut it, bones.bones.len())?),
       _ => None,
     };
 
     // Read ahead of the record so the two embedded motion chunks can be checked against each other.
-    let motions: Option<SkeletonMotionsChunk> = match find_optional_chunk_by_id(chunks, SkeletonMotionsChunk::CHUNK_ID)
-    {
-      Some(mut it) => Some(it.read_xr::<T, _>()?),
-      None => None,
-    };
+    let motions: Option<SkeletonMotionsChunk> =
+      match ChunkReader::find_optional_by_id(chunks, SkeletonMotionsChunk::CHUNK_ID) {
+        Some(mut it) => Some(it.read_xr::<T, _>()?),
+        None => None,
+      };
 
     let motion_parameters: Option<SkeletonMotionParametersChunk> =
-      match find_optional_chunk_by_id(chunks, SkeletonMotionParametersChunk::CHUNK_ID) {
+      match ChunkReader::find_optional_by_id(chunks, SkeletonMotionParametersChunk::CHUNK_ID) {
         Some(mut it) => Some(it.read_xr::<T, _>()?),
         None => None,
       };
@@ -105,36 +105,36 @@ impl OgfFile {
     Ok(Self {
       bones,
       ik_data,
-      header: find_required_chunk_by_id(chunks, OgfHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-      texture: match find_optional_chunk_by_id(chunks, OgfTextureChunk::CHUNK_ID) {
+      header: ChunkReader::find_required_by_id(chunks, OgfHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      texture: match ChunkReader::find_optional_by_id(chunks, OgfTextureChunk::CHUNK_ID) {
         Some(mut it) => Some(it.read_xr::<T, _>()?),
         None => None,
       },
       geometry: OgfGeometry::read_from_chunks::<T, _>(chunks)?,
-      swi_data: match find_optional_chunk_by_id(chunks, OgfSwiDataChunk::CHUNK_ID) {
+      swi_data: match ChunkReader::find_optional_by_id(chunks, OgfSwiDataChunk::CHUNK_ID) {
         Some(mut it) => Some(it.read_xr::<T, _>()?),
         None => None,
       },
-      children: match find_optional_chunk_by_id(chunks, OgfChildrenChunk::CHUNK_ID) {
+      children: match ChunkReader::find_optional_by_id(chunks, OgfChildrenChunk::CHUNK_ID) {
         Some(mut it) => Some(it.read_xr::<T, _>()?),
         None => None,
       },
-      description: match find_optional_chunk_by_id(chunks, OgfDescriptionChunk::CHUNK_ID) {
+      description: match ChunkReader::find_optional_by_id(chunks, OgfDescriptionChunk::CHUNK_ID) {
         Some(mut it) => Some(it.read_xr::<T, _>()?),
         None => None,
       },
-      kinematics: match find_one_of_optional_chunk_by_id(
+      kinematics: match ChunkReader::find_one_of_optional_by_id(
         chunks,
         &[OgfKinematicsChunk::CHUNK_ID, OgfKinematicsChunk::CHUNK_ID_OLD],
       ) {
         Some((id, mut it)) => Some(OgfKinematicsChunk::read::<T, _>(&mut it, id)?),
         None => None,
       },
-      user_data: match find_optional_chunk_by_id(chunks, OgfUserDataChunk::CHUNK_ID) {
+      user_data: match ChunkReader::find_optional_by_id(chunks, OgfUserDataChunk::CHUNK_ID) {
         Some(mut it) => Some(it.read_xr::<T, _>()?),
         None => None,
       },
-      lods: match find_optional_chunk_by_id(chunks, OgfLodsChunk::CHUNK_ID) {
+      lods: match ChunkReader::find_optional_by_id(chunks, OgfLodsChunk::CHUNK_ID) {
         Some(mut it) => Some(it.read_xr::<T, _>()?),
         None => None,
       },
@@ -163,7 +163,7 @@ impl OgfFile {
       reader.read_bytes_len(),
     );
 
-    let (chunk_id, mut chunk) = find_one_of_required_chunks_by_id(
+    let (chunk_id, mut chunk) = ChunkReader::find_one_of_required_by_id(
       &chunks,
       &[OgfKinematicsChunk::CHUNK_ID, OgfKinematicsChunk::CHUNK_ID_OLD],
     )?;

@@ -1,6 +1,6 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
 /// What a pair declares for itself rather than inheriting, by the bit `SGameMtlPair` names it under.
@@ -47,8 +47,8 @@ impl GameMtlPair {
   pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
-    let mut pair: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::PAIR_CHUNK_ID)?;
-    let mut collide: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::COLLIDE_CHUNK_ID)?;
+    let mut pair: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::PAIR_CHUNK_ID)?;
+    let mut collide: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::COLLIDE_CHUNK_ID)?;
 
     Ok(Self {
       material_a: pair.read_u32::<T>()?,
@@ -56,8 +56,8 @@ impl GameMtlPair {
       id: pair.read_u32::<T>()?,
       parent_id: pair.read_u32::<T>()?,
       own_properties: pair.read_u32::<T>()?,
-      breaking_sounds: find_required_chunk_by_id(&chunks, Self::BREAKING_CHUNK_ID)?.read_w1251_string()?,
-      step_sounds: find_required_chunk_by_id(&chunks, Self::STEP_CHUNK_ID)?.read_w1251_string()?,
+      breaking_sounds: ChunkReader::find_required_by_id(&chunks, Self::BREAKING_CHUNK_ID)?.read_w1251_string()?,
+      step_sounds: ChunkReader::find_required_by_id(&chunks, Self::STEP_CHUNK_ID)?.read_w1251_string()?,
       collide_sounds: collide.read_w1251_string()?,
       collide_particles: collide.read_w1251_string()?,
       collide_marks: collide.read_w1251_string()?,

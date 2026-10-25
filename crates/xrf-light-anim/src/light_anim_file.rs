@@ -3,7 +3,7 @@ use std::path::Path;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_optional_chunk_by_id, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -67,11 +67,11 @@ impl LightAnimFile {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     Ok(Self {
-      version: match find_optional_chunk_by_id(&chunks, Self::VERSION_CHUNK_ID) {
+      version: match ChunkReader::find_optional_by_id(&chunks, Self::VERSION_CHUNK_ID) {
         Some(mut chunk) => chunk.read_u16::<T>()?,
         None => Self::BGR_VERSION,
       },
-      items: Self::read_items::<T, D>(&mut find_required_chunk_by_id(&chunks, Self::ITEMS_CHUNK_ID)?)?,
+      items: Self::read_items::<T, D>(&mut ChunkReader::find_required_by_id(&chunks, Self::ITEMS_CHUNK_ID)?)?,
     })
   }
 

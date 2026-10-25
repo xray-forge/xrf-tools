@@ -3,7 +3,7 @@ use std::path::Path;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_optional_chunk_by_id, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -70,7 +70,7 @@ impl GameMtlFile {
   /// Returns an error when a chunk is absent, the version is one the engine refuses, or a material cannot be read.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
-    let version: u16 = find_required_chunk_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u16::<T>()?;
+    let version: u16 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u16::<T>()?;
 
     if version != Self::CURRENT_VERSION {
       return Err(XrfError::new_not_implemented_error(format!(
@@ -79,17 +79,17 @@ impl GameMtlFile {
       )));
     }
 
-    let mut autoincrement: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::AUTOINCREMENT_CHUNK_ID)?;
+    let mut autoincrement: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::AUTOINCREMENT_CHUNK_ID)?;
 
     Ok(Self {
       version,
       material_index: autoincrement.read_u32::<T>()?,
       material_pair_index: autoincrement.read_u32::<T>()?,
-      materials: match find_optional_chunk_by_id(&chunks, Self::MATERIALS_CHUNK_ID) {
+      materials: match ChunkReader::find_optional_by_id(&chunks, Self::MATERIALS_CHUNK_ID) {
         Some(mut chunk) => Self::read_materials::<T, D>(&mut chunk)?,
         None => Vec::new(),
       },
-      pairs: match find_optional_chunk_by_id(&chunks, Self::PAIRS_CHUNK_ID) {
+      pairs: match ChunkReader::find_optional_by_id(&chunks, Self::PAIRS_CHUNK_ID) {
         Some(mut chunk) => Self::read_pairs::<T, D>(&mut chunk)?,
         None => Vec::new(),
       },

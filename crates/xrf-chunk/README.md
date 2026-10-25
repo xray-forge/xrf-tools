@@ -35,11 +35,12 @@ The outer reader spans the whole buffer. The child's ID is `7`, while its positi
   `from_source`, a file window with `from_slice`, or a path with `from_path`, which reads positionally rather than
   holding the file. `from_file` loads the whole file into memory. Every constructor rejects an empty source; an empty
   child chunk is ordinary.
-- Locate children with `read_children`, `ChunkIterator`, and the `find_*_chunk_by_id` helpers, which match the stored ID
-  exactly. `ChunkSizePackedIterator` walks a payload stored as `[size][content]` records, where each size counts its
-  own four bytes.
-- `read_u8_chunk`, `read_u32_chunk`, `read_w1251_string_chunk` and their kin read a chunk holding one value and fail
-  when bytes remain after it.
+- Locate children with `read_children` or `ChunkIterator`, then pick one with `ChunkReader::find_required_by_id`,
+  `find_optional_by_id` or their `find_one_of_*` forms, which match the stored ID exactly and take a preference order
+  of IDs. `ChunkSizePackedIterator` walks a payload stored as `[size][content]` records, where each size counts its own
+  four bytes.
+- `read_u8_payload`, `read_u32_payload`, `read_w1251_string_payload` and their kin read a chunk whose whole payload is
+  one value, and fail when bytes remain after it.
 - Build a payload with `ChunkWriter`, then use `flush_chunk_into` or `flush_chunk_into_buffer` for a framed chunk, or
   `flush_raw_into` for raw bytes.
 - Implement `ChunkReadWrite` for a format's typed payload; `ChunkReadWriteList` and `ChunkReadWriteOptional` cover
@@ -53,8 +54,8 @@ its parent's source: in-memory windows share one buffer, so slicing and cloning 
 ## Framing and typed payloads
 
 A chunk header is two `u32` fields, ID then payload size (`CHUNK_HEADER_SIZE`). `ChunkWriter` buffers the payload; its
-flush methods leave that buffer intact, so clear it or create another writer before constructing an unrelated payload.
-A payload larger than a `u32` can declare is refused.
+flush methods read that buffer without changing it, so clear it or create another writer before constructing an
+unrelated payload. A payload larger than a `u32` can declare is refused.
 
 `XRayByteOrder` is little-endian. Payload reads and the writer's header take the byte order as a type parameter, but
 the child iterators always read headers little-endian.

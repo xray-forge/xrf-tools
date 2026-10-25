@@ -3,7 +3,7 @@ use std::path::Path;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{format_path, to_format_size};
 
@@ -59,7 +59,7 @@ impl LevelWallmarksFile {
   /// Returns an error when the chunk is absent, or its slots do not account for it.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
-    let mut slots_reader: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::SLOTS_CHUNK_ID)?;
+    let mut slots_reader: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::SLOTS_CHUNK_ID)?;
 
     let count: u32 = slots_reader.read_u32::<T>()?;
     let mut slots: Vec<LevelWallmarkSlot> =
