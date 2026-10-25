@@ -8,6 +8,7 @@ pub(crate) mod options;
 pub(crate) mod repair;
 pub(crate) mod serialize;
 pub(crate) mod spans;
+pub(crate) mod unescape;
 
 pub use crate::dom::{XmlDocument, XmlElement};
 pub use crate::encoding::{declared_xml_encoding, encoding_from_label};

@@ -4,6 +4,7 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::options::XmlParseOptions;
 use crate::repair::repair_for_parsing;
+use crate::unescape::{unescape_attribute, unescape_text};
 
 /// A parsed document together with the text it was parsed from.
 ///
@@ -78,10 +79,11 @@ impl XmlElementSpan {
     )
     .map_err(|error| XrfError::new_parsing_error(format!("Failed to parse XML: {error}")))?;
 
-    Ok(Self::from_node(input, document.root_element()))
+    Ok(Self::from_node(input, parsable, document.root_element()))
   }
 
-  fn from_node(input: &str, node: roxmltree::Node<'_, '_>) -> Self {
+  /// One element of the parse of `parsable`, its ranges and values addressing `input`.
+  fn from_node(input: &str, parsable: &str, node: roxmltree::Node<'_, '_>) -> Self {
     let name: String = node.tag_name().name().to_owned();
     let element: Range<usize> = node.range();
     let content: Option<Range<usize>> = content_range(input, &element, &name);
@@ -89,22 +91,42 @@ impl XmlElementSpan {
     Self {
       attributes: node
         .attributes()
-        .map(|attribute| (attribute.name().to_owned(), attribute.value().to_owned()))
+        .map(|attribute| {
+          let value: String = match Self::get_changed_source(input, parsable, attribute.range_value()) {
+            Some(raw) => unescape_attribute(raw),
+            None => attribute.value().to_owned(),
+          };
+
+          (attribute.name().to_owned(), value)
+        })
         .collect(),
       children: node
         .children()
         .filter(roxmltree::Node::is_element)
-        .map(|child| Self::from_node(input, child))
+        .map(|child| Self::from_node(input, parsable, child))
         .collect(),
       text: node
         .children()
         .filter(roxmltree::Node::is_text)
-        .filter_map(|child| child.text())
+        .map(|child| match Self::get_changed_source(input, parsable, child.range()) {
+          Some(raw) => unescape_text(raw),
+          None => child.text().unwrap_or_default().to_owned(),
+        })
         .collect(),
       content,
       element,
       name,
     }
+  }
+
+  /// The source of a node whose bytes the repair changed, which the parser's own values would misread.
+  ///
+  /// `None` for every node of a document that parsed as written, and for every node of a repaired one the repair left
+  /// alone, so those keep exactly the values the parser resolved.
+  fn get_changed_source<'a>(input: &'a str, parsable: &str, range: Range<usize>) -> Option<&'a str> {
+    let raw: &'a str = input.get(range.clone())?;
+
+    (parsable.get(range) != Some(raw)).then_some(raw)
   }
 
   pub fn name(&self) -> &str {

@@ -49,10 +49,10 @@ pub fn encoding_from_label(label: &str) -> XrfResult<XRayEncoding> {
 ///
 /// Returns an encoding error when the declaration is unsupported or the bytes do not decode.
 pub(crate) fn decode_xml_bytes(input: &[u8]) -> XrfResult<String> {
-  Ok(decode_bytes_to_string(
-    input,
-    declared_xml_encoding(input)?.unwrap_or_else(new_utf8_encoder),
-  )?)
+  // Mapped rather than converted: bytes that do not decode are the document's own defect, and `From<io::Error>` would
+  // report them as an IO failure, which a caller reads as the file never having been read.
+  decode_bytes_to_string(input, declared_xml_encoding(input)?.unwrap_or_else(new_utf8_encoder))
+    .map_err(|error| XrfError::new_encoding_error(error.to_string()))
 }
 
 /// Pull the raw encoding name out of a prolog, without judging whether it is supported.

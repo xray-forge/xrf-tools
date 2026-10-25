@@ -29,6 +29,14 @@ fn parses_declared_windows_1251_encoding() {
   assert_eq!(document.elements_named("text").next().unwrap().text(), "Привет");
 }
 
+/// Bytes the declared encoding cannot decode are a defect of the document, never an IO failure.
+#[test]
+fn reports_undecodable_bytes_as_an_encoding_error() {
+  let error = XmlDocument::parse_bytes(b"<root>\xff\xfe</root>", XmlParseOptions::default()).unwrap_err();
+
+  assert!(matches!(error, xrf_error::XrfError::Encoding { .. }), "{error:?}");
+}
+
 #[test]
 fn rejects_dtd_unless_enabled() {
   let source: &str = "<!DOCTYPE root [<!ELEMENT root EMPTY>]><root/>";

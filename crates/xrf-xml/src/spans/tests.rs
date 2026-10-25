@@ -103,12 +103,27 @@ fn parses_a_comment_banner_xml_forbids_and_the_engine_accepts() {
 #[test]
 fn parses_a_bare_ampersand_in_text() {
   let document: XmlSourceDocument =
-    parse("<string_table><string id=\"a\"><text>Smith & Wesson</text></string></string_table>");
+    parse("<string_table><string id=\"a\"><text>Smith & Wesson &amp; sons</text></string></string_table>");
+  let element: &XmlElementSpan = text_of(&document);
 
   assert_eq!(
-    &document.source()[text_of(&document).content_range().unwrap().clone()],
-    "Smith & Wesson"
+    &document.source()[element.content_range().unwrap().clone()],
+    "Smith & Wesson &amp; sons"
   );
+  // The text reads what the engine shows: the bare ampersand as written, never the repair's stand-in for it.
+  assert_eq!(element.text(), "Smith & Wesson & sons");
+}
+
+#[test]
+fn reads_a_bare_ampersand_in_an_attribute_and_leaves_untouched_values_to_the_parser() {
+  let document: XmlSourceDocument =
+    parse("<string_table><string id=\"a&b\" note=\"x &amp; y\"><text>~ kept</text></string></string_table>");
+  let string: &XmlElementSpan = document.root().child_named("string").unwrap();
+
+  assert_eq!(string.attribute("id"), Some("a&b"));
+  assert_eq!(string.attribute("note"), Some("x & y"));
+  // A real tilde in a node the repair did not touch is the parser's value, unchanged.
+  assert_eq!(text_of(&document).text(), "~ kept");
 }
 
 #[test]
