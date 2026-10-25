@@ -39,29 +39,28 @@ Keep that context rather than formatting it into a message.
 
 Match on the variant when behavior depends on the cause; the `Display` text is for people.
 
-| Variant                   | Meaning                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------- |
-| `Invalid`                 | Input or arguments violate an operation's requirements                          |
-| `Parsing`                 | Input cannot be parsed                                                          |
-| `NotFound`                | A requested file, asset, section or value is absent                             |
-| `Io`                      | Host I/O failed; `kind` keeps the `std::io::ErrorKind`                          |
-| `Read`                    | A file, archive or entry cannot be read: refused, out of bounds, or undecodable |
-| `Assertion`               | A binary-format check failed, from `xrf_utils`' `assert*` helpers               |
-| `ChunkNotEnded`           | A chunk reader stopped with `remaining` bytes unread                            |
-| `NoTerminator`            | A fixed or null-terminated string has no terminator                             |
-| `Encoding`                | Text cannot be written in the required encoding, or a stream cannot be coded    |
-| `Serialization`           | A value cannot be written to its binary format                                  |
-| `LtxParse`, `LtxScheme`   | LTX text fails to parse at `line:col`, or a field breaks its section scheme     |
-| `Convert`                 | An LTX value or structure cannot be converted to what the reader expects        |
-| `Verify`                  | A verification run found problems                                               |
-| `Asset`                   | An asset resolves to nothing or cannot be used                                  |
-| `TextureProcessing`       | Image decoding or encoding failed                                               |
-| `UnknownLanguage`         | A translation language name is not one XRF knows                                |
-| `NotImplemented`          | The requested operation or format variant is not supported                      |
-| `Cancelled`               | The operation stopped at a safe boundary because cancellation was requested     |
-| `Unexpected`              | An internal state that should not occur                                         |
-| `Serde`, `Generic`        | Converted from `serde_json` and boxed `dyn Error` failures                      |
-| `Format`, `InvalidSource` | Declared but produced nowhere in the workspace                                  |
+| Variant                 | Meaning                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------- |
+| `Invalid`               | Input or arguments violate an operation's requirements                          |
+| `Parsing`               | Input cannot be parsed                                                          |
+| `NotFound`              | A requested file, asset, section or value is absent                             |
+| `Io`                    | Host I/O failed; `kind` keeps the `std::io::ErrorKind`                          |
+| `Read`                  | A file, archive or entry cannot be read: refused, out of bounds, or undecodable |
+| `Assertion`             | A binary-format check failed, from `xrf_utils`' `assert*` helpers               |
+| `ChunkNotEnded`         | A chunk reader stopped with `remaining` bytes unread                            |
+| `NoTerminator`          | A fixed or null-terminated string has no terminator                             |
+| `Encoding`              | Text cannot be written in the required encoding, or a stream cannot be coded    |
+| `Serialization`         | A value cannot be written to its binary format                                  |
+| `LtxParse`, `LtxScheme` | LTX text fails to parse at `line:col`, or a field breaks its section scheme     |
+| `Convert`               | An LTX value or structure cannot be converted to what the reader expects        |
+| `Verify`                | A verification run found problems                                               |
+| `Asset`                 | An asset resolves to nothing or cannot be used                                  |
+| `TextureProcessing`     | Image decoding or encoding failed                                               |
+| `UnknownLanguage`       | A translation language name is not one XRF knows                                |
+| `NotImplemented`        | The requested operation or format variant is not supported                      |
+| `Cancelled`             | The operation stopped at a safe boundary because cancellation was requested     |
+| `Unexpected`            | An internal state that should not occur                                         |
+| `Serde`, `Generic`      | Converted from `serde_json` and boxed `dyn Error` failures                      |
 
 `Cancelled` is control flow, not a failure: it lets a cancellation check compose with `?` and stop a parallel iterator.
 An operation catches its own `Cancelled` and reports what it completed, so one reaching a caller means a missed catch.

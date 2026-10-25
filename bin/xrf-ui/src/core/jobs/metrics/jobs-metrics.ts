@@ -177,7 +177,6 @@ export class JobProfileRecorder {
 
     const phase: IJobPhase = {
       id: leaf.id,
-      label: leaf.label,
       duration: 0,
       completed: 0,
       unit: leaf.unit,

@@ -71,7 +71,7 @@ describe("JobsService adoption ending", () => {
       [JOBS_LIST_COMMAND]: [
         mockJobDescription({
           progress: {
-            levels: [{ id: "write", label: null, completed: 7, total: 10, unit: "items" }],
+            levels: [{ id: "write", completed: 7, total: 10, unit: "items" }],
             duration: 2000,
             detail: null,
           },

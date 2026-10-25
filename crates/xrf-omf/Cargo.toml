@@ -15,10 +15,6 @@ xrf-error = { workspace = true }
 xrf-skeleton = { workspace = true }
 xrf-utils = { workspace = true }
 
-[features]
-# Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
-
-
 [dev-dependencies]
 xrf-skeleton = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use xrf_error::XrfResult;
 use xrf_ltx::{
   Ltx, LtxDialect, LtxDocumentSource, LtxFieldOrigin, LtxProvenance, LtxResolution, LtxResolutionDiagnostic,
-  LtxResolveRequest, LtxStandardDialect, Section,
+  LtxResolveRequest, Section,
 };
 
 use crate::discovery::dltx_discovery::DltxDiscovery;
@@ -182,6 +182,3 @@ impl DltxDialect {
       .collect()
   }
 }
-
-/// Standard LTX, re-exported so a caller picking a dialect from a flag names both in one place.
-pub type DltxStandardDialect = LtxStandardDialect;

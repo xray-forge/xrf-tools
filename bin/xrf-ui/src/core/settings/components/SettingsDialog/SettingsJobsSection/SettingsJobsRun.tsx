@@ -72,7 +72,7 @@ export function SettingsJobsRun({
 
               return (
                 <div key={phase.id} className={"flex gap-4 py-0.5"}>
-                  <Typography className={"monospace min-w-0 grow"}>{phase.label ?? phase.id}</Typography>
+                  <Typography className={"monospace min-w-0 grow"}>{phase.id}</Typography>
 
                   <Typography className={"w-24 shrink-0 text-text-secondary"} variant={"caption"}>
                     {formatProgressUnits(phase.completed, phase.unit)}

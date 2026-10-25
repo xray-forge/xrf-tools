@@ -138,11 +138,6 @@ impl JobHandle {
     self.state.gate.elapsed()
   }
 
-  /// What a watcher would be told right now, whether or not an emission is due.
-  ///
-  /// `None` while the job is between levels, which is the same thing the sink is spared: a snapshot with no levels
-  /// describes a run with no phase as though it had one. Lets a listing read a running job's state on demand rather
-  /// than the job having to push every snapshot somewhere a listing can find it.
   /// Says where this job has got to, if it has not said so recently.
   ///
   /// The same rule a completed unit goes through, for a caller that has no unit to report: a phase doing real work
@@ -155,6 +150,11 @@ impl JobHandle {
     self.state.report_if_due();
   }
 
+  /// What a watcher would be told right now, whether or not an emission is due.
+  ///
+  /// `None` while the job is between levels, which is the same thing the sink is spared: a snapshot with no levels
+  /// describes a run with no phase as though it had one. Lets a listing read a running job's state on demand rather
+  /// than the job having to push every snapshot somewhere a listing can find it.
   pub fn get_progress(&self) -> Option<JobProgress> {
     let progress: JobProgress = self.state.describe();
 
@@ -182,7 +182,6 @@ impl JobState {
   ) -> JobScope {
     let level: Arc<LevelState> = Arc::new(LevelState {
       id: id.into(),
-      label: None,
       unit,
       total,
       completed: AtomicU64::new(0),

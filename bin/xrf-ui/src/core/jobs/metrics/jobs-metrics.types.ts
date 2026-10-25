@@ -6,8 +6,6 @@ import { Nullable } from "@xrf/types";
  */
 export interface IJobPhase {
   id: string;
-  /** What to call it in front of a person, where the id is not already presentable. */
-  label: Nullable<string>;
   /** Milliseconds this phase was the innermost one reporting. */
   duration: number;
   /** Units it got through, in this phase's own counting. */

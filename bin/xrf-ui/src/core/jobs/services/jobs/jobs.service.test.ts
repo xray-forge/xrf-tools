@@ -23,7 +23,7 @@ const CANCEL_COMMAND: string = EJobsCommand.CANCEL;
 
 function progress(completed: number, total: Nullable<number> = 10): JobProgress {
   return {
-    levels: [{ id: "write", label: null, completed, total, unit: "items" }],
+    levels: [{ id: "write", completed, total, unit: "items" }],
     duration: 1000,
     detail: null,
   };

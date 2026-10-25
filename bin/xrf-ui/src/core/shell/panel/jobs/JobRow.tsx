@@ -45,7 +45,7 @@ export function JobRow({ job, onCancel }: IJobRowProps): ReactElement {
 
       <div className={"flex items-center justify-between gap-2"}>
         <Typography variant={"caption"} color={"text.secondary"} noWrap={true}>
-          {active ? `${active.label ?? active.id} ${formatProgressCounts(active)}` : job.kind}
+          {active ? `${active.id} ${formatProgressCounts(active)}` : job.kind}
         </Typography>
 
         <div className={"flex shrink-0 items-center gap-2"}>

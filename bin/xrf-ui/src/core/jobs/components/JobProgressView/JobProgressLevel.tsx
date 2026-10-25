@@ -19,7 +19,7 @@ export function JobProgressLevel({ level }: IJobProgressLevelProps): ReactElemen
     <div>
       <div className={"flex justify-between gap-2"}>
         <Typography variant={"caption"} color={"text.secondary"}>
-          {level.label ?? level.id}
+          {level.id}
         </Typography>
 
         <Typography variant={"caption"} color={"text.secondary"}>

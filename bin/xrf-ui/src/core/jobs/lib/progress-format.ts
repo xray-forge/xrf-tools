@@ -86,7 +86,7 @@ export function describeActiveProgress(progress: Nullable<JobProgress>): string 
   const deeper: Array<ProgressLevel> = progress.levels.slice(RENDERED_PROGRESS_LEVELS);
 
   if (deeper.length) {
-    return deeper.map((level: ProgressLevel) => level.label ?? level.id).join(" / ");
+    return deeper.map((level: ProgressLevel) => level.id).join(" / ");
   }
 
   return progress.detail ?? "";

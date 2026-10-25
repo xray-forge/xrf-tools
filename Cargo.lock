@@ -8536,7 +8536,6 @@ dependencies = [
  "byteorder",
  "log",
  "serde",
- "specta",
  "xrf-chunk",
  "xrf-error",
  "xrf-math",

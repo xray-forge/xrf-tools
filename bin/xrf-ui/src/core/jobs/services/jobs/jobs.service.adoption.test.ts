@@ -47,7 +47,7 @@ describe("JobsService adoption", () => {
     await service.onProvision(1);
 
     emitMockChannelMessage({
-      levels: [{ id: "write", label: null, completed: 4, total: 10, unit: "items" }],
+      levels: [{ id: "write", completed: 4, total: 10, unit: "items" }],
       duration: 1200,
       detail: null,
     });
@@ -65,7 +65,7 @@ describe("JobsService adoption", () => {
     await service.onProvision(1);
 
     emitMockChannelMessage({
-      levels: [{ id: "write", label: null, completed: 9, total: 10, unit: "items" }],
+      levels: [{ id: "write", completed: 9, total: 10, unit: "items" }],
       duration: 3000,
       detail: null,
     });
@@ -74,7 +74,7 @@ describe("JobsService adoption", () => {
       [JOBS_LIST_COMMAND]: [
         mockJobDescription({
           progress: {
-            levels: [{ id: "write", label: null, completed: 2, total: 10, unit: "items" }],
+            levels: [{ id: "write", completed: 2, total: 10, unit: "items" }],
             duration: 1000,
             detail: null,
           },
@@ -100,7 +100,7 @@ describe("JobsService adoption", () => {
       [JOBS_LIST_COMMAND]: [
         mockJobDescription({
           progress: {
-            levels: [{ id: "write", label: null, completed: 7, total: 10, unit: "items" }],
+            levels: [{ id: "write", completed: 7, total: 10, unit: "items" }],
             duration: 2000,
             detail: null,
           },
