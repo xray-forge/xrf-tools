@@ -38,12 +38,12 @@ impl EnvFlag {
     }
   }
 
-  /// The value as its kind reads it, logging a warning if it is invalid.
-  pub(crate) fn read_interpreted(&self) -> Option<String> {
+  /// The value as `parse` reads it, logging a warning if it is set but invalid.
+  pub(crate) fn read_as<T>(&self, parse: impl FnOnce(&str) -> Option<T>) -> Option<T> {
     let raw: String = self.get_raw()?;
-    let interpreted: Option<String> = self.value.interpret(&raw);
+    let parsed: Option<T> = parse(&raw);
 
-    if interpreted.is_none() && !raw.trim().is_empty() {
+    if parsed.is_none() && !raw.trim().is_empty() {
       log::warn!(
         "{}={raw:?} is not a valid value, so the default applies ({}). Valid values: {}",
         self.name,
@@ -52,6 +52,6 @@ impl EnvFlag {
       );
     }
 
-    interpreted
+    parsed
   }
 }

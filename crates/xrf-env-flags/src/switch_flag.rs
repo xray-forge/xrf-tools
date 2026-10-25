@@ -20,7 +20,7 @@ impl SwitchFlag {
 
   /// Its state, or none if it is unset or invalid. An invalid value is logged as a warning.
   pub fn read_switch(&self) -> Option<bool> {
-    self.0.read_interpreted().map(|value| value == "on")
+    self.0.read_as(EnvFlagValue::parse_switch)
   }
 
   pub const fn get_flag(&self) -> &EnvFlag {

@@ -267,14 +267,15 @@ impl EnvFlags {
 
   /// The `ENVIRONMENT.md` document for every variable.
   pub fn to_markdown() -> String {
-    let mut document: String = String::from(
+    let mut document: String = format!(
       "# Environment variables\n\n\
        Every environment variable the workspace reads. This file is generated from `EnvFlags::ALL` in \
        `crates/xrf-env-flags`: edit the table there, and its test rewrites this file.\n\n\
-       Runtime switches accept `1`, `true`, `on` or `yes` for on and `0`, `false`, `off` or `no` for off. Runtime \
-       choices accept their names in any case. An unrecognised value is logged as a warning, and the default \
-       applies. Passed-through and build variables follow their own readers' rules, described with each. The \
-       application logs every variable that is set at startup and lists them in Settings, About.\n",
+       Runtime switches accept {}. Runtime choices accept their names in any case. An unrecognised value is logged \
+       as a warning, and the default applies. Passed-through and build variables follow their own readers' rules, \
+       described with each. The application logs every variable that is set at startup and lists them in Settings, \
+       About.\n",
+      EnvFlagValue::Switch.describe()
     );
 
     for (kind, title, summary) in Self::SECTIONS {

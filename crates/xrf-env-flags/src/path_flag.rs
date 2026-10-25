@@ -26,7 +26,7 @@ impl PathFlag {
     let raw: OsString = std::env::var_os(self.0.name)?;
 
     match raw.to_str() {
-      Some(text) => (!text.trim().is_empty()).then(|| PathBuf::from(text.trim())),
+      Some(text) => EnvFlagValue::parse_text(text).map(PathBuf::from),
       None => Some(PathBuf::from(raw)),
     }
   }

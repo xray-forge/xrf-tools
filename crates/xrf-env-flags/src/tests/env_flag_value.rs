@@ -35,6 +35,14 @@ fn takes_a_path_or_text_as_set_unless_empty() {
 }
 
 #[test]
+fn describes_a_switch_by_the_spellings_it_takes() {
+  assert_eq!(
+    EnvFlagValue::Switch.describe(),
+    "`1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off"
+  );
+}
+
+#[test]
 fn describes_a_choice_as_a_list() {
   assert_eq!(EnvFlagValue::Choice(&["a"]).describe(), "`a`");
   assert_eq!(EnvFlagValue::Choice(&["a", "b", "c"]).describe(), "`a`, `b` or `c`");

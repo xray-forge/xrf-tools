@@ -23,9 +23,7 @@ impl ChoiceFlag {
   /// The name chosen as the table spells it, or none if it is unset or invalid. An invalid value is logged as a
   /// warning.
   pub fn read_choice(&self) -> Option<&'static str> {
-    let chosen: String = self.flag.read_interpreted()?;
-
-    self.names.iter().copied().find(|name| *name == chosen)
+    self.flag.read_as(|raw| EnvFlagValue::parse_choice(self.names, raw))
   }
 
   pub const fn get_flag(&self) -> &EnvFlag {
