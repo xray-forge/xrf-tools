@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use image::{DynamicImage, GenericImage, ImageBuffer, ImageReader, Rgba};
+use image::{DynamicImage, GenericImage, ImageBuffer, Rgba};
 use xrf_dds::DdsFile;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
@@ -15,7 +15,7 @@ use crate::equipment::{
   LTX_PATH_GAMEDATA_MARKER_PREFIX, RESOURCES_DIRECTORY, TEXTURES_DIRECTORY,
 };
 use crate::image_file::{
-  UI_MIPMAP_LEVELS, UI_MIPMAPS, fit_image_into_bounds, save_image_as_ui_dds, warn_on_reshaped_ui_dds,
+  UI_MIPMAP_LEVELS, UI_MIPMAPS, decode_image, fit_image_into_bounds, save_image_as_ui_dds, warn_on_reshaped_ui_dds,
 };
 
 pub struct EquipmentSpritePacker {}
@@ -202,7 +202,7 @@ impl EquipmentSpritePacker {
   /// Read rescaled png or dds icon to inject into one large equipment file.
   pub fn read_sprite_from_path(path: &Path, width: u32, height: u32) -> XrfResult<DynamicImage> {
     let image: DynamicImage = if XrayExtension::Png.matches_path(path) {
-      ImageReader::open(path)?.decode()?
+      decode_image(path)?
     } else {
       DdsFile::read_from_path(path)?.decode_rgba(0)?.into()
     };

@@ -6,6 +6,7 @@ mod image_shape;
 mod image_writer;
 
 pub(crate) use image_fit::fit_image_into_bounds;
+pub(crate) use image_reader::decode_image;
 pub use image_reader::read_image_as_rgba;
 pub use image_shape::ImageShape;
 pub(crate) use image_writer::{

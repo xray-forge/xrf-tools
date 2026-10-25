@@ -21,7 +21,8 @@ offered to be written in, as the desktop app's editors ask; `to_candidate` and `
 
 Each operation takes an options value carrying its inputs, output paths, and policy. Resolve game configs with the
 intended LTX dialect before passing them to equipment operations. `read_image_as_rgba` reads authoring input such as a
-height map or gloss mask in any format the `image` decoder recognises.
+height map or gloss mask as BMP, DDS, JPEG, PNG or TGA, chosen by its extension; the crate builds no other `image`
+codec.
 
 ## Build from a THM recipe
 
