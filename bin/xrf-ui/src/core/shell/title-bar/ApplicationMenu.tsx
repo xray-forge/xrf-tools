@@ -5,7 +5,7 @@ import { ReactElement, useCallback, useState } from "react";
 import { IMenubarMenu, Menubar } from "@/core/shell/menu/components/Menubar";
 import { useApplicationMenus } from "@/core/shell/menu/use-application-menus";
 import { useMenubarAccessKeys } from "@/core/shell/menu/use-menubar-access-keys";
-import { MenuGlyph } from "@/core/shell/title-bar/CaptionGlyph";
+import { MenuGlyph } from "@/core/shell/title-bar/glyphs/MenuGlyph";
 import { cn } from "@/core/theme/class-name";
 
 /** What showed the menubar: a click opens File at once, as a click on a menubar does; a key only marks it. */
