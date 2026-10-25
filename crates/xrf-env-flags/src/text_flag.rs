@@ -20,7 +20,7 @@ impl TextFlag {
 
   /// The text as set, trimmed, or none if it is unset or empty.
   pub fn read_text(&self) -> Option<String> {
-    self.0.read_interpreted()
+    self.0.read_as(EnvFlagValue::parse_text)
   }
 
   pub const fn get_flag(&self) -> &EnvFlag {

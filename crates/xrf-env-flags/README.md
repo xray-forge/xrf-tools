@@ -34,8 +34,8 @@ logger. `read_path` returns a non-Unicode path exactly as the system gives it. E
 
 ## Kinds of variable
 
-`EnvFlagKind` says who sets a variable and when it is read. It orders the sections of `ENVIRONMENT.md` and decides what
-a running binary reports.
+`EnvFlagKind` says who sets a variable and when it is read. It picks the section of `ENVIRONMENT.md` a variable is
+listed in and decides what a running binary reports.
 
 | Kind          | Meaning                                                                     |
 | ------------- | --------------------------------------------------------------------------- |
