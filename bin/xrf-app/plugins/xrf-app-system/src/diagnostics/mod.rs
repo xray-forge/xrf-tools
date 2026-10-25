@@ -6,20 +6,16 @@
 //!
 //! - [`HostInfo`] - the machine and the runtime the application found when it started.
 //! - [`RuntimeSnapshot`] - what it costs the machine right now, and how long it has been running.
-//! - [`DescendantUsage`] - the processes below this one, which is where the webview's memory actually is.
+//! - [`report::DescendantUsage`] - the processes below this one, which is where the webview's memory actually is.
 //! - [`memory`] - what the backend and each named webview process hold, cheap enough to poll from a status bar.
 //! - [`StartupLog`] - the log's first lines: the build, the machine, the process and the variables set.
 
 pub(crate) mod commands;
-mod descendant_usage;
-mod host_info;
-mod machine_probe_state;
 pub mod memory;
-mod runtime_snapshot;
-mod startup_log;
+mod probe;
+mod report;
+mod startup;
 
-pub use descendant_usage::DescendantUsage;
-pub use host_info::HostInfo;
-pub use machine_probe_state::MachineProbeState;
-pub use runtime_snapshot::RuntimeSnapshot;
-pub use startup_log::StartupLog;
+pub use probe::MachineProbeState;
+pub use report::{HostInfo, RuntimeSnapshot};
+pub use startup::StartupLog;

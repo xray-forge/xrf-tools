@@ -2,8 +2,8 @@ use serde::Serialize;
 use xrf_level::LevelWallmarkSlot;
 use xrf_vfs::XrayAssetType;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::archive_reference::ArchiveReference;
+use crate::describe::description::ArchiveReference;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// One material of a level's baked decals, as the viewer reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

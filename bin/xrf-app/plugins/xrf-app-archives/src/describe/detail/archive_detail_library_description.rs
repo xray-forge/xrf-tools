@@ -3,8 +3,8 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::{DetailModel, LevelDetailsFile};
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::detail::archive_detail_model::ArchiveDetailModel;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// One object of a level's detail library, and how much of the level it is planted across.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

@@ -6,16 +6,9 @@
 
 mod animation;
 mod anm;
-mod archive_bounds;
-mod archive_describe_scope;
-mod archive_describe_source;
-mod archive_described_format;
-mod archive_entry_container;
-mod archive_entry_reader;
-mod archive_file_description;
-mod archive_reference;
 mod chunks;
 pub(crate) mod commands;
+mod description;
 mod detail;
 mod efd;
 mod gamemtl;
@@ -27,10 +20,11 @@ mod ppe;
 mod shader_compiler;
 mod shaders;
 mod sound;
+mod source;
 mod spawn;
 #[cfg(test)]
 mod tests;
 mod thm;
 
-pub use archive_describe_source::ArchiveDescribeSource;
-pub use archive_file_description::ArchiveFileDescription;
+pub use description::ArchiveFileDescription;
+pub use source::ArchiveDescribeSource;

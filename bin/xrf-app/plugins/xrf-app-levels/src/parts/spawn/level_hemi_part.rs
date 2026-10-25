@@ -11,9 +11,9 @@ use xrf_vfs::XraySearch;
 use xrf_visual::{HemiEstimator, VisualSphere, VisualTransform};
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::level_report::LevelReport;
 use crate::parts::{LevelCollisionPart, LevelSpawnPart};
 use crate::parts::{LevelSpawn, LevelSpawnObjectHemi, LevelSpawnVisual};
+use crate::report::LevelReport;
 use crate::spawn::LevelSpawnCategory;
 
 /// What a change event calls a level's hemisphere lighting when it goes stale.

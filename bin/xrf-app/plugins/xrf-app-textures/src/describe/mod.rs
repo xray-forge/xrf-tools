@@ -2,13 +2,9 @@
 //! SDK gives the numbers its descriptor stores.
 
 pub(crate) mod commands;
+mod description;
 pub(crate) mod routes;
-mod texture_description;
-mod texture_files;
-mod texture_source;
 mod vocabulary;
 
-pub use texture_description::TextureDescription;
-pub use texture_files::TextureFiles;
-pub use texture_source::TextureSource;
+pub use description::{TextureDescription, TextureFiles, TextureSource};
 pub use vocabulary::TextureVocabulary;

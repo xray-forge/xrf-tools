@@ -5,7 +5,7 @@ use xrf_error::XrfResult;
 use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
 use xrf_vfs::{FsgameFile, XrayRoots, XraySearch};
 
-use crate::level_report::LevelReport;
+use crate::report::LevelReport;
 
 /// What a game's console sets of how its levels are lit, exposed and corrected: its installation's `user.ltx` over its
 /// shipped defaults (Anomaly's `default_controls.ltx`); each `None` it leaves to the engine.

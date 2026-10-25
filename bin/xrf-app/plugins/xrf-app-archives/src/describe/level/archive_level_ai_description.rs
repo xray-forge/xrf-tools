@@ -2,9 +2,9 @@ use serde::Serialize;
 use xrf_error::XrfResult;
 use xrf_level::LevelAiHeader;
 
-use crate::describe::archive_bounds::ArchiveBounds;
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::archive_entry_reader::ArchiveEntryReader;
+use crate::describe::description::ArchiveBounds;
+use crate::describe::source::ArchiveDescribeSource;
+use crate::describe::source::ArchiveEntryReader;
 
 /// What a level's navigation grid covers, from the 56 bytes that say so.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

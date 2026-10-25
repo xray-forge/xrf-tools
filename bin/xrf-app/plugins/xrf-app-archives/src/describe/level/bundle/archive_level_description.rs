@@ -4,10 +4,10 @@ use xrf_error::XrfResult;
 use xrf_level::{LevelFile, LevelShaderEntry};
 use xrf_shaders::ShaderLibraryFile;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::archive_reference::ArchiveReference;
+use crate::describe::description::ArchiveReference;
 use crate::describe::level::bundle::ArchiveLevelBundle;
 use crate::describe::level::bundle::ArchiveLevelSurface;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Where the engine loads the blender library from, which is the root of whatever tree is open.
 const SHADER_LIBRARY: &str = "shaders.xr";

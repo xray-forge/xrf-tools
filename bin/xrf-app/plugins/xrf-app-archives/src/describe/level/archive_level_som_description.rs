@@ -3,8 +3,8 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::LevelSomFile;
 
-use crate::describe::archive_bounds::ArchiveBounds;
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
+use crate::describe::description::ArchiveBounds;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about a level's sound occlusion mesh.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

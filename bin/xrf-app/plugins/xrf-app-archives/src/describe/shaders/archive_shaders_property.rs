@@ -2,8 +2,8 @@ use serde::Serialize;
 use xrf_shaders::{ShaderBlenderProperty, ShaderBlenderPropertyKind, ShaderBlenderPropertyValue, ShaderBlenderToken};
 use xrf_vfs::XrayAssetType;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::archive_reference::ArchiveReference;
+use crate::describe::description::ArchiveReference;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// The character an engine slot name begins with, against a texture name that addresses a file.
 const SLOT_PREFIX: char = '$';

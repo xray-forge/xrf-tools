@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use serde::Serialize;
 
-use crate::describe::archive_reference::ArchiveReferenceStatus;
+use crate::describe::description::ArchiveReferenceStatus;
 use crate::describe::particles::archive_particles_effect::ArchiveParticlesEffect;
 use crate::describe::particles::archive_particles_group::ArchiveParticlesGroup;
 

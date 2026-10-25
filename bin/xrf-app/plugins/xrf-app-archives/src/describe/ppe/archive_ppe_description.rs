@@ -4,9 +4,9 @@ use xrf_error::XrfResult;
 use xrf_ppe::PpeFile;
 
 use crate::describe::animation::ArchiveAnimationChannel;
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::ppe::archive_ppe_color::ArchivePpeColor;
 use crate::describe::ppe::archive_ppe_color_map::ArchivePpeColorMap;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about one post-process effect.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

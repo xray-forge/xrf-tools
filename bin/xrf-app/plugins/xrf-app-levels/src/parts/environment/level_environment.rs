@@ -7,8 +7,8 @@ use xrf_level::{EnvModifier, LevelEnvModFile};
 use xrf_vfs::XraySearch;
 
 use crate::level::SelectedLevel;
-use crate::level_report::LevelReport;
 use crate::parts::LevelWeatherPart;
+use crate::report::LevelReport;
 use crate::weather::render::LevelWeatherSource;
 use crate::weather::{EnvironmentCycleEntry, LevelWeatherCycle, LevelWeatherDescription, LevelWeatherTexture};
 

@@ -3,8 +3,8 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::LevelWallmarksFile;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::level::wallmarks::ArchiveLevelWallmarkSlot;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about a level's baked decals.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

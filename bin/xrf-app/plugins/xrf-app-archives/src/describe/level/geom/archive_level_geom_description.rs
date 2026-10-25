@@ -2,9 +2,9 @@ use serde::Serialize;
 use xrf_error::XrfResult;
 use xrf_level::LevelGeomFile;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::archive_entry_reader::ArchiveEntryReader;
 use crate::describe::level::geom::ArchiveLevelGeomLayout;
+use crate::describe::source::ArchiveDescribeSource;
+use crate::describe::source::ArchiveEntryReader;
 
 /// Everything the viewer says about a level's render geometry.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

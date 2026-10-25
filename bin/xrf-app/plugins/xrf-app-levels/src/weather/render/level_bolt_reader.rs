@@ -7,8 +7,8 @@ use xrf_light_anim::LightAnimFile;
 use xrf_material::{XraySurfaceDraw, XraySurfaceResolver};
 use xrf_visual::LightAnimatorDescription;
 
-use crate::level_report::LevelReport;
 use crate::parts::LevelLightsPart;
+use crate::report::LevelReport;
 use crate::weather::render::{
   LevelThunderbolt, LevelThunderboltGradient, LevelThunderboltModel, LevelWeatherModel, LevelWeatherSource,
 };

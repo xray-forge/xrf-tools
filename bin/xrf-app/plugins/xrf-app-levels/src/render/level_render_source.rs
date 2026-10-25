@@ -21,7 +21,6 @@ use xrf_visual::{LightsDescription, SectorAttributes, SectorPackage, SectorPacke
 use xrf_world::WorldLevelReload;
 
 use crate::level::SelectedLevel;
-use crate::level_report::LevelReport;
 use crate::parts::{
   LevelCollisionPart, LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart, LevelHemiPart,
   LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelSpawnVisual,
@@ -29,6 +28,7 @@ use crate::parts::{
   PackedLevelDetails, PackedLevelLights, PackedLevelParticles, SpawnVisualReader,
 };
 use crate::render::LevelParticleCollider;
+use crate::report::LevelReport;
 use crate::spawn::LevelSpawnObjectsDescription;
 use crate::weather::render::LevelRenderWeather;
 

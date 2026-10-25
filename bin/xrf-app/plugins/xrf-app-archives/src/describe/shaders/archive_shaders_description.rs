@@ -2,9 +2,9 @@ use serde::Serialize;
 use xrf_error::XrfResult;
 use xrf_shaders::ShaderLibraryFile;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::shaders::archive_shaders_blender::ArchiveShadersBlender;
 use crate::describe::shaders::archive_shaders_library::ArchiveShadersLibrary;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about the blender library.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use serde::Serialize;
 
-use crate::describe::archive_reference::ArchiveReferenceStatus;
+use crate::describe::description::ArchiveReferenceStatus;
 use crate::describe::shaders::archive_shaders_blender::ArchiveShadersBlender;
 
 /// What the library holds, taken over the whole of it.
@@ -52,7 +52,7 @@ impl ArchiveShadersLibrary {
 #[cfg(test)]
 mod tests {
   use super::ArchiveShadersLibrary;
-  use crate::describe::archive_reference::{ArchiveReference, ArchiveReferenceStatus};
+  use crate::describe::description::{ArchiveReference, ArchiveReferenceStatus};
   use crate::describe::shaders::archive_shaders_blender::ArchiveShadersBlender;
   use crate::describe::shaders::archive_shaders_property::ArchiveShadersProperty;
 

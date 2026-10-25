@@ -2,10 +2,10 @@
 //! where tools write when nobody named a destination.
 
 pub(crate) mod commands;
-mod path_description;
-mod path_reveal;
+mod description;
+mod reveal;
 #[cfg(test)]
 mod tests;
 
-pub use path_description::PathDescription;
-pub use path_reveal::PathReveal;
+pub use description::PathDescription;
+pub use reveal::PathReveal;

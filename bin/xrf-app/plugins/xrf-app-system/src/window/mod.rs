@@ -2,6 +2,6 @@
 //! leaving, which only the page knows.
 
 pub(crate) mod commands;
-mod leave_decision;
+mod request;
 
-pub use leave_decision::LeaveDecision;
+pub use request::LeaveDecision;

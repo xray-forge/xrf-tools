@@ -3,8 +3,8 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::LevelPsStaticFile;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::level::ps_static::ArchiveLevelPsStaticEffect;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about the particle effects a level plants.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

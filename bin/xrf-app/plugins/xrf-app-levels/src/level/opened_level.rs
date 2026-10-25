@@ -12,11 +12,11 @@ use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch};
 use xrf_visual::SectorOutline;
 
 use crate::level::{LevelBundle, LevelConfigs, LevelSource, SelectedLevel};
-use crate::level_report::LevelReport;
 use crate::parts::{
   LevelGeometryPart, LevelMapPart, LevelSectionsPart, LevelSpawn, LevelSpawnPart, LevelStart, LevelStartPart,
   LevelSurfacesPart, LevelTextureReference, LevelTexturesPart,
 };
+use crate::report::LevelReport;
 
 /// How a compiled level is read through the shared asset state: what an open commits, and what a commit's follow
 /// derives again once it moved a file the level was read from.

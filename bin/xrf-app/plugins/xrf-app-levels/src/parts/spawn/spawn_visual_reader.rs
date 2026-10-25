@@ -13,8 +13,8 @@ use xrf_visual::{
 };
 
 use crate::level::SelectedLevel;
-use crate::level_report::LevelReport;
 use crate::parts::{LevelSpawnVisual, LevelSpawnVisuals, LevelSpawnVisualsPart, LevelTextureReference};
+use crate::report::LevelReport;
 
 /// Reads a level's spawned visuals within one search, opening the shader library once for all of them, and only if
 /// one is read at all.

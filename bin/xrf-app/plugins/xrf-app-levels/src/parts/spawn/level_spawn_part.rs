@@ -9,8 +9,8 @@ use xrf_spawn::{AlifeObject, ClsId, SpawnFile, SpawnLevelObjects};
 use xrf_vfs::{XrayInputRecord, XrayLogicalPath, XraySearch};
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::level_report::LevelReport;
 use crate::parts::LevelSpawn;
+use crate::report::LevelReport;
 use crate::spawn::LevelSpawnRelease;
 
 /// What a change event calls a level's spawn when it goes stale.

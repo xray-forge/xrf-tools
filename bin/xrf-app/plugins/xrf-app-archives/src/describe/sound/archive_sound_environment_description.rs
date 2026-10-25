@@ -3,8 +3,8 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_sound::SoundEnvironmentFile;
 
-use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::sound::archive_sound_environment::ArchiveSoundEnvironment;
+use crate::describe::source::ArchiveDescribeSource;
 
 /// Everything the viewer says about the sound environment library.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

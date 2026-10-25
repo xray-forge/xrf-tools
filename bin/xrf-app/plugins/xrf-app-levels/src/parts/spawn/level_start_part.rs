@@ -7,8 +7,8 @@ use xrf_vfs::{XrayInputRecord, XraySearch};
 use xrf_visual::{SectorOutline, VisualBounds, convert_vector};
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::level_report::LevelReport;
 use crate::parts::{LevelCollisionPart, LevelSpawn, LevelSpawnPart, LevelStart, LevelStartOrigin};
+use crate::report::LevelReport;
 
 /// What a change event calls where a level opens when it goes stale.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
