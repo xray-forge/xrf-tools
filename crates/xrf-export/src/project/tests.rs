@@ -2,15 +2,121 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Value, json};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
-use super::{ExportContractDescriptor, ExportsProjectParser};
-use crate::render::{ExternFormat, render_extern_manifest};
+use crate::{
+  ExportContractDescriptor, ExportDescriptor, ExportReturnDescriptor, ExportSourceContent, ExportSourceDescriptor,
+  ExportsProject, ExportsProjectParser, ExternFormat, ExternManifest,
+};
 
 fn create_test_root(name: &str) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("project-projection/{name}"));
-  fs::create_dir_all(&root).unwrap();
-  root
+  GeneratedResources::create_dir(&format!("project-projection/{name}")).unwrap()
+}
+
+/// A callable declaration recorded at a line range of one file.
+fn descriptor(name: &str, path: &str, line: usize, end_line: usize) -> ExportDescriptor {
+  ExportDescriptor {
+    name: name.into(),
+    description: None,
+    source: ExportSourceDescriptor {
+      path: path.into(),
+      line,
+      column: 1,
+      end_line,
+    },
+    contract: ExportContractDescriptor::Callable {
+      parameters: Vec::new(),
+      returns: ExportReturnDescriptor {
+        typing: "void".into(),
+        description: None,
+      },
+    },
+  }
+}
+
+/// A project of one `declaration.ts` holding `contents`, which records `declarations` without parsing them.
+fn project_of(name: &str, contents: &str, declarations: Vec<ExportDescriptor>) -> ExportsProject {
+  let root: PathBuf = create_test_root(&format!("source-{name}"));
+
+  fs::write(root.join("declaration.ts"), contents).expect("temporary declaration");
+
+  ExportsProject {
+    root,
+    declarations,
+    manifest: ExternManifest::default(),
+  }
+}
+
+#[test]
+fn reads_every_line_of_a_multiline_declaration() {
+  let project: ExportsProject = project_of(
+    "multiline",
+    "const a = 1;\nextern(\"on_game\", () => {\n  log(\"a\");\n  log(\"b\");\n});\nconst b = 2;\n",
+    vec![descriptor("on_game", "declaration.ts", 2, 5)],
+  );
+
+  let source: ExportSourceContent = project.read_declaration_source("on_game").unwrap();
+
+  assert_eq!(
+    source.content,
+    "extern(\"on_game\", () => {\n  log(\"a\");\n  log(\"b\");\n});"
+  );
+  assert_eq!(source.line, 2);
+  assert_eq!(source.end_line, 5);
+}
+
+#[test]
+fn reads_a_single_line_declaration() {
+  let project: ExportsProject = project_of(
+    "single",
+    "const a = 1;\nextern(\"value\", 5 as number);\n",
+    vec![descriptor("value", "declaration.ts", 2, 2)],
+  );
+
+  assert_eq!(
+    project.read_declaration_source("value").unwrap().content,
+    "extern(\"value\", 5 as number);"
+  );
+}
+
+#[test]
+fn refuses_a_name_the_project_does_not_declare() {
+  // The name is the only key into the file system here, so an unknown one must not read anything.
+  let project: ExportsProject = project_of(
+    "unknown",
+    "extern(\"known\", () => {});\n",
+    vec![descriptor("known", "declaration.ts", 1, 1)],
+  );
+
+  let error = project.read_declaration_source("../../secrets").unwrap_err();
+
+  assert!(error.to_string().contains("is not part of this project"), "{error}");
+}
+
+#[test]
+fn returns_what_remains_when_the_file_shrank_since_parsing() {
+  // Lines were recorded at parse time and the file may have been edited since.
+  let project: ExportsProject = project_of(
+    "shrunk",
+    "extern(\"trimmed\", () => {});\n",
+    vec![descriptor("trimmed", "declaration.ts", 1, 40)],
+  );
+
+  assert_eq!(
+    project.read_declaration_source("trimmed").unwrap().content,
+    "extern(\"trimmed\", () => {});"
+  );
+}
+
+#[test]
+fn reports_a_declaration_whose_file_is_gone() {
+  let project: ExportsProject = project_of(
+    "missing",
+    "extern(\"gone\", () => {});\n",
+    vec![descriptor("gone", "removed.ts", 1, 1)],
+  );
+
+  assert!(project.read_declaration_source("gone").is_err());
 }
 
 fn write_source(root: &Path, name: &str, source: &str) {
@@ -215,7 +321,9 @@ fn carries_the_manifest_its_declarations_were_projected_from() {
       .collect::<Vec<String>>()
   );
   assert!(
-    render_extern_manifest(&project.manifest, ExternFormat::Json, None)
+    project
+      .manifest
+      .render(ExternFormat::Json, None)
       .unwrap()
       .contains("\"xr_effects.run\"")
   );

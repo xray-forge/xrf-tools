@@ -2,39 +2,33 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use xrf_error::XrfResult;
-use xrf_typescript::swc_common::{SourceMap, Spanned};
 use xrf_typescript::swc_ecma_ast::{Expr, MemberExpr, MemberProp, Program, TsFnOrConstructorType, TsType};
 use xrf_typescript::{TypeScriptSymbol, TypeScriptSymbolResolver};
 
-use super::callable_parser::ExternCallableParser;
-use super::diagnostics::{invalid_at, unsupported_export_value_reason};
-use super::type_renderer::canonical_type;
-use crate::extern_documentation::ExternDocumentation;
-use crate::extern_export::ExternExport;
-use crate::extern_value::ExternValue;
+use crate::manifest::{ExternDocumentation, ExternExport, ExternValue};
+use crate::parse::declaration::extern_callable_parser::ExternCallableParser;
+use crate::parse::declaration::extern_diagnostic::ExternDiagnostic;
+use crate::parse::declaration::extern_type_renderer::ExternTypeRenderer;
 
 /// Parses one value passed to an extern declaration.
-pub struct ExternValueParser<'a> {
+pub(crate) struct ExternValueParser<'a> {
   callable_parser: ExternCallableParser<'a>,
+  diagnostic: ExternDiagnostic<'a>,
   source_file: &'a Path,
-  source_map: &'a SourceMap,
-  source_path: &'a str,
   symbol_resolver: &'a TypeScriptSymbolResolver,
 }
 
 impl<'a> ExternValueParser<'a> {
   /// Create a parser for one declaration source file.
   pub fn new(
-    source_map: &'a SourceMap,
+    diagnostic: ExternDiagnostic<'a>,
     source_file: &'a Path,
-    source_path: &'a str,
     symbol_resolver: &'a TypeScriptSymbolResolver,
   ) -> Self {
     Self {
-      callable_parser: ExternCallableParser::new(source_map, source_path),
+      callable_parser: ExternCallableParser::new(diagnostic),
+      diagnostic,
       source_file,
-      source_map,
-      source_path,
       symbol_resolver,
     }
   }
@@ -81,18 +75,12 @@ impl<'a> ExternValueParser<'a> {
           )?));
         }
 
-        Ok(ExternExport::Value(ExternValue {
-          doc: documentation,
-          source: self.source_path.into(),
-          type_name: canonical_type(assertion.type_ann.as_ref(), self.source_map),
-        }))
+        Ok(self.new_value(
+          documentation,
+          ExternTypeRenderer::render(assertion.type_ann.as_ref(), self.diagnostic.get_source_map()),
+        ))
       }
-      _ => Err(invalid_at(
-        self.source_map,
-        value.span().lo,
-        self.source_path,
-        &unsupported_export_value_reason(value, export_name, self.source_map),
-      )),
+      _ => Err(self.diagnostic.invalid_value(value, export_name)),
     }
   }
 
@@ -108,8 +96,8 @@ impl<'a> ExternValueParser<'a> {
   ) -> XrfResult<ExternExport> {
     let symbol: TypeScriptSymbol = self
       .symbol_resolver
-      .resolve_symbol(self.source_file, self.source_map, program, local_name)?
-      .ok_or_else(|| self.invalid_value(value, export_name))?;
+      .resolve_symbol(self.source_file, self.diagnostic.get_source_map(), program, local_name)?
+      .ok_or_else(|| self.diagnostic.invalid_value(value, export_name))?;
 
     match symbol {
       TypeScriptSymbol::Callable(signature) => Ok(ExternExport::Callable(self.callable_parser.convert_signature(
@@ -117,11 +105,10 @@ impl<'a> ExternValueParser<'a> {
         documentation,
         parameter_docs,
       ))),
-      value => Ok(ExternExport::Value(ExternValue {
-        doc: documentation,
-        source: self.source_path.into(),
-        type_name: value.value_type().expect("Non-callable symbols have value types"),
-      })),
+      value => Ok(self.new_value(
+        documentation,
+        value.value_type().expect("Non-callable symbols have value types"),
+      )),
     }
   }
 
@@ -134,37 +121,29 @@ impl<'a> ExternValueParser<'a> {
     export_name: &str,
     documentation: Option<ExternDocumentation>,
   ) -> XrfResult<ExternExport> {
-    let Expr::Ident(object) = member.obj.as_ref() else {
-      return Err(self.invalid_value(value, export_name));
-    };
-    let MemberProp::Ident(property) = &member.prop else {
-      return Err(self.invalid_value(value, export_name));
+    let (Expr::Ident(object), MemberProp::Ident(property)) = (member.obj.as_ref(), &member.prop) else {
+      return Err(self.diagnostic.invalid_value(value, export_name));
     };
     let type_name: String = self
       .symbol_resolver
       .resolve_member_type(
         self.source_file,
-        self.source_map,
+        self.diagnostic.get_source_map(),
         program,
         object.sym.as_ref(),
         property.sym.as_ref(),
       )?
-      .ok_or_else(|| self.invalid_value(value, export_name))?;
+      .ok_or_else(|| self.diagnostic.invalid_value(value, export_name))?;
 
-    Ok(ExternExport::Value(ExternValue {
-      doc: documentation,
-      source: self.source_path.into(),
-      type_name,
-    }))
+    Ok(self.new_value(documentation, type_name))
   }
 
-  /// Build a location-aware diagnostic for an unsupported extern value.
-  fn invalid_value(&self, value: &Expr, export_name: &str) -> xrf_error::XrfError {
-    invalid_at(
-      self.source_map,
-      value.span().lo,
-      self.source_path,
-      &unsupported_export_value_reason(value, export_name, self.source_map),
-    )
+  /// A value extern of this source.
+  fn new_value(&self, documentation: Option<ExternDocumentation>, type_name: String) -> ExternExport {
+    ExternExport::Value(ExternValue {
+      doc: documentation,
+      source: self.diagnostic.get_source_path().into(),
+      type_name,
+    })
   }
 }
