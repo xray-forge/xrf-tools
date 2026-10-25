@@ -9,7 +9,7 @@ import { Nullable } from "@xrf/types";
 import { ESequenceMotionState } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -41,7 +41,7 @@ function mockMotions(failing: Array<string> = []): Array<string> {
   const calls: Array<string> = [];
 
   mockIpcCommands({
-    [EVisualsCommand.DESCRIBE_MOTION]: (args) => {
+    [EVisualsCommand.DESCRIBE_MOTION]: mockSessionRead((args) => {
       calls.push(`open:${args.name}`);
 
       if (failing.includes(args.name)) {
@@ -49,7 +49,7 @@ function mockMotions(failing: Array<string> = []): Array<string> {
       }
 
       return mockBake(args.name);
-    },
+    }),
   });
 
   return calls;

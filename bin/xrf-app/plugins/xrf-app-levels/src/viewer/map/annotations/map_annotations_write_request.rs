@@ -10,7 +10,7 @@ use crate::viewer::map::annotations::LevelAnnotationKind;
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MapAnnotationsRequest {
+pub struct MapAnnotationsWriteRequest {
   pub path: PathBuf,
   pub area: LevelMapArea,
   pub kinds: Vec<LevelAnnotationKind>,

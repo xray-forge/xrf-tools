@@ -1,14 +1,17 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container, EventBus, WireEvent } from "@wirestate/core";
+import { flowResult } from "@wirestate/mobx";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
-import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
+import { SessionChange, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
-import { mockArchivesWorldSubject, mockArchiveWorldEntry } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveStatistics, mockArchivesWorldSubject, mockArchiveWorldEntry } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { noop } from "@/lib/callbacks/noop";
 
 import { ArchivesService } from "./archives.service";
 
@@ -93,6 +96,45 @@ describe("ArchivesService session changes", () => {
 
     expect(countReads()).toBe(reads);
     expect(service.entries).toHaveLength(1);
+  });
+
+  it("drops statistics read from the listing a commit replaced, and reads them again for the new one", async () => {
+    const { container, service, sessionId } = await openWorld();
+    let finishOlder: (answer: SessionSnapshot<ArchiveStatistics>) => void = noop;
+
+    mockIpcCommands({
+      [RESTORE]: () =>
+        mockSessionSnapshot(
+          mockArchivesWorldSubject([mockArchiveWorldEntry(), mockArchiveWorldEntry({ name: "configs\\game.ltx" })]),
+          sessionId,
+          1
+        ),
+      [EArchivesCommand.DESCRIBE_STATISTICS]: () =>
+        new Promise((resolve) => {
+          finishOlder = resolve;
+        }),
+    });
+
+    const loading = flowResult(service.loadStatistics());
+
+    notify(container, { sessionId, revision: 1, root: { kind: "derived" }, staleParts: [], isViewRenewed: false });
+    await flush();
+
+    expect(service.entries).toHaveLength(2);
+
+    finishOlder(mockSessionSnapshot(mockArchiveStatistics(), sessionId, 0));
+    await loading;
+
+    expect(service.statistics.value).toBeNull();
+    expect(service.statistics.isLoading).toBe(false);
+
+    mockIpcCommands({
+      [EArchivesCommand.DESCRIBE_STATISTICS]: ({ sessionId: id }) =>
+        mockSessionSnapshot(mockArchiveStatistics(), id, 1),
+    });
+    await flowResult(service.loadStatistics());
+
+    expect(service.statistics.value?.overview.total.files).toBe(7);
   });
 
   it("keeps the world shown and says so where it could not be listed again", async () => {

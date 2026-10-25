@@ -7,7 +7,7 @@ import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
 import { mockArchiveFileDescriptor, mockArchiveReadPolicy, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
-import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { ArchivesService } from "./archives.service";
@@ -38,7 +38,7 @@ function mockService(texture: ArchiveFileDescriptor = TEXTURE): ArchivesService 
 describe("ArchivesService texture preview", () => {
   beforeEach(() => {
     mockIpcCommands({
-      [EArchivesCommand.DESCRIBE_TEXTURE]: DESCRIPTOR,
+      [EArchivesCommand.DESCRIBE_TEXTURE]: mockSessionRead(DESCRIPTOR),
     });
     mockIpcBulkRoutes({
       [EArchivesBulkRoute.READ_TEXTURE]: BYTES,
@@ -135,7 +135,7 @@ describe("ArchivesService texture preview", () => {
     const service: ArchivesService = mockService();
 
     mockIpcCommands({
-      [EArchivesCommand.DESCRIBE_TEXTURE]: DESCRIPTOR,
+      [EArchivesCommand.DESCRIBE_TEXTURE]: mockSessionRead(DESCRIPTOR),
     });
     mockIpcBulkRoutes({
       [EArchivesBulkRoute.READ_TEXTURE]: () => {

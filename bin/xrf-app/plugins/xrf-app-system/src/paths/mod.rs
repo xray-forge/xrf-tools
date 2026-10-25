@@ -7,5 +7,5 @@ mod path_reveal;
 #[cfg(test)]
 mod tests;
 
-pub use path_description::{PathDescription, PathKind};
+pub use path_description::PathDescription;
 pub use path_reveal::PathReveal;

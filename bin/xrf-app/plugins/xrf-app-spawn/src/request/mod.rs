@@ -1,5 +1,5 @@
 //! What the spawn commands taking more than a few arguments were asked to do.
 
-mod spawn_conversion_request;
+mod spawn_convert_request;
 
-pub use spawn_conversion_request::SpawnConversionRequest;
+pub use spawn_convert_request::SpawnConvertRequest;

@@ -12,7 +12,12 @@ import { XrayPathCollision } from "@xrf/ipc/types/xrf-vfs";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
 import { mockArchiveFileDescriptor, mockArchivesVolumes, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
-import { mockRestoredSession, mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import {
+  mockRestoredSession,
+  mockSessionRead,
+  mockSessionResponse,
+  mockSessionSnapshot,
+} from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 function ignoreReadResult(): void {}
@@ -56,7 +61,7 @@ describe("ArchivesService file selection", () => {
     const descriptor = mockArchiveFileDescriptor();
     const result: ArchiveReadResult = { name: descriptor.name, content: "[system]", size: 8 };
 
-    mockIpcCommands({ [EArchivesCommand.READ_FILE]: result });
+    mockIpcCommands({ [EArchivesCommand.READ_FILE]: mockSessionRead(result) });
 
     const service: ArchivesService = mockArchivesService([descriptor]);
 
@@ -87,7 +92,7 @@ describe("ArchivesService file selection", () => {
       format: { kind: "unsupported", reason: { kind: "noDescriber", extension: "omf" } },
     };
 
-    mockIpcCommands({ [EArchivesCommand.DESCRIBE_FILE]: description });
+    mockIpcCommands({ [EArchivesCommand.DESCRIBE_FILE]: mockSessionRead(description) });
 
     const descriptor = mockArchiveFileDescriptor({ name: "meshes\\actor.omf" });
     const service: ArchivesService = mockArchivesService([descriptor]);
@@ -132,8 +137,9 @@ describe("ArchivesService file selection", () => {
     });
 
     mockIpcCommands({
-      [EArchivesCommand.READ_FILE]: (args?: Record<string, unknown>) =>
-        args?.name === first.name ? firstResult : secondResult,
+      [EArchivesCommand.READ_FILE]: mockSessionRead((args?: Record<string, unknown>) =>
+        args?.name === first.name ? firstResult : secondResult
+      ),
     });
 
     const service: ArchivesService = mockArchivesService([first, second]);
@@ -157,7 +163,7 @@ describe("ArchivesService file selection", () => {
 
     mockIpcCommands({
       // Neither settles, so both stay in flight for the length of the assertion.
-      [EArchivesCommand.READ_FILE]: () => new Promise(() => {}),
+      [EArchivesCommand.READ_FILE]: mockSessionRead(() => new Promise(() => {})),
       [EArchivesCommand.EXTRACT_FILE]: () => new Promise(() => {}),
     });
 
@@ -268,7 +274,7 @@ describe("ArchivesService reachability", () => {
 
     mockIpcCommands({
       [EArchivesCommand.OPEN_VOLUMES]: mockSessionResponse(mockArchivesVolumes([])),
-      [EArchivesCommand.LIST_OVERRIDES]: { overridden: [], unreachable: [collision] },
+      [EArchivesCommand.LIST_OVERRIDES]: mockSessionRead({ overridden: [], unreachable: [collision] }),
     });
 
     const { service } = mockInjectedService(ArchivesService);
@@ -285,9 +291,9 @@ describe("ArchivesService reachability", () => {
   it("keeps a project browsable when reachability cannot be answered", async () => {
     mockIpcCommands({
       [EArchivesCommand.OPEN_VOLUMES]: mockSessionResponse(mockArchivesVolumes([])),
-      [EArchivesCommand.LIST_OVERRIDES]: () => {
+      [EArchivesCommand.LIST_OVERRIDES]: mockSessionRead(() => {
         throw new Error("fold failed");
-      },
+      }),
     });
 
     const { service } = mockInjectedService(ArchivesService);
@@ -302,7 +308,7 @@ describe("ArchivesService reachability", () => {
   it("forgets them when the project closes", async () => {
     mockIpcCommands({
       [EArchivesCommand.OPEN_VOLUMES]: mockSessionResponse(mockArchivesVolumes([])),
-      [EArchivesCommand.LIST_OVERRIDES]: { overridden: [], unreachable: [mockPathCollision()] },
+      [EArchivesCommand.LIST_OVERRIDES]: mockSessionRead({ overridden: [], unreachable: [mockPathCollision()] }),
       [EArchivesCommand.CLOSE_SUBJECT]: undefined,
     });
 

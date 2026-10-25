@@ -366,7 +366,7 @@ export type LevelWeatherTexture = {
  * The annotations asked of a level map: its PNG in the screenshots folder, beside which they are written as an SVG,
  * the ground it covers, what of them is drawn, and whether every volume is named.
  */
-export type MapAnnotationsRequest = {
+export type MapAnnotationsWriteRequest = {
   path: string;
   area: LevelMapArea;
   kinds: Array<LevelAnnotationKind>;

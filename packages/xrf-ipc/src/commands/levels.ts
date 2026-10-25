@@ -18,7 +18,7 @@ import {
   LevelTextureReference,
   LevelWeatherCycle,
   LevelWeatherDescription,
-  MapAnnotationsRequest,
+  MapAnnotationsWriteRequest,
   MapCaptureRequest,
   MapExportRequest,
   SelectedLevelDescription,
@@ -173,7 +173,7 @@ export const levelsCommands = {
   showLevel: (viewport: RenderViewportId, sessionId: string | null) =>
     __TAURI_INVOKE<number | null>(ELevelsCommand.SHOW_LEVEL, { viewport, sessionId }),
   /** Draw the open level's annotations over one of its level maps and write them beside it as an SVG; answers the SVG. */
-  writeMapAnnotations: (sessionId: SessionId, request: MapAnnotationsRequest) =>
+  writeMapAnnotations: (sessionId: SessionId, request: MapAnnotationsWriteRequest) =>
     __TAURI_INVOKE<SessionSnapshot<string>>(ELevelsCommand.WRITE_MAP_ANNOTATIONS, { sessionId, request }),
   /** Write a screenshot's report beside it in the screenshots folder, as its JSON text; answers where it was written. */
   writeScreenshotReport: (path: string, text: string) =>

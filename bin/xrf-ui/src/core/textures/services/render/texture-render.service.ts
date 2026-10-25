@@ -18,9 +18,9 @@ import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import {
   TEXTURE_SURFACE_CAMERA,
-  toTextureSurfaceRequest,
+  toTexturesShowRequest,
   toTextureViewOptions,
-  TTextureSurfaceRequest,
+  TTexturesShowRequest,
 } from "@/core/textures/lib/render/texture-surface-render";
 import { dragTextureLighting } from "@/core/textures/lib/texture-lighting";
 import { TextureSelectionService } from "@/core/textures/services/selection";
@@ -102,9 +102,9 @@ export class TextureRenderService extends NativeRenderSurfaceService {
         });
       }),
       reaction(
-        (): TTextureSurfaceRequest =>
-          toTextureSurfaceRequest(this.selectionService.selected.value ?? null, this.viewService.options),
-        (request: TTextureSurfaceRequest) => this.showTexture(request),
+        (): TTexturesShowRequest =>
+          toTexturesShowRequest(this.selectionService.selected.value ?? null, this.viewService.options),
+        (request: TTexturesShowRequest) => this.showTexture(request),
         { equals: comparer.structural, fireImmediately: true }
       ),
       reaction(
@@ -167,7 +167,7 @@ export class TextureRenderService extends NativeRenderSurfaceService {
     });
   }
 
-  private showTexture(request: TTextureSurfaceRequest): void {
+  private showTexture(request: TTexturesShowRequest): void {
     this.hasDescribed = false;
     this.scene = null;
 

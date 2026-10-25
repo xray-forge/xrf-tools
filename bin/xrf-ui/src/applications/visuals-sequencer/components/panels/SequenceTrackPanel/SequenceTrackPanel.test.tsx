@@ -7,7 +7,7 @@ import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -24,7 +24,7 @@ async function renderTrack(names: ReadonlyArray<string> = ["first", "second"]) {
   });
 
   mockIpcCommands({
-    [EVisualsCommand.DESCRIBE_MOTION]: bake,
+    [EVisualsCommand.DESCRIBE_MOTION]: mockSessionRead(bake),
   });
 
   for (const name of names) {

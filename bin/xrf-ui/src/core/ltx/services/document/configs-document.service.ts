@@ -5,6 +5,7 @@ import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
 import { configsCommands } from "@xrf/ipc/commands/configs";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
@@ -115,7 +116,9 @@ export class ConfigsDocumentService {
     this.document = this.document.asLoading();
 
     try {
-      const document: ConfigsDocument = yield* call(configsCommands.readDocument({ path, sessionId }));
+      const { value: document }: SessionSnapshot<ConfigsDocument> = yield* call(
+        configsCommands.readDocument({ path, sessionId })
+      );
 
       this.document = this.document.asReady(document);
 

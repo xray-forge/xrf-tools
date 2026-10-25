@@ -12,15 +12,15 @@ use xrf_job::{ExecutionRequest, JobHandle, JobOutcome};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
 use crate::SpawnConversion;
-use crate::request::SpawnConversionRequest;
+use crate::request::SpawnConvertRequest;
 use crate::tests::synthetic_spawn;
 
-fn request(case: &str) -> SpawnConversionRequest {
+fn request(case: &str) -> SpawnConvertRequest {
   let directory: PathBuf = build_absolute_generated_test_resource_path(&format!("spawn/conversion/{case}"));
 
   fs::create_dir_all(&directory).expect("scratch directory");
 
-  SpawnConversionRequest {
+  SpawnConvertRequest {
     source: directory.join("source.spawn"),
     destination: directory.join("output"),
   }
@@ -29,11 +29,11 @@ fn request(case: &str) -> SpawnConversionRequest {
 #[test]
 fn pack_and_unpack_share_one_lease_until_work_finishes() {
   let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
-  let request: SpawnConversionRequest = request("lease");
+  let request: SpawnConvertRequest = request("lease");
 
   for first in [SpawnConversion::Pack, SpawnConversion::Unpack] {
     let (job, registration) = registry
-      .register(first.start(&request, Uuid::new_v4(), Channel::new(|_| Ok(()))))
+      .register_fixture(first.start(&request, Uuid::new_v4(), Channel::new(|_| Ok(()))))
       .expect("first conversion registers");
 
     job.cancel();
@@ -41,7 +41,7 @@ fn pack_and_unpack_share_one_lease_until_work_finishes() {
     for second in [SpawnConversion::Pack, SpawnConversion::Unpack] {
       assert!(
         registry
-          .register(second.start(&request, Uuid::new_v4(), Channel::new(|_| Ok(()))))
+          .register_fixture(second.start(&request, Uuid::new_v4(), Channel::new(|_| Ok(()))))
           .is_err()
       );
     }
@@ -52,7 +52,7 @@ fn pack_and_unpack_share_one_lease_until_work_finishes() {
 
 #[test]
 fn cancellation_before_reading_preserves_existing_output() {
-  let request: SpawnConversionRequest = request("cancelled");
+  let request: SpawnConvertRequest = request("cancelled");
 
   fs::write(&request.destination, b"existing output").expect("existing destination");
 
@@ -77,7 +77,7 @@ fn cancellation_before_reading_preserves_existing_output() {
 fn failure_is_retained_and_releases_the_conversion_lease() {
   let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
   let execution: ExecutionState = ExecutionState::new(ExecutionRequest::Auto).expect("execution pool");
-  let request: SpawnConversionRequest = request("failure");
+  let request: SpawnConvertRequest = request("failure");
 
   for operation in [SpawnConversion::Pack, SpawnConversion::Unpack] {
     let id: Uuid = Uuid::new_v4();
@@ -105,7 +105,7 @@ fn failure_is_retained_and_releases_the_conversion_lease() {
 
 #[test]
 fn conversions_round_trip_and_retain_the_output() {
-  let request: SpawnConversionRequest = request("round_trip");
+  let request: SpawnConvertRequest = request("round_trip");
 
   synthetic_spawn()
     .write_to_path::<XRayByteOrder, _>(&request.source)
@@ -124,7 +124,7 @@ fn conversions_round_trip_and_retain_the_output() {
   let packed = tauri::async_runtime::block_on(SpawnConversion::Pack.run(
     &execution,
     &registry,
-    SpawnConversionRequest {
+    SpawnConvertRequest {
       source: unpacked.destination,
       destination: request.source.with_extension("repacked"),
     },
@@ -153,7 +153,7 @@ fn cancellation_during_reading_stops_before_output_but_writing_finishes() {
 
   for phase in ["read", "write"] {
     for operation in [SpawnConversion::Pack, SpawnConversion::Unpack] {
-      let mut request: SpawnConversionRequest = request(&format!("cancel_{phase}_{operation:?}"));
+      let mut request: SpawnConvertRequest = request(&format!("cancel_{phase}_{operation:?}"));
 
       match operation {
         SpawnConversion::Pack => {

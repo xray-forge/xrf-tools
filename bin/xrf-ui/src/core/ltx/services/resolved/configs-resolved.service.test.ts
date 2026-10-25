@@ -5,6 +5,7 @@ import { LtxResolvedIndex, LtxResolvedSection } from "@xrf/ipc/types/xrf-ltx-ins
 
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
+import { mockSessionRead } from "@/fixtures/mocks/session.mocks";
 import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
@@ -43,7 +44,9 @@ describe("ConfigsResolvedService", () => {
 
   it("indexes an entry point once and answers the second ask from what it holds", async () => {
     mockIpcCommands({
-      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("wpn_base", "items\\w_base.ltx")]),
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(
+        getIndexOf([getEntryOf("wpn_base", "items\\w_base.ltx")])
+      ),
     });
 
     const service: ConfigsResolvedService = await mockOpenedService();
@@ -57,8 +60,10 @@ describe("ConfigsResolvedService", () => {
 
   it("asks only for the sections it does not already hold", async () => {
     mockIpcCommands({
-      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("a", "one.ltx"), getEntryOf("b", "one.ltx")]),
-      [EConfigsCommand.READ_RESOLVED_SECTIONS]: [getSectionOf("a")],
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(
+        getIndexOf([getEntryOf("a", "one.ltx"), getEntryOf("b", "one.ltx")])
+      ),
+      [EConfigsCommand.READ_RESOLVED_SECTIONS]: mockSessionRead([getSectionOf("a")]),
     });
 
     const service: ConfigsResolvedService = await mockOpenedService();
@@ -77,8 +82,8 @@ describe("ConfigsResolvedService", () => {
 
   it("drops a page that lands after the entry point it was asked for was replaced", async () => {
     mockIpcCommands({
-      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("a", "one.ltx")]),
-      [EConfigsCommand.READ_RESOLVED_SECTIONS]: [getSectionOf("a")],
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(getIndexOf([getEntryOf("a", "one.ltx")])),
+      [EConfigsCommand.READ_RESOLVED_SECTIONS]: mockSessionRead([getSectionOf("a")]),
     });
 
     const service: ConfigsResolvedService = await mockOpenedService();
@@ -96,10 +101,9 @@ describe("ConfigsResolvedService", () => {
 
   it("narrows to what one config declared, and widens back", async () => {
     mockIpcCommands({
-      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([
-        getEntryOf("wpn_base", "items\\w_base.ltx"),
-        getEntryOf("system", "system.ltx"),
-      ]),
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(
+        getIndexOf([getEntryOf("wpn_base", "items\\w_base.ltx"), getEntryOf("system", "system.ltx")])
+      ),
     });
 
     const service: ConfigsResolvedService = await mockOpenedService();
@@ -125,7 +129,7 @@ describe("ConfigsResolvedService", () => {
       resolve = settle;
     });
 
-    mockIpcCommands({ [EConfigsCommand.LIST_RESOLVED_SECTIONS]: () => response });
+    mockIpcCommands({ [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(() => response) });
 
     const service = await mockOpenedService();
     const opening = service.open("system.ltx");
@@ -143,8 +147,8 @@ describe("ConfigsResolvedService", () => {
     const response = mockDeferredSections();
 
     mockIpcCommands({
-      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("a", "one.ltx")]),
-      [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => response.promise,
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(getIndexOf([getEntryOf("a", "one.ltx")])),
+      [EConfigsCommand.READ_RESOLVED_SECTIONS]: mockSessionRead(() => response.promise),
     });
 
     const service = await mockOpenedService();
@@ -168,8 +172,8 @@ describe("ConfigsResolvedService", () => {
     const response = mockDeferredSections();
 
     mockIpcCommands({
-      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("a", "one.ltx")]),
-      [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => response.promise,
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(getIndexOf([getEntryOf("a", "one.ltx")])),
+      [EConfigsCommand.READ_RESOLVED_SECTIONS]: mockSessionRead(() => response.promise),
     });
 
     const service = await mockOpenedService();
@@ -196,8 +200,8 @@ describe("ConfigsResolvedService", () => {
     const newer = mockDeferredSections();
 
     mockIpcCommands({
-      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("a", "one.ltx")]),
-      [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => older.promise,
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(getIndexOf([getEntryOf("a", "one.ltx")])),
+      [EConfigsCommand.READ_RESOLVED_SECTIONS]: mockSessionRead(() => older.promise),
     });
 
     const service = await mockOpenedService();
@@ -209,7 +213,7 @@ describe("ConfigsResolvedService", () => {
     service.clear();
     await service.open("system.ltx");
 
-    mockIpcCommands({ [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => newer.promise });
+    mockIpcCommands({ [EConfigsCommand.READ_RESOLVED_SECTIONS]: mockSessionRead(() => newer.promise) });
 
     const second = service.request(["a"]);
 
@@ -230,8 +234,10 @@ describe("ConfigsResolvedService", () => {
     const second = mockDeferredSections();
 
     mockIpcCommands({
-      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: getIndexOf([getEntryOf("a", "one.ltx"), getEntryOf("b", "one.ltx")]),
-      [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => first.promise,
+      [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(
+        getIndexOf([getEntryOf("a", "one.ltx"), getEntryOf("b", "one.ltx")])
+      ),
+      [EConfigsCommand.READ_RESOLVED_SECTIONS]: mockSessionRead(() => first.promise),
     });
 
     const service = await mockOpenedService();
@@ -240,7 +246,7 @@ describe("ConfigsResolvedService", () => {
 
     const firstPage = service.request(["a"]);
 
-    mockIpcCommands({ [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => second.promise });
+    mockIpcCommands({ [EConfigsCommand.READ_RESOLVED_SECTIONS]: mockSessionRead(() => second.promise) });
 
     const secondPage = service.request(["b"]);
 

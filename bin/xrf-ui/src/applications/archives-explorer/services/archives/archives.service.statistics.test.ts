@@ -8,7 +8,7 @@ import { Nullable } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
 import { mockArchiveStatistics, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
-import { mockRestoredSession, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockRestoredSession, mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 function getStatisticsCallsCount(): number {
@@ -26,7 +26,7 @@ function mockArchivesService(): ArchivesService {
 
 describe("ArchivesService statistics", () => {
   it("describes the open subject once and keeps the answer", async () => {
-    mockIpcCommands({ [EArchivesCommand.DESCRIBE_STATISTICS]: mockArchiveStatistics() });
+    mockIpcCommands({ [EArchivesCommand.DESCRIBE_STATISTICS]: mockSessionRead(mockArchiveStatistics()) });
 
     const service: ArchivesService = mockArchivesService();
 
@@ -45,7 +45,7 @@ describe("ArchivesService statistics", () => {
   });
 
   it("drops the answer when the subject is reset, so the next one is described afresh", async () => {
-    mockIpcCommands({ [EArchivesCommand.DESCRIBE_STATISTICS]: mockArchiveStatistics() });
+    mockIpcCommands({ [EArchivesCommand.DESCRIBE_STATISTICS]: mockSessionRead(mockArchiveStatistics()) });
 
     const service: ArchivesService = mockArchivesService();
 
@@ -57,9 +57,9 @@ describe("ArchivesService statistics", () => {
 
   it("reports a failed description rather than leaving the dialog blank", async () => {
     mockIpcCommands({
-      [EArchivesCommand.DESCRIBE_STATISTICS]: () => {
+      [EArchivesCommand.DESCRIBE_STATISTICS]: mockSessionRead(() => {
         throw new Error("the session is gone");
-      },
+      }),
     });
 
     const service: ArchivesService = mockArchivesService();

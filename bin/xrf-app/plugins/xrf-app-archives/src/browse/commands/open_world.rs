@@ -35,7 +35,7 @@ pub async fn archives_open_world(
     .await
     .map_err(|error| format!("Failed to open provided game folder: {error}"))?;
 
-  if let ArchiveSubject::World { world } = &**opened {
+  if let ArchiveSubject::World { world, .. } = &**opened {
     log::info!(
       "Opened archive world: {} files, {} overridden, {} source(s)",
       world.files.len(),

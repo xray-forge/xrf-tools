@@ -168,7 +168,7 @@ export class SequencerService extends VisualInspectionService {
     });
 
     try {
-      const names: Array<string> = await visualsCommands.listMotions(sessionId);
+      const names: Array<string> = (await visualsCommands.listMotions(sessionId)).value;
 
       runInAction(() => {
         if (this.visual.value?.selected.sessionId !== sessionId) {

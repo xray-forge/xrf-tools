@@ -68,10 +68,10 @@ export const archivesCommands = {
   closeSubject: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<void>(EArchivesCommand.CLOSE_SUBJECT, { sessionIds }),
   /** Where the open subject looks for an engine path, in the order it looks. */
   describeResolution: (sessionId: SessionId) =>
-    __TAURI_INVOKE<ArchiveResolution>(EArchivesCommand.DESCRIBE_RESOLUTION, { sessionId }),
+    __TAURI_INVOKE<SessionSnapshot<ArchiveResolution>>(EArchivesCommand.DESCRIBE_RESOLUTION, { sessionId }),
   /** What the open subject holds, broken down by extension, folder, size, and where its files come from. */
   describeStatistics: (sessionId: SessionId) =>
-    __TAURI_INVOKE<ArchiveStatistics>(EArchivesCommand.DESCRIBE_STATISTICS, { sessionId }),
+    __TAURI_INVOKE<SessionSnapshot<ArchiveStatistics>>(EArchivesCommand.DESCRIBE_STATISTICS, { sessionId }),
   /** Write every file the open subject holds under one directory into a destination root. */
   extractDirectory: (request: ArchivesExtractRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<ArchiveExtractDirectoryResult>(EArchivesCommand.EXTRACT_DIRECTORY, { request, jobId, progress }),
@@ -80,10 +80,10 @@ export const archivesCommands = {
     __TAURI_INVOKE<ArchiveExtractResult>(EArchivesCommand.EXTRACT_FILE, { sessionId, name, destination }),
   /** What the open subject answers with more than one copy, and what it cannot reach at all. */
   listOverrides: (sessionId: SessionId) =>
-    __TAURI_INVOKE<ArchiveOverrideReport>(EArchivesCommand.LIST_OVERRIDES, { sessionId }),
+    __TAURI_INVOKE<SessionSnapshot<ArchiveOverrideReport>>(EArchivesCommand.LIST_OVERRIDES, { sessionId }),
   /** Payloads that several entries of the open volume set locate at once. */
   listSharedPayloads: (sessionId: SessionId) =>
-    __TAURI_INVOKE<Array<ArchiveSharedPayload>>(EArchivesCommand.LIST_SHARED_PAYLOADS, { sessionId }),
+    __TAURI_INVOKE<SessionSnapshot<Array<ArchiveSharedPayload>>>(EArchivesCommand.LIST_SHARED_PAYLOADS, { sessionId }),
   /** Open one archive volume, or every volume beneath a directory, as a single name table. */
   openVolumes: (sessionId: SessionId, path: string) =>
     __TAURI_INVOKE<SessionSnapshot<ArchiveSubject>>(EArchivesCommand.OPEN_VOLUMES, { sessionId, path }),
@@ -95,7 +95,7 @@ export const archivesCommands = {
     __TAURI_INVOKE<SessionSnapshot<ArchiveSubject>>(EArchivesCommand.OPEN_WORLD, { sessionId, roots }),
   /** Read one file of the open subject as text, subject to the viewer's read policy, whose ceiling keeps it a short read. */
   readFile: (sessionId: SessionId, name: string) =>
-    __TAURI_INVOKE<ArchiveReadResult>(EArchivesCommand.READ_FILE, { sessionId, name }),
+    __TAURI_INVOKE<SessionSnapshot<ArchiveReadResult>>(EArchivesCommand.READ_FILE, { sessionId, name }),
   /**
    * What `tool`'s explorer has open in the asking window, the newest it opened, so a reloaded frontend adopts it
    * instead of asking for it again.
@@ -107,13 +107,13 @@ export const archivesCommands = {
    * describer may parse a whole level bundle or walk a large file by seeking.
    */
   describeFile: (sessionId: SessionId, name: string) =>
-    __TAURI_INVOKE<ArchiveFileDescription>(EArchivesCommand.DESCRIBE_FILE, { sessionId, name }),
+    __TAURI_INVOKE<SessionSnapshot<ArchiveFileDescription>>(EArchivesCommand.DESCRIBE_FILE, { sessionId, name }),
   /** Report whatever the engine would read out of a sound of the open subject, without handing over the sound. */
   describeAudio: (sessionId: SessionId, name: string) =>
-    __TAURI_INVOKE<AudioDescriptor>(EArchivesCommand.DESCRIBE_AUDIO, { sessionId, name }),
+    __TAURI_INVOKE<SessionSnapshot<AudioDescriptor>>(EArchivesCommand.DESCRIBE_AUDIO, { sessionId, name }),
   /** Report the shape of a texture of the open subject, without decoding it into a picture. */
   describeTexture: (sessionId: SessionId, name: string) =>
-    __TAURI_INVOKE<AssetTextureDescriptor>(EArchivesCommand.DESCRIBE_TEXTURE, { sessionId, name }),
+    __TAURI_INVOKE<SessionSnapshot<AssetTextureDescriptor>>(EArchivesCommand.DESCRIBE_TEXTURE, { sessionId, name }),
   /**
    * Report the shape of a picture of the open subject the webview draws as it stands.
    *
@@ -123,7 +123,7 @@ export const archivesCommands = {
    * webview draws - which the caller decided before asking, so reaching it means the two disagree.
    */
   describeImage: (sessionId: SessionId, name: string) =>
-    __TAURI_INVOKE<ImageDescriptor>(EArchivesCommand.DESCRIBE_IMAGE, { sessionId, name }),
+    __TAURI_INVOKE<SessionSnapshot<ImageDescriptor>>(EArchivesCommand.DESCRIBE_IMAGE, { sessionId, name }),
   /** Hand back a packing configuration with nothing chosen yet. */
   defaultPackConfig: () => __TAURI_INVOKE<ArchivePackConfig>(EArchivesCommand.DEFAULT_PACK_CONFIG),
   /** Write the selection rules of a configuration out as a packing configuration file. */

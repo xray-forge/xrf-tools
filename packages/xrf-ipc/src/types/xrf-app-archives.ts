@@ -1074,12 +1074,28 @@ export enum EArchiveSubject {
   WORLD = "world",
 }
 
-/** What the explorer has open: a set of `.db` volumes, or a whole mounted world. */
+/**
+ * What the explorer has open: a set of `.db` volumes, or a whole mounted world.
+ *
+ * Each carries the roots it reads through, so a reader that needs a whole search rather than this subject's own reads
+ * (the visuals viewer, resolving a model's textures and shaders) mounts the same arrangement without the page knowing
+ * which kind is open.
+ */
 export type ArchiveSubject =
   /** The volumes at one path, merged into a single name table. */
-  | { kind: "volumes"; project: ArchiveProject }
+  | {
+      kind: "volumes";
+      project: ArchiveProject;
+      /** Every volume beneath the project's root, as the project was read. */
+      roots: XrayRoots;
+    }
   /** A game folder read as the engine mounts it, archives and loose tree together. */
-  | { kind: "world"; world: ArchiveWorld };
+  | {
+      kind: "world";
+      world: ArchiveWorld;
+      /** How the world was opened, so a commit's follow lists it again over the same mounts. */
+      roots: XrayRoots;
+    };
 
 /** The bump declaration of a descriptor, `THM_CHUNK_BUMP`. */
 export type ArchiveThmBump = {
@@ -1212,8 +1228,6 @@ export type ArchiveUnreadSource = {
 
 /** One mounted world the explorer browses: an installation, or any tree read as the engine would read it. */
 export type ArchiveWorld = {
-  /** How the world was opened, so a commit's follow lists it again over the same mounts. */
-  roots: XrayRoots;
   /** Sources searched, highest priority first, as each one names itself. */
   mounts: Array<string>;
   /** Winning entries, one per engine path, ordered by that path. */

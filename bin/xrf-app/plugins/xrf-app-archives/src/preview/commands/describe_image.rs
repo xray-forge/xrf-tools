@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use serde::Serialize;
 use tauri::State;
 use xrf_app_core::TauriResult;
@@ -8,7 +6,7 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_extension::XrayExtensionOf;
 use xrf_texture::ImageShape;
 
-use crate::browse::{ArchiveSubject, ArchiveSubjects};
+use crate::browse::ArchiveSubjects;
 
 /// What a picture the webview renders itself turns out to be.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -34,27 +32,26 @@ pub async fn archives_describe_image(
   name: String,
   execution: State<'_, ExecutionState>,
   subjects: State<'_, ArchiveSubjects>,
-) -> TauriResult<ImageDescriptor> {
+) -> TauriResult<SessionSnapshot<ImageDescriptor>> {
   log::info!("Describing image: {name}");
 
   let media_type: &'static str = XrayExtensionOf::of(&name)
     .known()
     .and_then(|extension| extension.get_media_type())
     .ok_or_else(|| format!("Failed to describe image '{name}': no webview renders this extension"))?;
-  let subject: Arc<SessionSnapshot<ArchiveSubject>> = subjects.require(session_id)?;
 
-  execution
-    .run_blocking("Describing image", move || {
+  subjects
+    .read_on_pool(&execution, session_id, "Describing image", move |subject| {
       let shape: Option<ImageShape> = ImageShape::of_bytes(&subject.read_bytes(&name)?);
 
       if shape.is_none() {
         log::warn!("Image '{name}' carries no header this reads");
       }
 
-      Ok::<_, String>(ImageDescriptor {
+      Ok(ImageDescriptor {
         shape,
         media_type: media_type.to_owned(),
       })
     })
-    .await?
+    .await
 }

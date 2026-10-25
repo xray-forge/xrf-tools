@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_archive::{ArchiveReadPolicy, ArchiveReadResult};
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayPathCollision, XrayRoots, XraySearch, XrayShadowingEntry};
+use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayPathCollision, XraySearch, XrayShadowingEntry};
 
 use crate::browse::archive_world_entry::ArchiveWorldEntry;
 
@@ -10,8 +10,6 @@ use crate::browse::archive_world_entry::ArchiveWorldEntry;
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveWorld {
-  /// How the world was opened, so a commit's follow lists it again over the same mounts.
-  pub roots: XrayRoots,
   /// The snapshot the listing was built from, which every read of this world goes through, so what is listed and
   /// what is read never come from two revisions.
   #[serde(skip)]
@@ -41,7 +39,7 @@ pub struct ArchiveWorld {
 impl ArchiveWorld {
   /// Lists everything `listed` reaches, folded into the shape the explorer browses, read later through `search`: the
   /// same snapshot, though `listed` may be a clone of it recording what the listing read.
-  pub fn list(listed: &XraySearch, search: XraySearch, roots: XrayRoots) -> Self {
+  pub fn list(listed: &XraySearch, search: XraySearch) -> Self {
     let entries: Vec<XrayShadowingEntry> = listed.list_shadowing_entries();
 
     Self {
@@ -49,7 +47,6 @@ impl ArchiveWorld {
       mounts: listed.list_roots(),
       sources: listed.list_containers(),
       read_policy: ArchiveReadPolicy::default(),
-      roots,
       search,
       shadowed_count: entries.iter().filter(|entry| entry.is_shadowing()).count(),
       shadowed_size_real: entries.iter().map(XrayShadowingEntry::get_shadowed_size).sum(),
@@ -156,7 +153,7 @@ mod tests {
 
     let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
 
-    ArchiveWorld::list(&search, search.clone(), roots)
+    ArchiveWorld::list(&search, search.clone())
   }
 
   #[test]

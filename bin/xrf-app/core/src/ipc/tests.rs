@@ -102,7 +102,7 @@ mod bindings {
   use std::fs;
   use std::path::PathBuf;
 
-  use xrf_ipc_typescript::{IpcBindingsGenerator, IpcCommandSurface, TypeModules};
+  use xrf_ipc_typescript::{IpcBindingsGenerator, IpcCommandSurface, MirrorImports, TypeModules};
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
   use crate::ipc::tests::fixture;
@@ -126,6 +126,7 @@ mod bindings {
         fixture::BULK_ROUTES,
       )],
       &TypeModules::default(),
+      &MirrorImports::new("#"),
     );
 
     let read = |name: &str| -> String {
@@ -138,9 +139,15 @@ mod bindings {
     assert!(typed.contains("ping"), "{typed}");
     assert!(!typed.contains("read_bytes"), "{typed}");
     assert!(
-      raw.contains("readBytes: (length: number): Promise<ArrayBuffer> =>\n    invokeRaw(\"plugin:fixture|read_bytes\", { length }),"),
+      raw.contains("READ_BYTES = \"plugin:fixture|read_bytes\",")
+        && raw.contains(
+          "readBytes: (length: number): Promise<ArrayBuffer> =>\n    invokeRaw(EFixtureRawCommand.READ_BYTES, { length }),"
+        ),
       "{raw}"
     );
-    assert!(bulk.contains("route: \"fixture/read_route\""), "{bulk}");
+    assert!(
+      bulk.contains("READ_ROUTE = \"fixture/read_route\",") && bulk.contains("route: EFixtureBulkRoute.READ_ROUTE"),
+      "{bulk}"
+    );
   }
 }

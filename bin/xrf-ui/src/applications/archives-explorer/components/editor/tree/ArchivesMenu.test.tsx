@@ -9,7 +9,7 @@ import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
-import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { mockSessionRead, mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -24,9 +24,9 @@ interface IRenderedMenu {
 async function renderMenu(files: Array<ArchiveFileDescriptor>): Promise<IRenderedMenu> {
   mockIpcCommands({
     [EArchivesCommand.RESTORE_SUBJECT]: mockSessionResponse(mockArchivesVolumes(files)),
-    [EArchivesCommand.LIST_OVERRIDES]: { overridden: [], unreachable: [] },
-    [EArchivesCommand.LIST_SHARED_PAYLOADS]: [],
-    [EArchivesCommand.READ_FILE]: { name: files[0]?.name ?? "", content: "[system]", size: 8 },
+    [EArchivesCommand.LIST_OVERRIDES]: mockSessionRead({ overridden: [], unreachable: [] }),
+    [EArchivesCommand.LIST_SHARED_PAYLOADS]: mockSessionRead([]),
+    [EArchivesCommand.READ_FILE]: mockSessionRead({ name: files[0]?.name ?? "", content: "[system]", size: 8 }),
   });
 
   const { container, service } = mockInjectedService(ArchivesService);

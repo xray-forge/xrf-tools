@@ -6,6 +6,7 @@ import { Nullable } from "@xrf/types";
 
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
+import { mockSessionRead } from "@/fixtures/mocks/session.mocks";
 import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
@@ -17,7 +18,7 @@ describe("ConfigsSchemeService", () => {
       resolve = settle;
     });
 
-    mockIpcCommands({ [EConfigsCommand.READ_SECTION_SCHEME]: () => response });
+    mockIpcCommands({ [EConfigsCommand.READ_SECTION_SCHEME]: mockSessionRead(() => response) });
 
     const { service, container } = mockInjectedService(ConfigsSchemeService, [ConfigsProjectService]);
 

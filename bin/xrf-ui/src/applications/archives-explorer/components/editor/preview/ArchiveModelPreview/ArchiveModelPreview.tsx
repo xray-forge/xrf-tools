@@ -5,7 +5,6 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { getSubjectRoots } from "@/core/archive/lib";
 import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
@@ -34,7 +33,7 @@ export function ArchiveModelPreview({
 
   useEffect(() => {
     if (subject) {
-      void loadService.load({ kind: "asset", logicalPath: name }, getSubjectRoots(subject));
+      void loadService.load({ kind: "asset", logicalPath: name }, subject.roots);
     }
 
     return () => loadService.clear();

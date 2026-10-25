@@ -41,15 +41,39 @@ export function mockSessionResponse<T, A extends MockSessionArgs = MockSessionAr
   response: MockSessionValue<T, A>
 ): (args: A) => Promise<MockSessionAnswer<T>> {
   return async (args: A): Promise<MockSessionAnswer<T>> => {
-    const value: T = typeof response === "function" ? await (response as (args: A) => T | Promise<T>)(args) : response;
+    const value: T = await readMockSessionValue(response, args);
 
     if (value === null || value === undefined) {
       return null as MockSessionAnswer<T>;
     }
 
-    const request = args?.request as Optional<Record<string, unknown>>;
-    const id: unknown = args?.motionId ?? args?.sectorId ?? args?.sessionId ?? request?.sessionId;
-
-    return mockSessionSnapshot(value, typeof id === "string" ? id : "fixture-session") as MockSessionAnswer<T>;
+    return mockSessionSnapshot(value, toMockSessionId(args)) as MockSessionAnswer<T>;
   };
+}
+
+/**
+ * Makes a configured read of an open session answer under the caller's identity, at the revision an open leaves. Unlike
+ * an open, a read that finds nothing still answers a snapshot, of that nothing.
+ */
+export function mockSessionRead<T, A extends MockSessionArgs = MockSessionArgs>(
+  response: MockSessionValue<T, A>
+): (args: A) => Promise<SessionSnapshot<T>> {
+  return async (args: A): Promise<SessionSnapshot<T>> =>
+    mockSessionSnapshot(await readMockSessionValue(response, args), toMockSessionId(args));
+}
+
+/** What a fixture's value or reader gives for the arguments a command was invoked with. */
+async function readMockSessionValue<T, A extends MockSessionArgs>(
+  response: MockSessionValue<T, A>,
+  args: A
+): Promise<T> {
+  return typeof response === "function" ? (response as (args: A) => T | Promise<T>)(args) : response;
+}
+
+/** The identity a command was addressed by, wherever its arguments carry it. */
+function toMockSessionId(args: MockSessionArgs): string {
+  const request = args?.request as Optional<Record<string, unknown>>;
+  const id: unknown = args?.motionId ?? args?.sectorId ?? args?.sessionId ?? request?.sessionId;
+
+  return typeof id === "string" ? id : "fixture-session";
 }

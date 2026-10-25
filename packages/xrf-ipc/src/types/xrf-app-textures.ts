@@ -341,19 +341,6 @@ export enum ETextureSurfaceAlpha {
 /** Every `ETextureSurfaceAlpha` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type TextureSurfaceAlpha = `${ETextureSurfaceAlpha}`;
 
-/** A texture laid on a body, and how it is laid there. */
-export type TextureSurfaceRequest = {
-  source: TextureSource;
-  /** The roots the texture is resolved in, as its description was. */
-  roots: XrayRoots;
-  shape: TextureSurfaceShape;
-  /** How many times the texture repeats across the body, which is how a tiling seam becomes visible. */
-  tiling: number | null;
-  alpha: TextureSurfaceAlpha;
-  /** Width over height of the texture, which the plane is stretched to. */
-  aspect: number | null;
-};
-
 /** The body a texture is laid on to be looked at. */
 export enum ETextureSurfaceShape {
   /** Flat and face on, where the decode is read most directly and tiling is judged. */
@@ -444,4 +431,17 @@ export type TexturesMakeBumpRequest = {
 export type TexturesSaveRequest = {
   descriptor: TextureDescriptorSave;
   texture: TextureEncodingSave | null;
+};
+
+/** A texture laid on a body, and how it is laid there. */
+export type TexturesShowRequest = {
+  source: TextureSource;
+  /** The roots the texture is resolved in, as its description was. */
+  roots: XrayRoots;
+  shape: TextureSurfaceShape;
+  /** How many times the texture repeats across the body, which is how a tiling seam becomes visible. */
+  tiling: number | null;
+  alpha: TextureSurfaceAlpha;
+  /** Width over height of the texture, which the plane is stretched to. */
+  aspect: number | null;
 };

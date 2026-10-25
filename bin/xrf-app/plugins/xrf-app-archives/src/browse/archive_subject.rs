@@ -10,7 +10,7 @@ use xrf_pack::{
   ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtractResult, ArchiveUnpacker, XrayWorldExtractor,
 };
 use xrf_utils::error_to_string;
-use xrf_vfs::{XrayArchiveSource, XrayInputRecord, XrayRoots, XraySearch};
+use xrf_vfs::{XrayArchiveSource, XrayInputRecord, XrayMountMode, XrayRoots, XraySearch};
 
 use crate::browse::archive_name_index::ArchiveNameIndex;
 use crate::browse::archive_override_report::ArchiveOverrideReport;
@@ -20,6 +20,10 @@ use crate::browse::archive_world_entry::ArchiveWorldEntry;
 use crate::describe::{ArchiveDescribeSource, ArchiveFileDescription};
 
 /// What the explorer has open: a set of `.db` volumes, or a whole mounted world.
+///
+/// Each carries the roots it reads through, so a reader that needs a whole search rather than this subject's own reads
+/// (the visuals viewer, resolving a model's textures and shaders) mounts the same arrangement without the page knowing
+/// which kind is open.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
@@ -27,19 +31,28 @@ pub enum ArchiveSubject {
   /// The volumes at one path, merged into a single name table.
   Volumes {
     project: ArchiveProject,
+    /// Every volume beneath the project's root, as the project was read.
+    // todo: Serve a volume set's search from the volumes this subject already read, so the first model preview does not
+    //  index the set's name tables a second time in the asset mounts.
+    roots: XrayRoots,
     /// The name table by engine identity, for references spelled otherwise than the volume lists them.
     #[serde(skip)]
     #[cfg_attr(feature = "typescript-bindings", specta(skip))]
     names: ArchiveNameIndex,
   },
   /// A game folder read as the engine mounts it, archives and loose tree together.
-  World { world: ArchiveWorld },
+  World {
+    world: ArchiveWorld,
+    /// How the world was opened, so a commit's follow lists it again over the same mounts.
+    roots: XrayRoots,
+  },
 }
 
 impl ArchiveSubject {
   /// The volume set at `project`, its name table indexed on first need.
   pub fn of_volumes(project: ArchiveProject) -> Self {
     Self::Volumes {
+      roots: XrayRoots::one(project.root.clone(), XrayMountMode::Volumes),
       project,
       names: ArchiveNameIndex::default(),
     }
@@ -49,9 +62,9 @@ impl ArchiveSubject {
   /// lists the world again.
   pub fn read_world(search: XraySearch, roots: XrayRoots) -> SessionDerived<Self> {
     let inputs: XrayInputRecord = XrayInputRecord::new();
-    let world: ArchiveWorld = ArchiveWorld::list(&search.clone().with_recording(&inputs), search, roots);
+    let world: ArchiveWorld = ArchiveWorld::list(&search.clone().with_recording(&inputs), search);
 
-    SessionDerived::new(Self::World { world }, inputs)
+    SessionDerived::new(Self::World { world, roots }, inputs)
   }
 
   /// The open world listed again over the roots it was opened over, once a commit moved what its listing read. A
@@ -62,7 +75,7 @@ impl ArchiveSubject {
   /// Returns an error when the roots cannot be searched, or when asked of a volume set.
   pub fn derive(current: &SessionSnapshot<Self>, assets: &AssetMountState) -> TauriResult<SessionDerived<Self>> {
     match &**current {
-      Self::World { world } => Ok(Self::read_world(assets.search(&world.roots)?, world.roots.clone())),
+      Self::World { roots, .. } => Ok(Self::read_world(assets.search(roots)?, roots.clone())),
       Self::Volumes { .. } => Err(String::from("An archive volume set does not follow commits")),
     }
   }
@@ -70,8 +83,8 @@ impl ArchiveSubject {
   /// What a describer reads this subject through.
   pub fn to_describe_source(&self) -> ArchiveDescribeSource<'_> {
     match self {
-      Self::Volumes { project, names } => ArchiveDescribeSource::Volumes { project, names },
-      Self::World { world } => ArchiveDescribeSource::World { world },
+      Self::Volumes { project, names, .. } => ArchiveDescribeSource::Volumes { project, names },
+      Self::World { world, .. } => ArchiveDescribeSource::World { world },
     }
   }
 
@@ -79,7 +92,7 @@ impl ArchiveSubject {
   pub fn get_read_policy(&self) -> &ArchiveReadPolicy {
     match self {
       Self::Volumes { project, .. } => &project.read_policy,
-      Self::World { world } => &world.read_policy,
+      Self::World { world, .. } => &world.read_policy,
     }
   }
 
@@ -101,7 +114,7 @@ impl ArchiveSubject {
   pub fn describe_statistics(&self) -> ArchiveStatistics {
     match self {
       Self::Volumes { project, .. } => ArchiveStatistics::of_volumes(project),
-      Self::World { world } => ArchiveStatistics::of_world(&world.files, &world.mounts, &world.sources),
+      Self::World { world, .. } => ArchiveStatistics::of_world(&world.files, &world.mounts, &world.sources),
     }
   }
 
@@ -116,7 +129,7 @@ impl ArchiveSubject {
           unreachable,
         }
       }
-      Self::World { world } => ArchiveOverrideReport {
+      Self::World { world, .. } => ArchiveOverrideReport {
         overridden: world
           .files
           .iter()
@@ -132,7 +145,7 @@ impl ArchiveSubject {
   pub fn describe_resolution(&self) -> ArchiveResolution {
     match self {
       Self::Volumes { project, .. } => ArchiveResolution::of_volumes(project),
-      Self::World { world } => ArchiveResolution::of_search(&world.search),
+      Self::World { world, .. } => ArchiveResolution::of_search(&world.search),
     }
   }
 
@@ -145,7 +158,7 @@ impl ArchiveSubject {
   pub fn read_text(&self, name: &str) -> TauriResult<ArchiveReadResult> {
     match self {
       Self::Volumes { project, .. } => project.read_file_as_string(name),
-      Self::World { world } => world.read_text(name),
+      Self::World { world, .. } => world.read_text(name),
     }
     .map_err(|error| format!("Failed to read '{name}': {error}"))
   }
@@ -193,7 +206,7 @@ impl ArchiveSubject {
   pub fn extract_file(&self, name: &str, destination: &Path) -> TauriResult<ArchiveExtractResult> {
     match self {
       Self::Volumes { project, .. } => ArchiveUnpacker::extract_file(project, name, destination),
-      Self::World { world } => XrayWorldExtractor::extract_file(&world.search, name, destination),
+      Self::World { world, .. } => XrayWorldExtractor::extract_file(&world.search, name, destination),
     }
     .map_err(error_to_string)
   }
@@ -213,7 +226,9 @@ impl ArchiveSubject {
   ) -> TauriResult<ArchiveExtractDirectoryResult> {
     match self {
       Self::Volumes { project, .. } => ArchiveUnpacker::extract_directory_opt(project, prefix, destination, options),
-      Self::World { world } => XrayWorldExtractor::extract_directory_opt(&world.search, prefix, destination, options),
+      Self::World { world, .. } => {
+        XrayWorldExtractor::extract_directory_opt(&world.search, prefix, destination, options)
+      }
     }
     .map_err(error_to_string)
   }

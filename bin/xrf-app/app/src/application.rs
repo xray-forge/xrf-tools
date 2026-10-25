@@ -12,7 +12,7 @@ use xrf_app_core::logging::{ProcessStart, setup_logger};
 use xrf_app_core::session::SessionScopes;
 use xrf_app_core::transport::TransportServer;
 use xrf_app_core::window::{WindowCloseApprovals, WindowHandles};
-use xrf_app_system::diagnostics::StartupLog;
+use xrf_app_system::StartupLog;
 use xrf_build_info::{BuildInfo, build_info};
 use xrf_job::ExecutionRequest;
 
@@ -143,7 +143,7 @@ mod tests {
 
   use tauri::test::{MockRuntime, mock_builder, mock_context, noop_assets};
   use tauri::{App, Manager};
-  use xrf_app_archives::browse::ArchiveSubjects;
+  use xrf_app_archives::ArchiveSubjects;
   use xrf_app_configs::ConfigsProjects;
   use xrf_app_core::assets::AssetMountState;
   use xrf_app_core::directories::AppDirectories;
@@ -157,9 +157,8 @@ mod tests {
   use xrf_app_render::{RenderViewports, Renderer, TextureReloads, ViewportShows, WorldState};
   use xrf_app_spawn::SpawnFiles;
   use xrf_app_sprite_equipment::EquipmentSprites;
-  use xrf_app_system::diagnostics::MachineProbeState;
-  use xrf_app_textures::browse::TextureBrowses;
-  use xrf_app_textures::encoding::TextureComparisons;
+  use xrf_app_system::MachineProbeState;
+  use xrf_app_textures::{TextureBrowses, TextureComparisons};
   use xrf_app_translations::TranslationProjects;
   use xrf_app_visuals::{VisualBrowses, VisualModels, VisualPoses};
   use xrf_build_info::{BuildInfo, build_info};

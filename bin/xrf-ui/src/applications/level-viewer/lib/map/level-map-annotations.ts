@@ -1,4 +1,4 @@
-import { ELevelAnnotationKind, MapAnnotationsRequest } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelAnnotationKind, MapAnnotationsWriteRequest } from "@xrf/ipc/types/xrf-app-levels";
 
 import { ILevelMapRect } from "./level-map-capture";
 
@@ -53,11 +53,11 @@ export function toLevelMapAnnotationsWith(
  * @param area - The ground the map covers.
  * @returns What the backend is asked to draw beside the map.
  */
-export function toMapAnnotationsRequest(
+export function toMapAnnotationsWriteRequest(
   annotations: ILevelMapAnnotations,
   path: string,
   area: ILevelMapRect
-): MapAnnotationsRequest {
+): MapAnnotationsWriteRequest {
   return {
     path,
     area: { minX: area.minX, minZ: area.minZ, maxX: area.maxX, maxZ: area.maxZ },

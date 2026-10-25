@@ -1,12 +1,15 @@
 #![doc = include_str!("../README.md")]
 
-pub mod browse;
-pub mod describe;
-pub mod edit;
-pub mod encoding;
+mod browse;
+mod describe;
+mod edit;
+mod encoding;
 pub mod ipc;
 mod lease;
 pub mod plugin;
-pub mod surface;
+mod surface;
 #[cfg(test)]
 mod tests;
+
+pub use browse::TextureBrowses;
+pub use encoding::TextureComparisons;

@@ -1,11 +1,9 @@
 import { ArchiveSubject, EArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveReadPolicy } from "@xrf/ipc/types/xrf-archive";
-import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
 import { IArchiveEntry } from "./entry";
 import { listArchiveFiles } from "./files";
-import { createArchiveRoots } from "./roots";
 
 /**
  * How many sources a subject answers from: volumes for a volume set, mounts for a world.
@@ -70,24 +68,5 @@ export function getSubjectReadPolicy(subject: Nullable<ArchiveSubject>): Nullabl
  * @returns The volume set's own root, the world's first root, or an empty string.
  */
 export function getSubjectRoot(subject: Nullable<ArchiveSubject>): string {
-  if (!subject) {
-    return "";
-  }
-
-  return subject.kind === EArchiveSubject.WORLD ? (subject.world.roots.roots[0]?.path ?? "") : subject.project.root;
-}
-
-/**
- * The roots a model of a subject is opened in, since the visuals viewer reads through roots rather than through the
- * subject's session as every other preview does.
- *
- * A world already carries the roots it was opened with, so a read answers for the arrangement the listing on screen
- * describes rather than for whatever the path means now.
- *
- * @param subject - What the explorer has open.
- * @returns The roots spec the backend can mount.
- */
-export function getSubjectRoots(subject: ArchiveSubject): XrayRoots {
-  // todo: Open an archived model through the subject's session, so a volume set is not mounted a second time for it.
-  return subject.kind === EArchiveSubject.WORLD ? subject.world.roots : createArchiveRoots(subject.project);
+  return subject?.roots.roots[0]?.path ?? "";
 }

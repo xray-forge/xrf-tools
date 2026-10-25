@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@xrf/ipc/types/xrf-app-textures";
 import { RenderViewOptions } from "@xrf/ipc/types/xrf-renderer";
 
-import { toTextureSurfaceRequest, toTextureViewOptions } from "@/core/textures/lib/render/texture-surface-render";
+import { toTexturesShowRequest, toTextureViewOptions } from "@/core/textures/lib/render/texture-surface-render";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
 import { ITextureSurfaceOptions } from "@/core/textures/lib/texture-surface";
 import { VIEWPORT } from "@/core/theme/tokens";
@@ -17,13 +17,13 @@ const OPTIONS: ITextureSurfaceOptions = {
   tiling: 3,
 };
 
-describe("toTextureSurfaceRequest", () => {
+describe("toTexturesShowRequest", () => {
   it("asks for the texture as its description named it, on the body and with the alpha the view asks", () => {
     const description = mockTextureDescription(MOCK_TEXTURE, {
       base: { shape: { format: "DXT1", height: 512, mipmapLevels: 1, width: 1024 }, size: 1 },
     });
 
-    expect(toTextureSurfaceRequest(description, OPTIONS)).toEqual({
+    expect(toTexturesShowRequest(description, OPTIONS)).toEqual({
       alpha: ETextureSurfaceAlpha.BLENDED,
       aspect: 2,
       roots: description.roots,
@@ -34,7 +34,7 @@ describe("toTextureSurfaceRequest", () => {
   });
 
   it("asks for nothing while no texture is open", () => {
-    expect(toTextureSurfaceRequest(null, OPTIONS)).toBeNull();
+    expect(toTexturesShowRequest(null, OPTIONS)).toBeNull();
   });
 });
 

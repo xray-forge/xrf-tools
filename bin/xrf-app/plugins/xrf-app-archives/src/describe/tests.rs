@@ -33,7 +33,7 @@ fn world(case: &str, files: &[(&str, &[u8])]) -> ArchiveWorld {
     .expect("the roots mount");
   let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
 
-  ArchiveWorld::list(&search, search.clone(), roots)
+  ArchiveWorld::list(&search, search.clone())
 }
 
 fn describe(world: &ArchiveWorld, name: &str) -> ArchiveFormatDescription {

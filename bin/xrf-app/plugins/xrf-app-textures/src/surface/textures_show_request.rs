@@ -8,7 +8,7 @@ use crate::surface::{TextureSurfaceAlpha, TextureSurfaceShape};
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TextureSurfaceRequest {
+pub struct TexturesShowRequest {
   pub source: TextureSource,
   /// The roots the texture is resolved in, as its description was.
   pub roots: XrayRoots,

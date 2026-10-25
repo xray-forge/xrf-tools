@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
@@ -7,7 +5,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_visual::VisualMotionBake;
 
-use crate::{SelectedVisual, VisualModels};
+use crate::VisualModels;
 
 /// Describe one of the open visual's motions as a pose of it would hold it, its frames, bones and length, posing none;
 /// read on the pool.
@@ -19,12 +17,11 @@ pub async fn visuals_describe_motion(
   models: State<'_, VisualModels>,
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
-) -> TauriResult<VisualMotionBake> {
-  let current: Arc<SessionSnapshot<SelectedVisual>> = models.require(session_id)?;
+) -> TauriResult<SessionSnapshot<VisualMotionBake>> {
   let assets: AssetMountState = AssetMountState::clone(&assets);
 
-  execution
-    .run_blocking("Describing a visual's motion", move || {
+  models
+    .read_on_pool(&execution, session_id, "Describing a visual's motion", move |current| {
       let Some(motions) = current.motions.as_ref() else {
         return Err(String::from("The open visual carries no bind pose to animate"));
       };
@@ -39,5 +36,5 @@ pub async fn visuals_describe_motion(
         )
         .map_err(|error| error.to_string())
     })
-    .await?
+    .await
 }

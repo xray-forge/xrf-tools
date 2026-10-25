@@ -1,7 +1,9 @@
 #![doc = include_str!("../README.md")]
 
-pub mod diagnostics;
+mod diagnostics;
 pub mod ipc;
-pub mod paths;
+mod paths;
 pub mod plugin;
-pub mod window;
+mod window;
+
+pub use diagnostics::{MachineProbeState, StartupLog};

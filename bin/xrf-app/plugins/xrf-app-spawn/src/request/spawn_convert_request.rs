@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct SpawnConversionRequest {
+pub struct SpawnConvertRequest {
   pub source: PathBuf,
   pub destination: PathBuf,
 }

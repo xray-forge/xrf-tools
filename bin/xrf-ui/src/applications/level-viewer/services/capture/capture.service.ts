@@ -49,7 +49,7 @@ import {
 import {
   DEFAULT_LEVEL_MAP_ANNOTATIONS,
   ILevelMapAnnotations,
-  toMapAnnotationsRequest,
+  toMapAnnotationsWriteRequest,
 } from "@/applications/level-viewer/lib/map/level-map-annotations";
 import {
   ELevelMapArea,
@@ -445,7 +445,7 @@ export class LevelViewerCaptureService {
       return;
     }
 
-    const request = toMapAnnotationsRequest(this.mapAnnotations, captured.image.path, captured.area);
+    const request = toMapAnnotationsWriteRequest(this.mapAnnotations, captured.image.path, captured.area);
     const writing: Promise<SessionSnapshot<string>> = this.annotationsWritten.then(() =>
       levelsCommands.writeMapAnnotations(sessionId, request)
     );

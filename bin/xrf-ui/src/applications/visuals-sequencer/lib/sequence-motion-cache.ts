@@ -105,7 +105,7 @@ export class SequenceMotionCache {
 
     try {
       const sessionId: string = requireSessionId(this.loadService.visual.value?.selected ?? null);
-      const bake: VisualMotionBake = await visualsCommands.describeMotion(sessionId, motion);
+      const bake: VisualMotionBake = (await visualsCommands.describeMotion(sessionId, motion)).value;
 
       if (generation === this.generation) {
         this.setMotion(motion, { bake, reason: null, state: ESequenceMotionState.READY });

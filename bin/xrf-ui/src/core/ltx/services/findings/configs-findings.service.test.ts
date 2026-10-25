@@ -5,6 +5,7 @@ import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
+import { mockSessionRead } from "@/fixtures/mocks/session.mocks";
 import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
@@ -16,7 +17,7 @@ describe("ConfigsFindingsService", () => {
       resolve = settle;
     });
 
-    mockIpcCommands({ [EConfigsCommand.LIST_FINDINGS]: () => response });
+    mockIpcCommands({ [EConfigsCommand.LIST_FINDINGS]: mockSessionRead(() => response) });
 
     const { service, container } = mockInjectedService(ConfigsFindingsService, [ConfigsProjectService]);
 

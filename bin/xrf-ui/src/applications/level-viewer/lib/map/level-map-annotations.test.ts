@@ -4,7 +4,7 @@ import { ELevelAnnotationKind } from "@xrf/ipc/types/xrf-app-levels";
 import {
   DEFAULT_LEVEL_MAP_ANNOTATIONS,
   toLevelMapAnnotationsWith,
-  toMapAnnotationsRequest,
+  toMapAnnotationsWriteRequest,
 } from "@/applications/level-viewer/lib/map/level-map-annotations";
 
 describe("level map annotations", () => {
@@ -24,7 +24,7 @@ describe("level map annotations", () => {
 
   it("asks the backend for the ground the map covers", () => {
     expect(
-      toMapAnnotationsRequest({ kinds: [ELevelAnnotationKind.PATROLS], isLabelled: true }, "map.png", {
+      toMapAnnotationsWriteRequest({ kinds: [ELevelAnnotationKind.PATROLS], isLabelled: true }, "map.png", {
         minX: -600,
         minZ: -615,
         maxX: 600,
