@@ -31,6 +31,7 @@ xrf-ogf = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-dialog = { workspace = true }
 xrf-gamedata = { workspace = true }
+xrf-gamemtl = { workspace = true }
 xrf-level = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-ltx-inspect = { workspace = true }

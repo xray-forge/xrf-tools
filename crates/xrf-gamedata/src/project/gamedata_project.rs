@@ -3,9 +3,10 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_engine_target::{XrayEngineDetector, XrayEngineResolution};
 use xrf_error::{XrfError, XrfResult};
+use xrf_gamemtl::GameMtlFile;
 use xrf_ltx::{LtxProject, LtxProjectOptions};
 use xrf_utils::format_path;
 use xrf_vfs::{
@@ -14,6 +15,7 @@ use xrf_vfs::{
 };
 
 use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
+use crate::project::levels::level_engine_constants::SPAWNS_DIRECTORY;
 
 /// Logical directory holding a project's configs.
 pub(crate) const CONFIGS_DIRECTORY: &str = "configs";
@@ -252,6 +254,25 @@ impl GamedataProject {
   /// Returns an error when the kind has no canonical home, the reference is invalid, or a mask carries more than one `*`.
   pub(crate) fn resolve_all(&self, asset_type: XrayAssetType, reference: &str) -> XrfResult<Vec<XrayAsset>> {
     Ok(self.search.resolve(asset_type, reference)?.into_assets())
+  }
+
+  /// Logical paths of the spawn files under `spawns`, the merged sets that carry the game graph and alife objects.
+  pub(crate) fn spawn_paths(&self) -> Vec<String> {
+    self
+      .entries_of_type(XrayAssetType::Spawn)
+      .into_iter()
+      .filter(|location| location.get_logical_path().is_under(SPAWNS_DIRECTORY).unwrap_or(false))
+      .map(|location| location.get_logical_path().to_string())
+      .collect()
+  }
+
+  /// The game material library, which several checks resolve material names and numbers against.
+  ///
+  /// # Errors
+  ///
+  /// Returns a not-found error when the project holds no library, and otherwise whatever reading it answers with.
+  pub(crate) fn game_materials(&self) -> XrfResult<Arc<GameMtlFile>> {
+    self.read_parsed(GameMtlFile::FILE_NAME, GameMtlFile::read_from_chunk::<XRayByteOrder, _>)
   }
 
   /// Resolves an OGF reference under the `meshes` namespace.

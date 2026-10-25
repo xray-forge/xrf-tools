@@ -35,9 +35,6 @@ impl LevelDetailsPart {
   /// The detail library and planting grid, which the grass is planted from.
   pub const FILE: &'static str = "level.details";
 
-  /// The game material library, whose flags say which materials a planting falls through.
-  const GAME_MATERIALS_FILE: &'static str = "gamemtl.xr";
-
   /// Packs the open level's grass, what it is read from recorded as its details part, or answers `None` for a level
   /// with no detail library.
   ///
@@ -93,12 +90,12 @@ impl LevelDetailsPart {
   /// The ids of the game materials a planting falls through, none where the library cannot be read: the engine would
   /// have refused to load the level at all without one.
   fn read_passable_materials(search: &XraySearch) -> HashSet<u16> {
-    let materials: GameMtlFile = match read_located_asset(search, Self::GAME_MATERIALS_FILE)
+    let materials: GameMtlFile = match read_located_asset(search, GameMtlFile::FILE_NAME)
       .and_then(GameMtlFile::read_from_bytes::<XRayByteOrder>)
     {
       Ok(materials) => materials,
       Err(error) => {
-        LevelReport::unreadable_materials(Self::GAME_MATERIALS_FILE, &error);
+        LevelReport::unreadable_materials(GameMtlFile::FILE_NAME, &error);
 
         return HashSet::new();
       }

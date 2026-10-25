@@ -4,9 +4,7 @@ use xrf_chunk::ChunkReader;
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_spawn::{GraphCrossTable, GraphLevel, SpawnFile, SpawnGraphsChunk, XRayByteOrder};
-use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::project::levels::level_engine_constants::SPAWNS_DIRECTORY;
 use crate::project::levels::roster_level::RosterLevel;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataVerificationRule};
 
@@ -27,12 +25,7 @@ impl LevelRoster {
       sources_count: 0,
     };
 
-    let sources: Vec<String> = project
-      .entries_of_type(AssetType::Spawn)
-      .into_iter()
-      .filter(|location| location.get_logical_path().is_under(SPAWNS_DIRECTORY).unwrap_or(false))
-      .map(|location| location.get_logical_path().to_string())
-      .collect();
+    let sources: Vec<String> = project.spawn_paths();
 
     for source in &sources {
       job.check_cancelled()?;

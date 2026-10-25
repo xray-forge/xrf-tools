@@ -4,13 +4,12 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_error::XrfResult;
+use xrf_gamemtl::GameMtlFile;
 use xrf_ltx::{Ltx, LtxProject};
 use xrf_particles::ParticlesFile;
 use xrf_spawn::{SpawnFile, XRayByteOrder};
 use xrf_utils::format_path;
-use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::project::levels::level_engine_constants::SPAWNS_DIRECTORY;
 use crate::project::particles::verify_particles_usage_result::GamedataParticlesUsageVerificationResult;
 use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
@@ -18,7 +17,7 @@ use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOption
 const SKIPPED_REFERENCE_VALUES: [&str; 7] = ["true", "false", "on", "off", "0", "1", "nil"];
 
 impl GamedataProject {
-  /// Verify that every particle effect/group referenced from configs and spawn custom data
+  /// Verify that every particle effect/group referenced from configs, spawn custom data and material pairs
   /// exists in the shipped particles.xr libraries. A reference to a missing particle is fatal
   /// at runtime (engine asserts on spawn), so it is treated as a verification failure.
   pub fn verify_particles_usage(
@@ -36,6 +35,7 @@ impl GamedataProject {
 
     self.verify_particles_usage_in_configs(options, &particle_names, &mut result);
     self.verify_particles_usage_in_spawns(options, &particle_names, &mut result);
+    self.verify_particles_usage_in_game_materials(options, &particle_names, &mut result);
 
     result
       .findings
@@ -124,12 +124,7 @@ impl GamedataProject {
     particle_names: &HashSet<String>,
     result: &mut GamedataParticlesUsageVerificationResult,
   ) {
-    let spawn_files: Vec<String> = self
-      .entries_of_type(AssetType::Spawn)
-      .into_iter()
-      .filter(|location| location.get_logical_path().is_under(SPAWNS_DIRECTORY).unwrap_or(false))
-      .map(|location| location.get_logical_path().to_string())
-      .collect();
+    let spawn_files: Vec<String> = self.spawn_paths();
 
     for relative_path in &spawn_files {
       if options.job.is_cancelled() {
@@ -213,6 +208,42 @@ impl GamedataProject {
             result.unparsed_custom_data_count += 1;
           }
         }
+      }
+    }
+  }
+
+  /// The effects material pairs play where they collide, each once however many pairs name it. Checked only where the
+  /// library reads; the materials check reports it otherwise.
+  fn verify_particles_usage_in_game_materials(
+    &self,
+    options: &GamedataProjectVerifyOptions,
+    particle_names: &HashSet<String>,
+    result: &mut GamedataParticlesUsageVerificationResult,
+  ) {
+    let Ok(library) = self.game_materials() else {
+      return;
+    };
+
+    for (reference, pairs_count) in library.get_list_entries(|pair| &pair.collide_particles) {
+      if options.job.is_cancelled() {
+        break;
+      }
+
+      result.checked_references_count += 1;
+
+      if !particle_names.contains(&Self::normalize_particle_name(reference)) {
+        xrf_output::error!(
+          options.output,
+          "Unknown particle reference: collide particles of {pairs_count} pairs = {reference} ({})",
+          GameMtlFile::FILE_NAME
+        );
+
+        result.findings.push(GamedataFindingFactory::for_asset(
+          GamedataVerificationRule::ParticlesUsageReference,
+          GameMtlFile::FILE_NAME,
+          format!("Unknown particle reference: collide particles of {pairs_count} pairs = {reference}"),
+        ));
+        result.invalid_references_count += 1;
       }
     }
   }

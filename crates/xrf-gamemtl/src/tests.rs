@@ -300,6 +300,47 @@ fn splits_a_list_as_the_engine_counts_and_trims_it() {
 }
 
 #[test]
+fn builds_a_library_numbering_on_from_its_highest_numbers() -> XrfResult {
+  let file: GameMtlFile = GameMtlFile::new(
+    vec![GameMtlMaterial::new(4, "default"), GameMtlMaterial::new(9, "metal")],
+    vec![GameMtlPair::new(2, 4, 9)],
+  );
+  let mut writer: ChunkWriter = ChunkWriter::new();
+
+  file.write::<XRayByteOrder>(&mut writer)?;
+
+  let restored: GameMtlFile = GameMtlFile::read_from_bytes::<XRayByteOrder>(writer.flush_raw_into_buffer()?)?;
+
+  assert_eq!(restored, file);
+  assert_eq!((restored.material_index, restored.material_pair_index), (10, 3));
+  assert_eq!(restored.get_game_version(), GameMtlVersion::CallOfPripyat);
+  assert_eq!(restored.pairs[0].get_own_properties().len(), 5);
+  assert_eq!(GameMtlFile::new(Vec::new(), Vec::new()).material_index, 0);
+
+  Ok(())
+}
+
+#[test]
+fn labels_a_pair_by_its_materials_and_counts_the_pairs_naming_each_list_entry() {
+  let mut first: GameMtlPair = GameMtlPair::new(0, 0, 7);
+  let mut second: GameMtlPair = GameMtlPair::new(1, 0, 0);
+
+  first.collide_marks = String::from("wm\\a, wm\\b");
+  second.collide_marks = String::from("wm\\a,,wm\\c");
+
+  let file: GameMtlFile = GameMtlFile::new(vec![GameMtlMaterial::new(0, "default")], vec![first, second]);
+
+  assert_eq!(file.get_pair_label(&file.pairs[0]), "default - 7");
+  assert_eq!(
+    file
+      .get_list_entries(|pair| &pair.collide_marks)
+      .into_iter()
+      .collect::<Vec<(&str, usize)>>(),
+    [("wm\\a", 2), ("wm\\b", 1)]
+  );
+}
+
+#[test]
 fn finds_a_material_by_the_number_a_collision_face_stores() -> XrfResult {
   let file: GameMtlFile = GameMtlFile::read_from_bytes::<XRayByteOrder>(library(
     &[material(7, "concrete", None)?, material(9, "metal", None)?],

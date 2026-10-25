@@ -3,9 +3,7 @@ use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
 use xrf_spawn::{SpawnFile, XRayByteOrder};
-use xrf_vfs::XrayAssetType as AssetType;
 
-use crate::project::levels::level_engine_constants::SPAWNS_DIRECTORY;
 use crate::project::spawns::verify_spawns_result::GamedataSpawnsVerificationResult;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
@@ -16,12 +14,7 @@ impl GamedataProject {
 
     let started_at: Instant = Instant::now();
 
-    let spawn_files: Vec<String> = self
-      .entries_of_type(AssetType::Spawn)
-      .into_iter()
-      .filter(|location| location.get_logical_path().is_under(SPAWNS_DIRECTORY).unwrap_or(false))
-      .map(|location| location.get_logical_path().to_string())
-      .collect();
+    let spawn_files: Vec<String> = self.spawn_paths();
 
     xrf_output::heading!(options.output, "{} {}", "Verify spawns:", spawn_files.len());
 

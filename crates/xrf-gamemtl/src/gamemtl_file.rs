@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::Path;
 
@@ -24,6 +25,9 @@ pub struct GameMtlFile {
 }
 
 impl GameMtlFile {
+  /// `GAMEMTL_FILENAME`, the library's path under `$game_data$`, which the engine reads and no other.
+  pub const FILE_NAME: &'static str = "gamemtl.xr";
+
   /// `GAMEMTL_VERSION_COP`, the only version `CGameMtlLibrary::Load` accepts; it logs and gives up on any other.
   pub const CURRENT_VERSION: u16 = 1;
 
@@ -31,6 +35,22 @@ impl GameMtlFile {
   pub const AUTOINCREMENT_CHUNK_ID: u32 = 0x1001;
   pub const MATERIALS_CHUNK_ID: u32 = 0x1002;
   pub const PAIRS_CHUNK_ID: u32 = 0x1003;
+
+  /// A library of the given materials and pairs, numbering on from the highest number either holds as the editor would.
+  pub fn new(materials: Vec<GameMtlMaterial>, pairs: Vec<GameMtlPair>) -> Self {
+    Self {
+      version: Self::CURRENT_VERSION,
+      material_index: Self::get_next_number(materials.iter().map(|material| material.id)),
+      material_pair_index: Self::get_next_number(pairs.iter().map(|pair| pair.id)),
+      materials,
+      pairs,
+    }
+  }
+
+  /// One past the highest of the numbers, the first a library handing them out in order would give next.
+  fn get_next_number(numbers: impl Iterator<Item = u32>) -> u32 {
+    numbers.max().map_or(0, |number| number.saturating_add(1))
+  }
 
   /// Reads a material library from a path.
   ///
@@ -187,6 +207,39 @@ impl GameMtlFile {
   /// The pair two materials make in either order, or `None` where they have none, as happens for two static materials.
   pub fn find_pair(&self, material_a: u32, material_b: u32) -> Option<&GameMtlPair> {
     self.pairs.iter().find(|pair| pair.is_pair(material_a, material_b))
+  }
+
+  /// A pair by its materials' names, `a - b` as `SGameMtlPair::dbg_Name` gives it, a number standing in for a material
+  /// the library does not define.
+  pub fn get_pair_label(&self, pair: &GameMtlPair) -> String {
+    let name = |id: u32| {
+      self
+        .find_material(id)
+        .map_or_else(|| id.to_string(), |material| material.name.clone())
+    };
+
+    format!("{} - {}", name(pair.material_a), name(pair.material_b))
+  }
+
+  /// Every entry one of the pairs' lists names, as the engine splits it, with how many pairs name it; empty entries are
+  /// left out.
+  pub fn get_list_entries<'a>(&'a self, list: impl Fn(&'a GameMtlPair) -> &'a str) -> BTreeMap<&'a str, usize> {
+    let mut entries: BTreeMap<&str, usize> = BTreeMap::new();
+
+    for pair in &self.pairs {
+      for entry in GameMtlPair::split_list(list(pair)) {
+        if !entry.is_empty() {
+          *entries.entry(entry).or_default() += 1;
+        }
+      }
+    }
+
+    entries
+  }
+
+  /// Materials flagged dynamic, which moving objects and their bones are made of and pairs are made for.
+  pub fn get_dynamic_materials_count(&self) -> usize {
+    self.materials.iter().filter(|material| material.is_dynamic()).count()
   }
 
   /// Pairs naming a parent pair the editor takes their unset properties from.

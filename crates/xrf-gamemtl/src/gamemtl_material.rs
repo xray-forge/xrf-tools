@@ -102,6 +102,30 @@ impl GameMtlMaterial {
   /// What `SGameMtl` holds for density where the chunk is absent.
   pub const DEFAULT_DENSITY_FACTOR: f32 = 0.0;
 
+  /// A material holding `SGameMtl`'s defaults, with every optional chunk present as `SGameMtl::Save` writes them.
+  pub fn new(id: u32, name: impl Into<String>) -> Self {
+    Self {
+      id,
+      name: name.into(),
+      description: Some(String::new()),
+      flags: 0,
+      ph_friction: 1.0,
+      ph_damping: 1.0,
+      ph_spring: 1.0,
+      ph_bounce_start_velocity: 0.0,
+      ph_bouncing: 0.1,
+      shoot_factor: 0.0,
+      bounce_damage_factor: 1.0,
+      visual_transparency_factor: 0.0,
+      sound_occlusion_factor: 0.0,
+      flotation_factor: Some(Self::DEFAULT_FLOTATION_FACTOR),
+      injurious_speed: Some(Self::DEFAULT_INJURIOUS_SPEED),
+      density_factor: Some(Self::DEFAULT_DENSITY_FACTOR),
+      shoot_factor_mp: Some(0.0),
+      acoustics: None,
+    }
+  }
+
   /// Reads one material from the chunk holding it.
   ///
   /// # Errors
@@ -242,6 +266,12 @@ impl GameMtlMaterial {
   /// Whether things walk and fall through it, as grass planted over it does.
   pub const fn is_passable(&self) -> bool {
     self.flags & Self::FLAG_PASSABLE != 0
+  }
+
+  /// Whether moving objects and their bones may be made of it, which the engine asserts of a bone's material and refuses
+  /// for a level's collision faces.
+  pub const fn is_dynamic(&self) -> bool {
+    self.flags & Self::FLAG_DYNAMIC != 0
   }
 
   /// The flags the material sets, named.

@@ -54,6 +54,23 @@ impl GameMtlPair {
   /// Entries a particle or mark list may hold before the engine's load asserts, `GAMEMTL_SUBITEM_COUNT`.
   pub const MAX_EFFECTS: usize = 4;
 
+  /// A pair of two materials inheriting from nothing, as `CGameMtlLibrary::CreateMaterialPair` makes one: it sets every
+  /// property itself and lists nothing yet.
+  pub fn new(id: u32, material_a: u32, material_b: u32) -> Self {
+    Self {
+      material_a,
+      material_b,
+      id,
+      parent_id: Self::NO_PARENT_ID,
+      own_properties: u32::MAX,
+      breaking_sounds: String::new(),
+      step_sounds: String::new(),
+      collide_sounds: String::new(),
+      collide_particles: String::new(),
+      collide_marks: String::new(),
+    }
+  }
+
   /// Reads one pair from the chunk holding it.
   ///
   /// # Errors

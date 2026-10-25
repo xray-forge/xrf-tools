@@ -11,6 +11,8 @@ export enum EGamedataVerificationType {
   ENVIRONMENT = "environment",
   LEVELS = "levels",
   LTX = "ltx",
+  /** The game material library, and every name the engine, configs and spawn objects resolve against it. */
+  MATERIALS = "materials",
   MESHES = "meshes",
   PARTICLES = "particles",
   PARTICLES_USAGE = "particles-usage",

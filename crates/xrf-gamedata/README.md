@@ -81,17 +81,24 @@ and `get_all()` list every selectable check, and each parses from its CLI name:
 
 - `animations`: HUD item and player HUD animations, motion collisions, object motions, and post-process effects.
 - `environment`: everything under `configs\environment` the engine reads, and the textures its keyframes name.
-- `levels`: compiled level bundles, their companion files, and the level roster.
+- `levels`: compiled level bundles, their companion files, the level roster, and the game materials collision faces
+  are made of.
 - `ltx`: config resolution, section schemes, and formatting.
-- `meshes`: OGF visuals, their motions and shaders.
+- `materials`: the game material library, `gamemtl.xr`, against what the engine asserts on while loading it, the
+  materials the engine looks up by names of its own, wallmark textures, and materials configs and climable spawn
+  objects name.
+- `meshes`: OGF visuals, their motions, shaders, and the game materials their bones are made of.
 - `particles`: the particle library and its textures.
-- `particles-usage`: particle references from configs and spawns.
+- `particles-usage`: particle references from configs, spawns and material pairs.
 - `scripts`: script paths, reads and syntax.
 - `shaders`: shader sources, includes and Lua shader scripts.
-- `sounds`: sound files and the references to them.
+- `sounds`: sound files and the references to them, material pairs' among them.
 - `spawns`: spawn files.
 - `textures`: DDS textures, `.thm` descriptors and bump companions.
 - `weapons`: weapon sections.
+
+Only `materials` fails on a tree without a readable material library; `levels`, `meshes`, `particles-usage` and
+`sounds` then leave out what they would resolve against it.
 
 Passing an empty selection is an error; default verify options do not mean all checks. A check named twice runs once,
 in first-requested order. The options also carry strictness, live output, and a job handle.
