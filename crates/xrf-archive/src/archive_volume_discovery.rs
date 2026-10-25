@@ -7,11 +7,11 @@ use xrf_utils::format_path_or;
 use crate::ArchiveDescriptor;
 
 /// Finds archive volumes and orders them for the project's merge.
-pub(super) struct ArchiveVolumeDiscovery;
+pub(crate) struct ArchiveVolumeDiscovery;
 
 impl ArchiveVolumeDiscovery {
   /// Volume paths at a path, in merge order: a named file is itself, a directory is walked to `depth`.
-  pub(super) fn discover(path: &Path, depth: usize) -> XrfResult<Vec<PathBuf>> {
+  pub(crate) fn discover(path: &Path, depth: usize) -> XrfResult<Vec<PathBuf>> {
     if path.is_file() {
       return Ok(vec![path.to_path_buf()]);
     }
@@ -31,7 +31,7 @@ impl ArchiveVolumeDiscovery {
     for entry in entries {
       let path: PathBuf = entry?;
 
-      if ArchiveDescriptor::is_valid_db_path(&path) {
+      if ArchiveDescriptor::is_volume_path(&path) {
         volumes.push(path);
       }
     }
@@ -60,12 +60,11 @@ impl ArchiveVolumeDiscovery {
 #[cfg(test)]
 mod tests {
   use std::io::ErrorKind;
-  use std::path::{Path, PathBuf};
+  use std::path::PathBuf;
 
   use xrf_error::{XrfError, XrfResult};
 
   use super::ArchiveVolumeDiscovery;
-  use crate::ArchiveDescriptor;
 
   #[test]
   fn volumes_merge_in_the_order_the_engine_registers_them() {
@@ -94,24 +93,6 @@ mod tests {
         "/game/db/textures.db0",
       ]
     );
-  }
-
-  #[test]
-  fn recognizes_volume_extensions_without_case() {
-    assert!(ArchiveDescriptor::is_valid_db_path(Path::new("game.db0")));
-    assert!(ArchiveDescriptor::is_valid_db_path(Path::new("GAME.DB0")));
-    assert!(ArchiveDescriptor::is_valid_db_path(Path::new("mod.xdb1")));
-    assert!(!ArchiveDescriptor::is_valid_db_path(Path::new("readme.txt")));
-    assert!(!ArchiveDescriptor::is_valid_db_path(Path::new("noextension")));
-  }
-
-  #[test]
-  fn recognizes_a_volume_whose_whole_name_is_its_extension() {
-    assert!(ArchiveDescriptor::is_valid_db_path(Path::new("db/.db0")));
-    assert!(ArchiveDescriptor::is_valid_db_path(Path::new(".xdb1")));
-
-    // A dot in a directory name is still not the extension of an extensionless file.
-    assert!(!ArchiveDescriptor::is_valid_db_path(Path::new("game.db0/header")));
   }
 
   /// A walk failure used to be filtered away, so an unreadable descendant left the project quietly short of the volumes

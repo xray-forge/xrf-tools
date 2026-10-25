@@ -8,11 +8,16 @@ import { getArchivePreviewSupport } from "./preview";
 const READ_POLICY: ArchiveReadPolicy = mockArchiveReadPolicy();
 
 describe("archive preview support", () => {
-  it.each(READ_POLICY.extensions)("accepts uncompressed .%s files within the backend limit", (extension: string) => {
-    expect(getArchivePreviewSupport(mockArchiveFileDescriptor({ name: `preview.${extension}` }), READ_POLICY)).toEqual({
-      kind: "supported",
-    });
-  });
+  it.each(READ_POLICY.textExtensions)(
+    "accepts uncompressed .%s files within the backend limit",
+    (extension: string) => {
+      expect(
+        getArchivePreviewSupport(mockArchiveFileDescriptor({ name: `preview.${extension}` }), READ_POLICY)
+      ).toEqual({
+        kind: "supported",
+      });
+    }
+  );
 
   it("accepts the normalized extension regardless of filename casing", () => {
     expect(getArchivePreviewSupport(mockArchiveFileDescriptor({ name: "actor.SCRIPT" }), READ_POLICY)).toEqual({
@@ -27,7 +32,7 @@ describe("archive preview support", () => {
       getArchivePreviewSupport(
         mockArchiveFileDescriptor({
           name: "meshes\\actor.ogf",
-          sizeReal: READ_POLICY.maximumSize + 1,
+          sizeReal: READ_POLICY.maximumTextSize + 1,
         }),
         READ_POLICY
       )
@@ -83,8 +88,8 @@ describe("archive preview support", () => {
       getArchivePreviewSupport(mockArchiveFileDescriptor({ sizeReal: 2048, sizeCompressed: 1024 }), READ_POLICY)
     ).toEqual({ kind: "supported" });
     expect(
-      getArchivePreviewSupport(mockArchiveFileDescriptor({ sizeReal: READ_POLICY.maximumSize + 1 }), READ_POLICY)
-    ).toEqual({ kind: "too-large", maximumSize: READ_POLICY.maximumSize });
+      getArchivePreviewSupport(mockArchiveFileDescriptor({ sizeReal: READ_POLICY.maximumTextSize + 1 }), READ_POLICY)
+    ).toEqual({ kind: "too-large", maximumSize: READ_POLICY.maximumTextSize });
   });
 
   it("routes textures to the image path, compressed or not", () => {
@@ -125,8 +130,8 @@ describe("archive preview support", () => {
 
   it("uses backend-provided policy values", () => {
     const policy: ArchiveReadPolicy = mockArchiveReadPolicy({
-      extensions: ["xml"],
-      maximumSize: 1024,
+      textExtensions: ["xml"],
+      maximumTextSize: 1024,
     });
 
     expect(

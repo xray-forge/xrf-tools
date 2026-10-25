@@ -249,7 +249,7 @@ impl XrayMountPlan {
 
   /// Whether a file is an archive volume, asked of the crate that owns the format.
   pub(crate) fn is_volume(path: &Path) -> bool {
-    path.is_file() && ArchiveDescriptor::is_valid_db_path(path)
+    path.is_file() && ArchiveDescriptor::is_volume_path(path)
   }
 
   /// Whether a loose directory is the installation's gamedata root rather than one of its subdirectories.

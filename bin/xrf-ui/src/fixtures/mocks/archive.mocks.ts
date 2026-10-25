@@ -122,7 +122,7 @@ export function mockArchiveExtractDirectoryResult(
  */
 export function mockArchiveReadPolicy(overrides: Partial<ArchiveReadPolicy> = {}): ArchiveReadPolicy {
   return {
-    extensions: [
+    textExtensions: [
       EXrayExtension.BAT,
       EXrayExtension.CMD,
       EXrayExtension.CS,
@@ -142,10 +142,11 @@ export function mockArchiveReadPolicy(overrides: Partial<ArchiveReadPolicy> = {}
       EXrayExtension.S,
       EXrayExtension.SCRIPT,
       EXrayExtension.SEQ,
+      EXrayExtension.TXT,
       EXrayExtension.VS,
       EXrayExtension.XML,
     ],
-    maximumSize: 10 * 1024 * 1024,
+    maximumTextSize: 10 * 1024 * 1024,
     textureExtensions: [EXrayExtension.DDS],
     maximumTextureSize: 32 * 1024 * 1024,
     imageExtensions: [EXrayExtension.BMP, EXrayExtension.JPEG, EXrayExtension.JPG, EXrayExtension.PNG],

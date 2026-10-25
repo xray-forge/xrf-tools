@@ -2,13 +2,15 @@
 
 /// Chunk carrying file payloads back to back.
 pub const CHUNK_ID_DATA: u32 = 0;
-/// Chunk carrying the entry name table, of which a volume has one.
+/// Chunk carrying the entry name table, of which a volume has one; `CLocatorAPI::LoadArchive` reads it.
 pub const CHUNK_ID_FILE_DESCRIPTORS: u32 = 1;
-/// Every chunk id accepted as an entry name table.
+/// Every chunk id accepted as an entry name table. `0x86` appears in volumes this tooling has to open but in no
+/// reference engine tree, so its provenance is unverified: it is accepted because dropping it would make those volumes
+/// unreadable, and it is never written.
 pub const CHUNK_ID_FILE_DESCRIPTORS_READ: [u32; 2] = [CHUNK_ID_FILE_DESCRIPTORS, 0x86];
-/// Chunk carrying the `[header]` metadata that names the volume's entry point.
+/// Chunk carrying the `[header]` metadata that names the volume's entry point: `CFS_HeaderChunkID` in `xrCore/FS.h`.
 pub const CHUNK_ID_METADATA: u32 = 666;
-/// Every chunk id accepted as that metadata. `1337` is unverified in the same way as `0x86` above, and never written.
+/// Every chunk id accepted as that metadata. `1337` is unverified in the same way as `0x86`, and never written.
 pub const CHUNK_ID_METADATA_READ: [u32; 2] = [CHUNK_ID_METADATA, 1337];
 
 /// The four numeric fields a descriptor row carries around its name.
