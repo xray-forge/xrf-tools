@@ -1,5 +1,7 @@
-use std::io::ErrorKind;
+use std::error::Error;
+use std::io::{Error as IoError, ErrorKind};
 
+use image::ImageError;
 use thiserror::Error as ThisError;
 use xrf_error_derive::ErrorConstructors;
 
@@ -129,6 +131,39 @@ impl XrfError {
   }
 }
 
+impl From<IoError> for XrfError {
+  fn from(value: IoError) -> Self {
+    Self::Io {
+      message: value.to_string(),
+      kind: value.kind(),
+    }
+  }
+}
+
+impl From<serde_json::error::Error> for XrfError {
+  fn from(value: serde_json::error::Error) -> Self {
+    Self::Serde {
+      message: value.to_string(),
+    }
+  }
+}
+
+impl From<ImageError> for XrfError {
+  fn from(value: ImageError) -> Self {
+    Self::TextureProcessing {
+      message: value.to_string(),
+    }
+  }
+}
+
+impl From<Box<dyn Error + Send + Sync>> for XrfError {
+  fn from(value: Box<dyn Error + Send + Sync>) -> Self {
+    Self::Generic {
+      message: value.to_string(),
+    }
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use std::io::{Error as IoError, ErrorKind};
@@ -155,5 +190,14 @@ mod tests {
       } if message == "missing file"
     ));
     assert_eq!(error.to_string(), "IO error: missing file");
+  }
+
+  #[test]
+  fn converts_serde_and_boxed_errors_to_their_variants() {
+    let serde: XrfError = serde_json::from_str::<u32>("x").expect_err("not a number").into();
+    let boxed: XrfError = Box::<dyn std::error::Error + Send + Sync>::from("boxed").into();
+
+    assert!(matches!(serde, XrfError::Serde { .. }));
+    assert!(matches!(&boxed, XrfError::Generic { message } if message == "boxed"));
   }
 }
