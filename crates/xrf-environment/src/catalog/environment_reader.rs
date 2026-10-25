@@ -7,9 +7,9 @@ use xrf_vfs::XrayLogicalPath;
 
 use crate::catalog::environment_catalog::EnvironmentCatalog;
 use crate::catalog::environment_read_options::EnvironmentReadOptions;
-use crate::catalog::environment_read_pass::EnvironmentReadPass;
-use crate::finding::EnvironmentFinding;
+use crate::catalog::read::environment_read_pass::EnvironmentReadPass;
 use crate::level::LevelWeather;
+use crate::section::finding::EnvironmentFinding;
 use crate::weather::{WeatherCycle, WeatherCycleId};
 
 /// Reads a game's environment configs as one engine reads them.

@@ -45,9 +45,17 @@ fn reads_one_altitude_as_both_bounds_in_radians() {
 
 #[test]
 fn reads_an_altitude_pair_and_clamps_as_the_engine_does() {
-  let settings = LevelThunderboltSettings::of(&new_settings(&[10.0, 25.0], 0.99, 1.5), XrayEngine::Extended);
+  let settings = LevelThunderboltSettings::of(&new_settings(&[10.0, 25.0], 0.99, 1.5), XrayEngine::Vanilla);
 
   assert_eq!(settings.altitude, [10f32.to_radians(), 25f32.to_radians()]);
-  assert_eq!(settings.min_distance, LevelThunderboltSettings::MAX_DISTANCE);
+  assert_eq!(settings.min_distance, ThunderboltSettingsKey::MAX_DIST_FACTOR);
   assert_eq!(settings.second_probability, 1.0);
+}
+
+// Monolith reads `altitude` with `r_float`, which takes the first number of a pair.
+#[test]
+fn reads_only_the_first_altitude_of_a_pair_on_monolith() {
+  let settings = LevelThunderboltSettings::of(&new_settings(&[10.0, 25.0], 0.5, 0.5), XrayEngine::Extended);
+
+  assert_eq!(settings.altitude, [10f32.to_radians(), 10f32.to_radians()]);
 }

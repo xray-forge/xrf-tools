@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use xrf_engine_target::XrayEngine;
 
-use crate::key::EnvironmentValue;
 use crate::section::EnvironmentSection;
+use crate::section::key::EnvironmentValue;
 use crate::weather::weather_key::WeatherKey;
 use crate::weather::weather_keyframe::WeatherKeyframe;
 
@@ -44,7 +44,9 @@ pub struct WeatherDescriptor {
   pub sun: Option<String>,
   /// The sun's direction as the keyframe stands it; none on an engine that stands it by its sun table.
   pub sun_direction: Option<[f32; 3]>,
-  /// Whether the keyframe fixes its sun, `sun_dir`, against OpenXRay's own computed one.
+  /// Whether OpenXRay reads the keyframe's sun from `sun_dir` rather than the two angles, which clears the
+  /// descriptor's `use_dynamic_sun_dir`. Only the weather editor's save reads that flag back; the mixer stands its sun by
+  /// `openxray.ltx`'s `dynamic_sun_dir` whatever the keyframes write.
   pub is_sun_fixed: bool,
   /// Radians, what OpenXRay turns its computed sun by.
   pub sun_azimuth: f32,

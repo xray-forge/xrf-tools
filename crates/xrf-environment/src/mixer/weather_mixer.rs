@@ -67,7 +67,7 @@ impl WeatherMixer<'_> {
       modified.fog_density,
     );
     let hemi_color: [f32; 4] = {
-      let [red, green, blue, alpha] = lerp(f, &a.hemi_color, &b.hemi_color);
+      let [red, green, blue, alpha] = Self::lerp(f, &a.hemi_color, &b.hemi_color);
       let [red, green, blue] = modify_vector(WeatherModifier::HEMI_COLOR, [red, green, blue], modified.hemi_color);
 
       [red, green, blue, alpha]
@@ -90,15 +90,15 @@ impl WeatherMixer<'_> {
     WeatherMix {
       ambient_color: modify_vector(
         WeatherModifier::AMBIENT_COLOR,
-        lerp(f, &a.ambient_color, &b.ambient_color),
+        Self::lerp(f, &a.ambient_color, &b.ambient_color),
         modified.ambient,
       ),
-      clouds_color: lerp(f, &a.clouds_color, &b.clouds_color),
+      clouds_color: Self::lerp(f, &a.clouds_color, &b.clouds_color),
       clouds_rotation: scalar(a.clouds_rotation, b.clouds_rotation),
       far_plane,
       fog_color: modify_vector(
         WeatherModifier::FOG_COLOR,
-        lerp(f, &a.fog_color, &b.fog_color),
+        Self::lerp(f, &a.fog_color, &b.fog_color),
         modified.fog_color,
       ),
       fog_density,
@@ -109,7 +109,7 @@ impl WeatherMixer<'_> {
       between,
       sky_color: modify_vector(
         WeatherModifier::SKY_COLOR,
-        lerp(f, &a.sky_color, &b.sky_color),
+        Self::lerp(f, &a.sky_color, &b.sky_color),
         modified.sky_color,
       ),
       sky_rotation: scalar(a.sky_rotation, b.sky_rotation),
@@ -119,7 +119,7 @@ impl WeatherMixer<'_> {
       tree_amplitude: scalar(a.tree_amplitude, b.tree_amplitude),
       tree_rotation: scalar(a.tree_rotation, b.tree_rotation),
       tree_speed: scalar(a.tree_speed, b.tree_speed),
-      tree_wave: lerp(f, &a.tree_wave, &b.tree_wave),
+      tree_wave: Self::lerp(f, &a.tree_wave, &b.tree_wave),
       water_intensity: scalar(a.water_intensity, b.water_intensity),
       sun_shafts_intensity: scalar(a.sun_shafts_intensity, b.sun_shafts_intensity),
       thunderbolt_collection: if f < 0.5 {
@@ -130,7 +130,7 @@ impl WeatherMixer<'_> {
       .clone(),
       thunderbolt_duration: scalar(a.thunderbolt_duration, b.thunderbolt_duration),
       thunderbolt_period: scalar(a.thunderbolt_period, b.thunderbolt_period),
-      rain_color: lerp(f, &a.rain_color, &b.rain_color),
+      rain_color: Self::lerp(f, &a.rain_color, &b.rain_color),
       rain_density: scalar(a.rain_density, b.rain_density),
       wind_direction: scalar(a.wind_direction, b.wind_direction),
       wind_velocity: scalar(a.wind_velocity, b.wind_velocity),
@@ -152,7 +152,7 @@ impl WeatherMixer<'_> {
 
         (
           color,
-          normalise(std::array::from_fn(|axis| scalar(from[axis], to[axis]))),
+          Self::normalise(std::array::from_fn(|axis| scalar(from[axis], to[axis]))),
         )
       }
       // The engine passes the mixed `exec_time`, which runs backwards across midnight; the time of day it stands for
@@ -213,21 +213,21 @@ impl WeatherMixer<'_> {
       to - from
     }
   }
-}
 
-/// Each of two values' components mixed `f` of the way from the first to the second.
-fn lerp<const N: usize>(f: f32, a: &[f32; N], b: &[f32; N]) -> [f32; N] {
-  std::array::from_fn(|index| (1.0 - f) * a[index] + f * b[index])
-}
+  /// Each of two values' components mixed `f` of the way from the first to the second.
+  fn lerp<const N: usize>(f: f32, a: &[f32; N], b: &[f32; N]) -> [f32; N] {
+    std::array::from_fn(|index| (1.0 - f) * a[index] + f * b[index])
+  }
 
-/// A direction at unit length, straight down where it has none.
-fn normalise(direction: [f32; 3]) -> [f32; 3] {
-  let direction: Vector3d = Vector3d::from(direction);
-  let length: f32 = direction.length();
+  /// A direction at unit length, straight down where it has none.
+  fn normalise(direction: [f32; 3]) -> [f32; 3] {
+    let direction: Vector3d = Vector3d::from(direction);
+    let length: f32 = direction.length();
 
-  if length > 0.0 {
-    (&direction / length).to_array()
-  } else {
-    [0.0, -1.0, 0.0]
+    if length > 0.0 {
+      (&direction / length).to_array()
+    } else {
+      [0.0, -1.0, 0.0]
+    }
   }
 }

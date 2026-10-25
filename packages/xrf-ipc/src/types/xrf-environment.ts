@@ -128,7 +128,11 @@ export type WeatherDescriptor = {
   sun: string | null;
   /** The sun's direction as the keyframe stands it; none on an engine that stands it by its sun table. */
   sunDirection: [number | null, number | null, number | null] | null;
-  /** Whether the keyframe fixes its sun, `sun_dir`, against OpenXRay's own computed one. */
+  /**
+   * Whether OpenXRay reads the keyframe's sun from `sun_dir` rather than the two angles, which clears the
+   * descriptor's `use_dynamic_sun_dir`. Only the weather editor's save reads that flag back; the mixer stands its sun by
+   * `openxray.ltx`'s `dynamic_sun_dir` whatever the keyframes write.
+   */
   isSunFixed: boolean;
   /** Radians, what OpenXRay turns its computed sun by. */
   sunAzimuth: number | null;
