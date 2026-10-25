@@ -55,7 +55,9 @@ impl ViewerImage {
   /// Returns an error when it cannot be read or decoded.
   pub fn read_capture(source: &Path) -> TauriResult<RgbaImage> {
     let bytes: Vec<u8> = fs::read(source).map_err(|error| format!("Failed to read '{}': {error}", source.display()))?;
-    let mut reader: ImageReader<Cursor<Vec<u8>>> = ImageReader::with_format(Cursor::new(bytes), ImageFormat::Png);
+    // A borrowed cursor, the reader every other decode uses: `image` compiles each codec once per reader type.
+    let mut reader: ImageReader<Cursor<&[u8]>> =
+      ImageReader::with_format(Cursor::new(bytes.as_slice()), ImageFormat::Png);
 
     reader.no_limits();
 

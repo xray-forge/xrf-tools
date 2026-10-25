@@ -6,9 +6,9 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-image = { workspace = true, features = [
-  "rayon", "bmp", "dds", "exr", "ff", "gif", "hdr", "ico", "jpeg", "png", "pnm", "qoi", "tga", "tiff", "webp",
-] }
+# The formats an X-Ray tree and its authoring tools carry (`XrayExtension`); every other codec costs binary size and
+# reads nothing these tools are handed.
+image = { workspace = true, features = ["rayon", "bmp", "dds", "jpeg", "png", "tga"] }
 log = { workspace = true }
 rayon = { workspace = true }
 serde = { workspace = true }

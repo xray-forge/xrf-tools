@@ -35,8 +35,6 @@ impl ImageShape {
       ImageFormat::Jpeg => "JPEG".to_owned(),
       ImageFormat::Bmp => "BMP".to_owned(),
       ImageFormat::Tga => "TGA".to_owned(),
-      ImageFormat::Gif => "GIF".to_owned(),
-      ImageFormat::WebP => "WebP".to_owned(),
       // Everything else the decoder knows and this viewer does not route: named by the crate rather than guessed at.
       other => format!("{other:?}").to_uppercase(),
     }
