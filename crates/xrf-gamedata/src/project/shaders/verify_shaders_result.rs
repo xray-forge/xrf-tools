@@ -39,7 +39,7 @@ impl GamedataCheckResult for GamedataShadersVerificationResult {
     GamedataVerificationStatus::from_is_valid(self.findings.is_empty())
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{} shader scripts and {} shader sources checked, {} problems",
       self.checked_scripts_count,
@@ -92,7 +92,7 @@ mod tests {
     };
 
     assert_eq!(
-      result.get_failure_message(),
+      result.get_summary(),
       "2 shader scripts and 3 shader sources checked, 0 problems"
     );
   }

@@ -9,7 +9,6 @@ pub use project::gamedata_project_read_options::*;
 pub use project::gamedata_project_verify_options::*;
 pub use project::gamedata_verification_check_report::*;
 pub use project::gamedata_verification_report::*;
-pub use project::gamedata_verification_result::*;
 pub use project::gamedata_verification_rule::*;
 pub use project::gamedata_verification_type::*;
 pub use xrf_report::{Finding, Status as GamedataVerificationStatus};

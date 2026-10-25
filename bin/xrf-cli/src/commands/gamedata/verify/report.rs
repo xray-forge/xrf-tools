@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use serde::Serialize;
 use xrf_engine_target::XrayEngineResolution;
-use xrf_gamedata::GamedataVerificationResult;
+use xrf_gamedata::GamedataVerificationReport;
 use xrf_report::Status;
 use xrf_vfs::{XrayCacheStats, XrayReadTraceSummary, XraySkippedMount};
 
@@ -34,7 +34,7 @@ impl GamedataVerifyReport {
   pub fn new(
     root: &Path,
     engine: &XrayEngineResolution,
-    result: &GamedataVerificationResult,
+    result: &GamedataVerificationReport,
     skipped: &[XraySkippedMount],
     cache: XrayCacheStats,
     reads: Option<XrayReadTraceSummary>,
@@ -83,7 +83,7 @@ mod tests {
       GamedataVerificationStatus::Failed
     }
 
-    fn get_failure_message(&self) -> String {
+    fn get_summary(&self) -> String {
       String::from("2/2 textures are invalid")
     }
 

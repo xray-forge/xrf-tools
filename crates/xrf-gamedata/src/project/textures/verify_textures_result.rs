@@ -44,11 +44,11 @@ impl GamedataCheckResult for GamedataTexturesVerificationResult {
     GamedataVerificationStatus::aggregate([self.texture_files.get_status(), self.texture_bumps.get_status()])
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}; {}",
-      self.texture_files.get_failure_message(),
-      self.texture_bumps.get_failure_message()
+      self.texture_files.get_summary(),
+      self.texture_bumps.get_summary()
     )
   }
 
@@ -110,9 +110,6 @@ mod tests {
     );
 
     assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
-    assert_eq!(
-      result.get_failure_message(),
-      "2/2 textures valid; 1/1 declared bumps resolved"
-    );
+    assert_eq!(result.get_summary(), "2/2 textures valid; 1/1 declared bumps resolved");
   }
 }

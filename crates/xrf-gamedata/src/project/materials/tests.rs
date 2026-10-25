@@ -6,6 +6,8 @@ use std::path::PathBuf;
 use xrf_gamemtl::GameMtlFile;
 use xrf_test_utils::GeneratedResources;
 
+use crate::project::gamedata_check::GamedataCheck;
+use crate::project::materials::materials_verifier::MaterialsVerifier;
 use crate::project::materials::verify_materials_result::GamedataMaterialsVerificationResult;
 use crate::project::tests::fixtures::{engine_game_materials, game_materials_bytes};
 use crate::{
@@ -32,9 +34,10 @@ fn verify(name: &str, library: Option<&GameMtlFile>, config: &str) -> GamedataMa
   })
   .unwrap();
 
-  let result: GamedataMaterialsVerificationResult = project
-    .verify_materials(&GamedataProjectVerifyOptions::default())
-    .expect("materials verified");
+  let result: GamedataMaterialsVerificationResult =
+    MaterialsVerifier::new(&project, &GamedataProjectVerifyOptions::default())
+      .verify()
+      .expect("materials verified");
 
   fs::remove_dir_all(root).unwrap();
 
@@ -65,7 +68,7 @@ fn passes_a_library_the_engine_loads_and_configs_that_resolve_against_it() {
     messages(&result)
   );
   assert_eq!(
-    result.get_failure_message(),
+    result.get_summary(),
     "7 materials, 1 pairs; 9/9 material references valid"
   );
 }
@@ -75,7 +78,7 @@ fn fails_without_a_library() {
   let result: GamedataMaterialsVerificationResult = verify("missing", None, "");
 
   assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
-  assert_eq!(result.get_failure_message(), "Game material library unreadable");
+  assert_eq!(result.get_summary(), "Game material library unreadable");
   assert_eq!(result.get_findings()[0].rule_id().to_string(), "materials.library");
 }
 
@@ -126,7 +129,7 @@ fn reports_a_config_naming_an_undefined_material() {
     ["materials.reference: Unknown game material: [m_dog] material = creatures\\medium"]
   );
   assert_eq!(
-    result.get_failure_message(),
+    result.get_summary(),
     "7 materials, 1 pairs; 7/8 material references valid"
   );
 }

@@ -34,14 +34,14 @@ impl GamedataCheckResult for GamedataAnimationsVerificationResult {
     ])
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}, {}, {}, {}, {}",
-      self.player_hud_animations.get_failure_message(),
-      self.hud_item_animations.get_failure_message(),
-      self.hud_motion_collisions.get_failure_message(),
-      self.object_motions.get_failure_message(),
-      self.post_process_effects.get_failure_message()
+      self.player_hud_animations.get_summary(),
+      self.hud_item_animations.get_summary(),
+      self.hud_motion_collisions.get_summary(),
+      self.object_motions.get_summary(),
+      self.post_process_effects.get_summary()
     )
   }
 

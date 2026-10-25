@@ -8,6 +8,7 @@ use xrf_ltx::{Ltx, LtxProject};
 use xrf_spawn::{AlifeObjectInherited, SpawnFile, XRayByteOrder};
 use xrf_utils::format_path;
 
+use crate::project::gamedata_check::GamedataCheck;
 use crate::project::materials::verify_materials_result::GamedataMaterialsVerificationResult;
 use crate::{
   GamedataCheckResult, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule,
@@ -20,27 +21,14 @@ pub(crate) struct MaterialsVerifier<'a> {
   project: &'a GamedataProject,
 }
 
-impl<'a> MaterialsVerifier<'a> {
-  /// Materials the engine looks up by names of its own, and whether it asserts the material is dynamic: `default` in
-  /// `Level_load.cpp` and `material_manager.cpp`, `default_object` in `ModelPool.cpp`, the small box in
-  /// `PHGeometryOwner.cpp`, and `WEAPON_MATERIAL_NAME` and `KNIFE_MATERIAL_NAME`. A name missing from the library reads
-  /// as an index past its end in a release build.
-  const ENGINE_MATERIALS: [(&'static str, bool); 5] = [
-    ("default", false),
-    ("default_object", true),
-    ("objects\\small_box", false),
-    ("objects\\bullet", false),
-    ("objects\\knife", false),
-  ];
+impl<'a> GamedataCheck<'a> for MaterialsVerifier<'a> {
+  type Result = GamedataMaterialsVerificationResult;
 
-  /// The key `CMaterialManager::Load` reads an actor's or a monster's material from.
-  const MATERIAL_KEY: &'static str = "material";
-
-  pub(crate) fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
+  fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
     Self { options, project }
   }
 
-  pub(crate) fn verify(&self) -> XrfResult<GamedataMaterialsVerificationResult> {
+  fn verify(&self) -> XrfResult<GamedataMaterialsVerificationResult> {
     self.options.job.check_cancelled()?;
 
     xrf_output::heading!(self.options.output, "Verify materials:");
@@ -80,13 +68,30 @@ impl<'a> MaterialsVerifier<'a> {
       self.options.output,
       "Verified gamedata materials in {}, {}",
       xrf_utils::format_duration(result.duration),
-      result.get_failure_message()
+      result.get_summary()
     );
 
     self.options.job.check_cancelled()?;
 
     Ok(result)
   }
+}
+
+impl MaterialsVerifier<'_> {
+  /// Materials the engine looks up by names of its own, and whether it asserts the material is dynamic: `default` in
+  /// `Level_load.cpp` and `material_manager.cpp`, `default_object` in `ModelPool.cpp`, the small box in
+  /// `PHGeometryOwner.cpp`, and `WEAPON_MATERIAL_NAME` and `KNIFE_MATERIAL_NAME`. A name missing from the library reads
+  /// as an index past its end in a release build.
+  const ENGINE_MATERIALS: [(&'static str, bool); 5] = [
+    ("default", false),
+    ("default_object", true),
+    ("objects\\small_box", false),
+    ("objects\\bullet", false),
+    ("objects\\knife", false),
+  ];
+
+  /// The key `CMaterialManager::Load` reads an actor's or a monster's material from.
+  const MATERIAL_KEY: &'static str = "material";
 
   fn verify_engine_materials(&self, library: &GameMtlFile, result: &mut GamedataMaterialsVerificationResult) {
     for (name, is_dynamic_required) in Self::ENGINE_MATERIALS {

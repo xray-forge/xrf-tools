@@ -19,7 +19,7 @@ impl GamedataCheckResult for GamedataScriptsVerificationResult {
     GamedataVerificationStatus::from_is_valid(self.invalid_scripts_count == 0)
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}/{} scripts valid",
       self.checked_scripts_count - self.invalid_scripts_count,

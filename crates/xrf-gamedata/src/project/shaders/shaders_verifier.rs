@@ -7,9 +7,12 @@ use xrf_extension::XrayExtension;
 use xrf_shaders::{ShaderRenderer, XRayShader, XRayShaderScript, is_shader_source_path};
 use xrf_vfs::XraySearch;
 
+use crate::project::gamedata_check::GamedataCheck;
 use crate::project::shaders::gamedata_shader_source_loader::GamedataShaderSourceLoader;
 use crate::project::shaders::verify_shaders_result::GamedataShadersVerificationResult;
-use crate::{GamedataCheckResult, GamedataFindingFactory, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{
+  GamedataCheckResult, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule,
+};
 
 /// Logical directory holding the renderer shader trees.
 pub(crate) const SHADERS_DIRECTORY: &str = "shaders";
@@ -21,8 +24,27 @@ pub(crate) struct ShadersVerifier<'a> {
   search: &'a XraySearch,
 }
 
+impl<'a> GamedataCheck<'a> for ShadersVerifier<'a> {
+  type Result = GamedataShadersVerificationResult;
+
+  fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
+    Self::over(project.search(), options)
+  }
+
+  fn verify(&self) -> XrfResult<GamedataShadersVerificationResult> {
+    self.options.job.check_cancelled()?;
+
+    let result: GamedataShadersVerificationResult = self.verify_renderers();
+
+    self.options.job.check_cancelled()?;
+
+    Ok(result)
+  }
+}
+
 impl<'a> ShadersVerifier<'a> {
-  pub(crate) fn new(search: &'a XraySearch, options: &'a GamedataProjectVerifyOptions) -> Self {
+  /// A verifier over any search holding shader trees, which a project lends its own.
+  pub(crate) fn over(search: &'a XraySearch, options: &'a GamedataProjectVerifyOptions) -> Self {
     Self {
       options,
       search,
@@ -30,7 +52,8 @@ impl<'a> ShadersVerifier<'a> {
     }
   }
 
-  pub(crate) fn verify(&self) -> GamedataShadersVerificationResult {
+  /// Every renderer's shader tree, a source that does not read failing only itself.
+  pub(crate) fn verify_renderers(&self) -> GamedataShadersVerificationResult {
     xrf_output::heading!(self.options.output, "Verify renderer shaders:");
 
     let started_at: Instant = Instant::now();
@@ -53,7 +76,7 @@ impl<'a> ShadersVerifier<'a> {
       self.options.output,
       "Verified renderer shaders in {}, {}",
       xrf_utils::format_duration(result.duration),
-      result.get_failure_message()
+      result.get_summary()
     );
 
     result
@@ -304,10 +327,10 @@ mod tests {
     write_file(&shaders.join("shared/common.h"), "float value;\n")?;
 
     let search: XraySearch = mount(&root)?;
-    let result = ShadersVerifier::new(&search, &options).verify();
+    let result = ShadersVerifier::over(&search, &options).verify_renderers();
 
     assert_eq!(
-      result.get_failure_message(),
+      result.get_summary(),
       "1 shader scripts and 2 shader sources checked, 0 problems"
     );
     assert!(result.get_findings().is_empty());
@@ -332,11 +355,11 @@ mod tests {
     )?;
 
     let search: XraySearch = mount(&root)?;
-    let result = ShadersVerifier::new(&search, &options).verify();
+    let result = ShadersVerifier::over(&search, &options).verify_renderers();
 
     assert!(result.get_findings().is_empty());
     assert_eq!(
-      result.get_failure_message(),
+      result.get_summary(),
       "1 shader scripts and 0 shader sources checked, 0 problems",
       "a renderer holding only scripts is still checked, not reported absent"
     );
@@ -362,7 +385,7 @@ mod tests {
     write_file(&shaders.join("gl/second.h"), "#include \"first.h\"\n")?;
 
     let search: XraySearch = mount(&root)?;
-    let result = ShadersVerifier::new(&search, &options).verify();
+    let result = ShadersVerifier::over(&search, &options).verify_renderers();
     let rule_ids: Vec<String> = result
       .get_findings()
       .iter()

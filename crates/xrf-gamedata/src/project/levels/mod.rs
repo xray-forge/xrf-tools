@@ -9,7 +9,6 @@ pub(crate) mod level_references_verifier;
 pub(crate) mod level_roster;
 pub(crate) mod levels_verifier;
 pub(crate) mod roster_level;
-pub(crate) mod verify_levels;
 pub(crate) mod verify_levels_result;
 
 #[cfg(test)]

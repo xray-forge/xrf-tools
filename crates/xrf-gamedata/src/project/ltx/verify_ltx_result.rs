@@ -24,7 +24,7 @@ impl GamedataCheckResult for GamedataLtxVerificationResult {
     )
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}/{} LTX files formatted; {}/{} sections valid",
       self.format_result.valid_files,

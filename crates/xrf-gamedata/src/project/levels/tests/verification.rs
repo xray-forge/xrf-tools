@@ -5,7 +5,9 @@ use std::sync::atomic::Ordering;
 
 use xrf_test_utils::GeneratedResources;
 
+use crate::project::gamedata_check::GamedataCheck;
 use crate::project::levels::level_engine_constants::{AI_CURRENT_VERSION, LEVEL_PRODUCTION_VERSION};
+use crate::project::levels::levels_verifier::LevelsVerifier;
 use crate::project::levels::tests::fixtures::*;
 use crate::project::levels::verify_levels_result::GamedataLevelsVerificationResult;
 use crate::project::tests::fixtures::engine_game_materials;
@@ -31,7 +33,7 @@ fn passes_on_a_consistent_level_tree() {
   assert_eq!(result.roster_levels_count, 1);
   assert_eq!(result.checked_levels_count, 1);
   assert_eq!(
-    result.get_failure_message(),
+    result.get_summary(),
     "1/1 level bundles valid; 2/2 level shader references valid"
   );
 }
@@ -414,7 +416,9 @@ fn fails_the_check_when_the_game_graph_cannot_be_read() {
   .unwrap();
 
   assert!(
-    project.verify_levels(&GamedataProjectVerifyOptions::default()).is_err(),
+    LevelsVerifier::new(&project, &GamedataProjectVerifyOptions::default())
+      .verify()
+      .is_err(),
     "Expected an unreadable game graph to fail the check instead of passing it"
   );
 }

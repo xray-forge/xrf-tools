@@ -6,7 +6,6 @@ use xrf_output::{OutputSequence, OutputSlot, OutputVerbosity};
 use xrf_utils::format_path;
 
 use crate::project::gamedata_check_schedule::GamedataCheckSchedule;
-use crate::project::job_phases::GAMEDATA_PHASE_CHECKS;
 use crate::{
   GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationCheckReport, GamedataVerificationReport,
   GamedataVerificationType,
@@ -14,6 +13,12 @@ use crate::{
 
 /// How many checks may be working at once while somebody is reading.
 const CHECK_WINDOW: usize = 6;
+
+/// Phase a verification reports while it works through the checks it was asked for.
+///
+/// Named for the units it counts rather than for the operation, because the checks nested inside it are verifications
+/// too: a stack reading `verify / verify` would say nothing about which level was which.
+const PHASE_CHECKS: &str = "checks";
 
 impl GamedataProject {
   pub fn verify(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<GamedataVerificationReport> {
@@ -48,7 +53,7 @@ impl GamedataProject {
     // One level over the selected checks, and each check that reports its own work nests inside it: the LTX checks
     // enter their own file-level scopes on this same handle, so a run reads as `checks 3/11` above `verify 400/2000`
     // rather than as one bar that sits still for minutes. This is the first consumer to nest across two crates.
-    let verifying: xrf_job::JobScope = options.job.enter(GAMEDATA_PHASE_CHECKS, Some(checks.len() as u64));
+    let verifying: xrf_job::JobScope = options.job.enter(PHASE_CHECKS, Some(checks.len() as u64));
 
     // Checks run together on whatever pool the caller installed, because most of them cannot use one on their own:
     // eight of the fifteen are strictly serial, and on Anomaly they account for 6.7 of the 15 seconds a sweep takes.

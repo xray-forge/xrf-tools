@@ -10,6 +10,8 @@ use xrf_gamemtl::GameMtlFile;
 use xrf_test_utils::GeneratedResources;
 
 use super::sounds_verification_result::GamedataSoundsVerificationResult;
+use super::sounds_verifier::SoundsVerifier;
+use crate::project::gamedata_check::GamedataCheck;
 use crate::project::tests::fixtures::{engine_game_materials, game_materials_bytes};
 use crate::{GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions};
 
@@ -46,15 +48,15 @@ fn open_project_with_materials(
 }
 
 fn verify(project: &GamedataProject) -> GamedataSoundsVerificationResult {
-  project
-    .verify_sounds(&GamedataProjectVerifyOptions::default())
+  SoundsVerifier::new(project, &GamedataProjectVerifyOptions::default())
+    .verify()
     .expect("sounds verified")
 }
 
 #[test]
 fn resolves_a_sound_reference_declared_in_a_config() {
   let (root, project) = open_project("resolved", "[wpn_ak74]\nsnd_shoot = weapons\\ak74_shot\n");
-  let message: String = verify(&project).get_failure_message();
+  let message: String = verify(&project).get_summary();
 
   assert!(
     message.contains("1/1 sound references valid"),
@@ -73,7 +75,7 @@ fn resolves_each_sound_material_pairs_list_once() {
 
   let (root, project) = open_project_with_materials("pairs", "", Some(&library));
   let result: GamedataSoundsVerificationResult = verify(&project);
-  let message: String = result.get_failure_message();
+  let message: String = result.get_summary();
 
   assert!(message.contains("1/2 sound references valid"), "{message}");
   assert_eq!(
@@ -87,7 +89,7 @@ fn resolves_each_sound_material_pairs_list_once() {
 #[test]
 fn reports_a_config_reference_with_no_sound_file() {
   let (root, project) = open_project("missing", "[wpn_ak74]\nsnd_shoot = weapons\\missing\n");
-  let message: String = verify(&project).get_failure_message();
+  let message: String = verify(&project).get_summary();
 
   assert!(
     message.contains("0/1 sound references valid"),

@@ -1,12 +1,13 @@
 use std::marker::PhantomData;
 
-use rayon::prelude::*;
 use xrf_animation_envelope::AnimationEnvelope;
-use xrf_error::{XrfError, XrfResult};
-use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
+use xrf_error::XrfResult;
+use xrf_output::OutputOptions;
 
 use crate::project::animations::envelopes::envelope_animation::EnvelopeAnimation;
 use crate::project::animations::envelopes::envelope_animations_verification_result::GamedataEnvelopeAnimationsVerificationResult;
+use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
+use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions};
 
 /// Reads every file of one envelope animation format the game holds, writes each back, and evaluates each channel.
@@ -37,46 +38,23 @@ impl<'a, F: EnvelopeAnimation> EnvelopeAnimationsVerifier<'a, F> {
       .map(|location| location.get_logical_path().to_string())
       .collect();
 
-    let checked_files_count: u32 = u32::try_from(paths.len())
-      .map_err(|_| XrfError::new_verify_error(format!("{} count exceeds the supported result range", F::NAME)))?;
-
-    // Files are read in parallel, so each one logs into its listed position and the sequence releases them in path
-    // order rather than in the order the workers finished.
-    let sequence: OutputSequence = OutputSequence::new(&self.options.output, paths.len());
-
-    let file_findings: Vec<Vec<Finding>> = paths
-      .par_iter()
-      .enumerate()
-      .filter(|_| !self.options.job.is_cancelled())
-      .map(|(index, path)| {
-        let slot: OutputSlot = sequence.new_slot(index);
-
-        self.verify_file(slot.get_output(), path)
-      })
-      .collect();
+    let outcome: GamedataAssetSweepOutcome =
+      GamedataAssetSweep::new(self.options).run(&paths, |options, path| self.verify_file(&options.output, path))?;
 
     self.options.job.check_cancelled()?;
-
-    let invalid_files_count: u32 = u32::try_from(file_findings.iter().filter(|findings| !findings.is_empty()).count())
-      .map_err(|_| {
-        XrfError::new_verify_error(format!("Invalid {} count exceeds the supported result range", F::NAME))
-      })?;
-    let mut findings: Vec<Finding> = file_findings.into_iter().flatten().collect();
 
     xrf_output::info!(
       self.options.output,
       "Verified gamedata {}, {}/{} valid",
       F::PLURAL_NAME,
-      checked_files_count - invalid_files_count,
-      checked_files_count,
+      outcome.checked_count - outcome.invalid_count,
+      outcome.checked_count,
     );
 
-    findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_rule_and_message);
-
     Ok(GamedataEnvelopeAnimationsVerificationResult {
-      checked_files_count,
-      findings,
-      invalid_files_count,
+      checked_files_count: outcome.checked_count,
+      findings: outcome.findings,
+      invalid_files_count: outcome.invalid_count,
       format: PhantomData,
     })
   }

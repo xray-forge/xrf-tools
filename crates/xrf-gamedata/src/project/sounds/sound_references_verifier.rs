@@ -9,7 +9,6 @@ use xrf_utils::format_path;
 use xrf_vfs::{XrayAssetType, XrayLogicalPath};
 use xrf_xml::{XmlDocument, XmlParseOptions};
 
-use crate::project::gamedata_project::CONFIGS_DIRECTORY;
 use crate::project::sounds::sound_references_verification_result::GamedataSoundReferencesVerificationResult;
 use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
@@ -107,7 +106,11 @@ impl<'a> SoundReferencesVerifier<'a> {
 
       let logical_path: &XrayLogicalPath = location.get_logical_path();
 
-      if !logical_path.is_under(CONFIGS_DIRECTORY).unwrap_or(false) || !logical_path.has_extension(XrayExtension::Xml) {
+      if !logical_path
+        .is_under(GamedataProject::CONFIGS_DIRECTORY)
+        .unwrap_or(false)
+        || !logical_path.has_extension(XrayExtension::Xml)
+      {
         continue;
       }
 

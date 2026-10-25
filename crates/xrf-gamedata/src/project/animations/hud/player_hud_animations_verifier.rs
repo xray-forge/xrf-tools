@@ -1,21 +1,18 @@
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use rayon::prelude::*;
-use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, LtxResolution, Section};
-use xrf_ogf::OgfFile;
-use xrf_omf::OmfFile;
-use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
-use xrf_spawn::XRayByteOrder;
-use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::project::animations::hud::player_hud_animations_verification_result::GamedataPlayerHudAnimationsVerificationResult;
-use crate::project::weapons::weapons_utils::{get_weapon_animation_name, is_player_hud_section, is_weapon_section};
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
+use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
+use crate::project::gamedata_item_section::GamedataItemSection;
+use crate::project::gamedata_visual_motions::GamedataVisualMotions;
+use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
+/// Verifies the player hands: their visual plays motions, and every motion a weapon's HUD section asks of them.
 pub(crate) struct PlayerHudAnimationsVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,
   project: &'a GamedataProject,
@@ -36,269 +33,130 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
     let system_ltx_path: PathBuf = self.project.ltx_project.system_ltx_report_path()?;
     let player_hud_sections: Vec<(&str, &Section)> = system_ltx
       .iter()
-      .filter(|(_, section)| is_player_hud_section(section))
+      .filter(|(_, section)| GamedataItemSection::is_player_hud(section))
       .collect();
 
-    let checked_huds_count: u32 = u32::try_from(player_hud_sections.len())
-      .map_err(|_| XrfError::new_verify_error("Player HUD count exceeds the supported result range"))?;
+    let outcome: GamedataAssetSweepOutcome =
+      GamedataAssetSweep::new(self.options).run(&player_hud_sections, |options, (section_name, section)| {
+        xrf_output::verbose!(options.output, "Verify player hud config [{section_name}]");
 
-    // Sections are verified in parallel, so each one logs into its listed position and the sequence
-    // releases them in section order rather than in the order the workers finished.
-    let sequence: OutputSequence = OutputSequence::new(&self.options.output, player_hud_sections.len());
+        self
+          .verify_player_hud(system_ltx, section_name, section)
+          .into_iter()
+          .map(|message| {
+            xrf_output::error!(options.output, "{message}");
 
-    let mut findings: Vec<Finding> = player_hud_sections
-      .par_iter()
-      .enumerate()
-      .filter(|_| !self.options.job.is_cancelled())
-      .filter_map(|(index, (section_name, section))| {
-        let slot: OutputSlot = sequence.new_slot(index);
-        let output: &OutputOptions = slot.get_output();
-
-        xrf_output::verbose!(output, "Verify player hud config [{section_name}]");
-
-        if self
-          .verify_player_hud_animation(output, system_ltx, section_name, section)
-          .is_ok_and(|it| it)
-        {
-          return None;
-        }
-
-        xrf_output::info!(output, "Player hud config [{section_name}] is invalid");
-
-        Some(GamedataFindingFactory::for_asset(
-          GamedataVerificationRule::AnimationsPlayerHud,
-          &system_ltx_path,
-          format!("Player HUD section [{section_name}] has invalid animations"),
-        ))
-      })
-      .collect();
+            GamedataFindingFactory::for_asset(GamedataVerificationRule::AnimationsPlayerHud, &system_ltx_path, message)
+          })
+          .collect()
+      })?;
 
     self.options.job.check_cancelled()?;
-
-    let invalid_huds_count: u32 = u32::try_from(findings.len())
-      .map_err(|_| XrfError::new_verify_error("Invalid player HUD count exceeds the supported result range"))?;
 
     xrf_output::info!(
       self.options.output,
       "Verified gamedata huds, {}/{} valid",
-      checked_huds_count - invalid_huds_count,
-      checked_huds_count,
+      outcome.checked_count - outcome.invalid_count,
+      outcome.checked_count,
     );
 
-    findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
-
-    self.options.job.check_cancelled()?;
-
     Ok(GamedataPlayerHudAnimationsVerificationResult {
-      checked_huds_count,
-      findings,
-      invalid_huds_count,
+      checked_huds_count: outcome.checked_count,
+      findings: outcome.findings,
+      invalid_huds_count: outcome.invalid_count,
     })
   }
 
-  fn verify_player_hud_animation(
-    &self,
-    output: &OutputOptions,
-    system_ltx: &Ltx,
-    section_name: &str,
-    section: &Section,
-  ) -> XrfResult<bool> {
-    self.options.job.check_cancelled()?;
+  /// Every problem with one player HUD section, a message each.
+  fn verify_player_hud(&self, system_ltx: &Ltx, section_name: &str, section: &Section) -> Vec<String> {
+    let mut messages: Vec<String> = Vec::new();
+    let motions: BTreeSet<String> = self.read_motions(section_name, section, &mut messages);
 
-    let mut is_valid: bool = true;
-    let mut hud_motions: HashSet<String> = HashSet::new();
+    if motions.is_empty() {
+      messages.push(format!("Player HUD section [{section_name}] has no animations"));
 
-    // Resolved and read through the VFS, so an archived hands visual and its banks are checked too.
-    if let Some(visual_path) = &section.get("visual").and_then(|it| {
-      self
-        .project
-        .ogf(it)
-        .ok()
-        .flatten()
-        .map(|location| location.get_logical_path().to_string())
-    }) {
-      xrf_output::verbose!(
-        output,
-        "Read player hud motion refs - [{}] {}",
-        section_name,
-        visual_path
-      );
+      return messages;
+    }
 
-      match self.read_motion_refs(visual_path) {
-        Ok(linked_visuals) => {
-          xrf_output::verbose!(
-            output,
-            "Player hud ogf [{} contains {} linked omf files to check",
-            visual_path,
-            linked_visuals.len()
-          );
-
-          for linked_visual in &linked_visuals {
-            self.options.job.check_cancelled()?;
-
-            match self
-              .project
-              .read_parsed(linked_visual, |chunk| {
-                OmfFile::read_from_chunk::<XRayByteOrder, _>(chunk)
-              })
-              .map(|omf| {
-                omf
-                  .get_motion_names()
-                  .into_iter()
-                  .map(str::to_owned)
-                  .collect::<Vec<String>>()
-              }) {
-              Ok(motions) => {
-                if motions.is_empty() {
-                  xrf_output::error!(output, "No motions in visual: [{}] - {}", section_name, linked_visual);
-
-                  is_valid = false;
-                }
-
-                for motion in motions {
-                  self.options.job.check_cancelled()?;
-
-                  hud_motions.insert(motion);
-                }
-              }
-              Err(error) => {
-                xrf_output::error!(
-                  output,
-                  "Failed to read linked visual: [{}] - {} - {}",
-                  section_name,
-                  linked_visual,
-                  error
-                );
-
-                is_valid = false;
-              }
-            }
-          }
-        }
-        Err(error) => {
-          xrf_output::error!(
-            output,
-            "Failed to read linked visuals: [{}] - {} - {}",
-            section_name,
-            visual_path,
-            error
-          );
-
-          is_valid = false;
-        }
+    for (weapon_name, weapon) in system_ltx.iter() {
+      if self.options.job.is_cancelled() {
+        break;
       }
-    } else {
-      xrf_output::error!(
-        output,
-        "Not found hud visual: [{}] - {:?}",
-        section_name,
-        section.get("visual")
-      );
 
-      is_valid = false;
-    }
-
-    if hud_motions.is_empty() {
-      xrf_output::error!(output, "Hud [{section_name}] contains no animations");
-
-      is_valid = false;
-    } else if !self
-      .verify_weapon_animations(output, system_ltx, section_name, &hud_motions)
-      .is_ok_and(|it| it)
-    {
-      xrf_output::error!(output, "Hud [{section_name}] failed weapons check");
-
-      is_valid = false;
-    }
-
-    self.options.job.check_cancelled()?;
-
-    Ok(is_valid)
-  }
-
-  fn verify_weapon_animations(
-    &self,
-    output: &OutputOptions,
-    system_ltx: &Ltx,
-    section_name: &str,
-    motions: &HashSet<String>,
-  ) -> XrfResult<bool> {
-    self.options.job.check_cancelled()?;
-
-    xrf_output::verbose!(output, "Verify weapons animations for [{section_name}]");
-
-    let mut is_valid: bool = true;
-
-    for (weapon_section_name, weapon_section) in system_ltx.iter() {
-      self.options.job.check_cancelled()?;
-
-      if !is_weapon_section(weapon_section) {
+      // A weapon without a HUD section the hands can play is reported by the weapons check.
+      let Some(hud) = weapon
+        .get("hud")
+        .filter(|_| GamedataItemSection::is_weapon(weapon))
+        .and_then(|hud| system_ltx.section(hud))
+      else {
         continue;
-      }
+      };
 
-      if let Some(hud_section_name) = weapon_section.get("hud") {
-        if let Some(hud_section) = system_ltx.section(hud_section_name) {
-          for (field_name, field_value) in hud_section {
-            self.options.job.check_cancelled()?;
-
-            if !field_name.starts_with("anm_") {
-              continue;
-            }
-
-            let weapon_motion_name: String = get_weapon_animation_name(field_value);
-
-            if !motions.contains(&weapon_motion_name) {
-              xrf_output::error!(
-                output,
-                "Hud [{section_name}] weapon [{weapon_section_name}] {field_name}={weapon_motion_name} -> animation motion is not found"
-              );
-
-              is_valid = false;
-            }
-          }
-        } else {
-          xrf_output::verbose!(
-            output,
-            "Not able to check weapon hud section [{section_name}] -> [{weapon_section_name}] [{hud_section_name}]"
-          );
+      for (field_name, field_value) in hud {
+        if !field_name.starts_with("anm_") {
+          continue;
         }
-      } else {
-        xrf_output::verbose!(
-          output,
-          "Not able to check weapon hud [{section_name}] -> [{weapon_section_name}] hud"
-        );
+
+        let motion: &str = GamedataItemSection::get_motion_name(field_value);
+
+        if !motions.contains(motion) {
+          messages.push(format!(
+            "Player HUD section [{section_name}] has no motion '{motion}', which weapon [{weapon_name}] plays as {field_name}"
+          ));
+        }
       }
     }
 
-    self.options.job.check_cancelled()?;
-
-    Ok(is_valid)
+    messages
   }
 
-  fn read_motion_refs(&self, path: &str) -> XrfResult<HashSet<String>> {
-    self.options.job.check_cancelled()?;
+  /// The motions the hands visual plays, each problem reading them added to `messages`. Resolved and read through the
+  /// VFS, so an archived hands visual and its banks are checked too.
+  fn read_motions(&self, section_name: &str, section: &Section, messages: &mut Vec<String>) -> BTreeSet<String> {
+    let mut motions: BTreeSet<String> = BTreeSet::new();
+    let visual: &str = section.get("visual").unwrap_or_default();
 
-    // todo: Fix and use read_parsed.
-    // Narrow read: a full visual parse fails on visuals whose geometry will not read, while their motion refs chunk
-    // reads fine, and this check must still see those refs.
-    let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(self.project.read_bytes(path)?)?;
-    let motion_refs: Vec<String> = OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut chunk)?;
+    let Some(visual_path) = self
+      .project
+      .ogf(visual)
+      .ok()
+      .flatten()
+      .map(|location| location.get_logical_path().to_string())
+    else {
+      messages.push(format!(
+        "Player HUD section [{section_name}] visual '{visual}' is not found"
+      ));
 
-    let mut assets: HashSet<String> = HashSet::new();
+      return motions;
+    };
 
-    for motion_ref in &motion_refs {
-      self.options.job.check_cancelled()?;
+    let refs: Vec<String> = match GamedataVisualMotions::read_refs(self.project, &visual_path) {
+      Ok(Some(refs)) => refs,
+      Ok(None) => return motions,
+      Err(error) => {
+        messages.push(format!(
+          "Player HUD section [{section_name}] visual '{visual_path}' motion refs do not read: {error}"
+        ));
 
-      for location in self.project.resolve_all(AssetType::Omf, motion_ref)? {
-        self.options.job.check_cancelled()?;
-        if location.is_type(AssetType::Omf) {
-          assets.insert(location.get_logical_path().to_string());
+        return motions;
+      }
+    };
+
+    // A ref that resolves to no bank is the meshes check's finding, against the visual that names it.
+    for motion_ref in &refs {
+      for bank in GamedataVisualMotions::resolve_banks(self.project, motion_ref).unwrap_or_default() {
+        match GamedataVisualMotions::read_names(self.project, &bank) {
+          Ok(names) if names.is_empty() => messages.push(format!(
+            "Player HUD section [{section_name}] motion bank '{bank}' holds no motions"
+          )),
+          Ok(names) => motions.extend(names),
+          Err(error) => messages.push(format!(
+            "Player HUD section [{section_name}] motion bank '{bank}' does not read: {error}"
+          )),
         }
       }
     }
 
-    self.options.job.check_cancelled()?;
-
-    Ok(assets)
+    motions
   }
 }

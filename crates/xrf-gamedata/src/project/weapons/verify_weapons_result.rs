@@ -19,7 +19,7 @@ impl GamedataCheckResult for GamedataWeaponVerificationResult {
     GamedataVerificationStatus::from_is_valid(self.invalid_weapons_count == 0)
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}/{} weapons valid",
       self.checked_weapons_count - self.invalid_weapons_count,

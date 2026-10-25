@@ -125,7 +125,7 @@ mod tests {
       self.status
     }
 
-    fn get_failure_message(&self) -> String {
+    fn get_summary(&self) -> String {
       self.summary.clone()
     }
 
@@ -210,7 +210,7 @@ mod tests {
       Ok(TestCheckResult {
         findings: vec![
           GamedataFindingFactory::for_asset(GamedataVerificationRule::ScriptsSyntax, "scripts/z.script", "same"),
-          GamedataFindingFactory::for_asset(GamedataVerificationRule::ScriptsPath, "scripts/a.script", "same"),
+          GamedataFindingFactory::for_asset(GamedataVerificationRule::ScriptsRead, "scripts/a.script", "same"),
           GamedataFindingFactory::for_asset(GamedataVerificationRule::ScriptsSyntax, "scripts/a.script", "same"),
         ],
         status: GamedataVerificationStatus::Failed,
@@ -222,7 +222,7 @@ mod tests {
 
     assert_eq!(report.status(), Status::Failed);
     assert_eq!(report.checks()[0].id().as_str(), "scripts");
-    assert_eq!(report.checks()[0].findings()[0].rule_id().as_str(), "scripts.path");
+    assert_eq!(report.checks()[0].findings()[0].rule_id().as_str(), "scripts.read");
     assert_eq!(report.checks()[0].findings()[1].rule_id().as_str(), "scripts.syntax");
     assert_eq!(report.checks()[0].findings()[2].subject(), Some("scripts/z.script"));
   }

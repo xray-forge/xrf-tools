@@ -2,6 +2,7 @@ use std::time::Instant;
 
 use xrf_error::XrfResult;
 
+use crate::project::gamedata_check::GamedataCheck;
 use crate::project::textures::texture_bumps_verifier::TextureBumpsVerifier;
 use crate::project::textures::texture_files_verifier::TextureFilesVerifier;
 use crate::project::textures::verify_textures_result::GamedataTexturesVerificationResult;
@@ -13,12 +14,14 @@ pub(crate) struct TexturesVerifier<'a> {
   project: &'a GamedataProject,
 }
 
-impl<'a> TexturesVerifier<'a> {
-  pub(crate) fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
+impl<'a> GamedataCheck<'a> for TexturesVerifier<'a> {
+  type Result = GamedataTexturesVerificationResult;
+
+  fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
     Self { options, project }
   }
 
-  pub(crate) fn verify(&self) -> XrfResult<GamedataTexturesVerificationResult> {
+  fn verify(&self) -> XrfResult<GamedataTexturesVerificationResult> {
     self.options.job.check_cancelled()?;
 
     xrf_output::heading!(self.options.output, "Verify textures:");
@@ -35,7 +38,7 @@ impl<'a> TexturesVerifier<'a> {
       self.options.output,
       "Verified gamedata textures in {}, {}",
       xrf_utils::format_duration(result.duration),
-      result.get_failure_message()
+      result.get_summary()
     );
 
     self.options.job.check_cancelled()?;

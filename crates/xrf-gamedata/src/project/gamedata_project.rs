@@ -15,10 +15,6 @@ use xrf_vfs::{
 };
 
 use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
-use crate::project::levels::level_engine_constants::SPAWNS_DIRECTORY;
-
-/// Logical directory holding a project's configs.
-pub(crate) const CONFIGS_DIRECTORY: &str = "configs";
 
 /// Root config the engine loads, and the one asset whose absence means this is not a usable project.
 const SYSTEM_LTX_LOGICAL_PATH: &str = "configs\\system.ltx";
@@ -39,6 +35,12 @@ pub struct GamedataProject {
 }
 
 impl GamedataProject {
+  /// Logical directory holding a project's configs.
+  pub(crate) const CONFIGS_DIRECTORY: &'static str = "configs";
+
+  /// Logical directory holding the merged spawn files that carry the game graph and alife objects.
+  pub(crate) const SPAWNS_DIRECTORY: &'static str = "spawns";
+
   pub fn root(&self) -> &Path {
     &self.root
   }
@@ -108,9 +110,9 @@ impl GamedataProject {
 
     let ltx_project: LtxProject = LtxProject::open_at_search_opt(
       // The configs directory, not the game root: this project *is* the config tree, and callers join onto its root.
-      options.root.join(CONFIGS_DIRECTORY),
+      options.root.join(Self::CONFIGS_DIRECTORY),
       &search,
-      Some(CONFIGS_DIRECTORY),
+      Some(Self::CONFIGS_DIRECTORY),
       LtxProjectOptions {
         dialect: options.dialect.clone(),
         // Several verifiers read `system.ltx` and the same config roots, so resolving one twice would be paid work.
@@ -261,7 +263,12 @@ impl GamedataProject {
     self
       .entries_of_type(XrayAssetType::Spawn)
       .into_iter()
-      .filter(|location| location.get_logical_path().is_under(SPAWNS_DIRECTORY).unwrap_or(false))
+      .filter(|location| {
+        location
+          .get_logical_path()
+          .is_under(Self::SPAWNS_DIRECTORY)
+          .unwrap_or(false)
+      })
       .map(|location| location.get_logical_path().to_string())
       .collect()
   }
