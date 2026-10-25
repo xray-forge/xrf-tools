@@ -5,17 +5,15 @@ use wgpu::hal::api::Vulkan;
 use xrf_error::XrfResult;
 
 use crate::dlss_quality::DlssQuality;
-use crate::dlss_ray_inputs::DlssRayInputs;
-use crate::dlss_ray_preset::DlssRayPreset;
-use crate::ngx::bindings::*;
 #[cfg(windows)]
-use crate::ngx::d3d12_resource::to_d3d12_resource;
-use crate::ngx::ngx_commands::NgxCommands;
-use crate::ngx::ngx_feature::NgxFeature;
-use crate::ngx::ngx_result::check_ngx;
-use crate::ngx::ngx_sdk::NgxSdk;
-use crate::ngx::ngx_sdk_guard::NgxSdkGuard;
-use crate::ngx::vulkan_resource::to_ngx_resource;
+use crate::ngx::backend::ngx_d3d12_resource::NgxD3d12Resource;
+use crate::ngx::backend::ngx_vulkan_resource::NgxVulkanResource;
+use crate::ngx::bindings::*;
+use crate::ngx::feature::ngx_commands::NgxCommands;
+use crate::ngx::feature::ngx_feature::NgxFeature;
+use crate::ngx::sdk::ngx_sdk::NgxSdk;
+use crate::reconstruction::dlss_ray_inputs::DlssRayInputs;
+use crate::reconstruction::dlss_ray_preset::DlssRayPreset;
 
 /// NGX's ray reconstruction feature for one output: denoising and upscaling in one network, over the guides a frame
 /// gives it, and the render sizes it upscales from.
@@ -25,7 +23,8 @@ pub(crate) struct NgxRayReconstruction {
 }
 
 impl NgxRayReconstruction {
-  /// NGX's ray reconstruction render preset hints, one a quality, each set to the preset asked before a feature is made.
+  /// NGX's ray reconstruction render preset hints, one a quality, each set to the preset asked before a feature is
+  /// made.
   const PRESET_HINTS: [&'static [u8]; 6] = [
     NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_DLAA,
     NVSDK_NGX_Parameter_RayReconstruction_Hint_Render_Preset_Quality,
@@ -44,17 +43,21 @@ impl NgxRayReconstruction {
     flags: NVSDK_NGX_DLSS_Feature_Flags,
   ) -> XrfResult<Self> {
     let value: NVSDK_NGX_PerfQuality_Value = quality.to_value();
-    let [mut optimal, mut min, mut max] = Self::get_render_sizes(sdk, output, value)?;
+    // Ray reconstruction's own sizes on Windows, super resolution's where its D3D helpers are not compiled.
+    #[cfg(windows)]
+    let query = NGX_DLSSD_GET_OPTIMAL_SETTINGS;
+    #[cfg(not(windows))]
+    let query = NGX_DLSS_GET_OPTIMAL_SETTINGS;
+    let [optimal, min, max] = NgxFeature::query_render_sizes(
+      sdk,
+      (output, quality),
+      "DLSS has no render size for the output to reconstruct rays from",
+      query,
+    )?;
     // The Vulkan device NGX was started on, which it makes the feature on; none on D3D12, whose command list names it.
     // SAFETY: the raw device is only read for its handle, which outlives the call it is passed to.
     let vulkan_device: ash::vk::Device =
       unsafe { device.as_hal::<Vulkan>() }.map_or_else(ash::vk::Device::null, |hal| hal.raw_device().handle());
-
-    // DLAA draws at the output's size alone.
-    if quality == DlssQuality::Native {
-      (optimal, min, max) = (output, output, output);
-    }
-
     let mut parameters = NVSDK_NGX_DLSSD_Create_Params {
       InDenoiseMode: NVSDK_NGX_DLSS_Denoise_Mode_NVSDK_NGX_DLSS_Denoise_Mode_DLUnified,
       InRoughnessMode: NVSDK_NGX_DLSS_Roughness_Mode_NVSDK_NGX_DLSS_Roughness_Mode_Packed,
@@ -71,12 +74,8 @@ impl NgxRayReconstruction {
       sdk,
       (device, queue),
       "DLSS cannot reconstruct rays into the output",
-      // The preset hints go on the shared parameters under the lock the feature is made under, so another feature made
-      // meanwhile cannot change them first.
       |commands, ngx, handle| unsafe {
-        for hint in Self::PRESET_HINTS {
-          NVSDK_NGX_Parameter_SetUI(ngx, hint.as_ptr().cast(), preset.to_hint() as u32);
-        }
+        NgxFeature::set_preset_hints(ngx, &Self::PRESET_HINTS, preset.to_hint() as u32);
 
         match commands {
           NgxCommands::Vulkan(list) => {
@@ -94,46 +93,6 @@ impl NgxRayReconstruction {
     })
   }
 
-  /// The optimal, the smallest and the largest render size ray reconstruction upscales from into `output` at a
-  /// quality: its own on Windows, super resolution's where its D3D helpers are not compiled.
-  fn get_render_sizes(
-    sdk: &Arc<Mutex<NgxSdk>>,
-    output: (u32, u32),
-    value: NVSDK_NGX_PerfQuality_Value,
-  ) -> XrfResult<[(u32, u32); 3]> {
-    let locked: NgxSdkGuard<'_> = NgxSdkGuard::lock(sdk);
-    let mut optimal: (u32, u32) = (0, 0);
-    let mut max: (u32, u32) = (0, 0);
-    let mut min: (u32, u32) = (0, 0);
-    let mut sharpness: f32 = 0.0;
-
-    #[cfg(windows)]
-    let get = NGX_DLSSD_GET_OPTIMAL_SETTINGS;
-    #[cfg(not(windows))]
-    let get = NGX_DLSS_GET_OPTIMAL_SETTINGS;
-
-    check_ngx(
-      unsafe {
-        get(
-          locked.parameters,
-          output.0,
-          output.1,
-          value,
-          &mut optimal.0,
-          &mut optimal.1,
-          &mut max.0,
-          &mut max.1,
-          &mut min.0,
-          &mut min.1,
-          &mut sharpness,
-        )
-      },
-      "DLSS has no render size for the output to reconstruct rays from",
-    )?;
-
-    Ok([optimal, min, max])
-  }
-
   /// Records the reconstruction of `inputs`: their barriers into `encoder`, NGX's work into the command buffer
   /// answered, which must be submitted right after `encoder`'s commands.
   pub(crate) fn record(
@@ -142,23 +101,7 @@ impl NgxRayReconstruction {
     adapter: &wgpu::Adapter,
     inputs: &DlssRayInputs<'_>,
   ) -> XrfResult<wgpu::CommandBuffer> {
-    // NGX samples the inputs and writes the output as storage, in states wgpu then carries on from.
-    encoder.transition_resources(
-      std::iter::empty(),
-      inputs
-        .get_read()
-        .into_iter()
-        .map(|view| wgpu::TextureTransition {
-          texture: view.texture(),
-          selector: None,
-          state: wgpu::TextureUses::RESOURCE,
-        })
-        .chain([wgpu::TextureTransition {
-          texture: inputs.output.texture(),
-          selector: None,
-          state: wgpu::TextureUses::STORAGE_READ_WRITE,
-        }]),
-    );
+    NgxFeature::transition_inputs(encoder, inputs.get_read(), inputs.output);
 
     // NGX reads the matrices through pointers while it records, row after row.
     let mut world_to_view: [f32; 16] = inputs.world_to_view.transpose().to_cols_array();
@@ -183,7 +126,7 @@ impl NgxRayReconstruction {
     (world_to_view, view_to_clip): (*mut f32, *mut f32),
   ) -> NVSDK_NGX_Result {
     // NGX reads these through pointers while it records, so they live until it is done.
-    let resource = |view: &wgpu::TextureView| unsafe { to_ngx_resource(view, adapter) };
+    let resource = |view: &wgpu::TextureView| unsafe { NgxVulkanResource::of(view, adapter) };
     let mut color = resource(inputs.color);
     let mut output = resource(inputs.output);
     let mut depth = resource(inputs.depth);
@@ -250,26 +193,26 @@ impl NgxRayReconstruction {
       // The optional inputs left out: null resources and zero scalars.
       let mut parameters: NVSDK_NGX_D3D12_DLSSD_Eval_Params = std::mem::zeroed();
 
-      parameters.pInColor = to_d3d12_resource(inputs.color);
-      parameters.pInOutput = to_d3d12_resource(inputs.output);
-      parameters.pInDepth = to_d3d12_resource(inputs.depth);
-      parameters.pInMotionVectors = to_d3d12_resource(inputs.motion);
-      parameters.pInDiffuseAlbedo = to_d3d12_resource(inputs.diffuse_albedo);
-      parameters.pInSpecularAlbedo = to_d3d12_resource(inputs.specular_albedo);
-      parameters.pInNormals = to_d3d12_resource(inputs.normals);
-      parameters.pInSpecularHitDistance = to_d3d12_resource(inputs.specular_hit_distance);
+      parameters.pInColor = NgxD3d12Resource::of(inputs.color);
+      parameters.pInOutput = NgxD3d12Resource::of(inputs.output);
+      parameters.pInDepth = NgxD3d12Resource::of(inputs.depth);
+      parameters.pInMotionVectors = NgxD3d12Resource::of(inputs.motion);
+      parameters.pInDiffuseAlbedo = NgxD3d12Resource::of(inputs.diffuse_albedo);
+      parameters.pInSpecularAlbedo = NgxD3d12Resource::of(inputs.specular_albedo);
+      parameters.pInNormals = NgxD3d12Resource::of(inputs.normals);
+      parameters.pInSpecularHitDistance = NgxD3d12Resource::of(inputs.specular_hit_distance);
 
       if let Some(diffuse) = inputs.diffuse_hit_distance {
-        parameters.pInDiffuseHitDistance = to_d3d12_resource(diffuse);
+        parameters.pInDiffuseHitDistance = NgxD3d12Resource::of(diffuse);
       }
 
       if let Some(bias) = inputs.bias_current_color {
-        parameters.pInBiasCurrentColorMask = to_d3d12_resource(bias);
+        parameters.pInBiasCurrentColorMask = NgxD3d12Resource::of(bias);
       }
 
       if let Some((before, after)) = inputs.transparency {
-        parameters.pInColorBeforeTransparency = to_d3d12_resource(before);
-        parameters.pInColorAfterTransparency = to_d3d12_resource(after);
+        parameters.pInColorBeforeTransparency = NgxD3d12Resource::of(before);
+        parameters.pInColorAfterTransparency = NgxD3d12Resource::of(after);
       }
 
       parameters.pInWorldToViewMatrix = world_to_view;

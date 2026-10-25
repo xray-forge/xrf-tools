@@ -42,6 +42,7 @@ pub struct DlssRayInputs<'a> {
 
 impl DlssRayInputs<'_> {
   /// The views NGX reads.
+  #[cfg(feature = "sdk")]
   pub(crate) fn get_read(&self) -> Vec<&wgpu::TextureView> {
     let mut views: Vec<&wgpu::TextureView> = vec![
       self.color,

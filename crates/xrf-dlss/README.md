@@ -78,5 +78,7 @@ NGX's own messages go to the log under the `xrf_dlss::ngx` target while its debu
 ## Checks
 
 Run `cargo test --locked -p xrf-dlss`, adding `--features sdk` to build the NGX glue. Sources: the
-[instance](src/dlss_instance.rs), [`Dlss`](src/dlss.rs), the [upscaler](src/dlss_upscaler.rs), the
-[ray reconstructor](src/dlss_ray_reconstructor.rs), and the [build script](build.rs).
+[instance](src/dlss_instance.rs), [`Dlss`](src/dlss.rs), the [upscaler](src/upscaler/dlss_upscaler.rs), the
+[ray reconstructor](src/reconstruction/dlss_ray_reconstructor.rs), and the [build script](build.rs). The NGX glue
+under `src/ngx` groups NGX started on a device (`sdk`), the features it makes (`feature`), and the graphics APIs it runs
+on (`backend`).

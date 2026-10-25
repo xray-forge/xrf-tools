@@ -3,13 +3,13 @@ use std::sync::{Arc, Mutex};
 
 use xrf_error::XrfResult;
 
-use crate::dlss_preset::DlssPreset;
 use crate::dlss_quality::DlssQuality;
-use crate::dlss_ray_preset::DlssRayPreset;
-use crate::dlss_ray_reconstructor::DlssRayReconstructor;
-use crate::dlss_upscaler::DlssUpscaler;
 #[cfg(feature = "sdk")]
-use crate::ngx::{ngx_application::NgxApplication, ngx_sdk::NgxSdk};
+use crate::ngx::{ngx_application::NgxApplication, sdk::ngx_sdk::NgxSdk};
+use crate::reconstruction::dlss_ray_preset::DlssRayPreset;
+use crate::reconstruction::dlss_ray_reconstructor::DlssRayReconstructor;
+use crate::upscaler::dlss_preset::DlssPreset;
+use crate::upscaler::dlss_upscaler::DlssUpscaler;
 
 /// DLSS started on a device: NGX, which each view makes its upscaler or ray reconstructor from.
 #[derive(Clone)]

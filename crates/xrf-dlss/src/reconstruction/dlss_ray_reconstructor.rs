@@ -4,10 +4,10 @@ use std::sync::{Arc, Mutex};
 use xrf_error::XrfResult;
 
 use crate::dlss_quality::DlssQuality;
-use crate::dlss_ray_inputs::DlssRayInputs;
-use crate::dlss_ray_preset::DlssRayPreset;
 #[cfg(feature = "sdk")]
-use crate::ngx::{ngx_ray_reconstruction::NgxRayReconstruction, ngx_sdk::NgxSdk};
+use crate::ngx::{feature::ngx_ray_reconstruction::NgxRayReconstruction, sdk::ngx_sdk::NgxSdk};
+use crate::reconstruction::dlss_ray_inputs::DlssRayInputs;
+use crate::reconstruction::dlss_ray_preset::DlssRayPreset;
 
 /// One view's DLSS ray reconstruction: what it denoises and upscales into, at which quality, and the render sizes it
 /// upscales from.
