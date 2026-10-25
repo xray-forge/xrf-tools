@@ -13,7 +13,10 @@ impl CropTextureProcessor {
   pub fn crop(options: &CropTextureOptions) -> XrfResult<CropTextureResult> {
     let image: RgbaImage = DdsFile::read_from_path(&options.source)?.decode_rgba(0)?;
 
-    if options.x + options.width > image.width() || options.y + options.height > image.height() {
+    // Saturating: a region named past `u32` must be refused, never wrap back inside the image.
+    if options.x.saturating_add(options.width) > image.width()
+      || options.y.saturating_add(options.height) > image.height()
+    {
       return Err(XrfError::new_texture_processing_error(format!(
         "Region {}:{} {}x{} does not fit in source {} which is {}x{}",
         options.x,

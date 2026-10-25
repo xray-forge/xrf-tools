@@ -53,7 +53,7 @@ impl ExternManifestParser {
       ));
     }
 
-    let files: Vec<PathBuf> = self.read_source_files(declarations_root);
+    let files: Vec<PathBuf> = self.read_source_files(declarations_root)?;
 
     self.parse_files(&files, declarations_root)
   }
@@ -108,27 +108,49 @@ impl ExternManifestParser {
       && !path.components().any(|component| component.as_os_str() == "__test__")
   }
 
-  fn read_source_files(&self, declarations_root: &Path) -> Vec<PathBuf> {
-    let mut files: Vec<PathBuf> = WalkDir::new(declarations_root)
+  /// The declaration sources under the root, in path order.
+  ///
+  /// A directory the walk cannot enter and a source that cannot be read both fail the scan as `Io`: skipping either
+  /// would publish a manifest missing whatever they declare, and a check would pass against it.
+  fn read_source_files(&self, declarations_root: &Path) -> XrfResult<Vec<PathBuf>> {
+    let mut files: Vec<PathBuf> = Vec::new();
+
+    for entry in WalkDir::new(declarations_root)
       .into_iter()
       .filter_entry(|entry: &DirEntry| Self::should_visit(entry, declarations_root))
-      .filter_map(Result::ok)
-      .map(|entry| entry.into_path())
-      .filter(|path| Self::is_source_path(path))
-      .filter(|path| Self::contains_extern_call(path))
-      .collect();
+    {
+      let path: PathBuf = entry
+        .map_err(|error| {
+          XrfError::new_io_error(
+            format!("Failed to walk extern sources: {error}"),
+            error.io_error().map_or(ErrorKind::Other, std::io::Error::kind),
+          )
+        })?
+        .into_path();
+
+      if Self::is_source_path(&path) && Self::contains_extern_call(&path)? {
+        files.push(path);
+      }
+    }
 
     files.sort();
 
-    files
+    Ok(files)
   }
 
-  fn contains_extern_call(path: &Path) -> bool {
-    fs::read_to_string(path).is_ok_and(|source: String| {
+  fn contains_extern_call(path: &Path) -> XrfResult<bool> {
+    let source: String = fs::read_to_string(path).map_err(|error| {
+      XrfError::new_io_error(
+        format!("Failed to read extern source '{}': {error}", format_path(path)),
+        error.kind(),
+      )
+    })?;
+
+    Ok(
       source
         .match_indices("extern")
-        .any(|(offset, _)| source[offset + "extern".len()..].trim_start().starts_with('('))
-    })
+        .any(|(offset, _)| source[offset + "extern".len()..].trim_start().starts_with('(')),
+    )
   }
 
   fn should_visit(entry: &DirEntry, declarations_root: &Path) -> bool {
@@ -493,6 +515,19 @@ mod tests {
     let error: XrfError = ExternManifestParser::new().parse_directory(&root).unwrap_err();
 
     assert!(error.to_string().contains("is not a directory"), "{error}");
+    assert!(matches!(error, XrfError::Io { .. }), "{error}");
+  }
+
+  /// A source the scan cannot read fails it, rather than leaving a manifest that silently lacks its externs.
+  #[test]
+  fn rejects_a_source_it_cannot_read() {
+    let root: PathBuf = create_test_root("unreadable");
+
+    fs::write(root.join("externs.ts"), b"export {}; extern(\"x\", () => {}); \xff").unwrap();
+
+    let error: XrfError = ExternManifestParser::new().parse_directory(&root).unwrap_err();
+
+    assert!(error.to_string().contains("Failed to read extern source"), "{error}");
     assert!(matches!(error, XrfError::Io { .. }), "{error}");
   }
 }

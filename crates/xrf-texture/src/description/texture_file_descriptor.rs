@@ -68,8 +68,10 @@ impl TextureFileDescriptor {
     }
 
     (
-      max_width.next_multiple_of(DDS_BLOCK_SIZE),
-      max_height.next_multiple_of(DDS_BLOCK_SIZE),
+      max_width.checked_next_multiple_of(DDS_BLOCK_SIZE).unwrap_or(max_width),
+      max_height
+        .checked_next_multiple_of(DDS_BLOCK_SIZE)
+        .unwrap_or(max_height),
     )
   }
 }
@@ -123,6 +125,15 @@ mod tests {
         "Expect an already aligned canvas not to gain a block"
       );
     }
+  }
+
+  /// A description naming a rect past `u32` saturates, so it is refused as too large rather than wrapping back small.
+  #[test]
+  fn saturates_a_rect_past_the_largest_canvas() {
+    assert_eq!(
+      descriptor_of(&[(u32::MAX - 2, 0, 10, 10)]).get_dimension_boundaries(),
+      (u32::MAX, 12)
+    );
   }
 
   #[test]

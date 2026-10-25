@@ -2,6 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
 use xrf_error::XrfResult;
+use xrf_utils::to_format_size;
 
 use crate::light_anim_key::LightAnimKey;
 
@@ -70,7 +71,7 @@ impl LightAnimItem {
 
     let mut keys: ChunkWriter = ChunkWriter::new();
 
-    keys.write_u32::<T>(self.keys.len() as u32)?;
+    keys.write_u32::<T>(to_format_size(self.keys.len(), "light animation keys")?)?;
 
     for key in &self.keys {
       keys.write_u32::<T>(key.frame)?;
