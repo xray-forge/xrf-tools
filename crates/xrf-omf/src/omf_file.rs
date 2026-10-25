@@ -6,7 +6,7 @@ use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk};
-use xrf_utils::{assert_equal, format_path, write_new_file_staged};
+use xrf_utils::{StagedFile, assert_equal, format_path};
 
 // c++ CKinematicsAnimated
 #[derive(Debug)]
@@ -75,7 +75,7 @@ impl OmfFile {
 
     self.write_to::<T>(&mut bytes)?;
 
-    Ok(write_new_file_staged(path.as_ref(), &bytes)?)
+    Ok(StagedFile::write_creating_directories(path.as_ref(), &bytes)?)
   }
 
   /// Write omf file data into the writer.
@@ -158,7 +158,7 @@ mod tests {
     assert_publication_left_previous, build_absolute_generated_test_resource_path,
     build_relative_test_sample_file_path, create_generated_test_resource_dir, open_generated_test_resource_as_slice,
   };
-  use xrf_utils::staging_faults::fail_next_staged_write;
+  use xrf_utils::StagingFaults;
 
   use crate::omf_file::OmfFile;
 
@@ -219,7 +219,7 @@ mod tests {
     let path: PathBuf = create_generated_test_resource_dir("omf_file/publication")?.join("motions.omf");
 
     fs::write(&path, b"previous")?;
-    fail_next_staged_write();
+    StagingFaults::fail_next_write();
 
     assert!(new_mock(4).write_to_path::<XRayByteOrder, _>(&path).is_err());
     assert_publication_left_previous(&path, b"previous");

@@ -2,8 +2,8 @@
 //!
 //! `serde` has no way to say "encode all `Duration` fields like this", so each one carries
 //! `#[serde(with = "xrf_utils::duration_ms")]` itself - and forgetting it fails silently, by falling
-//! back to serde's own `{ secs, nanos }` object beside fields that emit a number. That is exactly how
-//! `xrf_report::CheckReport` came to answer the same question two ways inside one report.
+//! back to serde's own `{ secs, nanos }` object beside fields that emit a number, so one report would
+//! answer the same question two ways.
 //!
 //! This walks the workspace sources rather than any one type, so a report type added later is
 //! covered the day it is written instead of the day someone reads its output.

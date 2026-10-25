@@ -1,7 +1,7 @@
 use byteorder::ByteOrder;
 use xrf_chunk::{CHUNK_HEADER_SIZE, ChunkDataSource, ChunkReader, ChunkTrailing};
 use xrf_error::XrfResult;
-use xrf_utils::encode_w1251_bytes_to_string;
+use xrf_utils::decode_w1251_bytes_to_string;
 
 use crate::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::residue::ogf_residue_cause::OgfResidueCause;
@@ -96,6 +96,6 @@ impl OgfResidue {
       return None;
     }
 
-    encode_w1251_bytes_to_string(path).ok()
+    decode_w1251_bytes_to_string(path).ok()
   }
 }

@@ -10,36 +10,18 @@ pub const BYTES_PER_GIGABYTE: u64 = 1024 * BYTES_PER_MEGABYTE;
 /// Unit labels by binary magnitude, matching `BYTE_UNITS` in `@xrf/format` (`packages/xrf-format/src/bytes.ts`).
 const BYTE_UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
 
-/// Convert a byte count to megabytes, unrounded.
-///
-/// Rounding is left to the caller because the callers differ: a summary shows a fraction, a form field
-/// wants a whole number. Mirrors `bytesToMegabytes` in `@xrf/format` (`packages/xrf-format/src/byte-size.ts`).
-#[inline]
-pub fn bytes_to_megabytes(bytes: u64) -> f64 {
-  bytes as f64 / BYTES_PER_MEGABYTE as f64
-}
-
 /// Convert a megabyte count to bytes, for the sizes that are typed in megabytes but stored in bytes.
-///
-/// Saturates rather than wrapping: a size limit past `u64::MAX` bytes is already every byte there is.
 #[inline]
 pub fn megabytes_to_bytes(megabytes: u64) -> u64 {
   megabytes.saturating_mul(BYTES_PER_MEGABYTE)
 }
 
 /// Format a byte count with the largest binary unit it fills: `512 B`, `1.5 KB`, `1.17 GB`.
-///
-/// Mirrors `@xrf/format`'s `formatBytes` (`packages/xrf-format/src/bytes.ts`) rule for rule — magnitude-scaled precision
-/// with trailing zeros dropped — so the CLI and the desktop app render the same size identically. For two
-/// sizes a reader is meant to compare, use [`format_bytes_pair`] so both carry the same unit.
 pub fn format_bytes(bytes: u64) -> String {
   format_bytes_as(bytes, byte_unit_index(bytes))
 }
 
 /// Format two byte counts that are meant to be compared, both in the larger value's unit.
-///
-/// A pack summary reads `1.17 GB source, 0.78 GB written`: with each size picking its own unit the
-/// ratio between them stops being visible at a glance.
 pub fn format_bytes_pair(first: u64, second: u64) -> (String, String) {
   let unit_index: usize = byte_unit_index(first.max(second));
 
@@ -85,8 +67,7 @@ fn format_bytes_as(bytes: u64, unit_index: usize) -> String {
 #[cfg(test)]
 mod tests {
   use crate::{
-    BYTES_PER_GIGABYTE, BYTES_PER_KILOBYTE, BYTES_PER_MEGABYTE, bytes_to_megabytes, format_bytes, format_bytes_pair,
-    megabytes_to_bytes,
+    BYTES_PER_GIGABYTE, BYTES_PER_KILOBYTE, BYTES_PER_MEGABYTE, format_bytes, format_bytes_pair, megabytes_to_bytes,
   };
 
   #[test]
@@ -94,13 +75,6 @@ mod tests {
     assert_eq!(BYTES_PER_KILOBYTE, 1024);
     assert_eq!(BYTES_PER_MEGABYTE, 1024 * 1024);
     assert_eq!(BYTES_PER_GIGABYTE, 1024 * 1024 * 1024);
-  }
-
-  #[test]
-  fn test_bytes_to_megabytes() {
-    assert_eq!(bytes_to_megabytes(0), 0.0);
-    assert_eq!(bytes_to_megabytes(BYTES_PER_MEGABYTE), 1.0);
-    assert_eq!(bytes_to_megabytes(BYTES_PER_MEGABYTE + BYTES_PER_MEGABYTE / 2), 1.5);
   }
 
   #[test]

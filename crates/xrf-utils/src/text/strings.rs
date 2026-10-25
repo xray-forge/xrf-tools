@@ -17,7 +17,7 @@ pub fn vector_to_string<T: ToString>(slice: &[T]) -> String {
 
 /// Stringify provided vector as pattern-separated values.
 #[inline]
-pub fn vector_to_string_sep<T: ToString>(slice: &[T], sep: &str) -> String {
+fn vector_to_string_sep<T: ToString>(slice: &[T], sep: &str) -> String {
   slice.iter().map(T::to_string).collect::<Vec<_>>().join(sep)
 }
 
@@ -29,7 +29,7 @@ pub fn vector_from_string<T: FromStr>(string: &str) -> XrfResult<Vec<T>> {
 
 /// Parse vector of values from string with separator.
 #[inline]
-pub fn vector_from_string_sep<T: FromStr>(string: &str, sep: &str) -> XrfResult<Vec<T>> {
+fn vector_from_string_sep<T: FromStr>(string: &str, sep: &str) -> XrfResult<Vec<T>> {
   let source: &str = string.trim();
 
   if source.is_empty() {
@@ -61,7 +61,7 @@ pub fn vector_from_string_sized<T: FromStr>(string: &str, size: usize) -> XrfRes
 
 /// Read vector of values from serialized by separator string.
 #[inline]
-pub fn vector_from_string_sep_sized<T: FromStr>(string: &str, sep: &str, size: usize) -> XrfResult<Vec<T>> {
+fn vector_from_string_sep_sized<T: FromStr>(string: &str, sep: &str, size: usize) -> XrfResult<Vec<T>> {
   let vector: Vec<T> = vector_from_string_sep(string, sep)?;
 
   if vector.len() == size {
@@ -125,7 +125,7 @@ mod tests {
     assert_eq!(read_engine_integer("x1"), 0);
   }
 
-  use crate::{
+  use super::{
     read_engine_integer, to_camel_case, vector_from_string, vector_from_string_sep, vector_from_string_sep_sized,
     vector_from_string_sized, vector_to_string, vector_to_string_sep,
   };

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_utils::{
-  decode_bytes_to_string, encode_w1251_bytes_to_string, new_windows1251_encoder, read_as_string_from_w1251_encoded,
+  decode_bytes_to_string, decode_w1251_bytes_to_string, new_windows1251_encoder, read_as_string_from_w1251_encoded,
 };
 use xrf_vfs::XraySearch;
 
@@ -153,7 +153,7 @@ impl Ltx {
   ///
   /// Returns an error when the bytes cannot be decoded or parsed.
   pub(crate) fn is_formatted(bytes: &[u8]) -> XrfResult<bool> {
-    let existing: String = encode_w1251_bytes_to_string(bytes)?;
+    let existing: String = decode_w1251_bytes_to_string(bytes)?;
 
     Ok(existing == Self::format_from_str(&existing)?)
   }

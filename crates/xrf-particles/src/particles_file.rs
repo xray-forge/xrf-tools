@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::FileImportExport;
-use xrf_utils::{assert, assert_length, format_path, write_new_file_staged};
+use xrf_utils::{StagedFile, assert, assert_length, format_path};
 
 use crate::chunks::particles_effects_chunk::ParticlesEffectsChunk;
 use crate::chunks::particles_firstgen_chunk::ParticlesFirstgenChunk;
@@ -66,7 +66,7 @@ impl ParticlesFile {
 
     self.write_to::<T>(&mut bytes)?;
 
-    Ok(write_new_file_staged(path.as_ref(), &bytes)?)
+    Ok(StagedFile::write_creating_directories(path.as_ref(), &bytes)?)
   }
 
   /// Write particles file data to the writer.

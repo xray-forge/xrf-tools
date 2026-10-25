@@ -2,7 +2,7 @@ use std::io::Write;
 use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{HostDestination, format_path, write_new_file_staged};
+use xrf_utils::{HostDestination, StagedFile, format_path};
 use xrf_vfs::{XrayAsset, XrayMountedEntry, XraySearch};
 
 use crate::path::{relative_to_prefix, to_host_relative};
@@ -109,7 +109,7 @@ impl XrayWorldExtractor {
 
     // The caller named this path, so it is written where it points rather than through a rooted destination — the
     // same rule an archive extraction of one file follows. Staged, so a failed write leaves what was there.
-    write_new_file_staged(destination.as_ref(), &bytes).map_err(|error| {
+    StagedFile::write_creating_directories(destination.as_ref(), &bytes).map_err(|error| {
       XrfError::new_io_error(
         format!("Failed to write '{}': {error}", format_path(destination.as_ref())),
         error.kind(),

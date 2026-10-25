@@ -8,7 +8,7 @@ use xrf_build_info::{BuildInfo, BuildKind};
 use xrf_error::XrfError;
 use xrf_job::{ExecutionPlan, ExecutionRequest};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_utils::staging_faults::fail_next_staged_write;
+use xrf_utils::StagingFaults;
 
 use crate::core::command::{CommandError, CommandResult};
 use crate::core::report::{CommandEnvelope, ReportDestination};
@@ -205,7 +205,7 @@ fn keeps_the_previous_report_when_publication_fails() {
   let envelope: CommandEnvelope = CommandEnvelope::new(&build(), Vec::new(), &Ok(()), Duration::ZERO, &plan(), None);
 
   fs::write(&path, b"{\"sentinel\":true}").expect("the previous report to be seeded");
-  fail_next_staged_write();
+  StagingFaults::fail_next_write();
 
   let error: CommandError = envelope
     .publish(&ReportDestination::File(path.clone()))

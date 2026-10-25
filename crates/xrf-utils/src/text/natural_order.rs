@@ -1,22 +1,6 @@
 use std::cmp::Ordering;
 
 /// Compare two strings the way rustfmt orders identifiers under `style_edition = "2024"`.
-///
-/// Plain byte order reads wrong wherever a name carries a number: it puts `item10` before `item2` and
-/// `ammo-11.43x23` before `ammo-5.45x39`. This is the ordering rustfmt moved to for that reason (RFC 3424), and the one
-/// the TypeScript ecosystem calls "natural" — `eslint-plugin-simple-import-sort`, `eslint-plugin-perfectionist`, and
-/// ESLint's own `sort-keys` with `natural: true`.
-///
-/// Three rules, derived from what rustfmt actually emits rather than from the prose about it:
-///
-/// - Where both sides hold a digit, the whole runs of digits are compared as numbers: `a2` before `a10`.
-/// - Where two runs are numerically equal but spelled differently, the **longer** one sorts first: `a000`, `a00`, `a0`
-///   and `a001`, `a01`, `a1`. This is what keeps the order total, and it is not raw byte order — bytes agree on
-///   `001`/`01`/`1` and invert on `000`/`00`/`0`.
-/// - Everywhere else characters compare ordinarily, except that `_` sorts before everything: `b_c`, `b1c`, `bAc`.
-///
-/// Comparison is by character, not by chunk, so a digit meeting a non-digit falls through to the character rule and
-/// `a_b` precedes `a1` — chunking those as `a_b` against `a` would make one a prefix of the other and get it backwards.
 pub fn natural_cmp(left: &str, right: &str) -> Ordering {
   let mut left_at: usize = 0;
   let mut right_at: usize = 0;

@@ -22,7 +22,7 @@ impl RenderCacheStore for DiskCacheStore {
   fn write_cached(&self, name: &str, bytes: &[u8]) {
     let path: PathBuf = self.directory.join(name);
 
-    let written = std::fs::create_dir_all(&self.directory).and_then(|()| xrf_utils::write_file_staged(&path, bytes));
+    let written = std::fs::create_dir_all(&self.directory).and_then(|()| xrf_utils::StagedFile::write(&path, bytes));
 
     if let Err(error) = written {
       log::warn!("The renderer's cache '{}' cannot be kept: {error}", path.display());

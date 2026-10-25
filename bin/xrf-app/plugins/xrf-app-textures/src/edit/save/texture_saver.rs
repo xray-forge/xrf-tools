@@ -5,7 +5,7 @@ use xrf_app_core::assets::{AssetMountState, FileStamp};
 use xrf_chunk::XRayByteOrder;
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_thm::{ThmFile, ThmFormat};
-use xrf_utils::{error_to_string, format_path, write_file_staged};
+use xrf_utils::{StagedFile, error_to_string, format_path};
 use xrf_vfs::{XraySearch, XrayTransaction};
 
 use crate::edit::{TextureDescriptorForm, TextureDescriptorSave, TextureSaveOutcome, TextureWrite};
@@ -111,7 +111,7 @@ impl TextureSaver {
     }
 
     for file in loose {
-      write_file_staged(&file.path, &file.bytes)
+      StagedFile::write(&file.path, &file.bytes)
         .map_err(|error| format!("Cannot write '{}': {error}", format_path(&file.path)))?;
     }
 

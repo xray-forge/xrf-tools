@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{StagedFile, format_path, to_staged_sibling};
+use xrf_utils::{StagedFile, format_path};
 
 use crate::change::xray_disk_journal::XrayDiskJournal;
 use crate::change::xray_journal_entry::XrayJournalEntry;
@@ -33,7 +33,7 @@ impl XrayDiskSwap {
         self.create_directories_above(&target)?;
 
         Some(
-          StagedFile::stage(&target, &to_staged_sibling(&target, "staged")?, bytes).map_err(|error| {
+          StagedFile::stage(&target, &StagedFile::to_sibling(&target, "staged")?, bytes).map_err(|error| {
             XrfError::new_asset_error(format!("failed to stage '{}': {error}", format_path(&target)))
           })?,
         )
@@ -42,7 +42,7 @@ impl XrayDiskSwap {
     };
     let backup: Option<PathBuf> = target
       .exists()
-      .then(|| to_staged_sibling(&target, "replaced"))
+      .then(|| StagedFile::to_sibling(&target, "replaced"))
       .transpose()?;
 
     self.files.push(XraySwappedFile { target, staged, backup });

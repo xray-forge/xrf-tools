@@ -4,7 +4,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::Ltx;
-use xrf_utils::{format_path, write_file_staged};
+use xrf_utils::{StagedFile, format_path};
 
 use crate::archive_config_format::ArchiveConfigFormat;
 use crate::pack::config::ArchivePackHeaderEntry;
@@ -147,7 +147,7 @@ impl ArchivePatchConfig {
       ArchiveConfigFormat::Json => self.to_json().render()?.into_bytes(),
     };
 
-    write_file_staged(path, &rendered).map_err(|error| {
+    StagedFile::write(path, &rendered).map_err(|error| {
       XrfError::new_io_error(
         format!(
           "Failed to write the patching configuration to '{}': {error}",

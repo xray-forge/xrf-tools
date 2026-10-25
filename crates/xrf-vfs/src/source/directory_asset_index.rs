@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use walkdir::WalkDir;
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, is_staged_sibling};
+use xrf_utils::{StagedFile, format_path};
 
 use crate::change::XrayDiskJournal;
 use crate::source::DirectoryAsset;
@@ -66,7 +66,7 @@ impl DirectoryAssetIndex {
         continue;
       }
 
-      if is_staged_sibling(entry.file_name()) {
+      if StagedFile::is_sibling(entry.file_name()) {
         if entry.file_name().to_str().is_some_and(XrayDiskJournal::is_journal) {
           journals.push(entry.path().to_path_buf());
         }

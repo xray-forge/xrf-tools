@@ -3,7 +3,7 @@ use std::io::ErrorKind;
 use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{LineEndings, format_path, write_file_staged, write_new_file_staged};
+use xrf_utils::{LineEndings, StagedFile, format_path};
 
 use crate::edit::TranslationEdit;
 use crate::json::normalize::{resolve_line_endings, to_canonical_bytes};
@@ -73,9 +73,9 @@ pub(crate) fn write_canonical(path: &Path, render: &CanonicalRender) -> XrfResul
   }
 
   if render.is_new() {
-    write_new_file_staged(path, &render.bytes)?;
+    StagedFile::write_creating_directories(path, &render.bytes)?;
   } else {
-    write_file_staged(path, &render.bytes)?;
+    StagedFile::write(path, &render.bytes)?;
   }
 
   Ok(true)
@@ -115,8 +115,6 @@ pub fn apply_edits(path: &Path, language: &str, edits: &[TranslationEdit]) -> Xr
 
 /// The bytes a multi-language JSON source holding `existing` holds once one language's edits are applied, in the
 /// canonical shape [`apply_edits`] writes and with the line endings `existing` uses.
-///
-/// `subject` names the file only so a refusal can say which one it was.
 ///
 /// # Errors
 ///

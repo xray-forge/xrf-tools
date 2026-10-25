@@ -8,7 +8,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_error::XrfResult;
 use xrf_renderer::RenderCapture;
-use xrf_utils::write_file_staged;
+use xrf_utils::StagedFile;
 
 use crate::RenderAnswer;
 
@@ -58,6 +58,6 @@ impl CaptureFile {
       .write_to(&mut Cursor::new(&mut png), ImageFormat::Png)
       .map_err(|error| format!("Failed to encode {name} '{}': {error}", path.display()))?;
 
-    write_file_staged(path, &png).map_err(|error| format!("Failed to write {name} '{}': {error}", path.display()))
+    StagedFile::write(path, &png).map_err(|error| format!("Failed to write {name} '{}': {error}", path.display()))
   }
 }

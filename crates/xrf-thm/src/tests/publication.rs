@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::{assert_publication_left_previous, create_generated_test_resource_dir};
-use xrf_utils::staging_faults::fail_next_staged_write;
+use xrf_utils::StagingFaults;
 
 use crate::thm_file::ThmFile;
 
@@ -14,7 +14,7 @@ fn keeps_the_previous_file_when_publication_fails() -> XrfResult {
   let path: PathBuf = create_generated_test_resource_dir("thm_file/publication")?.join("texture.thm");
 
   fs::write(&path, b"previous")?;
-  fail_next_staged_write();
+  StagingFaults::fail_next_write();
 
   assert!(ThmFile::default().write_to_path::<XRayByteOrder, _>(&path).is_err());
   assert_publication_left_previous(&path, b"previous");

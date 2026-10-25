@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::{XrayExtension, XrayExtensionOf};
-use xrf_utils::{LineEndings, apply_line_endings, format_path, write_new_file_staged};
+use xrf_utils::{LineEndings, StagedFile, format_path};
 use xrf_xml::{escape_xml_attribute, escape_xml_text};
 
 use crate::extern_callable::ExternCallable;
@@ -100,7 +100,7 @@ pub fn render_extern_manifest(
   };
   let ending: LineEndings = line_endings.unwrap_or_else(|| format.default_line_endings());
 
-  Ok(apply_line_endings(&format!("{content}\n"), ending))
+  Ok(ending.apply(&format!("{content}\n")))
 }
 
 /// Publishes a rendered manifest at `path`, creating the directories above it.
@@ -119,7 +119,7 @@ pub fn write_extern_manifest(
 ) -> XrfResult {
   let content: String = render_extern_manifest(manifest, format, line_endings)?;
 
-  write_new_file_staged(path, content.as_bytes()).map_err(|error| {
+  StagedFile::write_creating_directories(path, content.as_bytes()).map_err(|error| {
     XrfError::new_io_error(
       format!(
         "Failed to write the extern artifact to '{}': {error}",

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
-use xrf_utils::encode_w1251_bytes_to_string;
+use xrf_utils::decode_w1251_bytes_to_string;
 
 /// One text file read for display: its name, decoded content, and unpacked size.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -24,7 +24,7 @@ impl ArchiveReadResult {
   pub fn decode(name: &str, bytes: &[u8], size: u32) -> XrfResult<Self> {
     Ok(Self {
       name: name.into(),
-      content: encode_w1251_bytes_to_string(bytes)?,
+      content: decode_w1251_bytes_to_string(bytes)?,
       size,
     })
   }

@@ -2,7 +2,7 @@ use std::io::Write;
 
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{encode_string_to_w1251_bytes, encode_w1251_bytes_to_string};
+use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes};
 
 /// Reads a fixed width, null terminated windows-1251 field.
 ///
@@ -22,7 +22,7 @@ pub(crate) fn read_shader_fixed_string<D: ChunkDataSource>(
     )));
   };
 
-  Ok(encode_w1251_bytes_to_string(&bytes[..end])?)
+  Ok(decode_w1251_bytes_to_string(&bytes[..end])?)
 }
 
 /// Writes a fixed width field, null padded the way the engine's own buffers are.

@@ -9,7 +9,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::FileImportExport;
 use xrf_math::Vector3d;
-use xrf_utils::{assert_equal, assert_length, write_new_file_staged};
+use xrf_utils::{StagedFile, assert_equal, assert_length};
 
 use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
 use crate::chunks::spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk;
@@ -232,7 +232,7 @@ impl SpawnFile {
 
     self.write_to::<T>(&mut bytes)?;
 
-    Ok(write_new_file_staged(path.as_ref(), &bytes)?)
+    Ok(StagedFile::write_creating_directories(path.as_ref(), &bytes)?)
   }
 
   /// Write spawn file data to the writer.
@@ -295,7 +295,7 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
   use xrf_test_utils::utils::{assert_publication_left_previous, create_generated_test_resource_dir};
-  use xrf_utils::staging_faults::fail_next_staged_write;
+  use xrf_utils::StagingFaults;
 
   use super::SpawnFile;
   use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
@@ -382,7 +382,7 @@ mod tests {
     };
 
     fs::write(&path, b"previous")?;
-    fail_next_staged_write();
+    StagingFaults::fail_next_write();
 
     assert!(spawn.write_to_path::<XRayByteOrder, _>(&path).is_err());
     assert_publication_left_previous(&path, b"previous");

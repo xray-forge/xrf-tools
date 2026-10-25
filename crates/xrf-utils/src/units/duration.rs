@@ -1,18 +1,12 @@
 use std::time::Duration;
 
 /// Convert a duration to whole milliseconds, saturating at `u64::MAX`.
-///
-/// The workspace wire format for a duration is a `u64` millisecond count, so this is the one place the
-/// narrowing from `Duration` is defined.
 #[inline]
 pub fn duration_to_millis(duration: Duration) -> u64 {
   u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
 }
 
 /// Format a duration the way every surface reports elapsed time: `742 ms`, `3.2 s`, `1 m 12 s`.
-///
-/// Mirrors `@xrf/format`'s `formatDuration` (`packages/xrf-format/src/duration.ts`) threshold for threshold, so the CLI and
-/// the desktop app render the same run identically.
 pub fn format_duration(duration: Duration) -> String {
   let seconds: f64 = duration.as_secs_f64();
 
@@ -28,9 +22,6 @@ pub fn format_duration(duration: Duration) -> String {
 }
 
 /// Serialize a `Duration` as whole milliseconds, the workspace wire format for durations.
-///
-/// Use as `#[serde(with = "xrf_utils::duration_ms")]`. The field keeps its own wire name: milliseconds
-/// are the standard duration unit on the consuming side, so the unit stays implicit there.
 pub mod duration_ms {
   use std::time::Duration;
 
@@ -46,11 +37,6 @@ pub mod duration_ms {
 }
 
 /// Serialize an optional `Duration` as whole milliseconds, or `null` when it was never measured.
-///
-/// Use as `#[serde(with = "xrf_utils::optional_duration_ms")]`. `serde(with)` does not reach through
-/// an `Option` on its own: without this, an `Option<Duration>` falls back to serde's own `Duration`
-/// representation and emits a `{ secs, nanos }` object beside fields that emit a millisecond count.
-/// A report that answers the same question two ways is the thing this exists to prevent.
 pub mod optional_duration_ms {
   use std::time::Duration;
 
@@ -69,12 +55,6 @@ pub mod optional_duration_ms {
 }
 
 /// Serialize a sequence of `Duration`s as whole milliseconds, the workspace wire format for durations.
-///
-/// Use as `#[serde(with = "xrf_utils::duration_ms_vec")]`. Exists for the same reason
-/// [`optional_duration_ms`] does: `serde(with)` applies to the field, not through the container, so a
-/// `Vec<Duration>` would otherwise emit a list of `{ secs, nanos }` objects beside fields carrying a
-/// millisecond count. For a field reporting every measured round, where the whole point is that the
-/// individual figures are comparable with the median beside them.
 pub mod duration_ms_vec {
   use std::time::Duration;
 

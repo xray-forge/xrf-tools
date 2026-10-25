@@ -1,7 +1,8 @@
 # xrf-test-utils
 
-Shared support for XRF Rust tests: where generated test files live, writing and reading them, comparing files,
-filesystem links for containment tests, and skipping GPU tests on hosts without a device. Add it as a dev-dependency.
+Shared support for XRF Rust tests: where generated test files live, writing and reading them, checking what a refused
+publication left, filesystem links for containment tests, and skipping GPU tests on hosts without a device. Add it as a
+dev-dependency.
 
 ## Write a generated fixture
 
@@ -39,20 +40,23 @@ crate's manifest location, so it assumes the XRF workspace layout.
 
 Helpers are in `utils` unless the name carries another module:
 
-| Helper                                           | Use                                                        |
-| ------------------------------------------------ | ---------------------------------------------------------- |
-| `build_absolute_generated_test_resource_path`    | A path in this run's directory; creates nothing            |
-| `write_generated_test_resource`                  | Write one file and get its path                            |
-| `overwrite_generated_test_resource_as_file`      | Create or truncate a generated file, with its parents      |
-| `overwrite_file`                                 | The same for any path                                      |
-| `open_generated_test_resource_as_file`           | Open a generated file                                      |
-| `open_generated_test_resource_as_slice`          | Open a generated file as a `FileSlice`                     |
-| `build_absolute_generated_test_sample_file_path` | A generated path grouped under the test source's file stem |
-| `build_non_unicode_file_name`                    | A file name the host accepts and `Path::to_str` refuses    |
-| `assertions::files_are_equal`, `_by_path`        | Compare two files byte for byte                            |
-| `file::read_file_as_string`                      | Read an open file to the end                               |
-| `links::link_directory`, `links::link_file`      | Create a link for a containment test                       |
-| `gpu::skip_without_gpu`                          | Skip a GPU test that found no device                       |
+| Helper                                           | Use                                                              |
+| ------------------------------------------------ | ---------------------------------------------------------------- |
+| `build_absolute_generated_test_resource_path`    | A path in this run's directory; creates nothing                  |
+| `write_generated_test_resource`                  | Write one file and get its path                                  |
+| `create_generated_test_resource_dir`             | An empty directory, cleared of an earlier run's files            |
+| `overwrite_generated_test_resource_as_file`      | Create or truncate a generated file, with its parents            |
+| `overwrite_file`                                 | The same for any path                                            |
+| `open_generated_test_resource_as_file`           | Open a generated file                                            |
+| `open_generated_test_resource_as_slice`          | Open a generated file as a `FileSlice`                           |
+| `build_relative_test_sample_file_path`           | A relative path grouped under the test source's file stem        |
+| `build_relative_test_sample_file_directory`      | That file stem alone                                             |
+| `build_absolute_generated_test_sample_file_path` | The grouped path made absolute                                   |
+| `build_non_unicode_file_name`                    | A file name the host accepts and `Path::to_str` refuses          |
+| `assert_publication_left_previous`               | Assert a refused staged write left the previous file and no more |
+| `file::read_file_as_string`                      | Read an open file to the end                                     |
+| `links::link_directory`, `links::link_file`      | Create a link for a containment test                             |
+| `gpu::skip_without_gpu`                          | Skip a GPU test that found no device                             |
 
 `FileSlice` from the `fileslice` crate is re-exported for binary-format tests. The helpers write the bytes they are
 given and validate no format. File helpers return `std::io::Result`, keeping the error kind and naming the path.
@@ -71,4 +75,4 @@ device fails the run.
 ## Checks
 
 Run `cargo test --locked -p xrf-test-utils` from the repository root. See the [resource helpers](src/utils.rs),
-[links](src/links.rs), [GPU skip](src/gpu.rs) and [assertions](src/assertions.rs).
+[links](src/links.rs) and the [GPU skip](src/gpu.rs).

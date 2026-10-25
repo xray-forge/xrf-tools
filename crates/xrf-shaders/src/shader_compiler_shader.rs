@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{encode_string_to_w1251_bytes, encode_w1251_bytes_to_string};
+use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes};
 
 /// Flags a compiler shader carries, by the bit `Shader_xrLC` names it under.
 pub const SHADER_COMPILER_FLAGS: [(u32, &str); 6] = [
@@ -45,7 +45,7 @@ impl ShaderCompilerShader {
       ));
     };
 
-    Ok((encode_w1251_bytes_to_string(&bytes[..end])?, bytes[end..].to_vec()))
+    Ok((decode_w1251_bytes_to_string(&bytes[..end])?, bytes[end..].to_vec()))
   }
 
   /// Rebuilds the name field out of the name and what trailed it.

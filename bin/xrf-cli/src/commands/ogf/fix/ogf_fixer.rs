@@ -9,7 +9,7 @@ use xrf_extension::XrayExtension;
 use xrf_ogf::OgfNormalization;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_spawn::XRayByteOrder;
-use xrf_utils::{format_path, write_file_staged};
+use xrf_utils::{StagedFile, format_path};
 
 use crate::commands::ogf::fix::ogf_fix_file_report::OgfFixFileReport;
 use crate::commands::ogf::fix::ogf_fix_finding_report::OgfFixFindingReport;
@@ -200,7 +200,7 @@ impl<'a> OgfFixer<'a> {
       fs::create_dir_all(parent)?;
     }
 
-    write_file_staged(destination, bytes)
+    StagedFile::write(destination, bytes)
       .map_err(|error| XrfError::new_io_error(format!("File was not written: {error}"), error.kind()))
   }
 

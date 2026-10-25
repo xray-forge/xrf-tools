@@ -62,7 +62,7 @@ argument overrides the format's default.
 | `Xml`  | `<externs><exports>`, one `<export>` per name    | LF              |
 | `Html` | A reference page grouped by namespace            | LF              |
 
-`write_extern_manifest` renders and publishes through `xrf_utils::write_new_file_staged`, creating parent directories,
+`write_extern_manifest` renders and publishes through `xrf_utils::StagedFile::write_creating_directories`, creating parent directories,
 so a failed write leaves the previous artifact whole. `ExternFormat::from_extension` infers the format from `.json`,
 `.xml`, `.html` or `.htm`, and `ExternFormat`'s `FromStr` takes the `--format` names in `ExternFormat::NAMES`.
 

@@ -9,23 +9,26 @@ use fileslice::FileSlice;
 /// How long a run's directory survives before a later run collects it.
 const GENERATED_RESOURCE_RETENTION: Duration = Duration::from_secs(60 * 60);
 
-/// Get relative path to sample resource.
+/// A generated resource's relative path grouped under the test source's file stem: `file!()` and `x.chunk` give
+/// `<stem>/x.chunk`, joined with the host's separator.
 pub fn build_relative_test_sample_file_path(file: &str, resource: &str) -> String {
-  let mut path: PathBuf = PathBuf::new();
-
-  path.push(Path::new(file).file_stem().unwrap());
-  path.push(resource);
-
-  path.into_os_string().into_string().unwrap()
+  Path::new(&build_relative_test_sample_file_directory(file))
+    .join(resource)
+    .to_string_lossy()
+    .into_owned()
 }
 
-/// Get relative path to sample resource of current test file.
+/// The relative directory a test source's generated resources are grouped in: its file stem.
+///
+/// # Panics
+///
+/// Panics when `file` names no file, which `file!()` always does.
 pub fn build_relative_test_sample_file_directory(file: &str) -> String {
-  let mut path: PathBuf = PathBuf::new();
-
-  path.push(Path::new(file).file_stem().unwrap());
-
-  path.into_os_string().into_string().unwrap()
+  Path::new(file)
+    .file_stem()
+    .expect("a test source has a file name")
+    .to_string_lossy()
+    .into_owned()
 }
 
 /// Remove the run directories under `root` that were started before `collect_before`.
@@ -54,7 +57,7 @@ fn collect_stale_generated_resources(root: &Path, collect_before: u128) {
   }
 }
 
-/// Get absolute path to a generated test resource.
+/// The absolute path of a generated test resource in this run's directory; creates nothing.
 pub fn build_absolute_generated_test_resource_path(resource_path: &str) -> PathBuf {
   static GENERATED_TEST_RESOURCE_ROOT: OnceLock<PathBuf> = OnceLock::new();
 
@@ -117,7 +120,7 @@ pub fn create_generated_test_resource_dir(resource_path: &str) -> IoResult<PathB
 /// Assert that a publication refused part way left `path` holding `previous` and nothing staged beside it.
 ///
 /// What a format crate's `write_to_path` promises when its staged write fails: the file a caller had is still the file
-/// they have, and no hidden sibling is left for them to find. Pair it with `xrf_utils::staging_faults`, which arms the
+/// they have, and no hidden sibling is left for them to find. Pair it with `xrf_utils::StagingFaults`, which arms the
 /// failure.
 ///
 /// # Panics
@@ -143,56 +146,26 @@ pub fn assert_publication_left_previous(path: &Path, previous: &[u8]) {
   );
 }
 
-/// Get absolute path to a generated sample resource.
+/// The absolute path of a generated resource grouped under the test source's file stem.
 pub fn build_absolute_generated_test_sample_file_path(file: &str, resource: &str) -> PathBuf {
   build_absolute_generated_test_resource_path(&build_relative_test_sample_file_path(file, resource))
 }
 
-/// Open a generated test resource as a slice.
+/// Opens a generated test resource as a slice.
 pub fn open_generated_test_resource_as_slice(resource_path: &str) -> IoResult<FileSlice> {
-  let path: PathBuf = build_absolute_generated_test_resource_path(resource_path);
-
-  match File::open(path.clone()) {
-    Ok(file) => Ok(FileSlice::new(file)),
-    Err(error) => Err(IoError::new(
-      error.kind(),
-      format!("Failed to open generated test asset {}", path.display()),
-    )),
-  }
+  open_generated_test_resource_as_file(resource_path).map(FileSlice::new)
 }
 
-/// Open a generated test resource.
+/// Opens a generated test resource for reading.
 pub fn open_generated_test_resource_as_file(resource_path: &str) -> IoResult<File> {
   let path: PathBuf = build_absolute_generated_test_resource_path(resource_path);
 
-  match File::open(path.clone()) {
-    Ok(file) => Ok(file),
-    Err(error) => Err(IoError::new(
-      error.kind(),
-      format!("Failed to open generated test asset {}", path.display()),
-    )),
-  }
+  File::open(&path).map_err(|error| name_open_error(&path, error))
 }
 
-/// Create and open a generated test resource, overwriting any previous output.
+/// Creates or truncates a generated test resource, with the directories above it, and opens it to read and write.
 pub fn overwrite_generated_test_resource_as_file(resource_path: &str) -> IoResult<File> {
-  let path: PathBuf = build_absolute_generated_test_resource_path(resource_path);
-
-  std::fs::create_dir_all(path.parent().expect("Parent directory"))?;
-
-  match OpenOptions::new()
-    .create(true)
-    .write(true)
-    .truncate(true)
-    .read(true)
-    .open(path.clone())
-  {
-    Ok(file) => Ok(file),
-    Err(error) => Err(IoError::new(
-      error.kind(),
-      format!("Failed to open generated test asset {}", path.display()),
-    )),
-  }
+  overwrite_file(build_absolute_generated_test_resource_path(resource_path))
 }
 
 /// Write a generated test resource and return where it landed.
@@ -236,23 +209,31 @@ pub fn build_non_unicode_file_name() -> std::ffi::OsString {
   }
 }
 
-/// Create and open file by path, overwrite existing one.
+/// Creates or truncates the file at `path`, with the directories above it, and opens it to read and write.
+///
+/// # Panics
+///
+/// Panics when `path` has no parent, which no file below a test root lacks.
 pub fn overwrite_file<P: AsRef<Path>>(path: P) -> IoResult<File> {
-  std::fs::create_dir_all(path.as_ref().parent().expect("Parent directory"))?;
+  let path: &Path = path.as_ref();
 
-  match OpenOptions::new()
+  std::fs::create_dir_all(path.parent().expect("a test file has a parent directory"))?;
+
+  OpenOptions::new()
     .create(true)
     .write(true)
     .truncate(true)
     .read(true)
-    .open(path.as_ref())
-  {
-    Ok(file) => Ok(file),
-    Err(error) => Err(IoError::new(
-      error.kind(),
-      format!("Failed to open test asset {}", path.as_ref().display()),
-    )),
-  }
+    .open(path)
+    .map_err(|error| name_open_error(path, error))
+}
+
+/// Names `path` in an open that failed, keeping the kind and the system's reason.
+fn name_open_error(path: &Path, error: IoError) -> IoError {
+  IoError::new(
+    error.kind(),
+    format!("Failed to open test asset {}: {error}", path.display()),
+  )
 }
 
 #[cfg(test)]

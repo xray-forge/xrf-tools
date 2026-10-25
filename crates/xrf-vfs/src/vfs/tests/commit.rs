@@ -655,7 +655,7 @@ fn a_swap_failing_part_way_puts_every_file_back() {
     .unwrap();
 
   // The journal publishes first, then `system.ltx`; `game.ltx`, the second swap, is refused.
-  xrf_utils::staging_faults::fail_staged_publish_after(2);
+  xrf_utils::StagingFaults::fail_publish_after(2);
 
   assert!(before.get_vfs().commit(&transaction).is_err());
 

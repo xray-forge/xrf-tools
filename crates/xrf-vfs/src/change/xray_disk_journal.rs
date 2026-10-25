@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{StagedFile, format_path, sync_parent_directory, to_staged_sibling};
+use xrf_utils::{StagedFile, format_path};
 
 use crate::change::xray_journal_entry::XrayJournalEntry;
 
@@ -25,7 +25,7 @@ impl XrayDiskJournal {
   /// Returns an error when `target` names no file a sibling can sit beside.
   pub(crate) fn beside(target: &Path) -> XrfResult<Self> {
     Ok(Self {
-      path: to_staged_sibling(target, "commit")?,
+      path: StagedFile::to_sibling(target, "commit")?,
     })
   }
 
@@ -42,7 +42,7 @@ impl XrayDiskJournal {
       text.push('\n');
     }
 
-    StagedFile::stage(&self.path, &to_staged_sibling(&self.path, "tmp")?, text.as_bytes())
+    StagedFile::stage(&self.path, &StagedFile::to_sibling(&self.path, "tmp")?, text.as_bytes())
       .and_then(StagedFile::publish)
       .map_err(|error| XrfError::new_asset_error(format!("failed to journal a commit: {error}")))
   }
@@ -56,7 +56,7 @@ impl XrayDiskJournal {
       );
     }
 
-    sync_parent_directory(&self.path);
+    StagedFile::sync_parent_directory(&self.path);
   }
 
   /// Whether a file name is a commit journal's.

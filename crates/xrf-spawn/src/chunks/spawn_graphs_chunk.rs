@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_ltx::{FileImportExport, Ltx, LtxImportExport};
-use xrf_utils::{assert_length, write_new_file_staged};
+use xrf_utils::{StagedFile, assert_length};
 
 use crate::data::graph::graph_cross_table::GraphCrossTable;
 use crate::data::graph::graph_edge::GraphEdge;
@@ -242,7 +242,7 @@ impl FileImportExport for SpawnGraphsChunk {
     let mut cross_tables: Vec<u8> = Vec::new();
 
     GraphCrossTable::export_list::<XRayByteOrder>(&self.cross_tables, &mut cross_tables)?;
-    write_new_file_staged(&path.as_ref().join("graphs_cross_tables.gct"), &cross_tables)?;
+    StagedFile::write_creating_directories(&path.as_ref().join("graphs_cross_tables.gct"), &cross_tables)?;
 
     log::info!("Exported graph cross tables");
 

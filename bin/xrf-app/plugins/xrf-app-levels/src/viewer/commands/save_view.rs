@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
-use xrf_utils::write_file_staged;
+use xrf_utils::StagedFile;
 
 use crate::viewer::LevelViewerFolder;
 
@@ -15,7 +15,7 @@ pub async fn levels_save_view(execution: State<'_, ExecutionState>, path: PathBu
 
   execution
     .run_blocking("Saving a level view", move || {
-      write_file_staged(&path, text.as_bytes())
+      StagedFile::write(&path, text.as_bytes())
         .map_err(|error| format!("Failed to write the view '{}': {error}", path.display()))
     })
     .await?
