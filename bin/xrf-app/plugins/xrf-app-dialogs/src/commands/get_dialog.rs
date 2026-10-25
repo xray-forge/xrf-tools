@@ -6,7 +6,7 @@ use crate::DialogProjects;
 use crate::request::DialogsReadRequest;
 
 /// One dialog, with every phrase it declares.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_dialog"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "get_dialog")]
 pub async fn dialogs_get_dialog(
   request: DialogsReadRequest,

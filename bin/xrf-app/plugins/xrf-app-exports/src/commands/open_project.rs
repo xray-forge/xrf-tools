@@ -11,7 +11,7 @@ use crate::ExportsProjects;
 
 /// Open the scripts project at `project_path` and parse every extern it declares, answering the whole project, which
 /// the page lists in full.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_project"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_project")]
 pub async fn exports_open_project(
   session_id: SessionId,

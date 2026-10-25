@@ -170,7 +170,7 @@ export const levelsCommands = {
    * the scene drawn, which the viewport's load reports name, or none. The source may resolve the level's surfaces, so
    * it is made on the pool, after the ticket that keeps a level asked for later from being replaced by this one.
    */
-  showLevel: (viewport: RenderViewportId, sessionId: string | null) =>
+  showLevel: (viewport: RenderViewportId, sessionId: SessionId | null) =>
     __TAURI_INVOKE<number | null>(ELevelsCommand.SHOW_LEVEL, { viewport, sessionId }),
   /** Draw the open level's annotations over one of its level maps and write them beside it as an SVG; answers the SVG. */
   writeMapAnnotations: (sessionId: SessionId, request: MapAnnotationsWriteRequest) =>

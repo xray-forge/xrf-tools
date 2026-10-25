@@ -10,7 +10,7 @@ use xrf_vfs::XrayRoots;
 use crate::{SelectedVisual, SelectedVisualDescription, VisualModels};
 
 /// Select a visual and return what it contains, with every reference it declares resolved, read on the pool.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_model"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_model")]
 pub async fn visuals_open_model(
   session_id: SessionId,

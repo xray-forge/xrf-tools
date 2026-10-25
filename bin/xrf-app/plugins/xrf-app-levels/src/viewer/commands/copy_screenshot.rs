@@ -11,7 +11,7 @@ use crate::viewer::LevelViewerFolder;
 
 /// Copy a screenshot of the screenshots folder to where the page names, as Save as does; read whole first, so a failed
 /// copy leaves no partial file and keeps any file it would have replaced.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "copy_screenshot"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "copy_screenshot")]
 pub async fn levels_copy_screenshot(
   directories: State<'_, AppDirectories>,

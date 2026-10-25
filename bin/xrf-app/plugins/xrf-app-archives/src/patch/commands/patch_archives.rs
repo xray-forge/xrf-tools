@@ -15,7 +15,7 @@ use crate::lease::PUBLISH_ACTION_GROUP;
 use crate::patch::ArchivesPatchRequest;
 
 /// Publishes added and modified entries as patch volumes.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "patch_archives"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "patch_archives")]
 pub async fn archives_patch_archives(
   execution: State<'_, ExecutionState>,

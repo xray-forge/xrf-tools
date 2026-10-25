@@ -15,7 +15,7 @@ use crate::viewer::map::MapCaptureRequest;
 use crate::viewer::{LevelViewerReport, ViewerCaptureJob};
 
 /// Capture a level map in a viewport tile by tile and write it to a PNG file with its coverage in alpha.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "capture_map"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "capture_map")]
 pub async fn levels_capture_map(
   renderer: State<'_, Renderer>,

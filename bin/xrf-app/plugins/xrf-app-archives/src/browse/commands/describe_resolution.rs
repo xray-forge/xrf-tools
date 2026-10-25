@@ -6,7 +6,7 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 use crate::browse::{ArchiveResolution, ArchiveSubjects};
 
 /// Where the open subject looks for an engine path, in the order it looks.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_resolution"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_resolution")]
 pub async fn archives_describe_resolution(
   session_id: SessionId,

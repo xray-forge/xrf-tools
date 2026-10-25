@@ -10,7 +10,7 @@ use xrf_archive::ArchiveProject;
 use crate::browse::{ArchiveSubject, ArchiveSubjects};
 
 /// Open one archive volume, or every volume beneath a directory, as a single name table.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_volumes"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_volumes")]
 pub async fn archives_open_volumes(
   session_id: SessionId,

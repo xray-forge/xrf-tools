@@ -10,7 +10,7 @@ use crate::level::LevelEntry;
 use crate::report::LevelReport;
 
 /// Every compiled level the mounted roots hold, loose or archived alike, listed on the pool from a fresh search.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_levels"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "list_levels")]
 pub async fn levels_list_levels(
   roots: XrayRoots,

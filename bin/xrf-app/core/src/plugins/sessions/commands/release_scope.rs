@@ -8,7 +8,7 @@ use crate::window::InvokingWindow;
 ///
 /// Synchronous, so the tool's bindings go in the order the page sent its calls: an opening bound after it, by the tool
 /// entered again, is not one it closes. What the openings held is dropped on the pool.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "release_scope"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "release_scope")]
 pub fn sessions_release_scope(scopes: State<'_, SessionScopes>, window: InvokingWindow, tool: String) -> u32 {
   let scope: SessionScope = SessionScope::of(&window, tool);

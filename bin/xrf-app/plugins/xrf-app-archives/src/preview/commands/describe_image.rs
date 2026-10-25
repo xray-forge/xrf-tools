@@ -14,7 +14,7 @@ use crate::preview::ImageDescriptor;
 ///
 /// Returns an error when the subject holds no such file, its bytes cannot be read, or its extension is not one a
 /// webview draws - which the caller decided before asking, so reaching it means the two disagree.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_image"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_image")]
 pub async fn archives_describe_image(
   session_id: SessionId,

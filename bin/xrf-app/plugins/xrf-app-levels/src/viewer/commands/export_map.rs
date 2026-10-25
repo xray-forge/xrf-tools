@@ -8,7 +8,7 @@ use crate::viewer::{LevelViewerFolder, LevelViewerReport};
 
 /// Write a level map of the screenshots folder again as a PNG, a TGA or a DDS, or its annotations alone as an SVG;
 /// answers its pixels across and down.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "export_map"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "export_map")]
 pub async fn levels_export_map(
   directories: State<'_, AppDirectories>,

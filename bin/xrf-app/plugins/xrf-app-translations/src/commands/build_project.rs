@@ -14,7 +14,7 @@ use crate::ipc::translations::TRANSLATIONS_JOB_BUILD;
 use crate::request::TranslationsBuildRequest;
 
 /// Compile translation sources into per-language string tables, one build at a time.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "build_project"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "build_project")]
 pub async fn translations_build_project(
   execution: State<'_, ExecutionState>,

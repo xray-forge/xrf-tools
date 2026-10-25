@@ -12,7 +12,7 @@ use crate::request::SpawnConvertRequest;
 use crate::{SpawnConversion, SpawnConversionResult};
 
 /// Pack a directory of spawn chunks into one file, as a tracked job sharing one lane with unpacking.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "pack_file"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "pack_file")]
 pub async fn spawn_pack_file(
   execution: State<'_, ExecutionState>,

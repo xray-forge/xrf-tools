@@ -7,7 +7,7 @@ use xrf_app_core::execution::ExecutionState;
 use crate::paths::PathDescription;
 
 /// Describe what a path currently holds.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_path"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_path")]
 pub async fn system_describe_path(execution: State<'_, ExecutionState>, path: PathBuf) -> TauriResult<PathDescription> {
   // A directory's entries are counted, which grows with it.

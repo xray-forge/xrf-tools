@@ -2,15 +2,7 @@
 
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
-import {
-  ELeaveDecision,
-  GpuMemoryUsage,
-  HostInfo,
-  PathDescription,
-  ProcessMemory,
-  RuntimeSnapshot,
-  WebviewProcessMemory,
-} from "#/types/xrf-app-system";
+import { ELeaveDecision, HostInfo, MemoryUsage, PathDescription, RuntimeSnapshot } from "#/types/xrf-app-system";
 import { BuildInfo } from "#/types/xrf-build-info";
 import { EnvFlagReading } from "#/types/xrf-env-flags";
 
@@ -49,15 +41,7 @@ export const systemCommands = {
    * Report what the application and each of its webview's processes hold in memory, where the platform can say, and what
    * the application holds on the GPU while its renderer runs one.
    */
-  getMemoryUsage: () =>
-    __TAURI_INVOKE<{
-      /** The backend process itself. */
-      application: ProcessMemory;
-      /** Every webview process still running, in the order the environment listed them. */
-      webview: Array<WebviewProcessMemory>;
-      /** The application's GPU memory, none while no renderer runs a GPU. */
-      gpu: GpuMemoryUsage | null;
-    } | null>(ESystemCommand.GET_MEMORY_USAGE),
+  getMemoryUsage: () => __TAURI_INVOKE<MemoryUsage | null>(ESystemCommand.GET_MEMORY_USAGE),
   /** Report what the application currently costs the machine, and how long it has been running. */
   getRuntimeSnapshot: () => __TAURI_INVOKE<RuntimeSnapshot>(ESystemCommand.GET_RUNTIME_SNAPSHOT),
   /** Write what the page decided about leaving or closing to the log, beside what the backend did about it. */

@@ -15,7 +15,7 @@ use crate::lease::PUBLISH_ACTION_GROUP;
 use crate::pack::ArchivesPackRequest;
 
 /// Packs a directory using the supplied configuration.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "pack_directory"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "pack_directory")]
 pub async fn archives_pack_directory(
   execution: State<'_, ExecutionState>,

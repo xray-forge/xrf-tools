@@ -11,7 +11,7 @@ use crate::browse::{ArchiveSubject, ArchiveSubjects};
 
 /// Open a game folder as the engine mounts it: its archives and the loose tree standing in front of them. The world
 /// follows commits: one that moves what its listing read lists it again, at the revision a page then refreshes to.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_world"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_world")]
 pub async fn archives_open_world(
   session_id: SessionId,

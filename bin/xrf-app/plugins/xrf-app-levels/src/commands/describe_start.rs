@@ -8,7 +8,7 @@ use crate::level::{SelectedLevel, SelectedLevels};
 use crate::parts::{LevelStart, LevelStartPart};
 
 /// Describe where the open level opens, or none for a viewer to decide; decided again where a commit let it go.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_start"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_start")]
 pub async fn levels_describe_start(
   session_id: SessionId,

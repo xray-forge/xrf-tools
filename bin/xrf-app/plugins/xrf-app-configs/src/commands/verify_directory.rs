@@ -14,7 +14,7 @@ use crate::ipc::configs::CONFIGS_JOB_VERIFY;
 use crate::request::ConfigsVerifyRequest;
 
 /// Verifies LTX configs through the VFS, including archived files, one verification at a time.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "verify_directory"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "verify_directory")]
 pub async fn configs_verify_directory(
   execution: State<'_, ExecutionState>,

@@ -14,7 +14,7 @@ use crate::browse::{ArchiveSubject, ArchiveSubjects, ArchivesExtractRequest};
 use crate::ipc::archives::ARCHIVES_JOB_EXTRACT;
 
 /// Write every file the open subject holds under one directory into a destination root.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "extract_directory"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "extract_directory")]
 pub async fn archives_extract_directory(
   execution: State<'_, ExecutionState>,

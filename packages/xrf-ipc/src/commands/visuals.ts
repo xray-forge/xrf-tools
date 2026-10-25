@@ -72,7 +72,7 @@ export const visualsCommands = {
    * draws none. Answers the scene drawn, which the viewport's load reports name, or none. Off the main thread, as every
    * show is, its ticket taken first so a model asked for later is never replaced by this one.
    */
-  showModel: (viewport: RenderViewportId, sessionId: string | null, detail: number | null) =>
+  showModel: (viewport: RenderViewportId, sessionId: SessionId | null, detail: number | null) =>
     __TAURI_INVOKE<number | null>(EVisualsCommand.SHOW_MODEL, { viewport, sessionId, detail }),
 };
 

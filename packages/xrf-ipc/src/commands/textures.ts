@@ -7,8 +7,6 @@ import { IIpcCommandSignature } from "#/signature";
 import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
 import {
   ETextureCatalogMode,
-  ETextureSurfaceAlpha,
-  ETextureSurfaceShape,
   TextureBrowse,
   TextureBuildOutcome,
   TextureCatalog,
@@ -22,6 +20,7 @@ import {
   TexturesMakeBumpRequest,
   TextureSource,
   TexturesSaveRequest,
+  TexturesShowRequest,
   TextureVocabulary,
 } from "#/types/xrf-app-textures";
 import { JobProgress } from "#/types/xrf-job";
@@ -84,20 +83,8 @@ export const texturesCommands = {
    * Draw a texture laid on a body in a viewport, its files read by the renderer; no request draws none. Answers the
    * scene drawn, which the viewport's load reports name, or none.
    */
-  showTexture: (
-    viewport: RenderViewportId,
-    request: {
-      source: TextureSource;
-      /** The roots the texture is resolved in, as its description was. */
-      roots: XrayRoots;
-      shape: ETextureSurfaceShape;
-      /** How many times the texture repeats across the body, which is how a tiling seam becomes visible. */
-      tiling: number | null;
-      alpha: ETextureSurfaceAlpha;
-      /** Width over height of the texture, which the plane is stretched to. */
-      aspect: number | null;
-    } | null
-  ) => __TAURI_INVOKE<number | null>(ETexturesCommand.SHOW_TEXTURE, { viewport, request }),
+  showTexture: (viewport: RenderViewportId, request: TexturesShowRequest | null) =>
+    __TAURI_INVOKE<number | null>(ETexturesCommand.SHOW_TEXTURE, { viewport, request }),
 };
 
 /** What each command of the `textures` plugin takes and resolves to, keyed by its wire name. */

@@ -6,7 +6,7 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 use crate::{SpawnChunk, SpawnChunkKind, SpawnFiles};
 
 /// One large chunk of the spawn `session_id` holds, copied on the pool.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "read_chunk"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "read_chunk")]
 pub async fn spawn_read_chunk(
   session_id: SessionId,

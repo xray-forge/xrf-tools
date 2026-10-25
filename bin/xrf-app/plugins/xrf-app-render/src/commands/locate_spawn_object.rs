@@ -8,7 +8,7 @@ use crate::{RenderAnswer, Renderer};
 
 /// Find a spawned object's bounding sphere in a viewport's level, centre then radius in renderer space; none until
 /// its model is drawn.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "locate_spawn_object"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "locate_spawn_object")]
 pub async fn render_locate_spawn_object(
   renderer: State<'_, Renderer>,

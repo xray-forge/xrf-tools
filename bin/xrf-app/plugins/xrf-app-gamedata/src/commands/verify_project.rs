@@ -14,7 +14,7 @@ use crate::ipc::gamedata::GAMEDATA_JOB_VERIFY;
 use crate::request::GamedataVerifyRequest;
 
 /// Run the selected checks over a gamedata project, one verification at a time.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "verify_project"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "verify_project")]
 pub async fn gamedata_verify_project(
   execution: State<'_, ExecutionState>,

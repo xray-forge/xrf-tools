@@ -10,7 +10,7 @@ use crate::request::ConfigsOpenRequest;
 use crate::{ConfigsProject, ConfigsProjectDescriptor, ConfigsProjects, OpenedConfigsProject};
 
 /// Open a configs project for browsing over the shared asset roots, read on the pool, and list what it holds.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_project"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_project")]
 pub async fn configs_open_project(
   execution: State<'_, ExecutionState>,

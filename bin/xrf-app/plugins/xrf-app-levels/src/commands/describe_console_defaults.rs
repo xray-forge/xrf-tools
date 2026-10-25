@@ -14,7 +14,7 @@ use crate::parts::LevelConsolePart;
 /// its shipped defaults; read again where a commit let the shipped ones go.
 #[cfg_attr(
   feature = "typescript-bindings",
-  specta::specta(rename = "describe_console_defaults")
+  specta::specta
 )]
 #[tauri::command(rename = "describe_console_defaults")]
 pub async fn levels_describe_console_defaults(

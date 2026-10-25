@@ -7,7 +7,7 @@ use crate::browse::{ArchiveSubject, ArchiveSubjects};
 
 /// What `tool`'s explorer has open in the asking window, the newest it opened, so a reloaded frontend adopts it
 /// instead of asking for it again.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "restore_subject"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "restore_subject")]
 pub async fn archives_restore_subject(
   subjects: State<'_, ArchiveSubjects>,

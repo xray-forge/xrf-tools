@@ -3,7 +3,7 @@ use xrf_renderer::RenderBackendAvailability;
 
 /// Say which graphics backends the renderer can draw with on this machine, and on which GPU, for the settings to offer
 /// only those; each is probed off the render thread.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_backends"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "list_backends")]
 pub async fn render_list_backends() -> TauriResult<Vec<RenderBackendAvailability>> {
   tauri::async_runtime::spawn_blocking(xrf_renderer::probe_render_backends)

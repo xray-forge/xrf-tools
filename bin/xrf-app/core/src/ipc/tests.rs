@@ -25,7 +25,7 @@ mod fixture_registry {
 
 use fixture_registry::fixture;
 
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "ping"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "ping")]
 fn fixture_ping() -> String {
   String::from("pong")

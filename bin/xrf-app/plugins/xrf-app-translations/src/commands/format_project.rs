@@ -14,7 +14,7 @@ use crate::request::TranslationsFormatRequest;
 use crate::{TranslationFormatGuard, TranslationProjects, TranslationsFormatRun};
 
 /// Normalize the JSON translation sources under a directory, refused while an open project holds any of them.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "format_project"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "format_project")]
 pub async fn translations_format_project(
   execution: State<'_, ExecutionState>,

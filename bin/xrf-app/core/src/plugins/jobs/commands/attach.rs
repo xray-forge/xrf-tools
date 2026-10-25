@@ -8,7 +8,7 @@ use xrf_job::JobProgress;
 use crate::jobs::JobRegistry;
 
 /// Watch a running job this window did not start.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "attach"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "attach")]
 pub fn jobs_attach(registry: State<'_, Arc<JobRegistry>>, id: Uuid, progress: Channel<JobProgress>) -> bool {
   log::info!("Attaching to job: {}", id);

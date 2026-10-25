@@ -12,7 +12,7 @@ use crate::viewer::LevelViewerFolder;
 
 /// Write a viewport's next finished frame to a PNG file of the level viewer's screenshots folder: the whole viewport at
 /// its drawn size, without its overlays or its selection's outline.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "save_screenshot"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save_screenshot")]
 pub async fn levels_save_screenshot(
   renderer: State<'_, Renderer>,

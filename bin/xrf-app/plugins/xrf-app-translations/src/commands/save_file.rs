@@ -10,7 +10,7 @@ use xrf_translation::TranslationEdit;
 use crate::{TranslationProjects, TranslationSaveOutcome, TranslationSavePlan};
 
 /// Write one logical file's pending edits, grouped by the language each belongs to, into the project `session_id` holds.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "save_file"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save_file")]
 pub async fn translations_save_file(
   session_id: SessionId,

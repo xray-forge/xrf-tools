@@ -12,7 +12,7 @@ use crate::surface::{TextureRenderSource, TexturesShowRequest};
 
 /// Draw a texture laid on a body in a viewport, its files read by the renderer; no request draws none. Answers the
 /// scene drawn, which the viewport's load reports name, or none.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "show_texture"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "show_texture")]
 pub async fn textures_show_texture(
   shows: State<'_, ViewportShows>,

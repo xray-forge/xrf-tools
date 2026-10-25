@@ -10,7 +10,7 @@ use crate::level::{SelectedLevel, SelectedLevels};
 use crate::parts::{LevelTextureReference, LevelTexturesPart};
 
 /// Describe what every texture the open level's surfaces bind resolved to; resolved again where a commit let it go.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_textures"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_textures")]
 pub async fn levels_describe_textures(
   session_id: SessionId,
