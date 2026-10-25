@@ -2,7 +2,7 @@ use serde::Serialize;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::{XrayExtension, XrayExtensionOf};
 
-/// What a viewer may read out of a mounted tree, by extension and size.
+/// What a viewer may read out of a mounted tree, by extension and size, passed to each read it gates.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,8 +29,14 @@ pub struct ArchiveReadPolicy {
   pub maximum_chunk_tree_size: u32,
 }
 
-impl ArchiveReadPolicy {
-  const TEXT_EXTENSIONS: &'static [XrayExtension] = &[
+/// The policy the archive viewers read under, on both sides of IPC: the backend gates its reads by it, and the
+/// frontend's bindings carry it as the preview rules.
+///
+/// `dds` is the texture the engine loads, which the backend transcodes for display; images are pictures a webview draws
+/// as they stand.
+#[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
+pub const ARCHIVE_READ_POLICY: ArchiveReadPolicy = ArchiveReadPolicy {
+  text_extensions: &[
     XrayExtension::Bat,
     XrayExtension::Cmd,
     XrayExtension::Cs,
@@ -53,28 +59,24 @@ impl ArchiveReadPolicy {
     XrayExtension::Txt,
     XrayExtension::Vs,
     XrayExtension::Xml,
-  ];
-  const TEXT_SIZE: u32 = 10 * 1024 * 1024;
-
-  /// The DDS the engine loads, which the backend transcodes for display.
-  const TEXTURE_EXTENSIONS: &'static [XrayExtension] = &[XrayExtension::Dds];
-  const TEXTURE_SIZE: u32 = 32 * 1024 * 1024;
-
-  /// Pictures a webview draws as they stand.
-  const IMAGE_EXTENSIONS: &'static [XrayExtension] = &[
+  ],
+  maximum_text_size: 10 * 1024 * 1024,
+  texture_extensions: &[XrayExtension::Dds],
+  maximum_texture_size: 32 * 1024 * 1024,
+  image_extensions: &[
     XrayExtension::Bmp,
     XrayExtension::Jpeg,
     XrayExtension::Jpg,
     XrayExtension::Png,
-  ];
-  const IMAGE_SIZE: u32 = 32 * 1024 * 1024;
+  ],
+  maximum_image_size: 32 * 1024 * 1024,
+  audio_extensions: &[XrayExtension::Ogg, XrayExtension::Wav],
+  maximum_audio_size: 64 * 1024 * 1024,
+  maximum_describe_size: 64 * 1024 * 1024,
+  maximum_chunk_tree_size: 8 * 1024 * 1024,
+};
 
-  const AUDIO_EXTENSIONS: &'static [XrayExtension] = &[XrayExtension::Ogg, XrayExtension::Wav];
-  const AUDIO_SIZE: u32 = 64 * 1024 * 1024;
-
-  const DESCRIBE_SIZE: u32 = 64 * 1024 * 1024;
-  const CHUNK_TREE_SIZE: u32 = 8 * 1024 * 1024;
-
+impl ArchiveReadPolicy {
   /// Whether this file is one the policy reads as text, judged by its extension alone.
   pub fn is_text_file(&self, filename: &str) -> bool {
     XrayExtensionOf::of(filename)
@@ -115,30 +117,13 @@ impl ArchiveReadPolicy {
   }
 }
 
-impl Default for ArchiveReadPolicy {
-  fn default() -> Self {
-    Self {
-      text_extensions: Self::TEXT_EXTENSIONS,
-      maximum_text_size: Self::TEXT_SIZE,
-      texture_extensions: Self::TEXTURE_EXTENSIONS,
-      maximum_texture_size: Self::TEXTURE_SIZE,
-      image_extensions: Self::IMAGE_EXTENSIONS,
-      maximum_image_size: Self::IMAGE_SIZE,
-      audio_extensions: Self::AUDIO_EXTENSIONS,
-      maximum_audio_size: Self::AUDIO_SIZE,
-      maximum_describe_size: Self::DESCRIBE_SIZE,
-      maximum_chunk_tree_size: Self::CHUNK_TREE_SIZE,
-    }
-  }
-}
-
 #[cfg(test)]
 mod tests {
-  use super::ArchiveReadPolicy;
+  use super::{ARCHIVE_READ_POLICY, ArchiveReadPolicy};
 
   #[test]
   fn default_policy_recognizes_text_extensions_case_insensitively() {
-    let policy: ArchiveReadPolicy = ArchiveReadPolicy::default();
+    let policy: ArchiveReadPolicy = ARCHIVE_READ_POLICY;
 
     for extension in policy.text_extensions {
       assert!(policy.is_text_file(&format!("preview.{extension}")));
@@ -156,7 +141,7 @@ mod tests {
   fn every_stage_of_a_shader_source_reads_as_text() {
     // Written as the whole family on purpose. `.ps`, `.vs`, `.hs` and `.ds` were readable while `.gs`, `.cs` and the
     // `.hlsl` IX-Ray ships loose - 501 of them - were not, which is an oversight no wording of the list prevents.
-    let policy: ArchiveReadPolicy = ArchiveReadPolicy::default();
+    let policy: ArchiveReadPolicy = ARCHIVE_READ_POLICY;
 
     for stage in ["vs", "hs", "ds", "gs", "ps", "cs", "hlsl"] {
       assert!(
@@ -169,7 +154,7 @@ mod tests {
   #[test]
   fn the_scripting_the_engine_runs_reads_as_text() {
     // Two spellings of one language: `.script` is what the game data uses and `.lua` is what an engine tree does.
-    let policy: ArchiveReadPolicy = ArchiveReadPolicy::default();
+    let policy: ArchiveReadPolicy = ARCHIVE_READ_POLICY;
 
     assert!(policy.is_text_file("scripts\\bind_stalker.script"));
     assert!(policy.is_text_file("scripts\\bind_stalker.lua"));
@@ -178,12 +163,12 @@ mod tests {
   #[test]
   fn the_shader_script_the_engine_ships_without_a_name_reads_as_text() {
     // `Path::extension` calls `shaders\r1\.s` a hidden file and refuses it; it is a Lua script the engine loads.
-    assert!(ArchiveReadPolicy::default().is_text_file("shaders\\r1\\.s"));
+    assert!(ARCHIVE_READ_POLICY.is_text_file("shaders\\r1\\.s"));
   }
 
   #[test]
   fn a_text_read_is_refused_by_extension_and_by_size() {
-    let policy: ArchiveReadPolicy = ArchiveReadPolicy::default();
+    let policy: ArchiveReadPolicy = ARCHIVE_READ_POLICY;
 
     assert!(
       policy
@@ -200,7 +185,7 @@ mod tests {
 
   #[test]
   fn a_describe_read_is_bounded_by_size_alone() {
-    let policy: ArchiveReadPolicy = ArchiveReadPolicy::default();
+    let policy: ArchiveReadPolicy = ARCHIVE_READ_POLICY;
 
     // The extension is not consulted: which formats have a describer is not a question this policy answers, so a
     // descriptor and a mesh are admitted on the same terms and refused on the same terms.

@@ -405,7 +405,7 @@ mod tests {
   use std::path::{Path, PathBuf};
   use std::sync::Arc;
 
-  use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveReadPolicy};
+  use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 
   use super::XrayArchiveSource;
   use crate::{XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayPathCollision, XrayShadowedCopy};
@@ -431,7 +431,6 @@ mod tests {
         })
         .collect(),
       files: merged.0,
-      read_policy: ArchiveReadPolicy::default(),
       root: PathBuf::from("C:\\game\\db"),
       shadowed: merged.1,
       size_real: 0,

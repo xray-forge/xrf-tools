@@ -17,23 +17,22 @@ pub struct ArchiveFileDescription {
 }
 
 impl ArchiveFileDescription {
-  /// Describes one entry of the subject being browsed.
+  /// Describes one entry of the subject being browsed, holding no more of it than `policy` admits.
   ///
   /// # Errors
   ///
   /// Returns an error when the subject holds no such file, or when a describer that claimed the entry could not read
   /// it. A format nothing describes, and an entry too large to read whole, are answers rather than failures.
-  pub fn of(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+  pub fn of(source: &ArchiveDescribeSource, name: &str, policy: &ArchiveReadPolicy) -> XrfResult<Self> {
     let size: u64 = source
       .get_size_of(name)
       .ok_or_else(|| XrfError::new_not_found_error(format!("File '{name}' is not held by the open subject")))?;
 
     // Narrowed rather than compared as a `u64`: an entry past `u32` is past every ceiling this policy sets anyway.
     let weighed: u32 = u32::try_from(size).unwrap_or(u32::MAX);
-    let policy: &ArchiveReadPolicy = source.get_read_policy();
 
     let format: ArchiveFormatDescription = match ArchiveDescribedFormat::of(name) {
-      None => Self::describe_container(source, name, size, weighed)?,
+      None => Self::describe_container(source, name, size, weighed, policy)?,
       // The ceiling bounds what a describer holds, and one that seeks holds a chunk header at a time however large
       // the entry is. Where the subject can only hand the entry over whole it is held after all, and the format is
       // what says whether that is a size worth refusing - see `reads_by_seeking`.
@@ -45,9 +44,9 @@ impl ArchiveFileDescription {
       }
       // A claim that did not hold is offered whatever the container walk can say, exactly as an unclaimed
       // entry is: the file is still a file, and its shape is still readable.
-      Some(format) => match format.describe(source, name)? {
+      Some(format) => match format.describe(source, name, policy)? {
         Some(description) => description,
-        None => Self::describe_container(source, name, size, weighed)?,
+        None => Self::describe_container(source, name, size, weighed, policy)?,
       },
     };
 
@@ -68,9 +67,8 @@ impl ArchiveFileDescription {
     name: &str,
     size: u64,
     weighed: u32,
+    policy: &ArchiveReadPolicy,
   ) -> XrfResult<ArchiveFormatDescription> {
-    let policy: &ArchiveReadPolicy = source.get_read_policy();
-
     if !policy.allows_chunk_tree_read(weighed) {
       return Ok(Self::refuse_chunk_tree(size, policy));
     }

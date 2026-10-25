@@ -39,6 +39,7 @@ pub fn expand(arguments: TokenStream, item: TokenStream) -> syn::Result<TokenStr
           name: #name_text,
           doc: #doc,
           value: || ::xrf_ipc::to_value(&super::#name),
+          data_type: |types| ::xrf_ipc::data_type_of(&super::#name, types),
         }
       }
     }

@@ -14,6 +14,7 @@ module beside it, `__xrf_ipc_constant_<NAME>`, that submits an `xrf_ipc::IpcCons
 | `name`        | The constant's identifier                                                                     |
 | `doc`         | Its `///` lines, each without the one space after the slashes, joined by `\n`, then trimmed   |
 | `value`       | A function serializing the constant through `xrf_ipc::to_value`, so its type must `Serialize` |
+| `data_type`   | Its type's definition through `xrf_ipc::data_type_of`, so its type must be a `specta::Type`   |
 
 Inner indentation of a doc line survives; `#[doc(hidden)]` and other list-form doc attributes are skipped.
 

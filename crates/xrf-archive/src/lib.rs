@@ -8,7 +8,7 @@ mod payload;
 mod volume;
 
 pub use archive_project::ArchiveProject;
-pub use archive_read_policy::ArchiveReadPolicy;
+pub use archive_read_policy::{ARCHIVE_READ_POLICY, ArchiveReadPolicy};
 pub use archive_read_result::ArchiveReadResult;
 pub use payload::{ArchiveOpenVolumes, ArchiveSharedPayload};
 pub use volume::{

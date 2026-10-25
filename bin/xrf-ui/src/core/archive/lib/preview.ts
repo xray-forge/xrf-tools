@@ -1,4 +1,4 @@
-import { ArchiveReadPolicy } from "@xrf/ipc/types/xrf-archive";
+import { ARCHIVE_READ_POLICY, ArchiveReadPolicy } from "@xrf/ipc/types/xrf-archive";
 import { EXrayExtension, XrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { getFoldedFileExtension } from "@xrf/path";
 
@@ -15,13 +15,16 @@ export type ArchivePreviewSupport =
   | { kind: "too-large"; maximumSize: number };
 
 /**
- * Classifies an entry's preview using the backend-provided extensions and size limits.
+ * Classifies an entry's preview using the backend's extensions and size limits.
  *
  * @param descriptor - Browsed entry used to validate type and size.
- * @param policy - Backend-provided archive read capabilities.
+ * @param policy - Read policy to classify by, the one generated from the backend unless a test narrows it.
  * @returns A discriminated result describing preview support or the reason it is unavailable.
  */
-export function getArchivePreviewSupport(descriptor: IArchiveEntry, policy: ArchiveReadPolicy): ArchivePreviewSupport {
+export function getArchivePreviewSupport(
+  descriptor: IArchiveEntry,
+  policy: ArchiveReadPolicy = ARCHIVE_READ_POLICY
+): ArchivePreviewSupport {
   // Policy extensions are lower case; normalize the entry's spelling once for every preview kind.
   const extension: string = getFoldedFileExtension(descriptor.name);
 

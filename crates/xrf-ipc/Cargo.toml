@@ -9,6 +9,7 @@ rust-version.workspace = true
 inventory = "0.3.25"
 serde = { workspace = true }
 serde_json = { workspace = true }
+specta = { workspace = true }
 xrf-ipc-derive = { workspace = true }
 
 [lints]

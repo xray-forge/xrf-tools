@@ -56,6 +56,7 @@ import {
   EArchiveSubject,
 } from "@xrf/ipc/types/xrf-app-archives";
 import {
+  ARCHIVE_READ_POLICY,
   ArchiveDescriptor,
   ArchiveFileDescriptor,
   ArchiveProject,
@@ -115,48 +116,13 @@ export function mockArchiveExtractDirectoryResult(
 }
 
 /**
- * Creates an archive read policy fixture.
+ * Creates an archive read policy fixture: the generated policy, with any limit a test narrows.
  *
  * @param overrides - Field values to override.
  * @returns An archive read policy fixture.
  */
 export function mockArchiveReadPolicy(overrides: Partial<ArchiveReadPolicy> = {}): ArchiveReadPolicy {
-  return {
-    textExtensions: [
-      EXrayExtension.BAT,
-      EXrayExtension.CMD,
-      EXrayExtension.CS,
-      EXrayExtension.DS,
-      EXrayExtension.GS,
-      EXrayExtension.H,
-      EXrayExtension.HLSL,
-      EXrayExtension.HS,
-      EXrayExtension.INI,
-      EXrayExtension.JSON,
-      EXrayExtension.LOG,
-      EXrayExtension.LTX,
-      EXrayExtension.LUA,
-      EXrayExtension.MD,
-      EXrayExtension.PS,
-      EXrayExtension.PY,
-      EXrayExtension.S,
-      EXrayExtension.SCRIPT,
-      EXrayExtension.SEQ,
-      EXrayExtension.TXT,
-      EXrayExtension.VS,
-      EXrayExtension.XML,
-    ],
-    maximumTextSize: 10 * 1024 * 1024,
-    textureExtensions: [EXrayExtension.DDS],
-    maximumTextureSize: 32 * 1024 * 1024,
-    imageExtensions: [EXrayExtension.BMP, EXrayExtension.JPEG, EXrayExtension.JPG, EXrayExtension.PNG],
-    maximumImageSize: 32 * 1024 * 1024,
-    audioExtensions: [EXrayExtension.OGG, EXrayExtension.WAV],
-    maximumAudioSize: 64 * 1024 * 1024,
-    maximumDescribeSize: 64 * 1024 * 1024,
-    maximumChunkTreeSize: 8 * 1024 * 1024,
-    ...overrides,
-  };
+  return { ...ARCHIVE_READ_POLICY, ...overrides };
 }
 
 /**
@@ -237,7 +203,6 @@ export function mockArchivesProject(files?: Array<ArchiveFileDescriptor>): Archi
   return {
     archives: [archive],
     files: Object.fromEntries(descriptors.map((descriptor) => [descriptor.name, descriptor])),
-    readPolicy: mockArchiveReadPolicy(),
     root: "C:\\game\\database",
     shadowed: [],
     sizeReal: descriptors.reduce((total: number, descriptor) => total + descriptor.sizeReal, 0),
@@ -332,7 +297,6 @@ export function mockArchivesWorld(files?: Array<ArchiveWorldEntry>): ArchiveWorl
   return {
     files: entries,
     mounts: ["C:\\game\\gamedata", "C:\\game\\db"],
-    readPolicy: mockArchiveReadPolicy(),
     shadowedCount: entries.filter((entry: ArchiveWorldEntry) => entry.shadowed.length).length,
     shadowedSizeReal: entries.reduce(
       (total: number, entry: ArchiveWorldEntry) =>

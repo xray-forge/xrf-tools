@@ -7885,6 +7885,7 @@ dependencies = [
  "xrf-chunk",
  "xrf-error",
  "xrf-extension",
+ "xrf-ipc",
  "xrf-lzhuf",
  "xrf-test-utils",
  "xrf-utils",
@@ -8184,6 +8185,7 @@ dependencies = [
  "inventory",
  "serde",
  "serde_json",
+ "specta",
  "xrf-ipc-derive",
 ]
 
@@ -8202,6 +8204,7 @@ dependencies = [
 name = "xrf-ipc-typescript"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "serde_json",
  "specta",
  "specta-serde",

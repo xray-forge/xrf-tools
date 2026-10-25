@@ -1,7 +1,7 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
 import { AssetTextureShape, SessionId } from "#/types/xrf-app-core";
-import { ArchiveProject, ArchiveReadPolicy } from "#/types/xrf-archive";
+import { ArchiveProject } from "#/types/xrf-archive";
 import { ArchivePackConfig, ArchivePatchConfig } from "#/types/xrf-pack";
 import { ImageShape } from "#/types/xrf-texture";
 import { XrayAssetContainer, XrayPathCollision, XrayRoots, XraySourceKind } from "#/types/xrf-vfs";
@@ -1232,7 +1232,6 @@ export type ArchiveWorld = {
   mounts: Array<string>;
   /** Winning entries, one per engine path, ordered by that path. */
   files: Array<ArchiveWorldEntry>;
-  readPolicy: ArchiveReadPolicy;
   /** Unpacked bytes of the winning entries. What is shadowed is not counted; it is not what the engine would load. */
   sizeReal: number;
   /** Engine paths this world answers with more than one copy for. */

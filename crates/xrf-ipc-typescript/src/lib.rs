@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 
-mod collected_commands;
+mod collected;
 mod command_module_writer;
 mod command_typescript;
 mod constants;

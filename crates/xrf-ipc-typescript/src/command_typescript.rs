@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use specta_typescript::{Exporter, Typescript};
 use tauri_specta::{BuilderConfiguration, LanguageExt};
 
-use crate::collected_commands::CollectedCommands;
+use crate::collected::CollectedCommands;
 use crate::constants::GENERATED_HEADER;
 use crate::generated_output::normalize_generated_bindings;
 use crate::specta_command::SpectaCommand;

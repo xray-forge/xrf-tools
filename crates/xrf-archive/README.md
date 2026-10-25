@@ -89,31 +89,35 @@ names sorted within each group. This identifies shared storage; it does not reve
 `read_file_bytes(name)` returns the complete unpacked payload as a `Vec<u8>`. It applies no preview size limit or
 extension filter. A caller choosing this method must decide how large a file it is willing to hold in memory.
 
-For display text, use `read_file_as_string(name)`. It checks `project.read_policy` before reading the payload and
+For display text, use `read_file_as_string(name, policy)`. It checks the policy before reading the payload and
 returns `ArchiveReadResult` with the name, Windows-1251-decoded content, and unpacked byte size. It does not detect
 UTF-8 or parse formats such as LTX or XML.
 
 ```rust,no_run
-use xrf_archive::ArchiveProject;
+use xrf_archive::{ARCHIVE_READ_POLICY, ArchiveProject, ArchiveReadPolicy};
 
 fn main() -> xrf_error::XrfResult {
-  let mut project = ArchiveProject::new("game/db")?;
-  project.read_policy.maximum_text_size = 2 * 1024 * 1024;
+  let project = ArchiveProject::new("game/db")?;
+  let policy = ArchiveReadPolicy {
+    maximum_text_size: 2 * 1024 * 1024,
+    ..ARCHIVE_READ_POLICY
+  };
 
-  let text = project.read_file_as_string(r"configs\system.ltx")?;
+  let text = project.read_file_as_string(r"configs\system.ltx", &policy)?;
   println!("{} ({} bytes)\n{}", text.name, text.size, text.content);
 
   Ok(())
 }
 ```
 
-The default text limit is 10 MiB. Allowed extensions include LTX, XML, INI, JSON, scripts, and shader sources; extension
-checks ignore case. `ArchiveReadPolicy::is_text_file` checks only the extension, while `assert_can_read_as_text` also
+`ARCHIVE_READ_POLICY` is the archive viewers' policy, and it is also generated into the frontend's bindings as their
+preview rules. Its text limit is 10 MiB. Allowed extensions include LTX, XML, INI, JSON, scripts, and shader sources;
+extension checks ignore case. `ArchiveReadPolicy::is_text_file` checks only the extension, while `assert_can_read_as_text` also
 checks the unpacked size. A size exactly equal to the limit is allowed.
 
 The policy also carries texture, image, audio, format-description, and chunk-tree preview limits for consumers. Those
-fields do not automatically constrain byte reads or copies; consumers must apply the relevant limits themselves. See
-the [policy and its default limits and extensions](src/archive_read_policy.rs).
+fields do not automatically constrain byte reads or copies; consumers must apply the relevant limits themselves. See the
+[policy and its limits and extensions](src/archive_read_policy.rs).
 
 ## Reuse open volumes for multiple reads
 
