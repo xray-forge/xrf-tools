@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::extern_callable::ExternCallable;
-use crate::extern_documentation::ExternDocumentation;
-use crate::extern_value::ExternValue;
+use crate::manifest::extern_callable::ExternCallable;
+use crate::manifest::extern_documentation::ExternDocumentation;
+use crate::manifest::extern_value::ExternValue;
 
 /// One exported value. The JSON representation remains compatible with the
 /// existing tracked `extern.json` artifact.
@@ -25,6 +25,23 @@ impl ExternExport {
     match self {
       Self::Callable(value) => value.doc.as_ref(),
       Self::Value(value) => value.doc.as_ref(),
+    }
+  }
+
+  /// The contract as TypeScript writes it: `(name?: Type, ...) => Returns` for a callable, the type for a value.
+  pub fn get_contract(&self) -> String {
+    match self {
+      Self::Callable(callable) => format!(
+        "({}) => {}",
+        callable
+          .params
+          .iter()
+          .map(|parameter| parameter.get_contract())
+          .collect::<Vec<String>>()
+          .join(", "),
+        callable.returns,
+      ),
+      Self::Value(value) => value.type_name.clone(),
     }
   }
 }

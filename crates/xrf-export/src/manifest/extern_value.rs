@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::extern_documentation::ExternDocumentation;
+use crate::manifest::extern_documentation::ExternDocumentation;
 
 /// A non-callable extern with an explicitly asserted value type.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]

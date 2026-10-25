@@ -2,28 +2,25 @@ use std::collections::BTreeMap;
 
 use xrf_error::XrfResult;
 use xrf_typescript::TypeScriptFunctionSignature;
-use xrf_typescript::swc_common::{SourceMap, SourceMapper, Spanned};
+use xrf_typescript::swc_common::{Span, Spanned};
 use xrf_typescript::swc_ecma_ast::{ArrowExpr, Pat, TsFnParam, TsFnType, TsTypeAnn};
 
-use super::diagnostics::invalid_at;
-use super::type_renderer::canonical_type;
-use crate::extern_callable::ExternCallable;
-use crate::extern_documentation::ExternDocumentation;
-use crate::extern_parameter::ExternParameter;
+use crate::manifest::{ExternCallable, ExternDocumentation, ExternParameter};
+use crate::parse::declaration::extern_diagnostic::ExternDiagnostic;
+use crate::parse::declaration::extern_type_renderer::ExternTypeRenderer;
 
 /// Builds canonical extern callables from TypeScript function contracts.
-pub struct ExternCallableParser<'a> {
-  source_map: &'a SourceMap,
-  source_path: &'a str,
+pub(crate) struct ExternCallableParser<'a> {
+  diagnostic: ExternDiagnostic<'a>,
 }
 
 impl<'a> ExternCallableParser<'a> {
+  /// What a destructured parameter is named where its source cannot be read back.
+  const PATTERN_NAME: &'static str = "[parameter]";
+
   /// Create a callable parser for one declaration source file.
-  pub fn new(source_map: &'a SourceMap, source_path: &'a str) -> Self {
-    Self {
-      source_map,
-      source_path,
-    }
+  pub fn new(diagnostic: ExternDiagnostic<'a>) -> Self {
+    Self { diagnostic }
   }
 
   /// Parse an inline arrow function declared by an extern.
@@ -33,10 +30,6 @@ impl<'a> ExternCallableParser<'a> {
     documentation: Option<ExternDocumentation>,
     parameter_docs: &BTreeMap<String, String>,
   ) -> XrfResult<ExternCallable> {
-    let returns: String = arrow.return_type.as_ref().map_or_else(
-      || String::from("unknown"),
-      |annotation| canonical_type(annotation.type_ann.as_ref(), self.source_map),
-    );
     let mut params: Vec<ExternParameter> = Vec::with_capacity(arrow.params.len());
 
     for parameter in &arrow.params {
@@ -46,8 +39,8 @@ impl<'a> ExternCallableParser<'a> {
     Ok(ExternCallable {
       doc: documentation,
       params,
-      returns,
-      source: self.source_path.into(),
+      returns: ExternTypeRenderer::render_annotation(arrow.return_type.as_deref(), self.diagnostic.get_source_map()),
+      source: self.diagnostic.get_source_path().into(),
     })
   }
 
@@ -62,31 +55,29 @@ impl<'a> ExternCallableParser<'a> {
 
     for parameter in &function_type.params {
       let TsFnParam::Ident(binding) = parameter else {
-        return Err(invalid_at(
-          self.source_map,
+        return Err(self.diagnostic.invalid_at(
           function_type.span.lo,
-          self.source_path,
           "function type assertions must use named parameters",
         ));
       };
       let name: String = binding.id.sym.to_string();
-      let type_name: String = binding.type_ann.as_ref().map_or_else(
-        || String::from("unknown"),
-        |annotation| canonical_type(annotation.type_ann.as_ref(), self.source_map),
-      );
+
       params.push(ExternParameter {
         doc: parameter_docs.get(&name).cloned(),
         name,
         optional: binding.id.optional.then_some(true),
-        type_name,
+        type_name: ExternTypeRenderer::render_annotation(binding.type_ann.as_deref(), self.diagnostic.get_source_map()),
       });
     }
 
     Ok(ExternCallable {
       doc: documentation,
       params,
-      returns: canonical_type(function_type.type_ann.type_ann.as_ref(), self.source_map),
-      source: self.source_path.into(),
+      returns: ExternTypeRenderer::render(
+        function_type.type_ann.type_ann.as_ref(),
+        self.diagnostic.get_source_map(),
+      ),
+      source: self.diagnostic.get_source_path().into(),
     })
   }
 
@@ -112,7 +103,7 @@ impl<'a> ExternCallableParser<'a> {
       doc: documentation,
       params,
       returns: signature.returns,
-      source: self.source_path.into(),
+      source: self.diagnostic.get_source_path().into(),
     }
   }
 
@@ -125,19 +116,18 @@ impl<'a> ExternCallableParser<'a> {
         binding.id.optional,
       ),
       Pat::Array(pattern) => (
-        pattern_name(self.source_map, pattern.span, "[parameter]"),
+        self.get_pattern_name(pattern.span),
         pattern.type_ann.as_deref(),
         pattern.optional,
       ),
       Pat::Rest(pattern) => {
         let Pat::Ident(binding) = pattern.arg.as_ref() else {
-          return Err(invalid_at(
-            self.source_map,
+          return Err(self.diagnostic.invalid_at(
             parameter.span().lo,
-            self.source_path,
             "rest parameters must use explicitly typed identifiers",
           ));
         };
+
         (
           binding.id.sym.to_string(),
           pattern.type_ann.as_deref().or(binding.type_ann.as_deref()),
@@ -146,25 +136,17 @@ impl<'a> ExternCallableParser<'a> {
       }
       Pat::Assign(pattern) => match pattern.left.as_ref() {
         Pat::Ident(binding) => (binding.id.sym.to_string(), binding.type_ann.as_deref(), true),
-        Pat::Array(binding) => (
-          pattern_name(self.source_map, binding.span, "[parameter]"),
-          binding.type_ann.as_deref(),
-          true,
-        ),
+        Pat::Array(binding) => (self.get_pattern_name(binding.span), binding.type_ann.as_deref(), true),
         _ => {
-          return Err(invalid_at(
-            self.source_map,
+          return Err(self.diagnostic.invalid_at(
             parameter.span().lo,
-            self.source_path,
             "callable extern parameters with defaults must use explicitly typed identifiers or array patterns",
           ));
         }
       },
       _ => {
-        return Err(invalid_at(
-          self.source_map,
+        return Err(self.diagnostic.invalid_at(
           parameter.span().lo,
-          self.source_path,
           "callable extern parameters must use explicitly typed identifiers or array patterns",
         ));
       }
@@ -174,27 +156,24 @@ impl<'a> ExternCallableParser<'a> {
       doc: parameter_docs.get(&name).cloned(),
       name,
       optional: optional.then_some(true),
-      type_name: annotation.map_or_else(
-        || String::from("unknown"),
-        |value| canonical_type(value.type_ann.as_ref(), self.source_map),
-      ),
+      type_name: ExternTypeRenderer::render_annotation(annotation, self.diagnostic.get_source_map()),
     })
   }
-}
 
-/// Return a readable name for a destructured parameter pattern.
-fn pattern_name(source_map: &SourceMap, span: xrf_typescript::swc_common::Span, fallback: &str) -> String {
-  let snippet: String = source_map.span_to_snippet(span).unwrap_or_else(|_| fallback.into());
-  let mut nesting: usize = 0;
+  /// A readable name for a destructured parameter: its pattern as written, up to the type annotation.
+  fn get_pattern_name(&self, span: Span) -> String {
+    let snippet: String = self.diagnostic.get_snippet(span, Self::PATTERN_NAME);
+    let mut nesting: usize = 0;
 
-  for (index, character) in snippet.char_indices() {
-    match character {
-      '[' | '(' | '{' => nesting += 1,
-      ']' | ')' | '}' => nesting = nesting.saturating_sub(1),
-      ':' if nesting == 0 => return snippet[..index].trim_end().into(),
-      _ => {}
+    for (index, character) in snippet.char_indices() {
+      match character {
+        '[' | '(' | '{' => nesting += 1,
+        ']' | ')' | '}' => nesting = nesting.saturating_sub(1),
+        ':' if nesting == 0 => return snippet[..index].trim_end().into(),
+        _ => {}
+      }
     }
-  }
 
-  snippet.trim_end().into()
+    snippet.trim_end().into()
+  }
 }

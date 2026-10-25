@@ -1,14 +1,10 @@
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::time::Instant;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
-use xrf_export::{
-  ExternFormat, ExternManifest, ExternManifestParser, ParsedExternManifest, render_extern_manifest,
-  write_extern_manifest,
-};
+use xrf_export::{ExternFormat, ExternManifestParser, ParsedExternManifest};
 use xrf_output::OutputOptions;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_utils::{LineEndings, format_path};
@@ -87,7 +83,7 @@ impl GenericCommand for ExportCommand {
     let parsed: ParsedExternManifest = ExternManifestParser::new().parse_directory(declarations_root)?;
     let externs: usize = parsed.manifest.exports.len();
 
-    write_extern_manifest(&parsed.manifest, path, format, line_endings)?;
+    parsed.manifest.write(path, format, line_endings)?;
 
     xrf_output::success!(output, "Exported {externs} externs to '{}'.", format_path(path));
 
@@ -130,7 +126,7 @@ impl ExportCommand {
         Ok(parsed) => {
           let externs: usize = parsed.manifest.exports.len();
 
-          match Self::verify_artifact(path, format, &parsed.manifest, line_endings) {
+          match parsed.manifest.verify_artifact(path, format, line_endings) {
             Ok(()) => (externs, None),
             Err(error @ XrfError::Io { .. }) => return Err(error.into()),
             Err(error) => (externs, Some(Self::finding(Self::RULE_ARTIFACT, path, &error))),
@@ -172,51 +168,6 @@ impl ExportCommand {
       Some(value) => ExternFormat::from_str(value),
       None => ExternFormat::from_extension(path),
     }
-  }
-
-  fn verify_artifact(
-    path: &Path,
-    format: ExternFormat,
-    manifest: &ExternManifest,
-    line_endings: Option<LineEndings>,
-  ) -> Result<(), XrfError> {
-    let existing: String = fs::read_to_string(path)?;
-
-    match format {
-      ExternFormat::Json => {
-        let actual: ExternManifest = serde_json::from_str(&existing).map_err(|error| {
-          XrfError::new_invalid_error(format!(
-            "Cannot parse '{}' as an extern JSON manifest: {error}",
-            format_path(path)
-          ))
-        })?;
-
-        if actual != *manifest {
-          return Err(XrfError::new_verify_error(format!(
-            "Extern JSON artifact '{}' does not match the parsed declaration manifest.",
-            format_path(path)
-          )));
-        }
-      }
-
-      ExternFormat::Xml | ExternFormat::Html => {
-        let expected: String = render_extern_manifest(manifest, format, line_endings)?;
-
-        if LineEndings::normalize(&existing) != LineEndings::normalize(&expected) {
-          return Err(XrfError::new_verify_error(format!(
-            "Extern {} artifact '{}' does not match freshly rendered output.",
-            match format {
-              ExternFormat::Xml => "XML",
-              ExternFormat::Html => "HTML",
-              ExternFormat::Json => unreachable!(),
-            },
-            format_path(path)
-          )));
-        }
-      }
-    }
-
-    Ok(())
   }
 }
 

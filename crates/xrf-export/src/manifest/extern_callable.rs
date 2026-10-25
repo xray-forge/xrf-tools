@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::extern_documentation::ExternDocumentation;
-use crate::extern_parameter::ExternParameter;
+use crate::manifest::extern_documentation::ExternDocumentation;
+use crate::manifest::extern_parameter::ExternParameter;
 
 /// A callable extern with an explicitly declared function contract.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
