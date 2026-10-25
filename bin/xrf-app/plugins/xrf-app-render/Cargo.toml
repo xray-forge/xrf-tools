@@ -66,7 +66,6 @@ typescript-bindings = [
   "specta",
   "tauri-specta",
   "xrf-app-core/typescript-bindings",
-  "xrf-error/typescript-bindings",
   "xrf-job/typescript-bindings",
   "xrf-material/typescript-bindings",
   "xrf-renderer/typescript-bindings",

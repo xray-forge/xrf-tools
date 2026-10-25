@@ -1,9 +1,9 @@
 use std::time::Duration;
 
 use serde::Serialize;
-use xrf_error::XrfError;
 use xrf_job::JobOutcome;
 
+use crate::finding::LtxFinding;
 use crate::project::LtxEntryVerification;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -29,7 +29,8 @@ pub struct LtxProjectVerifyResult {
   #[serde(with = "xrf_utils::duration_ms")]
   #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
   pub startup_duration: Duration,
-  pub errors: Vec<XrfError>,
+  /// Everything wrong with the project, every one of which fails the verification.
+  pub findings: Vec<LtxFinding>,
   pub invalid_sections: usize,
   pub skipped_sections: usize,
   pub total_files: usize,
@@ -45,7 +46,7 @@ impl LtxProjectVerifyResult {
       checked_sections: 0,
       duration: Duration::ZERO,
       startup_duration: Duration::ZERO,
-      errors: Vec::new(),
+      findings: Vec::new(),
       invalid_sections: 0,
       skipped_sections: 0,
       total_files: 0,
@@ -66,6 +67,6 @@ impl LtxProjectVerifyResult {
     self.total_sections += found.total_sections;
     self.valid_sections += found.valid_sections;
 
-    self.errors.extend(found.errors);
+    self.findings.extend(found.findings);
   }
 }

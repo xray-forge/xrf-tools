@@ -11,7 +11,7 @@ pub(crate) mod text;
 #[cfg(test)]
 mod tests;
 
-pub use crate::findings::{LtxAnchoredFinding, LtxFindingKind};
+pub use crate::findings::LtxAnchoredFinding;
 pub use crate::inventory::{LtxInventory, LtxInventoryFile, LtxInventoryReader, LtxInventoryRole};
 pub use crate::ltx_root_reader::LtxRootReader;
 pub use crate::resolved::{

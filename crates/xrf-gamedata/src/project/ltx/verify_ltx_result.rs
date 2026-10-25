@@ -18,8 +18,9 @@ impl GamedataCheckResult for GamedataLtxVerificationResult {
   }
 
   fn get_status(&self) -> GamedataVerificationStatus {
+    // Every finding fails the check, a section that breaks its scheme as much as an entry point that would not read.
     GamedataVerificationStatus::from_is_valid(
-      self.format_result.invalid_files == 0 && self.verification_result.invalid_sections == 0,
+      self.format_result.invalid_files == 0 && self.verification_result.findings.is_empty(),
     )
   }
 
@@ -40,7 +41,7 @@ impl GamedataCheckResult for GamedataLtxVerificationResult {
 
 #[cfg(test)]
 mod tests {
-  use xrf_ltx::LtxProjectVerifyResult;
+  use xrf_ltx::{LtxFinding, LtxProjectVerifyResult};
 
   use super::GamedataLtxVerificationResult;
   use crate::{
@@ -61,8 +62,9 @@ mod tests {
       GamedataVerificationType::Ltx,
       Ok(GamedataLtxVerificationResult {
         findings: vec![finding.clone()],
+        // A finding no section owns, so the verdict cannot be reading the section count.
         verification_result: LtxProjectVerifyResult {
-          invalid_sections: 1,
+          findings: vec![LtxFinding::new_unreadable("configs/broken.ltx", "broken")],
           ..Default::default()
         },
         ..Default::default()

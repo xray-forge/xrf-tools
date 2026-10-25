@@ -1,14 +1,8 @@
-use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LTX_SYMBOL_ANY, LtxDocument, LtxDocumentSource, LtxFieldOrigin, LtxResolution, LtxResolutionDiagnostic};
+use xrf_error::XrfResult;
+use xrf_ltx::{LtxDocument, LtxDocumentSource, LtxFieldOrigin, LtxFinding, LtxFindingKind, LtxResolution};
 
-use crate::findings::{LtxAnchoredFinding, LtxFindingKind};
+use crate::findings::LtxAnchoredFinding;
 use crate::structure::{LtxDocumentScan, LtxFileStructure};
-
-/// The config a scheme finding names and the line inside it, either of which may be unknown.
-///
-/// A pair rather than a record: it exists between one private helper and its one caller, and naming two fields would
-/// add a type to navigate without hiding anything from either of them.
-type SchemeAnchor = (Option<String>, Option<u32>);
 
 /// Places findings on the lines that produced them.
 ///
@@ -16,26 +10,23 @@ type SchemeAnchor = (Option<String>, Option<u32>);
 pub(crate) struct LtxFindingAnchor {}
 
 impl LtxFindingAnchor {
-  /// Everything wrong with one root: what verifying it found, and what the dialect said while resolving it.
+  /// Every finding a verification of one root made, each placed at its line.
   ///
   /// Reached through [`crate::LtxRootReader`]; see its `read_findings`.
   pub(crate) fn read_findings(
-    entry: &str,
     resolution: &LtxResolution,
     source: &dyn LtxDocumentSource,
-    errors: &[XrfError],
+    findings: &[LtxFinding],
   ) -> XrfResult<Vec<LtxAnchoredFinding>> {
-    let mut findings: Vec<LtxAnchoredFinding> = Vec::with_capacity(errors.len() + resolution.diagnostics.len());
-
-    for error in errors {
-      findings.push(Self::anchor_error(entry, resolution, source, error)?);
-    }
-
-    for diagnostic in &resolution.diagnostics {
-      findings.push(Self::anchor_diagnostic(entry, resolution, source, diagnostic)?);
-    }
-
-    Ok(findings)
+    findings
+      .iter()
+      .map(|finding| {
+        Ok(LtxAnchoredFinding {
+          line: Self::find_finding_line(resolution, source, finding)?,
+          finding: finding.clone(),
+        })
+      })
+      .collect()
   }
 
   /// What is wrong with one file rather than with the root: it will not parse, or an include reached nothing.
@@ -46,16 +37,14 @@ impl LtxFindingAnchor {
     let mut findings: Vec<LtxAnchoredFinding> = Vec::new();
 
     if let Some(parse_error) = &structure.parse_error {
-      findings.push(LtxAnchoredFinding {
-        engine_behaviour: None,
-        entry: String::from(entry),
-        field: None,
-        file: Some(structure.path.clone()),
-        kind: LtxFindingKind::Parse,
-        line: Some(parse_error.line),
-        message: parse_error.message.clone(),
-        section: None,
-      });
+      findings.push(Self::file_finding(
+        LtxFindingKind::Parse,
+        entry,
+        structure,
+        Some(parse_error.line),
+        parse_error.message.clone(),
+        None,
+      ));
     }
 
     // Keys above the first header of a config that has headers. Nothing loads them: Anomaly's ini loader drops a key
@@ -68,23 +57,21 @@ impl LtxFindingAnchor {
     // sections and then strands keys above them is the other thing entirely: in both trees, every instance of it is a
     // comment somebody wrote without a `;`.
     if !structure.root_entries.is_empty() && !structure.sections.is_empty() {
-      findings.push(LtxAnchoredFinding {
-        engine_behaviour: Some(String::from(
-          "Anomaly's ini loader drops keys read before the first section header; vanilla X-Ray dereferences a null section",
-        )),
-        entry: String::from(entry),
-        field: None,
-        file: Some(structure.path.clone()),
-        kind: LtxFindingKind::RootKeys,
+      findings.push(Self::file_finding(
+        LtxFindingKind::RootKeys,
+        entry,
+        structure,
         // The first of them, because that is where the run starts and where a reader has to look.
-        line: structure.root_entries.first().map(|first| first.line),
-        message: format!(
+        structure.root_entries.first().map(|first| first.line),
+        format!(
           "{} key(s) written above [{}], where no section holds them",
           structure.root_entries.len(),
           structure.sections.first().map_or("", |section| section.name.as_str())
         ),
-        section: None,
-      });
+        Some(String::from(
+          "Anomaly's ini loader drops keys read before the first section header; vanilla X-Ray dereferences a null section",
+        )),
+      ));
     }
 
     for include in &structure.includes {
@@ -92,125 +79,61 @@ impl LtxFindingAnchor {
         continue;
       }
 
-      findings.push(LtxAnchoredFinding {
-        engine_behaviour: None,
-        entry: String::from(entry),
-        field: None,
-        file: Some(structure.path.clone()),
-        kind: LtxFindingKind::Include,
-        line: Some(include.line),
-        message: format!("Include '{}' resolved to no file", include.statement),
-        section: None,
-      });
+      findings.push(Self::file_finding(
+        LtxFindingKind::Include,
+        entry,
+        structure,
+        Some(include.line),
+        format!("Include '{}' resolved to no file", include.statement),
+        None,
+      ));
     }
 
     findings
   }
 
-  /// One verification error, placed at the statement it is about.
-  fn anchor_error(
+  /// A finding about one file as a whole, at the line its structure already knows.
+  fn file_finding(
+    kind: LtxFindingKind,
     entry: &str,
-    resolution: &LtxResolution,
-    source: &dyn LtxDocumentSource,
-    error: &XrfError,
-  ) -> XrfResult<LtxAnchoredFinding> {
-    match error {
-      XrfError::LtxScheme {
-        section,
-        field,
+    structure: &LtxFileStructure,
+    line: Option<u32>,
+    message: String,
+    engine_behaviour: Option<String>,
+  ) -> LtxAnchoredFinding {
+    LtxAnchoredFinding {
+      finding: LtxFinding {
+        engine_behaviour,
+        entry: String::from(entry),
+        field: None,
+        file: Some(structure.path.clone()),
+        kind,
         message,
-        ..
-      } => {
-        // `*` is how a scheme finding says it is about the section rather than about a field, which is what a missing
-        // scheme declaration is.
-        let field: Option<&str> = (field != LTX_SYMBOL_ANY).then_some(field.as_str());
-        let (file, line) = Self::anchor_scheme(resolution, source, section, field)?;
-
-        Ok(LtxAnchoredFinding {
-          engine_behaviour: None,
-          entry: String::from(entry),
-          field: field.map(String::from),
-          file,
-          kind: LtxFindingKind::Scheme,
-          line,
-          message: message.clone(),
-          section: Some(section.clone()),
-        })
-      }
-      XrfError::LtxParse { line, message, .. } => Ok(LtxAnchoredFinding {
-        engine_behaviour: None,
-        entry: String::from(entry),
-        field: None,
-        // The parser reports where it stopped, not which file it was reading; whatever caught the error knows that.
-        file: None,
-        kind: LtxFindingKind::Parse,
-        line: Some(*line as u32),
-        message: message.clone(),
         section: None,
-      }),
-      // Anything else reached this pass without a statement to point at, and saying so is better than guessing one.
-      error => Ok(LtxAnchoredFinding {
-        engine_behaviour: None,
-        entry: String::from(entry),
-        field: None,
-        file: None,
-        kind: LtxFindingKind::Dialect,
-        line: None,
-        message: error.to_string(),
-        section: None,
-      }),
+      },
+      line,
     }
   }
 
-  /// One dialect diagnostic, placed at the header of the section it is about.
-  fn anchor_diagnostic(
-    entry: &str,
+  /// The line one finding marks in the config it names: a scheme finding's field where the section writes it, any other
+  /// finding about a section its header.
+  fn find_finding_line(
     resolution: &LtxResolution,
     source: &dyn LtxDocumentSource,
-    diagnostic: &LtxResolutionDiagnostic,
-  ) -> XrfResult<LtxAnchoredFinding> {
-    // The file the dialect blamed, which for a patch is the patch rather than the base; failing that, the config that
-    // declared the section.
-    let file: Option<String> = diagnostic
-      .file
-      .clone()
-      .or_else(|| Self::declaring_file(resolution, &diagnostic.section));
-
-    let line: Option<u32> = match &file {
-      Some(file) => source
-        .read_document(file)?
-        .and_then(|document| LtxDocumentScan::find_section_header_line(&document, &diagnostic.section)),
-      None => None,
+    finding: &LtxFinding,
+  ) -> XrfResult<Option<u32>> {
+    let (Some(file), Some(section)) = (&finding.file, &finding.section) else {
+      return Ok(None);
     };
 
-    Ok(LtxAnchoredFinding {
-      engine_behaviour: diagnostic.engine_behaviour.clone(),
-      entry: String::from(entry),
-      field: None,
-      file,
-      kind: LtxFindingKind::Dialect,
-      line,
-      message: diagnostic.message.clone(),
-      section: Some(diagnostic.section.clone()),
+    let Some(document) = source.read_document(file)? else {
+      return Ok(None);
+    };
+
+    Ok(match finding.kind {
+      LtxFindingKind::Scheme => Self::find_line(resolution, &document, section, finding.field.as_deref()),
+      _ => LtxDocumentScan::find_section_header_line(&document, section),
     })
-  }
-
-  /// Where a scheme finding about one section, and possibly one field, belongs.
-  fn anchor_scheme(
-    resolution: &LtxResolution,
-    source: &dyn LtxDocumentSource,
-    section: &str,
-    field: Option<&str>,
-  ) -> XrfResult<SchemeAnchor> {
-    let Some(file) = Self::declaring_file(resolution, section) else {
-      return Ok((None, None));
-    };
-
-    let Some(document) = source.read_document(&file)? else {
-      return Ok((Some(file), None));
-    };
-
-    Ok((Some(file), Self::find_line(resolution, &document, section, field)))
   }
 
   /// The line inside one declaring config a scheme finding marks.
@@ -231,10 +154,5 @@ impl LtxFindingAnchor {
     resolution
       .get_origin(section, field)
       .is_some_and(LtxFieldOrigin::is_inherited)
-  }
-
-  /// The config whose header declared one section, as the resolution stamped it.
-  fn declaring_file(resolution: &LtxResolution, section: &str) -> Option<String> {
-    resolution.ltx.section(section)?.get_origin().map(String::from)
   }
 }

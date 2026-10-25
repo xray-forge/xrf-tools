@@ -12,6 +12,7 @@ use xrf_vfs::{
   XrayInputKind, XrayInputRecord, XrayLogicalPath, XrayLookupScope, XrayMountMode, XrayRoots, XraySearch, XrayVfs,
 };
 
+use crate::finding::LtxFindingKind;
 use crate::project::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
@@ -228,12 +229,9 @@ value = 1
   // And the verifier is what reports it, as one finding among however many the readable files raise.
   let result = project.verify_entries()?;
 
-  assert_eq!(result.errors.len(), 1);
-  assert!(
-    result.errors[0].to_string().contains("broken.ltx"),
-    "{:?}",
-    result.errors
-  );
+  assert_eq!(result.findings.len(), 1);
+  assert_eq!(result.findings[0].kind, LtxFindingKind::Unreadable);
+  assert_eq!(result.findings[0].entry, "broken.ltx", "{:?}", result.findings);
 
   fs::remove_dir_all(root)?;
 

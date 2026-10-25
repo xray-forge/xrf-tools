@@ -18,7 +18,7 @@ const RESULT: LtxProjectVerifyResult = {
   checkedSections: 2,
   duration: 1000,
   startupDuration: 50,
-  errors: [],
+  findings: [],
   invalidSections: 0,
   skippedSections: 0,
   totalFiles: 1,

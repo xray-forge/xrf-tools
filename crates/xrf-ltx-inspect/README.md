@@ -33,8 +33,8 @@ fn main() -> xrf_error::XrfResult {
 
   println!("{} requested sections returned", sections.len());
 
-  let verification = project.verify_resolved(&entry, &resolution.ltx)?;
-  let findings = reader.read_findings(&verification.errors)?;
+  let verification = project.verify_resolved(&entry, &resolution);
+  let findings = reader.read_findings(&verification.findings)?;
 
   println!("{} findings", findings.len());
 
@@ -101,11 +101,12 @@ newlines, with `is_normalized = false` so a viewer can show what needs repair.
 
 ## Findings and errors
 
-`read_findings` anchors verification errors (`LtxEntryVerification::errors`) and the dialect's resolution diagnostics
-to source lines. `read_file_findings` reports problems of one file from its structure: a parse error, an include that
-reached nothing, or keys before the first header in a config that also declares sections (`RootKeys`). Storage and other
-read failures use `XrfResult`. Keep the entry point with cached results because a shared config can resolve differently
-under another root.
+A finding is the core's `xrf_ltx::LtxFinding`; this crate adds only the line. `read_findings` places what verifying a
+root found (`LtxEntryVerification::findings`, which already holds the dialect's resolution diagnostics) on source lines.
+`read_file_findings` reports problems of one file from its structure: a parse error, an include that reached nothing, or
+keys before the first header in a config that also declares sections (`RootKeys`). `LtxAnchoredFinding` serializes flat,
+the finding's fields beside `line`. Storage and other read failures use `XrfResult`. Keep the entry point with cached
+results because a shared config can resolve differently under another root.
 
 ## Module map
 

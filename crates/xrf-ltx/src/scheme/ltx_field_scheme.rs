@@ -1,7 +1,5 @@
 use std::cmp;
 
-use xrf_error::XrfError;
-
 use crate::condlist::Condlist;
 use crate::ltx::Ltx;
 use crate::scheme::LtxFieldDataType;
@@ -79,27 +77,26 @@ impl LtxFieldScheme {
 impl LtxFieldScheme {
   // todo: Do not use ltx as parameter, split section check on higher level or impl 2 separate methods.
   /// Validate provided value based on current field schema definition.
-  pub fn validate_value(&self, ltx: &Ltx, field_data: &str) -> Option<XrfError> {
+  ///
+  /// `Err` carries why the value breaks the scheme. A violation is a finding about the config being judged rather than
+  /// a failure of the check, so the caller decides where it belongs and what to name it by.
+  pub fn validate_value(&self, ltx: &Ltx, field_data: &str) -> Result<(), String> {
     // Ltx-specific validation of section type.
     if self.data_type == LtxFieldDataType::TypeSection {
-      if self.is_array {
-        // todo: Probably merge with generic array check.
-        for entry in field_data.split(',') {
-          let entry: &str = entry.trim();
-
-          if !entry.is_empty() {
-            let validation_result: Option<XrfError> = self.validate_section_type_defined(ltx, entry);
-
-            if validation_result.is_some() {
-              return validation_result;
-            }
-          }
-        }
-      } else {
+      if !self.is_array {
         return self.validate_section_type_defined(ltx, field_data);
       }
 
-      return None;
+      // todo: Probably merge with generic array check.
+      for entry in field_data.split(',') {
+        let entry: &str = entry.trim();
+
+        if !entry.is_empty() {
+          self.validate_section_type_defined(ltx, entry)?;
+        }
+      }
+
+      return Ok(());
     }
 
     if self.is_array {
@@ -110,29 +107,25 @@ impl LtxFieldScheme {
         .collect::<Vec<&str>>();
 
       if array_values.is_empty() && !self.is_optional {
-        return Some(self.validation_error(&format!(
+        return Err(format!(
           "Invalid value - expected non optional array of {}",
           self.data_type,
-        )));
+        ));
       }
 
       for entry in array_values {
-        let validation_result: Option<XrfError> = self.validate_data_entry_by_type(&self.data_type, entry);
-
-        if validation_result.is_some() {
-          return validation_result;
-        }
+        self.validate_data_entry_by_type(&self.data_type, entry)?;
       }
 
-      None
+      Ok(())
     } else {
       self.validate_data_entry_by_type(&self.data_type, field_data)
     }
   }
 
-  fn validate_data_entry_by_type(&self, field_type: &LtxFieldDataType, field_data: &str) -> Option<XrfError> {
+  fn validate_data_entry_by_type(&self, field_type: &LtxFieldDataType, field_data: &str) -> Result<(), String> {
     match field_type {
-      LtxFieldDataType::TypeAny => None,
+      LtxFieldDataType::TypeAny => Ok(()),
       LtxFieldDataType::TypeBool => self.validate_bool_type(field_data),
       LtxFieldDataType::TypeCondlist => self.validate_condlist_type(field_data),
       LtxFieldDataType::TypeConst(_) => self.validate_const(field_data),
@@ -149,13 +142,9 @@ impl LtxFieldScheme {
       LtxFieldDataType::TypeU16 => self.validate_u16_type(field_data),
       LtxFieldDataType::TypeU32 => self.validate_u32_type(field_data),
       LtxFieldDataType::TypeU8 => self.validate_u8_type(field_data),
-      LtxFieldDataType::TypeUnknown => None,
+      LtxFieldDataType::TypeUnknown => Ok(()),
       LtxFieldDataType::TypeVector => self.validate_vector_type(field_data),
     }
-  }
-
-  fn validation_error(&self, message: &str) -> XrfError {
-    XrfError::new_ltx_scheme_error(&self.section, &self.name, message)
   }
 }
 
@@ -167,132 +156,134 @@ impl LtxFieldScheme {
 }
 
 impl LtxFieldScheme {
-  fn validate_f32_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_f32_type(&self, value: &str) -> Result<(), String> {
     match value.parse::<f32>() {
-      Ok(_) => None,
-      Err(_) => Some(self.validation_error(&format!(
+      Ok(_) => Ok(()),
+      Err(_) => Err(format!(
         "Invalid value, floating point number is expected, got '{value}'"
-      ))),
+      )),
     }
   }
 
-  fn validate_u32_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_u32_type(&self, value: &str) -> Result<(), String> {
     match value.parse::<u32>() {
-      Ok(_) => None,
-      Err(_) => Some(self.validation_error(&format!(
+      Ok(_) => Ok(()),
+      Err(_) => Err(format!(
         "Invalid value, unsigned 32 bit number is expected, got '{value}'"
-      ))),
+      )),
     }
   }
 
-  fn validate_i32_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_i32_type(&self, value: &str) -> Result<(), String> {
     match value.parse::<i32>() {
-      Ok(_) => None,
-      Err(_) => Some(self.validation_error(&format!(
+      Ok(_) => Ok(()),
+      Err(_) => Err(format!(
         "Invalid value, signed 32 bit number is expected, got '{value}'"
-      ))),
+      )),
     }
   }
 
-  fn validate_u16_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_u16_type(&self, value: &str) -> Result<(), String> {
     match value.parse::<u16>() {
-      Ok(_) => None,
-      Err(_) => Some(self.validation_error(&format!(
+      Ok(_) => Ok(()),
+      Err(_) => Err(format!(
         "Invalid value, unsigned 16 bit number is expected, got '{value}'"
-      ))),
+      )),
     }
   }
 
-  fn validate_i16_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_i16_type(&self, value: &str) -> Result<(), String> {
     match value.parse::<i16>() {
-      Ok(_) => None,
-      Err(_) => Some(self.validation_error(&format!(
+      Ok(_) => Ok(()),
+      Err(_) => Err(format!(
         "Invalid value, signed 16 bit number is expected, got '{value}'"
-      ))),
+      )),
     }
   }
 
-  fn validate_u8_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_u8_type(&self, value: &str) -> Result<(), String> {
     match value.parse::<u8>() {
-      Ok(_) => None,
-      Err(_) => Some(self.validation_error(&format!(
+      Ok(_) => Ok(()),
+      Err(_) => Err(format!(
         "Invalid value, unsigned 8 bit number is expected, got '{value}'"
-      ))),
+      )),
     }
   }
 
-  fn validate_i8_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_i8_type(&self, value: &str) -> Result<(), String> {
     match value.parse::<i8>() {
-      Ok(_) => None,
-      Err(_) => Some(self.validation_error(&format!(
-        "Invalid value, signed 8 bit number is expected, got '{value}'"
-      ))),
+      Ok(_) => Ok(()),
+      Err(_) => Err(format!("Invalid value, signed 8 bit number is expected, got '{value}'")),
     }
   }
 
-  fn validate_bool_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_bool_type(&self, value: &str) -> Result<(), String> {
     match value.parse::<bool>() {
-      Ok(_) => None,
-      Err(_) => Some(self.validation_error(&format!("Invalid value, boolean is expected, got '{value}'"))),
+      Ok(_) => Ok(()),
+      Err(_) => Err(format!("Invalid value, boolean is expected, got '{value}'")),
     }
   }
 
   /// Validate if provided value is correct comma separated vector.
   /// Expected value like `x,y,z` in f32 format.
-  fn validate_vector_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_vector_type(&self, value: &str) -> Result<(), String> {
     self.validate_fixed_float_list_type(value, 3)
   }
 
   /// Validate if provided value is correct comma separated rgb.
   /// Expected value like `r,g,b` in f32 format.
-  fn validate_rgb_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_rgb_type(&self, value: &str) -> Result<(), String> {
     self.validate_fixed_float_list_type(value, 3)
   }
 
   /// Validate if provided value is correct comma separated rgba.
   /// Expected value like `r,g,b,a` in f32 format.
-  fn validate_rgba_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_rgba_type(&self, value: &str) -> Result<(), String> {
     self.validate_fixed_float_list_type(value, 4)
   }
 
   /// Validate if provided value is correct list of floats with defined len.
-  fn validate_fixed_float_list_type(&self, value: &str, len: usize) -> Option<XrfError> {
+  fn validate_fixed_float_list_type(&self, value: &str, len: usize) -> Result<(), String> {
     let parsed_values: Vec<f32> = value.split(',').filter_map(|x| x.trim().parse::<f32>().ok()).collect();
 
     if parsed_values.len() != len {
-      Some(self.validation_error(&format!(
+      Err(format!(
         "Invalid value, comma separated {len} float values expected, got '{value}'"
-      )))
+      ))
     } else {
-      None
+      Ok(())
     }
   }
 
   /// Validate if provided value is correct enumeration defined field.
-  fn validate_enum_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_enum_type(&self, value: &str) -> Result<(), String> {
     match &self.data_type {
       LtxFieldDataType::TypeEnum(allowed_values) => {
         if allowed_values.is_empty() {
-          Some(self.validation_error("Unexpected enum check - list of possible values is empty"))
+          Err(String::from("Unexpected enum check - list of possible values is empty"))
         } else if allowed_values.contains(&value.into()) {
-          None
+          Ok(())
         } else {
-          Some(self.validation_error(&format!(
+          Err(format!(
             "Invalid value, one of possible values [{}] expected, got '{value}'",
             allowed_values.join(",")
-          )))
+          ))
         }
       }
-      _ => Some(self.validation_error("Unexpected enum type check, trying to validate enum with non-enum field")),
+      _ => Err(String::from(
+        "Unexpected enum type check, trying to validate enum with non-enum field",
+      )),
     }
   }
 
   /// Validate if provided value matches tuple description.
-  fn validate_tuple_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_tuple_type(&self, value: &str) -> Result<(), String> {
     match &self.data_type {
       LtxFieldDataType::TypeTuple(types, types_raw, separator) => {
         if types.is_empty() {
-          Some(self.validation_error("Unexpected tuple check - list of possible values is empty"))
+          Err(String::from(
+            "Unexpected tuple check - list of possible values is empty",
+          ))
         } else {
           let values: Vec<&str> = value.split(separator.as_char()).map(|it| it.trim()).collect();
           let values_count: usize = values.len();
@@ -302,14 +293,14 @@ impl LtxFieldScheme {
             .count();
 
           if values_count < required_values_count || values_count > types.len() {
-            Some(self.validation_error(&format!(
+            Err(format!(
               "Invalid value, {} {} separated values required, provided {} ('{}' in '{}' field)",
               required_values_count,
               separator.as_name(),
               values_count,
               value,
               types_raw.join(", ")
-            )))
+            ))
           } else {
             let loop_length: usize = cmp::max(values.len(), types.len());
 
@@ -323,75 +314,72 @@ impl LtxFieldScheme {
                 continue;
               }
 
-              if let Some(error) = self.validate_data_entry_by_type(current_type, current_value) {
-                return Some(self.validation_error(&format!(
-                  "Tuple error [{}] at [{}] - {}",
-                  types_raw.join(","),
-                  it,
-                  error
-                )));
+              if let Err(error) = self.validate_data_entry_by_type(current_type, current_value) {
+                return Err(format!("Tuple error [{}] at [{}] - {}", types_raw.join(","), it, error));
               }
             }
 
-            None
+            Ok(())
           }
         }
       }
-      _ => Some(self.validation_error("Unexpected tuple type check, trying to validate enum with non-enum field")),
+      _ => Err(String::from(
+        "Unexpected tuple type check, trying to validate enum with non-enum field",
+      )),
     }
   }
 
   /// Validate if provided value matches const description.
-  fn validate_const(&self, value: &str) -> Option<XrfError> {
+  fn validate_const(&self, value: &str) -> Result<(), String> {
     match &self.data_type {
       LtxFieldDataType::TypeConst(const_value) => {
         if const_value.is_empty() {
-          Some(self.validation_error("Unexpected const check - value is empty"))
+          Err(String::from("Unexpected const check - value is empty"))
         } else if const_value != value {
-          Some(self.validation_error(&format!(
+          Err(format!(
             "Invalid value, constant '{const_value}' is expected, got '{value}'"
-          )))
+          ))
         } else {
-          None
+          Ok(())
         }
       }
-      _ => Some(self.validation_error("Unexpected tuple type check, trying to validate enum with non-enum field")),
+      _ => Err(String::from(
+        "Unexpected tuple type check, trying to validate enum with non-enum field",
+      )),
     }
   }
 
-  fn validate_section_type(&self, _: &str) -> Option<XrfError> {
-    None
+  fn validate_section_type(&self, _: &str) -> Result<(), String> {
+    Ok(())
   }
 
-  fn validate_section_type_defined(&self, ltx: &Ltx, value: &str) -> Option<XrfError> {
+  fn validate_section_type_defined(&self, ltx: &Ltx, value: &str) -> Result<(), String> {
     if ltx.has_section(value) {
-      None
+      Ok(())
     } else {
-      Some(self.validation_error(&format!(
+      Err(format!(
         "Unexpected value - section [{value}] is not defined in file scope"
-      )))
+      ))
     }
   }
 
-  fn validate_condlist_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_condlist_type(&self, value: &str) -> Result<(), String> {
     if value.is_empty() && !self.is_optional {
-      return Some(self.validation_error("Invalid value - condlist is expected, got empty field"));
+      return Err(String::from("Invalid value - condlist is expected, got empty field"));
     }
 
     if value.is_empty() {
-      return None;
+      return Ok(());
     }
 
-    Condlist::parse(value)
-      .err()
-      .map(|error| self.validation_error(&error.to_string()))
+    Condlist::parse(value).map(|_| ()).map_err(|error| error.to_string())
   }
 
-  fn validate_string_type(&self, value: &str) -> Option<XrfError> {
+  fn validate_string_type(&self, value: &str) -> Result<(), String> {
     if value.is_empty() && !self.is_optional {
-      Some(self.validation_error("Invalid value - string is expected, got empty field"))
+      Err(String::from("Invalid value - string is expected, got empty field"))
     } else {
-      None
+      Ok(())
     }
   }
 }
@@ -407,16 +395,16 @@ mod tests {
     let scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeI32);
 
-    assert!(scheme.validate_u32_type(&u32::MIN.to_string()).is_none());
-    assert!(scheme.validate_u32_type(&i32::MAX.to_string()).is_none());
+    assert!(scheme.validate_u32_type(&u32::MIN.to_string()).is_ok());
+    assert!(scheme.validate_u32_type(&i32::MAX.to_string()).is_ok());
 
-    assert!(scheme.validate_u32_type(&((u32::MIN as i64) - 1).to_string()).is_some());
-    assert!(scheme.validate_u32_type(&((u32::MAX as i64) + 1).to_string()).is_some());
+    assert!(scheme.validate_u32_type(&((u32::MIN as i64) - 1).to_string()).is_err());
+    assert!(scheme.validate_u32_type(&((u32::MAX as i64) + 1).to_string()).is_err());
 
-    assert!(scheme.validate_u32_type("a").is_some());
-    assert!(scheme.validate_u32_type("true").is_some());
-    assert!(scheme.validate_u32_type(",").is_some());
-    assert!(scheme.validate_u32_type("").is_some());
+    assert!(scheme.validate_u32_type("a").is_err());
+    assert!(scheme.validate_u32_type("true").is_err());
+    assert!(scheme.validate_u32_type(",").is_err());
+    assert!(scheme.validate_u32_type("").is_err());
   }
 
   #[test]
@@ -424,16 +412,16 @@ mod tests {
     let scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeI32);
 
-    assert!(scheme.validate_i32_type(&i32::MIN.to_string()).is_none());
-    assert!(scheme.validate_i32_type(&i32::MAX.to_string()).is_none());
+    assert!(scheme.validate_i32_type(&i32::MIN.to_string()).is_ok());
+    assert!(scheme.validate_i32_type(&i32::MAX.to_string()).is_ok());
 
-    assert!(scheme.validate_i32_type(&((i32::MIN as i64) - 1).to_string()).is_some());
-    assert!(scheme.validate_i32_type(&((i32::MAX as i64) + 1).to_string()).is_some());
+    assert!(scheme.validate_i32_type(&((i32::MIN as i64) - 1).to_string()).is_err());
+    assert!(scheme.validate_i32_type(&((i32::MAX as i64) + 1).to_string()).is_err());
 
-    assert!(scheme.validate_i32_type("a").is_some());
-    assert!(scheme.validate_i32_type("true").is_some());
-    assert!(scheme.validate_i32_type(",").is_some());
-    assert!(scheme.validate_i32_type("").is_some());
+    assert!(scheme.validate_i32_type("a").is_err());
+    assert!(scheme.validate_i32_type("true").is_err());
+    assert!(scheme.validate_i32_type(",").is_err());
+    assert!(scheme.validate_i32_type("").is_err());
   }
 
   #[test]
@@ -441,16 +429,16 @@ mod tests {
     let scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeU16);
 
-    assert!(scheme.validate_u16_type(&u16::MIN.to_string()).is_none());
-    assert!(scheme.validate_u16_type(&u16::MAX.to_string()).is_none());
+    assert!(scheme.validate_u16_type(&u16::MIN.to_string()).is_ok());
+    assert!(scheme.validate_u16_type(&u16::MAX.to_string()).is_ok());
 
-    assert!(scheme.validate_u16_type(&((u16::MIN as i32) - 1).to_string()).is_some());
-    assert!(scheme.validate_u16_type(&((u16::MAX as i32) + 1).to_string()).is_some());
+    assert!(scheme.validate_u16_type(&((u16::MIN as i32) - 1).to_string()).is_err());
+    assert!(scheme.validate_u16_type(&((u16::MAX as i32) + 1).to_string()).is_err());
 
-    assert!(scheme.validate_u16_type("a").is_some());
-    assert!(scheme.validate_u16_type("true").is_some());
-    assert!(scheme.validate_u16_type(",").is_some());
-    assert!(scheme.validate_u16_type("").is_some());
+    assert!(scheme.validate_u16_type("a").is_err());
+    assert!(scheme.validate_u16_type("true").is_err());
+    assert!(scheme.validate_u16_type(",").is_err());
+    assert!(scheme.validate_u16_type("").is_err());
   }
 
   #[test]
@@ -458,16 +446,16 @@ mod tests {
     let scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeI16);
 
-    assert!(scheme.validate_i16_type(&i16::MIN.to_string()).is_none());
-    assert!(scheme.validate_i16_type(&i16::MAX.to_string()).is_none());
+    assert!(scheme.validate_i16_type(&i16::MIN.to_string()).is_ok());
+    assert!(scheme.validate_i16_type(&i16::MAX.to_string()).is_ok());
 
-    assert!(scheme.validate_i16_type(&((i16::MIN as i32) - 1).to_string()).is_some());
-    assert!(scheme.validate_i16_type(&((i16::MAX as i32) + 1).to_string()).is_some());
+    assert!(scheme.validate_i16_type(&((i16::MIN as i32) - 1).to_string()).is_err());
+    assert!(scheme.validate_i16_type(&((i16::MAX as i32) + 1).to_string()).is_err());
 
-    assert!(scheme.validate_i16_type("a").is_some());
-    assert!(scheme.validate_i16_type("true").is_some());
-    assert!(scheme.validate_i16_type(",").is_some());
-    assert!(scheme.validate_i16_type("").is_some());
+    assert!(scheme.validate_i16_type("a").is_err());
+    assert!(scheme.validate_i16_type("true").is_err());
+    assert!(scheme.validate_i16_type(",").is_err());
+    assert!(scheme.validate_i16_type("").is_err());
   }
 
   #[test]
@@ -475,16 +463,16 @@ mod tests {
     let scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeU8);
 
-    assert!(scheme.validate_u8_type(&u8::MIN.to_string()).is_none());
-    assert!(scheme.validate_u8_type(&u8::MAX.to_string()).is_none());
+    assert!(scheme.validate_u8_type(&u8::MIN.to_string()).is_ok());
+    assert!(scheme.validate_u8_type(&u8::MAX.to_string()).is_ok());
 
-    assert!(scheme.validate_u8_type(&((u8::MIN as i32) - 1).to_string()).is_some());
-    assert!(scheme.validate_u8_type(&((u8::MAX as i32) + 1).to_string()).is_some());
+    assert!(scheme.validate_u8_type(&((u8::MIN as i32) - 1).to_string()).is_err());
+    assert!(scheme.validate_u8_type(&((u8::MAX as i32) + 1).to_string()).is_err());
 
-    assert!(scheme.validate_u8_type("a").is_some());
-    assert!(scheme.validate_u8_type("true").is_some());
-    assert!(scheme.validate_u8_type(",").is_some());
-    assert!(scheme.validate_u8_type("").is_some());
+    assert!(scheme.validate_u8_type("a").is_err());
+    assert!(scheme.validate_u8_type("true").is_err());
+    assert!(scheme.validate_u8_type(",").is_err());
+    assert!(scheme.validate_u8_type("").is_err());
   }
 
   #[test]
@@ -492,16 +480,16 @@ mod tests {
     let scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeI8);
 
-    assert!(scheme.validate_i8_type(&i8::MIN.to_string()).is_none());
-    assert!(scheme.validate_i8_type(&i8::MAX.to_string()).is_none());
+    assert!(scheme.validate_i8_type(&i8::MIN.to_string()).is_ok());
+    assert!(scheme.validate_i8_type(&i8::MAX.to_string()).is_ok());
 
-    assert!(scheme.validate_i8_type(&((i8::MIN as i32) - 1).to_string()).is_some());
-    assert!(scheme.validate_i8_type(&((i8::MAX as i32) + 1).to_string()).is_some());
+    assert!(scheme.validate_i8_type(&((i8::MIN as i32) - 1).to_string()).is_err());
+    assert!(scheme.validate_i8_type(&((i8::MAX as i32) + 1).to_string()).is_err());
 
-    assert!(scheme.validate_i8_type("a").is_some());
-    assert!(scheme.validate_i8_type("true").is_some());
-    assert!(scheme.validate_i8_type(",").is_some());
-    assert!(scheme.validate_i8_type("").is_some());
+    assert!(scheme.validate_i8_type("a").is_err());
+    assert!(scheme.validate_i8_type("true").is_err());
+    assert!(scheme.validate_i8_type(",").is_err());
+    assert!(scheme.validate_i8_type("").is_err());
   }
 
   #[test]
@@ -509,13 +497,13 @@ mod tests {
     let scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeBool);
 
-    assert!(scheme.validate_bool_type("true").is_none());
-    assert!(scheme.validate_bool_type("false").is_none());
+    assert!(scheme.validate_bool_type("true").is_ok());
+    assert!(scheme.validate_bool_type("false").is_ok());
 
-    assert!(scheme.validate_bool_type("1,2,3,4").is_some());
-    assert!(scheme.validate_bool_type("1").is_some());
-    assert!(scheme.validate_bool_type("0").is_some());
-    assert!(scheme.validate_bool_type("").is_some());
+    assert!(scheme.validate_bool_type("1,2,3,4").is_err());
+    assert!(scheme.validate_bool_type("1").is_err());
+    assert!(scheme.validate_bool_type("0").is_err());
+    assert!(scheme.validate_bool_type("").is_err());
   }
 
   #[test]
@@ -526,32 +514,28 @@ mod tests {
     assert!(
       scheme
         .validate_condlist_type("{+info -other} enabled, fallback %=set_active_task(test)%")
-        .is_none()
+        .is_ok()
     );
-    assert!(
-      scheme
-        .validate_condlist_type("{+info} %=mech_discount(0.95)%")
-        .is_none()
-    );
+    assert!(scheme.validate_condlist_type("{+info} %=mech_discount(0.95)%").is_ok());
 
-    assert!(scheme.validate_condlist_type("").is_some());
-    assert!(scheme.validate_condlist_type("{+} enabled").is_some());
-    assert!(scheme.validate_condlist_type("enabled %effect").is_some());
+    assert!(scheme.validate_condlist_type("").is_err());
+    assert!(scheme.validate_condlist_type("{+} enabled").is_err());
+    assert!(scheme.validate_condlist_type("enabled %effect").is_err());
   }
   #[test]
   fn test_string_validation() {
     let scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_type("test_section", "test_field", LtxFieldDataType::TypeString);
 
-    assert!(scheme.validate_string_type("true").is_none());
-    assert!(scheme.validate_string_type("false").is_none());
-    assert!(scheme.validate_string_type("0").is_none());
-    assert!(scheme.validate_string_type("1").is_none());
-    assert!(scheme.validate_string_type("-1").is_none());
-    assert!(scheme.validate_string_type(",").is_none());
-    assert!(scheme.validate_string_type(",,,,,,").is_none());
+    assert!(scheme.validate_string_type("true").is_ok());
+    assert!(scheme.validate_string_type("false").is_ok());
+    assert!(scheme.validate_string_type("0").is_ok());
+    assert!(scheme.validate_string_type("1").is_ok());
+    assert!(scheme.validate_string_type("-1").is_ok());
+    assert!(scheme.validate_string_type(",").is_ok());
+    assert!(scheme.validate_string_type(",,,,,,").is_ok());
 
-    assert!(scheme.validate_string_type("").is_some());
+    assert!(scheme.validate_string_type("").is_err());
   }
 
   #[test]
@@ -561,16 +545,16 @@ mod tests {
 
     let ltx: Ltx = Ltx::new();
 
-    assert!(scheme.validate_value(&ltx, "true").is_none());
-    assert!(scheme.validate_value(&ltx, "false").is_none());
-    assert!(scheme.validate_value(&ltx, "0").is_none());
-    assert!(scheme.validate_value(&ltx, "1").is_none());
-    assert!(scheme.validate_value(&ltx, "-1").is_none());
+    assert!(scheme.validate_value(&ltx, "true").is_ok());
+    assert!(scheme.validate_value(&ltx, "false").is_ok());
+    assert!(scheme.validate_value(&ltx, "0").is_ok());
+    assert!(scheme.validate_value(&ltx, "1").is_ok());
+    assert!(scheme.validate_value(&ltx, "-1").is_ok());
 
-    assert!(scheme.validate_value(&ltx, ",").is_some());
-    assert!(scheme.validate_value(&ltx, ",,,,,,,,,").is_some());
-    assert!(scheme.validate_value(&ltx, ",,,   , ,     ,").is_some());
-    assert!(scheme.validate_value(&ltx, "").is_some());
+    assert!(scheme.validate_value(&ltx, ",").is_err());
+    assert!(scheme.validate_value(&ltx, ",,,,,,,,,").is_err());
+    assert!(scheme.validate_value(&ltx, ",,,   , ,     ,").is_err());
+    assert!(scheme.validate_value(&ltx, "").is_err());
   }
 
   #[test]
@@ -578,15 +562,15 @@ mod tests {
     let scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeString);
 
-    assert!(scheme.validate_string_type("true").is_none());
-    assert!(scheme.validate_string_type("false").is_none());
-    assert!(scheme.validate_string_type("0").is_none());
-    assert!(scheme.validate_string_type("1").is_none());
-    assert!(scheme.validate_string_type("-1").is_none());
-    assert!(scheme.validate_string_type(",").is_none());
-    assert!(scheme.validate_string_type(",,,,,,").is_none());
+    assert!(scheme.validate_string_type("true").is_ok());
+    assert!(scheme.validate_string_type("false").is_ok());
+    assert!(scheme.validate_string_type("0").is_ok());
+    assert!(scheme.validate_string_type("1").is_ok());
+    assert!(scheme.validate_string_type("-1").is_ok());
+    assert!(scheme.validate_string_type(",").is_ok());
+    assert!(scheme.validate_string_type(",,,,,,").is_ok());
 
-    assert!(scheme.validate_string_type("").is_none());
+    assert!(scheme.validate_string_type("").is_ok());
   }
 
   #[test]
@@ -594,15 +578,15 @@ mod tests {
     let scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeVector);
 
-    assert!(scheme.validate_vector_type("1,2,3").is_none());
-    assert!(scheme.validate_vector_type("-2,2.5,-0.0025").is_none());
-    assert!(scheme.validate_vector_type("-1.5,-2.5,-3.1").is_none());
+    assert!(scheme.validate_vector_type("1,2,3").is_ok());
+    assert!(scheme.validate_vector_type("-2,2.5,-0.0025").is_ok());
+    assert!(scheme.validate_vector_type("-1.5,-2.5,-3.1").is_ok());
 
-    assert!(scheme.validate_vector_type("").is_some());
-    assert!(scheme.validate_vector_type("1,2,3,4").is_some());
-    assert!(scheme.validate_vector_type("1,2").is_some());
-    assert!(scheme.validate_vector_type("-1,2.0").is_some());
-    assert!(scheme.validate_vector_type("a,b,c").is_some());
+    assert!(scheme.validate_vector_type("").is_err());
+    assert!(scheme.validate_vector_type("1,2,3,4").is_err());
+    assert!(scheme.validate_vector_type("1,2").is_err());
+    assert!(scheme.validate_vector_type("-1,2.0").is_err());
+    assert!(scheme.validate_vector_type("a,b,c").is_err());
   }
 
   #[test]
@@ -610,18 +594,18 @@ mod tests {
     let mut scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeVector);
 
-    assert!(scheme.validate_enum_type("a").is_some());
+    assert!(scheme.validate_enum_type("a").is_err());
 
     scheme.data_type = LtxFieldDataType::TypeEnum(vec![String::from("a"), String::from("b_c"), String::from("d")]);
 
-    assert!(scheme.validate_enum_type("a").is_none());
-    assert!(scheme.validate_enum_type("b_c").is_none());
-    assert!(scheme.validate_enum_type("d").is_none());
+    assert!(scheme.validate_enum_type("a").is_ok());
+    assert!(scheme.validate_enum_type("b_c").is_ok());
+    assert!(scheme.validate_enum_type("d").is_ok());
 
-    assert!(scheme.validate_enum_type("").is_some());
-    assert!(scheme.validate_enum_type("e").is_some());
-    assert!(scheme.validate_enum_type("f").is_some());
-    assert!(scheme.validate_enum_type("1").is_some());
+    assert!(scheme.validate_enum_type("").is_err());
+    assert!(scheme.validate_enum_type("e").is_err());
+    assert!(scheme.validate_enum_type("f").is_err());
+    assert!(scheme.validate_enum_type("1").is_err());
   }
 
   #[test]
@@ -629,22 +613,21 @@ mod tests {
     let mut scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeVector);
 
-    assert!(scheme.validate_const("a").is_some());
+    assert!(scheme.validate_const("a").is_err());
 
     scheme.data_type = LtxFieldDataType::TypeConst(String::from("fixed value"));
 
-    assert!(scheme.validate_const("fixed value").is_none());
+    assert!(scheme.validate_const("fixed value").is_ok());
 
-    assert!(scheme.validate_const("").is_some());
-    assert!(scheme.validate_const("fixed").is_some());
+    assert!(scheme.validate_const("").is_err());
+    assert!(scheme.validate_const("fixed").is_err());
 
     // Both operands stay quoted so a constant containing spaces keeps a recoverable boundary.
     assert_eq!(
       scheme
         .validate_const("other")
-        .expect("Expected mismatching constant to be rejected")
-        .to_string(),
-      "Ltx scheme error [test_section] test_field : Invalid value, constant 'fixed value' is expected, got 'other'"
+        .expect_err("Expected mismatching constant to be rejected"),
+      "Invalid value, constant 'fixed value' is expected, got 'other'"
     );
   }
 
@@ -653,7 +636,7 @@ mod tests {
     let mut scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeVector);
 
-    assert!(scheme.validate_enum_type("a").is_some());
+    assert!(scheme.validate_enum_type("a").is_err());
 
     scheme.data_type = LtxFieldDataType::TypeTuple(
       vec![
@@ -665,18 +648,18 @@ mod tests {
       TupleSeparator::Comma,
     );
 
-    assert!(scheme.validate_tuple_type("15.25, abc, true").is_none());
-    assert!(scheme.validate_tuple_type("-12.50, def, false").is_none());
-    assert!(scheme.validate_tuple_type("0, a, true").is_none());
+    assert!(scheme.validate_tuple_type("15.25, abc, true").is_ok());
+    assert!(scheme.validate_tuple_type("-12.50, def, false").is_ok());
+    assert!(scheme.validate_tuple_type("0, a, true").is_ok());
 
-    assert!(scheme.validate_tuple_type("").is_some());
-    assert!(scheme.validate_tuple_type("e").is_some());
-    assert!(scheme.validate_tuple_type("f").is_some());
-    assert!(scheme.validate_tuple_type("1").is_some());
-    assert!(scheme.validate_tuple_type("10,,true_true").is_some());
-    assert!(scheme.validate_tuple_type("10,,1").is_some());
-    assert!(scheme.validate_tuple_type("a,b,c").is_some());
-    assert!(scheme.validate_tuple_type("a,b,c,d").is_some());
+    assert!(scheme.validate_tuple_type("").is_err());
+    assert!(scheme.validate_tuple_type("e").is_err());
+    assert!(scheme.validate_tuple_type("f").is_err());
+    assert!(scheme.validate_tuple_type("1").is_err());
+    assert!(scheme.validate_tuple_type("10,,true_true").is_err());
+    assert!(scheme.validate_tuple_type("10,,1").is_err());
+    assert!(scheme.validate_tuple_type("a,b,c").is_err());
+    assert!(scheme.validate_tuple_type("a,b,c,d").is_err());
   }
 
   #[test]
@@ -684,7 +667,7 @@ mod tests {
     let mut scheme: LtxFieldScheme =
       LtxFieldScheme::new_with_optional_type("test_section", "test_field", LtxFieldDataType::TypeVector);
 
-    assert!(scheme.validate_enum_type("a").is_some());
+    assert!(scheme.validate_enum_type("a").is_err());
 
     scheme.data_type = LtxFieldDataType::TypeTuple(
       vec![
@@ -702,29 +685,29 @@ mod tests {
       TupleSeparator::Comma,
     );
 
-    assert!(scheme.validate_tuple_type("15.25, xxx, abc, true").is_none());
-    assert!(scheme.validate_tuple_type("-12.50, xxx, def, false").is_none());
-    assert!(scheme.validate_tuple_type("0, xxx, a, true").is_none());
-    assert!(scheme.validate_tuple_type("0, xxx, a").is_none());
-    assert!(scheme.validate_tuple_type("0, xxx").is_none());
-    assert!(scheme.validate_tuple_type("0, true,,").is_none());
-    assert!(scheme.validate_tuple_type("0, 1,,").is_none());
+    assert!(scheme.validate_tuple_type("15.25, xxx, abc, true").is_ok());
+    assert!(scheme.validate_tuple_type("-12.50, xxx, def, false").is_ok());
+    assert!(scheme.validate_tuple_type("0, xxx, a, true").is_ok());
+    assert!(scheme.validate_tuple_type("0, xxx, a").is_ok());
+    assert!(scheme.validate_tuple_type("0, xxx").is_ok());
+    assert!(scheme.validate_tuple_type("0, true,,").is_ok());
+    assert!(scheme.validate_tuple_type("0, 1,,").is_ok());
 
-    assert!(scheme.validate_tuple_type(", xxx, a, true").is_some());
-    assert!(scheme.validate_tuple_type(", a, true").is_some());
-    assert!(scheme.validate_tuple_type(", , , true").is_some());
-    assert!(scheme.validate_tuple_type(", , ,").is_some());
-    assert!(scheme.validate_tuple_type("").is_some());
-    assert!(scheme.validate_tuple_type("e").is_some());
-    assert!(scheme.validate_tuple_type("f").is_some());
-    assert!(scheme.validate_tuple_type("10,xxx,,,,,,,,,,").is_some());
-    assert!(scheme.validate_tuple_type("10,xxx,test,true,true").is_some());
-    assert!(scheme.validate_tuple_type("10,xxx,test,true_true").is_some());
-    assert!(scheme.validate_tuple_type("10xxx,,,true_true").is_some());
-    assert!(scheme.validate_tuple_type("10,,,1").is_some());
-    assert!(scheme.validate_tuple_type("a,b").is_some());
-    assert!(scheme.validate_tuple_type("a,b,c").is_some());
-    assert!(scheme.validate_tuple_type("a,b,c,d").is_some());
+    assert!(scheme.validate_tuple_type(", xxx, a, true").is_err());
+    assert!(scheme.validate_tuple_type(", a, true").is_err());
+    assert!(scheme.validate_tuple_type(", , , true").is_err());
+    assert!(scheme.validate_tuple_type(", , ,").is_err());
+    assert!(scheme.validate_tuple_type("").is_err());
+    assert!(scheme.validate_tuple_type("e").is_err());
+    assert!(scheme.validate_tuple_type("f").is_err());
+    assert!(scheme.validate_tuple_type("10,xxx,,,,,,,,,,").is_err());
+    assert!(scheme.validate_tuple_type("10,xxx,test,true,true").is_err());
+    assert!(scheme.validate_tuple_type("10,xxx,test,true_true").is_err());
+    assert!(scheme.validate_tuple_type("10xxx,,,true_true").is_err());
+    assert!(scheme.validate_tuple_type("10,,,1").is_err());
+    assert!(scheme.validate_tuple_type("a,b").is_err());
+    assert!(scheme.validate_tuple_type("a,b,c").is_err());
+    assert!(scheme.validate_tuple_type("a,b,c,d").is_err());
   }
 
   #[test]
@@ -737,22 +720,22 @@ mod tests {
     assert!(
       scheme
         .validate_data_entry_by_type(&scheme.data_type, "signal | {+info} next_state")
-        .is_none()
+        .is_ok()
     );
     assert!(
       scheme
         .validate_data_entry_by_type(&scheme.data_type, " | {+info} next_state")
-        .is_none()
+        .is_ok()
     );
     assert!(
       scheme
         .validate_data_entry_by_type(&scheme.data_type, "signal | {+}")
-        .is_some()
+        .is_err()
     );
     assert!(
       scheme
         .validate_data_entry_by_type(&scheme.data_type, "signal |")
-        .is_none()
+        .is_ok()
     );
   }
 }

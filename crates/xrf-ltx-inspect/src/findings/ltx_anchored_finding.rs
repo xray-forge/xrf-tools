@@ -1,41 +1,16 @@
 use serde::Serialize;
+use xrf_ltx::LtxFinding;
 
-/// One finding, already placed at the file and line a person has to open.
+/// One finding, placed at the line a person has to open.
+///
+/// The finding itself is the core's: this adds only the line, which takes the documents to find. Flattened, so a
+/// viewer reads one record rather than a finding nested in its placement.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LtxAnchoredFinding {
-  pub kind: LtxFindingKind,
-  /// Engine identity of the entry point whose resolution the finding was produced under.
-  pub entry: String,
-  /// Engine identity of the config to open, where one is known.
-  ///
-  /// `None` means nothing recorded which config declares the section, which a patch dialect answers for a section
-  /// created by an override of something nothing declares.
-  pub file: Option<String>,
-  /// One-based line in `file`, where the anchor reached one.
+  #[serde(flatten)]
+  pub finding: LtxFinding,
+  /// One-based line in the finding's `file`, where the anchor reached one.
   pub line: Option<u32>,
-  pub section: Option<String>,
-  pub field: Option<String>,
-  pub message: String,
-  /// What the engine does with the same input, where the dialect said so.
-  pub engine_behaviour: Option<String>,
-}
-
-/// What kind of thing went wrong, which is also what decides how it was anchored.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum LtxFindingKind {
-  /// The file would not parse. Carries its own line, from the parser.
-  Parse,
-  /// A section broke the scheme it is bound to, or is bound to one nothing declares.
-  Scheme,
-  /// The dialect had something to say about the root that is not a failure.
-  Dialect,
-  /// An `#include` reached no file.
-  Include,
-  /// A config declares keys above its first section header, where no engine loads them. Not raised for a config
-  /// that declares no section at all: that is a list, read as data rather than loaded as an ini.
-  RootKeys,
 }
