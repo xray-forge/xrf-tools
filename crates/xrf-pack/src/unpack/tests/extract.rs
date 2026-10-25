@@ -2,7 +2,7 @@ use std::fs;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
-use xrf_archive::ArchiveProject;
+use xrf_archive::{ARCHIVE_READ_POLICY, ArchiveProject};
 use xrf_job::{ExecutionRequest, JobHandle, JobOutcome};
 
 use super::fixtures::{Entry, create_project, create_temporary_directory};
@@ -158,7 +158,9 @@ fn read_file_as_string_accepts_a_compressed_entry() {
   let directory: PathBuf = create_temporary_directory("compressed-string");
   let project: ArchiveProject = create_project(&directory, &[Entry::compressed("configs\\system.ltx", COMPRESSIBLE)]);
 
-  let result = project.read_file_as_string("configs\\system.ltx").expect("read");
+  let result = project
+    .read_file_as_string("configs\\system.ltx", &ARCHIVE_READ_POLICY)
+    .expect("read");
 
   // Previously refused outright, because reading raw bytes at the offset would have produced rubbish.
   assert_eq!(result.content, String::from_utf8_lossy(COMPRESSIBLE));
@@ -174,7 +176,9 @@ fn read_file_as_string_decodes_windows_1251_text() {
   let directory: PathBuf = create_temporary_directory("w1251-string");
   let project: ArchiveProject = create_project(&directory, &[Entry::stored("configs\\weapon.ltx", CYRILLIC_W1251)]);
 
-  let result = project.read_file_as_string("configs\\weapon.ltx").expect("read");
+  let result = project
+    .read_file_as_string("configs\\weapon.ltx", &ARCHIVE_READ_POLICY)
+    .expect("read");
 
   assert_eq!(result.content, "[wpn]\r\nname = Прицел\r\n");
   assert!(!result.content.contains('\u{FFFD}'), "no replacement characters");

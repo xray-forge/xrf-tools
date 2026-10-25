@@ -5,7 +5,7 @@ import { TranslationProjectDescriptor, TranslationSource } from "@xrf/ipc/types/
 
 import { TCallableExportDescriptor } from "@/core/exports";
 
-import { mockArchiveFileDescriptor, mockArchiveReadPolicy } from "./archive.mocks";
+import { mockArchiveFileDescriptor } from "./archive.mocks";
 import { mockEquipmentOccupant } from "./sprite.mocks";
 
 /**
@@ -63,7 +63,6 @@ export function mockArchivesProject(overrides: Partial<ArchiveProject> = {}): Ar
         name: "wpn_ak74.ogf",
       }),
     },
-    readPolicy: mockArchiveReadPolicy(),
     root: "db",
     shadowed: [],
     sizeReal: 6144,

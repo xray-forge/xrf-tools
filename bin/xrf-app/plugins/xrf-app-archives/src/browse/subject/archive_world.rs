@@ -27,7 +27,6 @@ pub struct ArchiveWorld {
   #[serde(skip)]
   #[cfg_attr(feature = "typescript-bindings", specta(skip))]
   pub collisions: Vec<XrayPathCollision>,
-  pub read_policy: ArchiveReadPolicy,
   /// Unpacked bytes of the winning entries. What is shadowed is not counted; it is not what the engine would load.
   pub size_real: u64,
   /// Engine paths this world answers with more than one copy for.
@@ -46,7 +45,6 @@ impl ArchiveWorld {
       collisions: listed.list_collisions(),
       mounts: listed.list_roots(),
       sources: listed.list_containers(),
-      read_policy: ArchiveReadPolicy::default(),
       search,
       shadowed_count: entries.iter().filter(|entry| entry.is_shadowing()).count(),
       shadowed_size_real: entries.iter().map(XrayShadowingEntry::get_shadowed_size).sum(),
@@ -73,19 +71,19 @@ impl ArchiveWorld {
       .map(|index| &self.files[index])
   }
 
-  /// Reads one file of this world as text, subject to the viewer's read policy.
+  /// Reads one file of this world as text, if `policy` admits it.
   ///
   /// # Errors
   ///
   /// Returns an error when this world does not hold the path, the policy refuses it, or the bytes cannot be read or
   /// decoded.
-  pub fn read_text(&self, name: &str) -> XrfResult<ArchiveReadResult> {
+  pub fn read_text(&self, name: &str, policy: &ArchiveReadPolicy) -> XrfResult<ArchiveReadResult> {
     let entry: &ArchiveWorldEntry = self
       .find(name)
       .ok_or_else(|| XrfError::new_not_found_error(format!("File '{name}' is not found in the opened game folder")))?;
     let size: u32 = entry.size_real.try_into().unwrap_or(u32::MAX);
 
-    self.read_policy.assert_can_read_as_text(name, size)?;
+    policy.assert_can_read_as_text(name, size)?;
 
     ArchiveReadResult::decode(name, &self.search.read_asset(&self.find_asset(name)?)?, size)
   }
@@ -108,6 +106,7 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
+  use xrf_archive::ARCHIVE_READ_POLICY;
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
   use xrf_vfs::{XrayAssetContainer, XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchStep, XrayVfs};
 
@@ -239,7 +238,7 @@ mod tests {
 
     assert_eq!(
       world
-        .read_text("configs\\system.ltx")
+        .read_text("configs\\system.ltx", &ARCHIVE_READ_POLICY)
         .expect("the winner reads")
         .content,
       "front"

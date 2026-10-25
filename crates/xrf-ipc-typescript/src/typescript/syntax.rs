@@ -53,9 +53,55 @@ pub(crate) fn render_string(value: &str) -> String {
   format!("\"{}\"", value.replace('\\', "\\\\").replace('"', "\\\""))
 }
 
+/// A serialized value as a TypeScript literal: JSON, with an object's keys left bare where they are identifiers, as the
+/// frontend's formatter would leave them.
+pub(crate) fn render_value(value: &serde_json::Value) -> String {
+  match value {
+    serde_json::Value::Object(fields) if fields.is_empty() => String::from("{}"),
+    serde_json::Value::Object(fields) => format!(
+      "{{ {} }}",
+      fields
+        .iter()
+        .map(|(key, field)| format!("{}: {}", render_key(key), render_value(field)))
+        .collect::<Vec<String>>()
+        .join(", ")
+    ),
+    serde_json::Value::Array(elements) => format!(
+      "[{}]",
+      elements.iter().map(render_value).collect::<Vec<String>>().join(", ")
+    ),
+    scalar => scalar.to_string(),
+  }
+}
+
+/// An object key, bare where it is an identifier and a string literal otherwise.
+fn render_key(key: &str) -> String {
+  let mut characters = key.chars();
+  let is_identifier: bool = characters
+    .next()
+    .is_some_and(|first| first.is_ascii_alphabetic() || first == '_')
+    && characters.all(|rest| rest.is_ascii_alphanumeric() || rest == '_');
+
+  if is_identifier {
+    key.to_owned()
+  } else {
+    serde_json::Value::from(key).to_string()
+  }
+}
+
 #[cfg(test)]
 mod tests {
-  use super::{escape_docs, render_string};
+  use serde_json::json;
+
+  use super::{escape_docs, render_string, render_value};
+
+  #[test]
+  fn a_value_is_written_as_its_literal_with_bare_keys_where_they_can_be() {
+    assert_eq!(
+      render_value(&json!({ "mostSteps": 7, "two words": [0.5, true, null, "a \"b\""], "empty": {} })),
+      "{ empty: {}, mostSteps: 7, \"two words\": [0.5, true, null, \"a \\\"b\\\"\"] }"
+    );
+  }
 
   #[test]
   fn documentation_cannot_terminate_the_comment_carrying_it() {

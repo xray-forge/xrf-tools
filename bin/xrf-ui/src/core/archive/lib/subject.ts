@@ -1,5 +1,4 @@
 import { ArchiveSubject, EArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
-import { ArchiveReadPolicy } from "@xrf/ipc/types/xrf-archive";
 import { Nullable } from "@xrf/types";
 
 import { IArchiveEntry } from "./entry";
@@ -45,20 +44,6 @@ export function listSubjectEntries(subject: Nullable<ArchiveSubject>): Array<IAr
   }
 
   return subject.kind === EArchiveSubject.WORLD ? subject.world.files : listArchiveFiles(subject.project);
-}
-
-/**
- * What a subject may be read as, by extension and size.
- *
- * @param subject - What the explorer has open, or null when nothing is.
- * @returns The backend's read policy, or null when nothing is open.
- */
-export function getSubjectReadPolicy(subject: Nullable<ArchiveSubject>): Nullable<ArchiveReadPolicy> {
-  if (!subject) {
-    return null;
-  }
-
-  return subject.kind === EArchiveSubject.WORLD ? subject.world.readPolicy : subject.project.readPolicy;
 }
 
 /**

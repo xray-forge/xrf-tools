@@ -25,8 +25,6 @@ pub struct ArchiveProject {
   pub files: HashMap<Arc<str>, ArchiveFileDescriptor>,
   /// Entries a later volume overwrote in the merge, in the order they were displaced.
   pub shadowed: Vec<ArchiveFileDescriptor>,
-  /// What [`Self::read_file_as_string`] admits, and what a viewer of this project may preview.
-  pub read_policy: ArchiveReadPolicy,
   /// The tightest path holding exactly these volumes: the volume itself when one file was read, the volumes' common
   /// parent when a directory was walked. Mounting it reaches this project's entries and no others, which is what a
   /// caller reading an entry's bytes back out of the filesystem needs.
@@ -110,7 +108,6 @@ impl ArchiveProject {
     Ok(Self {
       archives,
       files,
-      read_policy: ArchiveReadPolicy::default(),
       root,
       shadowed,
       size_real,
@@ -205,17 +202,17 @@ impl ArchiveProject {
     self.open_volumes()?.read_bytes(self.get_file(name)?)
   }
 
-  /// Reads one archived file as text, subject to the project's read policy.
+  /// Reads one archived file as text, if `policy` admits it.
   ///
   /// # Errors
   ///
   /// Returns an error when the entry is absent, the policy refuses it, or its bytes cannot be read or decoded.
-  pub fn read_file_as_string(&self, name: &str) -> XrfResult<ArchiveReadResult> {
+  pub fn read_file_as_string(&self, name: &str, policy: &ArchiveReadPolicy) -> XrfResult<ArchiveReadResult> {
     log::info!("Trying to read file from archive: {name}");
 
     let descriptor: &ArchiveFileDescriptor = self.get_file(name)?;
 
-    self.read_policy.assert_can_read_as_text(name, descriptor.size_real)?;
+    policy.assert_can_read_as_text(name, descriptor.size_real)?;
 
     ArchiveReadResult::decode(
       name,

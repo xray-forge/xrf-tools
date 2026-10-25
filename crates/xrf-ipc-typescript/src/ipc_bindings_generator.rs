@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use tauri::Runtime;
 
-use crate::collected_commands::CollectedCommands;
+use crate::collected::{CollectedCommands, CollectedConstants};
 use crate::command_module_writer::{CommandModuleWriter, PluginModules};
 use crate::command_typescript::CommandTypescript;
 use crate::constants::{COMMANDS_DIRECTORY, TYPES_DIRECTORY};
@@ -20,8 +20,9 @@ use crate::type_ownership::TypeOwnership;
 /// Writes the frontend's TypeScript mirror of an IPC command surface.
 ///
 /// The order below is the whole contract and it is not a caller's to reproduce: every plugin's commands are exported
-/// first, because that is what collects the types they reference and the commands themselves; the type modules are
-/// written next, because only then is it known which module declares what; each command module is finalized after,
+/// first, because that is what collects the types they reference and the commands themselves; the marked constants are
+/// collected next, adding the types they carry; the type modules are written then, because only then is it known which
+/// module declares what; each command module is finalized after,
 /// because it is the type modules that say which imports replace the copies Specta inlined; and the merged signatures
 /// last, because they import every command module.
 pub struct IpcBindingsGenerator;
@@ -51,9 +52,10 @@ impl IpcBindingsGenerator {
     reset_directory(&types);
     reset_directory(&commands);
 
-    let collected: CollectedCommands = Self::export_commands(&commands, surfaces);
+    let mut collected: CollectedCommands = Self::export_commands(&commands, surfaces);
+    let constants: CollectedConstants = CollectedConstants::collect(type_modules, &mut collected.types);
     let (ownership, enumerations): (TypeOwnership, Enumerations) =
-      TypeModuleWriter::write_all(&types, &collected.types, type_modules, imports);
+      TypeModuleWriter::write_all(&types, &collected.types, &constants, type_modules, imports);
     let mut plugins: Vec<PluginModules> = Vec::with_capacity(surfaces.len());
 
     for surface in surfaces {

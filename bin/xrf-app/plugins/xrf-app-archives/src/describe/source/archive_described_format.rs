@@ -147,12 +147,18 @@ impl ArchiveDescribedFormat {
     )
   }
 
-  /// Reads the entry this format claimed, or answers `None` where the claim does not hold after all.
+  /// Reads the entry this format claimed, or answers `None` where the claim does not hold after all; what a describer
+  /// reads whole beyond what it claimed answers to `policy`.
   ///
   /// # Errors
   ///
   /// Returns an error when the entry's bytes cannot be read, or when they are not the format this claimed them as.
-  pub fn describe(self, source: &ArchiveDescribeSource, name: &str) -> XrfResult<Option<ArchiveFormatDescription>> {
+  pub fn describe(
+    self,
+    source: &ArchiveDescribeSource,
+    name: &str,
+    policy: &ArchiveReadPolicy,
+  ) -> XrfResult<Option<ArchiveFormatDescription>> {
     Ok(Some(match self {
       Self::Anm => ArchiveAnmDescription::read(source, name)?.into(),
       Self::Detail => ArchiveDetailModel::read(source, name)?.into(),
@@ -180,7 +186,7 @@ impl ArchiveDescribedFormat {
       Self::Particles => ArchiveParticlesDescription::read(source, name)?.into(),
       Self::Ppe => ArchivePpeDescription::read(source, name)?.into(),
       Self::Shaders => ArchiveShadersDescription::read(source, name)?.into(),
-      Self::Spawn => return Self::describe_spawn(source, name),
+      Self::Spawn => return Self::describe_spawn(source, name, policy),
       Self::Thm => ArchiveThmDescription::read(source, name)?.into(),
     }))
   }
@@ -193,7 +199,11 @@ impl ArchiveDescribedFormat {
   /// # Errors
   ///
   /// Returns an error when the entry's bytes cannot be read.
-  fn describe_spawn(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Option<ArchiveFormatDescription>> {
+  fn describe_spawn(
+    source: &ArchiveDescribeSource,
+    name: &str,
+    policy: &ArchiveReadPolicy,
+  ) -> XrfResult<Option<ArchiveFormatDescription>> {
     let mut entry: ArchiveEntryReader = source.open_entry(name)?;
 
     if let Some(set) = ArchiveSpawnDescription::of_entry(&mut entry) {
@@ -201,7 +211,6 @@ impl ArchiveDescribedFormat {
     }
 
     let size: u64 = entry.size();
-    let policy: &ArchiveReadPolicy = source.get_read_policy();
 
     if !policy.allows_describe_read(u32::try_from(size).unwrap_or(u32::MAX)) {
       return Ok(Some(ArchiveFormatDescription::refuse(

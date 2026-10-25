@@ -2,6 +2,49 @@
 
 import { XrayExtension } from "#/types/xrf-extension";
 
+/**
+ * The policy the archive viewers read under, on both sides of IPC: the backend gates its reads by it, and the
+ * frontend's bindings carry it as the preview rules.
+ *
+ * `dds` is the texture the engine loads, which the backend transcodes for display; images are pictures a webview draws
+ * as they stand.
+ */
+export const ARCHIVE_READ_POLICY: ArchiveReadPolicy = {
+  audioExtensions: ["ogg", "wav"],
+  imageExtensions: ["bmp", "jpeg", "jpg", "png"],
+  maximumAudioSize: 67108864,
+  maximumChunkTreeSize: 8388608,
+  maximumDescribeSize: 67108864,
+  maximumImageSize: 33554432,
+  maximumTextSize: 10485760,
+  maximumTextureSize: 33554432,
+  textExtensions: [
+    "bat",
+    "cmd",
+    "cs",
+    "ds",
+    "gs",
+    "h",
+    "hlsl",
+    "hs",
+    "ini",
+    "json",
+    "log",
+    "ltx",
+    "lua",
+    "md",
+    "ps",
+    "py",
+    "s",
+    "script",
+    "seq",
+    "txt",
+    "vs",
+    "xml",
+  ],
+  textureExtensions: ["dds"],
+};
+
 /** One volume of a set: where it is, where it mounts, and what it holds, counted at read time. */
 export type ArchiveDescriptor = {
   /** Volume file creation time in Unix milliseconds, when the filesystem reports one. */
@@ -49,8 +92,6 @@ export type ArchiveProject = {
   files: { [key in string]: ArchiveFileDescriptor };
   /** Entries a later volume overwrote in the merge, in the order they were displaced. */
   shadowed: Array<ArchiveFileDescriptor>;
-  /** What [`Self::read_file_as_string`] admits, and what a viewer of this project may preview. */
-  readPolicy: ArchiveReadPolicy;
   /**
    * The tightest path holding exactly these volumes: the volume itself when one file was read, the volumes' common
    * parent when a directory was walked. Mounting it reaches this project's entries and no others, which is what a
@@ -61,7 +102,7 @@ export type ArchiveProject = {
   sizeReal: number;
 };
 
-/** What a viewer may read out of a mounted tree, by extension and size. */
+/** What a viewer may read out of a mounted tree, by extension and size, passed to each read it gates. */
 export type ArchiveReadPolicy = {
   /** Extensions read as text and decoded from Windows-1251 for display. */
   textExtensions: Array<XrayExtension>;

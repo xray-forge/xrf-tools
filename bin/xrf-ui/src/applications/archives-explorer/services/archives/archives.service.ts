@@ -30,12 +30,7 @@ import {
   EArchiveSubject,
 } from "@xrf/ipc/types/xrf-app-archives";
 import { ESessionRootChange, SessionChange, SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
-import {
-  ArchiveDescriptor,
-  ArchiveFileDescriptor,
-  ArchiveReadPolicy,
-  ArchiveSharedPayload,
-} from "@xrf/ipc/types/xrf-archive";
+import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveSharedPayload } from "@xrf/ipc/types/xrf-archive";
 import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 import { EXrayAssetContainer, XrayPathCollision, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
@@ -47,7 +42,6 @@ import {
   ArchivePreviewSupport,
   getArchivePreviewSupport,
   getArchiveVolumeOf,
-  getSubjectReadPolicy,
   IArchiveEntry,
   listSubjectEntries,
   TArchiveContent,
@@ -768,13 +762,12 @@ export class ArchivesService {
    */
   private *loadSelectedContent(entry: IArchiveEntry): TFlow {
     const subject: Nullable<ArchiveSubject> = this.subject.value;
-    const policy: Nullable<ArchiveReadPolicy> = getSubjectReadPolicy(subject);
 
-    if (!subject || !policy) {
+    if (!subject) {
       return;
     }
 
-    const support: ArchivePreviewSupport = getArchivePreviewSupport(entry, policy);
+    const support: ArchivePreviewSupport = getArchivePreviewSupport(entry);
 
     switch (support.kind) {
       case "audio":

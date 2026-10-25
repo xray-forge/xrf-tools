@@ -4,7 +4,7 @@ use serde::Serialize;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::{AssetMountState, AssetTextureDescriptor};
 use xrf_app_core::session::{SessionDerived, SessionSnapshot};
-use xrf_archive::{ArchiveProject, ArchiveReadPolicy, ArchiveReadResult};
+use xrf_archive::{ARCHIVE_READ_POLICY, ArchiveProject, ArchiveReadResult};
 use xrf_archive_stats::ArchiveStatistics;
 use xrf_pack::{
   ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtractResult, ArchiveUnpacker, XrayWorldExtractor,
@@ -88,14 +88,6 @@ impl ArchiveSubject {
     }
   }
 
-  /// What a viewer may read out of this subject, which is one policy for both.
-  pub fn get_read_policy(&self) -> &ArchiveReadPolicy {
-    match self {
-      Self::Volumes { project, .. } => &project.read_policy,
-      Self::World { world, .. } => &world.read_policy,
-    }
-  }
-
   /// The volume set this subject is, or a refusal naming what it is instead.
   ///
   /// # Errors
@@ -149,7 +141,7 @@ impl ArchiveSubject {
     }
   }
 
-  /// Reads one file as text, subject to the viewer's read policy.
+  /// Reads one file as text, if the viewers' read policy admits it.
   ///
   /// # Errors
   ///
@@ -157,8 +149,8 @@ impl ArchiveSubject {
   /// decoded.
   pub fn read_text(&self, name: &str) -> TauriResult<ArchiveReadResult> {
     match self {
-      Self::Volumes { project, .. } => project.read_file_as_string(name),
-      Self::World { world, .. } => world.read_text(name),
+      Self::Volumes { project, .. } => project.read_file_as_string(name, &ARCHIVE_READ_POLICY),
+      Self::World { world, .. } => world.read_text(name, &ARCHIVE_READ_POLICY),
     }
     .map_err(|error| format!("Failed to read '{name}': {error}"))
   }
@@ -182,7 +174,7 @@ impl ArchiveSubject {
   /// Returns a message when the subject does not hold the name, or a describer that claimed the entry could not read
   /// it. A format nothing describes is an answer rather than a failure.
   pub fn describe_file(&self, name: &str) -> TauriResult<ArchiveFileDescription> {
-    ArchiveFileDescription::of(&self.to_describe_source(), name)
+    ArchiveFileDescription::of(&self.to_describe_source(), name, &ARCHIVE_READ_POLICY)
       .map_err(|error| format!("Failed to describe '{name}': {error}"))
   }
 

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveReadPolicy};
+use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 
 use crate::{ArchiveExtensionUsage, ArchiveStatistics};
 
@@ -44,7 +44,6 @@ fn project() -> ArchiveProject {
       .into_iter()
       .map(|descriptor| (Arc::clone(&descriptor.name), descriptor))
       .collect::<HashMap<Arc<str>, ArchiveFileDescriptor>>(),
-    read_policy: ArchiveReadPolicy::default(),
     root: PathBuf::from("C:/game/db"),
     shadowed: Vec::new(),
     size_real: 15_848,

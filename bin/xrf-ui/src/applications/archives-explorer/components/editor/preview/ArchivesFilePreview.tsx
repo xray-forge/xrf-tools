@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
 import { formatBytes } from "@xrf/format";
-import { ArchiveReadPolicy } from "@xrf/ipc/types/xrf-archive";
+import { ARCHIVE_READ_POLICY } from "@xrf/ipc/types/xrf-archive";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
@@ -9,7 +9,6 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import {
   ArchivePreviewSupport,
   getArchivePreviewSupport,
-  getSubjectReadPolicy,
   IArchiveEntry,
   TArchiveContent,
   TArchiveSelection,
@@ -56,7 +55,6 @@ export function ArchivesFilePreview({
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
   const selection: TArchiveSelection = archivesService.selection;
-  const policy: Nullable<ArchiveReadPolicy> = getSubjectReadPolicy(archivesService.subject.value);
   const content: AsyncState<Nullable<TArchiveContent>> = archivesService.content;
 
   const onGetUnsupportedDescription = useCallback((support: TUnsupported): string => {
@@ -76,20 +74,16 @@ export function ArchivesFilePreview({
 
   const entry: Nullable<IArchiveEntry> = selection.kind === EPathEntryKind.FILE ? selection.entry : null;
 
-  if (!entry || !policy) {
+  if (!entry) {
     return (
       <EmptyState
         title={"Select a file to preview"}
-        description={
-          policy
-            ? `Supported text files up to ${formatBytes(policy.maximumTextSize)} can be displayed.`
-            : "Supported text files can be displayed."
-        }
+        description={`Supported text files up to ${formatBytes(ARCHIVE_READ_POLICY.maximumTextSize)} can be displayed.`}
       />
     );
   }
 
-  const support: ArchivePreviewSupport = getArchivePreviewSupport(entry, policy);
+  const support: ArchivePreviewSupport = getArchivePreviewSupport(entry);
 
   return (
     <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 grow flex-col", className)}>

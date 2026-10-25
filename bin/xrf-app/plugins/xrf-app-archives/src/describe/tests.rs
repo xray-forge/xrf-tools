@@ -4,6 +4,7 @@
 use std::fs;
 use std::path::PathBuf;
 
+use xrf_archive::{ARCHIVE_READ_POLICY, ArchiveReadPolicy};
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchStep, XrayVfs};
 
@@ -37,19 +38,27 @@ fn world(case: &str, files: &[(&str, &[u8])]) -> ArchiveWorld {
 }
 
 fn describe(world: &ArchiveWorld, name: &str) -> ArchiveFormatDescription {
-  ArchiveFileDescription::of(&ArchiveDescribeSource::World { world }, name)
+  describe_under(world, name, &ARCHIVE_READ_POLICY)
+}
+
+fn describe_under(world: &ArchiveWorld, name: &str, policy: &ArchiveReadPolicy) -> ArchiveFormatDescription {
+  ArchiveFileDescription::of(&ArchiveDescribeSource::World { world }, name, policy)
     .expect("the entry is described")
     .format
 }
 
+/// The viewers' policy, with a describe ceiling small enough for a test entry to pass.
+const SMALL_CEILING: ArchiveReadPolicy = ArchiveReadPolicy {
+  maximum_describe_size: 16,
+  ..ARCHIVE_READ_POLICY
+};
+
 #[test]
 fn a_held_read_past_the_ceiling_is_refused_rather_than_read() {
-  let mut world: ArchiveWorld = world("too_large", &[("textures\\wall.thm", &[0; 64])]);
-
-  world.read_policy.maximum_describe_size = 16;
+  let world: ArchiveWorld = world("too_large", &[("textures\\wall.thm", &[0; 64])]);
 
   assert_eq!(
-    describe(&world, "textures\\wall.thm"),
+    describe_under(&world, "textures\\wall.thm", &SMALL_CEILING),
     ArchiveFormatDescription::Unsupported {
       reason: ArchiveDescribeRefusal::TooLarge { size: 64, maximum: 16 }
     }
@@ -88,12 +97,10 @@ fn a_spawn_that_is_neither_format_falls_to_the_container_walk() {
 fn a_spawn_read_whole_as_a_level_list_answers_to_the_ceiling() {
   // A set is read by seeking and answers to no ceiling, so a damaged one past it must not be held and parsed whole as
   // a level's object list instead.
-  let mut world: ArchiveWorld = world("spawn_oversized", &[("spawns\\all.spawn", &[0; 64])]);
-
-  world.read_policy.maximum_describe_size = 16;
+  let world: ArchiveWorld = world("spawn_oversized", &[("spawns\\all.spawn", &[0; 64])]);
 
   assert_eq!(
-    describe(&world, "spawns\\all.spawn"),
+    describe_under(&world, "spawns\\all.spawn", &SMALL_CEILING),
     ArchiveFormatDescription::Unsupported {
       reason: ArchiveDescribeRefusal::TooLarge { size: 64, maximum: 16 }
     }

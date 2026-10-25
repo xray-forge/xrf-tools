@@ -4,11 +4,12 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::iter;
 use std::path::Path;
 
-use specta::datatype::NamedDataType;
+use specta::datatype::{DataType, NamedDataType};
 use specta::{Format, Types};
 use specta_typescript::{Exporter, primitives};
 use xrf_ipc::IpcConstant;
 
+use crate::collected::CollectedConstants;
 use crate::command_typescript::CommandTypescript;
 use crate::constants::GENERATED_HEADER;
 use crate::enumerations::Enumerations;
@@ -17,6 +18,7 @@ use crate::mirror_imports::MirrorImports;
 use crate::type_modules::TypeModules;
 use crate::type_ownership::TypeOwnership;
 use crate::typescript::format::TypeScriptFormat;
+use crate::typescript::syntax::render_value;
 
 /// Writes `types/`, one module per crate that declares an exported type or constant.
 pub(crate) struct TypeModuleWriter;
@@ -28,10 +30,12 @@ impl TypeModuleWriter {
   /// Writes one module per declaring crate, or crate family as `type_modules` groups them, each importing another as
   /// `imports` addresses it, answering with the ownership and the enums those modules establish.
   ///
-  /// A crate's constants marked `#[xrf_ipc::constant]` open its module, after the imports and before the types.
+  /// `collected` holds every type a command or a constant carries. A crate's `constants` open its module, after the
+  /// imports and before the types.
   pub(crate) fn write_all(
     output: &Path,
     collected: &Types,
+    constants: &CollectedConstants,
     type_modules: &TypeModules,
     imports: &MirrorImports,
   ) -> (TypeOwnership, Enumerations) {
@@ -51,11 +55,10 @@ impl TypeModuleWriter {
       }
     }
 
-    let constants: BTreeMap<String, Vec<&IpcConstant>> = Self::group_constants(type_modules);
     let mut graph: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
     let mut rendered: BTreeMap<String, String> = BTreeMap::new();
 
-    for module in modules.keys().chain(constants.keys()).collect::<BTreeSet<&String>>() {
+    for module in modules.keys().chain(constants.modules()).collect::<BTreeSet<&String>>() {
       let declarations: String = modules
         .get(module)
         .into_iter()
@@ -63,10 +66,16 @@ impl TypeModuleWriter {
         .map(|declared| Self::render_declaration(&exporter, &types, &enumerations, declared, module))
         .collect::<Vec<String>>()
         .join("\n");
+      let exported: String = constants
+        .of_module(module)
+        .map(|(constant, data_type)| Self::render_constant(constant, data_type, module, &ownership, &exporter, &types))
+        .collect::<Vec<String>>()
+        .join("\n");
+      let source: String = format!("{exported}\n{declarations}");
 
-      ownership.assert_no_foreign_references(&declarations, module);
+      ownership.assert_no_foreign_references(&source, module);
 
-      let referenced: BTreeSet<&str> = ownership.references(&declarations, module);
+      let referenced: BTreeSet<&str> = ownership.references(&source, module);
 
       graph.insert(module.clone(), ownership.modules_of(&referenced));
 
@@ -74,13 +83,6 @@ impl TypeModuleWriter {
       // written has to be prepended here.
       let imports: String = ownership.imports(&referenced);
       let separator: &str = if imports.is_empty() { "" } else { "\n" };
-      let exported: String = constants
-        .get(module)
-        .into_iter()
-        .flatten()
-        .map(|constant| Self::render_constant(constant, module, &ownership))
-        .collect::<Vec<String>>()
-        .join("\n");
       let constant_separator: &str = if exported.is_empty() || declarations.is_empty() {
         ""
       } else {
@@ -117,46 +119,23 @@ impl TypeModuleWriter {
     normalize_doc_indentation(&enumerations.render(declared, &union))
   }
 
-  /// Every registered constant by the module of the crate declaring it, each module's sorted by name.
-  ///
-  /// Fails on a constant no workspace crate declares, and on two of one name in one module.
-  fn group_constants(type_modules: &TypeModules) -> BTreeMap<String, Vec<&'static IpcConstant>> {
-    let mut grouped: BTreeMap<String, Vec<&IpcConstant>> = BTreeMap::new();
-
-    for constant in IpcConstant::list() {
-      let module: String = type_modules.module_of(constant.module_path).unwrap_or_else(|| {
-        panic!(
-          "Constant `{}` is declared in `{}`, outside the workspace, and has no module to live in",
-          constant.name, constant.module_path
-        )
-      });
-
-      grouped.entry(module).or_default().push(constant);
-    }
-
-    for (module, exported) in &mut grouped {
-      exported.sort_by_key(|constant| constant.name);
-
-      for pair in exported.windows(2) {
-        assert_ne!(
-          pair[0].name, pair[1].name,
-          "Constant `{}` is exported twice into {module}, from `{}` and `{}`",
-          pair[0].name, pair[0].module_path, pair[1].module_path
-        );
-      }
-    }
-
-    grouped
-  }
-
   /// One constant as the frontend declares it: its doc comment, then `export const NAME: type = value;`.
   ///
-  /// A string is its own literal (`export const NAME = "value" as const;`), so the page can name one kind of value (a
-  /// job kind) by the union of the constants declaring them; a number or a boolean is typed as its primitive.
+  /// A scalar's type follows its value, since the value is the contract: a string is its own literal (`export const
+  /// NAME = "value" as const;`), so the page can name one kind of value (a job kind) by the union of the constants
+  /// declaring them, and a number or a boolean is typed as its primitive. An object or an array cannot name its shape,
+  /// so it is typed as Specta names its Rust type, `data_type` resolved against `types`.
   ///
-  /// Fails on a name a type of the module already takes, on a value that does not serialize, on one neither a number,
-  /// a string nor a boolean, and on an integer a JavaScript number does not hold exactly.
-  fn render_constant(constant: &IpcConstant, module: &str, ownership: &TypeOwnership) -> String {
+  /// Fails on a name a type of the module already takes, on a value that does not serialize, on a bare `null`, on an
+  /// integer a JavaScript number does not hold exactly, and on a type Specta cannot name.
+  fn render_constant(
+    constant: &IpcConstant,
+    data_type: &DataType,
+    module: &str,
+    ownership: &TypeOwnership,
+    exporter: &Exporter,
+    types: &Types,
+  ) -> String {
     assert!(
       !ownership.is_declared_by(constant.name, module),
       "Constant `{}` takes the name of a type {module} declares",
@@ -169,33 +148,67 @@ impl TypeModuleWriter {
         constant.name, constant.module_path
       )
     });
+    Self::assert_exact_numbers(constant, &value);
+
     let doc: String = Self::render_doc(constant.doc);
+    let literal: String = render_value(&value);
 
-    let kind: &str = match &value {
+    let kind: String = match &value {
       // Its own literal, by assertion rather than annotation, as the frontend's lint asks of a literal type.
-      serde_json::Value::String(_) => return format!("{doc}export const {} = {value} as const;\n", constant.name),
-      serde_json::Value::Number(number) => {
-        assert!(
-          number
-            .as_i64()
-            .map(i64::unsigned_abs)
-            .or(number.as_u64())
-            .is_none_or(|magnitude| magnitude <= Self::MAX_SAFE_INTEGER),
-          "Constant `{}` of `{}` is {number}, an integer a JavaScript number does not hold exactly",
-          constant.name,
-          constant.module_path
-        );
-
-        "number"
+      serde_json::Value::String(_) => return format!("{doc}export const {} = {literal} as const;\n", constant.name),
+      serde_json::Value::Number(_) => String::from("number"),
+      serde_json::Value::Bool(_) => String::from("boolean"),
+      serde_json::Value::Object(_) | serde_json::Value::Array(_) => {
+        Self::render_type(constant, data_type, exporter, types)
       }
-      serde_json::Value::Bool(_) => "boolean",
-      other => panic!(
-        "Constant `{}` of {module} serializes to {other}, which is not a number, a string or a boolean",
+      serde_json::Value::Null => panic!(
+        "Constant `{}` of {module} serializes to null, which the bindings cannot type",
         constant.name
       ),
     };
 
-    format!("{doc}export const {}: {kind} = {value};\n", constant.name)
+    format!("{doc}export const {}: {kind} = {literal};\n", constant.name)
+  }
+
+  /// Fails on an integer, at any depth of `value`, that a JavaScript number does not hold exactly.
+  fn assert_exact_numbers(constant: &IpcConstant, value: &serde_json::Value) {
+    match value {
+      serde_json::Value::Object(fields) => {
+        for field in fields.values() {
+          Self::assert_exact_numbers(constant, field);
+        }
+      }
+      serde_json::Value::Array(elements) => {
+        for element in elements {
+          Self::assert_exact_numbers(constant, element);
+        }
+      }
+      serde_json::Value::Number(number) => assert!(
+        number
+          .as_i64()
+          .map(i64::unsigned_abs)
+          .or(number.as_u64())
+          .is_none_or(|magnitude| magnitude <= Self::MAX_SAFE_INTEGER),
+        "Constant `{}` of `{}` holds {number}, an integer a JavaScript number does not hold exactly",
+        constant.name,
+        constant.module_path
+      ),
+      _ => {}
+    }
+  }
+
+  /// The TypeScript type of an object or array constant: a reference to a named type, or the inline shape of any other.
+  fn render_type(constant: &IpcConstant, data_type: &DataType, exporter: &Exporter, types: &Types) -> String {
+    match data_type {
+      DataType::Reference(reference) => primitives::reference(&exporter, types, reference),
+      other => primitives::inline(&exporter, types, other),
+    }
+    .unwrap_or_else(|error| {
+      panic!(
+        "Constant `{}` of `{}` has a type the bindings cannot name: {error}",
+        constant.name, constant.module_path
+      )
+    })
   }
 
   /// A doc comment as JSDoc, on one line where it is one line; nothing where there is none.
@@ -229,23 +242,52 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use specta::Types;
+  use serde::Serialize;
+  use specta::datatype::DataType;
+  use specta::{Format, Types};
+  use specta_typescript::Exporter;
   use xrf_ipc::IpcConstant;
   use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 
+  use crate::collected::CollectedConstants;
+  use crate::command_typescript::CommandTypescript;
   use crate::mirror_imports::MirrorImports;
   use crate::type_module_writer::TypeModuleWriter;
   use crate::type_modules::TypeModules;
   use crate::type_ownership::TypeOwnership;
+  use crate::typescript::format::TypeScriptFormat;
 
   const IMPORTS: MirrorImports = MirrorImports::new("@/fixture");
 
-  /// One constant rendered alone, into a module with no types.
+  /// One constant rendered alone, into a module declaring nothing but the types its own type references.
   fn render(constant: &IpcConstant) -> String {
-    let (ownership, _) = TypeOwnership::resolve(&Types::default(), &TypeModules::default(), &IMPORTS);
+    let mut collected: Types = Types::default();
+    let data_type: DataType = (constant.data_type)(&mut collected);
+    let types: Types = TypeScriptFormat::default()
+      .map_types(&collected)
+      .expect("types to map")
+      .into_owned();
+    let (ownership, _) = TypeOwnership::resolve(&types, &TypeModules::default(), &IMPORTS);
+    let exporter: Exporter = CommandTypescript::configured().into();
 
-    TypeModuleWriter::render_constant(constant, "xrf-fixture", &ownership)
+    TypeModuleWriter::render_constant(constant, &data_type, "xrf-fixture", &ownership, &exporter, &types)
   }
+
+  /// Limits a test exports as one value.
+  #[derive(Serialize, specta::Type)]
+  #[serde(rename_all = "camelCase")]
+  struct ExportedLimits {
+    /// Spellings the test admits.
+    names: &'static [&'static str],
+    most_steps: u32,
+  }
+
+  /// The limits the test exports, whose type no command carries.
+  #[xrf_ipc::constant]
+  const EXPORTED_LIMITS: ExportedLimits = ExportedLimits {
+    names: &["steps", "two words"],
+    most_steps: 7,
+  };
 
   /// Steps a test exports to its crate's module.
   ///
@@ -268,7 +310,10 @@ mod tests {
 
     fs::create_dir_all(&output).expect("directory to be created");
 
-    TypeModuleWriter::write_all(&output, &Types::default(), &TypeModules::default(), &IMPORTS);
+    let mut types: Types = Types::default();
+    let constants: CollectedConstants = CollectedConstants::collect(&TypeModules::default(), &mut types);
+
+    TypeModuleWriter::write_all(&output, &types, &constants, &TypeModules::default(), &IMPORTS);
 
     let module: String = fs::read_to_string(output.join("xrf-ipc-typescript.ts")).expect("module to be written");
 
@@ -276,8 +321,14 @@ mod tests {
     assert_eq!(EXPORTED_NAME, "steps");
     assert_eq!(EXPORTED_PATTERN, "a *  b");
     assert_eq!(
+      (EXPORTED_LIMITS.names, EXPORTED_LIMITS.most_steps),
+      (&["steps", "two words"][..], 7)
+    );
+    assert_eq!(
       module,
       "// Auto-generated rust bindings. Do not edit it manually.\n\n\
+       /** The limits the test exports, whose type no command carries. */\n\
+       export const EXPORTED_LIMITS: ExportedLimits = { mostSteps: 7, names: [\"steps\", \"two words\"] };\n\n\
        /** A name the test exports beside the steps. */\n\
        export const EXPORTED_NAME = \"steps\" as const;\n\n\
        /**\n \
@@ -290,7 +341,13 @@ mod tests {
        *\n \
        * The second line closes no comment: *\\/\n \
        */\n\
-       export const EXPORTED_STEPS: number = 7;\n"
+       export const EXPORTED_STEPS: number = 7;\n\n\
+       /** Limits a test exports as one value. */\n\
+       export type ExportedLimits = {\n\
+       \t/** Spellings the test admits. */\n\
+       \tnames: string[],\n\
+       \tmostSteps: number,\n\
+       };\n"
     );
   }
 
@@ -301,6 +358,7 @@ mod tests {
       name: "SHARE",
       doc: "",
       value: || xrf_ipc::to_value(&0.1_f32),
+      data_type: |types| xrf_ipc::data_type_of(&0.1_f32, types),
     });
 
     assert_eq!(rendered, "export const SHARE: number = 0.1;\n");
@@ -313,20 +371,49 @@ mod tests {
       name: "LARGEST",
       doc: "",
       value: || xrf_ipc::to_value(&-9_007_199_254_740_991_i64),
+      data_type: |types| xrf_ipc::data_type_of(&0_i64, types),
     });
 
     assert_eq!(rendered, "export const LARGEST: number = -9007199254740991;\n");
   }
 
   #[test]
-  #[should_panic(expected = "Constant `HUGE` of `xrf_fixture::limits` is 9007199254740992, an integer a JavaScript")]
+  #[should_panic(expected = "Constant `HUGE` of `xrf_fixture::limits` holds 9007199254740992, an integer a JavaScript")]
   fn refuses_an_integer_a_javascript_number_does_not_hold() {
     render(&IpcConstant {
       module_path: "xrf_fixture::limits",
       name: "HUGE",
       doc: "",
       value: || xrf_ipc::to_value(&9_007_199_254_740_992_u64),
+      data_type: |types| xrf_ipc::data_type_of(&0_u64, types),
     });
+  }
+
+  #[test]
+  #[should_panic(
+    expected = "Constant `NESTED` of `xrf_fixture::limits` holds 9007199254740992, an integer a JavaScript"
+  )]
+  fn refuses_an_integer_a_javascript_number_does_not_hold_inside_an_array() {
+    render(&IpcConstant {
+      module_path: "xrf_fixture::limits",
+      name: "NESTED",
+      doc: "",
+      value: || xrf_ipc::to_value(&[1_u64, 9_007_199_254_740_992_u64]),
+      data_type: |types| xrf_ipc::data_type_of(&[0_u64; 2], types),
+    });
+  }
+
+  #[test]
+  fn writes_an_array_typed_as_its_elements() {
+    let rendered: String = render(&IpcConstant {
+      module_path: "xrf_fixture::limits",
+      name: "STEPS",
+      doc: "",
+      value: || xrf_ipc::to_value(&[1_u32, 2, 3]),
+      data_type: |types| xrf_ipc::data_type_of::<[u32]>(&[1, 2, 3], types),
+    });
+
+    assert_eq!(rendered, "export const STEPS: number[] = [1, 2, 3];\n");
   }
 
   #[test]
@@ -337,6 +424,7 @@ mod tests {
       name: "BROKEN",
       doc: "",
       value: || serde_json::from_str("not a value"),
+      data_type: |types| xrf_ipc::data_type_of(&0_u32, types),
     });
   }
 }

@@ -48,11 +48,11 @@ copies Specta inlined; and the merged signatures last, because they import every
 
 ## What it writes
 
-| Path                        | Contents                                                                         |
-| --------------------------- | -------------------------------------------------------------------------------- |
-| `types/xrf-<crate>.ts`      | Every exported type and constant one crate or family declares                    |
-| `commands/<plugin>.ts`      | `E<Plugin>Command`, the typed commands as `<plugin>Commands`, their signatures   |
-| `commands/<plugin>-raw.ts`  | The same for raw commands, only for a plugin declaring any                       |
+| Path                        | Contents                                                                          |
+| --------------------------- | --------------------------------------------------------------------------------- |
+| `types/xrf-<crate>.ts`      | Every exported type and constant one crate or family declares                     |
+| `commands/<plugin>.ts`      | `E<Plugin>Command`, the typed commands as `<plugin>Commands`, their signatures    |
+| `commands/<plugin>-raw.ts`  | The same for raw commands, only for a plugin declaring any                        |
 | `commands/<plugin>-bulk.ts` | `E<Plugin>BulkRoute`, `<plugin>BulkRoutes` and their signatures, where it has any |
 | `commands/signatures.ts`    | `IIpcCommandSignatures` and `IIpcBulkRouteSignatures`, every plugin's merged      |
 
@@ -85,10 +85,13 @@ crate's module by the same rule. The generator reads every `xrf_ipc::IpcConstant
 module's constants after its imports and before its types, sorted by name, each under its doc comment as JSDoc:
 `export const NAME: number = 4;`. A crate with constants and no types still gets a module. The TypeScript type follows
 the serialized value: `number` (an `f32` in its own shortest form), the string's own literal (`export const
-ARCHIVES_JOB_PACK = "archives.pack" as const;`, so a kind of value is the union of its constants) or `boolean`.
-Generation fails, naming the
-constant, on a value that does not serialize or is anything else, an integer past ±(2^53−1), two constants of one name
-in a module, or a constant named as a type of its module.
+ARCHIVES_JOB_PACK = "archives.pack" as const;`, so a kind of value is the union of its constants) or `boolean`. An object
+or an array is typed as Specta names the constant's Rust type and written as a literal with bare identifier keys
+(`export const ARCHIVE_READ_POLICY: ArchiveReadPolicy = { ... };`). Every constant's type joins the collected types
+before ownership is resolved, so a type only a constant carries is declared in its crate's module, and a module imports
+what its constants reference. Generation fails, naming the constant, on a value that does not serialize or is a bare
+`null`, an integer past ±(2^53−1) at any depth, a type Specta cannot name, two constants of one name in a module, or a
+constant named as a type of its module.
 
 ## Enumerations
 
@@ -143,9 +146,13 @@ One type per file, named for it: [`IpcBindingsGenerator`](src/ipc_bindings_gener
 [`TypeModuleWriter`](src/type_module_writer.rs) and [`CommandModuleWriter`](src/command_module_writer.rs) write the two
 directories, [`TypeModules`](src/type_modules.rs) names a crate's module, [`MirrorImports`](src/mirror_imports.rs)
 addresses it, [`TypeOwnership`](src/type_ownership.rs) answers which module declares what,
-[`CollectedCommands`](src/collected_commands.rs) holds what the export collected, each command a
-[`SpectaCommand`](src/specta_command.rs), [`PluginSymbols`](src/plugin_symbols.rs) spells a plugin's generated names,
-and [`Surface`](src/surface.rs) reads a generated tree back.
+[`PluginSymbols`](src/plugin_symbols.rs) spells a plugin's generated names, and [`Surface`](src/surface.rs) reads a
+generated tree back.
+
+[`collected/`](src/collected/) holds what the run gathers before it writes anything:
+[`CollectedCommands`](src/collected/collected_commands.rs), what the export collected, each command a
+[`SpectaCommand`](src/specta_command.rs), and [`CollectedConstants`](src/collected/collected_constants.rs), every
+marked constant beside its type, added to the same collection.
 
 [`typescript/`](src/typescript/) is vocabulary rather than a layer: `source` reads generated text, `syntax` emits it,
 `normalization` canonicalizes a parsed declaration, and `format` is the Specta shape the frontend expects. Every module

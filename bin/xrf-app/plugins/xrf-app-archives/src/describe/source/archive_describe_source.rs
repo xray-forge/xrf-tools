@@ -1,5 +1,5 @@
 use xrf_app_core::assets::{AssetTextureDescriptor, AssetTextureShape};
-use xrf_archive::{ArchiveFileDescriptor, ArchiveProject, ArchiveReadPolicy};
+use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_chunk::ChunkReader;
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::XrayAsset;
@@ -27,14 +27,6 @@ impl ArchiveDescribeSource<'_> {
         volumes: project.archives.len(),
       },
       Self::World { .. } => ArchiveDescribeScope::World,
-    }
-  }
-
-  /// What this source may be read under, which is the policy of the subject it is.
-  pub fn get_read_policy(&self) -> &ArchiveReadPolicy {
-    match self {
-      Self::Volumes { project, .. } => &project.read_policy,
-      Self::World { world } => &world.read_policy,
     }
   }
 
