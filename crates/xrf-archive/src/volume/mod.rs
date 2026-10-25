@@ -4,6 +4,7 @@ mod archive_constants;
 mod archive_descriptor;
 mod archive_file_descriptor;
 mod archive_header;
+mod archive_metadata;
 mod archive_reader;
 
 pub use archive_constants::{
