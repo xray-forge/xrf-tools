@@ -1,5 +1,7 @@
+use xrf_build_info::BuildInfoEmitter;
+
 fn main() {
-  xrf_build_info::emit();
+  BuildInfoEmitter::emit();
 
   // Gives the executable the application mark in Explorer, shortcuts and the console window. `compile` reports
   // `NotWindows` and does nothing when the target is not Windows, so it needs no cfg of its own.

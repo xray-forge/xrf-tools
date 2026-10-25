@@ -36,9 +36,12 @@ pub struct BuildInfo {
 }
 
 impl BuildInfo {
-  /// First seven characters of the commit, which is what a human quotes.
+  /// First seven characters of the commit, which is what a human quotes, or the whole commit when it is shorter.
   pub fn short_commit(&self) -> Option<&'static str> {
-    self.commit.map(|commit| &commit[..commit.len().min(7)])
+    // Cut at a character boundary: a `GITHUB_SHA` override is not validated as a hash.
+    self
+      .commit
+      .map(|commit| commit.char_indices().nth(7).map_or(commit, |(end, _)| &commit[..end]))
   }
 }
 
@@ -71,7 +74,8 @@ impl fmt::Display for BuildInfo {
   }
 }
 
-/// Read back the description this crate's [`emit`](crate::emit) wrote for the binary being compiled.
+/// Read back the description [`BuildInfoEmitter::emit`](crate::BuildInfoEmitter::emit) wrote for the binary being
+/// compiled.
 #[macro_export]
 macro_rules! build_info {
   () => {
@@ -89,4 +93,62 @@ macro_rules! build_info {
       run_id: option_env!("XRF_BUILD_RUN_ID"),
     }
   };
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::{BuildInfo, BuildKind};
+
+  fn build(commit: Option<&'static str>) -> BuildInfo {
+    BuildInfo {
+      version: "1.2.3",
+      kind: BuildKind::Development,
+      commit,
+      reference: Some("main"),
+      is_dirty: true,
+      built_at: Some("2026-10-25T12:00:00Z"),
+      target: None,
+      rustc: None,
+      profile: Some("release"),
+      optimization: None,
+      run_id: None,
+    }
+  }
+
+  #[test]
+  fn a_short_commit_is_the_first_seven_characters() {
+    assert_eq!(build(Some("1c84ad228f00")).short_commit(), Some("1c84ad2"));
+    assert_eq!(
+      build(Some("1c84")).short_commit(),
+      Some("1c84"),
+      "a shorter value is kept whole"
+    );
+    assert_eq!(build(None).short_commit(), None);
+  }
+
+  #[test]
+  fn a_short_commit_cuts_an_unvalidated_override_at_a_character() {
+    assert_eq!(build(Some("коміт-без-хешу")).short_commit(), Some("коміт-б"));
+  }
+
+  #[test]
+  fn the_display_skips_what_the_build_could_not_record() {
+    assert_eq!(
+      build(Some("1c84ad228f00")).to_string(),
+      "1.2.3 (development)\n\
+       commit:       1c84ad228f00 on main (dirty)\n\
+       built at:     2026-10-25T12:00:00Z\n\
+       profile:      release\n"
+    );
+  }
+
+  #[test]
+  fn the_display_drops_the_reference_and_dirty_flag_without_a_commit() {
+    assert_eq!(
+      build(None).to_string(),
+      "1.2.3 (development)\n\
+       built at:     2026-10-25T12:00:00Z\n\
+       profile:      release\n"
+    );
+  }
 }

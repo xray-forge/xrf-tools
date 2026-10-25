@@ -4,8 +4,8 @@ Embeds build metadata in XRF binaries, so a built binary can state its own prove
 build kind, compiler settings, build time, and workflow run. `xrf-cli` prints it for `--version` and in its reports;
 the desktop app logs it at startup, shows it in Settings, About, and colours its executable icon by the build kind.
 
-The crate has two halves. `emit()` runs in a consuming package's build script and records the metadata as compile-time
-environment variables; the `build_info!()` macro reads them back into a `BuildInfo` in that package. Everything is
+The crate has two halves. `BuildInfoEmitter::emit()` runs in a consuming package's build script and records the
+metadata as compile-time environment variables; the `build_info!()` macro reads them back into a `BuildInfo` in that package. Everything is
 fixed at compile time: reading or displaying the record runs no Git command and reads no runtime environment.
 
 ## Record a build
@@ -23,10 +23,10 @@ xrf-build-info = { workspace = true }
 In `build.rs`:
 
 ```rust,no_run
-use xrf_build_info::emit;
+use xrf_build_info::BuildInfoEmitter;
 
 fn main() {
-  emit();
+  BuildInfoEmitter::emit();
 }
 ```
 
@@ -46,7 +46,7 @@ fn main() {
 }
 ```
 
-Call the macro in the package whose build script ran `emit()`. Called from a shared library, it would read that
+Call the macro in the package whose build script ran the emitter. Called from a shared library, it would read that
 library's compile-time environment and version instead.
 
 ## Read the record
@@ -72,8 +72,8 @@ build, not the machine running the binary.
 commit, ` on <reference>` when known, and `(dirty)`; without a commit, the reference and dirty flag are not printed.
 Every line ends with a newline, so use `print!`, not `println!`.
 
-`short_commit()` returns the first seven bytes of the commit, the whole value if shorter, or `None` without one. It
-assumes an ASCII hash: a `GITHUB_SHA` override is not validated, and non-ASCII text can make the slice panic.
+`short_commit()` returns the first seven characters of the commit, the whole value if shorter, or `None` without one.
+A `GITHUB_SHA` override is not validated as a hash, so a non-hash value is cut at a character boundary all the same.
 
 `BuildInfo` and `BuildKind` serialize with Serde in camelCase (`builtAt`, `"development"`). The `typescript-bindings`
 feature derives Specta types for the frontend bindings.
@@ -111,7 +111,7 @@ The emitter tells Cargo to rerun it when one of its environment inputs changes, 
 keep the previous dirty flag and time. When a fresh snapshot matters, change `XRF_BUILD_TIMESTAMP` or touch the
 consuming package's `build.rs`.
 
-Without `emit()`, the macro still compiles under Cargo and reads the version; other fields come from any `XRF_BUILD_*`
+Without the emitter, the macro still compiles under Cargo and reads the version; other fields come from any `XRF_BUILD_*`
 values present at compilation, otherwise absent, with `kind: Local` and `is_dirty: false`.
 
 ## Checks
@@ -123,7 +123,7 @@ cargo test --locked -p xrf-build-info
 cargo doc --locked -p xrf-build-info --no-deps
 ```
 
-Source: the [emitter](src/emit.rs), the [record, display and macro](src/build_info.rs), and the
+Source: the [emitter](src/build_info_emitter.rs), the [record, display and macro](src/build_info.rs), and the
 [kind mapping](src/build_kind.rs). The [CLI build script](../../bin/xrf-cli/build.rs) and the
 [desktop build-info command](../../bin/xrf-app/plugins/xrf-app-system/src/diagnostics/commands/get_build_info.rs) show the two
 halves in use.
