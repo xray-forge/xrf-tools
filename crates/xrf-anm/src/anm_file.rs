@@ -5,7 +5,7 @@ use std::time::Duration;
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_animation_envelope::{AnimationEnvelope, AnimationPlayback};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::format_path;
@@ -94,7 +94,7 @@ impl AnmFile {
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
-    Self::read_from_motion_chunk::<T, _>(&mut find_required_chunk_by_id(&chunks, Self::CHUNK_ID)?)
+    Self::read_from_motion_chunk::<T, _>(&mut ChunkReader::find_required_by_id(&chunks, Self::CHUNK_ID)?)
   }
 
   /// Reads the motion chunk itself, which is where the whole of the format lives.

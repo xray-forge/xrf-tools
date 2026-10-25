@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::Path;
 
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkDataSource, ChunkReader, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -67,8 +67,8 @@ impl<D: ChunkDataSource> LevelGeomSource<D> {
 
     Ok(LevelGeomSource {
       file: LevelGeomFile::read_from_children::<T, _>(&chunks)?,
-      indices: find_required_chunk_by_id(&chunks, LevelGeomFile::INDEX_BUFFERS_CHUNK_ID)?,
-      vertices: find_required_chunk_by_id(&chunks, LevelGeomFile::VERTEX_BUFFERS_CHUNK_ID)?,
+      indices: ChunkReader::find_required_by_id(&chunks, LevelGeomFile::INDEX_BUFFERS_CHUNK_ID)?,
+      vertices: ChunkReader::find_required_by_id(&chunks, LevelGeomFile::VERTEX_BUFFERS_CHUNK_ID)?,
     })
   }
 

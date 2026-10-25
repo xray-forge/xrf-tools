@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use byteorder::{ByteOrder, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, read_u32_chunk};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_equal, to_format_size};
 
@@ -26,7 +26,7 @@ impl ChunkReadWrite for SkeletonMotionsChunk {
       .split_first_mut()
       .ok_or_else(|| XrfError::new_read_error("Skeleton motions chunk has no count definition"))?;
 
-    let bones_motions_count: u32 = read_u32_chunk::<T, _>(count_chunk)?;
+    let bones_motions_count: u32 = count_chunk.read_u32_payload::<T>()?;
 
     assert_equal(
       bones_motions_count as usize,

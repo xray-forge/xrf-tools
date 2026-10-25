@@ -1,9 +1,6 @@
 use byteorder::{ByteOrder, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{
-  ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, find_optional_chunk_by_id, find_required_chunk_by_id,
-  read_f32_chunk, read_f32_vector_chunk, read_u16_chunk, read_u32_chunk, read_w1251_string_chunk,
-};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field, read_ltx_optional_field};
 use xrf_math::Vector3d;
@@ -87,7 +84,7 @@ impl ParticleEffect {
     name: &str,
     read: impl FnOnce(&mut ChunkReader<D>) -> XrfResult<R>,
   ) -> XrfResult<R> {
-    find_required_chunk_by_id(chunks, id)
+    ChunkReader::find_required_by_id(chunks, id)
       .and_then(|mut chunk| read(&mut chunk))
       .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle {name} chunk: {error}")))
   }
@@ -99,7 +96,7 @@ impl ParticleEffect {
     name: &str,
     read: impl FnOnce(&mut ChunkReader<D>) -> XrfResult<R>,
   ) -> XrfResult<Option<R>> {
-    find_optional_chunk_by_id(chunks, id)
+    ChunkReader::find_optional_by_id(chunks, id)
       .map(|mut chunk| read(&mut chunk))
       .transpose()
       .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle {name} chunk: {error}")))
@@ -114,32 +111,34 @@ impl ChunkReadWrite for ParticleEffect {
 
     let effect: Self = Self {
       version: Self::read_required(&chunks, Self::VERSION_CHUNK_ID, "version", |it| {
-        read_u16_chunk::<T, _>(it)
+        it.read_u16_payload::<T>()
       })?,
-      name: Self::read_required(&chunks, Self::NAME_CHUNK_ID, "name", |it| read_w1251_string_chunk(it))?,
+      name: Self::read_required(&chunks, Self::NAME_CHUNK_ID, "name", |it| {
+        it.read_w1251_string_payload()
+      })?,
       max_particles: Self::read_required(&chunks, Self::MAX_PARTICLES_CHUNK_ID, "max_particles", |it| {
-        read_u32_chunk::<T, _>(it)
+        it.read_u32_payload::<T>()
       })?,
       actions: Self::read_required(&chunks, Self::ACTION_LIST_CHUNK_ID, "actions", |it| {
         it.read_xr_list::<T, _>()
       })?,
-      flags: Self::read_required(&chunks, Self::FLAGS_CHUNK_ID, "flags", |it| read_u32_chunk::<T, _>(it))?,
+      flags: Self::read_required(&chunks, Self::FLAGS_CHUNK_ID, "flags", |it| it.read_u32_payload::<T>())?,
       frame: Self::read_optional(&chunks, Self::FRAME_CHUNK_ID, "frame", |it| it.read_xr::<T, _>())?,
       sprite: Self::read_required(&chunks, Self::SPRITE_CHUNK_ID, "sprite", |it| it.read_xr::<T, _>())?,
       time_limit: Self::read_optional(&chunks, Self::TIME_LIMIT_CHUNK_ID, "time_limit", |it| {
-        read_f32_chunk::<T, _>(it)
+        it.read_f32_payload::<T>()
       })?,
       collision: Self::read_optional(&chunks, Self::COLLISION_CHUNK_ID, "collision", |it| {
         it.read_xr::<T, _>()
       })?,
       velocity_scale: Self::read_optional(&chunks, Self::VELOCITY_SCALE_CHUNK_ID, "velocity_scale", |it| {
-        read_f32_vector_chunk::<T, _>(it).map(Into::into)
+        it.read_f32_vector_payload::<T>().map(Into::into)
       })?,
       description: Self::read_optional(&chunks, Self::DESCRIPTION_CHUNK_ID, "description", |it| {
         it.read_xr::<T, _>()
       })?,
       rotation: Self::read_optional(&chunks, Self::ROTATION_CHUNK_ID, "rotation", |it| {
-        read_f32_vector_chunk::<T, _>(it).map(Into::into)
+        it.read_f32_vector_payload::<T>().map(Into::into)
       })?,
       editor_data: Self::read_optional(&chunks, Self::EDITOR_DATA_CHUNK_ID, "editor_data", |it| {
         it.read_xr::<T, _>()

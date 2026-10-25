@@ -3,7 +3,7 @@ use std::path::Path;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -125,7 +125,7 @@ impl LevelDetailsFile {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     let header: LevelDetailsHeader =
-      find_required_chunk_by_id(&chunks, Self::HEADER_CHUNK_ID)?.read_xr::<T, LevelDetailsHeader>()?;
+      ChunkReader::find_required_by_id(&chunks, Self::HEADER_CHUNK_ID)?.read_xr::<T, LevelDetailsHeader>()?;
 
     if header.version != Self::CURRENT_VERSION {
       return Err(XrfError::new_not_implemented_error(format!(
@@ -137,7 +137,7 @@ impl LevelDetailsFile {
 
     let mut objects: Vec<DetailModel> = Vec::new();
 
-    for mut chunk in find_required_chunk_by_id(&chunks, Self::OBJECTS_CHUNK_ID)?.read_children()? {
+    for mut chunk in ChunkReader::find_required_by_id(&chunks, Self::OBJECTS_CHUNK_ID)?.read_children()? {
       objects.push(DetailModel::read::<T, D>(&mut chunk)?);
       chunk.assert_read("Expect all data to be read from detail object chunk")?;
     }
@@ -150,7 +150,7 @@ impl LevelDetailsFile {
       )));
     }
 
-    let stored: Vec<u8> = find_required_chunk_by_id(&chunks, Self::SLOTS_CHUNK_ID)?.read_remaining()?;
+    let stored: Vec<u8> = ChunkReader::find_required_by_id(&chunks, Self::SLOTS_CHUNK_ID)?.read_remaining()?;
     let expected: u64 = u64::from(header.size_x) * u64::from(header.size_z) * LevelDetailsSlot::SERIALIZED_SIZE as u64;
 
     if stored.len() as u64 != expected {

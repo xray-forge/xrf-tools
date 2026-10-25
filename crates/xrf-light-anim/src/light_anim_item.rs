@@ -1,6 +1,6 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_utils::to_format_size;
 
@@ -29,12 +29,12 @@ impl LightAnimItem {
   pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
-    let mut common: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::COMMON_CHUNK_ID)?;
+    let mut common: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::COMMON_CHUNK_ID)?;
     let name: String = common.read_w1251_string()?;
     let fps: f32 = common.read_f32::<T>()?;
     let frame_count: u32 = common.read_u32::<T>()?;
 
-    let mut keys: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::KEYS_CHUNK_ID)?;
+    let mut keys: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::KEYS_CHUNK_ID)?;
     let count: u32 = keys.read_u32::<T>()?;
     let mut read: Vec<LightAnimKey> =
       keys.new_bounded_vec(count as u64, LightAnimKey::SERIALIZED_SIZE, "light animation keys")?;

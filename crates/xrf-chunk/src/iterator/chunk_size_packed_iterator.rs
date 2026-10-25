@@ -4,28 +4,31 @@ use byteorder::ReadBytesExt;
 use fileslice::FileSlice;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::chunk_constants::CHUNK_SIZE_FIELD_SIZE;
 use crate::{ChunkDataSource, ChunkReader, XRayByteOrder};
 
-/// Iterate over data in chunk slice, which is stored like [(size)(content)(size)(content)].
+/// Walks a payload stored as `[size][content]` records, where each size counts its own four bytes.
+///
+/// Hands each record over as a reader whose id is its ordinal and whose window holds the content alone. Advances the
+/// parent reader's cursor past every record it hands over, and stops at the first malformed size, handing over its
+/// error once.
 pub struct ChunkSizePackedIterator<'a, T: ChunkDataSource = FileSlice> {
   pub index: u32,
   pub reader: &'a mut ChunkReader<T>,
   failed: bool,
 }
 
-impl<T: ChunkDataSource> ChunkSizePackedIterator<'_, T> {
-  pub fn from_start(reader: &mut ChunkReader<T>) -> XrfResult<ChunkSizePackedIterator<'_, T>> {
+impl<'a, T: ChunkDataSource> ChunkSizePackedIterator<'a, T> {
+  /// Iterates from the start of the reader's payload.
+  pub fn from_start(reader: &'a mut ChunkReader<T>) -> XrfResult<Self> {
     reader.reset_pos()?;
 
-    Ok(ChunkSizePackedIterator {
-      index: 0,
-      reader,
-      failed: false,
-    })
+    Ok(Self::from_current(reader))
   }
 
-  pub fn from_current(reader: &mut ChunkReader<T>) -> ChunkSizePackedIterator<'_, T> {
-    ChunkSizePackedIterator {
+  /// Iterates from wherever the reader's cursor already is, numbering records from zero there.
+  pub fn from_current(reader: &'a mut ChunkReader<T>) -> Self {
+    Self {
       index: 0,
       reader,
       failed: false,
@@ -52,26 +55,27 @@ impl<T: ChunkDataSource> Iterator for ChunkSizePackedIterator<'_, T> {
       Err(error) => return self.fail(error.into()),
     };
 
-    let size_field_size: u64 = 4;
     let remaining: u64 = self.reader.read_bytes_remain();
 
-    if remaining < size_field_size {
+    if remaining < CHUNK_SIZE_FIELD_SIZE {
       return self.fail(XrfError::new_invalid_error(format!(
-        "Incomplete packed chunk size at position {position}, expected {size_field_size} bytes but only {remaining} remain"
+        "Incomplete packed chunk size at position {position}, expected {CHUNK_SIZE_FIELD_SIZE} bytes but only \
+         {remaining} remain"
       )));
     }
 
     // todo: Hardcoded byte order, should be part of generics.
     let size: u64 = match self.reader.read_u32::<XRayByteOrder>() {
-      Ok(size) => size as u64,
+      Ok(size) => u64::from(size),
       Err(error) => return self.fail(error.into()),
     };
 
     let id: u32 = self.index;
 
-    if size < size_field_size {
+    if size < CHUNK_SIZE_FIELD_SIZE {
       return self.fail(XrfError::new_invalid_error(format!(
-        "Packed chunk {id} at position {position} declares invalid size {size}; size includes the {size_field_size}-byte header"
+        "Packed chunk {id} at position {position} declares invalid size {size}; size includes the \
+         {CHUNK_SIZE_FIELD_SIZE}-byte header"
       )));
     }
 
@@ -92,7 +96,13 @@ impl<T: ChunkDataSource> Iterator for ChunkSizePackedIterator<'_, T> {
     }
 
     self.index += 1;
-    if let Err(error) = self.reader.data.set_seek(SeekFrom::Current(size as i64 - 4)) {
+
+    // The size field is already read, so the content is what is left of the declared size.
+    if let Err(error) = self
+      .reader
+      .data
+      .set_seek(SeekFrom::Current((size - CHUNK_SIZE_FIELD_SIZE) as i64))
+    {
       return self.fail(error.into());
     }
 
@@ -100,7 +110,7 @@ impl<T: ChunkDataSource> Iterator for ChunkSizePackedIterator<'_, T> {
       id,
       size,
       position,
-      data: self.reader.data.slice(position + size_field_size..end_position),
+      data: self.reader.data.slice(position + CHUNK_SIZE_FIELD_SIZE..end_position),
     }))
   }
 }
@@ -167,7 +177,7 @@ mod tests {
 
     assert_eq!(vec.len(), 2, "Expected count to be 2");
     assert_eq!(vec[0].id, 0, "Expected [0] id to be 0");
-    assert_eq!(vec[0].size, 8, "Expected [0] size to be 9");
+    assert_eq!(vec[0].size, 8, "Expected [0] size to be 8");
     assert_eq!(vec[0].position, 0, "Expected [0] position to be 0");
     assert_eq!(vec[1].id, 1, "Expected [1] id to be 1");
     assert_eq!(vec[1].size, 12, "Expected [1] size to be 12");
@@ -191,10 +201,11 @@ mod tests {
       vec.push(it?);
     }
 
-    assert_eq!(vec.len(), 1, "Expected count to be 2");
-    assert_eq!(vec[0].id, 0, "Expected [1] id to be 0");
-    assert_eq!(vec[0].size, 12, "Expected [1] size to be 5");
-    assert_eq!(vec[0].position, 8, "Expected [1] position to be 0");
+    // Records are numbered from where the walk starts, so the second record of the payload is this walk's first.
+    assert_eq!(vec.len(), 1, "Expected count to be 1");
+    assert_eq!(vec[0].id, 0, "Expected [0] id to be 0");
+    assert_eq!(vec[0].size, 12, "Expected [0] size to be 12");
+    assert_eq!(vec[0].position, 8, "Expected [0] position to be 8");
 
     Ok(())
   }
@@ -203,13 +214,11 @@ mod tests {
   fn rejects_size_smaller_than_header() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> =
       ChunkReader::from_source(InMemoryChunkDataSource::from_buffer(&[3, 0, 0, 0]))?;
-    let result: XrfResult<ChunkReader<InMemoryChunkDataSource>> = ChunkSizePackedIterator::from_start(&mut reader)?
+    let error: String = ChunkSizePackedIterator::from_start(&mut reader)?
       .next()
-      .expect("Expected one invalid packed chunk");
-    let error: String = match result {
-      Ok(_) => panic!("Expected undersized packed chunk to fail"),
-      Err(error) => error.to_string(),
-    };
+      .expect("Expected one invalid packed chunk")
+      .expect_err("Expected undersized packed chunk to fail")
+      .to_string();
 
     assert!(error.contains("declares invalid size 3"), "Unexpected error: {error}");
 
@@ -220,13 +229,11 @@ mod tests {
   fn rejects_packed_chunk_data_beyond_source_end() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> =
       ChunkReader::from_source(InMemoryChunkDataSource::from_buffer(&[8, 0, 0, 0, 0]))?;
-    let result: XrfResult<ChunkReader<InMemoryChunkDataSource>> = ChunkSizePackedIterator::from_start(&mut reader)?
+    let error: String = ChunkSizePackedIterator::from_start(&mut reader)?
       .next()
-      .expect("Expected one invalid packed chunk");
-    let error: String = match result {
-      Ok(_) => panic!("Expected oversized packed chunk to fail"),
-      Err(error) => error.to_string(),
-    };
+      .expect("Expected one invalid packed chunk")
+      .expect_err("Expected oversized packed chunk to fail")
+      .to_string();
 
     assert!(error.contains("beyond source end"), "Unexpected error: {error}");
 

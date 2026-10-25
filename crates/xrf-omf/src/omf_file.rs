@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::Path;
 
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk};
 use xrf_utils::{assert_equal, format_path, write_new_file_staged};
@@ -48,11 +48,11 @@ impl OmfFile {
     assert_equal(chunks.len(), 2, "Unexpected chunks count in omf file, expected 2")?;
 
     let parameters: SkeletonMotionParametersChunk =
-      find_required_chunk_by_id(chunks, SkeletonMotionParametersChunk::CHUNK_ID)?
+      ChunkReader::find_required_by_id(chunks, SkeletonMotionParametersChunk::CHUNK_ID)?
         .read_xr::<T, _>()
         .map_err(|error| XrfError::new_read_error(format!("Failed to read OMF parameters: {error}")))?;
 
-    let motions: SkeletonMotionsChunk = find_required_chunk_by_id(chunks, SkeletonMotionsChunk::CHUNK_ID)?
+    let motions: SkeletonMotionsChunk = ChunkReader::find_required_by_id(chunks, SkeletonMotionsChunk::CHUNK_ID)?
       .read_xr::<T, _>()
       .map_err(|error| XrfError::new_read_error(format!("Failed to read OMF motions: {error}")))?;
 

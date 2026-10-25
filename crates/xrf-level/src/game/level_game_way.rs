@@ -1,6 +1,6 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_optional_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_utils::to_format_size;
 
@@ -36,15 +36,15 @@ impl LevelGameWay {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     Ok(Self {
-      version: match find_optional_chunk_by_id(&chunks, Self::VERSION_CHUNK_ID) {
+      version: match ChunkReader::find_optional_by_id(&chunks, Self::VERSION_CHUNK_ID) {
         Some(mut chunk) => chunk.read_u16::<T>()?,
         None => 0,
       },
-      name: match find_optional_chunk_by_id(&chunks, Self::NAME_CHUNK_ID) {
+      name: match ChunkReader::find_optional_by_id(&chunks, Self::NAME_CHUNK_ID) {
         Some(mut chunk) => chunk.read_w1251_string()?,
         None => String::new(),
       },
-      kind: match find_optional_chunk_by_id(&chunks, Self::TYPE_CHUNK_ID) {
+      kind: match ChunkReader::find_optional_by_id(&chunks, Self::TYPE_CHUNK_ID) {
         Some(mut chunk) => Some(chunk.read_u32::<T>()?),
         None => None,
       },
@@ -105,7 +105,7 @@ impl LevelGameWay {
   ///
   /// Returns an error when the declared count does not fit the chunk, or the chunk ends inside a node.
   fn read_points<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Vec<LevelGameWayPoint>> {
-    let Some(mut chunk) = find_optional_chunk_by_id(chunks, Self::POINTS_CHUNK_ID) else {
+    let Some(mut chunk) = ChunkReader::find_optional_by_id(chunks, Self::POINTS_CHUNK_ID) else {
       return Ok(Vec::new());
     };
 
@@ -128,7 +128,7 @@ impl LevelGameWay {
   ///
   /// Returns an error when the declared count does not fit the chunk, or the chunk ends inside a link.
   fn read_links<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Vec<LevelGameWayLink>> {
-    let Some(mut chunk) = find_optional_chunk_by_id(chunks, Self::LINKS_CHUNK_ID) else {
+    let Some(mut chunk) = ChunkReader::find_optional_by_id(chunks, Self::LINKS_CHUNK_ID) else {
       return Ok(Vec::new());
     };
 

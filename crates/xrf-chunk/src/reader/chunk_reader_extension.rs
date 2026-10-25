@@ -3,9 +3,11 @@ use std::io::Read;
 use byteorder::{ByteOrder, ReadBytesExt};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::chunk_read_write::ChunkReadWrite;
+use crate::read_write::chunk_read_write::ChunkReadWrite;
+use crate::read_write::chunk_read_write_list::ChunkReadWriteList;
+use crate::read_write::chunk_read_write_optional::ChunkReadWriteOptional;
+use crate::reader::chunk_reader::ChunkReader;
 use crate::source::chunk_data_source::ChunkDataSource;
-use crate::{ChunkReadWriteList, ChunkReadWriteOptional, ChunkReader};
 
 impl<D: ChunkDataSource> ChunkReader<D> {
   #[inline]
@@ -22,9 +24,53 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   pub fn read_xr_list<T: ByteOrder, C: ChunkReadWriteList>(&mut self) -> XrfResult<Vec<C>> {
     C::read_list::<T, D>(self)
   }
-}
 
-impl<D: ChunkDataSource> ChunkReader<D> {
+  /// Read a chunk whose whole payload is one `u8`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the payload is shorter, or longer, than the value.
+  pub fn read_u8_payload(&mut self) -> XrfResult<u8> {
+    self.read_whole_payload("All data should be read in u8 chunk", |reader| Ok(reader.read_u8()?))
+  }
+
+  /// Read a chunk whose whole payload is one `u16`; see [`Self::read_u8_payload`] for the errors.
+  pub fn read_u16_payload<T: ByteOrder>(&mut self) -> XrfResult<u16> {
+    self.read_whole_payload("All data should be read in u16 chunk", |reader| {
+      Ok(reader.read_u16::<T>()?)
+    })
+  }
+
+  /// Read a chunk whose whole payload is one `u32`; see [`Self::read_u8_payload`] for the errors.
+  pub fn read_u32_payload<T: ByteOrder>(&mut self) -> XrfResult<u32> {
+    self.read_whole_payload("All data should be read in u32 chunk", |reader| {
+      Ok(reader.read_u32::<T>()?)
+    })
+  }
+
+  /// Read a chunk whose whole payload is one `f32`; see [`Self::read_u8_payload`] for the errors.
+  pub fn read_f32_payload<T: ByteOrder>(&mut self) -> XrfResult<f32> {
+    self.read_whole_payload("All data should be read in f32 chunk", |reader| {
+      Ok(reader.read_f32::<T>()?)
+    })
+  }
+
+  /// Read a chunk whose whole payload is three `f32`s; see [`Self::read_u8_payload`] for the errors.
+  pub fn read_f32_vector_payload<T: ByteOrder>(&mut self) -> XrfResult<(f32, f32, f32)> {
+    self.read_whole_payload("All data should be read in f32 vector chunk", |reader| {
+      Ok((
+        reader.read_f32::<T>()?,
+        reader.read_f32::<T>()?,
+        reader.read_f32::<T>()?,
+      ))
+    })
+  }
+
+  /// Read a chunk whose whole payload is one null-terminated string; see [`Self::read_u8_payload`] for the errors.
+  pub fn read_w1251_string_payload(&mut self) -> XrfResult<String> {
+    self.read_whole_payload("All data should be read in string chunk", Self::read_w1251_string)
+  }
+
   /// Create a vector for a record count this chunk declares, bounded by the bytes remaining in it.
   ///
   /// `min_record_size` counts only the bytes every record consumes unconditionally; see
@@ -36,18 +82,7 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   /// Read serialized vector from chunk, where u32 count N is followed by N u16 entries.
   pub fn read_u16_vector<T: ByteOrder>(&mut self) -> XrfResult<Vec<u16>> {
     let count: u32 = self.read_u32::<T>()?;
-    let available_count: u64 = self.read_bytes_remain() / size_of::<u16>() as u64;
-
-    if u64::from(count) > available_count {
-      return Err(XrfError::new_invalid_error(format!(
-        "u16 vector declares {count} entries, but only {available_count} fit in the remaining payload"
-      )));
-    }
-
-    let capacity: usize = usize::try_from(count)
-      .map_err(|_| XrfError::new_invalid_error(format!("u16 vector count {count} exceeds the platform limit")))?;
-
-    let mut vector: Vec<u16> = Vec::with_capacity(capacity);
+    let mut vector: Vec<u16> = self.new_bounded_vec(count.into(), size_of::<u16>() as u64, "u16 vector")?;
 
     for _ in 0..count {
       vector.push(self.read_u16::<T>()?)
@@ -67,19 +102,17 @@ impl<D: ChunkDataSource> ChunkReader<D> {
   }
 
   /// Read raw bytes.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, before reading anything, when fewer than `count` bytes remain in the chunk.
   pub fn read_bytes(&mut self, count: usize) -> XrfResult<Vec<u8>> {
-    let count: u64 = u64::try_from(count)
-      .map_err(|_| XrfError::new_invalid_error("Requested byte count exceeds the supported source range"))?;
-
-    if count > self.read_bytes_remain() {
+    if count as u64 > self.read_bytes_remain() {
       return Err(XrfError::new_invalid_error(format!(
         "Requested {count} bytes, but only {} remain in the chunk",
         self.read_bytes_remain()
       )));
     }
-
-    let count: usize = usize::try_from(count)
-      .map_err(|_| XrfError::new_invalid_error("Requested byte count exceeds the platform limit"))?;
 
     Ok(self.data.read_bytes(count)?)
   }
@@ -91,6 +124,15 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     self.read_to_end(&mut buf)?;
 
     Ok(buf)
+  }
+
+  /// Reads one value and proves it was the whole payload.
+  fn read_whole_payload<V>(&mut self, message: &str, read: impl FnOnce(&mut Self) -> XrfResult<V>) -> XrfResult<V> {
+    let value: V = read(self)?;
+
+    self.assert_read(message)?;
+
+    Ok(value)
   }
 }
 
@@ -164,6 +206,33 @@ mod tests {
   }
 
   #[test]
+  fn reads_a_payload_holding_exactly_one_value() -> XrfResult {
+    assert_eq!(ChunkReader::from_bytes(&[7])?.read_u8_payload()?, 7);
+    assert_eq!(
+      ChunkReader::from_bytes(&[1, 0, 0, 0])?.read_u32_payload::<XRayByteOrder>()?,
+      1
+    );
+    assert_eq!(ChunkReader::from_bytes(b"abc\0")?.read_w1251_string_payload()?, "abc");
+
+    Ok(())
+  }
+
+  #[test]
+  fn refuses_a_payload_with_bytes_left_after_its_value() -> XrfResult {
+    let error: String = ChunkReader::from_bytes(&[1, 0, 0, 0, 9])?
+      .read_u32_payload::<XRayByteOrder>()
+      .expect_err("expect the trailing byte to be refused")
+      .to_string();
+
+    assert_eq!(
+      error,
+      "Chunk is not ended, 1 bytes remain: All data should be read in u32 chunk"
+    );
+
+    Ok(())
+  }
+
+  #[test]
   fn bounds_a_declared_count_by_the_bytes_remaining_in_the_chunk() -> XrfResult {
     let chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0, 1, 2, 3, 4, 5, 6, 7])?;
 
@@ -191,8 +260,11 @@ mod tests {
       .expect_err("expect the declared count to exceed the payload")
       .to_string();
 
-    assert!(error.contains("declares 2 entries"), "Unexpected error: {error}");
-    assert!(error.contains("only 1 fit"), "Unexpected error: {error}");
+    assert!(
+      error.contains("u16 vector declares 2 entries"),
+      "Unexpected error: {error}"
+    );
+    assert!(error.contains("only 2 remain"), "Unexpected error: {error}");
 
     Ok(())
   }

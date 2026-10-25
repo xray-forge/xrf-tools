@@ -8,8 +8,10 @@ use crate::chunk_constants::{CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK};
 use crate::reader::chunk_reader::ChunkReader;
 use crate::{ChunkDataSource, XRayByteOrder};
 
-/// Iterate over samples in provided file slice.
-/// Mutates parent object to keep track of what was read during execution.
+/// Walks the child chunks laid out back to back in a reader's payload, each cut as a window of the same source.
+///
+/// Advances the parent reader's cursor past every child it hands over, and stops at the first malformed header,
+/// handing over its error once.
 pub struct ChunkIterator<'a, T: ChunkDataSource = FileSlice> {
   pub reader: &'a mut ChunkReader<T>,
   failed: bool,
@@ -17,33 +19,31 @@ pub struct ChunkIterator<'a, T: ChunkDataSource = FileSlice> {
   is_compression_accepted: bool,
 }
 
-impl<T: ChunkDataSource> ChunkIterator<'_, T> {
-  pub fn from_start(reader: &mut ChunkReader<T>) -> XrfResult<ChunkIterator<'_, T>> {
+impl<'a, T: ChunkDataSource> ChunkIterator<'a, T> {
+  /// Iterates from the start of the reader's payload.
+  pub fn from_start(reader: &'a mut ChunkReader<T>) -> XrfResult<Self> {
     reader.reset_pos()?;
 
-    Ok(ChunkIterator {
-      reader,
-      failed: false,
-      is_compression_accepted: false,
-    })
+    Ok(Self::new(reader, false))
   }
 
   /// Iterates from the start, handing over a compressed chunk as the bytes it is stored as.
-  pub fn from_start_including_compressed(reader: &mut ChunkReader<T>) -> XrfResult<ChunkIterator<'_, T>> {
+  pub fn from_start_including_compressed(reader: &'a mut ChunkReader<T>) -> XrfResult<Self> {
     reader.reset_pos()?;
 
-    Ok(ChunkIterator {
-      reader,
-      failed: false,
-      is_compression_accepted: true,
-    })
+    Ok(Self::new(reader, true))
   }
 
-  pub fn from_current(reader: &mut ChunkReader<T>) -> ChunkIterator<'_, T> {
-    ChunkIterator {
+  /// Iterates from wherever the reader's cursor already is.
+  pub fn from_current(reader: &'a mut ChunkReader<T>) -> Self {
+    Self::new(reader, false)
+  }
+
+  fn new(reader: &'a mut ChunkReader<T>, is_compression_accepted: bool) -> Self {
+    Self {
       reader,
       failed: false,
-      is_compression_accepted: false,
+      is_compression_accepted,
     }
   }
 
@@ -54,7 +54,6 @@ impl<T: ChunkDataSource> ChunkIterator<'_, T> {
   }
 }
 
-/// Iterates over chunk and read child samples.
 impl<T: ChunkDataSource> Iterator for ChunkIterator<'_, T> {
   type Item = XrfResult<ChunkReader<T>>;
 
@@ -137,10 +136,10 @@ mod tests {
   #[test]
   fn rejects_incomplete_chunk_header() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[0, 0, 0])?;
-    let error: String = match reader.read_children() {
-      Ok(_) => panic!("Expected incomplete chunk header to fail"),
-      Err(error) => error.to_string(),
-    };
+    let error: String = reader
+      .read_children()
+      .expect_err("Expected incomplete chunk header to fail")
+      .to_string();
 
     assert!(error.contains("Incomplete chunk header"), "Unexpected error: {error}");
 
@@ -150,10 +149,10 @@ mod tests {
   #[test]
   fn rejects_chunk_data_beyond_source_end() -> XrfResult {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[1, 0, 0, 0, 10, 0, 0, 0, 0, 0])?;
-    let error: String = match reader.read_children() {
-      Ok(_) => panic!("Expected oversized chunk to fail"),
-      Err(error) => error.to_string(),
-    };
+    let error: String = reader
+      .read_children()
+      .expect_err("Expected oversized chunk to fail")
+      .to_string();
 
     // The bytes that remain are the number a reader needs; making it subtract them reads as a reader defect.
     assert!(
@@ -172,11 +171,11 @@ mod tests {
     assert!(!reader.is_ended());
     assert!(reader.assert_read("Reader overrun must fail").is_err());
 
-    let error: String = match super::ChunkIterator::from_current(&mut reader).next() {
-      Some(Err(error)) => error.to_string(),
-      Some(Ok(_)) => panic!("Expected overrun reader to fail"),
-      None => panic!("Expected overrun reader to produce an error"),
-    };
+    let error: String = super::ChunkIterator::from_current(&mut reader)
+      .next()
+      .expect("Expected overrun reader to produce an error")
+      .expect_err("Expected overrun reader to fail")
+      .to_string();
 
     assert!(error.contains("Incomplete chunk header"), "Unexpected error: {error}");
 

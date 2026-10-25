@@ -1,9 +1,6 @@
 use byteorder::{ByteOrder, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{
-  ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, find_optional_chunk_by_id, find_required_chunk_by_id,
-  read_f32_chunk, read_u16_chunk, read_u32_chunk, read_w1251_string_chunk,
-};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field};
 use xrf_utils::assert_equal;
@@ -48,16 +45,16 @@ impl ChunkReadWrite for ParticleGroup {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     let particle_group: Self = Self {
-      version: read_u16_chunk::<T, _>(&mut find_required_chunk_by_id(&chunks, Self::VERSION_CHUNK_ID)?)?,
-      name: read_w1251_string_chunk(&mut find_required_chunk_by_id(&chunks, Self::NAME_CHUNK_ID)?)?,
-      flags: read_u32_chunk::<T, _>(&mut find_required_chunk_by_id(&chunks, Self::FLAGS_CHUNK_ID)?)?,
-      effects: find_required_chunk_by_id(&chunks, Self::EFFECTS_CHUNK_ID)?.read_xr_list::<T, _>()?,
-      time_limit: read_f32_chunk::<T, _>(&mut find_required_chunk_by_id(&chunks, Self::TIME_LIMIT_CHUNK_ID)?)?,
-      description: find_optional_chunk_by_id(&chunks, Self::DESCRIPTION_CHUNK_ID)
+      version: ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u16_payload::<T>()?,
+      name: ChunkReader::find_required_by_id(&chunks, Self::NAME_CHUNK_ID)?.read_w1251_string_payload()?,
+      flags: ChunkReader::find_required_by_id(&chunks, Self::FLAGS_CHUNK_ID)?.read_u32_payload::<T>()?,
+      effects: ChunkReader::find_required_by_id(&chunks, Self::EFFECTS_CHUNK_ID)?.read_xr_list::<T, _>()?,
+      time_limit: ChunkReader::find_required_by_id(&chunks, Self::TIME_LIMIT_CHUNK_ID)?.read_f32_payload::<T>()?,
+      description: ChunkReader::find_optional_by_id(&chunks, Self::DESCRIPTION_CHUNK_ID)
         .map(|mut it| ParticleDescription::read::<T, _>(&mut it))
         .transpose()
         .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle group description: {error}")))?,
-      effects_old: find_optional_chunk_by_id(&chunks, Self::EFFECTS2_CHUNK_ID)
+      effects_old: ChunkReader::find_optional_by_id(&chunks, Self::EFFECTS2_CHUNK_ID)
         .map(|mut it| it.read_xr_list::<T, _>())
         .transpose()
         .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle group old effects: {error}")))?,

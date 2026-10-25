@@ -1,9 +1,6 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{
-  ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, find_optional_chunk_by_id, find_required_chunk_by_id,
-  read_f32_chunk, read_u32_chunk,
-};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
 use crate::gamemtl_acoustics::GameMtlAcoustics;
@@ -79,20 +76,20 @@ impl GameMtlMaterial {
   pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
-    let mut main: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::MAIN_CHUNK_ID)?;
+    let mut main: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::MAIN_CHUNK_ID)?;
     let id: u32 = main.read_u32::<T>()?;
     let name: String = main.read_w1251_string()?;
 
-    let mut physics: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::PHYSICS_CHUNK_ID)?;
-    let mut factors: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::FACTORS_CHUNK_ID)?;
+    let mut physics: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::PHYSICS_CHUNK_ID)?;
+    let mut factors: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::FACTORS_CHUNK_ID)?;
 
     Ok(Self {
       id,
       name,
-      description: find_optional_chunk_by_id(&chunks, Self::DESCRIPTION_CHUNK_ID)
+      description: ChunkReader::find_optional_by_id(&chunks, Self::DESCRIPTION_CHUNK_ID)
         .map(|mut chunk| chunk.read_w1251_string())
         .transpose()?,
-      flags: read_u32_chunk::<T, D>(&mut find_required_chunk_by_id(&chunks, Self::FLAGS_CHUNK_ID)?)?,
+      flags: ChunkReader::find_required_by_id(&chunks, Self::FLAGS_CHUNK_ID)?.read_u32_payload::<T>()?,
       ph_friction: physics.read_f32::<T>()?,
       ph_damping: physics.read_f32::<T>()?,
       ph_spring: physics.read_f32::<T>()?,
@@ -102,19 +99,19 @@ impl GameMtlMaterial {
       bounce_damage_factor: factors.read_f32::<T>()?,
       visual_transparency_factor: factors.read_f32::<T>()?,
       sound_occlusion_factor: factors.read_f32::<T>()?,
-      flotation_factor: find_optional_chunk_by_id(&chunks, Self::FLOTATION_CHUNK_ID)
-        .map(|mut chunk| read_f32_chunk::<T, D>(&mut chunk))
+      flotation_factor: ChunkReader::find_optional_by_id(&chunks, Self::FLOTATION_CHUNK_ID)
+        .map(|mut chunk| chunk.read_f32_payload::<T>())
         .transpose()?,
-      injurious_speed: find_optional_chunk_by_id(&chunks, Self::INJURIOUS_CHUNK_ID)
-        .map(|mut chunk| read_f32_chunk::<T, D>(&mut chunk))
+      injurious_speed: ChunkReader::find_optional_by_id(&chunks, Self::INJURIOUS_CHUNK_ID)
+        .map(|mut chunk| chunk.read_f32_payload::<T>())
         .transpose()?,
-      density_factor: find_optional_chunk_by_id(&chunks, Self::DENSITY_CHUNK_ID)
-        .map(|mut chunk| read_f32_chunk::<T, D>(&mut chunk))
+      density_factor: ChunkReader::find_optional_by_id(&chunks, Self::DENSITY_CHUNK_ID)
+        .map(|mut chunk| chunk.read_f32_payload::<T>())
         .transpose()?,
-      shoot_factor_mp: find_optional_chunk_by_id(&chunks, Self::FACTORS_MP_CHUNK_ID)
-        .map(|mut chunk| read_f32_chunk::<T, D>(&mut chunk))
+      shoot_factor_mp: ChunkReader::find_optional_by_id(&chunks, Self::FACTORS_MP_CHUNK_ID)
+        .map(|mut chunk| chunk.read_f32_payload::<T>())
         .transpose()?,
-      acoustics: find_optional_chunk_by_id(&chunks, Self::ACOUSTICS_CHUNK_ID)
+      acoustics: ChunkReader::find_optional_by_id(&chunks, Self::ACOUSTICS_CHUNK_ID)
         .map(|mut chunk| GameMtlAcoustics::read::<T, D>(&mut chunk))
         .transpose()?,
     })

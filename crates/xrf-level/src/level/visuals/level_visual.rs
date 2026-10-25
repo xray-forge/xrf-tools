@@ -1,5 +1,5 @@
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkDataSource, ChunkReader, find_optional_chunk_by_id, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::XrfResult;
 use xrf_math::Matrix4x4;
 use xrf_ogf::{
@@ -42,27 +42,29 @@ impl LevelVisual {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
     Ok(Self {
-      header: find_required_chunk_by_id(&chunks, OgfHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-      texture: match find_optional_chunk_by_id(&chunks, OgfTextureChunk::CHUNK_ID) {
+      header: ChunkReader::find_required_by_id(&chunks, OgfHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      texture: match ChunkReader::find_optional_by_id(&chunks, OgfTextureChunk::CHUNK_ID) {
         Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
         None => None,
       },
-      children: match find_optional_chunk_by_id(&chunks, OgfChildrenLinkChunk::CHUNK_ID) {
+      children: match ChunkReader::find_optional_by_id(&chunks, OgfChildrenLinkChunk::CHUNK_ID) {
         Some(mut chunk) => chunk.read_xr::<T, OgfChildrenLinkChunk>()?.children,
         None => Vec::new(),
       },
-      geometry: match find_optional_chunk_by_id(&chunks, OgfGeometryContainerChunk::CHUNK_ID) {
+      geometry: match ChunkReader::find_optional_by_id(&chunks, OgfGeometryContainerChunk::CHUNK_ID) {
         Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
         None => None,
       },
       fastpath: Self::read_fastpath::<T, D>(&chunks)?,
-      tree: match find_optional_chunk_by_id(&chunks, OgfTreeDefinitionChunk::CHUNK_ID) {
+      tree: match ChunkReader::find_optional_by_id(&chunks, OgfTreeDefinitionChunk::CHUNK_ID) {
         Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
         None => None,
       },
-      lod: find_optional_chunk_by_id(&chunks, OgfLodDefinitionChunk::CHUNK_ID).map(|mut chunk| chunk.read_xr::<T, _>()),
-      swi: find_optional_chunk_by_id(&chunks, OgfSwiDataChunk::CHUNK_ID).map(|mut chunk| chunk.read_xr::<T, _>()),
-      swi_container: find_optional_chunk_by_id(&chunks, OgfSwiContainerChunk::CHUNK_ID)
+      lod: ChunkReader::find_optional_by_id(&chunks, OgfLodDefinitionChunk::CHUNK_ID)
+        .map(|mut chunk| chunk.read_xr::<T, _>()),
+      swi: ChunkReader::find_optional_by_id(&chunks, OgfSwiDataChunk::CHUNK_ID)
+        .map(|mut chunk| chunk.read_xr::<T, _>()),
+      swi_container: ChunkReader::find_optional_by_id(&chunks, OgfSwiContainerChunk::CHUNK_ID)
         .map(|mut chunk| chunk.read_xr::<T, _>()),
     })
   }
@@ -85,13 +87,14 @@ impl LevelVisual {
   fn read_fastpath<T: ByteOrder, D: ChunkDataSource>(
     chunks: &[ChunkReader<D>],
   ) -> XrfResult<Option<OgfGeometryContainerChunk>> {
-    let Some(mut fastpath) = find_optional_chunk_by_id(chunks, OgfGeometryContainerChunk::FASTPATH_CHUNK_ID) else {
+    let Some(mut fastpath) = ChunkReader::find_optional_by_id(chunks, OgfGeometryContainerChunk::FASTPATH_CHUNK_ID)
+    else {
       return Ok(None);
     };
 
     let nested: Vec<ChunkReader<D>> = fastpath.read_children()?;
 
-    match find_optional_chunk_by_id(&nested, OgfGeometryContainerChunk::CHUNK_ID) {
+    match ChunkReader::find_optional_by_id(&nested, OgfGeometryContainerChunk::CHUNK_ID) {
       Some(mut chunk) => Ok(Some(chunk.read_xr::<T, _>()?)),
       None => Ok(None),
     }

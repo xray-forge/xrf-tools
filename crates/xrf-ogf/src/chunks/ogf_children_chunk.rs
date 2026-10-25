@@ -40,7 +40,7 @@ impl ChunkReadWrite for OgfChildrenChunk {
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     for (index, _child) in self.nested.iter().enumerate() {
-      let mut child_writer: ChunkWriter = ChunkWriter::new();
+      let child_writer: ChunkWriter = ChunkWriter::new();
 
       // todo: Child write.
 
