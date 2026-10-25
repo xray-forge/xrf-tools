@@ -2,8 +2,8 @@ use serde::Serialize;
 use xrf_engine_target::XrayEngine;
 use xrf_ltx::Section;
 
-use crate::finding::EnvironmentRule;
-use crate::key::{EnvironmentKey, EnvironmentValue};
+use crate::section::finding::EnvironmentRule;
+use crate::section::key::{EnvironmentKey, EnvironmentValue};
 use crate::section::{EnvironmentSection, EnvironmentSectionReader};
 use crate::weather::weather_key::WeatherKey;
 use crate::weather::weather_time::WeatherTime;

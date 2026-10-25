@@ -1,4 +1,4 @@
-use crate::key::declare_environment_keys;
+use crate::section::key::declare_environment_keys;
 
 declare_environment_keys! {
   /// The keys of a weather keyframe, `CEnvDescriptor::load` in `xray-16` and `xray-monolith`
@@ -49,7 +49,8 @@ declare_environment_keys! {
     SunAltitude = "sun_altitude": Number, vanilla: Conditional(Number(0.0)), extended: Unread;
     /// Degrees.
     SunLongitude = "sun_longitude": Number, vanilla: Conditional(Number(0.0)), extended: Unread;
-    /// Degrees, clamped to a turn; `openxray.ltx`'s `sun_dir_azimuth` where not written.
+    /// Degrees, clamped to a turn. Where not written OpenXRay takes `openxray.ltx`'s `sun_dir_azimuth`, which this
+    /// crate does not read: it holds zero in every shipped `openxray.ltx`, as the default does.
     SunAzimuth = "sun_azimuth": Number, vanilla: Optional(Number(0.0)), extended: Unread;
     SunShaftsIntensity = "sun_shafts_intensity": Number,
       vanilla: Optional(Number(0.0)), extended: Optional(Number(0.0));

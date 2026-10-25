@@ -3,11 +3,11 @@ use std::collections::BTreeMap;
 use serde::Serialize;
 use xrf_engine_target::XrayEngine;
 
-use crate::ambient::{Ambient, AmbientEffect, LevelAmbients, SoundChannel};
-use crate::finding::EnvironmentFinding;
+use crate::definition::ambient::{Ambient, AmbientEffect, LevelAmbients, SoundChannel};
+use crate::definition::sun::{LensFlare, SunTable};
+use crate::definition::thunderbolt::{Thunderbolt, ThunderboltCollection, ThunderboltSettings};
 use crate::level::WeatherGraphs;
-use crate::sun::{LensFlare, SunTable};
-use crate::thunderbolt::{Thunderbolt, ThunderboltCollection, ThunderboltSettings};
+use crate::section::finding::EnvironmentFinding;
 use crate::weather::{WeatherCycle, WeatherCycleId, WeatherCycleKind, WeatherKey};
 
 /// A game's environment configs, everything under `configs\environment` that its engine reads, read as that engine

@@ -2,7 +2,7 @@ use std::f32::consts::{PI, TAU};
 use std::time::Duration;
 
 use glam::Vec3;
-use xrf_environment::WeatherMix;
+use xrf_environment::{ThunderboltSettingsKey, WeatherMix};
 use xrf_math::{EPS_L, EPS_S};
 use xrf_renderer::{
   EngineSpace, RenderThunder, RenderThunderSettings, RenderThunderbolt, RenderThunderboltGlow, RenderThunderboltStrike,
@@ -10,9 +10,6 @@ use xrf_renderer::{
 };
 
 use crate::weather::thunder_flash::ThunderFlash;
-
-/// `CEffect_Thunderbolt::MAX_DIST_FACTOR`: the farthest a bolt strikes, of the far plane.
-const MAX_DISTANCE: f32 = 0.95;
 
 /// `EPS_L`: real seconds a strike followed at once waits after the last one ends.
 const SECOND_DELAY: f32 = EPS_L;
@@ -138,7 +135,10 @@ impl WeatherThunder {
       sun_heading - settings.delta_longitude + PI,
       sun_heading + settings.delta_longitude + PI,
     );
-    let distance: f32 = random.between(far * settings.min_distance, far * MAX_DISTANCE);
+    let distance: f32 = random.between(
+      far * settings.min_distance,
+      far * ThunderboltSettingsKey::MAX_DIST_FACTOR,
+    );
     let toward: Vec3 = Self::to_direction(longitude, altitude);
     let position: Vec3 = view + toward * distance;
     let deviation: Vec3 = Vec3::new(

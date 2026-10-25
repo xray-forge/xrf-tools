@@ -71,6 +71,12 @@ The engine loads suns, thunderbolt collections, thunderbolts, ambients, sound ch
 keyframe names them, directly or through another definition. A finding in a definition nothing names is demoted to
 `Convention`, with "nothing references it" added to its message.
 
+A list is split as `_GetItemCount` counts it: `a,` is one item, and the count stops at a doubled comma, so `a,,b` is
+`a` and an empty item. An ambient's channels are `AmbientKey::list_channels`: the list under the spelling its engine
+reads, or for a Shadow of Chernobyl ambient, which OpenXRay plays as its own channel, the `sound_channels.ltx` section
+of the ambient's own name. The strike settings' `altitude` is a range on OpenXRay and one number on Monolith
+(`ThunderboltSettingsKey::get_altitude`), and both clamp `min_dist_factor` to `MAX_DIST_FACTOR`.
+
 Texture, sound and model existence belong to whoever holds the asset index, `xrf-gamedata`, whose `environment` check
 reports these findings by rule.
 
@@ -96,16 +102,23 @@ mixer's own input, so the crate does not depend on the level format.
 
 ## Module map
 
-- `key`: the vocabulary every section kind is read with: a key's value kind, and per engine whether it is read and what
-  it defaults to.
-- `section`: one section as authored, and the reader that parses one as the engine does.
-- `finding`: what a read found wrong, and of which kind.
+- `section`: one section as authored, and the reader that parses one as the engine does. `section::key` is the
+  vocabulary every section kind is read with: a key's value kind, and per engine whether it is read and what it
+  defaults to; `section::finding` is what a read found wrong, and of which kind.
 - `weather`: cycles, effects, their keyframes, and a keyframe as the engine loads it.
-- `sun`, `thunderbolt`, `ambient`: the definitions a keyframe names.
+- `definition`: the definitions a keyframe names, `sun`, `thunderbolt` and `ambient`.
 - `level`: which cycles a level plays.
 - `mixer`: a cycle mixed at a time of day.
 - `playback`: a weather played on: the pair of keyframes blended, and effects laid over the cycle.
-- `catalog`: reading all of it at once.
+- `catalog`: reading all of it at once; `catalog::read` is the one read that fills it.
+
+## What is not read
+
+Shadow of Chernobyl's weather layout, cycles listed in `system.ltx`'s `[weathers]` and `[weather_effects]` with
+keyframes under the older key spellings, is not read: OpenXRay still loads it, but every shipped tree's `system.ltx`
+leaves the `weathers\environment.ltx` that would declare it out. Neither is `openxray.ltx`, whose `sun_dir_azimuth`
+OpenXRay turns a keyframe's sun by where `sun_azimuth` is not written: it holds zero in every shipped one, as the
+crate's default does.
 
 ## Checks
 

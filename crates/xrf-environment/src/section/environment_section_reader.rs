@@ -2,10 +2,10 @@ use xrf_engine_target::XrayEngine;
 use xrf_ltx::{LtxProvenance, Section, read_engine_bool, read_engine_floats, scan_engine_float};
 use xrf_utils::read_engine_integer;
 
-use crate::finding::{EnvironmentFinding, EnvironmentRule};
-use crate::key::{EnvironmentKey, EnvironmentKeyUse, EnvironmentValue, EnvironmentValueKind};
 use crate::section::environment_origin::EnvironmentOrigin;
 use crate::section::environment_section::EnvironmentSection;
+use crate::section::finding::{EnvironmentFinding, EnvironmentRule};
+use crate::section::key::{EnvironmentKey, EnvironmentKeyUse, EnvironmentValue, EnvironmentValueKind};
 
 /// Reads sections of one config against a key table, as one engine reads them, and says what that engine would refuse
 /// or misread.
@@ -219,12 +219,30 @@ impl<'a> EnvironmentSectionReader<'a> {
     components
   }
 
-  /// A list as `_GetItemCount` and `_GetItem` walk it: comma-separated, each item trimmed, none in empty text.
+  /// A list as `_GetItemCount` counts it and `_GetItem` takes each item, trimmed: the count stops at the first doubled
+  /// comma and leaves out an empty last item, so `a,` is one item, `a,,b` the two `a` and an empty one, and empty text
+  /// none.
   fn split_list(value: &str) -> Vec<String> {
-    if value.is_empty() {
-      return Vec::new();
+    let mut count: usize = 0;
+    let mut rest: &str = value;
+
+    while let Some(comma) = rest.find(',') {
+      rest = &rest[comma + 1..];
+      count += 1;
+
+      if rest.starts_with(',') {
+        break;
+      }
     }
 
-    value.split(',').map(|item| item.trim().to_owned()).collect()
+    if !rest.is_empty() {
+      count += 1;
+    }
+
+    value
+      .split(',')
+      .take(count)
+      .map(|item| item.trim().to_owned())
+      .collect()
   }
 }

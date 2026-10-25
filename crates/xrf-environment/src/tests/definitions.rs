@@ -130,6 +130,30 @@ fn needs_the_strike_settings_from_either_config_on_openxray() {
   );
 }
 
+// Both engines take the nearest strike as at most `MAX_DIST_FACTOR`; Monolith reads one altitude where OpenXRay reads a
+// range.
+#[test]
+fn says_what_the_engine_makes_of_the_strike_settings() {
+  let fixture: EnvironmentFixture = clean_day().with(
+    "environment\\environment.ltx",
+    "[environment]\naltitude = 20, 30\ndelta_longitude = 30\nfog_color = 0.1\nmin_dist_factor = 0.99\n\
+     second_propability = 0.5\nsky_color = 0.1\nsun_color = 0.9\ntilt = 17\n",
+  );
+  let clamped: &str = "Thunderbolt settings [environment] has [min_dist_factor] = 0.99, which the engine takes as 0.95";
+
+  assert_eq!(
+    messages(&fixture.read(XrayEngine::Vanilla), EnvironmentRule::Convention),
+    vec![clamped]
+  );
+  assert_eq!(
+    messages(&fixture.read(XrayEngine::Extended), EnvironmentRule::Convention),
+    vec![
+      "Thunderbolt settings [environment] has [altitude] written as a range, of which the engine reads only 20",
+      clamped,
+    ]
+  );
+}
+
 #[test]
 fn says_which_sound_channel_or_effect_an_ambient_names_is_missing() {
   let fixture: EnvironmentFixture = clean_day().with(
@@ -166,17 +190,82 @@ fn checks_a_sound_channel_as_the_engine_asserts_on_it() {
   );
 }
 
-// A Shadow of Chernobyl ambient is its own channel, and OpenXRay still reads one.
+// A Shadow of Chernobyl ambient is its own channel, which OpenXRay still reads, from the sound channels config under
+// the ambient's name rather than from the ambient's own section.
 #[test]
-fn reads_a_shadow_of_chernobyl_ambient_as_its_own_channel() {
-  let fixture: EnvironmentFixture = clean_day().with(
-    "environment\\ambients.ltx",
-    "[day]\nsounds = ambient\\wind_1\nsound_dist = 20, 40\nsound_period = 25, 30\neffect_period = 30, 60\n",
-  );
+fn reads_a_shadow_of_chernobyl_ambient_as_the_channel_of_its_name() {
+  let fixture: EnvironmentFixture = clean_day()
+    .with(
+      "environment\\ambients.ltx",
+      "[day]\nsounds = ambient\\wind_1\neffect_period = 30, 60\n",
+    )
+    .with(
+      "environment\\sound_channels.ltx",
+      "[day]\nsounds = ambient\\wind_1\nsound_dist = 20, 40\nsound_period = 25, 30\n",
+    );
   let catalog = fixture.read(XrayEngine::Vanilla);
 
   assert_eq!(catalog.findings, Vec::new());
-  assert!(catalog.find_sound_channel("day").is_some());
+  assert_eq!(
+    catalog
+      .find_ambient("day")
+      .map(|ambient| AmbientKey::list_channels(ambient, XrayEngine::Vanilla)),
+    Some(vec!["day"])
+  );
+
+  let unchanneled: EnvironmentFixture = fixture.with("environment\\sound_channels.ltx", "");
+
+  assert_eq!(
+    messages(&unchanneled.read(XrayEngine::Vanilla), EnvironmentRule::Reference),
+    vec!["Ambient [day] references missing sound channel [day]"]
+  );
+}
+
+// Monolith asserts on an ambient that plays nothing as OpenXRay does, and reads its channels by one spelling alone.
+#[test]
+fn refuses_an_ambient_with_nothing_to_play_on_either_engine() {
+  let fixture: EnvironmentFixture = clean_day().with(
+    "environment\\ambients.ltx",
+    "[day]\nsound_channels =\neffects =\nmin_effect_period = 30\nmax_effect_period = 60\n",
+  );
+
+  for engine in [XrayEngine::Vanilla, XrayEngine::Extended] {
+    assert!(
+      messages(&fixture.read(engine), EnvironmentRule::Engine)
+        .contains(&"Ambient [day] has neither sound channels nor effects"),
+      "{engine:?}"
+    );
+  }
+
+  let older: EnvironmentFixture = clean_day().with(
+    "environment\\ambients.ltx",
+    "[day]\nsnd_channels = wind\neffects = gust\nmin_effect_period = 30\nmax_effect_period = 60\n",
+  );
+  let ambient = |engine: XrayEngine| older.read(engine).find_ambient("day").cloned().unwrap();
+
+  assert_eq!(
+    AmbientKey::list_channels(&ambient(XrayEngine::Vanilla), XrayEngine::Vanilla),
+    vec!["wind"]
+  );
+  assert_eq!(
+    AmbientKey::list_channels(&ambient(XrayEngine::Extended), XrayEngine::Extended),
+    Vec::<&str>::new()
+  );
+}
+
+// `_GetItemCount` stops at a doubled comma and drops an empty last item, and `_GetItem` takes each one trimmed.
+#[test]
+fn reads_a_list_with_as_many_items_as_the_engine_counts() {
+  let fixture: EnvironmentFixture = clean_day().with(
+    "environment\\ambients.ltx",
+    "[day]\nsound_channels = wind,\neffects = gust,, gust\nmin_effect_period = 30\nmax_effect_period = 60\n",
+  );
+  let catalog = fixture.read(XrayEngine::Vanilla);
+  let ambient = catalog.find_ambient("day").unwrap();
+
+  assert_eq!(ambient.get_list(AmbientKey::SoundChannels), ["wind"]);
+  assert_eq!(ambient.get_list(AmbientKey::Effects), ["gust", ""]);
+  assert_eq!(messages(&catalog, EnvironmentRule::Reference), Vec::<&str>::new());
 }
 
 #[test]
