@@ -7,6 +7,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{format_path, to_format_size};
 
+use crate::efd_data_format::EfdDataFormat;
 use crate::efd_pattern::EfdPattern;
 use crate::efd_variable::EfdVariable;
 
@@ -15,15 +16,21 @@ use crate::efd_variable::EfdVariable;
 #[serde(rename_all = "camelCase")]
 pub struct EfdFile {
   pub builder_version: u32,
-  pub data_format: u32,
-  /// Which base function this one registers itself as.
+  /// How wide the result range and the weights are stored.
+  pub data_format: EfdDataFormat,
+  /// The slot of `CEF_Storage::m_fpaBaseFunctions` this function registers itself in, which another function's
+  /// variable names to read it.
   pub function_type: u32,
-  pub minimum_result: f32,
-  pub maximum_result: f32,
+  /// The range `get_discrete_value` divides a result over.
+  pub minimum_result: f64,
+  pub maximum_result: f64,
   pub variables: Vec<EfdVariable>,
   pub patterns: Vec<EfdPattern>,
   /// The weights, one per combination of every pattern's inputs, laid out pattern by pattern.
-  pub parameters: Vec<f32>,
+  ///
+  /// Held at the double width whatever the format: a float file's weights widen exactly, so it is written back byte for
+  /// byte.
+  pub parameters: Vec<f64>,
 }
 
 impl EfdFile {
@@ -66,8 +73,9 @@ impl EfdFile {
   ///
   /// # Errors
   ///
-  /// Returns an error when the builder version is one the engine refuses, a pattern names an input the function does
-  /// not declare, or the parameter block is not the size the patterns claim.
+  /// Returns an error when the builder version is one the engine refuses, the data format one the builder never
+  /// writes, a pattern names an input the function does not declare, or the parameter block is not the size the
+  /// patterns claim.
   pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let builder_version: u32 = reader.read_u32::<T>()?;
 
@@ -78,7 +86,7 @@ impl EfdFile {
       )));
     }
 
-    let data_format: u32 = reader.read_u32::<T>()?;
+    let data_format: EfdDataFormat = EfdDataFormat::from_value(reader.read_u32::<T>()?)?;
     let count: u32 = reader.read_u32::<T>()?;
 
     let mut ranges: Vec<u32> = reader.new_bounded_vec(count.into(), EfdVariable::SERIALIZED_SIZE, "efd variables")?;
@@ -97,8 +105,8 @@ impl EfdFile {
     }
 
     let function_type: u32 = reader.read_u32::<T>()?;
-    let minimum_result: f32 = reader.read_f32::<T>()?;
-    let maximum_result: f32 = reader.read_f32::<T>()?;
+    let minimum_result: f64 = data_format.read_real::<T, D>(reader)?;
+    let maximum_result: f64 = data_format.read_real::<T, D>(reader)?;
     let count: u32 = reader.read_u32::<T>()?;
 
     let mut patterns: Vec<EfdPattern> = reader.new_bounded_vec(count.into(), EfdPattern::FIXED_SIZE, "efd patterns")?;
@@ -116,10 +124,10 @@ impl EfdFile {
     }
 
     let expected: u64 = Self::count_parameters(&patterns, &variables)?;
-    let mut parameters: Vec<f32> = reader.new_bounded_vec(expected, size_of::<f32>() as u64, "efd parameters")?;
+    let mut parameters: Vec<f64> = reader.new_bounded_vec(expected, data_format.get_real_size(), "efd parameters")?;
 
     for _ in 0..expected {
-      parameters.push(reader.read_f32::<T>()?);
+      parameters.push(data_format.read_real::<T, D>(reader)?);
     }
 
     reader.assert_read("Expect all data to be read from evaluation function file")?;
@@ -136,7 +144,7 @@ impl EfdFile {
     })
   }
 
-  /// Writes the function back in the layout the engine reads.
+  /// Writes the function back in the layout the engine reads, at its data format's width.
   ///
   /// # Errors
   ///
@@ -153,7 +161,7 @@ impl EfdFile {
     }
 
     writer.write_u32::<T>(self.builder_version)?;
-    writer.write_u32::<T>(self.data_format)?;
+    writer.write_u32::<T>(self.data_format.to_value())?;
     writer.write_u32::<T>(to_format_size(self.variables.len(), "efd variables")?)?;
 
     for variable in &self.variables {
@@ -165,8 +173,8 @@ impl EfdFile {
     }
 
     writer.write_u32::<T>(self.function_type)?;
-    writer.write_f32::<T>(self.minimum_result)?;
-    writer.write_f32::<T>(self.maximum_result)?;
+    self.data_format.write_real::<T>(writer, self.minimum_result)?;
+    self.data_format.write_real::<T>(writer, self.maximum_result)?;
     writer.write_u32::<T>(to_format_size(self.patterns.len(), "efd patterns")?)?;
 
     for pattern in &self.patterns {
@@ -178,10 +186,87 @@ impl EfdFile {
     }
 
     for parameter in &self.parameters {
-      writer.write_f32::<T>(*parameter)?;
+      self.data_format.write_real::<T>(writer, *parameter)?;
     }
 
     Ok(())
+  }
+
+  /// The function's value for one bucketed value per input, in the order its variables are declared.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `values` does not hold one value per input, a value is past its input's range, or the
+  /// weight block is not the size the patterns claim.
+  pub fn evaluate(&self, values: &[u32]) -> XrfResult<f64> {
+    if values.len() != self.variables.len() {
+      return Err(XrfError::new_invalid_error(format!(
+        "Evaluation function takes {} input values, {} were given",
+        self.variables.len(),
+        values.len()
+      )));
+    }
+
+    if let Some((index, (value, variable))) = values
+      .iter()
+      .zip(&self.variables)
+      .enumerate()
+      .find(|(_, (value, variable))| **value >= variable.range)
+    {
+      return Err(XrfError::new_invalid_error(format!(
+        "Evaluation function input {index} is {value}, past its range of {}",
+        variable.range
+      )));
+    }
+
+    let mut offset: u64 = 0;
+    let mut weights: Vec<f64> = Vec::with_capacity(self.patterns.len());
+
+    for (index, pattern) in self.patterns.iter().enumerate() {
+      let weight: f64 = pattern
+        .get_index(values, &self.variables)
+        .and_then(|local| self.parameters.get(usize::try_from(offset + local).ok()?))
+        .copied()
+        .ok_or_else(|| {
+          XrfError::new_invalid_error(format!(
+            "Evaluation function pattern {index} selects a weight its parameter block does not hold"
+          ))
+        })?;
+
+      weights.push(weight);
+      offset += pattern.get_complexity(&self.variables).unwrap_or_default();
+    }
+
+    Ok(match self.data_format {
+      EfdDataFormat::Float => f64::from(weights.iter().fold(0.0f32, |sum, weight| sum + *weight as f32)),
+      EfdDataFormat::Double => weights.iter().sum(),
+    })
+  }
+
+  /// Which of `range` buckets a result of this function falls in, which is the value it hands a function reading it.
+  pub fn get_discrete_value(&self, result: f64, range: u32) -> u32 {
+    let last: u32 = range.saturating_sub(1);
+
+    if result <= self.minimum_result {
+      return 0;
+    }
+
+    if result >= self.maximum_result {
+      return last;
+    }
+
+    let bucket: f64 = match self.data_format {
+      EfdDataFormat::Float => {
+        let (result, minimum, maximum) = (result as f32, self.minimum_result as f32, self.maximum_result as f32);
+
+        f64::from(((result - minimum) / (maximum - minimum) * last as f32 + 0.5).floor())
+      }
+      EfdDataFormat::Double => {
+        ((result - self.minimum_result) / (self.maximum_result - self.minimum_result) * f64::from(last) + 0.5).floor()
+      }
+    };
+
+    bucket as u32
   }
 
   /// Weights the patterns together claim, which is the only thing that sizes the trailing block.
