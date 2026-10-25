@@ -6,6 +6,8 @@ use xrf_job::JobProgress;
 
 use crate::jobs::JobKind;
 use crate::jobs::job_conclusion::JobConclusion;
+#[cfg(feature = "typescript-bindings")]
+use crate::jobs::opaque_json::OpaqueJson;
 
 /// One job as the listing describes it, running or recently finished.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -41,19 +43,4 @@ pub struct JobDescription {
   pub duration: Duration,
   /// When the registry took it on, as milliseconds since the epoch.
   pub started_at: u64,
-}
-
-/// The Typescript face of a value this application does not describe: `unknown`.
-///
-/// `serde_json::Value` cannot be mirrored directly - Specta inlines it, and a self-referential inline type has no
-/// finite Typescript expansion. Naming it `unknown` says the same thing the Rust side says, and better than a shape
-/// would: whoever reads the field is the one that knows what is in it, and a caller that guesses has to narrow first.
-#[cfg(feature = "typescript-bindings")]
-pub struct OpaqueJson;
-
-#[cfg(feature = "typescript-bindings")]
-impl specta::Type for OpaqueJson {
-  fn definition(_: &mut specta::Types) -> specta::datatype::DataType {
-    specta::datatype::DataType::Reference(specta_typescript::define("unknown"))
-  }
 }

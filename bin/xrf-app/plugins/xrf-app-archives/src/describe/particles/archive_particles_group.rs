@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
 use serde::Serialize;
-use xrf_particles::{ParticleGroup, ParticleGroupEffect};
+use xrf_particles::ParticleGroup;
+
+use crate::describe::particles::archive_particles_group_effect::ArchiveParticlesGroupEffect;
 
 /// One sequence of the library: the effects it plays and what each one starts alongside itself.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -12,30 +14,6 @@ pub struct ArchiveParticlesGroup {
   /// Seconds the group runs for; zero where it declares no limit.
   pub time_limit: f32,
   pub effects: Vec<ArchiveParticlesGroupEffect>,
-}
-
-/// One slot of a group: the effect it plays, and the effects that effect starts with it.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArchiveParticlesGroupEffect {
-  pub effect: ArchiveParticlesEffectName,
-  pub on_birth: Option<ArchiveParticlesEffectName>,
-  pub on_play: Option<ArchiveParticlesEffectName>,
-  pub on_dead: Option<ArchiveParticlesEffectName>,
-  /// Seconds into the group the slot starts and stops, `time_0` and `time_1`.
-  pub from: f32,
-  pub to: f32,
-  pub flags: u32,
-}
-
-/// An effect a group names, and whether this library is where it is defined.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArchiveParticlesEffectName {
-  pub name: String,
-  pub is_defined: bool,
 }
 
 impl ArchiveParticlesGroup {
@@ -53,34 +31,6 @@ impl ArchiveParticlesGroup {
           .collect(),
       })
       .collect()
-  }
-}
-
-impl ArchiveParticlesGroupEffect {
-  fn of(effect: &ParticleGroupEffect, effects: &HashSet<&str>) -> Self {
-    Self {
-      effect: ArchiveParticlesEffectName::of(&effect.name, effects),
-      on_birth: ArchiveParticlesEffectName::of_optional(&effect.on_birth_child_name, effects),
-      on_play: ArchiveParticlesEffectName::of_optional(&effect.on_play_child_name, effects),
-      on_dead: ArchiveParticlesEffectName::of_optional(&effect.on_dead_child_name, effects),
-      from: effect.time_0,
-      to: effect.time_1,
-      flags: effect.flags,
-    }
-  }
-}
-
-impl ArchiveParticlesEffectName {
-  fn of(name: &str, effects: &HashSet<&str>) -> Self {
-    Self {
-      name: name.to_owned(),
-      is_defined: effects.contains(name),
-    }
-  }
-
-  /// The same, for a slot that is free to name nothing - which most of the three child slots do.
-  fn of_optional(name: &str, effects: &HashSet<&str>) -> Option<Self> {
-    (!name.is_empty()).then(|| Self::of(name, effects))
   }
 }
 

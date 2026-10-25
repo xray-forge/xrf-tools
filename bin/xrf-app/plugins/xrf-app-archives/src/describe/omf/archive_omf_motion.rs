@@ -68,7 +68,7 @@ mod tests {
   use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionMark};
 
   use super::ArchiveOmfMotion;
-  use crate::describe::omf::archive_omf_mark::ArchiveOmfMarkInterval;
+  use crate::describe::omf::archive_omf_mark_interval::ArchiveOmfMarkInterval;
   use crate::describe::omf::archive_omf_target::ArchiveOmfTarget;
 
   fn definition(flags: u32, speed: f32) -> SkeletonMotionDefinition {
