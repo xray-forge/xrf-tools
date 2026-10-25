@@ -2,27 +2,12 @@
 
 import { JobOutcome } from "#/types/xrf-job";
 
-/**
- * One thing wrong with a config tree, placed at the entry point it was found under and the config it is about.
- *
- * Paths are engine identities. Where a person needs the file on disk rather than the logical path, the surface that
- * shows the finding renders it, through [`crate::LtxProject::with_reported_paths`].
- */
+/** One thing wrong with a config tree, placed at the entry point it was found under and the config it is about. */
 export type LtxFinding = {
   kind: LtxFindingKind;
-  /**
-   * The entry point whose resolution the finding was produced under.
-   *
-   * Kept beside `file` rather than instead of it: the entry point is the unit a caller re-runs and the only thing
-   * that explains why two files were read together, but it is not where the section is written.
-   */
+  /** The entry point whose resolution the finding was produced under. */
   entry: string;
-  /**
-   * The config to open, where one is known.
-   *
-   * `None` means nothing recorded which config declares the section, which a patch dialect answers for a section
-   * created by an override of something nothing declares.
-   */
+  /** The config to open, where one is known. */
   file: string | null;
   section: string | null;
   /** The field it is about, or `None` for a finding about the section as a whole. */

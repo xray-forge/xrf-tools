@@ -182,7 +182,7 @@ export type DialogProjectMode = `${EDialogProjectMode}`;
  * One dialog, as the project index lists it.
  *
  * Named for the reduction it is. A descriptor carrying a domain type's own name mirrors that type —
- * [`DialogDescriptor`] mirrors `Dialog` — so a summary of one has to say so.
+ * [`DialogDescriptor`](crate::DialogDescriptor) mirrors `Dialog` — so a summary of one has to say so.
  */
 export type DialogSummaryDescriptor = {
   id: string;
