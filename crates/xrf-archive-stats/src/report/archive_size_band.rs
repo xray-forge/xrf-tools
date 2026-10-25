@@ -32,13 +32,8 @@ impl ArchiveSizeBand {
 
   /// The band a size falls in, as a position in [`Self::FLOORS`].
   pub(crate) fn index_of(size: u64) -> usize {
-    let mut band: usize = 0;
-
-    while band + 1 < Self::FLOORS.len() && size >= Self::FLOORS[band + 1] {
-      band += 1;
-    }
-
-    band
+    // The first floor is zero, so every size passes at least one.
+    Self::FLOORS.partition_point(|&floor| floor <= size) - 1
   }
 
   /// The exclusive upper bound of a band, or `None` for the open-ended top one.

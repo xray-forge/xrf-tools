@@ -7,7 +7,7 @@ use crate::report::archive_measure::ArchiveMeasure;
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveExtensionUsage {
-  /// The spelling as found, lower-cased, or `None` for a name carrying no extension at all.
+  /// The spelling as found, case kept, or `None` for a name carrying no extension at all.
   pub extension: Option<String>,
   /// Whether [`xrf_extension::XrayExtension`] declares this spelling.
   pub is_declared: bool,
