@@ -8,7 +8,8 @@ use xrf_report::Status;
 use xrf_test_utils::utils::create_generated_test_resource_dir;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use crate::commands::dialog::info::dialog_sweep::{DialogSweep, DialogSweepResult};
+use crate::commands::dialog::info::dialog_sweep::DialogSweep;
+use crate::commands::dialog::info::dialog_sweep_result::DialogSweepResult;
 
 const DIALOG: &str = r#"<game_dialogs><dialog id="d"><phrase_list><phrase id="0"><text>key</text></phrase></phrase_list></dialog></game_dialogs>"#;
 

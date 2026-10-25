@@ -9,27 +9,28 @@ use xrf_job::ExecutionPlan;
 use xrf_utils::{format_path, write_file_staged};
 
 use crate::core::command::{CommandError, CommandResult};
-use crate::core::report::{CommandOutcome, ReportDestination};
+use crate::core::report::{CommandBuild, CommandExecution, ReportDestination};
 
 /// One run of one command, as a machine reads it.
+///
+/// `exitCode` is the verdict: 0 success, 3 a check that failed, 1 or 2 a run that could not finish. Nothing restates it.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandEnvelope {
   /// Identity of the binary that produced the run, as recorded when it was compiled.
-  build: BuildInfo,
+  build: CommandBuild,
   /// The command path as it was dispatched, so a consumer never splits a string to learn it.
   command: Vec<String>,
   #[serde(with = "xrf_utils::duration_ms")]
   duration: Duration,
+  /// Why the run could not finish; absent from a run that finished, whatever its verdict, since a check's failure is
+  /// told by the result it deposited.
+  #[serde(skip_serializing_if = "Option::is_none")]
   error: Option<String>,
-  /// The width this run was bounded to, and whether anybody chose it.
-  ///
-  /// Named for the policy rather than for the `--jobs` flag that sets it: a `job` in this workspace is a tracked unit
-  /// of work with progress and cancellation, and a field called `jobs` holding a worker count would be that word
-  /// meaning something else in the one document both concepts could appear in.
-  execution: ExecutionPlan,
+  execution: CommandExecution,
   exit_code: u8,
-  outcome: CommandOutcome,
+  /// What the command deposited; absent where it failed before judging anything.
+  #[serde(skip_serializing_if = "Option::is_none")]
   result: Option<Value>,
 }
 
@@ -37,21 +38,23 @@ impl CommandEnvelope {
   /// The envelope of a run of `command` that ended in `outcome` after `duration`, bounded by `execution`, carrying the
   /// result the command deposited.
   pub fn new(
-    build: BuildInfo,
+    build: &BuildInfo,
     command: Vec<String>,
     outcome: &CommandResult,
     duration: Duration,
-    execution: ExecutionPlan,
+    execution: &ExecutionPlan,
     result: Option<Value>,
   ) -> Self {
     Self {
-      build,
+      build: CommandBuild::from(build),
       command,
       duration,
-      error: outcome.as_ref().err().map(CommandError::message),
-      execution,
+      error: match outcome {
+        Err(error @ CommandError::Execution(_)) => Some(error.message()),
+        Ok(()) | Err(CommandError::CheckFailed { .. }) => None,
+      },
+      execution: CommandExecution::from(execution),
       exit_code: outcome.as_ref().err().map_or(0, CommandError::exit_code),
-      outcome: CommandOutcome::of(outcome),
       result,
     }
   }

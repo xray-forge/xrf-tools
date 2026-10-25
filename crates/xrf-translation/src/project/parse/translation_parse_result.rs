@@ -108,7 +108,7 @@ impl TranslationParseResult {
 
   pub fn to_report(&self) -> Report {
     Report::new(vec![CheckReport::new(
-      CheckId::new("translations").expect("Expected a non-empty translation check ID"),
+      CheckId::of_static("translations"),
       self.get_status(),
       Some(self.duration),
       self.findings.clone(),
@@ -117,11 +117,9 @@ impl TranslationParseResult {
 
   /// Record something about a file that was read through the VFS, named by its logical path.
   pub(crate) fn record_finding(&mut self, rule: &'static str, subject: &str, message: impl Into<String>) {
-    self.findings.push(Finding::new(
-      RuleId::new(rule).expect("Expected a non-empty translation rule ID"),
-      Some(subject.to_owned()),
-      message,
-    ));
+    self
+      .findings
+      .push(Finding::new(RuleId::of_static(rule), Some(subject.to_owned()), message));
   }
 
   /// Record something about a file on the host, whose path is formatted for showing.

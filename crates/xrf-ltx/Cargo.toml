@@ -25,6 +25,7 @@ xrf-output = { workspace = true }
 [dev-dependencies]
 criterion = { workspace = true }
 xrf-test-utils = { workspace = true }
+xrf-utils = { workspace = true, features = ["staging-faults"] }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.

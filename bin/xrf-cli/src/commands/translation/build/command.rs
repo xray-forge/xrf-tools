@@ -55,8 +55,6 @@ impl GenericCommand for BuildCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let paths: Vec<&PathBuf> = XrayRootsArguments::list_paths(matches);
-
     let output_dir: &PathBuf = matches
       .get_one::<PathBuf>("dest")
       .expect("Expected valid output folder path to be provided");
@@ -69,7 +67,7 @@ impl GenericCommand for BuildCommand {
     let output: OutputOptions = context.get_output().clone();
 
     let options: TranslationBuildOptions = TranslationBuildOptions {
-      job: CliJob::new_logging(),
+      job: CliJob::for_output(&output),
       is_sorted,
       output,
       output_dir: output_dir.clone(),
@@ -77,34 +75,35 @@ impl GenericCommand for BuildCommand {
       link_policy: LinkPolicyArgument::of(matches),
     };
 
-    // A single source keeps working through the path-taking reader: a VFS mounts a directory, never a
-    // file, and one source with no mounted roots is the case that convenience exists for.
-    let result: TranslationBuildResult = if paths.len() == 1 && paths[0].is_file() {
-      xrf_output::info!(
-        options.output,
-        "Building translation {}, language - {}, sorted - {}",
-        format_path(&paths[0]),
-        language,
-        is_sorted
-      );
+    let result: TranslationBuildResult = match XrayRootsArguments::single_file_of(matches) {
+      Some(file) => {
+        xrf_output::info!(
+          options.output,
+          "Building translation {}, language - {}, sorted - {}",
+          format_path(file),
+          language,
+          is_sorted
+        );
 
-      TranslationBuilder::build_file(paths[0], &options)?
-    } else {
-      let source: XrayMountMode = XrayRootsArguments::source_of(matches)?;
-      let roots: XrayRoots = XrayRootsArguments::of(matches)?;
+        TranslationBuilder::build_file(file, &options)?
+      }
+      None => {
+        let source: XrayMountMode = XrayRootsArguments::source_of(matches)?;
+        let roots: XrayRoots = XrayRootsArguments::of(matches)?;
 
-      xrf_output::info!(
-        options.output,
-        "Building translations in {} ({source}), language - {}, sorted - {}",
-        roots.describe(),
-        language,
-        is_sorted
-      );
+        xrf_output::info!(
+          options.output,
+          "Building translations in {} ({source}), language - {}, sorted - {}",
+          roots.describe(),
+          language,
+          is_sorted
+        );
 
-      TranslationBuilder::build_roots(&roots, XrayRootsArguments::prefix_of(matches), &options)?
+        TranslationBuilder::build_roots(&roots, XrayRootsArguments::prefix_of(matches), &options)?
+      }
     };
 
-    xrf_output::info!(
+    xrf_output::success!(
       options.output,
       "Built translation files in {}",
       xrf_utils::format_duration(result.duration)

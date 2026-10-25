@@ -63,11 +63,12 @@ impl GenericCommand for FixCommand {
     // it did fix and the findings explaining the rest.
     context.set_result(|| &report)?;
 
-    if report.failed > 0 {
+    if !report.findings.is_empty() {
       return Err(
         XrfError::new_verify_error(format!(
           "Failed to fix {} of {} ogf visual(s)",
-          report.failed, report.checked
+          report.findings.len(),
+          report.checked
         ))
         .into(),
       );
@@ -83,21 +84,21 @@ impl FixCommand {
       xrf_output::info!(
         output,
         "Dry run, nothing written: {} of {} visual(s) would be normalized, {} bytes discarded, {} unchanged, {} failed",
-        report.normalized,
+        report.files.len(),
         report.checked,
-        report.discarded_size,
+        report.discarded_size(),
         report.unchanged,
-        report.failed
+        report.findings.len()
       );
     } else {
       xrf_output::info!(
         output,
         "Normalized {} of {} visual(s), {} bytes discarded, {} unchanged, {} failed",
-        report.normalized,
+        report.files.len(),
         report.checked,
-        report.discarded_size,
+        report.discarded_size(),
         report.unchanged,
-        report.failed
+        report.findings.len()
       );
     }
   }

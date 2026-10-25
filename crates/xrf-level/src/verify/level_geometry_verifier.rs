@@ -509,7 +509,7 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
   ///
   /// The bundle is not optional: a level without one is what a path naming no level at all looks like, and reporting
   /// nothing would let it pass every check by having nothing to check.
-  fn require_file(&self, name: &str, rule: &str, state: &mut LevelGeometryFindings) -> Option<Vec<u8>> {
+  fn require_file(&self, name: &str, rule: &'static str, state: &mut LevelGeometryFindings) -> Option<Vec<u8>> {
     match self.source.read(name) {
       Ok(Some(bytes)) => Some(bytes),
       Ok(None) => {
@@ -530,7 +530,7 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
   }
 
   /// Reads one of the level's files, where the level not having it is ordinary, as either geometry file is.
-  fn read_file(&self, name: &str, rule: &str, state: &mut LevelGeometryFindings) -> Option<Vec<u8>> {
+  fn read_file(&self, name: &str, rule: &'static str, state: &mut LevelGeometryFindings) -> Option<Vec<u8>> {
     match self.source.read(name) {
       Ok(Some(bytes)) => Some(bytes),
       Ok(None) => None,
@@ -542,11 +542,7 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
     }
   }
 
-  fn finding(&self, rule: &str, file: &str, message: String) -> Finding {
-    Finding::new(
-      RuleId::new(rule).expect("Expected a non-empty rule id"),
-      Some(self.source.describe(file)),
-      message,
-    )
+  fn finding(&self, rule: &'static str, file: &str, message: String) -> Finding {
+    Finding::new(RuleId::of_static(rule), Some(self.source.describe(file)), message)
   }
 }

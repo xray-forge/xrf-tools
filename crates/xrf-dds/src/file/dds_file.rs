@@ -252,7 +252,10 @@ mod tests {
   use ddsfile::{AlphaMode, D3D10ResourceDimension, Dds, DxgiFormat, NewDxgiParams};
   use image::RgbaImage;
   use image_dds::{ImageFormat, Quality};
-  use xrf_test_utils::utils::write_generated_test_resource;
+  use xrf_test_utils::utils::{
+    assert_publication_left_previous, create_generated_test_resource_dir, write_generated_test_resource,
+  };
+  use xrf_utils::staging_faults::fail_next_staged_write;
 
   use super::DdsFile;
   use crate::encode::dds_encoding::DdsEncoding;
@@ -290,6 +293,20 @@ mod tests {
     dds.write(&mut bytes).expect("expect the test DDS to serialize");
 
     DdsFile::read_from_bytes(&bytes).expect("expect the test DDS to parse")
+  }
+
+  /// A write that fails part way leaves the texture a caller had, and nothing staged beside it.
+  #[test]
+  fn keeps_the_previous_file_when_publication_fails() {
+    let path: std::path::PathBuf = create_generated_test_resource_dir("dds_file/publication")
+      .expect("expect a test directory")
+      .join("texture.dds");
+
+    std::fs::write(&path, b"previous").expect("expect the previous file to be written");
+    fail_next_staged_write();
+
+    assert!(encoded_file(4, 4, DdsMipmaps::Disabled).write_to_path(&path).is_err());
+    assert_publication_left_previous(&path, b"previous");
   }
 
   #[test]

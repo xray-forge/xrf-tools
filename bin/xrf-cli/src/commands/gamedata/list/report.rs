@@ -3,7 +3,7 @@ use std::time::Duration;
 use serde::Serialize;
 use xrf_vfs::XrayPathCollision;
 
-use crate::commands::gamedata::list::asset_lister::AssetListing;
+use crate::commands::gamedata::list::asset_listing::AssetListing;
 use crate::commands::gamedata::list::gamedata_asset_report::GamedataAssetReport;
 use crate::commands::gamedata::list::gamedata_mount_report::GamedataMountReport;
 use crate::core::reports::SkippedMountReport;
@@ -23,7 +23,6 @@ pub struct GamedataListReport {
   origin: String,
   shadowed: Vec<GamedataAssetReport>,
   skipped: Vec<SkippedMountReport>,
-  total: usize,
 }
 
 impl GamedataListReport {
@@ -37,7 +36,6 @@ impl GamedataListReport {
       origin: listing.origin.clone(),
       shadowed: GamedataAssetReport::list(&listing.shadowed),
       skipped: SkippedMountReport::list(&listing.skipped),
-      total: listing.entries.len(),
     }
   }
 }

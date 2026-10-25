@@ -8,16 +8,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 use xrf_vfs::{XrayLookupScope, XraySearch, XrayVfs};
 
 use crate::ltx::Ltx;
 
 /// Builds a config tree and mounts it, returning the VFS and an all-mounts scope.
 fn mount(name: &str, files: &[(&str, &str)]) -> (Arc<XrayVfs>, XrayLookupScope) {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("ltx_vfs_read/{name}"));
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf = create_generated_test_resource_dir(&format!("ltx_vfs_read/{name}")).expect("config root");
 
   for (path, contents) in files {
     let path: PathBuf = root.join(path.replace('\\', "/"));
@@ -189,12 +187,10 @@ fn records_that_location_as_the_normalized_identity() {
 #[test]
 fn a_loose_config_overrides_one_lower_in_the_mount_order() {
   // What the whole layer is for: an override in front of a base tree is what the reader sees.
-  let overlay: PathBuf = build_absolute_generated_test_resource_path("ltx_vfs_read/override_overlay");
-  let base: PathBuf = build_absolute_generated_test_resource_path("ltx_vfs_read/override_base");
+  let overlay: PathBuf = create_generated_test_resource_dir("ltx_vfs_read/override_overlay").expect("overlay root");
+  let base: PathBuf = create_generated_test_resource_dir("ltx_vfs_read/override_base").expect("base root");
 
   for (root, value) in [(&overlay, "overridden"), (&base, "base")] {
-    let _ = fs::remove_dir_all(root);
-
     fs::create_dir_all(root.join("configs")).expect("config directory");
     fs::write(root.join("configs/system.ltx"), format!("[section]\nvalue = {value}\n")).expect("config file");
   }

@@ -5,6 +5,7 @@ mod pack_command;
 mod packed_file_arguments;
 mod packed_file_destination;
 mod packed_file_format;
+mod packed_file_verify_report;
 mod re_unpack_command;
 mod repack_command;
 #[cfg(test)]
@@ -16,6 +17,7 @@ pub use pack_command::PackCommand;
 pub use packed_file_arguments::PackedFileArguments;
 pub use packed_file_destination::PackedFileDestination;
 pub use packed_file_format::PackedFileFormat;
+pub use packed_file_verify_report::PackedFileVerifyReport;
 pub use re_unpack_command::ReUnpackCommand;
 pub use repack_command::RepackCommand;
 pub use unpack_command::UnpackCommand;

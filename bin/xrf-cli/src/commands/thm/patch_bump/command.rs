@@ -115,7 +115,7 @@ impl PatchBumpCommand {
       return Ok(report);
     }
 
-    xrf_output::info!(
+    xrf_output::success!(
       output,
       "Patched thm {}, written into {}",
       outcome,

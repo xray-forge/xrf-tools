@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
 
 use crate::ltx::{Ltx, Section};
 use crate::syntax::ROOT_SECTION;
@@ -14,9 +14,8 @@ use crate::syntax::ROOT_SECTION;
 /// The root is cleared first because these trees are described in full: a file an earlier run left behind would join a
 /// wildcard include and silently widen the golden.
 fn tree(name: &str, files: &[(&str, &str)]) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("ltx_golden_contract/{name}"));
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf =
+    create_generated_test_resource_dir(&format!("ltx_golden_contract/{name}")).expect("config tree root");
 
   for (path, contents) in files {
     let path: PathBuf = root.join(path.replace('\\', "/"));
@@ -491,10 +490,7 @@ fn a_semicolon_anywhere_in_a_value_starts_a_comment() -> XrfResult {
 
 #[test]
 fn reads_and_writes_windows_1251_bytes_unchanged() -> XrfResult {
-  let root: PathBuf = build_absolute_generated_test_resource_path("ltx_golden_contract/encoding");
-
-  let _ = fs::remove_dir_all(&root);
-  fs::create_dir_all(&root)?;
+  let root: PathBuf = create_generated_test_resource_dir("ltx_golden_contract/encoding")?;
 
   // Cyrillic in Windows-1251, which is what shipped configs carry. Written as bytes because the source file is UTF-8.
   let path: PathBuf = root.join("cyrillic.ltx");

@@ -15,7 +15,7 @@ use std::time::Duration;
 
 use xrf_error::XrfError;
 use xrf_job::{JobHandle, JobOutcome, JobProgress, ProgressSink};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 use crate::pack::tests::fixtures::{CONFIG, borrow_files, create_source, distinct_files, open, pack, read};
@@ -26,9 +26,7 @@ use crate::pack::{ArchivePackOptions, ArchivePackResult, ArchivePacker, PACK_PHA
 /// Unlike the shared fixture, the destination is left exactly as the test found it: what a second run does to a
 /// destination the first one filled is the whole subject here.
 fn create_run(scope: &str, run: &str, files: &[(&str, &[u8])]) -> ArchivePackConfig {
-  let source: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/{run}"));
-
-  let _ = fs::remove_dir_all(&source);
+  let source: PathBuf = create_generated_test_resource_dir(&format!("{scope}/{run}")).expect("source directory");
 
   for (name, contents) in files {
     let path: PathBuf = source.join(name.replace('\\', "/"));

@@ -52,10 +52,8 @@ fn normalizes_a_split_visual_in_place_and_names_what_it_dropped() -> XrfResult {
 
   assert_eq!(fs::read(&file)?, fixtures::well_formed()?);
   assert_eq!(result["checked"], 1);
-  assert_eq!(result["normalized"], 1);
+  assert_eq!(result["files"].as_array().map(Vec::len), Some(1));
   assert_eq!(result["unchanged"], 0);
-  assert_eq!(result["failed"], 0);
-  assert_eq!(result["discardedSize"], fixtures::SPLIT_SIZE);
   assert_eq!(result["isDryRun"], false);
   assert_eq!(result["findings"], Value::Array(Vec::new()));
 
@@ -63,8 +61,6 @@ fn normalizes_a_split_visual_in_place_and_names_what_it_dropped() -> XrfResult {
 
   assert_eq!(entry["cause"], "split-motion-ref");
   assert_eq!(entry["discardedReference"], fixtures::SPLIT_REF);
-  assert_eq!(entry["discardedSize"], fixtures::SPLIT_SIZE);
-  assert_eq!(entry["isWritten"], true);
   assert_eq!(entry["originalSize"], fixtures::split_motion_ref()?.len());
   assert_eq!(entry["normalizedSize"], fixtures::well_formed()?.len());
   assert_eq!(entry["source"], entry["destination"]);
@@ -91,9 +87,7 @@ fn leaves_a_visual_it_already_normalized_alone() -> XrfResult {
 
   assert_eq!(fs::read(&file)?, fixtures::well_formed()?);
   assert_eq!(result["checked"], 1);
-  assert_eq!(result["normalized"], 0);
   assert_eq!(result["unchanged"], 1);
-  assert_eq!(result["discardedSize"], 0);
   assert_eq!(result["files"], Value::Array(Vec::new()));
 
   Ok(())
@@ -113,9 +107,7 @@ fn reports_a_dry_run_without_writing() -> XrfResult {
 
   assert_eq!(fs::read(&file)?, fixtures::split_motion_ref()?);
   assert_eq!(result["isDryRun"], true);
-  assert_eq!(result["normalized"], 1);
-  assert_eq!(result["discardedSize"], fixtures::SPLIT_SIZE);
-  assert_eq!(result["files"][0]["isWritten"], false);
+  assert_eq!(result["files"].as_array().map(Vec::len), Some(1));
   assert_eq!(result["files"][0]["discardedReference"], fixtures::SPLIT_REF);
   assert_eq!(names_in(&root)?, vec![String::from("split.ogf")]);
 
@@ -143,11 +135,9 @@ fn sweeps_a_directory_and_fails_for_what_it_refused() -> XrfResult {
   assert!(error.contains("Failed to fix 1 of 3 ogf visual(s)"), "{error}");
 
   assert_eq!(result["checked"], 3);
-  assert_eq!(result["normalized"], 1);
-  assert_eq!(result["unchanged"], 1);
-  assert_eq!(result["failed"], 1);
-  assert_eq!(result["discardedSize"], fixtures::SPLIT_SIZE);
   assert_eq!(result["files"].as_array().map(Vec::len), Some(1));
+  assert_eq!(result["unchanged"], 1);
+  assert_eq!(result["findings"].as_array().map(Vec::len), Some(1));
 
   let finding: &Value = &result["findings"][0];
 
@@ -268,7 +258,7 @@ fn keeps_the_source_when_the_write_fails() -> XrfResult {
   verdict.expect_err("Expect the run to fail for the visual it could not write");
 
   assert_eq!(fs::read(&file)?, fixtures::split_motion_ref()?);
-  assert_eq!(result["failed"], 1);
+  assert_eq!(result["findings"].as_array().map(Vec::len), Some(1));
   assert!(
     result["findings"][0]["message"]
       .as_str()

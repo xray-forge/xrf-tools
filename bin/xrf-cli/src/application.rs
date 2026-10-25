@@ -92,11 +92,11 @@ pub fn run() -> ExitCode {
   let duration: Duration = started_at.elapsed();
 
   let envelope: CommandEnvelope = CommandEnvelope::new(
-    build,
+    &build,
     vec![String::from(domain), String::from(operation)],
     &outcome,
     duration,
-    plan,
+    &plan,
     context.take_result(),
   );
 

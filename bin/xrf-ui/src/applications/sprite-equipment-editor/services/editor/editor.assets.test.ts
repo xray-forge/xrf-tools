@@ -5,7 +5,7 @@ import { ESpriteEquipmentCommand } from "@xrf/ipc/commands/sprite-equipment";
 import { ESpriteEquipmentBulkRoute } from "@xrf/ipc/commands/sprite-equipment-bulk";
 import { mockInvoke, mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
 import { EquipmentSpriteMetadata } from "@xrf/ipc/types/xrf-app-sprite-equipment";
-import { PackEquipmentResult } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 
 import { AssetService } from "@/core/assets/services";
@@ -61,7 +61,7 @@ function createService(): { service: SpriteEquipmentEditorService; assets: Asset
 
 describe("SpriteEquipmentEditorService object urls", () => {
   it("repacks through the shared service before replacing the editor image", async () => {
-    const packed: PackEquipmentResult = {
+    const packed: EquipmentSpritePackResult = {
       outcome: "completed",
       savedAt: SHEET_PATH,
       savedWidth: 1024,

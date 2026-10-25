@@ -2,12 +2,12 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
-use xrf_archive::{ArchiveProject, ArchiveSharedPayload};
+use xrf_archive::{ArchiveFileDescriptor, ArchiveProject, ArchiveSharedPayload};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
 use super::report::ArchiveFindReport;
-use crate::commands::archive::list::ListCommand;
+use crate::commands::archive::list::ArchiveEntrySelection;
 use crate::commands::archive::list::archive_shared_payload_index::ArchiveSharedPayloadIndex;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
@@ -64,8 +64,8 @@ impl GenericCommand for FindCommand {
     let project: ArchiveProject = ArchiveProject::new(path)?;
     // Lowercased for matching only: the report echoes the query as it was typed.
     let needle: String = query.to_ascii_lowercase();
-    let entries = ListCommand::entries(&project, ListCommand::selection(matches));
-    let entries: Vec<_> = entries
+    let entries: Vec<&ArchiveFileDescriptor> = ArchiveEntrySelection::of(matches)
+      .select(&project)
       .into_iter()
       .filter(|entry| entry.name.to_ascii_lowercase().contains(&needle))
       .collect();

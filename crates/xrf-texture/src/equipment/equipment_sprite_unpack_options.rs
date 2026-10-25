@@ -5,7 +5,7 @@ use xrf_dds::ImageFormat;
 use xrf_ltx::Ltx;
 use xrf_utils::HostLinkPolicy;
 
-pub struct UnpackEquipmentOptions {
+pub struct EquipmentSpriteUnpackOptions {
   /// Where progress goes, and for packing, where cancellation comes from.
   pub job: xrf_job::JobHandle,
   pub ltx: Ltx,

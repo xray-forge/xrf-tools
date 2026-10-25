@@ -3,15 +3,13 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
 
 use crate::{XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchPlan};
 
 /// Builds a loose root holding one asset, since a plan is decided by what is actually there.
 fn root(name: &str, logical: &str) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_roots/{name}"));
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf = create_generated_test_resource_dir(&format!("xray_roots/{name}")).expect("root directory");
 
   let path: PathBuf = root.join(logical.replace('\\', "/"));
 

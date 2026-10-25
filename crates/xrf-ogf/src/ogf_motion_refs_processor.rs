@@ -1,5 +1,6 @@
 use std::io::Write;
 use std::path::Path;
+use std::sync::Arc;
 
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
@@ -18,20 +19,24 @@ pub struct OgfMotionRefsProcessor {}
 impl OgfMotionRefsProcessor {
   /// Rewrite motion refs of an ogf file, verifying the result before letting it survive.
   ///
-  /// The source is read once, and the patched bytes are checked before anything is written, so a refused patch leaves
-  /// the destination as it was and a written one replaces it whole.
+  /// The source is read once, and every pass over it reads that one buffer. The patched bytes are checked before
+  /// anything is written, so a refused patch leaves the destination as it was and a written one replaces it whole.
   pub fn patch_motion_refs_to_path<T: ByteOrder>(
     source: &Path,
     destination: &Path,
     motion_refs: &[String],
     is_dry_run: bool,
   ) -> XrfResult<OgfRefsPatchReport> {
-    let original: Vec<u8> = OgfRawPatch::read_source(source)?;
-    let existing: Vec<String> = OgfFile::read_motion_refs_from_bytes::<T>(original.clone())?;
+    let original: Arc<Vec<u8>> = Arc::new(OgfRawPatch::read_source(source)?);
+    let existing: Vec<String> =
+      OgfFile::read_motion_refs_from_chunk::<T, _>(&mut ChunkReader::from_shared(Arc::clone(&original))?)?;
 
     Self::assert_chunk_copy_is_lossless::<T>(source, &original, &existing)?;
 
-    let patched: Vec<u8> = Self::write_motion_refs_to_buffer::<T>(original.clone(), motion_refs)?;
+    let patched: Arc<Vec<u8>> = Arc::new(Self::write_motion_refs::<T>(
+      ChunkReader::from_shared(Arc::clone(&original))?,
+      motion_refs,
+    )?);
 
     Self::assert_patched_refs_match::<T>(source, &patched, motion_refs)?;
 
@@ -56,8 +61,15 @@ impl OgfMotionRefsProcessor {
 
   /// Rewrite motion refs of the ogf file `bytes` hold, copying every other chunk verbatim.
   pub fn write_motion_refs_to_buffer<T: ByteOrder>(bytes: Vec<u8>, motion_refs: &[String]) -> XrfResult<Vec<u8>> {
-    let (mut chunks, _) =
-      OgfResidue::read_root_chunks::<T, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_vec(bytes)?)?;
+    Self::write_motion_refs::<T>(ChunkReader::from_vec(bytes)?, motion_refs)
+  }
+
+  /// Rewrite motion refs of the ogf file `reader` opens, copying every other chunk verbatim.
+  fn write_motion_refs<T: ByteOrder>(
+    mut reader: ChunkReader<InMemoryChunkDataSource>,
+    motion_refs: &[String],
+  ) -> XrfResult<Vec<u8>> {
+    let (mut chunks, _) = OgfResidue::read_root_chunks::<T, _>(&mut reader)?;
     let mut buffer: Vec<u8> = Vec::new();
     let mut patched_count: u32 = 0;
 
@@ -97,15 +109,24 @@ impl OgfMotionRefsProcessor {
   }
 
   /// Guard that rewriting the refs a file already has reproduces that file, normalized.
-  fn assert_chunk_copy_is_lossless<T: ByteOrder>(source: &Path, original: &[u8], existing: &[String]) -> XrfResult {
-    let reverted: Vec<u8> = Self::write_motion_refs_to_buffer::<T>(original.to_vec(), existing)?;
+  fn assert_chunk_copy_is_lossless<T: ByteOrder>(
+    source: &Path,
+    original: &Arc<Vec<u8>>,
+    existing: &[String],
+  ) -> XrfResult {
+    let reverted: Vec<u8> = Self::write_motion_refs::<T>(ChunkReader::from_shared(Arc::clone(original))?, existing)?;
 
     OgfRawPatch::assert_chunk_copy_is_lossless::<T>(source, original, &reverted, "rewriting its existing motion refs")
   }
 
   /// Guard that the patched bytes read back exactly the requested motion refs.
-  fn assert_patched_refs_match<T: ByteOrder>(source: &Path, patched: &[u8], motion_refs: &[String]) -> XrfResult {
-    let read_back: Vec<String> = OgfFile::read_motion_refs_from_bytes::<T>(patched.to_vec())?;
+  fn assert_patched_refs_match<T: ByteOrder>(
+    source: &Path,
+    patched: &Arc<Vec<u8>>,
+    motion_refs: &[String],
+  ) -> XrfResult {
+    let read_back: Vec<String> =
+      OgfFile::read_motion_refs_from_chunk::<T, _>(&mut ChunkReader::from_shared(Arc::clone(patched))?)?;
 
     if read_back != motion_refs {
       return Err(XrfError::new_verify_error(format!(

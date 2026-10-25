@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_report::Report;
 
-use crate::commands::ogf::verify::ogf_verifier::OgfVerificationCensus;
+use crate::commands::ogf::verify::ogf_verification_census::OgfVerificationCensus;
 
 /// What `ogf verify` found and counted: its checks as every verify command reports them, beside its census.
 #[derive(Debug, Serialize)]

@@ -7,7 +7,7 @@ use xrf_utils::format_path;
 
 use crate::commands::profile::run::profile_run_binary_report::ProfileRunBinaryReport;
 use crate::commands::profile::run::rounds::RoundStatistics;
-use crate::commands::profile::run::sample::SampledRun;
+use crate::commands::profile::run::sampled_run::SampledRun;
 use crate::core::command::CommandResult;
 
 /// One binary as the session measures it, and what its rounds have measured so far.

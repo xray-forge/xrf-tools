@@ -176,6 +176,13 @@ impl OgfFile {
     Ok(Self::read_from_bytes::<T>(bytes)?.list_texture_refs())
   }
 
+  /// Lists texture references from a chunk reader over any data source.
+  pub fn read_texture_refs_from_chunk<T: ByteOrder, D: ChunkDataSource>(
+    reader: &mut ChunkReader<D>,
+  ) -> XrfResult<Vec<String>> {
+    Ok(Self::read_from_chunk::<T, _>(reader)?.list_texture_refs())
+  }
+
   fn list_texture_refs(self) -> Vec<String> {
     self
       .children

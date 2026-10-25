@@ -145,6 +145,9 @@ impl OmfFile {
 
 #[cfg(test)]
 mod tests {
+  use std::fs;
+  use std::path::PathBuf;
+
   use xrf_chunk::{ChunkReader, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_skeleton::{
@@ -152,9 +155,10 @@ mod tests {
   };
   use xrf_test_utils::FileSlice;
   use xrf_test_utils::utils::{
-    build_absolute_generated_test_resource_path, build_relative_test_sample_file_path,
-    open_generated_test_resource_as_slice,
+    assert_publication_left_previous, build_absolute_generated_test_resource_path,
+    build_relative_test_sample_file_path, create_generated_test_resource_dir, open_generated_test_resource_as_slice,
   };
+  use xrf_utils::staging_faults::fail_next_staged_write;
 
   use crate::omf_file::OmfFile;
 
@@ -205,6 +209,20 @@ mod tests {
     assert_eq!(read.parameters.parts, original.parameters.parts);
     assert_eq!(read.parameters.motions, original.parameters.motions);
     assert_eq!(read.motions.motions, original.motions.motions);
+
+    Ok(())
+  }
+
+  /// A write that fails part way leaves the motions file a caller had, and nothing staged beside it.
+  #[test]
+  fn keeps_the_previous_file_when_publication_fails() -> XrfResult {
+    let path: PathBuf = create_generated_test_resource_dir("omf_file/publication")?.join("motions.omf");
+
+    fs::write(&path, b"previous")?;
+    fail_next_staged_write();
+
+    assert!(new_mock(4).write_to_path::<XRayByteOrder, _>(&path).is_err());
+    assert_publication_left_previous(&path, b"previous");
 
     Ok(())
   }

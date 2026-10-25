@@ -9,12 +9,11 @@ use crate::commands::level::info::level_vertex_layout_report::LevelVertexLayoutR
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelGeomReport {
-  vertex_buffers: usize,
   index_buffers: usize,
   slide_windows: usize,
-  vertices: u64,
   indices: u64,
-  /// Distinct vertex declarations, each with what it is spelled as and how much of the level uses it.
+  /// Distinct vertex declarations, each with what it is spelled as and how much of the level uses it; their buffers
+  /// and vertices add up to the file's.
   layouts: Vec<LevelVertexLayoutReport>,
 }
 
@@ -41,8 +40,6 @@ impl LevelGeomReport {
         })
         .collect(),
       slide_windows: geometry.slide_windows.len(),
-      vertex_buffers: geometry.vertex_buffers.len(),
-      vertices: geometry.vertex_buffers.iter().map(|it| it.vertex_count as u64).sum(),
     }
   }
 }

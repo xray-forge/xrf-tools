@@ -14,7 +14,6 @@ use crate::commands::archive::list::archive_shared_payload_index::ArchiveSharedP
 pub struct ArchiveFindReport {
   entries: Vec<ArchiveEntryReport>,
   query: String,
-  total: usize,
 }
 
 impl ArchiveFindReport {
@@ -25,7 +24,6 @@ impl ArchiveFindReport {
     shared: &ArchiveSharedPayloadIndex,
   ) -> Self {
     Self {
-      total: entries.len(),
       entries: ArchiveEntryReport::list(project, entries, shared),
       query: String::from(query),
     }

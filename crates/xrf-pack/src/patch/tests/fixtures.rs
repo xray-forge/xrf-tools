@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_archive::ArchiveProject;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
 
 use crate::pack::config::ArchivePackConfig;
 use crate::pack::{ArchivePackResult, ArchivePacker};
@@ -29,9 +29,7 @@ pub(crate) const BINARY: &[u8] = &[0x44, 0x44, 0x53, 0x20, 0x01, 0x02, 0x03, 0xf
 
 /// Build a loose tree under this test's scratch directory and return its root.
 pub(crate) fn create_tree(scope: &str, name: &str, files: &[(&str, &[u8])]) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/{name}"));
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf = create_generated_test_resource_dir(&format!("{scope}/{name}")).expect("tree root");
 
   for (entry, contents) in files {
     let path: PathBuf = root.join(entry.replace('\\', "/"));
@@ -39,8 +37,6 @@ pub(crate) fn create_tree(scope: &str, name: &str, files: &[(&str, &[u8])]) -> P
     fs::create_dir_all(path.parent().expect("entry parent")).expect("tree directory");
     fs::write(&path, contents).expect("tree file");
   }
-
-  fs::create_dir_all(&root).expect("tree root");
 
   root
 }
@@ -143,9 +139,7 @@ pub(crate) fn create_installation(
   archived: &[(&str, &[u8])],
   loose: &[(&str, &[u8])],
 ) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/{name}"));
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf = create_generated_test_resource_dir(&format!("{scope}/{name}")).expect("installation root");
 
   let packed: PathBuf = create_volumes(scope, &format!("{name}-db"), archived);
 

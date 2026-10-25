@@ -10,10 +10,10 @@ below the CLI's `dds` and `sprite` commands and the desktop app's texture and sp
   `BuildTextureRecipe::of` reads that descriptor as a recipe.
 - `GenerateBumpProcessor::generate` produces a bump pair from a height map and gloss.
 - `CropTextureProcessor::crop` extracts a DDS region, optionally fits it, and writes PNG or DDS output.
-- `PackDescriptionProcessor::pack_xml_descriptions` and `UnpackDescriptionProcessor::unpack_xml_descriptions` handle
+- `DescriptionSpritePacker::pack_xml_descriptions` and `DescriptionSpriteUnpacker::unpack_xml_descriptions` handle
   sprite sheets an XML description lays out; both take `PackDescriptionOptions`.
-- `PackEquipmentProcessor::pack_sprites` and `UnpackEquipmentProcessor::unpack_sprites` handle the inventory icon sheet.
-- `VerifyEquipmentGridProcessor::find_overlaps` checks occupied inventory rectangles in resolved LTX data.
+- `EquipmentSpritePacker::pack_sprites` and `EquipmentSpriteUnpacker::unpack_sprites` handle the inventory icon sheet.
+- `EquipmentGridVerifier::find_overlaps` checks occupied inventory rectangles in resolved LTX data.
 
 `TextureEncodingFormat` and `TextureEncodingQuality` are the five formats and three efforts a texture or a capture is
 offered to be written in, as the desktop app's editors ask; `to_candidate` and `to_quality` turn them into
@@ -89,7 +89,7 @@ the layout before packing:
 
 ```rust
 use xrf_ltx::Ltx;
-use xrf_texture::VerifyEquipmentGridProcessor;
+use xrf_texture::EquipmentGridVerifier;
 
 fn main() -> xrf_error::XrfResult {
   let config = Ltx::read_from_str(
@@ -106,7 +106,7 @@ fn main() -> xrf_error::XrfResult {
      inv_grid_width = 2\n\
      inv_grid_height = 1\n",
   )?;
-  let overlaps = VerifyEquipmentGridProcessor::find_overlaps(&config);
+  let overlaps = EquipmentGridVerifier::find_overlaps(&config);
 
   assert_eq!(overlaps.len(), 1);
   assert_eq!((overlaps[0].first.as_str(), overlaps[0].second.as_str()), ("wpn_long", "wpn_short"));

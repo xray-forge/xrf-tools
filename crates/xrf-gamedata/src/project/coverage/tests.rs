@@ -6,7 +6,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 
 use crate::{
   GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
@@ -27,11 +27,7 @@ $screenshots$   = true  | false | $app_data_root$  | screenshots\\
 ";
 
 fn resource(name: &str) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("gamedata_coverage/{name}"));
-
-  let _ = fs::remove_dir_all(&root);
-
-  root
+  create_generated_test_resource_dir(&format!("gamedata_coverage/{name}")).expect("installation root")
 }
 
 /// An installation holding the one config that makes it a project, declaring one archive alias per `broken` entry over

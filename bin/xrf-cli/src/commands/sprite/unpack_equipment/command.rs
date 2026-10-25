@@ -6,7 +6,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_dds::{DdsFile, DdsMetadata, ImageFormat};
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
-use xrf_texture::{UnpackEquipmentOptions, UnpackEquipmentProcessor};
+use xrf_texture::{EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker};
 use xrf_utils::format_path;
 
 use super::report::SpriteEquipmentUnpackReport;
@@ -94,8 +94,8 @@ impl GenericCommand for UnpackEquipmentCommand {
 
     create_dir_all(output)?;
 
-    UnpackEquipmentProcessor::unpack_sprites(UnpackEquipmentOptions {
-      job: CliJob::new_logging(),
+    EquipmentSpriteUnpacker::unpack_sprites(EquipmentSpriteUnpackOptions {
+      job: CliJob::for_output(&output_options),
       ltx: system_ltx,
       source: source_dds,
       output: output_options.clone(),

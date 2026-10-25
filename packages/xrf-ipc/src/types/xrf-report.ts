@@ -5,8 +5,9 @@ export type CheckId = string;
 /** Immutable report data for one command check. */
 export type CheckReport = {
   /**
-   * Absent when the check did not measure itself; a millisecond count otherwise, like every other
-   * duration on the wire.
+   * `null` when the check did not measure itself; a millisecond count otherwise, like every other
+   * duration on the wire. Never omitted, because the IPC bindings cannot type a conditionally skipped
+   * field.
    */
   duration: number | null;
   findings: Array<Finding>;

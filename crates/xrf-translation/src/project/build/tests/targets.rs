@@ -2,7 +2,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_generated_test_resource};
+use xrf_test_utils::utils::{
+  build_absolute_generated_test_resource_path, create_generated_test_resource_dir, write_generated_test_resource,
+};
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::language::TranslationLanguage;
@@ -64,11 +66,7 @@ fn a_target_never_leaves_the_output_directory() {
 
 /// A sentinel `input/st_test.xml` beside the source, and the output directory a single-file build is pointed at.
 fn single_file_layout(test_root: &str) -> XrfResult<(PathBuf, PathBuf)> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(test_root);
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
+  let root: PathBuf = create_generated_test_resource_dir(test_root)?;
 
   let source: PathBuf = write_generated_test_resource(&format!("{test_root}/input/st_test.json"), SOURCE_JSON)?;
 

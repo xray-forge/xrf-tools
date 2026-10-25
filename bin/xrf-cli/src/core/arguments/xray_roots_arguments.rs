@@ -65,8 +65,19 @@ impl XrayRootsArguments {
     ))
   }
 
-  /// The paths as given, before any is mounted, for a command that reads one file directly.
-  pub fn list_paths(matches: &ArgMatches) -> Vec<&PathBuf> {
+  /// The one source file the command was handed directly, when its only path names a file.
+  ///
+  /// A VFS mounts a directory, never a file, so a command that also reads a single source keeps that convenience
+  /// through this rather than through [`Self::of`]: one file and no roots is the case it exists for.
+  pub fn single_file_of(matches: &ArgMatches) -> Option<&PathBuf> {
+    match Self::list_paths(matches).as_slice() {
+      [path] if path.is_file() => Some(path),
+      _ => None,
+    }
+  }
+
+  /// The paths as given, before any is mounted.
+  fn list_paths(matches: &ArgMatches) -> Vec<&PathBuf> {
     matches
       .get_many::<PathBuf>(Self::PATH)
       .expect("Expected at least one path to be provided")

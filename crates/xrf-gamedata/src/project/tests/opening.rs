@@ -3,7 +3,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 use xrf_vfs::XrayMountMode;
 
 use crate::{GamedataProject, GamedataProjectReadOptions};
@@ -24,10 +24,9 @@ fn options(root: PathBuf) -> GamedataProjectReadOptions {
 
 /// Builds an installation whose `gamedata\configs` holds a minimal `system.ltx`.
 fn install(name: &str) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("gamedata_opening/{name}"));
+  let root: PathBuf =
+    create_generated_test_resource_dir(&format!("gamedata_opening/{name}")).expect("installation root");
   let configs: PathBuf = root.join("gamedata").join("configs");
-
-  let _ = fs::remove_dir_all(&root);
 
   fs::create_dir_all(&configs).expect("configs directory");
   fs::write(root.join("fsgame.ltx"), FSGAME).expect("fsgame written");
@@ -106,9 +105,7 @@ fn opens_when_an_ignore_hides_the_root_config() {
 
 #[test]
 fn refuses_a_directory_that_resolves_no_system_ltx() {
-  let root: PathBuf = build_absolute_generated_test_resource_path("gamedata_opening/empty");
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf = create_generated_test_resource_dir("gamedata_opening/empty").expect("installation root");
 
   fs::create_dir_all(root.join("configs")).expect("configs directory");
 

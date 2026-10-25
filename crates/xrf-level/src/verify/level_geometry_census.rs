@@ -4,7 +4,7 @@ use serde::Serialize;
 use xrf_math::Vector3d;
 use xrf_ogf::{OgfGeometryContainerChunk, OgfModelType};
 
-use crate::{LevelGeomVertexBuffer, LevelVertex, LevelVertexLayout};
+use crate::{LevelGeomVertexBuffer, LevelGeometryLayoutKind, LevelVertex, LevelVertexLayout};
 
 /// A normal the compiler wrote is a unit vector, so one whose length misses by more than this came out of the wrong
 /// element rather than out of rounding.
@@ -22,8 +22,8 @@ pub struct LevelGeometryCensus {
   pub shader_entries: usize,
   /// Visuals of each engine model type, by `MT_*` identifier.
   pub model_types: BTreeMap<String, usize>,
-  /// Vertex declarations the level stores geometry in, by the spelling a reader gives them.
-  pub layouts: BTreeMap<String, usize>,
+  /// Visuals stored in each kind of vertex declaration.
+  pub layouts: BTreeMap<LevelGeometryLayoutKind, usize>,
   /// The box every decoded position fell in, which is the level's own extent.
   pub bounds: Option<(Vector3d, Vector3d)>,
   /// Decoded normals whose length is not near one, which a misread normal element would make of all of them.
@@ -47,9 +47,20 @@ pub struct LevelGeometryCensus {
 
 impl LevelGeometryCensus {
   /// Counts one visual by the kind its header declares.
+  ///
+  /// A level holds thousands of visuals and a dozen kinds, so a kind already counted is found by its static name and
+  /// only the first of each allocates its key.
   pub(crate) fn record_visual(&mut self, model_type: u8) {
     self.visuals += 1;
-    *self.model_types.entry(OgfModelType::label(model_type)).or_default() += 1;
+
+    let known: Option<&mut usize> = OgfModelType::from_raw(model_type)
+      .map(OgfModelType::name)
+      .and_then(|name| self.model_types.get_mut(name));
+
+    match known {
+      Some(count) => *count += 1,
+      None => *self.model_types.entry(OgfModelType::label(model_type)).or_default() += 1,
+    }
   }
 
   /// Counts what one visual draws from the level's ordinary buffers.
@@ -61,7 +72,7 @@ impl LevelGeometryCensus {
 
   /// Counts the declaration a visual's geometry is stored in, and says whether it carries a normal to judge.
   pub(crate) fn record_layout(&mut self, buffer: &LevelGeomVertexBuffer) -> bool {
-    *self.layouts.entry(Self::describe(buffer)).or_default() += 1;
+    *self.layouts.entry(LevelGeometryLayoutKind::of(buffer)).or_default() += 1;
 
     LevelVertexLayout::of(buffer).is_ok_and(|layout| layout.get_normal_offset().is_some())
   }
@@ -92,17 +103,6 @@ impl LevelGeometryCensus {
       .widest_coordinate
       .max(vertex.texture_coordinate.0.abs())
       .max(vertex.texture_coordinate.1.abs());
-  }
-
-  /// A declaration as one word, so two buffers sharing a layout count as one spelling.
-  fn describe(buffer: &LevelGeomVertexBuffer) -> String {
-    match LevelVertexLayout::of(buffer) {
-      Ok(layout) if layout.is_fastpath() => String::from("positions only"),
-      Ok(layout) if layout.is_tree() => String::from("tree"),
-      Ok(layout) if layout.is_lightmapped() => String::from("lightmapped"),
-      Ok(_) => String::from("vertex lit"),
-      Err(_) => String::from("unreadable"),
-    }
   }
 
   fn length(vector: &Vector3d) -> f32 {

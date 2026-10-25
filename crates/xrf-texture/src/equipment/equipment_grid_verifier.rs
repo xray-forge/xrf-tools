@@ -2,25 +2,15 @@ use std::collections::HashMap;
 
 use xrf_ltx::Ltx;
 
-use crate::equipment::InventorySpriteDescriptor;
-
-/// Two sections whose inventory icon rectangles cover a common cell.
-#[derive(Clone, Debug, PartialEq)]
-pub struct EquipmentGridOverlap {
-  pub first: String,
-  pub second: String,
-  /// One cell both rectangles cover, enough to locate the clash on the sheet.
-  pub cell: (u32, u32),
-  pub overlapping_cells: u32,
-}
+use crate::equipment::{EquipmentGridOverlap, InventorySpriteDescriptor};
 
 /// Finds inventory icon rectangles that overlap without being identical.
 ///
 /// Identical rectangles are not reported. Sharing a slot is legitimate and expected for `_nimble`,
 /// `_snag` and the `pri_a15_` quest copies.
-pub struct VerifyEquipmentGridProcessor {}
+pub struct EquipmentGridVerifier {}
 
-impl VerifyEquipmentGridProcessor {
+impl EquipmentGridVerifier {
   pub fn find_overlaps(ltx: &Ltx) -> Vec<EquipmentGridOverlap> {
     let descriptors: Vec<InventorySpriteDescriptor> = InventorySpriteDescriptor::new_list_from_ltx(ltx);
 
@@ -86,7 +76,7 @@ impl VerifyEquipmentGridProcessor {
 mod tests {
   use xrf_ltx::Ltx;
 
-  use super::VerifyEquipmentGridProcessor;
+  use super::EquipmentGridVerifier;
 
   fn ltx_of(entries: &[(&str, u32, u32, u32, u32)]) -> Ltx {
     let mut ltx: Ltx = Ltx::new();
@@ -109,7 +99,7 @@ mod tests {
   fn reports_a_rect_reaching_into_a_neighbour() {
     // The real case this exists for: a 4 wide rect spanning a 2 wide one beside it.
     let ltx: Ltx = ltx_of(&[("wpn_rpg7_missile", 15, 5, 4, 1), ("wpn_colt1911", 16, 5, 2, 1)]);
-    let overlaps = VerifyEquipmentGridProcessor::find_overlaps(&ltx);
+    let overlaps = EquipmentGridVerifier::find_overlaps(&ltx);
 
     assert_eq!(overlaps.len(), 1);
     assert_eq!(overlaps[0].first, "wpn_colt1911");
@@ -122,20 +112,20 @@ mod tests {
   fn ignores_identical_rects_because_variants_share_slots_by_design() {
     let ltx: Ltx = ltx_of(&[("wpn_pm", 18, 0, 2, 1), ("wpn_pm_actor", 18, 0, 2, 1)]);
 
-    assert!(VerifyEquipmentGridProcessor::find_overlaps(&ltx).is_empty());
+    assert!(EquipmentGridVerifier::find_overlaps(&ltx).is_empty());
   }
 
   #[test]
   fn ignores_rects_that_only_touch() {
     let ltx: Ltx = ltx_of(&[("wpn_pm", 18, 0, 2, 1), ("wpn_fort", 20, 0, 1, 1)]);
 
-    assert!(VerifyEquipmentGridProcessor::find_overlaps(&ltx).is_empty());
+    assert!(EquipmentGridVerifier::find_overlaps(&ltx).is_empty());
   }
 
   #[test]
   fn detects_vertical_overlap() {
     let ltx: Ltx = ltx_of(&[("wpn_svd", 20, 0, 6, 2), ("wpn_something", 21, 1, 2, 1)]);
-    let overlaps = VerifyEquipmentGridProcessor::find_overlaps(&ltx);
+    let overlaps = EquipmentGridVerifier::find_overlaps(&ltx);
 
     assert_eq!(overlaps.len(), 1);
     assert_eq!(overlaps[0].cell, (21, 1));

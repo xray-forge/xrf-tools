@@ -46,15 +46,13 @@ fn finding(verdict: CommandResult, result: Option<Value>) -> String {
   }
 
   let result: Value = result.expect("a report to be deposited");
+  let finding: &Value = &result["checks"][0]["findings"][0];
 
   assert_eq!(result["status"], "failed");
-  assert_eq!(result["isCheck"], true);
   assert_eq!(result["externs"], 0);
+  assert_eq!(finding["ruleId"], "externs.declarations");
 
-  result["findings"][0]
-    .as_str()
-    .expect("the finding to be reported")
-    .into()
+  finding["message"].as_str().expect("the finding to be reported").into()
 }
 
 #[test]

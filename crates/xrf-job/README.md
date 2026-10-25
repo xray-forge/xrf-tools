@@ -51,8 +51,9 @@ leaving a level are reported at once; `advance` reports only when the interval h
 there first, so a sink is called from arbitrary threads and blocking in it blocks that worker. `report_if_due` lets a
 phase with nothing to count still report, and `get_progress` reads the current snapshot on demand.
 
-Sinks: `NoopSink` discards, `RecordingSink` keeps every snapshot for tests (`list_reported`, `take_reported`), and
-`LoggingSink` writes each as an `info` log line; give it a coarse interval.
+Sinks: `NoopSink` discards and `RecordingSink` keeps every snapshot for tests (`list_reported`, `take_reported`). A
+consumer renders progress through a sink of its own: the CLI's `TerminalProgressSink` writes a line to stderr at a
+coarse interval, the app forwards snapshots to the window.
 
 Cancellation is cooperative. `cancel` sets a flag; `is_cancelled` reads it before expensive work, and `check_cancelled`
 returns `XrfError::Cancelled` so a loop or a parallel `try_for_each` stops with `?`. Nothing is interrupted or rolled

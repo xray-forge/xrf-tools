@@ -7,7 +7,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use xrf_archive::ArchiveProject;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
 use xrf_vfs::{
   XrayArchiveSource, XrayAsset, XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayDeclaredRoot, XrayLookupScope,
   XrayMountMode, XrayRootProbe, XraySearch, XraySearchPlan, XraySearchStep, XrayShadowedCopy, XrayShadowingEntry,
@@ -38,10 +38,10 @@ fn search_root(root: &PathBuf) -> XraySearch {
 
 /// Packs a source tree into volumes and mounts the result.
 fn mount(scope: &str, files: &[(&str, &[u8])]) -> XrayArchiveSource {
-  let source: PathBuf = build_absolute_generated_test_resource_path(&format!("archive_asset_source/{scope}/gamedata"));
+  let source: PathBuf =
+    create_generated_test_resource_dir(&format!("archive_asset_source/{scope}/gamedata")).expect("source directory");
   let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("archive_asset_source/{scope}/db"));
 
-  let _ = fs::remove_dir_all(&source);
   let _ = fs::remove_dir_all(&destination);
 
   for (name, contents) in files {
@@ -75,10 +75,8 @@ fn mount_volumes(scope: &str, volumes: &[(&str, &str, &[u8])]) -> XrayArchiveSou
 
   for (volume, name, contents) in volumes {
     let source: PathBuf =
-      build_absolute_generated_test_resource_path(&format!("archive_asset_source/{scope}/{volume}"));
+      create_generated_test_resource_dir(&format!("archive_asset_source/{scope}/{volume}")).expect("source directory");
     let path: PathBuf = source.join(name.replace('\\', "/"));
-
-    let _ = fs::remove_dir_all(&source);
 
     fs::create_dir_all(path.parent().expect("entry parent")).expect("source directory");
     fs::write(&path, contents).expect("source file");
@@ -203,9 +201,8 @@ fn a_loose_file_wins_over_the_same_name_in_an_archive() {
   // The rule fsgame declares by listing db before gamedata. Mount order carries it.
   let archived: XrayArchiveSource = mount("override", &[("textures\\wpn\\wpn_ak74.dds", TEXTURE)]);
 
-  let loose: PathBuf = build_absolute_generated_test_resource_path("archive_asset_source/override/loose");
-
-  let _ = fs::remove_dir_all(&loose);
+  let loose: PathBuf =
+    create_generated_test_resource_dir("archive_asset_source/override/loose").expect("loose directory");
 
   fs::create_dir_all(loose.join("textures/wpn")).expect("loose directory");
   fs::write(loose.join("textures/wpn/wpn_ak74.dds"), b"loose").expect("loose file");
@@ -365,9 +362,9 @@ fn a_recorded_checksum_is_answered_without_reading_the_payload() {
 fn a_loose_source_records_no_checksum_of_its_own() {
   // The default half of the seam. A directory would have to read the file to produce one, so it declines and leaves
   // the caller to decide whether the payload is worth reading.
-  let root: PathBuf = build_absolute_generated_test_resource_path("archive_asset_source/loose_crc/gamedata");
+  let root: PathBuf =
+    create_generated_test_resource_dir("archive_asset_source/loose_crc/gamedata").expect("source directory");
 
-  let _ = fs::remove_dir_all(&root);
   fs::create_dir_all(root.join("configs")).expect("source directory");
   fs::write(root.join("configs").join("system.ltx"), CONFIG).expect("source file");
 
@@ -386,9 +383,9 @@ fn a_checksum_is_read_through_the_mount_that_won() {
   // mount is a directory, which records none.
   let scope: &str = "crc_follows_the_winner";
   let archived: XrayArchiveSource = mount(scope, &[("configs\\system.ltx", CONFIG)]);
-  let loose: PathBuf = build_absolute_generated_test_resource_path(&format!("archive_asset_source/{scope}/loose"));
+  let loose: PathBuf =
+    create_generated_test_resource_dir(&format!("archive_asset_source/{scope}/loose")).expect("override directory");
 
-  let _ = fs::remove_dir_all(&loose);
   fs::create_dir_all(loose.join("configs")).expect("override directory");
   fs::write(loose.join("configs").join("system.ltx"), PATCHED).expect("override file");
 
@@ -429,9 +426,9 @@ fn a_volume_declares_the_root_its_entries_mount_under() {
 #[test]
 fn a_loose_source_declares_no_root() {
   // A directory mounts where it was mounted and claims nothing, which is why the default is empty rather than a guess.
-  let root: PathBuf = build_absolute_generated_test_resource_path("archive_asset_source/loose_roots/gamedata");
+  let root: PathBuf =
+    create_generated_test_resource_dir("archive_asset_source/loose_roots/gamedata").expect("source directory");
 
-  let _ = fs::remove_dir_all(&root);
   fs::create_dir_all(root.join("configs")).expect("source directory");
   fs::write(root.join("configs").join("system.ltx"), CONFIG).expect("source file");
 

@@ -1,44 +1,13 @@
-use clap::{Arg, ArgAction, Command};
+use clap::Command;
 
-use crate::core::arguments::ReportingArguments;
-use crate::core::command::CommandGroup;
+use super::argument_reference::ArgumentReference;
 
-/// Documentation model extracted from one registered CLI command group.
-pub struct GroupReference {
-  pub slug: &'static str,
-  pub label: &'static str,
-  pub commands: Vec<CommandReference>,
-}
-
+/// Documentation model of one command: its usage line and the arguments its reference page tabulates.
 pub struct CommandReference {
   pub name: String,
   pub about: Option<String>,
   pub usage: String,
   pub arguments: Vec<ArgumentReference>,
-}
-
-pub struct ArgumentReference {
-  pub display: String,
-  pub help: Option<String>,
-  pub is_required: bool,
-  pub default_value: Option<String>,
-  pub possible_values: Vec<String>,
-  pub value_delimiter: Option<char>,
-}
-
-impl GroupReference {
-  pub fn from_group(group: &CommandGroup) -> Self {
-    Self {
-      slug: group.slug,
-      label: group.label,
-      commands: group
-        .commands
-        .iter()
-        // A command is documented as a caller meets it, which includes the reporting flags every command answers to.
-        .map(|command| CommandReference::from_command(group.slug, ReportingArguments::declare(command.init())))
-        .collect(),
-    }
-  }
 }
 
 impl CommandReference {
@@ -66,65 +35,6 @@ impl CommandReference {
     let usage: &str = usage.strip_prefix("Usage: ").unwrap_or(&usage);
 
     format!("xrf-cli {domain} {usage}")
-  }
-}
-
-impl ArgumentReference {
-  pub fn from_argument(argument: &Arg) -> Self {
-    let takes_value: bool = matches!(argument.get_action(), ArgAction::Set | ArgAction::Append);
-
-    let value_name: String = argument
-      .get_value_names()
-      .and_then(|names| names.first().map(|name| name.to_string()))
-      .unwrap_or_else(|| argument.get_id().to_string());
-
-    let is_multiple: bool = takes_value
-      && (matches!(argument.get_action(), ArgAction::Append)
-        || argument.get_num_args().is_some_and(|range| range.max_values() > 1));
-
-    let display: String = if argument.is_positional() {
-      format!("<{value_name}>")
-    } else {
-      let mut flags: Vec<String> = Vec::new();
-
-      if let Some(short) = argument.get_short() {
-        flags.push(format!("-{short}"));
-      }
-
-      if let Some(long) = argument.get_long() {
-        flags.push(format!("--{long}"));
-      }
-
-      match (takes_value, is_multiple) {
-        (true, true) => format!("{} <{value_name}>...", flags.join(", ")),
-        (true, false) => format!("{} <{value_name}>", flags.join(", ")),
-        (false, _) => flags.join(", "),
-      }
-    };
-
-    Self {
-      display,
-      help: argument.get_help().map(|help| help.to_string()),
-      is_required: argument.is_required_set(),
-      // Flag actions carry implicit "true"/"false" defaults that would only add table noise.
-      default_value: takes_value
-        .then(|| {
-          argument
-            .get_default_values()
-            .iter()
-            .map(|value| value.to_string_lossy().to_string())
-            .collect::<Vec<String>>()
-        })
-        .filter(|values| !values.is_empty())
-        .map(|values| values.join(",")),
-      possible_values: argument
-        .get_possible_values()
-        .iter()
-        .filter(|value| !value.is_hide_set())
-        .map(|value| value.get_name().to_string())
-        .collect(),
-      value_delimiter: argument.get_value_delimiter(),
-    }
   }
 }
 

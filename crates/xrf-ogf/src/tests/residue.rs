@@ -1,4 +1,4 @@
-use xrf_chunk::XRayByteOrder;
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::{build_relative_test_sample_file_path, write_generated_test_resource};
 
@@ -171,7 +171,12 @@ fn surveys_report_residue_rather_than_tolerating_it() -> XrfResult {
     &build_relative_test_sample_file_path(file!(), "survey.ogf"),
     fixtures::split_motion_ref()?,
   )?;
-  let survey = OgfChunksProcessor::collect_chunks_from_bytes::<XRayByteOrder>(std::fs::read(path)?)?;
+  let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(std::fs::read(path)?)?;
+
+  // Surveyed after the visual was read through the same reader, as `ogf info` does to read the file once.
+  OgfFile::read_from_chunk::<XRayByteOrder, _>(&mut reader)?;
+
+  let survey = OgfChunksProcessor::collect_chunks::<XRayByteOrder, _>(&mut reader)?;
 
   assert_eq!(
     survey.entries.iter().map(|it| it.id).collect::<Vec<u32>>(),

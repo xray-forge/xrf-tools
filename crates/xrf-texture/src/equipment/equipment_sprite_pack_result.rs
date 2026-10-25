@@ -7,7 +7,7 @@ use xrf_job::JobOutcome;
 #[derive(Debug, Default, Serialize)]
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
-pub struct PackEquipmentResult {
+pub struct EquipmentSpritePackResult {
   /// Whether the run drew every section or was stopped between them.
   ///
   /// The sheet is one image written once at the end, so a stopped run leaves nothing behind: the counts describe what

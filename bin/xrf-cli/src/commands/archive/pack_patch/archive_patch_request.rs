@@ -8,14 +8,14 @@ use xrf_utils::format_path;
 
 use crate::commands::archive::{ArchiveVolumeArguments, ArchiveVolumeRequest};
 
-/// Parsed arguments for `archive pack-patch`.
-pub(crate) struct ArchivePatchArguments {
+/// What `archive pack-patch` was asked to do, read from its arguments with every path made absolute.
+pub(crate) struct ArchivePatchRequest {
   pub(crate) config: ArchivePatchConfig,
   pub(crate) options: ArchivePatchOptions,
   pub(crate) is_dry_run: bool,
 }
 
-impl ArchivePatchArguments {
+impl ArchivePatchRequest {
   /// Parses patch arguments and resolves absolute paths.
   ///
   /// # Errors

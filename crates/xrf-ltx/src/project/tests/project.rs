@@ -7,7 +7,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 use xrf_vfs::{
   XrayInputKind, XrayInputRecord, XrayLogicalPath, XrayLookupScope, XrayMountMode, XrayRoots, XraySearch, XrayVfs,
 };
@@ -15,15 +15,7 @@ use xrf_vfs::{
 use crate::project::{LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("project/{name}"));
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
-
-  fs::create_dir_all(&root)?;
-
-  Ok(root)
+  Ok(create_generated_test_resource_dir(&format!("project/{name}"))?)
 }
 
 #[test]

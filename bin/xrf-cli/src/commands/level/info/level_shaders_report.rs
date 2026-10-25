@@ -1,11 +1,11 @@
 use serde::Serialize;
 use xrf_level::{LevelFile, LevelShaderEntry};
 
-/// The shader table, counted by what each entry is rather than listed whole.
+/// The shader table, counted by what each entry is rather than listed whole: every entry is a reference, empty or
+/// malformed, so the three add up to the table.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelShadersReport {
-  total: usize,
   references: usize,
   lightmapped: usize,
   /// Entries the renderer skips because they name nothing.
@@ -38,7 +38,6 @@ impl LevelShadersReport {
         .iter()
         .filter(|it| matches!(it, LevelShaderEntry::Reference(_)))
         .count(),
-      total: entries.len(),
     }
   }
 }

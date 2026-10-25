@@ -34,10 +34,18 @@ impl InMemoryChunkDataSource {
   /// The seam for reading assets out of a mounted VFS, where the read already produced an owned buffer per entry and a
   /// copy would double the allocation of every archived mesh and level read.
   pub fn from_vec(buf: Vec<u8>) -> Self {
+    Self::from_shared(Arc::new(buf))
+  }
+
+  /// Wraps bytes the caller keeps holding, without copying.
+  ///
+  /// For a caller that reads the same bytes several times and also needs them as a slice, such as a patch checking that
+  /// rewriting a file reproduces it: every pass gets a reader over one buffer.
+  pub fn from_shared(buf: Arc<Vec<u8>>) -> Self {
     let end: usize = buf.len();
 
     Self {
-      data: Arc::new(buf),
+      data: buf,
       start: 0,
       end,
       position: 0,
@@ -207,6 +215,18 @@ mod tests {
 
     // The whole point of the shape: slicing and cloning must not copy the bytes.
     assert_eq!(Arc::strong_count(&parent.data), 1 + children.len() + clones.len());
+  }
+
+  #[test]
+  fn reads_shared_bytes_without_taking_them() {
+    let bytes: Arc<Vec<u8>> = Arc::new((0u8..8).collect());
+    let mut source: InMemoryChunkDataSource = InMemoryChunkDataSource::from_shared(Arc::clone(&bytes));
+    let mut buffer: [u8; 8] = [0; 8];
+
+    source.read_exact(&mut buffer).unwrap();
+
+    assert_eq!(buffer.as_slice(), bytes.as_slice());
+    assert_eq!(Arc::strong_count(&bytes), 2);
   }
 
   #[test]

@@ -3,7 +3,7 @@ import {
   EquipmentSpriteMetadata,
   EquipmentSpriteOpen,
 } from "@xrf/ipc/types/xrf-app-sprite-equipment";
-import { EEquipmentSlotClaim, EquipmentSlotOccupant, PackEquipmentResult } from "@xrf/ipc/types/xrf-texture";
+import { EEquipmentSlotClaim, EquipmentSlotOccupant, EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 
 /**
@@ -85,7 +85,9 @@ export function mockEquipmentSpriteMetadata(overrides: Partial<EquipmentSpriteMe
  * @param overrides - What this case varies.
  * @returns The result as it crosses IPC.
  */
-export function mockPackEquipmentResult(overrides: Partial<PackEquipmentResult> = {}): PackEquipmentResult {
+export function mockEquipmentSpritePackResult(
+  overrides: Partial<EquipmentSpritePackResult> = {}
+): EquipmentSpritePackResult {
   return {
     outcome: "completed",
     duration: 1000,

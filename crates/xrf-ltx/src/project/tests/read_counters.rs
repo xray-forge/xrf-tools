@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::dialect::LtxResolution;
@@ -16,13 +16,7 @@ use crate::project::{LtxProject, LtxProjectOptions, LtxReadCountersSnapshot};
 ///
 /// `is_caching_resolutions` is the property half of these cases are about, so it is what the caller chooses.
 fn open_nested_project(name: &str, is_caching_resolutions: bool) -> XrfResult<LtxProject> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("ltx_read_counters/{name}"));
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
-
-  fs::create_dir_all(&root)?;
+  let root: PathBuf = create_generated_test_resource_dir(&format!("ltx_read_counters/{name}"))?;
 
   fs::write(
     root.join("system.ltx"),

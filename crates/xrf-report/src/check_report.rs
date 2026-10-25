@@ -9,8 +9,9 @@ use crate::{CheckId, Finding, Status};
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CheckReport {
-  /// Absent when the check did not measure itself; a millisecond count otherwise, like every other
-  /// duration on the wire.
+  /// `null` when the check did not measure itself; a millisecond count otherwise, like every other
+  /// duration on the wire. Never omitted, because the IPC bindings cannot type a conditionally skipped
+  /// field.
   #[serde(with = "xrf_utils::optional_duration_ms")]
   #[cfg_attr(feature = "typescript-bindings", specta(type = Option<u64>))]
   duration: Option<Duration>,

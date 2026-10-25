@@ -6,20 +6,13 @@ use xrf_archive::{ArchiveFileDescriptor, ArchiveProject, ArchiveSharedPayload};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
+use super::archive_entry_selection::ArchiveEntrySelection;
 use super::archive_shared_payload_index::ArchiveSharedPayloadIndex;
 use super::report::ArchiveListReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct ListCommand;
-
-/// The name-table records to include in a listing.
-#[derive(Clone, Copy)]
-pub(crate) enum ArchiveEntrySelection {
-  All,
-  Files,
-  Directories,
-}
 
 impl GenericCommand for ListCommand {
   fn operation(&self) -> &'static str {
@@ -60,7 +53,7 @@ impl GenericCommand for ListCommand {
     let output: OutputOptions = context.get_output().clone();
 
     let project: ArchiveProject = ArchiveProject::new(path)?;
-    let entries: Vec<&ArchiveFileDescriptor> = Self::entries(&project, Self::selection(matches));
+    let entries: Vec<&ArchiveFileDescriptor> = ArchiveEntrySelection::of(matches).select(&project);
 
     // Derived over the whole table once, whatever the selection: a filtered listing still says what each of its
     // entries shares with entries it left out.
@@ -95,33 +88,6 @@ impl GenericCommand for ListCommand {
     context.set_result(|| ArchiveListReport::new(&project, &entries, &shared))?;
 
     Ok(())
-  }
-}
-
-impl ListCommand {
-  pub(crate) fn selection(matches: &ArgMatches) -> ArchiveEntrySelection {
-    if matches.get_flag("files") {
-      ArchiveEntrySelection::Files
-    } else if matches.get_flag("directories") {
-      ArchiveEntrySelection::Directories
-    } else {
-      ArchiveEntrySelection::All
-    }
-  }
-
-  pub(crate) fn entries(project: &ArchiveProject, selection: ArchiveEntrySelection) -> Vec<&ArchiveFileDescriptor> {
-    let mut entries: Vec<&ArchiveFileDescriptor> = project
-      .files
-      .values()
-      .filter(|entry| match selection {
-        ArchiveEntrySelection::All => true,
-        ArchiveEntrySelection::Files => !entry.is_directory,
-        ArchiveEntrySelection::Directories => entry.is_directory,
-      })
-      .collect();
-
-    entries.sort_unstable_by(|left, right| left.name.cmp(&right.name));
-    entries
   }
 }
 

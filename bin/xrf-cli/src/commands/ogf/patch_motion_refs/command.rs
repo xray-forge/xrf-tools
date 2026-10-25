@@ -39,7 +39,6 @@ impl GenericCommand for PatchMotionRefsCommand {
       .arg(
         Arg::new("refs")
           .help("Motion refs to store in the ogf file")
-          .short('r')
           .long("refs")
           .required(true)
           .num_args(1..)
@@ -111,7 +110,7 @@ impl PatchMotionRefsCommand {
       return Ok(report);
     }
 
-    xrf_output::info!(output, "Ogf motion refs written into {}", format_path(destination));
+    xrf_output::success!(output, "Ogf motion refs written into {}", format_path(destination));
 
     Ok(report)
   }

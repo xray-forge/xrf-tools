@@ -68,11 +68,11 @@ impl GenericCommand for ConvertCommand {
     let source: &PathBuf = matches.get_one("path").expect("Expected valid source path");
     let destination: &PathBuf = matches.get_one("dest").expect("Expected valid destination path");
     let candidate: DdsEncodeCandidate = Self::get_candidate(matches)?;
-    let quality: Quality = DdsEncodeArguments::quality_of(matches)?;
+    let quality: Quality = DdsEncodeArguments::quality_of(matches);
     let output: OutputOptions = context.get_output().clone();
 
     let base: RgbaImage = DdsFile::read_from_path(source)?.decode_rgba(0)?;
-    let chain: DdsMipChain = DdsMipChain::build(&base, Self::get_mipmaps(matches)?)?;
+    let chain: DdsMipChain = DdsMipChain::build(&base, Self::get_mipmaps(matches))?;
 
     let written: DdsEncodeAttempt = DdsEncodeAttempt::measure(&chain, candidate, quality)?;
 
@@ -115,11 +115,11 @@ impl ConvertCommand {
     )
   }
 
-  fn get_mipmaps(matches: &ArgMatches) -> XrfResult<DdsMipmaps> {
+  fn get_mipmaps(matches: &ArgMatches) -> DdsMipmaps {
     if matches.get_flag("no-mipmaps") {
-      return Ok(DdsMipmaps::Disabled);
+      return DdsMipmaps::Disabled;
     }
 
-    Ok(DdsMipmaps::Filtered(DdsEncodeArguments::mip_filter_of(matches)?))
+    DdsMipmaps::Filtered(DdsEncodeArguments::mip_filter_of(matches))
   }
 }

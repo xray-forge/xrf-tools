@@ -15,7 +15,6 @@ pub struct DialogListReport {
   dialogs: Vec<DialogListEntry>,
   /// What opening the tree had to say about it, and offered dialogs no file declares.
   findings: Vec<DialogFinding>,
-  total: usize,
 }
 
 impl DialogListReport {
@@ -28,7 +27,6 @@ impl DialogListReport {
     Self {
       language,
       profile,
-      total: dialogs.len(),
       dialogs,
       findings,
     }

@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::str::FromStr;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
@@ -48,8 +47,6 @@ impl GenericCommand for VerifyCommand {
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
-    let paths: Vec<&PathBuf> = XrayRootsArguments::list_paths(matches);
-
     let language: &String = matches
       .get_one::<String>("language")
       .expect("Expected valid language for translation");
@@ -59,7 +56,7 @@ impl GenericCommand for VerifyCommand {
     let output: OutputOptions = context.get_output().clone();
 
     let options: TranslationVerifyOptions = TranslationVerifyOptions {
-      job: CliJob::new_logging(),
+      job: CliJob::for_output(&output),
       is_strict,
       output,
       language: TranslationLanguage::from_str(language).map_err(XrfError::new_unknown_language_error)?,
@@ -67,29 +64,30 @@ impl GenericCommand for VerifyCommand {
       is_detailed: true,
     };
 
-    // A single file keeps working through the path-taking reader: a VFS mounts a directory, never a
-    // file, and one source with no mounted roots is the case that convenience exists for.
-    let verify_result: XrfResult<TranslationVerifyResult> = if paths.len() == 1 && paths[0].is_file() {
-      xrf_output::info!(
-        options.output,
-        "Verifying translation file {}, language - {}",
-        format_path(&paths[0]),
-        language
-      );
+    let verify_result: XrfResult<TranslationVerifyResult> = match XrayRootsArguments::single_file_of(matches) {
+      Some(file) => {
+        xrf_output::info!(
+          options.output,
+          "Verifying translation file {}, language - {}",
+          format_path(file),
+          language
+        );
 
-      TranslationVerifier::verify_file(paths[0], &options)
-    } else {
-      let source: XrayMountMode = XrayRootsArguments::source_of(matches)?;
-      let roots: XrayRoots = XrayRootsArguments::of(matches)?;
+        TranslationVerifier::verify_file(file, &options)
+      }
+      None => {
+        let source: XrayMountMode = XrayRootsArguments::source_of(matches)?;
+        let roots: XrayRoots = XrayRootsArguments::of(matches)?;
 
-      xrf_output::info!(
-        options.output,
-        "Verifying translations in {} ({source}), language - {}",
-        roots.describe(),
-        language
-      );
+        xrf_output::info!(
+          options.output,
+          "Verifying translations in {} ({source}), language - {}",
+          roots.describe(),
+          language
+        );
 
-      TranslationVerifier::verify_roots(&roots, XrayRootsArguments::prefix_of(matches), &options)
+        TranslationVerifier::verify_roots(&roots, XrayRootsArguments::prefix_of(matches), &options)
+      }
     };
 
     let result: TranslationVerifyResult = match verify_result {

@@ -6,7 +6,9 @@ use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
 use crate::commands::ogf::verify::ogf_texture_resolver::OgfTextureResolver;
-use crate::commands::ogf::verify::ogf_verifier::{OgfVerificationCensus, OgfVerificationResult, OgfVerifier};
+use crate::commands::ogf::verify::ogf_verification_census::OgfVerificationCensus;
+use crate::commands::ogf::verify::ogf_verification_result::OgfVerificationResult;
+use crate::commands::ogf::verify::ogf_verifier::OgfVerifier;
 use crate::commands::ogf::verify::report::OgfVerifyReport;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::report::ReportVerdict;

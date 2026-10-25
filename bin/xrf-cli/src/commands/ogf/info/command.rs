@@ -2,6 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command, value_parser};
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_error::XrfError;
 use xrf_ogf::{OgfChunksProcessor, OgfFile, OgfHeaderChunk};
 use xrf_output::OutputOptions;
@@ -39,11 +40,12 @@ impl GenericCommand for InfoCommand {
 
     xrf_output::info!(output, "Read ogf file {}", format_path(path));
 
-    // Read once: the visual and the survey of the chunks it does not understand are two views of the same bytes.
+    // Read once: the visual and the survey of the chunks it does not understand are two passes of one reader.
     let bytes: Vec<u8> = fs::read(path).map_err(|error| {
       XrfError::new_not_found_error(format!("OGF file was not read: {}, error: {error}", format_path(path)))
     })?;
-    let ogf_file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(bytes)?;
+    let ogf_file: OgfFile = OgfFile::read_from_chunk::<XRayByteOrder, _>(&mut reader)?;
     let header: &OgfHeaderChunk = &ogf_file.header;
 
     xrf_output::info!(
@@ -132,7 +134,7 @@ impl GenericCommand for InfoCommand {
     // Kept for the report: which chunks went unparsed is how an unsupported visual is told apart
     // from an empty one, and a survey that could not run says nothing rather than "none".
     let unknown_chunks: Option<Vec<u32>> =
-      match OgfChunksProcessor::find_unknown_chunk_ids_from_bytes::<XRayByteOrder>(bytes) {
+      match OgfChunksProcessor::find_unknown_chunk_ids::<XRayByteOrder, _>(&mut reader) {
         Ok(unknown) if !unknown.is_empty() => {
           xrf_output::info!(
             output,

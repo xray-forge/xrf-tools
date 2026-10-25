@@ -21,7 +21,7 @@ use xrf_pack::{
   ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchivePackConfig, ArchivePacker, ArchiveUnpackResult,
   ArchiveUnpacker,
 };
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
 
 /// Entries per archive, held constant so depth is the only thing that varies.
 const ENTRY_COUNT: usize = 512;
@@ -42,11 +42,8 @@ fn one_worker() -> NonZeroUsize {
 /// `.dds` rather than `.ltx`: the packer compresses configs and stores textures, and a decoder running per entry would
 /// drown the filesystem work this measures.
 fn create_source_tree(scope: &str, depth: usize) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("bench/{scope}/source"));
-
-  if root.exists() {
-    fs::remove_dir_all(&root).expect("a source tree can be replaced");
-  }
+  let root: PathBuf =
+    create_generated_test_resource_dir(&format!("bench/{scope}/source")).expect("a source tree can be replaced");
 
   let payload: Vec<u8> = vec![0x41; PAYLOAD_SIZE];
 

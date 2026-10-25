@@ -57,6 +57,15 @@ macro_rules! identifier {
         }
       }
 
+      /// Creates a stable identifier a check or rule names itself by, spelled in its source.
+      ///
+      /// # Panics
+      ///
+      /// Panics when `value` is empty, which only a source spelling it so can make it.
+      pub fn of_static(value: &'static str) -> Self {
+        Self::new(value).expect("a check or rule names itself by a non-empty literal")
+      }
+
       pub fn as_str(&self) -> &str {
         &self.0
       }

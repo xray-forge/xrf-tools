@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use xrf_dds::ImageFormat;
 use xrf_ltx::Ltx;
 
-pub struct PackEquipmentOptions {
+pub struct EquipmentSpritePackOptions {
   /// Where progress goes, and for packing, where cancellation comes from.
   pub job: xrf_job::JobHandle,
   pub ltx: Ltx,
