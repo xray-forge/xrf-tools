@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_report::Status;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::commands::dialog::info::dialog_sweep::DialogSweep;
@@ -19,7 +19,7 @@ fn roots(root: &Path) -> XrayRoots {
 }
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("dialog_info/selection/{name}"))?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("dialog_info/selection/{name}"))?;
 
   Ok(root)
 }

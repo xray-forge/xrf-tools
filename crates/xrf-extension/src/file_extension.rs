@@ -38,7 +38,7 @@ pub(crate) fn has_extension(name: &str, extension: &str) -> bool {
 mod tests {
   use std::path::{Path, PathBuf};
 
-  use xrf_test_utils::utils::build_non_unicode_file_name;
+  use xrf_test_utils::HostFilesystem;
 
   use super::{get_file_extension, get_path_extension, has_extension};
 
@@ -103,7 +103,7 @@ mod tests {
   fn reads_a_path_extension_through_a_parent_directory_that_is_not_valid_text() {
     // Converting the whole path with `to_str` answers `None` here, which reads as no extension; the file name alone
     // still carries one.
-    let directory: PathBuf = PathBuf::from(build_non_unicode_file_name());
+    let directory: PathBuf = PathBuf::from(HostFilesystem::non_unicode_file_name());
     let path: PathBuf = directory.join("ak74.dds");
 
     assert!(path.to_str().is_none(), "the whole path has to be unreadable as text");
@@ -113,7 +113,7 @@ mod tests {
   #[test]
   fn a_file_name_that_is_not_valid_text_carries_no_extension() {
     // An extension is compared as text, so a name that is not text has none to name. A refusal, not a panic.
-    let mut name: std::ffi::OsString = build_non_unicode_file_name();
+    let mut name: std::ffi::OsString = HostFilesystem::non_unicode_file_name();
 
     name.push(".dds");
 

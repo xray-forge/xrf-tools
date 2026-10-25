@@ -105,7 +105,7 @@ mod tests {
   use xrf_gamedata::GamedataVerificationType;
   use xrf_job::{JobHandle, JobOutcome, JobProgress, ProgressSink};
   use xrf_report::Status;
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use crate::GamedataVerifySummary;
   use crate::request::GamedataVerifyRequest;
@@ -169,7 +169,7 @@ mod tests {
 
   #[test]
   fn a_cancel_after_the_last_check_keeps_the_completed_result() {
-    let root = build_absolute_generated_test_resource_path("gamedata_job/late_cancel");
+    let root = GeneratedResources::path("gamedata_job/late_cancel");
     fs::create_dir_all(root.join("configs")).expect("configs directory");
     fs::write(root.join("configs/system.ltx"), "[system]\nversion = 1\n").expect("system config");
     let sink = Arc::new(CancelAtPhase {

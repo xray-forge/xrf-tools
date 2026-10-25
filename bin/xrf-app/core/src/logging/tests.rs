@@ -1,13 +1,13 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::logging::log_file::LogFile;
 
 #[test]
 fn keeps_the_last_runs_log_beside_a_fresh_one() {
-  let directory: PathBuf = build_absolute_generated_test_resource_path("log_file/keeps_the_last_runs_log");
+  let directory: PathBuf = GeneratedResources::path("log_file/keeps_the_last_runs_log");
 
   let _ = fs::remove_dir_all(&directory);
 

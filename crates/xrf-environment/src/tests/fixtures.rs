@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use xrf_dltx::DltxDialect;
 use xrf_engine_target::XrayEngine;
 use xrf_ltx::{LtxProject, LtxProjectOptions};
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::{EnvironmentCatalog, EnvironmentFinding, EnvironmentReadOptions, EnvironmentReader, EnvironmentRule};
 
@@ -23,7 +23,7 @@ impl EnvironmentFixture {
   pub fn new() -> Self {
     let unique: u64 = NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed);
     // A panicking test never reaches a cleanup of its own, so a fixture must not open on what one left.
-    let root: PathBuf = create_generated_test_resource_dir(&format!("environment/fixture-{unique}")).unwrap();
+    let root: PathBuf = GeneratedResources::create_dir(&format!("environment/fixture-{unique}")).unwrap();
 
     Self { is_dltx: false, root }
       .with("environment\\suns.ltx", SUN)

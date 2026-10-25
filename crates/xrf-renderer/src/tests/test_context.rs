@@ -1,4 +1,4 @@
-use xrf_test_utils::gpu::skip_without_gpu;
+use xrf_test_utils::GpuRequirement;
 
 use crate::context::gpu_context::GpuContext;
 use crate::contract::render_backend::RenderBackend;
@@ -17,7 +17,7 @@ pub(crate) fn create_test_context(what: &str) -> Option<GpuContext> {
     }
   }
 
-  skip_without_gpu(format_args!("no GPU {what} ({})", problems.join("; ")));
+  GpuRequirement::skip_without_device(format_args!("no GPU {what} ({})", problems.join("; ")));
 
   None
 }

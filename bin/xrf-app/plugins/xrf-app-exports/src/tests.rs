@@ -10,7 +10,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionScope, SessionScopes};
 use xrf_export::ExportsProject;
 use xrf_job::ExecutionRequest;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::ExportsProjects;
 use crate::commands::open_project::exports_open_project;
@@ -46,7 +46,7 @@ fn open(application: &App<MockRuntime>, tool: &SessionScope, root: &Path) -> (Se
 fn a_project_opens_with_every_extern_it_declares() {
   let application: App<MockRuntime> = application();
   let tool: SessionScope = SessionScope::new("main", "exports-explorer");
-  let root: PathBuf = build_absolute_generated_test_resource_path("exports/open/declared");
+  let root: PathBuf = GeneratedResources::path("exports/open/declared");
   let source: PathBuf = root.join("src/engine/tasks.ts");
 
   let _ = fs::remove_dir_all(&root);
@@ -79,7 +79,7 @@ fn a_project_opens_with_every_extern_it_declares() {
 fn a_missing_project_opens_nothing_and_leaves_no_binding() {
   let application: App<MockRuntime> = application();
   let tool: SessionScope = SessionScope::new("main", "exports-explorer");
-  let root: PathBuf = build_absolute_generated_test_resource_path("exports/open/missing");
+  let root: PathBuf = GeneratedResources::path("exports/open/missing");
 
   let _ = fs::remove_dir_all(&root);
 

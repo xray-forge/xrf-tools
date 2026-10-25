@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::{
   XrayAsset, XrayCachePolicy, XrayChangeKind, XrayChangeSet, XrayMountMode, XrayRoots, XraySearch, XrayVfs, XrayVfsHost,
@@ -16,7 +16,7 @@ use crate::{
 
 /// An installation whose `fsgame.ltx` declares archives and loose files, holding the files it is given.
 fn install(name: &str, files: &[&str]) -> PathBuf {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("xray_vfs_host/{name}")).expect("install root");
+  let root: PathBuf = GeneratedResources::create_dir(&format!("xray_vfs_host/{name}")).expect("install root");
 
   fs::write(
     root.join("fsgame.ltx"),

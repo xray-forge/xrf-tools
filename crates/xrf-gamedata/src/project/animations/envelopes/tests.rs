@@ -7,7 +7,7 @@ use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
 use xrf_anm::{AnmChannel, AnmFile};
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_ppe::PpeFile;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::{
   GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
@@ -83,7 +83,7 @@ fn write_effect(effect: &PpeFile) -> Vec<u8> {
 }
 
 fn open_project(name: &str, files: &[(&str, Vec<u8>)]) -> (PathBuf, GamedataProject) {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("animations/{name}")).unwrap();
+  let root: PathBuf = GeneratedResources::create_dir(&format!("animations/{name}")).unwrap();
 
   fs::create_dir_all(root.join("configs")).unwrap();
   fs::create_dir_all(root.join("anims")).unwrap();

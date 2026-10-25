@@ -153,7 +153,7 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use crate::constants::{COMMANDS_DIRECTORY, TYPES_DIRECTORY};
   use crate::surface::Surface;
@@ -161,7 +161,7 @@ mod tests {
 
   /// The surface of a bindings tree whose one type module holds `source`.
   fn read(name: &str, source: &str) -> Surface {
-    let root: PathBuf = build_absolute_generated_test_resource_path("bindings-surface").join(name);
+    let root: PathBuf = GeneratedResources::path("bindings-surface").join(name);
 
     for directory in [TYPES_DIRECTORY, COMMANDS_DIRECTORY] {
       fs::create_dir_all(root.join(directory)).expect("directory to be created");

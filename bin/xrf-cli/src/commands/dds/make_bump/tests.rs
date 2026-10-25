@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use serde_json::Value;
 use xrf_dds::{DdsFile, Rgba, RgbaImage};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::commands::dds::make_bump::command::MakeBumpCommand;
 use crate::core::command::CommandResult;
@@ -12,7 +12,7 @@ use crate::core::command::command_testing::run_command_for_result;
 
 /// A height map whose relief climbs with y, written as a png the way an author would hand one over.
 fn height(case: &str) -> CommandResult<PathBuf> {
-  let path: PathBuf = build_absolute_generated_test_resource_path(&format!("dds_make_bump/{case}/height.png"));
+  let path: PathBuf = GeneratedResources::path(&format!("dds_make_bump/{case}/height.png"));
 
   std::fs::create_dir_all(path.parent().expect("case directory"))?;
 

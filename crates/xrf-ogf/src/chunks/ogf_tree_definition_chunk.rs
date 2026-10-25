@@ -48,11 +48,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::{Matrix4x4, Vector3d};
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::chunks::ogf_tree_color::OgfTreeColor;
   use crate::chunks::ogf_tree_definition_chunk::OgfTreeDefinitionChunk;
@@ -93,12 +89,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 64 + 20 + 20);
 
     writer.flush_chunk_into::<XRayByteOrder>(
-      &mut overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(file!(), &filename))?,
+      &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       OgfTreeDefinitionChunk::CHUNK_ID,
     )?;
 
-    let file: FileSlice =
-      open_generated_test_resource_as_slice(&build_relative_test_sample_file_path(file!(), &filename))?;
+    let file: FileSlice = GeneratedResources::open_slice(&GeneratedResources::sample_name(file!(), &filename))?;
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?
       .read_child_by_index(0)

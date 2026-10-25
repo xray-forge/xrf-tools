@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use xrf_shaders::fixtures::{ShaderBlenderFixture, ShaderLibraryFixture};
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::fixtures::thm_fixture::ThmFixture;
 use crate::resolve::xray_surface_resolver::XraySurfaceResolver;
@@ -20,7 +20,7 @@ impl FixtureTree {
   /// When the generated test resources directory cannot be created, which no test can proceed past.
   pub fn new(case: &str) -> Self {
     let root: PathBuf =
-      create_generated_test_resource_dir(&format!("xrf_material/{case}")).expect("fixture tree root is creatable");
+      GeneratedResources::create_dir(&format!("xrf_material/{case}")).expect("fixture tree root is creatable");
 
     Self { root }
   }

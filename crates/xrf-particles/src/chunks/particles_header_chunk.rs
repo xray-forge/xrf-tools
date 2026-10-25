@@ -96,26 +96,20 @@ impl FileImportExport for ParticlesHeaderChunk {
 #[cfg(test)]
 mod tests {
   use std::fs::File;
-  use std::io::{Seek, SeekFrom, Write};
+  use std::io::{Seek, SeekFrom, Write, read_to_string};
   use std::path::Path;
 
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::FileImportExport;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::file::read_file_as_string;
-  use xrf_test_utils::utils::{
-    build_absolute_generated_test_resource_path, build_relative_test_sample_file_directory,
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::chunks::particles_header_chunk::ParticlesHeaderChunk;
 
   #[test]
   fn test_read_write_incorrect() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write_incorrect.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write_incorrect.chunk");
 
     let original: ParticlesHeaderChunk = ParticlesHeaderChunk { version: 2 };
 
@@ -126,11 +120,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 2);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 2);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 2 + 8);
 
@@ -150,7 +144,7 @@ mod tests {
 
   #[test]
   fn test_read_write() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: ParticlesHeaderChunk = ParticlesHeaderChunk { version: 1 };
 
@@ -161,11 +155,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 2);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 2);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 2 + 8);
 
@@ -182,8 +176,7 @@ mod tests {
   fn test_import_export() -> XrfResult {
     let original: ParticlesHeaderChunk = ParticlesHeaderChunk { version: 1 };
 
-    let export_directory: &Path =
-      &build_absolute_generated_test_resource_path(&build_relative_test_sample_file_directory(file!()));
+    let export_directory: &Path = &GeneratedResources::sample_root(file!());
     std::fs::create_dir_all(export_directory)?;
 
     original.export(&export_directory)?;
@@ -199,15 +192,13 @@ mod tests {
   fn test_serialize_deserialize() -> XrfResult {
     let original: ParticlesHeaderChunk = ParticlesHeaderChunk { version: 1 };
 
-    let mut file: File = overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(
-      file!(),
-      "serialize_deserialize.json",
-    ))?;
+    let mut file: File =
+      GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
 
     file.write_all(to_string_pretty(&original)?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
-    let serialized: String = read_file_as_string(&mut file)?;
+    let serialized: String = read_to_string(&mut file)?;
 
     assert_eq!(serialized.to_string(), serialized);
     assert_eq!(original, serde_json::from_str::<ParticlesHeaderChunk>(&serialized)?);

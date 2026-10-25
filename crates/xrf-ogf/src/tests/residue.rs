@@ -1,6 +1,6 @@
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::{build_relative_test_sample_file_path, write_generated_test_resource};
+use xrf_test_utils::GeneratedResources;
 
 use crate::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::ogf_file::OgfFile;
@@ -167,8 +167,8 @@ fn refuses_to_normalize_what_it_cannot_account_for() -> XrfResult {
 #[test]
 fn surveys_report_residue_rather_than_tolerating_it() -> XrfResult {
   // The survey exists to answer whether parsing is complete, so a silent pass here would be the one wrong answer.
-  let path: std::path::PathBuf = write_generated_test_resource(
-    &build_relative_test_sample_file_path(file!(), "survey.ogf"),
+  let path: std::path::PathBuf = GeneratedResources::write(
+    &GeneratedResources::sample_name(file!(), "survey.ogf"),
     fixtures::split_motion_ref()?,
   )?;
   let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(std::fs::read(path)?)?;

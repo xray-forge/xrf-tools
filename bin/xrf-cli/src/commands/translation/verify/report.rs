@@ -53,14 +53,14 @@ mod tests {
   use std::path::PathBuf;
 
   use xrf_error::XrfError;
-  use xrf_test_utils::utils::create_generated_test_resource_dir;
+  use xrf_test_utils::GeneratedResources;
   use xrf_translation::{TranslationLanguage, TranslationVerifier, TranslationVerifyOptions};
 
   use super::TranslationVerifyReport;
 
   #[test]
   fn reports_missing_translations_as_structured_findings() {
-    let root: PathBuf = create_generated_test_resource_dir("translation_verify/report").unwrap();
+    let root: PathBuf = GeneratedResources::create_dir("translation_verify/report").unwrap();
     let translation_path: PathBuf = root.join("dialogs.json");
     let options: TranslationVerifyOptions = TranslationVerifyOptions {
       is_strict: false,

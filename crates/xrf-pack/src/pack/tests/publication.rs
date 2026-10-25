@@ -15,7 +15,7 @@ use std::time::Duration;
 
 use xrf_error::XrfError;
 use xrf_job::{JobHandle, JobOutcome, JobProgress, ProgressSink};
-use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
+use xrf_test_utils::GeneratedResources;
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 use crate::pack::tests::fixtures::{CONFIG, borrow_files, create_source, distinct_files, open, pack, read};
@@ -26,7 +26,7 @@ use crate::pack::{ArchivePackOptions, ArchivePackResult, ArchivePacker, PACK_PHA
 /// Unlike the shared fixture, the destination is left exactly as the test found it: what a second run does to a
 /// destination the first one filled is the whole subject here.
 fn create_run(scope: &str, run: &str, files: &[(&str, &[u8])]) -> ArchivePackConfig {
-  let source: PathBuf = create_generated_test_resource_dir(&format!("{scope}/{run}")).expect("source directory");
+  let source: PathBuf = GeneratedResources::create_dir(&format!("{scope}/{run}")).expect("source directory");
 
   for (name, contents) in files {
     let path: PathBuf = source.join(name.replace('\\', "/"));
@@ -47,7 +47,7 @@ fn create_run(scope: &str, run: &str, files: &[(&str, &[u8])]) -> ArchivePackCon
 
 /// The one destination every run of a scope publishes into, emptied before the scope's first run.
 fn destination_of(scope: &str) -> PathBuf {
-  build_absolute_generated_test_resource_path(&format!("{scope}/db"))
+  GeneratedResources::path(&format!("{scope}/db"))
 }
 
 fn clear_destination(scope: &str) -> PathBuf {
@@ -320,7 +320,7 @@ fn every_published_volume_is_a_direct_child_of_the_destination() {
 fn refuses_a_volume_name_that_would_leave_the_destination_before_writing() {
   let scope: &str = "refuses_a_volume_name_that_would_leave_the_destination_before_writing";
   let source: PathBuf = create_source(scope, &[("configs\\system.ltx", CONFIG)]);
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+  let destination: PathBuf = GeneratedResources::path(&format!("{scope}/db"));
 
   let _ = fs::remove_dir_all(&destination);
 

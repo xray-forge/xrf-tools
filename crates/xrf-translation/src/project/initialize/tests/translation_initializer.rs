@@ -1,7 +1,7 @@
 use std::fs;
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::write_generated_test_resource;
+use xrf_test_utils::GeneratedResources;
 
 use crate::json::read::read_json;
 use crate::language::TranslationLanguage;
@@ -10,7 +10,7 @@ use crate::types::TranslationVariant;
 
 #[test]
 fn initialization_replaces_json_only_after_writing_a_valid_document() -> XrfResult {
-  let path = write_generated_test_resource("initialize/transactional.json", r#"{"st_test":{"eng":"original"}}"#)?;
+  let path = GeneratedResources::write("initialize/transactional.json", r#"{"st_test":{"eng":"original"}}"#)?;
 
   let result = TranslationInitializer::initialize(&path)?;
 
@@ -43,7 +43,7 @@ fn an_already_complete_file_is_left_untouched() -> XrfResult {
     .map(|language| format!("\"{language}\":null"))
     .collect::<Vec<_>>()
     .join(",");
-  let path = write_generated_test_resource("initialize/complete.json", format!("{{\"st_test\":{{{languages}}}}}"))?;
+  let path = GeneratedResources::write("initialize/complete.json", format!("{{\"st_test\":{{{languages}}}}}"))?;
   let before: Vec<u8> = fs::read(&path)?;
 
   let result = TranslationInitializer::initialize(&path)?;

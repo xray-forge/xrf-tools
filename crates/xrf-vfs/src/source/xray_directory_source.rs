@@ -157,14 +157,14 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use xrf_test_utils::utils::create_generated_test_resource_dir;
+  use xrf_test_utils::GeneratedResources;
 
   use crate::XrayAssetSource;
   use crate::source::{XrayDirectorySource, XraySourceKind};
 
   fn source(name: &str, files: &[&str]) -> XrayDirectorySource {
     let root: PathBuf =
-      create_generated_test_resource_dir(&format!("xray_directory_source/{name}")).expect("test tree is creatable");
+      GeneratedResources::create_dir(&format!("xray_directory_source/{name}")).expect("test tree is creatable");
 
     for file in files {
       let path: PathBuf = root.join(file);
@@ -235,7 +235,7 @@ mod tests {
   #[test]
   fn leaves_a_created_file_under_an_ignored_prefix_out() {
     let root: PathBuf =
-      create_generated_test_resource_dir("xray_directory_source/ignored_changes").expect("the tree is creatable");
+      GeneratedResources::create_dir("xray_directory_source/ignored_changes").expect("the tree is creatable");
 
     fs::create_dir_all(root.join("configs")).expect("the tree is creatable");
 

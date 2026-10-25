@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::pack::config::ArchivePackHeaderEntry;
 use crate::patch::config::{ArchivePatchConfig, ArchivePatchConfigJson};
@@ -18,7 +18,7 @@ fn authored() -> ArchivePatchConfig {
 
 /// A scratch path under this test's scope.
 fn scratch(scope: &str, name: &str) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("patch_config/{scope}"));
+  let root: PathBuf = GeneratedResources::path(&format!("patch_config/{scope}"));
 
   std::fs::create_dir_all(&root).expect("scratch directory");
 

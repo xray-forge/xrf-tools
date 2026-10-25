@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch};
 
 use crate::partner::dialog_character::DialogCharacter;
@@ -54,7 +54,7 @@ const INFO_PORTIONS: &str = r#"<game_information_portions>
 
 /// Lay out a gameplay folder and read its partners.
 fn read_partners(name: &str, files: &[(&str, &str)]) -> XrfResult<DialogPartners> {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("partner/{name}"))?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("partner/{name}"))?;
   let gameplay: PathBuf = root.join("configs").join("gameplay");
 
   fs::create_dir_all(&gameplay)?;

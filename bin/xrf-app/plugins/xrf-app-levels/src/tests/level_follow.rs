@@ -16,7 +16,7 @@ use xrf_dltx::DltxDialect;
 use xrf_engine_target::{XrayEngine, XrayEngineResolution};
 use xrf_level::{LevelGeomFile, LevelHeaderChunk, LevelShadersChunk, LevelVisualsChunk};
 use xrf_renderer::{RenderLevelSource, RenderSceneId, RenderViewportId, RenderWorkers, RenderWorld};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 use xrf_world::{WorldEventSink, WorldViewportEvent};
 
@@ -73,7 +73,7 @@ fn geometry_bytes() -> Vec<u8> {
 
 /// A loose tree holding one synthetic level behind an asset state, with the roots and the search an open takes.
 fn level_tree(name: &str) -> (AssetMountState, XrayRoots, XraySearch) {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("level_follow/{name}"));
+  let root: PathBuf = GeneratedResources::path(&format!("level_follow/{name}"));
   let level: PathBuf = root.join("levels").join("l01");
 
   let _ = fs::remove_dir_all(&root);

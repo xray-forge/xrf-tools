@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::{build_relative_test_sample_file_path, write_generated_test_resource};
+use xrf_test_utils::GeneratedResources;
 
 use crate::ogf_file::OgfFile;
 use crate::ogf_motion_refs_processor::OgfMotionRefsProcessor;
@@ -15,8 +15,8 @@ use crate::residue::OgfNormalization;
 use crate::tests::fixtures;
 
 fn write_fixture(name: &str, bytes: Vec<u8>) -> XrfResult<PathBuf> {
-  Ok(write_generated_test_resource(
-    &build_relative_test_sample_file_path(file!(), name),
+  Ok(GeneratedResources::write(
+    &GeneratedResources::sample_name(file!(), name),
     bytes,
   )?)
 }

@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::dialect::LtxStandardDialect;
 use crate::ltx::Ltx;
@@ -39,7 +39,7 @@ fn write_including_tree(root: &Path) -> XrfResult<PathBuf> {
 
 #[test]
 fn a_filesystem_root_finds_what_it_includes_from_anywhere() -> XrfResult {
-  let root: PathBuf = build_absolute_generated_test_resource_path("include_directories/from_anywhere");
+  let root: PathBuf = GeneratedResources::path("include_directories/from_anywhere");
   let entry: PathBuf = write_including_tree(&root)?;
 
   // Forward-slashed, which is how the CLI hands a path over, and never the working directory of this test process.
@@ -59,7 +59,7 @@ fn a_filesystem_root_finds_what_it_includes_from_anywhere() -> XrfResult {
 
 #[test]
 fn a_wildcard_include_resolves_in_the_same_directory() -> XrfResult {
-  let root: PathBuf = build_absolute_generated_test_resource_path("include_directories/wildcard");
+  let root: PathBuf = GeneratedResources::path("include_directories/wildcard");
 
   fs::create_dir_all(root.join("items"))?;
   fs::write(root.join("items").join("w_first.ltx"), "[first]\na = 1\n")?;
@@ -82,7 +82,7 @@ fn a_wildcard_include_resolves_in_the_same_directory() -> XrfResult {
 
 #[test]
 fn an_include_two_directories_deep_resolves_against_its_own_parent() -> XrfResult {
-  let root: PathBuf = build_absolute_generated_test_resource_path("include_directories/nested");
+  let root: PathBuf = GeneratedResources::path("include_directories/nested");
 
   fs::create_dir_all(root.join("a").join("b"))?;
   fs::write(root.join("a").join("b").join("leaf.ltx"), "[leaf]\nkey = deep\n")?;
@@ -105,7 +105,7 @@ fn an_include_two_directories_deep_resolves_against_its_own_parent() -> XrfResul
 
 #[test]
 fn a_config_read_by_path_records_its_real_directory() -> XrfResult {
-  let root: PathBuf = build_absolute_generated_test_resource_path("include_directories/recorded");
+  let root: PathBuf = GeneratedResources::path("include_directories/recorded");
   let entry: PathBuf = write_including_tree(&root)?;
   let forward: String = entry.to_string_lossy().replace('\\', "/");
 

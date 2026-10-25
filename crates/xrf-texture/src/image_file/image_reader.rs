@@ -45,7 +45,7 @@ mod tests {
   use std::path::PathBuf;
 
   use image::{DynamicImage, ImageFormat, RgbImage};
-  use xrf_test_utils::utils::write_generated_test_resource;
+  use xrf_test_utils::GeneratedResources;
 
   use super::{decode_image, read_image_as_rgba};
 
@@ -57,7 +57,7 @@ mod tests {
       .write_to(&mut Cursor::new(&mut bytes), format)
       .expect("picture encodes");
 
-    write_generated_test_resource(&format!("xrf-texture/image-reader/{name}"), bytes).expect("picture written")
+    GeneratedResources::write(&format!("xrf-texture/image-reader/{name}"), bytes).expect("picture written")
   }
 
   #[test]

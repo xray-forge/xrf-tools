@@ -37,17 +37,13 @@ mod tests {
 
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use super::OgfLodsChunk;
 
   /// Round trip the given text through a real chunk, the way the reader sees it on disk.
   fn write_then_read(name: &str, lods: &str) -> XrfResult<OgfLodsChunk> {
-    let filename: String = build_relative_test_sample_file_path(file!(), name);
+    let filename: String = GeneratedResources::sample_name(file!(), name);
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     OgfLodsChunk {
@@ -56,12 +52,12 @@ mod tests {
     .write::<XRayByteOrder>(&mut writer)?;
 
     let contents: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(OgfLodsChunk::CHUNK_ID)?;
-    let mut file = overwrite_generated_test_resource_as_file(&filename)?;
+    let mut file = GeneratedResources::overwrite(&filename)?;
 
     file.write_all(&contents)?;
     file.flush()?;
 
-    let slice: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let slice: FileSlice = GeneratedResources::open_slice(&filename)?;
     let mut chunk: ChunkReader = ChunkReader::from_slice(slice)?
       .read_children()?
       .into_iter()

@@ -109,18 +109,14 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::chunks::spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk;
   use crate::data::artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint;
 
   #[test]
   fn test_read_write() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: SpawnArtefactSpawnsChunk = SpawnArtefactSpawnsChunk {
       nodes: vec![
@@ -143,12 +139,12 @@ mod tests {
 
     assert_eq!(writer.bytes_written(), 44);
 
-    let bytes_written: usize = writer
-      .flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename).unwrap(), 0)?;
+    let bytes_written: usize =
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename).unwrap(), 0)?;
 
     assert_eq!(bytes_written, 44);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 44 + 8);
 

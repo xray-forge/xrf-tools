@@ -153,11 +153,7 @@ mod tests {
   use xrf_skeleton::{
     SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
   };
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    assert_publication_left_previous, build_absolute_generated_test_resource_path,
-    build_relative_test_sample_file_path, create_generated_test_resource_dir, open_generated_test_resource_as_slice,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources, RefusedPublication};
   use xrf_utils::StagingFaults;
 
   use crate::omf_file::OmfFile;
@@ -196,12 +192,12 @@ mod tests {
 
   #[test]
   fn test_write_read_file() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "write_read.omf");
+    let filename: String = GeneratedResources::sample_name(file!(), "write_read.omf");
     let original: OmfFile = new_mock(4);
 
-    original.write_to_path::<XRayByteOrder, _>(&build_absolute_generated_test_resource_path(&filename))?;
+    original.write_to_path::<XRayByteOrder, _>(&GeneratedResources::path(&filename))?;
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let chunks: Vec<ChunkReader> = ChunkReader::from_slice(file)?.read_children()?;
     let read: OmfFile = OmfFile::read_from_chunks::<XRayByteOrder, _>(&chunks)?;
 
@@ -216,13 +212,13 @@ mod tests {
   /// A write that fails part way leaves the motions file a caller had, and nothing staged beside it.
   #[test]
   fn keeps_the_previous_file_when_publication_fails() -> XrfResult {
-    let path: PathBuf = create_generated_test_resource_dir("omf_file/publication")?.join("motions.omf");
+    let path: PathBuf = GeneratedResources::create_dir("omf_file/publication")?.join("motions.omf");
 
     fs::write(&path, b"previous")?;
     StagingFaults::fail_next_write();
 
     assert!(new_mock(4).write_to_path::<XRayByteOrder, _>(&path).is_err());
-    assert_publication_left_previous(&path, b"previous");
+    RefusedPublication::assert_left_previous(&path, b"previous");
 
     Ok(())
   }
@@ -322,16 +318,16 @@ mod tests {
 
   #[test]
   fn test_write_read_preserves_a_non_text_label() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "non_text_label.omf");
+    let filename: String = GeneratedResources::sample_name(file!(), "non_text_label.omf");
     let mut original: OmfFile = new_mock(4);
 
     // Windows-1251 round-trips every byte, which is why repacking a scrambled bank is byte identical.
     original.motions.motions[0].label = String::from("\u{2019}<\u{0427}\u{2019}\u{201A}m");
     original.parameters.motions[0].motion = 50_992;
 
-    original.write_to_path::<XRayByteOrder, _>(&build_absolute_generated_test_resource_path(&filename))?;
+    original.write_to_path::<XRayByteOrder, _>(&GeneratedResources::path(&filename))?;
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let chunks: Vec<ChunkReader> = ChunkReader::from_slice(file)?.read_children()?;
     let read: OmfFile = OmfFile::read_from_chunks::<XRayByteOrder, _>(&chunks)?;
 

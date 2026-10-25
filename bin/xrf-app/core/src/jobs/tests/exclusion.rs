@@ -3,6 +3,7 @@ use std::thread;
 
 use uuid::Uuid;
 use xrf_job::JobHandle;
+use xrf_test_utils::GeneratedResources;
 
 use crate::jobs::job_conclusion::JobConclusion;
 use crate::jobs::job_registration::JobRegistration;
@@ -11,7 +12,7 @@ use crate::jobs::{JobRegistry, JobResource, JobStart};
 
 #[test]
 fn texture_save_and_sprite_pack_cannot_write_the_same_file() {
-  let output = xrf_test_utils::utils::build_absolute_generated_test_resource_path("job_leases/shared.dds");
+  let output = GeneratedResources::path("job_leases/shared.dds");
   let registry = Arc::new(JobRegistry::new());
   let (_job, _registration) = registry
     .register(JobStart::new(Uuid::new_v4(), kinds::TEXTURES_SAVE).with_resources(vec![JobResource::file(&output)]))
@@ -30,7 +31,7 @@ fn texture_save_and_sprite_pack_cannot_write_the_same_file() {
 
 #[test]
 fn extraction_cannot_write_inside_an_unpack_destination() {
-  let output = xrf_test_utils::utils::build_absolute_generated_test_resource_path("job_leases/unpack");
+  let output = GeneratedResources::path("job_leases/unpack");
   let registry = Arc::new(JobRegistry::new());
   let (_job, _registration) = registry
     .register(

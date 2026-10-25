@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::write_generated_test_resource;
+use xrf_test_utils::GeneratedResources;
 use xrf_utils::{encode_string_to_bytes, new_windows1251_encoder, new_windows1252_encoder};
 
 use crate::xml::read::read_string_table;
 
 fn write_encoded(relative_path: &str, source: &str, encoding: xrf_utils::XRayEncoding) -> XrfResult<PathBuf> {
-  Ok(write_generated_test_resource(
+  Ok(GeneratedResources::write(
     relative_path,
     encode_string_to_bytes(source, encoding)?,
   )?)
@@ -74,7 +74,7 @@ fn a_gamedata_directory_supplies_the_encoding_when_nothing_else_does() -> XrfRes
 
 #[test]
 fn utf16_is_refused_rather_than_read_as_a_code_page() -> XrfResult {
-  let path: PathBuf = write_generated_test_resource("xml_encoding/utf16.xml", [0xFF, 0xFE, 0x3C, 0x00])?;
+  let path: PathBuf = GeneratedResources::write("xml_encoding/utf16.xml", [0xFF, 0xFE, 0x3C, 0x00])?;
   let error = read_string_table(&path).unwrap_err();
 
   assert!(error.to_string().contains("UTF-16"));

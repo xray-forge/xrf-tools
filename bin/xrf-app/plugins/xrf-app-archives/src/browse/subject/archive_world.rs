@@ -107,13 +107,13 @@ mod tests {
   use std::path::PathBuf;
 
   use xrf_archive::ARCHIVE_READ_POLICY;
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
   use xrf_vfs::{XrayAssetContainer, XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchStep, XrayVfs};
 
   use super::ArchiveWorld;
 
   fn tree(name: &str, files: &[(&str, &str)]) -> PathBuf {
-    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("archives/world/{name}"));
+    let root: PathBuf = GeneratedResources::path(&format!("archives/world/{name}"));
 
     let _ = fs::remove_dir_all(&root);
 

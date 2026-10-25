@@ -1,4 +1,4 @@
-use xrf_test_utils::utils::write_generated_test_resource;
+use xrf_test_utils::GeneratedResources;
 
 use crate::project::source_read::read_source;
 use crate::project::tests::fixtures::roots;
@@ -7,7 +7,7 @@ use crate::project::tests::fixtures::roots;
 fn reads_a_json_map_as_one_file_carrying_every_language() {
   let root: &str = "source_read/json";
 
-  write_generated_test_resource(
+  GeneratedResources::write(
     &format!("{root}/st_test.json"),
     r#"{"st_hello":{"eng":"Hello","ukr":"Pryvit"}}"#,
   )
@@ -28,9 +28,9 @@ fn reads_a_json_map_as_one_file_carrying_every_language() {
 fn opens_a_project_whose_json_is_broken_and_reports_it() {
   let root: &str = "source_read/broken_json";
 
-  write_generated_test_resource(&format!("{root}/good.json"), r#"{"st_hello":{"eng":"Hello"}}"#)
+  GeneratedResources::write(&format!("{root}/good.json"), r#"{"st_hello":{"eng":"Hello"}}"#)
     .expect("Expected a written test file");
-  write_generated_test_resource(&format!("{root}/bad.json"), "{ not json").expect("Expected a written test file");
+  GeneratedResources::write(&format!("{root}/bad.json"), "{ not json").expect("Expected a written test file");
 
   let descriptor = read_source(&roots(root), "").unwrap();
 
@@ -47,9 +47,9 @@ fn opens_a_project_whose_json_is_broken_and_reports_it() {
 fn reports_an_id_defined_in_two_files_instead_of_refusing_to_open() {
   let root: &str = "source_read/cross_file";
 
-  write_generated_test_resource(&format!("{root}/first.json"), r#"{"st_same":{"eng":"first"}}"#)
+  GeneratedResources::write(&format!("{root}/first.json"), r#"{"st_same":{"eng":"first"}}"#)
     .expect("Expected a written test file");
-  write_generated_test_resource(&format!("{root}/second.json"), r#"{"st_same":{"eng":"second"}}"#)
+  GeneratedResources::write(&format!("{root}/second.json"), r#"{"st_same":{"eng":"second"}}"#)
     .expect("Expected a written test file");
 
   let descriptor = read_source(&roots(root), "").unwrap();
@@ -67,7 +67,7 @@ fn reports_an_id_defined_in_two_files_instead_of_refusing_to_open() {
 fn records_the_code_page_each_language_will_be_built_in() {
   let root: &str = "source_read/encodings";
 
-  write_generated_test_resource(&format!("{root}/st_test.json"), r#"{"st_hello":{"eng":"a","ukr":"b"}}"#)
+  GeneratedResources::write(&format!("{root}/st_test.json"), r#"{"st_hello":{"eng":"a","ukr":"b"}}"#)
     .expect("Expected a written test file");
 
   let descriptor = read_source(&roots(root), "").unwrap();

@@ -6,14 +6,14 @@ use std::sync::Arc;
 
 use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, LtxDialect, LtxProject, LtxProjectOptions, LtxResolution, LtxStandardDialect};
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayLogicalPath, XrayMountMode, XrayRoots};
 
 use crate::dltx_dialect::DltxDialect;
 
 /// Writes a base config and one patch file beside it.
 fn patched_tree(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("dltx_project/{name}"))?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("dltx_project/{name}"))?;
 
   fs::write(
     root.join("system.ltx"),

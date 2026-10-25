@@ -174,11 +174,7 @@ impl SkeletonMotionDefinition {
 mod tests {
   use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::skeleton_motion_definition::SkeletonMotionDefinition;
   use crate::skeleton_motion_mark::SkeletonMotionMark;
@@ -192,9 +188,9 @@ mod tests {
 
     SkeletonMotionDefinition::write_list::<XRayByteOrder>(&mut writer, definitions, version)?;
 
-    writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(filename)?, 0)?;
+    writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(filename)?, 0)?;
 
-    let file: FileSlice = open_generated_test_resource_as_slice(filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(filename)?;
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
     SkeletonMotionDefinition::read_list::<XRayByteOrder, _>(&mut reader, version)
@@ -241,7 +237,7 @@ mod tests {
 
   #[test]
   fn test_read_write_list_v4_with_marks() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write_v4.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write_v4.chunk");
 
     let original: Vec<SkeletonMotionDefinition> = vec![
       SkeletonMotionDefinition::new_mock(vec![SkeletonMotionMark {
@@ -259,7 +255,7 @@ mod tests {
 
   #[test]
   fn test_read_write_list_v3_without_marks() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write_v3.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write_v3.chunk");
 
     let original: Vec<SkeletonMotionDefinition> = vec![SkeletonMotionDefinition::new_mock(Vec::new())];
 

@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::write_generated_test_resource;
+use xrf_test_utils::GeneratedResources;
 use xrf_utils::LineEndings;
 
 use crate::project::format::translation_format_options::TranslationFormatOptions;
@@ -27,7 +27,7 @@ fn read(path: &Path) -> String {
 
 #[test]
 fn sorts_ids_naturally_rather_than_by_byte() -> XrfResult {
-  let path: PathBuf = write_generated_test_resource(
+  let path: PathBuf = GeneratedResources::write(
     "translation_format/natural.json",
     "{\n  \"st_a10\": {\n    \"eng\": \"A\"\n  },\n  \"st_a2\": {\n    \"eng\": \"B\"\n  }\n}\n",
   )?;
@@ -47,7 +47,7 @@ fn sorts_ids_naturally_rather_than_by_byte() -> XrfResult {
 
 #[test]
 fn sorts_language_keys() -> XrfResult {
-  let path: PathBuf = write_generated_test_resource(
+  let path: PathBuf = GeneratedResources::write(
     "translation_format/languages.json",
     "{\n  \"st_a\": {\n    \"ukr\": \"U\",\n    \"eng\": \"E\"\n  }\n}\n",
   )?;
@@ -65,7 +65,7 @@ fn sorts_language_keys() -> XrfResult {
 #[test]
 fn adds_a_trailing_newline() -> XrfResult {
   // 31 of the 34 hand-authored engine sources are shaped exactly like this.
-  let path: PathBuf = write_generated_test_resource(
+  let path: PathBuf = GeneratedResources::write(
     "translation_format/no_newline.json",
     "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}",
   )?;
@@ -80,7 +80,7 @@ fn adds_a_trailing_newline() -> XrfResult {
 
 #[test]
 fn rewrites_indentation() -> XrfResult {
-  let path: PathBuf = write_generated_test_resource("translation_format/indent.json", "{\"st_a\":{\"eng\":\"A\"}}\n")?;
+  let path: PathBuf = GeneratedResources::write("translation_format/indent.json", "{\"st_a\":{\"eng\":\"A\"}}\n")?;
 
   format(&path)?;
 
@@ -91,7 +91,7 @@ fn rewrites_indentation() -> XrfResult {
 
 #[test]
 fn leaves_a_canonical_source_untouched() -> XrfResult {
-  let path: PathBuf = write_generated_test_resource(
+  let path: PathBuf = GeneratedResources::write(
     "translation_format/canonical.json",
     "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n",
   )?;
@@ -113,7 +113,7 @@ fn leaves_a_canonical_source_untouched() -> XrfResult {
 fn preserves_the_line_endings_a_file_already_uses() -> XrfResult {
   // A CRLF checkout is the normal state of `xrf-engine`, and a formatter that flipped it would rewrite every file to
   // say nothing about their content.
-  let path: PathBuf = write_generated_test_resource(
+  let path: PathBuf = GeneratedResources::write(
     "translation_format/crlf.json",
     "{\r\n  \"st_b\": {\r\n    \"eng\": \"B\"\r\n  },\r\n  \"st_a\": {\r\n    \"eng\": \"A\"\r\n  }\r\n}\r\n",
   )?;
@@ -131,7 +131,7 @@ fn preserves_the_line_endings_a_file_already_uses() -> XrfResult {
 
 #[test]
 fn a_check_over_a_file_with_other_line_endings_passes_unless_endings_were_asked_for() -> XrfResult {
-  let path: PathBuf = write_generated_test_resource(
+  let path: PathBuf = GeneratedResources::write(
     "translation_format/endings_check.json",
     "{\r\n  \"st_a\": {\r\n    \"eng\": \"A\"\r\n  }\r\n}\r\n",
   )?;
@@ -152,7 +152,7 @@ fn a_check_over_a_file_with_other_line_endings_passes_unless_endings_were_asked_
 
 #[test]
 fn an_asserted_ending_is_written() -> XrfResult {
-  let path: PathBuf = write_generated_test_resource(
+  let path: PathBuf = GeneratedResources::write(
     "translation_format/endings_write.json",
     "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n",
   )?;
@@ -167,7 +167,7 @@ fn an_asserted_ending_is_written() -> XrfResult {
 #[test]
 fn a_check_reports_without_writing() -> XrfResult {
   let source: &str = "{\n  \"st_b\": {\n    \"eng\": \"B\"\n  },\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n";
-  let path: PathBuf = write_generated_test_resource("translation_format/check.json", source)?;
+  let path: PathBuf = GeneratedResources::write("translation_format/check.json", source)?;
 
   let result: TranslationFormatResult = check(&path)?;
 
@@ -183,7 +183,7 @@ fn the_value_shape_is_left_alone() -> XrfResult {
   // Collapsing a one-element array or splitting an embedded line break are lossless conversions `build` undoes either
   // way, and choosing between the spellings is the importer's call about authoring, not a formatter's.
   let source: &str = "{\n  \"st_a\": {\n    \"eng\": [\n      \"one\"\n    ],\n    \"rus\": null\n  }\n}\n";
-  let path: PathBuf = write_generated_test_resource("translation_format/shapes.json", source)?;
+  let path: PathBuf = GeneratedResources::write("translation_format/shapes.json", source)?;
 
   let result: TranslationFormatResult = format(&path)?;
 
@@ -195,8 +195,8 @@ fn the_value_shape_is_left_alone() -> XrfResult {
 
 #[test]
 fn a_malformed_source_stops_the_run() -> XrfResult {
-  let broken: PathBuf = write_generated_test_resource("translation_format/broken/a_broken.json", "{ not json")?;
-  let sound: PathBuf = write_generated_test_resource(
+  let broken: PathBuf = GeneratedResources::write("translation_format/broken/a_broken.json", "{ not json")?;
+  let sound: PathBuf = GeneratedResources::write(
     "translation_format/broken/b_sound.json",
     "{\n  \"st_b\": {\n    \"eng\": \"B\"\n  },\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n",
   )?;
@@ -214,7 +214,7 @@ fn a_malformed_source_stops_the_run() -> XrfResult {
 
 #[test]
 fn a_named_file_is_formatted_whatever_its_extension() -> XrfResult {
-  let path: PathBuf = write_generated_test_resource(
+  let path: PathBuf = GeneratedResources::write(
     "translation_format/named.txt",
     "{\n  \"st_b\": {\n    \"eng\": \"B\"\n  },\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n",
   )?;

@@ -7,7 +7,7 @@ use std::thread;
 use std::time::Duration;
 
 use rayon::prelude::*;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{
   XrayAsset, XrayInputKind, XrayInputRecord, XrayLookupScope, XrayMountMode, XrayRevision, XrayRoots, XraySearch,
   XrayTransaction, XrayVfs,
@@ -205,7 +205,7 @@ fn a_pooled_part_built_over_rayon_does_not_deadlock_the_workers_waiting_on_it() 
 
 /// A loose tree of `files` mounted as the whole of a VFS.
 fn mounted(name: &str, files: &[&str]) -> XrayVfs {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("session_parts/{name}"));
+  let root: PathBuf = GeneratedResources::path(&format!("session_parts/{name}"));
 
   let _ = fs::remove_dir_all(&root);
 
@@ -398,7 +398,7 @@ fn opened_tree(name: &str, files: &[&str]) -> (AssetMountState, XraySearch) {
 
 /// The same, with the tree's root.
 fn opened_roots(name: &str, files: &[&str]) -> (AssetMountState, PathBuf, XraySearch) {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("session_follow/{name}"));
+  let root: PathBuf = GeneratedResources::path(&format!("session_follow/{name}"));
 
   let _ = fs::remove_dir_all(&root);
 

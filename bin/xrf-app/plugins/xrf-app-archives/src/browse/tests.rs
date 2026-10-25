@@ -11,7 +11,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionScope, SessionScopes, SessionSnapshot};
 use xrf_job::ExecutionRequest;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
 use crate::browse::commands::close_subject::archives_close_subject;
@@ -35,7 +35,7 @@ fn application() -> App<MockRuntime> {
 fn a_world_opens_over_its_roots_reads_restores_and_closes() {
   let application: App<MockRuntime> = application();
   let tool: SessionScope = SessionScope::new("main", "archives-explorer");
-  let root: PathBuf = build_absolute_generated_test_resource_path("archives/browse/cycle");
+  let root: PathBuf = GeneratedResources::path("archives/browse/cycle");
   let roots: XrayRoots = XrayRoots::new([XrayRoot::new(root.clone(), XrayMountMode::Directory)]);
   let session_id: SessionId = SessionId::generate();
 

@@ -131,13 +131,13 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use xrf_test_utils::utils::create_generated_test_resource_dir;
+  use xrf_test_utils::GeneratedResources;
 
   use super::XrayMountMode;
   use crate::XraySourceKind;
 
   fn install(name: &str) -> PathBuf {
-    let root: PathBuf = create_generated_test_resource_dir(&format!("xray_mount_mode/{name}")).expect("install root");
+    let root: PathBuf = GeneratedResources::create_dir(&format!("xray_mount_mode/{name}")).expect("install root");
 
     fs::create_dir_all(root.join("gamedata").join("configs")).expect("gamedata");
     fs::write(
@@ -150,7 +150,7 @@ mod tests {
   }
 
   fn volumes(name: &str, names: &[&str]) -> PathBuf {
-    let root: PathBuf = create_generated_test_resource_dir(&format!("xray_mount_mode/{name}")).expect("volumes root");
+    let root: PathBuf = GeneratedResources::create_dir(&format!("xray_mount_mode/{name}")).expect("volumes root");
 
     for name in names {
       let volume: PathBuf = root.join(name);

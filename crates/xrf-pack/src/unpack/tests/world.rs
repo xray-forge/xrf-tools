@@ -3,7 +3,7 @@ use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
 use xrf_job::{ExecutionRequest, JobOutcome};
-use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XraySearch, XraySearchPlan, XraySearchStep, XrayVfs};
 
 use crate::unpack::archive_extract_directory_result::ArchiveExtractDirectoryResult;
@@ -12,7 +12,7 @@ use crate::unpack::xray_world_extractor::XrayWorldExtractor;
 
 fn tree(name: &str, files: &[(&str, &str)]) -> PathBuf {
   let root: PathBuf =
-    create_generated_test_resource_dir(&format!("xray_world_extractor/{name}")).expect("test tree is creatable");
+    GeneratedResources::create_dir(&format!("xray_world_extractor/{name}")).expect("test tree is creatable");
 
   for (path, contents) in files {
     let path: PathBuf = root.join(path);
@@ -53,7 +53,7 @@ fn layered(name: &str) -> (XrayVfs, Vec<XraySearchStep>) {
 }
 
 fn destination(name: &str) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_world_extractor/{name}_out"));
+  let root: PathBuf = GeneratedResources::path(&format!("xray_world_extractor/{name}_out"));
 
   let _ = fs::remove_dir_all(&root);
 

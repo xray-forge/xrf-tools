@@ -65,11 +65,7 @@ impl ChunkReadWrite for OgfGeometryContainerChunk {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::chunks::ogf_geometry_container_chunk::OgfGeometryContainerChunk;
 
@@ -95,12 +91,11 @@ mod tests {
     );
 
     writer.flush_chunk_into::<XRayByteOrder>(
-      &mut overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(file!(), &filename))?,
+      &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       OgfGeometryContainerChunk::CHUNK_ID,
     )?;
 
-    let file: FileSlice =
-      open_generated_test_resource_as_slice(&build_relative_test_sample_file_path(file!(), &filename))?;
+    let file: FileSlice = GeneratedResources::open_slice(&GeneratedResources::sample_name(file!(), &filename))?;
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?
       .read_child_by_index(0)

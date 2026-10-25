@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
-use xrf_test_utils::utils::write_generated_test_resource;
+use xrf_test_utils::GeneratedResources;
 use xrf_utils::to_portable_path_string;
 use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XraySearch, XrayVfs};
 
@@ -35,7 +35,7 @@ fn set(id: &str, text: &str) -> TranslationEdit {
 
 #[test]
 fn routes_a_json_source_to_the_json_writer() -> XrfResult {
-  let path = write_generated_test_resource("project_edit/dispatch.json", r#"{"st_a":{"eng":"A"}}"#)?;
+  let path = GeneratedResources::write("project_edit/dispatch.json", r#"{"st_a":{"eng":"A"}}"#)?;
 
   apply_edits(&path, "eng", &[set("st_a", "B")])?;
 
@@ -49,7 +49,7 @@ fn routes_a_json_source_to_the_json_writer() -> XrfResult {
 
 #[test]
 fn routes_an_xml_source_to_the_splice_writer() -> XrfResult {
-  let path = write_generated_test_resource(
+  let path = GeneratedResources::write(
     "project_edit/dispatch.xml",
     "<string_table><string id=\"st_a\"><text>A</text></string></string_table>",
   )?;
@@ -68,7 +68,7 @@ fn routes_an_xml_source_to_the_splice_writer() -> XrfResult {
 /// was reported as a file this cannot write - while every reader in the crate opened it without complaint.
 #[test]
 fn routes_a_source_whatever_case_its_name_was_typed_in() -> XrfResult {
-  let path: PathBuf = write_generated_test_resource("project_edit/AUTHORED_CASE.JSON", r#"{"st_a":{"eng":"A"}}"#)?;
+  let path: PathBuf = GeneratedResources::write("project_edit/AUTHORED_CASE.JSON", r#"{"st_a":{"eng":"A"}}"#)?;
 
   apply_edits(&path, "eng", &[set("st_a", "B")])?;
 
@@ -77,7 +77,7 @@ fn routes_a_source_whatever_case_its_name_was_typed_in() -> XrfResult {
     Some(TranslationVariant::String(String::from("B")))
   );
 
-  let path: PathBuf = write_generated_test_resource(
+  let path: PathBuf = GeneratedResources::write(
     "project_edit/AUTHORED_CASE.XML",
     "<string_table><string id=\"st_a\"><text>A</text></string></string_table>",
   )?;
@@ -140,7 +140,7 @@ fn a_language_with_no_recorded_encoding_is_not_second_guessed() -> XrfResult {
 #[test]
 fn renders_a_json_source_edited_as_apply_edits_writes_it() -> XrfResult {
   let existing: &str = "{\r\n  \"st_a\": {\r\n    \"eng\": \"A\"\r\n  }\r\n}\r\n";
-  let path = write_generated_test_resource("project_edit/render.json", existing)?;
+  let path = GeneratedResources::write("project_edit/render.json", existing)?;
 
   let rendered: Vec<u8> = render_edits(
     &XrayLogicalPath::new(r"translations\render.json")?,
@@ -189,7 +189,7 @@ fn renders_a_string_table_edited_leaving_every_untouched_byte() -> XrfResult {
 
 /// A search over one loose tree holding a two-language JSON source, with the source each language reads.
 fn json_project(name: &str) -> XrfResult<(PathBuf, XraySearch, HashMap<String, TranslationSource>)> {
-  let file: PathBuf = write_generated_test_resource(
+  let file: PathBuf = GeneratedResources::write(
     &format!("project_edit/{name}/translations/st_save.json"),
     r#"{"st_a":{"eng":"A","rus":"А"}}"#,
   )?;

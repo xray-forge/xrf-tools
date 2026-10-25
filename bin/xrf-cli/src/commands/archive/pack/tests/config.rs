@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::commands::archive::pack::command::PackCommand;
 use crate::core::command::CommandResult;
@@ -12,7 +12,7 @@ use crate::core::command::command_testing::{run_command, run_command_for_result}
 
 /// A source tree of two directories, so a configuration that selects one proves it selected.
 fn create_roots(name: &str) -> CommandResult<(PathBuf, PathBuf)> {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("archive_pack_config/{name}"))?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("archive_pack_config/{name}"))?;
 
   fs::create_dir_all(root.join("source").join("configs"))?;
   fs::create_dir_all(root.join("source").join("meshes"))?;

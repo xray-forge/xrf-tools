@@ -9,14 +9,14 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::JobRegistry;
 use xrf_chunk::XRayByteOrder;
 use xrf_job::{ExecutionRequest, JobHandle, JobOutcome};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::SpawnConversion;
 use crate::request::SpawnConvertRequest;
 use crate::tests::synthetic_spawn;
 
 fn request(case: &str) -> SpawnConvertRequest {
-  let directory: PathBuf = build_absolute_generated_test_resource_path(&format!("spawn/conversion/{case}"));
+  let directory: PathBuf = GeneratedResources::path(&format!("spawn/conversion/{case}"));
 
   fs::create_dir_all(&directory).expect("scratch directory");
 

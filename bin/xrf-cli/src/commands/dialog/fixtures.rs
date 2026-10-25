@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::core::command::command_testing::run_command_for_result;
 use crate::core::command::{CommandResult, GenericCommand};
@@ -57,7 +57,7 @@ const STRINGS: &str = r#"<string_table>
 
 /// Lay out the tree under a root of its own, since tests run in parallel.
 pub fn create_tree(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("dialog_commands/{name}"))?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("dialog_commands/{name}"))?;
   let gameplay: PathBuf = root.join("configs").join("gameplay");
   let text: PathBuf = root.join("configs").join("text").join("eng");
 

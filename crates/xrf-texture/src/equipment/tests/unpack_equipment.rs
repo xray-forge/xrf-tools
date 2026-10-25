@@ -7,14 +7,14 @@ use image::{Rgba, RgbaImage};
 use xrf_dds::ImageFormat;
 use xrf_error::XrfError;
 use xrf_ltx::Ltx;
-use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
+use xrf_test_utils::GeneratedResources;
 
 use crate::equipment::{EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker};
 
 const SENTINEL: &[u8] = b"sentinel";
 
 fn create_root(name: &str) -> PathBuf {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("equipment-unpack/{name}")).expect("test root");
+  let root: PathBuf = GeneratedResources::create_dir(&format!("equipment-unpack/{name}")).expect("test root");
 
   fs::write(root.join("victim.dds"), SENTINEL).expect("sentinel beside the destination");
 
@@ -54,7 +54,7 @@ fn list_output(root: &Path) -> Vec<PathBuf> {
 
 #[test]
 fn refuses_a_section_name_that_leaves_the_destination() {
-  let absolute: String = build_absolute_generated_test_resource_path("equipment-unpack/absolute/victim")
+  let absolute: String = GeneratedResources::path("equipment-unpack/absolute/victim")
     .display()
     .to_string();
 

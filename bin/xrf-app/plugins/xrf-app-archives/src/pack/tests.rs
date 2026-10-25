@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use xrf_app_core::TauriResult;
 use xrf_pack::ArchivePackConfig;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_utils::StagingFaults;
 
 use crate::pack::commands::export_pack_config::archives_export_pack_config;
@@ -19,7 +19,7 @@ fn run<T>(command: impl Future<Output = TauriResult<T>>) -> TauriResult<T> {
 
 /// An empty directory of one case's own, since these commands write files.
 fn test_directory(name: &str) -> PathBuf {
-  let directory: PathBuf = build_absolute_generated_test_resource_path(&format!("archives/pack_config/{name}"));
+  let directory: PathBuf = GeneratedResources::path(&format!("archives/pack_config/{name}"));
 
   let _ = fs::remove_dir_all(&directory);
 

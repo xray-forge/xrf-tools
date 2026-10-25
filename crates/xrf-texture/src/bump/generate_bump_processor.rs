@@ -281,7 +281,7 @@ mod tests {
   use xrf_dds::{DdsFile, DdsMipFilter, Quality};
   use xrf_error::XrfResult;
   use xrf_job::JobHandle;
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use super::GenerateBumpProcessor;
   use crate::bump::generate_bump_gloss::GenerateBumpGloss;
@@ -294,7 +294,7 @@ mod tests {
   }
 
   fn options(case: &str, height: RgbaImage) -> GenerateBumpOptions {
-    let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("xrf-texture/bump/{case}"));
+    let destination: PathBuf = GeneratedResources::path(&format!("xrf-texture/bump/{case}"));
 
     std::fs::create_dir_all(destination.parent().expect("case directory")).expect("scratch directory");
 

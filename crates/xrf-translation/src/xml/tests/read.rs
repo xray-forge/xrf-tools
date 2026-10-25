@@ -1,11 +1,11 @@
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::write_generated_test_resource;
+use xrf_test_utils::GeneratedResources;
 
 use crate::xml::read::read_string_table;
 
 #[test]
 fn returns_entries_in_file_order() -> XrfResult {
-  let path = write_generated_test_resource(
+  let path = GeneratedResources::write(
     "xml_read/order.xml",
     "<string_table><string id=\"st_b\"><text>B</text></string><string id=\"st_a\"><text>A</text></string></string_table>",
   )?;
@@ -23,7 +23,7 @@ fn returns_entries_in_file_order() -> XrfResult {
 
 #[test]
 fn keeps_duplicates_instead_of_refusing_them() -> XrfResult {
-  let path = write_generated_test_resource(
+  let path = GeneratedResources::write(
     "xml_read/duplicates.xml",
     "<string_table><string id=\"st_dup\"><text>first</text></string><string id=\"st_dup\"><text>second</text></string></string_table>",
   )?;
@@ -43,7 +43,7 @@ fn keeps_duplicates_instead_of_refusing_them() -> XrfResult {
 
 #[test]
 fn skips_an_entry_with_no_text_element() -> XrfResult {
-  let path = write_generated_test_resource(
+  let path = GeneratedResources::write(
     "xml_read/no_text.xml",
     "<string_table><string id=\"st_empty\"></string><string id=\"st_ok\"><text>ok</text></string></string_table>",
   )?;
@@ -59,7 +59,7 @@ fn skips_an_entry_with_no_text_element() -> XrfResult {
 
 #[test]
 fn reads_a_comment_banner_that_xml_forbids() -> XrfResult {
-  let path = write_generated_test_resource(
+  let path = GeneratedResources::write(
     "xml_read/banner.xml",
     "<string_table>\n<!-- ---- names ---- -->\n<string id=\"st_a\"><text>A</text></string>\n</string_table>",
   )?;
@@ -75,7 +75,7 @@ fn reads_a_comment_banner_that_xml_forbids() -> XrfResult {
 
 #[test]
 fn resolves_entities_in_the_text() -> XrfResult {
-  let path = write_generated_test_resource(
+  let path = GeneratedResources::write(
     "xml_read/entities.xml",
     "<string_table><string id=\"st_a\"><text>a &amp; b</text></string></string_table>",
   )?;
@@ -90,7 +90,7 @@ fn resolves_entities_in_the_text() -> XrfResult {
 
 #[test]
 fn a_malformed_document_is_reported_rather_than_silently_empty() -> XrfResult {
-  let path = write_generated_test_resource("xml_read/malformed.xml", "<string_table><string id=")?;
+  let path = GeneratedResources::write("xml_read/malformed.xml", "<string_table><string id=")?;
 
   assert!(read_string_table(&path).is_err());
 

@@ -45,11 +45,7 @@ mod tests {
   use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use super::OgfIkDataChunk;
   use crate::data::ogf_bone_ik_data::OgfBoneIkData;
@@ -114,18 +110,18 @@ mod tests {
   }
 
   fn write_then_read(name: &str, chunk: &OgfIkDataChunk) -> XrfResult<OgfIkDataChunk> {
-    let filename: String = build_relative_test_sample_file_path(file!(), name);
+    let filename: String = GeneratedResources::sample_name(file!(), name);
     let mut writer: ChunkWriter = ChunkWriter::new();
 
     chunk.write::<XRayByteOrder>(&mut writer)?;
 
     let contents: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(OgfIkDataChunk::CHUNK_ID)?;
-    let mut file = overwrite_generated_test_resource_as_file(&filename)?;
+    let mut file = GeneratedResources::overwrite(&filename)?;
 
     file.write_all(&contents)?;
     file.flush()?;
 
-    let slice: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let slice: FileSlice = GeneratedResources::open_slice(&filename)?;
     let mut reader: ChunkReader = ChunkReader::from_slice(slice)?
       .read_children()?
       .into_iter()

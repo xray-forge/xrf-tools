@@ -1,7 +1,7 @@
 use std::fs::{self, File};
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::paths::PathDescription;
 use crate::paths::description::PathKind;
@@ -9,7 +9,7 @@ use crate::paths::description::PathKind;
 /// A directory of this test's own among the generated test resources, emptied first so a re-run counts what this run
 /// created.
 fn root(name: &str) -> PathBuf {
-  let path: PathBuf = build_absolute_generated_test_resource_path(&format!("describe-path/{name}"));
+  let path: PathBuf = GeneratedResources::path(&format!("describe-path/{name}"));
 
   if path.exists() {
     fs::remove_dir_all(&path).expect("a removable test root");

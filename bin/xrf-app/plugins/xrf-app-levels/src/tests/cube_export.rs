@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use image::{ImageFormat, Rgba, RgbaImage};
 use xrf_app_core::TauriResult;
 use xrf_dds::DdsFile;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_texture::{TextureEncodingFormat, TextureEncodingQuality};
 
 use crate::viewer::ViewerDdsExport;
@@ -12,7 +12,7 @@ use crate::viewer::cube::{CubeExportFormat, CubeExportRequest, CubeExporter};
 
 /// A cross of 16 pixel faces in a folder of its own, each face one flat shade by its place in the engine's order.
 fn write_cross(name: &str) -> TauriResult<(PathBuf, PathBuf)> {
-  let folder: PathBuf = build_absolute_generated_test_resource_path(&format!("cube_export/{name}"));
+  let folder: PathBuf = GeneratedResources::path(&format!("cube_export/{name}"));
   let places: [(u32, u32); 6] = [(2, 1), (0, 1), (1, 0), (1, 2), (1, 1), (3, 1)];
   let mut cross: RgbaImage = RgbaImage::new(64, 48);
 

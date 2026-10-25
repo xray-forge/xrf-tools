@@ -8,7 +8,7 @@ use xrf_dds::{DdsFile, ImageFormat};
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_ltx::Ltx;
 use xrf_output::{Output, OutputChannel, OutputOptions, OutputVerbosity};
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::equipment::{EquipmentSpritePackOptions, EquipmentSpritePacker};
 use crate::image_file::{UI_MIPMAPS, save_image_as_ui_dds};
@@ -27,7 +27,7 @@ impl Output for CancelOnOutput {
 }
 
 fn options(name: &str, icons: u32, existing: bool) -> EquipmentSpritePackOptions {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("equipment-pack/{name}/{existing}")).unwrap();
+  let root: PathBuf = GeneratedResources::create_dir(&format!("equipment-pack/{name}/{existing}")).unwrap();
 
   let mut ltx: Ltx = Ltx::new();
   let icon: RgbaImage = RgbaImage::from_pixel(50, 50, Rgba([255, 255, 255, 255]));

@@ -4,7 +4,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use xrf_ltx::LtxReadCountersSnapshot;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::{GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataVerificationType};
 
@@ -22,7 +22,7 @@ const WEAPONS: &str = "[wpn_base]\ncost = 1000\n";
 /// Builds an installation holding a two-file config tree.
 fn install(name: &str) -> PathBuf {
   let root: PathBuf =
-    create_generated_test_resource_dir(&format!("gamedata_config_reads/{name}")).expect("installation root");
+    GeneratedResources::create_dir(&format!("gamedata_config_reads/{name}")).expect("installation root");
   let configs: PathBuf = root.join("gamedata").join("configs");
 
   fs::create_dir_all(&configs).expect("configs directory");

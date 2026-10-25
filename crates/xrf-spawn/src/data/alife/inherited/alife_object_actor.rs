@@ -76,19 +76,14 @@ impl LtxImportExport for AlifeObjectActor {
 #[cfg(test)]
 mod tests {
   use std::fs::File;
-  use std::io::{Seek, SeekFrom, Write};
+  use std::io::{Seek, SeekFrom, Write, read_to_string};
   use std::path::Path;
 
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::file::read_file_as_string;
-  use xrf_test_utils::utils::{
-    build_absolute_generated_test_sample_file_path, build_relative_test_sample_file_path,
-    open_generated_test_resource_as_slice, overwrite_file, overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
   use crate::data::alife::inherited::alife_object_actor::AlifeObjectActor;
@@ -100,7 +95,7 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: AlifeObjectActor = AlifeObjectActor {
       base: AlifeObjectCreature {
@@ -152,11 +147,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 185);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 185);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 185 + 8);
 
@@ -169,8 +164,8 @@ mod tests {
 
   #[test]
   fn test_import_export() -> XrfResult {
-    let config_path: &Path = &build_absolute_generated_test_sample_file_path(file!(), "import_export.ltx");
-    let mut file: File = overwrite_file(config_path)?;
+    let config_path: &Path = &GeneratedResources::sample_path(file!(), "import_export.ltx");
+    let mut file: File = GeneratedResources::overwrite_path(config_path)?;
     let mut ltx: Ltx = Ltx::new();
 
     let original: AlifeObjectActor = AlifeObjectActor {
@@ -276,15 +271,13 @@ mod tests {
       holder_id: 0,
     };
 
-    let mut file: File = overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(
-      file!(),
-      "serialize_deserialize.json",
-    ))?;
+    let mut file: File =
+      GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
 
     file.write_all(to_string_pretty(&original)?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
-    let serialized: String = read_file_as_string(&mut file)?;
+    let serialized: String = read_to_string(&mut file)?;
 
     assert_eq!(serialized.to_string(), serialized);
 

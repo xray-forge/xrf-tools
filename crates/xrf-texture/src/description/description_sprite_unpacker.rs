@@ -162,7 +162,7 @@ mod tests {
   use image::RgbaImage;
   use xrf_dds::{DdsMipmaps, ImageFormat};
   use xrf_error::XrfError;
-  use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
+  use xrf_test_utils::GeneratedResources;
 
   use super::DescriptionSpriteUnpacker;
   use crate::image_file::save_image_as_ui_dds;
@@ -226,7 +226,7 @@ mod tests {
 
   /// A readable 8x4 sheet at `base/sheet.dds`, a description of `ids` over it, and a sentinel beside `out`.
   fn options_for_sheet(name: &str, ids: &[&str], is_strict: bool) -> DescriptionSpriteOptions {
-    let root: PathBuf = create_generated_test_resource_dir(&format!("description-unpack/{name}")).expect("sheet root");
+    let root: PathBuf = GeneratedResources::create_dir(&format!("description-unpack/{name}")).expect("sheet root");
 
     fs::create_dir_all(root.join("base")).expect("sheet directory");
     fs::write(root.join("victim.dds"), SENTINEL).expect("sentinel beside the destination");
@@ -274,7 +274,7 @@ mod tests {
 
   #[test]
   fn refuses_a_sprite_id_that_leaves_the_destination() {
-    let absolute: String = build_absolute_generated_test_resource_path("description-unpack/absolute/victim")
+    let absolute: String = GeneratedResources::path("description-unpack/absolute/victim")
       .display()
       .to_string();
 

@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayLogicalPath, XrayMountMode, XrayRoots};
 
 use crate::project::descriptor::dialog_descriptor::DialogDescriptor;
@@ -15,7 +15,7 @@ use crate::project::dialog_project_mode::DialogProjectMode;
 const DIALOG: &str = r#"<game_dialogs><dialog id="d" priority="-5"><phrase_list><phrase id="0"><text>key</text></phrase></phrase_list></dialog></game_dialogs>"#;
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  Ok(create_generated_test_resource_dir(&format!("project/{name}"))?)
+  Ok(GeneratedResources::create_dir(&format!("project/{name}"))?)
 }
 
 /// Lay out a gamedata-shaped tree: dialogs and text both under `configs`.

@@ -143,12 +143,12 @@ mod tests {
   use std::path::PathBuf;
 
   use xrf_error::XrfResult;
-  use xrf_test_utils::utils::create_generated_test_resource_dir;
+  use xrf_test_utils::GeneratedResources;
 
   use crate::project::{LtxFilesFormatter, LtxProjectFormatResult};
 
   fn create_root(name: &str) -> XrfResult<PathBuf> {
-    Ok(create_generated_test_resource_dir(&format!("format/{name}"))?)
+    Ok(GeneratedResources::create_dir(&format!("format/{name}"))?)
   }
 
   #[test]

@@ -195,7 +195,7 @@ mod tests {
   use std::path::{Path, PathBuf};
 
   use xrf_error::XrfResult;
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use super::ArchivePackNameTable;
   use crate::pack::config::ArchivePackConfig;
@@ -282,8 +282,7 @@ mod tests {
   fn two_spellings_of_one_host_file_register_once_under_the_first() {
     // What a case-insensitive host produces when `[include_files]` spells a walked file differently: both names reach
     // one file, so the engine would get the same bytes either way and there is nothing to refuse.
-    let root: PathBuf =
-      build_absolute_generated_test_resource_path("archive_pack_name_table/two_spellings_of_one_host_file");
+    let root: PathBuf = GeneratedResources::path("archive_pack_name_table/two_spellings_of_one_host_file");
     let path: PathBuf = root.join("system.ltx");
 
     fs::create_dir_all(&root).expect("scratch directory");

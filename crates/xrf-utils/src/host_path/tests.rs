@@ -5,13 +5,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfError;
-use xrf_test_utils::links::{link_directory, link_file};
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::{GeneratedResources, HostFilesystem};
 
 use crate::{HostDestination, HostLinkPolicy, HostRelativePath};
 
 fn create_directory(name: &str) -> PathBuf {
-  create_generated_test_resource_dir(&format!("host-path/{name}")).expect("temporary directory")
+  GeneratedResources::create_dir(&format!("host-path/{name}")).expect("temporary directory")
 }
 
 /// A directory outside the root, holding a file no write is allowed to touch unless the layout sends it there.
@@ -45,7 +44,7 @@ fn follow_writes_through_a_directory_link_the_user_placed() {
   fs::create_dir_all(&root).expect("destination");
 
   // A junctioned texture tree or a symlink deployment: the layout is the user's, so the write lands where it points.
-  if !link_directory(&sentinel, &root.join("textures")) {
+  if !HostFilesystem::link_directory(&sentinel, &root.join("textures")) {
     return;
   }
 
@@ -70,7 +69,7 @@ fn follow_overwrites_a_file_through_its_link() {
 
   fs::create_dir_all(&root).expect("destination");
 
-  if !link_file(&sentinel.join("keep.txt"), &root.join("keep.txt")) {
+  if !HostFilesystem::link_file(&sentinel.join("keep.txt"), &root.join("keep.txt")) {
     return;
   }
 
@@ -95,7 +94,7 @@ fn refuse_stops_at_a_directory_link() {
 
   fs::create_dir_all(&root).expect("destination");
 
-  if !link_directory(&sentinel, &root.join("configs")) {
+  if !HostFilesystem::link_directory(&sentinel, &root.join("configs")) {
     return;
   }
 
@@ -120,7 +119,7 @@ fn refuse_stops_at_a_file_link() {
 
   fs::create_dir_all(&root).expect("destination");
 
-  if !link_file(&sentinel.join("keep.txt"), &root.join("keep.txt")) {
+  if !HostFilesystem::link_file(&sentinel.join("keep.txt"), &root.join("keep.txt")) {
     return;
   }
 
@@ -269,7 +268,9 @@ fn resolve_applies_the_policy_to_links_that_exist() {
 
   fs::create_dir_all(&root).expect("destination");
 
-  if !link_directory(&sentinel, &root.join("text")) || !link_file(&sentinel.join("keep.txt"), &root.join("keep.txt")) {
+  if !HostFilesystem::link_directory(&sentinel, &root.join("text"))
+    || !HostFilesystem::link_file(&sentinel.join("keep.txt"), &root.join("keep.txt"))
+  {
     return;
   }
 

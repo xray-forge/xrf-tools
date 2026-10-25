@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::level::LevelSource;
 
@@ -43,9 +43,9 @@ fn refuses_a_name_leaving_the_level() {
 // A directory is read through the search by the path its implied root gives it, so its reads are recorded too.
 #[test]
 fn names_a_level_directorys_files_by_the_root_it_lies_under() {
-  let root: PathBuf = build_absolute_generated_test_resource_path("level_read/directory");
+  let root: PathBuf = GeneratedResources::path("level_read/directory");
   let level: PathBuf = root.join("levels").join("l01");
-  let stray: PathBuf = build_absolute_generated_test_resource_path("level_read/stray").join("l01");
+  let stray: PathBuf = GeneratedResources::path("level_read/stray").join("l01");
 
   let _ = fs::remove_dir_all(&root);
   let _ = fs::remove_dir_all(&stray);

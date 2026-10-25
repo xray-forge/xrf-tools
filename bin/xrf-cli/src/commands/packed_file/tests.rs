@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_particles::ParticlesFile;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::commands::packed_file::{PackCommand, UnpackCommand, VerifyCommand};
 use crate::commands::particle::fixtures::create_library;
@@ -70,7 +70,7 @@ fn packing_refuses_a_destination_that_is_there_and_keeps_it() -> XrfResult {
 /// The old folder stands until the new one is complete, so a source that cannot be read costs nothing.
 #[test]
 fn a_forced_unpack_of_a_bad_source_keeps_the_old_folder() -> XrfResult {
-  let root: PathBuf = create_generated_test_resource_dir("packed_file/unpack_bad_source")?;
+  let root: PathBuf = GeneratedResources::create_dir("packed_file/unpack_bad_source")?;
   let source: PathBuf = root.join("broken.xr");
   let dest: PathBuf = root.join("unpacked");
 

@@ -263,12 +263,12 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
+  use xrf_test_utils::GeneratedResources;
 
   use super::{VolumeScan, XrayMountPlan};
 
   fn directory(name: &str, files: &[&str]) -> PathBuf {
-    let root: PathBuf = create_generated_test_resource_dir(&format!("xray_mount_plan/{name}")).expect("scan root");
+    let root: PathBuf = GeneratedResources::create_dir(&format!("xray_mount_plan/{name}")).expect("scan root");
 
     for file in files {
       fs::write(root.join(file), []).expect("scanned file");
@@ -300,7 +300,7 @@ mod tests {
   /// A directory the host refuses to list is the case the predicate cannot express.
   #[test]
   fn reports_a_directory_it_cannot_list_as_unknown_rather_than_empty() {
-    let absent: PathBuf = build_absolute_generated_test_resource_path("xray_mount_plan/scan_unreadable");
+    let absent: PathBuf = GeneratedResources::path("xray_mount_plan/scan_unreadable");
 
     let _ = fs::remove_dir_all(&absent);
 

@@ -11,7 +11,7 @@ use crc32fast::hash;
 use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::XrfResult;
 use xrf_job::ExecutionRequest;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::unpack::archive_extract_options::ArchiveExtractOptions;
 use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
@@ -98,7 +98,7 @@ pub(crate) fn create_project(directory: &Path, entries: &[Entry]) -> ArchiveProj
 }
 
 pub(crate) fn create_temporary_directory(name: &str) -> PathBuf {
-  create_generated_test_resource_dir(&format!("unpack/{name}")).expect("temporary directory")
+  GeneratedResources::create_dir(&format!("unpack/{name}")).expect("temporary directory")
 }
 
 /// Unpacks bounded to `workers`, the way a binary bounds itself.

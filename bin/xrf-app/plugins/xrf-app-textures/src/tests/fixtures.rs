@@ -9,7 +9,7 @@ use xrf_app_core::assets::FileStamp;
 use xrf_chunk::XRayByteOrder;
 use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_thm::{ThmBumpMode, ThmFile};
 use xrf_vfs::{
   XrayAsset, XrayAssetContainer, XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMountId, XrayMountMode,
@@ -152,7 +152,7 @@ pub fn to_dds_bytes(size: u32) -> Vec<u8> {
 
 /// A directory this run owns, emptied on the way in so a case starts from nothing whatever the last run left.
 fn to_scratch_directory(prefix: &str, case: &str) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("{prefix}/{case}"));
+  let root: PathBuf = GeneratedResources::path(&format!("{prefix}/{case}"));
 
   let _ = fs::remove_dir_all(&root);
 

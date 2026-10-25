@@ -219,13 +219,13 @@ mod tests {
   use std::path::PathBuf;
 
   use byteorder::{LittleEndian, WriteBytesExt};
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use super::ArchiveReader;
 
   /// Writes raw bytes as a volume file, since malformed input is a byte-level condition.
   fn volume(name: &str, bytes: &[u8]) -> PathBuf {
-    let root: PathBuf = build_absolute_generated_test_resource_path("archive_reader");
+    let root: PathBuf = GeneratedResources::path("archive_reader");
 
     fs::create_dir_all(&root).expect("scratch root");
 

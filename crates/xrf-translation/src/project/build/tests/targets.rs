@@ -2,9 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::{
-  build_absolute_generated_test_resource_path, create_generated_test_resource_dir, write_generated_test_resource,
-};
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::language::TranslationLanguage;
@@ -27,10 +25,7 @@ fn options(output_dir: PathBuf) -> TranslationBuildOptions {
 }
 
 fn roots(root: &str) -> XrayRoots {
-  XrayRoots::one(
-    build_absolute_generated_test_resource_path(root),
-    XrayMountMode::Directory,
-  )
+  XrayRoots::one(GeneratedResources::path(root), XrayMountMode::Directory)
 }
 
 #[test]
@@ -66,11 +61,11 @@ fn a_target_never_leaves_the_output_directory() {
 
 /// A sentinel `input/st_test.xml` beside the source, and the output directory a single-file build is pointed at.
 fn single_file_layout(test_root: &str) -> XrfResult<(PathBuf, PathBuf)> {
-  let root: PathBuf = create_generated_test_resource_dir(test_root)?;
+  let root: PathBuf = GeneratedResources::create_dir(test_root)?;
 
-  let source: PathBuf = write_generated_test_resource(&format!("{test_root}/input/st_test.json"), SOURCE_JSON)?;
+  let source: PathBuf = GeneratedResources::write(&format!("{test_root}/input/st_test.json"), SOURCE_JSON)?;
 
-  write_generated_test_resource(&format!("{test_root}/input/st_test.xml"), "keep me")?;
+  GeneratedResources::write(&format!("{test_root}/input/st_test.xml"), "keep me")?;
 
   Ok((source, root.join("out")))
 }
@@ -147,14 +142,14 @@ fn a_single_file_build_writes_inside_the_output_whatever_its_path_holds() -> Xrf
 #[test]
 fn directory_builds_preserve_relative_source_paths() -> XrfResult {
   let test_root: &str = "build_targets/relative_paths";
-  let output_root = build_absolute_generated_test_resource_path(&format!("{test_root}/output"));
+  let output_root = GeneratedResources::path(&format!("{test_root}/output"));
 
   if output_root.exists() {
     fs::remove_dir_all(&output_root)?;
   }
 
   for relative_path in ["one/common.json", "two/common.json"] {
-    write_generated_test_resource(&format!("{test_root}/source/{relative_path}"), SOURCE_JSON)?;
+    GeneratedResources::write(&format!("{test_root}/source/{relative_path}"), SOURCE_JSON)?;
   }
 
   let result = TranslationBuilder::build_roots(
@@ -179,13 +174,13 @@ fn directory_builds_preserve_relative_source_paths() -> XrfResult {
 #[test]
 fn builds_report_one_row_per_language() -> XrfResult {
   let test_root: &str = "build_targets/languages";
-  let output_root = build_absolute_generated_test_resource_path(&format!("{test_root}/output"));
+  let output_root = GeneratedResources::path(&format!("{test_root}/output"));
 
   if output_root.exists() {
     fs::remove_dir_all(&output_root)?;
   }
 
-  write_generated_test_resource(&format!("{test_root}/source/st_a.json"), SOURCE_JSON)?;
+  GeneratedResources::write(&format!("{test_root}/source/st_a.json"), SOURCE_JSON)?;
 
   let mut all = options(output_root.clone());
 
@@ -225,11 +220,11 @@ fn builds_reject_output_inside_any_source_root() -> XrfResult {
   // Every loose root is checked, not just the first: a layered build reads from all of them, and
   // filling an authored tree with generated tables is nobody's intention whichever one it is.
   let test_root: &str = "build_targets/output_inside_source";
-  let source_root = build_absolute_generated_test_resource_path(&format!("{test_root}/source"));
-  let other_root = build_absolute_generated_test_resource_path(&format!("{test_root}/other"));
+  let source_root = GeneratedResources::path(&format!("{test_root}/source"));
+  let other_root = GeneratedResources::path(&format!("{test_root}/other"));
 
-  write_generated_test_resource(&format!("{test_root}/source/common.json"), SOURCE_JSON)?;
-  write_generated_test_resource(&format!("{test_root}/other/common.json"), SOURCE_JSON)?;
+  GeneratedResources::write(&format!("{test_root}/source/common.json"), SOURCE_JSON)?;
+  GeneratedResources::write(&format!("{test_root}/other/common.json"), SOURCE_JSON)?;
 
   let layered: XrayRoots = XrayRoots::new([
     xrf_vfs::XrayRoot::new(other_root.clone(), XrayMountMode::Directory),

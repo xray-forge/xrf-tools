@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::dialect::LtxStandardDialect;
 use crate::ltx::Ltx;
@@ -26,7 +26,7 @@ fn write_tree(root: &Path) -> XrfResult<String> {
 
 #[test]
 fn an_included_section_names_the_file_that_declared_it() -> XrfResult {
-  let root: PathBuf = build_absolute_generated_test_resource_path("section_origins/included");
+  let root: PathBuf = GeneratedResources::path("section_origins/included");
   let entry: String = write_tree(&root)?;
 
   let resolved: Ltx = Ltx::read_from_file_with_dialect(&entry, &LtxStandardDialect)?;
@@ -54,7 +54,7 @@ fn an_included_section_names_the_file_that_declared_it() -> XrfResult {
 
 #[test]
 fn inheritance_keeps_the_child_s_own_file_rather_than_its_parent_s() -> XrfResult {
-  let root: PathBuf = build_absolute_generated_test_resource_path("section_origins/inherited");
+  let root: PathBuf = GeneratedResources::path("section_origins/inherited");
   let entry: String = write_tree(&root)?;
 
   let resolved: Ltx = Ltx::read_from_file_with_dialect(&entry, &LtxStandardDialect)?;

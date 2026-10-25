@@ -200,7 +200,7 @@ mod tests {
   use std::collections::HashSet;
   use std::path::{Path, PathBuf};
 
-  use xrf_test_utils::utils::build_non_unicode_file_name;
+  use xrf_test_utils::HostFilesystem;
 
   use super::XrayExtension;
 
@@ -395,7 +395,7 @@ mod tests {
   #[test]
   fn matches_a_path_whose_parent_directory_is_not_valid_text() {
     // A whole-path `to_str` answers `None` here, which would read a PNG under a CP1251 mod directory as no PNG at all.
-    let path: PathBuf = PathBuf::from(build_non_unicode_file_name()).join("ak74.png");
+    let path: PathBuf = PathBuf::from(HostFilesystem::non_unicode_file_name()).join("ak74.png");
 
     assert!(path.to_str().is_none(), "the whole path has to be unreadable as text");
     assert!(XrayExtension::Png.matches_path(&path));

@@ -318,19 +318,14 @@ impl LtxImportExport for ParticleEffect {
 #[cfg(test)]
 mod tests {
   use std::fs::File;
-  use std::io::{Seek, SeekFrom, Write};
+  use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_math::Vector3d;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::file::read_file_as_string;
-  use xrf_test_utils::utils::{
-    build_absolute_generated_test_resource_path, build_relative_test_sample_file_path,
-    open_generated_test_resource_as_slice, overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::actions::particle_action_copy_vertex::ParticleActionCopyVertex;
   use crate::data::actions::particle_action_damping::ParticleActionDamping;
@@ -402,14 +397,13 @@ mod tests {
     assert_eq!(writer.bytes_written(), 343);
 
     let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
-      &mut overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(file!(), &filename))?,
+      &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
 
     assert_eq!(bytes_written, 343);
 
-    let file: FileSlice =
-      open_generated_test_resource_as_slice(&build_relative_test_sample_file_path(file!(), &filename))?;
+    let file: FileSlice = GeneratedResources::open_slice(&GeneratedResources::sample_name(file!(), &filename))?;
 
     assert_eq!(file.bytes_remaining(), 343 + 8);
 
@@ -426,7 +420,7 @@ mod tests {
 
   #[test]
   fn test_import_export() -> XrfResult {
-    let ltx_filename: String = build_relative_test_sample_file_path(file!(), "import_export.ltx");
+    let ltx_filename: String = GeneratedResources::sample_name(file!(), "import_export.ltx");
     let mut ltx: Ltx = Ltx::new();
     let original: ParticleEffect = ParticleEffect {
       version: 1,
@@ -479,9 +473,9 @@ mod tests {
 
     original.export("data", &mut ltx)?;
 
-    ltx.write_to(&mut overwrite_generated_test_resource_as_file(&ltx_filename)?)?;
+    ltx.write_to(&mut GeneratedResources::overwrite(&ltx_filename)?)?;
 
-    let source: Ltx = Ltx::read_from_path(build_absolute_generated_test_resource_path(&ltx_filename))?;
+    let source: Ltx = Ltx::read_from_path(GeneratedResources::path(&ltx_filename))?;
 
     assert_eq!(ParticleEffect::import("data", &source)?, original);
 
@@ -539,15 +533,13 @@ mod tests {
       }),
     };
 
-    let mut file: File = overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(
-      file!(),
-      "serialize_deserialize.json",
-    ))?;
+    let mut file: File =
+      GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
 
     file.write_all(to_string_pretty(&original)?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
-    let serialized: String = read_file_as_string(&mut file)?;
+    let serialized: String = read_to_string(&mut file)?;
 
     assert_eq!(serialized.to_string(), serialized);
     assert_eq!(serde_json::from_str::<ParticleEffect>(&serialized)?, original);

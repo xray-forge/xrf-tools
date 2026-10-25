@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use xrf_app_core::assets::AssetMountState;
 use xrf_material::XrayTextureScope;
 use xrf_renderer::get_texture_name;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch, XrayTransaction};
 
 use crate::TextureResolver;
@@ -15,7 +15,7 @@ const REFERENCE: &str = "prop\\prop_fence";
 /// next read finds what a commit added since.
 #[test]
 fn resolves_a_reference_once_and_again_after_forget() {
-  let root: PathBuf = build_absolute_generated_test_resource_path("render/texture_resolver");
+  let root: PathBuf = GeneratedResources::path("render/texture_resolver");
 
   let _ = fs::remove_dir_all(&root);
 

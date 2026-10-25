@@ -80,11 +80,7 @@ impl LtxImportExport for AlifeObjectPhysic {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
   use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
@@ -94,7 +90,7 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: AlifeObjectPhysic = AlifeObjectPhysic {
       base: AlifeObjectDynamicVisual {
@@ -126,11 +122,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 88);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 88);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 88 + 8);
 

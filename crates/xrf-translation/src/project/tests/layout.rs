@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::write_generated_test_resource;
+use xrf_test_utils::GeneratedResources;
 
 use crate::project::layout::detect_mode;
 use crate::project::tests::fixtures::roots;
@@ -11,7 +11,7 @@ use crate::project::translation_project_mode::TranslationProjectMode;
 fn language_directories_under_the_text_prefix_look_like_gamedata() -> XrfResult {
   let root: &str = "layout/gamedata";
 
-  write_generated_test_resource(
+  GeneratedResources::write(
     &format!("{root}/configs/text/rus/st_test.xml"),
     "<string_table></string_table>",
   )?;
@@ -25,7 +25,7 @@ fn language_directories_under_the_text_prefix_look_like_gamedata() -> XrfResult 
 fn a_json_map_looks_like_a_source_tree() -> XrfResult {
   let root: &str = "layout/source_json";
 
-  write_generated_test_resource(
+  GeneratedResources::write(
     &format!("{root}/translations/st_test.json"),
     r#"{"st_hello":{"eng":"Hello"}}"#,
   )?;
@@ -41,11 +41,11 @@ fn xml_under_the_source_prefix_is_not_evidence_of_a_source_tree() -> XrfResult {
   // the only real evidence, so this reads as gamedata rather than as the tree that produced it.
   let root: &str = "layout/built_xml";
 
-  write_generated_test_resource(
+  GeneratedResources::write(
     &format!("{root}/translations/dialogs.eng.xml"),
     "<string_table></string_table>",
   )?;
-  write_generated_test_resource(
+  GeneratedResources::write(
     &format!("{root}/configs/text/rus/st_test.xml"),
     "<string_table></string_table>",
   )?;
@@ -61,11 +61,11 @@ fn a_tree_holding_both_reads_as_a_source_tree() -> XrfResult {
   // the same checkout also ships.
   let root: &str = "layout/both";
 
-  write_generated_test_resource(
+  GeneratedResources::write(
     &format!("{root}/translations/st_test.json"),
     r#"{"st_hello":{"eng":"Hello"}}"#,
   )?;
-  write_generated_test_resource(
+  GeneratedResources::write(
     &format!("{root}/configs/text/rus/st_test.xml"),
     "<string_table></string_table>",
   )?;

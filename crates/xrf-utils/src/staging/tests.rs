@@ -2,13 +2,13 @@ use std::fs::{self, File};
 use std::io::Result as IoResult;
 use std::path::{Path, PathBuf};
 
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::StagedFile;
 
 /// An empty directory of this case's own, since every assertion here is about what a destination holds.
 fn get_test_directory(name: &str) -> IoResult<PathBuf> {
-  create_generated_test_resource_dir(&format!("staging/{name}"))
+  GeneratedResources::create_dir(&format!("staging/{name}"))
 }
 
 /// The names a directory holds, for asserting nothing staged was left beside a target.

@@ -110,12 +110,12 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use xrf_test_utils::utils::create_generated_test_resource_dir;
+  use xrf_test_utils::GeneratedResources;
 
   use super::{XrayRootKind, XrayRootProbe};
 
   fn tree(name: &str, directories: &[&str], files: &[(&str, &str)]) -> PathBuf {
-    let root: PathBuf = create_generated_test_resource_dir(&format!("xray_root_probe/{name}")).expect("probe root");
+    let root: PathBuf = GeneratedResources::create_dir(&format!("xray_root_probe/{name}")).expect("probe root");
 
     for directory in directories {
       fs::create_dir_all(root.join(directory)).expect("probe directory");

@@ -4,12 +4,12 @@ use std::fs;
 use std::path::PathBuf;
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::commands::ltx::format::ltx_format_selection::LtxFormatSelection;
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("ltx_format/selection/{name}"))?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("ltx_format/selection/{name}"))?;
 
   Ok(root)
 }
