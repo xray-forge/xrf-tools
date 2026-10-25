@@ -3,11 +3,11 @@ use std::sync::{Arc, Mutex};
 
 use xrf_error::XrfResult;
 
-use crate::dlss_inputs::DlssInputs;
-use crate::dlss_preset::DlssPreset;
 use crate::dlss_quality::DlssQuality;
 #[cfg(feature = "sdk")]
-use crate::ngx::{ngx_sdk::NgxSdk, ngx_super_resolution::NgxSuperResolution};
+use crate::ngx::{feature::ngx_super_resolution::NgxSuperResolution, sdk::ngx_sdk::NgxSdk};
+use crate::upscaler::dlss_inputs::DlssInputs;
+use crate::upscaler::dlss_preset::DlssPreset;
 
 /// One view's DLSS super resolution: what it upscales into, at which quality and preset, and the render sizes it
 /// upscales from.

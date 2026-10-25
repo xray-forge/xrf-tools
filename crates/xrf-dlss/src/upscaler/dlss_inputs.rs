@@ -25,3 +25,15 @@ pub struct DlssInputs<'a> {
   /// Time since the frame before, which DLSS weighs its history by.
   pub frame_time: Duration,
 }
+
+impl DlssInputs<'_> {
+  /// The views NGX reads.
+  #[cfg(feature = "sdk")]
+  pub(crate) fn get_read(&self) -> Vec<&wgpu::TextureView> {
+    let mut views: Vec<&wgpu::TextureView> = vec![self.color, self.depth, self.motion];
+
+    views.extend(self.bias_current_color);
+
+    views
+  }
+}

@@ -9,12 +9,12 @@ use wgpu::hal::api::Vulkan;
 use windows_core::Interface;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::ngx::backend::ngx_api::NgxApi;
 use crate::ngx::bindings::*;
-use crate::ngx::ngx_api::NgxApi;
+use crate::ngx::feature::ngx_retired_feature::NgxRetiredFeature;
 use crate::ngx::ngx_application::NgxApplication;
-use crate::ngx::ngx_lock::lock_ngx;
-use crate::ngx::ngx_result::check_ngx;
-use crate::ngx::ngx_retired_feature::NgxRetiredFeature;
+use crate::ngx::ngx_result::NgxResult;
+use crate::ngx::sdk::ngx_lock::NgxLock;
 
 /// NGX started on a device, the API it runs on, the parameters its features are made with, whether it reconstructs
 /// rays as well as it upscales, and the features dropped while the device may still run their work.
@@ -39,7 +39,7 @@ impl NgxSdk {
 
     Self::update(application);
 
-    let ngx: MutexGuard<'static, ()> = lock_ngx();
+    let ngx: MutexGuard<'static, ()> = NgxLock::hold();
 
     match api {
       NgxApi::Vulkan => Self::init_vulkan(application, device)?,
@@ -72,7 +72,7 @@ impl NgxSdk {
   fn read_capabilities(&mut self) -> XrfResult<()> {
     let mut is_available: i32 = 0;
 
-    check_ngx(
+    NgxResult::check(
       unsafe {
         match self.api {
           NgxApi::Vulkan => NVSDK_NGX_VULKAN_GetCapabilityParameters(&mut self.parameters),
@@ -83,7 +83,7 @@ impl NgxSdk {
       "NGX has no parameters",
     )?;
 
-    check_ngx(
+    NgxResult::check(
       unsafe {
         NVSDK_NGX_Parameter_GetI(
           self.parameters,
@@ -125,7 +125,7 @@ impl NgxSdk {
       let engine_version = application.get_engine_version();
 
       application.with_feature_info(Default::default(), |info| {
-        check_ngx(
+        NgxResult::check(
           NVSDK_NGX_VULKAN_Init_with_ProjectID(
             application.get_project().as_ptr(),
             NVSDK_NGX_EngineType_NVSDK_NGX_ENGINE_TYPE_CUSTOM,
@@ -155,7 +155,7 @@ impl NgxSdk {
       let engine_version = application.get_engine_version();
 
       application.with_feature_info(Default::default(), |info| {
-        check_ngx(
+        NgxResult::check(
           NVSDK_NGX_D3D12_Init_with_ProjectID(
             application.get_project().as_ptr(),
             NVSDK_NGX_EngineType_NVSDK_NGX_ENGINE_TYPE_CUSTOM,
@@ -180,7 +180,7 @@ impl NgxSdk {
       let application: NgxApplication = application.clone();
 
       std::thread::spawn(move || {
-        let _ngx: MutexGuard<'static, ()> = lock_ngx();
+        let _ngx: MutexGuard<'static, ()> = NgxLock::hold();
         let started: Instant = Instant::now();
 
         for feature in [
@@ -233,7 +233,7 @@ impl NgxSdk {
       }
     };
 
-    if let Err(error) = check_ngx(result, "DLSS does not release a feature") {
+    if let Err(error) = NgxResult::check(result, "DLSS does not release a feature") {
       log::error!("{error}");
     }
   }
@@ -246,7 +246,7 @@ impl NgxSdk {
   unsafe fn shut_down(&mut self) {
     unsafe {
       if !self.parameters.is_null()
-        && let Err(error) = check_ngx(
+        && let Err(error) = NgxResult::check(
           match self.api {
             NgxApi::Vulkan => NVSDK_NGX_VULKAN_DestroyParameters(self.parameters),
             #[cfg(windows)]
@@ -271,7 +271,7 @@ impl NgxSdk {
       };
 
       if let Some(result) = result
-        && let Err(error) = check_ngx(result, "NGX does not shut down")
+        && let Err(error) = NgxResult::check(result, "NGX does not shut down")
       {
         log::error!("{error}");
       }
@@ -287,7 +287,7 @@ impl Drop for NgxSdk {
       log::error!("DLSS shuts down on a device that does not finish its work: {error}");
     }
 
-    let _ngx: MutexGuard<'static, ()> = lock_ngx();
+    let _ngx: MutexGuard<'static, ()> = NgxLock::hold();
 
     for feature in self.retired.drain(..) {
       unsafe { Self::release(self.api, feature.handle) };

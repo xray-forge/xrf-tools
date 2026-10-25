@@ -2,6 +2,8 @@ use std::path::Path;
 
 use crate::dlss::Dlss;
 #[cfg(feature = "sdk")]
+use crate::ngx::backend::ngx_vulkan_extensions::NgxVulkanExtensions;
+#[cfg(feature = "sdk")]
 use crate::ngx::ngx_application::NgxApplication;
 
 /// A wgpu instance which, built with the SDK, starts its devices with DLSS: on Vulkan carrying the instance extensions
@@ -93,8 +95,6 @@ impl DlssInstance {
   /// A Vulkan instance with NGX's instance extensions, where the loader has them; one without NGX otherwise.
   #[cfg(feature = "sdk")]
   fn hook(descriptor: &wgpu::InstanceDescriptor, application: NgxApplication) -> xrf_error::XrfResult<Self> {
-    use crate::ngx::vulkan_extensions::add_instance_extensions;
-
     let mut is_supported: xrf_error::XrfResult<bool> = Ok(false);
     let raw = unsafe {
       wgpu::hal::vulkan::Instance::init_with_callback(
@@ -107,7 +107,7 @@ impl DlssInstance {
           display: None,
         },
         Some(Box::new(|mut args| {
-          is_supported = add_instance_extensions(&application, &mut args);
+          is_supported = NgxVulkanExtensions::add_to_instance(&application, &mut args);
         })),
       )
     }
@@ -127,8 +127,6 @@ impl DlssInstance {
     adapter: &wgpu::Adapter,
     descriptor: &wgpu::DeviceDescriptor<'_>,
   ) -> xrf_error::XrfResult<(wgpu::Device, wgpu::Queue, bool)> {
-    use crate::ngx::vulkan_extensions::add_device_extensions;
-
     let failed = |error: String| xrf_error::XrfError::new_unexpected_error(error);
     let hal = unsafe { adapter.as_hal::<wgpu::hal::api::Vulkan>() }
       .ok_or_else(|| failed("the adapter is not a Vulkan one".to_string()))?;
@@ -139,7 +137,7 @@ impl DlssInstance {
         &descriptor.required_limits,
         &descriptor.memory_hints,
         Some(Box::new(|mut args| {
-          is_supported = add_device_extensions(application, &mut args, &hal);
+          is_supported = NgxVulkanExtensions::add_to_device(application, &mut args, &hal);
         })),
       )
     }
