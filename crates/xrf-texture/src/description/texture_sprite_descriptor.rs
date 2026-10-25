@@ -61,8 +61,10 @@ impl TextureSpriteDescriptor {
     w > 0 && h > 0
   }
 
+  /// Where the sprite ends on each axis, saturating, so a description naming a rect past `u32` is caught as out of
+  /// bounds rather than wrapping back inside the sheet.
   pub fn get_dimension_boundaries(&self) -> (u32, u32) {
-    (self.x + self.w, self.y + self.h)
+    (self.x.saturating_add(self.w), self.y.saturating_add(self.h))
   }
 
   /// The file this sprite is stored as on its own, named for its id as spelled.

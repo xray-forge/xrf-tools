@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 
-use rayon::ThreadPoolBuilder;
 use rayon::prelude::*;
 use xrf_error::XrfResult;
 use xrf_job::{JobHandle, JobScope};
@@ -12,9 +11,6 @@ use crate::patch::compare::{
 };
 use crate::patch::config::ArchivePatchScope;
 use crate::patch::world::{ArchivePatchChecksum, ArchivePatchRole, ArchivePatchWorld};
-
-/// How many payloads a comparison reads at once.
-const DECISION_CONCURRENCY: usize = 8;
 
 /// Classified differences and counts for two mounted roots.
 #[derive(Debug, Default)]
@@ -104,31 +100,22 @@ impl ArchivePatchComparison {
     job: &JobHandle,
     is_verifying_payload: bool,
   ) -> XrfResult<()> {
-    let decide_all = || -> Vec<XrfResult<ArchivePatchDecision>> {
-      // An indexed collection, so rayon hands the answers back in the order the merge queued them.
-      pending
-        .par_iter()
-        .map(|entry| {
-          if job.is_cancelled() {
-            return Ok(ArchivePatchDecision::cancelled());
-          }
+    // On whatever pool the caller installed, whose width is the binary's to bound (`-j`, the app's execution pool). An
+    // indexed collection, so rayon hands the answers back in the order the merge queued them.
+    let decided: Vec<XrfResult<ArchivePatchDecision>> = pending
+      .par_iter()
+      .map(|entry| {
+        if job.is_cancelled() {
+          return Ok(ArchivePatchDecision::cancelled());
+        }
 
-          let decision: XrfResult<ArchivePatchDecision> = Self::decide(base, target, &entry.name, is_verifying_payload);
+        let decision: XrfResult<ArchivePatchDecision> = Self::decide(base, target, &entry.name, is_verifying_payload);
 
-          comparing.advance();
+        comparing.advance();
 
-          decision
-        })
-        .collect()
-    };
-
-    // Its own pool rather than the global one, so the bound is this phase's and no other work inherits it. A pool
-    // that cannot be built is not worth failing a comparison over: the same decisions are made sequentially.
-    let decided: Vec<XrfResult<ArchivePatchDecision>> =
-      match ThreadPoolBuilder::new().num_threads(DECISION_CONCURRENCY).build() {
-        Ok(pool) => pool.install(decide_all),
-        Err(_) => decide_all(),
-      };
+        decision
+      })
+      .collect();
 
     for (entry, decision) in pending.into_iter().zip(decided) {
       let decision: ArchivePatchDecision = decision?;

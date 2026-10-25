@@ -143,6 +143,11 @@ fn imported_function_reference(program: &Program, local_name: &str) -> Option<(S
       continue;
     };
 
+    // `import type { X }` binds no value, whatever its specifiers say one by one.
+    if import.type_only {
+      continue;
+    }
+
     for specifier in &import.specifiers {
       let ImportSpecifier::Named(named) = specifier else {
         continue;
@@ -165,6 +170,11 @@ fn imported_function_reference(program: &Program, local_name: &str) -> Option<(S
 
 /// Return the original export name when a named re-export exposes `export_name`.
 fn reexported_name(named: &crate::swc_ecma_ast::NamedExport, export_name: &str) -> Option<String> {
+  // `export type { X } from` re-exports no value either.
+  if named.type_only {
+    return None;
+  }
+
   named.specifiers.iter().find_map(|specifier| {
     let crate::swc_ecma_ast::ExportSpecifier::Named(specifier) = specifier else {
       return None;
@@ -185,4 +195,68 @@ fn reexported_name(named: &crate::swc_ecma_ast::NamedExport, export_name: &str) 
 /// Return the text form of an AST module export name.
 fn module_export_name(name: &ModuleExportName) -> String {
   name.atom().to_string()
+}
+
+#[cfg(test)]
+mod tests {
+  use std::fs;
+  use std::path::PathBuf;
+
+  use xrf_test_utils::utils::create_generated_test_resource_dir;
+
+  use super::{imported_function_reference, reexported_name};
+  use crate::parse_typescript_file;
+  use crate::swc_ecma_ast::{ModuleDecl, ModuleItem, NamedExport, Program};
+
+  fn parse(name: &str, source: &str) -> Program {
+    let path: PathBuf = create_generated_test_resource_dir(&format!("module-resolver/{name}"))
+      .unwrap()
+      .join("source.ts");
+
+    fs::write(&path, source).unwrap();
+
+    parse_typescript_file(&path).unwrap().program
+  }
+
+  fn first_named_export(program: &Program) -> NamedExport {
+    let Program::Module(module) = program else {
+      panic!("Expected a module");
+    };
+
+    module
+      .body
+      .iter()
+      .find_map(|item| match item {
+        ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(named)) => Some(named.clone()),
+        _ => None,
+      })
+      .expect("Expected a named export")
+  }
+
+  #[test]
+  fn follows_a_value_import_and_not_a_type_only_one() {
+    let program: Program = parse(
+      "imports",
+      "import { run } from \"./run\";\nimport type { Config } from \"./config\";\nimport { type Shape } from \"./shape\";",
+    );
+
+    assert_eq!(
+      imported_function_reference(&program, "run"),
+      Some((String::from("./run"), String::from("run")))
+    );
+    assert_eq!(imported_function_reference(&program, "Config"), None);
+    assert_eq!(imported_function_reference(&program, "Shape"), None);
+  }
+
+  #[test]
+  fn follows_a_value_reexport_and_not_a_type_only_one() {
+    let value: Program = parse("reexport-value", "export { run as start } from \"./run\";");
+    let type_only: Program = parse("reexport-type", "export type { Config } from \"./config\";");
+
+    assert_eq!(
+      reexported_name(&first_named_export(&value), "start"),
+      Some(String::from("run"))
+    );
+    assert_eq!(reexported_name(&first_named_export(&type_only), "Config"), None);
+  }
 }

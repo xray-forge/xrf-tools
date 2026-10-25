@@ -61,7 +61,7 @@ impl EquipmentSpriteUnpacker {
 
     // todo: Respect custom icon path from LTX file here (sprite.custom_icon).
 
-    if x + w > options.source.width() || y + h > options.source.height() {
+    if x.saturating_add(w) > options.source.width() || y.saturating_add(h) > options.source.height() {
       xrf_output::warning!(
         options.output,
         "Skip for possible section: '{}' - icon is out of source file bonds",

@@ -74,12 +74,16 @@ impl InventorySpriteDescriptor {
     Ok(HostFileName::new(&self.section, "Inventory icon section")?.with_extension(extension.as_str()))
   }
 
+  /// The icon's rectangle in pixels.
+  ///
+  /// Saturating, because the grid values come from whatever a config declares: a value past the sheet must fail the
+  /// caller's bounds check rather than wrap back inside it.
   pub fn get_boundaries(&self) -> (u32, u32, u32, u32) {
     (
-      self.x * INVENTORY_ICON_GRID_SQUARE_BASE,
-      self.y * INVENTORY_ICON_GRID_SQUARE_BASE,
-      self.w * INVENTORY_ICON_GRID_SQUARE_BASE,
-      self.h * INVENTORY_ICON_GRID_SQUARE_BASE,
+      self.x.saturating_mul(INVENTORY_ICON_GRID_SQUARE_BASE),
+      self.y.saturating_mul(INVENTORY_ICON_GRID_SQUARE_BASE),
+      self.w.saturating_mul(INVENTORY_ICON_GRID_SQUARE_BASE),
+      self.h.saturating_mul(INVENTORY_ICON_GRID_SQUARE_BASE),
     )
   }
 }
@@ -109,14 +113,29 @@ impl InventorySpriteDescriptor {
 
     for (section_name, section) in ltx.iter() {
       if let Some(sprite) = Self::new_optional_from_section(section_name, section) {
-        max_width = max((sprite.x + sprite.w) * INVENTORY_ICON_GRID_SQUARE_BASE, max_width);
-        max_height = max((sprite.y + sprite.h) * INVENTORY_ICON_GRID_SQUARE_BASE, max_height);
+        // Saturating, so a config declaring a rect past `u32` reaches the size refusal instead of wrapping small.
+        max_width = max(
+          sprite
+            .x
+            .saturating_add(sprite.w)
+            .saturating_mul(INVENTORY_ICON_GRID_SQUARE_BASE),
+          max_width,
+        );
+        max_height = max(
+          sprite
+            .y
+            .saturating_add(sprite.h)
+            .saturating_mul(INVENTORY_ICON_GRID_SQUARE_BASE),
+          max_height,
+        );
       }
     }
 
     (
-      max_width.next_multiple_of(DDS_BLOCK_SIZE),
-      max_height.next_multiple_of(DDS_BLOCK_SIZE),
+      max_width.checked_next_multiple_of(DDS_BLOCK_SIZE).unwrap_or(max_width),
+      max_height
+        .checked_next_multiple_of(DDS_BLOCK_SIZE)
+        .unwrap_or(max_height),
     )
   }
 }

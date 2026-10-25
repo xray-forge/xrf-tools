@@ -72,8 +72,13 @@ impl GamedataProjectVerifyOptions {
       .checks
       .iter()
       .copied()
-      // The collisions check always runs, so a caller naming it programmatically must not run it a second time.
-      .filter(|check| *check != GamedataVerificationType::Collisions)
+      // Coverage and collisions always run first, so a caller naming either programmatically must not run it again.
+      .filter(|check| {
+        !matches!(
+          check,
+          GamedataVerificationType::Coverage | GamedataVerificationType::Collisions
+        )
+      })
       .filter(|check| seen.insert(*check))
       .collect()
   }
@@ -99,5 +104,20 @@ mod tests {
       options.selected_checks(),
       vec![GamedataVerificationType::Textures, GamedataVerificationType::Scripts,]
     );
+  }
+
+  /// The two always-run checks already ran before the selection, so naming them must not run them a second time.
+  #[test]
+  fn selected_checks_leaves_out_the_always_run_checks() {
+    let options: GamedataProjectVerifyOptions = GamedataProjectVerifyOptions {
+      checks: vec![
+        GamedataVerificationType::Coverage,
+        GamedataVerificationType::Ltx,
+        GamedataVerificationType::Collisions,
+      ],
+      ..Default::default()
+    };
+
+    assert_eq!(options.selected_checks(), vec![GamedataVerificationType::Ltx]);
   }
 }
