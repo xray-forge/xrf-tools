@@ -5,7 +5,7 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
-use xrf_utils::write_file_staged;
+use xrf_utils::StagedFile;
 
 use crate::viewer::LevelViewerFolder;
 
@@ -25,7 +25,7 @@ pub async fn levels_copy_screenshot(
     .run_blocking("Copying a screenshot", move || {
       let bytes: Vec<u8> = fs::read(&path).map_err(|error| format!("Failed to read '{}': {error}", path.display()))?;
 
-      write_file_staged(&target, &bytes)
+      StagedFile::write(&target, &bytes)
         .map_err(|error| format!("Failed to copy '{}' to '{}': {error}", path.display(), target.display()))
     })
     .await?

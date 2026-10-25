@@ -19,11 +19,6 @@ impl Display for HostPath<'_> {
 
 /// Render a host path the way it is shown to a person: platform-native separators, and the lossy
 /// substitution `Path::display` already performs for a name that is not valid Unicode.
-///
-/// This is the one boundary for human-facing host path output, so a presentation change happens here
-/// rather than at every call site. It answers a different question than `to_portable_path_string`,
-/// which is a deterministic wire or report key, and than `XrayLogicalPath`, which is an engine
-/// identity. Rendering, never a write address: resolve a path to write through the VFS instead.
 #[inline]
 pub fn format_path<P: AsRef<Path> + ?Sized>(path: &P) -> impl Display + '_ {
   HostPath {
@@ -33,9 +28,6 @@ pub fn format_path<P: AsRef<Path> + ?Sized>(path: &P) -> impl Display + '_ {
 }
 
 /// Render a host path that may be absent, naming the absent case explicitly.
-///
-/// The fallback is the caller's word, because what a missing path means is the caller's domain: an
-/// `Ltx` built in memory is `virtual`, and nothing here should have to know that.
 #[inline]
 pub fn format_path_or<'a, P: AsRef<Path> + ?Sized>(path: Option<&'a P>, fallback: &'a str) -> impl Display + 'a {
   HostPath {
@@ -45,24 +37,12 @@ pub fn format_path_or<'a, P: AsRef<Path> + ?Sized>(path: Option<&'a P>, fallback
 }
 
 /// Render a host path with forward slashes, for a wire contract or a report key.
-///
-/// Not to be confused with `XrayLogicalPath::normalize`, which answers the other domain: that one
-/// produces an engine identity (`\`-separated, lower case), this one renders a host path so the same
-/// project reports the same key on Windows and Linux. Four crates had grown their own copy of these
-/// three tokens before this existed.
 #[inline]
 pub fn to_portable_path_string<T: AsRef<Path>>(path: T) -> String {
   path.as_ref().to_string_lossy().replace('\\', "/")
 }
 
 /// Resolve a host path to an absolute one, against the current directory and without consulting the filesystem.
-///
-/// Lexical on purpose. `canonicalize` refuses a path that does not exist yet, which a destination typically does not,
-/// and on Windows it answers the verbatim `\\?\` form that no person typed and few tools accept. Folding `.` and `..`
-/// by component gives the one spelling a person can act on for a path that may still be about to be created.
-///
-/// A symlink is therefore not followed, so the result names where the path says it goes rather than where it lands.
-/// Canonicalize instead where that difference matters.
 ///
 /// # Errors
 ///
@@ -181,7 +161,7 @@ mod tests {
   }
 
   /// A Unix filename is bytes, not text, so it can be a valid path and still not be valid Unicode.
-  /// `to_str` returns `None` for it, which is what used to be unwrapped; rendering must not.
+  /// `to_str` returns `None` for it; rendering must still answer.
   #[test]
   #[cfg(unix)]
   fn renders_a_path_that_is_not_valid_unicode() {

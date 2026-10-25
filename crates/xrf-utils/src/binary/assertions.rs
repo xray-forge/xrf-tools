@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use xrf_error::{XrfError, XrfResult};
 
-/// Assert condition.
+/// Refuses a format check that did not hold, with `message` as the assertion error.
 #[inline]
 pub fn assert(condition: bool, message: &str) -> XrfResult {
   if condition {
@@ -12,7 +12,7 @@ pub fn assert(condition: bool, message: &str) -> XrfResult {
   }
 }
 
-/// Assert data values are equal.
+/// Refuses a container whose length is not the one its format declared.
 #[inline]
 pub fn assert_length<T>(container: &[T], expected_len: usize, message: &str) -> XrfResult {
   if container.len() == expected_len {
@@ -27,7 +27,7 @@ pub fn assert_length<T>(container: &[T], expected_len: usize, message: &str) -> 
   }
 }
 
-/// Assert data values are equal.
+/// Refuses two values a format requires to be equal, naming both.
 #[inline]
 pub fn assert_equal<T: PartialEq + Debug>(first: T, second: T, message: &str) -> XrfResult {
   if first == second {
@@ -40,7 +40,7 @@ pub fn assert_equal<T: PartialEq + Debug>(first: T, second: T, message: &str) ->
   }
 }
 
-/// Assert data values are not equal.
+/// Refuses two values a format requires to differ, naming both.
 #[inline]
 pub fn assert_not_equal<T: PartialEq + Debug>(first: T, second: T, message: &str) -> XrfResult {
   if first != second {

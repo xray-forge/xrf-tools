@@ -4,7 +4,8 @@ Small primitives every XRF crate shares: bounds for counts read from files, safe
 staged file publication, line endings, text encodings, natural ordering, and the workspace's units for durations and
 sizes. It depends only on `xrf-error` among XRF crates, so any crate can use it; domain rules live in the domain crates.
 
-Everything is exported flat from the crate root (`xrf_utils::format_bytes`, `xrf_utils::HostDestination`).
+Everything is exported flat from the crate root (`xrf_utils::format_bytes`, `xrf_utils::HostDestination`). The sources
+group by the sections below: `binary/`, `host_path/`, `staging/`, `text/` and `units/`.
 
 ## Counts and sizes in binary formats
 
@@ -84,33 +85,39 @@ extension belongs to [xrf-extension](../xrf-extension/README.md).
 ```rust,no_run
 use std::path::Path;
 
-use xrf_utils::write_new_file_staged;
+use xrf_utils::StagedFile;
 
 fn main() -> std::io::Result<()> {
-  write_new_file_staged(Path::new("output/report.txt"), b"Verification completed\n")
+  StagedFile::write_creating_directories(Path::new("output/report.txt"), b"Verification completed\n")
 }
 ```
 
 A staged write creates a hidden sibling (`.<name>.xrf-tmp-<pid>-<n>`), writes and `sync_all`s it, renames it over the
 destination, then best-effort syncs the parent directory, so the destination holds either the previous file or the new
-one. A replacement keeps the old file's permissions; a failed write removes the sibling. `write_file_staged` requires
-the parent directory; `write_new_file_staged` creates it. Neither is create-only: both replace an existing file, so the
-caller enforces any overwrite policy. Both return `std::io::Result` so the caller can name the artifact and keep the
-`ErrorKind`.
+one. A replacement keeps the old file's permissions; a failed write removes the sibling. `StagedFile::write` requires
+the parent directory; `StagedFile::write_creating_directories` creates it. Neither is create-only: both replace an
+existing file, so the caller enforces any overwrite policy. Both return `std::io::Result` so the caller can name the
+artifact and keep the `ErrorKind`.
 
-The `staging-faults` feature exposes `staging_faults::fail_next_staged_write()`, which makes the next staged write on
-the current thread fail with `StorageFull`; enable it only in a dependent crate's tests.
+A caller publishing several files together stages each with `StagedFile::stage(target, sibling, contents)`, naming the
+sibling with `StagedFile::to_sibling(target, purpose)`, and calls `publish` on each once all are staged; a `StagedFile`
+dropped unpublished removes its sibling. `StagedFile::is_sibling` recognizes any `.<name>.xrf-…` name, so a directory
+walk can skip what a staged write left beside its target.
+
+The `staging-faults` feature exposes `StagingFaults::fail_next_write()`, which makes the next staged write on the current
+thread fail with `StorageFull`, and `StagingFaults::fail_publish_after(n)`, which fails a publish once `n` more have
+succeeded. Enable it only in a dependent crate's tests.
 
 ## Text
 
 ```rust
-use xrf_utils::{LineEndings, apply_line_endings, detect_line_endings, natural_cmp, normalize_line_endings};
+use xrf_utils::{LineEndings, natural_cmp};
 
 let source: &str = "first\r\nsecond\r\n";
 
-assert_eq!(detect_line_endings(source.as_bytes()), Some(LineEndings::Crlf));
-assert_eq!(normalize_line_endings(source), "first\nsecond\n");
-assert_eq!(apply_line_endings("first\n", LineEndings::Crlf), "first\r\n");
+assert_eq!(LineEndings::detect(source.as_bytes()), Some(LineEndings::Crlf));
+assert_eq!(LineEndings::normalize(source), "first\nsecond\n");
+assert_eq!(LineEndings::Crlf.apply("first\n"), "first\r\n");
 
 let mut names: [&str; 3] = ["item10", "item2", "item1"];
 
@@ -118,17 +125,18 @@ names.sort_by(|left, right| natural_cmp(left, right));
 assert_eq!(names, ["item1", "item2", "item10"]);
 ```
 
-- Line endings: `detect_line_endings` returns the more frequent of LF and CRLF, LF on a tie, and `None` with neither;
-  it ignores bare CR. `normalize_line_endings` turns CRLF and bare CR into LF. `apply_line_endings` rewrites every
-  break and adds no final one. `LineEndings` parses exactly `lf` and `crlf`.
+- Line endings: `LineEndings::detect` returns the more frequent of LF and CRLF, LF on a tie, and `None` with neither;
+  it ignores bare CR. `LineEndings::normalize` turns CRLF and bare CR into LF. `apply` rewrites every break as the
+  ending it is called on and adds no final one. `LineEndings` parses exactly `lf` and `crlf`.
 - `natural_cmp` orders identifiers the way rustfmt does under `style_edition = "2024"`: digit runs compare as numbers
   (`a2` before `a10`), an equal number spelled longer sorts first (`a00` before `a0`), and `_` sorts before every
   other character. Its tests pin it against real rustfmt output.
 - Encodings: `new_windows1251_encoder` and its siblings return `encoding_rs` encodings (UTF-8, Windows-1250/1251/1252).
   `decode_bytes_to_string` handles a BOM, `decode_bytes_to_string_without_bom_handling` does not, and
   `encode_string_to_bytes` encodes; each returns `InvalidData` rather than substituting characters. The encoding comes
-  from the format, never from guessing; game text is Windows-1251 (`encode_string_to_w1251_bytes`). Base64 helpers use
-  the URL-safe alphabet without padding.
+  from the format, never from guessing; game text is Windows-1251 (`decode_w1251_bytes_to_string`,
+  `encode_string_to_w1251_bytes`, `read_as_string_from_w1251_encoded`). Base64 helpers use the URL-safe alphabet
+  without padding.
 - `read_engine_integer` reads an integer as the engine's `atoi` does: the longest leading integer, or zero, saturated
   to `i32`. `vector_from_string(_sep)(_sized)` parse separated lists, `to_camel_case` turns a snake or kebab name into a
   JavaScript identifier.
@@ -149,5 +157,5 @@ assert_eq!(names, ["item1", "item2", "item10"]);
 
 Run `cargo test --locked -p xrf-utils` from the repository root. Functions return `std::io::Result` or `XrfResult` as
 their signatures say; callers add domain context. See [host paths](src/host_path/mod.rs),
-[capacity bounds](src/capacity_utils.rs), [staged writes](src/staged_write_utils.rs),
-[line endings](src/line_ending_utils.rs) and [encodings](src/encoding_utils.rs).
+[capacity bounds](src/binary/capacity.rs), [staged writes](src/staging/staged_file.rs),
+[line endings](src/text/line_endings.rs) and [encodings](src/text/encoding.rs).

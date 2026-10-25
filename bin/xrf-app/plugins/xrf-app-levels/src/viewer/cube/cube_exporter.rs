@@ -5,7 +5,7 @@ use image::{RgbaImage, imageops};
 use xrf_app_core::TauriResult;
 use xrf_dds::{DdsFile, DdsMipChain};
 use xrf_renderer::CubeAssembly;
-use xrf_utils::write_file_staged;
+use xrf_utils::StagedFile;
 
 use crate::viewer::ViewerImage;
 use crate::viewer::cube::{CubeExportFormat, CubeExportRequest};
@@ -86,7 +86,7 @@ impl CubeExporter {
           .write_to_bytes()
           .map_err(|error| format!("Failed to encode cubemap '{}': {error}", target.display()))?;
 
-        write_file_staged(target, &encoded)
+        StagedFile::write(target, &encoded)
           .map_err(|error| format!("Failed to write cubemap '{}': {error}", target.display()))?;
       }
       CubeExportFormat::Tga | CubeExportFormat::Png => {
@@ -101,7 +101,7 @@ impl CubeExporter {
           .collect::<TauriResult<_>>()?;
 
         for (target, encoded) in paths.iter().zip(encoded) {
-          write_file_staged(target, &encoded)
+          StagedFile::write(target, &encoded)
             .map_err(|error| format!("Failed to write cubemap face '{}': {error}", target.display()))?;
         }
       }

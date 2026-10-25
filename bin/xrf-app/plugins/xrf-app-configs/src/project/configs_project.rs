@@ -5,7 +5,7 @@ use xrf_ltx::{LtxDocumentSource, LtxEntryVerification, LtxProject};
 use xrf_ltx_inspect::{
   LtxAnchoredFinding, LtxFileStructure, LtxFileText, LtxResolvedIndex, LtxRootReader, LtxTextReader,
 };
-use xrf_utils::{encode_w1251_bytes_to_string, error_to_string};
+use xrf_utils::{decode_w1251_bytes_to_string, error_to_string};
 use xrf_vfs::XrayLogicalPath;
 
 use crate::{ConfigsDocument, ConfigsProjectDescriptor, ConfigsResolvedRoot};
@@ -157,7 +157,7 @@ impl ConfigsProject {
     // Configs are strict Windows-1251, loose and archived alike; a lossy decode would put a viewer and a writer at odds
     // about what the file says.
     let contents: String =
-      encode_w1251_bytes_to_string(&bytes).map_err(|error| format!("Cannot decode '{path}': {error}"))?;
+      decode_w1251_bytes_to_string(&bytes).map_err(|error| format!("Cannot decode '{path}': {error}"))?;
 
     let text: LtxFileText = LtxTextReader::read(logical.as_str(), &contents);
 

@@ -6,7 +6,7 @@ use serde_json::Value;
 use xrf_build_info::BuildInfo;
 use xrf_error::XrfError;
 use xrf_job::ExecutionPlan;
-use xrf_utils::{format_path, write_file_staged};
+use xrf_utils::{StagedFile, format_path};
 
 use crate::core::command::{CommandError, CommandResult};
 use crate::core::report::{CommandBuild, CommandExecution, ReportDestination};
@@ -84,7 +84,7 @@ impl CommandEnvelope {
 
         document.push(b'\n');
 
-        write_file_staged(path, &document).map_err(|error| {
+        StagedFile::write(path, &document).map_err(|error| {
           CommandError::from(XrfError::new_io_error(
             format!("Failed to write the report to '{}': {error}", format_path(path)),
             error.kind(),

@@ -1,11 +1,8 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::duration_utils::duration_to_millis;
+use crate::units::duration_to_millis;
 
 /// Read the wall clock, as milliseconds since the Unix epoch.
-///
-/// A clock standing before the epoch reads as zero rather than panicking. That happens when the host clock is wrong,
-/// which is not a reason to fail the work being stamped.
 pub fn wall_clock_millis() -> u64 {
   SystemTime::now()
     .duration_since(UNIX_EPOCH)
@@ -14,7 +11,7 @@ pub fn wall_clock_millis() -> u64 {
 
 #[cfg(test)]
 mod tests {
-  use crate::clock_utils::wall_clock_millis;
+  use super::wall_clock_millis;
 
   /// Milliseconds at the start of 2020, which every clock this runs on is past.
   const YEAR_2020: u64 = 1_577_836_800_000;

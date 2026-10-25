@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, to_staged_sibling};
+use xrf_utils::{StagedFile, format_path};
 
 /// Where a packed-file command writes: refused while it is there unless the caller forced it, and replaced only once
 /// the new one is complete, so a source that cannot be read leaves the old output standing.
@@ -36,7 +36,7 @@ impl PackedFileDestination {
       return export(dest);
     }
 
-    let staged: PathBuf = to_staged_sibling(dest, "staged")?;
+    let staged: PathBuf = StagedFile::to_sibling(dest, "staged")?;
 
     if let Err(error) = export(&staged) {
       let _ = fs::remove_dir_all(&staged);

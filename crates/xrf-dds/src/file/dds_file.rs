@@ -6,7 +6,7 @@ use ddsfile::{Dds, DxgiFormat};
 use image::codecs::png::PngEncoder;
 use image::{ExtendedColorType, ImageEncoder, RgbaImage};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, write_new_file_staged};
+use xrf_utils::{StagedFile, format_path};
 
 use crate::file::dds_metadata::DdsMetadata;
 use crate::file::dds_png::DdsPng;
@@ -180,7 +180,7 @@ impl DdsFile {
 
   /// Write the file to `path`, making the directories above it, staged as every format's file is written.
   pub fn write_to_path(&self, path: &Path) -> XrfResult {
-    Ok(write_new_file_staged(path, &self.write_to_bytes()?)?)
+    Ok(StagedFile::write_creating_directories(path, &self.write_to_bytes()?)?)
   }
 
   /// The whole file as it would be written, header and payload.
@@ -267,7 +267,7 @@ mod tests {
   use xrf_test_utils::utils::{
     assert_publication_left_previous, create_generated_test_resource_dir, write_generated_test_resource,
   };
-  use xrf_utils::staging_faults::fail_next_staged_write;
+  use xrf_utils::StagingFaults;
 
   use super::DdsFile;
   use crate::encode::dds_encoding::DdsEncoding;
@@ -315,7 +315,7 @@ mod tests {
       .join("texture.dds");
 
     std::fs::write(&path, b"previous").expect("expect the previous file to be written");
-    fail_next_staged_write();
+    StagingFaults::fail_next_write();
 
     assert!(encoded_file(4, 4, DdsMipmaps::Disabled).write_to_path(&path).is_err());
     assert_publication_left_previous(&path, b"previous");

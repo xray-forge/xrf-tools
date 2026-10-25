@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use xrf_error::XrfResult;
-use xrf_utils::staging_faults::fail_next_staged_write;
+use xrf_utils::StagingFaults;
 
 use super::fixtures;
 use crate::commands::ogf::fix::command::FixCommand;
@@ -250,7 +250,7 @@ fn keeps_the_source_when_the_write_fails() -> XrfResult {
   let file: PathBuf = root.join("split.ogf");
 
   fs::write(&file, fixtures::split_motion_ref()?)?;
-  fail_next_staged_write();
+  StagingFaults::fail_next_write();
 
   let (verdict, result) = fix(&["--path", &argument(&file)]);
   let result: Value = result.expect("Expect a result to be deposited beside the failure");

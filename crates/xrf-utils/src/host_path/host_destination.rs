@@ -7,8 +7,7 @@ use std::path::{Component, Path, PathBuf};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::host_path::host_file_name::is_host_file_name;
-use crate::host_path::{HostLinkPolicy, HostRelativePath};
-use crate::path_utils::format_path;
+use crate::host_path::{HostLinkPolicy, HostRelativePath, format_path};
 
 /// A destination root that data-named writes only ever grow downwards from.
 pub struct HostDestination {

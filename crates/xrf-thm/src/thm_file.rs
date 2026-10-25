@@ -6,7 +6,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, write_new_file_staged};
+use xrf_utils::{StagedFile, format_path};
 
 use crate::chunks::thm_bump_chunk::ThmBumpChunk;
 use crate::chunks::thm_detail_chunk::ThmDetailChunk;
@@ -172,7 +172,10 @@ impl ThmFile {
 impl ThmFile {
   /// Writes the descriptor to a path, creating the directories leading to it.
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    Ok(write_new_file_staged(path.as_ref(), &self.write_to_bytes::<T>()?)?)
+    Ok(StagedFile::write_creating_directories(
+      path.as_ref(),
+      &self.write_to_bytes::<T>()?,
+    )?)
   }
 
   /// The descriptor as the bytes of a file.

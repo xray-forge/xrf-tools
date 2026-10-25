@@ -4,7 +4,7 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
-use xrf_utils::write_file_staged;
+use xrf_utils::StagedFile;
 
 use crate::viewer::LevelViewerFolder;
 
@@ -23,7 +23,7 @@ pub async fn levels_write_screenshot_report(
 
   execution
     .run_blocking("Writing a screenshot's report", move || {
-      write_file_staged(&report, text.as_bytes())
+      StagedFile::write(&report, text.as_bytes())
         .map(|()| report.display().to_string())
         .map_err(|error| format!("Failed to write the report '{}': {error}", report.display()))
     })

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::create_generated_test_resource_dir;
-use xrf_utils::staging_faults::fail_next_staged_write;
+use xrf_utils::StagingFaults;
 
 use crate::commands::externs::export::command::ExportCommand;
 use crate::core::command::command_testing::run_command_with_result;
@@ -60,7 +60,7 @@ fn replaces_an_artifact_a_previous_run_published() -> XrfResult {
 fn keeps_the_previous_artifact_when_publication_fails() -> XrfResult {
   let root: PathBuf = create_root("failed")?;
 
-  fail_next_staged_write();
+  StagingFaults::fail_next_write();
 
   // A failed publication is the command's own failure, not a verdict on the declarations.
   match export(&root) {

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
-use xrf_utils::{encode_string_to_w1251_bytes, encode_w1251_bytes_to_string, format_path};
+use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes, format_path};
 use xrf_vfs::{XrayTransaction, require_writable_path};
 
 use crate::ltx::Ltx;
@@ -62,7 +62,7 @@ impl LtxProject {
 
       options.job.set_detail(Some(format_path(&file).to_string()));
 
-      let existing: String = encode_w1251_bytes_to_string(&self.read_counted_bytes(logical_path)?)?;
+      let existing: String = decode_w1251_bytes_to_string(&self.read_counted_bytes(logical_path)?)?;
       let formatted: String = Ltx::format_from_str(&existing)?;
 
       if existing == formatted {
@@ -132,7 +132,7 @@ impl LtxProject {
       // from the document the project already holds, so this pass parses nothing.
       let contents: Vec<u8> = self.read_counted_bytes(logical_path)?;
       let formatted: bool =
-        encode_w1251_bytes_to_string(&contents)? == self.read_document(logical_path)?.to_formatted();
+        decode_w1251_bytes_to_string(&contents)? == self.read_document(logical_path)?.to_formatted();
 
       result.record_checked(self.path_of(logical_path), formatted, &options);
       checking.advance();

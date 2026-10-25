@@ -5,7 +5,7 @@ use std::sync::Arc;
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, write_new_file_staged};
+use xrf_utils::{StagedFile, format_path};
 
 use crate::chunks::ogf_children_chunk::OgfChildrenChunk;
 use crate::chunks::ogf_texture_chunk::OgfTextureChunk;
@@ -62,7 +62,7 @@ impl OgfTextureRefsProcessor {
     };
 
     if !is_dry_run {
-      write_new_file_staged(destination, &patched)?;
+      StagedFile::write_creating_directories(destination, &patched)?;
     }
 
     Ok(report)

@@ -5,7 +5,7 @@ use image::imageops::FilterType;
 use image::{RgbaImage, imageops};
 use xrf_app_core::TauriResult;
 use xrf_dds::{DdsFile, DdsMipChain};
-use xrf_utils::write_file_staged;
+use xrf_utils::StagedFile;
 
 use crate::viewer::map::annotations::AnnotationCanvas;
 use crate::viewer::map::{MapExportAnnotations, MapExportFormat, MapExportRequest};
@@ -47,7 +47,7 @@ impl MapExporter {
       let (width, height): (u32, u32) = image::image_dimensions(source)
         .map_err(|error| format!("Failed to read map '{}': {error}", source.display()))?;
 
-      write_file_staged(target, svg.as_bytes())
+      StagedFile::write(target, svg.as_bytes())
         .map_err(|error| format!("Failed to write annotations '{}': {error}", target.display()))?;
 
       return Ok((width, height));
@@ -93,7 +93,7 @@ impl MapExporter {
     };
 
     // Encoded whole first, so a failed write leaves no partial file.
-    write_file_staged(target, &encoded)
+    StagedFile::write(target, &encoded)
       .map_err(|error| format!("Failed to write map '{}': {error}", target.display()))?;
 
     Ok((width, height))

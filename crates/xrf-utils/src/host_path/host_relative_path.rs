@@ -4,14 +4,10 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::host_path::HostFileName;
 use crate::host_path::host_file_name::is_host_file_name;
-use crate::path_utils::format_path;
+use crate::host_path::{HostFileName, format_path};
 
 /// A path taken from data, spelled as authored, that cannot leave the root it is joined to; empty names the root.
-///
-/// Built from components so the platform inserts its own separator: pushed whole, `configs\system.ltx` is one file
-/// name on Linux.
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct HostRelativePath(PathBuf);
 

@@ -1,12 +1,8 @@
 use xrf_error::{XrfError, XrfResult};
 
+use crate::binary::format_width::FormatWidth;
+
 /// Assert a declared record count fits the budget the records will be read from.
-///
-/// A count read out of a file is untrusted: a truncated or hostile one can declare four billion records in a payload
-/// that holds none, and reserving from it aborts the process instead of failing the parse. `budget` and
-/// `min_record_size` share a unit - bytes for a binary reader, sections for an ltx one - and the minimum counts only
-/// what every record consumes unconditionally, so understating it stays correct while overstating it rejects valid
-/// input.
 pub fn assert_count_fits(count: u64, budget: u64, min_record_size: u64, what: &str) -> XrfResult {
   let max_count: u64 = budget / min_record_size.max(1);
 
@@ -20,9 +16,6 @@ pub fn assert_count_fits(count: u64, budget: u64, min_record_size: u64, what: &s
 }
 
 /// Create a vector holding a declared record count, proving the count against its budget before reserving it.
-///
-/// See [`assert_count_fits`] for what the budget means. The reservation itself is fallible, so a count that survives
-/// the bound but cannot be satisfied by the host is reported rather than aborting the process.
 pub fn new_bounded_vec<T>(count: u64, budget: u64, min_record_size: u64, what: &str) -> XrfResult<Vec<T>> {
   assert_count_fits(count, budget, min_record_size, what)?;
 
@@ -39,11 +32,6 @@ pub fn new_bounded_vec<T>(count: u64, budget: u64, min_record_size: u64, what: &
 }
 
 /// Create a vector of a length a file declared, when nothing bounds what it may declare.
-///
-/// [`new_bounded_vec`] is the one to reach for: a count read out of a file is untrusted, and a budget is what turns a
-/// hostile one into a rejected parse. Use this only where the declared length has no budget to check against - a
-/// decompressed size is the standard case, since what a payload expands to is not bounded by what it occupies. The
-/// reservation is still fallible, so an unsatisfiable length is reported rather than aborting the process.
 pub fn new_declared_vec(size: usize, what: &str) -> XrfResult<Vec<u8>> {
   let mut buffer: Vec<u8> = Vec::new();
 
@@ -55,31 +43,7 @@ pub fn new_declared_vec(size: usize, what: &str) -> XrfResult<Vec<u8>> {
   Ok(buffer)
 }
 
-/// A fixed-width format field a length can be narrowed into.
-///
-/// The label is carried here rather than read from [`std::any::type_name`], whose output the standard library does not
-/// guarantee, because it reaches the user inside an error message.
-pub trait FormatWidth: Sized + TryFrom<usize> {
-  const LABEL: &'static str;
-}
-
-impl FormatWidth for u8 {
-  const LABEL: &'static str = "u8";
-}
-
-impl FormatWidth for u16 {
-  const LABEL: &'static str = "u16";
-}
-
-impl FormatWidth for u32 {
-  const LABEL: &'static str = "u32";
-}
-
 /// Narrow an in-memory length into the fixed-width field its format stores it in.
-///
-/// A binary format states a count or a size in a field of a fixed width, and an `as` cast into that width truncates
-/// silently: the file is then written with a length that does not describe its own payload, and the defect only
-/// surfaces when something reads it back. `what` names the collection or payload being written.
 pub fn to_format_size<T: FormatWidth>(value: usize, what: &str) -> XrfResult<T> {
   T::try_from(value).map_err(|_| XrfError::new_invalid_error(format!("{what} exceeds the {} format limit", T::LABEL)))
 }
@@ -88,7 +52,7 @@ pub fn to_format_size<T: FormatWidth>(value: usize, what: &str) -> XrfResult<T> 
 mod tests {
   use xrf_error::XrfResult;
 
-  use crate::capacity_utils::{assert_count_fits, new_bounded_vec, to_format_size};
+  use super::{assert_count_fits, new_bounded_vec, to_format_size};
 
   #[test]
   fn accepts_count_that_fits_the_budget() -> XrfResult {

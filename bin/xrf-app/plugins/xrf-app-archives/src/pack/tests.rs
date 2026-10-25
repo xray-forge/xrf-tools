@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use xrf_app_core::TauriResult;
 use xrf_pack::ArchivePackConfig;
 use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_utils::staging_faults::fail_next_staged_write;
+use xrf_utils::StagingFaults;
 
 use crate::pack::commands::export_pack_config::archives_export_pack_config;
 use crate::pack::commands::import_pack_config::archives_import_pack_config;
@@ -114,7 +114,7 @@ fn keeps_the_previous_configuration_when_an_export_is_refused() {
     fs::write(&path, b"previous").expect("previous configuration is written");
 
     // The write over the existing file fails as a full device would, in either format.
-    fail_next_staged_write();
+    StagingFaults::fail_next_write();
 
     assert!(
       run(archives_export_pack_config(&path.display().to_string(), open_form())).is_err(),

@@ -1,17 +1,9 @@
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{LineEndings, apply_line_endings, detect_line_endings, natural_cmp};
+use xrf_utils::{LineEndings, natural_cmp};
 
 use crate::types::{TranslationEntry, TranslationJson};
 
 /// Sort ids and language keys into the order a canonical source carries them.
-///
-/// The whole import workflow is "run once per language and merge", so a file whose shape remembered which run touched
-/// it first would churn a diff for nothing. Natural rather than byte order, matching how rustfmt orders identifiers
-/// under `style_edition = "2024"` — byte order puts `st_thanks10` before `st_thanks2` and `ammo-11.43x23-fmj` before
-/// `ammo-5.45x39-ap`, which reads wrong in every review that touches one.
-///
-/// Language keys go through the same comparator for consistency rather than for effect: they are all three lowercase
-/// letters, so the two orders agree on them.
 pub(crate) fn sort_document(document: &mut TranslationJson) {
   document.sort_by(|left, _, right, _| natural_cmp(left, right));
 
@@ -21,11 +13,6 @@ pub(crate) fn sort_document(document: &mut TranslationJson) {
 }
 
 /// Whether two documents would serialize identically, order included.
-///
-/// `IndexMap` compares as a map, so `==` answers true for two documents holding the same pairs in different orders —
-/// which is exactly the change a re-sort makes and nothing else does. Using `==` here meant a file somebody hand-edited
-/// out of order was detected as unchanged and left that way, and it is the same trap a formatter's check mode falls
-/// into: every file would report as already formatted.
 pub(crate) fn is_same_document(left: &TranslationJson, right: &TranslationJson) -> bool {
   left.len() == right.len()
     && left
@@ -48,13 +35,6 @@ fn is_same_entry(left: &TranslationEntry, right: &TranslationEntry) -> bool {
 
 /// Render a document as the bytes a canonical source holds.
 ///
-/// One serializer for every writer in this crate — the importer, the initializer, the editor and the formatter — which
-/// is the only way the four of them stop disagreeing about what a source looks like. Two-space indentation, a trailing
-/// newline unconditionally, and the caller's line endings.
-///
-/// The document is written in whatever order it already carries. Sorting is [`sort_document`]'s job, and a caller that
-/// wants a canonical file calls both.
-///
 /// # Errors
 ///
 /// Returns a serialization error when the document cannot be rendered as JSON.
@@ -69,18 +49,13 @@ pub(crate) fn to_canonical_bytes(
 
   // Appended rather than preserved. Two of this crate's writers used to keep whatever a file already had and a third
   // silently dropped it, which is three answers to a question that has one.
-  Ok(apply_line_endings(&format!("{rendered}\n"), line_endings).into_bytes())
+  Ok(line_endings.apply(&format!("{rendered}\n")).into_bytes())
 }
 
 /// The line endings a rewrite of `existing` should use.
-///
-/// An explicit choice wins. Otherwise the file's own convention is preserved, because line endings are transport that
-/// `.gitattributes` and `.editorconfig` own, and a formatter that flipped them would rewrite every file in a CRLF
-/// checkout to say nothing about their content. A file with no line break to read, and a file that is not there yet,
-/// get LF.
 pub(crate) fn resolve_line_endings(requested: Option<LineEndings>, existing: Option<&[u8]>) -> LineEndings {
   requested
-    .or_else(|| existing.and_then(detect_line_endings))
+    .or_else(|| existing.and_then(LineEndings::detect))
     .unwrap_or(LineEndings::Lf)
 }
 

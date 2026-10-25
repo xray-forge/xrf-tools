@@ -1,7 +1,7 @@
 use std::io::{Read, SeekFrom};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::encode_w1251_bytes_to_string;
+use xrf_utils::decode_w1251_bytes_to_string;
 
 use crate::reader::chunk_line::ChunkLine;
 use crate::reader::chunk_reader::ChunkReader;
@@ -58,7 +58,7 @@ impl<D: ChunkDataSource> ChunkReader<D> {
       self.give_back_read_ahead(collected.len() - end - 1)?;
       collected.truncate(end);
 
-      return Ok(encode_w1251_bytes_to_string(&collected)?);
+      return Ok(decode_w1251_bytes_to_string(&collected)?);
     }
   }
 
@@ -135,8 +135,8 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     self.give_back_read_ahead(collected.len() - end)?;
 
     Ok(ChunkLine {
-      value: encode_w1251_bytes_to_string(&collected[..start])?,
-      terminator: encode_w1251_bytes_to_string(&collected[start..end])?,
+      value: decode_w1251_bytes_to_string(&collected[..start])?,
+      terminator: decode_w1251_bytes_to_string(&collected[start..end])?,
     })
   }
 

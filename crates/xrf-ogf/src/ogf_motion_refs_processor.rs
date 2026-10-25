@@ -5,7 +5,7 @@ use std::sync::Arc;
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, write_new_file_staged};
+use xrf_utils::{StagedFile, format_path};
 
 use crate::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::ogf_file::OgfFile;
@@ -53,7 +53,7 @@ impl OgfMotionRefsProcessor {
     };
 
     if !is_dry_run {
-      write_new_file_staged(destination, &patched)?;
+      StagedFile::write_creating_directories(destination, &patched)?;
     }
 
     Ok(report)

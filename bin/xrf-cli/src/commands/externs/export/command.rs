@@ -11,7 +11,7 @@ use xrf_export::{
 };
 use xrf_output::OutputOptions;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
-use xrf_utils::{LineEndings, format_path, normalize_line_endings};
+use xrf_utils::{LineEndings, format_path};
 
 use super::externs_check_report::ExternsCheckReport;
 use super::report::ExternsExportReport;
@@ -202,7 +202,7 @@ impl ExportCommand {
       ExternFormat::Xml | ExternFormat::Html => {
         let expected: String = render_extern_manifest(manifest, format, line_endings)?;
 
-        if normalize_line_endings(&existing) != normalize_line_endings(&expected) {
+        if LineEndings::normalize(&existing) != LineEndings::normalize(&expected) {
           return Err(XrfError::new_verify_error(format!(
             "Extern {} artifact '{}' does not match freshly rendered output.",
             match format {

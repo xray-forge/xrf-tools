@@ -7,35 +7,38 @@ use base64::{Engine, alphabet};
 use encoding_rs::{Encoding, UTF_8, WINDOWS_1250, WINDOWS_1251, WINDOWS_1252};
 use xrf_error::{XrfError, XrfResult};
 
+/// A text encoding a format names, never one guessed from the bytes.
 pub type XRayEncoding = &'static Encoding;
 
-pub const CUSTOM_B64_ENGINE: GeneralPurpose = GeneralPurpose::new(&alphabet::URL_SAFE, general_purpose::NO_PAD);
+/// URL-safe Base64 without padding, the one alphabet the workspace writes.
+const BASE64_ENGINE: GeneralPurpose = GeneralPurpose::new(&alphabet::URL_SAFE, general_purpose::NO_PAD);
 
-/// Return encoding factory for windows1250.
+/// The Windows-1250 code page.
 #[inline]
 pub fn new_windows1250_encoder() -> XRayEncoding {
   WINDOWS_1250
 }
 
-/// Return encoding factory for windows1251.
+/// The Windows-1251 code page, the encoding game text is written in.
 #[inline]
 pub fn new_windows1251_encoder() -> XRayEncoding {
   WINDOWS_1251
 }
 
-/// Return encoding factory for windows1252.
+/// The Windows-1252 code page.
 #[inline]
 pub fn new_windows1252_encoder() -> XRayEncoding {
   WINDOWS_1252
 }
 
-/// Return encoding factory for UTF-8.
+/// UTF-8, for text a format declares as Unicode.
 #[inline]
 pub fn new_utf8_encoder() -> XRayEncoding {
   UTF_8
 }
 
-/// Try encoding provided u8 raw bytes as string value.
+/// Decodes `bytes` in `encoding`, honouring and removing a byte order mark, and refusing rather than substituting a
+/// byte the encoding cannot read.
 #[inline]
 pub fn decode_bytes_to_string(bytes: &[u8], encoding: XRayEncoding) -> io::Result<String> {
   let (cow, _, had_errors) = encoding.decode(bytes);
@@ -54,7 +57,7 @@ pub fn decode_bytes_to_string(bytes: &[u8], encoding: XRayEncoding) -> io::Resul
   }
 }
 
-/// Try encoding provided u8 raw bytes as string value.
+/// Decodes `bytes` in `encoding` as [`decode_bytes_to_string`] does, but reads a byte order mark as text.
 #[inline]
 pub fn decode_bytes_to_string_without_bom_handling(bytes: &[u8], encoding: XRayEncoding) -> io::Result<String> {
   let (cow, had_errors) = encoding.decode_without_bom_handling(bytes);
@@ -73,7 +76,7 @@ pub fn decode_bytes_to_string_without_bom_handling(bytes: &[u8], encoding: XRayE
   }
 }
 
-/// Try encoding provided string value as bytes.
+/// Encodes `string` in `encoding`, refusing rather than substituting a character the encoding cannot write.
 #[inline]
 pub fn encode_string_to_bytes(string: &str, encoding: XRayEncoding) -> io::Result<Vec<u8>> {
   let (transformed, _, had_errors) = encoding.encode(string);
@@ -95,58 +98,52 @@ pub fn encode_string_to_bytes(string: &str, encoding: XRayEncoding) -> io::Resul
   }
 }
 
-/// Read whole encoded reader content to a string.
-#[inline]
-pub fn read_as_string_from_encoded<R: Read>(reader: &mut R, encoding: XRayEncoding) -> io::Result<String> {
-  let mut raw_data: Vec<u8> = Vec::new();
-
-  reader.read_to_end(&mut raw_data)?;
-
-  decode_bytes_to_string(&raw_data, encoding)
-}
-
-/// Try encoding provided u8 raw bytes as window 1251 string and convert into regular rust string.
+/// Reads everything `reader` holds and decodes it as Windows-1251, the encoding game text is written in.
 #[inline]
 pub fn read_as_string_from_w1251_encoded<R: Read>(reader: &mut R) -> io::Result<String> {
-  read_as_string_from_encoded(reader, WINDOWS_1251)
+  let mut bytes: Vec<u8> = Vec::new();
+
+  reader.read_to_end(&mut bytes)?;
+
+  decode_w1251_bytes_to_string(&bytes)
 }
 
-/// Try encoding provided u8 raw bytes as window 1251 string and convert into regular rust string.
+/// Decodes `bytes` as Windows-1251, the encoding game text is written in.
 #[inline]
-pub fn encode_w1251_bytes_to_string(bytes: &[u8]) -> io::Result<String> {
+pub fn decode_w1251_bytes_to_string(bytes: &[u8]) -> io::Result<String> {
   decode_bytes_to_string(bytes, WINDOWS_1251)
 }
 
-/// Try encoding provided string as windows1251 bytes.
+/// Encodes `string` as Windows-1251, the encoding game text is written in.
 #[inline]
 pub fn encode_string_to_w1251_bytes(string: &str) -> io::Result<Vec<u8>> {
   encode_string_to_bytes(string, WINDOWS_1251)
 }
 
-/// Encode str as b64 value.
+/// Encodes text as URL-safe Base64 without padding.
 #[inline]
 pub fn encode_string_to_base64(string: &str) -> String {
-  CUSTOM_B64_ENGINE.encode(string)
+  BASE64_ENGINE.encode(string)
 }
 
-/// Encode bytes as b64 value.
+/// Encodes bytes as URL-safe Base64 without padding.
 #[inline]
 pub fn encode_bytes_to_base64(bytes: &[u8]) -> String {
-  CUSTOM_B64_ENGINE.encode(bytes)
+  BASE64_ENGINE.encode(bytes)
 }
 
-/// Decode b64 as bytes.
+/// Decodes URL-safe Base64 without padding into bytes.
 #[inline]
 pub fn decode_bytes_from_base64(string: &str) -> XrfResult<Vec<u8>> {
-  CUSTOM_B64_ENGINE
+  BASE64_ENGINE
     .decode(string)
     .map_err(|error| XrfError::new_parsing_error(format!("Failed to decode bytes value from base 64: {}", error)))
 }
 
-/// Decode b64 as string.
+/// Decodes URL-safe Base64 without padding into text, refusing bytes that are not UTF-8.
 #[inline]
 pub fn decode_string_from_base64(string: &str) -> XrfResult<String> {
-  let bytes: Vec<u8> = CUSTOM_B64_ENGINE
+  let bytes: Vec<u8> = BASE64_ENGINE
     .decode(string)
     .map_err(|error| XrfError::new_parsing_error(format!("Failed to decode string value from base 64: {error}")))?;
 

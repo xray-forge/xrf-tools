@@ -6,7 +6,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
-use xrf_utils::write_file_staged;
+use xrf_utils::StagedFile;
 
 use crate::level::{SelectedLevel, SelectedLevels};
 use crate::parts::{LevelGraphPart, LevelSpawnPart};
@@ -55,7 +55,7 @@ pub async fn levels_write_map_annotations(
       .draw(&annotations);
       let target: PathBuf = LevelViewerFolder::get_annotations_path(&request.path);
 
-      write_file_staged(&target, svg.as_bytes())
+      StagedFile::write(&target, svg.as_bytes())
         .map_err(|error| format!("Failed to write annotations '{}': {error}", target.display()))?;
 
       Ok(svg)
