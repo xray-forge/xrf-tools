@@ -1,25 +1,17 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-/** One finding, already placed at the file and line a person has to open. */
+import { LtxFinding } from "#/types/xrf-ltx";
+
+/**
+ * One finding, placed at the line a person has to open.
+ *
+ * The finding itself is the core's: this adds only the line, which takes the documents to find. Flattened, so a
+ * viewer reads one record rather than a finding nested in its placement.
+ */
 export type LtxAnchoredFinding = {
-  kind: LtxFindingKind;
-  /** Engine identity of the entry point whose resolution the finding was produced under. */
-  entry: string;
-  /**
-   * Engine identity of the config to open, where one is known.
-   *
-   * `None` means nothing recorded which config declares the section, which a patch dialect answers for a section
-   * created by an override of something nothing declares.
-   */
-  file: string | null;
-  /** One-based line in `file`, where the anchor reached one. */
+  /** One-based line in the finding's `file`, where the anchor reached one. */
   line: number | null;
-  section: string | null;
-  field: string | null;
-  message: string;
-  /** What the engine does with the same input, where the dialect said so. */
-  engineBehaviour: string | null;
-};
+} & LtxFinding;
 
 /**
  * One config as written, carrying only what reading the text cannot answer.
@@ -71,26 +63,6 @@ export type LtxFileText = {
    */
   isNormalized: boolean;
 };
-
-/** What kind of thing went wrong, which is also what decides how it was anchored. */
-export enum ELtxFindingKind {
-  /** The file would not parse. Carries its own line, from the parser. */
-  PARSE = "parse",
-  /** A section broke the scheme it is bound to, or is bound to one nothing declares. */
-  SCHEME = "scheme",
-  /** The dialect had something to say about the root that is not a failure. */
-  DIALECT = "dialect",
-  /** An `#include` reached no file. */
-  INCLUDE = "include",
-  /**
-   * A config declares keys above its first section header, where no engine loads them. Not raised for a config
-   * that declares no section at all: that is a list, read as data rather than loaded as an ini.
-   */
-  ROOT_KEYS = "rootKeys",
-}
-
-/** Every `ELtxFindingKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type LtxFindingKind = `${ELtxFindingKind}`;
 
 /**
  * Every config a project holds, and what each one is to the project.

@@ -4,6 +4,7 @@ pub(crate) mod binding;
 pub(crate) mod condlist;
 pub(crate) mod dialect;
 pub(crate) mod document;
+pub(crate) mod finding;
 pub(crate) mod ltx;
 pub(crate) mod project;
 pub(crate) mod scheme;
@@ -18,6 +19,7 @@ pub use crate::dialect::{
   LtxStandardDialect, LtxTextInterner,
 };
 pub use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxSpan};
+pub use crate::finding::{LtxFinding, LtxFindingKind};
 pub use crate::ltx::{Ltx, LtxSectionFieldSchemes, LtxSectionSchemes, Section};
 pub use crate::project::{
   LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LTX_PHASE_VERIFY, LtxEntryVerification, LtxFilesFormatter, LtxFormatOptions,

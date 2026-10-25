@@ -3,7 +3,7 @@ import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { toOrderedFindings } from "@/core/ltx/lib/findings";
+import { toFindingMessage, toOrderedFindings } from "@/core/ltx/lib/findings";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { EditorProblemsPanel, IEditorProblem, IEditorProblemLocation } from "@/core/shell/editor/EditorProblemsPanel";
@@ -23,7 +23,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 function toProblem(finding: LtxAnchoredFinding): IEditorProblem {
   return {
     location: finding.file ? { line: finding.line, path: finding.file } : undefined,
-    message: finding.engineBehaviour ? `${finding.message}. ${finding.engineBehaviour}` : finding.message,
+    message: toFindingMessage(finding),
     rule: finding.section ? `${finding.kind}: ${finding.section}` : finding.kind,
     subject: finding.line === null ? finding.file : `${finding.file}:${finding.line}`,
   };

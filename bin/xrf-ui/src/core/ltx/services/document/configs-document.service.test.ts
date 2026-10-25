@@ -2,8 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { EConfigsCommand } from "@xrf/ipc/commands/configs";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
+import { ELtxFindingKind } from "@xrf/ipc/types/xrf-ltx";
 import {
-  ELtxFindingKind,
   LtxAnchoredFinding,
   LtxResolvedIndex,
   LtxResolvedSection,

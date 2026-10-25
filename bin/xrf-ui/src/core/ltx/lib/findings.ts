@@ -1,4 +1,5 @@
-import { LtxAnchoredFinding, LtxFindingKind } from "@xrf/ipc/types/xrf-ltx-inspect";
+import { LtxFinding, LtxFindingKind } from "@xrf/ipc/types/xrf-ltx";
+import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 
 import { ECodeLineMark } from "@/core/ui/code/code-line";
 
@@ -11,7 +12,18 @@ const FINDING_MARKS: Record<LtxFindingKind, ECodeLineMark> = {
   parse: ECodeLineMark.ERROR,
   rootKeys: ECodeLineMark.ERROR,
   scheme: ECodeLineMark.ERROR,
+  unreadable: ECodeLineMark.ERROR,
 };
+
+/**
+ * What one finding says, followed by what the engine does with the same input where the dialect said so.
+ *
+ * @param finding - The finding to describe.
+ * @returns Its message, with the engine's behaviour after it.
+ */
+export function toFindingMessage(finding: LtxFinding): string {
+  return finding.engineBehaviour ? `${finding.message}. ${finding.engineBehaviour}` : finding.message;
+}
 
 /**
  * The mark one finding puts in the gutter.

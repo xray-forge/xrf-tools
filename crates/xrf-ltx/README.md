@@ -108,8 +108,11 @@ file names case-sensitively. Both are off by default. Schemes judge resolved val
 whether inheritance supplied a required field.
 
 `verify_entries` checks every entry point, and `verify_entries_opt` adds progress and output options. `verify_resolved`
-checks one entry the caller has already resolved, with the same rules. A sweep continues past an unreadable config:
-inspect the result's `errors`, and its `outcome`, which says whether a cancelled run stopped early.
+checks one entry the caller has already resolved, with the same rules. Both answer `findings`: one `LtxFinding` per
+section or field that breaks its scheme, per statement the dialect reported the engine ignores, and per entry point
+that would not resolve - a sweep continues past it. Every finding fails the verification; `outcome` says whether a
+cancelled run stopped early. A finding names configs by engine identity, and `with_reported_paths` renders them as the
+file on disk where one is loose.
 
 Canonical formatting writes CRLF line endings and preserves spaces inside section brackets: `[ base ]` and `[base]` are
 different section names, while parent names after `:` are trimmed. Files are decoded as strict Windows-1251, so bytes
@@ -135,13 +138,15 @@ The crate is grouped by the stage each part answers for, and a config passes thr
 - `project`: a whole tree of configs, and the verify and format passes over it.
 
 `scheme` and `condlist` are the two value languages a field may be written in, read on demand rather than as a stage.
-`binding` is how a typed record is read out of a config and written back into one. Every module is private; the
+`binding` is how a typed record is read out of a config and written back into one. `finding` is what verification
+answers with, one type for the verifier, the explorer, the gamedata check and the CLI. Every module is private; the
 supported names are re-exported from the crate root.
 
 ## Errors and checks
 
-Parsing, include resolution, inheritance, and scheme checks fail at different stages, all as `XrfError`. A document that
-parses need not resolve under the selected dialect.
+Parsing, include resolution and inheritance fail at different stages, all as `XrfError`, as does a scheme file that
+cannot be read as a declaration (`LtxScheme`). A config that breaks a scheme is not an error but a finding. A document
+that parses need not resolve under the selected dialect.
 
 Run `cargo test --locked -p xrf-ltx` from the repository root.
 

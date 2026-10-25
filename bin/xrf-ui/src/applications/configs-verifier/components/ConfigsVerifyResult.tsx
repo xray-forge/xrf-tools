@@ -1,13 +1,20 @@
 import { GridColDef } from "@mui/x-data-grid";
 import { formatDuration } from "@xrf/format";
-import { LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx";
+import { LtxFinding, LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx";
 import { ReactElement, useMemo } from "react";
 
-import { TLtxSchemeError, toLtxSchemeErrors } from "@/core/ltx";
+import { toFindingMessage } from "@/core/ltx";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { identifierColumn } from "@/core/ui/table/columns";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+/**
+ * One finding as a row, keyed by where it came in the run: two findings can say the same thing about the same place.
+ */
+interface IConfigsVerifyFindingRow extends LtxFinding {
+  index: number;
+}
 
 interface IConfigsVerifyResultProps extends BaseComponentProps {
   result: LtxProjectVerifyResult;
@@ -21,21 +28,31 @@ export function ConfigsVerifyResult({
 }: IConfigsVerifyResultProps): ReactElement {
   const columns: Array<GridColDef> = useMemo(
     () => [
+      identifierColumn("kind", "Kind", 110),
       identifierColumn("section", "Section", 180),
       identifierColumn("field", "Field", 150),
-      { field: "message", headerName: "Problem", flex: 1, minWidth: 220 },
       {
-        field: "at",
+        field: "message",
+        headerName: "Problem",
+        flex: 1,
+        minWidth: 220,
+        valueGetter: (_, row: IConfigsVerifyFindingRow) => toFindingMessage(row),
+      },
+      {
+        field: "file",
         headerName: "Location",
         width: 220,
         cellClassName: "monospace",
-        valueGetter: (_, row: TLtxSchemeError) => row.at ?? row.entry,
+        valueGetter: (_, row: IConfigsVerifyFindingRow) => row.file ?? row.entry,
       },
     ],
     []
   );
 
-  const findings: Array<TLtxSchemeError> = useMemo(() => toLtxSchemeErrors(result.errors), [result]);
+  const findings: Array<IConfigsVerifyFindingRow> = useMemo(
+    () => result.findings.map((finding: LtxFinding, index: number) => ({ ...finding, index })),
+    [result]
+  );
 
   const stats: Array<ICommandResultStat> = useMemo(
     () => [
@@ -56,19 +73,17 @@ export function ConfigsVerifyResult({
       data-testid={dataTestId}
       id={id}
       className={className}
-      headline={
-        findings.length
-          ? `${findings.length} problem(s) found in ${result.invalidSections} section(s)`
-          : "All sections passed validation"
-      }
+      headline={findings.length ? `${findings.length} problem(s) found` : "All sections passed validation"}
       tone={findings.length ? "error" : "success"}
       stats={stats}
     >
-      <CommandResultFindings<TLtxSchemeError>
+      <CommandResultFindings<IConfigsVerifyFindingRow>
         rows={findings}
         columns={columns}
-        getRowId={(row) => `${row.at ?? row.entry}:${row.section}:${row.field}`}
-        getSearchText={(row) => `${row.section} ${row.field} ${row.message} ${row.at ?? ""} ${row.entry ?? ""}`}
+        getRowId={(row) => row.index}
+        getSearchText={(row) =>
+          `${row.kind} ${row.section ?? ""} ${row.field ?? ""} ${row.message} ${row.file ?? ""} ${row.entry}`
+        }
         emptyLabel={"Nothing to report."}
         searchPlaceholder={"Filter by section, field or file"}
       />

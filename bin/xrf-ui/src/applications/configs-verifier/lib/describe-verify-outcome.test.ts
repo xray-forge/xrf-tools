@@ -9,7 +9,7 @@ import { describeVerifyOutcome } from "./describe-verify-outcome";
 const DIRECTORY: string = "C:\\work\\gamedata\\configs";
 
 function result(patch: Partial<LtxProjectVerifyResult> = {}): LtxProjectVerifyResult {
-  return { outcome: "completed", totalFiles: 2665, errors: [], ...patch } as LtxProjectVerifyResult;
+  return { outcome: "completed", totalFiles: 2665, findings: [], ...patch } as LtxProjectVerifyResult;
 }
 
 function outcome(patch: Partial<IJobOutcome<LtxProjectVerifyResult>>): IJobOutcome<LtxProjectVerifyResult> {
@@ -27,7 +27,7 @@ describe("describeVerifyOutcome", () => {
   it("reports findings as a failed verdict", () => {
     const notice: IJobNotice = describeVerifyOutcome(
       DIRECTORY,
-      outcome({ result: result({ errors: ["a", "b"] as unknown as LtxProjectVerifyResult["errors"] }) })
+      outcome({ result: result({ findings: ["a", "b"] as unknown as LtxProjectVerifyResult["findings"] }) })
     );
 
     expect(notice.severity).toBe(ENotificationSeverity.WARNING);

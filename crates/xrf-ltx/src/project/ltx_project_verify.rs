@@ -1,25 +1,19 @@
-use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
 use fxhash::FxBuildHasher;
 use indexmap::IndexSet;
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::dialect::LtxResolution;
+use crate::finding::LtxFinding;
 use crate::ltx::Ltx;
 use crate::project::{LTX_PHASE_VERIFY, LtxEntryVerification, LtxProject, LtxProjectVerifyResult, LtxVerifyOptions};
 use crate::syntax::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY};
-
-/// Where a declaring file's logical path is rendered once and reused.
-///
-/// Rendering asks the VFS where a logical path really sits, and a config commonly declares hundreds of sections, so
-/// this is paid per file rather than per finding.
-type DeclaringPaths = HashMap<String, String>;
 
 impl LtxProject {
   /// Verify all the entries in current ltx project.
@@ -28,7 +22,6 @@ impl LtxProject {
   /// - All the inherited sections are valid and declared before inherit attempt
   pub fn verify_entries_opt(&self, options: LtxVerifyOptions) -> XrfResult<LtxProjectVerifyResult> {
     let mut result: LtxProjectVerifyResult = LtxProjectVerifyResult::new();
-    let mut declaring_paths: DeclaringPaths = HashMap::new();
 
     xrf_output::heading!(options.output, "Verify path: {}", format_path(&self.root));
 
@@ -59,10 +52,6 @@ impl LtxProject {
         result.total_files += 1;
       }
 
-      // Reported by the path a person can act on: the file on disk when it is loose, the logical path when it is archived.
-      // Rendered once per file because a scheme error carries its location as a string and one file can raise many.
-      let reported: String = format_path(&self.path_of(entry)).to_string();
-
       // One unreadable config must not end the run.
       // Not retained: a sweep reads every root once, and holding them all is what `is_caching_resolutions` exists to
       // let a session opt into rather than something every verify pays for.
@@ -70,20 +59,20 @@ impl LtxProject {
         Ok(resolved) => resolved,
         Err(error) => {
           result
-            .errors
-            .push(XrfError::new_verify_error(format!("Cannot read {reported}: {error}")));
+            .findings
+            .push(LtxFinding::new_unreadable(entry.as_str(), error.to_string()));
 
           continue;
         }
       };
 
-      result.absorb(self.verify_resolved_opt(&resolved.ltx, &reported, &mut declaring_paths, Some(&options.output))?);
+      result.absorb(self.verify_resolved_opt(entry, &resolved, Some(&options.output)));
     }
 
     result.duration = options.job.elapsed();
 
-    for error in &result.errors {
-      xrf_output::error!(options.output, "{error}");
+    for finding in &result.findings {
+      xrf_output::error!(options.output, "{}", self.with_reported_paths(finding));
     }
 
     xrf_output::info!(
@@ -107,7 +96,7 @@ impl LtxProject {
       );
     }
 
-    xrf_output::info!(options.output, "Found {} error(s)", result.errors.len());
+    xrf_output::info!(options.output, "Found {} finding(s)", result.findings.len());
 
     Ok(result)
   }
@@ -117,37 +106,37 @@ impl LtxProject {
   /// The door for a surface inspecting a single config: it holds a resolution for its own reasons and must not pay for
   /// a second one, and it wants the findings of that root alone rather than of the tree around it. The sweep above is
   /// this same check in a loop, so the two can never disagree about a file.
-  ///
-  /// `entry` names the entry point the resolution came from, and is what a finding reports as the file to re-run.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error only for a scheme failure that is not a finding about the config, which is a defect in a scheme
-  /// declaration rather than in the config being judged.
-  pub fn verify_resolved(&self, entry: &XrayLogicalPath, ltx: &Ltx) -> XrfResult<LtxEntryVerification> {
-    let reported: String = format_path(&self.path_of(entry)).to_string();
-
-    self.verify_resolved_opt(ltx, &reported, &mut DeclaringPaths::new(), None)
+  pub fn verify_resolved(&self, entry: &XrayLogicalPath, resolution: &LtxResolution) -> LtxEntryVerification {
+    self.verify_resolved_opt(entry, resolution, None)
   }
 
-  /// The section-and-field check itself, over one resolved config.
+  /// The same finding with its entry point and file named by the path a person can act on: the file on disk when it
+  /// is loose, the logical path when it is archived.
+  pub fn with_reported_paths(&self, finding: &LtxFinding) -> LtxFinding {
+    LtxFinding {
+      entry: self.report_path(&finding.entry),
+      file: finding.file.as_deref().map(|file| self.report_path(file)),
+      ..finding.clone()
+    }
+  }
+
+  /// The section-and-field check itself over one resolved config, and what its dialect said while resolving it.
   fn verify_resolved_opt(
     &self,
-    ltx: &Ltx,
-    reported: &str,
-    declaring_paths: &mut DeclaringPaths,
+    entry: &XrayLogicalPath,
+    resolution: &LtxResolution,
     output: Option<&OutputOptions>,
-  ) -> XrfResult<LtxEntryVerification> {
+  ) -> LtxEntryVerification {
+    let ltx: &Ltx = &resolution.ltx;
     let mut found: LtxEntryVerification = LtxEntryVerification::default();
+    // Rendered once per entry point and only when someone reads it: rendering asks the VFS where the file sits.
+    let reported: Option<String> = output.map(|_| self.report_path(entry.as_str()));
 
     for (section_name, section) in ltx.iter() {
       found.total_sections += 1;
 
-      // The file a person has to open. `reported` stays beside it, because the entry point is what a caller re-runs
-      // and the only thing that explains why two files were read together.
-      let declared_in: Option<String> = section
-        .get_origin()
-        .map(|origin| self.declaring_path_of(origin, declaring_paths));
+      // The file a person has to open, which the entry point stays beside.
+      let declared_in: Option<&str> = section.get_origin();
 
       // Check only if schema is defined:
       let Some(scheme_name) = section.get(LTX_SCHEME_FIELD) else {
@@ -174,37 +163,32 @@ impl LtxProject {
             .get(field_name)
             .or_else(|| scheme_definition.fields.get(LTX_SYMBOL_ANY))
           {
-            if let Some(output) = output {
+            if let (Some(output), Some(reported)) = (output, &reported) {
               xrf_output::verbose!(output, "Checking {} [{}] {}", reported, section_name, field_name);
             }
 
             found.checked_fields += 1;
 
-            if let Some(error) = field_definition.validate_value(ltx, value) {
-              match error {
-                XrfError::LtxScheme { message, .. } => {
-                  section_has_error = true;
+            if let Err(message) = field_definition.validate_value(ltx, value) {
+              section_has_error = true;
 
-                  found.errors.push(XrfError::new_scheme_error_resolved(
-                    section_name,
-                    field_name,
-                    message,
-                    declared_in.as_deref(),
-                    reported,
-                  ));
-                }
-                error => return Err(error),
-              }
+              found.findings.push(LtxFinding::new_scheme(
+                entry.as_str(),
+                declared_in.map(String::from),
+                section_name,
+                Some(field_name),
+                message,
+              ));
             }
           } else if scheme_definition.is_strict {
             section_has_error = true;
 
-            found.errors.push(XrfError::new_scheme_error_resolved(
+            found.findings.push(LtxFinding::new_scheme(
+              entry.as_str(),
+              declared_in.map(String::from),
               section_name,
-              field_name,
+              Some(field_name),
               "Unexpected field, definition is required in strict mode",
-              declared_in.as_deref(),
-              reported,
             ));
           }
         }
@@ -214,12 +198,12 @@ impl LtxProject {
             if !definition.is_optional && field_name != LTX_SYMBOL_ANY && !validated.contains(field_name) {
               section_has_error = true;
 
-              found.errors.push(XrfError::new_scheme_error_resolved(
+              found.findings.push(LtxFinding::new_scheme(
+                entry.as_str(),
+                declared_in.map(String::from),
                 section_name,
-                field_name,
+                Some(field_name),
                 "Required field was not provided",
-                declared_in.as_deref(),
-                reported,
               ));
             }
           }
@@ -227,12 +211,12 @@ impl LtxProject {
       } else {
         section_has_error = true;
 
-        found.errors.push(XrfError::new_scheme_error_resolved(
+        found.findings.push(LtxFinding::new_scheme(
+          entry.as_str(),
+          declared_in.map(String::from),
           section_name,
-          "*",
+          None,
           format!("Required schema '{scheme_name}' definition is not found"),
-          declared_in.as_deref(),
-          reported,
         ));
       }
 
@@ -243,19 +227,27 @@ impl LtxProject {
       }
     }
 
-    Ok(found)
+    // What the dialect noticed is judged with the rest: each is a statement the game loads and then ignores, which a
+    // modder cannot see any other way.
+    for diagnostic in &resolution.diagnostics {
+      let declared_in: Option<&str> = ltx
+        .section(&diagnostic.section)
+        .and_then(|section| section.get_origin());
+
+      found
+        .findings
+        .push(LtxFinding::from_diagnostic(entry.as_str(), diagnostic, declared_in));
+    }
+
+    found
   }
 
-  /// Renders one declaring file's logical path the way a person can act on it, once per file.
-  fn declaring_path_of(&self, origin: &str, declaring_paths: &mut DeclaringPaths) -> String {
-    declaring_paths
-      .entry(String::from(origin))
-      .or_insert_with(|| match XrayLogicalPath::new(origin) {
-        Ok(logical) => format_path(&self.path_of(&logical)).to_string(),
-        // A path the VFS will not accept is still worth naming as the file said it.
-        Err(_) => String::from(origin),
-      })
-      .clone()
+  /// One logical path as a person can act on it, or as written where the VFS will not accept it.
+  fn report_path(&self, logical: &str) -> String {
+    match XrayLogicalPath::new(logical) {
+      Ok(logical) => format_path(&self.path_of(&logical)).to_string(),
+      Err(_) => String::from(logical),
+    }
   }
 
   /// Verify all the section/field entries in current ltx project.

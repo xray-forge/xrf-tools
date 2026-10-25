@@ -47,7 +47,6 @@ typescript-bindings = [
   "tauri-specta",
   "xrf-engine-target/typescript-bindings",
   "xrf-env-flags/typescript-bindings",
-  "xrf-error/typescript-bindings",
   "xrf-ipc-typescript",
   "xrf-job/typescript-bindings",
   "xrf-vfs/typescript-bindings",

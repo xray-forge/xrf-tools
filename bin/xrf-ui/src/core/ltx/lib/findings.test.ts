@@ -1,8 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
-import { LtxAnchoredFinding, LtxFindingKind } from "@xrf/ipc/types/xrf-ltx-inspect";
+import { LtxFindingKind } from "@xrf/ipc/types/xrf-ltx";
+import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 
-import { toFindingMark, toFindingMarks, toOrderedFindings } from "@/core/ltx/lib/findings";
+import { toFindingMark, toFindingMarks, toFindingMessage, toOrderedFindings } from "@/core/ltx/lib/findings";
 import { ECodeLineMark } from "@/core/ui/code/code-line";
 
 const ENTRY: string = "configs\\system.ltx";
@@ -30,6 +31,16 @@ describe("toFindingMark", () => {
     expect(toFindingMark(findingOf("parse", FILE, 1))).toBe(ECodeLineMark.ERROR);
     expect(toFindingMark(findingOf("scheme", FILE, 1))).toBe(ECodeLineMark.ERROR);
     expect(toFindingMark(findingOf("include", FILE, 1))).toBe(ECodeLineMark.ERROR);
+    expect(toFindingMark(findingOf("unreadable", null, null))).toBe(ECodeLineMark.ERROR);
+  });
+});
+
+describe("toFindingMessage", () => {
+  it("should follow the message with what the engine does, where the dialect said", () => {
+    expect(toFindingMessage(findingOf("scheme", FILE, 1))).toBe("scheme at 1");
+    expect(toFindingMessage({ ...findingOf("dialect", FILE, 1), engineBehaviour: "silently dropped" })).toBe(
+      "dialect at 1. silently dropped"
+    );
   });
 });
 

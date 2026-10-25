@@ -41,7 +41,6 @@ typescript-bindings = [
   "xrf-app-core/typescript-bindings",
   "xrf-app-render/typescript-bindings",
   "xrf-environment/typescript-bindings",
-  "xrf-error/typescript-bindings",
   "xrf-material/typescript-bindings",
   "xrf-renderer/typescript-bindings",
   "xrf-vfs/typescript-bindings",

@@ -8082,9 +8082,7 @@ name = "xrf-error"
 version = "0.1.0"
 dependencies = [
  "image",
- "serde",
  "serde_json",
- "specta",
  "thiserror 2.0.21",
  "xrf-error-derive",
 ]

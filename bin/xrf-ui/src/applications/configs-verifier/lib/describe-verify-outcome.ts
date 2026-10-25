@@ -25,7 +25,7 @@ export function describeVerifyOutcome(directory: string, outcome: IJobOutcome<Lt
     return {
       details: [
         `Stopped after ${formatCount(result.totalFiles)} file(s).`,
-        `${result.errors.length} problem(s) found so far.`,
+        `${result.findings.length} problem(s) found so far.`,
         "The rest of the project was not read.",
         directory,
       ].join("\n"),
@@ -34,11 +34,11 @@ export function describeVerifyOutcome(directory: string, outcome: IJobOutcome<Lt
     };
   }
 
-  if (result?.errors.length) {
+  if (result?.findings.length) {
     return {
       details: directory,
       severity: ENotificationSeverity.WARNING,
-      title: `Configs did not pass validation: ${result.errors.length} problem(s)`,
+      title: `Configs did not pass validation: ${result.findings.length} problem(s)`,
     };
   }
 

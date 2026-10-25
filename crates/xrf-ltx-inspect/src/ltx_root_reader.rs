@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
-use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{LtxDocumentSource, LtxResolution, LtxSectionSchemes};
+use xrf_error::XrfResult;
+use xrf_ltx::{LtxDocumentSource, LtxFinding, LtxResolution, LtxSectionSchemes};
 
 use crate::findings::{LtxAnchoredFinding, LtxFindingAnchor};
 use crate::resolved::{LtxResolvedIndex, LtxResolvedReader, LtxResolvedSection};
@@ -128,16 +128,16 @@ impl<'a> LtxRootReader<'a> {
     LtxSchemeReader::read_section_scheme(self.entry, self.resolution, self.declarations, section)
   }
 
-  /// Everything wrong with the root: what verifying it found, and what the dialect said while resolving it.
+  /// Everything wrong with the root, each finding placed at its line.
   ///
-  /// `errors` is what a per-entry verification answered. Both halves are anchored the same way because a reader does
-  /// not care which pass noticed.
+  /// `findings` is what verifying the root answered (`xrf_ltx::LtxProject::verify_resolved`), which already holds what
+  /// the dialect said while resolving it.
   ///
   /// # Errors
   ///
   /// Returns an error when a declaring config cannot be read back.
-  pub fn read_findings(&self, errors: &[XrfError]) -> XrfResult<Vec<LtxAnchoredFinding>> {
-    LtxFindingAnchor::read_findings(self.entry, self.resolution, self.source, errors)
+  pub fn read_findings(&self, findings: &[LtxFinding]) -> XrfResult<Vec<LtxAnchoredFinding>> {
+    LtxFindingAnchor::read_findings(self.resolution, self.source, findings)
   }
 
   /// What is wrong with one file rather than with the root: it will not parse, or an include reached nothing.

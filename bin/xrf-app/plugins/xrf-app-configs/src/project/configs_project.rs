@@ -121,7 +121,7 @@ impl ConfigsProject {
   ///
   /// # Errors
   ///
-  /// Returns an error when the entry point cannot be resolved, verified, or read back.
+  /// Returns an error when the entry point cannot be resolved or read back.
   pub fn find_problems(&self, entry: &XrayLogicalPath) -> TauriResult<Arc<Vec<LtxAnchoredFinding>>> {
     // Findings anchor a scheme error to the file that wrote the field, which only a recorded origin can name.
     self.with_reader(entry, true, |reader, resolved| {
@@ -129,13 +129,10 @@ impl ConfigsProject {
         return Ok(held);
       }
 
-      let verification: LtxEntryVerification = self
-        .project
-        .verify_resolved(&resolved.entry, &resolved.resolution.ltx)
-        .map_err(|error| format!("Cannot verify '{}': {error}", resolved.entry.as_str()))?;
+      let verification: LtxEntryVerification = self.project.verify_resolved(&resolved.entry, &resolved.resolution);
 
       let findings: Vec<LtxAnchoredFinding> = reader
-        .read_findings(&verification.errors)
+        .read_findings(&verification.findings)
         .map_err(|error| format!("Cannot anchor the findings of '{}': {error}", resolved.entry.as_str()))?;
 
       Ok(resolved.hold_findings(Arc::new(findings)))

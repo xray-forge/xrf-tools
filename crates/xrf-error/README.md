@@ -29,9 +29,7 @@ Message-only variants get a `new_<variant>_error(impl Into<String>)` constructor
 [xrf-error-derive](../xrf-error-derive/README.md). Variants with structured context have handwritten constructors:
 
 - `new_io_error(message, kind)` and `new_chunk_not_ended_error(message, remaining)`;
-- `new_ltx_parse_error(line, col, message)`;
-- for `LtxScheme`: `new_ltx_scheme_error`, `new_scheme_error_at` (also the config that declared the section) and
-  `new_scheme_error_resolved` (that config, if known, and the entry point whose resolution reached it).
+- `new_ltx_parse_error(line, col, message)` and `new_ltx_scheme_error(section, field, message)`.
 
 Keep that context rather than formatting it into a message.
 
@@ -51,7 +49,7 @@ Match on the variant when behavior depends on the cause; the `Display` text is f
 | `NoTerminator`          | A fixed or null-terminated string has no terminator                             |
 | `Encoding`              | Text cannot be written in the required encoding, or a stream cannot be coded    |
 | `Serialization`         | A value cannot be written to its binary format                                  |
-| `LtxParse`, `LtxScheme` | LTX text fails to parse at `line:col`, or a field breaks its section scheme     |
+| `LtxParse`, `LtxScheme` | LTX text fails to parse at `line:col`, or a scheme declaration is malformed     |
 | `Convert`               | An LTX value or structure cannot be converted to what the reader expects        |
 | `Verify`                | A verification run found problems                                               |
 | `Asset`                 | An asset resolves to nothing or cannot be used                                  |
@@ -80,12 +78,13 @@ See [xrf-job](../xrf-job/README.md) for cancellation.
 Any other error needs an explicit `map_err` to the variant that describes it. Wrapping everything as `Invalid` loses
 distinctions callers act on, such as a missing file (`Io` with `ErrorKind::NotFound`) against an unreadable one.
 
-## Serialization and checks
+## Boundaries and checks
 
-`XrfError` serializes with Serde, externally tagged by variant name, for example
-`{"NotFound": {"message": "..."}}`; `LtxScheme` carries `section`, `field`, `message`, `at` and `entry`. `Io` serializes
-its message only; its `kind` stays off the wire. The `typescript-bindings` feature derives Specta types for the
-frontend. The crate does not log errors, choose exit codes, or decide how a UI shows them.
+`XrfError` does not serialize. A boundary - an IPC command, a CLI report - carries one as its `Display` text, and what
+a surface reports about the data it judged is that domain's own finding type (`xrf_ltx::LtxFinding`,
+`xrf_environment::EnvironmentFinding`), never an error. A config that breaks its scheme is such a finding; `LtxScheme`
+is a scheme file that cannot be read as a declaration. The crate does not log errors, choose exit codes, or decide how a
+UI shows them.
 
 Run `cargo test --locked -p xrf-error` from the repository root. See the [variants and constructors](src/error.rs) and
 the [result alias](src/types.rs).

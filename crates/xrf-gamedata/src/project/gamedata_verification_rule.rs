@@ -91,6 +91,9 @@ pub enum GamedataVerificationRule {
   LevelsTextureReference,
   #[display("levels.undeclared-map")]
   LevelsUndeclaredMap,
+  /// A statement the LTX dialect reports the engine loads and then ignores.
+  #[display("ltx.dialect")]
+  LtxDialect,
   #[display("ltx.formatting")]
   LtxFormatting,
   #[display("ltx.schema")]

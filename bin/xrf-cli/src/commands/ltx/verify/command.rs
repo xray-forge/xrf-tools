@@ -8,8 +8,10 @@ use xrf_utils::format_path;
 
 use crate::commands::ltx::ltx_installation::LtxInstallation;
 use crate::commands::ltx::ltx_project_opening::LtxProjectOpening;
+use crate::commands::ltx::verify::report::LtxVerifyReport;
 use crate::core::arguments::LtxDialectArgument;
-use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::report::ReportVerdict;
 use crate::core::terminal::CliJob;
 
 #[derive(Default)]
@@ -50,15 +52,17 @@ impl GenericCommand for VerifyCommand {
     // would leave archived includes unresolved and report their sections as missing, so the scope a person picks is the
     // path they name rather than a flag.
     let project: LtxProject = LtxProjectOpening::open(path, matches, &output)?;
-    let result: LtxProjectVerifyResult = project.verify_entries_opt(LtxVerifyOptions { output, job })?;
+    let result: LtxProjectVerifyResult = project.verify_entries_opt(LtxVerifyOptions {
+      output: output.clone(),
+      job,
+    })?;
+    let report: LtxVerifyReport = LtxVerifyReport::new(&project, &result);
+
+    ReportVerdict::print_findings(&output, report.report());
 
     // Deposited before the verdict becomes an outcome, so a failing check still reports what failed.
-    context.set_result(|| &result)?;
+    context.set_result(|| &report)?;
 
-    if result.errors.is_empty() {
-      Ok(())
-    } else {
-      Err(CommandError::new_check_failed(result.errors.len()))
-    }
+    ReportVerdict::conclude(&output, report.report(), "LTX verification")
   }
 }
