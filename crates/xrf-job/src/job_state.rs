@@ -1,5 +1,6 @@
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::time::Duration;
 
 use crate::emission_gate::EmissionGate;
 use crate::job_progress::JobProgress;
@@ -11,18 +12,31 @@ use crate::progress_unit::ProgressUnit;
 
 /// Everything one job run shares, however many threads are doing its work.
 pub(crate) struct JobState {
-  pub(crate) sink: Arc<dyn ProgressSink>,
+  sink: Arc<dyn ProgressSink>,
   /// False for an inert job, which skips the whole emission path rather than reporting into a sink that discards.
-  pub(crate) is_reporting: bool,
+  is_reporting: bool,
   /// When the run started, and which thread may report right now.
-  pub(crate) gate: EmissionGate,
-  pub(crate) cancelled: AtomicBool,
+  gate: EmissionGate,
+  /// Relaxed, because nothing is published through this flag: the operation reads it, decides to stop, and reports what
+  /// it had already finished through its own return value.
+  cancelled: AtomicBool,
   /// The active stack, outermost first. Written on enter and leave, read only when a snapshot is actually being built.
-  pub(crate) levels: RwLock<Vec<Arc<LevelState>>>,
-  pub(crate) detail: RwLock<Option<String>>,
+  levels: RwLock<Vec<Arc<LevelState>>>,
+  detail: RwLock<Option<String>>,
 }
 
 impl JobState {
+  pub(crate) fn new(sink: Arc<dyn ProgressSink>, is_reporting: bool, interval: Duration) -> Self {
+    Self {
+      sink,
+      is_reporting,
+      gate: EmissionGate::new(interval),
+      cancelled: AtomicBool::new(false),
+      levels: RwLock::new(Vec::new()),
+      detail: RwLock::new(None),
+    }
+  }
+
   pub(crate) fn enter(state: &Arc<Self>, id: impl Into<String>, total: Option<u64>) -> JobScope {
     Self::enter_with_unit(state, id, total, ProgressUnit::Items)
   }
@@ -33,12 +47,7 @@ impl JobState {
     total: Option<u64>,
     unit: ProgressUnit,
   ) -> JobScope {
-    let level: Arc<LevelState> = Arc::new(LevelState {
-      id: id.into(),
-      unit,
-      total,
-      completed: AtomicU64::new(0),
-    });
+    let level: Arc<LevelState> = Arc::new(LevelState::new(id.into(), unit, total));
 
     state.write_levels().push(Arc::clone(&level));
 
@@ -64,10 +73,26 @@ impl JobState {
     drop(levels);
 
     if let Some(parent) = parent {
-      parent.completed.fetch_add(1, Ordering::Relaxed);
+      parent.advance_by(1);
 
       self.emit();
     }
+  }
+
+  pub(crate) fn set_detail(&self, detail: Option<String>) {
+    *self.detail.write().unwrap_or_else(PoisonError::into_inner) = detail;
+  }
+
+  pub(crate) fn cancel(&self) {
+    self.cancelled.store(true, Ordering::Relaxed);
+  }
+
+  pub(crate) fn is_cancelled(&self) -> bool {
+    self.cancelled.load(Ordering::Relaxed)
+  }
+
+  pub(crate) fn elapsed(&self) -> Duration {
+    self.gate.elapsed()
   }
 
   /// One unit was counted somewhere; report it where the gate says this thread is the one to.

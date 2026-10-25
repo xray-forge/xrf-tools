@@ -9,13 +9,13 @@ progress goes, when to cancel, and how wide to run.
 A `JobHandle` is one run's progress and cancellation together. Clones share the run: the app hands one clone to the
 blocking thread doing the work and keeps another to call `cancel` on.
 
-| Constructor                       | Use                                                                         |
-| --------------------------------- | --------------------------------------------------------------------------- |
-| `JobHandle::inert()` or `default` | Reports nowhere and is never cancelled; the CLI and most tests pass it      |
-| `JobHandle::new(sink)`            | Reports to a `ProgressSink` at most once per `DEFAULT_PROGRESS_INTERVAL`    |
-| `JobHandle::with_interval(..)`    | Same, with another interval; `Duration::ZERO` reports every unit, for tests |
+| Constructor                       | Use                                                                                 |
+| --------------------------------- | ----------------------------------------------------------------------------------- |
+| `JobHandle::inert()` or `default` | Reports nowhere, though it can still be cancelled; the CLI and most tests pass it   |
+| `JobHandle::new(sink)`            | Reports to a `ProgressSink` at most once per `JobHandle::DEFAULT_PROGRESS_INTERVAL` |
+| `JobHandle::with_interval(..)`    | Same, with another interval; `Duration::ZERO` reports every unit, for tests         |
 
-`DEFAULT_PROGRESS_INTERVAL` is 100 ms; the desktop app uses it.
+`JobHandle::DEFAULT_PROGRESS_INTERVAL` is 100 ms; the desktop app uses it.
 
 The operation enters levels and counts work, and checks for cancellation between units:
 

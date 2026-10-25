@@ -24,7 +24,7 @@ mod tests;
 pub use crate::execution_origin::ExecutionOrigin;
 pub use crate::execution_plan::ExecutionPlan;
 pub use crate::execution_request::ExecutionRequest;
-pub use crate::job_handle::{DEFAULT_PROGRESS_INTERVAL, JobHandle};
+pub use crate::job_handle::JobHandle;
 pub use crate::job_outcome::JobOutcome;
 pub use crate::job_progress::JobProgress;
 pub use crate::job_scope::JobScope;

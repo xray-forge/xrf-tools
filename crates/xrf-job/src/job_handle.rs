@@ -1,24 +1,14 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, PoisonError, RwLock};
+use std::sync::Arc;
 use std::time::Duration;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::emission_gate::EmissionGate;
 use crate::job_progress::JobProgress;
 use crate::job_scope::JobScope;
 use crate::job_state::JobState;
 use crate::noop_sink::NoopSink;
 use crate::progress_sink::ProgressSink;
 use crate::progress_unit::ProgressUnit;
-
-/// How often a running job reports, at most.
-///
-/// Time rather than a count of units, because units are not the same size: a step of one in twenty reports twenty times
-/// over three seconds for a set of small configs and ten times over several minutes for a set of level meshes, and
-/// neither is what a person watching needs. Ten a second is more than a reader can follow and few enough that the
-/// transport underneath never becomes the cost of doing the work.
-pub const DEFAULT_PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
 
 /// A job's progress and its cancellation, as one thing an operation is handed.
 ///
@@ -32,9 +22,12 @@ pub struct JobHandle {
 }
 
 impl JobHandle {
+  /// How often a running job reports, at most.
+  pub const DEFAULT_PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
+
   /// A job reporting to `sink`, at the default interval.
   pub fn new(sink: Arc<dyn ProgressSink>) -> Self {
-    Self::with_interval(sink, DEFAULT_PROGRESS_INTERVAL)
+    Self::with_interval(sink, Self::DEFAULT_PROGRESS_INTERVAL)
   }
 
   /// A job reporting to `sink` no more often than `interval`.
@@ -43,31 +36,21 @@ impl JobHandle {
   /// production should ask for.
   pub fn with_interval(sink: Arc<dyn ProgressSink>, interval: Duration) -> Self {
     Self {
-      state: Arc::new(JobState {
-        sink,
-        is_reporting: true,
-        gate: EmissionGate::new(interval),
-        cancelled: AtomicBool::new(false),
-        levels: RwLock::new(Vec::new()),
-        detail: RwLock::new(None),
-      }),
+      state: Arc::new(JobState::new(sink, true, interval)),
     }
   }
 
-  /// A job that reports nowhere and is never cancelled.
+  /// A job that reports nowhere, though whoever holds it can still cancel it.
   ///
   /// What the command line and every test that is not about progress pass, so an operation has one signature rather
   /// than an instrumented path and a bare one.
   pub fn inert() -> Self {
     Self {
-      state: Arc::new(JobState {
-        sink: Arc::new(NoopSink),
-        is_reporting: false,
-        gate: EmissionGate::new(DEFAULT_PROGRESS_INTERVAL),
-        cancelled: AtomicBool::new(false),
-        levels: RwLock::new(Vec::new()),
-        detail: RwLock::new(None),
-      }),
+      state: Arc::new(JobState::new(
+        Arc::new(NoopSink),
+        false,
+        Self::DEFAULT_PROGRESS_INTERVAL,
+      )),
     }
   }
 
@@ -89,15 +72,12 @@ impl JobHandle {
   /// For sequential work only. An operation spreading its units over a pool leaves this alone: the entry one arbitrary
   /// worker happens to be on flickers between unrelated files, which reads as thrashing rather than as progress.
   pub fn set_detail(&self, detail: Option<String>) {
-    *self.state.detail.write().unwrap_or_else(PoisonError::into_inner) = detail;
+    self.state.set_detail(detail);
   }
 
   /// Ask the job to stop at its next safe boundary.
-  ///
-  /// Relaxed, because nothing is published through this flag — the operation reads it, decides to stop, and reports
-  /// what it had already finished through its own return value.
   pub fn cancel(&self) {
-    self.state.cancelled.store(true, Ordering::Relaxed);
+    self.state.cancel();
   }
 
   /// Whether stopping has been asked for.
@@ -105,7 +85,7 @@ impl JobHandle {
   /// The form to use before starting expensive work, which is the only place a check helps: a write already begun
   /// cannot be halved, so the boundary has to be found before it rather than inside it.
   pub fn is_cancelled(&self) -> bool {
-    self.state.cancelled.load(Ordering::Relaxed)
+    self.state.is_cancelled()
   }
 
   /// The same question as an error, for a loop that stops by returning one.
@@ -123,7 +103,7 @@ impl JobHandle {
 
   /// How long the run has taken so far.
   pub fn elapsed(&self) -> Duration {
-    self.state.gate.elapsed()
+    self.state.elapsed()
   }
 
   /// Says where this job has got to, if it has not said so recently.

@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
 
 use crate::job_state::JobState;
 use crate::level_state::LevelState;
@@ -23,13 +22,12 @@ impl JobScope {
   /// Called once per entry from every worker, so the common path is a single relaxed increment plus a counter gate.
   /// Deciding emission here rather than in the caller is what keeps one rule over every operation.
   pub fn advance(&self) {
-    self.level.completed.fetch_add(1, Ordering::Relaxed);
-    self.state.report_if_due();
+    self.advance_by(1);
   }
 
   /// Count `units` at once, for a level whose steps are not all one unit — bytes written by a single copy, say.
   pub fn advance_by(&self, units: u64) {
-    self.level.completed.fetch_add(units, Ordering::Relaxed);
+    self.level.advance_by(units);
     self.state.report_if_due();
   }
 
@@ -43,7 +41,7 @@ impl JobScope {
 
   /// How far this level has got, which is what a caller reporting its own result asks for.
   pub fn get_completed(&self) -> u64 {
-    self.level.completed.load(Ordering::Relaxed)
+    self.level.get_completed()
   }
 }
 
