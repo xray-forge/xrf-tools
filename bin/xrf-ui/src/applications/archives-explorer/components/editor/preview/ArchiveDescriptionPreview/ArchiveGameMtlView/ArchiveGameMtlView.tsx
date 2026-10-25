@@ -45,8 +45,8 @@ export function ArchiveGameMtlView({
           label={"Pairs"}
           value={formatCount(description.pairs)}
           caption={
-            `${formatCount(description.inheritingPairs)} take their behaviour from another pairing rather than ` +
-            "declaring their own"
+            `${formatCount(description.inheritingPairs)} name a parent pairing the editor fills their unset ` +
+            "properties from"
           }
         />
 

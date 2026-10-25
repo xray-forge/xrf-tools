@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_gamemtl::{GAMEMTL_PAIR_PROPERTIES, GameMtlPair};
+use xrf_gamemtl::GameMtlPair;
 
 /// One thing a material pairing can declare, and how many pairings declare it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -15,7 +15,7 @@ impl ArchiveGameMtlProperty {
   ///
   /// Counted rather than listed: a library carries up to 1,550 pairings and no reader goes through them one by one.
   pub fn of_all(pairs: &[GameMtlPair]) -> Vec<Self> {
-    GAMEMTL_PAIR_PROPERTIES
+    GameMtlPair::PROPERTY_NAMES
       .into_iter()
       .map(|(mask, name)| Self {
         name: name.to_owned(),

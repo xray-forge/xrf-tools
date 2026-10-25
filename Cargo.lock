@@ -8176,7 +8176,6 @@ dependencies = [
  "serde",
  "xrf-chunk",
  "xrf-error",
- "xrf-test-utils",
  "xrf-utils",
 ]
 

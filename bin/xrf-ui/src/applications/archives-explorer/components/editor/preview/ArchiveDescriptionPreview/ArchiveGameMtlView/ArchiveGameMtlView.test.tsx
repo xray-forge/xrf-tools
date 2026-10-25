@@ -17,7 +17,7 @@ describe("ArchiveGameMtlView", () => {
     const { getByText, queryByText } = renderView();
 
     expect(getByText("1,421")).toBeTruthy();
-    expect(getByText(/968 take their behaviour from another pairing/)).toBeTruthy();
+    expect(getByText(/968 name a parent pairing/)).toBeTruthy();
     expect(queryByText("default ↔ materials\\acid")).toBeNull();
   });
 

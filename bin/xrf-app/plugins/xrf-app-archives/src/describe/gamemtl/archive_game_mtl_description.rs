@@ -16,7 +16,7 @@ pub struct ArchiveGameMtlDescription {
   pub materials: Vec<ArchiveGameMtlMaterial>,
   /// Pairings of two materials, which decide what is heard and seen where they meet.
   pub pairs: usize,
-  /// Pairings that declare nothing of their own and take everything from the pairing they name as parent.
+  /// Pairings naming a parent pairing the editor takes their unset properties from.
   pub inheriting_pairs: usize,
   /// What the pairings declare, counted per property rather than listed.
   pub properties: Vec<ArchiveGameMtlProperty>,
