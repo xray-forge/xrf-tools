@@ -68,7 +68,7 @@ export enum EXrayExtension {
   /** Named the way `s_` is, beside `seq` in the same trees. */
   SEQ_ = "seq_",
   SND_STATIC = "snd_static",
-  /** A level's sound occlusion mesh, which sits beside `hom` and was missing from this list. */
+  /** A level's sound occlusion mesh, which sits beside `hom`. */
   SOM = "som",
   SPAWN = "spawn",
   TGA = "tga",

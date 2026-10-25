@@ -30,7 +30,7 @@ export enum EXrayEngineEvidence {
   NAMED = "named",
   /** `AnomalyLauncher.exe`, `bin/AnomalyDX*.exe` or `bin/VerifiedDX11.exe` beside `fsgame.ltx`. */
   ANOMALY_EXECUTABLES = "anomalyExecutables",
-  /** `fsgame.ltx` declares `$warfare_presets$`. */
+  /** The installation's fsgame file declares `$warfare_presets$`. */
   ANOMALY_FSGAME = "anomalyFsgame",
   /** `configs/environment/dynamic_weather_graphs.ltx` has a `[weather_cycles]` section. */
   ATMOSFEAR_CYCLES = "atmosfearCycles",
