@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use xrf_build_info::{BuildInfo, BuildKind};
 use xrf_error::XrfError;
 use xrf_job::{ExecutionPlan, ExecutionRequest};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_utils::StagingFaults;
 
 use crate::core::command::{CommandError, CommandResult};
@@ -174,7 +174,7 @@ fn publishes_nothing_when_no_report_was_asked_for() {
 
 /// A destination of this test's own, since these cases are about what a file holds afterwards.
 fn report_path(name: &str) -> PathBuf {
-  let directory: PathBuf = build_absolute_generated_test_resource_path(&format!("core/reporting/{name}"));
+  let directory: PathBuf = GeneratedResources::path(&format!("core/reporting/{name}"));
 
   fs::create_dir_all(&directory).expect("the report directory to be created");
 

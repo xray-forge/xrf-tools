@@ -57,7 +57,7 @@ impl<'a> XrayExtensionOf<'a> {
 mod tests {
   use std::path::{Path, PathBuf};
 
-  use xrf_test_utils::utils::build_non_unicode_file_name;
+  use xrf_test_utils::HostFilesystem;
 
   use super::{XrayExtension, XrayExtensionOf};
 
@@ -135,7 +135,7 @@ mod tests {
   fn reads_a_path_extension_through_a_parent_directory_that_is_not_valid_text() {
     // Whole-path conversion answers `None` here, which would report a configuration that has an extension as having
     // none.
-    let path: PathBuf = PathBuf::from(build_non_unicode_file_name()).join("pack.ltx");
+    let path: PathBuf = PathBuf::from(HostFilesystem::non_unicode_file_name()).join("pack.ltx");
 
     assert!(path.to_str().is_none(), "the whole path has to be unreadable as text");
     assert_eq!(

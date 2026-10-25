@@ -1,13 +1,13 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::{XrayAssetType, XrayResolution, XraySearch, XraySearchPlan, XraySearchStep, XrayVfs};
 
 /// A loose X-Ray root, which is what an implied plan recognizes: a tree holding both `meshes` and `textures`.
 fn root(name: &str, files: &[&str]) -> PathBuf {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("xray_search_plan/{name}")).expect("search root");
+  let root: PathBuf = GeneratedResources::create_dir(&format!("xray_search_plan/{name}")).expect("search root");
 
   for directory in ["meshes", "textures"] {
     fs::create_dir_all(root.join(directory)).expect("root holds the directories an implied plan looks for");

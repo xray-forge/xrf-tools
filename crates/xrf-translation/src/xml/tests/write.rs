@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::write_generated_test_resource;
+use xrf_test_utils::GeneratedResources;
 use xrf_utils::{encode_string_to_bytes, new_windows1251_encoder, new_windows1252_encoder};
 
 use crate::edit::TranslationEdit;
@@ -118,7 +118,7 @@ fn a_value_the_encoding_cannot_hold_is_refused_with_the_character_named() {
 #[test]
 fn writing_a_file_leaves_every_untouched_byte_alone() -> XrfResult {
   let relative_path: &str = "xml_write/in_place.rus.xml";
-  let path = write_generated_test_resource(
+  let path = GeneratedResources::write(
     relative_path,
     encode_string_to_bytes(SOURCE, new_windows1251_encoder())?,
   )?;
@@ -143,7 +143,7 @@ fn a_byte_order_mark_survives_a_rewrite() -> XrfResult {
 
   marked.extend_from_slice(body.as_bytes());
 
-  let path = write_generated_test_resource(relative_path, marked)?;
+  let path = GeneratedResources::write(relative_path, marked)?;
 
   apply_edits(&path, &[set("st_a", "B")])?;
 
@@ -160,7 +160,7 @@ fn a_byte_order_mark_survives_a_rewrite() -> XrfResult {
 fn an_empty_edit_list_does_not_touch_the_file() -> XrfResult {
   let relative_path: &str = "xml_write/untouched.xml";
   let body: &str = "<string_table><string id=\"st_a\"><text>A</text></string></string_table>";
-  let path = write_generated_test_resource(relative_path, body)?;
+  let path = GeneratedResources::write(relative_path, body)?;
 
   apply_edits(&path, &[])?;
 

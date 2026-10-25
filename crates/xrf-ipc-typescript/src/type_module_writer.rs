@@ -247,7 +247,7 @@ mod tests {
   use specta::{Format, Types};
   use specta_typescript::Exporter;
   use xrf_ipc::IpcConstant;
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use crate::collected::CollectedConstants;
   use crate::command_typescript::CommandTypescript;
@@ -306,7 +306,7 @@ mod tests {
 
   #[test]
   fn writes_a_marked_constant_into_its_crate_s_module_with_its_doc() {
-    let output: PathBuf = build_absolute_generated_test_resource_path("type-module-writer");
+    let output: PathBuf = GeneratedResources::path("type-module-writer");
 
     fs::create_dir_all(&output).expect("directory to be created");
 

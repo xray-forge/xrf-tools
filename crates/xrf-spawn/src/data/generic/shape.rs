@@ -211,7 +211,7 @@ impl Shape {
 #[cfg(test)]
 mod tests {
   use std::fs::File;
-  use std::io::{Seek, SeekFrom, Write};
+  use std::io::{Seek, SeekFrom, Write, read_to_string};
   use std::path::Path;
 
   use byteorder::ReadBytesExt;
@@ -220,12 +220,7 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::file::read_file_as_string;
-  use xrf_test_utils::utils::{
-    build_absolute_generated_test_sample_file_path, build_relative_test_sample_file_path,
-    open_generated_test_resource_as_slice, overwrite_file, overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::generic::shape::Shape;
 
@@ -299,7 +294,7 @@ mod tests {
   #[test]
   fn test_read_write_list() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write_list.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write_list.chunk");
 
     let original: Vec<Shape> = vec![
       Shape::Sphere((
@@ -339,11 +334,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 67);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 67);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 67 + 8);
 
@@ -357,7 +352,7 @@ mod tests {
   #[test]
   fn test_read_write_sphere() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write_sphere.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write_sphere.chunk");
 
     let original: Shape = Shape::Sphere((
       Vector3d {
@@ -373,11 +368,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 17);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 17);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 17 + 8);
 
@@ -391,7 +386,7 @@ mod tests {
   #[test]
   fn test_read_write_box() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write_box.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write_box.chunk");
 
     let original: Shape = Shape::Box((
       Vector3d { x: 1.5, y: 1.7, z: 1.0 },
@@ -405,11 +400,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 49);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 49);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 49 + 8);
 
@@ -422,7 +417,7 @@ mod tests {
 
   #[test]
   fn test_import_export() -> XrfResult {
-    let config_path: &Path = &build_absolute_generated_test_sample_file_path(file!(), "test_import_export.ltx");
+    let config_path: &Path = &GeneratedResources::sample_path(file!(), "test_import_export.ltx");
     let mut ltx: Ltx = Ltx::new();
 
     let original: Vec<Shape> = vec![
@@ -459,7 +454,7 @@ mod tests {
     ];
 
     Shape::export_list(&original, "data", &mut ltx);
-    ltx.write_to(&mut overwrite_file(config_path)?)?;
+    ltx.write_to(&mut GeneratedResources::overwrite_path(config_path)?)?;
 
     assert_eq!(
       Shape::import_list(Ltx::read_from_path(config_path)?.section("data").unwrap(),)?,
@@ -480,7 +475,7 @@ mod tests {
       52.0,
     ));
 
-    let mut file: File = overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(
+    let mut file: File = GeneratedResources::overwrite(&GeneratedResources::sample_name(
       file!(),
       "serialize_deserialize_sphere.json",
     ))?;
@@ -488,7 +483,7 @@ mod tests {
     file.write_all(to_string_pretty(&original)?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
-    let serialized: String = read_file_as_string(&mut file)?;
+    let serialized: String = read_to_string(&mut file)?;
 
     assert_eq!(serialized.to_string(), serialized);
     assert_eq!(original, serde_json::from_str::<Shape>(&serialized)?);
@@ -521,7 +516,7 @@ mod tests {
       },
     ));
 
-    let mut file: File = overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(
+    let mut file: File = GeneratedResources::overwrite(&GeneratedResources::sample_name(
       file!(),
       "serialize_deserialize_box.json",
     ))?;
@@ -529,7 +524,7 @@ mod tests {
     file.write_all(to_string_pretty(&original)?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
-    let serialized: String = read_file_as_string(&mut file)?;
+    let serialized: String = read_to_string(&mut file)?;
 
     assert_eq!(serialized.to_string(), serialized);
     assert_eq!(original, serde_json::from_str::<Shape>(&serialized)?);

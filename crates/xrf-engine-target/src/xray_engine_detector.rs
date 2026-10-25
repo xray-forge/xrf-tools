@@ -111,7 +111,7 @@ mod tests {
   use std::fs;
   use std::path::{Path, PathBuf};
 
-  use xrf_test_utils::utils::create_generated_test_resource_dir;
+  use xrf_test_utils::GeneratedResources;
   use xrf_vfs::{XrayMountMode, XrayRoots};
 
   use super::XrayEngineDetector;
@@ -132,8 +132,7 @@ mod tests {
 
   /// Builds a throwaway tree under the generated scratch root, scoped by name since tests share it.
   fn tree(name: &str, files: &[(&str, &str)]) -> PathBuf {
-    let root: PathBuf =
-      create_generated_test_resource_dir(&format!("engine_detection/{name}")).expect("detection root");
+    let root: PathBuf = GeneratedResources::create_dir(&format!("engine_detection/{name}")).expect("detection root");
 
     for (path, contents) in files {
       let file: PathBuf = root.join(path);

@@ -8,7 +8,7 @@ use xrf_app_core::session::{SessionId, SessionScope, SessionScopes};
 use xrf_chunk::XRayByteOrder;
 use xrf_job::ExecutionRequest;
 use xrf_spawn::SpawnFile;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::{SpawnChunk, SpawnChunkKind, SpawnFiles, SpawnSession};
 
@@ -28,7 +28,7 @@ pub(super) fn synthetic_spawn() -> SpawnFile {
 /// spawn that cannot be read leaves the one open as it was and no handle bound behind it.
 #[test]
 fn a_packed_spawn_opens_described_and_a_failed_open_leaves_no_binding() {
-  let directory: PathBuf = build_absolute_generated_test_resource_path("spawn/session/loading");
+  let directory: PathBuf = GeneratedResources::path("spawn/session/loading");
   let (packed, corrupt): (PathBuf, PathBuf) = (directory.join("all.spawn"), directory.join("corrupt.spawn"));
   let source: SpawnFile = synthetic_spawn();
 

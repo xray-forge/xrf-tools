@@ -49,7 +49,7 @@ mod tests {
   use image::{Rgba, RgbaImage};
   use xrf_dds::{DdsFile, Quality};
   use xrf_error::XrfResult;
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
   use xrf_thm::{ThmFile, ThmFormat, ThmMipFilter, ThmTextureFlag, ThmTextureFlags, ThmTextureParamChunk};
 
   use super::BuildTextureProcessor;
@@ -78,7 +78,7 @@ mod tests {
   }
 
   fn options(case: &str, descriptor: ThmFile, source: RgbaImage) -> BuildTextureOptions {
-    let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("xrf-texture/build/{case}.dds"));
+    let destination: PathBuf = GeneratedResources::path(&format!("xrf-texture/build/{case}.dds"));
 
     std::fs::create_dir_all(destination.parent().expect("case directory")).expect("scratch directory");
 

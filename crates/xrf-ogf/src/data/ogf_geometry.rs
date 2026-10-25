@@ -119,24 +119,20 @@ mod tests {
   use byteorder::WriteBytesExt;
   use xrf_chunk::{ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use super::OgfGeometry;
 
   #[test]
   fn test_read() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "read.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read.chunk");
     let contents: Vec<u8> = geometry_contents()?;
-    let mut file = overwrite_generated_test_resource_as_file(&filename)?;
+    let mut file = GeneratedResources::overwrite(&filename)?;
 
     file.write_all(&contents)?;
     file.flush()?;
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     assert_eq!(file.bytes_remaining(), contents.len());
 
     let chunks = ChunkReader::from_slice(file)?.read_children()?;

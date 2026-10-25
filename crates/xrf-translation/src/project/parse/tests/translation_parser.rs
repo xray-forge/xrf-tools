@@ -2,10 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_test_utils::links::link_directory;
-use xrf_test_utils::utils::{
-  build_absolute_generated_test_resource_path, create_generated_test_resource_dir, write_generated_test_resource,
-};
+use xrf_test_utils::{GeneratedResources, HostFilesystem};
 use xrf_utils::{HostLinkPolicy, encode_string_to_bytes};
 
 use super::super::translation_parse_options::TranslationParseOptions;
@@ -31,7 +28,7 @@ fn options(root: &str, language: TranslationLanguage, output_dir: PathBuf) -> Tr
 
 /// A clean output directory below the generated test tree.
 fn output(test_root: &str) -> XrfResult<PathBuf> {
-  let path: PathBuf = build_absolute_generated_test_resource_path(&format!("{test_root}/output"));
+  let path: PathBuf = GeneratedResources::path(&format!("{test_root}/output"));
 
   if path.exists() {
     fs::remove_dir_all(&path)?;
@@ -56,7 +53,7 @@ fn write_table(relative_path: &str, language: TranslationLanguage, id: &str, tex
     table(id, text)
   );
 
-  write_generated_test_resource(
+  GeneratedResources::write(
     relative_path,
     encode_string_to_bytes(&source, language.new_language_encoder())?,
   )?;
@@ -69,7 +66,7 @@ fn imports_one_language_into_a_new_source() -> XrfResult {
   let root: &str = "parse_run/first_import";
   let output_dir: PathBuf = output(root)?;
 
-  write_generated_test_resource(&format!("{root}/eng/st_items.xml"), table("st_medkit", "Medkit"))?;
+  GeneratedResources::write(&format!("{root}/eng/st_items.xml"), table("st_medkit", "Medkit"))?;
 
   let result: TranslationParseResult =
     TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
@@ -140,7 +137,7 @@ fn running_the_same_import_twice_writes_nothing_the_second_time() -> XrfResult {
   let root: &str = "parse_run/idempotent";
   let output_dir: PathBuf = output(root)?;
 
-  write_generated_test_resource(&format!("{root}/eng/st_items.xml"), table("st_medkit", "Medkit"))?;
+  GeneratedResources::write(&format!("{root}/eng/st_items.xml"), table("st_medkit", "Medkit"))?;
 
   TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
 
@@ -159,7 +156,7 @@ fn existing_text_survives_unless_overwrite_is_asked_for() -> XrfResult {
   let root: &str = "parse_run/conflict";
   let output_dir: PathBuf = output(root)?;
 
-  write_generated_test_resource(&format!("{root}/eng/st_items.xml"), table("st_medkit", "Medkit"))?;
+  GeneratedResources::write(&format!("{root}/eng/st_items.xml"), table("st_medkit", "Medkit"))?;
 
   fs::create_dir_all(&output_dir)?;
   fs::write(
@@ -190,7 +187,7 @@ fn a_dry_run_reports_what_it_would_have_written_and_writes_nothing() -> XrfResul
   let root: &str = "parse_run/dry";
   let output_dir: PathBuf = output(root)?;
 
-  write_generated_test_resource(&format!("{root}/eng/st_items.xml"), table("st_medkit", "Medkit"))?;
+  GeneratedResources::write(&format!("{root}/eng/st_items.xml"), table("st_medkit", "Medkit"))?;
 
   let mut dry = options(root, TranslationLanguage::English, output_dir.clone());
 
@@ -213,8 +210,8 @@ fn nested_sources_keep_their_directories_apart() -> XrfResult {
   let root: &str = "parse_run/nested";
   let output_dir: PathBuf = output(root)?;
 
-  write_generated_test_resource(&format!("{root}/eng/one/common.xml"), table("st_one", "One"))?;
-  write_generated_test_resource(&format!("{root}/eng/two/common.xml"), table("st_two", "Two"))?;
+  GeneratedResources::write(&format!("{root}/eng/one/common.xml"), table("st_one", "One"))?;
+  GeneratedResources::write(&format!("{root}/eng/two/common.xml"), table("st_two", "Two"))?;
 
   TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
 
@@ -229,8 +226,8 @@ fn a_single_table_can_be_selected_by_name() -> XrfResult {
   let root: &str = "parse_run/selected";
   let output_dir: PathBuf = output(root)?;
 
-  write_generated_test_resource(&format!("{root}/eng/st_items.xml"), table("st_medkit", "Medkit"))?;
-  write_generated_test_resource(&format!("{root}/eng/st_ui.xml"), table("st_start", "Start"))?;
+  GeneratedResources::write(&format!("{root}/eng/st_items.xml"), table("st_medkit", "Medkit"))?;
+  GeneratedResources::write(&format!("{root}/eng/st_ui.xml"), table("st_start", "Start"))?;
 
   let mut selected = options(root, TranslationLanguage::English, output_dir.clone());
 
@@ -250,8 +247,8 @@ fn an_unreadable_table_costs_its_own_strings_and_not_the_import() -> XrfResult {
   let root: &str = "parse_run/damaged";
   let output_dir: PathBuf = output(root)?;
 
-  write_generated_test_resource(&format!("{root}/eng/st_good.xml"), table("st_medkit", "Medkit"))?;
-  write_generated_test_resource(&format!("{root}/eng/st_bad.xml"), "<string_table><string id=")?;
+  GeneratedResources::write(&format!("{root}/eng/st_good.xml"), table("st_medkit", "Medkit"))?;
+  GeneratedResources::write(&format!("{root}/eng/st_bad.xml"), "<string_table><string id=")?;
 
   let result: TranslationParseResult =
     TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
@@ -276,7 +273,7 @@ fn xml_that_is_not_a_string_table_is_skipped_rather_than_written_empty() -> XrfR
   let root: &str = "parse_run/not_a_table";
   let output_dir: PathBuf = output(root)?;
 
-  write_generated_test_resource(&format!("{root}/eng/openxray.xml"), "<openxray></openxray>")?;
+  GeneratedResources::write(&format!("{root}/eng/openxray.xml"), "<openxray></openxray>")?;
 
   let result: TranslationParseResult =
     TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
@@ -293,7 +290,7 @@ fn a_repeated_id_keeps_the_last_and_says_so() -> XrfResult {
   let root: &str = "parse_run/duplicate";
   let output_dir: PathBuf = output(root)?;
 
-  write_generated_test_resource(
+  GeneratedResources::write(
     &format!("{root}/eng/st_items.xml"),
     "<string_table>\
        <string id=\"st_a\"><text>first</text></string>\
@@ -321,7 +318,7 @@ fn multi_line_text_is_imported_as_an_array() -> XrfResult {
   let root: &str = "parse_run/multiline";
   let output_dir: PathBuf = output(root)?;
 
-  write_generated_test_resource(&format!("{root}/eng/st_items.xml"), table("st_a", "first\\nsecond"))?;
+  GeneratedResources::write(&format!("{root}/eng/st_items.xml"), table("st_a", "first\\nsecond"))?;
 
   TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
 
@@ -340,7 +337,7 @@ fn a_scope_holding_no_string_tables_is_refused() -> XrfResult {
   let root: &str = "parse_run/empty";
   let output_dir: PathBuf = output(root)?;
 
-  write_generated_test_resource(&format!("{root}/eng/notes.txt"), "not a translation")?;
+  GeneratedResources::write(&format!("{root}/eng/notes.txt"), "not a translation")?;
 
   let error = TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir)).unwrap_err();
 
@@ -354,7 +351,7 @@ fn a_file_selector_that_names_nothing_is_refused() -> XrfResult {
   let root: &str = "parse_run/absent_file";
   let output_dir: PathBuf = output(root)?;
 
-  write_generated_test_resource(&format!("{root}/eng/st_items.xml"), table("st_a", "A"))?;
+  GeneratedResources::write(&format!("{root}/eng/st_items.xml"), table("st_a", "A"))?;
 
   let mut selected = options(root, TranslationLanguage::English, output_dir);
 
@@ -371,9 +368,9 @@ fn a_file_selector_that_names_nothing_is_refused() -> XrfResult {
 ///
 /// Returns `None` when this host cannot create the link.
 fn linked_output(root: &str) -> XrfResult<Option<(PathBuf, PathBuf)>> {
-  write_generated_test_resource(&format!("{root}/eng/ui/st_ui.xml"), table("st_ui", "UI"))?;
+  GeneratedResources::write(&format!("{root}/eng/ui/st_ui.xml"), table("st_ui", "UI"))?;
 
-  let destination: PathBuf = create_generated_test_resource_dir(&format!("{root}-destination"))?;
+  let destination: PathBuf = GeneratedResources::create_dir(&format!("{root}-destination"))?;
 
   let sentinel: PathBuf = destination.join("sentinel");
   let output_dir: PathBuf = destination.join("output");
@@ -381,7 +378,7 @@ fn linked_output(root: &str) -> XrfResult<Option<(PathBuf, PathBuf)>> {
   fs::create_dir_all(&sentinel)?;
   fs::create_dir_all(&output_dir)?;
 
-  if !link_directory(&sentinel, &output_dir.join("ui")) {
+  if !HostFilesystem::link_directory(&sentinel, &output_dir.join("ui")) {
     return Ok(None);
   }
 

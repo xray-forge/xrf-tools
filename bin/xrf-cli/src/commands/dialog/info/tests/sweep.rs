@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use serde_json::Value;
 use xrf_error::XrfResult;
 use xrf_report::Status;
-use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::commands::dialog::info::command::InfoCommand;
@@ -21,7 +21,7 @@ fn roots(root: &Path) -> XrayRoots {
 }
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("dialog_info/sweep/{name}"))?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("dialog_info/sweep/{name}"))?;
 
   Ok(root)
 }
@@ -255,7 +255,7 @@ fn refuses_a_path_that_does_not_exist() -> XrfResult {
   // path now mounts an empty roots rather than failing outright, so the assertion is on the class of
   // failure rather than on wording the mount layer owns.
   // Never created, so the path names a root that is absent rather than one that happens to be empty.
-  let missing: PathBuf = build_absolute_generated_test_resource_path("dialog_info/sweep/absent");
+  let missing: PathBuf = GeneratedResources::path("dialog_info/sweep/absent");
 
   match run(&missing, &["--source", "directory"]) {
     Err(error @ CommandError::Execution(_)) => assert_eq!(error.exit_code(), 1),

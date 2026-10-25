@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_archive::ArchiveProject;
-use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
+use xrf_test_utils::GeneratedResources;
 
 use crate::pack::config::ArchivePackConfig;
 use crate::pack::{ArchivePackResult, ArchivePacker};
@@ -29,7 +29,7 @@ pub(crate) const BINARY: &[u8] = &[0x44, 0x44, 0x53, 0x20, 0x01, 0x02, 0x03, 0xf
 
 /// Build a loose tree under this test's scratch directory and return its root.
 pub(crate) fn create_tree(scope: &str, name: &str, files: &[(&str, &[u8])]) -> PathBuf {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("{scope}/{name}")).expect("tree root");
+  let root: PathBuf = GeneratedResources::create_dir(&format!("{scope}/{name}")).expect("tree root");
 
   for (entry, contents) in files {
     let path: PathBuf = root.join(entry.replace('\\', "/"));
@@ -44,7 +44,7 @@ pub(crate) fn create_tree(scope: &str, name: &str, files: &[(&str, &[u8])]) -> P
 /// Packs a scratch tree and returns the archive directory.
 pub(crate) fn create_volumes(scope: &str, name: &str, files: &[(&str, &[u8])]) -> PathBuf {
   let source: PathBuf = create_tree(scope, &format!("{name}-source"), files);
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/{name}"));
+  let destination: PathBuf = GeneratedResources::path(&format!("{scope}/{name}"));
 
   let _ = fs::remove_dir_all(&destination);
 
@@ -58,7 +58,7 @@ pub(crate) fn create_volumes(scope: &str, name: &str, files: &[(&str, &[u8])]) -
 
 /// Where a run under this scope publishes.
 pub(crate) fn destination(scope: &str) -> PathBuf {
-  let path: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/published"));
+  let path: PathBuf = GeneratedResources::path(&format!("{scope}/published"));
 
   let _ = fs::remove_dir_all(&path);
 
@@ -139,7 +139,7 @@ pub(crate) fn create_installation(
   archived: &[(&str, &[u8])],
   loose: &[(&str, &[u8])],
 ) -> PathBuf {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("{scope}/{name}")).expect("installation root");
+  let root: PathBuf = GeneratedResources::create_dir(&format!("{scope}/{name}")).expect("installation root");
 
   let packed: PathBuf = create_volumes(scope, &format!("{name}-db"), archived);
 

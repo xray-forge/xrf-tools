@@ -11,7 +11,7 @@ use xrf_app_core::assets::{AssetMountState, AssetSource};
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionScope, SessionScopes};
 use xrf_job::ExecutionRequest;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::XrayRoots;
 
 use crate::VisualModels;
@@ -33,7 +33,7 @@ fn application() -> App<MockRuntime> {
 fn a_visual_that_cannot_be_read_opens_nothing_and_leaves_no_binding() {
   let application: App<MockRuntime> = application();
   let tool: SessionScope = SessionScope::new("main", "visuals-explorer");
-  let directory: PathBuf = build_absolute_generated_test_resource_path("visuals/open/unreadable");
+  let directory: PathBuf = GeneratedResources::path("visuals/open/unreadable");
   let path: PathBuf = directory.join("stalker.ogf");
   let session_id: SessionId = SessionId::generate();
 

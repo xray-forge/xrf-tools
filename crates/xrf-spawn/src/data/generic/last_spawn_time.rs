@@ -74,26 +74,22 @@ impl ChunkReadWrite for LastSpawnTime {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::generic::last_spawn_time::LastSpawnTime;
   use crate::data::generic::time::Time;
 
   fn read_back(original: &LastSpawnTime, name: &str, expected_size: usize) -> XrfResult<LastSpawnTime> {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), name);
+    let filename: String = GeneratedResources::sample_name(file!(), name);
 
     original.write::<XRayByteOrder>(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), expected_size);
 
-    writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+    writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
     LastSpawnTime::read::<XRayByteOrder, _>(&mut reader)

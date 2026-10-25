@@ -294,7 +294,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
-  use xrf_test_utils::utils::{assert_publication_left_previous, create_generated_test_resource_dir};
+  use xrf_test_utils::{GeneratedResources, RefusedPublication};
   use xrf_utils::StagingFaults;
 
   use super::SpawnFile;
@@ -351,7 +351,7 @@ mod tests {
   /// A write that fails part way leaves the spawn a caller had, and nothing staged beside it.
   #[test]
   fn keeps_the_previous_file_when_publication_fails() -> XrfResult {
-    let path: PathBuf = create_generated_test_resource_dir("spawn_file/publication")?.join("all.spawn");
+    let path: PathBuf = GeneratedResources::create_dir("spawn_file/publication")?.join("all.spawn");
     let guid: Uuid = uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7");
     let spawn: SpawnFile = SpawnFile {
       header: SpawnHeaderChunk {
@@ -385,7 +385,7 @@ mod tests {
     StagingFaults::fail_next_write();
 
     assert!(spawn.write_to_path::<XRayByteOrder, _>(&path).is_err());
-    assert_publication_left_previous(&path, b"previous");
+    RefusedPublication::assert_left_previous(&path, b"previous");
 
     Ok(())
   }

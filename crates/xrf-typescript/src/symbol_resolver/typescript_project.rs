@@ -163,12 +163,12 @@ mod tests {
   use std::fs;
   use std::path::{Path, PathBuf};
 
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use super::TypeScriptProject;
 
   fn create_test_root(name: &str) -> PathBuf {
-    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("typescript-project/{name}"));
+    let root: PathBuf = GeneratedResources::path(&format!("typescript-project/{name}"));
 
     fs::create_dir_all(&root).unwrap();
 

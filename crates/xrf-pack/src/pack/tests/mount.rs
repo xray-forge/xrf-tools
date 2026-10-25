@@ -8,7 +8,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_archive::ArchiveProject;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayAsset, XrayMountMode, XrayRoots, XraySearch, XraySearchStep, XrayVfs};
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
@@ -18,7 +18,7 @@ use crate::pack::{ArchivePackResult, ArchivePacker};
 /// Pack one source tree into a destination shared with other volumes, under its own volume name.
 fn pack_volume(scope: &str, name: &str, files: &[(&str, &[u8])]) -> PathBuf {
   let source: PathBuf = create_source(&format!("{scope}/{name}"), files);
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+  let destination: PathBuf = GeneratedResources::path(&format!("{scope}/db"));
 
   let mut config: ArchivePackConfig = ArchivePackConfig::new(&source, &destination, name);
 
@@ -36,7 +36,7 @@ fn pack_volume(scope: &str, name: &str, files: &[(&str, &[u8])]) -> PathBuf {
 fn opening_one_volume_opens_only_that_volume() {
   // What the explorer's archive mode asks for: the volume the user named, not the directory it happens to sit in.
   let scope: &str = "opening_one_volume_opens_only_that_volume";
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+  let destination: PathBuf = GeneratedResources::path(&format!("{scope}/db"));
 
   let _ = fs::remove_dir_all(&destination);
 
@@ -67,7 +67,7 @@ fn a_named_volume_is_searched_as_a_root() {
   // The explorer mounts a project's root to read an entry's bytes back, and for a single-volume project that root is
   // the volume. A root planner that only recognised directories would search nothing and report every entry missing.
   let scope: &str = "a_named_volume_is_searched_as_a_root";
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+  let destination: PathBuf = GeneratedResources::path(&format!("{scope}/db"));
 
   let _ = fs::remove_dir_all(&destination);
 
@@ -106,7 +106,7 @@ fn a_volume_in_a_subdirectory_is_read_through_the_project_root() {
   // shallow volume set, that root sees only the volumes directly under it, and every entry stored deeper is listed,
   // sized and extractable but previews as missing.
   let scope: &str = "a_volume_in_a_subdirectory_is_read_through_the_project_root";
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+  let destination: PathBuf = GeneratedResources::path(&format!("{scope}/db"));
 
   let _ = fs::remove_dir_all(&destination);
 

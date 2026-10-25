@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::dialect::{LtxDialect, LtxFieldOrigin, LtxResolution, LtxResolveRequest, LtxStandardDialect};
 use crate::source::LtxFilesystemSource;
@@ -31,7 +31,7 @@ fn write_tree(root: &Path) -> XrfResult<String> {
 
 /// Resolves the tree written at `root`, asking for provenance.
 fn resolve_explained(name: &str) -> XrfResult<LtxResolution> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(name);
+  let root: PathBuf = GeneratedResources::path(name);
   let entry: String = write_tree(&root)?;
 
   LtxStandardDialect.resolve(&entry, &LtxFilesystemSource, LtxResolveRequest::with_provenance())
@@ -118,7 +118,7 @@ fn every_resolved_field_of_every_section_is_accounted_for() -> XrfResult {
 
 #[test]
 fn a_root_field_merged_from_a_second_file_is_attributed_to_the_first() -> XrfResult {
-  let root: PathBuf = build_absolute_generated_test_resource_path("field_provenance/root_merge");
+  let root: PathBuf = GeneratedResources::path("field_provenance/root_merge");
 
   fs::create_dir_all(root.join("items"))?;
   fs::write(
@@ -163,7 +163,7 @@ fn a_root_field_merged_from_a_second_file_is_attributed_to_the_first() -> XrfRes
 
 #[test]
 fn a_resolution_that_was_not_asked_records_nothing() -> XrfResult {
-  let root: PathBuf = build_absolute_generated_test_resource_path("field_provenance/unasked");
+  let root: PathBuf = GeneratedResources::path("field_provenance/unasked");
   let entry: String = write_tree(&root)?;
 
   let resolved: LtxResolution = LtxStandardDialect.resolve(&entry, &LtxFilesystemSource, LtxResolveRequest::plain())?;

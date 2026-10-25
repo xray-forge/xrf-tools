@@ -3,13 +3,13 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
+use xrf_test_utils::GeneratedResources;
 
 use crate::{XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchPlan};
 
 /// Builds a loose root holding one asset, since a plan is decided by what is actually there.
 fn root(name: &str, logical: &str) -> PathBuf {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("xray_roots/{name}")).expect("root directory");
+  let root: PathBuf = GeneratedResources::create_dir(&format!("xray_roots/{name}")).expect("root directory");
 
   let path: PathBuf = root.join(logical.replace('\\', "/"));
 
@@ -181,7 +181,7 @@ fn opens_what_it_planned() {
 #[cfg(any(target_os = "linux", windows))]
 #[test]
 fn opens_a_non_unicode_root_without_changing_its_address() {
-  let base: PathBuf = build_absolute_generated_test_resource_path("xray_roots/non-unicode-address");
+  let base: PathBuf = GeneratedResources::path("xray_roots/non-unicode-address");
   let root: PathBuf = base.join(non_unicode_component());
   let asset: PathBuf = root.join("configs/system.ltx");
 

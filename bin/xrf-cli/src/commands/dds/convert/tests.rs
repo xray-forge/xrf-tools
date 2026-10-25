@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use serde_json::Value;
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::commands::dds::convert::command::ConvertCommand;
 use crate::core::command::CommandResult;
@@ -12,7 +12,7 @@ use crate::core::command::command_testing::run_command_for_result;
 
 /// A source texture with detail in every channel, so a lossy candidate has something to lose.
 fn source(case: &str) -> CommandResult<PathBuf> {
-  let path: PathBuf = build_absolute_generated_test_resource_path(&format!("dds_convert/{case}/source.dds"));
+  let path: PathBuf = GeneratedResources::path(&format!("dds_convert/{case}/source.dds"));
 
   std::fs::create_dir_all(path.parent().expect("case directory"))?;
 

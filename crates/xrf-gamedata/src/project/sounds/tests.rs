@@ -6,13 +6,13 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use super::sounds_verification_result::GamedataSoundsVerificationResult;
 use crate::{GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions};
 
 fn open_project(name: &str, config: &str) -> (PathBuf, GamedataProject) {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("sounds/{name}")).unwrap();
+  let root: PathBuf = GeneratedResources::create_dir(&format!("sounds/{name}")).unwrap();
   let configs: PathBuf = root.join("configs");
 
   fs::create_dir_all(configs.join("weapons")).unwrap();

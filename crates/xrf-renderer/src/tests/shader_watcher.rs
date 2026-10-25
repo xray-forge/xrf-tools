@@ -1,13 +1,13 @@
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::shader::shader_watcher::ShaderWatcher;
 
 #[test]
 fn tells_once_a_shader_source_is_written() {
-  let root: PathBuf = build_absolute_generated_test_resource_path("shader-watcher");
+  let root: PathBuf = GeneratedResources::path("shader-watcher");
 
   std::fs::create_dir_all(&root).expect("the folder is made");
 

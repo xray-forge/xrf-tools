@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes, Sessions};
 use xrf_ltx::{LtxFormatOptions, LtxProjectFormatResult};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayAsset, XrayInputRecord, XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 
 use crate::{ConfigsFormat, ConfigsProjects, OpenedConfigsProject};
@@ -34,7 +34,7 @@ fn read(search: &XraySearch, logical_path: &str, parses: &AtomicU32) -> Arc<Vec<
 
 #[test]
 fn a_format_commits_its_rewrites_so_retained_configs_and_sessions_follow() {
-  let root: PathBuf = build_absolute_generated_test_resource_path("configs_format/committed");
+  let root: PathBuf = GeneratedResources::path("configs_format/committed");
 
   let _ = fs::remove_dir_all(&root);
 
@@ -88,7 +88,7 @@ fn a_format_commits_its_rewrites_so_retained_configs_and_sessions_follow() {
 
 #[test]
 fn an_open_project_lists_a_config_committed_beside_it_once_read_again() {
-  let root: PathBuf = build_absolute_generated_test_resource_path("configs_follow/created");
+  let root: PathBuf = GeneratedResources::path("configs_follow/created");
 
   let _ = fs::remove_dir_all(&root);
 

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use xrf_engine_target::XrayEngineChoice;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use super::verify_environment_result::GamedataEnvironmentVerificationResult;
 use crate::{GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions};
@@ -18,7 +18,7 @@ struct EnvironmentTree {
 impl EnvironmentTree {
   fn new() -> Self {
     let unique: u64 = NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed);
-    let root: PathBuf = create_generated_test_resource_dir(&format!("gamedata_environment/fixture-{unique}")).unwrap();
+    let root: PathBuf = GeneratedResources::create_dir(&format!("gamedata_environment/fixture-{unique}")).unwrap();
 
     Self { root }
       .with("configs/system.ltx", "")

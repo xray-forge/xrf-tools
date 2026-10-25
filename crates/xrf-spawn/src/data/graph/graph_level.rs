@@ -85,7 +85,7 @@ impl LtxImportExport for GraphLevel {
 #[cfg(test)]
 mod tests {
   use std::fs::File;
-  use std::io::{Seek, SeekFrom, Write};
+  use std::io::{Seek, SeekFrom, Write, read_to_string};
   use std::path::Path;
 
   use serde_json::to_string_pretty;
@@ -94,12 +94,7 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_math::Vector3d;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::file::read_file_as_string;
-  use xrf_test_utils::utils::{
-    build_absolute_generated_test_sample_file_path, build_relative_test_sample_file_path,
-    open_generated_test_resource_as_slice, overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::graph::graph_level::GraphLevel;
 
@@ -121,14 +116,13 @@ mod tests {
     assert_eq!(writer.bytes_written(), 59);
 
     let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
-      &mut overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(file!(), &filename))?,
+      &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
 
     assert_eq!(bytes_written, 59);
 
-    let file: FileSlice =
-      open_generated_test_resource_as_slice(&build_relative_test_sample_file_path(file!(), &filename))?;
+    let file: FileSlice = GeneratedResources::open_slice(&GeneratedResources::sample_name(file!(), &filename))?;
 
     assert_eq!(file.bytes_remaining(), 59 + 8);
 
@@ -151,8 +145,8 @@ mod tests {
       offset: Vector3d::new(0.25, 5.55, -1.5),
     };
 
-    let config_path: &Path = &build_absolute_generated_test_sample_file_path(file!(), "import_export.ltx");
-    let mut file: File = overwrite_generated_test_resource_as_file(config_path.to_str().expect("Valid path"))?;
+    let config_path: &Path = &GeneratedResources::sample_path(file!(), "import_export.ltx");
+    let mut file: File = GeneratedResources::overwrite(config_path.to_str().expect("Valid path"))?;
     let mut ltx: Ltx = Ltx::new();
 
     original.export("graph_level", &mut ltx)?;
@@ -176,15 +170,13 @@ mod tests {
       offset: Vector3d::new(0.25, 5.55, -1.5),
     };
 
-    let mut file: File = overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(
-      file!(),
-      "serialize_deserialize.json",
-    ))?;
+    let mut file: File =
+      GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
 
     file.write_all(to_string_pretty(&original)?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
-    let serialized: String = read_file_as_string(&mut file)?;
+    let serialized: String = read_to_string(&mut file)?;
 
     assert_eq!(serialized.to_string(), serialized);
     assert_eq!(original, serde_json::from_str::<GraphLevel>(&serialized)?);

@@ -65,7 +65,7 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use super::{ArchiveAlias, ArchiveAliasTable};
   use crate::pack::source::{ArchivePackEntry, ArchivePackPayloads};
@@ -74,7 +74,7 @@ mod tests {
   const SECOND: &[u8] = b"a different one!!";
 
   fn write(scope: &str, name: &str, contents: &[u8]) -> ArchivePackEntry {
-    let path: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/{name}"));
+    let path: PathBuf = GeneratedResources::path(&format!("{scope}/{name}"));
 
     fs::create_dir_all(path.parent().expect("scope directory")).expect("scope directory");
     fs::write(&path, contents).expect("candidate file");

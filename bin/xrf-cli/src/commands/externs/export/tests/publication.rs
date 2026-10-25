@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 use xrf_utils::StagingFaults;
 
 use crate::commands::externs::export::command::ExportCommand;
@@ -15,7 +15,7 @@ const PREVIOUS: &str = "{\n  \"exports\": { \"sentinel\": true }\n}\n";
 
 /// A declarations root beside an artifact a previous run already published.
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("externs-export-publication/{name}"))?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("externs-export-publication/{name}"))?;
 
   fs::create_dir_all(root.join("declarations"))?;
   fs::write(

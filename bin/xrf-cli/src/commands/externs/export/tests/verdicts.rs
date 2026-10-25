@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::commands::externs::export::command::ExportCommand;
 use crate::core::command::command_testing::run_command_with_result;
@@ -13,7 +13,7 @@ use crate::core::command::{CommandError, CommandResult};
 
 /// A declarations root holding one source, beside the artifact a `--check` run compares against.
 fn create_root(name: &str, declarations: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("externs-export/{name}"))?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("externs-export/{name}"))?;
 
   fs::create_dir_all(root.join("declarations"))?;
   fs::write(root.join("declarations/externs.ts"), declarations)?;

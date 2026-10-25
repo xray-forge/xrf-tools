@@ -11,7 +11,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionScope, SessionScopes};
 use xrf_dialog::DialogProjectMode;
 use xrf_job::ExecutionRequest;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots};
 
 use crate::DialogProjects;
@@ -40,7 +40,7 @@ fn application() -> App<MockRuntime> {
 
 /// An empty tree of one case's own, with `files` written into it.
 fn tree(case: &str, files: &[(&str, &str)]) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("dialogs/open/{case}"));
+  let root: PathBuf = GeneratedResources::path(&format!("dialogs/open/{case}"));
 
   let _ = fs::remove_dir_all(&root);
 

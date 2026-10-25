@@ -317,7 +317,7 @@ mod reported_path_test {
   use std::path::{Path, PathBuf};
 
   use xrf_error::XrfResult;
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use crate::ltx::Ltx;
 
@@ -340,7 +340,7 @@ mod reported_path_test {
 
   #[test]
   fn names_the_file_the_undeclared_section_was_inherited_in() -> XrfResult {
-    let root: PathBuf = build_absolute_generated_test_resource_path("inherit/named");
+    let root: PathBuf = GeneratedResources::path("inherit/named");
     let error: String = inherit_error_for(&root, "broken.ltx")?;
 
     assert!(error.contains("Failed to inherit unknown section [missing]"), "{error}");
@@ -358,7 +358,7 @@ mod reported_path_test {
     use std::ffi::OsStr;
     use std::os::unix::ffi::OsStrExt;
 
-    let root: PathBuf = build_absolute_generated_test_resource_path("inherit/non_utf8");
+    let root: PathBuf = GeneratedResources::path("inherit/non_utf8");
     let name: &OsStr = OsStr::from_bytes(b"\xffbroken.ltx");
 
     assert!(name.to_str().is_none());

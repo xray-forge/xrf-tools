@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use image::{ImageFormat, Rgba, RgbaImage};
 use xrf_app_core::TauriResult;
 use xrf_dds::DdsFile;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_texture::{TextureEncodingFormat, TextureEncodingQuality};
 
 use crate::viewer::map::{MapExportAnnotations, MapExportFormat, MapExportRequest, MapExporter};
@@ -13,7 +13,7 @@ use crate::viewer::{ViewerDdsExport, ViewerImage};
 /// A 30 by 20 map, its left half covered in red and its right clear, and beside it annotations drawing a white square
 /// over its right half, in a folder of its own.
 fn write_map(name: &str) -> TauriResult<(PathBuf, PathBuf)> {
-  let folder: PathBuf = build_absolute_generated_test_resource_path(&format!("map_export/{name}"));
+  let folder: PathBuf = GeneratedResources::path(&format!("map_export/{name}"));
   let map: RgbaImage = RgbaImage::from_fn(30, 20, |x, _| {
     if x < 15 {
       Rgba([255, 0, 0, 255])

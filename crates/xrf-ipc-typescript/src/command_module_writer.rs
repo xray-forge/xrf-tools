@@ -435,7 +435,7 @@ mod tests {
   use std::path::PathBuf;
 
   use specta::Types;
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use crate::command_module_writer::CommandModuleWriter;
   use crate::enumerations::Enumerations;
@@ -451,7 +451,7 @@ mod tests {
     let types: Types = Types::default();
     let (ownership, _): (TypeOwnership, _) = TypeOwnership::resolve(&types, &TypeModules::default(), &IMPORTS);
     let enumerations: Enumerations = Enumerations::resolve(&types, &types);
-    let path: PathBuf = build_absolute_generated_test_resource_path("command-module-writer").join(name);
+    let path: PathBuf = GeneratedResources::path("command-module-writer").join(name);
 
     fs::create_dir_all(path.parent().expect("module to have a directory")).expect("directory to be created");
 

@@ -104,10 +104,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_file,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::GeneratedResources;
 
   use crate::ai::level_ai_file::{LevelAiFile, LevelAiHeader};
 
@@ -133,12 +130,13 @@ mod tests {
 
     assert_eq!(writer.bytes_written() as u64, LevelAiHeader::SIZE);
 
-    writer.flush_raw_into(&mut overwrite_generated_test_resource_as_file(
-      &build_relative_test_sample_file_path(file!(), &filename),
-    )?)?;
+    writer.flush_raw_into(&mut GeneratedResources::overwrite(&GeneratedResources::sample_name(
+      file!(),
+      &filename,
+    ))?)?;
 
-    let read: LevelAiFile = LevelAiFile::read_from_file::<XRayByteOrder>(open_generated_test_resource_as_file(
-      &build_relative_test_sample_file_path(file!(), &filename),
+    let read: LevelAiFile = LevelAiFile::read_from_file::<XRayByteOrder>(GeneratedResources::open(
+      &GeneratedResources::sample_name(file!(), &filename),
     )?)?;
 
     assert_eq!(read.header, original);
@@ -157,13 +155,13 @@ mod tests {
 
     bytes.truncate(LevelAiHeader::SIZE as usize - 1);
 
-    overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(file!(), &filename))?
-      .write_all(&bytes)?;
+    GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?.write_all(&bytes)?;
 
     assert!(
-      LevelAiFile::read_from_file::<XRayByteOrder>(open_generated_test_resource_as_file(
-        &build_relative_test_sample_file_path(file!(), &filename)
-      )?)
+      LevelAiFile::read_from_file::<XRayByteOrder>(GeneratedResources::open(&GeneratedResources::sample_name(
+        file!(),
+        &filename
+      ))?)
       .is_err(),
       "Expected truncated AI-map header to fail reading"
     );

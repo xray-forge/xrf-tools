@@ -1,7 +1,7 @@
 use std::fs;
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::write_generated_test_resource;
+use xrf_test_utils::GeneratedResources;
 
 use crate::edit::TranslationEdit;
 use crate::json::read::read_json;
@@ -21,7 +21,7 @@ fn remove(id: &str) -> TranslationEdit {
 
 #[test]
 fn sets_one_language_and_leaves_the_others() -> XrfResult {
-  let path = write_generated_test_resource(
+  let path = GeneratedResources::write(
     "json_write/set.json",
     "{\n  \"st_hello\": {\n    \"eng\": \"Hello\",\n    \"ukr\": \"Pryvit\"\n  }\n}\n",
   )?;
@@ -45,7 +45,7 @@ fn sets_one_language_and_leaves_the_others() -> XrfResult {
 
 #[test]
 fn adds_an_entry_that_was_not_there() -> XrfResult {
-  let path = write_generated_test_resource("json_write/add.json", "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n")?;
+  let path = GeneratedResources::write("json_write/add.json", "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n")?;
 
   apply_edits(&path, "eng", &[set("st_b", "B")])?;
 
@@ -57,7 +57,7 @@ fn adds_an_entry_that_was_not_there() -> XrfResult {
 
 #[test]
 fn removing_a_language_keeps_the_entry_for_the_rest() -> XrfResult {
-  let path = write_generated_test_resource(
+  let path = GeneratedResources::write(
     "json_write/remove_one.json",
     "{\n  \"st_hello\": {\n    \"eng\": \"Hello\",\n    \"ukr\": \"Pryvit\"\n  }\n}\n",
   )?;
@@ -74,7 +74,7 @@ fn removing_a_language_keeps_the_entry_for_the_rest() -> XrfResult {
 
 #[test]
 fn an_entry_with_no_languages_left_goes_entirely() -> XrfResult {
-  let path = write_generated_test_resource(
+  let path = GeneratedResources::write(
     "json_write/remove_last.json",
     "{\n  \"st_only\": {\n    \"eng\": \"Only\"\n  }\n}\n",
   )?;
@@ -91,7 +91,7 @@ fn a_file_without_a_trailing_newline_gains_one() -> XrfResult {
   // Every writer in this crate goes through the canonical serializer, which appends one unconditionally. Preserving
   // its absence was one of three answers the crate used to give: the importer and this editor kept whatever a file
   // had, and the initializer silently dropped it.
-  let path = write_generated_test_resource(
+  let path = GeneratedResources::write(
     "json_write/no_newline.json",
     "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}",
   )?;
@@ -105,7 +105,7 @@ fn a_file_without_a_trailing_newline_gains_one() -> XrfResult {
 
 #[test]
 fn a_file_with_a_trailing_newline_keeps_it() -> XrfResult {
-  let path = write_generated_test_resource(
+  let path = GeneratedResources::write(
     "json_write/newline.json",
     "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n",
   )?;

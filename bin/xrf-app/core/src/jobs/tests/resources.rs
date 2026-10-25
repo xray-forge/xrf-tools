@@ -3,13 +3,13 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use uuid::Uuid;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::jobs::tests::kinds;
 use crate::jobs::{JobRegistry, JobResource, JobStart};
 
 fn new_scratch_path() -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path("job_resources").join(Uuid::new_v4().to_string());
+  let root: PathBuf = GeneratedResources::path("job_resources").join(Uuid::new_v4().to_string());
   fs::create_dir_all(&root).expect("scratch directory");
   root
 }

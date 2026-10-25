@@ -251,7 +251,7 @@ impl Patrol {
 #[cfg(test)]
 mod tests {
   use std::fs::File;
-  use std::io::{Seek, SeekFrom, Write};
+  use std::io::{Seek, SeekFrom, Write, read_to_string};
   use std::path::Path;
 
   use serde_json::to_string_pretty;
@@ -259,12 +259,7 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_ltx::Ltx;
   use xrf_math::Vector3d;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::file::read_file_as_string;
-  use xrf_test_utils::utils::{
-    build_absolute_generated_test_sample_file_path, build_relative_test_sample_file_path,
-    open_generated_test_resource_as_slice, overwrite_file, overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::patrols::patrol::Patrol;
   use crate::data::patrols::patrol_link::PatrolLink;
@@ -273,7 +268,7 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: Patrol = Patrol {
       name: String::from("patrol-name"),
@@ -304,11 +299,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 210);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 210);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 210 + 8);
     assert_eq!(
@@ -322,7 +317,7 @@ mod tests {
   #[test]
   fn test_read_write_list() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write_list.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write_list.chunk");
 
     let original: Vec<Patrol> = vec![
       Patrol {
@@ -378,11 +373,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 430);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 430);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 430 + 8);
     assert_eq!(
@@ -409,9 +404,9 @@ mod tests {
       links: vec![],
     };
 
-    let patrol_config_path: &Path = &build_absolute_generated_test_sample_file_path(file!(), "padded_names.ltx");
-    let points_config_path: &Path = &build_absolute_generated_test_sample_file_path(file!(), "padded_names_points.ltx");
-    let links_config_path: &Path = &build_absolute_generated_test_sample_file_path(file!(), "padded_names_links.ltx");
+    let patrol_config_path: &Path = &GeneratedResources::sample_path(file!(), "padded_names.ltx");
+    let points_config_path: &Path = &GeneratedResources::sample_path(file!(), "padded_names_points.ltx");
+    let links_config_path: &Path = &GeneratedResources::sample_path(file!(), "padded_names_links.ltx");
 
     let mut patrol_ltx: Ltx = Ltx::new();
     let mut points_ltx: Ltx = Ltx::new();
@@ -419,9 +414,9 @@ mod tests {
 
     original.export(&original.name, &mut patrol_ltx, &mut points_ltx, &mut links_ltx)?;
 
-    patrol_ltx.write_to(&mut overwrite_file(patrol_config_path)?)?;
-    points_ltx.write_to(&mut overwrite_file(points_config_path)?)?;
-    links_ltx.write_to(&mut overwrite_file(links_config_path)?)?;
+    patrol_ltx.write_to(&mut GeneratedResources::overwrite_path(patrol_config_path)?)?;
+    points_ltx.write_to(&mut GeneratedResources::overwrite_path(points_config_path)?)?;
+    links_ltx.write_to(&mut GeneratedResources::overwrite_path(links_config_path)?)?;
 
     let imported: Patrol = Patrol::import(
       &original.name,
@@ -469,14 +464,13 @@ mod tests {
       }],
     };
 
-    let patrol_config_path: &Path = &build_absolute_generated_test_sample_file_path(file!(), "import_export.ltx");
-    let points_config_path: &Path =
-      &build_absolute_generated_test_sample_file_path(file!(), "import_export_points.ltx");
-    let links_config_path: &Path = &build_absolute_generated_test_sample_file_path(file!(), "import_export_links.ltx");
+    let patrol_config_path: &Path = &GeneratedResources::sample_path(file!(), "import_export.ltx");
+    let points_config_path: &Path = &GeneratedResources::sample_path(file!(), "import_export_points.ltx");
+    let links_config_path: &Path = &GeneratedResources::sample_path(file!(), "import_export_links.ltx");
 
-    let mut patrol_file: File = overwrite_file(patrol_config_path)?;
-    let mut points_file: File = overwrite_file(points_config_path)?;
-    let mut links_file: File = overwrite_file(links_config_path)?;
+    let mut patrol_file: File = GeneratedResources::overwrite_path(patrol_config_path)?;
+    let mut points_file: File = GeneratedResources::overwrite_path(points_config_path)?;
+    let mut links_file: File = GeneratedResources::overwrite_path(links_config_path)?;
 
     let mut patrol_ltx: Ltx = Ltx::new();
     let mut links_ltx: Ltx = Ltx::new();
@@ -527,15 +521,13 @@ mod tests {
       }],
     };
 
-    let mut file: File = overwrite_file(build_absolute_generated_test_sample_file_path(
-      file!(),
-      "serialize_deserialize.json",
-    ))?;
+    let mut file: File =
+      GeneratedResources::overwrite_path(GeneratedResources::sample_path(file!(), "serialize_deserialize.json"))?;
 
     file.write_all(to_string_pretty(&original)?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
-    let serialized: String = read_file_as_string(&mut file)?;
+    let serialized: String = read_to_string(&mut file)?;
 
     assert_eq!(serialized.to_string(), serialized);
     assert_eq!(original, serde_json::from_str::<Patrol>(&serialized)?);

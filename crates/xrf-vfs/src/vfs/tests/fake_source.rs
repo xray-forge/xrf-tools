@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::{XrayAssetContainer, XrayAssetSource, XraySourceKind};
 
@@ -102,7 +102,7 @@ impl XrayAssetSource for FakeArchiveSource {
 }
 
 pub fn directory(name: &str, files: &[&str]) -> PathBuf {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("xray_vfs/{name}")).expect("test tree is creatable");
+  let root: PathBuf = GeneratedResources::create_dir(&format!("xray_vfs/{name}")).expect("test tree is creatable");
 
   for file in files {
     let path: PathBuf = root.join(file);

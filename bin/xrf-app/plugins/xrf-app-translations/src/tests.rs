@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes};
-use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_generated_test_resource};
+use xrf_test_utils::GeneratedResources;
 use xrf_translation::{
   TranslationEdit, TranslationProjectDescriptor, TranslationProjectMode, TranslationVariant, read_source,
 };
@@ -43,17 +43,14 @@ fn fixture() -> (AssetMountState, TranslationProjects) {
 /// Write a source project under `name` holding `FILE` and `OTHER_FILE`, and answer the roots it is read through.
 fn write_project(name: &str, value: &str) -> TauriResult<XrayRoots> {
   for file in [FILE, OTHER_FILE] {
-    write_generated_test_resource(
+    GeneratedResources::write(
       &format!("{name}/{PREFIX}/{file}"),
       format!(r#"{{"{ID}":{{"{LANGUAGE}":"{value}"}}}}"#),
     )
     .map_err(error_to_string)?;
   }
 
-  Ok(XrayRoots::one(
-    build_absolute_generated_test_resource_path(name),
-    XrayMountMode::Directory,
-  ))
+  Ok(XrayRoots::one(GeneratedResources::path(name), XrayMountMode::Directory))
 }
 
 /// The entry of `file` a project holds, which is how every assertion here tells the projects apart.

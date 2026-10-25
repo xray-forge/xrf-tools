@@ -227,7 +227,7 @@ mod tests {
   use std::path::PathBuf;
 
   use xrf_dds::ImageFormat;
-  use xrf_test_utils::utils::write_generated_test_resource;
+  use xrf_test_utils::GeneratedResources;
 
   use super::XmlDescriptionCollection;
   use crate::DescriptionSpriteOptions;
@@ -235,7 +235,7 @@ mod tests {
   #[test]
   fn returns_an_error_for_invalid_xml_in_strict_mode() {
     let path: PathBuf =
-      write_generated_test_resource("xml_description/invalid.xml", "<w>").expect("generated description to be written");
+      GeneratedResources::write("xml_description/invalid.xml", "<w>").expect("generated description to be written");
 
     let options: DescriptionSpriteOptions = DescriptionSpriteOptions {
       job: Default::default(),
@@ -261,7 +261,7 @@ mod tests {
   /// declared, with no error to say why.
   #[test]
   fn reads_a_description_whose_name_was_typed_in_upper_case() {
-    let directory: PathBuf = write_generated_test_resource(
+    let directory: PathBuf = GeneratedResources::write(
       "xml_description/upper-case/UI_ICON_EQUIPMENT.XML",
       "<w><file name=\"ui_icon_equipment\"><texture id=\"wpn_ak74\" x=\"0\" y=\"0\" width=\"4\" height=\"4\">ui_icon_equipment</texture></file></w>",
     )

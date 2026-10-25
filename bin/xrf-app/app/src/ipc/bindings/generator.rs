@@ -10,7 +10,7 @@
 use std::path::PathBuf;
 
 use xrf_ipc_typescript::{IpcBindingsGenerator, MirrorImports, SurfaceDrift, TypeModules};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::ipc::bindings::command_surfaces::command_surfaces;
 
@@ -45,7 +45,7 @@ fn export_typescript_bindings() {
 fn verify_typescript_bindings() {
   let drift: SurfaceDrift = IpcBindingsGenerator::verify(
     &bindings_output_path(),
-    &build_absolute_generated_test_resource_path("bindings"),
+    &GeneratedResources::path("bindings"),
     &command_surfaces::<tauri::Wry>(),
     &type_modules(),
     &MIRROR_IMPORTS,

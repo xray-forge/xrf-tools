@@ -4,13 +4,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfError;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackConfigJson, ArchivePackDirectory};
 
 /// An empty directory of one case's own, since several assertions here scan one.
 fn test_directory(name: &str) -> PathBuf {
-  create_generated_test_resource_dir(&format!("pack/config_codec/{name}")).expect("test directory is created")
+  GeneratedResources::create_dir(&format!("pack/config_codec/{name}")).expect("test directory is created")
 }
 
 fn directory(path: &str, is_recursive: bool) -> ArchivePackDirectory {

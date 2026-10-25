@@ -112,14 +112,14 @@ mod tests {
   use std::path::PathBuf;
 
   use xrf_ltx::{LtxFinding, LtxProject, LtxProjectFormatResult, LtxProjectVerifyResult};
-  use xrf_test_utils::utils::create_generated_test_resource_dir;
+  use xrf_test_utils::GeneratedResources;
 
   use super::GamedataProject;
   use crate::{Finding, GamedataFindingFactory, GamedataVerificationRule};
 
   #[test]
   fn collects_format_scheme_and_unreadable_findings_with_source_paths() {
-    let root: PathBuf = create_generated_test_resource_dir("gamedata_ltx_findings/sources").expect("project root");
+    let root: PathBuf = GeneratedResources::create_dir("gamedata_ltx_findings/sources").expect("project root");
     let project: LtxProject = LtxProject::open_at_path(&root).expect("an empty project opens");
     let format_result: LtxProjectFormatResult = LtxProjectFormatResult {
       to_format: vec![PathBuf::from("configs/system.ltx")],

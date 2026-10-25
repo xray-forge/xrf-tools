@@ -87,12 +87,12 @@ mod tests {
 
   use swc_ecma_ast::Program;
   use xrf_error::XrfError;
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use super::parse_typescript_file;
 
   fn write_source(name: &str, source: &str) -> PathBuf {
-    let path: PathBuf = build_absolute_generated_test_resource_path(&format!("typescript-parser/{name}"));
+    let path: PathBuf = GeneratedResources::path(&format!("typescript-parser/{name}"));
 
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(&path, source).unwrap();
@@ -119,7 +119,7 @@ mod tests {
 
   #[test]
   fn reports_a_source_that_cannot_be_read() {
-    let path: PathBuf = build_absolute_generated_test_resource_path("typescript-parser/missing.ts");
+    let path: PathBuf = GeneratedResources::path("typescript-parser/missing.ts");
 
     match parse_failure(&path) {
       XrfError::Io { message, kind } => {

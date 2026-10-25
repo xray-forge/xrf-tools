@@ -7,7 +7,7 @@ use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 use xrf_ogf::{OgfBox, OgfHeaderChunk, OgfKinematicsChunk, OgfSphere};
 use xrf_spawn::XRayByteOrder;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 /// The four references shipped Anomaly zombied faces declare.
 pub(super) const DECLARED_REFS: [&str; 4] = [
@@ -108,7 +108,7 @@ pub(super) fn unexplained_residue() -> XrfResult<Vec<u8>> {
 
 /// An empty directory of this test's own.
 pub(super) fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("ogf-fix/{name}"))?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("ogf-fix/{name}"))?;
 
   Ok(root)
 }

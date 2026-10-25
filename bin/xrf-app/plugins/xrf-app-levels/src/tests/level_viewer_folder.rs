@@ -1,13 +1,13 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::viewer::LevelViewerFolder;
 
 #[test]
 fn numbers_a_screenshot_whose_name_is_taken() {
-  let folder: PathBuf = build_absolute_generated_test_resource_path("level-viewer-free-screenshot");
+  let folder: PathBuf = GeneratedResources::path("level-viewer-free-screenshot");
 
   fs::create_dir_all(&folder).expect("the folder to be made");
 

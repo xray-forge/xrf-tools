@@ -8,7 +8,7 @@ use serde_json::Value;
 use xrf_error::XrfResult;
 use xrf_particles::ParticlesFile;
 use xrf_spawn::XRayByteOrder;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::core::command::command_testing::run_command_for_result;
 use crate::core::command::{CommandResult, GenericCommand};
@@ -143,7 +143,7 @@ flags = 4
 
 /// Write the library under a root of its own, since tests run in parallel, and answer the packed file's path.
 pub fn create_library(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("particle_commands/{name}"))?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("particle_commands/{name}"))?;
   let unpacked: PathBuf = root.join("unpacked");
   let packed: PathBuf = root.join("particles.xr");
 

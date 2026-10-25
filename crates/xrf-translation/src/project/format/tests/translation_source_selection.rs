@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::write_generated_test_resource;
+use xrf_test_utils::GeneratedResources;
 
 use crate::project::format::translation_source_selection::select_sources;
 
@@ -9,11 +9,11 @@ const SOURCE: &str = "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n";
 
 #[test]
 fn walks_a_directory_for_json_sources_only() -> XrfResult {
-  let source: PathBuf = write_generated_test_resource("translation_selection/walk/st_a.json", SOURCE)?;
-  let nested: PathBuf = write_generated_test_resource("translation_selection/walk/nested/st_b.json", SOURCE)?;
+  let source: PathBuf = GeneratedResources::write("translation_selection/walk/st_a.json", SOURCE)?;
+  let nested: PathBuf = GeneratedResources::write("translation_selection/walk/nested/st_b.json", SOURCE)?;
 
-  write_generated_test_resource("translation_selection/walk/st_a.eng.xml", "<string_table/>")?;
-  write_generated_test_resource("translation_selection/walk/notes.txt", "ignored")?;
+  GeneratedResources::write("translation_selection/walk/st_a.eng.xml", "<string_table/>")?;
+  GeneratedResources::write("translation_selection/walk/notes.txt", "ignored")?;
 
   let directory: &Path = source.parent().expect("Expected a parent directory");
   let selected: Vec<PathBuf> = select_sources(&[directory.to_path_buf()])?;
@@ -25,7 +25,7 @@ fn walks_a_directory_for_json_sources_only() -> XrfResult {
 
 #[test]
 fn takes_a_named_file_whatever_its_extension() -> XrfResult {
-  let path: PathBuf = write_generated_test_resource("translation_selection/named/st_a.txt", SOURCE)?;
+  let path: PathBuf = GeneratedResources::write("translation_selection/named/st_a.txt", SOURCE)?;
 
   assert_eq!(select_sources(std::slice::from_ref(&path))?, vec![path]);
 
@@ -34,7 +34,7 @@ fn takes_a_named_file_whatever_its_extension() -> XrfResult {
 
 #[test]
 fn de_duplicates_overlapping_paths() -> XrfResult {
-  let path: PathBuf = write_generated_test_resource("translation_selection/overlap/st_a.json", SOURCE)?;
+  let path: PathBuf = GeneratedResources::write("translation_selection/overlap/st_a.json", SOURCE)?;
   let directory: &Path = path.parent().expect("Expected a parent directory");
 
   assert_eq!(
@@ -58,7 +58,7 @@ fn a_path_that_does_not_exist_is_refused() {
 fn selecting_nothing_is_refused() -> XrfResult {
   // Not `ltx format`'s empty-set success: a renamed directory would otherwise make a check gate pass over no files at
   // all, which reads identically to a clean tree.
-  let placeholder: PathBuf = write_generated_test_resource("translation_selection/empty/notes.txt", "ignored")?;
+  let placeholder: PathBuf = GeneratedResources::write("translation_selection/empty/notes.txt", "ignored")?;
   let directory: &Path = placeholder.parent().expect("Expected a parent directory");
 
   let error = select_sources(&[directory.to_path_buf()]).expect_err("Expected an empty selection to be refused");

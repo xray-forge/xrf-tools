@@ -239,11 +239,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
   use crate::data::alife::alife_object::AlifeObject;
@@ -365,7 +361,7 @@ mod tests {
 
   #[test]
   fn test_read_write_empty() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write_empty.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write_empty.chunk");
 
     let original: SpawnALifeSpawnsChunk = SpawnALifeSpawnsChunk { objects: vec![] };
 
@@ -376,11 +372,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 28);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 28);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 28 + 8);
 
@@ -397,7 +393,7 @@ mod tests {
 
   #[test]
   fn test_read_write() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: SpawnALifeSpawnsChunk = SpawnALifeSpawnsChunk {
       objects: vec![
@@ -487,11 +483,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 419);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 419);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 419 + 8);
 

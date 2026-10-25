@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::write_generated_test_resource;
+use xrf_test_utils::GeneratedResources;
 
 use crate::dialog_file::DialogFile;
 use crate::dialog_source::DialogSource;
@@ -74,7 +74,7 @@ fn keeps_a_byte_order_mark_out_of_the_text_and_holds_it_for_a_rewrite() -> XrfRe
 fn reads_the_same_bytes_from_a_path_and_from_memory() -> XrfResult {
   let source: &[u8] =
     br#"<?xml version="1.0" encoding="windows-1251" ?><game_dialogs><dialog id="both"/></game_dialogs>"#;
-  let path = write_generated_test_resource("dialog_encoding/both.xml", source)?;
+  let path = GeneratedResources::write("dialog_encoding/both.xml", source)?;
 
   let from_path: DialogFile = DialogFile::read_from_path(&path)?;
   let from_bytes: DialogFile = DialogFile::read_from_bytes(source)?;

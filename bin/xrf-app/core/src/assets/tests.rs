@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::assets::FileStamp;
 use crate::assets::asset_change_order::AssetChangeOrder;
@@ -35,7 +35,7 @@ fn a_ticket_given_up_lets_later_changes_be_heard() {
 
 #[test]
 fn a_stamp_tells_a_missing_file_from_an_unreadable_one() {
-  let root: PathBuf = build_absolute_generated_test_resource_path("core/assets/stamp");
+  let root: PathBuf = GeneratedResources::path("core/assets/stamp");
   let path: PathBuf = root.join("ston_beton05.thm");
 
   let _ = std::fs::remove_dir_all(&root);

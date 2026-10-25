@@ -9,7 +9,7 @@ use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
 use xrf_level::{LevelAiHeader, LevelCformHeader, LevelHeaderChunk, LevelShaderEntry, LevelShadersChunk};
 use xrf_math::Vector3d;
 use xrf_spawn::{GraphCrossTable, GraphHeader, GraphLevel, SpawnGraphsChunk};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::project::levels::level_engine_constants::{
   AI_CURRENT_VERSION, CFORM_CURRENT_VERSION, LEVEL_PRODUCTION_VERSION,
@@ -219,7 +219,7 @@ impl GamedataFixture {
     let unique: u64 = NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed);
 
     Self {
-      root: build_absolute_generated_test_resource_path(&format!("levels/fixture-{unique}")),
+      root: GeneratedResources::path(&format!("levels/fixture-{unique}")),
       bundles: vec![LevelBundleFixture::valid("zaton")],
       spawn: Some(spawn_graph_bytes(
         &[("zaton", 108, ZATON_GUID)],

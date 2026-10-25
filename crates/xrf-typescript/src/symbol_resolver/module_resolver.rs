@@ -202,14 +202,14 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use xrf_test_utils::utils::create_generated_test_resource_dir;
+  use xrf_test_utils::GeneratedResources;
 
   use super::{imported_function_reference, reexported_name};
   use crate::parse_typescript_file;
   use crate::swc_ecma_ast::{ModuleDecl, ModuleItem, NamedExport, Program};
 
   fn parse(name: &str, source: &str) -> Program {
-    let path: PathBuf = create_generated_test_resource_dir(&format!("module-resolver/{name}"))
+    let path: PathBuf = GeneratedResources::create_dir(&format!("module-resolver/{name}"))
       .unwrap()
       .join("source.ts");
 

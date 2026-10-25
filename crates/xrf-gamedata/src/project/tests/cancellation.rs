@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use rayon::ThreadPoolBuilder;
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_output::{Output, OutputChannel, OutputOptions, OutputVerbosity};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::{
   GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataVerificationStatus,
@@ -60,7 +60,7 @@ fn cancellation_inside_a_check_stops_its_remaining_items() {
       "Verify spawn file:",
     ),
   ] {
-    let root = build_absolute_generated_test_resource_path(&format!("gamedata_cancellation/{check}"));
+    let root = GeneratedResources::path(&format!("gamedata_cancellation/{check}"));
 
     fs::create_dir_all(root.join("configs")).expect("configs directory");
     fs::create_dir_all(root.join(directory)).expect("asset directory");

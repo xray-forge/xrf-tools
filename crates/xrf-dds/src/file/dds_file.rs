@@ -264,9 +264,7 @@ mod tests {
   use ddsfile::{AlphaMode, D3D10ResourceDimension, Dds, DxgiFormat, NewDxgiParams};
   use image::RgbaImage;
   use image_dds::{ImageFormat, Quality};
-  use xrf_test_utils::utils::{
-    assert_publication_left_previous, create_generated_test_resource_dir, write_generated_test_resource,
-  };
+  use xrf_test_utils::{GeneratedResources, RefusedPublication};
   use xrf_utils::StagingFaults;
 
   use super::DdsFile;
@@ -310,7 +308,7 @@ mod tests {
   /// A write that fails part way leaves the texture a caller had, and nothing staged beside it.
   #[test]
   fn keeps_the_previous_file_when_publication_fails() {
-    let path: std::path::PathBuf = create_generated_test_resource_dir("dds_file/publication")
+    let path: std::path::PathBuf = GeneratedResources::create_dir("dds_file/publication")
       .expect("expect a test directory")
       .join("texture.dds");
 
@@ -318,7 +316,7 @@ mod tests {
     StagingFaults::fail_next_write();
 
     assert!(encoded_file(4, 4, DdsMipmaps::Disabled).write_to_path(&path).is_err());
-    assert_publication_left_previous(&path, b"previous");
+    RefusedPublication::assert_left_previous(&path, b"previous");
   }
 
   #[test]
@@ -327,7 +325,7 @@ mod tests {
     // only worth having if it agrees with the full read, mip count and payload size included.
     let encoded: DdsFile = encoded_file(256, 128, DdsMipmaps::Filtered(DdsMipFilter::Box));
     let bytes: Vec<u8> = encoded.write_to_bytes().expect("expect DDS bytes");
-    let path = write_generated_test_resource("xrf-dds/header-only.dds", &bytes).expect("expect scratch DDS");
+    let path = GeneratedResources::write("xrf-dds/header-only.dds", &bytes).expect("expect scratch DDS");
 
     assert_eq!(
       DdsFile::read_metadata_from_path(&path).expect("expect the header to parse"),
@@ -340,7 +338,7 @@ mod tests {
     // A DX10 header is twenty bytes longer, so the payload size derivation has to account for it.
     let file: DdsFile = dx10_file(DxgiFormat::BC3_UNorm);
     let bytes: Vec<u8> = file.write_to_bytes().expect("expect DDS bytes");
-    let path = write_generated_test_resource("xrf-dds/header-only-dx10.dds", &bytes).expect("expect scratch DDS");
+    let path = GeneratedResources::write("xrf-dds/header-only-dx10.dds", &bytes).expect("expect scratch DDS");
 
     let metadata = DdsFile::read_metadata_from_path(&path).expect("expect the header to parse");
 
@@ -352,7 +350,7 @@ mod tests {
   fn reads_the_same_metadata_from_bytes_and_path() {
     let encoded: DdsFile = encoded_file(64, 32, DdsMipmaps::Disabled);
     let bytes: Vec<u8> = encoded.write_to_bytes().expect("expect DDS bytes");
-    let path = write_generated_test_resource("xrf-dds/read-path.dds", &bytes).expect("expect scratch DDS");
+    let path = GeneratedResources::write("xrf-dds/read-path.dds", &bytes).expect("expect scratch DDS");
 
     assert_eq!(
       DdsFile::read_from_bytes(&bytes)

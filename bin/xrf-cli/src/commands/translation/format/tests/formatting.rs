@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 
 use crate::commands::translation::format::command::FormatCommand;
 use crate::core::command::CommandResult;
@@ -15,7 +15,7 @@ const UNSORTED: &str = "{\n  \"st_b\": {\n    \"eng\": \"B\"\n  },\n  \"st_a\": 
 const CANONICAL: &str = "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  },\n  \"st_b\": {\n    \"eng\": \"B\"\n  }\n}\n";
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("translation_format/{name}"))?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("translation_format/{name}"))?;
 
   Ok(root)
 }

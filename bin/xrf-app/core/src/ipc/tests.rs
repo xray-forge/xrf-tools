@@ -103,7 +103,7 @@ mod bindings {
   use std::path::PathBuf;
 
   use xrf_ipc_typescript::{IpcBindingsGenerator, IpcCommandSurface, MirrorImports, TypeModules};
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use crate::ipc::tests::fixture;
 
@@ -115,7 +115,7 @@ mod bindings {
 
   #[test]
   fn a_domain_with_raw_commands_is_generated_a_raw_module() {
-    let output: PathBuf = build_absolute_generated_test_resource_path("registry-fixture-bindings");
+    let output: PathBuf = GeneratedResources::path("registry-fixture-bindings");
 
     IpcBindingsGenerator::generate(
       &output,

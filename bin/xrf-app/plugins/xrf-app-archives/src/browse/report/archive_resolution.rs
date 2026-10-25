@@ -63,7 +63,7 @@ mod tests {
   use std::sync::Arc;
 
   use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
   use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchStep, XraySourceKind, XrayVfs};
 
   use super::ArchiveResolution;
@@ -94,7 +94,7 @@ mod tests {
 
   /// Writes a tree and returns its root, since a mount is decided by what is actually on disk.
   fn tree(name: &str, files: &[&str]) -> PathBuf {
-    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("archives/resolution/{name}"));
+    let root: PathBuf = GeneratedResources::path(&format!("archives/resolution/{name}"));
 
     let _ = fs::remove_dir_all(&root);
 

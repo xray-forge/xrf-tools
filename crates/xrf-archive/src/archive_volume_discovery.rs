@@ -146,11 +146,11 @@ mod tests {
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
 
-    use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+    use xrf_test_utils::GeneratedResources;
 
     use crate::ArchiveProject;
 
-    let root: PathBuf = build_absolute_generated_test_resource_path("archive_project_unreadable");
+    let root: PathBuf = GeneratedResources::path("archive_project_unreadable");
     let locked: PathBuf = root.join("locked");
 
     fs::create_dir_all(&locked)?;

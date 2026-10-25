@@ -163,14 +163,14 @@ impl Ltx {
 mod test {
   use std::path::PathBuf;
 
-  use xrf_test_utils::utils::{build_relative_test_sample_file_path, write_generated_test_resource};
+  use xrf_test_utils::GeneratedResources;
 
   use crate::ltx::{Ltx, LtxIncluded};
 
   #[test]
   fn load_from_file() {
-    let file_name: PathBuf = write_generated_test_resource(
-      &build_relative_test_sample_file_path(file!(), "load_from_file.ltx"),
+    let file_name: PathBuf = GeneratedResources::write(
+      &GeneratedResources::sample_name(file!(), "load_from_file.ltx"),
       b"[test]\nKey=Value\n",
     )
     .expect("generated LTX input to be written");
@@ -181,11 +181,9 @@ mod test {
 
   /// Format `input` through a file on disk and compare the result to `expected`, line by line.
   fn assert_formats(case: &str, input: &str, expected: &str) {
-    let path: PathBuf = write_generated_test_resource(
-      &build_relative_test_sample_file_path(file!(), &format!("{case}.ltx")),
-      input,
-    )
-    .expect("generated LTX input to be written");
+    let path: PathBuf =
+      GeneratedResources::write(&GeneratedResources::sample_name(file!(), &format!("{case}.ltx")), input)
+        .expect("generated LTX input to be written");
 
     assert_eq!(
       Ltx::format_from_file(path)
@@ -380,8 +378,8 @@ value3 ; another comment
 
   #[test]
   fn load_no_includes_from_file() {
-    let file_name: PathBuf = write_generated_test_resource(
-      &build_relative_test_sample_file_path(file!(), "load_no_includes.ltx"),
+    let file_name: PathBuf = GeneratedResources::write(
+      &GeneratedResources::sample_name(file!(), "load_no_includes.ltx"),
       b"[test]Key=Value\n",
     )
     .expect("generated LTX input to be written");
@@ -392,8 +390,8 @@ value3 ; another comment
 
   #[test]
   fn load_few_includes_from_file() {
-    let file_name: PathBuf = write_generated_test_resource(
-      &build_relative_test_sample_file_path(file!(), "load_few_includes.ltx"),
+    let file_name: PathBuf = GeneratedResources::write(
+      &GeneratedResources::sample_name(file!(), "load_few_includes.ltx"),
       b"#include \"first.ltx\"\n;commented\n#include \"second.ltx\"",
     )
     .expect("generated LTX input to be written");

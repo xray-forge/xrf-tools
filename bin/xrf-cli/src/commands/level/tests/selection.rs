@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::create_generated_test_resource_dir;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch};
 
 use crate::commands::level::level_assets::LevelAssets;
@@ -18,7 +18,7 @@ fn search(root: &Path) -> XrfResult<XraySearch> {
 
 /// A root holding the named levels, each with a `level` file and a `level.geom` beside it.
 fn create_root(name: &str, levels: &[&str]) -> XrfResult<PathBuf> {
-  let root: PathBuf = create_generated_test_resource_dir(&format!("level/selection/{name}"))?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("level/selection/{name}"))?;
 
   for level in levels {
     fs::create_dir_all(root.join("levels").join(level))?;

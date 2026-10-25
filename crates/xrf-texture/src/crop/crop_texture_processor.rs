@@ -72,14 +72,14 @@ mod tests {
 
   use image::RgbaImage;
   use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat, Quality};
-  use xrf_test_utils::utils::write_generated_test_resource;
+  use xrf_test_utils::GeneratedResources;
 
   use super::CropTextureProcessor;
   use crate::CropTextureOptions;
 
   fn options_for(name: &str) -> CropTextureOptions {
     let resource: String = format!("xrf-texture/crop/{name}-source.dds");
-    let source: PathBuf = write_generated_test_resource(&resource, []).expect("expect scratch source");
+    let source: PathBuf = GeneratedResources::write(&resource, []).expect("expect scratch source");
 
     let chain: DdsMipChain =
       DdsMipChain::build(&RgbaImage::new(8, 8), DdsMipmaps::Disabled).expect("expect a source chain");
@@ -143,11 +143,10 @@ mod tests {
   #[test]
   #[cfg(target_os = "linux")]
   fn writes_a_png_under_a_parent_directory_that_is_not_valid_text() {
-    use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, build_non_unicode_file_name};
+    use xrf_test_utils::{GeneratedResources, HostFilesystem};
 
     let mut options: CropTextureOptions = options_for("non-unicode-parent");
-    let directory: PathBuf =
-      build_absolute_generated_test_resource_path("xrf-texture/crop").join(build_non_unicode_file_name());
+    let directory: PathBuf = GeneratedResources::path("xrf-texture/crop").join(HostFilesystem::non_unicode_file_name());
 
     std::fs::create_dir_all(&directory).expect("expect a scratch directory");
 

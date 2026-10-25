@@ -193,10 +193,7 @@ mod tests {
 
   use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_test_utils::utils::{
-    build_absolute_generated_test_resource_path, build_relative_test_sample_file_path,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::GeneratedResources;
 
   use crate::chunks::thm_bump_chunk::ThmBumpChunk;
   use crate::thm_bump_mode::ThmBumpMode;
@@ -216,12 +213,12 @@ mod tests {
     let mut bump_writer: ChunkWriter = ChunkWriter::new();
     bump.write::<XRayByteOrder>(&mut bump_writer)?;
 
-    let mut file: File = overwrite_generated_test_resource_as_file(filename)?;
+    let mut file: File = GeneratedResources::overwrite(filename)?;
 
     opaque_writer.flush_chunk_into::<XRayByteOrder>(&mut file, OPAQUE_CHUNK_ID)?;
     bump_writer.flush_chunk_into::<XRayByteOrder>(&mut file, ThmBumpChunk::CHUNK_ID)?;
 
-    Ok(build_absolute_generated_test_resource_path(filename))
+    Ok(GeneratedResources::path(filename))
   }
 
   fn used_bump(name: &str) -> ThmBumpChunk {
@@ -234,7 +231,7 @@ mod tests {
 
   #[test]
   fn test_write_bump_reproduces_source_when_unchanged() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "unchanged.thm");
+    let filename: String = GeneratedResources::sample_name(file!(), "unchanged.thm");
     let bump: ThmBumpChunk = used_bump("wpn\\pistols\\wpn_pm\\wpn_pm_bump");
     let path: PathBuf = write_sample(&filename, &bump)?;
 
@@ -249,7 +246,7 @@ mod tests {
 
   #[test]
   fn test_patch_bump_repoints_name_and_preserves_other_chunks() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "repointed.thm");
+    let filename: String = GeneratedResources::sample_name(file!(), "repointed.thm");
     let path: PathBuf = write_sample(&filename, &used_bump("wpn\\pistols\\wpn_pm\\wpn_pm_bump"))?;
     let original: Vec<u8> = fs::read(&path)?;
 
@@ -278,7 +275,7 @@ mod tests {
 
   #[test]
   fn test_patch_bump_is_a_no_op_on_dry_run() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "dry_run.thm");
+    let filename: String = GeneratedResources::sample_name(file!(), "dry_run.thm");
     let path: PathBuf = write_sample(&filename, &used_bump("wpn\\source\\name_bump"))?;
     let original: Vec<u8> = fs::read(&path)?;
 
@@ -292,7 +289,7 @@ mod tests {
 
   #[test]
   fn test_patch_bump_off_clears_mode_and_name() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "turned_off.thm");
+    let filename: String = GeneratedResources::sample_name(file!(), "turned_off.thm");
     let path: PathBuf = write_sample(&filename, &used_bump("tile\\tile_walls_red_01_bump"))?;
 
     let report = ThmBumpProcessor::patch_bump_off_to_path::<XRayByteOrder>(&path, &path, false)?;
@@ -318,7 +315,7 @@ mod tests {
 
   #[test]
   fn test_patch_bump_keeps_omitted_fields() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "partial.thm");
+    let filename: String = GeneratedResources::sample_name(file!(), "partial.thm");
     let path: PathBuf = write_sample(&filename, &used_bump("wpn\\source_bump"))?;
 
     // Mode omitted, so the parallax variant must survive a rename.
@@ -337,14 +334,13 @@ mod tests {
 
   #[test]
   fn test_patch_bump_requires_bump_chunk() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "without_bump.thm");
+    let filename: String = GeneratedResources::sample_name(file!(), "without_bump.thm");
     let mut opaque_writer: ChunkWriter = ChunkWriter::new();
 
     opaque_writer.write_all(&OPAQUE_PAYLOAD)?;
-    opaque_writer
-      .flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0x0812)?;
+    opaque_writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0x0812)?;
 
-    let path: PathBuf = build_absolute_generated_test_resource_path(&filename);
+    let path: PathBuf = GeneratedResources::path(&filename);
 
     assert!(
       ThmBumpProcessor::patch_bump_name_to_path::<XRayByteOrder>(&path, &path, "any", false).is_err(),
@@ -356,7 +352,7 @@ mod tests {
 
   #[test]
   fn test_unused_modes_report_no_bump_name() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "unused_mode.thm");
+    let filename: String = GeneratedResources::sample_name(file!(), "unused_mode.thm");
     let path: PathBuf = write_sample(
       &filename,
       &ThmBumpChunk {

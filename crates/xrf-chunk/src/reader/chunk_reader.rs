@@ -289,10 +289,7 @@ impl<T: ChunkDataSource> fmt::Debug for ChunkReader<T> {
 mod tests {
   use fileslice::FileSlice;
   use xrf_error::XrfResult;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_file, open_generated_test_resource_as_slice,
-    write_generated_test_resource,
-  };
+  use xrf_test_utils::GeneratedResources;
 
   use crate::reader::chunk_reader::ChunkReader;
   use crate::source::chunk_memory_source::InMemoryChunkDataSource;
@@ -315,11 +312,11 @@ mod tests {
   fn rejects_an_empty_source() -> XrfResult {
     // Kept file-backed so the two empty sources that come off a real handle - the file and a slice of it - stay
     // covered, rather than only the in-memory buffers the other three constructors take.
-    let path: String = build_relative_test_sample_file_path(file!(), "rejects_an_empty_source");
+    let path: String = GeneratedResources::sample_name(file!(), "rejects_an_empty_source");
 
-    write_generated_test_resource(&path, b"")?;
+    GeneratedResources::write(&path, b"")?;
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&path)?;
+    let file: FileSlice = GeneratedResources::open_slice(&path)?;
 
     assert_eq!(file.start_pos(), 0);
     assert_eq!(file.end_pos(), 0);
@@ -331,7 +328,7 @@ mod tests {
       EMPTY_SOURCE_ERROR
     );
     assert_eq!(
-      ChunkReader::from_file(open_generated_test_resource_as_file(&path)?)
+      ChunkReader::from_file(GeneratedResources::open(&path)?)
         .expect_err("Expect the file-to-memory path to refuse an empty file")
         .to_string(),
       EMPTY_SOURCE_ERROR
@@ -376,11 +373,11 @@ mod tests {
   #[test]
   fn reads_a_single_empty_child() -> XrfResult {
     // Kept file-backed so reading through a `FileSlice`, not just constructing over one, stays covered here.
-    let path: String = build_relative_test_sample_file_path(file!(), "reads_a_single_empty_child.chunk");
+    let path: String = GeneratedResources::sample_name(file!(), "reads_a_single_empty_child.chunk");
 
-    write_generated_test_resource(&path, new_chunk_bytes(0, &[]))?;
+    GeneratedResources::write(&path, new_chunk_bytes(0, &[]))?;
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&path)?;
+    let file: FileSlice = GeneratedResources::open_slice(&path)?;
 
     assert_eq!(file.start_pos(), 0);
     assert_eq!(file.end_pos(), 8);

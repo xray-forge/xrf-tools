@@ -84,7 +84,7 @@ mod tests {
   use std::fs;
   use std::path::{Path, PathBuf};
 
-  use xrf_test_utils::utils::create_generated_test_resource_dir;
+  use xrf_test_utils::GeneratedResources;
 
   use super::find_implied_asset_root;
 
@@ -93,8 +93,7 @@ mod tests {
   /// Written to the generated scratch root, never to a committed fixture directory, and scoped by name because tests in
   /// one binary share that root and run in parallel.
   fn tree(name: &str, directories: &[&str]) -> PathBuf {
-    let root: PathBuf =
-      create_generated_test_resource_dir(&format!("xray_root/{name}")).expect("test tree is creatable");
+    let root: PathBuf = GeneratedResources::create_dir(&format!("xray_root/{name}")).expect("test tree is creatable");
 
     for directory in directories {
       fs::create_dir_all(root.join(directory)).expect("test tree is creatable");

@@ -291,7 +291,7 @@ mod tests {
   use std::path::PathBuf;
 
   use image::{DynamicImage, RgbaImage};
-  use xrf_test_utils::utils::write_generated_test_resource;
+  use xrf_test_utils::GeneratedResources;
 
   use super::EquipmentSpritePacker;
 
@@ -301,7 +301,7 @@ mod tests {
   #[test]
   fn decodes_a_png_icon_named_in_upper_case() {
     let path: PathBuf =
-      write_generated_test_resource("equipment/icon-case/WPN_AK74.PNG", []).expect("expect a scratch icon");
+      GeneratedResources::write("equipment/icon-case/WPN_AK74.PNG", []).expect("expect a scratch icon");
 
     DynamicImage::from(RgbaImage::new(8, 8))
       .save(&path)
