@@ -2,6 +2,7 @@ use xrf_anm::AnmFile;
 use xrf_app_core::assets::read_located_asset;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
+use xrf_extension::XrayExtension;
 use xrf_vfs::XraySearch;
 
 use crate::level::{LevelSource, SelectedLevel};
@@ -42,7 +43,7 @@ impl LevelObjectMotionsPart {
   /// The motion read, every read through `search`.
   fn read_recorded(source: &LevelSource, search: &XraySearch, name: &str) -> Result<AnmFile, String> {
     // todo: Read `.anms` files, several motions of which `Play(true)` plays the first; no shipped spawn names one.
-    if !name.to_ascii_lowercase().ends_with(".anm") {
+    if !XrayExtension::Anm.matches(name) {
       return Err(format!("Object motion '{name}' is not an '.anm' file"));
     }
 

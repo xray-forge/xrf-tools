@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use xrf_extension::XrayExtension;
 use xrf_shaders::{
   XRayShaderBlendFactor, XRayShaderPass, XRayShaderPassState, XRayShaderSampler, XRayShaderSamplerTexture,
   XRayShaderScript,
@@ -19,9 +20,6 @@ impl XraySurfaceScript {
   /// Where the R2 renderer loads its scripts from, `getShaderPath()` under `$game_shaders$`.
   pub const SHADER_SCRIPT_DIRECTORY: &'static str = "shaders\\r2";
 
-  /// Extension every renderer script carries, which is what `LS_Load` filters the directory by.
-  pub const SHADER_SCRIPT_EXTENSION: &'static str = ".s";
-
   /// The positions of `t_base` and `t_second` in a script function's parameters, after the compiler.
   const FIRST_TEXTURE_PARAMETER: usize = 1;
   const SECOND_TEXTURE_PARAMETER: usize = 2;
@@ -37,13 +35,14 @@ impl XraySurfaceScript {
   const WATER_PROGRAM: &'static str = "water";
   const WATER_VARIANT_PREFIX: &'static str = "water_";
 
-  /// The logical path of the script a shader of this name would be read from.
+  /// The logical path of the script a shader of this name would be read from: an `.s` file, the extension `LS_Load`
+  /// filters the directory by.
   pub fn to_logical_path(shader_name: &str) -> String {
     format!(
-      "{}\\{}{}",
+      "{}\\{}.{}",
       Self::SHADER_SCRIPT_DIRECTORY,
       shader_name.replace(Self::NAME_DELIMITER, &Self::NAMESPACE_DELIMITER.to_string()),
-      Self::SHADER_SCRIPT_EXTENSION
+      XrayExtension::S
     )
   }
 

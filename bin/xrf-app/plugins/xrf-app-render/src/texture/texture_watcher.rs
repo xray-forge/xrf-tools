@@ -5,6 +5,7 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use xrf_extension::XrayExtension;
 use xrf_renderer::{RenderCommand, RenderQueue, get_texture_name};
 use xrf_vfs::XrayRoots;
 
@@ -90,11 +91,8 @@ impl TextureWatcher {
 
   /// A written file's texture name, where it is a texture: a `.dds` file's name, lowercase, without its extension.
   pub fn to_texture_name(path: &Path) -> Option<String> {
-    let is_texture: bool = path
-      .extension()
-      .is_some_and(|extension| extension.eq_ignore_ascii_case("dds"));
-
-    is_texture
+    XrayExtension::Dds
+      .matches_path(path)
       .then(|| path.file_stem())
       .flatten()
       .map(|stem| get_texture_name(&stem.to_string_lossy()))
