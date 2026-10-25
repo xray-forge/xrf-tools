@@ -97,8 +97,7 @@ export type DialogFileDescriptor = {
  * Something worth reporting about a project that was opened anyway.
  *
  * The reader refuses nothing on content, so this is how an off-schema element or an unreadable file
- * reaches a caller. Phase 4's validation produces `xrf_report::Finding` instead; this is the
- * narrower thing a project open can say about itself.
+ * reaches a caller: the narrow thing opening a project can say about itself, not a validation of it.
  */
 export type DialogFinding = {
   rule: string;

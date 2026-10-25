@@ -10,7 +10,7 @@ use crate::partner::dialog_character::DialogCharacter;
 use crate::partner::dialog_offer::DialogOffer;
 use crate::partner::dialog_partners::DialogPartners;
 use crate::partner::dialog_profile::DialogProfile;
-use crate::project::mode::DialogProjectMode;
+use crate::project::dialog_project_mode::DialogProjectMode;
 
 /// The shared include shipped characters take their dialogs from, which declares a start dialog of its own.
 const CHARACTER_DIALOGS: &str =

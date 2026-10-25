@@ -5,10 +5,10 @@ use xrf_error::XrfResult;
 use xrf_test_utils::utils::create_generated_test_resource_dir;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use crate::project::dialog_descriptor::DialogDescriptor;
+use crate::project::descriptor::dialog_descriptor::DialogDescriptor;
 use crate::project::dialog_project::DialogProject;
-use crate::project::layout::DialogProjectLayout;
-use crate::project::mode::DialogProjectMode;
+use crate::project::dialog_project_layout::DialogProjectLayout;
+use crate::project::dialog_project_mode::DialogProjectMode;
 
 /// Two phrases: one with a key the text tree defines, one built from script at runtime.
 const DIALOG: &str = r#"<game_dialogs>

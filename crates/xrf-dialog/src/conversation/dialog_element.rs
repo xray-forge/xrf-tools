@@ -1,6 +1,8 @@
 use std::ops::Range;
 
-use crate::dialog_element_kind::DialogElementKind;
+use xrf_xml::XmlElementSpan;
+
+use crate::conversation::dialog_element_kind::DialogElementKind;
 
 /// One child element of a dialog or a phrase, as written.
 ///
@@ -43,5 +45,16 @@ impl DialogElement {
   /// The engine treats any content as true for a flag element; shipped data writes `1`.
   pub fn is_enabled(&self) -> bool {
     !self.value.trim().is_empty() && self.value.trim() != "0"
+  }
+}
+
+/// The element as written: its name, its text, and where it sits.
+impl From<&XmlElementSpan> for DialogElement {
+  fn from(element: &XmlElementSpan) -> Self {
+    Self::new(
+      element.name().to_owned(),
+      element.text().to_owned(),
+      element.element_range().clone(),
+    )
   }
 }

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::conversation::dialog_phrase::DialogPhrase;
+
 /// What a dialog or phrase child element means to the engine.
 ///
 /// Classification only. The element keeps the name it was written with, so an element this does not
@@ -52,7 +54,7 @@ impl DialogElementKind {
       "dont_has_info" => Self::DontHasInfo,
       "is_final" => Self::IsFinal,
       "init_func" => Self::InitFunc,
-      "phrase_list" | "phrase" => Self::Container,
+      DialogPhrase::LIST_ELEMENT | DialogPhrase::ELEMENT => Self::Container,
       _ => Self::Unknown,
     }
   }

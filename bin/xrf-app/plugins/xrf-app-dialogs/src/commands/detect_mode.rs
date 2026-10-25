@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
-use xrf_dialog::{DialogProjectMode, detect_mode};
+use xrf_dialog::DialogProjectMode;
 use xrf_utils::error_to_string;
 use xrf_vfs::XrayRoots;
 
@@ -14,7 +14,7 @@ pub async fn dialogs_detect_mode(
 ) -> TauriResult<DialogProjectMode> {
   execution
     .run_blocking("Detecting a dialogs layout", move || {
-      let mode: DialogProjectMode = detect_mode(&roots).map_err(error_to_string)?;
+      let mode: DialogProjectMode = DialogProjectMode::detect(&roots).map_err(error_to_string)?;
 
       log::info!(
         "Detected dialogs layout across {} root(s): {:?}",

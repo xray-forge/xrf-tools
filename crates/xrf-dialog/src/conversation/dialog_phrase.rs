@@ -1,7 +1,11 @@
 use std::ops::Range;
 
-use crate::dialog_element::DialogElement;
-use crate::dialog_element_kind::DialogElementKind;
+use xrf_xml::XmlElementSpan;
+
+use crate::conversation::dialog_element::DialogElement;
+use crate::conversation::dialog_element_kind::DialogElementKind;
+use crate::conversation::dialog_parse_issue::DialogParseIssue;
+use crate::conversation::dialog_parse_issue_kind::DialogParseIssueKind;
 
 /// One line of a conversation.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -13,6 +17,14 @@ pub struct DialogPhrase {
 }
 
 impl DialogPhrase {
+  /// The element a dialog declares each phrase with.
+  pub(crate) const ELEMENT: &'static str = "phrase";
+  /// The element a dialog may wrap its phrases in.
+  pub(crate) const LIST_ELEMENT: &'static str = "phrase_list";
+  const ID_ATTRIBUTE: &'static str = "id";
+  /// Attributes a `phrase` may carry.
+  const ATTRIBUTES: &'static [&'static str] = &[Self::ID_ATTRIBUTE];
+
   pub fn new(id: String, elements: Vec<DialogElement>, range: Range<usize>, is_in_phrase_list: bool) -> Self {
     Self {
       id,
@@ -94,5 +106,52 @@ impl DialogPhrase {
 
   pub fn has_element_of(&self, kind: DialogElementKind) -> bool {
     self.elements.iter().any(|element| element.get_kind() == kind)
+  }
+
+  /// Read one `phrase` of a dialog, collecting what the schema does not describe.
+  ///
+  /// Answers `None` only for a phrase with no id, which no `next` can reach.
+  pub(crate) fn read(
+    element: &XmlElementSpan,
+    dialog_id: &str,
+    is_in_phrase_list: bool,
+    issues: &mut Vec<DialogParseIssue>,
+  ) -> Option<Self> {
+    let Some(id) = element.attribute(Self::ID_ATTRIBUTE) else {
+      issues.push(DialogParseIssue::new(
+        DialogParseIssueKind::MissingId,
+        Some(dialog_id.to_owned()),
+        None,
+        String::from(Self::ELEMENT),
+        element.element_range().clone(),
+      ));
+
+      return None;
+    };
+
+    DialogParseIssue::report_unknown_attributes(element, Self::ATTRIBUTES, Some(dialog_id), Some(id), issues);
+
+    let mut elements: Vec<DialogElement> = Vec::new();
+
+    for child in element.children() {
+      if !DialogElementKind::from_name(child.name()).is_valid_for_phrase() {
+        issues.push(DialogParseIssue::new(
+          DialogParseIssueKind::UnknownElement,
+          Some(dialog_id.to_owned()),
+          Some(id.to_owned()),
+          child.name().to_owned(),
+          child.element_range().clone(),
+        ));
+      }
+
+      elements.push(DialogElement::from(child));
+    }
+
+    Some(Self::new(
+      id.to_owned(),
+      elements,
+      element.element_range().clone(),
+      is_in_phrase_list,
+    ))
   }
 }

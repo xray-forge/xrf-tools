@@ -1,24 +1,24 @@
 use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
-use xrf_translation::{TranslationProjectMode, read_gamedata_in, read_source_in};
+use xrf_translation::{read_gamedata_in, read_source_in};
 use xrf_utils::to_portable_path_string;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayRoots, XraySearch};
 
-use crate::dialog::Dialog;
-use crate::dialog_element::DialogElement;
-use crate::file::DialogFile;
-use crate::project::dialog_descriptor::DialogDescriptor;
-use crate::project::dialog_file_descriptor::DialogFileDescriptor;
+use crate::conversation::dialog::Dialog;
+use crate::conversation::dialog_element::DialogElement;
+use crate::dialog_file::DialogFile;
+use crate::project::descriptor::dialog_descriptor::DialogDescriptor;
+use crate::project::descriptor::dialog_file_descriptor::DialogFileDescriptor;
+use crate::project::descriptor::dialog_project_descriptor::DialogProjectDescriptor;
+use crate::project::descriptor::dialog_reference_descriptor::DialogReferenceDescriptor;
+use crate::project::descriptor::dialog_summary_descriptor::DialogSummaryDescriptor;
 use crate::project::dialog_finding::DialogFinding;
-use crate::project::dialog_project_descriptor::DialogProjectDescriptor;
 use crate::project::dialog_project_file::DialogProjectFile;
-use crate::project::dialog_summary_descriptor::DialogSummaryDescriptor;
-use crate::project::dialog_text_index::DialogTextIndex;
-use crate::project::dialog_text_language::DialogTextLanguage;
-use crate::project::layout::DialogProjectLayout;
-use crate::project::mode::DialogProjectMode;
-use crate::project::reference_descriptor::DialogReferenceDescriptor;
+use crate::project::dialog_project_layout::DialogProjectLayout;
+use crate::project::dialog_project_mode::DialogProjectMode;
+use crate::project::text::dialog_text_index::DialogTextIndex;
+use crate::project::text::dialog_text_language::DialogTextLanguage;
 
 /// Filename prefix that marks a logical path as dialog data.
 const DIALOG_FILE_PREFIX: &str = "dialog";
@@ -123,16 +123,11 @@ impl DialogProject {
   ) -> DialogTextIndex {
     // The dialog layout decides the translation layout, because they are the same distinction seen
     // from two crates: XRF sources keep JSON beside the configs, shipped gamedata keeps per-language
-    // XML under `configs\text`. Mapped rather than converted — the two enums default opposite ways on
-    // purpose, so a `From` that looked obvious would silently flip one.
-    let translation_mode: TranslationProjectMode = match mode {
-      DialogProjectMode::Source => TranslationProjectMode::Source,
-      DialogProjectMode::Gamedata => TranslationProjectMode::Gamedata,
-    };
-
-    let read = match translation_mode {
-      TranslationProjectMode::Source => read_source_in(search, roots, prefix),
-      TranslationProjectMode::Gamedata => read_gamedata_in(search, roots, prefix),
+    // XML under `configs\text`. Matched rather than converted — the two mode enums default opposite
+    // ways on purpose, so a `From` between them that looked obvious would silently flip one.
+    let read = match mode {
+      DialogProjectMode::Source => read_source_in(search, roots, prefix),
+      DialogProjectMode::Gamedata => read_gamedata_in(search, roots, prefix),
     };
 
     match read {
@@ -311,11 +306,7 @@ impl DialogProject {
             .get_file()
             .get_dialogs()
             .iter()
-            .map(|dialog| DialogSummaryDescriptor {
-              id: dialog.get_id().to_owned(),
-              phrases: dialog.get_phrases().len(),
-              priority: dialog.get_priority(),
-            })
+            .map(DialogSummaryDescriptor::from)
             .collect(),
         },
       );

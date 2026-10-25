@@ -1,7 +1,9 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::ops::Range;
 
-use crate::dialog_parse_issue_kind::DialogParseIssueKind;
+use xrf_xml::XmlElementSpan;
+
+use crate::conversation::dialog_parse_issue_kind::DialogParseIssueKind;
 
 /// One issue, with where it was found.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -51,6 +53,27 @@ impl DialogParseIssue {
 
   pub fn get_range(&self) -> &Range<usize> {
     &self.range
+  }
+
+  /// Report every attribute of an element that is not among the ones its schema defines.
+  pub(crate) fn report_unknown_attributes(
+    element: &XmlElementSpan,
+    known: &[&str],
+    dialog_id: Option<&str>,
+    phrase_id: Option<&str>,
+    issues: &mut Vec<Self>,
+  ) {
+    for (name, _) in element.attributes() {
+      if !known.contains(&name) {
+        issues.push(Self::new(
+          DialogParseIssueKind::UnknownAttribute,
+          dialog_id.map(str::to_owned),
+          phrase_id.map(str::to_owned),
+          name.to_owned(),
+          element.element_range().clone(),
+        ));
+      }
+    }
   }
 }
 

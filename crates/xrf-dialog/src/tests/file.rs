@@ -2,10 +2,10 @@ use xrf_error::XrfResult;
 use xrf_test_utils::utils::write_generated_test_resource;
 use xrf_utils::new_windows1251_encoder;
 
-use crate::dialog::Dialog;
-use crate::dialog_element_kind::DialogElementKind;
-use crate::file::DialogFile;
-use crate::phrase::DialogPhrase;
+use crate::conversation::dialog::Dialog;
+use crate::conversation::dialog_element_kind::DialogElementKind;
+use crate::conversation::dialog_phrase::DialogPhrase;
+use crate::dialog_file::DialogFile;
 
 /// Parse decoded text, which is what most of these tests need.
 fn parse(source: &str) -> XrfResult<DialogFile> {

@@ -2,9 +2,9 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use xrf_vfs::XrayRoots;
 
-use crate::project::dialog_file_descriptor::DialogFileDescriptor;
+use crate::project::descriptor::dialog_file_descriptor::DialogFileDescriptor;
 use crate::project::dialog_finding::DialogFinding;
-use crate::project::mode::DialogProjectMode;
+use crate::project::dialog_project_mode::DialogProjectMode;
 
 /// An opened dialog project.
 ///

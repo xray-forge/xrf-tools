@@ -7,10 +7,10 @@ use xrf_extension::XrayExtension;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XraySearch};
 use xrf_xml::{XmlElementSpan, XmlParseOptions, XmlSourceDocument, expand_xml_includes, list_xml_includes};
 
-use crate::constants::ID_ATTRIBUTE;
-use crate::encoding::decode;
+use crate::dialog_source::DialogSource;
 use crate::partner::dialog_character::DialogCharacter;
 use crate::partner::dialog_offer::DialogOffer;
+use crate::partner::dialog_partner_text::DialogPartnerText;
 use crate::partner::dialog_profile::DialogProfile;
 use crate::project::dialog_finding::DialogFinding;
 
@@ -41,6 +41,7 @@ impl DialogPartners {
   const INFO_PORTIONS_FILE_PREFIX: &'static str = "info_";
 
   const INFO_PORTION_ELEMENT: &'static str = "info_portion";
+  const INFO_PORTION_ID_ATTRIBUTE: &'static str = "id";
   const INFO_PORTION_DIALOG_ELEMENT: &'static str = "dialog";
 
   /// The prefix the engine opens XML includes under, `$game_config$`.
@@ -90,7 +91,7 @@ impl DialogPartners {
 
       let document: XrfResult<XmlSourceDocument> = source
         .and_then(|source| expand_xml_includes(&source, &mut |name| search.read(&Self::to_include_path(name))))
-        .and_then(|expanded| decode(&expanded))
+        .and_then(|expanded| DialogSource::decode(&expanded))
         .and_then(|decoded| XmlSourceDocument::parse(decoded.text, XmlParseOptions::default()));
 
       match document {
@@ -242,15 +243,11 @@ impl DialogPartners {
 
   fn read_info_portions(&mut self, root: &XmlElementSpan, logical_path: &str) {
     for element in root.children_named(Self::INFO_PORTION_ELEMENT) {
-      let Some(id) = element.attribute(ID_ATTRIBUTE) else {
+      let Some(id) = element.attribute(Self::INFO_PORTION_ID_ATTRIBUTE) else {
         continue;
       };
 
-      let dialogs: Vec<String> = element
-        .children_named(Self::INFO_PORTION_DIALOG_ELEMENT)
-        .map(|child| child.text().trim().to_owned())
-        .filter(|dialog| !dialog.is_empty())
-        .collect();
+      let dialogs: Vec<String> = DialogPartnerText::all(element, Self::INFO_PORTION_DIALOG_ELEMENT);
 
       // Kept whether it opens anything or not, so a later declaration of the id is a duplicate either way.
       Self::insert(

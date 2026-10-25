@@ -1,5 +1,5 @@
-use crate::dialog_element::DialogElement;
-use crate::dialog_element_kind::DialogElementKind;
+use crate::conversation::dialog_element::DialogElement;
+use crate::conversation::dialog_element_kind::DialogElementKind;
 
 /// Build an element with a throwaway range, for the classification tests.
 fn element(name: &str, value: &str) -> DialogElement {

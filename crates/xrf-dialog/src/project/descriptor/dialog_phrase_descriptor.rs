@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::phrase::DialogPhrase;
-use crate::project::dialog_element_descriptor::DialogElementDescriptor;
-use crate::project::dialog_text_language::DialogTextLanguage;
+use crate::conversation::dialog_phrase::DialogPhrase;
+use crate::project::descriptor::dialog_element_descriptor::DialogElementDescriptor;
+use crate::project::text::dialog_text_language::DialogTextLanguage;
 
 /// One line of a conversation, as a canvas draws it.
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]

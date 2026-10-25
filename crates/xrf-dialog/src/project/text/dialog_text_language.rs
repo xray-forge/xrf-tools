@@ -1,4 +1,4 @@
-use crate::project::dialog_text_index::DialogTextIndex;
+use crate::project::text::dialog_text_index::DialogTextIndex;
 
 /// One language of one text index, which is everything resolving a phrase needs.
 #[derive(Clone, Copy, Debug)]
