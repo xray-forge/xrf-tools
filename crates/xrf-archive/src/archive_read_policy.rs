@@ -29,6 +29,47 @@ pub struct ArchiveReadPolicy {
   pub maximum_chunk_tree_size: u32,
 }
 
+impl ArchiveReadPolicy {
+  /// Whether this file is one the policy reads as text, judged by its extension alone.
+  pub fn is_text_file(&self, filename: &str) -> bool {
+    XrayExtensionOf::of(filename)
+      .known()
+      .is_some_and(|extension| self.text_extensions.contains(&extension))
+  }
+
+  /// Whether an entry of `size` bytes may be read whole so its format can be described.
+  pub const fn allows_describe_read(&self, size: u32) -> bool {
+    size <= self.maximum_describe_size
+  }
+
+  /// Whether an entry of `size` bytes may be read whole only to walk the container it is.
+  pub const fn allows_chunk_tree_read(&self, size: u32) -> bool {
+    size <= self.maximum_chunk_tree_size
+  }
+
+  /// Admits a text read of `size` bytes, or names why it is refused.
+  ///
+  /// # Errors
+  ///
+  /// Returns a read error when the extension is not one this policy reads as text, or the file exceeds its limit.
+  pub fn assert_can_read_as_text(&self, filename: &str, size: u32) -> XrfResult {
+    if !self.is_text_file(filename) {
+      return Err(XrfError::new_read_error(format!(
+        "File '{filename}' cannot be read, file extension is not allowed to be read"
+      )));
+    }
+
+    if size > self.maximum_text_size {
+      return Err(XrfError::new_read_error(format!(
+        "File '{filename}' is too big to be read - {size}, {} is maximum allowed",
+        self.maximum_text_size
+      )));
+    }
+
+    Ok(())
+  }
+}
+
 /// The policy the archive viewers read under, on both sides of IPC: the backend gates its reads by it, and the
 /// frontend's bindings carry it as the preview rules.
 ///
@@ -75,47 +116,6 @@ pub const ARCHIVE_READ_POLICY: ArchiveReadPolicy = ArchiveReadPolicy {
   maximum_describe_size: 64 * 1024 * 1024,
   maximum_chunk_tree_size: 8 * 1024 * 1024,
 };
-
-impl ArchiveReadPolicy {
-  /// Whether this file is one the policy reads as text, judged by its extension alone.
-  pub fn is_text_file(&self, filename: &str) -> bool {
-    XrayExtensionOf::of(filename)
-      .known()
-      .is_some_and(|extension| self.text_extensions.contains(&extension))
-  }
-
-  /// Whether an entry of `size` bytes may be read whole so its format can be described.
-  pub const fn allows_describe_read(&self, size: u32) -> bool {
-    size <= self.maximum_describe_size
-  }
-
-  /// Whether an entry of `size` bytes may be read whole only to walk the container it is.
-  pub const fn allows_chunk_tree_read(&self, size: u32) -> bool {
-    size <= self.maximum_chunk_tree_size
-  }
-
-  /// Admits a text read of `size` bytes, or names why it is refused.
-  ///
-  /// # Errors
-  ///
-  /// Returns a read error when the extension is not one this policy reads as text, or the file exceeds its limit.
-  pub fn assert_can_read_as_text(&self, filename: &str, size: u32) -> XrfResult {
-    if !self.is_text_file(filename) {
-      return Err(XrfError::new_read_error(format!(
-        "File '{filename}' cannot be read, file extension is not allowed to be read"
-      )));
-    }
-
-    if size > self.maximum_text_size {
-      return Err(XrfError::new_read_error(format!(
-        "File '{filename}' is too big to be read - {size}, {} is maximum allowed",
-        self.maximum_text_size
-      )));
-    }
-
-    Ok(())
-  }
-}
 
 #[cfg(test)]
 mod tests {
