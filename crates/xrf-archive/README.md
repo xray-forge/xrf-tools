@@ -98,7 +98,7 @@ use xrf_archive::ArchiveProject;
 
 fn main() -> xrf_error::XrfResult {
   let mut project = ArchiveProject::new("game/db")?;
-  project.read_policy.maximum_size = 2 * 1024 * 1024;
+  project.read_policy.maximum_text_size = 2 * 1024 * 1024;
 
   let text = project.read_file_as_string(r"configs\system.ltx")?;
   println!("{} ({} bytes)\n{}", text.name, text.size, text.content);
@@ -108,13 +108,12 @@ fn main() -> xrf_error::XrfResult {
 ```
 
 The default text limit is 10 MiB. Allowed extensions include LTX, XML, INI, JSON, scripts, and shader sources; extension
-checks ignore case. `ArchiveReadPolicy::supports_file` checks only the extension, while `assert_can_read_as_text` also
+checks ignore case. `ArchiveReadPolicy::is_text_file` checks only the extension, while `assert_can_read_as_text` also
 checks the unpacked size. A size exactly equal to the limit is allowed.
 
 The policy also carries texture, image, audio, format-description, and chunk-tree preview limits for consumers. Those
 fields do not automatically constrain byte reads or copies; consumers must apply the relevant limits themselves. See
-the [policy](src/archive_read_policy.rs) and
-[default limits and extensions](src/archive_read_policy_constants.rs).
+the [policy and its default limits and extensions](src/archive_read_policy.rs).
 
 ## Reuse open volumes for multiple reads
 
@@ -153,7 +152,8 @@ copy can leave a partially written target.
 
 ## Validation and checks
 
-Header reads check chunk bounds and descriptor row sizes. Payload reads and copies check that the stored byte range fits
+Header reads check chunk bounds, descriptor row sizes, and that each entry name fits the engine's 520-byte buffer with
+its terminator. Payload reads and copies check that the stored byte range fits
 its volume. When stored and unpacked sizes differ, the payload is LZO-decompressed, and both the resulting size and
 CRC32 are checked. When the sizes are equal, the payload is treated as uncompressed and its CRC is not checked.
 

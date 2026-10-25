@@ -34,20 +34,12 @@ impl ArchiveSharedPayload {
     let mut groups: HashMap<PayloadLocation, Vec<Arc<str>>> = HashMap::new();
 
     for entry in entries {
-      if entry.is_directory {
-        continue;
+      if !entry.is_directory {
+        groups
+          .entry(Self::location_of(entry))
+          .or_default()
+          .push(entry.name.clone());
       }
-
-      groups
-        .entry((
-          entry.volume,
-          entry.offset,
-          entry.size_compressed,
-          entry.size_real,
-          entry.crc,
-        ))
-        .or_default()
-        .push(entry.name.clone());
     }
 
     let mut payloads: Vec<Self> = groups
@@ -73,17 +65,26 @@ impl ArchiveSharedPayload {
 
   /// Whether `entry` is one of the rows located here.
   pub fn locates(&self, entry: &ArchiveFileDescriptor) -> bool {
-    !entry.is_directory
-      && self.volume == entry.volume
-      && self.offset == entry.offset
-      && self.size_compressed == entry.size_compressed
-      && self.size_real == entry.size_real
-      && self.crc == entry.crc
+    !entry.is_directory && Self::location_of(entry) == self.get_location()
   }
 
   /// The names located here other than `name`, in name order.
   pub fn get_others_of(&self, name: &str) -> impl Iterator<Item = &Arc<str>> {
     self.names.iter().filter(move |it| it.as_ref() != name)
+  }
+
+  fn get_location(&self) -> PayloadLocation {
+    (self.volume, self.offset, self.size_compressed, self.size_real, self.crc)
+  }
+
+  fn location_of(entry: &ArchiveFileDescriptor) -> PayloadLocation {
+    (
+      entry.volume,
+      entry.offset,
+      entry.size_compressed,
+      entry.size_real,
+      entry.crc,
+    )
   }
 }
 

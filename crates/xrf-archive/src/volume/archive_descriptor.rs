@@ -25,8 +25,8 @@ pub struct ArchiveDescriptor {
 }
 
 impl ArchiveDescriptor {
-  /// Whether a path names an archive volume by extension, matching `.db*` and `.xdb*` without case.
-  pub fn is_valid_db_path(path: impl AsRef<Path>) -> bool {
+  /// Whether a path names an archive volume by its extension alone, matching `.db*` and `.xdb*` without case.
+  pub fn is_volume_path(path: impl AsRef<Path>) -> bool {
     get_path_extension(path.as_ref()).is_some_and(|extension| {
       let extension: String = extension.to_ascii_lowercase();
 
@@ -42,5 +42,28 @@ impl ArchiveDescriptor {
   /// Bytes this volume's entries occupy as stored.
   pub fn get_compressed_size(&self) -> u64 {
     self.size_compressed
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::ArchiveDescriptor;
+
+  #[test]
+  fn recognizes_volume_extensions_without_case() {
+    assert!(ArchiveDescriptor::is_volume_path("game.db0"));
+    assert!(ArchiveDescriptor::is_volume_path("GAME.DB0"));
+    assert!(ArchiveDescriptor::is_volume_path("mod.xdb1"));
+    assert!(!ArchiveDescriptor::is_volume_path("readme.txt"));
+    assert!(!ArchiveDescriptor::is_volume_path("noextension"));
+  }
+
+  #[test]
+  fn recognizes_a_volume_whose_whole_name_is_its_extension() {
+    assert!(ArchiveDescriptor::is_volume_path("db/.db0"));
+    assert!(ArchiveDescriptor::is_volume_path(".xdb1"));
+
+    // A dot in a directory name is still not the extension of an extensionless file.
+    assert!(!ArchiveDescriptor::is_volume_path("game.db0/header"));
   }
 }

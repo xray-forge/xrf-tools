@@ -49,6 +49,7 @@ export type ArchiveProject = {
   files: { [key in string]: ArchiveFileDescriptor };
   /** Entries a later volume overwrote in the merge, in the order they were displaced. */
   shadowed: Array<ArchiveFileDescriptor>;
+  /** What [`Self::read_file_as_string`] admits, and what a viewer of this project may preview. */
   readPolicy: ArchiveReadPolicy;
   /**
    * The tightest path holding exactly these volumes: the volume itself when one file was read, the volumes' common
@@ -56,21 +57,27 @@ export type ArchiveProject = {
    * caller reading an entry's bytes back out of the filesystem needs.
    */
   root: string;
+  /** Bytes the merged name table's entries occupy once unpacked, summed when the set was read. */
   sizeReal: number;
 };
 
 /** What a viewer may read out of a mounted tree, by extension and size. */
 export type ArchiveReadPolicy = {
-  extensions: Array<XrayExtension>;
-  maximumSize: number;
+  /** Extensions read as text and decoded from Windows-1251 for display. */
+  textExtensions: Array<XrayExtension>;
+  /** Ceiling on a text read, which holds the whole entry and its decoded copy in memory. */
+  maximumTextSize: number;
   /** Extensions decoded into a picture. Compression does not apply: it is undone before decoding. */
   textureExtensions: Array<XrayExtension>;
+  /** Ceiling on a texture entry, which is held whole in memory to decode. */
   maximumTextureSize: number;
   /** Extensions the webview renders itself, so the backend hands the bytes over rather than decoding them. */
   imageExtensions: Array<XrayExtension>;
+  /** Ceiling on a picture handed over whole, the same bound a decoded one answers to. */
   maximumImageSize: number;
   /** Extensions played by the webview itself, so the backend only has to hand over the bytes. */
   audioExtensions: Array<XrayExtension>;
+  /** Ceiling on an audio entry, which is held whole in memory on the way to the webview. */
   maximumAudioSize: number;
   /** Ceiling on an entry read whole to describe its format. */
   maximumDescribeSize: number;

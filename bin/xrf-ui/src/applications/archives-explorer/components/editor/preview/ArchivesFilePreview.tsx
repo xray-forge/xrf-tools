@@ -82,7 +82,7 @@ export function ArchivesFilePreview({
         title={"Select a file to preview"}
         description={
           policy
-            ? `Supported text files up to ${formatBytes(policy.maximumSize)} can be displayed.`
+            ? `Supported text files up to ${formatBytes(policy.maximumTextSize)} can be displayed.`
             : "Supported text files can be displayed."
         }
       />

@@ -4,8 +4,10 @@ use std::sync::Arc;
 
 use crate::volume::ArchiveFileDescriptor;
 
-pub struct ArchiveHeader {
-  pub archive_path: PathBuf,
-  pub output_root_path: PathBuf,
-  pub files: HashMap<Arc<str>, ArchiveFileDescriptor>,
+/// What a volume's header chunks declare: where its entries unpack and its name table.
+pub(crate) struct ArchiveHeader {
+  /// Root from `[header] entry_point` with its alias stripped, empty when the volume carries no metadata chunk.
+  pub(crate) output_root_path: PathBuf,
+  /// The name table, keyed by each entry's authored name.
+  pub(crate) files: HashMap<Arc<str>, ArchiveFileDescriptor>,
 }

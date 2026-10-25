@@ -2,7 +2,6 @@
 
 mod archive_project;
 mod archive_read_policy;
-mod archive_read_policy_constants;
 mod archive_read_result;
 mod archive_volume_discovery;
 mod payload;

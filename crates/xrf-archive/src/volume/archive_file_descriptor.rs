@@ -44,6 +44,11 @@ impl ArchiveFileDescriptor {
 
     self
   }
+
+  /// Whether the payload is stored LZO-compressed. Equal sizes are how the format says "stored as is".
+  pub fn is_compressed(&self) -> bool {
+    self.size_compressed != self.size_real
+  }
 }
 
 #[cfg(test)]
@@ -70,5 +75,12 @@ mod tests {
 
     assert!(!ArchiveFileDescriptor::new(0, "meshes\\empty.ltx".into(), 0, 0, 0).is_directory);
     assert!(!ArchiveFileDescriptor::new(0, "meshes\\actors\\stalker.ogf".into(), 0, 512, 512).is_directory);
+  }
+
+  #[test]
+  fn an_entry_is_compressed_when_its_sizes_differ() {
+    assert!(ArchiveFileDescriptor::new(0, "configs\\system.ltx".into(), 0, 20, 80).is_compressed());
+    assert!(!ArchiveFileDescriptor::new(0, "textures\\wall.dds".into(), 0, 40, 40).is_compressed());
+    assert!(!ArchiveFileDescriptor::new(0, "configs\\empty.ltx".into(), 0, 0, 0).is_compressed());
   }
 }

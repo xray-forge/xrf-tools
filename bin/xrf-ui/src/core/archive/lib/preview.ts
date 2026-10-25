@@ -49,12 +49,12 @@ export function getArchivePreviewSupport(descriptor: IArchiveEntry, policy: Arch
       : { kind: "image" };
   }
 
-  if (!policy.extensions.some((candidate: XrayExtension) => candidate === extension)) {
+  if (!policy.textExtensions.some((candidate: XrayExtension) => candidate === extension)) {
     return { kind: "description" };
   }
 
-  if (descriptor.sizeReal > policy.maximumSize) {
-    return { kind: "too-large", maximumSize: policy.maximumSize };
+  if (descriptor.sizeReal > policy.maximumTextSize) {
+    return { kind: "too-large", maximumSize: policy.maximumTextSize };
   }
 
   return { kind: "supported" };

@@ -16,11 +16,11 @@ pub struct ArchiveOpenVolumes<'a> {
 
 impl<'a> ArchiveOpenVolumes<'a> {
   pub(crate) fn open(project: &'a ArchiveProject) -> XrfResult<Self> {
-    let mut files: Vec<ArchiveOpenVolume> = Vec::with_capacity(project.archives.len());
-
-    for archive in &project.archives {
-      files.push(ArchiveOpenVolume::open(&archive.path)?);
-    }
+    let files: Vec<ArchiveOpenVolume> = project
+      .archives
+      .iter()
+      .map(|archive| ArchiveOpenVolume::open(&archive.path))
+      .collect::<XrfResult<_>>()?;
 
     Ok(Self { project, files })
   }
@@ -61,6 +61,7 @@ impl<'a> ArchiveOpenVolumes<'a> {
   fn locate<'b>(&'b self, descriptor: &'b ArchiveFileDescriptor) -> XrfResult<ArchiveLocatedEntry<'b>> {
     let volume: &ArchiveDescriptor = self.project.get_volume_of(descriptor)?;
 
+    // In range: `get_volume_of` checked the index against `archives`, which `files` matches position for position.
     self.files[descriptor.volume as usize].locate(volume, descriptor)
   }
 }

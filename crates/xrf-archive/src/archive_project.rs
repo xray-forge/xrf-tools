@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use std::ffi::OsString;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Components, Path, PathBuf};
 use std::sync::Arc;
 
 use serde::Serialize;
@@ -26,11 +25,13 @@ pub struct ArchiveProject {
   pub files: HashMap<Arc<str>, ArchiveFileDescriptor>,
   /// Entries a later volume overwrote in the merge, in the order they were displaced.
   pub shadowed: Vec<ArchiveFileDescriptor>,
+  /// What [`Self::read_file_as_string`] admits, and what a viewer of this project may preview.
   pub read_policy: ArchiveReadPolicy,
   /// The tightest path holding exactly these volumes: the volume itself when one file was read, the volumes' common
   /// parent when a directory was walked. Mounting it reaches this project's entries and no others, which is what a
   /// caller reading an entry's bytes back out of the filesystem needs.
   pub root: PathBuf,
+  /// Bytes the merged name table's entries occupy once unpacked, summed when the set was read.
   pub size_real: u64,
 }
 
@@ -161,34 +162,28 @@ impl ArchiveProject {
     self.files.len() - self.count_files()
   }
 
+  /// The deepest directory every volume sits under.
   fn root_from_volumes(volumes: &[PathBuf]) -> PathBuf {
-    let Some(first) = volumes.first() else {
+    let Some((first, rest)) = volumes.split_first() else {
       return PathBuf::new();
     };
-    let mut common: Vec<OsString> = first
-      .parent()
-      .unwrap_or_else(|| Path::new(""))
-      .components()
-      .map(|component| component.as_os_str().to_owned())
-      .collect();
+    let mut common: Vec<Component<'_>> = Self::parent_components(first).collect();
 
-    for volume in &volumes[1..] {
-      let components: Vec<OsString> = volume
-        .parent()
-        .unwrap_or_else(|| Path::new(""))
-        .components()
-        .map(|component| component.as_os_str().to_owned())
-        .collect();
+    for volume in rest {
       let common_length: usize = common
         .iter()
-        .zip(&components)
-        .take_while(|(left, right)| left == right)
+        .zip(Self::parent_components(volume))
+        .take_while(|(left, right)| **left == *right)
         .count();
 
       common.truncate(common_length);
     }
 
     common.into_iter().collect()
+  }
+
+  fn parent_components(volume: &Path) -> Components<'_> {
+    volume.parent().unwrap_or_else(|| Path::new("")).components()
   }
 
   /// Opens every volume of the set, once, for as long as the returned value lives.
@@ -200,34 +195,40 @@ impl ArchiveProject {
     ArchiveOpenVolumes::open(self)
   }
 
-  /// Read one archived file into memory, decompressing it when it is stored compressed.
+  /// Reads one archived file into memory, decompressing it when it is stored compressed.
+  ///
+  /// # Errors
+  ///
+  /// Returns a not-found error when the merged name table holds no such entry, and an error when a volume cannot be
+  /// opened or the payload cannot be read or verified.
   pub fn read_file_bytes(&self, name: &str) -> XrfResult<Vec<u8>> {
-    let descriptor: &ArchiveFileDescriptor = self
-      .files
-      .get(name)
-      .ok_or_else(|| XrfError::new_not_found_error(format!("Cannot read '{name}' - no such file in the archive.")))?;
-
-    self.open_volumes()?.read_bytes(descriptor)
+    self.open_volumes()?.read_bytes(self.get_file(name)?)
   }
 
-  /// Read one archived file as text, subject to the project's read policy.
+  /// Reads one archived file as text, subject to the project's read policy.
   ///
   /// # Errors
   ///
   /// Returns an error when the entry is absent, the policy refuses it, or its bytes cannot be read or decoded.
-  pub fn read_file_as_string(&self, filename: &str) -> XrfResult<ArchiveReadResult> {
-    log::info!("Trying to read file from archive: {filename}");
+  pub fn read_file_as_string(&self, name: &str) -> XrfResult<ArchiveReadResult> {
+    log::info!("Trying to read file from archive: {name}");
 
-    let descriptor: &ArchiveFileDescriptor = self
-      .files
-      .get(filename)
-      .ok_or_else(|| XrfError::new_not_found_error(format!("File '{filename}' is not found in the archive project")))?;
+    let descriptor: &ArchiveFileDescriptor = self.get_file(name)?;
 
+    self.read_policy.assert_can_read_as_text(name, descriptor.size_real)?;
+
+    ArchiveReadResult::decode(
+      name,
+      &self.open_volumes()?.read_bytes(descriptor)?,
+      descriptor.size_real,
+    )
+  }
+
+  fn get_file(&self, name: &str) -> XrfResult<&ArchiveFileDescriptor> {
     self
-      .read_policy
-      .assert_can_read_as_text(filename, descriptor.size_real)?;
-
-    ArchiveReadResult::decode(filename, &self.read_file_bytes(filename)?, descriptor.size_real)
+      .files
+      .get(name)
+      .ok_or_else(|| XrfError::new_not_found_error(format!("Cannot read '{name}' - no such file in the archive.")))
   }
 
   /// The payloads more than one entry of this project locates, in volume and offset order.
