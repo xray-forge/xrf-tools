@@ -11,6 +11,8 @@ mod job_registration;
 mod job_registry;
 mod job_resource;
 mod job_start;
+#[cfg(feature = "typescript-bindings")]
+mod opaque_json;
 
 #[cfg(test)]
 mod tests;

@@ -4,9 +4,11 @@
 //! from a `ThmFile` chunk — the same arrangement `crates/xrf-thm` gives the chunks themselves.
 
 mod archive_thm_bump;
+mod archive_thm_declared_size;
 mod archive_thm_description;
 mod archive_thm_detail;
 mod archive_thm_file;
+mod archive_thm_flag;
 mod archive_thm_material;
 mod archive_thm_parameters;
 mod archive_thm_texture;

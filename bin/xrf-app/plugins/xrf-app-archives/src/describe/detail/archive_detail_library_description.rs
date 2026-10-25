@@ -3,20 +3,9 @@ use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 use xrf_level::{DetailModel, LevelDetailsFile};
 
+use crate::describe::detail::archive_detail_entry::ArchiveDetailEntry;
 use crate::describe::detail::archive_detail_model::ArchiveDetailModel;
 use crate::describe::source::ArchiveDescribeSource;
-
-/// One object of a level's detail library, and how much of the level it is planted across.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArchiveDetailEntry {
-  /// Position in the library, which is what a slot's six bits address.
-  pub index: u32,
-  /// Slot corners planting this object across the whole grid.
-  pub planted_corners: u64,
-  pub model: ArchiveDetailModel,
-}
 
 /// Everything the viewer says about a level's detail layer.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
