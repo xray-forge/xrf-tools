@@ -3,16 +3,10 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-/// What a pair declares for itself rather than inheriting, by the bit `SGameMtlPair` names it under.
-pub const GAMEMTL_PAIR_PROPERTIES: [(u32, &str); 5] = [
-  (1 << 1, "breaking sounds"),
-  (1 << 2, "step sounds"),
-  (1 << 4, "collide sounds"),
-  (1 << 5, "collide particles"),
-  (1 << 6, "collide marks"),
-];
-
 /// What happens when two materials meet, `SGameMtlPair` (`xrMaterialSystem/GameMtlLib_Engine.cpp`).
+///
+/// The lists are stored resolved: the editor copies what a pair inherits into its own strings on save, so the engine
+/// plays them as they stand and never walks `parent_id`, which only the editor reads.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameMtlPair {
@@ -20,8 +14,9 @@ pub struct GameMtlPair {
   pub material_a: u32,
   pub material_b: u32,
   pub id: u32,
-  /// The pair this one takes its unset properties from; `0xFFFFFFFF` is no parent.
+  /// The pair the editor takes unset properties from; `NO_PARENT_ID` is no parent.
   pub parent_id: u32,
+  /// The `PROPERTY_*` bits the pair sets itself rather than inherits.
   pub own_properties: u32,
   pub breaking_sounds: String,
   pub step_sounds: String,
@@ -39,29 +34,55 @@ impl GameMtlPair {
   /// `GAMEMTL_NONE_ID`, which a pair inheriting from nothing carries.
   pub const NO_PARENT_ID: u32 = u32::MAX;
 
+  pub const PROPERTY_BREAKING_SOUNDS: u32 = 1 << 1;
+  pub const PROPERTY_STEP_SOUNDS: u32 = 1 << 2;
+  pub const PROPERTY_COLLIDE_SOUNDS: u32 = 1 << 4;
+  pub const PROPERTY_COLLIDE_PARTICLES: u32 = 1 << 5;
+  pub const PROPERTY_COLLIDE_MARKS: u32 = 1 << 6;
+
+  /// Every property a pair can set itself, in bit order. Bits 0 and 3 are retired flotation and collide-sound bits.
+  pub const PROPERTY_NAMES: [(u32, &'static str); 5] = [
+    (Self::PROPERTY_BREAKING_SOUNDS, "breaking sounds"),
+    (Self::PROPERTY_STEP_SOUNDS, "step sounds"),
+    (Self::PROPERTY_COLLIDE_SOUNDS, "collide sounds"),
+    (Self::PROPERTY_COLLIDE_PARTICLES, "collide particles"),
+    (Self::PROPERTY_COLLIDE_MARKS, "collide marks"),
+  ];
+
+  /// Entries a sound list may hold before the engine's load asserts, `GAMEMTL_SUBITEM_COUNT + 2`.
+  pub const MAX_SOUNDS: usize = 6;
+  /// Entries a particle or mark list may hold before the engine's load asserts, `GAMEMTL_SUBITEM_COUNT`.
+  pub const MAX_EFFECTS: usize = 4;
+
   /// Reads one pair from the chunk holding it.
   ///
   /// # Errors
   ///
-  /// Returns an error when a chunk the engine asserts on is absent, or a chunk does not hold what it should.
+  /// Returns an error when a chunk the engine asserts on is absent, or a chunk holds more or less than it should.
   pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
-    let mut pair: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::PAIR_CHUNK_ID)?;
+    let mut head: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::PAIR_CHUNK_ID)?;
     let mut collide: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::COLLIDE_CHUNK_ID)?;
 
-    Ok(Self {
-      material_a: pair.read_u32::<T>()?,
-      material_b: pair.read_u32::<T>()?,
-      id: pair.read_u32::<T>()?,
-      parent_id: pair.read_u32::<T>()?,
-      own_properties: pair.read_u32::<T>()?,
-      breaking_sounds: ChunkReader::find_required_by_id(&chunks, Self::BREAKING_CHUNK_ID)?.read_w1251_string()?,
-      step_sounds: ChunkReader::find_required_by_id(&chunks, Self::STEP_CHUNK_ID)?.read_w1251_string()?,
+    let pair: Self = Self {
+      material_a: head.read_u32::<T>()?,
+      material_b: head.read_u32::<T>()?,
+      id: head.read_u32::<T>()?,
+      parent_id: head.read_u32::<T>()?,
+      own_properties: head.read_u32::<T>()?,
+      breaking_sounds: ChunkReader::find_required_by_id(&chunks, Self::BREAKING_CHUNK_ID)?
+        .read_w1251_string_payload()?,
+      step_sounds: ChunkReader::find_required_by_id(&chunks, Self::STEP_CHUNK_ID)?.read_w1251_string_payload()?,
       collide_sounds: collide.read_w1251_string()?,
       collide_particles: collide.read_w1251_string()?,
       collide_marks: collide.read_w1251_string()?,
-    })
+    };
+
+    head.assert_read("All data should be read in game material pair chunk")?;
+    collide.assert_read("All data should be read in game material pair collide chunk")?;
+
+    Ok(pair)
   }
 
   /// Writes the pair back in the chunk order the editor wrote it in.
@@ -99,16 +120,55 @@ impl GameMtlPair {
     Ok(())
   }
 
-  /// Whether the pair takes its unset properties from another pair, rather than inheriting from nothing.
+  /// Whether the pair is the meeting of the two materials, in either order, as `SGameMtlPair::IsPair` asks.
+  pub const fn is_pair(&self, material_a: u32, material_b: u32) -> bool {
+    (self.material_a == material_a && self.material_b == material_b)
+      || (self.material_a == material_b && self.material_b == material_a)
+  }
+
+  /// Whether the editor takes the pair's unset properties from another pair, rather than from nothing.
   pub const fn has_parent(&self) -> bool {
     self.parent_id != Self::NO_PARENT_ID
   }
 
-  /// What the pair declares for itself, named.
+  /// What the pair sets itself, named.
   pub fn get_own_properties(&self) -> Vec<&'static str> {
-    GAMEMTL_PAIR_PROPERTIES
+    Self::PROPERTY_NAMES
       .into_iter()
       .filter_map(|(mask, name)| (self.own_properties & mask != 0).then_some(name))
       .collect()
+  }
+
+  /// The entries the engine loads from one of a pair's lists, trimmed as `_GetItem` trims them.
+  ///
+  /// Counted as `_GetItemCount` counts, which stops at the first empty entry between two commas: `a,,b` is `a` and an
+  /// empty entry, and `b` is never loaded.
+  pub fn split_list(list: &str) -> Vec<&str> {
+    list
+      .split(',')
+      .take(Self::count_list(list))
+      .map(|item| item.trim_matches(|character: char| character <= ' '))
+      .collect()
+  }
+
+  /// `_GetItemCount` over a comma-separated list.
+  fn count_list(list: &str) -> usize {
+    if list.is_empty() {
+      return 0;
+    }
+
+    let mut count: usize = 0;
+    let mut rest: &str = list;
+
+    while let Some(position) = rest.find(',') {
+      rest = &rest[position + 1..];
+      count += 1;
+
+      if rest.starts_with(',') {
+        break;
+      }
+    }
+
+    count + usize::from(!rest.is_empty())
   }
 }

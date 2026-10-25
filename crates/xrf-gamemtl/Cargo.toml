@@ -15,8 +15,5 @@ xrf-chunk = { workspace = true }
 xrf-error = { workspace = true }
 xrf-utils = { workspace = true }
 
-[dev-dependencies]
-xrf-test-utils = { workspace = true }
-
 [lints]
 workspace = true

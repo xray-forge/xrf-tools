@@ -314,7 +314,7 @@ export type ArchiveGameMtlDescription = {
   materials: Array<ArchiveGameMtlMaterial>;
   /** Pairings of two materials, which decide what is heard and seen where they meet. */
   pairs: number;
-  /** Pairings that declare nothing of their own and take everything from the pairing they name as parent. */
+  /** Pairings naming a parent pairing the editor takes their unset properties from. */
   inheritingPairs: number;
   /** What the pairings declare, counted per property rather than listed. */
   properties: Array<ArchiveGameMtlProperty>;

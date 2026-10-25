@@ -5,10 +5,11 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::format_path;
+use xrf_utils::{format_path, to_format_size};
 
 use crate::gamemtl_material::GameMtlMaterial;
 use crate::gamemtl_pair::GameMtlPair;
+use crate::gamemtl_version::GameMtlVersion;
 
 /// The game material library, `gamemtl.xr`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -67,10 +68,11 @@ impl GameMtlFile {
   ///
   /// # Errors
   ///
-  /// Returns an error when a chunk is absent, the version is one the engine refuses, or a material cannot be read.
+  /// Returns an error when a chunk is absent or holds more or less than it should, the version is one the engine
+  /// refuses, or a material or pair cannot be read.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
-    let version: u16 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u16::<T>()?;
+    let version: u16 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u16_payload::<T>()?;
 
     if version != Self::CURRENT_VERSION {
       return Err(XrfError::new_not_implemented_error(format!(
@@ -80,11 +82,15 @@ impl GameMtlFile {
     }
 
     let mut autoincrement: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::AUTOINCREMENT_CHUNK_ID)?;
+    let material_index: u32 = autoincrement.read_u32::<T>()?;
+    let material_pair_index: u32 = autoincrement.read_u32::<T>()?;
+
+    autoincrement.assert_read("All data should be read in game material numbering chunk")?;
 
     Ok(Self {
       version,
-      material_index: autoincrement.read_u32::<T>()?,
-      material_pair_index: autoincrement.read_u32::<T>()?,
+      material_index,
+      material_pair_index,
       materials: match ChunkReader::find_optional_by_id(&chunks, Self::MATERIALS_CHUNK_ID) {
         Some(mut chunk) => Self::read_materials::<T, D>(&mut chunk)?,
         None => Vec::new(),
@@ -100,7 +106,7 @@ impl GameMtlFile {
   ///
   /// # Errors
   ///
-  /// Returns an error when the writer refuses the bytes.
+  /// Returns an error when the writer refuses the bytes, or a list is too long to number its chunks.
   pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut version: ChunkWriter = ChunkWriter::new();
 
@@ -119,7 +125,7 @@ impl GameMtlFile {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
       material.write::<T>(&mut chunk)?;
-      chunk.flush_chunk_into::<T>(&mut materials.buffer, index as u32)?;
+      chunk.flush_chunk_into::<T>(&mut materials.buffer, to_format_size(index, "game material chunk")?)?;
     }
 
     materials.flush_chunk_into::<T>(&mut writer.buffer, Self::MATERIALS_CHUNK_ID)?;
@@ -130,7 +136,7 @@ impl GameMtlFile {
       let mut chunk: ChunkWriter = ChunkWriter::new();
 
       pair.write::<T>(&mut chunk)?;
-      chunk.flush_chunk_into::<T>(&mut pairs.buffer, index as u32)?;
+      chunk.flush_chunk_into::<T>(&mut pairs.buffer, to_format_size(index, "game material pair chunk")?)?;
     }
 
     pairs.flush_chunk_into::<T>(&mut writer.buffer, Self::PAIRS_CHUNK_ID)?;
@@ -169,8 +175,33 @@ impl GameMtlFile {
     self.materials.iter().find(|material| material.id == id)
   }
 
-  /// Pairs that declare nothing of their own, which take everything from the pair they name as parent.
+  /// The material a name names regardless of ASCII case, as `CGameMtlLibrary::GetMaterial` matches a bone's or a
+  /// section's material, or `None` for a name nothing defines.
+  pub fn find_material_by_name(&self, name: &str) -> Option<&GameMtlMaterial> {
+    self
+      .materials
+      .iter()
+      .find(|material| material.name.eq_ignore_ascii_case(name))
+  }
+
+  /// The pair two materials make in either order, or `None` where they have none, as happens for two static materials.
+  pub fn find_pair(&self, material_a: u32, material_b: u32) -> Option<&GameMtlPair> {
+    self.pairs.iter().find(|pair| pair.is_pair(material_a, material_b))
+  }
+
+  /// Pairs naming a parent pair the editor takes their unset properties from.
   pub fn get_inheriting_pairs_count(&self) -> usize {
     self.pairs.iter().filter(|pair| pair.has_parent()).count()
+  }
+
+  /// The game `CGameMtlLibrary::Load` takes the library for, by its newest material; Shadow of Chernobyl when it has
+  /// none.
+  pub fn get_game_version(&self) -> GameMtlVersion {
+    self
+      .materials
+      .iter()
+      .map(GameMtlMaterial::get_game_version)
+      .max()
+      .unwrap_or(GameMtlVersion::ShadowOfChernobyl)
   }
 }

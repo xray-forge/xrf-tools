@@ -8,7 +8,7 @@ library; the desktop app's archive describer reads it, and its level grass packi
 
 ```rust
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
-use xrf_gamemtl::{GameMtlFile, GameMtlMaterial};
+use xrf_gamemtl::{GameMtlFile, GameMtlMaterial, GameMtlVersion};
 
 fn main() -> xrf_error::XrfResult {
   let grass = GameMtlMaterial {
@@ -45,8 +45,10 @@ fn main() -> xrf_error::XrfResult {
   let restored = GameMtlFile::read_from_bytes::<XRayByteOrder>(writer.buffer)?;
 
   assert_eq!(restored, library);
-  assert!(restored.find_material(0).is_some_and(GameMtlMaterial::is_passable));
+  assert!(restored.find_material_by_name("Materials\\Grass").is_some_and(GameMtlMaterial::is_passable));
   assert_eq!(restored.materials[0].get_named_flags(), ["passable"]);
+  assert_eq!(restored.materials[0].get_shoot_factor_mp(), 1.0);
+  assert_eq!(restored.get_game_version(), GameMtlVersion::ClearSky);
 
   Ok(())
 }
@@ -61,31 +63,46 @@ The library is a chunk tree: a version (`0x1000`), the editor's next material an
 materials chunk and a pairs chunk holding one child each. Only version 1, `GAMEMTL_VERSION_COP`, is read, as the engine
 reads no other. `material_index` and `material_pair_index` are one past the highest number ever handed out, not counts.
 
-`GameMtlMaterial` is `SGameMtl`. Its `id` is the library's number for it, which a collision face stores instead of the
-name; `find_material` looks one up by it. The main, flags, physics and factors chunks are required. Description,
-flotation, injurious speed, density, the multiplayer shoot factor and acoustics are optional and stay `None` when
-absent; the engine falls back to the single-player shoot factor for the first and derives acoustics from the sound
-occlusion factor. `GAMEMTL_FLAGS` names the flag bits; `get_named_flags` and
-`is_passable` read them.
+Every game wrote version 1, so `get_game_version` tells them apart as `CGameMtlLibrary::Load` does, by the newest chunk
+any material carries: density marks Clear Sky, the multiplayer shoot factor Call of Pripyat, and neither Shadow of
+Chernobyl. The game reads ammunition, artefacts, bone protection and stalker fire differently by it.
+
+`GameMtlMaterial` is `SGameMtl`. Its `id` is the library's number for it, which a level's collision faces store instead
+of the name; `find_material` looks one up by it and `find_material_by_name` by name regardless of ASCII case, as the
+engine resolves a bone's or a section's material. The main, flags, physics and factors chunks are required.
+Description, flotation, injurious speed, density, the multiplayer shoot factor and acoustics are optional and stay
+`None` when absent. The `get_*` accessors answer what the engine plays with instead: `SGameMtl`'s defaults (flotation
+1, injurious speed and density 0), the single-player shoot factor for the multiplayer one, and for acoustics the
+`GameMtlAcoustics::PREDEFINED` entry for the exact name, or else `default`'s absorbing as much as the material
+occludes. No shipped library carries acoustics.
+
+`FLAG_*` are the sixteen flag bits the engine names and `FLAG_NAMES` their labels, read by `get_named_flags` and
+`is_passable`. The editor recomputes slow down, shootable, transparent and injurious from the factors on every save; the
+crate keeps the stored bits as they are.
 
 `GameMtlPair` is `SGameMtlPair`: two material numbers, the pair's own number, a parent pair (`NO_PARENT_ID` for none),
-the properties it declares itself (`GAMEMTL_PAIR_PROPERTIES`, read by `get_own_properties`), and its breaking, step and
-collision sound, particle and mark lists as stored strings. `has_parent` answers whether the pair takes unset properties
-from another, and `get_inheriting_pairs_count` counts those that do.
+the `PROPERTY_*` bits it sets itself (`PROPERTY_NAMES`, read by `get_own_properties`), and its breaking, step and
+collision sound, particle and mark lists as stored strings. The editor writes inherited lists into the child on save,
+so the engine plays the stored strings and only the editor reads the parent. `split_list` gives a list's entries as the
+engine counts and trims them, which stops at the first empty entry between two commas; the engine asserts on more than
+`MAX_SOUNDS` sounds or `MAX_EFFECTS` particles or marks. `is_pair` and `find_pair` match two materials in either order,
+and `get_inheriting_pairs_count` counts the pairs naming a parent.
 
 ## Chunk order
 
 A material's chunks are written `0x1000`, description `0x1005`, `0x1001`, `0x1002`, `0x1003`, then `0x1008`, `0x1004`,
 `0x1006`, `0x1007` and acoustics `0x1009`, each optional one only when present. That is not the order `SGameMtl::Load`
-reads them in, but it is the order every shipped library writes them in, so a shipped library read and written back is
-byte for byte the file it came from. A pair is always `0x1000 0x1002 0x1003 0x1005`. Materials and pairs are numbered
-from zero in list order on write.
+reads them in, but it is the order `SGameMtl::Save` writes them in, so a shipped library read and written back is byte
+for byte the file it came from. A pair is always `0x1000 0x1002 0x1003 0x1005`. Materials and pairs are numbered from
+zero in list order on write.
 
 ## Errors and checks
 
-Reads reject a file that cannot be opened, a missing version or numbering chunk, another version, and a material or pair
-missing a chunk the engine asserts on. The crate does not resolve sound, particle or mark names to assets.
+Reads reject a file that cannot be opened, a missing version or numbering chunk, another version, a material or pair
+missing a chunk the engine asserts on, and a chunk holding more than its fields, which the writer could not give back.
+Chunks the engine does not know are skipped, as the engine skips them. The crate does not resolve sound, particle or
+mark names to assets, nor check a library against the engine's other load-time assertions.
 
 Run `cargo test --locked -p xrf-gamemtl` from the repository root. See the [library](src/gamemtl_file.rs),
-[material](src/gamemtl_material.rs), [pair](src/gamemtl_pair.rs), [acoustics](src/gamemtl_acoustics.rs), and
-[format tests](src/tests.rs).
+[material](src/gamemtl_material.rs), [pair](src/gamemtl_pair.rs), [acoustics](src/gamemtl_acoustics.rs),
+[game version](src/gamemtl_version.rs), and [format tests](src/tests.rs).
