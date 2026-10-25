@@ -8,9 +8,7 @@
 //! not valid Unicode, and a report describes a run rather than addressing one.
 
 mod file_conversion_report;
-mod file_verify_report;
 mod skipped_mount_report;
 
 pub use file_conversion_report::FileConversionReport;
-pub use file_verify_report::FileVerifyReport;
 pub use skipped_mount_report::SkippedMountReport;

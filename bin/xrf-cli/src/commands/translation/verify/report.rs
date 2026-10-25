@@ -1,17 +1,14 @@
-use std::time::Duration;
-
 use serde::Serialize;
 use xrf_error::XrfError;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_translation::{TranslationVerifyLanguageSummary, TranslationVerifyResult};
 
-/// What a `translation verify` run reports to a machine: the counts, the per-language table and the shared report.
+/// What a `translation verify` run reports to a machine: the counts, the per-language table and the shared report, whose
+/// one check carries the run's duration.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TranslationVerifyReport {
   checked_translations: u32,
-  #[serde(with = "xrf_utils::duration_ms")]
-  duration: Duration,
   /// One row per file and language, so "which languages are incomplete" is answerable without reading every finding:
   /// there are 149,979 of them for a two-language mod checked against eight.
   languages: Vec<TranslationVerifyLanguageSummary>,
@@ -24,7 +21,6 @@ impl TranslationVerifyReport {
   pub fn new(result: &TranslationVerifyResult) -> Self {
     Self {
       checked_translations: result.checked_translations_count,
-      duration: result.duration,
       languages: result.languages.clone(),
       missing_translations: result.missing_translations_count,
       report: result.to_report(),
@@ -35,15 +31,14 @@ impl TranslationVerifyReport {
   pub fn malformed(error: &XrfError) -> Self {
     Self {
       checked_translations: 0,
-      duration: Duration::ZERO,
       languages: Vec::new(),
       missing_translations: 0,
       report: Report::new(vec![CheckReport::new(
-        CheckId::new("translations").expect("Expected a non-empty translation check ID"),
+        CheckId::of_static("translations"),
         Status::Failed,
         None,
         vec![Finding::new(
-          RuleId::new("translations.source").expect("Expected a non-empty translation rule ID"),
+          RuleId::of_static("translations.source"),
           None,
           error.to_string(),
         )],

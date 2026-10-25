@@ -30,7 +30,8 @@ The outer reader spans the whole buffer. The child's ID is `7`, while its positi
 
 ## Sources and readers
 
-- Open owned bytes with `ChunkReader::from_vec`, copied bytes with `from_bytes`, an `InMemoryChunkDataSource` with
+- Open owned bytes with `ChunkReader::from_vec`, bytes the caller keeps reading as a slice with `from_shared` (an
+  `Arc<Vec<u8>>`, so several passes share one buffer), copied bytes with `from_bytes`, an `InMemoryChunkDataSource` with
   `from_source`, a file window with `from_slice`, or a path with `from_path`, which reads positionally rather than
   holding the file. `from_file` loads the whole file into memory. Every constructor rejects an empty source; an empty
   child chunk is ordinary.

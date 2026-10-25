@@ -1,4 +1,5 @@
 pub(crate) mod asset_lister;
+pub(crate) mod asset_listing;
 pub(crate) mod command;
 pub(crate) mod gamedata_asset_report;
 pub(crate) mod gamedata_mount_report;

@@ -44,7 +44,7 @@ impl GenericCommand for VerifyCommand {
 
     // Created before the project is opened, because its clock is what the result reports as the total: mounting and
     // indexing a cold installation is most of the wait.
-    let job: JobHandle = CliJob::new_logging();
+    let job: JobHandle = CliJob::for_output(&output);
 
     // Verification only reads, so an installation is verified over every declared source. Narrowing it to loose configs
     // would leave archived includes unresolved and report their sections as missing, so the scope a person picks is the

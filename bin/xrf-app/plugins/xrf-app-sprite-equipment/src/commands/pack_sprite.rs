@@ -11,7 +11,7 @@ use xrf_dltx::select_ltx_dialect;
 use xrf_job::JobProgress;
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
-use xrf_texture::{PackEquipmentOptions, PackEquipmentProcessor, PackEquipmentResult};
+use xrf_texture::{EquipmentSpritePackOptions, EquipmentSpritePackResult, EquipmentSpritePacker};
 
 use crate::ipc::sprite_equipment::SPRITE_EQUIPMENT_JOB_PACK;
 use crate::request::SpriteEquipmentPackRequest;
@@ -25,7 +25,7 @@ pub async fn sprite_equipment_pack_sprite(
   request: SpriteEquipmentPackRequest,
   job_id: Uuid,
   progress: Channel<JobProgress>,
-) -> TauriResult<PackEquipmentResult> {
+) -> TauriResult<EquipmentSpritePackResult> {
   let start: JobStart = JobStart::new(job_id, SPRITE_EQUIPMENT_JOB_PACK)
     .with_request(&request)
     .with_kind_exclusion()
@@ -51,7 +51,7 @@ pub async fn sprite_equipment_pack_sprite(
       &execution,
       start,
       move |job| {
-        PackEquipmentProcessor::pack_sprites(PackEquipmentOptions {
+        EquipmentSpritePacker::pack_sprites(EquipmentSpritePackOptions {
           job,
           ltx: Ltx::read_from_file_with_dialect(&system_ltx, select_ltx_dialect(is_dltx).as_ref())?,
           source,

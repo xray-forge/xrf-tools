@@ -1,4 +1,4 @@
-import { PackEquipmentResult } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
@@ -14,7 +14,7 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
  * @param outcome - How the run ended.
  * @returns What to record about it.
  */
-export function describePackSpriteOutcome(output: string, outcome: IJobOutcome<PackEquipmentResult>): IJobNotice {
+export function describePackSpriteOutcome(output: string, outcome: IJobOutcome<EquipmentSpritePackResult>): IJobNotice {
   const { result, error } = outcome;
 
   if (error) {

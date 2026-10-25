@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use xrf_math::Vector3d;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 use xrf_vfs::{XrayLookupScope, XrayMountId, XrayResolution, XraySearch, XrayVfs};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
@@ -16,9 +16,8 @@ use crate::data::visual::visual_description::VisualDescription;
 use crate::resolve::visual_dependencies::VisualDependencies;
 
 fn tree(case: &str, files: &[&str]) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("visual_dependencies/{case}"));
-
-  let _ = std::fs::remove_dir_all(&root);
+  let root: PathBuf =
+    create_generated_test_resource_dir(&format!("visual_dependencies/{case}")).expect("test tree is creatable");
 
   for file in files {
     let path: PathBuf = root.join(file);

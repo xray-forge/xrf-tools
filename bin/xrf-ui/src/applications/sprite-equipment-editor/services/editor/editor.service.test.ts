@@ -8,7 +8,7 @@ import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockEquipmentSpriteMetadata, mockPackEquipmentResult } from "@/fixtures/mocks/sprite.mocks";
+import { mockEquipmentSpriteMetadata, mockEquipmentSpritePackResult } from "@/fixtures/mocks/sprite.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { SpriteEquipmentEditorService } from "./editor.service";
@@ -137,7 +137,9 @@ describe("SpriteEquipmentEditorService", () => {
         },
       ];
     } else {
-      mockIpcCommands({ [ESpriteEquipmentCommand.PACK_SPRITE]: mockPackEquipmentResult({ outcome: "cancelled" }) });
+      mockIpcCommands({
+        [ESpriteEquipmentCommand.PACK_SPRITE]: mockEquipmentSpritePackResult({ outcome: "cancelled" }),
+      });
     }
 
     await service.repackAndOpenProject();

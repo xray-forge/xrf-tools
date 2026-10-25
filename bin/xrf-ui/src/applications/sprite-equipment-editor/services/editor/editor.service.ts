@@ -11,7 +11,7 @@ import { spriteEquipmentBulkRoutes } from "@xrf/ipc/commands/sprite-equipment-bu
 import { requireSessionId, Session, SessionScopeService } from "@xrf/ipc/session";
 import { AssetSource, EAssetSource, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { EquipmentSpriteMetadata, EquipmentSpriteOpen } from "@xrf/ipc/types/xrf-app-sprite-equipment";
-import { PackEquipmentResult } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 import { Logger, Timer } from "@xrf/logging";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
@@ -300,7 +300,7 @@ export class SpriteEquipmentEditorService {
     try {
       this.spriteImage = this.spriteImage.asLoading();
 
-      const result: Nullable<PackEquipmentResult> = yield* call(
+      const result: Nullable<EquipmentSpritePackResult> = yield* call(
         flowResult(
           this.packerService.packEquipmentSprite(
             repackSourcePath,

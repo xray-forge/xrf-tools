@@ -11,7 +11,7 @@ use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
 use xrf_utils::staging_faults::fail_next_staged_write;
 
 use crate::core::command::{CommandError, CommandResult};
-use crate::core::report::{CommandEnvelope, CommandOutcome, ReportDestination};
+use crate::core::report::{CommandEnvelope, ReportDestination};
 
 /// The plan a test envelope carries, where the width is not what the test is about.
 fn plan() -> ExecutionPlan {
@@ -41,11 +41,11 @@ fn build() -> BuildInfo {
 /// removal doubles as the assertion that every envelope carries one.
 fn envelope(outcome: CommandResult, result: Option<Value>) -> Value {
   let envelope: CommandEnvelope = CommandEnvelope::new(
-    build(),
+    &build(),
     vec![String::from("archive"), String::from("info")],
     &outcome,
     Duration::from_millis(1200),
-    plan(),
+    &plan(),
     result,
   );
 
@@ -86,16 +86,15 @@ fn records_a_successful_run() {
     json!({
       "command": ["archive", "info"],
       "duration": 1200,
-      "error": Value::Null,
       "exitCode": 0,
-      "outcome": "success",
       "result": { "volumes": 2 },
     })
   );
 }
 
+/// A check that failed finished the run: its result says why, and an `error` beside it would only restate the exit code.
 #[test]
-fn records_a_check_failure_with_its_findings() {
+fn records_a_check_failure_by_its_result_and_exit_code() {
   assert_eq!(
     envelope(
       Err(CommandError::new_check_failed(3)),
@@ -104,9 +103,7 @@ fn records_a_check_failure_with_its_findings() {
     json!({
       "command": ["archive", "info"],
       "duration": 1200,
-      "error": "Check failed: 3 finding(s)",
       "exitCode": 3,
-      "outcome": "checkFailed",
       "result": { "status": "failed" },
     })
   );
@@ -121,8 +118,6 @@ fn records_an_execution_failure_without_a_result() {
       "duration": 1200,
       "error": "Generic error: boom",
       "exitCode": 1,
-      "outcome": "executionFailed",
-      "result": Value::Null,
     })
   );
 }
@@ -132,67 +127,47 @@ fn records_an_execution_failure_without_a_result() {
 #[test]
 fn records_the_width_the_run_was_bounded_to() {
   let envelope: CommandEnvelope = CommandEnvelope::new(
-    build(),
+    &build(),
     vec![String::from("gamedata"), String::from("verify")],
     &Ok(()),
     Duration::from_millis(1200),
-    ExecutionRequest::Workers(NonZeroUsize::new(4).expect("four is not zero")).resolve(),
+    &ExecutionRequest::Workers(NonZeroUsize::new(4).expect("four is not zero")).resolve(),
     None,
   );
   let document: Value = serde_json::to_value(envelope).expect("envelope to serialize");
 
   // Carried by every run, including the commands that declare no `--jobs` of their own, because every command runs
   // inside a pool whether or not it offers a say in how wide that pool is.
-  assert_eq!(document["execution"], json!({ "workers": 4, "origin": "requested" }));
+  assert_eq!(document["execution"], json!({ "workers": 4 }));
 }
 
 /// A report outlives its run, and nothing else in the envelope says which binary wrote it.
 #[test]
 fn records_the_binary_that_produced_the_run() {
   let envelope: CommandEnvelope = CommandEnvelope::new(
-    build(),
+    &build(),
     vec![String::from("archive"), String::from("info")],
     &Ok(()),
     Duration::from_millis(1200),
-    plan(),
+    &plan(),
     None,
   );
   let document: Value = serde_json::to_value(envelope).expect("envelope to serialize");
 
+  // Only what tells two runs' binaries apart; a build recording no commit, profile or CI run omits them.
   assert_eq!(
     document["build"],
     json!({
       "version": "1.2.3",
       "kind": "local",
-      "commit": Value::Null,
-      "reference": Value::Null,
       "isDirty": false,
-      "builtAt": Value::Null,
-      "target": Value::Null,
-      "rustc": Value::Null,
-      "profile": Value::Null,
-      "optimization": Value::Null,
-      "runId": Value::Null,
     })
   );
 }
 
 #[test]
-fn names_every_outcome_the_exit_contract_distinguishes() {
-  assert_eq!(CommandOutcome::of(&Ok(())), CommandOutcome::Success);
-  assert_eq!(
-    CommandOutcome::of(&Err(CommandError::new_check_failed(1))),
-    CommandOutcome::CheckFailed
-  );
-  assert_eq!(
-    CommandOutcome::of(&Err(CommandError::from(XrfError::new_generic_error("boom")))),
-    CommandOutcome::ExecutionFailed
-  );
-}
-
-#[test]
 fn publishes_nothing_when_no_report_was_asked_for() {
-  let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, plan(), None);
+  let envelope: CommandEnvelope = CommandEnvelope::new(&build(), Vec::new(), &Ok(()), Duration::ZERO, &plan(), None);
 
   assert!(envelope.publish(&ReportDestination::None).is_ok());
 }
@@ -209,7 +184,7 @@ fn report_path(name: &str) -> PathBuf {
 #[test]
 fn replaces_a_report_a_previous_run_wrote() {
   let path: PathBuf = report_path("replaces");
-  let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, plan(), None);
+  let envelope: CommandEnvelope = CommandEnvelope::new(&build(), Vec::new(), &Ok(()), Duration::ZERO, &plan(), None);
 
   fs::write(&path, b"{\"sentinel\":true}").expect("the previous report to be seeded");
 
@@ -220,14 +195,14 @@ fn replaces_a_report_a_previous_run_wrote() {
   let written: String = fs::read_to_string(&path).expect("the report to be readable");
 
   assert!(!written.contains("sentinel"), "{written}");
-  assert!(written.contains("\"outcome\": \"success\""), "{written}");
+  assert!(written.contains("\"exitCode\": 0"), "{written}");
 }
 
 /// The contract the staging exists for: a report that could not be delivered destroys nothing.
 #[test]
 fn keeps_the_previous_report_when_publication_fails() {
   let path: PathBuf = report_path("preserves");
-  let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, plan(), None);
+  let envelope: CommandEnvelope = CommandEnvelope::new(&build(), Vec::new(), &Ok(()), Duration::ZERO, &plan(), None);
 
   fs::write(&path, b"{\"sentinel\":true}").expect("the previous report to be seeded");
   fail_next_staged_write();
@@ -245,7 +220,7 @@ fn keeps_the_previous_report_when_publication_fails() {
 
 #[test]
 fn fails_the_run_when_a_requested_report_cannot_be_written() {
-  let envelope: CommandEnvelope = CommandEnvelope::new(build(), Vec::new(), &Ok(()), Duration::ZERO, plan(), None);
+  let envelope: CommandEnvelope = CommandEnvelope::new(&build(), Vec::new(), &Ok(()), Duration::ZERO, &plan(), None);
   let destination: ReportDestination = ReportDestination::File(PathBuf::from("missing-directory/report.json"));
 
   let error: CommandError = envelope

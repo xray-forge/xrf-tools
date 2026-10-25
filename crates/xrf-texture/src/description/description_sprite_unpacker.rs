@@ -10,16 +10,16 @@ use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_utils::{HostDestination, HostRelativePath, format_path};
 
 use crate::description::{
-  SpriteDescriptionOptions, SpriteDescriptionResult, TextureFileDescriptor, XmlDescriptionCollection,
+  DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor, XmlDescriptionCollection,
 };
 use crate::image_file::save_image_as_ui_dds;
 
-pub struct UnpackDescriptionProcessor {}
+pub struct DescriptionSpriteUnpacker {}
 
-impl UnpackDescriptionProcessor {
+impl DescriptionSpriteUnpacker {
   /// Cuts the sprites out of the sheets the description declares, every one or those `options` names, and answers
   /// what was written.
-  pub fn unpack_xml_descriptions(options: &SpriteDescriptionOptions) -> XrfResult<SpriteDescriptionResult> {
+  pub fn unpack_xml_descriptions(options: &DescriptionSpriteOptions) -> XrfResult<DescriptionSpriteResult> {
     let started_at: Instant = Instant::now();
     let description: XmlDescriptionCollection = XmlDescriptionCollection::get_descriptions(options)?;
     let selected: Vec<&TextureFileDescriptor> = description.select_files(options)?;
@@ -41,22 +41,22 @@ impl UnpackDescriptionProcessor {
     // unwinds past it — which is what keeps output identical however wide the run is.
     let sequence: OutputSequence = OutputSequence::new(&options.output, selected.len());
 
-    let result: SpriteDescriptionResult = selected
+    let result: DescriptionSpriteResult = selected
       .par_iter()
       .enumerate()
       .map(|(index, file)| {
         let slot: OutputSlot = sequence.new_slot(index);
-        let unpacked: SpriteDescriptionResult = Self::unpack_xml_description(options, slot.get_output(), file)?;
+        let unpacked: DescriptionSpriteResult = Self::unpack_xml_description(options, slot.get_output(), file)?;
 
         unpacking.advance();
 
-        Ok::<SpriteDescriptionResult, XrfError>(unpacked)
+        Ok::<DescriptionSpriteResult, XrfError>(unpacked)
       })
-      .try_reduce(SpriteDescriptionResult::default, |left, right| Ok(left.merged(right)))?;
+      .try_reduce(DescriptionSpriteResult::default, |left, right| Ok(left.merged(right)))?;
 
     xrf_output::info!(options.output, "Unpacked {} files", result.files);
 
-    Ok(SpriteDescriptionResult {
+    Ok(DescriptionSpriteResult {
       duration: started_at.elapsed(),
       ..result
     })
@@ -65,10 +65,10 @@ impl UnpackDescriptionProcessor {
   /// Cuts the sprites out of one described sheet, answering how many were written and how many did not fit; a sheet
   /// that cannot be read is passed over whole outside strict mode.
   pub fn unpack_xml_description(
-    options: &SpriteDescriptionOptions,
+    options: &DescriptionSpriteOptions,
     output: &OutputOptions,
     file: &TextureFileDescriptor,
-  ) -> XrfResult<SpriteDescriptionResult> {
+  ) -> XrfResult<DescriptionSpriteResult> {
     let relative_path: HostRelativePath = file.to_host_relative_path()?;
     let sprite_paths: Vec<HostRelativePath> = file.to_sprite_paths()?;
     let full_name: PathBuf = options
@@ -94,7 +94,7 @@ impl UnpackDescriptionProcessor {
           error
         );
 
-        return Ok(SpriteDescriptionResult::skipped());
+        return Ok(DescriptionSpriteResult::skipped());
       }
     };
 
@@ -150,7 +150,7 @@ impl UnpackDescriptionProcessor {
       written += 1;
     }
 
-    Ok(SpriteDescriptionResult::written(written, skipped))
+    Ok(DescriptionSpriteResult::written(written, skipped))
   }
 }
 
@@ -162,13 +162,13 @@ mod tests {
   use image::RgbaImage;
   use xrf_dds::{DdsMipmaps, ImageFormat};
   use xrf_error::XrfError;
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
 
-  use super::UnpackDescriptionProcessor;
+  use super::DescriptionSpriteUnpacker;
   use crate::image_file::save_image_as_ui_dds;
-  use crate::{SpriteDescriptionOptions, SpriteDescriptionResult, TextureFileDescriptor};
+  use crate::{DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor};
 
-  fn options_for_missing_source(is_strict: bool) -> SpriteDescriptionOptions {
+  fn options_for_missing_source(is_strict: bool) -> DescriptionSpriteOptions {
     let root: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
       .parent()
       .and_then(|path| path.parent())
@@ -177,7 +177,7 @@ mod tests {
       .join("test-resources")
       .join(format!("xrf-texture-missing-description-{}", std::process::id()));
 
-    SpriteDescriptionOptions {
+    DescriptionSpriteOptions {
       job: Default::default(),
       description: root.join("description.xml"),
       base: root.join("source"),
@@ -192,13 +192,13 @@ mod tests {
 
   #[test]
   fn skips_an_unreadable_sheet_in_non_strict_mode() {
-    let options: SpriteDescriptionOptions = options_for_missing_source(false);
+    let options: DescriptionSpriteOptions = options_for_missing_source(false);
     let file: TextureFileDescriptor = TextureFileDescriptor::new(r"ui\missing");
 
     assert_eq!(
-      UnpackDescriptionProcessor::unpack_xml_description(&options, &options.output, &file)
+      DescriptionSpriteUnpacker::unpack_xml_description(&options, &options.output, &file)
         .expect("non-strict unpacking to skip an unreadable sheet"),
-      SpriteDescriptionResult::skipped()
+      DescriptionSpriteResult::skipped()
     );
     assert!(
       !options
@@ -210,10 +210,10 @@ mod tests {
 
   #[test]
   fn rejects_an_unreadable_sheet_in_strict_mode() {
-    let options: SpriteDescriptionOptions = options_for_missing_source(true);
+    let options: DescriptionSpriteOptions = options_for_missing_source(true);
     let file: TextureFileDescriptor = TextureFileDescriptor::new(r"ui\missing");
 
-    assert!(UnpackDescriptionProcessor::unpack_xml_description(&options, &options.output, &file).is_err());
+    assert!(DescriptionSpriteUnpacker::unpack_xml_description(&options, &options.output, &file).is_err());
     assert!(
       !options
         .output_path
@@ -225,10 +225,8 @@ mod tests {
   const SENTINEL: &[u8] = b"sentinel";
 
   /// A readable 8x4 sheet at `base/sheet.dds`, a description of `ids` over it, and a sentinel beside `out`.
-  fn options_for_sheet(name: &str, ids: &[&str], is_strict: bool) -> SpriteDescriptionOptions {
-    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("description-unpack/{name}"));
-
-    let _ = fs::remove_dir_all(&root);
+  fn options_for_sheet(name: &str, ids: &[&str], is_strict: bool) -> DescriptionSpriteOptions {
+    let root: PathBuf = create_generated_test_resource_dir(&format!("description-unpack/{name}")).expect("sheet root");
 
     fs::create_dir_all(root.join("base")).expect("sheet directory");
     fs::write(root.join("victim.dds"), SENTINEL).expect("sentinel beside the destination");
@@ -257,7 +255,7 @@ mod tests {
     )
     .expect("description");
 
-    SpriteDescriptionOptions {
+    DescriptionSpriteOptions {
       job: Default::default(),
       description: root.join("description.xml"),
       base: root.join("base"),
@@ -270,7 +268,7 @@ mod tests {
     }
   }
 
-  fn root_of(options: &SpriteDescriptionOptions) -> PathBuf {
+  fn root_of(options: &DescriptionSpriteOptions) -> PathBuf {
     options.base.parent().expect("a test root").to_path_buf()
   }
 
@@ -292,13 +290,13 @@ mod tests {
     {
       for is_strict in [false, true] {
         // A valid sprite is listed first, so a run that wrote before it checked would leave it behind.
-        let options: SpriteDescriptionOptions =
+        let options: DescriptionSpriteOptions =
           options_for_sheet(&format!("escape-{index}-{is_strict}"), &["ui_valid", id], is_strict);
         let root: PathBuf = root_of(&options);
 
         assert!(
           matches!(
-            UnpackDescriptionProcessor::unpack_xml_descriptions(&options),
+            DescriptionSpriteUnpacker::unpack_xml_descriptions(&options),
             Err(XrfError::Invalid { .. })
           ),
           "sprite id '{id}' must be refused by name"
@@ -315,11 +313,10 @@ mod tests {
 
   #[test]
   fn writes_each_sprite_under_its_id_as_spelled() {
-    let options: SpriteDescriptionOptions = options_for_sheet("valid", &["ui_icon_PDA", "ui icon (old)"], true);
+    let options: DescriptionSpriteOptions = options_for_sheet("valid", &["ui_icon_PDA", "ui icon (old)"], true);
     let root: PathBuf = root_of(&options);
 
-    let result: SpriteDescriptionResult =
-      UnpackDescriptionProcessor::unpack_xml_descriptions(&options).expect("unpack");
+    let result: DescriptionSpriteResult = DescriptionSpriteUnpacker::unpack_xml_descriptions(&options).expect("unpack");
 
     assert_eq!((result.files, result.sprites, result.skipped_sprites), (1, 2, 0));
     assert!(root.join("out").join("sheet").join("ui_icon_PDA.dds").is_file());

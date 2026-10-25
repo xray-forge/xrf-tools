@@ -1,5 +1,5 @@
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkDataSource, ChunkReader, InMemoryChunkDataSource};
+use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::XrfResult;
 use xrf_skeleton::{SkeletonMotionParametersChunk, SkeletonMotionsChunk};
 
@@ -41,10 +41,14 @@ impl OgfChunksProcessor {
     SkeletonMotionParametersChunk::CHUNK_ID,
   ];
 
-  /// The chunk tree of the visual `bytes` hold, for a caller that also reads the visual from the same bytes.
-  pub fn collect_chunks_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<OgfChunkSurvey> {
-    let (mut chunks, residue) =
-      OgfResidue::read_root_chunks::<T, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_vec(bytes)?)?;
+  /// The chunk tree of the visual `reader` opens, read from its start.
+  ///
+  /// Rewinds `reader` first, so a caller that has just read the visual through [`crate::OgfFile::read_from_chunk`]
+  /// surveys the same bytes without reading or copying them again.
+  pub fn collect_chunks<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<OgfChunkSurvey> {
+    reader.reset_pos()?;
+
+    let (mut chunks, residue) = OgfResidue::read_root_chunks::<T, _>(reader)?;
     let mut entries: Vec<OgfChunkEntry> = Vec::new();
 
     Self::walk(&mut chunks, 0, &mut entries)?;
@@ -52,9 +56,9 @@ impl OgfChunksProcessor {
     Ok(OgfChunkSurvey { entries, residue })
   }
 
-  /// Chunk ids present in the visual `bytes` hold that the reader does not understand, deduplicated and sorted.
-  pub fn find_unknown_chunk_ids_from_bytes<T: ByteOrder>(bytes: Vec<u8>) -> XrfResult<Vec<u32>> {
-    let mut unknown: Vec<u32> = Self::collect_chunks_from_bytes::<T>(bytes)?
+  /// Chunk ids present in the visual `reader` opens that the reader does not understand, deduplicated and sorted.
+  pub fn find_unknown_chunk_ids<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<u32>> {
+    let mut unknown: Vec<u32> = Self::collect_chunks::<T, D>(reader)?
       .entries
       .into_iter()
       .map(|it| it.id)

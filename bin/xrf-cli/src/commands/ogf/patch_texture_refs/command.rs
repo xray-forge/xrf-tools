@@ -121,7 +121,7 @@ impl PatchTextureRefsCommand {
       return Ok(report);
     }
 
-    xrf_output::info!(
+    xrf_output::success!(
       output,
       "Renamed {} ogf texture references, written into {}",
       report.patched_count,

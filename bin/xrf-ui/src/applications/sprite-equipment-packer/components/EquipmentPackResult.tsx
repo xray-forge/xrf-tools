@@ -1,10 +1,10 @@
 import { Chip, Grid } from "@mui/material";
 import { formatDuration } from "@xrf/format";
-import { PackEquipmentResult } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 import { ReactElement } from "react";
 
 interface IEquipmentPackResultProps {
-  result: PackEquipmentResult;
+  result: EquipmentSpritePackResult;
 }
 
 export function EquipmentPackResult({ result }: IEquipmentPackResultProps): ReactElement {

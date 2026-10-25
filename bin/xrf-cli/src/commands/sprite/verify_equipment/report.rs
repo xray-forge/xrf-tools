@@ -1,41 +1,22 @@
 use std::path::Path;
 
 use serde::Serialize;
-use xrf_error::XrfError;
-use xrf_report::Status;
-use xrf_texture::EquipmentGridOverlap;
+use xrf_report::Report;
 
-use crate::commands::sprite::verify_equipment::sprite_equipment_overlap_report::SpriteEquipmentOverlapReport;
-
-/// The verdict `sprite verify-equipment` reached over an inventory icon grid.
+/// What `sprite verify-equipment` found in the icon grid, beside the system ltx it read the grid from.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SpriteEquipmentVerifyReport {
-  findings: Vec<SpriteEquipmentOverlapReport>,
-  /// Why the system ltx could not be read as one, where it could not: nothing in it was checked.
-  #[serde(skip_serializing_if = "Option::is_none")]
-  malformed: Option<String>,
-  status: Status,
-  subject: String,
+pub struct SpriteVerifyEquipmentReport {
+  system_ltx: String,
+  #[serde(flatten)]
+  report: Report,
 }
 
-impl SpriteEquipmentVerifyReport {
-  pub fn new(subject: &Path, overlaps: &[EquipmentGridOverlap]) -> Self {
+impl SpriteVerifyEquipmentReport {
+  pub fn new(system_ltx: &Path, report: Report) -> Self {
     Self {
-      status: Status::from_is_valid(overlaps.is_empty()),
-      findings: overlaps.iter().map(SpriteEquipmentOverlapReport::new).collect(),
-      malformed: None,
-      subject: xrf_utils::to_portable_path_string(subject),
-    }
-  }
-
-  /// A system ltx that does not parse, judged failed.
-  pub fn malformed(subject: &Path, error: &XrfError) -> Self {
-    Self {
-      status: Status::Failed,
-      findings: Vec::new(),
-      malformed: Some(error.to_string()),
-      subject: xrf_utils::to_portable_path_string(subject),
+      system_ltx: xrf_utils::to_portable_path_string(system_ltx),
+      report,
     }
   }
 }

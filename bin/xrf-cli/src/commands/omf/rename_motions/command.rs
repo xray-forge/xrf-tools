@@ -147,7 +147,7 @@ impl RenameMotionsCommand {
 
     omf_file.write_to_path::<XRayByteOrder, _>(&destination)?;
 
-    xrf_output::info!(output, "Renamed omf file written into {}", format_path(destination));
+    xrf_output::success!(output, "Renamed omf file written into {}", format_path(destination));
 
     Ok(())
   }

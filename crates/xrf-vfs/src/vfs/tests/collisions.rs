@@ -6,7 +6,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 
 use crate::mount::XrayMountPlan;
 use crate::vfs::tests::fake_source::FakeArchiveSource;
@@ -21,9 +21,8 @@ fn search_all(vfs: XrayVfs) -> XraySearch {
 
 /// Writes a tree whose file names differ only by case, which normalize to one logical path.
 fn tree(name: &str, files: &[&str]) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_vfs_collisions/{name}"));
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf =
+    create_generated_test_resource_dir(&format!("xray_vfs_collisions/{name}")).expect("tree is creatable");
 
   for file in files {
     let path: PathBuf = root.join(file);

@@ -4,7 +4,9 @@ use xrf_report::Status;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::commands::dialog::dialog_project_opening::DialogProjectOpening;
-use crate::commands::dialog::info::dialog_sweep::{DialogSweep, DialogSweepCensus, DialogSweepResult};
+use crate::commands::dialog::info::dialog_sweep::DialogSweep;
+use crate::commands::dialog::info::dialog_sweep_census::DialogSweepCensus;
+use crate::commands::dialog::info::dialog_sweep_result::DialogSweepResult;
 use crate::commands::dialog::info::report::DialogInfoReport;
 use crate::core::arguments::XrayRootsArguments;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};

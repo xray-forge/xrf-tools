@@ -100,7 +100,7 @@ impl GenericCommand for UnpackCommand {
         &archive_project,
         &destination,
         ArchiveExtractOptions::default()
-          .with_job(CliJob::new_logging())
+          .with_job(CliJob::for_output(&output))
           .with_link_policy(LinkPolicyArgument::of(matches)),
       )?;
 

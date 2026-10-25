@@ -1,14 +1,16 @@
 use std::marker::PhantomData;
 use std::path::PathBuf;
+use std::time::Instant;
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
-use xrf_utils::format_path;
+use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
+use xrf_utils::{format_path, to_portable_path_string};
 
-use crate::commands::packed_file::{PackedFileArguments, PackedFileFormat};
-use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
-use crate::core::reports::FileVerifyReport;
+use crate::commands::packed_file::{PackedFileArguments, PackedFileFormat, PackedFileVerifyReport};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::report::ReportVerdict;
 
 /// Reads one packed file, or its unpacked folder, and judges whether it reads.
 pub struct VerifyCommand<F>(PhantomData<F>);
@@ -48,28 +50,34 @@ impl<F: PackedFileFormat> GenericCommand for VerifyCommand<F> {
     let path: &PathBuf = PackedFileArguments::path_of(matches);
     let is_unpacked: bool = matches.get_flag(Self::UNPACKED);
     let output: OutputOptions = context.get_output().clone();
+    let started_at: Instant = Instant::now();
 
     xrf_output::info!(output, "Verifying {} {}", F::NOUN, format_path(path));
 
     let read: XrfResult<F> = if is_unpacked { F::import(path) } else { F::read(path) };
+    let findings: Vec<Finding> = match read {
+      Ok(_) => Vec::new(),
+      // An unreadable file is an execution failure, which judged nothing and so deposits nothing; only judged content
+      // is a check failure.
+      Err(error @ XrfError::Io { .. }) => return Err(error.into()),
+      Err(error) => vec![Finding::new(
+        RuleId::of_static(F::READ_CHECK),
+        Some(to_portable_path_string(path)),
+        error.to_string(),
+      )],
+    };
+    let report: Report = Report::new(vec![CheckReport::new(
+      CheckId::of_static(F::READ_CHECK),
+      Status::from_is_valid(findings.is_empty()),
+      Some(started_at.elapsed()),
+      findings,
+    )]);
 
-    match read {
-      Ok(_) => {
-        xrf_output::success!(output, "{} is a valid {}", format_path(path), F::NOUN);
+    ReportVerdict::print_findings(&output, &report);
 
-        context.set_result(|| FileVerifyReport::passed(path))
-      }
-      // An unreadable file is an execution failure; only judged content is a check failure.
-      Err(error @ XrfError::Io { .. }) => Err(error.into()),
-      Err(error) => {
-        xrf_output::failure!(output, "{} is not a valid {}: {error}", format_path(path), F::NOUN);
+    // Deposited before the verdict becomes an outcome, so a caller reading `result` alone still learns what was wrong.
+    context.set_result(|| PackedFileVerifyReport::new(path, report.clone()))?;
 
-        // Deposited before the verdict becomes an outcome, so a caller reading `result` alone still learns what was
-        // wrong.
-        context.set_result(|| FileVerifyReport::failed(path, error.to_string()))?;
-
-        Err(CommandError::new_check_failed(1))
-      }
-    }
+    ReportVerdict::conclude(&output, &report, &format!("Verification of {}", format_path(path)))
   }
 }

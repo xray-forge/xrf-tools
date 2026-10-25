@@ -11,7 +11,7 @@ import {
   SpriteEquipmentPackRequest,
 } from "#/types/xrf-app-sprite-equipment";
 import { JobProgress } from "#/types/xrf-job";
-import { PackEquipmentResult } from "#/types/xrf-texture";
+import { EquipmentSpritePackResult } from "#/types/xrf-texture";
 
 /** The wire name of every command of the `sprite-equipment` plugin. */
 export enum ESpriteEquipmentCommand {
@@ -32,7 +32,7 @@ export const spriteEquipmentCommands = {
     __TAURI_INVOKE<SessionSnapshot<EquipmentSpriteMetadata>>(ESpriteEquipmentCommand.OPEN_SPRITE, { request }),
   /** Draw every declared inventory icon into one equipment sprite sheet. */
   packSprite: (request: SpriteEquipmentPackRequest, jobId: string, progress: Channel<JobProgress>) =>
-    __TAURI_INVOKE<PackEquipmentResult>(ESpriteEquipmentCommand.PACK_SPRITE, { request, jobId, progress }),
+    __TAURI_INVOKE<EquipmentSpritePackResult>(ESpriteEquipmentCommand.PACK_SPRITE, { request, jobId, progress }),
   /**
    * Read the sheet `previous_id` holds again, as it was asked for, into the new handle `session_id`; the previous handle
    * is left as it is, for the page to close once the reload is shown, and a failed reload leaves it untouched.

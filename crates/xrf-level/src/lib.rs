@@ -79,6 +79,7 @@ pub use crate::som::level_som_file::*;
 pub use crate::som::level_som_polygon::*;
 pub use crate::verify::level_file_source::*;
 pub use crate::verify::level_geometry_census::*;
+pub use crate::verify::level_geometry_layout_kind::*;
 pub use crate::verify::level_geometry_verifier::*;
 pub use crate::verify::level_geometry_verify_result::*;
 pub use crate::wallmarks::level_wallmark::*;

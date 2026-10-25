@@ -5,7 +5,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
-use super::command_reference::GroupReference;
+use super::group_reference::GroupReference;
 use super::markdown_renderer::ReferenceMarkdownRenderer;
 use super::report::DocsGenerateReport;
 use crate::core::command::{CommandContext, CommandError, CommandGroup, CommandResult, GenericCommand};

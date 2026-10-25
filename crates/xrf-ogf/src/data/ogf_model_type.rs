@@ -51,7 +51,8 @@ impl OgfModelType {
     matches!(self, Self::Progressive | Self::SkeletonGeomdefPm | Self::TreePm)
   }
 
-  const fn name(self) -> &'static str {
+  /// The engine identifier, such as `MT_NORMAL`.
+  pub const fn name(self) -> &'static str {
     match self {
       Self::Normal => "MT_NORMAL",
       Self::Hierarchy => "MT_HIERRARHY",

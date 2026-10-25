@@ -1,7 +1,7 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 import { spriteEquipmentCommands } from "@xrf/ipc/commands/sprite-equipment";
 import { SPRITE_EQUIPMENT_JOB_PACK } from "@xrf/ipc/types/xrf-app-sprite-equipment";
-import { PackEquipmentResult } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
@@ -17,7 +17,7 @@ export class SpriteEquipmentPackerService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** The sheet is written once at the end; a cancelled pack leaves the output unchanged. */
-  public readonly operation: JobOperation<PackEquipmentResult>;
+  public readonly operation: JobOperation<EquipmentSpritePackResult>;
 
   public constructor(jobsService: JobsService = inject(JobsService)) {
     this.operation = new JobOperation(jobsService, [SPRITE_EQUIPMENT_JOB_PACK]);
@@ -41,18 +41,18 @@ export class SpriteEquipmentPackerService {
     outputPath: string,
     systemLtxPath: string,
     isDltx: boolean
-  ): TFlow<Nullable<PackEquipmentResult>> {
+  ): TFlow<Nullable<EquipmentSpritePackResult>> {
     if (this.operation.isRunning) {
       return null;
     }
 
     this.log.info("Packing equipment editor:", sourcePath, outputPath, systemLtxPath);
 
-    const completion: JobCompletion<PackEquipmentResult> = yield* this.operation.run({
+    const completion: JobCompletion<EquipmentSpritePackResult> = yield* this.operation.run({
       kind: SPRITE_EQUIPMENT_JOB_PACK,
       invoke: (id: string, progress) =>
         spriteEquipmentCommands.packSprite({ sourcePath, outputPath, systemLtxPath, isDltx }, id, progress),
-      describe: (outcome: IJobOutcome<PackEquipmentResult>): IJobNotice =>
+      describe: (outcome: IJobOutcome<EquipmentSpritePackResult>): IJobNotice =>
         describePackSpriteOutcome(outputPath, outcome),
     });
 

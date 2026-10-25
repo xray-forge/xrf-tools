@@ -2,6 +2,7 @@ use std::fmt;
 use std::fs::File;
 use std::io::{Read, SeekFrom};
 use std::path::Path;
+use std::sync::Arc;
 
 use fileslice::FileSlice;
 use xrf_error::{XrfError, XrfResult};
@@ -83,6 +84,15 @@ impl ChunkReader<InMemoryChunkDataSource> {
   /// Returns an error when the bytes are empty; see [`Self::from_source`] for the rule.
   pub fn from_vec(buf: Vec<u8>) -> XrfResult<Self> {
     Self::from_source(InMemoryChunkDataSource::from_vec(buf))
+  }
+
+  /// Creates a reader over bytes the caller keeps holding, without copying them.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the bytes are empty; see [`Self::from_source`] for the rule.
+  pub fn from_shared(buf: Arc<Vec<u8>>) -> XrfResult<Self> {
+    Self::from_source(InMemoryChunkDataSource::from_shared(buf))
   }
 
   /// Creates a reader over an in-memory chunk data source.

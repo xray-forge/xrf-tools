@@ -3,16 +3,16 @@ import { EventBus } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
 import { ESpriteEquipmentCommand } from "@xrf/ipc/commands/sprite-equipment";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
-import { PackEquipmentResult } from "@xrf/ipc/types/xrf-texture";
+import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT } from "@/core/notifications/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
-import { mockPackEquipmentResult } from "@/fixtures/mocks/sprite.mocks";
+import { mockEquipmentSpritePackResult } from "@/fixtures/mocks/sprite.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 
-const RESULT: PackEquipmentResult = mockPackEquipmentResult();
+const RESULT: EquipmentSpritePackResult = mockEquipmentSpritePackResult();
 
 describe("SpriteEquipmentPackerService", () => {
   beforeEach(() => mockIpcCommands({}));
@@ -58,8 +58,8 @@ describe("SpriteEquipmentPackerService", () => {
   });
 
   it("abandons publication on deactivation while the backend finishes and notifies", async () => {
-    let finish: (result: PackEquipmentResult) => void = noop;
-    const response = new Promise<PackEquipmentResult>((resolve) => {
+    let finish: (result: EquipmentSpritePackResult) => void = noop;
+    const response = new Promise<EquipmentSpritePackResult>((resolve) => {
       finish = resolve;
     });
 

@@ -5,7 +5,7 @@ use xrf_output::OutputOptions;
 use xrf_pack::{ArchivePatchResult, ArchivePatcher};
 
 use crate::commands::archive::ArchiveVolumeArguments;
-use crate::commands::archive::pack_patch::archive_patch_arguments::ArchivePatchArguments;
+use crate::commands::archive::pack_patch::archive_patch_request::ArchivePatchRequest;
 use crate::commands::archive::pack_patch::archive_patch_summary::ArchivePatchSummary;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
@@ -90,16 +90,16 @@ impl GenericCommand for PackPatchCommand {
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
-    let arguments: ArchivePatchArguments = ArchivePatchArguments::of(matches, output.clone())?;
+    let request: ArchivePatchRequest = ArchivePatchRequest::of(matches, output.clone())?;
 
-    ArchivePatchSummary::describe_inputs(&output, &arguments.config, arguments.is_dry_run);
+    ArchivePatchSummary::describe_inputs(&output, &request.config, request.is_dry_run);
 
     // Which door runs is this flag's whole meaning, so it is spelled here rather than carried into the crate: the
     // patcher makes "does this write" a method name.
-    let result: ArchivePatchResult = if arguments.is_dry_run {
-      ArchivePatcher::compare_opt(&arguments.config, arguments.options)?
+    let result: ArchivePatchResult = if request.is_dry_run {
+      ArchivePatcher::compare_opt(&request.config, request.options)?
     } else {
-      ArchivePatcher::patch_opt(&arguments.config, arguments.options)?
+      ArchivePatcher::patch_opt(&request.config, request.options)?
     };
 
     ArchivePatchSummary::describe_result(&output, &result);

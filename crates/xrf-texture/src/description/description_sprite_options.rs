@@ -4,7 +4,7 @@ use xrf_dds::ImageFormat;
 use xrf_utils::HostLinkPolicy;
 
 /// What a texture description run packs or unpacks, in either direction.
-pub struct SpriteDescriptionOptions {
+pub struct DescriptionSpriteOptions {
   /// Where progress goes, and for packing, where cancellation comes from.
   pub job: xrf_job::JobHandle,
   pub description: PathBuf,

@@ -34,6 +34,7 @@ fixtures = []
 [dev-dependencies]
 xrf-math = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
+xrf-utils = { workspace = true, features = ["staging-faults"] }
 
 [lints]
 workspace = true

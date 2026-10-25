@@ -3,7 +3,9 @@ use std::path::PathBuf;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_test_utils::links::link_directory;
-use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_generated_test_resource};
+use xrf_test_utils::utils::{
+  build_absolute_generated_test_resource_path, create_generated_test_resource_dir, write_generated_test_resource,
+};
 use xrf_utils::{HostLinkPolicy, encode_string_to_bytes};
 
 use super::super::translation_parse_options::TranslationParseOptions;
@@ -371,11 +373,7 @@ fn a_file_selector_that_names_nothing_is_refused() -> XrfResult {
 fn linked_output(root: &str) -> XrfResult<Option<(PathBuf, PathBuf)>> {
   write_generated_test_resource(&format!("{root}/eng/ui/st_ui.xml"), table("st_ui", "UI"))?;
 
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{root}-destination"));
-
-  if destination.exists() {
-    fs::remove_dir_all(&destination)?;
-  }
+  let destination: PathBuf = create_generated_test_resource_dir(&format!("{root}-destination"))?;
 
   let sentinel: PathBuf = destination.join("sentinel");
   let output_dir: PathBuf = destination.join("output");

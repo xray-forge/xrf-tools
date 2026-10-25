@@ -14,6 +14,9 @@ pub trait PackedFileFormat: Sized + Send + Sync + 'static {
   /// How the packed file is named, such as `particles.xr`.
   const FILE_NAME: &'static str;
 
+  /// The check `verify` reports reading one under, and the rule a file that would not read breaks.
+  const READ_CHECK: &'static str;
+
   /// The packed file at `path`.
   ///
   /// # Errors
@@ -46,6 +49,7 @@ pub trait PackedFileFormat: Sized + Send + Sync + 'static {
 impl PackedFileFormat for ParticlesFile {
   const NOUN: &'static str = "particles file";
   const FILE_NAME: &'static str = "particles.xr";
+  const READ_CHECK: &'static str = "particles.read";
 
   fn read(path: &Path) -> XrfResult<Self> {
     Self::read_from_path::<XRayByteOrder, _>(&path)
@@ -67,6 +71,7 @@ impl PackedFileFormat for ParticlesFile {
 impl PackedFileFormat for SpawnFile {
   const NOUN: &'static str = "spawn file";
   const FILE_NAME: &'static str = "*.spawn";
+  const READ_CHECK: &'static str = "spawn.read";
 
   fn read(path: &Path) -> XrfResult<Self> {
     Self::read_from_path::<XRayByteOrder, _>(&path)

@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 
 use crate::mount::XrayMountPlan;
 use crate::{
@@ -53,11 +53,8 @@ fn install_with(name: &str, fsgame: &str, files: &[&str]) -> PathBuf {
 
 /// An installation declaring its layout under `file_name`, as an Enhanced Edition does under its game's own name.
 fn install_named(name: &str, file_name: &str, fsgame: &str, files: &[&str]) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_mount_plan/{name}"));
+  let root: PathBuf = create_generated_test_resource_dir(&format!("xray_mount_plan/{name}")).expect("install root");
 
-  let _ = fs::remove_dir_all(&root);
-
-  fs::create_dir_all(&root).expect("install root");
   fs::write(root.join(file_name), fsgame).expect("fsgame written");
 
   for file in files {
@@ -221,9 +218,7 @@ fn plans_a_bare_root_without_any_fsgame() {
 
 #[test]
 fn plans_the_root_implied_by_an_asset_and_nothing_when_there_is_none() {
-  let root: PathBuf = build_absolute_generated_test_resource_path("xray_mount_plan/implied");
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf = create_generated_test_resource_dir("xray_mount_plan/implied").expect("implied root");
 
   fs::create_dir_all(root.join("meshes/dynamics")).expect("meshes directory");
   fs::create_dir_all(root.join("textures")).expect("textures directory");
@@ -241,11 +236,7 @@ fn plans_the_root_implied_by_an_asset_and_nothing_when_there_is_none() {
 
 #[test]
 fn reports_an_installation_with_no_fsgame_as_an_error_rather_than_an_empty_plan() {
-  let root: PathBuf = build_absolute_generated_test_resource_path("xray_mount_plan/no_fsgame");
-
-  let _ = fs::remove_dir_all(&root);
-
-  fs::create_dir_all(&root).expect("root");
+  let root: PathBuf = create_generated_test_resource_dir("xray_mount_plan/no_fsgame").expect("root");
 
   assert!(XrayMountPlan::from_fsgame(&root).is_err());
 }

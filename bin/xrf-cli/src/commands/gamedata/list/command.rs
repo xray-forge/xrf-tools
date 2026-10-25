@@ -3,7 +3,8 @@ use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 use xrf_vfs::XrayRoots;
 
-use crate::commands::gamedata::list::asset_lister::{AssetLister, AssetListing};
+use crate::commands::gamedata::list::asset_lister::AssetLister;
+use crate::commands::gamedata::list::asset_listing::AssetListing;
 use crate::commands::gamedata::list::report::GamedataListReport;
 use crate::core::arguments::XrayRootsArguments;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};

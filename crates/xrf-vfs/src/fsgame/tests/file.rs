@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 
 use crate::fsgame::file::FsgameFile;
 
@@ -31,11 +31,7 @@ fn file() -> FsgameFile {
 
 /// An installation holding each of `names` as an fsgame file, scoped by name since tests share the scratch root.
 fn installation(name: &str, names: &[&str]) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("fsgame_file/{name}"));
-
-  let _ = fs::remove_dir_all(&root);
-
-  fs::create_dir_all(&root).expect("installation root");
+  let root: PathBuf = create_generated_test_resource_dir(&format!("fsgame_file/{name}")).expect("installation root");
 
   for name in names {
     fs::write(root.join(name), CONTENTS).expect("fsgame file");

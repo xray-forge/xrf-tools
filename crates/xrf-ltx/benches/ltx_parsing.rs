@@ -7,7 +7,7 @@ use std::{env, fs};
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use xrf_extension::XrayExtension;
 use xrf_ltx::Ltx;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 
 /// Environment variable naming a directory of real `.ltx` files to parse instead of generated ones.
 const CORPUS_VARIABLE: &str = "XRF_BENCH_CORPUS";
@@ -140,12 +140,10 @@ fn synthetic_inheritance_config(sections: usize) -> String {
 
 /// Writes a tree of one entry point over `files` wildcard-included section files, and answers the entry point.
 fn synthetic_tree(files: usize) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("ltx_bench_tree/{files}"));
-  let sections: PathBuf = root.join("sections");
-
   // Cleared because the include is a wildcard: a file an earlier run left behind would join this run's matches and
   // quietly change what the figure describes.
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf = create_generated_test_resource_dir(&format!("ltx_bench_tree/{files}")).expect("tree root");
+  let sections: PathBuf = root.join("sections");
 
   fs::create_dir_all(&sections).expect("sections directory");
 

@@ -120,12 +120,12 @@ mod tests {
         duration: Duration::from_millis(7),
         findings: vec![
           Finding::new(
-            RuleId::new("textures.dds").expect("Expected a non-empty test rule ID"),
+            RuleId::of_static("textures.dds"),
             Some(root.join("textures").join("z.dds").display().to_string()),
             "Second finding",
           ),
           Finding::new(
-            RuleId::new("textures.dds").expect("Expected a non-empty test rule ID"),
+            RuleId::of_static("textures.dds"),
             Some(root.join("textures").join("a.dds").display().to_string()),
             "First finding",
           ),

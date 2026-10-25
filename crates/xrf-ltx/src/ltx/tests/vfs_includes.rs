@@ -3,15 +3,13 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 use xrf_vfs::{XrayLookupScope, XraySearch, XrayVfs};
 
 use crate::ltx::Ltx;
 
 fn mount_search(name: &str, files: &[(&str, &str)]) -> XraySearch {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("ltx_vfs_includes/{name}"));
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf = create_generated_test_resource_dir(&format!("ltx_vfs_includes/{name}")).expect("config root");
 
   for (path, contents) in files {
     let path: PathBuf = root.join(path.replace('\\', "/"));

@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_dds::ImageFormat;
 use xrf_output::OutputOptions;
-use xrf_texture::{SpriteDescriptionOptions, SpriteDescriptionResult, UnpackDescriptionProcessor};
+use xrf_texture::{DescriptionSpriteOptions, DescriptionSpriteResult, DescriptionSpriteUnpacker};
 use xrf_utils::format_path;
 
 use crate::commands::sprite::pack_description::report::SpriteDescriptionReport;
@@ -85,8 +85,8 @@ impl GenericCommand for UnpackDescriptionCommand {
       format_path(destination)
     );
 
-    let options: SpriteDescriptionOptions = SpriteDescriptionOptions {
-      job: CliJob::new_logging(),
+    let options: DescriptionSpriteOptions = DescriptionSpriteOptions {
+      job: CliJob::for_output(&output),
       description: description.clone(),
       base: base.clone(),
       output: output.clone(),
@@ -97,7 +97,7 @@ impl GenericCommand for UnpackDescriptionCommand {
       link_policy: LinkPolicyArgument::of(matches),
     };
 
-    let result: SpriteDescriptionResult = UnpackDescriptionProcessor::unpack_xml_descriptions(&options)?;
+    let result: DescriptionSpriteResult = DescriptionSpriteUnpacker::unpack_xml_descriptions(&options)?;
 
     xrf_output::success!(
       output,

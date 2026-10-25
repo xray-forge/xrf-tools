@@ -42,7 +42,7 @@ impl GenericCommand for InitializeCommand {
       TranslationInitializeOptions::default().with_output(output.clone()),
     )?;
 
-    xrf_output::info!(
+    xrf_output::success!(
       output,
       "Initialized {}/{} translation source(s) in {}, {} key(s) added",
       result.files_initialized,

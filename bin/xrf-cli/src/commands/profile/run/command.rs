@@ -8,7 +8,7 @@ use super::profile_run_binary_report::ProfileRunBinaryReport;
 use super::profile_subject::ProfileSubject;
 use super::report::ProfileRunReport;
 use super::rounds::RoundStatistics;
-use super::sample::SampledRun;
+use super::sampled_run::SampledRun;
 use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 /// Rounds measured when the caller names no count.

@@ -3,12 +3,7 @@ use std::fmt::Display;
 use colored::Colorize;
 use xrf_output::{Output, OutputChannel};
 
-/// Which of the process streams a message is written to.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum TerminalStream {
-  Stdout,
-  Stderr,
-}
+use crate::core::terminal::terminal_stream::TerminalStream;
 
 /// Terminal renderer for live workflow output.
 ///
@@ -67,7 +62,8 @@ impl Output for TerminalOutput {
 mod tests {
   use xrf_output::OutputChannel;
 
-  use super::{TerminalOutput, TerminalStream};
+  use super::TerminalOutput;
+  use crate::core::terminal::terminal_stream::TerminalStream;
 
   const RESULT_CHANNELS: [OutputChannel; 4] = [
     OutputChannel::Heading,

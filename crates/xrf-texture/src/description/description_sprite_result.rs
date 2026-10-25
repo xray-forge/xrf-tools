@@ -8,7 +8,7 @@ use serde::Serialize;
 /// read as a complete one.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SpriteDescriptionResult {
+pub struct DescriptionSpriteResult {
   #[serde(with = "xrf_utils::duration_ms")]
   pub duration: Duration,
   /// Described files written: a packed sheet, or an unpacked sheet's folder of sprites.
@@ -21,7 +21,7 @@ pub struct SpriteDescriptionResult {
   pub skipped_sprites: u32,
 }
 
-impl SpriteDescriptionResult {
+impl DescriptionSpriteResult {
   /// One file written, holding `sprites` and passing over `skipped_sprites`.
   pub(crate) fn written(sprites: u32, skipped_sprites: u32) -> Self {
     Self {

@@ -4,6 +4,9 @@ use serde::Serialize;
 use xrf_ogf::OgfResidue;
 
 /// One visual whose bytes `ogf fix` changed, or would change on a dry run.
+///
+/// The bytes discarded are the two sizes' difference, and whether the file was written is the report's `isDryRun`, so
+/// neither is carried again here.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OgfFixFileReport {
@@ -13,9 +16,6 @@ pub struct OgfFixFileReport {
   destination: String,
   /// The motion reference path the residue completed, for the split-reference shape only.
   discarded_reference: Option<String>,
-  /// Bytes the source carried that the engine never read, inside the motion refs chunk and after it.
-  pub discarded_size: usize,
-  is_written: bool,
   normalized_size: usize,
   original_size: usize,
   source: String,
@@ -28,7 +28,6 @@ impl OgfFixFileReport {
     original_size: usize,
     normalized_size: usize,
     residue: Option<&OgfResidue>,
-    is_written: bool,
   ) -> Self {
     Self {
       cause: residue.map(|residue| String::from(residue.cause.as_str())),
@@ -36,11 +35,14 @@ impl OgfFixFileReport {
       discarded_reference: residue
         .and_then(|residue| residue.cause.get_discarded_path())
         .map(String::from),
-      discarded_size: original_size.saturating_sub(normalized_size),
-      is_written,
       normalized_size,
       original_size,
       source: xrf_utils::to_portable_path_string(source),
     }
+  }
+
+  /// Bytes the source carried that the engine never read, inside the motion refs chunk and after it.
+  pub fn discarded_size(&self) -> usize {
+    self.original_size.saturating_sub(self.normalized_size)
   }
 }

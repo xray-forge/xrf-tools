@@ -14,6 +14,7 @@ xrf-utils = { workspace = true }
 
 [dev-dependencies]
 xrf-test-utils = { workspace = true }
+xrf-utils = { workspace = true, features = ["staging-faults"] }
 
 [lints]
 workspace = true

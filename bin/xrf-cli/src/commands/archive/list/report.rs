@@ -12,13 +12,11 @@ use crate::commands::archive::list::archive_shared_payload_index::ArchiveSharedP
 #[serde(rename_all = "camelCase")]
 pub struct ArchiveListReport {
   entries: Vec<ArchiveEntryReport>,
-  total: usize,
 }
 
 impl ArchiveListReport {
   pub fn new(project: &ArchiveProject, entries: &[&ArchiveFileDescriptor], shared: &ArchiveSharedPayloadIndex) -> Self {
     Self {
-      total: entries.len(),
       entries: ArchiveEntryReport::list(project, entries, shared),
     }
   }

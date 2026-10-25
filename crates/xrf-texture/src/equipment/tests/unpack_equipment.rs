@@ -7,25 +7,22 @@ use image::{Rgba, RgbaImage};
 use xrf_dds::ImageFormat;
 use xrf_error::XrfError;
 use xrf_ltx::Ltx;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
 
-use crate::equipment::{UnpackEquipmentOptions, UnpackEquipmentProcessor};
+use crate::equipment::{EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker};
 
 const SENTINEL: &[u8] = b"sentinel";
 
 fn create_root(name: &str) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("equipment-unpack/{name}"));
+  let root: PathBuf = create_generated_test_resource_dir(&format!("equipment-unpack/{name}")).expect("test root");
 
-  let _ = fs::remove_dir_all(&root);
-
-  fs::create_dir_all(&root).expect("test root");
   fs::write(root.join("victim.dds"), SENTINEL).expect("sentinel beside the destination");
 
   root
 }
 
 /// One icon per section, laid out left to right in grid order.
-fn options_for(root: &Path, sections: &[&str]) -> UnpackEquipmentOptions {
+fn options_for(root: &Path, sections: &[&str]) -> EquipmentSpriteUnpackOptions {
   let mut ltx: Ltx = Ltx::new();
 
   for (index, section) in sections.iter().enumerate() {
@@ -38,7 +35,7 @@ fn options_for(root: &Path, sections: &[&str]) -> UnpackEquipmentOptions {
       .set("inv_grid_height", "1");
   }
 
-  UnpackEquipmentOptions {
+  EquipmentSpriteUnpackOptions {
     job: Default::default(),
     ltx,
     source: RgbaImage::from_pixel(50 * sections.len() as u32, 50, Rgba([255, 255, 255, 255])),
@@ -74,7 +71,7 @@ fn refuses_a_section_name_that_leaves_the_destination() {
     let root: PathBuf = create_root(&format!("escape-{index}"));
 
     // A valid icon is listed first, so a run that wrote before it checked would leave it behind.
-    let result = UnpackEquipmentProcessor::unpack_sprites(options_for(&root, &["wpn_valid", section]));
+    let result = EquipmentSpriteUnpacker::unpack_sprites(options_for(&root, &["wpn_valid", section]));
 
     assert!(
       matches!(result, Err(XrfError::Invalid { .. })),
@@ -93,7 +90,7 @@ fn refuses_a_section_name_that_leaves_the_destination() {
 fn writes_each_icon_under_its_section_name_as_spelled() {
   let root: PathBuf = create_root("valid");
 
-  UnpackEquipmentProcessor::unpack_sprites(options_for(&root, &["wpn_AK74", "wpn ak74 (old)"])).expect("unpack");
+  EquipmentSpriteUnpacker::unpack_sprites(options_for(&root, &["wpn_AK74", "wpn ak74 (old)"])).expect("unpack");
 
   assert!(root.join("out").join("wpn_AK74.dds").is_file());
   assert!(root.join("out").join("wpn ak74 (old).dds").is_file());

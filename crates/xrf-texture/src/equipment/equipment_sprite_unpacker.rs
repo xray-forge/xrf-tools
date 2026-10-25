@@ -4,13 +4,13 @@ use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
 use xrf_utils::{HostDestination, HostRelativePath};
 
-use crate::equipment::{InventorySpriteDescriptor, UnpackEquipmentOptions};
+use crate::equipment::{EquipmentSpriteUnpackOptions, InventorySpriteDescriptor};
 use crate::image_file::save_image_as_ui_dds;
 
-pub struct UnpackEquipmentProcessor {}
+pub struct EquipmentSpriteUnpacker {}
 
-impl UnpackEquipmentProcessor {
-  pub fn unpack_sprites(options: UnpackEquipmentOptions) -> XrfResult {
+impl EquipmentSpriteUnpacker {
+  pub fn unpack_sprites(options: EquipmentSpriteUnpackOptions) -> XrfResult {
     let mut count: u32 = 0;
     let sprites: Vec<InventorySpriteDescriptor> = InventorySpriteDescriptor::new_list_from_ltx(&options.ltx);
 
@@ -42,7 +42,7 @@ impl UnpackEquipmentProcessor {
   }
 
   pub fn unpack_sprite(
-    options: &UnpackEquipmentOptions,
+    options: &EquipmentSpriteUnpackOptions,
     destination: &HostDestination,
     sprite: &InventorySpriteDescriptor,
   ) -> XrfResult<bool> {

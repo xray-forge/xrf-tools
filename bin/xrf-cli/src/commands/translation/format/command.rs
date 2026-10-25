@@ -68,7 +68,7 @@ impl GenericCommand for FormatCommand {
     let options: TranslationFormatOptions = TranslationFormatOptions::default()
       // Created before the sources are discovered, because its clock is what the result reports as the total:
       // selecting them over a large tree is part of the wait.
-      .with_job(CliJob::new_logging())
+      .with_job(CliJob::for_output(&output))
       .with_output(output)
       .with_line_endings(line_endings);
 

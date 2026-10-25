@@ -10,7 +10,8 @@ use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
 use crate::commands::dialog::info::command::InfoCommand;
-use crate::commands::dialog::info::dialog_sweep::{DialogSweep, DialogSweepResult};
+use crate::commands::dialog::info::dialog_sweep::DialogSweep;
+use crate::commands::dialog::info::dialog_sweep_result::DialogSweepResult;
 use crate::core::command::command_testing::run_command_for_result;
 use crate::core::command::{CommandError, CommandResult};
 

@@ -1,5 +1,6 @@
 use std::io::Write;
 use std::path::Path;
+use std::sync::Arc;
 
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
@@ -19,8 +20,8 @@ pub struct OgfTextureRefsProcessor {}
 impl OgfTextureRefsProcessor {
   /// Rename a texture reference of an ogf file, verifying the result before letting it survive.
   ///
-  /// The source is read once, and the patched bytes are checked before anything is written, so a refused patch leaves
-  /// the destination as it was and a written one replaces it whole.
+  /// The source is read once, and every pass over it reads that one buffer. The patched bytes are checked before
+  /// anything is written, so a refused patch leaves the destination as it was and a written one replaces it whole.
   pub fn patch_texture_refs_to_path<T: ByteOrder>(
     source: &Path,
     destination: &Path,
@@ -28,12 +29,15 @@ impl OgfTextureRefsProcessor {
     to: &str,
     is_dry_run: bool,
   ) -> XrfResult<OgfRefsPatchReport> {
-    let original: Vec<u8> = OgfRawPatch::read_source(source)?;
-    let existing: Vec<String> = OgfFile::read_texture_refs_from_bytes::<T>(original.clone())?;
+    let original: Arc<Vec<u8>> = Arc::new(OgfRawPatch::read_source(source)?);
+    let existing: Vec<String> =
+      OgfFile::read_texture_refs_from_chunk::<T, _>(&mut ChunkReader::from_shared(Arc::clone(&original))?)?;
 
     Self::assert_chunk_copy_is_lossless::<T>(source, &original, from)?;
 
-    let (patched, patched_count) = Self::write_texture_refs_to_buffer::<T>(original.clone(), from, to)?;
+    let (patched, patched_count) =
+      Self::write_texture_refs::<T>(ChunkReader::from_shared(Arc::clone(&original))?, from, to)?;
+    let patched: Arc<Vec<u8>> = Arc::new(patched);
 
     if patched_count == 0 {
       return Err(XrfError::new_verify_error(format!(
@@ -66,8 +70,16 @@ impl OgfTextureRefsProcessor {
 
   /// Rename texture references of the ogf file `bytes` hold, copying every other chunk verbatim.
   pub fn write_texture_refs_to_buffer<T: ByteOrder>(bytes: Vec<u8>, from: &str, to: &str) -> XrfResult<(Vec<u8>, u32)> {
-    let (mut chunks, _) =
-      OgfResidue::read_root_chunks::<T, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_vec(bytes)?)?;
+    Self::write_texture_refs::<T>(ChunkReader::from_vec(bytes)?, from, to)
+  }
+
+  /// Rename texture references of the ogf file `reader` opens, copying every other chunk verbatim.
+  fn write_texture_refs<T: ByteOrder>(
+    mut reader: ChunkReader<InMemoryChunkDataSource>,
+    from: &str,
+    to: &str,
+  ) -> XrfResult<(Vec<u8>, u32)> {
+    let (mut chunks, _) = OgfResidue::read_root_chunks::<T, _>(&mut reader)?;
     let mut buffer: Vec<u8> = Vec::new();
     let mut patched_count: u32 = 0;
 
@@ -144,8 +156,8 @@ impl OgfTextureRefsProcessor {
   }
 
   /// Guard that a rename which changes nothing reproduces the source file, normalized.
-  fn assert_chunk_copy_is_lossless<T: ByteOrder>(source: &Path, original: &[u8], from: &str) -> XrfResult {
-    let (reverted, _) = Self::write_texture_refs_to_buffer::<T>(original.to_vec(), from, from)?;
+  fn assert_chunk_copy_is_lossless<T: ByteOrder>(source: &Path, original: &Arc<Vec<u8>>, from: &str) -> XrfResult {
+    let (reverted, _) = Self::write_texture_refs::<T>(ChunkReader::from_shared(Arc::clone(original))?, from, from)?;
 
     OgfRawPatch::assert_chunk_copy_is_lossless::<T>(
       source,
@@ -156,8 +168,9 @@ impl OgfTextureRefsProcessor {
   }
 
   /// Verify the patched bytes name the new reference and no longer name the old one.
-  fn assert_patched_refs_match<T: ByteOrder>(source: &Path, patched: &[u8], from: &str, to: &str) -> XrfResult {
-    let patched_refs: Vec<String> = OgfFile::read_texture_refs_from_bytes::<T>(patched.to_vec())?;
+  fn assert_patched_refs_match<T: ByteOrder>(source: &Path, patched: &Arc<Vec<u8>>, from: &str, to: &str) -> XrfResult {
+    let patched_refs: Vec<String> =
+      OgfFile::read_texture_refs_from_chunk::<T, _>(&mut ChunkReader::from_shared(Arc::clone(patched))?)?;
 
     if patched_refs.iter().any(|it| it == from) {
       return Err(XrfError::new_verify_error(format!(

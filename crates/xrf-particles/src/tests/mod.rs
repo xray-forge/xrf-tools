@@ -1,1 +1,2 @@
 mod malformed;
+mod publication;

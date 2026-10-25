@@ -166,7 +166,6 @@ impl<'a> OgfFixer<'a> {
       original.len(),
       normalization.bytes.len(),
       normalization.residue.as_ref(),
-      !self.is_dry_run,
     ))
   }
 

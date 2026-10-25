@@ -46,9 +46,10 @@ impl GenericCommand for ParseCommand {
           .value_parser(value_parser!(String)),
       )
       .arg(
-        Arg::new("overwrite")
+        Arg::new("force")
           .help("Replace existing text that differs, instead of keeping what is already there")
-          .long("overwrite")
+          .short('f')
+          .long("force")
           .action(ArgAction::SetTrue),
       )
       .arg(
@@ -75,7 +76,7 @@ impl GenericCommand for ParseCommand {
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
     let options: TranslationParseOptions = TranslationParseOptions {
-      job: CliJob::new_logging(),
+      job: CliJob::for_output(&output),
       output: output.clone(),
       roots: XrayRootsArguments::of(matches)?,
       prefix: XrayRootsArguments::prefix_of(matches).map(str::to_owned),
@@ -90,7 +91,7 @@ impl GenericCommand for ParseCommand {
         .expect("Expected valid output folder path to be provided")
         .clone(),
       file: matches.get_one::<String>("file").cloned(),
-      is_overwrite: matches.get_flag("overwrite"),
+      is_overwrite: matches.get_flag("force"),
       is_dry_run: matches.get_flag("dry-run"),
       link_policy: LinkPolicyArgument::of(matches),
     };

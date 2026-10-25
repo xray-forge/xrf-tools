@@ -17,8 +17,8 @@ pub struct LevelVisualsReport {
   textured: usize,
   /// Vertices the drawable visuals address, counting a shared vertex once per visual that names it.
   vertices: u64,
+  /// Indices of a triangle list, so a third of them is the triangle count.
   indices: u64,
-  triangles: u64,
   /// Distinct geometry ranges the drawable visuals name.
   unique_ranges: usize,
   /// How many visuals of each engine model type, by `MT_*` identifier.
@@ -94,7 +94,6 @@ impl LevelVisualsReport {
       model_types,
       textured: visuals.visuals.iter().filter(|it| it.texture.is_some()).count(),
       total: visuals.visuals.len(),
-      triangles: indices / 3,
       unique_ranges: ranges.len(),
       vertices,
     }

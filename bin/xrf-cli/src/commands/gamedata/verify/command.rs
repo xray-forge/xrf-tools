@@ -48,8 +48,9 @@ impl GenericCommand for VerifyCommand {
       )
       .arg(
         Arg::new("checks")
-          .help("List of checks to perform")
+          .help("Checks to run, comma-separated or repeated; every check when omitted")
           .long("checks")
+          .action(ArgAction::Append)
           .value_delimiter(',')
           .num_args(1..)
           .value_parser(value_parser!(GamedataVerificationType)),
@@ -104,7 +105,7 @@ impl GenericCommand for VerifyCommand {
       output: output.clone(),
       is_strict,
       checks,
-      job: CliJob::new_logging(),
+      job: CliJob::for_output(&output),
     };
 
     xrf_output::heading!(output, "Opening gamedata project");
@@ -143,5 +144,40 @@ impl GenericCommand for VerifyCommand {
     );
 
     ReportVerdict::conclude(&output, &report, "Gamedata project")
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use clap::ArgMatches;
+  use xrf_gamedata::GamedataVerificationType;
+
+  use super::VerifyCommand;
+  use crate::core::command::GenericCommand;
+
+  fn checks(arguments: &[&str]) -> Vec<GamedataVerificationType> {
+    let matches: ArgMatches = VerifyCommand.init().try_get_matches_from(arguments).unwrap();
+
+    matches
+      .get_many::<GamedataVerificationType>("checks")
+      .unwrap()
+      .copied()
+      .collect()
+  }
+
+  /// A set-valued option takes its members comma-separated, repeated, or both, and all spell the same set.
+  #[test]
+  fn reads_checks_comma_separated_or_repeated() {
+    let expected: Vec<GamedataVerificationType> =
+      vec![GamedataVerificationType::Ltx, GamedataVerificationType::Animations];
+
+    assert_eq!(
+      checks(&["verify", "-p", "root", "--checks", "ltx,animations"]),
+      expected
+    );
+    assert_eq!(
+      checks(&["verify", "-p", "root", "--checks", "ltx", "--checks", "animations"]),
+      expected
+    );
   }
 }

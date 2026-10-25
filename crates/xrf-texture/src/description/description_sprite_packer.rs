@@ -8,18 +8,18 @@ use xrf_extension::XrayExtension;
 use xrf_utils::{HostDestination, HostRelativePath, assert_equal, format_path};
 
 use crate::description::{
-  SpriteDescriptionOptions, SpriteDescriptionResult, TextureFileDescriptor, XmlDescriptionCollection,
+  DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor, XmlDescriptionCollection,
 };
 use crate::image_file::{UI_MIPMAP_LEVELS, UI_MIPMAPS, save_image_as_ui_dds, warn_on_reshaped_ui_dds};
 
-pub struct PackDescriptionProcessor {}
+pub struct DescriptionSpritePacker {}
 
-impl PackDescriptionProcessor {
+impl DescriptionSpritePacker {
   /// Packs the sheets the description declares, every one or those `options` names, and answers what was written.
-  pub fn pack_xml_descriptions(options: &SpriteDescriptionOptions) -> XrfResult<SpriteDescriptionResult> {
+  pub fn pack_xml_descriptions(options: &DescriptionSpriteOptions) -> XrfResult<DescriptionSpriteResult> {
     let started_at: Instant = Instant::now();
     let description: XmlDescriptionCollection = XmlDescriptionCollection::get_descriptions(options)?;
-    let mut result: SpriteDescriptionResult = SpriteDescriptionResult::default();
+    let mut result: DescriptionSpriteResult = DescriptionSpriteResult::default();
 
     let selected: Vec<&TextureFileDescriptor> = description.select_files(options)?;
 
@@ -43,7 +43,7 @@ impl PackDescriptionProcessor {
 
     xrf_output::info!(options.output, "Packed {} files", result.files);
 
-    Ok(SpriteDescriptionResult {
+    Ok(DescriptionSpriteResult {
       duration: started_at.elapsed(),
       ..result
     })
@@ -51,9 +51,9 @@ impl PackDescriptionProcessor {
 
   /// Packs one described sheet, answering how many of its sprites were placed and how many could not be read.
   pub fn pack_xml_description(
-    options: &SpriteDescriptionOptions,
+    options: &DescriptionSpriteOptions,
     file: &TextureFileDescriptor,
-  ) -> XrfResult<SpriteDescriptionResult> {
+  ) -> XrfResult<DescriptionSpriteResult> {
     let relative_path: HostRelativePath = file.to_host_relative_path()?;
     let sprite_paths: Vec<HostRelativePath> = file.to_sprite_paths()?;
     let full_name: PathBuf = options
@@ -141,6 +141,6 @@ impl PackDescriptionProcessor {
 
     save_image_as_ui_dds(&destination, &result, options.dds_compression_format, UI_MIPMAPS)?;
 
-    Ok(SpriteDescriptionResult::written(placed, skipped))
+    Ok(DescriptionSpriteResult::written(placed, skipped))
   }
 }

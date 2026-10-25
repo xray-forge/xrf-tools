@@ -16,13 +16,13 @@ pub use crate::build::{
 pub use crate::bump::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
 pub use crate::crop::{CropTextureOptions, CropTextureProcessor, CropTextureResult};
 pub use crate::description::{
-  PackDescriptionProcessor, SpriteDescriptionOptions, SpriteDescriptionResult, TextureFileDescriptor,
-  TextureSpriteDescriptor, UnpackDescriptionProcessor,
+  DescriptionSpriteOptions, DescriptionSpritePacker, DescriptionSpriteResult, DescriptionSpriteUnpacker,
+  TextureFileDescriptor, TextureSpriteDescriptor,
 };
 pub use crate::encoding::{TextureEncodingFormat, TextureEncodingQuality};
 pub use crate::equipment::{
-  EquipmentGridOverlap, EquipmentSlotClaim, EquipmentSlotOccupant, InventorySpriteDescriptor, PackEquipmentOptions,
-  PackEquipmentProcessor, PackEquipmentResult, UnpackEquipmentOptions, UnpackEquipmentProcessor,
-  VerifyEquipmentGridProcessor,
+  EquipmentGridOverlap, EquipmentGridVerifier, EquipmentSlotClaim, EquipmentSlotOccupant, EquipmentSpritePackOptions,
+  EquipmentSpritePackResult, EquipmentSpritePacker, EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker,
+  InventorySpriteDescriptor,
 };
 pub use crate::image_file::{ImageShape, read_image_as_rgba};

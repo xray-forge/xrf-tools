@@ -6,18 +6,12 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfError;
 use xrf_test_utils::links::{link_directory, link_file};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::create_generated_test_resource_dir;
 
 use crate::{HostDestination, HostLinkPolicy, HostRelativePath};
 
 fn create_directory(name: &str) -> PathBuf {
-  let directory: PathBuf = build_absolute_generated_test_resource_path(&format!("host-path/{name}"));
-
-  let _ = fs::remove_dir_all(&directory);
-
-  fs::create_dir_all(&directory).expect("temporary directory");
-
-  directory
+  create_generated_test_resource_dir(&format!("host-path/{name}")).expect("temporary directory")
 }
 
 /// A directory outside the root, holding a file no write is allowed to touch unless the layout sends it there.

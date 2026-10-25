@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::Write;
 use std::path::Path;
+use std::sync::Arc;
 
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource};
@@ -37,8 +38,8 @@ impl ThmBumpProcessor {
 
   /// Rewrite the bump declaration of a thm file, verifying the result before letting it survive.
   ///
-  /// The source is read once, and the patched bytes are checked before anything is written, so a refused patch leaves
-  /// the destination as it was and a written one replaces it whole.
+  /// The source is read once, and every pass over it reads that one buffer. The patched bytes are checked before
+  /// anything is written, so a refused patch leaves the destination as it was and a written one replaces it whole.
   pub fn patch_bump_to_path<T: ByteOrder>(
     source: &Path,
     destination: &Path,
@@ -46,8 +47,8 @@ impl ThmBumpProcessor {
     mode: Option<ThmBumpMode>,
     is_dry_run: bool,
   ) -> XrfResult<ThmBumpPatchReport> {
-    let original: Vec<u8> = Self::read_source(source)?;
-    let existing: ThmBumpChunk = Self::read_bump(source, original.clone())?;
+    let original: Arc<Vec<u8>> = Arc::new(Self::read_source(source)?);
+    let existing: ThmBumpChunk = Self::read_bump::<T>(source, &original)?;
 
     Self::assert_chunk_copy_is_lossless::<T>(source, &original, &existing)?;
 
@@ -57,9 +58,12 @@ impl ThmBumpProcessor {
       name: bump_name.map_or_else(|| existing.name.clone(), str::to_owned),
     };
 
-    let patched: Vec<u8> = Self::write_bump_name_to_buffer::<T>(original.clone(), &patch)?;
+    let patched: Arc<Vec<u8>> = Arc::new(Self::write_bump::<T>(
+      ChunkReader::from_shared(Arc::clone(&original))?,
+      &patch,
+    )?);
 
-    Self::assert_patched_bump_matches(source, patched.clone(), &patch)?;
+    Self::assert_patched_bump_matches::<T>(source, &patched, &patch)?;
 
     let report: ThmBumpPatchReport = ThmBumpPatchReport {
       original_size: original.len(),
@@ -78,8 +82,15 @@ impl ThmBumpProcessor {
 
   /// Rewrite the bump chunk of the thm file `bytes` hold, copying every other chunk verbatim.
   pub fn write_bump_name_to_buffer<T: ByteOrder>(bytes: Vec<u8>, bump: &ThmBumpChunk) -> XrfResult<Vec<u8>> {
-    let mut chunks: Vec<ChunkReader<InMemoryChunkDataSource>> =
-      ChunkReader::from_vec(bytes)?.read_children_including_compressed()?;
+    Self::write_bump::<T>(ChunkReader::from_vec(bytes)?, bump)
+  }
+
+  /// Rewrite the bump chunk of the thm file `reader` opens, copying every other chunk verbatim.
+  fn write_bump<T: ByteOrder>(
+    mut reader: ChunkReader<InMemoryChunkDataSource>,
+    bump: &ThmBumpChunk,
+  ) -> XrfResult<Vec<u8>> {
+    let mut chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = reader.read_children_including_compressed()?;
     let mut buffer: Vec<u8> = Vec::new();
     let mut patched_count: u32 = 0;
 
@@ -123,17 +134,21 @@ impl ThmBumpProcessor {
   }
 
   /// The bump declaration of the thm file `bytes` hold, read from `source`.
-  fn read_bump(source: &Path, bytes: Vec<u8>) -> XrfResult<ThmBumpChunk> {
-    ThmFile::read_from_bytes::<xrf_chunk::XRayByteOrder>(bytes)?
+  fn read_bump<T: ByteOrder>(source: &Path, bytes: &Arc<Vec<u8>>) -> XrfResult<ThmBumpChunk> {
+    ThmFile::read_from_chunk::<T, _>(&mut ChunkReader::from_shared(Arc::clone(bytes))?)?
       .bump
       .ok_or_else(|| XrfError::new_not_found_error(format!("THM file declares no bump chunk: {}", format_path(source))))
   }
 
   /// Guard that rewriting the declaration a file already has reproduces that file byte for byte.
-  fn assert_chunk_copy_is_lossless<T: ByteOrder>(source: &Path, original: &[u8], existing: &ThmBumpChunk) -> XrfResult {
-    let reverted: Vec<u8> = Self::write_bump_name_to_buffer::<T>(original.to_vec(), existing)?;
+  fn assert_chunk_copy_is_lossless<T: ByteOrder>(
+    source: &Path,
+    original: &Arc<Vec<u8>>,
+    existing: &ThmBumpChunk,
+  ) -> XrfResult {
+    let reverted: Vec<u8> = Self::write_bump::<T>(ChunkReader::from_shared(Arc::clone(original))?, existing)?;
 
-    if reverted != original {
+    if reverted != **original {
       return Err(XrfError::new_verify_error(format!(
         "Refused to patch {}, rewriting its existing bump declaration did not reproduce the source file, {} bytes original and {} bytes rewritten",
         format_path(source),
@@ -146,10 +161,15 @@ impl ThmBumpProcessor {
   }
 
   /// Guard that the patched bytes read back exactly the requested declaration.
-  fn assert_patched_bump_matches(source: &Path, patched: Vec<u8>, expected: &ThmBumpChunk) -> XrfResult {
-    let read_back: ThmBumpChunk = ThmFile::read_from_bytes::<xrf_chunk::XRayByteOrder>(patched)?
-      .bump
-      .ok_or_else(|| XrfError::new_verify_error(format!("Patched {} declares no bump chunk", format_path(source))))?;
+  fn assert_patched_bump_matches<T: ByteOrder>(
+    source: &Path,
+    patched: &Arc<Vec<u8>>,
+    expected: &ThmBumpChunk,
+  ) -> XrfResult {
+    let read_back: ThmBumpChunk =
+      ThmFile::read_from_chunk::<T, _>(&mut ChunkReader::from_shared(Arc::clone(patched))?)?
+        .bump
+        .ok_or_else(|| XrfError::new_verify_error(format!("Patched {} declares no bump chunk", format_path(source))))?;
 
     if &read_back != expected {
       return Err(XrfError::new_verify_error(format!(

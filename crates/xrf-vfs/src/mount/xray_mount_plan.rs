@@ -277,16 +277,12 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
 
   use super::{VolumeScan, XrayMountPlan};
 
   fn directory(name: &str, files: &[&str]) -> PathBuf {
-    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_mount_plan/{name}"));
-
-    let _ = fs::remove_dir_all(&root);
-
-    fs::create_dir_all(&root).expect("scan root");
+    let root: PathBuf = create_generated_test_resource_dir(&format!("xray_mount_plan/{name}")).expect("scan root");
 
     for file in files {
       fs::write(root.join(file), []).expect("scanned file");

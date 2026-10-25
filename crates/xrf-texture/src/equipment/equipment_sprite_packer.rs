@@ -10,18 +10,18 @@ use xrf_utils::format_path;
 use xrf_vfs::XrayLogicalPath;
 
 use crate::equipment::{
-  EXTENSIONS_DIRECTORY, InventorySpriteDescriptor, LTX_PATH_EXTENSION_MARKER, LTX_PATH_EXTENSION_MARKER_PREFIX,
-  LTX_PATH_GAMEDATA_MARKER, LTX_PATH_GAMEDATA_MARKER_PREFIX, PackEquipmentOptions, PackEquipmentResult,
-  RESOURCES_DIRECTORY, TEXTURES_DIRECTORY,
+  EXTENSIONS_DIRECTORY, EquipmentSpritePackOptions, EquipmentSpritePackResult, InventorySpriteDescriptor,
+  LTX_PATH_EXTENSION_MARKER, LTX_PATH_EXTENSION_MARKER_PREFIX, LTX_PATH_GAMEDATA_MARKER,
+  LTX_PATH_GAMEDATA_MARKER_PREFIX, RESOURCES_DIRECTORY, TEXTURES_DIRECTORY,
 };
 use crate::image_file::{
   UI_MIPMAP_LEVELS, UI_MIPMAPS, fit_image_into_bounds, save_image_as_ui_dds, warn_on_reshaped_ui_dds,
 };
 
-pub struct PackEquipmentProcessor {}
+pub struct EquipmentSpritePacker {}
 
-impl PackEquipmentProcessor {
-  pub fn pack_sprites(options: PackEquipmentOptions) -> XrfResult<PackEquipmentResult> {
+impl EquipmentSpritePacker {
+  pub fn pack_sprites(options: EquipmentSpritePackOptions) -> XrfResult<EquipmentSpritePackResult> {
     let started_at: Instant = Instant::now();
 
     let mut count: u32 = 0;
@@ -121,7 +121,7 @@ impl PackEquipmentProcessor {
       }
     }
 
-    Ok(PackEquipmentResult {
+    Ok(EquipmentSpritePackResult {
       outcome,
       duration: started_at.elapsed(),
       saved_at: options.output_path.clone(),
@@ -138,7 +138,7 @@ impl PackEquipmentProcessor {
   /// reported. Without this, updating a weapon's icon and forgetting its variants looks like it worked:
   /// the pack succeeds, the count is unchanged, and the variant packed later quietly wins.
   fn warn_on_conflicting_slot(
-    options: &PackEquipmentOptions,
+    options: &EquipmentSpritePackOptions,
     occupied_slots: &mut HashMap<(u32, u32), (String, Vec<u8>)>,
     slot: (u32, u32),
     section: &str,
@@ -164,7 +164,7 @@ impl PackEquipmentProcessor {
   }
 
   /// Fail once with every section that declares inventory grid coordinates but has no icon to pack.
-  fn assert_every_section_has_an_icon(options: &PackEquipmentOptions, skipped_sections: &[&str]) -> XrfResult {
+  fn assert_every_section_has_an_icon(options: &EquipmentSpritePackOptions, skipped_sections: &[&str]) -> XrfResult {
     if !options.is_strict || skipped_sections.is_empty() {
       return Ok(());
     }
@@ -177,7 +177,7 @@ impl PackEquipmentProcessor {
   }
 
   pub fn read_sprite(
-    options: &PackEquipmentOptions,
+    options: &EquipmentSpritePackOptions,
     sprite: &InventorySpriteDescriptor,
   ) -> XrfResult<Option<(PathBuf, DynamicImage)>> {
     let (_, _, w, h) = sprite.get_boundaries();
@@ -212,7 +212,7 @@ impl PackEquipmentProcessor {
 
   /// Read equipment icon from custom path defined in ltx config directory.
   pub fn read_sprite_path(
-    options: &PackEquipmentOptions,
+    options: &EquipmentSpritePackOptions,
     descriptor: &InventorySpriteDescriptor,
   ) -> XrfResult<PathBuf> {
     match descriptor.custom_icon.as_deref() {
@@ -293,7 +293,7 @@ mod tests {
   use image::{DynamicImage, RgbaImage};
   use xrf_test_utils::utils::write_generated_test_resource;
 
-  use super::PackEquipmentProcessor;
+  use super::EquipmentSpritePacker;
 
   /// The reader picked its decoder with a byte-exact `Path::extension` comparison, so an icon the author saved as
   /// `.PNG` went to the DDS reader, which fails on the first four bytes - and a failed icon is only a warning, so the
@@ -308,7 +308,7 @@ mod tests {
       .expect("expect the icon to be written as a PNG");
 
     let icon: DynamicImage =
-      PackEquipmentProcessor::read_sprite_from_path(&path, 4, 4).expect("expect the icon to be decoded");
+      EquipmentSpritePacker::read_sprite_from_path(&path, 4, 4).expect("expect the icon to be decoded");
 
     assert_eq!((icon.width(), icon.height()), (4, 4));
   }

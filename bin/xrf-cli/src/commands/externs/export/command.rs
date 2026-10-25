@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::time::Instant;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
@@ -9,10 +10,13 @@ use xrf_export::{
   write_extern_manifest,
 };
 use xrf_output::OutputOptions;
+use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_utils::{LineEndings, format_path, normalize_line_endings};
 
+use super::externs_check_report::ExternsCheckReport;
 use super::report::ExternsExportReport;
-use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
+use crate::core::report::ReportVerdict;
 
 /// Generate or verify a stable extern manifest from TypeScript declarations.
 #[derive(Default)]
@@ -87,11 +91,18 @@ impl GenericCommand for ExportCommand {
 
     xrf_output::success!(output, "Exported {externs} externs to '{}'.", format_path(path));
 
-    context.set_result(|| ExternsExportReport::written(declarations_root, path, format, externs))
+    context.set_result(|| ExternsExportReport::new(declarations_root, path, format, externs))
   }
 }
 
 impl ExportCommand {
+  /// The one check `--check` runs: the artifact still describes the declarations.
+  const CHECK: &'static str = "externs.artifact";
+  /// Declarations that did not parse, so nothing could be compared.
+  const RULE_DECLARATIONS: &'static str = "externs.declarations";
+  /// An artifact that does not parse as its format, or no longer matches the declarations.
+  const RULE_ARTIFACT: &'static str = "externs.artifact";
+
   /// Judge an artifact against the declarations it is supposed to describe.
   ///
   /// The declarations are checked content here just as the artifact is: a malformed tree, a
@@ -106,40 +117,53 @@ impl ExportCommand {
     line_endings: Option<LineEndings>,
   ) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
+    let started_at: Instant = Instant::now();
 
-    let (externs, finding): (usize, Option<XrfError>) =
+    let (externs, finding): (usize, Option<Finding>) =
       match ExternManifestParser::new().parse_directory(declarations_root) {
         Err(error @ XrfError::Io { .. }) => return Err(error.into()),
         // Declarations that never parsed exported nothing, and the count says so.
-        Err(error) => (0, Some(error)),
+        Err(error) => (
+          0,
+          Some(Self::finding(Self::RULE_DECLARATIONS, declarations_root, &error)),
+        ),
         Ok(parsed) => {
           let externs: usize = parsed.manifest.exports.len();
 
           match Self::verify_artifact(path, format, &parsed.manifest, line_endings) {
             Ok(()) => (externs, None),
             Err(error @ XrfError::Io { .. }) => return Err(error.into()),
-            Err(error) => (externs, Some(error)),
+            Err(error) => (externs, Some(Self::finding(Self::RULE_ARTIFACT, path, &error))),
           }
         }
       };
+    let findings: Vec<Finding> = finding.into_iter().collect();
+    let report: Report = Report::new(vec![CheckReport::new(
+      CheckId::of_static(Self::CHECK),
+      Status::from_is_valid(findings.is_empty()),
+      Some(started_at.elapsed()),
+      findings,
+    )]);
 
-    let Some(error) = finding else {
-      xrf_output::success!(
-        output,
-        "Extern artifact '{}' matches {externs} declarations.",
-        format_path(path)
-      );
-
-      return context.set_result(|| ExternsExportReport::checked(declarations_root, path, format, externs, Vec::new()));
-    };
-
-    xrf_output::failure!(output, "{error}");
+    ReportVerdict::print_findings(&output, &report);
 
     // Deposited before the verdict becomes an outcome, so a failing check still reports what it found.
-    context
-      .set_result(|| ExternsExportReport::checked(declarations_root, path, format, externs, vec![error.to_string()]))?;
+    context.set_result(|| ExternsCheckReport::new(declarations_root, path, format, externs, report.clone()))?;
 
-    Err(CommandError::new_check_failed(1))
+    ReportVerdict::conclude(
+      &output,
+      &report,
+      &format!("Extern artifact '{}' against {externs} declarations", format_path(path)),
+    )
+  }
+
+  /// What judging the declarations or the artifact at `subject` found.
+  fn finding(rule: &'static str, subject: &Path, error: &XrfError) -> Finding {
+    Finding::new(
+      RuleId::of_static(rule),
+      Some(xrf_utils::to_portable_path_string(subject)),
+      error.to_string(),
+    )
   }
 
   /// The format `--format` names, or the one the artifact's extension says.

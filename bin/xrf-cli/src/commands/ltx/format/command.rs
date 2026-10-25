@@ -55,7 +55,7 @@ impl GenericCommand for FormatCommand {
 
     // Created before the files are discovered, because its clock is what the result reports as the total: selecting
     // them over a large tree is part of the wait.
-    let job: JobHandle = CliJob::new_logging();
+    let job: JobHandle = CliJob::for_output(&output);
 
     let selection: LtxFormatSelection = LtxFormatSelection::select(&paths)?;
 

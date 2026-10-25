@@ -6,7 +6,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, create_generated_test_resource_dir};
 use xrf_utils::format_path;
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
@@ -21,9 +21,7 @@ pub(crate) const BINARY: &[u8] = &[0x44, 0x44, 0x53, 0x20, 0x01, 0x02, 0x03, 0xf
 
 /// Build a source tree under this test's scratch directory and return its root.
 pub(crate) fn create_source(scope: &str, files: &[(&str, &[u8])]) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/gamedata"));
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf = create_generated_test_resource_dir(&format!("{scope}/gamedata")).expect("source directory");
 
   for (name, contents) in files {
     let path: PathBuf = root.join(name.replace('\\', "/"));

@@ -58,7 +58,7 @@ impl TranslationVerifyResult {
 
   pub fn to_report(&self) -> Report {
     Report::new(vec![CheckReport::new(
-      CheckId::new("translations").expect("Expected a non-empty translation check ID"),
+      CheckId::of_static("translations"),
       self.status(),
       Some(self.duration),
       self.findings.clone(),
@@ -110,7 +110,7 @@ impl TranslationVerifyResult {
     }
 
     self.findings.push(Finding::new(
-      RuleId::new("translations.missing").expect("Expected a non-empty translation rule ID"),
+      RuleId::of_static("translations.missing"),
       Some(to_portable_path_string(path)),
       format!("Missing translation for key '{key}' in language '{language}'"),
     ));

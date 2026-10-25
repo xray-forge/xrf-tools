@@ -6,7 +6,7 @@ use xrf_dds::ImageFormat;
 use xrf_error::XrfError;
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
-use xrf_texture::{PackEquipmentOptions, PackEquipmentProcessor, PackEquipmentResult};
+use xrf_texture::{EquipmentSpritePackOptions, EquipmentSpritePackResult, EquipmentSpritePacker};
 use xrf_utils::format_path;
 
 use crate::core::arguments::LtxDialectArgument;
@@ -100,8 +100,8 @@ impl GenericCommand for PackEquipmentCommand {
     let started_at: Instant = Instant::now();
     let system_ltx: Ltx = Ltx::read_from_file_with_dialect(system_ltx_path, LtxDialectArgument::of(matches).as_ref())?;
 
-    let options = PackEquipmentOptions {
-      job: CliJob::new_logging(),
+    let options = EquipmentSpritePackOptions {
+      job: CliJob::for_output(&output_options),
       ltx: system_ltx,
       source: source.into(),
       output: output_options.clone(),
@@ -113,7 +113,7 @@ impl GenericCommand for PackEquipmentCommand {
 
     xrf_output::verbose!(output_options, "DDS format: {}", options.dds_compression_format);
 
-    let result: PackEquipmentResult = PackEquipmentProcessor::pack_sprites(options)?;
+    let result: EquipmentSpritePackResult = EquipmentSpritePacker::pack_sprites(options)?;
 
     context.set_result(|| &result)?;
 

@@ -90,8 +90,8 @@ impl GenericCommand for MakeBumpCommand {
       virtual_height: *matches
         .get_one::<f32>("virtual-height")
         .expect("Expected valid virtual height"),
-      mip_filter: DdsEncodeArguments::mip_filter_of(matches)?,
-      quality: DdsEncodeArguments::quality_of(matches)?,
+      mip_filter: DdsEncodeArguments::mip_filter_of(matches),
+      quality: DdsEncodeArguments::quality_of(matches),
     };
 
     let result: GenerateBumpResult = GenerateBumpProcessor::generate(&options)?;

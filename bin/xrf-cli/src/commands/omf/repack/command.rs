@@ -7,15 +7,14 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_omf::OmfFile;
 use xrf_output::OutputOptions;
-use xrf_report::Status;
+use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_spawn::XRayByteOrder;
-use xrf_utils::{format_duration, format_path};
+use xrf_utils::{format_duration, format_path, to_portable_path_string};
 
-use crate::commands::omf::repack::{
-  OmfRepackFindingReport, OmfRepackOutcome, OmfRepackStatistics, OmfRepackVerifyReport,
-};
-use crate::core::command::{CommandContext, CommandError, CommandResult, GenericCommand};
+use crate::commands::omf::repack::{OmfRepackOutcome, OmfRepackStatistics, OmfRepackVerifyReport};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 use crate::core::host_walk::HostWalk;
+use crate::core::report::ReportVerdict;
 use crate::core::reports::FileConversionReport;
 
 #[derive(Default)]
@@ -78,19 +77,28 @@ impl GenericCommand for RepackCommand {
 }
 
 impl RepackCommand {
+  /// The one check `--verify` runs: every omf file comes back as the bytes it was read from.
+  const CHECK: &'static str = "omf.roundtrip";
+  /// A file read and written back into different bytes.
+  const RULE_MISMATCH: &'static str = "omf.mismatch";
+  /// A file read, but not an omf file the reader accepts.
+  const RULE_MALFORMED: &'static str = "omf.malformed";
+  /// A file, or a directory of them, the run could not read at all.
+  const RULE_READ: &'static str = "omf.read";
+
   /// Verifies that every omf file `path` names, itself or below it, serializes back into identical bytes.
   fn verify(context: &mut CommandContext, path: &Path) -> CommandResult {
     let output: OutputOptions = context.get_output().clone();
+    let started_at: Instant = Instant::now();
     let mut statistics: OmfRepackStatistics = OmfRepackStatistics::default();
-    let mut findings: Vec<OmfRepackFindingReport> = Vec::new();
+    let mut findings: Vec<Finding> = Vec::new();
 
     for file in HostWalk::files_with(path, XrayExtension::Omf) {
       let outcome: OmfRepackOutcome = match file {
         Ok(file) => Self::verify_single(&output, &file, &mut findings),
         // A directory the walk cannot read is a failure of the run: its files were never judged.
         Err(error) => {
-          xrf_output::error!(output, "{error}");
-          findings.push(OmfRepackFindingReport::new(path, error.to_string()));
+          findings.push(Self::finding(Self::RULE_READ, path, error.to_string()));
 
           OmfRepackOutcome::Failed
         }
@@ -108,30 +116,31 @@ impl RepackCommand {
       statistics.failed()
     );
 
-    // Deposited before the verdict becomes an outcome, so a failing sweep still reports the files that explain it.
-    context.set_result(|| OmfRepackVerifyReport::new(&statistics, findings))?;
-
-    // A file that could not be read, or no file at all, is the run failing; a file that would not parse or came back
-    // different is a verdict on content.
-    match statistics.status() {
-      Status::Skipped => {
-        Err(XrfError::new_verify_error(format!("No omf file found under {}", format_path(path))).into())
-      }
-      Status::Error => Err(
-        XrfError::new_verify_error(format!(
-          "Omf repack verification could not read {} of {} files",
-          statistics.failed(),
-          statistics.checked()
-        ))
-        .into(),
-      ),
-      Status::Failed => Err(CommandError::new_check_failed(statistics.judged_defective() as usize)),
-      Status::Passed | Status::Incomplete => {
-        xrf_output::success!(output, "Every omf file repacked into identical bytes");
-
-        Ok(())
-      }
+    // No file at all is the run failing to find anything to judge, which no check can say.
+    if statistics.status() == Status::Skipped {
+      return Err(XrfError::new_verify_error(format!("No omf file found under {}", format_path(path))).into());
     }
+
+    // A file that could not be read makes the check an error, the run's own failure; a file that would not parse or
+    // came back different is a verdict on content.
+    let report: Report = Report::new(vec![CheckReport::new(
+      CheckId::of_static(Self::CHECK),
+      statistics.status(),
+      Some(started_at.elapsed()),
+      findings,
+    )]);
+
+    ReportVerdict::print_findings(&output, &report);
+
+    // Deposited before the verdict becomes an outcome, so a failing sweep still reports the files that explain it.
+    context.set_result(|| OmfRepackVerifyReport::new(statistics.checked(), report.clone()))?;
+
+    ReportVerdict::conclude(&output, &report, "Omf repack verification")
+  }
+
+  /// What one file's round trip found.
+  fn finding(rule: &'static str, path: &Path, message: String) -> Finding {
+    Finding::new(RuleId::of_static(rule), Some(to_portable_path_string(path)), message)
   }
 
   /// Reads `path` and writes it repacked to `destination`.
@@ -164,11 +173,7 @@ impl RepackCommand {
   }
 
   /// Reads and re-serializes one omf file, comparing the result with its bytes.
-  fn verify_single(
-    output: &OutputOptions,
-    path: &Path,
-    findings: &mut Vec<OmfRepackFindingReport>,
-  ) -> OmfRepackOutcome {
+  fn verify_single(output: &OutputOptions, path: &Path, findings: &mut Vec<Finding>) -> OmfRepackOutcome {
     match Self::repack_into_buffer(path) {
       Ok((original, repacked)) if original == repacked => {
         xrf_output::verbose!(output, "Byte identical: {}", format_path(path));
@@ -176,27 +181,26 @@ impl RepackCommand {
         OmfRepackOutcome::Identical
       }
       Ok((original, repacked)) => {
-        let message: String = format!(
-          "Repacked bytes differ, {} bytes original, {} bytes repacked",
-          original.len(),
-          repacked.len()
-        );
-
-        xrf_output::failure!(output, "{}: {message}", format_path(path));
-        findings.push(OmfRepackFindingReport::new(path, message));
+        findings.push(Self::finding(
+          Self::RULE_MISMATCH,
+          path,
+          format!(
+            "Repacked bytes differ, {} bytes original, {} bytes repacked",
+            original.len(),
+            repacked.len()
+          ),
+        ));
 
         OmfRepackOutcome::Mismatched
       }
       // A file that could not be read is the run's own failure; one read and refused is judged content.
       Err(error @ XrfError::Io { .. }) => {
-        xrf_output::error!(output, "Failed to read {}: {error}", format_path(path));
-        findings.push(OmfRepackFindingReport::new(path, error.to_string()));
+        findings.push(Self::finding(Self::RULE_READ, path, error.to_string()));
 
         OmfRepackOutcome::Failed
       }
       Err(error) => {
-        xrf_output::failure!(output, "{}: {error}", format_path(path));
-        findings.push(OmfRepackFindingReport::new(path, error.to_string()));
+        findings.push(Self::finding(Self::RULE_MALFORMED, path, error.to_string()));
 
         OmfRepackOutcome::Malformed
       }

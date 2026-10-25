@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_report::Report;
 
-use crate::commands::dialog::info::dialog_sweep::DialogSweepCensus;
+use crate::commands::dialog::info::dialog_sweep_census::DialogSweepCensus;
 
 /// What `dialog info` found and counted: its checks as every verify command reports them, beside its census.
 #[derive(Debug, Serialize)]
