@@ -8,8 +8,8 @@ import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core
 import {
   ESpawnChunkKind,
   SpawnChunk,
-  SpawnConversionRequest,
   SpawnConversionResult,
+  SpawnConvertRequest,
   SpawnSessionDescriptor,
 } from "#/types/xrf-app-spawn";
 import { JobProgress } from "#/types/xrf-job";
@@ -34,7 +34,7 @@ export const spawnCommands = {
   openFile: (sessionId: SessionId, path: string) =>
     __TAURI_INVOKE<SessionSnapshot<SpawnSessionDescriptor>>(ESpawnCommand.OPEN_FILE, { sessionId, path }),
   /** Pack a directory of spawn chunks into one file, as a tracked job sharing one lane with unpacking. */
-  packFile: (request: SpawnConversionRequest, jobId: string, progress: Channel<JobProgress>) =>
+  packFile: (request: SpawnConvertRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<SpawnConversionResult>(ESpawnCommand.PACK_FILE, { request, jobId, progress }),
   /** One large chunk of the spawn `session_id` holds, copied on the pool. */
   readChunk: (sessionId: SessionId, chunk: ESpawnChunkKind) =>
@@ -48,7 +48,7 @@ export const spawnCommands = {
   saveUnpackedDirectory: (path: string, sessionId: SessionId) =>
     __TAURI_INVOKE<null>(ESpawnCommand.SAVE_UNPACKED_DIRECTORY, { path, sessionId }),
   /** Unpack a spawn file into a directory of chunks, as a tracked job sharing one lane with packing. */
-  unpackFile: (request: SpawnConversionRequest, jobId: string, progress: Channel<JobProgress>) =>
+  unpackFile: (request: SpawnConvertRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<SpawnConversionResult>(ESpawnCommand.UNPACK_FILE, { request, jobId, progress }),
 };
 

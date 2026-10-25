@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
@@ -8,8 +6,8 @@ use xrf_ltx_inspect::LtxResolvedSection;
 use xrf_utils::error_to_string;
 use xrf_vfs::XrayLogicalPath;
 
+use crate::ConfigsProjects;
 use crate::request::ConfigsReadSectionsRequest;
-use crate::{ConfigsProject, ConfigsProjects};
 
 /// How many sections one request may ask for: a guard on the request's size, since the page pages by its own row count.
 const MAXIMUM_SECTIONS_PER_READ: usize = 64;
@@ -21,7 +19,7 @@ pub async fn configs_read_resolved_sections(
   execution: State<'_, ExecutionState>,
   projects: State<'_, ConfigsProjects>,
   request: ConfigsReadSectionsRequest,
-) -> TauriResult<Vec<LtxResolvedSection>> {
+) -> TauriResult<SessionSnapshot<Vec<LtxResolvedSection>>> {
   let ConfigsReadSectionsRequest {
     session_id,
     entry,
@@ -35,11 +33,10 @@ pub async fn configs_read_resolved_sections(
     ));
   }
 
-  let opened: Arc<SessionSnapshot<ConfigsProject>> = projects.require(session_id)?;
   let entry: XrayLogicalPath = XrayLogicalPath::new(&entry).map_err(error_to_string)?;
 
-  execution
-    .run_blocking("Configs resolved page", move || {
+  projects
+    .read_on_pool(&execution, session_id, "Configs resolved page", move |opened| {
       let names: Vec<&str> = names.iter().map(String::as_str).collect::<Vec<&str>>();
 
       opened.with_reader(&entry, true, |reader, resolved| {
@@ -48,5 +45,5 @@ pub async fn configs_read_resolved_sections(
           .map_err(|error| format!("Cannot read sections of '{}': {error}", resolved.entry.as_str()))
       })
     })
-    .await?
+    .await
 }

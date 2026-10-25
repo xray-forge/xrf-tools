@@ -7,7 +7,7 @@ import { AudioDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
 import { mockArchiveFileDescriptor, mockArchiveReadPolicy, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
-import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { ArchivesService } from "./archives.service";
@@ -40,7 +40,7 @@ function mockService(sound: ArchiveFileDescriptor = SOUND): ArchivesService {
 describe("ArchivesService audio preview", () => {
   beforeEach(() => {
     mockIpcCommands({
-      [EArchivesCommand.DESCRIBE_AUDIO]: DESCRIPTOR,
+      [EArchivesCommand.DESCRIBE_AUDIO]: mockSessionRead(DESCRIPTOR),
     });
     mockIpcBulkRoutes({
       [EArchivesBulkRoute.READ_ENTRY]: BYTES,
@@ -138,9 +138,9 @@ describe("ArchivesService audio preview", () => {
     const service: ArchivesService = mockService();
 
     mockIpcCommands({
-      [EArchivesCommand.DESCRIBE_AUDIO]: () => {
+      [EArchivesCommand.DESCRIBE_AUDIO]: mockSessionRead(() => {
         throw new Error("not a playable sound");
-      },
+      }),
     });
     mockIpcBulkRoutes({
       [EArchivesBulkRoute.READ_ENTRY]: BYTES,
@@ -156,7 +156,7 @@ describe("ArchivesService audio preview", () => {
     const service: ArchivesService = mockService();
 
     mockIpcCommands({
-      [EArchivesCommand.DESCRIBE_AUDIO]: DESCRIPTOR,
+      [EArchivesCommand.DESCRIBE_AUDIO]: mockSessionRead(DESCRIPTOR),
     });
     mockIpcBulkRoutes({
       [EArchivesBulkRoute.READ_ENTRY]: () => {

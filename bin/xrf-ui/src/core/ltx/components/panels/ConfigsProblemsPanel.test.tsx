@@ -13,7 +13,7 @@ import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
-import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -57,13 +57,13 @@ async function renderProblems(findings: Array<LtxAnchoredFinding>): Promise<{
   mockIpcCommands({
     // A provisioning restore finds the same project again.
     [EConfigsCommand.RESTORE_PROJECT]: mockSessionSnapshot({} as ConfigsProjectDescriptor, "session-1"),
-    [EConfigsCommand.LIST_FINDINGS]: findings,
+    [EConfigsCommand.LIST_FINDINGS]: mockSessionRead(findings),
     // What the jump reads: the config the finding names, which is not the one on screen.
-    [EConfigsCommand.READ_DOCUMENT]: {
+    [EConfigsCommand.READ_DOCUMENT]: mockSessionRead({
       findings: [],
       structure: { entryPoints: [ENTRY], includes: [], parseError: null, path: OTHER, rootEntries: [], sections: [] },
       text: { isNormalized: true, lines: ["[wpn_bad]"], path: OTHER },
-    },
+    }),
   });
 
   return { documentService, render: renderWithProviders(<ConfigsProblemsPanel />, { container }) };

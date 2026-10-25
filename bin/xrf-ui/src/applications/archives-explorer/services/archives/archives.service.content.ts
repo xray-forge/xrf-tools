@@ -46,7 +46,7 @@ export class ArchiveContentReader {
 
   /** Reads a file as the Windows-1251 text an engine surface shows. */
   private async readText(entry: IArchiveEntry): Promise<TArchiveContent> {
-    return { kind: "text", result: await archivesCommands.readFile(this.session(), entry.name) };
+    return { kind: "text", result: (await archivesCommands.readFile(this.session(), entry.name)).value };
   }
 
   /**
@@ -54,7 +54,10 @@ export class ArchiveContentReader {
    * this format yet.
    */
   private async readDescription(entry: IArchiveEntry): Promise<TArchiveContent> {
-    return { description: await archivesCommands.describeFile(this.session(), entry.name), kind: "description" };
+    return {
+      description: (await archivesCommands.describeFile(this.session(), entry.name)).value,
+      kind: "description",
+    };
   }
 
   /** Reads a sound as the description the engine would read plus the bytes the webview plays. */
@@ -66,7 +69,7 @@ export class ArchiveContentReader {
       fetchBulk(archivesBulkRoutes.readEntry(sessionId, entry.name)),
     ]);
 
-    return { bytes: new Uint8Array(bytes), descriptor: audio, kind: "audio" };
+    return { bytes: new Uint8Array(bytes), descriptor: audio.value, kind: "audio" };
   }
 
   /** Reads a texture as its source shape plus the png the backend decoded it into. */
@@ -78,7 +81,7 @@ export class ArchiveContentReader {
       fetchBulk(archivesBulkRoutes.readTexture(sessionId, entry.name)),
     ]);
 
-    return { bytes: new Uint8Array(bytes), descriptor: texture, kind: "texture" };
+    return { bytes: new Uint8Array(bytes), descriptor: texture.value, kind: "texture" };
   }
 
   /** Reads a picture the webview draws itself: its shape plus the bytes exactly as stored. */
@@ -90,6 +93,6 @@ export class ArchiveContentReader {
       fetchBulk(archivesBulkRoutes.readEntry(sessionId, entry.name)),
     ]);
 
-    return { bytes: new Uint8Array(bytes), descriptor: image, kind: "image" };
+    return { bytes: new Uint8Array(bytes), descriptor: image.value, kind: "image" };
   }
 }

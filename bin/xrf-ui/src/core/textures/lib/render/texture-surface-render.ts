@@ -13,7 +13,7 @@ import { ITextureSurfaceOptions, toTextureAspect } from "@/core/textures/lib/tex
 import { VIEWPORT } from "@/core/theme/tokens";
 
 /** A texture laid on a body, as the renderer is asked to draw one, or null for none. */
-export type TTextureSurfaceRequest = Parameters<typeof texturesCommands.showTexture>[1];
+export type TTexturesShowRequest = Parameters<typeof texturesCommands.showTexture>[1];
 
 /** The camera the body is first seen from, and returned to. */
 export const TEXTURE_SURFACE_CAMERA: WorldCamera = {
@@ -30,10 +30,10 @@ export const TEXTURE_SURFACE_CAMERA: WorldCamera = {
  * @param options - How it is being looked at.
  * @returns What the renderer is asked to draw: the texture on its body, or nothing.
  */
-export function toTextureSurfaceRequest(
+export function toTexturesShowRequest(
   description: Nullable<TextureDescription>,
   options: ITextureSurfaceOptions
-): TTextureSurfaceRequest {
+): TTexturesShowRequest {
   return description
     ? {
         alpha: options.alpha,

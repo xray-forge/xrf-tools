@@ -7,12 +7,12 @@ import { IIpcCommandSignature } from "#/signature";
 import {
   ConfigsDocument,
   ConfigsFormatRequest,
+  ConfigsListRequest,
   ConfigsOpenRequest,
   ConfigsProjectDescriptor,
   ConfigsReadDocumentRequest,
+  ConfigsReadSectionSchemeRequest,
   ConfigsReadSectionsRequest,
-  ConfigsResolvedRequest,
-  ConfigsSectionRequest,
   ConfigsVerifyRequest,
 } from "#/types/xrf-app-configs";
 import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
@@ -22,7 +22,7 @@ import {
   LtxAnchoredFinding,
   LtxResolvedIndex,
   LtxResolvedSection,
-  LtxSchemeFieldReport,
+  LtxSectionSchemeReport,
 } from "#/types/xrf-ltx-inspect";
 
 /** The wire name of every command of the `configs` plugin. */
@@ -57,37 +57,23 @@ export const configsCommands = {
    * Everything wrong with one resolved root, anchored to the file and line a person has to open; verified once and
    * answered as held.
    */
-  listFindings: (request: ConfigsResolvedRequest) =>
-    __TAURI_INVOKE<Array<LtxAnchoredFinding>>(EConfigsCommand.LIST_FINDINGS, { request }),
+  listFindings: (request: ConfigsListRequest) =>
+    __TAURI_INVOKE<SessionSnapshot<Array<LtxAnchoredFinding>>>(EConfigsCommand.LIST_FINDINGS, { request }),
   /** Lists every section one entry point resolves to, named and counted. */
-  listResolvedSections: (request: ConfigsResolvedRequest) =>
-    __TAURI_INVOKE<LtxResolvedIndex>(EConfigsCommand.LIST_RESOLVED_SECTIONS, { request }),
+  listResolvedSections: (request: ConfigsListRequest) =>
+    __TAURI_INVOKE<SessionSnapshot<LtxResolvedIndex>>(EConfigsCommand.LIST_RESOLVED_SECTIONS, { request }),
   /** Open a configs project for browsing over the shared asset roots, read on the pool, and list what it holds. */
   openProject: (request: ConfigsOpenRequest) =>
     __TAURI_INVOKE<SessionSnapshot<ConfigsProjectDescriptor>>(EConfigsCommand.OPEN_PROJECT, { request }),
   /** Reads one config as the authored view renders it: its lines, and what only the parser knows about them. */
   readDocument: (request: ConfigsReadDocumentRequest) =>
-    __TAURI_INVOKE<ConfigsDocument>(EConfigsCommand.READ_DOCUMENT, { request }),
+    __TAURI_INVOKE<SessionSnapshot<ConfigsDocument>>(EConfigsCommand.READ_DOCUMENT, { request }),
   /** Reads the bodies of the named sections of one entry point. */
   readResolvedSections: (request: ConfigsReadSectionsRequest) =>
-    __TAURI_INVOKE<Array<LtxResolvedSection>>(EConfigsCommand.READ_RESOLVED_SECTIONS, { request }),
+    __TAURI_INVOKE<SessionSnapshot<Array<LtxResolvedSection>>>(EConfigsCommand.READ_RESOLVED_SECTIONS, { request }),
   /** What one section is judged by, and how it measures against that. */
-  readSectionScheme: (request: ConfigsSectionRequest) =>
-    __TAURI_INVOKE<{
-      /** Engine identity of the entry point whose resolution this was read from. */
-      entry: string;
-      section: string;
-      /** The `$scheme` the resolved section carries, absent when it carries none. */
-      scheme: string | null;
-      /** Whether a scheme file declares that name. False is itself a finding, and the verifier reports it as one. */
-      isDeclared: boolean;
-      /** Whether the declaration refuses fields it does not name and demands the ones it does not mark optional. */
-      isStrict: boolean;
-      /** The section the binding is written in, absent when this section writes it itself. */
-      inheritedFrom: string | null;
-      /** Every field the scheme declares and every field the section holds, merged. */
-      fields: Array<LtxSchemeFieldReport>;
-    } | null>(EConfigsCommand.READ_SECTION_SCHEME, { request }),
+  readSectionScheme: (request: ConfigsReadSectionSchemeRequest) =>
+    __TAURI_INVOKE<SessionSnapshot<LtxSectionSchemeReport | null>>(EConfigsCommand.READ_SECTION_SCHEME, { request }),
   /**
    * The configs project `tool` holds in the asking window, the newest it opened, for a page attaching to it after a
    * reload.

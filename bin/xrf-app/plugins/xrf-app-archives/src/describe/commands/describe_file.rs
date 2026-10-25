@@ -1,11 +1,9 @@
-use std::sync::Arc;
-
 use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 
-use crate::browse::{ArchiveSubject, ArchiveSubjects};
+use crate::browse::ArchiveSubjects;
 use crate::describe::ArchiveFileDescription;
 
 /// Describe one entry of the open subject in words, for a format the viewer cannot draw: on the pool, since a
@@ -17,12 +15,12 @@ pub async fn archives_describe_file(
   name: String,
   execution: State<'_, ExecutionState>,
   subjects: State<'_, ArchiveSubjects>,
-) -> TauriResult<ArchiveFileDescription> {
+) -> TauriResult<SessionSnapshot<ArchiveFileDescription>> {
   log::info!("Describing file: {name}");
 
-  let subject: Arc<SessionSnapshot<ArchiveSubject>> = subjects.require(session_id)?;
-
-  execution
-    .run_blocking("Describing an archive entry", move || subject.describe_file(&name))
-    .await?
+  subjects
+    .read_on_pool(&execution, session_id, "Describing an archive entry", move |subject| {
+      subject.describe_file(&name)
+    })
+    .await
 }

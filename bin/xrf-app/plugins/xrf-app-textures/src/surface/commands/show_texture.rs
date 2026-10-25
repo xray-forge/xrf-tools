@@ -8,7 +8,7 @@ use xrf_app_render::ViewportShows;
 use xrf_renderer::{RenderLevelSource, RenderViewportId};
 
 use crate::describe::TextureDescription;
-use crate::surface::{TextureRenderSource, TextureSurfaceRequest};
+use crate::surface::{TextureRenderSource, TexturesShowRequest};
 
 /// Draw a texture laid on a body in a viewport, its files read by the renderer; no request draws none. Answers the
 /// scene drawn, which the viewport's load reports name, or none.
@@ -19,7 +19,7 @@ pub async fn textures_show_texture(
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
   viewport: RenderViewportId,
-  request: Option<TextureSurfaceRequest>,
+  request: Option<TexturesShowRequest>,
 ) -> TauriResult<Option<u32>> {
   // Taken before the description's hop, so a texture asked for later is never replaced by this one.
   let ticket: u64 = shows.ask(viewport);

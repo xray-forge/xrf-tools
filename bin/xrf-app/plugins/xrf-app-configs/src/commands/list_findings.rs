@@ -8,8 +8,8 @@ use xrf_ltx_inspect::LtxAnchoredFinding;
 use xrf_utils::error_to_string;
 use xrf_vfs::XrayLogicalPath;
 
-use crate::request::ConfigsResolvedRequest;
-use crate::{ConfigsProject, ConfigsProjects};
+use crate::ConfigsProjects;
+use crate::request::ConfigsListRequest;
 
 /// Everything wrong with one resolved root, anchored to the file and line a person has to open; verified once and
 /// answered as held.
@@ -18,14 +18,15 @@ use crate::{ConfigsProject, ConfigsProjects};
 pub async fn configs_list_findings(
   execution: State<'_, ExecutionState>,
   projects: State<'_, ConfigsProjects>,
-  request: ConfigsResolvedRequest,
-) -> TauriResult<Arc<Vec<LtxAnchoredFinding>>> {
-  let ConfigsResolvedRequest { session_id, entry } = request;
+  request: ConfigsListRequest,
+) -> TauriResult<SessionSnapshot<Arc<Vec<LtxAnchoredFinding>>>> {
+  let ConfigsListRequest { session_id, entry } = request;
 
-  let opened: Arc<SessionSnapshot<ConfigsProject>> = projects.require(session_id)?;
   let entry: XrayLogicalPath = XrayLogicalPath::new(&entry).map_err(error_to_string)?;
 
-  execution
-    .run_blocking("Configs findings", move || opened.find_problems(&entry))
-    .await?
+  projects
+    .read_on_pool(&execution, session_id, "Configs findings", move |opened| {
+      opened.find_problems(&entry)
+    })
+    .await
 }

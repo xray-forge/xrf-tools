@@ -91,13 +91,19 @@ export class VisualMotionService {
     this.motions = this.motions.asLoading();
 
     try {
-      const names: Array<string> = yield* call(
+      const names: SessionSnapshot<Array<string>> = yield* call(
         visualsCommands.listMotions(requireSessionId(this.loadService.visual.value?.selected ?? null))
       );
 
-      this.motions = this.motions.asReady(names);
+      this.motions = this.motions.asReady(names.value);
 
-      this.log.info("Visual motions listed:", sessionId, names.length, "motions, in", formatDuration(timer.elapsed()));
+      this.log.info(
+        "Visual motions listed:",
+        sessionId,
+        names.value.length,
+        "motions, in",
+        formatDuration(timer.elapsed())
+      );
     } catch (error: unknown) {
       const transformed: Error = transformError(error);
 

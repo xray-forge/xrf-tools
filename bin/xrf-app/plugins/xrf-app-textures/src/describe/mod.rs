@@ -11,4 +11,4 @@ mod vocabulary;
 pub use texture_description::TextureDescription;
 pub use texture_files::TextureFiles;
 pub use texture_source::TextureSource;
-pub use vocabulary::{TextureFlagEntry, TextureVocabulary, TextureVocabularyEntry};
+pub use vocabulary::TextureVocabulary;

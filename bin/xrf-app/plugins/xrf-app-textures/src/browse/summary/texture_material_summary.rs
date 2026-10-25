@@ -5,7 +5,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_material::{XrayMaterialDescriptor, XrayMaterialResolver};
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayRoots, XraySearch};
 
-use crate::browse::summary::{TextureBadges, TextureBumpPair};
+use crate::browse::{TextureBadges, TextureBumpPair};
 
 /// One descriptor's contribution to the tree: its badges, and the pair it names so both halves fold under it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

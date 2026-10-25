@@ -36,7 +36,7 @@ export const visualsCommands = {
    * read on the pool.
    */
   describeMotion: (sessionId: SessionId, name: string) =>
-    __TAURI_INVOKE<VisualMotionBake>(EVisualsCommand.DESCRIBE_MOTION, { sessionId, name }),
+    __TAURI_INVOKE<SessionSnapshot<VisualMotionBake>>(EVisualsCommand.DESCRIBE_MOTION, { sessionId, name }),
   /**
    * Every motion the open visual can play, by name, read on the pool.
    *
@@ -44,7 +44,8 @@ export const visualsCommands = {
    * references - about fifty milliseconds each against a seventy millisecond open. The viewer already knows whether a
    * visual animates at all, from its references, so nothing needs this until something is about to play one.
    */
-  listMotions: (sessionId: SessionId) => __TAURI_INVOKE<Array<string>>(EVisualsCommand.LIST_MOTIONS, { sessionId }),
+  listMotions: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<Array<string>>>(EVisualsCommand.LIST_MOTIONS, { sessionId }),
   /** Remember the browsed roots under an identity independent from the selected model. */
   openBrowse: (sessionId: SessionId, roots: XrayRoots) =>
     __TAURI_INVOKE<SessionSnapshot<XrayRoots>>(EVisualsCommand.OPEN_BROWSE, { sessionId, roots }),

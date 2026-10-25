@@ -29,6 +29,14 @@ export type ConfigsFormatRequest = {
   prefix: string | null;
 };
 
+/** Which resolved root a reader wants, of which open. */
+export type ConfigsListRequest = {
+  /** The open this read is addressed to; a read naming one closed is refused rather than answered. */
+  sessionId: SessionId;
+  /** Engine identity of the entry point to resolve. */
+  entry: string;
+};
+
 /** What opening a configs project for browsing was asked to do. */
 export type ConfigsOpenRequest = {
   sessionId: SessionId;
@@ -69,6 +77,16 @@ export type ConfigsReadDocumentRequest = {
   path: string;
 };
 
+/** Which section of a resolved root a reader wants explained. */
+export type ConfigsReadSectionSchemeRequest = {
+  /** The open this read is addressed to; a read naming one closed is refused rather than answered. */
+  sessionId: SessionId;
+  /** Engine identity of the entry point the section belongs to. */
+  entry: string;
+  /** The section to explain, as the index named it. */
+  section: string;
+};
+
 /** Which sections of a resolved root a page wants. */
 export type ConfigsReadSectionsRequest = {
   /** The open this read is addressed to; a read naming one closed is refused rather than answered. */
@@ -77,24 +95,6 @@ export type ConfigsReadSectionsRequest = {
   entry: string;
   /** Sections to read, as the index named them. */
   names: Array<string>;
-};
-
-/** Which resolved root a reader wants, of which open. */
-export type ConfigsResolvedRequest = {
-  /** The open this read is addressed to; a read naming one closed is refused rather than answered. */
-  sessionId: SessionId;
-  /** Engine identity of the entry point to resolve. */
-  entry: string;
-};
-
-/** Which section of a resolved root a reader wants explained. */
-export type ConfigsSectionRequest = {
-  /** The open this read is addressed to; a read naming one closed is refused rather than answered. */
-  sessionId: SessionId;
-  /** Engine identity of the entry point the section belongs to. */
-  entry: string;
-  /** The section to explain, as the index named it. */
-  section: string;
 };
 
 /** What a config verification was asked to do. */

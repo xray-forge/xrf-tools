@@ -181,8 +181,19 @@ impl JobRegistry {
       .await?
   }
 
+  /// Takes a job's leases as [`Self::run`] does before its work, for a test outside core that holds them while it
+  /// checks what another job is refused; dropping the second half concludes the job and releases them.
+  ///
+  /// # Errors
+  ///
+  /// Returns why the job could not start.
+  #[cfg(any(test, feature = "fixtures"))]
+  pub fn register_fixture(self: &Arc<Self>, start: JobStart) -> TauriResult<(JobHandle, impl Sized + use<>)> {
+    self.register(start)
+  }
+
   /// Take the job's lease keys and start reporting it as running.
-  pub fn register(self: &Arc<Self>, start: JobStart) -> TauriResult<(JobHandle, JobRegistration)> {
+  pub(crate) fn register(self: &Arc<Self>, start: JobStart) -> TauriResult<(JobHandle, JobRegistration)> {
     let id: Uuid = start.id;
     let kind: JobKind = start.kind;
 

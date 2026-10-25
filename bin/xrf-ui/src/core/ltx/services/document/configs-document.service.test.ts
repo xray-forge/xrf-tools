@@ -15,6 +15,7 @@ import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
+import { mockSessionRead } from "@/fixtures/mocks/session.mocks";
 import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
@@ -47,7 +48,7 @@ describe("ConfigsDocumentService", () => {
       resolve = settle;
     });
 
-    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: () => response });
+    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(() => response) });
 
     const { service } = await mockOpenedService();
     const reading = service.select("system.ltx");
@@ -67,7 +68,7 @@ describe("ConfigsDocumentService", () => {
       reject = fail;
     });
 
-    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: () => response });
+    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(() => response) });
 
     const { service } = await mockOpenedService();
     const reading = service.select("system.ltx");
@@ -88,12 +89,12 @@ describe("ConfigsDocumentService", () => {
       resolve = settle;
     });
 
-    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: previous });
+    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(previous) });
 
     const { service } = await mockOpenedService();
 
     await service.select("previous.ltx");
-    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: () => response });
+    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(() => response) });
 
     const reading = service.select("replacement.ltx");
 
@@ -141,10 +142,10 @@ describe("ConfigsDocumentService", () => {
       };
 
       mockIpcCommands({
-        [EConfigsCommand.READ_DOCUMENT]: mockDocumentOf(entry),
-        [EConfigsCommand.LIST_RESOLVED_SECTIONS]: index,
-        [EConfigsCommand.LIST_FINDINGS]: findings,
-        [EConfigsCommand.READ_SECTION_SCHEME]: report,
+        [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(mockDocumentOf(entry)),
+        [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(index),
+        [EConfigsCommand.LIST_FINDINGS]: mockSessionRead(findings),
+        [EConfigsCommand.READ_SECTION_SCHEME]: mockSessionRead(report),
       });
 
       const { service, container } = await mockOpenedService();
@@ -169,10 +170,10 @@ describe("ConfigsDocumentService", () => {
       });
 
       mockIpcCommands({
-        [EConfigsCommand.READ_DOCUMENT]: () => pending.then(() => mockDocumentOf("other.ltx")),
-        [EConfigsCommand.READ_RESOLVED_SECTIONS]: () => pending.then(() => [section]),
-        [EConfigsCommand.LIST_FINDINGS]: () => pending.then(() => findings),
-        [EConfigsCommand.READ_SECTION_SCHEME]: () => pending.then(() => report),
+        [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(() => pending.then(() => mockDocumentOf("other.ltx"))),
+        [EConfigsCommand.READ_RESOLVED_SECTIONS]: mockSessionRead(() => pending.then(() => [section])),
+        [EConfigsCommand.LIST_FINDINGS]: mockSessionRead(() => pending.then(() => findings)),
+        [EConfigsCommand.READ_SECTION_SCHEME]: mockSessionRead(() => pending.then(() => report)),
       });
 
       const reads = [
@@ -230,7 +231,7 @@ describe("ConfigsDocumentService", () => {
       finish = resolve;
     });
 
-    mockIpcCommands({ [EConfigsCommand.LIST_RESOLVED_SECTIONS]: () => pending });
+    mockIpcCommands({ [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(() => pending) });
 
     const { service, container } = await mockOpenedService();
     const resolved = container.get(ConfigsResolvedService);

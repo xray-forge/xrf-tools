@@ -5,8 +5,9 @@ use uuid::Uuid;
 use xrf_job::JobHandle;
 
 use crate::jobs::job_conclusion::JobConclusion;
+use crate::jobs::job_registration::JobRegistration;
 use crate::jobs::tests::kinds;
-use crate::jobs::{JobRegistration, JobRegistry, JobResource, JobStart};
+use crate::jobs::{JobRegistry, JobResource, JobStart};
 
 #[test]
 fn texture_save_and_sprite_pack_cannot_write_the_same_file() {

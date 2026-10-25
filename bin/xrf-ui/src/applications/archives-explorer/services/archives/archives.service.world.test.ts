@@ -12,7 +12,7 @@ import {
   mockArchivesWorldSubject,
   mockArchiveWorldEntry,
 } from "@/fixtures/mocks/archive.mocks";
-import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { mockSessionRead, mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 const INSTALLATION: string = "C:\\game";
@@ -46,7 +46,7 @@ describe("ArchivesService world subject", () => {
 
     mockIpcCommands({
       [EArchivesCommand.OPEN_WORLD]: mockSessionResponse(mockArchivesWorldSubject([entry])),
-      [EArchivesCommand.READ_FILE]: result,
+      [EArchivesCommand.READ_FILE]: mockSessionRead(result),
       [EArchivesCommand.EXTRACT_FILE]: { name: entry.name, destination: "C:\\out\\system.ltx", size: 8 },
     });
 
@@ -67,7 +67,7 @@ describe("ArchivesService world subject", () => {
   it("asks what a world cannot reach, and not for a name table it has none of", async () => {
     mockIpcCommands({
       [EArchivesCommand.OPEN_WORLD]: mockSessionResponse(mockArchivesWorldSubject()),
-      [EArchivesCommand.LIST_OVERRIDES]: { overridden: [], unreachable: [] },
+      [EArchivesCommand.LIST_OVERRIDES]: mockSessionRead({ overridden: [], unreachable: [] }),
     });
 
     const { service } = mockInjectedService(ArchivesService);
@@ -99,8 +99,8 @@ describe("ArchivesService world subject", () => {
     mockIpcCommands({
       [EArchivesCommand.OPEN_VOLUMES]: mockSessionResponse(mockArchivesVolumes([])),
       [EArchivesCommand.OPEN_WORLD]: mockSessionResponse(mockArchivesWorldSubject()),
-      [EArchivesCommand.LIST_OVERRIDES]: { overridden: [], unreachable: [] },
-      [EArchivesCommand.LIST_SHARED_PAYLOADS]: [],
+      [EArchivesCommand.LIST_OVERRIDES]: mockSessionRead({ overridden: [], unreachable: [] }),
+      [EArchivesCommand.LIST_SHARED_PAYLOADS]: mockSessionRead([]),
       [EArchivesCommand.CLOSE_SUBJECT]: (args?: Record<string, unknown>) =>
         void closed.push(args?.sessionIds as Array<string>),
     });
@@ -121,7 +121,7 @@ describe("ArchivesService world subject", () => {
   it("restores whichever subject the backend still holds", async () => {
     mockIpcCommands({
       [EArchivesCommand.RESTORE_SUBJECT]: mockSessionResponse(mockArchivesWorldSubject()),
-      [EArchivesCommand.LIST_OVERRIDES]: { overridden: [], unreachable: [] },
+      [EArchivesCommand.LIST_OVERRIDES]: mockSessionRead({ overridden: [], unreachable: [] }),
     });
 
     const { service } = mockInjectedService(ArchivesService);

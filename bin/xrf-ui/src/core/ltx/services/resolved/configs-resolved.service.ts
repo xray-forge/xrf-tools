@@ -4,6 +4,7 @@ import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
 import { configsCommands } from "@xrf/ipc/commands/configs";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { LtxResolvedIndex, LtxResolvedIndexEntry, LtxResolvedSection } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
@@ -105,7 +106,9 @@ export class ConfigsResolvedService {
     this.index = this.index.asLoading();
 
     try {
-      const index: LtxResolvedIndex = yield* call(configsCommands.listResolvedSections({ entry, sessionId }));
+      const { value: index }: SessionSnapshot<LtxResolvedIndex> = yield* call(
+        configsCommands.listResolvedSections({ entry, sessionId })
+      );
 
       this.log.info("Resolved", entry, "to", index.sections.length, "sections, in", formatDuration(timer.elapsed()));
 
@@ -146,11 +149,12 @@ export class ConfigsResolvedService {
     }
 
     try {
-      const sections: Array<LtxResolvedSection> = await configsCommands.readResolvedSections({
-        entry,
-        names: wanted,
-        sessionId,
-      });
+      const { value: sections }: SessionSnapshot<Array<LtxResolvedSection>> =
+        await configsCommands.readResolvedSections({
+          entry,
+          names: wanted,
+          sessionId,
+        });
 
       runInAction(() => {
         // An entry path can be reopened while an earlier read is still in flight.

@@ -4,6 +4,7 @@ import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
 import { configsCommands } from "@xrf/ipc/commands/configs";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
@@ -55,7 +56,9 @@ export class ConfigsFindingsService {
     this.findings = this.findings.asLoading();
 
     try {
-      const found: Array<LtxAnchoredFinding> = yield* call(configsCommands.listFindings({ entry, sessionId }));
+      const { value: found }: SessionSnapshot<Array<LtxAnchoredFinding>> = yield* call(
+        configsCommands.listFindings({ entry, sessionId })
+      );
 
       this.log.info("Verified", entry, "with", found.length, "finding(s), in", formatDuration(timer.elapsed()));
 

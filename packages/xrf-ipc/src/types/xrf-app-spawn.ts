@@ -50,17 +50,17 @@ export enum ESpawnConversion {
 /** Every `ESpawnConversion` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type SpawnConversion = `${ESpawnConversion}`;
 
-/** Source and output paths of a standalone spawn conversion. */
-export type SpawnConversionRequest = {
-  source: string;
-  destination: string;
-};
-
 /** What reached disk; cancellation is accepted only before writing begins. */
 export type SpawnConversionResult = {
   operation: SpawnConversion;
   destination: string;
   outcome: JobOutcome;
+};
+
+/** Source and output paths of a standalone spawn conversion. */
+export type SpawnConvertRequest = {
+  source: string;
+  destination: string;
 };
 
 /**

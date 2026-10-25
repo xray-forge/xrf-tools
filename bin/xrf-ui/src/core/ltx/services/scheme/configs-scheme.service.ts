@@ -4,6 +4,7 @@ import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { formatDuration } from "@xrf/format";
 import { configsCommands } from "@xrf/ipc/commands/configs";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { LtxSectionSchemeReport } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
@@ -62,7 +63,7 @@ export class ConfigsSchemeService {
     this.report = this.report.asLoading();
 
     try {
-      const report: Nullable<LtxSectionSchemeReport> = yield* call(
+      const { value: report }: SessionSnapshot<Nullable<LtxSectionSchemeReport>> = yield* call(
         configsCommands.readSectionScheme({ entry, section, sessionId })
       );
 

@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
 use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 
-use crate::{SelectedVisual, VisualModels};
+use crate::VisualModels;
 
 /// Every motion the open visual can play, by name, read on the pool.
 ///
@@ -20,12 +18,11 @@ pub async fn visuals_list_motions(
   models: State<'_, VisualModels>,
   assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
-) -> TauriResult<Vec<String>> {
-  let current: Arc<SessionSnapshot<SelectedVisual>> = models.require(session_id)?;
+) -> TauriResult<SessionSnapshot<Vec<String>>> {
   let assets: AssetMountState = AssetMountState::clone(&assets);
 
-  execution
-    .run_blocking("Listing a visual's motions", move || {
+  models
+    .read_on_pool(&execution, session_id, "Listing a visual's motions", move |current| {
       let Some(motions) = current.motions.as_ref() else {
         // No bind pose means nothing to pose, so the names would be unplayable even where they exist.
         return Ok(Vec::new());
@@ -43,5 +40,5 @@ pub async fn visuals_list_motions(
 
       Ok(names)
     })
-    .await?
+    .await
 }

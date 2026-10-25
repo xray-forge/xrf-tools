@@ -18,7 +18,6 @@ mod tests;
 pub use job_description::JobDescription;
 pub use job_kind::JobKind;
 pub use job_phase::JobPhase;
-pub use job_registration::JobRegistration;
 pub use job_registry::JobRegistry;
 pub use job_resource::JobResource;
 pub use job_start::JobStart;

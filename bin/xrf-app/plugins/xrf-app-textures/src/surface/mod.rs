@@ -4,10 +4,10 @@
 pub(crate) mod commands;
 mod texture_render_source;
 mod texture_surface_alpha;
-mod texture_surface_request;
 mod texture_surface_shape;
+mod textures_show_request;
 
 pub use texture_render_source::TextureRenderSource;
 pub use texture_surface_alpha::TextureSurfaceAlpha;
-pub use texture_surface_request::TextureSurfaceRequest;
 pub use texture_surface_shape::TextureSurfaceShape;
+pub use textures_show_request::TexturesShowRequest;

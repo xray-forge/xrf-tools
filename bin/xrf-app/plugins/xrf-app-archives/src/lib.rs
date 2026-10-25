@@ -1,11 +1,13 @@
 #![doc = include_str!("../README.md")]
 
-pub mod browse;
-pub mod describe;
+mod browse;
+mod describe;
 pub mod ipc;
 mod lease;
 mod pack;
 mod patch;
 pub mod plugin;
-pub mod preview;
+mod preview;
 mod unpack;
+
+pub use browse::ArchiveSubjects;

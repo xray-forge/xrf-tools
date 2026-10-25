@@ -15,7 +15,7 @@ One type to a file, grouped by concern:
 - `conversion/`: `SpawnConversion` and `SpawnConversionResult`, packing a directory of chunks into one file or
   unpacking a file into one, run as a job on one lane shared by both, and what reached disk. A conversion gives up only
   before it starts writing.
-- `request/`: `SpawnConversionRequest`, the source and output paths of a conversion.
+- `request/`: `SpawnConvertRequest`, the source and output paths of a conversion.
 - `commands/`: opening, restoring and closing a spawn; reading one chunk; saving a spawn as a packed file or as a
   directory of unpacked chunks; and packing and unpacking.
 - `plugin` and `ipc`: `SpawnPlugin` and its command domain.

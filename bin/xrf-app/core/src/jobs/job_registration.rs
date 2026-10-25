@@ -9,7 +9,7 @@ use crate::jobs::job_ending::JobEnding;
 use crate::jobs::job_registry::JobRegistry;
 
 /// A registered job, and the leases it holds, for as long as this is alive.
-pub struct JobRegistration {
+pub(crate) struct JobRegistration {
   registry: Arc<JobRegistry>,
   id: Uuid,
   ending: Mutex<Option<JobEnding>>,
@@ -26,7 +26,7 @@ impl JobRegistration {
   }
 
   /// The identity the job registered under.
-  pub fn get_id(&self) -> Uuid {
+  pub(crate) fn get_id(&self) -> Uuid {
     self.id
   }
 

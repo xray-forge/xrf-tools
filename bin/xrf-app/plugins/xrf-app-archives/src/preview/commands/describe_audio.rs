@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use serde::Serialize;
 use tauri::State;
 use xrf_app_core::TauriResult;
@@ -8,7 +6,7 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_extension::XrayExtensionOf;
 use xrf_sound::{SoundFile, SoundMetadata};
 
-use crate::browse::{ArchiveSubject, ArchiveSubjects};
+use crate::browse::ArchiveSubjects;
 
 /// The X-Ray source parameters carried in a sound's first vorbis comment.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -77,18 +75,17 @@ pub async fn archives_describe_audio(
   name: String,
   execution: State<'_, ExecutionState>,
   subjects: State<'_, ArchiveSubjects>,
-) -> TauriResult<AudioDescriptor> {
+) -> TauriResult<SessionSnapshot<AudioDescriptor>> {
   log::info!("Describing audio: {name}");
 
   let media_type: &'static str = XrayExtensionOf::of(&name)
     .known()
     .and_then(|extension| extension.get_media_type())
     .ok_or_else(|| format!("Failed to describe audio '{name}': no webview plays this extension"))?;
-  let subject: Arc<SessionSnapshot<ArchiveSubject>> = subjects.require(session_id)?;
 
-  execution
-    .run_blocking("Describing audio", move || {
-      Ok::<_, String>(AudioDescriptor::of(&name, &subject.read_bytes(&name)?, media_type))
+  subjects
+    .read_on_pool(&execution, session_id, "Describing audio", move |subject| {
+      Ok(AudioDescriptor::of(&name, &subject.read_bytes(&name)?, media_type))
     })
-    .await?
+    .await
 }

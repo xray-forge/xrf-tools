@@ -12,6 +12,7 @@ import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
+import { mockSessionRead } from "@/fixtures/mocks/session.mocks";
 import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -46,7 +47,7 @@ async function renderScheme(report: LtxSectionSchemeReport): Promise<RenderResul
   } as ConfigsDocument);
   documentService.selectSection(report.section);
 
-  mockIpcCommands({ [EConfigsCommand.READ_SECTION_SCHEME]: report });
+  mockIpcCommands({ [EConfigsCommand.READ_SECTION_SCHEME]: mockSessionRead(report) });
 
   return renderWithProviders(<ConfigsSchemePanel />, { container });
 }

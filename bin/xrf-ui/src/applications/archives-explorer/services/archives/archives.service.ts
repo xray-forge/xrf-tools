@@ -666,13 +666,17 @@ export class ArchivesService {
     try {
       this.statistics = this.statistics.asLoading(null);
 
-      const statistics: ArchiveStatistics = yield* call(
+      const answer: SessionSnapshot<ArchiveStatistics> = yield* call(
         archivesCommands.describeStatistics(this.requireSubjectSession())
       );
 
-      this.log.info("Archives statistics:", statistics.overview.total.files, "files");
+      if (this.isOlderThanShown(answer)) {
+        return;
+      }
 
-      this.statistics = this.statistics.asReady(statistics);
+      this.log.info("Archives statistics:", answer.value.overview.total.files, "files");
+
+      this.statistics = this.statistics.asReady(answer.value);
     } catch (error: unknown) {
       this.log.error("Failed to describe archives statistics:", error);
 
@@ -692,13 +696,17 @@ export class ArchivesService {
     try {
       this.resolution = this.resolution.asLoading(null);
 
-      const resolution: ArchiveResolution = yield* call(
+      const answer: SessionSnapshot<ArchiveResolution> = yield* call(
         archivesCommands.describeResolution(this.requireSubjectSession())
       );
 
-      this.log.info("Archives resolution:", resolution.sources.length, "sources");
+      if (this.isOlderThanShown(answer)) {
+        return;
+      }
 
-      this.resolution = this.resolution.asReady(resolution);
+      this.log.info("Archives resolution:", answer.value.sources.length, "sources");
+
+      this.resolution = this.resolution.asReady(answer.value);
     } catch (error: unknown) {
       this.log.error("Failed to describe archives resolution:", error);
 
@@ -710,17 +718,23 @@ export class ArchivesService {
     try {
       this.overrides = this.overrides.asLoading(EMPTY_OVERRIDES);
 
-      const report: ArchiveOverrideReport = yield* call(archivesCommands.listOverrides(this.requireSubjectSession()));
+      const answer: SessionSnapshot<ArchiveOverrideReport> = yield* call(
+        archivesCommands.listOverrides(this.requireSubjectSession())
+      );
+
+      if (this.isOlderThanShown(answer)) {
+        return;
+      }
 
       this.log.info(
         "Archives overrides:",
-        report.overridden.length,
+        answer.value.overridden.length,
         "overridden,",
-        report.unreachable.length,
+        answer.value.unreachable.length,
         "unreachable"
       );
 
-      this.overrides = this.overrides.asReady(report);
+      this.overrides = this.overrides.asReady(answer.value);
     } catch (error: unknown) {
       this.log.error("Failed to describe archives overrides:", error);
 
@@ -732,13 +746,14 @@ export class ArchivesService {
     try {
       this.sharedPayloads = this.sharedPayloads.asLoading([]);
 
-      const payloads: Array<ArchiveSharedPayload> = yield* call(
+      // A volume set follows no commit, so its payloads are never older than what is shown.
+      const answer: SessionSnapshot<Array<ArchiveSharedPayload>> = yield* call(
         archivesCommands.listSharedPayloads(this.requireSubjectSession())
       );
 
-      this.log.info("Archives shared payloads:", payloads.length);
+      this.log.info("Archives shared payloads:", answer.value.length);
 
-      this.sharedPayloads = this.sharedPayloads.asReady(payloads);
+      this.sharedPayloads = this.sharedPayloads.asReady(answer.value);
     } catch (error: unknown) {
       this.log.error("Failed to list archives shared payloads:", error);
 
@@ -804,5 +819,16 @@ export class ArchivesService {
   /** The session every read and write of the open subject is addressed by. */
   private requireSubjectSession(): SessionId {
     return requireSessionId(this.subjectState.value);
+  }
+
+  /**
+   * @param answer - A report read of the open subject.
+   * @returns Whether it was read from an older listing than the one shown, having lost a race to a commit's listing
+   *   anew; the reads that listing started answer instead, so the report is dropped.
+   */
+  private isOlderThanShown(answer: SessionSnapshot<unknown>): boolean {
+    const held: Nullable<SessionSnapshot<ArchiveSubject>> = this.subjectState.value;
+
+    return Boolean(held && isOlderSessionAnswer(held, answer));
   }
 }

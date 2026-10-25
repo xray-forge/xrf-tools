@@ -9,7 +9,7 @@ import { Nullable } from "@xrf/types";
 
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockSessionRead, mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -36,7 +36,7 @@ function listSent<K extends keyof IIpcCommandSignatures>(
 
 function mockMotion(bake: VisualMotionBake = BAKE): void {
   mockIpcCommands({
-    [EVisualsCommand.LIST_MOTIONS]: [bake.name, "norm_idle_0"],
+    [EVisualsCommand.LIST_MOTIONS]: mockSessionRead([bake.name, "norm_idle_0"]),
     [EVisualsCommand.OPEN_MOTION]: mockSessionResponse(bake),
   });
 }
@@ -67,11 +67,11 @@ describe("VisualMotionService", () => {
     let calls: number = 0;
 
     mockIpcCommands({
-      [EVisualsCommand.LIST_MOTIONS]: () => {
+      [EVisualsCommand.LIST_MOTIONS]: mockSessionRead(() => {
         calls += 1;
 
         return ["norm_walk_fwd_1"];
-      },
+      }),
     });
 
     const { service } = mockService();
@@ -87,10 +87,12 @@ describe("VisualMotionService", () => {
     const listing: { resolve: Nullable<(names: Array<string>) => void> } = { resolve: null };
 
     mockIpcCommands({
-      [EVisualsCommand.LIST_MOTIONS]: () =>
-        new Promise<Array<string>>((resolve) => {
-          listing.resolve = resolve;
-        }),
+      [EVisualsCommand.LIST_MOTIONS]: mockSessionRead(
+        () =>
+          new Promise<Array<string>>((resolve) => {
+            listing.resolve = resolve;
+          })
+      ),
     });
 
     const { service } = mockService();

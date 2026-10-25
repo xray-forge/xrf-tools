@@ -332,7 +332,6 @@ export function mockArchivesWorld(files?: Array<ArchiveWorldEntry>): ArchiveWorl
     files: entries,
     mounts: ["C:\\game\\gamedata", "C:\\game\\db"],
     readPolicy: mockArchiveReadPolicy(),
-    roots: { asset: null, roots: [{ mode: "auto", path: "C:\\game" }] },
     shadowedCount: entries.filter((entry: ArchiveWorldEntry) => entry.shadowed.length).length,
     shadowedSizeReal: entries.reduce(
       (total: number, entry: ArchiveWorldEntry) =>
@@ -350,7 +349,13 @@ export function mockArchivesWorld(files?: Array<ArchiveWorldEntry>): ArchiveWorl
  * @returns What the explorer has open when it indexed volumes.
  */
 export function mockArchivesVolumes(files?: Array<ArchiveFileDescriptor>): ArchiveSubject {
-  return { kind: EArchiveSubject.VOLUMES, project: mockArchivesProject(files) };
+  const project: ArchiveProject = mockArchivesProject(files);
+
+  return {
+    kind: EArchiveSubject.VOLUMES,
+    project,
+    roots: { asset: null, roots: [{ mode: "volumes", path: project.root }] },
+  };
 }
 
 /**
@@ -360,7 +365,11 @@ export function mockArchivesVolumes(files?: Array<ArchiveFileDescriptor>): Archi
  * @returns What the explorer has open when it mounted a world.
  */
 export function mockArchivesWorldSubject(files?: Array<ArchiveWorldEntry>): ArchiveSubject {
-  return { kind: EArchiveSubject.WORLD, world: mockArchivesWorld(files) };
+  return {
+    kind: EArchiveSubject.WORLD,
+    roots: { asset: null, roots: [{ mode: "auto", path: "C:\\game" }] },
+    world: mockArchivesWorld(files),
+  };
 }
 
 /**

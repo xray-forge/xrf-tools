@@ -21,5 +21,5 @@ mod startup_log;
 pub use descendant_usage::DescendantUsage;
 pub use host_info::HostInfo;
 pub use machine_probe_state::MachineProbeState;
-pub use runtime_snapshot::{MachineUsage, ProcessUsage, RuntimeSnapshot};
+pub use runtime_snapshot::RuntimeSnapshot;
 pub use startup_log::StartupLog;

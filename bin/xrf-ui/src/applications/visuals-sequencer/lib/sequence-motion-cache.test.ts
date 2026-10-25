@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { reaction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
 
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
@@ -15,8 +16,8 @@ import { ESequenceMotionState, SequenceMotionCache } from "./sequence-motion-cac
 function mockCache() {
   const { service: loadService } = mockInjectedService(VisualLoadService);
   const bake = mockVisualMotionBake({ name: "first" });
-  const open = jest.spyOn(visualsCommands, "describeMotion").mockImplementation(async (_sessionId, name) => {
-    return { ...bake, name };
+  const open = jest.spyOn(visualsCommands, "describeMotion").mockImplementation(async (sessionId, name) => {
+    return mockSessionSnapshot({ ...bake, name }, sessionId);
   });
 
   loadService.visual = AsyncState.ready({
@@ -64,9 +65,9 @@ describe("SequenceMotionCache", () => {
 
   it("waits for one motion's read before reading the next motion", async () => {
     const { cache, open, bake } = mockCache();
-    let finishOpen: (snapshot: VisualMotionBake) => void = noop;
+    let finishOpen: (snapshot: SessionSnapshot<VisualMotionBake>) => void = noop;
     let onOpening: () => void = noop;
-    const opening = new Promise<VisualMotionBake>((resolve) => {
+    const opening = new Promise<SessionSnapshot<VisualMotionBake>>((resolve) => {
       finishOpen = resolve;
     });
     const started = new Promise<void>((resolve) => {
@@ -87,7 +88,7 @@ describe("SequenceMotionCache", () => {
     expect(open).toHaveBeenCalledTimes(1);
     expect(cache.motions.get("second")?.state).toBe(ESequenceMotionState.DESCRIBING);
 
-    finishOpen(bake);
+    finishOpen(mockSessionSnapshot(bake));
 
     await Promise.all([first, second]);
 
@@ -142,7 +143,7 @@ describe("SequenceMotionCache", () => {
     const { cache, open } = mockCache();
     let failOpen: (error: Error) => void = noop;
     let onOpening: () => void = noop;
-    const opening = new Promise<VisualMotionBake>((_resolve, reject) => {
+    const opening = new Promise<SessionSnapshot<VisualMotionBake>>((_resolve, reject) => {
       failOpen = reject;
     });
     const started = new Promise<void>((resolve) => {

@@ -9,7 +9,7 @@ import { VisualMotionBake, VisualMotionDependency } from "@xrf/ipc/types/xrf-vis
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { mockSessionRead, mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import {
   mockPackedSubmesh,
   mockSelectedVisual,
@@ -62,11 +62,11 @@ async function renderPanel(
 
   mockIpcCommands({
     [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(selected),
-    [EVisualsCommand.LIST_MOTIONS]: () => {
+    [EVisualsCommand.LIST_MOTIONS]: mockSessionRead(() => {
       listed += 1;
 
       return names;
-    },
+    }),
     [EVisualsCommand.OPEN_MOTION]: mockSessionResponse((parameters?: Record<string, unknown>) => ({
       ...bake,
       name: String((parameters as { name: string }).name),
@@ -189,7 +189,7 @@ describe("VisualMotionsPanel listing", () => {
         })
       ),
       // Never settles, which is the state a 2,500-name actor is in for as long as its omf files are being read.
-      [EVisualsCommand.LIST_MOTIONS]: () => new Promise<Array<string>>(() => {}),
+      [EVisualsCommand.LIST_MOTIONS]: mockSessionRead(() => new Promise<Array<string>>(() => {})),
     });
 
     const container: Container = mockContainer([VisualLoadService, VisualMotionService, VisualsService]);
