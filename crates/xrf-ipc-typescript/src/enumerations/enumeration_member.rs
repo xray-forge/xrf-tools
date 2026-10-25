@@ -18,9 +18,6 @@ pub(crate) struct EnumerationMember {
 impl EnumerationMember {
   /// The members of one enum, pairing each Rust variant with the spelling it serializes as.
   ///
-  /// Paired by position because that is all the two views share: under `rename_all` the spelling appears nowhere in
-  /// the Rust source, so a member's name and its value come from different places and only their order relates them.
-  ///
   /// # Panics
   ///
   /// Panics when `source` is no longer an enum, or no longer declares as many variants as `named` serializes — either
@@ -48,7 +45,7 @@ impl EnumerationMember {
       .into_iter()
       .zip(spellings)
       .map(|((variant, declared), spelling)| Self {
-        name: Self::to_member_name(variant),
+        name: Self::member_name(variant),
         variant: variant.to_string(),
         value: spelling.to_string(),
         docs: declared.docs.clone(),
@@ -58,12 +55,7 @@ impl EnumerationMember {
   }
 
   /// The TypeScript member name a Rust variant is written as.
-  ///
-  /// Derived from the Rust identifier rather than from the serialized spelling, because the spelling is a wire
-  /// value and carries no word boundaries: upper-casing `AiCrow`'s spelling gives `AICROW` and `cform`'s gives
-  /// `CFORM`. A boundary is either the end of a word, as in `PsStatic`, or the end of an initialism directly
-  /// before one, as in `CForm`. Trailing underscores survive, so `S` and `S_` stay two members.
-  pub fn to_member_name(variant: &str) -> String {
+  pub fn member_name(variant: &str) -> String {
     let characters: Vec<char> = variant.chars().collect();
     let mut member: String = String::with_capacity(variant.len() + 4);
 
@@ -88,10 +80,6 @@ impl EnumerationMember {
   }
 
   /// Fails when two variants of one type fold to a single member name.
-  ///
-  /// Names the Rust identifiers rather than the wire spellings, because renaming is what resolves this and only the
-  /// identifier can be renamed: under `rename_all` the two spellings appear nowhere in the Rust source, so a collision
-  /// in `XrayExtension` would otherwise ask for `env_mod` and `envmod` to be renamed.
   pub fn assert_distinct(name: &str, members: &[Self]) {
     let mut claimed: BTreeMap<&str, &str> = BTreeMap::new();
 
@@ -115,7 +103,7 @@ mod tests {
   /// A member as [`Enumerations::resolve`] builds one, for the guard that reads only the first three fields.
   fn member(variant: &str, value: &str) -> EnumerationMember {
     EnumerationMember {
-      name: EnumerationMember::to_member_name(variant),
+      name: EnumerationMember::member_name(variant),
       variant: variant.to_string(),
       value: value.to_string(),
       docs: Cow::Borrowed(""),
@@ -125,39 +113,39 @@ mod tests {
 
   #[test]
   fn a_word_starts_where_a_capital_follows_a_lower_case_letter() {
-    assert_eq!(EnumerationMember::to_member_name("AiCrow"), "AI_CROW");
-    assert_eq!(EnumerationMember::to_member_name("EnvMod"), "ENV_MOD");
-    assert_eq!(EnumerationMember::to_member_name("PsStatic"), "PS_STATIC");
-    assert_eq!(EnumerationMember::to_member_name("GeomX"), "GEOM_X");
+    assert_eq!(EnumerationMember::member_name("AiCrow"), "AI_CROW");
+    assert_eq!(EnumerationMember::member_name("EnvMod"), "ENV_MOD");
+    assert_eq!(EnumerationMember::member_name("PsStatic"), "PS_STATIC");
+    assert_eq!(EnumerationMember::member_name("GeomX"), "GEOM_X");
   }
 
   #[test]
   fn a_word_starts_where_an_initialism_runs_into_one() {
     // The end of a run of capitals is a boundary only before a lower-case letter: `WSTM` is one word and `Gun` is
     // the next, so the break goes between them rather than before every capital.
-    assert_eq!(EnumerationMember::to_member_name("WSTMGun"), "WSTM_GUN");
-    assert_eq!(EnumerationMember::to_member_name("CForm"), "C_FORM");
+    assert_eq!(EnumerationMember::member_name("WSTMGun"), "WSTM_GUN");
+    assert_eq!(EnumerationMember::member_name("CForm"), "C_FORM");
   }
 
   #[test]
   fn a_word_starts_where_a_capital_follows_a_digit() {
-    assert_eq!(EnumerationMember::to_member_name("GF1S"), "GF1_S");
-    assert_eq!(EnumerationMember::to_member_name("SOG7B"), "SOG7_B");
+    assert_eq!(EnumerationMember::member_name("GF1S"), "GF1_S");
+    assert_eq!(EnumerationMember::member_name("SOG7B"), "SOG7_B");
     // Digits carry no boundary of their own, so a model number stays one word.
-    assert_eq!(EnumerationMember::to_member_name("SM209"), "SM209");
-    assert_eq!(EnumerationMember::to_member_name("Anm1"), "ANM1");
+    assert_eq!(EnumerationMember::member_name("SM209"), "SM209");
+    assert_eq!(EnumerationMember::member_name("Anm1"), "ANM1");
   }
 
   #[test]
   fn a_single_word_keeps_its_one_member() {
-    assert_eq!(EnumerationMember::to_member_name("Thm"), "THM");
-    assert_eq!(EnumerationMember::to_member_name("S"), "S");
+    assert_eq!(EnumerationMember::member_name("Thm"), "THM");
+    assert_eq!(EnumerationMember::member_name("S"), "S");
   }
 
   #[test]
   fn a_trailing_underscore_survives_because_it_is_the_spelling() {
-    assert_eq!(EnumerationMember::to_member_name("S_"), "S_");
-    assert_eq!(EnumerationMember::to_member_name("Seq_"), "SEQ_");
+    assert_eq!(EnumerationMember::member_name("S_"), "S_");
+    assert_eq!(EnumerationMember::member_name("Seq_"), "SEQ_");
   }
 
   #[test]

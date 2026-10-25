@@ -2,9 +2,6 @@ use xrf_utils::to_camel_case;
 
 /// The names a plugin's generated modules declare, spelled in one place so a module and the merged signatures that
 /// import it cannot disagree.
-///
-/// For the `sprite-equipment` plugin: `spriteEquipmentCommands`, `ESpriteEquipmentCommand`,
-/// `ISpriteEquipmentCommandSignatures`, and the `Raw` and `Bulk` forms of each.
 pub(crate) struct PluginSymbols {
   /// The plugin name in camel case (`spriteEquipment`).
   camel: String,

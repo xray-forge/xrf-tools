@@ -4,16 +4,10 @@ use std::sync::{Arc, Mutex};
 use specta_typescript::{Exporter, Typescript};
 use tauri_specta::{BuilderConfiguration, LanguageExt};
 
-use crate::collected::CollectedCommands;
-use crate::constants::GENERATED_HEADER;
-use crate::generated_output::normalize_generated_bindings;
-use crate::specta_command::SpectaCommand;
+use crate::collected::{CollectedCommands, SpectaCommand};
+use crate::write::GeneratedOutput;
 
 /// Exports one plugin's commands while recording every type those commands referenced, and the commands themselves.
-///
-/// Tauri Specta inlines the full transitive closure of a plugin's command signatures and cannot reference a
-/// declaration living in another file. Collecting the types here lets each one be written exactly once, into
-/// the module of the crate that declares it, and the inlined copies replaced by imports afterwards.
 pub(crate) struct CommandTypescript {
   exporter: Typescript,
   collected: Arc<Mutex<CollectedCommands>>,
@@ -34,7 +28,7 @@ impl LanguageExt for CommandTypescript {
     }
 
     LanguageExt::export(self.exporter, config, path)?;
-    normalize_generated_bindings(path)?;
+    GeneratedOutput::normalize_specta_module(path)?;
 
     Ok(())
   }
@@ -53,6 +47,6 @@ impl CommandTypescript {
   pub(crate) fn configured() -> Typescript {
     let exporter: Exporter = Typescript::default().into();
 
-    exporter.header(GENERATED_HEADER).framework_prelude("").into()
+    exporter.header(GeneratedOutput::HEADER).framework_prelude("").into()
   }
 }

@@ -14,7 +14,7 @@ pub(crate) struct Enumeration {
 
 impl Enumeration {
   /// The enum a type declares, which is its name under an `E` prefix.
-  pub fn to_enum_name(type_name: &str) -> String {
+  pub fn enum_name(type_name: &str) -> String {
     format!("E{type_name}")
   }
 
@@ -24,11 +24,8 @@ impl Enumeration {
   }
 
   /// This type as the frontend declares it: the enum, and the union it is declared with.
-  ///
-  /// An identities enum discards `union` because the union it wants is derived from the enum's own members rather
-  /// than from Specta's list of literals; a discriminant enum keeps it, because the object shapes are the type.
   pub fn render(&self, named: &NamedDataType, union: &str) -> String {
-    let name: String = Self::to_enum_name(&named.name);
+    let name: String = Self::enum_name(&named.name);
 
     match &self.subject {
       EnumerationSubject::Identities => {

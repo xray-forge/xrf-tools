@@ -5,8 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use specta::Types;
 use specta::datatype::NamedDataType;
 
-use crate::mirror_imports::MirrorImports;
-use crate::type_modules::TypeModules;
+use crate::input::{MirrorImports, TypeModules};
 use crate::typescript::source::{for_each_identifier, without_comments_and_strings};
 
 /// Where each collected type is declared, split by whether a workspace crate owns it.
@@ -94,10 +93,6 @@ impl TypeOwnership {
     referenced.iter().map(|name| self.owners[*name].clone()).collect()
   }
 
-  pub(crate) fn imports(&self, referenced: &BTreeSet<&str>) -> String {
-    self.render_imports(referenced)
-  }
-
   /// The import statements a module carrying `source` needs, where `owner` declares nothing of its own.
   pub(crate) fn imports_for(&self, source: &str) -> String {
     self.imports(&self.references(source, ""))
@@ -134,7 +129,7 @@ impl TypeOwnership {
   }
 
   /// Import statements pulling every referenced type from the module that declares it.
-  fn render_imports(&self, referenced: &BTreeSet<&str>) -> String {
+  pub(crate) fn imports(&self, referenced: &BTreeSet<&str>) -> String {
     let mut grouped: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
 
     for name in referenced {
@@ -163,50 +158,42 @@ impl TypeOwnership {
   }
 
   /// Fails when type modules would import each other.
-  ///
-  /// Crate dependencies are acyclic, so a cycle here means ownership resolved wrongly rather than that the
-  /// sources are circular. TypeScript would not report it as an error, only as a partially initialised module.
   pub(crate) fn assert_no_import_cycles(graph: &BTreeMap<String, BTreeSet<String>>) {
-    fn walk(
-      module: &str,
-      graph: &BTreeMap<String, BTreeSet<String>>,
-      path: &mut Vec<String>,
-      settled: &mut BTreeSet<String>,
-    ) {
-      if settled.contains(module) {
-        return;
-      }
-
-      assert!(
-        !path.iter().any(|visited| visited == module),
-        "Type modules import each other: {} -> {module}",
-        path.join(" -> ")
-      );
-
-      path.push(module.to_string());
-
-      for imported in graph.get(module).into_iter().flatten() {
-        walk(imported, graph, path, settled);
-      }
-
-      path.pop();
-      settled.insert(module.to_string());
-    }
-
     let mut settled: BTreeSet<String> = BTreeSet::new();
 
     for module in graph.keys() {
-      walk(module, graph, &mut Vec::new(), &mut settled);
+      Self::walk_imports(module, graph, &mut Vec::new(), &mut settled);
     }
   }
 
+  /// Walks the modules `module` imports depth first, failing on one already on `path`.
+  fn walk_imports(
+    module: &str,
+    graph: &BTreeMap<String, BTreeSet<String>>,
+    path: &mut Vec<String>,
+    settled: &mut BTreeSet<String>,
+  ) {
+    if settled.contains(module) {
+      return;
+    }
+
+    assert!(
+      !path.iter().any(|visited| visited == module),
+      "Type modules import each other: {} -> {module}",
+      path.join(" -> ")
+    );
+
+    path.push(module.to_string());
+
+    for imported in graph.get(module).into_iter().flatten() {
+      Self::walk_imports(imported, graph, path, settled);
+    }
+
+    path.pop();
+    settled.insert(module.to_string());
+  }
+
   /// The bindings module owning a type, taken from the crate that declares it, as `modules` groups the crates.
-  ///
-  /// `module_path!()` records the declaring crate as its first segment, so ownership is readable off every
-  /// collected type and nothing has to be listed by hand. A hand-written list is what previously let the crate
-  /// mirrors fall behind the command modules, duplicating a hundred declarations between them.
-  ///
-  /// Answers `None` for a type no workspace crate declares, which has no module to live in.
   fn owning_module(named: &NamedDataType, modules: &TypeModules) -> Option<String> {
     modules.module_of(&named.module_path)
   }

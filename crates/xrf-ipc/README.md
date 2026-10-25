@@ -45,16 +45,17 @@ Declared in `xrf-renderer`, that constant is generated into `core/ipc/types/xrf-
 - Declare it in an `xrf_*` crate. Its bindings module is named after the crate, and generation fails on a constant
   declared anywhere else.
 - Its type must implement `serde::Serialize` and `specta::Type`, the second as the crate's `typescript-bindings`
-  feature derives it. The value is what `serde_json` writes of it, an `f32` in its own shortest form (`to_value` goes
-  through the text, since `serde_json::to_value` would widen `0.1_f32` to `0.10000000149011612`). The generator takes
+  feature derives it. The value is what `serde_json` writes of it, an `f32` in its own shortest form. The generator takes
   numbers, strings, booleans, objects and arrays, integers only up to ±(2^53−1), the most a JavaScript number holds
   exactly; a non-finite float serializes as `null`, and a bare `null` is refused. An object or an array is typed by its
   Specta definition, which also declares a named type no command carries:
   `xrf_archive::ARCHIVE_READ_POLICY` is the frontend's only source of `ArchiveReadPolicy`.
 
-`to_value`, `data_type_of` and `parent_module_path` are public only because the expansion calls them. The type is read
-off the value, as the serialization is, so the expansion never restates a type the item spelled.
+`IpcConstant::serialize_value`, `define_type` and `enclosing_module` are public, and hidden from the docs, only because
+the expansion calls them: `serialize_value` goes through the text (`serde_json::to_value` would widen `0.1_f32` to
+`0.10000000149011612`), and the type is read off the value, as the serialization is, so the expansion never restates a
+type the item spelled.
 
 ## Checks
 
-Run `cargo test --locked -p xrf-ipc`. Sources: [`IpcConstant`](src/ipc_constant.rs), [`to_value`](src/to_value.rs).
+Run `cargo test --locked -p xrf-ipc`. Source: [`IpcConstant`](src/ipc_constant.rs).

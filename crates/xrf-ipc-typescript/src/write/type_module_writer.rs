@@ -10,15 +10,14 @@ use specta_typescript::{Exporter, primitives};
 use xrf_ipc::IpcConstant;
 
 use crate::collected::CollectedConstants;
-use crate::command_typescript::CommandTypescript;
-use crate::constants::GENERATED_HEADER;
+use crate::collected::CommandTypescript;
 use crate::enumerations::Enumerations;
-use crate::generated_output::{normalize_doc_indentation, write_generated};
-use crate::mirror_imports::MirrorImports;
-use crate::type_modules::TypeModules;
-use crate::type_ownership::TypeOwnership;
+use crate::input::MirrorImports;
+use crate::input::TypeModules;
 use crate::typescript::format::TypeScriptFormat;
 use crate::typescript::syntax::render_value;
+use crate::write::GeneratedOutput;
+use crate::write::TypeOwnership;
 
 /// Writes `types/`, one module per crate that declares an exported type or constant.
 pub(crate) struct TypeModuleWriter;
@@ -29,9 +28,6 @@ impl TypeModuleWriter {
 
   /// Writes one module per declaring crate, or crate family as `type_modules` groups them, each importing another as
   /// `imports` addresses it, answering with the ownership and the enums those modules establish.
-  ///
-  /// `collected` holds every type a command or a constant carries. A crate's `constants` open its module, after the
-  /// imports and before the types.
   pub(crate) fn write_all(
     output: &Path,
     collected: &Types,
@@ -91,14 +87,17 @@ impl TypeModuleWriter {
 
       rendered.insert(
         module.clone(),
-        format!("{GENERATED_HEADER}\n{imports}{separator}{exported}{constant_separator}{declarations}"),
+        format!(
+          "{}\n{imports}{separator}{exported}{constant_separator}{declarations}",
+          GeneratedOutput::HEADER
+        ),
       );
     }
 
     TypeOwnership::assert_no_import_cycles(&graph);
 
     for (module, contents) in rendered {
-      write_generated(&output.join(format!("{module}.ts")), &contents);
+      GeneratedOutput::write(&output.join(format!("{module}.ts")), &contents);
     }
 
     (ownership, enumerations)
@@ -116,18 +115,10 @@ impl TypeModuleWriter {
     let union: String = primitives::export(&exporter, types, iter::once(declared), "")
       .unwrap_or_else(|error| panic!("Failed to export {module} type {}: {error}", declared.name));
 
-    normalize_doc_indentation(&enumerations.render(declared, &union))
+    GeneratedOutput::normalize_doc_indentation(&enumerations.render(declared, &union))
   }
 
   /// One constant as the frontend declares it: its doc comment, then `export const NAME: type = value;`.
-  ///
-  /// A scalar's type follows its value, since the value is the contract: a string is its own literal (`export const
-  /// NAME = "value" as const;`), so the page can name one kind of value (a job kind) by the union of the constants
-  /// declaring them, and a number or a boolean is typed as its primitive. An object or an array cannot name its shape,
-  /// so it is typed as Specta names its Rust type, `data_type` resolved against `types`.
-  ///
-  /// Fails on a name a type of the module already takes, on a value that does not serialize, on a bare `null`, on an
-  /// integer a JavaScript number does not hold exactly, and on a type Specta cannot name.
   fn render_constant(
     constant: &IpcConstant,
     data_type: &DataType,
@@ -250,12 +241,12 @@ mod tests {
   use xrf_test_utils::GeneratedResources;
 
   use crate::collected::CollectedConstants;
-  use crate::command_typescript::CommandTypescript;
-  use crate::mirror_imports::MirrorImports;
-  use crate::type_module_writer::TypeModuleWriter;
-  use crate::type_modules::TypeModules;
-  use crate::type_ownership::TypeOwnership;
+  use crate::collected::CommandTypescript;
+  use crate::input::MirrorImports;
+  use crate::input::TypeModules;
   use crate::typescript::format::TypeScriptFormat;
+  use crate::write::TypeModuleWriter;
+  use crate::write::TypeOwnership;
 
   const IMPORTS: MirrorImports = MirrorImports::new("@/fixture");
 
@@ -357,8 +348,8 @@ mod tests {
       module_path: "xrf_fixture::limits",
       name: "SHARE",
       doc: "",
-      value: || xrf_ipc::to_value(&0.1_f32),
-      data_type: |types| xrf_ipc::data_type_of(&0.1_f32, types),
+      value: || IpcConstant::serialize_value(&0.1_f32),
+      data_type: |types| IpcConstant::define_type(&0.1_f32, types),
     });
 
     assert_eq!(rendered, "export const SHARE: number = 0.1;\n");
@@ -370,8 +361,8 @@ mod tests {
       module_path: "xrf_fixture::limits",
       name: "LARGEST",
       doc: "",
-      value: || xrf_ipc::to_value(&-9_007_199_254_740_991_i64),
-      data_type: |types| xrf_ipc::data_type_of(&0_i64, types),
+      value: || IpcConstant::serialize_value(&-9_007_199_254_740_991_i64),
+      data_type: |types| IpcConstant::define_type(&0_i64, types),
     });
 
     assert_eq!(rendered, "export const LARGEST: number = -9007199254740991;\n");
@@ -384,8 +375,8 @@ mod tests {
       module_path: "xrf_fixture::limits",
       name: "HUGE",
       doc: "",
-      value: || xrf_ipc::to_value(&9_007_199_254_740_992_u64),
-      data_type: |types| xrf_ipc::data_type_of(&0_u64, types),
+      value: || IpcConstant::serialize_value(&9_007_199_254_740_992_u64),
+      data_type: |types| IpcConstant::define_type(&0_u64, types),
     });
   }
 
@@ -398,8 +389,8 @@ mod tests {
       module_path: "xrf_fixture::limits",
       name: "NESTED",
       doc: "",
-      value: || xrf_ipc::to_value(&[1_u64, 9_007_199_254_740_992_u64]),
-      data_type: |types| xrf_ipc::data_type_of(&[0_u64; 2], types),
+      value: || IpcConstant::serialize_value(&[1_u64, 9_007_199_254_740_992_u64]),
+      data_type: |types| IpcConstant::define_type(&[0_u64; 2], types),
     });
   }
 
@@ -409,8 +400,8 @@ mod tests {
       module_path: "xrf_fixture::limits",
       name: "STEPS",
       doc: "",
-      value: || xrf_ipc::to_value(&[1_u32, 2, 3]),
-      data_type: |types| xrf_ipc::data_type_of::<[u32]>(&[1, 2, 3], types),
+      value: || IpcConstant::serialize_value(&[1_u32, 2, 3]),
+      data_type: |types| IpcConstant::define_type::<[u32]>(&[1, 2, 3], types),
     });
 
     assert_eq!(rendered, "export const STEPS: number[] = [1, 2, 3];\n");
@@ -424,7 +415,7 @@ mod tests {
       name: "BROKEN",
       doc: "",
       value: || serde_json::from_str("not a value"),
-      data_type: |types| xrf_ipc::data_type_of(&0_u32, types),
+      data_type: |types| IpcConstant::define_type(&0_u32, types),
     });
   }
 }

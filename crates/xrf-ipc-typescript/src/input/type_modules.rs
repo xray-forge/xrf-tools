@@ -1,8 +1,5 @@
 /// Which `types/` module a workspace crate's declarations land in: the crate's own, named after it (`xrf_renderer`
 /// writes `xrf-renderer.ts`), unless the caller groups a family of crates into one.
-///
-/// A family keeps one surface one module to the frontend however its sources are split into crates, so moving code
-/// between those crates moves no declaration between the frontend's imports.
 #[derive(Clone, Debug, Default)]
 pub struct TypeModules {
   /// Each family's crate name, and the module that crate and every `<crate name>_<part>` share.
