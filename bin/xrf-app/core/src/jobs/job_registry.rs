@@ -10,7 +10,7 @@ use serde::Serialize;
 use serde_json::Value;
 use tauri::ipc::Channel;
 use uuid::Uuid;
-use xrf_job::{DEFAULT_PROGRESS_INTERVAL, JobHandle, JobOutcome, JobProgress, ProgressSink};
+use xrf_job::{JobHandle, JobOutcome, JobProgress, ProgressSink};
 use xrf_utils::{error_to_string, format_duration, wall_clock_millis};
 
 use crate::TauriResult;
@@ -133,7 +133,7 @@ pub struct JobRegistry {
 impl JobRegistry {
   /// A registry whose jobs report at the interval `xrf-job` chose.
   pub fn new() -> Self {
-    Self::with_interval(DEFAULT_PROGRESS_INTERVAL)
+    Self::with_interval(JobHandle::DEFAULT_PROGRESS_INTERVAL)
   }
 
   /// A registry whose jobs report at `interval`.
