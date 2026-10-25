@@ -47,3 +47,26 @@ impl XrayEngineResolution {
     format!("{} ({})", self.engine, self.evidence.describe())
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::XrayEngineResolution;
+  use crate::{XrayEngine, XrayEngineEvidence};
+
+  #[test]
+  fn describes_the_engine_and_what_decided_it() {
+    assert_eq!(
+      XrayEngineResolution::detected(XrayEngine::Extended, XrayEngineEvidence::AnomalyExecutables, "launcher")
+        .describe(),
+      "extended (Anomaly executables found)"
+    );
+    assert_eq!(
+      XrayEngineResolution::named(XrayEngine::Vanilla).describe(),
+      "vanilla (named)"
+    );
+    assert_eq!(
+      XrayEngineResolution::undetected().describe(),
+      "vanilla (no Anomaly or Atmosfear signs)"
+    );
+  }
+}
