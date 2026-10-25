@@ -1,6 +1,6 @@
 use ddsfile::{D3DFormat, DxgiFormat};
 
-use crate::renderer::dds_format_family::{is_block_compressed, is_legacy_block_compressed, is_uncompressed};
+use crate::renderer::dds_format_family::DdsFormatFamily;
 use crate::renderer::dds_format_support::DdsFormatSupport;
 
 /// A renderer path of the engine, as far as what it will load off disk.
@@ -14,6 +14,7 @@ pub enum DdsRenderer {
 impl DdsRenderer {
   pub const ALL: [Self; 3] = [Self::Dx9, Self::Dx11, Self::OpenGl];
 
+  /// The short name a surface shows for the path.
   pub const fn label(self) -> &'static str {
     match self {
       Self::Dx9 => "DX9",
@@ -30,27 +31,17 @@ impl DdsRenderer {
   /// than by any code that can be read. GL was never checked, so it answers [`DdsFormatSupport::Unverified`] for
   /// everything rather than guessing in either direction.
   pub const fn supports(self, format: DxgiFormat) -> DdsFormatSupport {
-    match self {
-      Self::OpenGl => DdsFormatSupport::Unverified,
-      Self::Dx11 => {
-        if is_block_compressed(format) || is_uncompressed(format) {
-          DdsFormatSupport::Supported
-        } else {
-          DdsFormatSupport::Unverified
-        }
+    match (self, DdsFormatFamily::of(format)) {
+      (Self::OpenGl, _) => DdsFormatSupport::Unverified,
+      (Self::Dx11, Some(_)) => DdsFormatSupport::Supported,
+      (Self::Dx11, None) => DdsFormatSupport::Unverified,
+      (Self::Dx9, Some(DdsFormatFamily::LegacyBlockCompressed | DdsFormatFamily::Uncompressed)) => {
+        DdsFormatSupport::Supported
       }
-      Self::Dx9 => {
-        if is_legacy_block_compressed(format) || is_uncompressed(format) {
-          DdsFormatSupport::Supported
-        } else {
-          DdsFormatSupport::Unsupported
-        }
-      }
+      (Self::Dx9, _) => DdsFormatSupport::Unsupported,
     }
   }
-}
 
-impl DdsRenderer {
   /// Whether this renderer loads a texture whose header names a legacy D3D9 format.
   ///
   /// DX9 answers yes to all of them by construction: this enum is the D3D9 format set, and `D3DXCreateTexture*` is a
@@ -68,5 +59,52 @@ impl DdsRenderer {
         _ => DdsFormatSupport::Unverified,
       },
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use ddsfile::DxgiFormat;
+
+  use super::DdsRenderer;
+  use crate::renderer::dds_format_support::DdsFormatSupport;
+
+  #[test]
+  fn each_path_answers_by_the_family_a_layout_belongs_to() {
+    // One layout of each family, and one outside all three, which only DX9 is sure enough to refuse.
+    let answers = |format: DxgiFormat| DdsRenderer::ALL.map(|renderer| renderer.supports(format));
+
+    assert_eq!(
+      answers(DxgiFormat::BC3_UNorm),
+      [
+        DdsFormatSupport::Supported,
+        DdsFormatSupport::Supported,
+        DdsFormatSupport::Unverified
+      ]
+    );
+    assert_eq!(
+      answers(DxgiFormat::BC5_UNorm),
+      [
+        DdsFormatSupport::Unsupported,
+        DdsFormatSupport::Supported,
+        DdsFormatSupport::Unverified
+      ]
+    );
+    assert_eq!(
+      answers(DxgiFormat::B5G6R5_UNorm),
+      [
+        DdsFormatSupport::Supported,
+        DdsFormatSupport::Supported,
+        DdsFormatSupport::Unverified
+      ]
+    );
+    assert_eq!(
+      answers(DxgiFormat::R16G16_Float),
+      [
+        DdsFormatSupport::Unsupported,
+        DdsFormatSupport::Unverified,
+        DdsFormatSupport::Unverified
+      ]
+    );
   }
 }

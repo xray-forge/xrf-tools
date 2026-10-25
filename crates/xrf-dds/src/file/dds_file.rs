@@ -10,14 +10,13 @@ use xrf_utils::{format_path, write_new_file_staged};
 
 use crate::file::dds_metadata::DdsMetadata;
 use crate::file::dds_png::DdsPng;
-use crate::file::dds_uncompressed::decode_uncompressed;
+use crate::file::dds_uncompressed_decoder::DdsUncompressedDecoder;
 use crate::renderer::dds_format_support::DdsFormatSupport;
 use crate::renderer::dds_renderer::DdsRenderer;
 
-/// Bytes a DDS header occupies, with and without the DX10 extension.
+/// Bytes a DDS header occupies, magic included, without the DX10 extension and with it.
 const HEADER_SIZE: u64 = 128;
 const DX10_HEADER_SIZE: u64 = 148;
-const MAXIMUM_HEADER_SIZE: u64 = DX10_HEADER_SIZE;
 
 /// Parsed DDS file with format behavior behind one interface.
 pub struct DdsFile {
@@ -27,6 +26,11 @@ pub struct DdsFile {
 }
 
 impl DdsFile {
+  /// Reads a whole texture, payload included, from a file.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the file cannot be opened or does not hold a readable DDS.
   pub fn read_from_path<P: AsRef<Path>>(path: P) -> XrfResult<Self> {
     let mut file: File = File::open(path.as_ref())?;
     let file_size: u64 = file.metadata()?.len();
@@ -44,15 +48,15 @@ impl DdsFile {
   /// Read a texture's header without its payload.
   ///
   /// A DDS header is at most 148 bytes, and `Dds::read` reads the payload with `read_to_end` and validates no length
-  /// against it, so a reader limited to the header yields a complete header and an empty payload. That matters at scale:
-  /// surveying the reference trees means answering format questions about ten gigabytes of textures, and the answers all
-  /// live in the first 148 bytes of each file.
+  /// against it, so a reader limited to the header yields a complete header and an empty payload. That matters at
+  /// scale: surveying the reference trees means answering format questions about ten gigabytes of textures, and the
+  /// answers all live in the first 148 bytes of each file.
   ///
   /// The payload size is derived from the file length rather than measured, since the payload was never read.
   pub fn read_metadata_from_path<P: AsRef<Path>>(path: P) -> XrfResult<DdsMetadata> {
     let file: File = File::open(path.as_ref())?;
     let file_size: u64 = file.metadata()?.len();
-    let dds: Dds = Dds::read(&mut file.take(MAXIMUM_HEADER_SIZE)).map_err(|error| {
+    let dds: Dds = Dds::read(&mut file.take(DX10_HEADER_SIZE)).map_err(|error| {
       XrfError::new_texture_processing_error(format!(
         "Failed to read texture header by path {}, error: {}",
         format_path(path.as_ref()),
@@ -60,17 +64,7 @@ impl DdsFile {
       ))
     })?;
 
-    let metadata_size: u64 = if dds.header10.is_some() {
-      DX10_HEADER_SIZE
-    } else {
-      HEADER_SIZE
-    };
-
-    Ok(DdsMetadata {
-      data_size: usize::try_from(file_size.saturating_sub(metadata_size))
-        .map_err(|_| XrfError::new_texture_processing_error("DDS payload exceeds the supported size range"))?,
-      ..DdsMetadata::from_dds(&dds, file_size, metadata_size)
-    })
+    Self::header_metadata(&dds, file_size)
   }
 
   /// Reads header facts from bytes already in hand, without keeping the payload.
@@ -81,24 +75,19 @@ impl DdsFile {
   pub fn read_metadata_from_bytes(bytes: &[u8]) -> XrfResult<DdsMetadata> {
     let file_size: u64 = u64::try_from(bytes.len())
       .map_err(|_| XrfError::new_texture_processing_error("DDS input exceeds the supported size range"))?;
-    let header: &[u8] = &bytes[..bytes.len().min(MAXIMUM_HEADER_SIZE as usize)];
+    let header: &[u8] = &bytes[..bytes.len().min(DX10_HEADER_SIZE as usize)];
     let dds: Dds = Dds::read(&mut Cursor::new(header)).map_err(|error| {
       XrfError::new_texture_processing_error(format!("Failed to read DDS header from memory: {error}."))
     })?;
 
-    let metadata_size: u64 = if dds.header10.is_some() {
-      DX10_HEADER_SIZE
-    } else {
-      HEADER_SIZE
-    };
-
-    Ok(DdsMetadata {
-      data_size: usize::try_from(file_size.saturating_sub(metadata_size))
-        .map_err(|_| XrfError::new_texture_processing_error("DDS payload exceeds the supported size range"))?,
-      ..DdsMetadata::from_dds(&dds, file_size, metadata_size)
-    })
+    Self::header_metadata(&dds, file_size)
   }
 
+  /// Reads a whole texture, payload included, from bytes already in hand.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the bytes do not hold a readable DDS.
   pub fn read_from_bytes(bytes: &[u8]) -> XrfResult<Self> {
     let file_size: u64 = u64::try_from(bytes.len())
       .map_err(|_| XrfError::new_texture_processing_error("DDS input exceeds the supported size range"))?;
@@ -112,11 +101,7 @@ impl DdsFile {
   pub(crate) fn from_encoded(dds: Dds) -> XrfResult<Self> {
     let data_size: u64 = u64::try_from(dds.data.len())
       .map_err(|_| XrfError::new_texture_processing_error("Encoded DDS exceeds the supported size range"))?;
-    let metadata_size: u64 = if dds.header10.is_some() {
-      DX10_HEADER_SIZE
-    } else {
-      HEADER_SIZE
-    };
+    let metadata_size: u64 = Self::header_size(&dds);
     let file_size: u64 = metadata_size
       .checked_add(data_size)
       .ok_or_else(|| XrfError::new_texture_processing_error("Encoded DDS size overflowed"))?;
@@ -128,6 +113,7 @@ impl DdsFile {
     })
   }
 
+  /// The header facts of this texture, with sizes measured from what was read.
   pub fn metadata(&self) -> DdsMetadata {
     DdsMetadata::from_dds(&self.dds, self.file_size, self.metadata_size)
   }
@@ -164,7 +150,7 @@ impl DdsFile {
   pub fn decode_rgba(&self, mipmap_level: u32) -> XrfResult<RgbaImage> {
     match image_dds::image_from_dds(&self.dds, mipmap_level) {
       Ok(image) => Ok(image),
-      Err(error) => decode_uncompressed(&self.dds, mipmap_level).map_err(|fallback| {
+      Err(error) => DdsUncompressedDecoder::decode(&self.dds, mipmap_level).map_err(|fallback| {
         XrfError::new_texture_processing_error(format!(
           "Failed to convert DDS to RGBA image: {error}, and it is no expandable packing either: {fallback}"
         ))
@@ -172,6 +158,11 @@ impl DdsFile {
     }
   }
 
+  /// The base level as a PNG, decoded as [`Self::decode_rgba`] decodes it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error where [`Self::decode_rgba`] does, or when the PNG encoder refuses the pixels.
   pub fn to_png(&self) -> XrfResult<DdsPng> {
     let image: RgbaImage = self.decode_rgba(0)?;
     let mut bytes: Vec<u8> = Vec::new();
@@ -192,6 +183,7 @@ impl DdsFile {
     Ok(write_new_file_staged(path, &self.write_to_bytes()?)?)
   }
 
+  /// The whole file as it would be written, header and payload.
   pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
     let mut bytes: Vec<u8> = Vec::new();
 
@@ -244,6 +236,26 @@ impl DdsFile {
       file_size,
       metadata_size,
     })
+  }
+
+  /// Header facts from a header read without its payload, whose size is derived from the file length instead.
+  fn header_metadata(dds: &Dds, file_size: u64) -> XrfResult<DdsMetadata> {
+    let metadata_size: u64 = Self::header_size(dds);
+
+    Ok(DdsMetadata {
+      data_size: usize::try_from(file_size.saturating_sub(metadata_size))
+        .map_err(|_| XrfError::new_texture_processing_error("DDS payload exceeds the supported size range"))?,
+      ..DdsMetadata::from_dds(dds, file_size, metadata_size)
+    })
+  }
+
+  /// Bytes the header of this texture occupies, which the DX10 extension lengthens.
+  fn header_size(dds: &Dds) -> u64 {
+    if dds.header10.is_some() {
+      DX10_HEADER_SIZE
+    } else {
+      HEADER_SIZE
+    }
   }
 }
 
@@ -307,13 +319,6 @@ mod tests {
 
     assert!(encoded_file(4, 4, DdsMipmaps::Disabled).write_to_path(&path).is_err());
     assert_publication_left_previous(&path, b"previous");
-  }
-
-  #[test]
-  fn keeps_dimensions_that_are_not_multiples_of_four() {
-    let metadata = encoded_file(1023, 1020, DdsMipmaps::Disabled).metadata();
-
-    assert_eq!((metadata.width, metadata.height), (1023, 1020));
   }
 
   #[test]

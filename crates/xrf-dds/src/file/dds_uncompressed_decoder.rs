@@ -9,6 +9,79 @@ use ddsfile::{Caps2, Dds, PixelFormatFlags};
 use image::RgbaImage;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::mip::dds_mip_chain::DdsMipChain;
+
+/// The decoder [`crate::DdsFile::decode_rgba`] falls back to for a packing `image_dds` refuses.
+pub(crate) struct DdsUncompressedDecoder;
+
+impl DdsUncompressedDecoder {
+  /// Expands one mip level of an uncompressed surface into RGBA.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the header declares a layout this cannot expand, when the file is a cubemap or volume, or
+  /// when the payload is shorter than the level asks for.
+  pub(crate) fn decode(dds: &Dds, mipmap_level: u32) -> XrfResult<RgbaImage> {
+    // A cubemap or volume stores faces or slices one after another, and expanding the first as if it were the whole
+    // image would show one face stretched over the surface rather than reporting that this is not a flat texture.
+    if dds.header.caps2.intersects(Caps2::CUBEMAP | Caps2::VOLUME) {
+      return Err(XrfError::new_texture_processing_error(
+        "Cannot expand a cubemap or volume texture as a flat image",
+      ));
+    }
+
+    let layout: Layout = Layout::from_dds(dds).ok_or_else(|| {
+      XrfError::new_texture_processing_error("DDS header declares no uncompressed layout that can be expanded")
+    })?;
+
+    if mipmap_level >= dds.get_num_mipmap_levels() {
+      return Err(XrfError::new_texture_processing_error(format!(
+        "DDS carries {} mipmap levels, so level {mipmap_level} cannot be read",
+        dds.get_num_mipmap_levels()
+      )));
+    }
+
+    let level_bytes = |level: u32| -> usize {
+      let (width, height) = DdsMipChain::level_size(dds.get_width(), dds.get_height(), level);
+
+      width as usize * height as usize * layout.bytes_per_pixel
+    };
+    let offset: usize = (0..mipmap_level).map(level_bytes).sum();
+    let length: usize = level_bytes(mipmap_level);
+
+    if dds.data.len() < offset + length {
+      return Err(XrfError::new_texture_processing_error(format!(
+        "DDS payload holds {} bytes, and mipmap level {mipmap_level} needs {}",
+        dds.data.len(),
+        offset + length
+      )));
+    }
+
+    let (width, height) = DdsMipChain::level_size(dds.get_width(), dds.get_height(), mipmap_level);
+    let mut image: RgbaImage = RgbaImage::new(width, height);
+
+    for (index, pixel) in dds.data[offset..offset + length]
+      .chunks_exact(layout.bytes_per_pixel)
+      .enumerate()
+    {
+      let mut packed: u32 = 0;
+
+      // Little endian, as every DDS payload is: the first byte is the least significant part of the pixel.
+      for (byte, value) in pixel.iter().enumerate() {
+        packed |= u32::from(*value) << (byte * 8);
+      }
+
+      image.put_pixel(
+        index as u32 % width,
+        index as u32 / width,
+        image::Rgba(layout.to_rgba(packed)),
+      );
+    }
+
+    Ok(image)
+  }
+}
+
 /// One channel's place in a packed pixel: where its bits sit, and how wide they are.
 #[derive(Clone, Copy, Debug)]
 struct Channel {
@@ -86,7 +159,7 @@ impl Layout {
       // the low one because alpha holds the high one.
       let covered: u32 = alpha.map_or(0, |channel| channel.mask);
 
-      Channel::from_mask(Some(pixel_mask(bits) & !covered))
+      Channel::from_mask(Some(Self::pixel_mask(bits) & !covered))
     } else {
       Channel::from_mask(format.r_bit_mask)
     };
@@ -123,88 +196,15 @@ impl Layout {
       alpha,
     ]
   }
-}
 
-/// Expands one mip level of an uncompressed surface into RGBA.
-///
-/// # Errors
-///
-/// Returns an error when the header declares a layout this cannot expand, when the file is a cubemap or volume, or
-/// when the payload is shorter than the level asks for.
-pub(crate) fn decode_uncompressed(dds: &Dds, mipmap_level: u32) -> XrfResult<RgbaImage> {
-  // A cubemap or volume stores faces or slices one after another, and expanding the first as if it were the whole
-  // image would show one face stretched over the surface rather than reporting that this is not a flat texture.
-  if dds.header.caps2.intersects(Caps2::CUBEMAP | Caps2::VOLUME) {
-    return Err(XrfError::new_texture_processing_error(
-      "Cannot expand a cubemap or volume texture as a flat image",
-    ));
-  }
-
-  let layout: Layout = Layout::from_dds(dds).ok_or_else(|| {
-    XrfError::new_texture_processing_error("DDS header declares no uncompressed layout that can be expanded")
-  })?;
-
-  if mipmap_level >= dds.get_num_mipmap_levels() {
-    return Err(XrfError::new_texture_processing_error(format!(
-      "DDS carries {} mipmap levels, so level {mipmap_level} cannot be read",
-      dds.get_num_mipmap_levels()
-    )));
-  }
-
-  let (width, height) = level_size(dds.get_width(), dds.get_height(), mipmap_level);
-  let mut offset: usize = 0;
-
-  for level in 0..mipmap_level {
-    let (level_width, level_height) = level_size(dds.get_width(), dds.get_height(), level);
-
-    offset += level_width as usize * level_height as usize * layout.bytes_per_pixel;
-  }
-
-  let length: usize = width as usize * height as usize * layout.bytes_per_pixel;
-
-  if dds.data.len() < offset + length {
-    return Err(XrfError::new_texture_processing_error(format!(
-      "DDS payload holds {} bytes, and mipmap level {mipmap_level} needs {}",
-      dds.data.len(),
-      offset + length
-    )));
-  }
-
-  let mut image: RgbaImage = RgbaImage::new(width, height);
-
-  for (index, pixel) in dds.data[offset..offset + length]
-    .chunks_exact(layout.bytes_per_pixel)
-    .enumerate()
-  {
-    let mut packed: u32 = 0;
-
-    // Little endian, as every DDS payload is: the first byte is the least significant part of the pixel.
-    for (byte, value) in pixel.iter().enumerate() {
-      packed |= u32::from(*value) << (byte * 8);
+  /// Every bit a pixel of this width occupies.
+  fn pixel_mask(bits: u32) -> u32 {
+    if bits >= u32::BITS {
+      u32::MAX
+    } else {
+      (1u32 << bits) - 1
     }
-
-    image.put_pixel(
-      index as u32 % width,
-      index as u32 / width,
-      image::Rgba(layout.to_rgba(packed)),
-    );
   }
-
-  Ok(image)
-}
-
-/// Every bit a pixel of this width occupies.
-fn pixel_mask(bits: u32) -> u32 {
-  if bits >= u32::BITS {
-    u32::MAX
-  } else {
-    (1u32 << bits) - 1
-  }
-}
-
-/// The size of one mip level, which halves each time and never reaches zero.
-fn level_size(width: u32, height: u32, level: u32) -> (u32, u32) {
-  ((width >> level).max(1), (height >> level).max(1))
 }
 
 #[cfg(test)]
@@ -214,7 +214,7 @@ mod tests {
   use ddsfile::Dds;
   use image::RgbaImage;
 
-  use super::decode_uncompressed;
+  use super::DdsUncompressedDecoder;
 
   const DDS_MAGIC: u32 = 0x2053_4444;
   const HEADER_SIZE: u32 = 124;
@@ -222,9 +222,6 @@ mod tests {
   const PIXEL_FORMAT_SIZE: u32 = 32;
 
   /// Builds a two by two DDS out of a pixel format and its payload, the way the files in the trees are laid out.
-  ///
-  /// Written byte by byte rather than through a builder so a test states the header it means: these layouts are
-  /// distinguished by their masks alone, and a helper that filled masks in would be testing itself.
   fn dds(flags: u32, bits: u32, masks: [u32; 4], payload: &[u8]) -> Dds {
     let mut bytes: Vec<u8> = Vec::new();
     let mut header: [u32; 31] = [0; 31];
@@ -261,8 +258,8 @@ mod tests {
   fn expands_alpha_only_as_coverage_over_white() {
     // `A8` is every bitmap font atlas in the trees. The file states coverage and no colour, and white is the only
     // reading that shows what it carries: black glyphs on a black field would be a picture of nothing.
-    let image: RgbaImage =
-      decode_uncompressed(&dds(0x2, 8, [0, 0, 0, 0xff], &[0, 0x80, 0xff, 0x40]), 0).expect("expect A8 to expand");
+    let image: RgbaImage = DdsUncompressedDecoder::decode(&dds(0x2, 8, [0, 0, 0, 0xff], &[0, 0x80, 0xff, 0x40]), 0)
+      .expect("expect A8 to expand");
 
     assert_eq!(
       pixels(&image),
@@ -277,8 +274,8 @@ mod tests {
 
   #[test]
   fn expands_luminance_across_the_colour_channels() {
-    let image: RgbaImage =
-      decode_uncompressed(&dds(0x20000, 8, [0xff, 0, 0, 0], &[0, 0x40, 0x80, 0xff]), 0).expect("expect L8 to expand");
+    let image: RgbaImage = DdsUncompressedDecoder::decode(&dds(0x20000, 8, [0xff, 0, 0, 0], &[0, 0x40, 0x80, 0xff]), 0)
+      .expect("expect L8 to expand");
 
     assert_eq!(
       pixels(&image),
@@ -295,7 +292,7 @@ mod tests {
   fn expands_alpha_luminance_into_grey_with_coverage() {
     // Sixteen bits, luminance in the low byte and alpha in the high one.
     let payload: Vec<u8> = vec![0x00, 0xff, 0x80, 0x80, 0xff, 0x00, 0x40, 0xc0];
-    let image: RgbaImage = decode_uncompressed(&dds(0x20001, 16, [0x00ff, 0, 0, 0xff00], &payload), 0)
+    let image: RgbaImage = DdsUncompressedDecoder::decode(&dds(0x20001, 16, [0x00ff, 0, 0, 0xff00], &payload), 0)
       .expect("expect alpha-luminance to expand");
 
     assert_eq!(
@@ -319,8 +316,8 @@ mod tests {
       .iter()
       .flat_map(|it| it.to_le_bytes())
       .collect();
-    let image: RgbaImage =
-      decode_uncompressed(&dds(0x40, 16, [0xf800, 0x07e0, 0x001f, 0], &payload), 0).expect("expect R5G6B5 to expand");
+    let image: RgbaImage = DdsUncompressedDecoder::decode(&dds(0x40, 16, [0xf800, 0x07e0, 0x001f, 0], &payload), 0)
+      .expect("expect R5G6B5 to expand");
 
     assert_eq!(
       pixels(&image),
@@ -343,8 +340,9 @@ mod tests {
       0xff, 0x00, 0x00, 0xff, // red
       0xff, 0xff, 0xff, 0x00, // white
     ];
-    let image: RgbaImage = decode_uncompressed(&dds(0x40, 32, [0x00ff0000, 0x0000ff00, 0x000000ff, 0], &payload), 0)
-      .expect("expect X8R8G8B8 to expand");
+    let image: RgbaImage =
+      DdsUncompressedDecoder::decode(&dds(0x40, 32, [0x00ff0000, 0x0000ff00, 0x000000ff, 0], &payload), 0)
+        .expect("expect X8R8G8B8 to expand");
 
     assert_eq!(
       pixels(&image),
@@ -359,7 +357,8 @@ mod tests {
 
   #[test]
   fn refuses_a_payload_shorter_than_the_level_it_describes() {
-    let error = decode_uncompressed(&dds(0x2, 8, [0, 0, 0, 0xff], &[0, 0x80]), 0).expect_err("expect a short payload");
+    let error =
+      DdsUncompressedDecoder::decode(&dds(0x2, 8, [0, 0, 0, 0xff], &[0, 0x80]), 0).expect_err("expect a short payload");
 
     assert!(error.to_string().contains("needs 4"), "got {error}");
   }

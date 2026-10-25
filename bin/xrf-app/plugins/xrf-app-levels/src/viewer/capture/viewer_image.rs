@@ -5,7 +5,7 @@ use std::path::Path;
 use image::codecs::tga::TgaEncoder;
 use image::{ExtendedColorType, ImageEncoder, ImageFormat, ImageReader, Rgba, RgbaImage};
 use xrf_app_core::TauriResult;
-use xrf_dds::DDS_BLOCK_SIZE;
+use xrf_dds::DdsEncoding;
 
 /// The picture vocabulary both exports share: reading a capture back, sizing and flattening it, and encoding it.
 pub struct ViewerImage;
@@ -21,7 +21,7 @@ impl ViewerImage {
       let scaled: f64 = (f64::from(pixels) * scale).round().max(1.0);
 
       if is_blocked {
-        let block: f64 = f64::from(DDS_BLOCK_SIZE);
+        let block: f64 = f64::from(DdsEncoding::BLOCK_SIZE);
 
         ((scaled / block).round().max(1.0) * block) as u32
       } else {

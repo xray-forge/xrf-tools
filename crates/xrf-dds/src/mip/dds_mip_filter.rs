@@ -1,3 +1,8 @@
+use crate::mip::bessel::Bessel;
+
+/// Shape parameter of the Kaiser window, the value NVIDIA's own mip generator uses.
+const KAISER_ALPHA: f64 = 4.0;
+
 /// Resampling kernel a mip chain is reduced with.
 ///
 /// The family the X-Ray converter offers (`kMIPFilter*`, `ETextureParams.h`), minus `Advanced`, which names no kernel
@@ -24,11 +29,6 @@ pub enum DdsMipFilter {
   Blackman,
   Kaiser,
 }
-
-use crate::mip::bessel::{bessel_i0, bessel_j1};
-
-/// Shape parameter of the Kaiser window, the value NVIDIA's own mip generator uses.
-const KAISER_ALPHA: f64 = 4.0;
 
 impl DdsMipFilter {
   /// Every kernel, in the order the SDK's own filter combo lists them.
@@ -123,18 +123,18 @@ impl DdsMipFilter {
       }
       // Mitchell and Netravali, "Reconstruction Filters in Computer Graphics" (SIGGRAPH 1988), whose two parameters
       // place all three of these on one curve: the cubic B-spline, Catmull-Rom, and the paper's own recommendation.
-      Self::Cubic => mitchell_netravali(x, 1.0, 0.0),
-      Self::Catrom => mitchell_netravali(x, 0.0, 0.5),
-      Self::Mitchell => mitchell_netravali(x, 1.0 / 3.0, 1.0 / 3.0),
+      Self::Cubic => Self::mitchell_netravali(x, 1.0, 0.0),
+      Self::Catrom => Self::mitchell_netravali(x, 0.0, 0.5),
+      Self::Mitchell => Self::mitchell_netravali(x, 1.0 / 3.0, 1.0 / 3.0),
       // `exp(-x^2 / 2 sigma^2)` at the half-pixel deviation resampling conventionally uses.
       Self::Gaussian => (-2.0 * x * x).exp(),
-      Self::Sinc => sinc(x),
+      Self::Sinc => Self::sinc(x),
       // The jinc, sinc's radially symmetric counterpart, normalized to one at the centre.
       Self::Bessel => {
         if x == 0.0 {
           1.0
         } else {
-          2.0 * bessel_j1(std::f64::consts::PI * x) / (std::f64::consts::PI * x)
+          2.0 * Bessel::j1(std::f64::consts::PI * x) / (std::f64::consts::PI * x)
         }
       }
       // Three raised-cosine windows, used here as kernels in their own right as the SDK offers them.
@@ -145,32 +145,32 @@ impl DdsMipFilter {
       Self::Kaiser => {
         let ratio: f64 = x / self.support();
 
-        sinc(x) * bessel_i0(KAISER_ALPHA * (1.0 - ratio * ratio).max(0.0).sqrt()) / bessel_i0(KAISER_ALPHA)
+        Self::sinc(x) * Bessel::i0(KAISER_ALPHA * (1.0 - ratio * ratio).max(0.0).sqrt()) / Bessel::i0(KAISER_ALPHA)
       }
     }
   }
-}
 
-/// The Mitchell-Netravali cubic at `x`, for the `b` and `c` that name one member of the family.
-fn mitchell_netravali(x: f64, b: f64, c: f64) -> f64 {
-  let x2: f64 = x * x;
-  let x3: f64 = x2 * x;
+  /// The Mitchell-Netravali cubic at `x`, for the `b` and `c` that name one member of the family.
+  fn mitchell_netravali(x: f64, b: f64, c: f64) -> f64 {
+    let x2: f64 = x * x;
+    let x3: f64 = x2 * x;
 
-  if x < 1.0 {
-    ((12.0 - 9.0 * b - 6.0 * c) * x3 + (-18.0 + 12.0 * b + 6.0 * c) * x2 + (6.0 - 2.0 * b)) / 6.0
-  } else {
-    ((-b - 6.0 * c) * x3 + (6.0 * b + 30.0 * c) * x2 + (-12.0 * b - 48.0 * c) * x + (8.0 * b + 24.0 * c)) / 6.0
+    if x < 1.0 {
+      ((12.0 - 9.0 * b - 6.0 * c) * x3 + (-18.0 + 12.0 * b + 6.0 * c) * x2 + (6.0 - 2.0 * b)) / 6.0
+    } else {
+      ((-b - 6.0 * c) * x3 + (6.0 * b + 30.0 * c) * x2 + (-12.0 * b - 48.0 * c) * x + (8.0 * b + 24.0 * c)) / 6.0
+    }
   }
-}
 
-/// The normalized sinc, `sin(pi x) / (pi x)`, continuous at the origin.
-fn sinc(x: f64) -> f64 {
-  if x == 0.0 {
-    1.0
-  } else {
-    let scaled: f64 = std::f64::consts::PI * x;
+  /// The normalized sinc, `sin(pi x) / (pi x)`, continuous at the origin.
+  fn sinc(x: f64) -> f64 {
+    if x == 0.0 {
+      1.0
+    } else {
+      let scaled: f64 = std::f64::consts::PI * x;
 
-    scaled.sin() / scaled
+      scaled.sin() / scaled
+    }
   }
 }
 

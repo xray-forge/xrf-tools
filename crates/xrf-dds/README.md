@@ -70,8 +70,8 @@ a full chain down to one pixel. Every level is reduced from the base rather than
 resampled independently, and alpha is never premultiplied, because a bump pair packs unrelated planes into the four
 channels. `DdsMipFilter::from_label` matches a kernel by the SDK's name, ignoring case. Encoding consumes the prepared
 levels without generating a second chain. Block compression can change pixel values, so compare decoded output with a
-tolerance rather than assuming lossless equality. Sides need not be multiples of `DDS_BLOCK_SIZE`; the encoder pads
-whole blocks and records the unpadded size.
+tolerance rather than assuming lossless equality. Sides need not be multiples of `DdsEncoding::BLOCK_SIZE`; the
+encoder pads whole blocks and records the unpadded size.
 
 `DdsEncodeCandidate` lists the five formats worth offering (BC1, BC2, BC3, RGBA8, BC7) with their cost and renderer
 support. `DdsEncodeAttempt::measure` encodes a chain as one candidate and reports file and GPU bytes, encode time, and a
