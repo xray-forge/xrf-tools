@@ -17,7 +17,7 @@ use crate::ipc::textures::TEXTURES_JOB_MAKE_BUMP;
 use crate::lease::TEXTURE_ENCODE_GROUP;
 
 /// Generate the `_bump` and `_bump#` pair a bumped surface binds, from a height map.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "make_bump"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "make_bump")]
 pub async fn textures_make_bump(
   request: TexturesMakeBumpRequest,

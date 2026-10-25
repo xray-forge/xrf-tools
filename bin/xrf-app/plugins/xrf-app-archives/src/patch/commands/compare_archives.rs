@@ -14,7 +14,7 @@ use crate::ipc::archives::ARCHIVES_JOB_COMPARE;
 use crate::patch::ArchivesPatchRequest;
 
 /// Compares two roots without writing files.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "compare_archives"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "compare_archives")]
 pub async fn archives_compare_archives(
   execution: State<'_, ExecutionState>,

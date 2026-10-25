@@ -20,7 +20,7 @@ pub struct GraphCrossTable {
   pub vertices_count: u32,
   pub level_guid: Uuid,
   pub game_guid: Uuid,
-  #[serde(skip_serializing, default)] // Does not make sense for JSON.
+  #[serde(skip)] // Does not make sense for JSON.
   pub data: Vec<u8>,
 }
 

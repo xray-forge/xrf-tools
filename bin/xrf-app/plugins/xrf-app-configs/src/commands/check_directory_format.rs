@@ -15,7 +15,7 @@ use crate::request::ConfigsFormatRequest;
 
 /// Report which LTX configs roots exposes are misformatted, in the format's own lane so a check never reads half a
 /// rewrite.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "check_directory_format"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "check_directory_format")]
 pub async fn configs_check_directory_format(
   execution: State<'_, ExecutionState>,

@@ -9,7 +9,7 @@ use xrf_utils::StagedFile;
 use crate::viewer::LevelViewerFolder;
 
 /// Write a screenshot's report beside it in the screenshots folder, as its JSON text; answers where it was written.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "write_screenshot_report"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "write_screenshot_report")]
 pub async fn levels_write_screenshot_report(
   directories: State<'_, AppDirectories>,

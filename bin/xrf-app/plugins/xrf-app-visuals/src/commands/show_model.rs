@@ -13,7 +13,7 @@ use crate::{SelectedVisual, VisualModels, VisualPoses, VisualRenderSource};
 /// Draw the open model in a viewport, `detail` down its collapse chain, its textures read by the renderer; no session
 /// draws none. Answers the scene drawn, which the viewport's load reports name, or none. Off the main thread, as every
 /// show is, its ticket taken first so a model asked for later is never replaced by this one.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "show_model"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "show_model")]
 // Tauri injects each managed state as an argument of its own.
 #[allow(clippy::too_many_arguments)]

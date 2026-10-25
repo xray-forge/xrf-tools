@@ -7,7 +7,7 @@ use xrf_vfs::XrayRoots;
 use crate::browse::TextureMaterialSummary;
 
 /// Read every descriptor the roots hold and say what each makes of its texture.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_catalog"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_catalog")]
 pub async fn textures_describe_catalog(
   roots: XrayRoots,

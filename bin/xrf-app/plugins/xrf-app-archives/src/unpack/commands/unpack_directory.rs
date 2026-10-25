@@ -14,7 +14,7 @@ use crate::ipc::archives::ARCHIVES_JOB_UNPACK;
 use crate::unpack::ArchivesUnpackRequest;
 
 /// Unpack every archive of a directory into a destination tree, reporting progress and stopping on request.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "unpack_directory"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "unpack_directory")]
 pub async fn archives_unpack_directory(
   execution: State<'_, ExecutionState>,

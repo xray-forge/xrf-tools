@@ -4,7 +4,7 @@ use xrf_renderer::RenderViewportId;
 use crate::WorldState;
 
 /// Play a viewport's weather on from a time of day, in seconds since midnight, ending the effect playing.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "seek_weather"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "seek_weather")]
 pub fn render_seek_weather(world: State<'_, WorldState>, viewport: RenderViewportId, time: f32) {
   world.lock().seek_weather(viewport, time);

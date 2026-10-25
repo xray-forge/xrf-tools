@@ -8,7 +8,7 @@ use crate::request::SpriteEquipmentOpenRequest;
 use crate::{EquipmentSpriteDocument, EquipmentSpriteMetadata, EquipmentSprites};
 
 /// Open an equipment sheet with the configuration naming what sits on it, read on the pool.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_sprite"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_sprite")]
 pub async fn sprite_equipment_open_sprite(
   request: SpriteEquipmentOpenRequest,

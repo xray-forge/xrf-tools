@@ -13,7 +13,7 @@ use crate::request::ConfigsReadSectionsRequest;
 const MAXIMUM_SECTIONS_PER_READ: usize = 64;
 
 /// Reads the bodies of the named sections of one entry point.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "read_resolved_sections"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "read_resolved_sections")]
 pub async fn configs_read_resolved_sections(
   execution: State<'_, ExecutionState>,

@@ -7,7 +7,7 @@ use crate::execution::ExecutionState;
 
 /// Commit one text file as roots read it, the way an editor's save commits, answering the project revision it left: a
 /// development build's way for a driver to change a file no editor writes yet. A release build refuses.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "commit_text"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "commit_text")]
 pub async fn assets_commit_text(
   roots: XrayRoots,

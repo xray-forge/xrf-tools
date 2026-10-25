@@ -9,7 +9,7 @@ use crate::VisualModels;
 
 /// Describe one of the open visual's motions as a pose of it would hold it, its frames, bones and length, posing none;
 /// read on the pool.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_motion"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_motion")]
 pub async fn visuals_describe_motion(
   session_id: SessionId,

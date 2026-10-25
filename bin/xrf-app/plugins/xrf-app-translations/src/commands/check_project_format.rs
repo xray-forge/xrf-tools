@@ -15,7 +15,7 @@ use crate::request::TranslationsFormatRequest;
 
 /// Report which JSON translation sources under a directory are not normalized, in the format's own lane so a check
 /// never reads half a rewrite.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "check_project_format"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "check_project_format")]
 pub async fn translations_check_project_format(
   execution: State<'_, ExecutionState>,

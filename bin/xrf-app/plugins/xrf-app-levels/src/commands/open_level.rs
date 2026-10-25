@@ -15,7 +15,7 @@ use crate::parts::{LevelSurfacesPart, LevelTexturesPart};
 use crate::report::LevelReport;
 
 /// Select a compiled level and report what it is built out of, without reading any of its geometry.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_level"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_level")]
 pub async fn levels_open_level(
   session_id: SessionId,

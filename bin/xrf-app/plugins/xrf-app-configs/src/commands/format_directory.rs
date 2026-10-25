@@ -15,7 +15,7 @@ use crate::ipc::configs::CONFIGS_JOB_FORMAT;
 use crate::request::ConfigsFormatRequest;
 
 /// Rewrite the LTX configs roots exposes, as one commit, one format or format check at a time.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "format_directory"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "format_directory")]
 pub async fn configs_format_directory(
   execution: State<'_, ExecutionState>,

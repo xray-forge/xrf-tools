@@ -11,7 +11,7 @@ use crate::{PosedVisualMotion, SelectedVisual, VisualModels, VisualPoses};
 
 /// Pose the open visual through one of its motions, held as `motion_id`, an opening of the viewer's own, and report
 /// what came out; baked on the pool.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_motion"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_motion")]
 pub async fn visuals_open_motion(
   session_id: SessionId,

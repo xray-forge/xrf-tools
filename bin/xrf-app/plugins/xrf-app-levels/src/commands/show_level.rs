@@ -15,7 +15,7 @@ use crate::report::LevelReport;
 /// Draw the open level in a viewport, its sectors and textures read by the renderer; no session draws none. Answers
 /// the scene drawn, which the viewport's load reports name, or none. The source may resolve the level's surfaces, so
 /// it is made on the pool, after the ticket that keeps a level asked for later from being replaced by this one.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "show_level"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "show_level")]
 // Tauri injects each managed state as an argument of its own.
 #[allow(clippy::too_many_arguments)]

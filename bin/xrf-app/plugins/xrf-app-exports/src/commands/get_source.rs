@@ -7,7 +7,7 @@ use xrf_utils::error_to_string;
 use crate::ExportsProjects;
 
 /// Read the source the extern `name` is declared in, from the project `session_id` holds.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_source"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "get_source")]
 pub async fn exports_get_source(
   session_id: SessionId,

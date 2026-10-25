@@ -14,7 +14,7 @@ use crate::ipc::translations::TRANSLATIONS_JOB_PARSE;
 use crate::request::TranslationsParseRequest;
 
 /// Import one language's raw XML string tables into JSON sources, one import at a time.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "parse_project"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "parse_project")]
 pub async fn translations_parse_project(
   execution: State<'_, ExecutionState>,

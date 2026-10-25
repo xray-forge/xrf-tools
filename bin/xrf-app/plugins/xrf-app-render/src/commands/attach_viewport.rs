@@ -12,7 +12,7 @@ use crate::{RenderViewports, ViewportEvent};
 
 /// Start drawing a native viewport into the calling window, telling the page what it costs and where its camera is
 /// through `events`.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "attach_viewport"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "attach_viewport")]
 pub fn render_attach_viewport(
   viewports: State<'_, RenderViewports>,

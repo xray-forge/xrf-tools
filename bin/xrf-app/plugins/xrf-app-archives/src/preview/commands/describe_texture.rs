@@ -7,7 +7,7 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 use crate::browse::ArchiveSubjects;
 
 /// Report the shape of a texture of the open subject, without decoding it into a picture.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_texture"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_texture")]
 pub async fn archives_describe_texture(
   session_id: SessionId,

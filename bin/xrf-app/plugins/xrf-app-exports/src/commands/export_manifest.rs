@@ -10,7 +10,7 @@ use xrf_utils::error_to_string;
 use crate::ExportsProjects;
 
 /// Write the manifest of every extern the project `session_id` holds to `path`, in the format its extension names.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "export_manifest"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "export_manifest")]
 pub async fn exports_export_manifest(
   session_id: SessionId,

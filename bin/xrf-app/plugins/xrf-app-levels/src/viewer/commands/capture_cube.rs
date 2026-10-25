@@ -15,7 +15,7 @@ use crate::viewer::cube::CubeCaptureRequest;
 use crate::viewer::{LevelViewerReport, ViewerCaptureJob};
 
 /// Capture a cubemap around a viewport's camera face by face and write it to a PNG file as a horizontal cross.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "capture_cube"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "capture_cube")]
 pub async fn levels_capture_cube(
   renderer: State<'_, Renderer>,

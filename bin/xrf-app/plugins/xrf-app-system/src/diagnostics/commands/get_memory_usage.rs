@@ -14,7 +14,7 @@ const GPU_ANSWER_TIMEOUT: Duration = Duration::from_millis(500);
 
 /// Report what the application and each of its webview's processes hold in memory, where the platform can say, and what
 /// the application holds on the GPU while its renderer runs one.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_memory_usage"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "get_memory_usage")]
 pub async fn system_get_memory_usage(
   probe: State<'_, WebviewProcessProbe>,

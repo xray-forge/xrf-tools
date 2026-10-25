@@ -9,7 +9,7 @@ use crate::viewer::LevelViewerFolder;
 
 /// The first free path for a screenshot named `name` in the screenshots folder, `-2`, `-3` and on added for one taken
 /// within the same second.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "find_screenshot_path"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "find_screenshot_path")]
 pub async fn levels_find_screenshot_path(
   directories: State<'_, AppDirectories>,

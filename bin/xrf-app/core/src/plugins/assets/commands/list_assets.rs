@@ -7,7 +7,7 @@ use crate::execution::ExecutionState;
 
 /// Every asset of one kind the roots hold, winner first and shadowed copies omitted; read on the pool, since a first
 /// listing plans and mounts the roots.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_assets"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "list_assets")]
 pub async fn assets_list_assets(
   roots: XrayRoots,

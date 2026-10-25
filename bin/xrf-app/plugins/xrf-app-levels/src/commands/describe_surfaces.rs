@@ -12,7 +12,7 @@ use crate::parts::LevelSurfacesPart;
 
 /// Describe how the renderer draws each entry of the open level's shader table, in its order, so the page names a
 /// surface by the shader id a packed surface carries; resolved again where a commit let it go.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_surfaces"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_surfaces")]
 pub async fn levels_describe_surfaces(
   session_id: SessionId,

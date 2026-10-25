@@ -7,7 +7,7 @@ use xrf_utils::error_to_string;
 use crate::TranslationProjects;
 
 /// Report the first character a language cannot hold, or nothing when the value is writable.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "validate_text"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "validate_text")]
 pub async fn translations_validate_text(
   session_id: SessionId,

@@ -8,7 +8,7 @@ use crate::browse::ArchiveSubjects;
 use crate::preview::AudioDescriptor;
 
 /// Report whatever the engine would read out of a sound of the open subject, without handing over the sound.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_audio"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_audio")]
 pub async fn archives_describe_audio(
   session_id: SessionId,

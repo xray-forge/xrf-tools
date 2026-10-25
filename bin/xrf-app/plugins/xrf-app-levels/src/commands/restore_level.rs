@@ -7,7 +7,7 @@ use crate::level::{SelectedLevel, SelectedLevelDescription, SelectedLevels};
 
 /// Restore the level `tool` holds in the asking window, the newest it opened, without reading the level again: as a
 /// page attaches to it, or reads it again after a commit derived it anew. Its parts are read by their own queries.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "restore_level"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "restore_level")]
 pub async fn levels_restore_level(
   levels: State<'_, SelectedLevels>,

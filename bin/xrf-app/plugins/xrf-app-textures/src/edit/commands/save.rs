@@ -19,7 +19,7 @@ use crate::ipc::textures::TEXTURES_JOB_SAVE;
 
 /// Write one node's descriptor, and the base texture with it when a held candidate is chosen: written over the texture
 /// that candidate's comparison was made of, whose descriptor the request has to name.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "save"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save")]
 // Tauri injects each managed state as an argument of its own.
 #[allow(clippy::too_many_arguments)]

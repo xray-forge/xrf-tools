@@ -11,7 +11,7 @@ use xrf_utils::error_to_string;
 use crate::{SpawnFiles, SpawnSession};
 
 /// Write the spawn `session_id` holds to `path` as a packed file, on the pool.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "save_file"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save_file")]
 pub async fn spawn_save_file(
   path: PathBuf,

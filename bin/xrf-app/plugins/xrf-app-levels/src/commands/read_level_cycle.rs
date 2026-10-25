@@ -13,7 +13,7 @@ use crate::weather::LevelWeatherCycle;
 
 /// Read any cycle or effect of the game as the open level's engine loads it, for a viewer playing one the level does
 /// not offer itself.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "read_level_cycle"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "read_level_cycle")]
 pub async fn levels_read_level_cycle(
   session_id: SessionId,

@@ -7,7 +7,7 @@ use crate::request::ConfigsReadDocumentRequest;
 use crate::{ConfigsDocument, ConfigsProjects};
 
 /// Reads one config as the authored view renders it: its lines, and what only the parser knows about them.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "read_document"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "read_document")]
 pub async fn configs_read_document(
   execution: State<'_, ExecutionState>,

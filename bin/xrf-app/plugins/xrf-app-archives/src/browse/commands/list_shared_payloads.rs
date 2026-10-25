@@ -7,7 +7,7 @@ use xrf_archive::{ArchiveProject, ArchiveSharedPayload};
 use crate::browse::ArchiveSubjects;
 
 /// Payloads that several entries of the open volume set locate at once.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_shared_payloads"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "list_shared_payloads")]
 pub async fn archives_list_shared_payloads(
   session_id: SessionId,

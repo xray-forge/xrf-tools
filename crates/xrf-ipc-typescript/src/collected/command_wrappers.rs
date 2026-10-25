@@ -113,17 +113,16 @@ impl CommandWrappers {
       object = object.field(PluginSymbols::wrapper(function.name()), field);
     }
 
-    Ok((exporter.inline(&object.build())?, uses_channel))
+    Ok((exporter.reference(&object.build())?, uses_channel))
   }
 
-  /// A type as a wrapper spells it: Tauri's channel as `Channel<Payload>`, anything else as Specta references or
-  /// inlines it.
+  /// A type as a wrapper spells it: Tauri's channel as `Channel<Payload>`, anything else as Specta references it,
+  /// which inlines a type without a name.
   fn render_type(data_type: &DataType, exporter: &FrameworkExporter) -> Result<String, Error> {
     if let Some(channel) = Self::channel_of(data_type, exporter.types) {
       let payload: String = match &channel.inner {
         NamedReferenceType::Reference { generics, .. } => match generics.first() {
-          Some((_, DataType::Reference(reference))) => exporter.reference(reference)?,
-          Some((_, payload)) => exporter.inline(payload)?,
+          Some((_, payload)) => exporter.reference(payload)?,
           None => String::from("never"),
         },
         NamedReferenceType::Inline { .. } | NamedReferenceType::Recursive(_) => String::from("never"),
@@ -132,10 +131,7 @@ impl CommandWrappers {
       return Ok(format!("Channel<{payload}>"));
     }
 
-    match data_type {
-      DataType::Reference(reference) => exporter.reference(reference),
-      other => exporter.inline(other),
-    }
+    exporter.reference(data_type)
   }
 
   /// The reference `data_type` makes to Tauri's channel, where it is one.

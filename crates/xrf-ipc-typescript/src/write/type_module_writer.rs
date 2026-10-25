@@ -193,7 +193,7 @@ impl TypeModuleWriter {
   /// The TypeScript type of an object or array constant: a reference to a named type, or the inline shape of any other.
   fn render_type(constant: &IpcConstant, data_type: &DataType, exporter: &Exporter, types: &Types) -> String {
     match data_type {
-      DataType::Reference(reference) => primitives::reference(&exporter, types, reference),
+      DataType::Reference(_) => primitives::reference(&exporter, types, data_type),
       other => primitives::inline(&exporter, types, other),
     }
     .unwrap_or_else(|error| {

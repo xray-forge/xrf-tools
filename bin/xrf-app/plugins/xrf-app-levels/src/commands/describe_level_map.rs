@@ -9,7 +9,7 @@ use crate::parts::{LevelMapDescription, LevelMapPart};
 
 /// Describe where the open level's map lies over it, as its `level.ltx` places it, or none where it places none; read
 /// again where a commit let it go.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_level_map"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_level_map")]
 pub async fn levels_describe_level_map(
   session_id: SessionId,

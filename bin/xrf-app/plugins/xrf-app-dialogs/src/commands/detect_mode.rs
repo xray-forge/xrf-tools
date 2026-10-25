@@ -6,7 +6,7 @@ use xrf_utils::error_to_string;
 use xrf_vfs::XrayRoots;
 
 /// Report which layout roots looks like, for the open form to preselect; on the pool, since it looks through the roots.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "detect_mode"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "detect_mode")]
 pub async fn dialogs_detect_mode(
   roots: XrayRoots,

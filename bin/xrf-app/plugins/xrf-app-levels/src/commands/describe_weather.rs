@@ -10,7 +10,7 @@ use crate::weather::LevelWeatherDescription;
 
 /// Describe the open level's weather as its engine loads it: the cycles it plays, the effects, what they strike with,
 /// the sun table and the level's own overrides.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_weather"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_weather")]
 pub async fn levels_describe_weather(
   session_id: SessionId,

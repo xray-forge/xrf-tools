@@ -12,7 +12,7 @@ use crate::{TranslationProjectRead, TranslationProjects};
 
 /// Open a translations tree through the shared roots, read on the pool, recording what it reads so a commit to any of
 /// those files reads the project again.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_project"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_project")]
 pub async fn translations_open_project(
   request: TranslationsOpenRequest,

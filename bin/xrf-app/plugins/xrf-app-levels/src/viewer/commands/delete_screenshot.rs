@@ -11,7 +11,7 @@ use crate::viewer::LevelViewerFolder;
 
 /// Delete a screenshot of the screenshots folder for good, with what stands beside it: a screenshot's report, a level
 /// map's annotations.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "delete_screenshot"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "delete_screenshot")]
 pub async fn levels_delete_screenshot(
   directories: State<'_, AppDirectories>,

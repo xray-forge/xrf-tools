@@ -14,7 +14,7 @@ use crate::viewer::LevelViewerFolder;
 use crate::viewer::map::annotations::{AnnotationCanvas, LevelAnnotations, MapAnnotationsWriteRequest};
 
 /// Draw the open level's annotations over one of its level maps and write them beside it as an SVG; answers the SVG.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "write_map_annotations"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "write_map_annotations")]
 pub async fn levels_write_map_annotations(
   session_id: SessionId,

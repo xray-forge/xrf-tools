@@ -8,7 +8,7 @@ use xrf_vfs::XrayRoots;
 use crate::browse::{TextureBrowse, TextureBrowses, TextureCatalog, TextureCatalogMode};
 
 /// Open a root set and list every texture it holds, read fresh as an open a person makes is.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "open_browse"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "open_browse")]
 pub async fn textures_open_browse(
   session_id: SessionId,

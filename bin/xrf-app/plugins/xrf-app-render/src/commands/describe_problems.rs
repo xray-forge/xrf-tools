@@ -7,7 +7,7 @@ use xrf_world::WorldLevelProblems;
 use crate::WorldState;
 
 /// Say what a viewport's level could not draw: drawables the packer left out, sectors and spawned models unread.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_problems"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_problems")]
 pub async fn render_describe_problems(
   world: State<'_, WorldState>,

@@ -8,7 +8,7 @@ use crate::{RenderAnswer, Renderer};
 
 /// Say how far the level a viewport was last asked to show has loaded, for a caller polling rather than listening; none
 /// before its view is made.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "describe_load"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_load")]
 pub async fn render_describe_load(
   renderer: State<'_, Renderer>,

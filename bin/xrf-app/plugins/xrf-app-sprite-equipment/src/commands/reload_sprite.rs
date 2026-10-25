@@ -8,7 +8,7 @@ use crate::{EquipmentSpriteDocument, EquipmentSpriteMetadata, EquipmentSprites};
 
 /// Read the sheet `previous_id` holds again, as it was asked for, into the new handle `session_id`; the previous handle
 /// is left as it is, for the page to close once the reload is shown, and a failed reload leaves it untouched.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "reload_sprite"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "reload_sprite")]
 pub async fn sprite_equipment_reload_sprite(
   session_id: SessionId,

@@ -13,7 +13,7 @@ use crate::request::ConfigsListRequest;
 
 /// Everything wrong with one resolved root, anchored to the file and line a person has to open; verified once and
 /// answered as held.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "list_findings"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "list_findings")]
 pub async fn configs_list_findings(
   execution: State<'_, ExecutionState>,

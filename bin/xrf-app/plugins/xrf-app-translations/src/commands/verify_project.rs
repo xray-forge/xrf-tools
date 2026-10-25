@@ -13,7 +13,7 @@ use crate::ipc::translations::TRANSLATIONS_JOB_VERIFY;
 use crate::request::TranslationsVerifyRequest;
 
 /// Report which translations are missing from which languages, one check at a time.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "verify_project"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "verify_project")]
 pub async fn translations_verify_project(
   execution: State<'_, ExecutionState>,

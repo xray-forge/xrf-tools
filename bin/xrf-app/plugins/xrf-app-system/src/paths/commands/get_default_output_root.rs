@@ -3,7 +3,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::directories::AppDirectories;
 
 /// Where tools write when no output directory has been configured.
-#[cfg_attr(feature = "typescript-bindings", specta::specta(rename = "get_default_output_root"))]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "get_default_output_root")]
 pub async fn system_get_default_output_root(directories: State<'_, AppDirectories>) -> TauriResult<String> {
   directories

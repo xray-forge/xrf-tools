@@ -6,25 +6,14 @@ import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
 import { RenderPickRequest, ViewportEvent } from "#/types/xrf-app-render";
 import {
-  RenderAntialiasing,
-  RenderBackend,
   RenderBackendAvailability,
-  RenderDlssAvailability,
-  RenderFramePhases,
-  RenderGraphReport,
-  RenderGrassReport,
-  RenderGroupCost,
+  RenderFrameReport,
+  RenderLevelHit,
   RenderLibraries,
-  RenderLightsReport,
-  RenderLoadDurations,
-  RenderMemoryReport,
-  RenderMeterReading,
+  RenderLoadReport,
   RenderOverlay,
-  RenderParticlesReport,
-  RenderPassCost,
-  RenderSelectionTarget,
+  RenderSelection,
   RenderSettings,
-  RenderStaticReport,
   RenderTextureReport,
   RenderViewOptions,
   RenderViewportId,
@@ -93,80 +82,7 @@ export const renderCommands = {
    * than listening; none before its first report.
    */
   describeFrame: (viewport: RenderViewportId) =>
-    __TAURI_INVOKE<{
-      /** Frames presented a second over the reported span. */
-      framesPerSecond: number | null;
-      /** Mean milliseconds between presented frames. */
-      frameTime: number | null;
-      /** Longest milliseconds between two presented frames. */
-      frameTimeMax: number | null;
-      /** Milliseconds between each two presented frames over the span, in order. */
-      frameTimes: Array<number | null>;
-      /** Mean milliseconds of the render thread's own work a frame: recording and submitting, not waiting. */
-      cpuTime: number | null;
-      /** Milliseconds of the render thread's own work each frame over the span, in order. */
-      cpuTimes: Array<number | null>;
-      /**
-       * Mean milliseconds the GPU spent on a frame from its first command to its last, whether or not its passes are
-       * timed; none where the device cannot time it.
-       */
-      gpuTime: number | null;
-      /** Milliseconds the GPU spent on each frame read back over the span, in order; each comes back a few frames late. */
-      gpuTimes: Array<number | null>;
-      /** Where the render thread's time goes a frame, waiting for the window's image and presenting included. */
-      phases: RenderFramePhases;
-      /** What each encode group cost the render thread a frame, in the order the frame records them. */
-      groups: Array<RenderGroupCost>;
-      /** Drawn width, in device pixels. */
-      width: number;
-      /** Drawn height, in device pixels. */
-      height: number;
-      /** The scene's width as rendered, smaller than the drawn one where it is upscaled. */
-      renderWidth: number;
-      /** And its height. */
-      renderHeight: number;
-      /** The width the frame is resolved at before it is rescaled to the drawn one. */
-      outputWidth: number;
-      /** And its height. */
-      outputHeight: number;
-      /** What smooths the frame, and upscales it where it resolves temporally. */
-      antialiasing: RenderAntialiasing;
-      /** Whether DLSS reconstructs rays as it upscales the frame. */
-      isRayReconstructed: boolean;
-      /** The graphics API drawn with. */
-      backend: RenderBackend;
-      /** The GPU drawn on. */
-      adapter: string;
-      /**
-       * Whether it traces rays, by hardware ray query: what the reflections' and the water's tracing of what the screen
-       * misses needs.
-       */
-      hasRayQueries: boolean;
-      /** Whether it upscales with DLSS, and what it lacks where it does not. */
-      dlss: RenderDlssAvailability;
-      /** Whether it reconstructs rays with DLSS, and what it lacks where it does not. */
-      rayReconstruction: RenderDlssAvailability;
-      /** Whether its passes were timed on the GPU over the span. */
-      isGpuTimed: boolean;
-      /** What each pass cost on the GPU, in frame order; none while untimed. */
-      passes: Array<RenderPassCost>;
-      /** The level's static draws' pools and cull, empty without a level. */
-      staticDraws: RenderStaticReport;
-      /** The level's local lights, empty without a level. */
-      lights: RenderLightsReport;
-      /** The level's particle systems, empty without a level. */
-      particles: RenderParticlesReport;
-      /** The view's grass, empty without a level or grass. */
-      grass: RenderGrassReport;
-      /** Milliseconds the last sector taken in took to put into the scene, on the render thread. */
-      sectorTime: number | null;
-      /** What the renderer holds on the GPU. */
-      memory: RenderMemoryReport;
-      /** What the view's spot meter read, a frame or more late; none while it does not meter. */
-      meter: RenderMeterReading | null;
-      /** What the frame graph made of its latest frame, none before its first. */
-      graph: RenderGraphReport | null;
-    } | null>(ERenderCommand.DESCRIBE_FRAME, { viewport }),
+    __TAURI_INVOKE<RenderFrameReport | null>(ERenderCommand.DESCRIBE_FRAME, { viewport }),
   /** Report the versions of the graphics libraries the renderer ships with; currently only the DLSS runtime. */
   describeLibraries: () => __TAURI_INVOKE<RenderLibraries>(ERenderCommand.DESCRIBE_LIBRARIES),
   /**
@@ -174,27 +90,7 @@ export const renderCommands = {
    * before its view is made.
    */
   describeLoad: (viewport: RenderViewportId) =>
-    __TAURI_INVOKE<{
-      /** The scene it reports on, as showing the level named it. */
-      scene: number;
-      /** Sectors resident on the GPU. */
-      sectors: number;
-      /** Sectors the level has. */
-      sectorsTotal: number;
-      /** Bytes of the sectors resident, packed. */
-      bytes: number;
-      /** Textures uploaded or given up on. */
-      textures: number;
-      /** Textures the level samples: its scene's, its lights' projectors and its particles'. */
-      texturesTotal: number;
-      /**
-       * Whether everything is resident, so the level draws as it will: every sector, the spawn, grass, lights and
-       * particles read, and every texture settled.
-       */
-      isReady: boolean;
-      /** How long each part took to finish, timed from when the level began opening. */
-      durations: RenderLoadDurations;
-    } | null>(ERenderCommand.DESCRIBE_LOAD, { viewport }),
+    __TAURI_INVOKE<RenderLoadReport | null>(ERenderCommand.DESCRIBE_LOAD, { viewport }),
   /** Say what a viewport's level could not draw: drawables the packer left out, sectors and spawned models unread. */
   describeProblems: (viewport: RenderViewportId) =>
     __TAURI_INVOKE<WorldLevelProblems>(ERenderCommand.DESCRIBE_PROBLEMS, { viewport }),
@@ -227,30 +123,7 @@ export const renderCommands = {
    * pick passes it by.
    */
   pick: (viewport: RenderViewportId, request: RenderPickRequest) =>
-    __TAURI_INVOKE<
-      /** A surface the level compiled. */
-      | {
-          kind: "surface";
-          sector: number;
-          /** The shader table entry drawing it. */
-          shaderId: number;
-          /** The sector's instanced mesh it is one place of, or none for its baked geometry. */
-          mesh: number | null;
-          /** Which place of the mesh it is, or none for the baked geometry. */
-          place: number | null;
-          /** Whether it is a clump of trees drawn as its impostor. */
-          isImpostor: boolean;
-          point: [number | null, number | null, number | null];
-        }
-      /** An object the level's spawn places. */
-      | {
-          kind: "spawn";
-          /** Its index among the level's spawned objects. */
-          object: number;
-          point: [number | null, number | null, number | null];
-        }
-      | null
-    >(ERenderCommand.PICK, { viewport, request }),
+    __TAURI_INVOKE<RenderLevelHit | null>(ERenderCommand.PICK, { viewport, request }),
   /** Stand one viewport's skinned models in a pose. */
   poseModel: (viewport: RenderViewportId, pose: WorldModelPose) =>
     __TAURI_INVOKE<void>(ERenderCommand.POSE_MODEL, { viewport, pose }),
@@ -279,14 +152,8 @@ export const renderCommands = {
   setOverlays: (viewport: RenderViewportId, overlays: Array<RenderOverlay>) =>
     __TAURI_INVOKE<void>(ERenderCommand.SET_OVERLAYS, { viewport, overlays }),
   /** Mark what of one viewport's level is selected, or nothing. */
-  setSelection: (
-    viewport: RenderViewportId,
-    selection: {
-      target: RenderSelectionTarget;
-      /** sRGB from 0 to 1. */
-      color: [number | null, number | null, number | null];
-    } | null
-  ) => __TAURI_INVOKE<void>(ERenderCommand.SET_SELECTION, { viewport, selection }),
+  setSelection: (viewport: RenderViewportId, selection: RenderSelection | null) =>
+    __TAURI_INVOKE<void>(ERenderCommand.SET_SELECTION, { viewport, selection }),
   /** Set what one viewport draws its scene with. */
   setViewOptions: (viewport: RenderViewportId, options: RenderViewOptions) =>
     __TAURI_INVOKE<void>(ERenderCommand.SET_VIEW_OPTIONS, { viewport, options }),
