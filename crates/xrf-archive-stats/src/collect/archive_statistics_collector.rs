@@ -12,6 +12,7 @@ use crate::report::archive_origins::ArchiveOrigins;
 use crate::report::archive_overview::ArchiveOverview;
 use crate::report::archive_size_band::ArchiveSizeBand;
 use crate::report::archive_statistics::ArchiveStatistics;
+use crate::report::archive_volume_summary::ArchiveVolumeSummary;
 
 /// How many entries the largest-files part of the report names.
 const LARGEST_ENTRIES: usize = 20;
@@ -21,18 +22,16 @@ const LARGEST_ENTRIES: usize = 20;
 struct ArchiveGroup {
   measure: ArchiveMeasure,
   size_compressed: Option<u64>,
-  is_measured: bool,
 }
 
 impl ArchiveGroup {
   fn add(&mut self, size_real: u64, size_compressed: Option<u64>) {
-    self.size_compressed = match (self.is_measured, self.size_compressed, size_compressed) {
-      (false, _, stored) => stored,
-      (true, Some(total), Some(stored)) => Some(total + stored),
+    self.size_compressed = match (self.measure.is_empty(), self.size_compressed, size_compressed) {
+      (true, _, stored) => stored,
+      (false, Some(total), Some(stored)) => Some(total + stored),
       _ => None,
     };
 
-    self.is_measured = true;
     self.measure.add(size_real);
   }
 }
@@ -42,25 +41,22 @@ impl ArchiveGroup {
 pub(crate) struct ArchiveStatisticsCollector {
   extensions: HashMap<Option<String>, ArchiveGroup>,
   folders: HashMap<Option<String>, ArchiveGroup>,
-  bands: Vec<ArchiveMeasure>,
+  bands: [ArchiveMeasure; ArchiveSizeBand::FLOORS.len()],
   /// Every file's unpacked size, kept sorted at the end so the median needs no second walk.
   sizes: Vec<u64>,
   largest: Vec<ArchiveLargestEntry>,
   total: ArchiveMeasure,
   directories: u64,
   empty_files: u64,
-  size_compressed: u64,
+  /// Stored bytes of every file that supplied a stored size, or `None` while none has.
+  size_compressed: Option<u64>,
   stored_uncompressed: u64,
-  records_compression: bool,
 }
 
 impl ArchiveStatisticsCollector {
   /// Accumulates every entry of a subject.
   pub(crate) fn collect<'a, E: ArchiveStatisticsEntry + 'a>(entries: impl Iterator<Item = &'a E>) -> Self {
-    let mut collector: Self = Self {
-      bands: vec![ArchiveMeasure::default(); ArchiveSizeBand::FLOORS.len()],
-      ..Self::default()
-    };
+    let mut collector: Self = Self::default();
 
     for entry in entries {
       collector.add(entry);
@@ -69,10 +65,14 @@ impl ArchiveStatisticsCollector {
     collector
   }
 
-  /// Turns the walk into the report, with the source count its own kind of subject supplies.
-  ///
-  /// Leaves `volumes` and `origins` empty: neither falls out of a walk of entries, and each constructor fills its own.
-  pub(crate) fn into_report(mut self, sources: u64) -> ArchiveStatistics {
+  /// Turns the walk into the report, completed by what only the subject itself knows: how many sources it counts,
+  /// its volumes, and where its files come from.
+  pub(crate) fn into_report(
+    mut self,
+    sources: u64,
+    volumes: Option<Vec<ArchiveVolumeSummary>>,
+    origins: ArchiveOrigins,
+  ) -> ArchiveStatistics {
     self.sizes.sort_unstable();
 
     ArchiveStatistics {
@@ -83,9 +83,8 @@ impl ArchiveStatisticsCollector {
       extensions: Self::into_extension_usage(self.extensions),
       folders: Self::into_folder_usage(self.folders),
       largest: self.largest,
-      // Neither is knowable from a walk of entries alone, so each constructor supplies its own.
-      volumes: None,
-      origins: ArchiveOrigins::default(),
+      volumes,
+      origins,
     }
   }
 
@@ -109,8 +108,7 @@ impl ArchiveStatisticsCollector {
     }
 
     if let Some(stored) = stored {
-      self.records_compression = true;
-      self.size_compressed += stored;
+      self.size_compressed = Some(self.size_compressed.unwrap_or_default() + stored);
 
       // Equal sizes is how the format says "stored uncompressed". Not a defect: Anomaly stores every `geom`, `cform`
       // and `ai` payload this way.
@@ -184,17 +182,15 @@ impl ArchiveStatisticsCollector {
   }
 
   fn to_compression(&self) -> Option<ArchiveCompression> {
-    self.records_compression.then_some(ArchiveCompression {
-      size_compressed: self.size_compressed,
+    self.size_compressed.map(|size_compressed| ArchiveCompression {
+      size_compressed,
       size_real: self.total.size_real,
       stored_uncompressed: self.stored_uncompressed,
     })
   }
 
-  /// Heaviest first, with the key breaking ties so two readings of one subject order equal groups the same way.
   fn into_extension_usage(groups: HashMap<Option<String>, ArchiveGroup>) -> Vec<ArchiveExtensionUsage> {
-    let mut rows: Vec<ArchiveExtensionUsage> = groups
-      .into_iter()
+    Self::into_heaviest_first(groups)
       .map(|(extension, group)| ArchiveExtensionUsage {
         is_declared: extension
           .as_deref()
@@ -203,38 +199,34 @@ impl ArchiveStatisticsCollector {
         measure: group.measure,
         size_compressed: group.size_compressed,
       })
-      .collect();
-
-    rows.sort_by(|first, second| {
-      second
-        .measure
-        .size_real
-        .cmp(&first.measure.size_real)
-        .then_with(|| first.extension.cmp(&second.extension))
-    });
-
-    rows
+      .collect()
   }
 
   fn into_folder_usage(groups: HashMap<Option<String>, ArchiveGroup>) -> Vec<ArchiveFolderUsage> {
-    let mut rows: Vec<ArchiveFolderUsage> = groups
-      .into_iter()
+    Self::into_heaviest_first(groups)
       .map(|(folder, group)| ArchiveFolderUsage {
         folder,
         measure: group.measure,
         size_compressed: group.size_compressed,
       })
-      .collect();
+      .collect()
+  }
 
-    rows.sort_by(|first, second| {
+  /// Heaviest first, with the key breaking ties so two readings of one subject order equal groups the same way.
+  fn into_heaviest_first(
+    groups: HashMap<Option<String>, ArchiveGroup>,
+  ) -> impl Iterator<Item = (Option<String>, ArchiveGroup)> {
+    let mut groups: Vec<(Option<String>, ArchiveGroup)> = groups.into_iter().collect();
+
+    groups.sort_by(|(first_key, first), (second_key, second)| {
       second
         .measure
         .size_real
         .cmp(&first.measure.size_real)
-        .then_with(|| first.folder.cmp(&second.folder))
+        .then_with(|| first_key.cmp(second_key))
     });
 
-    rows
+    groups.into_iter()
   }
 
   /// The extension an engine path's last segment spells, as it spells it, or `None` when it has none.
@@ -255,7 +247,7 @@ impl ArchiveStatisticsCollector {
 
 #[cfg(test)]
 mod tests {
-  use super::ArchiveStatisticsCollector;
+  use super::{ArchiveGroup, ArchiveStatisticsCollector, LARGEST_ENTRIES};
 
   #[test]
   fn an_extension_is_read_off_the_last_segment() {
@@ -296,6 +288,46 @@ mod tests {
       ArchiveStatisticsCollector::folder_of("system.ltx"),
       None,
       "a file at the root sits in no folder"
+    );
+  }
+
+  #[test]
+  fn a_group_keeps_a_stored_size_only_while_every_member_supplies_one() {
+    let mut group: ArchiveGroup = ArchiveGroup::default();
+
+    group.add(100, Some(40));
+    group.add(200, Some(60));
+
+    assert_eq!(group.size_compressed, Some(100));
+
+    group.add(300, None);
+
+    assert_eq!(
+      group.size_compressed, None,
+      "a partial sum would pass for the whole group's"
+    );
+
+    group.add(400, Some(80));
+
+    assert_eq!(group.size_compressed, None, "and a later member cannot bring it back");
+    assert_eq!(group.measure.files, 4);
+  }
+
+  #[test]
+  fn the_largest_entries_stay_bounded_and_ordered() {
+    let mut collector: ArchiveStatisticsCollector = ArchiveStatisticsCollector::default();
+
+    for size in 0..(LARGEST_ENTRIES as u64 + 5) {
+      collector.keep_if_largest(&format!("file_{size}"), size, None);
+    }
+
+    let sizes: Vec<u64> = collector.largest.iter().map(|entry| entry.size_real).collect();
+
+    assert_eq!(sizes.len(), LARGEST_ENTRIES);
+    assert_eq!(sizes.first(), Some(&(LARGEST_ENTRIES as u64 + 4)), "largest first");
+    assert!(
+      sizes.windows(2).all(|pair| pair[0] > pair[1]),
+      "and descending throughout"
     );
   }
 }

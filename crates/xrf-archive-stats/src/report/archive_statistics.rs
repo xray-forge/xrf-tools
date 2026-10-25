@@ -39,21 +39,11 @@ pub struct ArchiveStatistics {
 impl ArchiveStatistics {
   /// Breaks down one volume set.
   pub fn of_volumes(project: &ArchiveProject) -> Self {
-    let collector: ArchiveStatisticsCollector = ArchiveStatisticsCollector::collect(project.files.values());
-
-    // Reverse merge order, because a later volume wins the name table and so is the one a lookup reaches first.
-    let sources: Vec<String> = project
-      .archives
-      .iter()
-      .rev()
-      .map(|volume| volume.path.display().to_string())
-      .collect();
-
-    Self {
-      volumes: Some(project.archives.iter().map(ArchiveVolumeSummary::from).collect()),
-      origins: ArchiveOriginsCollector::collect_volumes(project, &sources),
-      ..collector.into_report(project.archives.len() as u64)
-    }
+    ArchiveStatisticsCollector::collect(project.files.values()).into_report(
+      project.archives.len() as u64,
+      Some(project.archives.iter().map(ArchiveVolumeSummary::from).collect()),
+      ArchiveOriginsCollector::collect_volumes(project),
+    )
   }
 
   /// Breaks down one mounted world.
@@ -61,14 +51,10 @@ impl ArchiveStatistics {
   /// `mounts` counts the sources the overview reports; `sources` names them at the grain a container does, which is
   /// finer — one merged mount answers out of each of its volumes.
   pub fn of_world<E: ArchiveWorldStatisticsEntry>(entries: &[E], mounts: &[String], sources: &[String]) -> Self {
-    let collector: ArchiveStatisticsCollector = ArchiveStatisticsCollector::collect(entries.iter());
-
-    Self {
-      // A loose file has no stored size, so no arrangement of them has one either, and a world's sources are mounts
-      // rather than volumes.
-      volumes: None,
-      origins: ArchiveOriginsCollector::collect(entries, sources),
-      ..collector.into_report(mounts.len() as u64)
-    }
+    ArchiveStatisticsCollector::collect(entries.iter()).into_report(
+      mounts.len() as u64,
+      None,
+      ArchiveOriginsCollector::collect_world(entries, sources),
+    )
   }
 }

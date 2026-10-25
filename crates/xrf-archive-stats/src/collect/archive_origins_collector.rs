@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_vfs::XrayAssetContainer;
 
+use crate::collect::archive_statistics_entry::ArchiveStatisticsEntry;
 use crate::collect::archive_world_statistics_entry::ArchiveWorldStatisticsEntry;
 use crate::report::archive_measure::ArchiveMeasure;
 use crate::report::archive_origins::ArchiveOrigins;
@@ -24,73 +25,70 @@ pub(crate) struct ArchiveOriginsCollector {
 }
 
 impl ArchiveOriginsCollector {
-  /// Accumulates every winning entry of a mounted world and the copies each one hides.
-  pub(crate) fn collect<E: ArchiveWorldStatisticsEntry>(entries: &[E], searched: &[String]) -> ArchiveOrigins {
+  /// Where a mounted world's winning entries come from, and the copies each one hides, with `sources` in search
+  /// priority order.
+  pub(crate) fn collect_world<E: ArchiveWorldStatisticsEntry>(entries: &[E], sources: &[String]) -> ArchiveOrigins {
     let mut collector: Self = Self::default();
 
     for entry in entries {
-      collector.add(entry);
+      let container: &XrayAssetContainer = entry.get_container();
+
+      collector.add_winner(
+        Self::source_of(container),
+        Self::is_loose(container),
+        entry.get_size_real(),
+      );
+
+      for (container, size) in entry.list_shadowed() {
+        collector.add_hidden(Self::source_of(container), Self::is_loose(container), size);
+      }
     }
 
-    collector.into_origins(searched)
+    collector.into_origins(sources)
   }
 
-  fn add<E: ArchiveWorldStatisticsEntry>(&mut self, entry: &E) {
-    let size: u64 = entry.get_size_real();
-    let container: &XrayAssetContainer = entry.get_container();
+  /// Where a volume set's entries come from, and what its own merge hides.
+  pub(crate) fn collect_volumes(project: &ArchiveProject) -> ArchiveOrigins {
+    let mut collector: Self = Self::default();
 
-    if Self::is_loose(container) {
+    for descriptor in project.files.values().filter(|descriptor| !descriptor.is_directory()) {
+      collector.add_winner(Self::volume_of(project, descriptor), false, descriptor.get_size_real());
+    }
+
+    for descriptor in &project.shadowed {
+      collector.add_hidden(Self::volume_of(project, descriptor), false, descriptor.get_size_real());
+    }
+
+    // Reverse merge order, because a later volume wins the name table and so is the one a lookup reaches first.
+    let sources: Vec<String> = project
+      .archives
+      .iter()
+      .rev()
+      .map(|volume| volume.path.display().to_string())
+      .collect();
+
+    collector.into_origins(&sources)
+  }
+
+  /// Counts one entry a lookup reaches against the source serving it.
+  fn add_winner(&mut self, source: String, is_loose: bool, size: u64) {
+    if is_loose {
       self.origins.loose.add(size);
     } else {
       self.origins.archived.add(size);
     }
 
-    self.tally(container).wins.add(size);
-
-    for (container, size) in entry.list_shadowed() {
-      self.origins.hidden.add(size);
-      self.tally(container).hides.add(size);
-    }
+    self.tally(source, is_loose).wins.add(size);
   }
 
-  /// Where a volume set's entries come from and what its own merge hides.
-  pub(crate) fn collect_volumes(project: &ArchiveProject, searched: &[String]) -> ArchiveOrigins {
-    let mut collector: Self = Self::default();
-
-    for descriptor in project.files.values() {
-      if descriptor.is_directory {
-        continue;
-      }
-
-      let size: u64 = u64::from(descriptor.size_real);
-
-      collector.origins.archived.add(size);
-      collector
-        .tally_of(Self::volume_of(project, descriptor), false)
-        .wins
-        .add(size);
-    }
-
-    for descriptor in &project.shadowed {
-      let size: u64 = u64::from(descriptor.size_real);
-
-      collector.origins.hidden.add(size);
-      collector
-        .tally_of(Self::volume_of(project, descriptor), false)
-        .hides
-        .add(size);
-    }
-
-    collector.into_origins(searched)
+  /// Counts one copy no lookup reaches against the source holding it.
+  fn add_hidden(&mut self, source: String, is_loose: bool, size: u64) {
+    self.origins.hidden.add(size);
+    self.tally(source, is_loose).hides.add(size);
   }
 
-  /// The running tally for whatever source a container names, created on first sight.
-  fn tally(&mut self, container: &XrayAssetContainer) -> &mut SourceTally {
-    self.tally_of(Self::source_of(container), Self::is_loose(container))
-  }
-
-  /// The running tally for a source named directly, created on first sight.
-  fn tally_of(&mut self, source: String, is_loose: bool) -> &mut SourceTally {
+  /// The running tally for a source, created on first sight.
+  fn tally(&mut self, source: String, is_loose: bool) -> &mut SourceTally {
     let tally: &mut SourceTally = self.tallies.entry(source).or_default();
 
     tally.is_loose = is_loose;
@@ -98,17 +96,9 @@ impl ArchiveOriginsCollector {
     tally
   }
 
-  /// The volume file one entry sits in, which is the grain a copy is attributed to.
-  fn volume_of(project: &ArchiveProject, descriptor: &ArchiveFileDescriptor) -> String {
-    project.archives.get(descriptor.volume as usize).map_or_else(
-      || project.root.display().to_string(),
-      |volume| volume.path.display().to_string(),
-    )
-  }
-
   /// Turns the walk into the report, with one entry per source in the order they are searched.
-  fn into_origins(mut self, searched: &[String]) -> ArchiveOrigins {
-    let mut named: Vec<String> = searched.to_vec();
+  fn into_origins(mut self, sources: &[String]) -> ArchiveOrigins {
+    let mut named: Vec<String> = sources.to_vec();
     let mut unnamed: Vec<String> = self
       .tallies
       .keys()
@@ -135,6 +125,14 @@ impl ArchiveOriginsCollector {
       .collect();
 
     self.origins
+  }
+
+  /// The volume file one entry sits in, which is the grain a copy is attributed to.
+  fn volume_of(project: &ArchiveProject, descriptor: &ArchiveFileDescriptor) -> String {
+    project.archives.get(descriptor.volume as usize).map_or_else(
+      || project.root.display().to_string(),
+      |volume| volume.path.display().to_string(),
+    )
   }
 
   /// The source a container names, as the world's own mount list spells it.

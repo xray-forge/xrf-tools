@@ -9,7 +9,7 @@ use crate::report::archive_measure::ArchiveMeasure;
 pub struct ArchiveSourceUsage {
   /// The volume file, or the loose root, a copy sits in — the grain a container names, not the mount's.
   pub source: String,
-  /// Whether this source is a loose tree rather than a volume set.
+  /// Whether this source is a loose tree rather than a volume.
   pub is_loose: bool,
   /// Entries of this source a lookup reaches.
   pub wins: ArchiveMeasure,

@@ -12,7 +12,7 @@ export type ArchiveCompression = {
 
 /** How much of a subject one file extension accounts for. */
 export type ArchiveExtensionUsage = {
-  /** The spelling as found, lower-cased, or `None` for a name carrying no extension at all. */
+  /** The spelling as found, case kept, or `None` for a name carrying no extension at all. */
   extension: string | null;
   /** Whether [`xrf_extension::XrayExtension`] declares this spelling. */
   isDeclared: boolean;
@@ -91,7 +91,7 @@ export type ArchiveSizeBand = {
 export type ArchiveSourceUsage = {
   /** The volume file, or the loose root, a copy sits in — the grain a container names, not the mount's. */
   source: string;
-  /** Whether this source is a loose tree rather than a volume set. */
+  /** Whether this source is a loose tree rather than a volume. */
   isLoose: boolean;
   /** Entries of this source a lookup reaches. */
   wins: ArchiveMeasure;
