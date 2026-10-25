@@ -11,7 +11,9 @@ use xrf_typescript::swc_ecma_ast::{Expr, ModuleItem, Program, Prop, PropName, St
 use super::diagnostics::{invalid_at, source_span_location};
 use super::jsdoc_parser::JsDocParser;
 use super::value_parser::ExternValueParser;
-use crate::extern_manifest::{ExternDocumentation, ExternSourceLocation, ParsedExtern};
+use crate::extern_documentation::ExternDocumentation;
+use crate::extern_source_location::ExternSourceLocation;
+use crate::parsed_extern::ParsedExtern;
 
 const EXTERN_EXPRESSION: &str = "extern";
 

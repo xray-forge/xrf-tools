@@ -1,24 +1,7 @@
 use serde::Serialize;
 
 use crate::XrayAsset;
-use crate::search::XrayMountedEntry;
-
-/// One copy of an engine path that no lookup reaches, and how large it is.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[serde(rename_all = "camelCase")]
-pub struct XrayShadowedCopy {
-  /// The copy no lookup reaches.
-  pub asset: XrayAsset,
-  /// Unpacked bytes of this copy, as its own source records or measures them.
-  pub size: u64,
-}
-
-impl XrayShadowedCopy {
-  pub(crate) fn new(asset: XrayAsset, size: u64) -> Self {
-    Self { asset, size }
-  }
-}
+use crate::search::{XrayMountedEntry, XrayShadowedCopy};
 
 /// One engine path as the mounted order answers it: the copy a lookup reaches, and the copies it hides.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

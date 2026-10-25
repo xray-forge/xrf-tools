@@ -1,4 +1,5 @@
 use crate::Finding;
+use crate::project::textures::texture_bump_verdict::TextureBumpVerdict;
 
 /// What one texture descriptor's bump declaration came to: which count it lands in, and the findings it produced.
 ///
@@ -9,20 +10,6 @@ pub(crate) struct TextureBumpVerification {
   /// Whether the descriptor holds bytes past a chunk's fields.
   pub(crate) has_trailing_bytes: bool,
   pub(crate) findings: Vec<Finding>,
-}
-
-/// Which count a descriptor belongs in.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum TextureBumpVerdict {
-  /// Nothing to bind, and nothing wrong with saying so.
-  Undeclared,
-  /// The engine binds a pair for this descriptor, each half either the declared file or a substitute.
-  Bound {
-    is_bump_missing: bool,
-    is_companion_missing: bool,
-  },
-  /// The descriptor asks for a bump the engine never reads.
-  InvalidDeclaration,
 }
 
 impl TextureBumpVerification {

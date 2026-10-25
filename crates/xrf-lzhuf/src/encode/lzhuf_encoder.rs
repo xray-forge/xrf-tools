@@ -1,7 +1,8 @@
 use xrf_error::{XrfError, XrfResult};
 
 use crate::bit_writer::BitWriter;
-use crate::encode::match_finder::{MatchFinder, SourceMatch};
+use crate::encode::match_finder::MatchFinder;
+use crate::encode::source_match::SourceMatch;
 use crate::lzhuf_constants::{MATCH_CODE_BASE, MATCH_LENGTH_THRESHOLD};
 use crate::match_distance::{LEADING_BIT_COUNT, join_match_distance};
 use crate::tree::dynamic_huffman_tree::DynamicHuffmanTree;

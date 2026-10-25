@@ -69,5 +69,5 @@ not fill its chunk. The crate does not play, encode, or edit sounds.
 
 Run `cargo test --locked -p xrf-sound` from the repository root.
 
-See the [read API](src/sound_file.rs), the [X-Ray comment format](src/sound_file_metadata.rs), the
+See the [read API](src/sound_file.rs), the [X-Ray comment format](src/sound_metadata.rs), the
 [environment library](src/sound_environment_file.rs), and its [presets](src/sound_environment.rs).

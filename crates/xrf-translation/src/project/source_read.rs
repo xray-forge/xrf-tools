@@ -4,9 +4,11 @@ use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayRoots, XraySearch};
 
 use crate::json::read::parse_json;
 use crate::language::TranslationLanguage;
-use crate::project::descriptor::{
-  TranslationFile, TranslationFinding, TranslationProjectDescriptor, TranslationProjectMode, TranslationSource,
-};
+use crate::project::translation_file::TranslationFile;
+use crate::project::translation_finding::TranslationFinding;
+use crate::project::translation_project_descriptor::TranslationProjectDescriptor;
+use crate::project::translation_project_mode::TranslationProjectMode;
+use crate::project::translation_source::TranslationSource;
 use crate::source_file_name::is_json_source_name;
 use crate::types::TranslationJson;
 

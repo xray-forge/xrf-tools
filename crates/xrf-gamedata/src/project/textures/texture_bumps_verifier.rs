@@ -7,7 +7,8 @@ use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_thm::{ThmFile, ThmTrailingBytes};
 use xrf_vfs::{XrayAsset, XrayAssetType as AssetType, XrayResolution, XraySearch};
 
-use crate::project::textures::texture_bump_verification::{TextureBumpVerdict, TextureBumpVerification};
+use crate::project::textures::texture_bump_verdict::TextureBumpVerdict;
+use crate::project::textures::texture_bump_verification::TextureBumpVerification;
 use crate::project::textures::texture_bumps_verification_result::GamedataTextureBumpsVerificationResult;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 

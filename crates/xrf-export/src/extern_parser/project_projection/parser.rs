@@ -6,8 +6,11 @@ use super::{
   ExportContractDescriptor, ExportDescriptor, ExportParameterDescriptor, ExportReturnDescriptor,
   ExportSourceDescriptor, ExportsProject,
 };
-use crate::extern_manifest::{ExternExport, ExternParameter, ParsedExtern, ParsedExternManifest};
+use crate::extern_export::ExternExport;
+use crate::extern_parameter::ExternParameter;
 use crate::extern_parser::ExternManifestParser;
+use crate::parsed_extern::ParsedExtern;
+use crate::parsed_extern_manifest::ParsedExternManifest;
 
 /// Projects canonical externs into the application-facing exports project.
 #[derive(Default)]

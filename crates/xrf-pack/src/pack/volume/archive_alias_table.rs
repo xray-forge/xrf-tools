@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use xrf_error::XrfResult;
 
 use crate::pack::source::{ArchivePackEntry, ArchivePackPayloads};
+use crate::pack::volume::{ArchiveAlias, ArchiveAliasCandidate};
 
 /// Payloads already written to the current volume, so an identical file costs a descriptor row and nothing else.
 ///
@@ -13,21 +14,6 @@ use crate::pack::source::{ArchivePackEntry, ArchivePackPayloads};
 pub(crate) struct ArchiveAliasTable<'e> {
   /// Keyed by size and checksum, which several distinct payloads may share, so each key keeps every candidate.
   candidates: HashMap<(u32, u32), Vec<ArchiveAliasCandidate<'e>>>,
-}
-
-/// Where a payload an entry can share already sits in the current volume.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct ArchiveAlias {
-  pub(crate) offset: u32,
-  pub(crate) size_compressed: u32,
-}
-
-/// One recorded payload and the entry it was written for, so a match can be proven rather than assumed and its source
-/// named by the logical entry rather than by a host path.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct ArchiveAliasCandidate<'e> {
-  pub(crate) source: &'e ArchivePackEntry,
-  pub(crate) alias: ArchiveAlias,
 }
 
 impl<'e> ArchiveAliasTable<'e> {

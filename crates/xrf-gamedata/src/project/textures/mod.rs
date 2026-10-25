@@ -1,3 +1,4 @@
+pub(crate) mod texture_bump_verdict;
 pub(crate) mod texture_bump_verification;
 pub(crate) mod texture_bumps_verification_result;
 pub(crate) mod texture_bumps_verifier;

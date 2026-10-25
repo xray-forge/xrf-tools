@@ -5,7 +5,8 @@ use xrf_error::XrfResult;
 
 use crate::asset::XrayAssetType;
 use crate::cache::xray_cache_entries::XrayCacheEntries;
-use crate::cache::xray_cache_flights::{XrayCacheFlightClaim, XrayCacheFlights};
+use crate::cache::xray_cache_flight_claim::XrayCacheFlightClaim;
+use crate::cache::xray_cache_flights::XrayCacheFlights;
 use crate::cache::xray_cache_key::XrayCacheKey;
 use crate::cache::xray_cache_policy::XrayCachePolicy;
 use crate::cache::xray_cache_stats::XrayCacheStats;

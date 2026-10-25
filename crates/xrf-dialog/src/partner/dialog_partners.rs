@@ -12,7 +12,7 @@ use crate::encoding::decode;
 use crate::partner::dialog_character::DialogCharacter;
 use crate::partner::dialog_offer::DialogOffer;
 use crate::partner::dialog_profile::DialogProfile;
-use crate::project::descriptor::DialogFinding;
+use crate::project::dialog_finding::DialogFinding;
 
 /// Reads one partner file's root into the partners, given the file's logical path for findings.
 type PartnerReader = fn(&mut DialogPartners, &XmlElementSpan, &str);

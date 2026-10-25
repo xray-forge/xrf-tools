@@ -2,18 +2,10 @@ use std::borrow::Cow;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use serde::Serialize;
 use xrf_error::XrfResult;
 
 use crate::path::{is_component_prefix, join, normalize, normalize_base};
-use crate::{XrayAssetSource, XraySourceKind};
-
-/// Stable identity of a mount within one VFS.
-///
-/// Labels need not be unique, so scopes select mounts by this identifier.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
-pub struct XrayMountId(pub(crate) usize);
+use crate::{XrayAssetSource, XrayMountId, XraySourceKind};
 
 /// One source mounted at a logical base.
 ///

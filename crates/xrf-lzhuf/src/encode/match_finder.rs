@@ -1,3 +1,4 @@
+use crate::encode::source_match::SourceMatch;
 use crate::lzhuf_constants::{MATCH_LENGTH_MAX, MATCH_LENGTH_THRESHOLD, RING_BUFFER_SIZE};
 
 /// Bytes that must agree before a match is worth coding, which is also the hash width.
@@ -16,13 +17,6 @@ const MAX_CHAIN_DEPTH: usize = 128;
 
 /// Mask that wraps a position into the sliding window.
 const WINDOW_MASK: usize = RING_BUFFER_SIZE - 1;
-
-/// A back-reference the encoder can code: copy `length` bytes from `distance` back.
-pub(crate) struct SourceMatch {
-  pub(crate) length: usize,
-  /// Distance in the decoder's terms, where 0 names the byte most recently produced.
-  pub(crate) distance: usize,
-}
 
 /// Finds the longest back-reference for a position, over hash chains of equal three-byte prefixes.
 ///

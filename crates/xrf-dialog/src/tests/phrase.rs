@@ -1,7 +1,8 @@
 use xrf_error::XrfResult;
 use xrf_utils::new_windows1251_encoder;
 
-use crate::element::{DialogElement, DialogElementKind};
+use crate::dialog_element::DialogElement;
+use crate::dialog_element_kind::DialogElementKind;
 use crate::file::DialogFile;
 use crate::phrase::DialogPhrase;
 

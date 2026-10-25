@@ -3,7 +3,7 @@ use xrf_archive::ArchiveProject;
 
 use crate::collect::archive_origins_collector::ArchiveOriginsCollector;
 use crate::collect::archive_statistics_collector::ArchiveStatisticsCollector;
-use crate::collect::archive_statistics_entry::ArchiveWorldStatisticsEntry;
+use crate::collect::archive_world_statistics_entry::ArchiveWorldStatisticsEntry;
 use crate::report::archive_compression::ArchiveCompression;
 use crate::report::archive_extension_usage::ArchiveExtensionUsage;
 use crate::report::archive_folder_usage::ArchiveFolderUsage;

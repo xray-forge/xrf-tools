@@ -12,7 +12,7 @@ use super::super::translation_parse_options::TranslationParseOptions;
 use super::super::translation_parse_result::TranslationParseResult;
 use super::super::translation_parser::TranslationParser;
 use crate::language::TranslationLanguage;
-use crate::project::tests::{roots, table};
+use crate::project::tests::fixtures::{roots, table};
 
 fn options(root: &str, language: TranslationLanguage, output_dir: PathBuf) -> TranslationParseOptions {
   TranslationParseOptions {

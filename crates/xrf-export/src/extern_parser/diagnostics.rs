@@ -2,7 +2,7 @@ use xrf_error::XrfError;
 use xrf_typescript::swc_common::{BytePos, SourceMap, SourceMapper, Span, Spanned};
 use xrf_typescript::swc_ecma_ast::Expr;
 
-use crate::extern_manifest::ExternSourceLocation;
+use crate::extern_source_location::ExternSourceLocation;
 
 /// Return an extern declaration source location, spanning a single line.
 pub fn source_location(source_map: &SourceMap, position: BytePos, source_path: &str) -> ExternSourceLocation {

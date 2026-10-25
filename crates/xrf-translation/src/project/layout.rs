@@ -3,7 +3,7 @@ use xrf_vfs::{XrayRoots, XraySearch};
 
 use crate::language::TranslationLanguage;
 use crate::project::constants::MAP_DESC_DIRECTORY;
-use crate::project::descriptor::TranslationProjectMode;
+use crate::project::translation_project_mode::TranslationProjectMode;
 use crate::source_file_name::is_json_source_name;
 
 /// Report which layout roots look like, for the open form to preselect.

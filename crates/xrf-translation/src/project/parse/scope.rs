@@ -3,7 +3,7 @@ use xrf_vfs::{XrayDirectoryListing, XraySearch};
 
 use crate::language::TranslationLanguage;
 use crate::project::constants::MAP_DESC_DIRECTORY;
-use crate::project::descriptor::TranslationProjectMode;
+use crate::project::translation_project_mode::TranslationProjectMode;
 
 /// Where under the mounted roots one language's raw string tables actually sit.
 ///

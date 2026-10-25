@@ -9,7 +9,9 @@ use xrf_typescript::{TypeScriptSymbol, TypeScriptSymbolResolver};
 use super::callable_parser::ExternCallableParser;
 use super::diagnostics::{invalid_at, unsupported_export_value_reason};
 use super::type_renderer::canonical_type;
-use crate::extern_manifest::{ExternDocumentation, ExternExport, ExternValue};
+use crate::extern_documentation::ExternDocumentation;
+use crate::extern_export::ExternExport;
+use crate::extern_value::ExternValue;
 
 /// Parses one value passed to an extern declaration.
 pub struct ExternValueParser<'a> {

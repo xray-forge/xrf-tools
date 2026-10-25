@@ -13,7 +13,7 @@ use xrf_vfs::{
   XrayRoots, XraySearch, XraySearchPlan, XraySkippedMount, XrayVfs,
 };
 
-use crate::project::gamedata_project_options::GamedataProjectReadOptions;
+use crate::project::gamedata_project_read_options::GamedataProjectReadOptions;
 
 /// Logical directory holding a project's configs.
 pub(crate) const CONFIGS_DIRECTORY: &str = "configs";

@@ -1,5 +1,5 @@
 use super::callable_signature::{arrow_signature, function_signature, function_type};
-use super::symbol::TypeScriptSymbol;
+use super::typescript_symbol::TypeScriptSymbol;
 use crate::ast::canonical_ts_type_to_string;
 use crate::swc_common::SourceMap;
 use crate::swc_ecma_ast::{Expr, Lit, ObjectLit, Prop, PropName};

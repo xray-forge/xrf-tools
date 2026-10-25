@@ -1,6 +1,8 @@
-use indexmap::map::{Entry, OccupiedEntry, VacantEntry};
+use indexmap::map::Entry;
 
 use crate::ltx::Section;
+use crate::ltx::section_occupied_entry::SectionOccupiedEntry;
+use crate::ltx::section_vacant_entry::SectionVacantEntry;
 
 /// A view into an `Ltx`, which may either be vacant or occupied.
 pub enum SectionEntry<'a> {
@@ -34,34 +36,5 @@ impl<'a> From<Entry<'a, String, Section>> for SectionEntry<'a> {
       Entry::Occupied(inner) => Self::Occupied(SectionOccupiedEntry { inner }),
       Entry::Vacant(inner) => Self::Vacant(SectionVacantEntry { inner }),
     }
-  }
-}
-
-/// A view into a vacant entry in a `Ltx`.
-pub struct SectionVacantEntry<'a> {
-  inner: VacantEntry<'a, String, Section>,
-}
-
-impl<'a> SectionVacantEntry<'a> {
-  /// Insert one new section.
-  pub fn insert(self, value: Section) -> &'a mut Section {
-    self.inner.insert(value)
-  }
-}
-
-/// A view into an occupied entry in a `Ltx`.
-pub struct SectionOccupiedEntry<'a> {
-  inner: OccupiedEntry<'a, String, Section>,
-}
-
-impl<'a> SectionOccupiedEntry<'a> {
-  /// Into the first internal mutable properties
-  pub fn into_mut(self) -> &'a mut Section {
-    self.inner.into_mut()
-  }
-
-  /// Append a new section
-  pub fn append(&mut self, props: Section) {
-    self.inner.insert(props);
   }
 }

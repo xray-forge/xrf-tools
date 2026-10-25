@@ -1,8 +1,9 @@
 use xrf_error::XrfResult;
 
-use crate::element::DialogElementKind;
+use crate::dialog_element_kind::DialogElementKind;
 use crate::file::DialogFile;
-use crate::project::descriptor::{DialogDescriptor, DialogPhraseDescriptor};
+use crate::project::dialog_descriptor::DialogDescriptor;
+use crate::project::dialog_phrase_descriptor::DialogPhraseDescriptor;
 
 /// A dialog exercising what the flat descriptors have to survive: repeated elements, an ordered
 /// `next` list, a scripted line with no translation key, and an element the schema does not define.

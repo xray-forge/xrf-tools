@@ -5,8 +5,8 @@ use crate::job_handle::JobHandle;
 use crate::job_progress::JobProgress;
 use crate::job_scope::JobScope;
 use crate::progress_level::ProgressLevel;
-use crate::progress_sink::RecordingSink;
 use crate::progress_unit::ProgressUnit;
+use crate::recording_sink::RecordingSink;
 
 /// A handle reporting every unit, which is what an assertion over the sequence needs and what production never asks
 /// for.

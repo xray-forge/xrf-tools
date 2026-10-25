@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use xrf_typescript::swc_common::BytePos;
 use xrf_typescript::swc_common::comments::Comments;
 
-use crate::extern_manifest::ExternDocumentation;
+use crate::extern_documentation::ExternDocumentation;
 
 /// Parses JSDoc comments associated with one TypeScript source file.
 pub struct JsDocParser<'a> {

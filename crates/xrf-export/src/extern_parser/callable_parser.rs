@@ -7,7 +7,9 @@ use xrf_typescript::swc_ecma_ast::{ArrowExpr, Pat, TsFnParam, TsFnType, TsTypeAn
 
 use super::diagnostics::invalid_at;
 use super::type_renderer::canonical_type;
-use crate::extern_manifest::{ExternCallable, ExternDocumentation, ExternParameter};
+use crate::extern_callable::ExternCallable;
+use crate::extern_documentation::ExternDocumentation;
+use crate::extern_parameter::ExternParameter;
 
 /// Builds canonical extern callables from TypeScript function contracts.
 pub struct ExternCallableParser<'a> {

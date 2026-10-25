@@ -1,12 +1,7 @@
 use byteorder::ByteOrder;
 use xrf_math::Vector3d;
 
-/// One bone a vertex is skinned to, and how strongly.
-#[derive(Clone, Debug, PartialEq)]
-pub struct OgfVertexLink {
-  pub bone: u16,
-  pub weight: f32,
-}
+use crate::data::ogf_vertex_link::OgfVertexLink;
 
 /// One vertex of an OGF visual, with its skinning links resolved.
 #[derive(Clone, Debug, PartialEq)]

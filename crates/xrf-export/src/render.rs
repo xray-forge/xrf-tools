@@ -7,7 +7,10 @@ use xrf_extension::{XrayExtension, XrayExtensionOf};
 use xrf_utils::{LineEndings, apply_line_endings, format_path, write_new_file_staged};
 use xrf_xml::{escape_xml_attribute, escape_xml_text};
 
-use crate::extern_manifest::{ExternCallable, ExternExport, ExternManifest, ExternParameter};
+use crate::extern_callable::ExternCallable;
+use crate::extern_export::ExternExport;
+use crate::extern_manifest::ExternManifest;
+use crate::extern_parameter::ExternParameter;
 
 /// Output contract selected by `xrf-cli export-externs`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -198,7 +201,7 @@ fn append_xml_export(result: &mut String, export: &ExternExport, indentation: us
 
 fn append_xml_documentation(
   result: &mut String,
-  documentation: Option<&crate::extern_manifest::ExternDocumentation>,
+  documentation: Option<&crate::extern_documentation::ExternDocumentation>,
   indentation: usize,
 ) {
   let Some(documentation) = documentation else {

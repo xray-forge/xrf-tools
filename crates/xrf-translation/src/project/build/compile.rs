@@ -7,7 +7,8 @@ use xrf_xml::serialize_xml;
 use crate::language::{TranslationLanguage, find_unencodable_character};
 use crate::project::build::translation_build_options::TranslationBuildOptions;
 use crate::types::{TranslationJson, TranslationVariant};
-use crate::xml::compiled::{TranslationCompiledXml, TranslationEntryCompiled};
+use crate::xml::translation_compiled_xml::TranslationCompiledXml;
+use crate::xml::translation_entry_compiled::TranslationEntryCompiled;
 
 /// Render one language's string table from a multi-language source.
 ///

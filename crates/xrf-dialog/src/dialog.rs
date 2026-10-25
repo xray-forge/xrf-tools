@@ -1,6 +1,7 @@
 use std::ops::Range;
 
-use crate::element::{DialogElement, DialogElementKind};
+use crate::dialog_element::DialogElement;
+use crate::dialog_element_kind::DialogElementKind;
 use crate::phrase::DialogPhrase;
 
 /// One conversation: its identity, the conditions gating it, and its phrases.

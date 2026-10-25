@@ -34,7 +34,7 @@ impl Condlist {
 
 #[cfg(test)]
 mod tests {
-  use super::super::condlist_branch::CondlistCondition;
+  use super::super::condlist_condition::CondlistCondition;
   use super::Condlist;
 
   #[test]

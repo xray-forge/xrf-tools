@@ -3,7 +3,11 @@
 #[cfg(test)]
 mod tests;
 mod xray_read_trace;
+mod xray_read_trace_entry;
+mod xray_read_trace_hot_path;
 mod xray_read_trace_summary;
 
-pub use xray_read_trace::{XrayReadTrace, XrayReadTraceEntry};
-pub use xray_read_trace_summary::{XrayReadTraceHotPath, XrayReadTraceSummary};
+pub use xray_read_trace::XrayReadTrace;
+pub use xray_read_trace_entry::XrayReadTraceEntry;
+pub use xray_read_trace_hot_path::XrayReadTraceHotPath;
+pub use xray_read_trace_summary::XrayReadTraceSummary;

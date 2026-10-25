@@ -1,3 +1,4 @@
+pub(crate) mod archive_extract_directory_result;
 pub(crate) mod archive_extract_options;
 pub(crate) mod archive_extract_result;
 pub(crate) mod archive_unpack_result;

@@ -2,6 +2,7 @@
 
 pub(crate) mod merge;
 pub(crate) mod scope;
+pub(crate) mod translation_parse_census;
 pub(crate) mod translation_parse_options;
 pub(crate) mod translation_parse_result;
 pub(crate) mod translation_parser;

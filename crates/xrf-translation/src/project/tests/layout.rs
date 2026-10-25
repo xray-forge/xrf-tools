@@ -1,9 +1,9 @@
 use xrf_error::XrfResult;
 use xrf_test_utils::utils::write_generated_test_resource;
 
-use super::roots;
-use crate::project::descriptor::TranslationProjectMode;
 use crate::project::layout::detect_mode;
+use crate::project::tests::fixtures::roots;
+use crate::project::translation_project_mode::TranslationProjectMode;
 
 /// Each layout is looked for under its own prefix, so a fixture has to sit where the layout keeps it.
 /// That is the contract: the caller names a root to mount, not the directory the tables sit in.

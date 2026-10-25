@@ -3,7 +3,7 @@ use std::io::Read;
 use byteorder::{ByteOrder, ReadBytesExt};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::chunk_trait::ChunkReadWrite;
+use crate::chunk_read_write::ChunkReadWrite;
 use crate::source::chunk_data_source::ChunkDataSource;
 use crate::{ChunkReadWriteList, ChunkReadWriteOptional, ChunkReader};
 

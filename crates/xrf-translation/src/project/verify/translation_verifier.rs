@@ -7,8 +7,9 @@ use xrf_vfs::{XrayAsset, XrayRoots, XraySearch};
 
 use crate::json::read::{parse_json, read_json};
 use crate::language::TranslationLanguage;
+use crate::project::verify::translation_verify_language_summary::TranslationVerifyLanguageSummary;
 use crate::project::verify::translation_verify_options::TranslationVerifyOptions;
-use crate::project::verify::translation_verify_result::{TranslationVerifyLanguageSummary, TranslationVerifyResult};
+use crate::project::verify::translation_verify_result::TranslationVerifyResult;
 use crate::source_file_name::{is_json_source, is_json_source_name};
 use crate::types::TranslationJson;
 

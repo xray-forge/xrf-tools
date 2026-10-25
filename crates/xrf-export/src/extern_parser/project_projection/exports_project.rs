@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use xrf_error::{XrfError, XrfResult};
 
-use super::{ExportDescriptor, ExportSourceDescriptor};
+use super::{ExportDescriptor, ExportSourceContent, ExportSourceDescriptor};
 use crate::extern_manifest::ExternManifest;
 
 /// Parsed externs and the project they came from.
@@ -18,18 +18,6 @@ pub struct ExportsProject {
   #[serde(skip)]
   #[cfg_attr(feature = "typescript-bindings", specta(skip))]
   pub manifest: ExternManifest,
-}
-
-/// The source text that declares one extern.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ExportSourceContent {
-  pub name: String,
-  pub path: String,
-  pub line: usize,
-  pub end_line: usize,
-  pub content: String,
 }
 
 impl ExportsProject {

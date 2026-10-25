@@ -1,5 +1,9 @@
 use std::path::{Path, PathBuf};
 
+use serde::{Deserialize, Serialize};
+
+use crate::mount::xray_mount_mode::XrayMountMode;
+
 /// Logical directories an X-Ray root holds, and which identify it as one.
 ///
 /// `fsgame.ltx` defines `$game_meshes$` and `$game_textures$` relative to `$game_data$`, so a directory holding both is
@@ -10,6 +14,24 @@ pub(crate) const TEXTURES_DIRECTORY: &str = "textures";
 pub(crate) const CONFIGS_DIRECTORY: &str = "configs";
 pub(crate) const SOUNDS_DIRECTORY: &str = "sounds";
 pub(crate) const SPAWNS_DIRECTORY: &str = "spawns";
+
+/// One place to read from, and how that place becomes mounts.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct XrayRoot {
+  /// Native host address, retained without rendering it as text.
+  pub path: PathBuf,
+  /// How this path becomes mounts. `Auto` unless the caller says otherwise.
+  #[serde(default)]
+  pub mode: XrayMountMode,
+}
+
+impl XrayRoot {
+  pub fn new(path: PathBuf, mode: XrayMountMode) -> Self {
+    Self { path, mode }
+  }
+}
 
 /// The X-Ray root a physical asset path sits under, if any.
 /// Returns the nearest implied root, or `None` when no ancestor looks like one. Behind
