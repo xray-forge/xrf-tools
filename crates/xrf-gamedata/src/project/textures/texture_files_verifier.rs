@@ -1,8 +1,9 @@
-use rayon::prelude::*;
-use xrf_error::{XrfError, XrfResult};
-use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
+use xrf_dds::DdsFile;
+use xrf_error::XrfResult;
 use xrf_vfs::XrayAssetType as AssetType;
 
+use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
+use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
 use crate::project::textures::texture_files_verification_result::GamedataTextureFilesVerificationResult;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
@@ -27,60 +28,54 @@ impl<'a> TextureFilesVerifier<'a> {
       .map(|location| location.get_logical_path().to_string())
       .collect();
 
-    let checked_textures_count: u32 = u32::try_from(texture_paths.len())
-      .map_err(|_| XrfError::new_verify_error("Texture count exceeds the supported result range"))?;
-
-    // Textures are read in parallel, so each one logs into its listed position and the sequence
-    // releases them in path order rather than in the order the workers finished.
-    let sequence: OutputSequence = OutputSequence::new(&self.options.output, texture_paths.len());
-
-    let mut findings: Vec<Finding> = texture_paths
-      .par_iter()
-      .enumerate()
-      .filter(|_| !self.options.job.is_cancelled())
-      .filter_map(|(index, path)| {
-        let slot: OutputSlot = sequence.new_slot(index);
-        let output: &OutputOptions = slot.get_output();
-
-        xrf_output::verbose!(output, "Verify texture: {path}");
-
-        match self.project.verify_texture_by_path(path) {
-          Ok(true) => None,
-          Ok(false) => {
-            xrf_output::info!(output, "Texture is not valid: {path}");
-
-            Some(GamedataFindingFactory::for_asset(
-              GamedataVerificationRule::TexturesValidation,
-              path,
-              "Texture uses an unsupported format",
-            ))
-          }
-          Err(error) => {
-            xrf_output::info!(output, "Texture verification failed: {path} - {error}");
-
-            Some(GamedataFindingFactory::for_asset(
-              GamedataVerificationRule::TexturesRead,
-              path,
-              error.to_string(),
-            ))
-          }
-        }
-      })
-      .collect();
-
-    self.options.job.check_cancelled()?;
-
-    findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
-
-    let invalid_textures_count: u32 = u32::try_from(findings.len())
-      .map_err(|_| XrfError::new_verify_error("Invalid texture count exceeds the supported result range"))?;
+    let outcome: GamedataAssetSweepOutcome = GamedataAssetSweep::new(self.options)
+      .run(&texture_paths, |options, path| {
+        self.verify_texture(options, path).into_iter().collect()
+      })?;
 
     self.options.job.check_cancelled()?;
 
     Ok(GamedataTextureFilesVerificationResult {
-      checked_textures_count,
-      findings,
-      invalid_textures_count,
+      checked_textures_count: outcome.checked_count,
+      findings: outcome.findings,
+      invalid_textures_count: outcome.invalid_count,
     })
+  }
+
+  /// Whether one texture reads as a DDS the engine uploads, addressed by its logical path and read through the VFS, so
+  /// an archived texture is inspected rather than skipped. Shared with the particles check, which asks the same of the
+  /// textures an effect names.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the texture does not read as a DDS.
+  pub(crate) fn is_xray_compatible(project: &GamedataProject, path: &str) -> XrfResult<bool> {
+    Ok(DdsFile::read_from_bytes(&project.read_bytes(path)?)?.is_xray_compatible())
+  }
+
+  fn verify_texture(&self, options: &GamedataProjectVerifyOptions, path: &str) -> Option<Finding> {
+    xrf_output::verbose!(options.output, "Verify texture: {path}");
+
+    match Self::is_xray_compatible(self.project, path) {
+      Ok(true) => None,
+      Ok(false) => {
+        xrf_output::info!(options.output, "Texture is not valid: {path}");
+
+        Some(GamedataFindingFactory::for_asset(
+          GamedataVerificationRule::TexturesValidation,
+          path,
+          "Texture uses an unsupported format",
+        ))
+      }
+      Err(error) => {
+        xrf_output::info!(options.output, "Texture verification failed: {path} - {error}");
+
+        Some(GamedataFindingFactory::for_asset(
+          GamedataVerificationRule::TexturesRead,
+          path,
+          error.to_string(),
+        ))
+      }
+    }
   }
 }

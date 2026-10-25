@@ -3,6 +3,7 @@ use std::time::Instant;
 use xrf_error::XrfResult;
 use xrf_vfs::XrayAssetType as AssetType;
 
+use crate::project::gamedata_check::GamedataCheck;
 use crate::project::sounds::sound_files_verifier::SoundFilesVerifier;
 use crate::project::sounds::sound_references_verifier::SoundReferencesVerifier;
 use crate::project::sounds::sounds_verification_result::GamedataSoundsVerificationResult;
@@ -13,12 +14,14 @@ pub(crate) struct SoundsVerifier<'a> {
   project: &'a GamedataProject,
 }
 
-impl<'a> SoundsVerifier<'a> {
-  pub(crate) fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
+impl<'a> GamedataCheck<'a> for SoundsVerifier<'a> {
+  type Result = GamedataSoundsVerificationResult;
+
+  fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
     Self { options, project }
   }
 
-  pub(crate) fn verify(&self) -> XrfResult<GamedataSoundsVerificationResult> {
+  fn verify(&self) -> XrfResult<GamedataSoundsVerificationResult> {
     self.options.job.check_cancelled()?;
 
     xrf_output::heading!(self.options.output, "Verify sounds:");
@@ -44,7 +47,7 @@ impl<'a> SoundsVerifier<'a> {
       self.options.output,
       "Verified gamedata sounds in {}, {}",
       xrf_utils::format_duration(result.duration),
-      result.get_failure_message()
+      result.get_summary()
     );
 
     self.options.job.check_cancelled()?;

@@ -9,6 +9,8 @@ use xrf_vfs::{
   XraySearch, XraySourceKind, XrayVfs,
 };
 
+use crate::project::collisions::collisions_verifier::CollisionsVerifier;
+use crate::project::gamedata_check::GamedataCheck;
 use crate::{
   GamedataCheckResult, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationReport,
   GamedataVerificationStatus, GamedataVerificationType,
@@ -107,16 +109,17 @@ fn options(checks: Vec<GamedataVerificationType>) -> GamedataProjectVerifyOption
 /// The finding a person acts on: which identity is claimed, and which of the two files to remove.
 #[test]
 fn reports_both_sites_of_every_unreachable_file() {
-  let result = project(vec![
+  let project: GamedataProject = project(vec![
     collision("textures\\a.dds", "textures\\a.dds", "textures\\A.dds"),
     collision("meshes\\b.ogf", "meshes\\B.OGF", "meshes\\b.ogf"),
-  ])
-  .verify_collisions(&options(Vec::new()))
-  .expect("the collisions check completes");
+  ]);
+  let result = CollisionsVerifier::new(&project, &options(Vec::new()))
+    .verify()
+    .expect("the collisions check completes");
 
   assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
   assert_eq!(
-    result.get_failure_message(),
+    result.get_summary(),
     "2 file(s) cannot be reached, another file claims their path"
   );
 
@@ -146,12 +149,13 @@ fn reports_both_sites_of_every_unreachable_file() {
 /// A reachable index is not a passing verdict, or a run whose selected checks judged nothing would read as success.
 #[test]
 fn adds_nothing_to_the_verdict_when_every_file_is_reachable() {
-  let result = project(Vec::new())
-    .verify_collisions(&options(Vec::new()))
+  let project: GamedataProject = project(Vec::new());
+  let result = CollisionsVerifier::new(&project, &options(Vec::new()))
+    .verify()
     .expect("the collisions check completes");
 
   assert_eq!(result.get_status(), GamedataVerificationStatus::Skipped);
-  assert_eq!(result.get_failure_message(), "No unreachable files");
+  assert_eq!(result.get_summary(), "No unreachable files");
   assert!(result.get_findings().is_empty());
 }
 

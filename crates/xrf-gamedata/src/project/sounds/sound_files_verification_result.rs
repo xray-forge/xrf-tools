@@ -13,7 +13,7 @@ impl GamedataCheckResult for GamedataSoundFilesVerificationResult {
     GamedataVerificationStatus::from_is_valid(self.invalid_sounds_count == 0)
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}/{} sounds valid",
       self.checked_sounds_count - self.invalid_sounds_count,

@@ -9,6 +9,8 @@ use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_ppe::PpeFile;
 use xrf_test_utils::GeneratedResources;
 
+use crate::project::animations::animations_verifier::AnimationsVerifier;
+use crate::project::gamedata_check::GamedataCheck;
 use crate::{
   GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
   GamedataVerificationStatus,
@@ -109,17 +111,17 @@ fn passes_motions_and_effects_that_read_write_back_and_evaluate() {
     "valid",
     &[("line.anm", new_motion_bytes(6.0)), ("blur.ppe", new_effect_bytes(0.5))],
   );
-  let result = project
-    .verify_animations(&GamedataProjectVerifyOptions::default())
+  let result = AnimationsVerifier::new(&project, &GamedataProjectVerifyOptions::default())
+    .verify()
     .unwrap();
 
   assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
   assert!(
     result
-      .get_failure_message()
+      .get_summary()
       .ends_with("1/1 object motions valid, 1/1 post-process effects valid"),
     "{}",
-    result.get_failure_message()
+    result.get_summary()
   );
 
   fs::remove_dir_all(root).unwrap();
@@ -145,8 +147,8 @@ fn reports_each_way_a_motion_or_effect_is_invalid_under_its_own_rule() {
       ("grain.ppe", new_falling_grain_effect_bytes()),
     ],
   );
-  let result = project
-    .verify_animations(&GamedataProjectVerifyOptions::default())
+  let result = AnimationsVerifier::new(&project, &GamedataProjectVerifyOptions::default())
+    .verify()
     .unwrap();
   let findings: Vec<(String, String)> = result
     .get_findings()
@@ -162,10 +164,10 @@ fn reports_each_way_a_motion_or_effect_is_invalid_under_its_own_rule() {
   assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
   assert!(
     result
-      .get_failure_message()
+      .get_summary()
       .ends_with("0/3 object motions valid, 0/2 post-process effects valid"),
     "{}",
-    result.get_failure_message()
+    result.get_summary()
   );
   assert_eq!(
     findings,

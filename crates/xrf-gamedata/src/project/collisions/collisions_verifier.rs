@@ -4,35 +4,40 @@ use xrf_error::XrfResult;
 use xrf_vfs::XrayPathCollision;
 
 use crate::project::collisions::verify_collisions_result::GamedataCollisionsVerificationResult;
+use crate::project::gamedata_check::GamedataCheck;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
-impl GamedataProject {
-  /// Judges the project's own inputs, which no asset check can see.
-  ///
-  /// Two files of one source normalizing to a single engine identity leave one of them unreachable: the game never
-  /// loads it, whatever the author intended. The mounted world records that while indexing, and this is where the
-  /// record becomes a verdict — folding it into a content check would let `--checks ltx` hide an unreachable texture.
-  ///
-  /// # Errors
-  ///
-  /// Returns a cancellation error when the job is stopped before all findings are collected.
-  pub fn verify_collisions(
-    &self,
-    options: &GamedataProjectVerifyOptions,
-  ) -> XrfResult<GamedataCollisionsVerificationResult> {
-    options.job.check_cancelled()?;
+/// Judges the project's own inputs, which no asset check can see.
+///
+/// Two files of one source normalizing to a single engine identity leave one of them unreachable: the game never loads
+/// it, whatever the author intended. The mounted world records that while indexing, and this is where the record becomes
+/// a verdict — folding it into a content check would let `--checks ltx` hide an unreachable texture.
+pub(crate) struct CollisionsVerifier<'a> {
+  options: &'a GamedataProjectVerifyOptions,
+  project: &'a GamedataProject,
+}
 
-    xrf_output::heading!(options.output, "Verify path collisions:");
+impl<'a> GamedataCheck<'a> for CollisionsVerifier<'a> {
+  type Result = GamedataCollisionsVerificationResult;
+
+  fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
+    Self { options, project }
+  }
+
+  fn verify(&self) -> XrfResult<GamedataCollisionsVerificationResult> {
+    self.options.job.check_cancelled()?;
+
+    xrf_output::heading!(self.options.output, "Verify path collisions:");
 
     let started_at: Instant = Instant::now();
-    let collisions: Vec<XrayPathCollision> = self.collisions();
+    let collisions: Vec<XrayPathCollision> = self.project.collisions();
 
     let findings: Vec<Finding> = collisions
       .iter()
-      .take_while(|_| !options.job.is_cancelled())
+      .take_while(|_| !self.options.job.is_cancelled())
       .map(|collision| {
         xrf_output::info!(
-          options.output,
+          self.options.output,
           "File cannot be reached: {}, {} answers '{}'",
           collision.unreachable,
           collision.kept,
@@ -43,12 +48,12 @@ impl GamedataProject {
       })
       .collect();
 
-    options.job.check_cancelled()?;
+    self.options.job.check_cancelled()?;
 
     let duration: Duration = started_at.elapsed();
 
     xrf_output::info!(
-      options.output,
+      self.options.output,
       "Verified gamedata path collisions in {}, {} unreachable file(s)",
       xrf_utils::format_duration(duration),
       collisions.len()
@@ -60,7 +65,9 @@ impl GamedataProject {
       findings,
     })
   }
+}
 
+impl CollisionsVerifier<'_> {
   /// Names the claimed identity as the subject and both sites in the message.
   ///
   /// Both, because either one alone leaves the reader unable to act: removing or renaming the right file means knowing

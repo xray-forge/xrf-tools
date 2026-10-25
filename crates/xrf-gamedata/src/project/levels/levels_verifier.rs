@@ -6,6 +6,7 @@ use xrf_error::XrfResult;
 use xrf_gamemtl::GameMtlFile;
 use xrf_shaders::ShaderLibraryFile;
 
+use crate::project::gamedata_check::GamedataCheck;
 use crate::project::levels::level_binaries_outcome::LevelBinariesOutcome;
 use crate::project::levels::level_binaries_verifier::LevelBinariesVerifier;
 use crate::project::levels::level_bundle::LevelBundle;
@@ -22,12 +23,14 @@ pub(crate) struct LevelsVerifier<'a> {
   project: &'a GamedataProject,
 }
 
-impl<'a> LevelsVerifier<'a> {
-  pub(crate) fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
+impl<'a> GamedataCheck<'a> for LevelsVerifier<'a> {
+  type Result = GamedataLevelsVerificationResult;
+
+  fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
     Self { options, project }
   }
 
-  pub(crate) fn verify(&self) -> XrfResult<GamedataLevelsVerificationResult> {
+  fn verify(&self) -> XrfResult<GamedataLevelsVerificationResult> {
     self.options.job.check_cancelled()?;
 
     xrf_output::heading!(self.options.output, "Verify levels:");

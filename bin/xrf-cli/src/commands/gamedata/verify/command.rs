@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_gamedata::{
-  GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataVerificationResult,
+  GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions, GamedataVerificationReport,
   GamedataVerificationType,
 };
 use xrf_output::OutputOptions;
@@ -120,7 +120,7 @@ impl GenericCommand for VerifyCommand {
 
     xrf_output::info!(output, "Engine: {}", project.get_engine().describe());
 
-    let result: GamedataVerificationResult = project.verify(&verify_options)?;
+    let result: GamedataVerificationReport = project.verify(&verify_options)?;
 
     // Deposited before the verdict is turned into an outcome, so a failing check still reports the findings.
     context.set_result(|| {

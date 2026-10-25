@@ -12,7 +12,7 @@ impl GamedataCheckResult for GamedataHudMotionCollisionsVerificationResult {
     GamedataVerificationStatus::from_is_valid(self.collisions_count == 0)
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{} motion collisions across {} HUD namespaces",
       self.collisions_count, self.checked_huds_count

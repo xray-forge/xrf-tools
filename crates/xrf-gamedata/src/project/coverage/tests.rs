@@ -8,6 +8,8 @@ use std::path::PathBuf;
 
 use xrf_test_utils::GeneratedResources;
 
+use crate::project::coverage::coverage_verifier::CoverageVerifier;
+use crate::project::gamedata_check::GamedataCheck;
 use crate::{
   GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
   GamedataVerificationReport, GamedataVerificationStatus, GamedataVerificationType,
@@ -77,13 +79,13 @@ fn reports_every_unopened_source_with_its_alias_and_reason() {
   let volumes: PathBuf = root.join("db");
   let patches: PathBuf = root.join("patches");
 
-  let result = project
-    .verify_coverage(&options(Vec::new()))
+  let result = CoverageVerifier::new(&project, &options(Vec::new()))
+    .verify()
     .expect("the coverage check completes");
 
   assert_eq!(result.get_status(), GamedataVerificationStatus::Incomplete);
   assert_eq!(
-    result.get_failure_message(),
+    result.get_summary(),
     "2 declared source(s) could not be opened, so no result covers them"
   );
 
@@ -123,12 +125,12 @@ fn reports_every_unopened_source_with_its_alias_and_reason() {
 fn adds_nothing_to_the_verdict_when_every_declared_source_opened() {
   let (root, project) = installation_with_unreadable_volumes("complete", &[]);
 
-  let result = project
-    .verify_coverage(&options(Vec::new()))
+  let result = CoverageVerifier::new(&project, &options(Vec::new()))
+    .verify()
     .expect("the coverage check completes");
 
   assert_eq!(result.get_status(), GamedataVerificationStatus::Skipped);
-  assert_eq!(result.get_failure_message(), "Every declared source opened");
+  assert_eq!(result.get_summary(), "Every declared source opened");
   assert!(result.get_findings().is_empty());
 
   fs::remove_dir_all(root).expect("cleanup");

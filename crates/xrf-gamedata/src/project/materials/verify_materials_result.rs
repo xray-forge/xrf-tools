@@ -27,7 +27,7 @@ impl GamedataCheckResult for GamedataMaterialsVerificationResult {
     }
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     if !self.is_library_read {
       return String::from("Game material library unreadable");
     }
@@ -56,7 +56,7 @@ mod tests {
     let result: GamedataMaterialsVerificationResult = GamedataMaterialsVerificationResult::default();
 
     assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
-    assert_eq!(result.get_failure_message(), "Game material library unreadable");
+    assert_eq!(result.get_summary(), "Game material library unreadable");
   }
 
   #[test]
@@ -77,7 +77,7 @@ mod tests {
 
     assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
     assert_eq!(
-      result.get_failure_message(),
+      result.get_summary(),
       "2 materials, 1 pairs; 2/2 material references valid"
     );
   }

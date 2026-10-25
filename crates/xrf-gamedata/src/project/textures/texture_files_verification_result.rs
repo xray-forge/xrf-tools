@@ -13,7 +13,7 @@ impl GamedataCheckResult for GamedataTextureFilesVerificationResult {
     GamedataVerificationStatus::from_is_valid(self.invalid_textures_count == 0)
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}/{} textures valid",
       self.checked_textures_count - self.invalid_textures_count,

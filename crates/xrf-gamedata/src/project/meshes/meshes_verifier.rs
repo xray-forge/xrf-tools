@@ -4,6 +4,7 @@ use std::time::Instant;
 use xrf_error::XrfResult;
 use xrf_gamemtl::GameMtlFile;
 
+use crate::project::gamedata_check::GamedataCheck;
 use crate::project::meshes::mesh_assets_verification_result::GamedataMeshAssetsVerificationResult;
 use crate::project::meshes::mesh_assets_verifier::MeshAssetsVerifier;
 use crate::project::meshes::shader_library_verifier::ShaderLibraryVerifier;
@@ -15,12 +16,14 @@ pub(crate) struct MeshesVerifier<'a> {
   project: &'a GamedataProject,
 }
 
-impl<'a> MeshesVerifier<'a> {
-  pub(crate) fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
+impl<'a> GamedataCheck<'a> for MeshesVerifier<'a> {
+  type Result = GamedataMeshesVerificationResult;
+
+  fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
     Self { options, project }
   }
 
-  pub(crate) fn verify(&self) -> XrfResult<GamedataMeshesVerificationResult> {
+  fn verify(&self) -> XrfResult<GamedataMeshesVerificationResult> {
     self.options.job.check_cancelled()?;
 
     xrf_output::heading!(self.options.output, "Verify meshes:");
@@ -47,7 +50,7 @@ impl<'a> MeshesVerifier<'a> {
       self.options.output,
       "Verified gamedata meshes in {}, {}",
       xrf_utils::format_duration(result.duration),
-      result.get_failure_message()
+      result.get_summary()
     );
 
     self.options.job.check_cancelled()?;

@@ -28,7 +28,7 @@ impl GamedataCheckResult for GamedataParticlesUsageVerificationResult {
     }
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}/{} particle references valid; {}/{} spawn files readable; {} custom data sections unparsed",
       self.checked_references_count - self.invalid_references_count,
@@ -62,7 +62,7 @@ mod tests {
 
     assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
     assert_eq!(
-      result.get_failure_message(),
+      result.get_summary(),
       "0/0 particle references valid; 0/1 spawn files readable; 0 custom data sections unparsed"
     );
   }
@@ -76,7 +76,7 @@ mod tests {
 
     assert_eq!(result.get_status(), GamedataVerificationStatus::Incomplete);
     assert_eq!(
-      result.get_failure_message(),
+      result.get_summary(),
       "0/0 particle references valid; 0/0 spawn files readable; 1 custom data sections unparsed"
     );
   }

@@ -39,7 +39,7 @@ impl GamedataCheckResult for GamedataLevelsVerificationResult {
     }
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     if !self.has_roster {
       return String::from("No game graph found, level roster is unknown");
     }
@@ -73,10 +73,7 @@ mod tests {
     let result: GamedataLevelsVerificationResult = GamedataLevelsVerificationResult::skipped(Duration::ZERO);
 
     assert_eq!(result.get_status(), GamedataVerificationStatus::Skipped);
-    assert_eq!(
-      result.get_failure_message(),
-      "No game graph found, level roster is unknown"
-    );
+    assert_eq!(result.get_summary(), "No game graph found, level roster is unknown");
   }
 
   #[test]
@@ -91,7 +88,7 @@ mod tests {
 
     assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
     assert_eq!(
-      result.get_failure_message(),
+      result.get_summary(),
       "5/5 level bundles valid; 1204/1204 level shader references valid"
     );
   }

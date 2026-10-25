@@ -28,7 +28,7 @@ impl GamedataCheckResult for GamedataCollisionsVerificationResult {
     }
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     if self.unreachable_files_count == 0 {
       String::from("No unreachable files")
     } else {

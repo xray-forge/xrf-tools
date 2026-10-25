@@ -5,7 +5,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use xrf_engine_target::XrayEngineChoice;
 use xrf_test_utils::GeneratedResources;
 
+use super::environment_verifier::EnvironmentVerifier;
 use super::verify_environment_result::GamedataEnvironmentVerificationResult;
+use crate::project::gamedata_check::GamedataCheck;
 use crate::{GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions};
 
 static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
@@ -58,14 +60,16 @@ impl EnvironmentTree {
   }
 
   fn verify(&self, engine: XrayEngineChoice) -> GamedataEnvironmentVerificationResult {
-    GamedataProject::open(&GamedataProjectReadOptions {
+    let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
       engine,
       root: self.root.clone(),
       ..Default::default()
     })
-    .unwrap()
-    .verify_environment(&GamedataProjectVerifyOptions::default())
-    .unwrap()
+    .unwrap();
+
+    EnvironmentVerifier::new(&project, &GamedataProjectVerifyOptions::default())
+      .verify()
+      .unwrap()
   }
 }
 
@@ -116,7 +120,7 @@ fn passes_a_tree_the_engine_loads_whole() {
   let result: GamedataEnvironmentVerificationResult = EnvironmentTree::new().verify(XrayEngineChoice::Vanilla);
 
   assert_eq!(reported(&result), Vec::new());
-  assert_eq!(result.get_failure_message(), "5/5 environment configs valid");
+  assert_eq!(result.get_summary(), "5/5 environment configs valid");
 }
 
 #[test]
@@ -133,7 +137,7 @@ fn reports_what_the_engine_refuses_under_its_rule() {
       String::from("Weather [00:00:00] is missing required field [far_plane]")
     )]
   );
-  assert_eq!(result.get_failure_message(), "4/5 environment configs valid");
+  assert_eq!(result.get_summary(), "4/5 environment configs valid");
   assert!(
     result.get_findings()[0]
       .subject()
@@ -160,7 +164,7 @@ fn reports_a_sky_the_game_does_not_hold() {
       ),
     ]
   );
-  assert_eq!(result.get_failure_message(), "4/5 environment configs valid");
+  assert_eq!(result.get_summary(), "4/5 environment configs valid");
 }
 
 // Anomaly's cycles name no clouds at all, which draws none rather than a missing texture.
@@ -236,5 +240,5 @@ fn stops_reading_when_cancelled() {
 
   options.job.cancel();
 
-  assert!(project.verify_environment(&options).is_err());
+  assert!(EnvironmentVerifier::new(&project, &options).verify().is_err());
 }

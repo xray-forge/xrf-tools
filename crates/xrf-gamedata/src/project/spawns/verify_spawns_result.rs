@@ -19,7 +19,7 @@ impl GamedataCheckResult for GamedataSpawnsVerificationResult {
     GamedataVerificationStatus::from_is_valid(self.invalid_spawns == 0)
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}/{} spawns valid",
       self.total_spawns - self.invalid_spawns,

@@ -1,5 +1,3 @@
-//! The environment check: `xrf-environment`'s findings, placed in the report, and the textures its keyframes name.
-
 use std::collections::{BTreeSet, HashMap};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -12,29 +10,35 @@ use xrf_environment::{
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::XrayLogicalPath;
 
-use super::verify_environment_result::GamedataEnvironmentVerificationResult;
+use crate::project::environment::verify_environment_result::GamedataEnvironmentVerificationResult;
+use crate::project::gamedata_check::GamedataCheck;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
-impl GamedataProject {
-  /// Verifies every environment config as this project's engine reads it, and that each texture its weather keyframes
-  /// name is in the game.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error on cancellation, or when the configs cannot be listed.
-  pub fn verify_environment(
-    &self,
-    options: &GamedataProjectVerifyOptions,
-  ) -> XrfResult<GamedataEnvironmentVerificationResult> {
-    options.job.check_cancelled()?;
+/// The environment check: `xrf-environment`'s findings over every environment config as this project's engine reads it,
+/// placed in the report, and each texture its weather keyframes name.
+pub(crate) struct EnvironmentVerifier<'a> {
+  options: &'a GamedataProjectVerifyOptions,
+  project: &'a GamedataProject,
+}
 
-    xrf_output::heading!(options.output, "Verify environment:");
+impl<'a> GamedataCheck<'a> for EnvironmentVerifier<'a> {
+  type Result = GamedataEnvironmentVerificationResult;
+
+  fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
+    Self { options, project }
+  }
+
+  fn verify(&self) -> XrfResult<GamedataEnvironmentVerificationResult> {
+    self.options.job.check_cancelled()?;
+
+    xrf_output::heading!(self.options.output, "Verify environment:");
 
     let started_at: Instant = Instant::now();
+    let engine: XrayEngine = self.project.engine.engine;
     let read: EnvironmentReadOptions = EnvironmentReadOptions::default()
-      .with_engine(self.engine.engine)
-      .with_job(options.job.clone());
-    let catalog: EnvironmentCatalog = EnvironmentReader::read_opt(&self.ltx_project, &read)?;
+      .with_engine(engine)
+      .with_job(self.options.job.clone());
+    let catalog: EnvironmentCatalog = EnvironmentReader::read_opt(&self.project.ltx_project, &read)?;
 
     let mut findings: Vec<Finding> = catalog
       .findings
@@ -43,7 +47,7 @@ impl GamedataProject {
       .collect::<XrfResult<_>>()?;
     let mut invalid: BTreeSet<&str> = catalog.findings.iter().map(|finding| finding.file.as_str()).collect();
 
-    for (file, finding) in self.verify_environment_textures(&catalog, options)? {
+    for (file, finding) in self.verify_textures(&catalog)? {
       invalid.insert(file);
       findings.push(finding);
     }
@@ -52,7 +56,7 @@ impl GamedataProject {
 
     for finding in &findings {
       xrf_output::error!(
-        options.output,
+        self.options.output,
         "{}: {}",
         finding.message(),
         finding.subject().unwrap_or_default()
@@ -67,9 +71,9 @@ impl GamedataProject {
     let duration = started_at.elapsed();
 
     xrf_output::info!(
-      options.output,
+      self.options.output,
       "Verified environment configs as {} in {}, {}/{} valid",
-      self.engine.engine,
+      engine,
       xrf_utils::format_duration(duration),
       checked_configs_count - invalid_configs_count,
       checked_configs_count
@@ -82,21 +86,19 @@ impl GamedataProject {
       invalid_configs_count,
     })
   }
+}
 
+impl<'a> EnvironmentVerifier<'a> {
   /// Every sky cube, its `#small` twin and every clouds texture a keyframe names, each looked up once; each finding
   /// with the config it is in.
-  fn verify_environment_textures<'c>(
-    &self,
-    catalog: &'c EnvironmentCatalog,
-    options: &GamedataProjectVerifyOptions,
-  ) -> XrfResult<Vec<(&'c str, Finding)>> {
+  fn verify_textures<'c>(&self, catalog: &'c EnvironmentCatalog) -> XrfResult<Vec<(&'c str, Finding)>> {
     let mut is_present: HashMap<String, bool> = HashMap::new();
     let mut findings: Vec<(&'c str, Finding)> = Vec::new();
 
     for cycle in catalog.cycles.iter().chain(&catalog.effects) {
-      options.job.check_cancelled()?;
+      self.options.job.check_cancelled()?;
 
-      let reported: PathBuf = self.ltx_project.path_of(&XrayLogicalPath::new(&cycle.file)?);
+      let reported: PathBuf = self.project.ltx_project.path_of(&XrayLogicalPath::new(&cycle.file)?);
 
       for keyframe in &cycle.keyframes {
         for (what, texture) in Self::list_keyframe_textures(&keyframe.section, catalog.engine) {
@@ -147,7 +149,7 @@ impl GamedataProject {
 
   /// Whether the game holds a texture, as the engine finds one.
   fn has_texture(&self, texture: &str) -> bool {
-    self.dds_texture(texture).ok().flatten().is_some()
+    self.project.dds_texture(texture).ok().flatten().is_some()
   }
 
   fn report_environment_finding(&self, finding: &EnvironmentFinding) -> XrfResult<Finding> {
@@ -156,7 +158,7 @@ impl GamedataProject {
       EnvironmentRule::Reference => GamedataVerificationRule::EnvironmentReference,
       EnvironmentRule::Convention => GamedataVerificationRule::EnvironmentConvention,
     };
-    let reported: PathBuf = self.ltx_project.path_of(&XrayLogicalPath::new(&finding.file)?);
+    let reported: PathBuf = self.project.ltx_project.path_of(&XrayLogicalPath::new(&finding.file)?);
 
     Ok(GamedataFindingFactory::for_asset(
       rule,

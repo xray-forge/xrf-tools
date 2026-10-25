@@ -44,11 +44,11 @@ impl GamedataCheckResult for GamedataSoundsVerificationResult {
     GamedataVerificationStatus::aggregate([self.sound_files.get_status(), self.sound_references.get_status()])
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}; {}",
-      self.sound_files.get_failure_message(),
-      self.sound_references.get_failure_message(),
+      self.sound_files.get_summary(),
+      self.sound_references.get_summary(),
     )
   }
 

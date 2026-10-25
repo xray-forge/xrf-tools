@@ -1,32 +1,28 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use rayon::prelude::*;
-use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxResolution, Section};
-use xrf_ogf::OgfFile;
-use xrf_omf::OmfFile;
-use xrf_spawn::XRayByteOrder;
-use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::project::animations::hud::hud_motion_collisions_verification_result::GamedataHudMotionCollisionsVerificationResult;
-use crate::project::weapons::weapons_utils::is_player_hud_section;
+use crate::project::gamedata_item_section::GamedataItemSection;
+use crate::project::gamedata_visual_motions::GamedataVisualMotions;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Verifies that motion names stay unique within the set of banks a hands model loads.
-pub struct HudMotionCollisionsVerifier<'a> {
+pub(crate) struct HudMotionCollisionsVerifier<'a> {
   options: &'a GamedataProjectVerifyOptions,
   project: &'a GamedataProject,
 }
 
 impl<'a> HudMotionCollisionsVerifier<'a> {
-  pub fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
+  pub(crate) fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
     Self { options, project }
   }
 
-  pub fn verify(&self) -> XrfResult<GamedataHudMotionCollisionsVerificationResult> {
+  pub(crate) fn verify(&self) -> XrfResult<GamedataHudMotionCollisionsVerificationResult> {
     self.options.job.check_cancelled()?;
 
     xrf_output::verbose!(self.options.output, "Verify hud motion collisions");
@@ -37,7 +33,7 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
 
     let hud_sections: Vec<(&str, &Section)> = system_ltx
       .iter()
-      .filter(|(_, section)| is_player_hud_section(section))
+      .filter(|(_, section)| GamedataItemSection::is_player_hud(section))
       .collect();
 
     let checked_huds_count: u32 = u32::try_from(hud_sections.len())
@@ -103,9 +99,16 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
       return Vec::new();
     };
 
-    let Ok(banks) = self.read_motion_refs(&visual_path) else {
+    // A visual or bank that does not read is the player HUD check's finding, not a collision.
+    let Ok(Some(refs)) = GamedataVisualMotions::read_refs(self.project, &visual_path) else {
       return Vec::new();
     };
+
+    let banks: BTreeSet<String> = refs
+      .iter()
+      .filter_map(|motion_ref| GamedataVisualMotions::resolve_banks(self.project, motion_ref).ok())
+      .flatten()
+      .collect();
 
     // Ordered so the reported bank list is stable between runs.
     let mut owners: BTreeMap<String, Vec<String>> = BTreeMap::new();
@@ -115,15 +118,9 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
         break;
       }
 
-      // The whole bank, shared with the meshes and hud-item checks rather than parsed once per reader.
-      let Ok(omf) = self
-        .project
-        .read_parsed(bank, OmfFile::read_from_chunk::<XRayByteOrder, _>)
-      else {
+      let Ok(motions) = GamedataVisualMotions::read_names(self.project, bank) else {
         continue;
       };
-
-      let motions: Vec<String> = omf.get_motion_names().into_iter().map(str::to_owned).collect();
 
       // The bank's file name, taken from the logical path: reports name the omf, not its whole path.
       let bank_name: String = bank.rsplit('\\').next().unwrap_or(bank).to_string();
@@ -150,34 +147,5 @@ impl<'a> HudMotionCollisionsVerifier<'a> {
         )
       })
       .collect()
-  }
-
-  /// Resolve omf assets linked by the model motion refs, wildcards included.
-  fn read_motion_refs(&self, path: &str) -> XrfResult<Vec<String>> {
-    self.options.job.check_cancelled()?;
-
-    let mut assets: Vec<String> = Vec::new();
-    // todo: Review why full read fails and use plain read_parsed.
-    // Narrow read: a full visual parse fails on visuals whose geometry will not read, while their motion refs chunk
-    // reads fine, and this check must still see those refs.
-    let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_vec(self.project.read_bytes(path)?)?;
-
-    for motion_ref in &OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut chunk)? {
-      self.options.job.check_cancelled()?;
-
-      for location in self.project.resolve_all(AssetType::Omf, motion_ref)? {
-        self.options.job.check_cancelled()?;
-        if location.is_type(AssetType::Omf) {
-          assets.push(location.get_logical_path().to_string());
-        }
-      }
-    }
-
-    assets.sort();
-    assets.dedup();
-
-    self.options.job.check_cancelled()?;
-
-    Ok(assets)
   }
 }

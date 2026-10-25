@@ -7,30 +7,44 @@ use xrf_ltx::{
   LtxVerifyOptions,
 };
 
+use crate::project::gamedata_check::GamedataCheck;
 use crate::project::ltx::verify_ltx_result::GamedataLtxVerificationResult;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
-impl GamedataProject {
-  pub fn verify_ltx(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<GamedataLtxVerificationResult> {
-    options.job.check_cancelled()?;
+/// The LTX check: how every config is formatted, and whether it resolves against its section schemes.
+pub(crate) struct LtxVerifier<'a> {
+  options: &'a GamedataProjectVerifyOptions,
+  project: &'a GamedataProject,
+}
 
-    xrf_output::heading!(options.output, "Verify LTX files");
+impl<'a> GamedataCheck<'a> for LtxVerifier<'a> {
+  type Result = GamedataLtxVerificationResult;
+
+  fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
+    Self { options, project }
+  }
+
+  fn verify(&self) -> XrfResult<GamedataLtxVerificationResult> {
+    self.options.job.check_cancelled()?;
+
+    xrf_output::heading!(self.options.output, "Verify LTX files");
 
     let started_at: Instant = Instant::now();
 
-    let format_result: LtxProjectFormatResult = self.verify_ltx_format(options)?;
-    let verification_result: LtxProjectVerifyResult = self.verify_ltx_schemes(options)?;
-    let findings: Vec<Finding> = Self::collect_ltx_findings(&self.ltx_project, &format_result, &verification_result);
+    let format_result: LtxProjectFormatResult = self.verify_format()?;
+    let verification_result: LtxProjectVerifyResult = self.verify_schemes()?;
+    let findings: Vec<Finding> =
+      Self::collect_findings(&self.project.ltx_project, &format_result, &verification_result);
 
     let duration = started_at.elapsed();
 
     xrf_output::info!(
-      options.output,
+      self.options.output,
       "Verified gamedata ltx files in {}",
       xrf_utils::format_duration(duration),
     );
 
-    options.job.check_cancelled()?;
+    self.options.job.check_cancelled()?;
 
     Ok(GamedataLtxVerificationResult {
       duration,
@@ -39,8 +53,10 @@ impl GamedataProject {
       verification_result,
     })
   }
+}
 
-  fn collect_ltx_findings(
+impl LtxVerifier<'_> {
+  fn collect_findings(
     ltx_project: &LtxProject,
     format_result: &LtxProjectFormatResult,
     verification_result: &LtxProjectVerifyResult,
@@ -63,7 +79,7 @@ impl GamedataProject {
       let reported: LtxFinding = ltx_project.with_reported_paths(finding);
 
       findings.push(GamedataFindingFactory::for_asset(
-        Self::get_ltx_rule(finding.kind),
+        Self::get_rule(finding.kind),
         Path::new(reported.file.as_deref().unwrap_or(&reported.entry)),
         finding.get_located_message(),
       ));
@@ -74,7 +90,7 @@ impl GamedataProject {
     findings
   }
 
-  fn get_ltx_rule(kind: LtxFindingKind) -> GamedataVerificationRule {
+  fn get_rule(kind: LtxFindingKind) -> GamedataVerificationRule {
     match kind {
       LtxFindingKind::Scheme => GamedataVerificationRule::LtxSchema,
       LtxFindingKind::Dialect => GamedataVerificationRule::LtxDialect,
@@ -84,25 +100,25 @@ impl GamedataProject {
     }
   }
 
-  fn verify_ltx_format(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<LtxProjectFormatResult> {
-    options.job.check_cancelled()?;
+  fn verify_format(&self) -> XrfResult<LtxProjectFormatResult> {
+    self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(options.output, "Verify LTX files formatting");
+    xrf_output::heading!(self.options.output, "Verify LTX files formatting");
 
-    self.ltx_project.check_format_all_files_opt(LtxFormatOptions {
-      output: options.output.clone(),
-      job: options.job.clone(),
+    self.project.ltx_project.check_format_all_files_opt(LtxFormatOptions {
+      output: self.options.output.clone(),
+      job: self.options.job.clone(),
     })
   }
 
-  fn verify_ltx_schemes(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<LtxProjectVerifyResult> {
-    options.job.check_cancelled()?;
+  fn verify_schemes(&self) -> XrfResult<LtxProjectVerifyResult> {
+    self.options.job.check_cancelled()?;
 
-    xrf_output::heading!(options.output, "Verify LTX schemas");
+    xrf_output::heading!(self.options.output, "Verify LTX schemas");
 
-    self.ltx_project.verify_entries_opt(LtxVerifyOptions {
-      output: options.output.clone(),
-      job: options.job.clone(),
+    self.project.ltx_project.verify_entries_opt(LtxVerifyOptions {
+      output: self.options.output.clone(),
+      job: self.options.job.clone(),
     })
   }
 }
@@ -114,7 +130,7 @@ mod tests {
   use xrf_ltx::{LtxFinding, LtxProject, LtxProjectFormatResult, LtxProjectVerifyResult};
   use xrf_test_utils::GeneratedResources;
 
-  use super::GamedataProject;
+  use super::LtxVerifier;
   use crate::{Finding, GamedataFindingFactory, GamedataVerificationRule};
 
   #[test]
@@ -139,7 +155,7 @@ mod tests {
       ..Default::default()
     };
 
-    let findings: Vec<Finding> = GamedataProject::collect_ltx_findings(&project, &format_result, &verification_result);
+    let findings: Vec<Finding> = LtxVerifier::collect_findings(&project, &format_result, &verification_result);
 
     assert_eq!(
       findings,

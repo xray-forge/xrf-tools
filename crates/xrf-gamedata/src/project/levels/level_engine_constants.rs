@@ -56,9 +56,6 @@ pub const LEVEL_DETAILS_TEXTURE_FILE: &str = "build_details.dds";
 /// Root directory holding level bundles.
 pub const LEVELS_DIRECTORY: &str = "levels";
 
-/// Directory holding merged spawn files that carry the game graph.
-pub const SPAWNS_DIRECTORY: &str = "spawns";
-
 /// Configuration declaring which levels have a single player map.
 pub const SINGLE_PLAYER_MAPS_FILE: &str = "game_maps_single.ltx";
 

@@ -12,9 +12,11 @@ use xrf_math::Vector3d;
 use xrf_spawn::{GraphCrossTable, GraphHeader, GraphLevel, SpawnGraphsChunk};
 use xrf_test_utils::GeneratedResources;
 
+use crate::project::gamedata_check::GamedataCheck;
 use crate::project::levels::level_engine_constants::{
   AI_CURRENT_VERSION, CFORM_CURRENT_VERSION, LEVEL_PRODUCTION_VERSION,
 };
+use crate::project::levels::levels_verifier::LevelsVerifier;
 use crate::project::levels::verify_levels_result::GamedataLevelsVerificationResult;
 use crate::project::tests::fixtures::game_materials_bytes;
 use crate::{GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions};
@@ -342,8 +344,8 @@ impl GamedataFixture {
     })
     .unwrap();
 
-    project
-      .verify_levels(&GamedataProjectVerifyOptions::default())
+    LevelsVerifier::new(&project, &GamedataProjectVerifyOptions::default())
+      .verify()
       .expect("Expected level verification to complete")
   }
 }

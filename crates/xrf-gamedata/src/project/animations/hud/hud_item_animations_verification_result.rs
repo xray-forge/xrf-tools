@@ -12,7 +12,7 @@ impl GamedataCheckResult for GamedataHudItemAnimationsVerificationResult {
     GamedataVerificationStatus::from_is_valid(self.invalid_items_count == 0)
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}/{} HUD item animations valid",
       self.checked_items_count - self.invalid_items_count,

@@ -1,19 +1,16 @@
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use rayon::prelude::*;
-use xrf_chunk::ChunkReader;
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxResolution, Section};
-use xrf_ogf::OgfFile;
-use xrf_omf::OmfFile;
-use xrf_spawn::XRayByteOrder;
-use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::project::animations::hud::hud_item_animations_verification_result::GamedataHudItemAnimationsVerificationResult;
-use crate::project::weapons::weapons_utils::is_hud_item_section;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
+use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
+use crate::project::gamedata_item_section::GamedataItemSection;
+use crate::project::gamedata_visual_motions::GamedataVisualMotions;
+use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Motion the engine plays on the item model, and the `anm_*` field that asked for it.
 struct ExpectedItemMotion {
@@ -46,47 +43,34 @@ impl<'a> HudItemAnimationsVerifier<'a> {
 
     let item_sections: Vec<(&str, &Section)> = system_ltx
       .iter()
-      .filter(|(_, section)| is_hud_item_section(section))
+      .filter(|(_, section)| GamedataItemSection::is_hud_item(section))
       .collect();
-
-    let checked_items_count: u32 = u32::try_from(item_sections.len())
-      .map_err(|_| XrfError::new_verify_error("Hud item count exceeds the supported result range"))?;
 
     // Each section is verified once, reading its model and omf files a single time.
-    let messages_per_item: Vec<Vec<String>> = item_sections
-      .par_iter()
-      .filter(|_| !self.options.job.is_cancelled())
-      .map(|(section_name, section)| self.verify_item_animations(section_name, section))
-      .collect();
-
-    let invalid_items_count: u32 = u32::try_from(messages_per_item.iter().filter(|it| !it.is_empty()).count())
-      .map_err(|_| XrfError::new_verify_error("Invalid hud item count exceeds the supported result range"))?;
-
-    let mut findings: Vec<Finding> = messages_per_item
-      .into_iter()
-      .flatten()
-      .map(|message| {
-        GamedataFindingFactory::for_asset(GamedataVerificationRule::AnimationsHudItem, &system_ltx_path, message)
-      })
-      .collect();
+    let outcome: GamedataAssetSweepOutcome =
+      GamedataAssetSweep::new(self.options).run(&item_sections, |_, (section_name, section)| {
+        self
+          .verify_item_animations(section_name, section)
+          .into_iter()
+          .map(|message| {
+            GamedataFindingFactory::for_asset(GamedataVerificationRule::AnimationsHudItem, &system_ltx_path, message)
+          })
+          .collect()
+      })?;
 
     self.options.job.check_cancelled()?;
 
     xrf_output::info!(
       self.options.output,
       "Verified gamedata hud items, {}/{} valid",
-      checked_items_count - invalid_items_count,
-      checked_items_count,
+      outcome.checked_count - outcome.invalid_count,
+      outcome.checked_count,
     );
 
-    findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
-
-    self.options.job.check_cancelled()?;
-
     Ok(GamedataHudItemAnimationsVerificationResult {
-      checked_items_count,
-      findings,
-      invalid_items_count,
+      checked_items_count: outcome.checked_count,
+      findings: outcome.findings,
+      invalid_items_count: outcome.invalid_count,
     })
   }
 
@@ -96,7 +80,7 @@ impl<'a> HudItemAnimationsVerifier<'a> {
       return Vec::new();
     };
 
-    let item_motions: HashSet<String> = match self.read_model_motions(item_visual) {
+    let item_motions: BTreeSet<String> = match self.read_model_motions(item_visual) {
       Ok(Some(motions)) => motions,
       // Static model, the engine plays no item animations for it at all.
       Ok(None) => return Vec::new(),
@@ -163,7 +147,7 @@ impl<'a> HudItemAnimationsVerifier<'a> {
   }
 
   /// Read motions provided by the model, or `None` when the model carries no animations at all.
-  fn read_model_motions(&self, visual: &str) -> XrfResult<Option<HashSet<String>>> {
+  fn read_model_motions(&self, visual: &str) -> XrfResult<Option<BTreeSet<String>>> {
     self.options.job.check_cancelled()?;
 
     // Resolved and read through the VFS, so a visual and its animations inside archive volumes are checked too.
@@ -177,62 +161,6 @@ impl<'a> HudItemAnimationsVerifier<'a> {
       )));
     };
 
-    let Some(linked_assets) = self.read_motion_refs(&visual_path)? else {
-      return Ok(None);
-    };
-
-    let mut motions: HashSet<String> = HashSet::new();
-
-    for linked in linked_assets {
-      self.options.job.check_cancelled()?;
-
-      let omf: Arc<OmfFile> = self
-        .project
-        .read_parsed(&linked, OmfFile::read_from_chunk::<XRayByteOrder, _>)?;
-
-      motions.extend(omf.get_motion_names().into_iter().map(str::to_owned));
-    }
-
-    self.options.job.check_cancelled()?;
-
-    Ok(Some(motions))
-  }
-
-  /// Resolve omf assets linked by the model motion refs, or `None` when the model has no refs.
-  fn read_motion_refs(&self, path: &str) -> XrfResult<Option<HashSet<String>>> {
-    self.options.job.check_cancelled()?;
-
-    // todo: Review why full read fails and use plain read_parsed.
-    // Narrow read, assembled here rather than taken through the parsed seam: a full visual parse fails on visuals whose
-    // geometry will not read, while their motion refs chunk reads fine, and this check must still see those refs.
-    // `patch-ogf-motion-refs` depends on the same tolerance.
-    let motion_refs: Vec<String> = match self
-      .project
-      .read_bytes(path)
-      .and_then(ChunkReader::from_vec)
-      .and_then(|mut chunk| OgfFile::read_motion_refs_from_chunk::<XRayByteOrder, _>(&mut chunk))
-    {
-      Ok(refs) => refs,
-      // Model has no motion refs chunk, so it is a static visual without animations.
-      Err(XrfError::NotFound { .. }) => return Ok(None),
-      Err(error) => return Err(error),
-    };
-
-    let mut assets: HashSet<String> = HashSet::new();
-
-    for motion_ref in &motion_refs {
-      self.options.job.check_cancelled()?;
-
-      for location in self.project.resolve_all(AssetType::Omf, motion_ref)? {
-        self.options.job.check_cancelled()?;
-        if location.is_type(AssetType::Omf) {
-          assets.insert(location.get_logical_path().to_string());
-        }
-      }
-    }
-
-    self.options.job.check_cancelled()?;
-
-    Ok(Some(assets))
+    GamedataVisualMotions::read_all(self.project, &visual_path, &self.options.job)
   }
 }

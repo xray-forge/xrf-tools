@@ -28,7 +28,7 @@ impl<F: EnvelopeAnimation> GamedataCheckResult for GamedataEnvelopeAnimationsVer
     GamedataVerificationStatus::from_is_valid(self.invalid_files_count == 0)
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}/{} {} valid",
       self.checked_files_count - self.invalid_files_count,
@@ -58,10 +58,10 @@ mod tests {
       ..Default::default()
     };
 
-    assert_eq!(motions.get_failure_message(), "2/3 object motions valid");
+    assert_eq!(motions.get_summary(), "2/3 object motions valid");
     assert_eq!(motions.get_status(), GamedataVerificationStatus::Failed);
     assert_eq!(
-      GamedataEnvelopeAnimationsVerificationResult::<PpeFile>::default().get_failure_message(),
+      GamedataEnvelopeAnimationsVerificationResult::<PpeFile>::default().get_summary(),
       "0/0 post-process effects valid"
     );
   }

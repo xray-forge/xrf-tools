@@ -132,8 +132,6 @@ pub enum GamedataVerificationRule {
   MeshesMotionRead,
   #[display("meshes.motion-validation")]
   MeshesMotionValidation,
-  #[display("meshes.path")]
-  MeshesPath,
   #[display("meshes.read")]
   MeshesRead,
   #[display("meshes.shader-library")]
@@ -150,10 +148,10 @@ pub enum GamedataVerificationRule {
   ParticlesUsageSpawn,
   #[display("particles-usage.spawn-custom-data")]
   ParticlesUsageSpawnCustomData,
-  #[display("scripts.path")]
-  ScriptsPath,
+  /// A runtime script that does not read as Windows-1251 text.
   #[display("scripts.read")]
   ScriptsRead,
+  /// A runtime script LuaJIT's parser rejects.
   #[display("scripts.syntax")]
   ScriptsSyntax,
   #[display("shaders.include-cycle")]
@@ -174,8 +172,6 @@ pub enum GamedataVerificationRule {
   SoundsFiles,
   #[display("sounds.references")]
   SoundsReferences,
-  #[display("spawns.path")]
-  SpawnsPath,
   #[display("spawns.read")]
   SpawnsRead,
   #[display("textures.bump")]
@@ -186,8 +182,6 @@ pub enum GamedataVerificationRule {
   TexturesBumpDeclaration,
   #[display("textures.chunk-residue")]
   TexturesChunkResidue,
-  #[display("textures.path")]
-  TexturesPath,
   #[display("textures.read")]
   TexturesRead,
   #[display("textures.dds")]

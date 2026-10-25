@@ -38,7 +38,7 @@ impl GamedataCheckResult for GamedataTextureBumpsVerificationResult {
     )
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     let mut message: String = format!(
       "{}/{} declared bumps resolved",
       self.checked_bumps_count - self.unresolved_bumps_count,
@@ -90,7 +90,7 @@ mod tests {
     };
 
     assert_eq!(result.get_status(), GamedataVerificationStatus::Failed);
-    assert_eq!(result.get_failure_message(), "1/2 declared bumps resolved");
+    assert_eq!(result.get_summary(), "1/2 declared bumps resolved");
 
     let clean: GamedataTextureBumpsVerificationResult = GamedataTextureBumpsVerificationResult {
       checked_bumps_count: 1,
@@ -98,7 +98,7 @@ mod tests {
     };
 
     assert_eq!(clean.get_status(), GamedataVerificationStatus::Passed);
-    assert_eq!(clean.get_failure_message(), "1/1 declared bumps resolved");
+    assert_eq!(clean.get_summary(), "1/1 declared bumps resolved");
   }
 
   #[test]
@@ -112,7 +112,7 @@ mod tests {
 
     assert_eq!(lenient.get_status(), GamedataVerificationStatus::Passed);
     assert_eq!(
-      lenient.get_failure_message(),
+      lenient.get_summary(),
       "1/1 declared bumps resolved, 1 bump declarations the engine never reads"
     );
 
@@ -135,7 +135,7 @@ mod tests {
 
     assert_eq!(lenient.get_status(), GamedataVerificationStatus::Passed);
     assert_eq!(
-      lenient.get_failure_message(),
+      lenient.get_summary(),
       "1/1 declared bumps resolved, 2 descriptors with bytes past their fields"
     );
 
@@ -159,7 +159,7 @@ mod tests {
 
     assert_eq!(lenient.get_status(), GamedataVerificationStatus::Passed);
     assert_eq!(
-      lenient.get_failure_message(),
+      lenient.get_summary(),
       "1/1 declared bumps resolved, 1 bumps without a companion"
     );
 

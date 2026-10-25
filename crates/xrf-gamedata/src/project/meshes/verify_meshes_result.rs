@@ -39,11 +39,11 @@ impl GamedataCheckResult for GamedataMeshesVerificationResult {
     GamedataVerificationStatus::aggregate([self.shader_library.get_status(), self.mesh_assets.get_status()])
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}; {}",
-      self.shader_library.get_failure_message(),
-      self.mesh_assets.get_failure_message()
+      self.shader_library.get_summary(),
+      self.mesh_assets.get_summary()
     )
   }
 

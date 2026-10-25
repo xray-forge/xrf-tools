@@ -19,7 +19,7 @@ impl GamedataCheckResult for GamedataParticlesVerificationResult {
     GamedataVerificationStatus::from_is_valid(self.invalid_particle_files_count == 0)
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}/{} particle library files valid",
       self.checked_particle_files_count - self.invalid_particle_files_count,
@@ -45,6 +45,6 @@ mod tests {
       ..Default::default()
     };
 
-    assert_eq!(result.get_failure_message(), "0/1 particle library files valid");
+    assert_eq!(result.get_summary(), "0/1 particle library files valid");
   }
 }

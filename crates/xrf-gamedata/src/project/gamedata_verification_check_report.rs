@@ -55,7 +55,7 @@ impl GamedataVerificationCheckReport {
           result.get_duration(),
           result.get_findings().to_vec(),
         ),
-        summary: result.get_failure_message(),
+        summary: result.get_summary(),
         verification_type,
       },
       Err(XrfError::Cancelled { .. }) => Self {

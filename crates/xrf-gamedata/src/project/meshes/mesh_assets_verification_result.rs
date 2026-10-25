@@ -17,7 +17,7 @@ impl GamedataCheckResult for GamedataMeshAssetsVerificationResult {
     }
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     if self.is_skipped {
       String::from("Mesh assets were not checked because shaders.xr is invalid")
     } else {
