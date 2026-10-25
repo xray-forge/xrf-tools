@@ -50,10 +50,10 @@ mod visuals_domains;
 mod registry;
 
 use tauri_build::{Attributes, WindowsAttributes};
-use xrf_build_info::BuildKind;
+use xrf_build_info::{BuildInfoEmitter, BuildKind};
 
 fn main() {
-  xrf_build_info::emit();
+  BuildInfoEmitter::emit();
 
   clear_stale_inline_plugin_permissions().expect("failed to clear stale inline-plugin permissions");
 

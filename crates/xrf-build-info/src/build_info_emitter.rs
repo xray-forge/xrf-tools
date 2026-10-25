@@ -1,0 +1,109 @@
+use std::env;
+use std::process::{Command, Output};
+
+use jiff::{Timestamp, Unit};
+
+/// The build-script half: records what a binary should be able to say about itself, for
+/// [`build_info!`](crate::build_info) to read back.
+pub struct BuildInfoEmitter;
+
+impl BuildInfoEmitter {
+  /// Write the build description into the compiling crate's environment.
+  pub fn emit() {
+    // Any `rerun-if` directive replaces cargo's default of re-running whenever a package file changes, so
+    // every input has to be named. Without the Git log a local commit would leave a stale hash embedded.
+    for variable in [
+      "XRF_BUILD_KIND",
+      "XRF_BUILD_TIMESTAMP",
+      "GITHUB_SHA",
+      "GITHUB_REF_NAME",
+      "GITHUB_RUN_ID",
+      "CARGO_PROFILE_RELEASE_LTO",
+      "CARGO_PROFILE_RELEASE_CODEGEN_UNITS",
+    ] {
+      println!("cargo:rerun-if-env-changed={variable}");
+    }
+
+    if let Some(git_dir) = Self::git_output(&["rev-parse", "--absolute-git-dir"]) {
+      println!("cargo:rerun-if-changed={git_dir}/HEAD");
+      println!("cargo:rerun-if-changed={git_dir}/logs/HEAD");
+    }
+
+    // The names written here are the ones `build_info!` reads, which `option_env!` needs spelled as literals there.
+    Self::emit_variable("XRF_BUILD_KIND", env::var("XRF_BUILD_KIND").ok());
+    Self::emit_variable(
+      "XRF_BUILD_COMMIT",
+      env::var("GITHUB_SHA")
+        .ok()
+        .or_else(|| Self::git_output(&["rev-parse", "HEAD"])),
+    );
+    Self::emit_variable(
+      "XRF_BUILD_REF",
+      env::var("GITHUB_REF_NAME")
+        .ok()
+        .or_else(|| Self::git_output(&["rev-parse", "--abbrev-ref", "HEAD"])),
+    );
+    Self::emit_variable("XRF_BUILD_DIRTY", Some(Self::is_dirty().to_string()));
+    // Supplied by CI so the recorded instant is the workflow's, and computed otherwise: two dirty builds
+    // of one commit are otherwise indistinguishable, which is exactly the local case.
+    Self::emit_variable(
+      "XRF_BUILD_TIMESTAMP",
+      env::var("XRF_BUILD_TIMESTAMP").ok().or_else(|| Some(Self::built_at())),
+    );
+    Self::emit_variable("XRF_BUILD_TARGET", env::var("TARGET").ok());
+    Self::emit_variable("XRF_BUILD_RUSTC", Self::rustc_version());
+    Self::emit_variable("XRF_BUILD_PROFILE", env::var("PROFILE").ok());
+    Self::emit_variable("XRF_BUILD_OPTIMIZATION", Some(Self::optimization()));
+    Self::emit_variable("XRF_BUILD_RUN_ID", env::var("GITHUB_RUN_ID").ok());
+  }
+
+  /// Set a variable only when there is a value, so the reader sees absence rather than an empty string.
+  fn emit_variable(name: &str, value: Option<String>) {
+    if let Some(value) = value.filter(|value| !value.is_empty()) {
+      println!("cargo:rustc-env={name}={value}");
+    }
+  }
+
+  /// How hard the compiler was asked to work: the level cargo resolved, and the `CARGO_PROFILE_RELEASE_*` overrides
+  /// for link-time optimisation and codegen units, since a build script is told nothing else of the profile.
+  fn optimization() -> String {
+    let level: String = env::var("OPT_LEVEL").unwrap_or_else(|_| String::from("unknown"));
+    let lto: String = env::var("CARGO_PROFILE_RELEASE_LTO").unwrap_or_else(|_| String::from("profile default"));
+    let units: String =
+      env::var("CARGO_PROFILE_RELEASE_CODEGEN_UNITS").unwrap_or_else(|_| String::from("profile default"));
+
+    format!("opt-level={level}, lto={lto}, codegen-units={units}")
+  }
+
+  fn rustc_version() -> Option<String> {
+    let rustc: String = env::var("RUSTC").unwrap_or_else(|_| String::from("rustc"));
+
+    Self::command_output(Command::new(rustc).arg("--version"))
+  }
+
+  /// Whether the checkout carries changes that are in the binary but in no commit.
+  fn is_dirty() -> bool {
+    Self::git_output(&["status", "--porcelain"]).is_some_and(|status| !status.is_empty())
+  }
+
+  fn git_output(arguments: &[&str]) -> Option<String> {
+    Self::command_output(Command::new("git").args(arguments))
+  }
+
+  /// A command's trimmed standard output, treating any failure to run or succeed as an absent answer.
+  fn command_output(command: &mut Command) -> Option<String> {
+    let output: Output = command.output().ok()?;
+
+    output
+      .status
+      .success()
+      .then(|| String::from_utf8_lossy(&output.stdout).trim().to_owned())
+  }
+
+  /// The current instant, to a whole second.
+  fn built_at() -> String {
+    let now: Timestamp = Timestamp::now();
+
+    now.round(Unit::Second).unwrap_or(now).to_string()
+  }
+}
