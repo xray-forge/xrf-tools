@@ -42,7 +42,11 @@ impl FromStr for XrayEngine {
       .iter()
       .copied()
       .find(|engine| engine.as_str() == value)
-      .ok_or_else(|| format!("Unknown engine '{value}', expected one of: vanilla, extended"))
+      .ok_or_else(|| {
+        let expected: Vec<&str> = Self::ALL.iter().map(|engine| engine.as_str()).collect();
+
+        format!("Unknown engine '{value}', expected one of: {}", expected.join(", "))
+      })
   }
 }
 
@@ -63,6 +67,11 @@ mod tests {
 
   #[test]
   fn refuses_an_engine_it_does_not_name() {
-    assert!("anomaly".parse::<XrayEngine>().is_err());
+    assert_eq!(
+      "anomaly".parse::<XrayEngine>(),
+      Err(String::from(
+        "Unknown engine 'anomaly', expected one of: vanilla, extended"
+      ))
+    );
   }
 }

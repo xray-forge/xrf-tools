@@ -79,16 +79,13 @@ impl XrayEngineDetector {
 
   /// The first file directly in a directory whose lower-cased name matches, in name order.
   fn find_file(directory: &Path, is_matching: impl Fn(&str) -> bool) -> Option<PathBuf> {
-    let mut found: Vec<PathBuf> = fs::read_dir(directory)
+    fs::read_dir(directory)
       .ok()?
       .filter_map(Result::ok)
       .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_file()))
       .filter(|entry| is_matching(&entry.file_name().to_string_lossy().to_ascii_lowercase()))
       .map(|entry| entry.path())
-      .collect();
-
-    found.sort();
-    found.into_iter().next()
+      .min()
   }
 
   /// The installation's fsgame file when it declares Anomaly's Warfare presets; one that cannot be read declares nothing.
@@ -99,7 +96,7 @@ impl XrayEngineDetector {
     fsgame.find_declaration(Self::WARFARE_PRESETS_ALIAS).map(|_| path)
   }
 
-  /// Whether an LTX file opens a section of this header on a line of its own, whatever its parents or case.
+  /// Whether an LTX file opens a section of this header at the start of a line, whatever its indent, parents or case.
   fn has_section(bytes: &[u8], header: &[u8]) -> bool {
     bytes.split(|byte| *byte == b'\n').any(|line| {
       let line: &[u8] = line.trim_ascii_start();

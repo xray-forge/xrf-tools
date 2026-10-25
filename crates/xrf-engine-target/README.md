@@ -51,7 +51,7 @@ A root's installation is the root itself where it holds an fsgame file (`fsgame.
 
 1. `AnomalyExecutables`: `AnomalyLauncher.exe` in the installation, or `bin/AnomalyDX*.exe` or `bin/VerifiedDX11.exe`.
    Names compare without case. Extended.
-2. `AnomalyFsgame`: `fsgame.ltx` declares `$warfare_presets$`. Extended.
+2. `AnomalyFsgame`: the installation's fsgame file declares `$warfare_presets$`. Extended.
 3. `AtmosfearCycles`: `configs\environment\dynamic_weather_graphs.ltx` has a `[weather_cycles]` section, which the
    weather graphs play on Extended. Extended.
 4. `NoSigns`: Vanilla.
