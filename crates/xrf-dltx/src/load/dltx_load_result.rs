@@ -20,8 +20,8 @@ pub struct DltxLoadResult {
   pub(crate) override_parents: BTreeMap<String, Vec<String>>,
   /// `@[section]` names, which get an empty base section when nothing else declares one.
   pub(crate) safe_created: BTreeSet<String>,
-  /// Which file declared each plain section, for the duplicate diagnostic.
-  /// Which config declared each section, as the whole logical path rather than the bare name.
+  /// Which config declared each plain section, as its whole path: what the duplicate refusal names, and the origin a
+  /// resolved section reports.
   pub(crate) section_files: BTreeMap<String, String>,
   /// What the load pass found worth reporting.
   pub(crate) diagnostics: Vec<DltxDiagnostic>,

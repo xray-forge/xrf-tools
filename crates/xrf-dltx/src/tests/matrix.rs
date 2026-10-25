@@ -1,4 +1,6 @@
-//! One test per row of the DLTX compatibility matrix.
+//! The DLTX compatibility matrix: one test per rule the engine resolves by, each a handful of configs and the values
+//! the engine loads from them.
+
 use xrf_error::XrfResult;
 
 use crate::load::dltx_loader::DltxLoader;

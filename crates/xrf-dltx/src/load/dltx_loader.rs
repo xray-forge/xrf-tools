@@ -5,10 +5,10 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{LtxDocumentSource, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxTextInterner};
 
 use crate::discovery::dltx_attachment::DltxAttachment;
-use crate::discovery::dltx_discovery::{DLTX_BASE_DEPTH, DltxDiscovery};
+use crate::discovery::dltx_discovery::DltxDiscovery;
 use crate::load::dltx_item::DltxItem;
 use crate::load::dltx_load_result::DltxLoadResult;
-use crate::load::dltx_logical_path::{directory_of, file_name_of};
+use crate::load::dltx_source_path::DltxSourcePath;
 use crate::resolve::dltx_diagnostic::DltxDiagnostic;
 
 /// Reads a config tree and records every statement it declares, deciding none of them.
@@ -38,19 +38,12 @@ impl<'a> DltxLoader<'a> {
   ///
   /// Returns an error when the source cannot answer, or when a statement is one the engine would refuse to start on.
   pub fn load(mut self, root: &str) -> XrfResult<DltxLoadResult> {
-    self.load_file(root, DLTX_BASE_DEPTH)?;
+    self.load_file(root, DltxDiscovery::BASE_DEPTH)?;
 
     // After the whole base tree, so every section a mod file patches already exists to be patched. Only the root is
     // scanned for them; an included file is never a root.
     for attachment in self.list_attachments(root)? {
-      let directory: &str = directory_of(root);
-      let path: String = if directory.is_empty() {
-        attachment.name
-      } else {
-        format!("{directory}\\{}", attachment.name)
-      };
-
-      self.load_file(&path, attachment.depth)?;
+      self.load_file(&DltxSourcePath::sibling_of(root, &attachment.name), attachment.depth)?;
     }
 
     self.records.create_safe_sections();
@@ -60,9 +53,12 @@ impl<'a> DltxLoader<'a> {
 
   /// The mod files attached to a root, as names in its own directory.
   fn list_attachments(&self, root: &str) -> XrfResult<Vec<DltxAttachment>> {
-    let siblings: Vec<String> = self.source.list_file_names(directory_of(root))?;
+    let siblings: Vec<String> = self.source.list_file_names(DltxSourcePath::directory_of(root))?;
 
-    Ok(DltxDiscovery::attachments_of(file_name_of(root), &siblings))
+    Ok(DltxDiscovery::attachments_of(
+      DltxSourcePath::file_name_of(root),
+      &siblings,
+    ))
   }
 
   /// Records one file's statements, recursing into its includes one depth level down.
@@ -72,8 +68,10 @@ impl<'a> DltxLoader<'a> {
     };
 
     // One handle per file, shared by every item it declares: a config commonly writes hundreds of them.
-    let filename: Arc<str> = self.text.intern(&file_name_of(logical_path).to_lowercase());
-    let directory: String = String::from(directory_of(logical_path));
+    let filename: Arc<str> = self
+      .text
+      .intern(&DltxSourcePath::file_name_of(logical_path).to_lowercase());
+    let directory: String = String::from(DltxSourcePath::directory_of(logical_path));
 
     // Carried across the walk so a field lands in whichever header last opened, exactly as written.
     let mut current: Option<DltxTarget> = None;
@@ -202,15 +200,10 @@ impl<'a> DltxLoader<'a> {
   ) {
     // The header decides, not the section name: one section may be declared in one file and overridden in another, and
     // a field belongs to whichever of the two it was written under.
-    let is_override: bool = match &target {
-      DltxTarget::Base(_) => false,
-      DltxTarget::Override(_) => true,
+    let (section, is_override): (String, bool) = match target {
+      DltxTarget::Base(section) => (section, false),
+      DltxTarget::Override(section) => (section, true),
       // A field inside a deleted section: the engine records it against nothing, and the section goes anyway.
-      DltxTarget::Discarded => return,
-    };
-
-    let section: String = match target {
-      DltxTarget::Base(section) | DltxTarget::Override(section) => section,
       DltxTarget::Discarded => return,
     };
 

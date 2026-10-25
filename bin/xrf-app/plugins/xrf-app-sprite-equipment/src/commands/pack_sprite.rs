@@ -7,7 +7,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobRegistry, JobResource, JobStart};
 use xrf_dds::ImageFormat;
-use xrf_dltx::select_ltx_dialect;
+use xrf_dltx::DltxDialect;
 use xrf_job::JobProgress;
 use xrf_ltx::Ltx;
 use xrf_output::OutputOptions;
@@ -53,7 +53,7 @@ pub async fn sprite_equipment_pack_sprite(
       move |job| {
         EquipmentSpritePacker::pack_sprites(EquipmentSpritePackOptions {
           job,
-          ltx: Ltx::read_from_file_with_dialect(&system_ltx, select_ltx_dialect(is_dltx).as_ref())?,
+          ltx: Ltx::read_from_file_with_dialect(&system_ltx, DltxDialect::select(is_dltx).as_ref())?,
           source,
           output: OutputOptions::default(),
           output_path: output,

@@ -6,7 +6,7 @@ use xrf_app_core::assets::{AssetMountState, AssetSource};
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_dds::{DdsFile, DdsPng};
-use xrf_dltx::select_ltx_dialect;
+use xrf_dltx::DltxDialect;
 use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, LtxProject, LtxProjectOptions};
 use xrf_texture::EquipmentSlotOccupant;
@@ -135,10 +135,10 @@ impl EquipmentSpriteDocument {
   fn read_config(search: Option<&XraySearch>, open: &EquipmentSpriteOpen, config: &AssetSource) -> TauriResult<Ltx> {
     match config {
       AssetSource::File { path } => {
-        Ltx::read_from_file_with_dialect(path, select_ltx_dialect(open.is_dltx).as_ref()).map_err(error_to_string)
+        Ltx::read_from_file_with_dialect(path, DltxDialect::select(open.is_dltx).as_ref()).map_err(error_to_string)
       }
       AssetSource::Asset { logical_path } => {
-        let options: LtxProjectOptions = LtxProjectOptions::default().with_dialect(select_ltx_dialect(open.is_dltx));
+        let options: LtxProjectOptions = LtxProjectOptions::default().with_dialect(DltxDialect::select(open.is_dltx));
         let project: LtxProject =
           LtxProject::open_at_search_opt(open.roots.describe(), Self::require(search)?, None, options)
             .map_err(error_to_string)?;

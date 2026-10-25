@@ -17,7 +17,7 @@ type ResolvedSection = BTreeMap<Arc<str>, DltxItem>;
 /// Turns a load pass into resolved sections.
 ///
 /// A depth-first walk with a memo, matching `EvaluateSection`: parents first, then the section's own base merged with
-/// its overrides, then list operations, then section deletions. See the compatibility matrix, section 4.
+/// its overrides, then list operations, then section deletions.
 pub struct DltxResolver<'a> {
   /// What the load pass recorded, which this walk decides but never changes.
   loaded: &'a DltxLoadResult,

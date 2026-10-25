@@ -3,7 +3,7 @@ use std::sync::Arc;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionSnapshot};
-use xrf_dltx::select_ltx_dialect;
+use xrf_dltx::DltxDialect;
 use xrf_ltx::{LtxDocumentSource, LtxProject, LtxProjectOptions};
 use xrf_ltx_inspect::{LtxInventory, LtxInventoryReader};
 use xrf_utils::{error_to_string, format_path};
@@ -29,7 +29,7 @@ impl OpenedConfigsProject {
   ) -> TauriResult<SessionDerived<ConfigsProject>> {
     let inputs: XrayInputRecord = XrayInputRecord::new();
     let options: LtxProjectOptions = LtxProjectOptions {
-      dialect: select_ltx_dialect(is_dltx),
+      dialect: DltxDialect::select(is_dltx),
       is_caching_resolutions: true,
       is_with_schemes_check: true,
       is_strict_check: false,

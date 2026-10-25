@@ -4,12 +4,13 @@ use std::sync::Arc;
 use xrf_error::XrfResult;
 use xrf_ltx::{
   Ltx, LtxDialect, LtxDocumentSource, LtxFieldOrigin, LtxProvenance, LtxResolution, LtxResolutionDiagnostic,
-  LtxResolveRequest, Section,
+  LtxResolveRequest, LtxStandardDialect, Section,
 };
 
 use crate::discovery::dltx_discovery::DltxDiscovery;
 use crate::load::dltx_load_result::DltxLoadResult;
 use crate::load::dltx_loader::DltxLoader;
+use crate::load::dltx_source_path::DltxSourcePath;
 use crate::resolve::dltx_resolve_result::DltxResolveResult;
 use crate::resolve::dltx_resolver::DltxResolver;
 
@@ -40,21 +41,17 @@ impl LtxDialect for DltxDialect {
 
     for root in roots {
       by_directory
-        .entry(Ltx::directory_of(root))
+        .entry(DltxSourcePath::directory_of(root))
         .or_default()
-        .push(Self::file_name_of(root));
+        .push(root);
     }
 
     for (directory, bases) in by_directory {
       let siblings: Vec<String> = source.list_file_names(directory)?;
 
       for base in bases {
-        for attachment in DltxDiscovery::attachments_of(base, &siblings) {
-          attachments.push(if directory.is_empty() {
-            attachment.name
-          } else {
-            format!("{directory}\\{}", attachment.name)
-          });
+        for attachment in DltxDiscovery::attachments_of(DltxSourcePath::file_name_of(base), &siblings) {
+          attachments.push(DltxSourcePath::sibling_of(base, &attachment.name));
         }
       }
     }
@@ -71,8 +68,8 @@ impl LtxDialect for DltxDialect {
     source: &dyn LtxDocumentSource,
     request: LtxResolveRequest,
   ) -> XrfResult<LtxResolution> {
-    // The load result outlives the resolve by one call now, because it is what knows which file declared each
-    // section. It is still dropped here rather than retained.
+    // Kept until the result is lowered, because the load result is what knows which file declared each section, and
+    // dropped here rather than retained.
     let loaded: DltxLoadResult = DltxLoader::new(source).load(root)?;
     let resolved: DltxResolveResult = DltxResolver::new(&loaded)
       .with_provenance(request.is_with_provenance())
@@ -94,11 +91,14 @@ impl LtxDialect for DltxDialect {
 }
 
 impl DltxDialect {
-  /// The last segment of a logical path.
-  fn file_name_of(logical_path: &str) -> &str {
-    match logical_path.rsplit_once('\\') {
-      Some((_, name)) => name,
-      None => logical_path,
+  /// The dialect a caller resolves configs under, given whether they opted into DLTX.
+  ///
+  /// Chosen once, where a binary reads its `--dltx` flag, so the crates resolving values never depend on this one.
+  pub fn select(is_dltx: bool) -> Arc<dyn LtxDialect> {
+    if is_dltx {
+      Arc::new(Self)
+    } else {
+      Arc::new(LtxStandardDialect)
     }
   }
 
@@ -112,8 +112,7 @@ impl DltxDialect {
     let mut origins: BTreeMap<&str, Arc<str>> = BTreeMap::new();
 
     for (section, fields) in &resolved.sections {
-      // Entered once and filled in place. Going through `set_to` per field re-looked-up the section and cloned its
-      // name for every value it held.
+      // Entered once and filled in place, rather than looked up again and its name cloned for every value it holds.
       let target: &mut Section = ltx.entry(String::from(&**section)).or_insert_with(Default::default);
 
       // Shared rather than inserted as text: the loader interned every key and value once, and `insert` would

@@ -2,22 +2,22 @@ use xrf_extension::XrayExtension;
 
 use crate::discovery::dltx_attachment::DltxAttachment;
 
-/// Depth assigned to the base root. Its includes count up from here.
-pub const DLTX_BASE_DEPTH: i32 = 0;
-
-/// Depth step between consecutive mod files.
-///
-/// Two hundred slots each so a mod file's own include chain, which counts up one per level, cannot reach the next mod
-/// file's band. `Xr_ini.cpp`.
-pub const DLTX_MOD_DEPTH_STEP: i32 = -200;
-
-/// What a patch file's name opens with, the fixed half of the engine's `mod_<stem>_*.ltx` glob.
-const DLTX_MOD_PREFIX: &str = "mod_";
-
 /// Works out which files patch a base config, in the order the engine applies them.
 pub struct DltxDiscovery;
 
 impl DltxDiscovery {
+  /// Depth assigned to the base root. Its includes count up from here.
+  pub const BASE_DEPTH: i32 = 0;
+
+  /// Depth step between consecutive mod files.
+  ///
+  /// Two hundred slots each so a mod file's own include chain, which counts up one per level, cannot reach the next mod
+  /// file's band. `Xr_ini.cpp`.
+  pub const MOD_DEPTH_STEP: i32 = -200;
+
+  /// What a patch file's name opens with, the fixed half of the engine's `mod_<stem>_*.ltx` glob.
+  pub(crate) const MOD_PREFIX: &'static str = "mod_";
+
   /// The mod files attached to `base_name`, ordered as the engine loads them.
   ///
   /// `siblings` is every file name in the base file's own directory; nothing below it is searched. A candidate that
@@ -55,7 +55,7 @@ impl DltxDiscovery {
       .into_iter()
       .enumerate()
       .map(|(index, name)| DltxAttachment {
-        depth: DLTX_MOD_DEPTH_STEP * (index as i32 + 1),
+        depth: Self::MOD_DEPTH_STEP * (index as i32 + 1),
         name: name.clone(),
       })
       .collect()
@@ -66,7 +66,7 @@ impl DltxDiscovery {
   /// The trailing part may be empty, because the engine's glob lets `*` match nothing, so `mod_system_.ltx` is a mod
   /// file of `system.ltx` (`LocatorAPI_defs.cpp:117-140`).
   fn is_mod_of(name: &str, stem: &str) -> bool {
-    Self::strip_prefix_folded(name, DLTX_MOD_PREFIX)
+    Self::strip_prefix_folded(name, Self::MOD_PREFIX)
       .and_then(|rest| Self::strip_prefix_folded(rest, stem))
       .and_then(|rest| rest.strip_prefix('_'))
       .is_some_and(|rest| XrayExtension::Ltx.matches(rest))
@@ -91,7 +91,7 @@ impl DltxDiscovery {
       return false;
     };
 
-    Self::strip_prefix_folded(name, DLTX_MOD_PREFIX)
+    Self::strip_prefix_folded(name, Self::MOD_PREFIX)
       .and_then(|rest| Self::strip_prefix_folded(rest, longer_stem))
       .and_then(|rest| rest.strip_prefix('_'))
       .and_then(Self::config_stem)
@@ -218,8 +218,7 @@ mod tests {
   #[test]
   fn attaches_a_mod_file_whose_case_does_not_match_the_base() {
     // Every comparison here is folded, because the engine's are made against names it folded first. A listing hands
-    // back the case a mod author typed, so this pairs a base and patches that agree on nothing but the letters - which
-    // an earlier pass claimed to fix while hand-picking matching case, leaving the case that mattered still broken.
+    // back the case a mod author typed, so this pairs a base and patches that agree on nothing but the letters.
     assert_eq!(
       names(
         "System.LTX",
@@ -263,7 +262,7 @@ mod tests {
 
   #[test]
   fn a_name_merely_ending_in_the_letters_is_not_a_config() {
-    // What the dot in the suffix form was doing, now the splitter's job: `systemxltx` is one name, not a config.
+    // The extension is the part after a dot: `systemxltx` is one name, not a config.
     assert_eq!(names("systemxltx", &["mod_systemxltx_a.ltx"]), Vec::<String>::new());
     assert_eq!(names("system.ltx", &["mod_system_altx"]), Vec::<String>::new());
   }

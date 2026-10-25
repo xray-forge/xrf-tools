@@ -4,6 +4,8 @@ use std::sync::Arc;
 use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, LtxDocument, LtxDocumentSource};
 
+use crate::load::dltx_source_path::DltxSourcePath;
+
 /// A [`LtxDocumentSource`] over configs held in memory.
 ///
 /// What lets every rule in the compatibility matrix be tested without a filesystem: a row is a handful of config
@@ -30,22 +32,6 @@ impl DltxMapSource {
     }
 
     Ok(Self { documents })
-  }
-
-  /// Everything before the last separator, or the empty string for a top-level name.
-  fn directory_of(logical_path: &str) -> &str {
-    match logical_path.rsplit_once('\\') {
-      Some((directory, _)) => directory,
-      None => "",
-    }
-  }
-
-  /// The last segment of a logical path.
-  fn file_name_of(logical_path: &str) -> &str {
-    match logical_path.rsplit_once('\\') {
-      Some((_, name)) => name,
-      None => logical_path,
-    }
   }
 
   /// Whether `name` matches a mask that may carry one `*`.
@@ -76,15 +62,15 @@ impl LtxDocumentSource for DltxMapSource {
       return Ok(vec![joined]);
     }
 
-    let mask_directory: &str = Self::directory_of(&joined);
-    let mask: &str = Self::file_name_of(&joined);
+    let mask_directory: &str = DltxSourcePath::directory_of(&joined);
+    let mask: &str = DltxSourcePath::file_name_of(&joined);
 
     // Sorted, because the engine's file table is ordered and merge order must not depend on iteration order.
     let mut matched: Vec<String> = self
       .documents
       .keys()
-      .filter(|path| Self::directory_of(path) == mask_directory)
-      .filter(|path| Self::matches(Self::file_name_of(path), mask))
+      .filter(|path| DltxSourcePath::directory_of(path) == mask_directory)
+      .filter(|path| Self::matches(DltxSourcePath::file_name_of(path), mask))
       .cloned()
       .collect();
 
@@ -99,8 +85,8 @@ impl LtxDocumentSource for DltxMapSource {
     let mut names: Vec<String> = self
       .documents
       .keys()
-      .filter(|path| Self::directory_of(path) == directory)
-      .map(|path| String::from(Self::file_name_of(path)))
+      .filter(|path| DltxSourcePath::directory_of(path) == directory)
+      .map(|path| String::from(DltxSourcePath::file_name_of(path)))
       .collect();
 
     names.sort();

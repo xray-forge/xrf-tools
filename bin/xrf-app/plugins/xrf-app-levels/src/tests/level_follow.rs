@@ -12,7 +12,7 @@ use xrf_app_core::session::{
   SessionChange, SessionDerived, SessionId, SessionPart, SessionRootChange, SessionScopes, SessionSnapshot,
 };
 use xrf_app_render::WorldState;
-use xrf_dltx::select_ltx_dialect;
+use xrf_dltx::DltxDialect;
 use xrf_engine_target::{XrayEngine, XrayEngineResolution};
 use xrf_level::{LevelGeomFile, LevelHeaderChunk, LevelShadersChunk, LevelVisualsChunk};
 use xrf_renderer::{RenderLevelSource, RenderSceneId, RenderViewportId, RenderWorkers, RenderWorld};
@@ -132,7 +132,7 @@ fn read_level(assets: &AssetMountState, roots: &XrayRoots) -> (SessionDerived<Se
   let search: XraySearch = assets.search(roots).expect("the tree mounts");
   let revision: XrayRevision = search.get_vfs().get_revision();
   let opened: SessionDerived<SelectedLevel> =
-    OpenedLevel::read(search, source, roots.clone(), select_ltx_dialect(false), |_, _| {
+    OpenedLevel::read(search, source, roots.clone(), DltxDialect::select(false), |_, _| {
       XrayEngineResolution::named(XrayEngine::Vanilla)
     })
     .expect("the level reads");
