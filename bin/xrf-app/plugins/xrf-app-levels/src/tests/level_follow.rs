@@ -316,6 +316,53 @@ fn a_commit_to_a_texture_of_a_shown_level_moves_its_scene_onto_the_next_snapshot
 }
 
 #[test]
+fn a_show_holding_a_snapshot_a_commit_moved_past_draws_the_source_the_commit_moved_on() {
+  let (assets, roots, search) = level_tree("late_show");
+  let pool: Arc<ThreadPool> = test_pool();
+  let levels: SelectedLevels = new_levels(&assets, Some(Arc::clone(&pool)));
+  let world: WorldState = WorldState::new(RenderWorkers::new(Arc::clone(&pool)));
+  let shown: ShownLevels = ShownLevels::default();
+  let viewport: RenderViewportId = RenderViewportId(1);
+
+  assets.add_subscriber(LevelSceneFollower {
+    levels: levels.clone(),
+    shown: shown.clone(),
+    world: world.clone(),
+  });
+
+  let opened: Arc<SessionSnapshot<SelectedLevel>> = open(&levels, &assets, &roots);
+  let source: Arc<LevelRenderSource> = shown.get_source(Arc::clone(&opened), &assets);
+
+  {
+    let mut world = world.lock();
+
+    world.attach(viewport, Box::new(Silence));
+    world
+      .show_level(viewport, Some(Arc::clone(&source) as Arc<dyn RenderLevelSource>))
+      .expect("the level shown");
+  }
+
+  write(&assets, &search, TEXTURE, "created");
+
+  let next: Arc<SessionSnapshot<SelectedLevel>> = levels.require(opened.session_id).expect("the level stays open");
+  let followed: Arc<LevelRenderSource> = shown.find_source(opened.session_id).expect("the next source is drawn");
+  // A show that took its snapshot before the commit, landing after the follow.
+  let late: Arc<LevelRenderSource> = shown.get_source(Arc::clone(&opened), &assets);
+
+  assert!(
+    Arc::ptr_eq(&late, &followed),
+    "the late show draws what the follow drew"
+  );
+  assert!(Arc::ptr_eq(
+    shown
+      .find_source(opened.session_id)
+      .expect("a source is drawn")
+      .get_level(),
+    &next
+  ));
+}
+
+#[test]
 fn every_show_of_one_snapshot_shares_one_source() {
   let (assets, roots, _) = level_tree("shared_source");
   let levels: SelectedLevels = new_levels(&assets, Some(test_pool()));

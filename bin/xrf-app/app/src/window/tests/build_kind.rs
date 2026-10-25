@@ -1,6 +1,6 @@
 use xrf_build_info::BuildKind;
 
-use crate::window::window_build_kind::get_build_kind_script;
+use crate::window::window_build_kind::WindowBuildKind;
 
 #[test]
 fn the_document_is_told_the_kind_under_its_serialized_name() {
@@ -10,7 +10,7 @@ fn the_document_is_told_the_kind_under_its_serialized_name() {
     (BuildKind::Optimized, "optimized"),
   ] {
     assert_eq!(
-      get_build_kind_script(kind),
+      WindowBuildKind::get_script(kind),
       format!("Object.defineProperty(window, \"__XRF_BUILD_KIND__\", {{ value: \"{name}\" }});")
     );
   }

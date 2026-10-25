@@ -5,5 +5,7 @@ pub mod ipc;
 pub mod plugin;
 mod project;
 mod request;
+#[cfg(test)]
+mod tests;
 
 pub use project::{DialogProjects, OpenedDialogProject};

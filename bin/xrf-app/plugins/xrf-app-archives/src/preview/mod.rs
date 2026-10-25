@@ -3,4 +3,7 @@
 //! read of a subject, so a volume set is read out of what is open rather than mounted a second time.
 
 pub(crate) mod commands;
+mod descriptor;
 pub(crate) mod routes;
+
+pub use descriptor::{AudioDescriptor, ImageDescriptor};

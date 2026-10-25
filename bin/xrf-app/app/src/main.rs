@@ -3,6 +3,7 @@
 #![doc = include_str!("../README.md")]
 
 mod application;
+mod application_failure;
 mod ipc;
 mod plugins;
 mod preferences;

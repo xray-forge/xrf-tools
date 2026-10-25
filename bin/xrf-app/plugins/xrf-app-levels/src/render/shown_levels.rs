@@ -19,6 +19,9 @@ impl ShownLevels {
   /// the textures that one resolved, else a new one. A new source may resolve the level's surfaces, so it is built
   /// outside the lock, which a commit's follow waits on; where another show placed one for the same snapshot meanwhile,
   /// that one is answered, so viewports still share one source.
+  ///
+  /// A source already past `level` answers instead: a show that took its snapshot before a commit and lands after the
+  /// commit's follow draws what the follow drew, never the older snapshot over it.
   pub fn get_source(
     &self,
     level: Arc<SessionSnapshot<SelectedLevel>>,
@@ -27,7 +30,7 @@ impl ShownLevels {
     let shown: Option<Arc<LevelRenderSource>> = self.find_source(level.session_id);
 
     if let Some(shown) = &shown
-      && Arc::ptr_eq(shown.get_level(), &level)
+      && Self::is_drawing(shown, &level)
     {
       return Arc::clone(shown);
     }
@@ -41,7 +44,7 @@ impl ShownLevels {
     if let Some(placed) = sources
       .get(&built.get_level().session_id)
       .and_then(Weak::upgrade)
-      .filter(|placed| Arc::ptr_eq(placed.get_level(), built.get_level()))
+      .filter(|placed| Self::is_drawing(placed, built.get_level()))
     {
       return placed;
     }
@@ -62,6 +65,11 @@ impl ShownLevels {
     self
       .lock()
       .insert(source.get_level().session_id, Arc::downgrade(source));
+  }
+
+  /// Whether `source` draws `level`, or a snapshot of its session published after it.
+  fn is_drawing(source: &LevelRenderSource, level: &SessionSnapshot<SelectedLevel>) -> bool {
+    source.get_level().revision >= level.revision
   }
 
   // Entries change whole, so one a panic left behind is still whole.

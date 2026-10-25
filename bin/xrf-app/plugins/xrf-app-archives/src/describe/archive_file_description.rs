@@ -7,6 +7,7 @@ use crate::describe::anm::ArchiveAnmDescription;
 use crate::describe::archive_describe_scope::ArchiveDescribeScope;
 use crate::describe::archive_describe_source::ArchiveDescribeSource;
 use crate::describe::archive_described_format::ArchiveDescribedFormat;
+use crate::describe::archive_entry_reader::ArchiveEntryReader;
 use crate::describe::chunks::ArchiveChunksDescription;
 use crate::describe::detail::{ArchiveDetailLibraryDescription, ArchiveDetailModel};
 use crate::describe::efd::ArchiveEfdDescription;
@@ -186,7 +187,8 @@ impl ArchiveFileDescription {
     })
   }
 
-  /// What can be said about an entry no describer claimed, which is its container or nothing.
+  /// What can be said about an entry no describer claimed, which is its container or nothing; weighed before it is
+  /// opened, since a volume hands an entry over whole.
   ///
   /// # Errors
   ///
@@ -200,17 +202,38 @@ impl ArchiveFileDescription {
     let policy: &ArchiveReadPolicy = source.get_read_policy();
 
     if !policy.allows_chunk_tree_read(weighed) {
-      return Ok(ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::TooLarge {
-        size,
-        maximum: policy.maximum_chunk_tree_size,
-      }));
+      return Ok(Self::refuse_chunk_tree(size, policy));
     }
 
-    Ok(match ArchiveChunksDescription::read(source, name)? {
+    Ok(Self::describe_container_of(&mut source.open_entry(name)?, name, policy))
+  }
+
+  /// The same for an entry a describer already opened and found not to be its format, walked where it was opened
+  /// rather than read again.
+  pub(crate) fn describe_container_of(
+    entry: &mut ArchiveEntryReader,
+    name: &str,
+    policy: &ArchiveReadPolicy,
+  ) -> ArchiveFormatDescription {
+    let size: u64 = entry.size();
+
+    if !policy.allows_chunk_tree_read(u32::try_from(size).unwrap_or(u32::MAX)) {
+      return Self::refuse_chunk_tree(size, policy);
+    }
+
+    match ArchiveChunksDescription::of_entry(entry) {
       Some(description) => description.into(),
       None => ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::NoDescriber {
         extension: XrayExtensionOf::of(name).as_str().unwrap_or_default().to_owned(),
       }),
+    }
+  }
+
+  /// The refusal of a container walk over an entry past the ceiling a whole walk answers to.
+  fn refuse_chunk_tree(size: u64, policy: &ArchiveReadPolicy) -> ArchiveFormatDescription {
+    ArchiveFormatDescription::refuse(ArchiveDescribeRefusal::TooLarge {
+      size,
+      maximum: policy.maximum_chunk_tree_size,
     })
   }
 }

@@ -1,4 +1,3 @@
-use serde::Serialize;
 use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
@@ -7,17 +6,7 @@ use xrf_extension::XrayExtensionOf;
 use xrf_texture::ImageShape;
 
 use crate::browse::ArchiveSubjects;
-
-/// What a picture the webview renders itself turns out to be.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ImageDescriptor {
-  /// Absent when the bytes carry no header this reads, which is a picture worth neither drawing nor measuring.
-  pub shape: Option<ImageShape>,
-  /// What to hand the bytes over as, taken from the extension rather than from the content.
-  pub media_type: String,
-}
+use crate::preview::ImageDescriptor;
 
 /// Report the shape of a picture of the open subject the webview draws as it stands.
 ///

@@ -9,6 +9,8 @@ mod archive_world;
 mod archive_world_entry;
 pub(crate) mod commands;
 mod request;
+#[cfg(test)]
+mod tests;
 
 pub use archive_name_index::ArchiveNameIndex;
 pub use archive_override_report::ArchiveOverrideReport;

@@ -161,13 +161,35 @@ impl<T: Send + Sync + 'static> Sessions<T> {
     opening.commit_read(read, &search, assets)
   }
 
+  /// Opens `id` with what `read` reads again of the value `previous` holds, on the application's pool: a reload is a new
+  /// handle, which the opener closes `previous` for once it commits, and one whose read fails is given up, leaving
+  /// `previous` as it was.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `previous` holds nothing, `id` cannot be reserved, the read fails, or the handle was closed
+  /// while it opened.
+  pub async fn reload_on_pool(
+    &self,
+    execution: &ExecutionState,
+    id: SessionId,
+    previous: SessionId,
+    what: &str,
+    read: impl FnOnce(&T) -> TauriResult<T> + Send + 'static,
+  ) -> TauriResult<Arc<SessionSnapshot<T>>> {
+    let (opening, held): (SessionOpening<T>, Arc<SessionSnapshot<T>>) = self.begin_reload(id, previous)?;
+    let value: T = execution.run_blocking(what, move || read(&held)).await??;
+
+    opening.commit(value)
+  }
+
   /// Reserves `id` to open again what `previous` holds, while `previous` is still open, answering the opening with what
-  /// `previous` holds: a reload is a new handle, which the opener closes `previous` for once it commits.
+  /// `previous` holds.
   ///
   /// # Errors
   ///
   /// Returns an error when `previous` holds nothing, or `id` cannot be reserved.
-  pub fn begin_reload(
+  pub(crate) fn begin_reload(
     &self,
     id: SessionId,
     previous: SessionId,

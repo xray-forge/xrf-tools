@@ -58,19 +58,29 @@ fn a_held_read_past_the_ceiling_is_refused_rather_than_read() {
 
 #[test]
 fn a_spawn_that_is_neither_format_falls_to_the_container_walk() {
+  // One chunk holding four bytes: a container, but with no set header and no spawn packet in it.
+  let container: &[u8] = &[7, 0, 0, 0, 4, 0, 0, 0, 1, 2, 3, 4];
   let world: ArchiveWorld = world(
     "spawn_neither",
-    &[("spawns\\broken.spawn", b"not a spawn of either kind")],
+    &[
+      ("spawns\\container.spawn", container),
+      ("spawns\\broken.spawn", b"not a spawn of either kind"),
+    ],
   );
 
-  assert!(
-    matches!(
-      describe(&world, "spawns\\broken.spawn"),
-      ArchiveFormatDescription::Unsupported {
-        reason: ArchiveDescribeRefusal::NoDescriber { .. }
-      } | ArchiveFormatDescription::Chunks { .. }
-    ),
-    "a claim that does not hold is offered whatever the container walk can say"
+  let ArchiveFormatDescription::Chunks { description } = describe(&world, "spawns\\container.spawn") else {
+    panic!("a claim that does not hold is offered whatever the container walk can say");
+  };
+
+  assert_eq!((description.nodes, description.size), (1, container.len() as u64));
+  assert_eq!(
+    describe(&world, "spawns\\broken.spawn"),
+    ArchiveFormatDescription::Unsupported {
+      reason: ArchiveDescribeRefusal::NoDescriber {
+        extension: String::from("spawn")
+      }
+    },
+    "and bytes that are no container at all say nothing describes them"
   );
 }
 

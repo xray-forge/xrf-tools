@@ -1,6 +1,8 @@
 use bytes::Bytes;
 use xrf_app_core::assets::AssetMountState;
+use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionScope, SessionScopes};
+use xrf_job::ExecutionRequest;
 use xrf_vfs::XrayRoots;
 
 use crate::{
@@ -59,6 +61,7 @@ fn a_preview_is_read_from_the_handle_that_holds_it_and_none_closed() {
 fn a_failed_reload_leaves_the_previous_sheet_and_binds_no_handle() {
   let scopes: SessionScopes = SessionScopes::default();
   let sprites: EquipmentSprites = EquipmentSprites::new("sprite test", &scopes);
+  let execution: ExecutionState = ExecutionState::new(ExecutionRequest::Auto).unwrap();
   let tool: SessionScope = SessionScope::new("main", "sprite-equipment-editor");
   let (first, reload): (SessionId, SessionId) = (SessionId::generate(), SessionId::generate());
 
@@ -66,14 +69,18 @@ fn a_failed_reload_leaves_the_previous_sheet_and_binds_no_handle() {
   sprites.begin_open(first).unwrap().commit(document(&[1, 2, 3])).unwrap();
   scopes.bind(reload, tool.clone());
 
-  let (opening, previous) = sprites.begin_reload(reload, first).unwrap();
-
-  // A sheet that cannot be decoded is the ordinary way a reload fails, and it must leave the open one alone rather
-  // than half-replacing it.
-  assert!(EquipmentSpriteDocument::read(&AssetMountState::new(), open_of("nothing-here.dds")).is_err());
-  assert_eq!(previous.metadata.open, open_of("equipment.dds"));
-
-  drop(opening);
+  // The sheet the open names is gone from disk, the ordinary way a reload fails, and it must leave the open one alone
+  // rather than half-replacing it.
+  assert!(
+    tauri::async_runtime::block_on(EquipmentSpriteDocument::reload(
+      &sprites,
+      &execution,
+      &AssetMountState::new(),
+      reload,
+      first,
+    ))
+    .is_err()
+  );
 
   let opened = sprites.require(first).unwrap();
 

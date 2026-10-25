@@ -7681,6 +7681,8 @@ dependencies = [
  "tauri-specta",
  "xrf-app-core",
  "xrf-dialog",
+ "xrf-job",
+ "xrf-test-utils",
  "xrf-utils",
  "xrf-vfs",
 ]
@@ -7695,6 +7697,8 @@ dependencies = [
  "tauri-specta",
  "xrf-app-core",
  "xrf-export",
+ "xrf-job",
+ "xrf-test-utils",
  "xrf-utils",
 ]
 
@@ -7924,9 +7928,11 @@ dependencies = [
  "xrf-chunk",
  "xrf-environment",
  "xrf-error",
+ "xrf-job",
  "xrf-material",
  "xrf-ogf",
  "xrf-renderer",
+ "xrf-test-utils",
  "xrf-vfs",
  "xrf-visual",
 ]

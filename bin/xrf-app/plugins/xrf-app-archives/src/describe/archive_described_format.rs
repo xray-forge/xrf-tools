@@ -5,7 +5,10 @@ use xrf_vfs::XrayLogicalPath;
 
 use crate::describe::anm::ArchiveAnmDescription;
 use crate::describe::archive_describe_source::ArchiveDescribeSource;
-use crate::describe::archive_file_description::{ArchiveDescribeRefusal, ArchiveFormatDescription};
+use crate::describe::archive_entry_reader::ArchiveEntryReader;
+use crate::describe::archive_file_description::{
+  ArchiveDescribeRefusal, ArchiveFileDescription, ArchiveFormatDescription,
+};
 use crate::describe::detail::{ArchiveDetailLibraryDescription, ArchiveDetailModel};
 use crate::describe::efd::ArchiveEfdDescription;
 use crate::describe::gamemtl::ArchiveGameMtlDescription;
@@ -184,19 +187,22 @@ impl ArchiveDescribedFormat {
     }))
   }
 
-  /// Reads a `.spawn` as a set where it carries a header, else as a level's object list, else answers `None` for the
-  /// container walk. A set is read by seeking, but an object list is read whole, so the list answers to the ceiling a
-  /// held read does: a damaged set the size of a whole game's spawn must not be held and parsed as a list.
+  /// Reads a `.spawn` as a set where it carries a header, else as a level's object list, else as whatever container it
+  /// is, all out of the entry opened once: a volume hands an entry over whole, and reading it again for each guess
+  /// would hold it as many times. A set is read by seeking, but an object list is read whole, so the list answers to
+  /// the ceiling a held read does: a damaged set the size of a whole game's spawn must not be parsed as a list.
   ///
   /// # Errors
   ///
   /// Returns an error when the entry's bytes cannot be read.
   fn describe_spawn(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Option<ArchiveFormatDescription>> {
-    if let Some(set) = ArchiveSpawnDescription::read(source, name)? {
+    let mut entry: ArchiveEntryReader = source.open_entry(name)?;
+
+    if let Some(set) = ArchiveSpawnDescription::of_entry(&mut entry) {
       return Ok(Some(set.into()));
     }
 
-    let size: u64 = source.get_size_of(name).unwrap_or(u64::MAX);
+    let size: u64 = entry.size();
     let policy: &ArchiveReadPolicy = source.get_read_policy();
 
     if !policy.allows_describe_read(u32::try_from(size).unwrap_or(u32::MAX)) {
@@ -208,7 +214,10 @@ impl ArchiveDescribedFormat {
       )));
     }
 
-    Ok(ArchiveLevelSpawnDescription::read(source, name)?.map(ArchiveFormatDescription::from))
+    Ok(Some(match ArchiveLevelSpawnDescription::of_entry(&mut entry) {
+      Some(list) => list.into(),
+      None => ArchiveFileDescription::describe_container_of(&mut entry, name, policy),
+    }))
   }
 
   /// Which named file an entry is, folded the way the engine addresses it.
