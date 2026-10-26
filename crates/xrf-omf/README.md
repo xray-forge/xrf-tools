@@ -99,7 +99,10 @@ copying fail when they would leave two motions with one name.
 ## Errors and checks
 
 Reads reject a file that cannot be opened, any number of top-level chunks other than two, a missing chunk, a parameters
-version other than 3 or 4, and unequal definition and payload counts; writes reject unequal counts and other versions.
+version newer than 4, and unequal definition and payload counts. As the engine does, they accept every older version,
+reading marks from version 4 on, and find each motion payload by its chunk id, one more than its index, rather than by
+position. A bank holding 16383 motions or more is refused, since a motion id addresses fewer. Writes reject unequal
+counts, those motion counts, and versions newer than 4.
 Two shipped Anomaly HUD banks are truncated and refuse to read.
 
 Run `cargo test --locked -p xrf-omf` from the repository root. See the [bank](src/omf_file.rs) and the

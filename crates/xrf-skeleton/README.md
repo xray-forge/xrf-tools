@@ -13,9 +13,15 @@ the two chunks carry the `Skeleton` prefix, and error text names them that way.
 | `SkeletonMotionParametersChunk` | `OGF_S_SMPARAMS`, ID 15 | A version, the bone partitions, and one definition per motion |
 | `SkeletonMotionsChunk`          | `OGF_S_MOTIONS`, ID 14  | A count child (0), then one keyed payload per motion (1 to N) |
 
-Both implement `xrf_chunk::ChunkReadWrite`. The parameters chunk reads and writes versions 3 and 4 and refuses others;
-only version 4 stores marks, and writing marks as version 3 is refused. The motions chunk refuses a count child that
-disagrees with the number of payloads.
+Both implement `xrf_chunk::ChunkReadWrite`, to the rules of the engine's `motions_value::load`. The parameters chunk
+reads and writes every version up to `MAXIMUM_VERSION` (4) and refuses newer ones; definitions store marks from
+`SkeletonMotionDefinition::MARKS_VERSION` (4) on, and writing marks to an older version is refused. The motions chunk
+finds each payload by its id rather than its position, and refuses a count child that disagrees with the number of
+payloads, a payload id that is absent, and `MAXIMUM_MOTIONS` (`0x3FFF`) or more motions, which a motion id cannot
+address.
+
+`SkeletonMotionFlag` names the bits of a definition's flags, `ESMFlags`: `mask`, `is_set_in`, `set_in` for the names a
+word carries, and `unnamed_in` for the bits no name claims.
 
 A motion's identity is the ordinal pair of its `SkeletonMotionDefinition` and its `SkeletonMotion`: definition `n` plays
 payload `n + 1`. The payload's leading `label` is an authoring leftover kept verbatim, and the definition's `motion`
@@ -28,7 +34,7 @@ still agrees with its definition's name. Pair them through the container's `get_
 parameters chunk's `get_bones_count` totals them. The partitions together name every bone a motion's payload keys, in
 payload order.
 
-`SkeletonMotionDefinition` holds a motion's name, flags (`esmFX` and the rest), the bone or part it addresses, and its
+`SkeletonMotionDefinition` holds a motion's name, flags (`SkeletonMotionFlag`), the bone or part it addresses, and its
 speed, power, accrue and falloff as stored floats. The engine quantises those four on load and adjusts accrue and
 falloff further, so the stored values are not exactly what it plays with. `get_playback_speed` is the speed, or
 `DEFAULT_SPEED` (1.0) when the stored one is not positive. `SkeletonMotionMark` is a named run of `(from, to)`

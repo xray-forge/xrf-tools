@@ -1,9 +1,8 @@
 use serde::Serialize;
-use xrf_skeleton::{SAMPLE_FPS, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
+use xrf_skeleton::{SAMPLE_FPS, SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionFlag, SkeletonPart};
 
 use crate::describe::omf::archive_omf_blend::ArchiveOmfBlend;
 use crate::describe::omf::archive_omf_mark::ArchiveOmfMark;
-use crate::describe::omf::archive_omf_motion_flag::ArchiveOmfMotionFlag;
 use crate::describe::omf::archive_omf_quantized::ArchiveOmfQuantized;
 use crate::describe::omf::archive_omf_target::ArchiveOmfTarget;
 
@@ -35,7 +34,7 @@ pub struct ArchiveOmfMotion {
 impl ArchiveOmfMotion {
   /// One motion, read against the partition of the bank it belongs to.
   pub fn of(definition: &SkeletonMotionDefinition, motion: &SkeletonMotion, parts: &[SkeletonPart]) -> Self {
-    let is_fx: bool = ArchiveOmfMotionFlag::Fx.is_set_in(definition.flags);
+    let is_fx: bool = SkeletonMotionFlag::Fx.is_set_in(definition.flags);
     let speed: ArchiveOmfQuantized = ArchiveOmfQuantized::of(definition.speed);
     let duration_seconds: f32 = motion.get_duration_seconds();
 
@@ -50,8 +49,8 @@ impl ArchiveOmfMotion {
       power: ArchiveOmfQuantized::of(definition.power),
       blend: ArchiveOmfBlend::of(definition.accrue, definition.falloff, is_fx),
       target: ArchiveOmfTarget::of(definition.bone_or_part, is_fx, parts),
-      flags: ArchiveOmfMotionFlag::set_in(definition.flags),
-      unnamed_flags: ArchiveOmfMotionFlag::unnamed_in(definition.flags),
+      flags: SkeletonMotionFlag::set_in(definition.flags),
+      unnamed_flags: SkeletonMotionFlag::unnamed_in(definition.flags),
       marks: definition.marks.iter().map(ArchiveOmfMark::of).collect(),
       has_diverging_label: !motion.has_label_matching(&definition.name),
     }

@@ -199,6 +199,25 @@ fn takes_the_frame_count_from_the_longest_stream_any_bone_carries() {
 }
 
 #[test]
+fn drives_a_bone_its_bank_names_in_another_case() {
+  // The engine lower-cases the bank's bone names and the skeleton's before matching them, so `Bip01` drives `bip01`.
+  let (skeleton, binds, mut parts) = flat_skeleton(&["bip01"]);
+
+  parts[0].bones[0].0 = String::from("Bip01");
+
+  let described: VisualMotionBake = describe_motion(
+    &skeleton,
+    &binds,
+    &parts,
+    &definition("idle", 1.0),
+    &motion(RELOAD_FRAMES, &[keyed_run(RELOAD_FRAMES)]),
+  )
+  .expect("expect the motion to describe");
+
+  assert_eq!(described.animated_bone_count, 1);
+}
+
+#[test]
 fn describes_a_motion_as_its_bake_does_without_posing_it() {
   let (skeleton, binds, parts) = flat_skeleton(&["wpn_body", "wpn_hand"]);
   let motion: SkeletonMotion = motion(RELOAD_FRAMES, &[keyed_run(RELOAD_FRAMES), held_run()]);

@@ -1,11 +1,8 @@
 use serde::Serialize;
 use xrf_omf::OmfFile;
+use xrf_skeleton::{SkeletonMotionDefinition, SkeletonMotionFlag};
 
 use crate::describe::omf::archive_omf_motion::ArchiveOmfMotion;
-use crate::describe::omf::archive_omf_motion_flag::ArchiveOmfMotionFlag;
-
-/// The version that appended per-motion marks, which is what a bank below it cannot carry.
-const MARKS_VERSION: u16 = 4;
 
 /// What a bank holds, taken over the whole of it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -37,7 +34,7 @@ impl ArchiveOmfBank {
 
     Self {
       version: file.parameters.version,
-      carries_marks: file.parameters.version >= MARKS_VERSION,
+      carries_marks: file.parameters.version >= SkeletonMotionDefinition::MARKS_VERSION,
       motions: motions.len(),
       // Off the flag word rather than off the described target, which reads `BI_NONE` as naming nothing and so
       // cannot tell the twelve vanilla effects that target no bone from a cycle that targets no part.
@@ -45,7 +42,7 @@ impl ArchiveOmfBank {
         .parameters
         .motions
         .iter()
-        .filter(|definition| ArchiveOmfMotionFlag::Fx.is_set_in(definition.flags))
+        .filter(|definition| SkeletonMotionFlag::Fx.is_set_in(definition.flags))
         .count(),
       bones: file.get_bones_count(),
       frames,

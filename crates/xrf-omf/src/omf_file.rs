@@ -247,13 +247,29 @@ mod tests {
 
   #[test]
   fn test_write_rejects_unsupported_version() {
-    let file: OmfFile = new_mock(2);
+    let file: OmfFile = new_mock(SkeletonMotionParametersChunk::MAXIMUM_VERSION + 1);
 
     assert!(
       file.write_to::<XRayByteOrder>(&mut Vec::new()).is_err(),
       "Expect write to reject unsupported omf version"
     );
   }
+
+  #[test]
+  fn reads_a_bank_older_than_marks() -> XrfResult {
+    // `motions_value::load` reads any version up to its own with one layout, so a bank from before marks still loads.
+    let mut bytes: Vec<u8> = Vec::new();
+
+    new_mock(2).write_to::<XRayByteOrder>(&mut bytes)?;
+
+    let read: OmfFile = OmfFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+
+    assert_eq!(read.parameters.version, 2);
+    assert_eq!(read.parameters.motions, new_mock(2).parameters.motions);
+
+    Ok(())
+  }
+
   #[test]
   fn test_get_motion_names_reads_the_definitions() -> XrfResult {
     let mut file: OmfFile = new_mock(4);
