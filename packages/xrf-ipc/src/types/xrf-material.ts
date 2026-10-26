@@ -223,9 +223,15 @@ export type XraySurfaceDeclaration =
       kind: "described";
       /** The class tag, as `Blender_CLSID.h` spells it: `MODEL`, `MODELEbB`, `LM_AREF`. */
       class: string;
-      /** The class's own alpha switch, or `None` for a class that writes none and is therefore always opaque. */
+      /**
+       * The class's own alpha switch, or `None` for a class that writes none: one drawn by its blending token, or
+       * always opaque.
+       */
       isAlphaUsed: boolean | null;
-      /** The authored `Alpha ref`, or `None` for a class that writes none. */
+      /**
+       * The authored `Alpha ref`, the value its class starts from where the file omits it, or `None` for a class that
+       * writes none.
+       */
       alphaReference: number | null;
       /** `Strict sorting`, which every class writes and which pushes a model surface out of the deferred path. */
       isStrictSorting: boolean;
@@ -244,13 +250,13 @@ export type XraySurfaceDescriptor = {
   library: XrayAsset | null;
   declaration: XraySurfaceDeclaration;
   /**
-   * What to draw. Always answerable: a surface nothing could be read for is drawn the way the engine draws one whose
-   * shader it could not resolve, which is opaque.
+   * What to draw. Always answerable: a surface nothing could be read for is drawn the way the DX11 renderer draws a
+   * shader it could not resolve, by `stub_default.s`, which is opaque.
    */
   draw: XraySurfaceDraw;
   /**
-   * The detail texture modulating its diffuse, `None` for a class the engine never details or a base texture whose
-   * descriptor associates none.
+   * The detail texture modulating its diffuse, `None` for a class the engine never details, a base texture whose
+   * descriptor associates none, or a blended surface, whose forward pass samples its base alone.
    */
   detail: XraySurfaceDetail | null;
   /** The four details and mask a terrain class lays over its base instead, `None` for any other class. */
@@ -260,7 +266,7 @@ export type XraySurfaceDescriptor = {
    * surface the blender library describes, whose class binds by slot.
    */
   samplers: Array<XraySurfaceSampler>;
-  /** The bump pair its base texture's descriptor declares, for a class that binds one. */
+  /** The bump pair its base texture's descriptor declares, for a class that binds one on a deferred pass. */
   bump: XrayMaterialBump | null;
   /** The lighting model its base texture's descriptor sets, `m_material`. */
   material: number | null;
