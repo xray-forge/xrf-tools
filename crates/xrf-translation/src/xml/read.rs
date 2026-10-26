@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_xml::{XmlElementSpan, XmlParseOptions, XmlSourceDocument};
+use xrf_xml::{XmlElementSpan, XmlSourceDocument};
 
 use crate::xml::decoded_translation::DecodedTranslation;
 use crate::xml::encoding::{decode, read_decoded};
@@ -56,7 +56,7 @@ pub(crate) fn parse_required_string_table(
   data: &[u8],
 ) -> XrfResult<Vec<(String, String)>> {
   let decoded: DecodedTranslation = decode(identity, data)?;
-  let document: XmlSourceDocument = XmlSourceDocument::parse(decoded.text, XmlParseOptions::default())?;
+  let document: XmlSourceDocument = XmlSourceDocument::parse(decoded.text)?;
   let root: &XmlElementSpan = document.root();
 
   if root.name() != STRING_TABLE_ELEMENT {
@@ -71,7 +71,7 @@ pub(crate) fn parse_required_string_table(
 
 /// Pull the entries out of a decoded string table, tolerating whatever the engine tolerates.
 fn parse_decoded(decoded: DecodedTranslation) -> XrfResult<Vec<(String, String)>> {
-  let document: XmlSourceDocument = XmlSourceDocument::parse(decoded.text, XmlParseOptions::default())?;
+  let document: XmlSourceDocument = XmlSourceDocument::parse(decoded.text)?;
 
   Ok(collect_entries(document.root()))
 }

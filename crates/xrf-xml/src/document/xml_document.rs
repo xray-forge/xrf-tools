@@ -1,8 +1,8 @@
-use xrf_error::{XrfError, XrfResult};
+use xrf_error::XrfResult;
 
-use crate::encoding::decode_xml_bytes;
-use crate::options::XmlParseOptions;
-use crate::xml_element::XmlElement;
+use crate::decode::XmlEncoding;
+use crate::document::XmlElement;
+use crate::xml_parse_options::XmlParseOptions;
 
 /// A parsed XML document detached from its input buffer.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -15,19 +15,11 @@ impl XmlDocument {
   ///
   /// # Errors
   ///
-  /// Returns a parsing error when the input is not a well-formed XML document.
+  /// Returns a parsing error when the input is not a well-formed XML document, or nests elements deeper than
+  /// [`XmlParseOptions::MAX_DEPTH`].
   pub fn parse(input: &str, options: XmlParseOptions) -> XrfResult<Self> {
-    let document: roxmltree::Document = roxmltree::Document::parse_with_options(
-      input,
-      roxmltree::ParsingOptions {
-        allow_dtd: options.allow_dtd,
-        ..roxmltree::ParsingOptions::default()
-      },
-    )
-    .map_err(|error| XrfError::new_parsing_error(format!("Failed to parse XML: {error}")))?;
-
     Ok(Self {
-      root: XmlElement::from_node(document.root_element()),
+      root: XmlElement::from_node(options.parse(input)?.root_element()),
     })
   }
 
@@ -38,7 +30,7 @@ impl XmlDocument {
   /// Returns an encoding error for unsupported or invalid input encodings, or a parsing error for
   /// malformed XML.
   pub fn parse_bytes(input: &[u8], options: XmlParseOptions) -> XrfResult<Self> {
-    Self::parse(&decode_xml_bytes(input)?, options)
+    Self::parse(&XmlEncoding::decode(input)?, options)
   }
 
   /// Returns the document element.

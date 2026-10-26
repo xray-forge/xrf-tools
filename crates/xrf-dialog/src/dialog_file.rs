@@ -2,7 +2,7 @@ use std::path::Path;
 
 use xrf_error::XrfResult;
 use xrf_utils::XRayEncoding;
-use xrf_xml::{XmlElementSpan, XmlParseOptions, XmlSourceDocument};
+use xrf_xml::{XmlElementSpan, XmlSourceDocument};
 
 use crate::conversation::dialog::Dialog;
 use crate::conversation::dialog_parse_issue::DialogParseIssue;
@@ -100,7 +100,7 @@ impl DialogFile {
   }
 
   fn from_source(source: DialogSource) -> XrfResult<Self> {
-    let document: XmlSourceDocument = XmlSourceDocument::parse(source.text, XmlParseOptions::default())?;
+    let document: XmlSourceDocument = XmlSourceDocument::parse(source.text)?;
     let mut issues: Vec<DialogParseIssue> = Vec::new();
 
     let root: &XmlElementSpan = document.root();

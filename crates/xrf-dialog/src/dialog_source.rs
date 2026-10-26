@@ -3,7 +3,7 @@ use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{XRayEncoding, decode_bytes_to_string_without_bom_handling, new_utf8_encoder, new_windows1251_encoder};
-use xrf_xml::declared_xml_encoding;
+use xrf_xml::XmlEncoding;
 
 /// A dialog file's bytes, decoded, with what is needed to write them back.
 pub(crate) struct DialogSource {
@@ -60,7 +60,7 @@ impl DialogSource {
   ///
   /// Returns an encoding error when the declaration names a code page there is no encoder for.
   pub(crate) fn resolve_encoding(data: &[u8]) -> XrfResult<XRayEncoding> {
-    Ok(declared_xml_encoding(data)?.unwrap_or_else(new_windows1251_encoder))
+    Ok(XmlEncoding::find_declared(data)?.unwrap_or_else(new_windows1251_encoder))
   }
 
   /// Split a leading byte order mark off the content, so it survives a rewrite untouched.

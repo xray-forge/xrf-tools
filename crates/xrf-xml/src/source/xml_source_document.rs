@@ -1,8 +1,7 @@
 use xrf_error::XrfResult;
 
-use crate::options::XmlParseOptions;
-use crate::repair::repair_for_parsing;
-use crate::xml_element_span::XmlElementSpan;
+use crate::source::XmlElementSpan;
+use crate::source::xml_repair::XmlRepair;
 
 /// A parsed document together with the text it was parsed from.
 ///
@@ -22,15 +21,19 @@ impl XmlSourceDocument {
   /// same-length repaired copy parsed instead - shipped game data contains comment banners and bare
   /// ampersands that XML forbids and the engine's own reader accepts.
   ///
+  /// A DTD is always refused: an element an entity expands has its range inside the entity's declaration rather than
+  /// where it reads in the document, so an edit through it would splice the wrong bytes.
+  ///
   /// # Errors
   ///
-  /// Returns a parsing error when neither the input nor its repaired copy is well-formed.
-  pub fn parse(source: String, options: XmlParseOptions) -> XrfResult<Self> {
-    let root: XmlElementSpan = match XmlElementSpan::parse_exact(&source, &source, options) {
+  /// Returns a parsing error when neither the input nor its repaired copy is well-formed, or when elements nest deeper
+  /// than [`XmlParseOptions::MAX_DEPTH`](crate::XmlParseOptions::MAX_DEPTH).
+  pub fn parse(source: String) -> XrfResult<Self> {
+    let root: XmlElementSpan = match XmlElementSpan::parse(&source, &source) {
       Ok(parsed) => parsed,
       // The repaired attempt's error is reported, not the strict one: it names whatever is still
       // wrong once the tolerated constructs are out of the way, which is what a caller has to act on.
-      Err(_) => XmlElementSpan::parse_exact(&source, &repair_for_parsing(&source), options)?,
+      Err(_) => XmlElementSpan::parse(&source, &XmlRepair::repair(&source))?,
     };
 
     Ok(Self { source, root })

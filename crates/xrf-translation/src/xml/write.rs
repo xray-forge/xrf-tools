@@ -4,7 +4,7 @@ use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, XRayEncoding, encode_string_to_bytes, format_path};
-use xrf_xml::{XmlElementSpan, XmlParseOptions, XmlSourceDocument, escape_xml_text};
+use xrf_xml::{XmlElementSpan, XmlEscape, XmlSourceDocument};
 
 use crate::edit::TranslationEdit;
 use crate::language::find_unencodable_character;
@@ -66,7 +66,7 @@ pub(crate) fn splice_edits(
   edits: &[TranslationEdit],
   encoding: XRayEncoding,
 ) -> XrfResult<String> {
-  let document: XmlSourceDocument = XmlSourceDocument::parse(source, XmlParseOptions::default())?;
+  let document: XmlSourceDocument = XmlSourceDocument::parse(source)?;
   let source: &str = document.source();
   let root: &XmlElementSpan = document.root();
   let strings: Vec<&XmlElementSpan> = root.children_named("string").collect();
@@ -87,7 +87,7 @@ pub(crate) fn splice_edits(
 
         // Last occurrence wins, because that is the one the engine's string table resolves to.
         match occurrences(&strings, id).last() {
-          Some(element) => replacements.push((text_content_range(path, element, id)?, escape_xml_text(&text))),
+          Some(element) => replacements.push((text_content_range(path, element, id)?, XmlEscape::text(&text))),
           None => appended.push_str(&layout.render_entry(id, &text)),
         }
       }

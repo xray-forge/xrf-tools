@@ -1,13 +1,10 @@
 use std::ops::Range;
 
-use crate::options::XmlParseOptions;
-use crate::xml_element_span::XmlElementSpan;
-use crate::xml_source_document::XmlSourceDocument;
-
-const OPTIONS: XmlParseOptions = XmlParseOptions { allow_dtd: false };
+use crate::source::{XmlElementSpan, XmlSourceDocument};
+use crate::xml_parse_options::XmlParseOptions;
 
 fn parse(source: &str) -> XmlSourceDocument {
-  XmlSourceDocument::parse(String::from(source), OPTIONS).expect("Expected a parsed document")
+  XmlSourceDocument::parse(String::from(source)).expect("Expected a parsed document")
 }
 
 fn text_of(document: &XmlSourceDocument) -> &XmlElementSpan {
@@ -16,6 +13,16 @@ fn text_of(document: &XmlSourceDocument) -> &XmlElementSpan {
     .child_named("string")
     .and_then(|string| string.child_named("text"))
     .expect("Expected a text element")
+}
+
+/// The source the root element's content range addresses.
+fn root_content(source: &str) -> Option<String> {
+  let document: XmlSourceDocument = parse(source);
+
+  document
+    .root()
+    .content_range()
+    .map(|range| document.source()[range.clone()].to_owned())
 }
 
 #[test]
@@ -64,6 +71,30 @@ fn reports_no_content_range_for_a_self_closing_element() {
 }
 
 #[test]
+fn finds_content_past_a_closing_angle_bracket_quoted_in_an_attribute() {
+  assert_eq!(root_content("<text note=\"a > b\">old</text>").as_deref(), Some("old"));
+  assert_eq!(root_content("<text note='a /> b'>old</text>").as_deref(), Some("old"));
+  assert_eq!(root_content("<text note=\"a /> b\"/>"), None);
+}
+
+#[test]
+fn finds_content_before_a_closing_tag_with_blanks_or_a_prefix() {
+  assert_eq!(root_content("<text>old</text >").as_deref(), Some("old"));
+  assert_eq!(
+    root_content("<n:text xmlns:n=\"urn:n\">old</n:text>").as_deref(),
+    Some("old")
+  );
+}
+
+#[test]
+fn finds_content_holding_markup_comments_and_cdata() {
+  assert_eq!(
+    root_content("<root><!-- a --><child/><![CDATA[</root>]]>tail</root>").as_deref(),
+    Some("<!-- a --><child/><![CDATA[</root>]]>tail")
+  );
+}
+
+#[test]
 fn keeps_entities_in_the_range_while_resolving_them_in_the_text() {
   let document: XmlSourceDocument =
     parse("<string_table><string id=\"a\"><text>a &amp; b</text></string></string_table>");
@@ -86,6 +117,14 @@ fn carries_attributes_and_element_ranges() {
     &document.source()[string.element_range().clone()],
     "<string id=\"a\"><text>x</text></string>"
   );
+}
+
+#[test]
+fn addresses_bytes_past_multibyte_text() {
+  let document: XmlSourceDocument = parse("<string_table><string id=\"п\"><text>Привет</text></string></string_table>");
+  let range: Range<usize> = text_of(&document).content_range().unwrap().clone();
+
+  assert_eq!(&document.source()[range], "Привет");
 }
 
 #[test]
@@ -128,6 +167,13 @@ fn reads_a_bare_ampersand_in_an_attribute_and_leaves_untouched_values_to_the_par
 }
 
 #[test]
+fn reads_cdata_as_written_when_a_banner_forced_the_repair() {
+  let document: XmlSourceDocument = parse("<!-- -- --><root><![CDATA[A & B <!-- -- -->]]></root>");
+
+  assert_eq!(document.root().text(), "A & B <!-- -- -->");
+}
+
+#[test]
 fn leaves_a_well_formed_document_to_the_strict_parse() {
   let document: XmlSourceDocument =
     parse("<string_table><string id=\"a\"><text>a &amp; b</text></string></string_table>");
@@ -137,8 +183,47 @@ fn leaves_a_well_formed_document_to_the_strict_parse() {
 }
 
 #[test]
+fn refuses_a_dtd_whose_entities_would_point_ranges_into_the_declaration() {
+  assert!(
+    XmlSourceDocument::parse(String::from(
+      "<!DOCTYPE root [<!ENTITY value '<text>old</text>'>]><root>&value;</root>"
+    ))
+    .is_err()
+  );
+}
+
+#[test]
+fn refuses_nesting_past_the_depth_bound_rather_than_overflowing() {
+  let nested = |depth: usize| format!("{}x{}", "<a>".repeat(depth), "</a>".repeat(depth));
+
+  let deepest: String = nested(XmlParseOptions::MAX_DEPTH);
+
+  // The deepest document accepted is parsed, cloned, compared, formatted and dropped on a main thread's stack, since
+  // each of those recurses once per level.
+  std::thread::Builder::new()
+    .stack_size(1 << 20)
+    .spawn(move || {
+      let document: XmlSourceDocument = XmlSourceDocument::parse(deepest).unwrap();
+
+      assert_eq!(document.clone(), document);
+      assert!(format!("{document:?}").len() > XmlParseOptions::MAX_DEPTH);
+    })
+    .unwrap()
+    .join()
+    .unwrap();
+
+  // Refused by the strict parse and its repaired retry alike, neither of which may recurse that deep.
+  let error: String = XmlSourceDocument::parse(nested(100_000)).unwrap_err().to_string();
+
+  assert!(
+    error.contains(&format!("deeper than {} levels", XmlParseOptions::MAX_DEPTH)),
+    "{error}"
+  );
+}
+
+#[test]
 fn reports_a_document_that_survives_neither_pass() {
-  assert!(XmlSourceDocument::parse(String::from("<string_table><string id="), OPTIONS).is_err());
+  assert!(XmlSourceDocument::parse(String::from("<string_table><string id=")).is_err());
 }
 
 #[test]

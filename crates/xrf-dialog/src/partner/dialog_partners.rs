@@ -5,7 +5,7 @@ use indexmap::map::Entry;
 use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XraySearch};
-use xrf_xml::{XmlElementSpan, XmlParseOptions, XmlSourceDocument, expand_xml_includes, list_xml_includes};
+use xrf_xml::{XmlElementSpan, XmlIncludes, XmlSourceDocument};
 
 use crate::dialog_source::DialogSource;
 use crate::partner::dialog_character::DialogCharacter;
@@ -78,7 +78,7 @@ impl DialogPartners {
     let included: HashSet<String> = sources
       .iter()
       .filter_map(|(_, _, source)| source.as_ref().ok())
-      .flat_map(|source| list_xml_includes(source))
+      .flat_map(|source| XmlIncludes::list(source))
       .filter_map(|name| XrayLogicalPath::normalize(&Self::to_include_path(&name)).ok())
       .collect();
 
@@ -90,9 +90,9 @@ impl DialogPartners {
       }
 
       let document: XrfResult<XmlSourceDocument> = source
-        .and_then(|source| expand_xml_includes(&source, &mut |name| search.read(&Self::to_include_path(name))))
+        .and_then(|source| XmlIncludes::expand(&source, &mut |name| search.read(&Self::to_include_path(name))))
         .and_then(|expanded| DialogSource::decode(&expanded))
-        .and_then(|decoded| XmlSourceDocument::parse(decoded.text, XmlParseOptions::default()));
+        .and_then(|decoded| XmlSourceDocument::parse(decoded.text));
 
       match document {
         Ok(document) => reader(&mut partners, document.root(), logical_path),

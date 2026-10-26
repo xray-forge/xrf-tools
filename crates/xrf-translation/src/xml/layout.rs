@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use xrf_xml::{XmlElementSpan, escape_xml_attribute, escape_xml_text};
+use xrf_xml::{XmlElementSpan, XmlEscape};
 
 /// Indentation used when a file holds no entry to copy the style from.
 const DEFAULT_STRING_INDENT: &str = "\t";
@@ -40,8 +40,8 @@ impl XmlLayout {
 
     format!(
       "{line_ending}{string_indent}<string id=\"{}\">{line_ending}{text_indent}<text>{}</text>{line_ending}{string_indent}</string>",
-      escape_xml_attribute(id),
-      escape_xml_text(text),
+      XmlEscape::attribute(id),
+      XmlEscape::text(text),
     )
   }
 

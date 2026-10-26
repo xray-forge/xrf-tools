@@ -5,7 +5,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_extension::{XrayExtension, XrayExtensionOf};
 use xrf_utils::{XRayEncoding, format_path};
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XraySearch, XrayTransaction};
-use xrf_xml::encoding_from_label;
+use xrf_xml::XmlEncoding;
 
 use crate::edit::TranslationEdit;
 use crate::language::find_unencodable_character;
@@ -133,7 +133,7 @@ pub fn find_unwritable_character(
   text: &str,
 ) -> XrfResult<Option<String>> {
   let candidates: Vec<(String, XRayEncoding)> = match descriptor.encodings.get(language) {
-    Some(label) => vec![(language.to_owned(), encoding_from_label(label)?)],
+    Some(label) => vec![(language.to_owned(), XmlEncoding::from_label(label)?)],
     None => Vec::new(),
   };
 

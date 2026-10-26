@@ -2,13 +2,13 @@ use std::collections::HashMap;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::include::{expand_xml_includes, list_xml_includes};
+use crate::decode::XmlIncludes;
 
 /// Expand `source` against a set of named files, failing on a name the set does not hold.
 fn expand(source: &str, files: &[(&str, &str)]) -> XrfResult<String> {
   let files: HashMap<&str, &str> = files.iter().copied().collect();
 
-  let expanded: Vec<u8> = expand_xml_includes(source.as_bytes(), &mut |name: &str| {
+  let expanded: Vec<u8> = XmlIncludes::expand(source.as_bytes(), &mut |name: &str| {
     files
       .get(name)
       .map(|content| content.as_bytes().to_vec())
@@ -94,7 +94,7 @@ fn decodes_an_include_name_as_its_document_declares_nested_ones_too() -> XrfResu
   .concat();
   let mut names: Vec<String> = Vec::new();
 
-  expand_xml_includes(&source, &mut |name: &str| {
+  XmlIncludes::expand(&source, &mut |name: &str| {
     names.push(name.to_owned());
 
     Ok(if names.len() == 1 {
@@ -111,7 +111,7 @@ fn decodes_an_include_name_as_its_document_declares_nested_ones_too() -> XrfResu
 
   assert_eq!(names, ["диалоги.xml", "д.xml"]);
   assert_eq!(
-    list_xml_includes(&source)
+    XmlIncludes::list(&source)
       .iter()
       .map(String::as_str)
       .collect::<Vec<&str>>(),
@@ -125,16 +125,16 @@ fn decodes_an_include_name_as_its_document_declares_nested_ones_too() -> XrfResu
 fn refuses_an_include_name_its_document_does_not_decode() {
   let source: &[u8] = b"#include \"\xE4.xml\"\n";
 
-  assert!(expand_xml_includes(source, &mut |_: &str| Ok(Vec::new())).is_err());
-  assert!(list_xml_includes(source).is_empty());
+  assert!(XmlIncludes::expand(source, &mut |_: &str| Ok(Vec::new())).is_err());
+  assert!(XmlIncludes::list(source).is_empty());
 }
 
 #[test]
 fn lists_the_names_a_document_includes_without_reading_them() {
   let source: &str = "<root>\n#include \"a.xml\"\n  #include \"b\\c.xml\"\n#include broken\n</root>";
 
-  assert_eq!(list_xml_includes(source.as_bytes()), ["a.xml", "b\\c.xml"]);
-  assert!(list_xml_includes(b"<root/>").is_empty());
+  assert_eq!(XmlIncludes::list(source.as_bytes()), ["a.xml", "b\\c.xml"]);
+  assert!(XmlIncludes::list(b"<root/>").is_empty());
 }
 
 #[test]
