@@ -161,7 +161,7 @@ mod tests {
           ],
           links: vec![PatrolLink {
             index: 0,
-            links: vec![(10, 50.5), (15, 60.25)],
+            links: vec![(1, 50.5), (0, 60.25)],
           }],
         },
         Patrol {
@@ -184,7 +184,7 @@ mod tests {
           ],
           links: vec![PatrolLink {
             index: 0,
-            links: vec![(10, 50.5), (15, 60.25)],
+            links: vec![(1, 50.5), (0, 60.25)],
           }],
         },
       ],

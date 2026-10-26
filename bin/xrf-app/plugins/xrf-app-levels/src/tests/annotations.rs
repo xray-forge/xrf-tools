@@ -166,7 +166,6 @@ fn points_a_level_changer_toward_its_destination_across_the_world() {
     silent_mode: 0,
     enabled: 1,
     hint: String::new(),
-    save_marker: 0,
   };
   let spawn: LevelSpawn = new_spawn(vec![new_object(
     "zat_to_pripyat",

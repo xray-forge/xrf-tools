@@ -1,6 +1,6 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport, Section};
 
@@ -19,14 +19,14 @@ impl ChunkReadWrite for AlifeObjectItemAmmo {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
-      ammo_left: reader.read_u16::<XRayByteOrder>()?,
+      ammo_left: reader.read_u16::<T>()?,
     })
   }
 
   /// Write item data into the writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
-    writer.write_u16::<XRayByteOrder>(self.ammo_left)?;
+    writer.write_u16::<T>(self.ammo_left)?;
 
     Ok(())
   }
@@ -99,7 +99,7 @@ mod tests {
           visual_flags: 33,
         },
         condition: 0.6,
-        upgrades_count: 0,
+        upgrades: Vec::new(),
       },
       ammo_left: 12,
     };
@@ -146,7 +146,7 @@ mod tests {
           visual_flags: 33,
         },
         condition: 0.6,
-        upgrades_count: 0,
+        upgrades: Vec::new(),
       },
       ammo_left: 12,
     };
@@ -181,7 +181,7 @@ mod tests {
           visual_flags: 16,
         },
         condition: 0.4,
-        upgrades_count: 2,
+        upgrades: vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")],
       },
       ammo_left: 17,
     };

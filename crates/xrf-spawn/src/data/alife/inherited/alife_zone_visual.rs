@@ -14,6 +14,7 @@ use crate::data::generic::last_spawn_time::LastSpawnTime;
 pub struct AlifeZoneVisual {
   pub base: AlifeObjectAnomalyZone,
   pub visual: AlifeObjectVisual,
+  /// The animation the zone idles in (`CSE_Visual::startup_animation`).
   pub idle_animation: String,
   pub attack_animation: String,
   pub last_spawn_time: LastSpawnTime,
@@ -25,16 +26,8 @@ impl ChunkReadWrite for AlifeZoneVisual {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       visual: reader.read_xr::<T, _>()?,
-      idle_animation: if reader.has_data() {
-        reader.read_w1251_string().unwrap()
-      } else {
-        String::new()
-      },
-      attack_animation: if reader.has_data() {
-        reader.read_w1251_string().unwrap()
-      } else {
-        String::new()
-      },
+      idle_animation: reader.read_w1251_string()?,
+      attack_animation: reader.read_w1251_string()?,
       last_spawn_time: reader.read_xr::<T, _>()?,
     })
   }

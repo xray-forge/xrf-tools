@@ -3,93 +3,88 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport, Section};
-use xrf_utils::assert_equal;
 
 use crate::data::alife::inherited::alife_smart_zone::AlifeSmartZone;
+use crate::data::generic::script_save_marker::ScriptSaveMarker;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlifeSmartTerrain {
   pub base: AlifeSmartZone,
+  /// The script class's own fields, `se_smart_terrain` in vanilla and `SmartTerrain` in xrf-engine: list counts and
+  /// presence flags, each zero in a compiled spawn because the simulation has not run.
   pub arriving_objects_count: u8,
   pub object_job_descriptors_count: u8,
   pub dead_objects_infos_count: u8,
   pub smart_terrain_actor_control: u8,
   pub respawn_point: u8,
   pub staying_objects_count: u8,
-  pub save_marker: u16,
+}
+
+impl AlifeSmartTerrain {
+  /// The script class the trailing fields belong to, named in a refused save marker.
+  const SCRIPT_CLASS: &'static str = "se_smart_terrain";
+
+  /// Refuse a terrain carrying simulation state, whose lists and records follow the counts and flags.
+  // todo: Read and write the lists and records `SmartTerrain::STATE_Write` puts behind non-zero counts and flags.
+  fn assert_compiled_state(&self) -> XrfResult {
+    for (value, what) in [
+      (self.arriving_objects_count, "arriving objects"),
+      (self.object_job_descriptors_count, "job descriptors"),
+      (self.dead_objects_infos_count, "dead object times"),
+      (self.smart_terrain_actor_control, "base control"),
+      (self.respawn_point, "respawn point"),
+      (self.staying_objects_count, "staying objects"),
+    ] {
+      if value != 0 {
+        return Err(XrfError::new_parsing_error(format!(
+          "Smart terrain declares {what} ({value}), a simulation state a compiled spawn does not hold"
+        )));
+      }
+    }
+
+    Ok(())
+  }
 }
 
 impl ChunkReadWrite for AlifeSmartTerrain {
   /// Read ALife smart terrain data from the chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let base: AlifeSmartZone = AlifeSmartZone::read::<T, _>(reader)?;
+    let object: Self = ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
+      Ok(Self {
+        base,
+        arriving_objects_count: reader.read_u8()?,
+        object_job_descriptors_count: reader.read_u8()?,
+        dead_objects_infos_count: reader.read_u8()?,
+        smart_terrain_actor_control: reader.read_u8()?,
+        respawn_point: reader.read_u8()?,
+        staying_objects_count: reader.read_u8()?,
+      })
+    })?;
 
-    let arriving_objects_count: u8 = reader.read_u8()?;
+    object.assert_compiled_state()?;
 
-    assert_equal(
-      arriving_objects_count,
-      0,
-      "Unexpected arriving objects in smart terrain",
-    )?;
-
-    let object_job_descriptors_count: u8 = reader.read_u8()?;
-
-    assert_equal(
-      object_job_descriptors_count,
-      0,
-      "Unexpected job objects in smart terrain",
-    )?;
-
-    let dead_objects_infos_count: u8 = reader.read_u8()?;
-
-    assert_equal(dead_objects_infos_count, 0, "Unexpected dead objects in smart terrain")?;
-
-    let smart_terrain_actor_control: u8 = reader.read_u8()?;
-
-    assert_equal(smart_terrain_actor_control, 0, "Unexpected smart terrain actor control")?;
-
-    let respawn_point: u8 = reader.read_u8()?;
-
-    if respawn_point != 0 {
-      return Err(XrfError::new_parsing_error(
-        "Unexpected respawn point handler in smart terrain parser",
-      ));
-    }
-
-    let staying_objects_count: u8 = reader.read_u8()?;
-
-    assert_equal(staying_objects_count, 0, "Unexpected smart terrain staying objects")?;
-
-    let save_marker: u16 = reader.read_u16::<T>()?;
-
-    assert_equal(save_marker, 6, "Unexpected data provided with smart terrain save")?;
-
-    Ok(Self {
-      base,
-      arriving_objects_count,
-      object_job_descriptors_count,
-      dead_objects_infos_count,
-      smart_terrain_actor_control,
-      respawn_point,
-      staying_objects_count,
-      save_marker,
-    })
+    Ok(object)
   }
 
   /// Write smart terrain data into the writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
-    writer.write_u8(self.arriving_objects_count)?;
-    writer.write_u8(self.object_job_descriptors_count)?;
-    writer.write_u8(self.dead_objects_infos_count)?;
-    writer.write_u8(self.smart_terrain_actor_control)?;
-    writer.write_u8(self.respawn_point)?;
-    writer.write_u8(self.staying_objects_count)?;
-    writer.write_u16::<T>(self.save_marker)?;
+    self.assert_compiled_state()?;
 
-    Ok(())
+    writer.write_xr::<T, _>(&self.base)?;
+
+    ScriptSaveMarker::write::<T>(writer, Self::SCRIPT_CLASS, |writer| {
+      writer.write_u8(self.arriving_objects_count)?;
+      writer.write_u8(self.object_job_descriptors_count)?;
+      writer.write_u8(self.dead_objects_infos_count)?;
+      writer.write_u8(self.smart_terrain_actor_control)?;
+      writer.write_u8(self.respawn_point)?;
+      writer.write_u8(self.staying_objects_count)?;
+
+      Ok(())
+    })
   }
 }
 
@@ -112,7 +107,6 @@ impl LtxImportExport for AlifeSmartTerrain {
       smart_terrain_actor_control: section.read_field("smart_terrain_actor_control")?,
       respawn_point: section.read_field("respawn_point")?,
       staying_objects_count: section.read_field("staying_objects_count")?,
-      save_marker: section.read_field("save_marker")?,
     })
   }
 
@@ -133,8 +127,7 @@ impl LtxImportExport for AlifeSmartTerrain {
         self.smart_terrain_actor_control.to_string(),
       )
       .set("respawn_point", self.respawn_point.to_string())
-      .set("staying_objects_count", self.staying_objects_count.to_string())
-      .set("save_marker", self.save_marker.to_string());
+      .set("staying_objects_count", self.staying_objects_count.to_string());
 
     Ok(())
   }
@@ -153,12 +146,8 @@ mod tests {
   use crate::data::alife::inherited::alife_smart_zone::AlifeSmartZone;
   use crate::data::generic::shape::Shape;
 
-  #[test]
-  fn test_read_write() -> XrfResult {
-    let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
-
-    let original: AlifeSmartTerrain = AlifeSmartTerrain {
+  fn new_terrain() -> AlifeSmartTerrain {
+    AlifeSmartTerrain {
       base: AlifeSmartZone {
         base: AlifeObjectSpaceRestrictor {
           base: AlifeObjectAbstract {
@@ -189,12 +178,19 @@ mod tests {
       smart_terrain_actor_control: 0,
       respawn_point: 0,
       staying_objects_count: 0,
-      save_marker: 6,
-    };
+    }
+  }
+
+  #[test]
+  fn test_read_write() -> XrfResult {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
+    let original: AlifeSmartTerrain = new_terrain();
 
     original.write::<XRayByteOrder>(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 114);
+    assert_eq!(writer.buffer[112..], [6, 0]);
 
     let bytes_written: usize =
       writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
@@ -210,5 +206,20 @@ mod tests {
     assert_eq!(AlifeSmartTerrain::read::<XRayByteOrder, _>(&mut reader)?, original);
 
     Ok(())
+  }
+
+  /// A count with nothing behind it would be read by the game as the start of a list, so it is not written.
+  #[test]
+  fn refuses_to_write_simulation_state_it_cannot_carry() {
+    let mut terrain: AlifeSmartTerrain = new_terrain();
+
+    terrain.respawn_point = 1;
+
+    let error: String = terrain
+      .write::<XRayByteOrder>(&mut ChunkWriter::new())
+      .expect_err("a respawn point without its records")
+      .to_string();
+
+    assert!(error.contains("declares respawn point (1)"), "{error}");
   }
 }

@@ -66,7 +66,8 @@ describe("SpawnRowDetailsPanel", () => {
   it("says an empty list is empty rather than printing nothing", async () => {
     const { render }: IPanelRender = await renderPanel(mockAlifeObject());
 
-    expect(render.getByText("empty")).toBeInTheDocument();
+    // The fixture carries no client data and no update data.
+    expect(render.getAllByText("empty")).toHaveLength(2);
   });
 
   it("drops the selection when the file it pointed into closes", async () => {

@@ -4,8 +4,8 @@ import { Vector3d } from "#/types/xrf-math";
 
 export type AlifeActor = {
   base: AlifeObjectActor;
+  /** The script class's own field, `se_actor` in vanilla. */
   startPositionFilled: number;
-  saveMarker: number;
 };
 
 export type AlifeAnomalousZone = {
@@ -31,9 +31,9 @@ export type AlifeLevelChanger = {
   destLevelName: string;
   destGraphPoint: string;
   silentMode: number;
+  /** The script class's own fields, `se_level_changer` in vanilla and `LevelChanger` in xrf-engine. */
   enabled: number;
   hint: string;
-  saveMarker: number;
 };
 
 /** Generic abstract ALife object base. */
@@ -50,13 +50,19 @@ export type AlifeObject = {
   respawnTime: number;
   parentId: number;
   phantomId: number;
+  /** `s_flags`; the spawn version is stored only while `M_SPAWN_VERSION` is set. */
   scriptFlags: number;
   version: number;
   gameType: number;
   scriptVersion: number;
-  clientDataSize: number;
+  /** The client object's saved state (`CSE_Abstract::client_data`), carried as stored. */
+  clientData: Array<number>;
   spawnId: number;
   inherited: AlifeObjectInherited;
+  /**
+   * The update packet past its `M_UPDATE` action, carried as stored. The engine applies it over the spawn packet when
+   * it creates the object, so a creature is placed where its update packet says.
+   */
   updateData: Array<number>;
 };
 
@@ -269,7 +275,8 @@ export type AlifeObjectInventoryBox = {
 export type AlifeObjectItem = {
   base: AlifeObjectDynamicVisual;
   condition: number | null;
-  upgradesCount: number;
+  /** The upgrade sections installed on the item (`CSE_ALifeInventoryItem::m_upgrades`). */
+  upgrades: Array<string>;
 };
 
 export type AlifeObjectItemAmmo = {
@@ -348,6 +355,7 @@ export type AlifeObjectShape = {
 };
 
 export type AlifeObjectSkeleton = {
+  /** The visual's startup animation (`CSE_Visual::startup_animation`), which `CSE_PHSkeleton::STATE_Read` reads first. */
   name: string;
   flags: number;
   sourceId: number;
@@ -413,13 +421,16 @@ export type AlifeSmartCoverLoophole = {
 
 export type AlifeSmartTerrain = {
   base: AlifeSmartZone;
+  /**
+   * The script class's own fields, `se_smart_terrain` in vanilla and `SmartTerrain` in xrf-engine: list counts and
+   * presence flags, each zero in a compiled spawn because the simulation has not run.
+   */
   arrivingObjectsCount: number;
   objectJobDescriptorsCount: number;
   deadObjectsInfosCount: number;
   smartTerrainActorControl: number;
   respawnPoint: number;
   stayingObjectsCount: number;
-  saveMarker: number;
 };
 
 export type AlifeSmartZone = {
@@ -429,6 +440,7 @@ export type AlifeSmartZone = {
 export type AlifeZoneVisual = {
   base: AlifeObjectAnomalyZone;
   visual: AlifeObjectVisual;
+  /** The animation the zone idles in (`CSE_Visual::startup_animation`). */
   idleAnimation: string;
   attackAnimation: string;
   lastSpawnTime: LastSpawnTime;

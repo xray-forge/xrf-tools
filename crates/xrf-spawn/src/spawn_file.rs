@@ -68,29 +68,33 @@ impl SpawnFile {
   pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
     assert_length(chunks, 5, "Unexpected chunks count in spawn file root, expected 5")?;
 
-    let spawn_file: Self = {
-      Self {
-        header: ChunkReader::find_required_by_id(chunks, SpawnHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-        alife_spawn: ChunkReader::find_required_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-        artefact_spawn: ChunkReader::find_required_by_id(chunks, SpawnArtefactSpawnsChunk::CHUNK_ID)?
-          .read_xr::<T, _>()?,
-        patrols: ChunkReader::find_required_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-        graphs: ChunkReader::find_required_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-      }
+    let spawn_file: Self = Self {
+      header: ChunkReader::find_required_by_id(chunks, SpawnHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      alife_spawn: ChunkReader::find_required_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      artefact_spawn: ChunkReader::find_required_by_id(chunks, SpawnArtefactSpawnsChunk::CHUNK_ID)?
+        .read_xr::<T, _>()?,
+      patrols: ChunkReader::find_required_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      graphs: ChunkReader::find_required_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
     };
 
+    spawn_file.assert_header_counts()?;
+
+    Ok(spawn_file)
+  }
+
+  /// Refuse a header whose object and level counts are not what the file holds, as the engine sizes its registries by
+  /// them.
+  fn assert_header_counts(&self) -> XrfResult {
     assert_length(
-      &spawn_file.alife_spawn.objects,
-      spawn_file.header.objects_count as usize,
+      &self.alife_spawn.objects,
+      self.header.objects_count as usize,
       "Expected correct objects count",
     )?;
     assert_equal(
-      spawn_file.header.levels_count,
-      spawn_file.graphs.header.levels_count as u32,
+      self.header.levels_count,
+      u32::from(self.graphs.header.levels_count),
       "Expected correct levels count",
-    )?;
-
-    Ok(spawn_file)
+    )
   }
 
   /// Read only the game graphs chunk of the spawn file by provided path.
@@ -236,7 +240,13 @@ impl SpawnFile {
   }
 
   /// Write spawn file data to the writer.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the header's counts disagree with what the file holds, or a chunk cannot be written.
   pub fn write_to<T: ByteOrder>(&self, writer: &mut dyn Write) -> XrfResult {
+    self.assert_header_counts()?;
+
     let mut header_chunk_writer: ChunkWriter = ChunkWriter::new();
     header_chunk_writer.write_xr::<T, _>(&self.header)?;
     header_chunk_writer.flush_chunk_into::<T>(writer, SpawnHeaderChunk::CHUNK_ID)?;
@@ -388,6 +398,47 @@ mod tests {
     RefusedPublication::assert_left_previous(&path, b"previous");
 
     Ok(())
+  }
+
+  /// A header counting objects the file does not hold would size the engine's registry wrong, so it is not written.
+  #[test]
+  fn refuses_to_write_a_header_that_miscounts_its_objects() {
+    let guid: Uuid = uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7");
+    let spawn: SpawnFile = SpawnFile {
+      header: SpawnHeaderChunk {
+        version: 10,
+        guid,
+        graph_guid: guid,
+        objects_count: 1,
+        levels_count: 0,
+      },
+      alife_spawn: SpawnALifeSpawnsChunk { objects: Vec::new() },
+      artefact_spawn: SpawnArtefactSpawnsChunk { nodes: Vec::new() },
+      patrols: SpawnPatrolsChunk { patrols: Vec::new() },
+      graphs: SpawnGraphsChunk {
+        header: GraphHeader {
+          version: 10,
+          vertices_count: 0,
+          edges_count: 0,
+          points_count: 0,
+          guid,
+          levels_count: 0,
+        },
+        levels: Vec::new(),
+        vertices: Vec::new(),
+        edges: Vec::new(),
+        points: Vec::new(),
+        cross_tables: Vec::new(),
+      },
+    };
+    let mut bytes: Vec<u8> = Vec::new();
+    let error: String = spawn
+      .write_to::<XRayByteOrder>(&mut bytes)
+      .expect_err("a header counting an object the file lacks")
+      .to_string();
+
+    assert!(error.contains("Expected correct objects count"), "{error}");
+    assert!(bytes.is_empty());
   }
 
   #[test]
