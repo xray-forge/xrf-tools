@@ -8,7 +8,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk};
 use xrf_utils::{StagedFile, assert_equal, format_path};
 
-// c++ CKinematicsAnimated
+/// One motion bank, the two chunks `motions_value::load` reads for a skinned visual's `motions` reference
+/// (`xrCore/Animation/SkeletonMotions.cpp`).
 #[derive(Debug)]
 pub struct OmfFile {
   pub parameters: SkeletonMotionParametersChunk,
@@ -134,12 +135,7 @@ impl OmfFile {
   }
 
   pub fn get_bones_count(&self) -> usize {
-    self
-      .parameters
-      .parts
-      .iter()
-      .map(|it| it.get_bones().len())
-      .sum::<usize>()
+    self.parameters.get_bones_count()
   }
 }
 

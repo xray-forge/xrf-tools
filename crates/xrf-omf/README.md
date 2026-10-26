@@ -94,7 +94,9 @@ carry labels that no longer name their motion and `motion` values that address n
 A payload label follows a rename or copy only where it matched the old name; a label that never named its motion stays
 as stored. Where every `motion` field equals its ordinal, filtering and copying renumber them to stay ordinal;
 otherwise they are left untouched. Every operation fails when definitions and payloads are unpaired, and renaming and
-copying fail when they would leave two motions with one name.
+copying fail when a name they introduce would share another motion's name ignoring case: the engine maps motions by
+their lowercased names and keeps the first, so the later would be unreachable. A collision the bank already holds does
+not block an edit, and a refused edit changes nothing.
 
 ## Errors and checks
 
