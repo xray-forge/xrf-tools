@@ -1,120 +1,109 @@
-//! Unit vectors as the three bytes a bump texture stores them in.
-//!
-//! Its own module because the packing is not obvious and is not a texture concern: a byte triple decodes to a vector
-//! that is rarely unit length, and the SDK spends a local search picking the triple that decodes closest to the
-//! direction it was given (`vpack`, `xray/trunk/xrDXT/NormalMapGen.cpp`).
+use std::ops::RangeInclusive;
 
-/// How far either side of the naive packing the search looks, in byte steps.
-const SEARCH_RADIUS: i32 = 2;
+use xrf_math::Vector3d;
 
-/// How far a candidate's decoded length may sit from one before it is refused outright.
-const LENGTH_TOLERANCE: f32 = 0.03;
-
-/// A direction in the range a byte covers, `[-1, 1]` mapped onto `0..=255`.
-pub(crate) fn pack_component(value: f32) -> u8 {
-  (((value + 1.0) * 0.5 * 255.0 + 0.5).floor() as i32).clamp(0, 255) as u8
-}
-
-/// The direction a byte triple decodes to, before any normalization.
-pub(crate) fn unpack_vector(x: u8, y: u8, z: u8) -> [f32; 3] {
-  [
-    (f32::from(x) / 255.0 - 0.5) * 2.0,
-    (f32::from(y) / 255.0 - 0.5) * 2.0,
-    (f32::from(z) / 255.0 - 0.5) * 2.0,
-  ]
-}
-
-/// The byte triple that decodes closest to `vector`, which is not the one that rounds closest to it.
+/// Unit vectors as the three bytes a bump texture stores them in, `vpack` (`xray/trunk/xrDXT/NormalMapGen.cpp`).
 ///
-/// Rounding each component on its own gives a triple whose decoded direction has drifted, because the three roundings
-/// do not cancel. The SDK searches a small cube around that first guess and keeps the candidate whose decoded
-/// direction points most nearly the same way, refusing any whose decoded length has strayed too far from one - which
-/// is what keeps a renormalizing shader from having to correct it.
-pub(crate) fn pack_vector(vector: [f32; 3]) -> [u8; 3] {
-  let direction: [f32; 3] = normalize(vector);
-  let guess: [u8; 3] = [
-    pack_component(direction[0]),
-    pack_component(direction[1]),
-    pack_component(direction[2]),
-  ];
+/// A byte triple decodes to a vector that is rarely unit length, so rounding each component on its own leaves the
+/// decoded direction drifted, the three roundings not cancelling. The SDK searches a small cube around that first
+/// guess and keeps the candidate whose decoded direction points most nearly the same way, refusing any whose decoded
+/// length has strayed too far from one, which is what keeps a renormalizing shader from having to correct it.
+pub(crate) struct BumpVector;
 
-  let mut best: [u8; 3] = guess;
-  let mut best_error: f32 = f32::MAX;
+impl BumpVector {
+  /// How far either side of the naive packing the search looks, in byte steps.
+  const SEARCH_RADIUS: u8 = 2;
 
-  for x in search_range(guess[0]) {
-    for y in search_range(guess[1]) {
-      for z in search_range(guess[2]) {
-        let candidate: [f32; 3] = unpack_vector(x, y, z);
-        let length: f32 = magnitude(candidate);
+  /// How far a candidate's decoded length may sit from one before it is refused outright.
+  const LENGTH_TOLERANCE: f32 = 0.03;
 
-        if (length - 1.0).abs() > LENGTH_TOLERANCE {
-          continue;
-        }
+  /// A direction in the range a byte covers, `[-1, 1]` mapped onto `0..=255`, `fpack`.
+  pub(crate) fn pack_component(value: f32) -> u8 {
+    (((value + 1.0) * 0.5 * 255.0 + 0.5).floor() as i32).clamp(0, 255) as u8
+  }
 
-        // One minus the cosine between the two, so nought is a candidate pointing exactly where it was asked to.
-        let error: f32 = (dot(direction, scale(candidate, 1.0 / length)) - 1.0).abs();
+  /// The direction a byte triple decodes to, before any normalization, `vunpack`.
+  pub(crate) fn unpack(bytes: [u8; 3]) -> Vector3d {
+    let [x, y, z] = bytes.map(|byte| (f32::from(byte) / 255.0 - 0.5) * 2.0);
 
-        if error < best_error {
-          best_error = error;
-          best = [x, y, z];
+    Vector3d::new(x, y, z)
+  }
+
+  /// The byte triple that decodes closest to `vector`, which is not the one that rounds closest to it.
+  pub(crate) fn pack(vector: &Vector3d) -> [u8; 3] {
+    let direction: Vector3d = Self::normalize(vector);
+    let guess: [u8; 3] = [direction.x, direction.y, direction.z].map(Self::pack_component);
+    let mut best: [u8; 3] = guess;
+    let mut best_error: f32 = f32::MAX;
+
+    for x in Self::search_range(guess[0]) {
+      for y in Self::search_range(guess[1]) {
+        for z in Self::search_range(guess[2]) {
+          let candidate: Vector3d = Self::unpack([x, y, z]);
+          let length: f32 = candidate.length();
+
+          if (length - 1.0).abs() > Self::LENGTH_TOLERANCE {
+            continue;
+          }
+
+          // One minus the cosine between the two, so nought is a candidate pointing exactly where it was asked to.
+          let error: f32 = (direction.dot(&(&candidate / length)) - 1.0).abs();
+
+          if error < best_error {
+            best_error = error;
+            best = [x, y, z];
+          }
         }
       }
     }
+
+    best
   }
 
-  best
-}
+  /// `Fvector::normalize`, which scales by the square root of the reciprocal rather than dividing by the length; a
+  /// vector with no length is kept, where the SDK asserts.
+  fn normalize(vector: &Vector3d) -> Vector3d {
+    match vector.length_squared() {
+      0.0 => vector.clone(),
+      squared => vector * (1.0 / squared).sqrt(),
+    }
+  }
 
-/// The bytes the search walks around one component of the first guess.
-fn search_range(center: u8) -> std::ops::RangeInclusive<u8> {
-  let center: i32 = i32::from(center);
-
-  (center - SEARCH_RADIUS).max(0) as u8..=(center + SEARCH_RADIUS).min(255) as u8
-}
-
-fn magnitude(vector: [f32; 3]) -> f32 {
-  dot(vector, vector).sqrt()
-}
-
-fn dot(left: [f32; 3], right: [f32; 3]) -> f32 {
-  left[0] * right[0] + left[1] * right[1] + left[2] * right[2]
-}
-
-fn scale(vector: [f32; 3], factor: f32) -> [f32; 3] {
-  [vector[0] * factor, vector[1] * factor, vector[2] * factor]
-}
-
-/// A vector of length one, or the vector itself when it has no length to divide by.
-fn normalize(vector: [f32; 3]) -> [f32; 3] {
-  match magnitude(vector) {
-    0.0 => vector,
-    length => scale(vector, 1.0 / length),
+  /// The bytes the search walks around one component of the first guess.
+  fn search_range(center: u8) -> RangeInclusive<u8> {
+    center.saturating_sub(Self::SEARCH_RADIUS)..=center.saturating_add(Self::SEARCH_RADIUS)
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use super::{pack_component, pack_vector, unpack_vector};
+  use xrf_math::Vector3d;
+
+  use super::BumpVector;
 
   #[test]
   fn a_component_covers_the_byte_range_it_is_given() {
     // The two ends and the middle of `[-1, 1]`, which is where a flat surface's normal sits.
-    assert_eq!(pack_component(-1.0), 0);
-    assert_eq!(pack_component(0.0), 128);
-    assert_eq!(pack_component(1.0), 255);
+    assert_eq!(BumpVector::pack_component(-1.0), 0);
+    assert_eq!(BumpVector::pack_component(0.0), 128);
+    assert_eq!(BumpVector::pack_component(1.0), 255);
 
     // Past either end is clamped rather than wrapped, since a normal arriving unnormalized is not a reason to write
     // a byte that decodes to the opposite direction.
-    assert_eq!(pack_component(-4.0), 0);
-    assert_eq!(pack_component(4.0), 255);
+    assert_eq!(BumpVector::pack_component(-4.0), 0);
+    assert_eq!(BumpVector::pack_component(4.0), 255);
   }
 
   #[test]
   fn packing_and_unpacking_round_trip_through_the_byte() {
     for byte in 0..=u8::MAX {
-      let [component, _, _] = unpack_vector(byte, 0, 0);
+      let component: f32 = BumpVector::unpack([byte, 0, 0]).x;
 
-      assert_eq!(pack_component(component), byte, "byte {byte} did not survive");
+      assert_eq!(
+        BumpVector::pack_component(component),
+        byte,
+        "byte {byte} did not survive"
+      );
     }
   }
 
@@ -125,20 +114,16 @@ mod tests {
     //
     // 127 is what the SDK wrote: it is the most common `normal.x` in every shipped bump texture sampled from
     // `gamedata` and `gamedata-anomaly`, with 126 and 128 either side of it.
-    assert_eq!(pack_vector([0.0, 0.0, 1.0]), [127, 127, 255]);
+    assert_eq!(BumpVector::pack(&Vector3d::Z), [127, 127, 255]);
   }
 
   #[test]
   fn the_search_keeps_the_direction_rather_than_the_rounding() {
     // A direction whose components do not land on byte boundaries. The search is allowed to move each byte by two, so
     // its answer stays near the naive rounding while decoding closer to where it was pointed.
-    let direction: [f32; 3] = [0.267_261, 0.534_522, 0.801_784];
-    let packed: [u8; 3] = pack_vector(direction);
-    let guess: [u8; 3] = [
-      pack_component(direction[0]),
-      pack_component(direction[1]),
-      pack_component(direction[2]),
-    ];
+    let direction: Vector3d = Vector3d::new(0.267_261, 0.534_522, 0.801_784);
+    let packed: [u8; 3] = BumpVector::pack(&direction);
+    let guess: [u8; 3] = [direction.x, direction.y, direction.z].map(BumpVector::pack_component);
 
     for channel in 0..3 {
       assert!(
@@ -148,16 +133,14 @@ mod tests {
     }
 
     // What the search is for: the decoded direction is closer to the one asked for than the naive rounding is.
-    let decoded: [f32; 3] = unpack_vector(packed[0], packed[1], packed[2]);
-    let naive: [f32; 3] = unpack_vector(guess[0], guess[1], guess[2]);
-    let cosine = |vector: [f32; 3]| {
-      let length: f32 = (vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]).sqrt();
+    let cosine = |bytes: [u8; 3]| {
+      let decoded: Vector3d = BumpVector::unpack(bytes);
 
-      (direction[0] * vector[0] + direction[1] * vector[1] + direction[2] * vector[2]) / length
+      direction.dot(&decoded) / decoded.length()
     };
 
     assert!(
-      cosine(decoded) >= cosine(naive),
+      cosine(packed) >= cosine(guess),
       "the search answered a worse direction than rounding did"
     );
   }

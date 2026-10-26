@@ -6,14 +6,14 @@ use xrf_app_core::jobs::JobResource;
 use xrf_dds::DdsMipFilter;
 use xrf_job::JobHandle;
 use xrf_texture::{
-  GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, TextureEncodingQuality, read_image_as_rgba,
+  GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, ImageFileReader, TextureEncodingQuality,
 };
 use xrf_utils::error_to_string;
 
 /// What a bump pair generation was asked to do.
 ///
-/// The height source is required and everything else refines it, exactly as the SDK's generator has it: normals are
-/// derived from the height alone and gloss is a separate plane, so a caller with only a height map still gets a pair.
+/// The height source is required and everything else refines it, so a caller with only a height map still gets a
+/// pair. Gloss is a plane of its own here, where the SDK's generator reads it from its one source's alpha.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -65,13 +65,13 @@ impl TexturesMakeBumpRequest {
     Ok(GenerateBumpOptions {
       job,
       destination: PathBuf::from(&self.destination),
-      height: read_image_as_rgba(&self.height).map_err(error_to_string)?,
+      height: ImageFileReader::read_rgba(&self.height).map_err(error_to_string)?,
       gloss: match &self.gloss {
-        Some(path) => GenerateBumpGloss::Mask(read_image_as_rgba(path).map_err(error_to_string)?),
+        Some(path) => GenerateBumpGloss::Mask(ImageFileReader::read_rgba(path).map_err(error_to_string)?),
         None => GenerateBumpGloss::Constant(self.gloss_constant),
       },
       normal_map: match &self.normal_map {
-        Some(path) => Some(read_image_as_rgba(path).map_err(error_to_string)?),
+        Some(path) => Some(ImageFileReader::read_rgba(path).map_err(error_to_string)?),
         None => None,
       },
       virtual_height: self

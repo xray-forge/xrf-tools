@@ -1,14 +1,11 @@
 //! An image on its way to or from a texture file: how it is read, how it is fitted, and how it is written.
 
+mod image_file_reader;
+mod image_file_writer;
 mod image_fit;
-mod image_reader;
 mod image_shape;
-mod image_writer;
 
-pub(crate) use image_fit::fit_image_into_bounds;
-pub(crate) use image_reader::decode_image;
-pub use image_reader::read_image_as_rgba;
+pub use image_file_reader::ImageFileReader;
+pub(crate) use image_file_writer::ImageFileWriter;
+pub(crate) use image_fit::ImageFit;
 pub use image_shape::ImageShape;
-pub(crate) use image_writer::{
-  UI_MIPMAP_LEVELS, UI_MIPMAPS, save_image_as_ui_dds, save_image_as_ui_png, warn_on_reshaped_ui_dds,
-};

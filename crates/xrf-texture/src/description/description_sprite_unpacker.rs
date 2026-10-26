@@ -12,7 +12,7 @@ use xrf_utils::{HostDestination, HostRelativePath, format_path};
 use crate::description::{
   DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor, XmlDescriptionCollection,
 };
-use crate::image_file::save_image_as_ui_dds;
+use crate::image_file::ImageFileWriter;
 
 pub struct DescriptionSpriteUnpacker {}
 
@@ -140,7 +140,7 @@ impl DescriptionSpriteUnpacker {
 
       // Unpacked sprites are packing input read at their base level, so a mip chain would only
       // cost space.
-      save_image_as_ui_dds(
+      ImageFileWriter::write_dds(
         &destination.prepare_file(sprite_path)?,
         &dds.view(sprite.x, sprite.y, sprite.w, sprite.h).to_image(),
         options.dds_compression_format,
@@ -165,7 +165,7 @@ mod tests {
   use xrf_test_utils::GeneratedResources;
 
   use super::DescriptionSpriteUnpacker;
-  use crate::image_file::save_image_as_ui_dds;
+  use crate::image_file::ImageFileWriter;
   use crate::{DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor};
 
   fn options_for_missing_source(is_strict: bool) -> DescriptionSpriteOptions {
@@ -230,7 +230,7 @@ mod tests {
 
     fs::create_dir_all(root.join("base")).expect("sheet directory");
     fs::write(root.join("victim.dds"), SENTINEL).expect("sentinel beside the destination");
-    save_image_as_ui_dds(
+    ImageFileWriter::write_dds(
       &root.join("base").join("sheet.dds"),
       &RgbaImage::new(8, 4),
       ImageFormat::BC3RgbaUnorm,

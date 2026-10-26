@@ -8605,6 +8605,7 @@ dependencies = [
  "xrf-extension",
  "xrf-job",
  "xrf-ltx",
+ "xrf-math",
  "xrf-output",
  "xrf-particles",
  "xrf-spawn",

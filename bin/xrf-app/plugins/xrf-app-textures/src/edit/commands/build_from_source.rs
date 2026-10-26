@@ -8,7 +8,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::{JobRegistry, JobStart};
 use xrf_app_render::TextureReloads;
 use xrf_job::JobProgress;
-use xrf_texture::{BuildTextureOptions, read_image_as_rgba};
+use xrf_texture::{BuildTextureOptions, ImageFileReader};
 use xrf_thm::ThmFile;
 use xrf_utils::error_to_string;
 
@@ -42,7 +42,7 @@ pub async fn textures_build_from_source(
       move |job| {
         let options: BuildTextureOptions = BuildTextureOptions {
           destination: request.to_destination(),
-          source: read_image_as_rgba(&request.source).map_err(error_to_string)?,
+          source: ImageFileReader::read_rgba(&request.source).map_err(error_to_string)?,
           descriptor: request.descriptor.to_descriptor(Some(ThmFile::new_texture())),
           quality: request.quality.to_quality(),
         };

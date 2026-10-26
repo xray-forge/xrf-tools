@@ -10,7 +10,7 @@ use xrf_utils::{HostDestination, HostRelativePath, assert_equal, format_path};
 use crate::description::{
   DescriptionSpriteOptions, DescriptionSpriteResult, TextureFileDescriptor, XmlDescriptionCollection,
 };
-use crate::image_file::{UI_MIPMAP_LEVELS, UI_MIPMAPS, save_image_as_ui_dds, warn_on_reshaped_ui_dds};
+use crate::image_file::ImageFileWriter;
 
 pub struct DescriptionSpritePacker {}
 
@@ -137,9 +137,20 @@ impl DescriptionSpritePacker {
 
     xrf_output::verbose!(options.output, "Saving file: {}", format_path(&destination));
 
-    warn_on_reshaped_ui_dds(&options.output, &destination, width, height, UI_MIPMAP_LEVELS);
+    ImageFileWriter::warn_on_reshaped_dds(
+      &options.output,
+      &destination,
+      width,
+      height,
+      ImageFileWriter::UI_MIPMAP_LEVELS,
+    );
 
-    save_image_as_ui_dds(&destination, &result, options.dds_compression_format, UI_MIPMAPS)?;
+    ImageFileWriter::write_dds(
+      &destination,
+      &result,
+      options.dds_compression_format,
+      ImageFileWriter::UI_MIPMAPS,
+    )?;
 
     Ok(DescriptionSpriteResult::written(placed, skipped))
   }

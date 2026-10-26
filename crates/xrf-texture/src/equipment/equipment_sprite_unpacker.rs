@@ -5,7 +5,7 @@ use xrf_extension::XrayExtension;
 use xrf_utils::{HostDestination, HostRelativePath};
 
 use crate::equipment::{EquipmentSpriteUnpackOptions, InventorySpriteDescriptor};
-use crate::image_file::save_image_as_ui_dds;
+use crate::image_file::ImageFileWriter;
 
 pub struct EquipmentSpriteUnpacker {}
 
@@ -72,7 +72,7 @@ impl EquipmentSpriteUnpacker {
     } else {
       // Unpacked icons are packing input read at their base level, so a mip chain would only cost
       // space.
-      save_image_as_ui_dds(
+      ImageFileWriter::write_dds(
         &destination.prepare_file(&relative_path)?,
         &options.source.view(x, y, w, h).to_image(),
         options.dds_compression_format,

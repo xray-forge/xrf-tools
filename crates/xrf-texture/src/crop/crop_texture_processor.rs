@@ -5,7 +5,7 @@ use xrf_extension::XrayExtension;
 use xrf_utils::format_path;
 
 use crate::crop::{CropTextureOptions, CropTextureResult};
-use crate::image_file::{fit_image_into_bounds, save_image_as_ui_dds, save_image_as_ui_png};
+use crate::image_file::{ImageFileWriter, ImageFit};
 
 pub struct CropTextureProcessor {}
 
@@ -43,15 +43,15 @@ impl CropTextureProcessor {
           fit_height
         );
 
-        fit_image_into_bounds(DynamicImage::from(cropped), fit_width, fit_height, &options.source)?.into()
+        ImageFit::into_bounds(DynamicImage::from(cropped), fit_width, fit_height, &options.source)?.into()
       }
       _ => cropped,
     };
 
     if XrayExtension::Png.matches_path(&options.output_path) {
-      save_image_as_ui_png(&options.output_path, &result)?;
+      ImageFileWriter::write_png(&options.output_path, &result)?;
     } else {
-      save_image_as_ui_dds(
+      ImageFileWriter::write_dds(
         &options.output_path,
         &result,
         options.dds_compression_format,

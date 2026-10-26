@@ -6,8 +6,8 @@ below the CLI's `dds` and `sprite` commands and the desktop app's texture and sp
 
 ## Choose an operation
 
-- `BuildTextureProcessor::build` rebuilds a texture from a source image the way its `.thm` descriptor says;
-  `BuildTextureRecipe::of` reads that descriptor as a recipe.
+- `BuildTextureProcessor::build` rebuilds a texture from a source image the way its `.thm` descriptor says, as the
+  SDK's `DXTCompress` does; `BuildTextureRecipe::of` reads that descriptor as a recipe.
 - `GenerateBumpProcessor::generate` produces a bump pair from a height map and gloss.
 - `CropTextureProcessor::crop` extracts a DDS region, optionally fits it, and writes PNG or DDS output.
 - `DescriptionSpritePacker::pack_xml_descriptions` and `DescriptionSpriteUnpacker::unpack_xml_descriptions` handle
@@ -20,9 +20,9 @@ offered to be written in, as the desktop app's editors ask; `to_candidate` and `
 [xrf-dds](../xrf-dds/README.md)'s encoder inputs.
 
 Each operation takes an options value carrying its inputs, output paths, and policy. Resolve game configs with the
-intended LTX dialect before passing them to equipment operations. `read_image_as_rgba` reads authoring input such as a
-height map or gloss mask as BMP, DDS, JPEG, PNG or TGA, chosen by its extension; the crate builds no other `image`
-codec.
+intended LTX dialect before passing them to equipment operations. `ImageFileReader::read_rgba` reads authoring input
+such as a height map or gloss mask as BMP, DDS, JPEG, PNG or TGA, chosen by its extension; the crate builds no other
+`image` codec.
 
 ## Build from a THM recipe
 
@@ -41,7 +41,7 @@ fn main() -> xrf_error::XrfResult {
 
   let recipe = BuildTextureRecipe::of(&descriptor)?;
 
-  println!("{:?}, {:?}, omitting {:?}", recipe.format, recipe.mipmaps, recipe.omissions);
+  println!("{:?} {:?}, {:?}, omitting {:?}", recipe.layout, recipe.format, recipe.mipmaps, recipe.omissions);
 
   let built = BuildTextureProcessor::build(&BuildTextureOptions {
     destination: "output/example.dds".into(),
@@ -56,14 +56,28 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-The descriptor decides everything: the layout, whether there is a mip chain and which kernel reduces it, and whether
-the source's alpha means anything; nothing is taken from the file being replaced. DXT1, DXT3, DXT5 and RGBA map to BC1,
+The descriptor decides everything: the layout, whether there is a mip chain and who reduces it, and whether the
+source's alpha means anything; nothing is taken from the file being replaced. DXT1, DXT3, DXT5 and RGBA map to BC1,
 BC2, BC3 and uncompressed RGBA. Other formats are refused rather than substituted, DXT1 Alpha included because the
-available BC1 encoder does not preserve its one-bit cutout, and so is a descriptor without texture parameters. The
-`Advanced` mip filter is reduced with a box kernel. `omissions` names each authored setting the builder does not apply
-(the `Advanced` fade, fades, borders, dithering, binary alpha); most shipped descriptors ask for colour dithering, so an
-empty list is the exception. Omissions are information about a successful but partial build, not failures. The
-destination's directory must already exist.
+available BC1 encoder does not preserve its one-bit cutout, and so is a descriptor without texture parameters.
+
+| Descriptor                    | Built as                                                                     |
+| ----------------------------- | ---------------------------------------------------------------------------- |
+| Image, normal map, terrain    | One texture (`BuildTextureLayout::Planar`)                                   |
+| Cube map                      | A cube from six square faces side by side, `+x -x +y -y +z -z` (`CubeStrip`) |
+| Bump map                      | Refused: it is a pair, which `GenerateBumpProcessor` writes                  |
+| `Advanced` mip filter         | The SDK's own chain (`BuildTextureAdvancedChain`), fade included             |
+| Any other filter, mip maps on | A chain the filter reduces from the base (`BuildTextureMipmaps::Filtered`)   |
+
+The `Advanced` chain is `Build32MipLevel` ported: each level the 2x2 average of the one above, faded towards
+`fade_color` by `fade_amount` percent from level `fade_delay` on, alpha raised by an eighth, and stopping when the
+shorter side reaches one texel. Like the SDK it pulls the blue channel towards the fade colour's red and the red channel
+towards its blue, and it refuses a level with an odd side, which the SDK asserts against.
+
+`omissions` names each authored setting the builder does not apply, all of them ones the SDK hands to the closed nvDXT
+library: borders, binary alpha, and a fade over a chain nvDXT reduces. The dithering flags are not omissions: nvDXT
+dithers only a conversion to 16 bits, none of the formats written here, and documents even that as disabled. Omissions
+are information about a successful but partial build, not failures. The destination's directory must already exist.
 
 ## Bump pairs
 
@@ -73,6 +87,11 @@ the first lost to DXT5 compression, so both are encoded before either is written
 `GenerateBumpOptions` takes the height map, a constant or masked gloss, an optional external normal map, which must
 match the height in size, the virtual height, the mip filter and the quality. A bump pair is distinct from a standalone
 normal-map image. `GenerateBumpResult::is_gloss_too_dark` reports a mean gloss below 0.1; the pair is written anyway.
+
+As in the SDK, the normals read the colour average truncated to a byte, and the height the second half stores reads
+the red channel, rescaled and floored with `EPS_S`. The SDK reads gloss from its one source's alpha and always reduces
+both halves with a box; here gloss is a plane of its own and the filter an option, box by default in the CLI and the
+app. Where a rescaled height or an error passes 255 the SDK keeps its low eight bits; these are clamped.
 
 ## Cropping
 

@@ -11,7 +11,8 @@ mod image_file;
 pub mod job_phases;
 
 pub use crate::build::{
-  BuildTextureOmission, BuildTextureOptions, BuildTextureProcessor, BuildTextureRecipe, BuildTextureResult,
+  BuildTextureAdvancedChain, BuildTextureLayout, BuildTextureMipmaps, BuildTextureOmission, BuildTextureOptions,
+  BuildTextureProcessor, BuildTextureRecipe, BuildTextureResult,
 };
 pub use crate::bump::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
 pub use crate::crop::{CropTextureOptions, CropTextureProcessor, CropTextureResult};
@@ -25,4 +26,4 @@ pub use crate::equipment::{
   EquipmentSpritePackResult, EquipmentSpritePacker, EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker,
   InventorySpriteDescriptor,
 };
-pub use crate::image_file::{ImageShape, read_image_as_rgba};
+pub use crate::image_file::{ImageFileReader, ImageShape};
