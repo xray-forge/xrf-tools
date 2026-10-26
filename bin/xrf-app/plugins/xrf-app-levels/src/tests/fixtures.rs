@@ -91,6 +91,5 @@ pub fn new_object(name: &str, section: &str, clsid: ClsId, inherited: AlifeObjec
     client_data: Vec::new(),
     spawn_id: 0,
     inherited,
-    update_data: Vec::new(),
   }
 }

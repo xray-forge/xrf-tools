@@ -38,8 +38,7 @@ and so which server-class reader (`AlifeObjectInherited`) parses its payload; sc
 the object's remaining byte budget. An object at spawn version 120 or below is refused (Call of Pripyat and Anomaly
 write 128), and so is a section with no known class. Stored values are kept as written rather than normalized the way
 the engine's `STATE_Read` would, and `LastSpawnTime` keeps its three states (`Absent`, `Unset`, `Set`) apart. An
-object's client data and an item's upgrade sections are read as the engine reads them; its update packet is carried
-verbatim, though the engine applies it over the spawn packet when it creates the object.
+object's client data and an item's upgrade sections are read as the engine reads them.
 
 A script class closes its own fields with a save marker counting their bytes, which both vanilla and xrf-engine
 scripts assert on load. The marker is not a field here: reading checks it against what was read, and writing derives
@@ -51,7 +50,38 @@ again is meant to reproduce the original bytes.
 
 Writing refuses what the engine would misread rather than writing it: header counts that differ from the objects and
 levels the set holds, graph counts that differ from its tables, an object whose payload class is not its section's, a
-patrol link to a point the patrol lacks, and a smart terrain or skeleton declaring state this crate cannot carry.
+patrol link to a point the patrol lacks, a smart terrain or skeleton declaring state this crate cannot carry, a
+physics state whose opening byte would not hold it, and a shotgun loading more shells than a byte counts. Reading
+refuses update bytes past what the object's class reads, which a rewrite would drop.
+
+## The update packet
+
+Each object's chunk carries a second packet, which the engine applies over the spawn packet when it creates the object
+(`CALifeSimulatorBase::create`), so where both store a field the update packet's is what the game uses. A payload owns
+its update fields beside its spawn fields, named `update_*`, up the same inheritance chain its `UPDATE_Read` follows; a
+class whose update packet is empty owns none, and its reader refuses bytes there. A payload with update fields reads
+and writes both packets together (`AlifePacketsReadWrite`).
+
+| Class                     | Update fields                                                                       |
+| ------------------------- | ----------------------------------------------------------------------------------- |
+| Every item                | `update_state`: the physics state, `None` for the zero byte standing in for none    |
+| Physic object             | `update_state`, as an item's, which a single player game never applies             |
+| Outfit, helmet            | `update_condition` after the item's                                                 |
+| Ammo                      | `update_ammo_left` after the item's                                                 |
+| Weapon                    | condition, weapon flags, rounds loaded, addons, ammo type, state and zoom           |
+| Magazined weapon          | `update_fire_mode` after the weapon's                                               |
+| With a grenade launcher   | `update_grenade_mode`, which opens the packet ahead of every inherited field        |
+| Shotgun (magazined)       | `update_ammo_ids`, a byte counting the shells loaded, after the magazined weapon's  |
+| Actor                     | its update packet, still carried as bytes                                           |
+
+`PhysicsNetState` models the state's mask: its opening byte packs the item count beside whether the body is enabled
+and whether each velocity is left out, so a velocity left out is `None`. The engine reads a physic object's empty
+packet as no state and a state ending before its closing byte as awake, and writes the zero byte and the closing byte;
+those two shapes, which no shipped spawn holds, are read as the engine reads them and written as it writes them. A
+quantised field keeps the byte it is stored in, and the float the engine reads is a derived reader
+(`get_update_condition`). The SDK writes some states without initialising them, so their floats are `RawFloat`s that
+keep their bits: vanilla's spawn holds 5,286 floats of `0xffffffff` and NaNs with payloads, which LTX and JSON carry as
+hex (`0xffffffff`) and every finite value as its number.
 
 ## Read a level spawn list
 

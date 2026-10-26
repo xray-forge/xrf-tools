@@ -285,7 +285,6 @@ mod tests {
         shape: vec![],
         restrictor_type: 0,
       })),
-      update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8],
     }
   }
 
@@ -434,9 +433,10 @@ mod tests {
               },
               condition: 1.0,
               upgrades: Vec::new(),
+              update_state: None,
             },
+            update_condition: 255,
           })),
-          update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
         },
         AlifeObject {
           id: 2335,
@@ -471,7 +471,6 @@ mod tests {
             shape: vec![],
             restrictor_type: 0,
           })),
-          update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8],
         },
       ],
     };
@@ -480,16 +479,16 @@ mod tests {
 
     original.write::<XRayByteOrder>(&mut writer)?;
 
-    assert_eq!(writer.bytes_written(), 419);
+    assert_eq!(writer.bytes_written(), 395);
 
     let bytes_written: usize =
       writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
-    assert_eq!(bytes_written, 419);
+    assert_eq!(bytes_written, 395);
 
     let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
-    assert_eq!(file.bytes_remaining(), 419 + 8);
+    assert_eq!(file.bytes_remaining(), 395 + 8);
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?
       .read_child_by_index(0)

@@ -4,3 +4,4 @@ pub(crate) mod generic;
 pub(crate) mod graph;
 pub(crate) mod meta;
 pub(crate) mod patrols;
+pub(crate) mod physics;
