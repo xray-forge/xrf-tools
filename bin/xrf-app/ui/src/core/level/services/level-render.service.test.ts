@@ -36,6 +36,13 @@ import {
 } from "@xrf/ipc/types/xrf-world";
 
 import { createRoots } from "@/core/assets/lib";
+import {
+  emitViewportEvent,
+  LEVEL_SCENE,
+  LEVEL_VIEWPORT,
+  mockAttachedLevelRender,
+} from "@/core/level/fixtures/level-render";
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level-sun-shafts-options";
 import { DEFAULT_LEVEL_WEATHER_CONTROL } from "@/core/level/lib/weather/level-weather-control";
@@ -43,13 +50,11 @@ import { toLevelWeatherMemoryKey, writeLevelWeatherMemory } from "@/core/level/l
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
 import { EMPTY_RENDER_FRAME_PHASES } from "@/core/render/lib/native/native-frame-report";
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
 import { clearLocalStorage } from "@/core/storage";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
-import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { emitViewportEvent, LEVEL_SCENE, LEVEL_VIEWPORT, mockAttachedLevelRender } from "@/fixtures/utils/level-render";
 
 const SPAN: WorldSurfaceSpan = { uMax: 2, uMin: 0, vMax: 1, vMin: -1 };
 

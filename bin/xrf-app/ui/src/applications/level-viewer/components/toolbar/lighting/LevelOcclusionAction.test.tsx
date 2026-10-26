@@ -4,17 +4,17 @@ import { ERenderAmbientOcclusionMethod, ERenderIndirectLightMode } from "@xrf/ip
 
 import { LevelOcclusionAction } from "@/applications/level-viewer/components/toolbar/lighting/LevelOcclusionAction";
 import {
-  DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
-  DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
-} from "@/core/render/lib/settings/render-feature-defaults";
-import { clearLocalStorage } from "@/core/storage";
-import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   noteLevelFrame,
   renderLevelView,
   TLevelViewRenderResult,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import {
+  DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
+  DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
+} from "@/core/render/lib/settings/render-feature-defaults";
+import { clearLocalStorage } from "@/core/storage";
 
 /**
  * @param setup - What the case sets on the services before it draws.

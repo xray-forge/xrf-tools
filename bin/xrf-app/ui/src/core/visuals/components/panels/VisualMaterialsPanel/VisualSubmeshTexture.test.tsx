@@ -3,8 +3,8 @@ import { RenderResult } from "@testing-library/react";
 import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
 
+import { mockTextureDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
-import { mockTextureDescriptor } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { VisualSubmeshTexture } from "./VisualSubmeshTexture";

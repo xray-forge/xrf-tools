@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { ERenderSelectionTarget } from "@xrf/ipc/types/xrf-renderer";
 
+import { mockLevelSpawnObject } from "@/core/level/fixtures/level.mocks";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection";
-import { mockLevelSpawnObject } from "@/fixtures/mocks/level.mocks";
 
 const POINT = { x: 0, y: 0, z: 0 };
 

@@ -2,13 +2,6 @@ import { describe, expect, it } from "@jest/globals";
 import { TextureEntry, TextureMaterialSummary } from "@xrf/ipc/types/xrf-app-textures";
 
 import {
-  buildTextureNodes,
-  countTextureBadges,
-  ETextureBadge,
-  filterTextureNodes,
-  ITextureNode,
-} from "@/core/textures/lib/texture-catalog";
-import {
   MOCK_BUMP,
   MOCK_COMPANION,
   MOCK_TEXTURE,
@@ -17,7 +10,14 @@ import {
   mockTextureBadges,
   mockTextureEntry,
   mockTextureSummary,
-} from "@/fixtures/mocks/texture.mocks";
+} from "@/core/textures/fixtures/texture.mocks";
+import {
+  buildTextureNodes,
+  countTextureBadges,
+  ETextureBadge,
+  filterTextureNodes,
+  ITextureNode,
+} from "@/core/textures/lib/texture-catalog";
 
 /** The listing a declared pair produces: the texture and both of its halves. */
 function mockPairEntries(): Array<TextureEntry> {

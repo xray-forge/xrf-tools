@@ -9,6 +9,12 @@ import { EEnvironmentRule, WeatherCycleId } from "@xrf/ipc/types/xrf-environment
 import { EWorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
+import {
+  mockLevelWeatherCycle,
+  mockLevelWeatherDescription,
+  mockWorldWeatherReport,
+} from "@/core/level/fixtures/weather.mocks";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
@@ -17,13 +23,7 @@ import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { clearLocalStorage } from "@/core/storage";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import {
-  mockLevelWeatherCycle,
-  mockLevelWeatherDescription,
-  mockWorldWeatherReport,
-} from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

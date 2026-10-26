@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelOverlaysAction } from "@/core/level/components/preview/toolbar/view/LevelOverlaysAction";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   renderLevelView,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { clearLocalStorage } from "@/core/storage";
 
 beforeEach(() => {
   clearLocalStorage();

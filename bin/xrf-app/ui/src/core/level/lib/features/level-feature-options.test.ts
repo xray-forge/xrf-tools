@@ -16,6 +16,7 @@ import {
   ERenderWaterMode,
 } from "@xrf/ipc/types/xrf-renderer";
 
+import { mockLevelFeatureOptions } from "@/core/level/fixtures/level.mocks";
 import {
   describeLevelFeatureToggle,
   ILevelFeatureOptions,
@@ -32,7 +33,6 @@ import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-opt
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
-import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 
 const SETTINGS: IRenderFeatureSettings = RENDER_PRESETS[ERenderPreset.BASE];
 

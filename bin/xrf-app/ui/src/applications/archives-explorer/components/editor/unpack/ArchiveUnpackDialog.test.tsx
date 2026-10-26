@@ -10,7 +10,7 @@ import {
   mockArchiveExtractDirectoryResult,
   mockArchiveFileDescriptor,
   mockArchivesVolumes,
-} from "@/fixtures/mocks/archive.mocks";
+} from "@/core/archive/fixtures/archive.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

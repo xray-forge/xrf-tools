@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { mockIpcCommands, resetMockChannels, resetMockInvoke } from "@xrf/ipc/testing";
 
-import { mockJobDescription } from "@/fixtures/mocks/job.mocks";
+import { mockJobDescription } from "@/core/jobs/fixtures/job.mocks";
 import {
   JOBS_ATTACH_COMMAND,
   JOBS_LIST_COMMAND,
   JOBS_POLL_INTERVAL,
   mockWatchedJobsService,
-} from "@/fixtures/utils/jobs-service";
+} from "@/core/jobs/fixtures/jobs-service";
 
 describe("JobsService adoption ending", () => {
   beforeEach(() => {

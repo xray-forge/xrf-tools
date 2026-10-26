@@ -2,8 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelParticlesAction } from "@/core/level/components/preview/toolbar/contents/LevelParticlesAction";
+import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
-import { mockLevelViewContainer } from "@/fixtures/utils/level-container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 describe("LevelParticlesAction", () => {

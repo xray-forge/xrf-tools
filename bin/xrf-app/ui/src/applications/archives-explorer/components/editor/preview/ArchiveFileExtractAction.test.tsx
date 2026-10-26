@@ -8,7 +8,7 @@ import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

@@ -10,6 +10,17 @@ import { EXrayEngine, EXrayEngineEvidence, XrayEngine } from "@xrf/ipc/types/xrf
 import { EWeatherCycleKind, WeatherCycleId } from "@xrf/ipc/types/xrf-environment";
 import { EWorldWeatherPlay, EWorldWeatherTransition } from "@xrf/ipc/types/xrf-world";
 
+import {
+  createLevelWeatherService,
+  LEVEL_WEATHER_SELECTED,
+  toWeatherKeyframe,
+} from "@/core/level/fixtures/level-weather";
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
+import {
+  mockLevelWeatherCycle,
+  mockLevelWeatherDescription,
+  mockWorldWeatherReport,
+} from "@/core/level/fixtures/weather.mocks";
 import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
 import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level-sun-shafts-options";
 import { ILevelWeatherHold } from "@/core/level/lib/weather/level-weather-hold";
@@ -22,15 +33,8 @@ import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-sour
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { clearLocalStorage } from "@/core/storage";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import {
-  mockLevelWeatherCycle,
-  mockLevelWeatherDescription,
-  mockWorldWeatherReport,
-} from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
-import { createLevelWeatherService, LEVEL_WEATHER_SELECTED, toWeatherKeyframe } from "@/fixtures/utils/level-weather";
 afterEach(() => {
   resetMockInvoke();
   clearLocalStorage();

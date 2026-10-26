@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { ERenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 
+import { mockLevelFeatureOptions } from "@/core/level/fixtures/level.mocks";
 import { DEFAULT_LEVEL_CAMERA_OPTIONS, ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import {
   DEFAULT_LEVEL_HEMI_STRENGTH,
@@ -9,7 +10,6 @@ import {
 } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
-import { mockLevelFeatureOptions } from "@/fixtures/mocks/level.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 describe("LevelViewService", () => {

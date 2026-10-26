@@ -5,9 +5,6 @@ import { resetMockInvoke } from "@xrf/ipc/testing";
 import { ERenderRainDropsMode, ERenderRainMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelRainAction } from "@/applications/level-viewer/components/toolbar/environment/LevelRainAction";
-import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
-import { DEFAULT_RENDER_RAIN_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   ILevelViewOpening,
@@ -15,7 +12,10 @@ import {
   renderLevelView,
   renderOpenLevelView,
   TLevelViewRenderResult,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
+import { DEFAULT_RENDER_RAIN_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { clearLocalStorage } from "@/core/storage";
 
 /**
  * @param opening - The level and weather to open; none unless given.

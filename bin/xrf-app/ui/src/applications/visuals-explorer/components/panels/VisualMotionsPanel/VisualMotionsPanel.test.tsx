@@ -7,16 +7,16 @@ import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 import { VisualMotionBake, VisualMotionDependency } from "@xrf/ipc/types/xrf-visual";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { mockSessionRead, mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import {
   mockPackedSubmesh,
   mockSelectedVisual,
   MockVisualBuffer,
   mockVisualDescription,
   mockVisualMotionBake,
-} from "@/fixtures/mocks/visual.mocks";
+} from "@/core/visuals/fixtures/visual.mocks";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { mockSessionRead, mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

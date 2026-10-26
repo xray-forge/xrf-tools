@@ -5,9 +5,6 @@ import { resetMockInvoke } from "@xrf/ipc/testing";
 import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting/LevelSunAction";
-import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
-import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   ILevelViewOpening,
@@ -16,7 +13,10 @@ import {
   renderLevelView,
   renderOpenLevelView,
   TLevelViewRenderResult,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
+import { DEFAULT_LEVEL_MANUAL_WEATHER } from "@/core/level/lib/weather/level-manual-weather";
+import { clearLocalStorage } from "@/core/storage";
 
 /** What the sun popover says under the steps while the enhanced volumetrics draw the shafts. */
 const STEPS_UNMARCHED: string = "The enhanced volumetrics draw the shafts; their steps apply with Engine volumetrics.";

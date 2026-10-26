@@ -4,7 +4,7 @@ import { EExportsCommand } from "@xrf/ipc/commands/exports";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ExportSourceContent } from "@xrf/ipc/types/xrf-export";
 
-import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
+import { mockExportsProject } from "@/core/exports/fixtures/project.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

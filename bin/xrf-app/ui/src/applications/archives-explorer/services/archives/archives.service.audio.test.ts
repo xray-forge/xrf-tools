@@ -6,7 +6,11 @@ import { listMockBulkCalls, mockInvoke, mockIpcBulkRoutes, mockIpcCommands } fro
 import { AudioDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
-import { mockArchiveFileDescriptor, mockArchiveReadPolicy, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
+import {
+  mockArchiveFileDescriptor,
+  mockArchiveReadPolicy,
+  mockArchivesVolumes,
+} from "@/core/archive/fixtures/archive.mocks";
 import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

@@ -5,8 +5,8 @@ import {
   toLevelSpawnPosition,
   toLevelSpawnSphere,
 } from "@/applications/level-viewer/lib/spawn/level-spawn-sphere";
-import { mockLevelSpawnObject } from "@/fixtures/mocks/level.mocks";
-import { mockVisualTransform } from "@/fixtures/mocks/visual.mocks";
+import { mockLevelSpawnObject } from "@/core/level/fixtures/level.mocks";
+import { mockVisualTransform } from "@/core/visuals/fixtures/visual.mocks";
 
 describe("toLevelSpawnSphere", () => {
   it("takes the sphere the renderer holds for its model", () => {

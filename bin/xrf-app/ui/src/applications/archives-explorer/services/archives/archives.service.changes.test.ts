@@ -7,8 +7,12 @@ import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionChange, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 
+import {
+  mockArchiveStatistics,
+  mockArchivesWorldSubject,
+  mockArchiveWorldEntry,
+} from "@/core/archive/fixtures/archive.mocks";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
-import { mockArchiveStatistics, mockArchivesWorldSubject, mockArchiveWorldEntry } from "@/fixtures/mocks/archive.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";

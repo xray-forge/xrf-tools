@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { ERenderLevelHit, RenderLevelHit } from "@xrf/ipc/types/xrf-renderer";
 
+import { mockLevelSpawnObject } from "@/core/level/fixtures/level.mocks";
 import { ELevelPick, toLevelPick } from "@/core/level/lib/pick/level-pick";
-import { mockLevelSpawnObject } from "@/fixtures/mocks/level.mocks";
 
 describe("toLevelPick", () => {
   it("names a picked spawned object as the held spawn has it, and nothing for one not held", () => {

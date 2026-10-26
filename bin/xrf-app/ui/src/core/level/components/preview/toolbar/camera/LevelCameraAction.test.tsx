@@ -3,14 +3,14 @@ import { fireEvent } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelCameraAction } from "@/core/level/components/preview/toolbar/camera/LevelCameraAction";
-import { DEFAULT_LEVEL_CAMERA_OPTIONS } from "@/core/level/lib/camera/level-camera-options";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   renderLevelView,
   TLevelViewRenderResult,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { DEFAULT_LEVEL_CAMERA_OPTIONS } from "@/core/level/lib/camera/level-camera-options";
+import { clearLocalStorage } from "@/core/storage";
 
 /**
  * @param setup - What the case sets on the services before it draws.

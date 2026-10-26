@@ -7,10 +7,10 @@ import { listMockInvokeCalls, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/
 import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 
+import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { mockSessionRead, mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 const BAKE: VisualMotionBake = mockVisualMotionBake();

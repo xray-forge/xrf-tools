@@ -12,7 +12,7 @@ const ROOT_DIR = path.resolve(__dirname, "../../");
  */
 module.exports = createJestConfig({
   rootDir: ROOT_DIR,
-  coveragePathIgnorePatterns: ["/node_modules/", "<rootDir>/src/fixtures/"],
+  coveragePathIgnorePatterns: ["/node_modules/", "/fixtures/"],
   globals: {
     __REPOSITORY_URL__: require(path.join(ROOT_DIR, "package.json")).repository.url,
   },

@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 import { ArchiveLevelSpawnDescription } from "@xrf/ipc/types/xrf-app-archives";
 
-import { mockArchiveLevelSpawnDescription } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveLevelSpawnDescription } from "@/core/archive/fixtures/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveLevelSpawnView } from "./ArchiveLevelSpawnView";

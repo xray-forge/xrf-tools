@@ -5,12 +5,12 @@ import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
-import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import {
   mockArchiveExtractDirectoryResult,
   mockArchiveFileDescriptor,
   mockArchivesVolumes,
-} from "@/fixtures/mocks/archive.mocks";
+} from "@/core/archive/fixtures/archive.mocks";
+import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
 

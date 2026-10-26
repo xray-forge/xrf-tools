@@ -7,16 +7,16 @@ import { mockIpcCommands } from "@xrf/ipc/testing";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 import { ERenderTextureGroup, RenderLoadFailure } from "@xrf/ipc/types/xrf-renderer";
 
-import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/texture/level-texture-report";
-import { LevelLoadService } from "@/core/level/services/level-load.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import {
   mockLevelPartResponses,
   mockLevelSpawnObject,
   mockLevelTextureReference,
   mockSectorOutline,
   mockSelectedLevelDescription,
-} from "@/fixtures/mocks/level.mocks";
+} from "@/core/level/fixtures/level.mocks";
+import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/texture/level-texture-report";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

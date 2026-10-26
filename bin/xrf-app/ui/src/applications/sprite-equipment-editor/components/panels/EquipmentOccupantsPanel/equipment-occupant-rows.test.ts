@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { mockEquipmentOccupant } from "@/core/sprite-equipment/fixtures/sprite.mocks";
 import { toEquipmentLayout } from "@/core/sprite-equipment/lib";
-import { mockEquipmentOccupant } from "@/fixtures/mocks/sprite.mocks";
 
 import { IEquipmentOccupantRow, toEquipmentOccupantRows } from "./equipment-occupant-rows";
 

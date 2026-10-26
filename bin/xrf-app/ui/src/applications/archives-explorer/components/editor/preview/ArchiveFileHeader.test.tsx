@@ -4,8 +4,8 @@ import { userEvent } from "@testing-library/user-event";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { mockArchiveFileDescriptor } from "@/core/archive/fixtures/archive.mocks";
 import { EPathEntryKind } from "@/core/path/entry-kind";
-import { mockArchiveFileDescriptor } from "@/fixtures/mocks/archive.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

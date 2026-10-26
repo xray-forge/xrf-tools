@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { mockTextureDependency } from "@/core/visuals/fixtures/visual.mocks";
 import { EVisualTextureState, toInitialTextureState } from "@/core/visuals/lib/visual-texture";
-import { mockTextureDependency } from "@/fixtures/mocks/visual.mocks";
 
 describe("toInitialTextureState", () => {
   it("separates a texture that was not found from a reference that was never usable", () => {

@@ -8,9 +8,6 @@ import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
-import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import {
   mockMaterialDescriptor,
   mockPackedSubmesh,
@@ -18,7 +15,10 @@ import {
   mockTextureDependency,
   MockVisualBuffer,
   mockVisualDescription,
-} from "@/fixtures/mocks/visual.mocks";
+} from "@/core/visuals/fixtures/visual.mocks";
+import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 const ROOTS: XrayRoots = createRoots(["C:\\game\\db"]);

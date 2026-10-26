@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { mockTextureDescriptorForm as form, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
+import { mockTextureDescriptorForm as form, mockTextureDescription } from "@/core/textures/fixtures/texture.mocks";
 
 import { isSameDescriptorForm, toEditableForm } from "./texture-descriptor-form";
 

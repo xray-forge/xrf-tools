@@ -5,10 +5,10 @@ import { ETexturesBulkRoute } from "@xrf/ipc/commands/textures-bulk";
 import { listMockBulkCalls, mockIpcBulkRoutes, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 
+import { MOCK_TEXTURE, mockTextureDescription } from "@/core/textures/fixtures/texture.mocks";
 import { EMPTY_TEXTURE_SURFACE } from "@/core/textures/lib/texture-surface";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
-import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
-import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
+import { mockMaterialDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 import { muteConsole } from "@/fixtures/utils/console";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

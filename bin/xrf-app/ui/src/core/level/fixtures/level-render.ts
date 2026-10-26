@@ -6,15 +6,15 @@ import { ERenderCommand } from "@xrf/ipc/commands/render";
 import { getMockChannels, listMockInvokeCalls, MockChannel, mockIpcCommands } from "@xrf/ipc/testing";
 import { ViewportEvent } from "@xrf/ipc/types/xrf-app-render";
 
+import { mockLevelPartResponses, mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
+import { mockLevelWeatherDescription } from "@/core/level/fixtures/weather.mocks";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { mockLevelPartResponses, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 /** The viewport and the scene the mocked renderer answers with. */

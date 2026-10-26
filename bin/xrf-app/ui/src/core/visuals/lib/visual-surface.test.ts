@@ -4,13 +4,13 @@ import { VisualSubmesh } from "@xrf/ipc/types/xrf-visual";
 
 import { ERenderDraw } from "@/core/render/lib/surface/render-draw";
 import { IRenderSurfaceDraw, OPAQUE_RENDER_SURFACE_DRAW } from "@/core/render/lib/surface/render-surface-draw";
-import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
 import {
   mockAlphaSurfaceDescriptor,
   mockPackedSubmesh,
   mockSurfaceDescriptor,
   MockVisualBuffer,
-} from "@/fixtures/mocks/visual.mocks";
+} from "@/core/visuals/fixtures/visual.mocks";
+import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
 
 describe("createVisualSurfaces", () => {
   it("joins each submesh on its own position, which is what the backend answered in", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { mockEquipmentOccupant } from "@/core/sprite-equipment/fixtures/sprite.mocks";
 import {
   IEquipmentGrid,
   isOccupantOutsideSheet,
@@ -10,7 +11,6 @@ import {
   toOccupantRect,
   toOutsideSheetRects,
 } from "@/core/sprite-equipment/lib";
-import { mockEquipmentOccupant } from "@/fixtures/mocks/sprite.mocks";
 
 describe("toEquipmentGrid", () => {
   it("spans the sheet when nothing is claimed beyond it", () => {

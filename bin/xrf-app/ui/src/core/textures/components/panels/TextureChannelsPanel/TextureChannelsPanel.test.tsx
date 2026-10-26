@@ -4,13 +4,13 @@ import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 
+import { mockTextureDescription } from "@/core/textures/fixtures/texture.mocks";
 import { ETextureBumpPlane } from "@/core/textures/lib/texture-bump-plane";
 import { ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { TextureViewService } from "@/core/textures/services/view";
-import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
-import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
+import { mockMaterialDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

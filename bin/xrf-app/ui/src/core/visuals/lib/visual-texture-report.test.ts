@@ -2,9 +2,13 @@ import { describe, expect, it } from "@jest/globals";
 import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 import { ERenderTextureGroup, ERenderTextureState, RenderTextureReport } from "@xrf/ipc/types/xrf-renderer";
 
+import {
+  mockMaterialDescriptor,
+  mockSelectedVisual,
+  mockTextureDependency,
+} from "@/core/visuals/fixtures/visual.mocks";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { toVisualBumpStatuses, toVisualTextureStatuses } from "@/core/visuals/lib/visual-texture-report";
-import { mockMaterialDescriptor, mockSelectedVisual, mockTextureDependency } from "@/fixtures/mocks/visual.mocks";
 
 function mockLoaded(reference: string, isExpanded: boolean = false): RenderTextureReport {
   return {

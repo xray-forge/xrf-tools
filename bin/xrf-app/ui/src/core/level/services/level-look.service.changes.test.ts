@@ -7,10 +7,10 @@ import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
 import { LEVEL_CONSOLE_PART, LEVEL_SPAWN_PART, LevelConsoleDefaults } from "@xrf/ipc/types/xrf-app-levels";
 
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { clearLocalStorage } from "@/core/storage";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

@@ -6,9 +6,12 @@ import { SPRITE_EQUIPMENT_JOB_PACK } from "@xrf/ipc/types/xrf-app-sprite-equipme
 
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
+import {
+  mockEquipmentSpriteMetadata,
+  mockEquipmentSpritePackResult,
+} from "@/core/sprite-equipment/fixtures/sprite.mocks";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockEquipmentSpriteMetadata, mockEquipmentSpritePackResult } from "@/fixtures/mocks/sprite.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { SpriteEquipmentEditorService } from "./editor.service";

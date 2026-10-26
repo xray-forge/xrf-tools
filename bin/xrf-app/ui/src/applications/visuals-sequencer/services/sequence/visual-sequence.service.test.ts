@@ -8,9 +8,9 @@ import { Nullable } from "@xrf/types";
 
 import { ESequenceMotionState } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
+import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 /** Frames each mocked motion holds, keyed by name, so a boundary is reached at a known tick. */

@@ -4,17 +4,17 @@ import { userEvent } from "@testing-library/user-event";
 import { ERenderAntialiasing, ERenderDlssAvailability, RenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelShadingAction } from "@/core/level/components/preview/toolbar/view/LevelShadingAction";
-import { ELevelShading } from "@/core/level/lib/view/level-shading";
-import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
-import { DEFAULT_RENDER_PARALLAX_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   noteLevelFrame,
   renderLevelView,
   TLevelViewRenderResult,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { ELevelShading } from "@/core/level/lib/view/level-shading";
+import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
+import { DEFAULT_RENDER_PARALLAX_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { clearLocalStorage } from "@/core/storage";
 
 /**
  * @param setup - What the case sets on the services before it draws.

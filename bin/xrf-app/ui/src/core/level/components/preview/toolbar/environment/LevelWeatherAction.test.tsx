@@ -5,6 +5,8 @@ import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 
 import { LevelWeatherAction } from "@/core/level/components/preview/toolbar/environment/LevelWeatherAction";
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
+import { mockLevelWeatherDescription } from "@/core/level/fixtures/weather.mocks";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
@@ -13,9 +15,7 @@ import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { clearLocalStorage } from "@/core/storage";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

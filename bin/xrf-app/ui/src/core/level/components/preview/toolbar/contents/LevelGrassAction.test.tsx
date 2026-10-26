@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelGrassAction } from "@/core/level/components/preview/toolbar/contents/LevelGrassAction";
-import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   renderLevelView,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { clearLocalStorage } from "@/core/storage";
 
 beforeEach(() => {
   clearLocalStorage();

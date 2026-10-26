@@ -8,12 +8,12 @@ import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
 import { LEVEL_ENVIRONMENT_PART, LEVEL_SPAWN_PART } from "@xrf/ipc/types/xrf-app-levels";
 import { EWorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
 
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
+import { mockLevelWeatherCycle, mockLevelWeatherDescription } from "@/core/level/fixtures/weather.mocks";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { clearLocalStorage } from "@/core/storage";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockLevelWeatherCycle, mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 const READ_WEATHER: string = ELevelsCommand.DESCRIBE_WEATHER;

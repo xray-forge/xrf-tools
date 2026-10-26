@@ -11,7 +11,7 @@ import {
   OPAQUE_RENDER_SURFACE_DRAW,
   toRenderSurfaceDraw,
 } from "@/core/render/lib/surface/render-surface-draw";
-import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
+import { mockSurfaceDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 
 function mockScripted(program: string, overrides: Partial<Record<string, boolean>> = {}): XraySurfaceDeclaration {
   return {

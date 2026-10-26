@@ -3,9 +3,9 @@ import { ESessionsCommand } from "@xrf/ipc/commands/sessions";
 import { ESpriteEquipmentCommand } from "@xrf/ipc/commands/sprite-equipment";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 
+import { mockEquipmentSpriteMetadata } from "@/core/sprite-equipment/fixtures/sprite.mocks";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockRestoredSession } from "@/fixtures/mocks/session.mocks";
-import { mockEquipmentSpriteMetadata } from "@/fixtures/mocks/sprite.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { SpriteEquipmentEditorService } from "./editor.service";

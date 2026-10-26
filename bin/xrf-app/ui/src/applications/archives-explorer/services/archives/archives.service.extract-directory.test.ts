@@ -5,12 +5,12 @@ import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 
-import { EPathEntryKind } from "@/core/path/entry-kind";
 import {
   mockArchiveExtractDirectoryResult,
   mockArchiveFileDescriptor,
   mockArchivesVolumes,
-} from "@/fixtures/mocks/archive.mocks";
+} from "@/core/archive/fixtures/archive.mocks";
+import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

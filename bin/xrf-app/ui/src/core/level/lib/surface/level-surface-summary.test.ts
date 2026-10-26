@@ -7,7 +7,7 @@ import {
   listNamedLevelSurfaces,
   UNNAMED_LEVEL_SURFACE,
 } from "@/core/level/lib/surface/level-surface-summary";
-import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
+import { mockSurfaceDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 
 describe("listLevelSurfaces", () => {
   // The position **is** the shader id: it is what every surface of the level refers to its entry by.

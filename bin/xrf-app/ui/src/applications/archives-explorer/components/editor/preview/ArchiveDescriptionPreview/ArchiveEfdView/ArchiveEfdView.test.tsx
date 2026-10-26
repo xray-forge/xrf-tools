@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { ArchiveEfdDescription } from "@xrf/ipc/types/xrf-app-archives";
 
-import { mockArchiveEfdDescription } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveEfdDescription } from "@/core/archive/fixtures/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveEfdView } from "./ArchiveEfdView";

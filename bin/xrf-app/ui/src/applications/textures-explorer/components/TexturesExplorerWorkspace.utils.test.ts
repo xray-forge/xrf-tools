@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { MOCK_TEXTURE, mockTextureCatalog, mockTextureEntry } from "@/fixtures/mocks/texture.mocks";
+import { MOCK_TEXTURE, mockTextureCatalog, mockTextureEntry } from "@/core/textures/fixtures/texture.mocks";
 
 import { describeTexturesStatus } from "./TexturesExplorerWorkspace.utils";
 

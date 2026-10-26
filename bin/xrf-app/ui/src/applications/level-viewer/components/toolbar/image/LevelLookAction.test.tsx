@@ -4,14 +4,14 @@ import { userEvent } from "@testing-library/user-event";
 import { ERenderBloomMode, ERenderDisplayTransform, ERenderLightModel } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelLookAction } from "@/applications/level-viewer/components/toolbar/image/LevelLookAction";
-import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   renderLevelView,
   TLevelViewRenderResult,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
+import { clearLocalStorage } from "@/core/storage";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 function renderAction(): TLevelViewRenderResult {

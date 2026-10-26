@@ -2,8 +2,8 @@
 //
 // These are not mocks - nothing here stands in for application behaviour. They exist because jsdom
 // omits browser and node globals that dependencies reach for at import time, which is earlier than any
-// `setupFilesAfterEnv` hook could run. Mocks live in `src/fixtures` and are registered from
-// `jest_setup.ts`.
+// `setupFilesAfterEnv` hook could run. The suite-wide mocks live in `src/fixtures/setup` and are
+// registered from `jest-setup.ts`.
 const { TextDecoder, TextEncoder } = require("node:util");
 
 if (typeof global.TextEncoder === "undefined") {

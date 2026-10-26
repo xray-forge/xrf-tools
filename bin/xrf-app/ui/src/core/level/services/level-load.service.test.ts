@@ -9,9 +9,13 @@ import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
 import { createRoots } from "@/core/assets/lib";
+import {
+  mockLevelSpawnObject,
+  mockSectorOutline,
+  mockSelectedLevelDescription,
+} from "@/core/level/fixtures/level.mocks";
 import { EMPTY_LEVEL_SPAWN_REPORT, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
-import { mockLevelSpawnObject, mockSectorOutline, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

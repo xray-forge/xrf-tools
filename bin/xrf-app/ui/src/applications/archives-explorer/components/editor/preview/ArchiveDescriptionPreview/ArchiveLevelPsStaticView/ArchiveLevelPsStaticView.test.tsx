@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { ArchiveLevelPsStaticDescription } from "@xrf/ipc/types/xrf-app-archives";
 
-import { mockArchiveLevelPsStaticDescription } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveLevelPsStaticDescription } from "@/core/archive/fixtures/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveLevelPsStaticView } from "./ArchiveLevelPsStaticView";

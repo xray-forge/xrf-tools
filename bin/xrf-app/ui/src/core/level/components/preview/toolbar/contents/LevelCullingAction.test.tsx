@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelCullingAction } from "@/core/level/components/preview/toolbar/contents/LevelCullingAction";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   renderLevelView,
   TLevelViewRenderResult,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { clearLocalStorage } from "@/core/storage";
 
 /**
  * @param setup - What the case sets on the services before it draws.

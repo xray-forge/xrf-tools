@@ -8,8 +8,12 @@ import { listMockBulkCalls, mockIpcBulkRoutes, mockIpcCommands, resetMockInvoke 
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 
 import { JobsService } from "@/core/jobs/services/jobs";
+import {
+  MOCK_TEXTURE,
+  mockTextureDescription,
+  mockTextureEncodingComparison,
+} from "@/core/textures/fixtures/texture.mocks";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { MOCK_TEXTURE, mockTextureDescription, mockTextureEncodingComparison } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 

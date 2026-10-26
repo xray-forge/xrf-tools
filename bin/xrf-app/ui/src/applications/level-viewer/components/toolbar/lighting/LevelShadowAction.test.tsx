@@ -3,15 +3,15 @@ import { userEvent } from "@testing-library/user-event";
 import { ERenderContactShadowMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelShadowAction } from "@/applications/level-viewer/components/toolbar/lighting/LevelShadowAction";
-import { DEFAULT_RENDER_SHADOW_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
-import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   renderLevelView,
   TLevelViewRenderResult,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { DEFAULT_RENDER_SHADOW_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { clearLocalStorage } from "@/core/storage";
 
 /**
  * @param shadows - The shadows the settings draw every viewport with.

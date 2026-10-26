@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { DEFAULT_LEVEL_MANUAL_WEATHER, toLevelManualDescriptor } from "@/core/level/lib/weather/level-manual-weather";
 import {
   ILevelWeatherMemory,
@@ -15,7 +16,6 @@ import {
   LEVEL_WEATHER_STORAGE_KEY,
   setLocalStorageValue,
 } from "@/core/storage";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 
 const MEMORY: ILevelWeatherMemory = {
   base: null,
