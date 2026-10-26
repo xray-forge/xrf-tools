@@ -52,9 +52,10 @@ describe("SpawnRowDetailsPanel", () => {
   it("shows the fields the table columns deliberately leave out", async () => {
     const { render }: IPanelRender = await renderPanel(mockAlifeObject());
 
-    // `inherited` and `updateData` are not columns, which is the point of the panel.
+    // `inherited`, the class payload with its update fields, and `clientData` are not columns, which is the point of
+    // the panel.
     expect(render.getByText("inherited")).toBeInTheDocument();
-    expect(render.getByText("updateData")).toBeInTheDocument();
+    expect(render.getByText("clientData")).toBeInTheDocument();
   });
 
   it("renders a vector readably rather than as JSON", async () => {
@@ -66,8 +67,8 @@ describe("SpawnRowDetailsPanel", () => {
   it("says an empty list is empty rather than printing nothing", async () => {
     const { render }: IPanelRender = await renderPanel(mockAlifeObject());
 
-    // The fixture carries no client data and no update data.
-    expect(render.getAllByText("empty")).toHaveLength(2);
+    // The fixture carries no client data.
+    expect(render.getAllByText("empty")).toHaveLength(1);
   });
 
   it("drops the selection when the file it pointed into closes", async () => {

@@ -82,6 +82,8 @@ pub use crate::data::meta::cls_id::ClsId;
 pub use crate::data::patrols::patrol::Patrol;
 pub use crate::data::patrols::patrol_link::PatrolLink;
 pub use crate::data::patrols::patrol_point::PatrolPoint;
+pub use crate::data::physics::physics_net_state::PhysicsNetState;
+pub use crate::data::physics::raw_float::RawFloat;
 pub use crate::level_spawn_file::*;
 pub use crate::level_spawn_object::*;
 pub use crate::spawn_file::*;

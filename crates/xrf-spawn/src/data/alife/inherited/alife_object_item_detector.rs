@@ -1,11 +1,13 @@
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::{Ltx, LtxImportExport};
 
+use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
 
+/// A detector, `CSE_ALifeItemDetector`, which adds nothing to either packet of the item it is.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -13,24 +15,25 @@ pub struct AlifeObjectItemDetector {
   pub base: AlifeObjectItem,
 }
 
-impl ChunkReadWrite for AlifeObjectItemDetector {
-  /// Read ALife item object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+impl AlifePacketsReadWrite for AlifeObjectItemDetector {
+  /// Read a detector from both packets.
+  fn read<T: ByteOrder, D: ChunkDataSource>(
+    spawn: &mut ChunkReader<D>,
+    update: &mut ChunkReader<D>,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
+      base: AlifeObjectItem::read::<T, _>(spawn, update)?,
     })
   }
 
-  /// Write item data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
-
-    Ok(())
+  /// Write a detector into both packets.
+  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+    self.base.write::<T>(spawn, update)
   }
 }
 
 impl LtxImportExport for AlifeObjectItemDetector {
-  /// Import ALife item object data from ltx config section.
+  /// Import a detector from ltx config section.
   fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
     Ok(Self {
       base: AlifeObjectItem::import(section_name, ltx)?,
@@ -39,148 +42,56 @@ impl LtxImportExport for AlifeObjectItemDetector {
 
   /// Export object data into ltx file.
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
-    self.base.export(section_name, ltx)?;
-
-    Ok(())
+    self.base.export(section_name, ltx)
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use std::fs::File;
-  use std::io::{Seek, SeekFrom, Write, read_to_string};
-
-  use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_test_utils::{FileSlice, GeneratedResources};
+  use xrf_math::Vector3d;
 
-  use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
-  use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
+  use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
   use crate::data::alife::inherited::alife_object_item_detector::AlifeObjectItemDetector;
 
+  fn new_object() -> AlifeObjectItemDetector {
+    AlifeObjectItemDetector {
+      base: AlifeObjectItem::new_mock(Vector3d::new(5.0, -1.5, 12.25)),
+    }
+  }
+
   #[test]
   fn test_read_write() -> XrfResult {
-    let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
+    let original: AlifeObjectItemDetector = new_object();
 
-    let original: AlifeObjectItemDetector = AlifeObjectItemDetector {
-      base: AlifeObjectItem {
-        base: AlifeObjectDynamicVisual {
-          base: AlifeObjectAbstract {
-            game_vertex_id: 1005,
-            distance: 34.12,
-            direct_control: 6627,
-            level_vertex_id: 55313,
-            flags: 45,
-            custom_data: String::from("custom_data"),
-            story_id: 475,
-            spawn_story_id: 128,
-          },
-          visual_name: String::from("efg"),
-          visual_flags: 33,
-        },
-        condition: 0.4,
-        upgrades: Vec::new(),
-      },
-    };
-
-    original.write::<XRayByteOrder>(&mut writer)?;
-
-    assert_eq!(writer.bytes_written(), 51);
-
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
-
-    assert_eq!(bytes_written, 51);
-
-    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
-
-    assert_eq!(file.bytes_remaining(), 51 + 8);
-
-    let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
-
-    assert_eq!(
-      AlifeObjectItemDetector::read::<XRayByteOrder, _>(&mut reader)?,
-      original
-    );
+    assert_eq!(original.read_back::<XRayByteOrder>()?, (52, 54, original));
 
     Ok(())
   }
 
   #[test]
   fn test_import_export() -> XrfResult {
-    let ltx_filename: String = GeneratedResources::sample_name(file!(), "import_export.ltx");
+    let original: AlifeObjectItemDetector = new_object();
     let mut ltx: Ltx = Ltx::new();
-
-    let original: AlifeObjectItemDetector = AlifeObjectItemDetector {
-      base: AlifeObjectItem {
-        base: AlifeObjectDynamicVisual {
-          base: AlifeObjectAbstract {
-            game_vertex_id: 5,
-            distance: 6.25,
-            direct_control: 55,
-            level_vertex_id: 56,
-            flags: 31,
-            custom_data: String::from("custom_data"),
-            story_id: 51,
-            spawn_story_id: 62,
-          },
-          visual_name: String::from("cdef"),
-          visual_flags: 61,
-        },
-        condition: 0.23,
-        upgrades: vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")],
-      },
-    };
 
     original.export("data", &mut ltx)?;
 
-    ltx.write_to(&mut GeneratedResources::overwrite(&ltx_filename)?)?;
-
-    let source: Ltx = Ltx::read_from_path(GeneratedResources::path(&ltx_filename))?;
-
-    assert_eq!(AlifeObjectItemDetector::import("data", &source)?, original);
+    assert_eq!(AlifeObjectItemDetector::import("data", &ltx)?, original);
 
     Ok(())
   }
 
   #[test]
   fn test_serialize_deserialize() -> XrfResult {
-    let original: AlifeObjectItemDetector = AlifeObjectItemDetector {
-      base: AlifeObjectItem {
-        base: AlifeObjectDynamicVisual {
-          base: AlifeObjectAbstract {
-            game_vertex_id: 11,
-            distance: 22.25,
-            direct_control: 33,
-            level_vertex_id: 44,
-            flags: 55,
-            custom_data: String::from("custom_data"),
-            story_id: 66,
-            spawn_story_id: 77,
-          },
-          visual_name: String::from("cdef"),
-          visual_flags: 5,
-        },
-        condition: 0.15,
-        upgrades: vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")],
-      },
-    };
+    let original: AlifeObjectItemDetector = new_object();
 
-    let mut file: File =
-      GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
-
-    file.write_all(to_string_pretty(&original)?.as_bytes())?;
-    file.seek(SeekFrom::Start(0))?;
-
-    let serialized: String = read_to_string(&mut file)?;
-
-    assert_eq!(serialized.to_string(), serialized);
-
-    assert_eq!(serde_json::from_str::<AlifeObjectItemDetector>(&serialized)?, original);
+    assert_eq!(
+      serde_json::from_str::<AlifeObjectItemDetector>(&serde_json::to_string(&original)?)?,
+      original
+    );
 
     Ok(())
   }

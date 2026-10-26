@@ -1,29 +1,56 @@
-use byteorder::ByteOrder;
+use std::io::Write;
+
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
-use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, LtxImportExport};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_error::{XrfError, XrfResult};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_utils::{vector_from_string, vector_to_string};
 
-use crate::data::alife::inherited::alife_object_item_weapon::AlifeObjectItemWeapon;
+use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
+use crate::data::alife::inherited::alife_object_item_weapon_magazined::AlifeObjectItemWeaponMagazined;
 
+/// A shotgun, `CSE_ALifeItemWeaponShotGun`, which the engine derives from the magazined weapon.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlifeObjectItemWeaponShotgun {
-  pub base: AlifeObjectItemWeapon,
+  pub base: AlifeObjectItemWeaponMagazined,
+  /// The ammo type of each shell loaded, `m_AmmoIDs`, behind a byte counting them.
+  pub update_ammo_ids: Vec<u8>,
 }
 
-impl ChunkReadWrite for AlifeObjectItemWeaponShotgun {
-  /// Read shotgun object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+impl AlifePacketsReadWrite for AlifeObjectItemWeaponShotgun {
+  /// Read a shotgun from both packets; the shells loaded end its update packet.
+  fn read<T: ByteOrder, D: ChunkDataSource>(
+    spawn: &mut ChunkReader<D>,
+    update: &mut ChunkReader<D>,
+  ) -> XrfResult<Self> {
+    let base: AlifeObjectItemWeaponMagazined = AlifeObjectItemWeaponMagazined::read::<T, _>(spawn, update)?;
+    let count: u8 = update.read_u8()?;
+
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
+      base,
+      update_ammo_ids: update.read_bytes(count.into())?,
     })
   }
 
-  /// Write shotgun object data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
+  /// Write a shotgun into both packets.
+  ///
+  /// # Errors
+  ///
+  /// Refuses more shells than the count's byte holds.
+  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+    let count: u8 = u8::try_from(self.update_ammo_ids.len()).map_err(|_| {
+      XrfError::new_invalid_error(format!(
+        "Shotgun loads {} shells, more than the byte counting them holds",
+        self.update_ammo_ids.len()
+      ))
+    })?;
+
+    self.base.write::<T>(spawn, update)?;
+    update.write_u8(count)?;
+    update.write_all(&self.update_ammo_ids)?;
 
     Ok(())
   }
@@ -32,8 +59,17 @@ impl ChunkReadWrite for AlifeObjectItemWeaponShotgun {
 impl LtxImportExport for AlifeObjectItemWeaponShotgun {
   /// Import ALife object data from ltx config section.
   fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
+    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+      XrfError::new_parsing_error(format!(
+        "ALife object '{}' should be defined in ltx file ({})",
+        section_name,
+        file!()
+      ))
+    })?;
+
     Ok(Self {
-      base: AlifeObjectItemWeapon::import(section_name, ltx)?,
+      base: AlifeObjectItemWeaponMagazined::import(section_name, ltx)?,
+      update_ammo_ids: vector_from_string(&section.read_field::<String>("item_weapon_shotgun.update_ammo_ids")?)?,
     })
   }
 
@@ -41,75 +77,78 @@ impl LtxImportExport for AlifeObjectItemWeaponShotgun {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
+    ltx.with_section(section_name).set(
+      "item_weapon_shotgun.update_ammo_ids",
+      vector_to_string(&self.update_ammo_ids),
+    );
+
     Ok(())
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
-  use xrf_test_utils::{FileSlice, GeneratedResources};
+  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_math::Vector3d;
 
-  use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
-  use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
-  use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
-  use crate::data::alife::inherited::alife_object_item_weapon::AlifeObjectItemWeapon;
+  use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
+  use crate::data::alife::inherited::alife_object_item_weapon_magazined::AlifeObjectItemWeaponMagazined;
   use crate::data::alife::inherited::alife_object_item_weapon_shotgun::AlifeObjectItemWeaponShotgun;
 
+  fn new_object() -> AlifeObjectItemWeaponShotgun {
+    AlifeObjectItemWeaponShotgun {
+      base: AlifeObjectItemWeaponMagazined::new_mock(Vector3d::new(1.0, 2.0, 3.0)),
+      update_ammo_ids: vec![0, 1, 1],
+    }
+  }
+
+  /// The magazined weapon's fire mode, then a count of shells and each one's ammo type.
   #[test]
   fn test_read_write() -> XrfResult {
-    let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
+    let original: AlifeObjectItemWeaponShotgun = new_object();
 
-    let original: AlifeObjectItemWeaponShotgun = AlifeObjectItemWeaponShotgun {
-      base: AlifeObjectItemWeapon {
-        base: AlifeObjectItem {
-          base: AlifeObjectDynamicVisual {
-            base: AlifeObjectAbstract {
-              game_vertex_id: 36426,
-              distance: 54.132,
-              direct_control: 441,
-              level_vertex_id: 23513,
-              flags: 33,
-              custom_data: String::from("custom-data"),
-              story_id: 35426,
-              spawn_story_id: 267845,
-            },
-            visual_name: String::from("visual-name"),
-            visual_flags: 253,
-          },
-          condition: 1.0,
-          upgrades: Vec::new(),
-        },
-        ammo_current: 20,
-        ammo_elapsed: 10,
-        weapon_state: 3,
-        addon_flags: 36,
-        ammo_type: 1,
-        elapsed_grenades: 1,
-      },
-    };
+    assert_eq!(original.read_back::<XRayByteOrder>()?, (60, 63 + 1 + 3, original));
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    Ok(())
+  }
 
-    assert_eq!(writer.bytes_written(), 67);
+  /// An empty shotgun without a physics state is the eleven-byte update packet placed ones carry.
+  #[test]
+  fn reads_an_empty_shotgun() -> XrfResult {
+    let mut original: AlifeObjectItemWeaponShotgun = new_object();
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    original.base.base.base.update_state = None;
+    original.update_ammo_ids.clear();
 
-    assert_eq!(bytes_written, 67);
+    assert_eq!(original.read_back::<XRayByteOrder>()?, (60, 11, original));
 
-    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
+    Ok(())
+  }
 
-    assert_eq!(file.bytes_remaining(), 67 + 8);
+  #[test]
+  fn refuses_more_shells_than_a_byte_counts() {
+    let mut original: AlifeObjectItemWeaponShotgun = new_object();
 
-    let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
+    original.update_ammo_ids = vec![0; 256];
 
-    assert_eq!(
-      AlifeObjectItemWeaponShotgun::read::<XRayByteOrder, _>(&mut reader)?,
-      original
-    );
+    let error: String = original
+      .read_back::<XRayByteOrder>()
+      .expect_err("256 shells")
+      .to_string();
+
+    assert!(error.contains("loads 256 shells"), "{error}");
+  }
+
+  #[test]
+  fn test_import_export() -> XrfResult {
+    let original: AlifeObjectItemWeaponShotgun = new_object();
+    let mut ltx: Ltx = Ltx::new();
+
+    original.export("data", &mut ltx)?;
+
+    assert_eq!(AlifeObjectItemWeaponShotgun::import("data", &ltx)?, original);
 
     Ok(())
   }

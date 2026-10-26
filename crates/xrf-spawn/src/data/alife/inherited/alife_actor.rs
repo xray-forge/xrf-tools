@@ -1,10 +1,24 @@
+use std::io::Write;
+
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_utils::{decode_bytes_from_base64, encode_bytes_to_base64};
 
+use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
+#[cfg(test)]
+use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_actor::AlifeObjectActor;
+#[cfg(test)]
+use crate::data::alife::inherited::alife_object_creature::AlifeObjectCreature;
+#[cfg(test)]
+use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
+#[cfg(test)]
+use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
+#[cfg(test)]
+use crate::data::alife::inherited::alife_object_trader_abstract::AlifeObjectTraderAbstract;
 use crate::data::generic::script_save_marker::ScriptSaveMarker;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -14,6 +28,10 @@ pub struct AlifeActor {
   pub base: AlifeObjectActor,
   /// The script class's own field, `se_actor` in vanilla.
   pub start_position_filled: u8,
+  /// The update packet, carried as stored. The engine reads it over the spawn packet, so the actor starts where it
+  /// says.
+  // todo: Read the creature and actor update fields, `CSE_ALifeCreatureActor::UPDATE_Read`, in place of these bytes.
+  pub update_data: Vec<u8>,
 }
 
 impl AlifeActor {
@@ -21,26 +39,89 @@ impl AlifeActor {
   const SCRIPT_CLASS: &'static str = "se_actor";
 }
 
-impl ChunkReadWrite for AlifeActor {
-  /// Read actor data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+#[cfg(test)]
+impl AlifeActor {
+  /// An actor as a new game places one, with no physics state saved.
+  pub fn new_mock() -> Self {
+    Self {
+      base: AlifeObjectActor {
+        base: AlifeObjectCreature {
+          base: AlifeObjectDynamicVisual {
+            base: AlifeObjectAbstract {
+              game_vertex_id: 621,
+              distance: 0.0,
+              direct_control: 1,
+              level_vertex_id: 52235,
+              flags: 0,
+              custom_data: String::new(),
+              story_id: AlifeObjectAbstract::INVALID_STORY_ID,
+              spawn_story_id: AlifeObjectAbstract::INVALID_STORY_ID,
+            },
+            visual_name: String::from("actors\\stalker_hero\\stalker_hero_1"),
+            visual_flags: 0,
+          },
+          team: 0,
+          squad: 0,
+          group: 0,
+          health: 1.0,
+          dynamic_out_restrictions: Vec::new(),
+          dynamic_in_restrictions: Vec::new(),
+          killer_id: u16::MAX,
+          game_death_time: 0,
+        },
+        trader: AlifeObjectTraderAbstract {
+          money: 5000,
+          specific_character: String::from("actor"),
+          trader_flags: 0,
+          character_profile: String::from("actor"),
+          community_index: 0,
+          rank: 0,
+          reputation: 0,
+          character_name: String::new(),
+          dead_body_can_take: 1,
+          dead_body_closed: 0,
+        },
+        skeleton: AlifeObjectSkeleton {
+          name: String::new(),
+          flags: 0,
+          source_id: u16::MAX,
+        },
+        holder_id: u16::MAX,
+      },
+      start_position_filled: 0,
+      update_data: Vec::new(),
+    }
+  }
+}
+
+impl AlifePacketsReadWrite for AlifeActor {
+  /// Read actor data from both packets.
+  fn read<T: ByteOrder, D: ChunkDataSource>(
+    spawn: &mut ChunkReader<D>,
+    update: &mut ChunkReader<D>,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
-      start_position_filled: ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
+      base: spawn.read_xr::<T, _>()?,
+      start_position_filled: ScriptSaveMarker::read::<T, _, _>(spawn, Self::SCRIPT_CLASS, |reader| {
         Ok(reader.read_u8()?)
       })?,
+      update_data: update.read_remaining()?,
     })
   }
 
-  /// Write object data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
+  /// Write actor data into both packets.
+  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+    spawn.write_xr::<T, _>(&self.base)?;
 
-    ScriptSaveMarker::write::<T>(writer, Self::SCRIPT_CLASS, |writer| {
+    ScriptSaveMarker::write::<T>(spawn, Self::SCRIPT_CLASS, |writer| {
       writer.write_u8(self.start_position_filled)?;
 
       Ok(())
-    })
+    })?;
+
+    update.write_all(&self.update_data)?;
+
+    Ok(())
   }
 }
 
@@ -58,6 +139,7 @@ impl LtxImportExport for AlifeActor {
     Ok(Self {
       base: AlifeObjectActor::import(section_name, ltx)?,
       start_position_filled: section.read_field("actor.start_position_filled")?,
+      update_data: decode_bytes_from_base64(&section.read_field::<String>("actor.update_data")?)?,
     })
   }
 
@@ -67,7 +149,8 @@ impl LtxImportExport for AlifeActor {
 
     ltx
       .with_section(section_name)
-      .set("actor.start_position_filled", self.start_position_filled.to_string());
+      .set("actor.start_position_filled", self.start_position_filled.to_string())
+      .set("actor.update_data", encode_bytes_to_base64(&self.update_data));
 
     Ok(())
   }
@@ -79,11 +162,12 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_test_utils::{FileSlice, GeneratedResources};
+  use xrf_test_utils::GeneratedResources;
 
+  use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_actor::AlifeActor;
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
   use crate::data::alife::inherited::alife_object_actor::AlifeObjectActor;
@@ -94,9 +178,6 @@ mod tests {
 
   #[test]
   fn test_read_write() -> XrfResult {
-    let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
-
     let original: AlifeActor = AlifeActor {
       base: AlifeObjectActor {
         base: AlifeObjectCreature {
@@ -143,24 +224,10 @@ mod tests {
         holder_id: 0,
       },
       start_position_filled: 1,
+      update_data: vec![0, 1, 2, 3],
     };
 
-    original.write::<XRayByteOrder>(&mut writer)?;
-
-    assert_eq!(writer.bytes_written(), 196);
-
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
-
-    assert_eq!(bytes_written, 196);
-
-    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
-
-    assert_eq!(file.bytes_remaining(), 196 + 8);
-
-    let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
-
-    assert_eq!(AlifeActor::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(original.read_back::<XRayByteOrder>()?, (196, 4, original));
 
     Ok(())
   }
@@ -216,6 +283,7 @@ mod tests {
         holder_id: 0,
       },
       start_position_filled: 1,
+      update_data: vec![0, 1, 2, 3],
     };
 
     original.export("data", &mut ltx)?;
@@ -277,6 +345,7 @@ mod tests {
         holder_id: 0,
       },
       start_position_filled: 1,
+      update_data: vec![0, 1, 2, 3],
     };
 
     let mut file: File =

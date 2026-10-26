@@ -6,6 +6,11 @@ export type AlifeActor = {
   base: AlifeObjectActor;
   /** The script class's own field, `se_actor` in vanilla. */
   startPositionFilled: number;
+  /**
+   * The update packet, carried as stored. The engine reads it over the spawn packet, so the actor starts where it
+   * says.
+   */
+  updateData: Array<number>;
 };
 
 export type AlifeAnomalousZone = {
@@ -58,12 +63,11 @@ export type AlifeObject = {
   /** The client object's saved state (`CSE_Abstract::client_data`), carried as stored. */
   clientData: Array<number>;
   spawnId: number;
-  inherited: AlifeObjectInherited;
   /**
-   * The update packet past its `M_UPDATE` action, carried as stored. The engine applies it over the spawn packet when
-   * it creates the object, so a creature is placed where its update packet says.
+   * The server class payload, its fields from both packets. The engine applies the update packet over the spawn
+   * packet when it creates the object, so where both carry a field the update packet's is the one the game uses.
    */
-  updateData: Array<number>;
+  inherited: AlifeObjectInherited;
 };
 
 /** Generic ALife object abstraction data. */
@@ -277,35 +281,52 @@ export type AlifeObjectItem = {
   condition: number | null;
   /** The upgrade sections installed on the item (`CSE_ALifeInventoryItem::m_upgrades`). */
   upgrades: Array<string>;
+  /**
+   * The physics state the update packet carries, whose position the engine moves the item to over the spawn
+   * packet's.
+   */
+  updateState: PhysicsNetState | null;
 };
 
 export type AlifeObjectItemAmmo = {
   base: AlifeObjectItem;
   ammoLeft: number;
+  /** The rounds left as the update packet stores them, which the engine reads over `ammo_left`. */
+  updateAmmoLeft: number;
 };
 
+/** An artefact, `CSE_ALifeItemArtefact`, which adds nothing to either packet of the item it is. */
 export type AlifeObjectItemArtefact = {
   base: AlifeObjectItem;
 };
 
+/** An outfit, `CSE_ALifeItemCustomOutfit`, whose update packet repeats its condition after the item's. */
 export type AlifeObjectItemCustomOutfit = {
   base: AlifeObjectItem;
+  /** The condition as the update packet quantises it, which the engine reads over the spawn packet's. */
+  updateCondition: number;
 };
 
+/** A detector, `CSE_ALifeItemDetector`, which adds nothing to either packet of the item it is. */
 export type AlifeObjectItemDetector = {
   base: AlifeObjectItem;
 };
 
+/** An explosive, `CSE_ALifeItemExplosive`, which adds nothing to either packet of the item it is. */
 export type AlifeObjectItemExplosive = {
   base: AlifeObjectItem;
 };
 
+/** A grenade, `CSE_ALifeItemGrenade`, which adds nothing to either packet of the item it is. */
 export type AlifeObjectItemGrenade = {
   base: AlifeObjectItem;
 };
 
+/** A helmet, `CSE_ALifeItemHelmet`, whose update packet repeats its condition after the item's. */
 export type AlifeObjectItemHelmet = {
   base: AlifeObjectItem;
+  /** The condition as the update packet quantises it, which the engine reads over the spawn packet's. */
+  updateCondition: number;
 };
 
 export type AlifeObjectItemPda = {
@@ -315,6 +336,10 @@ export type AlifeObjectItemPda = {
   infoPortion: string;
 };
 
+/**
+ * A weapon, `CSE_ALifeItemWeapon`. Its update packet repeats the rounds loaded, weapon state, addons and ammo type the
+ * spawn packet stores, and the engine reads them over the spawn packet's, so those are what the game starts with.
+ */
 export type AlifeObjectItemWeapon = {
   base: AlifeObjectItem;
   ammoCurrent: number;
@@ -323,18 +348,34 @@ export type AlifeObjectItemWeapon = {
   addonFlags: number;
   ammoType: number;
   elapsedGrenades: number;
+  /** The condition as the update packet quantises it, which the engine reads over the spawn packet's. */
+  updateCondition: number;
+  updateWeaponFlags: number;
+  updateAmmoElapsed: number;
+  updateAddonFlags: number;
+  updateAmmoType: number;
+  updateWeaponState: number;
+  /** `m_bZoom`, nonzero while aiming. */
+  updateZoom: number;
 };
 
 export type AlifeObjectItemWeaponMagazined = {
   base: AlifeObjectItemWeapon;
+  /** The fire mode selected, `m_u8CurFireMode`. */
+  updateFireMode: number;
 };
 
 export type AlifeObjectItemWeaponMagazinedWgl = {
   base: AlifeObjectItemWeaponMagazined;
+  /** `m_bGrenadeMode`, nonzero while the launcher is selected. */
+  updateGrenadeMode: number;
 };
 
+/** A shotgun, `CSE_ALifeItemWeaponShotGun`, which the engine derives from the magazined weapon. */
 export type AlifeObjectItemWeaponShotgun = {
-  base: AlifeObjectItemWeapon;
+  base: AlifeObjectItemWeaponMagazined;
+  /** The ammo type of each shell loaded, `m_AmmoIDs`, behind a byte counting them. */
+  updateAmmoIds: Array<number>;
 };
 
 export type AlifeObjectMotion = {
@@ -347,6 +388,11 @@ export type AlifeObjectPhysic = {
   physicType: number;
   mass: number | null;
   fixedBones: string;
+  /**
+   * The physics state the update packet carries. `CPhysicObject::net_Import` drops it for a local object, so a single
+   * player game never applies it, which is why vanilla's are often left uninitialised.
+   */
+  updateState: PhysicsNetState | null;
 };
 
 export type AlifeObjectShape = {
@@ -668,6 +714,41 @@ export type PatrolPoint = {
   levelVertexId: number;
   gameVertexId: number;
 };
+
+/**
+ * The physics state an inventory item and a physic object carry in their update packets, `SPHNetState` behind the
+ * byte `CSE_ALifeInventoryItem::UPDATE_Write` and `CSE_ALifeObjectPhysic::UPDATE_Write` open it with.
+ *
+ * That byte packs the item count into its low five bits and, above them, a mask: whether the body is enabled, and
+ * whether each velocity is left out as zero. A zero byte is a state that is not there at all, so an object without one
+ * is `None` beside its other update fields rather than a state with dead fields. The SDK writes some states without
+ * initialising them, so each float keeps the bits it is stored in.
+ */
+export type PhysicsNetState = {
+  /** The synchronised items, `m_u8NumItems`, at most the 31 its five bits hold. */
+  itemCount: number;
+  enabled: boolean;
+  force: [RawFloat, RawFloat, RawFloat];
+  torque: [RawFloat, RawFloat, RawFloat];
+  /** Where the body stands; an item's `UPDATE_Read` moves the object here (`o_Position`). */
+  position: [RawFloat, RawFloat, RawFloat];
+  /** The orientation quaternion as x, y, z and w. */
+  rotation: [RawFloat, RawFloat, RawFloat, RawFloat];
+  /** `None` where the mask leaves the angular velocity out as zero. */
+  angularVelocity: [RawFloat, RawFloat, RawFloat] | null;
+  /** `None` where the mask leaves the linear velocity out as zero. */
+  linearVelocity: [RawFloat, RawFloat, RawFloat] | null;
+  /** The byte closing the state: zero freezes the object and anything else leaves it awake. */
+  awake: number;
+};
+
+/**
+ * A float kept as the bits it is stored in, for state the SDK writes without initialising: a vanilla spawn's
+ * physics states hold NaNs with payloads, and whole states of `0xffffffff`, which no decimal brings back.
+ *
+ * A finite value travels as its number, in LTX and JSON alike, and anything else as its bits in hex (`0xffffffff`).
+ */
+export type RawFloat = number | string;
 
 /** Shape enumeration stored in objects descriptors. */
 export type Shape =

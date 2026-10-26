@@ -1,9 +1,12 @@
-use byteorder::ByteOrder;
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
-use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, LtxImportExport};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_error::{XrfError, XrfResult};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
+#[cfg(test)]
+use xrf_math::Vector3d;
 
+use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item_weapon::AlifeObjectItemWeapon;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -11,29 +14,45 @@ use crate::data::alife::inherited::alife_object_item_weapon::AlifeObjectItemWeap
 #[serde(rename_all = "camelCase")]
 pub struct AlifeObjectItemWeaponMagazined {
   pub base: AlifeObjectItemWeapon,
+  /// The fire mode selected, `m_u8CurFireMode`.
+  pub update_fire_mode: u8,
 }
 
-impl ChunkReadWrite for AlifeObjectItemWeaponMagazined {
-  /// Read magazined weapon data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+impl AlifePacketsReadWrite for AlifeObjectItemWeaponMagazined {
+  /// Read a magazined weapon from both packets; its fire mode ends the update packet's weapon fields.
+  fn read<T: ByteOrder, D: ChunkDataSource>(
+    spawn: &mut ChunkReader<D>,
+    update: &mut ChunkReader<D>,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
+      base: AlifeObjectItemWeapon::read::<T, _>(spawn, update)?,
+      update_fire_mode: update.read_u8()?,
     })
   }
 
-  /// Write magazined weapon item into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
+  /// Write a magazined weapon into both packets.
+  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+    self.base.write::<T>(spawn, update)?;
+    update.write_u8(self.update_fire_mode)?;
 
     Ok(())
   }
 }
 
 impl LtxImportExport for AlifeObjectItemWeaponMagazined {
-  /// Import ALife item object data from ltx config section.
+  /// Import a magazined weapon from ltx config section.
   fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
+    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+      XrfError::new_parsing_error(format!(
+        "ALife object '{}' should be defined in ltx file ({})",
+        section_name,
+        file!()
+      ))
+    })?;
+
     Ok(Self {
       base: AlifeObjectItemWeapon::import(section_name, ltx)?,
+      update_fire_mode: section.read_field("item_weapon_magazined.update_fire_mode")?,
     })
   }
 
@@ -41,78 +60,67 @@ impl LtxImportExport for AlifeObjectItemWeaponMagazined {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
+    ltx.with_section(section_name).set(
+      "item_weapon_magazined.update_fire_mode",
+      self.update_fire_mode.to_string(),
+    );
+
     Ok(())
   }
 }
 
 #[cfg(test)]
-mod tests {
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
-  use xrf_error::XrfResult;
-  use xrf_test_utils::{FileSlice, GeneratedResources};
+impl AlifeObjectItemWeaponMagazined {
+  /// A magazined weapon placed at `position`, firing in its second mode.
+  pub fn new_mock(position: Vector3d) -> Self {
+    Self {
+      base: AlifeObjectItemWeapon::new_mock(position),
+      update_fire_mode: 1,
+    }
+  }
+}
 
-  use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
-  use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
-  use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
-  use crate::data::alife::inherited::alife_object_item_weapon::AlifeObjectItemWeapon;
+#[cfg(test)]
+mod tests {
+  use xrf_chunk::XRayByteOrder;
+  use xrf_error::XrfResult;
+  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_math::Vector3d;
+
+  use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_item_weapon_magazined::AlifeObjectItemWeaponMagazined;
-  use crate::data::alife::inherited::alife_object_item_weapon_magazined_wgl::AlifeObjectItemWeaponMagazinedWgl;
 
   #[test]
   fn test_read_write() -> XrfResult {
-    let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
+    let original: AlifeObjectItemWeaponMagazined =
+      AlifeObjectItemWeaponMagazined::new_mock(Vector3d::new(1.0, 2.0, 3.0));
 
-    let original: AlifeObjectItemWeaponMagazinedWgl = AlifeObjectItemWeaponMagazinedWgl {
-      base: AlifeObjectItemWeaponMagazined {
-        base: AlifeObjectItemWeapon {
-          base: AlifeObjectItem {
-            base: AlifeObjectDynamicVisual {
-              base: AlifeObjectAbstract {
-                game_vertex_id: 5232,
-                distance: 53.1213,
-                direct_control: 67,
-                level_vertex_id: 25313,
-                flags: 32,
-                custom_data: String::from("custom-data"),
-                story_id: 3486,
-                spawn_story_id: 37663,
-              },
-              visual_name: String::from("visual-name"),
-              visual_flags: 33,
-            },
-            condition: 1.0,
-            upgrades: Vec::new(),
-          },
-          ammo_current: 20,
-          ammo_elapsed: 10,
-          weapon_state: 1,
-          addon_flags: 1,
-          ammo_type: 1,
-          elapsed_grenades: 0,
-        },
-      },
-    };
+    assert_eq!(original.read_back::<XRayByteOrder>()?, (60, 63, original));
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    Ok(())
+  }
 
-    assert_eq!(writer.bytes_written(), 67);
+  /// Without a physics state a magazined weapon's update packet is the ten bytes most placed ones carry.
+  #[test]
+  fn reads_a_weapon_without_a_physics_state() -> XrfResult {
+    let mut original: AlifeObjectItemWeaponMagazined = AlifeObjectItemWeaponMagazined::new_mock(Vector3d::ZERO);
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    original.base.base.update_state = None;
 
-    assert_eq!(bytes_written, 67);
+    assert_eq!(original.read_back::<XRayByteOrder>()?, (60, 10, original));
 
-    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
+    Ok(())
+  }
 
-    assert_eq!(file.bytes_remaining(), 67 + 8);
+  #[test]
+  fn test_import_export() -> XrfResult {
+    let original: AlifeObjectItemWeaponMagazined =
+      AlifeObjectItemWeaponMagazined::new_mock(Vector3d::new(1.0, 2.0, 3.0));
+    let mut ltx: Ltx = Ltx::new();
 
-    let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
+    original.export("data", &mut ltx)?;
 
-    assert_eq!(
-      AlifeObjectItemWeaponMagazinedWgl::read::<XRayByteOrder, _>(&mut reader)?,
-      original
-    );
+    assert_eq!(AlifeObjectItemWeaponMagazined::import("data", &ltx)?, original);
 
     Ok(())
   }

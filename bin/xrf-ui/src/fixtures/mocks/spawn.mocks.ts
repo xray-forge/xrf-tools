@@ -64,7 +64,6 @@ export function mockAlifeObject(overrides: Partial<AlifeObject> = {}): AlifeObje
     scriptVersion: 12,
     section: "stalker_novice",
     spawnId: 1,
-    updateData: [],
     version: 124,
     ...overrides,
   };

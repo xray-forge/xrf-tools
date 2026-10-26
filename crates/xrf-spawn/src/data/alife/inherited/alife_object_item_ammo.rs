@@ -1,9 +1,10 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport, Section};
 
+use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -12,21 +13,28 @@ use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
 pub struct AlifeObjectItemAmmo {
   pub base: AlifeObjectItem,
   pub ammo_left: u16,
+  /// The rounds left as the update packet stores them, which the engine reads over `ammo_left`.
+  pub update_ammo_left: u16,
 }
 
-impl ChunkReadWrite for AlifeObjectItemAmmo {
-  /// Read ALife item object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+impl AlifePacketsReadWrite for AlifeObjectItemAmmo {
+  /// Read ammo from both packets, each carrying the rounds left.
+  fn read<T: ByteOrder, D: ChunkDataSource>(
+    spawn: &mut ChunkReader<D>,
+    update: &mut ChunkReader<D>,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
-      ammo_left: reader.read_u16::<T>()?,
+      base: AlifeObjectItem::read::<T, _>(spawn, update)?,
+      ammo_left: spawn.read_u16::<T>()?,
+      update_ammo_left: update.read_u16::<T>()?,
     })
   }
 
-  /// Write item data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
-    writer.write_u16::<T>(self.ammo_left)?;
+  /// Write ammo into both packets.
+  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+    self.base.write::<T>(spawn, update)?;
+    spawn.write_u16::<T>(self.ammo_left)?;
+    update.write_u16::<T>(self.update_ammo_left)?;
 
     Ok(())
   }
@@ -46,6 +54,7 @@ impl LtxImportExport for AlifeObjectItemAmmo {
     Ok(Self {
       base: AlifeObjectItem::import(section_name, ltx)?,
       ammo_left: section.read_field("item_ammo.ammo_left")?,
+      update_ammo_left: section.read_field("item_ammo.update_ammo_left")?,
     })
   }
 
@@ -55,7 +64,8 @@ impl LtxImportExport for AlifeObjectItemAmmo {
 
     ltx
       .with_section(section_name)
-      .set("item_ammo.ammo_left", self.ammo_left.to_string());
+      .set("item_ammo.ammo_left", self.ammo_left.to_string())
+      .set("item_ammo.update_ammo_left", self.update_ammo_left.to_string());
 
     Ok(())
   }
@@ -63,140 +73,53 @@ impl LtxImportExport for AlifeObjectItemAmmo {
 
 #[cfg(test)]
 mod tests {
-  use std::fs::File;
-  use std::io::{Seek, SeekFrom, Write, read_to_string};
-
-  use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_test_utils::{FileSlice, GeneratedResources};
+  use xrf_math::Vector3d;
 
-  use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
-  use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
+  use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
   use crate::data::alife::inherited::alife_object_item_ammo::AlifeObjectItemAmmo;
 
+  fn new_object() -> AlifeObjectItemAmmo {
+    AlifeObjectItemAmmo {
+      base: AlifeObjectItem::new_mock(Vector3d::new(2.0, 1.0, -7.5)),
+      ammo_left: 30,
+      update_ammo_left: 60,
+    }
+  }
+
+  /// The rounds left follow the physics state in the update packet as they follow the item in the spawn packet.
   #[test]
   fn test_read_write() -> XrfResult {
-    let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
+    let original: AlifeObjectItemAmmo = new_object();
 
-    let original: AlifeObjectItemAmmo = AlifeObjectItemAmmo {
-      base: AlifeObjectItem {
-        base: AlifeObjectDynamicVisual {
-          base: AlifeObjectAbstract {
-            game_vertex_id: 1003,
-            distance: 65.25,
-            direct_control: 412242,
-            level_vertex_id: 463752354,
-            flags: 40,
-            custom_data: String::from("custom_data"),
-            story_id: 2563,
-            spawn_story_id: 413,
-          },
-          visual_name: String::from("cdef"),
-          visual_flags: 33,
-        },
-        condition: 0.6,
-        upgrades: Vec::new(),
-      },
-      ammo_left: 12,
-    };
-
-    original.write::<XRayByteOrder>(&mut writer)?;
-
-    assert_eq!(writer.bytes_written(), 54);
-
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
-
-    assert_eq!(bytes_written, 54);
-
-    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
-
-    assert_eq!(file.bytes_remaining(), 54 + 8);
-
-    let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
-
-    assert_eq!(AlifeObjectItemAmmo::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(original.read_back::<XRayByteOrder>()?, (54, 56, original));
 
     Ok(())
   }
 
   #[test]
   fn test_import_export() -> XrfResult {
-    let ltx_filename: String = GeneratedResources::sample_name(file!(), "import_export.ltx");
+    let original: AlifeObjectItemAmmo = new_object();
     let mut ltx: Ltx = Ltx::new();
-
-    let original: AlifeObjectItemAmmo = AlifeObjectItemAmmo {
-      base: AlifeObjectItem {
-        base: AlifeObjectDynamicVisual {
-          base: AlifeObjectAbstract {
-            game_vertex_id: 2662,
-            distance: 15.25,
-            direct_control: 5,
-            level_vertex_id: 623,
-            flags: 1,
-            custom_data: String::from("custom_data"),
-            story_id: 26,
-            spawn_story_id: 27,
-          },
-          visual_name: String::from("cdef"),
-          visual_flags: 33,
-        },
-        condition: 0.6,
-        upgrades: Vec::new(),
-      },
-      ammo_left: 12,
-    };
 
     original.export("data", &mut ltx)?;
 
-    ltx.write_to(&mut GeneratedResources::overwrite(&ltx_filename)?)?;
-
-    let source: Ltx = Ltx::read_from_path(GeneratedResources::path(&ltx_filename))?;
-
-    assert_eq!(AlifeObjectItemAmmo::import("data", &source)?, original);
+    assert_eq!(AlifeObjectItemAmmo::import("data", &ltx)?, original);
 
     Ok(())
   }
 
   #[test]
   fn test_serialize_deserialize() -> XrfResult {
-    let original: AlifeObjectItemAmmo = AlifeObjectItemAmmo {
-      base: AlifeObjectItem {
-        base: AlifeObjectDynamicVisual {
-          base: AlifeObjectAbstract {
-            game_vertex_id: 5,
-            distance: 15.25,
-            direct_control: 17,
-            level_vertex_id: 18,
-            flags: 19,
-            custom_data: String::from("custom_data"),
-            story_id: 26,
-            spawn_story_id: 27,
-          },
-          visual_name: String::from("cdef"),
-          visual_flags: 16,
-        },
-        condition: 0.4,
-        upgrades: vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")],
-      },
-      ammo_left: 17,
-    };
+    let original: AlifeObjectItemAmmo = new_object();
 
-    let mut file: File =
-      GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
-
-    file.write_all(to_string_pretty(&original)?.as_bytes())?;
-    file.seek(SeekFrom::Start(0))?;
-
-    let serialized: String = read_to_string(&mut file)?;
-
-    assert_eq!(serialized.to_string(), serialized);
-
-    assert_eq!(serde_json::from_str::<AlifeObjectItemAmmo>(&serialized)?, original);
+    assert_eq!(
+      serde_json::from_str::<AlifeObjectItemAmmo>(&serde_json::to_string(&original)?)?,
+      original
+    );
 
     Ok(())
   }

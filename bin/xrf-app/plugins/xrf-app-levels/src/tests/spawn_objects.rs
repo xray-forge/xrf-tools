@@ -32,6 +32,7 @@ fn new_physic(visual: &str, story_id: u32) -> AlifeObjectInherited {
     physic_type: 0,
     mass: 10.0,
     fixed_bones: String::new(),
+    update_state: None,
   }))
 }
 
@@ -40,6 +41,7 @@ fn new_item(visual: &str) -> AlifeObjectInherited {
     base: new_visual(visual, AlifeObjectAbstract::INVALID_STORY_ID),
     condition: 1.0,
     upgrades: Vec::new(),
+    update_state: None,
   }))
 }
 

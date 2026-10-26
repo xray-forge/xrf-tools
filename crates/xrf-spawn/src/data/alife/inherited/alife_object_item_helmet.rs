@@ -1,39 +1,64 @@
-use byteorder::ByteOrder;
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
-use xrf_error::XrfResult;
-use xrf_ltx::{Ltx, LtxImportExport};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_error::{XrfError, XrfResult};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
+use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
 
+/// A helmet, `CSE_ALifeItemHelmet`, whose update packet repeats its condition after the item's.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlifeObjectItemHelmet {
   pub base: AlifeObjectItem,
+  /// The condition as the update packet quantises it, which the engine reads over the spawn packet's.
+  pub update_condition: u8,
 }
 
-impl ChunkReadWrite for AlifeObjectItemHelmet {
-  /// Read ALife item object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+impl AlifeObjectItemHelmet {
+  /// The condition the engine reads from the update packet.
+  pub fn get_update_condition(&self) -> f32 {
+    AlifeObjectItem::dequantize_condition(self.update_condition)
+  }
+}
+
+impl AlifePacketsReadWrite for AlifeObjectItemHelmet {
+  /// Read a helmet from both packets.
+  fn read<T: ByteOrder, D: ChunkDataSource>(
+    spawn: &mut ChunkReader<D>,
+    update: &mut ChunkReader<D>,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
+      base: AlifeObjectItem::read::<T, _>(spawn, update)?,
+      update_condition: update.read_u8()?,
     })
   }
 
-  /// Write item data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
+  /// Write a helmet into both packets.
+  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+    self.base.write::<T>(spawn, update)?;
+    update.write_u8(self.update_condition)?;
 
     Ok(())
   }
 }
 
 impl LtxImportExport for AlifeObjectItemHelmet {
-  /// Import ALife item object data from ltx config section.
+  /// Import a helmet from ltx config section.
   fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self> {
+    let section: &Section = ltx.section(section_name).ok_or_else(|| {
+      XrfError::new_parsing_error(format!(
+        "ALife object '{}' should be defined in ltx file ({})",
+        section_name,
+        file!()
+      ))
+    })?;
+
     Ok(Self {
       base: AlifeObjectItem::import(section_name, ltx)?,
+      update_condition: section.read_field("item_helmet.update_condition")?,
     })
   }
 
@@ -41,143 +66,76 @@ impl LtxImportExport for AlifeObjectItemHelmet {
   fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     self.base.export(section_name, ltx)?;
 
+    ltx
+      .with_section(section_name)
+      .set("item_helmet.update_condition", self.update_condition.to_string());
+
     Ok(())
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use std::fs::File;
-  use std::io::{Seek, SeekFrom, Write, read_to_string};
-
-  use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::XRayByteOrder;
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_test_utils::{FileSlice, GeneratedResources};
+  use xrf_math::Vector3d;
 
-  use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
-  use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
+  use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
   use crate::data::alife::inherited::alife_object_item_helmet::AlifeObjectItemHelmet;
 
+  fn new_object() -> AlifeObjectItemHelmet {
+    AlifeObjectItemHelmet {
+      base: AlifeObjectItem::new_mock(Vector3d::new(5.0, -1.5, 12.25)),
+      update_condition: 255,
+    }
+  }
+
+  /// The quantised condition follows the item's physics state, one byte past it.
   #[test]
   fn test_read_write() -> XrfResult {
-    let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
+    let original: AlifeObjectItemHelmet = new_object();
 
-    let original: AlifeObjectItemHelmet = AlifeObjectItemHelmet {
-      base: AlifeObjectItem {
-        base: AlifeObjectDynamicVisual {
-          base: AlifeObjectAbstract {
-            game_vertex_id: 1027,
-            distance: 11.2,
-            direct_control: 664,
-            level_vertex_id: 823422,
-            flags: 46,
-            custom_data: String::from("custom_data"),
-            story_id: 515,
-            spawn_story_id: 33,
-          },
-          visual_name: String::from("abcd"),
-          visual_flags: 82,
-        },
-        condition: 0.32,
-        upgrades: Vec::new(),
-      },
-    };
+    assert_eq!(original.read_back::<XRayByteOrder>()?, (52, 55, original));
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+    Ok(())
+  }
 
-    assert_eq!(writer.bytes_written(), 52);
+  /// With no physics state the item's zero byte comes first, then the condition: the two bytes such an item carries.
+  #[test]
+  fn reads_the_condition_after_an_absent_physics_state() -> XrfResult {
+    let mut original: AlifeObjectItemHelmet = new_object();
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+    original.base.update_state = None;
+    original.update_condition = 128;
 
-    assert_eq!(bytes_written, 52);
-
-    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
-
-    assert_eq!(file.bytes_remaining(), 52 + 8);
-
-    let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
-
-    assert_eq!(AlifeObjectItemHelmet::read::<XRayByteOrder, _>(&mut reader)?, original);
+    assert_eq!(original.read_back::<XRayByteOrder>()?, (52, 2, original.clone()));
+    assert!((original.get_update_condition() - 0.502).abs() < 1e-3);
 
     Ok(())
   }
 
   #[test]
   fn test_import_export() -> XrfResult {
-    let ltx_filename: String = GeneratedResources::sample_name(file!(), "import_export.ltx");
+    let original: AlifeObjectItemHelmet = new_object();
     let mut ltx: Ltx = Ltx::new();
-
-    let original: AlifeObjectItemHelmet = AlifeObjectItemHelmet {
-      base: AlifeObjectItem {
-        base: AlifeObjectDynamicVisual {
-          base: AlifeObjectAbstract {
-            game_vertex_id: 4,
-            distance: 1.8,
-            direct_control: 7,
-            level_vertex_id: 2,
-            flags: 3,
-            custom_data: String::from("custom_data"),
-            story_id: 8,
-            spawn_story_id: 26,
-          },
-          visual_name: String::from("cdef"),
-          visual_flags: 255,
-        },
-        condition: 0.51,
-        upgrades: vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")],
-      },
-    };
 
     original.export("data", &mut ltx)?;
 
-    ltx.write_to(&mut GeneratedResources::overwrite(&ltx_filename)?)?;
-
-    let source: Ltx = Ltx::read_from_path(GeneratedResources::path(&ltx_filename))?;
-
-    assert_eq!(AlifeObjectItemHelmet::import("data", &source)?, original);
+    assert_eq!(AlifeObjectItemHelmet::import("data", &ltx)?, original);
 
     Ok(())
   }
 
   #[test]
   fn test_serialize_deserialize() -> XrfResult {
-    let original: AlifeObjectItemHelmet = AlifeObjectItemHelmet {
-      base: AlifeObjectItem {
-        base: AlifeObjectDynamicVisual {
-          base: AlifeObjectAbstract {
-            game_vertex_id: 4,
-            distance: 5.50,
-            direct_control: 1,
-            level_vertex_id: 76,
-            flags: 5,
-            custom_data: String::from("custom_data"),
-            story_id: 16,
-            spawn_story_id: 4,
-          },
-          visual_name: String::from("cdef"),
-          visual_flags: 2,
-        },
-        condition: 0.8,
-        upgrades: vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")],
-      },
-    };
+    let original: AlifeObjectItemHelmet = new_object();
 
-    let mut file: File =
-      GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
-
-    file.write_all(to_string_pretty(&original)?.as_bytes())?;
-    file.seek(SeekFrom::Start(0))?;
-
-    let serialized: String = read_to_string(&mut file)?;
-
-    assert_eq!(serialized.to_string(), serialized);
-
-    assert_eq!(serde_json::from_str::<AlifeObjectItemHelmet>(&serialized)?, original);
+    assert_eq!(
+      serde_json::from_str::<AlifeObjectItemHelmet>(&serde_json::to_string(&original)?)?,
+      original
+    );
 
     Ok(())
   }

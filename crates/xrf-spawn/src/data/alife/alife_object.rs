@@ -40,11 +40,9 @@ pub struct AlifeObject {
   /// The client object's saved state (`CSE_Abstract::client_data`), carried as stored.
   pub client_data: Vec<u8>,
   pub spawn_id: u16,
+  /// The server class payload, its fields from both packets. The engine applies the update packet over the spawn
+  /// packet when it creates the object, so where both carry a field the update packet's is the one the game uses.
   pub inherited: AlifeObjectInherited,
-  /// The update packet past its `M_UPDATE` action, carried as stored. The engine applies it over the spawn packet when
-  /// it creates the object, so a creature is placed where its update packet says.
-  // todo: Read and write the update packet by server class, as each class's `UPDATE_Read` and `UPDATE_Write` do.
-  pub update_data: Vec<u8>,
 }
 
 impl AlifeObject {
@@ -148,8 +146,6 @@ impl ChunkReadWrite for AlifeObject {
 
     assert_not_equal(&class, &AlifeClass::Unknown, "Expect known ALife object clsid")?;
 
-    let inherited: AlifeObjectInherited = AlifeObjectInherited::read::<T, _>(&mut spawn_reader, &class)?;
-
     let mut update_reader: ChunkReader<D> = reader.read_child_by_index(Self::DATA_UPDATE_CHUNK_ID)?;
     let update_data_length: u16 = update_reader.read_u16::<T>()?;
     let update_action: u16 = update_reader.read_u16::<T>()?;
@@ -165,10 +161,11 @@ impl ChunkReadWrite for AlifeObject {
       "Expect only net_update actions in ALife object update data",
     )?;
 
-    let update_data: Vec<u8> = update_reader.read_bytes(update_reader.read_bytes_remain() as usize)?;
+    let inherited: AlifeObjectInherited =
+      AlifeObjectInherited::read::<T, _>(&mut spawn_reader, &mut update_reader, &class)?;
 
     spawn_reader.assert_read("Expect ALife object spawn data to be read")?;
-    update_reader.assert_read("Expect ALife object update data to be read")?;
+    update_reader.assert_read("Expect ALife object update data to hold only its class's update fields")?;
     reader.assert_read("Expect ALife object chunk to be read")?;
 
     Ok(Self {
@@ -191,7 +188,6 @@ impl ChunkReadWrite for AlifeObject {
       client_data,
       spawn_id,
       inherited,
-      update_data,
     })
   }
 
@@ -204,6 +200,7 @@ impl ChunkReadWrite for AlifeObject {
 
     let mut object_data_writer: ChunkWriter = ChunkWriter::new();
     let mut inherited_data_writer: ChunkWriter = ChunkWriter::new();
+    let mut inherited_update_writer: ChunkWriter = ChunkWriter::new();
     let mut updated_data_writer: ChunkWriter = ChunkWriter::new();
 
     object_data_writer.write_u16::<T>(self.net_action)?;
@@ -232,7 +229,9 @@ impl ChunkReadWrite for AlifeObject {
     object_data_writer.write_all(&self.client_data)?;
     object_data_writer.write_u16::<T>(self.spawn_id)?;
 
-    self.inherited.write::<T>(&mut inherited_data_writer)?;
+    self
+      .inherited
+      .write::<T>(&mut inherited_data_writer, &mut inherited_update_writer)?;
 
     object_data_writer.write_u16::<T>(to_format_size(
       inherited_data_writer.bytes_written() + 2,
@@ -247,7 +246,7 @@ impl ChunkReadWrite for AlifeObject {
     data_spawn_writer.write_all(object_data_writer.flush_raw_into_buffer()?.as_slice())?;
 
     updated_data_writer.write_u16::<T>(NET_ACTION_UPDATE)?;
-    updated_data_writer.write_all(&self.update_data)?;
+    updated_data_writer.write_all(inherited_update_writer.flush_raw_into_buffer()?.as_slice())?;
 
     data_update_writer.write_u16::<T>(to_format_size(
       updated_data_writer.bytes_written(),
@@ -304,7 +303,6 @@ impl LtxImportExport for AlifeObject {
       client_data: decode_bytes_from_base64(&section.read_field::<String>("client_data")?)?,
       spawn_id: section.read_field("spawn_id")?,
       inherited: AlifeObjectInherited::import(section_name, ltx, &AlifeClass::from_cls_id(&clsid))?,
-      update_data: decode_bytes_from_base64(&section.read_field::<String>("update_data")?)?,
     })
   }
 
@@ -330,13 +328,7 @@ impl LtxImportExport for AlifeObject {
       .set("client_data", encode_bytes_to_base64(&self.client_data))
       .set("spawn_id", self.spawn_id.to_string());
 
-    self.inherited.export(section_name, ltx)?;
-
-    ltx
-      .with_section(section_name)
-      .set("update_data", encode_bytes_to_base64(&self.update_data));
-
-    Ok(())
+    self.inherited.export(section_name, ltx)
   }
 }
 
@@ -356,12 +348,14 @@ mod tests {
 
   use crate::data::alife::alife_object::AlifeObject;
   use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
+  use crate::data::alife::inherited::alife_actor::AlifeActor;
   use crate::data::alife::inherited::alife_graph_point::AlifeGraphPoint;
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
   use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
   use crate::data::alife::inherited::alife_object_item_custom_outfit::AlifeObjectItemCustomOutfit;
   use crate::data::meta::cls_id::ClsId;
+  use crate::data::physics::physics_net_state::PhysicsNetState;
 
   #[test]
   fn binary_read_returns_error_for_unknown_section() -> XrfResult {
@@ -447,23 +441,25 @@ mod tests {
           },
           condition: 1.0,
           upgrades: Vec::new(),
+          update_state: Some(PhysicsNetState::new_mock(Vector3d::new(1.0, 2.0, 3.0))),
         },
+        update_condition: 200,
       })),
-      update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
     };
 
     original.write::<XRayByteOrder>(&mut writer)?;
 
-    assert_eq!(writer.bytes_written(), 185);
+    // The outfit's update packet is its physics state, then its quantised condition: 55 bytes past its action.
+    assert_eq!(writer.bytes_written(), 223);
 
     let bytes_written: usize =
       writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
-    assert_eq!(bytes_written, 185);
+    assert_eq!(bytes_written, 223);
 
     let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
-    assert_eq!(file.bytes_remaining(), 185 + 8);
+    assert_eq!(file.bytes_remaining(), 223 + 8);
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
@@ -514,9 +510,10 @@ mod tests {
           },
           condition: 0.2,
           upgrades: Vec::new(),
+          update_state: Some(PhysicsNetState::new_mock(Vector3d::new(1.0, 2.0, 3.0))),
         },
+        update_condition: 200,
       })),
-      update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
     };
 
     original.export("data", &mut ltx)?;
@@ -569,9 +566,10 @@ mod tests {
           },
           condition: 1.0,
           upgrades: Vec::new(),
+          update_state: Some(PhysicsNetState::new_mock(Vector3d::new(1.0, 2.0, 3.0))),
         },
+        update_condition: 200,
       })),
-      update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
     };
 
     let mut file: File =
@@ -617,7 +615,6 @@ mod tests {
         location2: 3,
         location3: 4,
       })),
-      update_data: Vec::new(),
     }
   }
 
@@ -665,8 +662,12 @@ mod tests {
   #[test]
   fn rejects_update_data_past_its_size_field() {
     let mut original: AlifeObject = new_graph_point_object();
+    let mut actor: AlifeActor = AlifeActor::new_mock();
 
-    original.update_data = vec![0; 70000];
+    actor.update_data = vec![0; 70000];
+    original.section = String::from("actor");
+    original.clsid = ClsId::SActor;
+    original.inherited = AlifeObjectInherited::SeActor(Box::new(actor));
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
@@ -685,7 +686,9 @@ mod tests {
 
     let mut inherited_writer: ChunkWriter = ChunkWriter::new();
 
-    original.inherited.write::<XRayByteOrder>(&mut inherited_writer)?;
+    original
+      .inherited
+      .write::<XRayByteOrder>(&mut inherited_writer, &mut ChunkWriter::new())?;
 
     let inherited_length: usize = inherited_writer.bytes_written();
 
@@ -758,5 +761,42 @@ mod tests {
       .to_string();
 
     assert!(error.contains("of section 'medkit' (SFood, CseAlifeItem)"), "{error}");
+  }
+
+  /// A class whose update packet is empty reads none of it, so bytes there would be dropped by a rewrite.
+  #[test]
+  fn refuses_update_bytes_its_class_does_not_read() -> XrfResult {
+    let original: AlifeObject = new_graph_point_object();
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    original.write::<XRayByteOrder>(&mut writer)?;
+
+    let mut bytes: Vec<u8> = writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?;
+    let update_at: usize = 16 + XRayByteOrder::read_u32(&bytes[12..16]) as usize;
+
+    // One stray byte past the update packet's action: the outer chunk, the update chunk and its length each grow by one.
+    bytes.push(7);
+
+    for at in [4, update_at + 4] {
+      let size: u32 = XRayByteOrder::read_u32(&bytes[at..at + 4]);
+
+      XRayByteOrder::write_u32(&mut bytes[at..at + 4], size + 1);
+    }
+
+    let length: u16 = XRayByteOrder::read_u16(&bytes[update_at + 8..update_at + 10]);
+
+    XRayByteOrder::write_u16(&mut bytes[update_at + 8..update_at + 10], length + 1);
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&bytes)?.read_child_by_index(0)?;
+    let error: String = AlifeObject::read::<XRayByteOrder, _>(&mut reader)
+      .expect_err("a stray update byte")
+      .to_string();
+
+    assert!(
+      error.contains("update data to hold only its class's update fields"),
+      "{error}"
+    );
+
+    Ok(())
   }
 }

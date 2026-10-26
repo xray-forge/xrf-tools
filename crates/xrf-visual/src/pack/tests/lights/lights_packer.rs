@@ -105,7 +105,6 @@ fn object(name: &str, lamp: AlifeObjectHangingLamp) -> AlifeObject {
     client_data: Vec::new(),
     spawn_id: 0,
     inherited: AlifeObjectInherited::CseAlifeObjectHangingLamp(Box::new(lamp)),
-    update_data: Vec::new(),
   }
 }
 

@@ -6,6 +6,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport};
 
+use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_actor::AlifeActor;
 use crate::data::alife::inherited::alife_anomalous_zone::AlifeAnomalousZone;
 use crate::data::alife::inherited::alife_graph_point::AlifeGraphPoint;
@@ -76,46 +77,68 @@ pub enum AlifeObjectInherited {
 }
 
 impl AlifeObjectInherited {
-  /// Read custom save data based on serialized clsid.
-  /// Represents STATE_Read of each separate object in xray implementation.
-  /// Additionally, should respect script extension.
+  /// Read the payload of `alife_class` from both packets: each class's `STATE_Read` from the spawn packet, script
+  /// fields included, and its `UPDATE_Read` from the update packet, which a class without update fields leaves empty.
   pub fn read<T: ByteOrder, D: ChunkDataSource>(
-    reader: &mut ChunkReader<D>,
+    spawn: &mut ChunkReader<D>,
+    update: &mut ChunkReader<D>,
     alife_class: &AlifeClass,
   ) -> XrfResult<Self> {
     Ok(match alife_class {
-      AlifeClass::SeActor => Self::SeActor(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeObjectBreakable => Self::CseAlifeObjectBreakable(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeObjectClimable => Self::CseAlifeObjectClimable(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeGraphPoint => Self::CseAlifeGraphPoint(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeSpaceRestrictor => Self::CseAlifeSpaceRestrictor(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::SeSmartCover => Self::SeSmartCover(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeAnomalousZone => Self::CseAlifeAnomalousZone(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeTorridZone => Self::CseAlifeTorridZone(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::SeSmartTerrain => Self::SeSmartTerrain(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::SeLevelChanger => Self::SeLevelChanger(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeZoneVisual => Self::CseAlifeZoneVisual(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeCar => Self::CseAlifeCar(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeTrader => Self::CseAlifeTrader(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeObjectPhysic => Self::CseAlifeObjectPhysic(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeHelicopter => Self::CseAlifeHelicopter(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeInventoryBox => Self::CseAlifeInventoryBox(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeObjectHangingLamp => Self::CseAlifeObjectHangingLamp(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItem => Self::CseAlifeItem(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItemExplosive => Self::CseAlifeItemExplosive(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItemPda => Self::CseAlifeItemPda(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItemAmmo => Self::CseAlifeItemAmmo(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItemGrenade => Self::CseAlifeItemGrenade(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItemArtefact => Self::CseAlifeItemArtefact(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItemWeapon => Self::CseAlifeItemWeapon(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItemDetector => Self::CseAlifeItemDetector(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItemHelmet => Self::CseAlifeItemHelmet(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItemCustomOutfit => Self::CseAlifeItemCustomOutfit(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItemWeaponShotgun => Self::CseAlifeItemWeaponShotgun(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItemWeaponMagazined => Self::CseAlifeItemWeaponMagazined(Box::new(reader.read_xr::<T, _>()?)),
-      AlifeClass::CseAlifeItemWeaponMagazinedWGl => {
-        Self::CseAlifeItemWeaponMagazinedWGl(Box::new(reader.read_xr::<T, _>()?))
+      AlifeClass::SeActor => Self::SeActor(Box::new(AlifeActor::read::<T, _>(spawn, update)?)),
+      AlifeClass::CseAlifeObjectBreakable => Self::CseAlifeObjectBreakable(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeObjectClimable => Self::CseAlifeObjectClimable(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeGraphPoint => Self::CseAlifeGraphPoint(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeSpaceRestrictor => Self::CseAlifeSpaceRestrictor(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::SeSmartCover => Self::SeSmartCover(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeAnomalousZone => Self::CseAlifeAnomalousZone(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeTorridZone => Self::CseAlifeTorridZone(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::SeSmartTerrain => Self::SeSmartTerrain(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::SeLevelChanger => Self::SeLevelChanger(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeZoneVisual => Self::CseAlifeZoneVisual(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeCar => Self::CseAlifeCar(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeTrader => Self::CseAlifeTrader(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeObjectPhysic => {
+        Self::CseAlifeObjectPhysic(Box::new(AlifeObjectPhysic::read::<T, _>(spawn, update)?))
       }
+      AlifeClass::CseAlifeHelicopter => Self::CseAlifeHelicopter(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeInventoryBox => Self::CseAlifeInventoryBox(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeObjectHangingLamp => Self::CseAlifeObjectHangingLamp(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeItem => Self::CseAlifeItem(Box::new(AlifeObjectItem::read::<T, _>(spawn, update)?)),
+      AlifeClass::CseAlifeItemExplosive => {
+        Self::CseAlifeItemExplosive(Box::new(AlifeObjectItemExplosive::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::CseAlifeItemPda => Self::CseAlifeItemPda(Box::new(AlifeObjectItemPda::read::<T, _>(spawn, update)?)),
+      AlifeClass::CseAlifeItemAmmo => {
+        Self::CseAlifeItemAmmo(Box::new(AlifeObjectItemAmmo::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::CseAlifeItemGrenade => {
+        Self::CseAlifeItemGrenade(Box::new(AlifeObjectItemGrenade::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::CseAlifeItemArtefact => {
+        Self::CseAlifeItemArtefact(Box::new(AlifeObjectItemArtefact::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::CseAlifeItemWeapon => {
+        Self::CseAlifeItemWeapon(Box::new(AlifeObjectItemWeapon::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::CseAlifeItemDetector => {
+        Self::CseAlifeItemDetector(Box::new(AlifeObjectItemDetector::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::CseAlifeItemHelmet => {
+        Self::CseAlifeItemHelmet(Box::new(AlifeObjectItemHelmet::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::CseAlifeItemCustomOutfit => {
+        Self::CseAlifeItemCustomOutfit(Box::new(AlifeObjectItemCustomOutfit::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::CseAlifeItemWeaponShotgun => {
+        Self::CseAlifeItemWeaponShotgun(Box::new(AlifeObjectItemWeaponShotgun::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::CseAlifeItemWeaponMagazined => {
+        Self::CseAlifeItemWeaponMagazined(Box::new(AlifeObjectItemWeaponMagazined::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::CseAlifeItemWeaponMagazinedWGl => Self::CseAlifeItemWeaponMagazinedWGl(Box::new(
+        AlifeObjectItemWeaponMagazinedWgl::read::<T, _>(spawn, update)?,
+      )),
       _ => {
         return Err(XrfError::new_parsing_error(format!(
           "Not implemented parser for {}",
@@ -192,7 +215,7 @@ impl AlifeObjectInherited {
       AlifeObjectInherited::CseAlifeItemDetector(object) => Some(&object.base.base.base),
       AlifeObjectInherited::CseAlifeItemHelmet(object) => Some(&object.base.base.base),
       AlifeObjectInherited::CseAlifeItemCustomOutfit(object) => Some(&object.base.base.base),
-      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => Some(&object.base.base.base.base),
+      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => Some(&object.base.base.base.base.base),
       AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => Some(&object.base.base.base.base),
       AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => Some(&object.base.base.base.base.base),
     }
@@ -220,7 +243,7 @@ impl AlifeObjectInherited {
       AlifeObjectInherited::CseAlifeItemDetector(object) => object.base.base.visual_name.as_str(),
       AlifeObjectInherited::CseAlifeItemHelmet(object) => object.base.base.visual_name.as_str(),
       AlifeObjectInherited::CseAlifeItemCustomOutfit(object) => object.base.base.visual_name.as_str(),
-      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => object.base.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => object.base.base.base.base.visual_name.as_str(),
       AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => object.base.base.base.visual_name.as_str(),
       AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => object.base.base.base.base.visual_name.as_str(),
       AlifeObjectInherited::CseAlifeZoneVisual(object) => object.visual.visual_name.as_str(),
@@ -243,38 +266,39 @@ impl AlifeObjectInherited {
     self.get_abstract().map(|it| &it.custom_data)
   }
 
-  pub fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+  /// Write the payload's spawn fields into `spawn` and its update fields into `update`.
+  pub fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
     match self {
-      AlifeObjectInherited::SeActor(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeObjectBreakable(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeObjectClimable(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeGraphPoint(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeSpaceRestrictor(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::SeSmartCover(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeAnomalousZone(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeTorridZone(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::SeSmartTerrain(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::SeLevelChanger(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeZoneVisual(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeCar(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeTrader(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeObjectPhysic(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeHelicopter(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeInventoryBox(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeObjectHangingLamp(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItem(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItemExplosive(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItemPda(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItemAmmo(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItemGrenade(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItemArtefact(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItemWeapon(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItemDetector(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItemHelmet(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItemCustomOutfit(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => writer.write_xr::<T, _>(object.deref())?,
-      AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => writer.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::SeActor(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeObjectBreakable(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeObjectClimable(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeGraphPoint(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeSpaceRestrictor(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::SeSmartCover(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeAnomalousZone(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeTorridZone(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::SeSmartTerrain(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::SeLevelChanger(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeZoneVisual(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeCar(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeTrader(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeObjectPhysic(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeHelicopter(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeInventoryBox(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeObjectHangingLamp(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeItem(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemExplosive(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemPda(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemAmmo(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemGrenade(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemArtefact(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemWeapon(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemDetector(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemHelmet(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemCustomOutfit(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => object.write::<T>(spawn, update)?,
     }
 
     Ok(())
