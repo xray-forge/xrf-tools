@@ -24,6 +24,8 @@ impl LightAnimFile {
 
   /// The version below which colours are stored channel-swapped.
   pub const BGR_VERSION: u16 = 0;
+  /// The version `ELightAnimLibrary::Save` writes (`LANIM_VERSION`), its colours stored as RGB.
+  pub const VERSION: u16 = 1;
 
   /// Reads a colour animation library from a path.
   ///
@@ -121,6 +123,113 @@ impl LightAnimFile {
     }
 
     self.items.iter().find(|item| item.name == name)
+  }
+
+  /// [`Self::find_item`], for changing the animation it finds.
+  pub fn find_item_mut(&mut self, name: &str) -> Option<&mut LightAnimItem> {
+    if name.is_empty() {
+      return None;
+    }
+
+    self.items.iter_mut().find(|item| item.name == name)
+  }
+
+  /// Turns the library into what `ELightAnimLibrary::Load` holds and `Save` writes back: version 1, a version 0
+  /// library's colours with red and blue exchanged, and every animation's keys by frame, one a frame.
+  pub fn normalize(&mut self) {
+    let is_bgr: bool = self.is_bgr();
+
+    for item in &mut self.items {
+      item.normalize_keys(is_bgr);
+    }
+
+    self.version = Self::VERSION;
+  }
+
+  /// `ELightAnimLibrary::AppendItem` without a source: a new animation of the default rate and length, keyed
+  /// transparent black at frame 0, added last.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error for an empty name, or one the library already holds.
+  pub fn append_item(&mut self, name: &str) -> XrfResult<&mut LightAnimItem> {
+    self.push_item(LightAnimItem::new(name))
+  }
+
+  /// `ELightAnimLibrary::AppendItem` from a source: a copy of the animation named `source` under `name`, added last.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the library holds no `source`, or `name` is empty or already taken.
+  pub fn clone_item(&mut self, source: &str, name: &str) -> XrfResult<&mut LightAnimItem> {
+    let mut copy: LightAnimItem = self
+      .find_item(source)
+      .ok_or_else(|| Self::new_missing_error(source))?
+      .clone();
+
+    copy.name = name.to_owned();
+
+    self.push_item(copy)
+  }
+
+  /// `ELightAnimLibrary::RenameObject`: gives the animation named `from` the name `to`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the library holds no `from`, or `to` is empty or already taken by another animation.
+  pub fn rename_item(&mut self, from: &str, to: &str) -> XrfResult {
+    if from != to {
+      self.require_free_name(to)?;
+    }
+
+    self
+      .find_item_mut(from)
+      .ok_or_else(|| Self::new_missing_error(from))?
+      .name = to.to_owned();
+
+    Ok(())
+  }
+
+  /// `ELightAnimLibrary::RemoveObject`: takes the animation named `name` out of the library, keeping the others in their
+  /// order.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the library holds no such animation.
+  pub fn remove_item(&mut self, name: &str) -> XrfResult<LightAnimItem> {
+    let index: usize = self
+      .items
+      .iter()
+      .position(|item| !name.is_empty() && item.name == name)
+      .ok_or_else(|| Self::new_missing_error(name))?;
+
+    Ok(self.items.remove(index))
+  }
+
+  fn push_item(&mut self, item: LightAnimItem) -> XrfResult<&mut LightAnimItem> {
+    self.require_free_name(&item.name)?;
+    self.items.push(item);
+
+    Ok(self.items.last_mut().expect("the animation was just added"))
+  }
+
+  /// The engine looks an animation up by its exact name and takes the first, so a second of one name is unreachable.
+  fn require_free_name(&self, name: &str) -> XrfResult {
+    if name.is_empty() {
+      return Err(XrfError::new_invalid_error("A light animation needs a name"));
+    }
+
+    if self.find_item(name).is_some() {
+      return Err(XrfError::new_invalid_error(format!(
+        "The light animation library already holds '{name}'"
+      )));
+    }
+
+    Ok(())
+  }
+
+  fn new_missing_error(name: &str) -> XrfError {
+    XrfError::new_not_found_error(format!("The light animation library holds no '{name}'"))
   }
 
   /// Keys across every animation.

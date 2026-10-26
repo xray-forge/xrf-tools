@@ -35,11 +35,15 @@ impl LightAnimKey {
   /// The same key with red and blue exchanged and alpha kept, as `ELightAnimLibrary::Load` turns a version 0 colour
   /// into the one it uses (`subst_alpha(bgr2rgb(c), color_get_A(c))`).
   pub const fn to_swapped_red_blue(self) -> Self {
-    let red_blue: u32 = ((self.color & 0x00FF_0000) >> 16) | ((self.color & 0x0000_00FF) << 16);
-
     Self {
       frame: self.frame,
-      color: (self.color & 0xFF00_FF00) | red_blue,
+      color: Self::swap_red_blue(self.color),
     }
+  }
+
+  /// `color` with red and blue exchanged and alpha and green kept, which is both the version 0 correction and what
+  /// `CLAItem::InterpolateBGR` makes of an RGB colour.
+  pub(crate) const fn swap_red_blue(color: u32) -> u32 {
+    (color & 0xFF00_FF00) | ((color & 0x00FF_0000) >> 16) | ((color & 0x0000_00FF) << 16)
   }
 }

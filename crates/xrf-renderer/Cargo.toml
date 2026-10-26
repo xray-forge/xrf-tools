@@ -48,6 +48,8 @@ objc2-metal = { version = "0.3.2", default-features = false, features = ["std", 
 ddsfile = { workspace = true }
 naga = { workspace = true }
 serde_json = { workspace = true }
+# The engine's own light animation arithmetic, which the renderer's is held to.
+xrf-light-anim = { workspace = true }
 xrf-test-utils = { workspace = true }
 xrf-vfs = { workspace = true }
 
