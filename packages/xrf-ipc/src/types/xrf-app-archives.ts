@@ -1149,7 +1149,7 @@ export type ArchiveThmFile = {
   version: number | null;
   /** Whether the version is the one `ETextureThumbnail::Load` accepts. */
   isSupportedVersion: boolean;
-  /** The kind of asset the thumbnail describes; `1` is a texture and the only one these tools read. */
+  /** The kind of asset the thumbnail describes; `1` is a texture and the only kind this describer reads. */
   thumbnailType: number | null;
   thumbnail: ArchiveThmThumbnail | null;
   /** Chunk ids the reader could not fold into a field, in the order it read them. */
