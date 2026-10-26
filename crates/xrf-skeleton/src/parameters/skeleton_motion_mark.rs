@@ -63,7 +63,7 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use crate::skeleton_motion_mark::SkeletonMotionMark;
+  use crate::parameters::SkeletonMotionMark;
 
   #[test]
   fn test_read_write() -> XrfResult {

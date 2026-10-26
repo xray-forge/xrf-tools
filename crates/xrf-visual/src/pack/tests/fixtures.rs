@@ -265,8 +265,7 @@ pub(crate) fn embedded_motions(names: &[&str]) -> (SkeletonMotionsChunk, Skeleto
         .map(|(ordinal, _)| SkeletonMotion {
           label: format!("stale_label_{ordinal}"),
           count: 0,
-          flags: 0,
-          remaining: vec![],
+          keys: vec![0],
         })
         .collect(),
     },

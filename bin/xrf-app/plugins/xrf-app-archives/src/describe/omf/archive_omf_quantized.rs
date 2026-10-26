@@ -1,11 +1,5 @@
 use serde::Serialize;
-
-/// Steps the engine's 16-bit quantizer divides a value into, `CMotionDef::Quantize`
-/// (`xrCore/Animation/SkeletonMotions.hpp`).
-const STEPS_PER_UNIT: f32 = 655.35;
-
-/// The largest value the quantizer's `u16` admits, which is `65535 / 655.35` exactly.
-const LARGEST_VALUE: f32 = 100.0;
+use xrf_skeleton::SkeletonMotionDefinition;
 
 /// A playback value as the engine reads it, beside the one the file stores.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -24,32 +18,18 @@ impl ArchiveOmfQuantized {
   /// The value a stored float becomes on the way into `CMotionDef`.
   pub fn of(declared: f32) -> Self {
     Self {
-      value: Self::from_steps(Self::to_steps(declared)),
+      value: SkeletonMotionDefinition::dequantize(SkeletonMotionDefinition::quantize(declared)),
       declared,
-      is_clamped: !(0.0..=LARGEST_VALUE).contains(&declared),
+      is_clamped: !(0.0..=SkeletonMotionDefinition::get_quantized_maximum()).contains(&declared),
     }
-  }
-
-  /// `CMotionDef::Quantize`: the step count a stored float lands on.
-  pub(crate) fn to_steps(value: f32) -> u16 {
-    let steps: f32 = (value * STEPS_PER_UNIT).floor();
-
-    if steps.is_nan() {
-      return 0;
-    }
-
-    steps.clamp(0.0, f32::from(u16::MAX)) as u16
-  }
-
-  /// `CMotionDef::Dequantize`: what a step count is worth.
-  pub(crate) fn from_steps(steps: u16) -> f32 {
-    f32::from(steps) / STEPS_PER_UNIT
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use super::{ArchiveOmfQuantized, LARGEST_VALUE};
+  use xrf_skeleton::SkeletonMotionDefinition;
+
+  use super::ArchiveOmfQuantized;
 
   /// What the quantizer's own step is worth, which is the most a round trip may lose.
   const STEP: f32 = 1.0 / 655.35;
@@ -72,7 +52,10 @@ mod tests {
   fn a_value_past_the_quantizers_range_is_reported_beside_what_the_engine_reads() {
     let power: ArchiveOmfQuantized = ArchiveOmfQuantized::of(150.0);
 
-    assert_eq!((power.value, power.declared), (LARGEST_VALUE, 150.0));
+    assert_eq!(
+      (power.value, power.declared),
+      (SkeletonMotionDefinition::get_quantized_maximum(), 150.0)
+    );
     assert!(power.is_clamped);
   }
 

@@ -93,7 +93,7 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use crate::skeleton_part::SkeletonPart;
+  use crate::parameters::SkeletonPart;
 
   #[test]
   fn rejects_a_part_list_past_its_count_field() {

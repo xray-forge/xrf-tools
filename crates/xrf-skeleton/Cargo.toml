@@ -11,7 +11,6 @@ path = "src/lib.rs"
 [dependencies]
 byteorder = { workspace = true }
 log = { workspace = true }
-serde = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-error = { workspace = true }
 xrf-math = { workspace = true }
@@ -22,7 +21,6 @@ xrf-utils = { workspace = true }
 fixtures = []
 
 [dev-dependencies]
-xrf-math = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
 
 [lints]

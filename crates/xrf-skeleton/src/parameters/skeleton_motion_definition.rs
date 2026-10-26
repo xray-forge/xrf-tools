@@ -3,8 +3,9 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_length, to_format_size};
 
-use crate::skeleton_motion_mark::SkeletonMotionMark;
+use crate::parameters::{SkeletonMotionFlag, SkeletonMotionMark};
 
+/// One motion's definition in the parameters chunk: its name, flags, target, the four floats it plays with, and marks.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SkeletonMotionDefinition {
   pub name: String,
@@ -29,12 +30,70 @@ impl SkeletonMotionDefinition {
   /// The rate a motion plays at when its own is unusable, which is the rate the format samples at.
   pub const DEFAULT_SPEED: f32 = 1.0;
 
-  /// The rate playback runs at, as a multiplier of the format's sample rate.
-  pub fn get_playback_speed(&self) -> f32 {
-    if self.speed > 0.0 {
-      self.speed
+  /// Steps per unit `CMotionDef::Quantize` keeps a stored float in, as a `u16` (`SkeletonMotions.hpp:146`).
+  pub const QUANTUM: f32 = 655.35;
+
+  /// What the engine widens a blend time by before blending over it, `fQuantizerRangeExt` (`SkeletonMotions.hpp:132`).
+  pub const BLEND_RANGE_EXTENSION: f32 = 1.5;
+
+  /// `CMotionDef::Quantize`: the steps a stored float floors to, clamped to a `u16`, which is all `CMotionDef::Load`
+  /// keeps of speed, power, accrue and falloff.
+  pub fn quantize(value: f32) -> u16 {
+    // Clamped first, so the cast narrows nothing; a NaN, which `iFloor` leaves unusable, casts to zero.
+    (value * Self::QUANTUM).floor().clamp(0.0, f32::from(u16::MAX)) as u16
+  }
+
+  /// `CMotionDef::Dequantize`: what a step count is worth.
+  pub fn dequantize(steps: u16) -> f32 {
+    f32::from(steps) / Self::QUANTUM
+  }
+
+  /// The largest value quantising keeps, about 100; anything past it, or below zero, is clamped.
+  pub fn get_quantized_maximum() -> f32 {
+    Self::dequantize(u16::MAX)
+  }
+
+  /// The speed the engine plays, `CMotionDef::Speed`.
+  pub fn get_engine_speed(&self) -> f32 {
+    Self::dequantize(Self::quantize(self.speed))
+  }
+
+  /// The power the engine blends with, `CMotionDef::Power`.
+  pub fn get_engine_power(&self) -> f32 {
+    Self::dequantize(Self::quantize(self.power))
+  }
+
+  /// What the engine blends in over, `CMotionDef::Accrue`.
+  pub fn get_engine_accrue(&self) -> f32 {
+    Self::BLEND_RANGE_EXTENSION * Self::dequantize(Self::quantize(self.accrue))
+  }
+
+  /// What the engine blends out over, `CMotionDef::Falloff`, after `CMotionDef::Load` replaces a cycle's falloff that
+  /// quantises at or above its accrue with one step under it.
+  pub fn get_engine_falloff(&self) -> f32 {
+    let falloff: u16 = if self.is_falloff_replaced() {
+      // `u16(accrue - 1)`, which wraps a cycle declaring no accrue round to the quantizer's ceiling.
+      Self::quantize(self.accrue).wrapping_sub(1)
     } else {
-      Self::DEFAULT_SPEED
+      Self::quantize(self.falloff)
+    };
+
+    Self::BLEND_RANGE_EXTENSION * Self::dequantize(falloff)
+  }
+
+  /// Whether `CMotionDef::Load` replaces the declared falloff rather than reading it.
+  pub fn is_falloff_replaced(&self) -> bool {
+    !SkeletonMotionFlag::Fx.is_set_in(self.flags) && Self::quantize(self.falloff) >= Self::quantize(self.accrue)
+  }
+
+  /// The rate playback runs at, as a multiplier of the format's sample rate.
+  ///
+  /// This is the speed the engine plays ([`Self::get_engine_speed`]) rather than the one stored. A speed that comes to
+  /// zero would never advance the motion, so it plays at [`Self::DEFAULT_SPEED`] instead.
+  pub fn get_playback_speed(&self) -> f32 {
+    match Self::quantize(self.speed) {
+      0 => Self::DEFAULT_SPEED,
+      steps => Self::dequantize(steps),
     }
   }
 
@@ -180,8 +239,7 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use crate::skeleton_motion_definition::SkeletonMotionDefinition;
-  use crate::skeleton_motion_mark::SkeletonMotionMark;
+  use crate::parameters::{SkeletonMotionDefinition, SkeletonMotionFlag, SkeletonMotionMark};
 
   fn write_read_list(
     filename: &str,
@@ -201,19 +259,73 @@ mod tests {
   }
 
   #[test]
-  fn reports_a_stored_playback_speed_as_it_is() {
+  fn reports_the_speed_the_engine_quantises_a_stored_one_to() {
+    let speed = |stored: f32| {
+      let mut definition: SkeletonMotionDefinition = SkeletonMotionDefinition::new_mock(Vec::new());
+
+      definition.speed = stored;
+      definition.get_playback_speed()
+    };
+
+    // `Quantize` floors: 1.0 is 655.35 steps, kept as 655.
+    assert_eq!(speed(1.0), 655.0 / 655.35);
+    assert_eq!(speed(1.2), 786.0 / 655.35);
+    // A `u16` of steps tops out at 100.
+    assert_eq!(speed(250.0), 65535.0 / 655.35);
+  }
+
+  #[test]
+  fn quantises_as_the_engine_does_without_wrapping() {
+    assert_eq!(SkeletonMotionDefinition::quantize(1.0), 655);
+    assert_eq!(SkeletonMotionDefinition::quantize(150.0), u16::MAX);
+    assert_eq!(SkeletonMotionDefinition::quantize(-1.0), 0);
+    assert_eq!(SkeletonMotionDefinition::quantize(f32::NAN), 0);
+    assert_eq!(SkeletonMotionDefinition::get_quantized_maximum(), 65535.0 / 655.35);
+  }
+
+  #[test]
+  fn blends_over_half_again_what_the_definition_declares() {
     let mut definition: SkeletonMotionDefinition = SkeletonMotionDefinition::new_mock(Vec::new());
 
-    definition.speed = 1.2;
+    // A cycle whose falloff quantises under its accrue keeps it.
+    (definition.flags, definition.accrue, definition.falloff) = (0, 2.0, 1.0);
 
-    assert_eq!(definition.get_playback_speed(), 1.2);
+    assert_eq!(definition.get_engine_accrue(), 1.5 * (1310.0 / 655.35));
+    assert_eq!(definition.get_engine_falloff(), 1.5 * (655.0 / 655.35));
+    assert!(!definition.is_falloff_replaced());
+  }
+
+  #[test]
+  fn replaces_a_cycles_falloff_at_or_above_its_accrue_but_not_an_effects() {
+    let mut definition: SkeletonMotionDefinition = SkeletonMotionDefinition::new_mock(Vec::new());
+
+    (definition.flags, definition.accrue, definition.falloff) = (0, 2.0, 5.0);
+
+    assert!(definition.is_falloff_replaced());
+    assert_eq!(definition.get_engine_falloff(), 1.5 * (1309.0 / 655.35));
+
+    definition.flags = SkeletonMotionFlag::Fx.mask();
+
+    assert!(!definition.is_falloff_replaced());
+    assert_eq!(definition.get_engine_falloff(), 1.5 * (3276.0 / 655.35));
+  }
+
+  #[test]
+  fn wraps_a_cycle_declaring_no_accrue_to_the_quantizers_ceiling() {
+    // `u16(0 - 1)` is 65535, not 0: such a cycle blends out over the longest time the engine can hold.
+    let mut definition: SkeletonMotionDefinition = SkeletonMotionDefinition::new_mock(Vec::new());
+
+    (definition.flags, definition.accrue, definition.falloff) = (0, 0.0, 0.0);
+
+    assert!(definition.is_falloff_replaced());
+    assert_eq!(definition.get_engine_accrue(), 0.0);
+    assert_eq!(definition.get_engine_falloff(), 1.5 * (65535.0 / 655.35));
   }
 
   #[test]
   fn reads_a_speed_that_cannot_scale_playback_as_the_sample_rate() {
-    // The engine divides a motion's length by its speed, which these three turn into infinity, a negative length, and
-    // a value nothing can be compared against.
-    for speed in [0.0, -1.0, f32::NAN] {
+    // Each quantises to zero steps, which never advances the motion and leaves a length nothing can be divided into.
+    for speed in [0.0, -1.0, f32::NAN, 0.001] {
       let mut definition: SkeletonMotionDefinition = SkeletonMotionDefinition::new_mock(Vec::new());
 
       definition.speed = speed;

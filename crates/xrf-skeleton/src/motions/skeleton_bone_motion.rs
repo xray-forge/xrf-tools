@@ -1,6 +1,6 @@
 use xrf_math::Vector3d;
 
-use crate::quaternion::Quaternion;
+use crate::motions::Quaternion;
 
 /// One bone's animation within one motion, dequantised into renderer-ready values.
 #[derive(Clone, Debug, PartialEq)]

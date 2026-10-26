@@ -8542,7 +8542,6 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "log",
- "serde",
  "xrf-chunk",
  "xrf-error",
  "xrf-math",
