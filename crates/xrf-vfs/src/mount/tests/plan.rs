@@ -273,6 +273,35 @@ fn plans_an_enhanced_edition_from_the_fsgame_named_for_its_game() {
 }
 
 #[test]
+fn reads_an_installation_whose_gamedata_is_declared_by_absolute_path() {
+  // The engine's locator takes a root column naming no alias as the directory it spells, so this layout mounts the
+  // same gamedata `$fs_root$| gamedata\` would.
+  let root: PathBuf = install("absolute_gamedata", &["gamedata\\configs\\system.ltx"]);
+  let gamedata: PathBuf = root.join("gamedata");
+
+  fs::write(
+    root.join("fsgame.ltx"),
+    format!(
+      "$game_data$ = true | true | {}\n",
+      gamedata.to_str().expect("a Unicode scratch path")
+    ),
+  )
+  .expect("fsgame rewritten");
+
+  let search: XraySearch = XraySearchPlan::new()
+    .with_root_mode("game", &root, XrayMountMode::Installation)
+    .expect("the installation plans")
+    .open()
+    .expect("the installation opens");
+
+  assert_eq!(
+    search.read("configs\\system.ltx").expect("the config reads"),
+    b"payload"
+  );
+  assert_eq!(search.get_vfs().get_mounts()[0].get_origin(), Some("$game_data$"));
+}
+
+#[test]
 fn plans_from_an_already_parsed_fsgame() {
   let root: PathBuf = install("parsed", &["gamedata\\configs\\system.ltx"]);
   let fsgame: FsgameFile = FsgameFile::read(&root).expect("fsgame reads");

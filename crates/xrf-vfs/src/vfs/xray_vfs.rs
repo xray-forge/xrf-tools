@@ -6,12 +6,12 @@ use std::sync::Arc;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::cache::{XrayAssetCache, XrayCacheKey, XrayCachePolicy, XrayCacheStats};
 use crate::input::{XrayRevision, XrayRevisions};
-use crate::path::{XrayLogicalPath, normalize};
+use crate::path::{XrayLogicalPath, normalize, normalize_base};
 use crate::search::{XrayDirectoryListing, XrayMountSelection, XrayMountedEntry, XrayShadowedCopy, XrayShadowingEntry};
 use crate::source::XrayDirectorySource;
-use crate::trace::XrayReadTrace;
+use crate::vfs::cache::{XrayAssetCache, XrayCacheKey, XrayCachePolicy, XrayCacheStats};
+use crate::vfs::trace::XrayReadTrace;
 use crate::{
   XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetSource, XrayAssetType, XrayFileStamp, XrayLookupScope,
   XrayMount, XrayMountId, XraySkippedMount, XraySourceKind,
@@ -234,7 +234,7 @@ impl XrayVfs {
     Ok(id)
   }
 
-  /// Mounts a directory once, reusing the existing mount for the same root.
+  /// Mounts a directory once per logical base, reusing the existing mount of the same root at the same base.
   ///
   /// # Errors
   ///
@@ -242,19 +242,23 @@ impl XrayVfs {
   pub fn mount_directory(&mut self, base: &str, root: impl AsRef<Path>) -> XrfResult<XrayMountId> {
     let root: &Path = root.as_ref();
 
-    if let Some(mount) = self.find_directory_mount(root) {
+    if let Some(mount) = self.find_directory_mount(&normalize_base(base)?, root) {
       return Ok(mount);
     }
 
     self.mount(base, Box::new(XrayDirectorySource::read(root)?))
   }
 
-  /// Returns the mount already covering a directory root.
-  fn find_directory_mount(&self, root: &Path) -> Option<XrayMountId> {
+  /// Returns the mount already covering a directory root at a normalized logical base.
+  fn find_directory_mount(&self, base: &str, root: &Path) -> Option<XrayMountId> {
     self
       .mounts
       .iter()
-      .find(|mount| mount.get_kind() == XraySourceKind::Directory && mount.get_source().get_root_path() == root)
+      .find(|mount| {
+        mount.get_kind() == XraySourceKind::Directory
+          && mount.get_base() == base
+          && mount.get_source().get_root_path() == root
+      })
       .map(XrayMount::get_id)
   }
 
@@ -439,28 +443,31 @@ impl XrayVfs {
 
     // A loose container names its mount's root, but an archived one names the volume the entry sits in, which is a
     // file inside the mount rather than the mount itself. Matching the volume is also what tells two mounts planned
-    // from single volumes of one directory apart, where a root match alone would hand both to the first.
-    let Some(mount) = self.mounts.iter().find(|mount| {
-      let source: &dyn XrayAssetSource = mount.get_source();
+    // from single volumes of one directory apart, where a root match alone would hand both to the first. One root
+    // mounted at two bases is two mounts, so the one answering is the one holding the path under its own base.
+    let logical_path: &str = asset.get_logical_path().as_str();
+    let located: Option<(&XrayMount, &str)> = self
+      .mounts
+      .iter()
+      .filter(|mount| {
+        let source: &dyn XrayAssetSource = mount.get_source();
 
-      source.get_root_path() == container_root
-        || source.list_volumes().iter().any(|volume| volume.path == container_root)
-    }) else {
-      return Err(XrfError::new_not_found_error(format!(
-        "cannot read '{}': no mount in this VFS holds {}",
-        asset.get_logical_path(),
+        source.get_root_path() == container_root
+          || source.list_volumes().iter().any(|volume| volume.path == container_root)
+      })
+      .find_map(|mount| {
+        mount
+          .to_source_path(logical_path)
+          .filter(|source_path| mount.get_source().contains(source_path))
+          .map(|source_path| (mount, source_path))
+      });
+
+    located.ok_or_else(|| {
+      XrfError::new_not_found_error(format!(
+        "cannot read '{logical_path}': no mount in this VFS holds it in {}",
         format_path(container_root)
-      )));
-    };
-
-    let Some(source_path) = mount.to_source_path(asset.get_logical_path().as_str()) else {
-      return Err(XrfError::new_not_found_error(format!(
-        "cannot read '{}': it falls outside the base of the mount holding it",
-        asset.get_logical_path()
-      )));
-    };
-
-    Ok((mount, source_path))
+      ))
+    })
   }
 
   /// Size in bytes of the winning entry within a scope, without reading it.
@@ -762,7 +769,7 @@ impl XrayVfs {
   }
 
   /// Checks whether a logical path falls inside the scope's subtree.
-  fn get_within_prefix(scope: &XrayLookupScope, logical_path: &str) -> bool {
+  fn is_within_prefix(scope: &XrayLookupScope, logical_path: &str) -> bool {
     scope
       .get_prefix()
       .is_none_or(|prefix| crate::path::is_component_prefix(logical_path, prefix))
@@ -774,7 +781,7 @@ impl XrayVfs {
     scope: &XrayLookupScope,
     logical_path: &'a str,
   ) -> Option<(&XrayMount, &'a str)> {
-    if !Self::get_within_prefix(scope, logical_path) {
+    if !Self::is_within_prefix(scope, logical_path) {
       return None;
     }
 

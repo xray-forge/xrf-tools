@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::vfs::tests::fake_source::{FakeArchiveSource, directory};
+use crate::vfs::tests::fixtures::{FakeArchiveSource, directory};
 use crate::{
   XrayAsset, XrayCachePolicy, XrayChange, XrayChangeKind, XrayChangeSet, XrayInput, XrayInputKind, XrayInputRecord,
   XrayLogicalPath, XrayLookupScope, XrayMountId, XrayRevision, XraySearch, XraySearchKey, XrayTransaction, XrayVfs,

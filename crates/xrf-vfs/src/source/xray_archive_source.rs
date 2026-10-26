@@ -11,11 +11,10 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
 use crate::asset::XrayAsset;
-use crate::path::{XrayLogicalPath, is_component_prefix, normalize_logical};
-use crate::source::xray_asset_source::label_from_path;
+use crate::path::{XrayLogicalPath, is_component_prefix};
 use crate::{
   XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayDeclaredRoot, XrayPathCollision, XrayShadowedCopy,
-  XrayShadowingEntry, XraySourceKind,
+  XrayShadowingEntry, XraySourceKind, label_from_path,
 };
 
 /// Mounts an archive volume set as a read-only asset source.
@@ -235,7 +234,7 @@ impl XrayArchiveSource {
 
   /// The engine identity one entry folds to, or nothing when its name is not one.
   fn to_identity(descriptor: &ArchiveFileDescriptor) -> Option<String> {
-    normalize_logical(&descriptor.name)
+    XrayLogicalPath::normalize(&descriptor.name)
       .inspect_err(|error| log::warn!("Skipping archive entry '{}': {error}", descriptor.name))
       .ok()
   }

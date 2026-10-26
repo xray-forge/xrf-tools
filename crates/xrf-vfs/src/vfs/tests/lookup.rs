@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::vfs::tests::fake_source::{FakeArchiveSource, directory};
+use crate::vfs::tests::fixtures::{FakeArchiveSource, directory};
 use crate::{XrayAsset, XrayAssetType, XrayLookupScope, XrayVfs};
 
 #[test]
@@ -224,6 +224,32 @@ fn mounting_the_same_directory_twice_reuses_the_mount() {
 
   assert_eq!(first, second);
   assert_eq!(vfs.get_mounts().len(), 1, "the same root is not walked twice");
+}
+
+#[test]
+fn mounting_one_directory_at_another_base_is_another_mount() {
+  // Reusing the first mount would answer the second base's paths from the first base, so `weapons\ak74.ltx` would be
+  // found nowhere the caller mounted it.
+  let root: PathBuf = directory("rebased", &["ak74.ltx"]);
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+  let root_mount = vfs.mount_directory("", &root).expect("mounts at the root");
+  let based_mount = vfs
+    .mount_directory("Configs\\Weapons", &root)
+    .expect("mounts at a base");
+
+  assert_ne!(root_mount, based_mount);
+  assert_eq!(
+    vfs.mount_directory("configs\\weapons", &root).expect("mounts again"),
+    based_mount,
+    "the same base, however spelled, reuses its mount"
+  );
+  assert!(
+    vfs
+      .find_in(&XrayLookupScope::all(), "configs\\weapons\\ak74.ltx")
+      .expect("lookup")
+      .is_some()
+  );
 }
 
 #[test]

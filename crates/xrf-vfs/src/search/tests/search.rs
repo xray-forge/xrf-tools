@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfError;
 
-use crate::vfs::tests::fake_source::{FakeArchiveSource, directory};
+use crate::vfs::tests::fixtures::{FakeArchiveSource, directory};
 use crate::{
   XrayAsset, XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMountId, XrayResolution, XraySearch,
   XraySearchedSource, XrayVfs,

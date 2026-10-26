@@ -1,7 +1,5 @@
 //! What a resolved asset is, and the per-kind rules for turning an engine reference into one.
 
-mod shader;
-mod sound;
 mod xray_asset;
 mod xray_asset_container;
 mod xray_asset_rules;

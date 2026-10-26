@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use xrf_test_utils::GeneratedResources;
 
 use crate::mount::XrayMountPlan;
-use crate::vfs::tests::fake_source::FakeArchiveSource;
+use crate::vfs::tests::fixtures::FakeArchiveSource;
 use crate::{
   XrayCollisionSite, XrayLogicalPath, XrayLookupScope, XrayPathCollision, XraySearch, XraySourceKind, XrayVfs,
 };

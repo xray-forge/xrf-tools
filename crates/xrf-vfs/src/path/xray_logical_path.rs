@@ -118,7 +118,7 @@ impl XrayLogicalPath {
   ///
   /// Returns an error when the path contains an empty, `.` or `..` component or a colon.
   pub fn normalize(path: &str) -> XrfResult<String> {
-    normalize_logical(path)
+    Ok(normalize(path)?.into_owned())
   }
 
   /// Whether a logical path sits under a prefix, matching on component boundaries so `configs_backup` does not match
@@ -132,15 +132,6 @@ impl Display for XrayLogicalPath {
   fn fmt(&self, formatter: &mut Formatter<'_>) -> FormatResult {
     formatter.write_str(&self.0)
   }
-}
-
-/// Normalizes a path into the canonical X-Ray logical form, behind [`XrayLogicalPath::normalize`].
-///
-/// # Errors
-///
-/// Returns an error when the path contains an empty, `.` or `..` component or a colon.
-pub(crate) fn normalize_logical(path: &str) -> XrfResult<String> {
-  Ok(normalize(path)?.into_owned())
 }
 
 /// Whether a logical path sits under a prefix, matching on component boundaries so `configs_backup` does not match
