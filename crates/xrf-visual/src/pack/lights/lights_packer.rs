@@ -311,23 +311,13 @@ impl<'a> LightsPacker<'a> {
 
   /// `LALib.FindItem`: the animation by its exact name, added the first time a lamp names it.
   fn find_animator(&mut self, name: &str) -> Option<u32> {
-    if name.is_empty() {
-      return None;
-    }
-
     if let Some(index) = self.animator_indices.get(name) {
       return *index;
     }
 
     let animations: Option<&LightAnimFile> = self.animations;
     let found: Option<u32> = animations
-      .and_then(|file| {
-        file
-          .items
-          .iter()
-          .find(|item| item.name == name)
-          .map(|item| (file, item))
-      })
+      .and_then(|file| file.find_item(name).map(|item| (file, item)))
       .map(|(file, item)| {
         self.animators.push(LightAnimatorDescription::of(item, file.is_bgr()));
 

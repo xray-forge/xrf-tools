@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
@@ -13,7 +15,8 @@ pub struct LightAnimItem {
   pub name: String,
   pub fps: f32,
   pub frame_count: u32,
-  /// The keyed colours, in the order the file lists them, which is frame order.
+  /// The keyed colours, in the order the file lists them. The SDK writes them by frame, but a reader that needs the
+  /// engine's view takes [`Self::to_loaded_keys`].
   pub keys: Vec<LightAnimKey>,
 }
 
@@ -41,7 +44,7 @@ impl LightAnimItem {
 
     for _ in 0..count {
       read.push(LightAnimKey {
-        frame: keys.read_u32::<T>()?,
+        frame: keys.read_i32::<T>()?,
         color: keys.read_u32::<T>()?,
       });
     }
@@ -74,7 +77,7 @@ impl LightAnimItem {
     keys.write_u32::<T>(to_format_size(self.keys.len(), "light animation keys")?)?;
 
     for key in &self.keys {
-      keys.write_u32::<T>(key.frame)?;
+      keys.write_i32::<T>(key.frame)?;
       keys.write_u32::<T>(key.color)?;
     }
 
@@ -86,5 +89,18 @@ impl LightAnimItem {
   /// How long the animation runs, in seconds, which is its frames over its own rate.
   pub fn get_duration_seconds(&self) -> Option<f32> {
     (self.fps > 0.0).then(|| self.frame_count as f32 / self.fps)
+  }
+
+  /// The keys as `CLAItem::Keys` holds them once `ELightAnimLibrary::Load` has read them: by signed frame, a frame
+  /// listed twice keeping the colour read last, and, for a library whose colours are stored as BGR (`is_bgr`), every
+  /// colour with red and blue exchanged.
+  pub fn to_loaded_keys(&self, is_bgr: bool) -> Vec<LightAnimKey> {
+    let loaded: BTreeMap<i32, LightAnimKey> = self
+      .keys
+      .iter()
+      .map(|key| (key.frame, if is_bgr { key.to_swapped_red_blue() } else { *key }))
+      .collect();
+
+    loaded.into_values().collect()
   }
 }

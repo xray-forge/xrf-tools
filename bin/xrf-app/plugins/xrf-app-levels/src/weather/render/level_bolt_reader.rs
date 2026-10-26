@@ -111,16 +111,12 @@ impl<'s, 'a> LevelBoltReader<'s, 'a> {
 
   /// `LALib.FindItem`: the animation by its exact name.
   fn find_animator(&mut self, name: &str) -> Option<u32> {
-    if name.is_empty() {
-      return None;
-    }
-
     if let Some(index) = self.animator_indices.get(name) {
       return *index;
     }
 
     let found: Option<u32> = self.animations.as_ref().and_then(|file| {
-      let item = file.items.iter().find(|item| item.name == name)?;
+      let item = file.find_item(name)?;
 
       self.animators.push(LightAnimatorDescription::of(item, file.is_bgr()));
 

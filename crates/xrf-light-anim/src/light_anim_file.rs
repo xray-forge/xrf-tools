@@ -100,16 +100,27 @@ impl LightAnimFile {
     Ok(())
   }
 
-  /// Reads every animation, one per child chunk, in the order the library numbers them.
+  /// Reads the animations `ELightAnimLibrary::Load` reaches: chunk 0, 1, 2 and on, stopping at the first id the list
+  /// lacks, so an animation numbered past a gap is one the game never has.
   fn read_items<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<LightAnimItem>> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
     let mut items: Vec<LightAnimItem> = Vec::with_capacity(chunks.len());
 
-    for mut chunk in chunks {
+    while let Some(mut chunk) = ChunkReader::find_optional_by_id(&chunks, items.len() as u32) {
       items.push(LightAnimItem::read::<T, D>(&mut chunk)?);
     }
 
     Ok(items)
+  }
+
+  /// `ELightAnimLibrary::FindItem`: the first animation named exactly `name`, case included, and none for an empty
+  /// name, which every lamp without an animation carries.
+  pub fn find_item(&self, name: &str) -> Option<&LightAnimItem> {
+    if name.is_empty() {
+      return None;
+    }
+
+    self.items.iter().find(|item| item.name == name)
   }
 
   /// Keys across every animation.
