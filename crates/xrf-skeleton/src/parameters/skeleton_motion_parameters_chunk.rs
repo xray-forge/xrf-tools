@@ -23,7 +23,7 @@ impl SkeletonMotionParametersChunk {
   pub const MAXIMUM_PARTS: usize = 4;
 
   pub fn get_bones_count(&self) -> usize {
-    self.parts.iter().map(|it| it.bones.len()).sum()
+    SkeletonPart::count_bones(&self.parts)
   }
 
   /// Refuses partitions the engine cannot load: more than [`Self::MAXIMUM_PARTS`], or bone indices that are not each
@@ -38,7 +38,7 @@ impl SkeletonMotionParametersChunk {
       )));
     }
 
-    let runs: usize = parts.iter().map(|it| it.bones.len()).sum();
+    let runs: usize = SkeletonPart::count_bones(parts);
     let mut is_assigned: Vec<bool> = vec![false; runs];
 
     for (name, index) in parts.iter().flat_map(|part| &part.bones) {

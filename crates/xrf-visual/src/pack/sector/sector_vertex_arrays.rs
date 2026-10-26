@@ -7,8 +7,8 @@ use crate::data::sector::sector_attributes::SectorAttributes;
 use crate::data::sector::sector_geometry::SectorGeometry;
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
 use crate::data::visual::geometry::visual_section::VisualSection;
-use crate::pack::visual_buffer_builder::VisualBufferBuilder;
-use crate::pack::visual_cluster_table::VisualClusterTable;
+use crate::pack::buffer::visual_buffer_builder::VisualBufferBuilder;
+use crate::pack::buffer::visual_cluster_table::VisualClusterTable;
 use crate::pack::visual_conversion::convert_vector;
 
 /// The attribute arrays of a sector under construction, one entry per packed vertex: positions decoded into renderer

@@ -1,4 +1,4 @@
-use xrf_ogf::{OgfFile, OgfIkDataChunk};
+use xrf_ogf::{OgfFile, OgfIkDataChunk, OgfVertexData};
 
 use crate::data::visual::geometry::visual_geometry::VisualGeometry;
 use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
@@ -8,8 +8,8 @@ use crate::pack::visual::visual_package::VisualPackage;
 use crate::pack::visual::visual_packer::VisualPacker;
 use crate::pack::visual::visual_poser::VisualPoser;
 
-/// A triangle hanging from the first of two bones, both bound where the model stands.
-fn skinned_triangle() -> VisualPackage {
+/// A child's geometry hanging from two bones, both bound where the model stands.
+fn skinned(child: OgfFile) -> VisualPackage {
   let file: OgfFile = OgfFile {
     bones: Some(bones(&[("root", ""), ("child", "root")])),
     ik_data: Some(OgfIkDataChunk {
@@ -18,10 +18,15 @@ fn skinned_triangle() -> VisualPackage {
         bind(vector(0.0, 0.0, 0.0), vector(0.0, 1.0, 0.0)),
       ],
     }),
-    ..skeleton(vec![static_triangle_child()])
+    ..skeleton(vec![child])
   };
 
   VisualPacker::pack(&file)
+}
+
+/// A triangle hanging from the first of the two bones.
+fn skinned_triangle() -> VisualPackage {
+  skinned(static_triangle_child())
 }
 
 fn geometry(package: &VisualPackage) -> &VisualGeometry {
@@ -78,6 +83,29 @@ fn moves_a_skinned_vertex_with_its_bone_and_cuts_the_posed_geometry_into_cluster
     assert!((moved[1] - stored[1] - 2.0).abs() < 1e-6);
     assert!((moved[2] - stored[2]).abs() < 1e-6);
   }
+}
+
+#[test]
+fn stands_a_vertex_whose_links_weigh_nothing_where_it_is_stored() {
+  // Such a vertex has no bone to follow; summing none of them would drop it on the origin.
+  let mut child: OgfFile = static_triangle_child();
+
+  if let Some(OgfVertexData::Skinned(vertices)) = child.geometry.as_mut().and_then(|it| it.vertices.as_mut()) {
+    for vertex in vertices {
+      vertex.links[0].weight = 0.0;
+    }
+  }
+
+  let package: VisualPackage = skinned(child);
+
+  assert!(
+    geometry(&package).skin.is_some(),
+    "expect the weightless links to be packed"
+  );
+
+  let posed: VisualPackage = VisualPoser::pose(&package, Some(&raised()));
+
+  assert_eq!(positions(&posed), positions(&package));
 }
 
 #[test]

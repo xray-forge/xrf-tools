@@ -28,8 +28,11 @@ impl DetailsDescription {
   /// Bytes one bin entry takes.
   pub const BIN_ENTRY_BYTES: u32 = 4;
 
-  /// Bytes one triangle takes: nine floats.
-  pub const TRIANGLE_BYTES: u32 = 9 * 4;
+  /// Floats one triangle takes: its three corners.
+  pub const TRIANGLE_FLOATS: usize = 9;
+
+  /// Bytes one triangle takes.
+  pub const TRIANGLE_BYTES: u32 = (Self::TRIANGLE_FLOATS * size_of::<f32>()) as u32;
 
   /// Entries the bins hold, all of them together.
   pub fn get_bin_length(&self) -> u32 {

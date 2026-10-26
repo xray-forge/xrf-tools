@@ -11,25 +11,21 @@ use crate::data::visual::geometry::visual_skin::VisualSkin;
 use crate::data::visual::geometry::visual_submesh::VisualSubmesh;
 use crate::data::visual::geometry::visual_submesh_content::VisualSubmeshContent;
 use crate::data::visual::visual_description::VisualDescription;
+use crate::pack::buffer::visual_buffer_builder::VisualBufferBuilder;
+use crate::pack::buffer::visual_cluster_table::VisualClusterTable;
+use crate::pack::buffer::visual_index_window::VisualIndexWindow;
 use crate::pack::visual::flat_skin::FlatSkin;
 use crate::pack::visual::visual_mesh::VisualMesh;
 use crate::pack::visual::visual_package::VisualPackage;
 use crate::pack::visual::visual_skeleton::VisualSkeleton;
 use crate::pack::visual::visual_skip::VisualSkip;
 use crate::pack::visual::visual_tangent_basis::VisualTangentBasis;
-use crate::pack::visual_buffer_builder::VisualBufferBuilder;
-use crate::pack::visual_cluster_table::VisualClusterTable;
 use crate::pack::visual_conversion::{convert_declared_bounds, convert_uvs, convert_vector, reverse_triangle_winding};
-use crate::pack::visual_index_window::VisualIndexWindow;
 
 /// Flattens a parsed OGF visual into renderer ready buffers.
 pub struct VisualPacker {}
 
 impl VisualPacker {
-  /// Skinning links per vertex, which is both the format ceiling (`vertBoned4W`) and the width of a renderer's
-  /// `vec4` skin attributes.
-  const SKIN_LINKS: usize = 4;
-
   /// Converts an OGF visual into a description and one interleaved byte buffer.
   pub fn pack(file: &OgfFile) -> VisualPackage {
     let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
@@ -44,11 +40,7 @@ impl VisualPacker {
       .map(|(index, source)| Self::pack_submesh(&mut builder, index as u32, source, bone_count))
       .collect();
 
-    let computed_bounds: Option<VisualBounds> = submeshes
-      .iter()
-      .filter_map(|submesh| submesh.geometry())
-      .map(|geometry| geometry.bounds.clone())
-      .reduce(VisualBounds::merge);
+    let computed_bounds: Option<VisualBounds> = Self::compute_bounds(&submeshes);
 
     let description: VisualDescription = VisualDescription {
       version: file.header.version,
@@ -86,6 +78,9 @@ impl VisualPacker {
   /// The model type a built mesh is packed as: `MT_NORMAL`, drawn whole as it is stored.
   const BUILT_MODEL_TYPE: u8 = 0;
 
+  /// The OGF version a built visual describes itself as, the one every visual the engine loads carries.
+  const BUILT_VERSION: u8 = 4;
+
   /// Packs meshes built rather than read, a submesh each, in the order given, as an OGF visual packs.
   pub fn pack_meshes(meshes: &[VisualMesh]) -> VisualPackage {
     let mut builder: VisualBufferBuilder = VisualBufferBuilder::new();
@@ -98,36 +93,26 @@ impl VisualPacker {
         model_type_label: OgfModelType::label(Self::BUILT_MODEL_TYPE),
         texture_name: mesh.texture_name.clone(),
         shader_name: mesh.shader_name.clone(),
-        content: match Self::pack_mesh(&mut builder, mesh) {
-          Ok(geometry) => VisualSubmeshContent::Packed { geometry },
-          Err(skip) => VisualSubmeshContent::Skipped {
-            cause: skip.cause,
-            reason: skip.reason,
-          },
-        },
+        content: Self::to_content(Self::pack_mesh(&mut builder, mesh)),
       })
       .collect();
-    let computed_bounds: Option<VisualBounds> = submeshes
-      .iter()
-      .filter_map(|submesh| submesh.geometry())
-      .map(|geometry| geometry.bounds.clone())
-      .reduce(VisualBounds::merge);
-    let origin = || Vector3d { x: 0.0, y: 0.0, z: 0.0 };
+    let computed_bounds: Option<VisualBounds> = Self::compute_bounds(&submeshes);
 
     VisualPackage {
       description: VisualDescription {
-        version: 4,
+        version: Self::BUILT_VERSION,
         model_type: Self::BUILT_MODEL_TYPE,
         model_type_label: OgfModelType::label(Self::BUILT_MODEL_TYPE),
         shader_id: 0,
         source_file: None,
-        declared_bounds: computed_bounds.clone().unwrap_or_else(|| VisualBounds {
+        // A built mesh declares nothing of itself: what it spans is all there is to declare.
+        declared_bounds: computed_bounds.clone().unwrap_or(VisualBounds {
           bounding_box: VisualBox {
-            min: origin(),
-            max: origin(),
+            min: Vector3d::ZERO,
+            max: Vector3d::ZERO,
           },
           bounding_sphere: VisualSphere {
-            center: origin(),
+            center: Vector3d::ZERO,
             radius: 0.0,
           },
         }),
@@ -169,18 +154,8 @@ impl VisualPacker {
       start: 0,
       count: mesh.indices.len() as u32,
     };
-    let cut: Vec<u32> = mesh.indices.iter().map(|index| u32::from(*index)).collect();
-    let mut table: VisualClusterTable = VisualClusterTable::default();
-
-    table.push_run(
-      &cut,
-      &mesh.positions,
-      level.start,
-      level.count,
-      VisualClusters::NO_DRAWABLE,
-    );
-
-    let clusters: VisualClusters = table.write_into(builder);
+    let clusters: VisualClusters =
+      VisualClusterTable::of_levels(&mesh.indices, &mesh.positions, &[level]).write_into(builder);
 
     Ok(VisualGeometry {
       vertex_count: count as u32,
@@ -215,14 +190,28 @@ impl VisualPacker {
       model_type_label: OgfModelType::label(model_type),
       texture_name: source.texture.as_ref().map(|it| it.texture_name.clone()),
       shader_name: source.texture.as_ref().map(|it| it.shader_name.clone()),
-      content: match Self::pack_geometry(builder, source, bone_count) {
-        Ok(geometry) => VisualSubmeshContent::Packed { geometry },
-        Err(skip) => VisualSubmeshContent::Skipped {
-          cause: skip.cause,
-          reason: skip.reason,
-        },
+      content: Self::to_content(Self::pack_geometry(builder, source, bone_count)),
+    }
+  }
+
+  /// What a submesh holds once packed: its geometry, or why it has none, verbatim.
+  fn to_content(packed: Result<VisualGeometry, VisualSkip>) -> VisualSubmeshContent {
+    match packed {
+      Ok(geometry) => VisualSubmeshContent::Packed { geometry },
+      Err(skip) => VisualSubmeshContent::Skipped {
+        cause: skip.cause,
+        reason: skip.reason,
       },
     }
+  }
+
+  /// The extent every packed submesh spans together, or `None` when none produced geometry.
+  fn compute_bounds(submeshes: &[VisualSubmesh]) -> Option<VisualBounds> {
+    submeshes
+      .iter()
+      .filter_map(|submesh| submesh.geometry())
+      .map(|geometry| geometry.bounds.clone())
+      .reduce(VisualBounds::merge)
   }
 
   /// Convert and append one submesh's attributes, or say why it has none.
@@ -306,15 +295,8 @@ impl VisualPacker {
 
     // Skinned geometry moves with its bones, so only geometry drawn as stored is cut into clusters.
     let clusters: Option<VisualClusters> = skin.is_none().then(|| {
-      let cut: Vec<u32> = wound_indices.iter().map(|index| u32::from(*index)).collect();
-      let points: Vec<[f32; 3]> = positions.iter().map(|it| [it.x, it.y, it.z]).collect();
-      let mut table: VisualClusterTable = VisualClusterTable::default();
-
-      for level in &detail_levels {
-        table.push_run(&cut, &points, level.start, level.count, VisualClusters::NO_DRAWABLE);
-      }
-
-      table.write_into(builder)
+      VisualClusterTable::of_levels(&wound_indices, flat_positions.as_chunks::<3>().0, &detail_levels)
+        .write_into(builder)
     });
 
     Ok(VisualGeometry {
@@ -359,15 +341,15 @@ impl VisualPacker {
       return Ok(None);
     }
 
-    let mut indices: Vec<u16> = Vec::with_capacity(vertices.len() * Self::SKIN_LINKS);
-    let mut weights: Vec<f32> = Vec::with_capacity(vertices.len() * Self::SKIN_LINKS);
+    let mut indices: Vec<u16> = Vec::with_capacity(vertices.len() * VisualSkin::LINKS);
+    let mut weights: Vec<f32> = Vec::with_capacity(vertices.len() * VisualSkin::LINKS);
 
     for vertex in vertices {
-      if vertex.links.len() > Self::SKIN_LINKS {
+      if vertex.links.len() > VisualSkin::LINKS {
         return Err(VisualSkip::malformed(format!(
           "A vertex carries {} skinning links, and the format stores at most {}",
           vertex.links.len(),
-          Self::SKIN_LINKS
+          VisualSkin::LINKS
         )));
       }
 
@@ -383,7 +365,7 @@ impl VisualPacker {
         weights.push(link.weight);
       }
 
-      for _ in vertex.links.len()..Self::SKIN_LINKS {
+      for _ in vertex.links.len()..VisualSkin::LINKS {
         indices.push(0);
         weights.push(0.0);
       }
@@ -392,7 +374,7 @@ impl VisualPacker {
     Ok(Some(FlatSkin { indices, weights }))
   }
 
-  /// The index range that draws a submesh at full detail.
+  /// The index ranges a submesh may be drawn at, finest first: the whole buffer, or a progressive mesh's usable windows.
   fn resolve_detail_levels(
     source: &OgfFile,
     indices: &[u16],
@@ -407,7 +389,7 @@ impl VisualPacker {
         count: indices.len() as u32,
       };
 
-      Self::assert_level_in_range(indices, whole, vertex_count)
+      Self::check_level(indices, whole, vertex_count)
         .map_err(|reason| VisualSkip::malformed(format!("Drawn range {reason}")))?;
 
       return Ok(vec![whole]);
@@ -432,7 +414,7 @@ impl VisualPacker {
         count: u32::from(window.num_tris) * 3,
       };
 
-      match Self::assert_level_in_range(indices, range, vertex_count) {
+      match Self::check_level(indices, range, vertex_count) {
         Ok(()) => levels.push(range),
         // The finest level is what the model is: without it there is nothing honest to draw. A coarser one is an
         // option the viewer offers, so a bad one costs the option rather than the submesh.
@@ -449,8 +431,8 @@ impl VisualPacker {
     Ok(levels)
   }
 
-  /// Reject a range that leaves the index buffer or addresses a vertex the submesh does not have.
-  fn assert_level_in_range(indices: &[u16], range: VisualDrawRange, vertex_count: usize) -> Result<(), String> {
+  /// Refuses a range that leaves the index buffer or addresses a vertex the submesh does not have, saying why.
+  fn check_level(indices: &[u16], range: VisualDrawRange, vertex_count: usize) -> Result<(), String> {
     VisualIndexWindow {
       count: range.count,
       offset: range.start,

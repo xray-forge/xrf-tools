@@ -1,7 +1,7 @@
 //! Holds the buffer layout invariant: every section starts where a typed array view can read it.
 
 use crate::data::visual::geometry::visual_section::VisualSection;
-use crate::pack::visual_buffer_builder::VisualBufferBuilder;
+use crate::pack::buffer::visual_buffer_builder::VisualBufferBuilder;
 
 #[test]
 fn reports_the_range_each_section_occupies() {

@@ -8,7 +8,10 @@ use xrf_level::{
   LevelGeomSlideWindowItem, LevelGeomSource, LevelSectorComposition, LevelShadersChunk, LevelVertexLayout,
   LevelVertexPayload, LevelVisual, LevelVisualsChunk,
 };
-use xrf_ogf::{OgfGeometryContainerChunk, OgfLodDefinitionChunk, OgfModelType, OgfSwiContainerChunk, OgfSwiDataChunk};
+use xrf_ogf::{
+  OgfGeometryContainerChunk, OgfLodDefinitionChunk, OgfModelType, OgfSwiContainerChunk, OgfSwiDataChunk,
+  OgfTreeDefinitionChunk,
+};
 
 use crate::data::sector::instance::sector_instance_group::SectorInstanceGroup;
 use crate::data::sector::instance::sector_progressive::SectorProgressive;
@@ -22,6 +25,9 @@ use crate::data::visual::geometry::visual_clusters::VisualClusters;
 use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
 use crate::data::visual::geometry::visual_section::VisualSection;
 use crate::data::visual::geometry::visual_skip_cause::VisualSkipCause;
+use crate::pack::buffer::visual_buffer_builder::VisualBufferBuilder;
+use crate::pack::buffer::visual_cluster_table::VisualClusterTable;
+use crate::pack::buffer::visual_index_window::VisualIndexWindow;
 use crate::pack::sector::gathering::sector_gathering::SectorGathering;
 use crate::pack::sector::gathering::sector_index_range::SectorIndexRange;
 use crate::pack::sector::gathering::sector_instance_gathering::SectorInstanceGathering;
@@ -32,10 +38,7 @@ use crate::pack::sector::sector_impostor_arrays::SectorImpostorArrays;
 use crate::pack::sector::sector_package::SectorPackage;
 use crate::pack::sector::sector_surface_table::SectorSurfaceTable;
 use crate::pack::sector::sector_vertex_arrays::SectorVertexArrays;
-use crate::pack::visual_buffer_builder::VisualBufferBuilder;
-use crate::pack::visual_cluster_table::VisualClusterTable;
-use crate::pack::visual_conversion::{convert_placement, convert_tree_hemi};
-use crate::pack::visual_index_window::VisualIndexWindow;
+use crate::pack::visual_conversion::convert_placement;
 
 /// Packs one sector's drawables into the single buffer a renderer draws it from.
 pub struct SectorPacker<'a, D: ChunkDataSource> {
@@ -45,8 +48,11 @@ pub struct SectorPacker<'a, D: ChunkDataSource> {
 }
 
 impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
-  /// What a place names for its impostor where no `MT_LOD` visual composes it.
-  const NO_IMPOSTOR: i32 = -1;
+  /// `ps_r__Tree_SBC`'s default, the correction a tree's colour terms are bound with (`xrRender_console.cpp`).
+  const TREE_SCALE_BIAS_CORRECTION: f32 = 1.5;
+
+  /// What `FTreeVisual::Render` multiplies that correction by under every deferred renderer.
+  const DEFERRED_TREE_CORRECTION: f32 = 1.3333;
 
   pub fn new(
     visuals: &'a LevelVisualsChunk,
@@ -106,10 +112,12 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
 
         gathering.drawables.push(*drawable);
         gathering.placements.push(convert_placement(&tree.transform));
-        gathering.hemi.push(convert_tree_hemi(tree));
-        gathering
-          .impostors
-          .push(parents.get(drawable).map_or(Self::NO_IMPOSTOR, |index| *index as i32));
+        gathering.hemi.push(Self::get_tree_hemi(tree));
+        gathering.impostors.push(
+          parents
+            .get(drawable)
+            .map_or(SectorInstanceGroup::NO_IMPOSTOR, |index| *index as i32),
+        );
 
         continue;
       }
@@ -397,7 +405,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     let impostors: Option<VisualSection> = gathering
       .impostors
       .iter()
-      .any(|impostor| *impostor != Self::NO_IMPOSTOR)
+      .any(|impostor| *impostor != SectorInstanceGroup::NO_IMPOSTOR)
       .then(|| builder.push_i32_section(&gathering.impostors));
 
     Ok(SectorInstanceGroup {
@@ -541,6 +549,15 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
         windows: count,
       }),
     ))
+  }
+
+  /// A tree's hemisphere terms as `FTreeVisual` binds them, `c_scale.w` then `c_bias.w`: what scales and then offsets
+  /// its vertices' hemisphere byte.
+  fn get_tree_hemi(tree: &OgfTreeDefinitionChunk) -> [f32; 2] {
+    let correction: f32 =
+      Self::TREE_SCALE_BIAS_CORRECTION * Self::DEFERRED_TREE_CORRECTION * OgfTreeDefinitionChunk::COLOR_SCALE;
+
+    [tree.scale.hemi * correction, tree.bias.hemi * correction]
   }
 
   /// Records every instance of a mesh that could not be read, since none of them can be drawn without it.

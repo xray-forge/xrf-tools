@@ -47,8 +47,9 @@ the finest one. Do not draw the entire index buffer merely because it is present
 detail levels in it. Geometry drawn as stored is also cut into `clusters`; skinned geometry is not.
 
 The description retains both the declared bounds, converted, and the computed bounds of the packed geometry; computed
-bounds are absent when no submesh produced geometry. Skinning indices address the model's bone list, with four links per
-vertex. `VisualPoser::pose` stands a skinned package still in a rest pose as static geometry.
+bounds are absent when no submesh produced geometry. Skinning indices address the model's bone list, with
+`VisualSkin::LINKS` links per vertex. `VisualPoser::pose` stands a skinned package still in a rest pose as static
+geometry.
 
 ## Resolve external assets
 
@@ -80,9 +81,10 @@ search covers and in what order.
 
 ## Animation
 
-`bake_motion` takes the skeleton's bones, their bind data, the skeleton's partitions, and a paired motion definition and
-payload, and returns every frame as model-space bone transforms in renderer space, `FLOATS_PER_BONE` floats each.
-`describe_motion` reports the same frame count, duration and animated bones without posing a frame. Pair motions
+`VisualMotionBaker::bake` takes the skeleton's bones, their bind data, the skeleton's partitions, and a paired motion
+definition and payload, and returns every frame as model-space bone transforms in renderer space,
+`VisualTransform::FLOATS` floats each. `VisualMotionBaker::describe` reports the same frame count, duration and animated
+bones without posing a frame. Pair motions
 through the OGF and OMF `get_motions` and `get_motion_by_name` APIs rather than their payload labels. Each key run is
 matched to a bone by name, as the engine resolves it, and bones not driven by a motion keep their bind transforms. The
 frame count is what the decoded keys hold, not the motion's declared count. Baking fails when the bind records do not
@@ -113,5 +115,5 @@ binary geometry still travels separately from the serializable description.
 Run `cargo test --locked -p xrf-visual` from the repository root.
 
 See the [model packer](src/pack/visual/visual_packer.rs), [package](src/pack/visual/visual_package.rs),
-[motion baking](src/pack/visual/motion/visual_motion.rs), [sector packer](src/pack/sector/sector_packer.rs), and
+[motion baking](src/pack/visual/motion/visual_motion_baker.rs), [sector packer](src/pack/sector/sector_packer.rs), and
 [dependency resolver](src/resolve/visual_dependencies.rs).

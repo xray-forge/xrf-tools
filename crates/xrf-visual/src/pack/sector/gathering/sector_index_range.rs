@@ -4,8 +4,8 @@ use xrf_error::XrfResult;
 use xrf_level::LevelGeomSource;
 use xrf_ogf::OgfGeometryContainerChunk;
 
+use crate::pack::buffer::visual_index_window::VisualIndexWindow;
 use crate::pack::visual_conversion::reverse_triangle_winding;
-use crate::pack::visual_index_window::VisualIndexWindow;
 
 /// The run of `level.geom` indices one drawable names.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]

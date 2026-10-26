@@ -9,9 +9,9 @@ use xrf_math::Vector3d;
 
 use crate::data::details::details_description::DetailsDescription;
 use crate::data::details::details_model::DetailsModel;
+use crate::pack::buffer::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::details::details_package::DetailsPackage;
 use crate::pack::details::details_slot_box::DetailsSlotBox;
-use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::{convert_vector, reverse_triangle_winding};
 
 /// Packs a level's grass: its detail models, and each planted slot with the collision triangles its planting is cast
@@ -72,7 +72,7 @@ impl<'a> DetailsPacker<'a> {
         let index: u32 = *compacted.entry(*face).or_insert_with(|| {
           triangles.extend(self.to_renderer_triangle(*face).as_flattened());
 
-          (triangles.len() / 9 - 1) as u32
+          (triangles.len() / DetailsDescription::TRIANGLE_FLOATS - 1) as u32
         });
 
         entries.push(index);

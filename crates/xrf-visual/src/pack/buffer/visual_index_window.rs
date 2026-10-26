@@ -1,4 +1,4 @@
-use crate::pack::visual_index_fault::VisualIndexFault;
+use crate::pack::buffer::visual_index_fault::VisualIndexFault;
 
 /// A run of a mesh's indices one draw reads, checked before any of it reaches a GPU: every packer's one way of reading
 /// a window, so none draws past its indices or a vertex it was not given.

@@ -1,5 +1,6 @@
 use crate::data::visual::geometry::visual_clusters::VisualClusters;
-use crate::pack::visual_buffer_builder::VisualBufferBuilder;
+use crate::data::visual::geometry::visual_draw_range::VisualDrawRange;
+use crate::pack::buffer::visual_buffer_builder::VisualBufferBuilder;
 
 /// The clusters of one geometry under construction, cut from each run of its indices that is drawn: every packer's
 /// one way of cutting them, so every static draw culls the same.
@@ -12,6 +13,25 @@ pub struct VisualClusterTable {
 }
 
 impl VisualClusterTable {
+  /// The clusters of a model's geometry, cut from each of its detail levels; a model is no level's drawable, so none
+  /// of them names one.
+  pub fn of_levels(indices: &[u16], positions: &[[f32; 3]], levels: &[VisualDrawRange]) -> Self {
+    let indices: Vec<u32> = indices.iter().map(|index| u32::from(*index)).collect();
+    let mut table: Self = Self::default();
+
+    for level in levels {
+      table.push_run(
+        &indices,
+        positions,
+        level.start,
+        level.count,
+        VisualClusters::NO_DRAWABLE,
+      );
+    }
+
+    table
+  }
+
   /// Cuts a run of indices into clusters of consecutive triangles.
   ///
   /// # Arguments

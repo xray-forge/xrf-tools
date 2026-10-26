@@ -4,8 +4,8 @@ use xrf_ogf::{OgfLodDefinitionChunk, OgfLodVertex};
 
 use crate::data::sector::impostor::sector_impostor_group::SectorImpostorGroup;
 use crate::data::sector::impostor::sector_impostors::SectorImpostors;
+use crate::pack::buffer::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::sector::sector_surface_table::SectorSurfaceTable;
-use crate::pack::visual_buffer_builder::VisualBufferBuilder;
 use crate::pack::visual_conversion::convert_vector;
 
 /// The impostors of a sector under construction, in the order their places name them.

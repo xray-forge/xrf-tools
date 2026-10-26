@@ -39,7 +39,7 @@ export type VisualBounds = {
   boundingSphere: VisualSphere;
 };
 
-/** Axis aligned box in three.js space. */
+/** Axis aligned box in renderer space. */
 export type VisualBox = {
   min: Vector3d;
   max: Vector3d;
@@ -74,7 +74,7 @@ export type VisualDescription = {
   shaderId: number;
   /** Source object the OGF was built from, when the file records one. */
   sourceFile: string | null;
-  /** Extent the header declares, converted into three.js space for comparison with the computed extent. */
+  /** Extent the header declares, converted into renderer space for comparison with the computed extent. */
   declaredBounds: VisualBounds;
   /** Extent the packed geometry actually spans, absent when no submesh produced any. */
   computedBounds: VisualBounds | null;
@@ -145,7 +145,10 @@ export type VisualSection = {
   byteLength: number;
 };
 
-/** Where one submesh's skinning links sit in the geometry buffer. */
+/**
+ * Where one submesh's skinning links sit in the geometry buffer: [`VisualSkin::LINKS`] bone indices and as many
+ * weights a vertex, a vertex of fewer links padded with bone nought at no weight.
+ */
 export type VisualSkin = {
   indices: VisualSection;
   weights: VisualSection;
@@ -165,7 +168,7 @@ export enum EVisualSkipCause {
 /** Every `EVisualSkipCause` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type VisualSkipCause = `${EVisualSkipCause}`;
 
-/** Enclosing sphere in three.js space. */
+/** Enclosing sphere in renderer space. */
 export type VisualSphere = {
   center: Vector3d;
   radius: number | null;

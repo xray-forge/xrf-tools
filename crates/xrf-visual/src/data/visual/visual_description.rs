@@ -15,7 +15,7 @@ pub struct VisualDescription {
   pub shader_id: u16,
   /// Source object the OGF was built from, when the file records one.
   pub source_file: Option<String>,
-  /// Extent the header declares, converted into three.js space for comparison with the computed extent.
+  /// Extent the header declares, converted into renderer space for comparison with the computed extent.
   pub declared_bounds: VisualBounds,
   /// Extent the packed geometry actually spans, absent when no submesh produced any.
   pub computed_bounds: Option<VisualBounds>,

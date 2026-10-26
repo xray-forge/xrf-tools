@@ -16,8 +16,8 @@ pub struct SectorInstanceGroup {
   pub transforms: VisualSection,
   /// Two floats for each instance: what scales and then offsets its vertices' hemisphere term.
   pub hemi: VisualSection,
-  /// One signed integer for each instance: the sector's impostor standing in for the clump it belongs to, or -1.
-  /// Absent where no place of the group belongs to one.
+  /// One signed integer for each instance: the sector's impostor standing in for the clump it belongs to, or
+  /// [`Self::NO_IMPOSTOR`]. Absent where no place of the group belongs to one.
   pub impostors: Option<VisualSection>,
   /// The bands a progressive tree's places pick among, over the whole of its windows' indices; absent for a mesh of
   /// one detail, whose indices are its one window.
@@ -30,4 +30,7 @@ impl SectorInstanceGroup {
 
   /// Floats one instance's hemisphere terms occupy.
   pub const HEMI_FLOATS_PER_INSTANCE: usize = 2;
+
+  /// What an instance names for its impostor where no `MT_LOD` visual composes its clump.
+  pub const NO_IMPOSTOR: i32 = -1;
 }

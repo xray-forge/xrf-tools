@@ -1,8 +1,9 @@
 use glam::{Mat4, Vec3, Vec4};
 use xrf_renderer::{RenderModelSkeleton, RenderMotion};
+use xrf_visual::VisualTransform;
 
-/// Floats one bone's transform takes: its basis' three columns, then its translation.
-const FLOATS_PER_BONE: usize = 12;
+/// Floats one bone's transform takes: its basis' three columns, then its translation, as a bake writes them.
+const FLOATS_PER_BONE: usize = VisualTransform::FLOATS;
 
 /// One skinned object's skeleton as the renderer poses it: its binds inverted once, the matrices it stood by the
 /// frame before, and where its joints stand now, for the overlay.
