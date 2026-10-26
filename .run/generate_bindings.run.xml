@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="generate:bindings" type="js.build_tools.npm" nameIsGenerated="true">
-    <package-json value="$PROJECT_DIR$/bin/xrf-ui/package.json" />
+    <package-json value="$PROJECT_DIR$/bin/xrf-app/ui/package.json" />
     <command value="run" />
     <scripts>
       <script value="generate:bindings" />

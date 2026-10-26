@@ -4,7 +4,7 @@ Run every task with `cargo make <task>` from the repository root. The root `Make
 task runs once for the whole workspace. List them with `cargo make --list-all-steps`.
 
 CI's Windows jobs run the same tasks, so a passing `cargo make verify` means their checks pass too. The desktop tasks
-use the Tauri CLI version locked in `bin/xrf-ui`, so `cargo-make` is the only tool to install globally.
+use the Tauri CLI version locked in `bin/xrf-app/ui`, so `cargo-make` is the only tool to install globally.
 
 [ENVIRONMENT.md](./ENVIRONMENT.md) lists every environment variable the binaries and the build read.
 `crates/xrf-env-flags` generates it. To add a variable, add it to that crate's table instead of reading it with
@@ -93,7 +93,7 @@ CI follows because it runs the same tasks.
 ## Prerequisites
 
 See the [build requirements](./README.md#build-from-source). The desktop app needs the Rust toolchain, Node.js and
-pnpm; the Tauri CLI comes locked with `bin/xrf-ui`. The CLI-only tasks need Rust and Cargo Make.
+pnpm; the Tauri CLI comes locked with `bin/xrf-app/ui`. The CLI-only tasks need Rust and Cargo Make.
 
 The renderer's water and rain maps (`crates/xrf-renderer/assets/water`, `assets/rain`) are stored in Git LFS. Install
 it before cloning (`git lfs install`), or run `git lfs pull` after: without it the tree holds pointer files in their

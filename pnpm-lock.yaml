@@ -161,7 +161,7 @@ importers:
         specifier: 'catalog:'
         version: 3.9.10
 
-  bin/xrf-ui:
+  bin/xrf-app/ui:
     dependencies:
       '@dagrejs/dagre':
         specifier: ^3.1.1
@@ -219,34 +219,34 @@ importers:
         version: 1.0.0(mobx-react-lite@4.1.1(mobx@6.16.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(mobx@6.16.1)(react@19.3.1)
       '@xrf/async':
         specifier: workspace:*
-        version: link:../../packages/xrf-async
+        version: link:../../../packages/xrf-async
       '@xrf/errors':
         specifier: workspace:*
-        version: link:../../packages/xrf-errors
+        version: link:../../../packages/xrf-errors
       '@xrf/format':
         specifier: workspace:*
-        version: link:../../packages/xrf-format
+        version: link:../../../packages/xrf-format
       '@xrf/ipc':
         specifier: workspace:*
-        version: link:../../packages/xrf-ipc
+        version: link:../../../packages/xrf-ipc
       '@xrf/logging':
         specifier: workspace:*
-        version: link:../../packages/xrf-logging
+        version: link:../../../packages/xrf-logging
       '@xrf/math':
         specifier: workspace:*
-        version: link:../../packages/xrf-math
+        version: link:../../../packages/xrf-math
       '@xrf/path':
         specifier: workspace:*
-        version: link:../../packages/xrf-path
+        version: link:../../../packages/xrf-path
       '@xrf/search':
         specifier: workspace:*
-        version: link:../../packages/xrf-search
+        version: link:../../../packages/xrf-search
       '@xrf/syntax':
         specifier: workspace:*
-        version: link:../../packages/xrf-syntax
+        version: link:../../../packages/xrf-syntax
       '@xrf/types':
         specifier: workspace:*
-        version: link:../../packages/xrf-types
+        version: link:../../../packages/xrf-types
       '@xyflow/react':
         specifier: ^12.12.0
         version: 12.12.0(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -322,7 +322,7 @@ importers:
         version: 1.0.0(@wirestate/core@1.0.0)
       '@xrf/toolchain':
         specifier: workspace:*
-        version: link:../../cli
+        version: link:../../../cli
       babel-plugin-observing-components:
         specifier: ^0.2.0
         version: 0.2.0(supports-color@8.1.1)

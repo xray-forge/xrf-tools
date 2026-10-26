@@ -5,13 +5,13 @@
   "build": {
     "beforeDevCommand": {
       "script": "pnpm run dev",
-      "cwd": "../../xrf-ui"
+      "cwd": "../ui"
     },
     "beforeBuildCommand": {
       "script": "pnpm run build",
-      "cwd": "../../xrf-ui"
+      "cwd": "../ui"
     },
-    "frontendDist": "../../xrf-ui/target/dist",
+    "frontendDist": "../ui/target/dist",
     "devUrl": "http://localhost:1420"
   },
   "bundle": {
