@@ -4,8 +4,7 @@ use xrf_shaders::fixtures::{ShaderBlenderFixture, ShaderLibraryFixture};
 use xrf_test_utils::GeneratedResources;
 
 use crate::fixtures::thm_fixture::ThmFixture;
-use crate::resolve::xray_surface_resolver::XraySurfaceResolver;
-use crate::resolve::xray_surface_script::XraySurfaceScript;
+use crate::surface::{XraySurfaceResolver, XraySurfaceScript};
 
 /// A gamedata-shaped tree under the generated test resources, with descriptors that parse and textures that exist.
 pub struct FixtureTree {
