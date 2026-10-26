@@ -356,8 +356,7 @@ mod tests {
           .map(|ordinal| SkeletonMotion {
             label: format!("embedded_{ordinal}"),
             count: 2,
-            flags: 0,
-            remaining: vec![1, 2, 3],
+            keys: vec![0, 1, 2, 3],
           })
           .collect(),
       },

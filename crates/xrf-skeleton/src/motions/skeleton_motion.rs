@@ -1,52 +1,60 @@
-use byteorder::{ByteOrder, ReadBytesExt};
+use std::io::Write;
+
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 use xrf_utils::{assert_count_fits, new_bounded_vec};
 
-use crate::quaternion::Quaternion;
-use crate::skeleton_bone_motion::SkeletonBoneMotion;
-use crate::skeleton_motion::SkeletonMotion;
+use crate::motions::{Quaternion, SkeletonBoneMotion, SkeletonMotionCursor};
 
-/// Divisor the format quantises rotation components by, from `SkeletonMotionDefs.hpp:11`.
-const KEY_QUANT: f32 = 32767.0;
-
-/// Frames a second a motion samples at, from `SkeletonMotionDefs.hpp:8`.
-pub const SAMPLE_FPS: f32 = 30.0;
-
-/// Per-bone flags leading each bone's key streams, from `SkeletonMotions.hpp:21`.
-const FL_T_KEY_PRESENT: u8 = 1 << 0;
-const FL_R_KEY_ABSENT: u8 = 1 << 1;
-const FL_T_KEY_16_IS_BIT: u8 = 1 << 2;
-
-/// Bytes one quantised rotation key occupies: four `i16` components.
-const ROTATION_KEY_SIZE: usize = 8;
-
-/// Bytes one quantised translation key occupies, in each of the two widths the flags select.
-const TRANSLATION_KEY_16_SIZE: usize = 6;
-const TRANSLATION_KEY_8_SIZE: usize = 3;
+/// One motion's payload in the motions chunk, as `motions_value::load` reads chunk `n + 1`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SkeletonMotion {
+  /// Prefix the payload stores ahead of its keys, preserved verbatim and never an identity.
+  pub label: String,
+  /// Frames the motion declares, which every keyed stream stores one key for.
+  pub count: u32,
+  /// One key run per bone, each led by its own flags byte, in the order of the indices the partitions give their bones.
+  pub keys: Vec<u8>,
+}
 
 impl SkeletonMotion {
-  /// How many seconds the motion's frames span at the format's fixed sample rate.
-  pub fn get_duration_seconds(&self) -> f32 {
-    self.count as f32 / SAMPLE_FPS
+  /// Frames a second a motion samples at, `SAMPLE_FPS` (`SkeletonMotionDefs.hpp:8`).
+  pub const SAMPLE_FPS: f32 = 30.0;
+
+  /// A run's flag: a translation stream follows, `flTKeyPresent` (`SkeletonMotions.hpp:21`).
+  const TRANSLATION_KEYS_PRESENT: u8 = 1 << 0;
+  /// A run's flag: the rotation is one key rather than a stream, `flRKeyAbsent`.
+  const ROTATION_KEYS_ABSENT: u8 = 1 << 1;
+  /// A run's flag: translation keys are 16 bit rather than 8, `flTKey16IsBit`.
+  const TRANSLATION_KEYS_16_BIT: u8 = 1 << 2;
+
+  /// Whether the preserved payload label still matches the name of the definition it pairs with.
+  pub fn has_label_matching(&self, name: &str) -> bool {
+    self.label.eq_ignore_ascii_case(name)
   }
 
-  /// Decodes the motion's key streams, one entry per bone of the skeleton it animates.
+  /// How many seconds the motion's frames span at the format's fixed sample rate.
+  pub fn get_duration_seconds(&self) -> f32 {
+    self.count as f32 / Self::SAMPLE_FPS
+  }
+
+  /// Decodes the motion's key runs, one entry per bone of the skeleton it animates, in payload order.
   ///
   /// # Errors
   ///
   /// Returns an error when the payload ends early, when it does not end exactly where the last bone's keys do, or when
   /// a motion declaring no frames carries keyed streams.
   pub fn decode_bone_motions<T: ByteOrder>(&self, bone_count: usize) -> XrfResult<Vec<SkeletonBoneMotion>> {
-    let mut cursor: MotionCursor = MotionCursor::new(&self.remaining);
+    let mut cursor: SkeletonMotionCursor = SkeletonMotionCursor::new(&self.keys);
 
     // The bone count comes from the skeleton rather than the payload, so it is bounded by the keys that remain.
     let mut bones: Vec<SkeletonBoneMotion> =
       new_bounded_vec(bone_count as u64, cursor.remaining() as u64, 1, "skeleton motion bones")?;
 
-    for index in 0..bone_count {
-      // Every bone but the first reads its own flags; the first one's was taken by the chunk reader.
-      let flags: u8 = if index == 0 { self.flags } else { cursor.read_u8::<T>()? };
+    for _ in 0..bone_count {
+      let flags: u8 = cursor.read_u8()?;
 
       bones.push(self.decode_bone::<T>(&mut cursor, flags)?);
     }
@@ -63,22 +71,21 @@ impl SkeletonMotion {
     Ok(bones)
   }
 
-  fn decode_bone<T: ByteOrder>(&self, cursor: &mut MotionCursor, flags: u8) -> XrfResult<SkeletonBoneMotion> {
+  fn decode_bone<T: ByteOrder>(&self, cursor: &mut SkeletonMotionCursor, flags: u8) -> XrfResult<SkeletonBoneMotion> {
     let count: usize = self.count as usize;
-    let rotations: Vec<Quaternion> = if flags & FL_R_KEY_ABSENT != 0 {
+    let rotations: Vec<Quaternion> = if flags & Self::ROTATION_KEYS_ABSENT != 0 {
       // A held bone stores one key and no checksum: there is nothing to interpolate between.
       vec![cursor.read_rotation::<T>()?]
     } else {
       self.assert_keyed_frames("rotation keys")?;
 
-      // The checksum guards the shared-memory cache the engine keys by it; nothing here needs it.
-      cursor.skip(4)?;
+      cursor.skip(SkeletonMotionCursor::CHECKSUM_SIZE)?;
 
       // Collecting a range reserves its whole length up front, so the frame count is proven against the keys first.
       assert_count_fits(
         count as u64,
         cursor.remaining() as u64,
-        ROTATION_KEY_SIZE as u64,
+        SkeletonMotionCursor::ROTATION_KEY_SIZE as u64,
         "skeleton motion rotation keys",
       )?;
 
@@ -87,7 +94,7 @@ impl SkeletonMotion {
         .collect::<XrfResult<_>>()?
     };
 
-    if flags & FL_T_KEY_PRESENT == 0 {
+    if flags & Self::TRANSLATION_KEYS_PRESENT == 0 {
       // No stream at all: the bone sits at its initial offset for the whole motion.
       return Ok(SkeletonBoneMotion {
         rotations,
@@ -97,13 +104,13 @@ impl SkeletonMotion {
 
     self.assert_keyed_frames("translation keys")?;
 
-    cursor.skip(4)?;
+    cursor.skip(SkeletonMotionCursor::CHECKSUM_SIZE)?;
 
-    let is_16_bit: bool = flags & FL_T_KEY_16_IS_BIT != 0;
+    let is_16_bit: bool = flags & Self::TRANSLATION_KEYS_16_BIT != 0;
     let translation_key_size: usize = if is_16_bit {
-      TRANSLATION_KEY_16_SIZE
+      SkeletonMotionCursor::TRANSLATION_KEY_16_SIZE
     } else {
-      TRANSLATION_KEY_8_SIZE
+      SkeletonMotionCursor::TRANSLATION_KEY_8_SIZE
     };
 
     assert_count_fits(
@@ -151,110 +158,44 @@ impl SkeletonMotion {
   }
 }
 
-/// A position in one motion's key payload, which reports how much is left rather than panicking past the end.
-struct MotionCursor<'a> {
-  bytes: &'a [u8],
-  offset: usize,
-}
+impl ChunkReadWrite for SkeletonMotion {
+  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+    let label: String = reader.read_w1251_string()?;
+    let count: u32 = reader.read_u32::<T>()?;
+    let keys: Vec<u8> = reader.read_remaining()?;
 
-impl<'a> MotionCursor<'a> {
-  fn new(bytes: &'a [u8]) -> Self {
-    Self { bytes, offset: 0 }
+    reader.assert_read("Chunk data should be read for SkeletonMotion")?;
+
+    Ok(Self { label, count, keys })
   }
 
-  fn is_exhausted(&self) -> bool {
-    self.offset == self.bytes.len()
-  }
+  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    writer.write_w1251_string(&self.label)?;
+    writer.write_u32::<T>(self.count)?;
+    writer.write_all(&self.keys)?;
 
-  fn remaining(&self) -> usize {
-    self.bytes.len().saturating_sub(self.offset)
-  }
-
-  fn take(&mut self, size: usize) -> XrfResult<&'a [u8]> {
-    let end: usize = self.offset + size;
-
-    if end > self.bytes.len() {
-      return Err(XrfError::new_parsing_error(format!(
-        "Motion keys end early: {size} more bytes wanted at offset {}, {} available",
-        self.offset,
-        self.remaining()
-      )));
-    }
-
-    let taken: &[u8] = &self.bytes[self.offset..end];
-
-    self.offset = end;
-
-    Ok(taken)
-  }
-
-  fn skip(&mut self, size: usize) -> XrfResult<()> {
-    self.take(size).map(|_| ())
-  }
-
-  fn read_u8<T: ByteOrder>(&mut self) -> XrfResult<u8> {
-    Ok(self.take(1)?[0])
-  }
-
-  fn read_rotation<T: ByteOrder>(&mut self) -> XrfResult<Quaternion> {
-    let mut bytes: &[u8] = self.take(ROTATION_KEY_SIZE)?;
-
-    Ok(Quaternion {
-      x: f32::from(bytes.read_i16::<T>()?) / KEY_QUANT,
-      y: f32::from(bytes.read_i16::<T>()?) / KEY_QUANT,
-      z: f32::from(bytes.read_i16::<T>()?) / KEY_QUANT,
-      w: f32::from(bytes.read_i16::<T>()?) / KEY_QUANT,
-    })
-  }
-
-  fn read_translation_key_16<T: ByteOrder>(&mut self) -> XrfResult<[f32; 3]> {
-    let mut bytes: &[u8] = self.take(TRANSLATION_KEY_16_SIZE)?;
-
-    Ok([
-      f32::from(bytes.read_i16::<T>()?),
-      f32::from(bytes.read_i16::<T>()?),
-      f32::from(bytes.read_i16::<T>()?),
-    ])
-  }
-
-  fn read_translation_key_8(&mut self) -> XrfResult<[f32; 3]> {
-    let bytes: &[u8] = self.take(TRANSLATION_KEY_8_SIZE)?;
-
-    Ok([
-      f32::from(bytes[0] as i8),
-      f32::from(bytes[1] as i8),
-      f32::from(bytes[2] as i8),
-    ])
-  }
-
-  fn read_vector<T: ByteOrder>(&mut self) -> XrfResult<Vector3d> {
-    let mut bytes: &[u8] = self.take(12)?;
-
-    Ok(Vector3d {
-      x: bytes.read_f32::<T>()?,
-      y: bytes.read_f32::<T>()?,
-      z: bytes.read_f32::<T>()?,
-    })
+    Ok(())
   }
 }
 
 #[cfg(test)]
 mod tests {
   use byteorder::{LittleEndian, WriteBytesExt};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_error::XrfResult;
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use super::{FL_R_KEY_ABSENT, FL_T_KEY_16_IS_BIT, FL_T_KEY_PRESENT, KEY_QUANT, SkeletonBoneMotion};
-  use crate::skeleton_motion::SkeletonMotion;
+  use crate::motions::{SkeletonBoneMotion, SkeletonMotion, SkeletonMotionCursor};
 
   /// Builds one bone's key run the way the format lays it out, so a test states bytes rather than trusting the reader.
   struct BoneRun {
     bytes: Vec<u8>,
-    flags: u8,
   }
 
   impl BoneRun {
     /// A bone animated over `count` frames, with 16 bit translation keys.
     fn animated(count: usize) -> Self {
-      let mut bytes: Vec<u8> = Vec::new();
+      let mut bytes: Vec<u8> = vec![SkeletonMotion::TRANSLATION_KEYS_PRESENT | SkeletonMotion::TRANSLATION_KEYS_16_BIT];
 
       // Rotation: a checksum the engine caches by, then one key per frame.
       bytes.write_u32::<LittleEndian>(0xDEAD_BEEF).unwrap();
@@ -282,15 +223,12 @@ mod tests {
         bytes.write_f32::<LittleEndian>(value).unwrap();
       }
 
-      Self {
-        bytes,
-        flags: FL_T_KEY_PRESENT | FL_T_KEY_16_IS_BIT,
-      }
+      Self { bytes }
     }
 
     /// A bone the motion holds still: one rotation key, no checksum, and only an offset.
     fn held() -> Self {
-      let mut bytes: Vec<u8> = Vec::new();
+      let mut bytes: Vec<u8> = vec![SkeletonMotion::ROTATION_KEYS_ABSENT];
 
       for component in 0..4 {
         bytes.write_i16::<LittleEndian>(component + 1).unwrap();
@@ -300,34 +238,42 @@ mod tests {
         bytes.write_f32::<LittleEndian>(value).unwrap();
       }
 
-      Self {
-        bytes,
-        flags: FL_R_KEY_ABSENT,
-      }
+      Self { bytes }
     }
   }
 
-  /// Assembles a motion from bone runs, moving the first bone's flags where the chunk reader takes it.
   fn mock_motion(count: u32, runs: Vec<BoneRun>) -> SkeletonMotion {
-    let mut remaining: Vec<u8> = Vec::new();
-    let mut first: u8 = 0;
-
-    for (index, run) in runs.into_iter().enumerate() {
-      if index == 0 {
-        first = run.flags;
-      } else {
-        remaining.push(run.flags);
-      }
-
-      remaining.extend(run.bytes);
-    }
-
     SkeletonMotion {
       label: String::from("test_motion"),
       count,
-      flags: first,
-      remaining,
+      keys: runs.into_iter().flat_map(|run| run.bytes).collect(),
     }
+  }
+
+  #[test]
+  fn reads_and_writes_the_label_count_and_keys_as_stored() -> XrfResult {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
+
+    let original: SkeletonMotion = SkeletonMotion {
+      label: String::from("ak74_draw"),
+      count: 32,
+      keys: vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+    };
+
+    original.write::<XRayByteOrder>(&mut writer)?;
+
+    // 9 label bytes + 1 terminator + 4 count bytes + 9 key bytes.
+    assert_eq!(writer.bytes_written(), 9 + 1 + 4 + 9);
+
+    writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
+    let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
+
+    assert_eq!(SkeletonMotion::read::<XRayByteOrder, _>(&mut reader)?, original);
+
+    Ok(())
   }
 
   #[test]
@@ -336,10 +282,10 @@ mod tests {
     let bones: Vec<SkeletonBoneMotion> = motion.decode_bone_motions::<LittleEndian>(1).expect("one bone decodes");
 
     assert_eq!(bones[0].rotations.len(), 2);
-    assert_eq!(bones[0].rotations[0].x, 1.0 / KEY_QUANT);
-    assert_eq!(bones[0].rotations[0].w, 4.0 / KEY_QUANT);
-    assert_eq!(bones[0].rotations[1].x, 2.0 / KEY_QUANT);
-    assert_eq!(bones[0].rotations[1].w, 8.0 / KEY_QUANT);
+    assert_eq!(bones[0].rotations[0].x, 1.0 / SkeletonMotionCursor::KEY_QUANT);
+    assert_eq!(bones[0].rotations[0].w, 4.0 / SkeletonMotionCursor::KEY_QUANT);
+    assert_eq!(bones[0].rotations[1].x, 2.0 / SkeletonMotionCursor::KEY_QUANT);
+    assert_eq!(bones[0].rotations[1].w, 8.0 / SkeletonMotionCursor::KEY_QUANT);
   }
 
   #[test]
@@ -387,9 +333,8 @@ mod tests {
   }
 
   #[test]
-  fn reads_each_bones_flags_after_the_first() {
-    // The chunk reader takes the first bone's flags byte, so every later bone reads its own. Getting this wrong
-    // shifts every stream after the first by a byte.
+  fn reads_each_bones_flags_ahead_of_its_run() {
+    // Every run, the first included, leads with its own flags. Getting this wrong shifts every stream after it.
     let motion: SkeletonMotion = mock_motion(2, vec![BoneRun::animated(2), BoneRun::held(), BoneRun::animated(2)]);
     let bones: Vec<SkeletonBoneMotion> = motion
       .decode_bone_motions::<LittleEndian>(3)
@@ -398,6 +343,17 @@ mod tests {
     assert_eq!(bones[0].rotations.len(), 2);
     assert_eq!(bones[1].rotations.len(), 1, "expect the middle bone to be held");
     assert_eq!(bones[2].rotations.len(), 2);
+  }
+
+  #[test]
+  fn decodes_no_bones_from_an_empty_payload() {
+    // `motions_value::load` reads one run per bone and nothing else, so a skeleton of none stores no keys.
+    let motion: SkeletonMotion = mock_motion(1, vec![]);
+
+    assert_eq!(
+      motion.decode_bone_motions::<LittleEndian>(0).expect("no bones decode"),
+      vec![]
+    );
   }
 
   #[test]
@@ -421,7 +377,7 @@ mod tests {
   fn refuses_a_payload_that_ends_early() {
     let mut motion: SkeletonMotion = mock_motion(2, vec![BoneRun::animated(2)]);
 
-    motion.remaining.truncate(4);
+    motion.keys.truncate(5);
 
     assert!(motion.decode_bone_motions::<LittleEndian>(1).is_err());
   }
@@ -467,11 +423,14 @@ mod tests {
   #[test]
   fn rejects_a_keyed_translation_stream_on_a_motion_declaring_no_frames() {
     // A held rotation passes the first guard, so the translation stream carries its own.
+    let mut keys: Vec<u8> = vec![SkeletonMotion::ROTATION_KEYS_ABSENT | SkeletonMotion::TRANSLATION_KEYS_PRESENT];
+
+    keys.extend([0; 8 + 4 + 12 + 12]);
+
     let motion: SkeletonMotion = SkeletonMotion {
       label: String::from("test_motion"),
       count: 0,
-      flags: FL_R_KEY_ABSENT | FL_T_KEY_PRESENT,
-      remaining: vec![0; 8 + 4 + 12 + 12],
+      keys,
     };
 
     let error: String = motion
@@ -504,8 +463,7 @@ mod tests {
     let motion: SkeletonMotion = SkeletonMotion {
       label: String::from("test_motion"),
       count: u32::MAX,
-      flags: 0,
-      remaining: vec![0; 8],
+      keys: vec![0; 9],
     };
 
     let error: String = motion
@@ -521,11 +479,14 @@ mod tests {
 
   #[test]
   fn rejects_a_translation_frame_count_larger_than_the_payload_before_reserving_it() {
+    let mut keys: Vec<u8> = vec![SkeletonMotion::ROTATION_KEYS_ABSENT | SkeletonMotion::TRANSLATION_KEYS_PRESENT];
+
+    keys.extend([0; 12]);
+
     let motion: SkeletonMotion = SkeletonMotion {
       label: String::from("test_motion"),
       count: u32::MAX,
-      flags: FL_R_KEY_ABSENT | FL_T_KEY_PRESENT,
-      remaining: vec![0; 12],
+      keys,
     };
 
     let error: String = motion

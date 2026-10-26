@@ -39,8 +39,7 @@ fn main() -> xrf_error::XrfResult {
       motions: vec![SkeletonMotion {
         label: "pm_idle".into(),
         count: 1,
-        flags: 0,
-        remaining: vec![0; 4],
+        keys: vec![0; 5],
       }],
     },
   };

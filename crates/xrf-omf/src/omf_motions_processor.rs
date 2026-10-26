@@ -200,8 +200,7 @@ mod tests {
           .map(|name| SkeletonMotion {
             label: String::from(*name),
             count: 1,
-            flags: 0,
-            remaining: vec![1, 2, 3],
+            keys: vec![0, 1, 2, 3],
           })
           .collect(),
       },
@@ -263,12 +262,12 @@ mod tests {
   fn test_retain_motions_keeps_payload_paired_with_definition() -> XrfResult {
     let mut file: OmfFile = new_named_mock(&["first", "second", "third"]);
 
-    file.motions.motions[1].remaining = vec![42];
+    file.motions.motions[1].keys = vec![42];
 
     OmfMotionsProcessor::retain_motions(&mut file, |name| name == "second")?;
 
     assert_eq!(
-      file.motions.motions.first().expect("Retained motion").remaining,
+      file.motions.motions.first().expect("Retained motion").keys,
       vec![42],
       "Expect the payload of the retained motion to survive, not the payload at index zero"
     );

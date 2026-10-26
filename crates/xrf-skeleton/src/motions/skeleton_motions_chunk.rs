@@ -5,7 +5,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{assert_equal, to_format_size};
 
-use crate::skeleton_motion::SkeletonMotion;
+use crate::motions::SkeletonMotion;
 
 #[derive(Debug)]
 pub struct SkeletonMotionsChunk {
@@ -112,15 +112,13 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
 
-  use crate::skeleton_motion::SkeletonMotion;
-  use crate::skeleton_motions_chunk::SkeletonMotionsChunk;
+  use crate::motions::{SkeletonMotion, SkeletonMotionsChunk};
 
   fn new_motion(label: &str) -> SkeletonMotion {
     SkeletonMotion {
       label: String::from(label),
       count: 1,
-      flags: 0,
-      remaining: vec![1, 2, 3],
+      keys: vec![0, 1, 2, 3],
     }
   }
 

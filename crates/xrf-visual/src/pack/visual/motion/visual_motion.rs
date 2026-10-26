@@ -1,6 +1,6 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_ogf::{OgfBone, OgfBoneIkData};
-use xrf_skeleton::{SAMPLE_FPS, SkeletonBoneMotion, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
+use xrf_skeleton::{SkeletonBoneMotion, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 use xrf_spawn::XRayByteOrder;
 
 use crate::data::visual::skeleton::bind_transform::BindTransform;
@@ -124,7 +124,7 @@ fn describe_runs(
     name: definition.name.clone(),
     frame_count: frame_count as u32,
     bone_count: bones as u32,
-    duration: frame_count as f32 / (SAMPLE_FPS * definition.get_playback_speed()),
+    duration: frame_count as f32 / (SkeletonMotion::SAMPLE_FPS * definition.get_playback_speed()),
     speed: definition.speed,
     animated_bone_count: animated.iter().filter(|it| it.is_some()).count() as u32,
     floats_per_bone: FLOATS_PER_BONE as u32,

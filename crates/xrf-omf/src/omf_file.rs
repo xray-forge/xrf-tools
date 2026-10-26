@@ -172,14 +172,12 @@ mod tests {
           SkeletonMotion {
             label: String::from("ak74_draw"),
             count: 2,
-            flags: 1,
-            remaining: vec![9, 8, 7],
+            keys: vec![1, 9, 8, 7],
           },
           SkeletonMotion {
             label: String::from("ak74_idle"),
             count: 4,
-            flags: 0,
-            remaining: vec![1, 2],
+            keys: vec![0, 1, 2],
           },
         ],
       },

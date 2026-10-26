@@ -2,7 +2,7 @@
 
 use xrf_error::XrfResult;
 use xrf_ogf::{OgfBone, OgfBoneIkData};
-use xrf_skeleton::{SAMPLE_FPS, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
+use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 
 use crate::pack::tests::fixtures::{bind, bones, vector};
 use crate::pack::visual::motion::visual_motion::{FLOATS_PER_BONE, bake_motion, describe_motion};
@@ -27,27 +27,21 @@ fn keyed_run(count: u32) -> (u8, Vec<u8>) {
   ((1 << 0) | (1 << 2), vec![0; 4 + count * 8 + 4 + count * 6 + 12 + 12])
 }
 
-/// Assembles bone runs into a motion, moving the first bone's flags where the chunk reader takes them.
+/// Assembles bone runs into a motion, each led by its flags.
 fn motion(count: u32, runs: &[(u8, Vec<u8>)]) -> SkeletonMotion {
-  let mut remaining: Vec<u8> = Vec::new();
-  let mut first: u8 = 0;
-
-  for (index, (flags, bytes)) in runs.iter().enumerate() {
-    if index == 0 {
-      first = *flags;
-    } else {
-      remaining.push(*flags);
-    }
-
-    remaining.extend(bytes);
-  }
-
   SkeletonMotion {
     label: String::from("stale_label"),
     count,
-    flags: first,
-    remaining,
+    keys: runs
+      .iter()
+      .flat_map(|(flags, bytes)| std::iter::once(*flags).chain(bytes.iter().copied()))
+      .collect(),
   }
+}
+
+/// The speed the engine plays a stored one at, which the bake's duration divides by.
+fn played(speed: f32) -> f32 {
+  definition("s98b_reload", speed).get_playback_speed()
 }
 
 fn definition(name: &str, speed: f32) -> SkeletonMotionDefinition {
@@ -104,12 +98,16 @@ fn reports_the_frame_span_when_the_motion_plays_at_the_sample_rate() {
 
   assert_eq!(posed.description.frame_count, RELOAD_FRAMES);
   assert_eq!(posed.description.speed, 1.0);
-  assert_eq!(posed.description.duration, RELOAD_FRAMES as f32 / SAMPLE_FPS);
+  assert_eq!(
+    posed.description.duration,
+    RELOAD_FRAMES as f32 / (SkeletonMotion::SAMPLE_FPS * played(1.0))
+  );
 }
 
 #[test]
 fn reports_a_faster_motion_as_taking_less_time_than_its_frames_span() {
-  // The engine divides the frame span by the speed, so 269 frames at 1.2 take 7.47 seconds rather than 8.97.
+  // The engine divides the frame span by the speed it keeps of 1.2, 1.19936, so 269 frames take 7.476 seconds rather
+  // than 8.97.
   let posed: VisualMotionPose = bake_keyed(RELOAD_FRAMES, RELOAD_SPEED);
 
   assert_eq!(
@@ -119,10 +117,10 @@ fn reports_a_faster_motion_as_taking_less_time_than_its_frames_span() {
   assert_eq!(posed.description.speed, RELOAD_SPEED);
   assert_eq!(
     posed.description.duration,
-    RELOAD_FRAMES as f32 / (SAMPLE_FPS * RELOAD_SPEED)
+    RELOAD_FRAMES as f32 / (SkeletonMotion::SAMPLE_FPS * played(RELOAD_SPEED))
   );
   assert!(
-    (posed.description.duration - 7.472).abs() < 0.001,
+    (posed.description.duration - 7.476).abs() < 0.001,
     "unexpected duration: {}",
     posed.description.duration
   );
@@ -135,7 +133,10 @@ fn reports_a_speed_that_cannot_scale_playback_as_the_frame_span() {
   let posed: VisualMotionPose = bake_keyed(RELOAD_FRAMES, 0.0);
 
   assert_eq!(posed.description.speed, 0.0);
-  assert_eq!(posed.description.duration, RELOAD_FRAMES as f32 / SAMPLE_FPS);
+  assert_eq!(
+    posed.description.duration,
+    RELOAD_FRAMES as f32 / SkeletonMotion::SAMPLE_FPS
+  );
 }
 
 #[test]
@@ -145,7 +146,10 @@ fn reports_an_empty_motion_as_the_one_frame_it_poses() {
   let posed: VisualMotionPose = bake_held(0, RELOAD_SPEED);
 
   assert_eq!(posed.description.frame_count, 1);
-  assert_eq!(posed.description.duration, 1.0 / (SAMPLE_FPS * RELOAD_SPEED));
+  assert_eq!(
+    posed.description.duration,
+    1.0 / (SkeletonMotion::SAMPLE_FPS * played(RELOAD_SPEED))
+  );
 }
 
 #[test]
@@ -170,7 +174,10 @@ fn poses_one_frame_for_a_motion_of_nothing_but_held_bones() {
   let posed: VisualMotionPose = bake_held(u32::MAX, RELOAD_SPEED);
 
   assert_eq!(posed.description.frame_count, 1);
-  assert_eq!(posed.description.duration, 1.0 / (SAMPLE_FPS * RELOAD_SPEED));
+  assert_eq!(
+    posed.description.duration,
+    1.0 / (SkeletonMotion::SAMPLE_FPS * played(RELOAD_SPEED))
+  );
   assert_eq!(
     posed.transforms.len(),
     FLOATS_PER_BONE,

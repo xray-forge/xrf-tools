@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_skeleton::{SAMPLE_FPS, SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionFlag, SkeletonPart};
+use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionFlag, SkeletonPart};
 
 use crate::describe::omf::archive_omf_blend::ArchiveOmfBlend;
 use crate::describe::omf::archive_omf_mark::ArchiveOmfMark;
@@ -47,7 +47,7 @@ impl ArchiveOmfMotion {
       playback_seconds: (speed.value > 0.0).then(|| duration_seconds / speed.value),
       speed,
       power: ArchiveOmfQuantized::of(definition.power),
-      blend: ArchiveOmfBlend::of(definition.accrue, definition.falloff, is_fx),
+      blend: ArchiveOmfBlend::of(definition),
       target: ArchiveOmfTarget::of(definition.bone_or_part, is_fx, parts),
       flags: SkeletonMotionFlag::set_in(definition.flags),
       unnamed_flags: SkeletonMotionFlag::unnamed_in(definition.flags),
@@ -58,7 +58,7 @@ impl ArchiveOmfMotion {
 
   /// The seconds a motion's frames span, for a caller totalling a bank without joining its two lists again.
   pub fn to_duration_seconds(frames: u32) -> f32 {
-    frames as f32 / SAMPLE_FPS
+    frames as f32 / SkeletonMotion::SAMPLE_FPS
   }
 }
 
@@ -88,8 +88,7 @@ mod tests {
     SkeletonMotion {
       label: String::from(label),
       count,
-      flags: 0,
-      remaining: Vec::new(),
+      keys: Vec::new(),
     }
   }
 
