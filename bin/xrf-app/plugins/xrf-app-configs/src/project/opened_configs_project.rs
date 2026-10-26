@@ -9,7 +9,7 @@ use xrf_ltx_inspect::{LtxInventory, LtxInventoryReader};
 use xrf_utils::{error_to_string, format_path};
 use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch};
 
-use crate::{ConfigsProject, ConfigsProjectDescriptor};
+use crate::project::{ConfigsProject, ConfigsProjectDescriptor};
 
 /// How a configs project is assembled over the shared asset roots and listed, with what it read: what an open commits,
 /// and what a commit's follow reads again.

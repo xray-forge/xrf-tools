@@ -1,5 +1,6 @@
 import { Alert, Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { LtxResolvedIndexEntry } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
@@ -100,7 +101,7 @@ export function ConfigsResolvedView({
     <div data-testid={dataTestId} className={"flex min-h-0 min-w-0 grow flex-col"}>
       {narrowedTo ? (
         <Alert severity={"info"} variant={"outlined"} square action={showAll}>
-          {`Showing the ${visibleSections.length} section(s) this config declares, resolved through ` +
+          {`Showing the ${formatCount(visibleSections.length)} section(s) this config declares, resolved through ` +
             `${resolvedService.entry ?? "its entry point"}.`}
         </Alert>
       ) : null}

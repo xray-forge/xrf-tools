@@ -11,7 +11,8 @@ use xrf_ltx::{LtxFormatOptions, LtxProjectFormatResult};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayAsset, XrayInputRecord, XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 
-use crate::{ConfigsFormat, ConfigsProjects, OpenedConfigsProject};
+use crate::format::ConfigsFormat;
+use crate::project::{ConfigsProjects, OpenedConfigsProject};
 
 const SYSTEM_LTX: &str = "configs\\system.ltx";
 const GAME_LTX: &str = "configs\\game.ltx";

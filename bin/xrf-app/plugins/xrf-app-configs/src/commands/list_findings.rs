@@ -8,7 +8,7 @@ use xrf_ltx_inspect::LtxAnchoredFinding;
 use xrf_utils::error_to_string;
 use xrf_vfs::XrayLogicalPath;
 
-use crate::ConfigsProjects;
+use crate::project::ConfigsProjects;
 use crate::request::ConfigsListRequest;
 
 /// Everything wrong with one resolved root, anchored to the file and line a person has to open; verified once and

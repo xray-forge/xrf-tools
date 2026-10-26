@@ -6,7 +6,7 @@ use xrf_ltx_inspect::LtxSectionSchemeReport;
 use xrf_utils::error_to_string;
 use xrf_vfs::XrayLogicalPath;
 
-use crate::ConfigsProjects;
+use crate::project::ConfigsProjects;
 use crate::request::ConfigsReadSectionSchemeRequest;
 
 /// What one section is judged by, and how it measures against that.

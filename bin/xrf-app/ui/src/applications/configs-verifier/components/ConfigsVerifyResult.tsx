@@ -1,5 +1,5 @@
 import { GridColDef } from "@mui/x-data-grid";
-import { formatDuration } from "@xrf/format";
+import { formatCount, formatDuration } from "@xrf/format";
 import { LtxFinding, LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx";
 import { ReactElement, useMemo } from "react";
 
@@ -73,7 +73,7 @@ export function ConfigsVerifyResult({
       data-testid={dataTestId}
       id={id}
       className={className}
-      headline={findings.length ? `${findings.length} problem(s) found` : "All sections passed validation"}
+      headline={findings.length ? `${formatCount(findings.length)} problem(s) found` : "All sections passed validation"}
       tone={findings.length ? "error" : "success"}
       stats={stats}
     >

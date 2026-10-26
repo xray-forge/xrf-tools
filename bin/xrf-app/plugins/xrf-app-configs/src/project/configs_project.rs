@@ -8,7 +8,7 @@ use xrf_ltx_inspect::{
 use xrf_utils::{decode_w1251_bytes_to_string, error_to_string};
 use xrf_vfs::XrayLogicalPath;
 
-use crate::{ConfigsDocument, ConfigsProjectDescriptor, ConfigsResolvedRoot};
+use crate::project::{ConfigsDocument, ConfigsProjectDescriptor, ConfigsResolvedRoot};
 
 /// One opened configs project, and whatever has been resolved out of it.
 pub struct ConfigsProject {

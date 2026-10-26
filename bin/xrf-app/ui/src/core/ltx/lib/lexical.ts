@@ -10,7 +10,7 @@ import { ESyntaxLanguage, highlightSyntax, ISyntaxSpan } from "@xrf/syntax";
  *
  * This is the lexical half only. The backend's structure record owns header and include lines outright,
  * because parents, resolution and scheme binding are not things a regex can know; a caller replaces the
- * spans of those lines with what the parser said. See `plans/configs-explorer.md` decision 4.
+ * spans of those lines with what the parser said.
  *
  * @param line - One source line, without its terminator.
  * @returns Its spans; concatenating their `text` reproduces the line.

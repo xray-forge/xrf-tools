@@ -8,7 +8,7 @@ use xrf_ltx_inspect::LtxResolvedIndex;
 use xrf_utils::error_to_string;
 use xrf_vfs::XrayLogicalPath;
 
-use crate::ConfigsProjects;
+use crate::project::ConfigsProjects;
 use crate::request::ConfigsListRequest;
 
 /// Lists every section one entry point resolves to, named and counted.

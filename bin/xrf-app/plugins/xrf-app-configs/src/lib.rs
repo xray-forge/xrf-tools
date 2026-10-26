@@ -9,7 +9,4 @@ mod request;
 #[cfg(test)]
 mod tests;
 
-pub use format::ConfigsFormat;
-pub use project::{
-  ConfigsDocument, ConfigsProject, ConfigsProjectDescriptor, ConfigsProjects, ConfigsResolvedRoot, OpenedConfigsProject,
-};
+pub use project::ConfigsProjects;
