@@ -12,13 +12,16 @@ use crate::data::xray_surface_declaration::XraySurfaceDeclaration;
 use crate::data::xray_surface_descriptor::XraySurfaceDescriptor;
 use crate::data::xray_surface_draw::XraySurfaceDraw;
 use crate::data::xray_surface_sampler::XraySurfaceSampler;
+use crate::resolve::xray_material_resolver::XrayMaterialResolver;
+use crate::resolve::xray_texture_scope::XrayTextureScope;
 
 /// The renderer shader script a surface's name resolves to, which the engine prefers over the blender library.
 pub struct XraySurfaceScript;
 
 impl XraySurfaceScript {
-  /// Where the R2 renderer loads its scripts from, `getShaderPath()` under `$game_shaders$`.
-  pub const SHADER_SCRIPT_DIRECTORY: &'static str = "shaders\\r2";
+  /// Where the DX10 and DX11 renderers load their scripts from, `getShaderPath()`'s `r3\` under `$game_shaders$`
+  /// (`xrRender_R2/r2.h`): the renderer OpenXRay runs by default, and the one a surface is described for.
+  pub const SHADER_SCRIPT_DIRECTORY: &'static str = "shaders\\r3";
 
   /// The positions of `t_base` and `t_second` in a script function's parameters, after the compiler.
   const FIRST_TEXTURE_PARAMETER: usize = 1;
@@ -30,7 +33,7 @@ impl XraySurfaceScript {
   /// What the undecoration replaces it with, so `effects\lightplanes` is looked up as `effects_lightplanes`.
   const NAMESPACE_DELIMITER: char = '_';
 
-  /// The engine's water program (`shaders/r2/water.vs`), and what every variant of it is named behind: vanilla's
+  /// The engine's water program (`shaders/r3/water.vs`), and what every variant of it is named behind: vanilla's
   /// `water_soft`, Anomaly's `water_regular`, `water_studen`, `water_ryaska` and `water_underground`.
   const WATER_PROGRAM: &'static str = "water";
   const WATER_VARIANT_PREFIX: &'static str = "water_";
@@ -46,15 +49,21 @@ impl XraySurfaceScript {
     )
   }
 
-  /// How a surface naming this shader is drawn, for a shader the roots answer with a script.
-  pub fn describe(search: &XraySearch, shader_name: &str, textures: &[String]) -> Option<XraySurfaceDescriptor> {
+  /// How a surface naming this shader is drawn, for a shader the roots answer with a script, its textures read within
+  /// `scope`.
+  pub fn describe(
+    search: &XraySearch,
+    scope: &XrayTextureScope,
+    shader_name: &str,
+    textures: &[String],
+  ) -> Option<XraySurfaceDescriptor> {
     let logical_path: String = Self::to_logical_path(shader_name);
     let asset: XrayAsset = search.find(&logical_path).ok()??;
     let source: Arc<String> = search
       .read_parsed(&asset, |bytes| Ok(String::from_utf8_lossy(&bytes).into_owned()))
       .ok()?;
     let script: XRayShaderScript = XRayShaderScript::parse(&logical_path, &source).ok()?;
-    let base: Option<&XRayShaderPass> = script.pass_of(XRayShaderPass::BASE_FUNCTION);
+    let base: Option<&XRayShaderPass> = Self::find_base_pass(&script, search, scope, textures);
     let special: Option<&XRayShaderPass> = script.pass_of(XRayShaderPass::SPECIAL_FUNCTION);
     // `_lua_HasShader`: a script is the shader when it declares either; one with only a special pass draws nothing
     // into the scene itself.
@@ -97,6 +106,27 @@ impl XraySurfaceScript {
       is_shadowless: script.pass_of(XRayShaderPass::SHADOW_FUNCTION).is_none(),
       is_object_lod: false,
     })
+  }
+
+  /// The pass `_lua_Create` compiles the high quality base element from: `normal_hq` where the script declares one and
+  /// the base texture's descriptor names a detail, `normal` otherwise.
+  fn find_base_pass<'a>(
+    script: &'a XRayShaderScript,
+    search: &XraySearch,
+    scope: &XrayTextureScope,
+    textures: &[String],
+  ) -> Option<&'a XRayShaderPass> {
+    let detailed: Option<&XRayShaderPass> = script.pass_of(XRayShaderPass::DETAILED_BASE_FUNCTION);
+    let is_detailed = || {
+      textures
+        .first()
+        .is_some_and(|base| XrayMaterialResolver::describe_texture(search, scope, base).is_detail_associated())
+    };
+
+    match detailed {
+      Some(detailed) if is_detailed() => Some(detailed),
+      _ => script.pass_of(XRayShaderPass::BASE_FUNCTION),
+    }
   }
 
   /// The texture files one pass binds, each by its sampler, a parameter read from the surface's textures by position.

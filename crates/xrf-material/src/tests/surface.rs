@@ -312,6 +312,41 @@ fn a_switch_its_class_writes_and_a_file_omits_reads_as_off() {
   assert_eq!(descriptor.draw, XraySurfaceDraw::Opaque);
 }
 
+// A knob a file omits keeps what the class's constructor set before `Load` ran: 32 for a model's reference, 200 for
+// the level cut-out's, and edge clamping on for the screen space and particle classes.
+#[test]
+fn a_knob_a_file_omits_reads_as_the_value_its_class_starts_from() {
+  let tree: FixtureTree = library(
+    "surface_class_defaults",
+    &[
+      ShaderBlenderFixture::model("models\\model_aref")
+        .with_alpha_channel(true)
+        .without_property("Alpha ref"),
+      ShaderBlenderFixture::level_aref("def_shaders\\def_aref_blend")
+        .with_alpha_channel(true)
+        .without_property("Alpha ref"),
+      ShaderBlenderFixture::particle("particles\\add", 2).without_property("Texture clamp"),
+      ShaderBlenderFixture::of(ShaderBlenderClass::SCREEN_SET, "effects\\screen"),
+    ],
+  );
+  let model: XraySurfaceDescriptor = describe(&tree, "models\\model_aref");
+
+  assert_eq!(model.draw, CUT_OUT);
+  assert!(matches!(
+    model.declaration,
+    XraySurfaceDeclaration::Described {
+      alpha_reference: Some(32),
+      ..
+    }
+  ));
+  assert_eq!(
+    describe(&tree, "def_shaders\\def_aref_blend").draw,
+    XraySurfaceDraw::Blended { reference: 200 }
+  );
+  assert!(describe(&tree, "particles\\add").is_texture_clamped);
+  assert!(describe(&tree, "effects\\screen").is_texture_clamped);
+}
+
 #[test]
 fn the_library_is_read_once_and_answers_every_surface_of_a_model() {
   let tree: FixtureTree = library(
@@ -340,7 +375,7 @@ fn the_library_is_read_once_and_answers_every_surface_of_a_model() {
   );
 }
 
-/// The pass `shaders/r2/effects_lightplanes.s` declares, which is what a lamp's light planes are drawn with.
+/// The pass `shaders/r3/effects_lightplanes.s` declares, which is what a lamp's light planes are drawn with.
 const LIGHT_PLANES_SCRIPT: &str = r#"
 function normal (shader, t_base, t_second, t_detail)
   shader:begin ("base_lplanes","base_lplanes")

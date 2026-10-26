@@ -69,16 +69,19 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-- A pass is a `shader:begin` call on the `shader` receiver with exactly two literal string arguments. Computed names
+- A pass is a `shader:begin` call on the `shader` receiver with two literal string arguments, or three where DX10 and
+  later begin it with a geometry program between the vertex and pixel programs. Computed names
   are not evaluated, and calls in comments, including a commented-out `--[[ ]]` draft, produce no pass. A Lua syntax
   error is `XrfError::Verify`.
 - The function a pass is declared in decides when the engine compiles it: `XRayShaderPass::BASE_FUNCTION` (`normal`)
   is a surface's base element, `SPECIAL_FUNCTION` (`l_special`) its distortion or emissive element, and
-  `SHADOW_FUNCTION` (`l_point`) the deferred renderers' shadow element. `pass_of(function)` answers that function's
-  first pass, `None` when the script does not declare it.
+  `SHADOW_FUNCTION` (`l_point`) the deferred renderers' shadow element. `DETAILED_BASE_FUNCTION` (`normal_hq`) stands
+  in for `normal` where the base texture associates a detail. `pass_of(function)` answers that function's first pass,
+  `None` when the script does not declare it.
 - `state()` is the render state chained onto the `begin`: `blend`, `aref`, `zb`, `wmark`, `distort` and `emissive`. A
   pass that chains nothing tests and writes depth and does not blend.
-- `samplers()` are the `shader:sampler` calls after the `begin` and before the function's next one, in source order.
+- `samplers()` are the `shader:sampler(name):texture(texture)` and DX10 `shader:dx10texture(name, texture)` calls
+  after the `begin` and before the function's next one, in source order; `dx10sampler` binds no texture and is skipped.
   Each texture is an `XRayShaderSamplerTexture`: `Named` (a literal or a local bound to one, which may be an engine
   target such as `$user$sky0`; `file()` answers only real files), `Parameter` (an argument the renderer passes, such as
   `t_base`), `Global` (a name nothing in scope binds, such as `t_rt`), or `Unresolved`. A parameter or local hides a

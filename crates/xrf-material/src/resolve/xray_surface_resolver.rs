@@ -12,6 +12,7 @@ use crate::data::xray_material_detail::XrayMaterialDetail;
 use crate::data::xray_surface_declaration::XraySurfaceDeclaration;
 use crate::data::xray_surface_descriptor::XraySurfaceDescriptor;
 use crate::data::xray_surface_detail::XraySurfaceDetail;
+use crate::data::xray_surface_draw::XraySurfaceDraw;
 use crate::resolve::xray_material_resolver::XrayMaterialResolver;
 use crate::resolve::xray_surface_alpha::XraySurfaceAlpha;
 use crate::resolve::xray_surface_bump_rule::XraySurfaceBumpRule;
@@ -73,7 +74,7 @@ impl XraySurfaceResolver {
     // Before the library, because that is the order the engine asks in: a shader with a renderer script **is** that
     // script, and what `shaders.xr` calls its class never reaches the screen. Reading the class alone drew X-Ray's
     // additive glows and its wall marks as opaque black.
-    if let Some(scripted) = XraySurfaceScript::describe(&self.search, shader_name, textures) {
+    if let Some(scripted) = XraySurfaceScript::describe(&self.search, &self.scope, shader_name, textures) {
       return scripted;
     }
 
@@ -102,13 +103,15 @@ impl XraySurfaceResolver {
     };
 
     let alpha: XraySurfaceAlpha = rule.read(blender);
+    let draw: XraySurfaceDraw = rule.draw(blender, alpha);
+    let is_deferred: bool = XraySurfaceRule::is_deferred(draw);
     // The base texture's descriptor, which says the detail, the bump pair and the lighting model all at once.
     let base: Option<XrayMaterialDescriptor> = blender
       .base_texture(textures)
       .map(|base| XrayMaterialResolver::describe_texture(&self.search, &self.scope, base));
     let bump: Option<XrayMaterialBump> = base
       .as_ref()
-      .filter(|_| XraySurfaceBumpRule::is_bumped(blender.class))
+      .filter(|_| is_deferred && XraySurfaceBumpRule::is_bumped(blender.class))
       .and_then(|descriptor| descriptor.bump.clone());
 
     XraySurfaceDescriptor {
@@ -121,9 +124,10 @@ impl XraySurfaceResolver {
         alpha_reference: alpha.reference,
         is_strict_sorting: alpha.is_strict_sorting,
       },
-      draw: rule.draw(blender, alpha),
+      draw,
       detail: base
         .as_ref()
+        .filter(|_| is_deferred)
         .and_then(|descriptor| self.describe_detail(blender, descriptor, bump.is_some())),
       terrain: XraySurfaceTerrainRule::describe(blender, blender.base_texture(textures)),
       samplers: Vec::new(),

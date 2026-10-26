@@ -21,13 +21,18 @@ impl XRayShaderScript {
     let path: &Path = path.as_ref();
     let lua_script: XRayLuaScript = XRayLuaScript::parse(path, source)?;
     let begins: Vec<&XRayLuaMethodCall> = lua_script.method_calls("shader", "begin");
-    let samplers: Vec<&XRayLuaMethodCall> = lua_script.method_calls("shader", "sampler");
+    let samplers: Vec<&XRayLuaMethodCall> = [XRayShaderSampler::SAMPLER_METHOD, XRayShaderSampler::TEXTURE_METHOD]
+      .into_iter()
+      .flat_map(|method| lua_script.method_calls("shader", method))
+      .collect();
     let passes: Vec<XRayShaderPass> = begins
       .iter()
       .filter_map(|method_call| {
         let arguments: Vec<String> = method_call.literal_string_arguments()?;
-        let [vertex_shader, pixel_shader] = arguments.as_slice() else {
-          return None;
+        // `_pass(vs, ps)`, or `_passgs(vs, gs, ps)` on DX10 and later (`dx11ResourceManager_Scripting.cpp`).
+        let (vertex_shader, pixel_shader) = match arguments.as_slice() {
+          [vertex, pixel] | [vertex, _, pixel] => (vertex, pixel),
+          _ => return None,
         };
         // A pass binds what its function binds after it and before the function begins another.
         let from: usize = method_call.line_number();
@@ -37,13 +42,18 @@ impl XRayShaderScript {
           .map(|next| next.line_number())
           .min()
           .unwrap_or(usize::MAX);
-        let bound: Vec<XRayShaderSampler> = samplers
+        let mut bound: Vec<&XRayLuaMethodCall> = samplers
           .iter()
+          .copied()
           .filter(|sampler| {
             sampler.function() == method_call.function() && sampler.line_number() >= from && sampler.line_number() < to
           })
-          .filter_map(|sampler| XRayShaderSampler::of(sampler))
           .collect();
+
+        // In source order, whichever call bound each.
+        bound.sort_by_key(|sampler| sampler.line_number());
+
+        let bound: Vec<XRayShaderSampler> = bound.into_iter().filter_map(XRayShaderSampler::of).collect();
 
         Some(XRayShaderPass::of(method_call, vertex_shader.clone(), pixel_shader.clone()).with_samplers(bound))
       })
@@ -312,6 +322,68 @@ end
     assert_eq!(
       texture("s_image"),
       Some(XRayShaderSamplerTexture::Global("t_rt".to_owned()))
+    );
+
+    Ok(())
+  }
+
+  // `shaders/r3/effects_water.s`'s shape: DX10 binds a texture by `dx10texture` and its sampler state apart by
+  // `dx10sampler`, which binds no texture of its own.
+  #[test]
+  fn reads_the_textures_a_dx10_pass_binds() -> XrfResult {
+    let script: XRayShaderScript = XRayShaderScript::parse(
+      Path::new("shaders/r3/effects_water.s"),
+      r#"
+local tex_nmap = "water\\water_normal"
+
+function normal(shader, t_base, t_second, t_detail)
+  shader:begin("water_soft", "water_soft")
+        : blend(true, blend.srcalpha, blend.invsrcalpha)
+  shader:dx10texture("s_base", t_base)
+  shader:dx10texture("s_nmap", tex_nmap)
+  shader:dx10texture("s_env0", "$user$sky0")
+  shader:dx10sampler("smp_base")
+end
+"#,
+    )?;
+
+    let normal: &XRayShaderPass = script.pass_of(XRayShaderPass::BASE_FUNCTION).expect("a base pass");
+    let texture = |name: &str| normal.sampler(name).map(|sampler| sampler.texture().clone());
+
+    assert_eq!(
+      normal.samplers().iter().map(|it| it.name()).collect::<Vec<&str>>(),
+      ["s_base", "s_nmap", "s_env0"]
+    );
+    assert_eq!(
+      texture("s_base"),
+      Some(XRayShaderSamplerTexture::Parameter {
+        name: "t_base".to_owned(),
+        index: 1,
+      })
+    );
+    assert_eq!(
+      texture("s_nmap"),
+      Some(XRayShaderSamplerTexture::Named(r"water\water_normal".to_owned()))
+    );
+    assert_eq!(normal.sampler("s_env0").and_then(|it| it.texture().file()), None);
+    assert!(normal.state().is_blended);
+
+    Ok(())
+  }
+
+  // DX10 begins a pass with a geometry program too, `_passgs`, and the pixel program is the last of the three.
+  #[test]
+  fn reads_a_pass_begun_with_a_geometry_program() -> XrfResult {
+    let script: XRayShaderScript = XRayShaderScript::parse(
+      Path::new("shaders/r3/geometry.s"),
+      r#"function normal(shader) shader:begin("stub_default", "test", "stub_pixel") end"#,
+    )?;
+
+    let pass: &XRayShaderPass = script.pass_of(XRayShaderPass::BASE_FUNCTION).expect("a base pass");
+
+    assert_eq!(
+      (pass.vertex_shader(), pass.pixel_shader()),
+      ("stub_default", "stub_pixel")
     );
 
     Ok(())
