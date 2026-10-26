@@ -7,6 +7,7 @@ use xrf_ltx::Ltx;
 use xrf_utils::{StagedFile, format_path};
 
 use crate::archive_config_format::ArchiveConfigFormat;
+use crate::archive_config_ltx::ArchiveConfigLtx;
 use crate::pack::config::ArchivePackHeaderEntry;
 use crate::patch::config::ArchivePatchConfig;
 
@@ -64,21 +65,23 @@ impl ArchivePatchConfigJson {
     Ok(rendered)
   }
 
+  fn some_if_populated(values: &[String]) -> Option<Vec<String>> {
+    (!values.is_empty()).then(|| values.to_vec())
+  }
+}
+
+impl From<&ArchivePatchConfig> for ArchivePatchConfigJson {
   /// Take the file-owned fields of a configuration, leaving the per-run ones behind.
   ///
   /// An empty collection is written as absent rather than as an empty list, so a round trip leaves a caller's own
   /// values alone rather than clearing them.
-  pub fn from_config(config: &ArchivePatchConfig) -> Self {
+  fn from(config: &ArchivePatchConfig) -> Self {
     Self {
-      include: Self::some_if_populated(config.include.clone()),
-      ignore: Self::some_if_populated(config.ignore.clone()),
-      exclude_extensions: Self::some_if_populated(config.exclude_extensions.clone()),
+      include: Self::some_if_populated(&config.include),
+      ignore: Self::some_if_populated(&config.ignore),
+      exclude_extensions: Self::some_if_populated(&config.exclude_extensions),
       header: config.header.as_deref().map(ArchivePackHeaderEntry::split),
     }
-  }
-
-  fn some_if_populated<T>(values: Vec<T>) -> Option<Vec<T>> {
-    (!values.is_empty()).then_some(values)
   }
 }
 
@@ -105,11 +108,6 @@ impl ArchivePatchConfig {
     self
   }
 
-  /// Take the file-owned fields of this configuration in the shape a file carries.
-  pub fn to_json(&self) -> ArchivePatchConfigJson {
-    ArchivePatchConfigJson::from_config(self)
-  }
-
   /// Apply a patching configuration file over this configuration, in whichever format its extension names.
   ///
   /// # Errors
@@ -120,7 +118,7 @@ impl ArchivePatchConfig {
     let path: &Path = path.as_ref();
 
     match ArchiveConfigFormat::of_patch_config(path)? {
-      ArchiveConfigFormat::Ltx => self.with_ltx(&Ltx::read_from_file_standard(path)?),
+      ArchiveConfigFormat::Ltx => Ok(self.with_ltx(&Ltx::read_from_file_standard(path)?)),
       ArchiveConfigFormat::Json => {
         let json: ArchivePatchConfigJson = ArchivePatchConfigJson::parse(&fs::read(path)?).map_err(|error| {
           XrfError::new_parsing_error(format!(
@@ -143,8 +141,8 @@ impl ArchivePatchConfig {
     let path: &Path = path.as_ref();
 
     let rendered: Vec<u8> = match ArchiveConfigFormat::of_patch_config(path)? {
-      ArchiveConfigFormat::Ltx => self.to_ltx_bytes()?,
-      ArchiveConfigFormat::Json => self.to_json().render()?.into_bytes(),
+      ArchiveConfigFormat::Ltx => ArchiveConfigLtx::render(&Ltx::from(self))?,
+      ArchiveConfigFormat::Json => ArchivePatchConfigJson::from(self).render()?.into_bytes(),
     };
 
     StagedFile::write(path, &rendered).map_err(|error| {

@@ -2,7 +2,7 @@
 //!
 //! Discovery only. Whether a name the walk reaches is wanted is `archive_pack_config_rules.rs`; how a host path
 //! becomes an archive name is `crate::path`; which name the engine registers it under, and that it is registered once,
-//! is `archive_pack_name_table.rs`; and saying any of it out loud is `archive_pack_narrator.rs`.
+//! is `names/archive_pack_name_table.rs`; and saying any of it out loud is `archive_pack_narrator.rs`.
 
 use std::fs;
 use std::io::ErrorKind;
@@ -122,7 +122,7 @@ impl ArchivePackSourceCollector {
       config.source.join(directory.path.replace('\\', "/"))
     };
 
-    if !is_present_source_root(&root)? {
+    if !Self::is_present_source_root(&root)? {
       return Ok(());
     }
 
@@ -143,7 +143,7 @@ impl ArchivePackSourceCollector {
     let mut pruned: ArchivePackOmissions = self.omitted.new_sibling();
 
     for entry in walk.into_iter().filter_entry(|entry| {
-      let Some(name) = pruned_directory_name(config, entry) else {
+      let Some(name) = Self::pruned_directory_name(config, entry) else {
         return true;
       };
 
@@ -151,7 +151,7 @@ impl ArchivePackSourceCollector {
 
       false
     }) {
-      let entry: DirEntry = entry.map_err(|error| walk_error(&root, error))?;
+      let entry: DirEntry = entry.map_err(|error| Self::walk_error(&root, error))?;
       let path: &Path = entry.path();
       let name: String = to_archive_name(&config.source, path)?;
 
@@ -187,52 +187,52 @@ impl ArchivePackSourceCollector {
 
     Ok(())
   }
-}
 
-/// Whether an included root is there at all, refusing an answer the filesystem could not give.
-///
-/// A root that is not there contributes nothing, which is how a shared configuration names optional trees. Every
-/// other failure is a discovery failure: `Path::exists` reports a directory it may not read as absent too, and
-/// packing would then publish a volume set missing everything below it.
-fn is_present_source_root(root: &Path) -> XrfResult<bool> {
-  match fs::metadata(root) {
-    Ok(_) => Ok(true),
-    Err(error) if error.kind() == ErrorKind::NotFound => Ok(false),
-    Err(error) => Err(XrfError::new_io_error(
-      format!(
-        "Failed to read packing source directory '{}': {error}",
-        format_path(root)
-      ),
-      error.kind(),
-    )),
-  }
-}
-
-/// Turn a walk failure into an error naming what could not be read.
-///
-/// The walker knows which entry it tripped on for everything below the root, and names the root itself otherwise.
-fn walk_error(root: &Path, error: WalkError) -> XrfError {
-  let path: String = format_path(error.path().unwrap_or(root)).to_string();
-
-  // The wrapper repeats the path it already named, so the failure itself is what carries here.
-  match error.io_error() {
-    Some(cause) => XrfError::new_io_error(format!("Failed to read packing source '{path}': {cause}"), cause.kind()),
-    None => XrfError::new_invalid_error(format!("Failed to read packing source '{path}': {error}")),
-  }
-}
-
-/// The engine name of a directory that can be dropped without descending into it, and none for anything kept.
-///
-/// A recursive exclusion covers everything below the directory it names, so nothing inside can be selected and
-/// reading it would only turn an intentionally excluded corner of the tree into a packing failure. A shallow
-/// exclusion drops the directory alone while its contents still pack, so it must not prune. A directory whose name
-/// cannot be expressed is kept, so the walk reports it instead of losing it here.
-fn pruned_directory_name(config: &ArchivePackConfig, entry: &DirEntry) -> Option<String> {
-  if !entry.file_type().is_dir() {
-    return None;
+  /// Whether an included root is there at all, refusing an answer the filesystem could not give.
+  ///
+  /// A root that is not there contributes nothing, which is how a shared configuration names optional trees. Every
+  /// other failure is a discovery failure: `Path::exists` reports a directory it may not read as absent too, and
+  /// packing would then publish a volume set missing everything below it.
+  fn is_present_source_root(root: &Path) -> XrfResult<bool> {
+    match fs::metadata(root) {
+      Ok(_) => Ok(true),
+      Err(error) if error.kind() == ErrorKind::NotFound => Ok(false),
+      Err(error) => Err(XrfError::new_io_error(
+        format!(
+          "Failed to read packing source directory '{}': {error}",
+          format_path(root)
+        ),
+        error.kind(),
+      )),
+    }
   }
 
-  to_archive_name(&config.source, entry.path())
-    .ok()
-    .filter(|name| !name.is_empty() && config.is_recursively_excluded_directory(name))
+  /// Turn a walk failure into an error naming what could not be read.
+  ///
+  /// The walker knows which entry it tripped on for everything below the root, and names the root itself otherwise.
+  fn walk_error(root: &Path, error: WalkError) -> XrfError {
+    let path: String = format_path(error.path().unwrap_or(root)).to_string();
+
+    // The wrapper repeats the path it already named, so the failure itself is what carries here.
+    match error.io_error() {
+      Some(cause) => XrfError::new_io_error(format!("Failed to read packing source '{path}': {cause}"), cause.kind()),
+      None => XrfError::new_invalid_error(format!("Failed to read packing source '{path}': {error}")),
+    }
+  }
+
+  /// The engine name of a directory that can be dropped without descending into it, and none for anything kept.
+  ///
+  /// A recursive exclusion covers everything below the directory it names, so nothing inside can be selected and
+  /// reading it would only turn an intentionally excluded corner of the tree into a packing failure. A shallow
+  /// exclusion drops the directory alone while its contents still pack, so it must not prune. A directory whose name
+  /// cannot be expressed is kept, so the walk reports it instead of losing it here.
+  fn pruned_directory_name(config: &ArchivePackConfig, entry: &DirEntry) -> Option<String> {
+    if !entry.file_type().is_dir() {
+      return None;
+    }
+
+    to_archive_name(&config.source, entry.path())
+      .ok()
+      .filter(|name| !name.is_empty() && config.is_recursively_excluded_directory(name))
+  }
 }

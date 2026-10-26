@@ -1,15 +1,6 @@
 use xrf_job::JobHandle;
 use xrf_output::OutputOptions;
 
-/// Phase a patch reports while it mounts both sides and decides what differs.
-pub const PATCH_PHASE_COMPARE: &str = "compare";
-
-/// Phase a patch reports while it writes the difference into volumes.
-///
-/// Its own name rather than the pack's `write`, because the two are denominated differently: comparing counts the
-/// target's entries and packing counts only the changed ones, so a single bar over both would race at the handover.
-pub const PATCH_PHASE_PACK: &str = "pack";
-
 /// How one patch run should behave, beyond the configuration describing what to compare.
 #[derive(Default)]
 pub struct ArchivePatchOptions {
@@ -28,6 +19,15 @@ pub struct ArchivePatchOptions {
 }
 
 impl ArchivePatchOptions {
+  /// Phase a patch reports while it mounts both sides and decides what differs.
+  pub const PHASE_COMPARE: &str = "compare";
+
+  /// Phase a patch reports while it writes the difference into volumes.
+  ///
+  /// Its own name rather than the pack's `write`, because the two are denominated differently: comparing counts the
+  /// target's entries and packing counts only the changed ones, so a single bar over both would race at the handover.
+  pub const PHASE_PACK: &str = "pack";
+
   /// The same options, reporting to and cancellable through `job`.
   pub fn with_job(self, job: JobHandle) -> Self {
     Self { job, ..self }

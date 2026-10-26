@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::pack::config::{ArchivePackConfig, ArchivePackMode, ArchiveVolumeExtension, default_header};
+use crate::pack::config::{ArchivePackConfig, ArchivePackHeader, ArchivePackMode, ArchiveVolumeExtension};
 use crate::patch::config::ArchivePatchScope;
 
 /// Comparison roots, entry filters, and patch volume settings.
@@ -49,9 +49,9 @@ impl ArchivePatchConfig {
       include: Vec::new(),
       ignore: Vec::new(),
       exclude_extensions: Vec::new(),
-      header: Some(default_header()),
+      header: Some(ArchivePackHeader::default_text()),
       mode: ArchivePackMode::default(),
-      max_volume_size: crate::VOLUME_SIZE_MAX,
+      max_volume_size: ArchivePackConfig::VOLUME_SIZE_MAX,
       is_with_oversized_volumes: false,
       volume_extension: ArchiveVolumeExtension::default(),
     }
@@ -61,8 +61,8 @@ impl ArchivePatchConfig {
   ///
   /// # Errors
   ///
-  /// Returns an invalid error below `VOLUME_SIZE_MIN`, or above `VOLUME_SIZE_MAX` unless oversized volumes are
-  /// allowed.
+  /// Returns an invalid error below [`ArchivePackConfig::VOLUME_SIZE_MIN`], or above
+  /// [`ArchivePackConfig::VOLUME_SIZE_MAX`] unless oversized volumes are allowed.
   pub fn with_max_volume_size(mut self, size: u64) -> XrfResult<Self> {
     ArchivePackConfig::check_volume_size(size, self.is_with_oversized_volumes)?;
 
@@ -71,7 +71,8 @@ impl ArchivePatchConfig {
     Ok(self)
   }
 
-  /// Allow a volume size past `VOLUME_SIZE_MAX`, which only an engine fork that raised `XRP_MAX_SIZE` can open.
+  /// Allow a volume size past [`ArchivePackConfig::VOLUME_SIZE_MAX`], which only an engine fork that raised
+  /// `XRP_MAX_SIZE` can open.
   pub fn with_oversized_volumes(mut self, is_allowed: bool) -> Self {
     self.is_with_oversized_volumes = is_allowed;
 

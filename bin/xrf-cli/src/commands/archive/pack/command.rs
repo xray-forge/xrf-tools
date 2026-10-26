@@ -4,8 +4,7 @@ use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_output::OutputOptions;
 use xrf_pack::{
-  ArchivePackConfig, ArchivePackDirectory, ArchivePackOptions, ArchivePackResult, ArchivePacker,
-  ArchiveVolumeExtension, VOLUME_SIZE_MAX,
+  ArchivePackConfig, ArchivePackDirectory, ArchivePackOptions, ArchivePackResult, ArchivePacker, ArchiveVolumeExtension,
 };
 use xrf_utils::format_path;
 
@@ -140,13 +139,13 @@ impl GenericCommand for PackCommand {
     xrf_output::info!(output, "Pack source: {}", format_path(&path));
     xrf_output::info!(output, "Pack destination: {}", format_path(destination));
 
-    if config.max_volume_size > VOLUME_SIZE_MAX {
+    if config.max_volume_size > ArchivePackConfig::VOLUME_SIZE_MAX {
       xrf_output::warning!(
         output,
         "Volumes are capped at {}, past the {} MB no unmodified engine mounts. These volumes load only in \
          a fork that raised XRP_MAX_SIZE.",
         xrf_utils::format_bytes(config.max_volume_size),
-        VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
+        ArchivePackConfig::VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
       );
     }
 

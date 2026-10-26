@@ -6,10 +6,6 @@ use crate::pack::source::{ArchivePackEntry, ArchivePackPayloads};
 use crate::pack::volume::{ArchiveAlias, ArchiveAliasCandidate};
 
 /// Payloads already written to the current volume, so an identical file costs a descriptor row and nothing else.
-///
-/// Borrows the entries it records rather than copying anything out of them: the source table holds every entry for
-/// the whole write, so a candidate needs neither its own origin to prove a match nor its own name to say where an
-/// alias points.
 #[derive(Default)]
 pub(crate) struct ArchiveAliasTable<'e> {
   /// Keyed by size and checksum, which several distinct payloads may share, so each key keeps every candidate.
@@ -18,13 +14,6 @@ pub(crate) struct ArchiveAliasTable<'e> {
 
 impl<'e> ArchiveAliasTable<'e> {
   /// Find an identical payload already in this volume, confirming the match byte for byte.
-  ///
-  /// Equal size and checksum is strong evidence and not proof; xrCompress re-reads the candidate too. Trusting the key
-  /// alone would point an entry at another file's payload, which reads back as that other file rather than as an
-  /// error, so the cost of the re-read buys the one guarantee worth paying for here.
-  ///
-  /// Answered by value rather than by reference: a candidate is two words that already borrow the source table, so
-  /// handing back a borrow of this table would only stop the caller recording the entry it just proved a match for.
   pub(crate) fn find(
     &self,
     payloads: &ArchivePackPayloads,

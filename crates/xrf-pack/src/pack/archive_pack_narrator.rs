@@ -147,7 +147,7 @@ impl<'o> ArchivePackNarrator<'o> {
       return;
     }
 
-    xrf_output::verbose!(self.output, "Opened volume: {}", volume_name(path));
+    xrf_output::verbose!(self.output, "Opened volume: {}", Self::volume_name(path));
   }
 
   /// Say what a volume came to once its descriptor table was written.
@@ -159,16 +159,16 @@ impl<'o> ArchivePackNarrator<'o> {
     xrf_output::verbose!(
       self.output,
       "Closed volume: {}, {}, {entries} entries",
-      volume_name(path),
+      Self::volume_name(path),
       format_bytes(size)
     );
   }
-}
 
-/// The volume's own file name, which is what a reader of the transcript recognises it by.
-fn volume_name(path: &Path) -> String {
-  path.file_name().map_or_else(
-    || path.display().to_string(),
-    |name| name.to_string_lossy().into_owned(),
-  )
+  /// The volume's own file name, which is what a reader of the transcript recognises it by.
+  fn volume_name(path: &Path) -> String {
+    path.file_name().map_or_else(
+      || path.display().to_string(),
+      |name| name.to_string_lossy().into_owned(),
+    )
+  }
 }

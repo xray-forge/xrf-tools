@@ -40,7 +40,7 @@ fn a_round_trip_returns_the_scope_and_the_header() {
   assert_eq!(read.exclude_extensions, ["*.txt"]);
   assert_eq!(
     ArchivePackHeaderEntry::split(read.header.as_deref().expect("a header")),
-    ArchivePackHeaderEntry::split(&crate::pack::config::default_header())
+    ArchivePackHeaderEntry::split(&crate::pack::config::ArchivePackHeader::default_text())
   );
 }
 
@@ -83,7 +83,8 @@ fn an_absent_field_leaves_what_the_caller_holds() {
 
 #[test]
 fn an_empty_collection_is_written_as_absent_rather_than_as_an_empty_list() {
-  let empty: ArchivePatchConfigJson = ArchivePatchConfig::new("C:\\in", "C:\\out", "patch").to_json();
+  let empty: ArchivePatchConfigJson =
+    ArchivePatchConfigJson::from(&ArchivePatchConfig::new("C:\\in", "C:\\out", "patch"));
 
   assert_eq!(empty.include, None);
   assert_eq!(empty.ignore, None);

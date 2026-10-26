@@ -8,13 +8,10 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{HostDestination, HostRelativePath, format_path};
 
 use crate::path::{relative_to_prefix, to_host_relative};
-use crate::unpack::archive_extract_directory_result::ArchiveExtractDirectoryResult;
-use crate::unpack::archive_extract_options::ArchiveExtractOptions;
-use crate::unpack::archive_extract_result::ArchiveExtractResult;
-use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
-use crate::unpack::tree_entry::TreeEntry;
-use crate::unpack::tree_write_summary::TreeWriteSummary;
-use crate::unpack::tree_writer::TreeWriter;
+use crate::unpack::{
+  ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtractResult, ArchiveUnpackResult, TreeEntry,
+  TreeWriteSummary, TreeWriter,
+};
 
 /// Writes the contents of an archive project back out to a directory.
 pub struct ArchiveUnpacker;
@@ -78,7 +75,7 @@ impl ArchiveUnpacker {
     destination: P,
     options: ArchiveExtractOptions,
   ) -> XrfResult<ArchiveExtractDirectoryResult> {
-    let normalized: String = prefix.trim_end_matches(['\\', '/']).to_string();
+    let normalized: String = ArchiveExtractDirectoryResult::normalize_prefix(prefix);
     let destination: HostDestination = HostDestination::new(destination.as_ref(), options.link_policy);
 
     destination.create_root()?;
@@ -109,13 +106,11 @@ impl ArchiveUnpacker {
 
     let summary: TreeWriteSummary = Self::write_entries(&destination, &volumes, &selected, &options)?;
 
-    Ok(ArchiveExtractDirectoryResult {
-      prefix: normalized,
-      destination: format_path(destination.get_root()).to_string(),
-      outcome: summary.outcome,
-      extracted_count: summary.files,
-      size: summary.bytes,
-    })
+    Ok(ArchiveExtractDirectoryResult::of_summary(
+      normalized,
+      destination.get_root(),
+      &summary,
+    ))
   }
 
   /// Write one archived file to an exact path of the caller's choosing.

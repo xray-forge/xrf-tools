@@ -1,11 +1,12 @@
 use std::cmp::Ordering;
+use std::collections::BTreeSet;
 
 use rayon::prelude::*;
 use xrf_error::XrfResult;
 use xrf_job::{JobHandle, JobScope};
 use xrf_vfs::XrayAsset;
 
-use crate::patch::PATCH_PHASE_COMPARE;
+use crate::patch::ArchivePatchOptions;
 use crate::patch::compare::{
   ArchivePatchChange, ArchivePatchDecision, ArchivePatchOrigins, ArchivePatchPending, ArchivePatchSide,
 };
@@ -43,7 +44,7 @@ impl ArchivePatchComparison {
     let base_entries: Vec<XrayAsset> = base.list_scoped(scope);
     let target_entries: Vec<XrayAsset> = target.list_scoped(scope);
 
-    let comparing: JobScope = job.enter(PATCH_PHASE_COMPARE, Some(target_entries.len() as u64));
+    let comparing: JobScope = job.enter(ArchivePatchOptions::PHASE_COMPARE, Some(target_entries.len() as u64));
     let mut comparison: Self = Self {
       base_listed: base_entries.len(),
       target_listed: target_entries.len(),
@@ -67,7 +68,9 @@ impl ArchivePatchComparison {
           let entry: &XrayAsset = &target_entries[right];
           let side: ArchivePatchSide = target.to_side(entry, &mut comparison.origins);
 
-          comparison.added.push(ArchivePatchChange::added(name_of(entry), side));
+          comparison
+            .added
+            .push(ArchivePatchChange::added(Self::name_of(entry), side));
 
           right += 1;
           comparing.advance();
@@ -150,6 +153,32 @@ impl ArchivePatchComparison {
     names
   }
 
+  /// Directory rows for the ancestors of every carried name.
+  ///
+  /// A volume records the directories it contains so the engine can list a tree it has never seen loose, and a patch
+  /// is a volume like any other. Derived from the carried set rather than from either world: the patch holds what it
+  /// holds, and listing directories none of its entries live in would describe a tree it does not have.
+  ///
+  /// Sorted and unique by construction. The walk up each name stops at the first ancestor already recorded, because
+  /// everything above that one was recorded when it was.
+  pub(crate) fn list_carried_directories(carried: &[&str]) -> Vec<String> {
+    let mut directories: BTreeSet<String> = BTreeSet::new();
+
+    for name in carried {
+      let mut ancestor: &str = name;
+
+      while let Some((parent, _)) = ancestor.rsplit_once('\\') {
+        if !directories.insert(parent.to_owned()) {
+          break;
+        }
+
+        ancestor = parent;
+      }
+    }
+
+    directories.into_iter().collect()
+  }
+
   pub(crate) fn get_carried_count(&self) -> usize {
     self.added.len() + self.modified.len()
   }
@@ -176,7 +205,7 @@ impl ArchivePatchComparison {
   /// Which side owns the next entry, or `None` once both are exhausted.
   fn next(base: &[XrayAsset], target: &[XrayAsset]) -> Option<Ordering> {
     match (base.first(), target.first()) {
-      (Some(base), Some(target)) => Some(name_of(base).cmp(name_of(target))),
+      (Some(base), Some(target)) => Some(Self::name_of(base).cmp(Self::name_of(target))),
       (Some(_), None) => Some(Ordering::Less),
       (None, Some(_)) => Some(Ordering::Greater),
       (None, None) => None,
@@ -195,7 +224,7 @@ impl ArchivePatchComparison {
     target_entry: &XrayAsset,
     pending: &mut Vec<ArchivePatchPending>,
   ) {
-    let name: &str = name_of(target_entry);
+    let name: &str = Self::name_of(target_entry);
     let base_side: ArchivePatchSide = base.to_side(base_entry, &mut self.origins);
     let target_side: ArchivePatchSide = target.to_side(target_entry, &mut self.origins);
 
@@ -245,9 +274,27 @@ impl ArchivePatchComparison {
       is_payload_read,
     })
   }
+
+  /// The engine identity an entry is compared and reported under.
+  fn name_of(asset: &XrayAsset) -> &str {
+    asset.get_logical_path().as_str()
+  }
 }
 
-/// The engine identity an entry is compared and reported under.
-fn name_of(asset: &XrayAsset) -> &str {
-  asset.get_logical_path().as_str()
+#[cfg(test)]
+mod tests {
+  use super::ArchivePatchComparison;
+
+  #[test]
+  fn every_ancestor_of_a_carried_entry_is_listed_once() {
+    assert_eq!(
+      ArchivePatchComparison::list_carried_directories(&["configs\\weapons\\ak74.ltx", "configs\\system.ltx"]),
+      ["configs", "configs\\weapons"]
+    );
+  }
+
+  #[test]
+  fn an_entry_at_the_root_contributes_no_directory() {
+    assert!(ArchivePatchComparison::list_carried_directories(&["system.ltx"]).is_empty());
+  }
 }

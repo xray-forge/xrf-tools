@@ -1,6 +1,6 @@
 //! What a written `[header]` has to carry, and what a named key does to the default.
 
-use crate::pack::config::{ArchivePackConfig, ArchivePackHeaderEntry, default_header};
+use crate::pack::config::{ArchivePackConfig, ArchivePackHeader, ArchivePackHeaderEntry};
 
 /// One `key=value` pair, as a command line supplies it.
 fn entry(key: &str, value: &str) -> ArchivePackHeaderEntry {
@@ -109,5 +109,5 @@ fn a_run_asking_for_no_header_at_all_is_still_allowed() {
   .validate_for_packing()
   .expect("a headerless volume is a choice, not a malformed header");
 
-  assert!(default_header().contains("entry_point"));
+  assert!(ArchivePackHeader::default_text().contains("entry_point"));
 }

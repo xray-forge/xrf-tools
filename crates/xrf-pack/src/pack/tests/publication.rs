@@ -19,7 +19,7 @@ use xrf_test_utils::GeneratedResources;
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 use crate::pack::tests::fixtures::{CONFIG, borrow_files, create_source, distinct_files, open, pack, read};
-use crate::pack::{ArchivePackOptions, ArchivePackResult, ArchivePacker, PACK_PHASE_WRITE};
+use crate::pack::{ArchivePackOptions, ArchivePackResult, ArchivePacker};
 
 /// A source tree of its own, packed as `packed` into the scope's shared destination.
 ///
@@ -95,7 +95,7 @@ impl ProgressSink for CancelOnFirstEntry {
     let is_writing: bool = progress
       .levels
       .iter()
-      .any(|level| level.id == PACK_PHASE_WRITE && level.completed > 0);
+      .any(|level| level.id == ArchivePackOptions::PHASE_WRITE && level.completed > 0);
 
     if is_writing && !self.is_cancelled.swap(true, Ordering::Relaxed) {
       self.job.get().expect("the sink is given its job").cancel();

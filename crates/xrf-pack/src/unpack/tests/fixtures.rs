@@ -13,9 +13,7 @@ use xrf_error::XrfResult;
 use xrf_job::ExecutionRequest;
 use xrf_test_utils::GeneratedResources;
 
-use crate::unpack::archive_extract_options::ArchiveExtractOptions;
-use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
-use crate::unpack::archive_unpacker::ArchiveUnpacker;
+use crate::unpack::{ArchiveExtractOptions, ArchiveUnpackResult, ArchiveUnpacker};
 
 pub(crate) struct Entry {
   name: &'static str,

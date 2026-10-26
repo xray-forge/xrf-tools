@@ -6,10 +6,6 @@ use xrf_utils::format_path;
 use crate::pack::config::ArchivePackConfig;
 
 /// Authored names of different files that one engine name would fold together.
-///
-/// The reading half of the registration rule in [`crate::pack::archive_pack_name_table`]: that module decides what
-/// collides, this one decides how a person is told. Kept apart because the two change for different reasons — a
-/// sharper diagnostic is not a change to what the engine folds.
 #[derive(Debug)]
 pub(crate) struct ArchivePackNameCollision {
   pub(crate) engine_name: String,
@@ -18,9 +14,6 @@ pub(crate) struct ArchivePackNameCollision {
 
 impl ArchivePackNameCollision {
   /// Why a set whose files the engine would fold together stopped before anything was written.
-  ///
-  /// Every collision is named in one refusal rather than one per run, so a source tree with several is fixed in a
-  /// single pass instead of a repack per name.
   pub(crate) fn describe_refusal(config: &ArchivePackConfig, collisions: &[Self]) -> XrfError {
     let described: Vec<String> = collisions.iter().map(ToString::to_string).collect();
 

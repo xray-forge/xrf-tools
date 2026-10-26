@@ -1,12 +1,6 @@
 use xrf_job::JobHandle;
 use xrf_utils::HostLinkPolicy;
 
-/// Phase an unpack or extraction reports while it creates the destination tree.
-pub const EXTRACT_PHASE_PREPARE: &str = "prepare";
-
-/// Phase an unpack or extraction reports while it writes the entries it selected.
-pub const EXTRACT_PHASE_WRITE: &str = "write";
-
 /// How one unpack or directory extraction should behave, beyond what it reads and where it writes.
 #[derive(Default)]
 pub struct ArchiveExtractOptions {
@@ -17,6 +11,12 @@ pub struct ArchiveExtractOptions {
 }
 
 impl ArchiveExtractOptions {
+  /// Phase an unpack or extraction reports while it creates the destination tree.
+  pub const PHASE_PREPARE: &str = "prepare";
+
+  /// Phase an unpack or extraction reports while it writes the entries it selected.
+  pub const PHASE_WRITE: &str = "write";
+
   /// The same options, reporting to and cancellable through `job`.
   pub fn with_job(self, job: JobHandle) -> Self {
     Self { job, ..self }

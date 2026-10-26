@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use xrf_error::{XrfError, XrfResult};
@@ -14,9 +14,7 @@ use crate::patch::archive_patch_publication::ArchivePatchPublication;
 use crate::patch::compare::ArchivePatchComparison;
 use crate::patch::config::{ArchivePatchConfig, ArchivePatchScope};
 use crate::patch::world::{ArchivePatchRole, ArchivePatchWorld};
-use crate::patch::{
-  ArchivePatchNarrator, ArchivePatchOptions, ArchivePatchResult, PATCH_PHASE_PACK, to_patch_directory_rows,
-};
+use crate::patch::{ArchivePatchNarrator, ArchivePatchOptions, ArchivePatchResult};
 
 /// Compares two roots and publishes added or modified target entries as archive volumes.
 ///
@@ -126,7 +124,7 @@ impl ArchivePatcher {
   /// # Errors
   ///
   /// Propagates the read error of a destination that cannot be listed.
-  pub fn list_published_volumes(config: &ArchivePatchConfig) -> XrfResult<Vec<std::path::PathBuf>> {
+  pub fn list_published_volumes(config: &ArchivePatchConfig) -> XrfResult<Vec<PathBuf>> {
     ArchivePacker::list_published_volumes(&config.to_publication())
   }
 
@@ -185,7 +183,7 @@ impl ArchivePatcher {
     let names: ArchivePackNameTable = ArchivePackNameTable::register(
       &publication,
       carried.iter().copied().map(ArchivePackEntry::of_mounted).collect(),
-      to_patch_directory_rows(&carried),
+      ArchivePatchComparison::list_carried_directories(&carried),
     )?;
 
     let guarded: ArchivePublishedSet = ArchivePacker::guard_destination(&publication, options.is_forced)?;
@@ -196,7 +194,7 @@ impl ArchivePatcher {
       &ArchivePackPayloads::Mounted(target.get_search()),
       &options.job,
       &pack_narrator,
-      PATCH_PHASE_PACK,
+      ArchivePatchOptions::PHASE_PACK,
     );
 
     ArchivePacker::settle_publication(&publication, &guarded, written)

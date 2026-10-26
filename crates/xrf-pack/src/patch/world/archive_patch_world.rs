@@ -6,8 +6,8 @@ use xrf_vfs::{XrayAsset, XrayMountMode, XraySearch, XraySearchPlan};
 
 use crate::patch::compare::{ArchivePatchOrigins, ArchivePatchSide};
 use crate::patch::config::ArchivePatchScope;
-use crate::patch::world::archive_patch_entry_point::require_gamedata_entry_point;
-use crate::patch::world::{ArchivePatchChecksum, ArchivePatchRole};
+use crate::patch::world::{ArchivePatchChecksum, ArchivePatchEntryPoint, ArchivePatchRole};
+use crate::path::is_inside_directory;
 
 /// One comparison root mounted through the VFS, with archive and loose-file reads.
 pub(crate) struct ArchivePatchWorld {
@@ -61,7 +61,7 @@ impl ArchivePatchWorld {
       )));
     }
 
-    require_gamedata_entry_point(world.search.get_vfs(), role)?;
+    ArchivePatchEntryPoint::require_gamedata(world.search.get_vfs(), role)?;
 
     Ok(world)
   }
@@ -117,7 +117,7 @@ impl ArchivePatchWorld {
 
   /// Whether this side's root holds `path`.
   pub(crate) fn contains(&self, path: &Path) -> bool {
-    crate::path::is_inside_directory(path, &self.root)
+    is_inside_directory(path, &self.root)
   }
 
   pub(crate) fn get_root(&self) -> &Path {
