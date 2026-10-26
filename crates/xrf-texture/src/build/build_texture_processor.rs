@@ -1,16 +1,17 @@
 use image::RgbaImage;
-use xrf_dds::{DdsEncoding, DdsMipChain};
+use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::build::build_texture_options::BuildTextureOptions;
-use crate::build::build_texture_recipe::BuildTextureRecipe;
 use crate::build::build_texture_result::BuildTextureResult;
+use crate::build::recipe::build_texture_layout::BuildTextureLayout;
+use crate::build::recipe::build_texture_recipe::BuildTextureRecipe;
 
 /// Rebuilds a texture from a source image, the way its descriptor says to.
 ///
-/// The descriptor decides everything: which layout, whether there is a mip chain and which kernel reduces it, and
-/// whether the source's alpha means anything. Nothing is taken from the file being replaced, so a rebuild is
-/// reproducible from the two inputs alone.
+/// The descriptor decides everything: whether the source is one face or a cube's six, the format it is written in,
+/// whether there is a mip chain and who reduces it, and whether the source's alpha means anything. Nothing is taken
+/// from the file being replaced, so a rebuild is reproducible from the two inputs alone.
 pub struct BuildTextureProcessor {}
 
 impl BuildTextureProcessor {
@@ -18,19 +19,27 @@ impl BuildTextureProcessor {
   ///
   /// # Errors
   ///
-  /// Returns an error when the descriptor names a format this build cannot write, when the source has no pixels, or
-  /// when the encoded texture cannot be written. A recipe field that is merely not implemented is reported in the
-  /// result instead; see [`crate::BuildTextureOmission`].
+  /// Returns an error when the descriptor is one [`BuildTextureRecipe::of`] refuses, when the source has no pixels or
+  /// is not the shape its layout and mip chain need, or when the encoded texture cannot be written. A recipe field that
+  /// is merely not implemented is reported in the result instead; see [`crate::BuildTextureOmission`].
   pub fn build(options: &BuildTextureOptions) -> XrfResult<BuildTextureResult> {
     let recipe: BuildTextureRecipe = BuildTextureRecipe::of(&options.descriptor)?;
     let source: &RgbaImage = &options.source;
-    let chain: DdsMipChain = DdsMipChain::build(source, recipe.mipmaps)?;
-    let levels: u32 = u32::try_from(chain.levels().len())
+    let faces: Vec<DdsMipChain> = recipe
+      .layout
+      .split(source)?
+      .iter()
+      .map(|face| recipe.mipmaps.build(face))
+      .collect::<XrfResult<_>>()?;
+    let levels: u32 = u32::try_from(faces[0].levels().len())
       .map_err(|_| XrfError::new_texture_processing_error("Built texture has more levels than the format can carry"))?;
+    let encoding: DdsEncoding = DdsEncoding::new(recipe.format, options.quality);
+    let encoded: DdsFile = match recipe.layout {
+      BuildTextureLayout::Planar => encoding.encode(&faces[0])?,
+      BuildTextureLayout::CubeStrip => encoding.encode_cube(&faces)?,
+    };
 
-    DdsEncoding::new(recipe.format, options.quality)
-      .encode(&chain)?
-      .write_to_path(&options.destination)?;
+    encoded.write_to_path(&options.destination)?;
 
     Ok(BuildTextureResult {
       destination: options.destination.clone(),
@@ -50,12 +59,14 @@ mod tests {
   use xrf_dds::{DdsFile, Quality};
   use xrf_error::XrfResult;
   use xrf_test_utils::GeneratedResources;
-  use xrf_thm::{ThmFile, ThmFormat, ThmMipFilter, ThmTextureFlag, ThmTextureFlags, ThmTextureParamChunk};
+  use xrf_thm::{
+    ThmFile, ThmFormat, ThmMipFilter, ThmTextureFlag, ThmTextureFlags, ThmTextureParamChunk, ThmTextureType,
+  };
 
   use super::BuildTextureProcessor;
-  use crate::build::build_texture_omission::BuildTextureOmission;
   use crate::build::build_texture_options::BuildTextureOptions;
   use crate::build::build_texture_result::BuildTextureResult;
+  use crate::build::recipe::build_texture_omission::BuildTextureOmission;
 
   /// A descriptor of the given format, with whichever flags a case is about.
   fn descriptor(format: ThmFormat, flags: &[ThmTextureFlag], mip_filter: ThmMipFilter) -> ThmFile {
@@ -95,6 +106,13 @@ mod tests {
     RgbaImage::from_fn(size, size, |x, _| {
       Rgba([200, 100, 50, if x < size / 2 { 0 } else { u8::MAX }])
     })
+  }
+
+  /// Six faces of [`translucent`] side by side, a cube's source.
+  fn translucent_strip(size: u32) -> RgbaImage {
+    let face: RgbaImage = translucent(size);
+
+    RgbaImage::from_fn(size * 6, size, |x, y| *face.get_pixel(x % size, y))
   }
 
   #[test]
@@ -167,10 +185,36 @@ mod tests {
 
   #[test]
   fn names_every_recipe_field_it_does_not_carry_out() -> XrfResult {
-    // The common case rather than an exotic one: 7,429 of the 13,063 corpus descriptors ask for colour dithering,
-    // which is Stage B, so most rebuilds report something here.
+    // A fade over a chain nvDXT reduces is nvDXT's own, so it is named; the dithering beside it is not, because nvDXT
+    // never dithered the formats written here.
     let built: BuildTextureResult = BuildTextureProcessor::build(&options(
       "omissions",
+      descriptor(
+        ThmFormat::Dxt5,
+        &[
+          ThmTextureFlag::GenerateMipMaps,
+          ThmTextureFlag::DitherColor,
+          ThmTextureFlag::FadeToColor,
+          ThmTextureFlag::ColorBorder,
+        ],
+        ThmMipFilter::Kaiser,
+      ),
+      translucent(16),
+    ))?;
+
+    assert_eq!(
+      built.omissions,
+      vec![BuildTextureOmission::ColorBorder, BuildTextureOmission::FadeToColor]
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn the_advanced_filter_fades_as_the_sdk_does_and_leaves_nothing_out() -> XrfResult {
+    // The SDK reduces this chain itself, fade included, so the same flags leave nothing to report.
+    let built: BuildTextureResult = BuildTextureProcessor::build(&options(
+      "advanced",
       descriptor(
         ThmFormat::Dxt5,
         &[
@@ -183,19 +227,41 @@ mod tests {
       translucent(16),
     ))?;
 
-    assert_eq!(
-      built.omissions,
-      vec![
-        BuildTextureOmission::AdvancedMipFade,
-        BuildTextureOmission::FadeToColor,
-        BuildTextureOmission::DitherColor,
-      ]
-    );
-
-    // `Advanced` still produces the chain, because the SDK's own chain is a box reduction; only its fade is missing.
+    assert!(built.omissions.is_empty(), "got {:?}", built.omissions);
     assert_eq!(built.mipmap_levels, 5);
 
     Ok(())
+  }
+
+  #[test]
+  fn writes_a_cube_from_six_faces_side_by_side() -> XrfResult {
+    let mut cube: ThmFile = descriptor(ThmFormat::Rgba, &[], ThmMipFilter::Box);
+
+    cube.texture_type = Some(ThmTextureType::CubeMap);
+
+    let built: BuildTextureResult = BuildTextureProcessor::build(&options("cube", cube.clone(), translucent_strip(4)))?;
+    let written = DdsFile::read_from_path(&built.destination)?.metadata();
+
+    assert!(written.is_cubemap);
+    assert_eq!((written.width, written.height), (4, 4));
+    assert_eq!(written.data_size, 6 * 4 * 4 * 4, "six faces of sixteen RGBA texels");
+    assert_eq!(
+      (built.width, built.height),
+      (24, 4),
+      "the descriptor records the strip it was built from"
+    );
+    assert!(BuildTextureProcessor::build(&options("not_a_cube", cube, translucent(16))).is_err());
+
+    Ok(())
+  }
+
+  #[test]
+  fn refuses_a_bump_descriptor_which_builds_a_pair_rather_than_one_texture() {
+    let mut bump: ThmFile = descriptor(ThmFormat::Dxt5, &[], ThmMipFilter::Box);
+
+    bump.texture_type = Some(ThmTextureType::BumpMap);
+
+    assert!(BuildTextureProcessor::build(&options("bump", bump, translucent(16))).is_err());
   }
 
   #[test]

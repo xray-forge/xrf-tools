@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::build::build_texture_omission::BuildTextureOmission;
+use crate::build::recipe::build_texture_omission::BuildTextureOmission;
 
 /// What a rebuilt texture came to.
 #[derive(Clone, Debug, PartialEq)]

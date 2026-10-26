@@ -8,8 +8,9 @@ use crate::bump::generate_bump_gloss::GenerateBumpGloss;
 
 /// What a bump pair is generated from.
 ///
-/// The height source is required and everything else refines it: the SDK derives its normals from the height alone
-/// and takes gloss as a separate plane, so a caller with only a height map still gets a usable pair.
+/// The height source is required and everything else refines it, so a caller with only a height map still gets a
+/// usable pair. The SDK reads one source, height in its colour and gloss in its alpha; the gloss is a plane of its own
+/// here, which a caller can take from such a source's alpha.
 pub struct GenerateBumpOptions {
   /// What the run reports its steps to and reads its cancellation from.
   ///
@@ -17,7 +18,8 @@ pub struct GenerateBumpOptions {
   pub job: JobHandle,
   /// Where the pair is written, without the `_bump` suffix or an extension.
   pub destination: PathBuf,
-  /// The surface's relief. Its three colour channels are averaged, as `AverageRGBToAlpha` does.
+  /// The surface's relief. The normals read the average of its three colour channels, as `AverageRGBToAlpha` stores
+  /// it, and the height the second half carries reads its red channel, as `DXTCompressBump` does.
   pub height: RgbaImage,
   pub gloss: GenerateBumpGloss,
   /// Normals to use instead of the ones the height implies, for a descriptor naming an external normal map.
@@ -26,6 +28,7 @@ pub struct GenerateBumpOptions {
   pub normal_map: Option<RgbaImage>,
   /// `bump_virtual_height` of the descriptor, read here and nowhere at runtime.
   pub virtual_height: f32,
+  /// The kernel both halves are reduced with. The SDK always reduces them with a box, `STextureParams`'s default.
   pub mip_filter: DdsMipFilter,
   pub quality: Quality,
 }

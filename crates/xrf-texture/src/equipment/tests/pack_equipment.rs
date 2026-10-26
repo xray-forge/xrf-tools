@@ -11,7 +11,7 @@ use xrf_output::{Output, OutputChannel, OutputOptions, OutputVerbosity};
 use xrf_test_utils::GeneratedResources;
 
 use crate::equipment::{EquipmentSpritePackOptions, EquipmentSpritePacker};
-use crate::image_file::{UI_MIPMAPS, save_image_as_ui_dds};
+use crate::image_file::ImageFileWriter;
 
 struct CancelOnOutput {
   job: JobHandle,
@@ -45,7 +45,13 @@ fn options(name: &str, icons: u32, existing: bool) -> EquipmentSpritePackOptions
   let output_path: PathBuf = root.join("atlas.dds");
   if existing {
     let sentinel: RgbaImage = RgbaImage::from_pixel(52, 52, Rgba([255, 255, 255, 255]));
-    save_image_as_ui_dds(&output_path, &sentinel, ImageFormat::BC3RgbaUnorm, UI_MIPMAPS).unwrap();
+    ImageFileWriter::write_dds(
+      &output_path,
+      &sentinel,
+      ImageFormat::BC3RgbaUnorm,
+      ImageFileWriter::UI_MIPMAPS,
+    )
+    .unwrap();
   }
 
   EquipmentSpritePackOptions {

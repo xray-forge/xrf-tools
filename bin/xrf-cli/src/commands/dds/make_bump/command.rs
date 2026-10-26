@@ -4,9 +4,7 @@ use clap::{Arg, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_output::OutputOptions;
-use xrf_texture::{
-  GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult, read_image_as_rgba,
-};
+use xrf_texture::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult, ImageFileReader};
 use xrf_utils::format_path;
 
 use super::report::DdsMakeBumpReport;
@@ -81,10 +79,10 @@ impl GenericCommand for MakeBumpCommand {
     let options: GenerateBumpOptions = GenerateBumpOptions {
       job: JobHandle::inert(),
       destination: destination.clone(),
-      height: read_image_as_rgba(height)?,
+      height: ImageFileReader::read_rgba(height)?,
       gloss: Self::get_gloss(matches)?,
       normal_map: match matches.get_one::<PathBuf>("normal-map") {
-        Some(path) => Some(read_image_as_rgba(path)?),
+        Some(path) => Some(ImageFileReader::read_rgba(path)?),
         None => None,
       },
       virtual_height: *matches
@@ -123,7 +121,7 @@ impl MakeBumpCommand {
   /// The gloss the pair carries: a mask, one level everywhere, or the default where neither was given.
   fn get_gloss(matches: &ArgMatches) -> XrfResult<GenerateBumpGloss> {
     if let Some(path) = matches.get_one::<PathBuf>("gloss") {
-      return Ok(GenerateBumpGloss::Mask(read_image_as_rgba(path)?));
+      return Ok(GenerateBumpGloss::Mask(ImageFileReader::read_rgba(path)?));
     }
 
     let level: f32 = matches

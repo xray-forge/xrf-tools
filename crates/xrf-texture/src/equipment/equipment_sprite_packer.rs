@@ -14,9 +14,7 @@ use crate::equipment::{
   LTX_PATH_EXTENSION_MARKER, LTX_PATH_EXTENSION_MARKER_PREFIX, LTX_PATH_GAMEDATA_MARKER,
   LTX_PATH_GAMEDATA_MARKER_PREFIX, RESOURCES_DIRECTORY, TEXTURES_DIRECTORY,
 };
-use crate::image_file::{
-  UI_MIPMAP_LEVELS, UI_MIPMAPS, decode_image, fit_image_into_bounds, save_image_as_ui_dds, warn_on_reshaped_ui_dds,
-};
+use crate::image_file::{ImageFileReader, ImageFileWriter, ImageFit};
 
 pub struct EquipmentSpritePacker {}
 
@@ -98,19 +96,24 @@ impl EquipmentSpritePacker {
     if outcome == xrf_job::JobOutcome::Completed {
       Self::assert_every_section_has_an_icon(&options, &skipped_sections)?;
 
-      warn_on_reshaped_ui_dds(
+      ImageFileWriter::warn_on_reshaped_dds(
         &options.output,
         &options.output_path,
         image.width(),
         image.height(),
-        UI_MIPMAP_LEVELS,
+        ImageFileWriter::UI_MIPMAP_LEVELS,
       );
 
       // The write is the publication boundary; once started, finish it even if cancellation arrives.
       if options.job.is_cancelled() {
         outcome = xrf_job::JobOutcome::Cancelled;
       } else {
-        save_image_as_ui_dds(&options.output_path, &image, options.dds_compression_format, UI_MIPMAPS)?;
+        ImageFileWriter::write_dds(
+          &options.output_path,
+          &image,
+          options.dds_compression_format,
+          ImageFileWriter::UI_MIPMAPS,
+        )?;
 
         xrf_output::info!(
           options.output,
@@ -202,12 +205,12 @@ impl EquipmentSpritePacker {
   /// Read rescaled png or dds icon to inject into one large equipment file.
   pub fn read_sprite_from_path(path: &Path, width: u32, height: u32) -> XrfResult<DynamicImage> {
     let image: DynamicImage = if XrayExtension::Png.matches_path(path) {
-      decode_image(path)?
+      ImageFileReader::decode(path)?
     } else {
       DdsFile::read_from_path(path)?.decode_rgba(0)?.into()
     };
 
-    fit_image_into_bounds(image, width, height, path)
+    ImageFit::into_bounds(image, width, height, path)
   }
 
   /// Read equipment icon from custom path defined in ltx config directory.
