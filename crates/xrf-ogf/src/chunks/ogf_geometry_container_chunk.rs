@@ -18,10 +18,6 @@ impl OgfGeometryContainerChunk {
   /// `OGF_ICONTAINER` (8), which the engine marks unused.
   pub const CHUNK_ID: u32 = 21;
 
-  /// `OGF_FASTPATH`, which is a container chunk holding another [`Self::CHUNK_ID`] rather than the record itself
-  /// (`xray-16/src/Layers/xrRender/FVisual.cpp`).
-  pub const FASTPATH_CHUNK_ID: u32 = 22;
-
   /// Bytes the record occupies in the file.
   pub const SERIALIZED_SIZE: u64 = 6 * 4;
 

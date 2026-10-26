@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -18,9 +17,6 @@ pub struct OgfMotionRefsProcessor {}
 
 impl OgfMotionRefsProcessor {
   /// Rewrite motion refs of an ogf file, verifying the result before letting it survive.
-  ///
-  /// The source is read once, and every pass over it reads that one buffer. The patched bytes are checked before
-  /// anything is written, so a refused patch leaves the destination as it was and a written one replaces it whole.
   pub fn patch_motion_refs_to_path<T: ByteOrder>(
     source: &Path,
     destination: &Path,
@@ -69,11 +65,11 @@ impl OgfMotionRefsProcessor {
     mut reader: ChunkReader<InMemoryChunkDataSource>,
     motion_refs: &[String],
   ) -> XrfResult<Vec<u8>> {
-    let (mut chunks, _) = OgfResidue::read_root_chunks::<T, _>(&mut reader)?;
+    let (chunks, _) = OgfResidue::read_root_chunks::<T, _>(&mut reader)?;
     let mut buffer: Vec<u8> = Vec::new();
     let mut patched_count: u32 = 0;
 
-    for chunk in &mut chunks {
+    for chunk in &chunks {
       let payload: Vec<u8> = if OgfRawPatch::is_kinematics_chunk(chunk.id) {
         patched_count += 1;
 
@@ -89,14 +85,10 @@ impl OgfMotionRefsProcessor {
 
         kinematics_writer.flush_raw_into_buffer()?
       } else {
-        chunk.reset_pos()?;
-        chunk.read_remaining()?
+        OgfRawPatch::read_payload(chunk)?
       };
 
-      let mut chunk_writer: ChunkWriter = ChunkWriter::new();
-
-      chunk_writer.write_all(&payload)?;
-      chunk_writer.flush_chunk_into::<T>(&mut buffer, chunk.id)?;
+      OgfRawPatch::write_chunk::<T>(&mut buffer, chunk.id, payload)?;
     }
 
     if patched_count != 1 {

@@ -76,15 +76,17 @@ impl GenericCommand for InfoCommand {
       xrf_output::info!(output, "Shader name: {}", texture.shader_name);
     }
 
-    if let Some(description) = &ogf_file.description {
-      xrf_output::info!(
+    match &ogf_file.description {
+      Some(Ok(description)) => xrf_output::info!(
         output,
         "Source file: {}, convertor: {}, creator: {}, editor: {}",
         description.source_file,
         description.convertor,
         description.creator,
         description.editor
-      );
+      ),
+      Some(Err(error)) => xrf_output::info!(output, "Description: unreadable, {error}"),
+      None => {}
     }
 
     if let Some(bones) = &ogf_file.bones {

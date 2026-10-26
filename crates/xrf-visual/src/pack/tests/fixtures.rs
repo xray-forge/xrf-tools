@@ -2,9 +2,9 @@
 
 use xrf_math::Vector3d;
 use xrf_ogf::{
-  OgfBoneIkData, OgfBoneShape, OgfBonesChunk, OgfBox, OgfChildrenChunk, OgfCylinder, OgfDescriptionChunk, OgfFile,
-  OgfGeometry, OgfHeaderChunk, OgfJointIkData, OgfJointLimit, OgfKinematicsChunk, OgfObb, OgfSlideWindow, OgfSphere,
-  OgfSwiDataChunk, OgfTextureChunk, OgfVertex, OgfVertexLink,
+  OgfBoneIkData, OgfBoneShape, OgfBonesChunk, OgfBox, OgfChildrenChunk, OgfCylinder, OgfDescriptionChunk,
+  OgfDescriptionTimeWidth, OgfFile, OgfGeometry, OgfHeaderChunk, OgfJointIkData, OgfJointLimit, OgfKinematicsChunk,
+  OgfObb, OgfSlideWindow, OgfSphere, OgfSwiDataChunk, OgfTextureChunk, OgfVertex, OgfVertexData, OgfVertexLink,
 };
 use xrf_skeleton::{
   SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
@@ -41,7 +41,7 @@ pub(crate) fn geometry(vertices: Vec<OgfVertex>, indices: Vec<u16>) -> OgfGeomet
     indices: Some(indices),
     skin_bone_indices: vec![0],
     vertex_format: Some(VERTEX_FORMAT_1_LINK),
-    vertices: Some(vertices),
+    vertices: Some(OgfVertexData::Skinned(vertices)),
   }
 }
 
@@ -88,17 +88,25 @@ pub(crate) fn visual(model_type: u8) -> OgfFile {
       },
     },
     texture: None,
-    geometry: None,
-    bones: None,
-    swi_data: None,
-    children: None,
     description: None,
+    geometry: None,
+    geometry_container: None,
+    fastpath: None,
+    swi_data: None,
+    swi_container: None,
+    children: None,
+    children_links: None,
+    tree_definition: None,
+    lod_definition: None,
+    bones: None,
     kinematics: None,
     ik_data: None,
     user_data: None,
     lods: None,
     motions: None,
     motion_parameters: None,
+    collision_vertices: None,
+    collision_indices: None,
     residue: None,
   }
 }
@@ -116,6 +124,7 @@ pub(crate) fn textured(texture_name: &str, shader_name: &str, child: OgfFile) ->
     texture: Some(OgfTextureChunk {
       texture_name: String::from(texture_name),
       shader_name: String::from(shader_name),
+      trailing: Vec::new(),
     }),
     ..child
   }
@@ -295,5 +304,6 @@ pub(crate) fn description(source_file: &str) -> OgfDescriptionChunk {
     created_at: 0,
     editor: String::new(),
     edited_at: 0,
+    time_width: OgfDescriptionTimeWidth::Narrow,
   }
 }

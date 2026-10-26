@@ -6,11 +6,11 @@ use xrf_ogf::OgfDescriptionChunk;
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OgfDescriptionReport {
-  built_at: u32,
+  built_at: u64,
   convertor: String,
-  created_at: u32,
+  created_at: u64,
   creator: String,
-  edited_at: u32,
+  edited_at: u64,
   editor: String,
   source_file: String,
 }

@@ -135,16 +135,67 @@ pub(crate) fn unexplained_residue() -> XrfResult<Vec<u8>> {
   Ok(bytes)
 }
 
+/// The reference the `conserva_hud` shape cuts.
+pub(crate) const COUNTED_REF: &str = "gwr\\food\\conserva\\conserva_hud_animation";
+
 /// The `conserva_hud` shape: the declared size cuts a reference the count *does* govern.
 pub(crate) fn split_counted_ref() -> XrfResult<Vec<u8>> {
-  let single: &str = "gwr\\food\\conserva\\conserva_hud_animation";
-  let payload: Vec<u8> = kinematics_payload(&[single]);
-  let cut: usize = payload.len() - 14;
+  spilled_refs(&[COUNTED_REF], kinematics_payload(&[COUNTED_REF]).len() - 14)
+}
 
+/// The SGM `wpn_hand` shape: counted references running on past the declared size, `declared` bytes of the payload
+/// inside the chunk and the rest after it, to the end of the file.
+pub(crate) fn spilled_refs(refs: &[&str], declared: usize) -> XrfResult<Vec<u8>> {
+  let payload: Vec<u8> = kinematics_payload(refs);
   let mut bytes: Vec<u8> = header_bytes()?;
 
-  bytes.extend(raw_chunk(OgfKinematicsChunk::CHUNK_ID, &payload[..cut]));
-  bytes.extend_from_slice(&payload[cut..]);
+  bytes.extend(raw_chunk(OgfKinematicsChunk::CHUNK_ID, &payload[..declared]));
+  bytes.extend_from_slice(&payload[declared..]);
+
+  Ok(bytes)
+}
+
+/// A well-formed visual whose motion refs chunk holds exactly `refs`.
+pub(crate) fn with_refs(refs: &[&str]) -> XrfResult<Vec<u8>> {
+  let mut bytes: Vec<u8> = header_bytes()?;
+
+  bytes.extend(raw_chunk(OgfKinematicsChunk::CHUNK_ID, &kinematics_payload(refs)));
+
+  Ok(bytes)
+}
+
+/// The legacy motion refs chunk, one comma-joined string, ending the file with a size four bytes larger than it is:
+/// the shape GAMMA's weapon HUDs ship in.
+pub(crate) fn overstated_last_chunk() -> XrfResult<(Vec<u8>, Vec<u8>)> {
+  let payload: &[u8] = b"anomaly_weapons\\hud_animation\\wpn_axe_hud_animation\0";
+  let mut overstated: Vec<u8> = header_bytes()?;
+  let mut exact: Vec<u8> = overstated.clone();
+
+  overstated.extend(raw_oversized_chunk(
+    OgfKinematicsChunk::CHUNK_ID_OLD,
+    payload.len() as u32 + 4,
+    payload,
+  ));
+  exact.extend(raw_chunk(OgfKinematicsChunk::CHUNK_ID_OLD, payload));
+
+  Ok((overstated, exact))
+}
+
+/// A well-formed visual whose header chunk id carries the compression mark, the protection some mods apply: the
+/// engine reads the header with `r_chunk_safe`, which masks the mark off and reads the bytes as stored.
+pub(crate) fn marked_header() -> XrfResult<Vec<u8>> {
+  let mut bytes: Vec<u8> = well_formed()?;
+
+  bytes[3] |= 0x80;
+
+  Ok(bytes)
+}
+
+/// A visual whose user data chunk carries the compression mark, which the engine would decompress as it opens it.
+pub(crate) fn marked_opened_chunk() -> XrfResult<Vec<u8>> {
+  let mut bytes: Vec<u8> = well_formed()?;
+
+  bytes.extend(raw_chunk(17 | (1 << 31), b"[section]"));
 
   Ok(bytes)
 }

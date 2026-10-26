@@ -1,10 +1,9 @@
 use byteorder::ByteOrder;
-use xrf_chunk::{CHUNK_HEADER_SIZE, ChunkReader, InMemoryChunkDataSource};
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::to_format_size;
 
-use crate::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::ogf_file::OgfFile;
+use crate::ogf_raw_patch::OgfRawPatch;
 use crate::residue::ogf_residue::OgfResidue;
 
 /// A visual rewritten into bytes the engine loads identically, beside what the rewrite took out.
@@ -21,69 +20,20 @@ impl OgfNormalization {
   ///
   /// # Errors
   ///
-  /// Returns the strict walk's error for a visual whose trailing bytes cannot be accounted for. A visual with none is
-  /// returned unchanged, byte for byte.
+  /// Returns the strict walk's error for a visual whose departures cannot be accounted for.
   pub fn normalize<T: ByteOrder>(original: &[u8]) -> XrfResult<Self> {
     let mut reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(original)?;
     let (chunks, residue) = OgfResidue::read_root_chunks::<T, _>(&mut reader)?;
+    let mut bytes: Vec<u8> = Vec::with_capacity(original.len());
 
-    let kinematics: Option<(u64, u64, u64)> = match chunks
-      .iter()
-      .find(|it| it.id == OgfKinematicsChunk::CHUNK_ID || it.id == OgfKinematicsChunk::CHUNK_ID_OLD)
-    {
-      Some(chunk) => match OgfKinematicsChunk::read::<T, _>(&mut chunk.clone(), chunk.id)?
-        .trailing
-        .len() as u64
-      {
-        0 => None,
-        length => Some((chunk.position, chunk.size, length)),
-      },
-      None => None,
-    };
+    for chunk in &chunks {
+      let payload: Vec<u8> = match OgfRawPatch::is_kinematics_chunk(chunk.id) {
+        true => OgfRawPatch::read_normalized_kinematics_payload::<T, _>(chunk)?,
+        false => OgfRawPatch::read_payload(chunk)?,
+      };
 
-    if kinematics.is_none() && residue.is_none() {
-      return Ok(Self {
-        bytes: original.to_vec(),
-        residue,
-      });
+      OgfRawPatch::write_chunk::<T>(&mut bytes, chunk.id, payload)?;
     }
-
-    let end: usize = match &residue {
-      Some(residue) => usize::try_from(residue.position)
-        .map_err(|_| XrfError::new_invalid_error("Residue offset exceeds the supported range"))?,
-      None => original.len(),
-    };
-
-    let Some((position, size, trailing_length)) = kinematics else {
-      return Ok(Self {
-        bytes: original[..end].to_vec(),
-        residue,
-      });
-    };
-
-    let header_at: usize = usize::try_from(position.saturating_sub(CHUNK_HEADER_SIZE))
-      .map_err(|_| XrfError::new_invalid_error("Chunk offset exceeds the supported range"))?;
-    let payload_at: usize = header_at + CHUNK_HEADER_SIZE as usize;
-    let kept: usize = usize::try_from(size.saturating_sub(trailing_length))
-      .map_err(|_| XrfError::new_invalid_error("Chunk size exceeds the supported range"))?;
-    let payload_end: usize = payload_at.saturating_add(usize::try_from(size).unwrap_or(usize::MAX));
-
-    if payload_end > end {
-      return Err(XrfError::new_invalid_error(
-        "Refused to normalize an ogf whose motion refs chunk lies outside its own bytes",
-      ));
-    }
-
-    let mut size_field: [u8; 4] = [0; 4];
-
-    T::write_u32(&mut size_field, to_format_size(kept, "ogf chunk payload")?);
-
-    let mut bytes: Vec<u8> = Vec::with_capacity(end);
-
-    bytes.extend_from_slice(&original[..header_at + 4]);
-    bytes.extend_from_slice(&size_field);
-    bytes.extend_from_slice(&original[payload_at..payload_at + kept]);
-    bytes.extend_from_slice(&original[payload_end..end]);
 
     Ok(Self { bytes, residue })
   }

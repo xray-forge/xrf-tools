@@ -97,11 +97,121 @@ fn refuses_trailing_bytes_that_belong_to_nothing() -> XrfResult {
 }
 
 #[test]
-fn refuses_a_counted_reference_cut_by_the_declared_size() -> XrfResult {
-  assert!(
-    OgfFile::read_from_bytes::<XRayByteOrder>(fixtures::split_counted_ref()?).is_err(),
-    "Expect a counted reference crossing the chunk boundary to keep failing rather than read short"
+fn reads_a_counted_reference_the_declared_size_cuts_as_the_engine_does() -> XrfResult {
+  // `CKinematicsAnimated::Load` finds the chunk and reads its strings off the visual's reader, so the reference runs on
+  // past the declared size and the engine loads it whole: reading it short would name a bank that does not exist.
+  let bytes: Vec<u8> = fixtures::split_counted_ref()?;
+  let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
+  let declared: u32 = (fixtures::kinematics_payload(&[fixtures::COUNTED_REF]).len() - 14) as u32;
+
+  assert_eq!(
+    file.kinematics.map(|it| it.motion_refs),
+    Some(vec![String::from(fixtures::COUNTED_REF)])
   );
+  assert_eq!(
+    file.residue.map(|it| it.cause),
+    Some(OgfResidueCause::UnderstatedMotionRefs { declared })
+  );
+  assert_eq!(
+    OgfNormalization::normalize_bytes::<XRayByteOrder>(&bytes)?,
+    fixtures::with_refs(&[fixtures::COUNTED_REF])?,
+    "Expect normalizing to keep every byte and only give the chunk the size of what the engine reads"
+  );
+
+  Ok(())
+}
+
+#[test]
+fn reads_counted_references_running_whole_past_the_declared_size() -> XrfResult {
+  let refs: [&str; 3] = [
+    "dynamics\\devices\\dev_hand_detector_1_hud_animation",
+    "dynamics\\weapons\\wpn_hand_gp100_hud_animation",
+    "dynamics\\weapons\\wpn_hand_m1891_hud_animation",
+  ];
+  let bytes: Vec<u8> = fixtures::spilled_refs(&refs, 30)?;
+
+  assert_eq!(
+    OgfFile::read_motion_refs_from_bytes::<XRayByteOrder>(bytes.clone())?,
+    refs.map(String::from).to_vec()
+  );
+  assert_eq!(
+    OgfNormalization::normalize_bytes::<XRayByteOrder>(&bytes)?,
+    fixtures::with_refs(&refs)?
+  );
+
+  Ok(())
+}
+
+#[test]
+fn refuses_counted_references_followed_by_bytes_nothing_reads() -> XrfResult {
+  let mut bytes: Vec<u8> = fixtures::split_counted_ref()?;
+
+  bytes.extend_from_slice(b"unexplained bytes");
+
+  assert!(OgfFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+
+  Ok(())
+}
+
+#[test]
+fn reads_a_found_last_chunk_declaring_more_than_the_file_holds() -> XrfResult {
+  let (overstated, exact) = fixtures::overstated_last_chunk()?;
+  let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(overstated.clone())?;
+
+  assert_eq!(
+    file.kinematics.map(|it| it.motion_refs),
+    Some(vec![String::from(
+      "anomaly_weapons\\hud_animation\\wpn_axe_hud_animation"
+    )])
+  );
+  assert_eq!(
+    file.residue.map(|it| it.cause),
+    Some(OgfResidueCause::OverstatedMotionRefs { declared: 56 })
+  );
+  assert_eq!(OgfNormalization::normalize_bytes::<XRayByteOrder>(&overstated)?, exact);
+
+  Ok(())
+}
+
+#[test]
+fn refuses_any_other_chunk_the_file_cuts_short() -> XrfResult {
+  // A description cut mid-way is a truncated file: its payload does not read whole, so no size is merely wrong.
+  let mut bytes: Vec<u8> = fixtures::header_bytes()?;
+
+  bytes.extend_from_slice(&18u32.to_le_bytes());
+  bytes.extend_from_slice(&141u32.to_le_bytes());
+  bytes.extend_from_slice(b"x:\\rawdata\\objects\\cut");
+
+  assert!(OgfFile::read_from_bytes::<XRayByteOrder>(bytes).is_err());
+
+  Ok(())
+}
+
+#[test]
+fn reads_a_compression_mark_the_engine_ignores_and_normalizes_it_away() -> XrfResult {
+  let marked: Vec<u8> = fixtures::marked_header()?;
+  let file: OgfFile = OgfFile::read_from_bytes::<XRayByteOrder>(marked.clone())?;
+
+  assert_eq!(file.header.version, 4);
+  assert!(
+    file.residue.is_none(),
+    "Expect a mark on a found chunk to be no departure at all"
+  );
+  assert_eq!(
+    OgfNormalization::normalize_bytes::<XRayByteOrder>(&marked)?,
+    fixtures::well_formed()?
+  );
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_compressed_chunk_the_engine_would_decompress() -> XrfResult {
+  let error: String = OgfFile::read_from_bytes::<XRayByteOrder>(fixtures::marked_opened_chunk()?)
+    .expect_err("expect a compressed user data chunk to be refused")
+    .to_string();
+
+  assert!(error.contains("Compressed ogf chunk 17"), "Unexpected error: {error}");
 
   Ok(())
 }

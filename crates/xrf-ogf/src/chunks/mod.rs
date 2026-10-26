@@ -1,7 +1,11 @@
 pub(crate) mod ogf_bones_chunk;
 pub(crate) mod ogf_children_chunk;
 pub(crate) mod ogf_children_link_chunk;
+pub(crate) mod ogf_collision_indices_chunk;
+pub(crate) mod ogf_collision_vertices_chunk;
 pub(crate) mod ogf_description_chunk;
+pub(crate) mod ogf_description_time_width;
+pub(crate) mod ogf_fastpath_chunk;
 pub(crate) mod ogf_geometry_container_chunk;
 pub(crate) mod ogf_header_chunk;
 pub(crate) mod ogf_ik_data_chunk;
