@@ -1,5 +1,6 @@
 import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { ConfigsProjectDescriptor } from "@xrf/ipc/types/xrf-app-configs";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
@@ -69,9 +70,9 @@ export function ConfigsExplorerWorkspace({
       () =>
         project
           ? [
-              `${project.inventory.files.length} configs`,
+              `${formatCount(project.inventory.files.length)} configs`,
               project.isDltx ? "dltx" : "ltx",
-              ...(project.declaredSchemes.length ? [`${project.declaredSchemes.length} schemes`] : []),
+              ...(project.declaredSchemes.length ? [`${formatCount(project.declaredSchemes.length)} schemes`] : []),
             ]
           : [],
       [project]

@@ -5,7 +5,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionRestore, SessionScope};
 use xrf_app_core::window::InvokingWindow;
 
-use crate::{ConfigsProject, ConfigsProjectDescriptor, ConfigsProjects};
+use crate::project::{ConfigsProject, ConfigsProjectDescriptor, ConfigsProjects};
 
 /// The configs project `tool` holds in the asking window, the newest it opened, for a page attaching to it after a
 /// reload.

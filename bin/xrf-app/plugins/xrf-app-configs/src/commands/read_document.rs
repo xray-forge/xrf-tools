@@ -3,8 +3,8 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::SessionSnapshot;
 
+use crate::project::{ConfigsDocument, ConfigsProjects};
 use crate::request::ConfigsReadDocumentRequest;
-use crate::{ConfigsDocument, ConfigsProjects};
 
 /// Reads one config as the authored view renders it: its lines, and what only the parser knows about them.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

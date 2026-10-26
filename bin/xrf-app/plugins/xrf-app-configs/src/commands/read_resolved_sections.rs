@@ -6,7 +6,7 @@ use xrf_ltx_inspect::LtxResolvedSection;
 use xrf_utils::error_to_string;
 use xrf_vfs::XrayLogicalPath;
 
-use crate::ConfigsProjects;
+use crate::project::ConfigsProjects;
 use crate::request::ConfigsReadSectionsRequest;
 
 /// How many sections one request may ask for: a guard on the request's size, since the page pages by its own row count.

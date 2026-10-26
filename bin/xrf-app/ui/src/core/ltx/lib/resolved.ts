@@ -6,7 +6,7 @@ import {
   LtxResolvedSection,
 } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
-import { Nullable } from "@xrf/types";
+import { assertExhaustive, Nullable } from "@xrf/types";
 
 import { ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
 
@@ -179,7 +179,7 @@ export function describeResolvedFieldOrigin(origin: LtxResolvedFieldOrigin, isRo
     case ELtxResolvedFieldOrigin.DECLARED:
       // The root section is the one section that merges across configs instead of colliding, so its per-field file is
       // the first config merged rather than the one the field is written in. Naming it would be a claim this record
-      // cannot stand behind (`plans/configs-explorer.md`, caveats).
+      // cannot stand behind.
       return origin.file && !isRootSection ? `written here, in ${origin.file}` : "written here";
 
     case ELtxResolvedFieldOrigin.INHERITED:
@@ -192,10 +192,13 @@ export function describeResolvedFieldOrigin(origin: LtxResolvedFieldOrigin, isRo
         ? `set by ${origin.file} ('${origin.operation}', depth ${origin.depth})`
         : `set by ${origin.file} (depth ${origin.depth})`;
 
-    default:
-      // Reached when a resolution was produced without asking for provenance. Said rather than left blank, because a
-      // view inventing "written here" for a field nothing recorded is the one wrong answer available here.
+    case ELtxResolvedFieldOrigin.UNRECORDED:
+      // A resolution produced without asking for provenance. Said rather than left blank, because a view inventing
+      // "written here" for a field nothing recorded is the one wrong answer available here.
       return "origin not recorded";
+
+    default:
+      return assertExhaustive(origin);
   }
 }
 

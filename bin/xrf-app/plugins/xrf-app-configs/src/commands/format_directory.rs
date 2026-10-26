@@ -10,7 +10,7 @@ use xrf_app_core::jobs::{JobRegistry, JobResource, JobStart};
 use xrf_job::JobProgress;
 use xrf_ltx::{LtxFormatOptions, LtxProjectFormatResult};
 
-use crate::ConfigsFormat;
+use crate::format::ConfigsFormat;
 use crate::ipc::configs::CONFIGS_JOB_FORMAT;
 use crate::request::ConfigsFormatRequest;
 

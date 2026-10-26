@@ -1,4 +1,5 @@
 import { formatCount } from "@xrf/format";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { LtxProjectFormatResult } from "@xrf/ipc/types/xrf-ltx";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
@@ -6,17 +7,6 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
 
 /**
  * What the notification centre says when a configs formatting run ends.
- *
- * One describer for both modes, because one form runs both and they answer in the same shape. Every branch asks
- * `isCheck` first: the two report the same numbers and mean opposite things by them, and a check that announced files
- * as "formatted" would be claiming to have written to a project it never touched.
- *
- * A check that found badly formatted files is an error rather than a warning, matching what the command line does with
- * the same question — `ltx format --check` exits 3, a failed check. The rewrite that fixes them is a success.
- *
- * A stopped run is information either way. Each file is rewritten through a staged replace, so what a stopped rewrite
- * leaves behind is some files formatted and the rest untouched — a state running it again resolves, and never a file
- * half-written.
  *
  * @param directory - Configs directory the run was pointed at.
  * @param isCheck - Whether the run reported the formatting rather than repairing it.
@@ -34,12 +24,12 @@ export function describeFormatOutcome(
     return describeJobFailure(isCheck ? "Could not check formatting" : "Could not format configs", directory, error);
   }
 
-  if (result?.outcome === "cancelled") {
+  if (result?.outcome === EJobOutcome.CANCELLED) {
     return {
       details: [
         isCheck
-          ? `Read ${formatCount(result.totalFiles)} file(s), ${result.invalidFiles} badly formatted so far.`
-          : `Read ${formatCount(result.totalFiles)} file(s), of which ${result.invalidFiles} were rewritten.`,
+          ? `Read ${formatCount(result.totalFiles)} file(s), ${formatCount(result.invalidFiles)} badly formatted so far.`
+          : `Read ${formatCount(result.totalFiles)} file(s), of which ${formatCount(result.invalidFiles)} were rewritten.`,
         isCheck
           ? "The rest of the project was not read."
           : "The rest were left as they were; running it again finishes the job.",

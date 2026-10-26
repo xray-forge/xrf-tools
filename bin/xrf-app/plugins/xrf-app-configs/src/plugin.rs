@@ -4,7 +4,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::SessionScopes;
 
-use crate::{ConfigsProjects, OpenedConfigsProject};
+use crate::project::{ConfigsProjects, OpenedConfigsProject};
 
 /// The `configs` plugin: configs projects browsed and followed through commits, and a directory's configs verified,
 /// formatted and checked as jobs.

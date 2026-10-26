@@ -5,9 +5,10 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::SessionSnapshot;
+use xrf_vfs::XrayRoots;
 
+use crate::project::{ConfigsProject, ConfigsProjectDescriptor, ConfigsProjects, OpenedConfigsProject};
 use crate::request::ConfigsOpenRequest;
-use crate::{ConfigsProject, ConfigsProjectDescriptor, ConfigsProjects, OpenedConfigsProject};
 
 /// Open a configs project for browsing over the shared asset roots, read on the pool, and list what it holds.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
@@ -27,8 +28,8 @@ pub async fn configs_open_project(
 
   log::info!("Opening ltx configs project in {}", roots.describe());
 
-  let read_roots = roots.clone();
-  let opened = projects
+  let read_roots: XrayRoots = roots.clone();
+  let opened: Arc<SessionSnapshot<ConfigsProject>> = projects
     .open_followed(
       &execution,
       &assets,

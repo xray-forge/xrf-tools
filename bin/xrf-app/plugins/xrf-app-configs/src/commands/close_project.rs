@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_app_core::session::SessionId;
 
-use crate::ConfigsProjects;
+use crate::project::ConfigsProjects;
 
 /// Close the configs projects `session_ids` name, committed or opening, and whatever each had resolved.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
