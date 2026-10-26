@@ -60,6 +60,22 @@ fn an_excluded_extension_keeps_a_file_out() {
 }
 
 #[test]
+fn an_extension_pattern_means_what_it_means_to_a_pack() {
+  // One `exclude_exts` field, read from one LTX key and one JSON name in both configurations. Read as a literal
+  // suffix, `?` would match nothing and `*.tar.gz` would reach past the extension.
+  let scope: ArchivePatchScope = scope(&[], &[], &["*.js?n", "*.tar.gz"]);
+
+  assert!(
+    !scope.admits("configs\\data.json"),
+    "a wildcard inside the pattern still matches"
+  );
+  assert!(
+    scope.admits("archive.tar.gz"),
+    "a pattern reaches the extension alone, as xrCompress reads it"
+  );
+}
+
+#[test]
 fn an_unaddressable_prefix_is_refused() {
   let traversal: Vec<String> = vec![String::from("configs\\..\\secrets")];
 
