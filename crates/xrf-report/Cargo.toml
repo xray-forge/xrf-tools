@@ -11,6 +11,9 @@ specta = { workspace = true, optional = true }
 xrf-error = { workspace = true }
 xrf-utils = { workspace = true }
 
+[dev-dependencies]
+serde_json = { workspace = true }
+
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.
 typescript-bindings = ["specta"]
