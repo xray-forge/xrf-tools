@@ -9,7 +9,7 @@ use crate::TauriResult;
 use crate::transport::{TransportAnswer, TransportRefusal};
 
 /// What calling a route comes to.
-pub(crate) type TransportFuture = Pin<Box<dyn Future<Output = Result<TransportAnswer, TransportRefusal>> + Send>>;
+type TransportFuture = Pin<Box<dyn Future<Output = Result<TransportAnswer, TransportRefusal>> + Send>>;
 
 /// A route's handler with its arguments still a JSON body.
 type TransportHandler<C> = Arc<dyn Fn(C, Bytes) -> TransportFuture + Send + Sync>;

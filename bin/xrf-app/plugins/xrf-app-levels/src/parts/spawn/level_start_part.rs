@@ -7,7 +7,7 @@ use xrf_vfs::{XrayInputRecord, XraySearch};
 use xrf_visual::{SectorOutline, VisualBounds, convert_vector};
 
 use crate::level::{LevelSource, SelectedLevel};
-use crate::parts::{LevelCollisionPart, LevelSpawn, LevelSpawnPart, LevelStart, LevelStartOrigin};
+use crate::parts::{LevelSpawn, LevelSpawnPart, LevelStart, LevelStartOrigin};
 use crate::report::LevelReport;
 
 /// What a change event calls where a level opens when it goes stale.
@@ -53,14 +53,14 @@ impl LevelStartPart {
   /// covers nothing.
   pub fn find_open(source: &LevelSource, search: &XraySearch, eyes: &[Vector3d]) -> Vec<bool> {
     source
-      .read_optional_file(search, LevelCollisionPart::FILE)
+      .read_optional_file(search, LevelCformFile::FILE_NAME)
       .inspect_err(|error| LevelReport::unreadable_open_sky(source, error))
       .ok()
       .flatten()
       .and_then(|bytes| {
         LevelCformFile::read_open_above_from_bytes::<XRayByteOrder>(bytes, eyes)
           .inspect_err(|error| {
-            LevelReport::unreadable_open_sky(source, &source.describe_read_failure(LevelCollisionPart::FILE, error))
+            LevelReport::unreadable_open_sky(source, &source.describe_read_failure(LevelCformFile::FILE_NAME, error))
           })
           .ok()
       })

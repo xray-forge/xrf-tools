@@ -1,5 +1,4 @@
 use xrf_anm::AnmFile;
-use xrf_app_core::assets::read_located_asset;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
 use xrf_extension::XrayExtension;
@@ -49,7 +48,8 @@ impl LevelObjectMotionsPart {
 
     let bytes: Vec<u8> = match source.read_optional_file(search, name)? {
       Some(bytes) => bytes,
-      None => read_located_asset(search, &format!("{}\\{name}", Self::GAME_ANIMS_DIRECTORY))
+      None => search
+        .read(&format!("{}\\{name}", Self::GAME_ANIMS_DIRECTORY))
         .map_err(|error| error.to_string())?,
     };
 

@@ -235,3 +235,29 @@ fn answers_how_a_detail_association_is_applied() {
 
   assert_eq!(file.used_detail_usage(), Some(ThmDetailUsage::DiffuseAndBump));
 }
+
+#[test]
+fn names_the_flags_each_detail_usage_is_read_from() {
+  for usage in [
+    ThmDetailUsage::Diffuse,
+    ThmDetailUsage::Bump,
+    ThmDetailUsage::DiffuseAndBump,
+  ] {
+    let mut file: ThmFile = ThmFile::new_texture();
+
+    file.detail = Some(ThmDetailChunk {
+      name: String::from("detail\\detail_grnd_grass"),
+      scale: 1.0,
+    });
+    file.texture_param.as_mut().expect("Expect texture params").flags = usage
+      .get_flags()
+      .iter()
+      .fold(ThmTextureFlags::none(), |flags, flag| flags.with(*flag, true));
+
+    assert_eq!(
+      file.used_detail_usage(),
+      Some(usage),
+      "Expect {usage:?} read back from its flags"
+    );
+  }
+}

@@ -4,7 +4,7 @@ use serde::Serialize;
 use xrf_dds::{DdsFile, DdsMetadata};
 use xrf_vfs::{XrayAsset, XraySearch};
 
-use crate::assets::asset_texture_shape::AssetTextureShape;
+use crate::assets::AssetTextureShape;
 
 /// What a texture file is, once it has been located.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

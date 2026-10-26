@@ -1,7 +1,6 @@
 use std::collections::{BTreeSet, HashSet};
 
 use xrf_app_core::TauriResult;
-use xrf_app_core::assets::read_located_asset;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
 use xrf_gamemtl::GameMtlFile;
@@ -32,9 +31,6 @@ impl SessionPart for LevelDetailsPart {
 }
 
 impl LevelDetailsPart {
-  /// The detail library and planting grid, which the grass is planted from.
-  pub const FILE: &'static str = "level.details";
-
   /// Packs the open level's grass, what it is read from recorded as its details part, or answers `None` for a level
   /// with no detail library.
   ///
@@ -52,12 +48,12 @@ impl LevelDetailsPart {
 
   /// The grass packed, every read through `search`.
   fn pack_recorded(source: &LevelSource, search: &XraySearch) -> TauriResult<Option<PackedLevelDetails>> {
-    let Some(details) = source.read_optional_file(search, Self::FILE)? else {
+    let Some(details) = source.read_optional_file(search, LevelDetailsFile::FILE_NAME)? else {
       return Ok(None);
     };
 
     let details: LevelDetailsFile = LevelDetailsFile::read_from_bytes::<XRayByteOrder>(details)
-      .map_err(|error| source.describe_read_failure(Self::FILE, &error))?;
+      .map_err(|error| source.describe_read_failure(LevelDetailsFile::FILE_NAME, &error))?;
     let collision: LevelCformGeometry = LevelCollisionPart::read_geometry(source, search)?;
     let passable: HashSet<u16> = Self::read_passable_materials(search);
     let is_passable = |material: u16| passable.contains(&material);
@@ -90,7 +86,8 @@ impl LevelDetailsPart {
   /// The ids of the game materials a planting falls through, none where the library cannot be read: the engine would
   /// have refused to load the level at all without one.
   fn read_passable_materials(search: &XraySearch) -> HashSet<u16> {
-    let materials: GameMtlFile = match read_located_asset(search, GameMtlFile::FILE_NAME)
+    let materials: GameMtlFile = match search
+      .read(GameMtlFile::FILE_NAME)
       .and_then(GameMtlFile::read_from_bytes::<XRayByteOrder>)
     {
       Ok(materials) => materials,

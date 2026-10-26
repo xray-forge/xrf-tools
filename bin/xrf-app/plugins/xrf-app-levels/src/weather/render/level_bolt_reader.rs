@@ -1,13 +1,11 @@
 use std::collections::HashMap;
 
-use xrf_app_core::assets::read_located_asset;
 use xrf_chunk::XRayByteOrder;
 use xrf_environment::{Thunderbolt, ThunderboltKey};
 use xrf_light_anim::LightAnimFile;
 use xrf_material::{XraySurfaceDraw, XraySurfaceResolver};
 use xrf_visual::LightAnimatorDescription;
 
-use crate::parts::LevelLightsPart;
 use crate::report::LevelReport;
 use crate::weather::render::{
   LevelThunderbolt, LevelThunderboltGradient, LevelThunderboltModel, LevelWeatherModel, LevelWeatherSource,
@@ -53,9 +51,11 @@ impl<'s, 'a> LevelBoltReader<'s, 'a> {
   /// A reader over the level's weather source, its colour animations read once.
   pub(crate) fn open(source: &'s LevelWeatherSource<'a>) -> Self {
     Self {
-      animations: read_located_asset(source.search, LevelLightsPart::ANIMATIONS_FILE)
+      animations: source
+        .search
+        .read(LightAnimFile::FILE_NAME)
         .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
-        .inspect_err(|error| LevelReport::uncoloured_thunderbolts(LevelLightsPart::ANIMATIONS_FILE, error))
+        .inspect_err(|error| LevelReport::uncoloured_thunderbolts(LightAnimFile::FILE_NAME, error))
         .ok(),
       animator_indices: HashMap::new(),
       animators: Vec::new(),

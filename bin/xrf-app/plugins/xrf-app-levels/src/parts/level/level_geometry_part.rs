@@ -3,7 +3,7 @@ use std::sync::Arc;
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionParts, SessionSnapshot};
 use xrf_chunk::{InMemoryChunkDataSource, XRayByteOrder};
-use xrf_level::LevelGeomSource;
+use xrf_level::{LevelGeomFile, LevelGeomSource};
 use xrf_vfs::{XrayInputRecord, XraySearch};
 
 use crate::level::{LevelSource, SelectedLevel};
@@ -24,9 +24,6 @@ impl SessionPart for LevelGeometryPart {
 }
 
 impl LevelGeometryPart {
-  /// The render geometry beside the bundle, which the packed ranges are read out of.
-  pub const FILE: &'static str = "level.geom";
-
   /// The store with `geometry` kept as the level's geometry part, read from `inputs` as the level opened.
   pub fn with(
     parts: SessionParts,
@@ -56,7 +53,7 @@ impl LevelGeometryPart {
   ///
   /// Returns why `level.geom` could not be read.
   pub fn read(source: &LevelSource, search: &XraySearch) -> TauriResult<LevelGeomSource<InMemoryChunkDataSource>> {
-    LevelGeomSource::open_from_bytes::<XRayByteOrder>(source.read_file(search, Self::FILE)?)
-      .map_err(|error| source.describe_read_failure(Self::FILE, &error))
+    LevelGeomSource::open_from_bytes::<XRayByteOrder>(source.read_file(search, LevelGeomFile::FILE_NAME)?)
+      .map_err(|error| source.describe_read_failure(LevelGeomFile::FILE_NAME, &error))
   }
 }

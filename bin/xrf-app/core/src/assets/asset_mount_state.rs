@@ -10,11 +10,8 @@ use xrf_vfs::{
 };
 
 use crate::TauriResult;
-use crate::assets::asset_change_order::AssetChangeOrder;
-use crate::assets::asset_change_ticket::AssetChangeTicket;
-use crate::assets::asset_fan_out::AssetFanOut;
-use crate::assets::asset_read::read_located_asset;
-use crate::assets::{AssetChangeEvent, AssetChangeSubscriber};
+use crate::assets::change::{AssetChangeOrder, AssetChangeTicket};
+use crate::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetFanOut};
 use crate::session::{SessionChange, SessionFollower};
 
 /// A published change's place in the order it is heard in, with the snapshot it published.
@@ -126,7 +123,7 @@ impl AssetMountState {
         .map_err(|error| log::warn!("Engine detection read no data of {}: {error}", roots.describe()))
         .ok()?;
 
-      read_located_asset(&search, logical_path).ok()
+      search.read(logical_path).ok()
     })
   }
 

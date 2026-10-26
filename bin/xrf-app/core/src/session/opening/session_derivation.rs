@@ -2,14 +2,7 @@ use std::sync::Arc;
 
 use rayon::ThreadPool;
 
-use crate::TauriResult;
-use crate::assets::AssetMountState;
-use crate::session::{SessionDerived, SessionSnapshot};
-
-/// How a session's plugin derives its value again from the snapshot it replaces, reading through `assets` as its open
-/// did.
-pub(crate) type SessionDerive<T> =
-  dyn Fn(&SessionSnapshot<T>, &AssetMountState) -> TauriResult<SessionDerived<T>> + Send + Sync;
+use crate::session::opening::SessionDerive;
 
 /// Where a session's derivation runs once a commit moved what its value was read from.
 pub(crate) enum SessionDerivation<T> {

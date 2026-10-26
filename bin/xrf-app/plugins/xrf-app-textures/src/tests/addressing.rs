@@ -2,9 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
-use xrf_app_core::assets::{read_located_asset, read_referenced_asset};
 use xrf_material::fixtures::FixtureTree;
-use xrf_vfs::{XrayAssetType, XraySearch};
+use xrf_vfs::{XrayAsset, XrayAssetType, XraySearch};
 
 use crate::describe::{TextureFiles, TextureSource};
 use crate::tests::fixtures::{BASE, file_source, implied_root_tree, loose_directory, mount, search_over};
@@ -124,21 +123,25 @@ fn the_two_files_a_texture_is_are_named_from_either_half() {
 fn a_texture_is_read_by_its_reference_and_not_by_its_reference_as_a_path() {
   // The defect this pins broke weighing for every texture that has an engine reference, which is every texture in a
   // game tree. A reference such as `ston\\ston_beton05` and the logical path `textures\\ston\\ston_beton05.dds` are
-  // different strings for the same file, and a reader given the wrong one resolves nothing at all - so the reader that
-  // takes a reference has to be the one a caller holding a reference reaches for.
+  // different strings for the same file, and a reader given the wrong one resolves nothing at all - so a caller holding
+  // a reference resolves it by its kind before reading.
   let tree: FixtureTree = FixtureTree::new("textures_read_by_reference").with_texture(BASE);
   let (vfs, id) = mount(&tree);
   let search: XraySearch = search_over(vfs, id);
+  let resolved: Option<XrayAsset> = search
+    .resolve(XrayAssetType::Dds, BASE)
+    .expect("reference resolves")
+    .into_asset();
 
   assert!(
-    read_referenced_asset(&search, XrayAssetType::Dds, BASE).is_ok(),
+    resolved.is_some_and(|asset| search.read_asset(&asset).is_ok()),
     "expect an engine reference to reach the file it names"
   );
   assert!(
-    read_located_asset(&search, BASE).is_err(),
+    search.read(BASE).is_err(),
     "expect a reference read as a logical path to resolve to nothing, which is what made this worth pinning"
   );
 
   // And the logical path the listing reports is what the path reader wants.
-  assert!(read_located_asset(&search, "textures\\ston\\ston_beton05.dds").is_ok());
+  assert!(search.read("textures\\ston\\ston_beton05.dds").is_ok());
 }
