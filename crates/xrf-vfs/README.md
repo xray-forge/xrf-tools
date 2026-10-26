@@ -43,8 +43,9 @@ let bytes: Vec<u8> = search.read("configs\\system.ltx")?;
 - **fsgame file** — the layout file that declares an installation, found by `FsgameFile::find`. Every OpenXRay-family
   engine reads `fsgame.ltx`; each Enhanced Edition's engine reads only its own game's name instead (`fsgame_soc.ltx`,
   `fsgame_cs.ltx`, `fsgame_cop.ltx`) and supplies `$fs_root$` and `$app_data_root$` itself. A directory is searched in
-  `FsgameFile::FILE_NAMES` order, `fsgame.ltx` first. This crate anchors `$fs_root$` at the file's directory and leaves
-  aliases under `$app_data_root$` unresolved.
+  `FsgameFile::FILE_NAMES` order, `fsgame.ltx` first. This crate anchors `$fs_root$` at the file's directory, takes a
+  root column naming an absolute directory as that directory, as the engine does, and leaves aliases under
+  `$app_data_root$` unresolved.
 - **Search plan** — `XraySearchPlan` is the ordered search declared before anything is opened: `open` mounts it into a
   VFS of its own, `open_in` into a snapshot built with a cache policy or a read trace, `mount_into` into one someone
   else holds. `XrayRoots::to_search_plan` plans what a request names. A root that is not there is an empty step reported
@@ -203,8 +204,8 @@ println!("{:?}", search.read_size("configs\\system.ltx"));
 retries sources that failed to open, for an open a person makes. Mounts and changes (`commit`, `apply`, and
 `apply_changed_on_disk`, which applies each retained loose file changed behind every reader) are serialized on one lock
 and publish the next snapshot whole, so a search never waits for either and keeps reading the snapshot it was given;
-`search_writable` searches every writable loose mount, for a writer naming files on disk. The snapshot's cache policy and read trace, set on the first `XrayVfs` passed to `XrayVfsHost::new`, carry
-to every later snapshot.
+`search_writable` searches every writable loose mount, for a writer naming files on disk. The snapshot's cache policy
+and read trace, set on the first `XrayVfs` passed to `XrayVfsHost::new`, carry to every later snapshot.
 
 Further flows are documented on their types: recording what a search reads on `XraySearch::with_recording` and
 `XrayVfs::answer_input`, retention on `XrayCachePolicy` and `XraySearch::read_parsed`, and out-of-crate sources on
@@ -236,16 +237,20 @@ re-exported from the crate root:
 
 - `path` — what an engine identity is, and the only place separators and case are decided.
 - `asset` — what a resolved asset is, plus the per-kind rules that turn a reference into one.
-- `fsgame` — the declaration file an installation describes its own layout with.
-- `source` — the mountable surface, and the two sources the engine itself has.
-- `mount` — composing sources into a mounted order, and planning one from a path.
-- `search` — how a VFS snapshot is read: the ordered search, its steps and what its lookups answer.
-- `vfs` — the VFS snapshot itself (mounts, revisions, what it retains) and the host owning the current one.
-- `change` — changing what a snapshot holds: a transaction committed to disk, or changes already there applied.
+- `source` — the mountable surface, and the two sources the engine itself has (`directory/` holds the loose one).
+- `mount` — composing sources into a mounted order and planning one from a path: `plan/` what a step means before
+  anything opens, `root/` the places a caller names and what they turn out to be, `fsgame/` the declaration file an
+  installation describes its own layout with.
+- `search` — how a VFS snapshot is read: the ordered search, its `step/`s and scopes, and what its `listing/`s answer.
+- `vfs` — the VFS snapshot itself (mounts, revisions) and the host owning the current one; `cache/` what a snapshot
+  keeps after parsing an asset, the policy deciding what is kept and the coordination that keeps two readers from
+  parsing one asset twice; `trace/` what a snapshot actually read, when a caller asked to be told.
+- `change` — changing what a snapshot holds: a `transaction/` committed to disk through the `disk/` swap, or changes
+  already there applied.
 - `input` — which inputs a recording search resolved, and the revision each had then.
-- `cache` — what a snapshot keeps after parsing an asset, the policy deciding what is kept, and the coordination that
-  keeps two readers from parsing one asset twice.
-- `trace` — what a snapshot actually read, when a caller asked to be told.
+
+An aspect of `XrayVfs` that belongs to one of these questions lives in that module as `xray_vfs_<aspect>.rs`: plan
+mounting in `mount/plan/`, committing and the on-disk check in `change/`, input answers in `input/`.
 
 ## Checks
 
@@ -257,7 +262,7 @@ cargo test --locked --doc -p xrf-vfs
 ```
 
 See the [search](src/search/xray_search.rs), [search plan](src/search/xray_search_plan.rs),
-[snapshot](src/vfs/xray_vfs.rs), [host](src/vfs/xray_vfs_host.rs), [commit](src/change/xray_commit.rs), and
+[snapshot](src/vfs/xray_vfs.rs), [host](src/vfs/xray_vfs_host.rs), [commit](src/change/xray_vfs_commit.rs), and
 [public exports](src/lib.rs).
 
 ## Related crates

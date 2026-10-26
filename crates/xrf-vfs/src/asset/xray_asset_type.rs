@@ -45,11 +45,23 @@ pub enum XrayAssetType {
 
 impl XrayAssetType {
   /// The X-Ray shader library's fixed gamedata-relative logical path.
-  pub const SHADER_LIBRARY_PATH: &'static str = super::shader::SHADER_LIBRARY_LOGICAL_PATH;
+  pub const SHADER_LIBRARY_PATH: &'static str = "shaders.xr";
 
   /// Converts a sound reference into the name the engine registers it under.
   pub fn sound_reference_name(reference: &str) -> String {
-    super::sound::sound_reference_name(reference)
+    let reference: String = reference.trim().replace('/', "\\").to_ascii_lowercase();
+    let reference: &str = reference.strip_prefix("sounds\\").unwrap_or(&reference);
+
+    if !XrayExtension::Ogg.matches(reference) {
+      return reference.to_string();
+    }
+
+    // The extension matched, so the final dot is inside the final segment and this splits the name rather than a
+    // directory holding one.
+    reference
+      .rsplit_once('.')
+      .map_or(reference, |(stem, _)| stem)
+      .to_string()
   }
 
   /// Where this kind lives, for the kinds with one canonical home.
@@ -288,6 +300,39 @@ mod tests {
     assert_eq!(XrayAssetType::of(XrayExtension::Png), None);
     assert_eq!(XrayAssetType::of(XrayExtension::Tga), None);
     assert_eq!(XrayAssetType::of(XrayExtension::Xml), None);
+  }
+
+  #[test]
+  fn strips_the_implied_root_and_extension_from_a_sound_name() {
+    assert_eq!(
+      XrayAssetType::sound_reference_name(" sounds/weapons/ak74_shot.ogg "),
+      "weapons\\ak74_shot"
+    );
+    assert_eq!(
+      XrayAssetType::sound_reference_name("Weapons\\AK74_Shot"),
+      "weapons\\ak74_shot"
+    );
+  }
+
+  #[test]
+  fn keeps_a_sound_name_that_merely_ends_in_the_letters() {
+    // The last dotted byte-suffix rule in the workspace lived here, and it was safe only because the value above it is
+    // folded first. The splitter answers the same for a lower-case name and says why for the others.
+    assert_eq!(
+      XrayAssetType::sound_reference_name("weapons\\ak74_myogg"),
+      "weapons\\ak74_myogg"
+    );
+    assert_eq!(XrayAssetType::sound_reference_name("weapons\\ogg"), "weapons\\ogg");
+  }
+
+  #[test]
+  fn leaves_a_sound_directory_carrying_the_dot_alone() {
+    // `rsplit_once` is reached only once the extension matched, so an unextensioned name inside `sounds.old\` keeps
+    // every character of it rather than losing its last directory.
+    assert_eq!(
+      XrayAssetType::sound_reference_name("weapons.old\\ak74_shot"),
+      "weapons.old\\ak74_shot"
+    );
   }
 
   #[test]

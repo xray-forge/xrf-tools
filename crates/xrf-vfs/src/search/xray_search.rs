@@ -5,10 +5,10 @@ use std::sync::Arc;
 use xrf_archive::ArchiveDescriptor;
 use xrf_error::{XrfError, XrfResult};
 
-use crate::input::{XrayInput, XrayInputKind, XrayInputRecord, XraySearchKey};
+use crate::input::{XrayInput, XrayInputKind, XrayInputRecord};
 use crate::search::{
-  XrayDirectoryListing, XrayMountedEntry, XrayResolution, XraySearchStep, XraySearchedSource, XrayShadowedCopy,
-  XrayShadowingEntry,
+  XrayDirectoryListing, XrayMountedEntry, XrayReadHandle, XrayResolution, XraySearchKey, XraySearchStep,
+  XraySearchedSource, XrayShadowedCopy, XrayShadowingEntry,
 };
 use crate::{
   XrayAsset, XrayAssetRules, XrayAssetType, XrayLogicalPath, XrayLookupScope, XrayMountId, XrayPathCollision,
@@ -30,12 +30,6 @@ pub struct XraySearch {
 struct XraySearchRecording {
   record: XrayInputRecord,
   key: XraySearchKey,
-}
-
-/// A file opened to be read in pieces.
-#[derive(Debug)]
-pub struct XrayReadHandle {
-  _private: (),
 }
 
 impl XraySearch {

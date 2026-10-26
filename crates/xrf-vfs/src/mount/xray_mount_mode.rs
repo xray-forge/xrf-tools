@@ -6,8 +6,7 @@ use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 
 use crate::mount::XrayMountPlan;
-use crate::mount::xray_root::implied_install_root;
-use crate::{FsgameFile, XrayRootKind};
+use crate::{FsgameFile, XrayRootKind, XrayRootProbe};
 
 /// How a caller's path is turned into mounts.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -81,7 +80,7 @@ impl XrayMountMode {
           return XrayMountPlan::from_fsgame(path);
         }
 
-        match implied_install_root(path) {
+        match XrayRootProbe::implied_installation(path) {
           Some(install) => XrayMountPlan::from_fsgame(install),
           None => XrayMountPlan::root(path),
         }

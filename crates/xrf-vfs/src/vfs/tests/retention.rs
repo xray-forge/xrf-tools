@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use xrf_error::XrfResult;
 
-use crate::vfs::tests::fake_source::directory;
+use crate::vfs::tests::fixtures::directory;
 use crate::{XrayAssetType, XrayCachePolicy, XrayCacheStats, XrayLookupScope, XrayMountId, XrayRevision, XrayVfs};
 
 const SYSTEM_LTX: &str = "configs\\system.ltx";
@@ -97,7 +97,7 @@ fn a_changed_revision_misses() {
   let parses: AtomicUsize = AtomicUsize::new(0);
 
   parse(&vfs, &parses).expect("parses");
-  vfs.set_file_revision(id, SYSTEM_LTX, XrayRevision::of(1));
+  vfs.set_file_revision(id, SYSTEM_LTX, XrayRevision::from_count(1));
   parse(&vfs, &parses).expect("parses the changed copy");
 
   assert_eq!(parses.load(Ordering::Relaxed), 2, "a copy that changed is parsed again");
