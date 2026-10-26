@@ -9,3 +9,10 @@ pub struct VisualBox {
   pub min: Vector3d,
   pub max: Vector3d,
 }
+
+impl VisualBox {
+  /// The point halfway between its corners.
+  pub fn get_center(&self) -> Vector3d {
+    self.min.midpoint(&self.max)
+  }
+}

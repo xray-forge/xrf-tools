@@ -14,22 +14,18 @@ pub struct ArchiveBounds {
 impl ArchiveBounds {
   /// The box a run of points spans, or `None` where there are none to span one.
   pub fn of_points<'a>(points: impl Iterator<Item = &'a Vector3d<f32>>) -> Option<Self> {
-    let mut minimum: Option<Vector3d<f32>> = None;
-    let mut maximum: Option<Vector3d<f32>> = None;
+    let mut corners: Option<(Vector3d<f32>, Vector3d<f32>)> = None;
 
     for point in points {
-      let low: &mut Vector3d<f32> = minimum.get_or_insert_with(|| point.clone());
-      let high: &mut Vector3d<f32> = maximum.get_or_insert_with(|| point.clone());
-
-      low.x = low.x.min(point.x);
-      low.y = low.y.min(point.y);
-      low.z = low.z.min(point.z);
-      high.x = high.x.max(point.x);
-      high.y = high.y.max(point.y);
-      high.z = high.z.max(point.z);
+      corners = Some(match corners {
+        Some((minimum, maximum)) => (minimum.min(point), maximum.max(point)),
+        None => (point.clone(), point.clone()),
+      });
     }
 
-    Some(Self::of(&minimum?, &maximum?))
+    let (minimum, maximum) = corners?;
+
+    Some(Self::of(&minimum, &maximum))
   }
 
   /// The box between two corners.

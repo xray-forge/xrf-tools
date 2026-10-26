@@ -10,7 +10,7 @@ path = "src/lib.rs"
 
 [dependencies]
 byteorder = { workspace = true }
-derive_more = { workspace = true, features = ["display", "from_str"] }
+derive_more = { workspace = true, features = ["display"] }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 xrf-chunk = { workspace = true }

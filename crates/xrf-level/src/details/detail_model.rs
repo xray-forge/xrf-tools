@@ -97,12 +97,8 @@ impl DetailModel {
     let mut maximum: Vector3d<f32> = first.position.clone();
 
     for vertex in &self.vertices {
-      minimum.x = minimum.x.min(vertex.position.x);
-      minimum.y = minimum.y.min(vertex.position.y);
-      minimum.z = minimum.z.min(vertex.position.z);
-      maximum.x = maximum.x.max(vertex.position.x);
-      maximum.y = maximum.y.max(vertex.position.y);
-      maximum.z = maximum.z.max(vertex.position.z);
+      minimum = minimum.min(&vertex.position);
+      maximum = maximum.max(&vertex.position);
     }
 
     Some((minimum, maximum))

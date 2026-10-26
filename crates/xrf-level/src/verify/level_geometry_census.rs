@@ -81,21 +81,10 @@ impl LevelGeometryCensus {
   pub(crate) fn record_vertex(&mut self, vertex: &LevelVertex, has_normal: bool) {
     self.bounds = Some(match self.bounds.take() {
       None => (vertex.position.clone(), vertex.position.clone()),
-      Some((min, max)) => (
-        Vector3d {
-          x: min.x.min(vertex.position.x),
-          y: min.y.min(vertex.position.y),
-          z: min.z.min(vertex.position.z),
-        },
-        Vector3d {
-          x: max.x.max(vertex.position.x),
-          y: max.y.max(vertex.position.y),
-          z: max.z.max(vertex.position.z),
-        },
-      ),
+      Some((min, max)) => (min.min(&vertex.position), max.max(&vertex.position)),
     });
 
-    if has_normal && (Self::length(&vertex.normal) - 1.0).abs() > NORMAL_LENGTH_TOLERANCE {
+    if has_normal && (vertex.normal.length() - 1.0).abs() > NORMAL_LENGTH_TOLERANCE {
       self.stray_normals += 1;
     }
 
@@ -103,9 +92,5 @@ impl LevelGeometryCensus {
       .widest_coordinate
       .max(vertex.texture_coordinate.0.abs())
       .max(vertex.texture_coordinate.1.abs());
-  }
-
-  fn length(vector: &Vector3d) -> f32 {
-    (vector.x * vector.x + vector.y * vector.y + vector.z * vector.z).sqrt()
   }
 }

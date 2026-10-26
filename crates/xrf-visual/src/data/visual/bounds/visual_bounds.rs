@@ -32,12 +32,8 @@ impl VisualBounds {
     let mut max: Vector3d = first;
 
     for position in extent {
-      min.x = min.x.min(position.x);
-      min.y = min.y.min(position.y);
-      min.z = min.z.min(position.z);
-      max.x = max.x.max(position.x);
-      max.y = max.y.max(position.y);
-      max.z = max.z.max(position.z);
+      min = min.min(&position);
+      max = max.max(&position);
     }
 
     Some(Self::from_box_and_positions(VisualBox { min, max }, positions))
@@ -46,23 +42,15 @@ impl VisualBounds {
   /// Merge two extents, taking the union of the boxes and re-deriving the sphere from it.
   pub(crate) fn merge(self, other: Self) -> Self {
     let bounding_box: VisualBox = VisualBox {
-      min: Vector3d {
-        x: self.bounding_box.min.x.min(other.bounding_box.min.x),
-        y: self.bounding_box.min.y.min(other.bounding_box.min.y),
-        z: self.bounding_box.min.z.min(other.bounding_box.min.z),
-      },
-      max: Vector3d {
-        x: self.bounding_box.max.x.max(other.bounding_box.max.x),
-        y: self.bounding_box.max.y.max(other.bounding_box.max.y),
-        z: self.bounding_box.max.z.max(other.bounding_box.max.z),
-      },
+      min: self.bounding_box.min.min(&other.bounding_box.min),
+      max: self.bounding_box.max.max(&other.bounding_box.max),
     };
 
     // Each sphere already reaches every vertex of its own submesh, so a sphere centred on the merged
     // box and grown to cover both spheres covers every vertex of both without keeping the positions.
-    let center: Vector3d = box_center(&bounding_box);
-    let radius: f32 = distance(&center, &self.bounding_sphere.center) + self.bounding_sphere.radius;
-    let other_radius: f32 = distance(&center, &other.bounding_sphere.center) + other.bounding_sphere.radius;
+    let center: Vector3d = bounding_box.get_center();
+    let radius: f32 = center.distance(&self.bounding_sphere.center) + self.bounding_sphere.radius;
+    let other_radius: f32 = center.distance(&other.bounding_sphere.center) + other.bounding_sphere.radius;
 
     Self {
       bounding_box,
@@ -74,30 +62,12 @@ impl VisualBounds {
   }
 
   fn from_box_and_positions(bounding_box: VisualBox, positions: impl Iterator<Item = Vector3d>) -> Self {
-    let center: Vector3d = box_center(&bounding_box);
-    let radius: f32 = positions
-      .map(|position| distance(&center, &position))
-      .fold(0.0, f32::max);
+    let center: Vector3d = bounding_box.get_center();
+    let radius: f32 = positions.map(|position| center.distance(&position)).fold(0.0, f32::max);
 
     Self {
       bounding_box,
       bounding_sphere: VisualSphere { center, radius },
     }
   }
-}
-
-fn box_center(bounding_box: &VisualBox) -> Vector3d {
-  Vector3d {
-    x: (bounding_box.min.x + bounding_box.max.x) / 2.0,
-    y: (bounding_box.min.y + bounding_box.max.y) / 2.0,
-    z: (bounding_box.min.z + bounding_box.max.z) / 2.0,
-  }
-}
-
-fn distance(from: &Vector3d, to: &Vector3d) -> f32 {
-  let x: f32 = to.x - from.x;
-  let y: f32 = to.y - from.y;
-  let z: f32 = to.z - from.z;
-
-  (x * x + y * y + z * z).sqrt()
 }
