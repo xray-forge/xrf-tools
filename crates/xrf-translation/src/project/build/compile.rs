@@ -2,7 +2,7 @@ use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
-use xrf_xml::serialize_xml;
+use xrf_xml::XmlSerializer;
 
 use crate::language::{TranslationLanguage, find_unencodable_character};
 use crate::project::build::translation_build_options::TranslationBuildOptions;
@@ -53,7 +53,7 @@ pub(crate) fn compile_by_language(
     compiled.string.sort_by(|first, second| first.id.cmp(&second.id))
   }
 
-  buffer.push_str(&serialize_xml(&compiled)?);
+  buffer.push_str(&XmlSerializer::serialize(&compiled)?);
 
   Ok(buffer)
 }

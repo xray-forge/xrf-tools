@@ -1,8 +1,7 @@
 use xrf_utils::{encode_string_to_bytes, new_windows1251_encoder};
 
-use crate::options::XmlParseOptions;
-use crate::xml_document::XmlDocument;
-use crate::xml_element::XmlElement;
+use crate::document::{XmlDocument, XmlElement};
+use crate::xml_parse_options::XmlParseOptions;
 
 #[test]
 fn parses_elements_attributes_and_text() {
@@ -44,6 +43,36 @@ fn rejects_dtd_unless_enabled() {
 
   assert!(XmlDocument::parse(source, XmlParseOptions::default()).is_err());
   assert!(XmlDocument::parse(source, XmlParseOptions { allow_dtd: true }).is_ok());
+}
+
+#[test]
+fn refuses_nesting_past_the_depth_bound_rather_than_overflowing() {
+  let nested = |depth: usize| format!("{}x{}", "<a>".repeat(depth), "</a>".repeat(depth));
+  let deepest: String = nested(XmlParseOptions::MAX_DEPTH);
+
+  // The deepest document accepted is parsed, cloned, compared, formatted and dropped on a main thread's stack, since
+  // each of those recurses once per level.
+  std::thread::Builder::new()
+    .stack_size(1 << 20)
+    .spawn(move || {
+      let document: XmlDocument = XmlDocument::parse(&deepest, XmlParseOptions::default()).unwrap();
+
+      assert_eq!(document.clone(), document);
+      assert!(format!("{document:?}").len() > XmlParseOptions::MAX_DEPTH);
+    })
+    .unwrap()
+    .join()
+    .unwrap();
+
+  let error: String = XmlDocument::parse(&nested(XmlParseOptions::MAX_DEPTH + 1), XmlParseOptions::default())
+    .unwrap_err()
+    .to_string();
+
+  assert!(
+    error.contains(&format!("deeper than {} levels", XmlParseOptions::MAX_DEPTH)),
+    "{error}"
+  );
+  assert!(XmlDocument::parse(&nested(100_000), XmlParseOptions::default()).is_err());
 }
 
 #[test]

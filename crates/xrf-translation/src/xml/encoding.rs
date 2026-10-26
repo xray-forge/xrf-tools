@@ -3,7 +3,7 @@ use std::path::Path;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{XRayEncoding, decode_bytes_to_string_without_bom_handling, new_utf8_encoder};
-use xrf_xml::declared_xml_encoding;
+use xrf_xml::XmlEncoding;
 
 use crate::language::TranslationLanguage;
 use crate::xml::decoded_translation::DecodedTranslation;
@@ -22,7 +22,7 @@ use crate::xml::translation_identity::TranslationIdentity;
 /// Returns an encoding error when the declaration names a code page there is no encoder for.
 pub(crate) fn resolve_encoding(identity: TranslationIdentity, data: &[u8]) -> XrfResult<XRayEncoding> {
   let language: Option<TranslationLanguage> = identity.get_language();
-  let declared: Option<XRayEncoding> = declared_xml_encoding(data)?;
+  let declared: Option<XRayEncoding> = XmlEncoding::find_declared(data)?;
 
   if let (Some(declared), Some(language)) = (declared, language)
     && declared != language.new_language_encoder()

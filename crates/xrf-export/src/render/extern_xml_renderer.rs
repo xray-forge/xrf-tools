@@ -1,4 +1,4 @@
-use xrf_xml::{escape_xml_attribute, escape_xml_text};
+use xrf_xml::XmlEscape;
 
 use crate::manifest::{ExternDocumentation, ExternExport, ExternManifest};
 
@@ -14,7 +14,7 @@ impl ExternXmlRenderer {
     let mut result: String = String::from("<externs>\n  <exports>");
 
     for (name, export) in &manifest.exports {
-      result.push_str(&format!("\n    <export name=\"{}\">", escape_xml_attribute(name)));
+      result.push_str(&format!("\n    <export name=\"{}\">", XmlEscape::attribute(name)));
       Self::append_export(&mut result, export, 3);
       result.push_str("\n    </export>");
     }
@@ -33,8 +33,8 @@ impl ExternXmlRenderer {
         for parameter in &callable.params {
           let opening: String = format!(
             "<param name=\"{}\" type=\"{}\"{}>",
-            escape_xml_attribute(&parameter.name),
-            escape_xml_attribute(&parameter.type_name),
+            XmlEscape::attribute(&parameter.name),
+            XmlEscape::attribute(&parameter.type_name),
             if parameter.is_optional() {
               " optional=\"true\""
             } else {
@@ -45,7 +45,7 @@ impl ExternXmlRenderer {
           match &parameter.doc {
             Some(doc) => {
               Self::append_line(result, depth + 1, &opening);
-              Self::append_line(result, depth + 2, &format!("<doc>{}</doc>", escape_xml_text(doc)));
+              Self::append_line(result, depth + 2, &format!("<doc>{}</doc>", XmlEscape::text(doc)));
               Self::append_line(result, depth + 1, "</param>");
             }
             None => Self::append_line(result, depth + 1, &format!("{opening}</param>")),
@@ -86,7 +86,7 @@ impl ExternXmlRenderer {
     Self::append_line(
       result,
       depth,
-      &format!("<{element}>{}</{element}>", escape_xml_text(text)),
+      &format!("<{element}>{}</{element}>", XmlEscape::text(text)),
     );
   }
 

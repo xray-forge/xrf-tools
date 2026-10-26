@@ -2,30 +2,31 @@
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct XmlElement {
   name: String,
-  attributes: Vec<XmlAttribute>,
+  attributes: Vec<(String, String)>,
   children: Vec<XmlElement>,
   text: String,
 }
 
 impl XmlElement {
   pub(crate) fn from_node(node: roxmltree::Node<'_, '_>) -> Self {
+    let mut children: Vec<Self> = Vec::new();
+
+    // Recursing from a plain loop keeps each level's stack to this one frame, rather than the iterator frames `collect`
+    // stacks between levels in an unoptimized build.
+    for child in node.children().filter(roxmltree::Node::is_element) {
+      children.push(Self::from_node(child));
+    }
+
     Self {
-      name: node.tag_name().name().to_string(),
+      name: node.tag_name().name().to_owned(),
       attributes: node
         .attributes()
-        .map(|attribute| XmlAttribute {
-          name: attribute.name().to_string(),
-          value: attribute.value().to_string(),
-        })
+        .map(|attribute| (attribute.name().to_owned(), attribute.value().to_owned()))
         .collect(),
-      children: node
-        .children()
-        .filter(|child| child.is_element())
-        .map(Self::from_node)
-        .collect(),
+      children,
       text: node
         .children()
-        .filter(|child| child.is_text())
+        .filter(roxmltree::Node::is_text)
         .filter_map(|child| child.text())
         .collect(),
     }
@@ -41,8 +42,8 @@ impl XmlElement {
     self
       .attributes
       .iter()
-      .find(|attribute| attribute.name == name)
-      .map(|attribute| attribute.value.as_str())
+      .find(|(attribute, _)| attribute == name)
+      .map(|(_, value)| value.as_str())
   }
 
   /// Iterates over `(name, value)` pairs in source order.
@@ -50,7 +51,7 @@ impl XmlElement {
     self
       .attributes
       .iter()
-      .map(|attribute| (attribute.name.as_str(), attribute.value.as_str()))
+      .map(|(name, value)| (name.as_str(), value.as_str()))
   }
 
   /// Iterates over direct child elements with the exact tag name.
@@ -76,12 +77,6 @@ impl XmlElement {
   pub fn text(&self) -> &str {
     &self.text
   }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct XmlAttribute {
-  name: String,
-  value: String,
 }
 
 struct XmlDescendants<'a> {
