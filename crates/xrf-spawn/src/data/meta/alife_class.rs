@@ -6,6 +6,8 @@ use enum_map::Enum;
 use crate::data::meta::cls_id::ClsId;
 use crate::data::meta::map::CLS_ID_TO_CLASS;
 
+/// The server class a spawned object is read as: those Call of Pripyat creates from a spawn, by the engine's
+/// `object_factory_register.cpp` and the scripts' `class_registrator.script`.
 #[derive(Clone, Debug, Enum, PartialEq, FromStr, Display)]
 pub enum AlifeClass {
   #[display("CseAlifeAnomalousZone")]
@@ -14,10 +16,10 @@ pub enum AlifeClass {
   CseAlifeCar,
   #[display("CseAlifeCreatureCrow")]
   CseAlifeCreatureCrow,
+  #[display("CseAlifeCreaturePhantom")]
+  CseAlifeCreaturePhantom,
   #[display("CseAlifeDynamicObjectVisual")]
   CseAlifeDynamicObjectVisual,
-  #[display("CseAlifeFleshGroup")]
-  CseAlifeFleshGroup,
   #[display("CseAlifeGraphPoint")]
   CseAlifeGraphPoint,
   #[display("CseAlifeHelicopter")]
@@ -56,10 +58,6 @@ pub enum AlifeClass {
   CseAlifeItemWeaponMagazinedWGl,
   #[display("CseAlifeItemWeaponShotgun")]
   CseAlifeItemWeaponShotgun,
-  #[display("CseAlifeMonsterBase")]
-  CseAlifeMonsterBase,
-  #[display("CseAlifeMountedWeapon")]
-  CseAlifeMountedWeapon,
   #[display("CseAlifeObjectBreakable")]
   CseAlifeObjectBreakable,
   #[display("CseAlifeObjectClimable")]
@@ -72,32 +70,22 @@ pub enum AlifeClass {
   CseAlifeObjectProjector,
   #[display("CseAlifePhSkeletonObject")]
   CseAlifePhSkeletonObject,
-  #[display("CseAlifeRatGroup")]
-  CseAlifeRatGroup,
   #[display("CseAlifeSpaceRestrictor")]
   CseAlifeSpaceRestrictor,
-  #[display("CseAlifeSpawnGroup")]
-  CseAlifeSpawnGroup,
   #[display("CseAlifeStationaryMGun")]
   CseAlifeStationaryMGun,
-  #[display("CseAlifeTeamBaseZone")]
-  CseAlifeTeamBaseZone,
   #[display("CseAlifeTorridZone")]
   CseAlifeTorridZone,
   #[display("CseAlifeTrader")]
   CseAlifeTrader,
   #[display("CseAlifeZoneVisual")]
   CseAlifeZoneVisual,
-  #[display("CseSpectator")]
-  CseSpectator,
   #[display("SeActor")]
   SeActor,
   #[display("SeLevelChanger")]
   SeLevelChanger,
   #[display("SeMonster")]
   SeMonster,
-  #[display("SeSimFaction")]
-  SeSimFaction,
   #[display("SeSmartCover")]
   SeSmartCover,
   #[display("SeSmartTerrain")]
@@ -106,6 +94,7 @@ pub enum AlifeClass {
   SeStalker,
   #[display("SimSquadScripted")]
   SimSquadScripted,
+  /// A class no spawn can hold, such as a rocket's `CSE_Temporary`, which is no alife object.
   #[display("Unknown")]
   Unknown,
 }

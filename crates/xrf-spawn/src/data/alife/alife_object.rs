@@ -365,9 +365,17 @@ mod tests {
   use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
   use crate::data::alife::inherited::alife_object_item_custom_outfit::AlifeObjectItemCustomOutfit;
+  use crate::data::alife::inherited::alife_object_item_document::AlifeObjectItemDocument;
+  use crate::data::alife::inherited::alife_object_item_torch::AlifeObjectItemTorch;
+  use crate::data::alife::inherited::alife_object_online_offline_group::AlifeObjectOnlineOfflineGroup;
+  use crate::data::alife::inherited::alife_object_ph_skeleton_object::AlifeObjectPhSkeletonObject;
+  use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
+  use crate::data::alife::inherited::alife_object_stationary_mgun::AlifeObjectStationaryMgun;
+  use crate::data::alife::inherited::alife_squad::AlifeSquad;
   use crate::data::alife::inherited::alife_stalker::AlifeStalker;
   use crate::data::meta::cls_id::ClsId;
   use crate::data::physics::physics_net_state::PhysicsNetState;
+  use crate::data::physics::raw_float::RawFloat;
 
   #[test]
   fn binary_read_returns_error_for_unknown_section() -> XrfResult {
@@ -740,6 +748,117 @@ mod tests {
       assert_eq!(creature.update_position, Vector3d::new(-40.0, 5.5, 120.0));
       assert_eq!(creature.update_torso_yaw, 1.25);
       assert_eq!(creature.update_torso_pitch, -0.1);
+    }
+
+    Ok(())
+  }
+
+  /// Each section of a class Call of Pripyat creates reads back as that class through the object's two packets.
+  #[test]
+  fn writes_and_reads_every_class_by_its_section() -> XrfResult {
+    let position: Vector3d = Vector3d::new(1.0, 2.0, 3.0);
+    let visual: AlifeObjectDynamicVisual = AlifeObjectCreature::new_mock(position.clone()).base;
+    let item: AlifeObjectItem = AlifeObjectItem::new_mock(position.clone());
+    let skeleton: AlifeObjectSkeleton = AlifeObjectSkeleton {
+      name: String::from("$editor"),
+      flags: 0,
+      source_id: u16::MAX,
+    };
+
+    for (section, clsid, inherited) in [
+      (
+        "bolt",
+        ClsId::IIBolt,
+        AlifeObjectInherited::CseAlifeItemBolt(Box::new(item.clone())),
+      ),
+      (
+        "device_torch",
+        ClsId::TorchS,
+        AlifeObjectInherited::CseAlifeItemTorch(Box::new(AlifeObjectItemTorch {
+          base: item.clone(),
+          update_flags: AlifeObjectItemTorch::FLAG_ACTIVE,
+        })),
+      ),
+      (
+        "document",
+        ClsId::IIDoc,
+        AlifeObjectInherited::CseAlifeItemDocument(Box::new(AlifeObjectItemDocument {
+          base: item.clone(),
+          info_portion: String::from("info"),
+        })),
+      ),
+      (
+        "device_flare",
+        ClsId::DFlare,
+        AlifeObjectInherited::CseAlifeItem(Box::new(item.clone())),
+      ),
+      (
+        "m_crow",
+        ClsId::AiCrow,
+        AlifeObjectInherited::CseAlifeCreatureCrow(Box::new(AlifeObjectCreature::new_mock(position.clone()))),
+      ),
+      (
+        "m_phantom",
+        ClsId::AiPhant,
+        AlifeObjectInherited::CseAlifeCreaturePhantom(Box::new(AlifeObjectCreature::new_mock(position.clone()))),
+      ),
+      (
+        "script_object",
+        ClsId::ScrptObj,
+        AlifeObjectInherited::CseAlifeDynamicObjectVisual(Box::new(visual.clone())),
+      ),
+      (
+        "search_light",
+        ClsId::OSearch,
+        AlifeObjectInherited::CseAlifeObjectProjector(Box::new(visual.clone())),
+      ),
+      (
+        "ph_skeleton_object",
+        ClsId::PSkelet,
+        AlifeObjectInherited::CseAlifePhSkeletonObject(Box::new(AlifeObjectPhSkeletonObject {
+          base: visual.clone(),
+          skeleton,
+        })),
+      ),
+      (
+        "stationary_mgun",
+        ClsId::WSTMGun,
+        AlifeObjectInherited::CseAlifeStationaryMGun(Box::new(AlifeObjectStationaryMgun {
+          base: visual,
+          update_working: 0,
+          update_enemy_direction: [0.0, 0.0, 1.0].map(RawFloat::from),
+        })),
+      ),
+      (
+        "online_offline_group",
+        ClsId::OnOffS,
+        AlifeObjectInherited::SimSquadScripted(Box::new(AlifeSquad {
+          base: AlifeObjectOnlineOfflineGroup::new_mock(vec![]),
+          current_target_id: None,
+          respawn_point_id: None,
+          respawn_point_section: None,
+          assigned_terrain_id: None,
+        })),
+      ),
+    ] {
+      let mut original: AlifeObject = new_graph_point_object();
+
+      original.section = String::from(section);
+      original.clsid = clsid;
+      original.inherited = inherited;
+
+      let mut writer: ChunkWriter = ChunkWriter::new();
+
+      original.write::<XRayByteOrder>(&mut writer)?;
+
+      let mut reader: ChunkReader<InMemoryChunkDataSource> =
+        ChunkReader::from_vec(writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?.read_child_by_index(0)?;
+
+      assert_eq!(
+        AlifeObject::read::<XRayByteOrder, _>(&mut reader)?,
+        original,
+        "{section}"
+      );
     }
 
     Ok(())

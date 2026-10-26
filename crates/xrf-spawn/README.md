@@ -35,7 +35,11 @@ less when less is needed:
 An alife object is chunk-framed and its reader asserts full consumption, so a misread class fails that object rather
 than desynchronizing the next one. `ClsId::from_section` maps a section to its class, which gives the object's identity
 and so which server-class reader (`AlifeObjectInherited`) parses its payload; scripted fields at the tail are read from
-the object's remaining byte budget. An object at spawn version 120 or below is refused (Call of Pripyat and Anomaly
+the object's remaining byte budget. Every class Call of Pripyat creates from a spawn has a reader, by its engine
+registry (`object_factory_register.cpp`) and its scripts' (`class_registrator.script`), and those no shipped spawn
+holds are checked against packets a running game wrote for a new object of each; a rocket's section maps to
+`AlifeClass::Unknown`, since `CSE_Temporary` is no alife object, and multiplayer and Shadow of Chernobyl sections
+(spectator, team base, rat, flesh and spawn groups, the mounted weapon) map to no class at all. An object at spawn version 120 or below is refused (Call of Pripyat and Anomaly
 write 128), and so is a section with no known class. Stored values are kept as written rather than normalized the way
 the engine's `STATE_Read` would, and `LastSpawnTime` keeps its three states (`Absent`, `Unset`, `Set`) apart. An
 object's client data and an item's upgrade sections are read as the engine reads them.
@@ -80,12 +84,14 @@ and writes both packets together (`AlifePacketsReadWrite`).
 | Every item                | `update_state`: the physics state, `None` for the zero byte standing in for none    |
 | Physic object             | `update_state`, as an item's, which a single player game never applies             |
 | Outfit, helmet            | `update_condition` after the item's                                                 |
+| Torch                     | `update_flags` after the item's: light, night vision and attached                   |
+| Stationary machine gun    | `update_working` and `update_enemy_direction`, which a new gun leaves uninitialised |
 | Ammo                      | `update_ammo_left` after the item's                                                 |
 | Weapon                    | condition, weapon flags, rounds loaded, addons, ammo type, state and zoom           |
 | Magazined weapon          | `update_fire_mode` after the weapon's                                               |
 | With a grenade launcher   | `update_grenade_mode`, which opens the packet ahead of every inherited field        |
 | Shotgun (magazined)       | `update_ammo_ids`, a byte counting the shells loaded, after the magazined weapon's  |
-| Creature                  | health, timestamp, flags, position, model and torso angles, team, squad and group   |
+| Creature, crow, phantom   | health, timestamp, flags, position, model and torso angles, team, squad and group   |
 | Monster, human            | the game vertices it walks between and its distances along that edge, after those   |
 | Stalker                   | `update_start_dialog` after the monster's                                           |
 | Actor                     | movement state, two `ScaledDirection`s, radiation, weapon, then `update_body`       |

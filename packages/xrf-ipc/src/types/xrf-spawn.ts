@@ -384,7 +384,37 @@ export type AlifeObjectInherited =
     } & AlifeObjectItemWeaponMagazined)
   | ({
       type: "CseAlifeItemWeaponMagazinedWGl";
-    } & AlifeObjectItemWeaponMagazinedWgl);
+    } & AlifeObjectItemWeaponMagazinedWgl)
+  | ({
+      type: "CseAlifeItemBolt";
+    } & AlifeObjectItem)
+  | ({
+      type: "CseAlifeItemTorch";
+    } & AlifeObjectItemTorch)
+  | ({
+      type: "CseAlifeItemDocument";
+    } & AlifeObjectItemDocument)
+  | ({
+      type: "CseAlifeCreatureCrow";
+    } & AlifeObjectCreature)
+  | ({
+      type: "CseAlifeCreaturePhantom";
+    } & AlifeObjectCreature)
+  | ({
+      type: "CseAlifeDynamicObjectVisual";
+    } & AlifeObjectDynamicVisual)
+  | ({
+      type: "CseAlifeObjectProjector";
+    } & AlifeObjectDynamicVisual)
+  | ({
+      type: "CseAlifePhSkeletonObject";
+    } & AlifeObjectPhSkeletonObject)
+  | ({
+      type: "CseAlifeStationaryMGun";
+    } & AlifeObjectStationaryMgun)
+  | ({
+      type: "SimSquadScripted";
+    } & AlifeSquad);
 
 export type AlifeObjectInventoryBox = {
   base: AlifeObjectDynamicVisual;
@@ -429,6 +459,16 @@ export type AlifeObjectItemDetector = {
   base: AlifeObjectItem;
 };
 
+/**
+ * A document, `CSE_ALifeItemDocument`: an item whose spawn packet closes with the info portion reading it gives; its
+ * update packet is the item's.
+ */
+export type AlifeObjectItemDocument = {
+  base: AlifeObjectItem;
+  /** The info portion, `m_wDoc`. */
+  infoPortion: string;
+};
+
 /** An explosive, `CSE_ALifeItemExplosive`, which adds nothing to either packet of the item it is. */
 export type AlifeObjectItemExplosive = {
   base: AlifeObjectItem;
@@ -451,6 +491,16 @@ export type AlifeObjectItemPda = {
   owner: number;
   character: string;
   infoPortion: string;
+};
+
+/**
+ * A torch, `CSE_ALifeItemTorch`, whose update packet closes with a byte of whether its light and night vision are on
+ * and whether it is attached; its spawn packet is the item's.
+ */
+export type AlifeObjectItemTorch = {
+  base: AlifeObjectItem;
+  /** `eTorchActive`, `eNightVisionActive` and `eAttached` in its three low bits. */
+  updateFlags: number;
 };
 
 /**
@@ -533,6 +583,25 @@ export type AlifeObjectMotion = {
   motionName: string;
 };
 
+/**
+ * A squad's server object, `CSE_ALifeOnlineOfflineGroup`: the alife object, then a `u32` count of its members' object
+ * ids. Its update packet is empty.
+ */
+export type AlifeObjectOnlineOfflineGroup = {
+  base: AlifeObjectDynamic;
+  /** The members' object ids, `m_members`, which the game assigns when it creates them. */
+  members: Array<number>;
+};
+
+/**
+ * A physics skeleton object, `CSE_ALifePHSkeletonObject`: a visual with a physics skeleton, such as a corpse left as
+ * a prop. Its update packet is empty.
+ */
+export type AlifeObjectPhSkeletonObject = {
+  base: AlifeObjectDynamicVisual;
+  skeleton: AlifeObjectSkeleton;
+};
+
 export type AlifeObjectPhysic = {
   base: AlifeObjectDynamicVisual;
   skeleton: AlifeObjectSkeleton;
@@ -573,6 +642,18 @@ export type AlifeObjectSpaceRestrictor = {
   base: AlifeObjectAbstract;
   shape: Array<Shape>;
   restrictorType: number;
+};
+
+/**
+ * A stationary machine gun, `CSE_ALifeStationaryMgun`: a visual whose update packet carries whether it fires and
+ * where it aims. The engine leaves both uninitialised in a new gun, so the aim keeps the bits it is stored in.
+ */
+export type AlifeObjectStationaryMgun = {
+  base: AlifeObjectDynamicVisual;
+  /** Whether it fires, `m_bWorking`, one byte. */
+  updateWorking: number;
+  /** The direction it aims at its enemy in, `m_destEnemyDir`. */
+  updateEnemyDirection: [RawFloat, RawFloat, RawFloat];
 };
 
 export type AlifeObjectTorridZone = {
@@ -635,6 +716,23 @@ export type AlifeSmartZone = {
 };
 
 /**
+ * A squad as its script class saves one, `sim_squad_scripted` in vanilla and `Squad` in xrf-engine: both follow the
+ * group's fields with four `tostring` strings closed by a save marker - its target, its respawn point and the section
+ * that point spawns, and its smart terrain - and add nothing to the update packet.
+ */
+export type AlifeSquad = {
+  base: AlifeObjectOnlineOfflineGroup;
+  /** The object the squad heads for, `current_target_id`. */
+  currentTargetId: number | null;
+  /** The smart terrain that respawns it, `respawn_point_id`. */
+  respawnPointId: number | null;
+  /** The respawn section it was spawned from, `respawn_point_prop_section`. */
+  respawnPointSection: string | null;
+  /** The smart terrain it is assigned to, `smart_id` (`assignedTerrainId` in xrf-engine). */
+  assignedTerrainId: number | null;
+};
+
+/**
  * A stalker as its script class `se_stalker` saves one: vanilla's `se_stalker.script` and xrf-engine's `Stalker.ts`
  * both follow the server class's spawn fields with the offline state and whether the corpse's loot was dropped,
  * unmarked, and add nothing to the update packet.
@@ -670,12 +768,8 @@ export type ArtefactSpawnPoint = {
 /** todo: Add script to parse system ltx and read all the data from ltx/txt file instead. */
 export enum EClsId {
   AI_CROW = "AiCrow",
-  AI_FLE_G = "AiFleG",
   AI_GRAPH = "AiGraph",
   AI_PHANT = "AiPhant",
-  AI_RAT = "AiRat",
-  AI_RAT_G = "AiRatG",
-  AI_SP_GRP = "AiSpGrp",
   AI_STL_S = "AiStlS",
   AI_TRD_S = "AiTrdS",
   AMMO_S = "AmmoS",
@@ -704,10 +798,10 @@ export enum EClsId {
   O_DSTR_S = "ODstrS",
   O_PHYS_S = "OPhysS",
   O_SEARCH = "OSearch",
+  ON_OFF_S = "OnOffS",
   P_SKELET = "PSkelet",
   S_ACTOR = "SActor",
   S_EXPLO = "SExplo",
-  S_FACTION = "SFaction",
   S_FOOD = "SFood",
   S_INV_BOX = "SInvBox",
   SM209 = "SM209",
@@ -736,9 +830,7 @@ export enum EClsId {
   SMRT_TRRN = "SmrtTrrn",
   SO_H_LAMP = "SoHLamp",
   SPC_RS_S = "SpcRsS",
-  SPECT = "Spect",
   TORCH_S = "TorchS",
-  W_MOUNTD = "WMountd",
   WSTM_GUN = "WSTMGun",
   WP_AK74 = "WpAk74",
   WP_ASH_TG = "WpAshTG",
@@ -768,7 +860,6 @@ export enum EClsId {
   Z_NO_GRAV = "ZNoGrav",
   Z_RADIO = "ZRadio",
   Z_RUSTY_H = "ZRustyH",
-  Z_TEAM_BS = "ZTeamBs",
   Z_TORRID = "ZTorrid",
   ZS_AMEBA = "ZsAmeba",
   ZS_B_FUZZ = "ZsBFuzz",
