@@ -1,4 +1,5 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::mem;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_skeleton::SkeletonMotionFlag;
@@ -18,22 +19,14 @@ impl OmfMotionsProcessor {
     Self::assert_motions_are_paired(file, "filtering")?;
 
     let renumber: bool = Self::has_ordinal_motion_ids(file);
-    let retained: Vec<bool> = file.parameters.motions.iter().map(|it| predicate(&it.name)).collect();
+    let count: usize = file.parameters.motions.len();
 
-    let removed_count: usize = retained.iter().filter(|it| !**it).count();
-    let mut retained_iter = retained.iter();
-
-    file
-      .parameters
-      .motions
-      .retain(|_| *retained_iter.next().expect("Retained flag for each motion definition"));
-
-    let mut retained_iter = retained.iter();
-
-    file
-      .motions
-      .motions
-      .retain(|_| *retained_iter.next().expect("Retained flag for each motion"));
+    // Taken as pairs so a definition and its payload are kept or dropped together.
+    (file.parameters.motions, file.motions.motions) = mem::take(&mut file.parameters.motions)
+      .into_iter()
+      .zip(mem::take(&mut file.motions.motions))
+      .filter(|(definition, _)| predicate(&definition.name))
+      .unzip();
 
     if renumber {
       for (ordinal, definition) in file.parameters.motions.iter_mut().enumerate() {
@@ -42,12 +35,23 @@ impl OmfMotionsProcessor {
       }
     }
 
-    Ok(removed_count)
+    Ok(count - file.parameters.motions.len())
   }
 
   /// Rename motions using the provided old name to new name map.
   pub fn rename_motions(file: &mut OmfFile, renames: &HashMap<String, String>) -> XrfResult<usize> {
     Self::assert_motions_are_paired(file, "renaming")?;
+    Self::assert_introduced_names_are_unique(
+      &file
+        .parameters
+        .motions
+        .iter()
+        .map(|it| match renames.get(&it.name) {
+          Some(renamed) => (renamed.as_str(), true),
+          None => (it.name.as_str(), false),
+        })
+        .collect::<Vec<_>>(),
+    )?;
 
     let mut renamed_count: usize = 0;
 
@@ -64,8 +68,6 @@ impl OmfMotionsProcessor {
       renamed_count += 1;
     }
 
-    Self::assert_motion_names_are_unique(file)?;
-
     Ok(renamed_count)
   }
 
@@ -79,6 +81,15 @@ impl OmfMotionsProcessor {
       .iter()
       .position(|it| it.name == from)
       .ok_or_else(|| XrfError::new_not_found_error(format!("Motion '{from}' was not found in the omf file")))?;
+
+    Self::assert_introduced_names_are_unique(
+      &file
+        .get_motion_names()
+        .into_iter()
+        .map(|name| (name, false))
+        .chain([(to, true)])
+        .collect::<Vec<_>>(),
+    )?;
 
     let renumber: bool = Self::has_ordinal_motion_ids(file);
 
@@ -104,8 +115,6 @@ impl OmfMotionsProcessor {
     file.parameters.motions.push(definition);
     file.motions.motions.push(motion);
 
-    Self::assert_motion_names_are_unique(file)?;
-
     Ok(())
   }
 
@@ -128,15 +137,22 @@ impl OmfMotionsProcessor {
     )
   }
 
-  /// Guard that no two motions share a name, which would make one of them unreachable.
-  fn assert_motion_names_are_unique(file: &OmfFile) -> XrfResult {
-    let mut seen: HashSet<&str> = HashSet::new();
+  /// Guard, ahead of any change, that every name an edit introduces is unique among the names it would leave, as the
+  /// engine keys them.
+  ///
+  /// `motions_value::load` maps each definition by its lowercased name (`xr_strlwr`) and keeps the first it maps, so two
+  /// names differing only in case leave the later one unreachable. A collision the bank already holds is left alone.
+  fn assert_introduced_names_are_unique(names: &[(&str, bool)]) -> XrfResult {
+    let mut counts: HashMap<String, usize> = HashMap::new();
 
-    for definition in &file.parameters.motions {
-      if !seen.insert(&definition.name) {
+    for (name, _) in names {
+      *counts.entry(name.to_ascii_lowercase()).or_default() += 1;
+    }
+
+    for (name, is_introduced) in names {
+      if *is_introduced && counts[&name.to_ascii_lowercase()] > 1 {
         return Err(XrfError::new_invalid_error(format!(
-          "Motion name '{}' is duplicated, motion names must be unique within a file",
-          definition.name
+          "Motion name '{name}' is duplicated ignoring case, as the engine keys motions, names must be unique within a file"
         )));
       }
     }
@@ -362,6 +378,52 @@ mod tests {
 
     assert!(OmfMotionsProcessor::duplicate_motion(&mut file, "pm_idle", "pm_shoot", true).is_err());
   }
+
+  #[test]
+  fn refuses_a_rename_the_engine_would_key_onto_another_motion_and_changes_nothing() {
+    // The engine lowercases names before mapping them, so `PM_Shoot` would hide behind `pm_shoot`.
+    let mut file: OmfFile = new_named_mock(&["pm_idle", "pm_shoot"]);
+    let renames: HashMap<String, String> = HashMap::from([(String::from("pm_idle"), String::from("PM_Shoot"))]);
+
+    let error: String = OmfMotionsProcessor::rename_motions(&mut file, &renames)
+      .expect_err("expect a case-only collision to be refused")
+      .to_string();
+
+    assert!(
+      error.contains("'PM_Shoot' is duplicated ignoring case"),
+      "Unexpected error: {error}"
+    );
+    assert_eq!(file.get_motion_names(), vec!["pm_idle", "pm_shoot"]);
+    assert_eq!(file.motions.motions[0].label, "pm_idle");
+  }
+
+  #[test]
+  fn refuses_a_copy_the_engine_would_key_onto_another_motion_and_changes_nothing() {
+    let mut file: OmfFile = new_named_mock(&["pm_idle", "pm_shoot"]);
+
+    assert!(OmfMotionsProcessor::duplicate_motion(&mut file, "pm_idle", "PM_SHOOT", true).is_err());
+    assert_eq!(file.get_motion_names(), vec!["pm_idle", "pm_shoot"]);
+    assert_eq!(file.motions.motions.len(), 2);
+  }
+
+  #[test]
+  fn edits_a_bank_already_holding_a_case_collision() -> XrfResult {
+    // Refusing every edit of a third-party bank over a collision it shipped with would leave it uneditable.
+    let mut file: OmfFile = new_named_mock(&["pm_idle", "PM_Idle", "pm_shoot"]);
+    let renames: HashMap<String, String> = HashMap::from([(String::from("pm_shoot"), String::from("pm_fire"))]);
+
+    assert_eq!(OmfMotionsProcessor::rename_motions(&mut file, &renames)?, 1);
+
+    OmfMotionsProcessor::duplicate_motion(&mut file, "pm_fire", "pm_fire_once", true)?;
+
+    assert_eq!(
+      file.get_motion_names(),
+      vec!["pm_idle", "PM_Idle", "pm_fire", "pm_fire_once"]
+    );
+
+    Ok(())
+  }
+
   #[test]
   fn test_retain_motions_preserves_non_ordinal_motion_ids() -> XrfResult {
     let mut file: OmfFile = new_divergent_mock(&["first", "second", "third"]);
