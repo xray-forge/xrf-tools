@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::thm_bump_mode::ThmBumpMode;
+use crate::bump::thm_bump_mode::ThmBumpMode;
 
 /// Outcome of a guarded thm bump patch.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

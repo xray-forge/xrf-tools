@@ -194,6 +194,10 @@ export function mockTextureVocabulary(overrides: Partial<TextureVocabulary> = {}
       { label: "ttImage", value: 0 },
       { label: "ttTerrain", value: 4 },
     ],
+    typeChanges: [
+      { clearedFlags: 0, format: null, mipFilter: null, setFlags: 0, textureType: 0 },
+      { clearedFlags: 1, format: 0, mipFilter: null, setFlags: 1 << 24, textureType: 4 },
+    ],
     ...overrides,
   };
 }

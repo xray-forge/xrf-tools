@@ -1,36 +1,35 @@
 #![doc = include_str!("../README.md")]
 
+pub(crate) mod bump;
 pub(crate) mod chunks;
-pub mod thm_bump_mode;
-pub mod thm_bump_patch_report;
-pub mod thm_bump_processor;
-pub(crate) mod thm_detail_usage;
+pub(crate) mod object;
+pub(crate) mod sound;
+pub(crate) mod texture;
 pub(crate) mod thm_file;
-pub(crate) mod thm_format;
-pub(crate) mod thm_material;
-pub(crate) mod thm_mip_filter;
-pub(crate) mod thm_texture_flag;
-pub(crate) mod thm_texture_flags;
-pub(crate) mod thm_texture_type;
+pub(crate) mod thm_kind;
 
 #[cfg(test)]
 mod tests;
 
-pub use crate::chunks::thm_bump_chunk::*;
-pub use crate::chunks::thm_detail_chunk::*;
-pub use crate::chunks::thm_extra_chunk::*;
-pub use crate::chunks::thm_material_chunk::*;
-pub use crate::chunks::thm_texture_param_chunk::*;
-pub use crate::chunks::thm_thumbnail_chunk::*;
+pub use crate::bump::thm_bump_mode::ThmBumpMode;
+pub use crate::bump::thm_bump_patch_report::ThmBumpPatchReport;
+pub use crate::bump::thm_bump_processor::ThmBumpProcessor;
+pub use crate::chunks::thm_bump_chunk::ThmBumpChunk;
+pub use crate::chunks::thm_detail_chunk::ThmDetailChunk;
+pub use crate::chunks::thm_extra_chunk::ThmExtraChunk;
+pub use crate::chunks::thm_material_chunk::ThmMaterialChunk;
+pub use crate::chunks::thm_texture_param_chunk::ThmTextureParamChunk;
+pub use crate::chunks::thm_thumbnail_chunk::ThmThumbnailChunk;
 pub use crate::chunks::thm_trailing_bytes::ThmTrailingBytes;
-pub use crate::thm_bump_mode::*;
-pub use crate::thm_bump_patch_report::*;
-pub use crate::thm_bump_processor::*;
-pub use crate::thm_detail_usage::*;
-pub use crate::thm_file::*;
-pub use crate::thm_format::*;
-pub use crate::thm_material::*;
-pub use crate::thm_mip_filter::*;
-pub use crate::thm_texture_flag::*;
-pub use crate::thm_texture_flags::*;
-pub use crate::thm_texture_type::*;
+pub use crate::object::thm_group_file::ThmGroupFile;
+pub use crate::object::thm_object_file::ThmObjectFile;
+pub use crate::sound::thm_sound_file::ThmSoundFile;
+pub use crate::texture::thm_detail_usage::ThmDetailUsage;
+pub use crate::texture::thm_format::ThmFormat;
+pub use crate::texture::thm_material::ThmMaterial;
+pub use crate::texture::thm_mip_filter::ThmMipFilter;
+pub use crate::texture::thm_texture_flag::ThmTextureFlag;
+pub use crate::texture::thm_texture_flags::ThmTextureFlags;
+pub use crate::texture::thm_texture_type::ThmTextureType;
+pub use crate::thm_file::ThmFile;
+pub use crate::thm_kind::ThmKind;

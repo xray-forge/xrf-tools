@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-use crate::thm_bump_mode::ThmBumpMode;
+use crate::bump::thm_bump_mode::ThmBumpMode;
 
 /// Bump declaration of a texture, `THM_CHUNK_BUMP` in the engine (`ETextureParams.h:190`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

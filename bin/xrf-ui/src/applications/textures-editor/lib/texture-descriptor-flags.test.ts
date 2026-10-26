@@ -18,4 +18,12 @@ describe("texture flag words", () => {
     expect(withTextureFlag(unnamed, 1, true)).toBe(unnamed | 1);
     expect(withTextureFlag(unnamed | 1, 1, false)).toBe(unnamed);
   });
+
+  it("should keep a set top bit unsigned", () => {
+    // JavaScript's bitwise operators answer signed, and the backend refuses a negative flag word.
+    const top: number = 2 ** 31;
+
+    expect(withTextureFlag(top, 1, true)).toBe(top + 1);
+    expect(withTextureFlag(top + 1, 1, false)).toBe(top);
+  });
 });

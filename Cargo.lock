@@ -8621,10 +8621,12 @@ name = "xrf-thm"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "image",
  "serde",
  "serde_json",
  "xrf-chunk",
  "xrf-error",
+ "xrf-lzhuf",
  "xrf-test-utils",
  "xrf-utils",
 ]

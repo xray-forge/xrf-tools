@@ -2,7 +2,7 @@
 
 Reads, edits and writes `.thm` texture descriptors: the file beside a texture that says how the converter builds it,
 what the engine loads it as, and the bump pair beside it; the SDK's `STextureParams` wrapped in an
-`ETextureThumbnail`. `ThmFile` holds one.
+`ETextureThumbnail`. `ThmFile` holds one. The SDK's other thumbnails share the extension and are read here too.
 [xrf-material](../xrf-material/README.md) resolves what a descriptor makes the renderer bind,
 [xrf-texture](../xrf-texture/README.md) builds a texture from one, and the CLI's `thm patch-bump`, the texture verifier,
 and the desktop app's texture editor and archive describer read and write them.
@@ -41,6 +41,42 @@ Read a descriptor with `read_from_path`, `read_from_file`, `read_from_bytes` for
 `read_from_chunk`. Write one with `write_to_path`, which creates missing parent directories, `write_to_bytes`, or
 `write_to` for any writer. `ThmFile::new_texture` is a descriptor with the values the SDK starts a new one at;
 `ThmFile::default` has no chunk at all.
+
+`change_texture_type` sets the type the way the SDK's editor does (`STextureParams::OnTypeChange`), not just the
+field. A bump map loses its mip maps. A normal map gains mip maps, the Kaiser filter and RGBA, and loses implicit
+lighting. A terrain loses its mip maps, is lit implicitly and becomes DXT1. Both of the last two drop the flags only
+the converter's colour path reads. `ThmTextureType`'s `get_cleared_flags`, `get_set_flags`, `get_format` and
+`get_mip_filter` give each part, so the desktop app's form makes the same change. Assigning `texture_type` directly
+changes nothing else.
+
+## Previews
+
+`ThmThumbnailChunk::decode` turns the stored preview into a 128 by 128 RGBA image. It decompresses LZHUF when the
+chunk carries the compression mark, and it turns the SDK's layout around: `D3DCOLOR` pixels as B, G, R, A bytes,
+bottom row first. `ThmThumbnailChunk::encode` is the reverse and stores the result compressed, as the SDK saves it.
+Both refuse a picture or payload of any other size. The 11 previews in Anomaly's descriptors decode to their textures
+the right way up.
+
+## Other thumbnails
+
+The SDK writes a `.thm` for objects, object groups and sounds as well as textures. `ThmKind::detect` reads the version
+and type chunks and says which reader a file takes. It answers none for a pair no SDK reader accepts. Both chunks
+decide it. A group is stamped with the object's type and told apart only by its version. An object's parameter chunk
+reuses the texture material chunk's id, so its counts would read as a material if nothing checked the kind first.
+
+| Kind      | Reader          | Version  | Type | Fields                                                                    |
+| --------- | --------------- | -------- | ---- | ------------------------------------------------------------------------- |
+| `Texture` | `ThmFile`       | `0x0012` | `1`  | As below                                                                  |
+| `Object`  | `ThmObjectFile` | `0x0012` | `0`  | Preview, face and vertex counts in `0x0816`                               |
+| `Group`   | `ThmGroupFile`  | `0x0001` | `0`  | Preview, the object names in `0x0001`                                     |
+| `Sound`   | `ThmSoundFile`  | `0x0014` | `2`  | Quality, distances and game type in `0x1000`; base volume, AI distance    |
+
+Each reader refuses a file of another kind and requires its parameter chunk. `ThmSoundFile` keeps the base volume
+(`0x1001`) and AI distance (`0x1002`) chunks optional, because older sounds lack them. `get_base_volume` and
+`get_max_ai_distance` fall back as the SDK does, to `1` and to the maximum distance. A file without those chunks is
+written back without them. Each reader keeps unknown chunks and trailing bytes as `ThmFile` does. No game ships these
+thumbnails; they sit only in the SDK's rawdata, so the readers are checked against the SDK's source and synthetic
+files.
 
 ## Chunks and preservation
 
@@ -86,8 +122,10 @@ A dry run writes nothing. The returned `ThmBumpPatchReport` gives both sizes and
 
 ## Errors and checks
 
-Reads reject a file that cannot be opened and a known chunk too short for its fields. They do not reject another
-version or thumbnail type; ask `is_supported_version` and `is_texture_thumbnail`.
+Reads reject a file that cannot be opened and a known chunk too short for its fields. `ThmFile` does not reject
+another version or thumbnail type; ask `is_supported_version` and `is_texture_thumbnail`, or `ThmKind::detect`.
 
-Run `cargo test --locked -p xrf-thm` from the repository root. See the [descriptor](src/thm_file.rs),
-[bump patcher](src/thm_bump_processor.rs), [chunks](src/chunks), and [round-trip tests](src/tests/round_trip.rs).
+Run `cargo test --locked -p xrf-thm` from the repository root. See the [descriptor](src/thm_file.rs), its
+[enumerations](src/texture), the [bump patcher](src/bump/thm_bump_processor.rs), the [object and group](src/object)
+and [sound](src/sound) thumbnails, the [chunks](src/chunks), and the [round-trip](src/tests/round_trip.rs) and
+[thumbnail](src/tests/thumbnails.rs) tests.

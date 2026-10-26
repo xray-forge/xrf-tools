@@ -18,8 +18,8 @@ export function hasTextureFlag(flags: number, bit: number): boolean {
  * @param flags - The whole word as the descriptor stores it.
  * @param bit - The bit to change.
  * @param isSet - What to set it to.
- * @returns The new word.
+ * @returns The new word, unsigned as the backend reads it.
  */
 export function withTextureFlag(flags: number, bit: number, isSet: boolean): number {
-  return isSet ? flags | bit : flags & ~bit;
+  return (isSet ? flags | bit : flags & ~bit) >>> 0;
 }

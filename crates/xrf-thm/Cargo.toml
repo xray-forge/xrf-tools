@@ -10,10 +10,12 @@ path = "src/lib.rs"
 
 [dependencies]
 byteorder = { workspace = true }
+image = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-error = { workspace = true }
+xrf-lzhuf = { workspace = true }
 xrf-utils = { workspace = true }
 
 [dev-dependencies]
