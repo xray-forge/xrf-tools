@@ -1,6 +1,7 @@
 import { inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
+import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { texturesCommands } from "@xrf/ipc/commands/textures";
 import {
   TextureDescription,
@@ -22,7 +23,6 @@ import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { getTextureIdentity } from "@/core/textures/lib/texture-identity";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The descriptor being edited: what is on disk, what has been typed over it, and the save that publishes the two.

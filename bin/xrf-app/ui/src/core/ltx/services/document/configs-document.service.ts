@@ -2,6 +2,7 @@ import { inject, Injectable } from "@wirestate/core";
 import { Computed, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { configsCommands } from "@xrf/ipc/commands/configs";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
@@ -14,7 +15,6 @@ import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
-import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /** The two ways one config can be read. */
 export enum EConfigsDocumentMode {

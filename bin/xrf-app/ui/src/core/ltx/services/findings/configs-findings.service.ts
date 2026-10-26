@@ -2,6 +2,7 @@ import { inject, Injectable } from "@wirestate/core";
 import { Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { configsCommands } from "@xrf/ipc/commands/configs";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
@@ -11,7 +12,6 @@ import { Nullable } from "@xrf/types";
 
 import { toOrderedFindings } from "@/core/ltx/lib/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
-import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**
  * Everything wrong with one resolved root.

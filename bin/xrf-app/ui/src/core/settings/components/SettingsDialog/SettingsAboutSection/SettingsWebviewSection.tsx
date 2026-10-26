@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
-import { usePolledValue } from "@/lib/react";
+import { usePolledValue } from "@/lib/react/use-polled-value";
 
 import { IWebviewStats, readWebviewStats } from "./webview-stats";
 

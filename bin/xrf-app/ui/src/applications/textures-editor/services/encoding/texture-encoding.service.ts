@@ -2,6 +2,7 @@ import { inject, Injectable, OnDeactivation, OnEvent, WireEvent } from "@wiresta
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { fetchBulk, toEnumMember } from "@xrf/ipc";
 import { texturesCommands } from "@xrf/ipc/commands/textures";
@@ -24,7 +25,6 @@ import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { getTextureIdentity } from "@/core/textures/lib/texture-identity";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**
  * What every format would cost this texture, and which one the editor is holding for a save.

@@ -1,4 +1,5 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { spawnCommands } from "@xrf/ipc/commands/spawn";
 import { SPAWN_JOB_PACK, SPAWN_JOB_UNPACK, SpawnConversionResult } from "@xrf/ipc/types/xrf-app-spawn";
 import { Logger } from "@xrf/logging";
@@ -7,7 +8,6 @@ import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { describeSpawnConversionOutcome } from "@/core/spawn/lib/describe-spawn-conversion-outcome";
-import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /** Standalone spawn conversions share one lane and remain visible through the root jobs service. */
 @Injectable()

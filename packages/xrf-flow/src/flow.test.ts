@@ -1,11 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
 
-import { noop } from "@/lib/callbacks/noop";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx/flow";
+import { call } from "#/calls";
+import { ExclusiveFlow, LatestFlow } from "#/decorators";
+import { TFlow } from "#/types";
 
 function deferred() {
-  let resolve: (result: number) => void = noop;
+  // The executor runs before the constructor returns, so this is always assigned by the time it is read.
+  let resolve!: (result: number) => void;
   const promise = new Promise<number>((settle) => {
     resolve = settle;
   });

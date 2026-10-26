@@ -1,7 +1,7 @@
 import { flow } from "@wirestate/mobx";
 
-import { runExclusiveFlow, runLatestFlow } from "@/lib/mobx/flow/lanes";
-import { TCancellablePromise } from "@/lib/mobx/flow/types";
+import { runExclusiveFlow, runLatestFlow } from "#/lanes";
+import { TCancellablePromise } from "#/types";
 
 /**
  * A flow decorator, with the decorated class in an inference position.
@@ -23,8 +23,8 @@ type TFlowGenerator = (...args: Array<any>) => Generator<any, any, any>;
  * run, which is where a lane releases anything it had already taken.
  *
  * @param lane - Name shared by every method feeding one lane, so they supersede each other. Defaults to the method's
- *   own name, which is right when a lane has a single entry point. `load` and `restore` both fill the open visual, so
- *   they name the lane instead: a restore that lands after a load must not publish over it.
+ *   own name, which is right when a lane has a single entry point. A `load` and a `restore` filling the same field name
+ *   that field's lane instead: a restore that lands after a load must not publish over it.
  * @returns The method decorator that wraps the generator.
  */
 export function LatestFlow<T = object>(lane?: keyof T): TFlowDecorator<T> {
@@ -76,7 +76,7 @@ export function ExclusiveFlow<T = object>(lane?: keyof T): TFlowDecorator<T> {
  * Publishes a wrapped flow as a method bound to its instance on first read.
  *
  * Bound the way `action.bound` binds, because these are handed to React as callbacks: a component passing
- * `onLoad={service.loadPatrols}` detaches the method from its instance, and an unbound one would run with no `this`.
+ * `onLoad={service.load}` detaches the method from its instance, and an unbound one would run with no `this`.
  *
  * @param key - Method name being replaced.
  * @param run - Wrapped implementation to bind.

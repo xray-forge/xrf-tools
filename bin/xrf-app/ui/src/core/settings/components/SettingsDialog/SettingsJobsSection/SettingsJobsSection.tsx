@@ -11,7 +11,7 @@ import { cn } from "@/core/theme/class-name";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { useForceUpdate } from "@/lib/react";
+import { useForceUpdate } from "@/lib/react/use-force-update";
 
 import { SettingsJobsRun } from "./SettingsJobsRun";
 

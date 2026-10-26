@@ -11,7 +11,7 @@ import { BrowserRouter } from "react-router-dom";
 import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
 import { THEME_STORAGE_KEY } from "@/core/storage";
 import { createApplicationStyleCache, createApplicationTheme } from "@/core/theme";
-import { isDevelopmentBuild } from "@/lib/env";
+import { isDevelopmentBuild } from "@/lib/env/build-mode";
 
 interface IApplicationProviderProps {
   router?: ComponentType<PropsWithChildren>;

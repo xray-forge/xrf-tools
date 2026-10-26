@@ -7,7 +7,7 @@ import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { BaseComponentProps } from "@/lib/dom/element-types";
-import { useMountEffect } from "@/lib/react";
+import { useMountEffect } from "@/lib/react/use-mount-effect";
 
 export interface ISpawnChunkViewProps<T> extends BaseComponentProps {
   chunk: AsyncState<Nullable<T>>;

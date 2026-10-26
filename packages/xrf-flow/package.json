@@ -1,0 +1,39 @@
+{
+  "name": "@xrf/flow",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Cancellable MobX flows on named lanes: a newer call supersedes or joins the running one, a cancelled run publishes nothing, and a released service's runs are abandoned.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "imports": {
+    "#/*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "lint": "eslint . --max-warnings 0 --cache --cache-location target/eslint/cache.json --cache-strategy content",
+    "format": "prettier --write --ignore-path ../../.prettierignore \"**/*.(js|cjs|mjs|ts|md)\" && pnpm run lint --fix"
+  },
+  "dependencies": {
+    "@xrf/logging": "workspace:*",
+    "@xrf/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "@wirestate/core": "1.0.0",
+    "@wirestate/mobx": "1.0.0"
+  },
+  "devDependencies": {
+    "@jest/globals": "catalog:",
+    "@typescript/native": "catalog:",
+    "@wirestate/core": "1.0.0",
+    "@wirestate/mobx": "1.0.0",
+    "eslint": "catalog:",
+    "jest": "catalog:",
+    "mobx": "^6.16.1",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "@xrf/toolchain": "workspace:*"
+  }
+}

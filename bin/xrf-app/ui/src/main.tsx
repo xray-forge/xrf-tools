@@ -7,7 +7,7 @@ import { ApplicationRouter } from "@/ApplicationRouter";
 import { ErrorBoundary } from "@/core/error/components/ErrorBoundary";
 import { RootCrash } from "@/core/error/components/RootCrash";
 import { persistIpcProfiling } from "@/core/settings/lib/ipc-profiling";
-import { suppressNativeContextMenu } from "@/lib/dom/event";
+import { suppressNativeContextMenu } from "@/lib/dom/event/context-menu";
 
 Logger.info("Start application");
 

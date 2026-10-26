@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { Container, Injectable, OnDeactivation, OnProvision, WireStatus } from "@wirestate/core";
 import { flowResult, isObservableProp, Observable, reaction } from "@wirestate/mobx";
+import { call, LatestFlow, TFlow } from "@xrf/flow";
 
 import { noop } from "@/lib/callbacks/noop";
-import { call, LatestFlow, TFlow } from "@/lib/mobx";
 
 import { createContainerPlugins } from "./plugins";
 

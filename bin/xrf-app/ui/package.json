@@ -42,6 +42,7 @@
     "@wirestate/react-mobx": "1.0.0",
     "@xrf/async": "workspace:*",
     "@xrf/errors": "workspace:*",
+    "@xrf/flow": "workspace:*",
     "@xrf/format": "workspace:*",
     "@xrf/ipc": "workspace:*",
     "@xrf/logging": "workspace:*",

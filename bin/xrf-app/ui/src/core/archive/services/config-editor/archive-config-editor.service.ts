@@ -1,5 +1,6 @@
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { transformError } from "@xrf/errors";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { JobKind } from "@xrf/ipc/types/xrf-app-core";
 import { Logger, Timer } from "@xrf/logging";
@@ -10,7 +11,6 @@ import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/arc
 import { IJobSettledPayload } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /** What every archive configuration carries that this editor reads: the packer's own volume ceiling. */
 export interface IArchiveEditedConfig {

@@ -10,7 +10,7 @@ import {
   getLocalStorageValue,
   setLocalStorageValue,
 } from "@/core/storage";
-import { isDevelopmentBuild } from "@/lib/env";
+import { isDevelopmentBuild } from "@/lib/env/build-mode";
 
 /**
  * Application wide switches that are not tied to any one editor.

@@ -1,4 +1,5 @@
 import { Window } from "@tauri-apps/api/window";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 import { useCallback, useEffect, useState } from "react";
 
@@ -27,15 +28,15 @@ export function useWindowControls(): IWindowControls {
   const [isMaximized, setMaximized] = useState<boolean>(false);
 
   const minimize = useCallback(() => {
-    appWindow?.minimize().catch(console.error);
+    appWindow?.minimize().catch(Logger.error);
   }, [appWindow]);
 
   const toggleMaximize = useCallback(() => {
-    appWindow?.toggleMaximize().catch(console.error);
+    appWindow?.toggleMaximize().catch(Logger.error);
   }, [appWindow]);
 
   const close = useCallback(() => {
-    appWindow?.close().catch(console.error);
+    appWindow?.close().catch(Logger.error);
   }, [appWindow]);
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export function useWindowControls(): IWindowControls {
             setMaximized(next);
           }
         })
-        .catch(console.error);
+        .catch(Logger.error);
     }
 
     sync();
@@ -64,7 +65,7 @@ export function useWindowControls(): IWindowControls {
 
     return () => {
       isActive = false;
-      unlisten.then((it: () => void) => it()).catch(console.error);
+      unlisten.then((it: () => void) => it()).catch(Logger.error);
     };
   }, [appWindow]);
 

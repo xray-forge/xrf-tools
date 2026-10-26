@@ -1,4 +1,5 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { translationsCommands } from "@xrf/ipc/commands/translations";
 import { TRANSLATIONS_JOB_CHECK_FORMAT, TRANSLATIONS_JOB_FORMAT } from "@xrf/ipc/types/xrf-app-translations";
 import { TranslationFormatResult } from "@xrf/ipc/types/xrf-translation";
@@ -8,7 +9,6 @@ import { describeFormatOutcome } from "@/applications/translations-formatter/lib
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The translations formatting run and what it rewrote.

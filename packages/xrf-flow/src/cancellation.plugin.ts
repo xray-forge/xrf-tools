@@ -1,6 +1,6 @@
 import { WirestatePlugin } from "@wirestate/core";
 
-import { cancelFlows } from "@/lib/mobx/flow/lanes";
+import { cancelFlows } from "#/lanes";
 
 /** Cancels service flows when their owning instance is released. */
 export class FlowCancellationPlugin implements WirestatePlugin {

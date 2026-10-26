@@ -1,8 +1,9 @@
 const swcJest = require("@swc/jest");
 
 /**
- * Compiles the package for jest with TypeScript's `experimentalDecorators` semantics, which the session layer's
- * wirestate services need for their `@Observable()` fields to be reactive, as the app compiles them.
+ * Compiles a workspace member's TypeScript for jest with TypeScript's `experimentalDecorators` semantics, as the app's
+ * bundler compiles it: wirestate's `@Observable()` fields and decorated flow methods behave as they do in the app only
+ * under these, not under the standard decorators.
  */
 module.exports = swcJest.createTransformer({
   jsc: {

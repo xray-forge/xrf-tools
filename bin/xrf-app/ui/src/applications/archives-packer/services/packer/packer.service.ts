@@ -1,5 +1,6 @@
 import { EventBus, inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
+import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { archivesCommands } from "@xrf/ipc/commands/archives";
 import { ARCHIVES_JOB_PACK } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchivePackConfig, ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
@@ -12,7 +13,6 @@ import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "
 import { JobsService } from "@/core/jobs/services/jobs";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 import { toSavedState } from "./packer.service.utils";
 

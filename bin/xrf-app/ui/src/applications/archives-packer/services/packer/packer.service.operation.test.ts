@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
+import { cancelFlows } from "@xrf/flow";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { EJobsCommand } from "@xrf/ipc/commands/jobs";
 import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
@@ -13,7 +14,6 @@ import { JobsService } from "@/core/jobs/services/jobs";
 import { mockArchivePackResult } from "@/fixtures/mocks/archive.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
-import { cancelFlows } from "@/lib/mobx";
 
 const CONFIG: ArchivePackConfig = { ...FALLBACK_PACK_CONFIG, source: "C:\\in", destination: "C:\\out" };
 const RESULT: ArchivePackResult = mockArchivePackResult();

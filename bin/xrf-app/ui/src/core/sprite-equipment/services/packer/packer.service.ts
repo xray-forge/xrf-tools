@@ -1,4 +1,5 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { spriteEquipmentCommands } from "@xrf/ipc/commands/sprite-equipment";
 import { SPRITE_EQUIPMENT_JOB_PACK } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
@@ -9,7 +10,6 @@ import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "
 import { JobCompletion, JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { describePackSpriteOutcome } from "@/core/sprite-equipment/lib";
-import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /** Packing shared by the standalone runner and the editor's repack action. */
 @Injectable()

@@ -2,6 +2,7 @@ import { Channel } from "@tauri-apps/api/core";
 import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
 import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 import { transformError } from "@xrf/errors";
+import { all, call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { jobsCommands } from "@xrf/ipc/commands/jobs";
 import { EJobConclusion, JobConclusion, JobDescription, JobKind } from "@xrf/ipc/types/xrf-app-core";
@@ -22,7 +23,6 @@ import {
 } from "@/core/jobs/lib/jobs-types";
 import { JOB_PROFILES } from "@/core/jobs/metrics";
 import { emitNotification } from "@/core/notifications/lib";
-import { all, call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**
  * Every backend job this window started, while it is running.

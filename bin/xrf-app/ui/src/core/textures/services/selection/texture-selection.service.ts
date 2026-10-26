@@ -2,6 +2,7 @@ import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { fetchBulk } from "@xrf/ipc";
 import { assetsBulkRoutes } from "@xrf/ipc/commands/assets-bulk";
@@ -13,7 +14,6 @@ import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /** A texture inspection and the search roots needed to repeat it. */
 interface ITextureSelectionRequest {

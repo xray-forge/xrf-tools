@@ -10,7 +10,7 @@ import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
-import { usePolledValue } from "@/lib/react";
+import { usePolledValue } from "@/lib/react/use-polled-value";
 
 import {
   describeWeighedCalls,

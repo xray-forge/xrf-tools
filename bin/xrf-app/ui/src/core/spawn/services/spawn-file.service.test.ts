@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
+import { cancelFlow } from "@xrf/flow";
 import { ESpawnCommand } from "@xrf/ipc/commands/spawn";
 import { IpcCommandAnswer, mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
@@ -11,7 +12,6 @@ import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/sessi
 import { mockSpawnFile, mockSpawnSession } from "@/fixtures/mocks/spawn.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
-import { cancelFlow } from "@/lib/mobx";
 
 function deferred<T>() {
   let resolve: (value: T) => void = noop;

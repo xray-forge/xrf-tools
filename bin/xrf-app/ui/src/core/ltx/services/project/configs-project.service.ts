@@ -2,6 +2,7 @@ import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core
 import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { configsCommands } from "@xrf/ipc/commands/configs";
 import { Session, SessionScopeService } from "@xrf/ipc/session";
@@ -12,7 +13,6 @@ import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**
  * Owns the configs project and addresses reads by its committed session identity.
