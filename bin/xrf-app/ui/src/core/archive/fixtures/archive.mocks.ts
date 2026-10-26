@@ -66,7 +66,7 @@ import {
 import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { ArchiveExtractDirectoryResult, ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
-import { EXrayAssetContainer, XrayAssetContainer, XrayPathCollision } from "@xrf/ipc/types/xrf-vfs";
+import { EXrayAssetContainer, EXrayMountMode, XrayAssetContainer, XrayPathCollision } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
 /**
@@ -319,7 +319,7 @@ export function mockArchivesVolumes(files?: Array<ArchiveFileDescriptor>): Archi
   return {
     kind: EArchiveSubject.VOLUMES,
     project,
-    roots: { asset: null, roots: [{ mode: "volumes", path: project.root }] },
+    roots: { asset: null, roots: [{ mode: EXrayMountMode.VOLUMES, path: project.root }] },
   };
 }
 
@@ -332,7 +332,7 @@ export function mockArchivesVolumes(files?: Array<ArchiveFileDescriptor>): Archi
 export function mockArchivesWorldSubject(files?: Array<ArchiveWorldEntry>): ArchiveSubject {
   return {
     kind: EArchiveSubject.WORLD,
-    roots: { asset: null, roots: [{ mode: "auto", path: "C:\\game" }] },
+    roots: { asset: null, roots: [{ mode: EXrayMountMode.AUTO, path: "C:\\game" }] },
     world: mockArchivesWorld(files),
   };
 }

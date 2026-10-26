@@ -10,6 +10,8 @@ import {
 import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable, Optional } from "@xrf/types";
 
+import { isLooseContainer } from "@/core/assets/lib/container";
+
 /**
  * What a texture turns out to be, once its listing and its descriptor have been joined.
  */
@@ -287,7 +289,7 @@ function collectBadges(
     badges.add(ETextureBadge.UNREFERENCED);
   }
 
-  if (entry.texture?.container.kind === "archive") {
+  if (entry.texture && !isLooseContainer(entry.texture.container)) {
     badges.add(ETextureBadge.ARCHIVED);
   }
 

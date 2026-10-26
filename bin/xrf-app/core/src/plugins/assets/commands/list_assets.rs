@@ -12,18 +12,18 @@ use crate::execution::ExecutionState;
 pub async fn assets_list_assets(
   roots: XrayRoots,
   kind: XrayAssetType,
-  state: State<'_, AssetMountState>,
+  assets: State<'_, AssetMountState>,
   execution: State<'_, ExecutionState>,
 ) -> TauriResult<Vec<XrayAsset>> {
-  let state: AssetMountState = AssetMountState::clone(&state);
+  let assets: AssetMountState = AssetMountState::clone(&assets);
 
   execution
     .run_blocking("Listing assets", move || {
-      let assets: Vec<XrayAsset> = state.search(&roots)?.list_assets(kind);
+      let listed: Vec<XrayAsset> = assets.search(&roots)?.list_assets(kind);
 
-      log::info!("Listed {} assets of {kind:?} in the mounted roots", assets.len());
+      log::info!("Listed {} assets of {kind:?} in the mounted roots", listed.len());
 
-      Ok(assets)
+      Ok(listed)
     })
     .await?
 }

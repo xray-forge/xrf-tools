@@ -10,6 +10,7 @@ import { ReactElement, useCallback, useMemo } from "react";
 
 import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
+import { isLooseContainer } from "@/core/assets/lib/container";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
@@ -70,7 +71,7 @@ export function VisualsMenu({
     (item: ITreeNode<XrayAsset>) => (
       <TreeRowLabel
         label={item.label}
-        caption={item.payload?.container.kind === "archive" ? ARCHIVED_CAPTION : null}
+        caption={item.payload && !isLooseContainer(item.payload.container) ? ARCHIVED_CAPTION : null}
         captionTitle={"Read from an archive volume"}
       />
     ),

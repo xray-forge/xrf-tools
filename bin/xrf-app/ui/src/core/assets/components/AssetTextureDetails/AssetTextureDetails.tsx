@@ -4,6 +4,7 @@ import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
+import { getAssetContainerSource, isLooseContainer } from "@/core/assets/lib/container";
 import { formatMipmapLevels } from "@/core/assets/lib/texture-shape";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -27,11 +28,11 @@ export function AssetTextureDetails({
   return (
     <div data-testid={dataTestId} id={id} className={className}>
       <EditorPanelProperty label={"Path"} value={asset.logicalPath} isMonospace />
-      {asset.container.kind === "archive" ? (
-        <EditorPanelProperty label={"Archive"} value={asset.container.path} isMonospace />
-      ) : (
-        <EditorPanelProperty label={"Root"} value={asset.container.root} isMonospace />
-      )}
+      <EditorPanelProperty
+        label={isLooseContainer(asset.container) ? "Root" : "Archive"}
+        value={getAssetContainerSource(asset.container)}
+        isMonospace
+      />
       {descriptor ? <EditorPanelProperty label={"Size"} value={formatBytes(descriptor.size)} /> : null}
       {shape ? (
         <>

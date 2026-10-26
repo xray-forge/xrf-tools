@@ -1,4 +1,4 @@
-import { XrayMountMode, XrayRoot, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
+import { EXrayMountMode, XrayMountMode, XrayRoot, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
 /**
@@ -8,7 +8,7 @@ import { Nullable } from "@xrf/types";
  * tree. A viewer pointed at an installation's `db` directory otherwise mounts the volumes as files and
  * finds no assets at all.
  */
-export const DEFAULT_MOUNT_MODE: XrayMountMode = "auto";
+export const DEFAULT_MOUNT_MODE: XrayMountMode = EXrayMountMode.AUTO;
 
 /**
  * Names where the backend should read from.

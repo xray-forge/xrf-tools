@@ -1,6 +1,6 @@
 import { Chip } from "@mui/material";
 import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
-import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
+import { EXrayResolution, XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
@@ -50,13 +50,15 @@ export function VisualSubmeshTexture({
 
       {located ? <AssetTextureDetails asset={located} descriptor={textures?.[located.logicalPath] ?? null} /> : null}
 
-      {resolution.kind === "missing"
+      {resolution.kind === EXrayResolution.MISSING
         ? resolution.roots.map((root: string) => (
             <EditorPanelProperty key={root} label={"Searched"} value={root} isMonospace />
           ))
         : null}
 
-      {resolution.kind === "rejected" ? <EditorPanelProperty label={"Rejected"} value={resolution.reason} /> : null}
+      {resolution.kind === EXrayResolution.REJECTED ? (
+        <EditorPanelProperty label={"Rejected"} value={resolution.reason} />
+      ) : null}
 
       {state === EVisualTextureState.DECODED ? (
         <EditorPanelProperty
