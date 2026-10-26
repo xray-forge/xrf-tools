@@ -8,7 +8,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Display)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Display)]
 #[serde(rename_all = "camelCase")]
 #[display("{x},{y},{z}")]
 pub struct Vector3d<T = f32> {
@@ -21,6 +21,7 @@ impl Vector3d<f32> {
   pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
   pub const X: Self = Self::new(1.0, 0.0, 0.0);
   pub const Y: Self = Self::new(0.0, 1.0, 0.0);
+  pub const Z: Self = Self::new(0.0, 0.0, 1.0);
 
   pub const fn new(x: f32, y: f32, z: f32) -> Self {
     Self { x, y, z }
@@ -59,6 +60,21 @@ impl Vector3d<f32> {
     let length: f32 = self.length();
 
     if length > 0.0 { self / length } else { Self::ZERO }
+  }
+
+  /// The smaller of each pair of components, which is how a box's lower corner grows to take in a point.
+  pub fn min(&self, other: &Self) -> Self {
+    Self::new(self.x.min(other.x), self.y.min(other.y), self.z.min(other.z))
+  }
+
+  /// The larger of each pair of components, which is how a box's upper corner grows to take in a point.
+  pub fn max(&self, other: &Self) -> Self {
+    Self::new(self.x.max(other.x), self.y.max(other.y), self.z.max(other.z))
+  }
+
+  /// The point halfway to `other`.
+  pub fn midpoint(&self, other: &Self) -> Self {
+    &(self + other) * 0.5
   }
 
   pub fn to_array(&self) -> [f32; 3] {
@@ -283,6 +299,17 @@ mod tests {
     sum += &b;
 
     assert_eq!(sum, &a + &b);
+    assert_eq!(Vector3d::Y.cross(&Vector3d::Z), Vector3d::X);
+  }
+
+  #[test]
+  fn takes_each_component_on_its_own_for_bounds() {
+    let a: Vector3d = Vector3d::new(1.0, -2.0, 3.0);
+    let b: Vector3d = Vector3d::new(-1.0, 5.0, 3.0);
+
+    assert_eq!(a.min(&b), Vector3d::new(-1.0, -2.0, 3.0));
+    assert_eq!(a.max(&b), Vector3d::new(1.0, 5.0, 3.0));
+    assert_eq!(a.midpoint(&b), Vector3d::new(0.0, 1.5, 3.0));
   }
 
   #[test]

@@ -41,9 +41,10 @@ fn main() -> xrf_error::XrfResult {
 
 ## Vector3d
 
-`Vector3d<T = f32>` is three named components; the math is defined for `f32`. It has `new`, the constants `ZERO`, `X`
-and `Y`, `dot`, `cross`, `length`, `distance` (and their squared forms), `normalize_or_zero` (zero for a zero vector),
-`to_array`, and operators on references (`&a + &b`, `&a - &b`, `&a * 2.0`, `&a / 2.0`, `-&a`, `sum += &a`). It
+`Vector3d<T = f32>` is three named components; the math is defined for `f32`. It has `new`, the constants `ZERO`, `X`,
+`Y` and `Z`, `dot`, `cross`, `length`, `distance` (and their squared forms), `normalize_or_zero` (zero for a zero
+vector), the component-wise `min` and `max` a bounding box grows by, `midpoint`, `to_array`, and operators on references
+(`&a + &b`, `&a - &b`, `&a * 2.0`, `&a / 2.0`, `-&a`, `sum += &a`). It
 converts from `[f32; 3]` and `(f32, f32, f32)`, displays as `x,y,z`, and parses that form back with `FromStr`
 (whitespace around each number allowed), failing with `XrfError::Parsing`. On the wire it is three `f32`s, 12 bytes.
 

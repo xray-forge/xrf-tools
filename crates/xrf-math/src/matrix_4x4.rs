@@ -17,7 +17,7 @@ impl Matrix4x4 {
   pub const ELEMENTS: usize = 16;
 
   /// Bytes the matrix occupies.
-  pub const SERIALIZED_SIZE: u64 = 16 * 4;
+  pub const SERIALIZED_SIZE: u64 = (Self::ELEMENTS * size_of::<f32>()) as u64;
 
   /// Where the fourth row points, which is the translation the engine reads as `Fmatrix::c`.
   pub const fn get_translation(&self) -> Vector3d<f32> {
