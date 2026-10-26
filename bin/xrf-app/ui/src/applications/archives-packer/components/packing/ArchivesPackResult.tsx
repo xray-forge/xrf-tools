@@ -1,4 +1,4 @@
-import { formatBytesPair, formatDuration } from "@xrf/format";
+import { formatBytesPair, formatCount, formatDuration } from "@xrf/format";
 import { ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
 import { ReactElement, useMemo } from "react";
 
@@ -41,7 +41,7 @@ export function ArchivesPackResult({
       data-testid={dataTestId}
       id={id}
       className={className}
-      headline={`Packed ${result.filesTotal} file(s) into ${result.volumes.length} volume(s)`}
+      headline={`Packed ${formatCount(result.filesTotal)} file(s) into ${result.volumes.length} volume(s)`}
       tone={"success"}
       stats={stats}
       // The first volume rather than the output directory, so the file manager opens with something

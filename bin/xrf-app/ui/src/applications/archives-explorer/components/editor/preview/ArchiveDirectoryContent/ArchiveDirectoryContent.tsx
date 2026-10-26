@@ -5,7 +5,7 @@ import { Alert, Button, Typography } from "@mui/material";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
-import { formatBytes } from "@xrf/format";
+import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
@@ -92,7 +92,7 @@ export function ArchiveDirectoryContent({
       </Typography>
 
       <Typography className={"text-text-secondary"} variant={"body2"}>
-        {summary.count} files · {formatBytes(summary.size)}
+        {formatCount(summary.count)} files · {formatBytes(summary.size)}
       </Typography>
 
       {path ? (
@@ -122,7 +122,7 @@ export function ArchiveDirectoryContent({
         <div className={"mt-4 max-w-120"}>
           <Alert severity={"error"} variant={"outlined"} onClose={archivesService.clearOperation}>
             <Typography className={"wrap-break-word"} variant={"caption"}>
-              {String(operation.error)}
+              {operation.error.message}
             </Typography>
           </Alert>
         </div>
@@ -132,7 +132,7 @@ export function ArchiveDirectoryContent({
         <div className={"mt-4 max-w-120"}>
           <Alert severity={"success"} variant={"outlined"} onClose={archivesService.clearOperation}>
             <Typography className={"wrap-break-word"} variant={"caption"}>
-              {`Extracted ${extracted.extractedCount} files to ${extracted.destination}`}
+              {`Extracted ${formatCount(extracted.extractedCount)} files to ${extracted.destination}`}
             </Typography>
           </Alert>
         </div>

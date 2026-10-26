@@ -1,4 +1,5 @@
 import { Divider, Typography } from "@mui/material";
+import { formatCount } from "@xrf/format";
 import { ReactElement, ReactNode } from "react";
 
 import { cn } from "@/core/theme/class-name";
@@ -15,6 +16,7 @@ const TONE_COLORS: Record<TCommandResultTone, string> = {
 
 export interface ICommandResultStat {
   label: string;
+  /** What the stat measured; a number is a count, spelled through `formatCount` here so no caller forgets to. */
   value: ReactNode;
   tone?: TCommandResultTone;
 }
@@ -59,7 +61,7 @@ export function CommandResult({
         {stats.map((stat: ICommandResultStat) => (
           <div key={stat.label} className={"flex items-baseline gap-1.5"}>
             <Typography variant={"body2"} sx={{ color: stat.tone ? TONE_COLORS[stat.tone] : "text.primary" }}>
-              {stat.value}
+              {typeof stat.value === "number" ? formatCount(stat.value) : stat.value}
             </Typography>
 
             <Typography className={"text-text-secondary"} variant={"caption"}>

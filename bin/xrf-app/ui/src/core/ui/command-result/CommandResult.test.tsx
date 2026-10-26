@@ -29,6 +29,14 @@ describe("CommandResult", () => {
     expect(getByText("1.2 s")).toBeInTheDocument();
   });
 
+  it("spells a numeric stat as a count, so a large run reads with its separators", () => {
+    const { getByText } = renderWithProviders(
+      <CommandResult headline={"Done"} tone={"success"} stats={[{ label: "packed", value: 153221 }]} />
+    );
+
+    expect(getByText("153,221")).toBeInTheDocument();
+  });
+
   it("takes its severity colour from the palette rather than a literal", () => {
     const { getByText } = renderWithProviders(<CommandResult headline={"Failed"} tone={"error"} stats={[]} />);
 

@@ -1,4 +1,5 @@
 import { Typography } from "@mui/material";
+import { formatCount } from "@xrf/format";
 import {
   ArchiveDescribeScope,
   ArchiveParticlesDescription,
@@ -53,25 +54,27 @@ export function ArchiveParticlesDescriptionView({
       <EditorPanelSection title={"Library"} isFirst>
         <ArchiveDescriptionRow
           label={"Effects"}
-          value={`${library.effects}`}
-          caption={`Built from ${library.actions} actions between them`}
+          value={formatCount(library.effects)}
+          caption={`Built from ${formatCount(library.actions)} actions between them`}
         />
 
         <ArchiveDescriptionRow
           label={"Groups"}
-          value={`${library.groups}`}
+          value={formatCount(library.groups)}
           caption={
             library.undefinedEffects
-              ? `Naming ${library.undefinedEffects} ${library.undefinedEffects === 1 ? "effect" : "effects"} this library does not define`
+              ? `Naming ${formatCount(library.undefinedEffects)} ${library.undefinedEffects === 1 ? "effect" : "effects"} this library does not define`
               : "Every effect they name is defined here"
           }
         />
 
         <ArchiveDescriptionRow
           label={"Textures"}
-          value={`${library.textures}`}
+          value={formatCount(library.textures)}
           caption={
-            library.absentTextures ? `${library.absentTextures} not held by what is open` : "All held by what is open"
+            library.absentTextures
+              ? `${formatCount(library.absentTextures)} not held by what is open`
+              : "All held by what is open"
           }
         />
 
@@ -88,7 +91,11 @@ export function ArchiveParticlesDescriptionView({
       </div>
 
       <EditorPanelSection
-        title={isFiltered ? `Effects (${matchedEffects.length} of ${effects.length})` : `Effects (${effects.length})`}
+        title={
+          isFiltered
+            ? `Effects (${formatCount(matchedEffects.length)} of ${formatCount(effects.length)})`
+            : `Effects (${formatCount(effects.length)})`
+        }
         caption={"In the order the library declares them"}
       >
         {matchedEffects.length ? (
@@ -103,7 +110,11 @@ export function ArchiveParticlesDescriptionView({
       </EditorPanelSection>
 
       <EditorPanelSection
-        title={isFiltered ? `Groups (${matchedGroups.length} of ${groups.length})` : `Groups (${groups.length})`}
+        title={
+          isFiltered
+            ? `Groups (${formatCount(matchedGroups.length)} of ${formatCount(groups.length)})`
+            : `Groups (${formatCount(groups.length)})`
+        }
         caption={"Each slot names an effect, and the effects it starts alongside it"}
       >
         {matchedGroups.length ? (

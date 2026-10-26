@@ -2,6 +2,7 @@ import { default as TuneIcon } from "@mui/icons-material/Tune";
 import { Alert, Divider, Stack, Typography } from "@mui/material";
 import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { ArchivesPatchRequest } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
 import { Logger } from "@xrf/logging";
@@ -201,7 +202,9 @@ export function ArchivesPatcherApplication(): ReactElement {
     patcherService.configName ?? "no configuration",
     ...(patcherService.isDirty ? ["unsaved changes"] : []),
     ...(patcherService.operation.result
-      ? [`${patcherService.operation.result.added.length + patcherService.operation.result.modified.length} carried`]
+      ? [
+          `${formatCount(patcherService.operation.result.added.length + patcherService.operation.result.modified.length)} carried`,
+        ]
       : []),
   ]);
 

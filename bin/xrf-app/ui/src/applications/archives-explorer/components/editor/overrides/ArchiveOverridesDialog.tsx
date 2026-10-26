@@ -1,7 +1,7 @@
 import { default as ContentCopyIcon } from "@mui/icons-material/ContentCopy";
 import { Alert, CircularProgress, Dialog, DialogContent, TextField } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { formatBytes } from "@xrf/format";
+import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveWorldEntry } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveSourceUsage, ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable } from "@xrf/types";
@@ -162,7 +162,7 @@ export function ArchiveOverridesDialog({
               description={
                 "Each path with every copy claiming it, highest priority first; the top one is what the engine loads."
               }
-              fact={`${entries.length} of ${overridden.length} path(s) · ${hiddenCopies} buried`}
+              fact={`${formatCount(entries.length)} of ${formatCount(overridden.length)} path(s) · ${formatCount(hiddenCopies)} buried`}
             >
               <TextField
                 className={"mb-2 shrink-0"}

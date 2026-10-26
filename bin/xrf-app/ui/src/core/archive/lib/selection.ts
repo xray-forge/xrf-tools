@@ -27,8 +27,8 @@ export type TArchiveBytes = Uint8Array<ArrayBuffer>;
  * What was loaded for the current selection, whatever form it took.
  *
  * Media carries its description and its bytes side by side because they arrive as two calls: the bytes are what the
- * webview plays or paints, the descriptor is what the engine would read. Both are fetched against one roots, so they
- * always describe the same file.
+ * webview plays or paints, the descriptor is what the engine would read. Both are read by the open subject's session,
+ * so they always describe the same file.
  */
 export type TArchiveContent =
   | { kind: "text"; result: ArchiveReadResult }

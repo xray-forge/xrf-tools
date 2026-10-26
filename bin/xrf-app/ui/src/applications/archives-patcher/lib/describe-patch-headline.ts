@@ -1,3 +1,4 @@
+import { formatCount } from "@xrf/format";
 import { ArchivePatchResult } from "@xrf/ipc/types/xrf-pack";
 
 /**
@@ -11,12 +12,14 @@ export function describePatchHeadline(result: ArchivePatchResult): string {
 
   switch (result.publication.kind) {
     case "published":
-      return `Published ${carried} entry(s) into ${result.publication.volumes.length} volume(s)`;
+      return `Published ${formatCount(carried)} entry(s) into ${result.publication.volumes.length} volume(s)`;
 
     case "unnecessary":
       return "Nothing differs, so no patch was written";
 
     default:
-      return carried ? `${carried} entry(s) would be carried into a patch` : "Nothing differs between the two worlds";
+      return carried
+        ? `${formatCount(carried)} entry(s) would be carried into a patch`
+        : "Nothing differs between the two worlds";
   }
 }

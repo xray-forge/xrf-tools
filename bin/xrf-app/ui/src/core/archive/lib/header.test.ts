@@ -32,6 +32,16 @@ describe("writeHeaderValue", () => {
     expect(readHeaderValue(written, HEADER_ENTRY_POINT)).toBe("$game_data$");
   });
 
+  it("replaces a key where it stands, so the values keep the order they were written in", () => {
+    expect(writeHeaderValue(HEADER, HEADER_AUTO_LOAD, "false")).toBe(
+      "[header]\r\nauto_load = false\r\nEntry_Point = $fs_root$\\gamedata\\\r\nlevel_name = zaton\r\n"
+    );
+  });
+
+  it("appends a key the header does not hold", () => {
+    expect(writeHeaderValue(HEADER, "patch", "1")).toBe(`${HEADER}patch = 1\r\n`);
+  });
+
   it("removes a key for a blank value, and the whole header when nothing is left", () => {
     expect(writeHeaderValue("[header]\r\nEntry_Point = x\r\n", HEADER_ENTRY_POINT, " ")).toBeNull();
   });

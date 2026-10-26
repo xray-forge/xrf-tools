@@ -5,7 +5,7 @@ import { default as UnarchiveIcon } from "@mui/icons-material/Unarchive";
 import { Alert } from "@mui/material";
 import { CommandBus } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
-import { formatBytes } from "@xrf/format";
+import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveSubject, EArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
@@ -104,10 +104,10 @@ export function ArchivesEditor(): ReactElement {
   useEditorBusy(isBusy || Boolean(job));
 
   useEditorStatus([
-    `${getSubjectSourceCount(subject)} ${isWorld ? "sources" : "archives"}`,
-    `${archivesService.entries.length} files`,
+    `${formatCount(getSubjectSourceCount(subject))} ${isWorld ? "sources" : "archives"}`,
+    `${formatCount(archivesService.entries.length)} files`,
     formatBytes(getSubjectSize(subject)),
-    ...(overriddenCount ? [`${overriddenCount} overridden`] : []),
+    ...(overriddenCount ? [`${formatCount(overriddenCount)} overridden`] : []),
   ]);
 
   return (

@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { formatBytes, formatHex } from "@xrf/format";
+import { formatBytes, formatHex, formatPercent } from "@xrf/format";
 import { ArchiveSubject, ArchiveWorldEntry, EArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveDescriptor, ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 import { getFileExtension } from "@xrf/path";
@@ -44,9 +44,9 @@ export function ArchiveFileDetailsPanel({
       return "Stored";
     }
 
-    const ratio: number = descriptor.sizeReal ? (descriptor.sizeCompressed / descriptor.sizeReal) * 100 : 0;
+    const ratio: number = descriptor.sizeReal ? descriptor.sizeCompressed / descriptor.sizeReal : 0;
 
-    return `Compressed (${ratio.toFixed(1)}%)`;
+    return `Compressed (${formatPercent(ratio, 1)})`;
   }, []);
 
   if (!entry) {
