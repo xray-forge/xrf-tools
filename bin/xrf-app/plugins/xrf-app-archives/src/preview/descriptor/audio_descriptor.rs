@@ -40,7 +40,7 @@ impl AudioDescriptor {
           min_distance: parameters.min_distance,
           max_distance: parameters.max_distance,
           base_volume: parameters.base_volume,
-          game_type: parameters.game_type,
+          game_type: parameters.game_type.into(),
           max_ai_distance: parameters.max_ai_distance,
         }),
         SoundMetadata::EngineDefaults => None,
