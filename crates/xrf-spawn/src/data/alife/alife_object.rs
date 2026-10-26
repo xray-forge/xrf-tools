@@ -59,6 +59,15 @@ impl AlifeObject {
   /// here are laid out as Call of Pripyat and the forks built on it write them, at 128.
   pub const MAX_UNSUPPORTED_VERSION: u16 = 120;
 
+  /// Move the object to `position`, facing `direction` as the spawn packet's angles give it, in every packet that
+  /// stores where it stands. `CALifeSimulatorBase::create` reads the update packet over the spawn packet, so an object
+  /// moved in the spawn packet alone would start where its update packet still says.
+  pub fn move_to(&mut self, position: Vector3d, direction: Vector3d) {
+    self.inherited.move_to(&position, &direction);
+    self.position = position;
+    self.direction = direction;
+  }
+
   /// Refuse an object whose payload is shaped for another class than its section's, which the engine would read
   /// with the section's class.
   fn assert_class_matches_section(&self) -> XrfResult {
@@ -659,25 +668,69 @@ mod tests {
     );
   }
 
+  /// The actor starts where its update packet says, so a move that reached only the spawn packet would not move it.
   #[test]
-  fn rejects_update_data_past_its_size_field() {
+  fn moves_an_actor_in_both_packets() -> XrfResult {
     let mut original: AlifeObject = new_graph_point_object();
-    let mut actor: AlifeActor = AlifeActor::new_mock();
 
-    actor.update_data = vec![0; 70000];
     original.section = String::from("actor");
     original.clsid = ClsId::SActor;
-    original.inherited = AlifeObjectInherited::SeActor(Box::new(actor));
+    original.inherited = AlifeObjectInherited::SeActor(Box::new(AlifeActor::new_mock(Vector3d::new(1.0, 2.0, 3.0))));
+    original.move_to(Vector3d::new(-40.0, 5.5, 120.0), Vector3d::new(-0.1, 1.25, 0.0));
 
     let mut writer: ChunkWriter = ChunkWriter::new();
 
+    original.write::<XRayByteOrder>(&mut writer)?;
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> =
+      ChunkReader::from_vec(writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?.read_child_by_index(0)?;
+    let read: AlifeObject = AlifeObject::read::<XRayByteOrder, _>(&mut reader)?;
+    let AlifeObjectInherited::SeActor(actor) = &read.inherited else {
+      panic!("Expected an actor payload");
+    };
+
+    assert_eq!(read.position, Vector3d::new(-40.0, 5.5, 120.0));
+    assert_eq!(read.direction, Vector3d::new(-0.1, 1.25, 0.0));
+    assert_eq!(actor.base.base.update_position, Vector3d::new(-40.0, 5.5, 120.0));
+    assert_eq!(actor.base.base.update_torso_yaw, 1.25);
+    assert_eq!(actor.base.base.update_torso_pitch, -0.1);
+
+    Ok(())
+  }
+
+  /// An item's `UPDATE_Read` moves it to its physics state's position over its spawn packet's.
+  #[test]
+  fn moves_an_item_and_its_physics_state() {
+    let mut original: AlifeObject = new_graph_point_object();
+
+    original.section = String::from("medkit");
+    original.clsid = ClsId::SFood;
+    original.inherited =
+      AlifeObjectInherited::CseAlifeItem(Box::new(AlifeObjectItem::new_mock(original.position.clone())));
+    original.move_to(Vector3d::new(7.0, 8.0, 9.0), Vector3d::new(0.0, 0.5, 0.0));
+
+    let AlifeObjectInherited::CseAlifeItem(item) = &original.inherited else {
+      panic!("Expected an item payload");
+    };
+
+    assert_eq!(original.position, Vector3d::new(7.0, 8.0, 9.0));
     assert_eq!(
-      original
-        .write::<XRayByteOrder>(&mut writer)
-        .expect_err("expect the update data to exceed its size field")
-        .to_string(),
-      "Invalid error: alife object update data exceeds the u16 format limit"
+      item.update_state.as_ref().map(PhysicsNetState::get_position),
+      Some(Vector3d::new(7.0, 8.0, 9.0))
     );
+  }
+
+  /// A class storing no position in its update packet moves in its spawn packet alone.
+  #[test]
+  fn moves_a_graph_point_in_its_spawn_packet() {
+    let mut original: AlifeObject = new_graph_point_object();
+    let inherited: AlifeObjectInherited = original.inherited.clone();
+
+    original.move_to(Vector3d::new(7.0, 8.0, 9.0), Vector3d::new(0.0, 0.5, 0.0));
+
+    assert_eq!(original.position, Vector3d::new(7.0, 8.0, 9.0));
+    assert_eq!(original.direction, Vector3d::new(0.0, 0.5, 0.0));
+    assert_eq!(original.inherited, inherited);
   }
 
   #[test]

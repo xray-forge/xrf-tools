@@ -2,15 +2,56 @@
 
 import { Vector3d } from "#/types/xrf-math";
 
+/** Every `type` the `ActorPhysicsState` union is told apart by, so a switch or a comparison names one. */
+export enum EActorPhysicsState {
+  /** No body was saved. */
+  ABSENT = "Absent",
+  /** The living body, `m_AliveState`, in the order the actor writes it. */
+  ALIVE = "Alive",
+  /**
+   * A dead body, `m_DeadBodyData` as `CActor::net_ExportDeadBody` writes it: the low and high corners its bones are
+   * quantised within, then `bone_data_size` bytes for each of its `bone_count` bones.
+   */
+  DEAD = "Dead",
+}
+
+/**
+ * The body an actor's update packet saves, behind the `u16` count `CSE_ALifeCreatureActor::UPDATE_Write` opens it with:
+ * nothing at zero, the living body's physics state at one, and a dead body's bones above that.
+ */
+export type ActorPhysicsState =
+  /** No body was saved. */
+  | { type: "Absent" }
+  /** The living body, `m_AliveState`, in the order the actor writes it. */
+  | {
+      type: "Alive";
+      /** The body's enabled flag, as the byte the engine reads it into. */
+      enabled: number;
+      angularVelocity: [RawFloat, RawFloat, RawFloat];
+      linearVelocity: [RawFloat, RawFloat, RawFloat];
+      force: [RawFloat, RawFloat, RawFloat];
+      torque: [RawFloat, RawFloat, RawFloat];
+      position: [RawFloat, RawFloat, RawFloat];
+      /** The orientation quaternion as x, y, z and w. */
+      rotation: [RawFloat, RawFloat, RawFloat, RawFloat];
+    }
+  /**
+   * A dead body, `m_DeadBodyData` as `CActor::net_ExportDeadBody` writes it: the low and high corners its bones are
+   * quantised within, then `bone_data_size` bytes for each of its `bone_count` bones.
+   */
+  | {
+      type: "Dead";
+      boneCount: number;
+      boneDataSize: number;
+      lowCorner: [RawFloat, RawFloat, RawFloat];
+      highCorner: [RawFloat, RawFloat, RawFloat];
+      bones: Array<number>;
+    };
+
 export type AlifeActor = {
   base: AlifeObjectActor;
   /** The script class's own field, `se_actor` in vanilla. */
   startPositionFilled: number;
-  /**
-   * The update packet, carried as stored. The engine reads it over the spawn packet, so the actor starts where it
-   * says.
-   */
-  updateData: Array<number>;
 };
 
 export type AlifeAnomalousZone = {
@@ -82,11 +123,23 @@ export type AlifeObjectAbstract = {
   spawnStoryId: number;
 };
 
+/**
+ * The actor, `CSE_ALifeCreatureActor`: a creature and a trader with a skeleton. Its update packet follows the
+ * creature's fields with its own movement and the body it saved; the trader and the skeleton add none.
+ */
 export type AlifeObjectActor = {
   base: AlifeObjectCreature;
   trader: AlifeObjectTraderAbstract;
   skeleton: AlifeObjectSkeleton;
   holderId: number;
+  /** The movement state flags, `mstate`. */
+  updateMovementState: number;
+  updateAcceleration: ScaledDirection;
+  updateVelocity: ScaledDirection;
+  updateRadiation: number | null;
+  /** The weapon slot in hand, `weapon`. */
+  updateWeapon: number;
+  updateBody: ActorPhysicsState;
 };
 
 export type AlifeObjectAnomalyZone = {
@@ -112,6 +165,11 @@ export type AlifeObjectClimable = {
   gameMaterial: string;
 };
 
+/**
+ * A creature, `CSE_ALifeCreatureAbstract`. Its update packet repeats its health, team, squad and group, and carries
+ * where it stands and which way its torso faces; the engine reads them over the spawn packet's, so a creature starts
+ * where its update packet says.
+ */
 export type AlifeObjectCreature = {
   base: AlifeObjectDynamicVisual;
   team: number;
@@ -122,6 +180,21 @@ export type AlifeObjectCreature = {
   dynamicInRestrictions: Array<number>;
   killerId: number;
   gameDeathTime: number;
+  updateHealth: number | null;
+  updateTimestamp: number;
+  updateFlags: number;
+  /** Where the creature stands, `o_Position`. */
+  updatePosition: Vector3d;
+  /** The model's heading, `o_model`. */
+  updateModelYaw: number | null;
+  /** The torso's heading, `o_torso.yaw`, which the spawn packet's direction gives as its y. */
+  updateTorsoYaw: number | null;
+  /** The torso's pitch, `o_torso.pitch`, which the spawn packet's direction gives as its x. */
+  updateTorsoPitch: number | null;
+  updateTorsoRoll: number | null;
+  updateTeam: number;
+  updateSquad: number;
+  updateGroup: number;
 };
 
 export type AlifeObjectCustomZone = {
@@ -749,6 +822,13 @@ export type PhysicsNetState = {
  * A finite value travels as its number, in LTX and JSON alike, and anything else as its bits in hex (`0xffffffff`).
  */
 export type RawFloat = number | string;
+
+/** A vector as `NET_Packet::w_sdir` writes it: its direction compressed into a `u16` (`pvCompress`), then its length. */
+export type ScaledDirection = {
+  /** The unit direction as `pvCompress` packs it. */
+  direction: number;
+  magnitude: number | null;
+};
 
 /** Shape enumeration stored in objects descriptors. */
 export type Shape =

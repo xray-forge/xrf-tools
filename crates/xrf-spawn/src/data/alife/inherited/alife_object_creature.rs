@@ -1,12 +1,19 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport, Section};
+use xrf_math::Vector3d;
 use xrf_utils::{vector_from_string, vector_to_string};
 
+use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
+#[cfg(test)]
+use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 
+/// A creature, `CSE_ALifeCreatureAbstract`. Its update packet repeats its health, team, squad and group, and carries
+/// where it stands and which way its torso faces; the engine reads them over the spawn packet's, so a creature starts
+/// where its update packet says.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,38 +27,89 @@ pub struct AlifeObjectCreature {
   pub dynamic_in_restrictions: Vec<u16>,
   pub killer_id: u16,
   pub game_death_time: u64,
+  pub update_health: f32,
+  pub update_timestamp: u32,
+  pub update_flags: u8,
+  /// Where the creature stands, `o_Position`.
+  pub update_position: Vector3d,
+  /// The model's heading, `o_model`.
+  pub update_model_yaw: f32,
+  /// The torso's heading, `o_torso.yaw`, which the spawn packet's direction gives as its y.
+  pub update_torso_yaw: f32,
+  /// The torso's pitch, `o_torso.pitch`, which the spawn packet's direction gives as its x.
+  pub update_torso_pitch: f32,
+  pub update_torso_roll: f32,
+  pub update_team: u8,
+  pub update_squad: u8,
+  pub update_group: u8,
 }
 
-impl ChunkReadWrite for AlifeObjectCreature {
-  /// Read ALife creature object data from the chunk reader.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+impl AlifeObjectCreature {
+  /// Place the creature at `position`, its torso facing `direction` as the spawn packet's angles give it: pitch about
+  /// x and heading about y, as `CSE_ALifeCreatureAbstract::STATE_Read` derives the torso from `o_Angle`.
+  pub fn move_to(&mut self, position: &Vector3d, direction: &Vector3d) {
+    self.update_position = position.clone();
+    self.update_torso_pitch = direction.x;
+    self.update_torso_yaw = direction.y;
+  }
+}
+
+impl AlifePacketsReadWrite for AlifeObjectCreature {
+  /// Read a creature from both packets.
+  fn read<T: ByteOrder, D: ChunkDataSource>(
+    spawn: &mut ChunkReader<D>,
+    update: &mut ChunkReader<D>,
+  ) -> XrfResult<Self> {
     Ok(Self {
-      base: reader.read_xr::<T, _>()?,
-      team: reader.read_u8()?,
-      squad: reader.read_u8()?,
-      group: reader.read_u8()?,
-      health: reader.read_f32::<T>()?,
-      dynamic_out_restrictions: reader.read_u16_vector::<T>()?,
-      dynamic_in_restrictions: reader.read_u16_vector::<T>()?,
-      killer_id: reader.read_u16::<T>()?,
-      game_death_time: reader.read_u64::<T>()?,
+      base: spawn.read_xr::<T, _>()?,
+      team: spawn.read_u8()?,
+      squad: spawn.read_u8()?,
+      group: spawn.read_u8()?,
+      health: spawn.read_f32::<T>()?,
+      dynamic_out_restrictions: spawn.read_u16_vector::<T>()?,
+      dynamic_in_restrictions: spawn.read_u16_vector::<T>()?,
+      killer_id: spawn.read_u16::<T>()?,
+      game_death_time: spawn.read_u64::<T>()?,
+      update_health: update.read_f32::<T>()?,
+      update_timestamp: update.read_u32::<T>()?,
+      update_flags: update.read_u8()?,
+      update_position: update.read_xr::<T, _>()?,
+      update_model_yaw: update.read_f32::<T>()?,
+      update_torso_yaw: update.read_f32::<T>()?,
+      update_torso_pitch: update.read_f32::<T>()?,
+      update_torso_roll: update.read_f32::<T>()?,
+      update_team: update.read_u8()?,
+      update_squad: update.read_u8()?,
+      update_group: update.read_u8()?,
     })
   }
 
-  /// Write ALife creature object data into the chunk writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
+  /// Write a creature into both packets.
+  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+    spawn.write_xr::<T, _>(&self.base)?;
 
-    writer.write_u8(self.team)?;
-    writer.write_u8(self.squad)?;
-    writer.write_u8(self.group)?;
-    writer.write_f32::<T>(self.health)?;
+    spawn.write_u8(self.team)?;
+    spawn.write_u8(self.squad)?;
+    spawn.write_u8(self.group)?;
+    spawn.write_f32::<T>(self.health)?;
 
-    writer.write_u16_vector::<T>(&self.dynamic_out_restrictions)?;
-    writer.write_u16_vector::<T>(&self.dynamic_in_restrictions)?;
+    spawn.write_u16_vector::<T>(&self.dynamic_out_restrictions)?;
+    spawn.write_u16_vector::<T>(&self.dynamic_in_restrictions)?;
 
-    writer.write_u16::<T>(self.killer_id)?;
-    writer.write_u64::<T>(self.game_death_time)?;
+    spawn.write_u16::<T>(self.killer_id)?;
+    spawn.write_u64::<T>(self.game_death_time)?;
+
+    update.write_f32::<T>(self.update_health)?;
+    update.write_u32::<T>(self.update_timestamp)?;
+    update.write_u8(self.update_flags)?;
+    update.write_xr::<T, _>(&self.update_position)?;
+    update.write_f32::<T>(self.update_model_yaw)?;
+    update.write_f32::<T>(self.update_torso_yaw)?;
+    update.write_f32::<T>(self.update_torso_pitch)?;
+    update.write_f32::<T>(self.update_torso_roll)?;
+    update.write_u8(self.update_team)?;
+    update.write_u8(self.update_squad)?;
+    update.write_u8(self.update_group)?;
 
     Ok(())
   }
@@ -80,6 +138,17 @@ impl LtxImportExport for AlifeObjectCreature {
       dynamic_in_restrictions: vector_from_string(&section.read_field::<String>("creature.dynamic_in_restrictions")?)?,
       killer_id: section.read_field("creature.killer_id")?,
       game_death_time: section.read_field("creature.game_death_time")?,
+      update_health: section.read_field("creature.update_health")?,
+      update_timestamp: section.read_field("creature.update_timestamp")?,
+      update_flags: section.read_field("creature.update_flags")?,
+      update_position: section.read_field("creature.update_position")?,
+      update_model_yaw: section.read_field("creature.update_model_yaw")?,
+      update_torso_yaw: section.read_field("creature.update_torso_yaw")?,
+      update_torso_pitch: section.read_field("creature.update_torso_pitch")?,
+      update_torso_roll: section.read_field("creature.update_torso_roll")?,
+      update_team: section.read_field("creature.update_team")?,
+      update_squad: section.read_field("creature.update_squad")?,
+      update_group: section.read_field("creature.update_group")?,
     })
   }
 
@@ -102,184 +171,131 @@ impl LtxImportExport for AlifeObjectCreature {
         vector_to_string(&self.dynamic_in_restrictions),
       )
       .set("creature.killer_id", self.killer_id.to_string())
-      .set("creature.game_death_time", self.game_death_time.to_string());
+      .set("creature.game_death_time", self.game_death_time.to_string())
+      .set("creature.update_health", self.update_health.to_string())
+      .set("creature.update_timestamp", self.update_timestamp.to_string())
+      .set("creature.update_flags", self.update_flags.to_string())
+      .set("creature.update_position", self.update_position.to_string())
+      .set("creature.update_model_yaw", self.update_model_yaw.to_string())
+      .set("creature.update_torso_yaw", self.update_torso_yaw.to_string())
+      .set("creature.update_torso_pitch", self.update_torso_pitch.to_string())
+      .set("creature.update_torso_roll", self.update_torso_roll.to_string())
+      .set("creature.update_team", self.update_team.to_string())
+      .set("creature.update_squad", self.update_squad.to_string())
+      .set("creature.update_group", self.update_group.to_string());
 
     Ok(())
   }
 }
 
 #[cfg(test)]
-mod tests {
-  use std::fs::File;
-  use std::io::{Seek, SeekFrom, Write, read_to_string};
-
-  use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
-  use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_test_utils::{FileSlice, GeneratedResources};
-
-  use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
-  use crate::data::alife::inherited::alife_object_creature::AlifeObjectCreature;
-  use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
-
-  #[test]
-  fn test_read_write() -> XrfResult {
-    let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
-
-    let original: AlifeObjectCreature = AlifeObjectCreature {
+impl AlifeObjectCreature {
+  /// A living creature at `position`, facing along its spawn packet's direction as the SDK leaves one.
+  pub fn new_mock(position: Vector3d) -> Self {
+    Self {
       base: AlifeObjectDynamicVisual {
         base: AlifeObjectAbstract {
-          game_vertex_id: 1001,
-          distance: 65.25,
-          direct_control: 412421,
-          level_vertex_id: 66231,
-          flags: 33,
-          custom_data: String::from("custom_data"),
-          story_id: 400,
-          spawn_story_id: 25,
+          game_vertex_id: 621,
+          distance: 0.0,
+          direct_control: 1,
+          level_vertex_id: 52235,
+          flags: 0,
+          custom_data: String::new(),
+          story_id: AlifeObjectAbstract::INVALID_STORY_ID,
+          spawn_story_id: AlifeObjectAbstract::INVALID_STORY_ID,
         },
-        visual_name: String::from("abcdef"),
-        visual_flags: 33,
+        visual_name: String::from("actors\\stalker_hero\\stalker_hero_1"),
+        visual_flags: 0,
       },
-      team: 2,
-      squad: 3,
-      group: 4,
+      team: 0,
+      squad: 0,
+      group: 0,
       health: 1.0,
-      dynamic_out_restrictions: vec![1, 2, 3, 4],
-      dynamic_in_restrictions: vec![5, 6, 7, 8],
-      killer_id: 25,
+      dynamic_out_restrictions: Vec::new(),
+      dynamic_in_restrictions: Vec::new(),
+      killer_id: u16::MAX,
       game_death_time: 0,
-    };
+      update_health: 1.0,
+      update_timestamp: 0,
+      update_flags: 0,
+      update_position: position,
+      update_model_yaw: 0.0,
+      update_torso_yaw: 2.81,
+      update_torso_pitch: -0.012,
+      update_torso_roll: 0.0,
+      update_team: 0,
+      update_squad: 0,
+      update_group: 0,
+    }
+  }
+}
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+#[cfg(test)]
+mod tests {
+  use xrf_chunk::XRayByteOrder;
+  use xrf_error::XrfResult;
+  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_math::Vector3d;
 
-    assert_eq!(writer.bytes_written(), 87);
+  use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
+  use crate::data::alife::inherited::alife_object_creature::AlifeObjectCreature;
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
+  fn new_object() -> AlifeObjectCreature {
+    let mut object: AlifeObjectCreature = AlifeObjectCreature::new_mock(Vector3d::new(256.24, 19.81, 550.82));
 
-    assert_eq!(bytes_written, 87);
+    object.dynamic_out_restrictions = vec![1, 2, 3, 4];
+    object.dynamic_in_restrictions = vec![5, 6, 7, 8];
+    object.update_health = 0.5;
+    object.update_timestamp = 0xc2ba_3333;
+    object.update_flags = 0x99;
 
-    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
+    object
+  }
 
-    assert_eq!(file.bytes_remaining(), 87 + 8);
+  /// Health, timestamp, flags, position, four angles and three bytes: `CSE_ALifeCreatureAbstract::UPDATE_Write`.
+  #[test]
+  fn test_read_write() -> XrfResult {
+    let original: AlifeObjectCreature = new_object();
 
-    let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
-    let read_object: AlifeObjectCreature = AlifeObjectCreature::read::<XRayByteOrder, _>(&mut reader)?;
-
-    assert_eq!(read_object, original);
+    assert_eq!(original.read_back::<XRayByteOrder>()?, (104, 40, original));
 
     Ok(())
   }
 
   #[test]
+  fn moves_where_it_stands_and_turns_its_torso() {
+    let mut creature: AlifeObjectCreature = new_object();
+
+    creature.move_to(&Vector3d::new(1.0, 2.0, 3.0), &Vector3d::new(-0.25, 1.5, 0.75));
+
+    assert_eq!(creature.update_position, Vector3d::new(1.0, 2.0, 3.0));
+    assert_eq!(creature.update_torso_pitch, -0.25);
+    assert_eq!(creature.update_torso_yaw, 1.5);
+    // The model's heading and the torso's roll are not what the spawn packet's direction gives.
+    assert_eq!(creature.update_model_yaw, 0.0);
+    assert_eq!(creature.update_torso_roll, 0.0);
+  }
+
+  #[test]
   fn test_import_export() -> XrfResult {
-    let ltx_filename: String = GeneratedResources::sample_name(file!(), "import_export.ltx");
+    let original: AlifeObjectCreature = new_object();
     let mut ltx: Ltx = Ltx::new();
 
-    let first: AlifeObjectCreature = AlifeObjectCreature {
-      base: AlifeObjectDynamicVisual {
-        base: AlifeObjectAbstract {
-          game_vertex_id: 3215,
-          distance: 332.25,
-          direct_control: 32451,
-          level_vertex_id: 63663,
-          flags: 36,
-          custom_data: String::from("custom_data_first"),
-          story_id: 243,
-          spawn_story_id: 323,
-        },
-        visual_name: String::from("abcdef_first"),
-        visual_flags: 33,
-      },
-      team: 3,
-      squad: 4,
-      group: 5,
-      health: 0.5,
-      dynamic_out_restrictions: vec![1, 2, 3, 4],
-      dynamic_in_restrictions: vec![5, 6, 7, 8],
-      killer_id: 25,
-      game_death_time: 16,
-    };
+    original.export("data", &mut ltx)?;
 
-    let second: AlifeObjectCreature = AlifeObjectCreature {
-      base: AlifeObjectDynamicVisual {
-        base: AlifeObjectAbstract {
-          game_vertex_id: 32,
-          distance: 25.25,
-          direct_control: 255,
-          level_vertex_id: 634,
-          flags: 36,
-          custom_data: String::from("custom_data_second"),
-          story_id: 43,
-          spawn_story_id: 32,
-        },
-        visual_name: String::from("abcdef_second"),
-        visual_flags: 35,
-      },
-      team: 4,
-      squad: 5,
-      group: 6,
-      health: 0.5,
-      dynamic_out_restrictions: vec![1, 2, 3, 4],
-      dynamic_in_restrictions: vec![5, 6, 7, 8],
-      killer_id: 25,
-      game_death_time: 17,
-    };
-
-    first.export("first", &mut ltx)?;
-    second.export("second", &mut ltx)?;
-
-    ltx.write_to(&mut GeneratedResources::overwrite(&ltx_filename)?)?;
-
-    let source: Ltx = Ltx::read_from_path(GeneratedResources::path(&ltx_filename))?;
-
-    assert_eq!(AlifeObjectCreature::import("first", &source)?, first);
-    assert_eq!(AlifeObjectCreature::import("second", &source)?, second);
+    assert_eq!(AlifeObjectCreature::import("data", &ltx)?, original);
 
     Ok(())
   }
 
   #[test]
   fn test_serialize_deserialize() -> XrfResult {
-    let original: AlifeObjectCreature = AlifeObjectCreature {
-      base: AlifeObjectDynamicVisual {
-        base: AlifeObjectAbstract {
-          game_vertex_id: 3215,
-          distance: 332.25,
-          direct_control: 32451,
-          level_vertex_id: 63663,
-          flags: 36,
-          custom_data: String::from("custom_data_serde"),
-          story_id: 243,
-          spawn_story_id: 323,
-        },
-        visual_name: String::from("abcdef_serde"),
-        visual_flags: 33,
-      },
-      team: 3,
-      squad: 4,
-      group: 5,
-      health: 0.5,
-      dynamic_out_restrictions: vec![1, 2, 3, 4],
-      dynamic_in_restrictions: vec![5, 6, 7, 8],
-      killer_id: 25,
-      game_death_time: 0,
-    };
+    let original: AlifeObjectCreature = new_object();
 
-    let mut file: File =
-      GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
-
-    file.write_all(to_string_pretty(&original)?.as_bytes())?;
-
-    file.seek(SeekFrom::Start(0))?;
-
-    let serialized: String = read_to_string(&mut file)?;
-
-    assert_eq!(serialized.to_string(), serialized);
-    assert_eq!(original, serde_json::from_str::<AlifeObjectCreature>(&serialized)?);
+    assert_eq!(
+      serde_json::from_str::<AlifeObjectCreature>(&serde_json::to_string(&original)?)?,
+      original
+    );
 
     Ok(())
   }
